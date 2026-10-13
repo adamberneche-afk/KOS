@@ -15,6 +15,45 @@ instead — that PDF was later investigated and confirmed to describe an
 entirely different, abandoned pre-v8 architecture never carried into the
 live system, and has been archived; see `README.md`'s note on this.)
 
+## Retention schedule (adopted 2026-10-13, pending district confirmation)
+
+The operator adopted this schedule on 2026-10-13. **The district records
+officer still has to confirm it against the Library of Virginia's General
+Schedule GS-21 (public school divisions)**; every period is a Script
+Property, so a confirmed period is set without a code change. The schedule
+lives in `scripts/57_RetentionSchedule.js`, and `checkRetentionSchedule()`
+reports, per record, how many rows are past their period and how many of
+those are archived (counts only; it changes nothing).
+
+Periods are counted in whole school years after the year ends, with the
+same August start the dashboards use (`_retentionCutoff_()` in
+`00_SharedConfig.js`). On 2026-10-13, a 5-year record from 2020-21 or
+earlier is past; a 1-year record from 2024-25 or earlier is past.
+
+| Tier | Period | Records | Script Property |
+|---|---|---|---|
+| Record: what a grade, a rating decision or a disclosure rests on | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry` | `LEDGER_RETENTION_YEARS` |
+| | 5 years | `CompetencyEvidence` | `COMPETENCY_EVIDENCE_RETENTION_YEARS` |
+| | 5 years | `SCRDecisionLog` | `SCR_RETENTION_YEARS` |
+| | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
+| Working data: queues, Flow inputs and profiles | 1 year | `WarmUpQueue` | `WARMUP_QUEUE_RETENTION_YEARS` (was 5 years) |
+| | 1 year | `StudentProfiles`, `WarmUpRegistry`, `WarmUpResponses`, `SCRSuggestions`, `FlowInput`, `Flow3Input`, `Flow4Input`, `Flow5Input`, `ReviewQueue`, `STAGING_PIPELINE` | `WORKING_DATA_RETENTION_YEARS` |
+| Student Docs | with their row | A student's workspace Doc follows its `Ledger` row; a warm-up Doc follows its `WarmUpQueue` row | — |
+
+Kept on their own rules, outside the schedule: `WarmUpFlowReturn` (harvested
+rows deleted after 14 days by `41`), the Family Mail Sentinel tabs (below),
+the CAS attention signal (overwritten every run), and the Canvas gradebook
+exports (deleted after enrolling).
+
+**Disposition.** Past its period, a row in a tab with an archive marker
+(`Ledger`, `CompetencyEvidence`, `SCRDecisionLog`, `ParentReportLog`,
+`WarmUpQueue`) is archived automatically by the health checks, as below.
+Nothing is deleted automatically. Deletion is a separate step the operator
+approves after reviewing what is past its period.
+
+The history below is how each archive pass came to exist; where it says
+"default 5 years, unconfirmed", the table above is now the schedule.
+
 **Retention policy — partially defined: `SCRDecisionLog`, `Ledger`,
 `CompetencyEvidence`, `ParentReportLog`, and `WarmUpQueue`.** Every other tab in this document still persists
 indefinitely, with no deletion/archival mechanism at all. `SCRDecisionLog` — the one tab with an
@@ -86,9 +125,9 @@ for a given student's rows, for a reopened case (an appeal, a corrected
 record). SCRDecisionLog deliberately has no equivalent reactivate action —
 its archived state is a disposition hold, not a hibernate state.
 
-For every other tab, treat "retention: indefinite, no policy" as the honest
-answer — this document does not assert a retention period that isn't actually
-enforced anywhere.
+For the working-data tabs with no archive marker, the schedule above sets
+the period and `checkRetentionSchedule()` reports what is past it; nothing
+marks or removes those rows yet.
 
 ---
 
@@ -141,7 +180,7 @@ enforced anywhere.
 | **Written by** | `updateAllStudentProfiles()` (Script 23), nightly 3am |
 | **Read by** | `getStudentProfileSnapshot_()` and `buildShadowMatrixSummary_()` (Script 23), Script 25, Script 33 |
 | **Visible to** | The student's own teacher (Teacher Dashboard warm-up-readiness panel and per-student shadow-profile view); Studio Flow 3 (via a redacted snapshot — see Bonus 2 below) |
-| **Retention** | Indefinite — not yet defined |
+| **Retention** | Working data, 1 school year after the year ends (`WORKING_DATA_RETENTION_YEARS`; see the retention schedule above), dated by last-updated. Reported by `checkRetentionSchedule()`; no archive marker. |
 
 ### LessonContext / AlignmentLog
 *Teacher-authored, or drafted from the pacing guide by `buildUpcomingLessons()` (51); class-level — no student PII*
@@ -181,7 +220,7 @@ content.
 | **Written by** | Script 24 (build), Script 25 (scoring), Studio Flow 3 (doc creation, archetype write-back), Studio Flow 5 (bridge output) |
 | **Read by** | Script 23 (nightly), Script 25 |
 | **Visible to** | Studio Flow 3/4/5 — the native Sheets/Ask-Gemini connector steps still read/write this tab directly with no gate in this repo's own code, but the pre/post-processing steps around them are now this repo's own code (`cas-ccps/studio-steps/`: `SelectWarmUpArchetypeStep.gs`/`CreateWarmUpDocStep.gs` for Flow 3, `ExtractWarmUpPromptTextStep.gs`/`FinalizeWarmUpScoreStep.gs` for Flow 4, `ExtractBridgeInputsStep.gs` for Flow 5 — **blocked on this account and superseded**: a custom step needs a standard Cloud project, and this pre/post-processing was ported into `41_WarmUpFlowBridge.js`, which reaches this tab from Apps Script under the same Script Properties as Scripts 24/25); the student, indirectly, via the generated warm-up doc |
-| **Retention** | `WARMUP_QUEUE_RETENTION_YEARS` (Script Property, default 5 — see the retention note above) via `_archiveExpiredWarmUpQueueRows_()` (`34_QueueWatchdog.js`, which already owns this tab's health monitoring), run automatically on every daily health check and every on-demand admin health check, anchored on `lesson_date`. A row past the window gets `archive_status` set to `"ARCHIVED"`; actual deletion is never automatic. Reversible via the `♻️ Reactivate WarmUpQueue Rows` menu item (`reactivateWarmUpQueueArchival()`), same operational-data treatment as CompetencyEvidence above — this was the one major operational tab with no retention mechanism at all until a third-party review found the gap. |
+| **Retention** | `WARMUP_QUEUE_RETENTION_YEARS` (Script Property, default 1 school year since 2026-10-13 — see the retention schedule above) via `_archiveExpiredWarmUpQueueRows_()` (`34_QueueWatchdog.js`, which already owns this tab's health monitoring), run automatically on every daily health check and every on-demand admin health check, anchored on `lesson_date`. A row past the window gets `archive_status` set to `"ARCHIVED"`; actual deletion is never automatic. Reversible via the `♻️ Reactivate WarmUpQueue Rows` menu item (`reactivateWarmUpQueueArchival()`), same operational-data treatment as CompetencyEvidence above — this was the one major operational tab with no retention mechanism at all until a third-party review found the gap. |
 
 > This is the tab the Bonus-2 fix below actually touches — see "Flow 3 name exposure" section.
 
@@ -262,10 +301,9 @@ this one Central Ledger spreadsheet), writes the raw Gemini evaluation
 text back into `GeminiFullOutput`, and `harvestFlowInputResults()` takes
 it from there — same PII class as Ledger (student email, no raw response
 text; the response text itself is read from and stays in the student's
-own Doc, never copied in here). No dedicated retention pass yet — flagged
-as a fast-follow once real usage volume justifies one, same as every
-other tab's retention mechanism was added after the fact, not
-speculatively up front.
+own Doc, never copied in here). Retention: working data, 1 school year
+after the year ends (`WORKING_DATA_RETENTION_YEARS`; see the retention
+schedule above), reported by `checkRetentionSchedule()`.
 
 `harvestFlowInputResults()`'s `_fiCheckPlausibility_` gate (a backstop
 against a model returning well-formed output without ever reading the
