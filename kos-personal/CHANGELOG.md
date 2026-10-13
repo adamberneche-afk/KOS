@@ -1,6 +1,22 @@
 # KOS Changelog
 
 
+### The 21-day onboarding can be closed out (2026-10-13)
+
+The onboarding counter stopped at the cap, so the primer read "Onboarding
+Day 21 of 21" indefinitely and nothing recorded that onboarding had
+finished. `previewOnboardingCloseOut()` / `closeOutOnboarding()`
+(`5_Error_And_Utilities.gs`) record the close date in
+`KOS_ONBOARDING_CLOSED` and an `ONBOARDING_CLOSED` row in
+`ONBOARDING_TRACKER`; they refuse while the engine is cold or below day
+21, and a second run writes nothing. The primer, the session-context
+block, the web app's health panel and the progress check read
+`_onboardingStatusLine_()`: `Onboarding: complete (closed YYYY-MM-DD)`.
+Re-arming the engine clears it. The close-out review is
+`ONBOARDING_CLOSEOUT_2026-10-13.md`. Test:
+`tests/kos-personal/onboarding-closeout.test.js`.
+
+
 ### STAGING_PIPELINE is archived nightly, finished rows only (2026-10-06)
 
 Nothing archived `STAGING_PIPELINE` except the web app button, so it had

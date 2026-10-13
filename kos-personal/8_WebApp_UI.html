@@ -2221,7 +2221,9 @@ function loadHealthSummary() {
       return;
     }
 
-    const obText = res.onboardingDay > 0
+    const obText = res.onboardingClosed
+      ? 'Complete (closed ' + res.onboardingClosed + ')'
+      : res.onboardingDay > 0
       ? 'Day ' + res.onboardingDay + ' of ' + res.onboardingCap
       : 'Learning from sessions';
 

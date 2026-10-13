@@ -853,8 +853,7 @@ function generateDailyPrimer() {
     const shadowState = getShadowMatrixStatus();
     const quality     = _primerDataQuality_(vectorState);
     const vision       = props.getProperty(CFG.PROP.VISION_90_DAY) || 'Not defined';
-    const onboardingDay = props.getProperty(CFG.PROP.ONBOARDING_DAY) || '0';
-    const blocks = _primerBlocks_(onboardingDay, vision, vectorState, shadowState, quality);
+    const blocks = _primerBlocks_(_onboardingStatusLine_(props), vision, vectorState, shadowState, quality);
     const title  = 'DAILY PRIMER — ' + dateStr;
     const stamp  = _briefingStamp_(now, 'generateDailyPrimer');
 
@@ -929,9 +928,9 @@ function _appendBlocks_(body, blocks) {
  * meta/CODEBASE_REVIEW.md — when the same content was hand-duplicated
  * instead of shared).
  */
-function _primerBlocks_(onboardingDay, vision, vectorState, shadowState, quality) {
+function _primerBlocks_(onboardingLine, vision, vectorState, shadowState, quality) {
   const out = [];
-  out.push({ kind: 'p', text: 'Onboarding Day ' + onboardingDay + ' of ' + CFG.ONBOARDING_DAYS });
+  out.push({ kind: 'p', text: onboardingLine });
 
   out.push({ kind: 'h2', text: '90-Day Vision' });
   out.push({ kind: 'p', text: vision });
