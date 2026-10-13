@@ -591,8 +591,7 @@ function _archiveExpiredParentReports_() {
   if (!sheet || sheet.getLastRow() < 2) return { archived: 0, checked: 0 };
   _ensureParentReportArchiveColumn_(sheet);
 
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _parentReportRetentionYears_());
+  const cutoff = _retentionCutoff_(_parentReportRetentionYears_());
 
   const data = sheet.getRange(1, 1, sheet.getLastRow(), PARENT_REPORT_LOG_HEADERS.length).getValues();
   let archived = 0;
@@ -622,8 +621,7 @@ function _countParentReportsPastRetentionUnarchived_() {
   const sheet = ss.getSheetByName(cfg.tabs.parentReportLog);
   if (!sheet || sheet.getLastRow() < 2) return 0;
 
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _parentReportRetentionYears_());
+  const cutoff = _retentionCutoff_(_parentReportRetentionYears_());
 
   const data = sheet.getRange(1, 1, sheet.getLastRow(), PARENT_REPORT_LOG_HEADERS.length).getValues();
   let count = 0;

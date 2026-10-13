@@ -372,8 +372,8 @@ function _ferpaHealthChecks_() {
     alertText: warmUpQueuePastRetentionUnarchived
       ? "🚨 WARMUPQUEUE RETENTION ARCHIVAL DID NOT RUN\n" +
         "   " + warmUpQueuePastRetentionUnarchived + " row(s) are past the configured retention\n" +
-        "   window (WARMUP_QUEUE_RETENTION_YEARS Script Property, default 5 years,\n" +
-        "   unconfirmed against any real district retention schedule) and have\n" +
+        "   window (WARMUP_QUEUE_RETENTION_YEARS Script Property, default 1 school\n" +
+        "   year, 57_RetentionSchedule.js, pending district confirmation) and have\n" +
         "   not moved to ARCHIVED — this should be automatic.\n" +
         "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
         "   (which re-triggers archival), and confirm the daily health-check\n" +
@@ -1106,8 +1106,7 @@ function _archiveExpiredLedgerRows_() {
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
   if (!sheet) return { archived: 0, checked: 0 };
 
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _ledgerRetentionYears_());
+  const cutoff = _retentionCutoff_(_ledgerRetentionYears_());
 
   const data = sheet.getRange(1, 1, Math.max(1, sheet.getLastRow()), LEDGER_COL_COUNT).getValues();
   let archived = 0;
@@ -1154,8 +1153,7 @@ function _countLedgerRowsPastRetentionUnarchived_() {
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
   if (!sheet) return 0;
 
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _ledgerRetentionYears_());
+  const cutoff = _retentionCutoff_(_ledgerRetentionYears_());
 
   const data = sheet.getRange(1, 1, Math.max(1, sheet.getLastRow()), LEDGER_COL_COUNT).getValues();
   let count = 0;
