@@ -184,7 +184,7 @@ function runSocraticOnboarding() {
     [
       'IDENTITY_KEY', 'IDENTITY_KEY_SALT',
       CFG.PROP.THESIS_VERIFIED, CFG.PROP.ONBOARDING_DAY, CFG.PROP.ONBOARDING_START,
-      CFG.PROP.OPERATOR_ROLE, CFG.PROP.OPERATOR_AUDIENCE, CFG.PROP.ADMIN_GHOST,
+      CFG.PROP.ONBOARDING_CLOSED, CFG.PROP.OPERATOR_ROLE, CFG.PROP.OPERATOR_AUDIENCE, CFG.PROP.ADMIN_GHOST,
       CFG.PROP.NECESSARY_STRUGGLE, CFG.PROP.RELATIONAL_TARGETS, CFG.PROP.VISION_90_DAY,
       CFG.PROP.DEPLOYMENT_TYPE,
     ].forEach(k => props.deleteProperty(k));
@@ -441,8 +441,7 @@ function buildSessionContext() {
       'Assembled: ' + new Date().toLocaleString() + '\n' +
       'Active Files: ' + loaded.join(', ') + '\n' +
       'Operator: ' + (props.getProperty(CFG.PROP.OPERATOR_ROLE) || 'Unknown') + '\n' +
-      'Onboarding Day: ' + (props.getProperty(CFG.PROP.ONBOARDING_DAY) || '?') +
-      ' of ' + CFG.ONBOARDING_DAYS + '\n\n' +
+      _onboardingStatusLine_(props) + '\n\n' +
       '═'.repeat(50) + '\n\n' +
       sections.join('\n\n' + '─'.repeat(50) + '\n\n') +
       '\n\n' + '═'.repeat(50) + '\n' +
@@ -652,6 +651,13 @@ function checkOnboardingProgress() {
     ui.alert('🔒 Not Started Yet',
       'Setup hasn\'t been completed.\n\nRun 🧠 Admin → Personalize Your Advisor.',
       ui.ButtonSet.OK);
+    return;
+  }
+
+  const closed = props.getProperty(CFG.PROP.ONBOARDING_CLOSED);
+  if (closed) {
+    ui.alert('Onboarding Complete',
+      'Onboarding was closed on ' + closed + ' (closeOutOnboarding).', ui.ButtonSet.OK);
     return;
   }
 

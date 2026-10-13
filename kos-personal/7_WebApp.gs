@@ -335,6 +335,7 @@ function getSystemHealth() {
       engineArmed,
       onboardingDay:    obDay,
       onboardingCap:    CFG.ONBOARDING_DAYS,
+      onboardingClosed: props.getProperty(CFG.PROP.ONBOARDING_CLOSED) || '',
       // Empty string (falsy) when unset, not the literal 'not set' — the
       // client's own `res.adminEmail ? ... : ...` branch already renders a
       // "not set" warning icon, but a truthy placeholder string here made
