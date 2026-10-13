@@ -293,6 +293,7 @@ const CFG = {
     THESIS_VERIFIED:    'CORE_THESIS_VERIFIED',
     ONBOARDING_DAY:     'KOS_ONBOARDING_DAY',
     ONBOARDING_START:   'KOS_ONBOARDING_START',
+    ONBOARDING_CLOSED:  'KOS_ONBOARDING_CLOSED', // date the operator closed it out (closeOutOnboarding)
 
     // Managed inference service (optional — see CFG.INFERENCE_MODE above).
     // Deployment-specific values, set once as Script Properties, never

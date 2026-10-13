@@ -43,7 +43,7 @@ const QUALITY = { lines: [{ kind: 'p', text: 'Status: OK. No known data-quality 
 function write(exported, sandbox, dateStr, vision, vectorState, shadowState) {
   exported._writeLatestPrimer_(
     sandbox.DriveApp.getRootFolder(), 'DAILY PRIMER — ' + dateStr, 'Generated at: ' + dateStr + ' 06:00',
-    exported._primerBlocks_(1, vision, vectorState || VECTOR_EMPTY, shadowState || SHADOW_EMPTY, QUALITY)
+    exported._primerBlocks_('Onboarding Day 1 of 21', vision, vectorState || VECTOR_EMPTY, shadowState || SHADOW_EMPTY, QUALITY)
   );
   return sandbox.PropertiesService.getScriptProperties()
     .getProperty(exported.CFG.PROP.LATEST_PRIMER_DOC_ID);
@@ -164,13 +164,13 @@ test('_primerBlocks_: the Data Quality status rides on the Vector State heading 
   const { exported } = load();
   const flagged = { flagged: true, flags: ['56 processed session(s) have no Vector State row yet'],
     lines: [{ kind: 'p', text: 'Status: FLAGGED. Qualify any Vector State claim with the flags below.' }] };
-  const blocks = exported._primerBlocks_(21, 'vision', VECTOR_FULL, SHADOW_FULL, flagged);
+  const blocks = exported._primerBlocks_('Onboarding Day 21 of 21', 'vision', VECTOR_FULL, SHADOW_FULL, flagged);
   const i = blocks.findIndex((b) => b.kind === 'h2' && /^Vector State/.test(b.text));
   assert.equal(blocks[i].text, 'Vector State (Data Quality FLAGGED)');
   assert.equal(blocks[i + 1].text, 'Data Quality: FLAGGED. 56 processed session(s) have no Vector State row yet.');
   assert.equal(blocks[i + 2].text, 'Craft: 0.50', 'the scores follow the qualifier');
 
-  const ok = exported._primerBlocks_(21, 'vision', VECTOR_FULL, SHADOW_FULL, QUALITY);
+  const ok = exported._primerBlocks_('Onboarding Day 21 of 21', 'vision', VECTOR_FULL, SHADOW_FULL, QUALITY);
   const k = ok.findIndex((b) => b.kind === 'h2' && /^Vector State/.test(b.text));
   assert.deepEqual([ok[k].text, ok[k + 1].text], ['Vector State (Data Quality OK)', 'Data Quality: OK.']);
 });
