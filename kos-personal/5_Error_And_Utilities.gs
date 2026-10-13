@@ -1461,6 +1461,7 @@ function completeOnboarding(payload) {
     props.setProperty(CFG.PROP.THESIS_VERIFIED, 'true');
     props.setProperty(CFG.PROP.ONBOARDING_DAY,  '1');
     props.setProperty(CFG.PROP.ONBOARDING_START, new Date().toISOString());
+    props.deleteProperty(CFG.PROP.ONBOARDING_CLOSED); // a re-armed engine starts a new onboarding
     _logOnboardingDay(1, 'WEB_ONBOARDING_COMPLETE', p.vision);
 
     console.log('[completeOnboarding] Engine armed via web app. Deployment: ' + dt);
@@ -1513,6 +1514,67 @@ function _logOnboardingDay(day, event, note) {
   } catch (e) {
     console.warn('[_logOnboardingDay] ' + e.message);
   }
+}
+
+
+/**
+ * The one onboarding line the primer, the session context block and the
+ * KOS Project read: "Onboarding Day N of 21" while it runs, and
+ * "Onboarding: complete (closed YYYY-MM-DD)" once closeOutOnboarding()
+ * has run. Before the close-out the counter stops at the cap and stays
+ * there, which said nothing about whether onboarding had finished.
+ */
+function _onboardingStatusLine_(props) {
+  const closed = props.getProperty(CFG.PROP.ONBOARDING_CLOSED);
+  if (closed) return 'Onboarding: complete (closed ' + closed + ')';
+  return 'Onboarding Day ' + (props.getProperty(CFG.PROP.ONBOARDING_DAY) || '0') +
+    ' of ' + CFG.ONBOARDING_DAYS;
+}
+
+/**
+ * Show-then-confirm close-out of the 21-day onboarding. The preview
+ * changes nothing; closeOutOnboarding() records the close date, writes an
+ * ONBOARDING_CLOSED row in ONBOARDING_TRACKER, and from then on the
+ * primer reads "Onboarding: complete (closed …)". Refuses while the engine
+ * is cold or before the counter reaches CFG.ONBOARDING_DAYS. Safe to
+ * re-run: a second call reports the existing close date and writes
+ * nothing. Re-arming the engine (either onboarding path) clears it.
+ */
+function previewOnboardingCloseOut() {
+  return _onboardingCloseOut_(false);
+}
+
+function closeOutOnboarding() {
+  return _onboardingCloseOut_(true);
+}
+
+function _onboardingCloseOut_(apply) {
+  const props = PropertiesService.getScriptProperties();
+  const day = parseInt(props.getProperty(CFG.PROP.ONBOARDING_DAY) || '0', 10);
+  const start = props.getProperty(CFG.PROP.ONBOARDING_START) || '';
+  const closed = props.getProperty(CFG.PROP.ONBOARDING_CLOSED) || '';
+  let result;
+  if (closed) {
+    result = { ok: true, changed: false, message: 'Onboarding was already closed on ' + closed + '.' };
+  } else if (props.getProperty(CFG.PROP.THESIS_VERIFIED) !== 'true') {
+    result = { ok: false, changed: false, message: 'The engine is not armed, so there is no onboarding to close.' };
+  } else if (day < CFG.ONBOARDING_DAYS) {
+    result = { ok: false, changed: false, message: 'Onboarding is on day ' + day + ' of ' +
+      CFG.ONBOARDING_DAYS + '; it can be closed once it reaches day ' + CFG.ONBOARDING_DAYS + '.' };
+  } else {
+    const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    const note = 'Day ' + day + ' of ' + CFG.ONBOARDING_DAYS + (start ? '; started ' + start.slice(0, 10) : '');
+    if (apply) {
+      props.setProperty(CFG.PROP.ONBOARDING_CLOSED, today);
+      _logOnboardingDay(day, 'ONBOARDING_CLOSED', note);
+      result = { ok: true, changed: true, message: 'Onboarding closed on ' + today + ' (' + note + ').' };
+    } else {
+      result = { ok: true, changed: false, message: 'PREVIEW: onboarding would be closed today, ' + today +
+        ' (' + note + '). Run closeOutOnboarding() to close it.' };
+    }
+  }
+  console.log('[OnboardingCloseOut] ' + result.message);
+  return result;
 }
 
 
