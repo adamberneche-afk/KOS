@@ -225,7 +225,12 @@ function backPropagateCompletions() {
         queueSheet.getRange(rowNum, RQ_STATUS + 1).getValue()
       ).trim();
 
-      if (currentStatus !== "STAGED") continue;
+      // A result can land after the timeout branch above already closed the
+      // queue row (a slow Studio run, or one started by hand). The harvest
+      // then marks staging COMPLETE, so finish the queue and Ledger rows
+      // too; otherwise they stay at ERROR_TIMEOUT for good.
+      const late = currentStatus === "ERROR_TIMEOUT";
+      if (currentStatus !== "STAGED" && !late) continue;
 
       markQueueRow_(queueSheet, rowNum, "COMPLETE");
       updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId);
@@ -236,7 +241,8 @@ function backPropagateCompletions() {
       // but this catches any cases where Studio's doc connector step failed
       processCompletedEvaluation_(fileId, configId);
 
-      Logger.log("[BACKPROP] Processed row " + rowNum + " | FileID: " + fileId);
+      Logger.log("[BACKPROP] Processed row " + rowNum + (late ? " (arrived after its timeout)" : "") +
+                 " | FileID: " + fileId);
     }
   } catch (err) {
     Logger.log("[BACKPROP] Critical failure: " + err.message);
