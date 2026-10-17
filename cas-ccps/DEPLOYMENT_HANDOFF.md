@@ -464,7 +464,8 @@ Studio, because before that there is no `FlowInput` row for it to read.
 `WARMUP_TEXT_BOX` on, a warm-up is answered on the Student Dashboard instead
 of in a doc: Flow 3 writes it to the Ledger's `WarmUpTextBox` tab, the
 student types the answer under it (until the end of the lesson day), the
-3:15am run scores it, and the next day the card shows the feedback and, for
+3:15am run scores it, and the next day the card shows the score (out of
+10, with its parts) and the feedback and, for
 7 days, an extra-credit reply box (10 words or more). The card shows only
 the last warm-up and the current one. To turn it on, add the row
 `WARMUP_TEXT_BOX` to the Central Ledger's `_CONFIG` tab: `off`, `8175`,
