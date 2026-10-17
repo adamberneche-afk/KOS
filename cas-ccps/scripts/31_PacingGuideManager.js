@@ -403,7 +403,9 @@ function getWarmUpAnchor_(dateStr, courseName) {
   let unit = resolveUnitForDate_(dateStr);
   const courseCode = is8175 ? "8175" : (is8177 ? "8177" : "");
   if (courseCode) {
-    const own = resolveUnitForCourseDate_(dateStr, courseCode);
+    // A WarmUpPlan row (55) picks another lesson's seed for this day.
+    const planned = typeof plannedWarmUpUnit_ === "function" ? plannedWarmUpUnit_(dateStr, courseCode) : null;
+    const own = planned || resolveUnitForCourseDate_(dateStr, courseCode);
     if (own) unit = _pgUnitView_(own);
   }
   if (!unit) return null;
