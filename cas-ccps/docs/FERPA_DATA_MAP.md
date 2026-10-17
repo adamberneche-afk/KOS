@@ -38,7 +38,7 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 | | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
 | Working data: queues, Flow inputs and profiles | 1 year | `WarmUpQueue` | `WARMUP_QUEUE_RETENTION_YEARS` (was 5 years) |
 | | 1 year | `StudentProfiles`, `WarmUpRegistry`, `WarmUpResponses`, `SCRSuggestions`, `FlowInput`, `Flow3Input`, `Flow4Input`, `Flow5Input`, `ReviewQueue`, `STAGING_PIPELINE` | `WORKING_DATA_RETENTION_YEARS` |
-| Student Docs | with their row | A student's workspace Doc follows its `Ledger` row; a warm-up Doc follows its `WarmUpQueue` row | — |
+| Student Docs | with their row | A student's workspace Doc follows its `Ledger` row; a warm-up Doc follows its `WarmUpQueue` row. Feedback posted as comments (`FEEDBACK_AS_COMMENT`) is part of the Doc and goes with it | — |
 
 Kept on their own rules, outside the schedule: `WarmUpFlowReturn` (harvested
 rows deleted after 14 days by `41`), the Family Mail Sentinel tabs (below),

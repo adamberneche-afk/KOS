@@ -260,6 +260,18 @@ function processCompletedEvaluation_(fileId, configId) {
     const body = doc.getBody();
     const text = body.getText();
 
+    // Feedback as a comment (FEEDBACK_AS_COMMENT, 00): its next steps ride in
+    // the comment and the result is on the Ledger, so nothing is added here.
+    // An older doc still has the zone's placeholder, which says feedback
+    // appears in the document; clear it.
+    if (feedbackAsCommentFor_(configId)) {
+      if (text.indexOf("[No feedback yet.") !== -1) {
+        removePlaceholder_(body);
+        doc.saveAndClose();
+      }
+      return;
+    }
+
     // Only process if placeholder is still present (Studio may have removed it)
     const needsProcessing = text.indexOf("[No feedback yet.") !== -1;
     if (!needsProcessing) {

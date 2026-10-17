@@ -1005,6 +1005,65 @@ function teacherSendWeeklyParentReport(studentEmail, recipientAddress) {
 //   getStudentScaffoldingData() when Module 3 student profiles exist.
 //   For now scaffolding is always an empty array — zero UI cost.
 // ── M2 ──────────────────────────────────────────────────────────────────────
+// ---------------------------------------------------------------------------
+// Feedback placement (FEEDBACK_AS_COMMENT, 00): per course, Flow 2 feedback
+// goes into the student's doc or on it as a comment. The setting is one row
+// in the Central Ledger's _CONFIG tab ("off", one course code, or "all"),
+// which reaches the Central Ledger (the harvest) and the Student Dashboard
+// within the shared-config cache time. A Script Property of the same name
+// in a project overrides the tab there, so the panel says when this
+// project has one.
+// ---------------------------------------------------------------------------
+function getFeedbackPlacement() {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return _tdFeedbackPlacement_(cfg);
+}
+
+function setFeedbackPlacement(courseCode, asComment) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  const current = _tdFeedbackPlacement_(cfg);
+  const code = String(courseCode || "").trim();
+  if (!current.courses.some(function (c) { return c.code === code; })) {
+    return { success: false, error: "Unknown course: " + code };
+  }
+  const on = current.courses
+    .filter(function (c) { return c.code === code ? !!asComment : c.asComment; })
+    .map(function (c) { return c.code; });
+  let value;
+  if (on.length === 0) value = "off";
+  else if (on.length === current.courses.length) value = "all";
+  else if (on.length === 1) value = on[0];
+  else return { success: false, error: "The setting holds one course or all of them; turn the others on or off together." };
+  setSharedConfigValue_("FEEDBACK_AS_COMMENT", value);
+  Logger.log("[Dashboard] FEEDBACK_AS_COMMENT set to " + value + ".");
+  return _tdFeedbackPlacement_(cfg);
+}
+
+// Courses come from the Ledger's ConfigIDs ("CAS-8175-L06"), so a new course
+// shows up once it has assignments.
+function _tdFeedbackPlacement_(cfg) {
+  const resolved = _resolveConfigValues_();
+  const check = feedbackAsCommentChecker_();
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
+  const codes = {};
+  if (sheet && sheet.getLastRow() > 1) {
+    sheet.getRange(2, LEDGER.CONFIG_ID + 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) {
+      const m = String(r[0]).trim().match(/^CAS-(\d{4})-/);
+      if (m) codes[m[1]] = true;
+    });
+  }
+  return {
+    success: true,
+    value: resolved.values.FEEDBACK_AS_COMMENT || "off",
+    overriddenHere: resolved.sources.FEEDBACK_AS_COMMENT === "Script Property",
+    courses: Object.keys(codes).sort().map(function (code) {
+      return { code: code, asComment: check("CAS-" + code + "-X") };
+    }),
+  };
+}
+
 function getCompetencies() {
   const cfg   = getConfig_();
   const email = cfg.teacherEmail || "";
@@ -1559,6 +1618,9 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
        review queue of AI-suggested Module 5 competency ratings; nothing
        is decided until the teacher confirms or overrides one. -->
   <button id="scr-review-btn" onclick="openScrReviewModal()">🎓 SCR Reviews</button>
+  <!-- Feedback placement per course (FEEDBACK_AS_COMMENT, 00): in the doc or
+       as a comment on it. -->
+  <button id="feedback-placement-btn" onclick="openFeedbackPlacementModal()">💬 Feedback</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
@@ -1744,6 +1806,18 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
      a full preview of the text that would be sent: the teacher is
      authorizing a disclosure outside the school's domain, so they read the
      actual message, not a summary of it. -->
+<div class="modal-backdrop" id="feedback-placement-modal-backdrop" onclick="if(event.target===this)closeFeedbackPlacementModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="feedback-placement-modal-title" style="max-width:520px">
+    <div class="modal-header">
+      <h2 id="feedback-placement-modal-title">Where feedback goes</h2>
+      <button class="modal-close" onclick="closeFeedbackPlacementModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="feedback-placement-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="parent-report-modal-backdrop" onclick="if(event.target===this)closeParentReportModal()">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="parent-report-modal-title" style="max-width:720px">
     <div class="modal-header">
@@ -2094,6 +2168,65 @@ function _handleTurnInDecisionResult(res) {
 // consequential thing here the easiest thing to do by accident.
 
 let _parentReports = [];
+
+function openFeedbackPlacementModal() {
+  document.getElementById("feedback-placement-modal-backdrop").classList.add("show");
+  document.getElementById("feedback-placement-modal-body").innerHTML =
+    '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
+  google.script.run
+    .withSuccessHandler(renderFeedbackPlacement)
+    .withFailureHandler(_feedbackPlacementFailed)
+    .getFeedbackPlacement();
+}
+
+function closeFeedbackPlacementModal() {
+  document.getElementById("feedback-placement-modal-backdrop").classList.remove("show");
+}
+
+function _feedbackPlacementFailed(e) {
+  document.getElementById("feedback-placement-modal-body").innerHTML =
+    '<p style="color:#d93025;font-size:13px">Could not load: ' +
+    esc(e && e.message ? e.message : "unknown error") + '</p>';
+}
+
+function renderFeedbackPlacement(data) {
+  const body = document.getElementById("feedback-placement-modal-body");
+  if (!data || !data.success) {
+    body.innerHTML = '<p style="color:#d93025;font-size:13px">' +
+      esc((data && data.error) || "Could not load the setting.") + '</p>';
+    return;
+  }
+  let html = '<p style="font-size:13px;color:var(--text-secondary)">For each course, where a student\\'s ' +
+    'evaluation goes. A comment keeps the document to the assignment and the student\\'s work; ' +
+    'new documents are then made without a feedback section. Changes reach students within about 10 minutes.</p>';
+  if (data.overriddenHere) {
+    html += '<p style="font-size:13px;color:#d93025">This project has its own FEEDBACK_AS_COMMENT ' +
+      'Script Property, which overrides this setting here. Delete it to use this panel.</p>';
+  }
+  if (!data.courses.length) {
+    html += '<p style="font-size:13px">No courses with assignments yet.</p>';
+  }
+  data.courses.forEach(function(c) {
+    const name = "fp-" + esc(c.code);
+    html += '<fieldset style="border:1px solid #e8eaed;border-radius:6px;margin:8px 0;padding:8px 12px">' +
+      '<legend style="font-weight:600">' + esc(c.code) + '</legend>' +
+      '<label style="margin-right:16px"><input type="radio" name="' + name + '"' + (c.asComment ? '' : ' checked') +
+      ' onchange="saveFeedbackPlacement(\\'' + esc(c.code) + '\\', false)"> In the document</label>' +
+      '<label><input type="radio" name="' + name + '"' + (c.asComment ? ' checked' : '') +
+      ' onchange="saveFeedbackPlacement(\\'' + esc(c.code) + '\\', true)"> As a comment</label>' +
+      '</fieldset>';
+  });
+  body.innerHTML = html;
+}
+
+function saveFeedbackPlacement(code, asComment) {
+  document.getElementById("feedback-placement-modal-body").innerHTML =
+    '<p style="font-size:13px;color:var(--text-secondary)">Saving…</p>';
+  google.script.run
+    .withSuccessHandler(renderFeedbackPlacement)
+    .withFailureHandler(_feedbackPlacementFailed)
+    .setFeedbackPlacement(code, asComment);
+}
 
 function openParentReportModal() {
   document.getElementById("parent-report-modal-backdrop").classList.add("show");
