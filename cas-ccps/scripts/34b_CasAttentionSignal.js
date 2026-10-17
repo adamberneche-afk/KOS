@@ -34,7 +34,7 @@
 //   - STAGING_PIPELINE rows in flight with no timestamp (they never age, so
 //     nothing else ever times them out)
 //   - Submit for Feedback failures on the system side in the last 24 hours
-//     (Student Dashboard's DOC_UNREADABLE and NO_QUEUE, counted from the
+//     (Student Dashboard's DOC_UNREADABLE, NO_QUEUE and SERVER_ERROR, counted from the
 //     SubmitFailures tab 13 writes), with the count per code
 //   - the nightly lesson rollout (58): PROBLEM rows in RolloutLog in the last
 //     day, and the courses it is still running in SHADOW for
