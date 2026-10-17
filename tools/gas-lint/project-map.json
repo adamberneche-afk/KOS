@@ -76,7 +76,8 @@
       "cas-ccps/scripts/55_LessonSchedule.js",
       "cas-ccps/scripts/55b_LessonAssignmentData.js",
       "cas-ccps/scripts/57_RetentionSchedule.js",
-      "cas-ccps/scripts/58_LessonRollout.js"
+      "cas-ccps/scripts/58_LessonRollout.js",
+      "cas-ccps/scripts/63_DocHeader.js"
     ]
   },
   "cas-ccps:unified-manual": {
@@ -148,7 +149,8 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/13_StudentDashboard.js",
-      "cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js"
+      "cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js",
+      "cas-ccps/scripts/63_DocHeader.js"
     ]
   },
   "cas-ccps:studio-steps": {
