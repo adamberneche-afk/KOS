@@ -72,6 +72,8 @@ function _retentionSchedule_() {
       where: ledger(function (cfg) { return cfg.tabs.studentProfiles; }), dateCol: SP_LAST_UPDATED },
     { label: "WarmUpRegistry", tier: RETENTION_TIER_WORKING, years: working,
       where: ledger(function (cfg) { return cfg.tabs.warmUpRegistry; }), dateCol: WR_GENERATED_AT },
+    { label: "WarmUpTextBox", tier: RETENTION_TIER_WORKING, years: working,
+      where: ledger(function (cfg) { return cfg.tabs.warmUpTextBox; }), dateCol: WTB.LESSON_DATE },
     { label: "WarmUpResponses", tier: RETENTION_TIER_WORKING, years: working,
       where: ledger(function (cfg) { return cfg.tabs.warmUpResponses; }), dateCol: WUR_TIMESTAMP },
     { label: "SCRSuggestions", tier: RETENTION_TIER_WORKING, years: working,
