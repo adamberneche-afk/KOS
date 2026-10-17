@@ -350,8 +350,30 @@ function queueSubmission_(cfg, googleId, fileId, configId) {
   const queue = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
   if (!queue) return { ok: false, error: "NO_QUEUE" };
   // Column 5 (StudentText) stays empty; see the header comment above.
-  queue.appendRow([new Date(), googleId, fileId, configId, "", "PENDING", ""]);
+  const now = new Date();
+  queue.appendRow([now, googleId, fileId, configId, "", "PENDING", ""]);
+  stampSubmissionTs_(cfg, googleId, fileId, configId, now);
   return { ok: true };
+}
+
+// The Ledger's SubmissionTS: when the student last submitted this work. Both
+// dashboards show it. Best effort: the queued row is what counts, so a
+// failure here is logged and the submit still succeeds.
+function stampSubmissionTs_(cfg, googleId, fileId, configId, when) {
+  try {
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
+    const data  = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][LEDGER.GOOGLE_ID]).toLowerCase() === googleId.toLowerCase() &&
+          String(data[i][LEDGER.CONFIG_ID]) === configId &&
+          String(data[i][LEDGER.FILE_ID])   === fileId) {
+        sheet.getRange(i + 1, LEDGER.SUBMISSION_TS + 1).setValue(when);
+        return;
+      }
+    }
+  } catch (e) {
+    Logger.log("[S13] SubmissionTS not written for " + configId + ": " + e.message);
+  }
 }
 
 // ---------------------------------------------------------------------------
