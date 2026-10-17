@@ -367,51 +367,34 @@ function stampDocument_(fileId, configId, studentName, block,
   // feedback zone: the header keeps who and what, and the dashboard link.
   const feedbackInComments = feedbackAsCommentFor_(configId);
 
-  // ── ZONE 1: FEEDBACK HEADER ───────────────────────────────────────────────
-  body.appendParagraph(
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-    (feedbackInComments ? "" : "📊 FEEDBACK\n") +
-    "Student: " + studentName +
-    "  |  Block: " + block +
-    "  |  " + className + " — " + teacherName +
-    "  |  Period: " + period + "\n" +
-    "Assignment: " + unitName + "\n" +
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  );
+  // Who and what, the dashboard link and the feedback status live in the
+  // page header (00's writeDocHeader_), in small grey text, so the page
+  // itself holds only the assignment and the student's work. The dashboard
+  // link used to be a body line; the menu (01) finds the URL in the system
+  // block below.
+  writeDocHeader_(doc,
+    [studentName, className + " — " + teacherName,
+     block ? "Block " + block : "", period ? "Period " + period : "", unitName]
+      .filter(function (x) { return String(x || "").trim() !== ""; })
+      .join("  ·  "),
+    studentDashboardUrl);
 
+  // With feedback in the doc (FEEDBACK_AS_COMMENT off) its zone stays:
+  // 03 and 37 write between the markers.
   if (!feedbackInComments) {
     body.appendParagraph("── FEEDBACK ──");
-
     // Must start "[No feedback yet." — 03_QueueBridge.js finds and removes it
-    // by that prefix once the first evaluation arrives. Students submit from
-    // the dashboard: the doc's menu doesn't run for student accounts.
+    // by that prefix once the first evaluation arrives.
     body.appendParagraph(
-      "[No feedback yet. When you're ready, open your assignment dashboard (link below) " +
+      "[No feedback yet. When you're ready, open your assignment dashboard (link at the top) " +
       "and click Submit for Feedback. Your feedback will appear here.]"
     );
+    body.appendParagraph("── END FEEDBACK ──");
+    body.appendParagraph("");
   }
 
-  // External UX audit: the Student Dashboard web app was fully built but
-  // had zero real consumers anywhere in the repo — never written into the
-  // student doc, never in the onOpen() menu, never emailed — so no student
-  // could ever actually find it. This is the one place every student's
-  // doc is guaranteed to be freshly stamped, so it's the anchor point for
-  // making the dashboard discoverable at all.
-  if (studentDashboardUrl) {
-    body.appendParagraph("Your assignment dashboard: " + studentDashboardUrl + " — bookmark this.");
-  }
+  body.appendParagraph(unitName).editAsText().setFontSize(14).setBold(true);
 
-  if (!feedbackInComments) body.appendParagraph("── END FEEDBACK ──");
-  body.appendParagraph("");
-
-  // ── ZONE 2: ASSIGNMENT PROMPT ─────────────────────────────────────────────
-  body.appendParagraph(
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-    "📋 ASSIGNMENT\n" +
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  );
-
-  // Inject teacher prompt content — paragraph by paragraph to preserve structure
   if (promptContent) {
     promptContent.split("\n").forEach(line => {
       body.appendParagraph(line);
@@ -420,22 +403,15 @@ function stampDocument_(fileId, configId, studentName, block,
 
   body.appendParagraph("");
 
-  // ── ZONE 3: RESPONSE DIVIDER ──────────────────────────────────────────────
-  body.appendParagraph(
-    "──────────────────────────────────────────────────\n" +
-    "── YOUR RESPONSE BEGINS HERE ──\n" +
-    "──────────────────────────────────────────────────"
-  );
+  // The marker text is read by the dashboard, the doc menu and the
+  // evaluation (01, 13, 37 and others): keep it exactly.
+  body.appendParagraph("── YOUR RESPONSE BEGINS HERE ──")
+    .editAsText().setFontSize(10).setForegroundColor(DOC_HEADER_GREY);
 
   body.appendParagraph("");  // Student writes here
 
-  // ── ZONE 4: CONFIG_ID FOOTER + SYSTEM ID BLOCK ───────────────────────────
-  body.appendParagraph(
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-    "[CONFIG_ID: " + configId + "]\n" +
-    "Do not modify or delete this section.\n" +
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-  );
+  body.appendParagraph("[CONFIG_ID: " + configId + "] Do not delete this line.")
+    .editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY);
 
   // Zone 4b: System ID block — invisible white 1pt text for Script 01 fallback
   // Must be last so body.clear() earlier in this function doesn't wipe it

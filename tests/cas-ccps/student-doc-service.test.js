@@ -47,7 +47,7 @@ function ledgerRow(googleId, configId, fileId, status) {
 
 function loadService(signedInAs) {
   const loaded = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '13_StudentDashboard.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js')],
     ['doPost', 'handleStudentDocRequest_'],
     { ContentService: FakeContentService, Session: sessionAs(signedInAs) });
   const { sandbox } = loaded;
@@ -201,7 +201,7 @@ const ENOUGH = 'I would set up the stand near the gym entrance because that is w
 
 function loadSubmit(signedInAs, docBody, status) {
   const loaded = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '13_StudentDashboard.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js')],
     ['submitMyWork', 'getStudentDashboardData', 'dashExtractResponse_'],
     { ContentService: FakeContentService, Session: sessionAs(signedInAs) });
   const { sandbox } = loaded;
@@ -234,10 +234,13 @@ test('submitMyWork: reads the doc, queues the work, and never stores or returns 
 
 test('a queued submit stamps the Ledger row\'s SubmissionTS (column 14), from either path', () => {
   const sub = loadSubmit('Ben@ccpsnet.net', docWith(ENOUGH));
+  sub.doc.addHeader().appendParagraph('Feedback: not submitted yet.');
   assert.equal(sub.ledger.getRange(2, 14).getValue(), '');
   assert.equal(sub.exported.submitMyWork(sub.fileId, 'CFG-B').ok, true);
   const ts = sub.ledger.getRange(2, 14).getValue();
   assert.equal(String(ts), String(sub.queue.getRange(2, 1).getValue()), 'the same time as the queued row');
+  assert.match(sub.doc.getHeader().getChild(1).getText(), /^Feedback: submitted .*, being checked\.$/,
+    'the doc header says it is being checked');
 
   const svc = loadService('ben@ccpsnet.net');
   post(svc.exported, { action: 'submit', fileId: 'file-b', configId: 'CFG-B', hasText: true });

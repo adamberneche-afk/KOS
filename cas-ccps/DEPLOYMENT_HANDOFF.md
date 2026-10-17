@@ -474,6 +474,18 @@ delivered as a doc stays a doc. Set it back to `off` and new warm-ups are
 docs again. Run `refreshSharedConfig()` in the Central Ledger and the
 Student Dashboard so neither waits 10 minutes.
 
+**Assignment doc header (added 2026-10-17).** A doc made after this push
+has a small grey page header: the student, class, block, period and
+assignment with a "Your dashboard" link, and a "Feedback:" line. The line says
+"not submitted yet", then "submitted …, being checked" on submit, then the
+result in color once feedback arrives: green "✅ Meets the standard", amber
+"✏️ Revisions required", each saying where the feedback is. The body holds
+only the assignment title, the prompt, the response line and a small
+`[CONFIG_ID: …]` line. Docs made earlier keep their layout and get no
+header. **Feedback as comments is on for both courses from 2026-10-17**
+(operator's decision; `FEEDBACK_AS_COMMENT` = `all`); to roll back, set it
+to `off` and new docs get the feedback zone again.
+
 **Feedback as comments (optional switch, added 2026-10-17).** Flow 2
 feedback goes into the doc's feedback zone by default. To post it as a
 comment on the doc instead, so the doc holds only the assignment and the
