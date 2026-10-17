@@ -25,6 +25,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+const DOC_HEADER_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '63_DocHeader.js');
 const QUEUE_BRIDGE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '03_QueueBridge.js');
 const TURNIN_GATE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '04_Form2_TurnInGate.js');
 const FLOW2_PROMPT_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15b_StudioFlowPrompts_Flow2_Revised.js');
@@ -35,7 +36,7 @@ const PROMPTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '40
 
 function load(extraGlobals) {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PROMPTS_PATH,
+    [SHARED_CONFIG_PATH, DOC_HEADER_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PROMPTS_PATH,
       ASSIGNMENTS_PATH],
     [
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',
@@ -386,6 +387,7 @@ function harvestOneEvaluation(geminiOutput, opts = {}) {
   const doc = sandbox.DocumentApp.create('Student Doc');
   const studentFileId = doc.getId();
   layOutStudentDoc(doc);
+  if (opts.withHeader) doc.addHeader().appendParagraph('Feedback: submitted, being checked.');
   ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(
     stagingRow({ studentFileId, configId: configId, teacherEmail: 'teacher@example.com' }));
   ledgerSs.getSheetByName('Ledger').appendRow(
@@ -783,6 +785,18 @@ test('harvestFlowInputResults: with FEEDBACK_AS_COMMENT on for the course, the f
   assert.ok(!content.includes('── EVALUATION'), 'no doc-search markers in a comment');
   const fi = ledgerSs.getSheetByName('FlowInput');
   assert.equal(fi.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'HARVESTED');
+});
+
+test('harvestFlowInputResults: the doc header\'s feedback line takes the result and its color', () => {
+  let { doc } = harvestOneEvaluation(REVISION_OUTPUT,
+    { feedbackAsComment: 'all', configId: 'CAS-8175-L06', withHeader: true });
+  let line = doc.getHeader().getChild(1);
+  assert.match(line.getText(), /^Feedback: ✏️ Revisions required .*See the comment on this doc/);
+  assert.equal(line.color, '#b06000');
+  ({ doc } = harvestOneEvaluation(APPROVED_OUTPUT, { configId: 'CAS-8175-L06', withHeader: true }));
+  line = doc.getHeader().getChild(1);
+  assert.match(line.getText(), /^Feedback: ✅ Meets the standard .*See the Feedback section below/);
+  assert.equal(line.color, '#137333');
 });
 
 test('harvestFlowInputResults: FEEDBACK_AS_COMMENT for one course leaves the other course in the doc', () => {
