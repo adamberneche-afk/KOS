@@ -633,8 +633,17 @@ function runFlow2Canary() {
     // ── Stage 2: the harvest ──────────────────────────────────────────────
     harvestFlowInputResults();
 
-    const docText = DocumentApp.openById(scratchDocId).getBody().getText();
-    if (docText.indexOf('── END EVALUATION ──') === -1) {
+    // With FEEDBACK_AS_COMMENT on (00) the feedback is a comment on the doc,
+    // so the same content checks run on the comments instead.
+    const inComments = feedbackAsCommentFor_(configId);
+    const docText = inComments
+      ? _canaryCommentText_(scratchDocId)
+      : DocumentApp.openById(scratchDocId).getBody().getText();
+    if (inComments && docText.indexOf('RESULT:') === -1) {
+      return fail('Harvest posted the feedback as a comment on the student doc',
+        'No comment with a RESULT line on the scratch doc (FEEDBACK_AS_COMMENT is on).');
+    }
+    if (!inComments && docText.indexOf('── END EVALUATION ──') === -1) {
       return fail('Harvest wrote the feedback block into the student doc',
         'No "END EVALUATION" marker found. 03_QueueBridge.js\'s appendNextSteps_() ' +
         'matches on that exact U+2500 marker, so its absence would also break next-steps.');
@@ -652,7 +661,8 @@ function runFlow2Canary() {
         '04_Form2_TurnInGate.js\'s extractSuggestedScore_() reads that line out of the ' +
         'doc at turn-in time — stripping it would silently lose the score.');
     }
-    record('Harvest wrote correct, correctly-filtered feedback into the doc', true);
+    record('Harvest wrote correct, correctly-filtered feedback ' +
+      (inComments ? 'as a comment on the doc' : 'into the doc'), true);
 
     const evidenceSheet = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || 'CompetencyEvidence');
     if (!evidenceSheet) return fail('CompetencyEvidence tab exists', 'Harvest did not self-heal the tab.');
@@ -831,3 +841,15 @@ function cleanUpFlow2Canary(configId) {
 // the same way. Nothing about the polling/reporting mechanics above is
 // Flow-1-specific — only the row shape and the fixture requirements are.
 // =============================================================================
+
+// The text of every comment on a doc, joined, for the Flow 2 canary's checks
+// when feedback goes in comments. "" if the Drive service can't list them.
+function _canaryCommentText_(fileId) {
+  try {
+    const res = Drive.Comments.list(fileId, { fields: "comments(content)", pageSize: 20 });
+    return ((res && res.comments) || []).map(function (c) { return c.content || ""; }).join("\n");
+  } catch (e) {
+    Logger.log("[Canary] Could not list comments: " + e.message);
+    return "";
+  }
+}

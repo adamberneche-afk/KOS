@@ -455,6 +455,29 @@ answer.
 Only after Phases 1-3 are clean is there any point configuring Flow 2 in
 Studio, because before that there is no `FlowInput` row for it to read.
 
+**Feedback as comments (optional switch, added 2026-10-17).** Flow 2
+feedback goes into the doc's feedback zone by default. To post it as a
+comment on the doc instead, so the doc holds only the assignment and the
+student's work:
+
+1. On a test doc you own, run the `commentTest` probe
+   (`meta/CAS_BUG_HANDOFF_2026-10-16.md`, appendix) and check how the
+   comment looks on the web and on a tablet, and that a long one fits.
+2. On the Teacher Dashboard, **💬 Feedback**, choose *As a comment* for one
+   course first. (It writes the row `FEEDBACK_AS_COMMENT` in the Central
+   Ledger's `_CONFIG` tab: `off`, `8175`, `8177` or `all`; editing the tab
+   by hand does the same.)
+   It reaches the Central Ledger and the Student Dashboard within 10
+   minutes; `refreshSharedConfig()`, run in a project, makes it immediate there.
+3. Submit one test assignment and check: one comment on the doc with the
+   result, the report and the next steps; nothing added to the doc; the
+   dashboard says to open Comments.
+
+Docs created while it is on have no feedback zone. Docs created before keep
+theirs and their earlier feedback; only the "No feedback yet" line is
+removed. Set the row to `off` to go back. If a comment can't be posted, that
+one evaluation goes into the doc instead and the log says why.
+
 Two things that are **blocked** on this account, not merely unpushed, so
 don't spend time on either no matter what you run — see
 `cas-ccps/studio-steps/README.md`'s status banner and
