@@ -48,8 +48,10 @@ operator. This file holds what comes after them.
 - **Thread B: student-owned portfolio.** Start by hand-building the
   manifest for one or two volunteer students. Waits on district policy for
   exporting student work. Same doc, §2.
-- **Thread C: nightly lesson rollout.** Run it in shadow mode first, with
-  a `release` hold column and a stale-CSV warning. Same doc, §5.
+- **Thread C, what's left.** The nightly rollout is built (2026-10-17,
+  `58_LessonRollout.js`, shadow first). Still open: a per-lesson `release`
+  hold column in `LessonSchedule`, student-requested doc creation, and
+  persistent per-course docs. Same doc, §5.
 - **Cognitive exhaust and authenticity review.** Student process traces;
   flags on the Teacher Dashboard only at first. Waits on district policy
   and on a `revisionProbe` result.
