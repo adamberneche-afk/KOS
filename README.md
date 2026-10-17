@@ -224,12 +224,13 @@ for `sync.js`'s own mechanics, and
 [`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md`](./tools/clasp-sync/DEPLOYMENT_RUNBOOK.md)
 for the actual command-by-command runbook (all three systems, sandbox-first
 for cas-ccps, human-gated production promotion — folded in from an
-external review pass, Addendum 22 R9). [`tools/clasp-sync/run.ps1`](./tools/clasp-sync/run.ps1)
+external review pass, Addendum 22 R9). [`tools/clasp-sync/run.js`](./tools/clasp-sync/run.js)
+(Node, from `cmd.exe`; it replaced `run.ps1` on 2026-10-17)
 automates that runbook's clasp steps from the operator's Windows machine.
 It reads a registry of real `.clasp.json` files and deployment IDs, and it
 promotes web apps in place with `clasp update-deployment`, so `/exec` URLs
 never change. See the
-[clasp-sync README](./tools/clasp-sync/README.md#runps1--the-whole-push-from-windows).
+[clasp-sync README](./tools/clasp-sync/README.md#runjs--the-same-push-from-cmdexe).
 
 ## [`tools/watchdog/`](./tools/watchdog/check.js) — scheduled-job watchdog
 
@@ -367,7 +368,7 @@ per-session vector classification and its backfill
 the size-capped error digest (`error-digest.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers
-the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the generated cas-ccps unit rubrics, lesson assignments, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `lesson-assignments.test.js`, `canvas-cartridge.test.js`), LeaderHub's retired spring-2026 default deadlines (`retired-default-deadlines.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the `leaderhub-build` drift gate, and the split script's
+the deploy script `tools/clasp-sync/run.js` against a fake clasp (promote, head-only, rollback, the `--zip` extractor, the stale-copy check, and its manifest matching `run.ps1` and `project-map.json`: `clasp-run.test.js`), the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the generated cas-ccps unit rubrics, lesson assignments, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `lesson-assignments.test.js`, `canvas-cartridge.test.js`), LeaderHub's retired spring-2026 default deadlines (`retired-default-deadlines.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 
@@ -399,7 +400,7 @@ cas-ccps flows are verified live with their own liveness checks
 `cas-ccps/DEPLOYMENT_HANDOFF.md`). kos-personal's Curator flow was fixed in
 Studio on 2026-09-29 and its classify flow is returning real parts
 (`kos-personal/HANDOFF_2026-09-28.md`). What is left is operator work, not
-builds: pushes of current `main` (`tools/clasp-sync/run.ps1 -Latest`) and the
+builds: pushes of current `main` (`node run.js --latest`, `tools/clasp-sync/run.js`) and the
 setup functions each new script needs, listed in
 `cas-ccps/DEPLOYMENT_HANDOFF.md` and `kos-personal/HANDOFF_2026-09-28.md`.
 The `clasp`-side work is a human's, per SMP-004's air-gap.
