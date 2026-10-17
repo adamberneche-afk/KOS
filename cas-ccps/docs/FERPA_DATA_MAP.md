@@ -37,7 +37,7 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 | | 5 years | `SCRDecisionLog` | `SCR_RETENTION_YEARS` |
 | | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
 | Working data: queues, Flow inputs and profiles | 1 year | `WarmUpQueue` | `WARMUP_QUEUE_RETENTION_YEARS` (was 5 years) |
-| | 1 year | `StudentProfiles`, `WarmUpRegistry`, `WarmUpResponses`, `SCRSuggestions`, `FlowInput`, `Flow3Input`, `Flow4Input`, `Flow5Input`, `ReviewQueue`, `STAGING_PIPELINE` | `WORKING_DATA_RETENTION_YEARS` |
+| | 1 year | `StudentProfiles`, `WarmUpRegistry`, `WarmUpTextBox`, `WarmUpResponses`, `SCRSuggestions`, `FlowInput`, `Flow3Input`, `Flow4Input`, `Flow5Input`, `ReviewQueue`, `STAGING_PIPELINE` | `WORKING_DATA_RETENTION_YEARS` |
 | Student Docs | with their row | A student's workspace Doc follows its `Ledger` row; a warm-up Doc follows its `WarmUpQueue` row. Feedback posted as comments (`FEEDBACK_AS_COMMENT`) is part of the Doc and goes with it | — |
 
 Kept on their own rules, outside the schedule: `WarmUpFlowReturn` (harvested
@@ -228,6 +228,17 @@ content.
 Per-warm-up record (student email/name, teacher, doc ID/URL, generated-at,
 scores, term). Read by Script 23 only; not surfaced to any teacher/student
 UI directly.
+
+### WarmUpTextBox
+One row per warm-up answered on the Student Dashboard (`WARMUP_TEXT_BOX`),
+keyed by WarmUpQueue's queue_id: the generated warm-up text, the student's
+answer and their extra-credit reply, with when each was saved. No name or
+email (the queue row holds those). Written by Flow 3's harvest (41, the
+warm-up) and the Student Dashboard (13, the answer and reply, only for the
+signed-in student's own row); read by the nightly scoring (25), which copies
+the answer into WarmUpQueue's `response_text` as it does for a doc warm-up.
+The Student Dashboard shows a student only their own last and current
+warm-up. Retention: working data, 1 year, on `lesson_date`.
 
 ### WarmUpResponses
 Raw student-written warm-up response text, keyed by student email + lesson

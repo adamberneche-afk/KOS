@@ -460,6 +460,20 @@ answer.
 Only after Phases 1-3 are clean is there any point configuring Flow 2 in
 Studio, because before that there is no `FlowInput` row for it to read.
 
+**Warm-ups in a text box (switch, added 2026-10-17).** With
+`WARMUP_TEXT_BOX` on, a warm-up is answered on the Student Dashboard instead
+of in a doc: Flow 3 writes it to the Ledger's `WarmUpTextBox` tab, the
+student types the answer under it (until the end of the lesson day), the
+3:15am run scores it, and the next day the card shows the score (out of
+10, with its parts) and the feedback and, for
+7 days, an extra-credit reply box (10 words or more). The card shows only
+the last warm-up and the current one. To turn it on, add the row
+`WARMUP_TEXT_BOX` to the Central Ledger's `_CONFIG` tab: `off`, `8175`,
+`8177` or `all`. It must be on before Flow 3 delivers a warm-up: one already
+delivered as a doc stays a doc. Set it back to `off` and new warm-ups are
+docs again. Run `refreshSharedConfig()` in the Central Ledger and the
+Student Dashboard so neither waits 10 minutes.
+
 **Feedback as comments (optional switch, added 2026-10-17).** Flow 2
 feedback goes into the doc's feedback zone by default. To post it as a
 comment on the doc instead, so the doc holds only the assignment and the
