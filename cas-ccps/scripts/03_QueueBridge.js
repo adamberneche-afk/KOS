@@ -339,6 +339,10 @@ function appendNextSteps_(body, complianceResult) {
 // teacher sees the latest result in the doc).
 // 37_FlowInputBuilder.js puts this in every evaluation block it writes, so
 // each one carries its own next steps.
+// Never quote the response marker line itself (the dashes and all) in this
+// text: 37 inserts the block into the feedback zone, above the real marker,
+// and 01/13's extractors and responseZoneBounds_() take the first match, so
+// a quote here would pull the whole assignment into the "response".
 function buildNextStepsText_(complianceResult) {
   if (complianceResult === "APPROVED") {
     return (
@@ -364,7 +368,7 @@ function buildNextStepsText_(complianceResult) {
     "Your work needs revision. Here's what to do:\n\n" +
     "  1. Read the REQUIRED REVISIONS list above carefully.\n" +
     "  2. Update your response below the\n" +
-    "     ── YOUR RESPONSE BEGINS HERE ── line.\n" +
+    "     \"YOUR RESPONSE BEGINS HERE\" line.\n" +
     "  3. Open your assignment dashboard (the link is near the top of this\n" +
     "     document) and click Submit for Feedback.\n" +
     "  4. Repeat until you see a ✅ passing result.\n\n" +
