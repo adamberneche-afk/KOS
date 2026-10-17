@@ -5,10 +5,11 @@
 //
 // PURPOSE: the one statement of how long each kind of student record is
 // kept, and a read-only check that says, per record, how many rows are
-// past it. Adopted by the operator 2026-10-13, PENDING CONFIRMATION by the
-// district records officer against the Library of Virginia's General
-// Schedule GS-21 (public school divisions). Every period here is a Script
-// Property, so a confirmed period is set without a code change.
+// past it. Adopted by the operator 2026-10-13 against the Library of
+// Virginia's General Schedule GS-21 (public school divisions), and treated
+// as confirmed from 2026-10-17: the operator has as much confirmation as
+// the district will give. Every period here is a Script Property, so a
+// period the district later changes is set without a code change.
 //
 // Two tiers, counted in whole school years after the year ends
 // (_retentionCutoff_() in 00, August start):
@@ -32,7 +33,7 @@
 
 const RETENTION_TIER_RECORD = "RECORD";
 const RETENTION_TIER_WORKING = "WORKING";
-const RETENTION_ADOPTED = "operator-adopted 2026-10-13; district records officer to confirm against GS-21";
+const RETENTION_ADOPTED = "operator-adopted 2026-10-13 against GS-21; confirmed by the operator 2026-10-17";
 
 // One entry per tab. years(): the Script Property that sets the period.
 // dateCol: 0-based index, or a header name for tabs read by header.
