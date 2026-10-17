@@ -213,6 +213,8 @@ function _registerDeliveredWarmUps_() {
 
   const wqData = wqSheet.getDataRange().getValues();
   const wrData = wrSheet.getDataRange().getValues();
+  // Warm-ups delivered to the dashboard (WARMUP_TEXT_BOX) have no doc.
+  const textBox = readWarmUpTextBox_(ss);
 
   // Build set of queue_ids already in WarmUpRegistry
   const registeredQueueIds = new Set();
@@ -248,7 +250,7 @@ function _registerDeliveredWarmUps_() {
     // Register only DELIVERED rows not yet in registry
     if (status !== "DELIVERED") continue;
     if (registeredQueueIds.has(queueId)) continue;
-    if (!docId) continue;
+    if (!docId && !textBox[queueId]) continue;
 
     const regRow = new Array(WR_COL_COUNT).fill("");
     regRow[WR_WARMUP_ID]     = generateWarmUpId_();
@@ -360,6 +362,7 @@ function runWarmUpEvaluation() {
 
   const wrData = wrSheet.getDataRange().getValues();
   const wqData = wqSheet.getDataRange().getValues();
+  const textBox = readWarmUpTextBox_(ss);
 
   // Find WarmUpRegistry rows from yesterday where total_score is not yet set
   const yesterday     = getYesterday_();
@@ -391,7 +394,8 @@ function runWarmUpEvaluation() {
     if (tEmail !== teacherEmail.toLowerCase()) continue;
     if (lessonDate !== yesterdayStr)           continue;
     if (totalScore !== "")                     continue; // already scored
-    if (!docId || !queueId)                    continue;
+    if (!queueId)                              continue;
+    if (!docId && !textBox[queueId])           continue; // neither a doc nor a text box
 
     const queueRowNum = queueRowByQueueId[queueId];
     if (!queueRowNum) continue;
@@ -412,7 +416,7 @@ function runWarmUpEvaluation() {
   // never ran on any night with nothing new to evaluate — exactly the kind
   // of gap this sweep itself exists to close for extra credit. See
   // _recheckExtraCredit_()'s own header for the full story.
-  _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId);
+  _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId, textBox);
 
   if (toEvaluate.length === 0) {
     Logger.log("[S25-J2] No warm-ups to evaluate for " + yesterdayStr + ".");
@@ -428,7 +432,9 @@ function runWarmUpEvaluation() {
 
   for (const item of toEvaluate) {
     try {
-      const result = evaluateWarmUpDoc_(item.docId, item.queueId);
+      const result = item.docId
+        ? evaluateWarmUpDoc_(item.docId, item.queueId)
+        : evaluateWarmUpText_(textBox[item.queueId]);
 
       if (result.error) {
         Logger.log("[S25-J2] Error evaluating doc " + item.docId + ": " + result.error);
@@ -528,7 +534,8 @@ function _lockWarmUpDoc_(docId, teacherEmail) {
   }
 }
 
-function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId) {
+function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId, textBox) {
+  textBox = textBox || {};
   _ensureWarmUpRegistryExtraCreditColumn_(wrSheet);
 
   const wrData = wrSheet.getDataRange().getValues();
@@ -551,7 +558,8 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId)
 
     const docId   = String(row[WR_DOC_ID]    || "").trim();
     const queueId = String(row[WR_QUEUE_ID]  || "").trim();
-    if (!docId || !queueId) continue;
+    const tb      = docId ? null : textBox[queueId];
+    if (!queueId || (!docId && !tb)) continue;
 
     const lessonDate = _normalizeLessonDateCell_(row[WR_LESSON_DATE]);
     const lessonDateObj = new Date(lessonDate);
@@ -559,7 +567,10 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId)
 
     let result;
     try {
-      result = evaluateWarmUpDoc_(docId, queueId);
+      // A text-box warm-up's reply is saved by the Student Dashboard.
+      result = tb
+        ? { extraCredit: _warmUpWordCount_(tb.row[WTB.REPLY]) >= EXTRA_CREDIT_MIN_WORDS ? 1 : 0, error: null }
+        : evaluateWarmUpDoc_(docId, queueId);
     } catch (err) {
       Logger.log("[S25-J2-recheck] Could not open doc " + docId + ": " + err.message);
       continue;
@@ -569,7 +580,7 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId)
       Logger.log("[S25-J2-recheck] " + result.error);
       if (pastWindow) {
         wrSheet.getRange(i + 1, WR_EXTRA_CREDIT_CHECKED + 1).setValue(new Date());
-        _lockWarmUpDoc_(docId, tEmail);
+        if (docId) _lockWarmUpDoc_(docId, tEmail);
         expired++;
       }
       continue;
@@ -579,7 +590,7 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId)
       const newTotal = Number(totalScore) + 1;
       writeRegistryScores_(wrSheet, i + 1, newTotal, 1);
       wrSheet.getRange(i + 1, WR_EXTRA_CREDIT_CHECKED + 1).setValue(new Date());
-      _lockWarmUpDoc_(docId, tEmail);
+      if (docId) _lockWarmUpDoc_(docId, tEmail);
 
       const queueRowNum = queueRowByQueueId[queueId];
       if (queueRowNum) {
@@ -590,7 +601,7 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId)
     } else if (pastWindow) {
       // No reply found and the window has closed — stop looking.
       wrSheet.getRange(i + 1, WR_EXTRA_CREDIT_CHECKED + 1).setValue(new Date());
-      _lockWarmUpDoc_(docId, tEmail);
+      if (docId) _lockWarmUpDoc_(docId, tEmail);
       expired++;
     }
     // else: still within the window, no reply yet — leave unstamped so a
@@ -766,19 +777,9 @@ function evaluateWarmUpDoc_(fileId, queueId) {
     ? text.substring(responseIdx + RESPONSE_ZONE_MARKER.length, feedbackIdx)
     : text.substring(responseIdx + RESPONSE_ZONE_MARKER.length);
 
-  const responseText = responseRaw.trim();
-  const wordCount    = responseText.length > 0
-    ? responseText.split(/\s+/).filter(Boolean).length
-    : 0;
-
-  // ── Compute word count score ───────────────────────────────────────────────
-  let wordCountScore = 0;
-  for (const threshold of WORD_COUNT_THRESHOLDS) {
-    if (wordCount >= threshold.min) {
-      wordCountScore = threshold.score;
-      break;
-    }
-  }
+  const responseText   = responseRaw.trim();
+  const wordCount      = _warmUpWordCount_(responseText);
+  const wordCountScore = _warmUpWordCountScore_(wordCount);
 
   // ── Check for extra credit reply (text after FEEDBACK_END_MARKER) ─────────
   // On the night runWarmUpEvaluation()'s main loop calls this (the one
@@ -805,6 +806,34 @@ function evaluateWarmUpDoc_(fileId, queueId) {
   }
 
   return { responseText, wordCount, wordCountScore, promptText, extraCredit, error: null };
+}
+
+// The same result for a warm-up answered on the Student Dashboard
+// (WARMUP_TEXT_BOX): the answer is in its WarmUpTextBox row, and extra credit
+// is found later by _recheckExtraCredit_ from the reply saved there.
+function evaluateWarmUpText_(tb) {
+  const responseText = String((tb && tb.row[WTB.RESPONSE]) || "").trim();
+  const wordCount = _warmUpWordCount_(responseText);
+  return {
+    responseText: responseText,
+    wordCount: wordCount,
+    wordCountScore: _warmUpWordCountScore_(wordCount),
+    promptText: String((tb && tb.row[WTB.WARMUP]) || ""),
+    extraCredit: 0,
+    error: null
+  };
+}
+
+function _warmUpWordCount_(text) {
+  const t = String(text || "").trim();
+  return t ? t.split(/\s+/).filter(Boolean).length : 0;
+}
+
+function _warmUpWordCountScore_(wordCount) {
+  for (const threshold of WORD_COUNT_THRESHOLDS) {
+    if (wordCount >= threshold.min) return threshold.score;
+  }
+  return 0;
 }
 
 // ---------------------------------------------------------------------------
