@@ -299,7 +299,11 @@ function submitMyWork(fileId, configId) {
   // A second click before the queue bridge picks up the first: the bridge
   // would mark it DUPLICATE anyway, but the student should hear why.
   const queue = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
-  if (!queue) return { ok: false, error: "NO_QUEUE" };
+  if (!queue) {
+    Logger.log("submitMyWork: ReviewQueue tab not found in ADMIN_SS_ID for ConfigID " + configId);
+    dashRecordFailure_(cfg, "NO_QUEUE");
+    return { ok: false, error: "NO_QUEUE" };
+  }
   // Columns 2 and 5 are 03's RQ_FILE_ID and RQ_STATUS.
   const pending = queue.getDataRange().getValues().slice(1).some(r =>
     String(r[2]).trim() === fileId && String(r[5]).trim() === "PENDING");
@@ -309,7 +313,11 @@ function submitMyWork(fileId, configId) {
   try {
     fullText = DocumentApp.openById(fileId).getBody().getText();
   } catch (e) {
+    // A permission message here means the deploying account hasn't approved
+    // the manifest's documents scope (2026-10-15): every student fails the
+    // same way until the admin runs a function from the editor and approves.
     Logger.log("submitMyWork: couldn't open doc for ConfigID " + configId + ": " + e.message);
+    dashRecordFailure_(cfg, "DOC_UNREADABLE");
     return { ok: false, error: "DOC_UNREADABLE" };
   }
   if (fullText.indexOf(DASH_RESPONSE_MARKER) === -1) return { ok: false, error: "NO_RESPONSE_SECTION" };
@@ -328,6 +336,24 @@ function submitMyWork(fileId, configId) {
   if (!res.ok) return res;
   Logger.log("Dashboard submission — ConfigID: " + configId);
   return { ok: true, aiFlowsLive: !!cfg.aiFlowsLive };
+}
+
+// One row per system-side failure (a doc the admin account can't open, a
+// missing ReviewQueue tab): timestamp and error code, nothing about the
+// student or the doc. The CAS attention signal (34b) counts these so a
+// failure that hits every student shows up in the teacher's start brief, not
+// only in this project's Executions log. A failure here is swallowed: it must
+// never change what the student is told.
+function dashRecordFailure_(cfg, code) {
+  try {
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const name = cfg.tabs.submitFailures || "SubmitFailures";
+    const sheet = ss.getSheetByName(name) || ss.insertSheet(name);
+    if (sheet.getLastRow() === 0) sheet.appendRow(["Timestamp", "Code"]);
+    sheet.appendRow([new Date(), code]);
+  } catch (e) {
+    Logger.log("submitMyWork: couldn't record failure " + code + ": " + e.message);
+  }
 }
 
 // Same span as 01's extractStudentResponse_(): from the line after the
@@ -751,7 +777,10 @@ const SUBMIT_ERRORS = {
   ALREADY_QUEUED: "This is already waiting for feedback. Check back in a few minutes.",
   ALREADY_TURNED_IN: "You've already turned this in.",
   NOT_REGISTERED: "This assignment isn't open for you any more. Ask your teacher.",
-  NO_USER: "Sign into your school Google account and refresh this page."
+  NO_USER: "Sign into your school Google account and refresh this page.",
+  // System-side problems only the teacher can fix: retrying won't help.
+  DOC_UNREADABLE: "The system can't open your document right now. Your work is safe. Tell your teacher.",
+  NO_QUEUE: "The system can't take submissions right now. Your work is safe. Tell your teacher."
 };
 const SUBMIT_FALLBACK = "The assignment system didn't answer. Your work is safe in your document.\\nTry again in a minute. If it keeps happening, tell your teacher.";
 

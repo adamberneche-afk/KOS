@@ -152,6 +152,11 @@ function getConfig_() {
       draftUnits:      "DraftUnits",
       matrixRegistry:  "MatrixRegistry",   // Teacher Matrix SS ID lookup for Script 02
       flowInput:       "FlowInput",        // Script 37's materialized Flow 2 input row
+      // Student Dashboard (13) appends one row (timestamp, error code, nothing
+      // else) here each time Submit for Feedback fails for a system-side
+      // reason; the CAS attention signal (34b) counts them. Created on the
+      // first failure, so a missing tab means no failures, not a problem.
+      submitFailures:  "SubmitFailures",
 
       // ── M2 Lightweight (merged from 00_SharedConfig_M2_ADDENDUM_v2.js) ──
       lessonContext:      "LessonContext",

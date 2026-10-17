@@ -41,6 +41,7 @@ function load(extraGlobals) {
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',
       'STG_STATUS', 'STG_STUDENT_FILE_ID', 'STG_CONFIG_ID', 'STG_TEACHER_EMAIL',
       'LEDGER', '_fiCheckPlausibility_', '_fiDistinguishingWords_', 'recordStudentAssignment_',
+      '_fiInsertEvaluation_', 'responseZoneBounds_',
     ],
     extraGlobals,
   );
@@ -342,6 +343,104 @@ test('harvestFlowInputResults: writes feedback to the doc, CompetencyEvidence ro
   assert.equal(ledgerRowValues[exported.LEDGER.LAST_RESULT], 'PASSED');
   assert.equal(Object.prototype.toString.call(ledgerRowValues[exported.LEDGER.FIRST_PASSED_AT]), '[object Date]');
   assert.equal(ledgerRowValues[exported.LEDGER.LAST_SUGGESTED_SCORE], 4);
+});
+
+// ── where the evaluation lands in the student's doc ──────────────────
+
+const RESPONSE_MARKER_LINE = '── YOUR RESPONSE BEGINS HERE ──';
+const STUDENT_WORDS = 'My plan is to practice active listening and ask for feedback every week.';
+
+// A doc laid out the way 02's intake builds it: feedback zone near the top
+// (placeholder + dashboard link), the assignment, the response zone, and the
+// hidden system block last.
+function layOutStudentDoc(doc) {
+  const body = doc.getBody();
+  body.setText('── FEEDBACK ──');
+  body.appendParagraph("[No feedback yet. When you're ready, open your assignment dashboard (link below).]");
+  body.appendParagraph('Your assignment dashboard: https://example.test/exec — bookmark this.');
+  const end = body.appendParagraph('── END FEEDBACK ──');
+  end.setAttributes({ FONT_SIZE: 11, FOREGROUND_COLOR: '#000000' });
+  body.appendParagraph('');
+  body.appendParagraph('Assignment: write a skill development plan.');
+  body.appendParagraph(RESPONSE_MARKER_LINE + '\n');
+  body.appendParagraph(STUDENT_WORDS);
+  const sys = body.appendParagraph('[CONFIG_ID: VDOE-ABC-2026]\nDo not modify or delete this section.');
+  sys.setAttributes({ FONT_SIZE: 1, FOREGROUND_COLOR: '#ffffff' });
+  return body;
+}
+
+function harvestOneEvaluation(geminiOutput) {
+  const { exported, sandbox } = load();
+  const ledgerSs = setUpCentralLedger(sandbox);
+  setUpConfig(sandbox, ledgerSs);
+  const doc = sandbox.DocumentApp.create('Student Doc');
+  const studentFileId = doc.getId();
+  layOutStudentDoc(doc);
+  ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(
+    stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' }));
+  ledgerSs.getSheetByName('Ledger').appendRow(
+    ledgerRow({ googleId: 'student@example.com', configId: 'VDOE-ABC-2026', fileId: studentFileId, teacherEmail: 'teacher@example.com' }, exported));
+  ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
+  setUpTeacherMatrix(sandbox, 'matrix-ss-1').getSheetByName('TeacherMatrix').appendRow(
+    teacherMatrixRow({ configId: 'VDOE-ABC-2026', c1: 'COMP-1', c2: 'COMP-2', c3: 'COMP-3', c4: 'COMP-4' }));
+  exported.buildFlowInputRows();
+  const fiSheet = ledgerSs.getSheetByName('FlowInput');
+  fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(geminiOutput);
+  fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
+  exported.harvestFlowInputResults();
+  return { exported, doc, body: doc.getBody(), text: doc.getBody().getText() };
+}
+
+const APPROVED_OUTPUT =
+  'Great work overall.\n[SYSTEM: APPROVED]\n[SUGGESTED_SCORE: 4]\n' +
+  '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"MET","4":"MET"}]';
+const REVISION_OUTPUT =
+  'Needs work on milestone 4.\n[SYSTEM: REVISION_REQUIRED]\n' +
+  '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"MET","4":"NOT_MET"}]';
+
+test('harvestFlowInputResults: the evaluation lands inside the feedback zone, in the zone\'s formatting, above the assignment', () => {
+  const { text, body } = harvestOneEvaluation(APPROVED_OUTPUT);
+  const at = (needle) => text.indexOf(needle);
+  assert.ok(at('── FEEDBACK ──') < at('── EVALUATION'), 'after the zone opens');
+  assert.ok(at('── END EVALUATION ──') < at('── END FEEDBACK ──'), 'before the zone closes');
+  assert.ok(at('── END FEEDBACK ──') < at('Assignment: write'), 'above the assignment');
+  assert.ok(at('── END FEEDBACK ──') < at(RESPONSE_MARKER_LINE), 'above the response zone');
+  assert.ok(at(RESPONSE_MARKER_LINE) < at('[CONFIG_ID:'), 'the hidden system block stays last');
+  const block = body.paragraphs.find((p) => p.getText().indexOf('── EVALUATION') !== -1);
+  assert.deepEqual(block.getAttributes(), { FONT_SIZE: 11, FOREGROUND_COLOR: '#000000' },
+    'not the 1-point white text of the system block it used to inherit');
+});
+
+test('harvestFlowInputResults: a revision block above the real marker never changes what is read as the student\'s response', () => {
+  // The revision next steps used to quote the response marker line. Now that
+  // the block sits above the real marker, a quote would be the first match
+  // every extractor finds and pull the assignment into the "response".
+  for (const output of [REVISION_OUTPUT, APPROVED_OUTPUT]) {
+    const { exported, text } = harvestOneEvaluation(output);
+    assert.equal(text.split(RESPONSE_MARKER_LINE).length - 1, 1, 'the marker line appears exactly once');
+    const zone = exported.responseZoneBounds_(text);
+    assert.equal(text.substring(zone.from, zone.to).trim(), STUDENT_WORDS);
+  }
+});
+
+test('_fiInsertEvaluation_: later evaluations stack below earlier ones, still inside the zone', () => {
+  const { exported, sandbox } = load();
+  const doc = sandbox.DocumentApp.create('Student Doc');
+  const body = layOutStudentDoc(doc);
+  exported._fiInsertEvaluation_(body, '── EVALUATION first ──\nA\n── END EVALUATION ──');
+  exported._fiInsertEvaluation_(body, '── EVALUATION second ──\nB\n── END EVALUATION ──');
+  const text = body.getText();
+  assert.ok(text.indexOf('first') < text.indexOf('second'));
+  assert.ok(text.indexOf('second') < text.indexOf('── END FEEDBACK ──'));
+});
+
+test('_fiInsertEvaluation_: a doc with no end-of-feedback line gets the block appended, as before', () => {
+  const { exported, sandbox } = load();
+  const doc = sandbox.DocumentApp.create('Old Doc');
+  const body = doc.getBody();
+  body.setText('Some older doc layout');
+  exported._fiInsertEvaluation_(body, '── EVALUATION x ──\nA\n── END EVALUATION ──');
+  assert.ok(body.getText().endsWith('── END EVALUATION ──'));
 });
 
 test('harvestFlowInputResults: skips a milestone with no competency ID rather than guessing', () => {

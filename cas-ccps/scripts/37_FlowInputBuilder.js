@@ -659,7 +659,7 @@ function harvestFlowInputResults() {
 
         const doc = DocumentApp.openById(studentFileId);
         const body = doc.getBody();
-        body.appendParagraph(feedbackBlock);
+        _fiInsertEvaluation_(body, feedbackBlock);
         doc.saveAndClose();
 
         const competencyIds = {
@@ -783,6 +783,37 @@ function _fiStripMilestoneOutcomesLine_(fullText) {
 // character, confirmed by that file's own header comment), so the
 // already-deployed backPropagateCompletions()/appendNextSteps_() finds
 // "── END EVALUATION ──" correctly once it runs.
+// Where an evaluation lands in the student's doc. The doc's feedback zone is
+// the stretch between "── FEEDBACK ──" and "── END FEEDBACK ──" near the top
+// (02's intake builds it), and 03 removes its "[No feedback yet" placeholder
+// once an evaluation arrives. This used to appendParagraph() at the very end
+// of the document instead: below the assignment, the student's response and
+// the hidden system block, in that block's tiny font, while the zone the
+// student actually reads was left empty (2026-10-16: "the feedback never
+// landed"). Inserting just before the zone's end line puts it where the
+// student looks, in the zone's own formatting, and newer evaluations stack
+// below older ones, the same oldest-first order the end-of-doc appends had.
+// No end line (an older or hand-edited doc) falls back to appending.
+// 03's next-steps text must never quote the response marker line: this block
+// now sits above the real one, and every extractor takes the first match.
+const FI_FEEDBACK_END_MARKER = "── END FEEDBACK ──";
+
+function _fiInsertEvaluation_(body, block) {
+  const n = body.getNumChildren();
+  for (let i = 0; i < n; i++) {
+    const child = body.getChild(i);
+    if (child.getType() !== DocumentApp.ElementType.PARAGRAPH) continue;
+    const marker = child.asParagraph();
+    if (marker.getText().trim() !== FI_FEEDBACK_END_MARKER) continue;
+    const inserted = body.insertParagraph(i, block);
+    inserted.setAttributes(marker.getAttributes());
+    return inserted;
+  }
+  Logger.log("[FlowInputBuilder] No '" + FI_FEEDBACK_END_MARKER +
+             "' line in the doc; appended the evaluation at the end.");
+  return body.appendParagraph(block);
+}
+
 function _fiFormatFeedbackBlock_(studentFacingReport, complianceStatus) {
   const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
   const resultLine = complianceStatus === "APPROVED"
