@@ -3305,3 +3305,14 @@ which is what the dashboards read, and 04's turn-in gate that read the doc's
 stamp is retired (P0-04). Before switching on, the `commentTest` probe on a
 test doc shows how an unanchored comment looks on the web and on a tablet,
 whose name it carries, and whether a long one fits.
+
+## Submit errors that throw are counted too, 2026-10-17
+
+A second failed submission from 2026-10-15 showed the generic "didn't
+answer… try again in a minute" text. After #175 that text means the server
+call itself failed (or an unmapped code came back), and a thrown error was
+recorded nowhere but Executions, so the SubmitFailures count and the CAS
+signal couldn't see it. `submitMyWork` (13) now catches any error, records
+`SERVER_ERROR` in SubmitFailures (timestamp and code only) and tells the
+student their work is safe and to tell the teacher. A dropped connection
+still shows the "try again" text, since the server never ran.
