@@ -463,8 +463,10 @@ student's work:
 1. On a test doc you own, run the `commentTest` probe
    (`meta/CAS_BUG_HANDOFF_2026-10-16.md`, appendix) and check how the
    comment looks on the web and on a tablet, and that a long one fits.
-2. In the Central Ledger's `_CONFIG` tab, add the row
-   `FEEDBACK_AS_COMMENT` with `8175` or `8177` (one course first) or `all`.
+2. On the Teacher Dashboard, **💬 Feedback**, choose *As a comment* for one
+   course first. (It writes the row `FEEDBACK_AS_COMMENT` in the Central
+   Ledger's `_CONFIG` tab: `off`, `8175`, `8177` or `all`; editing the tab
+   by hand does the same.)
    It reaches the Central Ledger and the Student Dashboard within 10
    minutes; `refreshSharedConfig()`, run in a project, makes it immediate there.
 3. Submit one test assignment and check: one comment on the doc with the
