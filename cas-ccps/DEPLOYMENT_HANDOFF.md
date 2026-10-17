@@ -2,7 +2,7 @@
 
 > ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-12)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-12.md`](../meta/HANDOFF_2026-10-12.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-17.md`](../meta/HANDOFF_2026-10-17.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
@@ -27,7 +27,17 @@
 >   `YYYY-MM-DD`); `AI_FLOWS_LIVE` = `true` in the **Student Dashboard**
 >   project. Step 18: both Canvas cartridges imported (`8175.imscc`, 36
 >   modules; `8177.imscc`, 31) and the next lessons scheduled.
-> - **Not yet reported done:** the first end-to-end Flow 2 test. The order is in `meta/HANDOFF_2026-10-12.md`.
+> - **2026-10-15/16: the first real student submissions.** Submit failed until the
+>   deploying account approved the `documents` scope (rule below); feedback then
+>   landed at the bottom of the doc, and Flow 2 needed a manual start. #175 fixes
+>   the first two in code; see `meta/CAS_BUG_HANDOFF_2026-10-16.md`.
+> - **Not yet reported:** the push of #173–#175, and a submission with Flow 2
+>   starting by itself. The order is in `meta/HANDOFF_2026-10-17.md`.
+> - **After any manifest scope change** to a web app that runs as the deploying
+>   admin (both dashboards): run any function from that project's editor and
+>   approve every prompt, then test one submit, before a class depends on it.
+>   A prompt that never appears or can't be approved points to the district's
+>   Admin console API controls.
 > - **Retired 2026-10-12:** both Turn-In Form files are in Drive's trash.
 >   The Ledger's `dispatchFormSubmit` trigger stays; it serves the intake
 >   form.
@@ -411,6 +421,7 @@ noted.
 | 16 | Set the Script Property `SEED_UNITS` (e.g. `S1-U1`), then `previewAssignmentSeed()`, then `seedAssignments()` (53) | Writes each unit's LIVE TeacherMatrix row for both courses from the repo's unit rubrics, with Config IDs `CAS-S1-U1-8175` / `CAS-S1-U1-8177`: what step 17 needs. Replaces the Rubric Upload Form → Studio Flow 1 → confirmation path, which never produced an assignment (2026-10-06). Delete `SEED_UNITS` afterwards: while set, it overrides the LessonSchedule (step 17a). |
 | 17 | Upload each Canvas course's gradebook export (Grades → Export → Export Entire Gradebook) to Drive; `prepareRosterSections()` and put each section's period in `CanvasSectionMap` (this can be done before step 16); then **once per course**: set the Script Property `ROSTER_CONFIG_ID` to that course's LIVE assignment Config ID; `previewRosterEnrollment()`; put each section's period in `CanvasSectionMap`; preview again; `applyRosterEnrollment()` | Enrolls the roster through `intakeStudent_()` (02), exactly as the intake form would. Only students whose period is in the assignment's course (its TeacherMatrix CourseName) are enrolled; the others are skipped as `OTHER_COURSE`. Needs a LIVE assignment and ClassSchedule. |
 | 17a | **Switch to the teacher's lessons. Done live 2026-10-07** (`HISTORY.md`). In order: `seedLessonSchedule()`, then type start dates in the `LessonSchedule` tab (a lesson runs until the next starts); set `SEED_UNITS` to the lesson keys (`8175-L06,8177-employee-handbook-operations`) or delete it, then `previewAssignmentSeed()` / `seedAssignments()` and delete `SEED_UNITS`; set `ARCHIVE_CONFIG_ID` to **one** retired assignment at a time (`CAS-S1-U1-8175`, then `CAS-S1-U1-8177`) and run `previewArchiveAssignment()` / `archiveAssignment()` for each; `previewRemoveDraftedLessons()` / `removeDraftedLessons()` (after the last class of the day: it trashes today's frame docs too) then `buildUpcomingLessons()`, twice if it stops early; then step 17 with the new Config IDs (`CAS-8175-L06`, …) | The lesson builder, warm-ups and assignments then follow LessonSchedule; see the cas-ccps README, "The teacher's lessons and the LessonSchedule tab". A `SEED_UNITS` left at `S1-U1` makes the seeder plan nothing new, and a comma-separated `ARCHIVE_CONFIG_ID` archives nothing (both seen live). |
+| 17b | **Roll out the next lesson** (every new lesson, both courses; done by hand until a nightly job exists, `meta/CAS_DESIGN_THREADS_2026-10-16.md` Thread C). A date in `LessonSchedule` makes no student docs by itself. In order: the lesson's `start_date` as `YYYY-MM-DD` (run `seedLessonSchedule()` first if it has no row); the date within 7 days; delete `SEED_UNITS`; `previewAssignmentSeed()` then `seedAssignments()` (the LIVE TeacherMatrix row); set `ROSTER_CONFIG_ID` to the lesson's Config ID (e.g. `CAS-8175-L07`, one per run); `previewRosterEnrollment()` then `applyRosterEnrollment()` (creates and shares each student's doc and Ledger row; students already enrolled are skipped, so a re-run after a timeout is safe); repeat for the other course | Usual reasons a date does nothing: no LIVE assignment yet, the date more than 7 days out, `SEED_UNITS` still set, an 8177 lesson with no approved prompt file, or a stale Canvas export missing new students. `SECTION_NOT_MAPPED` in the preview means a section has no period in `CanvasSectionMap`. The 2 a.m. `buildUpcomingLessons()` makes class-level lesson frames, not student docs. |
 | 18 | Import `curriculum/canvas-cartridges/8175.imscc` / `8177.imscc` into each Canvas course (Settings → Import Course Content → Common Cartridge 1.x Package); a sandbox course first | Its assignments ask students to submit their CAS document's link, so do it once students have their docs (step 17). |
 
 These two are the only things that can tell you a Flow is live. A Flow that
