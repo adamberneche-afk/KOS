@@ -3316,3 +3316,16 @@ signal couldn't see it. `submitMyWork` (13) now catches any error, records
 `SERVER_ERROR` in SubmitFailures (timestamp and code only) and tells the
 student their work is safe and to tell the teacher. A dropped connection
 still shows the "try again" text, since the server never ran.
+
+## The feedback switch on the Teacher Dashboard, 2026-10-17
+
+The operator asked for the feedback-placement switch on the Teacher
+Dashboard rather than in a sheet tab. **💬 Feedback** (07) opens a panel with
+one choice per course, *In the document* or *As a comment*; courses come from
+the Ledger's ConfigIDs. Saving writes the single `FEEDBACK_AS_COMMENT` row in
+the Ledger's `_CONFIG` tab (`off`, one course code, or `all`) through
+`setSharedConfigValue_` (00), which only writes SHARED_CONFIG_KEYS and clears
+this project's cache; the Central Ledger and Student Dashboard pick it up
+within the 10-minute cache time. Only the authorized teacher can read or
+change it. The panel says when this project has its own Script Property of
+the same name, which would override the tab here.
