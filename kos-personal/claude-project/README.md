@@ -132,6 +132,10 @@ added this morning may not appear in today's `start`.
 
 ## Commute trial (one week from setup)
 
+**Result, 2026-10-17: Claude.** Gemini Live with the RTP Gem was not
+consistent enough to use; Claude voice in this Project is the commute
+assistant. The section below is kept as the trial's record.
+
 Use Claude voice in this Project on some days, and Gemini Live with the RTP
 Gem as it is on others. Note which gave a consistent brief and a useful
 conversation. Report the result; it decides whether the Gem retires early.
