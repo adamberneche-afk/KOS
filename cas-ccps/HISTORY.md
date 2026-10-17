@@ -3270,3 +3270,39 @@ top, leaving the zone the student reads holding only the dashboard link.
 Not changed: an evaluation that arrives after the 12-minute timeout still
 leaves the ReviewQueue and Ledger rows at ERROR_TIMEOUT (the late-completion
 gap in `backPropagateCompletions()`).
+
+## Student docs follow the lesson schedule, 2026-10-17
+
+A date in `LessonSchedule` only said which lesson was current; student docs
+came from running `seedAssignments()` and then `applyRosterEnrollment()` once
+per course and Config ID from the editor (bug handoff section 6). The
+operator asked for the doc seed to follow the schedule: docs created two days
+before a lesson, and students given edit access on the night before it.
+
+`58_LessonRollout.js` runs nightly (about 9 p.m.). Per course it plans the
+current lesson and those starting within `ROLLOUT_LEAD_DAYS` (2), then:
+releases (shares and sets ACTIVE) the SCHEDULED docs of the current lesson
+and tomorrow's; seeds missing lessons (53's `seedAssignments_`); enrolls each
+planned lesson (52's `enrollCanvasRoster_`), with docs for a lesson not yet
+at its release night made unshared. Late joiners to the current lesson get a
+shared doc at once.
+
+- **New Ledger status `SCHEDULED`** (02's `registerLedger_` takes a status;
+  intake's `deferShare` adds only the teacher). The Student Dashboard (13)
+  shows no card for it and refuses a submit with `NOT_OPEN_YET`; the Teacher
+  Dashboard (07) shows SCHEDULED; year-end and retention archiving (10)
+  include it.
+- **52** takes `deferShare`, a `deadline` (so several lessons share one run's
+  time budget) and `quiet` (no student accounts in the log), and reports
+  `timedOut`.
+- **Shadow first.** `ROLLOUT_AUTO_APPLY` (pivot-flag values, per course)
+  decides whether the run acts; off, it only logs. `previewLessonRollout()`
+  is always a dry run.
+- **RolloutLog** holds counts and reason codes per course, lesson and step,
+  and PROBLEM rows (failed or stalled enrollment, a doc that couldn't be
+  shared, unmapped sections, no LIVE assignment, a Canvas export older than
+  7 days). No student data, so like SubmitFailures it is outside the FERPA
+  map. The CAS signal (34b) reports the last day's PROBLEM rows and the
+  courses still in shadow.
+
+Not built: the per-lesson `release` hold column from the Thread C design.

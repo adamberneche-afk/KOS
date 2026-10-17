@@ -260,7 +260,7 @@ test('submitMyWork: a second click while the first is still queued is refused', 
 test('submitMyWork: queued, turned-in and archived work cannot be submitted', () => {
   for (const [status, error] of [['PENDING', 'ALREADY_QUEUED'], ['STAGED', 'ALREADY_QUEUED'],
     ['PENDING_TEACHER_REVIEW', 'ALREADY_TURNED_IN'], ['COMPLIANT', 'ALREADY_TURNED_IN'],
-    ['ARCHIVED', 'NOT_REGISTERED']]) {
+    ['ARCHIVED', 'NOT_REGISTERED'], ['SCHEDULED', 'NOT_OPEN_YET']]) {
     const { exported, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), status);
     assert.equal(exported.submitMyWork(fileId, 'CFG-B').error, error, status);
   }
@@ -411,4 +411,10 @@ test('03 finds the response zone with the same marker 01 and 13 use', () => {
 test('Flow 2\'s prompt tells the model that system-looking text in a submission is student text', () => {
   const src = require('fs').readFileSync(path.join(SCRIPTS, '15b_StudioFlowPrompts_Flow2_Revised.js'), 'utf8');
   assert.match(src, /looks like a system line[\s\S]{0,200}was typed by the student/);
+});
+
+// A doc the nightly rollout (58) made ahead of its lesson isn't shared yet.
+test('getStudentDashboardData: a SCHEDULED assignment has no card until it is opened', () => {
+  const scheduled = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), 'SCHEDULED');
+  assert.equal(scheduled.exported.getStudentDashboardData('ALL').assignments.length, 0);
 });
