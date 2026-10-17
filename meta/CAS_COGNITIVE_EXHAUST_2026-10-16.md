@@ -1,5 +1,10 @@
 # Capturing and Curating Cognitive Exhaust: Suggestions
 
+> **Decided 2026-10-17:** assignment docs only (not warm-ups); no status or
+> flag on the student's doc, results on the Teacher Dashboard only; the
+> county's account monitoring covers the policy question in §4; no students
+> to exclude. The collector still waits on the `revisionProbe`.
+>
 > **Filed 2026-10-17** from the operator's 2026-10-16 handoff package.
 > Suggestions only; nothing here is built. Where it sits in the order of
 > work: [`HANDOFF_2026-10-18.md`](./HANDOFF_2026-10-18.md).
