@@ -343,7 +343,8 @@ piece per assignment at its best outcome, for suggestions and retries alike
 (`scr-suggestion-engine.test.js`, `scr-retry-evidence-pieces.test.js`), what an
 evaluation leaves behind: the Ledger moved to COMPLETE and next steps pointing at
 the dashboard and Canvas (`evaluation-next-steps.test.js`), each evaluation's result on
-the Ledger (`evaluation-result-record.test.js`), the Teacher Dashboard's four states
+the Ledger (`evaluation-result-record.test.js`), feedback posted as a comment on the doc
+instead of into it, behind `FEEDBACK_AS_COMMENT` (`feedback-as-comment.test.js`), the Teacher Dashboard's four states
 (not checked, not passing yet, passed, passed before) and its lesson grouping
 (`teacher-dashboard-eval-states.test.js`), and the student-data access
 policy: intake sharing, locking at submission, school-year scoping, the

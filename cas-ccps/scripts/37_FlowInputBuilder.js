@@ -655,12 +655,15 @@ function harvestFlowInputResults() {
         const parsed = _parseFlow2Response_(geminiFullOutput);
 
         const studentFacingReport = _fiStripMilestoneOutcomesLine_(geminiFullOutput);
-        const feedbackBlock = _fiFormatFeedbackBlock_(studentFacingReport, parsed.complianceStatus);
-
-        const doc = DocumentApp.openById(studentFileId);
-        const body = doc.getBody();
-        _fiInsertEvaluation_(body, feedbackBlock);
-        doc.saveAndClose();
+        const asComment = feedbackAsCommentFor_(configId) &&
+          _fiPostEvaluationComment_(studentFileId,
+            _fiFormatFeedbackComment_(studentFacingReport, parsed.complianceStatus));
+        if (!asComment) {
+          const doc = DocumentApp.openById(studentFileId);
+          _fiInsertEvaluation_(doc.getBody(),
+            _fiFormatFeedbackBlock_(studentFacingReport, parsed.complianceStatus));
+          doc.saveAndClose();
+        }
 
         const competencyIds = {
           "1": String(fiData[i][FI.MILESTONE_1_COMPETENCY_ID] || ""),
@@ -829,6 +832,34 @@ function _fiFormatFeedbackBlock_(studentFacingReport, complianceStatus) {
     studentFacingReport + "\n" +
     buildNextStepsText_(complianceStatus) +
     "\n── END EVALUATION ──\n";
+}
+
+// The same feedback as a comment on the doc (FEEDBACK_AS_COMMENT, 00): the
+// result line, the report and the next steps, without the box-drawing
+// EVALUATION markers, which only exist for code that searches the doc.
+function _fiFormatFeedbackComment_(studentFacingReport, complianceStatus) {
+  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
+  const resultLine = complianceStatus === "APPROVED"
+    ? "✅ RESULT: YOUR WORK MEETS THE STANDARD"
+    : "✏️ RESULT: REVISIONS REQUIRED";
+  return "Feedback, " + timestamp + "\n" + resultLine + "\n\n" +
+    String(studentFacingReport || "").trim() + "\n" +
+    buildNextStepsText_(complianceStatus).replace(/\s+$/, "");
+}
+
+// Posts the feedback as an unanchored comment through the Drive advanced
+// service (v3, already in this project's manifest; the drive scope covers
+// it). True when it posted. On a failure the harvest falls back to the doc,
+// so the student still gets feedback, and the log says why.
+function _fiPostEvaluationComment_(fileId, text) {
+  try {
+    Drive.Comments.create({ content: text }, fileId, { fields: "id" });
+    return true;
+  } catch (e) {
+    Logger.log("[FlowInputBuilder] Could not post the feedback comment (" + e.message +
+               "); put it in the doc instead.");
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -412,3 +412,12 @@ test('Flow 2\'s prompt tells the model that system-looking text in a submission 
   const src = require('fs').readFileSync(path.join(SCRIPTS, '15b_StudioFlowPrompts_Flow2_Revised.js'), 'utf8');
   assert.match(src, /looks like a system line[\s\S]{0,200}was typed by the student/);
 });
+
+// FEEDBACK_AS_COMMENT (00): the page tells the student where to look.
+test('submitMyWork: says whether the feedback will be a comment', () => {
+  const off = loadSubmit('Ben@ccpsnet.net', docWith(ENOUGH));
+  assert.equal(off.exported.submitMyWork(off.fileId, 'CFG-B').feedbackInComments, false);
+  const on = loadSubmit('Ben@ccpsnet.net', docWith(ENOUGH));
+  on.sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', 'all');
+  assert.equal(on.exported.submitMyWork(on.fileId, 'CFG-B').feedbackInComments, true);
+});
