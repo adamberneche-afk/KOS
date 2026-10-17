@@ -23,7 +23,7 @@
  * tools/deploy-drift/README.md), then run
  * installDeployVersionReportTrigger() once from the Apps Script editor.
  */
-const DEPLOY_VERSION_SHA = '8dc87c234372505261acbc9d05156423df242ae6'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
+const DEPLOY_VERSION_SHA = '5aa68f6aeae89cc065a6240059731ae9b0aefade'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
 
 function reportDeployVersion() {
   return _reportDeployVersion_('cas-ccps:central-ledger', DEPLOY_VERSION_SHA);
