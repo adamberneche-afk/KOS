@@ -90,3 +90,58 @@ test('resolveStudentStatus_: an evaluated assignment points to Comments only whe
   assert.equal(exported.resolveStudentStatus_('COMPLETE', undefined, false),
     'Evaluated — feedback ready, check your document');
 });
+
+// The Teacher Dashboard's per-course control (07) writes the one shared row.
+function loadTeacher(viewer) {
+  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('07_TeacherDashboard.js')],
+    ['getFeedbackPlacement', 'setFeedbackPlacement'],
+    { Session: { getActiveUser: () => ({ getEmail: () => viewer }), getScriptTimeZone: () => 'America/New_York' } });
+  const { sandbox } = loaded;
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  props.setProperty('TEACHER_EMAIL', 'teacher@ccpsnet.net');
+  const ledger = ss.insertSheet('Ledger');
+  ledger.appendRow(new Array(23).fill('header'));
+  for (const id of ['CAS-8175-L06', 'CAS-8177-L03', 'CAS-8175-L07', 'VDOE-ABC123-2026']) {
+    const row = new Array(23).fill(''); row[2] = id; ledger.appendRow(row);
+  }
+  const config = () => {
+    const tab = ss.getSheetByName('_CONFIG');
+    return tab ? tab.getDataRange().getValues().filter((r) => r[0] === 'FEEDBACK_AS_COMMENT').map((r) => r[1]) : [];
+  };
+  return Object.assign({ ss, config }, loaded);
+}
+
+test('Teacher Dashboard feedback control: per course, written as one _CONFIG row', () => {
+  const { exported, config } = loadTeacher('Teacher@ccpsnet.net');
+  let res = exported.getFeedbackPlacement();
+  assert.deepEqual(res.courses.map((c) => [c.code, c.asComment]), [['8175', false], ['8177', false]]);
+
+  res = exported.setFeedbackPlacement('8175', true);
+  assert.deepEqual(config(), ['8175']);
+  assert.deepEqual(res.courses.map((c) => c.asComment), [true, false], 'read back at once in this project');
+
+  exported.setFeedbackPlacement('8177', true);
+  assert.deepEqual(config(), ['all'], 'still one row');
+  exported.setFeedbackPlacement('8175', false);
+  assert.deepEqual(config(), ['8177']);
+  exported.setFeedbackPlacement('8177', false);
+  assert.deepEqual(config(), ['off']);
+});
+
+test('Teacher Dashboard feedback control: only the authorized teacher, and only a known course', () => {
+  const other = loadTeacher('student@ccpsnet.net');
+  assert.equal(other.exported.setFeedbackPlacement('8175', true).success, false);
+  assert.equal(other.exported.getFeedbackPlacement().success, false);
+  assert.deepEqual(other.config(), []);
+  const teacher = loadTeacher('teacher@ccpsnet.net');
+  assert.match(teacher.exported.setFeedbackPlacement('9999', true).error, /Unknown course/);
+});
+
+test('Teacher Dashboard feedback control: says when a Script Property overrides the tab here', () => {
+  const { exported, sandbox } = loadTeacher('teacher@ccpsnet.net');
+  sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', 'all');
+  assert.equal(exported.getFeedbackPlacement().overriddenHere, true);
+});
