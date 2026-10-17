@@ -2,7 +2,7 @@
 
 > ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-12)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-17.md`](../meta/HANDOFF_2026-10-17.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-18.md`](../meta/HANDOFF_2026-10-18.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
@@ -31,8 +31,13 @@
 >   deploying account approved the `documents` scope (rule below); feedback then
 >   landed at the bottom of the doc, and Flow 2 needed a manual start. #175 fixes
 >   the first two in code; see `meta/CAS_BUG_HANDOFF_2026-10-16.md`.
-> - **Not yet reported:** the push of #173–#175, and a submission with Flow 2
->   starting by itself. The order is in `meta/HANDOFF_2026-10-17.md`.
+> - **2026-10-17:** #173–#175 pushed with `run.js`, which replaces run.ps1.
+>   Merged, not yet pushed: #179 (late results finish their rows), #180
+>   (feedback as comments, off by default; "Feedback as comments" below) and
+>   #181 (the nightly lesson rollout, shadow first; "Nightly lesson rollout"
+>   below).
+> - **Not yet reported:** a submission with Flow 2 starting by itself. The
+>   order is in `meta/HANDOFF_2026-10-18.md`.
 > - **After any manifest scope change** to a web app that runs as the deploying
 >   admin (both dashboards): run any function from that project's editor and
 >   approve every prompt, then test one submit, before a class depends on it.
