@@ -296,6 +296,33 @@ unit's lesson card planned: its work product, the course's role, the
 activity and the course's "goes deeper" extension. The unit's competencies
 are the criteria.
 
+## Nightly lesson rollout (script 58)
+
+`58_LessonRollout.js` (Central Ledger) ties student docs to the
+`LessonSchedule` dates, so a typed start date is enough. Each night at about
+9 p.m. (`installLessonRolloutTrigger()`), per course:
+
+1. **Release.** Docs made ahead for the current lesson or one starting
+   tomorrow (Ledger status `SCHEDULED`) are shared with their students and
+   set `ACTIVE`, so the card appears on the Student Dashboard the night
+   before the lesson.
+2. **Seed.** Lessons starting within 2 days, and the current one, go into the
+   TeacherMatrix as LIVE (`seedAssignments_`, script 53).
+3. **Enroll.** Each of those lessons is enrolled from the Canvas exports
+   (`enrollCanvasRoster_`, script 52). A lesson whose release night hasn't
+   come gets unshared `SCHEDULED` docs; the current lesson and tomorrow's
+   get shared ones, so late joiners can start at once.
+
+It runs in **shadow** until `ROLLOUT_AUTO_APPLY` is set (Script Property or
+the Ledger's `_CONFIG` tab: `8175`, `8177` or `all`; `off` stops it again):
+in shadow it only writes what it would do. Every run writes counts and
+reason codes to the `RolloutLog` tab, never student details, with a
+`PROBLEM` row for anything that needs you (failed enrollments, a run that
+hit its time budget, unmapped Canvas sections, a Canvas export more than 7
+days old). The CAS signal reports PROBLEM rows from the last day, and says
+while a course is still in shadow. `previewLessonRollout()` runs it once as
+a dry run from the editor. The steps below still work by hand.
+
 ## Canvas roster import (script 52)
 
 Warm-ups, profiles and dashboards only see a student with a Ledger row, and

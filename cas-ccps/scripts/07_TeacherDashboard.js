@@ -1388,6 +1388,8 @@ function resolveDisplay_(ledger, pipeline) {
   if (pipeline === "PENDING_INFERENCE") return "QUEUED";
   switch (ledger) {
     case "ACTIVE":    return "NOT STARTED";
+    // Made ahead by the nightly rollout (58); shared the night before.
+    case "SCHEDULED": return "SCHEDULED";
     case "STAGED":    return "QUEUED";
     case "COMPLETE":  return "EVALUATED";
     // NEW (Say/Do Ledger cas-ccps finding #1): a genuine-complete submission

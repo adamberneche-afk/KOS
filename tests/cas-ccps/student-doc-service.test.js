@@ -260,7 +260,7 @@ test('submitMyWork: a second click while the first is still queued is refused', 
 test('submitMyWork: queued, turned-in and archived work cannot be submitted', () => {
   for (const [status, error] of [['PENDING', 'ALREADY_QUEUED'], ['STAGED', 'ALREADY_QUEUED'],
     ['PENDING_TEACHER_REVIEW', 'ALREADY_TURNED_IN'], ['COMPLIANT', 'ALREADY_TURNED_IN'],
-    ['ARCHIVED', 'NOT_REGISTERED']]) {
+    ['ARCHIVED', 'NOT_REGISTERED'], ['SCHEDULED', 'NOT_OPEN_YET']]) {
     const { exported, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), status);
     assert.equal(exported.submitMyWork(fileId, 'CFG-B').error, error, status);
   }
@@ -429,4 +429,10 @@ test('submitMyWork: an unexpected error is SERVER_ERROR, is counted, and queues 
   assert.deepEqual({ ok: res.ok, error: res.error }, { ok: false, error: 'SERVER_ERROR' });
   const failures = ss.getSheetByName('SubmitFailures').getDataRange().getValues();
   assert.deepEqual(failures.slice(1).map((r) => r[1]), ['SERVER_ERROR']);
+});
+
+// A doc the nightly rollout (58) made ahead of its lesson isn't shared yet.
+test('getStudentDashboardData: a SCHEDULED assignment has no card until it is opened', () => {
+  const scheduled = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), 'SCHEDULED');
+  assert.equal(scheduled.exported.getStudentDashboardData('ALL').assignments.length, 0);
 });
