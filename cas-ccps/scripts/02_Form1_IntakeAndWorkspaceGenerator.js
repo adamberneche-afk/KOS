@@ -363,10 +363,14 @@ function stampDocument_(fileId, configId, studentName, block,
   // Clear the master template body before stamping
   body.clear();
 
+  // With feedback as comments (FEEDBACK_AS_COMMENT, 00) the doc gets no
+  // feedback zone: the header keeps who and what, and the dashboard link.
+  const feedbackInComments = feedbackAsCommentFor_(configId);
+
   // ── ZONE 1: FEEDBACK HEADER ───────────────────────────────────────────────
   body.appendParagraph(
     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
-    "📊 FEEDBACK\n" +
+    (feedbackInComments ? "" : "📊 FEEDBACK\n") +
     "Student: " + studentName +
     "  |  Block: " + block +
     "  |  " + className + " — " + teacherName +
@@ -375,15 +379,17 @@ function stampDocument_(fileId, configId, studentName, block,
     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
   );
 
-  body.appendParagraph("── FEEDBACK ──");
+  if (!feedbackInComments) {
+    body.appendParagraph("── FEEDBACK ──");
 
-  // Must start "[No feedback yet." — 03_QueueBridge.js finds and removes it
-  // by that prefix once the first evaluation arrives. Students submit from
-  // the dashboard: the doc's menu doesn't run for student accounts.
-  body.appendParagraph(
-    "[No feedback yet. When you're ready, open your assignment dashboard (link below) " +
-    "and click Submit for Feedback. Your feedback will appear at the end of this document.]"
-  );
+    // Must start "[No feedback yet." — 03_QueueBridge.js finds and removes it
+    // by that prefix once the first evaluation arrives. Students submit from
+    // the dashboard: the doc's menu doesn't run for student accounts.
+    body.appendParagraph(
+      "[No feedback yet. When you're ready, open your assignment dashboard (link below) " +
+      "and click Submit for Feedback. Your feedback will appear here.]"
+    );
+  }
 
   // External UX audit: the Student Dashboard web app was fully built but
   // had zero real consumers anywhere in the repo — never written into the
@@ -395,7 +401,7 @@ function stampDocument_(fileId, configId, studentName, block,
     body.appendParagraph("Your assignment dashboard: " + studentDashboardUrl + " — bookmark this.");
   }
 
-  body.appendParagraph("── END FEEDBACK ──");
+  if (!feedbackInComments) body.appendParagraph("── END FEEDBACK ──");
   body.appendParagraph("");
 
   // ── ZONE 2: ASSIGNMENT PROMPT ─────────────────────────────────────────────

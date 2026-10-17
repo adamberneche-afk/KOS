@@ -3298,6 +3298,65 @@ next backprop run finished it.
   result, and a row already finished, are left alone. The late-result test
   fails on the old code.
 
+## Feedback as a comment on the doc, behind a switch, 2026-10-17
+
+The operator wants Flow 2 feedback out of the student's doc: the cleaner the
+doc, the easier it is for a student to find their place. Feedback went into
+the doc's feedback zone (since #175; before that, at the very end).
+
+`FEEDBACK_AS_COMMENT` is a shared `_CONFIG` key, read like a pivot flag
+(blank/off, `all`, or one course code from the ConfigID), so one row reaches
+both the Central Ledger and the Student Dashboard. Default off: nothing
+changes until it is set.
+
+- **37.** The harvest posts the feedback as an unanchored comment through the
+  Drive advanced service (already in the Central Ledger manifest; the drive
+  scope covers it): result line, report and next steps, without the
+  box-drawing EVALUATION markers, which only exist for code searching the
+  doc. If the comment can't be posted, that evaluation goes into the doc
+  instead, so the student still gets feedback, and the log says why.
+- **03.** Backprop's post-processing adds nothing to the doc. An older doc's
+  "[No feedback yet" line, which says feedback appears in the document, is
+  removed.
+- **02.** Intake builds new docs without a feedback zone: the header keeps
+  who and what and the dashboard link.
+- **13.** The dashboard's evaluated status and its after-submit message say
+  to open Comments. Its doc-mode message said feedback appears "at the end of
+  your document", wrong since #175; it now says near the top, and the
+  placeholder intake writes says "here".
+- **35.** The Flow 2 canary runs its content checks on the doc's comments
+  when the switch covers its ConfigID.
+
+Not changed: the result already lives on the Ledger (`recordEvaluationResult_`),
+which is what the dashboards read, and 04's turn-in gate that read the doc's
+stamp is retired (P0-04). Before switching on, the `commentTest` probe on a
+test doc shows how an unanchored comment looks on the web and on a tablet,
+whose name it carries, and whether a long one fits.
+
+## Submit errors that throw are counted too, 2026-10-17
+
+A second failed submission from 2026-10-15 showed the generic "didn't
+answer… try again in a minute" text. After #175 that text means the server
+call itself failed (or an unmapped code came back), and a thrown error was
+recorded nowhere but Executions, so the SubmitFailures count and the CAS
+signal couldn't see it. `submitMyWork` (13) now catches any error, records
+`SERVER_ERROR` in SubmitFailures (timestamp and code only) and tells the
+student their work is safe and to tell the teacher. A dropped connection
+still shows the "try again" text, since the server never ran.
+
+## The feedback switch on the Teacher Dashboard, 2026-10-17
+
+The operator asked for the feedback-placement switch on the Teacher
+Dashboard rather than in a sheet tab. **💬 Feedback** (07) opens a panel with
+one choice per course, *In the document* or *As a comment*; courses come from
+the Ledger's ConfigIDs. Saving writes the single `FEEDBACK_AS_COMMENT` row in
+the Ledger's `_CONFIG` tab (`off`, one course code, or `all`) through
+`setSharedConfigValue_` (00), which only writes SHARED_CONFIG_KEYS and clears
+this project's cache; the Central Ledger and Student Dashboard pick it up
+within the 10-minute cache time. Only the authorized teacher can read or
+change it. The panel says when this project has its own Script Property of
+the same name, which would override the tab here.
+
 ## Student docs follow the lesson schedule, 2026-10-17
 
 A date in `LessonSchedule` only said which lesson was current; student docs
