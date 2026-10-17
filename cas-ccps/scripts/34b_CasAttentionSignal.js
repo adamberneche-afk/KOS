@@ -34,7 +34,7 @@
 //   - STAGING_PIPELINE rows in flight with no timestamp (they never age, so
 //     nothing else ever times them out)
 //   - Submit for Feedback failures on the system side in the last 24 hours
-//     (Student Dashboard's DOC_UNREADABLE and NO_QUEUE, counted from the
+//     (Student Dashboard's DOC_UNREADABLE, NO_QUEUE and SERVER_ERROR, counted from the
 //     SubmitFailures tab 13 writes), with the count per code
 //   - FERPA checks failing (10's _ferpaHealthChecks_)
 // Apps Script trigger failures can't be seen from inside a script; those
