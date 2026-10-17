@@ -116,6 +116,58 @@ test('writeCasSignal_: students first, counts only, no identifiers in the doc', 
   }
 });
 
+function submitFailures(ss, rows) {
+  const sh = ss.insertSheet('SubmitFailures');
+  sh.appendRow(['Timestamp', 'Code']);
+  rows.forEach((r) => sh.appendRow(r));
+  return sh;
+}
+
+test('writeCasSignal_: Student Dashboard submit failures in the last 24 hours are counted by code', () => {
+  const env = load();
+  const now = new Date();
+  staging(env.ss, []);
+  suggestions(env.ss, []);
+  const hoursAgo = (h) => new Date(now.getTime() - h * 3600 * 1000);
+  submitFailures(env.ss, [
+    [hoursAgo(1), 'DOC_UNREADABLE'],
+    [hoursAgo(2), 'DOC_UNREADABLE'],
+    [hoursAgo(3), 'NO_QUEUE'],
+    [hoursAgo(30), 'DOC_UNREADABLE'], // yesterday's: already out of the window
+  ]);
+  env.sandbox.checkRetryEligibility_ = () => ({ eligible: false });
+  env.exported.writeCasSignal_(okWatchdog(), now);
+  const text = signalText(env);
+  const admin = text.slice(text.indexOf('2. ADMIN'));
+  assert.match(admin, /- Student submissions that failed on the system side in the last 24 hours: 3 \(DOC_UNREADABLE 2, NO_QUEUE 1\)/);
+  assert.ok(!text.includes('Nothing needs attention.'));
+});
+
+test('writeCasSignal_: no SubmitFailures tab and no recent rows add no line', () => {
+  const env = load();
+  staging(env.ss, []);
+  suggestions(env.ss, []);
+  env.sandbox.checkRetryEligibility_ = () => ({ eligible: false });
+  env.exported.writeCasSignal_(okWatchdog());
+  assert.match(signalText(env), /2\. ADMIN\nNothing needs attention\./);
+  const sh = env.ss.getSheetByName('SubmitFailures') || submitFailures(env.ss, []);
+  sh.appendRow([new Date(Date.now() - 48 * 3600 * 1000), 'NO_QUEUE']);
+  env.exported.writeCasSignal_(okWatchdog());
+  assert.match(signalText(env), /2\. ADMIN\nNothing needs attention\./);
+});
+
+test('writeCasSignal_: a failure row carries nothing but a code in the doc', () => {
+  const env = load();
+  staging(env.ss, []);
+  suggestions(env.ss, []);
+  env.sandbox.checkRetryEligibility_ = () => ({ eligible: false });
+  submitFailures(env.ss, [[new Date(), 'ben@student.net'], [new Date(), 'DOC_UNREADABLE']]);
+  env.exported.writeCasSignal_(okWatchdog());
+  const text = signalText(env);
+  assert.match(text, /2 \(DOC_UNREADABLE 1, UNKNOWN 1\)/);
+  assert.ok(!text.includes('ben@student.net'));
+});
+
 test('writeCasSignal_: an unreadable count says unavailable, never all clear', () => {
   const env = load(); // no STAGING_PIPELINE, no SCRSuggestions tab
   env.exported.writeCasSignal_(okWatchdog());
