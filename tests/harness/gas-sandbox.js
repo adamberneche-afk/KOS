@@ -749,8 +749,10 @@ class FakeParagraph {
   setAttributes(attrs) { this.attributes = Object.assign({}, attrs); return this; }
   editAsText() {
     const self = {
-      setFontSize() { return self; },
-      setForegroundColor() { return self; },
+      // Size and color are recorded (the last call wins) so a test can
+      // check a doc header's small, color-coded status line.
+      setFontSize: (...a) => { this.fontSize = a[a.length - 1]; return self; },
+      setForegroundColor: (...a) => { this.color = a[a.length - 1]; return self; },
       setItalic() { return self; },
       setBold() { return self; },
       // Real Apps Script API — Text.setLinkUrl(start, endInclusive, url).
@@ -888,8 +890,17 @@ class FakeDoc {
     this.id = id;
     this.title = title;
     this.body = new FakeDocBody();
+    this.header = null;
   }
   getId() { return this.id; }
+  // Real Apps Script API — the page header (a HeaderSection: clear,
+  // appendParagraph, getText, getNumChildren/getChild, as the body).
+  getHeader() { return this.header; }
+  addHeader() {
+    if (this.header) throw new Error('The document already has a header.');
+    this.header = new FakeDocBody();
+    return this.header;
+  }
   getUrl() { return 'https://docs.google.com/document/d/' + this.id + '/edit'; }
   getBody() { return this.body; }
   saveAndClose() {}

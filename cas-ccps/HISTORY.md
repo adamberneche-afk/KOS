@@ -3488,3 +3488,31 @@ Not yet live: push, then set `WARMUP_TEXT_BOX` before Sunday's
   Noncommercial 1.0.0 license kos-personal uses, without KOS's addenda.
 - **Retention** (57): the 2026-10-13 schedule is treated as confirmed; the
   district will confirm no further. `RETENTION_ADOPTED` says so.
+
+## Assignment docs: a small header with the feedback status, 2026-10-17
+
+The operator asked for less clutter on a new assignment doc, with the
+feedback status in the header, small, color-coded once feedback arrives.
+
+- **63_DocHeader.js** (new; Central Ledger and Student Dashboard projects,
+  not 00, since it calls DocumentApp and two projects that load 00 lack the
+  documents scope). `writeDocHeader_` puts the student, class, block,
+  period and assignment, a "Your dashboard" link, and a "Feedback:" line in
+  the page header, 8pt grey. `setDocFeedbackStatus_` sets the line:
+  NOT_SUBMITTED and CHECKING grey; PASSED green (#137333); REVISE amber
+  (#b06000), each naming where the feedback is (the comment, or the
+  Feedback section). A doc without a header (made earlier) is left alone.
+- **02** `stampDocument_`: the header replaces the identity banner and the
+  body's dashboard line (the menu reads the URL from the system block). The
+  body is the assignment title, the prompt, the response marker (same text,
+  smaller and grey) and `[CONFIG_ID: …] Do not delete this line.` in 8pt
+  grey. With feedback in the doc, the feedback zone stays.
+- **13** a queued submit sets "being checked"; **37** the harvest sets the
+  result after posting the feedback.
+- **Decided:** feedback as comments on for both courses now
+  (`FEEDBACK_AS_COMMENT` = `all`), rolled back if it causes trouble. No
+  authenticity status on the doc; the county's account monitoring covers
+  policy; no students to exclude.
+- **Tests** in `feedback-as-comment.test.js`, `flow-input-builder.test.js`,
+  `student-doc-service.test.js`; the doc mock gained a page header and
+  records font size and color.

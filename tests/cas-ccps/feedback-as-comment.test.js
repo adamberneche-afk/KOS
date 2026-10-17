@@ -42,33 +42,74 @@ test('feedbackAsCommentFor_: off by default, "all" for every course, or one cour
 
 function stamp(flag, configId) {
   const { exported, sandbox } = loadGasFiles(
-    [S('00_SharedConfig.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['stampDocument_']);
+    [S('00_SharedConfig.js'), S('63_DocHeader.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['stampDocument_']);
   setFlag(sandbox, flag);
   const doc = sandbox.DocumentApp.create('Lesson 06 — student');
   exported.stampDocument_(doc.getId(), configId, 'A Student', 'B2', 'Sports Marketing', 'Teacher',
     '3', 'L06 SKILL DEVELOPMENT PLAN', 'Write your plan.', 'ledger-id', 'admin-id', 'https://example.test/exec');
-  return sandbox.DocumentApp.openById(doc.getId()).getBody().getText();
+  const d = sandbox.DocumentApp.openById(doc.getId());
+  return { text: d.getBody().getText(), header: d.getHeader(), sandbox, id: doc.getId() };
 }
 
-test('stampDocument_: with the flag on, a new doc has no feedback zone but keeps its header and dashboard link', () => {
-  const text = stamp('all', 'CAS-8175-L06');
-  for (const gone of ['📊 FEEDBACK', '── FEEDBACK ──', '[No feedback yet.', '── END FEEDBACK ──']) {
-    assert.ok(!text.includes(gone), gone + ' should be gone');
-  }
-  for (const kept of ['Student: A Student', 'Assignment: L06 SKILL DEVELOPMENT PLAN',
-    'Your assignment dashboard: https://example.test/exec', '── YOUR RESPONSE BEGINS HERE ──',
-    '[CONFIG_ID: CAS-8175-L06]']) {
-    assert.ok(text.includes(kept), kept + ' should stay');
+test('stampDocument_: who, what, the dashboard link and the feedback status are in a small grey page header', () => {
+  const { header } = stamp('all', 'CAS-8175-L06');
+  assert.equal(header.getNumChildren(), 2);
+  const [line1, line2] = [header.getChild(0), header.getChild(1)];
+  assert.equal(line1.getText(),
+    'A Student  ·  Sports Marketing — Teacher  ·  Block B2  ·  Period 3  ·  L06 SKILL DEVELOPMENT PLAN  ·  Your dashboard');
+  assert.deepEqual(line1.links, [{ text: 'Your dashboard', url: 'https://example.test/exec' }]);
+  assert.match(line2.getText(), /^Feedback: not submitted yet/);
+  for (const p of [line1, line2]) {
+    assert.equal(p.fontSize, 8);
+    assert.equal(p.color, '#5f6368');
   }
 });
 
+test('stampDocument_: with the flag on, the body is the assignment and the response space only', () => {
+  const { text } = stamp('all', 'CAS-8175-L06');
+  for (const gone of ['📊 FEEDBACK', '── FEEDBACK ──', '[No feedback yet.', '── END FEEDBACK ──',
+    'Student: A Student', 'Your assignment dashboard:', '📋 ASSIGNMENT', '━━━']) {
+    assert.ok(!text.includes(gone), gone + ' should be gone');
+  }
+  const at = (x) => text.indexOf(x);
+  assert.ok(at('L06 SKILL DEVELOPMENT PLAN') !== -1 && at('L06 SKILL DEVELOPMENT PLAN') < at('Write your plan.'));
+  assert.ok(at('Write your plan.') < at('── YOUR RESPONSE BEGINS HERE ──'));
+  assert.ok(at('── YOUR RESPONSE BEGINS HERE ──') < at('[CONFIG_ID: CAS-8175-L06]'));
+  assert.ok(text.includes('[SYS_DASHBOARD_URL:https://example.test/exec]'), 'the menu still finds the dashboard');
+});
+
 test('stampDocument_: with the flag off, the feedback zone is built as before', () => {
-  const text = stamp(undefined, 'CAS-8175-L06');
+  const { text } = stamp(undefined, 'CAS-8175-L06');
   const at = (s) => text.indexOf(s);
   assert.ok(at('── FEEDBACK ──') !== -1 && at('── FEEDBACK ──') < at('[No feedback yet.'));
   assert.ok(at('[No feedback yet.') < at('── END FEEDBACK ──'));
   assert.ok(at('── END FEEDBACK ──') < at('── YOUR RESPONSE BEGINS HERE ──'));
   assert.ok(text.includes('Your feedback will appear here.'), 'not "at the end of this document"');
+});
+
+test('setDocFeedbackStatus_: checking stays grey; a result is color-coded and says where the feedback is', () => {
+  const { sandbox, id } = stamp('all', 'CAS-8175-L06');
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js')], ['setDocFeedbackStatus_'], { DocumentApp: sandbox.DocumentApp });
+  const line = () => sandbox.DocumentApp.openById(id).getHeader().getChild(1);
+  assert.equal(exported.setDocFeedbackStatus_(id, 'CHECKING', {}), true);
+  assert.match(line().getText(), /^Feedback: submitted .*, being checked\.$/);
+  assert.equal(line().color, '#5f6368');
+  exported.setDocFeedbackStatus_(id, 'REVISE', { inComments: true });
+  assert.match(line().getText(), /^Feedback: ✏️ Revisions required \(.*\)\. See the comment on this doc, then submit again\.$/);
+  assert.equal(line().color, '#b06000');
+  exported.setDocFeedbackStatus_(id, 'PASSED', { inComments: false });
+  assert.match(line().getText(), /See the Feedback section below\.$/);
+  assert.equal(line().color, '#137333');
+  assert.equal(line().fontSize, 8);
+});
+
+test('setDocFeedbackStatus_: a doc made before the header is left alone', () => {
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js')], ['setDocFeedbackStatus_']);
+  const doc = sandbox.DocumentApp.create('Older doc');
+  doc.getBody().setText('Assignment\n── YOUR RESPONSE BEGINS HERE ──\nMy plan.');
+  assert.equal(exported.setDocFeedbackStatus_(doc.getId(), 'PASSED', {}), false);
+  assert.equal(doc.getHeader(), null);
+  assert.equal(exported.setDocFeedbackStatus_('missing-doc', 'PASSED', {}), false);
 });
 
 test('processCompletedEvaluation_: with the flag on, nothing is added to the doc', () => {

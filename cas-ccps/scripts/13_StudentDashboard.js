@@ -463,6 +463,7 @@ function queueSubmission_(cfg, googleId, fileId, configId) {
   const now = new Date();
   queue.appendRow([now, googleId, fileId, configId, "", "PENDING", ""]);
   stampSubmissionTs_(cfg, googleId, fileId, configId, now);
+  setDocFeedbackStatus_(fileId, "CHECKING", { when: now }); // the doc's header (00)
   return { ok: true };
 }
 
