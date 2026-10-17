@@ -154,6 +154,10 @@ function getStudentDashboardData(termFilter) {
     return a.className.localeCompare(b.className);
   });
 
+  // Warm-ups aren't Ledger rows, and they don't follow the term filter: the
+  // card always shows the last two weeks.
+  const warmUps = getStudentWarmUps_(ss, cfg, googleId, new Date());
+
   // Empty state with helpful context. "No results" from picking a term
   // with nothing in it is a completely different situation from "not
   // registered at all" — the account-troubleshooting copy below used to
@@ -164,6 +168,7 @@ function getStudentDashboardData(termFilter) {
     return {
       googleId:    googleId,
       assignments: [],
+      warmUps:     warmUps,
       emptyReason: filteredByTerm
         ? "No assignments for " + activeTerm + ".\n\nTry \"All Terms\" to see records from other terms."
         : "No assignments found for " + googleId + ".\n\n" +
@@ -180,10 +185,91 @@ function getStudentDashboardData(termFilter) {
   return {
     googleId:       googleId,
     assignments:    assignments,
+    warmUps:        warmUps,
     activeTerm:     activeTerm,
     availableTerms: [...availableTerms].sort().reverse(),
     generatedAt:    formatDate_(new Date())
   };
+}
+
+// ---------------------------------------------------------------------------
+// Warm-ups card. WarmUpQueue (25_WarmUpWriter.js's WQ25_*; 25 isn't in this
+// project, so the columns are repeated here): google_id 4, lesson_date 5,
+// lesson_context_snapshot 6, status 8, doc_id 9. A row has a doc once Flow 3
+// delivers it (41's wfbApplyFlow3_); before that there is nothing to open.
+// The student answers on the lesson day, and the 3:15am run after it
+// (runWarmUpEvaluation) checks the doc.
+// ---------------------------------------------------------------------------
+const DASH_WQ_GOOGLE_ID    = 4;
+const DASH_WQ_LESSON_DATE  = 5;
+const DASH_WQ_LESSON_SNAP  = 6;
+const DASH_WQ_STATUS       = 8;
+const DASH_WQ_DOC_ID       = 9;
+const DASH_WARMUP_DAYS     = 14;
+const DASH_WARMUP_MAX      = 10;
+
+function getStudentWarmUps_(ss, cfg, googleId, now) {
+  const sheet = ss.getSheetByName(cfg.tabs.warmUpQueue);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const tz    = Session.getScriptTimeZone();
+  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  const from  = new Date(now.getTime() - DASH_WARMUP_DAYS * 24 * 60 * 60 * 1000);
+  const since = Utilities.formatDate(from, tz, "yyyy-MM-dd");
+  const me    = String(googleId).trim().toLowerCase();
+
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, DASH_WQ_DOC_ID + 1).getValues();
+  const out = [];
+  rows.forEach(function (row) {
+    if (String(row[DASH_WQ_GOOGLE_ID] || "").trim().toLowerCase() !== me) return;
+    const docId = String(row[DASH_WQ_DOC_ID] || "").trim();
+    if (!docId) return;
+    const lessonDate = dashIsoDate_(row[DASH_WQ_LESSON_DATE], tz);
+    if (!lessonDate || lessonDate < since) return;
+    const st = resolveWarmUpStatus_(String(row[DASH_WQ_STATUS] || "").trim(), lessonDate, today);
+    let course = "";
+    try { course = String(JSON.parse(String(row[DASH_WQ_LESSON_SNAP] || "{}")).course_name || ""); }
+    catch (e) { /* a snapshot that doesn't parse just leaves the course off */ }
+    const [y, m, d] = lessonDate.split("-").map(Number);
+    out.push({
+      lessonDate:    lessonDate,
+      dateLabel:     Utilities.formatDate(new Date(y, m - 1, d, 12), tz, "EEE, MMM d"),
+      isToday:       lessonDate === today,
+      course:        course,
+      displayStatus: st.displayStatus,
+      statusClass:   st.statusClass,
+      docUrl:        "https://docs.google.com/document/d/" + docId + "/edit"
+    });
+  });
+  out.sort(function (a, b) { return a.lessonDate < b.lessonDate ? 1 : a.lessonDate > b.lessonDate ? -1 : 0; });
+  return out.slice(0, DASH_WARMUP_MAX);
+}
+
+// A lesson date read from the sheet is a Date or "YYYY-MM-DD" text.
+function dashIsoDate_(v, tz) {
+  if (Object.prototype.toString.call(v) === "[object Date]") {
+    return isNaN(v.getTime()) ? "" : Utilities.formatDate(v, tz, "yyyy-MM-dd");
+  }
+  const m = String(v || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[1] + "-" + m[2] + "-" + m[3] : "";
+}
+
+// Same statusClass names (and colors) as the assignment cards.
+function resolveWarmUpStatus_(status, lessonDate, today) {
+  switch (status) {
+    case "DELIVERED":
+      return lessonDate >= today
+        ? { displayStatus: "Ready — write your response today", statusClass: "NEEDS_ACTION" }
+        : { displayStatus: "Waiting to be checked", statusClass: "IN_PROGRESS" };
+    case "PENDING_EVAL":
+    case "EVAL_ERROR":
+      return { displayStatus: "Being checked — your work is saved", statusClass: "IN_PROGRESS" };
+    case "SCORED":
+      return { displayStatus: "Checked — feedback is in your doc", statusClass: "DONE" };
+    case "INCOMPLETE":
+      return { displayStatus: "No response was written", statusClass: "NOT_STARTED" };
+    default:
+      return { displayStatus: "Open your warm-up", statusClass: "NOT_STARTED" };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -549,6 +635,16 @@ function buildStudentDashboardHtml_() {
   .submit-msg{font-size:13px;margin-top:8px;line-height:1.45;white-space:pre-line}
   .submit-msg.ok{color:#137333}
   .submit-msg.err{color:#c5221f}
+  /* Warm-ups card: one card, a row per warm-up, newest first. */
+  .warmup-card{border-left-color:#1a73e8}
+  .warmup-card:hover{transform:none}
+  .warmup-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #e8eaed;flex-wrap:wrap}
+  .warmup-row:first-of-type{border-top:none}
+  .warmup-date{font-size:14px;font-weight:600}
+  .warmup-date .today{font-size:11px;font-weight:700;color:#1a73e8;margin-left:6px;text-transform:uppercase;letter-spacing:.5px}
+  .warmup-row .card-meta{margin-bottom:0}
+  .warmup-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .warmup-right .open-btn{padding:6px 14px;font-size:13px}
   .empty-state{text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line}
   .empty-state .icon{font-size:48px;margin-bottom:16px}
   footer{text-align:center;padding:20px;font-size:12px;color:var(--text-secondary);border-top:1px solid #e8eaed;margin-top:32px}
@@ -717,7 +813,7 @@ function render(data) {
   if (_myInfoOpen) renderMyInfo(data);
 
   if (!data.assignments || data.assignments.length === 0) {
-    main.innerHTML = \`<div class="empty-state">
+    main.innerHTML = renderWarmUps(data) + \`<div class="empty-state">
       <div class="icon">📋</div>
       <p>\${esc(data.emptyReason || "No assignments found.")}</p>
     </div>\`;
@@ -743,7 +839,7 @@ function render(data) {
     return a.localeCompare(b);
   });
 
-  let html = "";
+  let html = renderWarmUps(data);
   sortedGroups.forEach(gk => {
     html += \`<div class="group-header">Block \${esc(gk)}</div>\`;
     groups[gk].forEach(a => {
@@ -793,6 +889,29 @@ function render(data) {
     "Last refreshed: " + data.generatedAt + "  ·  " + data.googleId;
 
   _populateTermDropdown(data);
+}
+
+// Warm-ups card, above the assignments. Nothing is shown until a student
+// has a warm-up doc from the last two weeks.
+function renderWarmUps(data) {
+  const list = data.warmUps || [];
+  if (!list.length) return "";
+  let rows = "";
+  list.forEach(w => {
+    const url = safeDocUrl(w.docUrl);
+    rows += \`<div class="warmup-row">
+      <div>
+        <div class="warmup-date">\${esc(w.dateLabel)}\${w.isToday ? '<span class="today">Today</span>' : ""}</div>
+        \${w.course ? \`<div class="card-meta">\${esc(w.course)}</div>\` : ""}
+      </div>
+      <div class="warmup-right">
+        <div class="pill pill-\${esc(w.statusClass)}">\${esc(w.displayStatus)}</div>
+        \${url ? \`<a href="\${esc(url)}" target="_blank" class="open-btn">Open ↗</a>\` : ""}
+      </div>
+    </div>\`;
+  });
+  return \`<div class="group-header">Warm-ups</div>
+    <div class="card warmup-card" role="region" aria-label="Warm-ups">\${rows}</div>\`;
 }
 
 // Submit for Feedback: the doc's own menu can't run for student accounts
