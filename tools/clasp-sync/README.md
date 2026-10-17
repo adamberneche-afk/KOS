@@ -192,6 +192,12 @@ steps for all three systems in this repo — see
 
 ## run.ps1 — the whole push from Windows
 
+> **Since 2026-10-17, use [`run.js`](#runjs--the-same-push-from-cmdexe)**:
+> PowerShell is no longer usable for deployment on the operator's machine.
+> `run.js` does everything below with the same registry; this section stays
+> as the description of what both scripts do, and `run.ps1` stays only
+> while the manifest test keeps the two in step.
+
 `run.ps1` drives the clasp side of a full push across every in-scope
 project (kos-personal, leader-hub and the cas-ccps projects; the two
 studio-steps projects are out while the GCP block holds). It runs on the
@@ -273,3 +279,51 @@ The summary ends with each project's editor link and its `/exec` or
 .\run.ps1 -Latest -Only leader-hub                # release it
 .\run.ps1 -RollbackTo 6 -Only leader-hub          # undo the release
 ```
+
+## run.js — the same push from cmd.exe
+
+`run.js` is a Node port of `run.ps1`: same manifest, same registry, same
+promote / head-only / rollback behavior, same stale-copy check. It needs
+only Node (20 or later) and clasp on `PATH`, so it runs from plain
+`cmd.exe` with no PowerShell and no execution-policy setting. It uses
+Node's built-ins only; the `--zip` step reads the zip itself (checking
+every file's CRC and refusing entries that would land outside the
+checkout) instead of calling `Expand-Archive`.
+
+```
+cd C:\Users\<you>\kos
+node run.js --zip %USERPROFILE%\Downloads\KOS-main.zip --repo-root kos-main
+node run.js --repo-root kos-main --only teacher-dashboard,student-dashboard
+node run.js --latest --head-only --only leader-hub
+node run.js --rollback-to 6 --only leader-hub
+node run.js --help
+```
+
+Flags are the `run.ps1` options in GNU style: `--zip`, `--latest`,
+`--head-only`, `--rollback-to`, `--repo-root`, `--registry`,
+`--skip-script-check`, `--only`. The old spellings (`-Zip`, `-Latest`,
+`-HeadOnly`, `-RollbackTo`, `-RepoRoot`, `-Registry`, `-SkipScriptCheck`,
+`-Only`) work too, in any case, so a command copied from an older note
+still runs. `--only a,b`, `--only a --only b` and `--only a b` are the
+same. `--rollback-to` takes a version of 1 or more (a 0 used to be read as
+"no rollback", which pushed and promoted instead). The exit code is 1 if any
+project failed or the stale-copy check stopped the run, otherwise 0.
+
+Differences from `run.ps1`:
+
+- The stale-copy check compares against the checkout's
+  `tools\clasp-sync\run.js`, and prints a `copy /Y` command instead of
+  `Copy-Item`.
+- It checks that clasp runs once, up front, rather than failing once per
+  project.
+- On Windows it prints clasp's box-drawing file list as ASCII, because
+  cmd.exe's default code page can't draw it. Set `KOS_RUN_UNICODE=1`
+  (after `chcp 65001`) to keep the original characters.
+- `KOS_RUN_CLASP` overrides the clasp command (the tests use it to
+  substitute a fake).
+- Your registry (`.clasp.json`, `deployments.txt`) is unchanged and shared
+  by both scripts. `tests/tools/clasp-run.test.js` checks the two
+  manifests agree for as long as both files exist.
+
+Keep your working copy next to the registry, not inside the checkout,
+for the same reason as `run.ps1`: `--zip` deletes the checkout.

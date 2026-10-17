@@ -495,7 +495,7 @@ to give, `clasp deploy --deploymentId <id> --versionNumber <n>`, is what
 new `/exec` URL, and every bookmark, Script Property and leader-hub
 setting holding the old URL keeps serving the old version. Rolling back is
 the same command with the previous version number.
-[`run.ps1`](./README.md#runps1--the-whole-push-from-windows) does this
+[`run.js`](./README.md#runjs--the-same-push-from-cmdexe) (formerly `run.ps1`) does this
 push → version → update-deployment sequence for every web app, using the
 deployment IDs you list in its registry.
 
@@ -538,7 +538,7 @@ kos-personal's `studio-steps` project is archived
 | cas-ccps trigger-driven project, promoting to production | `node tools/clasp-sync/sync.js <name>` → fill in production `.clasp.json` → `clasp push` |
 | cas-ccps web app, promoting to production | `clasp push` → `clasp version "..."` → `clasp list-deployments` → `clasp update-deployment <id> --versionNumber <the number just printed>` |
 | cas-ccps `studio-steps`, any change | `node tools/clasp-sync/sync.js studio-steps` → `clasp push` → `clasp create-deployment --description "..."` (see 3.7) |
-| any of the above, from Windows | `run.ps1` (same folder) — see [its README section](./README.md#runps1--the-whole-push-from-windows) |
+| any of the above, from Windows | `node run.js` (same folder; it replaced `run.ps1`) — see [its README section](./README.md#runjs--the-same-push-from-cmdexe) |
 
 ## Recommended order
 
