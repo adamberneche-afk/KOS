@@ -33,6 +33,9 @@
 //     residue lands here)
 //   - STAGING_PIPELINE rows in flight with no timestamp (they never age, so
 //     nothing else ever times them out)
+//   - Submit for Feedback failures on the system side in the last 24 hours
+//     (Student Dashboard's DOC_UNREADABLE and NO_QUEUE, counted from the
+//     SubmitFailures tab 13 writes), with the count per code
 //   - FERPA checks failing (10's _ferpaHealthChecks_)
 // Apps Script trigger failures can't be seen from inside a script; those
 // still arrive as Google's failure-summary mail.
@@ -54,6 +57,7 @@ const CAS_SIGNAL_TITLE = "KOS_CAS_SIGNAL";
 const CAS_SIGNAL_STATE_KEY = "CAS_SIGNAL_STATE";
 const CAS_SIGNAL_SCR_EVERY_MS = 60 * 60 * 1000;
 const CAS_SIGNAL_RETRY_BUDGET_MS = 90 * 1000;
+const CAS_SIGNAL_SUBMIT_FAILURE_WINDOW_MS = 24 * 60 * 60 * 1000;
 // Hash prefix length (hex chars) for the retry-eligible pairs kept between
 // days: enough to tell pairs apart, not enough to store anything readable.
 const CAS_SIGNAL_HASH_CHARS = 12;
@@ -124,6 +128,18 @@ function writeCasSignal_(watchdog, now) {
     if (missing > 0) admin.push("Queue tabs missing: " + missing);
   }
   try {
+    const sf = _casSignalSubmitFailures_(now);
+    if (sf.total > 0) {
+      const parts = Object.keys(sf.byCode).sort().map(function (c) { return c + " " + sf.byCode[c]; });
+      admin.push("Student submissions that failed on the system side in the last 24 hours: " + sf.total +
+        " (" + parts.join(", ") + "). The Student Dashboard couldn't open a doc or find the ReviewQueue; " +
+        "check its Executions log for the reason.");
+    }
+  } catch (e) {
+    console.error("[CasSignal] Failed-submission count failed: " + e.message);
+    admin.push("Failed-submission count: unavailable (the SubmitFailures tab couldn't be read)");
+  }
+  try {
     const failing = _ferpaHealthChecks_().filter(function (c) { return !c.ok; }).length;
     if (failing > 0) admin.push("FERPA checks failing: " + failing + " (run the System Health Check)");
   } catch (e) {
@@ -175,6 +191,28 @@ function _casSignalQueueCounts_() {
     }
   }
   return { waiting: Object.keys(waiting).length, failed: Object.keys(failed).length, noTimestamp: noTimestamp };
+}
+
+// Rows the Student Dashboard (13's dashRecordFailure_) appended in the last
+// 24 hours, counted by error code. The tab is created on the first failure,
+// so a missing tab is a count of zero. A row with no readable timestamp is
+// counted: an unreadable signal must never look like an all-clear.
+function _casSignalSubmitFailures_(now) {
+  const cfg = getConfig_();
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.submitFailures || "SubmitFailures");
+  const out = { total: 0, byCode: {} };
+  if (!sheet) return out;
+  const since = now.getTime() - CAS_SIGNAL_SUBMIT_FAILURE_WINDOW_MS;
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    const when = new Date(data[i][0]).getTime();
+    if (!isNaN(when) && when < since) continue;
+    const raw = String(data[i][1] || "").trim();
+    const code = /^[A-Z_]{1,32}$/.test(raw) ? raw : "UNKNOWN";
+    out.byCode[code] = (out.byCode[code] || 0) + 1;
+    out.total++;
+  }
+  return out;
 }
 
 function _casSignalHasTime_(value) {

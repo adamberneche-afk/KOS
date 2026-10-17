@@ -742,6 +742,11 @@ class FakeParagraph {
   appendHorizontalRule() { return this; }
   setIndentStart() { return this; }
   setItalic() { return this; }
+  // Real Apps Script API — Paragraph.getAttributes()/setAttributes(). Kept as
+  // an opaque map so a test can assert one paragraph was given another's
+  // formatting (37's evaluation block takes the feedback zone's).
+  getAttributes() { return Object.assign({}, this.attributes || {}); }
+  setAttributes(attrs) { this.attributes = Object.assign({}, attrs); return this; }
   editAsText() {
     const self = {
       setFontSize() { return self; },
