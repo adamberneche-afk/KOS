@@ -916,6 +916,8 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
   const plausibility = _wfbCheckPlausible_(lesson, raw);
   if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
 
+  if (warmUpTextBoxFor_(courseName)) return wfbDeliverToTextBox_(wqSheet, found, queueId, raw);
+
   const studentName = String(row[WQ25_STUDENT_NAME] || "");
   const firstName = studentName.trim().split(/\s+/)[0] || "";
   const dateIso = wfbNormalizeDateIso_(row[WQ25_LESSON_DATE]);
@@ -957,6 +959,25 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
 
   wqSheet.getRange(found.sheetRow, WQ25_DOC_ID + 1).setValue(file.getId());
   wqSheet.getRange(found.sheetRow, WQ25_DOC_URL + 1).setValue(file.getUrl());
+  wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("DELIVERED");
+  SpreadsheetApp.flush();
+  return { ok: true };
+}
+
+// WARMUP_TEXT_BOX (00): the warm-up goes on the Student Dashboard instead of
+// into a doc. Unlike a doc, a second attempt can't duplicate anything: a row
+// already written for this queue_id is kept and the status re-stamped.
+function wfbDeliverToTextBox_(wqSheet, found, queueId, raw) {
+  const ss = wfbLedger_().ss;
+  const sheet = warmUpTextBoxSheet_(ss);
+  if (!readWarmUpTextBox_(ss)[queueId]) {
+    const row = new Array(WTB_HEADERS.length).fill("");
+    row[WTB.QUEUE_ID]    = queueId;
+    row[WTB.LESSON_DATE] = wfbNormalizeDateIso_(found.row[WQ25_LESSON_DATE]);
+    row[WTB.BRIDGE]      = sheetSafeText_(String(found.row[WQ25_BRIDGE_OUTPUT] || "").trim());
+    row[WTB.WARMUP]      = sheetSafeText_(String(raw).trim());
+    sheet.appendRow(row);
+  }
   wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("DELIVERED");
   SpreadsheetApp.flush();
   return { ok: true };
