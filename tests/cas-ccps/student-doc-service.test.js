@@ -421,3 +421,12 @@ test('submitMyWork: says whether the feedback will be a comment', () => {
   on.sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', 'all');
   assert.equal(on.exported.submitMyWork(on.fileId, 'CFG-B').feedbackInComments, true);
 });
+
+test('submitMyWork: an unexpected error is SERVER_ERROR, is counted, and queues nothing', () => {
+  const { exported, ss, queue, fileId } = loadSubmit('Ben@ccpsnet.net', docWith(ENOUGH));
+  queue.getDataRange = () => { throw new Error('Service Spreadsheets timed out'); };
+  const res = exported.submitMyWork(fileId, 'CFG-B');
+  assert.deepEqual({ ok: res.ok, error: res.error }, { ok: false, error: 'SERVER_ERROR' });
+  const failures = ss.getSheetByName('SubmitFailures').getDataRange().getValues();
+  assert.deepEqual(failures.slice(1).map((r) => r[1]), ['SERVER_ERROR']);
+});
