@@ -3413,3 +3413,26 @@ live the week of Oct 20.
 
 Not yet live: push the Student Dashboard and update its existing
 deployment. Nothing appears until Flow 3 delivers a warm-up doc.
+
+## WarmUpPlan: a week of first-quarter review warm-ups, 2026-10-17
+
+Every warm-up took its seed from the course's current lesson, so a week on
+one lesson repeated the same seed five times. The operator asked for warm-ups
+on all five days of the week of Oct 19, both courses, seeded from any
+first-term lessons.
+
+- **55** adds a `WarmUpPlan` tab (date, course, lesson_key, notes),
+  `seedWarmUpPlan()` (adds `WARMUP_PLAN_SEED`'s rows, never changes an
+  edited one) and `plannedWarmUpUnit_()`. A row naming an unknown lesson or
+  another course's is logged and skipped. `scheduledLessonUnit_` and the
+  plan share `_lessonUnit_`.
+- **31** `getWarmUpAnchor_` takes a planned lesson first. The anchor,
+  objective, vocabulary and competencies come from that lesson; the day's
+  LessonContext row, frame and assignment are unchanged.
+- **The plan:** 8175 L01–L05, Oct 19–23; 8177 The Business of the Game,
+  The Brand Board, The 4 Ps of the Fan Experience, the School Store Company
+  Description, and "What is Branding?" (its pacing guide's Quarter 1).
+- **Tests** in `lesson-schedule.test.js`.
+
+A day's warm-up queue is built at 3:30 a.m. the day before (24's
+`getTomorrow_`), so Monday's needs `buildWarmUpQueues()` on Sunday.
