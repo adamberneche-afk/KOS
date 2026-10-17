@@ -16,7 +16,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const ME = 'student@ccpsnet.net';
 
 let n = 0;
-function wqRow({ googleId = ME, date, status, docId = '', extraCredit = '', feedback = '' }) {
+function wqRow({ googleId = ME, date, status, docId = '', extraCredit = '', feedback = '', scores = null }) {
   const row = new Array(21).fill('');
   row[0] = 'WQ-' + (++n);
   row[4] = googleId;
@@ -26,6 +26,7 @@ function wqRow({ googleId = ME, date, status, docId = '', extraCredit = '', feed
   row[9] = docId;
   row[15] = extraCredit;
   row[17] = feedback;
+  if (scores) [row[12], row[13], row[14], row[16]] = scores; // length, grammar, engagement, total
   return row;
 }
 
@@ -99,6 +100,17 @@ test('extra credit: closed once credited or after 7 days', () => {
   ({ exported, ss } = load([{ wq: wqRow({ date: '2026-10-13', status: 'SCORED' }), tb: {} }]));
   ec = exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.extraCredit;
   assert.equal(ec.open, false);
+});
+
+test('the score shows with the feedback: out of 10, its parts, extra credit on top', () => {
+  let { exported, ss } = load([{ wq: wqRow({ date: '2026-10-20', status: 'SCORED', scores: [5, 1, 2, 8] }), tb: {} }]);
+  assert.deepEqual(exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.score,
+    { points: 8, max: 10, length: 5, grammar: 1, engagement: 2, extra: 0 });
+  ({ exported, ss } = load([{ wq: wqRow({ date: '2026-10-20', status: 'SCORED', extraCredit: 1, scores: [5, 1, 2, 9] }), tb: {} }]));
+  const sc = exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.score;
+  assert.deepEqual([sc.points, sc.extra], [8, 1]);
+  ({ exported, ss } = load([{ wq: wqRow({ date: '2026-10-20', status: 'PENDING_EVAL' }), tb: {} }]));
+  assert.equal(exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.score, null, 'no score before it is checked');
 });
 
 test('no warm-ups is no card', () => {
