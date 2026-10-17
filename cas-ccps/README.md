@@ -746,5 +746,5 @@ HISTORY.md's resolution 1.
 
 [Polyform Noncommercial 1.0.0](LICENSE), the same license as
 `kos-personal/`: free for personal, educational and research use;
-commercial use needs a separate license. KOS's Fidelity Clause and Blank
-Slate Protocol don't apply here.
+commercial use needs a separate license (contact Adam.berneche@gmail.com).
+KOS's Fidelity Clause and Blank Slate Protocol don't apply here.
