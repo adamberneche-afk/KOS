@@ -13,7 +13,7 @@ Prepared 2026-10-16 from the first live student submission through Flow 2. Cover
 |---|---|---|---|
 | 1 | Submit for Feedback fails with "The assignment system didn't answer" | Deploying admin account never approved the new `documents` scope | Fixed operationally 2026-10-15; code hardened in #175 |
 | 2 | Feedback "never landed" in the student's doc | Harvest appended the evaluation at the end of the doc, not in the feedback zone | Fixed in #175 |
-| 3 | Late evaluation leaves ReviewQueue and Ledger at ERROR_TIMEOUT | Backprop only closes rows whose queue status is still `STAGED` | Open; fix proposed, not yet in patch |
+| 3 | Late evaluation leaves ReviewQueue and Ledger at ERROR_TIMEOUT | Backprop only closes rows whose queue status is still `STAGED` | Fixed in the 2026-10-17 bug-3 PR (backprop finishes late rows); the one affected row was repaired by hand on 10-16 |
 | 4 | Flow 2 did not trigger on its own | Not yet diagnosed | Open |
 | 5 | Documents not created after a date was added to the schedule | Process gap (not a code bug) | Explained; steps in section 6 |
 
@@ -76,7 +76,7 @@ Note that `markLedgerEvaluated_` already accepts `ERROR_TIMEOUT` as a state it c
 
 **Workaround for an affected row.** Confirm the feedback is in the doc, then change that one ReviewQueue row's status from `ERROR_TIMEOUT` back to `STAGED`. On its next run backprop marks the queue and Ledger rows `COMPLETE` and runs the post-processing (which checks whether it was already done). Do not use the Admin Recovery Panel reset for this case: it re-queues the submission and the harvest would append a second feedback block.
 
-**Proposed code fix (not in the patch).** Let backprop's `COMPLETE` branch also finish a row whose queue status is `ERROR_TIMEOUT`, with a test for it.
+**Fix (2026-10-17, after this handoff).** Backprop's `COMPLETE` branch now also finishes a row whose queue status is `ERROR_TIMEOUT`, with tests (`cas-ccps/HISTORY.md`, "Late evaluations finish their rows"). Once it is pushed, the workaround above is no longer needed.
 
 ## 5. Open question: Flow 2 did not trigger on its own
 
