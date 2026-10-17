@@ -133,7 +133,7 @@ Do not confuse this with the 2 a.m. `buildUpcomingLessons()` trigger, which buil
 2. The row moves to `STAGED`, then staging shows `IN_PROCESS`; a `FlowInput` row appears as `READY` within about a minute.
 3. Flow 2 runs without a manual start. If it does not, that is open issue 4.
 4. `FlowInput` reaches `EVALUATED` then `HARVESTED`; staging `COMPLETE`; ReviewQueue `COMPLETE`; Ledger `COMPLETE`.
-5. In the student's doc, the evaluation block sits inside the feedback zone, above the assignment, in normal-sized text, with its next steps.
+5. In the student's doc, the evaluation block sits inside the feedback zone, above the assignment, in normal-sized text, with its next steps. **With `FEEDBACK_AS_COMMENT` on (from 2026-10-18):** instead, the evaluation is a Drive comment on the doc, nothing is written into the body, and a doc with the new header shows the result on its `Feedback:` line.
 6. The Teacher Dashboard status changes (queue item 4 check).
 7. Open the Teacher Dashboard and CAS signal; the SubmitFailures count should be absent or zero.
 
