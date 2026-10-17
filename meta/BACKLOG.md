@@ -27,9 +27,11 @@ operator. This file holds what comes after them.
 
 ### Offered, small, ready to build
 
-- **Late-completion fix (bug 3).** Let the COMPLETE branch of
-  `backPropagateCompletions` also finish `ERROR_TIMEOUT` queue rows, with a
-  test. 2026-10-16, [`CAS_BUG_HANDOFF_2026-10-16.md`](./CAS_BUG_HANDOFF_2026-10-16.md).
+- **Fill in SubmissionTS.** Nothing writes the Ledger's `SubmissionTS`
+  (registration leaves it blank), so the Teacher Dashboard's submitted
+  column reads "—" and the Student Dashboard shows no submitted time. Set it
+  when a submit is queued. Before the dashboards week (Oct 27). 2026-10-17,
+  from a status-column read of the Central Ledger.
 - **Retention disposition.** A dry-run report of records past their cutoff,
   then deletion only after the operator approves it. This follows the
   records officer's confirmation of the schedule. 2026-10-13, after #174.
