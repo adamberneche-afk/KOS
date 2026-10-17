@@ -3392,3 +3392,24 @@ shared doc at once.
   courses still in shadow.
 
 Not built: the per-lesson `release` hold column from the Thread C design.
+
+## Student Dashboard: a Warm-ups card, 2026-10-17
+
+Warm-up docs (Flow 3) reached students only through Drive's share email.
+The operator asked for them on the Student Dashboard before warm-ups go
+live the week of Oct 20.
+
+- **13** `getStudentWarmUps_` reads WarmUpQueue (columns repeated from 25's
+  `WQ25_*`, since 25 isn't in the Student Dashboard project): the signed-in
+  student's own rows with a doc, lesson date in the last 14 days, newest
+  first, at most 10. Not term-filtered. The card sits above the
+  assignments and is hidden when there is nothing to show.
+- **Statuses** (`resolveWarmUpStatus_`): DELIVERED on its day is "Ready —
+  write your response today", after it "Waiting to be checked";
+  PENDING_EVAL and EVAL_ERROR "Being checked — your work is saved"; SCORED
+  "Checked — feedback is in your doc"; INCOMPLETE "No response was
+  written". No score is shown.
+- **Tests** `student-dashboard-warmups.test.js`; the date mock gained `EEE`.
+
+Not yet live: push the Student Dashboard and update its existing
+deployment. Nothing appears until Flow 3 delivers a warm-up doc.
