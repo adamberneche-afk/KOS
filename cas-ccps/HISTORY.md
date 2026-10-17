@@ -3210,3 +3210,63 @@ reports, per record, how many rows are past their period and how many of
 those are archived, counts only. Archival stays automatic where a tab has
 an archive marker; deletion stays manual until the operator-approved
 disposition step is built.
+
+## Submit for Feedback: the documents scope, and failures that show, 2026-10-15
+
+The first real student submission through the Student Dashboard failed with
+"The assignment system didn't answer." Every `submitMyWork` run showed
+Completed. The cause was not in the code's logic: #115 added the `documents`
+scope to the manifest, but the page runs as the deploying admin
+(`USER_DEPLOYING`), and a new scope has to be approved by that account from
+the Apps Script editor. Nobody had, so `DocumentApp.openById` threw a
+permission error, the `catch` returned `DOC_UNREADABLE`, and the page had no
+wording for that code. Every student would have failed the same way. The
+fix was operational: run a function from the editor and approve the prompt.
+The change below is so the next one is visible and says the right thing.
+
+- **Wording (13).** `DOC_UNREADABLE` and `NO_QUEUE` now have their own
+  student messages ("Tell your teacher"). "Try again in a minute" stays for
+  a dropped call, where a retry can work.
+- **Counted (13, 00).** Each of those two failures appends a row (timestamp
+  and code, nothing else) to a `SubmitFailures` tab in the Central Ledger,
+  created on the first failure (`dashRecordFailure_()`). A failure to record
+  never changes what the student is told.
+- **Surfaced (34b).** The CAS attention signal's admin section shows the
+  count for the last 24 hours, by code, so a failure that hits every student
+  reaches the KOS start brief instead of living only in Executions. Counts
+  only; a tab that can't be read says "unavailable". Student-fixable refusals
+  (too short, already queued) are not counted.
+- **After any manifest scope change** to a web app that runs as the
+  deploying admin: run a function from the editor and approve, then test one
+  submit, before a class depends on it.
+
+## Evaluation feedback lands in the feedback zone, 2026-10-16
+
+After the permission fix, a real submission went through every stage (queue
+row COMPLETE, FlowInput HARVESTED) and the student's doc still looked as if
+no feedback had come back. The evaluation was there, but
+`harvestFlowInputResults()` had written it with `appendParagraph()`, at the
+very end of the document: below the assignment, the student's response and
+the hidden system block, in that block's 1-point font. Meanwhile 03 had
+removed the "[No feedback yet" placeholder from the feedback zone near the
+top, leaving the zone the student reads holding only the dashboard link.
+
+- **Placement (37).** `_fiInsertEvaluation_()` inserts the block just before
+  the zone's `── END FEEDBACK ──` line, copying that line's formatting, so
+  later evaluations stack below earlier ones in the same oldest-first order
+  as before. A doc with no end line falls back to appending.
+- **The marker (03).** The revision next-steps text quoted the response
+  marker line (`── YOUR RESPONSE BEGINS HERE ──`) verbatim. At the end of the
+  doc that was harmless, but above the real marker it would be the first
+  match for 01's and 13's extractors and `responseZoneBounds_()`, pulling the
+  assignment and the old evaluation into the "response". It now names the
+  line without the dashes. Evaluation blocks already written keep the old
+  wording and sit at the end of their docs, so they are unaffected. Never
+  put the full marker line in text that can appear above the response zone.
+- **Tests.** Placement, formatting, stacking, the append fallback, and that the
+  marker line appears once and the extracted response is exactly the
+  student's words after both an approved and a revision evaluation.
+
+Not changed: an evaluation that arrives after the 12-minute timeout still
+leaves the ReviewQueue and Ledger rows at ERROR_TIMEOUT (the late-completion
+gap in `backPropagateCompletions()`).
