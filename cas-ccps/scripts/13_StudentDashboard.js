@@ -199,8 +199,9 @@ function getStudentDashboardData(termFilter) {
 //
 // WarmUpQueue (25_WarmUpWriter.js's WQ25_*; 25 isn't in this project, so
 // the columns are repeated here): google_id 4, lesson_date 5,
-// lesson_context_snapshot 6, status 8, doc_id 9, extra_credit 15,
-// flow4_feedback 17. A warm-up answered here (WARMUP_TEXT_BOX) has a
+// lesson_context_snapshot 6, status 8, doc_id 9, word_count_score 12,
+// grammar_score 13, engagement_score 14, extra_credit 15, total_score 16
+// (the total includes extra credit once it is earned), flow4_feedback 17. A warm-up answered here (WARMUP_TEXT_BOX) has a
 // WarmUpTextBox row (00's WTB) and no doc. The student answers on the
 // lesson day; the 3:15am run after it (runWarmUpEvaluation) scores it, and
 // replies are checked each night for EXTRA_CREDIT_RECHECK_WINDOW_DAYS (7)
@@ -211,7 +212,12 @@ const DASH_WQ_LESSON_DATE  = 5;
 const DASH_WQ_LESSON_SNAP  = 6;
 const DASH_WQ_STATUS       = 8;
 const DASH_WQ_DOC_ID       = 9;
+const DASH_WQ_LENGTH       = 12;
+const DASH_WQ_GRAMMAR      = 13;
+const DASH_WQ_ENGAGEMENT   = 14;
 const DASH_WQ_EXTRA_CREDIT = 15;
+const DASH_WQ_TOTAL        = 16;
+const DASH_SCORE_MAX       = 10; // length 6 + grammar 1 + engagement 3 (25's thresholds, 41's ranges)
 const DASH_WQ_FEEDBACK     = 17;
 const DASH_WQ_WIDTH        = 18;
 const DASH_EC_DAYS         = 7;
@@ -281,6 +287,16 @@ function _dashWarmUpView_(w, tz, today, ecFrom) {
     savedAt:       tbRow && tbRow[WTB.SUBMITTED_AT] ? formatDate_(tbRow[WTB.SUBMITTED_AT]) : null,
     canAnswer:     !!tbRow && status === "DELIVERED" && w.lessonDate >= today,
     feedback:      status === "SCORED" ? String(w.row[DASH_WQ_FEEDBACK] || "") : "",
+    // Shown with the feedback, by the operator's choice (2026-10-17): the
+    // score out of 10 and its parts, extra credit added on top.
+    score: status === "SCORED" ? {
+      points:     Number(w.row[DASH_WQ_TOTAL] || 0) - (credited ? 1 : 0),
+      max:        DASH_SCORE_MAX,
+      length:     Number(w.row[DASH_WQ_LENGTH] || 0),
+      grammar:    Number(w.row[DASH_WQ_GRAMMAR] || 0),
+      engagement: Number(w.row[DASH_WQ_ENGAGEMENT] || 0),
+      extra:      credited ? 1 : 0
+    } : null,
     extraCredit: {
       credited:  credited,
       open:      ecOpen,
@@ -740,6 +756,10 @@ function buildStudentDashboardHtml_() {
   .wu-course{font-weight:400;color:var(--text-secondary);font-size:13px}
   .wu-bridge{font-size:13.5px;font-style:italic;color:var(--text-secondary);margin-bottom:8px;white-space:pre-line;line-height:1.5}
   .wu-prompt{font-size:15px;line-height:1.55;margin-bottom:10px;white-space:pre-line}
+  .wu-score{font-size:14px;margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+  .wu-score b{font-size:18px}
+  .wu-plus{color:#1e8e3e;font-weight:600;font-size:13px}
+  .wu-parts{color:var(--text-secondary);font-size:13px}
   .wu-feedback{font-size:14px;line-height:1.55;background:#f1f3f4;border-radius:8px;padding:10px 12px;margin-bottom:10px;white-space:pre-line}
   .wu-answer{font-size:14px;line-height:1.5;white-space:pre-line;color:#3c4043}
   .wu-ec{font-size:13px;color:#9334e6;font-weight:500;margin-bottom:6px}
@@ -1034,6 +1054,12 @@ function _wuBox(kind, w, saved, label, rows) {
 
 function _wuPrevious(w) {
   let h = '<div class="wu-section">' + _wuHead("Last warm-up", w);
+  if (w.score) {
+    h += '<div class="wu-score"><b>' + esc(w.score.points) + '/' + esc(w.score.max) + '</b>' +
+      (w.score.extra ? ' <span class="wu-plus">+' + esc(w.score.extra) + ' extra credit</span>' : '') +
+      '<span class="wu-parts">Length ' + esc(w.score.length) + ' · Grammar ' + esc(w.score.grammar) +
+      ' · Engagement ' + esc(w.score.engagement) + '</span></div>';
+  }
   if (w.feedback) h += '<div class="wu-feedback">' + esc(w.feedback) + '</div>';
   if (!w.textBox) h += _wuOpenLink(w);
   const ec = w.extraCredit || {};
