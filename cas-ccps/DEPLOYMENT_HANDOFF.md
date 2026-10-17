@@ -261,7 +261,7 @@ Studio and verified all five live end to end — see the status banner and
 
 ## Current repo state
 
-- Work lands on `main` through PRs from `claude/*` branches; the operator pushes `main` with `run.ps1 -Latest` (last full push 2026-10-05).
+- Work lands on `main` through PRs from `claude/*` branches; the operator pushes `main` with `node run.js --latest` (`tools/clasp-sync/run.js`, which replaced `run.ps1` on 2026-10-17).
 - **Zero errors is the gate. The warning counts are not** — both tools warn
   about accepted, documented things, and both numbers move whenever a check is
   added or a warning is legitimately resolved (gas-lint has gone 4 → 5,
