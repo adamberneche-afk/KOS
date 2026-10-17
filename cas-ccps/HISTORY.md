@@ -3463,6 +3463,12 @@ replies stay in the Ledger.
   `submitWarmUpAnswer` / `submitWarmUpReply` save only the signed-in
   student's own row, only while open; a leading `=` is not stored as a
   formula (`sheetSafeText_`). Drafts survive a refresh of the card.
+- **Scores shown** (operator's choice, reversing the docs' feedback-only
+  rule): the card shows the score out of 10 with its parts (length 0-6,
+  grammar 0-1, engagement 0-3) and "+1 extra credit" once earned.
+- **Decided 2026-10-17:** `WARMUP_TEXT_BOX` = `all` from Monday; a warm-up
+  can be answered once it is delivered (Sunday night for Monday) until the
+  end of its lesson day.
 - **Tests** `warmup-text-box.test.js`, `student-dashboard-warmups.test.js`.
 
 Not yet live: push, then set `WARMUP_TEXT_BOX` before Sunday's
