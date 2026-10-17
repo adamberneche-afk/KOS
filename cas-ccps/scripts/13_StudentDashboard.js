@@ -193,55 +193,119 @@ function getStudentDashboardData(termFilter) {
 }
 
 // ---------------------------------------------------------------------------
-// Warm-ups card. WarmUpQueue (25_WarmUpWriter.js's WQ25_*; 25 isn't in this
-// project, so the columns are repeated here): google_id 4, lesson_date 5,
-// lesson_context_snapshot 6, status 8, doc_id 9. A row has a doc once Flow 3
-// delivers it (41's wfbApplyFlow3_); before that there is nothing to open.
-// The student answers on the lesson day, and the 3:15am run after it
-// (runWarmUpEvaluation) checks the doc.
+// Warm-ups card: the last warm-up's feedback (and its extra-credit reply
+// while that window is open) and the current warm-up. Older warm-ups stay
+// in the Ledger; the card doesn't list them.
+//
+// WarmUpQueue (25_WarmUpWriter.js's WQ25_*; 25 isn't in this project, so
+// the columns are repeated here): google_id 4, lesson_date 5,
+// lesson_context_snapshot 6, status 8, doc_id 9, word_count_score 12,
+// grammar_score 13, engagement_score 14, extra_credit 15, total_score 16
+// (the total includes extra credit once it is earned), flow4_feedback 17. A warm-up answered here (WARMUP_TEXT_BOX) has a
+// WarmUpTextBox row (00's WTB) and no doc. The student answers on the
+// lesson day; the 3:15am run after it (runWarmUpEvaluation) scores it, and
+// replies are checked each night for EXTRA_CREDIT_RECHECK_WINDOW_DAYS (7)
+// with at least EXTRA_CREDIT_MIN_WORDS (10) words.
 // ---------------------------------------------------------------------------
 const DASH_WQ_GOOGLE_ID    = 4;
 const DASH_WQ_LESSON_DATE  = 5;
 const DASH_WQ_LESSON_SNAP  = 6;
 const DASH_WQ_STATUS       = 8;
 const DASH_WQ_DOC_ID       = 9;
-const DASH_WARMUP_DAYS     = 14;
-const DASH_WARMUP_MAX      = 10;
+const DASH_WQ_LENGTH       = 12;
+const DASH_WQ_GRAMMAR      = 13;
+const DASH_WQ_ENGAGEMENT   = 14;
+const DASH_WQ_EXTRA_CREDIT = 15;
+const DASH_WQ_TOTAL        = 16;
+const DASH_SCORE_MAX       = 10; // length 6 + grammar 1 + engagement 3 (25's thresholds, 41's ranges)
+const DASH_WQ_FEEDBACK     = 17;
+const DASH_WQ_WIDTH        = 18;
+const DASH_EC_DAYS         = 7;
+const DASH_EC_MIN_WORDS    = 10;
+const DASH_ANSWER_MAX      = 5000;
+const DASH_REPLY_MAX       = 2000;
 
-function getStudentWarmUps_(ss, cfg, googleId, now) {
+// The student's own warm-ups, oldest first, each with its WarmUpTextBox row.
+function _dashOwnWarmUps_(ss, cfg, googleId, tz) {
   const sheet = ss.getSheetByName(cfg.tabs.warmUpQueue);
   if (!sheet || sheet.getLastRow() < 2) return [];
+  const me = String(googleId).trim().toLowerCase();
+  const textBox = readWarmUpTextBox_(ss);
+  const out = [];
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, DASH_WQ_WIDTH).getValues().forEach(function (row, i) {
+    if (String(row[DASH_WQ_GOOGLE_ID] || "").trim().toLowerCase() !== me) return;
+    const queueId = String(row[0] || "").trim();
+    const docId = String(row[DASH_WQ_DOC_ID] || "").trim();
+    const tb = textBox[queueId] || null;
+    if (!queueId || (!docId && !tb)) return; // not delivered yet
+    const lessonDate = dashIsoDate_(row[DASH_WQ_LESSON_DATE], tz);
+    if (!lessonDate) return;
+    out.push({ queueId: queueId, sheetRow: i + 2, row: row, tb: tb, docId: docId, lessonDate: lessonDate });
+  });
+  out.sort(function (a, b) { return a.lessonDate < b.lessonDate ? -1 : a.lessonDate > b.lessonDate ? 1 : 0; });
+  return out;
+}
+
+function getStudentWarmUps_(ss, cfg, googleId, now) {
   const tz    = Session.getScriptTimeZone();
   const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
-  const from  = new Date(now.getTime() - DASH_WARMUP_DAYS * 24 * 60 * 60 * 1000);
-  const since = Utilities.formatDate(from, tz, "yyyy-MM-dd");
-  const me    = String(googleId).trim().toLowerCase();
+  const ecFrom = Utilities.formatDate(new Date(now.getTime() - DASH_EC_DAYS * 86400000), tz, "yyyy-MM-dd");
+  const own = _dashOwnWarmUps_(ss, cfg, googleId, tz);
+  const upcoming = own.filter(function (w) { return w.lessonDate >= today; });
+  const past = own.filter(function (w) { return w.lessonDate < today; });
+  const cur = upcoming.length ? upcoming[0] : null;
+  const prev = past.length ? past[past.length - 1] : null;
+  return {
+    current:  cur ? _dashWarmUpView_(cur, tz, today, ecFrom) : null,
+    previous: prev ? _dashWarmUpView_(prev, tz, today, ecFrom) : null
+  };
+}
 
-  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, DASH_WQ_DOC_ID + 1).getValues();
-  const out = [];
-  rows.forEach(function (row) {
-    if (String(row[DASH_WQ_GOOGLE_ID] || "").trim().toLowerCase() !== me) return;
-    const docId = String(row[DASH_WQ_DOC_ID] || "").trim();
-    if (!docId) return;
-    const lessonDate = dashIsoDate_(row[DASH_WQ_LESSON_DATE], tz);
-    if (!lessonDate || lessonDate < since) return;
-    const st = resolveWarmUpStatus_(String(row[DASH_WQ_STATUS] || "").trim(), lessonDate, today);
-    let course = "";
-    try { course = String(JSON.parse(String(row[DASH_WQ_LESSON_SNAP] || "{}")).course_name || ""); }
-    catch (e) { /* a snapshot that doesn't parse just leaves the course off */ }
-    const [y, m, d] = lessonDate.split("-").map(Number);
-    out.push({
-      lessonDate:    lessonDate,
-      dateLabel:     Utilities.formatDate(new Date(y, m - 1, d, 12), tz, "EEE, MMM d"),
-      isToday:       lessonDate === today,
-      course:        course,
-      displayStatus: st.displayStatus,
-      statusClass:   st.statusClass,
-      docUrl:        "https://docs.google.com/document/d/" + docId + "/edit"
-    });
-  });
-  out.sort(function (a, b) { return a.lessonDate < b.lessonDate ? 1 : a.lessonDate > b.lessonDate ? -1 : 0; });
-  return out.slice(0, DASH_WARMUP_MAX);
+function _dashWarmUpView_(w, tz, today, ecFrom) {
+  const status = String(w.row[DASH_WQ_STATUS] || "").trim();
+  const tbRow = w.tb ? w.tb.row : null;
+  let course = "";
+  try { course = String(JSON.parse(String(w.row[DASH_WQ_LESSON_SNAP] || "{}")).course_name || ""); }
+  catch (e) { /* a snapshot that doesn't parse just leaves the course off */ }
+  const [y, m, d] = w.lessonDate.split("-").map(Number);
+  const st = resolveWarmUpStatus_(status, w.lessonDate, today, !!tbRow);
+  const credited = Number(w.row[DASH_WQ_EXTRA_CREDIT] || 0) === 1;
+  const ecOpen = status === "SCORED" && !credited && w.lessonDate >= ecFrom;
+  const deadline = new Date(y, m - 1, d + DASH_EC_DAYS, 12);
+  return {
+    queueId:       w.queueId,
+    dateLabel:     Utilities.formatDate(new Date(y, m - 1, d, 12), tz, "EEE, MMM d"),
+    isToday:       w.lessonDate === today,
+    course:        course,
+    textBox:       !!tbRow,
+    docUrl:        w.docId ? "https://docs.google.com/document/d/" + w.docId + "/edit" : null,
+    displayStatus: st.displayStatus,
+    statusClass:   st.statusClass,
+    bridge:        tbRow ? String(tbRow[WTB.BRIDGE] || "") : "",
+    warmup:        tbRow ? String(tbRow[WTB.WARMUP] || "") : "",
+    answer:        tbRow ? String(tbRow[WTB.RESPONSE] || "") : "",
+    savedAt:       tbRow && tbRow[WTB.SUBMITTED_AT] ? formatDate_(tbRow[WTB.SUBMITTED_AT]) : null,
+    canAnswer:     !!tbRow && status === "DELIVERED" && w.lessonDate >= today,
+    feedback:      status === "SCORED" ? String(w.row[DASH_WQ_FEEDBACK] || "") : "",
+    // Shown with the feedback, by the operator's choice (2026-10-17): the
+    // score out of 10 and its parts, extra credit added on top.
+    score: status === "SCORED" ? {
+      points:     Number(w.row[DASH_WQ_TOTAL] || 0) - (credited ? 1 : 0),
+      max:        DASH_SCORE_MAX,
+      length:     Number(w.row[DASH_WQ_LENGTH] || 0),
+      grammar:    Number(w.row[DASH_WQ_GRAMMAR] || 0),
+      engagement: Number(w.row[DASH_WQ_ENGAGEMENT] || 0),
+      extra:      credited ? 1 : 0
+    } : null,
+    extraCredit: {
+      credited:  credited,
+      open:      ecOpen,
+      byLabel:   Utilities.formatDate(deadline, tz, "EEE, MMM d"),
+      minWords:  DASH_EC_MIN_WORDS,
+      reply:     tbRow ? String(tbRow[WTB.REPLY] || "") : "",
+      canReply:  ecOpen && !!tbRow
+    }
+  };
 }
 
 // A lesson date read from the sheet is a Date or "YYYY-MM-DD" text.
@@ -254,21 +318,67 @@ function dashIsoDate_(v, tz) {
 }
 
 // Same statusClass names (and colors) as the assignment cards.
-function resolveWarmUpStatus_(status, lessonDate, today) {
+function resolveWarmUpStatus_(status, lessonDate, today, textBox) {
+  const where = textBox ? "below" : "in your doc";
   switch (status) {
     case "DELIVERED":
       return lessonDate >= today
-        ? { displayStatus: "Ready — write your response today", statusClass: "NEEDS_ACTION" }
+        ? { displayStatus: "Ready — answer today", statusClass: "NEEDS_ACTION" }
         : { displayStatus: "Waiting to be checked", statusClass: "IN_PROGRESS" };
     case "PENDING_EVAL":
     case "EVAL_ERROR":
       return { displayStatus: "Being checked — your work is saved", statusClass: "IN_PROGRESS" };
     case "SCORED":
-      return { displayStatus: "Checked — feedback is in your doc", statusClass: "DONE" };
+      return { displayStatus: "Checked — feedback is " + where, statusClass: "DONE" };
     case "INCOMPLETE":
       return { displayStatus: "No response was written", statusClass: "NOT_STARTED" };
     default:
       return { displayStatus: "Open your warm-up", statusClass: "NOT_STARTED" };
+  }
+}
+
+// Called from the page: save the answer to a warm-up, or the extra-credit
+// reply to its feedback. Only the signed-in student's own warm-up, only a
+// text-box one, and only while it is open. Saving again replaces the text.
+function submitWarmUpAnswer(queueId, text) {
+  return _dashWarmUpSave_(queueId, text, "answer");
+}
+
+function submitWarmUpReply(queueId, text) {
+  return _dashWarmUpSave_(queueId, text, "reply");
+}
+
+function _dashWarmUpSave_(queueId, text, kind) {
+  const googleId = Session.getActiveUser().getEmail();
+  if (!googleId) return { ok: false, error: "Could not identify your Google account. Sign in and try again." };
+  const max = kind === "answer" ? DASH_ANSWER_MAX : DASH_REPLY_MAX;
+  const t = String(text || "").trim();
+  if (!t) return { ok: false, error: kind === "answer" ? "Write your answer first." : "Write your reply first." };
+  if (t.length > max) return { ok: false, error: "That's too long: keep it under " + max + " characters." };
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { ok: false, error: "The system is busy. Try again in a minute." };
+  try {
+    const cfg = getConfig_();
+    const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const tz  = Session.getScriptTimeZone();
+    const now = new Date();
+    const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+    const w = _dashOwnWarmUps_(ss, cfg, googleId, tz).filter(function (x) { return x.queueId === String(queueId); })[0];
+    if (!w || !w.tb) return { ok: false, error: "That warm-up wasn't found. Refresh the page." };
+    const view = _dashWarmUpView_(w, tz, today,
+      Utilities.formatDate(new Date(now.getTime() - DASH_EC_DAYS * 86400000), tz, "yyyy-MM-dd"));
+    const sheet = ss.getSheetByName(cfg.tabs.warmUpTextBox);
+    if (kind === "answer") {
+      if (!view.canAnswer) return { ok: false, error: "This warm-up is closed. It is checked overnight after its day." };
+      sheet.getRange(w.tb.sheetRow, WTB.RESPONSE + 1, 1, 2).setValues([[sheetSafeText_(t), now]]);
+    } else {
+      if (!view.extraCredit.canReply) return { ok: false, error: "The extra-credit window for this warm-up has closed." };
+      sheet.getRange(w.tb.sheetRow, WTB.REPLY + 1, 1, 2).setValues([[sheetSafeText_(t), now]]);
+    }
+    return { ok: true, savedAt: formatDate_(now) };
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -657,16 +767,30 @@ function buildStudentDashboardHtml_() {
   .submit-msg{font-size:13px;margin-top:8px;line-height:1.45;white-space:pre-line}
   .submit-msg.ok{color:#137333}
   .submit-msg.err{color:#c5221f}
-  /* Warm-ups card: one card, a row per warm-up, newest first. */
+  /* Warm-ups card: the last warm-up's feedback, then the current one. */
   .warmup-card{border-left-color:#1a73e8}
   .warmup-card:hover{transform:none}
-  .warmup-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-top:1px solid #e8eaed;flex-wrap:wrap}
-  .warmup-row:first-of-type{border-top:none}
-  .warmup-date{font-size:14px;font-weight:600}
-  .warmup-date .today{font-size:11px;font-weight:700;color:#1a73e8;margin-left:6px;text-transform:uppercase;letter-spacing:.5px}
-  .warmup-row .card-meta{margin-bottom:0}
-  .warmup-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .warmup-right .open-btn{padding:6px 14px;font-size:13px}
+  .wu-section{padding:12px 0;border-top:1px solid #e8eaed}
+  .wu-section:first-child{border-top:none;padding-top:0}
+  .wu-section:last-child{padding-bottom:0}
+  .wu-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+  .wu-label{font-size:14px;font-weight:600}
+  .wu-course{font-weight:400;color:var(--text-secondary);font-size:13px}
+  .wu-bridge{font-size:13.5px;font-style:italic;color:var(--text-secondary);margin-bottom:8px;white-space:pre-line;line-height:1.5}
+  .wu-prompt{font-size:15px;line-height:1.55;margin-bottom:10px;white-space:pre-line}
+  .wu-score{font-size:14px;margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
+  .wu-score b{font-size:18px}
+  .wu-plus{color:#1e8e3e;font-weight:600;font-size:13px}
+  .wu-parts{color:var(--text-secondary);font-size:13px}
+  .wu-feedback{font-size:14px;line-height:1.55;background:#f1f3f4;border-radius:8px;padding:10px 12px;margin-bottom:10px;white-space:pre-line}
+  .wu-answer{font-size:14px;line-height:1.5;white-space:pre-line;color:#3c4043}
+  .wu-ec{font-size:13px;color:#9334e6;font-weight:500;margin-bottom:6px}
+  .wu-ec.done{color:#1e8e3e}
+  .wu-note{font-size:12px;color:var(--text-secondary);margin-top:6px}
+  .wu-text{width:100%;font-family:inherit;font-size:15px;line-height:1.5;padding:10px 12px;border:1px solid #dadce0;border-radius:8px;margin-bottom:8px;resize:vertical}
+  .wu-text:focus{outline:2px solid #1a73e8;outline-offset:1px;border-color:#1a73e8}
+  .wu-open{padding:6px 14px;font-size:13px}
+  .wu-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
   .empty-state{text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line}
   .empty-state .icon{font-size:48px;margin-bottom:16px}
   footer{text-align:center;padding:20px;font-size:12px;color:var(--text-secondary);border-top:1px solid #e8eaed;margin-top:32px}
@@ -913,27 +1037,120 @@ function render(data) {
   _populateTermDropdown(data);
 }
 
-// Warm-ups card, above the assignments. Nothing is shown until a student
-// has a warm-up doc from the last two weeks.
+// Warm-ups card, above the assignments: the last warm-up's feedback (with
+// the extra-credit reply while it's open) and the current warm-up. Nothing
+// is shown until a student has a warm-up.
+let _wuDrafts = {}; // "answer:QUEUE" / "reply:QUEUE" -> text typed, kept across re-renders
+let _wuMsgs = {};   // same keys -> { ok, text } from this visit's saves
+
 function renderWarmUps(data) {
-  const list = data.warmUps || [];
-  if (!list.length) return "";
-  let rows = "";
-  list.forEach(w => {
-    const url = safeDocUrl(w.docUrl);
-    rows += \`<div class="warmup-row">
-      <div>
-        <div class="warmup-date">\${esc(w.dateLabel)}\${w.isToday ? '<span class="today">Today</span>' : ""}</div>
-        \${w.course ? \`<div class="card-meta">\${esc(w.course)}</div>\` : ""}
-      </div>
-      <div class="warmup-right">
-        <div class="pill pill-\${esc(w.statusClass)}">\${esc(w.displayStatus)}</div>
-        \${url ? \`<a href="\${esc(url)}" target="_blank" class="open-btn">Open ↗</a>\` : ""}
-      </div>
-    </div>\`;
-  });
-  return \`<div class="group-header">Warm-ups</div>
-    <div class="card warmup-card" role="region" aria-label="Warm-ups">\${rows}</div>\`;
+  const wu = data.warmUps || {};
+  if (!wu.current && !wu.previous) return "";
+  let html = '<div class="group-header">Warm-ups</div><div class="card warmup-card" role="region" aria-label="Warm-ups">';
+  if (wu.previous) html += _wuPrevious(wu.previous);
+  if (wu.current) html += _wuCurrent(wu.current);
+  return html + '</div>';
+}
+
+function _wuHead(label, w) {
+  return '<div class="wu-head"><div class="wu-label">' + esc(label) + ' · ' + esc(w.dateLabel) +
+    (w.course ? ' <span class="wu-course">' + esc(w.course) + '</span>' : '') + '</div>' +
+    '<div class="pill pill-' + esc(w.statusClass) + '">' + esc(w.displayStatus) + '</div></div>';
+}
+
+function _wuOpenLink(w) {
+  const url = safeDocUrl(w.docUrl);
+  return url ? '<a href="' + esc(url) + '" target="_blank" class="open-btn wu-open">Open warm-up ↗</a>' : '';
+}
+
+function _wuBox(kind, w, saved, label, rows) {
+  const key = kind + ":" + w.queueId;
+  const value = Object.prototype.hasOwnProperty.call(_wuDrafts, key) ? _wuDrafts[key] : saved;
+  const msg = _wuMsgs[key];
+  return '<label class="wu-sr" for="wu-' + kind + '-' + esc(w.queueId) + '">' + esc(label) + '</label>' +
+    '<textarea id="wu-' + kind + '-' + esc(w.queueId) + '" class="wu-text" rows="' + rows + '" data-key="' + esc(key) + '" oninput="wuDraft(this)">' + esc(value || "") + '</textarea>' +
+    '<div class="card-actions"><button class="submit-btn" data-kind="' + kind + '" data-queue="' + esc(w.queueId) + '" onclick="saveWarmUp(this)">' +
+    (kind === "answer" ? (saved ? "Update answer" : "Save answer") : (saved ? "Update reply" : "Save reply")) + '</button></div>' +
+    '<div id="wu-msg-' + kind + '-' + esc(w.queueId) + '" class="submit-msg ' + (msg ? (msg.ok ? "ok" : "err") : "") + '" role="status">' + (msg ? esc(msg.text) : "") + '</div>';
+}
+
+function _wuPrevious(w) {
+  let h = '<div class="wu-section">' + _wuHead("Last warm-up", w);
+  if (w.score) {
+    h += '<div class="wu-score"><b>' + esc(w.score.points) + '/' + esc(w.score.max) + '</b>' +
+      (w.score.extra ? ' <span class="wu-plus">+' + esc(w.score.extra) + ' extra credit</span>' : '') +
+      '<span class="wu-parts">Length ' + esc(w.score.length) + ' · Grammar ' + esc(w.score.grammar) +
+      ' · Engagement ' + esc(w.score.engagement) + '</span></div>';
+  }
+  if (w.feedback) h += '<div class="wu-feedback">' + esc(w.feedback) + '</div>';
+  if (!w.textBox) h += _wuOpenLink(w);
+  const ec = w.extraCredit || {};
+  if (ec.credited) {
+    h += '<div class="wu-ec done">✓ Extra credit earned</div>';
+  } else if (ec.open && ec.canReply) {
+    h += '<div class="wu-ec">Extra credit: reply to this feedback in at least ' + esc(ec.minWords) + ' words by ' + esc(ec.byLabel) + '.</div>' +
+      _wuBox("reply", w, ec.reply, "Your reply to the feedback", 3) +
+      (ec.reply ? '<div class="wu-note">Your reply is saved and checked overnight.</div>' : '');
+  } else if (ec.open) {
+    h += '<div class="wu-ec">Extra credit: reply under the feedback in your doc (at least ' + esc(ec.minWords) + ' words) by ' + esc(ec.byLabel) + '.</div>';
+  }
+  return h + '</div>';
+}
+
+function _wuCurrent(w) {
+  let h = '<div class="wu-section">' + _wuHead(w.isToday ? "Today's warm-up" : "Next warm-up", w);
+  if (!w.textBox) return h + _wuOpenLink(w) + '</div>';
+  if (w.bridge) h += '<div class="wu-bridge">' + esc(w.bridge) + '</div>';
+  h += '<div class="wu-prompt">' + esc(w.warmup) + '</div>';
+  if (w.canAnswer) {
+    h += _wuBox("answer", w, w.answer, "Your answer", 5);
+    if (w.answer && !_wuMsgs["answer:" + w.queueId]) {
+      h += '<div class="wu-note">Saved ' + esc(w.savedAt || "") + '. You can change it until the end of the day.</div>';
+    }
+  } else if (w.answer) {
+    h += '<div class="wu-answer"><b>Your answer</b><br>' + esc(w.answer) + '</div>';
+  }
+  return h + '</div>';
+}
+
+function wuDraft(el) {
+  _wuDrafts[el.getAttribute("data-key")] = el.value;
+}
+
+function saveWarmUp(btn) {
+  const kind = btn.getAttribute("data-kind");
+  const id = btn.getAttribute("data-queue");
+  const key = kind + ":" + id;
+  const box = document.getElementById("wu-" + kind + "-" + id);
+  const text = box ? box.value : "";
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Saving…";
+  const finish = function (res) {
+    btn.disabled = false;
+    btn.textContent = label;
+    const msgEl = document.getElementById("wu-msg-" + kind + "-" + id);
+    if (res && res.ok) {
+      _wuMsgs[key] = { ok: true, text: "Saved " + res.savedAt + "." +
+        (kind === "answer" ? " You can change it until the end of the day." : " It's checked overnight.") };
+      delete _wuDrafts[key];
+      _dashCache = {}; // the next refresh fetches the saved text
+      const wu = (_lastDashData && _lastDashData.warmUps) || {};
+      if (kind === "answer" && wu.current && wu.current.queueId === id) wu.current.answer = text;
+      if (kind === "reply" && wu.previous && wu.previous.queueId === id) wu.previous.extraCredit.reply = text;
+    } else {
+      _wuMsgs[key] = { ok: false, text: (res && res.error) ||
+        "Couldn't save. Your writing is still in the box: try again in a minute." };
+    }
+    if (msgEl) {
+      msgEl.className = "submit-msg " + (_wuMsgs[key].ok ? "ok" : "err");
+      msgEl.textContent = _wuMsgs[key].text;
+    }
+  };
+  google.script.run
+    .withSuccessHandler(finish)
+    .withFailureHandler(function () { finish(null); })
+    [kind === "answer" ? "submitWarmUpAnswer" : "submitWarmUpReply"](id, text);
 }
 
 // Submit for Feedback: the doc's own menu can't run for student accounts
