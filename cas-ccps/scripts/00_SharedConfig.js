@@ -239,7 +239,9 @@ const SHARED_CONFIG_KEYS = [
   "MASTER_TEACHER_MATRIX_SS_ID",
   // Research-pivot feature flags (meta/PRD_CAS_RESEARCH_PIVOT.md). Here so
   // one _CONFIG row reaches every project; read through pivotFlagFor_().
-  "PIVOT_ARCHETYPE_LOCK"
+  "PIVOT_ARCHETYPE_LOCK",
+  // Where Flow 2 feedback goes; read through feedbackAsCommentFor_().
+  "FEEDBACK_AS_COMMENT"
 ];
 
 // System text a student response must not contain (P0-03,
@@ -279,12 +281,42 @@ function pivotFlagFor_(flagName, courseCode) {
   } catch (e) {
     return false; // unconfigured project: every pivot feature stays off
   }
+  return _pivotValueOn_(raw, courseCode);
+}
+
+function _pivotValueOn_(raw, courseCode) {
   const value = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase();
   if (value === "" || value === "off") return false;
   if (value === "all") return true;
   const course = String(courseCode === undefined || courseCode === null ? "" : courseCode)
     .trim().toLowerCase();
   return course !== "" && value === course;
+}
+
+// Whether a submission's Flow 2 feedback goes on the student's doc as a
+// comment instead of into its feedback zone (FEEDBACK_AS_COMMENT, read like
+// a pivot flag: blank/"off", "all", or one course code). On, the harvest
+// (37) posts a comment, 03 adds nothing to the doc, and intake (02) builds
+// new docs without a feedback zone, so the doc holds only the assignment and
+// the student's work. ConfigIDs carry the course ("CAS-8175-L06"); an older
+// "VDOE-…" ID has none, so only "all" reaches it.
+function feedbackAsCommentFor_(configId) {
+  return feedbackAsCommentChecker_()(configId);
+}
+
+// The same test with the flag read once, for a loop over many assignments
+// (the Student Dashboard builds one card per Ledger row).
+function feedbackAsCommentChecker_() {
+  let raw = "";
+  try {
+    raw = _resolveConfigValues_().values.FEEDBACK_AS_COMMENT;
+  } catch (e) {
+    raw = ""; // unconfigured project: feedback stays in the doc
+  }
+  return function (configId) {
+    const m = String(configId || "").match(/^CAS-(\d{4})-/);
+    return _pivotValueOn_(raw, m ? m[1] : null);
+  };
 }
 
 // Same Key | Value tab 19_ClonedSheetConfig.js already writes into each
@@ -478,6 +510,33 @@ function seedLedgerConfigTab() {
     Logger.log("[CONFIG] Left as they are, settle by hand:\n  " + conflicts.join("\n  "));
   }
   return { ledgerId: ledgerId, added: added, conflicts: conflicts };
+}
+
+// Sets one SHARED_CONFIG_KEYS value in the Ledger's _CONFIG tab, replacing
+// the row if there is one, and clears this project's cache so the change
+// shows here at once (other projects see it within the cache TTL). For
+// settings a dashboard control changes, such as FEEDBACK_AS_COMMENT; callers
+// check who may change it.
+function setSharedConfigValue_(key, value) {
+  if (SHARED_CONFIG_KEYS.indexOf(key) === -1) throw new Error(key + " is not a shared setting.");
+  const ledgerId = _resolveConfigValues_().values.CENTRAL_LEDGER_SS_ID;
+  const ss = SpreadsheetApp.openById(ledgerId);
+  let sheet = ss.getSheetByName(CONFIG_TAB_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG_TAB_NAME);
+    sheet.appendRow(["Key", "Value"]);
+  }
+  const rows = sheet.getDataRange().getValues();
+  let written = false;
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]).trim() !== key) continue;
+    sheet.getRange(i + 1, 2).setValue(value);
+    written = true;
+    break;
+  }
+  if (!written) sheet.appendRow([key, value]);
+  try { CacheService.getScriptCache().remove(SHARED_CONFIG_CACHE_PREFIX + ledgerId); } catch (e) { /* ignore */ }
+  _sharedConfigMemo_ = null;
 }
 
 // Run from the Apps Script editor after editing the Ledger's _CONFIG tab

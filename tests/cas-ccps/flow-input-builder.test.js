@@ -369,26 +369,36 @@ function layOutStudentDoc(doc) {
   return body;
 }
 
-function harvestOneEvaluation(geminiOutput) {
+function harvestOneEvaluation(geminiOutput, opts = {}) {
   const { exported, sandbox } = load();
   const ledgerSs = setUpCentralLedger(sandbox);
   setUpConfig(sandbox, ledgerSs);
+  if (opts.feedbackAsComment) {
+    sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', opts.feedbackAsComment);
+  }
+  const configId = opts.configId || 'VDOE-ABC-2026';
+  const comments = [];
+  sandbox.Drive = { Comments: { create(resource, fileId, params) {
+    if (opts.commentFails) throw new Error('Comments API unavailable');
+    comments.push({ resource, fileId, params });
+    return { id: 'c' + comments.length };
+  } } };
   const doc = sandbox.DocumentApp.create('Student Doc');
   const studentFileId = doc.getId();
   layOutStudentDoc(doc);
   ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(
-    stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' }));
+    stagingRow({ studentFileId, configId: configId, teacherEmail: 'teacher@example.com' }));
   ledgerSs.getSheetByName('Ledger').appendRow(
-    ledgerRow({ googleId: 'student@example.com', configId: 'VDOE-ABC-2026', fileId: studentFileId, teacherEmail: 'teacher@example.com' }, exported));
+    ledgerRow({ googleId: 'student@example.com', configId: configId, fileId: studentFileId, teacherEmail: 'teacher@example.com' }, exported));
   ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
   setUpTeacherMatrix(sandbox, 'matrix-ss-1').getSheetByName('TeacherMatrix').appendRow(
-    teacherMatrixRow({ configId: 'VDOE-ABC-2026', c1: 'COMP-1', c2: 'COMP-2', c3: 'COMP-3', c4: 'COMP-4' }));
+    teacherMatrixRow({ configId: configId, c1: 'COMP-1', c2: 'COMP-2', c3: 'COMP-3', c4: 'COMP-4' }));
   exported.buildFlowInputRows();
   const fiSheet = ledgerSs.getSheetByName('FlowInput');
   fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(geminiOutput);
   fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
   exported.harvestFlowInputResults();
-  return { exported, doc, body: doc.getBody(), text: doc.getBody().getText() };
+  return { exported, doc, body: doc.getBody(), text: doc.getBody().getText(), comments, ledgerSs };
 }
 
 const APPROVED_OUTPUT =
@@ -755,4 +765,36 @@ test('buildFlowInputRows: the submission that errored is never rebuilt, so a sus
   exported.buildFlowInputRows();
 
   assert.equal(fiSheet.getLastRow(), 2, 'header + the errored row only');
+});
+
+// FEEDBACK_AS_COMMENT (00): the feedback goes on the doc as a comment and the
+// doc itself is left as it was.
+test('harvestFlowInputResults: with FEEDBACK_AS_COMMENT on for the course, the feedback is a comment and the doc is untouched', () => {
+  const before = (() => { const { sandbox } = load(); const d = sandbox.DocumentApp.create('x'); layOutStudentDoc(d); return d.getBody().getText(); })();
+  const { text, comments, exported, ledgerSs } = harvestOneEvaluation(REVISION_OUTPUT,
+    { feedbackAsComment: '8175', configId: 'CAS-8175-L06' });
+  assert.equal(text, before, 'nothing is written into the doc');
+  assert.equal(comments.length, 1);
+  const content = comments[0].resource.content;
+  assert.match(content, /RESULT: REVISIONS REQUIRED/);
+  assert.match(content, /Needs work on milestone 4\./);
+  assert.match(content, /WHAT TO DO NEXT/, 'the next steps ride in the comment');
+  assert.ok(!content.includes('[MILESTONE_OUTCOMES:'), 'the machine-readable line is stripped');
+  assert.ok(!content.includes('── EVALUATION'), 'no doc-search markers in a comment');
+  const fi = ledgerSs.getSheetByName('FlowInput');
+  assert.equal(fi.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'HARVESTED');
+});
+
+test('harvestFlowInputResults: FEEDBACK_AS_COMMENT for one course leaves the other course in the doc', () => {
+  const { text, comments } = harvestOneEvaluation(APPROVED_OUTPUT,
+    { feedbackAsComment: '8175', configId: 'CAS-8177-L06' });
+  assert.equal(comments.length, 0);
+  assert.ok(text.includes('── EVALUATION'));
+});
+
+test('harvestFlowInputResults: if the comment cannot be posted, the feedback goes in the doc instead', () => {
+  const { text, comments } = harvestOneEvaluation(APPROVED_OUTPUT,
+    { feedbackAsComment: 'all', configId: 'CAS-8175-L06', commentFails: true });
+  assert.equal(comments.length, 0);
+  assert.ok(text.includes('YOUR WORK MEETS THE STANDARD'), 'the student still gets feedback');
 });
