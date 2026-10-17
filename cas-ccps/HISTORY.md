@@ -3270,3 +3270,38 @@ top, leaving the zone the student reads holding only the dashboard link.
 Not changed: an evaluation that arrives after the 12-minute timeout still
 leaves the ReviewQueue and Ledger rows at ERROR_TIMEOUT (the late-completion
 gap in `backPropagateCompletions()`).
+
+## Feedback as a comment on the doc, behind a switch, 2026-10-17
+
+The operator wants Flow 2 feedback out of the student's doc: the cleaner the
+doc, the easier it is for a student to find their place. Feedback went into
+the doc's feedback zone (since #175; before that, at the very end).
+
+`FEEDBACK_AS_COMMENT` is a shared `_CONFIG` key, read like a pivot flag
+(blank/off, `all`, or one course code from the ConfigID), so one row reaches
+both the Central Ledger and the Student Dashboard. Default off: nothing
+changes until it is set.
+
+- **37.** The harvest posts the feedback as an unanchored comment through the
+  Drive advanced service (already in the Central Ledger manifest; the drive
+  scope covers it): result line, report and next steps, without the
+  box-drawing EVALUATION markers, which only exist for code searching the
+  doc. If the comment can't be posted, that evaluation goes into the doc
+  instead, so the student still gets feedback, and the log says why.
+- **03.** Backprop's post-processing adds nothing to the doc. An older doc's
+  "[No feedback yet" line, which says feedback appears in the document, is
+  removed.
+- **02.** Intake builds new docs without a feedback zone: the header keeps
+  who and what and the dashboard link.
+- **13.** The dashboard's evaluated status and its after-submit message say
+  to open Comments. Its doc-mode message said feedback appears "at the end of
+  your document", wrong since #175; it now says near the top, and the
+  placeholder intake writes says "here".
+- **35.** The Flow 2 canary runs its content checks on the doc's comments
+  when the switch covers its ConfigID.
+
+Not changed: the result already lives on the Ledger (`recordEvaluationResult_`),
+which is what the dashboards read, and 04's turn-in gate that read the doc's
+stamp is retired (P0-04). Before switching on, the `commentTest` probe on a
+test doc shows how an unanchored comment looks on the web and on a tablet,
+whose name it carries, and whether a long one fits.

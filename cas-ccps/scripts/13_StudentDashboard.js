@@ -57,6 +57,7 @@ function getStudentDashboardData(termFilter) {
   const availableTerms = new Set();
 
   const year = _currentSchoolYear_();
+  const feedbackAsComment = feedbackAsCommentChecker_();
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (String(row[LEDGER.GOOGLE_ID]).toLowerCase() !== googleId.toLowerCase()) continue;
@@ -94,8 +95,11 @@ function getStudentDashboardData(termFilter) {
       ? (Date.now() - new Date(registeredAtRaw).getTime()) < (3 * 24 * 60 * 60 * 1000)
       : false;
 
+    const configId = String(row[LEDGER.CONFIG_ID]).trim();
+    const feedbackInComments = feedbackAsComment(configId);
+
     assignments.push({
-      configId:      String(row[LEDGER.CONFIG_ID]).trim(),
+      configId:      configId,
       studentName:   String(row[LEDGER.STUDENT_NAME]).trim(),
       // Same fallback wording as the teacher dashboard's identical gap
       // (blank column 10) — a teacher and student comparing notes about a
@@ -111,7 +115,7 @@ function getStudentDashboardData(termFilter) {
       registeredAt:      registeredAtRaw ? formatDate_(registeredAtRaw) : null,
       isNewRegistration: isNewRegistration,
       status:        status,
-      displayStatus: resolveStudentStatus_(status, pipelineStatus[fileId]),
+      displayStatus: resolveStudentStatus_(status, pipelineStatus[fileId], feedbackInComments),
       statusClass:   resolveStudentClass_(status, pipelineStatus[fileId]),
       lastEval:      lastEval     || "No evaluations yet",
       submittedAt:   submittedAt  || null,
@@ -270,7 +274,8 @@ function queueSubmission_(cfg, googleId, fileId, configId) {
 // so it can do the menu's check-and-submit itself: it reads the student's
 // doc, applies the menu's minimums, and queues the same ReviewQueue row.
 // The writing is read only to count it. It is never returned or stored.
-// Returns { ok: true, aiFlowsLive } or { ok: false, error, words?, found? }.
+// Returns { ok: true, aiFlowsLive, feedbackInComments } or
+// { ok: false, error, words?, found? }.
 // ---------------------------------------------------------------------------
 const DASH_RESPONSE_MARKER    = "── YOUR RESPONSE BEGINS HERE ──"; // 01's RESPONSE_MARKER
 const DASH_MIN_RESPONSE_CHARS = 150; // 01's MIN_RESPONSE_CHARS
@@ -335,7 +340,7 @@ function submitMyWork(fileId, configId) {
   const res = queueSubmission_(cfg, googleId, fileId, configId);
   if (!res.ok) return res;
   Logger.log("Dashboard submission — ConfigID: " + configId);
-  return { ok: true, aiFlowsLive: !!cfg.aiFlowsLive };
+  return { ok: true, aiFlowsLive: !!cfg.aiFlowsLive, feedbackInComments: feedbackAsCommentFor_(configId) };
 }
 
 // One row per system-side failure (a doc the admin account can't open, a
@@ -370,7 +375,7 @@ function dashExtractResponse_(fullText) {
   return fullText.substring(from, to).trim();
 }
 
-function resolveStudentStatus_(status, pipeline) {
+function resolveStudentStatus_(status, pipeline, feedbackInComments) {
   // Wording here deliberately echoes the teacher dashboard's status labels
   // (Queued/Evaluating/Evaluated/Compliant/Flagged) so the same underlying
   // pipeline stage reads as the same word on both sides of a conversation —
@@ -385,7 +390,9 @@ function resolveStudentStatus_(status, pipeline) {
   switch (status) {
     case "ACTIVE":              return "Not started yet";
     case "PENDING": case "STAGED": return "Queued for evaluation…";
-    case "COMPLETE":            return "Evaluated — feedback ready, check your document";
+    case "COMPLETE":            return feedbackInComments
+      ? "Evaluated — feedback ready: open your document and click Comments"
+      : "Evaluated — feedback ready, check your document";
     // Where every passing turn-in lands (04_Form2_TurnInGate.js) until the
     // teacher confirms its score. It used to fall through to "Status
     // unavailable", flagged as an issue, on every submitted assignment.
@@ -797,9 +804,11 @@ function submitWork(btn) {
   google.script.run
     .withSuccessHandler(function(res) {
       if (res && res.ok) {
-        done({ ok: true, text: res.aiFlowsLive
-          ? "✅ Submitted. Your feedback will appear at the end of your document in a few minutes. Refresh the document to see it."
-          : "✅ Submitted. Your teacher can see your work and will review it directly." });
+        done({ ok: true, text: !res.aiFlowsLive
+          ? "✅ Submitted. Your teacher can see your work and will review it directly."
+          : res.feedbackInComments
+            ? "✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right)."
+            : "✅ Submitted. Your feedback will appear near the top of your document in a few minutes. Refresh the document to see it." });
         return;
       }
       const code = res && res.error;
