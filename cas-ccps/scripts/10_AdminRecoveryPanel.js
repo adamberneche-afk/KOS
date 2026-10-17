@@ -927,7 +927,8 @@ function _archiveSchoolYearRows_(sheet, year) {
     if (_rowSchoolYear_(data[i]) !== year) continue;
     const rowStatus = String(data[i][LEDGER.STATUS]).trim();
     // Archive COMPLIANT and ACTIVE rows — leave ERROR rows for admin review
-    if (rowStatus === "COMPLIANT" || rowStatus === "ACTIVE" || rowStatus === "COMPLETE") {
+    if (rowStatus === "COMPLIANT" || rowStatus === "ACTIVE" || rowStatus === "COMPLETE" ||
+        rowStatus === "SCHEDULED") {
       sheet.getRange(i + 1, LEDGER.STATUS + 1).setValue("ARCHIVED");
       archived++;
     } else if (rowStatus !== "ARCHIVED") {
@@ -1085,7 +1086,7 @@ function reactivateArchivedTerm() {
 // anything; actual permanent deletion still always requires a human
 // decision outside any script here.
 // =============================================================================
-const LEDGER_ARCHIVABLE_STATUSES = ["COMPLIANT", "ACTIVE", "COMPLETE"];
+const LEDGER_ARCHIVABLE_STATUSES = ["COMPLIANT", "ACTIVE", "COMPLETE", "SCHEDULED"];
 
 function _ledgerRetentionYears_() {
   const raw = PropertiesService.getScriptProperties().getProperty("LEDGER_RETENTION_YEARS");

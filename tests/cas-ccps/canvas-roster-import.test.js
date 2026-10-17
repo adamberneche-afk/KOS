@@ -24,7 +24,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '29_StudentContextAggregator.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
   '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '54_StudentAssignments.js'].map(S);
 const EXPOSE = ['previewRosterEnrollment', 'applyRosterEnrollment', 'prepareRosterSections', '_criParseGradebook_',
-  'repairRosterDuplicates_'];
+  'repairRosterDuplicates_', 'enrollCanvasRoster_'];
 const TEACHER = 'owner.teacher@ccpsnet.net';
 
 function csvFile(id, name, csv, minute) {
@@ -383,4 +383,20 @@ test('repairRosterDuplicates_ keeps each student\'s earliest workspace, archives
   const again = exported.applyRosterEnrollment('CFG-1');
   assert.deepEqual(again.skipped.filter((s) => s.reason === 'ALREADY_ENROLLED').map((s) => s.account).sort(),
     ['1234567@ccpsnet.net', '2345678@ccpsnet.net']);
+});
+
+// The nightly rollout (58) calls the import directly.
+test('enrollCanvasRoster_: deferShare reaches intake, a past deadline stops before the first doc, quiet logs no accounts', () => {
+  const { exported, calls, sandbox } = setup({ sectionMap: MAPPED });
+  const logs = [];
+  sandbox.Logger.log = (m) => logs.push(String(m));
+  const stopped = exported.enrollCanvasRoster_({ apply: true, assignmentConfigId: 'CFG-1', deadline: Date.now() - 1 });
+  assert.equal(stopped.enrolled, 0);
+  assert.equal(stopped.timedOut, true);
+  assert.equal(calls.length, 0);
+  const r = exported.enrollCanvasRoster_({ apply: true, assignmentConfigId: 'CFG-1', deferShare: true, quiet: true });
+  assert.equal(r.timedOut, false);
+  assert.equal(r.enrolled, 2);
+  assert.ok(calls.every((c) => c.deferShare === true));
+  assert.ok(!logs.some((l) => /@ccpsnet\.net|SIS Login ID/.test(l)), logs.join('\n'));
 });
