@@ -15,6 +15,10 @@ why this repo exists at all.
   the operator's queue in order, open decisions, and the rules for an agent
   session picking the work up. Start here. `HANDOFF_2026-10-12.md`, `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
   `HANDOFF_2026-10-06.md` and `HANDOFF_2026-10-05.md` are earlier days', superseded.
+- **`BACKLOG.md`** — ideas for future sprints, by system: offered small
+  PRs, the CAS design threads, the second-user and KOS Lite concepts
+  (deferred until after Oct 30), and repo chores. Nothing in it is
+  committed work; `PLAN_2026-10.md` wins. Reviewed at each sprint boundary.
 - **`CAS_BUG_HANDOFF_2026-10-16.md`** — the first live student submissions
   through the Student Dashboard and Flow 2: the four bugs (two fixed in
   #175), the lesson-scheduling steps, the checklist for the next live
