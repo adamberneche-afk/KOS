@@ -22,7 +22,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '22b_Competen
   '55b_LessonAssignmentData.js', '55_LessonSchedule.js'].map(S);
 const EXPOSE = ['seedLessonSchedule', 'scheduledLessonUnit_', 'resolveUnitForCourseDate_', 'buildUpcomingLessonPlan_',
   'seedAssignments_', 'archiveAssignment_', 'recordStudentAssignment_', 'getWarmUpAnchor_', 'PG_HEADERS',
-  'LESSON_ASSIGNMENTS'];
+  'LESSON_ASSIGNMENTS', 'seedWarmUpPlan', 'plannedWarmUpUnit_', 'WARMUP_PLAN_SEED'];
 const TEACHER = 'teacher@ccpsnet.net';
 const PACING = JSON.parse(fs.readFileSync(path.join(ROOT, 'cas-ccps/curriculum/PacingGuide_CAS_Context.json'), 'utf8')).pacing_guide;
 const RUBRICS = JSON.parse(fs.readFileSync(path.join(ROOT, 'cas-ccps/data/CompetencyRubrics.json'), 'utf8')).competency_rubrics;
@@ -114,6 +114,39 @@ test('the lesson for a date is the latest one started; the pacing guide covers t
     '8177-employee-handbook-operations');
   const anchor = exported.getWarmUpAnchor_('2026-10-08', 'Sports Entertainment and Event Management');
   assert.match(anchor.anchor, /Starbucks in Richmond/);
+});
+
+test('WarmUpPlan: next week reviews five first-quarter lessons per course, without changing the day\'s lesson', () => {
+  const { exported, ss } = setup();
+  exported.seedLessonSchedule();
+  assert.deepEqual(exported.seedWarmUpPlan(), { added: 10 });
+  for (const [date, code, key] of exported.WARMUP_PLAN_SEED) {
+    const a = exported.LESSON_ASSIGNMENTS[key];
+    assert.ok(a && a.code === code, key + ' is a ' + code + ' lesson');
+    assert.ok(a.warmupAnchor, key + ' has a warm-up seed');
+    const course = code === '8175' ? 'Sports Entertainment and Event Marketing' : 'Sports Entertainment and Event Management';
+    assert.equal(exported.getWarmUpAnchor_(date, course).anchor, a.warmupAnchor, date + ' ' + code);
+  }
+  const days = new Set(exported.WARMUP_PLAN_SEED.map((r) => r[0]));
+  assert.deepEqual([...days], ['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23']);
+  // The lesson for the day is still the scheduled one.
+  assert.equal(exported.resolveUnitForCourseDate_('2026-10-19', '8175').lesson_unit_id, '8175-L06');
+  // A day with no plan row uses the current lesson's seed.
+  assert.match(exported.getWarmUpAnchor_('2026-10-26', 'Sports Entertainment and Event Management').anchor,
+    /Starbucks in Richmond/);
+
+  // Re-seeding adds nothing and keeps the teacher's change; a bad key is ignored.
+  const sheet = ss.getSheetByName('WarmUpPlan');
+  sheet.getRange(2, 3).setValue('8175-L07');
+  sheet.getRange(3, 3).setValue('8177-brand-board');
+  assert.deepEqual(exported.seedWarmUpPlan(), { added: 0 });
+  const { exported: fresh, ss: ss2 } = setup();
+  fresh.seedLessonSchedule();
+  fresh.seedWarmUpPlan();
+  ss2.getSheetByName('WarmUpPlan').getRange(2, 3).setValue('8175-L07');
+  ss2.getSheetByName('WarmUpPlan').getRange(3, 3).setValue('8177-brand-board');
+  assert.equal(fresh.plannedWarmUpUnit_('2026-10-19', '8175').lesson_unit_id, '8175-L07');
+  assert.equal(fresh.plannedWarmUpUnit_('2026-10-20', '8175'), null, 'an 8177 lesson on an 8175 row is skipped');
 });
 
 test('the lesson builder drafts each course\'s scheduled lesson', () => {
