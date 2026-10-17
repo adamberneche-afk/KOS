@@ -275,6 +275,71 @@ test('submitMyWork: no signed-in user or a missing ID is refused', () => {
   assert.equal(exported.submitMyWork(fileId, '').error, 'BAD_REQUEST');
 });
 
+const failureRows = (ss) => {
+  const sh = ss.getSheetByName('SubmitFailures');
+  return sh ? sh.getDataRange().getValues().slice(1) : [];
+};
+
+test('submitMyWork: a doc the admin account cannot open is DOC_UNREADABLE, nothing is queued, and the failure is counted', () => {
+  // The case from 2026-10-15: the deploying account had not approved the
+  // documents scope, so DocumentApp.openById threw for every student.
+  const { exported, queue, ss, sandbox, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH));
+  sandbox.DocumentApp.openById = () => {
+    throw new Error('You do not have permission to call DocumentApp.openById.');
+  };
+  const res = exported.submitMyWork(fileId, 'CFG-B');
+  assert.deepEqual(res, { ok: false, error: 'DOC_UNREADABLE' });
+  assert.equal(queue.getDataRange().getValues().length, 1, 'only the header row');
+  const rows = failureRows(ss);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0][1], 'DOC_UNREADABLE');
+  assert.equal(rows[0].length, 2, 'timestamp and code only');
+  assert.ok(!JSON.stringify(rows).includes('ben@'), 'no student identifier');
+  assert.ok(!JSON.stringify(rows).includes(fileId), 'no file ID');
+  assert.ok(!JSON.stringify(rows).includes('CFG-B'), 'no config ID');
+});
+
+test('submitMyWork: a missing ReviewQueue tab is NO_QUEUE and is counted', () => {
+  const { exported, ss, sandbox, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH));
+  // ADMIN_SS_ID pointing at a spreadsheet with no ReviewQueue tab.
+  sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', sandbox.SpreadsheetApp.create('Elsewhere').getId());
+  assert.deepEqual(exported.submitMyWork(fileId, 'CFG-B'), { ok: false, error: 'NO_QUEUE' });
+  assert.deepEqual(failureRows(ss).map((r) => r[1]), ['NO_QUEUE']);
+});
+
+test('submitMyWork: failures the student can fix are not counted as system failures', () => {
+  const { exported, ss, fileId } = loadSubmit('ben@ccpsnet.net', docWith('too short'));
+  assert.equal(exported.submitMyWork(fileId, 'CFG-B').error, 'TOO_SHORT');
+  assert.equal(exported.submitMyWork(fileId, '').error, 'BAD_REQUEST');
+  assert.equal(failureRows(ss).length, 0);
+  assert.equal(ss.getSheetByName('SubmitFailures'), null, 'the tab is created on the first real failure');
+});
+
+test('submitMyWork: failing to record a failure never changes what the student is told', () => {
+  const { exported, ss, sandbox, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH));
+  const realOpen = sandbox.SpreadsheetApp.openById;
+  let docFailed = false;
+  sandbox.DocumentApp.openById = () => { docFailed = true; throw new Error('denied'); };
+  // Every spreadsheet open after the doc failure (the recorder's) throws.
+  sandbox.SpreadsheetApp.openById = function (id) {
+    if (docFailed) throw new Error('quota');
+    return realOpen.call(this, id);
+  };
+  assert.deepEqual(exported.submitMyWork(fileId, 'CFG-B'), { ok: false, error: 'DOC_UNREADABLE' });
+  assert.equal(ss.getSheetByName('SubmitFailures'), null, 'the recorder really did fail');
+});
+
+test('the page words DOC_UNREADABLE and NO_QUEUE as "tell your teacher", not "try again"', () => {
+  const src = require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboard.js'), 'utf8');
+  const block = src.match(/const SUBMIT_ERRORS = \{[\s\S]*?\n\};/)[0];
+  for (const code of ['DOC_UNREADABLE', 'NO_QUEUE']) {
+    const line = (block.match(new RegExp(code + ':\\s*"([^"]+)"')) || [])[1];
+    assert.ok(line, code + ' has its own message');
+    assert.match(line, /Tell your teacher/);
+    assert.ok(!/try again/i.test(line), code + ' must not send students into a retry loop');
+  }
+});
+
 test('getStudentDashboardData: offers Submit only where there is something to submit', () => {
   const open = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), 'ACTIVE');
   const a = open.exported.getStudentDashboardData('ALL').assignments[0];
