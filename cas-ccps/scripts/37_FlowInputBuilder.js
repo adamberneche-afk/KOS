@@ -664,6 +664,9 @@ function harvestFlowInputResults() {
             _fiFormatFeedbackBlock_(studentFacingReport, parsed.complianceStatus));
           doc.saveAndClose();
         }
+        // The doc header's feedback line (00), color-coded by the result.
+        setDocFeedbackStatus_(studentFileId,
+          parsed.complianceStatus === "APPROVED" ? "PASSED" : "REVISE", { inComments: !!asComment });
 
         const competencyIds = {
           "1": String(fiData[i][FI.MILESTONE_1_COMPETENCY_ID] || ""),
