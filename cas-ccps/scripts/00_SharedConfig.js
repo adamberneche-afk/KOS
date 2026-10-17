@@ -168,6 +168,7 @@ function getConfig_() {
       studentProfiles:    "StudentProfiles",
       warmUpQueue:        "WarmUpQueue",
       warmUpRegistry:     "WarmUpRegistry",
+      warmUpTextBox:      "WarmUpTextBox",
       classSchedule:      "ClassSchedule",
       pacingGuide:        "PacingGuide",
       competencyRubrics:  "CompetencyRubrics",
@@ -241,7 +242,10 @@ const SHARED_CONFIG_KEYS = [
   // one _CONFIG row reaches every project; read through pivotFlagFor_().
   "PIVOT_ARCHETYPE_LOCK",
   // Where Flow 2 feedback goes; read through feedbackAsCommentFor_().
-  "FEEDBACK_AS_COMMENT"
+  "FEEDBACK_AS_COMMENT",
+  // Warm-ups answered on the Student Dashboard; read through
+  // warmUpTextBoxFor_().
+  "WARMUP_TEXT_BOX"
 ];
 
 // System text a student response must not contain (P0-03,
@@ -317,6 +321,63 @@ function feedbackAsCommentChecker_() {
     const m = String(configId || "").match(/^CAS-(\d{4})-/);
     return _pivotValueOn_(raw, m ? m[1] : null);
   };
+}
+
+// Whether a course's warm-ups are answered in a text box on the Student
+// Dashboard instead of in a doc (WARMUP_TEXT_BOX, read like a pivot flag).
+// On, Flow 3's harvest (41) writes the warm-up to the WarmUpTextBox tab and
+// makes no doc; the dashboard (13) saves the answer and the extra-credit
+// reply there; the nightly scoring (25) reads them from it. A warm-up keeps
+// the form it was delivered in if the flag changes later.
+function warmUpTextBoxFor_(courseName) {
+  return pivotFlagFor_("WARMUP_TEXT_BOX", warmUpCourseCode_(courseName));
+}
+
+// "8175", "8177" or "" from a course name (24's courseCodeFromName_ rule).
+function warmUpCourseCode_(courseName) {
+  const name = String(courseName || "");
+  if (name.indexOf("8175") !== -1 || /marketing/i.test(name)) return "8175";
+  if (name.indexOf("8177") !== -1 || /management/i.test(name)) return "8177";
+  return "";
+}
+
+// WarmUpTextBox: one row per warm-up delivered to the dashboard, keyed by
+// WarmUpQueue's queue_id. WarmUpQueue itself stays 21 columns (see 41's
+// header). Student writing lives here and, once scored, in WarmUpQueue's
+// response_text, as it already did for doc warm-ups.
+const WTB_HEADERS = ["queue_id", "lesson_date", "bridge_text", "warmup_text",
+  "response_text", "submitted_at", "reply_text", "replied_at"];
+const WTB = { QUEUE_ID: 0, LESSON_DATE: 1, BRIDGE: 2, WARMUP: 3,
+  RESPONSE: 4, SUBMITTED_AT: 5, REPLY: 6, REPLIED_AT: 7 };
+
+function warmUpTextBoxSheet_(ss) {
+  let sheet = ss.getSheetByName(getConfig_().tabs.warmUpTextBox);
+  if (!sheet) {
+    sheet = ss.insertSheet(getConfig_().tabs.warmUpTextBox);
+    sheet.getRange(1, 1, 1, WTB_HEADERS.length).setValues([WTB_HEADERS]).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+    sheet.getRange("B:B").setNumberFormat("@"); // lesson_date stays YYYY-MM-DD text
+  }
+  return sheet;
+}
+
+// queue_id -> { sheetRow, row } ({} when the tab doesn't exist yet).
+function readWarmUpTextBox_(ss) {
+  const out = {};
+  const sheet = ss.getSheetByName(getConfig_().tabs.warmUpTextBox);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, WTB_HEADERS.length).getValues().forEach(function (row, i) {
+    const id = String(row[WTB.QUEUE_ID] || "").trim();
+    if (id) out[id] = { sheetRow: i + 2, row: row };
+  });
+  return out;
+}
+
+// Text a student or a model wrote, made safe to setValue: a leading = + - @
+// would otherwise be read as a formula. The apostrophe isn't stored.
+function sheetSafeText_(s) {
+  const t = String(s === undefined || s === null ? "" : s);
+  return /^[=+\-@]/.test(t) ? "'" + t : t;
 }
 
 // Same Key | Value tab 19_ClonedSheetConfig.js already writes into each
