@@ -210,13 +210,18 @@ function intakeStudent_(cfg, s) {
   );
 
   // Share the doc with its student (edit, until submission) and the
-  // assigning teacher (comment). Nobody else.
-  shareToStudentDrive_(cfg, docFile, googleId, assignedTeacherEmail);
+  // assigning teacher (comment). Nobody else. With deferShare (58's nightly
+  // rollout, for a lesson that hasn't reached its release night) only the
+  // teacher is added now, and the Ledger row is SCHEDULED until the rollout
+  // shares the doc and sets it ACTIVE.
+  const deferShare = s.deferShare === true;
+  shareToStudentDrive_(cfg, docFile, deferShare ? "" : googleId, assignedTeacherEmail);
 
   // Register in Ledger
   registerLedger_(cfg, googleId, studentName, studentConfigId, fileId,
                   block, className, teacherName, assignedTeacherEmail,
-                  subject, courseName, period, docFile.getUrl());
+                  subject, courseName, period, docFile.getUrl(),
+                  deferShare ? "SCHEDULED" : "ACTIVE");
   recordStudentAssignment_(SpreadsheetApp.openById(cfg.ledgerSsId), studentConfigId, googleId, unitConfigId);
 
   // No name: execution logs get copied out of the account (a roster import's
@@ -463,10 +468,12 @@ function shareToStudentDrive_(cfg, docFile, googleId, teacherEmail) {
   // doc. It now stays in the admin folder it was copied into, shared
   // directly: the student can edit (until submission, see
   // 04_Form2_TurnInGate.js) and the assigning teacher can comment.
-  try {
-    docFile.addEditor(googleId);
-  } catch (err) {
-    Logger.log("Share warning for " + googleId + ": " + err.message);
+  if (googleId) {
+    try {
+      docFile.addEditor(googleId);
+    } catch (err) {
+      Logger.log("Share warning for " + googleId + ": " + err.message);
+    }
   }
   if (teacherEmail) {
     try {
@@ -482,7 +489,7 @@ function shareToStudentDrive_(cfg, docFile, googleId, teacherEmail) {
 // ---------------------------------------------------------------------------
 function registerLedger_(cfg, googleId, studentName, configId, fileId,
                           block, className, teacherName, teacherEmail,
-                          subject, courseName, period, docUrl) {
+                          subject, courseName, period, docUrl, status) {
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
 
@@ -505,7 +512,7 @@ function registerLedger_(cfg, googleId, studentName, configId, fileId,
     subject,       // 9  Subject
     courseName,    // 10 CourseName
     period,        // 11 Period
-    "ACTIVE",      // 12 Status
+    status || "ACTIVE", // 12 Status (SCHEDULED: made ahead, not shared yet)
     "",            // 13 SubmissionTS
     "",            // 14 Notes
     "",            // 15 LastEval
