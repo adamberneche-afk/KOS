@@ -406,6 +406,7 @@ guide, so the lesson builder, warm-ups and assignment seeder follow it.
 | Function | What it does |
 |---|---|
 | `seedLessonSchedule()` (55) | Adds a row per lesson not yet in the tab, in teaching order, with its Config ID (`CAS-8175-L06`). Never changes a date you typed. |
+| `seedWarmUpPlan()` (55) | Adds the `WarmUpPlan` tab's planned rows (date, course, lesson_key): a lesson whose warm-up seed is used that day instead of the current lesson's. The repo plans the week of 2026-10-19 as a first-quarter review (8175 L01–L05; 8177's five Quarter 1 lessons). Never changes a row you edited; delete a row to fall back to the current lesson. Only the warm-up changes, not the day's lesson or assignment. |
 | `previewAssignmentSeed()` / `seedAssignments()` (53) | With no `SEED_UNITS`, seeds today's assignment and any lesson starting in the next 7 days. `SEED_UNITS` also takes lesson keys (`8175-L06`). **A set `SEED_UNITS` wins over the schedule:** left at `S1-U1` it seeds nothing new (seen live 2026-10-07), so delete it once its assignments are LIVE. |
 | `previewArchiveAssignment()` / `archiveAssignment()` (54) | Retires the assignment in the Script Property `ARCHIVE_CONFIG_ID`: its student workspaces are archived in the Ledger and their docs trashed (restorable from Drive's trash for 30 days), and its TeacherMatrix row is set ARCHIVED. **One Config ID per run:** a comma-separated list matches nothing and reports 0. |
 
