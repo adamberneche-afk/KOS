@@ -3270,3 +3270,30 @@ top, leaving the zone the student reads holding only the dashboard link.
 Not changed: an evaluation that arrives after the 12-minute timeout still
 leaves the ReviewQueue and Ledger rows at ERROR_TIMEOUT (the late-completion
 gap in `backPropagateCompletions()`).
+
+## Late evaluations finish their rows, 2026-10-17
+
+Bug 3 from the first live submissions (`meta/CAS_BUG_HANDOFF_2026-10-16.md`
+section 4). The turnstile (06) timed a staging row out after 12 minutes,
+`backPropagateCompletions()` closed the ReviewQueue and Ledger rows as
+ERROR_TIMEOUT and emailed the teacher, and then the evaluation arrived from
+a Studio run started by hand. The harvest put the feedback in the doc and
+marked staging COMPLETE, but backprop's COMPLETE branch only finished queue
+rows still at STAGED, so the queue and Ledger rows stayed at ERROR_TIMEOUT.
+On 2026-10-16 the operator set the queue row back to STAGED by hand, and the
+next backprop run finished it.
+
+- **03.** The COMPLETE branch now also finishes a queue row at ERROR_TIMEOUT:
+  queue and Ledger to COMPLETE, LastEval stamped, and the same post-processing
+  (`processCompletedEvaluation_` already skips a doc it has done). The log
+  line says the result arrived after its timeout. No second email: the
+  teacher already had the timeout one. `markLedgerEvaluated_` already
+  accepted ERROR_TIMEOUT, so late results had been anticipated but only half
+  handled.
+- **Also covered.** The Admin Recovery Panel's reset puts a timed-out staging
+  row back to PENDING_INFERENCE but leaves its queue row at ERROR_TIMEOUT;
+  when that rerun completes, the queue row now finishes too.
+- **Tests.** A late result finishes both rows and adds the next steps
+  without a second email; STAGED rows still finish; a row timed out with no
+  result, and a row already finished, are left alone. The late-result test
+  fails on the old code.
