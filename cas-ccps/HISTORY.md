@@ -3473,3 +3473,18 @@ replies stay in the Ledger.
 
 Not yet live: push, then set `WARMUP_TEXT_BOX` before Sunday's
 `buildWarmUpQueues()`.
+
+## SubmissionTS written; cas-ccps licensed; retention confirmed, 2026-10-17
+
+- **SubmissionTS.** Nothing wrote the Ledger's SubmissionTS, so the Teacher
+  Dashboard's submitted column read "—", the Student Dashboard showed no
+  submitted time, and the Student Context aggregator (29) fell back to the
+  registration time. 13's `queueSubmission_` now stamps it with the queued
+  row's time, from both the dashboard's Submit for Feedback and the doc
+  menu; a resubmission updates it. Best effort: a failed stamp is logged
+  and the submit stands. Rows submitted before this stay blank. Test in
+  `student-doc-service.test.js`.
+- **License.** The repo stays public; `cas-ccps/LICENSE` is the Polyform
+  Noncommercial 1.0.0 license kos-personal uses, without KOS's addenda.
+- **Retention** (57): the 2026-10-13 schedule is treated as confirmed; the
+  district will confirm no further. `RETENTION_ADOPTED` says so.

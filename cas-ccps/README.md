@@ -741,3 +741,10 @@ silently claiming the same canonical name with one of them being stale.
 `09` was the one exception, kept under both names (one archived), because
 the difference there was architectural, not incremental — see
 HISTORY.md's resolution 1.
+
+## License
+
+[Polyform Noncommercial 1.0.0](LICENSE), the same license as
+`kos-personal/`: free for personal, educational and research use;
+commercial use needs a separate license. KOS's Fidelity Clause and Blank
+Slate Protocol don't apply here.
