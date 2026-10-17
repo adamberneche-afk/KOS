@@ -108,6 +108,8 @@ A date typed into `LessonSchedule` does not create student docs by itself. It on
 
 Do not confuse this with the 2 a.m. `buildUpcomingLessons()` trigger, which builds class-level lesson frame docs, not student docs.
 
+**Since 2026-10-17** the nightly lesson rollout (`58_LessonRollout.js`) does steps 3 to 9 by itself once `ROLLOUT_AUTO_APPLY` is set: it seeds and enrolls lessons starting within 2 days and shares their docs the night before (see `cas-ccps/README.md`, "Nightly lesson rollout"). Steps 1 and 2 (a dated `LessonSchedule` row) are still yours.
+
 ## 7. The patch and deployment
 
 **File:** `submit-failures.patch` (apply with `patch -p1` from the repo root, against `KOS-main_21.zip`).

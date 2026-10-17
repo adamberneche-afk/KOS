@@ -69,8 +69,11 @@ function getStudentDashboardData(termFilter) {
     const rowTerm = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
     if (rowTerm) availableTerms.add(rowTerm);
 
-    // Skip ARCHIVED rows
+    // Skip ARCHIVED rows, and SCHEDULED ones: a doc made ahead of its lesson
+    // (58's nightly rollout) isn't shared with the student until the night
+    // before, so its card would open a doc they can't reach.
     const rowStatus = String(row[LEDGER.STATUS]).trim();
+    if (rowStatus === "SCHEDULED") continue;
     if (rowStatus === "ARCHIVED") {
       // Still count the term for dropdown, just don't show in assignments
       continue;
@@ -285,7 +288,7 @@ const DASH_MIN_RESPONSE_WORDS = 25;  // 01's MIN_RESPONSE_WORDS
 const DASH_NO_SUBMIT_STATUSES = {
   PENDING: "ALREADY_QUEUED", STAGED: "ALREADY_QUEUED",
   PENDING_TEACHER_REVIEW: "ALREADY_TURNED_IN", COMPLIANT: "ALREADY_TURNED_IN",
-  ARCHIVED: "NOT_REGISTERED"
+  ARCHIVED: "NOT_REGISTERED", SCHEDULED: "NOT_OPEN_YET"
 };
 
 function submitMyWork(fileId, configId) {
@@ -801,6 +804,7 @@ const SUBMIT_ERRORS = {
   ALREADY_QUEUED: "This is already waiting for feedback. Check back in a few minutes.",
   ALREADY_TURNED_IN: "You've already turned this in.",
   NOT_REGISTERED: "This assignment isn't open for you any more. Ask your teacher.",
+  NOT_OPEN_YET: "This assignment opens the evening before its lesson. Check back then.",
   NO_USER: "Sign into your school Google account and refresh this page.",
   // System-side problems only the teacher can fix: retrying won't help.
   DOC_UNREADABLE: "The system can't open your document right now. Your work is safe. Tell your teacher.",

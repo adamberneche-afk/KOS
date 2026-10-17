@@ -478,6 +478,25 @@ theirs and their earlier feedback; only the "No feedback yet" line is
 removed. Set the row to `off` to go back. If a comment can't be posted, that
 one evaluation goes into the doc instead and the log says why.
 
+**Nightly lesson rollout (added 2026-10-17).** Student docs follow the
+`LessonSchedule` dates without running the seeder and roster import by hand
+(`cas-ccps/README.md`, "Nightly lesson rollout (script 58)"):
+
+1. After pushing, run `installLessonRolloutTrigger()` in the Central Ledger
+   project (about 9 p.m. nightly). It starts in shadow and changes nothing.
+2. Run `previewLessonRollout()` once and read the `RolloutLog` tab. Read it
+   again after a few nights: each lesson's would-seed, would-enroll and
+   would-release counts, and any PROBLEM rows (also in the CAS signal).
+3. Set `ROLLOUT_AUTO_APPLY` to one course first (`8175` or `8177`), then
+   `all`: a Central Ledger Script Property, or a row in the Ledger's
+   `_CONFIG` tab. `off` (or deleting it) stops it.
+
+Docs for a lesson two days out are made with the Ledger status `SCHEDULED`:
+not shared, no Student Dashboard card, shown as SCHEDULED on the Teacher
+Dashboard. The run the night before shares them and sets them `ACTIVE`.
+Keep the Canvas exports fresh: an export older than 7 days is a PROBLEM row.
+`removeLessonRolloutTrigger()` takes it out.
+
 Two things that are **blocked** on this account, not merely unpushed, so
 don't spend time on either no matter what you run — see
 `cas-ccps/studio-steps/README.md`'s status banner and

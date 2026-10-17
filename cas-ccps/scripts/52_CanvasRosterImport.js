@@ -118,10 +118,15 @@ function prepareRosterSections() {
 }
 
 /**
- * @param {{apply?: boolean, assignmentConfigId: string}} opts
+ * @param {{apply?: boolean, assignmentConfigId: string, deferShare?: boolean,
+ *          deadline?: number, quiet?: boolean}} opts
+ *   deferShare: make each doc without sharing it with its student, Ledger
+ *   status SCHEDULED (58's nightly rollout shares it the night before the
+ *   lesson). deadline: stop by this time (ms) instead of after
+ *   CRI_TIME_BUDGET_MS. quiet: log counts only, no student accounts.
  * @returns {{apply, files, students, planned: Object[], enrolled: number,
  *            skipped: Object[], failed: Object[], unmappedSections: string[],
- *            notInCanvas: string[], message}}
+ *            notInCanvas: string[], timedOut: boolean, message}}
  */
 function enrollCanvasRoster_(opts) {
   opts = opts || {};
@@ -134,7 +139,8 @@ function enrollCanvasRoster_(opts) {
     String(PropertiesService.getScriptProperties().getProperty("ROSTER_CONFIG_ID") || "").trim();
   const cfg = getConfig_();
   const result = { apply: apply, files: 0, students: 0, planned: [], enrolled: 0, skipped: [], failed: [],
-    unmappedSections: [], notInCanvas: [], message: "" };
+    unmappedSections: [], notInCanvas: [], timedOut: false, message: "" };
+  const deadline = typeof opts.deadline === "number" ? opts.deadline : started + CRI_TIME_BUDGET_MS;
 
   if (!configId) {
     result.message = "No Config ID. Set the ROSTER_CONFIG_ID Script Property (Project Settings → Script " +
@@ -248,13 +254,14 @@ function enrollCanvasRoster_(opts) {
     row.period = period;
     result.planned.push(row);
     if (!apply) continue;
-    if (Date.now() - started > CRI_TIME_BUDGET_MS) { timedOut = true; break; }
+    if (Date.now() > deadline) { timedOut = true; break; }
 
     const courseName = course.name;
     const res = intakeStudent_(cfg, {
       googleId: s.account, studentName: s.name, block: period, className: courseName,
       subject: courseName, courseName: courseName, period: period,
-      teacherName: teacherName, teacherEmail: teacherEmail, unitConfigId: configId
+      teacherName: teacherName, teacherEmail: teacherEmail, unitConfigId: configId,
+      deferShare: opts.deferShare === true
     });
     if (res.ok) {
       result.enrolled++;
@@ -265,6 +272,7 @@ function enrollCanvasRoster_(opts) {
     }
   }
   result.unmappedSections = Object.keys(unmapped);
+  result.timedOut = timedOut;
 
   result.message = (apply
     ? "Enrolled " + result.enrolled + " of " + result.planned.length + " student(s)"
@@ -284,9 +292,11 @@ function enrollCanvasRoster_(opts) {
     Logger.log("[S52] " + counts.UNRECORDED_WORKSPACE + " student(s) already have a workspace from before " +
       "assignments were recorded. Run previewRosterRepair(), then repairRosterDuplicates(), then this again.");
   }
-  result.skipped.filter(s => s.reason === "INVALID_ACCOUNT")
-    .forEach(s => Logger.log("[S52]   not a student account: SIS Login ID \"" + s.sisLogin + "\""));
-  result.failed.forEach(f => Logger.log("[S52]   FAILED " + f.account + ": " + f.reason));
+  if (!opts.quiet) {
+    result.skipped.filter(s => s.reason === "INVALID_ACCOUNT")
+      .forEach(s => Logger.log("[S52]   not a student account: SIS Login ID \"" + s.sisLogin + "\""));
+    result.failed.forEach(f => Logger.log("[S52]   FAILED " + f.account + ": " + f.reason));
+  }
   if (result.notInCanvas.length) {
     Logger.log("[S52] " + result.notInCanvas.length + " student(s) in the Ledger are not in any export " +
       "(left the course?). Nothing was removed.");
