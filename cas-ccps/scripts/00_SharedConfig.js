@@ -512,6 +512,33 @@ function seedLedgerConfigTab() {
   return { ledgerId: ledgerId, added: added, conflicts: conflicts };
 }
 
+// Sets one SHARED_CONFIG_KEYS value in the Ledger's _CONFIG tab, replacing
+// the row if there is one, and clears this project's cache so the change
+// shows here at once (other projects see it within the cache TTL). For
+// settings a dashboard control changes, such as FEEDBACK_AS_COMMENT; callers
+// check who may change it.
+function setSharedConfigValue_(key, value) {
+  if (SHARED_CONFIG_KEYS.indexOf(key) === -1) throw new Error(key + " is not a shared setting.");
+  const ledgerId = _resolveConfigValues_().values.CENTRAL_LEDGER_SS_ID;
+  const ss = SpreadsheetApp.openById(ledgerId);
+  let sheet = ss.getSheetByName(CONFIG_TAB_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG_TAB_NAME);
+    sheet.appendRow(["Key", "Value"]);
+  }
+  const rows = sheet.getDataRange().getValues();
+  let written = false;
+  for (let i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]).trim() !== key) continue;
+    sheet.getRange(i + 1, 2).setValue(value);
+    written = true;
+    break;
+  }
+  if (!written) sheet.appendRow([key, value]);
+  try { CacheService.getScriptCache().remove(SHARED_CONFIG_CACHE_PREFIX + ledgerId); } catch (e) { /* ignore */ }
+  _sharedConfigMemo_ = null;
+}
+
 // Run from the Apps Script editor after editing the Ledger's _CONFIG tab
 // to use the new values in this project now, instead of within 10 minutes.
 // Each project caches separately, so this clears only the project it runs
