@@ -3436,3 +3436,34 @@ first-term lessons.
 
 A day's warm-up queue is built at 3:30 a.m. the day before (24's
 `getTomorrow_`), so Monday's needs `buildWarmUpQueues()` on Sunday.
+
+## Warm-ups in a text box on the Student Dashboard, 2026-10-17
+
+The operator asked for warm-ups answered on the dashboard instead of in a
+doc, with the card pared down to the last warm-up's feedback, its
+extra-credit reply, the new warm-up and the answer box. Older warm-ups and
+replies stay in the Ledger.
+
+- **Switch `WARMUP_TEXT_BOX`** (00, shared, `off` / course / `all`, read
+  through `warmUpTextBoxFor_` on the lesson's course). Off, warm-ups are
+  docs as before. A warm-up keeps the form it was delivered in.
+- **New tab `WarmUpTextBox`** (00's `WTB`): queue_id, lesson_date, bridge,
+  warm-up, answer, saved-at, reply, replied-at. WarmUpQueue stays 21
+  columns (41's header gives the reason). Working data, 1 year (57); in the
+  FERPA data map.
+- **41** Flow 3's harvest writes the warm-up there and stamps DELIVERED; no
+  doc, no sharing. A retry adds no second row.
+- **25** Job 1 registers a text-box warm-up with no doc; the nightly run
+  scores the saved answer (`evaluateWarmUpText_`, same word-count scoring)
+  and stamps an empty one INCOMPLETE; the extra-credit sweep counts the
+  saved reply. Doc locking is skipped for these.
+- **13** The card: "Last warm-up" (feedback; extra credit open for 7 days
+  until credited, with a reply box) and "Today's warm-up" (the bridge, the
+  warm-up, the answer box, saved until the end of the lesson day).
+  `submitWarmUpAnswer` / `submitWarmUpReply` save only the signed-in
+  student's own row, only while open; a leading `=` is not stored as a
+  formula (`sheetSafeText_`). Drafts survive a refresh of the card.
+- **Tests** `warmup-text-box.test.js`, `student-dashboard-warmups.test.js`.
+
+Not yet live: push, then set `WARMUP_TEXT_BOX` before Sunday's
+`buildWarmUpQueues()`.
