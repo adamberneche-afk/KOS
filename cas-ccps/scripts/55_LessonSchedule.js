@@ -22,6 +22,18 @@
  *                         warm-ups (24), use the schedule wherever it has a
  *                         dated lesson, and the pacing guide before that.
  *
+ * The WarmUpPlan tab picks a different lesson's warm-up seed for a day, so a
+ * week of warm-ups can review earlier lessons instead of repeating the
+ * current lesson's seed every day.
+ *
+ *   seedWarmUpPlan()      adds the rows in WARMUP_PLAN_SEED that aren't in the
+ *                         tab yet (date + course). Rows the teacher typed or
+ *                         changed are never touched.
+ *   plannedWarmUpUnit_(dateStr, code)
+ *                         that day's planned lesson, in the same unit shape,
+ *                         or null. getWarmUpAnchor_ (31) uses it first, so
+ *                         only the warm-up changes, not the day's lesson.
+ *
  * FERPA: teacher-level only.
  */
 
@@ -97,14 +109,18 @@ function scheduledLessonUnit_(dateStr, code) {
   let at = -1;
   rows.forEach((r, i) => { if (r.start <= dateStr) at = i; });
   if (at === -1) return null;
-  const a = LESSON_ASSIGNMENTS[rows[at].key];
   const next = rows[at + 1];
+  return _lessonUnit_(rows[at].key, code, rows[at].start, next ? next.start : "");
+}
+
+function _lessonUnit_(key, code, start, end) {
+  const a = LESSON_ASSIGNMENTS[key];
   const unit = {
     lesson_unit_id: a.key,
     lesson_unit_name: a.unitName,
     stage: "", stage_name: "",
-    approx_start: rows[at].start,
-    approx_end: next ? next.start : "",
+    approx_start: start,
+    approx_end: end,
     overlap_type: code + " only",
     warmup_anchor: a.warmupAnchor,
     key_vocabulary: a.vocabulary || "",
@@ -114,4 +130,87 @@ function scheduledLessonUnit_(dateStr, code) {
   unit["objective_" + code] = a.objective;
   unit["competency_ids_" + code] = a.competencyIds.join(",");
   return unit;
+}
+
+// ---------------------------------------------------------------------------
+// WarmUpPlan: which lesson seeds each day's warm-up
+// ---------------------------------------------------------------------------
+
+const WUP_TAB = "WarmUpPlan";
+const WUP_HEADERS = ["date", "course", "lesson_key", "notes"];
+
+// Week of 2026-10-19: a review of the first quarter's lessons, one a day, in
+// teaching order (8177's from its pacing guide's Quarter 1).
+const WARMUP_PLAN_SEED = [
+  ["2026-10-19", "8175", "8175-L01"],
+  ["2026-10-20", "8175", "8175-L02"],
+  ["2026-10-21", "8175", "8175-L03"],
+  ["2026-10-22", "8175", "8175-L04"],
+  ["2026-10-23", "8175", "8175-L05"],
+  ["2026-10-19", "8177", "8177-the-business-of-the-game"],
+  ["2026-10-20", "8177", "8177-brand-board"],
+  ["2026-10-21", "8177", "8177-the-4-ps-of-the-fan-experience"],
+  ["2026-10-22", "8177", "8177-chhs-school-store-company-description"],
+  ["2026-10-23", "8177", "8177-what-is-branding-reflection-essay"]
+];
+
+function seedWarmUpPlan() {
+  const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
+  let sheet = ss.getSheetByName(WUP_TAB);
+  if (!sheet) {
+    sheet = ss.insertSheet(WUP_TAB);
+    sheet.getRange(1, 1, 1, WUP_HEADERS.length).setValues([WUP_HEADERS]).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+  const have = {};
+  if (sheet.getLastRow() > 1) {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().forEach(r => {
+      have[_normalizeLessonDateCell_(r[0]) + "|" + String(r[1]).trim()] = true;
+    });
+  }
+  const add = WARMUP_PLAN_SEED
+    .filter(r => !have[r[0] + "|" + r[1]])
+    .map(r => [r[0], r[1], r[2], LESSON_ASSIGNMENTS[r[2]].unitName]);
+  if (add.length) {
+    const at = sheet.getLastRow() + 1;
+    sheet.getRange(at, 1, add.length, WUP_HEADERS.length).setNumberFormat("@").setValues(add);
+  }
+  Logger.log("[S55] Added " + add.length + " row(s) to " + WUP_TAB + ". Change a lesson_key to pick a " +
+    "different seed for that day; delete a row to use the current lesson's seed.");
+  _wupCache_ = null;
+  return { added: add.length };
+}
+
+let _wupCache_ = null;
+
+/** { "2026-10-19|8175": "8175-L01", ... }; rows naming an unknown or other-course lesson are skipped. */
+function _wupRows_() {
+  if (_wupCache_) return _wupCache_;
+  const out = {};
+  try {
+    const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
+    const sheet = ss.getSheetByName(WUP_TAB);
+    if (sheet && sheet.getLastRow() > 1) {
+      sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(r => {
+        const date = _normalizeLessonDateCell_(r[0]);
+        const code = String(r[1]).trim(), key = String(r[2]).trim();
+        const a = LESSON_ASSIGNMENTS[key];
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !a || a.code !== code) {
+          if (key) Logger.log("[S55] " + WUP_TAB + " row skipped: " + [date, code, key].join(" / "));
+          return;
+        }
+        out[date + "|" + code] = key;
+      });
+    }
+  } catch (e) {
+    Logger.log("[S55] " + WUP_TAB + " not read: " + e.message);
+  }
+  _wupCache_ = out;
+  return out;
+}
+
+/** The lesson planned to seed this course's warm-up on dateStr, as a unit, or null. */
+function plannedWarmUpUnit_(dateStr, code) {
+  const key = _wupRows_()[dateStr + "|" + code];
+  return key ? _lessonUnit_(key, code, dateStr, dateStr) : null;
 }
