@@ -28,8 +28,8 @@ operator. This file holds what comes after them.
 ### Offered, small, ready to build
 
 - **Retention disposition.** A dry-run report of records past their cutoff,
-  then deletion only after the operator approves it. This follows the
-  records officer's confirmation of the schedule. 2026-10-13, after #174.
+  then deletion only after the operator approves it. The schedule is
+  confirmed (2026-10-17), so this is ready when wanted. 2026-10-13, after #174.
 - **Retention check: report a missing date column.** When a tab's date
   header has been renamed, `checkRetentionSchedule` counts every row as
   "no readable date" and never says the column is missing. It should
@@ -47,9 +47,11 @@ operator. This file holds what comes after them.
   `58_LessonRollout.js`, shadow first). Still open: a per-lesson `release`
   hold column in `LessonSchedule`, student-requested doc creation, and
   persistent per-course docs. Same doc, §5.
-- **Cognitive exhaust and authenticity review.** Student process traces;
-  flags on the Teacher Dashboard only at first. Waits on district policy
-  and on a `revisionProbe` result.
+- **Cognitive exhaust and authenticity review.** Student process traces,
+  for assignment docs (not warm-ups). Decided 2026-10-17: nothing on the
+  student's doc, results on the Teacher Dashboard only; the county's account
+  monitoring covers policy; no students excluded. Waits on a
+  `revisionProbe` result.
   [`CAS_COGNITIVE_EXHAUST_2026-10-16.md`](./CAS_COGNITIVE_EXHAUST_2026-10-16.md).
 - **PRD research-pivot requirements past Phase 0.** Measurement, pedagogy
   and student experience. [`PRD_CAS_RESEARCH_PIVOT.md`](./PRD_CAS_RESEARCH_PIVOT.md).
