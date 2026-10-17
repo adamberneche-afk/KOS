@@ -10,11 +10,19 @@ why this repo exists at all.
   does what (Gemini runs the Google-side flows; a Claude Project is the
   thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
   pipeline kept and repaired, and the RTP Gem frozen.
-- **`HANDOFF_2026-10-12.md`** — the repo-wide session handoff: which
+- **`HANDOFF_2026-10-17.md`** — the repo-wide session handoff: which
   handoff docs are current, where each system stands (merged vs. live),
   the operator's queue in order, open decisions, and the rules for an agent
-  session picking the work up. Start here. `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
+  session picking the work up. Start here. `HANDOFF_2026-10-12.md`, `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
   `HANDOFF_2026-10-06.md` and `HANDOFF_2026-10-05.md` are earlier days', superseded.
+- **`CAS_BUG_HANDOFF_2026-10-16.md`** — the first live student submissions
+  through the Student Dashboard and Flow 2: the four bugs (two fixed in
+  #175), the lesson-scheduling steps, the checklist for the next live
+  submission, and the one-off probes.
+- **`CAS_COGNITIVE_EXHAUST_2026-10-16.md`** and
+  **`CAS_DESIGN_THREADS_2026-10-16.md`** — suggestions, nothing built:
+  student process traces and the authenticity-review plan; the cross-course
+  mastery map, a student-owned portfolio, and a nightly lesson rollout.
 - **`PRD_CAS_RESEARCH_PIVOT.md`** — the cas-ccps research-alignment PRD
   (revised 2026-10-10, checked against the code): a Phase 0 of live defects
   to fix before the warm-up week, then measurement, pedagogy and
