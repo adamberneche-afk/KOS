@@ -1145,8 +1145,17 @@ function buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding) {
 }
 
 // ---------------------------------------------------------------------------
+// installWarmUpTriggers
+// Run once manually from Script Editor. The Run dropdown hides names ending
+// in "_", so this is the entry point; installWarmUpTriggers_ does the work.
+// ---------------------------------------------------------------------------
+function installWarmUpTriggers() {
+  installWarmUpTriggers_();
+}
+
+// ---------------------------------------------------------------------------
 // installWarmUpTriggers_
-// Run once manually from Script Editor.
+// Installs the triggers; run it through installWarmUpTriggers().
 // Installs all three nightly warm-up cron triggers.
 // Sequence: S23 at 3:00am → S25 eval at 3:15am → S24 at 3:30am
 // Safe to re-run — checks for existing triggers before installing.
