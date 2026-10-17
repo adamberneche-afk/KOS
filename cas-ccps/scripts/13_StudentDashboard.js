@@ -289,6 +289,23 @@ const DASH_NO_SUBMIT_STATUSES = {
 };
 
 function submitMyWork(fileId, configId) {
+  // Anything thrown used to reach the page as a failed call, which shows
+  // "didn't answer… try again" and was recorded nowhere but Executions
+  // (the second failed submission, 2026-10-15). Caught here, it is counted
+  // in SubmitFailures like the other system-side failures and the student
+  // is told to tell the teacher.
+  try {
+    return _dashSubmit_(fileId, configId);
+  } catch (e) {
+    Logger.log("submitMyWork: unexpected error for ConfigID " + String(configId || "").trim() + ": " + e.message);
+    let cfg = null;
+    try { cfg = getConfig_(); } catch (e2) { /* no config: nothing to record it in */ }
+    if (cfg) dashRecordFailure_(cfg, "SERVER_ERROR");
+    return { ok: false, error: "SERVER_ERROR" };
+  }
+}
+
+function _dashSubmit_(fileId, configId) {
   const googleId = Session.getActiveUser().getEmail();
   if (!googleId) return { ok: false, error: "NO_USER" };
   fileId   = String(fileId   || "").trim();
@@ -787,7 +804,8 @@ const SUBMIT_ERRORS = {
   NO_USER: "Sign into your school Google account and refresh this page.",
   // System-side problems only the teacher can fix: retrying won't help.
   DOC_UNREADABLE: "The system can't open your document right now. Your work is safe. Tell your teacher.",
-  NO_QUEUE: "The system can't take submissions right now. Your work is safe. Tell your teacher."
+  NO_QUEUE: "The system can't take submissions right now. Your work is safe. Tell your teacher.",
+  SERVER_ERROR: "Something went wrong on the system's side. Your work is safe. Tell your teacher."
 };
 const SUBMIT_FALLBACK = "The assignment system didn't answer. Your work is safe in your document.\\nTry again in a minute. If it keeps happening, tell your teacher.";
 
