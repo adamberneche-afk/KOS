@@ -76,7 +76,13 @@ Left: re-test `start`. No SMP goes into knowledge.
    They keep the same file ID every day; Apps Script rewrites them in
    place.
 3. Paste `PROJECT_INSTRUCTIONS.md` (everything below its line) into the
-   Project's Instructions, with the links filled in.
+   Project's Instructions, with the links filled in. The easy way: put the
+   six links in `clasp-registry\kos-project-links.txt`, one
+   `NAME=https://...` per line (`KOS_CAS_SIGNAL=https://docs.google.com/...`),
+   then run `node run.js --latest --instructions` where you run pushes
+   (`tools/clasp-sync/README.md`). It fills the placeholders, keeps
+   only the text below the line and copies it to the clipboard. Do the
+   same after any change to the instructions; a push run reminds you.
 4. Add to the Project's knowledge:
    - `SESSION_LOG_FORMAT.md`;
    - the six `rtp-core-router/notebook-sources/PERSONA_*_V5_1.md` (the
