@@ -182,7 +182,7 @@ function _onStudioCounts_(ss, now) {
     const sheet = ss.getSheetByName("Flow" + f + "Input");
     if (!sheet || sheet.getLastRow() < 2) return;
     sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(function (r) {
-      if (String(r[2] || "").trim() === "CONSUMED") return;
+      if (String(r[2] || "").trim() !== "READY") return; // CONSUMED, or RETRIED (41)
       if (returned[f][String(r[1]).trim()]) return;
       if (_onOlderThan_(r[0], now, ON_STUDIO_STALL_MS[f])) out.stalled[f]++;
     });
