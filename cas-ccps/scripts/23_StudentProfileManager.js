@@ -1202,9 +1202,9 @@ function installWarmUpTriggers_() {
   // installArtifactSyncTrigger_() in Script 33 installs the 3:05am trigger.
   // It is a separate entry point because Script 33 is bound to the same
   // project and can install its own trigger.
-  // Run installArtifactSyncTrigger_() from Script 33 after adding S33 to project.
+  // Run installArtifactSyncTrigger() from Script 33 after adding S33 to project.
   Logger.log("[S23] Trigger installation complete.");
-  Logger.log("[S23] Also run installArtifactSyncTrigger_() from Script 33 " +
+  Logger.log("[S23] Also run installArtifactSyncTrigger() from Script 33 " +
              "to install the 3:05am artifact sync trigger.");
 }
 
