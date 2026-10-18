@@ -17,6 +17,9 @@
 // unreadable signal must never look like an all-clear. Widening what the doc
 // carries is the teacher's call (meta/HANDOFF_2026-10-12.md, FERPA).
 //
+// LAST NIGHT (first): 34c's overnight check of the 3 a.m. runs and the
+//   warm-ups, with an all-clear line when nothing is wrong; 34c also emails
+//   it once a day.
 // SECTION 1, STUDENTS & FAMILIES
 //   - submissions waiting on feedback (STAGING_PIPELINE PENDING_INFERENCE or
 //     IN_PROCESS, one per student doc)
@@ -161,20 +164,40 @@ function writeCasSignal_(watchdog, now) {
     admin.push("FERPA checks: unavailable (" + e.message + ")");
   }
 
+  // ── Last night (34c): the 3 a.m. runs and warm-ups; emailed once a day ──
+  let lastNight;
+  try {
+    lastNight = overnightHealth_(now, tz);
+  } catch (e) {
+    console.error("[CasSignal] Overnight check failed: " + e.message);
+    lastNight = { problems: ["Overnight check: unavailable (" + e.message + ")"], allClear: "" };
+  }
+  try {
+    overnightMaybeMail_(lastNight, now, tz);
+  } catch (e) {
+    console.error("[CasSignal] Overnight email failed: " + e.message);
+  }
+
   _casSignalWriteState_(props, state);
-  _casSignalWriteDoc_(props, _casSignalLines_(students, admin, now, tz));
-  return { students: students, admin: admin };
+  _casSignalWriteDoc_(props, _casSignalLines_(students, admin, now, tz, lastNight));
+  return { students: students, admin: admin, lastNight: lastNight };
 }
 
-function _casSignalLines_(students, admin, now, tz) {
+function _casSignalLines_(students, admin, now, tz, lastNight) {
   const lines = [
     CAS_SIGNAL_TITLE,
     "Generated at: " + Utilities.formatDate(now, tz, "yyyy-MM-dd HH:mm") + " (" + tz + ")",
     "Counts only: no names, IDs, grades or student text. Rewritten every 10 minutes by the CAS queue watchdog. " +
       "Open the Teacher Dashboard to act on any of it.",
     "",
-    "1. STUDENTS & FAMILIES",
   ];
+  if (lastNight) {
+    lines.push("LAST NIGHT (the 3 a.m. runs and warm-ups)");
+    if (lastNight.problems.length) lastNight.problems.forEach(function (l) { lines.push("- " + l); });
+    else lines.push(lastNight.allClear);
+    lines.push("");
+  }
+  lines.push("1. STUDENTS & FAMILIES");
   if (students.length) students.forEach(function (l) { lines.push("- " + l); });
   else lines.push("Nothing waiting on you.");
   lines.push("");

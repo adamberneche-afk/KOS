@@ -420,6 +420,11 @@ function runWarmUpEvaluation() {
 
   if (toEvaluate.length === 0) {
     Logger.log("[S25-J2] No warm-ups to evaluate for " + yesterdayStr + ".");
+    // A quiet night is still a run: 34c reads the stamp each morning.
+    PropertiesService.getScriptProperties().setProperties({
+      "M2_STAGE2_LAST_RUN": new Date().toISOString(),
+      "M2_STAGE2_STATUS":   "OK_NONE"
+    });
     return;
   }
 
