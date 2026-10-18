@@ -172,6 +172,11 @@ function buildWarmUpQueues() {
 
   if (meetingPeriods.length === 0) {
     Logger.log("[S24] No periods meet tomorrow (" + dayType + "). Nothing to queue.");
+    // A quiet night is still a run: 34c reads the stamp each morning.
+    PropertiesService.getScriptProperties().setProperties({
+      "M2_STAGE3_LAST_RUN": new Date().toISOString(),
+      "M2_STAGE3_STATUS":   "OK_NONE"
+    });
     return;
   }
 

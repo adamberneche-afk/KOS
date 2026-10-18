@@ -174,6 +174,12 @@ function syncArtifactCompetencies() {
   if (taggedAssignments === 0) {
     Logger.log("[S33] No competency tags found on Teacher Matrix — " +
                "run addCompetencyIdsColumn_() and tag assignments first.");
+    // Stamped so 34c reports the missing tags rather than a stage that
+    // didn't run.
+    PropertiesService.getScriptProperties().setProperties({
+      "M2_STAGE1B_LAST_RUN": new Date().toISOString(),
+      "M2_STAGE1B_STATUS":   "NO_TAGS"
+    });
     return;
   }
 
