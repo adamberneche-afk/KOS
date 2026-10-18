@@ -327,3 +327,39 @@ Differences from `run.ps1`:
 
 Keep your working copy next to the registry, not inside the checkout,
 for the same reason as `run.ps1`: `--zip` deletes the checkout.
+
+### --instructions — the KOS Project instructions, links filled in
+
+`kos-personal/claude-project/PROJECT_INSTRUCTIONS.md` names its Google
+Docs as `<link to KOS_CAS_SIGNAL>` and so on, because the real URLs are
+private and the repo isn't. Keep the URLs once, in the registry, in
+`kos-project-links.txt`:
+
+```
+# kos-project-links.txt: one NAME=https://... per line
+KOS_CORE_FACTS=https://docs.google.com/document/d/.../edit
+KOS_LATEST_PRIMER=https://docs.google.com/document/d/.../edit
+KOS_OPEN_DECISIONS=https://docs.google.com/document/d/.../edit
+KOS_SMP_REGISTER=https://docs.google.com/document/d/.../edit
+KOS_FAMILY_SIGNAL=https://docs.google.com/document/d/.../edit
+KOS_CAS_SIGNAL=https://docs.google.com/document/d/.../edit
+```
+
+Then:
+
+```
+node run.js --latest --instructions
+```
+
+fetches the latest checkout, fills every placeholder, keeps only the text
+below the file's first `---` line (the part the Project uses), copies it
+to the clipboard (`clip` on Windows, `pbcopy` on macOS; set
+`KOS_RUN_NO_CLIPBOARD=1` to skip) and saves it as
+`<registry>\PROJECT_INSTRUCTIONS.filled.md`. Paste it into the Project's
+Instructions. It pushes nothing, so it refuses `--only`, `--head-only` and
+`--rollback-to`. A placeholder with no line in the links file stops the
+run and names the line to add; a link that isn't `https://` is refused; a
+link nothing uses is reported but harmless.
+
+After an ordinary push, if the filled instructions would now differ from
+the saved copy, `run.js` ends with a reminder to run `--instructions`.
