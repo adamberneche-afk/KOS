@@ -118,7 +118,7 @@ see their own rows below):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `63` (the assignment doc's header: stamped by `02`, the result set by `37`), `02` (intake), `03` (queue bridge), `04` (shared helpers; the turn-in gate was retired 2026-10-10), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `34b` (CAS attention signal: the counts-only `KOS_CAS_SIGNAL` doc the KOS Claude Project reads, rewritten by the watchdog every 10 minutes), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section), `15b`/`15c`, `37`–`42` (flow plumbing), `43` (deploy marker), `50` (student data access), `51` (course year builder), `52` (Canvas roster import), `57` (the retention schedule and its read-only check) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `63` (the assignment doc's header: stamped by `02`, the result set by `37`), `02` (intake), `03` (queue bridge), `04` (shared helpers; the turn-in gate was retired 2026-10-10), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `34b` (CAS attention signal: the counts-only `KOS_CAS_SIGNAL` doc the KOS Claude Project reads, rewritten by the watchdog every 10 minutes), `34c` (the overnight check: the signal's LAST NIGHT section and the daily email), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section), `15b`/`15c`, `37`–`42` (flow plumbing), `43` (deploy marker), `50` (student data access), `51` (course year builder), `52` (Canvas roster import), `57` (the retention schedule and its read-only check) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `00`, `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically) plus its two still-live `16_*_ADDENDUM` files (their own top-level code shares this project's scope, not a stale leftover), `19` (required by `16`'s `writeConfigTab_()`), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
@@ -158,6 +158,18 @@ student text. The first run creates the doc and stores its ID in
 `CAS_SIGNAL_DOC_ID` (optional `CAS_SIGNAL_FOLDER_ID` picks its folder); paste
 its link into the Project's instructions. Data boundary:
 `docs/FERPA_DATA_MAP.md`, "CAS attention signal".
+
+**Last night (script 34c).** The doc opens with a LAST NIGHT section from
+`34c_OvernightHealth.js`: each 3 a.m. stage's run stamp (23, 33, 25, 24; a
+quiet night stamps too, and a run ending in `ERRORS_n` or `NO_TAGS` is
+reported), today's and tomorrow's warm-ups (delivered, not yet delivered,
+ERROR), earlier warm-ups stuck at PENDING_EVAL, Studio jobs with no return
+(Flow 2 after 15 minutes, Flows 3–5 after 30), and failed warm-up returns in
+the last day. With nothing wrong it prints one all-clear line. The same
+lines are emailed to `ADMIN_NOTIFY_EMAIL` (or `TEACHER_EMAIL`) once a day on
+the first watchdog run after 5 a.m., with the deployment's version marker
+and teacher account in the body; `CAS_OVERNIGHT_MAILED` holds the last date
+sent. Counts only.
 
 Each of these 8 projects now has a real, committed `appsscript.json` and
 is a clasp-adoption target — see [Version control (clasp)](#version-control-clasp)
