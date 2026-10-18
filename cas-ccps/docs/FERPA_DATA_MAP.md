@@ -408,6 +408,15 @@ person the teacher already knows; that is the point of the signal, and it
 goes only to the teacher's own Claude Project. Adding any field beyond counts
 is the teacher's decision.
 
+**The overnight email (34c).** `34c_OvernightHealth.js` writes the doc's
+LAST NIGHT section (stage run stamps, warm-up counts for today and tomorrow,
+Studio jobs with no return, failed warm-up returns) and emails the same
+lines once a day to `ADMIN_NOTIFY_EMAIL`, or `TEACHER_EMAIL` if that is
+unset. The email carries the same counts plus the deployment (project,
+version marker, teacher account, time zone); no student name, email, queue
+ID, file ID or student text. With more than one deployment, each one's admin
+address decides who sees its counts.
+
 ### RubricQueue
 Teacher-authored rubric text only — no student PII. Included for completeness
 since it's a central, shared tab.
