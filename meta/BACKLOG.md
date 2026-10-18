@@ -58,6 +58,11 @@ operator. This file holds what comes after them.
 
 ### Waiting on another piece of work
 
+- **Parent reports (`36_WeeklyParentReport.js`) turned on.** Built, not
+  enabled; the only off-domain disclosure. Waits until the student and
+  teacher dashboards are tightened (decided 2026-10-18; `PLAN_2026-10.md`,
+  "The next two weeks", D1), then a dry run: one report reviewed, none sent.
+
 - **Family Mail Sentinel redaction rework.** Keep the patch's new phrases
   (restrict "kms"), its quote-safe possessive handling and its two-letter
   names. Replace the automatic nickname prefixes with a nickname list the
