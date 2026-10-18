@@ -3516,3 +3516,55 @@ feedback status in the header, small, color-coded once feedback arrives.
 - **Tests** in `feedback-as-comment.test.js`, `flow-input-builder.test.js`,
   `student-doc-service.test.js`; the doc mock gained a page header and
   records font size and color.
+
+## Sunday's push and the first warm-ups: fixes, an overnight check, flow pacing, 2026-10-18
+
+The first real warm-up run (Monday 2026-10-19, 81 students) surfaced four
+problems in one night. Each is fixed; the overnight check now reports this
+kind of failure every morning.
+
+- **Run-dropdown entry points** (#189, #191). The Apps Script Run dropdown
+  hides names ending in `_`, so `installWarmUpTriggers_()` (23) and
+  `installArtifactSyncTrigger_()` (33) couldn't be run by hand. Public
+  `installWarmUpTriggers()` and `installArtifactSyncTrigger()` call them.
+  The 3:05 a.m. `syncArtifactCompetencies` trigger had never been installed
+  in the Central Ledger: `28_Module2Setup.js`, the wizard that installs it,
+  is in the Unified Manual project.
+- **The warm-up canary** (#190, 41). Its shadow-matrix check called
+  `wfbSelectArchetype_` without `{ lockEnabled: true }`, so since P0-02 it
+  failed on a correct build (7/8 live).
+- **Text-box delivery without folder fields** (#191, 41). `wfbApplyFlow3_`
+  checked the doc's folder-path fields before the `WARMUP_TEXT_BOX` branch;
+  with no `TEACHER_NAME` Script Property every snapshot's `teacher_name` was
+  blank and every delivery failed with `FOLDER_PATH_FIELDS_MISSING`. The
+  check now runs only for a doc. `retryWarmUpFolderPathFailures()` resets
+  the Flow 3 returns that failed only on that error and harvests them from
+  the saved output: 43 delivered. Live finding: the queue builder (24)
+  needs `TEACHER_EMAIL`, and the snapshot `TEACHER_NAME`, as Central Ledger
+  Script Properties.
+- **Overnight check** (#192, `34c_OvernightHealth.js`, new). Every watchdog
+  run it writes LAST NIGHT first in `KOS_CAS_SIGNAL`: each 3 a.m. stage's
+  stamp, today's and tomorrow's warm-ups (delivered, not yet, ERROR),
+  earlier warm-ups stuck at PENDING_EVAL, Studio jobs with no return, failed
+  returns in the last day, and an all-clear line when nothing is wrong. It
+  emails the same lines once a day on the first run after 5 a.m. to
+  `ADMIN_NOTIFY_EMAIL`, with the deployment's version marker and teacher
+  account, for diagnosis across deployments. Counts only. Quiet nights now
+  stamp their stage (24 with no periods, 25 with nothing to score, 33 with
+  no competency tags as `NO_TAGS`). The KOS Project's briefing opens with
+  LAST NIGHT.
+- **Flow pacing** (#193, 41). The 3:30 a.m. build wrote all 81 Flow 3
+  inputs at once; Studio's "When a sheet changes" trigger failed in a burst
+  at 3:32 ("Couldn't access the spreadsheet") and 38 jobs never ran.
+  `buildWarmUpFlowInputs` now writes at most `WFB_INPUTS_PER_RUN` (10) input
+  rows per 5-minute run, and first appends again any `READY` input with no
+  return after 30 minutes, marking the old row `RETRIED` (at most twice).
+  The harvest consumes every row of a job; liveness and 34c count `READY`
+  only.
+- **revisionProbe** (one-off, not in the repo). On one student assignment
+  doc: 6 revisions over 9 days, one sitting merged into one revision, system
+  edits counted as revisions, HTTP 429 on rapid export fetches. Paste
+  detection from revision history is not possible;
+  `meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md` records the lean option.
+- **Tests:** `warmup-text-box.test.js` (a blank `teacher_name` delivers),
+  `overnight-health.test.js`, `warmup-flow-pacing.test.js`.

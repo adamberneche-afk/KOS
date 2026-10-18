@@ -5,6 +5,21 @@
 > county's account monitoring covers the policy question in §4; no students
 > to exclude. The collector still waits on the `revisionProbe`.
 >
+> **revisionProbe run 2026-10-18** (one student assignment doc, counts only):
+> 6 revisions over 9 days. Drive merges a whole sitting into one revision
+> (one revision added 2,858 characters), so typing and pasting can't be told
+> apart: the paste and largest-jump metrics are dropped. The doc's creation
+> from the template and system edits (header, feedback) appear as revisions,
+> with 2 distinct editors, so a collector must filter them. Still measurable:
+> editing days or sessions, first student edit to submission, length at each
+> submission and the change since the last, and a non-student, non-system
+> editor. The `text/plain` export of each revision works, but Drive returns
+> HTTP 429 to rapid fetches, so a collector must space them. Finer detail
+> would need forward snapshots (a length check on modified docs every few
+> minutes), which still can't separate typing from pasting within the
+> interval. Recommendation: build only the lean collector, after Oct 30, or
+> drop it; the operator decides.
+>
 > **Filed 2026-10-17** from the operator's 2026-10-16 handoff package.
 > Suggestions only; nothing here is built. Where it sits in the order of
 > work: [`HANDOFF_2026-10-18.md`](./HANDOFF_2026-10-18.md).
@@ -40,7 +55,7 @@ Prepared 2026-10-16. Suggestions only; nothing here is built yet. "Cognitive exh
 
 ## 4. Open items
 
-- **Revision detail is unconfirmed.** How granular Drive's revision list is for Google Docs has not been tested; the probe function decides how far the paste and jump metrics can go.
+- **Revision detail (answered 2026-10-18 by the probe):** coarse, one revision per sitting or so. The paste and largest-jump metrics below can't be computed from history; see the note at the top.
 - **District policy and disclosure.** Confirm what monitoring and AI-use policy applies, and tell students the check exists.
 - **Accommodations.** Keep a teacher-set "do not flag" list, with no reason recorded, for students whose workflows (dictation, assistive technology) look like pastes or jumps.
 - **FERPA map and retention.** Any new tab derived from student work belongs in the FERPA data map and the retention schedule.
