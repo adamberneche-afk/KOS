@@ -1580,9 +1580,12 @@ function runWarmUpFlowCanary() {
     const modeB = wfbBuildFlow3Fields_({ course_name: "CAS" }, { student_name: "X" });
     step("Mode B when there is no anchor", modeB.mode === "B", modeB.mode);
 
+    // The lock is off unless PIVOT_ARCHETYPE_LOCK enables it (P0-02), so the
+    // check turns it on, as the unit tests do.
     step("a high-confidence shadow-matrix entry overrides the decision table",
       wfbSelectArchetype_({}, { unit_current: "U1",
-        shadow_matrix: { U1: { cross_confidence: 0.9, best_archetype: "concrete scenario" } } })
+        shadow_matrix: { U1: { cross_confidence: 0.9, best_archetype: "concrete scenario" } } },
+        { lockEnabled: true })
         === "CONCRETE_SCENARIO",
       "and its free-text spelling is normalized");
 
