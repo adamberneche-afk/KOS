@@ -34,6 +34,7 @@
  *   node run.js --zip %USERPROFILE%\Downloads\KOS-main.zip
  *   node run.js --latest --head-only --only leader-hub
  *   node run.js --rollback-to 6 --only leader-hub
+ *   node run.js --latest --instructions
  *   node run.js --help
  *
  * Flags (run.ps1's spellings -Zip, -Latest, -HeadOnly, -RollbackTo,
@@ -55,6 +56,12 @@
  *                         a project marked onHold in the manifest.
  *   --skip-script-check   Run this copy even though it differs from the one
  *                         in the checkout.
+ *   --instructions        Fill the KOS Claude Project instructions
+ *                         (kos-personal/claude-project/PROJECT_INSTRUCTIONS.md)
+ *                         with the doc links in <registry>\kos-project-links.txt,
+ *                         copy the result to the clipboard and save it as
+ *                         <registry>\PROJECT_INSTRUCTIONS.filled.md. Pushes
+ *                         nothing. Combine with --latest to refresh first.
  *
  * Exit code: 0 when nothing failed, 1 otherwise.
  */
@@ -104,6 +111,13 @@ const MANIFEST = [
 
 const SYNC_REL = path.join('tools', 'clasp-sync', 'sync.js');
 
+// --instructions: the Project instructions template, and the two files it
+// uses in the registry. The links are private doc URLs, so they live in the
+// registry beside the .clasp.json files, never in the (public) repo.
+const INSTRUCTIONS_REL = path.join('kos-personal', 'claude-project', 'PROJECT_INSTRUCTIONS.md');
+const LINKS_FILE = 'kos-project-links.txt';
+const FILLED_FILE = 'PROJECT_INSTRUCTIONS.filled.md';
+
 /** A fatal, user-facing problem: printed as "ERROR: message", exit 1. */
 class Fatal extends Error {}
 
@@ -111,7 +125,7 @@ class Fatal extends Error {}
 // Arguments
 // ---------------------------------------------------------------------------
 const VALUE_FLAGS = new Set(['zip', 'rollbackto', 'reporoot', 'registry', 'only']);
-const SWITCH_FLAGS = new Set(['latest', 'headonly', 'skipscriptcheck', 'help']);
+const SWITCH_FLAGS = new Set(['latest', 'headonly', 'skipscriptcheck', 'instructions', 'help']);
 
 /**
  * Accepts --zip x, --zip=x, -Zip x, --head-only, -HeadOnly, any case.
@@ -121,7 +135,7 @@ function parseArgs(argv) {
   const opts = {
     zip: '', latest: false, headOnly: false, rollbackTo: 0,
     repoRoot: 'KOS-main', registry: 'clasp-registry',
-    skipScriptCheck: false, only: [], help: false,
+    skipScriptCheck: false, only: [], instructions: false, help: false,
   };
   let lastFlag = '';
   for (let i = 0; i < argv.length; i++) {
@@ -140,6 +154,7 @@ function parseArgs(argv) {
       if (name === 'latest') opts.latest = true;
       else if (name === 'headonly') opts.headOnly = true;
       else if (name === 'skipscriptcheck') opts.skipScriptCheck = true;
+      else if (name === 'instructions') opts.instructions = true;
       else opts.help = true;
     } else if (VALUE_FLAGS.has(name)) {
       let value = m[2];
@@ -181,6 +196,8 @@ function usage() {
     '  --registry <dir>      folder of real .clasp.json files (default: clasp-registry)',
     '  --only <a,b>          run only the named project(s)',
     '  --skip-script-check   run this copy even if it differs from the checkout\'s',
+    '  --instructions        fill the KOS Project instructions with the links in',
+    `                        <registry>\\${LINKS_FILE} and copy them; pushes nothing`,
     '',
     'Projects: ' + MANIFEST.map((p) => p.name).join(', '),
     '',
@@ -449,6 +466,9 @@ function run(argv) {
   if (opts.rollbackTo && (opts.headOnly || opts.zip || opts.latest)) {
     throw new Fatal("--rollback-to pushes nothing, so it can't be combined with --head-only, --zip or --latest.");
   }
+  if (opts.instructions && (opts.rollbackTo || opts.headOnly || opts.only.length)) {
+    throw new Fatal('--instructions pushes nothing, so it only combines with --latest or --zip.');
+  }
   if (opts.rollbackTo && opts.only.length !== 1) {
     throw new Fatal('--rollback-to needs exactly one project in --only: version numbers are per project.');
   }
@@ -522,6 +542,8 @@ function run(argv) {
     }
   }
 
+  if (opts.instructions) return writeInstructions(repoRoot, registry);
+
   // Fail early and plainly if clasp isn't installed, instead of once per project.
   const version = runClasp(['--version'], process.cwd());
   if (version.status !== 0) {
@@ -567,7 +589,119 @@ function run(argv) {
     }
   }
 
+  const stale = instructionsChanged(repoRoot, registry);
+  if (stale) {
+    out('');
+    out(`The KOS Project instructions changed since ${stale}. Run: node run.js --instructions`);
+    out("then paste the result into the Project's Instructions.");
+  }
+
   return Object.values(results).some((r) => r.startsWith('FAILED')) ? 1 : 0;
+}
+
+// ---------------------------------------------------------------------------
+// --instructions: the KOS Claude Project's instructions, links filled in.
+// ---------------------------------------------------------------------------
+
+/** KEY=https://... lines; # comments and blank lines skipped. */
+function parseLinks(text) {
+  const links = {};
+  splitLines(text).forEach((raw, i) => {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) return;
+    const m = /^([A-Z][A-Z0-9_]*)\s*=\s*(\S+)$/.exec(line);
+    if (!m) throw new Fatal(`${LINKS_FILE} line ${i + 1} isn't NAME=https://...: ${line}`);
+    if (!/^https:\/\//.test(m[2])) throw new Fatal(`${LINKS_FILE}: ${m[1]} isn't an https:// link.`);
+    links[m[1]] = m[2];
+  });
+  return links;
+}
+
+/**
+ * The part of PROJECT_INSTRUCTIONS.md meant for pasting (below its first
+ * "---" line), with each `<link to NAME>` replaced from links. Throws, naming
+ * them, if any placeholder has no link: a half-filled paste is worse than none.
+ */
+function fillInstructions(template, links) {
+  const lines = splitLines(template.replace(/\r\n/g, '\n'));
+  const cut = lines.findIndex((l) => l.trim() === '---');
+  if (cut < 0) throw new Fatal(`${INSTRUCTIONS_REL} has no "---" line to paste below.`);
+  const body = lines.slice(cut + 1).join('\n').replace(/^\n+/, '') + '\n';
+  const missing = [];
+  const filled = body.replace(/<link to ([A-Z][A-Z0-9_]*)>/g, (whole, name) => {
+    if (links[name]) return links[name];
+    if (!missing.includes(name)) missing.push(name);
+    return whole;
+  });
+  if (missing.length) {
+    throw new Fatal(`No link for ${missing.join(', ')}: add ${missing.map((n) => n + '=https://...').join(', ')} to ${LINKS_FILE}.`);
+  }
+  return filled;
+}
+
+function writeInstructions(repoRoot, registry) {
+  const template = path.join(repoRoot, INSTRUCTIONS_REL);
+  const linksFile = path.join(registry, LINKS_FILE);
+  if (!fs.existsSync(template)) throw new Fatal(`Not found: ${template}`);
+  if (!fs.existsSync(linksFile)) {
+    throw new Fatal(`Not found: ${linksFile}. Create it with one NAME=https://... line per doc link ` +
+      '(KOS_LATEST_PRIMER, KOS_OPEN_DECISIONS, KOS_CORE_FACTS, KOS_FAMILY_SIGNAL, KOS_SMP_REGISTER, KOS_CAS_SIGNAL).');
+  }
+  const links = parseLinks(readText(linksFile));
+  const text = fillInstructions(readText(template), links);
+  const used = new Set((readText(template).match(/<link to ([A-Z][A-Z0-9_]*)>/g) || [])
+    .map((t) => t.slice(9, -1)));
+  const unused = Object.keys(links).filter((k) => !used.has(k));
+  if (unused.length) warn(`${LINKS_FILE} has links the instructions no longer use: ${unused.join(', ')}`);
+
+  const filledFile = path.join(registry, FILLED_FILE);
+  writeUtf8NoBom(filledFile, text);
+  out(`Filled ${used.size} link(s); saved ${filledFile}`);
+  if (copyToClipboard(text)) {
+    out("Copied to the clipboard. In the KOS Project: Instructions, select all, paste, save.");
+  } else {
+    out(`Couldn't use the clipboard: open ${filledFile}, select all, copy, and paste it into the Project's Instructions.`);
+  }
+  return 0;
+}
+
+/**
+ * Windows' clip.exe reads UTF-16LE with a BOM correctly (plain UTF-8 turns
+ * the instructions' dashes and arrows into mojibake). KOS_RUN_NO_CLIPBOARD=1
+ * skips it (tests).
+ */
+function copyToClipboard(text) {
+  if (process.env.KOS_RUN_NO_CLIPBOARD === '1') return false;
+  let cmd = null;
+  let input = text;
+  if (IS_WIN) {
+    cmd = 'clip';
+    input = Buffer.concat([Buffer.from([0xff, 0xfe]), Buffer.from(text, 'utf16le')]);
+  } else if (process.platform === 'darwin') {
+    cmd = 'pbcopy';
+  }
+  if (!cmd) return false;
+  const r = cp.spawnSync(cmd, [], { input: input });
+  return !r.error && r.status === 0;
+}
+
+/**
+ * After a push: "your last filled copy" when the instructions in the checkout
+ * fill differently from it, else "". Silent until kos-project-links.txt
+ * exists, and on any read problem (this is only a reminder).
+ */
+function instructionsChanged(repoRoot, registry) {
+  try {
+    const linksFile = path.join(registry, LINKS_FILE);
+    const template = path.join(repoRoot, INSTRUCTIONS_REL);
+    if (!fs.existsSync(linksFile) || !fs.existsSync(template)) return '';
+    const filledFile = path.join(registry, FILLED_FILE);
+    if (!fs.existsSync(filledFile)) return 'you set up ' + LINKS_FILE;
+    const now = fillInstructions(readText(template), parseLinks(readText(linksFile)));
+    return now === readText(filledFile) ? '' : 'your last filled copy';
+  } catch (e) {
+    return '';
+  }
 }
 
 function isSameFile(a, b) {
@@ -906,7 +1040,7 @@ function invokeProject(ctx, p) {
 // ---------------------------------------------------------------------------
 module.exports = {
   MANIFEST, Fatal, parseArgs, parseDeploymentLines, getKeepList, getMarker,
-  quoteForCmd, crc32, extractZip, isoLocal, run,
+  quoteForCmd, crc32, extractZip, isoLocal, run, parseLinks, fillInstructions,
 };
 
 if (require.main === module) {

@@ -535,3 +535,63 @@ test('the manifest matches run.ps1 while both exist, and every non-held project 
     assert.ok(map[key], `${p.name} has no project-map.json entry (${key})`);
   }
 });
+
+// ── --instructions: the KOS Project instructions, links filled ───────────────
+
+const TEMPLATE = '# KOS — instructions\n\nPaste below the line.\n\n---\n\n# KOS THINKING PARTNER\n' +
+  '- Primer: `<link to KOS_LATEST_PRIMER>`\n- CAS: `<link to KOS_CAS_SIGNAL>` → read LAST NIGHT first\n';
+const LINKS = '# private doc links\nKOS_LATEST_PRIMER=https://docs.google.com/document/d/P/edit\n\n' +
+  'KOS_CAS_SIGNAL = https://docs.google.com/document/d/C/edit\n';
+
+test('fillInstructions pastes only what is below the line, every placeholder filled', () => {
+  const t = run.fillInstructions(TEMPLATE, run.parseLinks(LINKS));
+  assert.match(t, /^# KOS THINKING PARTNER\n/);
+  assert.doesNotMatch(t, /Paste below the line|<link to/);
+  assert.match(t, /Primer: `https:\/\/docs\.google\.com\/document\/d\/P\/edit`/);
+  assert.match(t, /CAS: `https:\/\/docs\.google\.com\/document\/d\/C\/edit` → read LAST NIGHT first/);
+});
+
+test('a missing link stops the fill and names it; a bad links line is refused', () => {
+  assert.throws(() => run.fillInstructions(TEMPLATE, { KOS_LATEST_PRIMER: 'https://x' }),
+    /No link for KOS_CAS_SIGNAL: add KOS_CAS_SIGNAL=https:\/\/\.\.\./);
+  assert.throws(() => run.parseLinks('KOS_CAS_SIGNAL=http://x'), /isn't an https:\/\/ link/);
+  assert.throws(() => run.parseLinks('just a line'), /line 1 isn't NAME=https/);
+});
+
+function instructionsWorld() {
+  const w = world();
+  const dir = path.join(w.repo, 'kos-personal', 'claude-project');
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'PROJECT_INSTRUCTIONS.md'), TEMPLATE);
+  return w;
+}
+
+test('--instructions saves the filled copy in the registry, pushes nothing, and needs the links file', () => {
+  const w = instructionsWorld();
+  const env = { KOS_RUN_NO_CLIPBOARD: '1' };
+  const missing = w.run(['--instructions'], env);
+  assert.equal(missing.status, 1);
+  assert.match(missing.out, /kos-project-links\.txt\. Create it/);
+
+  fs.writeFileSync(path.join(w.registry, 'kos-project-links.txt'), LINKS);
+  const r = w.run(['--instructions'], env);
+  assert.equal(r.status, 0, r.out);
+  assert.match(r.out, /Filled 2 link\(s\)/);
+  assert.match(r.out, /open .*PROJECT_INSTRUCTIONS\.filled\.md/);
+  const filled = fs.readFileSync(path.join(w.registry, 'PROJECT_INSTRUCTIONS.filled.md'), 'utf8');
+  assert.match(filled, /d\/C\/edit/);
+  assert.equal(w.state().log.length, 0, 'no clasp call at all');
+  assert.match(w.run(['--instructions', '--only', 'leader-hub'], env).out, /only combines with --latest or --zip/);
+});
+
+test('after a push, a changed template is a reminder to run --instructions; an unchanged one is quiet', () => {
+  const w = instructionsWorld();
+  const env = { KOS_RUN_NO_CLIPBOARD: '1' };
+  assert.doesNotMatch(w.run(['--only', 'leader-hub'], env).out, /--instructions/, 'quiet before the links file exists');
+  fs.writeFileSync(path.join(w.registry, 'kos-project-links.txt'), LINKS);
+  w.run(['--instructions'], env);
+  assert.doesNotMatch(w.run(['--only', 'leader-hub'], env).out, /instructions changed/);
+  fs.appendFileSync(path.join(w.repo, 'kos-personal', 'claude-project', 'PROJECT_INSTRUCTIONS.md'), '- a new rule\n');
+  assert.match(w.run(['--only', 'leader-hub'], env).out,
+    /instructions changed since your last filled copy\. Run: node run\.js --instructions/);
+});
