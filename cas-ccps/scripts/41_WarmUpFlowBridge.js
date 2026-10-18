@@ -157,6 +157,16 @@ const WFB_FLOW4_HEADERS = [
 ];
 
 const WFB_MAX_ATTEMPTS = 3;
+// Studio drops runs when many rows change at once ("Couldn't access the
+// spreadsheet", 2026-10-18: 38 of 81 warm-ups after the 3:30 build wrote
+// every row together). So each 5-minute run writes at most this many input
+// rows, retries included: 81 warm-ups take about 40 minutes.
+const WFB_INPUTS_PER_RUN = 10;
+// A READY input with no return after this long was dropped by Studio. It is
+// written again as a new row (an appended row starts Studio; the old row is
+// marked RETRIED), at most WFB_MAX_INPUT_RETRIES times.
+const WFB_INPUT_RETRY_AFTER_MS = 30 * 60 * 1000;
+const WFB_MAX_INPUT_RETRIES = 2;
 const WFB_PRUNE_AFTER_DAYS = 14;
 const WFB_CANARY_PREFIX = "WUQ-CANARY-";
 
@@ -425,6 +435,53 @@ function wfbExistingInputIds_(sheet) {
   return seen;
 }
 
+// READY input rows older than WFB_INPUT_RETRY_AFTER_MS with nothing in
+// WarmUpFlowReturn for their QueueID: Studio dropped the run. Each is copied
+// to a new row (timestamp now, READY) and the old row marked RETRIED, up to
+// WFB_MAX_INPUT_RETRIES per QueueID and `budget` per call. Returns the count.
+function wfbRetryStaleInputs_(ss, tabs, budget, now) {
+  if (budget <= 0) return 0;
+  const returned = { 3: {}, 4: {}, 5: {} };
+  const ret = ss.getSheetByName(WFB_RETURN_TAB);
+  if (ret && ret.getLastRow() > 1) {
+    ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues().forEach(function (r) {
+      const f = Number(r[WFB_RET.FLOW]);
+      if (returned[f]) returned[f][String(r[WFB_RET.QUEUE_ID]).trim()] = true;
+    });
+  }
+  let retried = 0;
+  [3, 4, 5].forEach(function (flow) {
+    const sheet = tabs[flow];
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1 || retried >= budget) return;
+    const width = sheet.getLastColumn();
+    const rows = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+    const tries = {};
+    rows.forEach(function (r) {
+      if (String(r[2]).trim() === "RETRIED") {
+        const id = String(r[1]).trim();
+        tries[id] = (tries[id] || 0) + 1;
+      }
+    });
+    for (let i = 0; i < rows.length && retried < budget; i++) {
+      const r = rows[i];
+      const id = String(r[1]).trim();
+      if (!id || String(r[2]).trim() !== "READY" || returned[flow][id]) continue;
+      const at = new Date(r[0]).getTime();
+      if (!isNaN(at) && now.getTime() - at < WFB_INPUT_RETRY_AFTER_MS) continue;
+      if ((tries[id] || 0) >= WFB_MAX_INPUT_RETRIES) continue;
+      const copy = r.slice();
+      copy[0] = now;
+      sheet.getRange(i + 2, 3).setValue("RETRIED");
+      sheet.appendRow(copy);
+      tries[id] = (tries[id] || 0) + 1;
+      retried++;
+    }
+  });
+  if (retried) Logger.log("[WFB] Retried " + retried + " input row(s) Studio had not returned.");
+  return retried;
+}
+
 // ── Phase 1: materialize inputs ──────────────────────────────────────────────
 
 /**
@@ -436,7 +493,7 @@ function wfbExistingInputIds_(sheet) {
  * same student would generate two warm-up docs.
  */
 function buildWarmUpFlowInputs() {
-  const result = { flow3: 0, flow4: 0, flow5: 0, skipped: 0, errors: 0 };
+  const result = { flow3: 0, flow4: 0, flow5: 0, skipped: 0, errors: 0, retried: 0, deferred: 0 };
   const ctx = wfbLedger_();
   const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
   if (!wqSheet) {
@@ -458,6 +515,10 @@ function buildWarmUpFlowInputs() {
     5: wfbExistingInputIds_(tabs[5]),
   };
 
+  // Dropped jobs first: they are the oldest.
+  result.retried = wfbRetryStaleInputs_(ctx.ss, tabs, WFB_INPUTS_PER_RUN, new Date());
+  let budget = WFB_INPUTS_PER_RUN - result.retried;
+
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
     const status = String(row[WQ25_STATUS] || "").trim();
@@ -471,6 +532,7 @@ function buildWarmUpFlowInputs() {
     if (!flow) continue;
 
     if (seen[flow][queueId]) { result.skipped++; continue; }
+    if (budget <= 0) { result.deferred++; continue; }
 
     try {
       if (flow === 5) {
@@ -496,6 +558,7 @@ function buildWarmUpFlowInputs() {
         else result.skipped++;
       }
       seen[flow][queueId] = true;
+      budget--;
     } catch (e) {
       result.errors++;
       Logger.log("[WFB] " + queueId + " (flow " + flow + ") input build failed: " + e.message);
@@ -1172,11 +1235,12 @@ function wfbConsumeInputRow_(ss, flow, queueId) {
   if (!sheet) return;
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return;
+  // A retried job has more than one row (the old ones RETRIED): all of
+  // them are finished once its return is applied.
   const ids = sheet.getRange(2, 2, lastRow - 1, 2).getValues();
   for (let i = 0; i < ids.length; i++) {
-    if (String(ids[i][0]).trim() === queueId) {
+    if (String(ids[i][0]).trim() === queueId && String(ids[i][1]).trim() !== "CONSUMED") {
       sheet.getRange(i + 2, 3).setValue("CONSUMED");
-      return;
     }
   }
 }
@@ -1275,8 +1339,9 @@ function checkWarmUpFlowLiveness() {
     let ready = 0, consumed = 0;
     if (sheet && sheet.getLastRow() > 1) {
       sheet.getRange(2, 3, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) {
-        if (String(r[0]).trim() === "CONSUMED") consumed++;
-        else ready++;
+        const st = String(r[0]).trim();
+        if (st === "CONSUMED") consumed++;
+        else if (st === "READY") ready++;
       });
     }
     report.flows[flow] = { ready: ready, consumed: consumed,
