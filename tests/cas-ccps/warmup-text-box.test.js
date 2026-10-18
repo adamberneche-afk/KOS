@@ -131,3 +131,21 @@ test('extra credit: a reply of 10+ words saved on the dashboard is credited', ()
   const wq = fx.wq.getRange(2, 1, 1, fx.exported.WQ25_COL_COUNT).getValues()[0];
   assert.deepEqual([wq[fx.exported.WQ25_TOTAL_SCORE], wq[fx.exported.WQ25_EXTRA_CREDIT]], [7, 1]);
 });
+
+test('Flow 3 with the flag on: a blank teacher_name still delivers (no folder is needed); a doc still needs it', () => {
+  const fx = setup('8175');
+  const row = pendingRow(fx.exported, 'WQ-T', daysAgoStr(0));
+  const snap = JSON.parse(row[6]);
+  snap.teacher_name = '';
+  row[6] = JSON.stringify(snap);
+  fx.wq.appendRow(row);
+  assert.deepEqual(fx.exported.wfbApplyFlow3_(fx.wq, fx.exported.wfbFindQueueRow_(fx.wq, 'WQ-T'), 'WQ-T', RAW), { ok: true });
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'DELIVERED');
+
+  snap.course_name = 'Sports Entertainment and Event Management'; // 8177: flag off, so a doc
+  const docRow = pendingRow(fx.exported, 'WQ-U', daysAgoStr(0));
+  docRow[6] = JSON.stringify(snap);
+  fx.wq.appendRow(docRow);
+  const res = fx.exported.wfbApplyFlow3_(fx.wq, fx.exported.wfbFindQueueRow_(fx.wq, 'WQ-U'), 'WQ-U', RAW);
+  assert.equal(res.error, 'FOLDER_PATH_FIELDS_MISSING');
+});
