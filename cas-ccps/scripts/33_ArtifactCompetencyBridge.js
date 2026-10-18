@@ -348,9 +348,18 @@ function addCompetencyIdsColumn_() {
 }
 
 // ---------------------------------------------------------------------------
+// installArtifactSyncTrigger
+// Run once from Script Editor. The Run dropdown hides names ending in "_",
+// so this is the entry point; installArtifactSyncTrigger_ does the work.
+// ---------------------------------------------------------------------------
+function installArtifactSyncTrigger() {
+  installArtifactSyncTrigger_();
+}
+
+// ---------------------------------------------------------------------------
 // installArtifactSyncTrigger_
 // Installs the 3:05am nightly trigger for syncArtifactCompetencies.
-// Run once from Script Editor. Safe to re-run.
+// Run it through installArtifactSyncTrigger(). Safe to re-run.
 // ---------------------------------------------------------------------------
 function installArtifactSyncTrigger_() {
   const existing = ScriptApp.getProjectTriggers()

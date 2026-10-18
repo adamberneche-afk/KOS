@@ -904,9 +904,6 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
   const courseName = lesson.course_name || "";
   const teacherName = lesson.teacher_name || "";
   const period = lesson.period != null ? String(lesson.period) : "";
-  if (!adminRoot || !courseName || !teacherName || !period) {
-    return { ok: false, error: "FOLDER_PATH_FIELDS_MISSING" };
-  }
 
   // Plausibility gate BEFORE any Drive work — a fabricated warm-up prompt
   // is the assignment text the student actually responds to, and the doc
@@ -916,7 +913,13 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
   const plausibility = _wfbCheckPlausible_(lesson, raw);
   if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
 
-  if (warmUpTextBoxFor_(courseName)) return wfbDeliverToTextBox_(wqSheet, found, queueId, raw);
+  // The text box needs no folder, so the folder-path fields are checked only
+  // for a doc. Checked first, a blank teacher_name failed every warm-up.
+  if (courseName && warmUpTextBoxFor_(courseName)) return wfbDeliverToTextBox_(wqSheet, found, queueId, raw);
+
+  if (!adminRoot || !courseName || !teacherName || !period) {
+    return { ok: false, error: "FOLDER_PATH_FIELDS_MISSING" };
+  }
 
   const studentName = String(row[WQ25_STUDENT_NAME] || "");
   const firstName = studentName.trim().split(/\s+/)[0] || "";
@@ -1219,6 +1222,32 @@ function installWarmUpFlowTriggers() {
   Logger.log("[WFB] installWarmUpFlowTriggers: installed " + JSON.stringify(installed) +
     (installed.length ? "" : " (both already present)"));
   return { installed: installed };
+}
+
+/**
+ * One-off recovery, run by hand: Flow 3 returns that failed only on
+ * FOLDER_PATH_FIELDS_MISSING (a blank teacher_name before text-box delivery
+ * stopped needing folder fields) are reset and harvested again. The model
+ * output is already in WarmUpFlowReturn, so nothing is re-run in Studio.
+ * Logs counts only.
+ */
+function retryWarmUpFolderPathFailures() {
+  const ctx = wfbLedger_();
+  const returns = wfbTab_(ctx.ss, WFB_RETURN_TAB, WFB_RETURN_HEADERS);
+  const lastRow = returns.getLastRow();
+  let reset = 0;
+  if (lastRow >= 2) {
+    const data = returns.getRange(2, 1, lastRow - 1, WFB_RETURN_HEADERS.length).getValues();
+    data.forEach((r, i) => {
+      if (Number(r[WFB_RET.FLOW]) !== 3) return;
+      if (String(r[WFB_RET.HARVEST_STATUS] || "").trim() !== "FAILED") return;
+      if (String(r[WFB_RET.ERROR] || "").indexOf("FOLDER_PATH_FIELDS_MISSING") === -1) return;
+      wfbMarkReturn_(returns, i + 2, "", "", 0);
+      reset++;
+    });
+  }
+  Logger.log("[WFB] retryWarmUpFolderPathFailures: reset " + reset + " Flow 3 return(s); harvesting now.");
+  return { reset: reset, harvest: harvestWarmUpFlowReturns() };
 }
 
 /**
