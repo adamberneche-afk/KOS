@@ -3649,3 +3649,26 @@ kind of failure every morning.
   both causes.
 - **Tests:** `warmup-flow-pacing.test.js`; `flow-fixtures.test.js` loads 23
   (`formatDateYMD_`).
+
+## One trigger for the Ledger's frequent jobs, 2026-10-19
+
+- **What the executions showed.** About 45 failures 10-12 to 10-19 across
+  `bridgeQueue`, `runStagingTurnstile`, `backPropagateCompletions`,
+  `buildFlowInputRows`, `harvestFlowInputResults`, `harvestWarmUpFlowReturns`,
+  `buildWarmUpFlowInputs` and `runQueueWatchdog`: nearly all Google-side
+  ("a server error occurred", "JavaScript engine ... INTERNAL", "reading
+  from storage ... INTERNAL", runs that never started), a few hung 32
+  minutes, and once "too many LockService operations against the same
+  script". No error named a line of ours. Time budgets would not have
+  helped; ten triggers on one spreadsheet, all on one document lock, was the
+  load.
+- **`64_LedgerCycle.js`** (new, Central Ledger): `runLedgerCycle`, every
+  minute, runs the recorded jobs in turn at their own cadence, most overdue
+  first, each in a try/catch, none after 4 minutes, never two cycles at once
+  (`LEDGER_CYCLE_BUSY_UNTIL`). `installLedgerCycle()` takes over the jobs'
+  own triggers and records them; `restoreLedgerTriggers()` undoes it. A job
+  with its own trigger again is left to it, and preflight (35) knows a job
+  the cycle runs.
+- **`runSystemHealthCheck`** (10) logs its report instead of failing when
+  run from the editor (`getUi()` "cannot be called from this context").
+- **Tests:** `ledger-cycle.test.js`.
