@@ -22,9 +22,10 @@
  *                         warm-ups (24), use the schedule wherever it has a
  *                         dated lesson, and the pacing guide before that.
  *
- * The WarmUpPlan tab picks a different lesson's warm-up seed for a day, so a
- * week of warm-ups can review earlier lessons instead of repeating the
- * current lesson's seed every day.
+ * Warm-ups review: each pair of class days takes a random seed from the
+ * lessons taught so far (a LessonSchedule start_date on or before the day),
+ * the same for the ODD and EVEN classes (reviewWarmUpKey_, 2026-10-19). A
+ * WarmUpPlan row overrides the pick for its pair of days.
  *
  *   seedWarmUpPlan()      adds the rows in WARMUP_PLAN_SEED that aren't in the
  *                         tab yet (date + course). Rows the teacher typed or
@@ -228,8 +229,47 @@ function plannedWarmUpRow_(dateStr, code) {
   return rows[prev + "|" + code] ? { date: prev, key: rows[prev + "|" + code] } : null;
 }
 
-/** The lesson planned to seed this course's warm-up on dateStr, as a unit, or null. */
+/**
+ * The lesson seeding this course's warm-up on dateStr, as a unit, or null:
+ * the WarmUpPlan row covering the date when there is one (an override),
+ * otherwise reviewWarmUpKey_'s pick from the lessons taught so far.
+ */
 function plannedWarmUpUnit_(dateStr, code) {
   const row = plannedWarmUpRow_(dateStr, code);
-  return row ? _lessonUnit_(row.key, code, dateStr, dateStr) : null;
+  const key = row ? row.key : reviewWarmUpKey_(dateStr, code);
+  return key ? _lessonUnit_(key, code, dateStr, dateStr) : null;
+}
+
+/**
+ * A random review seed (decided 2026-10-19): any lesson with a LessonSchedule
+ * start_date on or before dateStr, that is, taught by then. The pick is
+ * random but fixed for a pair of class days (the odd date and the weekday
+ * after), so the ODD and EVEN classes get the same warm-up; it can repeat.
+ * A lesson with no start date isn't in the pool. "" when nothing is dated.
+ */
+function reviewWarmUpKey_(dateStr, code) {
+  const pool = (_lsRows_()[code] || [])
+    .filter(r => r.start <= dateStr && LESSON_ASSIGNMENTS[r.key].warmupAnchor)
+    .map(r => r.key);
+  if (!pool.length) return "";
+  return pool[_wupHash_(_wupPairStart_(dateStr) + "|" + code) % pool.length];
+}
+
+/** The date a pair of class days starts: an odd date, else the weekday before. */
+function _wupPairStart_(dateStr) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ""));
+  if (!m || +m[3] % 2 === 1) return String(dateStr || "");
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  d.setDate(d.getDate() - (d.getDay() === 1 ? 3 : 1));
+  return formatDateYMD_(d);
+}
+
+/** FNV-1a: the same string always picks the same lesson. */
+function _wupHash_(str) {
+  let h = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h;
 }

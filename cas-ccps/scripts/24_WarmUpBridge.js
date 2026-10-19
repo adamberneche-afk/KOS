@@ -468,7 +468,10 @@ function getPeriodsForDay_(scheduleData, teacherEmail, dayType) {
     const period   = String(row[CS_PERIOD]        || "").trim();
     const dType    = String(row[CS_DAY_TYPE]      || "").trim().toUpperCase();
     const course   = String(row[CS_COURSE_NAME]   || "").trim();
-    const active   = String(row[CS_ACTIVE]        || "TRUE").trim().toUpperCase();
+    // A typed FALSE is stored by Sheets as the boolean false, which `|| "TRUE"`
+    // used to turn into active (2026-10-19). Only a blank cell defaults to TRUE.
+    const activeCell = row[CS_ACTIVE];
+    const active   = String(activeCell === "" || activeCell == null ? "TRUE" : activeCell).trim().toUpperCase();
 
     if (tEmail !== teacherEmail.toLowerCase()) continue;
     if (active === "FALSE") continue;
