@@ -687,7 +687,15 @@ function requeueFailedSubmission() {
 // runSystemHealthCheck
 // ---------------------------------------------------------------------------
 function runSystemHealthCheck() {
-  const ui  = SpreadsheetApp.getUi();
+  // Run from the editor there is no spreadsheet UI: getUi() throws "Cannot
+  // call SpreadsheetApp.getUi() from this context" (seen 2026-10-12). The
+  // report then goes to the execution log.
+  let ui;
+  try {
+    ui = SpreadsheetApp.getUi();
+  } catch (e) {
+    ui = { alert: function (title, body) { Logger.log("[10] " + title + "\n" + body); }, ButtonSet: { OK: "OK" } };
+  }
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.adminSsId);
 
