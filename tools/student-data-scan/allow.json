@@ -1,0 +1,75 @@
+{
+  "_note": "Hashes of matches confirmed not to be student data. An entry is added only after a person has looked at the line, or when the hash equals a known synthetic string. Add {hash, file, why}.",
+  "allow": [
+    {
+      "hash": "297e225764fa",
+      "file": "cas-ccps/scripts/02_Form1_IntakeAndWorkspaceGenerator.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "87a02e484e4d",
+      "file": "tests/cas-ccps/canvas-roster-import.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "74e06ddb7793",
+      "file": "tests/cas-ccps/canvas-roster-import.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "0ff6de0bab93",
+      "file": "tests/cas-ccps/canvas-roster-import.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "4ccc6ca1caeb",
+      "file": "tests/cas-ccps/period-split.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "1c1db9c0ffe1",
+      "file": "tests/cas-ccps/period-split.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "77a9acd7b711",
+      "file": "tests/cas-ccps/period-split.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "46f28b109360",
+      "file": "tests/cas-ccps/period-split.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "d76db886359f",
+      "file": "tests/cas-ccps/review-queue-text-scrub.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "f4c6a99e2fa4",
+      "file": "tests/cas-ccps/review-queue-text-scrub.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "c36a16699669",
+      "file": "tests/cas-ccps/review-queue-text-scrub.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "a2cc6488eb77",
+      "file": "tests/cas-ccps/student-context-aggregator.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "2f578672354d",
+      "file": "tests/cas-ccps/student-context-aggregator.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "5c1b7f6d3046",
+      "file": "tests/cas-ccps/student-context-aggregator.test.js",
+      "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    }
+  ]
+}
