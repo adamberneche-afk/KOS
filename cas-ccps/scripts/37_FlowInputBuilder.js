@@ -201,9 +201,12 @@ function buildFlowInputRows() {
     const fiData = fiSheet.getDataRange().getValues();
     const existingKeys = new Set();
     const lastErrorAt = {};
+    const newRows = [];
+    const unstarted = [];
     for (let i = 1; i < fiData.length; i++) {
       const fiStatus = String(fiData[i][FI.READY_STATUS]).trim();
       if (fiStatus === "HARVESTED") continue;
+      if (fiStatus === "" && fiData[i][FI.STUDENT_FILE_ID]) unstarted.push(i + 1);
       const fiKey = fiData[i][FI.STUDENT_FILE_ID] + "|" + fiData[i][FI.CONFIG_ID];
       if (fiStatus.indexOf("ERROR_") === 0) {
         const at = new Date(fiData[i][FI.TIMESTAMP]).getTime() || 0;
@@ -288,19 +291,33 @@ function buildFlowInputRows() {
         matrixRow.milestone2CompetencyId,
         matrixRow.milestone3CompetencyId,
         matrixRow.milestone4CompetencyId,
-        "READY",
+        "", // ReadyStatus — set to READY just below, as its own edit
         "", // GeminiFullOutput — Studio Flow 2 fills this in
         // The Flow 2 prompt with every placeholder resolved EXCEPT
         // {{STUDENT_TEXT}} — see _fiBuildPromptText_ below.
         _fiBuildPromptText_(matrixRow),
       ]);
+      newRows.push(fiSheet.getLastRow());
       existingKeys.add(key);
       built++;
     }
 
-    if (built > 0) {
+    // READY goes in as an edit of a row already there, not with the
+    // appended row. Flow 2's Studio starter ("When a sheet changes",
+    // ReadyStatus -> READY) never fired on an appended row in 40 days of
+    // history, and fired at once when the cell was retyped (2026-10-19).
+    // A row left blank by an earlier run that stopped in between is set
+    // here too, so none waits forever.
+    if (newRows.length || unstarted.length) {
       SpreadsheetApp.flush();
+      newRows.concat(unstarted).forEach(r => fiSheet.getRange(r, FI.READY_STATUS + 1).setValue("READY"));
+      SpreadsheetApp.flush();
+    }
+    if (built > 0) {
       Logger.log("[FlowInputBuilder] Built " + built + " FlowInput row(s).");
+    }
+    if (unstarted.length) {
+      Logger.log("[FlowInputBuilder] Set READY on " + unstarted.length + " row(s) left blank by an earlier run.");
     }
   } catch (err) {
     Logger.log("[FlowInputBuilder] Critical failure: " + err.message);
