@@ -195,7 +195,7 @@ function enrollCanvasRoster_(opts) {
   const courseByPeriod = _criCourseByPeriod_(ss, cfg, teacherEmail);
 
   // Accounts already in the Ledger for this teacher and term.
-  const term = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "";
+  const term = currentTerm_();
   // inTerm: this teacher's students this term (for the "left the course"
   // report). enrolled: those with a workspace for THIS assignment
   // (StudentAssignments, 02), so the next unit's assignment can be imported
@@ -214,7 +214,7 @@ function enrollCanvasRoster_(opts) {
     ledger.getRange(2, 1, ledger.getLastRow() - 1, 19).getValues().forEach(r => {
       if (String(r[8] || "").trim().toLowerCase() !== teacherEmail) return;
       if (String(r[12] || "").trim() === "ARCHIVED") return;
-      if (term && String(r[18] || "").trim() && String(r[18]).trim() !== term) return;
+      if (!sameSchoolYearTerm_(r[18], term)) return;
       const account = String(r[1] || "").trim().toLowerCase();
       inTerm[account] = true;
       const assignment = assignments.byStudent[String(r[2] || "").trim()];
@@ -475,13 +475,13 @@ function relabelRosterPeriods_(opts) {
   if (!teacherEmail && registry && registry.getLastRow() > 1) {
     teacherEmail = String(registry.getRange(2, 2).getValue() || "").trim().toLowerCase();
   }
-  const term = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "";
+  const term = currentTerm_();
   const ledger = ss.getSheetByName(cfg.tabs.ledger);
   if (ledger && ledger.getLastRow() > 1) {
     ledger.getRange(2, 1, ledger.getLastRow() - 1, 19).getValues().forEach((r, i) => {
       if (String(r[8] || "").trim().toLowerCase() !== teacherEmail) return;
       if (String(r[12] || "").trim() === "ARCHIVED") return;
-      if (term && String(r[18] || "").trim() && String(r[18]).trim() !== term) return;
+      if (!sameSchoolYearTerm_(r[18], term)) return;
       const account = String(r[1] || "").trim().toLowerCase();
       if (!(account in sectionOf)) { result.notInCanvas++; return; }
       const period = sectionMap[sectionOf[account]] || "";
@@ -555,14 +555,14 @@ function repairRosterDuplicates_(opts) {
     });
   }
 
-  const term = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "";
+  const term = currentTerm_();
   const assignments = readStudentAssignments_(ss);
   const data = ledger.getRange(2, 1, ledger.getLastRow() - 1, 19).getValues();
   const groups = {};
   data.forEach((r, i) => {
     if (String(r[8] || "").trim().toLowerCase() !== teacherEmail) return;
     if (String(r[12] || "").trim() === "ARCHIVED") return;
-    if (term && String(r[18] || "").trim() && String(r[18]).trim() !== term) return;
+    if (!sameSchoolYearTerm_(r[18], term)) return;
     const sid = String(r[2] || "").trim();
     const account = String(r[1] || "").trim().toLowerCase();
     let assignment = assignments.byStudent[sid] || "";

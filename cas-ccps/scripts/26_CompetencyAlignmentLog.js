@@ -285,7 +285,7 @@ const RR_REPORT_TYPE  = 6;
 function generateAlignmentReport() {
   const cfg         = getConfig_();
   const props       = PropertiesService.getScriptProperties();
-  const currentTerm = props.getProperty("CURRENT_TERM") || "All Terms";
+  const currentTerm = currentTerm_() || "All Terms";
   const teacherEmail = cfg.teacherEmail;
   const generatedAt  = new Date();
 
