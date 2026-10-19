@@ -848,3 +848,87 @@ function validateQueueBuild() {
     Logger.log("[VALIDATE] ✓ Queue build verified.");
   }
 }
+
+// ---------------------------------------------------------------------------
+// Off-day warm-ups
+// ---------------------------------------------------------------------------
+// A warm-up queued for a student whose period doesn't meet that day: the
+// split of period 3 into "3-Odd" and "3-Even" (2026-10-19) came after both
+// groups had been queued every day as one DAILY period 3. Such a row is set
+// NOT_MEETING: no flow picks it up, the 3:15 scoring (25) never marks it
+// INCOMPLETE, the Student Dashboard (13) doesn't show it and 34c doesn't
+// count it. A row the student already answered is kept and scored. The
+// student's period is read from the Ledger, so run applyPeriodRelabel()
+// (52) and fix ClassSchedule first. Logs counts only.
+const WQ_NOT_MEETING = "NOT_MEETING";
+
+function previewOffDayWarmUps() {
+  return retireOffDayWarmUps_({ apply: false });
+}
+
+function retireOffDayWarmUps() {
+  return retireOffDayWarmUps_({ apply: true });
+}
+
+function retireOffDayWarmUps_(opts) {
+  opts = opts || {};
+  const apply = opts.apply === true;
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const teacherEmail = String(cfg.teacherEmail || "").trim().toLowerCase();
+  const currentTerm = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "";
+  const result = { apply: apply, checked: 0, retired: 0, answeredKept: 0, unknownPeriod: 0, message: "" };
+
+  // period → day types it meets on (ODD, EVEN, DAILY).
+  const meets = {};
+  const schedule = ss.getSheetByName(cfg.tabs.classSchedule);
+  if (schedule && schedule.getLastRow() > 1) {
+    schedule.getDataRange().getValues().slice(1).forEach(r => {
+      if (String(r[CS_TEACHER_EMAIL] || "").trim().toLowerCase() !== teacherEmail) return;
+      if (String(r[CS_ACTIVE]).trim().toUpperCase() === "FALSE") return;
+      const p = String(r[CS_PERIOD] || "").trim();
+      if (p) (meets[p] = meets[p] || {})[String(r[CS_DAY_TYPE] || "").trim().toUpperCase()] = true;
+    });
+  }
+  // account → current Ledger period.
+  const periodOf = {};
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (ledger && ledger.getLastRow() > 1) {
+    ledger.getDataRange().getValues().slice(1).forEach(r => {
+      if (String(r[LD24_TEACHER_EMAIL] || "").trim().toLowerCase() !== teacherEmail) return;
+      if (String(r[LD24_STATUS] || "").trim() === "ARCHIVED") return;
+      const term = String(r[LD24_TERM] || "").trim();
+      if (currentTerm && term && term !== currentTerm) return;
+      const account = String(r[LD24_GOOGLE_ID] || "").trim().toLowerCase();
+      if (account) periodOf[account] = String(r[LD24_PERIOD] || "").trim();
+    });
+  }
+
+  const wq = ss.getSheetByName(cfg.tabs.warmUpQueue);
+  if (wq && wq.getLastRow() > 1) {
+    const textBox = readWarmUpTextBox_(ss);
+    const rows = wq.getRange(2, 1, wq.getLastRow() - 1, WQ24_COL_COUNT).getValues();
+    rows.forEach((r, i) => {
+      const status = String(r[WQ24_STATUS] || "").trim();
+      if (["PENDING_BRIDGE", "PENDING", "DELIVERED"].indexOf(status) === -1) return;
+      if (String(r[WQ24_TOTAL_SCORE] || "").trim() !== "") return;
+      const dateStr = _normalizeLessonDateCell_(r[WQ24_LESSON_DATE]);
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
+      if (!m) return;
+      result.checked++;
+      const types = meets[periodOf[String(r[WQ24_GOOGLE_ID] || "").trim().toLowerCase()] || ""];
+      if (!types) { result.unknownPeriod++; return; }
+      if (types.DAILY || types[getDayType_(new Date(+m[1], +m[2] - 1, +m[3]))]) return;
+      const tb = textBox[String(r[WQ24_QUEUE_ID] || "").trim()];
+      if (tb && String(tb.row[WTB.RESPONSE] || "").trim()) { result.answeredKept++; return; }
+      result.retired++;
+      if (apply) wq.getRange(i + 2, WQ24_STATUS + 1).setValue(WQ_NOT_MEETING);
+    });
+  }
+  result.message = (apply ? "Set " : "DRY RUN: would set ") + result.retired + " warm-up(s) to " +
+    WQ_NOT_MEETING + " (their period doesn't meet that day) of " + result.checked + " checked; " +
+    result.answeredKept + " already answered, kept; " + result.unknownPeriod +
+    " whose period isn't in ClassSchedule, left alone.";
+  Logger.log("[S24] " + result.message);
+  return result;
+}
