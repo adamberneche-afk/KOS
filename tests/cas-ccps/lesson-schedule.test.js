@@ -23,7 +23,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '22b_Competen
 const EXPOSE = ['seedLessonSchedule', 'scheduledLessonUnit_', 'resolveUnitForCourseDate_', 'buildUpcomingLessonPlan_',
   'seedAssignments_', 'archiveAssignment_', 'recordStudentAssignment_', 'getWarmUpAnchor_', 'PG_HEADERS',
   'LESSON_ASSIGNMENTS', 'seedWarmUpPlan', 'plannedWarmUpUnit_', 'WARMUP_PLAN_SEED', 'plannedWarmUpRow_',
-  'isHalfPeriodRestDay_', 'getPeriodsForDay_'];
+  'isHalfPeriodRestDay_', 'getPeriodsForDay_', 'reviewWarmUpKey_'];
 const TEACHER = 'teacher@ccpsnet.net';
 const PACING = JSON.parse(fs.readFileSync(path.join(ROOT, 'cas-ccps/curriculum/PacingGuide_CAS_Context.json'), 'utf8')).pacing_guide;
 const RUBRICS = JSON.parse(fs.readFileSync(path.join(ROOT, 'cas-ccps/data/CompetencyRubrics.json'), 'utf8')).competency_rubrics;
@@ -132,8 +132,8 @@ test('WarmUpPlan: next week reviews five first-quarter lessons per course, witho
   assert.deepEqual([...days], ['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23']);
   // The lesson for the day is still the scheduled one.
   assert.equal(exported.resolveUnitForCourseDate_('2026-10-19', '8175').lesson_unit_id, '8175-L06');
-  // A day no plan row covers uses the current lesson's seed (Fri 23's row
-  // covers Mon 26, the next weekday; Tue 27 is uncovered).
+  // A day no plan row covers takes a random taught lesson's seed (Fri 23's
+  // row covers Mon 26; Tue 27 is uncovered): here the only dated 8177 lesson.
   assert.match(exported.getWarmUpAnchor_('2026-10-27', 'Sports Entertainment and Event Management').anchor,
     /Starbucks in Richmond/);
 
@@ -241,4 +241,49 @@ test('archiveAssignment_ archives the workspaces for one assignment and its Teac
   assert.equal(sandbox.DriveApp.getFileById(a).isTrashed(), true);
   const tm = matrix.getSheetByName('TeacherMatrix').getRange(2, 1, 2, 12).getValues();
   assert.deepEqual(tm.map((x) => [x[0], x[11]]), [['CAS-S1-U1-8175', 'ARCHIVED'], ['CAS-S1-U1-8177', 'LIVE']]);
+});
+
+function datedLessons(ss, rows) {
+  const sheet = ss.getSheetByName('LessonSchedule');
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues();
+  rows.forEach(([key, date]) => {
+    const i = data.findIndex((r) => r[1] === key);
+    sheet.getRange(i + 2, 4).setValue(date);
+  });
+}
+
+test('random review: a taught lesson, the same for both days of a pair; undated and future lessons never', () => {
+  const { exported, ss } = setup();
+  exported.seedLessonSchedule();
+  datedLessons(ss, [['8175-L01', '2026-08-27'], ['8175-L02', '2026-09-03'], ['8175-L03', '2026-09-10'],
+    ['8175-L09', '2026-11-30']]);
+  const taught = ['8175-L01', '8175-L02', '8175-L03', '8175-L06'];
+  const picks = [];
+  for (let d = 1; d <= 30; d++) {
+    const date = '2026-10-' + String(d).padStart(2, '0');
+    const day = new Date(date + 'T12:00:00').getDay();
+    if (day === 0 || day === 6 || date < '2026-10-08') continue;
+    const k = exported.reviewWarmUpKey_(date, '8175');
+    assert.ok(taught.includes(k), date + ': ' + k + ' was taught by then');
+    picks.push(k);
+  }
+  assert.ok(new Set(picks).size > 1, 'the pick varies');
+  assert.equal(exported.reviewWarmUpKey_('2026-10-20', '8175'), exported.reviewWarmUpKey_('2026-10-19', '8175'),
+    'Tue (even) shares Monday\'s pick');
+  assert.equal(exported.reviewWarmUpKey_('2026-10-26', '8175'), exported.reviewWarmUpKey_('2026-10-23', '8175'),
+    'Mon 26 (even) shares Friday\'s');
+  assert.equal(exported.reviewWarmUpKey_('2026-10-21', '8175'), exported.reviewWarmUpKey_('2026-10-21', '8175'),
+    'the same date always picks the same');
+  assert.equal(exported.reviewWarmUpKey_('2026-08-01', '8175'), '', 'nothing taught yet');
+});
+
+test('a WarmUpPlan row still overrides the random pick', () => {
+  const { exported, ss } = setup();
+  exported.seedLessonSchedule();
+  datedLessons(ss, [['8175-L01', '2026-08-27'], ['8175-L02', '2026-09-03']]);
+  planRows(ss, [['2026-10-21', '8175', '8175-L05']]);
+  assert.equal(exported.plannedWarmUpUnit_('2026-10-21', '8175').lesson_unit_id, '8175-L05');
+  assert.equal(exported.plannedWarmUpUnit_('2026-10-22', '8175').lesson_unit_id, '8175-L05', 'and its pair day');
+  const free = exported.plannedWarmUpUnit_('2026-10-27', '8175').lesson_unit_id;
+  assert.ok(['8175-L01', '8175-L02', '8175-L06'].includes(free));
 });
