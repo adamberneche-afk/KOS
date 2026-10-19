@@ -2,7 +2,7 @@
 
 > **Filed 2026-10-17** from the operator's handoff package. Bugs 1 and 2
 > landed as PR #175 (the patch below, applied unchanged); the queue that
-> uses this document is [`HANDOFF_2026-10-18.md`](./HANDOFF_2026-10-18.md).
+> uses this document is [`HANDOFF_2026-10-19.md`](./HANDOFF_2026-10-19.md).
 > Point-in-time: where it disagrees with the code, the code wins.
 
 Prepared 2026-10-16 from the first live student submission through Flow 2. Covers what broke, why, what we changed, and what is still open. No student names, emails, file IDs or ConfigIDs appear here by design.
@@ -14,7 +14,7 @@ Prepared 2026-10-16 from the first live student submission through Flow 2. Cover
 | 1 | Submit for Feedback fails with "The assignment system didn't answer" | Deploying admin account never approved the new `documents` scope | Fixed operationally 2026-10-15; code hardened in #175 |
 | 2 | Feedback "never landed" in the student's doc | Harvest appended the evaluation at the end of the doc, not in the feedback zone | Fixed in #175 |
 | 3 | Late evaluation leaves ReviewQueue and Ledger at ERROR_TIMEOUT | Backprop only closes rows whose queue status is still `STAGED` | Fixed in the 2026-10-17 bug-3 PR (backprop finishes late rows); the one affected row was repaired by hand on 10-16 |
-| 4 | Flow 2 did not trigger on its own | Not yet diagnosed | Open |
+| 4 | Flow 2 did not trigger on its own | Not yet diagnosed. 2026-10-19: four more timeouts; the Studio starter's settings look right but showed unsaved changes (see `HANDOFF_2026-10-19.md`) | Open, being diagnosed |
 | 5 | Documents not created after a date was added to the schedule | Process gap (not a code bug) | Explained; steps in section 6 |
 
 The code changes are in one patch, `submit-failures.patch`, made against `KOS-main_21.zip`. Final check on a clean extract: 1,678 tests, 0 failures. `gas-lint` (0 errors, 19 warnings) and `doc-currency` (0 errors, 8 warnings) are unchanged from before the patch.
