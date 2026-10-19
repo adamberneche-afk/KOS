@@ -128,8 +128,7 @@ function syncArtifactCompetencies() {
   }
 
   const teacherEmail = cfg.teacherEmail;
-  const currentTerm  = PropertiesService.getScriptProperties()
-    .getProperty("CURRENT_TERM") || "";
+  const currentTerm  = currentTerm_();
 
   Logger.log("[S33] Starting artifact competency sync | Teacher: " + teacherEmail);
 
@@ -210,7 +209,7 @@ function syncArtifactCompetencies() {
 
     if (tEmail !== teacherEmail.toLowerCase()) continue;
     if (status === "ARCHIVED") continue;
-    if (currentTerm && term && term !== currentTerm) continue;
+    if (!sameSchoolYearTerm_(term, currentTerm)) continue;
     if (!fileId || !email) continue;
 
     fileToStudent[fileId]  = { email, period };

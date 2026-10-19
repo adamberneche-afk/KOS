@@ -241,6 +241,8 @@ const SHARED_CONFIG_KEYS = [
   // Research-pivot feature flags (meta/PRD_CAS_RESEARCH_PIVOT.md). Here so
   // one _CONFIG row reaches every project; read through pivotFlagFor_().
   "PIVOT_ARCHETYPE_LOCK",
+  // When each marking period ends; read through currentTerm_().
+  "MARKING_PERIOD_ENDS",
   // Where Flow 2 feedback goes; read through feedbackAsCommentFor_().
   "FEEDBACK_AS_COMMENT",
   // Warm-ups answered on the Student Dashboard; read through
@@ -706,8 +708,72 @@ function _schoolYearOfTerm_(term) {
 }
 
 function _currentSchoolYear_(now) {
-  const term = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM");
-  return _schoolYearOfTerm_(term) || _schoolYearForDate_(now || new Date());
+  return _schoolYearOfTerm_(currentTerm_(now)) || _schoolYearForDate_(now || new Date());
+}
+
+// ---------------------------------------------------------------------------
+// The current term rolls over by date (decision #41, 2026-10-19). A
+// marking period runs through its last day, so the day after one ends
+// belongs to the next ("2627_MP1" through Oct 30, "2627_MP2" from Oct 31).
+// The table is MARKING_PERIOD_ENDS ("2627_MP1=2026-10-30,2627_MP2=..."),
+// a Script Property or a row of the Ledger's _CONFIG tab, else the
+// district calendar below. CURRENT_TERM (setCurrentTerm(), 10) names the
+// school year and the dates pick its marking period; a CURRENT_TERM in
+// another school year, or a date the table doesn't cover (summer), uses
+// CURRENT_TERM as set. Add next year's four ends before August.
+// ---------------------------------------------------------------------------
+const DEFAULT_MARKING_PERIOD_ENDS =
+  "2627_MP1=2026-10-30,2627_MP2=2027-01-22,2627_MP3=2027-03-25,2627_MP4=2027-06-04";
+
+function _markingPeriodEnds_(raw) {
+  return String(raw || "").split(",")
+    .map(function (pair) {
+      const kv = pair.split("=");
+      return { term: String(kv[0] || "").trim().toUpperCase(), end: String(kv[1] || "").trim() };
+    })
+    .filter(function (p) { return MP_TERM_RE_.test(p.term) && /^\d{4}-\d{2}-\d{2}$/.test(p.end); })
+    .sort(function (a, b) { return a.end < b.end ? -1 : a.end > b.end ? 1 : 0; });
+}
+
+function _termForDate_(table, ymd) {
+  for (let i = 0; i < table.length; i++) {
+    if (ymd <= table[i].end) return table[i].term;
+  }
+  return "";
+}
+
+function currentTerm_(now) {
+  const props = PropertiesService.getScriptProperties();
+  let raw = props.getProperty("MARKING_PERIOD_ENDS");
+  if (!raw) {
+    try { raw = _resolveConfigValues_().values.MARKING_PERIOD_ENDS; } catch (e) { raw = ""; }
+  }
+  let table = _markingPeriodEnds_(raw);
+  if (!table.length) table = _markingPeriodEnds_(DEFAULT_MARKING_PERIOD_ENDS);
+  const date = now ? new Date(now) : new Date();
+  const set = String(props.getProperty("CURRENT_TERM") || "").trim();
+  // Before the table's first school year starts (August), it doesn't apply.
+  const firstYear = _schoolYearOfTerm_(table[0].term);
+  if (firstYear && _schoolYearForDate_(date) < firstYear) return set;
+  // The district's time zone, fixed (Session needs a scope two projects lack).
+  const byDate = _termForDate_(table, Utilities.formatDate(date, "America/New_York", "yyyy-MM-dd"));
+  // CURRENT_TERM names the school year; the dates pick the marking period in
+  // it. A CURRENT_TERM in another school year was set on purpose and wins.
+  if (!byDate || (set && _schoolYearOfTerm_(set) && _schoolYearOfTerm_(set) !== _schoolYearOfTerm_(byDate))) return set;
+  return byDate;
+}
+
+// Whether a row's term is in the current term's school year. Courses run all
+// year, so a student enrolled in MP1 is still enrolled in MP2: the marking
+// period only labels the row. Terms with no readable year compare exactly;
+// a blank on either side matches, as before.
+function sameSchoolYearTerm_(rowTerm, currentTerm) {
+  const a = String(rowTerm || "").trim();
+  const b = String(currentTerm || "").trim();
+  if (!a || !b) return true;
+  const ya = _schoolYearOfTerm_(a);
+  const yb = _schoolYearOfTerm_(b);
+  return ya && yb ? ya === yb : a === b;
 }
 
 function _rowSchoolYear_(row) {
