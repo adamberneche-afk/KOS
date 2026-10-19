@@ -870,6 +870,8 @@ function generateDailyPrimer() {
     const quality     = _primerDataQuality_(vectorState);
     const vision       = props.getProperty(CFG.PROP.VISION_90_DAY) || 'Not defined';
     const blocks = _primerBlocks_(_onboardingStatusLine_(props), vision, vectorState, shadowState, quality);
+    // SMP-019: the moral debt counter, under the onboarding line (23_MoralDebt.gs).
+    blocks.splice(1, 0, { kind: 'p', text: moralDebtLine_(props, now) });
     const title  = 'DAILY PRIMER — ' + dateStr;
     const stamp  = _briefingStamp_(now, 'generateDailyPrimer');
 

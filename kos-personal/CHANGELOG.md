@@ -1,6 +1,17 @@
 # KOS Changelog
 
 
+### SMP-019: the moral debt counter (2026-10-19)
+
+Decision #3. Each PROCEED at an ALIGNMENT mandatory pause adds 1 to a
+counter that halves every 7 days (`23_MoralDebt.gs`). The intake
+(`sensor1_scanInboundSessions`) reads a new log's closeout Alignment block
+and counts the literal word PROCEED, once per log. The primer carries a
+`Moral debt:` line under the onboarding line; the Project instructions
+have the start briefing quote it and every mandatory pause state it, and
+at 3.0 (`MORAL_DEBT_MUSE_AT`) MUSE offers alternatives before the
+operator answers. The log format now records each pause's answer as one
+word. `previewMoralDebt()` shows the value; `resetMoralDebt()` zeroes it.
 ### Deploy_Trigger needs an APPROVED row; intervention triage is anonymous (2026-10-19)
 
 From the 10-19 decision-register session. Decision #12: ticking
