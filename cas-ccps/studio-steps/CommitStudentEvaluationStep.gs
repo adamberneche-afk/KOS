@@ -261,26 +261,31 @@ function writeCompetencyEvidence_(ledgerSsId, configId, studentEmail, studentFil
   var now = new Date();
 
   ["1", "2", "3", "4"].forEach(function (n) {
-    var competencyId = competencyIds[n];
+    // A milestone that holds several competencies lists them all
+    // ("8175-51, 8175-49"); its outcome is evidence for each.
+    var ids = String(competencyIds[n] || "").split(",")
+      .map(function (s) { return s.trim(); }).filter(Boolean);
     var outcome = outcomesParsed ? outcomesParsed[n] : null;
-    if (!competencyId || !outcome) {
+    if (!ids.length || !outcome) {
       skipped++;
       return;
     }
-    rows.push([
-      "EVD-" + Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd") + "-" + randomToken_(6),
-      studentEmail,
-      competencyId,
-      milestoneTexts[n],
-      outcome,
-      configId,
-      now,
-      studentFileId,
-      "", // archive_status — blank until _archiveExpiredCompetencyEvidence_()
-          // ages it out, or reactivateCompetencyEvidence_() clears it back
-          // (30_SCRSuggestionEngine.js, roadmap 2.2)
-    ]);
-    written++;
+    ids.forEach(function (competencyId) {
+      rows.push([
+        "EVD-" + Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd") + "-" + randomToken_(6),
+        studentEmail,
+        competencyId,
+        milestoneTexts[n],
+        outcome,
+        configId,
+        now,
+        studentFileId,
+        "", // archive_status — blank until _archiveExpiredCompetencyEvidence_()
+            // ages it out, or reactivateCompetencyEvidence_() clears it back
+            // (30_SCRSuggestionEngine.js, roadmap 2.2)
+      ]);
+      written++;
+    });
   });
 
   if (rows.length > 0) {

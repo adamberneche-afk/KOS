@@ -322,23 +322,28 @@ function writeCompetencyEvidenceFromFlow2_(studentEmail, configId, studentFileId
   const now = new Date();
 
   ["1", "2", "3", "4"].forEach((milestoneNum) => {
-    const competencyId = competencyIds && competencyIds[milestoneNum];
+    // A milestone that holds several competencies lists them all
+    // ("8175-51, 8175-49"); its outcome is evidence for each (2026-10-19).
+    const ids = String((competencyIds && competencyIds[milestoneNum]) || "")
+      .split(",").map((s) => s.trim()).filter(Boolean);
     const outcome = milestoneOutcomes && milestoneOutcomes[milestoneNum];
-    if (!competencyId || !outcome) {
+    if (!ids.length || !outcome) {
       skipped++;
       return;
     }
     const milestoneText = (milestoneTexts && milestoneTexts[milestoneNum]) || "";
-    rows.push([
-      _generateEvidenceId_(now), studentEmail, competencyId, milestoneText,
-      // archive_status starts blank — see 30_SCRSuggestionEngine.js's
-      // _archiveExpiredCompetencyEvidence_()/reactivateCompetencyEvidence_
-      // (roadmap 2.2). Must stay byte-identical with
-      // CommitStudentEvaluationStep.gs's writer — see
-      // tests/cas-ccps/competency-evidence-schema-compat.test.js.
-      outcome, configId || "", now, studentFileId || "", "",
-    ]);
-    written++;
+    ids.forEach((competencyId) => {
+      rows.push([
+        _generateEvidenceId_(now), studentEmail, competencyId, milestoneText,
+        // archive_status starts blank — see 30_SCRSuggestionEngine.js's
+        // _archiveExpiredCompetencyEvidence_()/reactivateCompetencyEvidence_
+        // (roadmap 2.2). Must stay byte-identical with
+        // CommitStudentEvaluationStep.gs's writer — see
+        // tests/cas-ccps/competency-evidence-schema-compat.test.js.
+        outcome, configId || "", now, studentFileId || "", "",
+      ]);
+      written++;
+    });
   });
 
   if (rows.length > 0) {

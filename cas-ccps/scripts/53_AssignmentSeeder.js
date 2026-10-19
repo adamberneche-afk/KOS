@@ -13,6 +13,8 @@
  * and the roster import had no Config ID.
  *
  *   previewAssignmentSeed()  lists what would be written. Changes nothing.
+ *   previewAssignmentRefresh() / refreshAssignments()  bring rows already in
+ *                            the TeacherMatrix up to the repo's criteria.
  *   seedAssignments()        writes them: one LIVE row per unit and course,
  *                            with its prompt-template Doc, in the matrix
  *                            MatrixRegistry names for this teacher (adding
@@ -135,6 +137,93 @@ function seedAssignments_(opts) {
  * 55b) for a course: { a, configId }, "OTHER_COURSE" for a lesson of the
  * other course, or null.
  */
+// ---------------------------------------------------------------------------
+// Refresh: an assignment already in the TeacherMatrix is never written again
+// by seedAssignments(), so a fix to its criteria in the repo never reached it
+// (2026-10-19: L07 graded peer replies Flow 2 can't see, and two of its
+// competencies had no criteria). This rewrites the milestones, the
+// Definition of Done and the milestone competency IDs of each row whose
+// ConfigID the repo knows, where they differ. Flow 2 reads them when a
+// student submits (37), so the next submission uses them; a FlowInput row
+// already written keeps its text. Nothing else in the row changes.
+//
+//   previewAssignmentRefresh()  lists each row that would change, and which
+//                               fields. Changes nothing.
+//   refreshAssignments()        writes them.
+// ---------------------------------------------------------------------------
+const AS_REFRESH_COLS_ = { MILESTONES: 4, DOD: 8, COMP_IDS: 15 }; // 0-based, AS_TAB_HEADERS
+
+function previewAssignmentRefresh() {
+  return refreshAssignments_({ apply: false });
+}
+
+function refreshAssignments() {
+  return refreshAssignments_({ apply: true });
+}
+
+/** ConfigID -> repo assignment, for every lesson and unit the repo has. */
+function _asByConfigId_() {
+  const out = {};
+  const lessons = typeof LESSON_ASSIGNMENTS !== "undefined" ? LESSON_ASSIGNMENTS : {};
+  Object.keys(lessons).forEach(k => { out[lessonConfigId_(k)] = lessons[k]; });
+  Object.keys(UNIT_ASSIGNMENTS).forEach(k => {
+    const a = UNIT_ASSIGNMENTS[k];
+    const cut = k.lastIndexOf("_");
+    out[assignmentConfigId_(k.slice(0, cut), k.slice(cut + 1))] = a;
+  });
+  return out;
+}
+
+function refreshAssignments_(opts) {
+  const apply = !!(opts && opts.apply === true);
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const result = { apply: apply, changed: [], unchanged: 0, notInRepo: 0, message: "" };
+  const matrix = _asTeacherMatrix_(ss, cfg);
+  const sheet = matrix.ss && matrix.ss.getSheetByName("TeacherMatrix");
+  if (!sheet || sheet.getLastRow() < 2) {
+    result.message = "No TeacherMatrix rows for this teacher. Nothing to refresh.";
+    Logger.log("[S53] " + result.message);
+    return result;
+  }
+  const repo = _asByConfigId_();
+  const width = AS_REFRESH_COLS_.COMP_IDS + 4;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(width, sheet.getLastColumn())).getValues();
+  rows.forEach((r, i) => {
+    const configId = String(r[0]).trim();
+    const a = repo[configId];
+    if (!a) { result.notInRepo++; return; }
+    const fields = [];
+    const want = {
+      milestones: a.milestones.slice(0, 4),
+      dod: a.definitionOfDone,
+      ids: a.milestoneCompetencyIds.slice(0, 4).map(v => v || ""),
+    };
+    const have = {
+      milestones: r.slice(AS_REFRESH_COLS_.MILESTONES, AS_REFRESH_COLS_.MILESTONES + 4).map(v => String(v).trim()),
+      dod: String(r[AS_REFRESH_COLS_.DOD]).trim(),
+      ids: r.slice(AS_REFRESH_COLS_.COMP_IDS, AS_REFRESH_COLS_.COMP_IDS + 4).map(competencyIdText_),
+    };
+    if (want.milestones.some((m, j) => m.trim() !== have.milestones[j])) fields.push("milestones");
+    if (want.dod.trim() !== have.dod) fields.push("definition of done");
+    if (want.ids.some((m, j) => m !== have.ids[j])) fields.push("competency IDs");
+    if (!fields.length) { result.unchanged++; return; }
+    result.changed.push({ configId: configId, unitName: a.unitName, fields: fields.join(", ") });
+    if (!apply) return;
+    const at = i + 2;
+    sheet.getRange(at, AS_REFRESH_COLS_.MILESTONES + 1, 1, 5).setValues([want.milestones.concat([want.dod])]);
+    // Text first: Sheets reads "8175-1" as a date (competencyIdText_, 32).
+    const ids = sheet.getRange(at, AS_REFRESH_COLS_.COMP_IDS + 1, 1, 4);
+    ids.setNumberFormat("@");
+    ids.setValues([want.ids]);
+  });
+  result.message = (apply ? "Refreshed " : "DRY RUN: would refresh ") + result.changed.length +
+    " assignment(s) from the repo (" + (result.changed.map(c => c.configId + ": " + c.fields).join("; ") || "none") +
+    "); " + result.unchanged + " already current, " + result.notInRepo + " not from the repo (left alone).";
+  Logger.log("[S53] " + result.message);
+  return result;
+}
+
 function _asAssignment_(id, code) {
   const lessons = typeof LESSON_ASSIGNMENTS !== "undefined" ? LESSON_ASSIGNMENTS : {};
   if (lessons[id]) {
