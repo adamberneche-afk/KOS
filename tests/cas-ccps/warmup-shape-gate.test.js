@@ -145,7 +145,7 @@ test('34c counts fallbacks; 33 stamps a stop with its reason', () => {
   ret.appendRow([new Date(now.getTime() - 3600 * 1000), 3, 'Q1', 'x', 'HARVESTED', 1, 'ANCHOR_FALLBACK: is a list']);
   ret.appendRow([new Date(now.getTime() - 3600 * 1000), 3, 'Q2', 'x', 'HARVESTED', 1, '']);
   const p = env.exported.overnightHealth_(now).problems.join('\n');
-  assert.match(p, /wasn't a warm-up, replaced by the teacher's own question, in the last 24 hours: 1/);
+  assert.match(p, /went out as the teacher's own question in the last 24 hours: 1/);
   assert.match(p, /3:05 artifact sync \(33\): ran with status NO_MATRIX_ID \(set the TEACHER_MATRIX_SS_ID/);
 
   const s33 = loadGasFiles([path.join(CC, '00_SharedConfig.js'), path.join(CC, '33_ArtifactCompetencyBridge.js')],
