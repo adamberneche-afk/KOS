@@ -469,11 +469,9 @@ function registerLedger_(cfg, googleId, studentName, configId, fileId,
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
 
-  // AcademicYear populated from CURRENT_TERM Script Property
-  // Admin sets this before each term (e.g. "2025-26 S1")
+  // AcademicYear: the current marking period (currentTerm_(), 00), by date.
   // Allows per-term dashboard filtering and end-of-term archiving
-  const currentTerm = PropertiesService.getScriptProperties()
-                        .getProperty("CURRENT_TERM") || "";
+  const currentTerm = currentTerm_();
 
   sheet.appendRow([
     new Date(),    // 0  Timestamp

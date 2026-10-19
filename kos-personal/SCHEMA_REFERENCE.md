@@ -308,10 +308,10 @@ mutation.
 | H | Notes | String | Context about why this mutation is proposed |
 | I | Filed_By | String | Who filed the mutation (persona or operator) |
 | J | Filed_Date | DateTime | When it was filed |
-| K | Status | String | STAGED_FOR_REVIEW, DEPLOYED, FAILED |
+| K | Status | String | STAGED_FOR_REVIEW, APPROVED (set by the operator), DEPLOYED, FAILED |
 | L | Deploy_Trigger | Boolean | Set to TRUE to execute the mutation (triggers onGovernanceEdit) |
 
-**Deploy_Trigger behavior:** Setting column L to TRUE while the spreadsheet is open triggers the `onGovernanceEdit` installable trigger. KOS reads the row, runs `applyMutation()` on the target document, and sets Status to DEPLOYED. The checkbox resets to FALSE whether the mutation succeeds or fails.
+**Deploy_Trigger behavior:** Setting column L to TRUE while the spreadsheet is open triggers the `onGovernanceEdit` installable trigger. It acts only on a row whose Status is `APPROVED` (decision #12, 2026-10-19); any other row, a `DEPLOYED` or `FAILED` one included, is refused with a toast and its checkbox reset. To deploy, set Status to `APPROVED`, then tick the box; to retry a failed row, set it to `APPROVED` again. KOS reads the row, runs `applyMutation()` on the target document, and sets Status to DEPLOYED. The checkbox resets to FALSE whether the mutation succeeds or fails.
 
 ---
 

@@ -163,8 +163,7 @@ function onLessonContextSubmit_(payload) {
   }
 
   // ── Resolve term ──────────────────────────────────────────────────────────
-  const currentTerm = PropertiesService.getScriptProperties()
-    .getProperty("CURRENT_TERM") || "";
+  const currentTerm = currentTerm_();
 
   // ── Deduplication: supersede existing RECEIVED row for same slot ──────────
   // Same teacher + date + period = same lesson slot. If resubmitting,

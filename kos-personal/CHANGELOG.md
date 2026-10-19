@@ -12,6 +12,18 @@ have the start briefing quote it and every mandatory pause state it, and
 at 3.0 (`MORAL_DEBT_MUSE_AT`) MUSE offers alternatives before the
 operator answers. The log format now records each pause's answer as one
 word. `previewMoralDebt()` shows the value; `resetMoralDebt()` zeroes it.
+### Deploy_Trigger needs an APPROVED row; intervention triage is anonymous (2026-10-19)
+
+From the 10-19 decision-register session. Decision #12: ticking
+Deploy_Trigger used to deploy any Blackboard or CE-LOG row at once, an
+already-deployed one included. `onGovernanceEdit` (`6_Governance.gs`) now
+deploys only a row whose Status is `APPROVED`; any other row is refused
+with a toast, its checkbox reset and nothing written. Decision #5: the
+Registrar's `intervention_triage` names a role, course and period, never a
+name, ID or grade. The Stage 1 prompt says so (re-paste it into the
+flow), and `_anonymousTriage_` (`11_Registrar_CogRelay.gs`) keeps the
+role to a fixed list and scrubs emails, ID-length numbers and percentages
+from the kill-switch alert and the briefing. The alert links the file.
 
 ### The 21-day onboarding can be closed out (2026-10-13)
 
