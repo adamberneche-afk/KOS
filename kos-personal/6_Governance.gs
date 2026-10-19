@@ -141,6 +141,8 @@ function installGovernanceTrigger() {
  * Fires when any cell in BRAIN_TRUST_INDEX is edited.
  * Exits immediately unless the edit is in the Deploy_Trigger
  * column (col 12) of the Blackboard sheet and the value is TRUE.
+ * A row whose Status (col 11) is not APPROVED is refused: the
+ * checkbox is reset and nothing is written.
  *
  * When triggered:
  *   1. Reads the full Blackboard row for mutation parameters.
@@ -160,6 +162,8 @@ function installGovernanceTrigger() {
  *
  * @param {GoogleAppsScript.Events.SheetsOnEdit} e  Edit event.
  */
+const GOV_APPROVED_STATUS = 'APPROVED';
+
 function onGovernanceEdit(e) {
   if (!e || !e.range) return;
 
@@ -180,6 +184,18 @@ function onGovernanceEdit(e) {
   const findStr     = String(data[4] || '').trim();  // col E = Find_String
   const payload     = String(data[5] || '').trim();  // col F = Replace_Payload
   const status_col  = 11;  // col K
+
+  // Decision #12 (2026-10-19): a checkbox alone is too easy to tick by
+  // accident, and used to deploy any row, a DEPLOYED one again included.
+  // The operator approves a row by setting Status to APPROVED; only then
+  // does the checkbox deploy it. Anything else is refused and left as it was.
+  const status = String(data[10] || '').trim().toUpperCase();
+  if (status !== GOV_APPROVED_STATUS) {
+    sheet.getRange(row, 12).setValue(false);
+    e.source.toast('Not deployed: set Status to ' + GOV_APPROVED_STATUS + ' first (it is ' +
+      (status || 'blank') + ').', 'Governance Engine', 8);
+    return;
+  }
 
   try {
     if (!targetDocId) throw new Error('Target_Doc_ID (col A) is blank.');
