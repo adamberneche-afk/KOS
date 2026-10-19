@@ -154,6 +154,47 @@ test('buildFlowInputRows: resolves the full 3-hop chain into one flat FlowInput 
   assert.equal(row[exported.FI.GEMINI_FULL_OUTPUT], '');
 });
 
+// Flow 2's Studio starter never fired on an appended row in 40 days, and
+// fired at once when ReadyStatus was retyped (2026-10-19). So the row goes
+// in with a blank status and READY follows as its own edit; a row an
+// earlier run left blank is set READY on the next run.
+test('buildFlowInputRows: READY is written as an edit after the row is appended, and a blank row is healed', () => {
+  const { exported, sandbox } = load();
+  const ledgerSs = setUpCentralLedger(sandbox);
+  setUpConfig(sandbox, ledgerSs);
+  const doc = sandbox.DocumentApp.create('Student Doc');
+  ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(
+    stagingRow({ studentFileId: doc.getId(), configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' }));
+  ledgerSs.getSheetByName('Ledger').appendRow(ledgerRow({ googleId: 'student@example.com', configId: 'VDOE-ABC-2026',
+    fileId: doc.getId(), teacherEmail: 'teacher@example.com' }, exported));
+  ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
+  setUpTeacherMatrix(sandbox, 'matrix-ss-1').getSheetByName('TeacherMatrix')
+    .appendRow(teacherMatrixRow({ configId: 'VDOE-ABC-2026', c1: 'COMP-1' }));
+
+  // Watch what status each FlowInput row is appended with.
+  const appended = [];
+  const sheetProto = Object.getPrototypeOf(ledgerSs.insertSheet('probe'));
+  const realAppend = sheetProto.appendRow;
+  sheetProto.appendRow = function (row) {
+    if (this.getName() === 'FlowInput' && this.getLastRow() > 0) appended.push(row[exported.FI.READY_STATUS]);
+    return realAppend.call(this, row);
+  };
+  try {
+  exported.buildFlowInputRows();
+  const fi = ledgerSs.getSheetByName('FlowInput');
+  assert.deepEqual(appended, [''], 'appended with a blank status');
+  assert.equal(fi.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'READY', 'then set READY');
+
+  // A run that stopped between the two writes leaves a blank row: the next run sets it.
+  fi.getRange(2, exported.FI.READY_STATUS + 1).setValue('');
+  exported.buildFlowInputRows();
+  assert.equal(fi.getLastRow(), 2, 'not rebuilt');
+  assert.equal(fi.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'READY');
+  } finally {
+    sheetProto.appendRow = realAppend;
+  }
+});
+
 test('buildFlowInputRows: a real student\'s workspace ID finds its assignment through StudentAssignments', () => {
   // The Ledger and staging carry the student's own workspace ID (VDOE-…);
   // the TeacherMatrix row is the assignment's (CAS-…). Looking the matrix up
