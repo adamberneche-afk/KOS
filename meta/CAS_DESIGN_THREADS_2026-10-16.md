@@ -2,7 +2,7 @@
 
 > **Filed 2026-10-17** from the operator's 2026-10-16 handoff package.
 > Suggestions only; nothing here is built. Where it sits in the order of
-> work: [`HANDOFF_2026-10-18.md`](./HANDOFF_2026-10-18.md).
+> work: [`HANDOFF_2026-10-19.md`](./HANDOFF_2026-10-19.md).
 
 Prepared 2026-10-16. Suggestions only; nothing here is built. These threads come from questions about aggregating student data across curriculum and courses, about a portable personal knowledge portfolio, and about rolling out lessons and distributing documents. They sit on top of the authenticity and process-trace suggestions in the Cognitive Exhaust document. Student data stays out of any analysis shared with Claude: only structure, counts and metrics.
 
