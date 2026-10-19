@@ -238,6 +238,8 @@ function _dashOwnWarmUps_(ss, cfg, googleId, tz) {
     const docId = String(row[DASH_WQ_DOC_ID] || "").trim();
     const tb = textBox[queueId] || null;
     if (!queueId || (!docId && !tb)) return; // not delivered yet
+    // NOT_MEETING (24): queued for a day the student's period doesn't meet.
+    if (String(row[DASH_WQ_STATUS] || "").trim() === "NOT_MEETING") return;
     const lessonDate = dashIsoDate_(row[DASH_WQ_LESSON_DATE], tz);
     if (!lessonDate) return;
     out.push({ queueId: queueId, sheetRow: i + 2, row: row, tb: tb, docId: docId, lessonDate: lessonDate });
