@@ -35,6 +35,11 @@ operator. This file holds what comes after them.
   "no readable date" and never says the column is missing. It should
   name the header it looked for. 2026-10-17.
 
+- **Assignments that aren't a document.** Some of the week's assignments
+  are on paper or don't fit a doc, so CAS has no record of them; L07 is the
+  last doc assignment of the week of Oct 19. Come back to these if time
+  allows (operator, 2026-10-19).
+
 ### Design threads (suggestions; nothing built)
 
 - **Thread A: cross-course mastery map, remediation and anchors.** Start

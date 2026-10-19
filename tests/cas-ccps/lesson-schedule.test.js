@@ -22,7 +22,8 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '22b_Competen
   '55b_LessonAssignmentData.js', '55_LessonSchedule.js'].map(S);
 const EXPOSE = ['seedLessonSchedule', 'scheduledLessonUnit_', 'resolveUnitForCourseDate_', 'buildUpcomingLessonPlan_',
   'seedAssignments_', 'archiveAssignment_', 'recordStudentAssignment_', 'getWarmUpAnchor_', 'PG_HEADERS',
-  'LESSON_ASSIGNMENTS', 'seedWarmUpPlan', 'plannedWarmUpUnit_', 'WARMUP_PLAN_SEED'];
+  'LESSON_ASSIGNMENTS', 'seedWarmUpPlan', 'plannedWarmUpUnit_', 'WARMUP_PLAN_SEED', 'plannedWarmUpRow_',
+  'isHalfPeriodRestDay_', 'getPeriodsForDay_'];
 const TEACHER = 'teacher@ccpsnet.net';
 const PACING = JSON.parse(fs.readFileSync(path.join(ROOT, 'cas-ccps/curriculum/PacingGuide_CAS_Context.json'), 'utf8')).pacing_guide;
 const RUBRICS = JSON.parse(fs.readFileSync(path.join(ROOT, 'cas-ccps/data/CompetencyRubrics.json'), 'utf8')).competency_rubrics;
@@ -131,8 +132,9 @@ test('WarmUpPlan: next week reviews five first-quarter lessons per course, witho
   assert.deepEqual([...days], ['2026-10-19', '2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23']);
   // The lesson for the day is still the scheduled one.
   assert.equal(exported.resolveUnitForCourseDate_('2026-10-19', '8175').lesson_unit_id, '8175-L06');
-  // A day with no plan row uses the current lesson's seed.
-  assert.match(exported.getWarmUpAnchor_('2026-10-26', 'Sports Entertainment and Event Management').anchor,
+  // A day no plan row covers uses the current lesson's seed (Fri 23's row
+  // covers Mon 26, the next weekday; Tue 27 is uncovered).
+  assert.match(exported.getWarmUpAnchor_('2026-10-27', 'Sports Entertainment and Event Management').anchor,
     /Starbucks in Richmond/);
 
   // Re-seeding adds nothing and keeps the teacher's change; a bad key is ignored.
@@ -146,7 +148,51 @@ test('WarmUpPlan: next week reviews five first-quarter lessons per course, witho
   ss2.getSheetByName('WarmUpPlan').getRange(2, 3).setValue('8175-L07');
   ss2.getSheetByName('WarmUpPlan').getRange(3, 3).setValue('8177-brand-board');
   assert.equal(fresh.plannedWarmUpUnit_('2026-10-19', '8175').lesson_unit_id, '8175-L07');
-  assert.equal(fresh.plannedWarmUpUnit_('2026-10-20', '8175'), null, 'an 8177 lesson on an 8175 row is skipped');
+  assert.equal(fresh.plannedWarmUpUnit_('2026-10-20', '8175').lesson_unit_id, '8175-L07',
+    'an 8177 lesson on an 8175 row is skipped, so the 19th\'s row covers the 20th');
+});
+
+function planRows(ss, rows) {
+  const sheet = ss.insertSheet('WarmUpPlan');
+  sheet.appendRow(['date', 'course', 'lesson_key', 'notes']);
+  rows.forEach((r) => sheet.appendRow(r));
+}
+
+test('WarmUpPlan pairs: a row covers its date and the next weekday, so ODD and EVEN classes share a warm-up', () => {
+  const { exported, ss } = setup();
+  planRows(ss, [['2026-10-19', '8175', '8175-L01'], ['2026-10-21', '8175', '8175-L03'],
+    ['2026-10-23', '8175', '8175-L05']]);
+  const row = (d) => { const r = exported.plannedWarmUpRow_(d, '8175'); return r && [r.date, r.key]; };
+  assert.deepEqual(row('2026-10-19'), ['2026-10-19', '8175-L01']);
+  assert.deepEqual(row('2026-10-20'), ['2026-10-19', '8175-L01'], 'Tue: Monday\'s row');
+  assert.deepEqual(row('2026-10-21'), ['2026-10-21', '8175-L03'], 'a row on its own date wins');
+  assert.deepEqual(row('2026-10-26'), ['2026-10-23', '8175-L05'], 'Mon: Friday\'s row');
+  assert.equal(row('2026-10-27'), null);
+  assert.equal(exported.plannedWarmUpRow_('2026-10-20', '8177'), null, 'per course');
+  const marketing = 'Sports Entertainment and Event Marketing';
+  assert.equal(exported.getWarmUpAnchor_('2026-10-20', marketing).anchor,
+    exported.getWarmUpAnchor_('2026-10-19', marketing).anchor);
+});
+
+test('DAILY_HALF: meets every day, a new warm-up on the first day of each pair only', () => {
+  const { exported, ss } = setup();
+  const schedule = [['teacher_email', 'period', 'day_type', 'course_name', 'active'],
+    [TEACHER, '1', 'DAILY_HALF', 'Sports Entertainment and Event Marketing', 'TRUE'],
+    [TEACHER, '2', 'EVEN', 'Sports Entertainment and Event Marketing', 'TRUE']];
+  assert.deepEqual(exported.getPeriodsForDay_(schedule, TEACHER, 'ODD').map((p) => [p.period, p.dayType]),
+    [['1', 'DAILY_HALF']]);
+  assert.deepEqual(exported.getPeriodsForDay_(schedule, TEACHER, 'EVEN').map((p) => p.period), ['1', '2']);
+
+  const restIn = (env) => (d) => env.isHalfPeriodRestDay_(d, new Date(d + 'T12:00:00'), '8175');
+  // No plan: an odd date starts a pair.
+  assert.deepEqual(['2026-10-19', '2026-10-20', '2026-10-21'].map(restIn(exported)), [false, true, false]);
+  // With a plan: the row's own date starts it, the next weekday rests, even
+  // where that disagrees with the date's parity (rows on even dates here).
+  const planned = setup();
+  planRows(planned.ss, [['2026-10-20', '8175', '8175-L01'], ['2026-10-22', '8175', '8175-L03']]);
+  assert.deepEqual(['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23', '2026-10-26']
+    .map(restIn(planned.exported)), [false, true, false, true, true],
+    'Mon 26: no row covers it, so the date decides (even: rest)');
 });
 
 test('the lesson builder drafts each course\'s scheduled lesson', () => {
