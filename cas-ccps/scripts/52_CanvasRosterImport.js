@@ -403,7 +403,7 @@ function _criCourseByPeriod_(ss, cfg, teacherEmail) {
   if (!sheet || sheet.getLastRow() < 2) return out;
   sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues().forEach(r => {
     if (String(r[0] || "").trim().toLowerCase() !== teacherEmail) return;
-    if (String(r[4] || "TRUE").trim().toUpperCase() === "FALSE") return;
+    if (r[4] === false || String(r[4]).trim().toUpperCase() === "FALSE") return; // a typed FALSE is boolean false
     const p = String(r[1] || "").trim();
     const name = String(r[3] || "").trim();
     if (!p || !name) return;
