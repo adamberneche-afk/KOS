@@ -939,7 +939,9 @@ function _collectScheduleCompact_(ui, props, ss, teacherEmail) {
     "One period per line (or separate entries with \";\" if this box " +
     "won't keep your line breaks).\n\n" +
     "DAYTYPE values:\n" +
-    "  DAILY — meets every school day (Period 1)\n" +
+    "  DAILY — meets every school day\n" +
+    "  DAILY_HALF — meets every school day for half the time, at the\n" +
+    "         ODD/EVEN periods' pace: a new warm-up every other day\n" +
     "  ODD   — meets on odd calendar days (1st, 3rd, 5th...)\n" +
     "  EVEN  — meets on even calendar days (2nd, 4th, 6th...)\n\n" +
     "Two courses in the same period at once? Enter it twice, once per " +
@@ -994,8 +996,8 @@ function _collectScheduleCompact_(ui, props, ss, teacherEmail) {
       const courseName = line.substring(colonIdx2 + 1).trim();
 
       if (!period)     { errors.push("'" + line + "' — period cannot be blank"); continue; }
-      if (!["DAILY","ODD","EVEN"].includes(dayType)) {
-        errors.push("'" + line + "' — day type must be DAILY, ODD, or EVEN (got: " + dayType + ")");
+      if (!["DAILY","DAILY_HALF","ODD","EVEN"].includes(dayType)) {
+        errors.push("'" + line + "' — day type must be DAILY, DAILY_HALF, ODD, or EVEN (got: " + dayType + ")");
         continue;
       }
       if (!courseName) { errors.push("'" + line + "' — course name cannot be blank"); continue; }
