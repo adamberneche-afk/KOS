@@ -3568,3 +3568,28 @@ kind of failure every morning.
   `meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md` records the lean option.
 - **Tests:** `warmup-text-box.test.js` (a blank `teacher_name` delivers),
   `overnight-health.test.js`, `warmup-flow-pacing.test.js`.
+
+## Monday's first warm-ups: a shape gate on Flow 3, 2026-10-19
+
+- **What LAST NIGHT showed.** Monday's 38 dropped warm-ups never returned
+  after their two retries (those students had the warm-up on the board).
+  Tuesday's batch, built under #193's pacing, came through whole. But 18 of
+  the 126 delivered warm-ups were not warm-ups: the Flow 3 prompt echoed back
+  (instructions, the student's name and competency gaps), a third-person
+  description of it, or a list of its fields. Each passed
+  `_wfbCheckPlausible_`, which only asks that output share words with the
+  input. The 3:05 artifact sync recorded no run.
+- **Shape gate** (41). `wfbWarmUpShapeProblem_` refuses output carrying the
+  prompt's headings or vocabulary (`ADAPTATION CONSTRAINTS`, "archetype",
+  "warm-up prompt"...), a competency code, a list, or over 900 characters.
+  `wfbApplyFlow3_` then delivers the teacher's `warmup_anchor` unchanged
+  instead, and the harvest notes `ANCHOR_FALLBACK: <why>` on the return row;
+  with no anchor the return fails as `NOT_A_WARMUP`.
+  `repairWarmUpTextBox()` (Central Ledger, Run menu) applies the same check
+  to rows already delivered, replacing unanswered ones with the anchor.
+- **34c** counts fallbacks in the last day as a LAST NIGHT line.
+- **33** stamps its stage when it stops early, with a `NO_*` status naming
+  why (`NO_MATRIX_ID`, `NO_MATRIX_TAB`, `NO_MATRIX_ACCESS`, a missing tab),
+  so LAST NIGHT says why instead of "no run recorded".
+- **Tests:** `warmup-shape-gate.test.js`; `artifact-sync-cron-health.test.js`
+  now expects the stop's stamp.
