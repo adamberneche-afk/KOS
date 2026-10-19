@@ -149,3 +149,13 @@ test('Flow 3 with the flag on: a blank teacher_name still delivers (no folder is
   const res = fx.exported.wfbApplyFlow3_(fx.wq, fx.exported.wfbFindQueueRow_(fx.wq, 'WQ-U'), 'WQ-U', RAW);
   assert.equal(res.error, 'FOLDER_PATH_FIELDS_MISSING');
 });
+
+test('a NOT_MEETING warm-up (24: its period does not meet that day) is never scored INCOMPLETE', () => {
+  const fx = setup('all');
+  deliver(fx, 'WQ-N', daysAgoStr(1));
+  fx.exported._registerDeliveredWarmUps_();
+  fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).setValue('NOT_MEETING');
+  fx.exported.runWarmUpEvaluation();
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'NOT_MEETING');
+  assert.equal(fx.wr.getRange(2, fx.exported.WR_TOTAL_SCORE + 1).getValue(), '');
+});

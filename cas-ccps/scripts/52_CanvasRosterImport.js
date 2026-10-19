@@ -427,6 +427,85 @@ function _criSectionCourse_(section, period, courseByPeriod) {
 }
 
 // ================================================================
+// RELABEL — a changed period for students already enrolled
+// ================================================================
+
+function previewPeriodRelabel() {
+  return relabelRosterPeriods_({ apply: false });
+}
+
+/**
+ * Sets the Block and Period on this teacher's Ledger rows this term (not
+ * ARCHIVED) to the period CanvasSectionMap now gives the student's Canvas
+ * section, where they differ. Enrollment skips students it already has, so
+ * a period changed in the map reaches them only through this (2026-10-19:
+ * period 3 split into "3-Odd" and "3-Even", two cross-listed sections that
+ * meet on alternate days). Safe to run again. Logs counts per old → new
+ * period only, never accounts.
+ */
+function applyPeriodRelabel() {
+  return relabelRosterPeriods_({ apply: true });
+}
+
+function relabelRosterPeriods_(opts) {
+  opts = opts || {};
+  const apply = opts.apply === true;
+  const cfg = getConfig_();
+  const result = { apply: apply, files: 0, changed: 0, unchanged: 0, notInCanvas: 0, unmapped: 0,
+    moves: {}, message: "" };
+  const files = _criFindExports_(cfg);
+  result.files = files.length;
+  if (!files.length) {
+    result.message = "No Canvas gradebook export (.csv with \"Grades\" in the name) found. Nothing changed.";
+    Logger.log("[S52] " + result.message);
+    return result;
+  }
+  // Each account's section; the first export a student appears in wins, as
+  // in enrollment.
+  const sectionOf = {};
+  files.forEach(file => {
+    _criParseGradebook_(file.getBlob().getDataAsString("UTF-8")).forEach(s => {
+      if (s.account && !(s.account in sectionOf)) sectionOf[s.account] = s.section;
+    });
+  });
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sectionMap = _criSectionMap_(ss, Object.keys(sectionOf).map(a => sectionOf[a]));
+  let teacherEmail = String(cfg.teacherEmail || "").trim().toLowerCase();
+  const registry = ss.getSheetByName(cfg.tabs.matrixRegistry);
+  if (!teacherEmail && registry && registry.getLastRow() > 1) {
+    teacherEmail = String(registry.getRange(2, 2).getValue() || "").trim().toLowerCase();
+  }
+  const term = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "";
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (ledger && ledger.getLastRow() > 1) {
+    ledger.getRange(2, 1, ledger.getLastRow() - 1, 19).getValues().forEach((r, i) => {
+      if (String(r[8] || "").trim().toLowerCase() !== teacherEmail) return;
+      if (String(r[12] || "").trim() === "ARCHIVED") return;
+      if (term && String(r[18] || "").trim() && String(r[18]).trim() !== term) return;
+      const account = String(r[1] || "").trim().toLowerCase();
+      if (!(account in sectionOf)) { result.notInCanvas++; return; }
+      const period = sectionMap[sectionOf[account]] || "";
+      if (!period) { result.unmapped++; return; }
+      const current = String(r[11] || "").trim();
+      if (current === period) { result.unchanged++; return; }
+      const move = (current || "(blank)") + " → " + period;
+      result.moves[move] = (result.moves[move] || 0) + 1;
+      result.changed++;
+      if (!apply) return;
+      // Ledger Block (col 6) and Period (col 12), as intakeStudent_ (02) wrote them.
+      ledger.getRange(i + 2, 6).setNumberFormat("@").setValue(period);
+      ledger.getRange(i + 2, 12).setNumberFormat("@").setValue(period);
+    });
+  }
+  result.message = (apply ? "Relabeled " : "DRY RUN: would relabel ") + result.changed + " Ledger row(s); " +
+    result.unchanged + " already right, " + result.notInCanvas + " not in any export, " + result.unmapped +
+    " in a section with no period.";
+  Logger.log("[S52] " + result.message);
+  Object.keys(result.moves).forEach(m => Logger.log("[S52]   period " + m + ": " + result.moves[m]));
+  return result;
+}
+
+// ================================================================
 // REPAIR — duplicate workspaces from re-runs before StudentAssignments
 // ================================================================
 
