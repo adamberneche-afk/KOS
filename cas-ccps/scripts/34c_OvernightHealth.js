@@ -158,7 +158,8 @@ function _onWarmUpCounts_(ss, today, tomorrow) {
     const date = _onDateStr_(r[dateCol]);
     const status = String(r[statusCol] || "").trim();
     const bucket = date === today ? out.today : (date === tomorrow ? out.tomorrow : null);
-    if (bucket) {
+    // NOT_MEETING (24): queued for a day the period doesn't meet; not a warm-up.
+    if (bucket && status !== "NOT_MEETING") {
       bucket.total++;
       if (ON_DELIVERED.indexOf(status) >= 0) bucket.delivered++;
       else if (status === "ERROR") bucket.error++;
