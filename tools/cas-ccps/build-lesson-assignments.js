@@ -23,7 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { load, COURSES, milestones, PERSONAS } = require('./build-unit-rubrics.js');
+const { load, COURSES, milestones, evidenceLines, PERSONAS } = require('./build-unit-rubrics.js');
 
 const ROOT = path.join(__dirname, '..', '..');
 const LESSONS = path.join(ROOT, 'cas-ccps', 'curriculum', 'lessons');
@@ -125,6 +125,23 @@ function reviewFile() {
   ].join('\n');
 }
 
+/**
+ * The teacher's grading notes, less what Flow 2 can't see. It reads only the
+ * student's doc, so a note about work done elsewhere (L07's "reply to two
+ * classmates" on the discussion board) would fail every student; that part
+ * is graded by the teacher in Canvas.
+ */
+const ELSEWHERE = /peer repl|repl(y|ies) to .*classmates|classmates'? posts/i;
+
+function gradable(grading) {
+  const lines = String(grading || '').split('\n');
+  const kept = lines.filter((l) => !ELSEWHERE.test(l));
+  const note = kept.length < lines.length
+    ? ['', 'Peer replies are graded by the teacher outside this document. Do not look for them here or count their absence.']
+    : [];
+  return kept.concat(note).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}
+
 function definitionOfDone(a, comps, grading, vocab) {
   return [
     'ASSIGNMENT: ' + a.unitName,
@@ -134,9 +151,9 @@ function definitionOfDone(a, comps, grading, vocab) {
     'CRITERIA',
     ...comps.flatMap((r) => [
       '- ' + (r.competency_id ? r.competency_id + ' ' : '') + String(r.competency_text).replace(/\.$/, '') + '.',
-      ...(r.demonstration_indicators || []).map((ind) => '    * Evidence of ' + ind),
+      ...evidenceLines(r),
     ]),
-    ...(grading ? ['', 'TEACHER GRADING NOTES', grading] : []),
+    ...(gradable(grading) ? ['', 'TEACHER GRADING NOTES', gradable(grading)] : []),
     '',
     'PASSING STANDARD',
     'The work passes when it completes every part of the assignment above, in the student\'s own words, ' +

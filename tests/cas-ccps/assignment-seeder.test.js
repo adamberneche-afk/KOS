@@ -85,11 +85,12 @@ test('SEED_UNITS chooses the units when set', () => {
   assert.deepEqual(r.planned.map((p) => p.configId), ['CAS-S1-U2-8175', 'CAS-S1-U2-8177']);
 });
 
+// A milestone holding several competencies lists them all (2026-10-19).
 test('every generated assignment has four milestones and a competency on the first', () => {
   const { exported } = setup();
   Object.entries(exported.UNIT_ASSIGNMENTS).forEach(([key, a]) => {
     assert.equal(a.milestones.length, 4, key);
     assert.ok(a.milestones.every(Boolean), key);
-    assert.match(a.milestoneCompetencyIds[0], /^817[57]-\d+$/, key);
+    assert.match(a.milestoneCompetencyIds[0], /^817[57]-\d+(, 817[57]-\d+)*$/, key);
   });
 });
