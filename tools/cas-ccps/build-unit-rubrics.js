@@ -97,7 +97,7 @@ function unitRubric(unit, code, rubrics, decks) {
         return [
         '- ' + r.competency_id + ' ' + text + '.' +
           (standard && standard.toLowerCase() !== text.toLowerCase() ? ' Standard: ' + standard + '.' : ''),
-        ...(r.demonstration_indicators || []).map((ind) => '    * Evidence of ' + ind),
+        ...evidenceLines(r),
         ];
       }),
     ]),
@@ -190,6 +190,26 @@ const PERSONAS = {
  * product and the vocabulary), or the list split into four runs. Each
  * milestone's competency ID is its first competency's.
  */
+/**
+ * A competency's criteria lines. The state indicators, each once (17 records
+ * repeat one). When the only indicator is the competency's own wording (22
+ * records, e.g. 8175-6 conflict resolution), Flow 2 had nothing specific to
+ * look for; the state task list's definition says what the work must show.
+ */
+function evidenceLines(r) {
+  const text = String(r.competency_text || '').replace(/\.$/, '').trim().toLowerCase();
+  const inds = (r.demonstration_indicators || []).filter((ind, i, all) => all.indexOf(ind) === i);
+  const thin = !inds.length || inds.every((ind) => String(ind).replace(/\.$/, '').trim().toLowerCase() === text);
+  if (thin && r.definition) return ['    * ' + String(r.definition).trim()];
+  return thin ? [] : inds.map((ind) => '    * Evidence of ' + ind);
+}
+
+/**
+ * The milestone lines. Flow 2 has four milestone slots. With more than four
+ * competencies, a milestone holds several, and its competency ID cell lists
+ * all of them ("8175-51, 8175-49") so its result counts as evidence for each
+ * (15c's writeCompetencyEvidenceFromFlow2_), not only the first.
+ */
 function milestones(comps, workProduct, vocab) {
   const line = (r) => (r.competency_id ? r.competency_id + ' ' : '') + r.competency_text.replace(/\.$/, '').trim() + '.';
   const out = [];
@@ -204,7 +224,7 @@ function milestones(comps, workProduct, vocab) {
   } else {
     for (let i = 0; i < 4; i++) {
       const run = comps.slice(Math.floor(i * comps.length / 4), Math.floor((i + 1) * comps.length / 4));
-      out.push({ text: run.map(line).join(' '), id: (run.find((r) => r.competency_id) || {}).competency_id || '' });
+      out.push({ text: run.map(line).join(' '), id: run.map((r) => r.competency_id).filter(Boolean).join(', ') });
     }
   }
   return { milestones: out.map((m) => m.text), milestoneCompetencyIds: out.map((m) => m.id) };
@@ -286,4 +306,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, buildData, unitRubric, load, COURSES, milestones, PERSONAS };
+module.exports = { build, buildData, unitRubric, load, COURSES, milestones, evidenceLines, PERSONAS };
