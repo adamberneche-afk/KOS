@@ -10,7 +10,8 @@
 //
 // WHAT IT DOES:
 //   1. Determines tomorrow's date and day type (ODD / EVEN)
-//   2. Reads ClassSchedule for periods meeting tomorrow (day_type match + DAILY)
+//   2. Reads ClassSchedule for periods meeting tomorrow (day_type match +
+//      DAILY + DAILY_HALF; a DAILY_HALF period skips the second day of a pair)
 //   3. For each matching period:
 //      a. Finds LessonContext row for teacher + period + tomorrow's date
 //      b. Reads full competency texts from CompetencyRegistry
@@ -192,6 +193,12 @@ function buildWarmUpQueues() {
 
   for (const periodInfo of meetingPeriods) {
     const { period, courseName } = periodInfo;
+    if (periodInfo.dayType === "DAILY_HALF" &&
+        isHalfPeriodRestDay_(tomorrowStr, tomorrow, courseCodeFromName_(courseName))) {
+      Logger.log("[S24] Period " + period + " (" + courseName + ") is DAILY_HALF and " + tomorrowStr +
+                 " is the second day of its warm-up: no new one (the card shows yesterday's reply box).");
+      continue;
+    }
     const isShared   = shared.has(period);
     const courseCode = isShared ? courseCodeFromName_(courseName) : "";
     const slotKey    = lessonPeriodKey_(period, courseName, isShared);
@@ -466,13 +473,28 @@ function getPeriodsForDay_(scheduleData, teacherEmail, dayType) {
     if (tEmail !== teacherEmail.toLowerCase()) continue;
     if (active === "FALSE") continue;
 
-    // DAILY always meets; ODD/EVEN match the computed day type
-    if (dType === "DAILY" || dType === dayType) {
-      periods.push({ period, courseName: course });
+    // DAILY and DAILY_HALF always meet; ODD/EVEN match the computed day type
+    if (dType === "DAILY" || dType === "DAILY_HALF" || dType === dayType) {
+      periods.push({ period, courseName: course, dayType: dType });
     }
   }
 
   return periods;
+}
+
+// ---------------------------------------------------------------------------
+// DAILY_HALF periods
+// A period that meets every day for half the time, at the same pace as the
+// ODD/EVEN periods (2026-10-19: period 1). It gets a new warm-up on the first
+// day of each pair and none on the second, when the Student Dashboard shows
+// the first day's score and feedback with its extra-credit reply box. The
+// pair is the WarmUpPlan row covering the date (55) when there is one, so the
+// warm-up matches the ODD and EVEN classes'; otherwise an odd date starts it.
+// ---------------------------------------------------------------------------
+function isHalfPeriodRestDay_(dateStr, date, courseCode) {
+  const row = typeof plannedWarmUpRow_ === "function" && courseCode ? plannedWarmUpRow_(dateStr, courseCode) : null;
+  if (row) return row.date !== dateStr;
+  return getDayType_(date) !== "ODD";
 }
 
 // ---------------------------------------------------------------------------
@@ -918,7 +940,7 @@ function retireOffDayWarmUps_(opts) {
       result.checked++;
       const types = meets[periodOf[String(r[WQ24_GOOGLE_ID] || "").trim().toLowerCase()] || ""];
       if (!types) { result.unknownPeriod++; return; }
-      if (types.DAILY || types[getDayType_(new Date(+m[1], +m[2] - 1, +m[3]))]) return;
+      if (types.DAILY || types.DAILY_HALF || types[getDayType_(new Date(+m[1], +m[2] - 1, +m[3]))]) return;
       const tb = textBox[String(r[WQ24_QUEUE_ID] || "").trim()];
       if (tb && String(tb.row[WTB.RESPONSE] || "").trim()) { result.answeredKept++; return; }
       result.retired++;
