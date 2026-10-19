@@ -877,7 +877,9 @@ function wfbHarvestUnderLock_(result) {
     }
 
     if (outcome.ok) {
-      wfbMarkReturn_(returns, sheetRow, "HARVESTED", "", attempts);
+      // A fallback is delivered, but noted so 34c can count it.
+      wfbMarkReturn_(returns, sheetRow, "HARVESTED",
+        outcome.fallback ? WFB_ANCHOR_FALLBACK + ": " + outcome.fallback : "", attempts);
       wfbConsumeInputRow_(ctx.ss, flow, queueId);
       result.applied++;
       continue;
@@ -968,17 +970,33 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
   const teacherName = lesson.teacher_name || "";
   const period = lesson.period != null ? String(lesson.period) : "";
 
-  // Plausibility gate BEFORE any Drive work — a fabricated warm-up prompt
-  // is the assignment text the student actually responds to, and the doc
-  // this creates can't cheaply be un-created (see the existingDocId guard
-  // above: a second attempt after a doc already exists is refused for
-  // exactly that reason).
-  const plausibility = _wfbCheckPlausible_(lesson, raw);
-  if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
+  // Shape gate first: output that is the prompt itself, a description of it
+  // or a list of its fields is never shown. The teacher's own anchor goes
+  // out instead, and the harvest records the fallback (34c counts it).
+  let fallback = "";
+  const shape = wfbWarmUpShapeProblem_(raw);
+  if (shape) {
+    const anchor = String(lesson.warmup_anchor || "").trim();
+    if (!anchor) return { ok: false, error: "NOT_A_WARMUP: " + shape };
+    raw = anchor;
+    fallback = shape;
+  } else {
+    // Plausibility gate BEFORE any Drive work — a fabricated warm-up prompt
+    // is the assignment text the student actually responds to, and the doc
+    // this creates can't cheaply be un-created (see the existingDocId guard
+    // above: a second attempt after a doc already exists is refused for
+    // exactly that reason).
+    const plausibility = _wfbCheckPlausible_(lesson, raw);
+    if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
+  }
 
   // The text box needs no folder, so the folder-path fields are checked only
   // for a doc. Checked first, a blank teacher_name failed every warm-up.
-  if (courseName && warmUpTextBoxFor_(courseName)) return wfbDeliverToTextBox_(wqSheet, found, queueId, raw);
+  if (courseName && warmUpTextBoxFor_(courseName)) {
+    const delivered = wfbDeliverToTextBox_(wqSheet, found, queueId, raw);
+    if (fallback) delivered.fallback = fallback;
+    return delivered;
+  }
 
   if (!adminRoot || !courseName || !teacherName || !period) {
     return { ok: false, error: "FOLDER_PATH_FIELDS_MISSING" };
@@ -1027,7 +1045,71 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
   wqSheet.getRange(found.sheetRow, WQ25_DOC_URL + 1).setValue(file.getUrl());
   wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("DELIVERED");
   SpreadsheetApp.flush();
-  return { ok: true };
+  return fallback ? { ok: true, fallback: fallback } : { ok: true };
+}
+
+// ── Shape gate (Flow 3) ──────────────────────────────────────────────────────
+//
+// 2026-10-19: 18 of the first 126 delivered warm-ups were not warm-ups: the
+// Flow 3 prompt echoed back, a third-person description of it, or a list of
+// its fields. Each passed _wfbCheckPlausible_, which only asks that the
+// output share words with the input, and a copy of the input shares all of
+// them. A warm-up is a few sentences to the student, so anything carrying
+// the prompt's own headings or vocabulary, a list, or a page of text is
+// refused here.
+const WFB_WARMUP_MAX_CHARS = 900;
+const WFB_WARMUP_PROMPT_MARKERS = [
+  "you are personalizing", "adaptation constraints", "output format",
+  "teacher's anchor prompt", "student context", "archetype",
+  "warm-up prompt", "warmup prompt", "competency gap",
+];
+const WFB_ANCHOR_FALLBACK = "ANCHOR_FALLBACK";
+
+/** @returns {string} why the text isn't a warm-up, or "" if it is one. */
+function wfbWarmUpShapeProblem_(text) {
+  const t = String(text || "").trim();
+  if (t.length > WFB_WARMUP_MAX_CHARS) return "longer than " + WFB_WARMUP_MAX_CHARS + " characters";
+  const lower = t.toLowerCase();
+  const marker = WFB_WARMUP_PROMPT_MARKERS.find(function (m) { return lower.indexOf(m) !== -1; });
+  if (marker) return "contains the prompt's own wording (\"" + marker + "\")";
+  if (/\b8\d{3}-\d{1,2}\b/.test(t)) return "names a competency code";
+  if (/^\s*(?:[-*\u2022]|\d+[.)])\s+/m.test(t)) return "is a list";
+  return "";
+}
+
+/**
+ * Operator entry point (Central Ledger, Run menu). Replaces every warm-up
+ * already in WarmUpTextBox that fails the shape gate with the teacher's
+ * anchor from its WarmUpQueue snapshot, for rows the student hasn't answered
+ * yet. Answered rows are counted, not changed. Logs counts only.
+ */
+function repairWarmUpTextBox() {
+  const ctx = wfbLedger_();
+  const sheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpTextBox);
+  const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
+  const result = { checked: 0, replaced: 0, answeredSkipped: 0, noAnchor: 0 };
+  if (!sheet || !wqSheet || sheet.getLastRow() < 2) {
+    Logger.log("[WFB] repairWarmUpTextBox: " + JSON.stringify(result));
+    return result;
+  }
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, WTB_HEADERS.length).getValues();
+  rows.forEach(function (r, i) {
+    result.checked++;
+    if (!wfbWarmUpShapeProblem_(r[WTB.WARMUP])) return;
+    if (String(r[WTB.RESPONSE] || "").trim()) { result.answeredSkipped++; return; }
+    const found = wfbFindQueueRow_(wqSheet, String(r[WTB.QUEUE_ID]).trim());
+    let anchor = "";
+    if (!found) { result.noAnchor++; return; }
+    try {
+      anchor = String(JSON.parse(String(found.row[WQ25_LESSON_CTX_SNAP] || "{}")).warmup_anchor || "").trim();
+    } catch (e) { anchor = ""; }
+    if (!anchor) { result.noAnchor++; return; }
+    sheet.getRange(i + 2, WTB.WARMUP + 1).setValue(sheetSafeText_(anchor));
+    result.replaced++;
+  });
+  SpreadsheetApp.flush();
+  Logger.log("[WFB] repairWarmUpTextBox: " + JSON.stringify(result));
+  return result;
 }
 
 // WARMUP_TEXT_BOX (00): the warm-up goes on the Student Dashboard instead of

@@ -104,6 +104,16 @@ const SP33_COMPETENCIES_ADDRESSED = 5; // per-student after this script runs
 // Students who completed fewer assignments have narrower coverage.
 // Students who completed makeup work get credit for those competencies.
 // ---------------------------------------------------------------------------
+// A run that stops before syncing still stamps its stage, with a NO_*
+// status naming why, so 34c reports the reason instead of "no run recorded"
+// (2026-10-19: the first night with the trigger installed recorded nothing).
+function s33Stopped_(status) {
+  PropertiesService.getScriptProperties().setProperties({
+    "M2_STAGE1B_LAST_RUN": new Date().toISOString(),
+    "M2_STAGE1B_STATUS":   status
+  });
+}
+
 function syncArtifactCompetencies() {
   const cfg = getConfig_();
 
@@ -130,16 +140,16 @@ function syncArtifactCompetencies() {
   const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
   const spSheet      = ss.getSheetByName(cfg.tabs.studentProfiles);
 
-  if (!ledgerSheet)  { Logger.log("[S33] Ledger tab not found.");          return; }
-  if (!stagingSheet) { Logger.log("[S33] STAGING_PIPELINE tab not found."); return; }
-  if (!spSheet)      { Logger.log("[S33] StudentProfiles tab not found.");  return; }
+  if (!ledgerSheet)  { Logger.log("[S33] Ledger tab not found.");          return s33Stopped_("NO_LEDGER_TAB"); }
+  if (!stagingSheet) { Logger.log("[S33] STAGING_PIPELINE tab not found."); return s33Stopped_("NO_STAGING_TAB"); }
+  if (!spSheet)      { Logger.log("[S33] StudentProfiles tab not found.");  return s33Stopped_("NO_PROFILES_TAB"); }
 
   // Load Teacher Matrix from teacher's own spreadsheet (not on Central Ledger)
   const matrixSsId = PropertiesService.getScriptProperties()
     .getProperty("TEACHER_MATRIX_SS_ID");
   if (!matrixSsId) {
     Logger.log("[S33] TEACHER_MATRIX_SS_ID not set — cannot read competency tags.");
-    return;
+    return s33Stopped_("NO_MATRIX_ID");
   }
 
   let matrixData;
@@ -148,12 +158,12 @@ function syncArtifactCompetencies() {
     const matrixSheet = matrixSs.getSheetByName("TeacherMatrix");
     if (!matrixSheet) {
       Logger.log("[S33] TeacherMatrix sheet not found in matrix spreadsheet.");
-      return;
+      return s33Stopped_("NO_MATRIX_TAB");
     }
     matrixData = matrixSheet.getDataRange().getValues();
   } catch(e) {
     Logger.log("[S33] Cannot open Teacher Matrix: " + e.message);
-    return;
+    return s33Stopped_("NO_MATRIX_ACCESS");
   }
 
   // ── Build configId → competency_ids map from Teacher Matrix ───────────────
