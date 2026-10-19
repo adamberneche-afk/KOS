@@ -1,8 +1,8 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-12)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-19)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-18.md`](../meta/HANDOFF_2026-10-18.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-19.md`](../meta/HANDOFF_2026-10-19.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
@@ -36,8 +36,14 @@
 >   (feedback as comments, off by default; "Feedback as comments" below) and
 >   #181 (the nightly lesson rollout, shadow first; "Nightly lesson rollout"
 >   below).
-> - **Not yet reported:** a submission with Flow 2 starting by itself. The
->   order is in `meta/HANDOFF_2026-10-18.md`.
+> - **2026-10-18/19: everything merged through #206 is pushed**, #179–#181
+>   included (the lesson rollout is in shadow). Steps 17c–17e ran live on
+>   2026-10-19: period 3 split into `3-Odd`/`3-Even`, period 1 `DAILY_HALF`,
+>   and the Ledger cycle installed (`installLedgerCycle()` took over 9
+>   triggers; `registerDeliveredWarmUps` had never had a Ledger trigger).
+> - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4,
+>   four timeouts on 10-19; the Studio starter is being checked). The
+>   order is in `meta/HANDOFF_2026-10-19.md`.
 > - **After any manifest scope change** to a web app that runs as the deploying
 >   admin (both dashboards): run any function from that project's editor and
 >   approve every prompt, then test one submit, before a class depends on it.
