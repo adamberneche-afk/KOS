@@ -167,6 +167,12 @@ function sensor1_scanInboundSessions() {
         const n = _chunkAndQueue(rawText, 'SESSION_LOG', logUUID, rawFolder, staging, ss);
         queued += n;
 
+        // SMP-019: the log's PROCEED answers add to the moral debt counter
+        // (23_MoralDebt.gs). After the duplicate guard, so a log counts once.
+        try { recordMoralDebt_(rawText, new Date()); } catch (mdErr) {
+          _reportError('sensor1:moralDebt:' + file.getName(), mdErr, null);
+        }
+
         // Move source to _PROCESSED — excluded from all future scans
         file.moveTo(processedFolder);
         _clearSensor1Failure_(file.getId());
