@@ -202,14 +202,29 @@ function _pfCheckSelfHealingTab_(ss, tabName, expectedMinCols, healer) {
 
 function _pfCheckTrigger_(handlerName, installer, purpose) {
   let installed = 0;
+  let cycle = 0;
   try {
     ScriptApp.getProjectTriggers().forEach(function (t) {
       if (t.getHandlerFunction() === handlerName) installed++;
+      if (t.getHandlerFunction() === "runLedgerCycle") cycle++;
     });
   } catch (e) {
     return {
       ok: true, label: 'Trigger: ' + handlerName,
       detail: 'Could not read project triggers (' + e.message + ') — not treated as a failure.',
+    };
+  }
+  // 64_LedgerCycle.js: a job the Ledger cycle runs has no trigger of its own.
+  const inCycle = cycle > 0 && typeof lcRecordedJobs_ === "function" &&
+    lcRecordedJobs_(PropertiesService.getScriptProperties()).indexOf(handlerName) !== -1;
+  if (inCycle && installed === 0) {
+    return { ok: true, label: 'Trigger: ' + handlerName, detail: purpose + ', run by runLedgerCycle (64).' };
+  }
+  if (inCycle) {
+    return {
+      ok: false, label: 'Trigger: ' + handlerName,
+      detail: 'Has its own trigger and is also run by runLedgerCycle, so it runs twice. Run ' +
+        'installLedgerCycle() again to take the trigger over.',
     };
   }
   if (installed === 0) {
