@@ -139,7 +139,8 @@ test('getPriorWarmUpResponse_: a Date-coerced lesson_date cell (Sheets auto-conv
 // ── shared periods (8175 and 8177 in the same period, different students) ──
 
 function loadShared() {
-  return loadGasFiles([LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
+  const shared = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+  return loadGasFiles([shared, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
     'findLesson_', 'getEnrolledStudents_', 'sharedPeriods_', 'lessonPeriodKey_', 'courseCodeFromName_',
   ]);
 }
