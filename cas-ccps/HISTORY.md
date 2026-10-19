@@ -3631,3 +3631,21 @@ kind of failure every morning.
   first day's feedback and extra-credit reply box. With no plan row, an odd
   date starts a pair. `DAILY` keeps a warm-up every day.
 - **Tests:** `lesson-schedule.test.js` (pairs, `DAILY_HALF`).
+
+## Flow 3: the anchor when Studio never returns, 2026-10-19
+
+- **What Studio's run history showed.** Besides the 3:31–3:32 burst
+  ("Couldn't access the spreadsheet", fixed by #193's pacing), Gemini
+  refused three Flow 3 prompts ("Couldn't complete this type of request"),
+  and the retried rows from Sunday never started a run at all. A dropped or
+  refused job had no warm-up.
+- **Fallback** (41). `wfbFallbackExhaustedInputs_`, run by
+  `buildWarmUpFlowInputs`, delivers the teacher's `warmup_anchor` for a Flow
+  3 input still `READY` with no return after every retry, while its lesson
+  date hasn't passed and its queue row is `PENDING`; it notes
+  `ANCHOR_FALLBACK: no return from Studio ...` in WarmUpFlowReturn and
+  consumes the input. `wfbApplyFlow3_` takes the reason as a fifth argument
+  and skips the output gates for it. LAST NIGHT's fallback line now covers
+  both causes.
+- **Tests:** `warmup-flow-pacing.test.js`; `flow-fixtures.test.js` loads 23
+  (`formatDateYMD_`).
