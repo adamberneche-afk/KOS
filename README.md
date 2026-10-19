@@ -232,6 +232,17 @@ promotes web apps in place with `clasp update-deployment`, so `/exec` URLs
 never change. See the
 [clasp-sync README](./tools/clasp-sync/README.md#runjs--the-same-push-from-cmdexe).
 
+## [`tools/student-data-scan/`](./tools/student-data-scan/) — finds student data, says where but not what
+
+Reports student-shaped data (student-domain addresses, ID-shaped
+addresses, and with `--roster` the names in a Canvas export kept on the
+operator's machine) by path, line, kind and a hash, never the text, so its
+output is safe in a CI log or an agent session. `--history` scans every
+blob in git history. Matches confirmed not to be student data are
+allowlisted by hash in `allow.json`. Added 2026-10-19 so the repo can stay
+public after a scrub; not yet a CI gate. See
+[`tools/student-data-scan/README.md`](./tools/student-data-scan/README.md).
+
 ## [`tools/watchdog/`](./tools/watchdog/check.js) — scheduled-job watchdog
 
 Catches the failure mode a red X can't: an invalid `.github/workflows/*.yml`
@@ -369,7 +380,7 @@ per-session vector classification and its backfill
 the size-capped error digest (`error-digest.test.js`),
 the Registrar's stage validators (`registrar-validators.test.js`), its anonymous intervention triage (a role and a link; emails, IDs and percentages scrubbed: `registrar-anonymous-triage.test.js`), and Deploy_Trigger deploying only an APPROVED Blackboard row (`governance-deploy-guard.test.js`);
 `tests/tools/` covers
-the deploy script `tools/clasp-sync/run.js` against a fake clasp (promote, head-only, rollback, the `--zip` extractor, the stale-copy check, and its manifest matching `run.ps1` and `project-map.json`: `clasp-run.test.js`), the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the generated cas-ccps unit rubrics, lesson assignments, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `lesson-assignments.test.js`, `canvas-cartridge.test.js`), LeaderHub's retired spring-2026 default deadlines (`retired-default-deadlines.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the `leaderhub-build` drift gate, and the split script's
+the deploy script `tools/clasp-sync/run.js` against a fake clasp (promote, head-only, rollback, the `--zip` extractor, the stale-copy check, and its manifest matching `run.ps1` and `project-map.json`: `clasp-run.test.js`), the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the student-data scan reporting locations and hashes only (`student-data-scan.test.js`), the generated cas-ccps unit rubrics, lesson assignments, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `lesson-assignments.test.js`, `canvas-cartridge.test.js`), LeaderHub's retired spring-2026 default deadlines (`retired-default-deadlines.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 
