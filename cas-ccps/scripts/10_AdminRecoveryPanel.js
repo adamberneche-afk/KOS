@@ -750,7 +750,7 @@ function runSystemHealthCheck() {
     if (s === "ARCHIVED")  lArchived++;
     if (s.startsWith("ERROR") || s === "FLAGGED") lFlagged++;
   }
-  const currentTerm = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "(not set)";
+  const currentTerm = currentTerm_() || "(not set)";
 
   // Same reasoning as autoHealthAlert() above — archive first, so the
   // retention health check below reflects current-after-archival reality
@@ -868,6 +868,8 @@ function resendStudentDocLink() {
 // dropdowns. The format is the school year plus the marking period,
 // "2627_MP1" (MP 1-4; decided 2026-10-12). Changing it at a new marking
 // period hides no one: the dashboards show the whole school year by default.
+// Since 2026-10-19 the term follows the marking-period dates (currentTerm_(),
+// 00); this property is the fallback for a date they don't cover (summer).
 // ---------------------------------------------------------------------------
 function setCurrentTerm() {
   const ui  = SpreadsheetApp.getUi();
@@ -877,7 +879,10 @@ function setCurrentTerm() {
     "Set Current Term",
     "Enter the school year and marking period, like 2627_MP1\n" +
     "(2627 is the 2026-27 school year; MP is 1 to 4).\n\n" +
-    "Current term: " + cur + "\n\n" +
+    "CURRENT_TERM: " + cur + "\n" +
+    "Term in use today: " + (currentTerm_() || "(not set)") + "\n" +
+    "During the school year the term follows the marking-period dates (MARKING_PERIOD_ENDS);\n" +
+    "CURRENT_TERM is used only on a date those don't cover.\n\n" +
     "Students registered or imported after this change are tagged with the new term.\n" +
     "Existing rows keep theirs, and the dashboards still show the whole school year.",
     ui.ButtonSet.OK_CANCEL

@@ -154,7 +154,7 @@ Council cog verdict        COG_VERDICT  (submitCogVerdict(), skips PENDING_FLOW/
 | `generateDailyPrimer` | Daily 06:00 | Creates the session starter doc; rewrites `KOS_LATEST_PRIMER` and the three briefing docs |
 | `autoCouncilCheck` | Every 2 hours | Generates a Seven Bridges stimulus when the session threshold is met — the operator still fans it out |
 | `sensor3_externalTelemetry` | onChange | Watches BRAIN_TRUST_INDEX for external data |
-| `onGovernanceEdit` | onEdit | Watches Blackboard Deploy_Trigger checkbox |
+| `onGovernanceEdit` | onEdit | Watches Blackboard Deploy_Trigger checkbox; deploys only a row whose Status is APPROVED |
 | `runRegistrarIntake` | Daily 01:00 | Scans 09_Unclassified_Curriculum_Drafts for new files |
 | `runRegistrarMicrobatch` | Every 15 min | Registrar concurrency gate + stale-row reset |
 | `runRegistrarProcessor` | Every 10 min | Registrar validation, translation, and routing |

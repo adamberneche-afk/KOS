@@ -199,8 +199,7 @@ function _registerDeliveredWarmUps_() {
 
   const ss           = SpreadsheetApp.openById(cfg.ledgerSsId);
   const teacherEmail = cfg.teacherEmail;
-  const currentTerm  = PropertiesService.getScriptProperties()
-    .getProperty("CURRENT_TERM") || "";
+  const currentTerm  = currentTerm_();
 
   const wqSheet  = ss.getSheetByName(cfg.tabs.warmUpQueue);
   const wrSheet  = ss.getSheetByName(cfg.tabs.warmUpRegistry);
@@ -967,7 +966,7 @@ function writeFeedbackToDoc_(fileId, feedbackText, wordCountScore,
 function generateWarmUpReport() {
   const cfg          = getConfig_();
   const props        = PropertiesService.getScriptProperties();
-  const currentTerm  = props.getProperty("CURRENT_TERM") || "All Terms";
+  const currentTerm  = currentTerm_() || "All Terms";
   const teacherEmail = cfg.teacherEmail;
   const generatedAt  = new Date();
 
