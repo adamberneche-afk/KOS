@@ -22,7 +22,7 @@
 //     with nothing in WarmUpFlowReturn, Flow 2 FlowInput rows still READY
 //     after 15 minutes (open bug 4)
 //   - warm-up returns that FAILED or need attention in the last 24 hours
-//   - Flow 3 output replaced by the teacher's anchor (41's shape gate)
+//   - warm-ups delivered as the teacher's anchor (41: junk output, or no return)
 // With no problem and nothing unreadable, one all-clear line says what ran.
 //
 // DATA BOUNDARY: counts only, as 34b: no names, emails, queue IDs, file IDs
@@ -118,8 +118,9 @@ function overnightHealth_(now, tz) {
       }
     });
     if (st.fallback > 0) {
-      problems.push("Flow 3 output that wasn't a warm-up, replaced by the teacher's own question, " +
-        "in the last 24 hours: " + st.fallback + " (delivered; check Flow 3's prompt in Studio)");
+      problems.push("Warm-ups that went out as the teacher's own question in the last 24 hours: " +
+        st.fallback + " (Flow 3's output wasn't a warm-up, or Studio never returned it; check Flow 3's " +
+        "run history in Studio)");
     }
   } catch (e) {
     unreadable = true;
