@@ -22,7 +22,7 @@ const KP = path.join(__dirname, '..', '..', 'kos-personal');
 const FILES = [
   '1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '2_Ingestion_Sensors.gs', '4_Vector_Router.gs',
   '6_Governance.gs', '12_StudioReturnHarvest.gs', '13_StudioInputBuilder.gs', '19_StagingRequeue.gs',
-  '20_VectorClassifySessions.gs', '21_VectorMatrixRepair.gs', '22_BriefingDocs.gs', '3_Queue_Processor.gs',
+  '20_VectorClassifySessions.gs', '21_VectorMatrixRepair.gs', '22_BriefingDocs.gs', '23_MoralDebt.gs', '3_Queue_Processor.gs',
 ].map((f) => path.join(KP, f));
 const EXPOSE = [
   'processIntakePayload', '_recordDeferredDecisions_', 'resolveDecision',

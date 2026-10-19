@@ -24,7 +24,8 @@
       "kos-personal/19_StagingRequeue.gs",
       "kos-personal/20_VectorClassifySessions.gs",
       "kos-personal/21_VectorMatrixRepair.gs",
-      "kos-personal/22_BriefingDocs.gs"
+      "kos-personal/22_BriefingDocs.gs",
+      "kos-personal/23_MoralDebt.gs"
     ],
     "html": [
       "kos-personal/8_WebApp_UI.html"

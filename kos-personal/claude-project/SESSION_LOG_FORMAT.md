@@ -43,7 +43,7 @@ Next steps:
 - {action} (owner: {who}; by: {date or "unscheduled"})
 Alignment:
 - Status at close: {GREEN | YELLOW | RED}
-- Thresholds crossed: {A/B/C/D and the operator's answer, or "none"}
+- Thresholds crossed: {one line per mandatory pause, "{A|B|C|D}: {PROCEED | REDESIGN | DEFER} — {what}", or "none"}
 - Relational check-in this session: {yes: who | no}
 ```
 
@@ -55,5 +55,10 @@ Alignment:
   as `DECISION:`. A suggestion that wasn't approved is not a decision.
 - **No student data.** No student names, grades, rosters or student
   messages, even when they came up. Write "a student matter" instead.
+- **Every mandatory pause is logged with the operator's answer as one word,
+  `PROCEED`, `REDESIGN` or `DEFER`**, under the closeout's Alignment
+  "Thresholds crossed". The pipeline counts the literal `PROCEED` there for
+  the moral debt counter (SMP-019); don't write PROCEED anywhere else in
+  that block.
 - **No email addresses, account IDs or passwords.**
 - **Plain text only.** No JSON, no tables; markdown bullets are fine.
