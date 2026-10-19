@@ -63,6 +63,21 @@ operator. This file holds what comes after them.
 
 ### Waiting on another piece of work
 
+- **`PeriodOverride` tab** (student account → period) read first by the roster
+  import and `applyPeriodRelabel()` (52), so period 3's odd/even groups
+  survive a plain Canvas export. Until then each export is tagged by hand.
+  Needed before the next lesson enrollment (2026-10-19).
+- **Setup wizard installs two Ledger triggers in the wrong project.**
+  `28_Module2Setup.js` (Unified Manual) installs `registerDeliveredWarmUps`
+  and `runAlignmentLogBackfill_` in its own project; their installers in 25
+  and 22 end in `_`, so they can't be run from the Ledger's menu. Make
+  `installLedgerCycle()` always include `registerDeliveredWarmUps`, give
+  both installers public names, and fix 28 (2026-10-19).
+- **Teacher timeout email (03 `notifyTimeoutToTeacher_`)** still tells the
+  student to use the doc's AI Evaluation Panel menu, which doesn't run for
+  student accounts: say to start Flow 2 by hand (a late result still lands)
+  or have the student resubmit from the Student Dashboard (2026-10-19).
+
 - **Family Mail Sentinel: retry a dropped Studio run**, as #193 does for
   warm-ups. One run failed with "Couldn't access the spreadsheet" on 10-19,
   and `60` never writes the input again (2026-10-19).
