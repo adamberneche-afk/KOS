@@ -3672,3 +3672,18 @@ kind of failure every morning.
 - **`runSystemHealthCheck`** (10) logs its report instead of failing when
   run from the editor (`getUi()` "cannot be called from this context").
 - **Tests:** `ledger-cycle.test.js`.
+
+## Warm-ups review a random taught lesson, 2026-10-19
+
+- **Decided:** warm-up seeds come at random from every lesson taught so far,
+  not from dated `WarmUpPlan` rows; `WarmUpPlan` stays as an override.
+- **`reviewWarmUpKey_`** (55): the pool is the lessons with a
+  `LessonSchedule` start_date on or before the day (the 8177 lesson list in
+  55b isn't in teaching order, so dates are the record of what was taught).
+  The pick is a hash of the pair's start date (an odd date, else the weekday
+  before) and the course, so the ODD and EVEN classes share it; it can
+  repeat. `plannedWarmUpUnit_` returns the override, else this pick.
+- **`ClassSchedule` active** (24, 52): a typed `FALSE` is the boolean false
+  in Sheets, which `|| "TRUE"` read as active; only a blank defaults to
+  active now.
+- **Tests:** `lesson-schedule.test.js`, `period-split.test.js`.
