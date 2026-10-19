@@ -38,6 +38,10 @@ test('a text period label matches in the queue builder: meeting periods, enrolle
   const schedule = [['teacher_email', 'period', 'day_type', 'course_name', 'active']].concat(SCHEDULE);
   const periods = (t) => [...new Set(exported.getPeriodsForDay_(schedule, TEACHER, t).map((p) => p.period))];
   assert.deepEqual(periods('ODD'), ['1', '3-Odd']);
+  // A retired row with a typed FALSE (Sheets stores the boolean false) is skipped; a blank one is active.
+  const retired = schedule.concat([[TEACHER, '3', 'DAILY', MGT, false], [TEACHER, '5', 'DAILY', MGT, '']]);
+  assert.deepEqual([...new Set(exported.getPeriodsForDay_(retired, TEACHER, 'ODD').map((p) => p.period))],
+    ['1', '3-Odd', '5']);
   assert.deepEqual(periods('EVEN'), ['1', '3-Even']);
 
   const ledger = [new Array(19).fill('h'),
