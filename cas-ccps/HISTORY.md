@@ -3616,3 +3616,18 @@ kind of failure every morning.
   the extra-credit reply to it.
 - **Tests:** `period-split.test.js`; NOT_MEETING cases in
   `warmup-text-box.test.js` and `student-dashboard-warmups.test.js`.
+
+## Warm-up pairs and DAILY_HALF, 2026-10-19
+
+- **Same warm-up per lesson.** `plannedWarmUpRow_` (55) makes a
+  `WarmUpPlan` row cover its date and the next weekday, so the ODD and EVEN
+  classes on the same lesson get the same warm-up; `plannedWarmUpUnit_` and
+  `getWarmUpAnchor_` (31) read through it. A row on the next weekday wins.
+- **`DAILY_HALF`** (24, a new `ClassSchedule` day type; the setup wizard in
+  28 accepts it): a period that meets daily for half the time at the
+  ODD/EVEN pace. It meets every day (lessons are built daily), but
+  `buildWarmUpQueues` gives it a new warm-up only on the first day of a pair
+  (`isHalfPeriodRestDay_`); the second day the Student Dashboard shows the
+  first day's feedback and extra-credit reply box. With no plan row, an odd
+  date starts a pair. `DAILY` keeps a warm-up every day.
+- **Tests:** `lesson-schedule.test.js` (pairs, `DAILY_HALF`).

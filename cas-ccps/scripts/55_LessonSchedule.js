@@ -209,8 +209,27 @@ function _wupRows_() {
   return out;
 }
 
+/**
+ * The WarmUpPlan row covering dateStr for this course, { date, key }, or
+ * null. A row covers its own date and the next weekday, so one row is one
+ * warm-up for a pair of class days: the ODD and EVEN classes on the same
+ * lesson get the same warm-up, and a DAILY_HALF period (24) gets it on the
+ * first day only (decided 2026-10-19). A row on the next weekday wins.
+ */
+function plannedWarmUpRow_(dateStr, code) {
+  const rows = _wupRows_();
+  if (rows[dateStr + "|" + code]) return { date: dateStr, key: rows[dateStr + "|" + code] };
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(dateStr || ""));
+  if (!m) return null;
+  const d = new Date(+m[1], +m[2] - 1, +m[3]);
+  d.setDate(d.getDate() - (d.getDay() === 1 ? 3 : 1)); // the weekday before
+  if (d.getDay() === 0 || d.getDay() === 6) return null;
+  const prev = formatDateYMD_(d);
+  return rows[prev + "|" + code] ? { date: prev, key: rows[prev + "|" + code] } : null;
+}
+
 /** The lesson planned to seed this course's warm-up on dateStr, as a unit, or null. */
 function plannedWarmUpUnit_(dateStr, code) {
-  const key = _wupRows_()[dateStr + "|" + code];
-  return key ? _lessonUnit_(key, code, dateStr, dateStr) : null;
+  const row = plannedWarmUpRow_(dateStr, code);
+  return row ? _lessonUnit_(row.key, code, dateStr, dateStr) : null;
 }
