@@ -126,8 +126,7 @@ function buildWarmUpQueues() {
 
   const ss           = SpreadsheetApp.openById(cfg.ledgerSsId);
   const teacherEmail = cfg.teacherEmail;
-  const currentTerm  = PropertiesService.getScriptProperties()
-    .getProperty("CURRENT_TERM") || "";
+  const currentTerm  = currentTerm_();
 
   // ── Determine tomorrow ────────────────────────────────────────────────────
   const tomorrow    = getTomorrow_();
@@ -601,7 +600,7 @@ function getEnrolledStudents_(ledgerData, teacherEmail, period, currentTerm, cou
     if (tEmail  !== teacherEmail.toLowerCase()) continue;
     if (lPeriod !== period)                     continue;
     if (status  === "ARCHIVED")                 continue;
-    if (currentTerm && term && term !== currentTerm) continue;
+    if (!sameSchoolYearTerm_(term, currentTerm)) continue;
     if (courseCode && courseCodeFromName_(row[LD24_COURSE_NAME]) !== courseCode) continue;
     if (!email || seen.has(email))              continue;
 
@@ -901,7 +900,7 @@ function retireOffDayWarmUps_(opts) {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const teacherEmail = String(cfg.teacherEmail || "").trim().toLowerCase();
-  const currentTerm = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "";
+  const currentTerm = currentTerm_();
   const result = { apply: apply, checked: 0, retired: 0, answeredKept: 0, unknownPeriod: 0, message: "" };
 
   // period → day types it meets on (ODD, EVEN, DAILY).
@@ -923,7 +922,7 @@ function retireOffDayWarmUps_(opts) {
       if (String(r[LD24_TEACHER_EMAIL] || "").trim().toLowerCase() !== teacherEmail) return;
       if (String(r[LD24_STATUS] || "").trim() === "ARCHIVED") return;
       const term = String(r[LD24_TERM] || "").trim();
-      if (currentTerm && term && term !== currentTerm) return;
+      if (!sameSchoolYearTerm_(term, currentTerm)) return;
       const account = String(r[LD24_GOOGLE_ID] || "").trim().toLowerCase();
       if (account) periodOf[account] = String(r[LD24_PERIOD] || "").trim();
     });
