@@ -500,6 +500,33 @@ function _validateRegistrarStage2(ledger, sheetRow, row) {
   console.log('[Registrar] ' + row[RC.FILE_NAME] + ' passed Stage 2 validation → READY_FOR_TRANSLATION.');
 }
 
+
+// Decision #5 (2026-10-19): intervention_triage runs anonymous. Stage 1's
+// prompt asks for a role, course and period and never a name, ID or grade;
+// this is the code-side backstop for what a pattern can catch. The target
+// is a role from a fixed list; in the free text, email addresses, ID-length
+// digit runs and percentages are replaced. A name can't be caught by a
+// pattern, so the prompt's rule is the main guard.
+const TRIAGE_ROLES_ = ['Student', 'Parent', 'Colleague', 'Admin'];
+
+function _anonymousTriage_(t) {
+  t = t || {};
+  const role = String(t.target_entity || '').trim().toLowerCase();
+  const scrub = function (v) {
+    const text = String(v || '').trim()
+      .replace(/[^\s@()<>,;]+@[^\s@()<>,;]+\.[A-Za-z]{2,}/g, '[email]')
+      .replace(/\b\d{5,}\b/g, '[id]')
+      .replace(/\b\d{1,3}(\.\d+)?\s?%/g, '[grade]');
+    return text || 'unspecified';
+  };
+  return {
+    human_intervention_required: t.human_intervention_required === true,
+    target_entity: TRIAGE_ROLES_.filter(function (r) { return r.toLowerCase() === role; })[0] || 'unspecified',
+    friction_source: scrub(t.friction_source),
+    pedagogical_gap_identified: scrub(t.pedagogical_gap_identified),
+  };
+}
+
 /**
  * Phase 3: Translation & Routing. For a fully-verified row —
  *   1. Apollo Kill-Switch check (APP_FLOW_INTERVENTION_CONTRACT.pdf
@@ -530,17 +557,17 @@ function _translateAndRouteRegistrarRow(ledger, sheetRow, row) {
     return;
   }
 
-  const triage = schema1.intervention_triage || {};
+  const triage = _anonymousTriage_(schema1.intervention_triage);
   const fileId = row[RC.FILE_ID];
 
   if (triage.human_intervention_required === true) {
     ledger.getRange(sheetRow, RC.STATE + 1).setValue('AWAITING_CARBON');
     _sendChatAlert(
       '🟡 APOLLO KILL-SWITCH — human intervention required\n' +
-      'File: ' + row[RC.FILE_NAME] + ' (' + fileId + ')\n' +
-      'Target: ' + (triage.target_entity || 'unspecified') + '\n' +
-      'Friction source: ' + (triage.friction_source || 'unspecified') + '\n' +
-      'Pedagogical gap: ' + (triage.pedagogical_gap_identified || 'unspecified') + '\n' +
+      'File: ' + row[RC.FILE_NAME] + ' (https://drive.google.com/open?id=' + fileId + ')\n' +
+      'Target: ' + triage.target_entity + '\n' +
+      'Friction source: ' + triage.friction_source + '\n' +
+      'Pedagogical gap: ' + triage.pedagogical_gap_identified + '\n' +
       'Awaiting Carbon — call clearInterventionTriage("' + fileId + '") once resolved.'
     );
     try {
@@ -562,7 +589,7 @@ function _translateAndRouteRegistrarRow(ledger, sheetRow, row) {
     '**Action Command:** ' + schema2.action_command,
     '',
     '## Pedagogical Gap',
-    schema1.intervention_triage && schema1.intervention_triage.pedagogical_gap_identified || '_none flagged_',
+    triage.pedagogical_gap_identified === 'unspecified' ? '_none flagged_' : triage.pedagogical_gap_identified,
   ].join('\n');
   ledger.getRange(sheetRow, RC.TRANSLATION + 1).setValue(briefing);
 

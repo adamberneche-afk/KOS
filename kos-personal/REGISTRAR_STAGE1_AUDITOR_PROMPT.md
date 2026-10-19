@@ -58,6 +58,14 @@ section need to change — the schema and pipeline are naming-independent.
    instruction, a factual error, a tone concern involving a named
    person — not routine structural quirks Stage 2's dissonance scoring
    will already catch.
+
+   **`intervention_triage` is anonymous** (decision #5, 2026-10-19).
+   `target_entity` is a role only: `Student`, `Parent`, `Colleague` or
+   `Admin`. `friction_source` and `pedagogical_gap_identified` describe
+   the problem by role, course and period ("a period 3 student in
+   Sports Marketing"), never by a name, initials, email, student ID or
+   grade, even when the document contains them. The teacher finds the
+   person from the source document, which the alert links to.
 4. **Schema strictness.** Output must be valid JSON matching the exact
    schema below. No markdown fences, no preamble, no commentary outside
    the JSON object. Raw JSON only — starts with `{`, ends with `}`.
@@ -74,9 +82,9 @@ section need to change — the schema and pipeline are naming-independent.
   "doc_uid": "String",
   "intervention_triage": {
     "human_intervention_required": false,
-    "target_entity": "String (Student/Parent/Colleague/Admin)",
-    "friction_source": "String",
-    "pedagogical_gap_identified": "String"
+    "target_entity": "String (Student/Parent/Colleague/Admin; a role, never a name)",
+    "friction_source": "String (by role, course and period; no names, IDs or grades)",
+    "pedagogical_gap_identified": "String (by role, course and period; no names, IDs or grades)"
   },
   "architect_data": {
     "structural_dependencies": [],
