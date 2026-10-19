@@ -22,6 +22,7 @@
 //     with nothing in WarmUpFlowReturn, Flow 2 FlowInput rows still READY
 //     after 15 minutes (open bug 4)
 //   - warm-up returns that FAILED or need attention in the last 24 hours
+//   - Flow 3 output replaced by the teacher's anchor (41's shape gate)
 // With no problem and nothing unreadable, one all-clear line says what ran.
 //
 // DATA BOUNDARY: counts only, as 34b: no names, emails, queue IDs, file IDs
@@ -66,11 +67,13 @@ function overnightHealth_(now, tz) {
       problems.push("Stage " + s.label + ": didn't run last night (last run " +
         Utilities.formatDate(new Date(when), tz, "yyyy-MM-dd HH:mm") + ")");
     } else {
-      // ERRORS_n (25) and NO_TAGS (33) are runs that finished with a problem.
+      // ERRORS_n (25) and NO_* (33: NO_TAGS, or a stop such as NO_MATRIX_ID)
+      // are runs that finished with a problem.
       const status = String(props.getProperty(s.key.replace("LAST_RUN", "STATUS")) || "");
       if (/^(ERRORS|NO_)/.test(status)) {
         problems.push("Stage " + s.label + ": ran with status " + status +
-          (status === "NO_TAGS" ? " (no assignment on the Teacher Matrix has competency tags)" : ""));
+          (status === "NO_TAGS" ? " (no assignment on the Teacher Matrix has competency tags)" :
+            status === "NO_MATRIX_ID" ? " (set the TEACHER_MATRIX_SS_ID Script Property)" : ""));
       }
     }
   });
@@ -114,6 +117,10 @@ function overnightHealth_(now, tz) {
         problems.push("Flow " + f + " returns that failed or need attention in the last 24 hours: " + st.failed[f]);
       }
     });
+    if (st.fallback > 0) {
+      problems.push("Flow 3 output that wasn't a warm-up, replaced by the teacher's own question, " +
+        "in the last 24 hours: " + st.fallback + " (delivered; check Flow 3's prompt in Studio)");
+    }
   } catch (e) {
     unreadable = true;
     problems.push("Studio job counts: unavailable (" + e.message + ")");
@@ -164,7 +171,7 @@ function _onWarmUpCounts_(ss, today, tomorrow) {
 
 // Studio jobs with no return yet, and recent failed returns.
 function _onStudioCounts_(ss, now) {
-  const out = { stalled: { 2: 0, 3: 0, 4: 0, 5: 0 }, failed: { 3: 0, 4: 0, 5: 0 } };
+  const out = { stalled: { 2: 0, 3: 0, 4: 0, 5: 0 }, failed: { 3: 0, 4: 0, 5: 0 }, fallback: 0 };
   const returned = { 3: {}, 4: {}, 5: {} };
   const ret = ss.getSheetByName("WarmUpFlowReturn");
   if (ret && ret.getLastRow() > 1) {
@@ -174,8 +181,11 @@ function _onStudioCounts_(ss, now) {
       returned[f][String(r[2]).trim()] = true;
       const hs = String(r[4] || "").trim();
       const when = new Date(r[0]).getTime();
-      if ((hs === "FAILED" || hs === "NEEDS_ATTENTION") &&
-          (isNaN(when) || now.getTime() - when <= ON_RETURN_WINDOW_MS)) out.failed[f]++;
+      const recent = isNaN(when) || now.getTime() - when <= ON_RETURN_WINDOW_MS;
+      if ((hs === "FAILED" || hs === "NEEDS_ATTENTION") && recent) out.failed[f]++;
+      // 41's harvest notes "ANCHOR_FALLBACK: ..." on a Flow 3 return it
+      // replaced with the teacher's anchor (WFB_ANCHOR_FALLBACK).
+      if (f === 3 && hs === "HARVESTED" && recent && /^ANCHOR_FALLBACK/.test(String(r[6] || ""))) out.fallback++;
     });
   }
   [3, 4, 5].forEach(function (f) {
