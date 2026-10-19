@@ -28,7 +28,8 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = [
-  S('00_SharedConfig.js'), S('63_DocHeader.js'), S('22_LessonContextHandler.js'), S('24_WarmUpBridge.js'),
+  S('00_SharedConfig.js'), S('63_DocHeader.js'), S('22_LessonContextHandler.js'), S('23_StudentProfileManager.js'),
+  S('24_WarmUpBridge.js'),
   S('25_WarmUpWriter.js'), S('37_FlowInputBuilder.js'), S('39_FlowFixtures.js'),
   S('41_WarmUpFlowBridge.js'),
   // 15b holds FLOW_2_SYSTEM_PROMPT and 40 holds substituteFlowPrompt_. Both

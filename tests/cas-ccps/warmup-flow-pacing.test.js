@@ -101,3 +101,39 @@ test('retries share the per-run budget with new rows', () => {
   assert.equal(r.flow3, cap - 4);
   assert.equal(r.deferred, 4);
 });
+
+test('a Flow 3 job with no return after every retry gets the teacher\'s anchor; a past day\'s or a NOT_MEETING one does not', () => {
+  const fx = setup();
+  fx.sandbox.PropertiesService.getScriptProperties().setProperty('WARMUP_TEXT_BOX', 'all');
+  const add = (id, date, status) => {
+    const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+    row[0] = id; row[3] = 'Sam Student'; row[5] = date; row[8] = status;
+    row[6] = JSON.stringify({ course_name: 'Sports Entertainment and Event Marketing', warmup_anchor: 'How does a team make money?' });
+    fx.wq.appendRow(row);
+  };
+  add('Q-LOST', '2099-01-05', 'PENDING');
+  add('Q-OLD', '2020-01-05', 'PENDING');
+  add('Q-OFF', '2099-01-05', 'NOT_MEETING');
+  add('Q-NEW', '2099-01-05', 'PENDING');
+  const tab = fx.ss.insertSheet('Flow3Input');
+  tab.appendRow(fx.exported.WFB_FLOW3_HEADERS);
+  const old = new Date(Date.now() - 45 * 60 * 1000);
+  const input = (id, status, at) => tab.appendRow([at || old, id, status]);
+  ['Q-LOST', 'Q-OLD', 'Q-OFF'].forEach((id) => { input(id, 'RETRIED'); input(id, 'RETRIED'); input(id, 'READY'); });
+  input('Q-NEW', 'RETRIED'); input('Q-NEW', 'READY'); // one retry left
+
+  const r = fx.exported.buildWarmUpFlowInputs();
+  assert.equal(r.fallback, 1);
+  const statusOf = (id) => fx.wq.getRange(2, 1, 4, 9).getValues().find((x) => x[0] === id)[8];
+  assert.equal(statusOf('Q-LOST'), 'DELIVERED');
+  assert.equal(statusOf('Q-OLD'), 'PENDING', 'its day has passed');
+  assert.equal(statusOf('Q-OFF'), 'NOT_MEETING');
+  assert.equal(statusOf('Q-NEW'), 'PENDING', 'still has a retry');
+  assert.equal(fx.ss.getSheetByName('WarmUpTextBox').getRange(2, 4).getValue(), 'How does a team make money?');
+  const ret = fx.ss.getSheetByName('WarmUpFlowReturn').getRange(2, 1, 1, 7).getValues()[0];
+  assert.deepEqual([ret[1], ret[2], ret[4]], [3, 'Q-LOST', 'HARVESTED']);
+  assert.match(ret[6], /^ANCHOR_FALLBACK: no return from Studio after 2 retries/);
+  const lost = tab.getRange(2, 2, tab.getLastRow() - 1, 2).getValues().filter((x) => x[0] === 'Q-LOST');
+  assert.ok(lost.every((x) => x[1] === 'CONSUMED'));
+  assert.equal(fx.exported.buildWarmUpFlowInputs().fallback, 0, 'a second run delivers nothing again');
+});

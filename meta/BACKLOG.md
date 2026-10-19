@@ -63,6 +63,14 @@ operator. This file holds what comes after them.
 
 ### Waiting on another piece of work
 
+- **Time budgets on the Central Ledger's 5-minute jobs** (`03` `bridgeQueue`,
+  `06` `runStagingTurnstile`, `37` `buildFlowInputRows`, `41`
+  `harvestWarmUpFlowReturns`): several failed 10-18/19, some at 1920 s.
+  Waits on the executions' error lines (2026-10-19).
+- **Family Mail Sentinel: retry a dropped Studio run**, as #193 does for
+  warm-ups. One run failed with "Couldn't access the spreadsheet" on 10-19,
+  and `60` never writes the input again (2026-10-19).
+
 - **Parent reports (`36_WeeklyParentReport.js`) turned on.** Built, not
   enabled; the only off-domain disclosure. Waits until the student and
   teacher dashboards are tightened (decided 2026-10-18; `PLAN_2026-10.md`,
