@@ -841,6 +841,7 @@ LIVE assignment the Canvas roster import enrolls into (script 52).
   `M2_SETUP_PHASE_B`.
 
 **Set manually before running the wizards:**
+- `MARKING_PERIOD_ENDS` — when each marking period ends (`2627_MP1=2026-10-30,2627_MP2=2027-01-22,...`); the 2026-27 district calendar is the code default. Add next year's four ends before August (a `_CONFIG` row reaches every project).
 - `CURRENT_TERM` — no code default; falls back to `""`/`"All Terms"`/`"ALL"`
   per call site if unset (degraded, not fatal, but set it).
 - `ADMIN_ROOT_FOLDER_ID`, `ADMIN_NOTIFY_EMAIL` — admin-tier, no wizard sets these.

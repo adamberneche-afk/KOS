@@ -153,8 +153,7 @@ function updateAllStudentProfiles() {
 
   const ss           = SpreadsheetApp.openById(cfg.ledgerSsId);
   const teacherEmail = cfg.teacherEmail;
-  const currentTerm  = PropertiesService.getScriptProperties()
-    .getProperty("CURRENT_TERM") || "";
+  const currentTerm  = currentTerm_();
 
   Logger.log("[S23] Starting profile update | Teacher: " + teacherEmail +
              " | Term: " + currentTerm);
@@ -329,7 +328,7 @@ function buildStudentRoster_(ledgerData, teacherEmail, currentTerm) {
 
     if (tEmail !== teacherEmail.toLowerCase()) continue;
     if (status === "ARCHIVED")                 continue;
-    if (currentTerm && term && term !== currentTerm) continue;
+    if (!sameSchoolYearTerm_(term, currentTerm)) continue;
     if (!email || seen.has(email))             continue;
 
     seen.add(email);
