@@ -59,7 +59,7 @@ function setUpFixture(sandbox) {
   return { ss };
 }
 
-test('syncArtifactCompetencies() stamps M2_STAGE1B_LAST_RUN', () => {
+test('syncArtifactCompetencies() stamps M2_STAGE1B_LAST_RUN with a NO_* status when it stops early', () => {
   const { exported, sandbox } = loadCentralLedger();
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   const props = sandbox.PropertiesService.getScriptProperties();
@@ -67,18 +67,17 @@ test('syncArtifactCompetencies() stamps M2_STAGE1B_LAST_RUN', () => {
   props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   props.setProperty('M2_ENABLED', 'true');
   props.setProperty('TEACHER_EMAIL', 'teacher@ccpsnet.net');
-  // No TEACHER_MATRIX_SS_ID set — syncArtifactCompetencies() logs and
-  // returns early before doing any real work, but this stamp is only
-  // written at the very end of a full run, so this test exists purely to
-  // confirm the *absence* of a stamp on an incomplete run, matching the
-  // real function's own early-return guards (no tab/config → no stamp).
+  // No TEACHER_MATRIX_SS_ID set — syncArtifactCompetencies() stops before
+  // any real work. Since 2026-10-19 a stop still stamps the stage, with a
+  // NO_* status naming why, so the overnight check (34c) reports the reason
+  // instead of "no run recorded".
   ss.insertSheet('Ledger').appendRow(['header']);
   ss.insertSheet('STAGING_PIPELINE').appendRow(['StudentFileID', 'Status']);
   ss.insertSheet('StudentProfiles').appendRow(['header']);
 
   exported.syncArtifactCompetencies();
-  assert.equal(props.getProperty('M2_STAGE1B_LAST_RUN'), null,
-    'no stamp expected — TEACHER_MATRIX_SS_ID was never set, so the real function returns before its stamp-write line');
+  assert.ok(props.getProperty('M2_STAGE1B_LAST_RUN'), 'a stop is stamped');
+  assert.equal(props.getProperty('M2_STAGE1B_STATUS'), 'NO_MATRIX_ID');
 });
 
 test('runWarmUpEvaluation() alerts when M2_STAGE1B_LAST_RUN is stale', () => {
