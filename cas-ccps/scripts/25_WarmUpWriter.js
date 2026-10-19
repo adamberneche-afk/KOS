@@ -370,9 +370,11 @@ function runWarmUpEvaluation() {
 
   // Build queue_id → wq row index map for fast lookup
   const queueRowByQueueId = {};
+  const notMeeting = {}; // set NOT_MEETING by 24's retireOffDayWarmUps(): never scored
   for (let i = 1; i < wqData.length; i++) {
     const qId = String(wqData[i][WQ25_QUEUE_ID] || "").trim();
     if (qId) queueRowByQueueId[qId] = i + 1; // 1-based
+    if (qId && String(wqData[i][WQ25_STATUS] || "").trim() === "NOT_MEETING") notMeeting[qId] = true;
   }
 
   const toEvaluate = []; // { wrRowNum, queueId, docId, queueRowNum }
@@ -395,6 +397,7 @@ function runWarmUpEvaluation() {
     if (lessonDate !== yesterdayStr)           continue;
     if (totalScore !== "")                     continue; // already scored
     if (!queueId)                              continue;
+    if (notMeeting[queueId])                   continue;
     if (!docId && !textBox[queueId])           continue; // neither a doc nor a text box
 
     const queueRowNum = queueRowByQueueId[queueId];

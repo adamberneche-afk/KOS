@@ -166,3 +166,12 @@ test('every inline <script> the student dashboard serves parses as valid JS', ()
     assert.doesNotThrow(() => new vm.Script(code, { filename: `student-dashboard-inline-${i}.js` }));
   });
 });
+
+test('a NOT_MEETING warm-up is not shown: the card falls back to the next one', () => {
+  const { exported, ss } = load([
+    { wq: wqRow({ date: '2026-10-21', status: 'NOT_MEETING' }), tb: { warmup: 'Off day' } },
+    { wq: wqRow({ date: '2026-10-22', status: 'DELIVERED' }), tb: { warmup: 'Meeting day' } },
+  ]);
+  const w = exported.getStudentWarmUps_(ss, CFG, ME, NOW);
+  assert.equal(w.current.warmup, 'Meeting day');
+});

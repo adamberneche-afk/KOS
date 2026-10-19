@@ -3593,3 +3593,26 @@ kind of failure every morning.
   so LAST NIGHT says why instead of "no run recorded".
 - **Tests:** `warmup-shape-gate.test.js`; `artifact-sync-cron-health.test.js`
   now expects the stop's stamp.
+
+## Period 3's two groups, 2026-10-19
+
+- **What happened.** Day type is the calendar date's parity (the operator
+  confirmed; A/B is only the bell schedule), so `getDayType_` (24) was
+  right. But period 3 is two groups, an odd-day and an even-day one
+  (separate, cross-listed Canvas sections), both labeled `3` and marked
+  `DAILY` in `ClassSchedule`, so each got a warm-up every day.
+- **Split** (`DEPLOYMENT_HANDOFF.md` step 17c). Periods are text labels:
+  `3-Odd` and `3-Even` in `CanvasSectionMap` and `ClassSchedule`.
+  `previewPeriodRelabel()` / `applyPeriodRelabel()` (52) set the Ledger
+  Block and Period of students already enrolled to their section's period
+  (enrollment skips them). `previewOffDayWarmUps()` / `retireOffDayWarmUps()`
+  (24) set warm-ups already queued for a day the student's period doesn't
+  meet to `NOT_MEETING`, unless answered; 25 never scores such a row, the
+  Student Dashboard (13) doesn't show it and 34c doesn't count it.
+- **Decided, built next:** the odd-day and even-day classes get the same
+  warm-up per lesson (`WarmUpPlan` read as "latest row on or before the
+  date"), and period 1, which meets daily for half the time at the same
+  pace, gets a new warm-up only on the first day of each; its second day is
+  the extra-credit reply to it.
+- **Tests:** `period-split.test.js`; NOT_MEETING cases in
+  `warmup-text-box.test.js` and `student-dashboard-warmups.test.js`.
