@@ -167,6 +167,11 @@ const WFB_INPUTS_PER_RUN = 10;
 // marked RETRIED), at most WFB_MAX_INPUT_RETRIES times.
 const WFB_INPUT_RETRY_AFTER_MS = 30 * 60 * 1000;
 const WFB_MAX_INPUT_RETRIES = 2;
+// A Flow 3 job still without a return after its retries (Studio dropped it,
+// or Gemini refused it: "Couldn't complete this type of request", seen
+// 2026-10-18/19) gets the teacher's anchor, delivered here, so every student
+// has a warm-up. Only while its lesson date hasn't passed.
+const WFB_NO_RETURN_REASON = "no return from Studio after " + WFB_MAX_INPUT_RETRIES + " retries";
 const WFB_PRUNE_AFTER_DAYS = 14;
 const WFB_CANARY_PREFIX = "WUQ-CANARY-";
 
@@ -482,6 +487,49 @@ function wfbRetryStaleInputs_(ss, tabs, budget, now) {
   return retried;
 }
 
+// Flow 3 READY inputs that have had every retry and are stale again: the
+// teacher's anchor is delivered instead (wfbApplyFlow3_, as for a return),
+// a WarmUpFlowReturn row notes ANCHOR_FALLBACK for 34c, and the input is
+// CONSUMED. Skips a job already delivered, one whose lesson date has passed,
+// and one not PENDING (NOT_MEETING, ERROR). Returns the count delivered.
+function wfbFallbackExhaustedInputs_(ss, flow3Tab, wqSheet, now) {
+  const lastRow = flow3Tab.getLastRow();
+  if (lastRow <= 1 || !wqSheet) return 0;
+  const returned = {};
+  const ret = wfbTab_(ss, WFB_RETURN_TAB, WFB_RETURN_HEADERS);
+  if (ret.getLastRow() > 1) {
+    ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues().forEach(function (r) {
+      if (Number(r[WFB_RET.FLOW]) === 3) returned[String(r[WFB_RET.QUEUE_ID]).trim()] = true;
+    });
+  }
+  const rows = flow3Tab.getRange(2, 1, lastRow - 1, 3).getValues();
+  const tries = {};
+  rows.forEach(function (r) {
+    if (String(r[2]).trim() === "RETRIED") tries[String(r[1]).trim()] = (tries[String(r[1]).trim()] || 0) + 1;
+  });
+  const today = formatDateYMD_(now);
+  let delivered = 0;
+  rows.forEach(function (r) {
+    const id = String(r[1]).trim();
+    if (!id || String(r[2]).trim() !== "READY" || returned[id]) return;
+    if ((tries[id] || 0) < WFB_MAX_INPUT_RETRIES) return;
+    const at = new Date(r[0]).getTime();
+    if (!isNaN(at) && now.getTime() - at < WFB_INPUT_RETRY_AFTER_MS) return;
+    const found = wfbFindQueueRow_(wqSheet, id);
+    if (!found || String(found.row[WQ25_STATUS] || "").trim() !== "PENDING") return;
+    if (wfbNormalizeDateIso_(found.row[WQ25_LESSON_DATE]) < today) return;
+    const out = wfbApplyFlow3_(wqSheet, found, id, "", WFB_NO_RETURN_REASON);
+    if (!out.ok) return; // no anchor, or a doc that can't be made: left for 34c's stall line
+    ret.appendRow([now, 3, id, "", "HARVESTED", 0, WFB_ANCHOR_FALLBACK + ": " + WFB_NO_RETURN_REASON]);
+    wfbConsumeInputRow_(ss, 3, id);
+    returned[id] = true;
+    delivered++;
+  });
+  if (delivered) Logger.log("[WFB] Delivered the teacher's anchor for " + delivered + " Flow 3 job(s) " +
+    "Studio never returned.");
+  return delivered;
+}
+
 // ── Phase 1: materialize inputs ──────────────────────────────────────────────
 
 /**
@@ -493,7 +541,7 @@ function wfbRetryStaleInputs_(ss, tabs, budget, now) {
  * same student would generate two warm-up docs.
  */
 function buildWarmUpFlowInputs() {
-  const result = { flow3: 0, flow4: 0, flow5: 0, skipped: 0, errors: 0, retried: 0, deferred: 0 };
+  const result = { flow3: 0, flow4: 0, flow5: 0, skipped: 0, errors: 0, retried: 0, deferred: 0, fallback: 0 };
   const ctx = wfbLedger_();
   const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
   if (!wqSheet) {
@@ -517,6 +565,7 @@ function buildWarmUpFlowInputs() {
 
   // Dropped jobs first: they are the oldest.
   result.retried = wfbRetryStaleInputs_(ctx.ss, tabs, WFB_INPUTS_PER_RUN, new Date());
+  result.fallback = wfbFallbackExhaustedInputs_(ctx.ss, tabs[3], wqSheet, new Date());
   let budget = WFB_INPUTS_PER_RUN - result.retried;
 
   for (let i = 0; i < data.length; i++) {
@@ -941,7 +990,9 @@ function wfbApplyFlow5_(wqSheet, found, raw) {
 
 // Flow 3: create the doc, stamp the zones, share it, record doc_id/url and
 // DELIVERED. Ported from CreateWarmUpDocStep.
-function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
+// forcedFallback: deliver the anchor without reading raw (a job Studio never
+// returned; see wfbFallbackExhaustedInputs_), with this reason.
+function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
   const row = found.row;
   if (String(row[WQ25_STATUS] || "").trim() === "DELIVERED") {
     return { ok: true, duplicate: true };
@@ -973,13 +1024,13 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
   // Shape gate first: output that is the prompt itself, a description of it
   // or a list of its fields is never shown. The teacher's own anchor goes
   // out instead, and the harvest records the fallback (34c counts it).
-  let fallback = "";
-  const shape = wfbWarmUpShapeProblem_(raw);
-  if (shape) {
+  let fallback = forcedFallback || "";
+  const shape = fallback ? "" : wfbWarmUpShapeProblem_(raw);
+  if (fallback || shape) {
     const anchor = String(lesson.warmup_anchor || "").trim();
-    if (!anchor) return { ok: false, error: "NOT_A_WARMUP: " + shape };
+    if (!anchor) return { ok: false, error: "NOT_A_WARMUP: " + (shape || fallback) };
     raw = anchor;
-    fallback = shape;
+    fallback = fallback || shape;
   } else {
     // Plausibility gate BEFORE any Drive work — a fabricated warm-up prompt
     // is the assignment text the student actually responds to, and the doc
