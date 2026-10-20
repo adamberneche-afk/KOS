@@ -1042,8 +1042,16 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
     // this creates can't cheaply be un-created (see the existingDocId guard
     // above: a second attempt after a doc already exists is refused for
     // exactly that reason).
+    // A failure gets the teacher's anchor too, like the shape gate: a retry
+    // of the same output fails the same way, and the row would otherwise end
+    // at ERROR with no warm-up for the day (four on 2026-10-20).
     const plausibility = _wfbCheckPlausible_(lesson, raw);
-    if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
+    if (!plausibility.ok) {
+      const anchor = String(lesson.warmup_anchor || "").trim();
+      if (!anchor) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
+      raw = anchor;
+      fallback = "SUSPECT_FABRICATION: " + plausibility.reason;
+    }
   }
 
   // The text box needs no folder, so the folder-path fields are checked only
@@ -1165,6 +1173,45 @@ function repairWarmUpTextBox() {
   });
   SpreadsheetApp.flush();
   Logger.log("[WFB] repairWarmUpTextBox: " + JSON.stringify(result));
+  return result;
+}
+
+// Flow 3 jobs that ended at ERROR because Studio's output failed the
+// plausibility check (before 2026-10-20 that failed the row; it now gets the
+// anchor): delivers the teacher's anchor for each one whose day hasn't
+// passed, and notes ANCHOR_FALLBACK on its return row for 34c. Counts only.
+function previewFailedWarmUpRepair() { return wfbRepairFailedWarmUps_(true); }
+function repairFailedWarmUps() { return wfbRepairFailedWarmUps_(false); }
+
+function wfbRepairFailedWarmUps_(dryRun) {
+  const ctx = wfbLedger_();
+  const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
+  const ret = ctx.ss.getSheetByName(WFB_RETURN_TAB);
+  const result = { dryRun: dryRun, failed: 0, delivered: 0, pastDay: 0, notError: 0, noAnchor: 0 };
+  if (!wqSheet || !ret || ret.getLastRow() < 2) {
+    Logger.log("[WFB] repairFailedWarmUps: " + JSON.stringify(result));
+    return result;
+  }
+  const today = formatDateYMD_(new Date());
+  const rows = ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues();
+  rows.forEach(function (r, i) {
+    const error = String(r[WFB_RET.ERROR] || "");
+    if (Number(r[WFB_RET.FLOW]) !== 3 || String(r[WFB_RET.HARVEST_STATUS]).trim() !== "FAILED" ||
+        error.indexOf("SUSPECT_FABRICATION") !== 0) return;
+    result.failed++;
+    const queueId = String(r[WFB_RET.QUEUE_ID]).trim();
+    const found = wfbFindQueueRow_(wqSheet, queueId);
+    if (!found || String(found.row[WQ25_STATUS] || "").trim() !== "ERROR") { result.notError++; return; }
+    if (wfbNormalizeDateIso_(found.row[WQ25_LESSON_DATE]) < today) { result.pastDay++; return; }
+    if (dryRun) { result.delivered++; return; }
+    const out = wfbApplyFlow3_(wqSheet, found, queueId, "", error);
+    if (!out.ok) { result.noAnchor++; return; }
+    wfbMarkReturn_(ret, i + 2, "HARVESTED", WFB_ANCHOR_FALLBACK + ": " + error, r[WFB_RET.ATTEMPTS]);
+    wfbConsumeInputRow_(ctx.ss, 3, queueId);
+    result.delivered++;
+  });
+  if (!dryRun) SpreadsheetApp.flush();
+  Logger.log("[WFB] repairFailedWarmUps: " + JSON.stringify(result));
   return result;
 }
 

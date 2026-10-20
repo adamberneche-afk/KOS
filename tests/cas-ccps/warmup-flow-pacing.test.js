@@ -16,7 +16,8 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
   '40_FlowPrompts.js', '41_WarmUpFlowBridge.js']
   .map((f) => path.join(CC, f));
 const EXPOSE = ['buildWarmUpFlowInputs', 'wfbRetryStaleInputs_', 'wfbConsumeInputRow_',
-  'WFB_INPUTS_PER_RUN', 'WFB_FLOW3_HEADERS', 'WQ25_COL_COUNT'];
+  'WFB_INPUTS_PER_RUN', 'WFB_FLOW3_HEADERS', 'WQ25_COL_COUNT', 'harvestWarmUpFlowReturns',
+  'previewFailedWarmUpRepair', 'repairFailedWarmUps'];
 
 function setup() {
   const { exported, sandbox } = loadGasFiles(FILES, EXPOSE);
@@ -166,4 +167,66 @@ test('a text-box warm-up at PENDING_EVAL gets a Flow 4 input from its WarmUpText
     ['Q-TB', 'READY', 'How does a team make money?', 'Teams sell tickets and sponsorships.', 3, '']);
   assert.match(String(promptText), /How does a team make money\?/);
   assert.match(String(promptText), /Teams sell tickets and sponsorships\./);
+});
+
+// 2026-10-20: four of Wednesday's warm-ups ended at ERROR because Studio's
+// output failed the plausibility check; the shape gate's anchor fallback now
+// covers that too, and repairFailedWarmUps() delivers it for rows already
+// failed.
+const RET_HEADERS = ['Timestamp', 'Flow', 'QueueID', 'RawOutput', 'HarvestStatus', 'Attempts', 'Error'];
+const ANCHOR = 'How does a team make money?';
+function textBoxJob(fx, id, date, status) {
+  fx.sandbox.PropertiesService.getScriptProperties().setProperty('WARMUP_TEXT_BOX', 'all');
+  const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+  row[0] = id; row[3] = 'Sam Student'; row[5] = date; row[8] = status;
+  row[6] = JSON.stringify({ course_name: 'Sports Entertainment and Event Marketing',
+    course_objective: 'Explain sponsorship revenue streams', warmup_anchor: ANCHOR });
+  fx.wq.appendRow(row);
+}
+const statusOf = (fx, id) => fx.wq.getRange(2, 1, fx.wq.getLastRow() - 1, 9).getValues().find((x) => x[0] === id)[8];
+
+test('a Flow 3 return that fails the plausibility check delivers the teacher\'s anchor', () => {
+  const fx = setup();
+  textBoxJob(fx, 'Q-FAB', '2099-01-05', 'PENDING');
+  const ret = fx.ss.insertSheet('WarmUpFlowReturn');
+  ret.appendRow(RET_HEADERS);
+  ret.appendRow([new Date(), 3, 'Q-FAB', 'Write about your favorite hobby and why you enjoy it.', '', 0, '']);
+
+  const r = fx.exported.harvestWarmUpFlowReturns();
+  assert.equal(r.applied, 1, JSON.stringify(r));
+  assert.equal(statusOf(fx, 'Q-FAB'), 'DELIVERED');
+  assert.equal(fx.ss.getSheetByName('WarmUpTextBox').getRange(2, 4).getValue(), ANCHOR);
+  const after = ret.getRange(2, 1, 1, 7).getValues()[0];
+  assert.equal(after[4], 'HARVESTED');
+  assert.match(after[6], /^ANCHOR_FALLBACK: SUSPECT_FABRICATION: /);
+});
+
+test('repairFailedWarmUps delivers the anchor for a job failed as fabricated, not a past day\'s or another failure', () => {
+  const fx = setup();
+  textBoxJob(fx, 'Q-ERR', '2099-01-05', 'ERROR');
+  textBoxJob(fx, 'Q-PAST', '2020-01-05', 'ERROR');
+  textBoxJob(fx, 'Q-OTHER', '2099-01-05', 'ERROR');
+  const ret = fx.ss.insertSheet('WarmUpFlowReturn');
+  ret.appendRow(RET_HEADERS);
+  const fab = 'SUSPECT_FABRICATION: the output shares none of this row\'s distinguishing content';
+  ret.appendRow([new Date(), 3, 'Q-ERR', 'x', 'FAILED', 3, fab]);
+  ret.appendRow([new Date(), 3, 'Q-PAST', 'x', 'FAILED', 3, fab]);
+  ret.appendRow([new Date(), 3, 'Q-OTHER', 'x', 'FAILED', 3, 'No WarmUpQueue row for Queue_ID Q-OTHER']);
+
+  const preview = fx.exported.previewFailedWarmUpRepair();
+  assert.deepEqual([preview.failed, preview.delivered, preview.pastDay], [2, 1, 1]);
+  assert.equal(statusOf(fx, 'Q-ERR'), 'ERROR', 'the preview changes nothing');
+
+  const r = fx.exported.repairFailedWarmUps();
+  assert.deepEqual([r.failed, r.delivered, r.pastDay], [2, 1, 1]);
+  assert.equal(statusOf(fx, 'Q-ERR'), 'DELIVERED');
+  assert.equal(statusOf(fx, 'Q-PAST'), 'ERROR');
+  assert.equal(statusOf(fx, 'Q-OTHER'), 'ERROR');
+  const tb = fx.ss.getSheetByName('WarmUpTextBox');
+  assert.equal(tb.getLastRow(), 2);
+  assert.deepEqual([tb.getRange(2, 1).getValue(), tb.getRange(2, 4).getValue()], ['Q-ERR', ANCHOR]);
+  const row = ret.getRange(2, 1, 1, 7).getValues()[0];
+  assert.equal(row[4], 'HARVESTED');
+  assert.match(row[6], /^ANCHOR_FALLBACK: SUSPECT_FABRICATION/);
+  assert.equal(fx.exported.repairFailedWarmUps().delivered, 0, 'a second run does nothing');
 });
