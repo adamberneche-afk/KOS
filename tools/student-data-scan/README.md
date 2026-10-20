@@ -34,8 +34,10 @@ scan on every push and pull request, so a new student-shaped address fails
 the build. On 2026-10-20 the operator confirmed every remaining email
 finding, in the tree and in history, as a placeholder (allowlisted), and
 `--roster` found one real student name (`leader-hub/LH_04_EMAIL_AUDIT.md`),
-removed from the tree by the operator. That name is still in git history
-from 2026-08-08; removing it there needs a history rewrite on the
-operator's machine, the operator's decision. CI can't check names: run
+removed from the tree by the operator. The same day, at the operator's
+decision, `git filter-repo` replaced it in every past version (29 file
+versions) and all branches and tags were force-pushed; a fresh clone scans
+clean. GitHub's read-only pull-request refs keep the old commits until
+GitHub Support purges them. CI can't check names: run
 `--roster` locally for each section after any change that adds example
 text.
