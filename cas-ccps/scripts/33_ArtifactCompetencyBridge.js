@@ -147,16 +147,13 @@ function syncArtifactCompetencies() {
   if (!spSheet)      { Logger.log("[S33] StudentProfiles tab not found.");  return s33Stopped_("NO_PROFILES_TAB"); }
 
   // Load Teacher Matrix from teacher's own spreadsheet (not on Central Ledger)
-  const matrixSsId = PropertiesService.getScriptProperties()
-    .getProperty("TEACHER_MATRIX_SS_ID");
-  if (!matrixSsId) {
-    Logger.log("[S33] TEACHER_MATRIX_SS_ID not set — cannot read competency tags.");
-    return s33Stopped_("NO_MATRIX_ID");
-  }
-
   let matrixData;
   try {
-    const matrixSs    = SpreadsheetApp.openById(matrixSsId);
+    const matrixSs = s33TeacherMatrixSs_(ss, cfg);
+    if (!matrixSs) {
+      Logger.log("[S33] No Teacher Matrix: MatrixRegistry has no row and TEACHER_MATRIX_SS_ID isn't set.");
+      return s33Stopped_("NO_MATRIX_ID");
+    }
     const matrixSheet = matrixSs.getSheetByName("TeacherMatrix");
     if (!matrixSheet) {
       Logger.log("[S33] TeacherMatrix sheet not found in matrix spreadsheet.");
@@ -330,6 +327,18 @@ function s33CompetencyColumns_(headers) {
   });
   if (!cols.length && names.indexOf("competency_ids") !== -1) cols.push(names.indexOf("competency_ids"));
   return cols;
+}
+
+// The teacher's matrix spreadsheet, or null: the MatrixRegistry row, found as
+// 53 finds it (_asTeacherMatrix_), then the TEACHER_MATRIX_SS_ID Script
+// Property. Reading only the property stopped the sync with NO_MATRIX_ID on
+// an install that had never set it (2026-10-20). Throws if the matrix can't
+// be opened (NO_MATRIX_ACCESS above).
+function s33TeacherMatrixSs_(ss, cfg) {
+  const fromRegistry = _asTeacherMatrix_(ss, cfg).ss;
+  if (fromRegistry) return fromRegistry;
+  const id = PropertiesService.getScriptProperties().getProperty("TEACHER_MATRIX_SS_ID");
+  return id ? SpreadsheetApp.openById(id) : null;
 }
 
 // ---------------------------------------------------------------------------
