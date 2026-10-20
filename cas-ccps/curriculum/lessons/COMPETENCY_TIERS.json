@@ -1,5 +1,5 @@
 {
-  "_note": "Competency tiers per assignment (decided 2026-10-20). primary must be MET; secondary (1-2) at least PARTIALLY MET; tertiary never required, noted under ALSO SHOWN when the work shows one. Read by tools/cas-ccps/build-lesson-assignments.js. Term 2 approved as drafted 2026-10-20; term 1 drafted 2026-10-20 for review; tweak entries as lessons are taught. why says which part of the task evidences the primary and secondaries.",
+  "_note": "Competency tiers per assignment (decided 2026-10-20). primary must be MET; secondary (1-2) at least PARTIALLY MET; tertiary never required, noted under ALSO SHOWN when the work shows one. Read by tools/cas-ccps/build-lesson-assignments.js. Terms 1 and 2 drafted from each task text and approved as drafted 2026-10-20; tweak entries as lessons are taught. why says which part of the task evidences the primary and secondaries.",
   "8175-L01": {
     "primary": "8175-45",
     "secondary": [
