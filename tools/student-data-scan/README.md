@@ -37,7 +37,7 @@ finding, in the tree and in history, as a placeholder (allowlisted), and
 removed from the tree by the operator. The same day, at the operator's
 decision, `git filter-repo` replaced it in every past version (29 file
 versions) and all branches and tags were force-pushed; a fresh clone scans
-clean. GitHub's read-only pull-request refs keep the old commits until
-GitHub Support purges them. CI can't check names: run
+clean. GitHub Support then purged the read-only pull-request refs and
+cached views, and the repo went public again. CI can't check names: run
 `--roster` locally for each section after any change that adds example
 text.
