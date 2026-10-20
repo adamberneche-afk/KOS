@@ -428,11 +428,18 @@ function notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId) {
       "and has been cleared from the queue.\n\n" +
       "Assignment Config ID: " + configId + "\n" +
       "Document ID: " + fileId + "\n\n" +
-      "What to do:\n" +
-      "  1. Ask the student to reopen their document\n" +
-      "  2. Have them click: 📊 AI Evaluation Panel → Run Assignment Check\n" +
-      "  3. Their request will be re-queued automatically\n\n" +
-      "If this keeps happening for the same student, contact your system admin.\n\n" +
+      // The doc's AI Evaluation Panel menu doesn't run for student accounts
+      // (2026-10-19). A late result still lands (backprop finishes an
+      // ERROR_TIMEOUT row), and while the doc's FlowInput row is READY a
+      // resubmission builds no new one, so starting Flow 2 comes first.
+      "What to do (the student doesn't need to do anything yet):\n" +
+      "  1. In the Central Ledger's FlowInput tab, find this document's row (Document ID below).\n" +
+      "  2. If its ReadyStatus is READY, type READY into that cell again. A hand edit starts\n" +
+      "     Flow 2; the feedback lands and the student's status updates by itself, even late.\n" +
+      "  3. If the row is blank, starts with ERROR_, or isn't there, ask the student to press\n" +
+      "     Submit for Feedback again on the Student Dashboard.\n\n" +
+      "Don't use the Admin Recovery Panel reset for this: the feedback would arrive twice.\n" +
+      "If this keeps happening, contact your system admin.\n\n" +
       "— Assignment System (automated alert)"
     );
   } catch (e) {
