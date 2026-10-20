@@ -567,6 +567,7 @@ function buildWarmUpFlowInputs() {
   result.retried = wfbRetryStaleInputs_(ctx.ss, tabs, WFB_INPUTS_PER_RUN, new Date());
   result.fallback = wfbFallbackExhaustedInputs_(ctx.ss, tabs[3], wqSheet, new Date());
   let budget = WFB_INPUTS_PER_RUN - result.retried;
+  let textBox = null; // WarmUpTextBox rows, read once if a Flow 4 job needs them
 
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
@@ -603,7 +604,8 @@ function buildWarmUpFlowInputs() {
           result.skipped++;
         }
       } else {
-        if (wfbBuildFlow4Row_(tabs[4], row, queueId)) result.flow4++;
+        if (!textBox) textBox = readWarmUpTextBox_(ctx.ss);
+        if (wfbBuildFlow4Row_(tabs[4], row, queueId, textBox[queueId])) result.flow4++;
         else result.skipped++;
       }
       seen[flow][queueId] = true;
@@ -685,16 +687,19 @@ function wfbBuildFlow3Row_(sheet, row, queueId) {
   return f.archetype;
 }
 
-function wfbBuildFlow4Row_(sheet, row, queueId) {
+function wfbBuildFlow4Row_(sheet, row, queueId, tb) {
   const docId = String(row[WQ25_DOC_ID] || "").trim();
-  if (!docId) {
-    Logger.log("[WFB] " + queueId + " flow 4: no Doc_ID on the row — skipped");
+  if (!docId && !tb) {
+    Logger.log("[WFB] " + queueId + " flow 4: no Doc_ID and no WarmUpTextBox row — skipped");
     return false;
   }
   // Reuses 25_WarmUpWriter.js rather than re-reading the doc: this is exactly
   // what ExtractWarmUpPromptTextStep was re-implementing, and the marker
-  // strings it searches for are the ones wfbCreateWarmUpDoc_ writes.
-  const extracted = evaluateWarmUpDoc_(docId, queueId);
+  // strings it searches for are the ones wfbCreateWarmUpDoc_ writes. A
+  // warm-up answered in the text box (WARMUP_TEXT_BOX) has no doc: its
+  // prompt and answer are in its WarmUpTextBox row (2026-10-20: every
+  // text-box answer was skipped here and sat at PENDING_EVAL).
+  const extracted = docId ? evaluateWarmUpDoc_(docId, queueId) : evaluateWarmUpText_(tb);
   if (extracted && extracted.error) {
     Logger.log("[WFB] " + queueId + " flow 4: " + extracted.error);
     return false;

@@ -137,3 +137,33 @@ test('a Flow 3 job with no return after every retry gets the teacher\'s anchor; 
   assert.ok(lost.every((x) => x[1] === 'CONSUMED'));
   assert.equal(fx.exported.buildWarmUpFlowInputs().fallback, 0, 'a second run delivers nothing again');
 });
+
+// 2026-10-20: every warm-up answered in the text box sat at PENDING_EVAL,
+// because the Flow 4 input builder skipped any row without a Doc_ID.
+test('a text-box warm-up at PENDING_EVAL gets a Flow 4 input from its WarmUpTextBox row', () => {
+  const fx = setup();
+  const add = (id) => {
+    const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+    row[0] = id; row[3] = 'Sam Student'; row[5] = '2026-10-19'; row[8] = 'PENDING_EVAL';
+    row[12] = 3; row[18] = 'Teams sell tickets and sponsorships.';
+    fx.wq.appendRow(row);
+  };
+  add('Q-TB');
+  add('Q-NONE');
+  const tb = fx.ss.insertSheet('WarmUpTextBox');
+  tb.appendRow(['queue_id', 'lesson_date', 'bridge_text', 'warmup_text',
+    'response_text', 'submitted_at', 'reply_text', 'replied_at']);
+  tb.appendRow(['Q-TB', '2026-10-19', '', 'How does a team make money?',
+    'Teams sell tickets and sponsorships.', new Date(), '', '']);
+
+  const r = fx.exported.buildWarmUpFlowInputs();
+  assert.equal(r.flow4, 1);
+  assert.equal(r.skipped, 1, 'a row with neither a doc nor a text box is still skipped');
+  const input = fx.ss.getSheetByName('Flow4Input');
+  assert.equal(input.getLastRow(), 2);
+  const [, id, status, prompt, response, wcs, , docId, promptText] = input.getRange(2, 1, 1, 9).getValues()[0];
+  assert.deepEqual([id, status, prompt, response, wcs, docId],
+    ['Q-TB', 'READY', 'How does a team make money?', 'Teams sell tickets and sponsorships.', 3, '']);
+  assert.match(String(promptText), /How does a team make money\?/);
+  assert.match(String(promptText), /Teams sell tickets and sponsorships\./);
+});
