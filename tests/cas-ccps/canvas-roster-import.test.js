@@ -158,6 +158,17 @@ test('preview plans the mapped students, refuses a non-student login, and writes
   assert.equal(calls.length, 0);
 });
 
+test('a PeriodOverride row gives the student its period, even in a section with none', () => {
+  const { exported, ledgerSs } = setup({ sectionMap: MAPPED });
+  const o = ledgerSs.insertSheet('PeriodOverride');
+  o.appendRow(['student_account', 'period']);
+  o.appendRow(['4567890@ccpsnet.net', '3']);
+  const r = exported.previewRosterEnrollment('CFG-1');
+  assert.deepEqual(r.planned.map((p) => [p.account, p.period]), [
+    ['1234567@ccpsnet.net', '3'], ['2345678@ccpsnet.net', '3'], ['4567890@ccpsnet.net', '3']]);
+  assert.deepEqual(r.unmappedSections, []);
+});
+
 test('apply enrolls each course\'s students in that course\'s assignment, with the period and course from ClassSchedule', () => {
   const { exported, calls } = setup({ sectionMap: MAPPED });
   assert.equal(exported.applyRosterEnrollment('CFG-1').enrolled, 2);

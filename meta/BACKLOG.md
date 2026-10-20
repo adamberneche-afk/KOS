@@ -100,10 +100,6 @@ the part of the task.
 
 ### Waiting on another piece of work
 
-- **`PeriodOverride` tab** (student account → period) read first by the roster
-  import and `applyPeriodRelabel()` (52), so period 3's odd/even groups
-  survive a plain Canvas export. Until then each export is tagged by hand.
-  Needed before the next lesson enrollment (2026-10-19).
 - **Setup wizard installs two Ledger triggers in the wrong project.**
   `28_Module2Setup.js` (Unified Manual) installs `registerDeliveredWarmUps`
   and `runAlignmentLogBackfill_` in its own project; their installers in 25
