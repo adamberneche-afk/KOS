@@ -26,6 +26,13 @@
 // those. restoreLedgerTriggers() undoes it: one trigger per recorded job at
 // its cadence (rounded to a cadence Apps Script accepts), the cycle removed.
 // previewLedgerCycle() changes nothing. Logs function names and counts only.
+//
+// registerDeliveredWarmUps is always one of the cycle's jobs (LC_ALWAYS): the
+// setup wizard (28) put its trigger in the Unified Manual project, so the
+// Ledger never had one and 117 warm-ups were registered by hand on 10-19.
+// installRegistrationTrigger() and installAlignmentBackfillTrigger() are the
+// Run-menu entry points for those two jobs (2026-10-20): each adds its job to
+// the cycle, or gives it its own trigger when the cycle isn't installed.
 // =============================================================================
 
 const LC_TRIGGER_FN = "runLedgerCycle";
@@ -39,6 +46,8 @@ const LC_PROP_BUSY = "LEDGER_CYCLE_BUSY_UNTIL";
 // The Ledger's frequent jobs and their cadence in minutes, in pipeline order
 // (used to break ties). Cadences are the ones each installer set; 03's
 // backPropagateCompletions was specced at 2.
+const LC_ALWAYS = ["registerDeliveredWarmUps"];
+
 const LC_JOBS = [
   { fn: "bridgeQueue",               every: 1  }, // 03
   { fn: "runStagingTurnstile",       every: 1  }, // 06
@@ -132,9 +141,10 @@ function lcInstall_(opts) {
     const fn = t.getHandlerFunction();
     if (known.indexOf(fn) !== -1 && found.indexOf(fn) === -1) found.push(fn);
   });
-  const jobs = lcRecordedJobs_(props).concat(found.filter(function (fn) {
-    return lcRecordedJobs_(props).indexOf(fn) === -1;
-  }));
+  const jobs = lcRecordedJobs_(props);
+  found.concat(LC_ALWAYS).forEach(function (fn) {
+    if (jobs.indexOf(fn) === -1) jobs.push(fn);
+  });
   const hasCycle = triggers.some(function (t) { return t.getHandlerFunction() === LC_TRIGGER_FN; });
   const missing = known.filter(function (fn) { return jobs.indexOf(fn) === -1; });
   const result = { apply: apply, takenOver: found, jobs: jobs, notInstalled: missing, message: "" };
@@ -164,8 +174,7 @@ function restoreLedgerTriggers() {
   const restored = [];
   LC_JOBS.forEach(function (j) {
     if (jobs.indexOf(j.fn) === -1 || have.indexOf(j.fn) !== -1) return;
-    // everyMinutes takes only 1, 5, 10, 15 or 30.
-    const mins = [1, 5, 10, 15, 30].filter(function (m) { return m <= j.every; }).pop() || 1;
+    const mins = lcEveryMinutes_(j.every);
     ScriptApp.newTrigger(j.fn).timeBased().everyMinutes(mins).create();
     restored.push(j.fn + " (" + mins + " min)");
   });
@@ -174,4 +183,50 @@ function restoreLedgerTriggers() {
   Logger.log("[LC] Restored " + restored.length + " trigger(s): " + (restored.join(", ") || "none") +
     "; the cycle trigger is removed.");
   return { restored: restored };
+}
+
+// everyMinutes takes only 1, 5, 10, 15 or 30.
+function lcEveryMinutes_(every) {
+  return [1, 5, 10, 15, 30].filter(function (m) { return m <= every; }).pop() || 1;
+}
+
+/** registerDeliveredWarmUps (25): in the cycle, or its own trigger without one. */
+function installRegistrationTrigger() {
+  return lcInstallJob_("registerDeliveredWarmUps");
+}
+
+/** runAlignmentLogBackfill_ (22): in the cycle, or its own trigger without one. */
+function installAlignmentBackfillTrigger() {
+  return lcInstallJob_("runAlignmentLogBackfill_");
+}
+
+// Adds one LC_JOBS job to the cycle's recorded jobs when the cycle is
+// installed (a trigger of its own would make the cycle leave it alone),
+// otherwise gives it its own trigger at its cadence. Safe to run again.
+function lcInstallJob_(fn) {
+  const props = PropertiesService.getScriptProperties();
+  const handlers = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
+  const job = LC_JOBS.filter(function (j) { return j.fn === fn; })[0];
+  let message;
+  if (handlers.indexOf(LC_TRIGGER_FN) !== -1) {
+    const jobs = lcRecordedJobs_(props);
+    if (jobs.indexOf(fn) === -1) {
+      jobs.push(fn);
+      props.setProperty(LC_PROP_JOBS, JSON.stringify(jobs));
+      message = fn + " added to the Ledger cycle (every " + job.every + " min).";
+    } else {
+      message = fn + " already runs in the Ledger cycle.";
+    }
+    if (handlers.indexOf(fn) !== -1) {
+      message += " It also has its own trigger, so the cycle leaves it to that; run installLedgerCycle() to fold it in.";
+    }
+  } else if (handlers.indexOf(fn) !== -1) {
+    message = fn + " already has its own trigger.";
+  } else {
+    const mins = lcEveryMinutes_(job.every);
+    ScriptApp.newTrigger(fn).timeBased().everyMinutes(mins).create();
+    message = fn + " installed: its own trigger, every " + mins + " min (the Ledger cycle isn't installed).";
+  }
+  Logger.log("[LC] " + message);
+  return { fn: fn, message: message };
 }

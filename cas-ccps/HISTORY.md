@@ -3780,3 +3780,25 @@ kind of failure every morning.
 - **Tests:** `period-split.test.js` (the seed, and a plain export no longer
   undoing the relabel), `canvas-roster-import.test.js` (an override
   enrolls a student whose section has no period).
+
+## The setup wizard's triggers belong in the Central Ledger, 2026-10-20
+
+- **Found:** `28_Module2Setup.js` runs in the Unified Manual project, but
+  every trigger it installed (the alignment backfill in Phase A; the four
+  3 a.m. stages and `registerDeliveredWarmUps` in Phase B) runs a Central
+  Ledger function, so each could only fail there. Its verify step checked
+  its own project, so it reported them installed. The Ledger's own
+  installers covered the 3 a.m. stages; `registerDeliveredWarmUps` never had
+  a Ledger trigger (117 warm-ups registered by hand on 10-19), and its
+  installer and the backfill's ended in `_`, so neither was on the Run menu.
+  The tests pinned the wizard's install, not where it ran.
+- **Fix:** the wizard installs no trigger; Phase A and B name the Central
+  Ledger installers instead. `installLedgerCycle()` (64) always includes
+  `registerDeliveredWarmUps`. `installRegistrationTrigger()` and
+  `installAlignmentBackfillTrigger()` (64) add their job to the cycle, or
+  give it its own trigger without one. `previewMisplacedTriggers()` /
+  `removeMisplacedTriggers()` (28) clear the wizard's old triggers, only
+  those whose function the project lacks. Deployment step 17g.
+- **Tests:** `ledger-cycle.test.js`; `artifact-sync-cron-health.test.js`
+  (its wizard tests now pin that no trigger is made in the Unified Manual
+  project).

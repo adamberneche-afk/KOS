@@ -100,12 +100,6 @@ the part of the task.
 
 ### Waiting on another piece of work
 
-- **Setup wizard installs two Ledger triggers in the wrong project.**
-  `28_Module2Setup.js` (Unified Manual) installs `registerDeliveredWarmUps`
-  and `runAlignmentLogBackfill_` in its own project; their installers in 25
-  and 22 end in `_`, so they can't be run from the Ledger's menu. Make
-  `installLedgerCycle()` always include `registerDeliveredWarmUps`, give
-  both installers public names, and fix 28 (2026-10-19).
 - **Teacher timeout email (03 `notifyTimeoutToTeacher_`)** still tells the
   student to use the doc's AI Evaluation Panel menu, which doesn't run for
   student accounts: say to start Flow 2 by hand (a late result still lands)
