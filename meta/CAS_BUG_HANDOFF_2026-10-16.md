@@ -142,7 +142,7 @@ Do not confuse this with the 2 a.m. `buildUpcomingLessons()` trigger, which buil
 - How real Google Docs formats the inserted paragraph after the attribute copy. Tests use a fake document, so inspect the first live result.
 - Whether Studio's sheet trigger fires on script-written rows (open issue 4). **Answered 2026-10-19: not on an appended row; yes on an edit of an existing cell.**
 - Backprop's actual trigger interval (the code comment mentions 2 minutes; the effective cadence was not checked).
-- Whether the live web app matches the repo (v12 versus later pushes).
+- Whether the live web app matches the repo (v12 versus later pushes). **Answered 2026-10-20: the Student Dashboard is well past v12.**
 - Two odd rows at the top of the Ledger tab (rows 2 and 3: `IN_PROCESS`, no timestamp, placeholder-style ConfigIDs). They look like leftover test rows from a canary or fixture run. Check before deleting.
 
 ## 10. Reference
