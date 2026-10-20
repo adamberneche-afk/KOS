@@ -7,7 +7,11 @@
 //   - what reaches Gemini is redacted, and what reaches the signal doc names
 //     nobody: no student, no sender, no address, no message text;
 //   - a safety message is flagged before Gemini runs and is never summarized;
-//   - mail text is deleted from the sheet once the Flow has answered.
+//   - mail text is deleted from the sheet once the Flow has answered;
+//   - the signal doc splits WAITING ON YOU (needs a reply, with fail-safe
+//     overrides) from FOR YOUR EYES, and leaves out archived threads;
+//   - Google's system senders are never family mail.
+// Every name here is synthetic.
 //
 // Loaded with the project's full scope (project-map.json): 00_SharedConfig.js
 // for getConfig_/LEDGER, 61 for the prompt, 62 for the deploy marker. Gmail is
@@ -33,6 +37,7 @@ const EXPORTS = [
   'runFamilySentinelPreflight', 'runFamilyMailCanary', 'checkFamilyMailFlowBinding',
   'checkFamilyMailFlowLiveness', 'installFamilyMailFixture', 'syncFamilyMailFlowBuildSpec',
   'sendFamilySafetyAlerts', 'sendFamilyAlertTest', 'makeFamilyAlertTopic', 'runFamilySafetyAlertFixture',
+  'reclassifySystemSenderThreads', 'reclassifySystemSenderThreadsNow',
   'FAMILY_MAIL_TRIAGE_PROMPT', 'FMS_LOG', 'FMS_LOG_HEADERS',
 ];
 
@@ -118,7 +123,7 @@ function setUp(messages, opts) {
   props.setProperty('CENTRAL_LEDGER_SS_ID', ledgerSs.getId());
   const ledger = ledgerSs.insertSheet('Ledger');
   ledger.appendRow(new Array(16).fill('header'));
-  ROSTER.forEach((s) => {
+  (opts.roster || ROSTER).forEach((s) => {
     const row = new Array(16).fill('');
     row[1] = s.email; row[4] = s.name; row[8] = OPERATOR; row[10] = s.course; row[11] = s.period;
     ledger.appendRow(row);
@@ -126,6 +131,7 @@ function setUp(messages, opts) {
 
   const ss = sandbox.SpreadsheetApp.create('Family Mail Sentinel');
   props.setProperty('FAMILY_SENTINEL_SS_ID', ss.getId());
+  if (opts.beforeSetup) opts.beforeSetup(ss);
   exported.setupFamilySentinel();
   if (opts.contacts) {
     const tab = ss.getSheetByName('FamilyContacts');
@@ -678,4 +684,258 @@ test('61_FamilyMailPrompt.js is generated from FAMILY_MAIL_TRIAGE_PROMPT.md', ()
   assert.equal(fs.readFileSync(gen.TARGET_PATH, 'utf8'), expected,
     'Edit cas-ccps/docs/FAMILY_MAIL_TRIAGE_PROMPT.md and run node tools/cas-ccps/generate-family-mail-prompt.js');
   assert.match(gen.extractPrompt(fs.readFileSync(gen.SOURCE_PATH, 'utf8')), /MESSAGE TO TRIAGE:$/);
+});
+
+// ── Two tiers: WAITING ON YOU and FOR YOUR EYES ─────────────────────────────
+
+// The WAITING ON YOU block (with NEEDS YOU NOW) and the FOR YOUR EYES block.
+function tiers(text) {
+  const at = text.indexOf('FOR YOUR EYES:');
+  const end = text.indexOf('ANSWERED IN THE LAST');
+  return { waiting: text.slice(0, at), eyes: text.slice(at, end) };
+}
+
+const NO_REPLY = { is_family: true, category: 'praise_thanks', urgency: 1, safety: false,
+  ask: 'The student thanks the class for the quiz review.', due: '', needs_reply: false };
+
+// One student message, answered with `answer`, then the signal doc.
+function oneMessage(answer, extra) {
+  const fx = setUp([MAIL.student].concat(extra || []));
+  fx.exported.scanFamilyMail();
+  playFlow(fx.ss, () => answer);
+  fx.exported.harvestFamilyMailReturns();
+  const result = fx.exported.writeFamilySignal();
+  return Object.assign(fx, { result, text: signalText(fx.sandbox, fx.props) });
+}
+
+test('needs_reply false puts a thread under FOR YOUR EYES: course, category, ask and wait, never urgent', () => {
+  const fx = oneMessage(NO_REPLY);
+  assert.deepEqual([fx.result.waiting, fx.result.eyes], [0, 1]);
+  const t = tiers(fx.text);
+  assert.match(t.waiting, /WAITING ON YOU: none\./);
+  assert.match(t.eyes, /^FOR YOUR EYES: 1, oldest 20 h\.\n#1 · 8175 P3 · thanks · The student thanks the class for the quiz review · waiting 20 h · open\n/);
+  assert.doesNotMatch(t.eyes, /urgent|from a student|contact/);
+  const LOG = fx.exported.FMS_LOG;
+  assert.equal(logByMessage(fx.ss, LOG, 'm1')[LOG.NEEDS_REPLY], false);
+});
+
+test('a missing needs_reply counts as needing a reply', () => {
+  const answer = Object.assign({}, NO_REPLY);
+  delete answer.needs_reply;
+  const fx = oneMessage(answer);
+  assert.deepEqual([fx.result.waiting, fx.result.eyes], [1, 0]);
+  assert.match(tiers(fx.text).eyes, /FOR YOUR EYES: none\./);
+});
+
+test('override: a safety flag forces a reply (NEEDS YOU NOW), whatever Gemini says', () => {
+  // The tripwire flags it; Gemini calls it a harmless thank-you.
+  const tripped = Object.assign({}, MAIL.student, { body: 'Thanks for class. Some kids keep bullying me at lunch.' });
+  const fx = setUp([tripped]);
+  fx.exported.scanFamilyMail();
+  playFlow(fx.ss, () => NO_REPLY);
+  fx.exported.harvestFamilyMailReturns();
+  const out = fx.exported.writeFamilySignal();
+  assert.deepEqual([out.waiting, out.eyes], [1, 0]);
+  assert.match(tiers(signalText(fx.sandbox, fx.props)).waiting, /NEEDS YOU NOW: 1 message[\s\S]*WAITING ON YOU: 1,/);
+});
+
+test('override: a sensitive category forces a reply', () => {
+  const fx = oneMessage(Object.assign({}, NO_REPLY, { category: 'health', ask: '' }));
+  assert.equal(fx.result.waiting, 1);
+  assert.match(tiers(fx.text).waiting, /#1 · sensitive · waiting 20 h · open/);
+});
+
+test('override: urgency 4 or more forces a reply', () => {
+  const fx = oneMessage(Object.assign({}, NO_REPLY, { urgency: 4 }));
+  assert.equal(fx.result.waiting, 1);
+  assert.match(tiers(fx.text).waiting, /#1 · .* · urgent · open/);
+});
+
+test('override: a due date forces a reply', () => {
+  const fx = oneMessage(Object.assign({}, NO_REPLY, { due: 'Friday' }));
+  assert.equal(fx.result.waiting, 1);
+  assert.match(tiers(fx.text).waiting, /due Friday/);
+});
+
+test('override: a family\'s 2nd contact this week forces a reply', () => {
+  const again = Object.assign({}, MAIL.student, { id: 'm1x', threadId: 't1x', internalDate: now - 4 * HOUR,
+    subject: 'Thanks again', body: 'Thanks for the quiz review today, it helped.' });
+  const fx = oneMessage(NO_REPLY, [again]);
+  assert.deepEqual([fx.result.waiting, fx.result.eyes], [2, 0]);
+  assert.match(tiers(fx.text).waiting, /2nd contact this week/);
+});
+
+test('override: no classification (Flow down, or a bad answer) forces a reply', () => {
+  const down = setUp([MAIL.student]);
+  down.exported.scanFamilyMail();
+  assert.equal(down.exported.writeFamilySignal().waiting, 1, 'still queued: the Flow has not answered');
+
+  const bad = oneMessage('Sure! It is a thank-you note.');
+  assert.deepEqual([bad.result.waiting, bad.result.eyes], [1, 0]);
+  assert.match(tiers(bad.text).waiting, /couldn't classify/);
+  // Even a stray FALSE in Needs_Reply can't hide an unclassified message.
+  const LOG = bad.exported.FMS_LOG;
+  bad.ss.getSheetByName('FamilyMailLog').getRange(2, LOG.NEEDS_REPLY + 1).setValue(false);
+  assert.equal(bad.exported.writeFamilySignal().waiting, 1);
+});
+
+test('a needs-reply message in a FOR YOUR EYES thread moves it to WAITING ON YOU', () => {
+  const fx = oneMessage(NO_REPLY);
+  assert.equal(fx.result.eyes, 1);
+  const follow = { id: 'm1n', threadId: 't1', internalDate: now - 1 * HOUR,
+    from: 'Jordan Rivers <jrivers@student.ccpsnet.net>', subject: 'Re: Makeup test',
+    body: 'Also, can I still turn in the quiz corrections?' };
+  fx.gmail.Users.Messages.list = () => ({ messages: [{ id: 'm1n', threadId: 't1' }] });
+  const getOrig = fx.gmail.Users.Messages.get;
+  fx.gmail.Users.Messages.get = (u, id, o) => id === 'm1n'
+    ? { id: 'm1n', threadId: 't1', internalDate: String(follow.internalDate), payload: { mimeType: 'text/plain',
+      headers: [{ name: 'From', value: follow.from }, { name: 'Subject', value: follow.subject }],
+      body: { data: Buffer.from(follow.body).toString('base64url') } } }
+    : getOrig(u, id, o);
+  assert.equal(fx.exported.scanFamilyMail().queued, 1);
+  playFlow(fx.ss, () => ({ is_family: true, category: 'assignment_help', urgency: 2, safety: false,
+    ask: 'The student asks to turn in quiz corrections.', due: '', needs_reply: true }));
+  fx.exported.harvestFamilyMailReturns();
+  // Isolate the needs-reply rule from the 2nd-contact rule.
+  const LOG = fx.exported.FMS_LOG;
+  const log = fx.ss.getSheetByName('FamilyMailLog');
+  const all = rows(fx.ss, 'FamilyMailLog');
+  log.getRange(all.findIndex((r) => r[LOG.MESSAGE_ID] === 'm1n') + 2, LOG.FAMILY_KEY + 1).setValue('another-key');
+  const out = fx.exported.writeFamilySignal();
+  assert.deepEqual([out.waiting, out.eyes], [1, 0]);
+  assert.match(tiers(signalText(fx.sandbox, fx.props)).waiting, /#1 · 8175 P3 · from a student · assignment help/);
+});
+
+test('an archived thread (no message in INBOX) is in neither list', () => {
+  // Both filed out of INBOX: one would be FOR YOUR EYES, the other WAITING.
+  const archived = Object.assign({}, MAIL.student, { labelIds: ['Label_1'] });
+  const waitingToo = setUp([Object.assign({}, MAIL.parent, { labelIds: [] }), archived],
+    { contacts: [['pat.lopez@example.com', 'mlopez@student.ccpsnet.net', '']] });
+  waitingToo.exported.scanFamilyMail();
+  playFlow(waitingToo.ss, (itemId) => itemId === 'FMS-m1' ? NO_REPLY
+    : { is_family: true, category: 'grade_question', urgency: 4, safety: false, ask: 'The parent asks to explain the rubric score.', due: '' });
+  waitingToo.exported.harvestFamilyMailReturns();
+  const out = waitingToo.exported.writeFamilySignal();
+  assert.deepEqual([out.open, out.waiting, out.eyes], [0, 0, 0]);
+  const text = signalText(waitingToo.sandbox, waitingToo.props);
+  assert.match(text, /WAITING ON YOU: none\.\n\nFOR YOUR EYES: none\./);
+  assert.equal(oneMessage(NO_REPLY).result.eyes, 1, 'the same message left in INBOX is listed');
+});
+
+test('an existing 17-column FamilyMailLog gets the Needs_Reply header', () => {
+  const fx = setUp([], { beforeSetup: (ss) => {
+    ss.insertSheet('FamilyMailLog').appendRow(
+      ['Message_ID', 'Thread_ID', 'Received_At', 'Source', 'Family_Key', 'Course', 'Period', 'Status', 'Category',
+        'Urgency', 'Safety', 'Sensitive', 'Ask', 'Due', 'Classified_At', 'Note', 'Alerted_At']);
+  } });
+  const sh = fx.ss.getSheetByName('FamilyMailLog');
+  assert.deepEqual(sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0], fx.exported.FMS_LOG_HEADERS);
+});
+
+// ── System senders ──────────────────────────────────────────────────────────
+
+const SYSTEM = {
+  docs: {
+    id: 'g1', threadId: 'tg1', internalDate: now - 2 * HOUR,
+    from: 'Jordan Rivers (Google Docs) <comments-noreply@docs.google.com>', subject: 'Jordan Rivers commented',
+    body: 'Jordan Rivers replied to a comment on Marketing Plan.',
+  },
+  drive: {
+    id: 'g2', threadId: 'tg2', internalDate: now - 2 * HOUR,
+    from: 'Maya Lopez (via Google Drive) <drive-shares-dm-noreply@google.com>', subject: 'Document shared with you',
+    body: 'Maya Lopez shared a document with you.',
+  },
+  classroom: {
+    id: 'g3', threadId: 'tg3', internalDate: now - 2 * HOUR,
+    from: 'Google Classroom <no-reply@classroom.google.com>', subject: 'New private comment',
+    body: 'Jordan Rivers added a private comment.',
+  },
+};
+
+test('Google system senders are never family mail, even naming a student or in a family thread', () => {
+  const inThread = Object.assign({}, SYSTEM.docs, { id: 'g4', threadId: 't1' });
+  const fx = setUp([MAIL.student, SYSTEM.docs, SYSTEM.drive, SYSTEM.classroom, inThread]);
+  const out = fx.exported.scanFamilyMail();
+  assert.equal(out.queued, 1, 'only the student\'s own message');
+  ['tg1', 'tg2', 'tg3'].forEach((t) => assert.deepEqual(fx.gmail.labelNames(t), []));
+  const LOG = fx.exported.FMS_LOG;
+  ['g1', 'g2', 'g3', 'g4'].forEach((id) => assert.equal(logByMessage(fx.ss, LOG, id), undefined));
+});
+
+// A log written before system senders were excluded: rows for them, by hand.
+function legacySetup() {
+  const safetyDoc = Object.assign({}, SYSTEM.drive, { id: 'g5', threadId: 'tg5' });
+  const mixedDoc = Object.assign({}, SYSTEM.classroom, { id: 'g6', threadId: 't1' });
+  const fx = setUp([MAIL.student, SYSTEM.docs, safetyDoc, mixedDoc]);
+  fx.exported.scanFamilyMail();
+  const LOG = fx.exported.FMS_LOG;
+  const labels = fx.gmail.Users.Labels.list().labels;
+  const family = labels.find((l) => l.name === 'KOS/Family').id;
+  const log = fx.ss.getSheetByName('FamilyMailLog');
+  [[SYSTEM.docs, false], [safetyDoc, true], [mixedDoc, false]].forEach(([m, safety]) => {
+    const row = new Array(fx.exported.FMS_LOG_HEADERS.length).fill('');
+    row[LOG.MESSAGE_ID] = m.id; row[LOG.THREAD_ID] = m.threadId; row[LOG.RECEIVED_AT] = new Date(m.internalDate);
+    row[LOG.SOURCE] = 'external'; row[LOG.FAMILY_KEY] = 'k-' + m.id; row[LOG.STATUS] = 'CLASSIFIED';
+    row[LOG.CATEGORY] = 'other'; row[LOG.URGENCY] = 2; row[LOG.SAFETY] = safety; row[LOG.SENSITIVE] = safety;
+    log.appendRow(row);
+    fx.gmail.Users.Threads.modify({ addLabelIds: [family] }, 'me', m.threadId);
+  });
+  return fx;
+}
+
+test('the backfill dry run counts system-sender threads and changes nothing', () => {
+  const fx = legacySetup();
+  const before = JSON.stringify(rows(fx.ss, 'FamilyMailLog'));
+  const logs = [];
+  fx.sandbox.Logger.log = (m) => logs.push(String(m));
+  const out = fx.exported.reclassifySystemSenderThreads();
+  assert.equal(out.dryRun, true);
+  assert.deepEqual([out.reclassified, out.threads, out.labelsRemoved, out.keptSafety, out.keptLabelMixed],
+    [2, 2, 1, 1, 1]);
+  assert.equal(JSON.stringify(rows(fx.ss, 'FamilyMailLog')), before);
+  assert.deepEqual(fx.gmail.labelNames('tg1'), ['KOS/Family']);
+  assert.ok(logs.length && logs.every((l) => !/@|jordan|rivers|maya|lopez/i.test(l)), 'counts only');
+});
+
+test('the backfill marks system-sender rows NOT_FAMILY and unlabels their threads, keeping safety and mixed threads', () => {
+  const fx = legacySetup();
+  const out = fx.exported.reclassifySystemSenderThreadsNow();
+  assert.equal(out.dryRun, false);
+  const LOG = fx.exported.FMS_LOG;
+  assert.equal(logByMessage(fx.ss, LOG, 'g1')[LOG.STATUS], 'NOT_FAMILY');
+  assert.deepEqual(fx.gmail.labelNames('tg1'), [], 'label removed');
+  assert.equal(logByMessage(fx.ss, LOG, 'g5')[LOG.STATUS], 'CLASSIFIED', 'a safety flag is left for a person');
+  assert.deepEqual(fx.gmail.labelNames('tg5'), ['KOS/Family']);
+  assert.equal(logByMessage(fx.ss, LOG, 'g6')[LOG.STATUS], 'NOT_FAMILY');
+  assert.deepEqual(fx.gmail.labelNames('t1'), ['KOS/Family'], 'the family message keeps its thread labeled');
+  assert.equal(logByMessage(fx.ss, LOG, 'm1')[LOG.STATUS], 'QUEUED', 'real family mail untouched');
+  assert.equal(fx.exported.reclassifySystemSenderThreadsNow().reclassified, 0, 'a second run finds nothing');
+});
+
+// ── Compound surnames ───────────────────────────────────────────────────────
+
+test('full names with hyphenated and multi-word surnames match, in either order, and are redacted', () => {
+  // Roster emails are only lookup keys here, so not student-domain addresses.
+  const roster = [
+    { email: 'avery.sj@example.test', name: 'Smith-Jones, Avery', course: '8175', period: '2' },
+    { email: 'ana.dlc@example.test', name: 'De La Cruz, Ana', course: '8177', period: '4' },
+    { email: 'riley.vd@example.test', name: 'Riley Van Dorn', course: '8175', period: '1' },
+  ];
+  const mail = [
+    ['c1', 'Can we talk about Avery Smith-Jones this week?'],
+    ['c2', 'Checking on Smith Jones, Avery and the project.'],
+    ['c3', 'Ana De La Cruz was out today.'],
+    ['c4', 'De La Cruz, Ana needs the makeup quiz.'],
+    ['c5', 'Riley Van Dorn asked about the field trip.'],
+  ].map(([id, body]) => ({ id, threadId: 't' + id, internalDate: now - 2 * HOUR,
+    from: 'Counselor <counselor@ccpsnet.net>', subject: 'Checking in', body }));
+  const fx = setUp(mail, { roster });
+  assert.equal(fx.exported.scanFamilyMail().queued, 5);
+  const LOG = fx.exported.FMS_LOG;
+  assert.deepEqual(['c1', 'c2', 'c3', 'c4', 'c5'].map((id) => logByMessage(fx.ss, LOG, id)[LOG.PERIOD]),
+    ['2', '2', '4', '4', '1']);
+  rows(fx.ss, 'FamilyMailInput').forEach((r) => {
+    const sent = String(r[3]).slice(fx.exported.FAMILY_MAIL_TRIAGE_PROMPT.length);
+    assert.doesNotMatch(sent, /avery|smith|jones|cruz|riley|dorn/i);
+  });
 });
