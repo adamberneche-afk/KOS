@@ -3687,3 +3687,16 @@ kind of failure every morning.
   in Sheets, which `|| "TRUE"` read as active; only a blank defaults to
   active now.
 - **Tests:** `lesson-schedule.test.js`, `period-split.test.js`.
+
+## Flow 4 scores text-box warm-ups, 2026-10-20
+
+- **Found:** Tuesday's overnight check listed 3 warm-ups from earlier days
+  still at `PENDING_EVAL`, and `Flow4Input` had never had a row. The Flow 4
+  input builder (`wfbBuildFlow4Row_`, 41) skipped any queue row without a
+  `Doc_ID`, and a warm-up answered in the text box (`WARMUP_TEXT_BOX`, live
+  since 2026-10-19) has none. So no text-box answer could be scored.
+- **Fix:** with no doc, the builder takes the prompt and the answer from the
+  row's `WarmUpTextBox` entry (`evaluateWarmUpText_`, 25), read once per run;
+  `DocID` is left blank. A row with neither is still skipped. Scoring
+  (`wfbApplyFlow4_`) already wrote the doc's feedback only when there is one.
+- **Tests:** `warmup-flow-pacing.test.js`.
