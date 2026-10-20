@@ -20,7 +20,7 @@ Part 1: The Sales Script. Write what you'll say for Scenario A at each of the si
 
 Part 2: The Service Script. Write what you'll say for Scenario B at each step of the T.H.A.N.K.S. method. Include the solution you'll offer and why it's fair to both the fan and the team.
 
-Part 3: Reflect. After you perform, answer: which step was hardest, what did your partner say that surprised you, and how did you adjust?
+Part 3: Reflect. After you perform, write down what actually happened in each scenario: the lines from your script you used, what your partner said back, and how the scene ended. Then answer: which step was hardest, what did your partner say that surprised you, and how did you adjust?
 
 Use these terms accurately: selling process, open-ended question, feature, benefit, objection, suggestion selling, service recovery.
 
