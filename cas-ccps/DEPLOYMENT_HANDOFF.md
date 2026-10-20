@@ -2,7 +2,7 @@
 
 > ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-19)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-19.md`](../meta/HANDOFF_2026-10-19.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-20.md`](../meta/HANDOFF_2026-10-20.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
@@ -48,7 +48,7 @@
 >   edit, so READY is now written as one).
 > - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4,
 >   four timeouts on 10-19; the Studio starter is being checked). The
->   order is in `meta/HANDOFF_2026-10-19.md`.
+>   order is in `meta/HANDOFF_2026-10-20.md`.
 > - **After any manifest scope change** to a web app that runs as the deploying
 >   admin (both dashboards): run any function from that project's editor and
 >   approve every prompt, then test one submit, before a class depends on it.
