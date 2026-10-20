@@ -23,6 +23,15 @@
 //      category, ask, hours waiting and repeat contact, and no names.
 //      The KOS Project reads that doc. It never reads the mail.
 //
+// TWO TIERS (2026-10-20). WAITING ON YOU lists threads that need a reply;
+// FOR YOUR EYES lists the rest (thanks, an FYI), with no "urgent". Gemini
+// says needs_reply; _fmsNeedsReply_() forces it true for safety, a
+// sensitive category, urgency 4 or more, a due date, a family's 2nd+
+// contact this week, or no classification (Flow down or a bad answer), and
+// a missing answer counts as true. A needs-reply message in an "eyes"
+// thread moves the thread to WAITING. A thread with no message left in
+// INBOX (archived) counts as handled and is in neither list.
+//
 // WHAT COUNTS AS FAMILY MAIL (_fmsDetectFamily_):
 //   student   — from @student.ccpsnet.net.
 //   parent    — from an address in the FamilyContacts tab (the teacher fills
@@ -34,7 +43,11 @@
 //               ("my son"). Gemini confirms; a NOT_FAMILY verdict removes
 //               the label.
 //   The roster is the Central Ledger's Ledger tab (names, course, period),
-//   read by ID through getConfig_().ledgerSsId.
+//   read by ID through getConfig_().ledgerSsId. A surname may be hyphenated
+//   or several words ("De La Cruz"); _fmsNameParts_() keeps every form.
+//   Never family mail: Google's system senders (FMS_SYSTEM_SENDERS: Drive
+//   shares, Docs comments, Classroom), even when they name a student.
+//   reclassifySystemSenderThreads() clears ones logged before 2026-10-20.
 //
 // SAFETY. A message with any sign that a student may be unsafe is never
 // summarized: KOS/Family/Now goes on the thread, and the signal doc lists it
@@ -88,12 +101,13 @@ const FMS_LOG_TAB = "FamilyMailLog";
 const FMS_LOG_HEADERS = [
   "Message_ID", "Thread_ID", "Received_At", "Source", "Family_Key", "Course",
   "Period", "Status", "Category", "Urgency", "Safety", "Sensitive", "Ask",
-  "Due", "Classified_At", "Note", "Alerted_At",
+  "Due", "Classified_At", "Note", "Alerted_At", "Needs_Reply",
 ];
 const FMS_LOG = {
   MESSAGE_ID: 0, THREAD_ID: 1, RECEIVED_AT: 2, SOURCE: 3, FAMILY_KEY: 4,
   COURSE: 5, PERIOD: 6, STATUS: 7, CATEGORY: 8, URGENCY: 9, SAFETY: 10,
   SENSITIVE: 11, ASK: 12, DUE: 13, CLASSIFIED_AT: 14, NOTE: 15, ALERTED_AT: 16,
+  NEEDS_REPLY: 17,
 };
 
 const FMS_CONTACTS_TAB = "FamilyContacts";
@@ -122,6 +136,15 @@ const FMS_CANARY_PREFIX = "FMS-CANARY-";
 const FMS_STUDENT_DOMAIN = "@student.ccpsnet.net";
 const FMS_DISTRICT_DOMAIN = "@ccpsnet.net";
 const FMS_CANVAS_DOMAIN = "instructure.com";
+
+// Google's notification senders: a Drive share, a Docs comment, Classroom.
+// They often name a student (the doc's title, the commenter) but are not
+// mail from a family, and listing them buried the real messages.
+const FMS_SYSTEM_SENDERS = [
+  "drive-shares-noreply@google.com", "drive-shares-dm-noreply@google.com",
+  "comments-noreply@docs.google.com",
+  "no-reply@classroom.google.com", "classroom-noreply@google.com",
+];
 
 const FMS_SCAN_QUERY = "-in:sent -in:chats -in:spam -in:trash";
 const FMS_SCAN_WINDOW_HOURS = 48;   // the first scan, and the furthest back any scan looks
@@ -346,7 +369,7 @@ function _fmsScanQuery_(props, nowMs) {
 // A reply in a thread that is already family mail is family mail, whoever
 // sends it and whether or not it names the student.
 function _fmsFromFamilyThread_(msg, prior, operator) {
-  if (!prior || !msg.fromEmail || msg.fromEmail === operator) return null;
+  if (!prior || !msg.fromEmail || msg.fromEmail === operator || _fmsIsSystemSender_(msg.fromEmail)) return null;
   return {
     source: String(prior[FMS_LOG.SOURCE]) || "external",
     studentEmail: "",
@@ -420,7 +443,7 @@ function _fmsDecode_(data) {
 // Returns null, or { source, studentEmail, course, period, student }.
 function _fmsDetectFamily_(msg, roster, contacts, operator) {
   const from = msg.fromEmail;
-  if (!from || from === operator) return null;
+  if (!from || from === operator || _fmsIsSystemSender_(from)) return null;
   const text = msg.subject + "\n" + _fmsStripQuoted_(msg.body);
   const named = _fmsFindRosterName_(text, roster);
 
@@ -447,22 +470,97 @@ function _fmsDetectFamily_(msg, roster, contacts, operator) {
 }
 
 // Finds a rostered student in text: full name (either order) first, then a
-// first name on its own (only used with a parent word; see above).
+// first name on its own (only used with a parent word; see above). Every
+// surname form counts ("de la cruz", "cruz", "smith-jones", "smith jones").
 function _fmsFindRosterName_(text, roster) {
-  const lower = " " + String(text).toLowerCase().replace(/[^a-z' -]+/g, " ") + " ";
+  const lower = " " + String(text).toLowerCase().replace(/[^a-z' -]+/g, " ").replace(/\s+/g, " ") + " ";
   let full = null, first = null;
   for (let i = 0; i < roster.students.length && !full; i++) {
     const s = roster.students[i];
-    if (!s.first || !s.last) continue;
-    if (lower.indexOf(" " + s.first + " " + s.last + " ") !== -1 ||
-        lower.indexOf(" " + s.last + " " + s.first + " ") !== -1) full = s;
-    else if (!first && s.first.length >= 3 && lower.indexOf(" " + s.first + " ") !== -1) first = s;
+    const lasts = s.surnames || (s.last ? [s.last] : []);
+    if (!s.first || !lasts.length) continue;
+    for (let j = 0; j < lasts.length && !full; j++) {
+      if (lower.indexOf(" " + s.first + " " + lasts[j] + " ") !== -1 ||
+          lower.indexOf(" " + lasts[j] + " " + s.first + " ") !== -1) full = s;
+    }
+    if (!full && !first && s.first.length >= 3 && lower.indexOf(" " + s.first + " ") !== -1) first = s;
   }
   return { full: full, first: first };
 }
 
+function _fmsIsSystemSender_(email) {
+  return FMS_SYSTEM_SENDERS.indexOf(String(email || "").trim().toLowerCase()) !== -1;
+}
+
 function _fmsSafetyTripwire_(text) {
   return _fmsHasAny_(text, FMS_SAFETY_TERMS);
+}
+
+// ── Backfill: system senders logged before 2026-10-20 ───────────────────────
+
+// Marks logged threads from FMS_SYSTEM_SENDERS NOT_FAMILY and takes the
+// KOS/Family label off them. A dry run (the default, and what the Run button
+// does) changes nothing; reclassifySystemSenderThreadsNow() is the real run.
+// The log holds no sender, so each message's From is read from Gmail. Left
+// alone, and counted: a thread with a safety flag (a person should look),
+// and a thread that also holds a real family message (its rows from the
+// system sender are reclassified, the label stays). Logs counts only.
+function reclassifySystemSenderThreads(dryRun) {
+  const apply = dryRun === false;
+  const logSheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const rows = _fmsRows_(logSheet);
+  const out = { dryRun: !apply, checked: 0, systemMessages: 0, reclassified: 0, threads: 0,
+    labelsRemoved: 0, keptSafety: 0, keptLabelMixed: 0, unreadable: 0 };
+  const byThread = {};
+  rows.forEach(function (r, i) {
+    const st = String(r[FMS_LOG.STATUS]);
+    const thread = String(r[FMS_LOG.THREAD_ID] || "");
+    if (!thread || st === FMS_STATUS.NOT_FAMILY || st === FMS_STATUS.FIXTURE || st === FMS_STATUS.SAFETY_FIXTURE) return;
+    (byThread[thread] = byThread[thread] || []).push(i);
+  });
+  let labels = null;
+  Object.keys(byThread).forEach(function (thread) {
+    const system = [];
+    let other = 0;
+    byThread[thread].forEach(function (i) {
+      out.checked++;
+      let from = "";
+      try {
+        from = _fmsReadMessage_(Gmail.Users.Messages.get("me", String(rows[i][FMS_LOG.MESSAGE_ID]),
+          { format: "metadata", metadataHeaders: ["From"] })).fromEmail;
+      } catch (e) {
+        out.unreadable++; other++; return;
+      }
+      if (_fmsIsSystemSender_(from)) system.push(i); else other++;
+    });
+    if (!system.length) return;
+    out.systemMessages += system.length;
+    if (system.some(function (i) { return _fmsTrue_(rows[i][FMS_LOG.SAFETY]); })) { out.keptSafety++; return; }
+    out.threads++;
+    out.reclassified += system.length;
+    if (other) out.keptLabelMixed++; else out.labelsRemoved++;
+    if (!apply) return;
+    system.forEach(function (i) {
+      rows[i][FMS_LOG.STATUS] = FMS_STATUS.NOT_FAMILY;
+      rows[i][FMS_LOG.NOTE] = _fmsJoinNote_(rows[i][FMS_LOG.NOTE], "system sender (backfill)");
+      logSheet.getRange(i + 2, 1, 1, FMS_LOG_HEADERS.length).setValues([rows[i].slice(0, FMS_LOG_HEADERS.length)]);
+    });
+    if (!other) {
+      labels = labels || _fmsEnsureLabels_();
+      Gmail.Users.Threads.modify({ removeLabelIds: [labels[FMS_LABEL]] }, "me", thread);
+    }
+  });
+  Logger.log((apply ? "Reclassified " : "DRY RUN: would reclassify ") + out.reclassified +
+    " message(s) in " + out.threads + " thread(s) from system senders; KOS/Family " +
+    (apply ? "removed from " : "would come off ") + out.labelsRemoved + " thread(s). Left alone: " +
+    out.keptSafety + " with a safety flag, " + out.keptLabelMixed + " (label kept) that also hold a family message; " +
+    out.unreadable + " message(s) unreadable. Checked " + out.checked + ".");
+  return out;
+}
+
+// The real run of reclassifySystemSenderThreads(), for the Run button.
+function reclassifySystemSenderThreadsNow() {
+  return reclassifySystemSenderThreads(false);
 }
 
 // ── Redaction and the prompt ─────────────────────────────────────────────────
@@ -481,7 +579,7 @@ function _fmsBuildPromptText_(msg, fam, roster) {
 function _fmsRedactionContext_(msg, roster) {
   const names = {};
   roster.students.forEach(function (s) {
-    [s.first, s.last].forEach(function (n) { if (n && n.length >= 3) names[n] = "[STUDENT]"; });
+    (s.words || [s.first, s.last]).forEach(function (n) { if (n && n.length >= 3) names[n] = "[STUDENT]"; });
   });
   String(msg && msg.fromName || "").toLowerCase().split(/[^a-z']+/).forEach(function (n) {
     if (n.length >= 3 && !names[n]) names[n] = "[SENDER]";
@@ -646,6 +744,8 @@ function _fmsParseVerdict_(raw) {
       safety: v.safety === true,
       ask: typeof v.ask === "string" ? v.ask.trim() : "",
       due: typeof v.due === "string" ? v.due.trim().slice(0, 30) : "",
+      // Missing, or anything but a plain false, means a reply is needed.
+      needs_reply: !(v.needs_reply === false || String(v.needs_reply).toLowerCase() === "false"),
     },
   };
 }
@@ -663,6 +763,7 @@ function _fmsApplyVerdict_(row, v, promptText, ctx) {
   row[FMS_LOG.SENSITIVE] = sensitive || safety;
   row[FMS_LOG.DUE] = _fmsLeaks_(v.due, ctx) ? "" : v.due;
   row[FMS_LOG.CLASSIFIED_AT] = new Date();
+  row[FMS_LOG.NEEDS_REPLY] = v.needs_reply !== false;
   let note = "";
   let ask = v.ask.slice(0, FMS_ASK_MAX_CHARS);
   if (sensitive || safety) ask = "";
@@ -670,6 +771,21 @@ function _fmsApplyVerdict_(row, v, promptText, ctx) {
   else if (ask && !_fmsGrounded_(ask, promptText)) { ask = ""; note = "ask withheld: not grounded in the message"; }
   row[FMS_LOG.ASK] = ask;
   return { note: note };
+}
+
+// Does this message need a reply? Gemini's needs_reply, forced true by any
+// fail-safe: safety, a sensitive category, urgency 4 or more, a due date, the
+// family's 2nd+ contact this week (contacts), or no classification at all
+// (still queued, the Flow down, or a bad answer). Only an explicit FALSE
+// from a classified message makes it "for your eyes".
+function _fmsNeedsReply_(r, contacts) {
+  if (String(r[FMS_LOG.STATUS]) !== FMS_STATUS.CLASSIFIED) return true;
+  if (_fmsTrue_(r[FMS_LOG.SAFETY]) || _fmsTrue_(r[FMS_LOG.SENSITIVE])) return true; // Sensitive covers the categories
+  if (Number(r[FMS_LOG.URGENCY]) >= 4) return true;
+  if (String(r[FMS_LOG.DUE] || "").trim()) return true;
+  if (contacts >= 2) return true;
+  const v = r[FMS_LOG.NEEDS_REPLY];
+  return !(v === false || String(v).toUpperCase() === "FALSE");
 }
 
 // True when text holds an address, a long number, a phone number, or any
@@ -715,7 +831,9 @@ function _fmsGrounded_(ask, promptText) {
 // primer): one line per thread still waiting on the teacher, safety first,
 // then by urgency and hours waiting. Numbers are assigned fresh each run, so
 // "#3" never follows a family from one day to the next; repeat contact is
-// counted here instead.
+// counted here instead. A thread is WAITING ON YOU when any message since
+// the teacher's last reply needs one (_fmsNeedsReply_), else FOR YOUR EYES;
+// an archived thread (no message in INBOX) is in neither.
 function writeFamilySignal(now) {
   now = now ? new Date(now) : new Date();
   const ss = _fmsSpreadsheet_();
@@ -746,17 +864,19 @@ function writeFamilySignal(now) {
     const state = _fmsThreadState_(threadId, msgs);
     if (!state) return;
     if (state.replyHours !== null) replyHours.push(state.replyHours);
-    if (!state.waitingSince) return;
+    if (!state.waitingSince || state.archived) return;
     const latest = msgs[msgs.length - 1];
     const unanswered = msgs.filter(function (r) { return new Date(r[FMS_LOG.RECEIVED_AT]).getTime() >= state.waitingSince; });
+    const contacts = contactCount[String(latest[FMS_LOG.FAMILY_KEY])] || 1;
     open.push({
       threadId: threadId,
       row: latest,
       safety: unanswered.some(function (r) { return _fmsTrue_(r[FMS_LOG.SAFETY]); }),
       sensitive: unanswered.some(function (r) { return _fmsTrue_(r[FMS_LOG.SENSITIVE]); }),
       urgency: Math.max.apply(null, unanswered.map(function (r) { return Number(r[FMS_LOG.URGENCY]) || 0; })),
+      needsReply: unanswered.some(function (r) { return _fmsNeedsReply_(r, contacts); }),
       waitingHours: Math.max(0, (now.getTime() - state.waitingSince) / 3600000),
-      contacts: contactCount[String(latest[FMS_LOG.FAMILY_KEY])] || 1,
+      contacts: contacts,
     });
   });
 
@@ -781,12 +901,18 @@ function writeFamilySignal(now) {
     }
   });
   doc.saveAndClose();
-  return { open: open.length, safety: open.filter(function (o) { return o.safety; }).length };
+  return {
+    open: open.length,
+    safety: open.filter(function (o) { return o.safety; }).length,
+    waiting: open.filter(function (o) { return o.needsReply; }).length,
+    eyes: open.filter(function (o) { return !o.needsReply; }).length,
+  };
 }
 
 // Reads the thread's message times from Gmail. waitingSince is the first
 // family message after the teacher's last reply (null when answered);
-// replyHours is how long the last answered message waited.
+// replyHours is how long the last answered message waited; archived is true
+// when no message is left in INBOX (the teacher filed it: handled).
 function _fmsThreadState_(threadId, msgs) {
   let thread;
   try {
@@ -798,8 +924,10 @@ function _fmsThreadState_(threadId, msgs) {
   msgs.forEach(function (r) { familyIds[String(r[FMS_LOG.MESSAGE_ID])] = true; });
   const sent = [];
   const fam = [];
+  let inInbox = false;
   ((thread && thread.messages) || []).forEach(function (m) {
     const t = Number(m.internalDate);
+    if ((m.labelIds || []).indexOf("INBOX") !== -1) inInbox = true;
     if ((m.labelIds || []).indexOf("SENT") !== -1) sent.push(t);
     else if (familyIds[m.id]) fam.push(t);
   });
@@ -818,7 +946,7 @@ function _fmsThreadState_(threadId, msgs) {
     const reply = sent.filter(function (t) { return t >= lastAnswered; })[0];
     if (reply) replyHours = (reply - lastAnswered) / 3600000;
   }
-  return { waitingSince: waiting.length ? waiting[0] : null, replyHours: replyHours };
+  return { waitingSince: waiting.length ? waiting[0] : null, replyHours: replyHours, archived: !inInbox };
 }
 
 function _fmsSignalLines_(open, replyHours, now) {
@@ -830,7 +958,9 @@ function _fmsSignalLines_(open, replyHours, now) {
     { text: "" },
   ];
   const safety = open.filter(function (o) { return o.safety; });
-  const rest = open.filter(function (o) { return !o.safety; });
+  const rest = open.filter(function (o) { return !o.safety && o.needsReply; });
+  const eyes = open.filter(function (o) { return !o.safety && !o.needsReply; });
+  const waitingCount = safety.length + rest.length;
 
   if (safety.length) {
     lines.push({ text: "NEEDS YOU NOW: " + safety.length + (safety.length === 1 ? " message" : " messages") + ", not summarized." });
@@ -840,13 +970,25 @@ function _fmsSignalLines_(open, replyHours, now) {
     lines.push({ text: "" });
   }
 
-  if (!rest.length && !safety.length) {
+  if (!waitingCount) {
     lines.push({ text: "WAITING ON YOU: none." });
   } else {
-    const oldest = open.reduce(function (m, o) { return Math.max(m, o.waitingHours); }, 0);
-    lines.push({ text: "WAITING ON YOU: " + open.length + ", oldest " + _fmsHours_(oldest) + "." });
+    const oldest = safety.concat(rest).reduce(function (m, o) { return Math.max(m, o.waitingHours); }, 0);
+    lines.push({ text: "WAITING ON YOU: " + waitingCount + ", oldest " + _fmsHours_(oldest) + "." });
     rest.forEach(function (o, i) {
       lines.push({ text: "#" + (i + 1) + " · " + _fmsItemText_(o), url: _fmsThreadUrl_(o.threadId) });
+    });
+  }
+  lines.push({ text: "" });
+
+  // Numbered on from WAITING, so no two lines share a number.
+  if (!eyes.length) {
+    lines.push({ text: "FOR YOUR EYES: none." });
+  } else {
+    const oldestEyes = eyes.reduce(function (m, o) { return Math.max(m, o.waitingHours); }, 0);
+    lines.push({ text: "FOR YOUR EYES: " + eyes.length + ", oldest " + _fmsHours_(oldestEyes) + "." });
+    eyes.forEach(function (o, i) {
+      lines.push({ text: "#" + (rest.length + i + 1) + " · " + _fmsEyesText_(o), url: _fmsThreadUrl_(o.threadId) });
     });
   }
   lines.push({ text: "" });
@@ -885,6 +1027,20 @@ function _fmsItemText_(o) {
   if (!o.sensitive && o.contacts > 1) parts.push(_fmsOrdinal_(o.contacts) + " contact this week");
   if (!o.sensitive && r[FMS_LOG.DUE]) parts.push("due " + r[FMS_LOG.DUE]);
   if (!o.sensitive && Number(r[FMS_LOG.URGENCY]) >= 4) parts.push("urgent");
+  parts.push("open");
+  return parts.join(" · ");
+}
+
+// A "for your eyes" line: course, category, ask and wait. Never "urgent",
+// a due date or repeat contact (any of those would have made it WAITING).
+function _fmsEyesText_(o) {
+  const r = o.row;
+  const course = String(r[FMS_LOG.COURSE] || "");
+  const period = String(r[FMS_LOG.PERIOD] || "");
+  const parts = [course ? course + (period ? " P" + period : "") : "course unknown"];
+  parts.push(FMS_CATEGORIES[String(r[FMS_LOG.CATEGORY])] || "other");
+  if (r[FMS_LOG.ASK]) parts.push(String(r[FMS_LOG.ASK]).replace(/\.$/, ""));
+  parts.push("waiting " + _fmsHours_(o.waitingHours));
   parts.push("open");
   return parts.join(" · ");
 }
@@ -949,6 +1105,8 @@ function _fmsLoadRoster_() {
       email: email,
       first: parts.first,
       last: parts.last,
+      surnames: parts.surnames,
+      words: parts.words,
       course: String(r[LEDGER.COURSE_NAME] || "").trim(),
       period: String(r[LEDGER.PERIOD] || "").trim(),
     };
@@ -958,14 +1116,39 @@ function _fmsLoadRoster_() {
   return roster;
 }
 
+// { first, last, surnames, words }. "Last, First" (Canvas) keeps the whole
+// part before the comma as the surname, so "De La Cruz, Ana" is "de la
+// cruz"; "First Middle Last" can't say where the surname starts, so every
+// tail counts ("ann smith", "smith"). A hyphenated surname also matches
+// written with a space. words: every name word, split at hyphens too, for
+// the redactor and the leak check.
 function _fmsNameParts_(name) {
-  let n = String(name).trim();
-  if (n.indexOf(",") !== -1) {
-    const bits = n.split(",");
-    n = bits.slice(1).join(" ").trim() + " " + bits[0].trim();
+  const clean = function (t) {
+    return String(t).toLowerCase().replace(/[^a-z' -]+/g, " ").split(/\s+/).filter(Boolean);
+  };
+  const n = String(name).trim();
+  const comma = n.indexOf(",");
+  let given, surnames = [];
+  if (comma !== -1) {
+    const lastWords = clean(n.slice(0, comma));
+    given = clean(n.slice(comma + 1));
+    if (lastWords.length) {
+      surnames.push(lastWords.join(" "));
+      for (let i = 1; i < given.length; i++) surnames.push(given.slice(i).concat(lastWords).join(" "));
+    }
+  } else {
+    const all = clean(n);
+    given = all.slice(0, 1);
+    for (let i = 1; i < all.length; i++) surnames.push(all.slice(i).join(" "));
   }
-  const words = n.toLowerCase().replace(/[^a-z' -]+/g, " ").split(/\s+/).filter(Boolean);
-  return { first: words[0] || "", last: words.length > 1 ? words[words.length - 1] : "" };
+  surnames.slice().forEach(function (l) {
+    if (l.indexOf("-") !== -1) surnames.push(l.replace(/-/g, " "));
+  });
+  const words = [];
+  given.concat(surnames).join(" ").split(/[\s-]+/).forEach(function (w) {
+    if (w && words.indexOf(w) === -1) words.push(w);
+  });
+  return { first: given[0] || "", last: surnames[0] || "", surnames: surnames, words: words };
 }
 
 // Parent address → student email: the FamilyContacts tab, then every address
@@ -1358,11 +1541,21 @@ function _fmsOperatorEmail_() {
   return String(Session.getEffectiveUser().getEmail() || "").toLowerCase();
 }
 
+// Makes the tab, or adds headers appended since it was made (FamilyMailLog's
+// Needs_Reply, 2026-10-20), when the ones it has are the start of the list.
 function _fmsEnsureTab_(ss, name, headers) {
   let sh = ss.getSheetByName(name);
   if (!sh) {
     sh = ss.insertSheet(name);
     sh.getRange(1, 1, 1, headers.length).setValues([headers]);
+    return sh;
+  }
+  const width = sh.getLastColumn();
+  if (width > 0 && width < headers.length) {
+    const have = sh.getRange(1, 1, 1, width).getValues()[0].map(String);
+    if (have.every(function (h, i) { return h === headers[i]; })) {
+      sh.getRange(1, width + 1, 1, headers.length - width).setValues([headers.slice(width)]);
+    }
   }
   return sh;
 }
