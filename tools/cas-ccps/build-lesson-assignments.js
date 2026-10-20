@@ -128,9 +128,13 @@ function applyTiers(a, comps, t, grading, vocab) {
     'Explains the reasoning behind each part, in the student\'s own words.', id: '' };
   // The student sees what the work needs to show, in the task itself.
   const plainLine = (id) => '- ' + byId[id].competency_text.replace(/\.$/, '').trim();
-  a.promptText = String(a.promptText || '').trim() + '\n\nWhat your work needs to show:\n\n' +
+  // Before a closing "Submission:" part, which the Canvas cartridge drops.
+  const checklist = 'What your work needs to show:\n\n' +
     [plainLine(t.primary) + ' (required)'].concat(secondary.map(plainLine)).join('\n') +
     (tertiary.length ? '\n\nYou can also show (not required):\n\n' + tertiary.map(plainLine).join('\n') : '');
+  const task = String(a.promptText || '').trim();
+  const sub = task.search(/\n\nSubmission:\s*\n/);
+  a.promptText = sub === -1 ? task + '\n\n' + checklist : task.slice(0, sub) + '\n\n' + checklist + task.slice(sub);
   a.milestones = ms.map((m) => m.text);
   a.milestoneCompetencyIds = ms.map((m) => m.id);
   a.tertiaryCompetencyIds = tertiary.slice();
