@@ -20,7 +20,7 @@ Your flyer must include:
 - At least three items our class makes and the store sells, with their real prices (ask your teacher or the Shift Manager)
 - A headline that makes someone stop walking
 
-Part 1: Design It. Build your flyer in Canva, Adobe Express or Google Slides. Download it as a PDF and add it (or its link) to this document.
+Part 1: Design It. Build your flyer in Canva, Adobe Express or Google Slides. Download it as a PDF and add it (or its link) to this document. Then, under it, type the flyer's exact words (headline, items and prices, hours and location) and describe its layout from top to bottom.
 
 Part 2: Explain It. In a short paragraph, explain your design choices: what you made biggest and why, how you used contrast, and where you left empty space on purpose.
 
