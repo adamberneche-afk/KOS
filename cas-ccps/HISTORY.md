@@ -3802,3 +3802,29 @@ kind of failure every morning.
 - **Tests:** `ledger-cycle.test.js`; `artifact-sync-cron-health.test.js`
   (its wizard tests now pin that no trigger is made in the Unified Manual
   project).
+
+## Assignment prompts: evidence Flow 2 can see, 2026-10-20
+
+- **Why:** drafting the competency tiers showed tasks whose evidence never
+  reaches the student's doc, so Flow 2 couldn't judge them (the backlog's
+  "Assignment prompts the tiers turned up"). The teacher chose each fix.
+- **Only a link** (L28, L30; 8177 Promotional Flyer, The Hype Machine, The
+  Global Expansion, The Bottom Line, The Sponsorship Negotiation's CRM): the
+  link stays, and students also type the work into the doc (the questions,
+  the flyer's words, each part's answer, the budget table, the CRM rows).
+- **Half a SWOT** (L04, L29): each asks for an opportunity and a threat too,
+  so 105 can be fully met. L29's are about the survey.
+- **Work done aloud or in person** (L24, L35; 8177 The Front Lines, The
+  Sponsorship Negotiation, The Millionaire's Strike, Game Day Takeover):
+  each adds a short written record of what was said or done (the lines,
+  each objection and answer, the offers in order, the note's words, the
+  student's shift), so Flow 2 judges that, not only a reflection.
+- **Tiers:** L01's primary is 39 (marketing in the industry) instead of 45
+  (the industry's history); L05's secondary is 3 instead of 109 (industry
+  networking). The 8177 task list has no branding competency, so the three
+  branding assignments can't get one: Brand Board's secondary 93 became 42
+  (the manager's campaign decisions) and the Company Description's 93
+  became 23 (planning); the Branding Essay's tiers already fit (21, 2).
+- **Regenerated:** `55b_LessonAssignmentData.js` and both cartridges. The
+  six 8175 lesson files mirror Drive docs: the Drive copies need the same
+  edits.

@@ -25,10 +25,10 @@ Part 2: The Manager's Checklist. Complete:
 Part 3: Say Thank You. After the event:
 
 - List everyone who helped make the event happen, and what each person or group did.
-- Write a handwritten thank-you note to one staff member on your list. Be specific about what they did and why it mattered.
+- Write a handwritten thank-you note to one staff member on your list. Be specific about what they did and why it mattered. Type the note's words into this document before you deliver it.
 - Draft a public thank-you to our customers, for social media or the morning announcements.
 
-Part 4: The Results. Compare what happened with the goals from Part 2. Use the real numbers from the event log.
+Part 4: The Results. Compare what happened with the goals from Part 2. Use the real numbers from the event log. Then describe your own shift: what you did, one customer you served, and one problem that came up and how it was handled.
 
 Part 5: Keep and Change. Name one thing to keep and one thing to change for the next event, and explain each using the results.
 
