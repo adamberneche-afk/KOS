@@ -17,7 +17,8 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
   .map((f) => path.join(CC, f));
 const EXPOSE = ['buildWarmUpFlowInputs', 'wfbRetryStaleInputs_', 'wfbConsumeInputRow_',
   'WFB_INPUTS_PER_RUN', 'WFB_FLOW3_HEADERS', 'WQ25_COL_COUNT', 'harvestWarmUpFlowReturns',
-  'previewFailedWarmUpRepair', 'repairFailedWarmUps'];
+  'previewFailedWarmUpRepair', 'repairFailedWarmUps', 'previewFailedWarmUpScoring',
+  'repairFailedWarmUpScoring', 'WFB_FLOW4_HEADERS'];
 
 function setup() {
   const { exported, sandbox } = loadGasFiles(FILES, EXPOSE);
@@ -229,4 +230,90 @@ test('repairFailedWarmUps delivers the anchor for a job failed as fabricated, no
   assert.equal(row[4], 'HARVESTED');
   assert.match(row[6], /^ANCHOR_FALLBACK: SUSPECT_FABRICATION/);
   assert.equal(fx.exported.repairFailedWarmUps().delivered, 0, 'a second run does nothing');
+});
+
+// 2026-10-20: one of the first three text-box answers scored by Flow 4 sat at
+// EVAL_ERROR: the feedback paraphrased the answer, and the plausibility check
+// wanted one of its longest words verbatim. Flow 4's check now matches a
+// word's first letters, counts the prompt's words, and allows feedback that
+// says an answer is thin.
+const PROMPT = 'How does a sports franchise generate revenue?';
+function scoringJob(fx, id, status, answer) {
+  const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+  row[0] = id; row[3] = 'Sam Student'; row[5] = '2026-10-19'; row[8] = status;
+  row[12] = 2; row[18] = answer;
+  fx.wq.appendRow(row);
+  let input = fx.ss.getSheetByName('Flow4Input');
+  if (!input) {
+    input = fx.ss.insertSheet('Flow4Input');
+    input.appendRow(fx.exported.WFB_FLOW4_HEADERS);
+  }
+  input.appendRow([new Date(), id, 'READY', PROMPT, answer, 2, 0, '', 'prompt']);
+}
+const evaluation = (feedback) => JSON.stringify({ grammar: 1, engagement: 2, feedback });
+function harvestOne(fx, id, feedback) {
+  let ret = fx.ss.getSheetByName('WarmUpFlowReturn');
+  if (!ret) { ret = fx.ss.insertSheet('WarmUpFlowReturn'); ret.appendRow(RET_HEADERS); }
+  ret.appendRow([new Date(), 4, id, evaluation(feedback), '', 0, '']);
+  return fx.exported.harvestWarmUpFlowReturns();
+}
+
+test('Flow 4 scores feedback that paraphrases a misspelled answer', () => {
+  const fx = setup();
+  scoringJob(fx, 'Q-PARA', 'PENDING_EVAL', 'Teams make mony from sponsorships and merchandize.');
+  const r = harvestOne(fx, 'Q-PARA', 'You named sponsorship and merchandise sales as two ways teams earn money.');
+  assert.equal(r.applied, 1, JSON.stringify(r));
+  assert.equal(statusOf(fx, 'Q-PARA'), 'SCORED');
+});
+
+test('Flow 4 counts the prompt\'s words, and allows feedback that calls an answer thin', () => {
+  const fx = setup();
+  scoringJob(fx, 'Q-THIN', 'PENDING_EVAL', 'tikets i think');
+  const r = harvestOne(fx, 'Q-THIN',
+    'There is not enough information here yet: name two ways a franchise brings in revenue.');
+  assert.equal(r.applied, 1, JSON.stringify(r));
+  assert.equal(statusOf(fx, 'Q-THIN'), 'SCORED');
+});
+
+test('Flow 4 still fails feedback that says it could not see the answer, or is about nothing in it', () => {
+  const fx = setup();
+  scoringJob(fx, 'Q-NOACCESS', 'PENDING_EVAL', 'Teams sell tickets and sponsorships.');
+  scoringJob(fx, 'Q-GENERIC', 'PENDING_EVAL', 'Teams sell tickets and sponsorships.');
+  harvestOne(fx, 'Q-NOACCESS', 'I am unable to view the sponsorship answer, so here is general advice.');
+  const r = harvestOne(fx, 'Q-GENERIC', 'Great work overall, well done!');
+  assert.equal(r.applied, 0, JSON.stringify(r));
+  assert.equal(statusOf(fx, 'Q-NOACCESS'), 'PENDING_EVAL');
+  assert.equal(statusOf(fx, 'Q-GENERIC'), 'PENDING_EVAL');
+  const errors = fx.ss.getSheetByName('WarmUpFlowReturn').getRange(2, 7, 2, 1).getValues().map((x) => x[0]);
+  assert.match(errors[0], /^SUSPECT_FABRICATION: .*non-access phrase \("unable to view"\)/);
+  assert.match(errors[1], /^SUSPECT_FABRICATION: .*\(\d+ checked\)$/);
+  assert.doesNotMatch(errors[1], /sponsorships|tickets/, 'the reason never quotes the answer');
+});
+
+test('repairFailedWarmUpScoring scores an EVAL_ERROR job that passes the Flow 4 check now', () => {
+  const fx = setup();
+  scoringJob(fx, 'Q-EVAL', 'EVAL_ERROR', 'Teams make mony from sponsorships and merchandize.');
+  scoringJob(fx, 'Q-STILL', 'EVAL_ERROR', 'Teams sell tickets and sponsorships.');
+  scoringJob(fx, 'Q-OTHER', 'EVAL_ERROR', 'Teams sell tickets and sponsorships.');
+  const ret = fx.ss.insertSheet('WarmUpFlowReturn');
+  ret.appendRow(RET_HEADERS);
+  const fab = 'SUSPECT_FABRICATION: the output shares none of this row\'s distinguishing content';
+  ret.appendRow([new Date(), 4, 'Q-EVAL',
+    evaluation('You named sponsorship and merchandise sales as two ways teams earn money.'), 'FAILED', 3, fab]);
+  ret.appendRow([new Date(), 4, 'Q-STILL', evaluation('Great work overall, well done!'), 'FAILED', 3, fab]);
+  ret.appendRow([new Date(), 4, 'Q-OTHER', 'not json', 'FAILED', 3, 'GEMINI_JSON_PARSE_FAILED: x']);
+
+  const preview = fx.exported.previewFailedWarmUpScoring();
+  assert.deepEqual([preview.failed, preview.scored, preview.stillFailing], [2, 1, 1]);
+  assert.equal(statusOf(fx, 'Q-EVAL'), 'EVAL_ERROR', 'the preview changes nothing');
+
+  const r = fx.exported.repairFailedWarmUpScoring();
+  assert.deepEqual([r.failed, r.scored, r.stillFailing], [2, 1, 1]);
+  assert.equal(statusOf(fx, 'Q-EVAL'), 'SCORED');
+  assert.equal(statusOf(fx, 'Q-STILL'), 'EVAL_ERROR');
+  assert.equal(statusOf(fx, 'Q-OTHER'), 'EVAL_ERROR');
+  const row = ret.getRange(2, 1, 1, 7).getValues()[0];
+  assert.deepEqual([row[4], row[6]], ['HARVESTED', '']);
+  assert.equal(fx.ss.getSheetByName('Flow4Input').getRange(2, 3).getValue(), 'CONSUMED');
+  assert.equal(fx.exported.repairFailedWarmUpScoring().scored, 0, 'a second run does nothing');
 });
