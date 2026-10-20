@@ -14,7 +14,7 @@ Prepared 2026-10-16 from the first live student submission through Flow 2. Cover
 | 1 | Submit for Feedback fails with "The assignment system didn't answer" | Deploying admin account never approved the new `documents` scope | Fixed operationally 2026-10-15; code hardened in #175 |
 | 2 | Feedback "never landed" in the student's doc | Harvest appended the evaluation at the end of the doc, not in the feedback zone | Fixed in #175 |
 | 3 | Late evaluation leaves ReviewQueue and Ledger at ERROR_TIMEOUT | Backprop only closes rows whose queue status is still `STAGED` | Fixed in the 2026-10-17 bug-3 PR (backprop finishes late rows); the one affected row was repaired by hand on 10-16 |
-| 4 | Flow 2 did not trigger on its own | Not yet diagnosed. 2026-10-19: four more timeouts; the Studio starter's settings look right but showed unsaved changes (see `HANDOFF_2026-10-19.md`) | Open, being diagnosed |
+| 4 | Flow 2 did not trigger on its own | Diagnosed 2026-10-19: Studio's "When a sheet changes" starter never fired on a row the script appended (40 days of history: one Test run, nothing else), and fired at once when ReadyStatus was retyped by hand (four rows, four runs) | Fixed in code: `buildFlowInputRows` (37) appends the row blank, then sets READY as its own edit; a row left blank is set on the next run |
 | 5 | Documents not created after a date was added to the schedule | Process gap (not a code bug) | Explained; steps in section 6 |
 
 The code changes are in one patch, `submit-failures.patch`, made against `KOS-main_21.zip`. Final check on a clean extract: 1,678 tests, 0 failures. `gas-lint` (0 errors, 19 warnings) and `doc-currency` (0 errors, 8 warnings) are unchanged from before the patch.
@@ -140,7 +140,7 @@ Do not confuse this with the 2 a.m. `buildUpcomingLessons()` trigger, which buil
 ## 9. Not verified
 
 - How real Google Docs formats the inserted paragraph after the attribute copy. Tests use a fake document, so inspect the first live result.
-- Whether Studio's sheet trigger fires on script-written rows (open issue 4).
+- Whether Studio's sheet trigger fires on script-written rows (open issue 4). **Answered 2026-10-19: not on an appended row; yes on an edit of an existing cell.**
 - Backprop's actual trigger interval (the code comment mentions 2 minutes; the effective cadence was not checked).
 - Whether the live web app matches the repo (v12 versus later pushes).
 - Two odd rows at the top of the Ledger tab (rows 2 and 3: `IN_PROCESS`, no timestamp, placeholder-style ConfigIDs). They look like leftover test rows from a canary or fixture run. Check before deleting.
