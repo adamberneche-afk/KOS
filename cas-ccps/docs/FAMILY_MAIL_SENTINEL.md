@@ -33,7 +33,10 @@ address in the sheet's `FamilyContacts` tab or the Central Ledger's
 `ParentReportLog`, a colleague's or Canvas's mail that names a rostered
 student, an outside sender naming a rostered student, or any reply in a
 thread that is already family mail. The roster is the Central Ledger's
-`Ledger` tab.
+`Ledger` tab; a full name matches with a hyphenated or several-word surname
+too ("Smith-Jones", "De La Cruz"), in either order. **Never family mail:**
+Google's system notices (`FMS_SYSTEM_SENDERS`: Drive shares, Docs
+comments, Classroom), even when they name a student.
 
 **The signal doc** (`KOS_FAMILY_SIGNAL`, the same file every run) looks like:
 
@@ -48,11 +51,32 @@ WAITING ON YOU: 3, oldest 26 h.
 #1 · 8175 P4 · from a parent · grade question · The parent asks to explain the rubric score · waiting 26 h · 2nd contact this week · urgent · open
 #2 · sensitive · waiting 30 h · open
 
+FOR YOUR EYES: 2, oldest 9 h.
+#3 · 8177 P6 · thanks · The parent thanks the class for the event · waiting 9 h · open
+#4 · 8175 P3 · other · The student shares a link to the finished poster · waiting 4 h · open
+
 ANSWERED IN THE LAST 7 DAYS: 9, median reply 6 h.
 ```
 
 Each "open" links to the Gmail thread. Numbers are reassigned every run, so
 `#1` never follows a family from one day to the next.
+
+**Two tiers.** WAITING ON YOU (with NEEDS YOU NOW, counted in it) is the
+mail that needs a reply; FOR YOUR EYES is the rest, with course, category,
+ask and wait, never "urgent". Gemini says `needs_reply`; a missing or
+unreadable answer counts as true, and it is forced true by any of:
+
+- a safety flag (the tripwire or Gemini's);
+- a sensitive category;
+- urgency 4 or more;
+- a due date;
+- the family's 2nd or later contact this week;
+- no classification (the Flow down, or an unusable answer).
+
+A thread is WAITING when any message since the teacher's last reply needs
+one, so a needs-reply message in a FOR YOUR EYES thread moves it up.
+**Archived means handled:** a thread with no message left in the inbox is
+in neither list (it still counts toward the reply times).
 
 ## What reaches whom
 
@@ -60,7 +84,7 @@ Each "open" links to the Gmail thread. Numbers are reassigned every run, so
 |---|---|
 | Gmail, the sentinel sheet, Gemini (all inside the school's Google account) | The mail, as today. Gemini gets it with rostered names, the sender's name, addresses, phone numbers and long numbers redacted. |
 | `FamilyMailInput` tab | The redacted text, only until Gemini answers (or 48 hours), then deleted. |
-| `FamilyMailLog` tab | Message and thread IDs, course, period, category, urgency, the one-line ask. No names, no text. Kept 30 days. |
+| `FamilyMailLog` tab | Message and thread IDs, course, period, category, urgency, the one-line ask, whether it needs a reply. No names, no text. Kept 30 days. |
 | `KOS_FAMILY_SIGNAL` doc, and so Claude | Course, period, source, category, ask, hours waiting, repeat-contact count. Sensitive categories (accommodation, health, discipline, family situation, safety) show none of those, only "sensitive" and the wait. |
 | The KOS Project's own mail search | Nothing labeled `KOS/Family`, nothing from `student.ccpsnet.net` or Canvas. |
 | ntfy (safety pushes only) | "A family message needs you now. Open Gmail, label KOS/Family/Now." and a count. Nothing else. |
@@ -154,6 +178,15 @@ shut its gateway in 2025.)
    the Project instructions (`kos-personal/claude-project/README.md`).
 
 To pause it: Script Property `FAMILY_SENTINEL_ENABLED` = `false`.
+
+**Once, after the 2026-10-20 push (the two tiers):** the scan stops logging
+system notices, but ones logged before it are still listed. Run
+`reclassifySystemSenderThreads()` (a dry run: counts only, nothing changes),
+read its log, then `reclassifySystemSenderThreadsNow()`. It marks those
+messages `NOT_FAMILY` and takes `KOS/Family` off their threads. It leaves
+alone, and counts, a thread with a safety flag (look at it yourself) and a
+thread that also holds a real family message (the label stays). The log
+tab gains its `Needs_Reply` column by itself on the first run.
 
 ## Checks
 
