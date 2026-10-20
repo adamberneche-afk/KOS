@@ -41,6 +41,11 @@
 >   2026-10-19: period 3 split into `3-Odd`/`3-Even`, period 1 `DAILY_HALF`,
 >   and the Ledger cycle installed (`installLedgerCycle()` took over 9
 >   triggers; `registerDeliveredWarmUps` had never had a Ledger trigger).
+> - **Merged 2026-10-19 evening, not yet pushed:** #209 (term rollover by
+>   date; push before Oct 30), #213–#218 (assignment criteria and
+>   competency tiers; then step 16a, `refreshAssignments()`, and re-import
+>   both Canvas cartridges), #214 (bug 4: Flow 2's starter fires only on an
+>   edit, so READY is now written as one).
 > - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4,
 >   four timeouts on 10-19; the Studio starter is being checked). The
 >   order is in `meta/HANDOFF_2026-10-19.md`.
