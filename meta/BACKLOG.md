@@ -25,28 +25,6 @@ operator. This file holds what comes after them.
 
 ## cas-ccps
 
-### Assignment prompts the tiers turned up (2026-10-20)
-
-Each lesson's competency tiers (`curriculum/lessons/COMPETENCY_TIERS.json`)
-are drafted from its task; drafting showed tasks whose evidence Flow 2
-can't see. Fix each before the lesson is taught; the tier's `why` names
-the part of the task.
-- **Only a link:** L28 and L30 (a Forms URL, no explanation); 8177
-  Promotional Flyer, Hype Machine, Global Expansion (a PDF, Canva or Slides
-  link); The Bottom Line and The Sponsorship Negotiation (a linked Sheet).
-  Ask students to paste or describe the work in the doc.
-- **Half a SWOT:** L04 and L29 ask only for strengths and weaknesses, so
-  105 (SWOT) can only be partly met.
-- **Work done aloud or in person:** roleplays (L24, The Front Lines, The
-  Sponsorship Negotiation), the in-class negotiation (The Millionaire's
-  Strike), the live event and a handwritten note (Game Day Takeover), the
-  interview tool (L35). Only a written reflection reaches the doc.
-- **No branding competency** on the three 8177 branding assignments
-  (Brand Board, Company Description, Branding Essay); 93 and 97 are about
-  events. L01's primary (45) is about the industry's history, which the
-  task doesn't ask; L05's 109 is industry networking, the task personal
-  support.
-
 ### Warm-up scoring and Flow 3 output (2026-10-20)
 
 - **Word count penalises list answers.** A warm-up that asks students to

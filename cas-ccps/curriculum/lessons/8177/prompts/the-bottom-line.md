@@ -37,7 +37,7 @@ Part 1: Projected Revenue. Choose your team registration fee, ticket price and c
 
 Part 2: Projected Expenses. List every expense from the price list as its own line, and say whether each is a fixed cost or a variable cost. Calculate the total.
 
-Part 3: The Bottom Line. Calculate net profit (revenue − expenses) and your profit margin (net profit ÷ revenue × 100). Did you reach 15%? If not, change something and try again, and show both versions. Build your budget in Google Sheets with formulas, and add the link to this document.
+Part 3: The Bottom Line. Calculate net profit (revenue − expenses) and your profit margin (net profit ÷ revenue × 100). Did you reach 15%? If not, change something and try again, and show both versions. Build your budget in Google Sheets with formulas, and add the link to this document. Then copy your final budget into this document as a table: each revenue and expense line with its amount, the totals, net profit and margin.
 
 Part 4: The CFO Memo. Write a short memo to the board of directors that names the two biggest financial risks in your budget and what you'd do about each (for example, "If we sell fewer than 300 tickets, we lose money").
 

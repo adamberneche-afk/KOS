@@ -20,6 +20,8 @@ Part 4: The Budget. List how you'd spend the $5,000, item by item. It must add u
 
 Part 5: Keep It Honest. Explain how your campaign avoids misleading anyone. Would every promise in it hold up on game night?
 
+If you build the storyboard in Canva, add its link here and also type each part into this document: the ad's words, audience, placement and cost; the stunt; the deal and its deadline; the budget lines.
+
 Use these terms accurately: promotional mix, advertising, public relations, publicity, sales promotion, personal selling.
 
 ## Background
