@@ -952,3 +952,15 @@ test('the lock digest email only runs when PIVOT_ARCHETYPE_LOCK is "all"', () =>
   exported.checkShadowMatrixInterrupts_(ss, cfg);
   assert.equal(opened, 1);
 });
+
+// 2026-10-20: checkFlowBinding reported the 38 rows the harvest itself writes
+// for a job Studio never returned as "model output landed in column 7".
+test('_wfbDiagnoseReturnRow_: the harvest\'s own anchor-fallback row is not a binding problem', () => {
+  const { exported } = load();
+  const R = exported.WFB_RET;
+  const row = new Array(exported.WFB_RETURN_HEADERS.length).fill('');
+  row[R.TIMESTAMP] = new Date(); row[R.FLOW] = 3; row[R.QUEUE_ID] = 'WUQ-1';
+  row[R.HARVEST_STATUS] = 'HARVESTED'; row[R.ATTEMPTS] = 0;
+  row[R.ERROR] = 'ANCHOR_FALLBACK: no return from Studio after 2 retries';
+  assert.deepEqual(exported._wfbDiagnoseReturnRow_(row, { 'WUQ-1': true }), []);
+});
