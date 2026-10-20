@@ -3828,3 +3828,29 @@ kind of failure every morning.
 - **Regenerated:** `55b_LessonAssignmentData.js` and both cartridges. The
   six 8175 lesson files mirror Drive docs: the Drive copies need the same
   edits.
+
+## Family Mail Sentinel: needs a reply, or for your eyes, 2026-10-20
+
+- **Why:** KOS_FAMILY_SIGNAL listed every family message as waiting on the
+  teacher, including thanks and FYIs, and Google's own notices (Drive
+  shares, Docs comments, Classroom) that name a student.
+- **System senders:** `FMS_SYSTEM_SENDERS` are never family mail, in the
+  scan or as a reply in a family thread. `reclassifySystemSenderThreads()`
+  (dry run) / `reclassifySystemSenderThreadsNow()` clear ones already
+  logged; a thread with a safety flag is left for a person.
+- **needs_reply:** a new field in the triage prompt (61 regenerated) and a
+  `Needs_Reply` log column, added to an existing tab on the first run.
+  Missing or unparseable counts as true. `_fmsNeedsReply_()` forces it true
+  for safety, a sensitive category, urgency 4+, a due date, a family's 2nd+
+  contact this week, or no classification.
+- **Signal doc:** WAITING ON YOU keeps its lines and sort for threads that
+  need a reply; FOR YOUR EYES below it (course, category, ask, wait, never
+  "urgent"). A needs-reply message reopens an "eyes" thread into WAITING.
+  A thread with no message in INBOX is handled and in neither list.
+- **Roster:** a full name matches with a hyphenated or several-word surname,
+  either order, and every name word is redacted (a hyphenated surname used
+  to reach Gemini whole).
+- **KOS Project:** gives FOR YOUR EYES after WAITING; mail searches exclude
+  `-label:kos-family` (the connector matches label names, not `Label_8`).
+- **Tests:** `family-mail-sentinel.test.js`, each override checked by
+  removing it.
