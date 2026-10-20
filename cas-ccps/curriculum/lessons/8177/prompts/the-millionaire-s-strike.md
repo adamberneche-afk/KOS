@@ -20,7 +20,7 @@ If the two sides can't agree before the end of class, the season is canceled.
 
 Part 1: Your Side. Say which side you're on. For each of the four issues, write what your side wants and one reason it's fair.
 
-Part 2: The Deal. After the negotiation, record the final agreement on each issue, and explain what each side gave up to get there.
+Part 2: The Deal. During the negotiation, keep notes on one issue of your choice: each offer and counteroffer, in order, and which side made it. Afterward, record the final agreement on each issue, and explain what each side gave up to get there.
 
 Part 3: The Collateral Damage Report. If a Richmond team (like the Flying Squirrels or the Kickers) stopped playing for a season, who would get hurt? Name three specific local businesses or hourly jobs, and for each one explain exactly how its income depends on game days.
 

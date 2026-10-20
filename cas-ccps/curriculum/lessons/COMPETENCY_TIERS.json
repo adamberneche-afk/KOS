@@ -1,17 +1,17 @@
 {
   "_note": "Competency tiers per assignment (decided 2026-10-20). primary must be MET; secondary (1-2) at least PARTIALLY MET; tertiary never required, noted under ALSO SHOWN when the work shows one. Read by tools/cas-ccps/build-lesson-assignments.js. Every assignment (terms 1-4 and the 8177 lessons placed in no quarter) drafted from each task text and approved as drafted 2026-10-20; tweak entries as lessons are taught. why says which part of the task evidences the primary and secondaries.",
   "8175-L01": {
-    "primary": "8175-45",
+    "primary": "8175-39",
     "secondary": [
       "8175-43",
       "8175-41"
     ],
     "tertiary": [
       "8175-11",
-      "8175-39",
+      "8175-45",
       "8175-47"
     ],
-    "why": "Part 1 (time period and focus of each of the seven eras) and Part 3 (the 3-sentence prediction of the next era) evidence past, present and future (45); Part 4 naming the seven functions with two sports/entertainment examples evidences marketing functions (43) and Part 2 contrasting the Selling and Marketing Company eras evidences the marketing concept (41)."
+    "why": "Part 1 (time period and focus of each of the seven eras, from the Trade Era to the Collaboration Era) evidences explaining marketing as it relates to the industry (39); Part 4 naming the seven functions with two sports/entertainment examples evidences marketing functions (43) and Part 2 contrasting the Selling and Marketing Company eras evidences the marketing concept (41). Revised 2026-10-20: 45 (the industry's past, present and future) was primary, but the task traces marketing's eras, not the industry's history."
   },
   "8175-L02": {
     "primary": "8175-107",
@@ -42,17 +42,17 @@
       "8175-57",
       "8175-86"
     ],
-    "why": "Sections 1 and 3 (what makes the figure known, how others describe them) evidence explaining a brand and its personality (56); Section 2 strength and weakness evidences SWOT components (105) and judging whether the public reputation matches who they really seem to be evidences critical thinking (2)."
+    "why": "Sections 1 and 3 (what makes the figure known, how others describe them) evidence explaining a brand and its personality (56); Section 2 (a strength, weakness, opportunity and threat) evidences SWOT components (105) and judging whether the public reputation matches who they really seem to be evidences critical thinking (2). Opportunity and threat added 2026-10-20."
   },
   "8175-L05": {
     "primary": "8175-12",
     "secondary": [
-      "8175-109"
-    ],
-    "tertiary": [
       "8175-3"
     ],
-    "why": "The 5-sentence reflection on current support communities, what they have done for the student and which ones hinder success evidences life-management skills (12); explaining how to join new communities that offer support evidences a networking plan (109)."
+    "tertiary": [
+      "8175-109"
+    ],
+    "why": "The 5-sentence reflection on current support communities, what they have done for the student and which ones hinder success evidences life-management skills (12); explaining how the student will join new communities that offer support evidences initiative and self-direction (3). Revised 2026-10-20: 109 (an industry networking plan) was secondary, but the task is about personal support, not industry contacts."
   },
   "8175-L06": {
     "primary": "8175-20",
@@ -188,15 +188,15 @@
     "primary": "8177-1",
     "secondary": [
       "8177-45",
-      "8177-93"
+      "8177-42"
     ],
     "tertiary": [
       "8177-11",
       "8177-21",
-      "8177-42",
+      "8177-93",
       "8177-97"
     ],
-    "why": "Inventing the event or venue and building the brand board (palette, font, two logo versions, three words, four images) evidences creativity (1); Part 4 (how colors and logo show up inside the venue) evidences facilities management/atmospherics (45) and Part 2 plus the experience images (how customers should feel) evidence factors that motivate attendance (93)."
+    "why": "Inventing the event or venue and building the brand board (palette, font, two logo versions, three words, four images) evidences creativity (1); Part 4 (how colors and logo show up inside the venue) evidences facilities management/atmospherics (45) and setting the visual identity every campaign for the event will use evidences the manager's decision-making for campaigns (42). Revised 2026-10-20: 93 (what motivates attendance) was secondary; 42 is closer to branding. The 8177 task list has no branding competency."
   },
   "8177-the-4-ps-of-the-fan-experience": {
     "primary": "8177-97",
@@ -212,14 +212,14 @@
   "8177-chhs-school-store-company-description": {
     "primary": "8177-21",
     "secondary": [
-      "8177-93",
-      "8177-56"
+      "8177-56",
+      "8177-23"
     ],
     "tertiary": [
       "8177-11",
-      "8177-23"
+      "8177-93"
     ],
-    "why": "The 5-sentence company description in a professional voice evidences writing (21); Part 1's two reasons to buy here instead of online and the bolded USP evidence consumer motivation (93), and naming what the shop is, how it is run, its customers and its USP evidences business-start-up steps (customer segments, value proposition) (56)."
+    "why": "The 5-sentence company description in a professional voice evidences writing (21); naming what the shop is, how it is run, its customers and its USP evidences business-start-up steps (customer segments, value proposition) (56), and writing the company description as the first section of the store's business plan evidences planning within an organization (23). Revised 2026-10-20: 93 (what motivates people to attend events) was secondary; the task is about the store, not an event. The 8177 task list has no branding competency."
   },
   "8177-what-is-branding-reflection-essay": {
     "primary": "8177-21",
@@ -470,7 +470,7 @@
     "tertiary": [
       "8175-103"
     ],
-    "why": "The Strengths and Weaknesses critique of the class draft survey evidences the S and W components of a SWOT analysis (105); The Fix (specific, actionable changes to the shared class survey) evidences contributing to the team's product (10)."
+    "why": "The Strengths, Weaknesses, Opportunities and Threats critique of the class draft survey evidences a SWOT analysis (105); The Fix (specific, actionable changes to the shared class survey) evidences contributing to the team's product (10). Opportunities and threats added 2026-10-20."
   },
   "8175-L30": {
     "primary": "8175-63",
