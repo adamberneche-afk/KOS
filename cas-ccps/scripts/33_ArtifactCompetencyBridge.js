@@ -38,6 +38,9 @@
 //   6:00am — Studio Flow 3: warm-up generation
 //
 // TEACHER MATRIX EXTENSION:
+//   Superseded: the live matrix holds the IDs in Milestone{1-4}CompetencyId
+//   (written by the assignment generators), read by header since 2026-10-20.
+//   A matrix with neither still takes the column below.
 //   New column added at position 16 (index 15): competency_ids
 //   Format: comma-separated competency ID strings
 //   Example: "8177-47,8177-52,8177-53"
@@ -71,7 +74,7 @@ const TM_STATUS            = 11;
 const TM_PROMPT_TEMPLATE   = 12;
 const TM_SUBJECT           = 13;
 const TM_COURSE_NAME       = 14;
-const TM_COMPETENCY_IDS    = 15; // NEW — added by addCompetencyIdsColumn_()
+// The competency IDs are found by header (s33CompetencyColumns_), not index.
 
 // ── Ledger column indices (0-based) — from Module 1 ──────────────────────────
 const LD33_GOOGLE_ID      = 1;
@@ -165,15 +168,26 @@ function syncArtifactCompetencies() {
     return s33Stopped_("NO_MATRIX_ACCESS");
   }
 
-  // ── Build configId → competency_ids map from Teacher Matrix ───────────────
-  // Only include rows that have the competency_ids column populated
+  // ── Build assignment ConfigID → competency IDs map from Teacher Matrix ────
+  // An assignment's competencies are in its four Milestone{1-4}CompetencyId
+  // columns, each comma-separated ("8177-39, 8177-40"). Column 15 used to be
+  // read as a "competency_ids" column; on the live matrix it is
+  // Milestone1CompetencyId, so only the primary competency counted
+  // (2026-10-20). Found by header; a matrix with only the older
+  // competency_ids column still works.
   const configToCompIds = {};
+  const tagCols = s33CompetencyColumns_(matrixData[0] || []);
   for (let i = 1; i < matrixData.length; i++) {
     const row      = matrixData[i];
-    const configId = String(row[TM_CONFIG_ID]      || "").trim();
-    const compIds  = String(row[TM_COMPETENCY_IDS] || "").trim();
-    if (!configId || !compIds) continue;
-    const ids = compIds.split(",").map(id => id.trim()).filter(Boolean);
+    const configId = String(row[TM_CONFIG_ID] || "").trim();
+    if (!configId) continue;
+    const ids = [];
+    tagCols.forEach(function (c) {
+      String(row[c] || "").split(",").forEach(function (id) {
+        id = id.trim();
+        if (id && ids.indexOf(id) === -1) ids.push(id);
+      });
+    });
     if (ids.length > 0) configToCompIds[configId] = ids;
   }
 
@@ -193,9 +207,16 @@ function syncArtifactCompetencies() {
   }
 
   // ── Load Ledger — build student→fileId and fileId→configId maps ───────────
+  // A Ledger row's ConfigID is the student's own workspace ID ("VDOE-..."),
+  // not the assignment's TeacherMatrix ConfigID, so it goes through
+  // StudentAssignments (54) first, as Flow 2's input builder (37) does.
+  // Without that hop no student ever matched a tagged assignment
+  // (2026-10-20). A workspace with no StudentAssignments row is looked up by
+  // its own ID, as before.
   const ledgerData = ledgerSheet.getDataRange().getValues();
+  const assignments = readStudentAssignments_(ss).byStudent;
   const fileToStudent  = {}; // fileId → { email, period }
-  const fileToConfigId = {}; // fileId → configId
+  const fileToConfigId = {}; // fileId → assignment ConfigID
 
   for (let i = 1; i < ledgerData.length; i++) {
     const row      = ledgerData[i];
@@ -213,7 +234,7 @@ function syncArtifactCompetencies() {
     if (!fileId || !email) continue;
 
     fileToStudent[fileId]  = { email, period };
-    fileToConfigId[fileId] = configId;
+    fileToConfigId[fileId] = assignments[configId] || configId;
   }
 
   // ── Load STAGING_PIPELINE — find COMPLETE rows ────────────────────────────
@@ -297,6 +318,18 @@ function syncArtifactCompetencies() {
   });
 
   Logger.log("[S33] Artifact sync complete. Profiles updated: " + updated);
+}
+
+// The TeacherMatrix columns holding an assignment's competency IDs: the four
+// Milestone{1-4}CompetencyId columns, or an older matrix's competency_ids.
+function s33CompetencyColumns_(headers) {
+  const names = headers.map(function (h) { return String(h || "").trim().toLowerCase(); });
+  const cols = [];
+  names.forEach(function (n, i) {
+    if (/^milestone[1-4]competencyid$/.test(n)) cols.push(i);
+  });
+  if (!cols.length && names.indexOf("competency_ids") !== -1) cols.push(names.indexOf("competency_ids"));
+  return cols;
 }
 
 // ---------------------------------------------------------------------------
