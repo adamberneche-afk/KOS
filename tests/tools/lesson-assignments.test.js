@@ -29,7 +29,8 @@ test('8175 Lesson 06: the prompt is the lesson\'s Canvas text and the warm-up it
   assert.match(a.promptText, /Write a 100-word plan/);
   assert.doesNotMatch(a.promptText, /Bell Ringer|Grading Tip|\*\*/, 'teacher-only sections and markdown stay out');
   assert.match(a.warmupAnchor, /^What is a 'soft skill'\?/);
-  assert.deepEqual(a.milestoneCompetencyIds, ['8175-5', '8175-20', '8175-21', '8175-112']);
+  // Tiered (COMPETENCY_TIERS.json): primary, two secondaries, then the task-completion milestone.
+  assert.deepEqual(a.milestoneCompetencyIds, ['8175-20', '8175-112', '8175-21', '']);
   assert.match(a.definitionOfDone, /TEACHER GRADING NOTES/);
 });
 
