@@ -251,7 +251,7 @@ Example: LH: deca payment ICDC installment 2 $350 by April 1
 **WBL student issue**
 ```
 LH: wbl [student name] [issue]
-Example: LH: wbl Delvin Walker hours not logged
+Example: LH: wbl Placeholder Student hours not logged
 ```
 → Role `store`, creates follow-up task.
 
