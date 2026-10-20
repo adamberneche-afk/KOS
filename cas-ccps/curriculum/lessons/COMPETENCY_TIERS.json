@@ -1,0 +1,160 @@
+{
+  "_note": "Competency tiers per assignment (decided 2026-10-20). primary must be MET; secondary (1-2) at least PARTIALLY MET; tertiary never required, noted under ALSO SHOWN when the work shows one. Read by tools/cas-ccps/build-lesson-assignments.js. Term 2 drafted from each task text and approved as drafted 2026-10-20; tweak entries as lessons are taught. why says which part of the task evidences the primary and secondaries.",
+  "8175-L15": {
+    "primary": "8175-98",
+    "secondary": [
+      "8175-15",
+      "8175-21"
+    ],
+    "tertiary": [
+      "8175-29",
+      "8175-99",
+      "8175-100"
+    ],
+    "why": "The 200-word persuasive essay on whether hosting is a smart investment (cost, revenue, white elephants) evidences economic concepts (98); Part 1 research with at least 3 cited sources evidences information literacy (15) and the essay itself evidences writing (21)."
+  },
+  "8175-L16": {
+    "primary": "8175-19",
+    "secondary": [
+      "8175-67",
+      "8175-95"
+    ],
+    "tertiary": [
+      "8175-40",
+      "8175-66",
+      "8175-97",
+      "8175-101"
+    ],
+    "why": "Part 1 break-even calculations for Scenarios A and B with shown work evidence math (19); choosing and justifying skimming vs. penetration evidences pricing strategies (67) and the priced combo with a fan rationale evidences bundling (95)."
+  },
+  "8175-L17": {
+    "primary": "8175-70",
+    "secondary": [
+      "8175-51",
+      "8175-71"
+    ],
+    "tertiary": [
+      "8175-100"
+    ],
+    "why": "Identifying producer, intermediary and consumer in the ticket chain evidences distribution (70); the 100-word opinion piece on bot scalping evidences ethical vs. unethical practices (51) and the stadium-vs-club venue question evidences distribution challenges (71)."
+  },
+  "8175-L18": {
+    "primary": "8175-60",
+    "secondary": [
+      "8175-42",
+      "8175-87"
+    ],
+    "tertiary": [
+      "8175-10",
+      "8175-65",
+      "8175-76"
+    ],
+    "why": "Section 1 (name, concept, rules, appeal of the new sport) evidences product planning (60); Section 2 demographics/psychographics evidences target marketing (42) and Section 3 sponsor selection and rationale evidences sponsorship (87)."
+  },
+  "8175-L19": {
+    "primary": "8175-93",
+    "secondary": [
+      "8175-73",
+      "8175-104"
+    ],
+    "tertiary": [
+      "8175-22",
+      "8175-42",
+      "8175-60",
+      "8175-61",
+      "8175-75",
+      "8175-77",
+      "8175-84"
+    ],
+    "why": "The two-month hype-cycle timeline and pitch (customer profile, branding message, ad mockup, PR points, metrics) evidence promotional campaign elements (93); the weekly mix of public appearance, fan interaction and interview evidences promotional roles (73) and the cost/payoff estimate evidences ROI analysis (104)."
+  },
+  "8175-L20": {
+    "primary": "8175-83",
+    "secondary": [
+      "8175-11",
+      "8175-90"
+    ],
+    "tertiary": [
+      "8175-2",
+      "8175-8"
+    ],
+    "why": "The Impact question (how the partnership helps the athlete's personal brand and the non profit) evidences public relations (83); explaining the athlete-cause connection and benefit to both sides evidences big-picture thinking (11), and the cause co-branding partnership evidences a sponsorship trend (90)."
+  },
+  "8175-L21": {
+    "primary": "8175-87",
+    "secondary": [
+      "8175-88",
+      "8175-58"
+    ],
+    "tertiary": [
+      "8175-89",
+      "8175-91"
+    ],
+    "why": "The 5-sentence naming-rights proposal evidences sponsorship (87); the sponsor-vs-endorser explanation with a reason for each evidences 88, and defining and judging ambush marketing evidences brand protection (58)."
+  },
+  "8175-L22": {
+    "primary": "8175-93",
+    "secondary": [
+      "8175-92",
+      "8175-1"
+    ],
+    "tertiary": [
+      "8175-50",
+      "8175-74",
+      "8175-87"
+    ],
+    "why": "The Strategy slides (awareness, fundraising idea, chosen promotion) plus visuals evidence a promotional campaign (93); the sales promotion with one advantage and one disadvantage evidences 92, and the original cleat design and three-brand merch item evidence creativity (1)."
+  },
+  "8175-L23": {
+    "primary": "8175-1",
+    "secondary": [
+      "8175-75",
+      "8175-82"
+    ],
+    "tertiary": [
+      "8175-10",
+      "8175-14",
+      "8175-50",
+      "8175-81"
+    ],
+    "why": "The finished publication (eye-catching cover, articles, layout) evidences creativity (1); the colorful advertisements evidence advertisement elements (75) and 'Going Digital' (two ways to make money online) evidences digital revenue (82)."
+  },
+  "8177-school-store-planogram-customer-experience": {
+    "primary": "8177-45",
+    "secondary": [
+      "8177-22",
+      "8177-95"
+    ],
+    "tertiary": [
+      "8177-1",
+      "8177-11",
+      "8177-72",
+      "8177-73",
+      "8177-92"
+    ],
+    "why": "The top-down map with traffic flow, bottleneck fix and merchandise/hot/impulse zones evidences facilities management (45); Part 4 marking exits and 36-inch walkways evidences workplace safety (22) and placing each staff member with a reason evidences personnel needs (95)."
+  },
+  "8177-product-pitch-financial-analysis": {
+    "primary": "8177-19",
+    "secondary": [
+      "8177-96",
+      "8177-93"
+    ],
+    "tertiary": [
+      "8177-2",
+      "8177-7"
+    ],
+    "why": "Part 5 calculations (cost per item, profit, margin, batch cost, break-even, expected profit, turnover) evidence math (19); Part 3 real-supplier materials costing and production capacity evidences financial resources required (96), and Part 2 (who buys it and when) evidences consumer motivation (93)."
+  },
+  "8177-the-economics-of-the-arena": {
+    "primary": "8177-19",
+    "secondary": [
+      "8177-94",
+      "8177-2"
+    ],
+    "tertiary": [
+      "8177-86"
+    ],
+    "why": "Part 1 revenue calculations at every price for three games evidence math (19); Part 3 explaining why the playoff game outprices Snowy Tuesday evidences popularity/competitive factors and attendance (94), and Parts 2 and 4 (choosing a price from the math, taking a side on fairness) evidence critical thinking (2)."
+  }
+}
