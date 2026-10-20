@@ -377,6 +377,15 @@ course. A workspace made before that tab existed is skipped as
 records its assignment (from the doc's name and the TeacherMatrix), keeping each
 student's earliest workspace and archiving the duplicates that re-runs made.
 
+A student listed in the `PeriodOverride` tab (`student_account`, `period`)
+takes that period whatever their Canvas section, in enrollment, the nightly
+rollout and `applyPeriodRelabel()`. It exists for a period whose groups share
+one Canvas section (period 3's `3-Odd` and `3-Even`), so the export needs no
+hand tagging. `previewPeriodOverrideSeed()` / `seedPeriodOverrides()` fill it
+from the Ledger with each student whose period isn't the one their section
+code gives; run them while the Ledger's periods are right. A student who
+joins such a period later needs a row typed in by hand.
+
 ## The teacher's lessons and the LessonSchedule tab
 
 Since 2026-10-07 the courses run on the teacher's own lessons, not the

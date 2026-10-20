@@ -3760,3 +3760,23 @@ kind of failure every morning.
   commas; a matrix with only `competency_ids` still works.
 - **Tests:** `artifact-sync-cron-health.test.js`; `warmup-shape-gate.test.js`
   now loads 54 (gas-lint's sandbox-scope check).
+
+## Period 3's groups survive a plain Canvas export: PeriodOverride, 2026-10-20
+
+- **Why:** period 3's odd-day and even-day groups share each P03 Canvas
+  section, so the export's Section column can't say which group a student
+  is in. Since 10-19 the operator tagged every export by hand (` ODD` /
+  ` EVEN`). An untagged export put a new period-3 student in `3`, which has
+  no `ClassSchedule` row, and `applyPeriodRelabel()` would have moved the
+  students already relabeled back to `3`. The nightly rollout (58) enrolls
+  from the same exports, so D2 needed this first.
+- **Built:** a `PeriodOverride` tab in the Central Ledger (`student_account`,
+  `period`). Enrollment (`enrollCanvasRoster_`, so the rollout too) and
+  relabel read it before `CanvasSectionMap`; a student listed there needs no
+  mapped section. `previewPeriodOverrideSeed()` / `seedPeriodOverrides()`
+  (52) fill it from the Ledger: every student this term whose period isn't
+  the one their section code gives (`-P03]` → 3). The seed never changes a
+  row already in the tab and logs counts per period, never accounts.
+- **Tests:** `period-split.test.js` (the seed, and a plain export no longer
+  undoing the relabel), `canvas-roster-import.test.js` (an override
+  enrolls a student whose section has no period).

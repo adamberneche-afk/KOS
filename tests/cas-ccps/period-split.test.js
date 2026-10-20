@@ -59,10 +59,20 @@ const GRADEBOOK = [
   '"C, Three",3,S3,1000003,SPORTS MANAGEMENT [74-C8177H-P01],70',
 ].join('\n');
 
-function rosterSetup() {
+// A plain export: Canvas can't tell period 3's odd-day and even-day groups apart.
+const PLAIN_GRADEBOOK = [
+  'Student,ID,SIS User ID,SIS Login ID,Section,Current Score',
+  '"A, One",1,S1,1000001,SPORTS MARKETING [74-C8175H-P03],90',
+  '"B, Two",2,S2,1000002,SPORTS MARKETING [74-C8175H-P03],80',
+  '"C, Three",3,S3,1000003,SPORTS MANAGEMENT [74-C8177H-P01],70',
+].join('\n');
+
+function rosterSetup(opts) {
+  opts = opts || {};
   const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('29_StudentContextAggregator.js'),
     S('02_Form1_IntakeAndWorkspaceGenerator.js'), S('51_CourseYearBuilder.js'), S('52_CanvasRosterImport.js'),
-    S('54_StudentAssignments.js')], ['previewPeriodRelabel', 'applyPeriodRelabel']);
+    S('54_StudentAssignments.js')], ['previewPeriodRelabel', 'applyPeriodRelabel', 'previewPeriodOverrideSeed',
+    'seedPeriodOverrides']);
   const props = sandbox.PropertiesService.getScriptProperties();
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -73,11 +83,12 @@ function rosterSetup() {
   sandbox.DriveApp._registerFolder(folder);
   props.setProperty('TEACHER_FOLDER_ID', folder.getId());
   folder.addFile({ getName: () => '2026-10-19_Grades-8175.csv', getLastUpdated: () => new Date(),
-    getBlob: () => ({ getDataAsString: () => GRADEBOOK }) });
+    getBlob: () => ({ getDataAsString: () => opts.gradebook || GRADEBOOK }) });
   const ledger = ss.insertSheet('Ledger');
   ledger.appendRow(new Array(19).fill('h'));
-  ledger.appendRow(ledgerRow('1000001@ccpsnet.net', '3', MKT));
-  ledger.appendRow(ledgerRow('1000002@ccpsnet.net', '3', MKT));
+  const p3 = opts.relabeled ? ['3-Odd', '3-Even'] : ['3', '3'];
+  ledger.appendRow(ledgerRow('1000001@ccpsnet.net', p3[0], MKT));
+  ledger.appendRow(ledgerRow('1000002@ccpsnet.net', p3[1], MKT));
   ledger.appendRow(ledgerRow('1000003@ccpsnet.net', '1', MGT));
   ledger.appendRow(ledgerRow('1000009@ccpsnet.net', '3', MKT)); // left the course
   const map = ss.insertSheet('CanvasSectionMap');
@@ -85,7 +96,12 @@ function rosterSetup() {
   map.appendRow(['SPORTS MARKETING ODD [74-C8175H-P03]', '3-Odd']);
   map.appendRow(['SPORTS MARKETING EVEN [74-C8175H-P03]', '3-Even']);
   map.appendRow(['SPORTS MANAGEMENT [74-C8177H-P01]', '1']);
-  return { exported, ledger };
+  if (opts.overrides) {
+    const o = ss.insertSheet('PeriodOverride');
+    o.appendRow(['student_account', 'period']);
+    opts.overrides.forEach((r) => o.appendRow(r));
+  }
+  return { exported, ledger, ss, sandbox };
 }
 
 test('applyPeriodRelabel moves enrolled students to their section\'s new period; a preview changes nothing', () => {
@@ -102,6 +118,45 @@ test('applyPeriodRelabel moves enrolled students to their section\'s new period;
   assert.equal(applied.changed, 2);
   assert.deepEqual(periods(), [['3-Odd', '3-Odd'], ['3-Even', '3-Even'], ['1', '1'], ['3', '3']]);
   assert.equal(exported.applyPeriodRelabel().changed, 0, 'a second run changes nothing');
+});
+
+test('seedPeriodOverrides lists the students whose Ledger period their section code doesn\'t give; counts only', () => {
+  const { exported, ss, sandbox } = rosterSetup({ relabeled: true });
+  const logs = [];
+  sandbox.Logger.log = (m) => logs.push(String(m));
+  const preview = exported.previewPeriodOverrideSeed();
+  assert.equal(preview.added, 2);
+  assert.deepEqual(preview.byPeriod, { '3-Even': 1, '3-Odd': 1 });
+  assert.equal(ss.getSheetByName('PeriodOverride'), null, 'a preview writes nothing');
+
+  exported.seedPeriodOverrides();
+  const tab = ss.getSheetByName('PeriodOverride');
+  assert.deepEqual(tab.getRange(1, 1, tab.getLastRow(), 2).getValues(), [
+    ['student_account', 'period'], ['1000001@ccpsnet.net', '3-Odd'], ['1000002@ccpsnet.net', '3-Even']]);
+  const again = exported.seedPeriodOverrides();
+  assert.deepEqual([again.added, again.alreadyListed, again.disagree], [0, 2, 0], 'a second run adds nothing');
+  assert.ok(!logs.some((l) => /@ccpsnet\.net|1000001/.test(l)), logs.join('\n'));
+});
+
+test('a row already in PeriodOverride is never changed by the seed', () => {
+  const { exported, ss } = rosterSetup({ relabeled: true, overrides: [['1000001@ccpsnet.net', '3-Even']] });
+  const r = exported.seedPeriodOverrides();
+  assert.deepEqual([r.added, r.disagree], [1, 1]);
+  const tab = ss.getSheetByName('PeriodOverride');
+  assert.deepEqual(tab.getRange(2, 1, 2, 2).getValues(),
+    [['1000001@ccpsnet.net', '3-Even'], ['1000002@ccpsnet.net', '3-Even']]);
+});
+
+test('with PeriodOverride, a plain export no longer moves period 3 back to "3"', () => {
+  const unguarded = rosterSetup({ relabeled: true, gradebook: PLAIN_GRADEBOOK });
+  assert.deepEqual(unguarded.exported.previewPeriodRelabel().moves, { '3-Odd → 3': 1, '3-Even → 3': 1 },
+    'the hazard the tab removes');
+
+  const { exported, ledger } = rosterSetup({ relabeled: true, gradebook: PLAIN_GRADEBOOK,
+    overrides: [['1000001@ccpsnet.net', '3-Odd'], [' 1000002@CCPSNET.NET ', '3-Even']] });
+  const r = exported.applyPeriodRelabel();
+  assert.deepEqual([r.changed, r.unchanged], [0, 3]);
+  assert.deepEqual(ledger.getRange(2, 12, 2, 1).getValues(), [['3-Odd'], ['3-Even']]);
 });
 
 function retireSetup() {
