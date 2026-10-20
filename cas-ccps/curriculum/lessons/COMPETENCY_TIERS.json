@@ -1,5 +1,255 @@
 {
-  "_note": "Competency tiers per assignment (decided 2026-10-20). primary must be MET; secondary (1-2) at least PARTIALLY MET; tertiary never required, noted under ALSO SHOWN when the work shows one. Read by tools/cas-ccps/build-lesson-assignments.js. Term 2 drafted from each task text and approved as drafted 2026-10-20; tweak entries as lessons are taught. why says which part of the task evidences the primary and secondaries.",
+  "_note": "Competency tiers per assignment (decided 2026-10-20). primary must be MET; secondary (1-2) at least PARTIALLY MET; tertiary never required, noted under ALSO SHOWN when the work shows one. Read by tools/cas-ccps/build-lesson-assignments.js. Terms 1 and 2 drafted from each task text and approved as drafted 2026-10-20; tweak entries as lessons are taught. why says which part of the task evidences the primary and secondaries.",
+  "8175-L01": {
+    "primary": "8175-45",
+    "secondary": [
+      "8175-43",
+      "8175-41"
+    ],
+    "tertiary": [
+      "8175-11",
+      "8175-39",
+      "8175-47"
+    ],
+    "why": "Part 1 (time period and focus of each of the seven eras) and Part 3 (the 3-sentence prediction of the next era) evidence past, present and future (45); Part 4 naming the seven functions with two sports/entertainment examples evidences marketing functions (43) and Part 2 contrasting the Selling and Marketing Company eras evidences the marketing concept (41)."
+  },
+  "8175-L02": {
+    "primary": "8175-107",
+    "secondary": [
+      "8175-3"
+    ],
+    "tertiary": [],
+    "why": "Naming something the student does out of intrinsic motivation and explaining why they enjoy it evidences personal interests (107); describing what drives them to do it without reward evidences initiative and self-direction (3)."
+  },
+  "8175-L03": {
+    "primary": "8175-64",
+    "secondary": [
+      "8175-107"
+    ],
+    "tertiary": [
+      "8175-12",
+      "8175-56"
+    ],
+    "why": "Question 2 (the USP and why a team should pick you over 100 other applicants) and Question 3 (who you serve) evidence positioning relative to competitors and as seen by the audience (64); Question 1 (the value your strengths and attributes provide) evidences personal skills (107)."
+  },
+  "8175-L04": {
+    "primary": "8175-56",
+    "secondary": [
+      "8175-105",
+      "8175-2"
+    ],
+    "tertiary": [
+      "8175-57",
+      "8175-86"
+    ],
+    "why": "Sections 1 and 3 (what makes the figure known, how others describe them) evidence explaining a brand and its personality (56); Section 2 strength and weakness evidences SWOT components (105) and judging whether the public reputation matches who they really seem to be evidences critical thinking (2)."
+  },
+  "8175-L05": {
+    "primary": "8175-12",
+    "secondary": [
+      "8175-109"
+    ],
+    "tertiary": [
+      "8175-3"
+    ],
+    "why": "The 5-sentence reflection on current support communities, what they have done for the student and which ones hinder success evidences life-management skills (12); explaining how to join new communities that offer support evidences a networking plan (109)."
+  },
+  "8175-L06": {
+    "primary": "8175-20",
+    "secondary": [
+      "8175-112",
+      "8175-21"
+    ],
+    "tertiary": [
+      "8175-5"
+    ],
+    "why": "The 100-word plan to practice soft skills (patience, face-to-face communication, resilience) before a new job evidences professionalism (20); the specific action for an interview setting evidences the interview process (112) and the written plan itself evidences writing (21)."
+  },
+  "8175-L07": {
+    "primary": "8175-4",
+    "secondary": [
+      "8175-51",
+      "8175-20"
+    ],
+    "tertiary": [
+      "8175-6",
+      "8175-49"
+    ],
+    "why": "The initial post outlining how the student would react to the chosen scenario evidences integrity (4); naming what is unethical in the scenario (favoritism, fudged numbers, derogatory comments, intimidation) evidences ethical vs. unethical practices (51) and the required professional tone of the planned response evidences professionalism (20). Peer replies are not evidence."
+  },
+  "8175-L08": {
+    "primary": "8175-50",
+    "secondary": [
+      "8175-48",
+      "8175-18"
+    ],
+    "tertiary": [
+      "8175-7"
+    ],
+    "why": "The 3-5 slide deck following the Rule of Six with a speaker-notes script evidences presentation skills (50); labeling verbal, nonverbal and visual communication in the notes evidences types of communication (48) and the high-contrast slide build in PowerPoint/Google Slides evidences technology proficiency (18)."
+  },
+  "8175-L09": {
+    "primary": "8175-56",
+    "secondary": [
+      "8175-54",
+      "8175-21"
+    ],
+    "tertiary": [
+      "8175-2",
+      "8175-57"
+    ],
+    "why": "Defining branding (what it is not, the real-brand example, the brand as a promise) evidences explaining branding (56); writing it for someone with no business background evidences translating technical language (54) and the 250-word structured response evidences writing (21)."
+  },
+  "8175-L10": {
+    "primary": "8175-52",
+    "secondary": [
+      "8175-55",
+      "8175-21"
+    ],
+    "tertiary": [
+      "8175-9",
+      "8175-11",
+      "8175-46",
+      "8175-53"
+    ],
+    "why": "The Action, Emotion and Value questions (what set the company apart, how it felt, what it did to perceived value) evidence the importance of customer service (52); the Recovery question applying the LAST steps evidences complaint-handling procedures (55) and the 10-sentence reflection evidences writing (21)."
+  },
+  "8175-L11": {
+    "primary": "8175-57",
+    "secondary": [
+      "8175-42",
+      "8175-59"
+    ],
+    "tertiary": [
+      "8175-21",
+      "8175-47"
+    ],
+    "why": "Section 2 assessing the Cavalier brand (logo, colors, reputation) evidences branding in this context (57); Section 1 demographics and psychographics evidences target marketing (42) and the areas for improvement plus Section 3 trends affecting rebranding evidence reasons for rebranding (59)."
+  },
+  "8175-L12": {
+    "primary": "8175-105",
+    "secondary": [
+      "8175-101"
+    ],
+    "tertiary": [
+      "8175-102"
+    ],
+    "why": "Two internal strengths and weaknesses and two external opportunities and threats evidence SWOT components (105); placing the team against rivals and competitor threats evidences competition in the industry (101)."
+  },
+  "8175-L13": {
+    "primary": "8175-103",
+    "secondary": [
+      "8175-50",
+      "8175-1"
+    ],
+    "tertiary": [
+      "8175-85"
+    ],
+    "why": "The three open, unbiased focus-group questions (the slide the teacher grades first) evidence the importance of research (103); the 5-7 slide deck evidences presentation skills (50) and the new tagline/theme and desired-future vision evidence creativity (1)."
+  },
+  "8175-L14": {
+    "primary": "8175-69",
+    "secondary": [
+      "8175-47",
+      "8175-50"
+    ],
+    "tertiary": [
+      "8175-7",
+      "8175-10",
+      "8175-15",
+      "8175-23",
+      "8175-24",
+      "8175-25",
+      "8175-26",
+      "8175-27",
+      "8175-28",
+      "8175-30",
+      "8175-44",
+      "8175-68",
+      "8175-106"
+    ],
+    "why": "The Ownership point (the business's ownership type and how it changes who decides and who takes risk) evidences business ownership (69); the 5-year Future Forecast based on AI and trends evidences trends and innovations (47) and the minimal-text slide deck built from the script evidences presentation skills (50)."
+  },
+  "8177-the-business-of-the-game": {
+    "primary": "8177-86",
+    "secondary": [
+      "8177-52",
+      "8177-50"
+    ],
+    "tertiary": [
+      "8177-15",
+      "8177-24",
+      "8177-53",
+      "8177-94"
+    ],
+    "why": "Part 3 (top three revenue sources, each with how it brings in money) evidences revenue sources (86); Part 2 (owner and ownership type with how you know) evidences organizational structures (52) and Part 4 (one specific effect on the home city) evidences local economic impact (50)."
+  },
+  "8177-brand-board": {
+    "primary": "8177-1",
+    "secondary": [
+      "8177-45",
+      "8177-93"
+    ],
+    "tertiary": [
+      "8177-11",
+      "8177-21",
+      "8177-42",
+      "8177-97"
+    ],
+    "why": "Inventing the event or venue and building the brand board (palette, font, two logo versions, three words, four images) evidences creativity (1); Part 4 (how colors and logo show up inside the venue) evidences facilities management/atmospherics (45) and Part 2 plus the experience images (how customers should feel) evidence factors that motivate attendance (93)."
+  },
+  "8177-the-4-ps-of-the-fan-experience": {
+    "primary": "8177-97",
+    "secondary": [
+      "8177-46"
+    ],
+    "tertiary": [
+      "8177-10",
+      "8177-47"
+    ],
+    "why": "Parts 1-5 (product, price, place, promotion and how changing one P affects the others) evidence a marketing plan (97); Part 2 (price, cost to make and profit per item for an item sold only at the venue) evidences on-site revenue streams (46)."
+  },
+  "8177-chhs-school-store-company-description": {
+    "primary": "8177-21",
+    "secondary": [
+      "8177-93",
+      "8177-56"
+    ],
+    "tertiary": [
+      "8177-11",
+      "8177-23"
+    ],
+    "why": "The 5-sentence company description in a professional voice evidences writing (21); Part 1's two reasons to buy here instead of online and the bolded USP evidence consumer motivation (93), and naming what the shop is, how it is run, its customers and its USP evidences business-start-up steps (customer segments, value proposition) (56)."
+  },
+  "8177-what-is-branding-reflection-essay": {
+    "primary": "8177-21",
+    "secondary": [
+      "8177-2"
+    ],
+    "tertiary": [
+      "8177-11",
+      "8177-97"
+    ],
+    "why": "The 500-word essay with a plain definition, three example paragraphs and plain-language term explanations evidences writing (21); Part 1 (what each project taught about branding) and Part 3 (finding and rewriting sentences a beginner wouldn't understand) evidence critical thinking (2)."
+  },
+  "8177-employee-handbook-operations": {
+    "primary": "8177-25",
+    "secondary": [
+      "8177-95",
+      "8177-58"
+    ],
+    "tertiary": [
+      "8177-4",
+      "8177-5",
+      "8177-10",
+      "8177-14",
+      "8177-20",
+      "8177-45",
+      "8177-72",
+      "8177-73"
+    ],
+    "why": "Part 2's Z-Out (what is counted, the float subtracted, checked against the daily sales report) and Part 3's Two-Person and scan-everything rules against shrink evidence financial responsibility (25); Part 1 (each role's responsibility and what goes wrong without it) evidences personnel needs (95) and Part 4 (what you say to the waiting line) evidences customer-service techniques (58)."
+  },
   "8175-L15": {
     "primary": "8175-98",
     "secondary": [

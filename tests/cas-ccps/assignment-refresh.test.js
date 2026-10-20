@@ -44,14 +44,18 @@ function setup() {
   return { exported, tab, old };
 }
 
-test('L07\'s repo criteria: no peer replies, real criteria, every competency in milestone 4', () => {
+test('L07\'s repo criteria: no peer replies; an untiered milestone lists every competency it holds', () => {
   const { exported } = setup();
   const a = exported.LESSON_ASSIGNMENTS['8175-L07'];
   assert.doesNotMatch(a.definitionOfDone, /Peer Replies \(10 points\)/);
   assert.match(a.definitionOfDone, /graded by the teacher outside this document/);
   assert.doesNotMatch(a.definitionOfDone, /Evidence of Demonstrate conflict-resolution skills/);
-  assert.match(a.definitionOfDone, /negotiating diplomatic solutions/);
-  assert.deepEqual(a.milestoneCompetencyIds, ['8175-4', '8175-6', '8175-20', '8175-51, 8175-49']);
+  // L27 has no tiers yet: a milestone holding two competencies lists both.
+  assert.deepEqual(exported.LESSON_ASSIGNMENTS['8175-L27'].milestoneCompetencyIds,
+    ['8175-2', '8175-72, 8175-78', '8175-79', '8175-80, 8175-104']);
+  // A thin competency's criteria use the state definition (8175-6, untiered elsewhere).
+  const thin = Object.values(exported.LESSON_ASSIGNMENTS).find((x) => /negotiating diplomatic solutions/.test(x.definitionOfDone));
+  assert.ok(thin, 'some assignment carries 8175-6 or 8177-6 with its state definition');
 });
 
 // 2026-10-20: the criteria are judged against the task. The task text is in
