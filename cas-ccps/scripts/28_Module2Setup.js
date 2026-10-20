@@ -11,14 +11,24 @@
 //   A "complete" state means verified complete, not "script ran without errors."
 //
 // PHASE A — LIGHTWEIGHT (runs in ~30 seconds):
-//   Creates M2 tabs · imports competency registry · installs backfill trigger
+//   Creates M2 tabs · imports competency registry · points to the backfill
+//   trigger's installer in the Central Ledger
 //   Verifies each step before proceeding to the next.
 //   Ends with exact redeploy instructions in the completion alert — not the doc.
 //
 // PHASE B — WARM-UPS (offered from menu when timing is right):
 //   Creates warm-up tabs · collects schedule via single structured prompt
-//   Installs nightly triggers · verifies tab writes · surfaces Studio Flow
-//   configuration inline with exact settings, not a reference to another doc.
+//   Names the Central Ledger installers for its triggers · verifies tab
+//   writes · surfaces Studio Flow configuration inline with exact settings,
+//   not a reference to another doc.
+//
+// TRIGGERS LIVE IN THE CENTRAL LEDGER (2026-10-20):
+//   Every trigger this wizard used to install (the alignment backfill, the
+//   3 a.m. stages, registerDeliveredWarmUps) runs a Central Ledger function,
+//   and this file is in the Unified Manual project, so a trigger made here
+//   could only fail. The wizard now names the Ledger's installers instead;
+//   previewMisplacedTriggers() / removeMisplacedTriggers() below clear any
+//   it made here before.
 //
 // DEFERRED STATE IS NEVER SILENT:
 //   If a step cannot complete, the menu item reflects it.
@@ -125,7 +135,7 @@ function runModule2Setup() {
     "What happens:\n" +
     "  1. Four tabs created on your Central Ledger\n" +
     "  2. Competency framework imported from CSV\n" +
-    "  3. Backfill trigger installed\n" +
+    "  3. The backfill trigger's installer named (Central Ledger)\n" +
     "  4. Teacher Dashboard updated with 'New Lesson' button\n\n" +
     "Each step verifies itself before moving on.\n\n" +
     "Takes about 30 seconds. Click OK to begin.",
@@ -194,28 +204,18 @@ function _runPhaseA_(ui, props, ss) {
   // importResult: { success, rowCount, deferred, message }
   // If deferred, menu will reflect this — setup continues but marks incomplete
 
-  // ── STEP 4: Install backfill trigger ─────────────────────────────────────
-  _gateAlert_(ui, "Step 4 of 4 — Installing Safety Trigger", "");
-
-  _installTriggerIfMissing_("runAlignmentLogBackfill_", "everyMinutes", 5);
-
-  // Verify trigger installed
-  const backfillInstalled = ScriptApp.getProjectTriggers()
-    .some(t => t.getHandlerFunction() === "runAlignmentLogBackfill_");
-  if (!backfillInstalled) {
-    ui.alert(
-      "⚠ Trigger Installation Warning",
-      "The alignment backfill trigger could not be installed.\n\n" +
-      "This trigger provides a safety net if the alignment logger " +
-      "fails silently. Setup can continue without it but you should " +
-      "install it manually:\n\n" +
-      "  Script Editor → Triggers → + Add Trigger\n" +
-      "  Function: runAlignmentLogBackfill_\n" +
-      "  Event: Time-driven · Every 5 minutes",
-      ui.ButtonSet.OK
-    );
-    // Non-fatal — continue
-  }
+  // ── STEP 4: Backfill trigger, installed in the Central Ledger ────────────
+  // runAlignmentLogBackfill_ is a Central Ledger function (22); a trigger
+  // made in this project can't run it.
+  ui.alert(
+    "Step 4 of 4 — Safety Trigger (Central Ledger)",
+    "The alignment backfill retries any lesson whose competency alignment " +
+    "didn't log. It runs in the Central Ledger, so install it there:\n\n" +
+    "  Central Ledger → Extensions → Apps Script\n" +
+    "  Run: installAlignmentBackfillTrigger()\n\n" +
+    "Setup continues without it.",
+    ui.ButtonSet.OK
+  );
 
   // ── Write Script Properties ───────────────────────────────────────────────
   props.setProperties({
@@ -241,7 +241,7 @@ function _runPhaseA_(ui, props, ss) {
     // What was done
     "✓ Tabs created: LessonContext · CompetencyRegistry · AlignmentLog · ReportRegistry\n" +
     importLine + "\n" +
-    "✓ Backfill trigger installed.\n\n" +
+    "• Backfill trigger: run installAlignmentBackfillTrigger() in the Central Ledger.\n\n" +
 
     // ── INLINE REDEPLOY INSTRUCTIONS — not deferred to doc ──────────────
     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
@@ -739,51 +739,20 @@ function _runPhaseB_(ui, props, ss) {
   const scheduleResult = _collectScheduleCompact_(ui, props, ss, teacherEmail);
   if (!scheduleResult) return; // cancelled
 
-  // ── STEP 5: Install triggers ──────────────────────────────────────────────
-  _gateAlert_(ui, "Step 5 of 5 — Installing Nightly Triggers", "");
-
-  _installTriggerIfMissing_("updateAllStudentProfiles", "atHour", 3,  { nearMinute: 0  });
-  // FIXED: syncArtifactCompetencies (Script 33, Stage 1B) had its own
-  // standalone manual installer (installArtifactSyncTrigger_()) but was
-  // never part of the wizard's automated install/verify list — a
-  // third-party review found it. It stamps M2_STAGE1B_LAST_RUN on every
-  // run, now checked by runWarmUpEvaluation() below at 3:15am; installing
-  // it here is what makes that check meaningful on a fresh setup instead
-  // of alerting every night on a trigger the wizard never installed.
-  _installTriggerIfMissing_("syncArtifactCompetencies", "atHour", 3,  { nearMinute: 5  });
-  _installTriggerIfMissing_("runWarmUpEvaluation",      "atHour", 3,  { nearMinute: 15 });
-  _installTriggerIfMissing_("buildWarmUpQueues",         "atHour", 3,  { nearMinute: 30 });
-  _installTriggerIfMissing_("registerDeliveredWarmUps", "everyMinutes", 5);
-
-  // Verify all five triggers installed
-  const installedFns = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
-  const requiredTriggers = [
-    "updateAllStudentProfiles",
-    "syncArtifactCompetencies",
-    "runWarmUpEvaluation",
-    "buildWarmUpQueues",
-    "registerDeliveredWarmUps"
-  ];
-  const missingTriggers = requiredTriggers.filter(fn => !installedFns.includes(fn));
-
-  if (missingTriggers.length > 0) {
-    ui.alert(
-      "⚠ Trigger Installation Incomplete",
-      "These triggers could not be installed automatically:\n\n" +
-      missingTriggers.map(fn => "  • " + fn).join("\n") + "\n\n" +
-      "Install them manually:\n" +
-      "  Script Editor → Triggers → + Add Trigger\n" +
-      "  Event source: Time-driven\n\n" +
-      "  updateAllStudentProfiles  → Every day at 3am\n" +
-      "  syncArtifactCompetencies  → Every day at 3:05am\n" +
-      "  runWarmUpEvaluation       → Every day at 3:15am\n" +
-      "  buildWarmUpQueues          → Every day at 3:30am\n" +
-      "  registerDeliveredWarmUps  → Every 5 minutes\n\n" +
-      "Click OK to continue — warm-ups won't run until triggers are active.",
-      ui.ButtonSet.OK
-    );
-    // Non-fatal — continue
-  }
+  // ── STEP 5: Nightly triggers, installed in the Central Ledger ────────────
+  // Each runs a Central Ledger function; a trigger made in this project
+  // can't run it (2026-10-20). The cycle (64) runs registerDeliveredWarmUps.
+  ui.alert(
+    "Step 5 of 5 — Nightly Triggers (Central Ledger)",
+    "Warm-ups run in the Central Ledger. Install their triggers there:\n\n" +
+    "  Central Ledger → Extensions → Apps Script, then run:\n" +
+    "  installWarmUpTriggers()      → 3:00, 3:15 and 3:30am\n" +
+    "  installArtifactSyncTrigger() → 3:05am\n" +
+    "  installLedgerCycle()         → every minute; includes\n" +
+    "                                 registerDeliveredWarmUps\n\n" +
+    "Warm-ups won't run until these are installed.",
+    ui.ButtonSet.OK
+  );
 
   // ── Write Script Properties ───────────────────────────────────────────────
   props.setProperties({
@@ -1186,25 +1155,46 @@ function _createTabIfMissing28_(ss, tabName, headers, textColumns) {
 }
 
 // =============================================================================
-// TRIGGER INSTALLATION
+// MISPLACED TRIGGERS — ones this wizard used to install in this project
 // =============================================================================
+//
+// Until 2026-10-20 the wizard installed these here, in the Unified Manual
+// project, but each runs a Central Ledger function, so every run failed
+// ("Script function not found"); registerDeliveredWarmUps never ran in the
+// Ledger until it was installed there by hand (2026-10-19). Run
+// previewMisplacedTriggers(), then removeMisplacedTriggers(), from this
+// project's editor. Only a trigger whose function this project doesn't have
+// is removed. Logs function names and counts only.
 
-function _installTriggerIfMissing_(fnName, type, value, opts) {
-  const existing = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
-  if (existing.includes(fnName)) {
-    Logger.log("[S28] Trigger already installed: " + fnName);
-    return;
-  }
-  const builder = ScriptApp.newTrigger(fnName).timeBased();
-  if (type === "everyMinutes") {
-    builder.everyMinutes(value);
-  } else if (type === "atHour") {
-    builder.atHour(value);
-    if (opts && opts.nearMinute !== undefined) builder.nearMinute(opts.nearMinute);
-    builder.everyDays(1);
-  }
-  builder.create();
-  Logger.log("[S28] Trigger installed: " + fnName);
+const S28_LEDGER_TRIGGER_FNS = [
+  "runAlignmentLogBackfill_",
+  "updateAllStudentProfiles",
+  "syncArtifactCompetencies",
+  "runWarmUpEvaluation",
+  "buildWarmUpQueues",
+  "registerDeliveredWarmUps"
+];
+
+function previewMisplacedTriggers() {
+  return _s28MisplacedTriggers_(false);
+}
+
+function removeMisplacedTriggers() {
+  return _s28MisplacedTriggers_(true);
+}
+
+function _s28MisplacedTriggers_(apply) {
+  const misplaced = ScriptApp.getProjectTriggers().filter(t => {
+    const fn = t.getHandlerFunction();
+    return S28_LEDGER_TRIGGER_FNS.includes(fn) && typeof globalThis[fn] !== "function";
+  });
+  const names = misplaced.map(t => t.getHandlerFunction());
+  if (apply) misplaced.forEach(t => ScriptApp.deleteTrigger(t));
+  const message = (apply ? "Removed " : "DRY RUN: would remove ") + names.length +
+    " misplaced trigger(s)" + (names.length ? ": " + names.join(", ") : "") +
+    ". Install them in the Central Ledger instead (see the wizard's steps).";
+  Logger.log("[S28] " + message);
+  return { apply: apply, found: names, removed: apply ? names.length : 0, message: message };
 }
 
 // =============================================================================
@@ -1314,15 +1304,13 @@ function _writePhaseBSummaryDoc_(teacherName, teacherEmail, scheduleResult, prop
   );
   body.appendParagraph("");
 
-  body.appendParagraph("Triggers Installed")
+  body.appendParagraph("Triggers (installed from the Central Ledger)")
     .setHeading(DocumentApp.ParagraphHeading.HEADING2);
   [
-    "3:00am — updateAllStudentProfiles",
-    "3:05am — syncArtifactCompetencies",
-    "3:15am — runWarmUpEvaluation",
-    "3:30am — buildWarmUpQueues",
-    "Every 5 min — registerDeliveredWarmUps"
-  ].forEach(t => body.appendParagraph("  ✓ " + t));
+    "installWarmUpTriggers() — 3:00am updateAllStudentProfiles, 3:15am runWarmUpEvaluation, 3:30am buildWarmUpQueues",
+    "installArtifactSyncTrigger() — 3:05am syncArtifactCompetencies",
+    "installLedgerCycle() — every minute, including registerDeliveredWarmUps"
+  ].forEach(t => body.appendParagraph("  • " + t));
   body.appendParagraph("");
 
   body.appendParagraph("Studio Flows Required")
