@@ -27,5 +27,15 @@ Agents never run it: a session must not receive a roster.
 **Allowlist.** `allow.json` holds the hashes of matches that are not student
 data: a person has looked at the line, or the hash equals a known synthetic
 string (a run of digits at `ccpsnet.net`, say). Never put the matched text
-in it. Exit status is 1 while any finding is left, so CI can gate on it once
-the tree is clean.
+in it. Exit status is 1 while any finding is left.
+
+**CI gate (since 2026-10-20).** The `gas-lint` workflow runs the working-tree
+scan on every push and pull request, so a new student-shaped address fails
+the build. On 2026-10-20 the operator confirmed every remaining email
+finding, in the tree and in history, as a placeholder (allowlisted), and
+`--roster` found one real student name (`leader-hub/LH_04_EMAIL_AUDIT.md`),
+removed from the tree by the operator. That name is still in git history
+from 2026-08-08; removing it there needs a history rewrite on the
+operator's machine, the operator's decision. CI can't check names: run
+`--roster` locally for each section after any change that adds example
+text.
