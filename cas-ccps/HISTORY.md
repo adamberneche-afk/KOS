@@ -3687,3 +3687,34 @@ kind of failure every morning.
   in Sheets, which `|| "TRUE"` read as active; only a blank defaults to
   active now.
 - **Tests:** `lesson-schedule.test.js`, `period-split.test.js`.
+
+## Flow 4 scores text-box warm-ups, 2026-10-20
+
+- **Found:** Tuesday's overnight check listed 3 warm-ups from earlier days
+  still at `PENDING_EVAL`, and `Flow4Input` had never had a row. The Flow 4
+  input builder (`wfbBuildFlow4Row_`, 41) skipped any queue row without a
+  `Doc_ID`, and a warm-up answered in the text box (`WARMUP_TEXT_BOX`, live
+  since 2026-10-19) has none. So no text-box answer could be scored.
+- **Fix:** with no doc, the builder takes the prompt and the answer from the
+  row's `WarmUpTextBox` entry (`evaluateWarmUpText_`, 25), read once per run;
+  `DocID` is left blank. A row with neither is still skipped. Scoring
+  (`wfbApplyFlow4_`) already wrote the doc's feedback only when there is one.
+- **Tests:** `warmup-flow-pacing.test.js`.
+
+## Flow 3: the anchor for a warm-up that fails the plausibility check, 2026-10-20
+
+- **Found:** four of Wednesday's 53 warm-ups ended at `ERROR`, no warm-up
+  for the day. Studio's output for each failed `_wfbCheckPlausible_` (it
+  shared none of the lesson's distinguishing words); the harvest retried the
+  same output three times and failed the row. The shape gate (#201) already
+  sends the teacher's anchor for output that isn't a warm-up; this check
+  didn't.
+- **Fix:** `wfbApplyFlow3_` (41) delivers the anchor when the check fails,
+  noted `ANCHOR_FALLBACK: SUSPECT_FABRICATION: ...` on the return row (34c
+  counts it). With no anchor the row still fails as before.
+- **`previewFailedWarmUpRepair()` / `repairFailedWarmUps()`** (41, Central
+  Ledger): for Flow 3 returns `FAILED` as `SUSPECT_FABRICATION` whose queue
+  row is `ERROR` and whose day hasn't passed, deliver the anchor. Counts only.
+- **The same column, 2026-10-20:** of 48 anchor fallbacks, 38 were Studio
+  never returning after two retries, 6 too long, 4 the prompt's own wording.
+- **Tests:** `warmup-flow-pacing.test.js`.
