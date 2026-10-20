@@ -2,7 +2,7 @@
 
 **Status:** started 2026-10-17. Nothing here is committed work.
 [`PLAN_2026-10.md`](./PLAN_2026-10.md) is the plan of record and wins
-whenever the two disagree. [`HANDOFF_2026-10-19.md`](./HANDOFF_2026-10-19.md)
+whenever the two disagree. [`HANDOFF_2026-10-20.md`](./HANDOFF_2026-10-20.md)
 holds the operator's current queue and the decisions waiting on the
 operator. This file holds what comes after them.
 
@@ -46,6 +46,21 @@ the part of the task.
   events. L01's primary (45) is about the industry's history, which the
   task doesn't ask; L05's 109 is industry networking, the task personal
   support.
+
+### Warm-up scoring and Flow 3 output (2026-10-20)
+
+- **Word count penalises list answers.** A warm-up that asks students to
+  "list as many ways as you can" gets 0 of 6 for word count from a correct
+  list (`WORD_COUNT_THRESHOLDS`, 25). Either seed list prompts differently
+  or score lists by item count. A grading rule, so the teacher decides;
+  after Oct 30.
+- **Flow 3 output quality.** About 1 in 5 of Studio's warm-ups is turned
+  down by the shape gate (over 900 characters; the prompt's own wording,
+  "adaptation constraints", "teacher's anchor prompt"). Tighten the Flow 3
+  prompt (40) and watch the nightly fallback count. With D6.
+- **33 finds the matrix like 53.** `syncArtifactCompetencies` stops with
+  `NO_MATRIX_ID` unless `TEACHER_MATRIX_SS_ID` is set; fall back to
+  `MatrixRegistry` (`_asTeacherMatrix_`, 53).
 
 ### Offered, small, ready to build
 
