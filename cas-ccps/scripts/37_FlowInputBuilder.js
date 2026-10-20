@@ -670,6 +670,16 @@ function harvestFlowInputResults() {
         // same project, already tested. Returns { complianceStatus,
         // suggestedScore, milestoneOutcomes, rawResponse }.
         const parsed = _parseFlow2Response_(geminiFullOutput);
+        // Tiered assignments (COMPETENCY_TIERS, 2026-10-20): the pass rule
+        // is checked here too, so an APPROVED the outcomes don't support
+        // is never recorded; and the tertiary competencies the work showed
+        // are read from the ALSO_SHOWN line.
+        const dodText = String(fiData[i][FI.DEFINITION_OF_DONE] || "");
+        const tiers = _fiTiersFromDod_(dodText);
+        if (tiers && parsed.complianceStatus === "APPROVED" && !_fiTierRulePasses_(parsed.milestoneOutcomes)) {
+          parsed.complianceStatus = "REVISION_REQUIRED";
+        }
+        const alsoShown = tiers ? _fiAlsoShown_(geminiFullOutput, tiers.tertiary) : [];
 
         const studentFacingReport = _fiStripMilestoneOutcomesLine_(geminiFullOutput);
         const asComment = feedbackAsCommentFor_(configId) &&
@@ -704,6 +714,12 @@ function harvestFlowInputResults() {
           studentEmail, configId, studentFileId,
           competencyIds, milestoneTexts, parsed.milestoneOutcomes
         );
+        // A tertiary competency the work showed counts as MET evidence;
+        // one it didn't show records nothing (never required).
+        if (alsoShown.length) {
+          writeCompetencyEvidenceFromFlow2_(studentEmail, configId, studentFileId,
+            { "1": alsoShown.join(", ") }, { "1": "Also shown (tertiary competency)" }, { "1": "MET" });
+        }
 
         recordEvaluationResult_(ledgerSs.getSheetByName(cfg.tabs.ledger), studentFileId, configId,
           parsed.complianceStatus, parsed.suggestedScore);
@@ -796,7 +812,44 @@ function _fiMarkStagingComplete_(stagingSheet, stagingRowRef, studentFileId, con
 function _fiStripMilestoneOutcomesLine_(fullText) {
   return String(fullText || "")
     .replace(/\[MILESTONE_OUTCOMES:\s*(\{[\s\S]*?\})\]\s*/, "")
+    .replace(/\[ALSO_SHOWN:\s*\[[^\]]*\]\]\s*/, "")
     .replace(/\s+$/, "");
+}
+
+// A tiered Definition of Done (tools/cas-ccps/build-lesson-assignments.js,
+// COMPETENCY_TIERS) has a PASSING RULE line and a TERTIARY COMPETENCIES
+// section. Returns { tertiary: [ids] }, or null for an untiered one.
+function _fiTiersFromDod_(dod) {
+  const text = String(dod || "");
+  if (text.indexOf("PASSING RULE: APPROVED when Milestone 1") === -1) return null;
+  const at = text.indexOf("TERTIARY COMPETENCIES");
+  const section = at === -1 ? "" : text.slice(at).split(/\n\s*\n/)[0];
+  const tertiary = [];
+  section.split("\n").forEach(l => {
+    const m = /^- (\d{4}-\d+) /.exec(l.trim());
+    if (m) tertiary.push(m[1]);
+  });
+  return { tertiary: tertiary };
+}
+
+// The tier pass rule: Milestone 1 (the primary) MET, the other three at
+// least PARTIALLY_MET.
+function _fiTierRulePasses_(outcomes) {
+  const o = outcomes || {};
+  const atLeastPartial = v => v === "MET" || v === "PARTIALLY_MET";
+  return o["1"] === "MET" && atLeastPartial(o["2"]) && atLeastPartial(o["3"]) && atLeastPartial(o["4"]);
+}
+
+// The tertiary competencies Flow 2 says the work showed: its ALSO_SHOWN line,
+// kept only where the ID is one of this assignment's tertiaries.
+function _fiAlsoShown_(fullText, tertiary) {
+  const m = /\[ALSO_SHOWN:\s*(\[[^\]]*\])\]/.exec(String(fullText || ""));
+  if (!m) return [];
+  let ids;
+  try { ids = JSON.parse(m[1]); } catch (e) { return []; }
+  if (!Array.isArray(ids)) return [];
+  const allowed = tertiary || [];
+  return ids.map(id => String(id).trim()).filter((id, k, all) => allowed.indexOf(id) !== -1 && all.indexOf(id) === k);
 }
 
 // Builds the same feedback block shape

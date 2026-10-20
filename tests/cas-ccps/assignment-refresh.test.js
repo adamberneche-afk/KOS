@@ -99,3 +99,20 @@ test('a milestone listing two competencies writes evidence for each', () => {
   assert.deepEqual(rows.map((x) => [x[2], x[4]]),
     [['8175-4', 'MET'], ['8175-20', 'NOT_MET'], ['8175-51', 'PARTIALLY_MET'], ['8175-49', 'PARTIALLY_MET']]);
 });
+
+test('a tiered assignment: primary, secondaries and tertiaries in the Definition of Done, milestones and the student task', () => {
+  const { exported } = setup();
+  const a = exported.LESSON_ASSIGNMENTS['8175-L16'];
+  const tiers = JSON.parse(require('fs').readFileSync(path.join(__dirname, '..', '..', 'cas-ccps', 'curriculum',
+    'lessons', 'COMPETENCY_TIERS.json'), 'utf8'))['8175-L16'];
+  assert.equal(a.milestoneCompetencyIds[0], tiers.primary);
+  assert.deepEqual(a.milestoneCompetencyIds.slice(1, 1 + tiers.secondary.length), tiers.secondary);
+  assert.equal(a.milestones[3], 'Completes every part of the task the assignment asks for.');
+  assert.deepEqual(a.tertiaryCompetencyIds, tiers.tertiary);
+  assert.match(a.definitionOfDone, /PRIMARY COMPETENCY \(Milestone 1; must be MET\)/);
+  assert.match(a.definitionOfDone, /PASSING RULE: APPROVED when Milestone 1/);
+  tiers.tertiary.forEach((id) => assert.match(a.definitionOfDone, new RegExp('\\n- ' + id + ' ')));
+  assert.match(a.promptText, /What your work needs to show:[\s\S]*\(required\)[\s\S]*You can also show \(not required\):/);  // The checklist sits before a closing Submission: part, which the Canvas cartridge drops.
+  const sub = a.promptText.search(/\n\nSubmission:/);
+  if (sub !== -1) assert.ok(a.promptText.indexOf('What your work needs to show:') < sub);
+});

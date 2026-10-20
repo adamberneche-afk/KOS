@@ -88,6 +88,84 @@ function sameWording(a, b) {
 }
 
 const MAP_FILE = path.join(LESSONS, 'COMPETENCY_MAP.json');
+
+// Competency tiers per assignment (decided 2026-10-20): a primary that must
+// be MET, one or two secondaries that must be at least PARTIALLY MET, and
+// tertiaries the evaluator only notes when the work shows them. An
+// assignment without an entry keeps the untiered criteria.
+const TIERS_FILE = path.join(LESSONS, 'COMPETENCY_TIERS.json');
+const competencyTiers = () => (fs.existsSync(TIERS_FILE) ? JSON.parse(fs.readFileSync(TIERS_FILE, 'utf8')) : {});
+// Keys starting with _ are notes, not assignments.
+
+const TIER_RULE = 'PASSING RULE: APPROVED when Milestone 1 (the primary competency) is MET and Milestones 2, 3 ' +
+  'and 4 are each MET or PARTIALLY MET. Tertiary competencies never affect the result.';
+
+/** Milestones and the Definition of Done from an assignment's tiers. Throws on a tier that doesn't fit. */
+function applyTiers(a, comps, t, grading, vocab) {
+  const byId = {};
+  comps.forEach((r) => { if (r.competency_id) byId[r.competency_id] = r; });
+  const secondary = t.secondary || [];
+  const tertiary = t.tertiary || [];
+  const all = [t.primary].concat(secondary, tertiary);
+  const where = 'COMPETENCY_TIERS.json ' + a.key + ': ';
+  if (!t.primary) throw new Error(where + 'no primary');
+  if (secondary.length > 2) throw new Error(where + 'more than two secondaries');
+  all.forEach((id) => { if (!byId[id]) throw new Error(where + id + ' is not one of the lesson\'s competencies'); });
+  if (new Set(all).size !== all.length) throw new Error(where + 'a competency is in two tiers');
+  const missing = Object.keys(byId).filter((id) => all.indexOf(id) === -1);
+  if (missing.length) throw new Error(where + 'no tier for ' + missing.join(', '));
+
+  const line = (r) => r.competency_id + ' ' + r.competency_text.replace(/\.$/, '').trim() + '.';
+  const ms = [
+    { text: line(byId[t.primary]), id: t.primary },
+    { text: line(byId[secondary[0]] || byId[t.primary]), id: secondary[0] || '' },
+    secondary[1]
+      ? { text: line(byId[secondary[1]]), id: secondary[1] }
+      : { text: 'Uses specific examples from the student\'s own work, not general statements.', id: '' },
+    { text: 'Completes every part of the task the assignment asks for.', id: '' },
+  ];
+  if (!secondary.length) ms[1] = { text: vocab ? 'Uses the lesson vocabulary accurately: ' + vocab + '.' :
+    'Explains the reasoning behind each part, in the student\'s own words.', id: '' };
+  // The student sees what the work needs to show, in the task itself.
+  const plainLine = (id) => '- ' + byId[id].competency_text.replace(/\.$/, '').trim();
+  // Before a closing "Submission:" part, which the Canvas cartridge drops.
+  const checklist = 'What your work needs to show:\n\n' +
+    [plainLine(t.primary) + ' (required)'].concat(secondary.map(plainLine)).join('\n') +
+    (tertiary.length ? '\n\nYou can also show (not required):\n\n' + tertiary.map(plainLine).join('\n') : '');
+  const task = String(a.promptText || '').trim();
+  const sub = task.search(/\n\nSubmission:\s*\n/);
+  a.promptText = sub === -1 ? task + '\n\n' + checklist : task.slice(0, sub) + '\n\n' + checklist + task.slice(sub);
+  a.milestones = ms.map((m) => m.text);
+  a.milestoneCompetencyIds = ms.map((m) => m.id);
+  a.tertiaryCompetencyIds = tertiary.slice();
+
+  const block = (ids) => ids.flatMap((id) => ['- ' + line(byId[id]), ...evidenceLines(byId[id])]);
+  return [
+    'ASSIGNMENT: ' + a.unitName,
+    'COURSE: ' + a.courseName,
+    'COMPETENCIES ASSESSED: ' + [t.primary].concat(secondary).join(', '),
+    '',
+    'THE TASK (what the student was asked to do)',
+    String(a.promptText || '').trim(),
+    '',
+    'PRIMARY COMPETENCY (Milestone 1; must be MET)',
+    ...block([t.primary]),
+    '',
+    'SECONDARY COMPETENCIES (must be at least PARTIALLY MET)',
+    ...(secondary.length ? block(secondary) : ['- None for this assignment.']),
+    '',
+    'TERTIARY COMPETENCIES (never required; name any the work clearly shows under ALSO SHOWN)',
+    ...(tertiary.length ? tertiary.map((id) => '- ' + line(byId[id])) : ['- None for this assignment.']),
+    ...(gradable(grading) ? ['', 'TEACHER GRADING NOTES', gradable(grading)] : []),
+    '',
+    TIER_RULE,
+    '',
+    'PASSING STANDARD',
+    'The work does every part of the task the assignment asks for, in the student\'s own words' +
+      (vocab ? ', using the lesson vocabulary accurately (' + vocab + ')' : '') + '. ' +
+      'Specific examples, not general statements. ' + EXAMPLES_RULE,
+  ].join('\n');
+}
 const competencyMap = () => (fs.existsSync(MAP_FILE) ? JSON.parse(fs.readFileSync(MAP_FILE, 'utf8')) : {});
 const review = [];
 
@@ -202,7 +280,8 @@ function lesson8175(file, rubrics) {
   };
   Object.assign(a, milestones(comps, title, ''));
   a.promptText = promptText;
-  a.definitionOfDone = definitionOfDone(a, comps, grading, '');
+  const tiers8175 = competencyTiers()[a.key];
+  a.definitionOfDone = tiers8175 ? applyTiers(a, comps, tiers8175, grading, '') : definitionOfDone(a, comps, grading, '');
   return a;
 }
 
@@ -265,7 +344,8 @@ function lesson8177(file, rubrics) {
   };
   Object.assign(a, milestones(comps, title, vocab));
   a.promptText = prompt;
-  a.definitionOfDone = definitionOfDone(a, comps, '', vocab);
+  const tiers8177 = competencyTiers()[a.key];
+  a.definitionOfDone = tiers8177 ? applyTiers(a, comps, tiers8177, '', vocab) : definitionOfDone(a, comps, '', vocab);
   return a;
 }
 
