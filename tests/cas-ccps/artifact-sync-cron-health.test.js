@@ -35,6 +35,7 @@ function loadCentralLedger() {
     path.join(SCRIPTS, '23_StudentProfileManager.js'),
     path.join(SCRIPTS, '25_WarmUpWriter.js'),
     path.join(SCRIPTS, '33_ArtifactCompetencyBridge.js'),
+    path.join(SCRIPTS, '54_StudentAssignments.js'),
   ], ['runWarmUpEvaluation', 'syncArtifactCompetencies']);
 }
 
@@ -107,6 +108,96 @@ test('runWarmUpEvaluation() does not alert when M2_STAGE1B_LAST_RUN is fresh', (
 
   const sent = sandbox.MailApp.getSentMessages();
   assert.ok(!sent.some((m) => /Script 33/.test(m.subject)), 'a fresh stamp must not trigger an alert');
+});
+
+// 2026-10-20: the sync had never credited a student. A Ledger row's ConfigID
+// is the student's workspace ID ("VDOE-..."), which it looked up in
+// TeacherMatrix (keyed by assignment ID) without going through
+// StudentAssignments; and it read column 15 as "competency_ids", which on
+// the live matrix is Milestone1CompetencyId.
+const TM_HEADERS = ['ConfigID', 'UnitName', 'Tier', 'Persona', 'Milestone1', 'Milestone2',
+  'Milestone3', 'Milestone4', 'DefinitionOfDone', 'InstructorEmail', 'Created', 'Status',
+  'PromptTemplateID', 'Subject', 'CourseName', 'Milestone1CompetencyId', 'Milestone2CompetencyId',
+  'Milestone3CompetencyId', 'Milestone4CompetencyId', 'LessonUnitId'];
+
+function syncFixture(sandbox) {
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  const matrix = sandbox.SpreadsheetApp.create('Teacher Matrix');
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  sandbox.SpreadsheetApp._registry.set(matrix.getId(), matrix);
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('ADMIN_SS_ID', 'fake-admin-ss');
+  props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  props.setProperty('M2_ENABLED', 'true');
+  props.setProperty('TEACHER_EMAIL', 'teacher@ccpsnet.net');
+  props.setProperty('TEACHER_MATRIX_SS_ID', matrix.getId());
+
+  const tm = matrix.insertSheet('TeacherMatrix');
+  tm.appendRow(TM_HEADERS);
+  const tmRow = (id, comps) => {
+    const r = new Array(TM_HEADERS.length).fill('');
+    r[0] = id; r[11] = 'LIVE';
+    comps.forEach((c, i) => { r[15 + i] = c; });
+    tm.appendRow(r);
+  };
+  tmRow('CAS-8175-L06', ['8175-20', '8175-112', '8175-21', '']);
+  tmRow('CAS-S1-U1-8177', ['8177-39, 8177-40', '8177-41', '', '']);
+
+  const ledger = ss.insertSheet('Ledger');
+  ledger.appendRow(new Array(19).fill('header'));
+  const ledgerRow = (account, wsId, fileId) => {
+    const r = new Array(19).fill('');
+    r[1] = account; r[2] = wsId; r[3] = fileId; r[8] = 'teacher@ccpsnet.net'; r[12] = 'ACTIVE';
+    ledger.appendRow(r);
+  };
+  ledgerRow('a@student.test', 'VDOE-AAAAAA-2026', 'FILE-A');
+  ledgerRow('b@student.test', 'VDOE-BBBBBB-2026', 'FILE-B');
+  ledgerRow('c@student.test', 'VDOE-CCCCCC-2026', 'FILE-C');
+
+  const sa = ss.insertSheet('StudentAssignments');
+  sa.appendRow(['StudentConfigID', 'GoogleID', 'AssignmentConfigID']);
+  sa.appendRow(['VDOE-AAAAAA-2026', 'a@student.test', 'CAS-8175-L06']);
+  sa.appendRow(['VDOE-BBBBBB-2026', 'b@student.test', 'CAS-S1-U1-8177']);
+  sa.appendRow(['VDOE-CCCCCC-2026', 'c@student.test', 'CAS-8175-L06']);
+
+  const staging = ss.insertSheet('STAGING_PIPELINE');
+  staging.appendRow(['Timestamp', 'QueueRowRef', 'StudentFileID', 'ConfigID', 'TeacherEmail', 'Status']);
+  staging.appendRow([new Date(), 2, 'FILE-A', 'VDOE-AAAAAA-2026', 'teacher@ccpsnet.net', 'COMPLETE']);
+  staging.appendRow([new Date(), 3, 'FILE-B', 'VDOE-BBBBBB-2026', 'teacher@ccpsnet.net', 'COMPLETE']);
+  staging.appendRow([new Date(), 4, 'FILE-C', 'VDOE-CCCCCC-2026', 'teacher@ccpsnet.net', 'IN_PROCESS']);
+
+  const sp = ss.insertSheet('StudentProfiles');
+  sp.appendRow(['student_email', 'x', 'y', 'teacher_email', 'z', 'competencies_addressed']);
+  ['a@student.test', 'b@student.test', 'c@student.test'].forEach((e) =>
+    sp.appendRow([e, '', '', 'teacher@ccpsnet.net', '', JSON.stringify(['8175-1'])]));
+  return { ss, sp, props };
+}
+
+test('syncArtifactCompetencies credits a COMPLETE submission through its assignment, with every milestone\'s competencies', () => {
+  const { exported, sandbox } = loadCentralLedger();
+  const fx = syncFixture(sandbox);
+  exported.syncArtifactCompetencies();
+
+  const covered = (row) => JSON.parse(fx.sp.getRange(row, 6).getValue());
+  assert.deepEqual(covered(2), ['8175-1', '8175-112', '8175-20', '8175-21']);
+  assert.deepEqual(covered(3), ['8175-1', '8177-39', '8177-40', '8177-41'],
+    'a comma-separated milestone cell gives each ID');
+  assert.deepEqual(covered(4), ['8175-1'], 'a submission not COMPLETE adds nothing');
+  assert.equal(fx.props.getProperty('M2_STAGE1B_STATUS'), 'OK_2');
+});
+
+test('syncArtifactCompetencies still reads an older matrix\'s competency_ids column', () => {
+  const { exported, sandbox } = loadCentralLedger();
+  const fx = syncFixture(sandbox);
+  const matrix = sandbox.SpreadsheetApp.openById(fx.props.getProperty('TEACHER_MATRIX_SS_ID'));
+  const tm = matrix.getSheetByName('TeacherMatrix');
+  const old = TM_HEADERS.slice(0, 15).concat(['competency_ids']);
+  tm.getRange(1, 1, 1, TM_HEADERS.length).setValues([old.concat(new Array(TM_HEADERS.length - old.length).fill(''))]);
+  tm.getRange(2, 16, 2, 4).setValues([['8175-20,8175-21', '', '', ''], ['', '', '', '']]);
+
+  exported.syncArtifactCompetencies();
+  assert.deepEqual(JSON.parse(fx.sp.getRange(2, 6).getValue()), ['8175-1', '8175-20', '8175-21']);
+  assert.equal(fx.props.getProperty('M2_STAGE1B_STATUS'), 'OK_1');
 });
 
 // ── Script 28's trigger install (different GAS project: cas-ccps:unified-manual) ──
