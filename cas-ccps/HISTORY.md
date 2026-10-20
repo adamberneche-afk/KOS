@@ -3742,3 +3742,21 @@ kind of failure every morning.
 - **The 10-17 canary** (`WUQ-CANARY-...`, row 2 of `WarmUpFlowReturn`) is
   the one Flow 5 failure on the overnight check: its queue row is gone.
 - **Tests:** `warmup-flow-pacing.test.js`.
+
+## Artifact sync: the assignment hop and every milestone's competencies, 2026-10-20
+
+- **Found:** `syncArtifactCompetencies` (33) reported 0 students with
+  coverage while `STAGING_PIPELINE` held 5 `COMPLETE` evaluations. It looked
+  up each Ledger row's ConfigID in TeacherMatrix, but that ConfigID is the
+  student's own workspace ID (`VDOE-...`), and TeacherMatrix is keyed by the
+  assignment's ID (`CAS-...`). Flow 2's input builder (37) maps one to the
+  other through `StudentAssignments` (54); 33 never did, so it had never
+  credited a student. It also read column 15 as `competency_ids`, which on
+  the live matrix is `Milestone1CompetencyId`: only the primary competency
+  would have counted.
+- **Fix:** the workspace ID goes through `readStudentAssignments_` (54)
+  first, its own ID when it has no row there. The competency IDs come from
+  the four `Milestone{1-4}CompetencyId` columns, found by header and split on
+  commas; a matrix with only `competency_ids` still works.
+- **Tests:** `artifact-sync-cron-health.test.js`; `warmup-shape-gate.test.js`
+  now loads 54 (gas-lint's sandbox-scope check).
