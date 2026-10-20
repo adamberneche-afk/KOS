@@ -1645,6 +1645,10 @@ function _wfbDiagnoseReturnRow_(row, knownIds) {
   const issues = [];
   const cell = function (idx) { return String(row[idx] === undefined ? '' : row[idx]).trim(); };
 
+  // The harvest's own row for a job Studio never returned (wfbFallbackExhaustedInputs_):
+  // no output, the note in Error. Not Studio's, so not a binding to diagnose.
+  if (!cell(WFB_RET.RAW_OUTPUT) && cell(WFB_RET.ERROR).indexOf(WFB_ANCHOR_FALLBACK + ":") === 0) return issues;
+
   // Where did a flow number actually land?
   let flowAt = -1;
   for (let i = 0; i < row.length; i++) {
