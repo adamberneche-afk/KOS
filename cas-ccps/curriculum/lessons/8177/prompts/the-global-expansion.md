@@ -10,7 +10,7 @@
 
 Assignment: The International Expansion Proposal
 
-You are the Vice President of International Development for a U.S. sports team or entertainment brand (an NBA team, WWE, a music festival). Plan one major event in another country, and build a short proposal (Google Slides or Canva, linked or added to this document) that answers each part below.
+You are the Vice President of International Development for a U.S. sports team or entertainment brand (an NBA team, WWE, a music festival). Plan one major event in another country, and build a short proposal (Google Slides or Canva, linked or added to this document) that answers each part below. Type your answer to each part in this document too; the slides can carry the pictures.
 
 Part 1: The Destination. Which brand, and which foreign city? Explain why there's a market for your brand there: fans, popularity of the sport, population, or something else you found in your research.
 

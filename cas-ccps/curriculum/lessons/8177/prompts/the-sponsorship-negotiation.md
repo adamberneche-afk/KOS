@@ -12,11 +12,11 @@ Assignment: The Sponsorship Negotiation
 
 You're the director of corporate partnerships for a CHHS team or event. Your goal: sell a $500 banner sponsorship to a local business. You'll build a list of prospects, prepare for the hard questions, and then negotiate with a partner playing a skeptical business owner.
 
-Part 1: The CRM. In Google Sheets, build a simple customer relationship tracker with these columns: business name, contact person and title, contact information, why they're a good fit, and status (researching, ready to pitch, pitched, closed, declined). Add five real local businesses. At least two must be owned by women or by members of a minority group, or must serve one of the diverse communities in the Richmond area. Add the link to this document.
+Part 1: The CRM. In Google Sheets, build a simple customer relationship tracker with these columns: business name, contact person and title, contact information, why they're a good fit, and status (researching, ready to pitch, pitched, closed, declined). Add five real local businesses. At least two must be owned by women or by members of a minority group, or must serve one of the diverse communities in the Richmond area. Add the link to this document, and copy your five rows into it too.
 
 Part 2: The Objection Script. Write how you'll answer the two objections you're most likely to hear (for example, "Teenagers don't spend money at my business" or "I already sponsor another school"), using the Feel, Felt, Found method.
 
-Part 3: The Reflection. After your role-play, write a short paragraph: How did it feel when your partner said no? What did you do to stay calm, and how did you pivot? Did you close the deal?
+Part 3: The Reflection. After your role-play, write down what happened: your opening pitch in a sentence or two, each objection your partner raised and how you answered it, and how it ended. Then write a short paragraph: How did it feel when your partner said no? What did you do to stay calm, and how did you pivot? Did you close the deal?
 
 Do not contact any of these businesses. This is practice: no emails, calls or visits on behalf of CHHS without administration's approval.
 
