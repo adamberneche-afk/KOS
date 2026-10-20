@@ -70,6 +70,106 @@
       "hash": "5c1b7f6d3046",
       "file": "tests/cas-ccps/student-context-aggregator.test.js",
       "why": "Proven synthetic by hash: a sequence-of-digits test address (checked 2026-10-19, never read)"
+    },
+    {
+      "hash": "b98bc8e8b0b3",
+      "file": "cas-ccps/forms/WarmUpResponseForm_setup.md",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "9fe5cfce40c0",
+      "file": "cas-ccps/scripts/60_FamilyMailSentinel.js",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "b5f0c6684b2d",
+      "file": "cas-ccps/scripts/60_FamilyMailSentinel.js",
+      "why": "Placeholder, git history only: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "c7e879bc465b",
+      "file": "leader-hub/LH_02_INTEGRATION_GUIDE.md",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "92cf08d019d0",
+      "file": "leader-hub/src/04-markup-modals-and-feature-views.html",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "c64d0f734360",
+      "file": "leader-hub/src/05-data-helpers-dashboard.html",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "3b8b1cf93d82",
+      "file": "leader-hub/src/05-data-helpers-dashboard.html",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "62b8ba0944f4",
+      "file": "leader-hub/src/05-data-helpers-dashboard.html",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "118ec49e3743",
+      "file": "leader-hub/src/05-data-helpers-dashboard.html",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "2700a1873f6e",
+      "file": "leader-hub/src/05-data-helpers-dashboard.html",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "a38542cc74d3",
+      "file": "leader-hub/src/05-data-helpers-dashboard.html",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "09ad14bc53a5",
+      "file": "leader-hub/src/05-data-helpers-dashboard.html",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "4cbd98e5b823",
+      "file": "tests/cas-ccps/canvas-roster-import.test.js",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "7432ab4f2cb8",
+      "file": "tests/cas-ccps/family-mail-sentinel.test.js",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "159dec4a4ad9",
+      "file": "tests/cas-ccps/family-mail-sentinel.test.js",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "75ec5b39b071",
+      "file": "tests/cas-ccps/family-mail-sentinel.test.js",
+      "why": "Placeholder, git history only: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "369307c3aa33",
+      "file": "tests/cas-ccps/form1-intake-id-validation.test.js",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "a4b7a2eaf44e",
+      "file": "tests/cas-ccps/period-split.test.js",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "5521ff7ae20b",
+      "file": "tests/tools/student-data-scan.test.js",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "2f43cbfb135d",
+      "file": "tests/tools/student-data-scan.test.js",
+      "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
     }
   ]
 }
