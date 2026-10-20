@@ -858,6 +858,55 @@ function _wfbCheckPlausible_(sourceObj, outputText) {
   return { ok: true };
 }
 
+// Flow 4's check is looser than the one above (2026-10-20: one of the first
+// three text-box answers failed it and sat at EVAL_ERROR). Feedback on a
+// student's answer paraphrases it and doesn't repeat a misspelling, so a
+// candidate word matches on its first WFB_FLOW4_STEM_CHARS letters, and the
+// warm-up's own prompt counts as source too. Feedback on a thin answer may
+// honestly say "not enough information", so only the phrases about access
+// are checked. Apps Script puts the answer in Flow 4's prompt itself, so a
+// model that never saw it is the rarer failure here; the score-range check
+// still guards the grade.
+const WFB_FLOW4_STEM_CHARS = 5;
+const WFB_FLOW4_ANSWER_PHRASES = [
+  "insufficient context", "insufficient information", "not enough context",
+  "not enough information", "was not given", "was not provided",
+];
+
+function wfbFlow4Plausible_(responseText, promptText, feedback) {
+  const lower = String(feedback || "").toLowerCase();
+  const nonAccessHit = FI_NON_ACCESS_PHRASES.find(function (p) {
+    return WFB_FLOW4_ANSWER_PHRASES.indexOf(p) === -1 && lower.indexOf(p) !== -1;
+  });
+  if (nonAccessHit) {
+    return { ok: false, reason: "the model's own output contains a self-reported non-access phrase (\"" +
+      nonAccessHit + "\")" };
+  }
+  const candidates = _fiDistinguishingWords_(String(responseText || "") + " " + String(promptText || ""));
+  if (!candidates.length) return { ok: true };
+  const engaged = candidates.some(function (w) {
+    return lower.indexOf(w.slice(0, WFB_FLOW4_STEM_CHARS)) !== -1;
+  });
+  if (!engaged) {
+    // Counts only: these words are the student's own writing.
+    return { ok: false, reason: "the output shares none of the answer's or prompt's distinguishing words (" +
+      candidates.length + " checked)" };
+  }
+  return { ok: true };
+}
+
+// The warm-up prompt Flow 4 was given: its Flow4Input row's
+// OriginalPromptText (the newest row for the job, if it was retried).
+function wfbFlow4PromptText_(ss, queueId) {
+  const sheet = ss.getSheetByName(WFB_INPUT_TABS[4]);
+  if (!sheet || sheet.getLastRow() <= 1) return "";
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, WFB_FLOW4_HEADERS.length).getValues();
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][1]).trim() === queueId) return String(rows[i][3] || "");
+  }
+  return "";
+}
+
 // ── Phase 2: harvest returns ─────────────────────────────────────────────────
 
 /**
@@ -1215,6 +1264,51 @@ function wfbRepairFailedWarmUps_(dryRun) {
   return result;
 }
 
+// Flow 4 jobs that ended at EVAL_ERROR because the feedback failed the
+// plausibility check (before 2026-10-20's looser Flow 4 check): applies the
+// saved model output again under the current check, and scores each one that
+// now passes. Counts only.
+function previewFailedWarmUpScoring() { return wfbRepairFailedScoring_(true); }
+function repairFailedWarmUpScoring() { return wfbRepairFailedScoring_(false); }
+
+function wfbRepairFailedScoring_(dryRun) {
+  const ctx = wfbLedger_();
+  const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
+  const wrSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpRegistry);
+  const ret = ctx.ss.getSheetByName(WFB_RETURN_TAB);
+  const result = { dryRun: dryRun, failed: 0, scored: 0, stillFailing: 0, notEvalError: 0 };
+  if (!wqSheet || !ret || ret.getLastRow() < 2) {
+    Logger.log("[WFB] repairFailedWarmUpScoring: " + JSON.stringify(result));
+    return result;
+  }
+  const rows = ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues();
+  rows.forEach(function (r, i) {
+    if (Number(r[WFB_RET.FLOW]) !== 4 || String(r[WFB_RET.HARVEST_STATUS]).trim() !== "FAILED" ||
+        String(r[WFB_RET.ERROR] || "").indexOf("SUSPECT_FABRICATION") !== 0) return;
+    result.failed++;
+    const queueId = String(r[WFB_RET.QUEUE_ID]).trim();
+    const found = wfbFindQueueRow_(wqSheet, queueId);
+    if (!found || String(found.row[WQ25_STATUS] || "").trim() !== "EVAL_ERROR") { result.notEvalError++; return; }
+    if (dryRun) {
+      // The same gate the apply runs, with no writes.
+      let feedback = "";
+      try { feedback = String(JSON.parse(wfbStripFence_(r[WFB_RET.RAW_OUTPUT])).feedback || ""); } catch (e) { /* counted below */ }
+      const ok = feedback && wfbFlow4Plausible_(found.row[WQ25_RESPONSE_TEXT],
+        wfbFlow4PromptText_(ctx.ss, queueId), feedback).ok;
+      if (ok) result.scored++; else result.stillFailing++;
+      return;
+    }
+    const out = wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, String(r[WFB_RET.RAW_OUTPUT] || ""));
+    if (!out.ok) { result.stillFailing++; return; }
+    wfbMarkReturn_(ret, i + 2, "HARVESTED", "", r[WFB_RET.ATTEMPTS]);
+    wfbConsumeInputRow_(ctx.ss, 4, queueId);
+    result.scored++;
+  });
+  if (!dryRun) SpreadsheetApp.flush();
+  Logger.log("[WFB] repairFailedWarmUpScoring: " + JSON.stringify(result));
+  return result;
+}
+
 // WARMUP_TEXT_BOX (00): the warm-up goes on the Student Dashboard instead of
 // into a doc. Unlike a doc, a second attempt can't duplicate anything: a row
 // already written for this queue_id is kept and the status re-stamped.
@@ -1270,7 +1364,8 @@ function wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw) {
   // documented, retained field this project legitimately holds (see this
   // section's own header comment), so the check compares straight against
   // the real response.
-  const plausibility = _wfbCheckPlausible_({ responseText: row[WQ25_RESPONSE_TEXT] }, feedback);
+  const plausibility = wfbFlow4Plausible_(row[WQ25_RESPONSE_TEXT],
+    wfbFlow4PromptText_(wfbLedger_().ss, queueId), feedback);
   if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
 
   writeFinalScores_(wqSheet, found.sheetRow, grammar, engagement, feedback, total);
