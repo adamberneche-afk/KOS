@@ -16,7 +16,7 @@ function load() {
   return loadGasFiles(
     [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '03_QueueBridge.js')],
     ['markLedgerEvaluated_', 'buildNextStepsText_', 'processCompletedEvaluation_',
-     'backPropagateCompletions']);
+     'backPropagateCompletions', 'notifyTimeoutToTeacher_']);
 }
 
 function ledgerWith(sandbox, statuses) {
@@ -187,4 +187,19 @@ test('backPropagateCompletions: still finishes STAGED rows, and leaves timed-out
     ['COMPLETE', 'ERROR_TIMEOUT', 'COMPLETE']);
   assert.equal(ledger.getRange(4, 16).getValue(), '', 'a finished row is not processed again');
   assert.equal(sent.length, 0);
+});
+
+test('the timeout email says to restart Flow 2 or resubmit from the dashboard, not the doc menu', () => {
+  const { exported, sandbox } = load();
+  exported.notifyTimeoutToTeacher_({}, 'teacher@ccpsnet.net', 'file-0', 'VDOE-0');
+  const sent = sandbox.MailApp.getSentMessages();
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].to, 'teacher@ccpsnet.net');
+  assert.match(sent[0].body, /FlowInput tab/);
+  assert.match(sent[0].body, /type READY into that cell again/);
+  assert.match(sent[0].body, /Submit for Feedback again on the Student Dashboard/);
+  assert.match(sent[0].body, /Don't use the Admin Recovery Panel reset/);
+  assert.doesNotMatch(sent[0].body, /AI Evaluation Panel|Run Assignment Check|reopen their document/);
+  exported.notifyTimeoutToTeacher_({}, 'UNKNOWN', 'file-0', 'VDOE-0');
+  assert.equal(sandbox.MailApp.getSentMessages().length, 1, 'no teacher, no email');
 });
