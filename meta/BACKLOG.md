@@ -2,7 +2,7 @@
 
 **Status:** started 2026-10-17. Nothing here is committed work.
 [`PLAN_2026-10.md`](./PLAN_2026-10.md) is the plan of record and wins
-whenever the two disagree. [`HANDOFF_2026-10-20.md`](./HANDOFF_2026-10-20.md)
+whenever the two disagree. [`HANDOFF_2026-10-21.md`](./HANDOFF_2026-10-21.md)
 holds the operator's current queue and the decisions waiting on the
 operator. This file holds what comes after them.
 
@@ -167,6 +167,11 @@ wait until after 2026-10-30.
 
 ## kos-personal
 
+- **The Registrar's Studio flows (2026-10-20).** Stage 1 (Auditor) and
+  Stage 2 (Curator) were never built (`11_Registrar_CogRelay.gs`). When they
+  are, serve their prompts from the `FlowPrompts` tab like the other three:
+  add both `.md` files to `generate-flow-prompts.js` and `16_FlowPrompts.gs`,
+  rather than a hand-pasted system prompt.
 - **Ingestion hardening, steps C and A.** These come after the §4
   diagnosis. [`KOS_INGESTION_HARDENING_PLAN.md`](./KOS_INGESTION_HARDENING_PLAN.md).
 
