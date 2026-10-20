@@ -42,8 +42,10 @@ URGENCY (1 to 5):
 
 "due": a date or day the message names for when something is needed, in the sender's words (for example "Thursday" or "10/16"), or "" if none.
 
+"needs_reply": true if the sender expects the teacher to answer or do something. False only when there is nothing to answer: thanks, good news, or a notice the teacher just needs to read. When unsure, true.
+
 Return ONLY this JSON object. No markdown fences. No other text. Begin with { and end with }.
-{"is_family": true, "category": "absence_makeup", "urgency": 3, "safety": false, "ask": "The student asks for the makeup test date.", "due": "Thursday"}
+{"is_family": true, "category": "absence_makeup", "urgency": 3, "safety": false, "ask": "The student asks for the makeup test date.", "due": "Thursday", "needs_reply": true}
 
 MESSAGE TO TRIAGE:
 `.trim();
