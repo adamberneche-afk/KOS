@@ -73,7 +73,7 @@ function overnightHealth_(now, tz) {
       if (/^(ERRORS|NO_)/.test(status)) {
         problems.push("Stage " + s.label + ": ran with status " + status +
           (status === "NO_TAGS" ? " (no assignment on the Teacher Matrix has competency tags)" :
-            status === "NO_MATRIX_ID" ? " (set the TEACHER_MATRIX_SS_ID Script Property)" : ""));
+            status === "NO_MATRIX_ID" ? " (no MatrixRegistry row for the teacher, and no TEACHER_MATRIX_SS_ID)" : ""));
       }
     }
   });
