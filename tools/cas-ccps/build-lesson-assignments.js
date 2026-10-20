@@ -23,7 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { load, COURSES, milestones, evidenceLines, PERSONAS } = require('./build-unit-rubrics.js');
+const { load, COURSES, milestones, evidenceLines, EXAMPLES_RULE, PERSONAS } = require('./build-unit-rubrics.js');
 
 const ROOT = path.join(__dirname, '..', '..');
 const LESSONS = path.join(ROOT, 'cas-ccps', 'curriculum', 'lessons');
@@ -148,6 +148,11 @@ function definitionOfDone(a, comps, grading, vocab) {
     'COURSE: ' + a.courseName,
     'COMPETENCIES ASSESSED: ' + (comps.map((r) => r.competency_id).filter(Boolean).join(', ') || '(see criteria)'),
     '',
+    // What the student was asked to do, word for word, so the criteria are
+    // judged against the task (2026-10-20).
+    'THE TASK (what the student was asked to do)',
+    String(a.promptText || '').trim(),
+    '',
     'CRITERIA',
     ...comps.flatMap((r) => [
       '- ' + (r.competency_id ? r.competency_id + ' ' : '') + String(r.competency_text).replace(/\.$/, '') + '.',
@@ -156,11 +161,11 @@ function definitionOfDone(a, comps, grading, vocab) {
     ...(gradable(grading) ? ['', 'TEACHER GRADING NOTES', gradable(grading)] : []),
     '',
     'PASSING STANDARD',
-    'The work passes when it completes every part of the assignment above, in the student\'s own words, ' +
-      'and shows evidence for each competency listed' +
+    'The work passes when it does every part of the task the assignment asks for, in the student\'s own words, ' +
+      'and that work shows each competency listed in at least one specific way' +
       (vocab ? ', using the lesson vocabulary accurately (' + vocab + ')' : '') + '. ' +
-      'Specific examples, not general statements. Work that skips a part, or restates the prompt without ' +
-      'doing it, does not pass.',
+      'Specific examples, not general statements. Work that skips a part of the task, or restates the prompt ' +
+      'without doing it, does not pass. ' + EXAMPLES_RULE,
   ].join('\n');
 }
 
@@ -196,8 +201,8 @@ function lesson8175(file, rubrics) {
     source: 'lessons/8175/' + file,
   };
   Object.assign(a, milestones(comps, title, ''));
-  a.definitionOfDone = definitionOfDone(a, comps, grading, '');
   a.promptText = promptText;
+  a.definitionOfDone = definitionOfDone(a, comps, grading, '');
   return a;
 }
 
@@ -259,8 +264,8 @@ function lesson8177(file, rubrics) {
     source: 'lessons/8177/' + file,
   };
   Object.assign(a, milestones(comps, title, vocab));
-  a.definitionOfDone = definitionOfDone(a, comps, '', vocab);
   a.promptText = prompt;
+  a.definitionOfDone = definitionOfDone(a, comps, '', vocab);
   return a;
 }
 
