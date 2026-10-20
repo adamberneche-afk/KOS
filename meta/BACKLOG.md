@@ -75,10 +75,6 @@ operator. This file holds what comes after them.
 
 ### Waiting on another piece of work
 
-- **Teacher timeout email (03 `notifyTimeoutToTeacher_`)** still tells the
-  student to use the doc's AI Evaluation Panel menu, which doesn't run for
-  student accounts: say to start Flow 2 by hand (a late result still lands)
-  or have the student resubmit from the Student Dashboard (2026-10-19).
 
 - **Family Mail Sentinel: retry a dropped Studio run**, as #193 does for
   warm-ups. One run failed with "Couldn't access the spreadsheet" on 10-19,
