@@ -3718,3 +3718,27 @@ kind of failure every morning.
 - **The same column, 2026-10-20:** of 48 anchor fallbacks, 38 were Studio
   never returning after two retries, 6 too long, 4 the prompt's own wording.
 - **Tests:** `warmup-flow-pacing.test.js`.
+
+## Flow 4: a plausibility check that fits feedback on an answer, 2026-10-20
+
+- **Found:** of the three 10-19 warm-ups answered in the text box, two were
+  `SCORED` and one ended at `EVAL_ERROR`: the harvest failed Flow 4's output
+  as `SUSPECT_FABRICATION` three times. Flow 4 used Flow 3's check
+  (`_wfbCheckPlausible_`), which wants one of the answer's longest words
+  verbatim in the feedback. Feedback paraphrases an answer and doesn't
+  repeat its misspellings, and feedback on a thin answer may say "not enough
+  information", which the check read as the model saying it couldn't see
+  its input. The other 6 of the 9 answers counted were for other days.
+- **Fix:** `wfbFlow4Plausible_` (41), for Flow 4 only. A candidate word
+  matches on its first 5 letters; the warm-up prompt's words (its
+  `Flow4Input` row's `OriginalPromptText`) count as source too; the phrases
+  that describe a thin answer (`WFB_FLOW4_ANSWER_PHRASES`) are no longer
+  read as non-access. The reason names a count, not the student's words.
+  Flows 2 and 3 keep their checks. The score-range check is unchanged.
+- **`previewFailedWarmUpScoring()` / `repairFailedWarmUpScoring()`** (41,
+  Central Ledger): for Flow 4 returns `FAILED` as `SUSPECT_FABRICATION`
+  whose queue row is `EVAL_ERROR`, apply the saved output again under the
+  new check and score each one that passes. Counts only.
+- **The 10-17 canary** (`WUQ-CANARY-...`, row 2 of `WarmUpFlowReturn`) is
+  the one Flow 5 failure on the overnight check: its queue row is gone.
+- **Tests:** `warmup-flow-pacing.test.js`.
