@@ -170,6 +170,18 @@ marks or removes those rows yet.
 | **Visible to** | The exports: the teacher, in their own Drive. They are read by `52_CanvasRosterImport.js` in the Central Ledger project, which runs as the teacher (from the `TEACHER_FOLDER_ID` folder if set, otherwise any matching CSV the teacher owns). The execution log names accounts, not students. |
 | **Retention** | The exports are the teacher's files; delete them after enrolling. Nothing else is kept. |
 
+### PeriodOverride (S52)
+*Central Ledger tab*
+
+| | |
+|---|---|
+| **Fields** | student_account (district email), period (a class period label, e.g. `3-Odd`). No names, no grades. |
+| **Why collected** | A period whose groups share one Canvas section (period 3's odd-day and even-day groups) can't be read from the export; this tab says which group a student is in, so enrollment, the nightly rollout and relabel put them in the right period. |
+| **Written by** | `seedPeriodOverrides()` (52), from the Ledger's own Period column; the teacher, for a student who joins later. |
+| **Read by** | 52 (`enrollCanvasRoster_`, which the rollout in 58 also runs, and `applyPeriodRelabel()`). |
+| **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. The execution log shows counts per period, never accounts. |
+| **Retention** | No date column, so not in the retention schedule (57). It holds the same fact as the Ledger's Period column and is good for one school year: clear it when the year ends. |
+
 ### StudentProfiles
 *Teacher-scoped, one row per student per teacher*
 
