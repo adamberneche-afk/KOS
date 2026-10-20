@@ -10,10 +10,10 @@ why this repo exists at all.
   does what (Gemini runs the Google-side flows; a Claude Project is the
   thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
   pipeline kept and repaired, and the RTP Gem frozen.
-- **`HANDOFF_2026-10-20.md`** — the repo-wide session handoff: which
+- **`HANDOFF_2026-10-21.md`** — the repo-wide session handoff: which
   handoff docs are current, where each system stands (merged vs. live),
   the operator's queue in order, open decisions, and the rules for an agent
-  session picking the work up. Start here. `HANDOFF_2026-10-19.md` (its agent notes still hold), `HANDOFF_2026-10-18.md`, `HANDOFF_2026-10-17.md`, `HANDOFF_2026-10-12.md`, `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
+  session picking the work up. Start here. `HANDOFF_2026-10-20.md` and `HANDOFF_2026-10-19.md` (their agent notes still hold), `HANDOFF_2026-10-18.md`, `HANDOFF_2026-10-17.md`, `HANDOFF_2026-10-12.md`, `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
   `HANDOFF_2026-10-06.md` and `HANDOFF_2026-10-05.md` are earlier days', superseded.
 - **`BACKLOG.md`** — ideas for future sprints, by system: offered small
   PRs, the CAS design threads, the second-user and KOS Lite concepts
