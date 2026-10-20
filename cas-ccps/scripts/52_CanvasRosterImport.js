@@ -32,8 +32,10 @@
  * each with that course's assignment. The section's own name decides the
  * course ("...MARKETING... [74-C8175H-P01]"), since both courses can meet in
  * one period; a section without one takes its period's course (ClassSchedule).
- * A section's period defaults to its code's "-P01" suffix. A student who already has
- * a Ledger row for this assignment is skipped.
+ * A section's period defaults to its code's "-P01" suffix. A student listed in
+ * the PeriodOverride tab takes that period instead, whatever their section
+ * (seedPeriodOverrides() below). A student who already has a Ledger row for
+ * this assignment is skipped.
  *
  * Each student is set up by intakeStudent_() (02), the same function the
  * intake form uses: their own copy of the master template for that LIVE
@@ -49,6 +51,7 @@
  */
 
 const CRI_SECTION_MAP_TAB = "CanvasSectionMap";
+const CRI_PERIOD_OVERRIDE_TAB = "PeriodOverride";
 const CRI_TIME_BUDGET_MS = 5 * 60 * 1000;
 
 function previewRosterEnrollment(assignmentConfigId) {
@@ -91,13 +94,7 @@ function prepareRosterSections() {
   });
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sectionMap = _criSectionMap_(ss, Object.keys(bySection));
-  // TEACHER_EMAIL is set in the Unified Manual project, so here it usually
-  // comes from the MatrixRegistry row.
-  let teacherEmail = String(cfg.teacherEmail || "").trim().toLowerCase();
-  const registry = ss.getSheetByName(cfg.tabs.matrixRegistry);
-  if (!teacherEmail && registry && registry.getLastRow() > 1) {
-    teacherEmail = String(registry.getRange(2, 2).getValue() || "").trim().toLowerCase();
-  }
+  const teacherEmail = _criTeacherEmail_(ss, cfg);
   const courseByPeriod = _criCourseByPeriod_(ss, cfg, teacherEmail);
   Object.keys(bySection).sort().forEach(name => {
     const s = bySection[name];
@@ -192,6 +189,7 @@ function enrollCanvasRoster_(opts) {
 
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sectionMap = _criSectionMap_(ss, roster.map(s => s.section));
+  const overrides = _criPeriodOverrides_(ss);
   const courseByPeriod = _criCourseByPeriod_(ss, cfg, teacherEmail);
 
   // Accounts already in the Ledger for this teacher and term.
@@ -232,7 +230,7 @@ function enrollCanvasRoster_(opts) {
       result.skipped.push(Object.assign(row, { reason: "INVALID_ACCOUNT", sisLogin: s.sisLogin }));
       continue;
     }
-    const period = sectionMap[s.section];
+    const period = overrides[s.account] || sectionMap[s.section];
     if (!period) {
       unmapped[s.section] = true;
       result.skipped.push(Object.assign(row, { reason: "SECTION_NOT_MAPPED" }));
@@ -436,9 +434,10 @@ function previewPeriodRelabel() {
 
 /**
  * Sets the Block and Period on this teacher's Ledger rows this term (not
- * ARCHIVED) to the period CanvasSectionMap now gives the student's Canvas
- * section, where they differ. Enrollment skips students it already has, so
- * a period changed in the map reaches them only through this (2026-10-19:
+ * ARCHIVED) to the student's PeriodOverride row, or else the period
+ * CanvasSectionMap now gives their Canvas section, where they differ.
+ * Enrollment skips students it already has, so a period changed in the map
+ * reaches them only through this (2026-10-19:
  * period 3 split into "3-Odd" and "3-Even", two cross-listed sections that
  * meet on alternate days). Safe to run again. Logs counts per old → new
  * period only, never accounts.
@@ -470,11 +469,8 @@ function relabelRosterPeriods_(opts) {
   });
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sectionMap = _criSectionMap_(ss, Object.keys(sectionOf).map(a => sectionOf[a]));
-  let teacherEmail = String(cfg.teacherEmail || "").trim().toLowerCase();
-  const registry = ss.getSheetByName(cfg.tabs.matrixRegistry);
-  if (!teacherEmail && registry && registry.getLastRow() > 1) {
-    teacherEmail = String(registry.getRange(2, 2).getValue() || "").trim().toLowerCase();
-  }
+  const overrides = _criPeriodOverrides_(ss);
+  const teacherEmail = _criTeacherEmail_(ss, cfg);
   const term = currentTerm_();
   const ledger = ss.getSheetByName(cfg.tabs.ledger);
   if (ledger && ledger.getLastRow() > 1) {
@@ -484,7 +480,7 @@ function relabelRosterPeriods_(opts) {
       if (!sameSchoolYearTerm_(r[18], term)) return;
       const account = String(r[1] || "").trim().toLowerCase();
       if (!(account in sectionOf)) { result.notInCanvas++; return; }
-      const period = sectionMap[sectionOf[account]] || "";
+      const period = overrides[account] || sectionMap[sectionOf[account]] || "";
       if (!period) { result.unmapped++; return; }
       const current = String(r[11] || "").trim();
       if (current === period) { result.unchanged++; return; }
@@ -502,6 +498,122 @@ function relabelRosterPeriods_(opts) {
     " in a section with no period.";
   Logger.log("[S52] " + result.message);
   Object.keys(result.moves).forEach(m => Logger.log("[S52]   period " + m + ": " + result.moves[m]));
+  return result;
+}
+
+/**
+ * This teacher's email. TEACHER_EMAIL is set in the Unified Manual project,
+ * so here it usually comes from the MatrixRegistry row.
+ */
+function _criTeacherEmail_(ss, cfg) {
+  let teacherEmail = String(cfg.teacherEmail || "").trim().toLowerCase();
+  const registry = ss.getSheetByName(cfg.tabs.matrixRegistry);
+  if (!teacherEmail && registry && registry.getLastRow() > 1) {
+    teacherEmail = String(registry.getRange(2, 2).getValue() || "").trim().toLowerCase();
+  }
+  return teacherEmail;
+}
+
+// ================================================================
+// PERIOD OVERRIDE — a student's period whatever their Canvas section
+// ================================================================
+//
+// Period 3's odd-day and even-day groups share each P03 Canvas section, so a
+// plain export can't tell them apart (2026-10-19). Until this tab, every
+// export's Section column was tagged " ODD"/" EVEN" by hand; an untagged one
+// put new period-3 students in "3" (no ClassSchedule row), and
+// applyPeriodRelabel() would have moved the enrolled ones back to "3".
+// Enrollment and relabel read this tab first. Columns: student_account,
+// period. It holds accounts and period labels only.
+
+/** { "<account>": "<period>" } from the PeriodOverride tab; {} when there is none. */
+function _criPeriodOverrides_(ss) {
+  const out = {};
+  const sheet = ss.getSheetByName(CRI_PERIOD_OVERRIDE_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().forEach(r => {
+    const account = String(r[0] || "").trim().toLowerCase();
+    const period = String(r[1] || "").trim();
+    if (account && period) out[account] = period;
+  });
+  return out;
+}
+
+function previewPeriodOverrideSeed() {
+  return seedPeriodOverrides_({ apply: false });
+}
+
+/**
+ * Adds a PeriodOverride row for each of this teacher's students this term
+ * (not ARCHIVED) whose Ledger period isn't the one their Canvas section code
+ * gives ("-P03]" → 3): today, the period-3 students relabeled to "3-Odd" and
+ * "3-Even". Run it while the Ledger's periods are right. Never changes or
+ * removes a row already in the tab; a row that disagrees with the Ledger is
+ * counted, not changed. Safe to run again. Logs counts per period only,
+ * never accounts.
+ */
+function seedPeriodOverrides() {
+  return seedPeriodOverrides_({ apply: true });
+}
+
+function seedPeriodOverrides_(opts) {
+  opts = opts || {};
+  const apply = opts.apply === true;
+  const cfg = getConfig_();
+  const result = { apply: apply, files: 0, added: 0, alreadyListed: 0, disagree: 0, byPeriod: {}, message: "" };
+  const files = _criFindExports_(cfg);
+  result.files = files.length;
+  if (!files.length) {
+    result.message = "No Canvas gradebook export (.csv with \"Grades\" in the name) found. Nothing added.";
+    Logger.log("[S52] " + result.message);
+    return result;
+  }
+  const sectionOf = {};
+  files.forEach(file => {
+    _criParseGradebook_(file.getBlob().getDataAsString("UTF-8")).forEach(s => {
+      if (s.account && !(s.account in sectionOf)) sectionOf[s.account] = s.section;
+    });
+  });
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const existing = _criPeriodOverrides_(ss);
+  const teacherEmail = _criTeacherEmail_(ss, cfg);
+  const term = currentTerm_();
+  const add = [];
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (ledger && ledger.getLastRow() > 1) {
+    ledger.getRange(2, 1, ledger.getLastRow() - 1, 19).getValues().forEach(r => {
+      if (String(r[8] || "").trim().toLowerCase() !== teacherEmail) return;
+      if (String(r[12] || "").trim() === "ARCHIVED") return;
+      if (!sameSchoolYearTerm_(r[18], term)) return;
+      const account = String(r[1] || "").trim().toLowerCase();
+      const period = String(r[11] || "").trim();
+      if (!(account in sectionOf) || !period) return;
+      if (existing[account]) {
+        if (existing[account] === period) result.alreadyListed++; else result.disagree++;
+        return;
+      }
+      if (period === _criPeriodFromSection_(sectionOf[account])) return;
+      existing[account] = period;
+      add.push([account, period]);
+      result.byPeriod[period] = (result.byPeriod[period] || 0) + 1;
+    });
+  }
+  result.added = add.length;
+  if (apply && add.length) {
+    let sheet = ss.getSheetByName(CRI_PERIOD_OVERRIDE_TAB);
+    if (!sheet) {
+      sheet = ss.insertSheet(CRI_PERIOD_OVERRIDE_TAB);
+      sheet.getRange(1, 1, 1, 2).setValues([["student_account", "period"]]);
+    }
+    const range = sheet.getRange(sheet.getLastRow() + 1, 1, add.length, 2);
+    range.setNumberFormat("@");
+    range.setValues(add);
+  }
+  result.message = (apply ? "Added " : "DRY RUN: would add ") + result.added + " row(s) to " +
+    CRI_PERIOD_OVERRIDE_TAB + "; " + result.alreadyListed + " already listed" +
+    (result.disagree ? ", " + result.disagree + " listed with a period the Ledger doesn't have (left as is)" : "") + ".";
+  Logger.log("[S52] " + result.message);
+  Object.keys(result.byPeriod).sort().forEach(p => Logger.log("[S52]   period " + p + ": " + result.byPeriod[p]));
   return result;
 }
 
