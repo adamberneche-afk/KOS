@@ -2,7 +2,7 @@
 
 > **Filed 2026-10-17** from the operator's handoff package. Bugs 1 and 2
 > landed as PR #175 (the patch below, applied unchanged); the queue that
-> uses this document is [`HANDOFF_2026-10-20.md`](./HANDOFF_2026-10-20.md).
+> uses this document is [`HANDOFF_2026-10-21.md`](./HANDOFF_2026-10-21.md).
 > Point-in-time: where it disagrees with the code, the code wins.
 
 Prepared 2026-10-16 from the first live student submission through Flow 2. Covers what broke, why, what we changed, and what is still open. No student names, emails, file IDs or ConfigIDs appear here by design.
