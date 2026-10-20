@@ -135,13 +135,22 @@ Each item must reference a specific milestone and describe exactly what is missi
 or insufficient. If all milestones are fully met, write exactly:
 "No revisions required -- your submission meets all criteria."
 
+3b. ALSO SHOWN -- ONLY IF THE DEFINITION OF DONE LISTS TERTIARY COMPETENCIES
+Tertiary competencies are never required. For each one the work clearly shows,
+write one sentence naming the skill in plain words and the part of the student's
+work that shows it, under the heading ALSO SHOWN. Leave out any it does not
+show, and never mention a missing one. If the work shows none, or the Definition
+of Done lists none, leave this section out entirely.
+
 4. COMPLIANCE STAMP
 End your response with exactly one of these two lines and nothing after it
 except the two machine-readable lines described below:
   [SYSTEM: REVISION_REQUIRED]
   [SYSTEM: APPROVED]
-Use [SYSTEM: APPROVED] only if every milestone is MET and the Definition of Done
-is fully satisfied. Use [SYSTEM: REVISION_REQUIRED] in all other cases.
+When the Definition of Done gives a PASSING RULE, use [SYSTEM: APPROVED] exactly
+when that rule is met. Otherwise use [SYSTEM: APPROVED] only if every milestone is
+MET and the Definition of Done is fully satisfied. Use [SYSTEM: REVISION_REQUIRED]
+in all other cases.
 
 5. SUGGESTED SCORE -- REQUIRED ONLY IF APPROVED (Say/Do Ledger cas-ccps
 finding #1 -- added after this file's original design; if you are working
@@ -178,9 +187,19 @@ BREAKDOWN, or REQUIRED REVISIONS text a student actually reads as feedback
 uses -- see 25_WarmUpWriter.js). The narrative feedback should read the same
 whether the suggested score ends up being 2, 3, or 4.
 
+5b. ALSO-SHOWN LINE -- ONLY IF THE DEFINITION OF DONE LISTS TERTIARY COMPETENCIES
+On its own line after the compliance stamp (and the SUGGESTED_SCORE line, if
+any), list the IDs of the tertiary competencies you named under ALSO SHOWN,
+exactly as written in the Definition of Done, as a JSON array:
+
+[ALSO_SHOWN: ["8175-20","8175-5"]]
+
+Use [ALSO_SHOWN: []] when the work shows none. Leave the line out when the
+Definition of Done lists no tertiary competencies.
+
 6. MACHINE-READABLE OUTCOME LINE -- REQUIRED, MUST BE THE VERY LAST LINE
-Immediately after the compliance stamp line (and the SUGGESTED_SCORE line,
-if this submission was approved), on its own new line, output exactly one
+Immediately after the compliance stamp line (and the SUGGESTED_SCORE and
+ALSO_SHOWN lines, if present), on its own new line, output exactly one
 line in this exact format -- no extra spaces, no extra punctuation, no
 explanation before or after it:
 

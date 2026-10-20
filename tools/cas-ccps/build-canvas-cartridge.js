@@ -179,7 +179,7 @@ function assignmentXml(id, title, promptText, unit, dashboardUrl) {
     ...(dashboardUrl ? [
       '<h3>Get feedback</h3>',
       '<p>To have your work checked, open your <a href="' + esc(dashboardUrl) + '">assignment dashboard</a> and click ' +
-        '<strong>Submit for Feedback</strong> on this assignment. Feedback is added at the end of your CAS document. ' +
+        '<strong>Submit for Feedback</strong> on this assignment. Feedback arrives as a comment on your CAS document. ' +
         'A passing check before you turn it in is a good idea, but it isn\'t required.</p>',
     ] : []),
     '<h3>How to submit</h3>',
