@@ -1,5 +1,5 @@
 {
-  "_note": "Competency tiers per assignment (decided 2026-10-20). primary must be MET; secondary (1-2) at least PARTIALLY MET; tertiary never required, noted under ALSO SHOWN when the work shows one. Read by tools/cas-ccps/build-lesson-assignments.js. Terms 1 and 2 drafted from each task text and approved as drafted 2026-10-20; tweak entries as lessons are taught. why says which part of the task evidences the primary and secondaries.",
+  "_note": "Competency tiers per assignment (decided 2026-10-20). primary must be MET; secondary (1-2) at least PARTIALLY MET; tertiary never required, noted under ALSO SHOWN when the work shows one. Read by tools/cas-ccps/build-lesson-assignments.js. Every assignment (terms 1-4 and the 8177 lessons placed in no quarter) drafted from each task text and approved as drafted 2026-10-20; tweak entries as lessons are taught. why says which part of the task evidences the primary and secondaries.",
   "8175-L01": {
     "primary": "8175-45",
     "secondary": [
@@ -406,5 +406,412 @@
       "8177-86"
     ],
     "why": "Part 1 revenue calculations at every price for three games evidence math (19); Part 3 explaining why the playoff game outprices Snowy Tuesday evidences popularity/competitive factors and attendance (94), and Parts 2 and 4 (choosing a price from the math, taking a side on fairness) evidence critical thinking (2)."
+  },
+  "8175-L24": {
+    "primary": "8175-94",
+    "secondary": [
+      "8175-96"
+    ],
+    "tertiary": [
+      "8175-7",
+      "8175-10"
+    ],
+    "why": "Part 1 (define personal and non-personal selling with two benefits and two negatives of each) evidences types of selling (94); Part 2 (the six steps of the selling process in order) evidences the selling process (96)."
+  },
+  "8175-L25": {
+    "primary": "8175-15",
+    "secondary": [
+      "8175-1"
+    ],
+    "tertiary": [
+      "8175-8"
+    ],
+    "why": "Researching one Black entrepreneur and working three specific, accurate facts about their background and ventures into the card evidences information literacy (15); designing the original Valentine card (format, verse, layout) evidences creativity (1)."
+  },
+  "8175-L26": {
+    "primary": "8175-12",
+    "secondary": [
+      "8175-109"
+    ],
+    "tertiary": [
+      "8175-7"
+    ],
+    "why": "The Education, Top Strengths, Achievements and Academic Projects categories with two to three specific examples each evidence career planning (12); the Target Organizations and Inspiration categories evidence researching contacts for a networking plan (109)."
+  },
+  "8175-L27": {
+    "primary": "8175-72",
+    "secondary": [
+      "8175-79",
+      "8175-104"
+    ],
+    "tertiary": [
+      "8175-2",
+      "8175-78",
+      "8175-80"
+    ],
+    "why": "Part 1 (specific marketing examples noticed over break) and the reverse engineering of how the campaign went from idea to ad evidence promotion and the promotional mix (72); Keeping You (follow, email sign-up, loyalty app, discount code) evidences attracting and keeping customers (79) and Was It Worth It (how the company could tell the campaign earned back its cost) evidences ROI (104)."
+  },
+  "8175-L28": {
+    "primary": "8175-62",
+    "secondary": [
+      "8175-2",
+      "8175-17"
+    ],
+    "tertiary": [
+      "8175-103"
+    ],
+    "why": "Writing two quantitative and one qualitative question meant to find out what customers want from a new service evidences the role of market research (62); the Bias Check (spotting and rewriting leading questions) evidences critical thinking (2) and building and sending the survey in Google Forms evidences IT tools (17)."
+  },
+  "8175-L29": {
+    "primary": "8175-105",
+    "secondary": [
+      "8175-10"
+    ],
+    "tertiary": [
+      "8175-103"
+    ],
+    "why": "The Strengths and Weaknesses critique of the class draft survey evidences the S and W components of a SWOT analysis (105); The Fix (specific, actionable changes to the shared class survey) evidences contributing to the team's product (10)."
+  },
+  "8175-L30": {
+    "primary": "8175-63",
+    "secondary": [
+      "8175-17"
+    ],
+    "tertiary": [
+      "8175-103"
+    ],
+    "why": "The 10 closed and 2 open questions designed to verify the class market segments and how to reach them evidence creating a survey for primary research (63); building and sending it in Google Forms evidences IT tools (17)."
+  },
+  "8175-L31": {
+    "primary": "8175-2",
+    "secondary": [
+      "8175-103",
+      "8175-16"
+    ],
+    "tertiary": [
+      "8175-19"
+    ],
+    "why": "Part 2 (one concrete suggestion for running the league/event differently) evidences critical thinking and decision-making (2); Part 3 (citing the survey data to justify it) evidences using research to build the plan (103) and Protect the Data (no names or emails plus one sentence on why survey data stays private) evidences information security (16)."
+  },
+  "8175-L32": {
+    "primary": "8175-13",
+    "secondary": [
+      "8175-15"
+    ],
+    "tertiary": [],
+    "why": "The 200-word essay on predicted workforce changes and how the student will prepare for them, plus naming one job to research further, evidences continuous learning and adaptability (13); researching the five fastest-growing industries and citing three different sources evidences information literacy (15)."
+  },
+  "8175-L33": {
+    "primary": "8175-110",
+    "secondary": [
+      "8175-108"
+    ],
+    "tertiary": [
+      "8175-34",
+      "8175-111"
+    ],
+    "why": "The one-page resume (header, education, experience with action verbs, soft and hard skills) evidences developing a resume (110); the link to a real posting on TeamWork Online, Indeed, Handshake or a team careers page evidences job-search resources (108)."
+  },
+  "8175-L34": {
+    "primary": "8175-112",
+    "secondary": [
+      "8175-3"
+    ],
+    "tertiary": [],
+    "why": "The reflection on what the interview-skills video taught and one specific thing to do in an interview setting evidences the job interview process (112); the 100-word plan to practice those skills before an interview evidences initiative and self-direction (3)."
+  },
+  "8175-L35": {
+    "primary": "8175-112",
+    "secondary": [
+      "8175-13"
+    ],
+    "tertiary": [
+      "8175-7",
+      "8175-113"
+    ],
+    "why": "The five Interview Warmup questions with polished final answers evidence preparing answers to anticipated interview questions (112); refining each answer from the tool's feedback into a perfected written version evidences being coachable (13)."
+  },
+  "8175-L36": {
+    "primary": "8175-1",
+    "secondary": [
+      "8175-106",
+      "8175-20"
+    ],
+    "tertiary": [],
+    "why": "Designing the course brochure with a creative logo and a showcased project evidences creativity (1); Panel Three (three careers the class prepares you for) evidences occupations in the industry (106) and Panel Four (pros and cons of the teaching approach, phrased respectfully) evidences professionalism (20)."
+  },
+  "8177-market-research-survey-design": {
+    "primary": "8177-83",
+    "secondary": [
+      "8177-2",
+      "8177-79"
+    ],
+    "tertiary": [
+      "8177-18",
+      "8177-81",
+      "8177-93"
+    ],
+    "why": "Part 2 (building the three-question Google Form with email collection off) and Part 3 (whether each question collects quantitative or qualitative data and what the store learns) evidence developing a market research project (83); Part 4 (explaining and rewriting three biased questions) evidences critical thinking (2) and Part 5 (one more primary and one secondary source and what each tells the store) evidences sources of market research data (79)."
+  },
+  "8177-survey-deployment-statistical-significance": {
+    "primary": "8177-83",
+    "secondary": [
+      "8177-14",
+      "8177-4"
+    ],
+    "tertiary": [
+      "8177-7",
+      "8177-82"
+    ],
+    "why": "The fieldwork itself, Part 1 (why 323 responses instead of a few friends) and Part 4 (the running log of dates, places and response counts) evidence carrying out a market research project (83); Part 3 (when, where and whom to ask beyond close friends) and the log evidence managing time and resources (14), and Part 5 (why every response must be real) with the no-names log evidences integrity (4)."
+  },
+  "8177-survey-results-analysis": {
+    "primary": "8177-84",
+    "secondary": [
+      "8177-2",
+      "8177-78"
+    ],
+    "tertiary": [
+      "8177-21",
+      "8177-45",
+      "8177-77"
+    ],
+    "why": "Part 1 (three findings stated with their numbers and what each means for the store) evidences evaluating market research results (84); Parts 2-3 (one specific change backed by the numbers) evidence critical thinking (2) and Part 4 (how the results help three marketing functions, or what a future survey should ask) evidences research for all functions of marketing (78)."
+  },
+  "8177-promotional-flyer-design": {
+    "primary": "8177-1",
+    "secondary": [
+      "8177-18",
+      "8177-21"
+    ],
+    "tertiary": [
+      "8177-14",
+      "8177-97"
+    ],
+    "why": "Designing the black-and-white flyer with a stop-walking headline, logo, hours, location and three real items with prices evidences creativity (1); building it in Canva, Adobe Express or Google Slides with a grayscale logo check and PDF export evidences occupational design tools (18) and Part 2 (explaining hierarchy, contrast and negative space) with the short flyer copy evidences writing (21)."
+  },
+  "8177-the-hype-machine": {
+    "primary": "8177-97",
+    "secondary": [
+      "8177-42"
+    ],
+    "tertiary": [],
+    "why": "Parts 1-3 (a paid ad mockup with audience, placement and cost, an earned PR stunt, and a sales promotion with a deadline) evidence a marketing plan for the playoff game (97); Part 4 (allocating the $5,000 item by item) and Part 5 (checking every promise will hold up on game night) evidence the manager's decision-making for a campaign (42)."
+  },
+  "8177-the-richmond-festival-blueprint": {
+    "primary": "8177-92",
+    "secondary": [
+      "8177-95",
+      "8177-67"
+    ],
+    "tertiary": [
+      "8177-1",
+      "8177-68",
+      "8177-87",
+      "8177-96",
+      "8177-97"
+    ],
+    "why": "Working through all three phases (vision, logistics with a justified Richmond location, business) evidences the event planning process (92); The Team (five specific jobs and what each does) evidences personnel needs (95) and Risk Management (one thing that could go wrong and exactly how to prepare) evidences risk assessment and management (67)."
+  },
+  "8177-game-day-takeover": {
+    "primary": "8177-99",
+    "secondary": [
+      "8177-95"
+    ],
+    "tertiary": [
+      "8177-10",
+      "8177-58",
+      "8177-100",
+      "8177-101"
+    ],
+    "why": "Part 3 (listing everyone who helped and what they did, a specific thank-you note to one staff member, and a public thank-you to customers) evidences follow-up to recognize and thank participants (99); Part 2's staffing chart (every role, who fills it and who backs them up) evidences personnel needs (95)."
+  },
+  "8177-tournament-sponsorship-proposal": {
+    "primary": "8177-21",
+    "secondary": [
+      "8177-15",
+      "8177-97"
+    ],
+    "tertiary": [
+      "8177-20",
+      "8177-96"
+    ],
+    "why": "Part 2's one-page formal business letter (hook, connection, value, call to action) proofread in Part 3 evidences writing (21); Part 1 (a real local business, its sponsorship decision-maker and address, and why its customers match the crowd) evidences information literacy (15) and the Value paragraph (exactly what the sponsor gets) evidences sponsorship as part of an event marketing plan (97)."
+  },
+  "8177-the-millionaire-s-strike": {
+    "primary": "8177-28",
+    "secondary": [
+      "8177-70",
+      "8177-50"
+    ],
+    "tertiary": [
+      "8177-49",
+      "8177-69",
+      "8177-71"
+    ],
+    "why": "Part 1 (each side's position on the four issues), Part 2 (the final deal and what each side gave up) and Part 4 (why owners cannot replace players and why overseas options add leverage) evidence labor issues (28); Part 5 (the NLRA right and why owners want the draft and cap inside a CBA) evidences labor and antitrust law (70) and Part 3 (three local businesses or hourly jobs hurt by a lost season) evidences local economic impact (50)."
+  },
+  "8177-the-stadium-economy": {
+    "primary": "8177-49",
+    "secondary": [
+      "8177-50",
+      "8177-45"
+    ],
+    "tertiary": [
+      "8177-29",
+      "8177-66"
+    ],
+    "why": "Part 2 (consumer spending and GDP, and which new-spending estimate to trust) and Part 3 (how the interest rate and inflation raise the county's cost, with numbers) evidence economic indicators (49); the verdict comparing yearly loan payments with taxes on truly new spending evidences the stadium's effect on the local economy (50) and Part 4 (a seating capacity justified by diminishing returns) evidences facilities management (45)."
+  },
+  "8177-the-cloud-behind-the-game": {
+    "primary": "8177-65",
+    "secondary": [
+      "8177-64",
+      "8177-44"
+    ],
+    "tertiary": [
+      "8177-15",
+      "8177-48",
+      "8177-55",
+      "8177-57"
+    ],
+    "why": "Part 3 (how two accurate stories leave opposite impressions through selection, framing, headline, word choice and quotes, plus a balanced rewrite) evidences media bias and public perception (65); Part 2 (the economic, social and environmental T-chart and the AI option) with Part 5 (the evidence-backed recommendation) evidences social and environmental concerns in decisions (64) and Part 4's org chart (at least five roles at launch and how it changes by year three) evidences documenting roles with an organizational chart (44)."
+  },
+  "8177-the-global-expansion": {
+    "primary": "8177-74",
+    "secondary": [
+      "8177-80"
+    ],
+    "tertiary": [
+      "8177-51"
+    ],
+    "why": "Part 1 (why the foreign market exists), Part 2 (local currency and the real exchange-rate conversion with its source) and Part 4 (one real problem of going overseas and how to handle it) evidence external factors affecting the industry (74); Part 3 (one specific change to the event or marketing to fit the local culture) evidences external factors shaping the marketing process (80)."
+  },
+  "8177-secure-the-perimeter": {
+    "primary": "8177-90",
+    "secondary": [
+      "8177-91",
+      "8177-89"
+    ],
+    "tertiary": [
+      "8177-27",
+      "8177-30",
+      "8177-68"
+    ],
+    "why": "Part 1 (where fans go and why) and Part 2 (the map with routes and how the main gate avoids a bottleneck) evidence a venue's security needs such as evacuation, capacity and clear egress (90); the written plan with Part 4 (the three-sentence PA announcement) and Part 5 (a school drill as an EAP) evidences emergency preparedness plans (91), and Part 3 (where police, guest services and trainers go and each group's job) evidences types of security and partner agencies (89)."
+  },
+  "8177-the-back-room": {
+    "primary": "8177-41",
+    "secondary": [
+      "8177-14",
+      "8177-26"
+    ],
+    "tertiary": [
+      "8177-27"
+    ],
+    "why": "Part 1 (the discrepancy log comparing purchase order, packing slip and count for every item) evidences the controlling function of managing the shop (41); Part 2 (the inventory table of usable items and why the rest can't be used) evidences managing resources (14), and Part 3 (the professional supplier email with PO number and credit amount) evidences job-related technical skills in math and communication (26)."
+  },
+  "8177-the-battle-for-the-entertainment-dollar": {
+    "primary": "8177-93",
+    "secondary": [
+      "8177-94"
+    ],
+    "tertiary": [
+      "8177-2"
+    ],
+    "why": "Part 1 (the persona, their week and budget) and Part 2 (their top motivator and why it fits) evidence factors that motivate consumers to attend (93); Part 3 (a specific local indirect competitor and why it is a threat) and Part 4 (a promotion that wins the persona over that competitor) evidence how competitive factors and event attractiveness relate to attendance (94)."
+  },
+  "8177-the-bottom-line": {
+    "primary": "8177-98",
+    "secondary": [
+      "8177-85",
+      "8177-88"
+    ],
+    "tertiary": [
+      "8177-16",
+      "8177-34",
+      "8177-87"
+    ],
+    "why": "Parts 1 to 3 (projected revenue from fees, tickets and concessions, every expense line, and a budget that reaches a 15% margin) evidence developing an event budget (98); Part 2 (labeling each expense fixed or variable) evidences budget components (85), and Part 3 (net profit and profit margin, revised if under 15%) with Part 4 (the CFO memo on the two biggest risks) evidences analyzing an income statement (88)."
+  },
+  "8177-the-final-whistle": {
+    "primary": "8177-108",
+    "secondary": [
+      "8177-43",
+      "8177-104"
+    ],
+    "tertiary": [
+      "8177-12",
+      "8177-13",
+      "8177-32",
+      "8177-101",
+      "8177-102",
+      "8177-103",
+      "8177-105",
+      "8177-106",
+      "8177-107"
+    ],
+    "why": "Parts 2 to 6 together (career paths, resume bullets, STAR stories, network and barrier strategies) evidence developing a career plan (108); Part 2 (three jobs with what each involves and which class project prepared you) evidences evaluating career opportunities (43), and Part 2 (the education and training each job requires) evidences education and training needs (104)."
+  },
+  "8177-the-franchise-evolution": {
+    "primary": "8177-86",
+    "secondary": [
+      "8177-46",
+      "8177-23"
+    ],
+    "tertiary": [
+      "8177-54",
+      "8177-76"
+    ],
+    "why": "Parts 1 to 3 (a priced bundle, a brand extension and a naming-rights deal as three new ways to make money) evidence revenue sources (86); Part 1 (the bundle of tickets, food and extras with savings) and Part 3 (a named stadium area and sponsor fit) evidence on-site revenue streams (46), and Part 4 (the Kickers' life-cycle stage and how the three ideas help them grow) evidences planning from a review of past performance (23)."
+  },
+  "8177-the-front-lines": {
+    "primary": "8177-9",
+    "secondary": [
+      "8177-60",
+      "8177-61"
+    ],
+    "tertiary": [
+      "8177-41",
+      "8177-59"
+    ],
+    "why": "Part 2 (the T.H.A.N.K.S. service script for the fan behind the pillar) evidences customer service skills (9); Part 1 (the six-step sales script with open-ended questions and three features turned into benefits) evidences responding to customer inquiries (60), and Part 2 (the solution offered and why it is fair to both the fan and the team) evidences explaining company policy to a customer (61)."
+  },
+  "8177-the-nil-deal": {
+    "primary": "8177-42",
+    "secondary": [
+      "8177-75"
+    ],
+    "tertiary": [
+      "8177-20"
+    ],
+    "why": "Part 1 (choosing the public figure and why their audience beats someone with more followers), Part 2 (macro or micro with one advantage and one risk) and Part 4 (the numbers that show whether the deal worked) evidence the manager's role in campaign decision-making (42); Part 3 (the mockup with a clear #ad or #sponsored FTC disclosure) evidences the effect of national law on the industry (75)."
+  },
+  "8177-the-sponsorship-negotiation": {
+    "primary": "8177-6",
+    "secondary": [
+      "8177-8",
+      "8177-17"
+    ],
+    "tertiary": [
+      "8177-3",
+      "8177-41",
+      "8177-86"
+    ],
+    "why": "Part 2 (Feel, Felt, Found answers to the two most likely objections) and Part 3 (how the student stayed calm and pivoted after a no) evidence conflict-resolution skills (6); Part 1 (at least two prospects owned by women or minority-group members or serving Richmond's diverse communities) evidences respect for diversity (8), and Part 1 (the CRM tracker built in Google Sheets with a status pipeline) evidences working knowledge of IT systems (17)."
+  },
+  "8177-the-ticket-office": {
+    "primary": "8177-41",
+    "secondary": [
+      "8177-19",
+      "8177-63"
+    ],
+    "tertiary": [
+      "8177-39",
+      "8177-40",
+      "8177-42",
+      "8177-62"
+    ],
+    "why": "Parts 1, 2 and 4 together (setting quotas, designing a contest and supporting a struggling rep) evidence the planning, leading and controlling functions of a manager (41); Part 1 (plans needed for $60,000 and each rep's quota with the math shown) evidences job-specific math (19), and Part 3 (the three-rule code of ethics and the problem each rule prevents) evidences ethical issues in the industry (63)."
   }
 }
