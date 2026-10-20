@@ -54,6 +54,17 @@ test('L07\'s repo criteria: no peer replies, real criteria, every competency in 
   assert.deepEqual(a.milestoneCompetencyIds, ['8175-4', '8175-6', '8175-20', '8175-51, 8175-49']);
 });
 
+// 2026-10-20: the criteria are judged against the task. The task text is in
+// the Definition of Done, and a competency's indicators are examples.
+test('L06 carries its task, and its indicators read as examples, not a checklist', () => {
+  const { exported } = setup();
+  const d = exported.LESSON_ASSIGNMENTS['8175-L06'].definitionOfDone;
+  assert.match(d, /THE TASK \(what the student was asked to do\)\n[\s\S]*Write a 100-word plan/);
+  assert.match(d, /- 8175-112 Describe the job interview process\.\n    Evidence can include \(examples, not all required\):/);
+  assert.match(d, /a part of a competency the task does not ask for is never required/);
+  assert.doesNotMatch(d, /shows evidence for each competency listed/);
+});
+
 test('preview names the stale row and changes nothing; refresh rewrites only its criteria', () => {
   const { exported, tab, old } = setup();
   const p = exported.previewAssignmentRefresh();
