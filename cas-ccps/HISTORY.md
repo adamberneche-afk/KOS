@@ -3854,3 +3854,15 @@ kind of failure every morning.
   `-label:kos-family` (the connector matches label names, not `Label_8`).
 - **Tests:** `family-mail-sentinel.test.js`, each override checked by
   removing it.
+
+## The timeout email's steps, 2026-10-20
+
+- **Found:** `notifyTimeoutToTeacher_` (03) told the teacher to have the
+  student run the doc's AI Evaluation Panel menu, which doesn't run for
+  student accounts. A resubmission alone doesn't help either: while the
+  doc's FlowInput row is still READY, the builder (37) makes no new one.
+- **Now:** retype READY in that row's ReadyStatus (a hand edit starts
+  Flow 2, bug 4; a late result finishes its rows, bug 3); resubmit from the
+  Student Dashboard only when the row is blank, errored or missing; never
+  the Admin Recovery Panel reset (feedback twice).
+- **Tests:** `evaluation-next-steps.test.js`.
