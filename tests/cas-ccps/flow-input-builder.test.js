@@ -853,3 +853,59 @@ test('harvestFlowInputResults: if the comment cannot be posted, the feedback goe
   assert.equal(comments.length, 0);
   assert.ok(text.includes('YOUR WORK MEETS THE STANDARD'), 'the student still gets feedback');
 });
+
+// ── Competency tiers (2026-10-20) ────────────────────────────────────────────
+// A tiered Definition of Done: the primary must be MET and the rest at least
+// PARTIALLY_MET; tertiary competencies the work showed (ALSO_SHOWN) become
+// MET evidence and never count against the student; the ALSO_SHOWN line
+// never reaches the student.
+
+const TIERED_DOD = [
+  'PRIMARY COMPETENCY (Milestone 1; must be MET)', '- COMP-1 Primary.', '',
+  'SECONDARY COMPETENCIES (must be at least PARTIALLY MET)', '- COMP-2 Secondary.', '',
+  'TERTIARY COMPETENCIES (never required; name any the work clearly shows under ALSO SHOWN)',
+  '- 8175-40 Marketing mix.', '- 8175-66 Pricing factors.', '',
+  'PASSING RULE: APPROVED when Milestone 1 (the primary competency) is MET and Milestones 2, 3 and 4 are each MET or PARTIALLY MET. Tertiary competencies never affect the result.',
+].join('\n');
+
+function harvestTiered(geminiOutput) {
+  const { exported, sandbox } = load();
+  const ledgerSs = setUpCentralLedger(sandbox);
+  setUpConfig(sandbox, ledgerSs);
+  const doc = sandbox.DocumentApp.create('Student Doc');
+  const studentFileId = doc.getId();
+  doc.getBody().setText('[No feedback yet. Use the panel to run a check.]');
+  ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(
+    stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' }));
+  ledgerSs.getSheetByName('Ledger').appendRow(ledgerRow({ googleId: 'student@example.com', configId: 'VDOE-ABC-2026',
+    fileId: studentFileId, teacherEmail: 'teacher@example.com' }, exported));
+  ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
+  setUpTeacherMatrix(sandbox, 'matrix-ss-1').getSheetByName('TeacherMatrix').appendRow(
+    teacherMatrixRow({ configId: 'VDOE-ABC-2026', dod: TIERED_DOD, c1: 'COMP-1', c2: 'COMP-2' }));
+  exported.buildFlowInputRows();
+  const fiSheet = ledgerSs.getSheetByName('FlowInput');
+  fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(geminiOutput);
+  fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
+  exported.harvestFlowInputResults();
+  const evidence = ledgerSs.getSheetByName('CompetencyEvidence').getDataRange().getValues().slice(1)
+    .map((r) => [r[2], r[4]]);
+  const ledger = ledgerSs.getSheetByName('Ledger').getRange(2, 1, 1, 27).getValues()[0];
+  return { exported, docText: doc.getBody().getText(), evidence, lastResult: ledger[exported.LEDGER.LAST_RESULT] };
+}
+
+test('tiers: tertiary competencies the work showed are MET evidence; an unknown ID is ignored; the line is stripped', () => {
+  const r = harvestTiered('Good work.\nALSO SHOWN\nYou explained the marketing mix.\n[SYSTEM: APPROVED]\n' +
+    '[SUGGESTED_SCORE: 3]\n[ALSO_SHOWN: ["8175-40","8175-999"]]\n' +
+    '[MILESTONE_OUTCOMES: {"1":"MET","2":"PARTIALLY_MET","3":"PARTIALLY_MET","4":"MET"}]');
+  assert.equal(r.lastResult, 'PASSED', 'primary MET and the rest at least partial passes');
+  assert.deepEqual(r.evidence, [['COMP-1', 'MET'], ['COMP-2', 'PARTIALLY_MET'], ['8175-40', 'MET']]);
+  assert.match(r.docText, /ALSO SHOWN/);
+  assert.equal(r.docText.indexOf('[ALSO_SHOWN:'), -1, 'the machine line never reaches the student');
+});
+
+test('tiers: an APPROVED the outcomes do not support is recorded as needing revision', () => {
+  const r = harvestTiered('Mostly there.\n[SYSTEM: APPROVED]\n[SUGGESTED_SCORE: 2]\n[ALSO_SHOWN: []]\n' +
+    '[MILESTONE_OUTCOMES: {"1":"PARTIALLY_MET","2":"MET","3":"MET","4":"MET"}]');
+  assert.equal(r.lastResult, 'NEEDS_REVISION', 'the primary must be MET');
+  assert.deepEqual(r.evidence, [['COMP-1', 'PARTIALLY_MET'], ['COMP-2', 'MET']]);
+});
