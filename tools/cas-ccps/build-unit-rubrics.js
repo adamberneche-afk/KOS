@@ -103,12 +103,12 @@ function unitRubric(unit, code, rubrics, decks) {
     ]),
     '',
     'PASSING STANDARD',
-    'The work passes when the planned work product shows evidence for every competency listed above, in the ' +
-      'student\'s own words, applied to the class conglomerate (its divisions, school store, events and esports ' +
-      'program) or a real organization in sports, entertainment or events' +
-      (vocab ? ', and uses the unit vocabulary accurately (' + vocab + ')' : '') + '. ' +
-      'Each criterion needs specific examples, not general statements. Work that restates definitions ' +
-      'without applying them, or leaves any listed competency without evidence, does not pass.',
+    'The work passes when the planned work product does what the assignment asks and shows each competency ' +
+      'listed above in at least one specific way, in the student\'s own words, applied to the class conglomerate ' +
+      '(its divisions, school store, events and esports program) or a real organization in sports, entertainment ' +
+      'or events' + (vocab ? ', and uses the unit vocabulary accurately (' + vocab + ')' : '') + '. ' +
+      'Specific examples, not general statements. Work that restates definitions without applying them, or ' +
+      'leaves a listed competency with no evidence at all, does not pass. ' + EXAMPLES_RULE,
   ].join('\n');
 
   const promptText = [
@@ -201,8 +201,20 @@ function evidenceLines(r) {
   const inds = (r.demonstration_indicators || []).filter((ind, i, all) => all.indexOf(ind) === i);
   const thin = !inds.length || inds.every((ind) => String(ind).replace(/\.$/, '').trim().toLowerCase() === text);
   if (thin && r.definition) return ['    * ' + String(r.definition).trim()];
-  return thin ? [] : inds.map((ind) => '    * Evidence of ' + ind);
+  if (thin) return [];
+  // Examples, not a checklist (2026-10-20): a 100-word plan was failed for
+  // missing 14 interview steps the assignment never asked for.
+  return ['    Evidence can include (examples, not all required):']
+    .concat(inds.map((ind) => '    * ' + ind));
 }
+
+/**
+ * How Flow 2 reads the criteria: the task decides what is required; the
+ * lines under each competency are examples of evidence.
+ */
+const EXAMPLES_RULE = 'Judge each competency only by what this assignment asks the student to do. The lines under ' +
+  'a competency are examples of what evidence can look like, not a checklist: one specific, well-done example ' +
+  'that fits the task is enough, and a part of a competency the task does not ask for is never required.';
 
 /**
  * The milestone lines. Flow 2 has four milestone slots. With more than four
@@ -306,4 +318,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, buildData, unitRubric, load, COURSES, milestones, evidenceLines, PERSONAS };
+module.exports = { build, buildData, unitRubric, load, COURSES, milestones, evidenceLines, EXAMPLES_RULE, PERSONAS };
