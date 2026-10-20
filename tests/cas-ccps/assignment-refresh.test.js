@@ -20,7 +20,7 @@ const TEACHER = 'owner.teacher@ccpsnet.net';
 
 function setup() {
   const { exported, sandbox } = loadGasFiles(FILES,
-    ['previewAssignmentRefresh', 'refreshAssignments', 'LESSON_ASSIGNMENTS', 'AS_TAB_HEADERS']);
+    ['previewAssignmentRefresh', 'refreshAssignments', 'LESSON_ASSIGNMENTS', 'UNIT_ASSIGNMENTS', 'AS_TAB_HEADERS']);
   const props = sandbox.PropertiesService.getScriptProperties();
   const ledger = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ledger.getId(), ledger);
@@ -50,9 +50,10 @@ test('L07\'s repo criteria: no peer replies; an untiered milestone lists every c
   assert.doesNotMatch(a.definitionOfDone, /Peer Replies \(10 points\)/);
   assert.match(a.definitionOfDone, /graded by the teacher outside this document/);
   assert.doesNotMatch(a.definitionOfDone, /Evidence of Demonstrate conflict-resolution skills/);
-  // L27 has no tiers yet: a milestone holding two competencies lists both.
-  assert.deepEqual(exported.LESSON_ASSIGNMENTS['8175-L27'].milestoneCompetencyIds,
-    ['8175-2', '8175-72, 8175-78', '8175-79', '8175-80, 8175-104']);
+  // Every lesson is tiered; the unit assignments (53b) are not. An untiered
+  // milestone holding several competencies lists them all.
+  assert.equal(exported.UNIT_ASSIGNMENTS['S0-U1_8175'].milestoneCompetencyIds[0],
+    '8175-1, 8175-2, 8175-3, 8175-4, 8175-5');
   // A thin competency's criteria use the state definition (8175-6, untiered elsewhere).
   const thin = Object.values(exported.LESSON_ASSIGNMENTS).find((x) => /negotiating diplomatic solutions/.test(x.definitionOfDone));
   assert.ok(thin, 'some assignment carries 8175-6 or 8177-6 with its state definition');
