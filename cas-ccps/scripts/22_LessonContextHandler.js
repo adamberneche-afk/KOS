@@ -550,7 +550,9 @@ function runAlignmentLogBackfill_() {
 // ---------------------------------------------------------------------------
 // installModule2Triggers_
 // Run once manually from the Script Editor to install the backfill trigger.
-// Safe to re-run — checks for existing trigger before installing.
+// Safe to re-run — checks for existing trigger before installing. In the
+// Central Ledger, use installAlignmentBackfillTrigger() (64) instead: it is
+// on the Run menu and puts the backfill in the Ledger cycle.
 // Also confirms required tabs exist and logs their status.
 // ---------------------------------------------------------------------------
 function installModule2Triggers_() {

@@ -1240,7 +1240,8 @@ function generateReportId25_() {
 // ---------------------------------------------------------------------------
 // installRegistrationTrigger_
 // Installs the 5-minute Job 1 safety-net trigger for registerDeliveredWarmUps.
-// Called once manually. Safe to re-run.
+// Called once manually. Safe to re-run. From the Run menu, use
+// installRegistrationTrigger() (64), which puts it in the Ledger cycle.
 // ---------------------------------------------------------------------------
 function installRegistrationTrigger_() {
   const existing = ScriptApp.getProjectTriggers()

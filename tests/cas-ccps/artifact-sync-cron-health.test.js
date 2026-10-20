@@ -8,9 +8,11 @@
 //    ever checked it before, so a silently-broken 3:05am trigger would
 //    have left every student profile quietly reverted to class-level-only
 //    coverage with no signal anywhere.
-// 2. 28_Module2Setup.js's setup wizard now installs and verifies that
-//    trigger — it previously had its own standalone manual installer
-//    (installArtifactSyncTrigger_()) that the wizard never called.
+// 2. 28_Module2Setup.js's setup wizard installed that trigger, but in its
+//    own project (cas-ccps:unified-manual), where syncArtifactCompetencies
+//    doesn't exist. Since 2026-10-20 it installs no trigger; it names the
+//    Central Ledger installers, and removeMisplacedTriggers() clears the
+//    triggers it made before.
 //
 // Loaded together with 22_LessonContextHandler.js/23_StudentProfileManager.js
 // for the same shared-project reasons as warmup-extra-credit-recheck.test.js
@@ -200,43 +202,32 @@ test('syncArtifactCompetencies still reads an older matrix\'s competency_ids col
   assert.equal(fx.props.getProperty('M2_STAGE1B_STATUS'), 'OK_1');
 });
 
-// ── Script 28's trigger install (different GAS project: cas-ccps:unified-manual) ──
+// ── Script 28: no triggers in its own project (cas-ccps:unified-manual) ──
 
 function loadModule2Setup() {
   return loadGasFiles([
     path.join(SCRIPTS, '28_Module2Setup.js'),
-  ], ['_installTriggerIfMissing_']);
+  ], ['previewMisplacedTriggers', 'removeMisplacedTriggers']);
 }
 
-test('_installTriggerIfMissing_ installs syncArtifactCompetencies at 3:05am', () => {
-  const { exported, sandbox } = loadModule2Setup();
-  exported._installTriggerIfMissing_('syncArtifactCompetencies', 'atHour', 3, { nearMinute: 5 });
-
-  const triggers = sandbox.ScriptApp.getProjectTriggers();
-  const t = triggers.find((tr) => tr.getHandlerFunction() === 'syncArtifactCompetencies');
-  assert.ok(t, 'syncArtifactCompetencies trigger must be installed');
-});
-
-test('_installTriggerIfMissing_ does not install a second copy if one already exists', () => {
-  const { exported, sandbox } = loadModule2Setup();
-  exported._installTriggerIfMissing_('syncArtifactCompetencies', 'atHour', 3, { nearMinute: 5 });
-  exported._installTriggerIfMissing_('syncArtifactCompetencies', 'atHour', 3, { nearMinute: 5 });
-
-  const triggers = sandbox.ScriptApp.getProjectTriggers()
-    .filter((tr) => tr.getHandlerFunction() === 'syncArtifactCompetencies');
-  assert.equal(triggers.length, 1);
-});
-
-test('the wizard\'s requiredTriggers list includes syncArtifactCompetencies (source-level regression guard)', () => {
-  // A full behavioral test of the wizard's Step 5 would need heavy
-  // SpreadsheetApp.getUi()/dialog mocking this codebase has no established
-  // pattern for on any file — this is a direct, honest source-level check
-  // instead: it fails immediately if someone reverts the requiredTriggers
-  // edit, which is the actual regression this fix guards against.
+test('the wizard installs no trigger in its own project and names the Central Ledger installers', () => {
   const src = fs.readFileSync(path.join(SCRIPTS, '28_Module2Setup.js'), 'utf8');
-  const match = src.match(/const requiredTriggers = \[([\s\S]*?)\];/);
-  assert.ok(match, 'requiredTriggers array must exist in 28_Module2Setup.js');
-  const entries = match[1].split(',').map((s) => s.trim().replace(/["']/g, '')).filter(Boolean);
-  assert.equal(entries.length, 5, `expected 5 required triggers, found: ${entries.join(', ')}`);
-  assert.ok(entries.includes('syncArtifactCompetencies'), 'syncArtifactCompetencies must be in requiredTriggers');
+  assert.doesNotMatch(src, /newTrigger\(/, 'a trigger made in the Unified Manual project cannot run a Ledger function');
+  ['installAlignmentBackfillTrigger()', 'installWarmUpTriggers()', 'installArtifactSyncTrigger()',
+    'installLedgerCycle()'].forEach((fn) => assert.ok(src.includes(fn), fn + ' must be named'));
+});
+
+test('removeMisplacedTriggers removes only the Ledger triggers this project can\'t run; a preview removes none', () => {
+  const { exported, sandbox } = loadModule2Setup();
+  ['syncArtifactCompetencies', 'registerDeliveredWarmUps', 'installDeployVersionReport']
+    .forEach((fn) => sandbox.ScriptApp.newTrigger(fn).timeBased().everyMinutes(5).create());
+  const handlers = () => sandbox.ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction());
+
+  const preview = exported.previewMisplacedTriggers();
+  assert.deepEqual(preview.found, ['syncArtifactCompetencies', 'registerDeliveredWarmUps']);
+  assert.equal(handlers().length, 3, 'a preview changes nothing');
+
+  assert.equal(exported.removeMisplacedTriggers().removed, 2);
+  assert.deepEqual(handlers(), ['installDeployVersionReport'], 'a trigger not on the list is kept');
+  assert.equal(exported.removeMisplacedTriggers().removed, 0, 'a second run removes nothing');
 });

@@ -444,6 +444,7 @@ noted.
 | 17d | **A period that meets daily for half the time** (added 2026-10-19: period 1, same pace as the ODD/EVEN periods). Push first, then set its `ClassSchedule` rows' day_type to `DAILY_HALF` (code from before this change treats `DAILY_HALF` as not meeting). Give every lesson already taught a `start_date` in `LessonSchedule` (the warm-ups review from those, below). `WarmUpPlan` is optional: one row per pair of class days, on the day the pair starts, for a specific seed | A `WarmUpPlan` row covers its date and the next weekday: the ODD and EVEN classes get the same warm-up, and a `DAILY_HALF` period gets it on the first day only; on the second the Student Dashboard shows the first day's feedback and extra-credit reply box. A day no row covers takes a random seed (fixed for the pair) from the lessons with a `LessonSchedule` start_date on or before it (since 2026-10-19), and a `DAILY_HALF` period then starts a pair on odd dates. A lesson with no start date is never picked. `DAILY` is unchanged (a new warm-up every day). |
 | 17e | **One trigger for the Ledger's frequent jobs** (added 2026-10-19). After the push, in the Central Ledger: `previewLedgerCycle()`, then `installLedgerCycle()` (`64`): it deletes the frequent jobs' own triggers (`bridgeQueue`, `runStagingTurnstile`, `backPropagateCompletions`, `buildFlowInputRows`, `harvestFlowInputResults`, `buildWarmUpFlowInputs`, `harvestWarmUpFlowReturns`, `registerDeliveredWarmUps`, `runAlignmentLogBackfill_`, `runQueueWatchdog`, whichever exist) and installs `runLedgerCycle` every minute, which runs those same jobs in turn at their cadence. Rollback: `restoreLedgerTriggers()` | Why: ~45 Google-side failures in a week from ten triggers racing one spreadsheet. The 3 a.m. jobs and the nightly ones keep their own triggers. A job whose installer is re-run gets its own trigger back and the cycle leaves it alone (preflight flags the double); run `installLedgerCycle()` again to fold it in. Errors show in the cycle's log as `[LC] Errors: <job>: <message>`. |
 | 17f | **Stop tagging the Canvas export by hand** (added 2026-10-20). After the push, in the Central Ledger, while the Ledger's periods are right: `previewPeriodOverrideSeed()` then `seedPeriodOverrides()` (`52`). They add a `PeriodOverride` row (`student_account`, `period`) for each student whose period isn't the one their section code gives: today, period 3's `3-Odd` and `3-Even`. Then a plain export is enough; `previewPeriodRelabel()` should report 0 to relabel | Enrollment, the nightly rollout and relabel read `PeriodOverride` before `CanvasSectionMap`. The seed never changes a row already there and logs counts per period only. A student who joins a split period later needs a row typed in by hand; until then the export can still be tagged as before. |
+| 17g | **Triggers the setup wizard put in the wrong project** (added 2026-10-20). After the push: in the **Unified Manual** project, `previewMisplacedTriggers()` then `removeMisplacedTriggers()` (`28`). In the **Central Ledger**, `installRegistrationTrigger()` (`64`; already in the cycle since 17e, so it should say so), and `installAlignmentBackfillTrigger()` if the backfill should run | The wizard (28) runs in the Unified Manual project but installed triggers for Central Ledger functions, each failing on every run. Removal touches only triggers whose function that project doesn't have. `installLedgerCycle()` now always includes `registerDeliveredWarmUps`. The backfill retries alignment logging for a lesson whose direct log failed (22); both installers add their job to the Ledger cycle, or give it its own trigger when the cycle isn't installed. |
 | 18 | Import `curriculum/canvas-cartridges/8175.imscc` / `8177.imscc` into each Canvas course (Settings → Import Course Content → Common Cartridge 1.x Package); a sandbox course first | Its assignments ask students to submit their CAS document's link, so do it once students have their docs (step 17). |
 
 These two are the only things that can tell you a Flow is live. A Flow that
@@ -689,13 +690,20 @@ one — that distinction is what cost 2,113 lines here.
 5. **Run Module 2's setup wizard**, `28_Module2Setup.js` — two entry points, not
    one:
    - `runModule2Setup()` — Phase A (Lightweight): creates 4 tabs, imports the
-     competency registry, installs the 5-minute alignment-log backfill trigger,
-     sets `M2_ENABLED=true`.
+     competency registry, sets `M2_ENABLED=true`, and names the backfill's
+     installer: `installAlignmentBackfillTrigger()`, run in the **Central
+     Ledger** (`64`).
    - `runModule2WarmUps()` — Phase B (Full/Warm-Ups): creates 6 more tabs,
-     imports pacing guide + rubrics, collects the block schedule, **installs 5
-     nightly/periodic triggers** (this is where last session's fix matters —
-     see below), and walks through Studio Flow 3/4/5 configuration via `ui.alert()`
-     dialogs with the exact settings to enter by hand.
+     imports pacing guide + rubrics, collects the block schedule, **names the
+     Central Ledger installers for its triggers** (`installWarmUpTriggers()`,
+     `installArtifactSyncTrigger()`, `installLedgerCycle()`), and walks through
+     Studio Flow 3/4/5 configuration via `ui.alert()` dialogs with the exact
+     settings to enter by hand.
+   Since 2026-10-20 the wizard installs no trigger itself: it runs in the
+   Unified Manual project and every one of these runs a Central Ledger
+   function, so a trigger it made could only fail. In an install where it ran
+   before, run `previewMisplacedTriggers()` then `removeMisplacedTriggers()`
+   from the Unified Manual project's editor (step 17g).
    Both phases end with an inline (not doc-deferred) list of remaining manual
    steps — read the completion alerts, don't skip past them.
    Then, from Central Ledger, `importCourseData()` and
