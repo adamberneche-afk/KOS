@@ -36,9 +36,6 @@ operator. This file holds what comes after them.
   down by the shape gate (over 900 characters; the prompt's own wording,
   "adaptation constraints", "teacher's anchor prompt"). Tighten the Flow 3
   prompt (40) and watch the nightly fallback count. With D6.
-- **33 finds the matrix like 53.** `syncArtifactCompetencies` stops with
-  `NO_MATRIX_ID` unless `TEACHER_MATRIX_SS_ID` is set; fall back to
-  `MatrixRegistry` (`_asTeacherMatrix_`, 53).
 
 ### Offered, small, ready to build
 
