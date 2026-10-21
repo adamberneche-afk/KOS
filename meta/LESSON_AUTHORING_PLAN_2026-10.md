@@ -177,8 +177,8 @@ the submitter accepts.
 | Phase | What | Due |
 |---|---|---|
 | 0 ✓ | Rollout status per lesson | Shipped, #243 |
-| 1 | Edit existing lessons: the form with the VDOE cross-reference, `LessonDrafts`, Submit with the required-field check, the proposal view with Accept / Return, the import procedure (manual first) | Wed Oct 28 |
-| 2 | New lessons through the same form and states; the evening Routine for the import | Fri Oct 30 |
+| 1 ✓ | Edit existing lessons: the form with the VDOE cross-reference, `LessonDrafts`, Submit with the required-field check, the proposal view with Accept / Return, the import procedure (manual first) | Built 2026-10-21, #245 |
+| 2 ✓ | New lessons through the same form and states; the evening Routine for the import ("Lesson draft import", about 6 p.m. Eastern, the operator's time) | Built 2026-10-21 |
 | 3 (if wanted) | Draft-it-for-me on the dashboard | After Oct 30 |
 
 Build order inside phase 1: the `LessonDrafts` tab and its server functions

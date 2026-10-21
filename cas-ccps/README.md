@@ -448,7 +448,11 @@ required field filled (the student task, warm-up anchor, objective, a reason,
 a change) and tiers that pass the builder's rules. An import (an agent
 session) writes the repo files on a branch and a proposal back; the teacher
 who submitted the draft accepts it or returns it with a note, and only an
-accepted draft is merged and pushed. The import's steps are in
+accepted draft is merged and pushed. A **+ New lesson** button by each
+course's heading opens the same editor empty (title, objective, activity,
+the student task or a brief for it, warm-up anchor, vocabulary,
+competencies and tiers); the import makes the lesson files, and after the
+push `seedLessonSchedule()` adds its schedule row. The import's steps are in
 `docs/LESSON_IMPORT_PROCEDURE.md`; its mechanical half is
 `tools/cas-ccps/import-lesson-drafts.js`.
 
