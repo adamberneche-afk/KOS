@@ -3925,3 +3925,27 @@ kind of failure every morning.
   201 off-topic warm-ups pass on a common word ("describe", "friends").
   Accepted: it is a backstop, and the shape gate still runs first.
 - **Tests:** `warmup-flow-pacing.test.js`.
+
+## Flow 3's shape failures, 2026-10-21
+
+- **Why:** a night's 17 shape fallbacks, by length and flags (counts only):
+  8 were about 3,400 characters with 57–81 line breaks, the Mode A prompt
+  with its fields filled, so the output was Flow 3's own input. Most of the
+  other 9 had no question mark and used "teacher's anchor prompt" or
+  "adaptation constraints": a sentence about the anchor (constraint 10, "it
+  already fits"), not the anchor.
+- **Studio:** Flow 3's Gemini step takes the PromptText chip, and lists the
+  Central Ledger as a Drive source, which lets Gemini read the whole
+  Ledger. The build spec (42) now says to give the step no sources. The
+  likely cause of the echoed prompts; to be seen after the source is
+  removed.
+- **Prompts (40, and the spec HTML):** constraint 10 says to return the
+  anchor text itself, word for word, never a sentence saying it fits; both
+  modes' output lines say the student reads the output as written, and
+  never to describe the changes or name the archetype or the instructions.
+  Live with the push (the step reads the chip).
+- **Shape gate (41):** the prompt itself is named as that ("Studio returned
+  its input"), before the length rule; with an anchor, a warm-up must ask a
+  question unless it keeps the anchor whole (`wfbKeepsAnchor_`; 5 of the 67
+  anchors have no "?"). Every anchor returned unchanged passes.
+- **Tests:** `warmup-shape-gate.test.js`, `warmup-flow-pacing.test.js`.

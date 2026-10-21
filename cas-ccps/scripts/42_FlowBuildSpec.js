@@ -223,7 +223,9 @@ function _fbsAppendWarmUpFlows_(rows) {
     spec.headers.forEach(function (h, i) {
       rows.push([label, "read", tab, i + 1, h, "the materializer",
         h === "PromptText"
-          ? "The pre-substituted system prompt. Bind the Gemini step to this chip."
+          ? "The pre-substituted system prompt. Bind the Gemini step to this chip, and give " +
+            "the step no Drive sources: the chip holds everything, and a source lets Gemini " +
+            "read the whole Central Ledger, other students' rows included (2026-10-21)."
           : "Read it as a chip. Do not write to it — the harvest owns every write."]);
     });
     rows.push([label, "prompt", FLOW_PROMPT_TAB, "", spec.prompt, "40_FlowPrompts.js",
