@@ -22,7 +22,7 @@
 >
 > **Filed 2026-10-17** from the operator's 2026-10-16 handoff package.
 > Suggestions only; nothing here is built. Where it sits in the order of
-> work: [`HANDOFF_2026-10-21.md`](./HANDOFF_2026-10-21.md).
+> work: [`HANDOFF_2026-10-22.md`](./HANDOFF_2026-10-22.md).
 
 Prepared 2026-10-16. Suggestions only; nothing here is built yet. "Cognitive exhaust" is read as the process traces students leave while producing work: drafts, revisions, attempts and pauses. It builds on the authenticity-review plan (log revision-history metrics for every submission, baseline across students and assignments, flag anomalies for review with the student). Student writing stays out of any log; only numbers and timestamps are kept.
 
