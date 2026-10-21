@@ -1064,6 +1064,213 @@ function _tdFeedbackPlacement_(cfg) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Lesson schedule (2026-10-21). The LessonSchedule tab (55, Central Ledger)
+// holds one row per lesson in teaching order and the start date the teacher
+// gives it; a lesson runs until the next one starts. Everything downstream
+// reads that tab: which lesson is current (31), the warm-up seeds (24, 55)
+// and the nightly rollout (58), which seeds, enrolls and shares a lesson's
+// docs from its date. This panel shows the tab by course with what the last
+// rollout run did for each lesson, and changes one start date at a time.
+//
+// A date is not passive: with ROLLOUT_AUTO_APPLY on for a course, a lesson
+// starting within TD_ROLLOUT_LEAD_DAYS gets its docs made that night, and
+// shared the night before it starts. So a change that lands inside that
+// window, in the past, or on the current lesson asks to be confirmed first.
+// Whether a course's rollout acts is read from its last RolloutLog run (the
+// flag may be a Central Ledger Script Property this project can't see).
+// Teacher-level data only; RolloutLog rows are counts and reasons.
+// ---------------------------------------------------------------------------
+const TD_LS_TAB = "LessonSchedule";
+const TD_LS = { COURSE: 0, KEY: 1, LESSON: 2, START: 3, CONFIG_ID: 4, NOTES: 5 };
+const TD_ROLLOUT_LOG_TAB = "RolloutLog";
+// 58's ROLLOUT_LEAD_DAYS, which lives in the Central Ledger project.
+const TD_ROLLOUT_LEAD_DAYS = 2;
+
+function getLessonSchedule() {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return _tdLessonSchedule_(cfg, new Date());
+}
+
+/**
+ * Sets (or, with "", clears) one lesson's start date. `expected` is the date
+ * the panel showed, so an edit made in the sheet meanwhile isn't overwritten.
+ * Without `confirmed`, a change that the rollout acts on soon returns
+ * { success: false, confirm: "…" } and writes nothing.
+ */
+function setLessonStartDate(lessonKey, dateStr, expected, confirmed) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  const key = String(lessonKey || "").trim();
+  const date = String(dateStr || "").trim();
+  if (date && !_tdIsRealYmd_(date)) return { success: false, error: "Not a date: " + date + " (use YYYY-MM-DD)." };
+
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (e) {
+    return { success: false, error: "Another change is being saved; try again." };
+  }
+  try {
+    const now = new Date();
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TD_LS_TAB);
+    if (!sheet || sheet.getLastRow() < 2) return { success: false, error: "No LessonSchedule tab on the Central Ledger." };
+    const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, TD_LS.NOTES + 1).getValues();
+    const i = rows.findIndex(function (r) { return String(r[TD_LS.KEY]).trim() === key; });
+    if (i === -1) return { success: false, error: "No lesson " + key + " in LessonSchedule." };
+    const tz = Session.getScriptTimeZone();
+    const current = _tdLsDate_(rows[i][TD_LS.START], tz);
+    if (current !== String(expected || "").trim()) {
+      const out = _tdLessonSchedule_(cfg, now);
+      out.success = false;
+      out.error = "This date was changed in the sheet since the panel loaded (now " + (current || "blank") +
+        "). The panel shows the current dates.";
+      return out;
+    }
+    if (current === date) return _tdLessonSchedule_(cfg, now);
+
+    if (!confirmed) {
+      const course = String(rows[i][TD_LS.COURSE]).trim();
+      const schedule = _tdLessonSchedule_(cfg, now);
+      const c = schedule.courses.find(function (x) { return x.code === course; });
+      const lesson = c ? c.lessons.find(function (l) { return l.key === key; }) : null;
+      const why = _tdScheduleChangeWarning_(schedule.today, current, date, lesson, c);
+      if (why) return { success: false, confirm: why };
+    }
+    sheet.getRange(i + 2, TD_LS.START + 1).setNumberFormat("@").setValue(date);
+    SpreadsheetApp.flush();
+    Logger.log("[Dashboard] LessonSchedule " + key + ": start " + (current || "blank") + " -> " + (date || "blank") + ".");
+    return _tdLessonSchedule_(cfg, now);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Why a change needs a second look, or "" when it doesn't.
+function _tdScheduleChangeWarning_(today, from, to, lesson, course) {
+  const soon = _tdAddDaysYmd_(today, TD_ROLLOUT_LEAD_DAYS);
+  const acts = course && course.rolloutMode === "APPLY";
+  const reasons = [];
+  if (lesson && lesson.status === "current") {
+    reasons.push("this is the lesson the course is on now; " +
+      (to ? "moving its date can change which lesson is current" : "clearing its date makes the previous lesson current again"));
+  }
+  if (to && to < today) reasons.push("the new date is in the past, so the lesson becomes current at once (if it is the latest dated)");
+  else if (to && to <= soon) {
+    reasons.push(acts
+      ? "tonight's rollout will make and share this lesson's student docs (the course's rollout is on)"
+      : "tonight's rollout will plan this lesson's docs (shadow only; nothing is made while the rollout is off)");
+  }
+  if (!to && from) reasons.push("a lesson with no date is never current and the rollout skips it");
+  return reasons.length ? "Change " + (lesson ? lesson.lesson : "this lesson") + " from " + (from || "no date") +
+    " to " + (to || "no date") + "? Note: " + reasons.join("; ") + "." : "";
+}
+
+function _tdLessonSchedule_(cfg, now) {
+  const tz = Session.getScriptTimeZone();
+  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(TD_LS_TAB);
+  if (!sheet) return { success: false, error: "No LessonSchedule tab on the Central Ledger (seedLessonSchedule, 55, makes it)." };
+  const rows = sheet.getLastRow() > 1
+    ? sheet.getRange(2, 1, sheet.getLastRow() - 1, TD_LS.NOTES + 1).getValues() : [];
+  const rollout = _tdLastRollout_(ss);
+  const byCourse = {};
+  const order = [];
+  rows.forEach(function (r) {
+    const code = String(r[TD_LS.COURSE]).trim();
+    const key = String(r[TD_LS.KEY]).trim();
+    if (!code || !key) return;
+    if (!byCourse[code]) { byCourse[code] = []; order.push(code); }
+    const configId = String(r[TD_LS.CONFIG_ID] || "").trim();
+    const raw = r[TD_LS.START];
+    const start = _tdLsDate_(raw, tz);
+    byCourse[code].push({
+      key: key, lesson: String(r[TD_LS.LESSON] || key), configId: configId,
+      start: _tdIsRealYmd_(start) ? start : "", unreadable: start !== "" && !_tdIsRealYmd_(start),
+      notes: String(r[TD_LS.NOTES] || ""),
+      rollout: (rollout.byLesson[key.toUpperCase()] || rollout.byLesson[configId.toUpperCase()] || null),
+    });
+  });
+  const courses = order.sort().map(function (code) {
+    const lessons = byCourse[code];
+    // The current lesson: the latest start on or before today (55's rule).
+    let current = null;
+    lessons.forEach(function (l) {
+      if (l.start && l.start <= today && (!current || l.start >= current.start)) current = l;
+    });
+    let lastDated = "";
+    const seen = {};
+    lessons.forEach(function (l) {
+      l.status = !l.start ? "undated" : l === current ? "current" : l.start > today ? "upcoming" : "taught";
+      l.warnings = [];
+      if (l.unreadable) l.warnings.push("the date in the sheet can't be read; it counts as no date");
+      if (l.start && lastDated && l.start < lastDated) l.warnings.push("starts before a lesson listed above it");
+      if (l.start && seen[l.start]) l.warnings.push("same start date as " + seen[l.start] + "; only one of them runs");
+      if (l.start) { seen[l.start] = l.lesson; if (l.start > lastDated) lastDated = l.start; }
+    });
+    const mode = rollout.modeByCourse[code] || "";
+    return { code: code, lessons: lessons, rolloutMode: mode, current: current ? current.key : "" };
+  });
+  return {
+    success: true, today: today, leadDays: TD_ROLLOUT_LEAD_DAYS,
+    rolloutRunAt: rollout.at ? Utilities.formatDate(rollout.at, tz, "EEE MMM d, h:mm a") : "",
+    courses: courses,
+  };
+}
+
+// The last rollout run's rows (the rows sharing its newest timestamp's
+// minute), by lesson, and each course's mode in it.
+function _tdLastRollout_(ss) {
+  const out = { at: null, byLesson: {}, modeByCourse: {} };
+  const sheet = ss.getSheetByName(TD_ROLLOUT_LOG_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const n = Math.min(sheet.getLastRow() - 1, 500);
+  const rows = sheet.getRange(sheet.getLastRow() - n + 1, 1, n, 7).getValues();
+  let newest = 0;
+  rows.forEach(function (r) {
+    const t = sheetTimestampMs_(r[0]);
+    if (!isNaN(t) && t > newest) newest = t;
+  });
+  if (!newest) return out;
+  out.at = new Date(newest);
+  rows.forEach(function (r) {
+    const t = sheetTimestampMs_(r[0]);
+    if (isNaN(t) || newest - t > 10 * 60 * 1000) return;
+    const mode = String(r[1]).trim(), course = String(r[2]).trim(), lesson = String(r[3]).trim().toUpperCase();
+    const step = String(r[4]).trim();
+    if (course && course !== "-" && (mode === "APPLY" || mode === "SHADOW")) out.modeByCourse[course] = mode;
+    if (!lesson || lesson === "-") return;
+    const entry = out.byLesson[lesson] || (out.byLesson[lesson] = { mode: mode, steps: [], problems: [] });
+    if (step === "PROBLEM") entry.problems.push(String(r[6] || "").trim());
+    else entry.steps.push({ step: step, count: Number(r[5]) || 0, detail: String(r[6] || "").trim() });
+  });
+  return out;
+}
+
+// A LessonSchedule start cell as "YYYY-MM-DD", or the text it holds.
+// Sheets stores a date typed by hand as a Date (22's note).
+function _tdLsDate_(value, tz) {
+  if (value instanceof Date || Object.prototype.toString.call(value) === "[object Date]") {
+    return isNaN(value.getTime()) ? "" : Utilities.formatDate(value, tz, "yyyy-MM-dd");
+  }
+  return String(value === undefined || value === null ? "" : value).trim();
+}
+
+function _tdIsRealYmd_(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ""));
+  if (!m) return false;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3])));
+  return d.getUTCFullYear() === Number(m[1]) && d.getUTCMonth() === Number(m[2]) - 1 && d.getUTCDate() === Number(m[3]);
+}
+
+function _tdAddDaysYmd_(ymd, days) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd);
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + days));
+  return d.toISOString().slice(0, 10);
+}
+
 function getCompetencies() {
   const cfg   = getConfig_();
   const email = cfg.teacherEmail || "";
@@ -1621,6 +1828,9 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
   <!-- Feedback placement per course (FEEDBACK_AS_COMMENT, 00): in the doc or
        as a comment on it. -->
   <button id="feedback-placement-btn" onclick="openFeedbackPlacementModal()">💬 Feedback</button>
+  <!-- Lesson schedule (LessonSchedule tab, 55): start dates by course, with
+       what the last nightly rollout (58) did for each lesson. -->
+  <button id="lesson-schedule-btn" onclick="openLessonScheduleModal()">📅 Lessons</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
@@ -1813,6 +2023,18 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
       <button class="modal-close" onclick="closeFeedbackPlacementModal()" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="feedback-placement-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="lesson-schedule-modal-backdrop" onclick="if(event.target===this)closeLessonScheduleModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="lesson-schedule-modal-title" style="max-width:820px">
+    <div class="modal-header">
+      <h2 id="lesson-schedule-modal-title">Lesson schedule</h2>
+      <button class="modal-close" onclick="closeLessonScheduleModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="lesson-schedule-modal-body">
       <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
     </div>
   </div>
@@ -2170,7 +2392,7 @@ function _handleTurnInDecisionResult(res) {
 let _parentReports = [];
 
 function openFeedbackPlacementModal() {
-  document.getElementById("feedback-placement-modal-backdrop").classList.add("show");
+  document.getElementById("feedback-placement-modal-backdrop").classList.add("open");
   document.getElementById("feedback-placement-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
   google.script.run
@@ -2180,7 +2402,7 @@ function openFeedbackPlacementModal() {
 }
 
 function closeFeedbackPlacementModal() {
-  document.getElementById("feedback-placement-modal-backdrop").classList.remove("show");
+  document.getElementById("feedback-placement-modal-backdrop").classList.remove("open");
 }
 
 function _feedbackPlacementFailed(e) {
@@ -2228,8 +2450,115 @@ function saveFeedbackPlacement(code, asComment) {
     .setFeedbackPlacement(code, asComment);
 }
 
+// ── Lesson schedule ─────────────────────────────────────────────────────────
+// One start date per lesson, saved as it changes. A change the rollout acts
+// on soon comes back with a question; Save again only after OK.
+
+let _lessonSchedule = null;
+
+function openLessonScheduleModal() {
+  document.getElementById("lesson-schedule-modal-backdrop").classList.add("open");
+  document.getElementById("lesson-schedule-modal-body").innerHTML =
+    '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
+  google.script.run
+    .withSuccessHandler(renderLessonSchedule)
+    .withFailureHandler(_lessonScheduleFailed)
+    .getLessonSchedule();
+}
+
+function closeLessonScheduleModal() {
+  document.getElementById("lesson-schedule-modal-backdrop").classList.remove("open");
+}
+
+function _lessonScheduleFailed(e) {
+  document.getElementById("lesson-schedule-modal-body").innerHTML =
+    '<p style="color:#d93025;font-size:13px">Could not load: ' +
+    esc(e && e.message ? e.message : "unknown error") + '</p>';
+}
+
+const LS_STATUS_LABEL = { current: "Current", upcoming: "Upcoming", taught: "Taught", undated: "No date" };
+const LS_STATUS_COLOR = { current: "#188038", upcoming: "#1a73e8", taught: "#5f6368", undated: "#b06000" };
+
+function _lsRolloutText(l) {
+  if (!l.rollout) return '<span style="color:var(--text-secondary)">—</span>';
+  let t = l.rollout.steps.map(function(s) {
+    return esc(s.step.charAt(0) + s.step.slice(1).toLowerCase()) + ' ' + esc(String(s.count));
+  }).join(' · ');
+  if (l.rollout.mode === "SHADOW") t += ' <span style="color:var(--text-secondary)">(shadow)</span>';
+  if (l.rollout.problems.length) {
+    t += '<div style="color:#d93025">⚠ ' + l.rollout.problems.map(esc).join('; ') + '</div>';
+  }
+  return t;
+}
+
+function renderLessonSchedule(data) {
+  const body = document.getElementById("lesson-schedule-modal-body");
+  if (!data || (!data.success && !data.courses)) {
+    body.innerHTML = '<p style="color:#d93025;font-size:13px">' +
+      esc((data && data.error) || "Could not load the schedule.") + '</p>';
+    return;
+  }
+  _lessonSchedule = data;
+  let html = '';
+  if (data.error) html += '<p style="color:#d93025;font-size:13px">' + esc(data.error) + '</p>';
+  html += '<p style="font-size:13px;color:var(--text-secondary)">A lesson runs from its start date until the next ' +
+    'one starts. Each date saves when you change it, to the LessonSchedule tab. The nightly rollout makes a ' +
+    'lesson\\'s documents when it starts within ' + esc(String(data.leadDays)) + ' days and shares them the night before. ' +
+    (data.rolloutRunAt ? 'Rollout column: the run of ' + esc(data.rolloutRunAt) + '.' : 'The rollout has not run yet.') + '</p>';
+  if (!data.courses.length) html += '<p style="font-size:13px">No lessons in the LessonSchedule tab yet.</p>';
+  data.courses.forEach(function(c) {
+    html += '<h3 style="font-size:15px;margin:16px 0 6px">' + esc(c.code) +
+      ' <span style="font-weight:400;font-size:12px;color:var(--text-secondary)">rollout ' +
+      (c.rolloutMode === "APPLY" ? 'on' : c.rolloutMode === "SHADOW" ? 'in shadow (changes nothing)' : 'not seen yet') +
+      '</span></h3>' +
+      '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+      '<tr style="text-align:left;color:var(--text-secondary)"><th style="padding:4px">Lesson</th>' +
+      '<th style="padding:4px">Status</th><th style="padding:4px">Starts</th><th style="padding:4px">Last rollout</th></tr>';
+    c.lessons.forEach(function(l) {
+      const id = 'ls-' + esc(l.key);
+      html += '<tr style="border-top:1px solid #e8eaed;vertical-align:top">' +
+        '<td style="padding:6px 4px">' + esc(l.lesson) +
+        (l.warnings.length ? '<div style="color:#b06000;font-size:12px">⚠ ' + l.warnings.map(esc).join('; ') + '</div>' : '') +
+        '</td>' +
+        '<td style="padding:6px 4px;color:' + LS_STATUS_COLOR[l.status] + ';font-weight:600">' + esc(LS_STATUS_LABEL[l.status]) + '</td>' +
+        '<td style="padding:6px 4px"><input type="date" id="' + id + '" value="' + esc(l.start) + '" ' +
+        'aria-label="Start date for ' + esc(l.lesson) + '" ' +
+        'onchange="saveLessonStartDate(\\'' + jsAttr(l.key) + '\\', this.value)">' +
+        (l.start ? ' <button style="font-size:12px" onclick="saveLessonStartDate(\\'' + jsAttr(l.key) + '\\', \\'\\')">Clear</button>' : '') +
+        '</td>' +
+        '<td style="padding:6px 4px">' + _lsRolloutText(l) + '</td></tr>';
+    });
+    html += '</table>';
+  });
+  body.innerHTML = html;
+}
+
+function _lsFind(key) {
+  let found = null;
+  (_lessonSchedule ? _lessonSchedule.courses : []).forEach(function(c) {
+    c.lessons.forEach(function(l) { if (l.key === key) found = l; });
+  });
+  return found;
+}
+
+function saveLessonStartDate(key, value, confirmed) {
+  const l = _lsFind(key);
+  if (!l) return;
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.confirm) {
+        if (window.confirm(res.confirm)) saveLessonStartDate(key, value, true);
+        else renderLessonSchedule(_lessonSchedule);
+        return;
+      }
+      renderLessonSchedule(res);
+    })
+    .withFailureHandler(_lessonScheduleFailed)
+    .setLessonStartDate(key, value, l.start, !!confirmed);
+}
+
 function openParentReportModal() {
-  document.getElementById("parent-report-modal-backdrop").classList.add("show");
+  document.getElementById("parent-report-modal-backdrop").classList.add("open");
   document.getElementById("parent-report-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading this week\\'s reports…</p>';
   google.script.run
@@ -2243,7 +2572,7 @@ function openParentReportModal() {
 }
 
 function closeParentReportModal() {
-  document.getElementById("parent-report-modal-backdrop").classList.remove("show");
+  document.getElementById("parent-report-modal-backdrop").classList.remove("open");
 }
 
 function renderParentReportModal(data) {
