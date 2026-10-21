@@ -60,10 +60,11 @@ operator. This file holds what comes after them.
 - **Retention disposition.** A dry-run report of records past their cutoff,
   then deletion only after the operator approves it. The schedule is
   confirmed (2026-10-17), so this is ready when wanted. 2026-10-13, after #174.
-- **Retention check: report a missing date column.** When a tab's date
-  header has been renamed, `checkRetentionSchedule` counts every row as
-  "no readable date" and never says the column is missing. It should
-  name the header it looked for. 2026-10-17.
+  **Dry run built 2026-10-21** (`previewRetentionDisposition`, 57); the
+  deletion step, run on the operator's approval of that report, is still
+  open (D3, after Oct 30).
+- ~~**Retention check: report a missing date column.**~~ Built 2026-10-21:
+  `checkRetentionSchedule` names the header it looked for.
 
 - **Assignments that aren't a document.** Some of the week's assignments
   are on paper or don't fit a doc, so CAS has no record of them; L07 is the
