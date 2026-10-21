@@ -4032,3 +4032,28 @@ kind of failure every morning.
   stored task. 65 shows and compares the task without it (`_ldTaskText_`;
   all 67 lessons checked).
 - **Tests:** `tests/tools/import-lesson-drafts.test.js`.
+
+## Lesson writing from the Teacher Dashboard, phase 2, 2026-10-21
+
+- **Why:** phase 2 of `meta/LESSON_AUTHORING_PLAN_2026-10.md`, due Oct 30:
+  new lessons, and the import on an evening Routine (6 p.m. Eastern, the
+  operator's choice).
+- **65:** `getNewLessonEditor(course)`; `saveLessonDraft({ kind: "NEW", … })`
+  keeps a NEW draft by its id; its key is the next free 8175 lesson number
+  or the builder's slug of an 8177 title (`_ldNewKey_`). `_ldCheckNew_`
+  needs a title, objective, activity, warm-up anchor, vocabulary, the task
+  or a brief, a key no lesson or open draft has, and the same competency and
+  tier rules (`_ldTierIssues_`, now shared with edits). `getLessonEditor`
+  also takes a draft id. An 8177 objective is shown without its list number.
+- **07:** a **+ New lesson** button per course, and the editor's new-lesson
+  fields (title, activity, brief).
+- **import-lesson-drafts.js:** a NEW draft's files are made in the builder's
+  shape (`createLesson`), only when missing; a brief becomes a marked
+  placeholder for the session; a competency line's number honours
+  `COMPETENCY_MAP.json` if one is ever added (`lineNumber`); an edited 8177
+  objective keeps its list number.
+- **Procedure:** section 3, new lessons: drafting from a brief, the
+  teacher-facing parts, the Drive doc made after acceptance and before the
+  merge, `seedLessonSchedule()` after the push.
+- **Tests:** `lesson-drafts.test.js` (new lessons), `tests/tools/import-lesson-drafts.test.js`
+  (8175 and 8177 files built; a taken key refused).

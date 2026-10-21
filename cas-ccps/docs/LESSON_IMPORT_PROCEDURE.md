@@ -3,9 +3,11 @@
 The steps an agent session follows to import the Teacher Dashboard's lesson
 drafts (`65_LessonDrafts.js`; phase 1 of
 [`meta/LESSON_AUTHORING_PLAN_2026-10.md`](../../meta/LESSON_AUTHORING_PLAN_2026-10.md)).
-It runs when the operator says "import the lesson drafts", and each evening
-on the Routine once phase 2 sets one up. Phase 1 imports **edits** to
-existing lessons; a `NEW` draft waits for phase 2.
+It runs when the operator says "import the lesson drafts", and each
+evening at about 6 p.m. Eastern on the "Lesson draft import" Routine (a
+fresh session; with nothing to import, it ends without a message). It
+imports **edits** to existing lessons (phase 1) and **new lessons**
+(phase 2, section 3).
 
 The draft's states are in `65_LessonDrafts.js`'s header: `DRAFT`,
 `SUBMITTED`, `PROPOSED`, `RETURNED`, `ACCEPTED`, `MERGED`, `WITHDRAWN`.
@@ -82,7 +84,39 @@ its `review_note` first: it is what the teacher wants changed):
 The teacher who submitted the draft then accepts the proposal or returns
 it, on the dashboard.
 
-## 3. After the teacher's review
+## 3. New lessons (a `NEW` draft)
+
+Steps 1 and 2 hold, with these differences:
+
+- The draft's `lesson_key` is the new lesson's key: `8175-L<NN>` (the next
+  free number) or `8177-<slug>` (from the title, as the builder makes it).
+- `apply` makes the lesson files, only if they don't exist yet:
+  `lessons/8175/L<NN>.md`, or `lessons/8177/<slug>.md` and
+  `lessons/8177/prompts/<slug>.md` (with `status: approved`, since the PR is
+  merged only after the submitter accepts). It writes the tiers. A re-run
+  leaves the files as edited.
+- A task left to a **brief** is written as `[TO DRAFT FROM THE BRIEF] <brief>`:
+  replace it with the drafted student task, in the course's usual shape
+  (compare a lesson of the same course), and say in the proposal note that
+  the task is drafted.
+- The built task always carries its assignment title (and, for 8175, the
+  Description with the objective), so `promptText` reads `built, differs
+  from the draft`: that is expected; the proposal shows the full task.
+- An 8175 lesson's vocabulary sits under Key Vocabulary in the teacher
+  instructions; the builder doesn't read it.
+- Write the lesson's teacher-facing parts (an 8177 plan's Instructional
+  Sequence, an 8175 lesson's Hook and grading tip) from the draft's
+  activity, in the course's usual shape, and name them in the proposal note.
+- After the teacher **accepts**, before the merge: create the lesson's Drive
+  doc in the course's Drive folder (`lessons/README.md` has both folder IDs)
+  from the lesson file, with the Google Drive connector, and change the
+  file's first line to `<!-- source: Google Doc <id> -->` with its title on
+  the next, as the other lessons have. Push that to the PR.
+- After the merge and push: the operator runs `seedLessonSchedule()` in the
+  Central Ledger (it adds the new lesson's `LessonSchedule` row), then gives
+  it a date in 📅 Lessons, and re-imports that course's Canvas cartridge.
+
+## 4. After the teacher's review
 
 - `RETURNED`: back to step 2 on the same branch, answering the note.
 - `ACCEPTED`: mark the PR ready for review and tell the operator it is
