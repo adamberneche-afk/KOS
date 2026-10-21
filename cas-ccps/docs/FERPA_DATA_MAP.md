@@ -23,7 +23,12 @@ Schedule GS-21 (public school divisions)**; every period is a Script
 Property, so a confirmed period is set without a code change. The schedule
 lives in `scripts/57_RetentionSchedule.js`, and `checkRetentionSchedule()`
 reports, per record, how many rows are past their period and how many of
-those are archived (counts only; it changes nothing).
+those are archived (counts only; it changes nothing; a missing date
+column is named). `previewRetentionDisposition()` is the dry run of a
+disposition: per record, the rows it would remove (past, and archived
+where the tab has an archive marker) and the Docs that go with them, and
+the rows it can't decide yet. It deletes nothing; the disposition itself
+is a separate step run only on the operator's approval, and is not built.
 
 Periods are counted in whole school years after the year ends, with the
 same August start the dashboards use (`_retentionCutoff_()` in
