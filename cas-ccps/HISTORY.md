@@ -3891,3 +3891,18 @@ kind of failure every morning.
   first queueing, so a retry never keeps mail text longer.
   `checkFamilyMailFlowBinding()` counts only READY rows as waiting.
 - **Tests:** `family-mail-sentinel.test.js`, each guard checked by removing it.
+
+## Studio's text timestamps, 2026-10-21
+
+- **Why:** the 10-21 overnight email counted 25 anchor fallbacks "in the
+  last 24 hours"; 14 were from the night before. Studio writes
+  `WarmUpFlowReturn`'s Timestamp ("Now.") as text, `October 20, 2026 at
+  3:29 AM EDT`, which `new Date()` can't parse, and 34c counted an
+  unreadable time as recent. So a Studio row never left the window, and
+  the 14-day prune (41) never deleted one.
+- **Fix:** `sheetTimestampMs_` (00) reads a Date, an ISO string or Studio's
+  text (EDT/EST and the other US zones; minutes optional). 34c's 24-hour
+  window and stall check and 41's prune use it.
+- **The night's real count:** 11 (4 over 900 characters, 3 using the
+  prompt's own wording, 4 failing the plausibility check).
+- **Tests:** `overnight-health.test.js`.

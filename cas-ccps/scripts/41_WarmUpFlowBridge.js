@@ -1533,7 +1533,7 @@ function wfbPruneHarvested_(sheet) {
   let pruned = 0;
   for (let i = data.length - 1; i >= 0; i--) {
     if (String(data[i][WFB_RET.HARVEST_STATUS] || "").trim() !== "HARVESTED") continue;
-    const at = new Date(data[i][WFB_RET.TIMESTAMP]).getTime();
+    const at = sheetTimestampMs_(data[i][WFB_RET.TIMESTAMP]); // Studio's rows are text (00)
     if (!at || at > cutoff) continue;
     sheet.deleteRow(i + 2);
     pruned++;
