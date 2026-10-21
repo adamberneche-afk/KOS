@@ -426,6 +426,16 @@ teacher edits: one row per lesson, a start date, and a lesson runs until the
 next one starts. `resolveUnitForCourseDate_()` (31) uses it before the pacing
 guide, so the lesson builder, warm-ups and assignment seeder follow it.
 
+The Teacher Dashboard's **📅 Lessons** panel (07, since 2026-10-21) shows the
+tab by course: each lesson's status (current, upcoming, taught, no date),
+warnings (a date that can't be read, a lesson starting before one listed
+above it, two lessons on one date), and what the last nightly rollout (58)
+did for it, from `RolloutLog`. A start date changes there one at a time and
+is written to the tab as text. A change the rollout acts on soon (within
+its 2-day lead, in the past, or on the current lesson) asks to be
+confirmed first, and a date changed in the sheet since the panel loaded is
+never overwritten. Typing in the tab still works.
+
 | Function | What it does |
 |---|---|
 | `seedLessonSchedule()` (55) | Adds a row per lesson not yet in the tab, in teaching order, with its Config ID (`CAS-8175-L06`). Never changes a date you typed. |

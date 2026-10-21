@@ -3968,3 +3968,27 @@ kind of failure every morning.
   report. The plan (D3) expects nothing past its period this year, so
   likely zeros; a count above 0 is worth a look.
 - **Tests:** `retention-schedule.test.js`.
+
+## The Teacher Dashboard's lesson schedule panel, 2026-10-21
+
+- **Why:** the operator asked for lesson scheduling on the Teacher
+  Dashboard, shipped this week (the operator's call, over the plan's
+  small-changes rule for grading week), with the rollout's status per
+  lesson. Editing and writing lessons come later.
+- **What (07):** a **📅 Lessons** button and panel. `getLessonSchedule()`
+  reads the LessonSchedule tab (55) by course in teaching order, with each
+  lesson's status, warnings and the last RolloutLog run's steps and
+  problems for it, and each course's rollout mode in that run (the flag
+  may be a Central Ledger Script Property this project can't see).
+  `setLessonStartDate()` sets or clears one date, under the script lock,
+  as text; it refuses a value changed in the sheet since the panel loaded,
+  and without confirmation returns a question for a change within
+  `TD_ROLLOUT_LEAD_DAYS` (58's 2), in the past, or on the current lesson.
+  Teacher-only (`_isAuthorizedTeacher_`); no student data.
+- **Found on the way: the 💬 Feedback and ✉ Parent Reports panels never
+  opened.** Both added the class `show` to their backdrop, and the CSS opens
+  a backdrop on `.open` (since #186 for Feedback). All three panels now use
+  `open`; a test pins it. Seen by rendering the page with Playwright.
+- **Live:** a Teacher Dashboard push and a **new web-app version** of 07.
+- **Tests:** `teacher-dashboard-lesson-schedule.test.js`; the inline-JS
+  parse test covers the panel's client code.
