@@ -1,9 +1,8 @@
 # Lesson editing and writing from the Teacher Dashboard: plan
 
-**Status:** draft for the operator, 2026-10-21. Nothing in it is built.
-The decisions it needs are at the end. [`PLAN_2026-10.md`](./PLAN_2026-10.md)
-stays the order of work; this plan joins it when the operator picks a
-phase and a date.
+**Status:** decided 2026-10-21 (the operator's answers are under "Decided"
+below); nothing built yet. Phases 1 and 2 are due by **Fri Oct 30**, in
+[`PLAN_2026-10.md`](./PLAN_2026-10.md)'s week of Oct 26.
 
 **Asked for (2026-10-21):** from the Teacher Dashboard, (1) see each lesson's
 rollout status, (2) edit an existing lesson, (3) write a new one. Item 1
@@ -125,15 +124,70 @@ Two places the drafting could run:
 **Recommendation:** start in the import session. Add a dashboard button
 later if drafting turns out to be the slow part.
 
+## Decided (the operator, 2026-10-21)
+
+1. **Option A**, with the Drive doc linked for reading the whole lesson.
+2. **Editable fields, cross-referenced to the VDOE curriculum.** The form
+   edits the student prompt, warm-up anchor, vocabulary, objective,
+   competencies and tiers, and shows each competency with its VDOE task
+   (`CompetencyRegistry.csv`: the task text and duty area) and what
+   demonstrates it (`CompetencyRubrics.json`: the demonstration standard,
+   indicators, skill questions and SOL correlations). Picking competencies
+   is from that list only. The form and the import both check what the
+   builder checks (every tier names a competency the lesson lists, and every
+   listed competency has a tier) and show the course's coverage
+   (`COMPETENCY_TRACKER.md`'s view: which tasks the course still lacks).
+3. **A routine and a manual trigger.** The import runs on a schedule (a
+   Routine, an agent session each evening) and on demand (a **Submit for
+   import** button that also asks for one now, or the operator saying so).
+   **A draft is imported only when every required field is filled**: the
+   form checks on Submit, and the import checks again and leaves an
+   incomplete draft at `SUBMITTED` with the missing fields named.
+4. **Due by next week's deadline, Oct 30.** Phases 1 and 2 go in the week
+   of Oct 26, beside the dashboard walk-through and grading; the plan's
+   "changes stay small" for that week gives way to this, by the operator's
+   call.
+5. **Drafted before import; edits proposed during it; accepted by the
+   submitter.** The teacher writes the draft on the dashboard. The import
+   proposes edits and formatting (the repo's lesson shape, wording against
+   the VDOE task, a missing piece drafted from the brief) and writes them
+   back as a proposal beside the draft. The teacher who submitted it reviews
+   the proposal on the dashboard and **accepts** it or sends it back with a
+   note; only an accepted draft goes on to its PR's merge and the push.
+
+### The draft's life, with these decisions
+
+| Status | Set by | Means |
+|---|---|---|
+| `DRAFT` | The teacher, saving | Work in progress; never imported |
+| `SUBMITTED` | **Submit for import**, only with every required field | Waiting for the next import (the evening Routine or a manual one) |
+| `PROPOSED` | The import | The repo files are written on a branch and the checks ran; the proposed edits are shown beside the draft, with the PR link; nothing is merged |
+| `RETURNED` | The submitter | Sent back with a note; the next import answers it |
+| `ACCEPTED` | The submitter | The proposal is the lesson; the PR is ready for the operator's "merge" |
+| `MERGED #<PR>` | The import, after the merge | Live after the next push (and `refreshAssignments()` for a lesson already LIVE; `seedLessonSchedule` and a date for a new one) |
+
+**Required fields.** An edit: the lesson, at least one changed field and a
+reason. A new lesson: course, title, objective, activity, the student task
+(or a brief for it), the warm-up anchor, vocabulary, the competencies, and a
+tier for each. An 8177 lesson's prompt is `status: approved <date>` once
+the submitter accepts.
+
 ## Phases
 
-| Phase | What | Needs |
+| Phase | What | Due |
 |---|---|---|
 | 0 ✓ | Rollout status per lesson | Shipped, #243 |
-| 1 | Edit existing lessons, option A: the form, `LessonDrafts`, the import procedure; the panel shows each draft's status | Decisions 1–4 |
-| 2 | New lesson form and drafting in the import session; `seedLessonSchedule` listed in the PR | Phase 1 |
-| 3 (if wanted) | Draft-it-for-me on the dashboard | Phase 2 used for a while |
+| 1 | Edit existing lessons: the form with the VDOE cross-reference, `LessonDrafts`, Submit with the required-field check, the proposal view with Accept / Return, the import procedure (manual first) | Wed Oct 28 |
+| 2 | New lessons through the same form and states; the evening Routine for the import | Fri Oct 30 |
+| 3 (if wanted) | Draft-it-for-me on the dashboard | After Oct 30 |
 
+Build order inside phase 1: the `LessonDrafts` tab and its server functions
+with tests; the form; the VDOE lookup;
+the proposal view; then the import, written as a procedure plus a script for
+the mechanical part (draft fields into repo files, then the builders). The
+VDOE lookup needs no new data: the Central Ledger's `CompetencyRegistry` and
+`CompetencyRubrics` tabs hold both files, and 32's `_loadAllRubrics_`
+already reads the second from the Teacher Dashboard project.
 ## What to keep from today's rules
 
 - Teacher-only (`_isAuthorizedTeacher_`); lessons are teacher-level data,
@@ -146,17 +200,3 @@ later if drafting turns out to be the slow part.
   dashboard counts as the teacher's approval of the text they wrote, not of
   text the import drafted.
 - The Drive doc stays in step with the repo (the import updates it).
-
-## Decisions for the operator
-
-1. **Option A, B or C** (recommended: A, with B's link).
-2. **Which fields are editable in phase 1:** the student prompt, warm-up
-   anchor, vocabulary, objective and tiers are the useful ones; milestones
-   and the definition of done are generated, so they change through the
-   prompt and tiers.
-3. **Who runs the import, and how often:** an agent session on request
-   (recommended), or a scheduled one each evening.
-4. **Timing:** after Oct 30 (recommended; the plan's grading week), or
-   phase 1 now.
-5. **Where new lessons are drafted:** the import session (recommended) or
-   the dashboard.
