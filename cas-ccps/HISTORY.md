@@ -3866,3 +3866,14 @@ kind of failure every morning.
   Student Dashboard only when the row is blank, errored or missing; never
   the Admin Recovery Panel reset (feedback twice).
 - **Tests:** `evaluation-next-steps.test.js`.
+## The artifact sync finds the matrix like the seeder, 2026-10-20
+
+- **Found (10-20):** `syncArtifactCompetencies` (33) read only the
+  `TEACHER_MATRIX_SS_ID` Script Property and stopped with `NO_MATRIX_ID`
+  without it; the seeder (53) finds the matrix through `MatrixRegistry`.
+  The operator set the property that day, so this guards a future install.
+- **Now:** `s33TeacherMatrixSs_` (33) takes the `MatrixRegistry` row first
+  (`_asTeacherMatrix_`, 53), the property as the fallback. The overnight
+  report's `NO_MATRIX_ID` hint (34c) names both.
+- **Tests:** `artifact-sync-cron-health.test.js`; `warmup-shape-gate.test.js`
+  now loads 53 (gas-lint's sandbox-scope check).
