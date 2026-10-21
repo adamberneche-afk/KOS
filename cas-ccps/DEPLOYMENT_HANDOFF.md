@@ -2,7 +2,7 @@
 
 > ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-19)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-20.md`](../meta/HANDOFF_2026-10-20.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-21.md`](../meta/HANDOFF_2026-10-21.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
@@ -41,14 +41,18 @@
 >   2026-10-19: period 3 split into `3-Odd`/`3-Even`, period 1 `DAILY_HALF`,
 >   and the Ledger cycle installed (`installLedgerCycle()` took over 9
 >   triggers; `registerDeliveredWarmUps` had never had a Ledger trigger).
-> - **Merged 2026-10-19 evening, not yet pushed:** #209 (term rollover by
->   date; push before Oct 30), #213–#218 (assignment criteria and
->   competency tiers; then step 16a, `refreshAssignments()`, and re-import
->   both Canvas cartridges), #214 (bug 4: Flow 2's starter fires only on an
->   edit, so READY is now written as one).
-> - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4,
->   four timeouts on 10-19; the Studio starter is being checked). The
->   order is in `meta/HANDOFF_2026-10-20.md`.
+> - **2026-10-20: pushed** #209 (term rollover), #213–#218 (assignment
+>   criteria and competency tiers; `refreshAssignments()` run), #214 (bug 4:
+>   READY written as an edit), #220 and #222 (Flow 4 scoring and its own
+>   plausibility check), #223 (the artifact sync's assignment hop).
+> - **Merged 2026-10-20/21, not yet pushed:** #228 (`PeriodOverride`, step
+>   17f), #229 (the wizard's triggers belong in the Ledger, step 17g), #230
+>   (assignment evidence gaps; refresh and re-import the cartridges), #231
+>   and #235 (the family signal's two tiers; a dropped Flow run written
+>   again), #233 (the timeout email's steps), #234 (the artifact sync finds
+>   the matrix through `MatrixRegistry`).
+> - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4).
+>   The order is in `meta/HANDOFF_2026-10-21.md`.
 > - **After any manifest scope change** to a web app that runs as the deploying
 >   admin (both dashboards): run any function from that project's editor and
 >   approve every prompt, then test one submit, before a class depends on it.
