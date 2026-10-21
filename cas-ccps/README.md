@@ -448,7 +448,9 @@ required field filled (the student task, warm-up anchor, objective, a reason,
 a change) and tiers that pass the builder's rules. An import (an agent
 session) writes the repo files on a branch and a proposal back; the teacher
 who submitted the draft accepts it or returns it with a note, and only an
-accepted draft is merged and pushed.
+accepted draft is merged and pushed. The import's steps are in
+`docs/LESSON_IMPORT_PROCEDURE.md`; its mechanical half is
+`tools/cas-ccps/import-lesson-drafts.js`.
 
 | Function | What it does |
 |---|---|

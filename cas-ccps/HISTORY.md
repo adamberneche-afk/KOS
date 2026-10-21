@@ -4015,3 +4015,20 @@ kind of failure every morning.
   drafts strip. Buttons use data attributes and one listener, so no lesson
   text is spliced into an inline handler. Rendered in headless Chromium.
 - **Tests:** `lesson-drafts.test.js`.
+- **Phase 1b, the import (same PR):** `tools/cas-ccps/import-lesson-drafts.js`
+  (`check`, `apply`, `verify`) runs 65's own `_ldCheck_` on the exported
+  rows, writes the fields with one home (tiers with the reason added to
+  "why"; a competency line added or removed; the warm-up anchor; an 8177
+  lesson's vocabulary and objective), rebuilds 55b and the cartridges, and
+  reports each field against the draft; the student task, an 8175
+  objective, 8175 vocabulary and a shared competency line are named for the
+  session. Compared against the draft's own `original_json`, so a re-run
+  after hand edits changes nothing. `docs/LESSON_IMPORT_PROCEDURE.md` is the
+  session's steps: read the tab, check, apply, propose, verify, the checks,
+  a draft PR, the proposal written back; after the review, the Drive doc
+  and `MERGED`.
+- **Found on the way:** the builder puts a checklist from the tiers into the
+  student task ("What your work needs to show"), so a tier edit changed the
+  stored task. 65 shows and compares the task without it (`_ldTaskText_`;
+  all 67 lessons checked).
+- **Tests:** `tests/tools/import-lesson-drafts.test.js`.
