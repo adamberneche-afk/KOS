@@ -17,7 +17,7 @@ const FILES = (projectMap.projects || projectMap)['cas-ccps:central-ledger'].fil
 
 function load() {
   const env = loadGasFiles(FILES, [
-    '_retentionCutoff_', 'checkRetentionSchedule'
+    '_retentionCutoff_', 'checkRetentionSchedule', 'previewRetentionDisposition'
   ]);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -107,4 +107,48 @@ test('checkRetentionSchedule: counts past, archived and undated rows, and change
   assert.deepEqual([r.Flow4Input.rows, r.Flow4Input.past, r.Flow4Input.pastArchived], [2, 1, 0]);
   assert.equal(r.Ledger.found, false, 'a missing tab is reported, not counted as zero');
   assert.deepEqual(scr.getDataRange().getValues(), before, 'nothing written');
+});
+
+// 2026-10-21: a renamed date header made every row "no readable date"
+// without saying why. The check names the header it looked for.
+test('a tab whose date header is missing is named, and its rows are not counted as undated', () => {
+  const { exported, ss } = load();
+  const f4 = ss.insertSheet('Flow4Input');
+  f4.appendRow(['When', 'QueueID', 'Status']);
+  f4.appendRow([new Date(2010, 0, 15), 'q1', 'CONSUMED']);
+  f4.appendRow([new Date(), 'q2', 'READY']);
+  const r = byLabel(exported.checkRetentionSchedule());
+  assert.equal(r.Flow4Input.missingDateColumn, 'Timestamp');
+  assert.deepEqual([r.Flow4Input.rows, r.Flow4Input.past, r.Flow4Input.undated], [2, 0, 0]);
+  const p = byLabel(exported.previewRetentionDisposition().results);
+  assert.equal(p.Flow4Input.disposable, 0, 'undecided, never disposable');
+});
+
+test('previewRetentionDisposition: removable rows and their Docs, rows waiting on the archive pass, and nothing deleted', () => {
+  const { exported, ss } = load();
+  const old = new Date(2010, 0, 15);
+  const recent = new Date();
+  const scr = ss.insertSheet('SCRDecisionLog');
+  scr.appendRow(['decision_id', 'student_email', 'competency_id', 'suggested', 'final', 'type',
+    'decided_at', 'decided_by', 'evidence', 'archive_status']);
+  scr.appendRow(['d1', 's1@x.net', 'C1', 2, 2, 'CONFIRMED', old, 't', '', 'ARCHIVED — pending disposition review']);
+  scr.appendRow(['d2', 's2@x.net', 'C1', 2, 3, 'OVERRIDDEN', old, 't', '', '']);
+  scr.appendRow(['d3', 's3@x.net', 'C1', 2, 2, 'CONFIRMED', recent, 't', '', '']);
+
+  // StudentDocRegistry: no archive marker, so past is removable; its Doc goes with it.
+  const sdr = ss.insertSheet('StudentDocRegistry');
+  sdr.appendRow(['student_email', 'student_name', 'doc_id', 'doc_url', 'created_at']);
+  sdr.appendRow(['s1@x.net', 'S One', 'DOC-OLD', 'u', old]);
+  sdr.appendRow(['s2@x.net', 'S Two', '', 'u', old]);
+  sdr.appendRow(['s3@x.net', 'S Three', 'DOC-NEW', 'u', recent]);
+  sdr.appendRow(['s4@x.net', 'S Four', 'DOC-X', 'u', 'not a date']);
+
+  const before = [scr, sdr].map((t) => t.getDataRange().getValues().map((r) => r.slice()));
+  const out = exported.previewRetentionDisposition();
+  const r = byLabel(out.results);
+  assert.deepEqual([r.SCRDecisionLog.disposable, r.SCRDecisionLog.awaitingArchive], [1, 1]);
+  assert.deepEqual([r.StudentDocRegistry.disposable, r.StudentDocRegistry.linkedDocs,
+    r.StudentDocRegistry.undated], [2, 1, 1]);
+  assert.deepEqual(out.totals, { disposable: 3, linkedDocs: 1, awaitingArchive: 1, undecided: 1 });
+  assert.deepEqual([scr, sdr].map((t) => t.getDataRange().getValues()), before, 'nothing written');
 });
