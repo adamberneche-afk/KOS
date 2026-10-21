@@ -20,6 +20,9 @@
 // students get). Its tiers are read back from the milestones: the first
 // milestone competency is the primary, the rest the secondary, and
 // tertiaryCompetencyIds the tertiary (true of all 67 lessons, 2026-10-21).
+// The student task is shown without the checklist the builder adds from the
+// tiers ("What your work needs to show:", before "Submission:"), so a tier
+// edit doesn't read as a task edit; the builder writes it back.
 // The VDOE cross-reference is the CompetencyRubrics tab (32's
 // _loadAllRubrics_): each task's text, duty area, demonstration standard,
 // indicators and skill questions.
@@ -261,12 +264,18 @@ function _ldLesson_(key) {
   return {
     key: a.key, course: String(a.code), title: a.unitName, source: a.source, approved: !!a.approved,
     current: {
-      promptText: String(a.promptText || ""), warmupAnchor: String(a.warmupAnchor || ""),
+      promptText: _ldTaskText_(a.promptText), warmupAnchor: String(a.warmupAnchor || ""),
       objective: String(a.objective || ""), vocabulary: String(a.vocabulary || ""),
       competencyIds: (a.competencyIds || []).slice(),
       primary: tiered[0] || "", secondary: tiered.slice(1), tertiary: (a.tertiaryCompetencyIds || []).slice(),
     },
   };
+}
+
+/** A built student task without the generated tier checklist. */
+function _ldTaskText_(promptText) {
+  return String(promptText || "")
+    .replace(/\n\nWhat your work needs to show:\n\n[\s\S]*?(?=\n\nSubmission:\s*\n|$)/, "").trim();
 }
 
 /** The course's VDOE tasks from the CompetencyRubrics tab, in task order. */

@@ -195,3 +195,16 @@ test('with no CompetencyRubrics tab the editor still works, and says the VDOE li
     fields: editedFields(env, { vocabulary: 'brand' }) }).draft;
   assert.deepEqual(d.issues, [], 'course prefix is still checked; the VDOE list is skipped');
 });
+
+// The builder writes a checklist from the tiers into the student task. The
+// editor shows the task without it, so a tier edit isn't a task edit.
+test('the student task is shown without the generated tier checklist', () => {
+  const env = setUp();
+  const c = env.exported.getLessonEditor('8175-L04').lesson.current;
+  assert.doesNotMatch(c.promptText, /What your work needs to show|You can also show/);
+  assert.match(c.promptText, /\n\nSubmission:\n\nSubmit your responses/);
+  const d = env.exported.saveLessonDraft({ lessonKey: '8175-L04', reason: 'Tiers only',
+    fields: editedFields(env, { secondary: ['8175-105'], tertiary: ['8175-57', '8175-86', '8175-2'] }) }).draft;
+  assert.deepEqual(d.issues, []);
+  assert.equal(d.fields.promptText, c.promptText);
+});
