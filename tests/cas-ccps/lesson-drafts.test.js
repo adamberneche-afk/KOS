@@ -17,7 +17,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '07_TeacherDashboard.js', '32_CompetencyRubricImporter.js',
   '55b_LessonAssignmentData.js', '65_LessonDrafts.js'].map(S);
-const EXPOSE = ['getLessonEditor', 'listLessonDrafts', 'saveLessonDraft', 'submitLessonDraft',
+const EXPOSE = ['getLessonEditor', 'getNewLessonEditor', 'listLessonDrafts', 'saveLessonDraft', 'submitLessonDraft',
   'reviewLessonProposal', 'withdrawLessonDraft', 'LD_HEADERS', 'LD'];
 const TEACHER = 'teacher@example.com'; // the sandbox's default Session user
 
@@ -207,4 +207,57 @@ test('the student task is shown without the generated tier checklist', () => {
     fields: editedFields(env, { secondary: ['8175-105'], tertiary: ['8175-57', '8175-86', '8175-2'] }) }).draft;
   assert.deepEqual(d.issues, []);
   assert.equal(d.fields.promptText, c.promptText);
+});
+
+// Phase 2: new lessons. A NEW draft starts empty, takes the next free 8175
+// lesson number or an 8177 key from its title, and needs every field.
+const NEW_FIELDS = {
+  title: 'Sponsorship Pitch', objective: 'Build a sponsorship pitch for a local event.',
+  activity: 'Pairs research a local business and draft a pitch.', promptText: 'Write a one-page sponsorship pitch.',
+  warmupAnchor: 'What would make a business pay to put its name on a stadium?', vocabulary: 'sponsorship, activation',
+  competencyIds: ['8175-56', '8175-105', '8175-2'], primary: '8175-56', secondary: ['8175-105'], tertiary: ['8175-2'],
+};
+
+test('a new 8175 lesson takes the next free number, and is submitted only when complete', () => {
+  const env = setUp();
+  const ed = env.exported.getNewLessonEditor('8175');
+  assert.equal(ed.isNew, true);
+  assert.equal(ed.lesson.current.title, '');
+  assert.ok(ed.catalog.length > 0);
+  assert.equal(env.exported.getNewLessonEditor('9999').success, false);
+
+  const empty = env.exported.saveLessonDraft({ kind: 'NEW', course: '8175', fields: {} }).draft;
+  assert.equal(empty.kind, 'NEW');
+  assert.equal(empty.lessonKey, '8175-L37', 'L36 is the last 8175 lesson');
+  const all = empty.issues.join('\n');
+  ['Title', 'Objective', 'Activity', 'Warm-up anchor', 'Vocabulary'].forEach((f) => assert.match(all, new RegExp(f + ' is empty')));
+  assert.match(all, /student task, or a brief/);
+  assert.equal(env.exported.submitLessonDraft(empty.draftId).success, false);
+
+  const full = env.exported.saveLessonDraft({ kind: 'NEW', course: '8175', draftId: empty.draftId, fields: NEW_FIELDS }).draft;
+  assert.equal(full.draftId, empty.draftId);
+  assert.equal(full.lessonKey, '8175-L37', 'the number is kept');
+  assert.deepEqual(full.issues, []);
+  // A second new lesson takes the next number.
+  assert.equal(env.exported.saveLessonDraft({ kind: 'NEW', course: '8175', fields: {} }).draft.lessonKey, '8175-L38');
+  assert.equal(env.exported.submitLessonDraft(full.draftId).draft.status, 'SUBMITTED');
+  const listed = env.exported.listLessonDrafts().drafts.find((d) => d.draftId === full.draftId);
+  assert.equal(listed.lesson, 'Sponsorship Pitch (new)');
+  const reopened = env.exported.getLessonEditor(full.draftId);
+  assert.equal(reopened.isNew, true);
+  assert.equal(reopened.draft.status, 'SUBMITTED');
+});
+
+test('a new 8177 lesson is keyed by its title; a brief can stand in for the task; a taken key is named', () => {
+  const env = setUp();
+  const f = Object.assign({}, NEW_FIELDS, { title: 'The Front Lines', promptText: '', brief: 'Role-play a sale.',
+    competencyIds: [], primary: '', secondary: [], tertiary: [] });
+  const d = env.exported.saveLessonDraft({ kind: 'NEW', course: '8177', fields: f }).draft;
+  assert.equal(d.lessonKey, '8177-the-front-lines');
+  assert.ok(d.issues.some((x) => /already exists; give the new one another title/.test(x)));
+  assert.ok(!d.issues.some((x) => /student task, or a brief/.test(x)), 'a brief stands in for the task');
+  const renamed = env.exported.saveLessonDraft({ kind: 'NEW', course: '8177', draftId: d.draftId,
+    fields: Object.assign({}, f, { title: 'Ticket Tiers & Pricing' }) }).draft;
+  assert.equal(renamed.lessonKey, '8177-ticket-tiers-pricing');
+  assert.ok(!renamed.issues.some((x) => /already exists/.test(x)));
 });
