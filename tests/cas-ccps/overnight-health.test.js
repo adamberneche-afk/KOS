@@ -89,6 +89,36 @@ test('each problem gets its own line, and there is no all-clear', () => {
   assert.doesNotMatch(p, /Q\d|s@ccpsnet|Sam/, 'counts only');
 });
 
+// Studio writes WarmUpFlowReturn's Timestamp as text (found 2026-10-21):
+// new Date() can't read it, so every fallback since the tab began counted as
+// "the last 24 hours" (25 in the email, 11 from the night before).
+test('a Studio return row\'s text timestamp ages out of the 24 hours', () => {
+  const env = load();
+  const ret = env.ss.insertSheet('WarmUpFlowReturn');
+  ret.appendRow(['Timestamp', 'Flow', 'QueueID', 'RawOutput', 'HarvestStatus', 'Attempts', 'Error']);
+  // NOW is 2026-10-19 06:00 EDT.
+  ret.appendRow(['October 19, 2026 at 3:29 AM EDT', 3, 'Q1', 'text', 'HARVESTED', 1, 'ANCHOR_FALLBACK: is a list']);
+  ret.appendRow(['October 19, 2026 at 4 AM EDT', 3, 'Q2', 'text', 'HARVESTED', 1, 'ANCHOR_FALLBACK: is a list']);
+  ret.appendRow(['October 18, 2026 at 3:29 AM EDT', 3, 'Q3', 'text', 'HARVESTED', 1, 'ANCHOR_FALLBACK: is a list']);
+  ret.appendRow(['October 17, 2026 at 3:29 AM EDT', 3, 'Q4', 'text', 'FAILED', 3, 'old']);
+  const p = env.exported.overnightHealth_(NOW).problems.join('\n');
+  assert.match(p, /teacher's own question in the last 24 hours: 2 /);
+  assert.doesNotMatch(p, /returns that failed/);
+});
+
+test('sheetTimestampMs_ reads a Date, an ISO string and Studio\'s text; anything else is NaN', () => {
+  const ts = loadGasFiles([S('00_SharedConfig.js')], ['sheetTimestampMs_']).exported.sheetTimestampMs_;
+  assert.equal(ts(new Date('2026-10-20T07:29:00Z')), Date.parse('2026-10-20T07:29:00Z'));
+  assert.equal(ts('2026-10-20T07:29:00Z'), Date.parse('2026-10-20T07:29:00Z'));
+  assert.equal(ts('October 20, 2026 at 3:29 AM EDT'), Date.parse('2026-10-20T07:29:00Z'));
+  assert.equal(ts('October 20, 2026 at 4 AM EDT'), Date.parse('2026-10-20T08:00:00Z'));
+  assert.equal(ts('November 2, 2026 at 12:05 PM EST'), Date.parse('2026-11-02T17:05:00Z'));
+  assert.equal(ts('December 31, 2026 at 12:30 AM EST'), Date.parse('2026-12-31T05:30:00Z'));
+  assert.ok(Number.isNaN(ts('')));
+  assert.ok(Number.isNaN(ts('October 20, 2026 at 3:29 AM XYZ')));
+  assert.ok(Number.isNaN(ts('Smarch 20, 2026 at 3:29 AM EDT')));
+});
+
 test('a quiet weekend morning is still all clear; Module 2 off says so', () => {
   const env = load();
   assert.match(env.exported.overnightHealth_(NOW).allClear, /No warm-ups today\. None built for tomorrow\./);
