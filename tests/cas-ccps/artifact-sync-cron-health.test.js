@@ -37,6 +37,7 @@ function loadCentralLedger() {
     path.join(SCRIPTS, '23_StudentProfileManager.js'),
     path.join(SCRIPTS, '25_WarmUpWriter.js'),
     path.join(SCRIPTS, '33_ArtifactCompetencyBridge.js'),
+    path.join(SCRIPTS, '53_AssignmentSeeder.js'),
     path.join(SCRIPTS, '54_StudentAssignments.js'),
   ], ['runWarmUpEvaluation', 'syncArtifactCompetencies']);
 }
@@ -200,6 +201,30 @@ test('syncArtifactCompetencies still reads an older matrix\'s competency_ids col
   exported.syncArtifactCompetencies();
   assert.deepEqual(JSON.parse(fx.sp.getRange(2, 6).getValue()), ['8175-1', '8175-20', '8175-21']);
   assert.equal(fx.props.getProperty('M2_STAGE1B_STATUS'), 'OK_1');
+});
+
+test('syncArtifactCompetencies finds the matrix through MatrixRegistry, with no TEACHER_MATRIX_SS_ID', () => {
+  const { exported, sandbox } = loadCentralLedger();
+  const fx = syncFixture(sandbox);
+  const matrixId = fx.props.getProperty('TEACHER_MATRIX_SS_ID');
+  fx.props.deleteProperty('TEACHER_MATRIX_SS_ID');
+  const reg = fx.ss.insertSheet('MatrixRegistry');
+  reg.appendRow(['TeacherName', 'TeacherEmail', 'MatrixSsId', 'Created']);
+  reg.appendRow(['Mr. Owner', 'teacher@ccpsnet.net', matrixId, new Date()]);
+  exported.syncArtifactCompetencies();
+  assert.equal(fx.props.getProperty('M2_STAGE1B_STATUS'), 'OK_2');
+  assert.deepEqual(JSON.parse(fx.sp.getRange(2, 6).getValue()), ['8175-1', '8175-112', '8175-20', '8175-21']);
+});
+
+test('syncArtifactCompetencies uses TEACHER_MATRIX_SS_ID when MatrixRegistry has no row, and stops without either', () => {
+  const { exported, sandbox } = loadCentralLedger();
+  const fx = syncFixture(sandbox);
+  fx.ss.insertSheet('MatrixRegistry').appendRow(['TeacherName', 'TeacherEmail', 'MatrixSsId', 'Created']);
+  exported.syncArtifactCompetencies();
+  assert.equal(fx.props.getProperty('M2_STAGE1B_STATUS'), 'OK_2', 'the property is the fallback');
+  fx.props.deleteProperty('TEACHER_MATRIX_SS_ID');
+  exported.syncArtifactCompetencies();
+  assert.equal(fx.props.getProperty('M2_STAGE1B_STATUS'), 'NO_MATRIX_ID');
 });
 
 // ── Script 28: no triggers in its own project (cas-ccps:unified-manual) ──
