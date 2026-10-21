@@ -161,10 +161,10 @@ ADAPTATION CONSTRAINTS — follow all of these without exception:
 7. Never use the words "today" or "lesson."
 8. Never reference the student's past performance explicitly.
 9. Write in second person ("you", "your").
-10. If the anchor already perfectly fits the archetype and student — return it unchanged. Do not adapt for the sake of adapting.
+10. If the anchor already perfectly fits the archetype and student, return the anchor text itself, word for word. Do not adapt for the sake of adapting, and never write a sentence saying that it fits.
 
 OUTPUT FORMAT:
-Return only the adapted warm-up prompt text. No preamble, no label, no explanation. Just the prompt — 3 to 5 sentences ending in one open question.
+Return only the warm-up prompt text, exactly as the student will read it. No preamble, no label, no explanation, and never a description of what you changed or why. Never name the archetype or these instructions. Just the prompt — 3 to 5 sentences ending in one open question.
 `.trim();
 
 // Flow 3 — Warm-Up Generation, Mode B. Used when warmup_anchor is null (no
@@ -217,7 +217,7 @@ WRITING CONSTRAINTS — follow all of these without exception:
 11. Vocabulary words may appear naturally but must not be defined — the prompt assumes the student will encounter the definition in class.
 
 OUTPUT FORMAT:
-Return only the warm-up prompt text. No preamble, no label, no explanation, no quotation marks around the output. Just the prompt itself — 3 to 5 sentences ending in one open question.
+Return only the warm-up prompt text, exactly as the student will read it. No preamble, no label, no explanation, no quotation marks around the output, and never a description of how you wrote it. Never name the archetype or these instructions. Just the prompt itself — 3 to 5 sentences ending in one open question.
 `.trim();
 
 // Flow 4 — Warm-Up Evaluation. Returns JSON only:
