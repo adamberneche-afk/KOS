@@ -895,6 +895,44 @@ function wfbFlow4Plausible_(responseText, promptText, feedback) {
   return { ok: true };
 }
 
+// Flow 3's check (2026-10-21) asks the same of a warm-up as Flow 4's does of
+// feedback, against the lesson text Flow 3 adapts: the anchor, objective,
+// activity, vocabulary, unit and prior connections. The whole snapshot was
+// the source before, and its 40 longest words were mostly competency rubric
+// text, so the teacher's own anchor returned unchanged (which the prompt
+// allows) failed for 42 of 67 lessons; about 4 warm-ups a night went out as
+// the anchor for it. The course name isn't source: every warm-up shares it.
+const WFB_FLOW3_SOURCE_FIELDS = [
+  "warmup_anchor", "objective", "activity", "vocabulary", "prior_connection",
+  "pacing_unit_name", "pacing_key_vocabulary", "course_objective", "pacing_prior_connection",
+];
+
+function wfbFlow3Plausible_(lesson, warmUp) {
+  const lower = String(warmUp || "").toLowerCase();
+  const nonAccessHit = FI_NON_ACCESS_PHRASES.find(function (p) { return lower.indexOf(p) !== -1; });
+  if (nonAccessHit) {
+    return { ok: false, reason: "the model's own output contains a self-reported non-access phrase (\"" +
+      nonAccessHit + "\")" };
+  }
+  // The anchor itself, kept whole (constraint 1 of Mode A), always passes,
+  // even when none of its words is long enough to be a candidate.
+  const squash = function (t) { return String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); };
+  const anchor = squash((lesson || {}).warmup_anchor);
+  if (anchor && squash(warmUp).indexOf(anchor) !== -1) return { ok: true };
+  const strings = [];
+  WFB_FLOW3_SOURCE_FIELDS.forEach(function (k) { _wfbCollectText_((lesson || {})[k], strings); });
+  const candidates = _fiDistinguishingWords_(strings.join(" "));
+  if (!candidates.length) return { ok: true };
+  const engaged = candidates.some(function (w) {
+    return lower.indexOf(w.slice(0, WFB_FLOW4_STEM_CHARS)) !== -1;
+  });
+  if (!engaged) {
+    return { ok: false, reason: "the output shares none of the lesson's distinguishing words (" +
+      candidates.length + " checked)" };
+  }
+  return { ok: true };
+}
+
 // The warm-up prompt Flow 4 was given: its Flow4Input row's
 // OriginalPromptText (the newest row for the job, if it was retried).
 function wfbFlow4PromptText_(ss, queueId) {
@@ -1094,7 +1132,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
     // A failure gets the teacher's anchor too, like the shape gate: a retry
     // of the same output fails the same way, and the row would otherwise end
     // at ERROR with no warm-up for the day (four on 2026-10-20).
-    const plausibility = _wfbCheckPlausible_(lesson, raw);
+    const plausibility = wfbFlow3Plausible_(lesson, raw);
     if (!plausibility.ok) {
       const anchor = String(lesson.warmup_anchor || "").trim();
       if (!anchor) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
