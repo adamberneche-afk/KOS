@@ -3906,3 +3906,22 @@ kind of failure every morning.
 - **The night's real count:** 11 (4 over 900 characters, 3 using the
   prompt's own wording, 4 failing the plausibility check).
 - **Tests:** `overnight-health.test.js`.
+
+## Flow 3's own plausibility check, 2026-10-21
+
+- **Why:** about 4 warm-ups a night went out as the teacher's anchor with
+  `SUSPECT_FABRICATION: the output shares none of this row's distinguishing
+  content`. The check (`_wfbCheckPlausible_`) took the 40 longest words of
+  the whole lesson snapshot, mostly competency rubric text, and wanted one
+  verbatim. Run against the 67 lessons offline, the teacher's own anchor
+  returned unchanged (which Mode A's constraint 10 allows) failed for 42.
+- **Fix:** `wfbFlow3Plausible_` (41), Flow 3 only: the source is the lesson
+  text Flow 3 adapts (anchor, objective, activity, vocabulary, unit, prior
+  connections; not the course name, which every warm-up shares); a word
+  matches on its first 5 letters, as Flow 4's (#222); a warm-up that keeps
+  the anchor whole passes. The reason gives a count. Flow 5 keeps the old
+  check.
+- **Offline, the 67 lessons:** every anchor returned unchanged passes; 9 of
+  201 off-topic warm-ups pass on a common word ("describe", "friends").
+  Accepted: it is a backstop, and the shape gate still runs first.
+- **Tests:** `warmup-flow-pacing.test.js`.
