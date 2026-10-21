@@ -1,8 +1,8 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-19)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-21)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-21.md`](../meta/HANDOFF_2026-10-21.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-22.md`](../meta/HANDOFF_2026-10-22.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
@@ -45,14 +45,21 @@
 >   criteria and competency tiers; `refreshAssignments()` run), #214 (bug 4:
 >   READY written as an edit), #220 and #222 (Flow 4 scoring and its own
 >   plausibility check), #223 (the artifact sync's assignment hop).
-> - **Merged 2026-10-20/21, not yet pushed:** #228 (`PeriodOverride`, step
->   17f), #229 (the wizard's triggers belong in the Ledger, step 17g), #230
->   (assignment evidence gaps; refresh and re-import the cartridges), #231
->   and #235 (the family signal's two tiers; a dropped Flow run written
->   again), #233 (the timeout email's steps), #234 (the artifact sync finds
->   the matrix through `MatrixRegistry`).
+> - **2026-10-21: pushed** #228 (`PeriodOverride`, step 17f, seeded), #229
+>   (the wizard's triggers belong in the Ledger, step 17g), #230 (assignment
+>   evidence gaps; `refreshAssignments()` run; the Drive lesson docs match;
+>   the cartridges not yet re-imported), #231 and #235 (the family signal's
+>   two tiers; a dropped Flow run written again), #233 (the timeout email's
+>   steps), #234 (the artifact sync finds the matrix through
+>   `MatrixRegistry`).
+> - **Merged 2026-10-21, not yet pushed (Central Ledger):** #237 (Studio's
+>   text timestamps read: the overnight email's 24 hours, the return tab's
+>   prune), #238 (Flow 3's own plausibility check, the echoed prompt named,
+>   a question required, the prompt's constraint 10). Flow 3's Ask Gemini
+>   step no longer lists the Central Ledger as a source (removed by hand,
+>   2026-10-21).
 > - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4).
->   The order is in `meta/HANDOFF_2026-10-21.md`.
+>   The order is in `meta/HANDOFF_2026-10-22.md`.
 > - **After any manifest scope change** to a web app that runs as the deploying
 >   admin (both dashboards): run any function from that project's editor and
 >   approve every prompt, then test one submit, before a class depends on it.
