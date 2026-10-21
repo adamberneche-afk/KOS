@@ -19,6 +19,15 @@ why this repo exists at all.
   PRs, the CAS design threads, the second-user and KOS Lite concepts
   (deferred until after Oct 30), and repo chores. Nothing in it is
   committed work; `PLAN_2026-10.md` wins. Reviewed at each sprint boundary.
+- **`DASHBOARD_WALKTHROUGH_2026-10-26.md`** — the week of Oct 26's
+  dashboard walk-through, prepared from the code on 2026-10-21: a checklist
+  for the Student and Teacher Dashboards by student situation, and the
+  findings read from the code, ranked.
+- **`LESSON_AUTHORING_PLAN_2026-10.md`** — a draft plan (2026-10-21) for
+  editing and writing lessons from the Teacher Dashboard: how a lesson
+  reaches students today, three options (drafts imported through the repo,
+  Drive edits imported, live overrides), phases and the decisions they
+  need. Nothing built.
 - **`CAS_BUG_HANDOFF_2026-10-16.md`** — the first live student submissions
   through the Student Dashboard and Flow 2: the four bugs (two fixed in
   #175), the lesson-scheduling steps, the checklist for the next live
