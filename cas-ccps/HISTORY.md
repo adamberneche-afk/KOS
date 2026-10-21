@@ -3949,3 +3949,22 @@ kind of failure every morning.
   question unless it keeps the anchor whole (`wfbKeepsAnchor_`; 5 of the 67
   anchors have no "?"). Every anchor returned unchanged passes.
 - **Tests:** `warmup-shape-gate.test.js`, `warmup-flow-pacing.test.js`.
+
+## Retention: a missing date column named, and the disposition dry run, 2026-10-21
+
+- **Why:** two backlog items. A renamed date header made
+  `checkRetentionSchedule()` count every row as "no readable date" without
+  saying why; and D3's disposition needed a dry run before any deletion.
+- **Missing column (57):** when a tab has no date header (or the column
+  is past its last), the check says `date column "<name>" not found, so
+  none checked`; its rows are neither undated nor past.
+- **`previewRetentionDisposition()` (57), read-only:** per record, the rows
+  a disposition would remove (past, and archived where the tab has an
+  archive marker), the Docs on those rows (the Ledger's workspace Doc,
+  StudentDocRegistry's, a warm-up Doc: new `docCol` entries), the rows
+  past but not yet archived, and the rows it can't decide (no readable
+  date, no date column). Counts only; deletes nothing. The deletion step
+  is not built: D3, after Oct 30, on the operator's approval of this
+  report. The plan (D3) expects nothing past its period this year, so
+  likely zeros; a count above 0 is worth a look.
+- **Tests:** `retention-schedule.test.js`.
