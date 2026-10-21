@@ -35,7 +35,25 @@ operator. This file holds what comes after them.
 - **Flow 3 output quality.** About 1 in 5 of Studio's warm-ups is turned
   down by the shape gate (over 900 characters; the prompt's own wording,
   "adaptation constraints", "teacher's anchor prompt"). Tighten the Flow 3
-  prompt (40) and watch the nightly fallback count. With D6.
+  prompt (40) and watch the nightly fallback count. With D6. **Built
+  2026-10-21 (#238):** prompt tightened, the echoed prompt named, a
+  question required, Flow 3's own plausibility check; the Central Ledger
+  removed from Flow 3's Gemini sources. Watch: the fallback line in each
+  overnight email (11 on 10-21) and any "is Flow 3's own prompt" reason.
+- **The bridge paragraph (Flow 5): keep, enrich, merge or drop** (2026-10-21,
+  from the operator's questions). Flow 5 writes 2–3 sentences above a new
+  warm-up linking the student's last answer to the lesson. Today it adds
+  little: only students with an earlier answer get one (3 answered on
+  10-19), and lesson-seeded warm-ups leave its prior-lesson connection
+  blank, so it can only echo the last answer. Options: give it the
+  `StudentProfiles` digest Flow 3 already gets (competencies covered,
+  evaluation strengths and gaps), not the portfolio, since assignment
+  writing stays in the student's doc (`cas-ccps/docs/FERPA_DATA_MAP.md`);
+  have Flow 3 write the lead-in and retire Flow 5; write a one-line prior
+  connection per lesson; or drop it. **Watch until then:** read a few
+  bridges on the Student Dashboard's Warm-ups card each week (no student
+  text in notes). Decide in the Oct 26 dashboard walk-through; a portfolio
+  read goes with D5 in November.
 
 ### Offered, small, ready to build
 
