@@ -18,7 +18,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
 const EXPOSE = ['buildWarmUpFlowInputs', 'wfbRetryStaleInputs_', 'wfbConsumeInputRow_',
   'WFB_INPUTS_PER_RUN', 'WFB_FLOW3_HEADERS', 'WQ25_COL_COUNT', 'harvestWarmUpFlowReturns',
   'previewFailedWarmUpRepair', 'repairFailedWarmUps', 'previewFailedWarmUpScoring',
-  'repairFailedWarmUpScoring', 'WFB_FLOW4_HEADERS'];
+  'repairFailedWarmUpScoring', 'WFB_FLOW4_HEADERS', 'wfbFlow3Plausible_'];
 
 function setup() {
   const { exported, sandbox } = loadGasFiles(FILES, EXPOSE);
@@ -191,7 +191,7 @@ test('a Flow 3 return that fails the plausibility check delivers the teacher\'s 
   textBoxJob(fx, 'Q-FAB', '2099-01-05', 'PENDING');
   const ret = fx.ss.insertSheet('WarmUpFlowReturn');
   ret.appendRow(RET_HEADERS);
-  ret.appendRow([new Date(), 3, 'Q-FAB', 'Write about your favorite hobby and why you enjoy it.', '', 0, '']);
+  ret.appendRow([new Date(), 3, 'Q-FAB', 'What is your favorite hobby, and why do you enjoy it?', '', 0, '']);
 
   const r = fx.exported.harvestWarmUpFlowReturns();
   assert.equal(r.applied, 1, JSON.stringify(r));
@@ -200,6 +200,42 @@ test('a Flow 3 return that fails the plausibility check delivers the teacher\'s 
   const after = ret.getRange(2, 1, 1, 7).getValues()[0];
   assert.equal(after[4], 'HARVESTED');
   assert.match(after[6], /^ANCHOR_FALLBACK: SUSPECT_FABRICATION: /);
+});
+
+// 2026-10-21: about 4 warm-ups a night went out as the anchor because the
+// check compared them with the whole snapshot, whose longest words were
+// competency rubric text. Flow 3's check reads the lesson text it adapts.
+test('a Flow 3 warm-up that paraphrases the lesson is delivered as written', () => {
+  const fx = setup();
+  textBoxJob(fx, 'Q-OK', '2099-01-05', 'PENDING');
+  const ret = fx.ss.insertSheet('WarmUpFlowReturn');
+  ret.appendRow(RET_HEADERS);
+  const warmUp = 'A stadium sells naming rights, tickets and parking. Which of those sponsors would you call first?';
+  ret.appendRow([new Date(), 3, 'Q-OK', warmUp, '', 0, '']);
+  assert.equal(fx.exported.harvestWarmUpFlowReturns().applied, 1);
+  assert.equal(fx.ss.getSheetByName('WarmUpTextBox').getRange(2, 4).getValue(), warmUp);
+  assert.equal(ret.getRange(2, 7).getValue(), '', 'no fallback noted');
+});
+
+test('wfbFlow3Plausible_: every lesson\'s anchor returned unchanged passes; an off-topic warm-up does not', () => {
+  const { exported } = setup();
+  const la = loadGasFiles([path.join(CC, '55b_LessonAssignmentData.js')], ['LESSON_ASSIGNMENTS'])
+    .exported.LESSON_ASSIGNMENTS;
+  const lessons = Object.keys(la).map((k) => la[k]).filter((a) => a.warmupAnchor);
+  assert.ok(lessons.length >= 60);
+  lessons.forEach((a) => {
+    const lesson = { warmup_anchor: a.warmupAnchor, objective: a.objective, vocabulary: a.vocabulary,
+      pacing_unit_name: a.unitName, course_name: a.courseName,
+      competency_rubrics: [{ skill_questions: ['Differentiate characteristics of entrepreneurship'] }] };
+    assert.ok(exported.wfbFlow3Plausible_(lesson, a.warmupAnchor).ok, a.key);
+  });
+  const lesson = { warmup_anchor: ANCHOR, course_objective: 'Explain sponsorship revenue streams',
+    course_name: 'Sports Entertainment and Event Marketing' };
+  const off = exported.wfbFlow3Plausible_(lesson, 'Which sports entertainment event would you market?');
+  assert.equal(off.ok, false, 'the course name alone is not engagement');
+  assert.match(off.reason, /none of the lesson's distinguishing words \(\d+ checked\)$/);
+  assert.match(exported.wfbFlow3Plausible_(lesson, 'Revenue? I am unable to access the lesson.').reason,
+    /non-access phrase/);
 });
 
 test('repairFailedWarmUps delivers the anchor for a job failed as fabricated, not a past day\'s or another failure', () => {
