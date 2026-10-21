@@ -83,7 +83,7 @@ in neither list (it still counts toward the reply times).
 | | Sees |
 |---|---|
 | Gmail, the sentinel sheet, Gemini (all inside the school's Google account) | The mail, as today. Gemini gets it with rostered names, the sender's name, addresses, phone numbers and long numbers redacted. |
-| `FamilyMailInput` tab | The redacted text, only until Gemini answers (or 48 hours), then deleted. |
+| `FamilyMailInput` tab | The redacted text, only until Gemini answers (or 48 hours from when it was first queued), then deleted. A row Studio drops is written again after 30 minutes, at most twice; the old row is marked `RETRIED`. |
 | `FamilyMailLog` tab | Message and thread IDs, course, period, category, urgency, the one-line ask, whether it needs a reply. No names, no text. Kept 30 days. |
 | `KOS_FAMILY_SIGNAL` doc, and so Claude | Course, period, source, category, ask, hours waiting, repeat-contact count. Sensitive categories (accommodation, health, discipline, family situation, safety) show none of those, only "sensitive" and the wait. |
 | The KOS Project's own mail search | Nothing labeled `KOS/Family`, nothing from `student.ccpsnet.net` or Canvas. |

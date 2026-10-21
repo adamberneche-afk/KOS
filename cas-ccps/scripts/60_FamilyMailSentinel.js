@@ -77,6 +77,11 @@
 //               message, already joined here).
 //   Add row to FamilyMailReturn: Returned_At = now, Item_ID =
 //               @trigger.Item_ID, Primary_JSON = Gemini's answer.
+//   Studio sometimes drops a run ("Couldn't access the spreadsheet",
+//   2026-10-19). A READY row still unanswered after
+//   FMS_INPUT_RETRY_AFTER_MS is written again as a new row and the old one
+//   marked RETRIED, at most FMS_MAX_INPUT_RETRIES times, as warm-ups do (41,
+//   #193): _fmsRetryStaleInputs_().
 //
 // CHECKS (rule 9): runFamilySentinelPreflight(), runFamilyMailCanary(),
 // checkFamilyMailFlowBinding(), checkFamilyMailFlowLiveness();
@@ -124,6 +129,7 @@ const FMS_STATUS = {
   UNCLASSIFIED: "UNCLASSIFIED",
   FIXTURE: "FIXTURE",
   SAFETY_FIXTURE: "SAFETY_FIXTURE",
+  RETRIED: "RETRIED", // a FamilyMailInput row written again (Studio dropped its run)
 };
 
 const FMS_LABEL = "KOS/Family";
@@ -152,7 +158,10 @@ const FMS_SCAN_OVERLAP_HOURS = 1;   // each scan re-reads the last hour, for mai
 const FMS_SCAN_MAX = 100;
 const FMS_BODY_MAX_CHARS = 3000;
 const FMS_ASK_MAX_CHARS = 140;
-const FMS_INPUT_MAX_AGE_HOURS = 48;
+const FMS_INPUT_MAX_AGE_HOURS = 48;   // counted from the first time a message was queued
+const FMS_INPUT_RETRY_AFTER_MS = 30 * 60 * 1000;
+const FMS_MAX_INPUT_RETRIES = 2;
+const FMS_RETRIES_PER_RUN = 5;        // few rows at once: many at once is what makes Studio drop runs
 const FMS_SIGNAL_DAYS = 7;
 const FMS_LOG_KEEP_DAYS = 30;
 const FMS_TRIGGER_HANDLER = "runFamilySentinel";
@@ -240,6 +249,7 @@ function runFamilySentinel() {
     // Texted before the harvest waits on Gemini: the tripwire alone is enough.
     try { result.alertAfterScan = sendFamilySafetyAlerts(); } catch (e) { result.alertAfterScan = { error: String(e) }; }
     try { result.harvest = harvestFamilyMailReturns(); } catch (e) { result.harvest = { error: String(e) }; }
+    try { result.retried = _fmsRetryStaleInputs_(); } catch (e) { result.retried = { error: String(e) }; }
     try { result.alertAfterHarvest = sendFamilySafetyAlerts(); } catch (e) { result.alertAfterHarvest = { error: String(e) }; }
     try { result.signal = writeFamilySignal(); } catch (e) { result.signal = { error: String(e) }; }
   } finally {
@@ -722,6 +732,45 @@ function harvestFamilyMailReturns() {
     .filter(function (i) { return i !== -1; }));
   _fmsPruneLog_(logSheet);
   return out;
+}
+
+// READY input rows still unanswered after FMS_INPUT_RETRY_AFTER_MS: Studio
+// dropped the run. Each is copied to a new row (Queued_At now, READY; an
+// appended row starts the Flow) and the old row marked RETRIED, at most
+// FMS_MAX_INPUT_RETRIES times per message and FMS_RETRIES_PER_RUN per call.
+// Fixture and canary rows are left alone. Answered rows are already gone
+// (the harvest deletes every row with the item's ID, copies included), and
+// the 48-hour deletion counts from the first row, so a retry never keeps
+// mail text longer. Returns the number written again.
+function _fmsRetryStaleInputs_(now) {
+  now = now ? new Date(now) : new Date();
+  const sheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_INPUT_TAB, FMS_INPUT_HEADERS);
+  const rows = _fmsRows_(sheet);
+  const tries = {};
+  rows.forEach(function (r) {
+    if (String(r[FMS_IN.STATUS]) === FMS_STATUS.RETRIED) {
+      const id = String(r[FMS_IN.ITEM_ID]);
+      tries[id] = (tries[id] || 0) + 1;
+    }
+  });
+  let retried = 0;
+  for (let i = 0; i < rows.length && retried < FMS_RETRIES_PER_RUN; i++) {
+    const r = rows[i];
+    const id = String(r[FMS_IN.ITEM_ID] || "");
+    if (!id || id.indexOf(FMS_FIXTURE_PREFIX) === 0 || id.indexOf(FMS_CANARY_PREFIX) === 0) continue;
+    if (String(r[FMS_IN.STATUS]) !== FMS_STATUS.READY) continue;
+    const at = new Date(r[FMS_IN.QUEUED_AT]).getTime();
+    if (!isNaN(at) && now.getTime() - at < FMS_INPUT_RETRY_AFTER_MS) continue;
+    if ((tries[id] || 0) >= FMS_MAX_INPUT_RETRIES) continue;
+    const copy = r.slice(0, FMS_INPUT_HEADERS.length);
+    copy[FMS_IN.QUEUED_AT] = now;
+    sheet.getRange(i + 2, FMS_IN.STATUS + 1).setValue(FMS_STATUS.RETRIED);
+    sheet.appendRow(copy);
+    tries[id] = (tries[id] || 0) + 1;
+    retried++;
+  }
+  if (retried) Logger.log("Family Mail Sentinel: wrote " + retried + " input row(s) again that the Flow had not answered.");
+  return retried;
 }
 
 // Parses and validates Gemini's answer. Returns { ok, value } or { ok:false, error }.
@@ -1455,7 +1504,8 @@ function checkFamilyMailFlowBinding() {
   const ok = !unmatched && !empty;
   Logger.log(ok ? "Binding: no sign of a wrong column" :
     "Binding: " + unmatched + " answer(s) match no Item_ID, " + empty + " with an empty Primary_JSON");
-  return { ok: ok, unmatched: unmatched, emptyAnswers: empty, waitingInputs: inputs.length, binding: binding };
+  const waiting = inputs.filter(function (r) { return String(r[FMS_IN.STATUS]) === FMS_STATUS.READY; }).length;
+  return { ok: ok, unmatched: unmatched, emptyAnswers: empty, waitingInputs: waiting, binding: binding };
 }
 
 // Has the Flow ever answered? Counts real classifications and fixture

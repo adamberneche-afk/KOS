@@ -3877,3 +3877,17 @@ kind of failure every morning.
   report's `NO_MATRIX_ID` hint (34c) names both.
 - **Tests:** `artifact-sync-cron-health.test.js`; `warmup-shape-gate.test.js`
   now loads 53 (gas-lint's sandbox-scope check).
+
+## Family Mail Sentinel: a run Studio drops is written again, 2026-10-21
+
+- **Found (10-19):** one Flow run failed with "Couldn't access the
+  spreadsheet", and the sentinel (60) never wrote that input again, so the
+  message waited 48 hours and showed as unclassified.
+- **Now:** `_fmsRetryStaleInputs_`, after each harvest: a READY input with
+  no answer after 30 minutes is copied to a new row (an appended row starts
+  the Flow) and the old row marked `RETRIED`, at most twice per message and
+  five per run, as warm-ups do (41, #193). Fixture and canary rows are left
+  alone. An answer deletes every copy; the 48-hour deletion counts from the
+  first queueing, so a retry never keeps mail text longer.
+  `checkFamilyMailFlowBinding()` counts only READY rows as waiting.
+- **Tests:** `family-mail-sentinel.test.js`, each guard checked by removing it.
