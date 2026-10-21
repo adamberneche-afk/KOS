@@ -73,6 +73,11 @@ operator. This file holds what comes after them.
 
 ### Design threads (suggestions; nothing built)
 
+- **Lesson editing and writing from the Teacher Dashboard** (2026-10-21,
+  the operator's ask). Rollout status shipped (#243); editing and new
+  lessons wait on the decisions in
+  [`LESSON_AUTHORING_PLAN_2026-10.md`](./LESSON_AUTHORING_PLAN_2026-10.md).
+
 - **Thread A: cross-course mastery map, remediation and anchors.** Start
   with the competency graph file and a teacher-approval tool.
   [`CAS_DESIGN_THREADS_2026-10-16.md`](./CAS_DESIGN_THREADS_2026-10-16.md) §1.
