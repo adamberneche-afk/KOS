@@ -33,6 +33,12 @@
 // listed competency has a tier, and each is a task of the lesson's course.
 // The import checks the same again.
 //
+// NEW LESSONS (phase 2, 2026-10-21): a NEW draft starts empty, for one
+// course. It needs a title, objective, activity, the student task or a brief
+// for it, a warm-up anchor, vocabulary, and competencies with a tier each; it
+// takes the next free 8175 lesson number, or an 8177 key made from its title
+// as the builder makes one. The import writes the lesson files.
+//
 // ACCESS: teacher-only (_isAuthorizedTeacher_, 07); a proposal is reviewed
 // only by the account that submitted the draft. FERPA: lesson text is
 // teacher-level; a field that holds an email address is refused, and the
@@ -47,13 +53,18 @@ const LD_HEADERS = [
 const LD = {};
 LD_HEADERS.forEach(function (h, i) { LD[h.toUpperCase()] = i; });
 
-const LD_TEXT_FIELDS = ["promptText", "warmupAnchor", "objective", "vocabulary"];
+const LD_TEXT_FIELDS = ["promptText", "warmupAnchor", "objective", "vocabulary", "title", "activity", "brief"];
+const LD_NEW_REQUIRED = ["title", "objective", "activity", "warmupAnchor", "vocabulary"];
+const LD_COURSES = ["8175", "8177"];
 const LD_REQUIRED_TEXT = ["promptText", "warmupAnchor", "objective"];
 const LD_FIELD_LABELS = {
   promptText: "Student task", warmupAnchor: "Warm-up anchor", objective: "Objective", vocabulary: "Vocabulary",
   competencyIds: "Competencies", primary: "Primary competency", secondary: "Secondary competencies",
-  tertiary: "Tertiary competencies",
+  tertiary: "Tertiary competencies", title: "Title", activity: "Activity (what students do in class)",
+  brief: "Brief for the student task (if you leave the task for the import to draft)",
 };
+const LD_EDIT_FIELDS = ["promptText", "warmupAnchor", "objective", "vocabulary", "competencyIds", "primary",
+  "secondary", "tertiary"];
 const LD_MAX_TEXT = 20000;
 const LD_EDITABLE = ["DRAFT", "RETURNED"];
 const LD_EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
@@ -64,7 +75,13 @@ const LD_EMAIL_RE = /[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/;
 function getLessonEditor(lessonKey) {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
-  const key = String(lessonKey || "").trim();
+  let key = String(lessonKey || "").trim();
+  if (/^LD-/.test(key)) { // a draft's id: a NEW draft opens as itself, an edit as its lesson
+    const d = _ldFind_(cfg, key);
+    if (!d) return { success: false, error: "No draft " + key + "." };
+    if (d.kind === "NEW") return _ldNewEditor_(d.course, d);
+    key = d.lessonKey;
+  }
   const lesson = _ldLesson_(key);
   if (!lesson) return { success: false, error: "No lesson " + key + " in this deployment's lesson data." };
   const catalog = _ldCatalog_(lesson.course);
@@ -82,6 +99,25 @@ function getLessonEditor(lessonKey) {
   };
 }
 
+/** An empty editor for a new lesson in one course. */
+function getNewLessonEditor(course) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  if (LD_COURSES.indexOf(String(course)) === -1) return { success: false, error: "No course " + course + "." };
+  return _ldNewEditor_(String(course), null);
+}
+
+function _ldNewEditor_(course, d) {
+  const catalog = _ldCatalog_(course);
+  return {
+    success: true, isNew: true,
+    lesson: { key: d ? d.lessonKey : "", course: course, title: d && d.fields.title ? d.fields.title : "New " + course + " lesson",
+      source: "", current: _ldEmpty_() },
+    catalog: catalog.list, catalogAvailable: catalog.available, uncovered: _ldUncovered_(course, catalog.list),
+    draft: d ? _ldView_(d, catalog) : null, labels: LD_FIELD_LABELS,
+  };
+}
+
 /** Every draft not withdrawn, newest first, as summaries for the panel. */
 function listLessonDrafts() {
   const cfg = getConfig_();
@@ -90,7 +126,8 @@ function listLessonDrafts() {
     .sort(function (a, b) { return a.updatedAt < b.updatedAt ? 1 : a.updatedAt > b.updatedAt ? -1 : 0; })
     .map(function (d) {
       const l = _ldLesson_(d.lessonKey);
-      return { draftId: d.draftId, lessonKey: d.lessonKey, lesson: l ? l.title : d.lessonKey, course: d.course,
+      const name = d.kind === "NEW" ? (d.fields.title || "Untitled") + " (new)" : (l ? l.title : d.lessonKey);
+      return { draftId: d.draftId, kind: d.kind, lessonKey: d.lessonKey, lesson: name, course: d.course,
         status: d.status, updatedAt: d.updatedAt, prUrl: d.prUrl, missing: d.missing };
     });
   return { success: true, drafts: drafts };
@@ -107,6 +144,7 @@ function saveLessonDraft(payload) {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
   const p = payload || {};
+  if (p.kind === "NEW") return _ldSaveNew_(cfg, p);
   const lesson = _ldLesson_(String(p.lessonKey || "").trim());
   if (!lesson) return { success: false, error: "No lesson " + p.lessonKey + " in this deployment's lesson data." };
   const fields = _ldCleanFields_(p.fields || {});
@@ -145,6 +183,67 @@ function saveLessonDraft(payload) {
   });
 }
 
+// A NEW draft is found by its id (an 8177 key follows the title, so it can
+// change between saves).
+function _ldSaveNew_(cfg, p) {
+  const course = String(p.course || "").trim();
+  if (LD_COURSES.indexOf(course) === -1) return { success: false, error: "No course " + course + "." };
+  const fields = _ldCleanFields_(p.fields || {});
+  const email = _ldEmailIn_(fields, p.reason);
+  if (email) return { success: false, error: email };
+  return _ldWithLock_(function () {
+    const sheet = _ldSheet_(cfg);
+    const rows = _ldRows_(cfg);
+    const now = new Date();
+    let d = null;
+    if (p.draftId) {
+      d = rows.filter(function (r) { return r.draftId === String(p.draftId).trim(); })[0] || null;
+      if (!d || d.kind !== "NEW") return { success: false, error: "No new-lesson draft " + p.draftId + "." };
+      if (LD_EDITABLE.indexOf(d.status) === -1) {
+        return { success: false, error: "This draft is " + d.status + "; it can't change until the import and your review are done." };
+      }
+    }
+    const others = rows.filter(function (r) { return !d || r.draftId !== d.draftId; });
+    const key = _ldNewKey_(course, fields.title, d ? d.lessonKey : "", others);
+    const values = {
+      kind: "NEW", course: course, lesson_key: key, status: "DRAFT",
+      submitted_by: Session.getActiveUser().getEmail(), updated_at: now,
+      fields_json: JSON.stringify(fields), original_json: "{}",
+      reason: sheetSafeText_(String(p.reason || "").trim()),
+      missing: _ldCheckNew_(course, key, fields, _ldCatalog_(course), others).issues.join("; "),
+    };
+    let id = d ? d.draftId : "";
+    if (!d) {
+      id = "LD-" + Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd-HHmmss") + "-" + Math.floor(Math.random() * 1e4);
+      values.draft_id = id;
+      values.created_at = now;
+      sheet.appendRow(LD_HEADERS.map(function (h) { return values[h] !== undefined ? values[h] : ""; }));
+    } else {
+      _ldWrite_(sheet, d.sheetRow, values);
+    }
+    SpreadsheetApp.flush();
+    return { success: true, draft: _ldView_(_ldFind_(cfg, id), _ldCatalog_(course)) };
+  });
+}
+
+// 8175: the next lesson number no lesson or open draft has. 8177: the
+// builder's slug of the title (lessons/8177/<slug>.md).
+function _ldNewKey_(course, title, keep, otherDrafts) {
+  const open = otherDrafts.filter(function (r) { return ["MERGED", "WITHDRAWN"].indexOf(r.status) === -1; })
+    .map(function (r) { return r.lessonKey; });
+  if (course === "8175") {
+    if (keep) return keep;
+    let n = 0;
+    Object.keys(LESSON_ASSIGNMENTS).concat(open).forEach(function (k) {
+      const m = /^8175-L(\d+)$/.exec(k);
+      if (m) n = Math.max(n, Number(m[1]));
+    });
+    return "8175-L" + String(n + 1).padStart(2, "0");
+  }
+  const slug = String(title || "").toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return "8177-" + (slug || "untitled");
+}
+
 /** SUBMITTED, but only with every required field and tiers that pass; otherwise the list of what to fix. */
 function submitLessonDraft(draftId) {
   const cfg = getConfig_();
@@ -153,9 +252,8 @@ function submitLessonDraft(draftId) {
     const d = _ldFind_(cfg, draftId);
     if (!d) return { success: false, error: "No draft " + draftId + "." };
     if (d.status !== "DRAFT") return { success: false, error: "Only a saved draft can be submitted (this one is " + d.status + ")." };
-    const lesson = _ldLesson_(d.lessonKey);
     const catalog = _ldCatalog_(d.course);
-    const check = _ldCheck_(lesson, d.fields, d.reason, catalog);
+    const check = _ldCheckDraft_(d, catalog, _ldRows_(cfg));
     const sheet = _ldSheet_(cfg);
     _ldWrite_(sheet, d.sheetRow, { missing: check.issues.join("; "), updated_at: new Date() });
     if (check.issues.length) {
@@ -217,18 +315,56 @@ function _ldCheck_(lesson, fields, reason, catalog) {
     if (!String(f[k] || "").trim()) issues.push(LD_FIELD_LABELS[k] + " is empty.");
   });
   if (!String(reason || "").trim()) issues.push("Say why the lesson is changing (Reason).");
-  const changed = Object.keys(LD_FIELD_LABELS).filter(function (k) {
+  const changed = LD_EDIT_FIELDS.filter(function (k) {
     return JSON.stringify(_ldNorm_(f[k])) !== JSON.stringify(_ldNorm_(lesson.current[k]));
   });
   if (!changed.length) issues.push("Nothing is changed from the current lesson.");
 
+  return { issues: issues.concat(_ldTierIssues_(lesson.course, f, catalog))
+    .filter(function (x, i, a) { return a.indexOf(x) === i; }) };
+}
+
+/** Required fields for a NEW draft, its key, and the same competency and tier rules. */
+function _ldCheckNew_(course, key, fields, catalog, otherDrafts) {
+  const f = fields || {};
+  const issues = [];
+  LD_NEW_REQUIRED.forEach(function (k) {
+    if (!String(f[k] || "").trim()) issues.push(LD_FIELD_LABELS[k].replace(/ \(.*$/, "") + " is empty.");
+  });
+  if (!String(f.promptText || "").trim() && !String(f.brief || "").trim()) {
+    issues.push("Write the student task, or a brief for the import to draft it from.");
+  }
+  if (typeof LESSON_ASSIGNMENTS !== "undefined" && LESSON_ASSIGNMENTS[key]) {
+    issues.push("A lesson " + key + " already exists; give the new one another title.");
+  }
+  if (key === "8177-untitled") issues.push("Title is empty.");
+  (otherDrafts || []).forEach(function (r) {
+    if (r.lessonKey === key && ["MERGED", "WITHDRAWN"].indexOf(r.status) === -1) {
+      issues.push("Another open draft is for " + key + "; give this one another title.");
+    }
+  });
+  return { issues: issues.concat(_ldTierIssues_(course, f, catalog)).filter(function (x, i, a) { return a.indexOf(x) === i; }) };
+}
+
+/** The check that fits the draft's kind. */
+function _ldCheckDraft_(d, catalog, rows) {
+  if (d.kind === "NEW") {
+    return _ldCheckNew_(d.course, d.lessonKey, d.fields, catalog,
+      (rows || []).filter(function (r) { return r.draftId !== d.draftId; }));
+  }
+  return _ldCheck_(_ldLesson_(d.lessonKey), d.fields, d.reason, catalog);
+}
+
+/** The builder's competency and tier rules, in the teacher's words. */
+function _ldTierIssues_(course, f, catalog) {
+  const issues = [];
   const ids = f.competencyIds || [];
   if (!ids.length) issues.push("Pick at least one competency.");
   const seen = {};
   ids.forEach(function (id) {
     if (seen[id]) issues.push(id + " is listed twice.");
     seen[id] = true;
-    if (id.indexOf(lesson.course + "-") !== 0) issues.push(id + " is not a " + lesson.course + " task.");
+    if (id.indexOf(course + "-") !== 0) issues.push(id + " is not a " + course + " task.");
     else if (catalog.available && !catalog.byId[id]) issues.push(id + " is not in the VDOE task list (CompetencyRubrics).");
   });
   const inLesson = function (id) { return ids.indexOf(id) !== -1; };
@@ -251,7 +387,7 @@ function _ldCheck_(lesson, fields, reason, catalog) {
   LD_TEXT_FIELDS.forEach(function (k) {
     if (String(f[k] || "").length > LD_MAX_TEXT) issues.push(LD_FIELD_LABELS[k] + " is longer than " + LD_MAX_TEXT + " characters.");
   });
-  return { issues: issues.filter(function (x, i, a) { return a.indexOf(x) === i; }) };
+  return issues;
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -265,11 +401,17 @@ function _ldLesson_(key) {
     key: a.key, course: String(a.code), title: a.unitName, source: a.source, approved: !!a.approved,
     current: {
       promptText: _ldTaskText_(a.promptText), warmupAnchor: String(a.warmupAnchor || ""),
-      objective: String(a.objective || ""), vocabulary: String(a.vocabulary || ""),
+      // An 8177 objective is its plan's first numbered line; shown without the number.
+      objective: String(a.objective || "").replace(/^\d+\.\s+/, ""), vocabulary: String(a.vocabulary || ""),
       competencyIds: (a.competencyIds || []).slice(),
       primary: tiered[0] || "", secondary: tiered.slice(1), tertiary: (a.tertiaryCompetencyIds || []).slice(),
     },
   };
+}
+
+function _ldEmpty_() {
+  return { promptText: "", warmupAnchor: "", objective: "", vocabulary: "", title: "", activity: "", brief: "",
+    competencyIds: [], primary: "", secondary: [], tertiary: [] };
 }
 
 /** A built student task without the generated tier checklist. */
@@ -381,10 +523,10 @@ function _ldWrite_(sheet, row, values) {
 
 function _ldView_(d, catalog) {
   if (!d) return null;
-  const lesson = _ldLesson_(d.lessonKey);
-  const issues = lesson ? _ldCheck_(lesson, d.fields, d.reason, catalog || _ldCatalog_(d.course)).issues : [];
+  const issues = d.kind === "NEW" || _ldLesson_(d.lessonKey)
+    ? _ldCheckDraft_(d, catalog || _ldCatalog_(d.course), null).issues : [];
   return {
-    draftId: d.draftId, lessonKey: d.lessonKey, course: d.course, status: d.status, fields: d.fields,
+    draftId: d.draftId, kind: d.kind, lessonKey: d.lessonKey, course: d.course, status: d.status, fields: d.fields,
     original: d.original, reason: d.reason, issues: issues, proposal: d.proposal, proposalNote: d.proposalNote,
     prUrl: d.prUrl, reviewNote: d.reviewNote, updatedAt: d.updatedAt,
     canEdit: LD_EDITABLE.indexOf(d.status) !== -1, canSubmit: d.status === "DRAFT" && !issues.length,
