@@ -61,7 +61,7 @@ The dashboard is where the teacher writes; the repo stays the one source.
    the brief leaves out (the prompt, the background, milestones through the
    builder), and the PR says which parts are the teacher's and which are
    drafted.
-4. **Merge and push** as today; the panel marks each draft `MERGED #<PR>`.
+4. **Merge and push** as today; the panel marks each draft `MERGED`, with its PR.
    A new lesson appears in 📅 Lessons after `seedLessonSchedule` (a step
    the import's PR lists).
 
@@ -164,7 +164,7 @@ later if drafting turns out to be the slow part.
 | `PROPOSED` | The import | The repo files are written on a branch and the checks ran; the proposed edits are shown beside the draft, with the PR link; nothing is merged |
 | `RETURNED` | The submitter | Sent back with a note; the next import answers it |
 | `ACCEPTED` | The submitter | The proposal is the lesson; the PR is ready for the operator's "merge" |
-| `MERGED #<PR>` | The import, after the merge | Live after the next push (and `refreshAssignments()` for a lesson already LIVE; `seedLessonSchedule` and a date for a new one) |
+| `MERGED` (the PR in `pr_url`) | The import, after the merge | Live after the next push (and `refreshAssignments()` for a lesson already LIVE; `seedLessonSchedule` and a date for a new one) |
 
 **Required fields.** An edit: the lesson, at least one changed field and a
 reason. A new lesson: course, title, objective, activity, the student task
