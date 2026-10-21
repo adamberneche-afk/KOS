@@ -3992,3 +3992,43 @@ kind of failure every morning.
 - **Live:** a Teacher Dashboard push and a **new web-app version** of 07.
 - **Tests:** `teacher-dashboard-lesson-schedule.test.js`; the inline-JS
   parse test covers the panel's client code.
+
+## Lesson editing from the Teacher Dashboard, phase 1a, 2026-10-21
+
+- **Why:** phase 1 of `meta/LESSON_AUTHORING_PLAN_2026-10.md` (the
+  operator's decisions of 2026-10-21), due Wed Oct 28. This is its
+  dashboard half; the import tool follows.
+- **65_LessonDrafts.js (Teacher Dashboard):** `getLessonEditor`,
+  `saveLessonDraft`, `submitLessonDraft`, `reviewLessonProposal`,
+  `withdrawLessonDraft`, `listLessonDrafts`, over a new `LessonDrafts` tab
+  on the Central Ledger. Statuses DRAFT, SUBMITTED, PROPOSED, RETURNED,
+  ACCEPTED, MERGED, WITHDRAWN. The editor starts from 55b (added to the
+  Teacher Dashboard project; its tiers are read back from the milestones,
+  checked against `COMPETENCY_TIERS.json` for all 67 lessons) and the
+  CompetencyRubrics tab (32). Submit needs the student task, warm-up anchor,
+  objective, a reason and a change, and tiers that pass the builder's rules;
+  only the submitting account reviews a proposal; an email address in a
+  field is refused.
+- **07:** an **Edit** button per lesson in 📅 Lessons, the editor (tiers set
+  per competency, a task added from the course's VDOE list, the tasks no
+  lesson lists), the proposal side by side with Accept and Return, and the
+  drafts strip. Buttons use data attributes and one listener, so no lesson
+  text is spliced into an inline handler. Rendered in headless Chromium.
+- **Tests:** `lesson-drafts.test.js`.
+- **Phase 1b, the import (same PR):** `tools/cas-ccps/import-lesson-drafts.js`
+  (`check`, `apply`, `verify`) runs 65's own `_ldCheck_` on the exported
+  rows, writes the fields with one home (tiers with the reason added to
+  "why"; a competency line added or removed; the warm-up anchor; an 8177
+  lesson's vocabulary and objective), rebuilds 55b and the cartridges, and
+  reports each field against the draft; the student task, an 8175
+  objective, 8175 vocabulary and a shared competency line are named for the
+  session. Compared against the draft's own `original_json`, so a re-run
+  after hand edits changes nothing. `docs/LESSON_IMPORT_PROCEDURE.md` is the
+  session's steps: read the tab, check, apply, propose, verify, the checks,
+  a draft PR, the proposal written back; after the review, the Drive doc
+  and `MERGED`.
+- **Found on the way:** the builder puts a checklist from the tiers into the
+  student task ("What your work needs to show"), so a tier edit changed the
+  stored task. 65 shows and compares the task without it (`_ldTaskText_`;
+  all 67 lessons checked).
+- **Tests:** `tests/tools/import-lesson-drafts.test.js`.

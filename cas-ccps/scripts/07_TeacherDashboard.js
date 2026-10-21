@@ -2518,6 +2518,7 @@ function renderLessonSchedule(data) {
       const id = 'ls-' + esc(l.key);
       html += '<tr style="border-top:1px solid #e8eaed;vertical-align:top">' +
         '<td style="padding:6px 4px">' + esc(l.lesson) +
+        ' <button style="font-size:12px" data-ld="edit" data-key="' + esc(l.key) + '">Edit</button>' +
         (l.warnings.length ? '<div style="color:#b06000;font-size:12px">⚠ ' + l.warnings.map(esc).join('; ') + '</div>' : '') +
         '</td>' +
         '<td style="padding:6px 4px;color:' + LS_STATUS_COLOR[l.status] + ';font-weight:600">' + esc(LS_STATUS_LABEL[l.status]) + '</td>' +
@@ -2530,7 +2531,8 @@ function renderLessonSchedule(data) {
     });
     html += '</table>';
   });
-  body.innerHTML = html;
+  body.innerHTML = '<div id="ld-drafts"></div>' + html;
+  loadLessonDrafts();
 }
 
 function _lsFind(key) {
@@ -2556,6 +2558,246 @@ function saveLessonStartDate(key, value, confirmed) {
     .withFailureHandler(_lessonScheduleFailed)
     .setLessonStartDate(key, value, l.start, !!confirmed);
 }
+
+// ── Lesson editor (65_LessonDrafts.js) ─────────────────────────────────────
+// Opened from a lesson's Edit button in the Lessons panel. Buttons carry
+// data-ld actions, handled by one listener on the modal body, so no lesson
+// key or text is ever spliced into an inline handler.
+
+let _ld = null; // { data, fields }
+
+const LD_STATUS_TEXT = {
+  DRAFT: "Draft: saved, not submitted.",
+  SUBMITTED: "Submitted. It is imported this evening, or say “import the lesson drafts” in a Claude session to do it now.",
+  PROPOSED: "The import has proposed the lesson below. Review it: accept it, or return it with a note.",
+  RETURNED: "Returned with your note. Edit and submit it again.",
+  ACCEPTED: "Accepted. It goes live after the PR is merged and pushed.",
+  MERGED: "Merged.",
+};
+
+function loadLessonDrafts() {
+  google.script.run
+    .withSuccessHandler(function(res) {
+      const box = document.getElementById("ld-drafts");
+      if (!box || !res || !res.success || !res.drafts.length) return;
+      box.innerHTML = '<div style="border:1px solid #e8eaed;border-radius:6px;padding:8px 12px;margin:8px 0;font-size:13px">' +
+        '<strong>Lesson drafts</strong>' + res.drafts.map(function(d) {
+          return '<div style="margin-top:4px">' + esc(d.lesson) + ' · <span style="font-weight:600">' + esc(d.status) + '</span>' +
+            (d.missing && d.status === "DRAFT" ? ' <span style="color:#b06000">(not ready: ' + esc(d.missing) + ')</span>' : '') +
+            (d.prUrl ? ' · <a href="' + esc(d.prUrl) + '" target="_blank" rel="noopener">PR</a>' : '') +
+            ' <button style="font-size:12px" data-ld="edit" data-key="' + esc(d.lessonKey) + '">Open</button></div>';
+        }).join('') + '</div>';
+    })
+    .listLessonDrafts();
+}
+
+function openLessonEditor(key) {
+  const body = document.getElementById("lesson-schedule-modal-body");
+  body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary)">Loading the lesson…</p>';
+  google.script.run
+    .withSuccessHandler(renderLessonEditor)
+    .withFailureHandler(_lessonScheduleFailed)
+    .getLessonEditor(key);
+}
+
+function _ldCatalogItem(id) {
+  return (_ld.data.catalog || []).filter(function(c) { return c.id === id; })[0] || null;
+}
+
+function _ldTierOf(id) {
+  const f = _ld.fields;
+  if (f.primary === id) return "primary";
+  if (f.secondary.indexOf(id) !== -1) return "secondary";
+  if (f.tertiary.indexOf(id) !== -1) return "tertiary";
+  return "";
+}
+
+function _ldSetTier(id, tier) {
+  const f = _ld.fields;
+  if (f.primary === id) f.primary = "";
+  f.secondary = f.secondary.filter(function(x) { return x !== id; });
+  f.tertiary = f.tertiary.filter(function(x) { return x !== id; });
+  if (tier === "remove") { f.competencyIds = f.competencyIds.filter(function(x) { return x !== id; }); return; }
+  if (f.competencyIds.indexOf(id) === -1) f.competencyIds.push(id);
+  if (tier === "primary") { if (f.primary) f.tertiary.push(f.primary); f.primary = id; }
+  else if (tier === "secondary") f.secondary.push(id);
+  else if (tier === "tertiary") f.tertiary.push(id);
+}
+
+function _ldReadForm() {
+  ["promptText", "warmupAnchor", "objective", "vocabulary"].forEach(function(k) {
+    const el = document.getElementById("ld-" + k);
+    if (el) _ld.fields[k] = el.value;
+  });
+  const r = document.getElementById("ld-reason");
+  if (r) _ld.reason = r.value;
+}
+
+function renderLessonEditor(data) {
+  const body = document.getElementById("lesson-schedule-modal-body");
+  if (!data || !data.success) {
+    body.innerHTML = '<p style="color:#d93025;font-size:13px">' + esc((data && data.error) || "Could not load the lesson.") + '</p>' +
+      '<button data-ld="back">← Back to the schedule</button>';
+    return;
+  }
+  const draft = data.draft;
+  _ld = { data: data, reason: draft ? draft.reason : "",
+    fields: JSON.parse(JSON.stringify(draft ? draft.fields : data.lesson.current)) };
+  ["competencyIds", "secondary", "tertiary"].forEach(function(k) { _ld.fields[k] = _ld.fields[k] || []; });
+  _ldRender();
+}
+
+function _ldRender(message) {
+  const body = document.getElementById("lesson-schedule-modal-body");
+  const data = _ld.data, draft = data.draft, f = _ld.fields, L = data.labels;
+  const editable = !draft || draft.canEdit;
+  let h = '<button data-ld="back">← Back to the schedule</button>' +
+    '<h3 style="font-size:16px;margin:12px 0 4px">' + esc(data.lesson.title) + '</h3>' +
+    '<p style="font-size:12px;color:var(--text-secondary);margin:0 0 8px">' + esc(data.lesson.course) + ' · ' +
+    esc(data.lesson.source || "") + '. Changes here are a draft: nothing reaches students until the import’s ' +
+    'proposal is accepted, merged and pushed. Never name a student.</p>';
+  if (message) h += '<div style="color:' + (message.ok ? '#188038' : '#d93025') + ';font-size:13px;margin:6px 0">' + esc(message.text) + '</div>';
+  if (draft) {
+    h += '<div style="background:#f1f3f4;border-radius:6px;padding:8px 12px;font-size:13px;margin:8px 0">' +
+      '<strong>' + esc(draft.status) + '</strong> ' + esc(LD_STATUS_TEXT[draft.status] || "") +
+      (draft.reviewNote ? '<div>Your note: ' + esc(draft.reviewNote) + '</div>' : '') +
+      (draft.prUrl ? '<div><a href="' + esc(draft.prUrl) + '" target="_blank" rel="noopener">The PR</a></div>' : '') + '</div>';
+  }
+  if (draft && draft.status === "PROPOSED" && draft.proposal) {
+    const pf = draft.proposal.fields || {};
+    h += '<h4 style="font-size:14px;margin:12px 0 4px">Proposed changes</h4>';
+    if (draft.proposalNote) h += '<p style="font-size:13px;white-space:pre-line">' + esc(draft.proposalNote) + '</p>';
+    Object.keys(pf).forEach(function(k) {
+      const before = Array.isArray(draft.fields[k]) ? draft.fields[k].join(", ") : (draft.fields[k] || "");
+      const after = Array.isArray(pf[k]) ? pf[k].join(", ") : (pf[k] || "");
+      h += '<div style="font-size:13px;margin:8px 0"><strong>' + esc(L[k] || k) + '</strong>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div style="font-size:11px;color:var(--text-secondary)">Your draft</div>' +
+        '<div style="background:#fce8e6;padding:6px;white-space:pre-wrap">' + esc(before) + '</div></div>' +
+        '<div style="flex:1;min-width:240px"><div style="font-size:11px;color:var(--text-secondary)">Proposed</div>' +
+        '<div style="background:#e6f4ea;padding:6px;white-space:pre-wrap">' + esc(after) + '</div></div></div></div>';
+    });
+    if (draft.canReview) {
+      h += '<label style="font-size:13px;display:block;margin-top:8px">Note (needed to return it)<br>' +
+        '<textarea id="ld-review-note" rows="3" style="width:100%"></textarea></label>' +
+        '<button data-ld="accept">Accept the proposal</button> <button data-ld="return">Return with my note</button>';
+    } else {
+      h += '<p style="font-size:13px;color:var(--text-secondary)">Only the account that submitted this draft can review it.</p>';
+    }
+    body.innerHTML = h;
+    return;
+  }
+  const area = function(k, rows) {
+    return '<label style="display:block;font-size:13px;margin:8px 0"><strong>' + esc(L[k]) + '</strong>' +
+      (k === "vocabulary" ? ' (optional)' : '') + '<br><textarea id="ld-' + k + '" rows="' + rows + '" style="width:100%;font-family:inherit;font-size:13px"' +
+      (editable ? '' : ' disabled') + '>' + esc(f[k] || "") + '</textarea></label>';
+  };
+  h += area("promptText", 12) + area("warmupAnchor", 3) + area("objective", 3) + area("vocabulary", 2);
+  h += '<h4 style="font-size:14px;margin:12px 0 4px">Competencies and tiers</h4>' +
+    '<p style="font-size:12px;color:var(--text-secondary);margin:0">One primary (must be met), 1 or 2 secondary (at least ' +
+    'partly met), the rest tertiary. Each is a VDOE task of this course.</p>';
+  if (!data.catalogAvailable) {
+    h += '<p style="font-size:12px;color:#b06000">The VDOE task list (CompetencyRubrics tab) could not be read, so tasks show by ID only.</p>';
+  }
+  h += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+  f.competencyIds.forEach(function(id) {
+    const c = _ldCatalogItem(id), tier = _ldTierOf(id);
+    h += '<tr style="border-top:1px solid #e8eaed;vertical-align:top"><td style="padding:6px 4px">' +
+      '<details><summary><strong>' + esc(id) + '</strong> ' + esc(c ? c.text : "") + '</summary>' +
+      (c ? '<div style="font-size:12px;color:var(--text-secondary)">' + esc(c.dutyArea) +
+        (c.standard ? '<br>Standard: ' + esc(c.standard) : '') +
+        (c.indicators.length ? '<br>Shown by: ' + c.indicators.map(esc).join('; ') : '') +
+        (c.questions.length ? '<br>Questions: ' + c.questions.map(esc).join(' ') : '') + '</div>' : '') +
+      '</details></td><td style="padding:6px 4px;white-space:nowrap"><select data-ld="tier" data-id="' + esc(id) + '"' +
+      (editable ? '' : ' disabled') + '>' +
+      ["", "primary", "secondary", "tertiary", "remove"].map(function(t) {
+        return '<option value="' + t + '"' + (t === tier ? ' selected' : '') + '>' +
+          (t === "" ? "(no tier)" : t === "remove" ? "Remove" : t.charAt(0).toUpperCase() + t.slice(1)) + '</option>';
+      }).join('') + '</select></td></tr>';
+  });
+  h += '</table>';
+  if (editable) {
+    const add = (data.catalog || []).filter(function(c) { return f.competencyIds.indexOf(c.id) === -1; });
+    h += '<label style="font-size:13px;display:block;margin:8px 0">Add a task: <select data-ld="add"><option value="">Choose…</option>' +
+      add.map(function(c) {
+        return '<option value="' + esc(c.id) + '">' + esc(c.id) + ' ' + esc(String(c.text || "").slice(0, 80)) +
+          (data.uncovered.indexOf(c.id) !== -1 ? ' (in no lesson yet)' : '') + '</option>';
+      }).join('') + '</select></label>';
+  }
+  if (data.uncovered.length) {
+    h += '<p style="font-size:12px;color:var(--text-secondary)">This course’s tasks in no lesson: ' + data.uncovered.map(esc).join(', ') + '.</p>';
+  }
+  h += '<label style="display:block;font-size:13px;margin:8px 0"><strong>Reason</strong> (required)<br>' +
+    '<textarea id="ld-reason" rows="2" style="width:100%"' + (editable ? '' : ' disabled') + '>' + esc(_ld.reason || "") + '</textarea></label>';
+  if (draft && draft.issues && draft.issues.length && editable) {
+    h += '<div style="font-size:13px;color:#b06000">Before it can be submitted:<ul style="margin:4px 0">' +
+      draft.issues.map(function(x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div>';
+  }
+  if (editable) {
+    h += '<button data-ld="save">Save draft</button> <button data-ld="submit"' + (draft && draft.canSubmit ? '' : ' disabled title="Save a complete draft first"') +
+      '>Submit for import</button>' + (draft ? ' <button data-ld="withdraw">Withdraw</button>' : '');
+  }
+  body.innerHTML = h;
+}
+
+function _ldAfter(okText) {
+  return function(res) {
+    if (!res || !res.success) {
+      if (res && res.draft) _ld.data.draft = res.draft;
+      _ldRender({ ok: false, text: (res && res.error ? res.error : "Not saved.") + (res && res.issues ? " " + res.issues.join(" ") : "") });
+      return;
+    }
+    if (res.draft) {
+      _ld.data.draft = res.draft;
+      _ld.fields = JSON.parse(JSON.stringify(res.draft.fields));
+      ["competencyIds", "secondary", "tertiary"].forEach(function(k) { _ld.fields[k] = _ld.fields[k] || []; });
+      _ld.reason = res.draft.reason;
+    }
+    _ldRender({ ok: true, text: okText });
+  };
+}
+
+function _ldAction(el) {
+  const act = el.getAttribute("data-ld");
+  if (act === "edit") return openLessonEditor(el.getAttribute("data-key"));
+  if (act === "back") return openLessonScheduleModal();
+  if (!_ld) return;
+  const id = _ld.data.draft ? _ld.data.draft.draftId : "";
+  if (act === "save") {
+    _ldReadForm();
+    google.script.run.withSuccessHandler(_ldAfter("Draft saved.")).withFailureHandler(_lessonScheduleFailed)
+      .saveLessonDraft({ lessonKey: _ld.data.lesson.key, fields: _ld.fields, reason: _ld.reason });
+  } else if (act === "submit") {
+    google.script.run.withSuccessHandler(_ldAfter("Submitted for import.")).withFailureHandler(_lessonScheduleFailed)
+      .submitLessonDraft(id);
+  } else if (act === "withdraw") {
+    if (!window.confirm("Withdraw this draft? The lesson stays as it is.")) return;
+    google.script.run.withSuccessHandler(function() { openLessonEditor(_ld.data.lesson.key); })
+      .withFailureHandler(_lessonScheduleFailed).withdrawLessonDraft(id);
+  } else if (act === "accept" || act === "return") {
+    const note = document.getElementById("ld-review-note");
+    google.script.run.withSuccessHandler(_ldAfter(act === "accept" ? "Accepted." : "Returned with your note."))
+      .withFailureHandler(_lessonScheduleFailed)
+      .reviewLessonProposal(id, act === "accept", note ? note.value : "");
+  }
+}
+
+function _ldChange(el) {
+  const act = el.getAttribute("data-ld");
+  if (!_ld || (act !== "tier" && act !== "add")) return;
+  _ldReadForm();
+  if (act === "tier") _ldSetTier(el.getAttribute("data-id"), el.value);
+  else if (el.value) _ldSetTier(el.value, "tertiary");
+  _ldRender({ ok: true, text: "Changed here; Save draft to keep it." });
+}
+
+document.addEventListener("click", function(e) {
+  const el = e.target.closest && e.target.closest("#lesson-schedule-modal-body button[data-ld]");
+  if (el) _ldAction(el);
+});
+document.addEventListener("change", function(e) {
+  const el = e.target.closest && e.target.closest("#lesson-schedule-modal-body select[data-ld]");
+  if (el) _ldChange(el);
+});
 
 function openParentReportModal() {
   document.getElementById("parent-report-modal-backdrop").classList.add("open");

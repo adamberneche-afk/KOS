@@ -436,6 +436,22 @@ its 2-day lead, in the past, or on the current lesson) asks to be
 confirmed first, and a date changed in the sheet since the panel loaded is
 never overwritten. Typing in the tab still works.
 
+Each lesson there also has an **Edit** button (65, since 2026-10-21; phase 1
+of `meta/LESSON_AUTHORING_PLAN_2026-10.md`). The editor starts from the
+lesson as students get it (55b, now also in the Teacher Dashboard project):
+the student task, warm-up anchor, objective, vocabulary, competencies and
+their tiers, each competency shown with its VDOE task, standard, indicators
+and skill questions (the CompetencyRubrics tab), and the course's tasks that
+no lesson lists. A change is a draft in the Central Ledger's `LessonDrafts`
+tab, never the lesson itself. **Submit for import** works only with every
+required field filled (the student task, warm-up anchor, objective, a reason,
+a change) and tiers that pass the builder's rules. An import (an agent
+session) writes the repo files on a branch and a proposal back; the teacher
+who submitted the draft accepts it or returns it with a note, and only an
+accepted draft is merged and pushed. The import's steps are in
+`docs/LESSON_IMPORT_PROCEDURE.md`; its mechanical half is
+`tools/cas-ccps/import-lesson-drafts.js`.
+
 | Function | What it does |
 |---|---|
 | `seedLessonSchedule()` (55) | Adds a row per lesson not yet in the tab, in teaching order, with its Config ID (`CAS-8175-L06`). Never changes a date you typed. |

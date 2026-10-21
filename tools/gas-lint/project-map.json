@@ -143,7 +143,9 @@
       "cas-ccps/scripts/31_PacingGuideManager.js",
       "cas-ccps/scripts/32_CompetencyRubricImporter.js",
       "cas-ccps/scripts/36_WeeklyParentReport.js",
-      "cas-ccps/scripts/48_DeployVersionMarker_TeacherDashboard.js"
+      "cas-ccps/scripts/48_DeployVersionMarker_TeacherDashboard.js",
+      "cas-ccps/scripts/55b_LessonAssignmentData.js",
+      "cas-ccps/scripts/65_LessonDrafts.js"
     ]
   },
   "cas-ccps:student-dashboard": {
