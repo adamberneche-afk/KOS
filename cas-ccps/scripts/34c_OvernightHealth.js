@@ -182,7 +182,7 @@ function _onStudioCounts_(ss, now) {
       if (!returned[f]) return;
       returned[f][String(r[2]).trim()] = true;
       const hs = String(r[4] || "").trim();
-      const when = new Date(r[0]).getTime();
+      const when = sheetTimestampMs_(r[0]); // Studio writes it as text (00)
       const recent = isNaN(when) || now.getTime() - when <= ON_RETURN_WINDOW_MS;
       if ((hs === "FAILED" || hs === "NEEDS_ATTENTION") && recent) out.failed[f]++;
       // 41's harvest notes "ANCHOR_FALLBACK: ..." on a Flow 3 return it
@@ -217,7 +217,7 @@ function _onStudioCounts_(ss, now) {
 
 // A row with no readable timestamp counts as old: it never ages otherwise.
 function _onOlderThan_(value, now, ms) {
-  const t = new Date(value).getTime();
+  const t = sheetTimestampMs_(value);
   return isNaN(t) || now.getTime() - t > ms;
 }
 
