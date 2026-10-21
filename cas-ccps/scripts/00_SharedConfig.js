@@ -382,6 +382,25 @@ function sheetSafeText_(s) {
   return /^[=+\-@]/.test(t) ? "'" + t : t;
 }
 
+// A timestamp cell as milliseconds, or NaN. Apps Script writes a Date, but a
+// Studio flow writes "Now." as text, "October 20, 2026 at 3:29 AM EDT" (or
+// "at 4 AM EDT"), which new Date() can't parse (found 2026-10-21: the
+// overnight email's 24 hours never ended for a Studio return row).
+const SHEET_TS_MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const SHEET_TS_ZONES = { EDT: -4, EST: -5, CDT: -5, CST: -6, MDT: -6, MST: -7, PDT: -7, PST: -8, UTC: 0, GMT: 0 };
+function sheetTimestampMs_(value) {
+  const direct = new Date(value).getTime();
+  if (!isNaN(direct)) return direct;
+  const m = /^([a-z]+)\.? (\d{1,2}), (\d{4})(?: at)? (\d{1,2})(?::(\d{2}))?(?::(\d{2}))? ?([ap]m) ([a-z]{3})$/i
+    .exec(String(value || "").trim());
+  if (!m) return NaN;
+  const month = SHEET_TS_MONTHS.indexOf(m[1].slice(0, 3).toLowerCase());
+  const zone = SHEET_TS_ZONES[m[8].toUpperCase()];
+  const hour = Number(m[4]) % 12 + (m[7].toLowerCase() === "pm" ? 12 : 0);
+  if (month < 0 || zone === undefined || Number(m[4]) > 12) return NaN;
+  return Date.UTC(Number(m[3]), month, Number(m[2]), hour - zone, Number(m[5] || 0), Number(m[6] || 0));
+}
+
 // Same Key | Value tab 19_ClonedSheetConfig.js already writes into each
 // teacher's cloned sheets. On the Ledger, a SYSTEM_ROLE row marks it.
 const CONFIG_TAB_NAME   = "_CONFIG";
