@@ -191,7 +191,7 @@ test('a Flow 3 return that fails the plausibility check delivers the teacher\'s 
   textBoxJob(fx, 'Q-FAB', '2099-01-05', 'PENDING');
   const ret = fx.ss.insertSheet('WarmUpFlowReturn');
   ret.appendRow(RET_HEADERS);
-  ret.appendRow([new Date(), 3, 'Q-FAB', 'Write about your favorite hobby and why you enjoy it.', '', 0, '']);
+  ret.appendRow([new Date(), 3, 'Q-FAB', 'What is your favorite hobby, and why do you enjoy it?', '', 0, '']);
 
   const r = fx.exported.harvestWarmUpFlowReturns();
   assert.equal(r.applied, 1, JSON.stringify(r));

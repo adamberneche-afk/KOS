@@ -916,9 +916,7 @@ function wfbFlow3Plausible_(lesson, warmUp) {
   }
   // The anchor itself, kept whole (constraint 1 of Mode A), always passes,
   // even when none of its words is long enough to be a candidate.
-  const squash = function (t) { return String(t || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); };
-  const anchor = squash((lesson || {}).warmup_anchor);
-  if (anchor && squash(warmUp).indexOf(anchor) !== -1) return { ok: true };
+  if (wfbKeepsAnchor_(warmUp, (lesson || {}).warmup_anchor)) return { ok: true };
   const strings = [];
   WFB_FLOW3_SOURCE_FIELDS.forEach(function (k) { _wfbCollectText_((lesson || {})[k], strings); });
   const candidates = _fiDistinguishingWords_(strings.join(" "));
@@ -1117,7 +1115,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
   // or a list of its fields is never shown. The teacher's own anchor goes
   // out instead, and the harvest records the fallback (34c counts it).
   let fallback = forcedFallback || "";
-  const shape = fallback ? "" : wfbWarmUpShapeProblem_(raw);
+  const shape = fallback ? "" : wfbWarmUpShapeProblem_(raw, lesson.warmup_anchor);
   if (fallback || shape) {
     const anchor = String(lesson.warmup_anchor || "").trim();
     if (!anchor) return { ok: false, error: "NOT_A_WARMUP: " + (shape || fallback) };
@@ -1216,16 +1214,40 @@ const WFB_WARMUP_PROMPT_MARKERS = [
 ];
 const WFB_ANCHOR_FALLBACK = "ANCHOR_FALLBACK";
 
-/** @returns {string} why the text isn't a warm-up, or "" if it is one. */
-function wfbWarmUpShapeProblem_(text) {
+// 2026-10-21: 8 of a night's 17 shape failures were Flow 3's whole prompt
+// (3,400 characters, the Mode A text with its fields filled), so Studio
+// returned its input; they read "longer than 900 characters" until this.
+// Most of the rest had no question mark: a sentence about the anchor (that
+// it already fits), not the anchor. The question rule applies only with an
+// anchor to compare, since 5 of the 67 lesson anchors have no "?".
+const WFB_WARMUP_PROMPT_ECHO = ["you are personalizing a warm-up", "you are generating a warm-up", "your role:"];
+
+/**
+ * @param anchor  optional: the teacher's anchor. With it, a warm-up must ask
+ *                a question unless it keeps the anchor whole.
+ * @returns {string} why the text isn't a warm-up, or "" if it is one.
+ */
+function wfbWarmUpShapeProblem_(text, anchor) {
   const t = String(text || "").trim();
-  if (t.length > WFB_WARMUP_MAX_CHARS) return "longer than " + WFB_WARMUP_MAX_CHARS + " characters";
   const lower = t.toLowerCase();
+  if (WFB_WARMUP_PROMPT_ECHO.some(function (m) { return lower.indexOf(m) !== -1; })) {
+    return "is Flow 3's own prompt (Studio returned its input; see the Gemini step in Studio's run history)";
+  }
+  if (t.length > WFB_WARMUP_MAX_CHARS) return "longer than " + WFB_WARMUP_MAX_CHARS + " characters";
   const marker = WFB_WARMUP_PROMPT_MARKERS.find(function (m) { return lower.indexOf(m) !== -1; });
   if (marker) return "contains the prompt's own wording (\"" + marker + "\")";
   if (/\b8\d{3}-\d{1,2}\b/.test(t)) return "names a competency code";
   if (/^\s*(?:[-*\u2022]|\d+[.)])\s+/m.test(t)) return "is a list";
+  if (anchor && t.indexOf("?") === -1 && !wfbKeepsAnchor_(t, anchor)) return "asks no question";
   return "";
+}
+
+// True when the text holds the whole anchor, ignoring case, punctuation and
+// spacing (some anchors carry markdown asterisks).
+function wfbKeepsAnchor_(text, anchor) {
+  const squash = function (x) { return String(x || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim(); };
+  const a = squash(anchor);
+  return !!a && squash(text).indexOf(a) !== -1;
 }
 
 /**
