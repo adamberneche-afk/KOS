@@ -3992,3 +3992,26 @@ kind of failure every morning.
 - **Live:** a Teacher Dashboard push and a **new web-app version** of 07.
 - **Tests:** `teacher-dashboard-lesson-schedule.test.js`; the inline-JS
   parse test covers the panel's client code.
+
+## Lesson editing from the Teacher Dashboard, phase 1a, 2026-10-21
+
+- **Why:** phase 1 of `meta/LESSON_AUTHORING_PLAN_2026-10.md` (the
+  operator's decisions of 2026-10-21), due Wed Oct 28. This is its
+  dashboard half; the import tool follows.
+- **65_LessonDrafts.js (Teacher Dashboard):** `getLessonEditor`,
+  `saveLessonDraft`, `submitLessonDraft`, `reviewLessonProposal`,
+  `withdrawLessonDraft`, `listLessonDrafts`, over a new `LessonDrafts` tab
+  on the Central Ledger. Statuses DRAFT, SUBMITTED, PROPOSED, RETURNED,
+  ACCEPTED, MERGED, WITHDRAWN. The editor starts from 55b (added to the
+  Teacher Dashboard project; its tiers are read back from the milestones,
+  checked against `COMPETENCY_TIERS.json` for all 67 lessons) and the
+  CompetencyRubrics tab (32). Submit needs the student task, warm-up anchor,
+  objective, a reason and a change, and tiers that pass the builder's rules;
+  only the submitting account reviews a proposal; an email address in a
+  field is refused.
+- **07:** an **Edit** button per lesson in 📅 Lessons, the editor (tiers set
+  per competency, a task added from the course's VDOE list, the tasks no
+  lesson lists), the proposal side by side with Accept and Return, and the
+  drafts strip. Buttons use data attributes and one listener, so no lesson
+  text is spliced into an inline handler. Rendered in headless Chromium.
+- **Tests:** `lesson-drafts.test.js`.

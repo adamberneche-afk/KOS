@@ -443,6 +443,14 @@ District calendar dates only (seeded from the CCPS 2026-27 calendar by
 `checkCourseData()`, 51; edited by hand). No student PII. Included for
 completeness since it's a central tab.
 
+### LessonDrafts (S65)
+Lesson edits the teacher drafts on the Teacher Dashboard (2026-10-21):
+lesson fields, a reason, the import's proposal and the review note, plus the
+submitting account (the teacher's own). Teacher-level; a field holding an
+email address is refused when saved, and the import runs the student-data
+scan before anything reaches the repo. Out of the retention schedule, like
+the other teacher-level tabs.
+
 ### Unit rubrics and Canvas course cartridges
 `curriculum/unit-rubrics/*.md` and `curriculum/canvas-cartridges/*.imscc` are
 generated in the repo from the pacing guide, the lesson cards and
