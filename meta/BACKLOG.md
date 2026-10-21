@@ -76,9 +76,6 @@ operator. This file holds what comes after them.
 ### Waiting on another piece of work
 
 
-- **Family Mail Sentinel: retry a dropped Studio run**, as #193 does for
-  warm-ups. One run failed with "Couldn't access the spreadsheet" on 10-19,
-  and `60` never writes the input again (2026-10-19).
 
 - **Parent reports (`36_WeeklyParentReport.js`) turned on.** Built, not
   enabled; the only off-domain disclosure. Waits until the student and

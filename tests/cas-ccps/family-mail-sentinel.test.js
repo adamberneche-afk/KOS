@@ -612,6 +612,71 @@ test('a sensitive thread shows no course, period or ask', () => {
   assert.equal(line, '#1 · sensitive · waiting 20 h · open');
 });
 
+// ── A run Studio dropped ────────────────────────────────────────────────────
+
+// Backdates every FamilyMailInput row's Queued_At.
+function ageInputs(fx, hours) {
+  const sh = fx.ss.getSheetByName('FamilyMailInput');
+  for (let r = 2; r <= sh.getLastRow(); r++) sh.getRange(r, 3).setValue(new fx.sandbox.Date(Date.now() - hours * HOUR));
+}
+
+test('a READY input unanswered for 30 minutes is written again, at most twice, and not sooner', () => {
+  const fx = setUp([MAIL.student]);
+  fx.exported.scanFamilyMail();
+  assert.equal(fx.exported.runFamilySentinel().retried, 0, 'just queued: Studio may still answer');
+  ageInputs(fx, 1);
+  assert.equal(fx.exported.runFamilySentinel().retried, 1);
+  let input = rows(fx.ss, 'FamilyMailInput');
+  assert.deepEqual(input.map((r) => [r[0], r[1]]), [['FMS-m1', 'RETRIED'], ['FMS-m1', 'READY']]);
+  assert.equal(input[1][3], input[0][3], 'the same prompt');
+  assert.equal(fx.exported.checkFamilyMailFlowBinding().waitingInputs, 1, 'a RETRIED row is not waiting');
+  assert.equal(fx.exported.runFamilySentinel().retried, 0, 'the copy is new');
+  ageInputs(fx, 1);
+  assert.equal(fx.exported.runFamilySentinel().retried, 1);
+  ageInputs(fx, 1);
+  assert.equal(fx.exported.runFamilySentinel().retried, 0, 'two retries, then it waits for the 48 hours');
+  assert.equal(rows(fx.ss, 'FamilyMailInput').filter((r) => r[1] === 'READY').length, 1);
+});
+
+test('an answer to a retried message deletes every copy; one past 48 hours from its first queueing is UNCLASSIFIED', () => {
+  const fx = setUp([MAIL.student]);
+  fx.exported.scanFamilyMail();
+  ageInputs(fx, 1);
+  fx.exported.runFamilySentinel();
+  const ret = fx.ss.getSheetByName('FamilyMailReturn');
+  ret.appendRow([new Date(), 'FMS-m1', JSON.stringify(NO_REPLY)]);
+  fx.exported.harvestFamilyMailReturns();
+  assert.equal(rows(fx.ss, 'FamilyMailInput').length, 0, 'the original and its copy are both gone');
+  const LOG = fx.exported.FMS_LOG;
+  assert.equal(logByMessage(fx.ss, LOG, 'm1')[LOG.STATUS], 'CLASSIFIED');
+
+  const late = setUp([MAIL.student]);
+  late.exported.scanFamilyMail();
+  ageInputs(late, 1);
+  late.exported.runFamilySentinel();
+  // The original was queued 49 hours ago; its copy only an hour ago.
+  late.ss.getSheetByName('FamilyMailInput').getRange(2, 3).setValue(new late.sandbox.Date(Date.now() - 49 * HOUR));
+  assert.equal(late.exported.harvestFamilyMailReturns().expired, 1);
+  assert.equal(rows(late.ss, 'FamilyMailInput').length, 0, 'mail text is never kept past 48 hours');
+  assert.equal(logByMessage(late.ss, LOG, 'm1')[LOG.STATUS], 'UNCLASSIFIED');
+});
+
+test('the fixture row is never retried, and at most five rows are written again per run', () => {
+  const many = Array.from({ length: 7 }, (_, i) => Object.assign({}, MAIL.student, { id: 'r' + i, threadId: 'tr' + i }));
+  const fx = setUp(many);
+  fx.exported.scanFamilyMail();
+  fx.exported.installFamilyMailFixture();
+  ageInputs(fx, 1);
+  assert.equal(fx.exported.runFamilySentinel().retried, 5);
+  const fixture = rows(fx.ss, 'FamilyMailInput').filter((r) => String(r[0]).startsWith('FMS-FIXTURE-'));
+  assert.deepEqual(fixture.map((r) => r[1]), ['READY']);
+
+  const alone = setUp([]);
+  alone.exported.installFamilyMailFixture();
+  ageInputs(alone, 1);
+  assert.equal(alone.exported.runFamilySentinel().retried, 0, 'the fixture alone is not retried');
+});
+
 // ── Fixture, checks and the trigger ─────────────────────────────────────────
 
 test('the fixture is answered through the harvest and proves liveness, and never reaches the signal doc', () => {
