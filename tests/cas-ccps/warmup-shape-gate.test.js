@@ -60,11 +60,31 @@ test('the shape check passes a warm-up and names what is wrong with each kind of
   const shape = setupShape();
   assert.equal(shape(GOOD), '');
   assert.equal(shape(ANCHOR), '');
-  assert.match(shape(ECHO), /prompt's own wording/);
+  assert.match(shape(ECHO), /Flow 3's own prompt \(Studio returned its input/);
   assert.match(shape(SUMMARY), /prompt's own wording/);
   assert.match(shape(FIELDS), /a list/);
   assert.match(shape('Think about stadium pricing for 8177-4 skills.'), /competency code/);
   assert.match(shape(GOOD.repeat(10)), /longer than/);
+});
+
+// 2026-10-21: 8 of a night's 17 shape failures were the whole Mode A prompt
+// (about 3,400 characters), and most of the rest asked no question: a
+// sentence about the anchor rather than the anchor.
+test('Studio returning the prompt is named as that, not as too long', () => {
+  const shape = setupShape();
+  assert.match(shape(ECHO + '\n' + 'x'.repeat(3000)), /^is Flow 3's own prompt/);
+  assert.match(shape('YOUR ROLE:\nWrite a warm-up.'), /^is Flow 3's own prompt/);
+});
+
+test('with an anchor, a warm-up must ask a question unless it keeps the anchor whole', () => {
+  const shape = setupShape();
+  const said = 'This anchor already fits the student well, so it is kept as written for the bridge.';
+  assert.equal(shape(said), '', 'no anchor given: the rule does not apply');
+  assert.equal(shape(said, ANCHOR), 'asks no question');
+  assert.equal(shape(GOOD, ANCHOR), '');
+  const plain = 'Describe one thing a sponsor gets from a stadium deal. Be specific.';
+  assert.equal(shape(plain, plain), '', 'an anchor with no question, returned unchanged');
+  assert.equal(shape('Picture the crowd. ' + plain, '*' + plain + '*'), '', 'kept whole inside framing');
 });
 
 function setupShape() {
@@ -81,7 +101,7 @@ test('junk output delivers the teacher\'s anchor instead, and says why', () => {
   const fx = setup();
   const out = fx.exported.wfbApplyFlow3_(fx.wq, queue(fx, 'Q1'), 'Q1', ECHO);
   assert.equal(out.ok, true);
-  assert.match(out.fallback, /prompt's own wording/);
+  assert.match(out.fallback, /Flow 3's own prompt/);
   assert.equal(boxText(fx), ANCHOR);
   assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'DELIVERED');
 });
