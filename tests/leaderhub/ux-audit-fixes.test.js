@@ -122,8 +122,7 @@ test('reminder banners stack under the header in normal flow', () => {
   // Only lhShowBanner's own fallback (no #lh-banners in the page) prepends.
   assert.equal((all.match(/document\.body\.prepend\(banner\)/g) || []).length, 1);
   assert.match(all, /if \(!stack\) \{ document\.body\.prepend\(banner\); return; \}/);
-  // Eight reminders, and the standalone file's "move your data" banner (2026-10-22).
-  assert.equal((all.match(/lhShowBanner\(banner\);/g) || []).length, 9);
+  assert.equal((all.match(/lhShowBanner\(banner\);/g) || []).length, 8);
   assert.match(SRC('03-markup-nav-dashboard-trips.html'), /<\/header>\n<div id="lh-banners" role="region" aria-label="Reminders"><\/div>/);
   const css = SRC('01-styles.html');
   assert.match(css, /\.app\{ height:calc\(100vh - 64px - var\(--lh-banners-h, 0px\)\); \}/);
@@ -175,19 +174,14 @@ test('pulse rings: an overdue DECA deadline and zero trips no longer read 100%',
 });
 
 // meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md Phase 1 (2026-10-22):
-// no secret is kept in the browser. The Gemini key a browser may still
-// hold from before AI moved to Workspace Flows is deleted at every load,
-// and nothing reads or writes it.
-test('the old Gemini API key is deleted from browser storage at load and never written', () => {
+// no secret is kept in the browser. The Gemini key a browser may still hold
+// from before AI moved to Workspace Flows is deleted with the rest of an
+// earlier version's leftovers (lhMigrateFromBrowser_, which deletes every
+// key it doesn't move), is never imported, and nothing reads or writes it.
+test('the old Gemini API key is never read, written or imported', () => {
   const html = fs.readFileSync(path.join(LH, 'student-leader-hub.html'), 'utf8');
-  const removed = [];
-  const ctx = { localStorage: { removeItem: (k) => removed.push(k) } };
-  const src = SRC('05-data-helpers-dashboard.html');
-  const start = src.indexOf('const LH_RETIRED_SECRET_KEYS');
-  const end = src.indexOf('\n', src.indexOf('try { LH_RETIRED_SECRET_KEYS', start));
-  vm.runInNewContext(src.slice(start, end), ctx);
-  assert.deepEqual(removed, ['lh_api_key']);
-  const uses = html.split("'lh_api_key'").length - 1;
-  assert.equal(uses, 1, 'named once, in the list of keys to delete');
+  assert.equal(html.split("'lh_api_key'").length - 1, 1, 'named once, in LH_RETIRED_SECRET_KEYS');
+  assert.match(html, /(const|var) LH_RETIRED_SECRET_KEYS = \['lh_api_key'\];/, 'the build may hoist const to var');
+  assert.match(html, /LH_RETIRED_SECRET_KEYS\.indexOf\(k\) !== -1\) return;/, 'skipped by an import');
   assert.doesNotMatch(html, /generativelanguage\.googleapis\.com|x-goog-api-key/);
 });

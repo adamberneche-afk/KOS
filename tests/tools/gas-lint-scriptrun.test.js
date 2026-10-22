@@ -175,6 +175,8 @@ test('leader-hub\'s multi-line chains are covered', () => {
   const rel = 'leader-hub/student-leader-hub.html';
   const found = findGoogleScriptRunCalls(rel, fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8'));
   const got = [...new Set(found.calls.map((c) => c.name))].sort();
-  assert.deepEqual(got, ['lhApiCall', 'lhGetAllConfig', 'lhGetHorizonItems', 'lhGetScrScores',
+  // No lhGetAllConfig/lhGetScrScores since 2026-10-22: the page gets that
+  // data with doGet()'s boot data.
+  assert.deepEqual(got, ['lhApiCall', 'lhGetHorizonItems',
                          'lhOrgSyncCall', 'lhPullData', 'lhPushData', 'lhSaveConfig', 'lhSaveScrScores']);
 });

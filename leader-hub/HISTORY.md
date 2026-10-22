@@ -1306,3 +1306,15 @@ by id with the imported copy winning, counters take the larger value, SCR
 cells are queued, drafts and bookkeeping are skipped; the confirm says so.
 After the export, **Clear this browser's copy** deletes the file's data and
 marks the move, so the banner doesn't return. Phase 5 retires the file.
+
+## No browser storage, Phase 5: the standalone file is retired, 2026-10-22
+
+LeaderHub runs only as the web app. The first script in `<head>` (src/00)
+stops the page when it has no boot data (opened from disk) and shows how to
+open the web app, with **Export everything** for what an earlier version
+left in that browser and **Clear this browser's copy** after it. Removed:
+`_lhStore`'s local-storage branch, the boot catch-up calls, the Email Bridge
+URL field and its functions, `callGAS()`'s and Organization Sync's browser
+`fetch()` paths, Phase 4's in-app move banner, and the unused public
+`lhGetScrScores`. The web app's own URL (for share codes) comes from the
+server. `?diag=probe` gets the boot data so it still runs the app.

@@ -25,9 +25,9 @@ function load() {
   const cal = extractLines(F10, 197, 225, [
     "const SCHOOL_CALENDAR_YEAR", 'const SCHEDULE_OVERRIDES_DEFAULT', 'const NO_SCHOOL_DEFAULT',
   ]);
-  const deadlines = extractLines(F10, 1582, 1625, ['const DECA_DEADLINES_DEFAULT', 'const CCPS_CALENDAR_DEADLINES_DEFAULT']);
+  const deadlines = extractLines(F10, 1545, 1588, ['const DECA_DEADLINES_DEFAULT', 'const CCPS_CALENDAR_DEADLINES_DEFAULT']);
   const season = extractLines(F07, 1222, 1249, ['const DECA_SEASON_YEAR', 'const DECA_SEASON_DEFAULT']);
-  const quarters = extractLines(F12, 568, 573, ['const QUARTERS_DEFAULT']);
+  const quarters = extractLines(F12, 523, 528, ['const QUARTERS_DEFAULT']);
   return runInSandbox([cal, deadlines, quarters, season].join('\n'), {}, [
     'DECA_SEASON_YEAR', 'DECA_SEASON_DEFAULT', 'DECA_DEADLINES_DEFAULT',
     'SCHOOL_CALENDAR_YEAR', 'SCHEDULE_OVERRIDES_DEFAULT', 'NO_SCHOOL_DEFAULT',

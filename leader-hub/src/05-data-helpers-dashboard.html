@@ -1,50 +1,31 @@
 <script>
-// ── Where the app's data lives (no browser storage, Phase 3, 2026-10-22,
-// meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md) ─────────────────────
-// Served by the web app, doGet() writes the server's copy of every domain
-// into the page (window.__LH_BOOT__, Data.gs's lhBootData_). The app then
-// keeps it in page memory (_lhStore) and saves every change to the server:
-// nothing is read from or written to browser storage, apart from a
-// one-time move of what an earlier version left there (lhMigrateFromBrowser_).
-// Opened as a file from disk there is no server, so _lhStore is
-// localStorage, as before, until the standalone file is retired (Phase 5).
+// ── Where the app's data lives (no browser storage, Phases 3 and 5,
+// 2026-10-22, meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md) ─────────
+// doGet() writes the server's copy of every domain into the page
+// (window.__LH_BOOT__, Data.gs's lhBootData_). The app keeps it in page
+// memory (_lhStore) and saves every change to the server: nothing is read
+// from or written to browser storage, apart from a one-time move of what an
+// earlier version left there (lhMigrateFromBrowser_). Without the boot data
+// (the file opened from disk) the app doesn't start: src/00's guard shows
+// the retired-file page instead.
+if (typeof window !== 'undefined' && window.__LH_RETIRED__) throw new Error('LeaderHub: open the web app, not this file');
 const LH_BOOT = (typeof window !== 'undefined' && window.__LH_BOOT__) || null;
 const LH_SERVED = !!LH_BOOT;
 // The server's data couldn't be read: the page says so and refuses to
 // save, rather than starting empty and overwriting the server.
 const LH_BOOT_FAILED = LH_SERVED && LH_BOOT.ok === false;
 const _lhMem = {};
-const _lhStore = LH_SERVED ? {
+const _lhStore = {
   getItem: (k) => (Object.prototype.hasOwnProperty.call(_lhMem, k) ? _lhMem[k] : null),
   setItem: (k, v) => { _lhMem[k] = String(v); },
   removeItem: (k) => { delete _lhMem[k]; },
   keys: () => Object.keys(_lhMem),
-} : {
-  getItem: (k) => localStorage.getItem(k),
-  setItem: (k, v) => localStorage.setItem(k, v),
-  removeItem: (k) => localStorage.removeItem(k),
-  keys: () => { const out = []; for (let i = 0; i < localStorage.length; i++) out.push(localStorage.key(i)); return out; },
 };
 
-// Opened from disk: whether this browser held LeaderHub data before this
-// load wrote anything (it writes a few defaults on any load). Decides
-// whether the "move your data to the web app" banner shows (Phase 4, src/11).
-let LH_BROWSER_HAD_DATA = false;
-if (!LH_SERVED) {
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (k && k.indexOf('lh_') === 0) { LH_BROWSER_HAD_DATA = true; break; }
-    }
-  } catch (e) {}
-}
-
 // The Gemini API key a browser may still hold from before AI moved to
-// Workspace Flows (no code reads it since). Deleted at every load
-// (2026-10-22, meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md Phase 1):
-// a secret has no business staying in browser storage.
+// Workspace Flows (no code reads it since); lhMigrateFromBrowser_ deletes it
+// with the rest (Phase 1). Never imported.
 const LH_RETIRED_SECRET_KEYS = ['lh_api_key'];
-try { LH_RETIRED_SECRET_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ }
 // Tracks whether a save-failed warning has already been shown this page
 // load — a full quota means EVERY subsequent LS.set() call fails too, and
 // nothing here should spam a toast on every single one of them.
@@ -54,7 +35,8 @@ let _lsReadFailWarned = false;
 // meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md). Drafts, view state and
 // the cached CAS pacing units live in this page's memory only: a reload
 // opens on the dashboard with default filters and loses an unsaved draft
-// (the operator's decision). They are removed from browser storage at load.
+// (the operator's decision). Copies an earlier version left in the browser
+// are removed by lhMigrateFromBrowser_.
 const LH_PAGE_MEMORY_KEYS = [
   'lh_trip_draft', 'lh_journal_draft',
   'lh_last_view', 'lh_active_org', 'lh_lp_filter', 'lh_unit_expanded',
@@ -62,7 +44,6 @@ const LH_PAGE_MEMORY_KEYS = [
   'lh_cas_ccps_live_pacing_units', 'lh_cas_ccps_pacing_synced_at',
 ];
 const _lhPageMemory = {};
-try { LH_PAGE_MEMORY_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ }
 
 // Logs whose entries had no id, so neither server mechanism could hold them
 // (Phase 8 left them local). Each entry gets one as it is saved: random,
@@ -313,176 +294,6 @@ function _lhSyncConfigKeyToServer_(key, value) {
     })
     .withFailureHandler(err => _lhWarnSyncFailedOnce_(key, (err && err.message) || String(err)))
     .lhSaveConfig(key, value);
-}
-
-// Called once at boot (see the boot sequence's EMAIL_BRIDGE.poll() call) —
-// same-origin only, a no-op when opened as a local file. Pulls every
-// server-synced config domain in one round trip and catches this browser
-// up on anything saved from a different device/browser since it last
-// opened the app. Most of these domains are read fresh via LS.get() at
-// every point of use, so writing the server's copy into localStorage IS
-// the whole refresh for them; a handful also cache into a persistent
-// in-memory variable and need that re-applied too, listed explicitly
-// below rather than guessed at generically. Uses raw localStorage.setItem
-// (not LS.set) so applying a value the server just gave us doesn't
-// immediately re-queue the exact same value right back to it.
-async function lhRefreshConfigFromServer_() {
-  // Served: the page arrived with the server's data (LH_BOOT); nothing to catch up.
-  if (LH_SERVED) return;
-  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
-  let remote;
-  try {
-    remote = await new Promise((resolve, reject) => {
-      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).lhGetAllConfig();
-    });
-  } catch (e) {
-    console.warn('[LeaderHub] Could not refresh settings from server:', (e && e.message) || e);
-    return;
-  }
-  if (!remote) return;
-
-  // An edit the server never accepted wins over the server's older copy:
-  // treat the key as absent here, then push it again below.
-  const pendingConfig = _lhPendingKeys_('config');
-  pendingConfig.forEach(k => { delete remote[k]; });
-  setTimeout(() => {
-    pendingConfig.forEach(k => {
-      try {
-        const raw = _lhStore.getItem(k);
-        if (raw != null) _lhSyncConfigKeyToServer_(k, JSON.parse(raw));
-      } catch (e) {}
-    });
-  }, 0);
-
-  const _write = (k, v) => { try { _lhStore.setItem(k, JSON.stringify(v)); } catch (e) {} };
-
-  // A key the server has never had, but this browser has: push it once, so
-  // data kept only here moves to the server (no browser storage, Phase 2).
-  setTimeout(() => {
-    LH_SERVER_SYNCED_CONFIG_KEYS.forEach(k => {
-      if (remote[k] != null || pendingConfig.indexOf(k) !== -1) return;
-      try {
-        const raw = _lhStore.getItem(k);
-        const v = raw == null ? null : JSON.parse(raw);
-        if (v != null) _lhSyncConfigKeyToServer_(k, v);
-      } catch (e) {}
-    });
-  }, 0);
-
-  // Read fresh via LS.get() at point of use everywhere — localStorage
-  // catch-up is the entire refresh, nothing else to re-apply.
-  ['lh_keyContacts', 'lh_student_id_map', 'lh_cas_ccps_api_url',
-   'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
-   'lh_sub_period_assignments', 'lh_deca_approvals', 'lh_obs_prep',
-   'lh_sync_tracker', 'lh_sub_student_notes', 'lh_lp_edit_meta',
-   'lh_unit_notes',
-   // Phase 2 (no browser storage): read fresh at point of use.
-   'lh_brag_done_date', 'lh_brag_journal_includes', 'lh_brag_prompt_date',
-   'lh_comms_done_date', 'lh_comms_triage_date', 'lh_cron_pending', 'lh_cron_result',
-   'lh_deca_tomorrow_date', 'lh_deposit_done_date', 'lh_deposit_reminder_date',
-   'lh_esports_match_banner_date', 'lh_first_use_date', 'lh_journal_autoprompt_date',
-   'lh_journal_avoided', 'lh_journal_last', 'lh_last_backup', 'lh_notify_enabled',
-   'lh_plc_banner_date', 'lh_student_id_map_updated', 'lh_workday_done_date',
-   'lh_workday_reminder_date'].forEach(k => {
-    if (remote[k] !== null && remote[k] !== undefined) _write(k, remote[k]);
-  });
-
-  // Cached into a persistent in-memory variable — write through
-  // localStorage AND re-apply, so an already-rendered page picks up a
-  // change made elsewhere without a manual reload.
-  if (remote.lh_profile != null)        { _write('lh_profile', remote.lh_profile); Object.assign(PROFILE, PROFILE_DEFAULTS, remote.lh_profile); _applyProfileToStaticDOM(); }
-  if (remote.lh_modules != null)        { _write('lh_modules', remote.lh_modules); Object.assign(MODULES, MODULES_DEFAULT, remote.lh_modules); _applyModuleVisibility(); }
-  if (remote.lh_custom_orgs != null)    { _write('lh_custom_orgs', remote.lh_custom_orgs); Object.assign(CUSTOM_ORGS, remote.lh_custom_orgs); Object.assign(ORGANIZATIONS, ORG_DEFAULTS, CUSTOM_ORGS); }
-  if (remote.lh_custom_courses != null) { _write('lh_custom_courses', remote.lh_custom_courses); Object.assign(CUSTOM_COURSES, remote.lh_custom_courses); }
-  if (remote.lh_ftp_overrides != null)  { _write('lh_ftp_overrides', remote.lh_ftp_overrides); Object.assign(ftPermOverrides, remote.lh_ftp_overrides); }
-  if (remote.lh_conf_leave != null)     { _write('lh_conf_leave', remote.lh_conf_leave); Object.assign(confLeaveRecords, remote.lh_conf_leave); }
-  if (remote.lh_sbe_status != null)     { _write('lh_sbe_status', remote.lh_sbe_status); Object.assign(SBE_STATUS, remote.lh_sbe_status); }
-  if (remote.lh_deca_season != null)    { _write('lh_deca_season', remote.lh_deca_season); Object.assign(DECA_SEASON, remote.lh_deca_season); }
-  if (remote.lh_ssbu_check != null)     { _write('lh_ssbu_check', remote.lh_ssbu_check); Object.assign(SSBU_CHECK_STATUS, remote.lh_ssbu_check); }
-  if (remote.lh_mk8_check != null)      { _write('lh_mk8_check', remote.lh_mk8_check); Object.assign(MK8_CHECK_STATUS, remote.lh_mk8_check); }
-  if (remote.lh_schedule_config != null) {
-    _write('lh_schedule_config', remote.lh_schedule_config);
-    if (typeof _applyScheduleConfig === 'function') _applyScheduleConfig();
-    if (typeof _applyQuartersConfig === 'function') _applyQuartersConfig();
-  }
-  if (remote.lh_slip_rosters != null) {
-    _write('lh_slip_rosters', remote.lh_slip_rosters);
-    Object.keys(slipRosters).forEach(k => delete slipRosters[k]);
-    Object.assign(slipRosters, remote.lh_slip_rosters);
-  }
-  if (remote.lh_org_results != null) {
-    _write('lh_org_results', remote.lh_org_results);
-    Object.keys(ORG_RESULTS).forEach(k => delete ORG_RESULTS[k]);
-    Object.assign(ORG_RESULTS, remote.lh_org_results);
-  }
-  if (remote.lh_custom_pacing_units != null) {
-    _write('lh_custom_pacing_units', remote.lh_custom_pacing_units);
-    Object.keys(CUSTOM_PACING_UNITS).forEach(k => delete CUSTOM_PACING_UNITS[k]);
-    Object.assign(CUSTOM_PACING_UNITS, remote.lh_custom_pacing_units);
-  }
-  if (remote.lh_cas_pacing_notes != null) {
-    _write('lh_cas_pacing_notes', remote.lh_cas_pacing_notes);
-    Object.keys(CAS_PACING_NOTES).forEach(k => delete CAS_PACING_NOTES[k]);
-    Object.assign(CAS_PACING_NOTES, remote.lh_cas_pacing_notes);
-  }
-  if (remote.lh_scr_student_emails != null) {
-    _write('lh_scr_student_emails', remote.lh_scr_student_emails);
-    Object.keys(SCR_STUDENT_EMAILS).forEach(k => delete SCR_STUDENT_EMAILS[k]);
-    Object.assign(SCR_STUDENT_EMAILS, remote.lh_scr_student_emails);
-  }
-  if (remote.lh_receiving_status != null) {
-    _write('lh_receiving_status', remote.lh_receiving_status);
-    Object.keys(RECEIVING_STATUS).forEach(k => delete RECEIVING_STATUS[k]);
-    Object.assign(RECEIVING_STATUS, remote.lh_receiving_status);
-  }
-  if (remote.lh_horizon != null) {
-    _write('lh_horizon', remote.lh_horizon);
-    Object.keys(HORIZON).forEach(k => delete HORIZON[k]);
-    Object.assign(HORIZON, remote.lh_horizon);
-    if (typeof renderHorizons === 'function') renderHorizons();
-  }
-  if (remote.lh_lp_edits != null) {
-    _write('lh_lp_edits', remote.lh_lp_edits);
-    // LP_EDITS is a const object reference — mutate in place rather than
-    // reassign, same convention as ORGANIZATIONS/ORG_RESULTS above.
-    Object.keys(LP_EDITS).forEach(k => delete LP_EDITS[k]);
-    Object.assign(LP_EDITS, remote.lh_lp_edits);
-  }
-  // lh_lp_edit_meta and lh_unit_notes have no persistent in-memory
-  // variable either — both handled by the "read fresh via LS.get()"
-  // batch above.
-
-  // Phase 2 (no browser storage). The id counters take the larger of this
-  // browser's and the server's value per counter, so no id is handed out
-  // twice; if this browser's is ahead, it is pushed back.
-  if (remote.lh_next_id != null && typeof nextId === 'object' && nextId) {
-    const merged = Object.assign({}, remote.lh_next_id);
-    let ahead = false;
-    Object.keys(nextId).forEach(k => {
-      if (!(Number(merged[k]) >= Number(nextId[k]))) { merged[k] = nextId[k]; ahead = true; }
-    });
-    Object.keys(merged).forEach(k => { nextId[k] = merged[k]; });
-    _write('lh_next_id', nextId);
-    if (ahead) _lhSyncConfigKeyToServer_('lh_next_id', nextId);
-  }
-  if (remote.lh_next_slip_id != null && typeof nextSlipId !== 'undefined') {
-    const ahead = Number(nextSlipId) > Number(remote.lh_next_slip_id);
-    nextSlipId = Math.max(Number(nextSlipId) || 0, Number(remote.lh_next_slip_id) || 0);
-    _write('lh_next_slip_id', nextSlipId);
-    if (ahead) _lhSyncConfigKeyToServer_('lh_next_slip_id', nextSlipId);
-  }
-  if (remote.lh_org_sync != null && typeof ORG_SYNC !== 'undefined') {
-    _write('lh_org_sync', remote.lh_org_sync);
-    ORG_SYNC = remote.lh_org_sync;
-  }
-  if (remote.lh_org_welcome_seen != null && typeof ORG_WELCOME_SEEN !== 'undefined') {
-    _write('lh_org_welcome_seen', remote.lh_org_welcome_seen);
-    ORG_WELCOME_SEEN = remote.lh_org_welcome_seen;
-  }
-  if (remote.lh_snoozed != null && typeof CHOICE_SNOOZED !== 'undefined') {
-    _write('lh_snoozed', remote.lh_snoozed);
-    CHOICE_SNOOZED = remote.lh_snoozed;
-  }
 }
 
 // ── Server write-through for row-shaped data domains (server-migration
@@ -967,63 +778,6 @@ const LH_DATA_APPLY = {
   scr_session_log: arr => { _lhStore.setItem('lh_scr_session_log', JSON.stringify(arr)); },
 };
 
-// Boot-time catch-up for every row-shaped domain, same shape as
-// lhRefreshConfigFromServer_() above — only overwrites this browser's
-// copy when the server actually has something (found:true); a
-// never-synced domain keeps whatever's already in localStorage (this
-// browser's own seed data, on the very first sync).
-async function lhRefreshDataDomainsFromServer_() {
-  // Served: the page arrived with the server's data (LH_BOOT); nothing to catch up.
-  if (LH_SERVED) return;
-  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
-
-  const APPLY = LH_DATA_APPLY;
-
-  for (const [key, domain] of Object.entries(LH_SERVER_SYNCED_DATA_KEYS)) {
-    let res;
-    try {
-      res = await new Promise((resolve, reject) => {
-        google.script.run
-          .withSuccessHandler(resolve)
-          .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-          .lhPullData({ domain });
-      });
-    } catch (e) {
-      console.warn('[LeaderHub] Could not refresh ' + domain + ' from server:', (e && e.message) || e);
-      continue;
-    }
-    const pending = _lhPendingKeys_('data').indexOf(key) !== -1;
-    let local = null;
-    if (pending) {
-      try { local = JSON.parse(_lhStore.getItem(key) || 'null'); } catch (e) { local = null; }
-    }
-    if (res && res.ok && res.found) {
-      let arr = (res.rows || [])
-        .map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } })
-        .filter(Boolean);
-      // An edit the server never accepted: merge it with the server's copy
-      // rather than replacing it, then push the merge.
-      if (pending && Array.isArray(local)) arr = _lhMergeById_(arr, local);
-      const apply = APPLY[domain];
-      if (apply) apply(arr);
-      _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
-      if (pending) _lhSyncDataKeyToServer_(key, arr);
-    } else if (res && res.ok && pending && Array.isArray(local)) {
-      _lhSyncDataKeyToServer_(key, local);
-    } else if (res && res.ok && !res.found) {
-      // Never pushed from anywhere: this browser's copy seeds the server
-      // (no browser storage, Phase 2). Logs get their ids on the way.
-      let mine = null;
-      try { mine = JSON.parse(_lhStore.getItem(key) || 'null'); } catch (e) { mine = null; }
-      if (Array.isArray(mine) && mine.length) {
-        mine = _lhWithLogIds_(key, mine);
-        try { _lhStore.setItem(key, JSON.stringify(mine)); } catch (e) {}
-        _lhSyncDataKeyToServer_(key, mine);
-      }
-    }
-  }
-}
-
 // ── SCR score sync — debounced, per-cell (server-migration Phase 6) ────────
 // scrScores is a course→period→student→competency matrix that can span
 // thousands of cells, and setScore() (leader-hub/src/09-...-esports.html)
@@ -1087,36 +841,6 @@ async function _lhFlushScrScoreSync_() {
   }
 }
 
-// Boot-time catch-up, same found:false/found:true-guarded shape as
-// lhRefreshConfigFromServer_()/lhRefreshDataDomainsFromServer_() above —
-// found:false (this deployment has never had a score pushed to it) leaves
-// scrScores untouched; found:true replaces it wholesale with the server's
-// authoritative copy, since by the time any score has ever been synced,
-// the server is the source of truth every device should converge on.
-async function lhRefreshScrScoresFromServer_() {
-  // Served: the page arrived with the server's data (LH_BOOT); nothing to catch up.
-  if (LH_SERVED) return;
-  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
-  let res;
-  try {
-    res = await new Promise((resolve, reject) => {
-      google.script.run
-        .withSuccessHandler(resolve)
-        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-        .lhGetScrScores();
-    });
-  } catch (e) {
-    console.warn('[LeaderHub] Could not refresh SCR scores from server:', (e && e.message) || e);
-    return;
-  }
-  if (res && res.ok && res.found) {
-    scrScores = res.scores || {};
-    _lhStore.setItem('lh_scr_scores', JSON.stringify(scrScores));
-    if (document.getElementById('view-competency')?.classList.contains('active') && typeof renderCompetencyView === 'function') {
-      renderCompetencyView();
-    }
-  }
-}
 
 // ============================================================
 // DATA

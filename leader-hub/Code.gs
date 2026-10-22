@@ -160,5 +160,6 @@ function lhGetAllConfig() { _lhRequireOwner_(); return lhGetAllConfig_(); }
 function lhSaveConfig(key, value) { _lhRequireOwner_(); return lhSaveConfig_(key, value); }
 function lhPushData(body) { _lhRequireOwner_(); return lhPushData_(body); }
 function lhPullData(body) { _lhRequireOwner_(); return lhPullData_(body); }
-function lhGetScrScores() { _lhRequireOwner_(); return lhGetScrScores_(); }
+// lhGetScrScores: no public entry point since 2026-10-22; the page gets the
+// scores with the boot data (Data.gs's lhBootData_).
 function lhSaveScrScores(changes) { _lhRequireOwner_(); return lhSaveScrScores_(changes); }

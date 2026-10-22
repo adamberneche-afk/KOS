@@ -321,7 +321,7 @@ async function saveJournalEntry(){
 // Mood 1-3 → reduced, gentle load
 // Mood 4-6 → standard load
 // Mood 7-10 → push, ambitious load
-// Writes tomorrow's priority stack to localStorage.
+// Saves tomorrow's priority stack (to the server, through LS).
 // ══════════════════════════════════════════════════════════
 
 
@@ -2190,23 +2190,17 @@ function _orgSyncStatusLine_(orgId) {
 // through lhOrgSyncCall(), which relays to the other advisor's bridge on
 // the server, because google.script.run only reaches this deployment: a
 // co-advisor's push and pull used to land in their own, empty spreadsheet.
-// Opened as a local file, the browser POSTs to the bridge URL directly.
+// (The browser's direct POST for the standalone file went with that file,
+// 2026-10-22.)
 function _orgSyncCall_(orgId, action, payload, bridgeUrl) {
   const url = bridgeUrl !== undefined ? bridgeUrl : ((ORG_SYNC[orgId] && ORG_SYNC[orgId].bridgeUrl) || '');
-  if (typeof google !== 'undefined' && google.script && google.script.run) {
-    return new Promise((resolve, reject) => {
-      google.script.run
-        .withSuccessHandler(resolve)
-        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-        .lhOrgSyncCall(url, action, payload || {});
-    });
-  }
-  if (!url) return callGAS(action, payload);
-  return fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(Object.assign({}, payload || {}, { action })),
-  }).then(resp => { if (!resp.ok) throw new Error('GAS HTTP ' + resp.status); return resp.json(); });
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return Promise.reject(new Error('NO_SERVER'));
+  return new Promise((resolve, reject) => {
+    google.script.run
+      .withSuccessHandler(resolve)
+      .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+      .lhOrgSyncCall(url, action, payload || {});
+  });
 }
 
 // A share code is "<orgId>@<bridge /exec URL>": everything a co-advisor
@@ -2623,8 +2617,8 @@ function lhJoinOrg(orgId, bridgeUrl) {
 }
 
 // ── Whole-app backup — every lh_* key, in one file ─────────────────────────
-// Served, the keys come from page memory (the server's copy, _lhStore) and
-// an import is saved to the server; opened as a file, from localStorage.
+// The keys come from page memory (the server's copy, _lhStore), and an
+// import is added to the server's copy (lhImportIntoServer_, src/05).
 // This is the only backup mechanism a 100%-local, no-server app like this
 // one can have. Without it, a cleared cache or a device switch is silent,
 // unrecoverable data loss for a full year of tasks/journal/trip records.
@@ -2647,67 +2641,6 @@ function lhExportBackup(){
   // app has an elaborate reminder system and used none of it for the one
   // event — no backup ever taken — that would erase everything).
   LS.set('lh_last_backup', new Date().toISOString());
-}
-
-// ── Moving the standalone file's data to the web app (no browser storage,
-// Phase 4, 2026-10-22) ─────────────────────────────────────────────────────
-// Opened from disk, this copy keeps its data in this browser, which the web
-// app can't read. A banner says so and gives the two steps: Export here,
-// then Import in the web app (which adds to the server's copy). Once the
-// export is made, "Clear this browser's copy" deletes the data here. The
-// standalone file is retired after that (Phase 5).
-let _lhExportedThisSession = false;
-function lhShowMoveToWebAppBanner_() {
-  if (LH_SERVED || document.getElementById('lh-move-banner')) return;
-  // Only when this browser held data before this load (LH_BROWSER_HAD_DATA,
-  // src/05): the app writes a few defaults on any load, which aren't data.
-  if (!LH_BROWSER_HAD_DATA) return;
-  // Already moved and cleared here (lhClearBrowserCopy_).
-  try { if (localStorage.getItem(LH_MOVED_KEY)) return; } catch (e) {}
-  const banner = document.createElement('div');
-  banner.id = 'lh-move-banner';
-  banner.setAttribute('role', 'region');
-  banner.setAttribute('aria-label', 'Move your data to the web app');
-  banner.style.cssText = 'background:#1e3a5f;color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;font-size:.84rem';
-  // The Email Bridge URL is this same Apps Script project's web app, which
-  // serves LeaderHub too (Code.gs's doGet).
-  const appUrl = typeof EMAIL_BRIDGE !== 'undefined' ? EMAIL_BRIDGE.url() : null;
-  const safe = appUrl && /^https:\/\/script\.google\.com\//.test(appUrl) ? appUrl : null;
-  banner.innerHTML =
-    '<span style="flex:1;min-width:240px"><strong>This copy keeps your data in this browser only.</strong> ' +
-    'Move it to your LeaderHub web app: 1. <b>Export everything</b> here. 2. In the web app, ' +
-    '<b>Settings → Import</b> that file. Your web app\'s own data is kept; the two are combined.</span>' +
-    '<button id="lh-move-export" class="btn btn-sm" style="background:#fff;color:#1e3a5f;font-weight:700">⬇️ Export everything</button>' +
-    (safe ? '<a id="lh-move-open" href="' + escH(safe) + '" target="_blank" rel="noopener" style="color:#fff;font-weight:700">Open the web app ↗</a>' : '') +
-    '<button id="lh-move-clear" class="btn btn-sm" style="background:transparent;color:#fff;border:1px solid #fff" disabled ' +
-    'title="Export first">Clear this browser\'s copy</button>';
-  lhShowBanner(banner);
-  document.getElementById('lh-move-export').onclick = () => {
-    lhExportBackup();
-    _lhExportedThisSession = true;
-    const clear = document.getElementById('lh-move-clear');
-    if (clear) { clear.disabled = false; clear.title = 'After you have imported the file in the web app'; }
-  };
-  document.getElementById('lh-move-clear').onclick = () => {
-    if (!_lhExportedThisSession) return;
-    _showConfirm('Delete LeaderHub\'s data from this browser?\n\nDo this only after you have imported the exported ' +
-      'file in the web app and checked your trips, members and logs are there. This can\'t be undone here; the ' +
-      'exported file is your copy.', lhClearBrowserCopy_, { confirmLabel: 'Delete from this browser', ariaLabel: 'Delete this browser\'s copy' });
-  };
-}
-// Standalone only (this file still uses browser storage until Phase 5):
-// marks that this browser's data was moved, so the banner doesn't come back
-// for the defaults any load writes.
-const LH_MOVED_KEY = 'lh_moved_to_web_app';
-function lhClearBrowserCopy_() {
-  try {
-    const keys = [];
-    for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
-    keys.filter(k => k && k.startsWith('lh_')).forEach(k => localStorage.removeItem(k));
-    localStorage.setItem(LH_MOVED_KEY, JSON.stringify(new Date().toISOString()));
-  } catch (e) {}
-  _showToast('Deleted from this browser. Use the web app from now on.', 5000);
-  setTimeout(() => location.reload(), 1200);
 }
 
 function lhImportBackup(fileInput){
@@ -2755,11 +2688,6 @@ function lhImportBackup(fileInput){
           }, 500);
           return;
         }
-      } else {
-        keys.forEach(k => {
-          try { localStorage.setItem(k, data[k]); }
-          catch (e) { failedKeys.push(k); console.error('[lhImportBackup] failed to import key', k, e); }
-        });
       }
 
       if (failedKeys.length === 0) {
@@ -2792,12 +2720,10 @@ function _showImportConfirmModal(count, onConfirm) {
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
   modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem">
     <div style="font-weight:800;margin-bottom:.5rem">Import backup?</div>
-    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">${LH_SERVED
-      ? `Import ${count} data key(s) from this backup into your account? Records are added to what's already here (an item in both keeps the backup's version); settings take the backup's value.`
-      : `Import ${count} data key(s) from this backup? This overwrites anything currently saved under the same names — consider exporting your current data first.`}</div>
+    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">Import ${count} data key(s) from this backup into your account? Records are added to what's already here (an item in both keeps the backup's version); settings take the backup's value.</div>
     <div style="display:flex;justify-content:flex-end;gap:.5rem">
       <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-confirm-modal').remove()">Cancel</button>
-      <button class="btn btn-primary btn-sm" id="import-confirm-submit">${LH_SERVED ? 'Import' : 'Import &amp; Overwrite'}</button>
+      <button class="btn btn-primary btn-sm" id="import-confirm-submit">Import</button>
     </div>
   </div>`;
   modal.onclick = e => { if (e.target === modal) modal.remove(); };
