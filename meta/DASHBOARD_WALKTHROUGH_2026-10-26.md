@@ -81,11 +81,11 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 - [ ] **A never-submitted assignment**: pill "Not started yet" (grey), with a Submit button.
 - [ ] **Student E (submitted, waiting for Flow 2):**
   - Right after pressing Submit: "✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right)." (`FEEDBACK_AS_COMMENT` = all).
-  - Press Refresh. **Expect the pill still to say "Not started yet"**, not "Queued for evaluation…", with the Submit button still showing, until Flow 2 starts. The teacher sees QUEUED for the same student (finding 2).
+  - Press Refresh. Expect "Queued for evaluation…" with no Submit button, then "Evaluating now…" once Flow 2 starts (finding 2, fixed 10-22). The teacher sees QUEUED for the same student.
   - Once Flow 2 starts: "Evaluating now…" (orange).
   - Pressing Submit again while waiting should say "This is already waiting for feedback…" (only while the ReviewQueue row is still PENDING).
-- [ ] **SubmissionTS**: look for any "Submitted <time>" line on E's card. **Expect none.** It only shows on a COMPLIANT card, which nothing creates any more (finding 3).
-- [ ] **Student F (passed):** pill "Evaluated — feedback ready: open your document and click Comments" (purple, sorted as needing action), with Submit still showing. Nothing on the card says the work passed. The doc header says it (finding 8).
+- [ ] **SubmissionTS**: E's card shows "Last submitted <time>" (finding 3a, fixed 10-22).
+- [ ] **Student F (passed):** pill "Passed ✓ — feedback is ready: open your document and click Comments" (green); Submit still shows, so the work can be improved (finding 8, fixed 10-22). A student whose latest check needs revision reads "Feedback ready — revise, then submit again…" (purple).
 - [ ] **Feedback-as-comment link**: press "Open My Document ↗" on F's card. The doc opens, the feedback is a comment (Comments, top right), and the doc header's "Feedback:" line is color-coded.
 - [ ] **A flagged / timed-out row** (Ledger `ERROR_…`): red "Flagged ⚠ — see your teacher", with an "✉ Email <teacher>" link.
 - [ ] **No assignments at all**: the Warm-ups card (if any), then "No assignments found for <account>…" with three bullets. The footer is blank in this case (finding 17).
@@ -110,7 +110,7 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 
 - [ ] Each lesson section has a header: "<lesson> 12 students · 3 passed · … not checked". Students are ordered by period (1, 3-Even, 3-Odd, 4…), then name.
 - [ ] Each row shows the name, "Block x · Period 3-Odd · Subject", "N checks · last <date>" or "No checks yet", "First passed <date>", "Suggested score (latest check): n/5", **Open document ↗**, and on the right the state badge, plus a pipeline badge when the work is QUEUED, EVALUATING NOW, FLAGGED or PENDING REVIEW.
-- [ ] Student E's row shows the **QUEUED** badge while the student's own card says "Not started yet" (finding 2).
+- [ ] Student E's row shows the **QUEUED** badge, and the student's own card says "Queued for evaluation…" (finding 2, fixed 10-22).
 - [ ] Student F's row shows "✅ Passed" with a first-passed date.
 - [ ] Period 3 students show **3-Odd / 3-Even**, never plain "3" (`PeriodOverride` / relabel).
 - [ ] A submitted row ends its checks line with "· submitted <time>"; a row never submitted has none (finding 3b, fixed 10-22).
@@ -142,7 +142,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
   1. Work out the course from the row's class or course name with `warmUpCourseCode_` (00, the same rule `WARMUP_TEXT_BOX` uses), both in `_tdFeedbackPlacement_` and in a `feedbackAsCommentChecker_` that takes the row rather than the ConfigID.
   2. Show `data.value` at the top of the panel.
 
-**2. A submitted assignment reads "Not started yet" on the student's card while the teacher sees QUEUED.**
+**2. A submitted assignment reads "Not started yet" on the student's card while the teacher sees QUEUED.** *Fixed 2026-10-22: an open ReviewQueue row or a waiting staging row reads "Queued for evaluation…", Submit is hidden while queued, and a STAGED row refuses a second submit.*
 - **Where:** `13_StudentDashboard.js:619-670` (`resolveStudentStatus_` / `resolveStudentClass_`), compared with `07:1386-1389`.
 - **What:** 13 only knows a staging status of `IN_PROCESS`. Its `PENDING`/`STAGED` cases are dead, because no code ever writes those to the **Ledger**: 03 writes them to ReviewQueue only, and the Ledger goes ACTIVE → COMPLETE in `03:483-490`. 07 also maps staging `PENDING_INFERENCE` to QUEUED; 13 doesn't.
 - **Scenario:** student E presses Submit, refreshes, and sees "Not started yet" with the Submit button still there. Pressing Submit again after the bridge has moved the row to STAGED passes the `ALREADY_QUEUED` check (`13:554-556` only looks for PENDING) and stamps a new SubmissionTS. On a resubmission of evaluated work, the card keeps saying "Evaluated — feedback ready" until Flow 2 starts.
@@ -157,6 +157,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
   - The student card shows "Submitted <time>" only when `statusClass === "DONE"`, which is COMPLIANT. Nothing reaches COMPLIANT now: 04's turn-in gate is retired (P0-04), and the only writer, `07:678`, needs PENDING_TEACHER_REVIEW, which nothing writes.
   - The Teacher Dashboard computes `submittedAt` and never renders it (3b). *3b fixed 2026-10-22.*
   - HISTORY's #186 entry says both dashboards show it.
+  - *3a fixed 2026-10-22: every card with a SubmissionTS shows "Last submitted <time>".*
 - **Scenario:** during the walk, student E and student F both have a SubmissionTS on the Ledger, and neither dashboard shows it anywhere.
 - **Fix:**
   1. Show "Last submitted <time>" on any student card with `submittedAt`.
@@ -193,7 +194,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
 
 ### Confusing
 
-**8. A passed assignment looks the same as one that needs revision, and is flagged as needing action.**
+**8. A passed assignment looks the same as one that needs revision, and is flagged as needing action.** *Fixed 2026-10-22: the card reads the Ledger's LastResult.*
 - **Where:** `13:634-636,665`; the Ledger's LastResult is written at `37:762-769` and never read by 13.
 - **What:** COMPLETE always maps to "Evaluated — feedback ready…" (purple NEEDS_ACTION, sorted second) with Submit showing. The teacher sees ✅ Passed for the same row.
 - **Scenario:** student F sees a purple "needs action" card for work that passed and may resubmit it.
