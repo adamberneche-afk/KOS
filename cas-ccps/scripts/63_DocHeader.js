@@ -20,9 +20,11 @@ const DOC_FEEDBACK_PREFIX  = "Feedback: ";
 const DOC_FEEDBACK_STATES  = {
   NOT_SUBMITTED: { text: "not submitted yet. When you're ready, use Submit for Feedback on your dashboard.",
                    color: DOC_HEADER_GREY, bold: false },
-  CHECKING:      { text: "submitted {when}, being checked.", color: DOC_HEADER_GREY, bold: false },
-  PASSED:        { text: "✅ Meets the standard ({when}). See {where}.", color: "#137333", bold: true },
-  REVISE:        { text: "✏️ Revisions required ({when}). See {where}, then submit again.",
+  // The dashboards' words (2026-10-22): Waiting for feedback, Passed,
+  // Revise then submit again.
+  CHECKING:      { text: "submitted {when}, waiting for feedback.", color: DOC_HEADER_GREY, bold: false },
+  PASSED:        { text: "✅ Passed ({when}). See {where}.", color: "#137333", bold: true },
+  REVISE:        { text: "✏️ Revise, then submit again ({when}). Read {where} first.",
                    color: "#b06000", bold: true }
 };
 

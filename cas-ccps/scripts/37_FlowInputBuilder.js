@@ -892,9 +892,7 @@ function _fiInsertEvaluation_(body, block) {
 
 function _fiFormatFeedbackBlock_(studentFacingReport, complianceStatus) {
   const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
-  const resultLine = complianceStatus === "APPROVED"
-    ? "✅ RESULT: YOUR WORK MEETS THE STANDARD"
-    : "✏️  RESULT: REVISIONS REQUIRED";
+  const resultLine = complianceStatus === "APPROVED" ? FI_RESULT_PASSED : FI_RESULT_REVISE;
 
   // Each block carries its own next steps (03_QueueBridge.js's
   // buildNextStepsText_, same project). 03 adds a next-steps block only to a
@@ -910,14 +908,35 @@ function _fiFormatFeedbackBlock_(studentFacingReport, complianceStatus) {
 // The same feedback as a comment on the doc (FEEDBACK_AS_COMMENT, 00): the
 // result line, the report and the next steps, without the box-drawing
 // EVALUATION markers, which only exist for code that searches the doc.
+// It reads in the Comments panel (about 300px wide), so it has no divider
+// lines or hard-wrapped lines, uses the dashboards' words, and says that
+// resolving the comment doesn't delete it (2026-10-22).
 function _fiFormatFeedbackComment_(studentFacingReport, complianceStatus) {
-  const timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm");
-  const resultLine = complianceStatus === "APPROVED"
-    ? "✅ RESULT: YOUR WORK MEETS THE STANDARD"
-    : "✏️ RESULT: REVISIONS REQUIRED";
-  return "Feedback, " + timestamp + "\n" + resultLine + "\n\n" +
-    String(studentFacingReport || "").trim() + "\n" +
-    buildNextStepsText_(complianceStatus).replace(/\s+$/, "");
+  const when = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMM d, h:mm a");
+  const resultLine = complianceStatus === "APPROVED" ? FI_RESULT_PASSED : FI_RESULT_REVISE;
+  return "Feedback, " + when + "\n" + resultLine + "\n\n" +
+    String(studentFacingReport || "").trim() + "\n\n" +
+    _fiCommentNextSteps_(complianceStatus);
+}
+
+// The result line, in the doc and in the comment: the dashboards' words.
+const FI_RESULT_PASSED = "Result: ✅ Passed. Your work meets the standard.";
+const FI_RESULT_REVISE = "Result: ✏️ Revise, then submit again.";
+
+function _fiCommentNextSteps_(complianceStatus) {
+  const keep = "Resolving this comment only hides it. You can find it again with the Comments button.";
+  if (complianceStatus === "APPROVED") {
+    return "What to do next\n" +
+      "• Done? Turn it in on Canvas: copy this document's link, open the Canvas assignment, choose Start Assignment, then Website URL, and paste the link.\n" +
+      "• Want to make it stronger? Revise it, then press Submit for Feedback on your dashboard again (the link is at the top of this document).\n\n" +
+      keep;
+  }
+  return "What to do next\n" +
+    "1. Read the revisions listed above.\n" +
+    "2. Change your work under the \u201cYour response\u201d heading.\n" +
+    "3. Press Submit for Feedback on your dashboard (the link is at the top of this document).\n" +
+    "You can check as many times as you need. There's no penalty for revising.\n\n" +
+    keep;
 }
 
 // Posts the feedback as an unanchored comment through the Drive advanced
