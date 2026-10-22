@@ -122,7 +122,8 @@ test('reminder banners stack under the header in normal flow', () => {
   // Only lhShowBanner's own fallback (no #lh-banners in the page) prepends.
   assert.equal((all.match(/document\.body\.prepend\(banner\)/g) || []).length, 1);
   assert.match(all, /if \(!stack\) \{ document\.body\.prepend\(banner\); return; \}/);
-  assert.equal((all.match(/lhShowBanner\(banner\);/g) || []).length, 8);
+  // Eight reminders, and the standalone file's "move your data" banner (2026-10-22).
+  assert.equal((all.match(/lhShowBanner\(banner\);/g) || []).length, 9);
   assert.match(SRC('03-markup-nav-dashboard-trips.html'), /<\/header>\n<div id="lh-banners" role="region" aria-label="Reminders"><\/div>/);
   const css = SRC('01-styles.html');
   assert.match(css, /\.app\{ height:calc\(100vh - 64px - var\(--lh-banners-h, 0px\)\); \}/);

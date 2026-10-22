@@ -26,6 +26,19 @@ const _lhStore = LH_SERVED ? {
   keys: () => { const out = []; for (let i = 0; i < localStorage.length; i++) out.push(localStorage.key(i)); return out; },
 };
 
+// Opened from disk: whether this browser held LeaderHub data before this
+// load wrote anything (it writes a few defaults on any load). Decides
+// whether the "move your data to the web app" banner shows (Phase 4, src/11).
+let LH_BROWSER_HAD_DATA = false;
+if (!LH_SERVED) {
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.indexOf('lh_') === 0) { LH_BROWSER_HAD_DATA = true; break; }
+    }
+  } catch (e) {}
+}
+
 // The Gemini API key a browser may still hold from before AI moved to
 // Workspace Flows (no code reads it since). Deleted at every load
 // (2026-10-22, meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md Phase 1):
@@ -616,6 +629,50 @@ function lhMigrateFromBrowser_() {
       _lhScrMigrationPending_ = true;
     }
   }, 0);
+}
+
+// ── Import a backup into the server (served; no browser storage, Phase 4) ──
+// How the standalone file's data reaches the web app: Export there, Import
+// here. An import adds to what the server has rather than replacing it, so
+// nothing made in the web app is lost: records merge by id (the imported
+// copy winning), the id counters take the larger value, SCR cells are
+// queued one by one, and settings take the imported value. Drafts, view
+// state and sync bookkeeping are skipped. Returns the keys that failed.
+function lhImportIntoServer_(data) {
+  const failed = [];
+  Object.keys(data || {}).forEach(k => {
+    if (k.indexOf('lh_') !== 0 || k.indexOf('lh_data_sync_') === 0 || k === LH_SYNC_PENDING_KEY ||
+        LH_PAGE_MEMORY_KEYS.indexOf(k) !== -1 || LH_RETIRED_SECRET_KEYS.indexOf(k) !== -1) return;
+    let v;
+    try { v = typeof data[k] === 'string' ? JSON.parse(data[k]) : data[k]; } catch (e) { failed.push(k); return; }
+    if (v == null) return;
+    if (k === 'lh_scr_scores') {
+      if (typeof v !== 'object') { failed.push(k); return; }
+      const cur = LS.get('lh_scr_scores', {}) || {};
+      Object.keys(v).forEach(course => Object.keys(v[course] || {}).forEach(period =>
+        Object.keys(v[course][period] || {}).forEach(student =>
+          Object.keys(v[course][period][student] || {}).forEach(comp => {
+            const score = v[course][period][student][comp];
+            ((cur[course] = cur[course] || {})[period] = cur[course][period] || {})[student] =
+              Object.assign(cur[course][period][student] || {}, { [comp]: score });
+            _lhQueueScrScoreSync_(course, period, student, comp, score);
+          }))));
+      _lhStore.setItem('lh_scr_scores', JSON.stringify(cur));
+      return;
+    }
+    if (k in LH_SERVER_SYNCED_DATA_KEYS) {
+      if (!Array.isArray(v)) { failed.push(k); return; }
+      const cur = LS.get(k, []);
+      v = _lhMergeById_(Array.isArray(cur) ? cur : [], _lhWithLogIds_(k, v));
+    } else if (k === 'lh_next_id' && v && typeof v === 'object') {
+      const cur = LS.get(k, {}) || {};
+      Object.keys(cur).forEach(c => { if (!(Number(v[c]) >= Number(cur[c]))) v[c] = cur[c]; });
+    } else if (k === 'lh_next_slip_id') {
+      v = Math.max(Number(v) || 0, Number(LS.get(k, 0)) || 0);
+    }
+    if (LS.set(k, v) === false) failed.push(k);
+  });
+  return failed;
 }
 
 // ── "Not saved yet" (served) ─────────────────────────────────────────────

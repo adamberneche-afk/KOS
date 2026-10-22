@@ -4,7 +4,7 @@ The operator, 2026-10-22: "I don't want anything stored in the browser."
 cas-ccps and kos-personal already comply (`tests/tools/no-browser-storage.test.js`).
 leader-hub is the one system still built around `localStorage`, and moving
 it off is a migration rather than a fix, so it gets this plan and its own PRs.
-Phases 1 to 3 are done (2026-10-22), with the served app's part of Phase 4; the rest is decided, not built.
+Phases 1 to 4 are done (2026-10-22); Phase 5 is decided, not built.
 
 ## Where leader-hub is today
 
@@ -129,7 +129,7 @@ not used, and a test enforces that, as it does for the other two projects.
 - **Opened as a file from disk** there is no server, so `_lhStore` is still
   `localStorage` there until Phase 5.
 
-### Phase 4: move existing data, then remove browser storage
+### Phase 4: move existing data, then remove browser storage (done 2026-10-22)
 
 - **The served app: done with Phase 3** (`lhMigrateFromBrowser_`, src/05).
   On load, each `lh_*` key an earlier version left in that browser is
@@ -138,10 +138,16 @@ not used, and a test enforces that, as it does for the other two projects.
   is deleted from the browser once the server accepts it. One the server
   already has is deleted at once. The id counters take the larger value.
   Nothing is deleted before the server holds it.
-- **The standalone file: still to do.** Its data is in that file's own
-  browser storage, which the served app can't read. The file gets "Export
-  everything"; the served app's existing **Import** (Settings) now saves an
-  import to the server and reloads once it's in. That import is the move.
+- **The standalone file: done (2026-10-22).** Opened from disk with data in
+  it, the file shows a banner: **Export everything**, then **Settings →
+  Import** in the web app (with an **Open the web app** link when the
+  Email Bridge URL, this same project's web app, is set). Served, an import
+  adds to the server's copy (`lhImportIntoServer_`): records merge by id,
+  the imported copy winning; counters take the larger value; SCR cells are
+  queued one by one; drafts and bookkeeping are skipped. It never replaces
+  what the web app has. After the export, **Clear this browser's copy**
+  (with a confirm) deletes the file's data and marks the move
+  (`lh_moved_to_web_app`), so the banner doesn't return.
 - **Backups.** The "Export a backup" button writes a file download, not
   browser storage; served, it exports the server's copy.
 - **Enforcement.** `tests/leaderhub/no-browser-storage.test.js` checks the
