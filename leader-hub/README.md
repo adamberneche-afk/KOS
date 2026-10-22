@@ -1319,7 +1319,10 @@ Phase 2, `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`):
   deleted there (`lhMigrateFromBrowser_`).
 - **Opened as a file from disk** there is no server, so the app still uses
   `localStorage` until that file is retired (Phase 5); the Email Bridge URL
-  is only needed there. `lh_inventory_transactions` is read in one place
+  is only needed there. With data in it, the file shows a "move your data"
+  banner (Phase 4): **Export everything**, then **Settings → Import** in the
+  web app, which adds to the server's copy rather than replacing it; then
+  **Clear this browser's copy**. `lh_inventory_transactions` is read in one place
   and never written.
 - `tests/leaderhub/no-browser-storage.test.js` fails if a new `lh_*` key is
   not on the server, in page memory or a named exception.

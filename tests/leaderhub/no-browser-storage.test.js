@@ -144,6 +144,7 @@ test('every lh_* key is on the server, in page memory, or a named exception', ()
     lh_api_key: 'retired: deleted at load (Phase 1)',
     lh_deposit_reminder_force: 'read, never written',
     lh_inventory_transactions: 'read, never written',
+    lh_moved_to_web_app: 'the standalone file only: its data was moved (Phase 4)',
   };
   const keys = new Set();
   for (const f of fs.readdirSync(path.join(LH, 'src'))) {
@@ -309,4 +310,39 @@ test('served: if the server\'s data couldn\'t be read, nothing is saved over it'
   await tick();
   assert.equal(calls.length, 0, 'nothing sent to the server');
   assert.equal(store.size, 0);
+});
+
+// ── Phase 4: the standalone file's data reaches the web app by import ────
+// Served, an import adds to the server's copy: records merge by id with the
+// imported copy winning, counters take the larger value, SCR cells are
+// queued one by one, and drafts and bookkeeping are skipped.
+test('served: an import adds to the server\'s data, never replacing what the web app has', async () => {
+  const pushes = [];
+  const saved = {};
+  const { api, ctx } = served(Object.assign({}, BOOT, {
+    config: { lh_next_id: { trip: 40, ev: 3 } },
+  }), {}, {
+    lhPushData: (b) => { pushes.push(b); return { ok: true, updatedAt: 't2' }; },
+    lhSaveConfig: (k, v) => { saved[k] = v; return { ok: true }; },
+  });
+  const cells = [];
+  ctx._lhQueueScrScoreSync_ = (...a) => cells.push(a);
+  vm.runInContext('this.__imp = lhImportIntoServer_;', ctx);
+  const failed = ctx.__imp({
+    lh_trips: JSON.stringify([{ id: 1, name: 'ICDC (file copy)' }, { id: 7, name: 'only in the file' }]),
+    lh_next_id: JSON.stringify({ trip: 30, ev: 9 }),
+    lh_scr_scores: JSON.stringify({ '8175': { '3': { s1: { '1': 2 } } } }),
+    lh_trip_draft: JSON.stringify({ x: 1 }),
+    lh_sync_pending: JSON.stringify({}),
+    lh_data_sync_trips: JSON.stringify({}),
+    lh_profile: JSON.stringify({ name: 'From the file' }),
+  });
+  await tick();
+  assert.deepEqual(JSON.parse(JSON.stringify(failed)), []);
+  assert.deepEqual(api.LS.get('lh_trips').map((t) => t.name), ['ICDC (file copy)', 'only in the file']);
+  assert.deepEqual(JSON.parse(JSON.stringify(saved.lh_next_id)), { trip: 40, ev: 9 }, 'each counter the larger');
+  assert.deepEqual(JSON.parse(JSON.stringify(cells)), [['8175', '3', 's1', '1', 2]], 'SCR cells queued for the server');
+  assert.deepEqual(JSON.parse(JSON.stringify(saved.lh_profile)), { name: 'From the file' });
+  assert.equal(api.LS.get('lh_trip_draft', 'none'), 'none', 'a draft is not imported');
+  assert.ok(pushes.some((p) => p.domain === 'trips'));
 });
