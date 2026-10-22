@@ -1259,3 +1259,20 @@ Workspace Flows, but a browser could still hold `lh_api_key`, so the app
 now deletes it at every load. Decided for later phases: the standalone
 file is retired once its data can be imported, and view state resets on
 reload.
+
+## No browser storage, Phase 2: the rest of the data on the server, 2026-10-22
+
+Every `lh_*` key is now on the server, in page memory or a named exception
+(`tests/leaderhub/no-browser-storage.test.js`):
+- **Data domains** (Data.gs) for the member roster (`members`) and the five
+  logs that had no ids. Each entry gets a random id as it is saved.
+- **Config keys** (Config.gs) for 26 pieces of small state: reminder dates,
+  journal and cron state, the id counters (merged by the larger value),
+  Organization Sync bookkeeping, snoozed cards, the notifications setting.
+- **Page memory** for drafts, view state and the cached CAS pacing units,
+  so a reload loses an unsaved draft and opens on the dashboard.
+- **Seeding:** a key or domain the server never had is pushed once from
+  this browser at load.
+
+The served app still keeps a `localStorage` copy and writes through;
+Phase 3 makes the server the only copy.

@@ -4,7 +4,7 @@ The operator, 2026-10-22: "I don't want anything stored in the browser."
 cas-ccps and kos-personal already comply (`tests/tools/no-browser-storage.test.js`).
 leader-hub is the one system still built around `localStorage`, and moving
 it off is a migration rather than a fix, so it gets this plan and its own PRs.
-Phase 1 is done (2026-10-22); the rest is decided, not built.
+Phases 1 and 2 are done (2026-10-22); the rest is decided, not built.
 
 ## Where leader-hub is today
 
@@ -70,19 +70,37 @@ not used, and a test enforces that, as it does for the other two projects.
   check), and only the standalone file uses it. It goes with the
   standalone file in Phase 5.
 
-### Phase 2: the rest of the data onto the server
+### Phase 2: the rest of the data onto the server (done 2026-10-22)
 
-- Logs with no `id`: give each entry one when it's written (a counter
-  kept on the server), then add them to `LH_DATA_TABS`. Existing entries get
-  ids once, at import. Phase 8 rejected timestamp-derived ids; server-issued
-  ones avoid that problem.
-- State and reminders: add to `LH_CONFIG_KEYS` (map-shaped, small).
-  `lh_next_id` and `lh_next_slip_id` move to server counters.
-- `lh_students` and `lh_scr_session_log`: decide between a data tab and a
-  config key from their shape, in the PR.
-- `lh_trip_draft` and the journal draft: page memory only, like cas-ccps's
-  drafts, so a reload loses an unsaved draft (the same trade the operator
-  accepted for kos-personal).
+- **Logs with no `id`** (`lh_daily_log`, `lh_sub_plan_log`, `lh_brag_log`,
+  `lh_wbl_hours_log`, `lh_scr_session_log`) are data domains now. Each entry
+  gets an id as it is saved (`_lhWithLogIds_` in `LS.set`): random, not a
+  server counter, because a counter would need a round trip before every
+  save, and random ids already avoid Phase 8's worry (two entries in the
+  same millisecond stay two). Existing entries get theirs on their next
+  save or the first load's push.
+- **The member roster** (`lh_students`) is the `members` data domain. Its
+  records already had ids. It goes to the private, owner-only "LeaderHub
+  Data" spreadsheet, like the WBL roster, not to Organization Sync.
+- **Small state is config keys:** the reminder dates, the journal's last
+  entry and cron state, `lh_org_sync`, `lh_org_welcome_seen`, `lh_snoozed`,
+  `lh_notify_enabled`, `lh_first_use_date`, `lh_last_backup` and the id
+  counters. `lh_next_id` and `lh_next_slip_id` merge at load by the larger
+  value per counter, and a browser that was ahead pushes its value back.
+- **Drafts, view state and the cached CAS pacing units are page memory**
+  (`LH_PAGE_MEMORY_KEYS`). `LS` never writes them to the browser, and
+  copies left from before are removed at load.
+- **Seeding.** A key or domain the server has never had is pushed once from
+  this browser at load, so data kept only in the served app's browser moves
+  to the server on the first load after the push. Data in the standalone
+  file's storage still needs Phase 4's import.
+- **Enforced** by `tests/leaderhub/no-browser-storage.test.js`: every `lh_*`
+  key in `src/` is on the server, in page memory or a named exception
+  (sync bookkeeping, Phase 3; the Email Bridge URL, Phase 5; the retired
+  key; two keys that are read but never written).
+- **What is still in the browser:** the served app still keeps its copy in
+  `localStorage` and writes through to the server; Phase 3 makes the server
+  the only copy.
 
 ### Phase 3: one load, server first
 
