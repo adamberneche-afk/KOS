@@ -34,13 +34,13 @@ const ESCH_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '06-task
 const FINANCE_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '09-wbl-lessonplans-procurement-finance-esports.html');
 
 function renderSalesLog(salesLog) {
-  const escHSource = extractLines(ESCH_PATH, 1466, 1468, ['function escH(']);
+  const escHSource = extractLines(ESCH_PATH, 1537, 1539, ['function escH(']);
   // The real sink: the else-branch of renderFinance()'s sales-log block,
   // which assigns the rendered rows straight into a DOM element's
   // innerHTML. Extracted as-is (not reimplemented) so this test fails if
   // the real source stops escaping, not just if a hand-written copy of
   // the logic would.
-  const sinkSource = extractLines(FINANCE_PATH, 1828, 1845, [
+  const sinkSource = extractLines(FINANCE_PATH, 1831, 1848, [
     'logEl.innerHTML = [...SALES_LOG]', 'escH(s.staff)', 'escH(s.notes)', "}).join('');",
   ]);
 

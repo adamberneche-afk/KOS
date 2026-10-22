@@ -541,10 +541,10 @@ const RAW_MODAL_CLOSERS = {
   'journal-history-modal': () => { const el = document.getElementById('journal-history-modal'); if (el) el.style.display = 'none'; },
   'lp-modal':              () => closeLPModal(),
   'obs-log-modal':         () => closeObsLog(),
-  'po-modal':              () => closePOModal(),
+  'po-modal':              () => dismissPOModal(),
   'sales-modal':           () => closeSalesModal(),
   'inventory-modal':       () => closeInventoryModal(),
-  'wbl-student-modal':     () => closeWBLStudentModal(),
+  'wbl-student-modal':     () => dismissWBLStudentModal(),
   'es-player-modal':       () => closeESModal(),
   'es-match-modal':        () => closeMatchModal(),
   'survey-modal':          () => { const el = document.getElementById('survey-modal'); if (el) el.remove(); },
@@ -677,6 +677,9 @@ function openModal(name){
   modalEl.classList.add('open');
   _activeMoName = name;
   _activeMoReturnFocus = document.activeElement;
+  // Callers fill the form just before or just after opening it, so the
+  // "clean" snapshot is taken once this turn's code has run.
+  if (MO_FORM_GUARDS[name]) setTimeout(() => lhMarkFormClean('modal-' + name), 0);
   const focusable = _moFocusables(modalEl);
   if (focusable.length) focusable[0].focus();
 }
@@ -729,12 +732,78 @@ function _showDiscardConfirm(message, onConfirm) {
   _showConfirm(message, onConfirm, { confirmLabel: 'Discard', danger: true, ariaLabel: 'Discard unsaved changes' });
 }
 
+// ── Edit-modal guards (UX audit 2026-10-22, order-of-work 15) ─────────────
+// Escape, a backdrop click or ✕ on the trip wizard (editing), member, goal,
+// event, purchase-order and WBL-student forms used to throw away whatever
+// had been typed, with no warning. Each form's fields are snapshotted when
+// it opens; a close that isn't a save asks first if any field has changed.
+// Saves close with force (closeModal(name, true) or the raw close function),
+// so they never ask.
+const _lhFormSnaps = {};
+function _lhFormState(el) {
+  return [...el.querySelectorAll('input, textarea, select')]
+    .map(i => (i.type === 'checkbox' || i.type === 'radio') ? String(i.checked) : i.value)
+    .join('\u0001');
+}
+function lhMarkFormClean(id) {
+  const el = document.getElementById(id);
+  if (el) _lhFormSnaps[id] = _lhFormState(el);
+}
+function lhFormIsDirty(id) {
+  const el = document.getElementById(id);
+  return !!el && _lhFormSnaps[id] != null && _lhFormState(el) !== _lhFormSnaps[id];
+}
+// Runs close() now when the form is unchanged; otherwise asks, and runs it
+// only on "Discard". Returns whether it closed straight away.
+function lhCloseFormIfClean(id, what, close) {
+  if (!lhFormIsDirty(id)) { delete _lhFormSnaps[id]; close(); return true; }
+  _showDiscardConfirm('Discard your changes to this ' + what + '? They haven\'t been saved.', () => {
+    delete _lhFormSnaps[id];
+    close();
+  });
+  return false;
+}
+function _lhIsShown(el) { return !!el && (el.classList.contains('open') || el.style.display === 'block' || el.style.display === 'flex'); }
+// Trip wizard, when editing a saved trip: a new trip's draft is already
+// autosaved to lh_trip_draft, but an edit is only kept on Save Changes.
+let _wzEditBaseline = null;
+function _wzDraftKey(d) {
+  return JSON.stringify(Object.keys(d || {}).sort()
+    .filter(k => d[k] != null && d[k] !== '')
+    .map(k => [k, String(d[k])]));
+}
+function _wzEditIsDirty() {
+  if (!_wzDraft || !_wzDraft._editId || _wzEditBaseline == null) return false;
+  wzCollectStep();
+  return _wzDraftKey(_wzDraft) !== _wzEditBaseline;
+}
+const MO_FORM_GUARDS = { addStudent: 'member', addGoal: 'goal', newEvent: 'event' };
+function _lhOpenFormIsDirty() {
+  if (_lhIsShown(document.getElementById('modal-newTrip')) && _wzEditIsDirty()) return true;
+  return Object.keys(_lhFormSnaps).some(id => _lhIsShown(document.getElementById(id)) && lhFormIsDirty(id));
+}
+_unsavedWorkChecks.push(_lhOpenFormIsDirty);
+function dismissPOModal() { lhCloseFormIfClean('po-modal', 'purchase order', closePOModal); }
+function dismissWBLStudentModal() { lhCloseFormIfClean('wbl-student-modal', 'student', closeWBLStudentModal); }
+
 // Optional per-modal guard checked before a .mo modal actually closes — lets
 // a single modal (e.g. Brag Board's unsaved-draft check) require
 // confirmation without every other .mo modal needing to know about it.
 // Covers all three close paths uniformly since Escape, the backdrop click,
 // and each modal's own "✕ Close" button all funnel through closeModal().
 const MO_CLOSE_GUARDS = {
+  newTrip: () => {
+    if (!_wzEditIsDirty()) { _wzEditBaseline = null; return true; }
+    _showDiscardConfirm('Discard your changes to this trip? They haven\'t been saved.', () => {
+      _wzEditBaseline = null;
+      _wzDraft = {};
+      closeModal('newTrip', true);
+    });
+    return false;
+  },
+  addStudent: () => { lhCloseFormIfClean('modal-addStudent', 'member', () => closeModal('addStudent', true)); return false; },
+  addGoal:    () => { lhCloseFormIfClean('modal-addGoal', 'goal', () => closeModal('addGoal', true)); return false; },
+  newEvent:   () => { lhCloseFormIfClean('modal-newEvent', 'event', () => closeModal('newEvent', true)); return false; },
   bragboard: () => {
     if (!_bragHasUnsavedChanges()) return true;
     // Guard can only ever answer synchronously, but the dialog's answer
@@ -808,6 +877,7 @@ function openTripWizard(tripId) {
     // Every step already has data from the existing trip, so all of them
     // should be reachable/checked from the start, not just step 1.
     _wzMaxStepReached = WZ_STEPS.length;
+    _wzEditBaseline = _wzDraftKey(_wzDraft);
     _finishOpenTripWizard(existing);
     return;
   }
@@ -1395,9 +1465,10 @@ function wzSaveTrip() {
 
   // Clear draft
   _wzDraft = {};
+  _wzEditBaseline = null;
   LS.set('lh_trip_draft', {});
 
-  closeModal('newTrip');
+  closeModal('newTrip', true);
   document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
   currentTripId = null;
 
