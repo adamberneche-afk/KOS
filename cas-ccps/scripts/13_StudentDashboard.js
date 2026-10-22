@@ -447,11 +447,14 @@ function handleStudentDocRequest_(googleId, req) {
       ok: true,
       info: {
         status:      String(row[LEDGER.STATUS]).trim(),
-        submittedAt: row[LEDGER.SUBMISSION_TS] ? String(row[LEDGER.SUBMISSION_TS]) : null,
-        lastEval:    row[LEDGER.LAST_EVAL] ? String(row[LEDGER.LAST_EVAL]) : null,
+        // Dates and the term in words the doc can show as is (2026-10-22):
+        // the doc menu printed the raw Date string and "2627_MP1".
+        submittedAt: row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : null,
+        lastEval:    row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : null,
+        lastResult:  String(row[LEDGER.LAST_RESULT] || "").trim(),
         unitCode:    String(row[LEDGER.COURSE_NAME]).trim(),
         teacherName: String(row[LEDGER.TEACHER_NAME] || "").trim(),
-        term:        String(row[LEDGER.ACADEMIC_YEAR] || "").trim()
+        term:        termLabel_(row[LEDGER.ACADEMIC_YEAR])
       }
     };
   }
@@ -681,15 +684,13 @@ function resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult)
       const where = feedbackInComments ? "open your document and click Comments" : "check your document";
       if (lastResult === "PASSED") return "Passed ✓ — feedback is ready: " + where;
       if (lastResult === "NEEDS_REVISION") return "Feedback ready — revise, then submit again: " + where;
-      return feedbackInComments
-        ? "Evaluated — feedback ready: open your document and click Comments"
-        : "Evaluated — feedback ready, check your document";
+      return "Feedback is ready: " + where;
     }
     // Where every passing turn-in lands (04_Form2_TurnInGate.js) until the
     // teacher confirms its score. It used to fall through to "Status
     // unavailable", flagged as an issue, on every submitted assignment.
-    case "PENDING_TEACHER_REVIEW": return "Submitted — awaiting teacher review";
-    case "COMPLIANT":           return "Submitted — compliant ✓";
+    case "PENDING_TEACHER_REVIEW": return "Turned in — waiting for your teacher";
+    case "COMPLIANT":           return "Done ✓ — your teacher confirmed it";
     default:
       // Never show a raw Ledger status string to a student — a blank cell
       // or an unrecognized/future status code both land here. ERROR-

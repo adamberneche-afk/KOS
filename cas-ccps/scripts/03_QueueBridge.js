@@ -472,7 +472,7 @@ function updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId) {
 
 // ---------------------------------------------------------------------------
 // markLedgerEvaluated_ — an evaluation came back, so the Ledger row moves to
-// COMPLETE ("Evaluated — feedback ready" on the Student Dashboard). Nothing
+// COMPLETE ("Feedback is ready" on the Student Dashboard). Nothing
 // set it before, so a student's card still read "Not started yet" after
 // feedback arrived. Only from a not-yet-evaluated state: a turned-in or
 // archived row keeps its status.
