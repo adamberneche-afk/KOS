@@ -88,7 +88,9 @@ operator. This file holds what comes after them.
   First, the library and a class list in place of the four hardcoded
   8175/8177 rules. See
   [`COURSE_BUILDER_PLAN_2026-10.md`](./COURSE_BUILDER_PLAN_2026-10.md);
-  C1 decided, C2 to C6 open. After Oct 30; relates to "Second teachers
+  A public library and a private option; using the public library files
+  the lessons a teacher builds with CAS in it. C1 decided, C2 to C10 open
+  (C8: check the division's policy on teacher-created materials first). After Oct 30; relates to "Second teachers
   and adoption" below.
 
 - **Thread A: cross-course mastery map, remediation and anchors.** Start
