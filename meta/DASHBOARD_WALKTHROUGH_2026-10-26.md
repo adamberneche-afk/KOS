@@ -25,8 +25,10 @@ Dates assume the walk is on **Mon Oct 26**. Odd and even days go by calendar dat
 
 ### 1. Student Dashboard: header and banners (any student)
 
+- [ ] **❓ What do these mean?** in the header opens a list of the page's words (Submit for Feedback, Waiting for feedback, Passed ✓, Comments, extra credit…); Escape closes it. The Teacher Dashboard's **❓ Terms** does the same for its words, including the SCR scale (1 is the highest). Added 2026-10-22.
+
 - [ ] The header reads "📚 My Assignments", with the account label on the right, a term dropdown, **ℹ️ My Info** and **↻ Refresh**.
-- [ ] The term dropdown starts on "All Terms" and lists this year's terms (2627_MP1). Picking a term with nothing in it gives "No assignments for …, Try All Terms". It must not say "No assignments found for <account>".
+- [ ] The term dropdown starts on "Whole school year" and lists this year's marking periods ("Marking period 1, 2026–27"). Picking a term with nothing in it gives "No assignments for …" and points to "Whole school year". It must not say "No assignments found for <account>".
 - [ ] **"🎉 You were just registered…" banner.** Note how many lines it has and whether this student really registered in the last 3 days. Expect a line for each assignment row made in the last 3 days (finding 11).
 - [ ] **ℹ️ My Info** opens "My Info — What Is On File". Check that name, class, **period (3-Odd / 3-Even for period 3)** and teacher are right. Count the cards: expect one per assignment, not one per class (finding 12).
 
@@ -77,25 +79,25 @@ The card sits under a "WARM-UPS" heading above the assignments. It has at most t
 
 Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 
-- [ ] Each card shows the assignment name, a status pill, "Period 3-Odd · Subject" (or "No class info on file"), "Last evaluation: <date>" or "No evaluations yet", **Open My Document ↗**, and **Submit for Feedback** where allowed.
+- [ ] Each card shows the assignment name, a status pill, "Period 3-Odd · Subject" (or "No class info on file"), "Last checked: <date>" or "Not checked yet", **Open My Document ↗**, and **Submit for Feedback** where allowed.
 - [ ] **A never-submitted assignment**: pill "Not started yet" (grey), with a Submit button.
 - [ ] **Student E (submitted, waiting for Flow 2):**
   - Right after pressing Submit: "✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right)." (`FEEDBACK_AS_COMMENT` = all).
-  - Press Refresh. Expect "Queued for evaluation…" with no Submit button, then "Evaluating now…" once Flow 2 starts (finding 2, fixed 10-22). The teacher sees QUEUED for the same student.
-  - Once Flow 2 starts: "Evaluating now…" (orange).
+  - Press Refresh. Expect "Waiting for feedback…" with no Submit button, then "Being checked now…" once Flow 2 starts (finding 2, fixed 10-22). The teacher sees "Waiting to be checked" for the same student.
+  - Once Flow 2 starts: "Being checked now…" (orange).
   - Pressing Submit again while waiting should say "This is already waiting for feedback…" (only while the ReviewQueue row is still PENDING).
 - [ ] **SubmissionTS**: E's card shows "Last submitted <time>" (finding 3a, fixed 10-22).
 - [ ] **Student F (passed):** pill "Passed ✓ — feedback is ready: open your document and click Comments" (green); Submit still shows, so the work can be improved (finding 8, fixed 10-22). A student whose latest check needs revision reads "Feedback ready — revise, then submit again…" (purple).
 - [ ] **Feedback-as-comment link**: press "Open My Document ↗" on F's card. The doc opens, the feedback is a comment (Comments, top right), and the doc header's "Feedback:" line is color-coded.
-- [ ] **A flagged / timed-out row** (Ledger `ERROR_…`): red "Flagged ⚠ — see your teacher", with an "✉ Email <teacher>" link.
+- [ ] **A flagged / timed-out row** (Ledger `ERROR_…`): red "Couldn't be checked ⚠ — tell your teacher", with an "✉ Email <teacher>" link.
 - [ ] **No assignments at all**: the Warm-ups card (if any), then "No assignments found for <account>…" with three bullets. The footer is blank in this case (finding 17).
 - [ ] Footer: "Last refreshed: <time> · <account>".
 - [ ] **Privacy check:** across A–F, every card, warm-up, answer and reply shown belongs to the signed-in student. I found no code path that shows another student's rows (see "Checked and fine" below).
 
 ### 4. Teacher Dashboard: header and summary (after redeploying)
 
-- [ ] The header reads "📊 Assignment Dashboard", with: **+ New Lesson** (only when M2 is on), **Student Context** (was My Context), **📅 Lessons**, **✉ Parent Reports**, **🎓 SCR Reviews**, **💬 Feedback**, **↻ Refresh** and the term dropdown.
-- [ ] **Warm-up readiness strip** under the header (M2 on): "📅 <unit id — unit name>" or "No active unit", "x of N students have evaluation history", "y with warm-up responses", and the profile lines.
+- [ ] The header reads "📊 Assignment Dashboard", with: **+ New Lesson** (only when M2 is on), **Student Context** (was My Context), **📅 Lessons**, **✉ Parent Reports**, **🎓 Competency ratings**, **❓ Terms**, **💬 Feedback**, **↻ Refresh** and the term dropdown.
+- [ ] **Warm-up readiness strip** under the header (M2 on): "Pacing guide: <unit id — unit name>" or "No active unit", "x of N students have had work checked", "y answered a warm-up", and the profile lines.
   - Compare y with the number of students who actually **answered** a warm-up. Expect them to match: blank (INCOMPLETE) warm-ups no longer count (finding 6, fixed 10-22). Until the nightly profile rebuild after the push, an older score entry counts if it scored any points.
   - **Click each number.** Expect the roster to narrow to those students, with a blue "Showing n …" bar and **Clear filter** (finding 7, fixed 10-22).
   - N counts StudentProfiles rows, not the roster in view.
@@ -109,8 +111,8 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 ### 5. Teacher Dashboard: roster rows
 
 - [ ] Each lesson section has a header: "<lesson> 12 students · 3 passed · … not checked". Students are ordered by period (1, 3-Even, 3-Odd, 4…), then name.
-- [ ] Each row shows the name, "Block x · Period 3-Odd · Subject", "N checks · last <date>" or "No checks yet", "First passed <date>", "Suggested score (latest check): n/5", **Open document ↗**, and on the right the state badge, plus a pipeline badge when the work is QUEUED, EVALUATING NOW, FLAGGED or PENDING REVIEW.
-- [ ] Student E's row shows the **QUEUED** badge, and the student's own card says "Queued for evaluation…" (finding 2, fixed 10-22).
+- [ ] Each row shows the name, "Block x · Period 3-Odd · Subject", "N checks · last <date>" or "No checks yet", "First passed <date>", "AI's suggested score, last check: n — Adequate/Solid/Exceptional (2–4, higher is better)", **Open document ↗**, and on the right the state badge, plus a pipeline badge when the work is QUEUED, EVALUATING NOW, FLAGGED or PENDING REVIEW.
+- [ ] Student E's row shows the **Waiting to be checked** badge, and the student's own card says "Waiting for feedback…" (finding 2, fixed 10-22).
 - [ ] Student F's row shows "✅ Passed" with a first-passed date.
 - [ ] Period 3 students show **3-Odd / 3-Even**, never plain "3" (`PeriodOverride` / relabel).
 - [ ] A submitted row ends its checks line with "· submitted <time>"; a row never submitted has none (finding 3b, fixed 10-22).
