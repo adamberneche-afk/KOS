@@ -4236,3 +4236,44 @@ kind of failure every morning.
   horizontal scroll at 390px or 1366px. `docs/index.html`'s two
   descriptions follow. Not done: `docs/notebooklm-sources/`' Markdown
   copies of these guides are now behind them.
+
+## Plain words everywhere else a student or teacher reads, 2026-10-22
+
+The rest of the audit's jargon list (`meta/UX_AUDIT_2026-10-22.md`), in
+the dashboards' words:
+
+- **Feedback comment (37).** Opens with the time and "Result: ✅ Passed."
+  or "Result: ✏️ Revise, then submit again."; "What to do next" without
+  the box-drawing rules; ends by saying a resolved comment can be found
+  again. The in-doc block keeps the markers 03 matches on. The canary (35)
+  matches the new wording in either case.
+- **Doc header (63).** "submitted {when}, waiting for feedback.", "✅ Passed
+  ({when}).", "✏️ Revise, then submit again ({when})."
+- **The doc's own menu (01).** "📊 Feedback → Submit for Feedback / Where
+  is my work? / Open my dashboard". The pop-ups say where feedback lands
+  and use the Student Dashboard's stage names. The status service (13) now
+  sends formatted dates, the marking period in words (`termLabel_` in 00)
+  and the last result. The dashboard link uses `readSystemIds()`, so a
+  student's copy finds it. The menu still doesn't run for student
+  accounts; the words matter for teachers and for when it does.
+- **Student Dashboard leftovers (13).** "Feedback is ready: …" replaces
+  "Evaluated — feedback ready"; "Turned in — waiting for your teacher" and
+  "Done ✓ — your teacher confirmed it" replace "awaiting teacher review"
+  and "compliant ✓".
+- **Canvas pages.** "your assignment doc" and its "Your response" heading
+  replace "CAS document" and "response zone"; a lesson's `*emphasis*`
+  becomes `<em>` (9 lessons); the dashboard link uses the
+  `/a/macros/ccpsnet.net/` form, which opens in the school account. The
+  student doc (02) shows the same emphasis in italics. Both cartridges
+  are rebuilt; **re-import them into Canvas** for the new text.
+- **Teacher emails.** The warm-up digest (25) says what kind of warm-up
+  works for each student instead of naming an archetype. The timeout
+  email (03) names the student and lesson and links the doc and the
+  dashboard. "Ready for students" (08) replaces "Your Assignment Is Now
+  Live".
+- **Setup alerts (28).** Name the Teacher Dashboard or the file
+  (`31_PacingGuideManager`) instead of "Script 07" / "Script 31".
+
+Left as is: the overnight email (34c) goes to the admin and keeps its
+system names; its "names the problem, not the fix" finding is in the
+audit's failure-states work.
