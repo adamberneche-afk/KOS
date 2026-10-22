@@ -691,6 +691,11 @@ function resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult)
     // unavailable", flagged as an issue, on every submitted assignment.
     case "PENDING_TEACHER_REVIEW": return "Turned in — waiting for your teacher";
     case "COMPLIANT":           return "Done ✓ — your teacher confirmed it";
+    // 03 emails the teacher for both (2026-10-22, UX audit fix-first 4), so
+    // the student isn't told to report what the teacher already knows, and
+    // a timeout isn't worded as the student's fault.
+    case "ERROR_TIMEOUT":       return "Taking longer than usual ⚠ — your work is saved, and your teacher knows";
+    case "ERROR_EVALUATION":    return "Couldn't be checked this time ⚠ — your teacher knows. You can submit again";
     default:
       // Never show a raw Ledger status string to a student — a blank cell
       // or an unrecognized/future status code both land here. ERROR-

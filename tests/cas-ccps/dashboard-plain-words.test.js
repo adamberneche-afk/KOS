@@ -135,3 +135,17 @@ test('after a successful Submit, the card says it is waiting and Submit is gone'
   assert.equal(ctx.renders, 1);
   assert.match(ctx._submitMsgs.f1.text, /Comments/);
 });
+
+// UX audit fix-first 4 (2026-10-22): failures are worded as the system's,
+// the student isn't told to report what the teacher already knows, and the
+// teacher's row says why and what to do.
+test('a failed or timed-out check reads as the system\'s problem, with a next step for the teacher', () => {
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('07_TeacherDashboard.js')],
+    ['resolveStudentStatus_', '_tdFlagReason_']);
+  assert.match(exported.resolveStudentStatus_('ERROR_TIMEOUT'), /Taking longer than usual.*your teacher knows/);
+  assert.match(exported.resolveStudentStatus_('ERROR_EVALUATION'), /your teacher knows\. You can submit again/);
+  assert.match(exported.resolveStudentStatus_('ERROR_OTHER'), /tell your teacher/);
+  assert.match(exported._tdFlagReason_('ERROR_TIMEOUT'), /didn't finish in time\. Next:/);
+  assert.match(exported._tdFlagReason_('ERROR_EVALUATION'), /ask the student to submit again/);
+  assert.match(exported._tdFlagReason_('ERROR_X'), /Next: tell your system admin/);
+});
