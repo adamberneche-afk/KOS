@@ -4,6 +4,87 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LeaderHub — CCPS Command Center</title>
+<script>
+// ── The standalone file is retired (no browser storage, Phase 5,
+// 2026-10-22, meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md) ─────────
+// LeaderHub runs only as the web app, which writes the server's data into
+// the page (window.__LH_BOOT__, Code.gs's doGet). Opened any other way (as a
+// file from disk), the app doesn't start: this stops the page and shows how
+// to get to the web app, with an export of whatever an earlier version left
+// in this browser, so nothing is stranded. Reading and clearing that
+// leftover data is the only use of browser storage here.
+(function () {
+  if (window.__LH_BOOT__) return;
+  window.__LH_RETIRED__ = true;
+  try { window.stop(); } catch (e) {}
+  var MOVED = 'lh_moved_to_web_app';
+  function leftKeys() {
+    var out = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (k && k.indexOf('lh_') === 0 && k !== MOVED) out.push(k);
+      }
+    } catch (e) {}
+    return out;
+  }
+  function appUrl() {
+    try {
+      var u = JSON.parse(localStorage.getItem('lh_email_bridge_url') || 'null');
+      return typeof u === 'string' && /^https:\/\/script\.google\.com\/[^\s"'<>]*$/.test(u) ? u : null;
+    } catch (e) { return null; }
+  }
+  var exported = false;
+  function render() {
+    var keys = leftKeys();
+    var url = appUrl();
+    var css = 'font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:24px 16px';
+    var box = 'max-width:560px;margin:40px auto;background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:24px;line-height:1.55;font-size:16px';
+    var btn = 'font:inherit;font-weight:700;border-radius:8px;padding:10px 16px;cursor:pointer;margin:6px 8px 6px 0';
+    var html = '<div style="' + box + '"><h1 style="font-size:22px;margin:0 0 12px">LeaderHub now runs as a web app</h1>' +
+      '<p>This file no longer opens on its own. Open LeaderHub from its web app link' +
+      (url ? ':</p><p><a id="lh-r-open" href="' + url + '" target="_blank" rel="noopener" style="color:#1d4ed8;font-weight:700">Open the web app ↗</a></p>'
+           : ' (Apps Script → Deploy → Manage deployments shows it).</p>');
+    if (keys.length) {
+      html += '<h2 style="font-size:18px;margin:20px 0 8px">This browser still has data from this file</h2>' +
+        '<p>' + keys.length + ' item' + (keys.length === 1 ? '' : 's') + ' saved here by an earlier version. To move them:</p>' +
+        '<ol><li><b>Export everything</b> below. It downloads one file.</li>' +
+        '<li>In the web app, open <b>Settings → Import</b> and choose that file. It adds to the web app\'s data; nothing there is replaced.</li>' +
+        '<li>Then <b>Clear this browser\'s copy</b>.</li></ol>' +
+        '<button id="lh-r-export" style="' + btn + ';background:#1e3a5f;color:#fff;border:none">⬇️ Export everything</button>' +
+        '<button id="lh-r-clear" style="' + btn + ';background:#fff;color:#991b1b;border:1px solid #991b1b' +
+        (exported ? '"' : ';opacity:.55;cursor:not-allowed" disabled') + '>Clear this browser\'s copy</button>' +
+        (exported ? '' : '<p style="font-size:14px;color:#475569">Clear is available after you export.</p>');
+    } else {
+      html += '<p style="color:#475569">Nothing from this file is left in this browser.</p>';
+    }
+    html += '</div>';
+    document.documentElement.innerHTML = '<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+      '<title>LeaderHub — open the web app</title></head><body style="' + css + '">' + html + '</body>';
+    var ex = document.getElementById('lh-r-export');
+    if (ex) ex.onclick = function () {
+      var data = {};
+      leftKeys().forEach(function (k) { data[k] = localStorage.getItem(k); });
+      var payload = { app: 'LeaderHub', version: 1, exportedAt: new Date().toISOString(), data: data };
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+      a.download = 'leaderhub-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      exported = true;
+      render();
+    };
+    var cl = document.getElementById('lh-r-clear');
+    if (cl) cl.onclick = function () {
+      if (!exported) return;
+      if (!window.confirm('Delete LeaderHub\'s data from this browser?\n\nDo this only after importing the exported file in the web app and checking your data is there. The exported file is your copy.')) return;
+      leftKeys().forEach(function (k) { localStorage.removeItem(k); });
+      try { localStorage.setItem(MOVED, JSON.stringify(new Date().toISOString())); } catch (e) {}
+      render();
+    };
+  }
+  render();
+})();
+</script>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
   ║  FERPA DATA HANDLING NOTICE                                          ║

@@ -19,9 +19,9 @@ const LH = path.join(__dirname, '..', '..', 'leader-hub');
 const SRC = fs.readFileSync(path.join(LH, 'src', '05-data-helpers-dashboard.html'), 'utf8');
 // From the store (_lhStore, Phase 3) at the top of the file.
 const START = SRC.indexOf('const LH_BOOT = ');
-const REFRESH = SRC.indexOf('async function lhRefreshDataDomainsFromServer_() {');
-const END = SRC.indexOf('\n}\n', REFRESH) + 3;
-assert.ok(START > 0 && REFRESH > START && END > REFRESH, 'LS and sync code not found in 05');
+// Up to the SCR score sync, which these tests don't run.
+const END = SRC.indexOf('// ── SCR score sync');
+assert.ok(START > 0 && END > START, 'LS and sync code not found in 05');
 const CODE = SRC.slice(START, END);
 
 function load(server, seed) {
@@ -56,16 +56,18 @@ function load(server, seed) {
   };
   vm.createContext(ctx);
   vm.runInContext(CODE +
-    '\nthis.__api = { LS, lhRefreshConfigFromServer_, lhRefreshDataDomainsFromServer_, LH_SERVER_SYNCED_CONFIG_KEYS, LH_SERVER_SYNCED_DATA_KEYS, LH_PAGE_MEMORY_KEYS };', ctx);
+    '\nthis.__api = { LS, LH_SERVER_SYNCED_CONFIG_KEYS, LH_SERVER_SYNCED_DATA_KEYS, LH_PAGE_MEMORY_KEYS };', ctx);
   return { api: ctx.__api, store, calls, ctx };
 }
 const tick = () => new Promise((r) => setTimeout(r, 5));
 
+// Phase 2's behaviour, served (the only way the app runs since Phase 5):
+// drafts in page memory, ids on log entries, and what an earlier version
+// left in the browser moved to the server.
 test('drafts and view state stay in page memory, and old copies are removed from the browser', () => {
-  const { api, store } = load({}, { lh_trip_draft: '{"name":"old"}', lh_last_view: '"deca"', lh_goals: '[]' });
+  const { api, store } = served(BOOT, { lh_trip_draft: '{"name":"old"}', lh_last_view: '"deca"' }, {});
   assert.equal(store.has('lh_trip_draft'), false, 'a leftover draft is removed at load');
   assert.equal(store.has('lh_last_view'), false);
-  assert.equal(store.has('lh_goals'), true, 'other keys are untouched');
   api.LS.set('lh_trip_draft', { name: 'Field trip' });
   assert.equal(store.has('lh_trip_draft'), false, 'never written to the browser');
   assert.deepEqual(api.LS.get('lh_trip_draft'), { name: 'Field trip' });
@@ -75,10 +77,10 @@ test('drafts and view state stay in page memory, and old copies are removed from
 
 test('each log entry gets its own id as it is saved, and the log goes to the server', async () => {
   const pushes = [];
-  const { api, store } = load({ lhPushData: (b) => { pushes.push(b); return { ok: true, updatedAt: 't1' }; } });
+  const { api } = served(BOOT, {}, { lhPushData: (b) => { pushes.push(b); return { ok: true, updatedAt: 't1' }; } });
   const same = '2026-10-22T10:00:00.000Z';
   api.LS.set('lh_daily_log', [{ date: same, type: 'a' }, { date: same, type: 'a' }, { id: 'keep', type: 'b' }]);
-  const log = JSON.parse(store.get('lh_daily_log'));
+  const log = api.LS.get('lh_daily_log');
   assert.ok(log[0].id && log[1].id && log[0].id !== log[1].id, 'two entries in the same millisecond stay two');
   assert.equal(log[2].id, 'keep', 'an existing id is kept');
   await tick();
@@ -87,46 +89,38 @@ test('each log entry gets its own id as it is saved, and the log goes to the ser
   assert.deepEqual(pushes[0].rows.map((r) => r[0]), log.map((e) => String(e.id)));
 });
 
-test('a setting the server has never had is pushed once from this browser', async () => {
+test('a setting the server has never had is moved from the browser to the server', async () => {
   const saved = {};
-  const { api } = load({
-    lhGetAllConfig: () => ({}),
-    lhSaveConfig: (k, v) => { saved[k] = v; return { ok: true }; },
-  }, { lh_journal_last: JSON.stringify({ q1: 'today' }), lh_comms_done_date: '"Thu Oct 22 2026"' });
-  await api.lhRefreshConfigFromServer_();
-  await tick();
-  assert.deepEqual(saved.lh_journal_last, { q1: 'today' });
+  const { store } = served(Object.assign({}, BOOT, { config: {} }), {
+    lh_journal_last: JSON.stringify({ q1: 'today' }), lh_comms_done_date: '"Thu Oct 22 2026"',
+  }, { lhSaveConfig: (k, v) => { saved[k] = v; return { ok: true }; } });
+  await tick(); await tick();
+  assert.deepEqual(JSON.parse(JSON.stringify(saved.lh_journal_last)), { q1: 'today' });
   assert.equal(saved.lh_comms_done_date, 'Thu Oct 22 2026');
-  assert.ok(!('lh_profile' in saved), 'nothing pushed for a key this browser doesn\'t have');
+  assert.equal(store.size, 0, 'deleted from the browser once saved');
 });
 
-test('a log the server has never had is pushed from this browser, with ids added', async () => {
+test('a log the server has never had is moved from the browser, with ids added', async () => {
   const pushes = [];
-  const { api, store } = load({
-    lhPullData: () => ({ ok: true, found: false }),
-    lhPushData: (b) => { pushes.push(b); return { ok: true, updatedAt: 't1' }; },
-  }, { lh_wbl_hours_log: JSON.stringify([{ student: 'A', added: 2 }]) });
-  await api.lhRefreshDataDomainsFromServer_();
-  await tick();
-  const log = JSON.parse(store.get('lh_wbl_hours_log'));
+  const { api, store } = served(BOOT, { lh_wbl_hours_log: JSON.stringify([{ student: 'A', added: 2 }]) },
+    { lhPushData: (b) => { pushes.push(b); return { ok: true, updatedAt: 't1' }; } });
+  await tick(); await tick();
+  const log = api.LS.get('lh_wbl_hours_log');
   assert.ok(log[0].id, 'the existing entry got an id');
   const p = pushes.find((x) => x.domain === 'wbl_hours_log');
   assert.ok(p, 'pushed');
   assert.equal(p.rows[0][0], String(log[0].id));
-  assert.ok(!pushes.some((x) => x.domain === 'trips'), 'nothing pushed for a domain this browser has no data for');
+  assert.equal(store.has('lh_wbl_hours_log'), false);
 });
 
 test('the id counters take the larger value per counter, so no id is handed out twice', async () => {
   const saved = {};
-  const { api, ctx } = load({
-    lhGetAllConfig: () => ({ lh_next_id: { trip: 24, ev: 40 }, lh_next_slip_id: 150 }),
-    lhSaveConfig: (k, v) => { saved[k] = v; return { ok: true }; },
-  });
-  vm.runInContext('var nextId = { trip: 30, ev: 5 }; var nextSlipId = 210;', ctx);
-  await api.lhRefreshConfigFromServer_();
-  await tick();
-  assert.deepEqual(JSON.parse(JSON.stringify(ctx.nextId)), { trip: 30, ev: 40 });
-  assert.equal(ctx.nextSlipId, 210);
+  const { api } = served(Object.assign({}, BOOT, { config: { lh_next_id: { trip: 24, ev: 40 }, lh_next_slip_id: 150 } }),
+    { lh_next_id: JSON.stringify({ trip: 30, ev: 5 }), lh_next_slip_id: '210' },
+    { lhSaveConfig: (k, v) => { saved[k] = v; return { ok: true }; } });
+  assert.deepEqual(api.LS.get('lh_next_id'), { trip: 30, ev: 40 });
+  assert.equal(api.LS.get('lh_next_slip_id'), 210);
+  await tick(); await tick();
   assert.deepEqual(JSON.parse(JSON.stringify(saved.lh_next_id)), { trip: 30, ev: 40 }, 'this browser was ahead, so it is pushed back');
   assert.equal(saved.lh_next_slip_id, 210);
 });
@@ -140,11 +134,11 @@ test('every lh_* key is on the server, in page memory, or a named exception', ()
   const EXCEPTIONS = {
     lh_scr_scores: 'SCR.gs, per cell',
     lh_sync_pending: 'sync bookkeeping (Phase 3)',
-    lh_email_bridge_url: 'the standalone file only (Phase 5)',
+    lh_email_bridge_url: 'read once by the retired-file page (src/00) to link the web app',
     lh_api_key: 'retired: deleted at load (Phase 1)',
     lh_deposit_reminder_force: 'read, never written',
     lh_inventory_transactions: 'read, never written',
-    lh_moved_to_web_app: 'the standalone file only: its data was moved (Phase 4)',
+    lh_moved_to_web_app: 'the retired-file page (src/00) marks a browser it cleared',
   };
   const keys = new Set();
   for (const f of fs.readdirSync(path.join(LH, 'src'))) {
@@ -345,4 +339,49 @@ test('served: an import adds to the server\'s data, never replacing what the web
   assert.deepEqual(JSON.parse(JSON.stringify(saved.lh_profile)), { name: 'From the file' });
   assert.equal(api.LS.get('lh_trip_draft', 'none'), 'none', 'a draft is not imported');
   assert.ok(pushes.some((p) => p.domain === 'trips'));
+});
+
+// ── Phase 5: the standalone file is retired ──────────────────────────────
+// Opened without the server's data (as a file from disk), the page stops
+// and says to use the web app, offering an export of what's left here.
+function retiredPage(boot, seed) {
+  const head = fs.readFileSync(path.join(LH, 'src', '00-shell-head.html'), 'utf8');
+  const code = head.slice(head.indexOf('<script>') + 8, head.indexOf('</script>'));
+  const store = new Map(Object.entries(seed || {}));
+  const ctx = {
+    window: { __LH_BOOT__: boot, stop() { ctx.stopped = true; }, confirm: () => true },
+    localStorage: {
+      getItem: (k) => (store.has(k) ? store.get(k) : null),
+      setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k),
+      key: (i) => [...store.keys()][i], get length() { return store.size; },
+    },
+    document: { documentElement: { innerHTML: '' }, getElementById: () => null },
+    JSON, Date,
+  };
+  vm.createContext(ctx);
+  vm.runInContext(code, ctx);
+  return ctx;
+}
+
+test('the file opened from disk stops and points to the web app; served, it runs as usual', () => {
+  const served_ = retiredPage({ ok: true }, {});
+  assert.equal(served_.stopped, undefined);
+  assert.equal(served_.window.__LH_RETIRED__, undefined);
+
+  const file = retiredPage(undefined, {
+    lh_goals: '[{"id":1}]', lh_trips: '[]',
+    lh_email_bridge_url: JSON.stringify('https://script.google.com/macros/s/abc/exec'),
+  });
+  assert.equal(file.stopped, true, 'the rest of the page doesn\'t load');
+  assert.equal(file.window.__LH_RETIRED__, true);
+  const page = file.document.documentElement.innerHTML;
+  assert.match(page, /LeaderHub now runs as a web app/);
+  assert.match(page, /href="https:\/\/script\.google\.com\/macros\/s\/abc\/exec"/);
+  assert.match(page, /3 items saved here by an earlier version/);
+  assert.match(page, /Export everything/);
+  assert.match(page, /id="lh-r-clear"[^>]*cursor:not-allowed" disabled>/, 'clear only after an export');
+
+  const unsafe = retiredPage(undefined, { lh_email_bridge_url: JSON.stringify('javascript:alert(1)') });
+  assert.doesNotMatch(unsafe.document.documentElement.innerHTML, /javascript:/);
+  assert.match(retiredPage(undefined, {}).document.documentElement.innerHTML, /Nothing from this file is left/);
 });

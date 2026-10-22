@@ -131,12 +131,9 @@ The log also prints the exact Gmail filters to create (copy them from there).
 
 ## Step 7 — Connect LeaderHub (1 min)
 
-1. Open `student-leader-hub.html`
-2. Click **📧 Email Bridge** in the sidebar
-3. Paste the Web App URL from Step 5
-4. Click **✅ Save & Connect**
-
-The sidebar badge changes from ⚠️ Off to ✅ On.
+Nothing to paste (2026-10-22): LeaderHub runs as this same web app, so the
+bridge is already connected. Open LeaderHub from the web app URL from Step 5;
+the **📧 Email Bridge** sidebar badge reads ✅ On.
 
 ---
 

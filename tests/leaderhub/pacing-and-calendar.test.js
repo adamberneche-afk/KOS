@@ -40,7 +40,7 @@ function loadCalendarParser() {
 }
 
 function loadPacing(globals) {
-  const source = extractLines(PACING_HTML_PATH, 2111, 2183, [
+  const source = extractLines(PACING_HTML_PATH, 2066, 2138, [
     'CAS_PACING_COURSES',
     'function getPacingUnitsForCourse(',
     'function getQuarterForDate(',
