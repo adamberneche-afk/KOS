@@ -30,7 +30,7 @@ test('feedbackAsCommentFor_: off by default, "all" for every course, or one cour
     ['all', 'VDOE-ABC123-2026', true],
     ['8175', 'CAS-8175-L06', true],
     ['8175', 'CAS-8177-L06', false],
-    // An older ConfigID carries no course, so only "all" reaches it.
+    // A workspace ID with no Ledger row and no course name: no course.
     ['8175', 'VDOE-ABC123-2026', false],
   ];
   for (const [flag, configId, expected] of cases) {
@@ -38,6 +38,47 @@ test('feedbackAsCommentFor_: off by default, "all" for every course, or one cour
     setFlag(sandbox, flag);
     assert.equal(exported.feedbackAsCommentFor_(configId), expected, flag + ' / ' + configId);
   }
+});
+
+// A student's ConfigID is a workspace ID (02's generateConfigId_), so a
+// one-course value finds the course in a course name or the Ledger row.
+// Before 2026-10-22 it read the course from the ConfigID only, and a value
+// of "8175" reached no student.
+function ledgerRow(configId, className) {
+  const row = new Array(23).fill('');
+  row[2] = configId; row[6] = className; row[9] = className; row[10] = className;
+  return row;
+}
+
+test('feedbackAsCommentFor_: a workspace ID takes its course from a course name or its Ledger row', () => {
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js')], ['feedbackAsCommentFor_', 'feedbackAsCommentChecker_']);
+  setFlag(sandbox, '8175');
+  const ss = sandbox.SpreadsheetApp.openById(sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'));
+  const ledger = ss.insertSheet('Ledger');
+  ledger.appendRow(new Array(23).fill('header'));
+  ledger.appendRow(ledgerRow('VDOE-AAAAAA-2026', 'Sports and Entertainment Marketing'));
+  ledger.appendRow(ledgerRow('VDOE-BBBBBB-2026', 'Entrepreneurship 8177'));
+  ledger.appendRow(ledgerRow('VDOE-CCCCCC-2026', ''));
+
+  assert.equal(exported.feedbackAsCommentFor_('VDOE-AAAAAA-2026'), true, 'Marketing is 8175');
+  assert.equal(exported.feedbackAsCommentFor_('VDOE-BBBBBB-2026'), false);
+  assert.equal(exported.feedbackAsCommentFor_('VDOE-CCCCCC-2026'), false, 'a row naming no course');
+  assert.equal(exported.feedbackAsCommentFor_('VDOE-ZZZZZZ-2026'), false, 'no Ledger row');
+  // Intake stamps the doc before its Ledger row exists: the class decides.
+  assert.equal(exported.feedbackAsCommentFor_('VDOE-NEWNEW-2026', 'Sports Marketing'), true);
+  assert.equal(exported.feedbackAsCommentFor_('VDOE-NEWNEW-2026', 'Entrepreneurship'), false);
+
+  // The checker reads the Ledger once for a loop, and not at all for "off" or "all".
+  let reads = 0;
+  const getRange = ledger.getRange.bind(ledger);
+  ledger.getRange = (...a) => { reads++; return getRange(...a); };
+  const check = exported.feedbackAsCommentChecker_();
+  assert.deepEqual(['VDOE-AAAAAA-2026', 'VDOE-BBBBBB-2026', 'VDOE-AAAAAA-2026'].map((id) => check(id)), [true, false, true]);
+  assert.equal(reads, 1);
+  sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', 'all');
+  reads = 0;
+  assert.equal(exported.feedbackAsCommentChecker_()('VDOE-ZZZZZZ-2026'), true);
+  assert.equal(reads, 0);
 });
 
 function stamp(flag, configId) {
@@ -145,9 +186,11 @@ function loadTeacher(viewer) {
   props.setProperty('TEACHER_EMAIL', 'teacher@ccpsnet.net');
   const ledger = ss.insertSheet('Ledger');
   ledger.appendRow(new Array(23).fill('header'));
-  for (const id of ['CAS-8175-L06', 'CAS-8177-L03', 'CAS-8175-L07', 'VDOE-ABC123-2026']) {
-    const row = new Array(23).fill(''); row[2] = id; ledger.appendRow(row);
-  }
+  // Real Ledger rows: workspace IDs, the course in the class name (52
+  // writes the Canvas course name), one row naming no course.
+  [['VDOE-AAAAAA-2026', 'Sports and Entertainment Marketing'], ['VDOE-BBBBBB-2026', 'Entrepreneurship 8177'],
+    ['VDOE-CCCCCC-2026', 'Sports and Entertainment Marketing'], ['VDOE-DDDDDD-2026', '']]
+    .forEach(([id, name]) => ledger.appendRow(ledgerRow(id, name)));
   const config = () => {
     const tab = ss.getSheetByName('_CONFIG');
     return tab ? tab.getDataRange().getValues().filter((r) => r[0] === 'FEEDBACK_AS_COMMENT').map((r) => r[1]) : [];
@@ -159,11 +202,13 @@ test('Teacher Dashboard feedback control: per course, written as one _CONFIG row
   const { exported, config } = loadTeacher('Teacher@ccpsnet.net');
   let res = exported.getFeedbackPlacement();
   assert.deepEqual(res.courses.map((c) => [c.code, c.asComment]), [['8175', false], ['8177', false]]);
+  assert.equal(res.value, 'off', 'the live setting is sent for the panel to show');
 
   res = exported.setFeedbackPlacement('8175', true);
   assert.deepEqual(config(), ['8175']);
   assert.deepEqual(res.courses.map((c) => c.asComment), [true, false], 'read back at once in this project');
 
+  assert.equal(res.value, '8175');
   exported.setFeedbackPlacement('8177', true);
   assert.deepEqual(config(), ['all'], 'still one row');
   exported.setFeedbackPlacement('8175', false);
