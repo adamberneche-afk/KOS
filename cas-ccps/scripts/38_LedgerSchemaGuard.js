@@ -307,8 +307,16 @@ function _lsgClassifyValue_(v) {
   return "other";
 }
 
+// Logged, so a cell that could hold a student's address or name is
+// described by its shape. Dates, links, Drive IDs and code-like values
+// (statuses, ConfigIDs: capitals, digits, _ and -) are shown as before.
 function _lsgPreview_(v) {
+  const kind = _lsgClassifyValue_(v);
+  if (kind === "email") return "an email address";
   const s = v instanceof Date ? "a date (" + v + ")" : String(v);
+  if (kind === "other" && !/^[A-Z0-9_\-. ]*$/.test(s.trim())) {
+    return "text of " + s.trim().length + " character(s)";
+  }
   return s.length > 40 ? "\"" + s.substring(0, 40) + "…\"" : "\"" + s + "\"";
 }
 
