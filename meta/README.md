@@ -28,6 +28,11 @@ why this repo exists at all.
   reaches students today, three options (drafts imported through the repo,
   Drive edits imported, live overrides), phases and the decisions they
   need. Nothing built.
+- **`UX_AUDIT_2026-10-22.md`** — an end-to-end UX audit (2026-10-22) of
+  every surface in the three systems, by stakeholder (students, teacher,
+  families, operator and adopters, leader-hub, kos-personal): rendered and
+  read from the code, 16 fix-first items, per-stakeholder tables with file
+  and line, and a suggested order of work. Nothing changed by the audit.
 - **`COURSE_BUILDER_PLAN_2026-10.md`** — a decided plan (2026-10-22) for
   building a new course from the VDOE framework, with teachers submitting
   the course they want, built so adopting teachers can adapt it: how 8175

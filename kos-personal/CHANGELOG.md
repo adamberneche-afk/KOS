@@ -1,6 +1,36 @@
 # KOS Changelog
 
 
+### The web app: contrast and plain words (2026-10-22)
+
+The operator: the UI "doesn't offer enough contrast to be easily legible",
+and its system terms aren't ones a user knows (`8_WebApp_UI.html`).
+- **Contrast.** `--text2` #888 → #c2c2c2 (8.6:1 on the darkest card),
+  `--text3` #808080 → #a6a6a6 (6.3:1), amber text on its own token
+  `--amber-text` (7.3:1), control outlines `--border2` at 3.3:1 or more,
+  card edges visible. No text under 12px (43 sizes raised), a sturdier
+  monospace font, a visible focus ring, styled password, email and select
+  fields, and pinch-zoom allowed (`7_WebApp.gs` no longer sets
+  `maximum-scale`).
+- **Plain words.** The tabs are **Add**, **Queue** and **System**. Cog →
+  advisor, Council ID → Review ID, Seven Bridges council → advisor panel
+  review, vector weights → topic focus, incubating/promoted themes →
+  emerging/established topics, Pin to Core → make it a core fact, shadow
+  matrix → getting to know you, Turnstile → hand-off check, Sensor 2 → link
+  for other tools, daily primer → today's briefing. The five calibration
+  questions and the topic names are shown in plain words
+  (`plainQuestion`, `plainTopic`). Tooltips no longer cite script files or
+  config constants. Server values, sheet names and statuses are unchanged.
+- **Terms.** A **Terms** button in the header opens a list of every term:
+  what it means, and what the sheets, docs and the Claude Project call it.
+- **Also, from the 2026-10-22 audit:** the council review's success
+  message links the review document and fills in the Review ID on the
+  verdict form; today's briefing links its doc; the webhook hint says the
+  link needs `?secret=`; the archive button says it also archives failed
+  rows; the Needs-review card no longer says to paste JSON.
+- **Tests:** `tests/kos-personal/web-app-legibility.test.js`.
+
+
 ### SMP-019: the moral debt counter (2026-10-19)
 
 Decision #3. Each PROCEED at an ALIGNMENT mandatory pause adds 1 to a

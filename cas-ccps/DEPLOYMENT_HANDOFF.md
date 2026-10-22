@@ -63,7 +63,7 @@
 >   Lessons: the schedule panel; the Feedback and Parent Reports panels now
 >   open), #245 and #246 (lesson editing and writing: the `LessonDrafts`
 >   tab, made on the first save; 55b is now also in this project). After the
->   push, a new web-app version if the buttons don't show. The import runs
+>   push, `run.js` promotes the web app (a hand-made version only if it warns a deployment isn't in `deployments.txt`). The import runs
 >   by hand or on the "Lesson draft import" Routine
 >   (`docs/LESSON_IMPORT_PROCEDURE.md`), which needs its connectors added in
 >   claude.ai.
@@ -74,7 +74,7 @@
 >   #249 (07, 23: submitted times on roster rows, the warm-up count without
 >   blank answers, the "Assignments" card, Student Context's back link).
 >   Push the Central Ledger, the Teacher Dashboard and the Student
->   Dashboard, then a new web-app version of both dashboards.
+>   Dashboard; `run.js` promotes both web apps. #251 and #252 (02, 13) ride the same push.
 > - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4).
 >   The order is in `meta/HANDOFF_2026-10-22.md`.
 > - **After any manifest scope change** to a web app that runs as the deploying
