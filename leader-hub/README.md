@@ -1292,32 +1292,30 @@ row-shaped once actually read, and were placed accordingly):
   Organization Sync already proved out — a stale push is rejected with
   `{conflict:true}` and writes nothing.
 
-**Not migrated, on purpose**:
-- **Organizations' own roster (`students[]`) and DECA-shared results** —
-  the existing "Share with a co-advisor" opt-in (Organization Sync) stays
-  exactly as it was. Auto-enabling that for every organization would mean
-  publishing real student PII (names, emails, phone numbers, parent
-  contacts, addresses) to a Spreadsheet reachable by anyone holding the
-  deployed `/exec` URL, without ever asking — a real data-exposure
-  regression, not a neutral architecture change. Every other student-data
-  domain in this round (trips, WBL, grades, ...) syncs automatically
-  instead, specifically *because* its Spreadsheet is private to this
-  deployment's one `OWNER_EMAIL`-gated owner, with no analogous
-  "hand someone else this URL" sharing path at all.
-- **Per-browser UI/ephemeral state** — last-open view, active tab/filter
-  selections, one-time reminder-dedup date flags, and similar: no durable
-  value in round-tripping these to a server.
-- **A handful of append-only logs whose entries have no `id` field**
-  (`lh_daily_log`, `lh_sub_plan_log`, `lh_brag_log`, `lh_wbl_hours_log`,
-  `lh_scr_session_log`) — a synthetic id derived from a timestamp was
-  judged more fragile (a same-millisecond double action could silently
-  dedupe two real entries into one) than leaving these already-capped,
-  supplementary display/aggregation logs local-only. Nothing else depends
-  on them as a source of truth — e.g. a WBL student's real total hours
-  live in the (synced) roster row, not the hours log.
-- **`lh_inventory_transactions`** — read in one place, never written
-  anywhere in the file; left alone as apparently-dead data rather than
-  building sync infrastructure for it.
+**Not migrated, on purpose** (updated 2026-10-22, no browser storage
+Phase 2, `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`):
+- **Organization Sync stays opt-in.** The "Share with a co-advisor"
+  spreadsheet is reachable by whoever holds its share code, so nothing is
+  published there automatically. The member roster (`lh_students`) now
+  syncs like every other student-data domain, to the private,
+  `OWNER_EMAIL`-gated "LeaderHub Data" spreadsheet (`members` tab), not to
+  Organization Sync.
+- **Drafts and view state live in page memory**, never in the browser
+  (`LH_PAGE_MEMORY_KEYS`, `src/05`): the trip and journal drafts, the last
+  view, filters, open tabs and the cached CAS pacing units. A reload opens
+  on the dashboard and loses an unsaved draft.
+- **The id-less logs now sync** (`lh_daily_log`, `lh_sub_plan_log`,
+  `lh_brag_log`, `lh_wbl_hours_log`, `lh_scr_session_log`): each entry gets
+  a random id as it is saved (`_lhWithLogIds_`), so two entries made in the
+  same millisecond stay two. The reminder dates, journal state, id counters
+  (merged by the larger value), Organization Sync bookkeeping and snoozed
+  cards are config keys.
+- **Still in the browser until later phases:** sync bookkeeping
+  (`lh_sync_pending`, `lh_data_sync_*`, Phase 3), and the Email Bridge URL,
+  which only the standalone file uses (Phase 5). `lh_inventory_transactions`
+  is read in one place and never written.
+- `tests/leaderhub/no-browser-storage.test.js` fails if a new `lh_*` key is
+  not on the server, in page memory or a named exception.
 
 **SCR grading scores get a third, dedicated shape** (`SCR.gs`), because
 `scrScores` is a sparse course × period × student × competency matrix

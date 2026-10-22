@@ -100,10 +100,10 @@ function _journalHasUnsavedChanges(){
 
 // ── Journal draft autosave ──────────────────────────────────────────────
 // The discard-confirmation above only catches in-app close (Escape, ✕,
-// backdrop) — it can't help if the tab dies mid-reflection. This debounced
-// autosave gives a real recovery path for that case: in-progress answers
-// land in localStorage as the user types, restored on next open if they're
-// newer than whatever's already saved for today.
+// backdrop). This debounced autosave keeps in-progress answers as the user
+// types and restores them on the next open if they're newer than what's
+// saved for today. Since 2026-10-22 the draft is in page memory, not
+// browser storage, so it survives closing the journal but not a reload.
 const JOURNAL_DRAFT_KEY = 'lh_journal_draft';
 function saveJournalDraft(){
   const d = _journalCurrentValues();
