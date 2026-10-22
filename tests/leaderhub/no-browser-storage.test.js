@@ -17,7 +17,8 @@ const vm = require('vm');
 
 const LH = path.join(__dirname, '..', '..', 'leader-hub');
 const SRC = fs.readFileSync(path.join(LH, 'src', '05-data-helpers-dashboard.html'), 'utf8');
-const START = SRC.indexOf('const LH_PAGE_MEMORY_KEYS = [');
+// From the store (_lhStore, Phase 3) at the top of the file.
+const START = SRC.indexOf('const LH_BOOT = ');
 const REFRESH = SRC.indexOf('async function lhRefreshDataDomainsFromServer_() {');
 const END = SRC.indexOf('\n}\n', REFRESH) + 3;
 assert.ok(START > 0 && REFRESH > START && END > REFRESH, 'LS and sync code not found in 05');
@@ -54,7 +55,7 @@ function load(server, seed) {
     _showToast: () => {},
   };
   vm.createContext(ctx);
-  vm.runInContext('let _lsWriteFailWarned = false; let _lsReadFailWarned = false;\n' + CODE +
+  vm.runInContext(CODE +
     '\nthis.__api = { LS, lhRefreshConfigFromServer_, lhRefreshDataDomainsFromServer_, LH_SERVER_SYNCED_CONFIG_KEYS, LH_SERVER_SYNCED_DATA_KEYS, LH_PAGE_MEMORY_KEYS };', ctx);
   return { api: ctx.__api, store, calls, ctx };
 }
@@ -156,4 +157,156 @@ test('every lh_* key is on the server, in page memory, or a named exception', ()
   assert.deepEqual(unaccounted, []);
   for (const k of api.LH_SERVER_SYNCED_CONFIG_KEYS) assert.ok(config.includes("'" + k + "'"), k + ' is in Config.gs');
   for (const d of Object.values(api.LH_SERVER_SYNCED_DATA_KEYS)) assert.ok(data.includes("'" + d + "'"), d + ' is in Data.gs');
+});
+
+// ── Phase 3: served, the server is the only copy ─────────────────────────
+// Served by the web app, the page arrives with the server's data
+// (window.__LH_BOOT__, written by doGet()); LS reads and writes page memory
+// and the server, never browser storage, except a one-time move of what an
+// earlier version left there.
+function served(boot, seed, server) {
+  const store = new Map(Object.entries(seed || {}));
+  const touched = [];
+  const localStorage = {
+    getItem: (k) => { touched.push(['get', k]); return store.has(k) ? store.get(k) : null; },
+    setItem: (k, v) => { touched.push(['set', k]); store.set(k, String(v)); },
+    removeItem: (k) => { touched.push(['remove', k]); store.delete(k); },
+    key: (i) => [...store.keys()][i],
+    get length() { return store.size; },
+  };
+  const calls = [];
+  function runner() {
+    let ok = () => {}, fail = () => {};
+    let proxy = null;
+    const api = { withSuccessHandler(fn) { ok = fn; return proxy; }, withFailureHandler(fn) { fail = fn; return proxy; } };
+    proxy = new Proxy(api, {
+      get(target, name) {
+        if (name in target) return target[name];
+        return (...args) => {
+          calls.push({ name, args });
+          Promise.resolve().then(() => { try { ok((server[name] || (() => ({ ok: true, updatedAt: 'tX' })))(...args)); } catch (e) { fail(e); } });
+        };
+      },
+    });
+    return proxy;
+  }
+  const listeners = {};
+  const els = [];
+  const document = {
+    body: { prepend: (el) => els.unshift(el) },
+    getElementById: (id) => els.find((e) => e.id === id) || null,
+    createElement: () => {
+      const el = { style: {}, children: [], setAttribute() {}, appendChild(c) { this.children.push(c); },
+        remove() { const i = els.indexOf(this); if (i !== -1) els.splice(i, 1); } };
+      Object.defineProperty(el, 'innerHTML', { set() { el.children = []; }, get() { return ''; } });
+      return el;
+    },
+  };
+  const ctx = {
+    console: { warn() {}, log() {}, error() {} }, setTimeout, setInterval, clearInterval, Promise, JSON, Object, Array, String,
+    Number, Math, Date, Set, Uint32Array, crypto: require('crypto').webcrypto,
+    localStorage, document,
+    window: { __LH_BOOT__: boot, addEventListener: (n, f) => { listeners[n] = f; } },
+    google: { script: { get run() { return runner(); } } },
+    _showToast: () => {},
+  };
+  vm.createContext(ctx);
+  vm.runInContext(CODE + '\nthis.__api = { LS, _lhUnsavedCount_, lhRetryUnsaved };', ctx);
+  return { api: ctx.__api, store, touched, calls, listeners, els, ctx };
+}
+const BOOT = {
+  ok: true,
+  config: { lh_profile: { name: 'Server profile' } },
+  data: { trips: { found: true, updatedAt: 't1', rows: [['1', JSON.stringify({ id: 1, name: 'ICDC' })]] } },
+  scr: { ok: true, found: false },
+};
+
+test('served: the app reads the server\'s data and writes nothing to the browser', async () => {
+  const pushes = [];
+  const { api, store, touched } = served(BOOT, {}, { lhPushData: (b) => { pushes.push(b); return { ok: true, updatedAt: 't2' }; } });
+  assert.deepEqual(api.LS.get('lh_profile'), { name: 'Server profile' });
+  assert.deepEqual(api.LS.get('lh_trips').map((t) => t.name), ['ICDC']);
+  touched.length = 0;
+  api.LS.set('lh_trips', [{ id: 1, name: 'ICDC' }, { id: 2, name: 'SLC' }]);
+  await tick();
+  assert.deepEqual(touched.filter(([op]) => op !== 'get'), [], 'nothing written to the browser');
+  assert.equal(store.size, 0);
+  assert.equal(pushes[0].expectedUpdatedAt, 't1', 'pushed against the version the page loaded');
+  assert.deepEqual(api.LS.get('lh_trips').map((t) => t.name), ['ICDC', 'SLC']);
+});
+
+test('served: what an earlier version left in the browser moves to the server, then is deleted there', async () => {
+  const saved = {};
+  const pushes = [];
+  const seed = {
+    lh_keyContacts: JSON.stringify([{ name: 'only in this browser' }]), // server lacks it: moved
+    lh_profile: JSON.stringify({ name: 'stale copy' }), // server has it, nothing pending: dropped
+    lh_trips: JSON.stringify([{ id: 1, name: 'my edit' }, { id: 3, name: 'added here' }]), // pending: merged
+    lh_sync_pending: JSON.stringify({ config: {}, data: { lh_trips: 2 } }),
+    lh_data_sync_trips: JSON.stringify({ lastKnownRemoteUpdatedAt: 't0' }),
+    lh_email_bridge_url: JSON.stringify('https://script.google.com/x'),
+  };
+  const { api, store } = served(BOOT, seed, {
+    lhSaveConfig: (k, v) => { saved[k] = v; return { ok: true }; },
+    lhPushData: (b) => { pushes.push(b); return { ok: true, updatedAt: 't2' }; },
+  });
+  assert.deepEqual(api.LS.get('lh_keyContacts'), [{ name: 'only in this browser' }]);
+  assert.deepEqual(api.LS.get('lh_profile'), { name: 'Server profile' }, 'the server\'s copy wins when nothing was pending');
+  assert.deepEqual(api.LS.get('lh_trips').map((t) => t.name), ['my edit', 'added here'], 'the unsaved edit merged by id');
+  assert.equal(store.has('lh_profile'), false, 'dropped at once');
+  assert.equal(store.has('lh_email_bridge_url'), false);
+  assert.equal(store.has('lh_keyContacts'), true, 'kept until the server has it');
+  await tick(); await tick();
+  assert.deepEqual(saved.lh_keyContacts, [{ name: 'only in this browser' }]);
+  assert.ok(pushes.some((p) => p.domain === 'trips' && p.expectedUpdatedAt === 't1'));
+  assert.deepEqual([...store.keys()], [], 'everything deleted once the server accepted it, bookkeeping too');
+});
+
+test('served: a save the server refuses shows "not saved yet", retries, and leaving asks first', async () => {
+  let accept = false;
+  const { api, els, listeners } = served(BOOT, {}, {
+    lhSaveConfig: () => (accept ? { ok: true } : { ok: false, error: 'busy' }),
+  });
+  api.LS.set('lh_keyContacts', [{ name: 'x' }]);
+  await tick();
+  assert.equal(api._lhUnsavedCount_(), 1);
+  const bar = els.find((e) => e.id === 'lh-unsaved-bar');
+  assert.ok(bar, 'the bar is shown');
+  assert.match(bar.children[0].textContent, /1 change not saved yet/);
+  const ev = { preventDefault() { ev.prevented = true; } };
+  listeners.beforeunload(ev);
+  assert.equal(ev.prevented, true, 'leaving the page asks first');
+  accept = true;
+  api.lhRetryUnsaved();
+  await tick();
+  assert.equal(api._lhUnsavedCount_(), 0);
+  assert.equal(els.find((e) => e.id === 'lh-unsaved-bar'), undefined, 'the bar goes away');
+});
+
+test('served: a conflict is merged with the server\'s copy and pushed, not left for a reload', async () => {
+  let version = 't5';
+  const pushes = [];
+  const { api } = served(BOOT, {}, {
+    lhPushData: (b) => {
+      pushes.push(b.expectedUpdatedAt);
+      if (b.expectedUpdatedAt !== version) return { ok: false, conflict: true };
+      version = 't6';
+      return { ok: true, updatedAt: version };
+    },
+    lhPullData: () => ({ ok: true, found: true, updatedAt: 't5', rows: [
+      ['1', JSON.stringify({ id: 1, name: 'ICDC' })], ['9', JSON.stringify({ id: 9, name: 'from another device' })]] }),
+  });
+  api.LS.set('lh_trips', [{ id: 1, name: 'ICDC (edited)' }]);
+  await tick(); await tick(); await tick();
+  assert.deepEqual(pushes, ['t1', 't5']);
+  assert.deepEqual(api.LS.get('lh_trips').map((t) => t.name), ['ICDC (edited)', 'from another device']);
+  assert.equal(api._lhUnsavedCount_(), 0);
+});
+
+test('served: if the server\'s data couldn\'t be read, nothing is saved over it', async () => {
+  const { api, calls, store } = served({ ok: false, error: 'timeout' }, {}, {});
+  assert.equal(api.LS.set('lh_trips', []), false);
+  await tick();
+  assert.equal(calls.length, 0, 'nothing sent to the server');
+  assert.equal(store.size, 0);
 });

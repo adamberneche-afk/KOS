@@ -95,7 +95,18 @@ function doGet(e) {
       '<code>OWNER_EMAIL</code> Script Property under Project Settings.)</p>'
     ).setTitle('LeaderHub');
   }
-  return HtmlService.createHtmlOutputFromFile('student-leader-hub')
+  // The server's copy of every domain goes into the page (Data.gs's
+  // lhBootData_), so the app never reads browser storage (no browser
+  // storage, Phase 3, 2026-10-22). If the read fails, the page says so and
+  // refuses to save, rather than starting empty and overwriting the server.
+  let boot;
+  try {
+    boot = lhBootData_();
+  } catch (err) {
+    boot = { ok: false, error: String((err && err.message) || err) };
+  }
+  const html = HtmlService.createHtmlOutputFromFile('student-leader-hub').getContent();
+  return HtmlService.createHtmlOutput(lhInjectBootData_(html, boot))
     .setTitle('LeaderHub — CCPS Command Center')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
