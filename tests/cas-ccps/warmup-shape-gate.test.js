@@ -147,7 +147,7 @@ test('repairWarmUpTextBox replaces unanswered junk with the anchor and leaves th
 });
 
 test('34c counts fallbacks; 33 stamps a stop with its reason', () => {
-  const env = loadGasFiles([path.join(CC, '00_SharedConfig.js'), path.join(CC, '34c_OvernightHealth.js'),
+  const env = loadGasFiles([path.join(CC, '00_SharedConfig.js'), path.join(CC, '34c_OvernightHealth.js'), path.join(CC, '64_LedgerCycle.js'),
     path.join(CC, '43_DeployVersionMarker_CentralLedger.js')], ['overnightHealth_']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
