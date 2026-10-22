@@ -10,6 +10,42 @@ const LH_RETIRED_SECRET_KEYS = ['lh_api_key'];
 try { LH_RETIRED_SECRET_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ }
 let _lsWriteFailWarned = false;
 let _lsReadFailWarned = false;
+// No browser storage, Phase 2 (2026-10-22,
+// meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md). Drafts, view state and
+// the cached CAS pacing units live in this page's memory only: a reload
+// opens on the dashboard with default filters and loses an unsaved draft
+// (the operator's decision). They are removed from browser storage at load.
+const LH_PAGE_MEMORY_KEYS = [
+  'lh_trip_draft', 'lh_journal_draft',
+  'lh_last_view', 'lh_active_org', 'lh_lp_filter', 'lh_unit_expanded',
+  'lh_scr_active_course', 'lh_scr_active_period', 'lh_scr_view_mode', 'lh_brag_last_tab',
+  'lh_cas_ccps_live_pacing_units', 'lh_cas_ccps_pacing_synced_at',
+];
+const _lhPageMemory = {};
+try { LH_PAGE_MEMORY_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ }
+
+// Logs whose entries had no id, so neither server mechanism could hold them
+// (Phase 8 left them local). Each entry gets one as it is saved: random,
+// not derived from a timestamp, so two entries made in the same
+// millisecond stay two. Existing entries get theirs on their next save.
+const LH_ID_LOG_KEYS = ['lh_daily_log', 'lh_sub_plan_log', 'lh_brag_log', 'lh_wbl_hours_log', 'lh_scr_session_log'];
+function _lhNewId_() {
+  let rand = '';
+  try {
+    const a = new Uint32Array(2);
+    crypto.getRandomValues(a);
+    rand = a[0].toString(36) + a[1].toString(36);
+  } catch (e) {
+    rand = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+  }
+  return 'L' + Date.now().toString(36) + '-' + rand;
+}
+function _lhWithLogIds_(key, v) {
+  if (LH_ID_LOG_KEYS.indexOf(key) === -1 || !Array.isArray(v)) return v;
+  v.forEach(e => { if (e && typeof e === 'object' && e.id == null) e.id = _lhNewId_(); });
+  return v;
+}
+
 const LS = {
   // FIXED: this used to swallow every read failure silently — no
   // console log, no distinction between "key never existed" (normal,
@@ -24,6 +60,10 @@ const LS = {
   // inaccessible storage) worth telling apart in the log even though
   // both use the same one-toast-per-page-load convention.
   get: (k, def=null) => {
+    if (LH_PAGE_MEMORY_KEYS.indexOf(k) !== -1) {
+      return Object.prototype.hasOwnProperty.call(_lhPageMemory, k) && _lhPageMemory[k] != null
+        ? JSON.parse(_lhPageMemory[k]) : def;
+    }
     try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; }
     catch (e) {
       console.error('[LS.get] read failed for key', k, e);
@@ -43,6 +83,11 @@ const LS = {
   // per page load if it didn't — callers that care can still check the
   // return value, but the common case (fire-and-forget) is no longer silent.
   set: (k, v) => {
+    if (LH_PAGE_MEMORY_KEYS.indexOf(k) !== -1) {
+      _lhPageMemory[k] = v == null ? null : JSON.stringify(v);
+      return true;
+    }
+    v = _lhWithLogIds_(k, v);
     try {
       localStorage.setItem(k, JSON.stringify(v));
       _lhSyncConfigKeyToServer_(k, v);
@@ -109,6 +154,18 @@ const LH_SERVER_SYNCED_CONFIG_KEYS = [
   // same class of gap as the other id-less capped logs already listed
   // above).
   'lh_unit_notes',
+  // No browser storage, Phase 2: the small state that was local-only (see
+  // Config.gs). lh_next_id and lh_next_slip_id merge by the larger value at
+  // load, so two devices never hand out the same id.
+  'lh_brag_done_date', 'lh_brag_journal_includes', 'lh_brag_prompt_date',
+  'lh_comms_done_date', 'lh_comms_triage_date', 'lh_cron_pending',
+  'lh_cron_result', 'lh_deca_tomorrow_date', 'lh_deposit_done_date',
+  'lh_deposit_reminder_date', 'lh_esports_match_banner_date', 'lh_first_use_date',
+  'lh_journal_autoprompt_date', 'lh_journal_avoided', 'lh_journal_last',
+  'lh_last_backup', 'lh_next_id', 'lh_next_slip_id',
+  'lh_notify_enabled', 'lh_org_sync', 'lh_org_welcome_seen',
+  'lh_plc_banner_date', 'lh_snoozed', 'lh_student_id_map_updated',
+  'lh_workday_done_date', 'lh_workday_reminder_date',
 ];
 
 // ── LH_SYNC_PENDING_BEGIN ────────────────────────────────────────────────
@@ -244,13 +301,34 @@ async function lhRefreshConfigFromServer_() {
 
   const _write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
+  // A key the server has never had, but this browser has: push it once, so
+  // data kept only here moves to the server (no browser storage, Phase 2).
+  setTimeout(() => {
+    LH_SERVER_SYNCED_CONFIG_KEYS.forEach(k => {
+      if (remote[k] != null || pendingConfig.indexOf(k) !== -1) return;
+      try {
+        const raw = localStorage.getItem(k);
+        const v = raw == null ? null : JSON.parse(raw);
+        if (v != null) _lhSyncConfigKeyToServer_(k, v);
+      } catch (e) {}
+    });
+  }, 0);
+
   // Read fresh via LS.get() at point of use everywhere — localStorage
   // catch-up is the entire refresh, nothing else to re-apply.
   ['lh_keyContacts', 'lh_student_id_map', 'lh_cas_ccps_api_url',
    'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
    'lh_sub_period_assignments', 'lh_deca_approvals', 'lh_obs_prep',
    'lh_sync_tracker', 'lh_sub_student_notes', 'lh_lp_edit_meta',
-   'lh_unit_notes'].forEach(k => {
+   'lh_unit_notes',
+   // Phase 2 (no browser storage): read fresh at point of use.
+   'lh_brag_done_date', 'lh_brag_journal_includes', 'lh_brag_prompt_date',
+   'lh_comms_done_date', 'lh_comms_triage_date', 'lh_cron_pending', 'lh_cron_result',
+   'lh_deca_tomorrow_date', 'lh_deposit_done_date', 'lh_deposit_reminder_date',
+   'lh_esports_match_banner_date', 'lh_first_use_date', 'lh_journal_autoprompt_date',
+   'lh_journal_avoided', 'lh_journal_last', 'lh_last_backup', 'lh_notify_enabled',
+   'lh_plc_banner_date', 'lh_student_id_map_updated', 'lh_workday_done_date',
+   'lh_workday_reminder_date'].forEach(k => {
     if (remote[k] !== null && remote[k] !== undefined) _write(k, remote[k]);
   });
 
@@ -318,6 +396,38 @@ async function lhRefreshConfigFromServer_() {
   // lh_lp_edit_meta and lh_unit_notes have no persistent in-memory
   // variable either — both handled by the "read fresh via LS.get()"
   // batch above.
+
+  // Phase 2 (no browser storage). The id counters take the larger of this
+  // browser's and the server's value per counter, so no id is handed out
+  // twice; if this browser's is ahead, it is pushed back.
+  if (remote.lh_next_id != null && typeof nextId === 'object' && nextId) {
+    const merged = Object.assign({}, remote.lh_next_id);
+    let ahead = false;
+    Object.keys(nextId).forEach(k => {
+      if (!(Number(merged[k]) >= Number(nextId[k]))) { merged[k] = nextId[k]; ahead = true; }
+    });
+    Object.keys(merged).forEach(k => { nextId[k] = merged[k]; });
+    _write('lh_next_id', nextId);
+    if (ahead) _lhSyncConfigKeyToServer_('lh_next_id', nextId);
+  }
+  if (remote.lh_next_slip_id != null && typeof nextSlipId !== 'undefined') {
+    const ahead = Number(nextSlipId) > Number(remote.lh_next_slip_id);
+    nextSlipId = Math.max(Number(nextSlipId) || 0, Number(remote.lh_next_slip_id) || 0);
+    _write('lh_next_slip_id', nextSlipId);
+    if (ahead) _lhSyncConfigKeyToServer_('lh_next_slip_id', nextSlipId);
+  }
+  if (remote.lh_org_sync != null && typeof ORG_SYNC !== 'undefined') {
+    _write('lh_org_sync', remote.lh_org_sync);
+    ORG_SYNC = remote.lh_org_sync;
+  }
+  if (remote.lh_org_welcome_seen != null && typeof ORG_WELCOME_SEEN !== 'undefined') {
+    _write('lh_org_welcome_seen', remote.lh_org_welcome_seen);
+    ORG_WELCOME_SEEN = remote.lh_org_welcome_seen;
+  }
+  if (remote.lh_snoozed != null && typeof CHOICE_SNOOZED !== 'undefined') {
+    _write('lh_snoozed', remote.lh_snoozed);
+    CHOICE_SNOOZED = remote.lh_snoozed;
+  }
 }
 
 // ── Server write-through for row-shaped data domains (server-migration
@@ -357,6 +467,14 @@ const LH_SERVER_SYNCED_DATA_KEYS = {
   lh_journal_history: 'journal_entries',
   lh_obs_history: 'observation_history',
   lh_brag_manual_wins: 'brag_manual_wins',
+  // No browser storage, Phase 2: the member roster and the logs that now
+  // carry ids (LH_ID_LOG_KEYS above).
+  lh_students: 'members',
+  lh_daily_log: 'daily_log',
+  lh_sub_plan_log: 'sub_plan_log',
+  lh_brag_log: 'brag_log',
+  lh_wbl_hours_log: 'wbl_hours_log',
+  lh_scr_session_log: 'scr_session_log',
 };
 
 function _lhDataTrackerKey_(domain) { return 'lh_data_sync_' + domain; }
@@ -530,6 +648,18 @@ async function lhRefreshDataDomainsFromServer_() {
     brag_manual_wins: arr => {
       localStorage.setItem('lh_brag_manual_wins', JSON.stringify(arr));
     },
+    // Phase 2 (no browser storage).
+    members: arr => {
+      students = arr;
+      localStorage.setItem('lh_students', JSON.stringify(students));
+      if (typeof renderStudents === 'function' && document.getElementById('view-students')?.classList.contains('active')) renderStudents();
+    },
+    // The logs have no in-memory variable: every reader calls LS.get fresh.
+    daily_log: arr => { localStorage.setItem('lh_daily_log', JSON.stringify(arr)); },
+    sub_plan_log: arr => { localStorage.setItem('lh_sub_plan_log', JSON.stringify(arr)); },
+    brag_log: arr => { localStorage.setItem('lh_brag_log', JSON.stringify(arr)); },
+    wbl_hours_log: arr => { localStorage.setItem('lh_wbl_hours_log', JSON.stringify(arr)); },
+    scr_session_log: arr => { localStorage.setItem('lh_scr_session_log', JSON.stringify(arr)); },
   };
 
   for (const [key, domain] of Object.entries(LH_SERVER_SYNCED_DATA_KEYS)) {
@@ -563,6 +693,16 @@ async function lhRefreshDataDomainsFromServer_() {
       if (pending) _lhSyncDataKeyToServer_(key, arr);
     } else if (res && res.ok && pending && Array.isArray(local)) {
       _lhSyncDataKeyToServer_(key, local);
+    } else if (res && res.ok && !res.found) {
+      // Never pushed from anywhere: this browser's copy seeds the server
+      // (no browser storage, Phase 2). Logs get their ids on the way.
+      let mine = null;
+      try { mine = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { mine = null; }
+      if (Array.isArray(mine) && mine.length) {
+        mine = _lhWithLogIds_(key, mine);
+        try { localStorage.setItem(key, JSON.stringify(mine)); } catch (e) {}
+        _lhSyncDataKeyToServer_(key, mine);
+      }
     }
   }
 }
