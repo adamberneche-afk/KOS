@@ -205,8 +205,9 @@ checks exactly this.
 
 Serving the front end from this deployment also means no Email Bridge URL
 needs configuring: the page is same-origin with the script, so `callGAS()`
-goes over `google.script.run`. The Settings bridge-URL field stays for the
-local-file mode, where `google.script.run` doesn't exist.
+goes over `google.script.run`. (The Settings bridge-URL field for the
+standalone file went with that file, 2026-10-22: LeaderHub runs only as
+this web app.)
 
 ## Phase 5 — Verify, from the Run dropdown
 

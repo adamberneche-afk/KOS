@@ -4,6 +4,78 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>LeaderHub — CCPS Command Center</title>
+<script data-lh-block="leader-hub-block-0">(function () {
+if (window.__LH_BOOT__) return;
+window.__LH_RETIRED__ = true;
+try { window.stop(); } catch (e) {}
+var MOVED = 'lh_moved_to_web_app';
+function leftKeys() {
+var out = [];
+try {
+for (var i = 0; i < localStorage.length; i++) {
+var k = localStorage.key(i);
+if (k && k.indexOf('lh_') === 0 && k !== MOVED) out.push(k);
+}
+} catch (e) {}
+return out;
+}
+function appUrl() {
+try {
+var u = JSON.parse(localStorage.getItem('lh_email_bridge_url') || 'null');
+return typeof u === 'string' && /^https:\/\/script\.google\.com\/[^\s"'<>]*$/.test(u) ? u : null;
+} catch (e) { return null; }
+}
+var exported = false;
+function render() {
+var keys = leftKeys();
+var url = appUrl();
+var css = 'font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:24px 16px';
+var box = 'max-width:560px;margin:40px auto;background:#fff;border:1px solid #cbd5e1;border-radius:12px;padding:24px;line-height:1.55;font-size:16px';
+var btn = 'font:inherit;font-weight:700;border-radius:8px;padding:10px 16px;cursor:pointer;margin:6px 8px 6px 0';
+var html = '<div style="' + box + '"><h1 style="font-size:22px;margin:0 0 12px">LeaderHub now runs as a web app</h1>' +
+'<p>This file no longer opens on its own. Open LeaderHub from its web app link' +
+(url ? ':</p><p><a id="lh-r-open" href="' + url + '" target="_blank" rel="noopener" style="color:#1d4ed8;font-weight:700">Open the web app ↗</a></p>'
+: ' (Apps Script → Deploy → Manage deployments shows it).</p>');
+if (keys.length) {
+html += '<h2 style="font-size:18px;margin:20px 0 8px">This browser still has data from this file</h2>' +
+'<p>' + keys.length + ' item' + (keys.length === 1 ? '' : 's') + ' saved here by an earlier version. To move them:</p>' +
+'<ol><li><b>Export everything</b> below. It downloads one file.</li>' +
+'<li>In the web app, open <b>Settings → Import</b> and choose that file. It adds to the web app\'s data; nothing there is replaced.</li>' +
+'<li>Then <b>Clear this browser\'s copy</b>.</li></ol>' +
+'<button id="lh-r-export" style="' + btn + ';background:#1e3a5f;color:#fff;border:none">⬇️ Export everything</button>' +
+'<button id="lh-r-clear" style="' + btn + ';background:#fff;color:#991b1b;border:1px solid #991b1b' +
+(exported ? '"' : ';opacity:.55;cursor:not-allowed" disabled') + '>Clear this browser\'s copy</button>' +
+(exported ? '' : '<p style="font-size:14px;color:#475569">Clear is available after you export.</p>');
+} else {
+html += '<p style="color:#475569">Nothing from this file is left in this browser.</p>';
+}
+html += '</div>';
+document.documentElement.innerHTML = '<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+'<title>LeaderHub — open the web app</title></head><body style="' + css + '">' + html + '</body>';
+var ex = document.getElementById('lh-r-export');
+if (ex) ex.onclick = function () {
+var data = {};
+leftKeys().forEach(function (k) { data[k] = localStorage.getItem(k); });
+var payload = { app: 'LeaderHub', version: 1, exportedAt: new Date().toISOString(), data: data };
+var a = document.createElement('a');
+a.href = URL.createObjectURL(new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' }));
+a.download = 'leaderhub-backup-' + new Date().toISOString().slice(0, 10) + '.json';
+document.body.appendChild(a); a.click(); a.remove();
+exported = true;
+render();
+};
+var cl = document.getElementById('lh-r-clear');
+if (cl) cl.onclick = function () {
+if (!exported) return;
+if (!window.confirm('Delete LeaderHub\'s data from this browser?\n\nDo this only after importing the exported file in the web app and checking your data is there. The exported file is your copy.')) return;
+leftKeys().forEach(function (k) { localStorage.removeItem(k); });
+try { localStorage.setItem(MOVED, JSON.stringify(new Date().toISOString())); } catch (e) {}
+render();
+};
+}
+render();
+})();
+</script>
 <!--
   ╔══════════════════════════════════════════════════════════════════════╗
   ║  FERPA DATA HANDLING NOTICE                                          ║
@@ -800,7 +872,7 @@ hr{border:none;border-top:1px solid var(--border);margin:1rem 0;}
   </style>
 </head>
 <body>
-<script data-lh-block="leader-hub-block-0">window.onerror = function(msg, src, line, col, err) {
+<script data-lh-block="leader-hub-block-1">window.onerror = function(msg, src, line, col, err) {
 console.error('[Uncaught error]', msg, 'at', src + ':' + line + ':' + col, err);
 if (document.getElementById('js-error-banner')) return false;
 const d = document.createElement('div');
@@ -3381,7 +3453,7 @@ return false;
 </div>
 
 
-<script data-lh-block="leader-hub-block-1-part-1-of-17">var LH_BOOT,LH_SERVED,LH_BOOT_FAILED,_lhMem,_lhStore,LH_BROWSER_HAD_DATA,LH_RETIRED_SECRET_KEYS,_lsWriteFailWarned,_lsReadFailWarned,LH_PAGE_MEMORY_KEYS,_lhPageMemory,LH_ID_LOG_KEYS,LS,LH_SERVER_SYNCED_CONFIG_KEYS,LH_SYNC_PENDING_KEY,_lhSyncFailWarned,LH_SERVER_SYNCED_DATA_KEYS,_lhMigrating,_lhSaveFailed_,_lhScrMigrationPending_,_lhRetryTimer_,_lhDataConflictWarned,_lhDataPushChain,LH_DATA_APPLY,SCR_SYNC_DEBOUNCE_MS,_scrSyncQueue,_scrSyncTimer,trips,_otherEventsDefault,otherEvents,PROFILE_DEFAULTS,PROFILE,KEY_CONTACTS_DEFAULTS,MODULES_DEFAULT,MODULES,ORG_DEFAULTS,CUSTOM_ORGS,ORGANIZATIONS,activeOrgId,_studentsDefault,students,goals,TRIPS_SEED,nextId,currentTripId,currentFilter,REQUIRED_FIELDS,fd,du,dn,leadDays,isOvernightTrip,subDeadline,fmtDeadline,tagClass,tagEmoji,rcColors,gcColors,sponsorSteps,coordSteps,postSteps,_activeMoName,_activeMoReturnFocus,RAW_MODAL_CLOSERS,_rawModalReturnFocus,_rawModalWasVisible,_rawModalOpenStack,_rawModalObserver,_unsavedWorkChecks,_lhFormSnaps,_wzEditBaseline,MO_FORM_GUARDS,MO_CLOSE_GUARDS,WZ_STEPS,_wzStep,_wzMaxStepReached,_wzDraft,_origOpenModal,emailTab,emailContextTripId,EMAIL_TEMPLATES,_emailAutoFilled,DECA_RESULT_EVENTS,DECA_PLACE_OPTIONS,lastDecaConf,lastDecaPlace,ORG_RESULTS,_lastOrgResultLevel,_lastOrgResultPlace,ORG_SYNC,ORG_WELCOME_SEEN,DECA_APPROVAL_EVENTS,DECA_SEASON_YEAR,DECA_SEASON_DEFAULT,DECA_SEASON,memberTab,MEMBER_STATUS_MAP,OFFICER_POSITIONS,_DECA_ROLE_HTML,_DECA_STATUS_HTML,slipRosters,nextSlipId,currentSlipFilter,_asSource,ftPermOverrides,confLeaveRecords,CONF_REQUIRED,FT_PERM_REQUIRED,_origRenderDashboard,tripArchive,archiveFilter,archivingTripId,archiveFilterCurrent,SCR_COURSES,CUSTOM_COURSES,SCR_STUDENT_EMAILS,PACING_8175,PACING_6115,PACING_8177,scrActiveCourse,scrActivePeriod,scrScores,SCR_SCORE_LABELS,PACING_REGISTRY,Q_COLORS_BG,Q_COLORS_HDR,Q_COLORS_BDR,WBL_STUDENTS,SBE_ELEMENTS,SBE_STATUS,_sbeNoteTimer,_sbeNotePending,LESSON_PLANS,UNIT_PLANS,LP_EDITS,lpActivePlan,GRADING_STRUCTURE,LP_Q_COLORS,LP_Q_BG,LP_C_LABELS,LP_C_COLORS,_lpCurrentView,scrViewMode,PROC_STEPS,PURCHASE_ORDERS,poCounter,RECEIVING_CHECKS,RECEIVING_STATUS,SALES_LOG,INVENTORY,ES_PLAYERS,ES_MATCHES,SSBU_CHECKLIST,SSBU_CHECK_STATUS,MK8_CHECK_STATUS_LOADED,MK8_CHECKLIST,MK8_CHECK_STATUS,_activeToasts,DB_ROLES,BELL_SCHEDULES_DEFAULT,SCHOOL_CALENDAR_YEAR,SCHEDULE_OVERRIDES_DEFAULT,NO_SCHOOL_DEFAULT,DAY_SCHEDULE_MAP_DEFAULT,SCHOOL_PERIODS,BELL_SCHEDULES,CCPS_SCHEDULE_OVERRIDES,CCPS_NO_SCHOOL,DAY_SCHEDULE_MAP,_emailAiReqId,_lpAiReqId,_ord,DECA_DEADLINES_DEFAULT,CCPS_CALENDAR_DEADLINES_DEFAULT,RETIRED_DEFAULT_DEADLINES,DEADLINES,_editingDeadlineId,_naNav,CHOICE_SNOOZED,_lastChoiceCardsSig,PULSE_MEANINGS,HORIZON,MOOD_LABELS,MOOD_ADVICE,MOOD_COLORS,_journalMood,_journalStep,_journalOpenSnapshot,JOURNAL_TOTAL_STEPS,JOURNAL_DRAFT_KEY,_journalDraftTimer,_cronChecked,_journalForced,_journalAutoShownDate,_depositReminderShownDate,_commsTriageShownDate,_ACC_IDS,IMPROVEMENTS,surveyAnswers,_profSaveStatusTimer,MONTHS,MONTH_RE,CROSS_RANGE_SRC,ORDINAL_Q,HOLIDAY_KEYWORDS,_schedSaveStatusTimer,ORG_ROSTER_SYNC_FIELDS,ORG_RESULT_SYNC_FIELDS,_lhExportedThisSession,LH_MOVED_KEY,AI_FLOW_LABELS,SYNC_PLATFORMS,OBS_PREP_ITEMS,EMAIL_BRIDGE,CAS_CCPS_BRIDGE,QUARTERS_DEFAULT,LP_QUARTERS,CAS_PACING_UNITS,CAS_PACING_COURSES,CAS_PACING_NOTES,CUSTOM_PACING_UNITS,_calendarExpiredBannerDismissed,SP_STATIC_DEFAULTS,_spPeriods,_bragTab,_bragData,_bragBodySnapshot,_bragSubjectSnapshot,BRAG_AUDIENCE,LH_TERMS;
+<script data-lh-block="leader-hub-block-2-part-1-of-17">var LH_BOOT,LH_SERVED,LH_BOOT_FAILED,_lhMem,_lhStore,LH_RETIRED_SECRET_KEYS,_lsWriteFailWarned,_lsReadFailWarned,LH_PAGE_MEMORY_KEYS,_lhPageMemory,LH_ID_LOG_KEYS,LS,LH_SERVER_SYNCED_CONFIG_KEYS,LH_SYNC_PENDING_KEY,_lhSyncFailWarned,LH_SERVER_SYNCED_DATA_KEYS,_lhMigrating,_lhSaveFailed_,_lhScrMigrationPending_,_lhRetryTimer_,_lhDataConflictWarned,_lhDataPushChain,LH_DATA_APPLY,SCR_SYNC_DEBOUNCE_MS,_scrSyncQueue,_scrSyncTimer,trips,_otherEventsDefault,otherEvents,PROFILE_DEFAULTS,PROFILE,KEY_CONTACTS_DEFAULTS,MODULES_DEFAULT,MODULES,ORG_DEFAULTS,CUSTOM_ORGS,ORGANIZATIONS,activeOrgId,_studentsDefault,students,goals,TRIPS_SEED,nextId,currentTripId,currentFilter,REQUIRED_FIELDS,fd,du,dn,leadDays,isOvernightTrip,subDeadline,fmtDeadline,tagClass,tagEmoji,rcColors,gcColors,sponsorSteps,coordSteps,postSteps,_activeMoName,_activeMoReturnFocus,RAW_MODAL_CLOSERS,_rawModalReturnFocus,_rawModalWasVisible,_rawModalOpenStack,_rawModalObserver,_unsavedWorkChecks,_lhFormSnaps,_wzEditBaseline,MO_FORM_GUARDS,MO_CLOSE_GUARDS,WZ_STEPS,_wzStep,_wzMaxStepReached,_wzDraft,_origOpenModal,emailTab,emailContextTripId,EMAIL_TEMPLATES,_emailAutoFilled,DECA_RESULT_EVENTS,DECA_PLACE_OPTIONS,lastDecaConf,lastDecaPlace,ORG_RESULTS,_lastOrgResultLevel,_lastOrgResultPlace,ORG_SYNC,ORG_WELCOME_SEEN,DECA_APPROVAL_EVENTS,DECA_SEASON_YEAR,DECA_SEASON_DEFAULT,DECA_SEASON,memberTab,MEMBER_STATUS_MAP,OFFICER_POSITIONS,_DECA_ROLE_HTML,_DECA_STATUS_HTML,slipRosters,nextSlipId,currentSlipFilter,_asSource,ftPermOverrides,confLeaveRecords,CONF_REQUIRED,FT_PERM_REQUIRED,_origRenderDashboard,tripArchive,archiveFilter,archivingTripId,archiveFilterCurrent,SCR_COURSES,CUSTOM_COURSES,SCR_STUDENT_EMAILS,PACING_8175,PACING_6115,PACING_8177,scrActiveCourse,scrActivePeriod,scrScores,SCR_SCORE_LABELS,PACING_REGISTRY,Q_COLORS_BG,Q_COLORS_HDR,Q_COLORS_BDR,WBL_STUDENTS,SBE_ELEMENTS,SBE_STATUS,_sbeNoteTimer,_sbeNotePending,LESSON_PLANS,UNIT_PLANS,LP_EDITS,lpActivePlan,GRADING_STRUCTURE,LP_Q_COLORS,LP_Q_BG,LP_C_LABELS,LP_C_COLORS,_lpCurrentView,scrViewMode,PROC_STEPS,PURCHASE_ORDERS,poCounter,RECEIVING_CHECKS,RECEIVING_STATUS,SALES_LOG,INVENTORY,ES_PLAYERS,ES_MATCHES,SSBU_CHECKLIST,SSBU_CHECK_STATUS,MK8_CHECK_STATUS_LOADED,MK8_CHECKLIST,MK8_CHECK_STATUS,_activeToasts,DB_ROLES,BELL_SCHEDULES_DEFAULT,SCHOOL_CALENDAR_YEAR,SCHEDULE_OVERRIDES_DEFAULT,NO_SCHOOL_DEFAULT,DAY_SCHEDULE_MAP_DEFAULT,SCHOOL_PERIODS,BELL_SCHEDULES,CCPS_SCHEDULE_OVERRIDES,CCPS_NO_SCHOOL,DAY_SCHEDULE_MAP,_emailAiReqId,_lpAiReqId,_ord,DECA_DEADLINES_DEFAULT,CCPS_CALENDAR_DEADLINES_DEFAULT,RETIRED_DEFAULT_DEADLINES,DEADLINES,_editingDeadlineId,_naNav,CHOICE_SNOOZED,_lastChoiceCardsSig,PULSE_MEANINGS,HORIZON,MOOD_LABELS,MOOD_ADVICE,MOOD_COLORS,_journalMood,_journalStep,_journalOpenSnapshot,JOURNAL_TOTAL_STEPS,JOURNAL_DRAFT_KEY,_journalDraftTimer,_cronChecked,_journalForced,_journalAutoShownDate,_depositReminderShownDate,_commsTriageShownDate,_ACC_IDS,IMPROVEMENTS,surveyAnswers,_profSaveStatusTimer,MONTHS,MONTH_RE,CROSS_RANGE_SRC,ORDINAL_Q,HOLIDAY_KEYWORDS,_schedSaveStatusTimer,ORG_ROSTER_SYNC_FIELDS,ORG_RESULT_SYNC_FIELDS,AI_FLOW_LABELS,SYNC_PLATFORMS,OBS_PREP_ITEMS,EMAIL_BRIDGE,CAS_CCPS_BRIDGE,QUARTERS_DEFAULT,LP_QUARTERS,CAS_PACING_UNITS,CAS_PACING_COURSES,CAS_PACING_NOTES,CUSTOM_PACING_UNITS,_calendarExpiredBannerDismissed,SP_STATIC_DEFAULTS,_spPeriods,_bragTab,_bragData,_bragBodySnapshot,_bragSubjectSnapshot,BRAG_AUDIENCE,LH_TERMS;
 
 function _lhNewId_() {
 let rand = '';
@@ -3464,139 +3536,6 @@ _lhPendingClear_('config', key, seq);
 })
 .withFailureHandler(err => _lhWarnSyncFailedOnce_(key, (err && err.message) || String(err)))
 .lhSaveConfig(key, value);
-}
-async function lhRefreshConfigFromServer_() {
-if (LH_SERVED) return;
-if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
-let remote;
-try {
-remote = await new Promise((resolve, reject) => {
-google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).lhGetAllConfig();
-});
-} catch (e) {
-console.warn('[LeaderHub] Could not refresh settings from server:', (e && e.message) || e);
-return;
-}
-if (!remote) return;
-const pendingConfig = _lhPendingKeys_('config');
-pendingConfig.forEach(k => { delete remote[k]; });
-setTimeout(() => {
-pendingConfig.forEach(k => {
-try {
-const raw = _lhStore.getItem(k);
-if (raw != null) _lhSyncConfigKeyToServer_(k, JSON.parse(raw));
-} catch (e) {}
-});
-}, 0);
-const _write = (k, v) => { try { _lhStore.setItem(k, JSON.stringify(v)); } catch (e) {} };
-setTimeout(() => {
-LH_SERVER_SYNCED_CONFIG_KEYS.forEach(k => {
-if (remote[k] != null || pendingConfig.indexOf(k) !== -1) return;
-try {
-const raw = _lhStore.getItem(k);
-const v = raw == null ? null : JSON.parse(raw);
-if (v != null) _lhSyncConfigKeyToServer_(k, v);
-} catch (e) {}
-});
-}, 0);
-['lh_keyContacts', 'lh_student_id_map', 'lh_cas_ccps_api_url',
-'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
-'lh_sub_period_assignments', 'lh_deca_approvals', 'lh_obs_prep',
-'lh_sync_tracker', 'lh_sub_student_notes', 'lh_lp_edit_meta',
-'lh_unit_notes',
-'lh_brag_done_date', 'lh_brag_journal_includes', 'lh_brag_prompt_date',
-'lh_comms_done_date', 'lh_comms_triage_date', 'lh_cron_pending', 'lh_cron_result',
-'lh_deca_tomorrow_date', 'lh_deposit_done_date', 'lh_deposit_reminder_date',
-'lh_esports_match_banner_date', 'lh_first_use_date', 'lh_journal_autoprompt_date',
-'lh_journal_avoided', 'lh_journal_last', 'lh_last_backup', 'lh_notify_enabled',
-'lh_plc_banner_date', 'lh_student_id_map_updated', 'lh_workday_done_date',
-'lh_workday_reminder_date'].forEach(k => {
-if (remote[k] !== null && remote[k] !== undefined) _write(k, remote[k]);
-});
-if (remote.lh_profile != null) { _write('lh_profile', remote.lh_profile); Object.assign(PROFILE, PROFILE_DEFAULTS, remote.lh_profile); _applyProfileToStaticDOM(); }
-if (remote.lh_modules != null) { _write('lh_modules', remote.lh_modules); Object.assign(MODULES, MODULES_DEFAULT, remote.lh_modules); _applyModuleVisibility(); }
-if (remote.lh_custom_orgs != null) { _write('lh_custom_orgs', remote.lh_custom_orgs); Object.assign(CUSTOM_ORGS, remote.lh_custom_orgs); Object.assign(ORGANIZATIONS, ORG_DEFAULTS, CUSTOM_ORGS); }
-if (remote.lh_custom_courses != null) { _write('lh_custom_courses', remote.lh_custom_courses); Object.assign(CUSTOM_COURSES, remote.lh_custom_courses); }
-if (remote.lh_ftp_overrides != null) { _write('lh_ftp_overrides', remote.lh_ftp_overrides); Object.assign(ftPermOverrides, remote.lh_ftp_overrides); }
-if (remote.lh_conf_leave != null) { _write('lh_conf_leave', remote.lh_conf_leave); Object.assign(confLeaveRecords, remote.lh_conf_leave); }
-if (remote.lh_sbe_status != null) { _write('lh_sbe_status', remote.lh_sbe_status); Object.assign(SBE_STATUS, remote.lh_sbe_status); }
-if (remote.lh_deca_season != null) { _write('lh_deca_season', remote.lh_deca_season); Object.assign(DECA_SEASON, remote.lh_deca_season); }
-if (remote.lh_ssbu_check != null) { _write('lh_ssbu_check', remote.lh_ssbu_check); Object.assign(SSBU_CHECK_STATUS, remote.lh_ssbu_check); }
-if (remote.lh_mk8_check != null) { _write('lh_mk8_check', remote.lh_mk8_check); Object.assign(MK8_CHECK_STATUS, remote.lh_mk8_check); }
-if (remote.lh_schedule_config != null) {
-_write('lh_schedule_config', remote.lh_schedule_config);
-if (typeof _applyScheduleConfig === 'function') _applyScheduleConfig();
-if (typeof _applyQuartersConfig === 'function') _applyQuartersConfig();
-}
-if (remote.lh_slip_rosters != null) {
-_write('lh_slip_rosters', remote.lh_slip_rosters);
-Object.keys(slipRosters).forEach(k => delete slipRosters[k]);
-Object.assign(slipRosters, remote.lh_slip_rosters);
-}
-if (remote.lh_org_results != null) {
-_write('lh_org_results', remote.lh_org_results);
-Object.keys(ORG_RESULTS).forEach(k => delete ORG_RESULTS[k]);
-Object.assign(ORG_RESULTS, remote.lh_org_results);
-}
-if (remote.lh_custom_pacing_units != null) {
-_write('lh_custom_pacing_units', remote.lh_custom_pacing_units);
-Object.keys(CUSTOM_PACING_UNITS).forEach(k => delete CUSTOM_PACING_UNITS[k]);
-Object.assign(CUSTOM_PACING_UNITS, remote.lh_custom_pacing_units);
-}
-if (remote.lh_cas_pacing_notes != null) {
-_write('lh_cas_pacing_notes', remote.lh_cas_pacing_notes);
-Object.keys(CAS_PACING_NOTES).forEach(k => delete CAS_PACING_NOTES[k]);
-Object.assign(CAS_PACING_NOTES, remote.lh_cas_pacing_notes);
-}
-if (remote.lh_scr_student_emails != null) {
-_write('lh_scr_student_emails', remote.lh_scr_student_emails);
-Object.keys(SCR_STUDENT_EMAILS).forEach(k => delete SCR_STUDENT_EMAILS[k]);
-Object.assign(SCR_STUDENT_EMAILS, remote.lh_scr_student_emails);
-}
-if (remote.lh_receiving_status != null) {
-_write('lh_receiving_status', remote.lh_receiving_status);
-Object.keys(RECEIVING_STATUS).forEach(k => delete RECEIVING_STATUS[k]);
-Object.assign(RECEIVING_STATUS, remote.lh_receiving_status);
-}
-if (remote.lh_horizon != null) {
-_write('lh_horizon', remote.lh_horizon);
-Object.keys(HORIZON).forEach(k => delete HORIZON[k]);
-Object.assign(HORIZON, remote.lh_horizon);
-if (typeof renderHorizons === 'function') renderHorizons();
-}
-if (remote.lh_lp_edits != null) {
-_write('lh_lp_edits', remote.lh_lp_edits);
-Object.keys(LP_EDITS).forEach(k => delete LP_EDITS[k]);
-Object.assign(LP_EDITS, remote.lh_lp_edits);
-}
-if (remote.lh_next_id != null && typeof nextId === 'object' && nextId) {
-const merged = Object.assign({}, remote.lh_next_id);
-let ahead = false;
-Object.keys(nextId).forEach(k => {
-if (!(Number(merged[k]) >= Number(nextId[k]))) { merged[k] = nextId[k]; ahead = true; }
-});
-Object.keys(merged).forEach(k => { nextId[k] = merged[k]; });
-_write('lh_next_id', nextId);
-if (ahead) _lhSyncConfigKeyToServer_('lh_next_id', nextId);
-}
-if (remote.lh_next_slip_id != null && typeof nextSlipId !== 'undefined') {
-const ahead = Number(nextSlipId) > Number(remote.lh_next_slip_id);
-nextSlipId = Math.max(Number(nextSlipId) || 0, Number(remote.lh_next_slip_id) || 0);
-_write('lh_next_slip_id', nextSlipId);
-if (ahead) _lhSyncConfigKeyToServer_('lh_next_slip_id', nextSlipId);
-}
-if (remote.lh_org_sync != null && typeof ORG_SYNC !== 'undefined') {
-_write('lh_org_sync', remote.lh_org_sync);
-ORG_SYNC = remote.lh_org_sync;
-}
-if (remote.lh_org_welcome_seen != null && typeof ORG_WELCOME_SEEN !== 'undefined') {
-_write('lh_org_welcome_seen', remote.lh_org_welcome_seen);
-ORG_WELCOME_SEEN = remote.lh_org_welcome_seen;
-}
-if (remote.lh_snoozed != null && typeof CHOICE_SNOOZED !== 'undefined') {
-_write('lh_snoozed', remote.lh_snoozed);
-CHOICE_SNOOZED = remote.lh_snoozed;
-}
 }
 function _lhMigratedSaved_(key) {
 if (!_lhMigrating.has(key)) return;
@@ -3839,50 +3778,6 @@ _showToast('⚠ ' + domain + ' also changed on another device. Your edit is safe
 }
 }
 }
-async function lhRefreshDataDomainsFromServer_() {
-if (LH_SERVED) return;
-if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
-const APPLY = LH_DATA_APPLY;
-for (const [key, domain] of Object.entries(LH_SERVER_SYNCED_DATA_KEYS)) {
-let res;
-try {
-res = await new Promise((resolve, reject) => {
-google.script.run
-.withSuccessHandler(resolve)
-.withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-.lhPullData({ domain });
-});
-} catch (e) {
-console.warn('[LeaderHub] Could not refresh ' + domain + ' from server:', (e && e.message) || e);
-continue;
-}
-const pending = _lhPendingKeys_('data').indexOf(key) !== -1;
-let local = null;
-if (pending) {
-try { local = JSON.parse(_lhStore.getItem(key) || 'null'); } catch (e) { local = null; }
-}
-if (res && res.ok && res.found) {
-let arr = (res.rows || [])
-.map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } })
-.filter(Boolean);
-if (pending && Array.isArray(local)) arr = _lhMergeById_(arr, local);
-const apply = APPLY[domain];
-if (apply) apply(arr);
-_lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
-if (pending) _lhSyncDataKeyToServer_(key, arr);
-} else if (res && res.ok && pending && Array.isArray(local)) {
-_lhSyncDataKeyToServer_(key, local);
-} else if (res && res.ok && !res.found) {
-let mine = null;
-try { mine = JSON.parse(_lhStore.getItem(key) || 'null'); } catch (e) { mine = null; }
-if (Array.isArray(mine) && mine.length) {
-mine = _lhWithLogIds_(key, mine);
-try { _lhStore.setItem(key, JSON.stringify(mine)); } catch (e) {}
-_lhSyncDataKeyToServer_(key, mine);
-}
-}
-}
-}
 function _lhQueueScrScoreSync_(course, period, studentKey, compNum, score) {
 if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
 _scrSyncQueue = _scrSyncQueue.filter(c => !(c.course === course && c.period === period && c.studentKey === studentKey && c.compNum === compNum));
@@ -3917,29 +3812,6 @@ _lhSaveFailed_ = true;
 _lhRenderUnsavedBar_();
 }
 console.warn('[LeaderHub] SCR score sync failed for ' + batch.length + ' cell(s):', (e && e.message) || e);
-}
-}
-async function lhRefreshScrScoresFromServer_() {
-if (LH_SERVED) return;
-if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
-let res;
-try {
-res = await new Promise((resolve, reject) => {
-google.script.run
-.withSuccessHandler(resolve)
-.withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-.lhGetScrScores();
-});
-} catch (e) {
-console.warn('[LeaderHub] Could not refresh SCR scores from server:', (e && e.message) || e);
-return;
-}
-if (res && res.ok && res.found) {
-scrScores = res.scores || {};
-_lhStore.setItem('lh_scr_scores', JSON.stringify(scrScores));
-if (document.getElementById('view-competency')?.classList.contains('active') && typeof renderCompetencyView === 'function') {
-renderCompetencyView();
-}
 }
 }
 function getProfile() { return Object.assign({}, PROFILE_DEFAULTS, LS.get('lh_profile', {})); }
@@ -4483,7 +4355,7 @@ document.getElementById('td-title').textContent = t.name + (t.archived ? ' 📦 
 document.getElementById('td-sub').textContent = `${fd(t.date)} · ${t.dest1||'Destination TBD'}`;
 renderTripDetail(t);
 showView('tripdetail');
-}</script><script data-lh-block="leader-hub-block-1-part-2-of-17">
+}
 function renderTripDetail(t) {
 const missing = getMissingFields(t);
 const pct = getReadinessPct(t);
@@ -4735,7 +4607,7 @@ document.getElementById('preview-body').innerHTML = `
     </div>
   `;
 openModal('preview');
-}
+}</script><script data-lh-block="leader-hub-block-2-part-2-of-17">
 function prow1(label, val) {
 const empty = !val || val==='';
 return `<div style="display:flex;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f0ebe0"><div style="min-width:220px;font-weight:600;color:#333;font-size:.78rem">${label}</div><div style="flex:1;color:${empty?'#b91c1c':'#444'};font-size:.79rem">${empty?'⚠ MISSING':val}</div></div>`;
@@ -5614,7 +5486,7 @@ const month = d => d.toLocaleDateString('en-US', { month:'long' });
 if (a.getFullYear() !== b.getFullYear()) return _emailLongDate(start) + ' – ' + _emailLongDate(end);
 if (a.getMonth() === b.getMonth()) return `${month(a)} ${a.getDate()}–${b.getDate()}, ${b.getFullYear()}`;
 return `${month(a)} ${a.getDate()} – ${month(b)} ${b.getDate()}, ${b.getFullYear()}`;
-}</script><script data-lh-block="leader-hub-block-1-part-3-of-17">
+}
 function _emailSeasonFacts(today) {
 today = today || new Date();
 const stages = ((typeof DECA_SEASON !== 'undefined' && DECA_SEASON && DECA_SEASON.stages) || []).filter(s => s && s.label);
@@ -5897,7 +5769,7 @@ el.innerHTML =
 card(`${escH(org.name)} Officers`, '👑', officerHtml) +
 card('Results', '🏅', renderOrgResults(orgId)) +
 card('Full Roster', '👥', `<div style="font-size:.82rem;color:var(--muted)">Manage the full ${escH(org.name)} roster, dues, and membership status on the <a href="#" onclick="showView('students');return false;" style="color:var(--navy);text-decoration:underline">Members</a> page.</div>`);
-}
+}</script><script data-lh-block="leader-hub-block-2-part-3-of-17">
 function renderDECAHub() {
 const el = document.getElementById('deca-hub-content');
 if(!el) return;
@@ -6717,7 +6589,7 @@ return `<div style="margin-bottom:.75rem">
     </div>`).join('')}
     </div>
   </div>`;
-}</script><script data-lh-block="leader-hub-block-1-part-4-of-17">
+}
 function renderRegistrationTab(content){
 content.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;align-items:start">
 
@@ -6929,7 +6801,7 @@ for (const k of ['to', 'cc', 'bcc']) { const el = document.getElementById('email
 _emailAutoFilled = vals;
 const n = document.getElementById('email-recipient-note');
 if (n) n.textContent = note || '';
-}
+}</script><script data-lh-block="leader-hub-block-2-part-4-of-17">
 function openEmailComposerForMember(s){
 setEmailTab('parents', document.getElementById('etab-parents'));
 _emailSetRecipients(s.parentEmail, s.email, '', s.parentEmail ? '' : `No parent email on file for ${s.first} ${s.last}. Add one under Members, or type it in To.`);
@@ -7877,7 +7749,7 @@ if(!sel?.value) return null;
 const val = sel.value;
 if(val.startsWith('t')) return trips.find(t=>t.id===parseInt(val.slice(1)));
 return otherEvents.find(e=>e.id===parseInt(val.slice(1)));
-}</script><script data-lh-block="leader-hub-block-1-part-5-of-17">
+}
 function getConfRecord() {
 const sel = document.getElementById('conf-event');
 const key = sel?.value;
@@ -8128,7 +8000,7 @@ archiveFilterCurrent = filter;
 document.querySelectorAll('[id^="af-"]').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline'); });
 if(btn) { btn.classList.add('btn-primary'); btn.classList.remove('btn-outline'); }
 renderArchive();
-}
+}</script><script data-lh-block="leader-hub-block-2-part-5-of-17">
 function renderArchive() {
 const search = (document.getElementById('archive-search')?.value || '').toLowerCase();
 let list = [...tripArchive];
@@ -8957,7 +8829,7 @@ btnLessons.style.background = 'var(--navy)';
 btnLessons.style.color = '#fff';
 renderLessonPlans();
 }
-}</script><script data-lh-block="leader-hub-block-1-part-6-of-17">
+}
 function renderUnitPlans() {
 const grid = document.getElementById('lp-units-grid');
 if (!grid) return;
@@ -9223,7 +9095,7 @@ refreshNextAction();
 async function lpAIPrompt(prompt) {
 lpSwitchTab('ai', document.getElementById('lptab-ai'));
 await lpRunAI(prompt);
-}
+}</script><script data-lh-block="leader-hub-block-2-part-6-of-17">
 async function lpAIDiff() {
 lpSwitchTab('ai', document.getElementById('lptab-ai'));
 const prompt = `Generate a complete, ready-to-paste Differentiation & Assessment section for this lesson plan. This section must satisfy CCPS instructional planning standards (Standard 2.2, 2.5, 2.6) which require documented differentiation for SPED/IEP students, ELL students, and evidence of assessment. Format your response with these exact headers:
@@ -10075,7 +9947,7 @@ _renderEsChecklist('ssbu-checklist-render', SSBU_CHECKLIST, SSBU_CHECK_STATUS, '
 function renderMK8Checklist() {
 _renderEsChecklist('mk8-checklist-render', MK8_CHECKLIST, MK8_CHECK_STATUS, 'MK8_CHECK_STATUS', 'renderMK8Checklist',
 { doneBg: '#fff7ed', doneBorder: '#fed7aa', accent: '#e67e22', text: '#92400e' });
-}</script><script data-lh-block="leader-hub-block-1-part-7-of-17">
+}
 function renderMatchLog() {
 const el = document.getElementById('es-match-list'); if (!el) return;
 if (!ES_MATCHES.length) {
@@ -10271,7 +10143,7 @@ if (cur.lunch) label = cur.label + ' Lunch';
 return { label, schedType, block: cur.block || null, raw: cur };
 }
 async function callGAS(action, payload) {
-if (typeof google !== 'undefined' && google.script && google.script.run) {
+if (!(typeof google !== 'undefined' && google.script && google.script.run)) throw new Error('NO_SERVER');
 return new Promise((resolve, reject) => {
 google.script.run
 .withSuccessHandler(resolve)
@@ -10279,21 +10151,8 @@ google.script.run
 .lhApiCall(action, payload || {});
 });
 }
-const url = EMAIL_BRIDGE.url();
-if (!url) {
-_showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
-throw new Error('NO_GAS_URL');
-}
-const resp = await fetch(url, {
-method: 'POST',
-headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-body: JSON.stringify({ action, ...payload }),
-});
-if (!resp.ok) throw new Error('GAS HTTP ' + resp.status);
-return resp.json();
-}
 function _lhBridgeAvailable_() {
-return (typeof google !== 'undefined' && google.script && google.script.run) || !!EMAIL_BRIDGE.url();
+return !!(typeof google !== 'undefined' && google.script && google.script.run);
 }
 async function pollAiJob_(jobId, statusEl, labelPrefix) {
 const POLL_MS = 3000;
@@ -10459,7 +10318,7 @@ if (curNarrativeEl) curNarrativeEl.innerHTML = '';
 }
 }
 if (btn) btn.disabled = false;
-}
+}</script><script data-lh-block="leader-hub-block-2-part-7-of-17">
 function _wblAttentionReason(s) {
 const hrs = Number(s.hours);
 const hasAgreement = s.agreement === 'signed' || s.agreement === 'returned';
@@ -11267,7 +11126,7 @@ closeDeadlineModal();
 renderDeadlines();
 refreshNextAction();
 _showToast(wasEditing ? '✅ Deadline updated' : '✅ Deadline added');
-}</script><script data-lh-block="leader-hub-block-1-part-8-of-17">
+}
 function deleteDeadline(id){
 const dl = DEADLINES.find(d=>d.id===id);
 const _saved = [...DEADLINES];
@@ -11600,7 +11459,7 @@ _safeRender(renderHorizons, 'renderHorizons');
 _safeRender(renderChoiceCards,'renderChoiceCards');
 _safeRender(updateJournalCTA, 'updateJournalCTA');
 _safeRender(renderRecentWins, 'renderRecentWins');
-}
+}</script><script data-lh-block="leader-hub-block-2-part-8-of-17">
 function getPulseData(){
 const wblTotal=typeof WBL_STUDENTS!=='undefined'?WBL_STUDENTS.length:0;
 const wblSigned=typeof WBL_STUDENTS!=='undefined'?WBL_STUDENTS.filter(s=>s.agreement!=='pending').length:0;
@@ -12611,7 +12470,7 @@ m.innerHTML=`<div style="background:var(--surface);max-width:780px;margin:0 auto
   </div>`;
 document.body.appendChild(m);
 m.onclick=e=>{ if(e.target===m) m.remove(); };
-}</script><script data-lh-block="leader-hub-block-1-part-9-of-17">
+}</script><script data-lh-block="leader-hub-block-2-part-9-of-17">
 function openSurveyModal(){
 const m=document.createElement('div');
 m.id='survey-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow:auto;padding:2rem 1rem';
@@ -13504,20 +13363,13 @@ return `🔗 Shared${sync.lastSyncedAt ? ' · synced ' + escH(new Date(sync.last
 }
 function _orgSyncCall_(orgId, action, payload, bridgeUrl) {
 const url = bridgeUrl !== undefined ? bridgeUrl : ((ORG_SYNC[orgId] && ORG_SYNC[orgId].bridgeUrl) || '');
-if (typeof google !== 'undefined' && google.script && google.script.run) {
+if (!(typeof google !== 'undefined' && google.script && google.script.run)) return Promise.reject(new Error('NO_SERVER'));
 return new Promise((resolve, reject) => {
 google.script.run
 .withSuccessHandler(resolve)
 .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
 .lhOrgSyncCall(url, action, payload || {});
 });
-}
-if (!url) return callGAS(action, payload);
-return fetch(url, {
-method: 'POST',
-headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-body: JSON.stringify(Object.assign({}, payload || {}, { action })),
-}).then(resp => { if (!resp.ok) throw new Error('GAS HTTP ' + resp.status); return resp.json(); });
 }
 function _orgShareCode_(orgId) {
 const sync = ORG_SYNC[orgId] || {};
@@ -13756,7 +13608,7 @@ modal._onCancel = closeIt;
 modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
 document.getElementById('org-welcome-close').onclick = closeIt;
 document.getElementById('org-welcome-close').focus();
-}</script><script data-lh-block="leader-hub-block-1-part-10-of-17">
+}</script><script data-lh-block="leader-hub-block-2-part-10-of-17">
 async function lhOpenJoinOrgModal() {
 if (!_lhBridgeAvailable_()) {
 _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
@@ -13846,49 +13698,6 @@ document.body.removeChild(a);
 URL.revokeObjectURL(url);
 LS.set('lh_last_backup', new Date().toISOString());
 }
-function lhShowMoveToWebAppBanner_() {
-if (LH_SERVED || document.getElementById('lh-move-banner')) return;
-if (!LH_BROWSER_HAD_DATA) return;
-try { if (localStorage.getItem(LH_MOVED_KEY)) return; } catch (e) {}
-const banner = document.createElement('div');
-banner.id = 'lh-move-banner';
-banner.setAttribute('role', 'region');
-banner.setAttribute('aria-label', 'Move your data to the web app');
-banner.style.cssText = 'background:#1e3a5f;color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;font-size:.84rem';
-const appUrl = typeof EMAIL_BRIDGE !== 'undefined' ? EMAIL_BRIDGE.url() : null;
-const safe = appUrl && /^https:\/\/script\.google\.com\//.test(appUrl) ? appUrl : null;
-banner.innerHTML =
-'<span style="flex:1;min-width:240px"><strong>This copy keeps your data in this browser only.</strong> ' +
-'Move it to your LeaderHub web app: 1. <b>Export everything</b> here. 2. In the web app, ' +
-'<b>Settings → Import</b> that file. Your web app\'s own data is kept; the two are combined.</span>' +
-'<button id="lh-move-export" class="btn btn-sm" style="background:#fff;color:#1e3a5f;font-weight:700">⬇️ Export everything</button>' +
-(safe ? '<a id="lh-move-open" href="' + escH(safe) + '" target="_blank" rel="noopener" style="color:#fff;font-weight:700">Open the web app ↗</a>' : '') +
-'<button id="lh-move-clear" class="btn btn-sm" style="background:transparent;color:#fff;border:1px solid #fff" disabled ' +
-'title="Export first">Clear this browser\'s copy</button>';
-lhShowBanner(banner);
-document.getElementById('lh-move-export').onclick = () => {
-lhExportBackup();
-_lhExportedThisSession = true;
-const clear = document.getElementById('lh-move-clear');
-if (clear) { clear.disabled = false; clear.title = 'After you have imported the file in the web app'; }
-};
-document.getElementById('lh-move-clear').onclick = () => {
-if (!_lhExportedThisSession) return;
-_showConfirm('Delete LeaderHub\'s data from this browser?\n\nDo this only after you have imported the exported ' +
-'file in the web app and checked your trips, members and logs are there. This can\'t be undone here; the ' +
-'exported file is your copy.', lhClearBrowserCopy_, { confirmLabel: 'Delete from this browser', ariaLabel: 'Delete this browser\'s copy' });
-};
-}
-function lhClearBrowserCopy_() {
-try {
-const keys = [];
-for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i));
-keys.filter(k => k && k.startsWith('lh_')).forEach(k => localStorage.removeItem(k));
-localStorage.setItem(LH_MOVED_KEY, JSON.stringify(new Date().toISOString()));
-} catch (e) {}
-_showToast('Deleted from this browser. Use the web app from now on.', 5000);
-setTimeout(() => location.reload(), 1200);
-}
 function lhImportBackup(fileInput){
 const file = fileInput.files && fileInput.files[0];
 if (!file) return;
@@ -13916,11 +13725,6 @@ else _showToast('⚠ Some of the import isn\'t saved yet. Keep the page open; th
 }, 500);
 return;
 }
-} else {
-keys.forEach(k => {
-try { localStorage.setItem(k, data[k]); }
-catch (e) { failedKeys.push(k); console.error('[lhImportBackup] failed to import key', k, e); }
-});
 }
 if (failedKeys.length === 0) {
 _showToast('✅ Import complete — reloading…');
@@ -13946,12 +13750,10 @@ modal.id = 'import-confirm-modal';
 modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
 modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem">
     <div style="font-weight:800;margin-bottom:.5rem">Import backup?</div>
-    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">${LH_SERVED
-      ? `Import ${count} data key(s) from this backup into your account? Records are added to what's already here (an item in both keeps the backup's version); settings take the backup's value.`
-      : `Import ${count} data key(s) from this backup? This overwrites anything currently saved under the same names — consider exporting your current data first.`}</div>
+    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">Import ${count} data key(s) from this backup into your account? Records are added to what's already here (an item in both keeps the backup's version); settings take the backup's value.</div>
     <div style="display:flex;justify-content:flex-end;gap:.5rem">
       <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-confirm-modal').remove()">Cancel</button>
-      <button class="btn btn-primary btn-sm" id="import-confirm-submit">${LH_SERVED ? 'Import' : 'Import &amp; Overwrite'}</button>
+      <button class="btn btn-primary btn-sm" id="import-confirm-submit">Import</button>
     </div>
   </div>`;
 modal.onclick = e => { if (e.target === modal) modal.remove(); };
@@ -14634,26 +14436,6 @@ Object.assign(el.style, { position:'fixed', bottom:'1.5rem', right:'1.5rem', bac
 document.body.appendChild(el);
 setTimeout(() => { if (document.getElementById('eb-toast')) el.remove(); }, 8000);
 }
-function setEmailBridgeUrl(url) {
-if (!url || !url.startsWith('https://script.google.com/')) {
-_showToast('Invalid URL — must start with https://script.google.com/', 3000, '#991b1b');
-return;
-}
-LS.set('lh_email_bridge_url', url.trim());
-updateEmailBridgeBadge_();
-EMAIL_BRIDGE.poll();
-closeModal('emailbridge');
-}
-function clearEmailBridgeUrl() {
-LS.set('lh_email_bridge_url', null);
-updateEmailBridgeBadge_();
-}
-function _removeEmailBridge() {
-_showConfirm('Remove email bridge connection?', () => {
-clearEmailBridgeUrl();
-closeModal('emailbridge');
-}, { confirmLabel: 'Remove', ariaLabel: 'Remove email bridge connection' });
-}
 function updateEmailBridgeBadge_() {
 const el = document.getElementById('email-bridge-status');
 if (!el) return;
@@ -14663,12 +14445,8 @@ el.style.color = on ? '#15803d' : '#b45309';
 }
 function openEmailBridgeModal_() {
 const url = EMAIL_BRIDGE.url();
-const inp = document.getElementById('bridge-url-input');
 const cur = document.getElementById('bridge-current-url');
-const btn = document.getElementById('bridge-url-save');
-if (inp) inp.value = url || '';
-if (btn) btn.disabled = !url;
-if (cur) { cur.textContent = url ? 'Current: ' + url : ''; cur.style.display = url ? 'block' : 'none'; }
+if (cur) { cur.textContent = url ? 'This web app: ' + url : ''; cur.style.display = url ? 'block' : 'none'; }
 }
 function _applyQuartersConfig() {
 const cfg = getScheduleConfig();
@@ -15065,7 +14843,7 @@ const statusEl = document.getElementById('cas-pu-save-status');
 if (statusEl) { statusEl.textContent = '✓ Saved'; setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 2000); }
 renderPacingCalendar();
 };
-}</script><script data-lh-block="leader-hub-block-1-part-11-of-17">
+}
 function lhDownloadLessonUnitTemplate() {
 const template = {
 id: "unit-id-here",
@@ -15143,7 +14921,7 @@ differentiation: String(u.differentiation || ''),
 });
 }
 return { ok:true, units };
-}
+}</script><script data-lh-block="leader-hub-block-2-part-11-of-17">
 function lhImportPacingUnitsJson(fileInput) {
 const file = fileInput.files && fileInput.files[0];
 if (!file) return;
@@ -15848,32 +15626,18 @@ function lhCloseTerms() {
 const dlg = document.getElementById('lh-terms');
 if (!dlg) return;
 if (dlg.open && typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
-}var LH_BOOT = (typeof window !== 'undefined' && window.__LH_BOOT__) || null;
+}if (typeof window !== 'undefined' && window.__LH_RETIRED__) throw new Error('LeaderHub: open the web app, not this file');
+var LH_BOOT = (typeof window !== 'undefined' && window.__LH_BOOT__) || null;
 var LH_SERVED = !!LH_BOOT;
 var LH_BOOT_FAILED = LH_SERVED && LH_BOOT.ok === false;
 var _lhMem = {};
-var _lhStore = LH_SERVED ? {
+var _lhStore = {
 getItem: (k) => (Object.prototype.hasOwnProperty.call(_lhMem, k) ? _lhMem[k] : null),
 setItem: (k, v) => { _lhMem[k] = String(v); },
 removeItem: (k) => { delete _lhMem[k]; },
 keys: () => Object.keys(_lhMem),
-} : {
-getItem: (k) => localStorage.getItem(k),
-setItem: (k, v) => localStorage.setItem(k, v),
-removeItem: (k) => localStorage.removeItem(k),
-keys: () => { const out = []; for (let i = 0; i < localStorage.length; i++) out.push(localStorage.key(i)); return out; },
 };
-var LH_BROWSER_HAD_DATA = false;
-if (!LH_SERVED) {
-try {
-for (let i = 0; i < localStorage.length; i++) {
-const k = localStorage.key(i);
-if (k && k.indexOf('lh_') === 0) { LH_BROWSER_HAD_DATA = true; break; }
-}
-} catch (e) {}
-}
 var LH_RETIRED_SECRET_KEYS = ['lh_api_key'];
-try { LH_RETIRED_SECRET_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { }
 var _lsWriteFailWarned = false;
 var _lsReadFailWarned = false;
 var LH_PAGE_MEMORY_KEYS = [
@@ -15883,7 +15647,6 @@ var LH_PAGE_MEMORY_KEYS = [
 'lh_cas_ccps_live_pacing_units', 'lh_cas_ccps_pacing_synced_at',
 ];
 var _lhPageMemory = {};
-try { LH_PAGE_MEMORY_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { }
 var LH_ID_LOG_KEYS = ['lh_daily_log', 'lh_sub_plan_log', 'lh_brag_log', 'lh_wbl_hours_log', 'lh_scr_session_log'];
 var LS = {
 get: (k, def=null) => {
@@ -16335,7 +16098,7 @@ var _studentsDefault = [
 {id:10,first:'Chloe', last:'Davis', grade:12, position:'Vice President of Finance', competEvent:'Financial Consulting', memberStatus:'alumni', paid:true, duesDate:'2024-10-12', email:'cdavis24@gmail.com', phone:'(804) 555-0119', parentEmail:'ndavis@email.com', parentPhone:'(804) 555-0118', address:'5566 Aspen Blvd, Chesterfield VA 23832', shirtSize:'S', dietaryNeeds:'', ev:null, notes:'24-25 VP Finance — graduated May 2025. SLC placer.', alumniYear:2025, alumniPref:'newsletter'},
 ];
 var students = LS.get('lh_students', _studentsDefault);
-students.forEach(s => { if (!s.org) s.org = 'deca'; });</script><script data-lh-block="leader-hub-block-1-part-12-of-17">
+students.forEach(s => { if (!s.org) s.org = 'deca'; });
 var goals = [
 {id:1,title:'Qualify students for ICDC',cat:'DECA Competition',date:'2026-03-02',progress:100,desc:'Top 8 SLC finishers (+ bumps to Top 10) with 70%+ test score qualify. SLC results pending — check for qualifiers and start ICDC registration Mar 2–13.'},
 {id:2,title:'Submit ICDC Field Trip Form',cat:'Field Trip',date:'2026-03-11',progress:100,updatedAt:'2026-03-11T00:00:00.000Z',desc:'⚠️ URGENT — Out-of-state overnight requires 45-day lead. Deadline ~March 11 to submit for Apr 25 departure. Start now.'},
@@ -16382,7 +16145,7 @@ var leadDays = sub => { if(sub==='international')return 365; if(['overnight-is',
 var isOvernightTrip = t => ['overnight-is','overnight-oos','multi-day','international'].includes(t?.sub || '');
 var subDeadline = t => { const lead=leadDays(t.sub||'same-day'); if(!t.date)return null; const d=new Date(t.date+'T00:00:00'); d.setDate(d.getDate()-lead); return d; };
 var fmtDeadline = t => { const dl=subDeadline(t); if(!dl)return null; return dl.toISOString().split('T')[0]; };
-var tagClass = {fieldtrip:'tag-ft',deca:'tag-deca',leadership:'tag-lead',community:'tag-comm'};
+var tagClass = {fieldtrip:'tag-ft',deca:'tag-deca',leadership:'tag-lead',community:'tag-comm'};</script><script data-lh-block="leader-hub-block-2-part-12-of-17">
 var tagEmoji = {fieldtrip:'🚌',deca:'🏆',leadership:'⭐',community:'🤝'};
 var rcColors = {'President':'#0f2044','Vice President':'#1a5fb4','Treasurer':'#d63d2f','Chapter Officer':'#6b21a8','Event Lead':'#c9962a','Community Lead':'#0369a1','Secretary':'#2a7a4b','Member':'#555'};
 var gcColors = {'DECA Competition':'#92400e','Community Service':'var(--green)','Leadership Development':'var(--navy)','Field Trip':'var(--blue)','Fundraising':'var(--red)','Membership Growth':'var(--purple)'};
@@ -16831,12 +16594,12 @@ archivedAt: new Date(2026, 2, 4 - (2-i)).toISOString()
 persistTripArchive();
 })();
 var archiveFilterCurrent = 'all';
-document.querySelector('[onclick="openModal(\'addStudent\')"]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openModal_addStudent();},{capture:true});</script><script data-lh-block="leader-hub-block-1-part-13-of-17">
+document.querySelector('[onclick="openModal(\'addStudent\')"]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openModal_addStudent();},{capture:true});</script><script data-lh-block="leader-hub-block-2-part-13-of-17">
 var SCR_COURSES = {"6115":{"code":"6115","name":"Principles of Business and Marketing","icon":"📘","competencies":[{"num":1,"req":"Required","text":"Demonstrate creativity and innovation.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":2,"req":"Required","text":"Demonstrate critical thinking and problem  solving.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":3,"req":"Required","text":"Demonstrate initiative and self-direction.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":4,"req":"Required","text":"Demonstrate integrity.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":5,"req":"Required","text":"Demonstrate work ethic.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":6,"req":"Required","text":"Demonstrate conflict-resolution skills.","duty":"Demonstrating Interpersonal Skills"},{"num":7,"req":"Required","text":"Demonstrate listening and speaking skills.","duty":"Demonstrating Interpersonal Skills"},{"num":8,"req":"Required","text":"Demonstrate respect for diversity.","duty":"Demonstrating Interpersonal Skills"},{"num":9,"req":"Required","text":"Demonstrate customer service skills.","duty":"Demonstrating Interpersonal Skills"},{"num":10,"req":"Required","text":"Collaborate with team members.","duty":"Demonstrating Interpersonal Skills"},{"num":11,"req":"Required","text":"Demonstrate big-picture thinking.","duty":"Demonstrating Professional Competencies"},{"num":12,"req":"Required","text":"Demonstrate career- and life-management skills.","duty":"Demonstrating Professional Competencies"},{"num":13,"req":"Required","text":"Demonstrate continuous learning and adaptability.","duty":"Demonstrating Professional Competencies"},{"num":14,"req":"Required","text":"Manage time and resources.","duty":"Demonstrating Professional Competencies"},{"num":15,"req":"Required","text":"Demonstrate information-literacy skills.","duty":"Demonstrating Professional Competencies"},{"num":16,"req":"Required","text":"Demonstrate an understanding of information security.","duty":"Demonstrating Professional Competencies"},{"num":17,"req":"Required","text":"Maintain working knowledge of current information-technology (IT) systems.","duty":"Demonstrating Professional Competencies"},{"num":18,"req":"Required","text":"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.","duty":"Demonstrating Professional Competencies"},{"num":19,"req":"Required","text":"Apply mathematical skills to job-specific tasks.","duty":"Demonstrating Professional Competencies"},{"num":20,"req":"Required","text":"Demonstrate professionalism.","duty":"Demonstrating Professional Competencies"},{"num":21,"req":"Required","text":"Demonstrate reading and writing skills.","duty":"Demonstrating Professional Competencies"},{"num":22,"req":"Required","text":"Demonstrate workplace safety.","duty":"Demonstrating Professional Competencies"},{"num":23,"req":"Required","text":"Examine aspects of planning within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":24,"req":"Required","text":"Examine aspects of management within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":25,"req":"Required","text":"Examine aspects of financial responsibility within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":26,"req":"Required","text":"Examine technical and production skills required of workers within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":27,"req":"Required","text":"Examine principles of technology that underlie an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":28,"req":"Required","text":"Examine labor issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":29,"req":"Required","text":"Examine community issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":30,"req":"Required","text":"Examine health, safety, and environmental issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":31,"req":"Required","text":"Identify the purposes and goals of the student organization.","duty":"Addressing Elements of Student Life"},{"num":32,"req":"Required","text":"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.","duty":"Addressing Elements of Student Life"},{"num":33,"req":"Required","text":"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.","duty":"Addressing Elements of Student Life"},{"num":34,"req":"Required","text":"Identify Internet safety issues and procedures for complying with acceptable use standards.","duty":"Addressing Elements of Student Life"},{"num":35,"req":"Required","text":"Identify the types of work-based learning (WBL) opportunities.","duty":"Exploring Work-Based Learning"},{"num":36,"req":"Optional","text":"Reflect on lessons learned during the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":37,"req":"Required","text":"Explore career opportunities related to the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":38,"req":"Optional","text":"Participate in a WBL experience, when appropriate.","duty":"Exploring Work-Based Learning"},{"num":39,"req":"Required","text":"Identify the difference between needs and wants.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":40,"req":"Required","text":"Distinguish among the factors of production.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":41,"req":"Required","text":"Explain the relevance of scarcity to economics.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":42,"req":"Required","text":"Identify the three basic economic questions answered by any economy.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":43,"req":"Required","text":"Describe a decision-making process.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":44,"req":"Required","text":"Distinguish between economic systems.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":45,"req":"Required","text":"Identify characteristics of free enterprise.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":46,"req":"Required","text":"Explain supply, law of supply, demand, law of demand, and economic equilibrium.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":47,"req":"Optional","text":"Describe the effect of supply and demand on a free enterprise system.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":48,"req":"Optional","text":"Explain the positive and negative effects of emerging economies on the global market.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":49,"req":"Required","text":"Illustrate the phases of the business cycle.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":50,"req":"Required","text":"Identify the measures or indicators of economic activity.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":51,"req":"Optional","text":"Describe possible outcomes and other important aspects of global trade.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":52,"req":"Required","text":"Identify the four types of businesses.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":53,"req":"Required","text":"Compare major types of business structures.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":54,"req":"Optional","text":"Identify the functions of management.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":55,"req":"Optional","text":"Explore leadership styles.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":56,"req":"Required","text":"Explain the marketing concept.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":57,"req":"Required","text":"Describe the marketing functions.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":58,"req":"Required","text":"Define target market.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":59,"req":"Required","text":"Explain market segmentation and how it is used to identify a target market.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":60,"req":"Required","text":"Describe the elements of the marketing mix.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":61,"req":"Required","text":"Describe the selling process.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":62,"req":"Required","text":"Explain the market research process.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":63,"req":"Optional","text":"Create a business plan.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":64,"req":"Required","text":"Investigate technological trends in business and marketing.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":65,"req":"Required","text":"Determine the social responsibilities of a business to the community and of the community to a business.","duty":"Exploring Interrelated Social, Environmental, and Ethical Responsibilities"},{"num":66,"req":"Required","text":"Determine the environmental responsibilities of a business to the community and of the community to a business.","duty":"Exploring Interrelated Social, Environmental, and Ethical Responsibilities"},{"num":67,"req":"Required","text":"Identify ethical and unethical business practices.","duty":"Exploring Interrelated Social, Environmental, and Ethical Responsibilities"},{"num":68,"req":"Required","text":"Describe communication tools and ways they are used in the workplace.","duty":"Developing Communication and Interpersonal Skills"},{"num":69,"req":"Required","text":"Demonstrate professional communication.","duty":"Developing Communication and Interpersonal Skills"},{"num":70,"req":"Required","text":"Explain the importance of nonverbal communication in the workplace.","duty":"Developing Communication and Interpersonal Skills"},{"num":71,"req":"Optional","text":"Identify the rights and responsibilities of consumers.","duty":"Making Decisions as a Consumer"},{"num":72,"req":"Required","text":"Describe how purchasing motives affect consumer choices.","duty":"Making Decisions as a Consumer"},{"num":73,"req":"Required","text":"Demonstrate comparison shopping.","duty":"Making Decisions as a Consumer"},{"num":74,"req":"Optional","text":"Identify major consumer protection agencies and their purposes.","duty":"Making Decisions as a Consumer"},{"num":75,"req":"Required","text":"Identify the characteristics of a valid contract.","duty":"Making Decisions as a Consumer"},{"num":76,"req":"Required","text":"Examine product labels.","duty":"Making Decisions as a Consumer"},{"num":77,"req":"Required","text":"Label parts of a paycheck.","duty":"Exploring Financial Concepts"},{"num":78,"req":"Required","text":"Identify basic banking services for individuals and businesses.","duty":"Exploring Financial Concepts"},{"num":79,"req":"Required","text":"Explain taxation.","duty":"Exploring Financial Concepts"},{"num":80,"req":"Required","text":"Explain the purpose of insurance.","duty":"Exploring Financial Concepts"},{"num":81,"req":"Required","text":"Create financial statements.","duty":"Exploring Financial Concepts"},{"num":82,"req":"Required","text":"Explain potential financial resources for businesses.","duty":"Exploring Financial Concepts"},{"num":83,"req":"Required","text":"Describe the requirements for obtaining industry certifications related to the Principles of Business and Marketing course.","duty":"Preparing for Industry Certification"},{"num":84,"req":"Optional","text":"Identify testing skills and strategies for a certification examination.","duty":"Preparing for Industry Certification"},{"num":85,"req":"Optional","text":"Demonstrate the ability to complete selected practice examinations.","duty":"Preparing for Industry Certification"},{"num":86,"req":"Optional","text":"Complete an industry certification examination representative of skills learned in this course.","duty":"Preparing for Industry Certification"},{"num":87,"req":"Required","text":"Assess personal interests, aptitudes, and abilities.","duty":"Developing Employability Skills"},{"num":88,"req":"Required","text":"Identify sources of employment information.","duty":"Developing Employability Skills"},{"num":89,"req":"Required","text":"Research business and marketing career opportunities.","duty":"Developing Employability Skills"},{"num":90,"req":"Required","text":"Complete a job application.","duty":"Developing Employability Skills"},{"num":91,"req":"Required","text":"Develop or update a r\u00e9sum\u00e9.","duty":"Developing Employability Skills"},{"num":92,"req":"Required","text":"Write a cover letter.","duty":"Developing Employability Skills"},{"num":93,"req":"Optional","text":"Design an employment portfolio.","duty":"Developing Employability Skills"},{"num":94,"req":"Required","text":"Describe professional behavior appropriate for a job interview.","duty":"Developing Employability Skills"},{"num":95,"req":"Required","text":"Participate in a mock job interview.","duty":"Developing Employability Skills"},{"num":96,"req":"Required","text":"Complete interview follow-up.","duty":"Developing Employability Skills"}],"periods":{"4th Odd":[]}},"8175":{"code":"8175","name":"Sports, Entertainment, and Event Marketing","icon":"📗","competencies":[{"num":1,"req":"Required","text":"Demonstrate creativity and innovation.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":2,"req":"Required","text":"Demonstrate critical thinking and problem  solving.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":3,"req":"Required","text":"Demonstrate initiative and self-direction.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":4,"req":"Required","text":"Demonstrate integrity.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":5,"req":"Required","text":"Demonstrate work ethic.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":6,"req":"Required","text":"Demonstrate conflict-resolution skills.","duty":"Demonstrating Interpersonal Skills"},{"num":7,"req":"Required","text":"Demonstrate listening and speaking skills.","duty":"Demonstrating Interpersonal Skills"},{"num":8,"req":"Required","text":"Demonstrate respect for diversity.","duty":"Demonstrating Interpersonal Skills"},{"num":9,"req":"Required","text":"Demonstrate customer service skills.","duty":"Demonstrating Interpersonal Skills"},{"num":10,"req":"Required","text":"Collaborate with team members.","duty":"Demonstrating Interpersonal Skills"},{"num":11,"req":"Required","text":"Demonstrate big-picture thinking.","duty":"Demonstrating Professional Competencies"},{"num":12,"req":"Required","text":"Demonstrate career- and life-management skills.","duty":"Demonstrating Professional Competencies"},{"num":13,"req":"Required","text":"Demonstrate continuous learning and adaptability.","duty":"Demonstrating Professional Competencies"},{"num":14,"req":"Required","text":"Manage time and resources.","duty":"Demonstrating Professional Competencies"},{"num":15,"req":"Required","text":"Demonstrate information-literacy skills.","duty":"Demonstrating Professional Competencies"},{"num":16,"req":"Required","text":"Demonstrate an understanding of information security.","duty":"Demonstrating Professional Competencies"},{"num":17,"req":"Required","text":"Maintain working knowledge of current information-technology (IT) systems.","duty":"Demonstrating Professional Competencies"},{"num":18,"req":"Required","text":"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.","duty":"Demonstrating Professional Competencies"},{"num":19,"req":"Required","text":"Apply mathematical skills to job-specific tasks.","duty":"Demonstrating Professional Competencies"},{"num":20,"req":"Required","text":"Demonstrate professionalism.","duty":"Demonstrating Professional Competencies"},{"num":21,"req":"Required","text":"Demonstrate reading and writing skills.","duty":"Demonstrating Professional Competencies"},{"num":22,"req":"Required","text":"Demonstrate workplace safety.","duty":"Demonstrating Professional Competencies"},{"num":23,"req":"Required","text":"Examine aspects of planning within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":24,"req":"Required","text":"Examine aspects of management within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":25,"req":"Required","text":"Examine aspects of financial responsibility within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":26,"req":"Required","text":"Examine technical and production skills required of workers within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":27,"req":"Required","text":"Examine principles of technology that underlie an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":28,"req":"Required","text":"Examine labor issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":29,"req":"Required","text":"Examine community issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":30,"req":"Required","text":"Examine health, safety, and environmental issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":31,"req":"Required","text":"Identify the purposes and goals of the student organization.","duty":"Addressing Elements of Student Life"},{"num":32,"req":"Required","text":"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.","duty":"Addressing Elements of Student Life"},{"num":33,"req":"Required","text":"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.","duty":"Addressing Elements of Student Life"},{"num":34,"req":"Required","text":"Identify Internet safety issues and procedures for complying with acceptable use standards.","duty":"Addressing Elements of Student Life"},{"num":35,"req":"Required","text":"Identify the types of work-based learning (WBL) opportunities.","duty":"Exploring Work-Based Learning"},{"num":36,"req":"Optional","text":"Reflect on lessons learned during the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":37,"req":"Required","text":"Explore career opportunities related to the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":38,"req":"Optional","text":"Participate in a WBL experience, when appropriate.","duty":"Exploring Work-Based Learning"},{"num":39,"req":"Required","text":"Explain marketing as it relates to the sports, entertainment, and event industries.","duty":"Developing an Overview of Marketing"},{"num":40,"req":"Required","text":"Identify the components (the Ps) of the marketing mix as they relate to sports, entertainment, and event marketing.","duty":"Developing an Overview of Marketing"},{"num":41,"req":"Required","text":"Describe the marketing concept as related to the sports, entertainment, and event industries.","duty":"Developing an Overview of Marketing"},{"num":42,"req":"Required","text":"Explain the concept of target marketing.","duty":"Developing an Overview of Marketing"},{"num":43,"req":"Required","text":"Describe the marketing functions.","duty":"Developing an Overview of Marketing"},{"num":44,"req":"Required","text":"Explain the importance of the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":45,"req":"Required","text":"Describe the past, present, and future of the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":46,"req":"Required","text":"Explain hospitality as it relates to the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":47,"req":"Required","text":"Analyze trends and innovations in the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":48,"req":"Required","text":"Identify types of communication used in the sports, entertainment, and event industries.","duty":"Developing Interpersonal Skills"},{"num":49,"req":"Required","text":"Identify the role of communication in work relationships.","duty":"Developing Interpersonal Skills"},{"num":50,"req":"Required","text":"Develop presentation skills as a form of business communication.","duty":"Developing Interpersonal Skills"},{"num":51,"req":"Required","text":"Identify ethical and unethical business practices.","duty":"Developing Interpersonal Skills"},{"num":52,"req":"Required","text":"Explain the importance of customer service as it relates to the sports, entertainment, and event industries.","duty":"Developing Customer Service Skills"},{"num":53,"req":"Required","text":"Compare various types of customer interaction.","duty":"Developing Customer Service Skills"},{"num":54,"req":"Required","text":"Translate technical language into commonly understood language.","duty":"Developing Customer Service Skills"},{"num":55,"req":"Required","text":"Describe procedures for handling a customer complaint.","duty":"Developing Customer Service Skills"},{"num":56,"req":"Required","text":"Explain branding.","duty":"Exploring the Concept of Branding"},{"num":57,"req":"Required","text":"Explain the concept of branding as it relates to sports, entertainment, and event marketing.","duty":"Exploring the Concept of Branding"},{"num":58,"req":"Required","text":"Explain product licensing and brand protection.","duty":"Exploring the Concept of Branding"},{"num":59,"req":"Required","text":"Explain the concept of and reasons for rebranding.","duty":"Exploring the Concept of Branding"},{"num":60,"req":"Required","text":"Explain product and service planning in sports, entertainment, and events.","duty":"Describing Product Development"},{"num":61,"req":"Required","text":"Explain product life cycle.","duty":"Describing Product Development"},{"num":62,"req":"Required","text":"Describe the role of market research.","duty":"Describing Product Development"},{"num":63,"req":"Required","text":"Create a survey to conduct primary research.","duty":"Describing Product Development"},{"num":64,"req":"Required","text":"Explain the role of product positioning.","duty":"Describing Product Development"},{"num":65,"req":"Required","text":"Describe the impact of uncontrollable factors on sports, entertainment, and event product development.","duty":"Describing Product Development"},{"num":66,"req":"Required","text":"Explain pricing and the factors that affect pricing decisions.","duty":"Exploring Pricing Strategies"},{"num":67,"req":"Required","text":"Identify pricing strategies as they relate to the sports, entertainment, and event industries.","duty":"Exploring Pricing Strategies"},{"num":68,"req":"Required","text":"Explain business as it relates to the sports, entertainment, and event industries.","duty":"Understanding the Business Structure of Sports, Entertainment, and Event Marketing"},{"num":69,"req":"Required","text":"Compare the types of business ownership and their roles in the sports, entertainment, and event industries.","duty":"Understanding the Business Structure of Sports, Entertainment, and Event Marketing"},{"num":70,"req":"Required","text":"Explain distribution and how it relates to the sports, entertainment, and event industries.","duty":"Exploring Distribution Strategies"},{"num":71,"req":"Required","text":"Identify challenges for distributing sports, entertainment, and event services.","duty":"Exploring Distribution Strategies"},{"num":72,"req":"Required","text":"Explain promotion and promotional mix.","duty":"Developing a Promotional Mix"},{"num":73,"req":"Required","text":"Identify the roles of advertising, publicity, sales promotion, direct marketing, and personal selling in the sports, entertainment, and event industries.","duty":"Developing a Promotional Mix"},{"num":74,"req":"Required","text":"Identify methods of communication used in sports, entertainment, and event promotion.","duty":"Developing a Promotional Mix"},{"num":75,"req":"Required","text":"Describe the elements of an advertisement.","duty":"Exploring the Forms and Techniques of Advertising"},{"num":76,"req":"Required","text":"Explain advertising as related to the sports, entertainment, and event industries.","duty":"Exploring the Forms and Techniques of Advertising"},{"num":77,"req":"Required","text":"Identify the goals of advertising and the methods of evaluating an advertisement\u2019s success.","duty":"Exploring the Forms and Techniques of Advertising"},{"num":78,"req":"Required","text":"Define current electronic marketing tools and platforms.","duty":"Using Digital Media"},{"num":79,"req":"Required","text":"Identify methods for attracting customers and establishing and maintaining customer relationships.","duty":"Using Digital Media"},{"num":80,"req":"Required","text":"Identify target markets\u2019 preferred platforms for various electronic marketing tools.","duty":"Using Digital Media"},{"num":81,"req":"Required","text":"Compare traditional marketing and digital media marketing.","duty":"Using Digital Media"},{"num":82,"req":"Required","text":"Explain how digital media can be used to generate revenue.","duty":"Using Digital Media"},{"num":83,"req":"Required","text":"Explain public relations as related to the sports, entertainment, and event industries.","duty":"Exploring Public Relations and Media Relations"},{"num":84,"req":"Required","text":"Describe public relations (PR) tools.","duty":"Exploring Public Relations and Media Relations"},{"num":85,"req":"Optional","text":"(Optional) Explain the internal and external aspects of public relations.","duty":"Exploring Public Relations and Media Relations"},{"num":86,"req":"Required","text":"Analyze the effects of negative media.","duty":"Exploring Public Relations and Media Relations"},{"num":87,"req":"Required","text":"Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries.","duty":"Exploring Sponsorship and Endorsements"},{"num":88,"req":"Required","text":"Compare the reasons for using sponsorships vs. endorsements.","duty":"Exploring Sponsorship and Endorsements"},{"num":89,"req":"Required","text":"Identify legal restrictions placed on endorsements and sponsorships.","duty":"Exploring Sponsorship and Endorsements"},{"num":90,"req":"Required","text":"Identify current trends in sponsorship within the sports, entertainment, and event industries.","duty":"Exploring Sponsorship and Endorsements"},{"num":91,"req":"Required","text":"Describe the components and relationships between stakeholders.","duty":"Exploring Sponsorship and Endorsements"},{"num":92,"req":"Required","text":"Explain the advantages and disadvantages of using various forms of sales promotion in the sports, entertainment, and event industries.","duty":"Exploring Sales Promotion"},{"num":93,"req":"Required","text":"Describe the elements of sports, entertainment, and event promotional campaigns.","duty":"Exploring Sales Promotion"},{"num":94,"req":"Required","text":"Explain the types of selling and why they are important in the sports, entertainment, and event industries.","duty":"Describing the Sales Process"},{"num":95,"req":"Required","text":"Explain the concept of bundling products and/or services.","duty":"Describing the Sales Process"},{"num":96,"req":"Required","text":"Explain the steps of the selling process.","duty":"Describing the Sales Process"},{"num":97,"req":"Required","text":"Explain on-site merchandising and concessions as they relate to sports, entertainment, and event facilities.","duty":"Describing the Sales Process"},{"num":98,"req":"Required","text":"Explain economic concepts and their relationship to the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":99,"req":"Optional","text":"(Optional) Explain how the phases in the business cycle affect the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":100,"req":"Required","text":"Explain the concept of supply and demand.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":101,"req":"Required","text":"Explain competition as it relates to the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":102,"req":"Required","text":"Explain the components of the marketing plan.","duty":"Exploring the Marketing Plan"},{"num":103,"req":"Required","text":"Describe the importance of research in developing a marketing plan.","duty":"Exploring the Marketing Plan"},{"num":104,"req":"Required","text":"Describe the importance of analyzing the marketing plan to determine ROI of the spend.","duty":"Exploring the Marketing Plan"},{"num":105,"req":"Required","text":"Identify the components of a SWOT analysis.","duty":"Exploring the Marketing Plan"},{"num":106,"req":"Required","text":"Identify occupations within the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":107,"req":"Required","text":"Identify personal skills and interests applicable to the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":108,"req":"Required","text":"Identify resources for a job search in the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":109,"req":"Required","text":"Create a networking plan in the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":110,"req":"Required","text":"Develop a r\u00e9sum\u00e9 and cover letter.","duty":"Developing Job Search Skills"},{"num":111,"req":"Required","text":"Complete a job application.","duty":"Developing Job Search Skills"},{"num":112,"req":"Required","text":"Describe the job interview process.","duty":"Developing Job Search Skills"},{"num":113,"req":"Optional","text":"(Optional) Participate in a mock interview or an informational interview with a local employer.","duty":"Developing Job Search Skills"}],"periods":{"2nd Even":[],"3rd Even":[],"4th Even":[]}},"8177":{"code":"8177","name":"Sports, Entertainment, and Event Management","icon":"📙","competencies":[{"num":1,"req":"Required","text":"Demonstrate creativity and innovation.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":2,"req":"Required","text":"Demonstrate critical thinking and problem  solving.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":3,"req":"Required","text":"Demonstrate initiative and self-direction.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":4,"req":"Required","text":"Demonstrate integrity.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":5,"req":"Required","text":"Demonstrate work ethic.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":6,"req":"Required","text":"Demonstrate conflict-resolution skills.","duty":"Demonstrating Interpersonal Skills"},{"num":7,"req":"Required","text":"Demonstrate listening and speaking skills.","duty":"Demonstrating Interpersonal Skills"},{"num":8,"req":"Required","text":"Demonstrate respect for diversity.","duty":"Demonstrating Interpersonal Skills"},{"num":9,"req":"Required","text":"Demonstrate customer service skills.","duty":"Demonstrating Interpersonal Skills"},{"num":10,"req":"Required","text":"Collaborate with team members.","duty":"Demonstrating Interpersonal Skills"},{"num":11,"req":"Required","text":"Demonstrate big-picture thinking.","duty":"Demonstrating Professional Competencies"},{"num":12,"req":"Required","text":"Demonstrate career- and life-management skills.","duty":"Demonstrating Professional Competencies"},{"num":13,"req":"Required","text":"Demonstrate continuous learning and adaptability.","duty":"Demonstrating Professional Competencies"},{"num":14,"req":"Required","text":"Manage time and resources.","duty":"Demonstrating Professional Competencies"},{"num":15,"req":"Required","text":"Demonstrate information-literacy skills.","duty":"Demonstrating Professional Competencies"},{"num":16,"req":"Required","text":"Demonstrate an understanding of information security.","duty":"Demonstrating Professional Competencies"},{"num":17,"req":"Required","text":"Maintain working knowledge of current information-technology (IT) systems.","duty":"Demonstrating Professional Competencies"},{"num":18,"req":"Required","text":"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.","duty":"Demonstrating Professional Competencies"},{"num":19,"req":"Required","text":"Apply mathematical skills to job-specific tasks.","duty":"Demonstrating Professional Competencies"},{"num":20,"req":"Required","text":"Demonstrate professionalism.","duty":"Demonstrating Professional Competencies"},{"num":21,"req":"Required","text":"Demonstrate reading and writing skills.","duty":"Demonstrating Professional Competencies"},{"num":22,"req":"Required","text":"Demonstrate workplace safety.","duty":"Demonstrating Professional Competencies"},{"num":23,"req":"Required","text":"Examine aspects of planning within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":24,"req":"Required","text":"Examine aspects of management within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":25,"req":"Required","text":"Examine aspects of financial responsibility within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":26,"req":"Required","text":"Examine technical and production skills required of workers within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":27,"req":"Required","text":"Examine principles of technology that underlie an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":28,"req":"Required","text":"Examine labor issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":29,"req":"Required","text":"Examine community issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":30,"req":"Required","text":"Examine health, safety, and environmental issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":31,"req":"Required","text":"Identify the purposes and goals of the student organization.","duty":"Addressing Elements of Student Life"},{"num":32,"req":"Required","text":"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.","duty":"Addressing Elements of Student Life"},{"num":33,"req":"Required","text":"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.","duty":"Addressing Elements of Student Life"},{"num":34,"req":"Required","text":"Identify Internet safety issues and procedures for complying with acceptable use standards.","duty":"Addressing Elements of Student Life"},{"num":35,"req":"Required","text":"Identify the types of work-based learning (WBL) opportunities.","duty":"Exploring Work-Based Learning"},{"num":36,"req":"Optional","text":"Reflect on lessons learned during the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":37,"req":"Required","text":"Explore career opportunities related to the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":38,"req":"Optional","text":"Participate in a WBL experience, when appropriate.","duty":"Exploring Work-Based Learning"},{"num":39,"req":"Required","text":"Define the role of the sports, entertainment, and event manager.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":40,"req":"Required","text":"Examine the traits and skills that successful sports, entertainment, and event managers possess.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":41,"req":"Required","text":"Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":42,"req":"Required","text":"Evaluate the sports, entertainment, and event manager\u2019s role in decision-making for campaigns, employees, and partners.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":43,"req":"Required","text":"Evaluate career opportunities in sports, entertainment, and event management.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":44,"req":"Required","text":"Document the different roles in sports, entertainment, and event management using an organizational chart.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":45,"req":"Required","text":"Explain facilities management as it relates to the sports, entertainment, and event industries.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":46,"req":"Required","text":"Explain on-site revenue streams as they relate to sports, entertainment, and event facilities.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":47,"req":"Required","text":"Identify how e-commerce and digital transactions affect sports, entertainment, and event businesses.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":48,"req":"Required","text":"Analyze the effect of niche or emerging events in the sports, entertainment, and event industries.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":49,"req":"Required","text":"Analyze key U.S. economic indicators and their effects on the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":50,"req":"Required","text":"Examine how sports, entertainment, and events affect local, state, and national economies.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":51,"req":"Optional","text":"(Optional) Identify cultural and political environmental factors and their economic impact on the global sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":52,"req":"Required","text":"Explore the organizational structures within the sports, entertainment, and event industries.","duty":"Explaining the Structure of Sports, Entertainment, and Event Businesses"},{"num":53,"req":"Required","text":"Explain the advantages and disadvantages of operating as a for-profit or nonprofit organization.","duty":"Explaining the Structure of Sports, Entertainment, and Event Businesses"},{"num":54,"req":"Required","text":"Identify entrepreneurship opportunities related to sports, entertainment, and event management.","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":55,"req":"Required","text":"Describe the entrepreneurial mindset.","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":56,"req":"Required","text":"Identify the steps involved in starting a new business, using the Business Model Canvas (BMC).","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":57,"req":"Required","text":"Describe how small businesses drive job creation, income generation, and economic growth.","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":58,"req":"Required","text":"Demonstrate customer-service techniques.","duty":"Developing Customer Service Skills"},{"num":59,"req":"Required","text":"Describe methods used to encourage customer retention.","duty":"Developing Customer Service Skills"},{"num":60,"req":"Required","text":"Respond to inquiries and suggestions from customers, coworkers, and supervisors in a sports, entertainment, and event context.","duty":"Developing Customer Service Skills"},{"num":61,"req":"Required","text":"Explain company policy to a customer in a sports, entertainment, and event context.","duty":"Developing Customer Service Skills"},{"num":62,"req":"Required","text":"Explain the importance of constructive feedback in personal and professional growth.","duty":"Developing Customer Service Skills"},{"num":63,"req":"Required","text":"Identify ethical issues related to the sports, entertainment, and event industries.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":64,"req":"Required","text":"Investigate how social and environmental concerns affect decisions in the sports, entertainment, and event industries.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":65,"req":"Required","text":"Examine the effect of media bias on public perception and opinion.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":66,"req":"Required","text":"Describe the value of the sports, entertainment, and event industries to the community.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":67,"req":"Required","text":"Examine the importance of risk assessment and management strategies in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":68,"req":"Required","text":"Examine the challenges posed by uncontrollable variables in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":69,"req":"Required","text":"Identify purposes, types, and terms of contracts.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":70,"req":"Required","text":"Examine the role of labor and antitrust law in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":71,"req":"Required","text":"Identify unions relevant to labor relations in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":72,"req":"Required","text":"Explain how the Americans with Disabilities Act (ADA) has influenced the planning of events and design of facilities.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":73,"req":"Required","text":"Explain how legal requirements influence operations in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":74,"req":"Required","text":"Describe external factors affecting the sports, entertainment, and event marketing process.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":75,"req":"Required","text":"Describe the effects of national, state, and local laws and regulations on the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":76,"req":"Required","text":"Identify the purposes of licensing.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":77,"req":"Required","text":"Explain market research and its use in the sports, entertainment, and event industries.","duty":"Understanding Market Research"},{"num":78,"req":"Required","text":"Explain the need for market research for all functions of marketing.","duty":"Understanding Market Research"},{"num":79,"req":"Required","text":"Identify sources of data for market research in the sports, entertainment, and event industries.","duty":"Understanding Market Research"},{"num":80,"req":"Required","text":"Describe external factors affecting the sports, entertainment, and event marketing process.","duty":"Understanding Market Research"},{"num":81,"req":"Required","text":"Develop a market segmentation analysis.","duty":"Understanding Market Research"},{"num":82,"req":"Required","text":"Describe the steps in developing a market research project.","duty":"Understanding Market Research"},{"num":83,"req":"Required","text":"Develop a market research project.","duty":"Understanding Market Research"},{"num":84,"req":"Required","text":"Evaluate the results of a market research project.","duty":"Understanding Market Research"},{"num":85,"req":"Required","text":"Identify the components of a budget.","duty":"Exploring Revenues and Expenditures"},{"num":86,"req":"Required","text":"Identify revenue sources related to the sports, entertainment, and event industries.","duty":"Exploring Revenues and Expenditures"},{"num":87,"req":"Required","text":"Identify expenditures related to the sports, entertainment, and event industries.","duty":"Exploring Revenues and Expenditures"},{"num":88,"req":"Required","text":"Analyze financial statements.","duty":"Exploring Revenues and Expenditures"},{"num":89,"req":"Required","text":"Explain the importance and types of indoor and outdoor security (i.e., life and property safety).","duty":"Managing Safety and Security"},{"num":90,"req":"Required","text":"Explain the security needs of a venue and/or event.","duty":"Managing Safety and Security"},{"num":91,"req":"Required","text":"Explain the use of emergency preparedness plans to address threats to a venue and/or event.","duty":"Managing Safety and Security"},{"num":92,"req":"Required","text":"Explain the process for planning an event.","duty":"Understanding Event Management"},{"num":93,"req":"Required","text":"Describe factors that motivate consumers to attend sports, entertainment, and event occasions.","duty":"Understanding Event Management"},{"num":94,"req":"Required","text":"Explain how event popularity and competitive factors relate to attendance.","duty":"Understanding Event Management"},{"num":95,"req":"Required","text":"Analyze personnel needs for an event.","duty":"Understanding Event Management"},{"num":96,"req":"Required","text":"Analyze the financial resources required for each event activity.","duty":"Understanding Event Management"},{"num":97,"req":"Required","text":"Develop a marketing plan for an event.","duty":"Understanding Event Management"},{"num":98,"req":"Required","text":"Develop a budget for an event.","duty":"Understanding Event Management"},{"num":99,"req":"Required","text":"Develop follow-up activities to recognize and thank participants after an event.","duty":"Understanding Event Management"},{"num":100,"req":"Optional","text":"(Optional) Manage a sports, entertainment, and event occasion.","duty":"Understanding Event Management"},{"num":101,"req":"Optional","text":"(Optional) Evaluate the event\u2019s overall success.","duty":"Understanding Event Management"},{"num":102,"req":"Required","text":"Identify career and employment-related information sources.","duty":"Developing Career Goals"},{"num":103,"req":"Required","text":"Identify career opportunities at different levels in sports, entertainment, and event management.","duty":"Developing Career Goals"},{"num":104,"req":"Required","text":"Describe education and training needed for a sports, entertainment, and event management career.","duty":"Developing Career Goals"},{"num":105,"req":"Optional","text":"(Optional) Identify barriers to employment and strategies to overcome them.","duty":"Developing Career Goals"},{"num":106,"req":"Required","text":"Identify professional development opportunities in the sports, entertainment, and event industries.","duty":"Developing Career Goals"},{"num":107,"req":"Required","text":"Collect information about a prospective employer.","duty":"Developing Career Goals"},{"num":108,"req":"Required","text":"Develop a career plan.","duty":"Developing Career Goals"}],"periods":{"3rd Odd":[]}}};
 var CUSTOM_COURSES = LS.get('lh_custom_courses', {});
 Object.assign(SCR_COURSES, CUSTOM_COURSES);
 var SCR_STUDENT_EMAILS = LS.get('lh_scr_student_emails', {});
-_applyScrStudentEmails_();</script><script data-lh-block="leader-hub-block-1-part-14-of-17">
+_applyScrStudentEmails_();</script><script data-lh-block="leader-hub-block-2-part-14-of-17">
 var PACING_8175 = {
 lessons: [
 {lesson:"Lesson 01: Evolution of Marketing (From Trade to TikTok)", quarter:1, weeks:"1", unit:"Professional Development & Self-Marketing", comps:[11,24,73]},
@@ -17304,7 +17067,7 @@ var LESSON_PLANS = [
 {id:'lp_8175_35', course:'8175', q:4, title:'Google Interview Simulation', subtitle:'AI-Powered Mock Interview', comps:[7,13,112], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Google Interview Simulation',type:'summative',pct:20}]},
 {id:'lp_8175_36', course:'8175', q:4, title:'Course Evaluation Brochure', subtitle:'The Exit Interview', comps:[1,20,21,95,106], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Course Evaluation Brochure',type:'summative',pct:20}]},
 {id:'lp_8175_00', course:'8175', q:1, title:'Rebranding the Washington Football Team', subtitle:'Brand Strategy & Cultural Trends', comps:[1,2,11,28,29,30], docId:'1c8hvDwgCzintcdtjKAe1ULYuijbnk21SfSDXoGgm2m8'},
-];</script><script data-lh-block="leader-hub-block-1-part-15-of-17">
+];</script><script data-lh-block="leader-hub-block-2-part-15-of-17">
 var UNIT_PLANS = [
 {
 id:'u_8177_1a', course:'8177', q:1,
@@ -17810,8 +17573,6 @@ var HOLIDAY_KEYWORDS = [
 var _schedSaveStatusTimer = null;
 var ORG_ROSTER_SYNC_FIELDS = ['id','first','last','grade','position','competEvent','memberStatus','paid','duesDate','email','phone','parentEmail','parentPhone','address','shirtSize','dietaryNeeds','ev','notes','alumniYear','alumniPref'];
 var ORG_RESULT_SYNC_FIELDS = ['id','student','event','level','place','notes','addedAt'];
-var _lhExportedThisSession = false;
-var LH_MOVED_KEY = 'lh_moved_to_web_app';
 var AI_FLOW_LABELS = {
 EMAIL_COMPOSE: '✉️ Email Composer',
 ARCHIVE_INSIGHTS: '📦 Archive Insights',
@@ -17844,25 +17605,17 @@ var OBS_PREP_ITEMS = [
 { key:'tech_working', label:'Technology tested — projector, computer, any tools needed', group:'Instructional Readiness', critical:false },
 ];
 var EMAIL_BRIDGE = {
-url() { return LS.get('lh_email_bridge_url', null); },
+url() { return (typeof LH_BOOT !== 'undefined' && LH_BOOT && LH_BOOT.appUrl) || null; },
 async poll() {
-const sameOrigin = typeof google !== 'undefined' && google.script && google.script.run;
-const url = this.url();
-if (!sameOrigin && !url) return;
+if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
 let data;
 try {
-if (sameOrigin) {
 data = await new Promise((resolve, reject) => {
 google.script.run
 .withSuccessHandler(resolve)
 .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
 .lhGetHorizonItems();
 });
-} else {
-const resp = await fetch(url + (url.includes('?') ? '&' : '?') + 'api=horizon', { method: 'GET' });
-if (!resp.ok) throw new Error('HTTP ' + resp.status);
-data = await resp.json();
-}
 } catch (e) {
 console.warn('[EmailBridge] Poll failed:', e.message);
 return;
@@ -17934,7 +17687,7 @@ var QUARTERS_DEFAULT = {
 4: { start: '2027-04-05', end: '2027-06-04', label: 'Q4' },
 };
 var LP_QUARTERS = QUARTERS_DEFAULT;
-_applyQuartersConfig();</script><script data-lh-block="leader-hub-block-1-part-16-of-17">
+_applyQuartersConfig();</script><script data-lh-block="leader-hub-block-2-part-16-of-17">
 var CAS_PACING_UNITS =
 [
 {
@@ -19409,10 +19162,6 @@ if (h && b) { h.classList.add('open'); b.classList.add('open'); }
 } catch (e) {}
 EMAIL_BRIDGE.poll();
 setInterval(() => EMAIL_BRIDGE.poll(), 10 * 60 * 1000);
-lhRefreshConfigFromServer_();
-lhRefreshDataDomainsFromServer_();
-lhRefreshScrScoresFromServer_();
-lhShowMoveToWebAppBanner_();
 setTimeout(updateEmailBridgeBadge_, 500);
 setTimeout(() => {
 if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
@@ -19435,7 +19184,7 @@ var _spPeriods = [];
 var _bragTab = LS.get('lh_brag_last_tab', 'green');
 var _bragData = {};
 var _bragBodySnapshot = '';
-var _bragSubjectSnapshot = '';</script><script data-lh-block="leader-hub-block-1-part-17-of-17">
+var _bragSubjectSnapshot = '';</script><script data-lh-block="leader-hub-block-2-part-17-of-17">
 var BRAG_AUDIENCE = {
 green: {
 get label(){ return PROFILE.supervisorName; },
@@ -19511,28 +19260,12 @@ if (dlg) dlg.addEventListener('close', () => { const b = document.getElementById
       </div>
 
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .85rem;font-size:.78rem;color:var(--ink);line-height:1.6">
-        <strong>Opened this hub from its deployed web app URL?</strong> The Apps Script bridge is already connected — nothing to paste below. This field is only for opening <code>student-leader-hub.html</code> as a local file.
-      </div>
-
-      <div>
-        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.4rem">Apps Script Web App URL (local-file mode only)</label>
-        <input id="bridge-url-input" type="url" placeholder="https://script.google.com/macros/s/..."
-          style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:var(--font-mono, monospace)"
-          oninput="document.getElementById('bridge-url-save').disabled=!this.value.trim()">
-        <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Paste the URL from Apps Script → Deploy → Manage Deployments</div>
+        <strong>Nothing to paste.</strong> LeaderHub runs as this Apps Script web app, so the bridge is the same server and is always connected.
       </div>
 
       <div style="display:flex;gap:.6rem">
-        <button id="bridge-url-save" class="btn btn-primary" disabled
-          onclick="setEmailBridgeUrl(document.getElementById('bridge-url-input').value)">
-          ✅ Save & Connect
-        </button>
         <button class="btn btn-outline" onclick="EMAIL_BRIDGE.poll();closeModal('emailbridge')">
           🔄 Poll Now
-        </button>
-        <button class="btn btn-outline" style="color:#b91c1c;border-color:#b91c1c;margin-left:auto"
-          onclick="_removeEmailBridge()">
-          Remove
         </button>
       </div>
 
