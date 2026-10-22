@@ -1189,3 +1189,62 @@ kos-personal and the cas-ccps dashboards (`meta/UX_AUDIT_2026-10-22.md`,
 - Pinned by `tests/leaderhub/plain-words.test.js`. Four line-pinned tests
   (`escaping`, `finance-sales-log-escaping`, `school-calendar-defaults`,
   `pacing-and-calendar`) moved their ranges to follow the edits.
+
+## Family emails from the season, a phone layout, and edit guards, 2026-10-22
+
+The rest of leader-hub's share of `meta/UX_AUDIT_2026-10-22.md`: fix-first
+12 and 15, and order-of-work 15.
+
+- **Email templates read the season.** The ICDC qualifier letters (student
+  and family), the ICDC admin notice, the season update, the season report
+  and the faculty update were typed out for 2025-26 (ICDC Atlanta,
+  April 25–29, 2026; first payment due March 13). They now build their
+  dates, city, registration close and season label from `DECA_SEASON` (the
+  pipeline's Edit Season), and from the email's trip when it is this
+  season's ICDC trip. What the season can't know (cost, hotel, the chapter's
+  own payment dates) is left as a `[BLANK]`. The trip picker lists every
+  trip that isn't archived, instead of the four 2025-26 seed trips by id.
+  The chaperone line printed the literal text `${PROFILE.name}`; fixed.
+- **Real recipients.** "Email Families" put the words "DECA Families" in
+  To. Students and Parents now fill Bcc with real addresses: the trip's
+  permission-slip list, or the active members with no trip, with a line
+  saying how many and how many have no address on file. The registration
+  request and alumni emails do the same; a one-member email no longer
+  inherits the whole list.
+- **A check before sending.** Open in Mail (composer and Brag Board) and
+  Send now refuse an entry that isn't an email address or an email with no
+  address, and name every `[DATE]`-style blank still in the subject or body
+  before it goes. Copy reports the blanks too.
+- **Phone layout.** The eight-button top nav (about 810px) is hidden below
+  1100px (the sidebar has the same destinations), the header tightens
+  below 760px, fixed two- and three-column rows stack, and wide tables
+  scroll inside themselves. Every view fits 390px with no sideways page
+  scroll (checked in Chromium at 390 and 1366px); the gradebook tracker's
+  cells no longer run 17px past a 1366px screen. The Email Composer and
+  Brag Board put their side panel on top on a phone.
+- **Banners in normal flow.** The eight timed banners (deposit, payroll,
+  morning comms, PLC, match day, DECA tomorrow, calendar ended, Brag
+  Board) were `position:fixed;top:0` and covered the header, the ❓ Terms
+  button and each other. They stack in `#lh-banners` under the header
+  (`lhShowBanner()`), and the app's height follows them. The crash notice
+  from `02-error-handler` stays fixed on purpose.
+- **Edit-modal guards.** Escape, a backdrop click or ✕ on the trip wizard
+  while editing a saved trip, and on the member, goal, event, purchase
+  order and WBL student forms, now ask "Discard your changes?" when a field
+  has changed; saves close without asking, and leaving the page with such
+  a form open warns.
+- **Brag Board.** Generate ended in `if (url)` with no `url` in scope, so it
+  threw every time after writing the draft, and it read `aud.defaultTo`
+  (the field is `to`). Generate now only drafts; a separate "📤 Send now"
+  (shown when the email connection is set up) sends to exactly the
+  address in To, after the check above and a confirm.
+- **Pulse rings.** An overdue DECA deadline filled its ring to 100% and zero
+  trips read 100% (no DECA deadline read a made-up 50%). An overdue
+  deadline now says "Overdue"; nothing to count shows "—".
+- Pinned by `tests/leaderhub/ux-audit-fixes.test.js`; `plain-words.test.js`
+  follows the pulse caption's new markup. Four line-pinned tests moved
+  their ranges to follow the edits.
+- Not done here: the DECA Hub's 2025-26 ICDC alert card (hidden since
+  April 30, 2026) still names Atlanta and trip 6; the "25–26" vs "26–27"
+  season label, Escape routing for the forced journal, and the other
+  audit rows for leader-hub are left for their own change.

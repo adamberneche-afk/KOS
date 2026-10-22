@@ -2216,7 +2216,7 @@ function showCalendarExpiredBanner() {
   const end = getLastConfiguredQuarterEnd();
   const banner = document.createElement('div');
   banner.id = 'calendar-expired-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100000;background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
   banner.innerHTML = `
     <span style="font-size:1.3rem">📅</span>
     <div style="flex:1">
@@ -2227,7 +2227,7 @@ function showCalendarExpiredBanner() {
       <button onclick="openCalendarImporterSettings()" style="background:#fff;color:#1a3560;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📆 Import Calendar</button>
       <button onclick="document.getElementById('calendar-expired-banner').remove();_calendarExpiredBannerDismissed=true" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕ Dismiss</button>
     </div>`;
-  document.body.prepend(banner);
+  lhShowBanner(banner);
 }
 
 
@@ -3326,6 +3326,8 @@ function openBragBoard(autoPrompt) {
 
   setBragTab(_bragTab, document.getElementById('brag-tab-' + _bragTab));
   gatherBragData();
+  const sendBtn = document.getElementById('brag-send-btn');
+  if (sendBtn) sendBtn.style.display = _lhBridgeAvailable_() ? '' : 'none';
   openModal('bragboard');
 
   if (autoPrompt) {
@@ -3623,12 +3625,48 @@ function copyBragEmail() {
   });
 }
 
+function _bragFields() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  return { to: v('brag-to'), cc: v('brag-cc'), bcc: '', subject: v('brag-subject'), body: v('brag-body') };
+}
+
 function openBragInMail() {
-  const to      = encodeURIComponent(document.getElementById('brag-to').value || '');
-  const cc      = encodeURIComponent(document.getElementById('brag-cc').value || '');
-  const subject = encodeURIComponent(document.getElementById('brag-subject').value || '');
-  const body    = encodeURIComponent(document.getElementById('brag-body').value || '');
-  window.open(`mailto:${to}?cc=${cc}&subject=${subject}&body=${body}`);
+  const f = _bragFields();
+  lhCheckEmailBeforeSending(f, () => window.open(_emailMailtoUrl(f)));
+}
+
+// The explicit send that replaced Generate's broken automatic one (see
+// _generateBragEmailInner, src/10). Only shown when the email connection
+// is set up; sends to exactly the address in To, after the same address
+// and blanks check as Open in Mail, and a confirm naming the recipient.
+// The bridge sends To only (createBragDraft_, EmailBridge.gs), so a Cc
+// entry is refused here rather than silently dropped.
+async function sendBragEmail() {
+  const f = _bragFields();
+  if (!f.body.trim()) { _showToast('⚠ Nothing to send yet — click ✨ Generate or write the email first.', 3500, '#991b1b'); return; }
+  if (f.cc.trim()) { _showToast('⚠ Send now can\'t add a Cc. Clear Cc, or use 📬 Open in Mail.', 4500, '#991b1b'); return; }
+  lhCheckEmailBeforeSending(f, () => {
+    const to = lhEmailAddressList(f.to).join(', ');
+    _showConfirm(`Send this email to ${to} now, from your school account?`, async () => {
+      const statusEl = document.getElementById('brag-ai-status');
+      const btn = document.getElementById('brag-send-btn');
+      if (btn) btn.disabled = true;
+      if (statusEl) statusEl.textContent = '📤 Sending…';
+      try {
+        const res = await callGAS('bragEmail', { to, subject: f.subject || 'Weekly Wins', body: f.body });
+        if (res && res.ok) {
+          if (statusEl) statusEl.textContent = '✅ Sent to ' + to;
+          saveBragToLog();
+        } else if (statusEl) {
+          statusEl.textContent = '⚠ Not sent' + (res && res.error ? ': ' + res.error : '') + ' — the draft is still here';
+        }
+      } catch (e) {
+        if (statusEl) statusEl.textContent = '⚠ Not sent — the email connection didn\'t answer. The draft is still here.';
+      } finally {
+        if (btn) btn.disabled = false;
+      }
+    }, { confirmLabel: 'Send', danger: false, ariaLabel: 'Send this email' });
+  });
 }
 
 function saveBragToLog() {
@@ -3672,7 +3710,7 @@ function showBragBoardPromptBanner() {
   if (document.getElementById('brag-prompt-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'brag-prompt-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99997;background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.style.cssText = 'background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
   banner.innerHTML = `
     <span style="font-size:1.3rem">🏆</span>
     <div style="flex:1">
@@ -3688,7 +3726,7 @@ function showBragBoardPromptBanner() {
         aria-label="Dismiss" class="btn-on-navy"
         style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-  document.body.prepend(banner);
+  lhShowBanner(banner);
 }
 
 // ── Terms panel ─────────────────────────────────────────────────────────────

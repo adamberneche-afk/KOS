@@ -373,7 +373,7 @@ Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
 the pacing/calendar helpers (with the published CCPS 2026-27 calendar as an import fixture, `fixtures/ccps-2026-27-calendar.txt`, and the built-in calendar's own consistency, `school-calendar-defaults.test.js`), the page's sync code never overwriting an
 edit the server hasn't accepted (`sync-pending.test.js`), the `?diag` modes (`diagnostics.test.js`,
 run against the real built page), the owner-only functions the page
-calls through `google.script.run` (`browser-entry-points.test.js`), and the page's contrast and plain words (text colours at 4.5:1 or more, no on-screen text under 12px, the jargon the 2026-10-22 UX audit found replaced on screen, and a Terms panel entry for each renamed term: `plain-words.test.js`); `tests/kos-personal/` covers the archived `kos-personal/archive/studio-steps/`
+calls through `google.script.run` (`browser-entry-points.test.js`), and the page's contrast and plain words (text colours at 4.5:1 or more, no on-screen text under 12px, the jargon the 2026-10-22 UX audit found replaced on screen, and a Terms panel entry for each renamed term: `plain-words.test.js`), and the rest of its 2026-10-22 audit fixes (email templates from the season, real Bcc recipients and a blanks check before sending, reminder banners in normal flow, the phone header, edit-modal guards, Brag Board's explicit send, honest pulse rings: `ux-audit-fixes.test.js`); `tests/kos-personal/` covers the archived `kos-personal/archive/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
 lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced), the
