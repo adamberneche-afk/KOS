@@ -498,7 +498,7 @@ test('an evaluated assignment says whether it passed', () => {
   assert.match(revise.displayStatus, /^Feedback ready — revise, then submit again/);
   assert.equal(revise.statusClass, 'NEEDS_ACTION');
   const older = cardAfter({ status: 'COMPLETE' });
-  assert.match(older.displayStatus, /^Evaluated — feedback ready/, 'a row from before LastResult');
+  assert.match(older.displayStatus, /^Feedback is ready/, 'a row from before LastResult');
 });
 
 test('every card with a submission shows when it was last submitted', () => {
