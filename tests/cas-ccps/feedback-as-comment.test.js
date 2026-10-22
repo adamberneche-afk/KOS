@@ -138,6 +138,51 @@ test('stampDocument_: the assignment is 8 pt and the student\'s writing space 10
   }
 });
 
+// 2026-10-22: the operator asked for tabs to move between the assignment
+// and the response. The work stays in one tab (every reader of the
+// response reads the first tab), so headings make the Docs outline and two
+// links jump between them, both above the response marker.
+test('stampDocument_: headings and two jump links move between the assignment and the response', () => {
+  for (const flag of ['all', undefined]) {
+    const { sandbox, id } = stamp(flag, 'CAS-8175-L06');
+    const doc = sandbox.DocumentApp.openById(id);
+    const body = doc.getBody();
+    const paras = Array.from({ length: body.getNumChildren() }, (_, i) => body.getChild(i));
+    const at = (t) => paras.findIndex((p) => p.getText() === t);
+    const title = paras[at('L06 SKILL DEVELOPMENT PLAN')];
+    const heading = paras[at('Your response')];
+    assert.equal(title.getHeading(), 'HEADING1');
+    assert.equal(heading.getHeading(), 'HEADING2');
+
+    const follow = (label) => {
+      const p = paras.find((x) => (x.links || []).some((l) => l.text === label));
+      assert.ok(p, flag + ': a link labelled ' + label);
+      const url = p.links.find((l) => l.text === label).url;
+      assert.match(url, /^#bookmark=/);
+      return { from: paras.indexOf(p), to: doc.getBookmark(url.slice('#bookmark='.length)).position.element };
+    };
+    const down = follow('↓ Go to your response');
+    const up = follow('↑ Back to the assignment');
+    assert.equal(down.to, heading);
+    assert.equal(up.to, title);
+    const marker = at('── YOUR RESPONSE BEGINS HERE ──');
+    assert.ok(down.from < marker && up.from < marker, 'no link inside the response zone');
+    assert.ok(at('Write your plan.') > down.from && at('Write your plan.') < at('Your response'));
+    assert.match(paras[up.from].getText(), /^Write your answer under the grey line below\./);
+  }
+});
+
+test('stampDocument_: the response a student writes is read the same with the new lines', () => {
+  const { sandbox, id } = stamp('all', 'CAS-8175-L06');
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js')],
+    ['dashExtractResponse_']);
+  const body = sandbox.DocumentApp.openById(id).getBody();
+  const paras = Array.from({ length: body.getNumChildren() }, (_, i) => body.getChild(i));
+  const marker = paras.findIndex((p) => p.getText() === '── YOUR RESPONSE BEGINS HERE ──');
+  paras[marker + 1].setText('My plan is to practice every day.');
+  assert.equal(exported.dashExtractResponse_(body.getText()), 'My plan is to practice every day.');
+});
+
 test('stampDocument_: with the flag off, the feedback zone is built as before', () => {
   const { text } = stamp(undefined, 'CAS-8175-L06');
   const at = (s) => text.indexOf(s);
