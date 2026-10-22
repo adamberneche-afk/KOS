@@ -94,9 +94,9 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 
 ### 4. Teacher Dashboard: header and summary (after redeploying)
 
-- [ ] The header reads "📊 Assignment Dashboard", with: **+ New Lesson** (only when M2 is on), **My Context**, **✉ Parent Reports**, **🎓 SCR Reviews**, **💬 Feedback**, **↻ Refresh** and the term dropdown.
+- [ ] The header reads "📊 Assignment Dashboard", with: **+ New Lesson** (only when M2 is on), **Student Context** (was My Context), **📅 Lessons**, **✉ Parent Reports**, **🎓 SCR Reviews**, **💬 Feedback**, **↻ Refresh** and the term dropdown.
 - [ ] **Warm-up readiness strip** under the header (M2 on): "📅 <unit id — unit name>" or "No active unit", "x of N students have evaluation history", "y with warm-up responses", and the profile lines.
-  - Compare y with the number of students who actually **answered** a warm-up. Expect it to be higher, because blank (INCOMPLETE) warm-ups count (finding 6).
+  - Compare y with the number of students who actually **answered** a warm-up. Expect them to match: blank (INCOMPLETE) warm-ups no longer count (finding 6, fixed 10-22). Until the nightly profile rebuild after the push, an older score entry counts if it scored any points.
   - **Click each number.** Expect the roster to narrow to those students, with a blue "Showing n …" bar and **Clear filter** (finding 7, fixed 10-22).
   - N counts StudentProfiles rows, not the roster in view.
 - [ ] **Lesson picker** "Showing": it defaults to "Current lesson: <name>" (LessonSchedule's latest start_date on or before today, per course), and "All assignments" is at the bottom.
@@ -104,7 +104,7 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
   - Students, ✅ Passed, ↩️ Passed before (now revising), ✏️ Checked (not passing yet), ⚪ Not checked yet, Needs attention, and Pending Review (only if more than 0).
   - Passed + passed before + not passing + not checked = Students.
   - Click a card: the list filters, and a grey "Showing n: …" bar with **Clear filter** appears.
-  - In "All assignments", "Students" counts assignment rows, so one student with 5 assignments counts 5 (finding 16).
+  - In "All assignments", the first card reads "Assignments · n students": the count is assignment rows, so the other cards still add up to it (finding 16, fixed 10-22).
 
 ### 5. Teacher Dashboard: roster rows
 
@@ -113,7 +113,7 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 - [ ] Student E's row shows the **QUEUED** badge while the student's own card says "Not started yet" (finding 2).
 - [ ] Student F's row shows "✅ Passed" with a first-passed date.
 - [ ] Period 3 students show **3-Odd / 3-Even**, never plain "3" (`PeriodOverride` / relabel).
-- [ ] There is **no submitted time on any row**, although the server sends it (finding 3b).
+- [ ] A submitted row ends its checks line with "· submitted <time>"; a row never submitted has none (finding 3b, fixed 10-22).
 
 ### 6. Teacher Dashboard: 💬 Feedback
 
@@ -121,8 +121,8 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 
 ### 7. Teacher Dashboard: My Context
 
-- [ ] **My Context** replaces the roster with "Student Context — Full Roster", "Generated <time> · Updates weekly", and one row per student with an Active / No recent activity badge, the account, "last updated", and **Open doc ↗**.
-- [ ] There is no back button: **↻ Refresh** returns to the roster (finding 18).
+- [ ] **Student Context** replaces the roster with "Student Context — Full Roster", "Generated <time> · Updates weekly", and one row per student with an Active / No recent activity badge, the account, "last updated", and **Open doc ↗**.
+- [ ] **← Back to dashboard** at the top returns to the roster without reloading it (finding 18, fixed 10-22).
 - [ ] As a student, open the Teacher Dashboard URL. You get only the student's own small My Context page ("No context recorded yet…" or their own doc link), never the roster.
 
 ---
@@ -155,7 +155,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
 - **Where:** `13:1021-1024`; `07:559` compared with the row markup at `07:2797-2814`.
 - **What:**
   - The student card shows "Submitted <time>" only when `statusClass === "DONE"`, which is COMPLIANT. Nothing reaches COMPLIANT now: 04's turn-in gate is retired (P0-04), and the only writer, `07:678`, needs PENDING_TEACHER_REVIEW, which nothing writes.
-  - The Teacher Dashboard computes `submittedAt` and never renders it (3b).
+  - The Teacher Dashboard computes `submittedAt` and never renders it (3b). *3b fixed 2026-10-22.*
   - HISTORY's #186 entry says both dashboards show it.
 - **Scenario:** during the walk, student E and student F both have a SubmissionTS on the Ledger, and neither dashboard shows it anywhere.
 - **Fix:**
@@ -179,7 +179,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
   - A student who skipped yesterday (INCOMPLETE) loses the box for the warm-up before it at once.
 - **Fix:** make "Last warm-up" the most recent **SCORED** one, or list every SCORED warm-up whose window is still open (usually one or two), each with its own reply box.
 
-**6. Warm-up readiness "with warm-up responses" counts students who wrote nothing.**
+**6. Warm-up readiness "with warm-up responses" counts students who wrote nothing.** *Fixed 2026-10-22: each score records its status; only SCORED counts.*
 - **Where:** `23_StudentProfileManager.js:554` (`buildWarmupData_` keeps INCOMPLETE) and `23:820-824`; shown at `07:1899-1900`.
 - **What:** INCOMPLETE is 25's stamp for a blank answer, but it adds an entry to `SP_WARMUP_SCORES`, and any entry counts as a "response".
 - **Scenario:** on 10-19, about 50 of about 53 warm-ups were INCOMPLETE, yet the strip would count almost every delivered student as "with warm-up responses".
@@ -241,11 +241,11 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
 
 ### Cosmetic
 
-**16. "Students" counts assignment rows.** `07:2668` (`inView.length`). In "All assignments" one student counts once per assignment. Label it "Assignments" in the ALL view, or count distinct `googleId`.
+**16. "Students" counts assignment rows.** *Fixed 2026-10-22.* `07:2668` (`inView.length`). In "All assignments" one student counts once per assignment. Label it "Assignments" in the ALL view, or count distinct `googleId`.
 
 **17. The footer stays blank when a student has no assignments.** `13:964-972` returns before the footer is set at `13:1037`. Set the footer in that branch too.
 
-**18. "My Context" opens "Student Context — Full Roster", with no way back except Refresh.** `07:1612,2866-2891`. Rename the button "Student Context" and add a "← Back to dashboard" link that calls the page's `loadData` (client-side).
+**18. "My Context" opens "Student Context — Full Roster", with no way back except Refresh.** *Fixed 2026-10-22: renamed, with a back link that keeps the roster.* `07:1612,2866-2891`. Rename the button "Student Context" and add a "← Back to dashboard" link that calls the page's `loadData` (client-side).
 
 **19. A stale comment says the card shows "the last two weeks".** `13:157-158`. The card shows only the last warm-up and the current one (`13:251-264`). Fix the comment.
 

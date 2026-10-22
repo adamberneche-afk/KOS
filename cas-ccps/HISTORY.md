@@ -4087,3 +4087,25 @@ kind of failure every morning.
   course from a name or the row, one Ledger read per loop, none for
   "off"/"all"), `teacher-dashboard-inline-js.test.js` (the strip's buttons
   clicked, the panel's "Now:" line). Rendered in headless Chromium.
+
+## Teacher Dashboard: submitted times, counts and a way back, 2026-10-22
+
+- **Why:** walk-through findings 3b, 6, 16 and 18 (`meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`),
+  the Teacher Dashboard's remaining code findings before the Oct 26 walk.
+- **3b, 07:** a roster row's checks line ends "· submitted <time>" when the
+  Ledger has a SubmissionTS; the server already sent it.
+- **6, 23:** "with warm-up responses" counted INCOMPLETE (blank) score
+  entries. `buildWarmupData_` records each score's status, and
+  `buildShadowMatrixSummary_` counts a student only for a SCORED one
+  (`_spAnsweredWarmUp_`); an entry from before the status was recorded
+  counts if it scored points, until the nightly rebuild replaces it.
+- **16, 07:** in "All assignments" the first card reads "Assignments · n
+  students"; the count stays the row count, so the other cards add up to it.
+- **18, 07:** the button is **Student Context**; its view has **← Back to
+  dashboard** (`backToDashboard`), which shows the roster again without a
+  reload, or loads it if it never loaded.
+- **Tests:** `warmup-bridge.test.js` (the status recorded; blank-only
+  students not counted, older entries by points),
+  `teacher-dashboard-inline-js.test.js` (the submitted time, the card
+  label, the back link, all through the real `render()`). Rendered in
+  headless Chromium.
