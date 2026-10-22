@@ -1,6 +1,12 @@
 # KOS Changelog
 
 
+### The web app stores nothing in the browser (2026-10-22)
+
+The operator's rule. The ingest draft and the engine-setup draft were kept
+in `localStorage` so they survived a reload; they are page memory now, so a
+reload loses an unsent paste. Checked by `tests/tools/no-browser-storage.test.js`.
+
 ### The web app: archive keeps failed rows; failed list, review panel, "Needs you" (2026-10-22)
 
 From the 2026-10-22 UX audit (fix-first 14, order-of-work 16):

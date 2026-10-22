@@ -762,15 +762,9 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
 // ── DATA STORE ──────────────────────────────────────────────────────────────
 let deployments = [];
 
-// Load from localStorage if available
-try {
-  const saved = localStorage.getItem('ai_deployments');
-  if (saved) deployments = JSON.parse(saved);
-} catch(e) {}
-
-function save() {
-  try { localStorage.setItem('ai_deployments', JSON.stringify(deployments)); } catch(e) {}
-}
+// Kept in this page's memory only: nothing is stored in the browser
+// (2026-10-22), so entries last until the page is reloaded.
+function save() {}
 
 // ── NAVIGATION ──────────────────────────────────────────────────────────────
 function showPanel(id) {
