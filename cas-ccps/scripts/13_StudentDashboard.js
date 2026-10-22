@@ -136,7 +136,7 @@ function getStudentDashboardData(termFilter) {
       status:        status,
       displayStatus: resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult),
       statusClass:   resolveStudentClass_(status, pipeline, lastResult),
-      lastEval:      lastEval     || "No evaluations yet",
+      lastEval:      lastEval     || "",
       submittedAt:   submittedAt  || null,
       docUrl:        fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
@@ -186,7 +186,7 @@ function getStudentDashboardData(termFilter) {
       assignments: [],
       warmUps:     warmUps,
       emptyReason: filteredByTerm
-        ? "No assignments for " + activeTerm + ".\n\nTry \"All Terms\" to see records from other terms."
+        ? "No assignments for " + activeTerm + ".\n\nChoose \"Whole school year\" at the top to see the rest of the year."
         : "No assignments found for " + googleId + ".\n\n" +
           "If you expect to see assignments here:\n" +
           "• Make sure you are signed in with the correct Google account\n" +
@@ -656,24 +656,24 @@ function dashExtractResponse_(fullText) {
 }
 
 function resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult) {
-  // Wording here deliberately echoes the teacher dashboard's status labels
-  // (Queued/Evaluating/Evaluated/Compliant/Flagged) so the same underlying
-  // pipeline stage reads as the same word on both sides of a conversation —
-  // a student saying "it's flagged" should mean the same thing a teacher
-  // sees as FLAGGED, not require translation.
+  // Plain words (2026-10-22), paired with the teacher dashboard's badges so
+  // a student and teacher comparing notes mean the same stage: "Waiting for
+  // feedback" / "Waiting to be checked", "Being checked now" on both, and
+  // "Couldn't be checked" on both for an ERROR_* status (the system's
+  // failure, not the student's work). The Terms panel explains each.
   // `pipeline` (from StagingPipeline, same lookup the teacher dashboard
   // uses) distinguishes actively-processing from merely-queued — without
   // it a student's work looked "Queued for evaluation…" the entire time
   // it was in the pipeline, even while the teacher's own dashboard already
   // showed EVALUATING NOW.
-  if (pipeline === "IN_PROCESS") return "Evaluating now…";
+  if (pipeline === "IN_PROCESS") return "Being checked now…";
   // In line for its evaluation (submitted, not yet taken up): see
   // getStudentDashboardData's queuedFiles. Before 2026-10-22 a submitted
   // assignment read "Not started yet" here (walk-through finding 2).
-  if (pipeline === "QUEUED" || pipeline === "PENDING_INFERENCE") return "Queued for evaluation…";
+  if (pipeline === "QUEUED" || pipeline === "PENDING_INFERENCE") return "Waiting for feedback…";
   switch (status) {
     case "ACTIVE":              return "Not started yet";
-    case "PENDING": case "STAGED": return "Queued for evaluation…";
+    case "PENDING": case "STAGED": return "Waiting for feedback…";
     case "COMPLETE": {
       // The latest evaluation's result (LEDGER.LAST_RESULT, written by 37)
       // says whether the work passed; until 2026-10-22 a passed assignment
@@ -699,7 +699,7 @@ function resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult)
       // FIXED: the teacher side keeps its ⚠ icon on FLAGGED (the one status
       // that most needs an attention-grabber); this dropped it.
       return status.startsWith("ERROR")
-        ? "Flagged ⚠ — see your teacher"
+        ? "Couldn't be checked ⚠ — tell your teacher"
         : "Status unavailable — check with your teacher";
   }
 }
@@ -747,13 +747,18 @@ function buildStudentDashboardHtml_() {
   :root{--text-secondary:#5f6368}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:15px;min-height:100vh}
-  header{background:linear-gradient(135deg,#1e8e3e,#137333);color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  header{background:#0d652d;color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
   header h1{font-size:19px;font-weight:500}
-  #account-label{font-size:12px;opacity:.85;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .refresh-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:4px;padding:5px 10px;font-size:12px;cursor:pointer}
-  .refresh-btn:hover{background:rgba(255,255,255,0.25)}
+  #account-label{font-size:13px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .refresh-btn{background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.7);color:white;border-radius:6px;padding:7px 12px;font-size:13px;min-height:36px;cursor:pointer;font-family:inherit}
+  .refresh-btn:hover{background:rgba(0,0,0,0.35)}
+  .refresh-btn:focus-visible,#term-filter:focus-visible{outline:2px solid white;outline-offset:2px}
+  #term-filter option{color:#202124;background:#fff}
   @media (max-width:480px){
     header{padding:14px 16px}
+    .pill{max-width:none;text-align:left}
+    .refresh-btn{min-height:44px}
+    #account-label{max-width:100%}
     header h1{font-size:17px}
     .main{padding:16px}
     .card{padding:14px 16px}
@@ -771,7 +776,7 @@ function buildStudentDashboardHtml_() {
      same animation, same purpose, just a needless 4px drift between the
      two "app shells." Border color intentionally stays green (this
      dashboard's own accent) vs the teacher side's blue. */
-  .spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1e8e3e;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+  .spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#137333;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .main{padding:24px;max-width:700px;margin:0 auto}
   /* NEW (finding #7): "just registered" notice + My Info panel */
@@ -780,7 +785,7 @@ function buildStudentDashboardHtml_() {
   .info-card{background:white;border-radius:12px;padding:16px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-left:5px solid #1a73e8}
   .info-card .info-row{font-size:13.5px;color:#3c4043;margin-bottom:4px}
   .info-card .info-row b{color:#202124;font-weight:600}
-  .info-card .correction-link{display:inline-block;margin-top:8px;font-size:12.5px;color:#1a73e8;text-decoration:none;font-weight:500}
+  .info-card .correction-link{display:inline-block;margin-top:8px;font-size:13px;color:#1557b0;text-decoration:none;font-weight:500}
   .info-card .correction-link:hover{text-decoration:underline}
   .group-header{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-secondary);padding:4px 0 10px;border-bottom:2px solid #e8eaed;margin:28px 0 14px}
   .group-header:first-child{margin-top:0}
@@ -801,21 +806,21 @@ function buildStudentDashboardHtml_() {
      (font-size/padding/border-radius) — this renders the identical
      "current status" chip concept, but used to be a fully-rounded pill at
      a different size, a visible seam between the two dashboards. */
-  .pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap;flex-shrink:0}
+  .pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:12px;max-width:55%;text-align:right;line-height:1.35}
   .pill-NOT_STARTED{background:#f1f3f4;color:var(--text-secondary)}
   .pill-IN_PROGRESS{background:#fef3e2;color:#9c5000}
-  .pill-NEEDS_ACTION{background:#f3e8fd;color:#9334e6}
-  .pill-DONE{background:#e6f4ea;color:#1e8e3e}
-  .pill-ISSUE{background:#fce8e6;color:#d93025}
+  .pill-NEEDS_ACTION{background:#f3e8fd;color:#7627bb}
+  .pill-DONE{background:#e6f4ea;color:#137333}
+  .pill-ISSUE{background:#fce8e6;color:#b3261e}
   .card-meta{font-size:13px;color:var(--text-secondary);margin-bottom:10px}
-  .eval-line{font-size:12px;color:var(--text-secondary);margin-bottom:12px}
-  .open-btn{display:inline-block;background:#1a73e8;color:white;text-decoration:none;padding:9px 20px;border-radius:6px;font-size:14px;font-weight:500;transition:background .15s}
+  .eval-line{font-size:13px;color:var(--text-secondary);margin-bottom:12px}
+  .open-btn{display:inline-block;background:#1967d2;color:white;text-decoration:none;padding:9px 20px;border-radius:6px;font-size:14px;font-weight:500;transition:background .15s}
   .open-btn:hover{background:#1557b0}
-  .open-btn.done-btn{background:#1e8e3e}
-  .open-btn.done-btn:hover{background:#137333}
-  .submitted-note{font-size:12px;color:#1e8e3e;margin-top:8px;font-weight:500}
+  .open-btn.done-btn{background:#137333}
+  .open-btn.done-btn:hover{background:#0d652d}
+  .submitted-note{font-size:13px;color:#137333;margin-top:8px;font-weight:500}
   .card-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  .submit-btn{background:white;color:#1e8e3e;border:1px solid #1e8e3e;padding:8px 18px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+  .submit-btn{background:white;color:#137333;border:1px solid #137333;padding:8px 18px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
   .submit-btn:hover{background:#e6f4ea}
   .submit-btn:disabled{opacity:.6;cursor:default}
   .submit-msg{font-size:13px;margin-top:8px;line-height:1.45;white-space:pre-line}
@@ -834,20 +839,20 @@ function buildStudentDashboardHtml_() {
   .wu-prompt{font-size:15px;line-height:1.55;margin-bottom:10px;white-space:pre-line}
   .wu-score{font-size:14px;margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px}
   .wu-score b{font-size:18px}
-  .wu-plus{color:#1e8e3e;font-weight:600;font-size:13px}
+  .wu-plus{color:#137333;font-weight:600;font-size:13px}
   .wu-parts{color:var(--text-secondary);font-size:13px}
   .wu-feedback{font-size:14px;line-height:1.55;background:#f1f3f4;border-radius:8px;padding:10px 12px;margin-bottom:10px;white-space:pre-line}
   .wu-answer{font-size:14px;line-height:1.5;white-space:pre-line;color:#3c4043}
-  .wu-ec{font-size:13px;color:#9334e6;font-weight:500;margin-bottom:6px}
-  .wu-ec.done{color:#1e8e3e}
-  .wu-note{font-size:12px;color:var(--text-secondary);margin-top:6px}
+  .wu-ec{font-size:13px;color:#7627bb;font-weight:500;margin-bottom:6px}
+  .wu-ec.done{color:#137333}
+  .wu-note{font-size:13px;color:var(--text-secondary);margin-top:6px}
   .wu-text{width:100%;font-family:inherit;font-size:15px;line-height:1.5;padding:10px 12px;border:1px solid #dadce0;border-radius:8px;margin-bottom:8px;resize:vertical}
   .wu-text:focus{outline:2px solid #1a73e8;outline-offset:1px;border-color:#1a73e8}
   .wu-open{padding:6px 14px;font-size:13px}
   .wu-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
   .empty-state{text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line}
   .empty-state .icon{font-size:48px;margin-bottom:16px}
-  footer{text-align:center;padding:20px;font-size:12px;color:var(--text-secondary);border-top:1px solid #e8eaed;margin-top:32px}
+  footer{text-align:center;padding:20px;font-size:13px;color:var(--text-secondary);border-top:1px solid #e8eaed;margin-top:32px}
 </style>
 </head>
 <body>
@@ -855,11 +860,12 @@ function buildStudentDashboardHtml_() {
   <h1>📚 My Assignments</h1>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
-    <select id="term-filter" onchange="loadData()" aria-label="Filter by term" style="padding:5px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:12px;">
-      <option value="ALL">All Terms</option>
+    <select id="term-filter" onchange="loadData()" aria-label="Filter by term" style="padding:7px 10px;min-height:36px;border-radius:6px;border:1px solid rgba(255,255,255,0.7);background:rgba(0,0,0,0.22);color:white;font-size:13px;">
+      <option value="ALL">Whole school year</option>
     </select>
     <button id="my-info-btn" class="refresh-btn" onclick="toggleMyInfo()" aria-expanded="false" aria-controls="my-info-panel">ℹ️ My Info</button>
     <button id="refresh-btn" class="refresh-btn" onclick="loadData()" aria-label="Refresh assignments">↻ Refresh</button>
+    <button id="cas-terms-btn" class="refresh-btn" onclick="casOpenTerms()" aria-haspopup="dialog">❓ What do these mean?</button>
     <div id="account-label">Loading…</div>
   </div>
 </header>
@@ -927,13 +933,13 @@ function loadData() {
   if (refreshBtn) refreshBtn.disabled = true;
   const sel     = document.getElementById("term-filter");
   const rawTerm = sel ? sel.value : "ALL";
-  // The dropdown only ever has the hardcoded "All Terms" option until this
+  // The dropdown only ever has the hardcoded "Whole school year" option until this
   // very first response fills in the real list, so the very first call
   // would otherwise send the literal string "ALL" — which is truthy, so
   // the server's termFilter-or-CURRENT_TERM-or-"ALL" fallback never
   // actually consulted the admin-configured CURRENT_TERM. Sending "" only
   // on this one automatic first call lets that fallback do its job; any
-  // later call (refresh, or the student genuinely picking "All Terms")
+  // later call (refresh, or the student genuinely picking "Whole school year")
   // still sends the real selected value.
   const term    = (_isFirstLoad && rawTerm === "ALL") ? "" : (rawTerm || "ALL");
   _isFirstLoad  = false;
@@ -975,8 +981,8 @@ function loadData() {
       // repeated here — a stack-trace fragment isn't actionable for them.
       _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
         loading.innerHTML =
-          '<p style="color:#d93025;padding:24px 24px 8px;">⚠ Something went wrong loading your assignments. Try refreshing.</p>' +
-          '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+          '<p style="color:#b3261e;padding:24px 24px 8px;">⚠ Something went wrong loading your assignments. Try refreshing.</p>' +
+          '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1967d2;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
         if (refreshBtn) refreshBtn.disabled = false;
       });
     })
@@ -999,8 +1005,8 @@ function render(data) {
     // retry without a full page refresh.
     document.getElementById("account-label").textContent = "—";
     loading.innerHTML =
-      '<p style="color:#d93025;padding:24px 24px 8px;">' + esc(data.error) + '</p>' +
-      '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+      '<p style="color:#b3261e;padding:24px 24px 8px;">' + esc(data.error) + '</p>' +
+      '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1967d2;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
     return;
   }
 
@@ -1054,7 +1060,7 @@ function render(data) {
              space). Mirrors the teacher dashboard's conditional-join
              pattern (07_TeacherDashboard.js's student-meta line). -->
         <div class="card-meta">\${[a.period && "Period "+esc(a.period), esc(a.subject)].filter(Boolean).join(" &nbsp;·&nbsp; ") || "No class info on file"}</div>
-        <div class="eval-line">Last evaluation: \${esc(a.lastEval)}</div>
+        <div class="eval-line">\${a.lastEval ? "Last checked: " + esc(a.lastEval) : "Not checked yet"}</div>
         <div class="card-actions">
         \${safeDocUrl(a.docUrl)
           ? \`<a href="\${esc(safeDocUrl(a.docUrl))}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
@@ -1074,7 +1080,7 @@ function render(data) {
           : ""
         }
         \${a.statusClass === "ISSUE" && a.teacherEmail
-          ? \`<div style="margin-top:8px"><a href="mailto:\${esc(a.teacherEmail)}?subject=\${encodeURIComponent("Question about: " + a.unitName)}" style="font-size:13px;color:#1a73e8;text-decoration:none;font-weight:500">✉ Email \${esc(a.teacherName || "your teacher")}</a></div>\`
+          ? \`<div style="margin-top:8px"><a href="mailto:\${esc(a.teacherEmail)}?subject=\${encodeURIComponent("Question about: " + a.unitName)}" style="font-size:13px;color:#1557b0;text-decoration:none;font-weight:500">✉ Email \${esc(a.teacherName || "your teacher")}</a></div>\`
           : ""
         }
       </div>\`;
@@ -1334,7 +1340,7 @@ function _populateTermDropdown(data) {
     data.availableTerms.forEach(t => {
       if (!existing.includes(t)) {
         const opt = document.createElement("option");
-        opt.value = t; opt.textContent = t;
+        opt.value = t; opt.textContent = termLabel(t);
         sel.appendChild(opt);
       }
     });
@@ -1344,9 +1350,11 @@ function _populateTermDropdown(data) {
 
 ${CLIENT_ESC_JS}
 ${CLIENT_SAFE_DOC_URL_JS}
+${CLIENT_WORDS_JS}
 
 loadData();
 </script>
+${casTermsPanelHtml_("What these words mean", "The words you see on this page and in your assignment documents.", CAS_STUDENT_TERMS)}
 </body>
 </html>`;
 }

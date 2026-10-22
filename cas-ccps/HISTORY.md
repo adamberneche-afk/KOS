@@ -4160,3 +4160,41 @@ kind of failure every morning.
   line), `feedback-as-comment.test.js` (headings, the links followed to
   their bookmarks, the response read the same). The sandbox's documents
   record headings and bookmarks.
+
+## Both dashboards: contrast that clears WCAG, plain words, a Terms panel, 2026-10-22
+
+- **Why:** the operator: the UI should be easy to read, and system jargon
+  needs help tools or words a user understands. Same pattern as
+  kos-personal (its CHANGELOG, same date).
+- **Contrast (07, 13):** the light-theme shades that failed 4.5:1 as text
+  (#1a73e8, #1e8e3e, #d93025, #9334e6, #e37400) are #1557b0, #137333,
+  #b3261e, #7627bb and #b45f06; white text sits on #1967d2 or #0d652d
+  (the student header was a gradient whose light end was 4.2:1). No text
+  under 12px. The Teacher Dashboard's five unstyled header buttons are
+  styled at 34px; header controls get a focus ring and readable select
+  options. A rendered scan of both pages and five modals finds no text
+  below AA.
+- **Words (00, 07, 13):** `SCR_RATING_LABELS` (1 Can teach others … 5
+  Cannot perform; 1 is the highest), `FLOW2_SCORE_LABELS` (2 Adequate, 3
+  Solid, 4 Exceptional) and `termLabel()` ("2627_MP1" → "Marking period 1,
+  2026–27") in `CLIENT_WORDS_JS`.
+  - Student: "Waiting for feedback…", "Being checked now…", "Couldn't be
+    checked ⚠ — tell your teacher", "Last checked" / "Not checked yet",
+    "Whole school year".
+  - Teacher: badges "Waiting to be checked", "Being checked now",
+    "Couldn't be checked ⚠", "Waiting for your review" (`BADGE_WORDS`; the
+    server's codes are unchanged); "🎓 Competency ratings" with the scale
+    in words and direction stated; suggested scores as "3 — Solid (2–4,
+    higher is better)"; "had work checked", "answered a warm-up",
+    "Pacing guide: …".
+- **Terms panels:** `casTermsPanelHtml_` (00) builds a native `<dialog>`
+  from `CAS_STUDENT_TERMS` (14 words) or `CAS_TEACHER_TERMS` (16, with
+  the SCR scale); "❓ What do these mean?" on the Student Dashboard,
+  "❓ Terms" on the Teacher Dashboard.
+- **Not yet:** the Canvas cartridges' "CAS document" and "response zone"
+  (a rebuild means re-importing both cartridges), the doc menu (01), the
+  feedback comment (37), the teacher emails ("archetype", script numbers),
+  the guides.
+- **Tests:** `dashboard-plain-words.test.js`; `student-doc-service` and
+  `teacher-dashboard-inline-js` follow the new words.
+
