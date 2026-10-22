@@ -267,3 +267,83 @@ test('Student Context has a way back to the roster without a reload', () => {
   assert.equal(els.main.style.display, 'block');
   assert.equal(reloaded, false);
 });
+
+// ── Teacher Dashboard polish (2026-10-22, UX audit order-of-work item 6) ───
+test('rows that need the teacher come first in each lesson section', () => {
+  const { main } = renderedRoster([
+    rosterStudent({ name: 'A Early', googleId: 'a@example.invalid', period: '1' }),
+    rosterStudent({ name: 'Z Review', googleId: 'z@example.invalid', period: '4', statusClass: 'pending-review', status: 'PENDING_TEACHER_REVIEW' }),
+    rosterStudent({ name: 'B Middle', googleId: 'b@example.invalid', period: '2' }),
+    rosterStudent({ name: 'Y Flagged', googleId: 'y@example.invalid', period: '3', statusClass: 'flagged', status: 'ERROR_TIMEOUT' }),
+  ]);
+  const order = [...main.matchAll(/<div class="student-name">([^<]+)</g)].map((m) => m[1]);
+  assert.deepEqual(order, ['Y Flagged', 'Z Review', 'A Early', 'B Middle']);
+});
+
+function scrContext() {
+  const html = renderDashboard().buildDashboardHtml_();
+  const context = firstContextWith(html, ['renderScrReviewModal', 'toggleScrShowAll']);
+  const body = { innerHTML: '' };
+  context.document = { getElementById: () => body };
+  return { context, body };
+}
+
+const scrItem = (o) => Object.assign({ studentEmail: 's@example.invalid', studentName: 'A Student',
+  competencyId: 'C1', competencyText: 'A task', suggestedRating: 3, metCount: 2, notMetCount: 0, partialCount: 0 }, o);
+
+test('the SCR queue shows rows with a suggestion by default, the rest behind a toggle, and zeros as 0', () => {
+  const { context, body } = scrContext();
+  context.renderScrReviewModal({ success: true, suggestions: [
+    scrItem({}),
+    scrItem({ competencyId: 'C2', suggestedRating: null, metCount: 0, notMetCount: 0, partialCount: 1 }),
+    scrItem({ competencyId: 'C3', suggestedRating: null, metCount: 0, notMetCount: 0, partialCount: 0 }),
+  ] });
+  assert.match(body.innerHTML, /1 competency waiting on your review\. 2 more have too little evidence for a suggestion yet\./);
+  assert.match(body.innerHTML, /Evidence so far: 2 met, 0 not met, 0 partially met\./);
+  assert.equal((body.innerHTML.match(/id="scr-override-/g) || []).length, 1);
+  assert.match(body.innerHTML, />Show them</);
+  context.toggleScrShowAll();
+  assert.equal((body.innerHTML.match(/id="scr-override-/g) || []).length, 3);
+  assert.match(body.innerHTML, /id="scr-override-2"/, 'rows keep their queue index');
+  assert.match(body.innerHTML, /Evidence so far: 0 met, 0 not met, 1 partially met\./);
+  assert.match(body.innerHTML, />Hide them</);
+});
+
+test('the SCR queue with only too-little-evidence rows says nothing is waiting', () => {
+  const { context, body } = scrContext();
+  context.renderScrReviewModal({ success: true, suggestions: [scrItem({ suggestedRating: null })] });
+  assert.match(body.innerHTML, /No competency ratings are waiting on your review right now\. 1 more has too little evidence/);
+  assert.doesNotMatch(body.innerHTML, /id="scr-override-/);
+});
+
+test('✉ Parent Reports remembers the address a report went to, in this browser only', () => {
+  const html = renderDashboard().buildDashboardHtml_();
+  const context = firstContextWith(html, ['renderParentReportModal', 'submitParentReportSend']);
+  const store = {};
+  context.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+  const els = {};
+  const el = (id) => (els[id] = els[id] || { id, style: {}, value: '', innerHTML: '', textContent: '' });
+  context.document = { getElementById: el };
+  let send = null;
+  const chain = { withSuccessHandler: (f) => { send = f; return chain; }, withFailureHandler: () => chain,
+    teacherSendWeeklyParentReport() {} };
+  context.google = { script: { run: chain } };
+  context.showToast = () => {};
+  const data = { success: true, weekStart: 'Oct 19', weekEnd: 'Oct 25', excludedStudentCount: 0, reports: [
+    { studentEmail: 's@example.invalid', studentName: 'A Student', confirmedCount: 0, pendingCount: 0, progressCount: 0, preview: 'text' },
+  ] };
+  context.renderParentReportModal(data);
+  const body = els['parent-report-modal-body'].innerHTML;
+  assert.match(body, /0 confirmed scores · 0 competencies to date/, 'zeros print as 0');
+  assert.doesNotMatch(body, /value="/);
+  el('pr-addr-0').value = 'family@example.invalid';
+  context.submitParentReportSend(0);
+  send({ success: true, recipient: 'family@example.invalid' });
+  context.renderParentReportModal(data);
+  assert.match(els['parent-report-modal-body'].innerHTML, /id="pr-addr-0" type="email" placeholder="name@example.com" value="family@example.invalid"/);
+  assert.match(els['parent-report-modal-body'].innerHTML, /Last sent to family@example\.invalid on .+ from this browser/);
+  // Storage that throws (a private window) leaves the field empty, no error.
+  context.localStorage = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
+  context.renderParentReportModal(data);
+  assert.doesNotMatch(els['parent-report-modal-body'].innerHTML, /value="/);
+});
