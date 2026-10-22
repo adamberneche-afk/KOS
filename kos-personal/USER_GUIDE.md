@@ -19,9 +19,27 @@ Over time, KOS builds a calibrated picture of how you work that makes each new s
 
 ---
 
+## Words in the app
+
+The app uses plain words; the sheets, Drive docs and your Claude Project
+still use the system's own names. Tap **Terms** at the top of the app for
+the full list. The ones you'll meet most:
+
+| In the app | In the sheets and docs |
+|---|---|
+| Add tab, System tab | Ingest, Diagnostics |
+| AI session · Reference · Advisor verdict | Session log · Research / context · Cog verdict |
+| Advisor · Advisor panel review · Review ID | Cog or persona · Seven Bridges council · Council ID |
+| Getting to know you | Shadow matrix, ambient calibration |
+| Topic focus · Emerging topics · Established topics | Vector weights · Incubating themes · Promoted themes |
+| Make it a core fact | Pin to Core (KOS_CORE_FACTS) |
+| Today's briefing | Daily primer / session starter |
+| Hand-off check · Folder check · Link for other tools | Turnstile · Sensor 1 · Sensor 2 webhook |
+| Curriculum checks | Registrar |
+
 ## The Three Tabs
 
-### Ingest — Where You Submit Sessions
+### Add (Ingest) — Where You Submit Sessions
 
 This is where you paste session content. There are two types:
 
@@ -42,7 +60,7 @@ The four metric cards show the current state of your queue:
 
 **What to do on the Queue tab most of the time: nothing.** Check it after submitting a session to confirm it was received. If all numbers are 0 and you just submitted, wait 5 minutes and refresh.
 
-### Diagnostics — Where You See What the System Has Learned
+### System (Diagnostics) — Where You See What the System Has Learned
 
 This tab shows the system's internal state. You'll visit it most often to:
 - See your ambient calibration progress (shadow matrix)
@@ -71,14 +89,14 @@ KOS works best with session logs that use the `[🧠 RTP` delimiter to mark sect
 - Code files (use Research / Context instead if you want to file them)
 
 **Size guidance:**
-- Under 150,000 characters: paste directly into the Ingest tab
+- Under 150,000 characters: paste directly into the Add tab
 - Over 150,000 characters: the app automatically shows the folder-drop path. Follow the instructions to create a Google Doc in your 03.5_INBOUND_SESSIONS folder instead.
 
 ---
 
 ## The Folder-Drop Path (Large Payloads)
 
-If your session is too large to paste directly (over ~150,000 characters), the Ingest tab will detect this and show a yellow panel with instructions. The reason is technical — Google's web app infrastructure has a size limit for direct text transfers.
+If your session is too large to paste directly (over ~150,000 characters), the Add tab will detect this and show a yellow panel with instructions. The reason is technical — Google's web app infrastructure has a size limit for direct text transfers.
 
 The folder-drop path:
 1. Tap the **03.5_INBOUND_SESSIONS** link in the yellow panel — it opens your Drive folder
@@ -106,7 +124,7 @@ This appears when the AI's inference output couldn't be read automatically. It h
 4. If Studio processed it but produced malformed output: you need to re-run the session manually and paste the correct JSON into the document body. The JSON schema is in the Studio Integration Spec — most users won't need to do this.
 5. After fixing the document, the system retries within 10 minutes. You'll see the row move from "Needs your help" to "Processed" once complete.
 
-If a row has retried 3 times and is still failing, it becomes permanently flagged as `FAILED_PARSE`. At that point, archive it (Diagnostics → Archive completed queue rows) and resubmit the session as a fresh submission.
+If a row has retried 3 times and is still failing, it becomes permanently flagged as `FAILED_PARSE`. At that point, archive it (System → Archive finished and failed rows) and resubmit the session as a fresh submission.
 
 ---
 
@@ -169,7 +187,7 @@ The shadow matrix is the system's model of your values. It tracks five questions
 
 The confidence percentages show how close each question is to VERIFIED (75% = threshold). A new deployment will show 0% on all questions. After 10-15 well-structured sessions, you'll typically start seeing HYPOTHESIZED status on the questions most visible in your work.
 
-**You don't have to wait for ambient calibration.** If you want to set your values explicitly and get the system calibrated immediately, go to Diagnostics → Personalise your advisor. The 4-step form populates all five shadow questions at 100% confidence, generates your Identity Key, and calibrates the vector routing weights to your specific role.
+**You don't have to wait for ambient calibration.** If you want to set your values explicitly and get the system calibrated immediately, go to System → Personalize your advisor. The 4-step form populates all five shadow questions at 100% confidence, generates your Identity Key, and calibrates the vector routing weights to your specific role.
 
 ---
 
@@ -183,7 +201,7 @@ Every morning at 06:00, KOS generates a session starter document in your 03.1_CU
 
 To use it: find the document named `DAILY_PRIMER_[today's date]` in your Drive, open it, and paste its contents at the top of a new AI session. This gives your AI assistant instant context about who you are and what you're working on, without you having to re-explain it every session.
 
-You can also generate a fresh primer on demand from the Diagnostics tab: **Generate today's session starter**.
+You can also generate a fresh primer on demand from the System tab: **Make today's briefing**.
 
 The same content is kept in `KOS_LATEST_PRIMER`, one doc overwritten in place (for a notebook or Gem that follows a single file). It opens with a `Generated at:` stamp and a **Data Quality** block: OK, or FLAGGED with the reasons (for example a `VECTOR_MATRIX` repair still to finish). Three more docs are rewritten with it each morning: `KOS_RECENT_SESSIONS`, `KOS_OPEN_DECISIONS` and `KOS_CORE_FACTS`. To refresh them now, run `generateBriefingDocs()` in the Apps Script editor.
 
@@ -201,7 +219,7 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 - **CURATOR** — Organisation, synthesis, information retrieval
 - **ALIGNMENT** — Always active, monitors for boundary drift (also the cog behind the `04.5_ALIGNER_SILO` Calibration Silo folder and `CE-ALIGN` tag — same cog, older folder-naming convention)
 
-**What "Run full council review" does today:** it's the real, sequestered "Seven Bridges" design (SMP-002) — no longer the older shared-context shortcut that asked one model to role-play ARCHITECT/AUDITOR/MUSE together in a single pass (that generator was **deleted** in Round 14, along with the menu item that duplicated it). The button calls `triggerSevenBridgesReview()`, which assembles **one shared stimulus document** and a fresh Council ID. Real sequestration comes from what you do next, not from anything the pipeline does automatically: send that one document to each cog independently — a separate Gemini Gem conversation per cog, no shared context between them — then log each cog's verdict back under that same Council ID via **Ingest → Cog Verdict**. Once enough verdicts are in, `compileCouncilVerdict_()` enforces the halt-execution rule (3 or more non-APPROVED verdicts halts) and the results land in COG_REGISTRY.
+**What "Start an advisor panel review" (Run full council review) does today:** it's the real, sequestered "Seven Bridges" design (SMP-002) — no longer the older shared-context shortcut that asked one model to role-play ARCHITECT/AUDITOR/MUSE together in a single pass (that generator was **deleted** in Round 14, along with the menu item that duplicated it). The button calls `triggerSevenBridgesReview()`, which assembles **one shared stimulus document** and a fresh Council ID. Real sequestration comes from what you do next, not from anything the pipeline does automatically: send that one document to each cog independently — a separate Gemini Gem conversation per cog, no shared context between them — then log each cog's verdict back under that same Council ID via **Add → Advisor verdict**. Once enough verdicts are in, `compileCouncilVerdict_()` enforces the halt-execution rule (3 or more non-APPROVED verdicts halts) and the results land in COG_REGISTRY.
 
 **This one rule is on you, not the software.** BRIDGE_FIDELITY_001: *a verdict produced with knowledge of another cog's verdict is VOID.* KOS cannot enforce that — your Gem conversations happen outside it, and nothing in the system can tell whether a cog saw another's answer first. What it can do, and now does, is guarantee it will only ever hand you a sequestered stimulus. If you paste two cogs into one conversation, or summarise ARCHITECT's verdict into AUDITOR's prompt, the review is void and nothing will warn you. One cog, one fresh conversation, every time.
 
@@ -211,7 +229,7 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 - When you're in a planning loop and want external challenge
 
 **How to trigger it:**
-Go to Diagnostics → **Run full council review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, you'll get the stimulus document and a Council ID — send the document to each cog's own Gem conversation, then log each verdict via **Ingest → Cog Verdict** using that Council ID.
+Go to System → **Start an advisor panel review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, you'll get the stimulus document and a Council ID — send the document to each cog's own Gem conversation, then log each verdict via **Ingest → Cog Verdict** using that Council ID.
 
 From the spreadsheet instead of the web app, the same thing lives under **📥 Ingest & Context → Generate Seven Bridges Stimulus**. Both surfaces call the same function and produce the same artifact.
 
@@ -230,7 +248,7 @@ Neither changes the arithmetic — a review whose count is inflated is flagged, 
 
 ## The Vector Weights
 
-The vector weights in the Diagnostics tab show how strongly each knowledge domain featured in your last processed session. Seven domains are tracked by default:
+The topic focus (vector weights) on the System tab show how strongly each knowledge domain featured in your last processed session. Seven domains are tracked by default:
 
 | Domain | What it captures |
 |---|---|
@@ -248,17 +266,17 @@ New domains can be promoted from the incubator as your work evolves. If the same
 
 ---
 
-## The Diagnostics Tab Actions
+## The System Tab Actions
 
 | Action | When to use it |
 |---|---|
-| **Personalise your advisor** | First setup, or when your role/context has changed significantly |
-| **Generate today's session starter** | On demand — replaces waiting for the 06:00 trigger |
-| **Run full council review** | Before major decisions, after significant project phases |
+| **Personalize your advisor** | First setup, or when your role/context has changed significantly |
+| **Make today's briefing** | On demand — replaces waiting for the 06:00 trigger |
+| **Start an advisor panel review** | Before major decisions, after significant project phases |
 | **Check for new themes to promote** | When you notice your work has shifted domains |
-| **Pin to Core** | On an incubator theme you've already decided is permanent, when you don't want to wait for it to recur often enough to promote itself. Asks for a second tap; the note you attach becomes the asserted fact the Alignment persona checks later decisions against (Threshold D, Value-Consistency Drift) |
+| **Make it a core fact** (Pin to Core) | On an incubator theme you've already decided is permanent, when you don't want to wait for it to recur often enough to promote itself. Asks for a second tap; the note you attach becomes the asserted fact the Alignment persona checks later decisions against (Threshold D, Value-Consistency Drift) |
 | **Archive completed queue rows** | Periodically, when STAGING_PIPELINE has many processed rows |
-| **Send error digest now** | When you want to check the error log immediately |
+| **Email me the error summary** | When you want to check the error log immediately |
 | **Re-run full deploy** | Only when something is broken and you need to rebuild infrastructure |
 
 The **Re-run full deploy** button asks for two taps with a visible countdown. It's safe to use — it's idempotent (it finds or creates, never duplicates) — but it takes 30–60 seconds and should only be needed when a folder or sheet is missing.
@@ -271,7 +289,7 @@ The **Re-run full deploy** button asks for two taps with a visible countdown. It
 
 **Sessions 10–20:** Shadow matrix starts showing HYPOTHESIZED on your most-visible values. Vector weights begin to show a clear pattern — you'll see the same 2-3 domains consistently high. The daily primer becomes genuinely useful.
 
-**Sessions 30–50:** Shadow matrix transitions some values to VERIFIED, or you've completed the "Personalise your advisor" form. Vector routing is well-calibrated. The system starts auto-promoting new themes from the incubator if your work has expanded.
+**Sessions 30–50:** Shadow matrix transitions some values to VERIFIED, or you've completed the "Personalize your advisor" form. Vector routing is well-calibrated. The system starts auto-promoting new themes from the incubator if your work has expanded.
 
 **Sessions 50+:** The system is fully calibrated. Council reviews produce verdicts that surprise you in useful ways. The daily primer is a genuine accelerator for session quality. The ACTION_REGISTER has accumulated enough history to show patterns in what you repeatedly defer versus complete.
 
@@ -306,10 +324,10 @@ The queue processor runs every 10 minutes. If nothing has appeared after an hour
 Refresh the Queue tab — it doesn't auto-refresh. If it still shows 0 after refresh, check STAGING_PIPELINE directly. It's possible the session was chunked into multiple rows.
 
 **The shadow matrix shows 0% on everything after 5 sessions.**
-The shadow matrix updates from `alignment_observations` in the inference JSON. If Studio isn't producing these observations, or is producing them with all-zero confidence deltas, the matrix won't update. Check whether your Studio configuration includes the `alignment_observations` section in its output prompt. Alternatively, use "Personalise your advisor" to set your values directly.
+The shadow matrix updates from `alignment_observations` in the inference JSON. If Studio isn't producing these observations, or is producing them with all-zero confidence deltas, the matrix won't update. Check whether your Studio configuration includes the `alignment_observations` section in its output prompt. Alternatively, use "Personalize your advisor" to set your values directly.
 
 **The vector weights look wrong for my session.**
-Vector weights are modulated by your operator calibration. If you haven't set calibration values, defaults are used (0.75 for all domains). Complete "Personalise your advisor" to get calibration values matched to your role.
+Vector weights are modulated by your operator calibration. If you haven't set calibration values, defaults are used (0.75 for all domains). Complete "Personalize your advisor" to get calibration values matched to your role.
 
 **I accidentally clicked "Re-run full deploy" and it ran.**
 No data was lost. The deploy function only creates what doesn't exist — it won't overwrite your CURRENT_STATE or PIVOTS_AND_LESSONS documents, won't clear your SESSION_LOG, and won't reset your PropertiesService values. The only effect is that any missing folders or sheets get recreated.

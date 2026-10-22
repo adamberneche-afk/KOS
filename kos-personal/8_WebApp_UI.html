@@ -13,24 +13,28 @@
   --bg:          #111111;
   --surface:     #1c1c1c;
   --surface2:    #252525;
-  --border:      #2e2e2e;
-  --border2:     #3a3a3a;
-  --amber:       #BA7517;
+  /* Contrast (2026-10-22, the operator: "doesn't offer enough contrast to be
+     easily legible"). Every text token clears WCAG AA (4.5:1) on every
+     surface, and the main ones AAA (7:1); borders that outline a control
+     clear 3:1. tests/kos-personal/web-app-legibility.test.js pins them. */
+  --border:      #444444;  /* card edges: visible, decorative */
+  --border2:     #757575;  /* inputs, buttons, tip icons: 3.3:1+ on every surface */
+  --amber:       #BA7517;  /* fills, bars and borders only; text uses --amber-text */
+  --amber-text:  #e0a95a;  /* 7.3:1 on --surface2 */
   --amber-light: #FAC775;
   --amber-bg:    #231906;
   --amber-dim:   rgba(186,117,23,.15);
   --text:        #efefef;
-  --text2:       #888;
-  --text3:       #808080;  /* was #505050 — ~2.4:1 against --bg, fails WCAG AA (4.5:1) at the
-                               small sizes (9-11px) this token is used for across field labels,
-                               timestamps, and hints. #808080 clears ~4.6:1. */
+  --text2:       #c2c2c2;  /* 8.6:1 on --surface2 (was #888, 4.3:1) */
+  --text3:       #a6a6a6;  /* 6.3:1 on --surface2 (was #808080, 3.9:1) */
   --success:     #4ade80;
   --success-bg:  rgba(74,222,128,.1);
   --danger:      #f87171;
   --danger-bg:   rgba(248,113,113,.1);
   --warn:        #fbbf24;
   --warn-bg:     rgba(251,191,36,.1);
-  --mono:        'Courier New', 'Lucida Console', monospace;
+  /* Courier New's thin strokes read poorly at small sizes on a dark ground. */
+  --mono:        ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   --sans:        system-ui, -apple-system, sans-serif;
   --r:           8px;
   --r-sm:        5px;
@@ -53,8 +57,8 @@ body {
   flex-direction: column;
   max-width: 420px;
   margin: 0 auto;
-  height: 100dvh;
   height: 100vh; /* fallback */
+  height: 100dvh; /* after the fallback, so it wins where supported */
   overflow: hidden;
   border-left:  1px solid var(--border);
   border-right: 1px solid var(--border);
@@ -72,19 +76,41 @@ body {
   border-bottom: 1px solid var(--border);
 }
 .hdr-left { display: flex; flex-direction: column; gap: 1px; }
-.hdr-sys  { font-size: 10px; font-family: var(--mono); color: var(--text3); letter-spacing: .1em; text-transform: uppercase; }
+.hdr-sys  { font-size: 12px; font-family: var(--mono); color: var(--text3); letter-spacing: .1em; text-transform: uppercase; white-space: nowrap; }
 .hdr-name { font-size: 15px; font-weight: 500; }
 .hdr-right { display: flex; align-items: center; gap: 8px; }
 .status-pill {
   display: flex; align-items: center; gap: 5px;
   padding: 3px 8px; border-radius: 99px;
-  font-size: 11px; font-family: var(--mono);
+  font-size: 12px; font-family: var(--mono);
   background: var(--surface2); border: 1px solid var(--border);
 }
 .dot { width: 6px; height: 6px; border-radius: 50%; }
 .dot-armed  { background: var(--success); }
 .dot-cold   { background: var(--warn); }
 .dot-unk    { background: var(--text3); }
+
+/* ── Terms button and panel ───────────────────────────────── */
+.hdr-help {
+  display: flex; align-items: center; gap: 4px;
+  min-height: 32px; padding: 4px 10px; border-radius: 99px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  color: var(--text); font-size: 12px; font-family: var(--sans); cursor: pointer;
+}
+.hdr-help i { font-size: 15px; }
+.glossary {
+  width: min(400px, calc(100vw - 24px)); max-height: 85vh; margin: auto;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border2); border-radius: var(--r); padding: 16px;
+}
+.glossary::backdrop { background: rgba(0,0,0,.7); }
+.gl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.gl-head h2 { font-size: 16px; font-weight: 600; }
+.gl-intro { font-size: 13px; color: var(--text2); margin-bottom: 12px; line-height: 1.5; }
+.gl-item { padding: 9px 0; border-top: 1px solid var(--border); }
+.gl-item dt { font-size: 14px; font-weight: 600; }
+.gl-item dd { font-size: 13px; color: var(--text2); line-height: 1.5; margin-top: 2px; }
+.gl-aka { display: block; font-size: 12px; color: var(--text3); margin-top: 3px; font-family: var(--mono); }
 
 /* ── Tab content ───────────────────────────────────────────── */
 .content {
@@ -115,7 +141,7 @@ body {
   background: none;
   border: none;
   color: var(--text3);
-  font-size: 11px;
+  font-size: 12px;
   font-family: var(--sans);
   font-weight: 500;
   cursor: pointer;
@@ -124,7 +150,7 @@ body {
   transition: color .15s, border-color .15s;
 }
 .nav-btn i { font-size: 20px; }
-.nav-btn.active { color: var(--amber); border-top-color: var(--amber); }
+.nav-btn.active { color: var(--amber-text); border-top-color: var(--amber); }
 
 /* ── Type toggle ───────────────────────────────────────────── */
 .toggle {
@@ -145,16 +171,16 @@ body {
 
 /* ── Labels & fields ───────────────────────────────────────── */
 .field-lbl {
-  display: block; font-size: 10px; text-transform: uppercase;
+  display: block; font-size: 12px; text-transform: uppercase;
   letter-spacing: .09em; color: var(--text3);
   font-family: var(--mono); margin-bottom: 6px;
 }
 .field-group { margin-bottom: 14px; }
 
-input[type=text], textarea {
+input[type=text], input[type=password], input[type=email], select, textarea {
   width: 100%;
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border2);
   border-radius: var(--r-sm);
   color: var(--text);
   font-family: var(--mono);
@@ -165,11 +191,16 @@ input[type=text], textarea {
   outline: none;
   -webkit-appearance: none;
 }
-input[type=text]:focus, textarea:focus { border-color: var(--amber); }
+input[type=text]:focus, input[type=password]:focus, input[type=email]:focus, select:focus, textarea:focus { border-color: var(--amber-text); }
+select option { background: var(--surface); color: var(--text); }
+::placeholder { color: var(--text3); opacity: 1; }
+.stepper { display: flex; gap: 6px; align-items: center; }
+/* A visible focus ring for keyboard users on every control. */
+:focus-visible { outline: 2px solid var(--amber-text); outline-offset: 2px; }
 textarea { line-height: 1.55; }
 
 .char-count {
-  font-size: 11px; font-family: var(--mono);
+  font-size: 12px; font-family: var(--mono);
   color: var(--text3); text-align: right; margin-top: 4px;
 }
 
@@ -247,14 +278,14 @@ textarea { line-height: 1.55; }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r); padding: 12px 14px;
 }
-.metric-lbl { font-size: 10px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .07em; color: var(--text3); margin-bottom: 4px; }
+.metric-lbl { font-size: 12px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .07em; color: var(--text3); margin-bottom: 4px; }
 .metric-val { font-size: 26px; font-weight: 500; font-family: var(--mono); color: var(--text); }
 .metric-card.m-warn    .metric-val { color: var(--warn); }
 .metric-card.m-success .metric-val { color: var(--success); }
 .metric-card.m-danger  .metric-val { color: var(--danger); }
 
 .sec-lbl {
-  font-size: 10px; text-transform: uppercase; letter-spacing: .09em;
+  font-size: 12px; text-transform: uppercase; letter-spacing: .09em;
   font-family: var(--mono); color: var(--text3); margin-bottom: 10px;
 }
 
@@ -264,14 +295,14 @@ textarea { line-height: 1.55; }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r); padding: 11px 13px;
 }
-.q-uid  { font-size: 11px; font-family: var(--mono); color: var(--text2); margin-bottom: 6px; word-break: break-all; }
+.q-uid  { font-size: 12px; font-family: var(--mono); color: var(--text2); margin-bottom: 6px; word-break: break-all; }
 .q-meta { display: flex; align-items: center; justify-content: space-between; }
-.badge  { font-size: 10px; font-family: var(--mono); padding: 2px 7px; border-radius: 99px; }
+.badge  { font-size: 12px; font-family: var(--mono); padding: 2px 7px; border-radius: 99px; }
 .badge-danger { background: var(--danger-bg);  color: var(--danger); }
 .badge-warn   { background: var(--warn-bg);    color: var(--warn); }
 .badge-ok     { background: var(--success-bg); color: var(--success); }
 .badge-gray   { background: var(--surface2);   color: var(--text3); }
-.ext-link { font-size: 11px; color: var(--amber); text-decoration: none; display: flex; align-items: center; gap: 3px; }
+.ext-link { font-size: 12px; color: var(--amber-text); text-decoration: none; display: flex; align-items: center; gap: 3px; }
 
 .empty { text-align: center; padding: 28px 0; color: var(--text3); font-size: 13px; }
 .empty i { font-size: 30px; display: block; margin-bottom: 6px; opacity: .4; }
@@ -288,21 +319,21 @@ textarea { line-height: 1.55; }
 
 /* ── Diag actions ──────────────────────────────────────────── */
 .diag-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; }
-.status-line  { font-size: 11px; font-family: var(--mono); color: var(--text3); margin-top: 10px; min-height: 16px; }
+.status-line  { font-size: 12px; font-family: var(--mono); color: var(--text3); margin-top: 10px; min-height: 16px; }
 
 /* ── Webhook URL ────────────────────────────────────────────── */
 .url-box {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--r-sm); padding: 10px 12px;
-  font-family: var(--mono); font-size: 11px; color: var(--text2);
+  font-family: var(--mono); font-size: 12px; color: var(--text2);
   word-break: break-all; margin-top: 8px; cursor: pointer;
 }
 .url-box:active { background: var(--surface2); }
 
 /* ── Misc ───────────────────────────────────────────────────── */
-.sync-line { font-size: 11px; font-family: var(--mono); color: var(--text3); margin-top: 10px; }
+.sync-line { font-size: 12px; font-family: var(--mono); color: var(--text3); margin-top: 10px; }
 .section-gap { margin-bottom: 20px; }
-.hint { font-size: 11px; color: var(--text3); margin-top: 6px; }
+.hint { font-size: 12px; color: var(--text3); margin-top: 6px; }
 .char-warn { color: var(--warn); }
 
 /* ── Large-payload folder-drop panel ───────────────────────── */
@@ -325,7 +356,7 @@ textarea { line-height: 1.55; }
 .drop-panel-steps li { display: flex; gap: 9px; font-size: 12px; color: var(--text2); }
 .step-num {
   flex-shrink: 0; width: 18px; height: 18px; border-radius: 50%;
-  background: var(--warn); color: var(--bg); font-size: 10px;
+  background: var(--warn); color: var(--bg); font-size: 12px;
   font-weight: 700; display: flex; align-items: center;
   justify-content: center; margin-top: 1px;
 }
@@ -346,7 +377,7 @@ textarea { line-height: 1.55; }
 .setup-brand { text-align: center; margin-bottom: 20px; }
 .setup-icon  { font-size: 38px; line-height: 1; }
 .setup-name  { font-size: 19px; font-weight: 500; margin-top: 8px; }
-.setup-ver   { font-size: 10px; font-family: var(--mono); color: var(--text3); margin-top: 2px; letter-spacing: .07em; }
+.setup-ver   { font-size: 12px; font-family: var(--mono); color: var(--text3); margin-top: 2px; letter-spacing: .07em; }
 .setup-tagline {
   font-size: 13px; color: var(--text2); text-align: center;
   line-height: 1.65; margin-bottom: 24px; max-width: 320px;
@@ -356,7 +387,7 @@ textarea { line-height: 1.55; }
   border: 1px solid var(--border); border-radius: var(--r); padding: 20px;
 }
 .setup-footer {
-  margin-top: 16px; font-size: 11px; color: var(--text3);
+  margin-top: 16px; font-size: 12px; color: var(--text3);
   text-align: center; line-height: 1.7;
 }
 
@@ -396,7 +427,7 @@ textarea { line-height: 1.55; }
 .sdot.s-done   { background: var(--success); }
 
 /* ── Step content ────────────────────────────────────────────── */
-.step-label { font-size: 10px; text-transform: uppercase; letter-spacing: .09em; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
+.step-label { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
 .step-title { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
 .step-desc  { font-size: 12px; color: var(--text2); line-height: 1.55; margin-bottom: 16px; }
 
@@ -411,18 +442,18 @@ textarea { line-height: 1.55; }
 .radio-item input[type=radio] { accent-color: var(--amber); flex-shrink: 0; margin-top: 3px; }
 .radio-item.selected { border-color: var(--amber); background: var(--amber-bg); }
 .radio-meta .rl { font-size: 13px; font-weight: 500; }
-.radio-meta .rd { font-size: 11px; color: var(--text2); margin-top: 1px; }
+.radio-meta .rd { font-size: 12px; color: var(--text2); margin-top: 1px; }
 
 /* ── Onboarding nav ──────────────────────────────────────────── */
 .setup-nav { display: flex; gap: 8px; margin-top: 16px; }
 .setup-nav .btn { flex: 1; }
 
 /* ── Metric card subtitle ────────────────────────────────────── */
-.metric-sub { font-size: 9px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+.metric-sub { font-size: 12px; font-family: var(--mono); color: var(--text3); text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
 
 /* ── Queue item action guidance ──────────────────────────────── */
 .q-action {
-  margin-top: 6px; font-size: 11px; color: var(--text2); line-height: 1.5;
+  margin-top: 6px; font-size: 12px; color: var(--text2); line-height: 1.5;
   padding: 6px 8px; background: var(--surface2);
   border-radius: var(--r-sm); border-left: 2px solid var(--warn);
 }
@@ -443,9 +474,9 @@ textarea { line-height: 1.55; }
 /* ── Tooltip wrapper ─────────────────────────────────────────── */
 .has-tip { display: flex; align-items: center; gap: 5px; }
 .tip-icon {
-  width: 14px; height: 14px; border-radius: 50%;
+  width: 18px; height: 18px; border-radius: 50%;
   background: var(--surface2); border: 1px solid var(--border2);
-  color: var(--text3); font-size: 9px; font-weight: 700;
+  color: var(--text2); font-size: 12px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   cursor: pointer; flex-shrink: 0; line-height: 1;
 }
@@ -456,7 +487,7 @@ textarea { line-height: 1.55; }
   position: fixed; z-index: 200; max-width: 260px;
   background: var(--surface); color: var(--text);
   border: 1px solid var(--border2); border-radius: var(--r);
-  padding: 8px 10px; font-size: 11px; line-height: 1.5;
+  padding: 8px 10px; font-size: 12px; line-height: 1.5;
   box-shadow: 0 4px 16px rgba(0,0,0,.18);
 }
 .tip-popover[hidden] { display: none; }
@@ -518,11 +549,11 @@ textarea { line-height: 1.55; }
 .next-hint strong { color: var(--text); }
 
 /* ── Vector timestamp ────────────────────────────────────────── */
-.vec-meta { font-size: 10px; font-family: var(--mono); color: var(--text3); margin-top: 8px; }
+.vec-meta { font-size: 12px; font-family: var(--mono); color: var(--text3); margin-top: 8px; }
 
 /* ── Deploy log (tech detail, collapsible) ───────────────────── */
 .deploy-detail {
-  margin-top: 8px; font-size: 10px; font-family: var(--mono);
+  margin-top: 8px; font-size: 12px; font-family: var(--mono);
   color: var(--text3); max-height: 80px; overflow-y: auto; line-height: 1.7;
   display: none;
 }
@@ -531,7 +562,7 @@ textarea { line-height: 1.55; }
 .deploy-detail .l-warn { color: var(--warn); }
 .deploy-detail .l-err  { color: var(--danger); }
 .detail-toggle {
-  font-size: 10px; color: var(--text3); background: none; border: none;
+  font-size: 12px; color: var(--text3); background: none; border: none;
   cursor: pointer; padding: 4px 0; font-family: var(--mono);
   text-decoration: underline dotted;
 }
@@ -544,7 +575,7 @@ textarea { line-height: 1.55; }
   <div class="setup-brand">
     <div class="setup-icon">🧠</div>
     <div class="setup-name">Knowledge Operating System</div>
-    <div class="setup-ver">v8.0 · HEADLESS STUDIO EDITION</div>
+    <div class="setup-ver">v8.0</div>
   </div>
   <p class="setup-tagline">
     Your personal AI system learns how you work and<br>
@@ -553,9 +584,9 @@ textarea { line-height: 1.55; }
   <div class="setup-card">
     <div id="bs-idle">
       <button class="btn btn-primary" id="btn-bootstrap" onclick="handleBootstrap()">
-        <i class="ti ti-rocket"></i>Build My Studio
+        <i class="ti ti-rocket"></i>Set up my workspace
       </button>
-      <p style="font-size:11px;color:var(--text3);text-align:center;margin-top:10px;line-height:1.6">
+      <p style="font-size:12px;color:var(--text3);text-align:center;margin-top:10px;line-height:1.6">
         Creates a private spreadsheet, Drive folders, and AI personas<br>in your Google account. Nothing is shared.
       </p>
     </div>
@@ -570,16 +601,16 @@ textarea { line-height: 1.55; }
     </div>
     <div id="bs-done" style="display:none;text-align:center;padding:8px 0">
       <div style="font-size:28px;margin-bottom:8px">✅</div>
-      <div style="font-size:15px;font-weight:500;margin-bottom:6px">Your studio is ready.</div>
+      <div style="font-size:15px;font-weight:500;margin-bottom:6px">Your workspace is ready.</div>
       <div style="font-size:12px;color:var(--text2);line-height:1.6">
         The system learns as you work — no configuration required.<br>
-        Paste your first session log in the Ingest tab.
+        Paste your first AI session in the Add tab.
       </div>
     </div>
     <div id="bs-err" class="toast toast-err" style="display:none;margin-top:10px" role="alert" aria-live="assertive">
       <i class="ti ti-alert-circle"></i>
       <div><div id="bs-err-msg" style="font-weight:500"></div>
-      <div style="font-size:11px;margin-top:2px">Check your Google account permissions and try again.</div></div>
+      <div style="font-size:12px;margin-top:2px">Check your Google account permissions and try again.</div></div>
     </div>
     <!-- Lives outside #bs-active on purpose — a failed deploy hides
          #bs-active a second later to show the retry button, which used to
@@ -597,13 +628,16 @@ textarea { line-height: 1.55; }
 <!-- ═══ HEADER ═══════════════════════════════════════════════ -->
 <header class="hdr" id="op-header" style="display:none">
   <div class="hdr-left">
-    <span class="hdr-sys">knowledge operating system</span>
+    <span class="hdr-sys">Knowledge OS</span>
     <span class="hdr-name" id="hdr-name">Active Brain Trust</span>
   </div>
   <div class="hdr-right">
+    <button type="button" class="hdr-help" id="btn-glossary" onclick="openGlossary()" aria-haspopup="dialog">
+      <i class="ti ti-help-circle" aria-hidden="true"></i>Terms
+    </button>
     <div class="status-pill">
       <span class="dot dot-unk" id="engine-dot"></span>
-      <span id="engine-label" style="font-size:10px">v8.0</span>
+      <span id="engine-label" style="font-size:12px">v8.0</span>
     </div>
   </div>
 </header>
@@ -618,19 +652,19 @@ textarea { line-height: 1.55; }
          nav above — role="group" only conveyed "these buttons are
          related," not that they're tabs switching a panel below them. -->
     <div class="toggle" role="tablist" aria-label="Content type">
-      <button class="toggle-btn active" id="btn-type-session" role="tab" aria-selected="true" aria-controls="fields-session" tabindex="0" onclick="switchType('session')">Session Log</button>
-      <button class="toggle-btn" id="btn-type-research" role="tab" aria-selected="false" aria-controls="fields-research" tabindex="-1" onclick="switchType('research')">Research / Context</button>
+      <button class="toggle-btn active" id="btn-type-session" role="tab" aria-selected="true" aria-controls="fields-session" tabindex="0" onclick="switchType('session')">AI session</button>
+      <button class="toggle-btn" id="btn-type-research" role="tab" aria-selected="false" aria-controls="fields-research" tabindex="-1" onclick="switchType('research')">Reference</button>
       <!-- NEW (Say/Do Ledger kos-personal finding #1): Seven Bridges council
            verdict logging — see submitCogVerdict() (2_Ingestion_Sensors.gs). -->
-      <button class="toggle-btn" id="btn-type-cogverdict" role="tab" aria-selected="false" aria-controls="fields-cogverdict" tabindex="-1" onclick="switchType('cogverdict')">Cog Verdict</button>
+      <button class="toggle-btn" id="btn-type-cogverdict" role="tab" aria-selected="false" aria-controls="fields-cogverdict" tabindex="-1" onclick="switchType('cogverdict')">Advisor verdict</button>
     </div>
 
     <!-- Session Log fields -->
     <div id="fields-session" role="tabpanel" aria-labelledby="btn-type-session">
       <div class="field-group">
-        <label class="field-lbl" for="session-text">Session log</label>
+        <label class="field-lbl" for="session-text">AI session</label>
         <textarea id="session-text" rows="10"
-          placeholder="Paste full session log here…"
+          placeholder="Paste the whole conversation from your AI session here…"
           oninput="updateCount('session-text','session-count')"></textarea>
         <div class="char-count" id="session-count">0 chars</div>
         <!-- NEW (Say/Do Ledger kos-personal finding #8): the visible
@@ -645,7 +679,7 @@ textarea { line-height: 1.55; }
     <!-- Research / Context fields -->
     <div id="fields-research" style="display:none" role="tabpanel" aria-labelledby="btn-type-research">
       <div class="field-group">
-        <label class="field-lbl" for="research-title">Title / source</label>
+        <label class="field-lbl" for="research-title">Title or source</label>
         <!-- maxlength matches the server's silent 100-char truncation
              (2_Ingestion_Sensors.gs) — without this, a longer title was
              accepted, submitted, and quietly cut down with no indication
@@ -665,16 +699,16 @@ textarea { line-height: 1.55; }
     <!-- Cog Verdict fields (Say/Do Ledger kos-personal finding #1) -->
     <div id="fields-cogverdict" style="display:none" role="tabpanel" aria-labelledby="btn-type-cogverdict">
       <div class="field-group">
-        <label class="field-lbl has-tip" for="cogverdict-council">Council ID
-          <span class="tip-icon" title="Identifies one sequestered-council review (SMP-002) — the shared stimulus document goes out to each persona as a separate Gem conversation, and every verdict submitted back under this same ID is what groups them into one COG_REGISTRY review.">?</span>
+        <label class="field-lbl has-tip" for="cogverdict-council">Review ID
+          <span class="tip-icon" title="The ID of one advisor panel review, shown when you start it (it begins SB_). Every advisor's verdict for that review uses the same ID, which is how they're grouped. Called a Council ID in the sheets.">?</span>
         </label>
-        <input type="text" id="cogverdict-council" placeholder="e.g. SB_1234567890 — shown by Run full council review"
+        <input type="text" id="cogverdict-council" placeholder="e.g. SB_1234567890, shown when you start the review"
           oninput="scheduleIngestDraftSave()">
-        <div class="char-count">Same ID for every verdict from one review — this is what groups them.</div>
+        <div class="char-count">Use the same ID for every advisor in one review.</div>
       </div>
       <div class="field-group">
-        <label class="field-lbl has-tip" for="cogverdict-cog">Cog
-          <span class="tip-icon" title="Which persona (from CFG.PERSONAS — Architect, Auditor, Muse, Developer, Curator, Alignment) is submitting this verdict, as a separate Gemini Gem conversation outside this pipeline. Not the same thing as a Council ID, which identifies the review all of them are voting in.">?</span>
+        <label class="field-lbl has-tip" for="cogverdict-cog">Advisor
+          <span class="tip-icon" title="Which advisor gave this verdict: Architect, Auditor, Muse, Developer, Curator or Alignment. You ask each one in its own conversation, with no shared context. Called a cog or persona in the sheets.">?</span>
         </label>
         <input type="text" id="cogverdict-cog" list="cog-personas-list" placeholder="e.g. PERSONA_ARCHITECT"
           oninput="scheduleIngestDraftSave()">
@@ -687,15 +721,15 @@ textarea { line-height: 1.55; }
       <div class="field-group">
         <label class="field-lbl" for="cogverdict-status">Verdict</label>
         <select id="cogverdict-status" oninput="scheduleIngestDraftSave()">
-          <option value="APPROVED">APPROVED</option>
-          <option value="FLAG">FLAG</option>
-          <option value="VETO">VETO</option>
+          <option value="APPROVED">Approve</option>
+          <option value="FLAG">Flag a concern</option>
+          <option value="VETO">Veto (block it)</option>
         </select>
       </div>
       <div class="field-group">
-        <label class="field-lbl" for="cogverdict-summary">Summary / rationale</label>
+        <label class="field-lbl" for="cogverdict-summary">Why</label>
         <textarea id="cogverdict-summary" rows="6"
-          placeholder="Why this cog reached this verdict…"
+          placeholder="The advisor's reasons, in a sentence or two…"
           oninput="scheduleIngestDraftSave()"></textarea>
       </div>
     </div>
@@ -711,11 +745,11 @@ textarea { line-height: 1.55; }
     <div id="drop-panel" class="drop-panel" role="status" aria-live="polite">
       <div class="drop-panel-title">
         <i class="ti ti-alert-triangle"></i>
-        Payload too large for direct paste
+        Too long to paste here
       </div>
       <div class="drop-panel-body">
-        <strong id="drop-char-count"></strong> — Google's proxy layer caps web app
-        string transfers at ~250k chars. Use the folder-drop path instead:
+        <strong id="drop-char-count"></strong>. Google limits how much text this
+        page can send (about 250,000 characters). Drop it in a Drive folder instead:
         <ol class="drop-panel-steps">
           <li>
             <span class="step-num">1</span>
@@ -734,8 +768,8 @@ textarea { line-height: 1.55; }
           </li>
           <li>
             <span class="step-num">4</span>
-            <span>Sensor 1 picks it up within 5 min, or run
-              <strong>sensor1_scanInboundSessions</strong> manually from the editor.</span>
+            <span>The folder check picks it up within 5 minutes. (To do it now,
+              run <strong>sensor1_scanInboundSessions</strong> in the Apps Script editor.)</span>
           </li>
         </ol>
       </div>
@@ -755,11 +789,11 @@ textarea { line-height: 1.55; }
          rather than finishing or failing outright. Says so honestly. -->
     <div id="next-hint" class="next-hint">
       <strong>What happens now:</strong> Your session is in the queue.
-      Turnstile <span class="tip-icon" title="The matrix turnstile state machine (10_Turnstile.gs) — checks the queue every 5 minutes and hands one row at a time off to Studio for processing. It can only hand off; it can't complete a row itself, which is why nothing finishes without a connected Studio flow.">?</span>
-      checks it every 5 minutes and hands it to the AI engine —
-      but it only actually completes once a Studio flow is connected to
-      process it. Without one, it keeps retrying rather than finishing.
-      Check the <strong>Queue tab</strong> to track progress — or just come back later.
+      Every 5 minutes the hand-off check
+      <span class="tip-icon" title="A timer that looks at the queue every 5 minutes and hands one item at a time to Google's AI flow. It only hands off; the AI flow does the work. Called the Turnstile in the sheets.">?</span>
+      passes the next item to Google's AI flow, which reads it. If no AI flow
+      is connected, the item waits and is retried. Follow it on the
+      <strong>Queue</strong> tab, or come back later.
     </div>
 
     <button class="btn btn-primary" id="btn-submit" onclick="handleSubmit()">
@@ -776,17 +810,17 @@ textarea { line-height: 1.55; }
       <div class="metric-card m-warn">
         <div class="metric-lbl">Pending</div>
         <div class="metric-val" id="cnt-pending">—</div>
-        <div class="metric-sub">waiting for AI engine</div>
+        <div class="metric-sub">waiting for the AI</div>
       </div>
       <div class="metric-card m-success">
         <div class="metric-lbl">Processing</div>
         <div class="metric-val" id="cnt-ready">—</div>
-        <div class="metric-sub">in the pipeline</div>
+        <div class="metric-sub">being read now</div>
       </div>
       <div class="metric-card m-danger">
         <div class="metric-lbl">Needs your help</div>
         <div class="metric-val" id="cnt-curator">—</div>
-        <div class="metric-sub">action required</div>
+        <div class="metric-sub">see the list below</div>
       </div>
       <div class="metric-card">
         <div class="metric-lbl">Processed</div>
@@ -801,7 +835,7 @@ textarea { line-height: 1.55; }
       <div class="metric-card m-danger" id="metric-failed" style="display:none">
         <div class="metric-lbl">Failed</div>
         <div class="metric-val" id="cnt-failed">—</div>
-        <div class="metric-sub">couldn't be processed — see Diagnostics</div>
+        <div class="metric-sub">couldn't be read; see the System tab</div>
       </div>
       <!-- NEW (Say/Do Ledger kos-personal finding #2). Hidden unless
            counts.cycling > 0 — a PENDING_FLOW/STUDIO_ACTIVE row whose
@@ -811,9 +845,9 @@ textarea { line-height: 1.55; }
            from "Failed" — this isn't a terminal state, just an honest
            signal that a Studio flow likely isn't connected yet. -->
       <div class="metric-card m-warn" id="metric-cycling" style="display:none">
-        <div class="metric-lbl">Still waiting on Studio</div>
+        <div class="metric-lbl">Waiting on the AI flow</div>
         <div class="metric-val" id="cnt-cycling">—</div>
-        <div class="metric-sub">retrying — no Studio flow has completed it yet</div>
+        <div class="metric-sub">retrying; no AI flow has finished it yet</div>
       </div>
       <!-- NEW: a row whose Status matches none of the recognized pipeline
            states (5_Error_And_Utilities.gs's _isKnownStagingStatus_()) —
@@ -824,7 +858,7 @@ textarea { line-height: 1.55; }
       <div class="metric-card m-warn" id="metric-unknown" style="display:none">
         <div class="metric-lbl">Unrecognized status</div>
         <div class="metric-val" id="cnt-unknown">—</div>
-        <div class="metric-sub">not a known pipeline state — fix the Status cell by hand</div>
+        <div class="metric-sub">a status the system doesn't know; fix it in the sheet</div>
       </div>
     </div>
 
@@ -862,7 +896,7 @@ textarea { line-height: 1.55; }
          matches the Queue tab's "Needs review" header; these used to
          override to 8px, a stray 2px inconsistency between tabs. -->
     <div class="sec-lbl has-tip">
-      Ambient calibration
+      Getting to know you
       <!-- FIXED (Say/Do Ledger kos-personal finding #4): "no manual setup
            required" was true about day-to-day use (no per-session
            logging beyond your normal pastes) but false about the
@@ -872,14 +906,14 @@ textarea { line-height: 1.55; }
            Narrowed to only the true claim; the state-aware note below
            (loadShadowMatrix()) carries the setup-dependent part instead
            of burying it in a hover tooltip easy to miss. -->
-      <span class="tip-icon" title="The system learns your context passively from sessions — no need to log anything beyond your normal session pastes. Each question builds confidence over time.">?</span>
+      <span class="tip-icon" title="What the system has learned about how you work, from the sessions you add. You don't log anything extra; each item firms up over time. Called the shadow matrix, or ambient calibration, in the sheets.">?</span>
     </div>
     <!-- NEW (finding #4): hidden unless cold — see loadShadowMatrix(). -->
     <div id="calib-state-note" class="empty" style="display:none;padding:4px 0 8px"></div>
     <!-- FIXED (finding #8): same aria-live gap/fix as #curator-list above. -->
     <div id="shadow-matrix-list" style="margin-bottom:4px" role="status" aria-live="polite">
       <div class="empty" style="padding:8px 0">
-        <i class="ti ti-brain" style="font-size:18px;opacity:.4"></i>Loading calibration…
+        <i class="ti ti-brain" style="font-size:18px;opacity:.4"></i>Loading…
       </div>
     </div>
     <div class="sec-divider"></div>
@@ -904,7 +938,7 @@ textarea { line-height: 1.55; }
          when the ledger has never been used (total === 0) — most
          deployments won't touch this second, independent pipeline. -->
     <div class="sec-lbl has-tip" id="registrar-lbl" style="display:none">
-      Curriculum auditing
+      Curriculum checks
       <!-- FIXED (Say/Do Ledger kos-personal finding #9): this title used
            to be static, generic text with no connection to whether the
            Stage 1/2 Studio flows this pipeline depends on are actually
@@ -913,27 +947,27 @@ textarea { line-height: 1.55; }
            actually completes, instead of needing a manual edit to remove
            a stale caveat later. This attribute is just the pre-JS
            fallback shown for the instant before the first load resolves. -->
-      <span class="tip-icon" id="registrar-tip" title="A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance — distinct from the session-log pipeline above it on this tab.">?</span>
+      <span class="tip-icon" id="registrar-tip" title="A separate process that checks curriculum drafts: is everything there, and does the teaching hold together? It has nothing to do with your AI sessions. Called the Registrar in the sheets.">?</span>
     </div>
     <div id="registrar-summary" style="display:none;margin-bottom:4px"></div>
     <div class="sec-divider" id="registrar-divider" style="display:none"></div>
 
     <!-- ③ VECTOR WEIGHTS ─────────────────────────────────── -->
     <div class="sec-lbl has-tip">
-      Vector weights
-      <span class="tip-icon" title="How strongly each knowledge domain featured in your last processed session. Scores decay over time if a domain isn't mentioned.">?</span>
+      Topic focus
+      <span class="tip-icon" title="How much each topic came up in your last session, from 0 to 1. A topic fades if it stops coming up. ✦ marks an established topic. Called vector weights in the sheets.">?</span>
     </div>
     <!-- FIXED (finding #8): same aria-live gap/fix as #curator-list above. -->
     <div class="vec-list" id="vec-list" role="status" aria-live="polite">
       <div class="empty" style="padding:8px 0">
-        <i class="ti ti-chart-bar" style="font-size:18px;opacity:.4"></i>No sessions processed yet.
+        <i class="ti ti-chart-bar" style="font-size:18px;opacity:.4"></i>Loading…
       </div>
     </div>
     <div class="vec-meta" id="vec-meta"></div>
     <div id="incubating-wrap" style="display:none;margin-top:10px">
-      <div class="sec-lbl has-tip" style="margin-bottom:6px;font-size:11px">
-        Incubating themes
-        <span class="tip-icon" title="Emerging topics that aren't yet an established vector weight. Once a theme accumulates enough signal, it's promoted to the list above.">?</span>
+      <div class="sec-lbl has-tip" style="margin-bottom:6px;font-size:12px">
+        Emerging topics
+        <span class="tip-icon" title="Topics that keep coming up but aren't established yet. The number is how far each one is toward the bar (3.00). Past it, a topic is established and joins the list above. Called incubating themes in the sheets.">?</span>
       </div>
       <div id="incubating-list"></div>
     </div>
@@ -946,22 +980,22 @@ textarea { line-height: 1.55; }
         <i class="ti ti-bolt"></i>Personalize your advisor
       </button>
       <button class="btn btn-sm" id="btn-primer" onclick="handlePrimer()">
-        <i class="ti ti-file-text"></i>Generate today's session starter
+        <i class="ti ti-file-text"></i>Make today's briefing
       </button>
       <button class="btn btn-sm" id="btn-council" onclick="handleCouncil()">
-        <i class="ti ti-brain"></i>Run full council review
+        <i class="ti ti-brain"></i>Start an advisor panel review
       </button>
       <button class="btn btn-sm" id="btn-promote" onclick="handlePromotion()">
-        <i class="ti ti-trending-up"></i>Check for new themes to promote
+        <i class="ti ti-trending-up"></i>Check for topics ready to establish
       </button>
       <button class="btn btn-sm" id="btn-archive" onclick="handleArchive()">
-        <i class="ti ti-archive"></i>Archive completed queue rows
+        <i class="ti ti-archive"></i>Archive finished and failed rows
       </button>
       <button class="btn btn-sm" id="btn-report" onclick="handleSendReport()">
-        <i class="ti ti-mail"></i>Send error digest now
+        <i class="ti ti-mail"></i>Email me the error summary
       </button>
       <button class="btn btn-sm" id="btn-deploy" onclick="handleDeploy()">
-        <i class="ti ti-rocket"></i>Re-run full deploy
+        <i class="ti ti-rocket"></i>Repair setup (re-run it)
       </button>
     </div>
     <div class="status-line" id="diag-status" role="status" aria-live="polite"></div>
@@ -969,13 +1003,13 @@ textarea { line-height: 1.55; }
 
     <!-- ⑤ INTEGRATION ────────────────────────────────────── -->
     <div class="sec-lbl has-tip">
-      Sensor 2 webhook
-      <span class="tip-icon" title="POST structured JSON here from any external tool to queue it for AI processing. Used for COG exhaust and automated council verdicts.">?</span>
+      Link for other tools
+      <span class="tip-icon" title="Another program can send items into your queue by posting to this link (a webhook). It needs your secret on the end: ?secret= followed by KOS_WEBHOOK_SHARED_SECRET from Script Properties. Called Sensor 2 in the sheets.">?</span>
     </div>
     <div class="url-box" id="webhook-url" onclick="copyWebhookUrl()"
-         role="button" tabindex="0" aria-label="Copy webhook URL"
+         role="button" tabindex="0" aria-label="Copy the link for other tools"
          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyWebhookUrl();}">Loading URL…</div>
-    <div class="hint">Tap to copy · POST: { cog_name, task_id, verdict, artifact_text }
+    <div class="hint">Tap to copy. Add <strong>?secret=…</strong> (your KOS_WEBHOOK_SHARED_SECRET) when you set up the other tool. It sends: { cog_name, task_id, verdict, artifact_text }
       <span id="webhook-copy-confirm" style="display:none;color:var(--success);font-weight:600;margin-left:6px" role="status" aria-live="polite">✓ Copied</span>
     </div>
 
@@ -1007,10 +1041,21 @@ textarea { line-height: 1.55; }
       Continue <i class="ti ti-arrow-right"></i>
     </button>
   </div>
-  <p style="font-size:10px;color:var(--text3);text-align:center;margin-top:10px;line-height:1.5">
-    Forgotten your passphrase? You can regenerate a new Identity Key anytime — your data stays intact.
+  <p style="font-size:12px;color:var(--text3);text-align:center;margin-top:10px;line-height:1.5">
+    Your passphrase makes your Identity Key, the private key that marks your data as yours. Write it down: the app can't show it to you again.
   </p>
 </div>
+
+<!-- ── Terms (glossary). A native <dialog>: Escape closes it and focus
+     stays inside it while open. Filled by openGlossary(). -->
+<dialog id="glossary" class="glossary" aria-labelledby="glossary-title">
+  <div class="gl-head">
+    <h2 id="glossary-title">Terms used in this app</h2>
+    <button type="button" class="btn btn-sm" onclick="closeGlossary()" style="width:auto">Close</button>
+  </div>
+  <p class="gl-intro">The app uses plain words. The sheets, Drive docs and your Claude Project still use the system's own names, shown under each term.</p>
+  <dl id="glossary-list"></dl>
+</dialog>
 
 <!-- ═══ BOTTOM NAV ════════════════════════════════════════════
      FIXED (Say/Do Ledger kos-personal finding #6): full WAI-ARIA Tabs
@@ -1021,13 +1066,13 @@ textarea { line-height: 1.55; }
      its own class-toggle logic with no ARIA at all. -->
 <nav class="nav" id="op-nav" style="display:none" role="tablist" aria-label="Sections">
   <button class="nav-btn active" id="nav-ingest" role="tab" aria-selected="true" aria-controls="tab-ingest" tabindex="0" onclick="switchTab('ingest')">
-    <i class="ti ti-upload"></i>Ingest
+    <i class="ti ti-upload"></i>Add
   </button>
   <button class="nav-btn" id="nav-queue" role="tab" aria-selected="false" aria-controls="tab-queue" tabindex="-1" onclick="switchTab('queue')">
     <i class="ti ti-list-check"></i>Queue
   </button>
   <button class="nav-btn" id="nav-diag" role="tab" aria-selected="false" aria-controls="tab-diag" tabindex="-1" onclick="switchTab('diag')">
-    <i class="ti ti-activity"></i>Diagnostics
+    <i class="ti ti-activity"></i>System
   </button>
 </nav>
 
@@ -1347,7 +1392,7 @@ function updateCount(textareaId, countId) {
   let state, announceMsg;
   if (n > LARGE_PAYLOAD_THRESHOLD) {
     state = 'too-large';
-    el.innerHTML = '<span class="char-warn"><i class="ti ti-alert-triangle" style="font-size:11px"></i> ' + fmt + ' — too large for direct paste</span>';
+    el.innerHTML = '<span class="char-warn"><i class="ti ti-alert-triangle" style="font-size:12px"></i> ' + fmt + ' — too large for direct paste</span>';
     if (currentType === 'session') showDropPanel(n);
     announceMsg = fmt + ' — too large for direct paste. Use the folder-drop option below.';
   } else if (n > LARGE_PAYLOAD_THRESHOLD * 0.8) {
@@ -1424,7 +1469,7 @@ function handleSubmit() {
   if (text.length < minLength) {
     showIngestToast(
       currentType === 'session'
-        ? 'Too short to be a real session log (minimum 50 characters) — paste the full session.'
+        ? 'That\'s too short to be a whole session (50 characters minimum). Paste the full conversation.'
         : 'Nothing to send — paste your article or data first.',
       false
     );
@@ -1533,11 +1578,11 @@ function handleCogVerdictSubmit_(btn, label, icon) {
   const summary   = document.getElementById('cogverdict-summary').value.trim();
 
   if (!councilId) {
-    showIngestToast('Council ID is required — reuse the one shown by "Run full council review."', false);
+    showIngestToast('Review ID is required. Use the one shown when you started the review.', false);
     return;
   }
   if (!cogName) {
-    showIngestToast('Cog name is required.', false);
+    showIngestToast('Choose which advisor this verdict is from.', false);
     return;
   }
 
@@ -1550,7 +1595,7 @@ function handleCogVerdictSubmit_(btn, label, icon) {
     label.textContent = 'Submit';
     icon.className = 'ti ti-send';
     if (res && res.success) {
-      showIngestToast('✅ Verdict recorded for council ' + (res.uid || councilId) + '.', true);
+      showIngestToast('✅ Verdict recorded for review ' + (res.uid || councilId) + '.', true);
       // Council ID deliberately survives the clear — the operator submits
       // several verdicts in a row under the same ID. Only the per-cog
       // fields reset.
@@ -1652,11 +1697,11 @@ function renderServiceStatus(account) {
     : 'Free';
   el.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center">' +
-    '<span style="color:var(--text3);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em">Managed Inference · ' + tierLabel + '</span>' +
+    '<span style="color:var(--text3);font-family:var(--mono);font-size:12px;text-transform:uppercase;letter-spacing:.07em">Managed Inference · ' + tierLabel + '</span>' +
     '<span style="color:var(--amber-light);font-family:var(--mono)">' + account.credit_balance + ' credit' + (account.credit_balance === 1 ? '' : 's') + '</span>' +
     '</div>' +
     (account.credit_balance < 20
-      ? '<div style="color:var(--warn);font-size:11px;margin-top:4px">⚠ Low credits — sessions will pause when credits run out.</div>'
+      ? '<div style="color:var(--warn);font-size:12px;margin-top:4px">⚠ Low credits — sessions will pause when credits run out.</div>'
       : '') +
     // NEW (Say/Do Ledger kos-personal finding #3): this is the only
     // place credit balance/subscription tier is ever shown to a user.
@@ -1669,7 +1714,7 @@ function renderServiceStatus(account) {
     // billing backend should become a real self-serve feature, or stay
     // speculative scaffolding, is a separate, open product decision —
     // not resolved by this disclosure.
-    '<div style="color:var(--text3);font-size:10px;margin-top:6px;line-height:1.4">' +
+    '<div style="color:var(--text3);font-size:12px;margin-top:6px;line-height:1.4">' +
     'Purchasing more credits isn’t available here yet — this deployment mode isn’t set up for public self-serve use. Credits are provisioned manually by whoever runs this deployment.' +
     '</div>';
 }
@@ -1688,7 +1733,7 @@ function _checkQueueStall(pending) {
   const stalled = pending > 0 && (now - _queueStallTracker.since) >= QUEUE_STALL_MS;
   el.style.display = stalled ? 'block' : 'none';
   if (stalled) {
-    el.textContent = '⚠ Nothing has moved in 15 minutes — Studio may not be running.';
+    el.textContent = '⚠ Nothing has moved in 15 minutes. Google\'s AI flow may not be running.';
   }
 }
 
@@ -1757,8 +1802,8 @@ function renderQueue(res) {
       '<div class="empty-state">' +
       '<div class="empty-state-icon"><i class="ti ti-inbox"></i></div>' +
       '<div class="empty-state-title">Your queue is empty</div>' +
-      '<div class="empty-state-sub">Ready to process your first session. Paste a session log in the Ingest tab to get started.</div>' +
-      '<div class="empty-state-action"><button class="btn btn-sm btn-primary" onclick="switchTab(\'ingest\')" style="width:auto;padding:8px 16px"><i class="ti ti-upload"></i>Go to Ingest</button></div>' +
+      '<div class="empty-state-sub">Ready for your first session. Paste an AI session in the Add tab to get started.</div>' +
+      '<div class="empty-state-action"><button class="btn btn-sm btn-primary" onclick="switchTab(\'ingest\')" style="width:auto;padding:8px 16px"><i class="ti ti-upload"></i>Go to Add</button></div>' +
       '</div>';
   } else if (rows.length === 0) {
     list.innerHTML =
@@ -1778,13 +1823,15 @@ function renderQueue(res) {
       const badgeCls = retries >= 2 ? 'badge-danger' : 'badge-warn';
       const docLink  = r.url && r.url !== 'undefined'
         ? '<a href="' + esc(r.url) + '" target="_blank" class="ext-link"><i class="ti ti-external-link"></i>Open doc</a>'
-        : '<span class="badge" style="opacity:.4">No URL</span>';
+        : '<span class="badge badge-gray">No doc link</span>';
       return '<div class="queue-item">' +
         '<div class="q-uid">' + esc(r.uid) + '</div>' +
         '<div class="q-meta"><span class="badge ' + badgeCls + '">' +
           (retries >= 2 ? '⚠ ' : '') + retries + ' retr' + (retries === 1 ? 'y' : 'ies') +
         '</span>' + docLink + '</div>' +
-        '<div class="q-action">Open the doc → replace the body with your AI session\'s JSON output → the engine retries automatically within 10 minutes.</div>' +
+        '<div class="q-action">' + (r.url && r.url !== 'undefined'
+          ? 'It is retried automatically every 10 minutes. If the retries climb, open the doc and check that it holds the whole session.'
+          : 'It is retried automatically every 10 minutes. This item has no doc link; check the queue sheet.') + '</div>' +
         '</div>';
     }).join('');
   }
@@ -1827,7 +1874,7 @@ function _diagPanelError(elId, msg, retryFn, icon) {
   el.innerHTML = '<div class="empty" style="padding:4px 0">' +
     (icon ? '<i class="ti ' + icon + '" style="font-size:18px;opacity:.4;margin-right:4px"></i>' : '') +
     esc(msg) +
-    ' <button onclick="' + retryFn + '()" class="btn btn-sm btn-outline" style="margin-left:6px;padding:2px 10px;font-size:11px;display:inline-block;width:auto">Retry</button></div>';
+    ' <button onclick="' + retryFn + '()" class="btn btn-sm btn-outline" style="margin-left:6px;padding:2px 10px;font-size:12px;display:inline-block;width:auto">Retry</button></div>';
 }
 
 // ── Shadow Matrix display ───────────────────────────────────────
@@ -1836,7 +1883,7 @@ function loadShadowMatrix() {
     const el = document.getElementById('shadow-matrix-list');
     if (!el) return;
     if (!res || !res.success) {
-      _diagPanelError('shadow-matrix-list', (res && res.message) || 'Shadow matrix unavailable.', 'loadShadowMatrix', 'ti-alert-triangle');
+      _diagPanelError('shadow-matrix-list', (res && res.message) || 'Couldn\'t load what the system has learned about you.', 'loadShadowMatrix', 'ti-alert-triangle');
       return;
     }
     const modeColors = { CALIBRATED:'dot-armed', LEARNING:'dot-cold', COLD:'dot-unk' };
@@ -1855,7 +1902,7 @@ function loadShadowMatrix() {
       } else {
         stateNote.style.display = '';
         stateNote.innerHTML = '<i class="ti ti-info-circle" style="font-size:14px;opacity:.5;margin-right:4px"></i>' +
-          'Calibration hasn\'t started — finish the one-time setup wizard below to activate it.';
+          'This starts once you tap “Personalize your advisor” below (a one-time setup).';
       }
     }
 
@@ -1865,10 +1912,10 @@ function loadShadowMatrix() {
       const badge  = q.status==='VERIFIED' ? 'badge-ok' : q.status==='HYPOTHESIZED' ? 'badge-warn' : 'badge-gray';
       return '<div class="vec-row" style="margin-bottom:10px">' +
         '<div class="vec-hdr">' +
-        '<span class="vec-name" style="font-size:11px">' + esc(q.label) + '</span>' +
-        '<span class="badge ' + badge + '" style="font-size:9px">' + esc(friendlyShadowStatus(q.status)) + ' · ' + pct + '%</span>' +
+        '<span class="vec-name" style="font-size:12px">' + esc(plainQuestion(q.label)) + '</span>' +
+        '<span class="badge ' + badge + '" style="font-size:12px">' + esc(friendlyShadowStatus(q.status)) + ' · ' + pct + '%</span>' +
         '</div><div class="bar-bg"><div class="bar-fill" style="width:' + pct + '%;background:' + barCol + '"></div></div>' +
-        (q.inferred ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono)">' + esc(q.inferred.substring(0,60)) + (q.inferred.length>60?'…':'') + '</div>' : '') +
+        (q.inferred ? '<div style="font-size:12px;color:var(--text3);margin-top:2px;font-family:var(--mono)">' + esc(q.inferred.substring(0,60)) + (q.inferred.length>60?'…':'') + '</div>' : '') +
         '</div>';
     }).join('');
     // Gate on engine_armed (has completeOnboarding() actually run?), not
@@ -1887,7 +1934,7 @@ function loadShadowMatrix() {
 function handlePrimer() {
   const btn = document.getElementById('btn-primer');
   const gen = beginDiagAction();
-  btn.disabled = true; showDiagStatus('Generating primer…', undefined, gen);
+  btn.disabled = true; showDiagStatus('Making today\'s briefing…', undefined, gen);
   // FIXED: previously only disabled the button and relied on the shared
   // status line further down the tab for any sign something was
   // happening — a user watching the button they just tapped saw it gray
@@ -1896,15 +1943,17 @@ function handlePrimer() {
   btn.innerHTML = '<i class="ti ti-loader-2"></i>Generating…';
   callServer('generateDailyPrimer', [], (res) => {
     btn.disabled = false;
-    resetBtn('btn-primer', 'ti-file-text', "Generate today's session starter");
+    resetBtn('btn-primer', 'ti-file-text', "Make today's briefing");
     if (res && res.success) {
-      showDiagStatus('Daily primer saved to 03.1_CURRENT_STATE.', undefined, gen);
+      showDiagStatusHtml(res.docUrl
+        ? 'Today\'s briefing is ready. <a class="ext-link" style="display:inline-flex" target="_blank" href="' + esc(safeUrl_(res.docUrl)) + '"><i class="ti ti-external-link"></i>Open it</a>'
+        : esc('Today\'s briefing is saved in 03.1_CURRENT_STATE.'), undefined, gen);
     } else {
-      showDiagStatus('Error: ' + ((res && res.message) || 'Primer generation failed.'), 'danger', gen);
+      showDiagStatus('Error: ' + ((res && res.message) || 'The briefing couldn\'t be made.'), 'danger', gen);
     }
   }, (err) => {
     btn.disabled = false;
-    resetBtn('btn-primer', 'ti-file-text', "Generate today's session starter");
+    resetBtn('btn-primer', 'ti-file-text', "Make today's briefing");
     showDiagStatus('Error: ' + err.message, 'danger', gen);
   });
 }
@@ -1922,11 +1971,11 @@ const ARM_STEPS = [
     html: `<div class="field-group"><label class="field-lbl" for="arm-audience">Who you serve</label><input type="text" id="arm-audience" placeholder="e.g. High school students"></div>
       <div class="field-group"><label class="field-lbl" for="arm-vision">90-Day Vision</label><textarea id="arm-vision" rows="3" placeholder="What does success look like?"></textarea></div>` },
   { label:'Step 3 of 4', title:'Your Constraints', validate: () => true,
-    html: `<div class="field-group"><label class="field-lbl has-tip" for="arm-ghost">Admin Ghost
-        <span class="tip-icon" title="The recurring administrative busywork you want KOS to absorb for you — grading logistics, status updates, routine emails, anything that eats time without needing your judgment.">?</span>
+    html: `<div class="field-group"><label class="field-lbl has-tip" for="arm-ghost">Busywork to hand off
+        <span class="tip-icon" title="The routine admin you want KOS to take off your plate: grading logistics, status updates, routine emails, anything that eats time without needing your judgment. Called the Admin Ghost in the sheets.">?</span>
       </label><textarea id="arm-ghost" rows="2" placeholder="What steals your time?"></textarea></div>
-      <div class="field-group"><label class="field-lbl has-tip" for="arm-struggle">Necessary Struggle
-        <span class="tip-icon" title="The parts of your work that matter precisely because they're effortful — thinking, relationship-building, judgment calls. KOS is designed to protect these, not automate them away.">?</span>
+      <div class="field-group"><label class="field-lbl has-tip" for="arm-struggle">Work worth doing yourself
+        <span class="tip-icon" title="The parts of your work that matter because they take effort: thinking, building relationships, judgment calls. KOS protects these instead of automating them. Called the Necessary Struggle in the sheets.">?</span>
       </label><textarea id="arm-struggle" rows="2" placeholder="What won't you automate?"></textarea></div>` },
   { label:'Step 4 of 4', title:'Security', validate: () => {
       const p = document.getElementById('arm-passphrase')?.value;
@@ -1938,7 +1987,7 @@ const ARM_STEPS = [
       if (p !== c) return 'Passphrases don\'t match.';
       return true;
     },
-    html: `<div class="field-group"><label class="field-lbl" for="arm-targets">Relational Targets</label><input type="text" id="arm-targets" placeholder="3–5 names, comma separated"></div>
+    html: `<div class="field-group"><label class="field-lbl" for="arm-targets">People who matter most</label><input type="text" id="arm-targets" placeholder="3–5 names, comma separated"></div>
       <div class="field-group"><label class="field-lbl" for="arm-passphrase">Private passphrase <span style="color:var(--danger)">★</span></label>
       <div style="display:flex;gap:6px">
         <input type="password" id="arm-passphrase" autocomplete="off" placeholder="Memorable · write it down first" style="flex:1">
@@ -2225,7 +2274,7 @@ function loadHealthSummary() {
       ? 'Complete (closed ' + res.onboardingClosed + ')'
       : res.onboardingDay > 0
       ? 'Day ' + res.onboardingDay + ' of ' + res.onboardingCap
-      : 'Learning from sessions';
+      : 'Getting to know you';
 
     // Engine/admin-email rows below use the app's shared dot/icon-font
     // vocabulary (same as the header's engine-dot and the alert-triangle
@@ -2233,16 +2282,16 @@ function loadHealthSummary() {
     // languages for the same "armed/warning" signals in the same tab.
     el.innerHTML =
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">' +
-      healthRowHtml('Engine', res.engineArmed
+      healthRowHtml('Personalization', res.engineArmed
         ? '<span class="dot dot-armed" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>Personalized'
-        : '<span class="dot dot-cold" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>Learning') +
-      healthRow('Triggers',    res.triggersActive + ' active') +
+        : '<span class="dot dot-cold" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>Setup not done') +
+      healthRow('Timers',      res.triggersActive + ' running') +
       healthRow('Progress',    obText) +
       (res.adminEmail
         ? healthRow('Admin email', res.adminEmail)
         : healthRowHtml('Admin email', '<i class="ti ti-alert-triangle" style="font-size:12px;margin-right:4px"></i>not set')) +
       (res.promotedVectors && res.promotedVectors.length
-        ? healthRow('Promoted themes', res.promotedVectors.join(', '))
+        ? healthRow('Established topics', res.promotedVectors.map(plainTopic).join(', '))
         : '') +
       '</div>';
   }, (err) => {
@@ -2259,7 +2308,7 @@ function healthRow(label, val) {
 // text), so this doesn't reopen the escaping that healthRow() still does.
 function healthRowHtml(label, html) {
   return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;">' +
-    '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:2px;">' + esc(label) + '</div>' +
+    '<div style="font-size:12px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:2px;">' + esc(label) + '</div>' +
     '<div style="color:var(--text2);">' + html + '</div>' +
     '</div>';
 }
@@ -2331,9 +2380,9 @@ function loadRegistrarStatus() {
     if (tip) {
       const everCompleted = (g.routed || 0) > 0 || (g.failed || 0) > 0;
       tip.title = everCompleted
-        ? 'A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance — distinct from the session-log pipeline above it on this tab. ' +
-          (g.routed || 0) + ' file' + ((g.routed || 0) === 1 ? '' : 's') + ' routed so far.'
-        : 'A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance. No file has finished routing yet — if its two Studio flows (Stage 1 Auditor, Stage 2 Curator) aren\'t built yet, files here will keep retrying until they exceed the attempt limit and move to Failed for review.';
+        ? 'A separate process that checks curriculum drafts: is everything there, and does the teaching hold together? It has nothing to do with your AI sessions. ' +
+          (g.routed || 0) + ' file' + ((g.routed || 0) === 1 ? ' has' : 's have') + ' been checked and filed so far. Called the Registrar in the sheets.'
+        : 'A separate process that checks curriculum drafts: is everything there, and does the teaching hold together? No file has finished yet. Its two AI flows (an auditor and a curator) may not be built yet; until they are, files are retried and then marked Failed. Called the Registrar in the sheets.';
     }
   }, (err) => {
     console.warn('[Diagnostics] getRegistrarStatus error:', err.message);
@@ -2347,7 +2396,7 @@ function loadVectorState() {
     // to "no theme data yet" — same empty-icon treatment, no indication
     // anything was actually wrong, and no way to retry either case.
     if (!res || !res.success) {
-      _diagPanelError('vec-list', (res && res.message) || 'Vector state unavailable.', 'loadVectorState', 'ti-alert-triangle');
+      _diagPanelError('vec-list', (res && res.message) || 'Couldn\'t load topic focus.', 'loadVectorState', 'ti-alert-triangle');
       return;
     }
     // FIXED (Say/Do Ledger kos-personal finding #4): getVectorState()'s
@@ -2383,7 +2432,7 @@ function renderVectors(res) {
   renderIncubating(res); // independent of whether any theme has promoted yet
 
   if (vecs.length === 0) {
-    el.innerHTML = '<div class="empty" style="padding:8px 0">No theme data yet.</div>';
+    el.innerHTML = '<div class="empty" style="padding:8px 0">No sessions read yet.</div>';
     return;
   }
 
@@ -2397,7 +2446,7 @@ function renderVectors(res) {
     // interpolate from and never visibly plays.
     return '<div class="vec-row">' +
       '<div class="vec-hdr">' +
-      '<span class="vec-name">' + esc(v.name) + (isPromo ? ' ✦' : '') + '</span>' +
+      '<span class="vec-name">' + esc(plainTopic(v.name)) + (isPromo ? ' ✦' : '') + '</span>' +
       '<span class="vec-score">' + clamped.toFixed(2) + '</span>' +
       '</div>' +
       '<div class="bar-bg"><div class="' + fillCls + '" data-w="' + pct + '" style="width:0%"></div></div>' +
@@ -2439,11 +2488,11 @@ function renderIncubating(res) {
     const btnId = 'pin-btn-' + v.name.replace(/[^A-Za-z0-9_-]/g, '_');
     return '<div class="vec-row" style="margin-bottom:6px">' +
       '<div class="vec-hdr">' +
-      '<span class="vec-name" style="font-size:11px">' + esc(v.name) + '</span>' +
+      '<span class="vec-name" style="font-size:12px">' + esc(plainTopic(v.name)) + '</span>' +
       // FIXED: was toFixed(2) on one side and toFixed(1) on the other for
       // the same score/threshold unit (e.g. "1.85 / 3.0") — matched to the
       // more precise of the two rather than dropping precision.
-      '<span class="vec-score" style="font-size:10px">' + v.cumulative_score.toFixed(2) + ' / ' + threshold.toFixed(2) + '</span>' +
+      '<span class="vec-score" style="font-size:12px">' + v.cumulative_score.toFixed(2) + ' / ' + threshold.toFixed(2) + '</span>' +
       '</div>' +
       '<div class="bar-bg" style="height:4px"><div class="bar-fill" style="width:' + pct + '%;background:var(--text3)"></div></div>' +
       // Manual "pin to Core" override (KOS/CAS roadmap synthesis 2.1) — a
@@ -2451,9 +2500,9 @@ function renderIncubating(res) {
       // so nothing here needs JS-string escaping on top of esc()'s HTML
       // escaping.
       '<button class="btn btn-sm" id="' + btnId + '" ' +
-        'style="margin-top:4px;padding:4px 10px;font-size:11px" ' +
+        'style="margin-top:4px;padding:4px 10px;font-size:12px" ' +
         'data-theme="' + esc(v.name) + '" onclick="handlePinToCore(this)">' +
-        '<i class="ti ti-pin"></i>Pin to Core</button>' +
+        '<i class="ti ti-pin"></i>Make it a core fact</button>' +
       '</div>';
   }).join('');
 }
@@ -2533,7 +2582,7 @@ function handleSendReport() {
   btn.innerHTML = '<i class="ti ti-loader-2"></i>Sending…';
   callServer('sendDailyErrorReport', [], (res) => {
     btn.disabled = false;
-    resetBtn('btn-report', 'ti-mail', 'Send error digest now');
+    resetBtn('btn-report', 'ti-mail', 'Email me the error summary');
     if (res && res.sent) {
       showDiagStatus('Report sent (' + (res.count || 0) + ' error' + ((res.count || 0) === 1 ? '' : 's') + ' to ' + (res.to || 'admin') + ').', undefined, gen);
     } else {
@@ -2544,7 +2593,7 @@ function handleSendReport() {
     }
   }, (err) => {
     btn.disabled = false;
-    resetBtn('btn-report', 'ti-mail', 'Send error digest now');
+    resetBtn('btn-report', 'ti-mail', 'Email me the error summary');
     showDiagStatus('Error: ' + err.message, 'danger', gen);
   });
 }
@@ -2598,11 +2647,11 @@ function handlePromotion() {
   const btn = document.getElementById('btn-promote');
   const gen = beginDiagAction();
   btn.disabled = true;
-  showDiagStatus('Checking incubator…', undefined, gen);
+  showDiagStatus('Checking emerging topics…', undefined, gen);
   btn.innerHTML = '<i class="ti ti-loader-2"></i>Checking…';
   callServer('runPromotionCheck', [], (res) => {
     btn.disabled = false;
-    resetBtn('btn-promote', 'ti-trending-up', 'Check for new themes to promote');
+    resetBtn('btn-promote', 'ti-trending-up', 'Check for topics ready to establish');
     // runPromotionCheck() used to return a bare string for both the error
     // and no-op cases, so the web app couldn't tell a real failure from
     // "nothing to promote" and always rendered both in neutral gray.
@@ -2611,7 +2660,7 @@ function handlePromotion() {
     loadVectorState(); // refresh vector display
   }, (err) => {
     btn.disabled = false;
-    resetBtn('btn-promote', 'ti-trending-up', 'Check for new themes to promote');
+    resetBtn('btn-promote', 'ti-trending-up', 'Check for topics ready to establish');
     showDiagStatus('Error: ' + err.message, 'danger', gen);
   });
 }
@@ -2631,9 +2680,9 @@ function handlePinToCore(btn) {
     armedClass: 'btn btn-sm btn-confirm btn-countdown',
     armedIcon:  '<i class="ti ti-alert-triangle"></i>',
     armedLabel: (n) => 'Tap again to pin · ' + n + 's',
-    onArm: () => showDiagStatus('Tap "Pin to Core" again within 5 seconds to confirm — this bypasses the normal promotion threshold.', undefined, beginDiagAction()),
+    onArm: () => showDiagStatus('Tap "Make it a core fact" again within 5 seconds to confirm. It skips the usual 3.00 bar, and your AI sessions will treat it as settled.', undefined, beginDiagAction()),
     onExpire: () => {
-      resetBtn(btnId, 'ti-pin', 'Pin to Core');
+      resetBtn(btnId, 'ti-pin', 'Make it a core fact');
       showDiagStatus('', undefined, beginDiagAction());
     },
     onConfirm: () => {
@@ -2641,7 +2690,7 @@ function handlePinToCore(btn) {
       btn.disabled = true;
       btn.className = 'btn btn-sm';
       btn.innerHTML = '<i class="ti ti-loader-2"></i>Pinning…';
-      showDiagStatus('Pinning "' + theme + '" to Core…', undefined, gen);
+      showDiagStatus('Making "' + plainTopic(theme) + '" a core fact…', undefined, gen);
       callServer('pinThemeToCore', [theme], (res) => {
         btn.disabled = false;
         const isError = res && res.success === false;
@@ -2649,7 +2698,7 @@ function handlePinToCore(btn) {
         loadVectorState(); // refresh — a successful pin moves the theme out of this list
       }, (err) => {
         btn.disabled = false;
-        resetBtn(btnId, 'ti-pin', 'Pin to Core');
+        resetBtn(btnId, 'ti-pin', 'Make it a core fact');
         showDiagStatus('Error: ' + err.message, 'danger', gen);
       });
     }
@@ -2724,9 +2773,9 @@ function handleCouncil() {
     // bypassing the generation-token race guard every other showDiagStatus()
     // call site respects — a stray Diagnostics response landing during the
     // 5s countdown could silently clobber (or be clobbered by) this line.
-    onArm: () => showDiagStatus('Tap "Run full council review" again within 5 seconds to confirm.', undefined, beginDiagAction()),
+    onArm: () => showDiagStatus('Tap "Start an advisor panel review" again within 5 seconds to confirm.', undefined, beginDiagAction()),
     onExpire: () => {
-      resetBtn('btn-council', 'ti-brain', 'Run full council review');
+      resetBtn('btn-council', 'ti-brain', 'Start an advisor panel review');
       // FIXED: the aria-live line above kept asserting "tap again within
       // 5 seconds" indefinitely after the window actually closed — a
       // screen-reader user (or anyone reading the status line late) had
@@ -2747,34 +2796,36 @@ function handleCouncil() {
       // triggerSevenBridgesReview() generates one stimulus doc and a fresh
       // council ID; the operator sends that doc to each cog independently
       // and logs each verdict via Ingest → Cog Verdict under that ID.
-      showDiagStatus('Preparing a Seven Bridges review stimulus…', undefined, gen);
+      showDiagStatus('Preparing the review document…', undefined, gen);
       callServer('triggerSevenBridgesReview', [], (res) => {
         btn.disabled = false;
-        resetBtn('btn-council', 'ti-brain', 'Run full council review');
+        resetBtn('btn-council', 'ti-brain', 'Start an advisor panel review');
         if (res && res.success && (res.busy || res.noop)) {
           // Lock contention or "nothing changed since last run" — both routine,
           // expected outcomes, not failures. Render neutrally instead of red.
           showDiagStatus(res.message, undefined, gen);
         } else if (res && res.success) {
           showDiagStatusHtml(
-            'Stimulus ready — Council ID <strong>' + esc(res.councilId) + '</strong>. ' +
-            'Send it to each cog independently (separate Gemini conversation per cog, ' +
-            'no shared context), then log each verdict under this Council ID via ' +
-            '<strong>Ingest → Cog Verdict</strong>.',
+            'Review ready. Review ID <strong>' + esc(res.councilId) + '</strong>. ' +
+            (res.docUrl ? '<a class="ext-link" style="display:inline-flex" target="_blank" href="' + esc(safeUrl_(res.docUrl)) + '"><i class="ti ti-external-link"></i>Open the review document</a>. ' : '') +
+            'Give it to each advisor in its own conversation (no shared context), then record ' +
+            'each verdict under <strong>Add → Advisor verdict</strong>. The ID is filled in there for you.',
             undefined, gen
           );
+          const cc = document.getElementById('cogverdict-council');
+          if (cc && res.councilId) { cc.value = res.councilId; draftCogCouncil = res.councilId; scheduleIngestDraftSave(); }
         } else {
-          showDiagStatus((res && res.message) || 'Could not start council.', 'danger', gen);
+          showDiagStatus((res && res.message) || 'The review couldn\'t be started.', 'danger', gen);
         }
       }, (err) => {
         btn.disabled = false;
-        resetBtn('btn-council', 'ti-brain', 'Run full council review');
+        resetBtn('btn-council', 'ti-brain', 'Start an advisor panel review');
         // _coldEngineGate's TIER_2 throw leaks its internal function name, tier
         // label, and "Socratic Onboarding" (a term this UI doesn't otherwise
         // use — the button here says "Personalize your advisor"). Translate
         // that one specific case; anything else still shows Server error as-is.
         const msg = /COLD_ENGINE_TIER_2/.test(err.message)
-          ? 'Your advisor isn\'t personalized yet — tap "Personalize your advisor" in Diagnostics first.'
+          ? 'Your advisor isn\'t personalized yet. Tap "Personalize your advisor" on the System tab first.'
           : 'Error: ' + err.message;
         showDiagStatus(msg, 'danger', gen);
       });
@@ -2860,7 +2911,7 @@ function showDiagStatusHtml(html, type, token) {
   const el = document.getElementById('diag-status');
   el.innerHTML = html;
   if (type === 'danger') el.style.color = 'var(--danger)';
-  else if (type === 'warn') el.style.color = 'var(--amber)';
+  else if (type === 'warn') el.style.color = 'var(--amber-text)';
   else el.style.color = 'var(--text3)';
 }
 
@@ -2869,10 +2920,85 @@ function showDiagStatusHtml(html, type, token) {
 // Internal state/enum names → plain-language labels. Never print an
 // engine_mode/status enum straight into the DOM — a user reads "COLD" or
 // "HYPOTHESIZED" as backend jargon, not a status they can act on.
-const ENGINE_MODE_LABELS = { CALIBRATED: 'Personalized', LEARNING: 'Learning you', COLD: 'Not started' };
+const ENGINE_MODE_LABELS = { CALIBRATED: 'Personalized', LEARNING: 'Getting to know you', COLD: 'Setup not done' };
 const SHADOW_STATUS_LABELS = { VERIFIED: 'Confirmed', HYPOTHESIZED: 'Best guess', UNKNOWN: 'Not started' };
 function friendlyEngineMode(mode) { return ENGINE_MODE_LABELS[mode] || mode || 'v8.0'; }
 function friendlyShadowStatus(status) { return SHADOW_STATUS_LABELS[status] || status; }
+
+// Plain names for what the server calls by its internal names (2026-10-22,
+// the operator: "a lot of system jargon and terms that the user doesn't
+// know"). The server's values never change; only what's shown. Anything not
+// listed is shown in sentence case ("STUDENT_AGENCY" -> "Student agency").
+const QUESTION_LABELS = {
+  'Admin Ghost': 'Busywork to hand off',
+  'Relational Targets': 'People who matter most',
+  'Necessary Struggle': 'Work worth doing yourself',
+  'Prime Directive': 'Your main goal',
+  'Temporal Constraints': 'Time limits'
+};
+const TOPIC_LABELS = {
+  UI: 'User interface', GAS_DEVELOPMENT: 'Apps Script development',
+  AI_GOVERNANCE: 'AI governance', DOMAIN_COMPLIANCE: 'Rules and compliance'
+};
+function plainQuestion(label) { return QUESTION_LABELS[label] || label; }
+function plainTopic(name) {
+  const n = String(name || '');
+  if (TOPIC_LABELS[n]) return TOPIC_LABELS[n];
+  const words = n.replace(/_/g, ' ').toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+// Only https links reach an href.
+function safeUrl_(url) { return /^https:\/\//.test(String(url || '')) ? String(url) : '#'; }
+
+// The Terms panel: each word on screen, what it means, and what the
+// sheets, docs and the Claude Project call it, so the two vocabularies meet.
+const GLOSSARY = [
+  ['AI session', 'A conversation you had with an AI assistant, pasted in whole so KOS can learn from it.', 'Session log'],
+  ['Reference', 'An article, notes or data you want KOS to keep as background.', 'Research / context'],
+  ['Queue', 'Everything you have added, waiting to be read by the AI or already done.', 'STAGING_PIPELINE'],
+  ['Google\'s AI flow', 'The Google Workspace Studio flow that actually reads each item. Without it, items wait.', 'Studio flow'],
+  ['Hand-off check', 'A timer that, every 5 minutes, passes the next queued item to Google\'s AI flow.', 'Turnstile'],
+  ['Folder check', 'A timer that picks up Google Docs you drop in the 03.5_INBOUND_SESSIONS folder.', 'Sensor 1'],
+  ['Link for other tools', 'A web address another program can post items to (a webhook). It needs your secret.', 'Sensor 2 webhook'],
+  ['Getting to know you', 'What KOS has learned about how you work, from your sessions. Each item firms up over time.', 'Shadow matrix, ambient calibration'],
+  ['Personalization', 'The one-time setup that tells KOS your role, goals and limits. Until it\'s done, sessions wait.', 'Engine armed, calibrated'],
+  ['Busywork to hand off', 'Routine admin you want KOS to take off your plate.', 'Admin Ghost'],
+  ['Work worth doing yourself', 'Effortful work KOS should protect, not automate.', 'Necessary Struggle'],
+  ['People who matter most', 'The 3 to 5 people your work is for.', 'Relational Targets'],
+  ['Topic focus', 'How much each topic came up in your last session, from 0 to 1.', 'Vector weights'],
+  ['Emerging topics', 'Topics that keep coming up but aren\'t established yet; past 3.00 they become established.', 'Incubating themes'],
+  ['Established topics', 'Topics KOS now treats as part of your work. Marked ✦.', 'Promoted themes / vectors'],
+  ['Core fact', 'Something your AI sessions should treat as settled and not contradict.', 'KOS_CORE_FACTS, "Pin to Core"'],
+  ['Advisor', 'One of six AI points of view you consult: Architect, Auditor, Muse, Developer, Curator, Alignment.', 'Cog, persona'],
+  ['Your advisor team', 'All six advisors together; the name at the top of this app.', 'Active Brain Trust'],
+  ['Advisor panel review', 'One question put to every advisor separately, so no advisor sees another\'s answer.', 'Seven Bridges council review'],
+  ['Review ID', 'The ID that groups every advisor\'s verdict from one panel review. Starts SB_.', 'Council ID'],
+  ['Review document', 'The document you give each advisor in a panel review.', 'Stimulus doc'],
+  ['Advisor verdict', 'An advisor\'s answer in a panel review: approve, flag a concern, or veto.', 'Cog verdict (APPROVED / FLAG / VETO)'],
+  ['Today\'s briefing', 'A short summary of where things stand, for the start of an AI session.', 'Daily primer, 03.1_CURRENT_STATE'],
+  ['Curriculum checks', 'A separate process that checks curriculum drafts for completeness and sound teaching.', 'Registrar, cog relay'],
+  ['Identity Key', 'The private key made from your passphrase that marks your data as yours.', 'Identity Key'],
+  ['Timers', 'Google\'s scheduled jobs that run KOS in the background.', 'Triggers'],
+  ['Error summary', 'An email listing what went wrong recently.', 'Error digest, ERROR_LOG']
+];
+
+function openGlossary() {
+  const dlg = document.getElementById('glossary');
+  const list = document.getElementById('glossary-list');
+  if (!dlg || !list) return;
+  list.innerHTML = GLOSSARY.map(g =>
+    '<div class="gl-item"><dt>' + esc(g[0]) + '</dt><dd>' + esc(g[1]) +
+    (g[2] && g[2] !== g[0] ? '<span class="gl-aka">In the sheets and docs: ' + esc(g[2]) + '</span>' : '') +
+    '</dd></div>').join('');
+  if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+}
+function closeGlossary() {
+  const dlg = document.getElementById('glossary');
+  if (!dlg) return;
+  if (dlg.open && typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
+  const btn = document.getElementById('btn-glossary');
+  if (btn) btn.focus();
+}
 
 function esc(str) {
   return String(str)

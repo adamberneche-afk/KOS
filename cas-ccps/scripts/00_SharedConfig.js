@@ -976,6 +976,103 @@ const CLIENT_SAFE_DOC_URL_JS = `function safeDocUrl(u) {
   var s = String(u||"");
   return /^https:\\/\\/(docs|drive)\\.google\\.com\\//.test(s) ? s : "";
 }`;
+
+// =============================================================================
+// Plain words for the dashboards (2026-10-22, the operator: "a lot of system
+// jargon and terms that the user doesn't know"). One place for the scales
+// and labels both dashboards show, and the Terms panel each one opens.
+// Server values (Ledger statuses, ConfigIDs, term codes) never change; only
+// what a person reads.
+// =============================================================================
+// The Virginia CTE Student Competency Record scale: 1 is the HIGHEST.
+const SCR_RATING_LABELS = { 1: "Can teach others", 2: "Without supervision",
+  3: "Limited supervision", 4: "With supervision", 5: "Cannot perform" };
+// Flow 2's suggested score on a passing check (15b): 4 is the highest; it
+// only ever suggests 2, 3 or 4.
+const FLOW2_SCORE_LABELS = { 2: "Adequate", 3: "Solid", 4: "Exceptional" };
+
+// Client copies of the above, plus termLabel() ("2627_MP1" -> "Marking
+// period 1, 2026-27"). Interpolate as `${CLIENT_WORDS_JS}` in a dashboard's
+// <script>, like CLIENT_ESC_JS.
+const CLIENT_WORDS_JS =
+  "var SCR_RATING_LABELS = " + JSON.stringify(SCR_RATING_LABELS) + ";\n" +
+  "var FLOW2_SCORE_LABELS = " + JSON.stringify(FLOW2_SCORE_LABELS) + ";\n" +
+  "function termLabel(t) {\n" +
+  "  var m = /^(\\d{2})(\\d{2})_MP(\\d)$/.exec(String(t || ''));\n" +
+  "  return m ? 'Marking period ' + m[3] + ', 20' + m[1] + '\\u2013' + m[2] : String(t || '');\n" +
+  "}\n" +
+  "function scrLabel(n) { return SCR_RATING_LABELS[n] ? n + ' \\u2014 ' + SCR_RATING_LABELS[n] : String(n); }\n" +
+  "function scoreLabel(n) { return FLOW2_SCORE_LABELS[n] ? n + ' \\u2014 ' + FLOW2_SCORE_LABELS[n] : String(n); }\n";
+
+// What each dashboard's Terms panel explains: [word on screen, meaning].
+const CAS_STUDENT_TERMS = [
+  ["Submit for Feedback", "Sends what you wrote under “Your response” to be checked. Press it when you’re ready; you can submit again after you revise."],
+  ["Waiting for feedback", "Your work is in line to be checked. Nothing to do yet; check back in a few minutes."],
+  ["Being checked now", "Your work is being read right now."],
+  ["Passed ✓", "Your work meets the standard for this assignment. You can still improve it and submit again."],
+  ["Feedback ready — revise", "Read the feedback, change your work, then press Submit for Feedback again."],
+  ["Couldn’t be checked", "Something went wrong on our side, not with your work. Tell your teacher."],
+  ["Comments", "Your feedback appears as a comment on your document. Open the document and click the Comments button (top right). Resolving a comment doesn’t delete it."],
+  ["Last submitted", "When you last pressed Submit for Feedback on this assignment."],
+  ["Last checked", "When your work was last checked and given feedback."],
+  ["Warm-up", "A short question at the start of class. Type your answer here and save it before the end of the day."],
+  ["Extra credit", "After a warm-up is checked, reply to its feedback in at least 10 words by the date shown for an extra point."],
+  ["Marking period", "Part of the school year. Use the menu at the top to see one marking period or the whole year."],
+  ["Block and period", "When your class meets. 3-Odd and 3-Even are the two halves of period 3 that meet on alternate days."],
+  ["My Info", "What the system has on file for you: your name, class, period and teacher. Tell your teacher if something is wrong."]
+];
+const CAS_TEACHER_TERMS = [
+  ["Check", "One AI evaluation of a submission against the assignment’s criteria (Flow 2). A student can be checked many times."],
+  ["Passed / Not passing yet", "Whether the latest check met the assignment’s criteria. “Passed before” means an earlier check passed and the latest needs revision."],
+  ["Waiting to be checked", "Submitted and in line for its check."],
+  ["Being checked now", "The check is running."],
+  ["Couldn’t be checked", "The check failed or timed out, not the student’s work. The timeout email says what to do."],
+  ["AI’s suggested score", "On a passing check, the AI suggests 2 (Adequate), 3 (Solid) or 4 (Exceptional). Higher is better. It never suggests 1 or 5."],
+  ["Competency rating (SCR)", "The Virginia CTE Student Competency Record, 1 to 5, where 1 is the highest: 1 Can teach others, 2 Without supervision, 3 Limited supervision, 4 With supervision, 5 Cannot perform. The AI suggests 2 to 4 once there are 3 pieces of evidence; 1 and 5 are yours alone."],
+  ["Competency tiers", "Each assignment’s competencies are primary (must be shown to pass), secondary or tertiary (credited when shown)."],
+  ["Warm-up readiness", "How much the system knows about each student, from checks and warm-up answers. Click a number to see those students."],
+  ["Personalized learning profile", "The system’s growing guess of what kind of warm-up works for a student; “ready for fully personalized feedback” means it’s confident."],
+  ["Student Context", "One document per student that gathers their lessons, checks and warm-ups, updated weekly."],
+  ["Current lesson", "The lesson whose start date in 📅 Lessons is the latest on or before today, per course."],
+  ["Rollout", "The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead)."],
+  ["Feedback as a comment", "Where a student’s feedback goes: a comment on the document, or written into it. Set per course in 💬 Feedback."],
+  ["3-Odd / 3-Even", "The two halves of period 3, which meet on alternate (odd or even) calendar dates."],
+  ["Marking period", "A term code like 2627_MP1 is marking period 1 of 2026–27."]
+];
+
+function _casHtml_(s) {
+  return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// The Terms panel: a native <dialog> (Escape closes it; focus stays inside
+// while it's open), its styles and two functions, casOpenTerms() and
+// casCloseTerms(). A dashboard puts this in its <body> and a button that
+// calls casOpenTerms() in its header.
+function casTermsPanelHtml_(title, intro, entries) {
+  return '<dialog id="cas-terms" class="cas-terms" aria-labelledby="cas-terms-title">' +
+    '<div class="cas-terms-head"><h2 id="cas-terms-title">' + _casHtml_(title) + '</h2>' +
+    '<button type="button" onclick="casCloseTerms()">Close</button></div>' +
+    (intro ? '<p class="cas-terms-intro">' + _casHtml_(intro) + '</p>' : '') +
+    '<dl>' + entries.map(function (e) {
+      return '<div class="cas-terms-item"><dt>' + _casHtml_(e[0]) + '</dt><dd>' + _casHtml_(e[1]) + '</dd></div>';
+    }).join('') + '</dl></dialog>' +
+    '<style>' +
+    '.cas-terms{width:min(520px,calc(100vw - 24px));max-height:85vh;margin:auto;border:1px solid #dadce0;border-radius:10px;padding:18px;color:#202124}' +
+    '.cas-terms::backdrop{background:rgba(32,33,36,.55)}' +
+    '.cas-terms-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}' +
+    '.cas-terms-head h2{font-size:17px;margin:0}' +
+    '.cas-terms-head button{background:#fff;border:1px solid #5f6368;color:#202124;border-radius:6px;padding:6px 14px;font-size:14px;cursor:pointer}' +
+    '.cas-terms-intro{font-size:14px;color:#3c4043;margin:0 0 10px}' +
+    '.cas-terms dl{margin:0}.cas-terms-item{padding:9px 0;border-top:1px solid #e8eaed}' +
+    '.cas-terms dt{font-size:14px;font-weight:600}.cas-terms dd{margin:2px 0 0;font-size:14px;color:#3c4043;line-height:1.5}' +
+    '</style>' +
+    '<script>' +
+    'function casOpenTerms(){var d=document.getElementById("cas-terms");if(!d)return;if(d.showModal)d.showModal();else d.setAttribute("open","");}' +
+    'function casCloseTerms(){var d=document.getElementById("cas-terms");if(!d)return;if(d.open&&d.close)d.close();else d.removeAttribute("open");' +
+    'var b=document.getElementById("cas-terms-btn");if(b)b.focus();}' +
+    '</script>';
+}
 // rubricQueue: "RubricQueue"  ← included in getConfig_() above
 
 // =============================================================================
