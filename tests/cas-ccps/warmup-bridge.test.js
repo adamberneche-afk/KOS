@@ -282,3 +282,40 @@ test('cross_confidence weights the numerically newest unit most', () => {
   const out = exported.updateShadowMatrix_('ada@example.invalid', matrix, [], [new Array(21).fill('h')]);
   assert.equal(out['S1-U10'].cross_confidence, 0.54);
 });
+
+// ── The readiness strip's "with warm-up responses" (walk-through finding 6) ──
+//
+// 25 stamps a blank answer INCOMPLETE and it still becomes a score entry, so
+// the count took in students who wrote nothing (about 50 of 53 on 10-19).
+
+test('buildWarmupData_ records each score\'s status', () => {
+  const { exported } = loadProfile();
+  const wq = shadowQueue(exported, SHADOW_SPECS.slice(0, 2));
+  wq[2][exported.WQ23_STATUS] = 'INCOMPLETE';
+  assert.deepEqual(exported.buildWarmupData_(wq)['ada@example.invalid'].scores.map((s) => s.status),
+    ['SCORED', 'INCOMPLETE']);
+});
+
+test('buildShadowMatrixSummary_: a student whose warm-ups were all blank is not "with warm-up responses"', () => {
+  const { exported, sandbox } = loadGasFiles([LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH],
+    ['buildShadowMatrixSummary_']);
+  sandbox.resolveUnitForDate_ = () => null;
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  const sp = ss.insertSheet('StudentProfiles');
+  sp.appendRow(new Array(13).fill('h'));
+  const profile = (email, scores) => {
+    const r = new Array(13).fill('');
+    r[0] = email; r[3] = 'teacher@example.invalid'; r[8] = JSON.stringify(scores);
+    sp.appendRow(r);
+  };
+  profile('answered@example.invalid', [{ status: 'INCOMPLETE', total: 0 }, { status: 'SCORED', total: 0 }]);
+  profile('blank@example.invalid', [{ status: 'INCOMPLETE', total: 0 }, { status: 'INCOMPLETE', total: 0 }]);
+  // Written before the status was recorded: points mean an answer.
+  profile('older@example.invalid', [{ total: 7 }]);
+  profile('older-blank@example.invalid', [{ total: 0 }]);
+  const r = exported.buildShadowMatrixSummary_(ss,
+    { teacherEmail: 'Teacher@example.invalid', tabs: { studentProfiles: 'StudentProfiles' } });
+  assert.equal(r.total, 4);
+  assert.equal(r.withWarmUpHistory, 2);
+  assert.deepEqual(r.withWarmupEmails, ['answered@example.invalid', 'older@example.invalid']);
+});
