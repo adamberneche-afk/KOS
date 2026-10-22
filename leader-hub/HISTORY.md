@@ -1295,3 +1295,14 @@ Phase 3 makes the server the only copy.
   reloads only once every change is saved.
 - Opened as a file from disk, the app still uses `localStorage` until that
   file is retired (Phase 5).
+
+## No browser storage, Phase 4: the standalone file's data moves to the web app, 2026-10-22
+
+Opened from disk with data in it, the file shows a banner: **Export
+everything**, then **Settings → Import** in the web app, and **Open the web
+app** when the Email Bridge URL (this project's web app) is set. Served, an
+import now adds to the server's copy (`lhImportIntoServer_`): records merge
+by id with the imported copy winning, counters take the larger value, SCR
+cells are queued, drafts and bookkeeping are skipped; the confirm says so.
+After the export, **Clear this browser's copy** deletes the file's data and
+marks the move, so the banner doesn't return. Phase 5 retires the file.
