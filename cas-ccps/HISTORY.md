@@ -4361,3 +4361,14 @@ roster order, the SCR toggle, zeros and the remembered address.
 Left for later: prefilling addresses from `ParentReportLog` on the server
 (the audit's fix), header buttons and counts, the roster "Not submitted" /
 period filter, and a warning when a lesson's docs are already shared.
+
+## Nothing stored in the browser, 2026-10-22
+
+The operator: "I don't want anything stored in the browser." Parent
+Reports no longer remembers addresses (the entry above described it), and
+the lesson-log form's last period and draft (07) moved from
+`sessionStorage` to page memory, so they last until the page is reloaded.
+The same applies to kos-personal's ingest and engine-setup drafts, the
+Impact Dashboard and the M2 deployment guide. `tests/tools/no-browser-storage.test.js`
+keeps browser storage out of cas-ccps and kos-personal. leader-hub keeps
+its data in `localStorage` by design and is not covered yet.

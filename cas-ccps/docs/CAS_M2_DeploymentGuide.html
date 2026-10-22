@@ -900,7 +900,7 @@ shadowMatrixDecayFactor:         0.85,</div></div>
 <footer>
   <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">CAS · Deployment Guide</span>
   <span>Classroom Agency System · Module 2 · 37 steps · ~4 hours</span>
-  <span style="font-family:var(--mono);font-size:11px">Progress saves in browser localStorage</span>
+  <span style="font-family:var(--mono);font-size:11px">Progress lasts until you reload the page</span>
 </footer>
 
 <script>
@@ -915,14 +915,10 @@ const PHASES = {
 };
 const TOTAL = 37;
 
-function getState() {
-  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
-  catch(e) { return {}; }
-}
-function saveState(state) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
-  catch(e) {}
-}
+// Page memory only: nothing is stored in the browser (2026-10-22).
+let _guideState = {};
+function getState() { return JSON.parse(JSON.stringify(_guideState)); }
+function saveState(state) { _guideState = JSON.parse(JSON.stringify(state)); }
 
 // ── Toggle a step ─────────────────────────────────────────────────────────────
 function toggle(checkbox) {
@@ -983,7 +979,7 @@ function restoreState() {
 // ── Reset ─────────────────────────────────────────────────────────────────────
 function resetAll() {
   if (!confirm('Reset all progress?')) return;
-  localStorage.removeItem(STORAGE_KEY);
+  _guideState = {};
   document.querySelectorAll('.step.done').forEach(s => s.classList.remove('done'));
   updateProgress();
 }

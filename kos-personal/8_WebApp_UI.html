@@ -1257,21 +1257,29 @@ let queueRefreshTimer = null;
 let _queueStallTracker = { pending: null, since: null };
 const QUEUE_STALL_MS = 15 * 60 * 1000;
 
-// ── Ingest draft persistence (survives refresh/accidental close) ───────────
-// The in-memory draftSession/draftResearch vars above only ever survived a
-// tab switch — a paste this size (up to 150k chars) is real effort to lose
-// to a reload or a fat-fingered nav-back.
+// ── Ingest draft ────────────────────────────────────────────────────────────
+// Until 2026-10-22 this survived a reload, in browser storage. It is page memory
+// now (nothing is stored in the browser), so a reload loses an unsent paste.
 const INGEST_DRAFT_KEY = 'kos_ingest_draft';
 function _safeLS(fn) { try { return fn(); } catch (e) { return null; } }
+// Drafts live in this page's memory, not browser storage (the operator,
+// 2026-10-22: nothing is stored in the browser). They survive a tab switch
+// or a closed form, not a reload.
+const _pageMemory = {};
+const pageStore = {
+  getItem: (k) => (Object.prototype.hasOwnProperty.call(_pageMemory, k) ? _pageMemory[k] : null),
+  setItem: (k, v) => { _pageMemory[k] = String(v); },
+  removeItem: (k) => { delete _pageMemory[k]; },
+};
 function persistIngestDraft() {
   if (!draftSession && !draftResearch && !draftResearchTitle &&
       !draftCogCouncil && !draftCogName && !draftCogSummary) { clearIngestDraft(); return; }
-  _safeLS(() => localStorage.setItem(INGEST_DRAFT_KEY, JSON.stringify(
+  _safeLS(() => pageStore.setItem(INGEST_DRAFT_KEY, JSON.stringify(
     { session: draftSession, research: draftResearch, researchTitle: draftResearchTitle,
       cogCouncil: draftCogCouncil, cogName: draftCogName, cogSummary: draftCogSummary })));
 }
 function restoreIngestDraft() {
-  const raw = _safeLS(() => localStorage.getItem(INGEST_DRAFT_KEY));
+  const raw = _safeLS(() => pageStore.getItem(INGEST_DRAFT_KEY));
   if (!raw) return;
   const d = _safeLS(() => JSON.parse(raw));
   if (!d) return;
@@ -1294,7 +1302,7 @@ function restoreIngestDraft() {
   if (cn && draftCogName)    cn.value = draftCogName;
   if (cs && draftCogSummary) cs.value = draftCogSummary;
 }
-function clearIngestDraft() { _safeLS(() => localStorage.removeItem(INGEST_DRAFT_KEY)); }
+function clearIngestDraft() { _safeLS(() => pageStore.removeItem(INGEST_DRAFT_KEY)); }
 
 let _ingestDraftSaveTimer = null;
 function _flushIngestDraftSave() {
@@ -2454,11 +2462,11 @@ let armAnswers = {};
 // on every dismissal path — backdrop click and Escape both routed there —
 // with zero confirmation and zero recovery: a single misclick outside this
 // 4-step onboarding wizard silently wiped everything typed. Mirrors the
-// INGEST_DRAFT_KEY pattern above (persist to localStorage via the same
+// INGEST_DRAFT_KEY pattern above (kept in page memory via the same
 // _safeLS() guard, restore on next open, clear only on a true
 // submit-success), with one deliberate difference: passphrase and
 // passphraseConfirm are never included in the persisted draft. Those are
-// secrets — they have no business sitting in localStorage even briefly.
+// secrets — they have no business sitting in a draft even briefly.
 // A resumed draft just needs the passphrase re-typed, same as any
 // password field left empty on a closed form.
 const ARM_DRAFT_KEY = 'kos_arm_draft';
@@ -2466,10 +2474,10 @@ function persistArmDraft() {
   const { passphrase, passphraseConfirm, ...safeAnswers } = armAnswers;
   const hasContent = armStep > 0 || Object.values(safeAnswers).some(v => v);
   if (!hasContent) { clearArmDraft(); return; }
-  _safeLS(() => localStorage.setItem(ARM_DRAFT_KEY, JSON.stringify({ armStep, armAnswers: safeAnswers })));
+  _safeLS(() => pageStore.setItem(ARM_DRAFT_KEY, JSON.stringify({ armStep, armAnswers: safeAnswers })));
 }
 function restoreArmDraft() {
-  const raw = _safeLS(() => localStorage.getItem(ARM_DRAFT_KEY));
+  const raw = _safeLS(() => pageStore.getItem(ARM_DRAFT_KEY));
   if (!raw) return false;
   const d = _safeLS(() => JSON.parse(raw));
   if (!d) return false;
@@ -2477,7 +2485,7 @@ function restoreArmDraft() {
   armStep = Number.isInteger(d.armStep) ? Math.min(Math.max(d.armStep, 0), ARM_STEPS.length - 1) : 0;
   return true;
 }
-function clearArmDraft() { _safeLS(() => localStorage.removeItem(ARM_DRAFT_KEY)); }
+function clearArmDraft() { _safeLS(() => pageStore.removeItem(ARM_DRAFT_KEY)); }
 // Only called after a genuine successful save (submitArmEngine) — every
 // dismissal path (closeArmModal) deliberately leaves the draft in place.
 function _armResetState() {
