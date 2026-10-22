@@ -136,7 +136,11 @@ test('the built page\'s split script runs at load with nothing named before it e
   const html = fs.readFileSync(path.join(REPO_ROOT, 'leader-hub', 'student-leader-hub.html'), 'utf8');
   // The big block's tags, in order, by the name build.js writes on each.
   const chunks = [];
-  const attr = 'data-lh-block="leader-hub-block-1-part-';
+  // Found by name: a new <script> earlier in the page renumbers the blocks
+  // (src/00's retired-file guard, 2026-10-22, made the big one block 2).
+  const split = /data-lh-block="(leader-hub-block-\d+)-part-1-of-/.exec(html);
+  assert.ok(split, 'the big block is split');
+  const attr = 'data-lh-block="' + split[1] + '-part-';
   let pos = html.indexOf(attr);
   while (pos !== -1) {
     const bodyStart = html.indexOf('>', pos) + 1;

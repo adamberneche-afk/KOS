@@ -15,7 +15,9 @@ only, covers a materially wider scope than cas-ccps's two-course pair
 (DECA, E-Sports, trips, a third course), and has no code-level integration
 with cas-ccps beyond referencing the same course numbers. It began as a
 100% client-side single file — local HTML, all state in `localStorage`, no
-server, no build step — and **none of that is true any more**: the app is
+server, no build step — and **none of that is true any more** (since
+2026-10-22 nothing is stored in the browser at all, and the file no longer
+runs opened from disk): the app is
 now generated from 14 fragments in `src/` by `tools/leaderhub-build/build.js`,
 deployed as a real Apps Script Web App (`Code.gs`, `Data.gs`, `SCR.gs`,
 `Config.gs`), with most domains round-tripping to a private Spreadsheet.
@@ -692,7 +694,6 @@ only) could never show the other advisor's orgs. Now:
   bridge's `doPost()` sees a same-domain user, which push/pull already allow;
   `listOrgSyncs` stays owner-only. Only Apps Script `/exec` URLs are relayed
   to.
-- Opened as a local file, the browser POSTs to the bridge URL directly.
 
 **Layout on the Sheet side.** A `_org_meta` tab (one row per shared org:
 `OrgId, OrgName, ConfigJSON, UpdatedAt, UpdatedBy`) plus per-org
@@ -1317,12 +1318,16 @@ Phase 2, `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`):
   asks first; a conflict is merged by id at once. What an earlier version
   left in the browser moves to the server on the first load, then is
   deleted there (`lhMigrateFromBrowser_`).
-- **Opened as a file from disk** there is no server, so the app still uses
-  `localStorage` until that file is retired (Phase 5); the Email Bridge URL
-  is only needed there. With data in it, the file shows a "move your data"
-  banner (Phase 4): **Export everything**, then **Settings → Import** in the
-  web app, which adds to the server's copy rather than replacing it; then
-  **Clear this browser's copy**. `lh_inventory_transactions` is read in one place
+- **The standalone file is retired** (Phase 5, 2026-10-22). LeaderHub runs
+  only as the web app. Opened from disk, the page stops and says so
+  (src/00's guard), with an **Export everything** of whatever an earlier
+  version left in that browser and **Clear this browser's copy** after it;
+  **Settings → Import** in the web app adds that export to the server's
+  copy rather than replacing it. The Email Bridge URL setting, `callGAS()`'s
+  and Organization Sync's browser `fetch()` paths and the boot catch-up
+  calls are gone; the web app's own URL comes from the server
+  (`lhBootData_`'s `appUrl`). `lh_inventory_transactions` is read in one
+  place and never written. `lh_inventory_transactions` is read in one place
   and never written.
 - `tests/leaderhub/no-browser-storage.test.js` fails if a new `lh_*` key is
   not on the server, in page memory or a named exception.
