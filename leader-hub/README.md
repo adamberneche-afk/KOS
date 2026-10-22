@@ -1310,10 +1310,17 @@ Phase 2, `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`):
   same millisecond stay two. The reminder dates, journal state, id counters
   (merged by the larger value), Organization Sync bookkeeping and snoozed
   cards are config keys.
-- **Still in the browser until later phases:** sync bookkeeping
-  (`lh_sync_pending`, `lh_data_sync_*`, Phase 3), and the Email Bridge URL,
-  which only the standalone file uses (Phase 5). `lh_inventory_transactions`
-  is read in one place and never written.
+- **Served, nothing is in the browser** (Phase 3, 2026-10-22): `doGet()`
+  writes the server's data into the page (`lhBootData_`), the app keeps it
+  in page memory (`_lhStore`) and saves every change to the server. A save
+  that fails shows a red "not saved yet" bar that retries; leaving the page
+  asks first; a conflict is merged by id at once. What an earlier version
+  left in the browser moves to the server on the first load, then is
+  deleted there (`lhMigrateFromBrowser_`).
+- **Opened as a file from disk** there is no server, so the app still uses
+  `localStorage` until that file is retired (Phase 5); the Email Bridge URL
+  is only needed there. `lh_inventory_transactions` is read in one place
+  and never written.
 - `tests/leaderhub/no-browser-storage.test.js` fails if a new `lh_*` key is
   not on the server, in page memory or a named exception.
 

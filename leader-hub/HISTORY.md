@@ -1276,3 +1276,22 @@ Every `lh_*` key is now on the server, in page memory or a named exception
 
 The served app still keeps a `localStorage` copy and writes through;
 Phase 3 makes the server the only copy.
+
+## No browser storage, Phase 3: served, the server is the only copy, 2026-10-22
+
+- **`doGet()` writes the server's data into the page** (`lhBootData_`,
+  `lhInjectBootData_` in Data.gs): every config key, data domain and the
+  SCR scores, read in one pass. The app keeps them in page memory
+  (`_lhStore`, src/05). `LS` is unchanged for its ~300 callers.
+- **Nothing is read from or written to browser storage when served.** An
+  earlier version's leftovers move to the server on the first load and are
+  deleted from the browser once the server has them (`lhMigrateFromBrowser_`).
+- **A failed save** shows a red "N changes not saved yet — retrying" bar
+  with Retry; leaving the page asks first; a failed SCR batch is re-queued.
+- **A conflict is merged by id at once** and pushed, with a note.
+- **If the server's data can't be read,** the bar says so and every save is
+  refused.
+- **Backup** export and import use the server's copy when served; an import
+  reloads only once every change is saved.
+- Opened as a file from disk, the app still uses `localStorage` until that
+  file is retired (Phase 5).
