@@ -58,7 +58,7 @@
 //     executeBootstrap()              → 1_Config_And_Deploy.gs (alias of deployFullSystem)
 //
 //   This list is kept in sync with every `callServer('name', …)` site in
-//   8_WebApp_UI.html — 19 as of this writing. Adding a client call without
+//   8_WebApp_UI.html — 24 as of this writing. Adding a client call without
 //   adding it here is what gas-lint's google.script.run rule catches.
 //
 //   Ingest tab:
@@ -69,8 +69,11 @@
 //     getInboundFolderUrl()           → this file
 //     getWebAppUrl()                  → this file
 //
-//   Queue tab:
+//   Queue tab (also read at load, for the "Needs you" strip):
 //     getQueueMetrics()                → 3_Queue_Processor.gs
+//     getFailedQueueRows()             → 19_StagingRequeue.gs
+//     previewRetryFailedRow(uid)       → 19_StagingRequeue.gs (dry run)
+//     retryFailedRow(uid)              → 19_StagingRequeue.gs (via requeueStagingRows)
 //
 //   Diagnostics tab:
 //     getVectorState()                → 4_Vector_Router.gs
@@ -79,8 +82,10 @@
 //     getShadowMatrixStatus()         → 5_Error_And_Utilities.gs
 //     completeOnboarding(payload)     → 5_Error_And_Utilities.gs
 //     sendDailyErrorReport()          → 5_Error_And_Utilities.gs
-//     archiveStagingPipeline()        → 5_Error_And_Utilities.gs
+//     previewStagingArchive()         → 5_Error_And_Utilities.gs (count for the confirm)
+//     archiveStagingPipeline()        → 5_Error_And_Utilities.gs (finished rows only)
 //     triggerSevenBridgesReview()     → 6_Governance.gs
+//     getCouncilReviewForWebApp(id)   → 6_Governance.gs (review lookup; also at load)
 //     generateDailyPrimer()           → 6_Governance.gs
 //     getSystemHealth()               → this file
 //     getRegistrarStatus()            → 11_Registrar_CogRelay.gs

@@ -602,6 +602,7 @@ function triggerSevenBridgesReview() {
 
     const docUrl = DriveApp.getFileById(dId).getUrl();
     props.setProperty('SEVEN_BRIDGES_LAST_RUN', new Date().getTime().toString());
+    _rememberCouncilReview_(councilId, docUrl);
 
     console.log('[triggerSevenBridgesReview] Stimulus created: ' + docName + ' (council ' + councilId + ')');
     return {
@@ -808,6 +809,82 @@ function getCouncilReviewStatus(councilId) {
   } catch (e) {
     _reportError('getCouncilReviewStatus', e, null);
     return { success: false, message: e.message };
+  }
+}
+
+
+// Recent reviews started from the web app, newest first:
+// [{councilId, docUrl, createdAt}]. The council ID and the stimulus doc's
+// link used to exist only in one transient status line (UX audit
+// 2026-10-22: "the council ID is lost"); this is what the System tab's
+// review panel and the "Needs you" strip read back.
+const COUNCIL_REVIEWS_PROP = 'KOS_COUNCIL_REVIEWS';
+const COUNCIL_REVIEWS_KEEP = 10;
+
+function _readCouncilReviews_() {
+  try {
+    const list = JSON.parse(PropertiesService.getScriptProperties().getProperty(COUNCIL_REVIEWS_PROP) || '[]');
+    return Array.isArray(list) ? list : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function _rememberCouncilReview_(councilId, docUrl) {
+  const list = _readCouncilReviews_().filter(r => r && r.councilId !== councilId);
+  list.unshift({ councilId: String(councilId), docUrl: String(docUrl || ''), createdAt: new Date().toISOString() });
+  PropertiesService.getScriptProperties()
+    .setProperty(COUNCIL_REVIEWS_PROP, JSON.stringify(list.slice(0, COUNCIL_REVIEWS_KEEP)));
+}
+
+/**
+ * The web app's council lookup (System tab). Wraps getCouncilReviewStatus()
+ * and adds the review document's link. A blank ID means the most recent
+ * review started from the web app; with none on record it returns
+ * { success: true, none: true }.
+ *
+ * The doc link comes from KOS_COUNCIL_REVIEWS, or, for a review started
+ * before that existed, from the stimulus doc's name in RAW_EXHAUST
+ * ("CE: SEVEN_BRIDGES_STIMULUS_<id>"). Read-only.
+ *
+ * @param  {string} councilId  An SB_<ms> ID, or blank for the latest.
+ * @returns {Object} getCouncilReviewStatus()'s fields plus
+ *   { docUrl, startedAt, isLatest, latestId, haltThreshold }
+ */
+function getCouncilReviewForWebApp(councilId) {
+  try {
+    const reviews = _readCouncilReviews_();
+    let id = String(councilId || '').trim();
+    if (id.length > 64) return { success: false, message: 'That review ID is too long. It looks like SB_ followed by digits.' };
+    if (!id) {
+      if (!reviews.length) return { success: true, none: true };
+      id = reviews[0].councilId;
+    }
+
+    const status = getCouncilReviewStatus(id);
+    if (!status.success) return status;
+
+    const known = reviews.filter(r => r.councilId === id)[0];
+    status.docUrl    = known ? known.docUrl : _findStimulusDocUrl_(id);
+    status.startedAt = known ? known.createdAt : '';
+    status.latestId  = reviews.length ? reviews[0].councilId : '';
+    status.isLatest  = status.latestId === id;
+    status.haltThreshold = CFG.COG_HALT_THRESHOLD;
+    return status;
+  } catch (e) {
+    _reportError('getCouncilReviewForWebApp', e, null);
+    return { success: false, message: e.message };
+  }
+}
+
+function _findStimulusDocUrl_(councilId) {
+  try {
+    const exhaustId = PropertiesService.getScriptProperties().getProperty('ID_00_RAW_EXHAUST');
+    if (!exhaustId) return '';
+    const it = DriveApp.getFolderById(exhaustId).getFilesByName('CE: SEVEN_BRIDGES_STIMULUS_' + councilId);
+    return it.hasNext() ? it.next().getUrl() : '';
+  } catch (e) {
+    return '';
   }
 }
 

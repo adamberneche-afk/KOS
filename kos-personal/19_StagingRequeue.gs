@@ -54,6 +54,15 @@
  *   requeueStagingRows(opts) — the same, with options:
  *     { apply: bool, limit: number, statuses: [..], uids: [..] }
  *     `uids` requeues exactly those rows (still terminal-status only).
+ *
+ * WEB APP (Queue tab, UX audit 2026-10-22): the "Failed" tile used to be a
+ * number with no rows behind it, and requeue was editor-only.
+ *   getFailedQueueRows()        — every failed row, with whether it can be retried.
+ *   previewRetryFailedRow(uid)  — requeueStagingRows dry run for one UID.
+ *   retryFailedRow(uid)         — the same, applied.
+ * Both retry calls go through requeueStagingRows({uids: [uid]}), so the
+ * five-place reset above is the only requeue path; nothing here edits a
+ * status cell itself.
  */
 
 const RQ_BATCH_SIZE = 10;
@@ -91,7 +100,7 @@ function requeueStagingRows(opts) {
 
   const lock = apply ? LockService.getScriptLock() : null;
   if (lock && !lock.tryLock(10000)) {
-    const busy = { apply: apply, eligible: {}, inFlight: 0, selected: 0, remaining: 0, rows: [],
+    const busy = { apply: apply, busy: true, eligible: {}, inFlight: 0, selected: 0, remaining: 0, rows: [],
       message: 'Another pipeline run holds the script lock. Nothing changed; try again in a minute.' };
     console.log('[Requeue] ' + busy.message);
     return busy;
@@ -214,6 +223,116 @@ function requeueStagingRows(opts) {
     };
   } finally {
     if (lock) lock.releaseLock();
+  }
+}
+
+// The web app lists at most this many failed rows; `total` still counts all.
+const RQ_FAILED_LIST_CAP = 100;
+
+/**
+ * Every STAGING_PIPELINE row whose status starts with a
+ * TERMINAL_FAILED_STATUSES prefix (5_Error_And_Utilities.gs), for the
+ * Queue tab's failed list. Read-only.
+ *
+ * `status` is the matched prefix; `detail` is anything after it (an
+ * INTAKE_ERROR / PROCESSING_ERROR status carries ': <message>').
+ * `canRetry` is true only for a row requeueStagingRows() would consider:
+ * an exact RQ_STATUSES status, a UID, and not a fixture or canary row.
+ * Other failed statuses have no requeue path; the list says so.
+ *
+ * @returns {{success: boolean, total: number, byStatus: Object<string, number>,
+ *            rows: Object[], message?: string}}
+ */
+function getFailedQueueRows() {
+  try {
+    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+    const SC      = CFG.STAGING_COLS;
+    const last    = staging.getLastRow();
+    const data    = last > 1 ? staging.getRange(2, 1, last - 1, 7).getValues() : [];
+
+    const rows = [];
+    const byStatus = {};
+    let total = 0;
+    data.forEach(function (r) {
+      const raw  = String(r[SC.STATUS]).trim();
+      const code = TERMINAL_FAILED_STATUSES.filter(function (p) { return raw.indexOf(p) === 0; })[0];
+      if (!code) return;
+      total++;
+      byStatus[code] = (byStatus[code] || 0) + 1;
+      if (rows.length >= RQ_FAILED_LIST_CAP) return;
+      const uid = String(r[SC.PAYLOAD_UID] || '').trim();
+      const ts  = r[SC.TIMESTAMP];
+      rows.push({
+        uid:      uid,
+        type:     String(r[SC.PAYLOAD_TYPE] || ''),
+        status:   code,
+        detail:   raw.slice(code.length).replace(/^[:\s]+/, ''),
+        url:      String(r[SC.DOC_URL] || ''),
+        retries:  Number(r[SC.RETRY_COUNT]) || 0,
+        // google.script.run drops Date values; send a string.
+        addedAt:  (ts && typeof ts.toISOString === 'function') ? ts.toISOString() : String(ts || ''),
+        canRetry: RQ_STATUSES.indexOf(raw) !== -1 && !!uid && !_rqIsTestUid_(uid),
+      });
+    });
+    return { success: true, total: total, byStatus: byStatus, rows: rows };
+  } catch (e) {
+    _reportError('getFailedQueueRows', e, null);
+    return { success: false, total: 0, byStatus: {}, rows: [], message: e.message };
+  }
+}
+
+/** Dry run of a retry for one failed row. Changes nothing. */
+function previewRetryFailedRow(uid) {
+  return _rqRetryOne_(uid, false);
+}
+
+/** Retries one failed row through requeueStagingRows(). */
+function retryFailedRow(uid) {
+  return _rqRetryOne_(uid, true);
+}
+
+/**
+ * Runs requeueStagingRows({uids: [uid], limit: 1}) and words the result for
+ * the web app.
+ *
+ * @returns {{success: boolean, canRetry: boolean, applied: boolean,
+ *            restoreDoc?: boolean, busy?: boolean, message: string}}
+ */
+function _rqRetryOne_(uid, apply) {
+  const id = String(uid || '').trim();
+  if (!id) return { success: false, canRetry: false, applied: false, message: 'No item was named.' };
+  try {
+    const r = requeueStagingRows({ apply: apply, uids: [id], limit: 1 });
+    if (r.busy) {
+      return { success: true, busy: true, canRetry: false, applied: false,
+        message: 'The system is busy with another run. Nothing changed; try again in a minute.' };
+    }
+    const p = r.rows[0];
+    if (!p) {
+      return { success: true, canRetry: false, applied: false,
+        message: 'This item can\'t be retried from here. Only items that timed out or failed the ' +
+          'quality check can be, and it may already be back in the queue. Tap Refresh queue.' };
+    }
+    if (p.action === 'SKIP') {
+      const lost = p.reason.indexOf('SOURCE_LOST') === 0;
+      return { success: true, canRetry: false, applied: false,
+        message: lost
+          ? 'Its doc now holds the AI\'s answer and no copy of the original was saved, so a retry ' +
+            'would give the AI its own answer. It can\'t be retried from here.'
+          : 'Its doc can\'t be opened, so it can\'t be retried. Check that the doc still exists.' };
+    }
+    if (apply) {
+      return { success: true, canRetry: true, applied: true, restoreDoc: p.restoreDoc,
+        message: 'Back in the queue with its retries reset. Google\'s AI flow picks it up on its next pass.' };
+    }
+    return { success: true, canRetry: true, applied: false, restoreDoc: p.restoreDoc,
+      message: 'A retry puts it back in the queue with its retries reset to 0 and clears its earlier AI answers.' +
+        (p.restoreDoc ? ' Its doc is put back to the original text first.' : '') +
+        ' If Google\'s AI flow is still failing, it will fail the same way again.' };
+  } catch (e) {
+    _reportError(apply ? 'retryFailedRow' : 'previewRetryFailedRow', e, null);
+    return { success: false, canRetry: false, applied: false, message: e.message };
   }
 }
 
