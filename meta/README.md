@@ -33,6 +33,11 @@ why this repo exists at all.
   families, operator and adopters, leader-hub, kos-personal): rendered and
   read from the code, 16 fix-first items, per-stakeholder tables with file
   and line, and a suggested order of work. Nothing changed by the audit.
+- **`LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`** — a plan (2026-10-22)
+  to move leader-hub off `localStorage` after the operator's "nothing stored
+  in the browser": what is already on the server from the earlier
+  migration, the ~50 local-only keys, five phases (secrets first, the
+  standalone file last) and three decisions. Nothing built.
 - **`COURSE_BUILDER_PLAN_2026-10.md`** — a decided plan (2026-10-22) for
   building a new course from the VDOE framework, with teachers submitting
   the course they want, built so adopting teachers can adapt it: how 8175
