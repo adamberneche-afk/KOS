@@ -25,8 +25,9 @@ const MOOD_ADVICE = {
   10:'Tomorrow: Peak state — do your most important work first, before anything else.',
 };
 const MOOD_COLORS = {
-  1:'#dc2626',2:'#ef4444',3:'#f97316',4:'#eab308',5:'#84cc16',
-  6:'#22c55e',7:'#10b981',8:'#06b6d4',9:'#3b82f6',10:'#8b5cf6'
+  // Shades that carry white text, and read as text on white, at 4.5:1+.
+  1:'#991b1b',2:'#b91c1c',3:'#c2410c',4:'#a16207',5:'#4d7c0f',
+  6:'#15803d',7:'#047857',8:'#0e7490',9:'#1d4ed8',10:'#6d28d9'
 };
 
 // Step state
@@ -76,8 +77,8 @@ function openJournal(){
   const badge = document.getElementById('journal-cron-badge');
   if(badge){
     if(last && last.cronRan){ badge.className='cron-badge cron-ok'; badge.textContent='✅ Adjusted'; }
-    else if(last){ badge.className='cron-badge cron-warn'; badge.textContent='⏰ 2am'; }
-    else { badge.className='cron-badge cron-idle'; badge.textContent='⏰ 2am'; }
+    else if(last){ badge.className='cron-badge cron-warn'; badge.textContent='⏰ Re-plans at 2am'; }
+    else { badge.className='cron-badge cron-idle'; badge.textContent='⏰ Re-plans at 2am'; }
   }
 
   // Snapshot the just-loaded values so closeJournal() can tell whether the
@@ -441,11 +442,11 @@ function showDepositReminderBanner(){
     <span style="font-size:1.3rem">🏦</span>
     <div style="flex:1">
       <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">⏰ 1:45 PM — DEPOSIT REMINDER</div>
-      <div style="font-size:.76rem;opacity:.9">Per CCPS Policy 7060: <strong>no money overnight.</strong> All school store funds must be deposited with <strong>Ms. Evans by 2:00 PM</strong> today. Count cash, complete deposit slip, and deliver to bookkeeper before end of period.</div>
+      <div style="font-size:.76rem">Per CCPS Policy 7060: <strong>no money overnight.</strong> All school store funds must be deposited with <strong>Ms. Evans by 2:00 PM</strong> today. Count cash, complete deposit slip, and deliver to bookkeeper before end of period.</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="markDepositDone()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Deposit Done</button>
-      <button onclick="document.getElementById('deposit-reminder-banner').remove()" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕ Dismiss</button>
+      <button onclick="document.getElementById('deposit-reminder-banner').remove()" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕ Dismiss</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -501,7 +502,7 @@ function showWorkdayReminderBanner(){
     <span style="font-size:1.3rem">🕛</span>
     <div style="flex:1">
       <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">FRIDAY — SUBMIT TIME IN WORKDAY</div>
-      <div style="font-size:.76rem;opacity:.9">Payroll deadline is today. Log in to Workday and submit your timesheet before the end of the day.</div>
+      <div style="font-size:.76rem">Payroll deadline is today. Log in to Workday and submit your timesheet before the end of the day.</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <a href="https://www.myworkday.com/ccps" target="_blank"
@@ -509,7 +510,7 @@ function showWorkdayReminderBanner(){
          style="background:#fff;color:#1e3a5f;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center">
         ↗ Open Workday
       </a>
-      <button onclick="markWorkdayDone()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer">✅ Done</button>
+      <button onclick="markWorkdayDone()" style="background:rgba(0,0,0,.25);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer">✅ Done</button>
       <button onclick="document.getElementById('workday-reminder-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
@@ -580,16 +581,16 @@ function showCommsTriageBanner(){
   if(document.getElementById('comms-triage-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'comms-triage-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
   banner.innerHTML = `
     <span style="font-size:1.3rem">📬</span>
     <div style="flex:1">
       <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">🌅 MORNING COMMS CHECK</div>
-      <div style="font-size:.76rem;opacity:.9;margin-top:.15rem">Before students arrive: <strong>✉️ Check Outlook</strong> · <strong>📞 Check voicemail</strong> · <strong>📥 Check mailbox outside room</strong>. Reply to anything from admin or parents within 24 hrs. Log any actions in Brain Dump.</div>
+      <div style="font-size:.76rem;margin-top:.15rem">Before students arrive: <strong>✉️ Check Outlook</strong> · <strong>📞 Check voicemail</strong> · <strong>📥 Check mailbox outside room</strong>. Reply to anything from admin or parents within 24 hrs. Log any actions in Brain Dump.</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="markCommsDone()" style="background:#fff;color:#1e3a5f;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Checked</button>
-      <button onclick="document.getElementById('comms-triage-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('comms-triage-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -635,7 +636,7 @@ function showPLCBanner() {
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="logPLCAttended();document.getElementById('plc-banner').remove()" style="background:#fff;color:#1a3560;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✓ Attended</button>
-      <button onclick="document.getElementById('plc-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('plc-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.75);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -679,7 +680,7 @@ function showEsportsMatchBanner(match) {
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="showView('esports');document.getElementById('esports-match-banner').remove()" style="background:#fff;color:#4c1d95;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📋 Checklist</button>
-      <button onclick="document.getElementById('esports-match-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('esports-match-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -716,7 +717,7 @@ function showDECATomorrowBanner(dl) {
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="showView('deca');document.getElementById('deca-tomorrow-banner').remove()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">🏆 DECA Hub</button>
-      <button onclick="document.getElementById('deca-tomorrow-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('deca-tomorrow-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -736,7 +737,7 @@ function openJournalForced(){
     if(hdr){
       const banner = document.createElement('div');
       banner.id = 'journal-locked-banner';
-      banner.style.cssText = 'font-size:.65rem;font-weight:700;color:var(--gold);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:.35rem;margin-top:.2rem';
+      banner.style.cssText = 'font-size:.75rem;font-weight:700;color:var(--gold);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:.35rem;margin-top:.2rem';
       banner.innerHTML = '🔒 Complete all 6 questions to continue';
       hdr.appendChild(banner);
     }
@@ -785,7 +786,7 @@ function showCronMorningBriefing(plan, entry){
   if(document.getElementById('cron-briefing')) return;
   const banner = document.createElement('div');
   banner.id = 'cron-briefing';
-  const moodColor = entry.mood<=3?'#dc2626':entry.mood<=6?'#d97706':'#16a34a';
+  const moodColor = entry.mood<=3?'#b91c1c':entry.mood<=6?'#b45309':'#15803d';
   const tierLabel = entry.mood<=3?'🛡️ Gentle day':'🎯 Focused day';
   banner.style.cssText = `
     background:linear-gradient(135deg,#0f2044 0%,#1a3560 100%);
@@ -797,24 +798,24 @@ function showCronMorningBriefing(plan, entry){
       <div style="display:flex;align-items:center;gap:.65rem">
         <span style="font-size:1.3rem">⏰</span>
         <div>
-          <div style="font-family:'Bebas Neue',cursive;font-size:1rem;color:var(--gold);letter-spacing:1.5px;line-height:1">2am Priority Briefing</div>
-          <div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.1rem">${tierLabel} · Mood ${entry.mood}/10 · ${MOOD_LABELS[entry.mood]||''}</div>
+          <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1rem;color:var(--gold);letter-spacing:1.5px;line-height:1">2am Priority Briefing</div>
+          <div style="font-size:.75rem;color:rgba(255,255,255,.75);margin-top:.1rem">${tierLabel} · Mood ${entry.mood}/10 · ${MOOD_LABELS[entry.mood]||''}</div>
         </div>
       </div>
-      <button onclick="this.closest('#cron-briefing').remove()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);padding:2px 8px;border-radius:6px;cursor:pointer;font-size:.7rem">Dismiss</button>
+      <button onclick="this.closest('#cron-briefing').remove()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.75);padding:2px 8px;border-radius:6px;cursor:pointer;font-size:.75rem">Dismiss</button>
     </div>
     <div style="font-size:.82rem;color:#fff;font-weight:500;line-height:1.5;margin-bottom:.7rem">${plan.tomorrowMessage||''}</div>
     <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:${plan.kindnessNote?'.6rem':'0'}">
       ${(plan.priorities||[]).slice(0,maxFromMood(entry.mood)).map((p,i)=>{
         const r = DB_ROLES[p.role]||DB_ROLES.general;
-        return `<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:.32rem .65rem;font-size:.7rem;color:#fff;display:flex;align-items:center;gap:.35rem">
+        return `<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:.32rem .65rem;font-size:.75rem;color:#fff;display:flex;align-items:center;gap:.35rem">
           <span style="font-size:.85rem">${r.icon}</span>
           <span><strong>${i+1}.</strong> ${p.task}</span>
         </div>`;
       }).join('')}
     </div>
-    ${plan.kindnessNote?`<div style="font-size:.68rem;color:rgba(255,255,255,.4);font-style:italic;border-top:1px solid rgba(255,255,255,.08);padding-top:.45rem;margin-top:.1rem">${plan.kindnessNote}</div>`:''}
-    ${plan.energyNote?`<div style="font-size:.66rem;color:rgba(255,255,255,.32);margin-top:.35rem">${plan.energyNote}</div>`:''}
+    ${plan.kindnessNote?`<div style="font-size:.75rem;color:rgba(255,255,255,.75);font-style:italic;border-top:1px solid rgba(255,255,255,.08);padding-top:.45rem;margin-top:.1rem">${plan.kindnessNote}</div>`:''}
+    ${plan.energyNote?`<div style="font-size:.75rem;color:rgba(255,255,255,.75);margin-top:.35rem">${plan.energyNote}</div>`:''}
   `;
   const dashView = document.getElementById('view-dashboard');
   if(dashView) dashView.insertBefore(banner, dashView.firstChild);
@@ -837,17 +838,17 @@ function openJournalHistory(){
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
         <span style="font-weight:700;font-size:.8rem;color:var(--navy)">${e.date}</span>
         <div style="display:flex;align-items:center;gap:.45rem">
-          ${e.cronRan?'<span style="font-size:.6rem;background:#f0fdf4;color:#15803d;border:1px solid #86efac;padding:1px 7px;border-radius:99px;font-weight:600">✓ 2am ran</span>':''}
-          <span style="font-weight:800;font-size:1rem;color:${mc};font-family:\'Bebas Neue\',cursive">${e.mood||'—'}/10</span>
+          ${e.cronRan?'<span style="font-size:.75rem;background:#f0fdf4;color:#15803d;border:1px solid #86efac;padding:1px 7px;border-radius:99px;font-weight:600" title="The overnight re-plan used this entry">✓ Re-planned overnight</span>':''}
+          <span style="font-weight:800;font-size:1rem;color:${mc};font-family:\'Bebas Neue\',Impact,\'Arial Narrow\',sans-serif">${e.mood||'—'}/10</span>
         </div>
       </div>
       <div style="height:3px;background:#f1f5f9;border-radius:2px;margin-bottom:.55rem;overflow:hidden">
         <div style="height:100%;width:${(e.mood||0)*10}%;background:${mc};border-radius:2px;transition:width .5s"></div>
       </div>
-      ${e.q1?`<div style="font-size:.71rem;color:#374151;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Planning:</span> ${escH(e.q1.slice(0,90))}${e.q1.length>90?'…':''}</div>`:''}
-      ${e.q2?`<div style="font-size:.71rem;color:#b45309;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Avoided:</span> ${escH(e.q2.slice(0,90))}${e.q2.length>90?'…':''}</div>`:''}
-      ${e.q4?`<div style="font-size:.71rem;color:#15803d;line-height:1.4"><span style="font-weight:600">Proud:</span> ${escH(e.q4.slice(0,90))}${e.q4.length>90?'…':''}</div>`:''}
-      ${e.cronResult?`<div style="margin-top:.4rem;padding:.38rem .6rem;background:var(--navy-soft);border-radius:8px;font-size:.68rem;color:var(--navy);line-height:1.4"><span style="font-weight:700">2am said:</span> ${escH(e.cronResult.tomorrowMessage||'')}</div>`:''}
+      ${e.q1?`<div style="font-size:.75rem;color:#374151;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Planning:</span> ${escH(e.q1.slice(0,90))}${e.q1.length>90?'…':''}</div>`:''}
+      ${e.q2?`<div style="font-size:.75rem;color:#b45309;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Avoided:</span> ${escH(e.q2.slice(0,90))}${e.q2.length>90?'…':''}</div>`:''}
+      ${e.q4?`<div style="font-size:.75rem;color:#15803d;line-height:1.4"><span style="font-weight:600">Proud:</span> ${escH(e.q4.slice(0,90))}${e.q4.length>90?'…':''}</div>`:''}
+      ${e.cronResult?`<div style="margin-top:.4rem;padding:.38rem .6rem;background:var(--navy-soft);border-radius:8px;font-size:.75rem;color:var(--navy);line-height:1.4"><span style="font-weight:700">2am said:</span> ${escH(e.cronResult.tomorrowMessage||'')}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -985,20 +986,20 @@ function openImprovementsModal(){
   m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow:auto;padding:2rem 1rem';
   m.innerHTML=`<div style="background:var(--surface);max-width:780px;margin:0 auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-xl,0 24px 64px rgba(0,0,0,.2))">
     <div style="background:var(--navy);padding:1.1rem 1.5rem;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.5rem;color:var(--gold);letter-spacing:2px">5 Ideas per Work Area</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.5rem;color:var(--gold);letter-spacing:2px">5 Ideas per Work Area</div>
       <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1.5rem">
       ${Object.entries(IMPROVEMENTS).map(([key,items])=>{
         const labels={classroom:'📘 Classroom',trips:'🚌 Field Trips',deca:'🏆 DECA',wbl:'🏪 WBL / Store',esports:'🎮 E-Sports'};
-        return `<div><div style="font-family:'Bebas Neue',cursive;font-size:1.1rem;color:var(--navy);letter-spacing:1.5px;margin-bottom:.65rem;border-bottom:2px solid var(--gold);padding-bottom:.35rem">${labels[key]}</div>
+        return `<div><div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.1rem;color:var(--navy);letter-spacing:1.5px;margin-bottom:.65rem;border-bottom:2px solid var(--gold);padding-bottom:.35rem">${labels[key]}</div>
           <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.55rem">
             ${items.map(it=>`<div style="border:1px solid var(--border);border-radius:10px;padding:.75rem .85rem;background:#fafafa">
               <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.35rem">
                 <span style="font-size:1.1rem">${it.icon}</span>
                 <span style="font-weight:700;font-size:.78rem;color:var(--navy)">${it.title}</span>
               </div>
-              <p style="font-size:.71rem;color:#4b5563;line-height:1.55;margin:0">${it.desc}</p>
+              <p style="font-size:.75rem;color:#4b5563;line-height:1.55;margin:0">${it.desc}</p>
             </div>`).join('')}
           </div></div>`;
       }).join('')}
@@ -1014,11 +1015,11 @@ function openSurveyModal(){
   m.id='survey-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow:auto;padding:2rem 1rem';
   m.innerHTML=`<div style="background:var(--surface);max-width:600px;margin:0 auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-xl)">
     <div style="background:var(--navy);padding:1.1rem 1.5rem;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:var(--gold);letter-spacing:2px">Settings</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.4rem;color:var(--gold);letter-spacing:2px">Settings</div>
       <button onclick="document.getElementById('survey-modal').remove()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.5rem">
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">My Profile &amp; School</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">My Profile &amp; School</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         Every email template, sub plan, and Brag Board recipient below reads from these fields instead of a name built into the app — fill these in once to make LeaderHub yours. Values save as you leave each field.
       </div>
@@ -1054,14 +1055,14 @@ function openSurveyModal(){
         <div class="fg"><label>Attendance Coordinator (sub plans)</label><input id="prof-attendanceCoordFirstName" value="${escH(PROFILE.attendanceCoordFirstName)}" onblur="lhSaveProfileField('attendanceCoordFirstName',this.value)" placeholder="First name"></div>
         <div class="fg"><label>Attendance Coordinator Email</label><input id="prof-attendanceCoordEmail" type="email" value="${escH(PROFILE.attendanceCoordEmail)}" onblur="lhSaveProfileField('attendanceCoordEmail',this.value)"></div>
       </div>
-      <div id="prof-save-status" style="font-size:.74rem;color:#166534;margin-bottom:1.2rem;min-height:1.1em"></div>
+      <div id="prof-save-status" style="font-size:.75rem;color:#166534;margin-bottom:1.2rem;min-height:1.1em"></div>
 
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">School Calendar &amp; Bell Schedule</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">School Calendar &amp; Bell Schedule</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.9rem">
         These expire every school year and used to require editing the source file directly. Bell-schedule <em>times</em> themselves are still edited as raw JSON below — a full visual period builder is a bigger project than this round covers.
       </div>
 
-      <div id="sched-calendar-import-block" style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Import from County Calendar Document</div>
+      <div id="sched-calendar-import-block" style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Import from County Calendar Document</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         This app can't open a PDF directly (no PDF library, and the security policy blocks loading one). Instead: open your county's calendar PDF or webpage, select all the text, copy it, and paste it below — or upload a plain-text/.csv file with the same content. Parsing is best-effort; you'll see exactly what it found before anything is saved.
       </div>
@@ -1071,44 +1072,44 @@ function openSurveyModal(){
         <button onclick="document.getElementById('sched-import-file').click()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer">⬆️ Upload File (.txt/.csv)</button>
         <input type="file" id="sched-import-file" accept=".txt,.csv,text/plain,text/csv" style="display:none" onchange="lhLoadCountyCalendarFile(this)">
       </div>
-      <div id="sched-import-status" style="font-size:.74rem;margin-bottom:.6rem;min-height:1.1em"></div>
+      <div id="sched-import-status" style="font-size:.75rem;margin-bottom:.6rem;min-height:1.1em"></div>
       <button onclick="lhUseBuiltInSchoolCalendar()" style="width:100%;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer;margin-bottom:1.2rem">📅 Use the built-in ${escH(SCHOOL_CALENDAR_YEAR)} CCPS calendar (replaces quarters, no-school and early-release dates)</button>
 
-      <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Day-of-Week Default Schedule</div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Day-of-Week Default Schedule</div>
       <div class="fgrid" style="grid-template-columns:repeat(7,1fr);gap:.35rem;margin-bottom:.9rem">
         ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`
-        <div class="fg"><label style="font-size:.66rem">${d}</label>
-          <select id="sched-dow-${i}" onchange="lhSaveDayMap()" style="width:100%;padding:.35rem .3rem;border:1px solid var(--border);border-radius:6px;font-size:.74rem;background:#fff">${_schedTypeOptions(DAY_SCHEDULE_MAP[i])}</select>
+        <div class="fg"><label style="font-size:.75rem">${d}</label>
+          <select id="sched-dow-${i}" onchange="lhSaveDayMap()" style="width:100%;padding:.35rem .3rem;border:1px solid var(--border);border-radius:6px;font-size:.75rem;background:#fff">${_schedTypeOptions(DAY_SCHEDULE_MAP[i])}</select>
         </div>`).join('')}
       </div>
 
-      <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Quarter Dates</div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Quarter Dates</div>
       <div style="margin-bottom:.9rem">
         ${[1,2,3,4].map(q=>{ const r = LP_QUARTERS[q] || {start:'',end:'',label:'Q'+q}; return `
         <div class="fgrid fg2" style="margin-bottom:.4rem">
-          <div class="fg"><label style="font-size:.7rem">${escH(r.label)} Start</label><input type="date" id="sched-q${q}-start" value="${escH(r.start)}" onblur="lhSaveQuarters()"></div>
-          <div class="fg"><label style="font-size:.7rem">${escH(r.label)} End</label><input type="date" id="sched-q${q}-end" value="${escH(r.end)}" onblur="lhSaveQuarters()"></div>
+          <div class="fg"><label style="font-size:.75rem">${escH(r.label)} Start</label><input type="date" id="sched-q${q}-start" value="${escH(r.start)}" onblur="lhSaveQuarters()"></div>
+          <div class="fg"><label style="font-size:.75rem">${escH(r.label)} End</label><input type="date" id="sched-q${q}-end" value="${escH(r.end)}" onblur="lhSaveQuarters()"></div>
         </div>`; }).join('')}
       </div>
 
       <div class="fgrid fg2" style="margin-bottom:.9rem">
         <div class="fg">
-          <label style="font-size:.72rem;font-weight:700;color:var(--muted)">No-School Dates (one per line)</label>
+          <label style="font-size:.75rem;font-weight:700;color:var(--muted)">No-School Dates (one per line)</label>
           <textarea id="sched-noschool" onblur="lhSaveNoSchool()" rows="5" style="width:100%;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${[...CCPS_NO_SCHOOL].sort().join('\n')}</textarea>
         </div>
         <div class="fg">
-          <label style="font-size:.72rem;font-weight:700;color:var(--muted)">Early-Release Dates (one per line)</label>
+          <label style="font-size:.75rem;font-weight:700;color:var(--muted)">Early-Release Dates (one per line)</label>
           <textarea id="sched-earlyrelease" onblur="lhSaveEarlyRelease()" rows="5" style="width:100%;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${Object.keys(CCPS_SCHEDULE_OVERRIDES).sort().join('\n')}</textarea>
         </div>
       </div>
 
       <details style="margin-bottom:.5rem">
-        <summary style="cursor:pointer;font-size:.72rem;font-weight:700;color:var(--muted)">Advanced: Bell Schedule Times (JSON)</summary>
-        <textarea id="sched-bell-json" onblur="lhSaveBellScheduleJson()" rows="8" style="width:100%;margin-top:.5rem;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.72rem;font-family:monospace;resize:vertical">${escH(JSON.stringify(BELL_SCHEDULES, null, 2))}</textarea>
+        <summary style="cursor:pointer;font-size:.75rem;font-weight:700;color:var(--muted)">Advanced: Bell Schedule Times (JSON)</summary>
+        <textarea id="sched-bell-json" onblur="lhSaveBellScheduleJson()" rows="8" style="width:100%;margin-top:.5rem;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.75rem;font-family:monospace;resize:vertical">${escH(JSON.stringify(BELL_SCHEDULES, null, 2))}</textarea>
       </details>
-      <div id="sched-save-status" style="font-size:.74rem;margin-bottom:1.2rem;min-height:1.1em"></div>
+      <div id="sched-save-status" style="font-size:.75rem;margin-bottom:1.2rem;min-height:1.1em"></div>
 
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Modules</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Modules</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         Turn off any of these you don't run yourself — the nav button and sidebar section disappear immediately. Dashboard, Classroom, Field Trips, and Tools always stay on.
       </div>
@@ -1118,16 +1119,16 @@ function openSurveyModal(){
         <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-esports" ${MODULES.esports!==false?'checked':''} onchange="lhSaveModule('esports',this.checked)"> 🎮 E-Sports</label>
       </div>
 
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Notifications</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Notifications</div>
       <div style="margin-bottom:1.2rem">
         <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer">
           <input type="checkbox" id="notif-toggle" ${LS.get('lh_notify_enabled', false) ? 'checked' : ''} onchange="lhToggleNotifications(this.checked)">
           🔔 Browser notifications for time-sensitive reminders (deposit, payroll, comms, brag board) — so a minimized tab can still alert you
         </label>
-        <div id="notif-status" style="font-size:.74rem;margin-top:.3rem;min-height:1.1em"></div>
+        <div id="notif-status" style="font-size:.75rem;margin-top:.3rem;min-height:1.1em"></div>
       </div>
 
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Organizations</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Organizations</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         Adam's own DECA chapter ships built in. Add your own club, CTSO, or student organization — with its own officer titles, competition/achievement levels, and roster — as a JSON file instead of editing the app. Co-advisors sharing an organization can sync it via a shared Google Sheet (see leader-hub/README.md). <a href="#" onclick="lhDownloadOrgTemplate();return false;" style="color:#1e3a6e;text-decoration:underline">Download a blank template</a> to see the format.
       </div>
@@ -1142,14 +1143,14 @@ function openSurveyModal(){
            any time, not just on first join, matching the persistent-view
            pattern already used elsewhere (cas-ccps #7's "My Info" view). -->
       <details style="margin-bottom:1.4rem">
-        <summary style="cursor:pointer;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">ℹ️ About This Tool &amp; Syncing</summary>
+        <summary style="cursor:pointer;font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">ℹ️ About This Tool &amp; Syncing</summary>
         <div style="margin-top:.6rem;font-size:.78rem;color:#333;line-height:1.6;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.8rem .95rem">
           <p style="margin-bottom:.6rem"><strong>What this is:</strong> LeaderHub is a personal tool Adam Berneche built and maintains for his own workload — it isn't a district-provisioned or IT-supported product. There's no uptime guarantee and no support desk; if something breaks, it gets fixed on Adam's own time. If you're a co-advisor sharing an organization here, keep your own backup of anything you can't afford to lose (dues records, competition results) — this is a convenience layer, not a system of record.</p>
           <p style="margin:0"><strong>How syncing works:</strong> Nothing syncs automatically. ⬆️ Push sends your copy to the shared Sheet; ⬇️ Pull brings in what's on the Sheet — both always ask you to confirm first. If a push tells you someone else updated it since you last synced, or a pull tells you that you have local changes that haven't been pushed yet, that's this app catching a real conflict before it happens, not a bug — pick pull-first or push-anyway; it's never resolved silently behind your back.</p>
         </div>
       </details>
 
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Course Catalog</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Course Catalog</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         The Student Competency Records tracker ships with Adam's own 3 courses built in. Add your own — with their competency list or Standards of Learning — as a JSON file instead of editing the app. <a href="#" onclick="lhDownloadCourseTemplate();return false;" style="color:#1e3a6e;text-decoration:underline">Download a blank template</a> to see the format.
       </div>
@@ -1159,7 +1160,7 @@ function openSurveyModal(){
         <input type="file" id="lh-course-file" accept="application/json" style="display:none" onchange="lhImportCourseJson(this)">
       </div>
 
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Weekly Schedule / Lesson Unit Template</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Weekly Schedule / Lesson Unit Template</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         8175/8177's Pacing Calendar auto-populates from the real, current CAS pacing guide (imported from cas-ccps) — click any unit cell there to see its VDOE/CCPS competencies, vocabulary, and warm-up, and to add your own materials/assessment/differentiation notes. 6115 (or any other course) has no equivalent real external source — download the same CCPS/VDOE-format template below, fill it in (structured or on paper), then import the finished JSON here to put it on that course's Pacing Calendar the same way.
       </div>
@@ -1174,7 +1175,7 @@ function openSurveyModal(){
       </div>
       <div id="pacing-import-list" style="margin-bottom:1.4rem"></div>
 
-      <div id="sched-backup-block" style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
+      <div id="sched-backup-block" style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#78350f;margin-bottom:.9rem">
         Everything in LeaderHub lives only in this browser — there's no server and no automatic backup. Export a copy regularly, especially before clearing your browser data or switching devices.
       </div>
@@ -1188,15 +1189,15 @@ function openSurveyModal(){
       </div>
       <button onclick="lhClearSampleData()" style="width:100%;background:none;border:1.5px solid #fca5a5;color:#991b1b;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer;margin-bottom:1.4rem">🧹 Clear Sample Data</button>
 
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Student ID Lookup — AI Privacy</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Student ID Lookup — AI Privacy</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         Upload a roster CSV (Name + CCPS ID/login columns) to have Brag Board's AI drafting substitute each matched student's real name with their CCPS ID (e.g. <code>1234567@${PROFILE.emailDomain}</code>) before that content ever reaches Gemini. The AI-drafted email still shows real names — only the network request is affected. Names not in the uploaded roster are sent as-is.
       </div>
-      <div id="student-id-status" style="font-size:.74rem;color:var(--muted);margin-bottom:.6rem">No roster uploaded — student names will be sent to Gemini as-is.</div>
+      <div id="student-id-status" style="font-size:.75rem;color:var(--muted);margin-bottom:.6rem">No roster uploaded — student names will be sent to Gemini as-is.</div>
       <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
         <button onclick="document.getElementById('lh-student-id-file').click()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬆️ Upload Roster CSV</button>
         <input type="file" id="lh-student-id-file" accept=".csv,text/csv" style="display:none" onchange="lhImportStudentIdCsv(this)">
-        <button onclick="lhClearStudentIdMap()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;color:#dc2626;cursor:pointer">Clear</button>
+        <button onclick="lhClearStudentIdMap()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;color:#b91c1c;cursor:pointer">Clear</button>
       </div>
 
       <!-- Say/Do Ledger cross-portfolio Flow Health &amp; Inventory extension:
@@ -1204,13 +1205,13 @@ function openSurveyModal(){
            job queue (see callGAS('aiDraft',...) sites) but has no visible
            signal today for "is any Flow actually built for this yet" —
            see renderAiFlowHealthSettings() below. -->
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">AI Flow Health</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem" title="Called AI Flow Health in the setup guide">AI Drafting Status</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         Every AI-drafting feature (Brag Board, Email Composer, Lesson Plan assist, Financial analysis, Archive/WBL insights) submits a job through your Email Bridge, but only actually produces AI output once you've built the matching Google Workspace Flow for it (see LEADERHUB_AI_FLOW_SETUP.md) — until then it falls back to a template, silently. This shows which types have ever actually completed a job.
       </div>
       <div id="ai-flow-health-list" style="margin-bottom:1.4rem"></div>
 
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Quick Links</div>
+      <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Quick Links</div>
       <div style="display:flex;gap:.6rem;justify-content:center">
         <button onclick="document.getElementById('survey-modal').remove();openJournal()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;font-weight:600;cursor:pointer">📓 Open Journal</button>
         <button onclick="document.getElementById('survey-modal').remove();openImprovementsModal()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;cursor:pointer">💡 Ideas</button>
@@ -1943,8 +1944,8 @@ function renderCourseCatalogSettings() {
       <span>${escH(c.icon||'🧩')}</span>
       <span style="flex:1"><strong>${escH(code)}</strong> — ${escH(c.name)} <span style="color:var(--muted)">(${c.competencies.length} ${escH((c.standardsLabel||'competencies').toLowerCase())})</span></span>
       ${c.custom
-        ? `<button onclick="lhRemoveCustomCourse('${code}')" aria-label="Remove course ${escH(code)}" title="Remove course" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
-        : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
+        ? `<button onclick="lhRemoveCustomCourse('${code}')" aria-label="Remove course ${escH(code)}" title="Remove course" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
+        : `<span style="font-size:.75rem;color:var(--muted);font-style:italic">built-in</span>`}
     </div>`).join('');
 }
 
@@ -2081,14 +2082,14 @@ function renderOrgCatalogSettings() {
     const sync = ORG_SYNC[id];
     const syncRow = (sync && sync.enabled)
       ? `<div style="display:flex;align-items:center;gap:.4rem;margin-top:.3rem;flex-wrap:wrap;padding-left:1.75rem">
-           <span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(id)}</span>
-           <button onclick="lhPullOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
-           <button onclick="lhPushOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
-           <button onclick="lhCopyOrgShareCode('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">📋 Copy share code</button>
-           <button onclick="lhStopSharingOrg('${escJsAttr(id)}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
+           <span style="font-size:.75rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(id)}</span>
+           <button onclick="lhPullOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.75rem;cursor:pointer">⬇️ Pull</button>
+           <button onclick="lhPushOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.75rem;cursor:pointer">⬆️ Push</button>
+           <button onclick="lhCopyOrgShareCode('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.75rem;cursor:pointer">📋 Copy share code</button>
+           <button onclick="lhStopSharingOrg('${escJsAttr(id)}')" style="background:none;border:none;color:#b91c1c;font-size:.75rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
          </div>`
       : `<div style="padding-left:1.75rem;margin-top:.3rem">
-           <button onclick="lhShareOrg('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;font-size:.68rem;cursor:pointer;color:#1e3a6e">🔗 Share with a co-advisor</button>
+           <button onclick="lhShareOrg('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;font-size:.75rem;cursor:pointer;color:#1e3a6e">🔗 Share with a co-advisor</button>
          </div>`;
     return `
     <div style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
@@ -2096,8 +2097,8 @@ function renderOrgCatalogSettings() {
         <span>${escH(o.icon||'🧩')}</span>
         <span style="flex:1"><strong>${escH(o.name)}</strong> <span style="color:var(--muted)">(${o.officerPositions.length} officer position(s)${o.levels && o.levels.length ? ', '+o.levels.length+' level(s)' : ''})</span></span>
         ${o.custom
-          ? `<button onclick="lhRemoveCustomOrg('${escJsAttr(id)}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
-          : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
+          ? `<button onclick="lhRemoveCustomOrg('${escJsAttr(id)}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
+          : `<span style="font-size:.75rem;color:var(--muted);font-style:italic">built-in</span>`}
       </div>
       ${syncRow}
     </div>`;
@@ -2531,7 +2532,7 @@ async function lhOpenJoinOrgModal() {
       <input id="org-join-code" type="text" placeholder="deca@https://script.google.com/…/exec" style="flex:1;padding:.4rem .5rem;border:1px solid var(--border);border-radius:6px;font-size:.75rem">
       <button id="org-join-code-go" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer">Join</button>
     </div>
-    <div style="font-size:.72rem;font-weight:600;margin-bottom:.3rem">Shared from this bridge</div>
+    <div style="font-size:.75rem;font-weight:600;margin-bottom:.3rem">Shared from this bridge</div>
     <div id="org-join-list" style="font-size:.8rem;color:var(--muted)">Loading shared organizations…</div>
   </div>`;
   document.body.appendChild(modal);
@@ -2558,7 +2559,7 @@ async function lhOpenJoinOrgModal() {
     const btnLabel = existsLocally ? 'Pull latest' : 'Join';
     const whenStr = o.updatedAt ? new Date(o.updatedAt).toLocaleString() : 'unknown';
     return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem">
-      <span style="flex:1"><strong>${escH(o.orgName)}</strong><br><span style="font-size:.7rem;color:var(--muted)">Last updated ${escH(whenStr)}${o.updatedBy ? ' by ' + escH(o.updatedBy) : ''}</span></span>
+      <span style="flex:1"><strong>${escH(o.orgName)}</strong><br><span style="font-size:.75rem;color:var(--muted)">Last updated ${escH(whenStr)}${o.updatedBy ? ' by ' + escH(o.updatedBy) : ''}</span></span>
       <button onclick="lhJoinOrg('${String(o.orgId||'').trim().toLowerCase().replace(/[^a-z0-9_-]/g,'')}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap">${btnLabel}</button>
     </div>`;
   }).join('');
@@ -2985,10 +2986,12 @@ function _restoreNamesFromIds(text) {
 // Synergy grades should be updated every 2 weeks, and the Canvas assignment
 // calendar should be updated weekly.
 const SYNC_PLATFORMS = [
-  { id:'synergy',  label:'Synergy Grades',     icon:'📗', maxDays:14, policy:'Update every 2 weeks' },
-  { id:'canvas',   label:'Canvas Assignments',  icon:'🖥️', maxDays:7,  policy:'Update weekly' },
-  { id:'synergy_att', label:'Attendance (Synergy)', icon:'📋', maxDays:1, policy:'Update daily' },
-  { id:'canvas_comm', label:'Canvas Messages',  icon:'💬', maxDays:1,  policy:'Check daily' },
+  // `label` is what the screen says; `where` names the platform (the
+  // tooltip and the Terms panel say what Synergy and Canvas are).
+  { id:'synergy',  label:'Gradebook grades',   where:'Synergy, the district gradebook', icon:'📗', maxDays:14, policy:'Update every 2 weeks' },
+  { id:'canvas',   label:'Canvas assignments', where:'Canvas, where students see their classwork', icon:'🖥️', maxDays:7,  policy:'Update weekly' },
+  { id:'synergy_att', label:'Gradebook attendance', where:'Synergy, the district gradebook', icon:'📋', maxDays:1, policy:'Update daily' },
+  { id:'canvas_comm', label:'Canvas messages',  where:'Canvas, where students see their classwork', icon:'💬', maxDays:1,  policy:'Check daily' },
 ];
 
 function renderSyncTracker() {
@@ -3015,11 +3018,11 @@ function renderSyncTracker() {
     const dateStr = last ? last.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
     return `<div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:.42rem .55rem">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:.3rem;margin-bottom:.2rem">
-        <span style="font-size:.72rem;font-weight:700;color:${textColor}">${p.icon} ${p.label}</span>
-        <button onclick="markSyncDone('${p.id}')" title="Mark as updated now" style="background:var(--navy);color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:.62rem;font-weight:700;cursor:pointer;white-space:nowrap">✓ Done</button>
+        <span style="font-size:.75rem;font-weight:700;color:${textColor}" title="In ${p.where}">${p.icon} ${p.label}</span>
+        <button onclick="markSyncDone('${p.id}')" title="Mark as updated now" style="background:var(--navy);color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">✓ Done</button>
       </div>
-      <div style="font-size:.68rem;color:${textColor};font-weight:${overdue?'700':'400'}">${statusLabel}</div>
-      <div style="font-size:.62rem;color:#9ca3af">${dateStr} · ${p.policy}</div>
+      <div style="font-size:.75rem;color:${textColor};font-weight:${overdue?'700':'400'}">${statusLabel}</div>
+      <div style="font-size:.75rem;color:#4b5563">${dateStr} · ${p.policy}</div>
     </div>`;
   }).join('');
 }
@@ -3056,7 +3059,7 @@ const OBS_PREP_ITEMS = [
   { key:'assess_form',   label:'Formative assessment checkpoint is built into the lesson',              group:'Instructional Readiness', critical:true },
   { key:'assess_exit',   label:'Exit ticket or closing activity is prepared',                           group:'Instructional Readiness', critical:false },
   // Professionalism & Records
-  { key:'grades_synergy','label':'Synergy grades are updated within the last 14 days',                  group:'Professionalism & Records', critical:true },
+  { key:'grades_synergy','label':'Gradebook (Synergy) grades are updated within the last 14 days',                  group:'Professionalism & Records', critical:true },
   { key:'grades_canvas', label:'Canvas assignments/materials are current and visible to students',      group:'Professionalism & Records', critical:true },
   { key:'deposit_clear', label:'No outstanding deposits — all collections deposited to Ms. Evans',      group:'Professionalism & Records', critical:false },
   { key:'deadlines_ok',  label:'No overdue CCPS forms or DECA deadlines',                               group:'Professionalism & Records', critical:false },
@@ -3078,7 +3081,7 @@ function renderObsChecklist() {
   const critDone = critical.filter(i => saved[i.key]).length;
   const allCrit  = critDone === critical.length;
   const pct      = Math.round(done / total * 100);
-  const barColor = allCrit ? '#22c55e' : done > critical.length ? '#f59e0b' : '#ef4444';
+  const barColor = allCrit ? '#15803d' : done > critical.length ? '#b45309' : '#b91c1c';
 
   // Group by category
   const groups = {};
@@ -3091,13 +3094,13 @@ function renderObsChecklist() {
   const groupHtml = Object.entries(groups).map(([grpLabel, items]) => {
     const rows = items.map(item => {
       const checked = !!saved[item.key];
-      return `<label style="display:flex;align-items:flex-start;gap:.45rem;cursor:pointer;padding:.22rem 0;font-size:.76rem;color:${checked?'#9ca3af':'inherit'};${checked?'text-decoration:line-through':''}">
+      return `<label style="display:flex;align-items:flex-start;gap:.45rem;cursor:pointer;padding:.22rem 0;font-size:.76rem;color:${checked?'#4b5563':'inherit'};${checked?'text-decoration:line-through':''}">
         <input type="checkbox" ${checked?'checked':''} onchange="toggleObsCheck('${item.key}',this.checked)" style="margin-top:2px;accent-color:var(--navy);flex-shrink:0">
-        <span>${item.critical?'<strong>':''}${item.label}${item.critical?'</strong>':''} ${item.critical?'<span style="font-size:.6rem;color:#b91c1c;margin-left:2px">★ Critical</span>':''}</span>
+        <span>${item.critical?'<strong>':''}${item.label}${item.critical?'</strong>':''} ${item.critical?'<span style="font-size:.75rem;color:#b91c1c;margin-left:2px">★ Critical</span>':''}</span>
       </label>`;
     }).join('');
     return `<div style="margin-bottom:.6rem">
-      <div style="font-size:.65rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy);margin-bottom:.3rem;padding-bottom:.2rem;border-bottom:1px solid var(--border)">${grpLabel}</div>
+      <div style="font-size:.75rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy);margin-bottom:.3rem;padding-bottom:.2rem;border-bottom:1px solid var(--border)">${grpLabel}</div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1.2rem">${rows}</div>
     </div>`;
   }).join('');
@@ -3107,30 +3110,30 @@ function renderObsChecklist() {
     const typeLabel = {formal:'Formal Obs',walkthrough:'Walkthrough',pop:'Unannounced',plc:'PLC Meeting'};
     const outcomeStyle = {pending:'color:#92400e;background:#fef3c7',positive:'color:#166534;background:#dcfce7',concern:'color:#92400e;background:#fef3c7',action:'color:#991b1b;background:#fee2e2'};
     const st = outcomeStyle[o.outcome] || outcomeStyle.pending;
-    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:#f9fafb;border:1px solid var(--border);border-radius:7px;font-size:.72rem">
+    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:#f9fafb;border:1px solid var(--border);border-radius:7px;font-size:.75rem">
       <span style="flex-shrink:0;color:var(--muted)">${o.date}</span>
       <span style="font-weight:700;color:var(--navy)">${typeLabel[o.type]||o.type}</span>
-      <span style="font-size:.65rem;color:#555">${o.observer==='green'?'Ms. Green':o.observer==='white'?'C. White':o.observer==='altizer'?'D. Altizer':'Other'}</span>
-      <span style="font-size:.65rem;padding:1px 7px;border-radius:20px;font-weight:700;margin-left:auto;${st}">${o.outcome==='pending'?'⏳ Pending':o.outcome==='positive'?'✅ Positive':o.outcome==='concern'?'⚠️ Concern':'🔴 Action'}</span>
-      ${o.followup?`<span style="font-size:.63rem;color:#b91c1c;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.followup}">↳ ${o.followup}</span>`:''}
-      ${(o.outcome==='action'||o.outcome==='concern')?`<button onclick="resolveObsAction('${o.id}')" style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:5px;padding:1px 6px;font-size:.63rem;font-weight:700;cursor:pointer;flex-shrink:0" title="Mark follow-up complete — removes from priority queue">✅ Resolve</button>`:''}
-      <button onclick="deleteObsLog('${o.id}')" aria-label="Remove observation log entry from ${escH(o.date)}" style="background:none;border:none;color:#d1d5db;cursor:pointer;font-size:.72rem;flex-shrink:0">✕</button>
+      <span style="font-size:.75rem;color:#555">${o.observer==='green'?'Ms. Green':o.observer==='white'?'C. White':o.observer==='altizer'?'D. Altizer':'Other'}</span>
+      <span style="font-size:.75rem;padding:1px 7px;border-radius:20px;font-weight:700;margin-left:auto;${st}">${o.outcome==='pending'?'⏳ Pending':o.outcome==='positive'?'✅ Positive':o.outcome==='concern'?'⚠️ Concern':'🔴 Action'}</span>
+      ${o.followup?`<span style="font-size:.75rem;color:#b91c1c;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.followup}">↳ ${o.followup}</span>`:''}
+      ${(o.outcome==='action'||o.outcome==='concern')?`<button onclick="resolveObsAction('${o.id}')" style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:5px;padding:1px 6px;font-size:.75rem;font-weight:700;cursor:pointer;flex-shrink:0" title="Mark follow-up complete — removes from priority queue">✅ Resolve</button>`:''}
+      <button onclick="deleteObsLog('${o.id}')" aria-label="Remove observation log entry from ${escH(o.date)}" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:.75rem;flex-shrink:0">✕</button>
     </div>`;
   }).join('');
 
   el.innerHTML = `
-  <div style="border:${allCrit?'1px solid #86efac':'2px solid #f59e0b'};border-radius:12px;background:${allCrit?'#f0fdf4':'#fffbeb'};overflow:hidden">
+  <div style="border:${allCrit?'1px solid #86efac':'2px solid #b45309'};border-radius:12px;background:${allCrit?'#f0fdf4':'#fffbeb'};overflow:hidden">
     <!-- Header row -->
     <div style="display:flex;align-items:center;gap:.75rem;padding:.7rem 1rem;cursor:pointer;user-select:none" onclick="toggleObsPanel()">
       <div style="font-size:1.1rem">${allCrit?'✅':'📋'}</div>
       <div style="flex:1">
         <div style="font-size:.85rem;font-weight:700;color:var(--navy)">Observation / Walkthrough Prep Checklist</div>
-        <div style="font-size:.7rem;color:var(--muted)">${critDone}/${critical.length} critical items ready · ${done}/${total} total · click to ${saved._expanded?'collapse':'expand'}</div>
+        <div style="font-size:.75rem;color:var(--muted)">${critDone}/${critical.length} critical items ready · ${done}/${total} total · click to ${saved._expanded?'collapse':'expand'}</div>
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
-        <span style="font-size:.65rem;background:${allCrit?'#dcfce7':'#fef3c7'};color:${allCrit?'#15803d':'#92400e'};padding:2px 10px;border-radius:20px;font-weight:700;border:1px solid ${allCrit?'#86efac':'#fde68a'}">${allCrit?'🟢 READY':'🟡 '+pct+'% ready'}</span>
-        <button onclick="event.stopPropagation();openObsLog()" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.3rem .75rem;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">＋ Log Observation</button>
-        <button onclick="event.stopPropagation();resetObsPrep()" title="Reset all checkboxes" style="background:none;border:1px solid var(--border);border-radius:6px;padding:.3rem .5rem;font-size:.7rem;cursor:pointer;color:var(--muted)">↺ Reset</button>
+        <span style="font-size:.75rem;background:${allCrit?'#dcfce7':'#fef3c7'};color:${allCrit?'#15803d':'#92400e'};padding:2px 10px;border-radius:20px;font-weight:700;border:1px solid ${allCrit?'#86efac':'#fde68a'}">${allCrit?'🟢 READY':'🟡 '+pct+'% ready'}</span>
+        <button onclick="event.stopPropagation();openObsLog()" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.3rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">＋ Log Observation</button>
+        <button onclick="event.stopPropagation();resetObsPrep()" title="Reset all checkboxes" style="background:none;border:1px solid var(--border);border-radius:6px;padding:.3rem .5rem;font-size:.75rem;cursor:pointer;color:var(--muted)">↺ Reset</button>
         <span style="font-size:.85rem;color:var(--muted)">${saved._expanded?'▲':'▼'}</span>
       </div>
     </div>
@@ -3140,15 +3143,15 @@ function renderObsChecklist() {
     </div>
     <!-- Expandable body -->
     <div id="obs-checklist-body" style="display:${saved._expanded?'block':'none'};padding:.85rem 1rem 1rem">
-      <div style="font-size:.72rem;color:#92400e;background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:.4rem .65rem;margin-bottom:.75rem">
+      <div style="font-size:.75rem;color:#92400e;background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:.4rem .65rem;margin-bottom:.75rem">
         <strong>How to use:</strong> Check off each item before any observation or walkthrough. Critical items (★) must be complete. Reset between observations. Log the observation after it happens — this creates your evidence trail.
       </div>
       ${groupHtml}
       ${history.length ? `
       <div style="margin-top:.85rem;border-top:1px solid var(--border);padding-top:.75rem">
-        <div style="font-size:.7rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy);margin-bottom:.45rem">Observation History (${history.length} logged)</div>
+        <div style="font-size:.75rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy);margin-bottom:.45rem">Observation History (${history.length} logged)</div>
         <div style="display:flex;flex-direction:column;gap:.3rem">${recent}</div>
-        ${history.length > 3 ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.35rem;font-style:italic">${history.length-3} more observation${history.length-3!==1?'s':''} in history — reset or scroll to see all</div>` : ''}
+        ${history.length > 3 ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.35rem;font-style:italic">${history.length-3} more observation${history.length-3!==1?'s':''} in history — reset or scroll to see all</div>` : ''}
       </div>` : ''}
     </div>
   </div>`;
@@ -3176,7 +3179,7 @@ function toggleObsCheck(key, val) {
     const _ocLog   = LS.get('lh_daily_log', []);
     if (!_ocLog.some(e => e.type === 'obs_prep_complete' && (e.date||'').slice(0,10) === _ocToday)) {
       _logDaily({ date: new Date().toISOString(), type: 'obs_prep_complete',
-        note: `Obs prep checklist complete — all ${critical.length} critical items checked (${obsItems.filter(i=>saved[i.key]).length}/${obsItems.length} total)` });
+        note: `Observation prep checklist complete — all ${critical.length} critical items checked (${obsItems.filter(i=>saved[i.key]).length}/${obsItems.length} total)` });
     }
   }
   renderObsChecklist();

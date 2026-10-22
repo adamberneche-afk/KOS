@@ -31,7 +31,7 @@ const CALENDAR_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src',
 const PACING_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '12-integrations-pacing-subplan-brag.html');
 
 function loadCalendarParser() {
-  const source = extractLines(CALENDAR_HTML_PATH, 1277, 1578, [
+  const source = extractLines(CALENDAR_HTML_PATH, 1278, 1579, [
     'function extractDateRangeBounds(',
     'function extractDatesFromText(',
     'function parseCountyCalendarText(',
