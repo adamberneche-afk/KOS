@@ -654,6 +654,7 @@ function harvestFlowInputResults() {
         Logger.log("[FlowInputBuilder] Row " + rowNum +
                    " marked EVALUATED with no output — leaving for manual review.");
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_EMPTY_OUTPUT");
+        if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
         continue;
       }
 
@@ -662,6 +663,7 @@ function harvestFlowInputResults() {
         Logger.log("[FlowInputBuilder] Row " + rowNum + " ERROR_SUSPECT_FABRICATION: " +
                    plausibility.reason);
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_SUSPECT_FABRICATION");
+        if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
         continue;
       }
 
@@ -733,6 +735,7 @@ function harvestFlowInputResults() {
       } catch (err) {
         Logger.log("[FlowInputBuilder] Harvest failed for row " + rowNum + ": " + err.message);
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_HARVEST_FAILED");
+        if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
       }
     }
 
@@ -797,6 +800,33 @@ function _fiMarkStagingComplete_(stagingSheet, stagingRowRef, studentFileId, con
   }
   Logger.log("[FlowInputBuilder] Could not find matching STAGING_PIPELINE row for FileID " +
              studentFileId + " ConfigID " + configId + " to mark COMPLETE.");
+}
+
+// A check whose result couldn't be used (2026-10-22, UX audit fix-first 4):
+// its staging row is marked ERROR_EVALUATION, so 03 closes the submission,
+// tells the teacher why and sets the doc's header, instead of the row
+// sitting IN_PROCESS until the lane times it out as "didn't finish in time".
+function _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId) {
+  try {
+    if (!isNaN(stagingRowRef) && stagingRowRef >= 2 &&
+        String(stagingSheet.getRange(stagingRowRef, STG_STUDENT_FILE_ID + 1).getValue()).trim() === studentFileId &&
+        String(stagingSheet.getRange(stagingRowRef, STG_CONFIG_ID + 1).getValue()).trim() === configId &&
+        String(stagingSheet.getRange(stagingRowRef, STG_STATUS + 1).getValue()).trim() === "IN_PROCESS") {
+      stagingSheet.getRange(stagingRowRef, STG_STATUS + 1).setValue("ERROR_EVALUATION");
+      return;
+    }
+    const data = stagingSheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][STG_STUDENT_FILE_ID]).trim() === studentFileId &&
+          String(data[i][STG_CONFIG_ID]).trim() === configId &&
+          String(data[i][STG_STATUS]).trim() === "IN_PROCESS") {
+        stagingSheet.getRange(i + 1, STG_STATUS + 1).setValue("ERROR_EVALUATION");
+        return;
+      }
+    }
+  } catch (e) {
+    Logger.log("[FlowInputBuilder] Could not mark the staging row failed: " + e.message);
+  }
 }
 
 // Removes the [MILESTONE_OUTCOMES: {...}] machine-readable line before

@@ -557,6 +557,7 @@ function getDashboardData(termFilter) {
       statusClass: statusClass,
       lastEval:    row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : "Never",
       submittedAt: row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : "—",
+      flagReason:  statusClass === "flagged" ? _tdFlagReason_(ledgerStatus) : "",
       suggestedScore: suggestedScore,
       docUrl:      fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
@@ -1607,6 +1608,18 @@ function resolveDisplay_(ledger, pipeline) {
     case "COMPLIANT": return "COMPLIANT ✓";
     default:          return ledger.startsWith("ERROR") ? "FLAGGED ⚠" : (ledger || "UNKNOWN");
   }
+}
+
+// Why a row is "Couldn't be checked ⚠", and the next step (2026-10-22, UX
+// audit fix-first 4): the row used to say FLAGGED with no reason.
+function _tdFlagReason_(ledgerStatus) {
+  if (ledgerStatus === "ERROR_TIMEOUT") {
+    return "The check didn't finish in time. Next: follow the steps in the \"Feedback didn't finish\" email.";
+  }
+  if (ledgerStatus === "ERROR_EVALUATION") {
+    return "The check ran, but its result couldn't be used. Next: ask the student to submit again.";
+  }
+  return "Something went wrong on the system's side. Next: tell your system admin (code " + ledgerStatus + ").";
 }
 
 function resolveClass_(display) {
@@ -3418,6 +3431,7 @@ If you expect to see students here:
           }
           \${wrNextStep}
           \${reviewNextStep}
+          \${s.flagReason ? \`<div class="flag-reason" style="font-size:13px;color:#b3261e;margin-top:4px">\${esc(s.flagReason)}</div>\` : ""}
         </div>
         <div class="badges"><div class="status-badge \${EVAL_BADGE[s.evalState] || 'badge-unknown'}">\${esc(EVAL_LABEL[s.evalState] || s.evalState)}</div>\${pipelineBadge}</div>
       </div>\`;
