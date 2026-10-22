@@ -5,9 +5,8 @@
 //   - Master Teacher Matrix Sheet  (with Scripts 00 + 08)
 //   - Unified Manual / Admin Manual project (with Scripts 00 + 16 + 20)
 //     — required by 16_UnifiedManualSetup.js's createTeacherAssets_(),
-//     which calls writeConfigTab_() below. See
-//     cas-ccps/docs/ADMIN_DEPLOYMENT_WALKTHROUGH.html's file lists for
-//     this project, which already document this dependency correctly.
+//     which calls writeConfigTab_() below. tools/gas-lint/project-map.json
+//     lists this project's files.
 //
 // PURPOSE: Config persistence for cloned sheet projects, and the
 // _CONFIG-tab writer used by the Unified Manual setup wizard.

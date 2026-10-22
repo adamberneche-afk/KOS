@@ -146,8 +146,250 @@ test('every modal backdrop opens and closes with the "open" class the CSS uses',
   const { exported } = loadGasFiles(FILES, ['buildDashboardHtml_']);
   const html = exported.buildDashboardHtml_();
   assert.match(html, /\.modal-backdrop\.open\{display:flex/);
-  const uses = [...html.matchAll(/-backdrop"\)\.classList\.(add|remove)\("(\w+)"\)/g)].map((m) => m[2]);
+  const uses = [...html.matchAll(/(?:-backdrop"\)|backdrop)\.classList\.(add|remove)\("(\w+)"\)/g)].map((m) => m[2]);
   assert.ok(uses.length >= 6);
   assert.deepEqual([...new Set(uses)], ['open']);
+  // 2026-10-22: the six panels open and close through one helper.
+  for (const id of ['profile', 'score-review', 'feedback-placement', 'lesson-schedule', 'parent-report', 'scr-review']) {
+    assert.match(html, new RegExp('_openPanel\\("' + id + '-modal-backdrop"'), id);
+    assert.match(html, new RegExp('_closePanel\\("' + id + '-modal-backdrop"\\)'), id);
+  }
   assert.match(html, /id="lesson-schedule-btn" onclick="openLessonScheduleModal\(\)"/);
+});
+
+// ── The panel's client code, run against a small fake page (2026-10-22) ────
+// UX audit fix-first 9 and 10: a date saves on blur or Enter once it is a
+// whole date, and the lesson editor keeps its form on a failed save and asks
+// before discarding unsaved edits.
+const vm = require('vm');
+const { extractInlineScripts } = require('../../tools/html-lint/check.js');
+
+function fakePage() {
+  const els = {};
+  const listeners = {};
+  const doc = {
+    activeElement: null,
+    getElementById: (id) => els[id] || null,
+    querySelector: () => null,
+    querySelectorAll: () => [],
+    createElement: () => fakeEl('x' + Math.random()),
+    addEventListener: (type, fn) => { (listeners[type] = listeners[type] || []).push(fn); },
+    removeEventListener() {},
+  };
+  function fakeEl(id, extra) {
+    const classes = new Set();
+    const el = Object.assign({
+      id, style: {}, value: '', innerHTML: '', textContent: '', options: [], attrs: {},
+      classList: { add: (c) => classes.add(c), remove: (c) => classes.delete(c), contains: (c) => classes.has(c) },
+      setAttribute(k, v) { this.attrs[k] = v; }, getAttribute(k) { return this.attrs[k]; },
+      addEventListener() {}, appendChild() {}, remove() {}, querySelector: () => null, querySelectorAll: () => [],
+      matches: () => false, focus() { doc.activeElement = this; }, closest: () => null,
+    }, extra || {});
+    els[id] = el;
+    return el;
+  }
+  doc.body = fakeEl('body');
+  // google.script.run: each server call is recorded with its handlers.
+  const calls = [];
+  const chain = (h) => new Proxy({}, {
+    get: (_, name) => {
+      if (name === 'withSuccessHandler') return (f) => { h.ok = f; return chain(h); };
+      if (name === 'withFailureHandler') return (f) => { h.fail = f; return chain(h); };
+      return (...args) => { calls.push({ name, args, ok: h.ok, fail: h.fail }); };
+    },
+  });
+  const confirms = [];
+  const win = { confirmAnswer: true, confirm: (q) => { confirms.push(q); return win.confirmAnswer; }, open() {} };
+  const { exported } = loadGasFiles(FILES, ['buildDashboardHtml_']);
+  const code = extractInlineScripts(exported.buildDashboardHtml_()).find((c) => c.includes('function renderLessonSchedule'));
+  const store = {};
+  const ctx = vm.createContext({
+    document: doc, window: win, console, setTimeout, clearTimeout, Intl, Date,
+    google: { script: { get run() { return chain({}); } } },
+    localStorage: { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); }, removeItem: (k) => { delete store[k]; } },
+    sessionStorage: { getItem: () => null, setItem() {}, removeItem() {} },
+  });
+  ['lesson-schedule-modal-backdrop', 'lesson-schedule-modal-body', 'main', 'loading', 'term-filter',
+    'discard-confirm-backdrop', 'modal-backdrop'].forEach((id) => fakeEl(id));
+  new vm.Script(code).runInContext(ctx);
+  calls.length = 0;
+  const fire = (type, e) => (listeners[type] || []).forEach((fn) => fn(e));
+  return { ctx, doc, els, fakeEl, calls, confirms, win, fire, store };
+}
+
+const SCHEDULE = {
+  success: true, leadDays: 3, rolloutRunAt: '', today: '2026-10-22',
+  courses: [{ code: '8175', rolloutMode: 'APPLY', lessons: [
+    { key: '8175-L04', lesson: 'Lesson 04', status: 'upcoming', start: '2026-11-20', warnings: [], rollout: null },
+    { key: '8175-L05', lesson: 'Lesson 05', status: 'upcoming', start: '2026-12-01', warnings: [], rollout: null },
+  ] }],
+};
+const schedule = () => JSON.parse(JSON.stringify(SCHEDULE));
+
+function dateBox(page, key, value) {
+  const box = page.fakeEl('ls-' + key, {
+    value, attrs: { 'data-ls-key': key },
+    matches: (sel) => sel.includes('input[data-ls-key]'),
+  });
+  page.fakeEl('ls-' + key + '-msg');
+  return box;
+}
+
+test('📅 Lessons: a date box has no onchange save, and the panel says it saves on Enter or leaving the box', () => {
+  const page = fakePage();
+  page.ctx.renderLessonSchedule(schedule());
+  const body = page.els['lesson-schedule-modal-body'].innerHTML;
+  assert.doesNotMatch(body, /onchange="saveLessonStartDate/);
+  assert.match(body, /<input type="date" id="ls-8175-L04" value="2026-11-20" data-ls-key="8175-L04"/);
+  assert.match(body, /press Enter or leave the box/);
+});
+
+test('📅 Lessons: a half-typed date is not saved; a whole date saves once on Enter or blur', () => {
+  const page = fakePage();
+  page.ctx.renderLessonSchedule(schedule());
+  const box = dateBox(page, '8175-L04', '');
+  // Mid-typing, a browser reports "" or a year still being typed.
+  page.fire('focusout', { target: box, relatedTarget: null });
+  box.value = '0202-11-05';
+  page.fire('focusout', { target: box, relatedTarget: null });
+  assert.equal(page.calls.filter((c) => c.name === 'setLessonStartDate').length, 0, 'nothing is sent for an incomplete date');
+  assert.match(page.els['ls-8175-L04-msg'].textContent, /Not saved: type the whole date/);
+
+  box.value = '2026-11-05';
+  page.fire('keydown', { key: 'Enter', target: box, preventDefault() {} });
+  page.fire('focusout', { target: box, relatedTarget: null });
+  const saves = page.calls.filter((c) => c.name === 'setLessonStartDate');
+  assert.equal(saves.length, 1, 'Enter then blur saves once');
+  assert.deepEqual([...saves[0].args.slice(0, 3)], ['8175-L04', '2026-11-05', '2026-11-20']);
+});
+
+test('📅 Lessons: a save that lands while another date box has focus waits, then re-renders', () => {
+  const page = fakePage();
+  page.ctx.renderLessonSchedule(schedule());
+  const box = dateBox(page, '8175-L04', '2026-11-05');
+  page.fire('focusout', { target: box, relatedTarget: null });
+  const save = page.calls.find((c) => c.name === 'setLessonStartDate');
+  const other = dateBox(page, '8175-L05', '2026-12-01');
+  other.focus();
+  const before = page.els['lesson-schedule-modal-body'].innerHTML;
+  const after = schedule();
+  after.courses[0].lessons[0].start = '2026-11-05';
+  save.ok(after);
+  assert.equal(page.els['lesson-schedule-modal-body'].innerHTML, before, 'no re-render while typing in another box');
+  assert.equal(page.els['ls-8175-L04-msg'].textContent, 'Saved ✓');
+  page.fire('focusout', { target: other, relatedTarget: null });
+  assert.match(page.els['lesson-schedule-modal-body'].innerHTML, /id="ls-8175-L04" value="2026-11-05"/);
+});
+
+test('📅 Lessons: a failed date save says so in the row and leaves the table', () => {
+  const page = fakePage();
+  page.ctx.renderLessonSchedule(schedule());
+  const box = dateBox(page, '8175-L04', '2026-11-05');
+  page.fire('focusout', { target: box, relatedTarget: null });
+  const before = page.els['lesson-schedule-modal-body'].innerHTML;
+  page.calls.find((c) => c.name === 'setLessonStartDate').fail({ message: 'Service unavailable' });
+  assert.equal(page.els['lesson-schedule-modal-body'].innerHTML, before);
+  assert.match(page.els['ls-8175-L04-msg'].textContent, /Not saved: Service unavailable/);
+});
+
+const EDITOR = {
+  success: true, isNew: false,
+  lesson: { key: '8175-L04', title: 'Lesson 04', course: '8175', source: 'lesson data',
+    current: { promptText: 'Old task', warmupAnchor: 'Anchor', objective: 'Obj', vocabulary: '',
+      competencyIds: ['T1'], primary: 'T1', secondary: [], tertiary: [] } },
+  catalog: [], catalogAvailable: true, uncovered: [], draft: null,
+  labels: { promptText: 'Student task', warmupAnchor: 'Warm-up anchor', objective: 'Objective', vocabulary: 'Vocabulary' },
+};
+
+function openEditor(page) {
+  page.ctx.openLessonScheduleModal();
+  page.ctx.renderLessonEditor(JSON.parse(JSON.stringify(EDITOR)));
+  ['promptText', 'warmupAnchor', 'objective', 'vocabulary', 'reason'].forEach((k) => page.fakeEl('ld-' + k));
+  page.els['ld-promptText'].value = 'Old task';
+  page.els['ld-warmupAnchor'].value = 'Anchor';
+  page.els['ld-objective'].value = 'Obj';
+  page.calls.length = 0;
+}
+const act = (name) => ({ getAttribute: () => name });
+
+test('lesson editor: a failed save keeps the typed form and says it was not saved', () => {
+  const page = fakePage();
+  openEditor(page);
+  page.els['ld-promptText'].value = 'A new task I typed';
+  page.els['ld-reason'].value = 'Clearer wording';
+  page.ctx._ldAction(act('save'));
+  page.calls.find((c) => c.name === 'saveLessonDraft').fail({ message: 'Timed out' });
+  const body = page.els['lesson-schedule-modal-body'].innerHTML;
+  assert.doesNotMatch(body, /Could not load/);
+  assert.match(body, /Not saved: Timed out\. Your changes are still here/);
+  assert.match(body, /A new task I typed<\/textarea>/);
+  assert.match(body, /Clearer wording<\/textarea>/);
+  // A refusal from the server keeps the form too.
+  page.ctx._ldAction(act('save'));
+  page.calls.filter((c) => c.name === 'saveLessonDraft').pop().ok({ success: false, error: 'Reason is required.' });
+  assert.match(page.els['lesson-schedule-modal-body'].innerHTML, /A new task I typed<\/textarea>/);
+});
+
+test('lesson editor: a lesson that cannot be opened says why, with a way back', () => {
+  const page = fakePage();
+  page.ctx.openLessonEditor('8175-L04');
+  page.calls.find((c) => c.name === 'getLessonEditor').fail({ message: 'Quota' });
+  const body = page.els['lesson-schedule-modal-body'].innerHTML;
+  assert.match(body, /Could not open the lesson: Quota/);
+  assert.match(body, /data-ld="back">← Back to the schedule/);
+});
+
+test('lesson editor: ← Back and × ask before discarding unsaved edits, and not when nothing changed', () => {
+  const page = fakePage();
+  openEditor(page);
+  const backdrop = page.els['lesson-schedule-modal-backdrop'];
+  page.ctx._ldAction(act('back'));
+  assert.equal(page.confirms.length, 0, 'no question when nothing changed');
+  assert.ok(page.calls.some((c) => c.name === 'getLessonSchedule'));
+
+  openEditor(page);
+  page.els['ld-objective'].value = 'A better objective';
+  page.win.confirmAnswer = false;
+  page.ctx._ldAction(act('back'));
+  page.ctx.closeLessonScheduleModal();
+  assert.equal(page.confirms.length, 2);
+  assert.match(page.confirms[0], /Discard your unsaved changes/);
+  assert.equal(page.calls.some((c) => c.name === 'getLessonSchedule'), false, 'Back stayed put');
+  assert.ok(backdrop.classList.contains('open'), '× stayed open');
+
+  page.win.confirmAnswer = true;
+  page.ctx.closeLessonScheduleModal();
+  assert.equal(backdrop.classList.contains('open'), false);
+});
+
+test('lesson editor: after a successful save, leaving does not ask', () => {
+  const page = fakePage();
+  openEditor(page);
+  page.els['ld-objective'].value = 'Saved objective';
+  page.els['ld-reason'].value = 'Why';
+  page.ctx._ldAction(act('save'));
+  const fields = Object.assign({}, EDITOR.lesson.current, { objective: 'Saved objective' });
+  page.calls.find((c) => c.name === 'saveLessonDraft').ok({ success: true,
+    draft: { draftId: 'LD-1', status: 'DRAFT', canEdit: true, canSubmit: true, fields, reason: 'Why', issues: [] } });
+  page.ctx.closeLessonScheduleModal();
+  assert.equal(page.confirms.length, 0);
+});
+
+test('one panel helper: Escape closes the top panel and puts focus back; 📅 Lessons still asks first', () => {
+  const page = fakePage();
+  ['parent-report-modal-backdrop', 'parent-report-modal-body'].forEach((id) => page.fakeEl(id));
+  const opener = page.fakeEl('parent-report-btn');
+  opener.focus();
+  page.ctx.openParentReportModal();
+  assert.ok(page.els['parent-report-modal-backdrop'].classList.contains('open'));
+  page.fire('keydown', { key: 'Escape', target: page.doc.body });
+  assert.equal(page.els['parent-report-modal-backdrop'].classList.contains('open'), false);
+  assert.equal(page.doc.activeElement, opener, 'focus is back on the button that opened it');
+
+  openEditor(page);
+  page.els['ld-objective'].value = 'Unsaved';
+  page.win.confirmAnswer = false;
+  page.fire('keydown', { key: 'Escape', target: page.doc.body });
+  assert.match(page.confirms[0], /Discard your unsaved changes/);
+  assert.ok(page.els['lesson-schedule-modal-backdrop'].classList.contains('open'));
 });

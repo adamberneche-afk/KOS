@@ -39,6 +39,8 @@ the full list. The ones you'll meet most:
 
 ## The Three Tabs
 
+**Needs you.** Above every tab, a short **Needs you** list shows what is waiting on you, wherever it lives: items that need your help, failed items to check or retry, rows with a status the system doesn't know, personalization not done, and the latest advisor panel review while advisors still haven't answered (for 14 days after it started) or once it has halted. Tap a line to go to it. The Queue and System tabs carry a red badge with the number of these items on that tab. When nothing is waiting, the list is hidden.
+
 ### Add (Ingest) — Where You Submit Sessions
 
 This is where you paste session content. There are two types:
@@ -57,6 +59,7 @@ The four metric cards show the current state of your queue:
 - **Processing (AI running now)** — Sessions the AI engine is actively working on. Under normal operation this is 0 or 1 — the system processes one at a time to avoid interference.
 - **Needs your help (action required)** — Sessions where the AI's output couldn't be read automatically. This requires a specific action from you — see the NEEDS YOUR HELP section below.
 - **Processed (complete)** — Sessions fully processed and routed to your ledgers.
+- **Failed** (shown only when nonzero) — Items that stopped and won't be tried again on their own. They're listed below under **Failed items**; see that section further down.
 
 **What to do on the Queue tab most of the time: nothing.** Check it after submitting a session to confirm it was received. If all numbers are 0 and you just submitted, wait 5 minutes and refresh.
 
@@ -124,7 +127,11 @@ This appears when the AI's inference output couldn't be read automatically. It h
 4. If Studio processed it but produced malformed output: you need to re-run the session manually and paste the correct JSON into the document body. The JSON schema is in the Studio Integration Spec — most users won't need to do this.
 5. After fixing the document, the system retries within 10 minutes. You'll see the row move from "Needs your help" to "Processed" once complete.
 
-If a row has retried 3 times and is still failing, it becomes permanently flagged as `FAILED_PARSE`. At that point, archive it (System → Archive finished and failed rows) and resubmit the session as a fresh submission.
+If a row has retried 3 times and is still failing, it becomes permanently flagged as `FAILED_PARSE`. It then shows under **Queue → Failed items** ("Answer couldn't be read"), with a link to its doc. That status can't be retried from the app: resubmit the session as a fresh submission from the Add tab. Archiving no longer moves failed rows, so the row stays in the list until you deal with it.
+
+### Failed items (Queue tab)
+
+When anything has failed, the Queue tab shows a **Failed items** list below "Needs review", grouped by what went wrong: timed out, failed the quality check, answer couldn't be read, and so on. Items that **timed out** (`STUDIO_TIMEOUT`) or **failed the quality check** (`AUDIT_REJECTED`) have a **Retry…** button. The first tap only checks, and says what a retry will do (put it back in the queue with its retries reset, clear its earlier AI answers, and restore its doc to the original text if the AI's answer had replaced it), or why it can't be retried (its doc can't be opened, or no copy of the original was saved). **Retry now** then does it, using the same requeue path as `requeueStagingRows()` in the editor. If Google's AI flow is still failing, a retried item fails the same way again, so check the flow first.
 
 ---
 
@@ -135,11 +142,8 @@ output was perfectly valid JSON, but (if your Studio Flow has the
 optional Auditor step configured — see `CURATOR_PROMPT.md`) a second
 verification pass checked the Curator's own claims against your actual
 session transcript and found at least one that didn't hold up. In the
-Queue tab today this surfaces under the generic "Failed" indicator
-alongside other terminal failures — there's no dedicated label for it
-yet — so to confirm it's specifically an audit rejection rather than a
-parse failure, open STAGING_PIPELINE directly and check the Status
-column for the exact text `AUDIT_REJECTED`.
+Queue tab it is listed under **Failed items → Failed the quality
+check**, with a **Retry…** button (see "Failed items" above).
 
 **Your rejected output isn't lost.** Every rejected attempt — the full
 JSON the Curator produced, plus the Auditor's claim-by-claim trace log —
@@ -229,13 +233,15 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 - When you're in a planning loop and want external challenge
 
 **How to trigger it:**
-Go to System → **Start an advisor panel review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, you'll get the stimulus document and a Council ID — send the document to each cog's own Gem conversation, then log each verdict via **Ingest → Cog Verdict** using that Council ID.
+Go to System → **Start an advisor panel review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, you'll get the stimulus document and a Council ID — send the document to each cog's own Gem conversation, then log each verdict via **Add → Advisor verdict** using that Council ID.
+
+The **Advisor panel review** section of the System tab keeps the latest review: its Review ID with a **Copy ID** button, **Open the review document**, **Record a verdict** (opens Add → Advisor verdict with the ID filled in), and which advisors have answered and which you're still waiting on. To check an earlier review, type its ID in **Look up a review by its ID**.
 
 From the spreadsheet instead of the web app, the same thing lives under **📥 Ingest & Context → Generate Seven Bridges Stimulus**. Both surfaces call the same function and produce the same artifact.
 
 **The automatic trigger generates a stimulus, not a finished review.** Every 2 hours KOS checks whether 5 new sessions (configurable, `CFG.COUNCIL_AUTO_TRIGGER_SESSIONS`) have accumulated since the last review. If so, it generates a Seven Bridges stimulus document into `03.4_RAW_EXHAUST` with a fresh Council ID — and stops there. **Nothing reviews it for you.** The fan-out to each cog's own conversation and the verdict logging are still yours to do; until you do them, that document is just a file waiting in a folder. It won't fire again for another 5 sessions once one has been generated.
 
-**Picking a review back up: 📊 Diagnostics → Seven Bridges — Status & Verdict.** Because you run a council by hand across six separate conversations, it's normal to stop partway and come back later. Enter the Council ID and you get the whole picture: which cogs have verdicted and what they said, **which ones you're still waiting on**, and — once everyone's in — the compiled verdict and whether the halt rule tripped. Nothing was ever lost between sittings; each verdict was written down as it arrived. This is just the view that reads it back.
+**Picking a review back up: System → Advisor panel review in the web app, or 📊 Diagnostics → Seven Bridges — Status & Verdict in the spreadsheet menu.** Because you run a council by hand across six separate conversations, it's normal to stop partway and come back later. Enter the Council ID and you get the whole picture: which cogs have verdicted and what they said, **which ones you're still waiting on**, and — once everyone's in — the compiled verdict and whether the halt rule tripped. Nothing was ever lost between sittings; each verdict was written down as it arrived. This is just the view that reads it back.
 
 It also flags two things that otherwise pass silently, both consequences of the Cog field being free text:
 
@@ -275,7 +281,7 @@ New domains can be promoted from the incubator as your work evolves. If the same
 | **Start an advisor panel review** | Before major decisions, after significant project phases |
 | **Check for new themes to promote** | When you notice your work has shifted domains |
 | **Make it a core fact** (Pin to Core) | On an incubator theme you've already decided is permanent, when you don't want to wait for it to recur often enough to promote itself. Asks for a second tap; the note you attach becomes the asserted fact the Alignment persona checks later decisions against (Threshold D, Value-Consistency Drift) |
-| **Archive completed queue rows** | Periodically, when STAGING_PIPELINE has many processed rows |
+| **Archive finished rows** | Periodically, when STAGING_PIPELINE has many processed rows. The first tap counts; the button then asks for a second tap and says how many rows will move. Only finished rows move to STAGING_ARCHIVE; failed rows stay in the queue so they can be retried. A nightly timer does the same at 02:00 |
 | **Email me the error summary** | When you want to check the error log immediately |
 | **Re-run full deploy** | Only when something is broken and you need to rebuild infrastructure |
 

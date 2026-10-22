@@ -563,12 +563,13 @@ function sendWeeklyParentReport(studentEmail, recipientAddress, now) {
   try {
     MailApp.sendEmail({ to: recipient, subject: subject, body: body });
   } catch (e) {
-    Logger.log("[S36] Send failed for " + report.studentEmail + ": " + e.message);
+    // Logs carry the ParentReportLog row, not the student or family address.
+    Logger.log("[S36] Send failed for ParentReportLog row " + targetRow + ": " + e.message);
     return { success: false, error: "Could not send: " + e.message };
   }
 
   sheet.getRange(targetRow, PRL.SENT_AT + 1).setValue(stamp);
-  Logger.log("[S36] Sent weekly report for " + report.studentEmail + " to " + recipient);
+  Logger.log("[S36] Sent the weekly report on ParentReportLog row " + targetRow + ".");
   return {
     success: true,
     studentEmail: report.studentEmail,

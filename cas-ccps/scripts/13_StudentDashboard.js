@@ -691,6 +691,11 @@ function resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult)
     // unavailable", flagged as an issue, on every submitted assignment.
     case "PENDING_TEACHER_REVIEW": return "Turned in — waiting for your teacher";
     case "COMPLIANT":           return "Done ✓ — your teacher confirmed it";
+    // 03 emails the teacher for both (2026-10-22, UX audit fix-first 4), so
+    // the student isn't told to report what the teacher already knows, and
+    // a timeout isn't worded as the student's fault.
+    case "ERROR_TIMEOUT":       return "Taking longer than usual ⚠ — your work is saved, and your teacher knows";
+    case "ERROR_EVALUATION":    return "Couldn't be checked this time ⚠ — your teacher knows. You can submit again";
     default:
       // Never show a raw Ledger status string to a student — a blank cell
       // or an unrecognized/future status code both land here. ERROR-
@@ -1219,7 +1224,7 @@ function saveWarmUp(btn) {
 // the doc and checks it; this only shows the answer under the card.
 const SUBMIT_ERRORS = {
   TOO_SHORT: null, // worded below with the word count
-  NO_RESPONSE_SECTION: "Your document is missing its \\"── YOUR RESPONSE BEGINS HERE ──\\" line, so there's nothing to check. Ask your teacher.",
+  NO_RESPONSE_SECTION: "Your document is missing the line under “Your response” that marks where your writing starts, so there's nothing to check. Ask your teacher.",
   ALREADY_QUEUED: "This is already waiting for feedback. Check back in a few minutes.",
   ALREADY_TURNED_IN: "You've already turned this in.",
   NOT_REGISTERED: "This assignment isn't open for you any more. Ask your teacher.",
@@ -1240,6 +1245,19 @@ function submitWork(btn) {
   const done = function(msg) {
     _submitMsgs[fileId] = msg;
     _dashCache = {};
+    // After a successful submit the card shows what the server now holds
+    // (2026-10-22, UX audit fix-first 2): it used to re-render the old data,
+    // so it still read "Not started yet" with Submit active, and a second
+    // click got "already waiting".
+    if (msg.ok && _lastDashData) {
+      (_lastDashData.assignments || []).forEach(function(a) {
+        if (a.fileId !== fileId || a.configId !== configId) return;
+        a.displayStatus = "Waiting for feedback…";
+        a.statusClass = "IN_PROGRESS";
+        a.canSubmit = false;
+        a.submittedAt = "just now";
+      });
+    }
     if (_lastDashData) render(_lastDashData);
   };
   google.script.run
@@ -1249,15 +1267,15 @@ function submitWork(btn) {
           ? "✅ Submitted. Your teacher can see your work and will review it directly."
           : res.feedbackInComments
             ? "✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right)."
-            : "✅ Submitted. Your feedback will appear near the top of your document in a few minutes. Refresh the document to see it." });
+            : "✅ Submitted. In a few minutes your feedback will appear in your document, just above “Your response”. Refresh the document to see it." });
         return;
       }
       const code = res && res.error;
       if (code === "TOO_SHORT") {
         const w = res.words || 0;
-        done({ ok: false, text: "Not enough to evaluate yet. " +
-          (w > 0 ? "You've written about " + w + " word" + (w === 1 ? "" : "s") + "." : "You haven't written anything in the response section yet.") +
-          "\\nAim for at least 25 words below the \\"── YOUR RESPONSE BEGINS HERE ──\\" line." });
+        done({ ok: false, text: "Write a little more first. " +
+          (w > 0 ? "You've written about " + w + " word" + (w === 1 ? "" : "s") + "." : "You haven't written anything under “Your response” yet.") +
+          "\\nAim for at least 25 words under “Your response” in your document." });
         return;
       }
       if (code === "SYSTEM_TEXT_IN_RESPONSE") {

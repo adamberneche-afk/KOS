@@ -234,8 +234,8 @@ function aggregateEvidence_(evidenceSheet) {
     if (!VALID_OUTCOMES.includes(outcome)) {
       if (!badOutcomesSeen.has(outcome)) {
         Logger.log("[S30] Skipping row with invalid outcome value: '" + outcome +
-          "' (expected MET, PARTIALLY_MET, or NOT_MET) — student: " + email +
-          ", competency: " + compId);
+          "' (expected MET, PARTIALLY_MET, or NOT_MET) — " + evidenceSheet.getName() +
+          " row " + (i + 1) + ", competency: " + compId);
         badOutcomesSeen.add(outcome);
       }
       continue;
@@ -493,8 +493,8 @@ function recordDecision_(studentEmail, competencyId, teacherEmail, overrideRatin
     "", // archive_status — blank until _archiveExpiredScrDecisions_() ages it out
   ]);
 
-  Logger.log("[S30] Decision recorded — " + decisionType + " | " + studentEmail +
-    " | " + competencyId + " | final rating: " + finalRating + " | by: " + teacherEmail);
+  Logger.log("[S30] Decision recorded — " + decisionType + " | SCRDecisionLog row " +
+    decisionLogSheet.getLastRow() + " | " + competencyId + " | final rating: " + finalRating + " | by: " + teacherEmail);
 
   return { success: true, finalRating, decisionType };
 }

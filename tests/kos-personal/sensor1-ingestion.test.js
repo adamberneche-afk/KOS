@@ -27,6 +27,7 @@ const FILES = [
 ];
 const EXPOSE = [
   'sensor1_scanInboundSessions', 'submitSessionLog', 'submitExternalData', 'archiveStagingPipeline',
+  '_moveStagingRowsToArchive_', '_stagingArchiveSheet_',
   '_groupLinesForArchiveWrite_', '_archiveRawLog_',
   '_recordSensor1Failure_', '_clearSensor1Failure_', '_chunkAndQueue',
   'CFG',
@@ -322,12 +323,18 @@ test('_chunkAndQueue: a later chunk failing trashes the chunk docs already made'
 // ── Duplicate guards read STAGING_ARCHIVE too ──────────────────────────────
 // archiveStagingPipeline() moves finished rows to STAGING_ARCHIVE, and the
 // guards used to read STAGING_PIPELINE alone, so an archived log could be
-// ingested a second time.
+// ingested a second time. Failed rows are no longer archived (2026-10-22),
+// but STAGING_ARCHIVE still holds failed rows archived before then; those
+// go through the shared mover directly.
 
-function archiveEverything(exported, ss, status) {
+function archiveEverything(exported, ss, status, sandbox) {
   const staging = ss.getSheetByName('STAGING_PIPELINE');
   for (let r = 2; r <= staging.getLastRow(); r++) staging.getRange(r, 6).setValue(status);
-  exported.archiveStagingPipeline();
+  if (status === 'PROCESSED') exported.archiveStagingPipeline();
+  else {
+    const gas = sandbox.__exported; // the raw functions: these take and return sheet objects
+    gas._moveStagingRowsToArchive_(staging, gas._stagingArchiveSheet_(ss), [status]);
+  }
   assert.equal(staging.getLastRow(), 1, 'every row should have been archived');
 }
 
@@ -345,11 +352,11 @@ test('submitSessionLog: a log whose rows were archived as processed is still a d
   assert.equal(stagingRows(ss).length, 0, 'nothing re-queued');
 });
 
-test('submitSessionLog: a log archived as failed can be resubmitted', () => {
+test('submitSessionLog: a log archived as failed (before 2026-10-22) can be resubmitted', () => {
   const { exported, sandbox } = load();
   const { ss } = setUpSensor1(sandbox);
   assert.equal(exported.submitSessionLog(LOG_TEXT).success, true);
-  archiveEverything(exported, ss, 'FAILED_PARSE');
+  archiveEverything(exported, ss, 'FAILED_PARSE', sandbox);
 
   assert.equal(exported.submitSessionLog(LOG_TEXT).success, true);
 });

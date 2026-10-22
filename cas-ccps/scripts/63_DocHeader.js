@@ -25,7 +25,14 @@ const DOC_FEEDBACK_STATES  = {
   CHECKING:      { text: "submitted {when}, waiting for feedback.", color: DOC_HEADER_GREY, bold: false },
   PASSED:        { text: "✅ Passed ({when}). See {where}.", color: "#137333", bold: true },
   REVISE:        { text: "✏️ Revise, then submit again ({when}). Read {where} first.",
-                   color: "#b06000", bold: true }
+                   color: "#b06000", bold: true },
+  // Honest failure states (2026-10-22, UX audit fix-first 4): the line used
+  // to say "waiting for feedback" for good after a timeout or a failed
+  // check. Set by 03 when it closes the submission and tells the teacher.
+  TIMED_OUT:     { text: "⚠️ taking longer than usual. Your work is saved, and your teacher has been told.",
+                   color: "#b06000", bold: true },
+  NOT_CHECKED:   { text: "⚠️ couldn't be checked this time. Your work is saved, and your teacher has been " +
+                   "told. You can submit again from your dashboard.", color: "#b06000", bold: true }
 };
 
 // Builds the header on a doc being stamped (02). identity is line 1's text.

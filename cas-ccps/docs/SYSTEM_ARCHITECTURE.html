@@ -329,7 +329,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
         </div>
       </div>
       <div>
-        <p style="font-size:13px;margin-bottom:8px">Deployed as web app. Execute as: User accessing the app — critical for Session.getActiveUser() to return student ID. Filters ledger by Google ID.</p>
+        <p style="font-size:13px;margin-bottom:8px">Deployed as web app. Execute as: Me (USER_DEPLOYING), access: your domain (DOMAIN), per student-dashboard.appsscript.json. Session.getActiveUser() still names the signed-in student, and the page shows only that student's Ledger rows; students need no access to the Ledger.</p>
       </div>
       <div class="project-triggers"><strong>Web app</strong>doGet()</div>
     </div>
@@ -437,7 +437,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
       <div class="col-row"><span class="col-idx">08</span><span class="col-name">ConfirmationStep</span><span class="col-type">Matrix Sheet</span><span class="col-desc">pollForNewDrafts(), onTeacherConfirmSubmit() — draft detection, confirmation email</span></div>
       <div class="col-row"><span class="col-idx">09</span><span class="col-name">RevisionGuidance</span><span class="col-type">Student Template</span><span class="col-desc">Reference copy — operative code in Script 03</span></div>
       <div class="col-row"><span class="col-idx">10</span><span class="col-name">AdminPanel</span><span class="col-type">Central Ledger</span><span class="col-desc">Admin Controls menu — recovery, term management, health check, autoHealthAlert()</span></div>
-      <div class="col-row"><span class="col-idx">13</span><span class="col-name">StudentDashboard</span><span class="col-type">Standalone</span><span class="col-desc">doGet(), getStudentDashboardData(term) — student web app, Execute as: User</span></div>
+      <div class="col-row"><span class="col-idx">13</span><span class="col-name">StudentDashboard</span><span class="col-type">Standalone</span><span class="col-desc">doGet(), getStudentDashboardData(term) — student web app, Execute as: Me, access: domain</span></div>
       <div class="col-row"><span class="col-idx">15</span><span class="col-name">StudioPrompts</span><span class="col-type">Reference</span><span class="col-desc">Prompts and Studio Flow config reference — not deployed</span></div>
       <div class="col-row"><span class="col-idx">16</span><span class="col-name">UnifiedManualSetup</span><span class="col-type">Admin Manual</span><span class="col-desc">Admin + teacher setup wizard, role detection, menu management</span></div>
       <div class="col-row"><span class="col-idx">17</span><span class="col-name">MasterStudentTemplate</span><span class="col-type">Student Template</span><span class="col-desc">Architecture documentation stub — no operational functions</span></div>

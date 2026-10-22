@@ -98,6 +98,30 @@ lesson will be shared.
 
 ## The plan
 
+### Phase 0: onboarding and deployment (added 2026-10-22, before Phase A)
+
+The UX audit (`meta/UX_AUDIT_2026-10-22.md`, "Operator and future
+adopters") found adoption is blocked on setup, not on courses. A second
+school can't use a course library it can't install. So this comes first:
+
+- **One install path, built on `run.js`.** A setup guide written from the
+  code (the project table, each project's manifest settings, the Script
+  Properties each needs), replacing the retired admin walkthrough. `run.js
+  --latest` asks for `--only` or a "yes" and prints the change list first.
+- **No hardcoded school.** The student-account pattern (`ccpsnet.net`, seven
+  digits), the course codes (8175/8177 in about 22 files) and the library ID
+  come from configuration, with today's values as the defaults and tests
+  pinning them.
+- **What to run next.** The Central Ledger's runnable functions (about 139,
+  13 in menus) get a menu or sidebar for the ones an operator runs, in
+  order, with preview before apply; inputs come from a "Run inputs" tab, not
+  leftover Script Properties.
+- **Checks after a push** read the deployed version marker from each project
+  (or `list-deployments`), not by reloading editor tabs.
+- **Done when** someone other than the operator can set up a sandbox copy
+  from the guide alone, and the setup tab the Unified Manual writes matches
+  the code.
+
 ### Phase A: the library and the class list (no visible change)
 
 - The library: `cas-ccps/data/courses/<code>/` (competencies, registry

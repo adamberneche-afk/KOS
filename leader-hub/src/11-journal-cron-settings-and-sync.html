@@ -433,11 +433,35 @@ function checkDepositReminder(){
   _fireNotification('🏦 1:45 PM — Deposit Reminder', 'CCPS Policy 7060: no money overnight. Deposit with Ms. Evans by 2:00 PM.');
 }
 
+// ── Reminder banner stack ────────────────────────────────────────────────────
+// UX audit 2026-10-22, fix-first 15: every timed reminder used to be
+// position:fixed;top:0 and was prepended to <body>, so two on one day sat on
+// top of each other and both covered the header. They now go into
+// #lh-banners (src/03, right under the header), in normal flow, one under
+// the next. The app below is sized with --lh-banners-h so the page itself
+// never grows a second scrollbar; the observers keep that in step when a
+// banner is removed (each banner's own ✕ just calls .remove()) or wraps.
+function lhShowBanner(banner) {
+  const stack = document.getElementById('lh-banners');
+  if (!stack) { document.body.prepend(banner); return; }
+  stack.appendChild(banner);
+  if (!stack._lhWatched) {
+    stack._lhWatched = true;
+    if (typeof MutationObserver === 'function') new MutationObserver(_lhSyncBannerHeight).observe(stack, { childList: true });
+    if (typeof ResizeObserver === 'function') new ResizeObserver(_lhSyncBannerHeight).observe(stack);
+  }
+  _lhSyncBannerHeight();
+}
+function _lhSyncBannerHeight() {
+  const stack = document.getElementById('lh-banners');
+  document.documentElement.style.setProperty('--lh-banners-h', (stack ? stack.offsetHeight : 0) + 'px');
+}
+
 function showDepositReminderBanner(){
   if(document.getElementById('deposit-reminder-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'deposit-reminder-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.style.cssText = 'background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
   banner.innerHTML = `
     <span style="font-size:1.3rem">🏦</span>
     <div style="flex:1">
@@ -448,7 +472,7 @@ function showDepositReminderBanner(){
       <button onclick="markDepositDone()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Deposit Done</button>
       <button onclick="document.getElementById('deposit-reminder-banner').remove()" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕ Dismiss</button>
     </div>`;
-  document.body.prepend(banner);
+  lhShowBanner(banner);
 }
 
 function markDepositDone(){
@@ -497,7 +521,7 @@ function showWorkdayReminderBanner(){
   if(document.getElementById('workday-reminder-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'workday-reminder-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
   banner.innerHTML = `
     <span style="font-size:1.3rem">🕛</span>
     <div style="flex:1">
@@ -513,7 +537,7 @@ function showWorkdayReminderBanner(){
       <button onclick="markWorkdayDone()" style="background:rgba(0,0,0,.25);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer">✅ Done</button>
       <button onclick="document.getElementById('workday-reminder-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-  document.body.prepend(banner);
+  lhShowBanner(banner);
 }
 
 function markWorkdayDone(){
@@ -581,7 +605,7 @@ function showCommsTriageBanner(){
   if(document.getElementById('comms-triage-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'comms-triage-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
   banner.innerHTML = `
     <span style="font-size:1.3rem">📬</span>
     <div style="flex:1">
@@ -592,7 +616,7 @@ function showCommsTriageBanner(){
       <button onclick="markCommsDone()" style="background:#fff;color:#1e3a5f;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Checked</button>
       <button onclick="document.getElementById('comms-triage-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-  document.body.prepend(banner);
+  lhShowBanner(banner);
 }
 
 function markCommsDone(){
@@ -627,7 +651,7 @@ function showPLCBanner() {
   if (document.getElementById('plc-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'plc-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99995;background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
   banner.innerHTML = `
     <span style="font-size:1.3rem">🗓️</span>
     <div style="flex:1">
@@ -638,7 +662,7 @@ function showPLCBanner() {
       <button onclick="logPLCAttended();document.getElementById('plc-banner').remove()" style="background:#fff;color:#1a3560;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✓ Attended</button>
       <button onclick="document.getElementById('plc-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.75);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-  document.body.prepend(banner);
+  lhShowBanner(banner);
 }
 
 function logPLCAttended() {
@@ -670,7 +694,7 @@ function showEsportsMatchBanner(match) {
   if (document.getElementById('esports-match-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'esports-match-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99995;background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.style.cssText = 'background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
   const gameLabel = match.game === 'ssbu' ? '🥊 Smash Bros' : match.game === 'mk8' ? '🏎️ Mario Kart' : '🎮 E-Sports';
   banner.innerHTML = `
     <span style="font-size:1.3rem">🎮</span>
@@ -682,7 +706,7 @@ function showEsportsMatchBanner(match) {
       <button onclick="showView('esports');document.getElementById('esports-match-banner').remove()" style="background:#fff;color:#4c1d95;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📋 Checklist</button>
       <button onclick="document.getElementById('esports-match-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-  document.body.prepend(banner);
+  lhShowBanner(banner);
 }
 
 // ── DECA event tomorrow — day-before banner ────────────────────────────────
@@ -708,7 +732,7 @@ function showDECATomorrowBanner(dl) {
   if (document.getElementById('deca-tomorrow-banner')) return;
   const banner = document.createElement('div');
   banner.id = 'deca-tomorrow-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99994;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.style.cssText = 'background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
   banner.innerHTML = `
     <span style="font-size:1.3rem">🏆</span>
     <div style="flex:1">
@@ -719,7 +743,7 @@ function showDECATomorrowBanner(dl) {
       <button onclick="showView('deca');document.getElementById('deca-tomorrow-banner').remove()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">🏆 DECA Hub</button>
       <button onclick="document.getElementById('deca-tomorrow-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-  document.body.prepend(banner);
+  lhShowBanner(banner);
 }
 
 function openJournalForced(){

@@ -170,7 +170,12 @@ test('each pulse ring\'s percentage is captioned with what it counts', () => {
     const [caption, tip] = ctx.m[key];
     assert.ok(caption && tip.length > 30, key);
   }
-  assert.match(src, /title="\$\{m\[1\]\}">\$\{d\.pct\}%<\/div>\n\s*<div style="font-size:\.75rem;color:var\(--muted\);line-height:1\.2">\$\{m\[0\]\}<\/div>/);
+  // A real percentage carries its caption; nothing to count shows — and an
+  // overdue DECA deadline shows Overdue (UX audit 2026-10-22: both used to
+  // read 100%).
+  assert.match(src, /title="\$\{m\[1\]\}">\$\{d\.overdue\?'Overdue':d\.pct==null\?'—':d\.pct\+'%'\}<\/div>\n\s*<div style="font-size:\.75rem;color:var\(--muted\);line-height:1\.2">\$\{d\.overdue\?'deadline passed':d\.pct==null\?'nothing to count yet':m\[0\]\}<\/div>/);
+  assert.match(src, /const tripsPct = _allTrips\.length \? [^\n]*: null;/);
+  assert.match(src, /\{key:'deca',pct:decaDays===null\|\|decaDays<0\?null:/);
 });
 
 function terms() {

@@ -203,7 +203,7 @@ const WD_WARMUP_QUEUE_COLUMNS = {
 // fix by itself, only make visible once the flow's own wiring is fixed
 // to write it.
 // -----------------------------------------------------------------------
-const WD_TERMINAL_FAILED_STATUSES = ['STUDIO_TIMEOUT', 'ERROR', 'ERROR_TIMEOUT', 'EVAL_ERROR', 'EXTRACTION_ERROR'];
+const WD_TERMINAL_FAILED_STATUSES = ['STUDIO_TIMEOUT', 'ERROR', 'ERROR_TIMEOUT', 'ERROR_EVALUATION', 'EVAL_ERROR', 'EXTRACTION_ERROR'];
 
 const WD_RUBRIC_QUEUE_KNOWN_STATUSES = ['PENDING_EXTRACTION', 'COMPLETE'];
 const WD_STAGING_PIPELINE_KNOWN_STATUSES = ['PENDING_INFERENCE', 'IN_PROCESS', 'COMPLETE'];

@@ -1415,22 +1415,12 @@ async function _generateBragEmailInner() {
   _bragBodySnapshot = emailBody; // this exact text is now persisted — only further hand-edits are at risk
   refreshNextAction();
 
-  // Optionally send to Apps Script to email it via MailApp
-  if (url) {
-    try {
-      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Sending email…';
-      const to   = aud?.defaultTo || '';
-      const subj = _subj || `Weekly Wins — Week of ${weekDisplay}`;
-      const res  = await callGAS('bragEmail', { to, subject: subj, body: emailBody });
-      if (res.ok) {
-        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Email sent';
-      } else {
-        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (send failed)';
-      }
-    } catch(e) {
-      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — email unavailable';
-    }
-  }
+  // Brag Board fix (UX audit 2026-10-22): this used to go on to email the
+  // draft automatically, behind `if (url)` — but no `url` existed in this
+  // scope, so every Generate threw a ReferenceError after the draft was
+  // written, and it read `aud.defaultTo`, a field BRAG_AUDIENCE never had
+  // (it is `to`). Generating now only drafts; sending is its own explicit
+  // "📤 Send now" button (sendBragEmail, src/12), to the address in To.
 }
 
 // ── Removed: Gemini AI infrastructure (getAPIKey, setAPIKey, callAI) ──────────
@@ -2266,7 +2256,7 @@ function getPulseData(){
       });
     });
   } catch(e) {}
-  const teachPct = _scrTotal ? Math.round((_scrScored / _scrTotal) * 100) : 0;
+  const teachPct = _scrTotal ? Math.round((_scrScored / _scrTotal) * 100) : null; // null: nothing to count yet, shown as —
   const teachStat = _scrTotal ? `${teachPct}% of competencies scored` : 'No scores yet';
   const teachAlert = teachPct < 60 && _scrTotal > 0;  // Alert when <60% scored — actionable before it's urgent
 
@@ -2321,7 +2311,8 @@ function getPulseData(){
   // ── Trips pct: % of trips with all required fields complete ──────────────────
   const _allTrips = typeof trips !== 'undefined' ? trips : [];
   const _readyTrips = _allTrips.filter(t => typeof getMissingFields==='function' && getMissingFields(t).length===0);
-  const tripsPct = _allTrips.length ? Math.round((_readyTrips.length / _allTrips.length) * 100) : 100;
+  // UX audit 2026-10-22: zero trips used to read 100%. Nothing to count is —.
+  const tripsPct = _allTrips.length ? Math.round((_readyTrips.length / _allTrips.length) * 100) : null;
   const tripsAlert = (tripDL && daysUntil(tripDL.date) <= 3) || (_allTrips.length > 0 && tripsPct < 50);
 
   // 'store'/'deca'/'esports' cards drop out when their module is disabled
@@ -2330,8 +2321,10 @@ function getPulseData(){
   return [
     {key:'teach',pct:teachPct,nav:'competency',stat:teachStat,next:teachNext,alert:teachAlert},
     {key:'store',pct:Math.round((sbeDone/sbeTotal)*100)||0,nav:'wbl',stat:lowInv>0?`⚠ ${lowInv} item${lowInv===1?'':'s'} low on stock`:`${wblAvgHrs}h avg work-based learning`,next:lowInv>0?`Reorder items`:wblSigned<wblTotal?`${wblTotal-wblSigned} agreements unsigned`:`Store approval ${sbeDone}/${sbeTotal}`,alert:lowInv>0||wblSigned<wblTotal},
-    {key:'deca',pct:decaDays!==null?Math.max(0,Math.min(100,Math.round((1-decaDays/90)*100))):50,nav:'deca',stat:nextDeca?`${urgencyClass(decaDays).dot} ${decaDays}d`:'No deadlines',next:nextDeca?nextDeca.title:'Add DECA deadlines',alert:decaDays!==null&&decaDays<=7},
-    {key:'esports',pct:esTotal?Math.round((esWins/esTotal)*100):0,nav:'esports',stat:esTotal?`${esWins}W–${esTotal-esWins}L`:'No matches logged',next:nextMatchLabel?`Next: ${nextMatchLabel}`:esTotal?'Review lineup':'Log first match',alert:nextMatchDays!==null&&nextMatchDays<=1},
+    // An overdue DECA deadline used to fill the ring to 100% (and no deadline
+    // showed a made-up 50%); now it says Overdue, and no deadline is —.
+    {key:'deca',pct:decaDays===null||decaDays<0?null:Math.max(0,Math.min(100,Math.round((1-decaDays/90)*100))),overdue:decaDays!==null&&decaDays<0,nav:'deca',stat:nextDeca?(decaDays<0?`${urgencyClass(decaDays).dot} ${-decaDays}d overdue`:`${urgencyClass(decaDays).dot} ${decaDays}d`):'No deadlines',next:nextDeca?nextDeca.title:'Add DECA deadlines',alert:decaDays!==null&&decaDays<=7},
+    {key:'esports',pct:esTotal?Math.round((esWins/esTotal)*100):null,nav:'esports',stat:esTotal?`${esWins}W–${esTotal-esWins}L`:'No matches logged',next:nextMatchLabel?`Next: ${nextMatchLabel}`:esTotal?'Review lineup':'Log first match',alert:nextMatchDays!==null&&nextMatchDays<=1},
     {key:'trips',pct:tripsPct,nav:'trips',stat:tripDL?`${urgencyClass(daysUntil(tripDL.date)).dot} ${daysUntil(tripDL.date)}d`:'No trip deadlines',next:tripDL?tripDL.title:`${_readyTrips.length}/${_allTrips.length} ready`,alert:tripsAlert},
   ].filter(d => (d.key!=='store' || MODULES.wbl) && (d.key!=='deca' || MODULES.orgs) && (d.key!=='esports' || MODULES.esports));
 }
@@ -2341,7 +2334,7 @@ function getPulseData(){
 const PULSE_MEANINGS = {
   teach:   ['competencies scored', 'Share of competency scores entered so far, across every class and student.'],
   store:   ['store approval done', 'Share of the store approval (SBE) checklist marked done.'],
-  deca:    ['of 90 days used', 'How close the next DECA deadline is: 0% means 90 or more days away, 100% means due today or overdue.'],
+  deca:    ['of 90 days used', 'How close the next DECA deadline is: 0% means 90 or more days away, 100% means due today. A passed deadline shows Overdue.'],
   esports: ['matches won', 'Share of logged e-sports matches the team won.'],
   trips:   ['trips with forms done', 'Share of trips whose required fields are all filled in.'],
 };
@@ -2355,13 +2348,13 @@ function renderPulseRow(){
     return `<div onclick="showView('${d.nav}')" style="background:var(--surface);${ab}border-radius:var(--radius-sm,10px);padding:.65rem .8rem;cursor:pointer;transition:all .2s;position:relative" onmouseover="this.style.boxShadow='var(--shadow-lg)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
       ${d.alert?`<div style="position:absolute;top:-.4rem;right:-.4rem;background:#b91c1c;color:#fff;font-size:.75rem;font-weight:800;padding:2px 7px;border-radius:99px">Action!</div>`:''}
       <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
-        <div style="position:relative;flex-shrink:0">${ring(d.pct,r.color,54,3.5)}
+        <div style="position:relative;flex-shrink:0">${ring(d.overdue?100:(d.pct||0),d.overdue?'#b91c1c':r.color,54,3.5)}
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem">${r.icon}</div>
         </div>
         <div>
           <div style="font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:${r.color}">${r.label}</div>
-          <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.35rem;color:var(--navy);line-height:1" title="${m[1]}">${d.pct}%</div>
-          <div style="font-size:.75rem;color:var(--muted);line-height:1.2">${m[0]}</div>
+          <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.35rem;color:var(--navy);line-height:1" title="${m[1]}">${d.overdue?'Overdue':d.pct==null?'—':d.pct+'%'}</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.2">${d.overdue?'deadline passed':d.pct==null?'nothing to count yet':m[0]}</div>
         </div>
       </div>
       <div style="font-size:.84rem;color:#374151;font-weight:600;line-height:1.3">${d.stat}</div>

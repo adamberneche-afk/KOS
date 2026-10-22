@@ -468,6 +468,52 @@ textarea { line-height: 1.55; }
 .empty-state-sub   { font-size: 12px; color: var(--text3); line-height: 1.55; max-width: 240px; }
 .empty-state-action { margin-top: 4px; }
 
+/* ── "Needs you" strip and tab badges (UX audit 2026-10-22) ──── */
+.needs-strip {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-left: 3px solid var(--warn); border-radius: var(--r);
+  padding: 10px 12px; margin-bottom: 14px;
+}
+.needs-strip h2 {
+  font-size: 12px; font-family: var(--mono); text-transform: uppercase;
+  letter-spacing: .09em; color: var(--text2); font-weight: 500; margin-bottom: 6px;
+}
+.needs-list { list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.needs-item {
+  width: 100%; display: flex; align-items: center; gap: 8px; text-align: left;
+  background: none; border: none; color: var(--text); font-size: 13px;
+  font-family: var(--sans); padding: 6px 0; cursor: pointer; line-height: 1.4;
+}
+.needs-item i { font-size: 16px; flex-shrink: 0; }
+.needs-item .ni-go { margin-left: auto; color: var(--text3); }
+.needs-item.ni-danger i:first-child { color: var(--danger); }
+.needs-item.ni-warn i:first-child   { color: var(--warn); }
+.needs-item:hover .ni-text { text-decoration: underline; }
+.nav-btn { position: relative; }
+.nav-badge {
+  position: absolute; top: 4px; left: calc(50% + 6px);
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 99px;
+  background: var(--danger); color: var(--bg); font-size: 12px; font-weight: 600;
+  font-family: var(--mono); line-height: 18px; text-align: center;
+}
+
+/* ── Failed items list (Queue tab) ──────────────────────────── */
+.fail-group-lbl { font-size: 13px; font-weight: 600; color: var(--text); margin: 10px 0 2px; }
+.fail-group-sub { font-size: 12px; color: var(--text2); margin-bottom: 6px; line-height: 1.5; }
+.q-btns { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.q-btns .btn { width: auto; padding: 6px 12px; }
+
+/* ── Advisor panel review (System tab) ───────────────────────── */
+.council-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 11px 13px; font-size: 13px; line-height: 1.5;
+}
+.council-id { font-family: var(--mono); font-size: 13px; color: var(--text); word-break: break-all; }
+.council-list { list-style: none; margin-top: 6px; display: flex; flex-direction: column; gap: 3px; font-size: 13px; color: var(--text2); }
+.lookup-row { display: flex; gap: 8px; margin-top: 10px; }
+.lookup-row input { flex: 1; min-width: 0; }
+.lookup-row .btn { width: auto; flex-shrink: 0; }
+
 /* ── Section divider ─────────────────────────────────────────── */
 .sec-divider { height: 1px; background: var(--border); margin: 16px 0; }
 
@@ -644,6 +690,14 @@ textarea { line-height: 1.55; }
 
 <!-- ═══ TAB CONTENT ══════════════════════════════════════════ -->
 <main class="content" id="main-content" style="display:none">
+
+  <!-- "Needs you" strip (UX audit 2026-10-22: the app opened on Add while
+       the operator's open items sat on other tabs). Shown on every tab,
+       hidden when there is nothing to do. Filled by renderNeedsYou(). -->
+  <section class="needs-strip" id="needs-you" aria-labelledby="needs-you-title" style="display:none">
+    <h2 id="needs-you-title">Needs you</h2>
+    <ul class="needs-list" id="needs-you-list"></ul>
+  </section>
 
   <!-- ─── INGEST ─────────────────────────────────────────── -->
   <div id="tab-ingest" class="section active" role="tabpanel" aria-labelledby="nav-ingest" tabindex="0">
@@ -835,7 +889,7 @@ textarea { line-height: 1.55; }
       <div class="metric-card m-danger" id="metric-failed" style="display:none">
         <div class="metric-lbl">Failed</div>
         <div class="metric-val" id="cnt-failed">—</div>
-        <div class="metric-sub">couldn't be read; see the System tab</div>
+        <div class="metric-sub">stopped; see the list below</div>
       </div>
       <!-- NEW (Say/Do Ledger kos-personal finding #2). Hidden unless
            counts.cycling > 0 — a PENDING_FLOW/STUDIO_ACTIVE row whose
@@ -858,7 +912,7 @@ textarea { line-height: 1.55; }
       <div class="metric-card m-warn" id="metric-unknown" style="display:none">
         <div class="metric-lbl">Unrecognized status</div>
         <div class="metric-val" id="cnt-unknown">—</div>
-        <div class="metric-sub">a status the system doesn't know; fix it in the sheet</div>
+        <div class="metric-sub">a status the system does not know; fix it in the sheet</div>
       </div>
     </div>
 
@@ -877,6 +931,19 @@ textarea { line-height: 1.55; }
          create the every-keystroke chattiness a char-count would. -->
     <div class="queue-list" id="curator-list" role="status" aria-live="polite">
       <div class="empty"><i class="ti ti-list-check"></i>Loading queue…</div>
+    </div>
+
+    <!-- Failed items (UX audit 2026-10-22: the Failed tile was a number
+         with no rows behind it, and retrying was editor-only). Hidden
+         unless something failed. Filled by renderFailedRows(); Retry goes
+         through previewRetryFailedRow() then retryFailedRow(). -->
+    <div id="failed-wrap" style="display:none;margin-top:16px">
+      <div class="sec-lbl has-tip">
+        Failed items
+        <span class="tip-icon" title="Items that stopped and won't be tried again on their own. Items that timed out or failed the quality check can be retried from here: Retry first shows what it will do. Retrying is called a requeue in the sheets.">?</span>
+      </div>
+      <div class="status-line" id="failed-status" role="status" aria-live="polite" style="margin:0 0 8px"></div>
+      <div class="queue-list" id="failed-list"></div>
     </div>
 
     <div style="margin-top:14px">
@@ -989,7 +1056,7 @@ textarea { line-height: 1.55; }
         <i class="ti ti-trending-up"></i>Check for topics ready to establish
       </button>
       <button class="btn btn-sm" id="btn-archive" onclick="handleArchive()">
-        <i class="ti ti-archive"></i>Archive finished and failed rows
+        <i class="ti ti-archive"></i>Archive finished rows
       </button>
       <button class="btn btn-sm" id="btn-report" onclick="handleSendReport()">
         <i class="ti ti-mail"></i>Email me the error summary
@@ -999,6 +1066,29 @@ textarea { line-height: 1.55; }
       </button>
     </div>
     <div class="status-line" id="diag-status" role="status" aria-live="polite"></div>
+    <div class="sec-divider"></div>
+
+    <!-- ④b ADVISOR PANEL REVIEW (UX audit 2026-10-22: the review ID and
+         document link lived only in one status line, and checking who had
+         answered was a spreadsheet-menu item this standalone deploy
+         doesn't have). Filled by loadCouncilPanel(). -->
+    <div class="sec-lbl has-tip">
+      Advisor panel review
+      <span class="tip-icon" title="Your latest panel review: its ID, its document, and which advisors have answered. Look up any earlier review by its ID. Called a Seven Bridges council review in the sheets.">?</span>
+    </div>
+    <div id="council-panel" role="status" aria-live="polite">
+      <div class="empty" style="padding:8px 0">
+        <i class="ti ti-brain" style="font-size:18px;opacity:.4"></i>Loading…
+      </div>
+    </div>
+    <label class="field-lbl" for="council-lookup" style="margin-top:12px">Look up a review by its ID</label>
+    <div class="lookup-row" style="margin-top:4px">
+      <input type="text" id="council-lookup" placeholder="SB_ followed by digits" autocomplete="off" spellcheck="false"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();lookupCouncil();}">
+      <button class="btn btn-sm" id="btn-council-lookup" onclick="lookupCouncil()">
+        <i class="ti ti-search"></i>Look up
+      </button>
+    </div>
     <div class="sec-divider"></div>
 
     <!-- ⑤ INTEGRATION ────────────────────────────────────── -->
@@ -1070,9 +1160,11 @@ textarea { line-height: 1.55; }
   </button>
   <button class="nav-btn" id="nav-queue" role="tab" aria-selected="false" aria-controls="tab-queue" tabindex="-1" onclick="switchTab('queue')">
     <i class="ti ti-list-check"></i>Queue
+    <span class="nav-badge" id="badge-queue" hidden></span>
   </button>
   <button class="nav-btn" id="nav-diag" role="tab" aria-selected="false" aria-controls="tab-diag" tabindex="-1" onclick="switchTab('diag')">
     <i class="ti ti-activity"></i>System
+    <span class="nav-badge" id="badge-diag" hidden></span>
   </button>
 </nav>
 
@@ -1165,21 +1257,29 @@ let queueRefreshTimer = null;
 let _queueStallTracker = { pending: null, since: null };
 const QUEUE_STALL_MS = 15 * 60 * 1000;
 
-// ── Ingest draft persistence (survives refresh/accidental close) ───────────
-// The in-memory draftSession/draftResearch vars above only ever survived a
-// tab switch — a paste this size (up to 150k chars) is real effort to lose
-// to a reload or a fat-fingered nav-back.
+// ── Ingest draft ────────────────────────────────────────────────────────────
+// Until 2026-10-22 this survived a reload, in browser storage. It is page memory
+// now (nothing is stored in the browser), so a reload loses an unsent paste.
 const INGEST_DRAFT_KEY = 'kos_ingest_draft';
 function _safeLS(fn) { try { return fn(); } catch (e) { return null; } }
+// Drafts live in this page's memory, not browser storage (the operator,
+// 2026-10-22: nothing is stored in the browser). They survive a tab switch
+// or a closed form, not a reload.
+const _pageMemory = {};
+const pageStore = {
+  getItem: (k) => (Object.prototype.hasOwnProperty.call(_pageMemory, k) ? _pageMemory[k] : null),
+  setItem: (k, v) => { _pageMemory[k] = String(v); },
+  removeItem: (k) => { delete _pageMemory[k]; },
+};
 function persistIngestDraft() {
   if (!draftSession && !draftResearch && !draftResearchTitle &&
       !draftCogCouncil && !draftCogName && !draftCogSummary) { clearIngestDraft(); return; }
-  _safeLS(() => localStorage.setItem(INGEST_DRAFT_KEY, JSON.stringify(
+  _safeLS(() => pageStore.setItem(INGEST_DRAFT_KEY, JSON.stringify(
     { session: draftSession, research: draftResearch, researchTitle: draftResearchTitle,
       cogCouncil: draftCogCouncil, cogName: draftCogName, cogSummary: draftCogSummary })));
 }
 function restoreIngestDraft() {
-  const raw = _safeLS(() => localStorage.getItem(INGEST_DRAFT_KEY));
+  const raw = _safeLS(() => pageStore.getItem(INGEST_DRAFT_KEY));
   if (!raw) return;
   const d = _safeLS(() => JSON.parse(raw));
   if (!d) return;
@@ -1202,7 +1302,7 @@ function restoreIngestDraft() {
   if (cn && draftCogName)    cn.value = draftCogName;
   if (cs && draftCogSummary) cs.value = draftCogSummary;
 }
-function clearIngestDraft() { _safeLS(() => localStorage.removeItem(INGEST_DRAFT_KEY)); }
+function clearIngestDraft() { _safeLS(() => pageStore.removeItem(INGEST_DRAFT_KEY)); }
 
 let _ingestDraftSaveTimer = null;
 function _flushIngestDraftSave() {
@@ -1604,6 +1704,7 @@ function handleCogVerdictSubmit_(btn, label, icon) {
       document.getElementById('cogverdict-summary').value = '';
       draftCogName = ''; draftCogSummary = '';
       persistIngestDraft();
+      loadCouncilPanel(); // "waiting on N advisors" in the Needs you strip
     } else {
       showIngestToast((res && res.message) || 'Something went wrong. Try again.', false);
     }
@@ -1791,6 +1892,13 @@ function renderQueue(res) {
   const unknownCnt = document.getElementById('cnt-unknown');
   if (unknownCnt) unknownCnt.textContent = unknown;
 
+  needsState.review  = inReview;
+  needsState.failed  = failed;
+  needsState.unknown = unknown;
+  renderNeedsYou();
+  if (failed > 0) loadFailedRows();
+  else { const fw = document.getElementById('failed-wrap'); if (fw) fw.style.display = 'none'; }
+
   const list = document.getElementById('curator-list');
   const rows = res.needs_curator || [];
 
@@ -1853,6 +1961,348 @@ function _fmtSyncTime(d) {
 }
 
 
+// ── "Needs you" strip and tab badges (UX audit 2026-10-22) ────────
+// The operator's open items were spread over three tabs, and the app
+// opened on Add. Each source fills its part of needsState as it loads
+// (renderQueue(), loadShadowMatrix() and the boot ping, loadCouncilPanel());
+// null means "not loaded yet", which shows nothing rather than a guess.
+const needsState = { review: null, failed: null, unknown: null, notPersonalized: null, council: null };
+// An unfinished review stops nagging after this long; a new review replaces it anyway.
+const COUNCIL_NAG_DAYS = 14;
+
+function _plural_(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+
+function _needsItems_() {
+  const s = needsState;
+  const items = [];
+  if (s.review > 0) items.push({ tab: 'queue', anchor: 'curator-list', cls: 'ni-danger', icon: 'ti-alert-circle',
+    text: _plural_(s.review, 'item needs', 'items need') + ' your help' });
+  if (s.failed > 0) items.push({ tab: 'queue', anchor: 'failed-wrap', cls: 'ni-danger', icon: 'ti-circle-x',
+    text: _plural_(s.failed, 'failed item', 'failed items') + ' to check or retry' });
+  if (s.unknown > 0) items.push({ tab: 'queue', anchor: 'metric-unknown', cls: 'ni-warn', icon: 'ti-help-triangle',
+    text: _plural_(s.unknown, 'item has', 'items have') + ' a status the system doesn\'t know' });
+  if (s.notPersonalized) items.push({ tab: 'diag', anchor: 'btn-arm', cls: 'ni-warn', icon: 'ti-bolt',
+    text: 'Personalize your advisor; new sessions wait until you do' });
+  const c = s.council;
+  if (c && c.success && !c.none) {
+    const started = c.startedAt ? new Date(c.startedAt).getTime() : NaN;
+    const fresh = isNaN(started) || (Date.now() - started) < COUNCIL_NAG_DAYS * 86400000;
+    if (c.halted) items.push({ tab: 'diag', anchor: 'council-panel', cls: 'ni-danger', icon: 'ti-hand-stop',
+      text: 'Panel review ' + c.councilId + ' is halted: ' + _plural_(c.nonApprovedCount, 'advisor', 'advisors') + ' flagged a concern or vetoed' });
+    else if (!c.complete && fresh) items.push({ tab: 'diag', anchor: 'council-panel', cls: 'ni-warn', icon: 'ti-users',
+      text: 'Panel review ' + c.councilId + ': waiting on ' + c.pending.length + ' of ' + c.expected + ' advisors' });
+  }
+  return items;
+}
+
+function renderNeedsYou() {
+  const items = _needsItems_();
+  const strip = document.getElementById('needs-you');
+  const list  = document.getElementById('needs-you-list');
+  if (strip && list) {
+    strip.style.display = items.length ? '' : 'none';
+    list.innerHTML = items.map((it, i) =>
+      '<li><button type="button" class="needs-item ' + it.cls + '" onclick="goToNeed(' + i + ')">' +
+      '<i class="ti ' + it.icon + '" aria-hidden="true"></i><span class="ni-text">' + esc(it.text) + '</span>' +
+      '<i class="ti ti-chevron-right ni-go" aria-hidden="true"></i></button></li>').join('');
+  }
+  const count = (tab) => items.filter(it => it.tab === tab).length;
+  _setNavBadge_('badge-queue', 'nav-queue', count('queue'));
+  _setNavBadge_('badge-diag',  'nav-diag',  count('diag'));
+}
+
+function _setNavBadge_(badgeId, navId, n) {
+  const b = document.getElementById(badgeId);
+  if (!b) return;
+  b.hidden = n === 0;
+  b.textContent = n > 0 ? String(n) : '';
+  const nav = document.getElementById(navId);
+  if (nav) {
+    const name = navId === 'nav-queue' ? 'Queue' : 'System';
+    nav.setAttribute('aria-label', n > 0 ? name + ', ' + _plural_(n, 'thing needs', 'things need') + ' you' : name);
+  }
+}
+
+function goToNeed(i) {
+  const it = _needsItems_()[i];
+  if (!it) return;
+  switchTab(it.tab);
+  setTimeout(() => {
+    const el = document.getElementById(it.anchor);
+    if (el && el.offsetParent !== null) el.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, 150);
+}
+
+
+// ── Failed items (Queue tab) ────────────────────────────────────
+// Plain names for the failed statuses (TERMINAL_FAILED_STATUSES on the
+// server), in the order the list groups them. `retry` says whether the
+// server has a retry path for that status (requeueStagingRows' RQ_STATUSES).
+const FAILED_STATUS_TEXT = {
+  STUDIO_TIMEOUT:   { label: 'Timed out', retry: true,
+    sub: 'Google\'s AI flow took these but never finished them.' },
+  AUDIT_REJECTED:   { label: 'Failed the quality check', retry: true,
+    sub: 'The AI\'s answer didn\'t pass the check on its work.' },
+  FAILED_PARSE:     { label: 'Answer couldn\'t be read', retry: false,
+    sub: 'The AI\'s answer wasn\'t in a form the system could read.' },
+  PHASE_2_ERROR:    { label: 'Failed in a later step', retry: false,
+    sub: 'The answer was read, but saving what it learned failed.' },
+  INTAKE_ERROR:     { label: 'Couldn\'t be added', retry: false,
+    sub: 'Something went wrong while the item was being added.' },
+  MISSING_FILE_ID:  { label: 'Doc missing', retry: false,
+    sub: 'The queue row has no doc to read.' },
+  PROCESSING_ERROR: { label: 'Error while processing', retry: false,
+    sub: 'An error stopped the item part way.' },
+};
+const NO_RETRY_NOTE = 'These can\'t be retried from here. Open the doc to see what it holds; you can add the session again from the Add tab.';
+
+let _failedRows = [];
+let _lastFailedRes = null;  // the last getFailedQueueRows() answer, re-rendered around a preview
+let _retryPreview = null;   // { uid, res } while a preview is open
+let _failedLoadSeq = 0;
+
+function loadFailedRows() {
+  const seq = ++_failedLoadSeq;
+  callServer('getFailedQueueRows', [], (res) => {
+    if (seq !== _failedLoadSeq) return; // a newer load is on its way
+    if (res && res.success) _lastFailedRes = res;
+    renderFailedRows(res);
+  }, (err) => {
+    if (seq !== _failedLoadSeq) return;
+    const wrap = document.getElementById('failed-wrap');
+    if (wrap) wrap.style.display = '';
+    _diagPanelError('failed-list', 'Couldn\'t load the failed items.', 'loadFailedRows', 'ti-alert-triangle');
+  });
+}
+
+function renderFailedRows(res) {
+  const wrap = document.getElementById('failed-wrap');
+  const list = document.getElementById('failed-list');
+  if (!wrap || !list) return;
+  if (!res || !res.success) {
+    wrap.style.display = '';
+    _diagPanelError('failed-list', (res && res.message) || 'Couldn\'t load the failed items.', 'loadFailedRows', 'ti-alert-triangle');
+    return;
+  }
+  _failedRows = res.rows || [];
+  wrap.style.display = res.total > 0 ? '' : 'none';
+  if (_retryPreview && !_failedRows.some(r => r.uid === _retryPreview.uid)) _retryPreview = null;
+
+  const order = Object.keys(FAILED_STATUS_TEXT);
+  const groups = {};
+  _failedRows.forEach((r, i) => { (groups[r.status] = groups[r.status] || []).push(i); });
+  const statuses = Object.keys(groups).sort((a, b) => order.indexOf(a) - order.indexOf(b));
+
+  list.innerHTML = statuses.map(st => {
+    const meta = FAILED_STATUS_TEXT[st] || { label: st, retry: false, sub: '' };
+    const n = (res.byStatus && res.byStatus[st]) || groups[st].length;
+    return '<div>' +
+      '<div class="fail-group-lbl">' + esc(meta.label) + ' (' + n + ')</div>' +
+      '<div class="fail-group-sub">' + esc(meta.sub) + (meta.retry ? '' : ' ' + esc(NO_RETRY_NOTE)) + '</div>' +
+      '<div class="queue-list">' + groups[st].map(_failedRowHtml_).join('') + '</div>' +
+      '</div>';
+  }).join('') +
+  (res.total > _failedRows.length
+    ? '<div class="empty" style="padding:8px 0">Showing the first ' + _failedRows.length + ' of ' + res.total + '. The rest are in the queue sheet.</div>'
+    : '');
+}
+
+function _failedRowHtml_(i) {
+  const r = _failedRows[i];
+  const docLink = r.url && /^https:\/\//.test(r.url)
+    ? '<a href="' + esc(safeUrl_(r.url)) + '" target="_blank" class="ext-link"><i class="ti ti-external-link"></i>Open doc</a>'
+    : '<span class="badge badge-gray">No doc link</span>';
+  const added = r.addedAt && !isNaN(new Date(r.addedAt).getTime()) ? 'Added ' + _fmtSyncTime(r.addedAt) : '';
+  const detail = r.detail ? '<div class="q-action" style="border-left-color:var(--danger)">' + esc(r.detail.length > 160 ? r.detail.slice(0, 160) + '…' : r.detail) + '</div>' : '';
+  let actions = '';
+  const open = _retryPreview && _retryPreview.uid === r.uid ? _retryPreview.res : null;
+  if (open) {
+    actions = '<div class="q-action">' + esc(open.message) + '</div>' +
+      '<div class="q-btns">' +
+      (open.canRetry
+        ? '<button type="button" class="btn btn-sm btn-primary" id="retry-go-' + i + '" onclick="confirmRetry(' + i + ')"><i class="ti ti-refresh"></i>Retry now</button>'
+        : '') +
+      '<button type="button" class="btn btn-sm btn-outline" onclick="cancelRetry()">' + (open.canRetry ? 'Cancel' : 'Close') + '</button>' +
+      '</div>';
+  } else if (r.canRetry) {
+    actions = '<div class="q-btns"><button type="button" class="btn btn-sm" id="retry-btn-' + i + '" onclick="previewRetry(' + i + ')"><i class="ti ti-refresh"></i>Retry…</button></div>';
+  }
+  return '<div class="queue-item">' +
+    '<div class="q-uid">' + esc(r.uid || '(no ID)') + '</div>' +
+    '<div class="q-meta"><span class="badge badge-danger">' + r.retries + ' retr' + (r.retries === 1 ? 'y' : 'ies') + '</span>' + docLink + '</div>' +
+    (added ? '<div style="font-size:12px;color:var(--text3);margin-top:4px">' + esc(added) + '</div>' : '') +
+    detail + actions + '</div>';
+}
+
+function previewRetry(i) {
+  const r = _failedRows[i];
+  if (!r) return;
+  const btn = document.getElementById('retry-btn-' + i);
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i>Checking…'; }
+  announceStatus('failed-status', '', false);
+  callServer('previewRetryFailedRow', [r.uid], (res) => {
+    if (!res || res.success === false) {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh"></i>Retry…'; }
+      announceStatus('failed-status', 'Couldn\'t check this item: ' + ((res && res.message) || 'no answer from the server.'), true);
+      return;
+    }
+    _retryPreview = { uid: r.uid, res: res };
+    if (_lastFailedRes) renderFailedRows(_lastFailedRes);
+    const go = document.getElementById('retry-go-' + i);
+    if (go) go.focus();
+  }, (err) => {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="ti ti-refresh"></i>Retry…'; }
+    announceStatus('failed-status', 'Couldn\'t check this item: ' + err.message, true);
+  });
+}
+
+function confirmRetry(i) {
+  const r = _failedRows[i];
+  if (!r) return;
+  const go = document.getElementById('retry-go-' + i);
+  if (go) { go.disabled = true; go.innerHTML = '<i class="ti ti-loader-2"></i>Retrying…'; }
+  callServer('retryFailedRow', [r.uid], (res) => {
+    _retryPreview = null;
+    const ok = res && res.success !== false && res.applied;
+    announceStatus('failed-status', (ok ? r.uid + ': ' : '') + ((res && res.message) || 'No answer from the server.'), !(res && res.success !== false));
+    loadQueueStatus();
+  }, (err) => {
+    _retryPreview = null;
+    announceStatus('failed-status', 'The retry didn\'t go through: ' + err.message, true);
+    loadQueueStatus();
+  });
+}
+
+function cancelRetry() {
+  _retryPreview = null;
+  if (_lastFailedRes) renderFailedRows(_lastFailedRes);
+}
+
+
+// ── Advisor panel review (System tab) ───────────────────────────
+// The review ID and the document link used to live only in one status
+// line, and "who has answered" was a spreadsheet-menu item. This panel
+// reads getCouncilReviewForWebApp(): the latest review by default, or the
+// one looked up by ID.
+let _councilShownId = '';
+let _councilSeq = 0;
+const VERDICT_WORDS = { APPROVED: 'approved', FLAG: 'flagged a concern', VETO: 'vetoed' };
+
+function plainAdvisor(name) {
+  const n = String(name || '').replace(/^PERSONA[_\s-]*/i, '').replace(/_/g, ' ').toLowerCase();
+  return n.charAt(0).toUpperCase() + n.slice(1);
+}
+
+function loadCouncilPanel(id) {
+  if (id !== undefined) _councilShownId = String(id || '').trim();
+  const seq = ++_councilSeq;
+  callServer('getCouncilReviewForWebApp', [_councilShownId], (res) => {
+    if (seq !== _councilSeq) return;
+    if (res && res.success && (res.none || res.isLatest)) { needsState.council = res; renderNeedsYou(); }
+    renderCouncilPanel(res);
+  }, (err) => {
+    if (seq !== _councilSeq) return;
+    _diagPanelError('council-panel', 'Couldn\'t load the review: ' + err.message, 'loadCouncilPanel', 'ti-alert-triangle');
+  });
+}
+
+function lookupCouncil() {
+  const input = document.getElementById('council-lookup');
+  const id = input ? input.value.trim() : '';
+  const el = document.getElementById('council-panel');
+  if (el) el.innerHTML = '<div class="empty" style="padding:8px 0"><i class="ti ti-loader-2" style="font-size:18px;opacity:.4"></i>Looking it up…</div>';
+  loadCouncilPanel(id);
+}
+
+function renderCouncilPanel(res) {
+  const el = document.getElementById('council-panel');
+  if (!el) return;
+  if (!res || !res.success) {
+    _diagPanelError('council-panel', (res && res.message) || 'Couldn\'t load the review.', 'loadCouncilPanel', 'ti-alert-triangle');
+    return;
+  }
+  if (res.none || !res.councilId) {
+    el.innerHTML = '<div class="empty" style="padding:8px 0;text-align:left">No panel review started from this app yet. ' +
+      'Tap “Start an advisor panel review” above to start one.</div>';
+    return;
+  }
+  const input = document.getElementById('council-lookup');
+  if (input && !input.value) input.value = res.councilId;
+
+  const id = res.councilId;
+  const answered = (res.received || []).length;
+  const lines = [];
+  lines.push('<div><span class="council-id">' + esc(id) + '</span>' +
+    (res.isLatest ? ' <span class="badge badge-gray">latest</span>' : '') + '</div>');
+  if (res.startedAt && !isNaN(new Date(res.startedAt).getTime())) {
+    lines.push('<div style="font-size:12px;color:var(--text3)">Started ' + esc(_fmtSyncTime(res.startedAt)) + '</div>');
+  }
+  lines.push('<div class="q-btns">' +
+    '<button type="button" class="btn btn-sm" onclick="copyCouncilId()"><i class="ti ti-copy"></i>Copy ID</button>' +
+    (res.docUrl ? '<a class="btn btn-sm" style="width:auto;text-decoration:none" target="_blank" href="' + esc(safeUrl_(res.docUrl)) + '"><i class="ti ti-external-link"></i>Open the review document</a>' : '') +
+    '<button type="button" class="btn btn-sm" onclick="goToVerdict()"><i class="ti ti-pencil"></i>Record a verdict</button>' +
+    '<span id="council-copy-confirm" role="status" aria-live="polite" style="display:none;font-size:12px;align-self:center"></span>' +
+    '</div>');
+  if (!res.docUrl) {
+    lines.push('<div style="font-size:12px;color:var(--text3);margin-top:6px">The review document wasn\'t found; look in the 03.4_RAW_EXHAUST folder in Drive.</div>');
+  }
+
+  lines.push('<div style="margin-top:8px;color:var(--text)">' + (res.complete
+    ? 'All ' + res.expected + ' advisors have answered.'
+    : answered + ' of ' + res.expected + ' advisors have answered.') + '</div>');
+  if (res.halted) {
+    lines.push('<div style="color:var(--danger);margin-top:4px">Halted: ' + _plural_(res.nonApprovedCount, 'answer flags', 'answers flag') +
+      ' a concern or veto' + (res.haltThreshold ? ' (the limit is ' + res.haltThreshold + ')' : '') + '. Resolve them before going ahead.</div>');
+  }
+  if (answered) {
+    lines.push('<ul class="council-list">' + res.received.map(v =>
+      '<li>' + esc(plainAdvisor(v.cog)) + ': ' + esc(VERDICT_WORDS[v.status] || v.status) +
+      (v.count > 1 ? ' <span style="color:var(--warn)">(recorded ' + v.count + ' times; each counts)</span>' : '') + '</li>').join('') + '</ul>');
+  }
+  if (res.pending && res.pending.length) {
+    lines.push('<div style="margin-top:6px;color:var(--text2)">Still waiting on: ' + res.pending.map(p => esc(plainAdvisor(p))).join(', ') + '</div>');
+  }
+  if (res.unrecognized && res.unrecognized.length) {
+    lines.push('<div style="margin-top:6px;color:var(--warn)">Recorded under a name that isn\'t one of your advisors (a typo?), and still counted: ' +
+      res.unrecognized.map(v => '“' + esc(v.cog) + '” (' + esc(VERDICT_WORDS[v.status] || v.status) + ')').join(', ') + '</div>');
+  }
+  el.innerHTML = '<div class="council-card">' + lines.join('') + '</div>';
+  el.dataset.councilId = id;
+}
+
+function copyCouncilId() {
+  const el = document.getElementById('council-panel');
+  const id = el && el.dataset.councilId;
+  if (!id) return;
+  const showConfirm = (label, ok) => {
+    const c = document.getElementById('council-copy-confirm');
+    if (!c) return;
+    c.textContent = label;
+    c.style.color = ok ? 'var(--success)' : 'var(--danger)';
+    c.style.display = 'inline';
+    setTimeout(() => { c.style.display = 'none'; }, 2200);
+  };
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(id).then(() => showConfirm('✓ Copied', true), () => _fallbackCopy(id, showConfirm));
+  } else {
+    _fallbackCopy(id, showConfirm);
+  }
+}
+
+// Opens Add → Advisor verdict with this review's ID filled in.
+function goToVerdict() {
+  const el = document.getElementById('council-panel');
+  const id = el && el.dataset.councilId;
+  if (id) { draftCogCouncil = id; scheduleIngestDraftSave(); }
+  switchTab('ingest');
+  switchType('cogverdict');
+  const cc = document.getElementById('cogverdict-council');
+  if (cc && id) cc.value = id;
+  const cog = document.getElementById('cogverdict-cog');
+  if (cog) cog.focus();
+}
+
+
 // ── Diagnostics ─────────────────────────────────────────────────
 function loadDiagnostics() {
   loadShadowMatrix();
@@ -1860,6 +2310,7 @@ function loadDiagnostics() {
   loadRegistrarStatus();
   loadVectorState();
   loadWebhookUrl();
+  loadCouncilPanel();
 }
 
 // A failed Diagnostics panel used to be a dead end: the only thing that
@@ -1924,6 +2375,8 @@ function loadShadowMatrix() {
     // onboarding can vanish while the engine is still cold.
     const armBtn = document.getElementById('btn-arm');
     if (armBtn) armBtn.style.display = res.engine_armed ? 'none' : '';
+    needsState.notPersonalized = !res.engine_armed;
+    renderNeedsYou();
   }, (err) => {
     _diagPanelError('shadow-matrix-list', 'Couldn\'t load — ' + err.message, 'loadShadowMatrix', 'ti-alert-triangle');
   });
@@ -2009,11 +2462,11 @@ let armAnswers = {};
 // on every dismissal path — backdrop click and Escape both routed there —
 // with zero confirmation and zero recovery: a single misclick outside this
 // 4-step onboarding wizard silently wiped everything typed. Mirrors the
-// INGEST_DRAFT_KEY pattern above (persist to localStorage via the same
+// INGEST_DRAFT_KEY pattern above (kept in page memory via the same
 // _safeLS() guard, restore on next open, clear only on a true
 // submit-success), with one deliberate difference: passphrase and
 // passphraseConfirm are never included in the persisted draft. Those are
-// secrets — they have no business sitting in localStorage even briefly.
+// secrets — they have no business sitting in a draft even briefly.
 // A resumed draft just needs the passphrase re-typed, same as any
 // password field left empty on a closed form.
 const ARM_DRAFT_KEY = 'kos_arm_draft';
@@ -2021,10 +2474,10 @@ function persistArmDraft() {
   const { passphrase, passphraseConfirm, ...safeAnswers } = armAnswers;
   const hasContent = armStep > 0 || Object.values(safeAnswers).some(v => v);
   if (!hasContent) { clearArmDraft(); return; }
-  _safeLS(() => localStorage.setItem(ARM_DRAFT_KEY, JSON.stringify({ armStep, armAnswers: safeAnswers })));
+  _safeLS(() => pageStore.setItem(ARM_DRAFT_KEY, JSON.stringify({ armStep, armAnswers: safeAnswers })));
 }
 function restoreArmDraft() {
-  const raw = _safeLS(() => localStorage.getItem(ARM_DRAFT_KEY));
+  const raw = _safeLS(() => pageStore.getItem(ARM_DRAFT_KEY));
   if (!raw) return false;
   const d = _safeLS(() => JSON.parse(raw));
   if (!d) return false;
@@ -2032,7 +2485,7 @@ function restoreArmDraft() {
   armStep = Number.isInteger(d.armStep) ? Math.min(Math.max(d.armStep, 0), ARM_STEPS.length - 1) : 0;
   return true;
 }
-function clearArmDraft() { _safeLS(() => localStorage.removeItem(ARM_DRAFT_KEY)); }
+function clearArmDraft() { _safeLS(() => pageStore.removeItem(ARM_DRAFT_KEY)); }
 // Only called after a genuine successful save (submitArmEngine) — every
 // dismissal path (closeArmModal) deliberately leaves the draft in place.
 function _armResetState() {
@@ -2598,15 +3051,75 @@ function handleSendReport() {
   });
 }
 
+// FIXED (UX audit 2026-10-22, fix-first 14): one tap used to archive
+// finished AND failed rows, and archived rows are beyond any retry. Now the
+// server archives finished rows only, and the first tap asks
+// previewStagingArchive() for the count, then arms the same 5-second
+// tap-again confirm as the review and repair buttons, saying how many rows
+// will move and how many failed rows stay.
+let _archivePreview = null;
+const ARCHIVE_LABEL = 'Archive finished rows';
+
+function _rowsWord_(n) { return n + ' row' + (n === 1 ? '' : 's'); }
+
+function _archiveConfirmOpts_() {
+  const p = _archivePreview || { finished: 0, failedKept: 0 };
+  return {
+    armedClass: 'btn btn-sm btn-confirm btn-countdown',
+    armedIcon:  '<i class="ti ti-alert-triangle"></i>',
+    armedLabel: (n) => 'Tap again to archive ' + _rowsWord_(p.finished) + ' · ' + n + 's',
+    onArm: () => showDiagStatus(
+      'This moves ' + _rowsWord_(p.finished) + ' that finished to the archive sheet.' +
+      (p.failedKept > 0 ? ' ' + p.failedKept + ' failed ' + (p.failedKept === 1 ? 'item stays' : 'items stay') +
+        ' in the queue so you can retry ' + (p.failedKept === 1 ? 'it' : 'them') + '.' : '') +
+      ' Tap the button again within 5 seconds to confirm.', 'warn', beginDiagAction()),
+    onExpire: () => {
+      resetBtn('btn-archive', 'ti-archive', ARCHIVE_LABEL);
+      showDiagStatus('', undefined, beginDiagAction());
+    },
+    onConfirm: _runArchive_,
+  };
+}
+
 function handleArchive() {
+  const st = _confirmTapState['btn-archive'];
+  if (st && st.armed) { _confirmTap_('btn-archive', _archiveConfirmOpts_()); return; }
+
   const btn = document.getElementById('btn-archive');
   const gen = beginDiagAction();
   btn.disabled = true;
+  btn.innerHTML = '<i class="ti ti-loader-2"></i>Counting…';
+  callServer('previewStagingArchive', [], (res) => {
+    btn.disabled = false;
+    if (!res || res.success === false) {
+      resetBtn('btn-archive', 'ti-archive', ARCHIVE_LABEL);
+      showDiagStatus('Error: ' + ((res && res.message) || 'Couldn\'t count the rows.'), 'danger', gen);
+      return;
+    }
+    if (!res.finished) {
+      resetBtn('btn-archive', 'ti-archive', ARCHIVE_LABEL);
+      showDiagStatus('Nothing to archive: no finished rows in the queue.', undefined, gen);
+      return;
+    }
+    _archivePreview = res;
+    _confirmTap_('btn-archive', _archiveConfirmOpts_());
+  }, (err) => {
+    btn.disabled = false;
+    resetBtn('btn-archive', 'ti-archive', ARCHIVE_LABEL);
+    showDiagStatus('Error: ' + err.message, 'danger', gen);
+  });
+}
+
+function _runArchive_() {
+  const btn = document.getElementById('btn-archive');
+  const gen = beginDiagAction();
+  btn.disabled = true;
+  btn.className = 'btn btn-sm';
   showDiagStatus('Archiving…', undefined, gen);
   btn.innerHTML = '<i class="ti ti-loader-2"></i>Archiving…';
   callServer('archiveStagingPipeline', [], (res) => {
     btn.disabled = false;
-    resetBtn('btn-archive', 'ti-archive', 'Archive completed queue rows');
+    resetBtn('btn-archive', 'ti-archive', ARCHIVE_LABEL);
     // A genuine exception (res.success === false) used to return the exact
     // same {archived:0,...} shape as a routine "nothing to archive" run,
     // so a real backend failure rendered identically to a benign no-op.
@@ -2618,27 +3131,14 @@ function handleArchive() {
       showDiagStatus(res.message, undefined, gen);
       return;
     }
-    // archiveStagingPipeline() also sweeps up rows that failed intake and
-    // were never shown anywhere else in the Queue UI — this button's label
-    // ("Archive completed queue rows") used to imply it only touched
-    // finished/successful work, so a failure count is called out
-    // explicitly instead of folding silently into one total.
-    const archived  = (res && res.archived)  || 0;
-    const failed    = (res && res.failed)    || 0;
-    const rowWord = archived + ' row' + (archived === 1 ? '' : 's');
-    // FIXED: the outer rowWord was pluralized in an earlier round, but this
-    // nested clause wasn't — failed === 1 rendered "1 were failed-intake
-    // rows, not successes."
-    const failedClause = failed === 1
-      ? '1 was a failed-intake row, not a success'
-      : failed + ' were failed-intake rows, not successes';
-    const msg = failed > 0
-      ? rowWord + ' archived (' + failedClause + ').'
-      : rowWord + ' archived to STAGING_ARCHIVE.';
-    showDiagStatus(msg, failed > 0 ? 'warn' : undefined, gen);
+    const archived = (res && res.archived) || 0;
+    const kept     = (res && res.failedKept) || 0;
+    showDiagStatus(_rowsWord_(archived) + ' archived.' +
+      (kept > 0 ? ' ' + kept + ' failed ' + (kept === 1 ? 'item is' : 'items are') + ' still in the queue; see Queue → Failed items.' : ''),
+      undefined, gen);
   }, (err) => {
     btn.disabled = false;
-    resetBtn('btn-archive', 'ti-archive', 'Archive completed queue rows');
+    resetBtn('btn-archive', 'ti-archive', ARCHIVE_LABEL);
     showDiagStatus('Error: ' + err.message, 'danger', gen);
   });
 }
@@ -2814,6 +3314,12 @@ function handleCouncil() {
           );
           const cc = document.getElementById('cogverdict-council');
           if (cc && res.councilId) { cc.value = res.councilId; draftCogCouncil = res.councilId; scheduleIngestDraftSave(); }
+          // The status line above is replaced by the next action; the
+          // review panel below keeps the ID, the document link and who
+          // has answered.
+          const lookup = document.getElementById('council-lookup');
+          if (lookup) lookup.value = '';
+          loadCouncilPanel('');
         } else {
           showDiagStatus((res && res.message) || 'The review couldn\'t be started.', 'danger', gen);
         }
@@ -2957,6 +3463,10 @@ const GLOSSARY = [
   ['Reference', 'An article, notes or data you want KOS to keep as background.', 'Research / context'],
   ['Queue', 'Everything you have added, waiting to be read by the AI or already done.', 'STAGING_PIPELINE'],
   ['Google\'s AI flow', 'The Google Workspace Studio flow that actually reads each item. Without it, items wait.', 'Studio flow'],
+  ['Failed item', 'An item that stopped and won\'t be tried again on its own. Ones that timed out or failed the quality check can be retried from the Queue tab.', 'Terminal status: STUDIO_TIMEOUT, AUDIT_REJECTED, FAILED_PARSE and others'],
+  ['Retry', 'Puts a failed item back in the queue with its retries reset to 0. It shows what it will change before it does anything.', 'Requeue'],
+  ['Quality check', 'A second AI pass that checks the first AI\'s answer before it is saved.', 'Audit gate, AUDIT_LOG'],
+  ['Archive sheet', 'Where finished queue rows move to keep the queue short. Failed items stay in the queue so they can be retried.', 'STAGING_ARCHIVE'],
   ['Hand-off check', 'A timer that, every 5 minutes, passes the next queued item to Google\'s AI flow.', 'Turnstile'],
   ['Folder check', 'A timer that picks up Google Docs you drop in the 03.5_INBOUND_SESSIONS folder.', 'Sensor 1'],
   ['Link for other tools', 'A web address another program can post items to (a webhook). It needs your secret.', 'Sensor 2 webhook'],
@@ -3275,9 +3785,20 @@ function closeTip() {
         const lbl = document.getElementById('engine-label');
         if (dot) dot.className = 'dot ' + (modeColors[res.engine_mode] || 'dot-unk');
         if (lbl) lbl.textContent = friendlyEngineMode(res.engine_mode);
+        needsState.notPersonalized = !res.engine_armed;
+        renderNeedsYou();
       }, (err) => {
         console.warn('[Boot] getShadowMatrixStatus failed:', err);
       });
+
+      // The "Needs you" strip and tab badges read the queue and the latest
+      // advisor review at load, so open items show before any tab is opened.
+      callServer('getQueueMetrics', [], (res) => {
+        if (res && res.success) renderQueue(res);
+      }, (err) => {
+        console.warn('[Boot] getQueueMetrics failed:', err);
+      });
+      loadCouncilPanel();
 
       // Pre-fetch inbound folder URL for the large-payload drop panel
       callServer('getInboundFolderUrl', [], (res) => {

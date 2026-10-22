@@ -291,9 +291,19 @@ function enrollCanvasRoster_(opts) {
       "assignments were recorded. Run previewRosterRepair(), then repairRosterDuplicates(), then this again.");
   }
   if (!opts.quiet) {
-    result.skipped.filter(s => s.reason === "INVALID_ACCOUNT")
-      .forEach(s => Logger.log("[S52]   not a student account: SIS Login ID \"" + s.sisLogin + "\""));
-    result.failed.forEach(f => Logger.log("[S52]   FAILED " + f.account + ": " + f.reason));
+    // By section and count only: the operator pastes these logs into
+    // sessions, so no SIS login or student account is printed. The
+    // returned result still carries them for the caller.
+    const bySection = (list) => {
+      const n = {};
+      list.forEach(x => { const k = x.section || "(no section)"; n[k] = (n[k] || 0) + 1; });
+      return Object.keys(n).map(k => k + ": " + n[k]).join(" | ");
+    };
+    const invalid = result.skipped.filter(s => s.reason === "INVALID_ACCOUNT");
+    if (invalid.length) Logger.log("[S52]   not a student account, by section: " + bySection(invalid));
+    const reasons = {};
+    result.failed.forEach(f => { (reasons[f.reason] = reasons[f.reason] || []).push(f); });
+    Object.keys(reasons).forEach(r => Logger.log("[S52]   FAILED " + r + ", by section: " + bySection(reasons[r])));
   }
   if (result.notInCanvas.length) {
     Logger.log("[S52] " + result.notInCanvas.length + " student(s) in the Ledger are not in any export " +

@@ -31,6 +31,8 @@
 //     or 5; the state scale counts 1-3 as satisfactory, 1 the highest),
 //     with the change since yesterday
 // SECTION 2, ADMIN
+//   - Ledger cycle jobs (64) failing now or that failed today, by function
+//     name, with the run-in-a-row and today's counts
 //   - watchdog in DRY RUN; the watchdog run itself failing
 //   - rows the watchdog timed out this run; unknown-status rows (Studio
 //     residue lands here)
@@ -79,6 +81,19 @@ function writeCasSignal_(watchdog, now) {
 
   const students = [];
   const admin = [];
+  // The Ledger cycle's failing jobs (64), first: a job failing every minute
+  // used to show nowhere (2026-10-22, UX audit fix-first 5).
+  try {
+    if (typeof lcFailingJobs_ === "function") {
+      lcFailingJobs_(props, now.getTime()).forEach(function (f) {
+        admin.push("Ledger job " + f.fn + ": " +
+          (f.streak > 0 ? "failing, " + f.streak + " run" + (f.streak === 1 ? "" : "s") + " in a row" : "recovered") +
+          ", " + f.today + " failure" + (f.today === 1 ? "" : "s") + " today (Executions in the Central Ledger's Apps Script project shows the errors)");
+      });
+    }
+  } catch (e) {
+    admin.push("Ledger job failures: unavailable (" + e.message + ")");
+  }
 
   // ── Queue counts (every run) ──
   let queue = null;
