@@ -261,6 +261,9 @@ function lhBootData_() {
     config: lhGetAllConfig_(), // Config.gs
     data: data,
     scr: lhGetScrScores_(), // SCR.gs
+    // This web app's own URL: Organization Sync's share codes carry it, and
+    // it used to be typed in as the "Email Bridge URL" (Phase 5).
+    appUrl: (function () { try { return ScriptApp.getService().getUrl() || ''; } catch (e) { return ''; } })(),
   };
 }
 

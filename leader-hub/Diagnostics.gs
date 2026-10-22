@@ -74,7 +74,11 @@ function lhDiagnosticResponse_(e) {
     const raw = String((e.parameter && e.parameter.parts) || '').trim();
     const parts = /^\d+$/.test(raw) ? parseInt(raw, 10) : null;
     const html = HtmlService.createHtmlOutputFromFile('student-leader-hub').getContent();
-    return HtmlService.createHtmlOutput(lhDiagInstrument_(html, parts))
+    // The app only starts with the server's data in the page (Phase 5's
+    // retired-file guard, src/00), so the probe gets it too.
+    let boot;
+    try { boot = lhBootData_(); } catch (err) { boot = { ok: false, error: String((err && err.message) || err) }; }
+    return HtmlService.createHtmlOutput(lhInjectBootData_(lhDiagInstrument_(html, parts), boot))
       .setTitle('LeaderHub — diagnostic')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }

@@ -16,28 +16,12 @@
       </div>
 
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .85rem;font-size:.78rem;color:var(--ink);line-height:1.6">
-        <strong>Opened this hub from its deployed web app URL?</strong> The Apps Script bridge is already connected — nothing to paste below. This field is only for opening <code>student-leader-hub.html</code> as a local file.
-      </div>
-
-      <div>
-        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.4rem">Apps Script Web App URL (local-file mode only)</label>
-        <input id="bridge-url-input" type="url" placeholder="https://script.google.com/macros/s/..."
-          style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:var(--font-mono, monospace)"
-          oninput="document.getElementById('bridge-url-save').disabled=!this.value.trim()">
-        <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Paste the URL from Apps Script → Deploy → Manage Deployments</div>
+        <strong>Nothing to paste.</strong> LeaderHub runs as this Apps Script web app, so the bridge is the same server and is always connected.
       </div>
 
       <div style="display:flex;gap:.6rem">
-        <button id="bridge-url-save" class="btn btn-primary" disabled
-          onclick="setEmailBridgeUrl(document.getElementById('bridge-url-input').value)">
-          ✅ Save & Connect
-        </button>
         <button class="btn btn-outline" onclick="EMAIL_BRIDGE.poll();closeModal('emailbridge')">
           🔄 Poll Now
-        </button>
-        <button class="btn btn-outline" style="color:#b91c1c;border-color:#b91c1c;margin-left:auto"
-          onclick="_removeEmailBridge()">
-          Remove
         </button>
       </div>
 

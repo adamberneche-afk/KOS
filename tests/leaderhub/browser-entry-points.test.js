@@ -27,7 +27,10 @@ const { findGoogleScriptRunCalls } = require('../../tools/gas-lint/check.js');
 const LH = path.join(__dirname, '..', '..', 'leader-hub');
 const FILES = ['Code.gs', 'EmailBridge.gs', 'Config.gs', 'Data.gs', 'SCR.gs'].map((f) => path.join(LH, f));
 const ENTRY_POINTS = ['lhApiCall', 'lhGetHorizonItems', 'lhGetAllConfig', 'lhSaveConfig',
-  'lhPushData', 'lhPullData', 'lhGetScrScores', 'lhSaveScrScores', 'lhOrgSyncCall'];
+  'lhPushData', 'lhPullData', 'lhSaveScrScores', 'lhOrgSyncCall'];
+// Called by ?diag=1's page (Diagnostics.gs), not the app: since 2026-10-22
+// the app gets its settings with the boot data.
+const DIAG_ONLY = ['lhGetAllConfig'];
 const OWNER = 'owner@ccpsnet.net';
 
 function load(viewer, ownerEmail) {
@@ -49,7 +52,6 @@ test('the owner gets the same results the "_" implementations give', () => {
   const pushed = exported.lhPushData({ domain: 'trips', headers: ['Id', 'RecordJSON'], rows: [['1', '{"id":1}']] });
   assert.equal(pushed.ok, true);
   assert.deepEqual(exported.lhPullData({ domain: 'trips' }).rows, [['1', '{"id":1}']]);
-  assert.deepEqual(exported.lhGetScrScores(), { ok: true, found: false });
   assert.deepEqual(exported.lhSaveScrScores([]), { ok: true, saved: 0 });
 });
 
@@ -86,9 +88,9 @@ test('the built page calls only these entry points, and each one checks the owne
   const rel = 'leader-hub/student-leader-hub.html';
   const html = fs.readFileSync(path.join(LH, 'student-leader-hub.html'), 'utf8');
   const called = [...new Set(findGoogleScriptRunCalls(rel, html).calls.map((c) => c.name))].sort();
-  assert.deepEqual(called, ENTRY_POINTS.slice().sort());
+  assert.deepEqual(called, ENTRY_POINTS.filter((n) => !DIAG_ONLY.includes(n)).sort());
   const code = fs.readFileSync(path.join(LH, 'Code.gs'), 'utf8');
-  called.forEach((name) => {
+  ENTRY_POINTS.forEach((name) => {
     const at = code.indexOf('function ' + name + '(');
     assert.ok(at !== -1, name + ' is declared in Code.gs');
     const body = code.slice(code.indexOf('{', at) + 1).trimStart();
