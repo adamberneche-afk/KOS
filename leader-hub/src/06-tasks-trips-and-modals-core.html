@@ -765,7 +765,7 @@ function lhCloseFormIfClean(id, what, close) {
 }
 function _lhIsShown(el) { return !!el && (el.classList.contains('open') || el.style.display === 'block' || el.style.display === 'flex'); }
 // Trip wizard, when editing a saved trip: a new trip's draft is already
-// autosaved to lh_trip_draft, but an edit is only kept on Save Changes.
+// autosaved to lh_trip_draft (page memory), but an edit is kept on Save Changes.
 let _wzEditBaseline = null;
 function _wzDraftKey(d) {
   return JSON.stringify(Object.keys(d || {}).sort()
@@ -922,8 +922,8 @@ function openTripWizard(tripId) {
 }
 
 function _finishOpenTripWizard(existing) {
-  // wzUpdate() only writes to localStorage for brand-new trips (lh_trip_draft
-  // is specifically the "resume an unfinished new trip" slot — reusing it for
+  // wzUpdate() only saves a draft for brand-new trips (lh_trip_draft, in
+  // page memory since 2026-10-22, is specifically the "resume an unfinished new trip" slot — reusing it for
   // edits would leak a half-finished edit into the next unrelated new-trip
   // draft, the same class of bug already fixed above). The banner used to
   // claim auto-save protection unconditionally, which was simply false while
