@@ -90,6 +90,20 @@ const LH_CONFIG_KEYS = [
   // header comment's note on id-less capped logs) — its entries key off a
   // composite `key` field (date+course), not `id`.
   'lh_unit_notes',
+  // No browser storage, Phase 2 (2026-10-22,
+  // meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md): the small state that
+  // was local-only. Reminder "shown today" / "done today" dates, the
+  // journal's last entry and cron state, the id counters, Organization Sync
+  // bookkeeping, snoozed cards and the notifications preference.
+  'lh_brag_done_date', 'lh_brag_journal_includes', 'lh_brag_prompt_date',
+  'lh_comms_done_date', 'lh_comms_triage_date', 'lh_cron_pending',
+  'lh_cron_result', 'lh_deca_tomorrow_date', 'lh_deposit_done_date',
+  'lh_deposit_reminder_date', 'lh_esports_match_banner_date', 'lh_first_use_date',
+  'lh_journal_autoprompt_date', 'lh_journal_avoided', 'lh_journal_last',
+  'lh_last_backup', 'lh_next_id', 'lh_next_slip_id',
+  'lh_notify_enabled', 'lh_org_sync', 'lh_org_welcome_seen',
+  'lh_plc_banner_date', 'lh_snoozed', 'lh_student_id_map_updated',
+  'lh_workday_done_date', 'lh_workday_reminder_date',
 ];
 
 // Namespaced so these can never collide with OWNER_EMAIL, AI_QUEUE_SHEET_ID,
