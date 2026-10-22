@@ -80,6 +80,14 @@ operator. This file holds what comes after them.
   Open: phase 3 (a draft-it-for-me button on the dashboard), if drafting
   turns out to be the slow part.
 
+- **New courses from the VDOE framework, requested by teachers** (2026-10-22,
+  the operator's ask). A teacher submits a course code and its VDOE
+  framework; an agent session imports the competencies through a PR the
+  teacher accepts. First, a course list in place of the four hardcoded
+  8175/8177 rules. See
+  [`COURSE_BUILDER_PLAN_2026-10.md`](./COURSE_BUILDER_PLAN_2026-10.md);
+  decisions C1 to C4 open. After Oct 30.
+
 - **Thread A: cross-course mastery map, remediation and anchors.** Start
   with the competency graph file and a teacher-approval tool.
   [`CAS_DESIGN_THREADS_2026-10-16.md`](./CAS_DESIGN_THREADS_2026-10-16.md) §1.
