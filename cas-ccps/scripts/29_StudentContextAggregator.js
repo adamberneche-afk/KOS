@@ -115,11 +115,16 @@ function runWeeklyStudentAggregation_() {
   let docsSkippedNoContent = 0;
   let docsSkippedInvalidId = 0;
 
+  // Logs name a student by their place in this run's roster, never by
+  // address or name (the operator pastes these logs into sessions).
+  let rosterPos = 0;
   for (const [email, name] of roster.entries()) {
+    rosterPos++;
+    const who = "roster entry " + rosterPos + " of " + roster.size;
     if (!_studentIdPattern_().test(email)) {
       // Defensive — buildValidatedStudentRoster_ already filters, but never
       // trust a single validation point when writing to permanent Docs.
-      Logger.log("[S29] Skipping invalid student identifier at write stage: " + email);
+      Logger.log("[S29] Skipping invalid student identifier at write stage: " + who);
       docsSkippedInvalidId++;
       continue;
     }
@@ -138,7 +143,7 @@ function runWeeklyStudentAggregation_() {
 
     const docInfo = getOrCreateStudentDoc_(registrySheet, email, name, cfg);
     if (!docInfo) {
-      Logger.log("[S29] Could not get or create doc for " + email + " — skipping this run.");
+      Logger.log("[S29] Could not get or create doc for " + who + " — skipping this run.");
       continue;
     }
 
@@ -152,7 +157,7 @@ function runWeeklyStudentAggregation_() {
         docsUpdated++;
       }
     } catch (err) {
-      Logger.log("[S29] Failed to append section for " + email + ": " + err.message);
+      Logger.log("[S29] Failed to append section to doc " + docInfo.docId + " (" + who + "): " + err.message);
     }
   }
 
@@ -195,8 +200,8 @@ function buildValidatedStudentRoster_(ledgerSheet) {
 
     if (!_studentIdPattern_().test(email)) {
       if (!invalidSeen.has(email)) {
-        Logger.log("[S29] Invalid GoogleID format, excluded from roster: '" + email +
-          "' (expected 7 digits @ccpsnet.net)");
+        Logger.log("[S29] Invalid GoogleID format, excluded from roster: Ledger row " + (i + 1) +
+          " (expected 7 digits @ccpsnet.net)");
         invalidSeen.add(email);
       }
       continue;
@@ -407,7 +412,7 @@ function getOrCreateStudentDoc_(registrySheet, email, name, cfg) {
     try {
       DriveApp.getFileById(docId).addViewer(email);
     } catch (shareErr) {
-      Logger.log("[S29] Could not share doc with " + email + ": " + shareErr.message +
+      Logger.log("[S29] Could not share doc " + docId + " with its student: " + shareErr.message +
         " — doc created but student may not have access yet.");
     }
 
@@ -423,11 +428,12 @@ function getOrCreateStudentDoc_(registrySheet, email, name, cfg) {
     newRow[SDR_LAST_RUN_HAD_CONTENT] = "";
     registrySheet.appendRow(newRow);
 
-    Logger.log("[S29] Created new student doc for " + email + " — " + docUrl);
+    Logger.log("[S29] Created new student doc " + docId + " (StudentDocRegistry row " +
+      registrySheet.getLastRow() + ")");
     return { docId, isNew: true };
 
   } catch (err) {
-    Logger.log("[S29] Doc creation failed for " + email + ": " + err.message);
+    Logger.log("[S29] Doc creation failed for one student: " + err.message);
     return null;
   }
 }

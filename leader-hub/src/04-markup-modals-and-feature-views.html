@@ -968,11 +968,11 @@
 </div>
 
 <!-- PO Modal -->
-<div id="po-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closePOModal()">
+<div id="po-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)dismissPOModal()">
   <div style="background:#fff;max-width:540px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.3rem;letter-spacing:1.5px">New Purchase Order</div>
-      <button onclick="closePOModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="dismissPOModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <!-- FIXED per Say/Do Ledger leader-hub finding #9: this used to be a
@@ -1085,11 +1085,11 @@
 </div>
 
 <!-- WBL: Add / Edit Student Modal -->
-<div id="wbl-student-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closeWBLStudentModal()">
+<div id="wbl-student-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)dismissWBLStudentModal()">
   <div style="background:#fff;max-width:560px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.3rem;letter-spacing:1.5px" id="wbl-modal-title">Add WBL Student</div>
-      <button onclick="closeWBLStudentModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="dismissWBLStudentModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem">
       <input type="hidden" id="wbl-edit-id">
@@ -1608,9 +1608,9 @@
       <button class="email-tab" id="etab-faculty"   onclick="setEmailTab('faculty',this)">👩‍🏫 Faculty</button>
     </div>
 
-    <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+    <div class="lh-split" style="display:flex;flex:1;overflow:hidden;min-height:0">
       <!-- LEFT: template picker + context selector -->
-      <div style="width:230px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:#faf9f6">
+      <div class="lh-split-side" style="width:230px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:#faf9f6">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:.4rem">Context</div>
         <select id="email-context-sel" style="width:100%;font-size:.78rem;margin-bottom:.75rem;border:1px solid var(--border);border-radius:6px;padding:.35rem" onchange="onEmailContextChange()">
           <option value="">— General / No trip —</option>
@@ -1627,16 +1627,21 @@
 
       <!-- RIGHT: compose area -->
       <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:.85rem">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+        <div class="lh-fields3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:.25rem">
           <div>
-            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">TO</label>
-            <input id="email-to" placeholder="Recipients / group" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+            <label for="email-to" style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">TO</label>
+            <input id="email-to" type="text" placeholder="name@school.org; …" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
           </div>
           <div>
-            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">CC</label>
-            <input id="email-cc" placeholder="Optional" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+            <label for="email-cc" style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">CC</label>
+            <input id="email-cc" type="text" placeholder="Optional" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+          </div>
+          <div>
+            <label for="email-bcc" style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">BCC <span style="font-weight:400">(hidden from each other)</span></label>
+            <input id="email-bcc" type="text" placeholder="Optional" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
           </div>
         </div>
+        <div id="email-recipient-note" role="status" style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem;min-height:1em"></div>
         <div style="margin-bottom:.5rem">
           <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">SUBJECT</label>
           <input id="email-subject" placeholder="Email subject line" style="width:100%;font-size:.82rem;font-weight:600;border:1px solid var(--border);border-radius:6px;padding:.38rem">

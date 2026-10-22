@@ -768,7 +768,7 @@ function buildStudentTemplateProps_(ids) {
 }
 
 // The Teacher Dashboard is deployed once per teacher (see
-// ADMIN_DEPLOYMENT_WALKTHROUGH.html Step 10) — every server function on
+// cas-ccps/DEPLOYMENT_HANDOFF.md) — every server function on
 // it gates on TEACHER_EMAIL matching the signed-in caller
 // (_isAuthorizedTeacher_ in 07_TeacherDashboard.js), so an unset property
 // here means the installer's dashboard denies everyone, not "works for

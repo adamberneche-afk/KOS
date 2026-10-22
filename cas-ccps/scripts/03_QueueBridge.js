@@ -198,18 +198,29 @@ function backPropagateCompletions() {
       const configId      = stagingData[i][STG_CONFIG_ID].toString().trim();
       const teacherEmail  = String(stagingData[i][STG_TEACHER_EMAIL] || "").trim();
 
-      // Handle ERROR_TIMEOUT rows — close queue row and notify teacher
-      if (stagingStatus === "ERROR_TIMEOUT") {
+      // Handle ERROR_TIMEOUT rows (the lane timed out, 06) and
+      // ERROR_EVALUATION rows (the check ran but its result couldn't be
+      // used, 37): close the queue row, tell the teacher why, and set the
+      // doc's header so the student isn't told "waiting for feedback" for
+      // good (2026-10-22, UX audit fix-first 4).
+      if (stagingStatus === "ERROR_TIMEOUT" || stagingStatus === "ERROR_EVALUATION") {
         const rowNum = parseInt(queueRowRef, 10);
         if (!isNaN(rowNum) && rowNum >= 2) {
           const currentQStatus = String(
             queueSheet.getRange(rowNum, RQ_STATUS + 1).getValue()
           ).trim();
           if (currentQStatus === "STAGED") {
-            markQueueRow_(queueSheet, rowNum, "ERROR_TIMEOUT");
-            updateLedgerStatus_(ledgerSheet, fileId, configId, "ERROR_TIMEOUT");
-            notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet);
-            Logger.log("[BACKPROP] ERROR_TIMEOUT closed — row " + rowNum +
+            markQueueRow_(queueSheet, rowNum, stagingStatus);
+            updateLedgerStatus_(ledgerSheet, fileId, configId, stagingStatus);
+            if (stagingStatus === "ERROR_TIMEOUT") {
+              notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet);
+            } else {
+              notifyFailedCheckToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet);
+            }
+            if (typeof setDocFeedbackStatus_ === "function") {
+              setDocFeedbackStatus_(fileId, stagingStatus === "ERROR_TIMEOUT" ? "TIMED_OUT" : "NOT_CHECKED", {});
+            }
+            Logger.log("[BACKPROP] " + stagingStatus + " closed — row " + rowNum +
                        " | Teacher: " + teacherEmail);
           }
         }
@@ -467,6 +478,56 @@ function notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId, ledgerShee
     );
   } catch (e) {
     Logger.log("[BACKPROP] notifyTimeoutToTeacher_ error: " + e.message);
+  }
+}
+
+// The student and lesson for a doc, from the Ledger: { studentName,
+// lessonName, docUrl }, blanks when the row isn't found.
+function _bridgeDocContext_(ledgerSheet, fileId) {
+  const out = { studentName: "", lessonName: "", docUrl: "" };
+  try {
+    const rows = ledgerSheet ? ledgerSheet.getDataRange().getValues() : [];
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][LEDGER.FILE_ID]).trim() !== fileId) continue;
+      out.studentName = String(rows[i][LEDGER.STUDENT_NAME] || "").trim();
+      out.lessonName  = String(rows[i][LEDGER.COURSE_NAME] || "").trim();
+      out.docUrl      = String(rows[i][LEDGER.STUDENT_FILE_URL] || "").trim();
+      break;
+    }
+  } catch (e) {
+    Logger.log("[BACKPROP] doc context lookup error: " + e.message);
+  }
+  if (!out.docUrl && fileId) out.docUrl = "https://docs.google.com/document/d/" + fileId + "/edit";
+  return out;
+}
+
+// notifyFailedCheckToTeacher_ — the check ran, but its result couldn't be
+// used (37: empty output, a result that didn't fit the assignment, or a
+// failed harvest). A resubmission gets a fresh check (37's
+// buildFlowInputRows), so the fix is the student's Submit (2026-10-22).
+function notifyFailedCheckToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet) {
+  if (!teacherEmail || teacherEmail === "UNKNOWN") return;
+  const c = _bridgeDocContext_(ledgerSheet, fileId);
+  const who = c.studentName || "A student";
+  const dashboardUrl = (cfg && cfg.teacherDashboardUrl) || "";
+  try {
+    MailApp.sendEmail(
+      teacherEmail,
+      "⚠️ Feedback couldn't be made — " + who + (c.lessonName ? ", " + c.lessonName : ""),
+      who + "'s work" + (c.lessonName ? " on " + c.lessonName : "") + " was checked, but the " +
+      "result couldn't be used (it was empty, or didn't match the assignment), so no feedback " +
+      "was sent. Your Teacher Dashboard shows it as \"Couldn't be checked ⚠\", and the " +
+      "student's doc says it couldn't be checked this time.\n\n" +
+      (c.docUrl ? "Student's doc: " + c.docUrl + "\n" : "") +
+      (dashboardUrl ? "Teacher Dashboard: " + dashboardUrl + "\n" : "") +
+      "\nWhat to do: ask the student to press Submit for Feedback again on the Student " +
+      "Dashboard. That starts a fresh check.\n\n" +
+      "If it happens again for the same work, tell your system admin and give them this code: " +
+      configId + "\n\n" +
+      "— Classroom Agency System (automated alert)"
+    );
+  } catch (e) {
+    Logger.log("[BACKPROP] notifyFailedCheckToTeacher_ error: " + e.message);
   }
 }
 

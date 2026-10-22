@@ -24,7 +24,7 @@ const JOBS = ['bridgeQueue', 'runStagingTurnstile', 'buildFlowInputRows', 'harve
 function setup(installed) {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('64_LedgerCycle.js')],
     ['runLedgerCycle', 'installLedgerCycle', 'previewLedgerCycle', 'restoreLedgerTriggers', 'lcRecordedJobs_',
-      'installRegistrationTrigger', 'installAlignmentBackfillTrigger']);
+      'installRegistrationTrigger', 'installAlignmentBackfillTrigger', 'lcFailingJobs_']);
   const calls = [];
   JOBS.forEach((fn) => { env.sandbox[fn] = () => calls.push(fn); });
   (installed || JOBS).forEach((fn) => env.sandbox.ScriptApp.newTrigger(fn).timeBased().everyMinutes(5).create());
@@ -138,4 +138,29 @@ test('without the cycle, an installer gives the job its own 5-minute trigger, on
   env.exported.installRegistrationTrigger();
   assert.deepEqual(env.handlers(), ['registerDeliveredWarmUps']);
   assert.equal(env.props.getProperty('LEDGER_CYCLE_JOBS'), null);
+});
+
+// UX audit fix-first 5 (2026-10-22): a job's failures are counted where 34b
+// and 34c can see them, and a job failing ten cycles in a row makes the
+// trigger itself fail, so Google's failure email arrives.
+test('the cycle counts each job\'s failures, and fails loudly after ten in a row', () => {
+  const env = setup(['bridgeQueue', 'harvestWarmUpFlowReturns']);
+  env.exported.installLedgerCycle();
+  let broken = true;
+  env.sandbox.harvestWarmUpFlowReturns = () => { if (broken) throw new Error('server error'); };
+  const cycle = () => { env.props.deleteProperty('LEDGER_CYCLE_LAST_RUN'); return env.exported.runLedgerCycle(); };
+  for (let i = 0; i < 9; i++) cycle();
+  let failing = env.exported.lcFailingJobs_(env.props);
+  assert.equal(failing.length, 1);
+  assert.equal(failing[0].fn, 'harvestWarmUpFlowReturns');
+  assert.equal(failing[0].streak, 9);
+  assert.equal(failing[0].today, 9);
+  assert.throws(cycle, /harvestWarmUpFlowReturns has failed 10 cycles in a row/);
+  assert.ok(env.calls.filter((c) => c === 'bridgeQueue').length === 10, 'the other jobs still ran');
+  broken = false;
+  cycle();
+  failing = env.exported.lcFailingJobs_(env.props);
+  assert.equal(failing[0].streak, 0, 'a success ends the streak');
+  assert.equal(failing[0].today, 10, 'today\'s count is kept');
+  assert.doesNotMatch(env.props.getProperty('LEDGER_CYCLE_ERRORS'), /server error/, 'names and counts only');
 });

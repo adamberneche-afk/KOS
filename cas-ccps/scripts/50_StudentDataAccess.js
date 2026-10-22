@@ -99,17 +99,27 @@ function runStudentDataAccessRepair_(opts) {
     result.files + " file(s) checked, " + result.changes.length + " change(s)" +
     (apply ? "" : " would be made") + ", " + result.failures.length + " failure(s)." +
     (result.done ? "" : " Stopped at the time budget; run it again to continue from file " + i + "."));
+  // The log names no student: the operator pastes it into sessions. A
+  // student account reads "a student account"; staff addresses are kept so
+  // the operator knows whose access changed. The returned result keeps the
+  // addresses for a caller that needs them.
   result.changes.forEach(function (c) {
-    Logger.log("[S50]   " + c.what + " " + c.email + " on " + c.target + (c.reason ? " (" + c.reason + ")" : ""));
+    Logger.log("[S50]   " + c.what + " " + _sdaWho_(c.email) + " on " + c.target + (c.reason ? " (" + c.reason + ")" : ""));
   });
   result.failures.forEach(function (f) {
     Logger.log("[S50]   FAILED " + f.target + ": " + f.error);
   });
   if (result.ledgerStudentAccess.length) {
-    Logger.log("[S50] The Central Ledger itself is shared with student account(s): " +
-      result.ledgerStudentAccess.join(", ") + ". Remove them by hand (Share, in the Ledger).");
+    Logger.log("[S50] The Central Ledger itself is shared with " + result.ledgerStudentAccess.length +
+      " student account(s). Remove them by hand (Share, in the Ledger).");
   }
   return result;
+}
+
+// How a log line names an account: never a student's address.
+function _sdaWho_(email) {
+  const e = String(email || "");
+  return _studentIdPattern_().test(e) ? "a student account" : e;
 }
 
 // One entry per file: { fileId, label, student, teacher, current, submitted }.
@@ -118,13 +128,14 @@ function _sdaTargets_(cfg, ss, year) {
   const seen = {};
   const ledger = ss.getSheetByName(cfg.tabs.ledger);
   if (ledger && ledger.getLastRow() > 1) {
-    ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER.ACADEMIC_YEAR + 1).getValues().forEach(function (row) {
+    ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER.ACADEMIC_YEAR + 1).getValues().forEach(function (row, idx) {
       const fileId = String(row[LEDGER.FILE_ID] || "").trim();
       if (!fileId || seen[fileId]) return;
       seen[fileId] = true;
       out.push({
         fileId: fileId,
-        label: "work doc " + String(row[LEDGER.CONFIG_ID] || "") + " (" + String(row[LEDGER.STUDENT_NAME] || "") + ")",
+        // Logged, so a Ledger row number, not the student's name.
+        label: "work doc " + String(row[LEDGER.CONFIG_ID] || "") + " (Ledger row " + (idx + 2) + ")",
         student: String(row[LEDGER.GOOGLE_ID] || "").trim().toLowerCase(),
         teacher: String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase(),
         current: _isCurrentSchoolYearRow_(row, year),
@@ -178,7 +189,7 @@ function _sdaFixFile_(t, apply, result) {
     result.changes.push({ target: t.label, what: what, email: email, reason: reason });
     if (!apply) return;
     try { fn(); } catch (e) {
-      result.failures.push({ target: t.label, error: what + " " + email + ": " + e.message +
+      result.failures.push({ target: t.label, error: what + " " + _sdaWho_(email) + ": " + e.message +
         " (likely inherited from a parent folder)" });
     }
   }
@@ -241,7 +252,7 @@ function _sdaFixClassFolders_(apply, result) {
         result.changes.push({ target: label, what: "remove folder access", email: email, reason: "class-wide sharing" });
         if (!apply) return;
         try { folder.removeEditor(email); folder.removeViewer(email); } catch (e) {
-          result.failures.push({ target: label, error: email + ": " + e.message });
+          result.failures.push({ target: label, error: _sdaWho_(email) + ": " + e.message });
         }
       });
     }

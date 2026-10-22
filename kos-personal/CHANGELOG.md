@@ -1,6 +1,49 @@
 # KOS Changelog
 
 
+### The web app stores nothing in the browser (2026-10-22)
+
+The operator's rule. The ingest draft and the engine-setup draft were kept
+in `localStorage` so they survived a reload; they are page memory now, so a
+reload loses an unsent paste. Checked by `tests/tools/no-browser-storage.test.js`.
+
+### The web app: archive keeps failed rows; failed list, review panel, "Needs you" (2026-10-22)
+
+From the 2026-10-22 UX audit (fix-first 14, order-of-work 16):
+- **Archive keeps failed rows.** "Archive finished and failed rows" moved
+  every failed row to STAGING_ARCHIVE in one tap, and `requeueStagingRows()`
+  reads STAGING_PIPELINE only, so an archived timed-out row could never be
+  retried. `archiveStagingPipeline()` now moves finished rows only (the same
+  set as the nightly `archiveFinishedStagingRows()`) and returns
+  `failedKept`. The button is **Archive finished rows**: the first tap asks
+  the new `previewStagingArchive()` for the count, then arms a tap-again
+  confirm that says how many rows will move and how many failed rows stay.
+- **Failed items list.** The Queue tab's Failed tile had no rows behind it.
+  `getFailedQueueRows()` (`19_StagingRequeue.gs`) lists every failed row,
+  grouped by status in plain words, with its doc link and any error text.
+  Timed-out and quality-check rows get **Retry…**: `previewRetryFailedRow()`
+  says what will change (or why it can't, e.g. SOURCE_LOST), and
+  `retryFailedRow()` applies it. Both call `requeueStagingRows({uids:[uid]})`,
+  so there is still one requeue path. `requeueStagingRows()`'s busy result
+  now carries `busy: true`.
+- **Advisor panel review panel.** The review ID and document link lived only
+  in one status line, and the status view was spreadsheet-menu only.
+  `triggerSevenBridgesReview()` records the last 10 reviews
+  (`KOS_COUNCIL_REVIEWS`, kept by `resetProperties()`), and
+  `getCouncilReviewForWebApp(id)` (`6_Governance.gs`) returns
+  `getCouncilReviewStatus()` plus the document link (from that record, or by
+  the stimulus doc's name in RAW_EXHAUST for older reviews). The System tab
+  shows the latest review with Copy ID, Open the review document, Record a
+  verdict (prefills the verdict form), who has answered and who is pending,
+  duplicates and unrecognized names; any review can be looked up by ID.
+- **"Needs you" strip and tab badges.** Above every tab: items needing your
+  help, failed items, unknown statuses, personalization not done, and the
+  latest review while advisors are pending (14 days) or once it halts. The
+  Queue and System tabs carry counts. Filled at load.
+- Terms gains Failed item, Retry, Quality check and Archive sheet.
+- Tests: `web-app-operator-chores.test.js` (new); `staging-archive`,
+  `staging-requeue`, `council-review-status` and `sensor1-ingestion` updated.
+
 ### The web app: contrast and plain words (2026-10-22)
 
 The operator: the UI "doesn't offer enough contrast to be easily legible",

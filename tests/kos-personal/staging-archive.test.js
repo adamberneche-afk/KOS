@@ -6,9 +6,12 @@
 // rows only. A STUDIO_TIMEOUT part must stay in STAGING_PIPELINE, because
 // requeueStagingRows() and checkVectorClassifySessions() read that sheet
 // only, and DUPLICATE rows stay because the duplicate finder reads them
-// there. archiveStagingPipeline() (the web app button) still moves finished
-// and failed rows. Both now move rows in bulk; the order of archived rows
-// and of the rows left behind must survive that.
+// there. archiveStagingPipeline() (the web app button) moved finished AND
+// failed rows until 2026-10-22 (UX audit fix-first 14), which put a failed
+// row beyond any retry; it now moves the same set as the nightly run, and
+// previewStagingArchive() gives the web app its confirm count. Both move
+// rows in bulk; the order of archived rows and of the rows left behind
+// must survive that.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -20,7 +23,7 @@ const FILES = [
   path.join(KP, '1_Config_And_Deploy.gs'),
   path.join(KP, '5_Error_And_Utilities.gs'),
 ];
-const EXPOSE = ['archiveFinishedStagingRows', 'archiveStagingPipeline', 'setupAllTriggers',
+const EXPOSE = ['archiveFinishedStagingRows', 'archiveStagingPipeline', 'previewStagingArchive', 'setupAllTriggers',
   'KOS_TRIGGER_HANDLERS', 'CFG'];
 
 const STAGING_HEADERS = ['Timestamp', 'Payload_UID', 'Payload_Type', 'Doc_URL', 'File_ID', 'Status', 'Retry_Count'];
@@ -80,15 +83,27 @@ test('archiveFinishedStagingRows: a second run appends below the first', () => {
   assert.deepEqual(archiveUids(ss.getSheetByName('STAGING_ARCHIVE')), ['UID-0', 'UID-1']);
 });
 
-test('archiveStagingPipeline: still moves finished and failed rows, and counts each', () => {
-  const { exported, staging } = setup(MIXED);
+test('archiveStagingPipeline: moves finished rows only; failed rows stay so they can be retried', () => {
+  const { exported, ss, staging } = setup(MIXED.concat(['FAILED_PARSE', 'PROCESSING_ERROR: boom']));
   const r = exported.archiveStagingPipeline();
   assert.equal(r.success, true);
-  assert.equal(r.archived, 7);
+  assert.equal(r.archived, 5);
   assert.equal(r.succeeded, 5);
-  assert.equal(r.failed, 2);
-  assert.deepEqual(stagingUids(staging), ['UID-3', 'UID-4', 'UID-6'],
-    'DUPLICATE and in-flight rows stay');
+  assert.equal(r.failed, 0, 'no failed row is archived');
+  assert.equal(r.failedKept, 4, 'STUDIO_TIMEOUT, AUDIT_REJECTED, FAILED_PARSE and PROCESSING_ERROR stay');
+  assert.deepEqual(stagingUids(staging), ['UID-2', 'UID-3', 'UID-4', 'UID-6', 'UID-7', 'UID-10', 'UID-11']);
+  assert.deepEqual(archiveUids(ss.getSheetByName('STAGING_ARCHIVE')), ['UID-0', 'UID-1', 'UID-5', 'UID-8', 'UID-9']);
+});
+
+test('previewStagingArchive: counts what the button would move, and changes nothing', () => {
+  const { exported, ss, staging } = setup(MIXED.concat(['FAILED_PARSE']));
+  const p = exported.previewStagingArchive();
+  assert.equal(p.success, true);
+  assert.equal(p.finished, 5);
+  assert.equal(p.failedKept, 3);
+  assert.equal(staging.getLastRow(), 12, 'every row is still in the queue');
+  assert.equal(ss.getSheetByName('STAGING_ARCHIVE'), null, 'no archive sheet was made');
+  assert.equal(exported.archiveStagingPipeline().archived, p.finished, 'the preview matches the real run');
 });
 
 test('setupAllTriggers installs the nightly archive once', () => {

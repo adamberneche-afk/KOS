@@ -716,8 +716,10 @@ test('harvestFlowInputResults: a fabricated evaluation is caught before it reach
     'the student doc must not be touched');
   const evidenceSheet = ledgerSs.getSheetByName('CompetencyEvidence');
   assert.ok(!evidenceSheet || evidenceSheet.getLastRow() === 0, 'no evidence written for a suspect row');
-  assert.equal(staging.getRange(2, exported.STG_STATUS + 1).getValue(), 'IN_PROCESS',
-    'the staging row must stay untouched, not marked COMPLETE');
+  // Marked failed, never COMPLETE (2026-10-22): 03 then closes it and tells
+  // the teacher, instead of it timing out as "didn't finish in time".
+  assert.equal(staging.getRange(2, exported.STG_STATUS + 1).getValue(), 'ERROR_EVALUATION',
+    'the staging row is marked failed, not COMPLETE');
 });
 
 test('harvestFlowInputResults: a self-reported non-access phrase in the output is caught the same way', () => {
@@ -734,7 +736,7 @@ test('harvestFlowInputResults: a self-reported non-access phrase in the output i
 
   assert.equal(fiSheet.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'ERROR_SUSPECT_FABRICATION');
   assert.equal(doc.getBody().getText(), '[No feedback yet. Use the panel to run a check.]');
-  assert.equal(staging.getRange(2, exported.STG_STATUS + 1).getValue(), 'IN_PROCESS');
+  assert.equal(staging.getRange(2, exported.STG_STATUS + 1).getValue(), 'ERROR_EVALUATION');
 });
 
 test('harvestFlowInputResults: a grounded evaluation referencing real rubric content is still applied normally', () => {

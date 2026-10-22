@@ -39,8 +39,9 @@
 // _getOrCreateDoc()      BUG-03 pattern: saveAndClose → moveTo →
 //                        openById(captured dId). No name-search.
 //
-// archiveStagingPipeline() Headless: no ui.alert. Returns archived
-//                        count so the web app can display it.
+// archiveStagingPipeline() Headless: no ui.alert. Archives finished rows
+//                        only (failed rows stay, so they can be retried);
+//                        returns the count so the web app can display it.
 //
 // resetProperties()      Preserves KOS_PROMOTED_VECTORS (v8.0 key)
 //                        in addition to existing preserved keys.
@@ -1597,8 +1598,8 @@ function getRelationalTargets() {
 // Canonical list of permanently-stuck / failed-intake status prefixes —
 // shared with getQueueMetrics() (3_Queue_Processor.gs) so
 // the Queue tab can count and surface these rows instead of silently
-// excluding them from every visible total, the same way archiveStagingPipeline()
-// below already recognizes them for cleanup. Matched via startsWith(), not
+// excluding them from every visible total. archiveStagingPipeline() below
+// leaves these rows in STAGING_PIPELINE, so they can still be retried. Matched via startsWith(), not
 // exact equality, since PROCESSING_ERROR/INTAKE_ERROR statuses carry a
 // ': <message>' suffix.
 const TERMINAL_FAILED_STATUSES = ['FAILED_PARSE', 'PHASE_2_ERROR', 'INTAKE_ERROR', 'MISSING_FILE_ID', 'PROCESSING_ERROR', 'STUDIO_TIMEOUT', 'AUDIT_REJECTED'];
@@ -1908,36 +1909,30 @@ function _clearTurnstileStaleCounts_(uids) {
 }
 
 /**
- * Moves all terminal-status rows from STAGING_PIPELINE to
- * STAGING_ARCHIVE. Fully headless — no ui.alert.
+ * Moves the rows that finished successfully (STAGING_SUCCEEDED_STATUSES:
+ * PROCESSED, INTAKE_PROCESSED, PARTITIONED, CONSOLIDATED) from
+ * STAGING_PIPELINE to STAGING_ARCHIVE. Fully headless — no ui.alert.
  *
- * Terminal statuses: PROCESSED, INTAKE_PROCESSED, PARTITIONED,
- *   CONSOLIDATED, FAILED_PARSE, PHASE_2_ERROR, INTAKE_ERROR,
- *   MISSING_FILE_ID, PROCESSING_ERROR, STUDIO_TIMEOUT, AUDIT_REJECTED
- *   (the latter two added after this comment was first written — see
- *   TERMINAL_FAILED_STATUSES above, the actual list this function reads;
- *   kept this comment in sync rather than letting it drift again).
- *
- * FIXED: MISSING_FILE_ID and PROCESSING_ERROR (3_Queue_Processor.gs)
- * used to be set as a bare 'ERROR: ...' string, which matched none of
- * these named prefixes (startsWith() below is a genuine prefix match,
- * not a substring search) — those rows accumulated in STAGING_PIPELINE
- * forever with no path to this archive. Both are real, named statuses
- * now and recognized here.
+ * FIXED (UX audit 2026-10-22, fix-first 14): this also moved every
+ * TERMINAL_FAILED_STATUSES row (FAILED_PARSE … STUDIO_TIMEOUT,
+ * AUDIT_REJECTED), on one tap and with no confirm. requeueStagingRows()
+ * (19_StagingRequeue.gs) and checkVectorClassifySessions() read
+ * STAGING_PIPELINE only, so an archived STUDIO_TIMEOUT row could never be
+ * retried again. Failed rows now stay in the queue, where the Queue tab
+ * lists them with a Retry action (getFailedQueueRows()); this is the same
+ * set the nightly archiveFinishedStagingRows() below moves. The web app
+ * asks previewStagingArchive() first and confirms with the count.
  *
  * Called by the web app Diagnostics tab:
  *   google.script.run.withSuccessHandler(fn).archiveStagingPipeline()
  *
- * @returns {{success: boolean, archived: number, succeeded: number, failed: number, message: ?string}}
- *   archived = total rows moved; failed = of those, how many were
- *   unrecoverable intake failures rather than genuine successes
- *   (displayed by the web app so archiving never silently disposes of
- *   failures the UI never showed anywhere). `success` distinguishes a
+ * @returns {{success: boolean, archived: number, succeeded: number, failed: number,
+ *            failedKept: number, busy?: boolean, message?: string}}
+ *   archived = rows moved (all of them finished rows, so succeeded ===
+ *   archived and failed === 0; both kept for older callers). failedKept =
+ *   failed rows left in STAGING_PIPELINE. `success` distinguishes a
  *   genuine exception (`false`, `message` set) from a routine run that
- *   simply had nothing to archive (`true`, `archived: 0`) — these used to
- *   return the identical `{archived:0,succeeded:0,failed:0}` shape, so a
- *   real backend failure rendered in the Diagnostics tab exactly like
- *   "there was nothing to do."
+ *   simply had nothing to archive (`true`, `archived: 0`).
  */
 function archiveStagingPipeline() {
   // FIXED: this is the only function that ever calls staging.deleteRow() on
@@ -1952,56 +1947,77 @@ function archiveStagingPipeline() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) {
     // Not a genuine failure (success stays true, matching runPromotionCheck's
-    // "system busy" case) — just contention with a concurrent trigger run,
-    // which is exactly the scenario this lock exists to make safe instead of
-    // silently corrupting a row. `busy: true` lets the client show this
-    // distinctly from both a real error and a normal "nothing to archive" run.
-    return { success: true, busy: true, message: 'System busy — try again in a moment.', archived: 0, succeeded: 0, failed: 0 };
+    // "system busy" case) — just contention with a concurrent trigger run.
+    return { success: true, busy: true, message: 'System busy — try again in a moment.', archived: 0, succeeded: 0, failed: 0, failedKept: 0 };
   }
   try {
     const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
     const archive = _stagingArchiveSheet_(ss);
-
-    // These two groups are both "terminal" (never revisited by the
-    // pipeline) but very differently worth knowing about: succeeded rows
-    // are just housekeeping, failed-intake rows are unrecoverable data the
-    // web app UI never surfaces anywhere else. Archiving them together is
-    // still correct, but the caller needs the breakdown — a button labeled
-    // "Archive completed queue rows" silently sweeping up never-shown
-    // failures with zero indication was the actual problem, not the
-    // archiving itself.
-    const succeededStatuses = STAGING_SUCCEEDED_STATUSES;
-    const failedStatuses    = TERMINAL_FAILED_STATUSES;
-    const r = _moveStagingRowsToArchive_(staging, archive, succeededStatuses.concat(failedStatuses));
+    const r = _moveStagingRowsToArchive_(staging, archive, STAGING_SUCCEEDED_STATUSES);
     const done = r.moved.length;
-    const failed = r.moved.filter(s => failedStatuses.some(f => s.startsWith(f))).length;
-    const succeeded = done - failed;
+    const failedKept = _countFailedStagingRows_(staging);
 
     if (done > 0) SpreadsheetApp.flush();
-    console.log('[archiveStagingPipeline] Archived ' + done + ' row(s) (' + succeeded + ' succeeded, ' + failed + ' failed intake).');
-    return { success: true, archived: done, succeeded: succeeded, failed: failed };
+    console.log('[archiveStagingPipeline] Archived ' + done + ' finished row(s); ' +
+      failedKept + ' failed row(s) stay in ' + CFG.STAGING_SHEET + '.');
+    return { success: true, archived: done, succeeded: done, failed: 0, failedKept: failedKept };
 
   } catch (e) {
     _reportError('archiveStagingPipeline', e, null);
-    return { success: false, message: e.message, archived: 0, succeeded: 0, failed: 0 };
+    return { success: false, message: e.message, archived: 0, succeeded: 0, failed: 0, failedKept: 0 };
   } finally {
     lock.releaseLock();
   }
+}
+
+/**
+ * Read-only count for the web app's archive confirm: how many rows
+ * archiveStagingPipeline() would move now, and how many failed rows stay.
+ * Takes no lock and writes nothing.
+ *
+ * @returns {{success: boolean, finished: number, failedKept: number, message?: string}}
+ */
+function previewStagingArchive() {
+  try {
+    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+    const data    = staging.getDataRange().getValues();
+    let finished = 0;
+    for (let i = 1; i < data.length; i++) {
+      const s = String(data[i][CFG.STAGING_COLS.STATUS]);
+      if (STAGING_SUCCEEDED_STATUSES.some(p => s.startsWith(p))) finished++;
+    }
+    return { success: true, finished: finished, failedKept: _countFailedStagingRows_(staging) };
+  } catch (e) {
+    _reportError('previewStagingArchive', e, null);
+    return { success: false, finished: 0, failedKept: 0, message: e.message };
+  }
+}
+
+/** STAGING_PIPELINE rows whose status starts with a TERMINAL_FAILED_STATUSES prefix. */
+function _countFailedStagingRows_(staging) {
+  const data = staging.getDataRange().getValues();
+  let n = 0;
+  for (let i = 1; i < data.length; i++) {
+    const s = String(data[i][CFG.STAGING_COLS.STATUS]);
+    if (TERMINAL_FAILED_STATUSES.some(p => s.startsWith(p))) n++;
+  }
+  return n;
 }
 
 
 /**
  * Nightly trigger handler (setupAllTriggers, 02:00). Moves only the rows
  * that finished successfully (STAGING_SUCCEEDED_STATUSES) to
- * STAGING_ARCHIVE. Unlike archiveStagingPipeline(), it leaves every failed
- * row in place: requeueStagingRows() and checkVectorClassifySessions() read
+ * STAGING_ARCHIVE, the same set the web app button (archiveStagingPipeline())
+ * moves since 2026-10-22. It leaves every failed row in place: requeueStagingRows() and checkVectorClassifySessions() read
  * STAGING_PIPELINE only, so a STUDIO_TIMEOUT part archived on a timer could
  * no longer be requeued, and its session's matrix row would stay
  * incomplete. DUPLICATE rows stay too; the duplicate finder, the matrix
  * repair and the governance count look for them in STAGING_PIPELINE.
  *
- * Nothing archived STAGING_PIPELINE except the web app button, so the
+ * Before this trigger, nothing archived STAGING_PIPELINE except the web app button, so the
  * sheet had reached ~400 rows, nearly all PROCESSED (2026-10-06).
  *
  * @returns {{success: boolean, archived: number, remaining: number, busy?: boolean, message?: string}}
@@ -2113,6 +2129,7 @@ function resetProperties() {
     'KOS_NECESSARY_STRUGGLE',
     'KOS_RELATIONAL_TARGETS',
     'KOS_VISION_90_DAY',
+    'KOS_COUNCIL_REVIEWS',           // open advisor panel reviews (6_Governance.gs)
   ].forEach(k => {
     const v = props.getProperty(k);
     if (v) keep[k] = v;

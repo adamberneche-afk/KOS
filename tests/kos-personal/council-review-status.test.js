@@ -28,7 +28,8 @@ const GOV_PATH    = path.join(__dirname, '..', '..', 'kos-personal', '6_Governan
 function load() {
   return loadGasFiles(
     [CONFIG_PATH, UTILS_PATH, GOV_PATH],
-    ['getCouncilReviewStatus', 'compileCouncilVerdict_', 'CFG']
+    ['getCouncilReviewStatus', 'compileCouncilVerdict_', 'getCouncilReviewForWebApp',
+      'triggerSevenBridgesReview', 'CFG']
   );
 }
 
@@ -165,4 +166,75 @@ test('getCouncilReviewStatus: a blank council ID is rejected, not treated as a w
   const res = exported.getCouncilReviewStatus('   ');
   assert.equal(res.success, false);
   assert.match(res.message, /Council ID is required/);
+});
+
+// ── The web app's review lookup (UX audit 2026-10-22) ──────────────────────
+// The review ID and the stimulus doc's link used to live only in one
+// transient status line, and the status view was spreadsheet-menu only.
+// getCouncilReviewForWebApp() is the System tab's reader: the latest review
+// by default, any review by ID, with its document link.
+
+// The pointers triggerSevenBridgesReview() needs (see auto-council-check.test.js).
+function setUpStimulus(sandbox) {
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('IDENTITY_KEY', 'fake-identity-key');
+  props.setProperty('CORE_THESIS_VERIFIED', 'true');
+  const stateDoc = sandbox.DocumentApp.create('CURRENT_STATE');
+  stateDoc.getBody().setText('Recent session summary text.');
+  const pivotDoc = sandbox.DocumentApp.create('PIVOTS_AND_LESSONS');
+  pivotDoc.getBody().setText('Active constraints and pivots.');
+  const exhaust = sandbox.DriveApp.getRootFolder().createFolder('03.4_RAW_EXHAUST');
+  sandbox.DriveApp._registerFolder(exhaust);
+  props.setProperty('ID_CURRENT_STATE', stateDoc.getId());
+  props.setProperty('ID_PIVOTS_AND_LESSONS', pivotDoc.getId());
+  props.setProperty('ID_00_RAW_EXHAUST', exhaust.getId());
+  return { props, exhaust };
+}
+
+test('getCouncilReviewForWebApp: with no review started, says so', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox, []);
+  const res = exported.getCouncilReviewForWebApp('');
+  assert.equal(res.success, true);
+  assert.equal(res.none, true);
+});
+
+test('getCouncilReviewForWebApp: a started review keeps its ID and document link', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox, []);
+  setUpStimulus(sandbox);
+
+  const started = exported.triggerSevenBridgesReview();
+  assert.equal(started.success, true);
+  assert.match(started.councilId, /^SB_\d+$/);
+
+  const res = exported.getCouncilReviewForWebApp('');
+  assert.equal(res.success, true);
+  assert.equal(res.councilId, started.councilId, 'blank means the latest review');
+  assert.equal(res.docUrl, started.docUrl);
+  assert.equal(res.isLatest, true);
+  assert.equal(res.complete, false);
+  assert.equal(res.pending.length, exported.CFG.PERSONAS.length);
+  assert.equal(res.haltThreshold, exported.CFG.COG_HALT_THRESHOLD);
+  assert.equal(typeof res.startedAt, 'string');
+});
+
+test('getCouncilReviewForWebApp: an earlier review is found by ID, its doc by name', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox, [{ councilId: 'SB_42', cog: 'PERSONA_MUSE', status: 'FLAG' }]);
+  const { exhaust } = setUpStimulus(sandbox);
+  const doc = sandbox.DocumentApp.create('CE: SEVEN_BRIDGES_STIMULUS_SB_42');
+  sandbox.DriveApp.getFileById(doc.getId()).moveTo(exhaust);
+
+  const res = exported.getCouncilReviewForWebApp('SB_42');
+  assert.equal(res.success, true);
+  assert.equal(res.councilId, 'SB_42');
+  assert.equal(res.isLatest, false);
+  assert.deepEqual(res.received.map((r) => r.cog), ['MUSE']);
+  assert.ok(res.docUrl, 'a review started before the record existed still gets its link');
+
+  const unknown = exported.getCouncilReviewForWebApp('SB_999');
+  assert.equal(unknown.success, true);
+  assert.equal(unknown.docUrl, '', 'no doc, no made-up link');
+  assert.equal(exported.getCouncilReviewForWebApp('SB_' + '9'.repeat(80)).success, false);
 });

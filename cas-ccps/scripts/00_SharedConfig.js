@@ -247,7 +247,11 @@ const SHARED_CONFIG_KEYS = [
   "FEEDBACK_AS_COMMENT",
   // Warm-ups answered on the Student Dashboard; read through
   // warmUpTextBoxFor_().
-  "WARMUP_TEXT_BOX"
+  "WARMUP_TEXT_BOX",
+  // The nightly lesson rollout's switch (58); read through pivotFlagFor_().
+  // Missing until 2026-10-22, so a _CONFIG row was ignored though the docs
+  // said it worked there (UX audit, fix-first 6).
+  "ROLLOUT_AUTO_APPLY"
 ];
 
 // System text a student response must not contain (P0-03,

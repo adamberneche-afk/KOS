@@ -537,7 +537,7 @@ function _lockWarmUpDoc_(docId, teacherEmail) {
   const res = _lockDocAfterSubmission_(docId, teacherEmail);
   if (res.failed.length) {
     Logger.log("[S25-J2-recheck] Could not lock warm-up doc " + docId + ": " +
-      res.failed.map(function (f) { return (f.email || "file") + " (" + f.error + ")"; }).join("; "));
+      res.failed.map(function (f) { return (f.email ? "an account" : "file") + " (" + f.error + ")"; }).join("; "));
   }
 }
 

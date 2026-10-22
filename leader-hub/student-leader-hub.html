@@ -155,6 +155,60 @@ nav button.active{color:var(--gold);background:rgba(232,184,75,.15);}
     display:block; position:fixed; inset:64px 0 0 0; background:rgba(0,0,0,.35); z-index:140;
   }
 }
+/* PHONE + TABLET (UX audit 2026-10-22, fix-first 15). The top nav's eight
+   buttons are ~810px wide on their own, so below laptop width every view
+   scrolled sideways (949px on a 390px phone). The sidebar carries the same
+   destinations, so the top nav steps aside under 1100px; under 760px the
+   header tightens and every view keeps to the screen's width. */
+@media(max-width:1100px){
+  header nav{ display:none; }
+}
+@media(max-width:760px){
+  header{ padding:0 .5rem; gap:.35rem; }
+  header .logo{ font-size:1.35rem; letter-spacing:2px; white-space:nowrap; }
+  header .logo > span + span{ display:none; }
+  header .btn-sm{ padding:.35rem .55rem; }
+  .app, .main{ max-width:100vw; }
+  .main{ min-width:0; }
+  .main>.view.active:not(#view-dashboard){ padding:1rem; }
+  #view-dashboard{ padding:.75rem; }
+  .main .view{ overflow-x:hidden; }
+  .main .view table{ display:block; max-width:100%; overflow-x:auto; }
+  .fg2, .fg3{ grid-template-columns:1fr; }
+  /* Hand-written two- and three-column rows (season cards, slip and form
+     panels) stack; a grid or flex child may shrink below its content's
+     width, and a flex row that still can't fit wraps instead of running
+     off the edge. */
+  .main .view [style*="grid-template-columns:1fr 1fr"],
+  .main .view [style*="grid-template-columns:repeat(2"],
+  .main .view [style*="grid-template-columns:repeat(3"],
+  .main .view [style*="grid-template-columns:repeat(4"]{ grid-template-columns:1fr !important; }
+  .main .view .grid > *, .main .view [style*="grid-template-columns"] > *{ min-width:0; }
+  .main .view [style*="display:flex"]{ flex-wrap:wrap; }
+  .main .view img, .main .view pre{ max-width:100%; }
+  .modal, .mbox{ max-width:calc(100vw - 16px); }
+  /* Email Composer and Brag Board: the 230–260px side panel goes on top. */
+  .lh-split{ flex-direction:column; overflow-y:auto !important; }
+  .lh-split > *{ overflow:visible !important; }
+  .lh-split-side{ width:auto !important; border-right:none !important; border-bottom:1px solid var(--border); }
+  .lh-fields3{ grid-template-columns:1fr !important; }
+}
+/* REMINDER BANNERS (UX audit 2026-10-22, fix-first 15). The timed
+   reminders (deposit, payroll, morning comms, PLC, match day, DECA
+   tomorrow, school calendar ended, Brag Board) used to be
+   position:fixed;top:0, so they covered the header (and the ❓ Terms
+   button) and each other. They now stack in #lh-banners, in normal flow
+   between the header and the app; lhShowBanner() (src/11) puts them there
+   and keeps the app's height in step. */
+#lh-banners{ display:flex; flex-direction:column; }
+#lh-banners:empty{ display:none; }
+#lh-banners > div{ flex-wrap:wrap; }
+#lh-banners > div > div:first-of-type{ flex:1 1 220px !important; min-width:0; }
+#lh-banners > div > div:last-child{ flex-wrap:wrap; }
+#lh-banners > div + div{ border-top:1px solid rgba(255,255,255,.25); }
+.app{ height:calc(100vh - 64px - var(--lh-banners-h, 0px)); }
+/* The gradebook tracker's two cells ran 17px past a 1366px screen. */
+#sync-tracker-grid > *{ min-width:0; overflow-wrap:anywhere; }
 /* CARDS — hover lift; the base .card box model itself is defined once,
    below, under "DESIGN SYSTEM — CLEAN COMPONENT TOKENS" (a second .card
    rule used to live here too, with different border/padding values —
@@ -816,6 +870,7 @@ return false;
     <button class="btn btn-gold btn-sm" onclick="openModal('newTrip')">+ New Trip</button>
   </div>
 </header>
+<div id="lh-banners" role="region" aria-label="Reminders"></div>
 
 <div class="app">
 <div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
@@ -2632,11 +2687,11 @@ return false;
 </div>
 
 <!-- PO Modal -->
-<div id="po-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closePOModal()">
+<div id="po-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)dismissPOModal()">
   <div style="background:#fff;max-width:540px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.3rem;letter-spacing:1.5px">New Purchase Order</div>
-      <button onclick="closePOModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="dismissPOModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <!-- FIXED per Say/Do Ledger leader-hub finding #9: this used to be a
@@ -2749,11 +2804,11 @@ return false;
 </div>
 
 <!-- WBL: Add / Edit Student Modal -->
-<div id="wbl-student-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closeWBLStudentModal()">
+<div id="wbl-student-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)dismissWBLStudentModal()">
   <div style="background:#fff;max-width:560px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.3rem;letter-spacing:1.5px" id="wbl-modal-title">Add WBL Student</div>
-      <button onclick="closeWBLStudentModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="dismissWBLStudentModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem">
       <input type="hidden" id="wbl-edit-id">
@@ -3272,9 +3327,9 @@ return false;
       <button class="email-tab" id="etab-faculty"   onclick="setEmailTab('faculty',this)">👩‍🏫 Faculty</button>
     </div>
 
-    <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+    <div class="lh-split" style="display:flex;flex:1;overflow:hidden;min-height:0">
       <!-- LEFT: template picker + context selector -->
-      <div style="width:230px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:#faf9f6">
+      <div class="lh-split-side" style="width:230px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:#faf9f6">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:.4rem">Context</div>
         <select id="email-context-sel" style="width:100%;font-size:.78rem;margin-bottom:.75rem;border:1px solid var(--border);border-radius:6px;padding:.35rem" onchange="onEmailContextChange()">
           <option value="">— General / No trip —</option>
@@ -3291,16 +3346,21 @@ return false;
 
       <!-- RIGHT: compose area -->
       <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:.85rem">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+        <div class="lh-fields3" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem;margin-bottom:.25rem">
           <div>
-            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">TO</label>
-            <input id="email-to" placeholder="Recipients / group" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+            <label for="email-to" style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">TO</label>
+            <input id="email-to" type="text" placeholder="name@school.org; …" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
           </div>
           <div>
-            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">CC</label>
-            <input id="email-cc" placeholder="Optional" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+            <label for="email-cc" style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">CC</label>
+            <input id="email-cc" type="text" placeholder="Optional" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+          </div>
+          <div>
+            <label for="email-bcc" style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">BCC <span style="font-weight:400">(hidden from each other)</span></label>
+            <input id="email-bcc" type="text" placeholder="Optional" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
           </div>
         </div>
+        <div id="email-recipient-note" role="status" style="font-size:.75rem;color:var(--muted);margin-bottom:.5rem;min-height:1em"></div>
         <div style="margin-bottom:.5rem">
           <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">SUBJECT</label>
           <input id="email-subject" placeholder="Email subject line" style="width:100%;font-size:.82rem;font-weight:600;border:1px solid var(--border);border-radius:6px;padding:.38rem">
@@ -3321,7 +3381,7 @@ return false;
 </div>
 
 
-<script data-lh-block="leader-hub-block-1-part-1-of-16">var _lsWriteFailWarned,_lsReadFailWarned,LS,LH_SERVER_SYNCED_CONFIG_KEYS,LH_SYNC_PENDING_KEY,_lhSyncFailWarned,LH_SERVER_SYNCED_DATA_KEYS,_lhDataConflictWarned,_lhDataPushChain,SCR_SYNC_DEBOUNCE_MS,_scrSyncQueue,_scrSyncTimer,trips,_otherEventsDefault,otherEvents,PROFILE_DEFAULTS,PROFILE,KEY_CONTACTS_DEFAULTS,MODULES_DEFAULT,MODULES,ORG_DEFAULTS,CUSTOM_ORGS,ORGANIZATIONS,activeOrgId,_studentsDefault,students,goals,TRIPS_SEED,nextId,currentTripId,currentFilter,REQUIRED_FIELDS,fd,du,dn,leadDays,isOvernightTrip,subDeadline,fmtDeadline,tagClass,tagEmoji,rcColors,gcColors,sponsorSteps,coordSteps,postSteps,_activeMoName,_activeMoReturnFocus,RAW_MODAL_CLOSERS,_rawModalReturnFocus,_rawModalWasVisible,_rawModalOpenStack,_rawModalObserver,_unsavedWorkChecks,MO_CLOSE_GUARDS,WZ_STEPS,_wzStep,_wzMaxStepReached,_wzDraft,_origOpenModal,emailTab,emailContextTripId,EMAIL_TEMPLATES,DECA_RESULT_EVENTS,DECA_PLACE_OPTIONS,lastDecaConf,lastDecaPlace,ORG_RESULTS,_lastOrgResultLevel,_lastOrgResultPlace,ORG_SYNC,ORG_WELCOME_SEEN,DECA_APPROVAL_EVENTS,DECA_SEASON_YEAR,DECA_SEASON_DEFAULT,DECA_SEASON,memberTab,MEMBER_STATUS_MAP,OFFICER_POSITIONS,_DECA_ROLE_HTML,_DECA_STATUS_HTML,slipRosters,nextSlipId,currentSlipFilter,_asSource,ftPermOverrides,confLeaveRecords,CONF_REQUIRED,FT_PERM_REQUIRED,_origRenderDashboard,tripArchive,archiveFilter,archivingTripId,archiveFilterCurrent,SCR_COURSES,CUSTOM_COURSES,SCR_STUDENT_EMAILS,PACING_8175,PACING_6115,PACING_8177,scrActiveCourse,scrActivePeriod,scrScores,SCR_SCORE_LABELS,PACING_REGISTRY,Q_COLORS_BG,Q_COLORS_HDR,Q_COLORS_BDR,WBL_STUDENTS,SBE_ELEMENTS,SBE_STATUS,_sbeNoteTimer,_sbeNotePending,LESSON_PLANS,UNIT_PLANS,LP_EDITS,lpActivePlan,GRADING_STRUCTURE,LP_Q_COLORS,LP_Q_BG,LP_C_LABELS,LP_C_COLORS,_lpCurrentView,scrViewMode,PROC_STEPS,PURCHASE_ORDERS,poCounter,RECEIVING_CHECKS,RECEIVING_STATUS,SALES_LOG,INVENTORY,ES_PLAYERS,ES_MATCHES,SSBU_CHECKLIST,SSBU_CHECK_STATUS,MK8_CHECK_STATUS_LOADED,MK8_CHECKLIST,MK8_CHECK_STATUS,_activeToasts,DB_ROLES,BELL_SCHEDULES_DEFAULT,SCHOOL_CALENDAR_YEAR,SCHEDULE_OVERRIDES_DEFAULT,NO_SCHOOL_DEFAULT,DAY_SCHEDULE_MAP_DEFAULT,SCHOOL_PERIODS,BELL_SCHEDULES,CCPS_SCHEDULE_OVERRIDES,CCPS_NO_SCHOOL,DAY_SCHEDULE_MAP,_emailAiReqId,_lpAiReqId,_ord,DECA_DEADLINES_DEFAULT,CCPS_CALENDAR_DEADLINES_DEFAULT,RETIRED_DEFAULT_DEADLINES,DEADLINES,_editingDeadlineId,_naNav,CHOICE_SNOOZED,_lastChoiceCardsSig,PULSE_MEANINGS,HORIZON,MOOD_LABELS,MOOD_ADVICE,MOOD_COLORS,_journalMood,_journalStep,_journalOpenSnapshot,JOURNAL_TOTAL_STEPS,JOURNAL_DRAFT_KEY,_journalDraftTimer,_cronChecked,_journalForced,_journalAutoShownDate,_depositReminderShownDate,_commsTriageShownDate,_ACC_IDS,IMPROVEMENTS,surveyAnswers,_profSaveStatusTimer,MONTHS,MONTH_RE,CROSS_RANGE_SRC,ORDINAL_Q,HOLIDAY_KEYWORDS,_schedSaveStatusTimer,ORG_ROSTER_SYNC_FIELDS,ORG_RESULT_SYNC_FIELDS,AI_FLOW_LABELS,SYNC_PLATFORMS,OBS_PREP_ITEMS,EMAIL_BRIDGE,CAS_CCPS_BRIDGE,QUARTERS_DEFAULT,LP_QUARTERS,CAS_PACING_UNITS,CAS_PACING_COURSES,CAS_PACING_NOTES,CUSTOM_PACING_UNITS,_calendarExpiredBannerDismissed,SP_STATIC_DEFAULTS,_spPeriods,_bragTab,_bragData,_bragBodySnapshot,_bragSubjectSnapshot,BRAG_AUDIENCE,LH_TERMS;
+<script data-lh-block="leader-hub-block-1-part-1-of-17">var LH_RETIRED_SECRET_KEYS,_lsWriteFailWarned,_lsReadFailWarned,LS,LH_SERVER_SYNCED_CONFIG_KEYS,LH_SYNC_PENDING_KEY,_lhSyncFailWarned,LH_SERVER_SYNCED_DATA_KEYS,_lhDataConflictWarned,_lhDataPushChain,SCR_SYNC_DEBOUNCE_MS,_scrSyncQueue,_scrSyncTimer,trips,_otherEventsDefault,otherEvents,PROFILE_DEFAULTS,PROFILE,KEY_CONTACTS_DEFAULTS,MODULES_DEFAULT,MODULES,ORG_DEFAULTS,CUSTOM_ORGS,ORGANIZATIONS,activeOrgId,_studentsDefault,students,goals,TRIPS_SEED,nextId,currentTripId,currentFilter,REQUIRED_FIELDS,fd,du,dn,leadDays,isOvernightTrip,subDeadline,fmtDeadline,tagClass,tagEmoji,rcColors,gcColors,sponsorSteps,coordSteps,postSteps,_activeMoName,_activeMoReturnFocus,RAW_MODAL_CLOSERS,_rawModalReturnFocus,_rawModalWasVisible,_rawModalOpenStack,_rawModalObserver,_unsavedWorkChecks,_lhFormSnaps,_wzEditBaseline,MO_FORM_GUARDS,MO_CLOSE_GUARDS,WZ_STEPS,_wzStep,_wzMaxStepReached,_wzDraft,_origOpenModal,emailTab,emailContextTripId,EMAIL_TEMPLATES,_emailAutoFilled,DECA_RESULT_EVENTS,DECA_PLACE_OPTIONS,lastDecaConf,lastDecaPlace,ORG_RESULTS,_lastOrgResultLevel,_lastOrgResultPlace,ORG_SYNC,ORG_WELCOME_SEEN,DECA_APPROVAL_EVENTS,DECA_SEASON_YEAR,DECA_SEASON_DEFAULT,DECA_SEASON,memberTab,MEMBER_STATUS_MAP,OFFICER_POSITIONS,_DECA_ROLE_HTML,_DECA_STATUS_HTML,slipRosters,nextSlipId,currentSlipFilter,_asSource,ftPermOverrides,confLeaveRecords,CONF_REQUIRED,FT_PERM_REQUIRED,_origRenderDashboard,tripArchive,archiveFilter,archivingTripId,archiveFilterCurrent,SCR_COURSES,CUSTOM_COURSES,SCR_STUDENT_EMAILS,PACING_8175,PACING_6115,PACING_8177,scrActiveCourse,scrActivePeriod,scrScores,SCR_SCORE_LABELS,PACING_REGISTRY,Q_COLORS_BG,Q_COLORS_HDR,Q_COLORS_BDR,WBL_STUDENTS,SBE_ELEMENTS,SBE_STATUS,_sbeNoteTimer,_sbeNotePending,LESSON_PLANS,UNIT_PLANS,LP_EDITS,lpActivePlan,GRADING_STRUCTURE,LP_Q_COLORS,LP_Q_BG,LP_C_LABELS,LP_C_COLORS,_lpCurrentView,scrViewMode,PROC_STEPS,PURCHASE_ORDERS,poCounter,RECEIVING_CHECKS,RECEIVING_STATUS,SALES_LOG,INVENTORY,ES_PLAYERS,ES_MATCHES,SSBU_CHECKLIST,SSBU_CHECK_STATUS,MK8_CHECK_STATUS_LOADED,MK8_CHECKLIST,MK8_CHECK_STATUS,_activeToasts,DB_ROLES,BELL_SCHEDULES_DEFAULT,SCHOOL_CALENDAR_YEAR,SCHEDULE_OVERRIDES_DEFAULT,NO_SCHOOL_DEFAULT,DAY_SCHEDULE_MAP_DEFAULT,SCHOOL_PERIODS,BELL_SCHEDULES,CCPS_SCHEDULE_OVERRIDES,CCPS_NO_SCHOOL,DAY_SCHEDULE_MAP,_emailAiReqId,_lpAiReqId,_ord,DECA_DEADLINES_DEFAULT,CCPS_CALENDAR_DEADLINES_DEFAULT,RETIRED_DEFAULT_DEADLINES,DEADLINES,_editingDeadlineId,_naNav,CHOICE_SNOOZED,_lastChoiceCardsSig,PULSE_MEANINGS,HORIZON,MOOD_LABELS,MOOD_ADVICE,MOOD_COLORS,_journalMood,_journalStep,_journalOpenSnapshot,JOURNAL_TOTAL_STEPS,JOURNAL_DRAFT_KEY,_journalDraftTimer,_cronChecked,_journalForced,_journalAutoShownDate,_depositReminderShownDate,_commsTriageShownDate,_ACC_IDS,IMPROVEMENTS,surveyAnswers,_profSaveStatusTimer,MONTHS,MONTH_RE,CROSS_RANGE_SRC,ORDINAL_Q,HOLIDAY_KEYWORDS,_schedSaveStatusTimer,ORG_ROSTER_SYNC_FIELDS,ORG_RESULT_SYNC_FIELDS,AI_FLOW_LABELS,SYNC_PLATFORMS,OBS_PREP_ITEMS,EMAIL_BRIDGE,CAS_CCPS_BRIDGE,QUARTERS_DEFAULT,LP_QUARTERS,CAS_PACING_UNITS,CAS_PACING_COURSES,CAS_PACING_NOTES,CUSTOM_PACING_UNITS,_calendarExpiredBannerDismissed,SP_STATIC_DEFAULTS,_spPeriods,_bragTab,_bragData,_bragBodySnapshot,_bragSubjectSnapshot,BRAG_AUDIENCE,LH_TERMS;
 
 function _lhPendingAll_() {
 try {
@@ -4467,7 +4527,7 @@ document.getElementById('preview-body').innerHTML = `
     </div>
   `;
 openModal('preview');
-}</script><script data-lh-block="leader-hub-block-1-part-2-of-16">
+}</script><script data-lh-block="leader-hub-block-1-part-2-of-17">
 function prow1(label, val) {
 const empty = !val || val==='';
 return `<div style="display:flex;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f0ebe0"><div style="min-width:220px;font-weight:600;color:#333;font-size:.78rem">${label}</div><div style="flex:1;color:${empty?'#b91c1c':'#444'};font-size:.79rem">${empty?'⚠ MISSING':val}</div></div>`;
@@ -4644,6 +4704,7 @@ if (!modalEl) return;
 modalEl.classList.add('open');
 _activeMoName = name;
 _activeMoReturnFocus = document.activeElement;
+if (MO_FORM_GUARDS[name]) setTimeout(() => lhMarkFormClean('modal-' + name), 0);
 const focusable = _moFocusables(modalEl);
 if (focusable.length) focusable[0].focus();
 }
@@ -4676,6 +4737,44 @@ document.getElementById('discard-confirm-submit').focus();
 function _showDiscardConfirm(message, onConfirm) {
 _showConfirm(message, onConfirm, { confirmLabel: 'Discard', danger: true, ariaLabel: 'Discard unsaved changes' });
 }
+function _lhFormState(el) {
+return [...el.querySelectorAll('input, textarea, select')]
+.map(i => (i.type === 'checkbox' || i.type === 'radio') ? String(i.checked) : i.value)
+.join('\u0001');
+}
+function lhMarkFormClean(id) {
+const el = document.getElementById(id);
+if (el) _lhFormSnaps[id] = _lhFormState(el);
+}
+function lhFormIsDirty(id) {
+const el = document.getElementById(id);
+return !!el && _lhFormSnaps[id] != null && _lhFormState(el) !== _lhFormSnaps[id];
+}
+function lhCloseFormIfClean(id, what, close) {
+if (!lhFormIsDirty(id)) { delete _lhFormSnaps[id]; close(); return true; }
+_showDiscardConfirm('Discard your changes to this ' + what + '? They haven\'t been saved.', () => {
+delete _lhFormSnaps[id];
+close();
+});
+return false;
+}
+function _lhIsShown(el) { return !!el && (el.classList.contains('open') || el.style.display === 'block' || el.style.display === 'flex'); }
+function _wzDraftKey(d) {
+return JSON.stringify(Object.keys(d || {}).sort()
+.filter(k => d[k] != null && d[k] !== '')
+.map(k => [k, String(d[k])]));
+}
+function _wzEditIsDirty() {
+if (!_wzDraft || !_wzDraft._editId || _wzEditBaseline == null) return false;
+wzCollectStep();
+return _wzDraftKey(_wzDraft) !== _wzEditBaseline;
+}
+function _lhOpenFormIsDirty() {
+if (_lhIsShown(document.getElementById('modal-newTrip')) && _wzEditIsDirty()) return true;
+return Object.keys(_lhFormSnaps).some(id => _lhIsShown(document.getElementById(id)) && lhFormIsDirty(id));
+}
+function dismissPOModal() { lhCloseFormIfClean('po-modal', 'purchase order', closePOModal); }
+function dismissWBLStudentModal() { lhCloseFormIfClean('wbl-student-modal', 'student', closeWBLStudentModal); }
 function closeModal(name, force){
 const guard = MO_CLOSE_GUARDS[name];
 if (!force && guard && !guard()) return;
@@ -4696,6 +4795,7 @@ if (existing) {
 _wzDraft = { _editId: existing.id, ...tripToDraft(existing) };
 document.getElementById('nt-modal-title').textContent = 'Edit: ' + existing.name;
 _wzMaxStepReached = WZ_STEPS.length;
+_wzEditBaseline = _wzDraftKey(_wzDraft);
 _finishOpenTripWizard(existing);
 return;
 }
@@ -5192,8 +5292,9 @@ trips = trips.filter(t => t.id !== d._editId);
 trips.push(trip);
 persistTrips(); persistNextId();
 _wzDraft = {};
+_wzEditBaseline = null;
 LS.set('lh_trip_draft', {});
-closeModal('newTrip');
+closeModal('newTrip', true);
 document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
 currentTripId = null;
 if (d._editId && trip.archived) {
@@ -5294,12 +5395,73 @@ otherEvents=otherEvents.filter(e=>e.id!==id);
 persistEvents(); renderEvents();
 _undoToast(`"${(ev.name||'').slice(0,40)}" removed`,()=>{otherEvents=_saved;persistEvents();renderEvents();});
 }
+function _emailLongDate(iso) {
+return iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }) : '[DATE]';
+}
+function _emailDateRange(start, end) {
+if (!start) return '[DATES]';
+if (!end || end === start) return _emailLongDate(start);
+const a = new Date(start + 'T00:00:00'), b = new Date(end + 'T00:00:00');
+const month = d => d.toLocaleDateString('en-US', { month:'long' });
+if (a.getFullYear() !== b.getFullYear()) return _emailLongDate(start) + ' – ' + _emailLongDate(end);
+if (a.getMonth() === b.getMonth()) return `${month(a)} ${a.getDate()}–${b.getDate()}, ${b.getFullYear()}`;
+return `${month(a)} ${a.getDate()} – ${month(b)} ${b.getDate()}, ${b.getFullYear()}`;
+}
+function _emailSeasonFacts(today) {
+today = today || new Date();
+const stages = ((typeof DECA_SEASON !== 'undefined' && DECA_SEASON && DECA_SEASON.stages) || []).filter(s => s && s.label);
+const find = (re, not) => stages.find(s => re.test(s.label) && !(not && not.test(s.label)));
+const icdc = find(/\bICDC\b/i, /registration|payment/i);
+const icdcReg = find(/\bICDC\b.*registration/i);
+const icdcPay = find(/\bICDC\b.*payment/i);
+const slc = find(/\bSLC\b|\bstate\b/i, /registration|testing/i);
+const cityOf = s => (String((s && s.detail) || '').split('·').map(x => x.trim()).find(x => /,\s*[A-Z]{2}$/.test(x))) || '';
+const dates = stages.map(s => s.date).filter(Boolean).sort();
+const y1 = dates.length ? dates[0].slice(0, 4) : '', y2 = dates.length ? dates[dates.length - 1].slice(0, 4) : '';
+const status = s => (typeof _decaStageStatus === 'function') ? _decaStageStatus(s, today) : 'upcoming';
+const line = s => `• ${s.label} — ${_emailDateRange(s.date, s.endDate)}${cityOf(s) ? ' (' + cityOf(s) + ')' : ''}`;
+const seasonStart = dates[0] || '';
+const todayIso = (typeof _localDateStr_ === 'function') ? _localDateStr_(today) : today.toISOString().slice(0, 10);
+const doneTrips = (typeof trips !== 'undefined' ? trips : [])
+.filter(t => t && t.date && seasonStart && t.date >= seasonStart && (t.retDate || t.date) < todayIso)
+.sort((a, b) => a.date.localeCompare(b.date))
+.map(t => `• ${t.name} — ${_emailDateRange(t.date, t.retDate)}${t.dest1 ? ' · ' + t.dest1 : ''}${t.stuAtt ? ' · ' + t.stuAtt + ' students' : ''}`);
+return {
+seasonStart,
+seasonLabel: y1 ? (y1 === y2 ? y1 : `${y1}–${y2.slice(2)}`) : '[SEASON]',
+icdcYear: icdc && icdc.date ? icdc.date.slice(0, 4) : '',
+icdcDates: icdc ? _emailDateRange(icdc.date, icdc.endDate) : '[ICDC DATES]',
+icdcPlace: cityOf(icdc) || (icdc ? icdc.label.replace(/\bICDC\b/i, '').trim() : '') || '[ICDC LOCATION]',
+icdcRegCloses: icdcReg ? _emailLongDate(icdcReg.endDate || icdcReg.date) : '[DATE]',
+icdcPaymentDue: icdcPay ? _emailLongDate(icdcPay.date) : '[DATE]',
+slcName: slc ? 'the DECA State Leadership Conference' : 'the State Leadership Conference',
+slcDates: slc ? _emailDateRange(slc.date, slc.endDate) : '[DATES]',
+doneLines: stages.filter(s => status(s) === 'done').map(line),
+upcomingLines: stages.filter(s => status(s) !== 'done').map(line),
+doneTrips,
+};
+}
+function _emailIcdc(t, f) {
+const trip = t && /\bICDC\b/i.test(t.name || '') && t.date && f.seasonStart && t.date >= f.seasonStart ? t : null;
+return {
+dates: trip ? _emailDateRange(trip.date, trip.retDate) : f.icdcDates,
+place: (trip && trip.dest1) || f.icdcPlace,
+cost: trip && trip.costStu ? '$' + trip.costStu : '[AMOUNT]',
+housing: (trip && trip.housing) || '[HOTEL]',
+transport: (trip && (trip.flight || trip.charterCo || trip.train)) || '[TRANSPORTATION]',
+};
+}
 function openEmailComposer(tripId, audience) {
 populateEmailContextDropdown();
-if(tripId) {
-document.getElementById('email-context-sel').value = tripId;
+const sel = document.getElementById('email-context-sel');
+if(tripId && sel.querySelector(`option[value="${tripId}"]`)) {
+sel.value = tripId;
 emailContextTripId = tripId;
+} else {
+sel.value = '';
+emailContextTripId = null;
 }
+_emailUpdateContextLabel();
 if(audience) setEmailTab(audience, document.getElementById('etab-'+audience));
 else setEmailTab('students', document.getElementById('etab-students'));
 openModal('emailComposer');
@@ -5308,33 +5470,37 @@ function populateEmailContextDropdown() {
 const sel = document.getElementById('email-context-sel');
 const currentVal = sel.value;
 sel.innerHTML = '<option value="">— General / No trip —</option>';
-const decaGroup = document.createElement('optgroup');
-decaGroup.label = '🏆 DECA Trips (25–26)';
-const decaNames = {3:'Power Trip',4:'DLC',5:'SLC',6:'ICDC'};
-trips.filter(t => t.id >= 3 && t.id <= 6).forEach(t => {
-const o = document.createElement('option');
-o.value = t.id;
-o.textContent = `${t.name.replace('DECA ','').replace('— International Career Development Conference','')} (${fd(t.date)})`;
-decaGroup.appendChild(o);
-});
-sel.appendChild(decaGroup);
-const otherGroup = document.createElement('optgroup');
-otherGroup.label = '🚌 Other Trips';
-trips.filter(t => t.id < 3).forEach(t => {
+const todayIso = _localDateStr_(new Date());
+const list = trips.filter(t => !t.archived).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+const groups = [
+['🚌 Upcoming trips', list.filter(t => (t.retDate || t.date || '') >= todayIso)],
+['🗂 Past trips', list.filter(t => (t.retDate || t.date || '') < todayIso).reverse()],
+];
+for (const [label, items] of groups) {
+if (!items.length) continue;
+const g = document.createElement('optgroup');
+g.label = label;
+items.forEach(t => {
 const o = document.createElement('option');
 o.value = t.id;
 o.textContent = `${t.name} (${fd(t.date)})`;
-otherGroup.appendChild(o);
+g.appendChild(o);
 });
-if(otherGroup.children.length) sel.appendChild(otherGroup);
-if(currentVal) sel.value = currentVal;
+sel.appendChild(g);
+}
+if(currentVal && sel.querySelector(`option[value="${currentVal}"]`)) sel.value = currentVal;
+}
+function _emailUpdateContextLabel() {
+const t = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
+const el = document.getElementById('email-context-label');
+if (el) el.textContent = t ? t.name : 'General — no trip selected';
 }
 function onEmailContextChange() {
 const sel = document.getElementById('email-context-sel');
 emailContextTripId = sel.value ? parseInt(sel.value) : null;
 renderEmailTemplates();
-const t = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
-document.getElementById('email-context-label').textContent = t ? t.name : 'General — no trip selected';
+_emailUpdateContextLabel();
+_emailFillRecipients();
 }
 function setEmailTab(tab, btn) {
 emailTab = tab;
@@ -5343,16 +5509,65 @@ if(btn) btn.classList.add('active');
 else { const b = document.getElementById('etab-'+tab); if(b) b.classList.add('active'); }
 renderEmailTemplates();
 clearEmailComposer();
+_emailFillRecipients();
 }
 function renderEmailTemplates() {
 const list = document.getElementById('email-template-list');
 if(!list) return;
 const templates = EMAIL_TEMPLATES[emailTab] || [];
-const t = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
 list.innerHTML = templates.map(tpl => `
     <button class="etpl" onclick="loadEmailTemplate('${tpl.id}')">
       ${tpl.label}
     </button>`).join('');
+}
+function _emailRecipients(tab, trip) {
+const parents = tab === 'parents';
+const out = { to: '', cc: '', bcc: '', note: '' };
+if (tab === 'school') {
+out.to = PROFILE.adminEmail || '';
+out.cc = PROFILE.email || '';
+out.note = out.to ? '' : 'Type the principal\'s or office\'s address in To (or add it in Settings → My Profile & School).';
+return out;
+}
+if (tab === 'faculty') {
+out.cc = PROFILE.email || '';
+out.note = 'Type your colleagues\' addresses in To.';
+return out;
+}
+let people, from;
+if (trip) {
+people = getSlipRoster(trip.id).map(resolveSlipStudent);
+from = `the ${trip.name} permission-slip list`;
+} else {
+people = students.filter(s => s.memberStatus !== 'alumni' && (!s.org || s.org === activeOrgId));
+from = 'your active members';
+}
+const field = parents ? 'parentEmail' : 'email';
+const emails = [...new Set(people.map(p => String(p[field] || '').trim()).filter(e => e.includes('@')))];
+const missing = people.length - people.filter(p => String(p[field] || '').includes('@')).length;
+out.to = emails.length ? (PROFILE.email || '') : '';
+out.bcc = emails.join('; ');
+const who = parents ? 'famil' + (emails.length === 1 ? 'y' : 'ies') : 'student' + (emails.length === 1 ? '' : 's');
+if (!people.length) {
+out.note = trip
+? `No one is on ${from} yet. Add students under Permission Slips, or type addresses here.`
+: 'No active members yet. Add them under Members, or type addresses here.';
+} else {
+out.note = `Bcc: ${emails.length} ${who} from ${from}.` +
+(missing ? ` ${missing} ${missing === 1 ? 'has' : 'have'} no ${parents ? 'parent ' : ''}email on file.` : '');
+}
+return out;
+}
+function _emailFillRecipients() {
+const trip = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
+const r = _emailRecipients(emailTab, trip);
+for (const k of ['to', 'cc', 'bcc']) {
+const el = document.getElementById('email-' + k);
+if (!el) continue;
+if (!el.value || el.value === _emailAutoFilled[k]) { el.value = r[k]; _emailAutoFilled[k] = r[k]; }
+}
+const note = document.getElementById('email-recipient-note');
+if (note) note.textContent = r.note;
 }
 function loadEmailTemplate(tplId) {
 const tpl = Object.values(EMAIL_TEMPLATES).flat().find(t => t.id === tplId);
@@ -5360,26 +5575,52 @@ if(!tpl) return;
 const trip = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
 document.getElementById('email-subject').value = typeof tpl.subject === 'function' ? tpl.subject(trip) : tpl.subject;
 document.getElementById('email-body').value = typeof tpl.body === 'function' ? tpl.body(trip) : tpl.body;
-const toDefaults = { students:'DECA Chapter Members', parents:'DECA Families', school:'Principal / Administration', faculty:'Colleagues / Dept. Team' };
-if(!document.getElementById('email-to').value) {
-document.getElementById('email-to').value = toDefaults[emailTab] || '';
-}
-const ccDefaults = { school:PROFILE.email, faculty:PROFILE.email };
-if(!document.getElementById('email-cc').value && ccDefaults[emailTab]) {
-document.getElementById('email-cc').value = ccDefaults[emailTab];
-}
+_emailFillRecipients();
 document.querySelectorAll('.etpl').forEach(b => { b.classList.toggle('sel', b.textContent.trim() === (tpl.label||'').trim()); });
 document.getElementById('email-copy-confirm').textContent = '';
 }
+function lhEmailBlanks(text) {
+return [...new Set(String(text || '').match(/\[[^\[\]\n]{1,40}\]/g) || [])];
+}
+function lhEmailAddressList(text) {
+return String(text || '').split(/[;,\s]+/).map(a => a.trim()).filter(Boolean);
+}
+function lhCheckEmailBeforeSending(fields, send) {
+const addrs = lhEmailAddressList([fields.to, fields.cc, fields.bcc].join(';'));
+const notAddrs = addrs.filter(a => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a));
+if (notAddrs.length) {
+_showToast(`⚠ Not an email address: ${notAddrs.slice(0, 3).join(', ')}. Use real addresses, separated by ;`, 5000, '#991b1b');
+return;
+}
+if (!lhEmailAddressList([fields.to, fields.bcc].join(';')).length) {
+_showToast('⚠ Add at least one email address in To or Bcc.', 4000, '#991b1b');
+return;
+}
+const blanks = lhEmailBlanks((fields.subject || '') + '\n' + (fields.body || ''));
+if (!blanks.length) { send(); return; }
+_showConfirm(
+`This email still has ${blanks.length} blank${blanks.length === 1 ? '' : 's'} to fill in:\n` +
+blanks.slice(0, 10).join('  ') + (blanks.length > 10 ? '  …' : '') +
+'\n\nThe people you send it to will see them as written.',
+send,
+{ confirmLabel: 'Send anyway', cancelLabel: 'Go back and fill them in', danger: false, ariaLabel: 'Unfilled blanks in this email' }
+);
+}
+function _emailFields() {
+const v = id => (document.getElementById(id) || {}).value || '';
+return { to: v('email-to'), cc: v('email-cc'), bcc: v('email-bcc'), subject: v('email-subject'), body: v('email-body') };
+}
 function copyEmail() {
-const subj = document.getElementById('email-subject').value;
-const body = document.getElementById('email-body').value;
-const to = document.getElementById('email-to').value;
-const full = (to ? 'TO: ' + to + '\n' : '') + (subj ? 'SUBJECT: ' + subj + '\n\n' : '') + body;
-navigator.clipboard.writeText(full).then(() => {
-document.getElementById('email-copy-confirm').textContent = '✅ Copied to clipboard!';
-setTimeout(() => { document.getElementById('email-copy-confirm').textContent = ''; }, 2500);
-}).catch(() => {
+const f = _emailFields();
+const full = (f.to ? 'TO: ' + f.to + '\n' : '') + (f.bcc ? 'BCC: ' + f.bcc + '\n' : '') + (f.subject ? 'SUBJECT: ' + f.subject + '\n\n' : '') + f.body;
+const blanks = lhEmailBlanks(f.subject + '\n' + f.body);
+const confirmEl = document.getElementById('email-copy-confirm');
+const done = (msg) => {
+confirmEl.textContent = blanks.length ? `${msg} ${blanks.length} blank${blanks.length === 1 ? '' : 's'} still to fill: ${blanks.slice(0, 5).join(' ')}` : msg;
+confirmEl.style.color = blanks.length ? '#b45309' : 'var(--green)';
+setTimeout(() => { confirmEl.textContent = ''; }, blanks.length ? 6000 : 2500);
+};
+navigator.clipboard.writeText(full).then(() => done('✅ Copied to clipboard!')).catch(() => {
 try {
 const ta = document.createElement('textarea');
 ta.value = full;
@@ -5387,26 +5628,32 @@ document.body.appendChild(ta);
 ta.select();
 document.execCommand('copy');
 document.body.removeChild(ta);
-document.getElementById('email-copy-confirm').textContent = '✅ Copied!';
+done('✅ Copied!');
 } catch (e) {
-document.getElementById('email-copy-confirm').textContent = '⚠ Could not copy — select and copy the text manually';
+confirmEl.textContent = '⚠ Could not copy — select and copy the text manually';
+setTimeout(() => { confirmEl.textContent = ''; }, 3500);
 }
-setTimeout(() => { document.getElementById('email-copy-confirm').textContent = ''; }, 3500);
 });
 }
+function _emailMailtoUrl(f) {
+const enc = encodeURIComponent;
+const to = lhEmailAddressList(f.to).join(',');
+const params = [];
+if (f.cc) params.push('cc=' + enc(lhEmailAddressList(f.cc).join(',')));
+if (f.bcc) params.push('bcc=' + enc(lhEmailAddressList(f.bcc).join(',')));
+params.push('subject=' + enc(f.subject || ''), 'body=' + enc(f.body || ''));
+return `mailto:${enc(to).replace(/%2C/g, ',').replace(/%40/g, '@')}?${params.join('&')}`;
+}
 function openInMailClient() {
-const subj = encodeURIComponent(document.getElementById('email-subject').value || '');
-const body = encodeURIComponent(document.getElementById('email-body').value || '');
-const to = encodeURIComponent(document.getElementById('email-to').value || '');
-const cc = encodeURIComponent(document.getElementById('email-cc').value || '');
-window.location.href = `mailto:${to}?subject=${subj}&body=${body}${cc?'&cc='+cc:''}`;
+const f = _emailFields();
+lhCheckEmailBeforeSending(f, () => { window.location.href = _emailMailtoUrl(f); });
 }
 function clearEmailComposer() {
-document.getElementById('email-to').value = '';
-document.getElementById('email-cc').value = '';
-document.getElementById('email-subject').value = '';
-document.getElementById('email-body').value = '';
+['email-to', 'email-cc', 'email-bcc', 'email-subject', 'email-body'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+_emailAutoFilled = { to: '', cc: '', bcc: '' };
 document.getElementById('email-copy-confirm').textContent = '';
+const note = document.getElementById('email-recipient-note');
+if (note) note.textContent = '';
 document.querySelectorAll('.etpl').forEach(b => b.classList.remove('sel'));
 }
 function openEmailComposerForTrip(tripId, audience) {
@@ -5442,7 +5689,7 @@ el.innerHTML =
 card(`${escH(org.name)} Officers`, '👑', officerHtml) +
 card('Results', '🏅', renderOrgResults(orgId)) +
 card('Full Roster', '👥', `<div style="font-size:.82rem;color:var(--muted)">Manage the full ${escH(org.name)} roster, dues, and membership status on the <a href="#" onclick="showView('students');return false;" style="color:var(--navy);text-decoration:underline">Members</a> page.</div>`);
-}
+}</script><script data-lh-block="leader-hub-block-1-part-3-of-17">
 function renderDECAHub() {
 const el = document.getElementById('deca-hub-content');
 if(!el) return;
@@ -5624,7 +5871,7 @@ card('📋 Admin Approval Checklist — CCPS Required Forms', '🏛️', renderD
 card('🏅 Competitive Results', '📈', renderDecaResults()) +
 card('Key Contacts', '📞', contacts) +
 card('Chapter Reference — Fees, Rules & Deadlines', '📋', refInfo);
-}</script><script data-lh-block="leader-hub-block-1-part-3-of-16">
+}
 function renderDecaResults() {
 const results = LS.get('lh_deca_results', []);
 const byEvent = {};
@@ -6083,7 +6330,7 @@ const name=document.getElementById('ne-name').value.trim();if(!name)return _show
 otherEvents.push({id:nextId.ev++,name,type:document.getElementById('ne-type').value,date:document.getElementById('ne-date').value,loc:document.getElementById('ne-loc').value||'TBD',stu:parseInt(document.getElementById('ne-stu').value)||0,notes:document.getElementById('ne-notes').value});
 persistNextId();
 persistEvents();
-closeModal('newEvent');['ne-name','ne-loc','ne-stu','ne-notes','ne-date'].forEach(id=>document.getElementById(id).value='');
+closeModal('newEvent', true);['ne-name','ne-loc','ne-stu','ne-notes','ne-date'].forEach(id=>document.getElementById(id).value='');
 renderEvents();
 }
 function _officerPositionsFor(orgId){ return (ORGANIZATIONS[orgId] && ORGANIZATIONS[orgId].officerPositions) || OFFICER_POSITIONS; }
@@ -6388,7 +6635,7 @@ notes: document.getElementById('st-notes').value,
 students.push(s);
 persistNextId();
 persistStudents();
-closeModal('addStudent');
+closeModal('addStudent', true);
 renderStudents();
 _showToast('✅ Member added');
 }
@@ -6439,7 +6686,7 @@ s.dietaryNeeds= document.getElementById('st-dietary')?.value.trim()||'';
 s.ev = parseInt(document.getElementById('st-event')?.value)||null;
 s.notes = document.getElementById('st-notes').value;
 persistStudents();
-closeModal('addStudent');
+closeModal('addStudent', true);
 renderStudents();
 _showToast('✅ Member updated');
 }
@@ -6468,10 +6715,16 @@ const rows = active.map(s=>[s.last,s.first,s.grade,s.position,s.competEvent,s.me
 const csv = [headers.join(','),...rows].join('\n');
 navigator.clipboard.writeText(csv).then(()=>_showToast('📋 Member CSV copied to clipboard')).catch(()=>{ const ta=document.createElement('textarea');ta.value=csv;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);_showToast('📋 Copied to clipboard'); });
 }
+function _emailSetRecipients(to, cc, bcc, note) {
+const vals = { to: to || '', cc: cc || '', bcc: bcc || '' };
+for (const k of ['to', 'cc', 'bcc']) { const el = document.getElementById('email-' + k); if (el) el.value = vals[k]; }
+_emailAutoFilled = vals;
+const n = document.getElementById('email-recipient-note');
+if (n) n.textContent = note || '';
+}</script><script data-lh-block="leader-hub-block-1-part-4-of-17">
 function openEmailComposerForMember(s){
 setEmailTab('parents', document.getElementById('etab-parents'));
-document.getElementById('email-to').value = s.parentEmail || '';
-document.getElementById('email-cc').value = s.email || '';
+_emailSetRecipients(s.parentEmail, s.email, '', s.parentEmail ? '' : `No parent email on file for ${s.first} ${s.last}. Add one under Members, or type it in To.`);
 const _memberOrgName = (ORGANIZATIONS[s.org]||ORGANIZATIONS.deca).name;
 document.getElementById('email-subject').value = `${_memberOrgName} Registration Info Needed — ${s.first} ${s.last}`;
 document.getElementById('email-body').value =
@@ -6521,7 +6774,8 @@ const contextLabels = {new:'new membership registration',renewal:'annual members
 const tab = audience==='parent' ? 'parents' : 'students';
 closeModal('memberReg');
 setEmailTab(tab, document.getElementById('etab-'+tab));
-document.getElementById('email-to').value = audience==='student'?'DECA Members':audience==='parent'?'DECA Families':'DECA Members; DECA Families';
+const _regLists = (audience === 'both' ? ['students', 'parents'] : [tab]).map(k => _emailRecipients(k, null));
+_emailSetRecipients(PROFILE.email, '', [...new Set(_regLists.flatMap(r => lhEmailAddressList(r.bcc)))].join('; '), _regLists.map(r => r.note).join(' '));
 document.getElementById('email-subject').value = `DECA Registration — Information Needed by ${deadline}`;
 document.getElementById('email-body').value =
 `Dear ${audience==='student'?'DECA Team':'DECA Families'},
@@ -6576,7 +6830,9 @@ await aiComposeEmail();
 }
 function loadAlumniExitTemplate(){
 setEmailTab('students', document.getElementById('etab-students'));
-document.getElementById('email-to').value = 'DECA Alumni';
+const _alumni = students.filter(s => s.memberStatus === 'alumni' && (s.email || '').includes('@'));
+_emailSetRecipients(_alumni.length ? PROFILE.email : '', '', _alumni.map(s => s.email).join('; '),
+_alumni.length ? `Bcc: ${_alumni.length} alumni with an email on file.` : 'No alumni with an email on file. Type addresses in To.');
 document.getElementById('email-subject').value = `DECA Exit Interview & Alumni Connection — ${PROFILE.chapterName}`;
 document.getElementById('email-body').value =
 `Dear [Student Name],
@@ -6635,12 +6891,11 @@ function sendAlumniExitEmail(studentId){
 const s = students.find(x=>x.id===studentId);
 if(!s) return;
 setEmailTab('students', document.getElementById('etab-students'));
-document.getElementById('email-to').value = s.email || '';
 document.getElementById('email-subject').value = `DECA Exit Interview & Alumni Connection — ${s.first}, We'd Love to Hear from You`;
 loadAlumniExitTemplate();
 const body = document.getElementById('email-body');
 body.value = body.value.replace('Dear [Student Name],', `Dear ${s.first},`);
-document.getElementById('email-to').value = s.email || '';
+_emailSetRecipients(s.email, '', '', s.email ? '' : `No email on file for ${s.first} ${s.last}.`);
 openModal('emailComposer');
 }
 function renderGoals(){
@@ -6704,7 +6959,7 @@ function saveGoal(){
 const title=document.getElementById('gl-title').value.trim();if(!title)return _showToast('Enter goal title.', 2500, '#991b1b');
 goals.push({id:nextId.gl++,title,cat:document.getElementById('gl-cat').value,date:document.getElementById('gl-date').value,progress:parseInt(document.getElementById('gl-prog').value)||0,desc:document.getElementById('gl-desc').value,updatedAt:new Date().toISOString()});
 persistGoals(); persistNextId();
-closeModal('addGoal');['gl-title','gl-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('gl-prog').value=0;document.getElementById('gl-pct').textContent='0%';
+closeModal('addGoal', true);['gl-title','gl-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('gl-prog').value=0;document.getElementById('gl-pct').textContent='0%';
 renderGoals(); refreshNextAction();
 }
 function persistSlips() { LS.set('lh_slip_rosters', slipRosters); }
@@ -6728,7 +6983,7 @@ dirty = true;
 });
 if (dirty) persistSlips();
 }
-function persistNextSlipId() { LS.set('lh_next_slip_id', nextSlipId); }</script><script data-lh-block="leader-hub-block-1-part-4-of-16">
+function persistNextSlipId() { LS.set('lh_next_slip_id', nextSlipId); }
 function resolveSlipStudent(slip) {
 if (slip.studentId) {
 const s = students.find(m => m.id === slip.studentId);
@@ -7665,7 +7920,7 @@ archiveFilterCurrent = filter;
 document.querySelectorAll('[id^="af-"]').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline'); });
 if(btn) { btn.classList.add('btn-primary'); btn.classList.remove('btn-outline'); }
 renderArchive();
-}
+}</script><script data-lh-block="leader-hub-block-1-part-5-of-17">
 function renderArchive() {
 const search = (document.getElementById('archive-search')?.value || '').toLowerCase();
 let list = [...tripArchive];
@@ -7885,7 +8140,7 @@ document.querySelectorAll('.scr-tab').forEach(b => b.classList.remove('active'))
 const tabBtn = btn || document.getElementById('scrtab-' + code);
 if (tabBtn) tabBtn.classList.add('active');
 renderCompetencyView();
-}</script><script data-lh-block="leader-hub-block-1-part-5-of-16">
+}
 function renderCompetencyView() {
 if (!scrScores[scrActiveCourse]) initScrScores();
 const course = SCR_COURSES[scrActiveCourse];
@@ -8238,6 +8493,7 @@ document.getElementById('wbl-reflects').value = 0;
 document.getElementById('wbl-agreement').value = 'pending';
 document.getElementById('wbl-period').value = '2';
 document.getElementById('wbl-student-modal').style.display = 'block';
+lhMarkFormClean('wbl-student-modal');
 }
 function openWBLEditStudent(id) {
 const s = WBL_STUDENTS.find(x=>x.id===id);
@@ -8252,6 +8508,7 @@ document.getElementById('wbl-reflects').value = s.reflects;
 document.getElementById('wbl-agreement').value = s.agreement;
 document.getElementById('wbl-period').value = s.period;
 document.getElementById('wbl-student-modal').style.display = 'block';
+lhMarkFormClean('wbl-student-modal');
 }
 function saveWBLStudent() {
 const id = document.getElementById('wbl-edit-id').value;
@@ -8758,7 +9015,7 @@ refreshNextAction();
 async function lpAIPrompt(prompt) {
 lpSwitchTab('ai', document.getElementById('lptab-ai'));
 await lpRunAI(prompt);
-}
+}</script><script data-lh-block="leader-hub-block-1-part-6-of-17">
 async function lpAIDiff() {
 lpSwitchTab('ai', document.getElementById('lptab-ai'));
 const prompt = `Generate a complete, ready-to-paste Differentiation & Assessment section for this lesson plan. This section must satisfy CCPS instructional planning standards (Standard 2.2, 2.5, 2.6) which require documented differentiation for SPED/IEP students, ELL students, and evidence of assessment. Format your response with these exact headers:
@@ -8981,7 +9238,7 @@ return `<div class="mb-card">
       </div>
     </div>
   </div>`;
-}</script><script data-lh-block="leader-hub-block-1-part-6-of-16">
+}
 function scrScoreKeydown(e, stuName, compNum, el) {
 if (e.key >= '0' && e.key <= '5') {
 e.preventDefault();
@@ -9215,6 +9472,7 @@ INVENTORY.map(i => `<option value="${i.id}">${escH(i.name)}</option>`).join('') 
 '<option value="__new__">➕ New item (not yet in Inventory)</option>';
 document.getElementById('po-item-new-wrap').style.display = 'none';
 document.getElementById('po-modal').style.display='block';
+lhMarkFormClean('po-modal');
 }
 function closePOModal() { document.getElementById('po-modal').style.display='none'; }
 function onPoSkuChange() {
@@ -9912,7 +10170,7 @@ if (glowEl && !glowEl.value) glowEl.value = t.notes ? `Trip notes: ${t.notes}` :
 if (growEl && !growEl.value) growEl.value = 'What would I do differently next time?';
 if (outEl && !outEl.value) outEl.value = t.status === 'complete' ? 'Completed successfully' : t.status || '';
 _showToast('Fields pre-filled from trip data — edit and save', 3000, '#0369a1');
-}
+}</script><script data-lh-block="leader-hub-block-1-part-7-of-17">
 async function generateAIInsights() {
 const btn = document.getElementById('archive-ai-btn');
 const body = document.getElementById('ai-insights-body');
@@ -10174,7 +10432,7 @@ if (curOutput) {
 const note = `<div style="padding:.3rem 0 .5rem;font-size:.75rem;color:var(--muted);font-style:italic">Couldn't get an AI answer just now — showing related tips instead.</div>`;
 curOutput.innerHTML = note + localHtml;
 }
-}</script><script data-lh-block="leader-hub-block-1-part-7-of-16">
+}
 function openAISCRInsights() {
 const course = SCR_COURSES[scrActiveCourse];
 const students = course.periods[scrActivePeriod] || [];
@@ -10584,21 +10842,6 @@ _bLog.unshift({ date: new Date().toISOString(), week: weekLabel, audience: _brag
 LS.set('lh_brag_log', _bLog.slice(0, 52));
 _bragBodySnapshot = emailBody;
 refreshNextAction();
-if (url) {
-try {
-if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Sending email…';
-const to = aud?.defaultTo || '';
-const subj = _subj || `Weekly Wins — Week of ${weekDisplay}`;
-const res = await callGAS('bragEmail', { to, subject: subj, body: emailBody });
-if (res.ok) {
-if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Email sent';
-} else {
-if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (send failed)';
-}
-} catch(e) {
-if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — email unavailable';
-}
-}
 }
 function updateLessonStrip() {
 const el = document.getElementById('db-lesson-strip');
@@ -11149,7 +11392,7 @@ _safeRender(renderHorizons, 'renderHorizons');
 _safeRender(renderChoiceCards,'renderChoiceCards');
 _safeRender(updateJournalCTA, 'updateJournalCTA');
 _safeRender(renderRecentWins, 'renderRecentWins');
-}
+}</script><script data-lh-block="leader-hub-block-1-part-8-of-17">
 function getPulseData(){
 const wblTotal=typeof WBL_STUDENTS!=='undefined'?WBL_STUDENTS.length:0;
 const wblSigned=typeof WBL_STUDENTS!=='undefined'?WBL_STUDENTS.filter(s=>s.agreement!=='pending').length:0;
@@ -11189,7 +11432,7 @@ if (perScores[name] && perScores[name][comp.num]) _scrScored++;
 });
 });
 } catch(e) {}
-const teachPct = _scrTotal ? Math.round((_scrScored / _scrTotal) * 100) : 0;
+const teachPct = _scrTotal ? Math.round((_scrScored / _scrTotal) * 100) : null;
 const teachStat = _scrTotal ? `${teachPct}% of competencies scored` : 'No scores yet';
 const teachAlert = teachPct < 60 && _scrTotal > 0;
 const _scrLog = LS.get('lh_scr_session_log', []);
@@ -11235,13 +11478,13 @@ teachPacingIndicator = _diff > 0 ? ' ▲' : _diff < 0 ? ' ▼' : ' ✓';
 const teachNext = teachScrNext + teachPacingIndicator;
 const _allTrips = typeof trips !== 'undefined' ? trips : [];
 const _readyTrips = _allTrips.filter(t => typeof getMissingFields==='function' && getMissingFields(t).length===0);
-const tripsPct = _allTrips.length ? Math.round((_readyTrips.length / _allTrips.length) * 100) : 100;
+const tripsPct = _allTrips.length ? Math.round((_readyTrips.length / _allTrips.length) * 100) : null;
 const tripsAlert = (tripDL && daysUntil(tripDL.date) <= 3) || (_allTrips.length > 0 && tripsPct < 50);
 return [
 {key:'teach',pct:teachPct,nav:'competency',stat:teachStat,next:teachNext,alert:teachAlert},
 {key:'store',pct:Math.round((sbeDone/sbeTotal)*100)||0,nav:'wbl',stat:lowInv>0?`⚠ ${lowInv} item${lowInv===1?'':'s'} low on stock`:`${wblAvgHrs}h avg work-based learning`,next:lowInv>0?`Reorder items`:wblSigned<wblTotal?`${wblTotal-wblSigned} agreements unsigned`:`Store approval ${sbeDone}/${sbeTotal}`,alert:lowInv>0||wblSigned<wblTotal},
-{key:'deca',pct:decaDays!==null?Math.max(0,Math.min(100,Math.round((1-decaDays/90)*100))):50,nav:'deca',stat:nextDeca?`${urgencyClass(decaDays).dot} ${decaDays}d`:'No deadlines',next:nextDeca?nextDeca.title:'Add DECA deadlines',alert:decaDays!==null&&decaDays<=7},
-{key:'esports',pct:esTotal?Math.round((esWins/esTotal)*100):0,nav:'esports',stat:esTotal?`${esWins}W–${esTotal-esWins}L`:'No matches logged',next:nextMatchLabel?`Next: ${nextMatchLabel}`:esTotal?'Review lineup':'Log first match',alert:nextMatchDays!==null&&nextMatchDays<=1},
+{key:'deca',pct:decaDays===null||decaDays<0?null:Math.max(0,Math.min(100,Math.round((1-decaDays/90)*100))),overdue:decaDays!==null&&decaDays<0,nav:'deca',stat:nextDeca?(decaDays<0?`${urgencyClass(decaDays).dot} ${-decaDays}d overdue`:`${urgencyClass(decaDays).dot} ${decaDays}d`):'No deadlines',next:nextDeca?nextDeca.title:'Add DECA deadlines',alert:decaDays!==null&&decaDays<=7},
+{key:'esports',pct:esTotal?Math.round((esWins/esTotal)*100):null,nav:'esports',stat:esTotal?`${esWins}W–${esTotal-esWins}L`:'No matches logged',next:nextMatchLabel?`Next: ${nextMatchLabel}`:esTotal?'Review lineup':'Log first match',alert:nextMatchDays!==null&&nextMatchDays<=1},
 {key:'trips',pct:tripsPct,nav:'trips',stat:tripDL?`${urgencyClass(daysUntil(tripDL.date)).dot} ${daysUntil(tripDL.date)}d`:'No trip deadlines',next:tripDL?tripDL.title:`${_readyTrips.length}/${_allTrips.length} ready`,alert:tripsAlert},
 ].filter(d => (d.key!=='store' || MODULES.wbl) && (d.key!=='deca' || MODULES.orgs) && (d.key!=='esports' || MODULES.esports));
 }
@@ -11254,13 +11497,13 @@ const ab=d.alert?'border:2px solid #b91c1c;':'border:1px solid var(--border);';
 return `<div onclick="showView('${d.nav}')" style="background:var(--surface);${ab}border-radius:var(--radius-sm,10px);padding:.65rem .8rem;cursor:pointer;transition:all .2s;position:relative" onmouseover="this.style.boxShadow='var(--shadow-lg)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
       ${d.alert?`<div style="position:absolute;top:-.4rem;right:-.4rem;background:#b91c1c;color:#fff;font-size:.75rem;font-weight:800;padding:2px 7px;border-radius:99px">Action!</div>`:''}
       <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
-        <div style="position:relative;flex-shrink:0">${ring(d.pct,r.color,54,3.5)}
+        <div style="position:relative;flex-shrink:0">${ring(d.overdue?100:(d.pct||0),d.overdue?'#b91c1c':r.color,54,3.5)}
           <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem">${r.icon}</div>
         </div>
         <div>
           <div style="font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:${r.color}">${r.label}</div>
-          <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.35rem;color:var(--navy);line-height:1" title="${m[1]}">${d.pct}%</div>
-          <div style="font-size:.75rem;color:var(--muted);line-height:1.2">${m[0]}</div>
+          <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.35rem;color:var(--navy);line-height:1" title="${m[1]}">${d.overdue?'Overdue':d.pct==null?'—':d.pct+'%'}</div>
+          <div style="font-size:.75rem;color:var(--muted);line-height:1.2">${d.overdue?'deadline passed':d.pct==null?'nothing to count yet':m[0]}</div>
         </div>
       </div>
       <div style="font-size:.84rem;color:#374151;font-weight:600;line-height:1.3">${d.stat}</div>
@@ -11419,7 +11662,7 @@ LS.set('lh_horizon',HORIZON);
 renderHorizons();
 refreshNextAction();
 });
-}</script><script data-lh-block="leader-hub-block-1-part-8-of-16">
+}
 function renderRecentWins() {
 const strip = document.getElementById('recent-wins-strip');
 const list = document.getElementById('recent-wins-list');
@@ -11733,11 +11976,26 @@ LS.set('lh_deposit_reminder_date', today);
 showDepositReminderBanner();
 _fireNotification('🏦 1:45 PM — Deposit Reminder', 'CCPS Policy 7060: no money overnight. Deposit with Ms. Evans by 2:00 PM.');
 }
+function lhShowBanner(banner) {
+const stack = document.getElementById('lh-banners');
+if (!stack) { document.body.prepend(banner); return; }
+stack.appendChild(banner);
+if (!stack._lhWatched) {
+stack._lhWatched = true;
+if (typeof MutationObserver === 'function') new MutationObserver(_lhSyncBannerHeight).observe(stack, { childList: true });
+if (typeof ResizeObserver === 'function') new ResizeObserver(_lhSyncBannerHeight).observe(stack);
+}
+_lhSyncBannerHeight();
+}
+function _lhSyncBannerHeight() {
+const stack = document.getElementById('lh-banners');
+document.documentElement.style.setProperty('--lh-banners-h', (stack ? stack.offsetHeight : 0) + 'px');
+}
 function showDepositReminderBanner(){
 if(document.getElementById('deposit-reminder-banner')) return;
 const banner = document.createElement('div');
 banner.id = 'deposit-reminder-banner';
-banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+banner.style.cssText = 'background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
 banner.innerHTML = `
     <span style="font-size:1.3rem">🏦</span>
     <div style="flex:1">
@@ -11748,7 +12006,7 @@ banner.innerHTML = `
       <button onclick="markDepositDone()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Deposit Done</button>
       <button onclick="document.getElementById('deposit-reminder-banner').remove()" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕ Dismiss</button>
     </div>`;
-document.body.prepend(banner);
+lhShowBanner(banner);
 }
 function markDepositDone(){
 const banner = document.getElementById('deposit-reminder-banner');
@@ -11783,7 +12041,7 @@ function showWorkdayReminderBanner(){
 if(document.getElementById('workday-reminder-banner')) return;
 const banner = document.createElement('div');
 banner.id = 'workday-reminder-banner';
-banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+banner.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
 banner.innerHTML = `
     <span style="font-size:1.3rem">🕛</span>
     <div style="flex:1">
@@ -11799,7 +12057,7 @@ banner.innerHTML = `
       <button onclick="markWorkdayDone()" style="background:rgba(0,0,0,.25);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer">✅ Done</button>
       <button onclick="document.getElementById('workday-reminder-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-document.body.prepend(banner);
+lhShowBanner(banner);
 }
 function markWorkdayDone(){
 const banner = document.getElementById('workday-reminder-banner');
@@ -11842,7 +12100,7 @@ function showCommsTriageBanner(){
 if(document.getElementById('comms-triage-banner')) return;
 const banner = document.createElement('div');
 banner.id = 'comms-triage-banner';
-banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+banner.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
 banner.innerHTML = `
     <span style="font-size:1.3rem">📬</span>
     <div style="flex:1">
@@ -11853,7 +12111,7 @@ banner.innerHTML = `
       <button onclick="markCommsDone()" style="background:#fff;color:#1e3a5f;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Checked</button>
       <button onclick="document.getElementById('comms-triage-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-document.body.prepend(banner);
+lhShowBanner(banner);
 }
 function markCommsDone(){
 const banner = document.getElementById('comms-triage-banner');
@@ -11882,7 +12140,7 @@ function showPLCBanner() {
 if (document.getElementById('plc-banner')) return;
 const banner = document.createElement('div');
 banner.id = 'plc-banner';
-banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99995;background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+banner.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
 banner.innerHTML = `
     <span style="font-size:1.3rem">🗓️</span>
     <div style="flex:1">
@@ -11893,7 +12151,7 @@ banner.innerHTML = `
       <button onclick="logPLCAttended();document.getElementById('plc-banner').remove()" style="background:#fff;color:#1a3560;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✓ Attended</button>
       <button onclick="document.getElementById('plc-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.75);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-document.body.prepend(banner);
+lhShowBanner(banner);
 }
 function logPLCAttended() {
 _logDaily({ date: today, type: 'plc_meeting', note: 'CTE PLC Monthly Meeting — attended.' });
@@ -11920,7 +12178,7 @@ function showEsportsMatchBanner(match) {
 if (document.getElementById('esports-match-banner')) return;
 const banner = document.createElement('div');
 banner.id = 'esports-match-banner';
-banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99995;background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+banner.style.cssText = 'background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
 const gameLabel = match.game === 'ssbu' ? '🥊 Smash Bros' : match.game === 'mk8' ? '🏎️ Mario Kart' : '🎮 E-Sports';
 banner.innerHTML = `
     <span style="font-size:1.3rem">🎮</span>
@@ -11932,7 +12190,7 @@ banner.innerHTML = `
       <button onclick="showView('esports');document.getElementById('esports-match-banner').remove()" style="background:#fff;color:#4c1d95;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📋 Checklist</button>
       <button onclick="document.getElementById('esports-match-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-document.body.prepend(banner);
+lhShowBanner(banner);
 }
 function checkDECAEventTomorrow() {
 if (MODULES.orgs === false) return;
@@ -11950,7 +12208,7 @@ function showDECATomorrowBanner(dl) {
 if (document.getElementById('deca-tomorrow-banner')) return;
 const banner = document.createElement('div');
 banner.id = 'deca-tomorrow-banner';
-banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99994;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+banner.style.cssText = 'background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
 banner.innerHTML = `
     <span style="font-size:1.3rem">🏆</span>
     <div style="flex:1">
@@ -11961,7 +12219,7 @@ banner.innerHTML = `
       <button onclick="showView('deca');document.getElementById('deca-tomorrow-banner').remove()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">🏆 DECA Hub</button>
       <button onclick="document.getElementById('deca-tomorrow-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(0,0,0,.25);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-document.body.prepend(banner);
+lhShowBanner(banner);
 }
 function openJournalForced(){
 _journalForced = true;
@@ -12145,7 +12403,7 @@ m.innerHTML=`<div style="background:var(--surface);max-width:780px;margin:0 auto
   </div>`;
 document.body.appendChild(m);
 m.onclick=e=>{ if(e.target===m) m.remove(); };
-}
+}</script><script data-lh-block="leader-hub-block-1-part-9-of-17">
 function openSurveyModal(){
 const m=document.createElement('div');
 m.id='survey-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow:auto;padding:2rem 1rem';
@@ -12504,7 +12762,7 @@ const next = _iso(dt.getFullYear(), dt.getMonth(), dt.getDate());
 if (dt.getDay() !== 0 && dt.getDay() !== 6 && !skip.has(next)) return next;
 }
 return null;
-}</script><script data-lh-block="leader-hub-block-1-part-9-of-16">
+}
 function parseCountyCalendarText(text, refYear) {
 const warnings = [];
 const lines = text.split(/\r?\n/);
@@ -13290,7 +13548,7 @@ modal._onCancel = closeIt;
 modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
 document.getElementById('org-welcome-close').onclick = closeIt;
 document.getElementById('org-welcome-close').focus();
-}
+}</script><script data-lh-block="leader-hub-block-1-part-10-of-17">
 async function lhOpenJoinOrgModal() {
 if (!_lhBridgeAvailable_()) {
 _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
@@ -13886,7 +14144,7 @@ const url = document.getElementById('casccps-url-input');
 const cid = document.getElementById('casccps-clientid-input');
 const btn = document.getElementById('casccps-save');
 if (btn) btn.disabled = !(url && url.value.trim() && cid && cid.value.trim());
-}</script><script data-lh-block="leader-hub-block-1-part-10-of-16">
+}
 function openCasCcpsModal_() {
 const url = CAS_CCPS_BRIDGE.apiUrl();
 const cid = CAS_CCPS_BRIDGE.clientId();
@@ -14228,7 +14486,7 @@ if (_calendarExpiredBannerDismissed || document.getElementById('calendar-expired
 const end = getLastConfiguredQuarterEnd();
 const banner = document.createElement('div');
 banner.id = 'calendar-expired-banner';
-banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100000;background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+banner.style.cssText = 'background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
 banner.innerHTML = `
     <span style="font-size:1.3rem">📅</span>
     <div style="flex:1">
@@ -14239,7 +14497,7 @@ banner.innerHTML = `
       <button onclick="openCalendarImporterSettings()" style="background:#fff;color:#1a3560;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📆 Import Calendar</button>
       <button onclick="document.getElementById('calendar-expired-banner').remove();_calendarExpiredBannerDismissed=true" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕ Dismiss</button>
     </div>`;
-document.body.prepend(banner);
+lhShowBanner(banner);
 }
 function renderPacingCalendar() {
 const container = document.getElementById('lp-calendar-grid');
@@ -14617,7 +14875,7 @@ differentiation: String(u.differentiation || ''),
 });
 }
 return { ok:true, units };
-}
+}</script><script data-lh-block="leader-hub-block-1-part-11-of-17">
 function lhImportPacingUnitsJson(fileInput) {
 const file = fileInput.files && fileInput.files[0];
 if (!file) return;
@@ -14995,6 +15253,8 @@ const iso = _localDateStr_(d);
 document.getElementById('brag-week-start').value = iso;
 setBragTab(_bragTab, document.getElementById('brag-tab-' + _bragTab));
 gatherBragData();
+const sendBtn = document.getElementById('brag-send-btn');
+if (sendBtn) sendBtn.style.display = _lhBridgeAvailable_() ? '' : 'none';
 openModal('bragboard');
 if (autoPrompt) {
 document.getElementById('brag-week-label').textContent = "🎉 It's Friday — here's what you accomplished this week";
@@ -15207,12 +15467,40 @@ el.textContent = '⚠ Could not copy — select and copy the text manually';
 setTimeout(() => { el.textContent = ''; }, 3500);
 });
 }
+function _bragFields() {
+const v = id => (document.getElementById(id) || {}).value || '';
+return { to: v('brag-to'), cc: v('brag-cc'), bcc: '', subject: v('brag-subject'), body: v('brag-body') };
+}
 function openBragInMail() {
-const to = encodeURIComponent(document.getElementById('brag-to').value || '');
-const cc = encodeURIComponent(document.getElementById('brag-cc').value || '');
-const subject = encodeURIComponent(document.getElementById('brag-subject').value || '');
-const body = encodeURIComponent(document.getElementById('brag-body').value || '');
-window.open(`mailto:${to}?cc=${cc}&subject=${subject}&body=${body}`);
+const f = _bragFields();
+lhCheckEmailBeforeSending(f, () => window.open(_emailMailtoUrl(f)));
+}
+async function sendBragEmail() {
+const f = _bragFields();
+if (!f.body.trim()) { _showToast('⚠ Nothing to send yet — click ✨ Generate or write the email first.', 3500, '#991b1b'); return; }
+if (f.cc.trim()) { _showToast('⚠ Send now can\'t add a Cc. Clear Cc, or use 📬 Open in Mail.', 4500, '#991b1b'); return; }
+lhCheckEmailBeforeSending(f, () => {
+const to = lhEmailAddressList(f.to).join(', ');
+_showConfirm(`Send this email to ${to} now, from your school account?`, async () => {
+const statusEl = document.getElementById('brag-ai-status');
+const btn = document.getElementById('brag-send-btn');
+if (btn) btn.disabled = true;
+if (statusEl) statusEl.textContent = '📤 Sending…';
+try {
+const res = await callGAS('bragEmail', { to, subject: f.subject || 'Weekly Wins', body: f.body });
+if (res && res.ok) {
+if (statusEl) statusEl.textContent = '✅ Sent to ' + to;
+saveBragToLog();
+} else if (statusEl) {
+statusEl.textContent = '⚠ Not sent' + (res && res.error ? ': ' + res.error : '') + ' — the draft is still here';
+}
+} catch (e) {
+if (statusEl) statusEl.textContent = '⚠ Not sent — the email connection didn\'t answer. The draft is still here.';
+} finally {
+if (btn) btn.disabled = false;
+}
+}, { confirmLabel: 'Send', danger: false, ariaLabel: 'Send this email' });
+});
 }
 function saveBragToLog() {
 const subject = document.getElementById('brag-subject').value;
@@ -15241,12 +15529,12 @@ if (LS.get('lh_brag_prompt_date', '') === today) return;
 LS.set('lh_brag_prompt_date', today);
 showBragBoardPromptBanner();
 _fireNotification('🏆 Friday — Brag About Your Week', 'You did a lot this week. Generate a quick wins email for Ms. Green, Admin, or DECA parents.');
-}</script><script data-lh-block="leader-hub-block-1-part-11-of-16">
+}
 function showBragBoardPromptBanner() {
 if (document.getElementById('brag-prompt-banner')) return;
 const banner = document.createElement('div');
 banner.id = 'brag-prompt-banner';
-banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99997;background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+banner.style.cssText = 'background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
 banner.innerHTML = `
     <span style="font-size:1.3rem">🏆</span>
     <div style="flex:1">
@@ -15262,7 +15550,7 @@ banner.innerHTML = `
         aria-label="Dismiss" class="btn-on-navy"
         style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
-document.body.prepend(banner);
+lhShowBanner(banner);
 }
 function _lhTermMeaning(t) {
 if (t[1]) return t[1];
@@ -15292,7 +15580,9 @@ function lhCloseTerms() {
 const dlg = document.getElementById('lh-terms');
 if (!dlg) return;
 if (dlg.open && typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
-}var _lsWriteFailWarned = false;
+}var LH_RETIRED_SECRET_KEYS = ['lh_api_key'];
+try { LH_RETIRED_SECRET_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { }
+var _lsWriteFailWarned = false;
 var _lsReadFailWarned = false;
 var LS = {
 get: (k, def=null) => {
@@ -15697,10 +15987,10 @@ var RAW_MODAL_CLOSERS = {
 'journal-history-modal': () => { const el = document.getElementById('journal-history-modal'); if (el) el.style.display = 'none'; },
 'lp-modal': () => closeLPModal(),
 'obs-log-modal': () => closeObsLog(),
-'po-modal': () => closePOModal(),
+'po-modal': () => dismissPOModal(),
 'sales-modal': () => closeSalesModal(),
 'inventory-modal': () => closeInventoryModal(),
-'wbl-student-modal': () => closeWBLStudentModal(),
+'wbl-student-modal': () => dismissWBLStudentModal(),
 'es-player-modal': () => closeESModal(),
 'es-match-modal': () => closeMatchModal(),
 'survey-modal': () => { const el = document.getElementById('survey-modal'); if (el) el.remove(); },
@@ -15725,7 +16015,23 @@ const hasUnsaved = _unsavedWorkChecks.some(fn => { try { return fn(); } catch (e
 if (hasUnsaved) { e.preventDefault(); e.returnValue = ''; }
 });
 document.addEventListener('keydown', _moTrapKeydown);
+var _lhFormSnaps = {};
+var _wzEditBaseline = null;
+var MO_FORM_GUARDS = { addStudent: 'member', addGoal: 'goal', newEvent: 'event' };
+_unsavedWorkChecks.push(_lhOpenFormIsDirty);
 var MO_CLOSE_GUARDS = {
+newTrip: () => {
+if (!_wzEditIsDirty()) { _wzEditBaseline = null; return true; }
+_showDiscardConfirm('Discard your changes to this trip? They haven\'t been saved.', () => {
+_wzEditBaseline = null;
+_wzDraft = {};
+closeModal('newTrip', true);
+});
+return false;
+},
+addStudent: () => { lhCloseFormIfClean('modal-addStudent', 'member', () => closeModal('addStudent', true)); return false; },
+addGoal: () => { lhCloseFormIfClean('modal-addGoal', 'goal', () => closeModal('addGoal', true)); return false; },
+newEvent: () => { lhCloseFormIfClean('modal-newEvent', 'event', () => closeModal('newEvent', true)); return false; },
 bragboard: () => {
 if (!_bragHasUnsavedChanges()) return true;
 _showDiscardConfirm('Discard this email draft? It hasn\'t been saved to the log.', () => {
@@ -15748,7 +16054,7 @@ var WZ_STEPS = [
 var _wzStep = 1;
 var _wzMaxStepReached = 1;
 var _wzDraft = {};
-var _origOpenModal = openModal;
+var _origOpenModal = openModal;</script><script data-lh-block="leader-hub-block-1-part-12-of-17">
 window.openModal = function(name) {
 if (name === 'newTrip') { openTripWizard(null); return; }
 _origOpenModal(name);
@@ -15772,8 +16078,8 @@ return `Hi DECA Team,\n\nExciting news — we have an upcoming trip and I want t
 }
 },
 { id:'stu-icdc-qualify', label:'🏆 ICDC Qualifier Notification',
-subject: () => `CONGRATULATIONS — You Qualified for ICDC!`,
-body: (t) => `Hi [Student Name],\n\nCONGRATULATIONS! Based on your performance at the DECA State Leadership Conference, you have qualified to compete at the DECA International Career Development Conference (ICDC) in Atlanta, GA!\n\n📅 ICDC DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n💰 ESTIMATED COST: ~$1,000/student\n\nIMPORTANT NEXT STEPS:\n1. ✅ Confirm your participation with ${PROFILE.courtesyName} by [DATE]\n2. 💰 First installment (~$400) due March 13\n3. 📋 ICDC permission form due [DATE]\n4. 📝 Complete the ICDC commitment letter packet\n\nREQUIREMENT REMINDER: You must have scored 70%+ on the SLC written test to attend ICDC. I will confirm your test score with you directly.\n\nRegistration window: March 2–13 ($155). I cannot register you after March 13 — no exceptions.\n\nThis is a huge achievement. I am incredibly proud of you. Let's make ICDC count!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
+subject: () => `CONGRATULATIONS — You Qualified for ICDC ${_emailSeasonFacts().icdcYear}!`,
+body: (t) => { const f = _emailSeasonFacts(), x = _emailIcdc(t, f); return `Hi [Student Name],\n\nCONGRATULATIONS! Based on your performance at ${f.slcName}, you have qualified to compete at the DECA International Career Development Conference (ICDC) in ${x.place}!\n\n📅 ICDC DATES: ${x.dates}\n📍 LOCATION: ${x.place}\n💰 ESTIMATED COST: ${x.cost}/student\n\nIMPORTANT NEXT STEPS:\n1. ✅ Accept your spot with ${PROFILE.courtesyName} by ${f.icdcRegCloses}. DECA locks ICDC registration after that, so I can't add you later.\n2. 📋 Return the ICDC permission form by [DATE]\n3. 💰 Payment to the chapter: [AMOUNT] by [DATE]\n4. 📝 Complete the ICDC commitment letter packet\n\nREQUIREMENT REMINDER: You must have scored 70%+ on the SLC written test to attend ICDC. I will confirm your test score with you directly.\n\nThis is a huge achievement. I am incredibly proud of you. Let's make ICDC count!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`; }
 },
 { id:'stu-permission-reminder', label:'📝 Permission Slip Reminder',
 subject: (t) => `REMINDER: Permission Slip Needed — ${t ? t.name : 'Upcoming Trip'}`,
@@ -15798,20 +16104,20 @@ subject: (t) => `DECA Field Trip: ${t ? t.name : '[Trip Name]'} — Permission &
 body: (t) => {
 if(!t) return `Dear DECA Families,\n\nOur DECA chapter has an exciting trip coming up. Please watch for details and the permission form that will be sent home soon.\n\nIf you have any questions, please contact me at the information below.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
 const overnight = isOvernightTrip(t);
-return `Dear ${t.name} Families,\n\nOur DECA chapter has an upcoming ${overnight ? 'overnight ' : ''}field trip and I want to make sure you have all of the information you need.\n\n📅 EVENT: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORTATION: ${t.charterCo ? 'Charter Bus — ' + t.charterCo : t.train ? 'Train/Amtrak' : t.parentTx ? 'Parent Transportation' : 'TBD'}\n💰 COST: $${t.costStu || 0}/student${t.afford ? '\n   Funding source: ' + t.afford : ''}\n👨‍🏫 CHAPERONES: ${t.chaperones || t.med1 || '${PROFILE.name}'}\n\nPERMISSION & PAYMENT:\nA signed permission form and payment of $${t.costStu || 0} must be returned to ${PROFILE.courtesyName} by [DATE]. Your student's spot is not secured until both are received.\n\n${overnight ? 'OVERNIGHT INFORMATION:\nStudents will be staying at ' + (t.housing || '[Hotel TBD]') + '. We will maintain a chaperone-to-student ratio throughout the trip.\n\n' : ''}If you have any questions or concerns, please reach out directly.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
+return `Dear ${t.name} Families,\n\nOur DECA chapter has an upcoming ${overnight ? 'overnight ' : ''}field trip and I want to make sure you have all of the information you need.\n\n📅 EVENT: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORTATION: ${t.charterCo ? 'Charter Bus — ' + t.charterCo : t.train ? 'Train/Amtrak' : t.parentTx ? 'Parent Transportation' : 'TBD'}\n💰 COST: $${t.costStu || 0}/student${t.afford ? '\n   Funding source: ' + t.afford : ''}\n👨‍🏫 CHAPERONES: ${t.chaperones || t.med1 || PROFILE.name}\n\nPERMISSION & PAYMENT:\nA signed permission form and payment of $${t.costStu || 0} must be returned to ${PROFILE.courtesyName} by [DATE]. Your student's spot is not secured until both are received.\n\n${overnight ? 'OVERNIGHT INFORMATION:\nStudents will be staying at ' + (t.housing || '[Hotel TBD]') + '. We will maintain a chaperone-to-student ratio throughout the trip.\n\n' : ''}If you have any questions or concerns, please reach out directly.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
 }
 },
 { id:'par-icdc-info', label:'✈️ ICDC Qualifier Letter',
 subject: () => `DECA ICDC — Your Student Qualified! Information & Next Steps`,
-body: () => `Dear [Student] Families,\n\nI am thrilled to share that your student has qualified to compete at the DECA International Career Development Conference (ICDC)!\n\n📅 EVENT: DECA ICDC\n📆 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n🚌 TRANSPORTATION: Airline (details to follow)\n🏨 HOUSING: Atlanta Hilton — $260/night, 4 to a room\n💰 ESTIMATED TOTAL COST: ~$1,000/student\n\nPAYMENT SCHEDULE:\n• Installment #1: ~$400 due March 13\n• Installment #2: ~$300 due March 27\n• Installment #3: ~$300 + forms due April 17\n\nIMPORTANT: ICDC is open only to students who placed in the Top 8 at the State Leadership Conference AND scored 70%+ on the SLC written test. I will confirm eligibility with each family individually.\n\nPlease contact me as soon as possible to confirm whether your student will attend, as the registration window closes March 13.\n\nThank you for your continued support of our DECA chapter!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
+body: (t) => { const f = _emailSeasonFacts(), x = _emailIcdc(t, f); return `Dear [Student] Families,\n\nI am thrilled to share that your student has qualified to compete at the DECA International Career Development Conference (ICDC)!\n\n📅 EVENT: DECA ICDC ${f.icdcYear}\n📆 DATES: ${x.dates}\n📍 LOCATION: ${x.place}\n🚌 TRANSPORTATION: ${x.transport}\n🏨 HOUSING: ${x.housing}\n💰 ESTIMATED TOTAL COST: ${x.cost}/student\n\nPAYMENT SCHEDULE:\n• [AMOUNT] due [DATE]\n• [AMOUNT] + forms due [DATE]\n\nIMPORTANT: ICDC is open only to students who placed in the Top 8 at the State Leadership Conference AND scored 70%+ on the SLC written test. I will confirm eligibility with each family individually.\n\nPlease let me know by ${f.icdcRegCloses} whether your student will attend. DECA closes ICDC registration that day.\n\nThank you for your continued support of our DECA chapter!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`; }
 },
 { id:'par-permission-followup', label:'📝 Unsigned Permission Slip Followup',
 subject: (t) => `URGENT: Missing Permission Slip — ${t ? t.name : 'Upcoming Trip'}`,
 body: (t) => `Dear [Student]'s Family,\n\nThis is a follow-up regarding the permission slip for ${t ? t.name : 'the upcoming DECA trip'}.\n\nAs of today, we have not received a signed permission form for your student. Without a completed permission slip, your student WILL NOT be able to participate.\n\n📅 Trip Date: ${t ? fd(t.date) : '[Date]'}\n⚠️  Permission Deadline: [DATE]\n💰 Payment Remaining: $[AMOUNT]\n\nPlease return the signed form and any remaining payment to ${PROFILE.courtesyName} (Room [#]) by the deadline above.\n\nIf you have questions or need a new form, please contact me directly.\n\n${PROFILE.name}\n${PROFILE.phone} | ${PROFILE.email}`
 },
 { id:'par-season-update', label:'📅 Season / Calendar Update',
-subject: () => `DECA 25-26 Season Update — Key Dates & Upcoming Events`,
-body: () => `Dear DECA Families,\n\nI wanted to send a quick update on our DECA chapter's 25-26 season and share some important upcoming dates.\n\n✅ COMPLETED THIS SEASON:\n• Ultimate Power Trip — Nov 21–23, 2025 (Arlington, VA)\n• District Leadership Conference — Dec 3, 2025 (Chesterfield Towne Center)\n• State Leadership Conference — Feb 27–Mar 1, 2026 (Virginia Beach)\n\n📅 UPCOMING:\n• ICDC Registration: March 2–13, 2026 ($155/student — qualifiers only)\n• ICDC Payment Due: April 1, 2026\n• ICDC Atlanta: April 25–29, 2026\n\nMembership in DECA is $20 and accepted all year. If your student is not yet a paid member and would like to be involved in future activities, please have them see ${PROFILE.courtesyName}.\n\nThank you for your ongoing support!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}\nInstagram: @cloverhillsdeca`
+subject: () => `DECA ${_emailSeasonFacts().seasonLabel} Season Update — Key Dates & Upcoming Events`,
+body: () => { const f = _emailSeasonFacts(); return `Dear DECA Families,\n\nI wanted to send a quick update on our DECA chapter's ${f.seasonLabel} season and share some important upcoming dates.\n\n${f.doneLines.length ? '✅ COMPLETED THIS SEASON:\n' + f.doneLines.join('\n') + '\n\n' : ''}📅 UPCOMING:\n${f.upcomingLines.join('\n') || '• [Add upcoming dates]'}\n\nMembership in DECA is $20 and accepted all year. If your student is not yet a paid member and would like to be involved in future activities, please have them see ${PROFILE.courtesyName}.\n\nThank you for your ongoing support!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}\nInstagram: @cloverhillsdeca`; }
 },
 { id:'par-chaperone-request', label:'🙋 Chaperone Request',
 subject: (t) => `Seeking Chaperones: ${t ? t.name : 'Upcoming DECA Trip'}`,
@@ -15835,12 +16141,12 @@ subject: (t) => `Purchase Order / Payment Request — ${t ? t.name : '[Event]'}`
 body: (t) => `Dear Finance Office,\n\nI am writing to request a purchase order / payment processing for the following:\n\n📋 EVENT: ${t ? t.name : '[Event Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n💰 AMOUNT: $[AMOUNT]\n📁 ACCOUNT CODE: ${t ? (t.fund || 'DECA 4280') : 'DECA 4280'}\n📤 PAYABLE TO: [Vendor Name]\n\nDETAILS:\n[Brief description of what is being purchased — e.g., transportation, registration fees, hotel]\n\nPlease let me know what documentation you need to process this request.\n\nThank you,\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
 },
 { id:'sch-icdc-notification', label:'✈️ ICDC Admin Notification',
-subject: () => `DECA ICDC — Students Advancing to Nationals — April 25–29, 2026`,
-body: () => `Dear Administration,\n\nI am pleased to share that [#] ${PROFILE.chapterName} students have qualified to represent our school at the DECA International Career Development Conference (ICDC) — a national competition attended by approximately 20,000 students.\n\n📅 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA\n💰 STUDENT COST: ~$1,000/student (funded through SAF/student payments)\n🚌 TRANSPORT: Airline\n📁 ACCOUNT: DECA 4280\n\nQUALIFICATION: Students placed in the Top 8 at the Virginia DECA State Leadership Conference (Feb 27–Mar 1) AND scored 70%+ on the written assessment.\n\nThis is a tremendous achievement for our students and for ${PROFILE.school}. I will be submitting the field trip form through TripTracker and the Conference/Leave Request (PR3) form for administrative approval.\n\nPlease let me know if you need any additional information.\n\nThank you for your continued support of our DECA program!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
+subject: (t) => `DECA ICDC — Students Advancing to Nationals — ${_emailIcdc(t, _emailSeasonFacts()).dates}`,
+body: (t) => { const f = _emailSeasonFacts(), x = _emailIcdc(t, f); return `Dear Administration,\n\nI am pleased to share that [#] ${PROFILE.chapterName} students have qualified to represent our school at the DECA International Career Development Conference (ICDC) — a national competition attended by approximately 20,000 students.\n\n📅 DATES: ${x.dates}\n📍 LOCATION: ${x.place}\n💰 STUDENT COST: ${x.cost}/student (funded through SAF/student payments)\n🚌 TRANSPORT: ${x.transport}\n📁 ACCOUNT: DECA 4280\n\nQUALIFICATION: Students placed in the Top 8 at the Virginia DECA State Leadership Conference (${f.slcDates}) AND scored 70%+ on the written assessment.\n\nThis is a tremendous achievement for our students and for ${PROFILE.school}. I will be submitting the field trip form through TripTracker and the Conference/Leave Request (PR3) form for administrative approval.\n\nPlease let me know if you need any additional information.\n\nThank you for your continued support of our DECA program!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`; }
 },
 { id:'sch-season-report', label:'📊 Season Report / Summary',
-subject: () => `DECA 25-26 Season Report — ${PROFILE.school}`,
-body: () => `Dear Administration,\n\nI wanted to share a brief summary of the ${PROFILE.chapterName} chapter's 25-26 competitive season.\n\n✅ SEASON HIGHLIGHTS:\n\n1. Ultimate Power Trip (Nov 21–23, 2025)\n   • Location: Arlington, VA (Renaissance Arlington Capital View)\n   • 13 students attended · Transport: Amtrak\n   • PO# 26-316-3418\n\n2. District Leadership Conference (Dec 3, 2025)\n   • Location: Chesterfield Towne Center\n   • 15 students competed (23 invited)\n   • No transportation cost\n\n3. State Leadership Conference (Feb 27–Mar 1, 2026)\n   • Location: Virginia Beach Convention Center\n   • 15 students competed · Charter bus (Winn)\n   • PO# 26-0368-2559\n   • Results: [Add SLC results]\n\n4. ICDC — International Career Development Conference (Apr 25–29, 2026)\n   • [# qualifiers advancing]\n   • Atlanta, GA\n\nThe DECA program continues to grow in both membership and competitive achievement. I look forward to sharing full results at the end of the season.\n\nThank you for your support!\n\n${PROFILE.name}\n${PROFILE.title}\n${PROFILE.phone}`
+subject: () => `DECA ${_emailSeasonFacts().seasonLabel} Season Report — ${PROFILE.school}`,
+body: () => { const f = _emailSeasonFacts(); const done = f.doneTrips.length ? f.doneTrips : f.doneLines; return `Dear Administration,\n\nI wanted to share a brief summary of the ${PROFILE.chapterName} chapter's ${f.seasonLabel} competitive season.\n\n✅ SEASON HIGHLIGHTS:\n${done.join('\n') || '• [Add this season\'s events]'}\n\nRESULTS: [Add results]\n\n📅 STILL TO COME:\n${f.upcomingLines.join('\n') || '• Nothing else on the season calendar'}\n\nThe DECA program continues to grow in both membership and competitive achievement. I look forward to sharing full results at the end of the season.\n\nThank you for your support!\n\n${PROFILE.name}\n${PROFILE.title}\n${PROFILE.phone}`; }
 },
 ],
 faculty: [
@@ -15862,10 +16168,11 @@ body: (t) => `Dear [Name],\n\nI wanted to take a moment to sincerely thank you f
 },
 { id:'fac-dept-update', label:'📣 Dept / Team DECA Update',
 subject: () => `DECA Program Update — [Month] [Year]`,
-body: () => `Hi Team,\n\nJust a quick update on where DECA is at this season and what's on the horizon.\n\nSEASON SO FAR:\n• Ultimate Power Trip ✅ — Nov 21–23 (Arlington, VA · 13 students)\n• DLC ✅ — Dec 3 (Chesterfield Towne Center · 15 students)\n• SLC ✅ — Feb 27–Mar 1 (Virginia Beach · 15 students · results pending)\n\nUPCOMING:\n• ICDC Registration: March 2–13 ($155 — qualifiers only)\n• ICDC Atlanta: April 25–29, 2026\n\nSTUDENTS TO WATCH: [Add names of strong performers]\n\nLet me know if you have any questions or if there's anything I can do to support your students who are in DECA.\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
+body: () => { const f = _emailSeasonFacts(); const done = f.doneTrips.length ? f.doneTrips : f.doneLines; return `Hi Team,\n\nJust a quick update on where DECA is at this season and what's on the horizon.\n\nSEASON SO FAR:\n${done.join('\n') || '• The season is just getting started'}\n\nUPCOMING:\n${f.upcomingLines.slice(0, 4).join('\n') || '• [Add upcoming dates]'}\n\nSTUDENTS TO WATCH: [Add names of strong performers]\n\nLet me know if you have any questions or if there's anything I can do to support your students who are in DECA.\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`; }
 },
 ]
 };
+var _emailAutoFilled = { to: '', cc: '', bcc: '' };
 var DECA_RESULT_EVENTS = [
 {id:'dlc25', label:'DLC — Dec 3', short:'DLC'},
 {id:'slc26', label:'SLC — Feb 27–Mar 1', short:'SLC'},
@@ -15967,7 +16274,7 @@ EMAIL_TEMPLATES.parents.push(
 subject: ()=>'DECA Registration — Student Information Needed',
 body: ()=>`Dear DECA Families,
 
-To complete your student's DECA membership registration for the 25-26 season, I need the following information by [DATE].
+To complete your student's DECA membership registration for the ${_emailSeasonFacts().seasonLabel} season, I need the following information by [DATE].
 
 STUDENT INFORMATION:
 □ Full legal name (as on school ID)
@@ -16050,7 +16357,7 @@ countFormsDue();
 };
 var tripArchive = LS.get('lh_trip_archive', []);
 var archiveFilter = 'all';
-var archivingTripId = null;</script><script data-lh-block="leader-hub-block-1-part-12-of-16">
+var archivingTripId = null;
 (function seedArchive() {
 if (tripArchive.length > 0) return;
 const seed = [
@@ -16085,12 +16392,12 @@ archivedAt: new Date(2026, 2, 4 - (2-i)).toISOString()
 persistTripArchive();
 })();
 var archiveFilterCurrent = 'all';
-document.querySelector('[onclick="openModal(\'addStudent\')"]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openModal_addStudent();},{capture:true});
+document.querySelector('[onclick="openModal(\'addStudent\')"]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openModal_addStudent();},{capture:true});</script><script data-lh-block="leader-hub-block-1-part-13-of-17">
 var SCR_COURSES = {"6115":{"code":"6115","name":"Principles of Business and Marketing","icon":"📘","competencies":[{"num":1,"req":"Required","text":"Demonstrate creativity and innovation.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":2,"req":"Required","text":"Demonstrate critical thinking and problem  solving.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":3,"req":"Required","text":"Demonstrate initiative and self-direction.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":4,"req":"Required","text":"Demonstrate integrity.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":5,"req":"Required","text":"Demonstrate work ethic.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":6,"req":"Required","text":"Demonstrate conflict-resolution skills.","duty":"Demonstrating Interpersonal Skills"},{"num":7,"req":"Required","text":"Demonstrate listening and speaking skills.","duty":"Demonstrating Interpersonal Skills"},{"num":8,"req":"Required","text":"Demonstrate respect for diversity.","duty":"Demonstrating Interpersonal Skills"},{"num":9,"req":"Required","text":"Demonstrate customer service skills.","duty":"Demonstrating Interpersonal Skills"},{"num":10,"req":"Required","text":"Collaborate with team members.","duty":"Demonstrating Interpersonal Skills"},{"num":11,"req":"Required","text":"Demonstrate big-picture thinking.","duty":"Demonstrating Professional Competencies"},{"num":12,"req":"Required","text":"Demonstrate career- and life-management skills.","duty":"Demonstrating Professional Competencies"},{"num":13,"req":"Required","text":"Demonstrate continuous learning and adaptability.","duty":"Demonstrating Professional Competencies"},{"num":14,"req":"Required","text":"Manage time and resources.","duty":"Demonstrating Professional Competencies"},{"num":15,"req":"Required","text":"Demonstrate information-literacy skills.","duty":"Demonstrating Professional Competencies"},{"num":16,"req":"Required","text":"Demonstrate an understanding of information security.","duty":"Demonstrating Professional Competencies"},{"num":17,"req":"Required","text":"Maintain working knowledge of current information-technology (IT) systems.","duty":"Demonstrating Professional Competencies"},{"num":18,"req":"Required","text":"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.","duty":"Demonstrating Professional Competencies"},{"num":19,"req":"Required","text":"Apply mathematical skills to job-specific tasks.","duty":"Demonstrating Professional Competencies"},{"num":20,"req":"Required","text":"Demonstrate professionalism.","duty":"Demonstrating Professional Competencies"},{"num":21,"req":"Required","text":"Demonstrate reading and writing skills.","duty":"Demonstrating Professional Competencies"},{"num":22,"req":"Required","text":"Demonstrate workplace safety.","duty":"Demonstrating Professional Competencies"},{"num":23,"req":"Required","text":"Examine aspects of planning within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":24,"req":"Required","text":"Examine aspects of management within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":25,"req":"Required","text":"Examine aspects of financial responsibility within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":26,"req":"Required","text":"Examine technical and production skills required of workers within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":27,"req":"Required","text":"Examine principles of technology that underlie an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":28,"req":"Required","text":"Examine labor issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":29,"req":"Required","text":"Examine community issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":30,"req":"Required","text":"Examine health, safety, and environmental issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":31,"req":"Required","text":"Identify the purposes and goals of the student organization.","duty":"Addressing Elements of Student Life"},{"num":32,"req":"Required","text":"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.","duty":"Addressing Elements of Student Life"},{"num":33,"req":"Required","text":"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.","duty":"Addressing Elements of Student Life"},{"num":34,"req":"Required","text":"Identify Internet safety issues and procedures for complying with acceptable use standards.","duty":"Addressing Elements of Student Life"},{"num":35,"req":"Required","text":"Identify the types of work-based learning (WBL) opportunities.","duty":"Exploring Work-Based Learning"},{"num":36,"req":"Optional","text":"Reflect on lessons learned during the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":37,"req":"Required","text":"Explore career opportunities related to the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":38,"req":"Optional","text":"Participate in a WBL experience, when appropriate.","duty":"Exploring Work-Based Learning"},{"num":39,"req":"Required","text":"Identify the difference between needs and wants.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":40,"req":"Required","text":"Distinguish among the factors of production.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":41,"req":"Required","text":"Explain the relevance of scarcity to economics.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":42,"req":"Required","text":"Identify the three basic economic questions answered by any economy.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":43,"req":"Required","text":"Describe a decision-making process.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":44,"req":"Required","text":"Distinguish between economic systems.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":45,"req":"Required","text":"Identify characteristics of free enterprise.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":46,"req":"Required","text":"Explain supply, law of supply, demand, law of demand, and economic equilibrium.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":47,"req":"Optional","text":"Describe the effect of supply and demand on a free enterprise system.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":48,"req":"Optional","text":"Explain the positive and negative effects of emerging economies on the global market.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":49,"req":"Required","text":"Illustrate the phases of the business cycle.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":50,"req":"Required","text":"Identify the measures or indicators of economic activity.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":51,"req":"Optional","text":"Describe possible outcomes and other important aspects of global trade.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":52,"req":"Required","text":"Identify the four types of businesses.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":53,"req":"Required","text":"Compare major types of business structures.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":54,"req":"Optional","text":"Identify the functions of management.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":55,"req":"Optional","text":"Explore leadership styles.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":56,"req":"Required","text":"Explain the marketing concept.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":57,"req":"Required","text":"Describe the marketing functions.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":58,"req":"Required","text":"Define target market.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":59,"req":"Required","text":"Explain market segmentation and how it is used to identify a target market.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":60,"req":"Required","text":"Describe the elements of the marketing mix.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":61,"req":"Required","text":"Describe the selling process.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":62,"req":"Required","text":"Explain the market research process.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":63,"req":"Optional","text":"Create a business plan.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":64,"req":"Required","text":"Investigate technological trends in business and marketing.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":65,"req":"Required","text":"Determine the social responsibilities of a business to the community and of the community to a business.","duty":"Exploring Interrelated Social, Environmental, and Ethical Responsibilities"},{"num":66,"req":"Required","text":"Determine the environmental responsibilities of a business to the community and of the community to a business.","duty":"Exploring Interrelated Social, Environmental, and Ethical Responsibilities"},{"num":67,"req":"Required","text":"Identify ethical and unethical business practices.","duty":"Exploring Interrelated Social, Environmental, and Ethical Responsibilities"},{"num":68,"req":"Required","text":"Describe communication tools and ways they are used in the workplace.","duty":"Developing Communication and Interpersonal Skills"},{"num":69,"req":"Required","text":"Demonstrate professional communication.","duty":"Developing Communication and Interpersonal Skills"},{"num":70,"req":"Required","text":"Explain the importance of nonverbal communication in the workplace.","duty":"Developing Communication and Interpersonal Skills"},{"num":71,"req":"Optional","text":"Identify the rights and responsibilities of consumers.","duty":"Making Decisions as a Consumer"},{"num":72,"req":"Required","text":"Describe how purchasing motives affect consumer choices.","duty":"Making Decisions as a Consumer"},{"num":73,"req":"Required","text":"Demonstrate comparison shopping.","duty":"Making Decisions as a Consumer"},{"num":74,"req":"Optional","text":"Identify major consumer protection agencies and their purposes.","duty":"Making Decisions as a Consumer"},{"num":75,"req":"Required","text":"Identify the characteristics of a valid contract.","duty":"Making Decisions as a Consumer"},{"num":76,"req":"Required","text":"Examine product labels.","duty":"Making Decisions as a Consumer"},{"num":77,"req":"Required","text":"Label parts of a paycheck.","duty":"Exploring Financial Concepts"},{"num":78,"req":"Required","text":"Identify basic banking services for individuals and businesses.","duty":"Exploring Financial Concepts"},{"num":79,"req":"Required","text":"Explain taxation.","duty":"Exploring Financial Concepts"},{"num":80,"req":"Required","text":"Explain the purpose of insurance.","duty":"Exploring Financial Concepts"},{"num":81,"req":"Required","text":"Create financial statements.","duty":"Exploring Financial Concepts"},{"num":82,"req":"Required","text":"Explain potential financial resources for businesses.","duty":"Exploring Financial Concepts"},{"num":83,"req":"Required","text":"Describe the requirements for obtaining industry certifications related to the Principles of Business and Marketing course.","duty":"Preparing for Industry Certification"},{"num":84,"req":"Optional","text":"Identify testing skills and strategies for a certification examination.","duty":"Preparing for Industry Certification"},{"num":85,"req":"Optional","text":"Demonstrate the ability to complete selected practice examinations.","duty":"Preparing for Industry Certification"},{"num":86,"req":"Optional","text":"Complete an industry certification examination representative of skills learned in this course.","duty":"Preparing for Industry Certification"},{"num":87,"req":"Required","text":"Assess personal interests, aptitudes, and abilities.","duty":"Developing Employability Skills"},{"num":88,"req":"Required","text":"Identify sources of employment information.","duty":"Developing Employability Skills"},{"num":89,"req":"Required","text":"Research business and marketing career opportunities.","duty":"Developing Employability Skills"},{"num":90,"req":"Required","text":"Complete a job application.","duty":"Developing Employability Skills"},{"num":91,"req":"Required","text":"Develop or update a r\u00e9sum\u00e9.","duty":"Developing Employability Skills"},{"num":92,"req":"Required","text":"Write a cover letter.","duty":"Developing Employability Skills"},{"num":93,"req":"Optional","text":"Design an employment portfolio.","duty":"Developing Employability Skills"},{"num":94,"req":"Required","text":"Describe professional behavior appropriate for a job interview.","duty":"Developing Employability Skills"},{"num":95,"req":"Required","text":"Participate in a mock job interview.","duty":"Developing Employability Skills"},{"num":96,"req":"Required","text":"Complete interview follow-up.","duty":"Developing Employability Skills"}],"periods":{"4th Odd":[]}},"8175":{"code":"8175","name":"Sports, Entertainment, and Event Marketing","icon":"📗","competencies":[{"num":1,"req":"Required","text":"Demonstrate creativity and innovation.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":2,"req":"Required","text":"Demonstrate critical thinking and problem  solving.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":3,"req":"Required","text":"Demonstrate initiative and self-direction.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":4,"req":"Required","text":"Demonstrate integrity.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":5,"req":"Required","text":"Demonstrate work ethic.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":6,"req":"Required","text":"Demonstrate conflict-resolution skills.","duty":"Demonstrating Interpersonal Skills"},{"num":7,"req":"Required","text":"Demonstrate listening and speaking skills.","duty":"Demonstrating Interpersonal Skills"},{"num":8,"req":"Required","text":"Demonstrate respect for diversity.","duty":"Demonstrating Interpersonal Skills"},{"num":9,"req":"Required","text":"Demonstrate customer service skills.","duty":"Demonstrating Interpersonal Skills"},{"num":10,"req":"Required","text":"Collaborate with team members.","duty":"Demonstrating Interpersonal Skills"},{"num":11,"req":"Required","text":"Demonstrate big-picture thinking.","duty":"Demonstrating Professional Competencies"},{"num":12,"req":"Required","text":"Demonstrate career- and life-management skills.","duty":"Demonstrating Professional Competencies"},{"num":13,"req":"Required","text":"Demonstrate continuous learning and adaptability.","duty":"Demonstrating Professional Competencies"},{"num":14,"req":"Required","text":"Manage time and resources.","duty":"Demonstrating Professional Competencies"},{"num":15,"req":"Required","text":"Demonstrate information-literacy skills.","duty":"Demonstrating Professional Competencies"},{"num":16,"req":"Required","text":"Demonstrate an understanding of information security.","duty":"Demonstrating Professional Competencies"},{"num":17,"req":"Required","text":"Maintain working knowledge of current information-technology (IT) systems.","duty":"Demonstrating Professional Competencies"},{"num":18,"req":"Required","text":"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.","duty":"Demonstrating Professional Competencies"},{"num":19,"req":"Required","text":"Apply mathematical skills to job-specific tasks.","duty":"Demonstrating Professional Competencies"},{"num":20,"req":"Required","text":"Demonstrate professionalism.","duty":"Demonstrating Professional Competencies"},{"num":21,"req":"Required","text":"Demonstrate reading and writing skills.","duty":"Demonstrating Professional Competencies"},{"num":22,"req":"Required","text":"Demonstrate workplace safety.","duty":"Demonstrating Professional Competencies"},{"num":23,"req":"Required","text":"Examine aspects of planning within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":24,"req":"Required","text":"Examine aspects of management within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":25,"req":"Required","text":"Examine aspects of financial responsibility within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":26,"req":"Required","text":"Examine technical and production skills required of workers within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":27,"req":"Required","text":"Examine principles of technology that underlie an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":28,"req":"Required","text":"Examine labor issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":29,"req":"Required","text":"Examine community issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":30,"req":"Required","text":"Examine health, safety, and environmental issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":31,"req":"Required","text":"Identify the purposes and goals of the student organization.","duty":"Addressing Elements of Student Life"},{"num":32,"req":"Required","text":"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.","duty":"Addressing Elements of Student Life"},{"num":33,"req":"Required","text":"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.","duty":"Addressing Elements of Student Life"},{"num":34,"req":"Required","text":"Identify Internet safety issues and procedures for complying with acceptable use standards.","duty":"Addressing Elements of Student Life"},{"num":35,"req":"Required","text":"Identify the types of work-based learning (WBL) opportunities.","duty":"Exploring Work-Based Learning"},{"num":36,"req":"Optional","text":"Reflect on lessons learned during the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":37,"req":"Required","text":"Explore career opportunities related to the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":38,"req":"Optional","text":"Participate in a WBL experience, when appropriate.","duty":"Exploring Work-Based Learning"},{"num":39,"req":"Required","text":"Explain marketing as it relates to the sports, entertainment, and event industries.","duty":"Developing an Overview of Marketing"},{"num":40,"req":"Required","text":"Identify the components (the Ps) of the marketing mix as they relate to sports, entertainment, and event marketing.","duty":"Developing an Overview of Marketing"},{"num":41,"req":"Required","text":"Describe the marketing concept as related to the sports, entertainment, and event industries.","duty":"Developing an Overview of Marketing"},{"num":42,"req":"Required","text":"Explain the concept of target marketing.","duty":"Developing an Overview of Marketing"},{"num":43,"req":"Required","text":"Describe the marketing functions.","duty":"Developing an Overview of Marketing"},{"num":44,"req":"Required","text":"Explain the importance of the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":45,"req":"Required","text":"Describe the past, present, and future of the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":46,"req":"Required","text":"Explain hospitality as it relates to the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":47,"req":"Required","text":"Analyze trends and innovations in the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":48,"req":"Required","text":"Identify types of communication used in the sports, entertainment, and event industries.","duty":"Developing Interpersonal Skills"},{"num":49,"req":"Required","text":"Identify the role of communication in work relationships.","duty":"Developing Interpersonal Skills"},{"num":50,"req":"Required","text":"Develop presentation skills as a form of business communication.","duty":"Developing Interpersonal Skills"},{"num":51,"req":"Required","text":"Identify ethical and unethical business practices.","duty":"Developing Interpersonal Skills"},{"num":52,"req":"Required","text":"Explain the importance of customer service as it relates to the sports, entertainment, and event industries.","duty":"Developing Customer Service Skills"},{"num":53,"req":"Required","text":"Compare various types of customer interaction.","duty":"Developing Customer Service Skills"},{"num":54,"req":"Required","text":"Translate technical language into commonly understood language.","duty":"Developing Customer Service Skills"},{"num":55,"req":"Required","text":"Describe procedures for handling a customer complaint.","duty":"Developing Customer Service Skills"},{"num":56,"req":"Required","text":"Explain branding.","duty":"Exploring the Concept of Branding"},{"num":57,"req":"Required","text":"Explain the concept of branding as it relates to sports, entertainment, and event marketing.","duty":"Exploring the Concept of Branding"},{"num":58,"req":"Required","text":"Explain product licensing and brand protection.","duty":"Exploring the Concept of Branding"},{"num":59,"req":"Required","text":"Explain the concept of and reasons for rebranding.","duty":"Exploring the Concept of Branding"},{"num":60,"req":"Required","text":"Explain product and service planning in sports, entertainment, and events.","duty":"Describing Product Development"},{"num":61,"req":"Required","text":"Explain product life cycle.","duty":"Describing Product Development"},{"num":62,"req":"Required","text":"Describe the role of market research.","duty":"Describing Product Development"},{"num":63,"req":"Required","text":"Create a survey to conduct primary research.","duty":"Describing Product Development"},{"num":64,"req":"Required","text":"Explain the role of product positioning.","duty":"Describing Product Development"},{"num":65,"req":"Required","text":"Describe the impact of uncontrollable factors on sports, entertainment, and event product development.","duty":"Describing Product Development"},{"num":66,"req":"Required","text":"Explain pricing and the factors that affect pricing decisions.","duty":"Exploring Pricing Strategies"},{"num":67,"req":"Required","text":"Identify pricing strategies as they relate to the sports, entertainment, and event industries.","duty":"Exploring Pricing Strategies"},{"num":68,"req":"Required","text":"Explain business as it relates to the sports, entertainment, and event industries.","duty":"Understanding the Business Structure of Sports, Entertainment, and Event Marketing"},{"num":69,"req":"Required","text":"Compare the types of business ownership and their roles in the sports, entertainment, and event industries.","duty":"Understanding the Business Structure of Sports, Entertainment, and Event Marketing"},{"num":70,"req":"Required","text":"Explain distribution and how it relates to the sports, entertainment, and event industries.","duty":"Exploring Distribution Strategies"},{"num":71,"req":"Required","text":"Identify challenges for distributing sports, entertainment, and event services.","duty":"Exploring Distribution Strategies"},{"num":72,"req":"Required","text":"Explain promotion and promotional mix.","duty":"Developing a Promotional Mix"},{"num":73,"req":"Required","text":"Identify the roles of advertising, publicity, sales promotion, direct marketing, and personal selling in the sports, entertainment, and event industries.","duty":"Developing a Promotional Mix"},{"num":74,"req":"Required","text":"Identify methods of communication used in sports, entertainment, and event promotion.","duty":"Developing a Promotional Mix"},{"num":75,"req":"Required","text":"Describe the elements of an advertisement.","duty":"Exploring the Forms and Techniques of Advertising"},{"num":76,"req":"Required","text":"Explain advertising as related to the sports, entertainment, and event industries.","duty":"Exploring the Forms and Techniques of Advertising"},{"num":77,"req":"Required","text":"Identify the goals of advertising and the methods of evaluating an advertisement\u2019s success.","duty":"Exploring the Forms and Techniques of Advertising"},{"num":78,"req":"Required","text":"Define current electronic marketing tools and platforms.","duty":"Using Digital Media"},{"num":79,"req":"Required","text":"Identify methods for attracting customers and establishing and maintaining customer relationships.","duty":"Using Digital Media"},{"num":80,"req":"Required","text":"Identify target markets\u2019 preferred platforms for various electronic marketing tools.","duty":"Using Digital Media"},{"num":81,"req":"Required","text":"Compare traditional marketing and digital media marketing.","duty":"Using Digital Media"},{"num":82,"req":"Required","text":"Explain how digital media can be used to generate revenue.","duty":"Using Digital Media"},{"num":83,"req":"Required","text":"Explain public relations as related to the sports, entertainment, and event industries.","duty":"Exploring Public Relations and Media Relations"},{"num":84,"req":"Required","text":"Describe public relations (PR) tools.","duty":"Exploring Public Relations and Media Relations"},{"num":85,"req":"Optional","text":"(Optional) Explain the internal and external aspects of public relations.","duty":"Exploring Public Relations and Media Relations"},{"num":86,"req":"Required","text":"Analyze the effects of negative media.","duty":"Exploring Public Relations and Media Relations"},{"num":87,"req":"Required","text":"Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries.","duty":"Exploring Sponsorship and Endorsements"},{"num":88,"req":"Required","text":"Compare the reasons for using sponsorships vs. endorsements.","duty":"Exploring Sponsorship and Endorsements"},{"num":89,"req":"Required","text":"Identify legal restrictions placed on endorsements and sponsorships.","duty":"Exploring Sponsorship and Endorsements"},{"num":90,"req":"Required","text":"Identify current trends in sponsorship within the sports, entertainment, and event industries.","duty":"Exploring Sponsorship and Endorsements"},{"num":91,"req":"Required","text":"Describe the components and relationships between stakeholders.","duty":"Exploring Sponsorship and Endorsements"},{"num":92,"req":"Required","text":"Explain the advantages and disadvantages of using various forms of sales promotion in the sports, entertainment, and event industries.","duty":"Exploring Sales Promotion"},{"num":93,"req":"Required","text":"Describe the elements of sports, entertainment, and event promotional campaigns.","duty":"Exploring Sales Promotion"},{"num":94,"req":"Required","text":"Explain the types of selling and why they are important in the sports, entertainment, and event industries.","duty":"Describing the Sales Process"},{"num":95,"req":"Required","text":"Explain the concept of bundling products and/or services.","duty":"Describing the Sales Process"},{"num":96,"req":"Required","text":"Explain the steps of the selling process.","duty":"Describing the Sales Process"},{"num":97,"req":"Required","text":"Explain on-site merchandising and concessions as they relate to sports, entertainment, and event facilities.","duty":"Describing the Sales Process"},{"num":98,"req":"Required","text":"Explain economic concepts and their relationship to the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":99,"req":"Optional","text":"(Optional) Explain how the phases in the business cycle affect the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":100,"req":"Required","text":"Explain the concept of supply and demand.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":101,"req":"Required","text":"Explain competition as it relates to the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":102,"req":"Required","text":"Explain the components of the marketing plan.","duty":"Exploring the Marketing Plan"},{"num":103,"req":"Required","text":"Describe the importance of research in developing a marketing plan.","duty":"Exploring the Marketing Plan"},{"num":104,"req":"Required","text":"Describe the importance of analyzing the marketing plan to determine ROI of the spend.","duty":"Exploring the Marketing Plan"},{"num":105,"req":"Required","text":"Identify the components of a SWOT analysis.","duty":"Exploring the Marketing Plan"},{"num":106,"req":"Required","text":"Identify occupations within the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":107,"req":"Required","text":"Identify personal skills and interests applicable to the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":108,"req":"Required","text":"Identify resources for a job search in the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":109,"req":"Required","text":"Create a networking plan in the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":110,"req":"Required","text":"Develop a r\u00e9sum\u00e9 and cover letter.","duty":"Developing Job Search Skills"},{"num":111,"req":"Required","text":"Complete a job application.","duty":"Developing Job Search Skills"},{"num":112,"req":"Required","text":"Describe the job interview process.","duty":"Developing Job Search Skills"},{"num":113,"req":"Optional","text":"(Optional) Participate in a mock interview or an informational interview with a local employer.","duty":"Developing Job Search Skills"}],"periods":{"2nd Even":[],"3rd Even":[],"4th Even":[]}},"8177":{"code":"8177","name":"Sports, Entertainment, and Event Management","icon":"📙","competencies":[{"num":1,"req":"Required","text":"Demonstrate creativity and innovation.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":2,"req":"Required","text":"Demonstrate critical thinking and problem  solving.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":3,"req":"Required","text":"Demonstrate initiative and self-direction.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":4,"req":"Required","text":"Demonstrate integrity.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":5,"req":"Required","text":"Demonstrate work ethic.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":6,"req":"Required","text":"Demonstrate conflict-resolution skills.","duty":"Demonstrating Interpersonal Skills"},{"num":7,"req":"Required","text":"Demonstrate listening and speaking skills.","duty":"Demonstrating Interpersonal Skills"},{"num":8,"req":"Required","text":"Demonstrate respect for diversity.","duty":"Demonstrating Interpersonal Skills"},{"num":9,"req":"Required","text":"Demonstrate customer service skills.","duty":"Demonstrating Interpersonal Skills"},{"num":10,"req":"Required","text":"Collaborate with team members.","duty":"Demonstrating Interpersonal Skills"},{"num":11,"req":"Required","text":"Demonstrate big-picture thinking.","duty":"Demonstrating Professional Competencies"},{"num":12,"req":"Required","text":"Demonstrate career- and life-management skills.","duty":"Demonstrating Professional Competencies"},{"num":13,"req":"Required","text":"Demonstrate continuous learning and adaptability.","duty":"Demonstrating Professional Competencies"},{"num":14,"req":"Required","text":"Manage time and resources.","duty":"Demonstrating Professional Competencies"},{"num":15,"req":"Required","text":"Demonstrate information-literacy skills.","duty":"Demonstrating Professional Competencies"},{"num":16,"req":"Required","text":"Demonstrate an understanding of information security.","duty":"Demonstrating Professional Competencies"},{"num":17,"req":"Required","text":"Maintain working knowledge of current information-technology (IT) systems.","duty":"Demonstrating Professional Competencies"},{"num":18,"req":"Required","text":"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.","duty":"Demonstrating Professional Competencies"},{"num":19,"req":"Required","text":"Apply mathematical skills to job-specific tasks.","duty":"Demonstrating Professional Competencies"},{"num":20,"req":"Required","text":"Demonstrate professionalism.","duty":"Demonstrating Professional Competencies"},{"num":21,"req":"Required","text":"Demonstrate reading and writing skills.","duty":"Demonstrating Professional Competencies"},{"num":22,"req":"Required","text":"Demonstrate workplace safety.","duty":"Demonstrating Professional Competencies"},{"num":23,"req":"Required","text":"Examine aspects of planning within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":24,"req":"Required","text":"Examine aspects of management within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":25,"req":"Required","text":"Examine aspects of financial responsibility within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":26,"req":"Required","text":"Examine technical and production skills required of workers within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":27,"req":"Required","text":"Examine principles of technology that underlie an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":28,"req":"Required","text":"Examine labor issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":29,"req":"Required","text":"Examine community issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":30,"req":"Required","text":"Examine health, safety, and environmental issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":31,"req":"Required","text":"Identify the purposes and goals of the student organization.","duty":"Addressing Elements of Student Life"},{"num":32,"req":"Required","text":"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.","duty":"Addressing Elements of Student Life"},{"num":33,"req":"Required","text":"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.","duty":"Addressing Elements of Student Life"},{"num":34,"req":"Required","text":"Identify Internet safety issues and procedures for complying with acceptable use standards.","duty":"Addressing Elements of Student Life"},{"num":35,"req":"Required","text":"Identify the types of work-based learning (WBL) opportunities.","duty":"Exploring Work-Based Learning"},{"num":36,"req":"Optional","text":"Reflect on lessons learned during the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":37,"req":"Required","text":"Explore career opportunities related to the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":38,"req":"Optional","text":"Participate in a WBL experience, when appropriate.","duty":"Exploring Work-Based Learning"},{"num":39,"req":"Required","text":"Define the role of the sports, entertainment, and event manager.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":40,"req":"Required","text":"Examine the traits and skills that successful sports, entertainment, and event managers possess.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":41,"req":"Required","text":"Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":42,"req":"Required","text":"Evaluate the sports, entertainment, and event manager\u2019s role in decision-making for campaigns, employees, and partners.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":43,"req":"Required","text":"Evaluate career opportunities in sports, entertainment, and event management.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":44,"req":"Required","text":"Document the different roles in sports, entertainment, and event management using an organizational chart.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":45,"req":"Required","text":"Explain facilities management as it relates to the sports, entertainment, and event industries.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":46,"req":"Required","text":"Explain on-site revenue streams as they relate to sports, entertainment, and event facilities.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":47,"req":"Required","text":"Identify how e-commerce and digital transactions affect sports, entertainment, and event businesses.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":48,"req":"Required","text":"Analyze the effect of niche or emerging events in the sports, entertainment, and event industries.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":49,"req":"Required","text":"Analyze key U.S. economic indicators and their effects on the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":50,"req":"Required","text":"Examine how sports, entertainment, and events affect local, state, and national economies.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":51,"req":"Optional","text":"(Optional) Identify cultural and political environmental factors and their economic impact on the global sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":52,"req":"Required","text":"Explore the organizational structures within the sports, entertainment, and event industries.","duty":"Explaining the Structure of Sports, Entertainment, and Event Businesses"},{"num":53,"req":"Required","text":"Explain the advantages and disadvantages of operating as a for-profit or nonprofit organization.","duty":"Explaining the Structure of Sports, Entertainment, and Event Businesses"},{"num":54,"req":"Required","text":"Identify entrepreneurship opportunities related to sports, entertainment, and event management.","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":55,"req":"Required","text":"Describe the entrepreneurial mindset.","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":56,"req":"Required","text":"Identify the steps involved in starting a new business, using the Business Model Canvas (BMC).","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":57,"req":"Required","text":"Describe how small businesses drive job creation, income generation, and economic growth.","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":58,"req":"Required","text":"Demonstrate customer-service techniques.","duty":"Developing Customer Service Skills"},{"num":59,"req":"Required","text":"Describe methods used to encourage customer retention.","duty":"Developing Customer Service Skills"},{"num":60,"req":"Required","text":"Respond to inquiries and suggestions from customers, coworkers, and supervisors in a sports, entertainment, and event context.","duty":"Developing Customer Service Skills"},{"num":61,"req":"Required","text":"Explain company policy to a customer in a sports, entertainment, and event context.","duty":"Developing Customer Service Skills"},{"num":62,"req":"Required","text":"Explain the importance of constructive feedback in personal and professional growth.","duty":"Developing Customer Service Skills"},{"num":63,"req":"Required","text":"Identify ethical issues related to the sports, entertainment, and event industries.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":64,"req":"Required","text":"Investigate how social and environmental concerns affect decisions in the sports, entertainment, and event industries.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":65,"req":"Required","text":"Examine the effect of media bias on public perception and opinion.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":66,"req":"Required","text":"Describe the value of the sports, entertainment, and event industries to the community.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":67,"req":"Required","text":"Examine the importance of risk assessment and management strategies in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":68,"req":"Required","text":"Examine the challenges posed by uncontrollable variables in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":69,"req":"Required","text":"Identify purposes, types, and terms of contracts.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":70,"req":"Required","text":"Examine the role of labor and antitrust law in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":71,"req":"Required","text":"Identify unions relevant to labor relations in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":72,"req":"Required","text":"Explain how the Americans with Disabilities Act (ADA) has influenced the planning of events and design of facilities.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":73,"req":"Required","text":"Explain how legal requirements influence operations in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":74,"req":"Required","text":"Describe external factors affecting the sports, entertainment, and event marketing process.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":75,"req":"Required","text":"Describe the effects of national, state, and local laws and regulations on the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":76,"req":"Required","text":"Identify the purposes of licensing.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":77,"req":"Required","text":"Explain market research and its use in the sports, entertainment, and event industries.","duty":"Understanding Market Research"},{"num":78,"req":"Required","text":"Explain the need for market research for all functions of marketing.","duty":"Understanding Market Research"},{"num":79,"req":"Required","text":"Identify sources of data for market research in the sports, entertainment, and event industries.","duty":"Understanding Market Research"},{"num":80,"req":"Required","text":"Describe external factors affecting the sports, entertainment, and event marketing process.","duty":"Understanding Market Research"},{"num":81,"req":"Required","text":"Develop a market segmentation analysis.","duty":"Understanding Market Research"},{"num":82,"req":"Required","text":"Describe the steps in developing a market research project.","duty":"Understanding Market Research"},{"num":83,"req":"Required","text":"Develop a market research project.","duty":"Understanding Market Research"},{"num":84,"req":"Required","text":"Evaluate the results of a market research project.","duty":"Understanding Market Research"},{"num":85,"req":"Required","text":"Identify the components of a budget.","duty":"Exploring Revenues and Expenditures"},{"num":86,"req":"Required","text":"Identify revenue sources related to the sports, entertainment, and event industries.","duty":"Exploring Revenues and Expenditures"},{"num":87,"req":"Required","text":"Identify expenditures related to the sports, entertainment, and event industries.","duty":"Exploring Revenues and Expenditures"},{"num":88,"req":"Required","text":"Analyze financial statements.","duty":"Exploring Revenues and Expenditures"},{"num":89,"req":"Required","text":"Explain the importance and types of indoor and outdoor security (i.e., life and property safety).","duty":"Managing Safety and Security"},{"num":90,"req":"Required","text":"Explain the security needs of a venue and/or event.","duty":"Managing Safety and Security"},{"num":91,"req":"Required","text":"Explain the use of emergency preparedness plans to address threats to a venue and/or event.","duty":"Managing Safety and Security"},{"num":92,"req":"Required","text":"Explain the process for planning an event.","duty":"Understanding Event Management"},{"num":93,"req":"Required","text":"Describe factors that motivate consumers to attend sports, entertainment, and event occasions.","duty":"Understanding Event Management"},{"num":94,"req":"Required","text":"Explain how event popularity and competitive factors relate to attendance.","duty":"Understanding Event Management"},{"num":95,"req":"Required","text":"Analyze personnel needs for an event.","duty":"Understanding Event Management"},{"num":96,"req":"Required","text":"Analyze the financial resources required for each event activity.","duty":"Understanding Event Management"},{"num":97,"req":"Required","text":"Develop a marketing plan for an event.","duty":"Understanding Event Management"},{"num":98,"req":"Required","text":"Develop a budget for an event.","duty":"Understanding Event Management"},{"num":99,"req":"Required","text":"Develop follow-up activities to recognize and thank participants after an event.","duty":"Understanding Event Management"},{"num":100,"req":"Optional","text":"(Optional) Manage a sports, entertainment, and event occasion.","duty":"Understanding Event Management"},{"num":101,"req":"Optional","text":"(Optional) Evaluate the event\u2019s overall success.","duty":"Understanding Event Management"},{"num":102,"req":"Required","text":"Identify career and employment-related information sources.","duty":"Developing Career Goals"},{"num":103,"req":"Required","text":"Identify career opportunities at different levels in sports, entertainment, and event management.","duty":"Developing Career Goals"},{"num":104,"req":"Required","text":"Describe education and training needed for a sports, entertainment, and event management career.","duty":"Developing Career Goals"},{"num":105,"req":"Optional","text":"(Optional) Identify barriers to employment and strategies to overcome them.","duty":"Developing Career Goals"},{"num":106,"req":"Required","text":"Identify professional development opportunities in the sports, entertainment, and event industries.","duty":"Developing Career Goals"},{"num":107,"req":"Required","text":"Collect information about a prospective employer.","duty":"Developing Career Goals"},{"num":108,"req":"Required","text":"Develop a career plan.","duty":"Developing Career Goals"}],"periods":{"3rd Odd":[]}}};
 var CUSTOM_COURSES = LS.get('lh_custom_courses', {});
 Object.assign(SCR_COURSES, CUSTOM_COURSES);
 var SCR_STUDENT_EMAILS = LS.get('lh_scr_student_emails', {});
-_applyScrStudentEmails_();</script><script data-lh-block="leader-hub-block-1-part-13-of-16">
+_applyScrStudentEmails_();</script><script data-lh-block="leader-hub-block-1-part-14-of-17">
 var PACING_8175 = {
 lessons: [
 {lesson:"Lesson 01: Evolution of Marketing (From Trade to TikTok)", quarter:1, weeks:"1", unit:"Professional Development & Self-Marketing", comps:[11,24,73]},
@@ -16558,7 +16865,7 @@ var LESSON_PLANS = [
 {id:'lp_8175_35', course:'8175', q:4, title:'Google Interview Simulation', subtitle:'AI-Powered Mock Interview', comps:[7,13,112], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Google Interview Simulation',type:'summative',pct:20}]},
 {id:'lp_8175_36', course:'8175', q:4, title:'Course Evaluation Brochure', subtitle:'The Exit Interview', comps:[1,20,21,95,106], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Course Evaluation Brochure',type:'summative',pct:20}]},
 {id:'lp_8175_00', course:'8175', q:1, title:'Rebranding the Washington Football Team', subtitle:'Brand Strategy & Cultural Trends', comps:[1,2,11,28,29,30], docId:'1c8hvDwgCzintcdtjKAe1ULYuijbnk21SfSDXoGgm2m8'},
-];</script><script data-lh-block="leader-hub-block-1-part-14-of-16">
+];</script><script data-lh-block="leader-hub-block-1-part-15-of-17">
 var UNIT_PLANS = [
 {
 id:'u_8177_1a', course:'8177', q:1,
@@ -16937,7 +17244,7 @@ var _lastChoiceCardsSig = null;
 var PULSE_MEANINGS = {
 teach: ['competencies scored', 'Share of competency scores entered so far, across every class and student.'],
 store: ['store approval done', 'Share of the store approval (SBE) checklist marked done.'],
-deca: ['of 90 days used', 'How close the next DECA deadline is: 0% means 90 or more days away, 100% means due today or overdue.'],
+deca: ['of 90 days used', 'How close the next DECA deadline is: 0% means 90 or more days away, 100% means due today. A passed deadline shows Overdue.'],
 esports: ['matches won', 'Share of logged e-sports matches the team won.'],
 trips: ['trips with forms done', 'Share of trips whose required fields are all filled in.'],
 };
@@ -17186,7 +17493,7 @@ var QUARTERS_DEFAULT = {
 4: { start: '2027-04-05', end: '2027-06-04', label: 'Q4' },
 };
 var LP_QUARTERS = QUARTERS_DEFAULT;
-_applyQuartersConfig();</script><script data-lh-block="leader-hub-block-1-part-15-of-16">
+_applyQuartersConfig();</script><script data-lh-block="leader-hub-block-1-part-16-of-17">
 var CAS_PACING_UNITS =
 [
 {
@@ -18686,7 +18993,7 @@ var _spPeriods = [];
 var _bragTab = LS.get('lh_brag_last_tab', 'green');
 var _bragData = {};
 var _bragBodySnapshot = '';
-var _bragSubjectSnapshot = '';</script><script data-lh-block="leader-hub-block-1-part-16-of-16">
+var _bragSubjectSnapshot = '';</script><script data-lh-block="leader-hub-block-1-part-17-of-17">
 var BRAG_AUDIENCE = {
 green: {
 get label(){ return PROFILE.supervisorName; },
@@ -19063,10 +19370,10 @@ if (dlg) dlg.addEventListener('close', () => { const b = document.getElementById
       </div>
     </div>
 
-    <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+    <div class="lh-split" style="display:flex;flex:1;overflow:hidden;min-height:0">
 
       <!-- LEFT: gathered wins -->
-      <div style="width:260px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:#faf9f6;display:flex;flex-direction:column;gap:.6rem">
+      <div class="lh-split-side" style="width:260px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:#faf9f6;display:flex;flex-direction:column;gap:.6rem">
         <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Wins Gathered This Week</div>
 
         <div id="brag-section-tasks" style="display:none">
@@ -19134,10 +19441,10 @@ if (dlg) dlg.addEventListener('close', () => { const b = document.getElementById
       <!-- RIGHT: compose area -->
       <div style="flex:1;display:flex;flex-direction:column;padding:.85rem;overflow:hidden">
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+        <div class="lh-fields3" style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
           <div>
-            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">TO</label>
-            <input id="brag-to" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+            <label for="brag-to" style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">TO</label>
+            <input id="brag-to" placeholder="name@school.org" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
           </div>
           <div>
             <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">CC</label>
@@ -19160,6 +19467,7 @@ if (dlg) dlg.addEventListener('close', () => { const b = document.getElementById
           <button id="brag-generate-btn" class="btn btn-gold btn-sm" style="flex:1" onclick="generateBragEmail()">✨ Generate</button>
           <button class="btn btn-primary btn-sm" onclick="copyBragEmail()" style="flex:1">📋 Copy</button>
           <button class="btn btn-outline btn-sm" onclick="openBragInMail()">📬 Open in Mail</button>
+          <button id="brag-send-btn" class="btn btn-outline btn-sm" onclick="sendBragEmail()" style="display:none" title="Sends from your school account through the email connection">📤 Send now</button>
           <button class="btn btn-outline btn-sm" onclick="saveBragToLog()">💾 Save to Log</button>
         </div>
         <div id="brag-copy-confirm" style="font-size:.75rem;color:var(--green);text-align:center;margin-top:.3rem;min-height:16px"></div>

@@ -475,7 +475,8 @@ function confirmRetryImprovement_(studentEmail, primaryCompetencyId, teacherEmai
     "", // archive_status (Say/Do Ledger cas-ccps Extension 3) -- blank until aged out
   ]);
 
-  Logger.log("[S30b] Retry confirmed -- " + studentEmail + " | " + primaryCompetencyId +
+  Logger.log("[S30b] Retry confirmed -- SCRDecisionLog row " + decisionLogSheet.getLastRow() +
+    " | " + primaryCompetencyId +
     " | " + retryResult.currentOfficialRating + " -> " + retryResult.newSuggestedRating +
     " | by: " + teacherEmail);
 
