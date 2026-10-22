@@ -28,7 +28,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const LH = path.join(__dirname, '..', '..', 'leader-hub');
 const APP_HTML = fs.readFileSync(path.join(LH, 'student-leader-hub.html'), 'utf8');
 const FILES = [path.join(LH, 'Code.gs'), path.join(LH, 'EmailBridge.gs'), path.join(LH, 'Diagnostics.gs'),
-  path.join(LH, 'DeployVersionMarker.gs')];
+  path.join(LH, 'DeployVersionMarker.gs'), path.join(LH, 'Data.gs'), path.join(LH, 'Config.gs'), path.join(LH, 'SCR.gs')];
 const EXPOSE = ['doGet', 'lhDiagScriptElements_', 'lhDiagInstrument_', 'lhDiagPing', 'lhDiagReport',
   '_lhDiagBootstrapJs_', 'lhDiagJsLiteral_', 'lhDiagRawSlice_', 'lhDiagBlockName_', 'lhDiagCountNames_'];
 const OWNER = 'owner@ccpsnet.net';
@@ -259,10 +259,21 @@ test('panel: says when only some blocks were served', () => {
 
 // ── doGet routing and the owner gate ─────────────────────────────────────
 
-test('doGet without ?diag serves the app exactly as before', () => {
+// No browser storage, Phase 3 (2026-10-22): the app comes with the
+// server's data in a <script> at the top of <head>, and is otherwise
+// unchanged.
+test('doGet without ?diag serves the app with the server\'s data at the top of <head>', () => {
   const { doGet, outputs } = load(OWNER);
   doGet({ parameter: {} });
-  assert.equal(outputs[outputs.length - 1].content, APP_HTML);
+  const served = outputs[outputs.length - 1].content;
+  const open = '<script>window.__LH_BOOT__=';
+  const at = served.indexOf(open);
+  assert.ok(at > 0 && at === served.indexOf('<head>') + 7, 'right after <head>');
+  const end = served.indexOf(';</script>', at);
+  const boot = JSON.parse(served.slice(at + open.length, end));
+  assert.equal(boot.ok, true);
+  assert.ok(boot.config && boot.data && boot.data.trips, 'config and every data domain');
+  assert.equal(served.slice(0, at - 1) + served.slice(end + ';</script>'.length), APP_HTML, 'the app itself unchanged');
 });
 
 test('?diag=probe serves the instrumented app to the owner', () => {
