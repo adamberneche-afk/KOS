@@ -4198,3 +4198,41 @@ kind of failure every morning.
 - **Tests:** `dashboard-plain-words.test.js`; `student-doc-service` and
   `teacher-dashboard-inline-js` follow the new words.
 
+
+## The three guides rewritten in the dashboards' words, 2026-10-22
+
+- **Why:** the operator asked for plain words, with help where a term must
+  stay; the dashboards changed first (entry above), and the guides still
+  described the old system (UX audit 2026-10-22: Students "Student Quick
+  Start" and "Quick Start FAQ" rows, Classroom teacher "Teacher guides"
+  row).
+- **Student Quick Start:** the doc as 02's `stampDocument_` makes it (page
+  header with the "Your dashboard" link and the Feedback: line, the
+  assignment at 8 pt, "↓ Go to your response" / "↑ Back to the
+  assignment", "Your response", the grey line, the writing space, the
+  CONFIG_ID line, and only the text between them is checked). Feedback is
+  a comment, not text at the end of the doc. The card statuses as 13 shows
+  them; the 12-minute timeout (06) replaces the 10-minute rule; a new
+  warm-ups section (answer, score out of 10, a 10-word extra-credit
+  reply); Canvas turn-in as the cartridge words it; the edit-after-turn-in
+  answer corrected (Canvas holds the link, so the teacher sees the doc as
+  it is). FAQ is `<details>`/`<summary>`.
+- **Teacher Quick-Start:** the activation steps, rubric upload and
+  one-at-a-time registration with a Config ID are gone. It is now the first
+  week: lesson start dates in 📅 Lessons, the nightly rollout enrolling
+  from Canvas (58), what students do, the morning check, a quick reference.
+  Its checklist uses real checkboxes.
+- **Teacher Reference Guide:** "Day to Day" rebuilt around the dashboard:
+  header buttons (Student Context, not My Context), summary cards and
+  badges, lesson drafts through 📅 Lessons' Edit / + New lesson (so there
+  is an edit path), 💬 Feedback, the SCR scale in words with its direction,
+  parent reports marked not in use, archiving per school year (there is no
+  "All Terms" option). Dropped: the Pending Review step, feedback at the
+  end of the doc, the doc locking at turn-in, the folder tree, and lesson
+  logs feeding SCR evidence (ratings come from checks, 30).
+- **All three** end with "Words you'll see", copied from
+  `CAS_STUDENT_TERMS` / `CAS_TEACHER_TERMS` (00). Text is at least 12px and
+  4.5:1 (the big section numbers are decorative and `aria-hidden`); no
+  horizontal scroll at 390px or 1366px. `docs/index.html`'s two
+  descriptions follow. Not done: `docs/notebooklm-sources/`' Markdown
+  copies of these guides are now behind them.
