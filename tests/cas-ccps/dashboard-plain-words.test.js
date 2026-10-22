@@ -149,3 +149,12 @@ test('a failed or timed-out check reads as the system\'s problem, with a next st
   assert.match(exported._tdFlagReason_('ERROR_EVALUATION'), /ask the student to submit again/);
   assert.match(exported._tdFlagReason_('ERROR_X'), /Next: tell your system admin/);
 });
+
+// UX audit fix-first 11 (2026-10-22): the doc's task drops the Canvas text's
+// title line and its "Submission:" part, which contradicts CAS.
+test('the doc shows the task without the Canvas title line or the Submission part', () => {
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_docStudentTask_']);
+  const task = 'Title: Assignment: Brand Analysis\n\nDescription:\n\nDo it well.\n\nWhat your work needs to show:\n\n- A\n\nSubmission:\n\nSubmit your responses as a Text Entry.';
+  assert.equal(exported._docStudentTask_(task), 'Description:\n\nDo it well.\n\nWhat your work needs to show:\n\n- A');
+  assert.equal(exported._docStudentTask_('Just the task.'), 'Just the task.');
+});
