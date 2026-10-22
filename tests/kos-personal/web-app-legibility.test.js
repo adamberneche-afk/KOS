@@ -64,9 +64,28 @@ test('no text is smaller than 12px, and the page can be zoomed', () => {
 // The labels a person reads: the markup without comments, the script block
 // or tooltips (a tooltip names the system term on purpose: "Called the
 // Turnstile in the sheets").
+// Cut by plain string search, not a tag-matching regex: this reads one
+// known file, and a regex HTML filter is the pattern code scanning flags.
+function cutBetween(src, open, close) {
+  let out = '';
+  let i = 0;
+  for (;;) {
+    const a = src.indexOf(open, i);
+    if (a < 0) return out + src.slice(i);
+    out += src.slice(i, a);
+    const b = src.indexOf(close, a + open.length);
+    if (b < 0) return out;
+    i = b + close.length;
+  }
+}
+function scriptBody() {
+  return UI.slice(UI.indexOf('<script>') + '<script>'.length, UI.lastIndexOf('</script>'));
+}
 function visibleMarkup() {
-  return UI.replace(/<script>[\s\S]*?<\/script>/g, '').replace(/<style>[\s\S]*?<\/style>/g, '')
-    .replace(/<!--[\s\S]*?-->/g, '').replace(/title="[^"]*"/g, '');
+  let text = cutBetween(UI, '<script>', '</script>');
+  text = cutBetween(text, '<style>', '</style>');
+  text = cutBetween(text, '<!--', '-->');
+  return cutBetween(text, 'title="', '"');
 }
 
 test('the screen uses plain words for the system\'s own terms', () => {
@@ -86,14 +105,14 @@ test('tooltips never cite a script file or a config constant', () => {
     assert.doesNotMatch(t, /\.gs\b|CFG\.|SMP-\d|COG_REGISTRY/, t);
   }
   // The registrar tooltip is rewritten by script once its status loads.
-  const script = UI.match(/<script>([\s\S]*)<\/script>/)[1];
+  const script = scriptBody();
   const tip = script.match(/tip\.title = everCompleted([\s\S]*?);\n/)[1];
   assert.doesNotMatch(tip, /\.gs\b|pedagogical dissonance/);
 });
 
 // The helpers and the Terms list, run as the browser would run them.
 function helpers() {
-  const script = UI.match(/<script>([\s\S]*)<\/script>/)[1];
+  const script = scriptBody();
   const start = script.indexOf('const QUESTION_LABELS');
   const end = script.indexOf('function openGlossary');
   const ctx = {};
