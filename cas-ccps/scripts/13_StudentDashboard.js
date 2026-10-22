@@ -53,6 +53,16 @@ function getStudentDashboardData(termFilter) {
     if (fid) pipelineStatus[fid] = st;
   }
 
+  // Work waiting for its evaluation (walk-through finding 2, 2026-10-22).
+  // The Ledger stays ACTIVE (or COMPLETE, on a resubmission) until an
+  // evaluation lands, so the open ReviewQueue row (PENDING, then STAGED once
+  // the bridge takes it) or a staging row waiting for the turnstile is what
+  // says the student's work is in line.
+  const queuedFiles = dashQueuedFileIds_(cfg);
+  Object.keys(pipelineStatus).forEach(fid => {
+    if (pipelineStatus[fid] === "PENDING_INFERENCE") queuedFiles[fid] = true;
+  });
+
   const assignments    = [];
   const availableTerms = new Set();
 
@@ -100,6 +110,12 @@ function getStudentDashboardData(termFilter) {
 
     const configId = String(row[LEDGER.CONFIG_ID]).trim();
     const feedbackInComments = feedbackAsComment(configId, ledgerRowCourseCode_(row));
+    // "QUEUED" stands in for a pipeline stage when the work is in line but
+    // not yet being evaluated; IN_PROCESS (evaluating now) wins.
+    const pipeline = pipelineStatus[fileId] === "IN_PROCESS" ? "IN_PROCESS"
+      : queuedFiles[fileId] ? "QUEUED" : pipelineStatus[fileId];
+    const lastResult = String(row[LEDGER.LAST_RESULT] || "").trim();
+    const inLine = pipeline === "IN_PROCESS" || pipeline === "QUEUED";
 
     assignments.push({
       configId:      configId,
@@ -118,8 +134,8 @@ function getStudentDashboardData(termFilter) {
       registeredAt:      registeredAtRaw ? formatDate_(registeredAtRaw) : null,
       isNewRegistration: isNewRegistration,
       status:        status,
-      displayStatus: resolveStudentStatus_(status, pipelineStatus[fileId], feedbackInComments),
-      statusClass:   resolveStudentClass_(status, pipelineStatus[fileId]),
+      displayStatus: resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult),
+      statusClass:   resolveStudentClass_(status, pipeline, lastResult),
       lastEval:      lastEval     || "No evaluations yet",
       submittedAt:   submittedAt  || null,
       docUrl:        fileId
@@ -128,7 +144,7 @@ function getStudentDashboardData(termFilter) {
       // For the Submit for Feedback button (submitMyWork). The student's
       // own doc, which docUrl already carries.
       fileId:        fileId,
-      canSubmit:     !!fileId && !DASH_NO_SUBMIT_STATUSES[status],
+      canSubmit:     !!fileId && !DASH_NO_SUBMIT_STATUSES[status] && !inLine,
       folderLabel:   String(row[LEDGER.BLOCK]).trim() + " - " +
                      String(row[LEDGER.CLASS_NAME]).trim() + " - " +
                      String(row[LEDGER.TEACHER_NAME]).trim()
@@ -506,6 +522,27 @@ const DASH_MIN_RESPONSE_CHARS = 150; // 01's MIN_RESPONSE_CHARS
 const DASH_MIN_RESPONSE_WORDS = 25;  // 01's MIN_RESPONSE_WORDS
 // Ledger statuses with nothing to submit: already queued, already turned in,
 // or retired.
+// A ReviewQueue row in these states is a submission not yet evaluated.
+const DASH_OPEN_QUEUE_STATUSES = { PENDING: true, STAGED: true };
+
+// fileId -> true for every student file with an open ReviewQueue row. The
+// queue lives in the admin spreadsheet; if it can't be read the dashboard
+// shows statuses from the Ledger alone, as before.
+function dashQueuedFileIds_(cfg) {
+  const out = {};
+  try {
+    const queue = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
+    if (!queue) return out;
+    queue.getDataRange().getValues().slice(1).forEach(r => {
+      const fid = String(r[2]).trim();
+      if (fid && DASH_OPEN_QUEUE_STATUSES[String(r[5]).trim()]) out[fid] = true;
+    });
+  } catch (e) {
+    Logger.log("[Dashboard] ReviewQueue unreadable: " + e.message);
+  }
+  return out;
+}
+
 const DASH_NO_SUBMIT_STATUSES = {
   PENDING: "ALREADY_QUEUED", STAGED: "ALREADY_QUEUED",
   PENDING_TEACHER_REVIEW: "ALREADY_TURNED_IN", COMPLIANT: "ALREADY_TURNED_IN",
@@ -550,9 +587,11 @@ function _dashSubmit_(fileId, configId) {
     dashRecordFailure_(cfg, "NO_QUEUE");
     return { ok: false, error: "NO_QUEUE" };
   }
-  // Columns 2 and 5 are 03's RQ_FILE_ID and RQ_STATUS.
+  // Columns 2 and 5 are 03's RQ_FILE_ID and RQ_STATUS. STAGED is still in
+  // line: the bridge has taken it but no evaluation has landed. A second
+  // submit then used to pass and stamp a new SubmissionTS.
   const pending = queue.getDataRange().getValues().slice(1).some(r =>
-    String(r[2]).trim() === fileId && String(r[5]).trim() === "PENDING");
+    String(r[2]).trim() === fileId && DASH_OPEN_QUEUE_STATUSES[String(r[5]).trim()]);
   if (pending) return { ok: false, error: "ALREADY_QUEUED" };
 
   let fullText;
@@ -616,7 +655,7 @@ function dashExtractResponse_(fullText) {
   return fullText.substring(from, to).trim();
 }
 
-function resolveStudentStatus_(status, pipeline, feedbackInComments) {
+function resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult) {
   // Wording here deliberately echoes the teacher dashboard's status labels
   // (Queued/Evaluating/Evaluated/Compliant/Flagged) so the same underlying
   // pipeline stage reads as the same word on both sides of a conversation —
@@ -628,12 +667,24 @@ function resolveStudentStatus_(status, pipeline, feedbackInComments) {
   // it was in the pipeline, even while the teacher's own dashboard already
   // showed EVALUATING NOW.
   if (pipeline === "IN_PROCESS") return "Evaluating now…";
+  // In line for its evaluation (submitted, not yet taken up): see
+  // getStudentDashboardData's queuedFiles. Before 2026-10-22 a submitted
+  // assignment read "Not started yet" here (walk-through finding 2).
+  if (pipeline === "QUEUED" || pipeline === "PENDING_INFERENCE") return "Queued for evaluation…";
   switch (status) {
     case "ACTIVE":              return "Not started yet";
     case "PENDING": case "STAGED": return "Queued for evaluation…";
-    case "COMPLETE":            return feedbackInComments
-      ? "Evaluated — feedback ready: open your document and click Comments"
-      : "Evaluated — feedback ready, check your document";
+    case "COMPLETE": {
+      // The latest evaluation's result (LEDGER.LAST_RESULT, written by 37)
+      // says whether the work passed; until 2026-10-22 a passed assignment
+      // read the same as one needing revision (finding 8).
+      const where = feedbackInComments ? "open your document and click Comments" : "check your document";
+      if (lastResult === "PASSED") return "Passed ✓ — feedback is ready: " + where;
+      if (lastResult === "NEEDS_REVISION") return "Feedback ready — revise, then submit again: " + where;
+      return feedbackInComments
+        ? "Evaluated — feedback ready: open your document and click Comments"
+        : "Evaluated — feedback ready, check your document";
+    }
     // Where every passing turn-in lands (04_Form2_TurnInGate.js) until the
     // teacher confirms its score. It used to fall through to "Status
     // unavailable", flagged as an issue, on every submitted assignment.
@@ -653,16 +704,16 @@ function resolveStudentStatus_(status, pipeline, feedbackInComments) {
   }
 }
 
-function resolveStudentClass_(status, pipeline) {
+function resolveStudentClass_(status, pipeline, lastResult) {
   // Evaluating-now shares IN_PROGRESS's visual bucket (same pill/border
   // color) — the distinction is carried by displayStatus's text, not a
   // separate color, since it's still fundamentally "in progress" to a
   // student with no action to take.
-  if (pipeline === "IN_PROCESS") return "IN_PROGRESS";
+  if (pipeline === "IN_PROCESS" || pipeline === "QUEUED" || pipeline === "PENDING_INFERENCE") return "IN_PROGRESS";
   switch (status) {
     case "ACTIVE":              return "NOT_STARTED";
     case "PENDING": case "STAGED": return "IN_PROGRESS";
-    case "COMPLETE":            return "NEEDS_ACTION";
+    case "COMPLETE":            return lastResult === "PASSED" ? "DONE" : "NEEDS_ACTION";
     case "PENDING_TEACHER_REVIEW": return "IN_PROGRESS";
     case "COMPLIANT":           return "DONE";
     default:                    return "ISSUE";
@@ -1018,8 +1069,8 @@ function render(data) {
           ? \`<div class="submit-msg \${_submitMsgs[a.fileId].ok ? "ok" : "err"}" role="status">\${esc(_submitMsgs[a.fileId].text)}</div>\`
           : ""
         }
-        \${isDone && a.submittedAt
-          ? \`<div class="submitted-note">Submitted \${esc(a.submittedAt)}</div>\`
+        \${a.submittedAt
+          ? \`<div class="submitted-note">Last submitted \${esc(a.submittedAt)}</div>\`
           : ""
         }
         \${a.statusClass === "ISSUE" && a.teacherEmail

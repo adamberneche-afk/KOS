@@ -452,3 +452,61 @@ test('getStudentDashboardData: a SCHEDULED assignment has no card until it is op
   const scheduled = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), 'SCHEDULED');
   assert.equal(scheduled.exported.getStudentDashboardData('ALL').assignments.length, 0);
 });
+
+// Walk-through findings 2, 8 and 3a (2026-10-22): what a student's card says
+// once the work is submitted, once it passed, and when it was submitted.
+function cardAfter(setup) {
+  const sub = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), setup.status || 'ACTIVE');
+  if (setup.lastResult) sub.ledger.getRange(2, 25).setValue(setup.lastResult);
+  if (setup.queue) sub.queue.appendRow([new Date(), 'ben@ccpsnet.net', sub.fileId, 'CFG-B', '', setup.queue, '']);
+  if (setup.staging) {
+    const st = sub.ss.insertSheet('STAGING_PIPELINE');
+    st.appendRow(['StudentFileID', 'Status']);
+    st.appendRow([sub.fileId, setup.staging]);
+  }
+  if (setup.submit) sub.exported.submitMyWork(sub.fileId, 'CFG-B');
+  return Object.assign(sub.exported.getStudentDashboardData('ALL').assignments[0], { sub });
+}
+
+test('a submitted assignment reads "Queued for evaluation…", with no Submit button, until it is evaluated', () => {
+  for (const setup of [{ submit: true }, { queue: 'STAGED' }, { staging: 'PENDING_INFERENCE' },
+    { status: 'COMPLETE', lastResult: 'NEEDS_REVISION', queue: 'PENDING' }]) {
+    const card = cardAfter(setup);
+    assert.equal(card.displayStatus, 'Queued for evaluation…', JSON.stringify(setup));
+    assert.equal(card.statusClass, 'IN_PROGRESS');
+    assert.equal(card.canSubmit, false);
+  }
+  const evaluating = cardAfter({ queue: 'STAGED', staging: 'IN_PROCESS' });
+  assert.equal(evaluating.displayStatus, 'Evaluating now…');
+  assert.equal(evaluating.canSubmit, false);
+  const closed = cardAfter({ queue: 'COMPLETE' });
+  assert.equal(closed.displayStatus, 'Not started yet', 'a closed queue row is not in line');
+});
+
+test('submitMyWork: work the bridge has STAGED is still in line, so a second submit is refused', () => {
+  const { exported, queue, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH));
+  queue.appendRow([new Date(), 'ben@ccpsnet.net', fileId, 'CFG-B', '', 'STAGED', '']);
+  assert.equal(exported.submitMyWork(fileId, 'CFG-B').error, 'ALREADY_QUEUED');
+});
+
+test('an evaluated assignment says whether it passed', () => {
+  const passed = cardAfter({ status: 'COMPLETE', lastResult: 'PASSED' });
+  assert.match(passed.displayStatus, /^Passed ✓ — feedback is ready/);
+  assert.equal(passed.statusClass, 'DONE');
+  assert.equal(passed.canSubmit, true, 'a student may still improve passed work');
+  const revise = cardAfter({ status: 'COMPLETE', lastResult: 'NEEDS_REVISION' });
+  assert.match(revise.displayStatus, /^Feedback ready — revise, then submit again/);
+  assert.equal(revise.statusClass, 'NEEDS_ACTION');
+  const older = cardAfter({ status: 'COMPLETE' });
+  assert.match(older.displayStatus, /^Evaluated — feedback ready/, 'a row from before LastResult');
+});
+
+test('every card with a submission shows when it was last submitted', () => {
+  assert.ok(cardAfter({ submit: true }).submittedAt, 'the server sends it');
+  // The card's markup: shown whenever submittedAt is set, not only on
+  // finished (DONE) cards, which nothing reaches since the turn-in gate
+  // was retired.
+  const src = require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboard.js'), 'utf8');
+  assert.match(src, /\\\$\{a\.submittedAt\s*\n\s*\? \\`<div class="submitted-note">Last submitted /);
+  assert.doesNotMatch(src, /isDone && a\.submittedAt/);
+});
