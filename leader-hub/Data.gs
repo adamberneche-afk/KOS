@@ -70,6 +70,13 @@ const LH_DATA_TABS = [
   // one) than leaving these already-capped, lower-stakes logs local-only.
   'goals', 'events', 'tasks', 'deadlines', 'journal_entries',
   'observation_history', 'brag_manual_wins',
+  // No browser storage, Phase 2 (2026-10-22,
+  // meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md): the member roster
+  // (records already carry an id), and the id-less logs Phase 8 left local.
+  // Each log entry now gets an id when it is saved (the client's LS.set,
+  // _lhWithLogIds_): random, not derived from a timestamp, so two entries
+  // made in the same millisecond stay two rows.
+  'members', 'daily_log', 'sub_plan_log', 'brag_log', 'wbl_hours_log', 'scr_session_log',
 ];
 
 const LH_DATA_SHEET_PROP = 'LH_DATA_SHEET_ID';
