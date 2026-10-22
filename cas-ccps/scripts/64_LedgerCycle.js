@@ -42,6 +42,15 @@ const LC_DUE_TOLERANCE_MS = 15 * 1000;
 const LC_PROP_JOBS = "LEDGER_CYCLE_JOBS";
 const LC_PROP_LAST = "LEDGER_CYCLE_LAST_RUN";
 const LC_PROP_BUSY = "LEDGER_CYCLE_BUSY_UNTIL";
+// Each job's failures (2026-10-22, UX audit fix-first 5): the cycle used to
+// only log them, so the trigger "succeeded" and nothing showed a job failing
+// every minute. { fn: { streak, since, day, dayCount } }: failures in a row
+// (0 after a success), when the streak began, and today's count. 34b and
+// 34c read it (function names and counts only). Once a job has failed
+// LC_ALERT_STREAK cycles in a row, the cycle throws after running every job,
+// so Google's trigger-failure email arrives too.
+const LC_PROP_ERRORS = "LEDGER_CYCLE_ERRORS";
+const LC_ALERT_STREAK = 10;
 
 // The Ledger's frequent jobs and their cadence in minutes, in pipeline order
 // (used to break ties). Cadences are the ones each installer set; 03's
@@ -79,6 +88,7 @@ function runLedgerCycle() {
     const names = lcRecordedJobs_(props).filter(function (fn) { return own.indexOf(fn) === -1; });
     let last = {};
     try { last = JSON.parse(props.getProperty(LC_PROP_LAST) || "{}"); } catch (e) { last = {}; }
+    var errs = lcErrorState_(props);
     const due = LC_JOBS
       .map(function (j, order) { return { fn: j.fn, every: j.every, order: order,
         overdue: started - Number(last[j.fn] || 0) - j.every * 60000 }; })
@@ -93,18 +103,67 @@ function runLedgerCycle() {
       try {
         fn();
         result.ran.push(j.fn);
+        lcNoteResult_(errs, j.fn, true, started);
       } catch (e) {
         // A Google-side error in one job no longer stops the others.
         result.errors.push(j.fn + ": " + String(e && e.message || e).slice(0, 200));
+        lcNoteResult_(errs, j.fn, false, started);
       }
     }
     props.setProperty(LC_PROP_LAST, JSON.stringify(last));
+    props.setProperty(LC_PROP_ERRORS, JSON.stringify(errs));
   } finally {
     props.deleteProperty(LC_PROP_BUSY);
   }
   if (result.errors.length) Logger.log("[LC] Errors: " + result.errors.join(" | "));
   if (result.deferred.length) Logger.log("[LC] Out of time; next cycle: " + result.deferred.join(", "));
+  const stuck = lcFailingJobs_(props, started).filter(function (f) { return f.streak >= LC_ALERT_STREAK; });
+  if (stuck.length) {
+    throw new Error("Ledger cycle: " + stuck.map(function (f) {
+      return f.fn + " has failed " + f.streak + " cycles in a row";
+    }).join("; ") + ". The other jobs still ran. See the execution log for the errors.");
+  }
   return result;
+}
+
+function lcErrorState_(props) {
+  try {
+    const v = JSON.parse(props.getProperty(LC_PROP_ERRORS) || "{}");
+    return v && typeof v === "object" ? v : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function lcNoteResult_(errs, fn, ok, now) {
+  const day = Utilities.formatDate(new Date(now), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const e = errs[fn] || { streak: 0, since: 0, day: day, dayCount: 0 };
+  if (e.day !== day) { e.day = day; e.dayCount = 0; }
+  if (ok) {
+    e.streak = 0;
+    e.since = 0;
+  } else {
+    if (!e.streak) e.since = now;
+    e.streak++;
+    e.dayCount++;
+  }
+  errs[fn] = e;
+}
+
+/**
+ * The cycle's jobs that are failing now or failed today: [{ fn, streak,
+ * since, today }], worst first. For 34b and 34c; names and counts only.
+ */
+function lcFailingJobs_(props, now) {
+  props = props || PropertiesService.getScriptProperties();
+  const day = Utilities.formatDate(new Date(now || Date.now()), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const errs = lcErrorState_(props);
+  return Object.keys(errs).map(function (fn) {
+    const e = errs[fn] || {};
+    return { fn: fn, streak: Number(e.streak) || 0, since: Number(e.since) || 0,
+      today: e.day === day ? Number(e.dayCount) || 0 : 0 };
+  }).filter(function (f) { return f.streak > 0 || f.today > 0; })
+    .sort(function (a, b) { return (b.streak - a.streak) || (b.today - a.today); });
 }
 
 /** The jobs installLedgerCycle() found triggers for. */
