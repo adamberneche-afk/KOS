@@ -16,8 +16,18 @@ const SUBMISSION_COOLDOWN_MS = 90000; // 90 seconds
 const MIN_RESPONSE_CHARS = 150;
 const MIN_RESPONSE_WORDS = 25;
 
+// Where feedback lands: a comment on this doc, or written into it, depending
+// on the class's setting (00's FEEDBACK_AS_COMMENT). The menu can't read
+// that setting as a student, so it names both.
+const FEEDBACK_WHERE_TEXT =
+  "Find it in this doc: click the Comments button (top right), or look " +
+  "just above “Your response”.";
+const FEEDBACK_ARRIVES_TEXT =
+  "Feedback usually arrives within a few minutes. " + FEEDBACK_WHERE_TEXT + "\n\n" +
+  "Your assignment dashboard shows when it's ready.";
+
 const SERVICE_DOWN_MESSAGE =
-  "The assignment system didn't answer. Your work is safe in this document.\n\n" +
+  "Your assignment dashboard didn't answer. Your work is safe in this document.\n\n" +
   "Try again in a minute. If it keeps happening, tell your teacher.";
 
 // ---------------------------------------------------------------------------
@@ -45,12 +55,14 @@ function _aiFlowsLive_() {
 // should degrade to "not configured yet" rather than throwing if
 // ADMIN_SS_ID/CENTRAL_LEDGER_SS_ID haven't been set on this deployment.
 // ---------------------------------------------------------------------------
+// It finds the URL the way readSystemIds() does (2026-10-22): a student's
+// copy of the doc has no Script Properties, only the link 02 stamps.
 function openStudentDashboard() {
-  const url = PropertiesService.getScriptProperties().getProperty("STUDENT_DASHBOARD_URL");
+  const ids = readSystemIds();
   DocumentApp.getUi().alert(
-    "Your Assignment Dashboard",
-    url ? "Open this link and bookmark it:\n\n" + url
-        : "Your dashboard isn't set up yet — contact your teacher.",
+    "Your assignment dashboard",
+    ids ? "Open this link and bookmark it:\n\n" + ids.serviceUrl
+        : "Your dashboard isn't set up yet. Tell your teacher.",
     DocumentApp.getUi().ButtonSet.OK
   );
 }
@@ -110,12 +122,12 @@ function callStudentService_(ids, body) {
 // ---------------------------------------------------------------------------
 function onOpen() {
   DocumentApp.getUi()
-    .createMenu("📊 AI Evaluation Panel")
-    .addItem("Run Assignment Check",  "runSystemCheck")
+    .createMenu("📊 Feedback")
+    .addItem("Submit for Feedback",   "runSystemCheck")
     .addSeparator()
-    .addItem("📬 Check My Status",    "checkSubmissionStatus")
+    .addItem("📬 Where is my work?",  "checkSubmissionStatus")
     .addSeparator()
-    .addItem("📈 Open My Dashboard",  "openStudentDashboard")
+    .addItem("📈 Open my dashboard",  "openStudentDashboard")
     .addToUi();
 }
 
@@ -128,8 +140,8 @@ function runSystemCheck() {
   const ids = readSystemIds();
   if (!ids) {
     ui.alert(
-      "Document Not Configured",
-      "This document is missing its system setup. Contact your teacher.",
+      "This doc isn't set up",
+      "This doc is missing the link to your assignment dashboard. Tell your teacher.",
       ui.ButtonSet.OK
     );
     return;
@@ -138,7 +150,7 @@ function runSystemCheck() {
   const googleId = Session.getActiveUser().getEmail();
   if (!googleId) {
     ui.alert(
-      "Not Signed In",
+      "Not signed in",
       "Please sign into a Google account and reopen this document.",
       ui.ButtonSet.OK
     );
@@ -152,9 +164,9 @@ function runSystemCheck() {
 
   if (!configId) {
     ui.alert(
-      "Assignment Token Missing",
-      "The tracking code at the bottom of your document is missing or damaged.\n\n" +
-      "Please contact your teacher — do not try to fix this yourself.",
+      "This doc can't be matched to its assignment",
+      "The assignment code at the end of this doc is missing or changed.\n\n" +
+      "Tell your teacher. Please don't try to fix it yourself.",
       ui.ButtonSet.OK
     );
     return;
@@ -168,12 +180,12 @@ function runSystemCheck() {
     if (elapsed < SUBMISSION_COOLDOWN_MS) {
       const remaining = Math.ceil((SUBMISSION_COOLDOWN_MS - elapsed) / 1000);
       ui.alert(
-        "Already Submitted ⏳",
-        "Your work was just submitted for evaluation.\n\n" +
+        "Already submitted ⏳",
+        "Your work was just submitted for feedback.\n\n" +
         "Please wait " + remaining + " more second" + (remaining === 1 ? "" : "s") +
         " before submitting again.\n\n" +
         (_aiFlowsLive_()
-          ? "Your feedback will appear at the top of this document within 1–3 minutes."
+          ? FEEDBACK_ARRIVES_TEXT
           : "Your work is saved and your teacher can see it. Automatic feedback isn't switched on for your class yet — your teacher will review this directly."),
         ui.ButtonSet.OK
       );
@@ -183,13 +195,13 @@ function runSystemCheck() {
 
   const roster = validateRoster_(ids, googleId, fileId, configId);
   if (roster.error && roster.error !== "NOT_REGISTERED") {
-    ui.alert("Couldn't Reach the Assignment System", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
+    ui.alert("Couldn't reach your dashboard", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
     return;
   }
   if (!roster.ok) {
     ui.alert(
-      "Account Not Recognized",
-      "The Google account you're using (" + googleId + ") isn't registered for this assignment.\n\n" +
+      "This account isn't on this assignment",
+      "The Google account you're using (" + googleId + ") isn't on the class list for this assignment.\n\n" +
       "Make sure you opened this document while signed into the correct Google account.\n\n" +
       "If you're not sure which account to use, ask your teacher.",
       ui.ButtonSet.OK
@@ -204,14 +216,13 @@ function runSystemCheck() {
   if (!studentText || charCount < MIN_RESPONSE_CHARS || wordCount < MIN_RESPONSE_WORDS) {
     const current = wordCount > 0
       ? "You've written about " + wordCount + " word" + (wordCount === 1 ? "" : "s") + " so far."
-      : "You haven't written anything in the response section yet.";
+      : "You haven't written anything under “Your response” yet.";
 
     ui.alert(
-      "Not Enough to Evaluate Yet",
-      "Your response needs a bit more before the system can give you useful feedback.\n\n" +
+      "Write a little more first",
+      "Your response needs a bit more before it can get useful feedback.\n\n" +
       current + "\n\n" +
-      "Aim for at least " + MIN_RESPONSE_WORDS + " words in the\n" +
-      "── YOUR RESPONSE BEGINS HERE ── section.\n\n" +
+      "Aim for at least " + MIN_RESPONSE_WORDS + " words under “Your response”.\n\n" +
       "The more you write, the more specific your feedback will be.",
       ui.ButtonSet.OK
     );
@@ -221,7 +232,7 @@ function runSystemCheck() {
   try {
     submitToQueue_(ids, googleId, fileId, configId);
   } catch (e) {
-    ui.alert("Couldn't Submit", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
+    ui.alert("Couldn't submit", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
     return;
   }
 
@@ -229,11 +240,9 @@ function runSystemCheck() {
   PropertiesService.getScriptProperties().setProperty(cooldownKey, Date.now().toString());
 
   ui.alert(
-    "✅ Submitted for Feedback",
+    "✅ Submitted for feedback",
     _aiFlowsLive_()
-      ? "Your work is being evaluated now.\n\n" +
-        "Your feedback will appear at the top of this document within 1–3 minutes.\n\n" +
-        "You can keep this tab open and refresh the page to see it when it arrives."
+      ? "Your work is waiting for feedback.\n\n" + FEEDBACK_ARRIVES_TEXT
       : "Your work is saved and your teacher can see it.\n\n" +
         "Automatic feedback isn't switched on for your class yet — your teacher will review this directly.",
     ui.ButtonSet.OK
@@ -301,7 +310,7 @@ function checkSubmissionStatus() {
   const ui       = DocumentApp.getUi();
   const ids      = readSystemIds();
   if (!ids) {
-    ui.alert("Status Unavailable", "Document configuration is missing. Contact your teacher.", ui.ButtonSet.OK);
+    ui.alert("Can't check right now", "This doc is missing the link to your assignment dashboard. Tell your teacher.", ui.ButtonSet.OK);
     return;
   }
 
@@ -312,20 +321,20 @@ function checkSubmissionStatus() {
   const configId = extractConfigId_(fullText);
 
   if (!configId) {
-    ui.alert("Status Unavailable", "Assignment token not found. Contact your teacher.", ui.ButtonSet.OK);
+    ui.alert("Can't check right now", "The assignment code at the end of this doc is missing. Tell your teacher.", ui.ButtonSet.OK);
     return;
   }
 
   const res = validateRoster_(ids, googleId, fileId, configId);
   if (res.error && res.error !== "NOT_REGISTERED") {
-    ui.alert("Status Unavailable", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
+    ui.alert("Can't check right now", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
     return;
   }
   const info = res.ok ? res.info : null;
   if (!info) {
     ui.alert(
-      "Not Registered",
-      "Your Google account (" + googleId + ") isn't registered for this assignment.\n\n" +
+      "This account isn't on this assignment",
+      "Your Google account (" + googleId + ") isn't on the class list for this assignment yet.\n\n" +
       "If you just got access to this document, your teacher may still be setting things up.\n\n" +
       "Try again in a few minutes, or ask your teacher.",
       ui.ButtonSet.OK
@@ -333,7 +342,7 @@ function checkSubmissionStatus() {
     return;
   }
 
-  ui.alert("📬 Your Status", buildStatusMessage_(info, configId), ui.ButtonSet.OK);
+  ui.alert("📬 Where your work is", buildStatusMessage_(info, configId), ui.ButtonSet.OK);
 }
 
 
@@ -341,41 +350,42 @@ function checkSubmissionStatus() {
 // buildStatusMessage_ — plain language, meets students where they are
 // ---------------------------------------------------------------------------
 function buildStatusMessage_(info, configId) {
+  // The Student Dashboard's words for each stage (13's resolveStudentStatus_),
+  // so the doc and the dashboard never disagree (2026-10-22).
   const lines = [];
   if (info.unitCode)    lines.push("Assignment: " + info.unitCode);
-  if (info.teacherName) lines.push("Teacher:    " + info.teacherName);
-  if (info.term)        lines.push("Term:       " + info.term);
+  if (info.teacherName) lines.push("Teacher: " + info.teacherName);
+  if (info.term)        lines.push(info.term);
   const header   = lines.join("\n");
   const evalLine = info.lastEval
-    ? "Last feedback: " + info.lastEval
-    : "No feedback yet.";
+    ? "Last checked: " + info.lastEval
+    : "Not checked yet.";
 
   switch (info.status) {
     case "ACTIVE":
       return header + "\n\n" +
-        "📝  In Progress\n\n" +
+        "📝  Not submitted yet\n\n" +
         evalLine + "\n\n" +
         "When you're ready for feedback, click:\n" +
-        "📊 AI Evaluation Panel → Run Assignment Check";
+        "📊 Feedback → Submit for Feedback";
 
     case "STAGED": case "PENDING":
       return header + "\n\n" +
         (_aiFlowsLive_()
-          ? "⏳  Being Evaluated Right Now\n\n" +
-            "Your feedback should appear at the top of this document\n" +
-            "within the next 1–3 minutes.\n\n" +
-            "Keep this tab open — you can refresh to see it."
-          : "✅  Saved and Visible to Your Teacher\n\n" +
-            "Automatic feedback isn't switched on for your class yet — " +
-            "your teacher will review this directly.");
+          ? "⏳  Waiting for feedback\n\n" + FEEDBACK_ARRIVES_TEXT
+          : "✅  Saved, and your teacher can see it\n\n" +
+            "Automatic feedback isn't switched on for your class yet. " +
+            "Your teacher will review this directly.");
 
     case "COMPLETE":
       return header + "\n\n" +
-        "📋  Feedback Has Been Delivered\n\n" +
+        (info.lastResult === "PASSED" ? "✅  Passed. Your feedback is ready."
+          : info.lastResult === "NEEDS_REVISION" ? "✏️  Feedback is ready. Revise, then submit again."
+          : "📋  Your feedback is ready.") + "\n\n" +
         evalLine + "\n\n" +
-        "Scroll to the end of this document to read your feedback.\n\n" +
-        "If it says your work passed → turn it in on Canvas when you're ready.\n" +
-        "If it says revisions are needed → fix your work and run another check.";
+        FEEDBACK_WHERE_TEXT + "\n\n" +
+        "Passed? Turn it in on Canvas when you're ready.\n" +
+        "Need to revise? Fix your work, then submit for feedback again.";
 
     // NEW (Say/Do Ledger cas-ccps finding #1): a genuine-complete submission
     // no longer jumps straight to COMPLIANT — it waits here for the teacher's
@@ -384,24 +394,25 @@ function buildStatusMessage_(info, configId) {
     // nothing is final until the teacher confirms or overrides it.
     case "PENDING_TEACHER_REVIEW":
       return header + "\n\n" +
-        "✅  Submitted — Awaiting Teacher Review\n\n" +
-        "Submitted: " + (info.submittedAt || "—") + "\n\n" +
-        "Your submission passed all automated checks and is now waiting for " +
-        "your teacher to take a look. You'll hear back once they've reviewed it.";
+        "✅  Turned in — waiting for your teacher\n\n" +
+        "Turned in: " + (info.submittedAt || "—") + "\n\n" +
+        "Your work is in, and your teacher will look at it next. " +
+        "You'll hear back once they've reviewed it.";
 
     case "COMPLIANT":
       return header + "\n\n" +
-        "✅  Submitted and Verified\n\n" +
-        "Submitted: " + (info.submittedAt || "—") + "\n\n" +
-        "Your final submission has been received. You're all done!";
+        "✅  Done — your teacher confirmed it\n\n" +
+        "Turned in: " + (info.submittedAt || "—") + "\n\n" +
+        "You're all done with this one!";
 
     default:
-      if (info.status.startsWith("ERROR")) {
+      if (String(info.status).startsWith("ERROR")) {
         return header + "\n\n" +
-          "⚠️  Something Needs Attention\n\n" +
-          "There's a problem with your submission that your teacher needs to look at.\n\n" +
-          "Show your teacher this code: " + configId;
+          "⚠️  Couldn't be checked\n\n" +
+          "Something went wrong on our side, not with your work. " +
+          "Tell your teacher, and show them this code: " + configId;
       }
-      return header + "\n\nStatus: " + info.status + "\n\n" + evalLine;
+      return header + "\n\n" +
+        "Status unavailable — check with your teacher.\n\n" + evalLine;
   }
 }

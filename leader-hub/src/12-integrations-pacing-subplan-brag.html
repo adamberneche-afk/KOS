@@ -156,7 +156,7 @@ function _handleCasCcpsCredential(response) {
     );
     CAS_CCPS_BRIDGE._idToken    = response.credential;
     CAS_CCPS_BRIDGE._idTokenExp = payload.exp || 0;
-    _showToast('✅ Signed in to cas-ccps as ' + (payload.email || 'unknown'));
+    _showToast('✅ Signed in to CAS as ' + (payload.email || 'unknown'));
     if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
   } catch (e) {
     console.warn('[CasCcpsBridge] Could not decode credential:', e.message);
@@ -240,7 +240,7 @@ function _updateCasCcpsStatus_() {
   const signedIn = CAS_CCPS_BRIDGE.hasValidToken();
   if (badge) {
     badge.textContent = !url ? '⚠️ Off' : (signedIn ? '✅ Signed in' : '⚠️ Not signed in');
-    badge.style.color = !url ? '#b45309' : (signedIn ? '#16a34a' : '#b45309');
+    badge.style.color = !url ? '#b45309' : (signedIn ? '#15803d' : '#b45309');
   }
   const line = document.getElementById('casccps-sync-status');
   if (line) {
@@ -258,7 +258,7 @@ function _updateCasCcpsStatus_() {
 }
 
 function _removeCasCcpsConnection() {
-  _showConfirm('Remove cas-ccps connection?', () => {
+  _showConfirm('Remove the CAS connection?', () => {
     LS.set('lh_cas_ccps_api_url', null);
     LS.set('lh_cas_ccps_oauth_client_id', null);
     CAS_CCPS_BRIDGE._idToken = null;
@@ -266,9 +266,9 @@ function _removeCasCcpsConnection() {
     const btn = document.getElementById('cas-ccps-signin-btn');
     if (btn) btn.innerHTML = '';
     if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
-    _showToast('cas-ccps connection removed.');
+    _showToast('CAS connection removed.');
     closeModal('casccps');
-  }, { confirmLabel: 'Remove', ariaLabel: 'Remove cas-ccps connection' });
+  }, { confirmLabel: 'Remove', ariaLabel: 'Remove the CAS connection' });
 }
 
 /**
@@ -281,11 +281,11 @@ function _removeCasCcpsConnection() {
  */
 async function refreshCasCcpsPacingGuide() {
   if (!CAS_CCPS_BRIDGE.apiUrl()) {
-    _showToast('⚙️ Connect to cas-ccps first — Settings → Connect to cas-ccps', 4000, '#991b1b');
+    _showToast('⚙️ Connect to CAS first — sidebar → Dashboard → Connect to CAS', 4000, '#991b1b');
     return;
   }
   if (!CAS_CCPS_BRIDGE.hasValidToken()) {
-    _showToast('Sign in to cas-ccps first (Settings → Connect to cas-ccps).', 4000, '#991b1b');
+    _showToast('Sign in to CAS first (sidebar → Dashboard → Connect to CAS).', 4000, '#991b1b');
     return;
   }
   try {
@@ -300,7 +300,7 @@ async function refreshCasCcpsPacingGuide() {
     LS.set('lh_cas_ccps_pacing_synced_at', new Date().toISOString());
     if (typeof renderPacingCalendar === 'function') renderPacingCalendar();
     if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
-    _showToast('✅ Pacing guide refreshed — ' + units.length + ' unit(s) from cas-ccps.');
+    _showToast('✅ Pacing guide refreshed — ' + units.length + ' unit(s) from CAS.');
   } catch (e) {
     _showToast('⚠ Refresh failed: ' + e.message, 4000, '#991b1b');
   }
@@ -341,11 +341,11 @@ function _transformCasCcpsPacingUnit_(u) {
 // refreshCasCcpsPacingGuide() and Org Sync's push/pull.
 async function syncCasCcpsRoster() {
   if (!CAS_CCPS_BRIDGE.apiUrl()) {
-    _showToast('⚙️ Connect to cas-ccps first — Settings → Connect to cas-ccps', 4000, '#991b1b');
+    _showToast('⚙️ Connect to CAS first — sidebar → Dashboard → Connect to CAS', 4000, '#991b1b');
     return;
   }
   if (!CAS_CCPS_BRIDGE.hasValidToken()) {
-    _showToast('Sign in to cas-ccps first (Settings → Connect to cas-ccps).', 4000, '#991b1b');
+    _showToast('Sign in to CAS first (sidebar → Dashboard → Connect to CAS).', 4000, '#991b1b');
     return;
   }
   try {
@@ -469,7 +469,7 @@ function _showCasCcpsRosterReport_(report) {
   const section = (title, caption, rows) => rows.length ? `
     <div style="margin-top:.85rem">
       <div style="font-size:.75rem;font-weight:700;margin-bottom:.2rem">${title} (${rows.length})</div>
-      <div style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem">${caption}</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">${caption}</div>
       <div style="max-height:160px;overflow:auto;border:1px solid var(--border);border-radius:6px">
         ${rows.map(r => `<div style="padding:.3rem .5rem;font-size:.75rem;border-bottom:1px solid var(--border-soft)">${r}</div>`).join('')}
       </div>
@@ -485,10 +485,10 @@ function _showCasCcpsRosterReport_(report) {
     <div style="font-size:.8rem;color:var(--ink)">
       ${report.matchedNow.length} newly matched · ${report.alreadySynced} already synced${needsReview ? ` · ${needsReview} need review` : ''}
     </div>
-    ${section('cas-ccps has these students, but no leader-hub period roster entry matched',
+    ${section('CAS has these students, but no leader-hub period roster entry matched',
       'Add them to a period roster by hand, then sync again — leader-hub has no way to know which period they belong in.',
       report.casUnmatched.map(r => `${escH(r.name)} — ${escH(r.email)}`))}
-    ${section("leader-hub has these students, but cas-ccps's roster has no match",
+    ${section("leader-hub has these students, but CAS's roster has no match",
       'Stays name-keyed — nothing is lost, just not yet linked to an email.',
       report.leaderHubUnmatched.map(r => `${escH(SCR_COURSES[r.code] ? SCR_COURSES[r.code].name : r.code)} · ${escH(r.period)} · ${escH(r.name)}`))}
     ${section('Ambiguous — more than one student shares this name',
@@ -506,7 +506,7 @@ function emailBridgeToast_(h, d) {
   const total = h + d;
   const el = document.createElement('div');
   el.id = 'eb-toast';
-  el.innerHTML = '<span style="font-size:1.1rem">\u{1F4E7}</span><div><div style="font-weight:700;font-size:.82rem">' + total + ' item' + (total===1?'':'s') + ' from email</div><div style="font-size:.74rem;color:rgba(255,255,255,.75)">' + h + ' horizon' + (d ? ' \u00b7 ' + d + ' deadline' + (d===1?'':'s') : '') + '</div></div><button onclick="document.getElementById(\'eb-toast\').remove()" style="background:none;border:none;color:rgba(255,255,255,.6);font-size:1rem;cursor:pointer;margin-left:.5rem">\u2715</button>';
+  el.innerHTML = '<span style="font-size:1.1rem">\u{1F4E7}</span><div><div style="font-weight:700;font-size:.82rem">' + total + ' item' + (total===1?'':'s') + ' from email</div><div style="font-size:.75rem;color:rgba(255,255,255,.75)">' + h + ' horizon' + (d ? ' \u00b7 ' + d + ' deadline' + (d===1?'':'s') : '') + '</div></div><button onclick="document.getElementById(\'eb-toast\').remove()" style="background:none;border:none;color:rgba(255,255,255,.75);font-size:1rem;cursor:pointer;margin-left:.5rem">\u2715</button>';
   Object.assign(el.style, { position:'fixed', bottom:'1.5rem', right:'1.5rem', background:'#0f2044', color:'#fff', borderRadius:'10px', padding:'.75rem 1rem', display:'flex', alignItems:'center', gap:'.6rem', boxShadow:'0 4px 20px rgba(0,0,0,.3)', zIndex:'9999', fontSize:'.84rem' });
   document.body.appendChild(el);
   setTimeout(() => { if (document.getElementById('eb-toast')) el.remove(); }, 8000);
@@ -542,7 +542,7 @@ function updateEmailBridgeBadge_() {
   // even with no URL ever configured \u2014 see _lhBridgeAvailable_().
   const on = _lhBridgeAvailable_();
   el.textContent = on ? '\u2705 On' : '\u26a0\ufe0f Off';
-  el.style.color  = on ? '#16a34a' : '#b45309';
+  el.style.color  = on ? '#15803d' : '#b45309';
 }
 
 function openEmailBridgeModal_() {
@@ -2354,18 +2354,18 @@ function renderPacingCalendar() {
     // Find which lesson we're on today
     const todayInfo = dateToLesson[todayKey];
     const progressHtml = todayInfo
-      ? `<span style="font-size:.68rem;background:${qBg};color:${qColor};padding:2px 8px;border-radius:10px;font-weight:700;border:1px solid ${qColor}20">
+      ? `<span style="font-size:.75rem;background:${qBg};color:${qColor};padding:2px 8px;border-radius:10px;font-weight:700;border:1px solid ${qColor}20">
            📍 Today: L${todayInfo.lessonNum} — ${todayInfo.lesson.title}
          </span>`
       : '';
     legendEl.innerHTML =
       units.map((u,i) =>
-        `<span style="display:flex;align-items:center;gap:.3rem;font-size:.68rem;color:#374151;white-space:nowrap">
+        `<span style="display:flex;align-items:center;gap:.3rem;font-size:.75rem;color:#374151;white-space:nowrap">
           <span style="width:10px;height:10px;border-radius:2px;background:${unitColorMap[u.id]};flex-shrink:0;display:inline-block"></span>
           ${escH(u.title || u.name || '')}
         </span>`
       ).join('') +
-      `<span style="font-size:.68rem;color:var(--muted);margin-left:.25rem">${lessons.length} ${hasRealDatedUnits?'unit'+(lessons.length!==1?'s':''):'lesson'+(lessons.length!==1?'s':'')} · ${meetingDays.length} days${isCasCourse?' · real dates from the CAS pacing guide':(hasRealDatedUnits?' · real dates from your imported lesson units':'')}</span>` +
+      `<span style="font-size:.75rem;color:var(--muted);margin-left:.25rem">${lessons.length} ${hasRealDatedUnits?'unit'+(lessons.length!==1?'s':''):'lesson'+(lessons.length!==1?'s':'')} · ${meetingDays.length} days${isCasCourse?' · real dates from the CAS pacing guide':(hasRealDatedUnits?' · real dates from your imported lesson units':'')}</span>` +
       progressHtml;
   }
 
@@ -2390,7 +2390,7 @@ function renderPacingCalendar() {
     <div style="display:grid;grid-template-columns:36px repeat(5,1fr);gap:3px;margin-bottom:5px;padding:0 2px">
       <div></div>
       ${['MON','TUE','WED','THU','FRI'].map(d =>
-        `<div style="text-align:center;font-size:.6rem;font-weight:800;letter-spacing:2px;color:#94a3b8;padding:.2rem 0">${d}</div>`
+        `<div style="text-align:center;font-size:.75rem;font-weight:800;letter-spacing:2px;color:#475569;padding:.2rem 0">${d}</div>`
       ).join('')}
     </div>`;
 
@@ -2402,7 +2402,7 @@ function renderPacingCalendar() {
 
     html += `<div style="display:grid;grid-template-columns:36px repeat(5,1fr);gap:3px;margin-bottom:3px;padding:0 2px">
       <div style="display:flex;align-items:flex-start;justify-content:flex-end;padding-right:5px;padding-top:7px">
-        <span style="font-size:.58rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:${showMonth?'#1e3a5f':'transparent'};line-height:1">${monthLabel||'·'}</span>
+        <span style="font-size:.75rem;font-weight:900;letter-spacing:1.5px;text-transform:uppercase;color:${showMonth?'#1e3a5f':'transparent'};line-height:1">${monthLabel||'·'}</span>
       </div>`;
 
     for (let dow = 1; dow <= 5; dow++) {
@@ -2432,7 +2432,7 @@ function renderPacingCalendar() {
       // ── Out of quarter ──
       if (!inQ) {
         html += `<div style="min-height:82px;border-radius:5px;background:#f1f5f9;position:relative">
-          <span style="position:absolute;top:4px;right:5px;font-size:.58rem;color:#cbd5e1">${dayNum}</span>
+          <span style="position:absolute;top:4px;right:5px;font-size:.75rem;color:#6b7280">${dayNum}</span>
         </div>`;
         continue;
       }
@@ -2441,13 +2441,13 @@ function renderPacingCalendar() {
       if (isHol) {
         if (!showHols) {
           html += `<div style="min-height:82px;border-radius:5px;background:#f8fafc;position:relative">
-            <span style="position:absolute;top:4px;right:5px;font-size:.58rem;color:#e2e8f0">${dayNum}</span>
+            <span style="position:absolute;top:4px;right:5px;font-size:.75rem;color:#e2e8f0">${dayNum}</span>
           </div>`;
         } else {
           html += `<div style="min-height:82px;border-radius:5px;background:repeating-linear-gradient(45deg,#f8fafc,#f8fafc 5px,#f1f5f9 5px,#f1f5f9 10px);border:1px solid #e2e8f0;position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center">
-            <span style="position:absolute;top:4px;right:5px;font-size:.58rem;color:#94a3b8">${dayNum}</span>
+            <span style="position:absolute;top:4px;right:5px;font-size:.75rem;color:#475569">${dayNum}</span>
             <span style="font-size:.85rem;line-height:1">🏫</span>
-            <span style="font-size:.55rem;color:#94a3b8;margin-top:3px;font-weight:600">NO SCHOOL</span>
+            <span style="font-size:.75rem;color:#475569;margin-top:3px;font-weight:600">NO SCHOOL</span>
           </div>`;
         }
         continue;
@@ -2456,9 +2456,9 @@ function renderPacingCalendar() {
       // ── School day, course doesn't meet (wrong parity) ──
       if (!meetsCourse) {
         html += `<div style="min-height:82px;border-radius:5px;background:#f8fafc;border:1px solid #f1f5f9;position:relative">
-          <span style="position:absolute;top:4px;right:5px;font-size:.58rem;color:#cbd5e1">${dayNum}</span>
-          ${isER ? `<span style="position:absolute;top:4px;left:5px;font-size:.5rem;background:#fef3c7;color:#92400e;padding:1px 4px;border-radius:3px">Early</span>` : ''}
-          ${showOE && parity ? `<span style="position:absolute;bottom:4px;left:5px;font-size:.5rem;color:#e2e8f0;font-weight:700;letter-spacing:.5px">${parity}</span>` : ''}
+          <span style="position:absolute;top:4px;right:5px;font-size:.75rem;color:#6b7280">${dayNum}</span>
+          ${isER ? `<span style="position:absolute;top:4px;left:5px;font-size:.75rem;background:#fef3c7;color:#92400e;padding:1px 4px;border-radius:3px">Early</span>` : ''}
+          ${showOE && parity ? `<span style="position:absolute;bottom:4px;left:5px;font-size:.75rem;color:#e2e8f0;font-weight:700;letter-spacing:.5px">${parity}</span>` : ''}
         </div>`;
         continue;
       }
@@ -2488,16 +2488,16 @@ function renderPacingCalendar() {
         ${lesson?`onmouseover="this.style.boxShadow='0 4px 16px ${uColor}30'" onmouseout="this.style.boxShadow='${isToday?`0 0 0 2.5px ${uColor},0 0 0 4px ${qBg}`:''}'"`:''}>
         ${todayDot}
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
-          <span style="font-size:.5rem;font-weight:800;color:${lesson?uColor+'80':'#e2e8f0'};letter-spacing:.5px">${showOE&&parity?parity:''}</span>
-          <span style="font-size:.6rem;color:${lesson?'#94a3b8':'#e2e8f0'}">${dayNum}</span>
+          <span style="font-size:.75rem;font-weight:800;color:${lesson?uColor:'#6b7280'};letter-spacing:.5px">${showOE&&parity?parity:''}</span>
+          <span style="font-size:.75rem;color:${lesson?'#475569':'#6b7280'}">${dayNum}</span>
         </div>
-        ${isER ? `<div style="font-size:.5rem;background:#fef3c7;color:#92400e;padding:1px 4px;border-radius:3px;display:inline-block;margin-bottom:2px">⏱ Early Release</div>` : ''}
+        ${isER ? `<div style="font-size:.75rem;background:#fef3c7;color:#92400e;padding:1px 4px;border-radius:3px;display:inline-block;margin-bottom:2px">⏱ Early Release</div>` : ''}
         ${lesson ? `
-          <div style="font-size:.58rem;color:${uColor};font-weight:900;letter-spacing:.5px;line-height:1;margin-bottom:2px">L${info.lessonNum}</div>
-          <div style="font-size:.68rem;color:#0f172a;font-weight:700;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:1px">${lesson.title}</div>
-          <div style="font-size:.56rem;color:#64748b;line-height:1.2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${lesson.subtitle}</div>
+          <div style="font-size:.75rem;color:${uColor};font-weight:900;letter-spacing:.5px;line-height:1;margin-bottom:2px">L${info.lessonNum}</div>
+          <div style="font-size:.75rem;color:#0f172a;font-weight:700;line-height:1.25;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;margin-bottom:1px">${lesson.title}</div>
+          <div style="font-size:.75rem;color:#475569;line-height:1.2;overflow:hidden;white-space:nowrap;text-overflow:ellipsis">${lesson.subtitle}</div>
           ${pipHtml}
-          ${hasEdit ? '<span style="position:absolute;bottom:4px;right:4px;font-size:.58rem">✏️</span>' : ''}
+          ${hasEdit ? '<span style="position:absolute;bottom:4px;right:4px;font-size:.75rem">✏️</span>' : ''}
         ` : ''}
       </div>`;
     }
@@ -2539,7 +2539,7 @@ function openCasPacingUnitModal(unitId, course) {
     : `<div style="font-size:.78rem;color:var(--muted);font-style:italic">None recorded.</div>`;
 
   const compsHtml = comps.length
-    ? `<div style="display:flex;flex-direction:column;gap:.25rem">${comps.map(c => `<div style="font-size:.76rem"><span style="font-weight:700;color:var(--navy)">#${c.num}</span> ${escH(c.text)} <span style="color:var(--muted);font-size:.68rem">(${escH(c.duty)})</span></div>`).join('')}</div>`
+    ? `<div style="display:flex;flex-direction:column;gap:.25rem">${comps.map(c => `<div style="font-size:.76rem"><span style="font-weight:700;color:var(--navy)">#${c.num}</span> ${escH(c.text)} <span style="color:var(--muted);font-size:.75rem">(${escH(c.duty)})</span></div>`).join('')}</div>`
     : `<div style="font-size:.78rem;color:var(--muted);font-style:italic">No formal competency requirement for ${LP_C_LABELS[course]||course} this unit${cdata.objective ? ' — see objective below.' : '.'}</div>`;
 
   const modal = document.createElement('div');
@@ -2548,46 +2548,46 @@ function openCasPacingUnitModal(unitId, course) {
   modal.innerHTML = `<div style="background:#fff;max-width:640px;width:100%;max-height:88vh;overflow-y:auto;border-radius:12px;padding:1.4rem" role="dialog" aria-modal="true" aria-label="Lesson unit: ${escH(unit.name)}">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;margin-bottom:.9rem">
       <div>
-        <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:.5px;color:var(--navy);line-height:1.15">${escH(unit.name)}</div>
-        <div style="font-size:.74rem;color:var(--muted);margin-top:.2rem">${unit.stageName?escH(unit.stageName)+' · ':''}${LP_C_LABELS[course]||course} · Weeks ${escH(unit.weeks)} · ${escH(unit.startDate)} – ${escH(unit.endDate)}</div>
+        <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.3rem;letter-spacing:.5px;color:var(--navy);line-height:1.15">${escH(unit.name)}</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">${unit.stageName?escH(unit.stageName)+' · ':''}${LP_C_LABELS[course]||course} · Weeks ${escH(unit.weeks)} · ${escH(unit.startDate)} – ${escH(unit.endDate)}</div>
       </div>
       <button id="cas-pacing-unit-close" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer;flex-shrink:0">✕</button>
     </div>
 
-    <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.65rem .85rem;font-size:.72rem;color:#1e3a6e;margin-bottom:1rem">
+    <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.65rem .85rem;font-size:.75rem;color:#1e3a6e;margin-bottom:1rem">
       ${unit._custom
         ? 'Real curriculum content below is from your own imported lesson unit (Settings → Weekly Schedule / Lesson Unit Template) — read-only here except the delivery notes further down. Re-import the same unit id to update it.'
         : 'Real curriculum content below is imported from the CAS pacing guide (cas-ccps/curriculum/PacingGuide_CAS_Context.json) — read-only here. Fill in the CCPS delivery fields underneath for your own records.'}
     </div>
 
-    <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">Objective</div>
+    <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">Objective</div>
     <div style="font-size:.8rem;margin-bottom:.9rem;line-height:1.5">${escH(cdata.objective || '(none recorded)')}</div>
 
-    <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">VDOE / CCPS Competencies Addressed</div>
+    <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">VDOE / CCPS Competencies Addressed</div>
     <div style="margin-bottom:.9rem">${compsHtml}</div>
 
-    <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">Key Vocabulary</div>
+    <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">Key Vocabulary</div>
     <div style="margin-bottom:.9rem">${vocabHtml}</div>
 
-    ${unit.warmupAnchor ? `<div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">Warm-Up / Bell-Ringer</div>
+    ${unit.warmupAnchor ? `<div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">Warm-Up / Bell-Ringer</div>
     <div style="font-size:.8rem;margin-bottom:.9rem;line-height:1.5;font-style:italic">"${escH(unit.warmupAnchor)}"</div>` : ''}
 
-    ${unit.priorConnection ? `<div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">Prior Lesson Connection</div>
+    ${unit.priorConnection ? `<div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">Prior Lesson Connection</div>
     <div style="font-size:.8rem;margin-bottom:1.1rem;line-height:1.5">${escH(unit.priorConnection)}</div>` : ''}
 
     <div style="height:1px;background:var(--border);margin:1rem 0"></div>
 
-    <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--navy);margin-bottom:.6rem">Your Lesson Delivery Notes (CCPS format)</div>
-    <div class="fg" style="margin-bottom:.6rem"><label style="font-size:.72rem;font-weight:700;color:var(--muted)">Materials</label>
+    <div style="font-size:.75rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--navy);margin-bottom:.6rem">Your Lesson Delivery Notes (CCPS format)</div>
+    <div class="fg" style="margin-bottom:.6rem"><label style="font-size:.75rem;font-weight:700;color:var(--muted)">Materials</label>
       <textarea id="cas-pu-materials" rows="2" style="width:100%;padding:.4rem .55rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${escH(notes.materials)}</textarea></div>
-    <div class="fg" style="margin-bottom:.6rem"><label style="font-size:.72rem;font-weight:700;color:var(--muted)">Assessment / Evidence of Learning</label>
+    <div class="fg" style="margin-bottom:.6rem"><label style="font-size:.75rem;font-weight:700;color:var(--muted)">Assessment / Evidence of Learning</label>
       <textarea id="cas-pu-assessment" rows="2" style="width:100%;padding:.4rem .55rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${escH(notes.assessment)}</textarea></div>
-    <div class="fg" style="margin-bottom:.6rem"><label style="font-size:.72rem;font-weight:700;color:var(--muted)">Differentiation</label>
+    <div class="fg" style="margin-bottom:.6rem"><label style="font-size:.75rem;font-weight:700;color:var(--muted)">Differentiation</label>
       <textarea id="cas-pu-differentiation" rows="2" style="width:100%;padding:.4rem .55rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${escH(notes.differentiation)}</textarea></div>
-    <div class="fg" style="margin-bottom:.9rem"><label style="font-size:.72rem;font-weight:700;color:var(--muted)">Notes</label>
+    <div class="fg" style="margin-bottom:.9rem"><label style="font-size:.75rem;font-weight:700;color:var(--muted)">Notes</label>
       <textarea id="cas-pu-notes" rows="2" style="width:100%;padding:.4rem .55rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${escH(notes.notes)}</textarea></div>
 
-    <div id="cas-pu-save-status" style="font-size:.74rem;margin-bottom:.6rem;min-height:1.1em;color:#166534"></div>
+    <div id="cas-pu-save-status" style="font-size:.75rem;margin-bottom:.6rem;min-height:1.1em;color:#166534"></div>
     <div style="display:flex;gap:.6rem">
       <button id="cas-pu-save" class="btn btn-primary" style="flex:1">💾 Save Delivery Notes</button>
       <button onclick="lhPrintLessonUnitTemplate('${unitId}','${course}')" class="btn btn-outline">🖨 Print</button>
@@ -2803,20 +2803,20 @@ function renderPacingImportSettings() {
   if (courses.includes(prev)) sel.value = prev;
 
   if (!courses.length) {
-    list.innerHTML = `<div style="font-size:.74rem;color:var(--muted);font-style:italic">Add a course in Course Catalog above (other than 8175/8177, which already use the real CAS pacing guide) to import lesson units for it.</div>`;
+    list.innerHTML = `<div style="font-size:.75rem;color:var(--muted);font-style:italic">Add a course in Course Catalog above (other than 8175/8177, which already use the real CAS pacing guide) to import lesson units for it.</div>`;
     return;
   }
 
   const withUnits = courses.filter(c => (CUSTOM_PACING_UNITS[c] || []).length > 0);
   if (!withUnits.length) {
-    list.innerHTML = `<div style="font-size:.74rem;color:var(--muted);font-style:italic">Nothing imported yet.</div>`;
+    list.innerHTML = `<div style="font-size:.75rem;color:var(--muted);font-style:italic">Nothing imported yet.</div>`;
     return;
   }
   list.innerHTML = withUnits.map(c => {
     const n = CUSTOM_PACING_UNITS[c].length;
     return `<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
       <span style="flex:1"><strong>${escH(LP_C_LABELS[c]||c)}</strong> — ${n} lesson unit${n!==1?'s':''} imported</span>
-      <button onclick="lhClearCustomPacingUnits('${c}')" aria-label="Remove imported lesson units for ${escH(LP_C_LABELS[c]||c)}" title="Remove imported units" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>
+      <button onclick="lhClearCustomPacingUnits('${c}')" aria-label="Remove imported lesson units for ${escH(LP_C_LABELS[c]||c)}" title="Remove imported units" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>
     </div>`;
   }).join('');
 }
@@ -2833,7 +2833,7 @@ function lhPrintLessonUnitTemplate(unitId, course) {
 
   const field = (label, value, lines) => `
     <div style="margin-bottom:.9rem">
-      <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:.2rem">${label}</div>
+      <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#555;margin-bottom:.2rem">${label}</div>
       ${value
         ? `<div style="font-size:.82rem;line-height:1.5;white-space:pre-line">${escH(value)}</div>`
         : `<div style="border-bottom:1px solid #999;min-height:${(lines||2)*1.4}rem"></div>`}
@@ -3096,22 +3096,22 @@ function buildSubPlanPeriods() {
           Block ${p.block} · ${fmtTime(p.start)}–${fmtTime(p.end)}
           ${p.course ? `<span style="font-weight:400;color:var(--muted)"> — ${p.courseName}</span>` : '<span style="color:var(--muted);font-weight:400"> — No class this block</span>'}
         </div>
-        <span style="font-size:.68rem;color:var(--muted)">${p.students.length} students</span>
+        <span style="font-size:.75rem;color:var(--muted)">${p.students.length} students</span>
       </div>
       ${p.course ? `
       <div style="margin-bottom:.35rem">
-        <label style="font-size:.68rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Canvas Assignment URL</label>
+        <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Canvas Assignment URL</label>
         <input id="sp-canvas-${p.block}" value="${canvasUrl}" placeholder="https://ccps.instructure.com/courses/…"
           style="width:100%;font-size:.75rem;border:1px solid var(--border);border-radius:5px;padding:.28rem .4rem"
           onchange="saveSubPeriodAssignment(${p.block})">
       </div>
       <div>
-        <label style="font-size:.68rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Sub Instructions for This Period</label>
+        <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Sub Instructions for This Period</label>
         <textarea id="sp-instr-${p.block}" rows="2"
           style="width:100%;font-size:.75rem;border:1px solid var(--border);border-radius:5px;padding:.28rem .4rem;resize:vertical;font-family:inherit"
           onchange="saveSubPeriodAssignment(${p.block})">${instructions}</textarea>
       </div>
-      ${lesson ? `<div style="font-size:.67rem;color:var(--muted);margin-top:.2rem">📖 Today's lesson: <em>${lesson.title} — ${lesson.subtitle}</em></div>` : ''}
+      ${lesson ? `<div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">📖 Today's lesson: <em>${lesson.title} — ${lesson.subtitle}</em></div>` : ''}
       ` : '<div style="font-size:.75rem;color:var(--muted);font-style:italic">No class this period — planning time.</div>'}
     </div>`;
   }).join('');
@@ -3497,7 +3497,7 @@ function gatherBragData() {
     // email subject, log note, SCR/WBL/E-Sports summary) this one shared
     // renderer touches, in one place.
     lst.innerHTML = items.map(i =>
-      `<div style="font-size:.72rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4">${escH(fmt(i))}</div>`
+      `<div style="font-size:.75rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4">${escH(fmt(i))}</div>`
     ).join('');
   };
 
@@ -3521,7 +3521,7 @@ function gatherBragData() {
     journalSec.style.display = 'block';
     journalLst.innerHTML = journalCandidates.map(w => {
       const included = journalIncludes[w.id] === true;
-      return `<div style="font-size:.72rem;background:${included?'#fff':'#f9fafb'};border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4;display:flex;gap:.45rem;align-items:flex-start">
+      return `<div style="font-size:.75rem;background:${included?'#fff':'#f9fafb'};border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4;display:flex;gap:.45rem;align-items:flex-start">
         <input type="checkbox" ${included?'checked':''} onchange="toggleBragJournalInclude('${escJsAttr(w.id)}',this.checked)" style="margin-top:.15rem;flex-shrink:0" aria-label="Include this reflection in the Brag Board draft">
         <span style="${included?'':'color:var(--muted)'}">${w.kind} ${escH(w.text)}</span>
       </div>`;
@@ -3536,7 +3536,7 @@ function gatherBragData() {
   } else {
     manualSec.style.display = 'block';
     manualLst.innerHTML = manualWins.map(w =>
-      `<div style="font-size:.72rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4;display:flex;justify-content:space-between;gap:.3rem;align-items:flex-start">
+      `<div style="font-size:.75rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4;display:flex;justify-content:space-between;gap:.3rem;align-items:flex-start">
         <span>✍️ ${escH(w.text)}</span>
         <button onclick="deleteBragManualWin('${escJsAttr(w.id)}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;flex-shrink:0" title="Remove" aria-label="Remove this win">✕</button>
       </div>`
@@ -3691,5 +3691,76 @@ function showBragBoardPromptBanner() {
   document.body.prepend(banner);
 }
 
-</script>
+// ── Terms panel ─────────────────────────────────────────────────────────────
+// The operator, 2026-10-22: "there is a lot of system jargon and terms that
+// the user doesn't know." The screen now uses plain words; this panel lists
+// each one: the word on screen, what it means, and what the sheets, forms,
+// setup guide or code call it. Same pattern as kos-personal's GLOSSARY and
+// cas-ccps's casTermsPanelHtml_. Pinned by tests/leaderhub/plain-words.test.js.
+// The SCR entry is built from SCR_SCORE_LABELS and the pacing guide's own
+// "SCR rating" vocabulary entry, so the scale is written in one place.
+const LH_TERMS = [
+  ['Gradebook', 'The district\'s grade and attendance system, where grades and attendance are officially recorded. LeaderHub reminds you to update it; it can\'t read it.', 'Synergy'],
+  ['Canvas', 'The course site where students see assignments, materials and messages.', 'Canvas'],
+  ['Gradebook & Canvas up to date', 'The card where you mark when you last updated grades, attendance, Canvas assignments and Canvas messages, so LeaderHub can remind you when one is due.', 'Sync tracker, "Grade & Platform Currency"'],
+  ['School store', 'The student-run business (the Cavalier Shop) that counts as work-based learning.', 'SBE (School-Based Enterprise)'],
+  ['Store approval checklist', 'The ten things the principal needs before the store is approved to run: business plan, location, job descriptions and so on.', 'SBE checklist, SBE compliance, SBE certification'],
+  ['Work-based learning', 'Students learning on the job: here, running the school store. Hours and reflections are tracked per student.', 'WBL, HQWBL'],
+  ['SCR', null, 'Student Competency Record (SCR)'],
+  ['Observation prep', 'A checklist of what should be ready if an administrator observes your class: lesson plan, posted objectives, current grades and so on.', 'Obs Prep'],
+  ['End-of-day reflection', 'Six short questions at the end of the school day. Your answers re-order tomorrow\'s priorities.', 'Journal'],
+  ['Overnight re-plan', 'At 2am after you finish the reflection, LeaderHub re-orders tomorrow\'s priority list using your energy level and the task you put off. "Not yet" means it hasn\'t run tonight.', 'Cron, cron badge, runCronAdjustment'],
+  ['Choose your next move', 'The two most urgent things to do now, picked from your deadlines, trips, store, grades and reminders. "Later" hides one for now.', 'Priority engine, action queue'],
+  ['Pulse cards', 'The five cards under "Choose your next move". Each percentage measures something different, written under it: Teaching = competencies scored; Store = store approval done; DECA = how close the next DECA deadline is (100% = due now); E-Sports = matches won; Field Trips = trips with all forms filled in.', 'Pulse row, pulse rings'],
+  ['Brain Dump', 'Type any thought; LeaderHub sorts it into This Week, Month or Semester by matching keywords. It doesn\'t use AI.', 'Brain Dump, horizon lists'],
+  ['Email connection', 'The link between this page and your Google account that lets LeaderHub make Gmail drafts, Google Docs and AI drafts.', 'Email Bridge (EmailBridge.gs)'],
+  ['AI drafting', 'Optional help writing emails, the brag board, lesson plans and summaries. Each kind only works once its matching Google Workspace flow is set up.', 'AI Flow, Google Workspace Flow, AI Flow Health'],
+  ['Connect to CAS', 'Links LeaderHub to the Classroom Agency System, the class dashboard your 8175/8177 students use, so pacing and scores can come across.', 'cas-ccps, CAS bridge'],
+  ['Field Trip Permission Form', 'The county\'s parent permission and assumption-of-risk form, one per student.', 'FT Permission Form'],
+  ['TripTracker', 'The county\'s online system for requesting and approving field trips and transportation.', 'TripTracker'],
+  ['PO', 'Purchase order: the number Finance gives a purchase, used on trip and store paperwork.', 'PO #'],
+  ['DLC, SLC, ICDC', 'DECA\'s three competition levels: the District, State and International (Career Development) conferences.', 'DLC, SLC, ICDC'],
+  ['Organizations', 'Clubs and student groups you advise, such as DECA. CTSO means Career and Technical Student Organization.', 'Organizations, CTSO, MODULES.orgs'],
+  ['Three Glows & a Grow', 'A trip debrief: three things that went well and one to improve, kept in the trip archive for next year.', 'Glows / Grows'],
+  ['JSON file', 'A plain-text file format LeaderHub uses to import and export courses, organizations and backups.', 'JSON'],
+  ['Sample data', 'The example trips, members and roster the app starts with. Settings → Clear Sample Data removes them.', 'Seed data'],
+];
 
+function _lhTermMeaning(t) {
+  if (t[1]) return t[1];
+  // SCR: the pacing guide's own definition, plus the scale in words.
+  let def = 'Student Competency Record: each student is rated on each course competency.';
+  try {
+    for (const u of (typeof CAS_PACING_UNITS !== 'undefined' ? CAS_PACING_UNITS : [])) {
+      const v = (u.vocabulary || []).find(x => x.term === 'SCR rating');
+      if (v) { def = v.definition; break; }
+    }
+  } catch (e) {}
+  const scale = typeof SCR_SCORE_LABELS !== 'undefined'
+    ? Object.keys(SCR_SCORE_LABELS).map(k => k + ' ' + SCR_SCORE_LABELS[k]).join(' · ')
+    : '';
+  return def + (scale ? '. 1 is the highest: ' + scale + '. 1–3 count as satisfactory.' : '');
+}
+
+function lhOpenTerms() {
+  const dlg = document.getElementById('lh-terms');
+  const list = document.getElementById('lh-terms-list');
+  if (!dlg || !list) return;
+  list.innerHTML = LH_TERMS.map(t =>
+    '<div class="lh-term"><dt>' + escH(t[0]) + '</dt><dd>' + escH(_lhTermMeaning(t)) +
+    (t[2] && t[2] !== t[0] ? '<span class="lh-term-aka">In the forms, setup guide or code: ' + escH(t[2]) + '</span>' : '') +
+    '</dd></div>').join('');
+  if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+}
+function lhCloseTerms() {
+  const dlg = document.getElementById('lh-terms');
+  if (!dlg) return;
+  if (dlg.open && typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
+}
+// Escape closes a <dialog> natively; either way focus goes back to the button.
+document.addEventListener('DOMContentLoaded', () => {
+  const dlg = document.getElementById('lh-terms');
+  if (dlg) dlg.addEventListener('close', () => { const b = document.getElementById('lh-terms-btn'); if (b) b.focus(); });
+});
+
+</script>

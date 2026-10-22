@@ -13,7 +13,7 @@
   --paper:   #f4f0e8;
   --ink:     #1a1612;
   --ink-mid: #4a4540;
-  --ink-dim: #8a837a;
+  --ink-dim: #6b645c;
   --rule:    #ddd8ce;
   --green:   #2d6a4f;
   --green-bg:#edf7f1;
@@ -55,11 +55,11 @@ body {
 }
 
 .cover-tag {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 500;
   letter-spacing: 3px;
   text-transform: uppercase;
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.72);
   margin-bottom: 20px;
   display: block;
 }
@@ -80,7 +80,7 @@ body {
 
 .cover-sub {
   font-size: 17px;
-  color: rgba(255,255,255,0.55);
+  color: rgba(255,255,255,0.75);
   max-width: 480px;
   line-height: 1.6;
   margin-bottom: 40px;
@@ -98,7 +98,7 @@ body {
   border-radius: 20px;
   padding: 6px 14px;
   font-size: 13px;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.82);
 }
 
 /* ── MAIN ── */
@@ -188,7 +188,7 @@ body {
   padding: 6px 0 28px;
 }
 
-.step-body strong {
+.step-body > strong {
   display: block;
   font-size: 16px;
   font-weight: 600;
@@ -250,10 +250,10 @@ body {
 .zone-green  .zone-label { color: #2d6a4f; }
 .zone-blue   .zone-label { color: #1e40af; }
 .zone-amber  .zone-label { color: #b45309; }
-.zone-grey   .zone-label { color: #6b7280; }
+.zone-grey   .zone-label { color: #4b5563; }
 
 .zone-tag {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 10px;
@@ -262,7 +262,7 @@ body {
 
 .tag-write   { background: var(--amber-bg); color: var(--amber); }
 .tag-read    { background: var(--blue-bg);  color: var(--blue);  }
-.tag-system  { background: #f3f4f6;          color: #6b7280;      }
+.tag-system  { background: #f3f4f6;          color: #4b5563;      }
 
 /* ── CALLOUTS ── */
 .callout {
@@ -313,7 +313,7 @@ body {
 .eval-section:last-child { border-bottom: none; }
 
 .eval-section-label {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 1.5px;
   text-transform: uppercase;
@@ -345,7 +345,7 @@ body {
   border: 1px solid #fcd34d;
 }
 
-/* ── FAQ ── */
+/* ── FAQ ── (native <details>/<summary>, so the keyboard opens them) */
 .faq { margin: 24px 0; }
 
 .faq-item {
@@ -365,10 +365,12 @@ body {
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-  user-select: none;
+  list-style: none;
 }
 
+.faq-q::-webkit-details-marker { display: none; }
 .faq-q:hover { background: var(--paper); }
+.faq-q:focus-visible { outline: 3px solid var(--blue); outline-offset: -3px; }
 
 .faq-arrow {
   color: var(--ink-dim);
@@ -377,34 +379,54 @@ body {
   font-size: 18px;
 }
 
-.faq-item.open .faq-arrow { transform: rotate(180deg); }
+.faq-item[open] .faq-arrow { transform: rotate(180deg); }
 
 .faq-a {
-  display: none;
-  padding: 0 20px 16px;
+  padding: 14px 20px 16px;
   color: var(--ink-mid);
   font-size: 15px;
   line-height: 1.7;
   border-top: 1px solid var(--rule);
 }
 
-.faq-item.open .faq-a { display: block; }
+/* ── STATUS LIST ── */
+.status-list { margin: 20px 0; border: 1px solid var(--rule); border-radius: 12px; background: white; overflow: hidden; }
+.status-item { padding: 14px 20px; border-bottom: 1px solid var(--rule); }
+.status-item:last-child { border-bottom: none; }
+.status-pill { display: inline-block; font-size: 13px; font-weight: 600; padding: 3px 10px; border-radius: 10px; margin-bottom: 6px; }
+.pill-grey  { background: #f3f4f6; color: #374151; }
+.pill-amber { background: var(--amber-bg); color: #78350f; }
+.pill-green { background: var(--green-bg); color: #1a4731; }
+.pill-purple{ background: #f3e8fd; color: #5b2192; }
+.pill-red   { background: var(--red-bg); color: var(--red); }
+.status-item p { font-size: 15px; color: var(--ink-mid); margin: 0; }
+
+/* ── WORDS YOU'LL SEE ── */
+.terms { margin: 24px 0; border: 1px solid var(--rule); border-radius: 12px; background: white; overflow: hidden; }
+.terms div { padding: 12px 20px; border-bottom: 1px solid var(--rule); }
+.terms div:last-child { border-bottom: none; }
+.terms dt { font-weight: 600; font-size: 15px; color: var(--ink); }
+.terms dd { font-size: 15px; color: var(--ink-mid); margin: 2px 0 0; }
 
 /* ── FOOTER ── */
 .footer {
   background: var(--ink);
-  color: rgba(255,255,255,0.4);
+  color: rgba(255,255,255,0.72);
   text-align: center;
   padding: 32px;
   font-size: 13px;
   margin-top: 80px;
 }
 
+code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background: var(--paper); border: 1px solid var(--rule); border-radius: 4px; padding: 1px 5px; overflow-wrap: anywhere; }
+
 @media (max-width: 600px) {
   .cover { padding: 48px 24px 40px; }
   .cover h1 { font-size: 36px; }
-  .main { padding: 0 20px 60px; }
+  .main { padding: 0 16px 60px; }
   .section-num { font-size: 52px; }
+  .zone { grid-template-columns: 4px 1fr; }
+  .zone-tag { grid-column: 2; justify-self: start; margin-top: 6px; }
 }
 </style>
 </head>
@@ -415,14 +437,15 @@ body {
   <span class="cover-tag">Student Guide</span>
   <h1>Your Assignment,<br><em>Step by Step</em></h1>
   <p class="cover-sub">
-    Everything you need to know about writing your response,
-    getting feedback, and submitting your final work.
+    Write in your document. Press Submit for Feedback. Read the comment.
+    Turn it in on Canvas. Here's how each step works.
   </p>
   <div class="cover-steps">
-    <span class="cover-step">📄 Find your document</span>
-    <span class="cover-step">✍️ Write your response</span>
-    <span class="cover-step">📊 Get AI feedback</span>
-    <span class="cover-step">✅ Submit when ready</span>
+    <span class="cover-step">📄 Open your document</span>
+    <span class="cover-step">✍️ Write under the grey line</span>
+    <span class="cover-step">📊 Submit for Feedback</span>
+    <span class="cover-step">💬 Read the comment</span>
+    <span class="cover-step">✅ Turn it in on Canvas</span>
   </div>
 </div>
 
@@ -430,76 +453,84 @@ body {
 
 <!-- SECTION 1: YOUR DOCUMENT -->
 <div class="section">
-  <span class="section-num">01</span>
-  <h2>Finding Your Assignment Document</h2>
-  <p>Your teacher has created a personal document for you in Google Drive. It's already shared with your Google account — you don't need to create anything.</p>
+  <span class="section-num" aria-hidden="true">01</span>
+  <h2>Open Your Document</h2>
+  <p>Every lesson has its own Google Doc, made just for you. You don't make it. It shows up the night before the lesson.</p>
 
   <div class="steps">
     <div class="step">
       <div class="step-n">1</div>
       <div class="step-body">
-        <strong>Open Google Drive</strong>
-        <p>Go to drive.google.com and make sure you're signed into the correct Google account — the one your teacher used when they registered you.</p>
+        <strong>Sign in with your school Google account</strong>
+        <p>Your document and your dashboard only work with your school account.</p>
       </div>
     </div>
     <div class="step">
       <div class="step-n">2</div>
       <div class="step-body">
-        <strong>Look in "Shared with me"</strong>
-        <p>Click "Shared with me" in the left sidebar. Your assignment document will be there, named after the assignment and your name.</p>
+        <strong>Open it from your dashboard</strong>
+        <p>On your dashboard, find the assignment and press <strong>Open My Document ↗</strong>. The Canvas assignment also has a link to your dashboard.</p>
       </div>
     </div>
     <div class="step">
       <div class="step-n">3</div>
       <div class="step-body">
-        <strong>Open it and bookmark it</strong>
-        <p>Open the document. Bookmark this page in your browser — you'll return to it every time you work on this assignment.</p>
+        <strong>Or find it in Google Drive</strong>
+        <p>Go to drive.google.com and click <strong>Shared with me</strong>. The document's name starts with the lesson's name and ends with your name.</p>
       </div>
     </div>
   </div>
 
   <div class="callout callout-warn">
     <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><strong>Use your original document.</strong> Don't copy it or create a new one. The system tracks your specific document — any other version won't work for submission.</div>
+    <div class="callout-body"><strong>Use that document. Don't make a copy.</strong> The system only reads the one made for you.</div>
   </div>
 </div>
 
 <!-- SECTION 2: DOCUMENT LAYOUT -->
 <div class="section">
-  <span class="section-num">02</span>
-  <h2>Understanding Your Document</h2>
-  <p>Your document has four distinct zones. Each one has a specific purpose.</p>
+  <span class="section-num" aria-hidden="true">02</span>
+  <h2>What's in Your Document</h2>
+  <p>Write in one place: under the grey line. Here's everything on the page, top to bottom.</p>
 
   <div class="doc-diagram">
-    <div class="zone zone-green">
+    <div class="zone zone-grey">
       <div class="zone-bar"></div>
       <div class="zone-body">
-        <div class="zone-label">📊 Feedback Zone</div>
-        <div class="zone-desc">Says "No feedback yet" until your first check, and has the link to your assignment dashboard. Each evaluation is added at the end of your document, newest last.</div>
+        <div class="zone-label">Page header (small grey text)</div>
+        <div class="zone-desc">Your name, class, teacher, block, period and the lesson. A <strong>Your dashboard</strong> link. A <strong>Feedback:</strong> line that says where your work stands.</div>
       </div>
-      <span class="zone-tag tag-read">System writes here</span>
+      <span class="zone-tag tag-system">System writes here</span>
     </div>
     <div class="zone zone-blue">
       <div class="zone-bar"></div>
       <div class="zone-body">
-        <div class="zone-label">📋 Assignment Prompt</div>
-        <div class="zone-desc">Your teacher's instructions. Read this carefully before you start writing.</div>
+        <div class="zone-label">📋 The lesson title and the assignment</div>
+        <div class="zone-desc">What to do, in small print. <strong>↓ Go to your response</strong> jumps down to where you write.</div>
       </div>
-      <span class="zone-tag tag-read">Read only</span>
+      <span class="zone-tag tag-read">Read this</span>
+    </div>
+    <div class="zone zone-blue">
+      <div class="zone-bar"></div>
+      <div class="zone-body">
+        <div class="zone-label">“Your response” heading</div>
+        <div class="zone-desc">Under it: “Write your answer under the grey line below.” and <strong>↑ Back to the assignment</strong>.</div>
+      </div>
+      <span class="zone-tag tag-read">Read this</span>
     </div>
     <div class="zone zone-amber">
       <div class="zone-bar"></div>
       <div class="zone-body">
-        <div class="zone-label">✍️ Your Response</div>
-        <div class="zone-desc">Everything below "── YOUR RESPONSE BEGINS HERE ──" is where you write.</div>
+        <div class="zone-label">✍️ ── YOUR RESPONSE BEGINS HERE ──</div>
+        <div class="zone-desc">The grey line. Write under it, in the bigger text.</div>
       </div>
       <span class="zone-tag tag-write">You write here</span>
     </div>
     <div class="zone zone-grey">
       <div class="zone-bar"></div>
       <div class="zone-body">
-        <div class="zone-label">Footer / Tracking</div>
-        <div class="zone-desc">Contains your assignment tracking code.</div>
+        <div class="zone-label">[CONFIG_ID: …] Do not delete this line.</div>
+        <div class="zone-desc">A small grey line at the bottom. It tells the system which assignment this is.</div>
       </div>
       <span class="zone-tag tag-system">Do not edit</span>
     </div>
@@ -507,236 +538,369 @@ body {
 
   <div class="callout callout-rule">
     <span class="callout-icon">🚫</span>
-    <div class="callout-body"><strong>One rule:</strong> Only write in the response zone. Don't edit the feedback zone, the prompt, or the footer. The system uses those sections to track and verify your work.</div>
+    <div class="callout-body"><strong>Keep your writing between the grey line and the “Do not delete this line” line.</strong> Anything above the grey line or below the bottom line isn't checked. Don't change the assignment, the grey line or the bottom line.</div>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>Your feedback isn't in the document text.</strong> It's a comment on the document. Click <strong>Comments</strong> (top right) to see it.</div>
   </div>
 </div>
 
-<!-- SECTION 3: WRITING & SUBMITTING FOR FEEDBACK -->
+<!-- SECTION 3: GETTING FEEDBACK -->
 <div class="section">
-  <span class="section-num">03</span>
-  <h2>Getting Your Feedback</h2>
-  <p>When you're ready to get feedback on your work, the assignment has a built-in evaluation tool. You can use it as many times as you need — there's no penalty for running multiple checks.</p>
+  <span class="section-num" aria-hidden="true">03</span>
+  <h2>Get Feedback</h2>
+  <p>Submit as many times as you like. Revising is the point, and there's no penalty.</p>
 
   <div class="steps">
     <div class="step">
       <div class="step-n">1</div>
       <div class="step-body">
-        <strong>Write your response</strong>
-        <p>Write your work below the "── YOUR RESPONSE BEGINS HERE ──" line. Aim for at least 25 words — shorter responses don't give the system enough to evaluate meaningfully.</p>
+        <strong>Write at least 25 words</strong>
+        <p>Write under the grey line. With fewer than 25 words, the dashboard says “Not enough to evaluate yet” and tells you how many words it found.</p>
       </div>
     </div>
     <div class="step">
       <div class="step-n">2</div>
       <div class="step-body">
-        <strong>Submit it from your dashboard</strong>
-        <p>Open your assignment dashboard (the link is in your document, under "Your assignment dashboard") and click <strong>Submit for Feedback</strong> on the assignment. The dashboard tells you right there whether it went through, or what's missing. If your document also shows a <strong>📊 AI Evaluation Panel</strong> menu, <strong>Run Assignment Check</strong> there does the same thing.</p>
+        <strong>Press Submit for Feedback on your dashboard</strong>
+        <p>Open your dashboard (the <strong>Your dashboard</strong> link at the top of your document). Find the assignment and press <strong>Submit for Feedback</strong>. You'll see: “✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right).”</p>
       </div>
     </div>
     <div class="step">
       <div class="step-n">3</div>
       <div class="step-body">
-        <strong>Wait 1–3 minutes</strong>
-        <p>Keep the document open. Your feedback will appear at the end of the document, usually within a few minutes. Refresh the page if you don't see it.</p>
+        <strong>Wait a few minutes</strong>
+        <p>Press <strong>↻ Refresh</strong> on your dashboard. The card says <strong>Waiting for feedback…</strong>, then <strong>Being checked now…</strong>.</p>
       </div>
     </div>
     <div class="step">
       <div class="step-n">4</div>
       <div class="step-body">
-        <strong>Read your feedback</strong>
-        <p>Scroll to the end of the document. Your newest evaluation is the last one there, with what to do next: revise and submit again, or, once it passes, turn it in on Canvas if you're done.</p>
+        <strong>Open your document and click Comments</strong>
+        <p>Your feedback is a comment. Each time you submit, you get a new one. The newest is the one to read.</p>
       </div>
     </div>
   </div>
 
+  <h2 style="font-size:24px;margin-top:32px">What your card says</h2>
+  <p>Each assignment has a card on your dashboard. The coloured label tells you what to do next.</p>
+
+  <div class="status-list">
+    <div class="status-item">
+      <span class="status-pill pill-grey">Not started yet</span>
+      <p>You haven't submitted this one. Write, then press Submit for Feedback.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-amber">Waiting for feedback…</span>
+      <p>Your work is in line to be checked. Nothing to do yet. Check back in a few minutes.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-amber">Being checked now…</span>
+      <p>Your work is being read right now.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-green">Passed ✓ — feedback is ready: open your document and click Comments</span>
+      <p>Your work meets the standard. Turn it in on Canvas, or keep improving it and submit again.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-purple">Feedback ready — revise, then submit again: open your document and click Comments</span>
+      <p>Read the feedback, change your work, then press Submit for Feedback again.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-red">Couldn't be checked ⚠ — tell your teacher</span>
+      <p>Something went wrong on our side, not with your work. Your work is safe. Tell your teacher. The card has a link to email them.</p>
+    </div>
+  </div>
+
+  <p>The card also shows <strong>Last submitted</strong> (when you last pressed Submit for Feedback) and <strong>Last checked</strong> (when you last got feedback), or “Not checked yet”.</p>
+
   <div class="callout callout-info">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>Check your status anytime.</strong> Your dashboard shows where each assignment stands without waiting for feedback to arrive.</div>
+    <span class="callout-icon">⏱️</span>
+    <div class="callout-body"><strong>Most checks take a few minutes.</strong> If a check takes longer than 12 minutes, the system stops it and your card says “Couldn't be checked ⚠”. Tell your teacher. You don't need to submit again unless they ask you to.</div>
   </div>
 </div>
 
 <!-- SECTION 4: READING YOUR FEEDBACK -->
 <div class="section">
-  <span class="section-num">04</span>
-  <h2>Reading Your Evaluation</h2>
-  <p>Every evaluation report ends with one of two results. Here's what each one means and what you should do.</p>
+  <span class="section-num" aria-hidden="true">04</span>
+  <h2>Read Your Feedback</h2>
+  <p>Open your document and click <strong>Comments</strong> (top right). Each comment starts with the date and a result line. Here's the shape of one. Your own will talk about your work.</p>
 
   <div class="eval-sample">
-    <div class="eval-header">Example Evaluation Report</div>
+    <div class="eval-header">Example comment: passed</div>
     <div class="eval-section">
-      <div class="eval-section-label">Overall Assessment</div>
-      <p>Your response demonstrates a solid understanding of the core concepts. Your argument in the second paragraph is particularly well-reasoned. The connection to real-world examples strengthens your analysis.</p>
+      <p>Feedback, 2026-10-22 10:41</p>
+      <p style="margin-top:8px"><span class="stamp-approved">✅ RESULT: YOUR WORK MEETS THE STANDARD</span></p>
     </div>
     <div class="eval-section">
-      <div class="eval-section-label">Milestone Breakdown</div>
-      <p>✓ Milestone 1 — Clear thesis statement present<br>✓ Milestone 2 — Evidence cited and explained<br>⚠ Milestone 3 — Counterargument not addressed<br>✓ Milestone 4 — Conclusion ties back to thesis</p>
+      <div class="eval-section-label">Overall assessment</div>
+      <p>A few sentences on what your work does well and what would make it stronger.</p>
     </div>
     <div class="eval-section">
-      <div class="eval-section-label">Result</div>
-      <p><span class="stamp-approved">✅ YOUR WORK MEETS THE STANDARD</span></p>
-      <p style="margin-top:8px">If you're done, turn it in on Canvas. Or keep revising and click Submit for Feedback on your dashboard again.</p>
+      <div class="eval-section-label">Milestone breakdown</div>
+      <p>Each milestone (a part of the task) marked MET, PARTIALLY MET or NOT MET, with a reason.</p>
+    </div>
+    <div class="eval-section">
+      <div class="eval-section-label">What to do next</div>
+      <p>Done with it? Turn it in on Canvas. Want to make it stronger? Keep revising, then press Submit for Feedback again.</p>
     </div>
   </div>
 
-  <p>If your work needs revision, the result will look like this instead:</p>
+  <p>If your work needs more, the result line is different, and there's a list of what to fix:</p>
 
   <div class="eval-sample">
-    <div class="eval-header">Example — Revision Required</div>
+    <div class="eval-header">Example comment: revise</div>
     <div class="eval-section">
-      <div class="eval-section-label">Required Revisions</div>
-      <p>1. Address the counterargument in paragraph 3<br>2. Add at least one specific piece of evidence for your second claim<br>3. Expand your conclusion — currently only one sentence</p>
+      <p><span class="stamp-revision">✏️ RESULT: REVISIONS REQUIRED</span></p>
     </div>
     <div class="eval-section">
-      <div class="eval-section-label">Result</div>
-      <p><span class="stamp-revision">✏️ REVISIONS REQUIRED</span></p>
-      <p style="margin-top:8px">Make the changes listed above, then click Submit for Feedback on your dashboard again.</p>
+      <div class="eval-section-label">Required revisions</div>
+      <p>A numbered list of the changes to make.</p>
+    </div>
+    <div class="eval-section">
+      <div class="eval-section-label">What to do next</div>
+      <p>Make the changes under the grey line, then press Submit for Feedback on your dashboard again. Repeat until you see ✅.</p>
     </div>
   </div>
 
   <div class="callout callout-tip">
     <span class="callout-icon">✅</span>
-    <div class="callout-body"><strong>Revisions are normal.</strong> Most students revise 2–3 times before passing. Each round of feedback shows you specifically what to improve — it's not a grade, it's a coach.</div>
+    <div class="callout-body"><strong>Revising is normal.</strong> Feedback is a coach, not a grade. Your teacher grades your work in Canvas.</div>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">💬</span>
+    <div class="callout-body"><strong>Resolving a comment doesn't delete it.</strong> If you click Resolve, the comment is still in the document's comment history, and your teacher can still see it.</div>
   </div>
 </div>
 
-<!-- SECTION 5: SUBMITTING -->
+<!-- SECTION 5: WARM-UPS -->
 <div class="section">
-  <span class="section-num">05</span>
-  <h2>Turning In Your Work on Canvas</h2>
-  <p>You turn in on Canvas, where your teacher grades it. Getting a passing check first is a good idea, but it isn't required, and you can keep getting feedback for as long as you're working on it.</p>
+  <span class="section-num" aria-hidden="true">05</span>
+  <h2>Warm-ups</h2>
+  <p>A warm-up is a short question at the start of class. You answer it on your dashboard, in the <strong>Warm-ups</strong> card at the top.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Type your answer and press Save answer</strong>
+        <p>Find <strong>Today's warm-up</strong>. Type in the box, then press <strong>Save answer</strong>. You can change it until the end of the day: the button then says <strong>Update answer</strong>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Read your score and feedback</strong>
+        <p>Warm-ups are checked overnight. Next time, <strong>Last warm-up</strong> shows your score out of 10 (Length, Grammar and Engagement) and your feedback. Length is about word count: 30 words or more gets the full length points.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Earn extra credit</strong>
+        <p>Under the feedback, reply to it in <strong>at least 10 words</strong> by the date shown, and press <strong>Save reply</strong>. Replies are checked overnight. Once it counts, you'll see “✓ Extra credit earned” and “+1 extra credit”. Don't leave it to the last day.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">📄</span>
+    <div class="callout-body"><strong>Some classes use a warm-up document instead.</strong> If the card shows <strong>Open warm-up ↗</strong>, answer in that document, and reply under the feedback there for extra credit.</div>
+  </div>
+</div>
+
+<!-- SECTION 6: TURNING IN -->
+<div class="section">
+  <span class="section-num" aria-hidden="true">06</span>
+  <h2>Turn It In on Canvas</h2>
+  <p>You turn in on Canvas. That's where your teacher grades it. Passing a check first is a good idea, but it isn't required.</p>
 
   <div class="steps">
     <div class="step">
       <div class="step-n">1</div>
       <div class="step-body">
         <strong>Copy your document's link</strong>
-        <p>With your assignment document open, copy the address from your browser's address bar.</p>
+        <p>With your document open, copy the address from the browser's address bar.</p>
       </div>
     </div>
     <div class="step">
       <div class="step-n">2</div>
       <div class="step-body">
-        <strong>Open the Canvas assignment</strong>
-        <p>Find the same assignment in Canvas and choose <strong>Start Assignment</strong> → <strong>Website URL</strong>.</p>
+        <strong>Open the same assignment in Canvas</strong>
+        <p>Choose <strong>Start Assignment</strong> → <strong>Website URL</strong>.</p>
       </div>
     </div>
     <div class="step">
       <div class="step-n">3</div>
       <div class="step-body">
         <strong>Paste the link and submit</strong>
-        <p>Paste your document's link and click <strong>Submit Assignment</strong>.</p>
+        <p>Paste the link and press <strong>Submit Assignment</strong>.</p>
       </div>
     </div>
   </div>
 
   <div class="callout callout-tip">
     <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>Your teacher sees your latest result.</strong> When your teacher opens your document from Canvas, the newest evaluation at the end of it shows where your work stands.</div>
+    <div class="callout-body"><strong>Your teacher opens your document from Canvas.</strong> They see it as it is when they open it, with your feedback comments.</div>
   </div>
 </div>
 
-<!-- SECTION 6: FAQ -->
+<!-- SECTION 7: YOUR DASHBOARD -->
 <div class="section">
-  <span class="section-num">06</span>
+  <span class="section-num" aria-hidden="true">07</span>
+  <h2>Your Dashboard</h2>
+  <p>Your dashboard is called <strong>📚 My Assignments</strong>. Open it from the <strong>Your dashboard</strong> link at the top of any of your documents.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">→</div>
+      <div class="step-body">
+        <strong>The year menu</strong>
+        <p>It starts on <strong>Whole school year</strong>. Pick a marking period to see just that part of the year.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">→</div>
+      <div class="step-body">
+        <strong>ℹ️ My Info</strong>
+        <p>What the system has on file for you: your name, class, period and teacher. If something is wrong, press <strong>✉ Request a correction</strong> or tell your teacher.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">→</div>
+      <div class="step-body">
+        <strong>❓ What do these mean?</strong>
+        <p>Opens a list of the words on the page and what they mean. Press Escape or Close to shut it.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">→</div>
+      <div class="step-body">
+        <strong>↻ Refresh</strong>
+        <p>The page doesn't update by itself. Press Refresh to see the latest.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 8: FAQ -->
+<div class="section">
+  <span class="section-num" aria-hidden="true">08</span>
   <h2>Common Questions</h2>
 
   <div class="faq">
 
-    <div class="faq-item">
-      <div class="faq-q">
-        I don't see the "📊 AI Evaluation Panel" menu in my document.
-        <span class="faq-arrow">⌄</span>
-      </div>
+    <details class="faq-item">
+      <summary class="faq-q">I pressed Submit for Feedback. Where's my feedback?<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        That's expected: the menu doesn't run for student accounts. Use your assignment dashboard instead (the link is near the top of your document) and click <strong>Submit for Feedback</strong>. If your dashboard doesn't list the assignment, make sure you're signed into your school Google account, then ask your teacher.
+        Press ↻ Refresh on your dashboard. If the card says “Waiting for feedback…” or “Being checked now…”, it's on its way: give it a few minutes. When it's ready, open your document and click <strong>Comments</strong> (top right). If the card says “Couldn't be checked ⚠”, tell your teacher.
       </div>
-    </div>
+    </details>
 
-    <div class="faq-item">
-      <div class="faq-q">
-        I submitted for feedback but nothing appeared after 5 minutes.
-        <span class="faq-arrow">⌄</span>
-      </div>
+    <details class="faq-item">
+      <summary class="faq-q">It says “Not enough to evaluate yet.”<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        First, refresh the page — feedback sometimes appears without the page updating automatically. If it's still not there, check your dashboard to see if your submission is queued. If it says "Evaluating now…", give it another minute. If there's still no feedback 10 minutes after you submitted, let your teacher know.
+        You need at least 25 words under the grey line. The message says how many words it found. If it found none, check that you wrote under the “── YOUR RESPONSE BEGINS HERE ──” line and above the “Do not delete this line” line.
       </div>
-    </div>
+    </details>
 
-    <div class="faq-item">
-      <div class="faq-q">
-        My dashboard says "Not enough to evaluate yet" when I click Submit for Feedback.
-        <span class="faq-arrow">⌄</span>
-      </div>
+    <details class="faq-item">
+      <summary class="faq-q">It says “This is already waiting for feedback.”<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        Your response needs to be at least 25 words before the system can give you meaningful feedback. Check how many words you've written — if it's close, try adding a few more sentences to fully express your ideas.
+        You already submitted, and it's in line. You don't need to press it again. Check back in a few minutes.
       </div>
-    </div>
+    </details>
 
-    <div class="faq-item">
-      <div class="faq-q">
-        My dashboard says my response "has text copied from a feedback block."
-        <span class="faq-arrow">⌄</span>
-      </div>
+    <details class="faq-item">
+      <summary class="faq-q">It says my response “has text copied from a feedback block.”<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        Your response contains a line that belongs to a feedback block, such as one starting with [SYSTEM: or [SUGGESTED_SCORE. The dashboard shows which text it found. Delete that line from your response (the part above the [CONFIG_ID: line) and click Submit for Feedback again. Your own writing is fine; the system only refuses text that looks like its own.
+        Your writing has a line the system uses itself, like one starting with <code>[SYSTEM:</code>. The message shows which. Delete that line and submit again. Your own words are fine.
       </div>
-    </div>
+    </details>
 
-    <div class="faq-item">
-      <div class="faq-q">
-        Do I have to pass before I turn it in on Canvas?
-        <span class="faq-arrow">⌄</span>
-      </div>
+    <details class="faq-item">
+      <summary class="faq-q">Do I have to pass before I turn it in on Canvas?<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        No. A passing check first is recommended, because it means your work meets the standard, but you can turn it in on Canvas whenever you're done. Your teacher sees your latest result in your document.
+        No. Passing first is a good idea, because it means your work meets the standard. But you can turn it in on Canvas whenever you're done.
       </div>
-    </div>
+    </details>
 
-    <div class="faq-item">
-      <div class="faq-q">
-        Can I run more than one evaluation? Will it hurt my grade?
-        <span class="faq-arrow">⌄</span>
-      </div>
+    <details class="faq-item">
+      <summary class="faq-q">Can I submit more than once? Will it hurt my grade?<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        Yes — run as many evaluations as you need. There is no penalty for revising multiple times. The system is designed for iteration: write, get feedback, improve, repeat. Your teacher sees your final submitted work, not how many checks you ran.
+        Submit as often as you need. There's no penalty. Write, get feedback, improve, repeat.
       </div>
-    </div>
+    </details>
 
-    <div class="faq-item">
-      <div class="faq-q">
-        I accidentally deleted part of my document — the footer or the zones.
-        <span class="faq-arrow">⌄</span>
-      </div>
+    <details class="faq-item">
+      <summary class="faq-q">I changed my work after I turned it in on Canvas. What now?<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        Don't try to fix it yourself. Contact your teacher immediately and let them know what happened. They can restore the document or set up a new one for you. The document's version history (File → Version history) may also let you undo the change.
+        Canvas has your document's link, not a copy. Your teacher sees the document as it is when they open it. You can still press Submit for Feedback to get your changes checked. If you're not sure, ask your teacher.
       </div>
-    </div>
+    </details>
 
-    <div class="faq-item">
-      <div class="faq-q">
-        I submitted and then made more changes. Do I need to resubmit?
-        <span class="faq-arrow">⌄</span>
-      </div>
+    <details class="faq-item">
+      <summary class="faq-q">My assignment isn't on my dashboard.<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        Once you submit and your submission is accepted, your work is recorded. Minor edits after submission don't change your submission record. If you made significant changes you want your teacher to see, contact them directly.
+        Check that you're signed into your school Google account. A lesson's document shows up the night before the lesson. Check the year menu says “Whole school year”. If it's still missing, tell your teacher.
       </div>
-    </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">I don’t see a “📊 Feedback” menu in my document.<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
+      <div class="faq-a">
+        That's normal. That menu doesn't work for student accounts. Use <strong>Submit for Feedback</strong> on your dashboard instead.
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">I deleted part of my document by accident.<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
+      <div class="faq-a">
+        Try <strong>File → Version history → See version history</strong> and restore an earlier version. If you deleted the grey line or the bottom “Do not delete this line” line and can't get it back, tell your teacher.
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">Something in My Info is wrong.<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
+      <div class="faq-a">
+        Open <strong>ℹ️ My Info</strong> and press <strong>✉ Request a correction</strong>, or tell your teacher.
+      </div>
+    </details>
 
   </div>
+</div>
+
+<!-- SECTION 9: WORDS (same words and meanings as the dashboard's "What do these mean?" panel, CAS_STUDENT_TERMS in scripts/00_SharedConfig.js) -->
+<div class="section" id="words">
+  <span class="section-num" aria-hidden="true">09</span>
+  <h2>Words You'll See</h2>
+  <p>The same list as <strong>❓ What do these mean?</strong> on your dashboard.</p>
+  <dl class="terms">
+    <div><dt>Submit for Feedback</dt><dd>Sends what you wrote under “Your response” to be checked. Press it when you’re ready; you can submit again after you revise.</dd></div>
+    <div><dt>Waiting for feedback</dt><dd>Your work is in line to be checked. Nothing to do yet; check back in a few minutes.</dd></div>
+    <div><dt>Being checked now</dt><dd>Your work is being read right now.</dd></div>
+    <div><dt>Passed ✓</dt><dd>Your work meets the standard for this assignment. You can still improve it and submit again.</dd></div>
+    <div><dt>Feedback ready — revise</dt><dd>Read the feedback, change your work, then press Submit for Feedback again.</dd></div>
+    <div><dt>Couldn’t be checked</dt><dd>Something went wrong on our side, not with your work. Tell your teacher.</dd></div>
+    <div><dt>Comments</dt><dd>Your feedback appears as a comment on your document. Open the document and click the Comments button (top right). Resolving a comment doesn’t delete it.</dd></div>
+    <div><dt>Last submitted</dt><dd>When you last pressed Submit for Feedback on this assignment.</dd></div>
+    <div><dt>Last checked</dt><dd>When your work was last checked and given feedback.</dd></div>
+    <div><dt>Warm-up</dt><dd>A short question at the start of class. Type your answer here and save it before the end of the day.</dd></div>
+    <div><dt>Extra credit</dt><dd>After a warm-up is checked, reply to its feedback in at least 10 words by the date shown for an extra point.</dd></div>
+    <div><dt>Marking period</dt><dd>Part of the school year. Use the menu at the top to see one marking period or the whole year.</dd></div>
+    <div><dt>Block and period</dt><dd>When your class meets. 3-Odd and 3-Even are the two halves of period 3 that meet on alternate days.</dd></div>
+    <div><dt>My Info</dt><dd>What the system has on file for you: your name, class, period and teacher. Tell your teacher if something is wrong.</dd></div>
+  </dl>
 </div>
 
 </div><!-- /main -->
 
 <div class="footer">
-  Assignment System — Student Guide · Contact your teacher if you need help with anything not covered here.
+  Assignment System — Student Guide · Ask your teacher if you need help with anything not covered here.
 </div>
-
-<script>
-document.querySelectorAll('.faq-q').forEach(q => {
-  q.addEventListener('click', () => {
-    q.parentElement.classList.toggle('open');
-  });
-});
-</script>
 
 </body>
 </html>

@@ -126,7 +126,7 @@ function unitRubric(unit, code, rubrics, decks) {
     ...groups.flatMap((g) => g.items.map((r) => '- ' + r.competency_text.replace(/\.$/, '') + '.')),
     ...(vocab ? ['', 'Use these terms accurately: ' + vocab + '.'] : []),
     '',
-    'Write your response in the response zone below.',
+    'Write your response under “Your response” below.',
   ].join('\n');
 
   const doc = [

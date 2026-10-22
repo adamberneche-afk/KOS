@@ -208,7 +208,7 @@ function backPropagateCompletions() {
           if (currentQStatus === "STAGED") {
             markQueueRow_(queueSheet, rowNum, "ERROR_TIMEOUT");
             updateLedgerStatus_(ledgerSheet, fileId, configId, "ERROR_TIMEOUT");
-            notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId);
+            notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet);
             Logger.log("[BACKPROP] ERROR_TIMEOUT closed — row " + rowNum +
                        " | Teacher: " + teacherEmail);
           }
@@ -418,29 +418,52 @@ function lookupTeacherEmail_(cfg, configId) {
 // notifyTimeoutToTeacher_ — emails teacher when an evaluation times out
 // so they can re-queue the student rather than waiting indefinitely
 // ---------------------------------------------------------------------------
-function notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId) {
+function notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet) {
   if (!teacherEmail || teacherEmail === "UNKNOWN") return;
+  // Names the student and lesson and links the doc (2026-10-22): the email
+  // used to give only the ConfigID and Document ID.
+  let studentName = "", lessonName = "", docUrl = "";
+  try {
+    const rows = ledgerSheet ? ledgerSheet.getDataRange().getValues() : [];
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][LEDGER.FILE_ID]).trim() !== fileId) continue;
+      studentName = String(rows[i][LEDGER.STUDENT_NAME] || "").trim();
+      lessonName  = String(rows[i][LEDGER.COURSE_NAME] || "").trim();
+      docUrl      = String(rows[i][LEDGER.STUDENT_FILE_URL] || "").trim();
+      break;
+    }
+  } catch (e) {
+    Logger.log("[BACKPROP] notifyTimeoutToTeacher_ lookup error: " + e.message);
+  }
+  if (!docUrl && fileId) docUrl = "https://docs.google.com/document/d/" + fileId + "/edit";
+  const who  = studentName || "A student";
+  const what = lessonName ? " on " + lessonName : "";
+  const dashboardUrl = (cfg && cfg.teacherDashboardUrl) || "";
   try {
     MailApp.sendEmail(
       teacherEmail,
-      "⚠️ Evaluation Timeout — Student Assignment",
-      "An automated evaluation did not complete within the expected time window " +
-      "and has been cleared from the queue.\n\n" +
-      "Assignment Config ID: " + configId + "\n" +
-      "Document ID: " + fileId + "\n\n" +
-      // The doc's AI Evaluation Panel menu doesn't run for student accounts
-      // (2026-10-19). A late result still lands (backprop finishes an
-      // ERROR_TIMEOUT row), and while the doc's FlowInput row is READY a
-      // resubmission builds no new one, so starting Flow 2 comes first.
+      "⚠️ Feedback didn't finish — " + who + (lessonName ? ", " + lessonName : ""),
+      who + "'s work" + what + " was sent to be checked, but the check didn't " +
+      "finish in time, so it was taken out of line. Your Teacher Dashboard shows it " +
+      "as \"Couldn't be checked ⚠\".\n\n" +
+      (docUrl ? "Student's doc: " + docUrl + "\n" : "") +
+      (dashboardUrl ? "Teacher Dashboard: " + dashboardUrl + "\n" : "") +
+      "\n" +
+      // The doc's own menu doesn't run for student accounts (2026-10-19).
+      // A late result still lands (backprop finishes an ERROR_TIMEOUT row),
+      // and while the doc's FlowInput row is READY a resubmission builds no
+      // new one, so restarting the check comes first.
       "What to do (the student doesn't need to do anything yet):\n" +
-      "  1. In the Central Ledger's FlowInput tab, find this document's row (Document ID below).\n" +
-      "  2. If its ReadyStatus is READY, type READY into that cell again. A hand edit starts\n" +
-      "     Flow 2; the feedback lands and the student's status updates by itself, even late.\n" +
-      "  3. If the row is blank, starts with ERROR_, or isn't there, ask the student to press\n" +
-      "     Submit for Feedback again on the Student Dashboard.\n\n" +
+      "  1. In the Central Ledger, open the FlowInput tab and find this doc's row\n" +
+      "     (search for its Document ID: " + fileId + ").\n" +
+      "  2. If its ReadyStatus cell says READY, type READY into that cell again. That\n" +
+      "     restarts the check; the feedback lands and the student's status updates by\n" +
+      "     itself, even late.\n" +
+      "  3. If the cell is blank, starts with ERROR_, or the row isn't there, ask the student\n" +
+      "     to press Submit for Feedback again on the Student Dashboard.\n\n" +
       "Don't use the Admin Recovery Panel reset for this: the feedback would arrive twice.\n" +
-      "If this keeps happening, contact your system admin.\n\n" +
-      "— Assignment System (automated alert)"
+      "If this keeps happening, tell your system admin and give them this code: " + configId + "\n\n" +
+      "— Classroom Agency System (automated alert)"
     );
   } catch (e) {
     Logger.log("[BACKPROP] notifyTimeoutToTeacher_ error: " + e.message);
@@ -472,7 +495,7 @@ function updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId) {
 
 // ---------------------------------------------------------------------------
 // markLedgerEvaluated_ — an evaluation came back, so the Ledger row moves to
-// COMPLETE ("Evaluated — feedback ready" on the Student Dashboard). Nothing
+// COMPLETE ("Feedback is ready" on the Student Dashboard). Nothing
 // set it before, so a student's card still read "Not started yet" after
 // feedback arrived. Only from a not-yet-evaluated state: a turned-in or
 // archived row keeps its status.
