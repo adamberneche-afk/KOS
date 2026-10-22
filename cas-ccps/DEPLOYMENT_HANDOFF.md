@@ -67,6 +67,14 @@
 >   by hand or on the "Lesson draft import" Routine
 >   (`docs/LESSON_IMPORT_PROCEDURE.md`), which needs its connectors added in
 >   claude.ai.
+> - **Merged 2026-10-22, not yet pushed:** #248 (00, 02, 07, 13: the 💬
+>   Feedback panel finds its courses from the Ledger rows' names and shows
+>   the live setting; a one-course `FEEDBACK_AS_COMMENT` value now reaches
+>   that course's students; the readiness numbers filter the roster) and
+>   #249 (07, 23: submitted times on roster rows, the warm-up count without
+>   blank answers, the "Assignments" card, Student Context's back link).
+>   Push the Central Ledger, the Teacher Dashboard and the Student
+>   Dashboard, then a new web-app version of both dashboards.
 > - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4).
 >   The order is in `meta/HANDOFF_2026-10-22.md`.
 > - **After any manifest scope change** to a web app that runs as the deploying
