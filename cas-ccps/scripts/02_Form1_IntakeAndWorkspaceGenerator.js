@@ -344,6 +344,22 @@ function fetchPromptContent_(promptTemplateId) {
   }
 }
 
+// Text sizes in a student doc (2026-10-22, the operator's choice): the
+// assignment and the feedback zone small, the student's own writing larger,
+// so the page reads as "their work" first. The page header is 8 too (63).
+const DOC_BODY_FONT_SIZE     = 8;
+const DOC_RESPONSE_FONT_SIZE = 10;
+
+// Sets a paragraph's font size through its attributes, which also holds
+// for an empty paragraph: the student's writing space is one, and what they
+// type there takes its size.
+function _docFontSize_(para, size) {
+  const attrs = {};
+  attrs[DocumentApp.Attribute.FONT_SIZE] = size;
+  para.setAttributes(attrs);
+  return para;
+}
+
 // ---------------------------------------------------------------------------
 // stampDocument_ — builds the four-zone structure AND stamps system IDs
 // in a single open/close cycle. System IDs are written as invisible text
@@ -383,33 +399,35 @@ function stampDocument_(fileId, configId, studentName, block,
   // With feedback in the doc (FEEDBACK_AS_COMMENT off) its zone stays:
   // 03 and 37 write between the markers.
   if (!feedbackInComments) {
-    body.appendParagraph("── FEEDBACK ──");
+    // 37 inserts each evaluation with the END line's formatting, so the
+    // feedback comes out at the zone's size.
+    _docFontSize_(body.appendParagraph("── FEEDBACK ──"), DOC_BODY_FONT_SIZE);
     // Must start "[No feedback yet." — 03_QueueBridge.js finds and removes it
     // by that prefix once the first evaluation arrives.
-    body.appendParagraph(
+    _docFontSize_(body.appendParagraph(
       "[No feedback yet. When you're ready, open your assignment dashboard (link at the top) " +
       "and click Submit for Feedback. Your feedback will appear here.]"
-    );
-    body.appendParagraph("── END FEEDBACK ──");
-    body.appendParagraph("");
+    ), DOC_BODY_FONT_SIZE);
+    _docFontSize_(body.appendParagraph("── END FEEDBACK ──"), DOC_BODY_FONT_SIZE);
+    _docFontSize_(body.appendParagraph(""), DOC_BODY_FONT_SIZE);
   }
 
   body.appendParagraph(unitName).editAsText().setFontSize(14).setBold(true);
 
   if (promptContent) {
     promptContent.split("\n").forEach(line => {
-      body.appendParagraph(line);
+      _docFontSize_(body.appendParagraph(line), DOC_BODY_FONT_SIZE);
     });
   }
 
-  body.appendParagraph("");
+  _docFontSize_(body.appendParagraph(""), DOC_BODY_FONT_SIZE);
 
   // The marker text is read by the dashboard, the doc menu and the
   // evaluation (01, 13, 37 and others): keep it exactly.
   body.appendParagraph("── YOUR RESPONSE BEGINS HERE ──")
     .editAsText().setFontSize(10).setForegroundColor(DOC_HEADER_GREY);
 
-  body.appendParagraph("");  // Student writes here
+  _docFontSize_(body.appendParagraph(""), DOC_RESPONSE_FONT_SIZE);  // Student writes here
 
   body.appendParagraph("[CONFIG_ID: " + configId + "] Do not delete this line.")
     .editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY);
