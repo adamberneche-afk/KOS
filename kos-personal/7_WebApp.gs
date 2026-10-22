@@ -160,7 +160,7 @@ function doGet(e) {
   return template.evaluate()
     .setTitle('KOS v8.0 — Active Brain Trust')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
-    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0');
 }
 
 
