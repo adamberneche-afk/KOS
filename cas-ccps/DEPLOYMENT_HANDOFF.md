@@ -55,9 +55,18 @@
 > - **Merged 2026-10-21, not yet pushed (Central Ledger):** #237 (Studio's
 >   text timestamps read: the overnight email's 24 hours, the return tab's
 >   prune), #238 (Flow 3's own plausibility check, the echoed prompt named,
->   a question required, the prompt's constraint 10). Flow 3's Ask Gemini
->   step no longer lists the Central Ledger as a source (removed by hand,
->   2026-10-21).
+>   a question required, the prompt's constraint 10), #241 (the retention
+>   dry run, `previewRetentionDisposition()`). Flow 3's Ask Gemini step no
+>   longer lists the Central Ledger as a source (removed by hand,
+>   2026-10-21). Both Canvas cartridges re-imported 2026-10-21.
+> - **Merged 2026-10-21, not yet pushed (Teacher Dashboard):** #243 (📅
+>   Lessons: the schedule panel; the Feedback and Parent Reports panels now
+>   open), #245 and #246 (lesson editing and writing: the `LessonDrafts`
+>   tab, made on the first save; 55b is now also in this project). After the
+>   push, a new web-app version if the buttons don't show. The import runs
+>   by hand or on the "Lesson draft import" Routine
+>   (`docs/LESSON_IMPORT_PROCEDURE.md`), which needs its connectors added in
+>   claude.ai.
 > - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4).
 >   The order is in `meta/HANDOFF_2026-10-22.md`.
 > - **After any manifest scope change** to a web app that runs as the deploying
