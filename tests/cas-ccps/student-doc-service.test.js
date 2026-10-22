@@ -239,7 +239,7 @@ test('a queued submit stamps the Ledger row\'s SubmissionTS (column 14), from ei
   assert.equal(sub.exported.submitMyWork(sub.fileId, 'CFG-B').ok, true);
   const ts = sub.ledger.getRange(2, 14).getValue();
   assert.equal(String(ts), String(sub.queue.getRange(2, 1).getValue()), 'the same time as the queued row');
-  assert.match(sub.doc.getHeader().getChild(1).getText(), /^Feedback: submitted .*, being checked\.$/,
+  assert.match(sub.doc.getHeader().getChild(1).getText(), /^Feedback: submitted .*, waiting for feedback\.$/,
     'the doc header says it is being checked');
 
   const svc = loadService('ben@ccpsnet.net');
