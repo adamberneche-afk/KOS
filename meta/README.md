@@ -28,6 +28,11 @@ why this repo exists at all.
   reaches students today, three options (drafts imported through the repo,
   Drive edits imported, live overrides), phases and the decisions they
   need. Nothing built.
+- **`COURSE_BUILDER_PLAN_2026-10.md`** — a draft plan (2026-10-22) for
+  building a new course from the VDOE framework, with teachers submitting
+  the course they want: how 8175 and 8177 were built, what assumes two
+  courses, four phases (a course list, the request, the import, lessons
+  and go-live) and the open decisions. Nothing built; after Oct 30.
 - **`CAS_BUG_HANDOFF_2026-10-16.md`** — the first live student submissions
   through the Student Dashboard and Flow 2: the four bugs (two fixed in
   #175), the lesson-scheduling steps, the checklist for the next live
