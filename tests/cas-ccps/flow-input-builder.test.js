@@ -359,7 +359,7 @@ test('harvestFlowInputResults: writes feedback to the doc, CompetencyEvidence ro
   exported.harvestFlowInputResults();
 
   const docText = doc.getBody().getText();
-  assert.ok(docText.indexOf('YOUR WORK MEETS THE STANDARD') !== -1, 'feedback block landed in the doc');
+  assert.ok(docText.indexOf('Result: ✅ Passed.') !== -1, 'feedback block landed in the doc');
   assert.ok(docText.indexOf('Great work overall') !== -1, 'the actual report text is present');
   assert.ok(docText.indexOf('[MILESTONE_OUTCOMES:') === -1, 'the machine-readable line must never reach the student');
   assert.ok(docText.indexOf('[SUGGESTED_SCORE: 4]') !== -1, 'the suggested-score line must survive — 04_Form2_TurnInGate.js reads it at turn-in time');
@@ -819,9 +819,12 @@ test('harvestFlowInputResults: with FEEDBACK_AS_COMMENT on for the course, the f
   assert.equal(text, before, 'nothing is written into the doc');
   assert.equal(comments.length, 1);
   const content = comments[0].resource.content;
-  assert.match(content, /RESULT: REVISIONS REQUIRED/);
+  assert.match(content, /Result: ✏️ Revise, then submit again\./);
   assert.match(content, /Needs work on milestone 4\./);
-  assert.match(content, /WHAT TO DO NEXT/, 'the next steps ride in the comment');
+  assert.match(content, /What to do next/, 'the next steps ride in the comment');
+  // It reads in a narrow panel: no divider lines, and Resolve explained.
+  assert.doesNotMatch(content, /────/);
+  assert.match(content, /Resolving this comment only hides it/);
   assert.ok(!content.includes('[MILESTONE_OUTCOMES:'), 'the machine-readable line is stripped');
   assert.ok(!content.includes('── EVALUATION'), 'no doc-search markers in a comment');
   const fi = ledgerSs.getSheetByName('FlowInput');
@@ -832,11 +835,11 @@ test('harvestFlowInputResults: the doc header\'s feedback line takes the result 
   let { doc } = harvestOneEvaluation(REVISION_OUTPUT,
     { feedbackAsComment: 'all', configId: 'CAS-8175-L06', withHeader: true });
   let line = doc.getHeader().getChild(1);
-  assert.match(line.getText(), /^Feedback: ✏️ Revisions required .*See the comment on this doc/);
+  assert.match(line.getText(), /^Feedback: ✏️ Revise, then submit again .*Read the comment on this doc first/);
   assert.equal(line.color, '#b06000');
   ({ doc } = harvestOneEvaluation(APPROVED_OUTPUT, { configId: 'CAS-8175-L06', withHeader: true }));
   line = doc.getHeader().getChild(1);
-  assert.match(line.getText(), /^Feedback: ✅ Meets the standard .*See the Feedback section below/);
+  assert.match(line.getText(), /^Feedback: ✅ Passed .*See the Feedback section below/);
   assert.equal(line.color, '#137333');
 });
 
@@ -851,7 +854,7 @@ test('harvestFlowInputResults: if the comment cannot be posted, the feedback goe
   const { text, comments } = harvestOneEvaluation(APPROVED_OUTPUT,
     { feedbackAsComment: 'all', configId: 'CAS-8175-L06', commentFails: true });
   assert.equal(comments.length, 0);
-  assert.ok(text.includes('YOUR WORK MEETS THE STANDARD'), 'the student still gets feedback');
+  assert.ok(text.includes('Result: ✅ Passed.'), 'the student still gets feedback');
 });
 
 // ── Competency tiers (2026-10-20) ────────────────────────────────────────────

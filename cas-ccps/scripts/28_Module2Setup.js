@@ -248,7 +248,7 @@ function _runPhaseA_(ui, props, ss) {
     "ACTION REQUIRED — Redeploy Teacher Dashboard\n" +
     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
     "The 'New Lesson' button is ready but needs one redeploy step:\n\n" +
-    "  1. Open the Script 07 project (Teacher Dashboard)\n" +
+    "  1. Open the Teacher Dashboard's Apps Script project\n" +
     "  2. Deploy → Manage deployments\n" +
     "  3. Select your deployment → Edit (pencil icon)\n" +
     "  4. Version: New version → Deploy\n\n" +
@@ -431,7 +431,7 @@ function _executeImportAndVerify_(ui, ss, csvFile, courseNames) {
   if (typeof CentralLedger === "undefined" || typeof CentralLedger.importCompetencyRegistry !== "function") {
     ui.alert(
       "⚠ Import Not Available From This Sheet",
-      "The competency registry importer (Script 22b) is bound to the " +
+      "The competency registry importer (22b_CompetencyRegistryImporter) is bound to the " +
       "Central Ledger project, not the Assignment System Manual — and the " +
       "CentralLedger Library dependency isn't wired up yet on this deployment " +
       "(see cas-ccps/README.md's Finding 5 writeup to set that up once).\n\n" +
@@ -500,7 +500,7 @@ function _executeImportAndVerify_(ui, ss, csvFile, courseNames) {
       "Course names in the CSV:\n" +
       [...foundCourses].map(c => "  • " + c).join("\n") + "\n\n" +
       "The 'New Lesson' modal tabs will show only courses whose names\n" +
-      "match exactly. If the tab names look wrong after redeploying Script 07,\n" +
+      "match exactly. If the tab names look wrong after updating the Teacher Dashboard,\n" +
       "re-run setup and confirm course names match the CSV 'subject' column.",
       ui.ButtonSet.OK
     );
@@ -641,7 +641,7 @@ function _runPhaseB_(ui, props, ss) {
       "⚠ Pacing Guide Not Found",
       "PacingGuide_CAS_Context.json was not found in your teacher folder.\n\n" +
       "Upload the file to:\n" + (props.getProperty("TEACHER_FOLDER_URL") || "[teacher folder]") + "\n\n" +
-      "Then run importPacingGuide() from Script 31 in the Script Editor.\n\n" +
+      "Then run importPacingGuide() (file 31_PacingGuideManager) in the Script Editor.\n\n" +
       "Warm-up prompts will generate using Mode B (generative) until the " +
       "pacing guide is imported.",
       ui.ButtonSet.OK
@@ -656,13 +656,13 @@ function _runPhaseB_(ui, props, ss) {
     // the full explanation.
     ui.alert(
       "⚠ Import Not Available From This Sheet",
-      "The pacing guide importer (Script 31) is bound to the Central Ledger " +
+      "The pacing guide importer (31_PacingGuideManager) is bound to the Central Ledger " +
       "project, not the Assignment System Manual — and the CentralLedger " +
       "Library dependency isn't wired up yet on this deployment (see " +
       "cas-ccps/README.md's Finding 5 writeup to set that up once).\n\n" +
       "Until then, import manually:\n" +
       "  1. Open the Central Ledger spreadsheet\n" +
-      "  2. Run importPacingGuide() from Script 31 in that project's Script Editor\n\n" +
+      "  2. Run importPacingGuide() (file 31_PacingGuideManager) in that project's Script Editor\n\n" +
       "This step can't be completed from this menu — it has to run from " +
       "Central Ledger directly.",
       ui.ButtonSet.OK
@@ -677,7 +677,7 @@ function _runPhaseB_(ui, props, ss) {
       ui.alert(
         "⚠ Pacing Guide Import Failed",
         "The import encountered an error:\n\n" + pgErr.message + "\n\n" +
-        "Run importPacingGuide() from Script 31 manually to retry.",
+        "Run importPacingGuide() (file 31_PacingGuideManager) manually to retry.",
         ui.ButtonSet.OK
       );
       props.setProperty("M2_PACING_GUIDE_IMPORTED", "false");
@@ -692,7 +692,7 @@ function _runPhaseB_(ui, props, ss) {
       "⚠ Competency Rubrics Not Found",
       "CompetencyRubrics.json was not found in your teacher folder.\n\n" +
       "Upload the file to:\n" + (props.getProperty("TEACHER_FOLDER_URL") || "[teacher folder]") + "\n\n" +
-      "Then run importCompetencyRubrics() from Script 32 in the Script Editor.\n\n" +
+      "Then run importCompetencyRubrics() (file 32_CompetencyRubricImporter) in the Script Editor.\n\n" +
       "Warm-up prompts will generate without skill question enrichment until imported.",
       ui.ButtonSet.OK
     );
@@ -705,13 +705,13 @@ function _runPhaseB_(ui, props, ss) {
     // _executeImportAndVerify_()'s comment for the full explanation.
     ui.alert(
       "⚠ Import Not Available From This Sheet",
-      "The competency rubrics importer (Script 32) is bound to the Central " +
+      "The competency rubrics importer (32_CompetencyRubricImporter) is bound to the Central " +
       "Ledger project, not the Assignment System Manual — and the " +
       "CentralLedger Library dependency isn't wired up yet on this deployment " +
       "(see cas-ccps/README.md's Finding 5 writeup to set that up once).\n\n" +
       "Until then, import manually:\n" +
       "  1. Open the Central Ledger spreadsheet\n" +
-      "  2. Run importCompetencyRubrics() from Script 32 in that project's Script Editor\n\n" +
+      "  2. Run importCompetencyRubrics() (file 32_CompetencyRubricImporter) in that project's Script Editor\n\n" +
       "This step can't be completed from this menu — it has to run from " +
       "Central Ledger directly.",
       ui.ButtonSet.OK
@@ -726,7 +726,7 @@ function _runPhaseB_(ui, props, ss) {
       ui.alert(
         "⚠ Competency Rubrics Import Failed",
         "The import encountered an error:\n\n" + crErr.message + "\n\n" +
-        "Run importCompetencyRubrics() from Script 32 manually to retry.",
+        "Run importCompetencyRubrics() (file 32_CompetencyRubricImporter) manually to retry.",
         ui.ButtonSet.OK
       );
       props.setProperty("M2_RUBRICS_IMPORTED", "false");
@@ -864,10 +864,10 @@ function _runPhaseB_(ui, props, ss) {
     "   ClassSchedule · PacingGuide · CompetencyRubrics\n" +
     (props.getProperty("M2_PACING_GUIDE_IMPORTED") === "true"
       ? "✓ Pacing guide imported\n"
-      : "⚠ Pacing guide pending — run importPacingGuide() from Script 31\n") +
+      : "⚠ Pacing guide pending — run importPacingGuide() (file 31_PacingGuideManager)\n") +
     (props.getProperty("M2_RUBRICS_IMPORTED") === "true"
       ? "✓ Competency rubrics imported\n"
-      : "⚠ Rubrics pending — run importCompetencyRubrics() from Script 32\n") +
+      : "⚠ Rubrics pending — run importCompetencyRubrics() (file 32_CompetencyRubricImporter)\n") +
     "✓ Block schedule written: " + scheduleResult.rows.length + " period(s)\n" +
     "✓ Nightly triggers installed\n" +
     "✓ Studio Flows configured (confirm above)\n\n" +
@@ -876,13 +876,13 @@ function _runPhaseB_(ui, props, ss) {
     "SMOKE TEST — run these in order:\n" +
     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
     "  1. Submit a lesson context for tomorrow via the dashboard\n" +
-    "  2. Run buildWarmUpQueues() from Script 24 → WarmUpQueue rows appear\n" +
-    "  3. Run updateAllStudentProfiles() from Script 23 → profiles populated\n" +
+    "  2. Run buildWarmUpQueues() (file 24_WarmUpBridge) → WarmUpQueue rows appear\n" +
+    "  3. Run updateAllStudentProfiles() (file 23_StudentProfileManager) → profiles populated\n" +
     "  4. Trigger Flow 3 → warm-up docs in student Drive folders\n" +
     "  5. Write 30+ words in one doc\n" +
-    "  6. Run runWarmUpEvaluation() from Script 25 → WarmUpQueue SCORED\n" +
+    "  6. Run runWarmUpEvaluation() (file 25_WarmUpWriter) → WarmUpQueue SCORED\n" +
     "     Feedback written into doc\n" +
-    "  7. Run generateWarmUpReport() from Script 25 → grade report created\n\n" +
+    "  7. Run generateWarmUpReport() (file 25_WarmUpWriter) → grade report created\n\n" +
 
     "The nightly cron runs automatically from tomorrow at 3am.",
 
@@ -1374,7 +1374,7 @@ function runModule2ImportOnly() {
     ui.alert(
       "✅ Import Complete",
       result.rowCount + " competencies imported.\n\n" +
-      "Redeploy Script 07 to activate the competency tabs in the " +
+      "Update the Teacher Dashboard to activate the competency tabs in the " +
       "lesson context modal.",
       ui.ButtonSet.OK
     );

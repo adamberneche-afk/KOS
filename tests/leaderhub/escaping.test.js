@@ -22,7 +22,7 @@ const { runInSandbox } = require('../harness/vm-run');
 const HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '06-tasks-trips-and-modals-core.html');
 
 function loadEscapers() {
-  const source = extractLines(HTML_PATH, 1464, 1482, ['function escH(', 'function escJsAttr(']);
+  const source = extractLines(HTML_PATH, 1466, 1484, ['function escH(', 'function escJsAttr(']);
   return runInSandbox(source, {}, ['escH', 'escJsAttr']);
 }
 
@@ -83,7 +83,7 @@ test('escJsAttr also applies escH\'s HTML-attribute escaping on top of the JS-st
 // JSON season editor, so everything is escaped and only <strong> comes back.
 test('_decaNoticeHtml keeps <strong> and escapes everything else', () => {
   const html07 = path.join(__dirname, '..', '..', 'leader-hub', 'src', '07-events-email-members-goals.html');
-  const source = extractLines(HTML_PATH, 1464, 1466, ['function escH(']) + '\n' +
+  const source = extractLines(HTML_PATH, 1466, 1468, ['function escH(']) + '\n' +
     extractLines(html07, 1074, 1076, ['function _decaNoticeHtml(']);
   const { _decaNoticeHtml } = runInSandbox(source, {}, ['_decaNoticeHtml']);
   assert.equal(_decaNoticeHtml('<strong>Due NOW.</strong> 45 days'), '<strong>Due NOW.</strong> 45 days');

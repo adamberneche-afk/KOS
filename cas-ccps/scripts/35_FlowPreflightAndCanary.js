@@ -654,7 +654,7 @@ function runFlow2Canary() {
     const docText = inComments
       ? _canaryCommentText_(scratchDocId)
       : DocumentApp.openById(scratchDocId).getBody().getText();
-    if (inComments && docText.indexOf('RESULT:') === -1) {
+    if (inComments && !/RESULT:/i.test(docText)) {
       return fail('Harvest posted the feedback as a comment on the student doc',
         'No comment with a RESULT line on the scratch doc (FEEDBACK_AS_COMMENT is on).');
     }
@@ -663,7 +663,7 @@ function runFlow2Canary() {
         'No "END EVALUATION" marker found. 03_QueueBridge.js\'s appendNextSteps_() ' +
         'matches on that exact U+2500 marker, so its absence would also break next-steps.');
     }
-    if (docText.indexOf('YOUR WORK MEETS THE STANDARD') === -1) {
+    if (!/your work meets the standard/i.test(docText)) {
       return fail('Feedback block reflects the APPROVED compliance stamp',
         'Result line missing or wrong for [SYSTEM: APPROVED].');
     }

@@ -18,7 +18,7 @@
  * left out, as is the blank SCR column.
  *
  * Assignments keep CAS as the place students work: each one tells the
- * student to write in their CAS document for the unit (made by the intake
+ * student to write in their assignment doc for the unit (made by the intake
  * form or the Canvas roster import, script 52), links their assignment
  * dashboard for feedback, and asks them to submit that document's link. No
  * Canvas rubric or outcome is included; CAS evaluates against the
@@ -63,6 +63,8 @@ function studentDashboardUrl(file = DEPLOYMENT_URLS) {
 const POINTS = 100;
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+// A lesson's *emphasis* as <em>, not literal asterisks (2026-10-22).
+const inline = (s) => esc(s).replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
 const ident = (...parts) => 'g' + crypto.createHash('md5').update(parts.join('|')).digest('hex');
 const isHeading = (b) => b.type === 'p' && b.runs.some((r) => r.text.trim()) &&
   b.runs.every((r) => r.bold || !r.text.trim()) && textOf(b) === textOf(b).toUpperCase();
@@ -155,7 +157,7 @@ function assignmentXml(id, title, promptText, unit, dashboardUrl) {
   let paras = promptText.split(/\n{2,}/);
   if (unit) {
     paras.shift(); // the unit title line; Canvas shows the assignment title
-    paras.pop();   // "Write your response in the response zone below." is for the CAS doc itself
+    paras.pop();   // "Write your response under “Your response” below." is for the doc itself
   } else {
     // A teacher's lesson: drop its title line and its Canvas "Submission:" part,
     // which the CAS instructions below replace.
@@ -165,21 +167,21 @@ function assignmentXml(id, title, promptText, unit, dashboardUrl) {
   }
   const promptHtml = paras.map((para) => {
     const lines = para.split('\n');
-    if (lines.every((l) => l.startsWith('- '))) return '<ul>\n' + lines.map((l) => '<li>' + esc(l.slice(2)) + '</li>').join('\n') + '\n</ul>';
+    if (lines.every((l) => l.startsWith('- '))) return '<ul>\n' + lines.map((l) => '<li>' + inline(l.slice(2)) + '</li>').join('\n') + '\n</ul>';
     if (lines.length === 1 && /^[A-Z][^.!?]{0,60}:$/.test(lines[0].trim())) return '<h3>' + esc(lines[0].trim().replace(/:$/, '')) + '</h3>';
-    return '<p>' + lines.map(esc).join('<br>') + '</p>';
+    return '<p>' + lines.map(inline).join('<br>') + '</p>';
   });
   const where = unit ? 'unit' : 'lesson';
   const html = [
     ...promptHtml,
     '<h3>Where to do this work</h3>',
-    '<p>Work in your CAS document for this ' + where + ', not in Canvas. It is shared with you in Google Drive ' +
-      '(<strong>Shared with me</strong>) and its name starts with this ' + where + '\'s name and ends with your name. ' +
-      'Write your response in its response zone.</p>',
+    '<p>Work in your assignment doc for this ' + where + ', not in Canvas. It is a Google Doc shared with you in ' +
+      'Google Drive (<strong>Shared with me</strong>), and its name starts with this ' + where + '\'s name and ends ' +
+      'with your name. Write under its <strong>Your response</strong> heading.</p>',
     ...(dashboardUrl ? [
       '<h3>Get feedback</h3>',
       '<p>To have your work checked, open your <a href="' + esc(dashboardUrl) + '">assignment dashboard</a> and click ' +
-        '<strong>Submit for Feedback</strong> on this assignment. Feedback arrives as a comment on your CAS document. ' +
+        '<strong>Submit for Feedback</strong> on this assignment. Feedback arrives as a comment on your assignment doc. ' +
         'A passing check before you turn it in is a good idea, but it isn\'t required.</p>',
     ] : []),
     '<h3>How to submit</h3>',

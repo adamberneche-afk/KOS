@@ -77,3 +77,31 @@ test('each dashboard has a Terms panel that explains its words', () => {
     assert.ok(words.includes(w), w);
   }
 });
+
+// The doc's own Feedback menu (01) uses the dashboard's words for each stage.
+test('the doc menu\'s status pop-up uses the dashboard\'s words, never a raw status code', () => {
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('01_StudentDoc_ContainerScript.js')],
+    ['buildStatusMessage_', 'termLabel_']);
+  const base = { unitCode: 'Unit 1', teacherName: 'T', term: exported.termLabel_('2627_MP1'), lastEval: 'Oct 22, 2026 9:00 AM' };
+  assert.equal(base.term, 'Marking period 1, 2026–27');
+  const say = (status, extra) => exported.buildStatusMessage_({ ...base, status, ...extra }, 'CFG');
+  assert.match(say('ACTIVE'), /Not submitted yet[\s\S]*Feedback → Submit for Feedback/);
+  assert.match(say('COMPLETE', { lastResult: 'PASSED' }), /Passed\. Your feedback is ready/);
+  assert.match(say('COMPLETE', { lastResult: 'NEEDS_REVISION' }), /Revise, then submit again/);
+  assert.match(say('PENDING_TEACHER_REVIEW'), /waiting for your teacher/);
+  assert.match(say('COMPLIANT'), /your teacher confirmed it/);
+  assert.match(say('ERROR_TIMEOUT'), /Couldn't be checked/);
+  for (const status of ['ACTIVE', 'COMPLETE', 'PENDING_TEACHER_REVIEW', 'COMPLIANT', 'ERROR_TIMEOUT', 'WEIRD']) {
+    const text = say(status);
+    assert.doesNotMatch(text, /AI Evaluation Panel|Run Assignment Check|Status: |2627_MP1|evaluat/i, status);
+  }
+});
+
+// A lesson's *emphasis* reaches the student's doc as italics (02), not asterisks.
+test('the doc shows a lesson\'s *emphasis* in italics, without the asterisks', () => {
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_docItalicSpans_']);
+  const md = exported._docItalicSpans_('Explain *why* it worked and what comes *next*.');
+  assert.equal(md.text, 'Explain why it worked and what comes next.');
+  assert.deepEqual(JSON.parse(JSON.stringify(md.spans)), [[8, 10], [37, 40]]);
+  assert.deepEqual(JSON.parse(JSON.stringify(exported._docItalicSpans_('No stars here').spans)), []);
+});

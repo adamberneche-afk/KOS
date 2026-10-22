@@ -689,30 +689,41 @@ function checkShadowMatrixInterrupts_(ss, cfg) {
   Logger.log("[S25] Shadow matrix: " + interrupts.length + " interrupt(s) to send.");
 
   // ── Build digest email ────────────────────────────────────────────────────
+  // Plain words (2026-10-22), matching the Teacher Dashboard's "ready for
+  // fully personalized feedback": the archetype names (PROVOCATION, BRIDGE,
+  // ...) are the warm-up engine's, so each is described by what the
+  // student's warm-ups will look like.
+  const WARMUP_STYLE_WORDS = {
+    PROVOCATION:       "a bold claim to argue with",
+    PARADOX:           "a puzzle where two true things seem to clash",
+    CONCRETE_SCENARIO: "a real-life situation to work through",
+    BRIDGE:            "a link from what they already know"
+  };
   const rows = interrupts.map(item =>
-    "  " + item.studentName + " — " + item.unitId +
-    "\n    Best archetype: " + item.bestArchetype +
-    " (" + Math.round(item.confidence * 100) + "% confidence, " +
-    item.historyCount + " warm-ups, trend: " + item.trend + ")"
+    "  " + item.studentName + " — unit " + item.unitId +
+    "\n    Works best with: " + (WARMUP_STYLE_WORDS[item.bestArchetype] || "no clear style yet") +
+    "\n    Based on " + item.historyCount + " warm-up" + (item.historyCount === 1 ? "" : "s") +
+    " (" + Math.round(item.confidence * 100) + "% sure" +
+    (item.trend === "rising" ? ", getting stronger" : item.trend === "falling" ? ", getting weaker" : "") + ")"
   ).join("\n\n");
 
-  const subject = "[CAS] Warm-Up Archetype Confidence — " + interrupts.length +
-                  " student" + (interrupts.length > 1 ? "s" : "") + " ready";
+  const subject = "[CAS] Warm-ups: " + interrupts.length +
+                  " student" + (interrupts.length > 1 ? "s" : "") + " ready for fully personalized feedback";
 
   const body =
     "Hello " + teacherName + ",\n\n" +
-    "The warm-up system has reached high confidence on archetype selection " +
-    "for the following student" + (interrupts.length > 1 ? "s" : "") + ":\n\n" +
+    "From their warm-up answers so far, CAS has learned which kind of warm-up " +
+    "question works best for " + (interrupts.length > 1 ? "these students" : "this student") + ":\n\n" +
     rows + "\n\n" +
-    "The system will automatically weight toward the best archetype for " +
-    "each student's next warm-up.\n\n" +
+    "Their next warm-ups will lean toward that kind of question. On the " +
+    "Teacher Dashboard they count as \"ready for fully personalized feedback\".\n\n" +
     // FIXED: this used to invite "Reply OVERRIDE" — nothing in cas-ccps
     // reads Gmail replies (no reply-scanning trigger exists anywhere in
     // this codebase, unlike leader-hub's EmailBridge.gs, which does have
     // one). A teacher following this instruction would get no response and
     // no override, with no indication anything was wrong.
-    "This digest is sent once per student per unit. You will not receive " +
-    "repeat notifications for the same student and unit.\n\n" +
+    "You'll get this email once per student per unit, not again for the " +
+    "same student and unit.\n\n" +
     "— Classroom Agency System";
 
   try {

@@ -8,9 +8,9 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#f9f8f5;--white:#ffffff;--ink:#18170f;--mid:#4d4c44;--dim:#8c8b80;--rule:#e5e3da;
+  --bg:#f9f8f5;--white:#ffffff;--ink:#18170f;--mid:#4d4c44;--dim:#6b6a60;--rule:#e5e3da;
   --teal:#0f6b6b;--teal-l:#e6f5f5;--teal-b:#7ecece;
-  --gold:#8a6800;--gold-l:#fdf5db;--gold-b:#f0c83a;
+  --gold:#7a5c00;--gold-l:#fdf5db;--gold-b:#f0c83a;
   --rose:#8b1a1a;--rose-l:#fdf0f0;
   --slate:#1a2840;--slate-l:#edf2f8;
   --serif:'Fraunces',Georgia,serif;--sans:'Inter',system-ui,sans-serif;
@@ -25,10 +25,10 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
 .sidebar{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--slate);padding:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent}
 .sb-brand{padding:28px 24px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
 .sb-brand h2{font-family:var(--serif);font-size:16px;font-weight:500;color:white;line-height:1.3}
-.sb-brand p{font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px}
+.sb-brand p{font-size:12px;color:rgba(255,255,255,0.7);margin-top:4px}
 .sb-section{padding:20px 0 4px}
-.sb-section-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.25);padding:0 24px 8px;display:block}
-.sb-link{display:block;padding:8px 24px;color:rgba(255,255,255,0.5);font-size:13px;text-decoration:none;border-left:2px solid transparent;transition:all 0.15s;line-height:1.3}
+.sb-section-label{font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.65);padding:0 24px 8px;display:block}
+.sb-link{display:block;padding:8px 24px;color:rgba(255,255,255,0.78);font-size:13px;text-decoration:none;border-left:2px solid transparent;transition:all 0.15s;line-height:1.3}
 .sb-link:hover{color:white;background:rgba(255,255,255,0.05)}
 .sb-link.active{color:var(--teal-b);border-left-color:var(--teal-b);background:rgba(126,206,206,0.08)}
 
@@ -37,7 +37,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
 
 /* ── HERO ── */
 .hero{padding:56px 64px 48px;background:var(--white);border-bottom:1px solid var(--rule)}
-.hero-kicker{font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--teal);margin-bottom:16px}
+.hero-kicker{font-size:12px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--teal);margin-bottom:16px}
 .hero h1{font-family:var(--serif);font-size:42px;font-weight:300;line-height:1.1;letter-spacing:-0.5px;margin-bottom:16px;max-width:580px}
 .hero h1 em{font-style:italic;color:var(--teal)}
 .hero-desc{font-size:16px;color:var(--mid);max-width:520px;line-height:1.75;margin-bottom:32px}
@@ -62,7 +62,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
 .step:not(:last-child)::before{content:"";position:absolute;left:15px;top:32px;bottom:0;width:1px;background:var(--rule)}
 .step-n{width:32px;height:32px;border-radius:50%;background:var(--teal);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;position:relative;z-index:1}
 .step-body{padding:4px 0 24px}
-.step-body strong{display:block;font-size:15px;font-weight:600;margin-bottom:5px}
+.step-body > strong{display:block;font-size:15px;font-weight:600;margin-bottom:5px}
 .step-body p{font-size:14px;color:var(--mid);line-height:1.7}
 
 /* ── CALLOUTS ── */
@@ -73,17 +73,17 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
 
 /* ── TABLES ── */
 .ref-table{width:100%;border-collapse:collapse;background:white;border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin:16px 0}
-.ref-table th{background:#f5f4f0;padding:10px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--rule)}
+.ref-table th{background:#f5f4f0;padding:10px 16px;text-align:left;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--rule)}
 .ref-table td{padding:12px 16px;border-bottom:1px solid var(--rule);font-size:14px;vertical-align:top}
 .ref-table tr:last-child td{border-bottom:none}
 .ref-table tr:hover td{background:#fafaf8}
-.td-label{font-weight:500;color:var(--ink);white-space:nowrap}
+.td-label{font-weight:500;color:var(--ink)}
 .td-action{color:var(--teal);font-size:13px}
 
 /* ── STATUS TABLE ── */
 .status-row{display:flex;gap:16px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--rule)}
 .status-row:last-child{border-bottom:none}
-.status-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap;flex-shrink:0;min-width:100px;text-align:center}
+.status-badge{display:inline-block;font-size:12px;font-weight:700;padding:3px 10px;border-radius:12px;flex-shrink:0;min-width:100px;max-width:220px;text-align:center}
 .s-active{background:#f1f5f9;color:#475569}.s-staged{background:#dbeafe;color:#1e40af}.s-evaluated{background:#f3e8fd;color:#6b21a8}.s-compliant{background:#dcfce7;color:#166534}.s-archived{background:#f1f5f9;color:#6b7280}.s-error{background:#fee2e2;color:#991b1b}
 .status-desc{font-size:14px;color:var(--mid);line-height:1.6}
 
@@ -94,43 +94,56 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
 hr{border:none;border-top:1px solid var(--rule);margin:40px 0}
 
 /* ── FOOTER ── */
-footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;padding:28px;font-size:12px}
+footer{background:var(--slate);color:rgba(255,255,255,0.72);text-align:center;padding:28px;font-size:12px}
+
+/* ── WORDS YOU'LL SEE ── */
+.terms{background:white;border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin:16px 0}
+.terms div{padding:12px 16px;border-bottom:1px solid var(--rule)}
+.terms div:last-child{border-bottom:none}
+.terms dt{font-weight:600;font-size:14.5px}
+.terms dd{font-size:14px;color:var(--mid);margin:2px 0 0}
+.content a{color:var(--teal)}
+.ref-table td{overflow-wrap:anywhere}
+.sb-link:focus-visible{outline:2px solid var(--teal-b);outline-offset:-2px}
 
 @media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{display:none}.hero,.content{padding:36px 24px 60px}}
+@media(max-width:600px){.hero,.content{padding:28px 16px 48px}.hero h1{font-size:32px}.ref-table th,.ref-table td{padding:10px 8px;font-size:13px}.status-row{flex-direction:column;gap:6px}}
 </style>
 </head>
 <body>
 <div class="shell">
 
 <!-- SIDEBAR -->
-<nav class="sidebar">
+<nav class="sidebar" aria-label="Sections">
   <div class="sb-brand">
     <h2>Teacher Reference Guide</h2>
     <p>Assignment System</p>
   </div>
   <div class="sb-section">
     <span class="sb-section-label">Getting Started</span>
-    <a class="sb-link" href="#setup">Your Setup</a>
-    <a class="sb-link" href="#workspace">Your Workspace</a>
+    <a class="sb-link" href="#setup">What's Where</a>
+    <a class="sb-link" href="#workspace">Student Documents</a>
   </div>
   <div class="sb-section">
     <span class="sb-section-label">Day to Day</span>
-    <a class="sb-link" href="#create">Creating an Assignment</a>
-    <a class="sb-link" href="#register">Registering Students</a>
     <a class="sb-link" href="#dashboard">Your Dashboard</a>
-    <a class="sb-link" href="#parent-reports">Weekly Parent Reports</a>
     <a class="sb-link" href="#status">Understanding Status</a>
-    <a class="sb-link" href="#module2">What Module 2 Does</a>
+    <a class="sb-link" href="#create">Lessons and Start Dates</a>
+    <a class="sb-link" href="#register">How Students Get Their Documents</a>
+    <a class="sb-link" href="#feedback">Where Feedback Goes</a>
+    <a class="sb-link" href="#module2">Warm-ups and Lesson Logs</a>
+    <a class="sb-link" href="#parent-reports">Parent Reports</a>
   </div>
   <div class="sb-section">
     <span class="sb-section-label">Student Support</span>
     <a class="sb-link" href="#problems">When Students Have Problems</a>
-    <a class="sb-link" href="#turnin">Turning In, Grading and the SCR</a>
+    <a class="sb-link" href="#turnin">Grading and Competency Ratings</a>
   </div>
   <div class="sb-section">
-    <span class="sb-section-label">End of Term</span>
-    <a class="sb-link" href="#term">Term Management</a>
-    <a class="sb-link" href="#limits">What Teachers Can't Edit</a>
+    <span class="sb-section-label">Through the Year</span>
+    <a class="sb-link" href="#term">Marking Periods and the School Year</a>
+    <a class="sb-link" href="#limits">What You Can Change</a>
+    <a class="sb-link" href="#words">Words You'll See</a>
   </div>
 </nav>
 
@@ -140,196 +153,67 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
 <div class="hero">
   <div class="hero-kicker">Teacher Reference</div>
   <h1>Your guide to the<br><em>Assignment System</em></h1>
-  <p class="hero-desc">Everything you need to know for day-to-day use. This is a reference document — consult it when you have a question, not just during setup.</p>
+  <p class="hero-desc">Look things up here when you have a question. Each section starts with what to do. The words match the Teacher Dashboard and its ❓ Terms panel.</p>
   <div class="hero-pills">
-    <span class="hero-pill">Creating assignments</span>
-    <span class="hero-pill">Registering students</span>
     <span class="hero-pill">Reading your dashboard</span>
+    <span class="hero-pill">Lessons and dates</span>
+    <span class="hero-pill">Feedback</span>
     <span class="hero-pill">Handling problems</span>
-    <span class="hero-pill">End of term</span>
+    <span class="hero-pill">Competency ratings</span>
   </div>
 </div>
 
 <div class="content">
 
-<!-- YOUR SETUP -->
+<!-- WHAT'S WHERE -->
 <div class="topic" id="setup">
   <a class="topic-anchor"></a>
   <div class="topic-header">
-    <div class="topic-icon icon-teal">⚙️</div>
-    <h2>Your Setup</h2>
+    <div class="topic-icon icon-teal" aria-hidden="true">⚙️</div>
+    <h2>What's Where</h2>
   </div>
 
-  <p style="color:var(--mid);margin-bottom:20px">You received an Admin Manual Google Doc with your name on it. When you first ran the setup wizard, it created your personal workspace automatically. Here's what was created and where to find it.</p>
+  <p style="color:var(--mid);margin-bottom:20px">Work from the Teacher Dashboard. You rarely need anything else.</p>
 
   <table class="ref-table">
-    <thead><tr><th>Asset</th><th>What it does</th><th>Where to find it</th></tr></thead>
+    <thead><tr><th>Thing</th><th>What it's for</th><th>Where to find it</th></tr></thead>
     <tbody>
-      <tr><td class="td-label">Teacher Manual Doc</td><td>Your operational hub — contains all your links and the ⚙️ Assignment System menu</td><td>In your Google Drive — the document you ran setup from</td></tr>
-      <tr><td class="td-label">Rubric Upload Form</td><td>Submit a new rubric to create an assignment</td><td>Link in your Teacher Setup Details page (end of manual)</td></tr>
-      <tr><td class="td-label">Student Registration Form</td><td>Register a student for an assignment</td><td>Link in your Teacher Setup Details page</td></tr>
-      <tr><td class="td-label">Canvas assignment</td><td>Where students turn in (their document's link) and where you grade</td><td>Your Canvas course (imported from the CAS cartridges)</td></tr>
-      <tr><td class="td-label">Student Dashboard</td><td>Where students submit for feedback and see where each assignment stands</td><td>The link near the top of every student document</td></tr>
-      <tr><td class="td-label">Teacher Matrix Sheet</td><td>Your assignment configurations — do not edit directly</td><td>Link in your Teacher Setup Details page</td></tr>
-      <tr><td class="td-label">Teacher Dashboard</td><td>Live view of all your students' progress</td><td>⚙️ Assignment System → Open My Dashboard</td></tr>
+      <tr><td class="td-label">Teacher Dashboard</td><td>Your students' progress, lessons, feedback setting and competency ratings</td><td>The link your admin gave you, or <span class="inline-code">⚙️ Assignment System → 📊 Open My Dashboard</span> in your Teacher Manual</td></tr>
+      <tr><td class="td-label">Student Dashboard</td><td>Where students press Submit for Feedback, answer warm-ups and see where each assignment stands</td><td>The “Your dashboard” link in every student document's page header, and in each Canvas assignment</td></tr>
+      <tr><td class="td-label">Student documents</td><td>One Google Doc per student per lesson, where the student writes</td><td>“Open document ↗” on the student's row</td></tr>
+      <tr><td class="td-label">Canvas assignment</td><td>Where students turn in (their document's link) and where you grade</td><td>Your Canvas course</td></tr>
+      <tr><td class="td-label">Teacher Manual</td><td>The ⚙️ Assignment System menu and your setup details</td><td>Your Google Drive</td></tr>
     </tbody>
   </table>
 
-  <div class="callout callout-gold">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>Keep your Teacher Manual bookmarked.</strong> It's the starting point for every action — creating assignments, registering students, and opening your dashboard are all one click from the ⚙️ menu.</div>
+  <div class="callout callout-rose">
+    <span class="callout-icon" aria-hidden="true">🚫</span>
+    <div class="callout-body"><strong>Don't edit the system's spreadsheets by hand</strong> (the Central Ledger, the Teacher Matrix). The dashboard changes what you need. The one exception is a step a timeout email asks for.</div>
   </div>
 </div>
 
-<!-- YOUR WORKSPACE -->
+<!-- STUDENT DOCUMENTS -->
 <div class="topic" id="workspace">
   <a class="topic-anchor"></a>
   <div class="topic-header">
-    <div class="topic-icon icon-teal">📁</div>
-    <h2>Your Workspace at a Glance</h2>
+    <div class="topic-icon icon-teal" aria-hidden="true">📁</div>
+    <h2>Student Documents</h2>
   </div>
 
-  <p style="color:var(--mid);margin-bottom:20px">Your workspace lives entirely within Google Drive. Here's how the folder structure is organised:</p>
+  <p style="color:var(--mid);margin-bottom:20px">Open a student's document from their row. Each document is shared with that student (they can edit) and with you (you can comment). Classmates have no access.</p>
 
-  <div style="background:white;border:1px solid var(--rule);border-radius:10px;padding:20px 24px;font-family:monospace;font-size:13px;color:var(--mid);line-height:2.2">
-    📁 Assignments/<br>
-    &nbsp;&nbsp;📁 [Your Subject]/<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;📁 [Your Name]/          ← your personal folder<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📋 [Name] — Rubric Responses  ← rubric uploads land here<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📊 [Name] — Teacher Matrix    ← your assignment configs<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📬 [Name] — Rubric Upload Form<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📬 [Name] — Assignment Review Form<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📬 [Name] — Student Registration Form<br>
-    &nbsp;&nbsp;📁 _Student Shared Folders/  ← no longer used for new work: each doc is shared with its student and teacher only<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;📁 [Block - Class - Teacher]/  ← per-class folder<br>
-    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 [Assignment] — [Student Name]
-  </div>
-
-  <div class="callout callout-rose" style="margin-top:20px">
-    <span class="callout-icon">🚫</span>
-    <div class="callout-body"><strong>Don't edit the Teacher Matrix directly.</strong> It's managed by the system. Editing rows there can break the evaluation pipeline for your students.</div>
-  </div>
-</div>
-
-<!-- CREATING AN ASSIGNMENT -->
-<div class="topic" id="create">
-  <a class="topic-anchor"></a>
-  <div class="topic-header">
-    <div class="topic-icon icon-gold">📝</div>
-    <h2>Creating an Assignment</h2>
-  </div>
-
-  <p style="color:var(--mid);margin-bottom:24px">Creating an assignment is a two-step process: upload your rubric, then confirm what the system extracted from it. Once confirmed, the assignment is live for students.</p>
-
-  <div class="steps">
-    <div class="step">
-      <div class="step-n">1</div>
-      <div class="step-body">
-        <strong>Create your prompt template document</strong>
-        <p>Write the student-facing assignment instructions in a Google Doc. This is what students will see in their document. Make it as clear as possible — the AI uses this context when evaluating responses. Share the doc as "Anyone with the link can view."</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-n">2</div>
-      <div class="step-body">
-        <strong>Prepare your rubric</strong>
-        <p>Write your evaluation rubric. The more specific and detailed it is, the better the AI evaluation will be. Include measurable criteria — "demonstrates understanding of X" is better than "understands X." You'll paste the full rubric text directly into the upload form.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-n">3</div>
-      <div class="step-body">
-        <strong>Open the Rubric Upload Form</strong>
-        <p>Click <span class="inline-code">⚙️ Assignment System → Create New Assignment</span> in your manual. Fill in: your name, subject, course name, paste the rubric text, paste the prompt template Google Doc link, and select the academic tier.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-n">4</div>
-      <div class="step-body">
-        <strong>Wait for the review email (1–5 min)</strong>
-        <p>The system processes your rubric and extracts the assignment criteria using AI. You'll receive an email with a pre-filled review link. This usually arrives within 5 minutes.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-n">5</div>
-      <div class="step-body">
-        <strong>Review and confirm the extracted criteria</strong>
-        <p>Click the link in the email. You'll see a form pre-filled with what the system extracted: assignment name, AI coach persona, four milestones, and the passing standard. Review each field. Edit anything that's wrong. Submit when it looks right.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-n">6</div>
-      <div class="step-body">
-        <strong>Receive your Config ID</strong>
-        <p>After confirming, the assignment status changes to LIVE and you receive a confirmation email containing your <strong>Config ID</strong> (format: <span class="inline-code">VDOE-XXXXXX-YYYY</span>). Record this — you need it when registering students.</p>
-      </div>
-    </div>
-  </div>
-
-  <div class="callout callout-gold">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>If the review email doesn't arrive after 10 minutes:</strong> check with your admin. The system may have encountered a processing issue with your rubric file. The admin can re-queue it from the Admin Controls panel.</div>
-  </div>
-
-  <div class="callout callout-rose">
-    <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><strong>Once confirmed, the assignment criteria are fixed.</strong> There is no edit path for a live assignment — changes would invalidate evaluations already delivered. If you need to update the criteria significantly, create a new assignment and use the new Config ID for any remaining students.</div>
-  </div>
-</div>
-
-<!-- REGISTERING STUDENTS -->
-<div class="topic" id="register">
-  <a class="topic-anchor"></a>
-  <div class="topic-header">
-    <div class="topic-icon icon-gold">👥</div>
-    <h2>Registering Students</h2>
-  </div>
-
-  <p style="color:var(--mid);margin-bottom:24px">Each student needs to be individually registered for each assignment. Registration creates their personal document and shares it to their Google Drive automatically.</p>
-
-  <div class="steps">
-    <div class="step">
-      <div class="step-n">1</div>
-      <div class="step-body">
-        <strong>Open the Student Registration Form</strong>
-        <p>Click <span class="inline-code">⚙️ Assignment System → Register a Student</span> in your manual.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-n">2</div>
-      <div class="step-body">
-        <strong>Fill in the student's details</strong>
-        <p>Required: student's Google account email, full name, class name, subject, course name, period, your name and email, the assignment Config ID, and the student's block.</p>
-        <div class="callout callout-rose" style="margin-top:12px">
-          <span class="callout-icon">⚠️</span>
-          <div class="callout-body"><strong>The student's Google account email must be exact.</strong> It's used to match the student to their document when they submit evaluations. A typo here means the student can't use the evaluation system. Double-check it before submitting.</div>
-        </div>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-n">3</div>
-      <div class="step-body">
-        <strong>Wait 1–2 minutes for the document to be created</strong>
-        <p>The system copies the master student template, injects your assignment prompt, and shares the document to the student's Google Drive. The student will find it in their "Shared with me" folder.</p>
-      </div>
-    </div>
-    <div class="step">
-      <div class="step-n">4</div>
-      <div class="step-body">
-        <strong>Tell the student to check Shared with me</strong>
-        <p>Send the student a quick message that their document is ready. They find it in Google Drive → Shared with me. The link to their assignment dashboard, where they submit for feedback, is near the top of the document.</p>
-      </div>
-    </div>
-  </div>
+  <p style="color:var(--mid);margin-bottom:8px"><strong>What the student sees, top to bottom:</strong></p>
+  <ul style="color:var(--mid);margin:0 0 20px 20px;font-size:14px;line-height:1.8">
+    <li>A small grey page header: who and what (name, class, teacher, block, period, lesson), a “Your dashboard” link, and a “Feedback:” line that says where the work stands.</li>
+    <li>The lesson title, a “↓ Go to your response” link, and the assignment in small (8 pt) text.</li>
+    <li>A “Your response” heading, “Write your answer under the grey line below.” and “↑ Back to the assignment”.</li>
+    <li>The grey “── YOUR RESPONSE BEGINS HERE ──” line, then the student's writing space (10 pt).</li>
+    <li>A small grey “[CONFIG_ID: …] Do not delete this line.” at the bottom. Only the text between the grey line and this line is checked.</li>
+  </ul>
 
   <div class="callout callout-teal">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>Register students in groups of 20–30.</strong> Large batches can occasionally time out. If a student doesn't receive their document within 5 minutes, submit the registration form again — re-submission is safe. Check your dashboard to confirm the student appears.</div>
-  </div>
-
-  <div class="callout callout-gold">
-    <span class="callout-icon">📋</span>
-    <div class="callout-body"><strong>Course name must match exactly.</strong> The course name in the registration form must match exactly what you used when creating the assignment. Case and spacing matter.</div>
+    <span class="callout-icon" aria-hidden="true">💬</span>
+    <div class="callout-body"><strong>Feedback is a comment, not text in the document.</strong> With feedback as a comment (the setting is on for every course), each check adds a new comment. Click Comments (top right) to read them. A student who presses Resolve doesn't delete it.</div>
   </div>
 </div>
 
@@ -337,247 +221,389 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
 <div class="topic" id="dashboard">
   <a class="topic-anchor"></a>
   <div class="topic-header">
-    <div class="topic-icon icon-teal">📊</div>
+    <div class="topic-icon icon-teal" aria-hidden="true">📊</div>
     <h2>Your Dashboard</h2>
   </div>
 
-<p style="color:var(--mid);margin-bottom:20px">Your teacher dashboard shows where each student's work stands. Open it from <span class="inline-code">⚙️ Assignment System → Open My Dashboard</span>.</p>
+  <p style="color:var(--mid);margin-bottom:20px">Open it, read the summary cards, act on Needs attention. Press <strong>↻ Refresh</strong> to see the latest: it doesn't update by itself.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Lesson picker:</strong> the dashboard opens on the <strong>current lesson</strong> for each course: the lesson in the LessonSchedule tab with the latest start date on or before today. The dropdown at the top switches to any other lesson, or to <strong>All assignments</strong>.</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Showing (the lesson picker).</strong> It opens on the <strong>current lesson</strong> for each course: the lesson whose start date in 📅 Lessons is the latest on or before today. Pick another lesson, or <strong>All assignments</strong> at the bottom.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Summary cards:</strong> at the top, a count for each state (see Understanding Student Status). Click a card to show only those students; click it again to clear the filter.</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Summary cards.</strong> Students, ✅ Passed, ↩️ Passed before, now revising, ✏️ Checked, not passing yet, ⚪ Not checked yet, and Needs attention. Click a card to show only those students; <strong>Clear filter</strong> shows everyone again. In All assignments the first card counts assignments, since a student has one row per assignment.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Order:</strong> one section per lesson, students by period, then name, which is easiest to follow alongside SpeedGrader.</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Each student's row.</strong> Name; block, period and course; “N checks · last &lt;date&gt;” or “No checks yet”, with “· submitted &lt;time&gt;” once they've submitted; “First passed &lt;date&gt;”; the AI's suggested score from the last check (“3 — Solid (2–4, higher is better)”); <strong>Open document ↗</strong>; and badges on the right. Rows are grouped by lesson, then ordered by period and name, which follows SpeedGrader.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Each student:</strong> their state, how many checks they've run, the date of the last one, when they first passed, and the <strong>suggested score</strong> from their latest check (a reference only; you grade in Canvas).</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Warm-up readiness strip</strong> (under the header, when warm-ups are on). The pacing guide unit, then “x of N students have had work checked”, “y answered a warm-up”, “building a personalized learning profile” and “ready for fully personalized feedback”. Click a number to show those students.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Term filter and Refresh:</strong> the term dropdown shows the current term by default. The dashboard doesn't update by itself; click ↻ Refresh to see the latest.</p>
-
-  <div class="callout callout-teal">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body">Click a student's "Open document ↗" link to open their document. Their evaluations are at the end of it, newest last, so it is the same view you get when you open their Canvas submission.</div>
-  </div>
-</div>
-
-<!-- WEEKLY PARENT REPORTS -->
-<div class="topic" id="parent-reports">
-  <a class="topic-anchor"></a>
-  <div class="topic-header">
-    <div class="topic-icon icon-teal">✉️</div>
-    <h2>Weekly Parent Reports</h2>
-  </div>
-
-  <p style="color:var(--mid);margin-bottom:20px">Click <span class="inline-code">✉ Parent Reports</span> in the dashboard header to see this week&rsquo;s report for each of your students. Nothing is sent until you enter an address and press Send on that student &mdash; there is no &ldquo;send all&rdquo;.</p>
-
-  <p style="color:var(--mid);margin-bottom:20px"><strong>What each report contains.</strong> Two sections. <em>This week</em> lists the coursework recorded for that student between Monday and Sunday, labelled by course and date. <em>Progress so far this term</em> lists their confirmed competency ratings, which are cumulative &mdash; they cover all work to date, not just this week, and the report says so.</p>
-
-  <div class="callout callout-gold">
-    <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><strong>Only scores you have confirmed appear as numbers.</strong> Anything still awaiting your review shows as &ldquo;with your teacher for review&rdquo; and is counted in a summary line &mdash; the parent never sees an AI-suggested score you haven&rsquo;t acted on. This is the same rule the student&rsquo;s own document follows while a submission is pending your review. If you want a score to appear, confirm it first in the Pending Review step.</div>
-  </div>
-
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Read before you send.</strong> Each student&rsquo;s row has a <span class="inline-code">Read what will be sent</span> toggle showing the exact text the parent will receive. This is the only place in the system where student information leaves the school&rsquo;s Google Workspace, so it is worth actually reading the first few times.</p>
-
-  <p style="color:var(--mid);margin-bottom:20px"><strong>You type the address.</strong> The system stores no parent contact details, so there is nothing to auto-fill and nothing to mistype on your behalf &mdash; but equally, nothing catches a wrong address for you. After a send, the confirmation echoes back the address it used. That line is worth a glance: it is the last moment a misdirected report can be spotted by someone who still remembers who it was meant for.</p>
-
-  <p style="color:var(--mid);margin-bottom:20px"><strong>One report per student per week.</strong> A second Send for the same student and week is refused, so a reload or a double-click can&rsquo;t send a parent the same report twice.</p>
-
-  <div class="callout callout-slate">
-    <span class="callout-icon">📝</span>
-    <div class="callout-body">Every send is recorded &mdash; which student, which address, which week, and you as the sender. That record is what lets the school answer &ldquo;what were we told, and when&rdquo; later, and it exists only because the app does the sending rather than your mail client.</div>
-  </div>
-
-  <p style="color:var(--mid);margin-bottom:20px"><strong>If a student is missing from the list.</strong> The panel shows a count of students it could not build a report for. That happens when a student&rsquo;s account doesn&rsquo;t match the district student-ID format, and it will keep happening for that student until the account is corrected &mdash; the system can&rsquo;t fix it on its own, and won&rsquo;t quietly skip them without telling you.</p>
+  <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">Header buttons</h3>
+  <table class="ref-table">
+    <thead><tr><th style="width:32%">Button</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td class="td-label">+ New Lesson</td><td>Opens “Log a lesson”: the day's objective, activity, vocabulary and the competencies taught, for one or more periods. Shown only when warm-ups (Module 2) are on. Not the same as 📅 Lessons' “+ New lesson”</td></tr>
+      <tr><td class="td-label">Student Context</td><td>One document per student that gathers their lessons, checks and warm-ups, updated weekly. “← Back to dashboard” returns to the roster</td></tr>
+      <tr><td class="td-label">✉ Parent Reports</td><td>Not in use yet. See <a href="#parent-reports">Parent Reports</a></td></tr>
+      <tr><td class="td-label">🎓 Competency ratings</td><td>Confirm or set each student's SCR rating. See <a href="#turnin">Grading and Competency Ratings</a></td></tr>
+      <tr><td class="td-label">💬 Feedback</td><td>Where feedback goes, per course. See <a href="#feedback">Where Feedback Goes</a></td></tr>
+      <tr><td class="td-label">📅 Lessons</td><td>Start dates, rollout status, and lesson edits. See <a href="#create">Lessons and Start Dates</a></td></tr>
+      <tr><td class="td-label">❓ Terms</td><td>What each word and number on the dashboard means. Escape closes it</td></tr>
+      <tr><td class="td-label">↻ Refresh</td><td>Loads the latest</td></tr>
+      <tr><td class="td-label">Whole school year</td><td>The year menu. Pick a marking period to see only that part of the year</td></tr>
+    </tbody>
+  </table>
 </div>
 
 <!-- STATUS -->
 <div class="topic" id="status">
   <a class="topic-anchor"></a>
   <div class="topic-header">
-    <div class="topic-icon icon-teal">🔍</div>
-    <h2>Understanding Student Status</h2>
+    <div class="topic-icon icon-teal" aria-hidden="true">🔍</div>
+    <h2>Understanding Status</h2>
   </div>
 
-  <p style="color:var(--mid);margin-bottom:20px">Every student's work for a lesson is in one of four states:</p>
+  <p style="color:var(--mid);margin-bottom:20px">Each student's work for a lesson is in one of four states:</p>
   <div style="margin-top:4px">
     <div class="status-row">
-      <div><span class="status-badge" style="background:#f1f3f4;color:#5f6368;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">⚪ NOT CHECKED</span></div>
-      <div class="status-desc">No evaluation has come back. The student hasn't clicked Submit for Feedback, or their first check is still running.</div>
+      <div><span class="status-badge" style="background:#f1f3f4;color:#3c4043;">⚪ Not checked yet</span></div>
+      <div class="status-desc">No check has come back. The student hasn't pressed Submit for Feedback, or the first check is still running.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge" style="background:#fef3e2;color:#9c5000;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">✏️ NOT PASSING YET</span></div>
-      <div class="status-desc">One or more checks have come back and none passed. This is different from not checked: the student is working on it.</div>
+      <div><span class="status-badge" style="background:#fef3e2;color:#8a4500;">✏️ Checked · not passing yet</span></div>
+      <div class="status-desc">One or more checks came back, and none passed. The student is working on it.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge" style="background:#e6f4ea;color:#1e8e3e;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">✅ PASSED</span></div>
-      <div class="status-desc">The latest check meets the standard. The student may turn it in on Canvas, or keep improving it.</div>
+      <div><span class="status-badge" style="background:#e6f4ea;color:#137333;">✅ Passed</span></div>
+      <div class="status-desc">The latest check met the assignment's criteria. The student can turn it in on Canvas, or keep improving it.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge" style="background:#e0f2f1;color:#00695c;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">↩️ PASSED BEFORE</span></div>
+      <div><span class="status-badge" style="background:#e0f2f1;color:#00594f;">↩️ Passed before · latest needs revision</span></div>
       <div class="status-desc">An earlier check passed, and the latest one needs revision.</div>
     </div>
   </div>
-  <p style="color:var(--mid);margin-bottom:20px">A second badge appears while a check is in progress or needs attention:</p>
+  <p style="color:var(--mid);margin:20px 0">A second badge shows while a check is on its way, or when it failed:</p>
   <div style="margin-top:4px">
     <div class="status-row">
-      <div><span class="status-badge" style="background:#fef3e2;color:#9c5000;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">QUEUED</span></div>
-      <div class="status-desc">The student clicked Submit for Feedback; the work is waiting to be evaluated. It should move on within a few minutes.</div>
+      <div><span class="status-badge" style="background:#fef3e2;color:#8a4500;">Waiting to be checked</span></div>
+      <div class="status-desc">Submitted and in line for its check. The student's card says “Waiting for feedback…”.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge" style="background:#dbeafe;color:#1e40af;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">EVALUATING NOW</span></div>
-      <div class="status-desc">The evaluation is running.</div>
+      <div><span class="status-badge" style="background:#dbeafe;color:#1e40af;">Being checked now</span></div>
+      <div class="status-desc">The check is running. The student sees the same words.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge" style="background:#fce8e6;color:#d93025;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">FLAGGED ⚠</span></div>
-      <div class="status-desc">Something went wrong (a processing failure or timeout). Open the student's document; contact the admin if it doesn't clear.</div>
+      <div><span class="status-badge" style="background:#fce8e6;color:#b3261e;">Couldn't be checked ⚠</span></div>
+      <div class="status-desc">The check failed or timed out. This isn't the student's work. A check still running after 12 minutes is stopped and lands here. These rows are counted under Needs attention. See <a href="#problems">When Students Have Problems</a>.</div>
     </div>
   </div>
   <div class="callout callout-teal">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body">Passing isn't required before a student turns in on Canvas. If a submission arrives in Canvas from a student who is ⚪ or ✏️ here, that's your flag that it hasn't passed a check.</div>
+    <span class="callout-icon" aria-hidden="true">💡</span>
+    <div class="callout-body">Passing isn't required before a student turns in on Canvas. A Canvas submission from a student who is ⚪ or ✏️ here hasn't passed a check yet.</div>
   </div>
 </div>
 
-<!-- MODULE 2 (Say/Do Ledger cas-ccps finding #10) -->
+<!-- LESSONS -->
+<div class="topic" id="create">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-gold" aria-hidden="true">📅</div>
+    <h2>Lessons and Start Dates</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:24px">Give each lesson a start date in 📅 Lessons. To change what a lesson says, or add one, write a draft there. You don't upload rubrics or forms to make assignments.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Open 📅 Lessons</strong>
+        <p>One table per course: Lesson, Status (Current, Upcoming, Taught or No date), Starts, and Last rollout. Next to each course name: whether the rollout is on, or “in shadow (changes nothing)”.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Set a start date</strong>
+        <p>Pick a date in Starts. It saves when you change it. <strong>Clear</strong> removes it. A lesson runs from its start date until the next one starts.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Edit a lesson, or add one</strong>
+        <p><strong>Edit</strong> opens the lesson's fields as a draft. <strong>+ New lesson</strong> (next to the course name) starts an empty one: title, objective, activity, the student task or a brief for it, a warm-up anchor, vocabulary, and competencies with a tier each.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-body">
+        <strong>Save draft, then Submit for import</strong>
+        <p>Submit only works once every required field is filled. The draft is imported that evening and comes back as a proposal.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">5</div>
+      <div class="step-body">
+        <strong>Review the proposal</strong>
+        <p>Open it under Lesson drafts. Choose <strong>Accept the proposal</strong>, or <strong>Return with my note</strong> to send it back. An accepted lesson goes live once the change is reviewed and published (the screen calls this a PR: a reviewed change to the system's files).</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-gold">
+    <span class="callout-icon" aria-hidden="true">💡</span>
+    <div class="callout-body"><strong>Competency tiers.</strong> Each lesson's competencies are primary (must be shown to pass), secondary or tertiary (credited when shown). The draft won't submit unless the tiers follow those rules.</div>
+  </div>
+</div>
+
+<!-- ENROLLMENT -->
+<div class="topic" id="register">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-gold" aria-hidden="true">👥</div>
+    <h2>How Students Get Their Documents</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:24px">Nothing to do. You don't register students one at a time. The nightly rollout (about 9 p.m.) does it from the Canvas roster.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Enroll</strong>
+        <p>For the current lesson and any lesson starting within 2 days, the rollout enrolls every student on the Canvas roster export.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Make the documents</strong>
+        <p>Each student gets their own document for the lesson. Until the lesson's release night, it isn't shared yet.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Share them the night before</strong>
+        <p>The night before a lesson starts, each document is shared with its student and appears on their dashboard. A student who joins late gets theirs after the next run.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon" aria-hidden="true">💡</span>
+    <div class="callout-body"><strong>A student is missing?</strong> Check they're in the Canvas section. A late joiner only appears once a fresh Canvas roster export is in place; an old export shows as a ⚠ line in 📅 Lessons' Last rollout column. Tell your admin.</div>
+  </div>
+</div>
+
+<!-- FEEDBACK PLACEMENT -->
+<div class="topic" id="feedback">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-teal" aria-hidden="true">💬</div>
+    <h2>Where Feedback Goes</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">Open <strong>💬 Feedback</strong> and choose, per course, <em>as a comment</em> on the document or <em>in the document</em>. The <strong>Now:</strong> line shows the live setting. Today it's “as a comment, for every course”.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px">A comment keeps the document to the assignment and the student's work, and new documents are made without a feedback section. A change reaches students within about 10 minutes.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>What a feedback comment says.</strong> “Feedback, &lt;date and time&gt;”, then “✅ RESULT: YOUR WORK MEETS THE STANDARD” or “✏️ RESULT: REVISIONS REQUIRED”, then the report (overall assessment, each milestone MET / PARTIALLY MET / NOT MET, required revisions) and what to do next.</p>
+</div>
+
+<!-- MODULE 2 -->
 <div class="topic" id="module2">
   <a class="topic-anchor"></a>
   <div class="topic-header">
-    <div class="topic-icon icon-gold">🧭</div>
-    <h2>What Module 2 Does and Why</h2>
+    <div class="topic-icon icon-gold" aria-hidden="true">🧭</div>
+    <h2>Warm-ups and Lesson Logs</h2>
   </div>
 
-  <p style="color:var(--mid);margin-bottom:20px">Module 2 is the one part of this system that gets more useful the more you use it — it's what lets warm-up questions and feedback personalize to each student over time, instead of treating every student identically. Three pieces work together:</p>
+  <p style="color:var(--mid);margin-bottom:20px">Log the lessons you teach. That's what lets warm-ups fit each student over time. This part of the system is Module 2.</p>
 
-  <p style="color:var(--mid);margin-bottom:8px"><strong>Competency checkboxes.</strong> Every time you log Lesson Context, you check off which state competencies that lesson addressed. This is the only place that connects a specific day's teaching to a specific competency — checking these is what feeds a student's SCR (Student Competency Record) evidence and, downstream, the warm-up personalization below.</p>
+  <p style="color:var(--mid);margin-bottom:8px"><strong>Log a lesson</strong> (the header's <strong>+ New Lesson</strong>). Enter the date, one or more periods, the objective, what students did, vocabulary, and tick the competencies you taught. Teaching the same lesson to several periods? List them with commas: one log is made for each. Each log records which competencies you taught, for coverage reports, and feeds warm-up personalization.</p>
 
   <div class="callout callout-teal" style="margin-bottom:20px">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body">If you skip the checkboxes for a lesson, that lesson simply doesn't count toward any competency's evidence — there's no way to recover it later. Logging Lesson Context without checking competencies still works for the roster/context features below, just not for SCR evidence.</div>
+    <span class="callout-icon" aria-hidden="true">💡</span>
+    <div class="callout-body">Competency ratings come from checks of student work, not from lesson logs. A lesson you don't log just isn't counted toward coverage or personalization.</div>
   </div>
 
-  <p style="color:var(--mid);margin-bottom:8px"><strong>"My Context" tab.</strong> A roster view of every student's document, aggregating their lesson history, evaluation activity, and warm-up responses in one place — regenerated weekly, not live. Use it to see what a student's document actually contains without opening each one individually.</p>
+  <p style="color:var(--mid);margin-bottom:8px"><strong>Warm-ups.</strong> A short question at the start of class. Students answer it on their dashboard, and it's scored overnight out of 10 (length, grammar and engagement). Students can earn an extra point by replying to the feedback in at least 10 words by the date shown.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Warm-up readiness.</strong> The panel at the top of your dashboard shows how many students have enough history (evaluation results, warm-up responses, logged lesson context) for the system to generate a genuinely personalized warm-up question, versus a generic one. Click any of those numbers to filter your roster to exactly those students — the "building a personalized learning profile" group's next step is always the same: log more Lesson Context for that class (lessons drafted nightly from the pacing guide count too; adjusting a drafted lesson's competencies improves them).</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Warm-up readiness</strong> (the strip under the header) shows how much the system knows about each student, from checks and warm-up answers. Click a number to see those students. “Building a personalized learning profile” means the system is still learning what kind of warm-up works for them; “ready for fully personalized feedback” means it's confident.</p>
+</div>
+
+<!-- PARENT REPORTS -->
+<div class="topic" id="parent-reports">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-teal" aria-hidden="true">✉️</div>
+    <h2>Parent Reports</h2>
+  </div>
 
   <div class="callout callout-gold">
-    <span class="callout-icon">🔗</span>
-    <div class="callout-body">The throughline: Lesson Context + competency checkboxes → SCR evidence and warm-up readiness → more personalized questions and feedback for that class. Skipping the checkboxes doesn't break anything today, but it's the one habit that determines how much value Module 2 actually delivers later.</div>
+    <span class="callout-icon" aria-hidden="true">⚠️</span>
+    <div class="callout-body"><strong>Not in use yet. Don't send reports.</strong> Weekly parent reports stay off until the school decides to start them. The ✉ Parent Reports button is there, but its wording and recipient checks are still being fixed.</div>
   </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">How it works, for when it starts: the panel lists this week's report for each student. Nothing is sent until you type an address and press Send for one student, and there's no “send all”. A second send for the same student and week is refused. Every send is recorded.</p>
 </div>
 
 <!-- STUDENT PROBLEMS -->
 <div class="topic" id="problems">
   <a class="topic-anchor"></a>
   <div class="topic-header">
-    <div class="topic-icon icon-rose">🙋</div>
+    <div class="topic-icon icon-rose" aria-hidden="true">🙋</div>
     <h2>When Students Have Problems</h2>
   </div>
 
   <table class="ref-table">
-    <thead><tr><th style="width:35%">Student says…</th><th>What's happening</th><th>What to do</th></tr></thead>
+    <thead><tr><th style="width:30%">Student says…</th><th>What's happening</th><th>What to do</th></tr></thead>
     <tbody>
       <tr>
-        <td class="td-label">"I don't see the 📊 menu in my document"</td>
-        <td>Expected: the district turns Apps Script off for student accounts, so the menu never appears for them</td>
-        <td>Send them to their assignment dashboard (link near the top of their document) and have them click <strong>Submit for Feedback</strong></td>
+        <td class="td-label">“My card says Couldn't be checked ⚠”</td>
+        <td>The check failed or timed out. Not their fault; their work is safe</td>
+        <td>Follow the timeout email you got: it says whether to restart the check or ask the student to press Submit for Feedback again. Contact your admin if it keeps happening</td>
       </tr>
       <tr>
-        <td class="td-label">"I submitted for feedback but nothing appeared"</td>
-        <td>The evaluation may still be running, or a pipeline issue</td>
-        <td>Feedback is added at the <strong>end</strong> of the document. Ask them to refresh it. If nothing after 10 minutes, check your dashboard: if they're still QUEUED, contact the admin to check the pipeline</td>
+        <td class="td-label">“I submitted but there's no feedback”</td>
+        <td>The check may still be in line or running</td>
+        <td>Feedback is a comment: have them open the document and click Comments. Their card says “Waiting for feedback…” or “Being checked now…” while it's on its way</td>
       </tr>
       <tr>
-        <td class="td-label">"The dashboard says I haven't written enough"</td>
-        <td>Fewer than 25 words below the response line</td>
-        <td>Ask them to write more below "── YOUR RESPONSE BEGINS HERE ──"</td>
+        <td class="td-label">“It says Not enough to evaluate yet”</td>
+        <td>Fewer than 25 words below the grey line</td>
+        <td>Ask them to write more under “── YOUR RESPONSE BEGINS HERE ──”, above the “Do not delete this line” line</td>
       </tr>
       <tr>
-        <td class="td-label">"My assignment isn't on my dashboard"</td>
-        <td>Signed into the wrong Google account, or not registered</td>
-        <td>Have them sign into their school account. If they still don't appear on your dashboard, their registration may have failed</td>
+        <td class="td-label">“My assignment isn't on my dashboard”</td>
+        <td>Wrong Google account, the lesson hasn't been released, or they're not enrolled</td>
+        <td>Have them sign into their school account. Check the lesson has a start date in 📅 Lessons. If they're not on your roster either, see <a href="#register">How Students Get Their Documents</a></td>
       </tr>
       <tr>
-        <td class="td-label">"I accidentally deleted something in the document"</td>
-        <td>Student edited a protected zone (feedback, footer, prompt)</td>
-        <td>Ask them to use File → Version history → See version history to restore. If they deleted the CONFIG_ID footer, contact admin — the document may need to be re-created</td>
+        <td class="td-label">“I don't see the 📊 menu in my document”</td>
+        <td>Expected: that menu doesn't run for student accounts</td>
+        <td>Send them to their dashboard to press <strong>Submit for Feedback</strong></td>
       </tr>
       <tr>
-        <td class="td-label">"I can't find my document"</td>
-        <td>Looking in the wrong place or wrong account</td>
-        <td>Tell them to go to drive.google.com → "Shared with me", or open it from their dashboard</td>
+        <td class="td-label">“I deleted part of my document”</td>
+        <td>They changed the assignment, the grey line or the bottom line</td>
+        <td>File → Version history → See version history to restore. If the grey line or the CONFIG_ID line is gone for good, contact your admin</td>
       </tr>
       <tr>
-        <td class="td-label">"How do I turn it in?"</td>
+        <td class="td-label">“My Info is wrong”</td>
+        <td>Their name, class, period or teacher is wrong on file</td>
+        <td>They can press ✉ Request a correction in My Info, which opens an email to you. Ask your admin to fix it</td>
+      </tr>
+      <tr>
+        <td class="td-label">“How do I turn it in?”</td>
         <td>They turn in on Canvas</td>
-        <td>Copy the document's link, open the Canvas assignment, Start Assignment → Website URL, paste, Submit</td>
+        <td>Copy the document's link, open the Canvas assignment, Start Assignment → Website URL, paste, Submit Assignment</td>
       </tr>
     </tbody>
   </table>
 </div>
 
-<!-- TURNING IN, GRADING AND THE SCR -->
+<!-- GRADING AND SCR -->
 <div class="topic" id="turnin">
   <a class="topic-anchor"></a>
   <div class="topic-header">
-    <div class="topic-icon icon-rose">📬</div>
-    <h2>Turning In, Grading and the SCR</h2>
+    <div class="topic-icon icon-rose" aria-hidden="true">🎓</div>
+    <h2>Grading and Competency Ratings</h2>
   </div>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Turning in happens in Canvas.</strong> Each Canvas assignment asks students for their CAS document's link (Website URL). You grade there; CAS doesn't send grades to Canvas. The CAS Turn-In Form is retired and was never given to students.</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Grade in Canvas.</strong> Each Canvas assignment asks for the student's document link (Website URL). The system doesn't send grades to Canvas. The AI's suggested score on a passing check, 2 (Adequate), 3 (Solid) or 4 (Exceptional), is a reference only. Higher is better.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>CAS keeps the SCR current.</strong> Every check writes competency evidence for the competencies its milestones are tied to. The weekly SCR suggestion counts <strong>one piece of evidence per assignment</strong>, using that assignment's best result, so drafts don't count against a student. It averages the student's <strong>three best pieces</strong> (Met = 2, Partially met = 3, Not met = 4) and rounds to the nearest rating. With fewer than three assignments the competency shows "insufficient evidence". Ratings 1 and 5 are never suggested; they're yours to enter as an override. Confirm or override each suggestion in the dashboard's SCR review.</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Rate competencies in 🎓 Competency ratings.</strong> Each item shows the student, the competency, “Evidence so far: n met, n not met, n partially met”, and the AI-suggested rating. Press <strong>Confirm</strong> to accept it, or type 1–5 under “Or enter 1–5” and press <strong>Submit</strong>. Items with too little evidence say so; you can still enter a rating.</p>
+
+  <table class="ref-table">
+    <thead><tr><th style="width:20%">Rating</th><th>Meaning (1 is the highest)</th></tr></thead>
+    <tbody>
+      <tr><td class="td-label">1</td><td>Can teach others</td></tr>
+      <tr><td class="td-label">2</td><td>Without supervision</td></tr>
+      <tr><td class="td-label">3</td><td>Limited supervision</td></tr>
+      <tr><td class="td-label">4</td><td>With supervision</td></tr>
+      <tr><td class="td-label">5</td><td>Cannot perform</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-rose">
+    <span class="callout-icon" aria-hidden="true">⚠️</span>
+    <div class="callout-body"><strong>The two scales run in opposite directions.</strong> On a competency rating, 1 is the highest. On the AI's suggested score, 4 is the highest. Changing a suggested rating from 2 to 4 lowers it.</div>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>How the AI suggests a rating</strong> (updated weekly). Every check records evidence for the competencies its milestones cover. One assignment counts once, at its best result, so drafts don't count against a student. With 3 or more assignments, it averages the 3 best (Met = 2, Partially met = 3, Not met = 4) and rounds. With fewer than 3, there's no suggestion yet. It only ever suggests 2, 3 or 4: 1 and 5 are yours alone.</p>
 </div>
 
-<!-- TERM MANAGEMENT -->
+<!-- TERM -->
 <div class="topic" id="term">
   <a class="topic-anchor"></a>
   <div class="topic-header">
-    <div class="topic-icon icon-slate">📅</div>
-    <h2>Term Management</h2>
+    <div class="topic-icon icon-slate" aria-hidden="true">📅</div>
+    <h2>Marking Periods and the School Year</h2>
   </div>
 
-  <p style="color:var(--mid);margin-bottom:20px">The system tracks which academic term each student registration belongs to. This allows dashboards to filter by term and allows completed terms to be archived cleanly.</p>
+  <p style="color:var(--mid);margin-bottom:20px">Use the year menu in the header. It starts on <strong>Whole school year</strong>. Pick a marking period, such as “Marking period 1, 2026–27”, to see only that part. A student's work belongs to the marking period it was made in.</p>
 
   <div class="callout callout-slate">
-    <span class="callout-icon">📋</span>
-    <div class="callout-body"><strong>Term management is handled by the admin</strong> — not by teachers. This section explains what happens so you understand what you'll see at the start and end of each term.</div>
+    <span class="callout-icon" aria-hidden="true">📋</span>
+    <div class="callout-body"><strong>Archiving is your admin's job.</strong> At the end of a school year, the admin archives it. Archived work no longer shows on the dashboard. It's kept, not deleted, and the admin can bring a year back.</div>
   </div>
 
-  <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">Start of term</h3>
-  <p style="color:var(--mid);margin-bottom:12px">The admin sets the current term (e.g. "2025-26 S2") before new students are registered. Your dashboard will automatically show the current term by default when you open it.</p>
-
-  <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">During the term</h3>
-  <p style="color:var(--mid);margin-bottom:12px">Your dashboard shows all students from the current term. Use the term filter dropdown to switch between terms — for example, to check whether a student completed work in a previous term.</p>
-
-  <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">End of term</h3>
-  <p style="color:var(--mid);margin-bottom:12px">The admin archives completed terms via Admin Controls. Archived students disappear from the default dashboard view. Their records are preserved for academic integrity purposes — they're hidden, not deleted. To see archived students, select "All Terms" from the filter dropdown.</p>
-
   <div class="callout callout-gold">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>Before the term ends:</strong> check for students still ⚪ Not checked or ✏️ Not passing on assignments you expect to be finished, and reach out to them before the admin archives the term.</div>
+    <span class="callout-icon" aria-hidden="true">💡</span>
+    <div class="callout-body"><strong>Before a marking period ends:</strong> click ⚪ Not checked yet and ✏️ Checked, not passing yet, and reach out to those students.</div>
   </div>
 </div>
 
-<!-- WHAT TEACHERS CAN'T EDIT -->
+<!-- WHAT YOU CAN CHANGE -->
 <div class="topic" id="limits">
   <a class="topic-anchor"></a>
   <div class="topic-header">
-    <div class="topic-icon icon-slate">🔒</div>
-    <h2>What Teachers Can and Can't Edit</h2>
+    <div class="topic-icon icon-slate" aria-hidden="true">🔒</div>
+    <h2>What You Can Change</h2>
   </div>
 
   <table class="ref-table">
-    <thead><tr><th style="width:35%">Item</th><th>Can edit?</th><th>Notes</th></tr></thead>
+    <thead><tr><th style="width:30%">Item</th><th>Can you change it?</th><th>How</th></tr></thead>
     <tbody>
-      <tr><td class="td-label">Prompt template document</td><td class="td-action">✅ Yes</td><td>Edit it anytime. Changes affect students registered after the edit — already-registered students have the prompt injected at creation time</td></tr>
-      <tr><td class="td-label">Assignment criteria (milestones, persona)</td><td class="td-action">⚠️ Create new assignment</td><td>Use the rubric upload flow to create a new assignment with updated criteria. Don't edit the Teacher Matrix directly</td></tr>
-      <tr><td class="td-label">Student registration details</td><td class="td-action">❌ Contact admin</td><td>Student name, email, class, period — these are locked in the Ledger. Admin can correct them</td></tr>
-      <tr><td class="td-label">Student's assignment document</td><td class="td-action">🚫 No</td><td>You have comment access to your own students' docs, for feedback. Only the student edits, and only until they turn it in; after that it's read-only for them too. Other teachers and classmates have no access</td></tr>
-      <tr><td class="td-label">Grades</td><td class="td-action">✅ In Canvas</td><td>CAS shows a suggested score as a reference; the grade is yours, in Canvas</td></tr>
-      <tr><td class="td-label">SCR ratings</td><td class="td-action">✅ In your dashboard</td><td>Confirm or override each suggestion in SCR review</td></tr>
-      <tr><td class="td-label">Teacher Matrix spreadsheet</td><td class="td-action">❌ Do not edit</td><td>System-managed. Editing rows directly can corrupt the evaluation pipeline</td></tr>
+      <tr><td class="td-label">Lesson start dates</td><td class="td-action">✅ Yes</td><td>📅 Lessons → Starts. Saves when you change it</td></tr>
+      <tr><td class="td-label">A lesson's text, task and competencies</td><td class="td-action">✅ Through a draft</td><td>📅 Lessons → Edit. The draft is reviewed before students see it</td></tr>
+      <tr><td class="td-label">A new lesson</td><td class="td-action">✅ Through a draft</td><td>📅 Lessons → + New lesson</td></tr>
+      <tr><td class="td-label">Where feedback goes</td><td class="td-action">✅ Yes</td><td>💬 Feedback, per course</td></tr>
+      <tr><td class="td-label">Student details (name, class, period)</td><td class="td-action">❌ Ask your admin</td><td>They come from the Canvas roster</td></tr>
+      <tr><td class="td-label">A student's document</td><td class="td-action">💬 Comment only</td><td>The student edits; you can comment</td></tr>
+      <tr><td class="td-label">Grades</td><td class="td-action">✅ In Canvas</td><td>The suggested score is a reference; the grade is yours</td></tr>
+      <tr><td class="td-label">Competency ratings</td><td class="td-action">✅ Yes</td><td>🎓 Competency ratings: confirm, or enter 1–5</td></tr>
+      <tr><td class="td-label">The system's spreadsheets</td><td class="td-action">❌ Don't edit</td><td>Except a step a timeout email asks for</td></tr>
     </tbody>
   </table>
+</div>
+
+<!-- WORDS (same words and meanings as CAS_TEACHER_TERMS in scripts/00_SharedConfig.js) -->
+<div class="topic" id="words">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-slate" aria-hidden="true">❓</div>
+    <h2>Words You'll See</h2>
+  </div>
+  <p style="color:var(--mid);margin-bottom:16px">The same list as <strong>❓ Terms</strong> on your dashboard.</p>
+  <dl class="terms">
+    <div><dt>Check</dt><dd>One AI evaluation of a submission against the assignment’s criteria (Flow 2). A student can be checked many times.</dd></div>
+    <div><dt>Passed / Not passing yet</dt><dd>Whether the latest check met the assignment’s criteria. “Passed before” means an earlier check passed and the latest needs revision.</dd></div>
+    <div><dt>Waiting to be checked</dt><dd>Submitted and in line for its check.</dd></div>
+    <div><dt>Being checked now</dt><dd>The check is running.</dd></div>
+    <div><dt>Couldn’t be checked</dt><dd>The check failed or timed out, not the student’s work. The timeout email says what to do.</dd></div>
+    <div><dt>AI’s suggested score</dt><dd>On a passing check, the AI suggests 2 (Adequate), 3 (Solid) or 4 (Exceptional). Higher is better. It never suggests 1 or 5.</dd></div>
+    <div><dt>Competency rating (SCR)</dt><dd>The Virginia CTE Student Competency Record, 1 to 5, where 1 is the highest: 1 Can teach others, 2 Without supervision, 3 Limited supervision, 4 With supervision, 5 Cannot perform. The AI suggests 2 to 4 once there are 3 pieces of evidence; 1 and 5 are yours alone.</dd></div>
+    <div><dt>Competency tiers</dt><dd>Each assignment’s competencies are primary (must be shown to pass), secondary or tertiary (credited when shown).</dd></div>
+    <div><dt>Warm-up readiness</dt><dd>How much the system knows about each student, from checks and warm-up answers. Click a number to see those students.</dd></div>
+    <div><dt>Personalized learning profile</dt><dd>The system’s growing guess of what kind of warm-up works for a student; “ready for fully personalized feedback” means it’s confident.</dd></div>
+    <div><dt>Student Context</dt><dd>One document per student that gathers their lessons, checks and warm-ups, updated weekly.</dd></div>
+    <div><dt>Current lesson</dt><dd>The lesson whose start date in 📅 Lessons is the latest on or before today, per course.</dd></div>
+    <div><dt>Rollout</dt><dd>The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead).</dd></div>
+    <div><dt>Feedback as a comment</dt><dd>Where a student’s feedback goes: a comment on the document, or written into it. Set per course in 💬 Feedback.</dd></div>
+    <div><dt>3-Odd / 3-Even</dt><dd>The two halves of period 3, which meet on alternate (odd or even) calendar dates.</dd></div>
+    <div><dt>Marking period</dt><dd>A term code like 2627_MP1 is marking period 1 of 2026–27.</dd></div>
+  </dl>
 </div>
 
 </div><!-- /content -->
