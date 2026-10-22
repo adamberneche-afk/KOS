@@ -4109,3 +4109,21 @@ kind of failure every morning.
   `teacher-dashboard-inline-js.test.js` (the submitted time, the card
   label, the back link, all through the real `render()`). Rendered in
   headless Chromium.
+
+## Student docs: the assignment at 8 pt, the student's writing at 10, 2026-10-22
+
+- **Why:** the operator: student docs are still hard to look at.
+- **02:** `stampDocument_` sets the assignment's lines, the spacing lines
+  and (with feedback in the doc) the feedback zone to 8 pt
+  (`DOC_BODY_FONT_SIZE`), and the empty paragraph under the response
+  marker, where the student writes, to 10 pt (`DOC_RESPONSE_FONT_SIZE`).
+  Sizes go on the paragraph's attributes (`_docFontSize_`), so the empty
+  writing space keeps its size for what the student types. The title stays
+  14 pt bold, the marker 10 pt grey, the page header 8 pt (63). 37's
+  evaluation block copies the END FEEDBACK line's attributes, so in-doc
+  feedback is 8 pt too.
+- **Only new docs:** a doc made before the push keeps its sizes.
+- **Not verified:** that Google Docs carries an empty paragraph's size to
+  typed text; check the first doc made after the push.
+- **Tests:** `feedback-as-comment.test.js`; the sandbox's `DocumentApp`
+  gains the `Attribute` enum.

@@ -119,6 +119,25 @@ test('stampDocument_: with the flag on, the body is the assignment and the respo
   assert.ok(text.includes('[SYS_DASHBOARD_URL:https://example.test/exec]'), 'the menu still finds the dashboard');
 });
 
+// 2026-10-22: the assignment at 8 pt and the student's writing space at 10,
+// set on the paragraphs so the empty writing space keeps its size.
+test('stampDocument_: the assignment is 8 pt and the student\'s writing space 10 pt', () => {
+  for (const flag of ['all', undefined]) {
+    const { sandbox, id } = stamp(flag, 'CAS-8175-L06');
+    const body = sandbox.DocumentApp.openById(id).getBody();
+    const paras = Array.from({ length: body.getNumChildren() }, (_, i) => body.getChild(i));
+    const size = (p) => p.getAttributes().FONT_SIZE;
+    const at = (t) => paras.findIndex((p) => p.getText() === t);
+    const marker = at('── YOUR RESPONSE BEGINS HERE ──');
+    assert.equal(size(paras[at('Write your plan.')]), 8, flag + ': the assignment');
+    assert.equal(paras[marker + 1].getText(), '');
+    assert.equal(size(paras[marker + 1]), 10, flag + ': the writing space');
+    if (!flag) {
+      assert.equal(size(paras[at('── END FEEDBACK ──')]), 8, 'the feedback zone, whose size 37 copies');
+    }
+  }
+});
+
 test('stampDocument_: with the flag off, the feedback zone is built as before', () => {
   const { text } = stamp(undefined, 'CAS-8175-L06');
   const at = (s) => text.indexOf(s);

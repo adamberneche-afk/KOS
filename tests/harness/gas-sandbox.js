@@ -916,6 +916,8 @@ function makeDocumentAppMock(driveAppMock) {
     // resolves instead of throwing on undefined.
     // Real Apps Script API — the Element.getType() enum.
     ElementType: { PARAGRAPH: 'PARAGRAPH', LIST_ITEM: 'LIST_ITEM', TABLE: 'TABLE' },
+    // Real Apps Script API — the attribute keys for Paragraph.setAttributes().
+    Attribute: { FONT_SIZE: 'FONT_SIZE', FOREGROUND_COLOR: 'FOREGROUND_COLOR', BOLD: 'BOLD' },
     ParagraphHeading: {
       NORMAL: 'NORMAL', TITLE: 'TITLE', SUBTITLE: 'SUBTITLE',
       HEADING1: 'HEADING1', HEADING2: 'HEADING2', HEADING3: 'HEADING3',
