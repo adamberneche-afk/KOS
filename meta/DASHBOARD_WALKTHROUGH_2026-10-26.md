@@ -13,7 +13,7 @@ Dates assume the walk is on **Mon Oct 26**. Odd and even days go by calendar dat
 
 ### 0. Before you start
 
-1. **Redeploy the Teacher Dashboard**: in the Teacher Dashboard project, Deploy → Manage deployments → edit → New version. A push changes the code but not the deployed version, and 07 and 23 have both changed since the last version (10-19). The Student Dashboard's version was recorded done on 10-20. If a 3-Odd student sees a warm-up dated an even day (check 3), the Student Dashboard is running a version from before the period split. Give it a new version too.
+1. **Confirm both web apps were promoted**: `run.js` cuts a version and moves each deployment in the project's `deployments.txt` onto it, and prints a Links block; make a version by hand (Deploy → Manage deployments → edit → New version) only if it warned that a deployment isn't listed. (Corrected 2026-10-22: this step used to say a push changes the code but not the deployed version, and 07 and 23 have both changed since the last version (10-19). The Student Dashboard's version was recorded done on 10-20. If a 3-Odd student sees a warm-up dated an even day (check 3), the Student Dashboard is running a version from before the period split: check its deployment is in `deployments.txt`.)
 2. **Get the right accounts.** Each dashboard works out who you are from the signed-in Google account. You need a test student account in the district domain with Ledger rows, or you can look over real students' shoulders. Have one of each:
    - **A**: a student with a scored text-box warm-up (WarmUpQueue `SCORED`), ideally one still inside its extra-credit window.
    - **B**: a student with no warm-ups at all.
