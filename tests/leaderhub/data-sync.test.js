@@ -8,7 +8,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFile } = require('../harness/gas-sandbox');
+const { loadGasFile, loadGasFiles } = require('../harness/gas-sandbox');
 
 const DATA_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'Data.gs');
 
@@ -119,4 +119,33 @@ test('LH_DATA_TABS covers every row-shaped domain the client\'s write-through ho
   assert.ok(m, 'LH_SERVER_SYNCED_DATA_KEYS not found in 05-data-helpers-dashboard.html — did it move or get renamed?');
   const domains = [...m[1].matchAll(/:\s*'([^']+)'/g)].map((mm) => mm[1]);
   assert.deepEqual(domains.slice().sort(), [...exported.LH_DATA_TABS].sort());
+});
+
+// No browser storage, Phase 3 (2026-10-22): doGet() writes the server's data
+// into the page. Stored text can't close the <script> or break the literal.
+test('lhInjectBootData_ puts the data first in <head>, and no stored text can close the tag', () => {
+  const { exported } = loadGasFile(DATA_PATH, ['lhInjectBootData_']);
+  const evil = '</script><script>alert(1)</script>\u2028x';
+  const out = exported.lhInjectBootData_('<html><head><title>t</title></head></html>', { ok: true, note: evil });
+  assert.ok(out.startsWith('<html><head>\n<script>window.__LH_BOOT__='));
+  assert.equal(out.split('</script>').length - 1, 1, 'only the tag\'s own closing');
+  const json = out.slice(out.indexOf('=') + 1, out.indexOf(';</script>'));
+  assert.equal(JSON.parse(json).note, evil, 'the text survives exactly');
+});
+
+test('lhBootData_ returns every domain, found or not, with each one\'s version', () => {
+  const { exported, sandbox } = loadGasFiles(
+    [path.join(__dirname, '..', '..', 'leader-hub', 'Config.gs'), DATA_PATH, path.join(__dirname, '..', '..', 'leader-hub', 'SCR.gs')],
+    ['lhBootData_', 'lhPushData_', 'LH_DATA_TABS']);
+  void sandbox;
+  const push = exported.lhPushData_({ domain: 'trips', headers: ['Id', 'RecordJSON'], rows: [['1', '{"id":1}']] });
+  const boot = exported.lhBootData_();
+  assert.equal(boot.ok, true);
+  assert.deepEqual(Object.keys(boot.data).sort(), [...exported.LH_DATA_TABS].sort());
+  assert.equal(boot.data.trips.found, true);
+  assert.equal(boot.data.trips.updatedAt, push.updatedAt);
+  assert.deepEqual(boot.data.trips.rows, [['1', '{"id":1}']]);
+  assert.equal(boot.data.goals.found, false);
+  assert.ok(boot.config && 'lh_profile' in boot.config);
+  assert.equal(boot.scr.found, false);
 });

@@ -15,7 +15,8 @@ const path = require('path');
 const vm = require('vm');
 
 const SRC = fs.readFileSync(path.join(__dirname, '..', '..', 'leader-hub', 'src', '05-data-helpers-dashboard.html'), 'utf8');
-const START = SRC.indexOf('const LH_SERVER_SYNCED_CONFIG_KEYS = [');
+// From the store (_lhStore, Phase 3) at the top of the file.
+const START = SRC.indexOf('const LH_BOOT = ');
 const REFRESH = SRC.indexOf('async function lhRefreshDataDomainsFromServer_() {');
 const END = SRC.indexOf('\n}\n', REFRESH) + 3;
 assert.ok(START > 0 && REFRESH > START && END > REFRESH, 'sync code not found in 05-data-helpers-dashboard.html');

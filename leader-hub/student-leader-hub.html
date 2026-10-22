@@ -8,9 +8,9 @@
   ╔══════════════════════════════════════════════════════════════════════╗
   ║  FERPA DATA HANDLING NOTICE                                          ║
   ║  This file processes student education records locally in-browser.   ║
-  ║  Student PII (names, grades, scores) is stored in this browser's     ║
-  ║  localStorage and, when served from the deployed Web App, synced to  ║
-  ║  one private, owner-only "LeaderHub Data" Spreadsheet (Data.gs).     ║
+  ║  Served from the deployed Web App, student PII (names, grades,       ║
+  ║  scores) is kept in page memory and one private, owner-only          ║
+  ║  "LeaderHub Data" Spreadsheet (Data.gs), never in browser storage.   ║
   ║  Network calls this page makes go to: script.google.com              ║
   ║  — your own Apps Script Web App(s) (EmailBridge.gs, and optionally a  ║
   ║  connected cas-ccps Teacher Dashboard, D1/Addendum 24) — and, only if ║
@@ -3381,7 +3381,7 @@ return false;
 </div>
 
 
-<script data-lh-block="leader-hub-block-1-part-1-of-17">var LH_RETIRED_SECRET_KEYS,_lsWriteFailWarned,_lsReadFailWarned,LH_PAGE_MEMORY_KEYS,_lhPageMemory,LH_ID_LOG_KEYS,LS,LH_SERVER_SYNCED_CONFIG_KEYS,LH_SYNC_PENDING_KEY,_lhSyncFailWarned,LH_SERVER_SYNCED_DATA_KEYS,_lhDataConflictWarned,_lhDataPushChain,SCR_SYNC_DEBOUNCE_MS,_scrSyncQueue,_scrSyncTimer,trips,_otherEventsDefault,otherEvents,PROFILE_DEFAULTS,PROFILE,KEY_CONTACTS_DEFAULTS,MODULES_DEFAULT,MODULES,ORG_DEFAULTS,CUSTOM_ORGS,ORGANIZATIONS,activeOrgId,_studentsDefault,students,goals,TRIPS_SEED,nextId,currentTripId,currentFilter,REQUIRED_FIELDS,fd,du,dn,leadDays,isOvernightTrip,subDeadline,fmtDeadline,tagClass,tagEmoji,rcColors,gcColors,sponsorSteps,coordSteps,postSteps,_activeMoName,_activeMoReturnFocus,RAW_MODAL_CLOSERS,_rawModalReturnFocus,_rawModalWasVisible,_rawModalOpenStack,_rawModalObserver,_unsavedWorkChecks,_lhFormSnaps,_wzEditBaseline,MO_FORM_GUARDS,MO_CLOSE_GUARDS,WZ_STEPS,_wzStep,_wzMaxStepReached,_wzDraft,_origOpenModal,emailTab,emailContextTripId,EMAIL_TEMPLATES,_emailAutoFilled,DECA_RESULT_EVENTS,DECA_PLACE_OPTIONS,lastDecaConf,lastDecaPlace,ORG_RESULTS,_lastOrgResultLevel,_lastOrgResultPlace,ORG_SYNC,ORG_WELCOME_SEEN,DECA_APPROVAL_EVENTS,DECA_SEASON_YEAR,DECA_SEASON_DEFAULT,DECA_SEASON,memberTab,MEMBER_STATUS_MAP,OFFICER_POSITIONS,_DECA_ROLE_HTML,_DECA_STATUS_HTML,slipRosters,nextSlipId,currentSlipFilter,_asSource,ftPermOverrides,confLeaveRecords,CONF_REQUIRED,FT_PERM_REQUIRED,_origRenderDashboard,tripArchive,archiveFilter,archivingTripId,archiveFilterCurrent,SCR_COURSES,CUSTOM_COURSES,SCR_STUDENT_EMAILS,PACING_8175,PACING_6115,PACING_8177,scrActiveCourse,scrActivePeriod,scrScores,SCR_SCORE_LABELS,PACING_REGISTRY,Q_COLORS_BG,Q_COLORS_HDR,Q_COLORS_BDR,WBL_STUDENTS,SBE_ELEMENTS,SBE_STATUS,_sbeNoteTimer,_sbeNotePending,LESSON_PLANS,UNIT_PLANS,LP_EDITS,lpActivePlan,GRADING_STRUCTURE,LP_Q_COLORS,LP_Q_BG,LP_C_LABELS,LP_C_COLORS,_lpCurrentView,scrViewMode,PROC_STEPS,PURCHASE_ORDERS,poCounter,RECEIVING_CHECKS,RECEIVING_STATUS,SALES_LOG,INVENTORY,ES_PLAYERS,ES_MATCHES,SSBU_CHECKLIST,SSBU_CHECK_STATUS,MK8_CHECK_STATUS_LOADED,MK8_CHECKLIST,MK8_CHECK_STATUS,_activeToasts,DB_ROLES,BELL_SCHEDULES_DEFAULT,SCHOOL_CALENDAR_YEAR,SCHEDULE_OVERRIDES_DEFAULT,NO_SCHOOL_DEFAULT,DAY_SCHEDULE_MAP_DEFAULT,SCHOOL_PERIODS,BELL_SCHEDULES,CCPS_SCHEDULE_OVERRIDES,CCPS_NO_SCHOOL,DAY_SCHEDULE_MAP,_emailAiReqId,_lpAiReqId,_ord,DECA_DEADLINES_DEFAULT,CCPS_CALENDAR_DEADLINES_DEFAULT,RETIRED_DEFAULT_DEADLINES,DEADLINES,_editingDeadlineId,_naNav,CHOICE_SNOOZED,_lastChoiceCardsSig,PULSE_MEANINGS,HORIZON,MOOD_LABELS,MOOD_ADVICE,MOOD_COLORS,_journalMood,_journalStep,_journalOpenSnapshot,JOURNAL_TOTAL_STEPS,JOURNAL_DRAFT_KEY,_journalDraftTimer,_cronChecked,_journalForced,_journalAutoShownDate,_depositReminderShownDate,_commsTriageShownDate,_ACC_IDS,IMPROVEMENTS,surveyAnswers,_profSaveStatusTimer,MONTHS,MONTH_RE,CROSS_RANGE_SRC,ORDINAL_Q,HOLIDAY_KEYWORDS,_schedSaveStatusTimer,ORG_ROSTER_SYNC_FIELDS,ORG_RESULT_SYNC_FIELDS,AI_FLOW_LABELS,SYNC_PLATFORMS,OBS_PREP_ITEMS,EMAIL_BRIDGE,CAS_CCPS_BRIDGE,QUARTERS_DEFAULT,LP_QUARTERS,CAS_PACING_UNITS,CAS_PACING_COURSES,CAS_PACING_NOTES,CUSTOM_PACING_UNITS,_calendarExpiredBannerDismissed,SP_STATIC_DEFAULTS,_spPeriods,_bragTab,_bragData,_bragBodySnapshot,_bragSubjectSnapshot,BRAG_AUDIENCE,LH_TERMS;
+<script data-lh-block="leader-hub-block-1-part-1-of-17">var LH_BOOT,LH_SERVED,LH_BOOT_FAILED,_lhMem,_lhStore,LH_RETIRED_SECRET_KEYS,_lsWriteFailWarned,_lsReadFailWarned,LH_PAGE_MEMORY_KEYS,_lhPageMemory,LH_ID_LOG_KEYS,LS,LH_SERVER_SYNCED_CONFIG_KEYS,LH_SYNC_PENDING_KEY,_lhSyncFailWarned,LH_SERVER_SYNCED_DATA_KEYS,_lhMigrating,_lhSaveFailed_,_lhScrMigrationPending_,_lhRetryTimer_,_lhDataConflictWarned,_lhDataPushChain,LH_DATA_APPLY,SCR_SYNC_DEBOUNCE_MS,_scrSyncQueue,_scrSyncTimer,trips,_otherEventsDefault,otherEvents,PROFILE_DEFAULTS,PROFILE,KEY_CONTACTS_DEFAULTS,MODULES_DEFAULT,MODULES,ORG_DEFAULTS,CUSTOM_ORGS,ORGANIZATIONS,activeOrgId,_studentsDefault,students,goals,TRIPS_SEED,nextId,currentTripId,currentFilter,REQUIRED_FIELDS,fd,du,dn,leadDays,isOvernightTrip,subDeadline,fmtDeadline,tagClass,tagEmoji,rcColors,gcColors,sponsorSteps,coordSteps,postSteps,_activeMoName,_activeMoReturnFocus,RAW_MODAL_CLOSERS,_rawModalReturnFocus,_rawModalWasVisible,_rawModalOpenStack,_rawModalObserver,_unsavedWorkChecks,_lhFormSnaps,_wzEditBaseline,MO_FORM_GUARDS,MO_CLOSE_GUARDS,WZ_STEPS,_wzStep,_wzMaxStepReached,_wzDraft,_origOpenModal,emailTab,emailContextTripId,EMAIL_TEMPLATES,_emailAutoFilled,DECA_RESULT_EVENTS,DECA_PLACE_OPTIONS,lastDecaConf,lastDecaPlace,ORG_RESULTS,_lastOrgResultLevel,_lastOrgResultPlace,ORG_SYNC,ORG_WELCOME_SEEN,DECA_APPROVAL_EVENTS,DECA_SEASON_YEAR,DECA_SEASON_DEFAULT,DECA_SEASON,memberTab,MEMBER_STATUS_MAP,OFFICER_POSITIONS,_DECA_ROLE_HTML,_DECA_STATUS_HTML,slipRosters,nextSlipId,currentSlipFilter,_asSource,ftPermOverrides,confLeaveRecords,CONF_REQUIRED,FT_PERM_REQUIRED,_origRenderDashboard,tripArchive,archiveFilter,archivingTripId,archiveFilterCurrent,SCR_COURSES,CUSTOM_COURSES,SCR_STUDENT_EMAILS,PACING_8175,PACING_6115,PACING_8177,scrActiveCourse,scrActivePeriod,scrScores,SCR_SCORE_LABELS,PACING_REGISTRY,Q_COLORS_BG,Q_COLORS_HDR,Q_COLORS_BDR,WBL_STUDENTS,SBE_ELEMENTS,SBE_STATUS,_sbeNoteTimer,_sbeNotePending,LESSON_PLANS,UNIT_PLANS,LP_EDITS,lpActivePlan,GRADING_STRUCTURE,LP_Q_COLORS,LP_Q_BG,LP_C_LABELS,LP_C_COLORS,_lpCurrentView,scrViewMode,PROC_STEPS,PURCHASE_ORDERS,poCounter,RECEIVING_CHECKS,RECEIVING_STATUS,SALES_LOG,INVENTORY,ES_PLAYERS,ES_MATCHES,SSBU_CHECKLIST,SSBU_CHECK_STATUS,MK8_CHECK_STATUS_LOADED,MK8_CHECKLIST,MK8_CHECK_STATUS,_activeToasts,DB_ROLES,BELL_SCHEDULES_DEFAULT,SCHOOL_CALENDAR_YEAR,SCHEDULE_OVERRIDES_DEFAULT,NO_SCHOOL_DEFAULT,DAY_SCHEDULE_MAP_DEFAULT,SCHOOL_PERIODS,BELL_SCHEDULES,CCPS_SCHEDULE_OVERRIDES,CCPS_NO_SCHOOL,DAY_SCHEDULE_MAP,_emailAiReqId,_lpAiReqId,_ord,DECA_DEADLINES_DEFAULT,CCPS_CALENDAR_DEADLINES_DEFAULT,RETIRED_DEFAULT_DEADLINES,DEADLINES,_editingDeadlineId,_naNav,CHOICE_SNOOZED,_lastChoiceCardsSig,PULSE_MEANINGS,HORIZON,MOOD_LABELS,MOOD_ADVICE,MOOD_COLORS,_journalMood,_journalStep,_journalOpenSnapshot,JOURNAL_TOTAL_STEPS,JOURNAL_DRAFT_KEY,_journalDraftTimer,_cronChecked,_journalForced,_journalAutoShownDate,_depositReminderShownDate,_commsTriageShownDate,_ACC_IDS,IMPROVEMENTS,surveyAnswers,_profSaveStatusTimer,MONTHS,MONTH_RE,CROSS_RANGE_SRC,ORDINAL_Q,HOLIDAY_KEYWORDS,_schedSaveStatusTimer,ORG_ROSTER_SYNC_FIELDS,ORG_RESULT_SYNC_FIELDS,AI_FLOW_LABELS,SYNC_PLATFORMS,OBS_PREP_ITEMS,EMAIL_BRIDGE,CAS_CCPS_BRIDGE,QUARTERS_DEFAULT,LP_QUARTERS,CAS_PACING_UNITS,CAS_PACING_COURSES,CAS_PACING_NOTES,CUSTOM_PACING_UNITS,_calendarExpiredBannerDismissed,SP_STATIC_DEFAULTS,_spPeriods,_bragTab,_bragData,_bragBodySnapshot,_bragSubjectSnapshot,BRAG_AUDIENCE,LH_TERMS;
 
 function _lhNewId_() {
 let rand = '';
@@ -3401,12 +3401,12 @@ return v;
 }
 function _lhPendingAll_() {
 try {
-const v = JSON.parse(localStorage.getItem(LH_SYNC_PENDING_KEY) || 'null');
+const v = JSON.parse(_lhStore.getItem(LH_SYNC_PENDING_KEY) || 'null');
 return (v && typeof v === 'object') ? { config: v.config || {}, data: v.data || {} } : { config: {}, data: {} };
 } catch (e) { return { config: {}, data: {} }; }
 }
 function _lhPendingSave_(all) {
-try { localStorage.setItem(LH_SYNC_PENDING_KEY, JSON.stringify(all)); } catch (e) {}
+try { _lhStore.setItem(LH_SYNC_PENDING_KEY, JSON.stringify(all)); } catch (e) {}
 }
 function _lhPendingMark_(kind, key) {
 const all = _lhPendingAll_();
@@ -3417,7 +3417,12 @@ return seq;
 }
 function _lhPendingClear_(kind, key, seq) {
 const all = _lhPendingAll_();
-if (Number(all[kind][key]) === seq) { delete all[kind][key]; _lhPendingSave_(all); }
+if (Number(all[kind][key]) === seq) {
+delete all[kind][key];
+_lhPendingSave_(all);
+_lhMigratedSaved_(key);
+_lhRenderUnsavedBar_();
+}
 }
 function _lhPendingKeys_(kind) { return Object.keys(_lhPendingAll_()[kind]); }
 function _lhIsLatestSave_(kind, key, seq) { return Number(_lhPendingAll_()[kind][key]) === seq; }
@@ -3440,6 +3445,7 @@ return out;
 }
 function _lhWarnSyncFailedOnce_(key, message) {
 console.warn('[LeaderHub] ' + key + ' was not saved to the server: ' + message);
+if (LH_SERVED) { _lhSaveFailed_ = true; _lhRenderUnsavedBar_(); return; }
 if (_lhSyncFailWarned[key]) return;
 _lhSyncFailWarned[key] = true;
 if (typeof _showToast === 'function') {
@@ -3460,6 +3466,7 @@ _lhPendingClear_('config', key, seq);
 .lhSaveConfig(key, value);
 }
 async function lhRefreshConfigFromServer_() {
+if (LH_SERVED) return;
 if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
 let remote;
 try {
@@ -3476,17 +3483,17 @@ pendingConfig.forEach(k => { delete remote[k]; });
 setTimeout(() => {
 pendingConfig.forEach(k => {
 try {
-const raw = localStorage.getItem(k);
+const raw = _lhStore.getItem(k);
 if (raw != null) _lhSyncConfigKeyToServer_(k, JSON.parse(raw));
 } catch (e) {}
 });
 }, 0);
-const _write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+const _write = (k, v) => { try { _lhStore.setItem(k, JSON.stringify(v)); } catch (e) {} };
 setTimeout(() => {
 LH_SERVER_SYNCED_CONFIG_KEYS.forEach(k => {
 if (remote[k] != null || pendingConfig.indexOf(k) !== -1) return;
 try {
-const raw = localStorage.getItem(k);
+const raw = _lhStore.getItem(k);
 const v = raw == null ? null : JSON.parse(raw);
 if (v != null) _lhSyncConfigKeyToServer_(k, v);
 } catch (e) {}
@@ -3591,10 +3598,143 @@ _write('lh_snoozed', remote.lh_snoozed);
 CHOICE_SNOOZED = remote.lh_snoozed;
 }
 }
+function _lhMigratedSaved_(key) {
+if (!_lhMigrating.has(key)) return;
+_lhMigrating.delete(key);
+try { localStorage.removeItem(key); } catch (e) {}
+if (!_lhMigrating.size) _lhDropBrowserBookkeeping_();
+}
+function _lhDropBrowserBookkeeping_() {
+try {
+const all = [];
+for (let i = 0; i < localStorage.length; i++) all.push(localStorage.key(i));
+all.filter(k => k === LH_SYNC_PENDING_KEY || k.indexOf('lh_data_sync_') === 0).forEach(k => localStorage.removeItem(k));
+} catch (e) {}
+}
+function lhMigrateFromBrowser_() {
+let keys = [];
+try { for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i)); } catch (e) { return; }
+keys = keys.filter(k => k && k.indexOf('lh_') === 0);
+if (!keys.length) return;
+let pending = { config: {}, data: {} };
+try {
+const v = JSON.parse(localStorage.getItem(LH_SYNC_PENDING_KEY) || 'null');
+if (v && typeof v === 'object') pending = { config: v.config || {}, data: v.data || {} };
+} catch (e) {}
+const read = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return undefined; } };
+const drop = (k) => { try { localStorage.removeItem(k); } catch (e) {} };
+const pushConfig = [], pushData = [];
+let pushScr = null;
+keys.forEach(k => {
+if (k === LH_SYNC_PENDING_KEY || k.indexOf('lh_data_sync_') === 0) return;
+const local = read(k);
+if (local === undefined || local === null) { drop(k); return; }
+if (LH_SERVER_SYNCED_CONFIG_KEYS.indexOf(k) !== -1) {
+if (k === 'lh_next_id' || k === 'lh_next_slip_id') {
+const server = _lhMem[k] != null ? JSON.parse(_lhMem[k]) : null;
+let merged = local, ahead = server == null;
+if (server != null && k === 'lh_next_slip_id') { ahead = Number(local) > Number(server); merged = Math.max(Number(local) || 0, Number(server) || 0); }
+if (server != null && k === 'lh_next_id') {
+merged = Object.assign({}, server);
+Object.keys(local || {}).forEach(c => { if (!(Number(merged[c]) >= Number(local[c]))) { merged[c] = local[c]; ahead = true; } });
+}
+_lhMem[k] = JSON.stringify(merged);
+if (ahead) { pushConfig.push(k); _lhMigrating.add(k); } else drop(k);
+return;
+}
+if (_lhMem[k] == null || pending.config[k]) {
+_lhMem[k] = JSON.stringify(local);
+pushConfig.push(k); _lhMigrating.add(k);
+} else drop(k);
+return;
+}
+if (k in LH_SERVER_SYNCED_DATA_KEYS) {
+if (!Array.isArray(local)) { drop(k); return; }
+if (_lhMem[k] == null) {
+_lhMem[k] = JSON.stringify(_lhWithLogIds_(k, local));
+pushData.push(k); _lhMigrating.add(k);
+} else if (pending.data[k]) {
+_lhMem[k] = JSON.stringify(_lhMergeById_(JSON.parse(_lhMem[k]), _lhWithLogIds_(k, local)));
+pushData.push(k); _lhMigrating.add(k);
+} else drop(k);
+return;
+}
+if (k === 'lh_scr_scores') {
+if (_lhMem.lh_scr_scores == null && local && typeof local === 'object') {
+_lhMem.lh_scr_scores = JSON.stringify(local);
+pushScr = local; _lhMigrating.add(k);
+} else drop(k);
+return;
+}
+drop(k);
+});
+if (!_lhMigrating.size) _lhDropBrowserBookkeeping_();
+setTimeout(() => {
+pushConfig.forEach(k => _lhSyncConfigKeyToServer_(k, JSON.parse(_lhMem[k])));
+pushData.forEach(k => _lhSyncDataKeyToServer_(k, JSON.parse(_lhMem[k])));
+if (pushScr) {
+Object.keys(pushScr).forEach(course => Object.keys(pushScr[course] || {}).forEach(period =>
+Object.keys(pushScr[course][period] || {}).forEach(student =>
+Object.keys(pushScr[course][period][student] || {}).forEach(comp =>
+_lhQueueScrScoreSync_(course, period, student, comp, pushScr[course][period][student][comp])))));
+_lhScrMigrationPending_ = true;
+}
+}, 0);
+}
+function _lhUnsavedCount_() {
+return _lhPendingKeys_('config').length + _lhPendingKeys_('data').length +
+(typeof _scrSyncQueue !== 'undefined' ? _scrSyncQueue.length : 0);
+}
+function _lhRenderUnsavedBar_() {
+if (!LH_SERVED || typeof document === 'undefined' || !document.body) return;
+let bar = document.getElementById('lh-unsaved-bar');
+const count = _lhUnsavedCount_();
+const show = LH_BOOT_FAILED || (_lhSaveFailed_ && count > 0);
+if (!show) {
+if (bar) bar.remove();
+if (!count) { _lhSaveFailed_ = false; if (_lhRetryTimer_) { clearInterval(_lhRetryTimer_); _lhRetryTimer_ = null; } }
+return;
+}
+if (!bar) {
+bar = document.createElement('div');
+bar.id = 'lh-unsaved-bar';
+bar.setAttribute('role', 'alert');
+bar.style.cssText = 'background:#7f1d1d;color:#fff;padding:.55rem 1rem;font-size:.85rem;font-weight:600;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap';
+const host = document.getElementById('lh-banners');
+if (host) host.prepend(bar); else document.body.prepend(bar);
+}
+if (LH_BOOT_FAILED) {
+bar.textContent = '⚠ Your data couldn\'t be loaded from the server (' + (LH_BOOT.error || 'no answer') +
+'). Reload the page. Nothing you change now will be saved.';
+return;
+}
+bar.innerHTML = '';
+const msg = document.createElement('span');
+msg.textContent = '⚠ ' + count + ' change' + (count === 1 ? '' : 's') + ' not saved yet — retrying. ' +
+'Keep this page open until this goes away.';
+const btn = document.createElement('button');
+btn.textContent = 'Retry now';
+btn.style.cssText = 'background:#fff;color:#7f1d1d;border:none;border-radius:5px;padding:.25rem .7rem;font-weight:700;cursor:pointer';
+btn.onclick = lhRetryUnsaved;
+bar.appendChild(msg);
+bar.appendChild(btn);
+if (!_lhRetryTimer_) _lhRetryTimer_ = setInterval(lhRetryUnsaved, 30000);
+}
+function lhRetryUnsaved() {
+_lhPendingKeys_('config').forEach(k => {
+const raw = _lhStore.getItem(k);
+if (raw != null) _lhSyncConfigKeyToServer_(k, JSON.parse(raw));
+});
+_lhPendingKeys_('data').forEach(k => {
+const raw = _lhStore.getItem(k);
+if (raw != null) _lhSyncDataKeyToServer_(k, JSON.parse(raw));
+});
+if (typeof _scrSyncQueue !== 'undefined' && _scrSyncQueue.length && typeof _lhFlushScrScoreSync_ === 'function') _lhFlushScrScoreSync_();
+}
 function _lhDataTrackerKey_(domain) { return 'lh_data_sync_' + domain; }
 function _lhGetDataTracker_(domain) { return LS.get(_lhDataTrackerKey_(domain), { lastKnownRemoteUpdatedAt: null }); }
 function _lhSetDataTracker_(domain, tracker) {
-try { localStorage.setItem(_lhDataTrackerKey_(domain), JSON.stringify(tracker)); } catch (e) {}
+try { _lhStore.setItem(_lhDataTrackerKey_(domain), JSON.stringify(tracker)); } catch (e) {}
 }
 function _lhSyncDataKeyToServer_(key, value) {
 const domain = LH_SERVER_SYNCED_DATA_KEYS[key];
@@ -3605,6 +3745,26 @@ const prev = _lhDataPushChain[domain] || Promise.resolve();
 const next = prev.then(() => _lhPushDataNow_(key, domain, value, seq)).catch(() => {});
 _lhDataPushChain[domain] = next;
 return next;
+}
+async function _lhMergeConflict_(key, domain, seq) {
+let pulled;
+try {
+pulled = await new Promise((resolve, reject) => {
+google.script.run.withSuccessHandler(resolve)
+.withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+.lhPullData({ domain });
+});
+} catch (e) { return false; }
+if (!pulled || !pulled.ok || !pulled.found) return false;
+const server = (pulled.rows || []).map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } }).filter(Boolean);
+let mine = [];
+try { mine = JSON.parse(_lhStore.getItem(key) || '[]'); } catch (e) { mine = []; }
+const merged = _lhMergeById_(server, mine);
+if (LH_DATA_APPLY[domain]) LH_DATA_APPLY[domain](merged); else _lhStore.setItem(key, JSON.stringify(merged));
+_lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: pulled.updatedAt });
+if (typeof _showToast === 'function') _showToast('Merged with changes from another device.', 5000, '#1e3a5f');
+_lhSyncDataKeyToServer_(key, merged);
+return true;
 }
 async function _lhPushDataNow_(key, domain, value, seq) {
 if (!_lhIsLatestSave_('data', key, seq)) return;
@@ -3623,6 +3783,7 @@ google.script.run
 });
 } catch (e) {
 console.warn('[LeaderHub] Sync failed for ' + domain + ':', (e && e.message) || e);
+if (LH_SERVED) { _lhSaveFailed_ = true; _lhRenderUnsavedBar_(); }
 return;
 }
 if (res && res.ok) {
@@ -3630,6 +3791,10 @@ _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
 _lhPendingClear_('data', key, seq);
 return;
 }
+if (res && res.conflict && LH_SERVED) {
+if (await _lhMergeConflict_(key, domain, seq)) return;
+}
+if (LH_SERVED) { _lhSaveFailed_ = true; _lhRenderUnsavedBar_(); return; }
 if (res && res.conflict && !_lhDataConflictWarned[domain]) {
 _lhDataConflictWarned[domain] = true;
 console.warn('[LeaderHub] ' + domain + ' has changes from elsewhere this browser hasn\'t synced yet — this edit stayed safe locally but wasn\'t pushed to the server.');
@@ -3639,94 +3804,9 @@ _showToast('⚠ ' + domain + ' also changed on another device. Your edit is safe
 }
 }
 async function lhRefreshDataDomainsFromServer_() {
+if (LH_SERVED) return;
 if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
-const APPLY = {
-trips: arr => {
-trips = arr;
-localStorage.setItem('lh_trips', JSON.stringify(trips));
-if (typeof renderTrips === 'function') renderTrips();
-if (typeof renderDashboard === 'function') renderDashboard();
-},
-trip_archive: arr => {
-tripArchive = arr;
-localStorage.setItem('lh_trip_archive', JSON.stringify(tripArchive));
-if (typeof renderArchive === 'function') renderArchive();
-},
-deca_results: arr => {
-localStorage.setItem('lh_deca_results', JSON.stringify(arr));
-if (typeof renderOrgHub === 'function' && document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
-},
-wbl_roster: arr => {
-WBL_STUDENTS = arr;
-localStorage.setItem('lh_wbl_students', JSON.stringify(WBL_STUDENTS));
-if (typeof renderWBLTracker === 'function') renderWBLTracker();
-},
-store_inventory: arr => {
-INVENTORY = arr;
-localStorage.setItem('lh_inventory', JSON.stringify(INVENTORY));
-if (typeof renderProcurement === 'function') renderProcurement();
-},
-store_sales_log: arr => {
-SALES_LOG = arr;
-localStorage.setItem('lh_sales_log', JSON.stringify(SALES_LOG));
-if (typeof renderFinance === 'function') renderFinance();
-},
-store_purchase_orders: arr => {
-PURCHASE_ORDERS = arr;
-localStorage.setItem('lh_purchase_orders', JSON.stringify(PURCHASE_ORDERS));
-if (typeof renderProcurement === 'function') renderProcurement();
-},
-esports_players: arr => {
-ES_PLAYERS = arr;
-localStorage.setItem('lh_es_players', JSON.stringify(ES_PLAYERS));
-if (typeof renderESRoster === 'function') renderESRoster();
-},
-esports_matches: arr => {
-ES_MATCHES = arr;
-localStorage.setItem('lh_es_matches', JSON.stringify(ES_MATCHES));
-if (typeof renderMatchLog === 'function') renderMatchLog();
-},
-goals: arr => {
-goals = arr;
-localStorage.setItem('lh_goals', JSON.stringify(goals));
-if (typeof renderGoals === 'function') renderGoals();
-},
-events: arr => {
-otherEvents = arr;
-localStorage.setItem('lh_events', JSON.stringify(otherEvents));
-if (typeof renderEvents === 'function') renderEvents();
-if (typeof renderDECAPipeline === 'function') renderDECAPipeline();
-},
-tasks: arr => {
-localStorage.setItem('lh_tasks', JSON.stringify(arr));
-if (typeof refreshNextAction === 'function') refreshNextAction();
-},
-deadlines: arr => {
-DEADLINES = typeof dropRetiredDefaultDeadlines === 'function' ? dropRetiredDefaultDeadlines(arr) : arr;
-localStorage.setItem('lh_deadlines', JSON.stringify(DEADLINES));
-if (typeof renderDeadlines === 'function') renderDeadlines();
-},
-journal_entries: arr => {
-localStorage.setItem('lh_journal_history', JSON.stringify(arr));
-},
-observation_history: arr => {
-localStorage.setItem('lh_obs_history', JSON.stringify(arr));
-if (typeof renderObsChecklist === 'function') renderObsChecklist();
-},
-brag_manual_wins: arr => {
-localStorage.setItem('lh_brag_manual_wins', JSON.stringify(arr));
-},
-members: arr => {
-students = arr;
-localStorage.setItem('lh_students', JSON.stringify(students));
-if (typeof renderStudents === 'function' && document.getElementById('view-students')?.classList.contains('active')) renderStudents();
-},
-daily_log: arr => { localStorage.setItem('lh_daily_log', JSON.stringify(arr)); },
-sub_plan_log: arr => { localStorage.setItem('lh_sub_plan_log', JSON.stringify(arr)); },
-brag_log: arr => { localStorage.setItem('lh_brag_log', JSON.stringify(arr)); },
-wbl_hours_log: arr => { localStorage.setItem('lh_wbl_hours_log', JSON.stringify(arr)); },
-scr_session_log: arr => { localStorage.setItem('lh_scr_session_log', JSON.stringify(arr)); },
-};
+const APPLY = LH_DATA_APPLY;
 for (const [key, domain] of Object.entries(LH_SERVER_SYNCED_DATA_KEYS)) {
 let res;
 try {
@@ -3743,7 +3823,7 @@ continue;
 const pending = _lhPendingKeys_('data').indexOf(key) !== -1;
 let local = null;
 if (pending) {
-try { local = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { local = null; }
+try { local = JSON.parse(_lhStore.getItem(key) || 'null'); } catch (e) { local = null; }
 }
 if (res && res.ok && res.found) {
 let arr = (res.rows || [])
@@ -3758,10 +3838,10 @@ if (pending) _lhSyncDataKeyToServer_(key, arr);
 _lhSyncDataKeyToServer_(key, local);
 } else if (res && res.ok && !res.found) {
 let mine = null;
-try { mine = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { mine = null; }
+try { mine = JSON.parse(_lhStore.getItem(key) || 'null'); } catch (e) { mine = null; }
 if (Array.isArray(mine) && mine.length) {
 mine = _lhWithLogIds_(key, mine);
-try { localStorage.setItem(key, JSON.stringify(mine)); } catch (e) {}
+try { _lhStore.setItem(key, JSON.stringify(mine)); } catch (e) {}
 _lhSyncDataKeyToServer_(key, mine);
 }
 }
@@ -3787,11 +3867,24 @@ google.script.run
 .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
 .lhSaveScrScores(batch);
 });
+if (_lhScrMigrationPending_ && !_scrSyncQueue.length) {
+_lhScrMigrationPending_ = false;
+_lhMigratedSaved_('lh_scr_scores');
+}
+_lhRenderUnsavedBar_();
 } catch (e) {
+if (LH_SERVED) {
+batch.forEach(c => {
+if (!_scrSyncQueue.some(q => q.course === c.course && q.period === c.period && q.studentKey === c.studentKey && q.compNum === c.compNum)) _scrSyncQueue.push(c);
+});
+_lhSaveFailed_ = true;
+_lhRenderUnsavedBar_();
+}
 console.warn('[LeaderHub] SCR score sync failed for ' + batch.length + ' cell(s):', (e && e.message) || e);
 }
 }
 async function lhRefreshScrScoresFromServer_() {
+if (LH_SERVED) return;
 if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
 let res;
 try {
@@ -3807,7 +3900,7 @@ return;
 }
 if (res && res.ok && res.found) {
 scrScores = res.scores || {};
-localStorage.setItem('lh_scr_scores', JSON.stringify(scrScores));
+_lhStore.setItem('lh_scr_scores', JSON.stringify(scrScores));
 if (document.getElementById('view-competency')?.classList.contains('active') && typeof renderCompetencyView === 'function') {
 renderCompetencyView();
 }
@@ -4496,7 +4589,7 @@ document.getElementById('tripdetail-body').innerHTML = `
       </div>
     </div>
   `;
-}
+}</script><script data-lh-block="leader-hub-block-1-part-2-of-17">
 function fieldRow(label, val) {
 const empty = !val || val===0;
 return `<div class="field-row"><div class="field-dot ${empty?'fd-miss':'fd-ok'}"></div><div class="field-name" style="color:${empty?'var(--red)':'inherit'}">${escH(label)}</div><span style="font-size:.75rem;color:${empty?'var(--red)':'#333'};font-weight:${empty?700:400}">${empty?'⚠ Missing':escH(val)}</span></div>`;
@@ -4549,7 +4642,7 @@ const note = ta.value.trim();
 modal.remove();
 onSubmit(note);
 };
-}</script><script data-lh-block="leader-hub-block-1-part-2-of-17">
+}
 function generateFormPreview(id) {
 const tid = id || currentTripId;
 const t = trips.find(t=>t.id===tid); if(!t) return;
@@ -5726,7 +5819,7 @@ return `mailto:${enc(to).replace(/%2C/g, ',').replace(/%40/g, '@')}?${params.joi
 function openInMailClient() {
 const f = _emailFields();
 lhCheckEmailBeforeSending(f, () => { window.location.href = _emailMailtoUrl(f); });
-}
+}</script><script data-lh-block="leader-hub-block-1-part-3-of-17">
 function clearEmailComposer() {
 ['email-to', 'email-cc', 'email-bcc', 'email-subject', 'email-body'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
 _emailAutoFilled = { to: '', cc: '', bcc: '' };
@@ -5768,7 +5861,7 @@ el.innerHTML =
 card(`${escH(org.name)} Officers`, '👑', officerHtml) +
 card('Results', '🏅', renderOrgResults(orgId)) +
 card('Full Roster', '👥', `<div style="font-size:.82rem;color:var(--muted)">Manage the full ${escH(org.name)} roster, dues, and membership status on the <a href="#" onclick="showView('students');return false;" style="color:var(--navy);text-decoration:underline">Members</a> page.</div>`);
-}</script><script data-lh-block="leader-hub-block-1-part-3-of-17">
+}
 function renderDECAHub() {
 const el = document.getElementById('deca-hub-content');
 if(!el) return;
@@ -6768,7 +6861,7 @@ persistStudents();
 closeModal('addStudent', true);
 renderStudents();
 _showToast('✅ Member updated');
-}
+}</script><script data-lh-block="leader-hub-block-1-part-4-of-17">
 function delStu(id){
 const stu = students.find(s=>s.id===id);
 const _saved=[...students];
@@ -6800,7 +6893,7 @@ for (const k of ['to', 'cc', 'bcc']) { const el = document.getElementById('email
 _emailAutoFilled = vals;
 const n = document.getElementById('email-recipient-note');
 if (n) n.textContent = note || '';
-}</script><script data-lh-block="leader-hub-block-1-part-4-of-17">
+}
 function openEmailComposerForMember(s){
 setEmailTab('parents', document.getElementById('etab-parents'));
 _emailSetRecipients(s.parentEmail, s.email, '', s.parentEmail ? '' : `No parent email on file for ${s.first} ${s.last}. Add one under Members, or type it in To.`);
@@ -7921,7 +8014,7 @@ trips.map(t=>`<option value="${t.id}">${escH(t.name)}</option>`).join('');
 document.getElementById('ps-custom').value = '';
 document.getElementById('auth-form-preview').innerHTML = buildAuthFormHTML('___________________________','','');
 openModal('printSlip');
-}
+}</script><script data-lh-block="leader-hub-block-1-part-5-of-17">
 function openArchiveModal(tripId) {
 const t = trips.find(x => x.id === tripId);
 if(!t) return;
@@ -7999,7 +8092,7 @@ archiveFilterCurrent = filter;
 document.querySelectorAll('[id^="af-"]').forEach(b => { b.classList.remove('btn-primary'); b.classList.add('btn-outline'); });
 if(btn) { btn.classList.add('btn-primary'); btn.classList.remove('btn-outline'); }
 renderArchive();
-}</script><script data-lh-block="leader-hub-block-1-part-5-of-17">
+}
 function renderArchive() {
 const search = (document.getElementById('archive-search')?.value || '').toLowerCase();
 let list = [...tripArchive];
@@ -9047,7 +9140,7 @@ document.getElementById('lp-pane-view').innerHTML = `
         <div style="margin-top:.5rem"><strong>Google Doc:</strong> <a href="https://docs.google.com/document/d/${lp.docId}/edit" target="_blank" style="color:var(--navy)">docs.google.com/…/${lp.docId.substring(0,12)}…</a></div>
       </div>
     </div>`;
-}
+}</script><script data-lh-block="leader-hub-block-1-part-6-of-17">
 function lpMarkdownToHTML(md) {
 let html = md
 .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -9094,7 +9187,7 @@ refreshNextAction();
 async function lpAIPrompt(prompt) {
 lpSwitchTab('ai', document.getElementById('lptab-ai'));
 await lpRunAI(prompt);
-}</script><script data-lh-block="leader-hub-block-1-part-6-of-17">
+}
 async function lpAIDiff() {
 lpSwitchTab('ai', document.getElementById('lptab-ai'));
 const prompt = `Generate a complete, ready-to-paste Differentiation & Assessment section for this lesson plan. This section must satisfy CCPS instructional planning standards (Standard 2.2, 2.5, 2.6) which require documented differentiation for SPED/IEP students, ELL students, and evidence of assessment. Format your response with these exact headers:
@@ -13702,10 +13795,9 @@ doPull();
 }
 function lhExportBackup(){
 const data = {};
-for (let i=0;i<localStorage.length;i++){
-const k = localStorage.key(i);
-if (k && k.startsWith('lh_')) data[k] = localStorage.getItem(k);
-}
+_lhStore.keys().forEach(k => {
+if (k && k.startsWith('lh_') && !k.startsWith('lh_data_sync_') && k !== LH_SYNC_PENDING_KEY) data[k] = _lhStore.getItem(k);
+});
 const payload = { app:'LeaderHub', version:1, exportedAt:new Date().toISOString(), data };
 const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
 const url = URL.createObjectURL(blob);
@@ -13731,10 +13823,31 @@ const keys = Object.keys(data || {}).filter(k => k.startsWith('lh_'));
 if (!keys.length){ _showToast('This doesn\'t look like a LeaderHub backup — no lh_ data keys found.', 4000, '#991b1b'); return; }
 _showImportConfirmModal(keys.length, () => {
 const failedKeys = [];
+if (LH_SERVED) {
+keys.forEach(k => {
+if (k.startsWith('lh_data_sync_') || k === LH_SYNC_PENDING_KEY) return;
+let v;
+try { v = JSON.parse(data[k]); } catch (e) { failedKeys.push(k); return; }
+if (LS.set(k, v) === false) failedKeys.push(k);
+});
+if (failedKeys.length === 0) {
+_showToast('Importing — saving to the server…', 4000);
+const started = Date.now();
+const wait = setInterval(() => {
+if (_lhUnsavedCount_() === 0 || Date.now() - started > 60000) {
+clearInterval(wait);
+if (_lhUnsavedCount_() === 0) { _showToast('✅ Import complete — reloading…'); setTimeout(() => location.reload(), 900); }
+else _showToast('⚠ Some of the import isn\'t saved yet. Keep the page open; the red bar retries.', 10000, '#991b1b');
+}
+}, 500);
+return;
+}
+} else {
 keys.forEach(k => {
 try { localStorage.setItem(k, data[k]); }
 catch (e) { failedKeys.push(k); console.error('[lhImportBackup] failed to import key', k, e); }
 });
+}
 if (failedKeys.length === 0) {
 _showToast('✅ Import complete — reloading…');
 setTimeout(() => location.reload(), 900);
@@ -14905,7 +15018,7 @@ URL.revokeObjectURL(url);
 }
 function _customPacingImportCourses() {
 return Object.keys(SCR_COURSES).filter(c => !CAS_PACING_COURSES.has(c));
-}
+}</script><script data-lh-block="leader-hub-block-1-part-11-of-17">
 function _parsePacingUnitsJson(raw, course) {
 let data;
 try { data = JSON.parse(raw); }
@@ -14954,7 +15067,7 @@ differentiation: String(u.differentiation || ''),
 });
 }
 return { ok:true, units };
-}</script><script data-lh-block="leader-hub-block-1-part-11-of-17">
+}
 function lhImportPacingUnitsJson(fileInput) {
 const file = fileInput.files && fileInput.files[0];
 if (!file) return;
@@ -15659,7 +15772,22 @@ function lhCloseTerms() {
 const dlg = document.getElementById('lh-terms');
 if (!dlg) return;
 if (dlg.open && typeof dlg.close === 'function') dlg.close(); else dlg.removeAttribute('open');
-}var LH_RETIRED_SECRET_KEYS = ['lh_api_key'];
+}var LH_BOOT = (typeof window !== 'undefined' && window.__LH_BOOT__) || null;
+var LH_SERVED = !!LH_BOOT;
+var LH_BOOT_FAILED = LH_SERVED && LH_BOOT.ok === false;
+var _lhMem = {};
+var _lhStore = LH_SERVED ? {
+getItem: (k) => (Object.prototype.hasOwnProperty.call(_lhMem, k) ? _lhMem[k] : null),
+setItem: (k, v) => { _lhMem[k] = String(v); },
+removeItem: (k) => { delete _lhMem[k]; },
+keys: () => Object.keys(_lhMem),
+} : {
+getItem: (k) => localStorage.getItem(k),
+setItem: (k, v) => localStorage.setItem(k, v),
+removeItem: (k) => localStorage.removeItem(k),
+keys: () => { const out = []; for (let i = 0; i < localStorage.length; i++) out.push(localStorage.key(i)); return out; },
+};
+var LH_RETIRED_SECRET_KEYS = ['lh_api_key'];
 try { LH_RETIRED_SECRET_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { }
 var _lsWriteFailWarned = false;
 var _lsReadFailWarned = false;
@@ -15678,7 +15806,7 @@ if (LH_PAGE_MEMORY_KEYS.indexOf(k) !== -1) {
 return Object.prototype.hasOwnProperty.call(_lhPageMemory, k) && _lhPageMemory[k] != null
 ? JSON.parse(_lhPageMemory[k]) : def;
 }
-try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; }
+try { const v=_lhStore.getItem(k); return v?JSON.parse(v):def; }
 catch (e) {
 console.error('[LS.get] read failed for key', k, e);
 if (!_lsReadFailWarned && typeof _showToast === 'function') {
@@ -15693,9 +15821,13 @@ if (LH_PAGE_MEMORY_KEYS.indexOf(k) !== -1) {
 _lhPageMemory[k] = v == null ? null : JSON.stringify(v);
 return true;
 }
+if (LH_BOOT_FAILED) {
+if (typeof _lhRenderUnsavedBar_ === 'function') _lhRenderUnsavedBar_();
+return false;
+}
 v = _lhWithLogIds_(k, v);
 try {
-localStorage.setItem(k, JSON.stringify(v));
+_lhStore.setItem(k, JSON.stringify(v));
 _lhSyncConfigKeyToServer_(k, v);
 _lhSyncDataKeyToServer_(k, v);
 return true;
@@ -15758,8 +15890,118 @@ lh_brag_log: 'brag_log',
 lh_wbl_hours_log: 'wbl_hours_log',
 lh_scr_session_log: 'scr_session_log',
 };
+var _lhMigrating = new Set();
+var _lhSaveFailed_ = false;
+var _lhScrMigrationPending_ = false;
+var _lhRetryTimer_ = null;
+if (LH_SERVED && !LH_BOOT_FAILED) {
+const cfg = LH_BOOT.config || {};
+LH_SERVER_SYNCED_CONFIG_KEYS.forEach(k => { if (cfg[k] != null) _lhMem[k] = JSON.stringify(cfg[k]); });
+Object.entries(LH_SERVER_SYNCED_DATA_KEYS).forEach(([key, domain]) => {
+const d = (LH_BOOT.data || {})[domain];
+if (!d || !d.found) return;
+const arr = (d.rows || []).map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } }).filter(Boolean);
+_lhMem[key] = JSON.stringify(arr);
+_lhMem[_lhDataTrackerKey_(domain)] = JSON.stringify({ lastKnownRemoteUpdatedAt: d.updatedAt });
+});
+if (LH_BOOT.scr && LH_BOOT.scr.found) _lhMem.lh_scr_scores = JSON.stringify(LH_BOOT.scr.scores || {});
+lhMigrateFromBrowser_();
+}
+if (LH_SERVED && typeof window !== 'undefined' && window.addEventListener) {
+window.addEventListener('beforeunload', (e) => {
+if (_lhUnsavedCount_() > 0) { e.preventDefault(); e.returnValue = ''; }
+});
+if (LH_BOOT_FAILED) window.addEventListener('DOMContentLoaded', _lhRenderUnsavedBar_);
+}
 var _lhDataConflictWarned = {};
 var _lhDataPushChain = {};
+var LH_DATA_APPLY = {
+trips: arr => {
+trips = arr;
+_lhStore.setItem('lh_trips', JSON.stringify(trips));
+if (typeof renderTrips === 'function') renderTrips();
+if (typeof renderDashboard === 'function') renderDashboard();
+},
+trip_archive: arr => {
+tripArchive = arr;
+_lhStore.setItem('lh_trip_archive', JSON.stringify(tripArchive));
+if (typeof renderArchive === 'function') renderArchive();
+},
+deca_results: arr => {
+_lhStore.setItem('lh_deca_results', JSON.stringify(arr));
+if (typeof renderOrgHub === 'function' && document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+},
+wbl_roster: arr => {
+WBL_STUDENTS = arr;
+_lhStore.setItem('lh_wbl_students', JSON.stringify(WBL_STUDENTS));
+if (typeof renderWBLTracker === 'function') renderWBLTracker();
+},
+store_inventory: arr => {
+INVENTORY = arr;
+_lhStore.setItem('lh_inventory', JSON.stringify(INVENTORY));
+if (typeof renderProcurement === 'function') renderProcurement();
+},
+store_sales_log: arr => {
+SALES_LOG = arr;
+_lhStore.setItem('lh_sales_log', JSON.stringify(SALES_LOG));
+if (typeof renderFinance === 'function') renderFinance();
+},
+store_purchase_orders: arr => {
+PURCHASE_ORDERS = arr;
+_lhStore.setItem('lh_purchase_orders', JSON.stringify(PURCHASE_ORDERS));
+if (typeof renderProcurement === 'function') renderProcurement();
+},
+esports_players: arr => {
+ES_PLAYERS = arr;
+_lhStore.setItem('lh_es_players', JSON.stringify(ES_PLAYERS));
+if (typeof renderESRoster === 'function') renderESRoster();
+},
+esports_matches: arr => {
+ES_MATCHES = arr;
+_lhStore.setItem('lh_es_matches', JSON.stringify(ES_MATCHES));
+if (typeof renderMatchLog === 'function') renderMatchLog();
+},
+goals: arr => {
+goals = arr;
+_lhStore.setItem('lh_goals', JSON.stringify(goals));
+if (typeof renderGoals === 'function') renderGoals();
+},
+events: arr => {
+otherEvents = arr;
+_lhStore.setItem('lh_events', JSON.stringify(otherEvents));
+if (typeof renderEvents === 'function') renderEvents();
+if (typeof renderDECAPipeline === 'function') renderDECAPipeline();
+},
+tasks: arr => {
+_lhStore.setItem('lh_tasks', JSON.stringify(arr));
+if (typeof refreshNextAction === 'function') refreshNextAction();
+},
+deadlines: arr => {
+DEADLINES = typeof dropRetiredDefaultDeadlines === 'function' ? dropRetiredDefaultDeadlines(arr) : arr;
+_lhStore.setItem('lh_deadlines', JSON.stringify(DEADLINES));
+if (typeof renderDeadlines === 'function') renderDeadlines();
+},
+journal_entries: arr => {
+_lhStore.setItem('lh_journal_history', JSON.stringify(arr));
+},
+observation_history: arr => {
+_lhStore.setItem('lh_obs_history', JSON.stringify(arr));
+if (typeof renderObsChecklist === 'function') renderObsChecklist();
+},
+brag_manual_wins: arr => {
+_lhStore.setItem('lh_brag_manual_wins', JSON.stringify(arr));
+},
+members: arr => {
+students = arr;
+_lhStore.setItem('lh_students', JSON.stringify(students));
+if (typeof renderStudents === 'function' && document.getElementById('view-students')?.classList.contains('active')) renderStudents();
+},
+daily_log: arr => { _lhStore.setItem('lh_daily_log', JSON.stringify(arr)); },
+sub_plan_log: arr => { _lhStore.setItem('lh_sub_plan_log', JSON.stringify(arr)); },
+brag_log: arr => { _lhStore.setItem('lh_brag_log', JSON.stringify(arr)); },
+wbl_hours_log: arr => { _lhStore.setItem('lh_wbl_hours_log', JSON.stringify(arr)); },
+scr_session_log: arr => { _lhStore.setItem('lh_scr_session_log', JSON.stringify(arr)); },
+};
 var SCR_SYNC_DEBOUNCE_MS = 2000;
 var _scrSyncQueue = [];
 var _scrSyncTimer = null;
@@ -16023,7 +16265,7 @@ var TRIPS_SEED = null;
 { const saved = LS.get('lh_trips', null); if (saved && Array.isArray(saved)) trips = saved; }
 var nextId = LS.get('lh_next_id', {trip:24, ev:30, st:11, gl:14, tk:11});
 var currentTripId = null;
-var currentFilter = 'all';
+var currentFilter = 'all';</script><script data-lh-block="leader-hub-block-1-part-12-of-17">
 var REQUIRED_FIELDS = [
 {key:'name', label:'Trip Name', section:'Basic Info'},
 {key:'date', label:'Trip Date', section:'Basic Info'},
@@ -16130,7 +16372,7 @@ document.addEventListener('keydown', _moTrapKeydown);
 var _lhFormSnaps = {};
 var _wzEditBaseline = null;
 var MO_FORM_GUARDS = { addStudent: 'member', addGoal: 'goal', newEvent: 'event' };
-_unsavedWorkChecks.push(_lhOpenFormIsDirty);</script><script data-lh-block="leader-hub-block-1-part-12-of-17">
+_unsavedWorkChecks.push(_lhOpenFormIsDirty);
 var MO_CLOSE_GUARDS = {
 newTrip: () => {
 if (!_wzEditIsDirty()) { _wzEditBaseline = null; return true; }

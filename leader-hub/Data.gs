@@ -235,3 +235,44 @@ function lhPullData_(body) {
     updatedBy: existing.row[2] || '',
   };
 }
+
+// ── Boot data (no browser storage, Phase 3, 2026-10-22) ─────────────────────
+// Everything the page needs at load, read once: every config key, every data
+// domain and the SCR scores. doGet() (Code.gs) writes it into the page before
+// the app's scripts run, so the app starts from the server's copy and never
+// reads browser storage (meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md).
+// One spreadsheet open and one meta read, not one per domain.
+function lhBootData_() {
+  const ss = _getLhDataSpreadsheet_();
+  const meta = _getLhDataMetaSheet_().getDataRange().getValues();
+  const updatedAt = {};
+  for (let i = 1; i < meta.length; i++) {
+    const at = meta[i][1];
+    updatedAt[meta[i][0]] = at instanceof Date ? at.toISOString() : at;
+  }
+  const data = {};
+  LH_DATA_TABS.forEach(function (domain) {
+    if (!(domain in updatedAt)) { data[domain] = { found: false }; return; }
+    data[domain] = { found: true, rows: _readDataTab_(ss, domain).rows, updatedAt: updatedAt[domain] };
+  });
+  return {
+    ok: true,
+    at: new Date().toISOString(),
+    config: lhGetAllConfig_(), // Config.gs
+    data: data,
+    scr: lhGetScrScores_(), // SCR.gs
+  };
+}
+
+// The page with the boot data in a <script> at the top of <head>. "<" and
+// the two JS line separators are escaped, so no stored text can close the
+// tag or break the literal.
+function lhInjectBootData_(html, boot) {
+  const json = JSON.stringify(boot)
+    .replace(/</g, '\\u003c')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
+  const tag = '<script>window.__LH_BOOT__=' + json + ';</script>';
+  const at = html.indexOf('<head>');
+  return at === -1 ? tag + html : html.slice(0, at + 6) + '\n' + tag + html.slice(at + 6);
+}
