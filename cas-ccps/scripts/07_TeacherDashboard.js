@@ -1652,20 +1652,25 @@ function buildDashboardHtml_() {
 body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:14px}
 
 /* ── HEADER ── */
-header{background:#1a73e8;color:white;padding:16px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header{background:#1967d2;color:white;padding:16px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 header h1{font-size:18px;font-weight:500;flex:1}
-#refresh-btn{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:white;padding:7px 14px;border-radius:4px;cursor:pointer;font-size:13px}
-#refresh-btn:hover{background:rgba(255,255,255,0.3)}
+#refresh-btn{background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.7);color:white;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;min-height:34px}
+/* The header's tool buttons (2026-10-22): they had no style at all, so they rendered as grey browser buttons 19px tall. */
+header button:not(#refresh-btn):not(#new-lesson-btn){background:white;color:#1557b0;border:1px solid white;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;min-height:34px;cursor:pointer;font-family:inherit}
+header button:not(#refresh-btn):not(#new-lesson-btn):hover{background:#e8f0fe}
+header button:focus-visible,header select:focus-visible{outline:2px solid white;outline-offset:2px}
+#term-filter option{color:#202124;background:#fff}
+#refresh-btn:hover{background:rgba(0,0,0,0.35)}
 #term-filter{padding:6px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:13px;margin-left:0}
 #term-filter option{color:#202124;background:white}
 
 /* ── M2: NEW LESSON BUTTON ── */
-#new-lesson-btn{background:white;color:#1a73e8;border:none;padding:7px 16px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;letter-spacing:.2px;transition:background 0.15s}
+#new-lesson-btn{background:white;color:#1557b0;border:none;padding:7px 16px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;letter-spacing:.2px;transition:background 0.15s}
 #new-lesson-btn:hover{background:#e8f0fe}
 
 /* ── LOADING ── */
 #loading{text-align:center;padding:60px 24px;color:var(--text-secondary)}
-.spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+.spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1557b0;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ── MAIN ── */
@@ -1674,16 +1679,16 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .summary-card{background:white;border-radius:8px;padding:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .summary-card .count{font-size:32px;font-weight:600;line-height:1;margin-bottom:6px}
 .summary-card .label{font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
-.card-compliant .count{color:#1e8e3e}.card-pending .count{color:#e37400}
-.card-flagged .count{color:#d93025}.card-total .count{color:#1a73e8}
+.card-compliant .count{color:#137333}.card-pending .count{color:#b45f06}
+.card-flagged .count{color:#b3261e}.card-total .count{color:#1557b0}
 /* NEW (Say/Do Ledger cas-ccps finding #1): Pending Review is a distinct
    color (purple, matching .badge-evaluated's family) from both the
    "in progress" (amber) and "needs attention" (red) cards — it isn't
    trouble, it's a fast, deliberate step the teacher takes. Clickable, like
    the warm-up-readiness stats already are — see .card-pending-review:hover. */
-.card-pending-review .count{color:#9334e6}
-.card-passed .count{color:#1e8e3e}.card-passed-before .count{color:#00796b}
-.card-not-passing .count{color:#e37400}.card-not-checked .count{color:#5f6368}
+.card-pending-review .count{color:#7627bb}
+.card-passed .count{color:#137333}.card-passed-before .count{color:#00796b}
+.card-not-passing .count{color:#b45f06}.card-not-checked .count{color:#5f6368}
 .card-filter{cursor:pointer;transition:box-shadow .15s}
 .card-filter:hover{box-shadow:0 3px 10px rgba(0,0,0,.15)}
 .card-filter.card-active{outline:2px solid #1a73e8}
@@ -1692,9 +1697,9 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .lesson-picker select{padding:6px 10px;border-radius:4px;border:1px solid #dadce0;font-size:13px;max-width:100%}
 .badges{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 .badge-passed-before{background:#e0f2f1;color:#00695c}
-.student-row.es-PASSED:not(.flagged){border-left-color:#1e8e3e}
+.student-row.es-PASSED:not(.flagged){border-left-color:#137333}
 .student-row.es-PASSED_BEFORE:not(.flagged){border-left-color:#00796b}
-.student-row.es-NOT_PASSING:not(.flagged){border-left-color:#e37400}
+.student-row.es-NOT_PASSING:not(.flagged){border-left-color:#b45f06}
 .student-row.es-NOT_CHECKED:not(.flagged){border-left-color:#dadce0}
 .card-pending-review{cursor:pointer;transition:box-shadow .15s}
 .card-pending-review:hover{box-shadow:0 3px 10px rgba(0,0,0,.15)}
@@ -1702,28 +1707,28 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .unit-header{font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
 .student-row{background:white;border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.08);border-left:4px solid #dadce0;transition:box-shadow .15s,transform .1s}
 .student-row:hover{box-shadow:0 3px 10px rgba(0,0,0,.15);transform:translateY(-1px)}
-.student-row.compliant{border-left-color:#1e8e3e}
-.student-row.active{border-left-color:#1a73e8}
-.student-row.queued{border-left-color:#e37400}
-.student-row.evaluated{border-left-color:#9334e6}
+.student-row.compliant{border-left-color:#137333}
+.student-row.active{border-left-color:#1557b0}
+.student-row.queued{border-left-color:#b45f06}
+.student-row.evaluated{border-left-color:#7627bb}
 .student-row.not-started{border-left-color:#dadce0}
-.student-row.pending-review{border-left-color:#9334e6}
-.student-row.flagged{border-left-color:#d93025;background:#fef7f7}
+.student-row.pending-review{border-left-color:#7627bb}
+.student-row.flagged{border-left-color:#b3261e;background:#fef7f7}
 .student-name{font-weight:500;font-size:14px;margin-bottom:3px}
 .student-meta{font-size:12px;color:var(--text-secondary)}
-.last-eval{font-size:11px;color:var(--text-secondary);margin-top:2px}
-.doc-link{display:block;font-size:11px;color:#1a73e8;margin-top:4px;text-decoration:none}
+.last-eval{font-size:12px;color:var(--text-secondary);margin-top:2px}
+.doc-link{display:block;font-size:12px;color:#1557b0;margin-top:4px;text-decoration:none}
 .doc-link:hover{text-decoration:underline}
-.status-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap}
-.badge-compliant{background:#e6f4ea;color:#1e8e3e}
-.badge-active{background:#e8f0fe;color:#1a73e8}
+.status-badge{font-size:12px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap}
+.badge-compliant{background:#e6f4ea;color:#137333}
+.badge-active{background:#e8f0fe;color:#1557b0}
 .badge-queued{background:#fef3e2;color:#9c5000}
-.badge-evaluated{background:#f3e8fd;color:#9334e6}
+.badge-evaluated{background:#f3e8fd;color:#7627bb}
 .badge-not-started{background:#f1f3f4;color:var(--text-secondary)}
-.badge-flagged{background:#fce8e6;color:#d93025}
+.badge-flagged{background:#fce8e6;color:#b3261e}
 .badge-unknown{background:#f1f3f4;color:var(--text-secondary)}
-.badge-pending-review{background:#f3e8fd;color:#9334e6}
-footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)}
+.badge-pending-review{background:#f3e8fd;color:#7627bb}
+footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)}
 
 /* ── M2: MODAL ── */
 .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
@@ -1733,7 +1738,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
 @keyframes modalPopIn{from{opacity:.6;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
 @media(prefers-reduced-motion:reduce){.modal-backdrop.open,.modal-backdrop.open .modal{animation:none}}
 .modal{background:white;border-radius:12px;width:100%;max-width:640px;box-shadow:0 8px 32px rgba(0,0,0,0.22);overflow:hidden;margin:auto}
-.modal-header{background:#1a73e8;color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+.modal-header{background:#1967d2;color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
 .modal-header h2{font-size:16px;font-weight:500}
 .modal-close{background:none;border:none;color:white;font-size:22px;cursor:pointer;line-height:1;padding:0 4px;opacity:.8}
 .modal-close:hover{opacity:1}
@@ -1743,14 +1748,14 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
 /* ── M2: FORM ELEMENTS ── */
 .field{margin-bottom:18px}
 .field label{display:block;font-size:13px;font-weight:500;color:#3c4043;margin-bottom:6px}
-.field label .req{color:#d93025;margin-left:2px}
+.field label .req{color:#b3261e;margin-left:2px}
 .field input[type="date"],
 .field input[type="text"],
 .field textarea,
 .field select{width:100%;padding:9px 12px;border:1px solid #dadce0;border-radius:6px;font-size:14px;font-family:inherit;color:#202124;background:white;transition:border-color 0.15s}
-.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,0.15)}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:#1557b0;box-shadow:0 0 0 2px rgba(26,115,232,0.15)}
 .field textarea{resize:vertical;min-height:80px;line-height:1.5}
-.field .hint{font-size:11px;color:var(--text-secondary);margin-top:4px}
+.field .hint{font-size:12px;color:var(--text-secondary);margin-top:4px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 
 /* ── M2: COURSE TABS ── */
@@ -1763,9 +1768,9 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
 .course-tabs{display:flex;gap:0;border-bottom:2px solid #e8eaed;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .course-tab{font-size:13px;font-weight:500;color:var(--text-secondary);padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px;background:none;border-top:none;border-left:none;border-right:none}
 .course-tab:hover{color:#202124;background:#f8f9fa}
-.course-tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
-.course-tab .tab-badge{font-size:11px;background:#1a73e8;color:white;border-radius:10px;padding:1px 6px;font-weight:600;display:none}
-.course-tab.active .tab-badge{background:#1a73e8}
+.course-tab.active{color:#1557b0;border-bottom-color:#1557b0;font-weight:600}
+.course-tab .tab-badge{font-size:12px;background:#1967d2;color:white;border-radius:10px;padding:1px 6px;font-weight:600;display:none}
+.course-tab.active .tab-badge{background:#1967d2}
 .course-tab .tab-badge.has-checks{display:inline-block}
 .course-panel{display:none}
 .course-panel.active{display:block}
@@ -1773,21 +1778,21 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
 /* ── M2: COMPETENCY CHECKLIST ── */
 .competency-loading{color:var(--text-secondary);font-size:13px;padding:8px 0}
 .strand-group{margin-bottom:14px}
-.strand-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;padding:4px 0;border-bottom:1px solid #f1f3f4}
+.strand-label{font-size:12px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;padding:4px 0;border-bottom:1px solid #f1f3f4}
 .competency-item{display:flex;align-items:flex-start;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background 0.1s}
 .competency-item:hover{background:#f8f9fa}
-.competency-item input[type="checkbox"]{margin-top:2px;flex-shrink:0;accent-color:#1a73e8;width:15px;height:15px;cursor:pointer}
-.competency-item .c-num{font-family:monospace;font-size:11px;color:#1a73e8;font-weight:700;white-space:nowrap;min-width:32px}
+.competency-item input[type="checkbox"]{margin-top:2px;flex-shrink:0;accent-color:#1557b0;width:15px;height:15px;cursor:pointer}
+.competency-item .c-num{font-family:monospace;font-size:12px;color:#1557b0;font-weight:700;white-space:nowrap;min-width:32px}
 .competency-item .c-text{font-size:13px;color:#3c4043;line-height:1.45}
-.competency-item .c-scaffold{font-size:10px;color:#1e8e3e;margin-top:2px}
+.competency-item .c-scaffold{font-size:12px;color:#137333;margin-top:2px}
 .competency-empty{font-size:13px;color:var(--text-secondary);padding:8px 0}
 .comp-container{max-height:260px;overflow-y:auto;border:1px solid #e8eaed;border-radius:6px;padding:8px 4px}
 
 /* ── M2: SUBMIT BUTTON ── */
-#submit-btn{background:#1a73e8;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:background 0.15s}
+#submit-btn{background:#1967d2;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:background 0.15s}
 #submit-btn:hover{background:#1557b0}
 #submit-btn:disabled{background:#dadce0;color:var(--text-secondary);cursor:not-allowed}
-.wr-stat{background:none;border:none;padding:0;font:inherit;color:#1a73e8;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.wr-stat{background:none;border:none;padding:0;font:inherit;color:#1557b0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .wr-stat:hover{color:#174ea6}
 #cancel-btn{background:none;border:none;color:var(--text-secondary);font-size:14px;cursor:pointer;padding:9px 14px}
 #cancel-btn:hover{color:#202124}
@@ -1795,7 +1800,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
 /* ── M2: TOAST ── */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#202124;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:400;opacity:0;transition:opacity 0.2s;pointer-events:none}
 .toast.show{opacity:1}
-.toast.error{background:#d93025}
+.toast.error{background:#b3261e}
 
 /* ── M2: FORM ERROR ── */
 .form-error{background:#fce8e6;color:#c5221f;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px;display:none}
@@ -1827,23 +1832,24 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
   <!-- SCR review (Open Items #4 — 30_SCRSuggestionEngine.js). Opens a
        review queue of AI-suggested Module 5 competency ratings; nothing
        is decided until the teacher confirms or overrides one. -->
-  <button id="scr-review-btn" onclick="openScrReviewModal()">🎓 SCR Reviews</button>
+  <button id="scr-review-btn" onclick="openScrReviewModal()">🎓 Competency ratings</button>
   <!-- Feedback placement per course (FEEDBACK_AS_COMMENT, 00): in the doc or
        as a comment on it. -->
   <button id="feedback-placement-btn" onclick="openFeedbackPlacementModal()">💬 Feedback</button>
   <!-- Lesson schedule (LessonSchedule tab, 55): start dates by course, with
        what the last nightly rollout (58) did for each lesson. -->
   <button id="lesson-schedule-btn" onclick="openLessonScheduleModal()">📅 Lessons</button>
+  <button id="cas-terms-btn" onclick="casOpenTerms()" aria-haspopup="dialog">❓ Terms</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
-    <option value="ALL">All Terms</option>
+    <option value="ALL">Whole school year</option>
   </select>
 </header>
 
 <!-- ── M2: Warm-Up Readiness Panel ── -->
 <div id="warmup-readiness-panel" style="display:none;background:#f8f9fa;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:12.5px;color:var(--text-secondary);gap:24px;align-items:center;flex-wrap:wrap">
-  <span id="wr-unit" style="font-weight:600;color:#1a73e8"></span>
+  <span id="wr-unit" style="font-weight:600;color:#1557b0"></span>
   <button type="button" class="wr-stat" id="wr-eval"></button>
   <button type="button" class="wr-stat" id="wr-warmup"></button>
   <button type="button" class="wr-stat" id="wr-confidence"></button>
@@ -1871,8 +1877,8 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
            warm-up readiness data (no extra round-trip). Hidden entirely if
            that data isn't available yet (M2 not enabled, or dashboard hasn't
            loaded) rather than showing a confusing placeholder. -->
-      <div id="lesson-payoff-hint" role="status" aria-live="polite" style="display:none;background:#e8f0fe;color:#1a73e8;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px"></div>
-      <div id="draft-stale-hint" role="status" aria-live="polite" style="display:none;background:#e8f0fe;color:#1a73e8;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px"></div>
+      <div id="lesson-payoff-hint" role="status" aria-live="polite" style="display:none;background:#e8f0fe;color:#1557b0;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px"></div>
+      <div id="draft-stale-hint" role="status" aria-live="polite" style="display:none;background:#e8f0fe;color:#1557b0;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px"></div>
 
       <!-- Row 1: Date + Period -->
       <div class="field-row">
@@ -1946,7 +1952,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
              wrNextStep captions (💡, blue, 12px, margin-top:4px) — this
              checklist is what feeds SCR competency evidence and the warm-up
              readiness signal, not a form field with no visible purpose. -->
-        <div style="font-size:12px;color:#1a73e8;margin-top:4px">💡 Checking these off is what lets the system connect this lesson to a student's SCR competency record and personalized warm-up readiness.</div>
+        <div style="font-size:12px;color:#1557b0;margin-top:4px">💡 Checking these off is what lets the system connect this lesson to a student's SCR competency record and personalized warm-up readiness.</div>
       </div>
     </div>
 
@@ -1972,7 +1978,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
     </div>
     <div class="modal-footer">
       <button id="discard-cancel-btn" onclick="_cancelDiscardConfirm()">Keep editing</button>
-      <button id="discard-confirm-btn" onclick="_confirmDiscard()" style="background:#d93025;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer">Discard</button>
+      <button id="discard-confirm-btn" onclick="_confirmDiscard()" style="background:#b3261e;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer">Discard</button>
     </div>
   </div>
 </div>
@@ -2063,7 +2069,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
 <div class="modal-backdrop" id="scr-review-modal-backdrop" onclick="if(event.target===this)closeScrReviewModal()">
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="scr-review-modal-title" style="max-width:720px">
     <div class="modal-header">
-      <h2 id="scr-review-modal-title">SCR reviews</h2>
+      <h2 id="scr-review-modal-title">Competency ratings (SCR)</h2>
       <button class="modal-close" onclick="closeScrReviewModal()" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="scr-review-modal-body">
@@ -2093,7 +2099,7 @@ function renderWarmUpReadiness(r) {
   // Current unit
   const unitEl = document.getElementById("wr-unit");
   if (unitEl) unitEl.textContent = r.currentUnit
-    ? "📅 " + r.currentUnit
+    ? "Pacing guide: " + r.currentUnit
     : "📅 No active unit";
 
   // NEW (Say/Do Ledger cas-ccps finding #13): each stat below is now a
@@ -2117,12 +2123,12 @@ function renderWarmUpReadiness(r) {
   // the verb agreement in the same sentence.
   wrButton(document.getElementById("wr-eval"), r.withEvalHistory,
     r.withEvalHistory + " of " + r.total + " student" +
-    (r.total === 1 ? " has" : "s have") + " evaluation history",
+    (r.total === 1 ? " has" : "s have") + " had work checked",
     "eval");
 
   // Warm-up history
   wrButton(document.getElementById("wr-warmup"), r.withWarmUpHistory,
-    r.withWarmUpHistory + " with warm-up responses", "warmup");
+    r.withWarmUpHistory + " answered a warm-up", "warmup");
 
   // Was "building archetype confidence" / "ready for personalized
   // archetype" — internal engine vocabulary ("archetype", "shadow
@@ -2142,7 +2148,7 @@ function renderWarmUpReadiness(r) {
 let _activeWrFilter = null; // 'eval' | 'warmup' | 'conf' | 'locked' | null
 let _lastDashData = null;
 const WR_FILTER_EMAIL_KEY = { eval: "withEvalEmails", warmup: "withWarmupEmails", conf: "withConfEmails", locked: "lockedEmails" };
-const WR_FILTER_LABEL = { eval: "students with evaluation history", warmup: "students with warm-up responses", conf: "students building a personalized learning profile", locked: "students ready for fully personalized feedback" };
+const WR_FILTER_LABEL = { eval: "students who have had work checked", warmup: "students who answered a warm-up", conf: "students building a personalized learning profile", locked: "students ready for fully personalized feedback" };
 
 function applyWrFilter(bucket) {
   _activeWrFilter = bucket;
@@ -2221,7 +2227,7 @@ function openStudentProfile(email, name) {
     })
     .withFailureHandler(function(e) {
       if (!backdrop.classList.contains("open")) return;
-      body.innerHTML = '<p style="font-size:13px;color:#d93025">Could not load this profile: ' +
+      body.innerHTML = '<p style="font-size:13px;color:#b3261e">Could not load this profile: ' +
         esc(e && e.message ? e.message : "unknown error") + '</p>';
     })
     .getStudentShadowProfile(email);
@@ -2315,11 +2321,11 @@ function renderScoreReviewModal(configId, suggestedScore) {
   if (suggestedScore) {
     html += '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">' +
       'This submission passed all automated checks. The AI-suggested score is <strong>' +
-      esc(suggestedScore) + '/5</strong>.</p>' +
+      esc(scoreLabel(suggestedScore)) + '</strong> (it suggests 2 to 4; higher is better).</p>' +
       '<button id="score-review-accept-btn" onclick="submitTurnInConfirm(\\'' + safeConfigId + '\\')" ' +
-      'style="width:100%;background:#1a73e8;color:white;border:none;padding:10px;border-radius:6px;' +
+      'style="width:100%;background:#1967d2;color:white;border:none;padding:10px;border-radius:6px;' +
       'font-size:14px;font-weight:500;cursor:pointer;margin-bottom:14px">Accept ' +
-      esc(suggestedScore) + '/5 as final score</button>';
+      esc(scoreLabel(suggestedScore)) + ' as the final score</button>';
   } else {
     html += '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">' +
       'This submission passed all automated checks, but was evaluated before AI scoring was ' +
@@ -2329,10 +2335,10 @@ function renderScoreReviewModal(configId, suggestedScore) {
   html += '<div class="field" style="margin-bottom:10px">' +
     '<label for="score-review-override">Or enter a different score (1–5)</label>' +
     '<input type="number" id="score-review-override" min="1" max="5" step="1" placeholder="1–5" style="width:100px">' +
-    '<div class="hint">5 is reserved for your own judgment — the system never suggests it.</div>' +
+    '<div class="hint">Higher is better. The AI suggests only 2 to 4; 1 and 5 are yours to give.</div>' +
     '</div>' +
     '<button id="score-review-override-btn" onclick="submitTurnInOverride(\\'' + safeConfigId + '\\')" ' +
-    'style="width:100%;background:none;border:1px solid #1a73e8;color:#1a73e8;padding:9px;border-radius:6px;' +
+    'style="width:100%;background:none;border:1px solid #1a73e8;color:#1557b0;padding:9px;border-radius:6px;' +
     'font-size:14px;font-weight:500;cursor:pointer">Submit this score instead</button>';
 
   body.innerHTML = html;
@@ -2410,14 +2416,14 @@ function closeFeedbackPlacementModal() {
 
 function _feedbackPlacementFailed(e) {
   document.getElementById("feedback-placement-modal-body").innerHTML =
-    '<p style="color:#d93025;font-size:13px">Could not load: ' +
+    '<p style="color:#b3261e;font-size:13px">Could not load: ' +
     esc(e && e.message ? e.message : "unknown error") + '</p>';
 }
 
 function renderFeedbackPlacement(data) {
   const body = document.getElementById("feedback-placement-modal-body");
   if (!data || !data.success) {
-    body.innerHTML = '<p style="color:#d93025;font-size:13px">' +
+    body.innerHTML = '<p style="color:#b3261e;font-size:13px">' +
       esc((data && data.error) || "Could not load the setting.") + '</p>';
     return;
   }
@@ -2431,7 +2437,7 @@ function renderFeedbackPlacement(data) {
   html += '<p style="font-size:13px;margin:10px 0"><strong>Now:</strong> ' + esc(now) +
     ' <span style="color:var(--text-secondary)">(FEEDBACK_AS_COMMENT = ' + esc(v) + ')</span></p>';
   if (data.overriddenHere) {
-    html += '<p style="font-size:13px;color:#d93025">This project has its own FEEDBACK_AS_COMMENT ' +
+    html += '<p style="font-size:13px;color:#b3261e">This project has its own FEEDBACK_AS_COMMENT ' +
       'Script Property, which overrides this setting here. Delete it to use this panel.</p>';
   }
   if (!data.courses.length) {
@@ -2481,7 +2487,7 @@ function closeLessonScheduleModal() {
 
 function _lessonScheduleFailed(e) {
   document.getElementById("lesson-schedule-modal-body").innerHTML =
-    '<p style="color:#d93025;font-size:13px">Could not load: ' +
+    '<p style="color:#b3261e;font-size:13px">Could not load: ' +
     esc(e && e.message ? e.message : "unknown error") + '</p>';
 }
 
@@ -2495,7 +2501,7 @@ function _lsRolloutText(l) {
   }).join(' · ');
   if (l.rollout.mode === "SHADOW") t += ' <span style="color:var(--text-secondary)">(shadow)</span>';
   if (l.rollout.problems.length) {
-    t += '<div style="color:#d93025">⚠ ' + l.rollout.problems.map(esc).join('; ') + '</div>';
+    t += '<div style="color:#b3261e">⚠ ' + l.rollout.problems.map(esc).join('; ') + '</div>';
   }
   return t;
 }
@@ -2503,13 +2509,13 @@ function _lsRolloutText(l) {
 function renderLessonSchedule(data) {
   const body = document.getElementById("lesson-schedule-modal-body");
   if (!data || (!data.success && !data.courses)) {
-    body.innerHTML = '<p style="color:#d93025;font-size:13px">' +
+    body.innerHTML = '<p style="color:#b3261e;font-size:13px">' +
       esc((data && data.error) || "Could not load the schedule.") + '</p>';
     return;
   }
   _lessonSchedule = data;
   let html = '';
-  if (data.error) html += '<p style="color:#d93025;font-size:13px">' + esc(data.error) + '</p>';
+  if (data.error) html += '<p style="color:#b3261e;font-size:13px">' + esc(data.error) + '</p>';
   html += '<p style="font-size:13px;color:var(--text-secondary)">A lesson runs from its start date until the next ' +
     'one starts. Each date saves when you change it, to the LessonSchedule tab. The nightly rollout makes a ' +
     'lesson\\'s documents when it starts within ' + esc(String(data.leadDays)) + ' days and shares them the night before. ' +
@@ -2645,7 +2651,7 @@ function _ldReadForm() {
 function renderLessonEditor(data) {
   const body = document.getElementById("lesson-schedule-modal-body");
   if (!data || !data.success) {
-    body.innerHTML = '<p style="color:#d93025;font-size:13px">' + esc((data && data.error) || "Could not load the lesson.") + '</p>' +
+    body.innerHTML = '<p style="color:#b3261e;font-size:13px">' + esc((data && data.error) || "Could not load the lesson.") + '</p>' +
       '<button data-ld="back">← Back to the schedule</button>';
     return;
   }
@@ -2680,9 +2686,9 @@ function _ldRender(message) {
       const before = Array.isArray(draft.fields[k]) ? draft.fields[k].join(", ") : (draft.fields[k] || "");
       const after = Array.isArray(pf[k]) ? pf[k].join(", ") : (pf[k] || "");
       h += '<div style="font-size:13px;margin:8px 0"><strong>' + esc(L[k] || k) + '</strong>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div style="font-size:11px;color:var(--text-secondary)">Your draft</div>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap"><div style="flex:1;min-width:240px"><div style="font-size:12px;color:var(--text-secondary)">Your draft</div>' +
         '<div style="background:#fce8e6;padding:6px;white-space:pre-wrap">' + esc(before) + '</div></div>' +
-        '<div style="flex:1;min-width:240px"><div style="font-size:11px;color:var(--text-secondary)">Proposed</div>' +
+        '<div style="flex:1;min-width:240px"><div style="font-size:12px;color:var(--text-secondary)">Proposed</div>' +
         '<div style="background:#e6f4ea;padding:6px;white-space:pre-wrap">' + esc(after) + '</div></div></div></div>';
     });
     if (draft.canReview) {
@@ -2834,7 +2840,7 @@ function openParentReportModal() {
     .withSuccessHandler(renderParentReportModal)
     .withFailureHandler(function(e) {
       document.getElementById("parent-report-modal-body").innerHTML =
-        '<p style="color:#d93025;font-size:13px">Could not load: ' +
+        '<p style="color:#b3261e;font-size:13px">Could not load: ' +
         esc(e && e.message ? e.message : "unknown error") + '</p>';
     })
     .getWeeklyParentReports();
@@ -2847,7 +2853,7 @@ function closeParentReportModal() {
 function renderParentReportModal(data) {
   const body = document.getElementById("parent-report-modal-body");
   if (!data || !data.success) {
-    body.innerHTML = '<p style="color:#d93025;font-size:13px">' +
+    body.innerHTML = '<p style="color:#b3261e;font-size:13px">' +
       esc((data && data.error) || "Could not load reports.") + '</p>';
     return;
   }
@@ -2893,7 +2899,7 @@ function renderParentReportModal(data) {
           (r.progressCount === 1 ? 'y' : 'ies') + ' to date' +
         '</div>' +
         '<details style="margin-bottom:10px">' +
-          '<summary style="font-size:12.5px;cursor:pointer;color:#1a73e8">' +
+          '<summary style="font-size:12.5px;cursor:pointer;color:#1557b0">' +
             'Read what will be sent</summary>' +
           '<pre style="white-space:pre-wrap;font-size:12px;background:#f8f9fa;' +
             'border-radius:6px;padding:10px;margin-top:8px;font-family:inherit">' +
@@ -2965,7 +2971,7 @@ function openScrReviewModal() {
     .withSuccessHandler(renderScrReviewModal)
     .withFailureHandler(function(e) {
       document.getElementById("scr-review-modal-body").innerHTML =
-        '<p style="color:#d93025;font-size:13px">Could not load: ' +
+        '<p style="color:#b3261e;font-size:13px">Could not load: ' +
         esc(e && e.message ? e.message : "unknown error") + '</p>';
     })
     .getScrReviewQueue();
@@ -2980,8 +2986,8 @@ function closeScrReviewModal() {
 function renderScrReviewModal(data) {
   const body = document.getElementById("scr-review-modal-body");
   if (!data || !data.success) {
-    body.innerHTML = '<p style="color:#d93025;font-size:13px">' +
-      esc((data && data.error) || "Could not load SCR reviews.") + '</p>';
+    body.innerHTML = '<p style="color:#b3261e;font-size:13px">' +
+      esc((data && data.error) || "Could not load competency ratings.") + '</p>';
     return;
   }
   _scrQueue = data.suggestions || [];
@@ -3008,18 +3014,18 @@ function renderScrReviewModal(data) {
           esc(item.competencyText) + ' (' + esc(item.competencyId) + ')</div>' +
         '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">' + evidenceNote + '</div>' +
         (suggested
-          ? '<p style="font-size:13px;margin-bottom:10px">AI-suggested rating: <strong>' + esc(suggested) + '/5</strong></p>' +
-            '<button onclick="submitScrConfirm(' + i + ')" style="margin-right:8px;background:#9334e6;color:white;' +
+          ? '<p style="font-size:13px;margin-bottom:10px">AI-suggested rating: <strong>' + esc(scrLabel(suggested)) + '</strong></p>' +
+            '<button onclick="submitScrConfirm(' + i + ')" style="margin-right:8px;background:#7627bb;color:white;' +
             'border:none;border-radius:4px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">Confirm ' +
-            esc(suggested) + '/5</button>'
+            esc(scrLabel(suggested)) + '</button>'
           : '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Not enough evidence yet for ' +
             'an AI suggestion — enter a rating directly below if you\\'re ready to decide.</p>') +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">' +
           '<label for="scr-override-' + i + '" style="font-size:12.5px">Or enter 1–5</label>' +
           '<input id="scr-override-' + i + '" type="number" min="1" max="5" step="1" ' +
             'style="width:70px;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px">' +
-          '<div class="hint" style="font-size:11px;color:var(--text-secondary)">5 is reserved for your own judgment.</div>' +
-          '<button onclick="submitScrOverride(' + i + ')" style="background:none;border:1px solid #9334e6;color:#9334e6;' +
+          '<div class="hint" style="font-size:12px;color:var(--text-secondary)">1 is the highest (can teach others), 5 the lowest (cannot perform). The AI suggests only 2 to 4; 1 and 5 are yours to give.</div>' +
+          '<button onclick="submitScrOverride(' + i + ')" style="background:none;border:1px solid #9334e6;color:#7627bb;' +
             'border-radius:4px;padding:5px 13px;font-size:13px;font-weight:500;cursor:pointer">Submit</button>' +
         '</div>' +
         '<div id="scr-msg-' + i + '" role="status" aria-live="polite" style="font-size:12.5px;margin-top:8px"></div>' +
@@ -3129,13 +3135,13 @@ function loadData() {
   // avoids that waste.
   if (refreshBtn) refreshBtn.disabled = true;
   const rawTerm = document.getElementById("term-filter").value || "ALL";
-  // The dropdown only ever has the hardcoded "All Terms" option until this
+  // The dropdown only ever has the hardcoded "Whole school year" option until this
   // very first response fills in the real list, so the very first call
   // would otherwise send the literal string "ALL" — which is truthy, so
   // the server's termFilter-or-CURRENT_TERM-or-"ALL" fallback never
   // actually consulted the admin-configured CURRENT_TERM. Sending "" only
   // on this one automatic first call lets that fallback do its job; any
-  // later call (refresh, or the user genuinely picking "All Terms") still
+  // later call (refresh, or the user genuinely picking "Whole school year") still
   // sends the real selected value.
   const term = (_isFirstLoad && rawTerm === "ALL") ? "" : rawTerm;
   _isFirstLoad = false;
@@ -3165,7 +3171,7 @@ function loadData() {
       if (data && data.error) {
         if (cached) { if (refreshBtn) refreshBtn.disabled = false; return; }
         _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
-          loading.innerHTML = '<p style="color:#d93025;padding:24px 24px 8px;">⚠ ' + esc(data.error) + '</p>';
+          loading.innerHTML = '<p style="color:#b3261e;padding:24px 24px 8px;">⚠ ' + esc(data.error) + '</p>';
           loading.style.display = "block";
           main.style.display = "none";
           if (refreshBtn) refreshBtn.disabled = false;
@@ -3188,8 +3194,8 @@ function loadData() {
       if (cached) { if (refreshBtn) refreshBtn.disabled = false; return; } // still showing valid (if slightly stale) cached data
       _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
         loading.innerHTML =
-          '<p style="color:#d93025;padding:24px 24px 8px;">⚠ Something went wrong loading your class data. Try refreshing.</p>' +
-          '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+          '<p style="color:#b3261e;padding:24px 24px 8px;">⚠ Something went wrong loading your class data. Try refreshing.</p>' +
+          '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1967d2;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
         if (refreshBtn) refreshBtn.disabled = false;
       });
     })
@@ -3210,12 +3216,12 @@ function render(data) {
     // different situation from "this class genuinely has no roster yet" —
     // the setup-troubleshooting copy below used to show for both, which is
     // actively misleading the moment term filtering is used for anything
-    // other than "All Terms."
+    // other than "Whole school year."
     const filteredByTerm = data && data.activeTerm && data.activeTerm !== "ALL" && (data.availableTerms || []).length > 0;
     main.innerHTML = filteredByTerm
       ? \`<div style="text-align:center;padding:60px 24px;color:var(--text-secondary)">
         <div style="font-size:48px;margin-bottom:16px">📋</div>
-        <p>No students for \${esc(data.activeTerm)}.<br>Try "All Terms" to see records from other terms.</p>
+        <p>No students for \${esc(termLabel(data.activeTerm))}.<br>Choose "Whole school year" to see the rest of the year.</p>
       </div>\`
       : \`<div style="text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line">
       <div style="font-size:48px;margin-bottom:16px">📋</div>
@@ -3289,8 +3295,8 @@ If you expect to see students here:
     const emailSet = new Set((data.warmUpReadiness[emailKey] || []).map(e => e.toLowerCase()));
     studentsToShow = studentsToShow.filter(s => emailSet.has(String(s.googleId||"").toLowerCase()));
     html += \`<div style="background:#e8f0fe;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-      <span style="font-size:13px;color:#1a73e8">Showing \${studentsToShow.length} \${esc(WR_FILTER_LABEL[_activeWrFilter]||"")}</span>
-      <button onclick="clearWrFilter()" style="background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
+      <span style="font-size:13px;color:#1557b0">Showing \${studentsToShow.length} \${esc(WR_FILTER_LABEL[_activeWrFilter]||"")}</span>
+      <button onclick="clearWrFilter()" style="background:none;border:1px solid #1a73e8;color:#1557b0;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
     </div>\`;
   }
   // NEW (finding #1): a second, independent filter toggle — the Pending
@@ -3300,8 +3306,8 @@ If you expect to see students here:
   if (_activePendingReviewFilter) {
     studentsToShow = studentsToShow.filter(s => s.statusClass === "pending-review");
     html += \`<div style="background:#f3e8fd;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
-      <span style="font-size:13px;color:#9334e6">Showing \${studentsToShow.length} awaiting your review</span>
-      <button onclick="togglePendingReviewFilter()" style="background:none;border:1px solid #9334e6;color:#9334e6;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
+      <span style="font-size:13px;color:#7627bb">Showing \${studentsToShow.length} awaiting your review</span>
+      <button onclick="togglePendingReviewFilter()" style="background:none;border:1px solid #9334e6;color:#7627bb;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
     </div>\`;
   }
 
@@ -3345,7 +3351,7 @@ If you expect to see students here:
       n("NOT_PASSING") + " not passing yet", n("NOT_CHECKED") + " not checked"].filter(Boolean);
     const unitFlagged = list.filter(s => s.statusClass === "flagged").length;
     html += \`<div class="unit-section">
-      <div class="unit-header">\${esc(unitNames[unit])} <span style="font-weight:400;margin-left:8px;">\${parts.join(" · ")}\${unitFlagged ? ' · <span style="color:#d93025">' + unitFlagged + ' flagged</span>' : ''}</span></div>\`;
+      <div class="unit-header">\${esc(unitNames[unit])} <span style="font-weight:400;margin-left:8px;">\${parts.join(" · ")}\${unitFlagged ? ' · <span style="color:#b3261e">' + unitFlagged + " couldn't be checked</span>" : ''}</span></div>\`;
     units[unit].forEach(s => {
       // NEW (finding #13): a bucket-appropriate next step per filtered row —
       // "building profile" students get a note to log more lesson context
@@ -3353,7 +3359,7 @@ If you expect to see students here:
       // link into their new per-student shadow-profile detail view.
       let wrNextStep = "";
       if (_activeWrFilter === "conf") {
-        wrNextStep = '<div style="font-size:12px;color:#1a73e8;margin-top:4px">💡 Log more Lesson Context for this class to help build a fuller profile faster.</div>';
+        wrNextStep = '<div style="font-size:12px;color:#1557b0;margin-top:4px">💡 Log more Lesson Context for this class to help build a fuller profile faster.</div>';
       } else if (_activeWrFilter === "locked") {
         // Two independent escape passes, in this order: HTML-attribute-
         // escape " first (the onclick attribute itself is double-quoted —
@@ -3376,7 +3382,7 @@ If you expect to see students here:
         // unaffected — googleId is never passed through esc() first.
         const wrIdSafe   = jsAttr(s.googleId);
         const wrNameSafe = jsAttr(s.name);
-        wrNextStep = '<button onclick="openStudentProfile(\\'' + wrIdSafe + '\\', \\'' + wrNameSafe + '\\')" style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">View Profile →</button>';
+        wrNextStep = '<button onclick="openStudentProfile(\\'' + wrIdSafe + '\\', \\'' + wrNameSafe + '\\')" style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1557b0;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">View Profile →</button>';
       }
       // NEW (Say/Do Ledger cas-ccps finding #1): shown on every
       // PENDING_TEACHER_REVIEW row regardless of which (if any) warm-up
@@ -3394,18 +3400,18 @@ If you expect to see students here:
         const rvScoreNote  = s.suggestedScore == null
           ? "No AI-suggested score — assign one directly."
           : "AI-suggested score: " + s.suggestedScore + "/5.";
-        reviewNextStep = '<div style="font-size:12px;color:#9334e6;margin-top:4px">' + rvScoreNote + '</div>' +
-          '<button onclick="openScoreReview(\\'' + rvConfigSafe + '\\', \\'' + rvNameSafe + '\\', ' + rvScoreArg + ')" style="margin-top:6px;background:#9334e6;color:white;border:none;border-radius:4px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">Review Submission →</button>';
+        reviewNextStep = '<div style="font-size:12px;color:#7627bb;margin-top:4px">' + rvScoreNote + '</div>' +
+          '<button onclick="openScoreReview(\\'' + rvConfigSafe + '\\', \\'' + rvNameSafe + '\\', ' + rvScoreArg + ')" style="margin-top:6px;background:#7627bb;color:white;border:none;border-radius:4px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">Review Submission →</button>';
       }
       const pipelineBadge = ["active", "queued", "flagged", "pending-review"].includes(s.statusClass)
-        ? \`<div class="status-badge \${badgeMap[s.statusClass] || 'badge-unknown'}">\${esc(s.status)}</div>\` : "";
+        ? \`<div class="status-badge \${badgeMap[s.statusClass] || 'badge-unknown'}">\${esc(BADGE_WORDS[s.statusClass] || s.status)}</div>\` : "";
       html += \`<div class="student-row \${s.statusClass} es-\${s.evalState}">
         <div>
           <div class="student-name">\${esc(s.name)}</div>
           <div class="student-meta">\${[s.block && "Block "+esc(s.block), s.period && "Period "+esc(s.period), esc(s.subject)].filter(Boolean).join(" · ") || "No class info on file"}</div>
           <div class="last-eval">\${s.checkCount ? s.checkCount + " check" + (s.checkCount === 1 ? "" : "s") + " · last " + esc(s.lastEval) : "No checks yet"}\${s.submittedAt && s.submittedAt !== "—" ? " · submitted " + esc(s.submittedAt) : ""}</div>
           \${s.firstPassedAt ? \`<div class="last-eval">First passed \${esc(s.firstPassedAt)}</div>\` : ""}
-          \${s.lastSuggestedScore != null ? \`<div class="last-eval">Suggested score (latest check): <b>\${esc(s.lastSuggestedScore)}</b>/5</div>\` : ""}
+          \${s.lastSuggestedScore != null ? \`<div class="last-eval">AI's suggested score, last check: <b>\${esc(scoreLabel(s.lastSuggestedScore))}</b> (2–4, higher is better)</div>\` : ""}
           \${safeDocUrl(s.docUrl)
             ? \`<a class="doc-link" href="\${esc(safeDocUrl(s.docUrl))}" target="_blank">Open document ↗</a>\`
             : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
@@ -3452,7 +3458,7 @@ function _populateTermDropdown(data) {
   (data.availableTerms || []).forEach(t => {
     if (!currentOptions.includes(t)) {
       const opt = document.createElement("option");
-      opt.value = t; opt.textContent = t;
+      opt.value = t; opt.textContent = termLabel(t);
       sel.appendChild(opt);
     }
   });
@@ -3461,6 +3467,11 @@ function _populateTermDropdown(data) {
 
 ${CLIENT_ESC_JS}
 ${CLIENT_SAFE_DOC_URL_JS}
+${CLIENT_WORDS_JS}
+// The roster's status badges: the server's codes stay (resolveClass_), the
+// words a teacher reads are these (2026-10-22).
+const BADGE_WORDS = { queued: "Waiting to be checked", active: "Being checked now",
+  flagged: "Couldn't be checked ⚠", "pending-review": "Waiting for your review" };
 
 // ── M4: STUDENT CONTEXT TAB ───────────────────────────────────────────────
 // FIXED (finding #9): this page is only ever built for the authorized
@@ -3482,13 +3493,13 @@ function showStudentContext() {
         // only ever errors on a failed identity check, and doGet() already
         // verified that before this page was built. Shown plainly rather
         // than assumed unreachable, in case config drifts between the two checks.
-        view.innerHTML = '<p style="color:#d93025;padding:24px;">' + esc(result.error) + '</p>';
+        view.innerHTML = '<p style="color:#b3261e;padding:24px;">' + esc(result.error) + '</p>';
         return;
       }
       renderTeacherRoster(result);
     })
     .withFailureHandler(function(e) {
-      view.innerHTML = '<p style="color:#d93025;padding:24px;">Could not load roster: ' + esc(e.message || e) + '</p>';
+      view.innerHTML = '<p style="color:#b3261e;padding:24px;">Could not load roster: ' + esc(e.message || e) + '</p>';
     })
     .getStudentContextRoster();
 }
@@ -3510,7 +3521,7 @@ function renderTeacherRoster(result) {
   // same convention used elsewhere in this file — this roster is the
   // aggregated view of every student doc's context (lesson history,
   // evaluation/warm-up activity), not just a read-only listing.
-  html += '<p style="font-size:12px;color:#1a73e8;margin-bottom:16px;">💡 This feeds every student’s warm-up personalization and shadow-profile confidence — the more Lesson Context logged, the richer this gets.</p>';
+  html += '<p style="font-size:12px;color:#1557b0;margin-bottom:16px;">💡 This feeds every student’s warm-up personalization and shadow-profile confidence — the more Lesson Context logged, the richer this gets.</p>';
   if (result.roster.length === 0) {
     html += '<p style="color:var(--text-secondary);">No student docs yet. They are created automatically the first week a student has a completed assignment or warm-up response.</p>';
   } else {
@@ -3524,9 +3535,9 @@ function renderTeacherRoster(result) {
         ? '<span class="status-badge badge-compliant">Active</span>'
         : '<span class="status-badge badge-not-started">No recent activity</span>';
       html += '<div style="background:white;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.08);">';
-      html += '<div>' + activityBadge + ' <strong style="margin-left:6px">' + esc(s.name) + '</strong><div style="font-size:11px;color:var(--text-secondary);margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
+      html += '<div>' + activityBadge + ' <strong style="margin-left:6px">' + esc(s.name) + '</strong><div style="font-size:12px;color:var(--text-secondary);margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
       html += safeDocUrl(s.docUrl)
-        ? '<a href="' + esc(safeDocUrl(s.docUrl)) + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">Open doc ↗</a>'
+        ? '<a href="' + esc(safeDocUrl(s.docUrl)) + '" target="_blank" style="font-size:12px;color:#1557b0;text-decoration:none;">Open doc ↗</a>'
         : '<span style="font-size:12px;color:var(--text-secondary);">Document not yet available</span>';
       html += '</div>';
     });
@@ -3921,7 +3932,7 @@ function loadCompetencies() {
       document.getElementById("comp-loading").style.display = "none";
       document.getElementById("competency-tabs-shell").innerHTML =
         '<div class="competency-empty">Something went wrong loading competencies. ' +
-        '<button onclick="this.disabled=true;loadCompetencies()" style="margin-left:8px;padding:6px 14px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:13px;cursor:pointer;">Try Again</button></div>';
+        '<button onclick="this.disabled=true;loadCompetencies()" style="margin-left:8px;padding:6px 14px;border-radius:6px;border:none;background:#1967d2;color:#fff;font-size:13px;cursor:pointer;">Try Again</button></div>';
     })
     .getCompetencies();
 }
@@ -4197,6 +4208,7 @@ document.addEventListener("keydown", function(e) {
 
 loadData();
 </script>
+${casTermsPanelHtml_("Terms used on this dashboard", "What each word and number means. The sheets and Studio flows use the system's own names (Flow 2, SCRSuggestions, LessonSchedule).", CAS_TEACHER_TERMS)}
 </body>
 </html>`;
 }
@@ -4222,11 +4234,11 @@ function buildMyContextHtml_() {
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:14px}
-header{background:#1a73e8;color:white;padding:16px 24px}
+header{background:#1967d2;color:white;padding:16px 24px}
 header h1{font-size:18px;font-weight:500}
 .main{padding:20px 24px;max-width:640px;margin:0 auto}
 #loading{text-align:center;padding:60px 24px;color:var(--text-secondary)}
-.spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+.spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1557b0;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
 </head>
@@ -4247,7 +4259,7 @@ function loadOwnContext() {
       const view = document.getElementById("main");
       view.style.display = "block";
       if (result.error) {
-        view.innerHTML = '<p style="color:#d93025;padding:24px 0;">' + esc(result.error) + '</p>';
+        view.innerHTML = '<p style="color:#b3261e;padding:24px 0;">' + esc(result.error) + '</p>';
         return;
       }
       if (!result.hasContent) {
@@ -4260,7 +4272,7 @@ function loadOwnContext() {
         '<p style="font-size:14px;color:#3c4043;margin-bottom:6px;">Your context record was last updated:</p>' +
         '<p style="font-size:16px;font-weight:500;color:#202124;margin-bottom:20px;">' + esc(result.lastUpdatedAt) + '</p>' +
         (safeDocUrl(result.docUrl)
-          ? '<a href="' + esc(safeDocUrl(result.docUrl)) + '" target="_blank" style="background:#1a73e8;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>'
+          ? '<a href="' + esc(safeDocUrl(result.docUrl)) + '" target="_blank" style="background:#1967d2;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>'
           : '<p style="font-size:13px;color:var(--text-secondary);">Document not yet available</p>') +
         '</div>';
     })
@@ -4268,7 +4280,7 @@ function loadOwnContext() {
       document.getElementById("loading").style.display = "none";
       const view = document.getElementById("main");
       view.style.display = "block";
-      view.innerHTML = '<p style="color:#d93025;padding:24px 0;">Could not load your context: ' + esc(e.message || e) + '</p>';
+      view.innerHTML = '<p style="color:#b3261e;padding:24px 0;">Could not load your context: ' + esc(e.message || e) + '</p>';
     })
     .getMyStudentContext();
 }

@@ -468,16 +468,16 @@ function cardAfter(setup) {
   return Object.assign(sub.exported.getStudentDashboardData('ALL').assignments[0], { sub });
 }
 
-test('a submitted assignment reads "Queued for evaluation…", with no Submit button, until it is evaluated', () => {
+test('a submitted assignment reads "Waiting for feedback…", with no Submit button, until it is checked', () => {
   for (const setup of [{ submit: true }, { queue: 'STAGED' }, { staging: 'PENDING_INFERENCE' },
     { status: 'COMPLETE', lastResult: 'NEEDS_REVISION', queue: 'PENDING' }]) {
     const card = cardAfter(setup);
-    assert.equal(card.displayStatus, 'Queued for evaluation…', JSON.stringify(setup));
+    assert.equal(card.displayStatus, 'Waiting for feedback…', JSON.stringify(setup));
     assert.equal(card.statusClass, 'IN_PROGRESS');
     assert.equal(card.canSubmit, false);
   }
   const evaluating = cardAfter({ queue: 'STAGED', staging: 'IN_PROCESS' });
-  assert.equal(evaluating.displayStatus, 'Evaluating now…');
+  assert.equal(evaluating.displayStatus, 'Being checked now…');
   assert.equal(evaluating.canSubmit, false);
   const closed = cardAfter({ queue: 'COMPLETE' });
   assert.equal(closed.displayStatus, 'Not started yet', 'a closed queue row is not in line');

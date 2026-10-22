@@ -189,7 +189,7 @@ test('the warm-up readiness numbers are buttons, and a click filters the roster'
   context.applyWrFilter = (bucket) => applied.push(bucket);
   context.renderWarmUpReadiness({ currentUnit: 'L06', total: 20, withEvalHistory: 5, withWarmUpHistory: 3,
     withShadowConfidence: 0, locked: 2 });
-  assert.equal(els['wr-eval'].textContent, '5 of 20 students have evaluation history');
+  assert.equal(els['wr-eval'].textContent, '5 of 20 students have had work checked');
   ['wr-eval', 'wr-warmup', 'wr-locked'].forEach((id) => els[id].onclick());
   assert.deepEqual(applied, ['eval', 'warmup', 'locked']);
   assert.equal(els['wr-confidence'].style.display, 'none', 'a zero count is hidden');
