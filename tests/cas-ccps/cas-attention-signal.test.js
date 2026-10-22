@@ -17,7 +17,7 @@ const FILES = [
   '00_SharedConfig.js', '06_StagingPipeline_Turnstile.js', '10_AdminRecoveryPanel.js',
   '22_LessonContextHandler.js', '23_StudentProfileManager.js', '30_SCRSuggestionEngine.js', '30b_SCRRetryRemediation.js',
   '34_QueueWatchdog.js', '34b_CasAttentionSignal.js', '34c_OvernightHealth.js', '36_WeeklyParentReport.js', '43_DeployVersionMarker_CentralLedger.js',
-  '50_StudentDataAccess.js',
+  '50_StudentDataAccess.js', '64_LedgerCycle.js',
 ].map(S);
 
 function load() {
@@ -328,4 +328,22 @@ test('_stagingPipelineHealthChecks_: no-timestamp rows are stuck; unknown status
   assert.equal(r.pendingStuckRows.length, 1);
   assert.match(r.pendingStuckRows[0], /no timestamp/);
   assert.deepEqual(r.unknownStatusRows, ['Row 4 — status "{{Step 3.Status}}"']);
+});
+
+// UX audit fix-first 5 (2026-10-22): a Ledger cycle job that keeps failing
+// shows in ADMIN, by function name and counts only.
+test('writeCasSignal_: a failing Ledger cycle job is named with its counts', () => {
+  const env = load();
+  staging(env.ss, []);
+  suggestions(env.ss, []);
+  env.sandbox.checkRetryEligibility_ = () => ({ eligible: false });
+  const day = env.sandbox.Utilities.formatDate(new Date(), env.sandbox.Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  env.props.setProperty('LEDGER_CYCLE_ERRORS', JSON.stringify({
+    bridgeQueue: { streak: 4, since: Date.now() - 4 * 60000, day, dayCount: 6 },
+    harvestFlowInputResults: { streak: 0, since: 0, day: '2000-01-01', dayCount: 3 },
+  }));
+  env.exported.writeCasSignal_(okWatchdog());
+  const text = signalText(env);
+  assert.match(text, /- Ledger job bridgeQueue: failing, 4 runs in a row, 6 failures today/);
+  assert.doesNotMatch(text, /harvestFlowInputResults/, 'an old day with no streak is not shown');
 });

@@ -12,6 +12,7 @@
 // hours of the run instead of at the next class.
 //
 // WHAT IT CHECKS
+//   - Ledger cycle jobs (64) still failing, by function name and count
 //   - each 3 a.m. stage stamped a run in the last 26 hours: 3:00 profiles
 //     (23), 3:05 artifact sync (33), 3:15 warm-up scoring (25), 3:30 queue
 //     build (24). A quiet night (nothing to build or score) still stamps.
@@ -77,6 +78,19 @@ function overnightHealth_(now, tz) {
       }
     }
   });
+
+  // The Ledger cycle's jobs still failing (64), 2026-10-22.
+  try {
+    if (typeof lcFailingJobs_ === "function") {
+      lcFailingJobs_(props, now.getTime()).filter(function (f) { return f.streak > 0; }).forEach(function (f) {
+        problems.push("Ledger job " + f.fn + ": failing, " + f.streak + " run" + (f.streak === 1 ? "" : "s") +
+          " in a row (Executions in the Central Ledger's Apps Script project shows the errors)");
+      });
+    }
+  } catch (e) {
+    unreadable = true;
+    problems.push("Ledger job failures: unavailable (" + e.message + ")");
+  }
 
   const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
   let wu = null;
