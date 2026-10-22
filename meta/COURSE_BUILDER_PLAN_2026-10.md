@@ -1,6 +1,7 @@
 # New courses from the VDOE framework: plan
 
-**Status:** draft, 2026-10-22. Nothing built. Starts after Oct 30
+**Status:** decided 2026-10-22 (C1 to C10, the operator's answers below;
+C8's division-policy check still to do). Nothing built. Starts after Oct 30
 ([`PLAN_2026-10.md`](./PLAN_2026-10.md): CAS live by Oct 30, one feature
 at a time), except Phase A if the operator wants it sooner.
 
@@ -166,21 +167,20 @@ the operator chooses public.
 `LessonSchedule` dates, the Canvas section map, enrollment and warm-ups, as
 for 8175 and 8177 today.
 
-## Open decisions
+## Decisions
 
-| # | Decision | Leaning |
+| # | Decision | Decided 2026-10-22 |
 |---|---|---|
-| C1 | **Who can submit.** *Decided 2026-10-22: any teacher, and built for teachers who adopt the platform later.* | A district-domain form until other teachers have dashboards; then a panel on each teacher's own |
-| C2 | **What a teacher provides.** The CTE Resource Center link, the `.docx`, a cartridge, or any of them | Any; the `.docx` with standards correlations is the most complete source, as for 8175 |
-| C3 | **When.** Phase A now, or everything after Oct 30 | All after Oct 30; Phase A is the safe first PR then |
-| C4 | **Lesson outline.** Draft one from the duty areas for the teacher to approve, or leave lessons entirely to the teacher | Draft one; it is a proposal, approved like 8177's prompts |
-| C5 | **Where an adopter's lessons live.** The operator's lessons are repo files built into 55b; an adopter has no repo | Class data in the teacher's Ledger, read by Apps Script; the operator's lessons move there too, with the repo keeping them as the example class. A change to how the lesson editor's import works (#245), so its own plan step |
-| C6 | **Who maintains the library.** VDOE revises frameworks; adopters get library updates | The operator reviews library PRs for fidelity to VDOE's text; releases carry library updates and never touch class data |
-
-| C7 | **A private teacher and VDOE frameworks.** Can a private teacher use the public library's course frameworks? | Yes: the framework entries are VDOE's text, not teachers' work; only lessons are share-alike |
-| C8 | **The licence for filed lessons.** cas-ccps has no licence file yet (`BACKLOG.md`) | A share-alike licence such as CC BY-SA 4.0, matching "use it, share back". **Check first whether the school division owns lessons its teachers write** (district policy on teacher-created materials); that decides whether a teacher can file them at all |
-| C9 | **Leaving the public library.** A teacher who goes private, or leaves | Lessons already filed stay under their licence; new lessons stay private from then on |
-| C10 | **Credit.** How a filed lesson names its author | The teacher's choice: their name, their school, or anonymous. Never a student |
+| C1 | **Who can submit.** | **Decided:** any teacher, built for teachers who adopt the platform later. A district-domain form until other teachers have dashboards; then a panel on each teacher's own |
+| C2 | **What a teacher provides.** The CTE Resource Center link, the `.docx`, a cartridge, or any of them | **Decided:** Any; the `.docx` with standards correlations is the most complete source, as for 8175 |
+| C3 | **When.** Phase A now, or everything after Oct 30 | **Decided:** All after Oct 30; Phase A is the safe first PR then |
+| C4 | **Lesson outline.** Draft one from the duty areas for the teacher to approve, or leave lessons entirely to the teacher | **Decided:** Draft one; it is a proposal, approved like 8177's prompts |
+| C5 | **Where an adopter's lessons live.** The operator's lessons are repo files built into 55b; an adopter has no repo | **Decided:** Class data in the teacher's Ledger, read by Apps Script; the operator's lessons move there too, with the repo keeping them as the example class. A change to how the lesson editor's import works (#245), so its own plan step |
+| C6 | **Who maintains the library.** VDOE revises frameworks; adopters get library updates | **Decided:** The operator reviews library PRs for fidelity to VDOE's text; releases carry library updates and never touch class data |
+| C7 | **A private teacher and VDOE frameworks.** Can a private teacher use the public library's course frameworks? | **Decided:** Yes: the framework entries are VDOE's text, not teachers' work; only lessons are share-alike |
+| C8 | **The licence for filed lessons.** cas-ccps has no licence file yet (`BACKLOG.md`) | **Decided:** CC BY-SA 4.0 for filed lessons. **Before Phase E is built:** confirm whether the school division owns lessons its teachers write (its policy on teacher-created materials); if it does, filing needs the division's agreement |
+| C9 | **Leaving the public library.** A teacher who goes private, or leaves | **Decided:** Lessons already filed stay under their licence; new lessons stay private from then on |
+| C10 | **Credit.** How a filed lesson names its author | **Decided:** The teacher's choice: their name, their school, or anonymous. Never a student |
 
 ## What to keep from today's rules
 
