@@ -62,7 +62,7 @@ function onFormSubmit_Intake(e) {
   if (res.ok) return;
 
   if (res.code === "INVALID_ACCOUNT") {
-    Logger.log("Form 1 rejected — '" + googleId + "' is not a valid student Google account (expected 7 digits @" + _studentEmailDomain_() + ").");
+    Logger.log("Form 1 rejected — the account entered is not a valid student Google account (expected 7 digits @" + _studentEmailDomain_() + ").");
     notifyIntakeRejected_(cfg, {
       studentName: studentName, googleId: googleId,
       teacherEmail: teacherEmail, unitConfigId: unitConfigId,
@@ -125,8 +125,7 @@ function onFormSubmit_Intake(e) {
       );
     }
 
-    Logger.log("Form 1 error — MASTER_STUDENT_TEMPLATE_ID not set. " +
-               "Student: " + studentName);
+    Logger.log("Form 1 error — MASTER_STUDENT_TEMPLATE_ID not set.");
   }
 }
 
@@ -524,7 +523,7 @@ function shareToStudentDrive_(cfg, docFile, googleId, teacherEmail) {
     try {
       docFile.addEditor(googleId);
     } catch (err) {
-      Logger.log("Share warning for " + googleId + ": " + err.message);
+      Logger.log("Share warning for the student's account: " + err.message);
     }
   }
   if (teacherEmail) {
