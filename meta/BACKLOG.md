@@ -81,12 +81,15 @@ operator. This file holds what comes after them.
   turns out to be the slow part.
 
 - **New courses from the VDOE framework, requested by teachers** (2026-10-22,
-  the operator's ask). A teacher submits a course code and its VDOE
-  framework; an agent session imports the competencies through a PR the
-  teacher accepts. First, a course list in place of the four hardcoded
+  the operator's ask), built for teachers who adopt the platform later: a
+  shared course library (VDOE's text) and each teacher's class (their
+  adaptation) kept apart. A teacher submits a course code and its VDOE
+  framework; an agent session imports it into the library through a PR.
+  First, the library and a class list in place of the four hardcoded
   8175/8177 rules. See
   [`COURSE_BUILDER_PLAN_2026-10.md`](./COURSE_BUILDER_PLAN_2026-10.md);
-  decisions C1 to C4 open. After Oct 30.
+  C1 decided, C2 to C6 open. After Oct 30; relates to "Second teachers
+  and adoption" below.
 
 - **Thread A: cross-course mastery map, remediation and anchors.** Start
   with the competency graph file and a teacher-approval tool.
