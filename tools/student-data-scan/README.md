@@ -41,3 +41,13 @@ clean. GitHub Support then purged the read-only pull-request refs and
 cached views, and the repo went public again. CI can't check names: run
 `--roster` locally for each section after any change that adds example
 text.
+
+**Log calls (warnings, since 2026-10-22).** The working-tree run also reads
+every `Logger.log` / `console.*` call in `cas-ccps/scripts/` and warns when
+one passes a student identifier, because the operator pastes Apps Script
+logs into sessions. It matches only unambiguous names (`studentEmail`,
+`studentName`, `googleId`, `sisLogin`, `student.email`, `student.name`,
+and the same as properties), after blanking string literals. A plain
+`email` is not matched: it is as often a teacher's address. Read the call
+for those. Warnings print `path:line log-identifier (warning)` and don't
+change the exit status. Log a row number, a count or a file ID instead.

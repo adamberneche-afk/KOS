@@ -36,3 +36,18 @@ test('roster names match as full names, either order in the export', () => {
   scan.scanText('Quorra  Zyx was here; Quorra alone is not', 'n.md', kinds, new Set(), out);
   assert.deepEqual(out.map((f) => f.kind), ['roster-name']);
 });
+
+test('log calls: a student identifier is flagged by line; wording and teacher addresses are not', () => {
+  const src = [
+    'Logger.log("[X] studentEmail missing for row " + row);',
+    'Logger.log("[X] decided " + studentEmail +',
+    '  " | " + rating);',
+    'console.error("skipped " + s.sisLogin);',
+    'Logger.log("[X] sent to " + teacherEmail + " for " + report.studentName);',
+    'Logger.log("[X] sent to " + teacherEmail);',
+    'const studentEmail = x; Logger.log("row " + n);',
+  ].join('\n');
+  const out = scan.scanLogCalls(src, 's.js', []);
+  assert.deepEqual(out.map((f) => f.where), ['s.js:2', 's.js:4', 's.js:5']);
+  assert.ok(out.every((f) => f.kind === 'log-identifier'));
+});
