@@ -316,11 +316,16 @@ test('the SCR queue with only too-little-evidence rows says nothing is waiting',
   assert.doesNotMatch(body.innerHTML, /id="scr-override-/);
 });
 
-test('✉ Parent Reports remembers the address a report went to, in this browser only', () => {
+// The operator, 2026-10-22: nothing is stored in the browser. Parent
+// Reports used to remember each address in localStorage, keyed by the
+// student's email.
+test('✉ Parent Reports stores nothing in the browser, and neither dashboard uses browser storage', () => {
   const html = renderDashboard().buildDashboardHtml_();
   const context = firstContextWith(html, ['renderParentReportModal', 'submitParentReportSend']);
-  const store = {};
-  context.localStorage = { getItem: (k) => (k in store ? store[k] : null), setItem: (k, v) => { store[k] = String(v); } };
+  const touched = [];
+  const trap = { getItem(k) { touched.push(k); return null; }, setItem(k) { touched.push(k); }, removeItem(k) { touched.push(k); } };
+  context.localStorage = trap;
+  context.sessionStorage = trap;
   const els = {};
   const el = (id) => (els[id] = els[id] || { id, style: {}, value: '', innerHTML: '', textContent: '' });
   context.document = { getElementById: el };
@@ -333,17 +338,15 @@ test('✉ Parent Reports remembers the address a report went to, in this browser
     { studentEmail: 's@example.invalid', studentName: 'A Student', confirmedCount: 0, pendingCount: 0, progressCount: 0, preview: 'text' },
   ] };
   context.renderParentReportModal(data);
-  const body = els['parent-report-modal-body'].innerHTML;
-  assert.match(body, /0 confirmed scores · 0 competencies to date/, 'zeros print as 0');
-  assert.doesNotMatch(body, /value="/);
+  assert.match(els['parent-report-modal-body'].innerHTML, /0 confirmed scores · 0 competencies to date/, 'zeros print as 0');
   el('pr-addr-0').value = 'family@example.invalid';
   context.submitParentReportSend(0);
   send({ success: true, recipient: 'family@example.invalid' });
   context.renderParentReportModal(data);
-  assert.match(els['parent-report-modal-body'].innerHTML, /id="pr-addr-0" type="email" placeholder="name@example.com" value="family@example.invalid"/);
-  assert.match(els['parent-report-modal-body'].innerHTML, /Last sent to family@example\.invalid on .+ from this browser/);
-  // Storage that throws (a private window) leaves the field empty, no error.
-  context.localStorage = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
-  context.renderParentReportModal(data);
-  assert.doesNotMatch(els['parent-report-modal-body'].innerHTML, /value="/);
+  assert.doesNotMatch(els['parent-report-modal-body'].innerHTML, /value="family@example\.invalid"/);
+  assert.deepEqual(touched, []);
+  const { exported } = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '13_StudentDashboard.js')], ['buildStudentDashboardHtml_']);
+  for (const page of [html, exported.buildStudentDashboardHtml_()]) {
+    assert.doesNotMatch(page, /localStorage|sessionStorage|indexedDB/);
+  }
 });

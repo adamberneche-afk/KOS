@@ -2437,26 +2437,6 @@ function _handleTurnInDecisionResult(res) {
 
 let _parentReports = [];
 
-// The address each student's report last went to, remembered in this
-// browser only, so the weekly send isn't retyped (2026-10-22, UX audit). It
-// is a per-viewer convenience: nothing is stored on the server or shared,
-// and the field stays editable. The server's ParentReportLog stays the record.
-const PR_ADDR_KEY = "casParentReportAddr:";
-
-function _prRemembered(studentEmail) {
-  try {
-    const v = JSON.parse(localStorage.getItem(PR_ADDR_KEY + studentEmail) || "null");
-    return v && v.addr ? v : null;
-  } catch (e) { return null; }
-}
-
-function _prRemember(studentEmail, addr) {
-  try {
-    const sentOn = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
-    localStorage.setItem(PR_ADDR_KEY + studentEmail, JSON.stringify({ addr: addr, sentOn: sentOn }));
-  } catch (e) {}
-}
-
 function openFeedbackPlacementModal() {
   _openPanel("feedback-placement-modal-backdrop", closeFeedbackPlacementModal);
   document.getElementById("feedback-placement-modal-body").innerHTML =
@@ -3075,7 +3055,6 @@ function renderParentReportModal(data) {
   }
 
   _parentReports.forEach(function(r, i) {
-    const last = _prRemembered(r.studentEmail);
     const pending = r.pendingCount > 0
       ? '<span style="color:#b06000"> · ' + escNum(r.pendingCount) + ' awaiting your review</span>'
       : '';
@@ -3097,12 +3076,9 @@ function renderParentReportModal(data) {
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
           '<label for="pr-addr-' + i + '" style="font-size:12.5px">Parent email</label>' +
           '<input id="pr-addr-' + i + '" type="email" placeholder="name@example.com" ' +
-            (last ? 'value="' + esc(last.addr) + '" ' : '') +
             'style="flex:1;min-width:190px;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px">' +
           '<button class="btn" onclick="submitParentReportSend(' + i + ')">Send</button>' +
         '</div>' +
-        (last ? '<div style="font-size:12px;color:var(--text-secondary);margin-top:6px">Last sent to ' + esc(last.addr) +
-          (last.sentOn ? ' on ' + esc(last.sentOn) : '') + ' from this browser. Check it is still right before you send.</div>' : '') +
         '<div id="pr-msg-' + i + '" role="status" aria-live="polite" ' +
           'style="font-size:12.5px;margin-top:8px"></div>' +
       '</div>';
@@ -3137,7 +3113,6 @@ function submitParentReportSend(i) {
       // still remembers who it was meant for.
       msg.textContent = "✅ Sent to " + res.recipient;
       if (input) input.disabled = true;
-      _prRemember(report.studentEmail, res.recipient || addr);
       showToast("✅ Report sent to " + res.recipient);
     })
     .withFailureHandler(function(e) {
@@ -3795,19 +3770,23 @@ function _modalTrapKeydown(e) {
 
 // Remembers the period/class from the last logged lesson (a teacher logging
 // several lessons in a row for the same class shouldn't have to retype it
-// every time), and keeps a debounced draft of the open form so an accidental
-// refresh or tab close doesn't lose a typed-out objective/activity.
-let lastUsedPeriod = _safeSessionGet_("casLastPeriod") || "";
+// every time), and keeps a debounced draft of the open form so closing it by
+// accident doesn't lose a typed-out objective/activity.
+// Both live in this page's memory, not browser storage (the operator,
+// 2026-10-22: nothing is stored in the browser), so they last until the
+// page is reloaded or closed.
+const _pageMemory_ = {};
+let lastUsedPeriod = "";
 const LESSON_DRAFT_KEY = "casLessonDraft";
 
 function _safeSessionGet_(key) {
-  try { return sessionStorage.getItem(key); } catch (e) { return null; }
+  return Object.prototype.hasOwnProperty.call(_pageMemory_, key) ? _pageMemory_[key] : null;
 }
 function _safeSessionSet_(key, val) {
-  try { sessionStorage.setItem(key, val); } catch (e) {}
+  _pageMemory_[key] = String(val);
 }
 function _safeSessionRemove_(key) {
-  try { sessionStorage.removeItem(key); } catch (e) {}
+  delete _pageMemory_[key];
 }
 
 function saveLessonDraft() {
@@ -3858,8 +3837,7 @@ function restoreLessonDraft() {
   let d;
   try { d = JSON.parse(raw); } catch (e) { return empty; }
   const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
-  // sessionStorage drafts survive for the life of the tab, not just until
-  // the next reopen the same day. Restoring a stale date here would
+  // A draft survives for the life of the page, which can span midnight. Restoring a stale date here would
   // silently backdate today's log (e.g. a Monday draft resumed on Tuesday)
   // with no indication it happened — openModal() already set f-date to
   // today before calling this, so only restore the draft's date when it
