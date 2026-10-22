@@ -623,18 +623,73 @@ function resetStuckRow() {
 // ---------------------------------------------------------------------------
 function clearStagingPipeline() {
   const ui = SpreadsheetApp.getUi();
-  if (ui.alert("⚠️ Clear Entire Staging Pipeline",
-    "Delete ALL rows from the staging pipeline?\n\n" +
-    "ReviewQueue rows are NOT affected — they will be re-staged on the next bridge run.\n\nContinue?",
-    ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
-
   const cfg   = getConfig_();
   const ss    = SpreadsheetApp.openById(cfg.adminSsId);
   const sheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
-  const last  = sheet.getLastRow();
+  const queue = ss.getSheetByName(cfg.tabs.reviewQueue);
+  const plan  = _clearStagingPlan_(sheet, queue);
+  if (!plan.rows) {
+    ui.alert("✅ The staging pipeline is already empty.");
+    return;
+  }
+  // A preview first, and the ReviewQueue rows put back (2026-10-22, UX audit
+  // fix-first 7). This used to promise ReviewQueue rows "will be re-staged
+  // on the next bridge run", but the bridge (03) stages only PENDING rows and
+  // these were STAGED, so every student cleared stayed "being checked" for
+  // good.
+  const byStatus = Object.keys(plan.byStatus).map(function (k) {
+    return "  " + k + ": " + plan.byStatus[k];
+  }).join("\n");
+  if (ui.alert("⚠️ Clear Entire Staging Pipeline",
+    "This deletes all " + plan.rows + " staging row(s):\n" + byStatus + "\n\n" +
+    (plan.requeue.length
+      ? plan.requeue.length + " submission(s) not finished yet will be put back in line " +
+        "(their ReviewQueue rows set to PENDING), so the bridge stages them again. " +
+        "A feedback still on its way may arrive twice.\n\n"
+      : "No unfinished submission needs putting back in line.\n\n") +
+    "Continue?",
+    ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
+
+  const last = sheet.getLastRow();
   if (last > 1) sheet.deleteRows(2, last - 1);
+  plan.requeue.forEach(function (rowNum) {
+    queue.getRange(rowNum, CSP_RQ_STATUS + 1).setValue("PENDING");
+  });
   SpreadsheetApp.flush();
-  ui.alert("✅ Staging pipeline cleared.");
+  ui.alert("✅ Staging pipeline cleared." +
+    (plan.requeue.length ? " " + plan.requeue.length + " submission(s) put back in line." : ""));
+}
+
+// ReviewQueue's Status column (03's RQ_STATUS).
+const CSP_RQ_STATUS = 5;
+
+// What clearStagingPipeline() would do: { rows, byStatus, requeue }, where
+// requeue lists the ReviewQueue row numbers still STAGED behind a staging
+// row that isn't COMPLETE. Reads only.
+function _clearStagingPlan_(sheet, queue) {
+  const plan = { rows: 0, byStatus: {}, requeue: [] };
+  if (!sheet || sheet.getLastRow() < 2) return plan;
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(function (h) { return String(h).trim(); });
+  const stIdx  = headers.indexOf("Status") !== -1 ? headers.indexOf("Status") : 5;
+  const refIdx = headers.indexOf("QueueRowRef") !== -1 ? headers.indexOf("QueueRowRef") : 1;
+  const refs = {};
+  for (let i = 1; i < data.length; i++) {
+    const st = String(data[i][stIdx]).trim() || "(blank)";
+    plan.rows++;
+    plan.byStatus[st] = (plan.byStatus[st] || 0) + 1;
+    const ref = parseInt(data[i][refIdx], 10);
+    if (st !== "COMPLETE" && !isNaN(ref) && ref >= 2) refs[ref] = true;
+  }
+  if (queue && queue.getLastRow() > 1) {
+    const q = queue.getRange(1, CSP_RQ_STATUS + 1, queue.getLastRow(), 1).getValues();
+    Object.keys(refs).forEach(function (r) {
+      const n = Number(r);
+      if (n <= q.length && String(q[n - 1][0]).trim() === "STAGED") plan.requeue.push(n);
+    });
+  }
+  plan.requeue.sort(function (a, b) { return a - b; });
+  return plan;
 }
 
 // ---------------------------------------------------------------------------
