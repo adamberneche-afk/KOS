@@ -390,7 +390,7 @@ Every Curator output rejected by the Auditor accountability check (`_archiveAudi
 
 ### STAGING_ARCHIVE
 
-Completed STAGING_PIPELINE rows moved by `archiveStagingPipeline()` (the web app button: finished and failed rows) and by `archiveFinishedStagingRows()` (nightly at 02:00: finished rows only).
+Finished STAGING_PIPELINE rows moved by `archiveStagingPipeline()` (the web app button) and by `archiveFinishedStagingRows()` (nightly at 02:00). Both move finished rows only; failed rows stay in STAGING_PIPELINE so they can be retried. Rows archived by the button before 2026-10-22 may include failed rows.
 
 | Col | Name | Type | Description |
 |---|---|---|---|
@@ -619,6 +619,7 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `KOS_VM_REDERIVE_KEPT`, `KOS_VM_REDERIVE_KEPT_UIDS` | How many rows the last finished rederive kept (couldn't rebuild), and which (JSON `[{sessionUid, reason}]`). The primer flags the count; `resetUnrebuildableRows()` reads the list and lowers both as it resets rows |
 | `KOS_ADMIN_EMAIL` | Also listed under Operator Properties — recipient of the daily error digest |
 | `SEVEN_BRIDGES_LAST_RUN` | Unix ms timestamp of the last Seven Bridges review. Serves double duty: `triggerSevenBridgesReview()`'s stasis guard (don't mint a new stimulus unless CURRENT_STATE has changed) **and** `autoCouncilCheck()`'s session-count anchor. That coupling is deliberate and load-bearing — the callee advancing this key is what stops the 2-hourly trigger from re-firing. See `6_Governance.gs`. |
+| `KOS_COUNCIL_REVIEWS` | JSON list of the last 10 advisor panel reviews started by `triggerSevenBridgesReview()`, newest first: `{councilId, docUrl, createdAt}`. Read by `getCouncilReviewForWebApp()` for the System tab's review panel and the Needs you strip. Kept by `resetProperties()`. See `6_Governance.gs`. |
 | `COUNCIL_LAST_RUN` | **Legacy — no longer read or written by any code.** Was the guard for the shared-context council generator deleted in Round 14 (see `CHANGELOG.md`). An existing stored value is a harmless orphan; there is no migration. |
 | `COUNCIL_ACTIVE_ID` | **Aspirational — never read or written by any code.** Council-in-progress state is not tracked in PropertiesService; a review's identity is the `SB_<ms>` Council ID carried in its stimulus document and stamped on each `COG_REGISTRY` row. |
 | `COUNCIL_EXPECTED_VERDICTS` | **Aspirational — never read or written by any code.** No expected-count is stored; `compileCouncilVerdict_()` groups whatever verdicts have arrived for a Council ID and tests them against `CFG.COG_HALT_THRESHOLD`. |
