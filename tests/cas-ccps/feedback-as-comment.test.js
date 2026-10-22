@@ -295,3 +295,15 @@ test('Teacher Dashboard feedback control: says when a Script Property overrides 
   sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', 'all');
   assert.equal(exported.getFeedbackPlacement().overriddenHere, true);
 });
+
+// UX audit fix-first 3 (2026-10-22): the doc no longer ends on the 1pt white
+// system block, so Ctrl+End or a click below the text lands on a visible line.
+test('stampDocument_: the doc ends on a visible note, after the system block, with room to write', () => {
+  const { text } = stamp('all', 'CAS-8175-L06');
+  const lines = text.split('\n');
+  assert.match(lines[lines.length - 1], /Nothing below that line is checked/);
+  assert.ok(text.indexOf('[SYS_DASHBOARD_URL:') < text.lastIndexOf('Nothing below that line'));
+  const marker = lines.indexOf('── YOUR RESPONSE BEGINS HERE ──');
+  const cfg = lines.findIndex((l) => l.startsWith('[CONFIG_ID:'));
+  assert.ok(cfg - marker - 1 >= 6, 'at least six empty writing lines');
+});
