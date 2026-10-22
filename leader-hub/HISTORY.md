@@ -1156,3 +1156,36 @@ the Q1/MP1/Marking Period/First Quarter forms, including "End of First
 Quarter" end dates (start inferred from the first day of school or the
 previous quarter's end). See README.md.
 
+
+## Plain words, a Terms panel and readable contrast, 2026-10-22
+
+The operator: "there is a lot of system jargon and terms that the user
+doesn't know", and the page must be easy to read. Same pattern as
+kos-personal and the cas-ccps dashboards (`meta/UX_AUDIT_2026-10-22.md`,
+"Added by the operator").
+
+- **Plain words on screen**, with the system's name kept in the tooltip:
+  "Synergy Grades" is "Gradebook grades" ("In Synergy, the district
+  gradebook"), "SBE Checklist" is "Store approval checklist", "Obs Prep"
+  is "Observation prep", "⏰ Cron idle" is "🌙 Overnight re-plan: not yet",
+  "FT Permission Form" is "Field Trip Permission Form", "Connect to
+  cas-ccps" is "Connect to CAS", "Email Bridge" is "Email connection".
+  A platform never logged used to read "Infinityd past 14-day limit"; it
+  now says "never logged here — log it today". Each pulse ring's
+  percentage is captioned with what it counts.
+- **A Terms panel** (header → ❓ Terms): a native `<dialog>` listing 24
+  terms, each with its meaning and what the forms, setup guide or code
+  call it. The SCR entry is built from `SCR_SCORE_LABELS` and the pacing
+  guide's own "SCR rating" definition.
+- **Contrast**: `--muted` #64748b → #475569, `--red` #dc2626 → #b91c1c,
+  `--green` #16a34a → #15803d, `--orange` #c05f1a → #b45309; #9ca3af grey
+  text → #4b5563; the #d1d5db delete ✕ icons are red; the gold ALTERNATIVE
+  label is #a16207; the period pill is white on its block colour; the
+  DECA card's row labels inherit the card's colour; white text on dark
+  panels is at least 75% opaque. No on-screen font size is under 12px
+  (the printed county forms keep their paper sizes). Bebas Neue falls back
+  to Impact, not a cursive font. Checkboxes are no longer stretched to
+  `width:100%`.
+- Pinned by `tests/leaderhub/plain-words.test.js`. Four line-pinned tests
+  (`escaping`, `finance-sales-log-escaping`, `school-calendar-defaults`,
+  `pacing-and-calendar`) moved their ranges to follow the edits.

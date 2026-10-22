@@ -2,7 +2,7 @@
 <div id="modal-emailbridge" class="mo" onclick="if(event.target===this)closeModal('emailbridge')">
   <div class="mbox" style="max-width:520px">
     <div class="mhdr">
-      <div class="mtitle">📧 Email Bridge Setup</div>
+      <div class="mtitle">📧 Email Connection Setup <span style="font-weight:400">(the Email Bridge)</span></div>
       <button class="mclose" onclick="closeModal('emailbridge')" aria-label="Close">✕</button>
     </div>
     <div class="mbody" style="display:flex;flex-direction:column;gap:1rem">
@@ -24,7 +24,7 @@
         <input id="bridge-url-input" type="url" placeholder="https://script.google.com/macros/s/..."
           style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:var(--font-mono, monospace)"
           oninput="document.getElementById('bridge-url-save').disabled=!this.value.trim()">
-        <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">Paste the URL from Apps Script → Deploy → Manage Deployments</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Paste the URL from Apps Script → Deploy → Manage Deployments</div>
       </div>
 
       <div style="display:flex;gap:.6rem">
@@ -35,13 +35,13 @@
         <button class="btn btn-outline" onclick="EMAIL_BRIDGE.poll();closeModal('emailbridge')">
           🔄 Poll Now
         </button>
-        <button class="btn btn-outline" style="color:#dc2626;border-color:#dc2626;margin-left:auto"
+        <button class="btn btn-outline" style="color:#b91c1c;border-color:#b91c1c;margin-left:auto"
           onclick="_removeEmailBridge()">
           Remove
         </button>
       </div>
 
-      <div id="bridge-current-url" style="font-size:.72rem;color:var(--muted);word-break:break-all;display:none"></div>
+      <div id="bridge-current-url" style="font-size:.75rem;color:var(--muted);word-break:break-all;display:none"></div>
 
       <hr style="border:none;border-top:1px solid var(--border)">
 
@@ -69,7 +69,7 @@
 <div id="modal-casccps" class="mo" onclick="if(event.target===this)closeModal('casccps')">
   <div class="mbox" style="max-width:520px">
     <div class="mhdr">
-      <div class="mtitle">🔗 Connect to cas-ccps</div>
+      <div class="mtitle">🔗 Connect to CAS (Classroom Agency System)</div>
       <button class="mclose" onclick="closeModal('casccps')" aria-label="Close">✕</button>
     </div>
     <div class="mbody" style="display:flex;flex-direction:column;gap:1rem">
@@ -83,7 +83,7 @@
         <input id="casccps-url-input" type="url" placeholder="https://script.google.com/macros/s/..."
           style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:var(--font-mono, monospace)"
           oninput="_casCcpsInputCheck_()">
-        <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">The <strong>second</strong> deployment URL from LEADERHUB_CONNECTION_SETUP.md — not the same URL you open the Teacher Dashboard from day-to-day.</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">The <strong>second</strong> deployment URL from LEADERHUB_CONNECTION_SETUP.md — not the same URL you open the Teacher Dashboard from day-to-day.</div>
       </div>
 
       <div>
@@ -91,7 +91,7 @@
         <input id="casccps-clientid-input" type="text" placeholder="123456789-abc...apps.googleusercontent.com"
           style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:var(--font-mono, monospace)"
           oninput="_casCcpsInputCheck_()">
-        <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">Same value on file for every teacher — ask whoever set up the district's cas-ccps deployment if you don't have it.</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Same value on file for every teacher — ask whoever set up the district's cas-ccps deployment if you don't have it.</div>
       </div>
 
       <div style="display:flex;gap:.6rem;flex-wrap:wrap">
@@ -99,13 +99,13 @@
           onclick="setCasCcpsConnection(document.getElementById('casccps-url-input').value, document.getElementById('casccps-clientid-input').value)">
           ✅ Save Connection
         </button>
-        <button class="btn btn-outline" style="color:#dc2626;border-color:#dc2626;margin-left:auto"
+        <button class="btn btn-outline" style="color:#b91c1c;border-color:#b91c1c;margin-left:auto"
           onclick="_removeCasCcpsConnection()">
           Remove
         </button>
       </div>
 
-      <div id="casccps-current-info" style="font-size:.72rem;color:var(--muted);word-break:break-all;display:none"></div>
+      <div id="casccps-current-info" style="font-size:.75rem;color:var(--muted);word-break:break-all;display:none"></div>
 
       <div id="cas-ccps-signin-btn" style="min-height:2.5rem"></div>
 
@@ -118,7 +118,7 @@
       <button class="btn btn-outline" onclick="syncCasCcpsRoster()">
         🔗 Sync Student Roster Now
       </button>
-      <div style="font-size:.7rem;color:var(--muted)">Links your SCR grading grid's students (8175/8177 only — 6115 has no cas-ccps counterpart) to their real cas-ccps email, by name. Reconciles both ways when a name doesn't match — nothing is added, removed, or renamed automatically.</div>
+      <div style="font-size:.75rem;color:var(--muted)">Links your SCR grading grid's students (8175/8177 only — 6115 has no cas-ccps counterpart) to their real cas-ccps email, by name. Reconciles both ways when a name doesn't match — nothing is added, removed, or renamed automatically.</div>
 
       <hr style="border:none;border-top:1px solid var(--border)">
 
@@ -148,8 +148,8 @@
     <!-- Header -->
     <div class="mhdr" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
       <div>
-        <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">📋 Sub Plan Generator</div>
-        <div style="font-size:.72rem;color:rgba(255,255,255,.5)" id="subplan-header-note">Auto-fills from your schedule, rosters, and lesson plans</div>
+        <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.2rem;letter-spacing:2px">📋 Sub Plan Generator</div>
+        <div style="font-size:.75rem;color:rgba(255,255,255,.75)" id="subplan-header-note">Auto-fills from your schedule, rosters, and lesson plans</div>
       </div>
       <div style="display:flex;gap:.5rem;align-items:center">
         <button class="btn btn-gold btn-sm" onclick="generateSubPlan()" id="subplan-gen-btn">✨ Generate Plan</button>
@@ -171,11 +171,11 @@
       <div id="subplan-step-setup">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.85rem">
           <div>
-            <label style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Absence Date</label>
+            <label style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Absence Date</label>
             <input type="date" id="sp-date" style="width:100%;font-size:.82rem;border:1px solid var(--border);border-radius:6px;padding:.38rem" onchange="onSubPlanDateChange()">
           </div>
           <div>
-            <label style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Reason for Absence</label>
+            <label style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Reason for Absence</label>
             <select id="sp-reason" style="width:100%;font-size:.82rem;border:1px solid var(--border);border-radius:6px;padding:.38rem">
               <option value="sick">🤒 Sick Day</option>
               <option value="deca" id="sp-reason-deca-opt">🏆 DECA Trip</option>
@@ -184,7 +184,7 @@
             </select>
           </div>
           <div>
-            <label style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Bell Schedule</label>
+            <label style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Bell Schedule</label>
             <select id="sp-schedule" style="width:100%;font-size:.82rem;border:1px solid var(--border);border-radius:6px;padding:.38rem">
               <option value="A">Schedule A (Regular)</option>
               <option value="B">Schedule B (Cav Morning / HR)</option>
@@ -197,7 +197,7 @@
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.85rem">
           <div>
-            <label style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Odd or Even Day?</label>
+            <label style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Odd or Even Day?</label>
             <div style="display:flex;gap:.5rem">
               <label style="display:flex;align-items:center;gap:.35rem;font-size:.82rem;cursor:pointer">
                 <input type="radio" name="sp-oddeven" value="Odd" id="sp-odd" checked> Odd Day
@@ -206,17 +206,17 @@
                 <input type="radio" name="sp-oddeven" value="Even" id="sp-even"> Even Day
               </label>
             </div>
-            <div id="sp-oddeven-note" style="font-size:.68rem;color:var(--muted);margin-top:3px"></div>
+            <div id="sp-oddeven-note" style="font-size:.75rem;color:var(--muted);margin-top:3px"></div>
           </div>
           <div>
-            <label style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Additional Context for Sub (optional)</label>
+            <label style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Additional Context for Sub (optional)</label>
             <input id="sp-context" placeholder="e.g. Quiz today — answer key in sub folder" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
           </div>
         </div>
 
         <!-- Detected periods preview -->
         <div style="background:#f8f7f4;border:1px solid var(--border);border-radius:8px;padding:.65rem .9rem">
-          <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.4rem">Classes That Will Meet</div>
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:.4rem">Classes That Will Meet</div>
           <div id="sp-periods-preview" style="font-size:.8rem;color:#374151;line-height:1.8">Select a date to auto-detect classes.</div>
         </div>
       </div>
@@ -239,26 +239,26 @@
 
         <!-- Static info section -->
         <div style="margin-top:1rem;padding:.75rem;background:#fef9c3;border:1px solid #fde68a;border-radius:8px">
-          <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#92400e;margin-bottom:.5rem">📍 Where Things Are (pre-filled every plan)</div>
+          <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#92400e;margin-bottom:.5rem">📍 Where Things Are (pre-filled every plan)</div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
             <div>
-              <label style="font-size:.68rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Sub Folder / Materials</label>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Sub Folder / Materials</label>
               <input id="sp-loc-subfolder" style="width:100%;font-size:.75rem;border:1px solid var(--border);border-radius:5px;padding:.3rem" placeholder="e.g. Top drawer of teacher desk">
             </div>
             <div>
-              <label style="font-size:.68rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Seating Charts</label>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Seating Charts</label>
               <input id="sp-loc-seating" style="width:100%;font-size:.75rem;border:1px solid var(--border);border-radius:5px;padding:.3rem" placeholder="e.g. Inside sub folder, one per class">
             </div>
             <div>
-              <label style="font-size:.68rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Nurse Location</label>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">Nurse Location</label>
               <input id="sp-loc-nurse" style="width:100%;font-size:.75rem;border:1px solid var(--border);border-radius:5px;padding:.3rem" placeholder="e.g. Room 100, Main Office hallway">
             </div>
             <div>
-              <label style="font-size:.68rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">AED / Emergency Binder</label>
+              <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">AED / Emergency Binder</label>
               <input id="sp-loc-aed" style="width:100%;font-size:.75rem;border:1px solid var(--border);border-radius:5px;padding:.3rem" placeholder="e.g. Hallway outside Room 214">
             </div>
           </div>
-          <div style="font-size:.67rem;color:#92400e;margin-top:.4rem">These values save automatically and pre-fill next time.</div>
+          <div style="font-size:.75rem;color:#92400e;margin-top:.4rem">These values save automatically and pre-fill next time.</div>
         </div>
       </div>
 
@@ -274,7 +274,7 @@
           <button class="btn btn-outline btn-sm" onclick="printSubPlan()">🖨 Print</button>
           <button class="btn btn-outline btn-sm" onclick="saveSubPlanToLog()">💾 Save to Log</button>
         </div>
-        <div id="sp-copy-confirm" style="font-size:.72rem;color:var(--green);text-align:center;margin-top:.3rem;min-height:16px"></div>
+        <div id="sp-copy-confirm" style="font-size:.75rem;color:var(--green);text-align:center;margin-top:.3rem;min-height:16px"></div>
       </div>
 
     </div><!-- /scroll area -->
@@ -298,21 +298,21 @@
     <!-- Header -->
     <div class="mhdr" style="display:flex;align-items:center;justify-content:space-between">
       <div>
-        <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">🏆 Weekly Wins — Brag Board</div>
-        <div style="font-size:.72rem;color:rgba(255,255,255,.5)" id="brag-week-label">This week's accomplishments</div>
+        <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.2rem;letter-spacing:2px">🏆 Weekly Wins — Brag Board</div>
+        <div style="font-size:.75rem;color:rgba(255,255,255,.75)" id="brag-week-label">This week's accomplishments</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="closeModal('bragboard')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕ Close</button>
     </div>
 
     <!-- Audience tabs -->
     <div style="display:flex;gap:.3rem;padding:.65rem 1.1rem .45rem;background:#f8f7f4;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">
-      <span style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-right:.25rem">Send to:</span>
+      <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-right:.25rem">Send to:</span>
       <button class="email-tab active" id="brag-tab-green"   onclick="setBragTab('green',this)">👩‍💼 Ms. Green</button>
       <button class="email-tab"        id="brag-tab-admin"   onclick="setBragTab('admin',this)">🏫 Admin</button>
       <button class="email-tab"        id="brag-tab-parents" onclick="setBragTab('parents',this)">👨‍👩‍👧 DECA Parents</button>
       <button class="email-tab"        id="brag-tab-self"    onclick="setBragTab('self',this)">📓 My Log</button>
       <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center">
-        <label style="font-size:.72rem;color:var(--muted)">Week of:</label>
+        <label style="font-size:.75rem;color:var(--muted)">Week of:</label>
         <input type="date" id="brag-week-start" style="font-size:.75rem;border:1px solid var(--border);border-radius:6px;padding:.25rem .4rem" onchange="gatherBragData()">
       </div>
     </div>
@@ -321,55 +321,55 @@
 
       <!-- LEFT: gathered wins -->
       <div style="width:260px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:#faf9f6;display:flex;flex-direction:column;gap:.6rem">
-        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Wins Gathered This Week</div>
+        <div style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted)">Wins Gathered This Week</div>
 
         <div id="brag-section-tasks" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">✅ Completed Tasks</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">✅ Completed Tasks</div>
           <div id="brag-list-tasks" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
         <div id="brag-section-deca" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">🏆 DECA Results</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">🏆 DECA Results</div>
           <div id="brag-list-deca" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
         <div id="brag-section-trips" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">🚌 Trips</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">🚌 Trips</div>
           <div id="brag-list-trips" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
         <div id="brag-section-email" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">📧 Email Items</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">📧 Email Items</div>
           <div id="brag-list-email" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
         <div id="brag-section-log" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">📋 Daily Log</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">📋 Daily Log</div>
           <div id="brag-list-log" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
         <div id="brag-section-scr" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">📊 SCR Scores Entered</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">📊 SCR Scores Entered</div>
           <div id="brag-list-scr" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
         <div id="brag-section-wbl" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">⏱ WBL Hours Logged</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">⏱ WBL Hours Logged</div>
           <div id="brag-list-wbl" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
         <div id="brag-section-esports" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">🎮 E-Sports Results</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">🎮 E-Sports Results</div>
           <div id="brag-list-esports" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
         <div id="brag-section-journal" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">🏅 Journal Moments</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">🏅 Journal Moments</div>
           <div id="brag-list-journal" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
         <div id="brag-section-manual" style="display:none">
-          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">✍️ Added by You</div>
+          <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">✍️ Added by You</div>
           <div id="brag-list-manual" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
@@ -378,11 +378,11 @@
         </div>
 
         <div style="display:flex;gap:.3rem;margin-top:.25rem">
-          <input id="brag-manual-input" placeholder="Add a win we might have missed…" style="flex:1;font-size:.72rem;border:1px solid var(--border);border-radius:6px;padding:.35rem .4rem" onkeydown="if(event.key==='Enter'){event.preventDefault();addBragManualWin();}">
-          <button class="btn btn-outline btn-sm" style="font-size:.73rem" onclick="addBragManualWin()">+ Add</button>
+          <input id="brag-manual-input" placeholder="Add a win we might have missed…" style="flex:1;font-size:.75rem;border:1px solid var(--border);border-radius:6px;padding:.35rem .4rem" onkeydown="if(event.key==='Enter'){event.preventDefault();addBragManualWin();}">
+          <button class="btn btn-outline btn-sm" style="font-size:.75rem" onclick="addBragManualWin()">+ Add</button>
         </div>
 
-        <button class="btn btn-outline btn-sm" style="margin-top:auto;font-size:.73rem" onclick="gatherBragData()">🔄 Re-gather</button>
+        <button class="btn btn-outline btn-sm" style="margin-top:auto;font-size:.75rem" onclick="gatherBragData()">🔄 Re-gather</button>
       </div>
 
       <!-- RIGHT: compose area -->
@@ -390,22 +390,22 @@
 
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
           <div>
-            <label style="font-size:.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">TO</label>
+            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">TO</label>
             <input id="brag-to" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
           </div>
           <div>
-            <label style="font-size:.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">CC</label>
+            <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">CC</label>
             <input id="brag-cc" placeholder="Optional" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
           </div>
         </div>
         <div style="margin-bottom:.5rem">
-          <label style="font-size:.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">SUBJECT</label>
+          <label style="font-size:.75rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">SUBJECT</label>
           <input id="brag-subject" style="width:100%;font-size:.82rem;font-weight:600;border:1px solid var(--border);border-radius:6px;padding:.38rem">
         </div>
         <div style="flex:1;display:flex;flex-direction:column;min-height:0">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px">
-            <label style="font-size:.7rem;font-weight:600;color:var(--muted)">BODY</label>
-            <div id="brag-ai-status" style="font-size:.68rem;color:var(--muted);font-style:italic"></div>
+            <label style="font-size:.75rem;font-weight:600;color:var(--muted)">BODY</label>
+            <div id="brag-ai-status" style="font-size:.75rem;color:var(--muted);font-style:italic"></div>
           </div>
           <textarea id="brag-body" style="flex:1;resize:none;font-size:.8rem;line-height:1.6;border:1px solid var(--border);border-radius:6px;padding:.6rem;font-family:'DM Sans',sans-serif;min-height:260px" placeholder="Click ✨ Generate to draft this email from your weekly wins…"></textarea>
         </div>
@@ -416,12 +416,23 @@
           <button class="btn btn-outline btn-sm" onclick="openBragInMail()">📬 Open in Mail</button>
           <button class="btn btn-outline btn-sm" onclick="saveBragToLog()">💾 Save to Log</button>
         </div>
-        <div id="brag-copy-confirm" style="font-size:.72rem;color:var(--green);text-align:center;margin-top:.3rem;min-height:16px"></div>
+        <div id="brag-copy-confirm" style="font-size:.75rem;color:var(--green);text-align:center;margin-top:.3rem;min-height:16px"></div>
       </div>
 
     </div>
   </div>
 </div>
+
+<!-- Terms: a native <dialog>, so Escape closes it and focus stays inside
+     while it is open. Filled by lhOpenTerms() from LH_TERMS. -->
+<dialog id="lh-terms" class="lh-terms" aria-labelledby="lh-terms-title">
+  <div class="lh-terms-head">
+    <h2 id="lh-terms-title">Terms used in LeaderHub</h2>
+    <button type="button" class="btn btn-outline btn-sm" onclick="lhCloseTerms()">Close</button>
+  </div>
+  <p class="lh-terms-intro">LeaderHub uses plain words on screen. County forms, the setup guide and the code still use the system's own names, shown under each term.</p>
+  <dl id="lh-terms-list"></dl>
+</dialog>
 
 </body>
 </html>

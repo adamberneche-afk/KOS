@@ -96,15 +96,15 @@ function renderTripDetail(t) {
       <div class="card cal">
         <div class="stitle">📊 Form Readiness</div>
         <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.75rem">
-          <div style="font-family:'Bebas Neue',cursive;font-size:3rem;color:${pct===100?'var(--green)':pct>=60?'var(--navy)':'var(--red)'};line-height:1">${pct}%</div>
+          <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:3rem;color:${pct===100?'var(--green)':pct>=60?'var(--navy)':'var(--red)'};line-height:1">${pct}%</div>
           <div style="flex:1">
             <div class="pbar" style="height:10px;margin-bottom:.35rem"><div class="pfill ${pct===100?'pf-ok':pct>=60?'pf-blue':'pf-danger'}" style="width:${pct}%"></div></div>
-            <div style="font-size:.74rem;color:var(--muted)">${REQUIRED_FIELDS.length - missing.length} of ${REQUIRED_FIELDS.length} required fields complete</div>
+            <div style="font-size:.75rem;color:var(--muted)">${REQUIRED_FIELDS.length - missing.length} of ${REQUIRED_FIELDS.length} required fields complete</div>
           </div>
         </div>
         ${missing.length?`<div style="margin-bottom:.5rem">
-          <div style="font-size:.72rem;font-weight:700;color:var(--red);margin-bottom:.4rem">⚠ MISSING REQUIRED FIELDS</div>
-          ${missing.map(f=>`<div class="field-row"><div class="field-dot fd-miss"></div><div class="field-name">${f.label}</div><span style="font-size:.67rem;color:var(--muted)">${f.section}</span></div>`).join('')}
+          <div style="font-size:.75rem;font-weight:700;color:var(--red);margin-bottom:.4rem">⚠ MISSING REQUIRED FIELDS</div>
+          ${missing.map(f=>`<div class="field-row"><div class="field-dot fd-miss"></div><div class="field-name">${f.label}</div><span style="font-size:.75rem;color:var(--muted)">${f.section}</span></div>`).join('')}
         </div><button class="btn btn-primary btn-sm" onclick="openEditModal(${t.id})">✏️ Fill In Missing Fields</button>`
         :`<div class="alert as" style="font-size:.78rem"><span class="aico">✅</span>All required fields complete! Ready for TripTracker submission.</div><button class="btn btn-green btn-sm" onclick="generateFormPreview(${t.id})">📄 Generate Form Preview</button>`}
       </div>
@@ -122,11 +122,11 @@ function renderTripDetail(t) {
               : `${s.l}: pending`;
             return `<div style="display:flex;flex-direction:column;align-items:center;min-width:68px">
               <div onclick="togApDetail(${t.id},'${s.k}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togApDetail(${t.id},'${s.k}')}" role="button" tabindex="0" title="${tip.replace(/"/g,'&quot;')}" aria-label="${tip.replace(/"/g,'&quot;')}" style="width:32px;height:32px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem">${look.glyph}</div>
-              <div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.25rem;color:${st==='rejected'?'var(--red)':'#555'};max-width:65px;line-height:1.2">${s.l}</div>
+              <div style="font-size:.75rem;font-weight:600;text-align:center;margin-top:.25rem;color:${st==='rejected'?'var(--red)':'#555'};max-width:65px;line-height:1.2">${s.l}</div>
             </div>`;
           }).join('')}
         </div>
-        <div style="font-size:.73rem;color:var(--muted)">${apDone}/${apSteps.length} approved · Click to cycle pending → approved → rejected</div>
+        <div style="font-size:.75rem;color:var(--muted)">${apDone}/${apSteps.length} approved · Click to cycle pending → approved → rejected</div>
       </div>
     </div>
 
@@ -162,10 +162,10 @@ function renderTripDetail(t) {
             const spct=ss.total?Math.round(ss.returned/ss.total*100):0;
             return `
               <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem">
-                <div style="font-family:'Bebas Neue',cursive;font-size:2.2rem;color:${spct===100?'var(--green)':spct>=60?'var(--navy)':'var(--red)'};line-height:1">${spct}%</div>
+                <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:2.2rem;color:${spct===100?'var(--green)':spct>=60?'var(--navy)':'var(--red)'};line-height:1">${spct}%</div>
                 <div style="flex:1">
                   <div class="pbar" style="height:8px;margin-bottom:.2rem"><div class="pfill ${spct===100?'pf-ok':spct>=60?'pf-blue':'pf-danger'}" style="width:${spct}%"></div></div>
-                  <div style="font-size:.72rem;color:var(--muted)">${ss.returned}/${ss.total} slips returned</div>
+                  <div style="font-size:.75rem;color:var(--muted)">${ss.returned}/${ss.total} slips returned</div>
                 </div>
               </div>
               <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.65rem">
@@ -174,16 +174,16 @@ function renderTripDetail(t) {
                 <span class="status st-urgent">⚠ ${ss.missing} missing</span>
                 <span class="status st-planned">🚗 ${ss.parent} own transport</span>
               </div>
-              ${ss.missing>0?`<div class="alert ad" style="font-size:.74rem"><span class="aico">🚨</span>${ss.missing} student${ss.missing===1?' has':'s have'} not returned their form.</div>`:''}
+              ${ss.missing>0?`<div class="alert ad" style="font-size:.75rem"><span class="aico">🚨</span>${ss.missing} student${ss.missing===1?' has':'s have'} not returned their form.</div>`:''}
               <button class="btn btn-primary btn-sm" onclick="showView('slips');setTimeout(()=>{document.getElementById('slip-trip-sel').value=${t.id};renderSlipView();},60)">📝 Manage Slips</button>
               <button class="btn btn-outline btn-sm" onclick="openPrintSlipFor(${t.id})" style="margin-left:.4rem">🖨 Print Forms</button>
             `;
           })()}
         </div>
         <div class="card"><div class="stitle">📚 Instructional Justification</div>
-          <div style="margin-bottom:.75rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Why Necessary</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.why?escH(t.why):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
-          <div style="margin-bottom:.75rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Pre-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.pre?escH(t.pre):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
-          <div><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Post-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.post?escH(t.post):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
+          <div style="margin-bottom:.75rem"><div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Why Necessary</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.why?escH(t.why):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
+          <div style="margin-bottom:.75rem"><div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Pre-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.pre?escH(t.pre):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
+          <div><div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Post-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.post?escH(t.post):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
         </div>
       </div>
     </div>
@@ -458,7 +458,7 @@ function renderTripFlow() {
                : {bd:'var(--border)',bg:'#fff',fg:'#888',glyph:'○'};
     return `<div style="display:flex;flex-direction:column;align-items:center;min-width:70px;margin-bottom:.4rem">
       <div style="width:30px;height:30px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;font-size:.88rem">${look.glyph}</div>
-      <div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.22rem;color:#555;max-width:65px;line-height:1.2">${s.l}</div>
+      <div style="font-size:.75rem;font-weight:600;text-align:center;margin-top:.22rem;color:#555;max-width:65px;line-height:1.2">${s.l}</div>
     </div>`;
   }).join('');
   const apNote = document.getElementById('tf-live-ap-note');
@@ -650,6 +650,8 @@ window.addEventListener('beforeunload', (e) => {
 });
 
 function _moTrapKeydown(e) {
+  // A native <dialog> (the Terms panel) handles its own Escape and focus.
+  if (document.querySelector('dialog[open]')) return;
   let modalEl, onEscape;
   if (_activeMoName) {
     modalEl = document.getElementById('modal-' + _activeMoName);
@@ -907,13 +909,13 @@ function renderWizardStepBar() {
         <div ${canJump ? `onclick="wzJumpTo(${s.id})" onkeydown="if((event.key==='Enter'||event.key===' ')){event.preventDefault();wzJumpTo(${s.id})}" role="button" tabindex="0" aria-label="Go to step ${s.id}: ${s.label}"` : 'aria-hidden="true"'} style="display:flex;flex-direction:column;align-items:center;cursor:${done||active?'pointer':'default'};flex-shrink:0;min-width:0">
           <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${done?'.75rem':'.8rem'};font-weight:700;
             background:${active?'var(--gold)':done?'rgba(255,255,255,.9)':'rgba(255,255,255,.15)'};
-            color:${active?'var(--navy)':done?'var(--navy)':'rgba(255,255,255,.5)'};
+            color:${active?'var(--navy)':done?'var(--navy)':'rgba(255,255,255,.75)'};
             border:2px solid ${active?'var(--gold)':done?'rgba(255,255,255,.8)':'rgba(255,255,255,.2)'};
             transition:all .2s">
             ${done ? '✓' : s.id}
           </div>
-          <div style="font-size:.6rem;margin-top:.25rem;font-weight:${active?'700':'400'};
-            color:${active?'var(--gold)':done?'rgba(255,255,255,.8)':'rgba(255,255,255,.4)'};
+          <div style="font-size:.75rem;margin-top:.25rem;font-weight:${active?'700':'400'};
+            color:${active?'var(--gold)':done?'rgba(255,255,255,.8)':'rgba(255,255,255,.75)'};
             white-space:nowrap;letter-spacing:.3px">
             ${s.label}
           </div>
@@ -942,11 +944,11 @@ function renderWizardStep() {
 
   const field = (id, label, inputHTML, hint='', req=false) => `
     <div class="fg" style="gap:.32rem">
-      <label style="font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.3px;display:flex;align-items:center;gap:.3rem">
+      <label style="font-size:.75rem;font-weight:700;color:var(--muted);letter-spacing:.3px;display:flex;align-items:center;gap:.3rem">
         ${label.toUpperCase()}${req ? ' <span style="color:var(--red)">*</span>' : ''}
       </label>
       ${inputHTML}
-      ${hint ? `<div style="font-size:.68rem;color:#94a3b8;line-height:1.4">${hint}</div>` : ''}
+      ${hint ? `<div style="font-size:.75rem;color:#475569;line-height:1.4">${hint}</div>` : ''}
     </div>`;
 
   const inp = (id, type='text', placeholder='', extra='') =>
@@ -968,7 +970,7 @@ function renderWizardStep() {
 
   const row2 = (...cols) => `<div style="display:grid;grid-template-columns:${cols.map(()=>'1fr').join(' ')};gap:.8rem">${cols.join('')}</div>`;
   const row3 = (...cols) => `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem">${cols.join('')}</div>`;
-  const sec  = (title) => `<div style="font-family:'Bebas Neue',cursive;font-size:.88rem;letter-spacing:2px;color:var(--navy);margin:1.2rem 0 .6rem;padding-bottom:.35rem;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:.5rem">${title}</div>`;
+  const sec  = (title) => `<div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:.88rem;letter-spacing:2px;color:var(--navy);margin:1.2rem 0 .6rem;padding-bottom:.35rem;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:.5rem">${title}</div>`;
   const info = (msg) => `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.6rem .9rem;font-size:.77rem;color:#1e40af;margin-bottom:.75rem;display:flex;gap:.5rem;align-items:flex-start"><span style="flex-shrink:0">ℹ️</span><span>${msg}</span></div>`;
   const warn = (msg) => `<div style="background:var(--red-light);border:1px solid #fca5a5;border-radius:8px;padding:.6rem .9rem;font-size:.77rem;color:#b91c1c;margin-bottom:.75rem;display:flex;gap:.5rem;align-items:flex-start"><span style="flex-shrink:0">🚫</span><span>${msg}</span></div>`;
 
