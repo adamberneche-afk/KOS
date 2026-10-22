@@ -1819,7 +1819,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
        building any HTML — see finding #9), so this always shows the full
        roster via getStudentContextRoster(). A student caller gets an
        entirely separate, small buildMyContextHtml_() page instead. ── -->
-  <button id="context-tab-btn" onclick="showStudentContext()">My Context</button>
+  <button id="context-tab-btn" onclick="showStudentContext()">Student Context</button>
   <!-- Weekly parent reports (36_WeeklyParentReport.js). Opens a review
        list; nothing is sent until the teacher enters an address and
        presses Send on one student. -->
@@ -3262,8 +3262,15 @@ If you expect to see students here:
   const pendingReview = inView.filter(s => s.statusClass === "pending-review").length;
   const card = (key, cls, n, label) =>
     \`<div class="summary-card \${cls} card-filter\${_evalFilter === key ? " card-active" : ""}" onclick="toggleEvalFilter('\${key}')" role="button" tabindex="0" aria-pressed="\${_evalFilter === key}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleEvalFilter('\${key}');}"><div class="count">\${n}</div><div class="label">\${label}</div></div>\`;
+  // In "All assignments" a student has one row per assignment, so the first
+  // card counts assignments there (the other cards count rows too, and add
+  // up to it) and says how many students they belong to.
+  const studentCount = new Set(inView.map(s => String(s.googleId || "").toLowerCase())).size;
+  const totalLabel = view === "ALL"
+    ? "Assignments · " + studentCount + " student" + (studentCount === 1 ? "" : "s")
+    : "Students";
   html += \`<div class="summary-grid">
-    <div class="summary-card card-total"><div class="count">\${inView.length}</div><div class="label">Students</div></div>
+    <div class="summary-card card-total"><div class="count">\${inView.length}</div><div class="label">\${totalLabel}</div></div>
     \${card("PASSED", "card-passed", count("PASSED"), "✅ Passed")}
     \${card("PASSED_BEFORE", "card-passed-before", count("PASSED_BEFORE"), "↩️ Passed before, now revising")}
     \${card("NOT_PASSING", "card-not-passing", count("NOT_PASSING"), "✏️ Checked, not passing yet")}
@@ -3396,7 +3403,7 @@ If you expect to see students here:
         <div>
           <div class="student-name">\${esc(s.name)}</div>
           <div class="student-meta">\${[s.block && "Block "+esc(s.block), s.period && "Period "+esc(s.period), esc(s.subject)].filter(Boolean).join(" · ") || "No class info on file"}</div>
-          <div class="last-eval">\${s.checkCount ? s.checkCount + " check" + (s.checkCount === 1 ? "" : "s") + " · last " + esc(s.lastEval) : "No checks yet"}</div>
+          <div class="last-eval">\${s.checkCount ? s.checkCount + " check" + (s.checkCount === 1 ? "" : "s") + " · last " + esc(s.lastEval) : "No checks yet"}\${s.submittedAt && s.submittedAt !== "—" ? " · submitted " + esc(s.submittedAt) : ""}</div>
           \${s.firstPassedAt ? \`<div class="last-eval">First passed \${esc(s.firstPassedAt)}</div>\` : ""}
           \${s.lastSuggestedScore != null ? \`<div class="last-eval">Suggested score (latest check): <b>\${esc(s.lastSuggestedScore)}</b>/5</div>\` : ""}
           \${safeDocUrl(s.docUrl)
@@ -3486,9 +3493,18 @@ function showStudentContext() {
     .getStudentContextRoster();
 }
 
+// Back from Student Context to the roster it replaced, without a reload;
+// if the roster never loaded, load it.
+function backToDashboard() {
+  document.getElementById("student-context-view").style.display = "none";
+  if (_lastDashData) document.getElementById("main").style.display = "block";
+  else loadData();
+}
+
 function renderTeacherRoster(result) {
   const view = document.getElementById("student-context-view");
-  let html = '<h2 style="font-size:16px;margin-bottom:12px;">Student Context — Full Roster</h2>';
+  let html = '<button type="button" class="wr-stat" id="context-back-btn" onclick="backToDashboard()" style="margin-bottom:12px">← Back to dashboard</button>';
+  html += '<h2 style="font-size:16px;margin-bottom:12px;">Student Context — Full Roster</h2>';
   html += '<p style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Generated ' + esc(result.generatedAt) + ' · Updates weekly via time trigger, not live.</p>';
   // NEW (Say/Do Ledger cas-ccps finding #10): in-context payoff caption,
   // same convention used elsewhere in this file — this roster is the

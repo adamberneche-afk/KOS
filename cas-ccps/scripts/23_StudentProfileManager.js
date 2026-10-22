@@ -573,6 +573,9 @@ function buildWarmupData_(wqData) {
     if (!result[email]) result[email] = { scores: [], extraCreditCount: 0 };
 
     result[email].scores.push({
+      // SCORED or INCOMPLETE (25's stamp for a blank answer), so a count of
+      // students who answered can leave the blank ones out.
+      status:           status,
       queue_id:         queueId,
       lesson_id:        lessonId,
       date:             date,
@@ -761,6 +764,15 @@ function compareUnitIds_(a, b) {
   return String(a).localeCompare(String(b));
 }
 
+// Whether a warm-up score entry is an answer. An entry written before the
+// status was recorded (2026-10-22) counts if it scored any points; a blank
+// answer scores 0.
+function _spAnsweredWarmUp_(score) {
+  if (!score) return false;
+  if (score.status) return score.status === "SCORED";
+  return Number(score.total || 0) > 0;
+}
+
 // ---------------------------------------------------------------------------
 // buildShadowMatrixSummary_
 // Reads all student profiles and returns a summary for the dashboard
@@ -817,10 +829,11 @@ function buildShadowMatrixSummary_(ss, cfg) {
       if (signals.length > 0) { withEval++; withEvalEmails.push(rowEmail); }
     } catch(e) {}
 
-    // Has warm-up history?
+    // Answered a warm-up? A blank answer (INCOMPLETE) is a score entry too,
+    // so it isn't counted (walk-through finding 6, 2026-10-22).
     try {
       const scores = JSON.parse(data[i][SP_WARMUP_SCORES] || "[]");
-      if (scores.length > 0) { withWarmup++; withWarmupEmails.push(rowEmail); }
+      if (scores.some(_spAnsweredWarmUp_)) { withWarmup++; withWarmupEmails.push(rowEmail); }
     } catch(e) {}
 
     // Has shadow matrix confidence?
