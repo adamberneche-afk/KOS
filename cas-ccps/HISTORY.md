@@ -4127,3 +4127,36 @@ kind of failure every morning.
   typed text; check the first doc made after the push.
 - **Tests:** `feedback-as-comment.test.js`; the sandbox's `DocumentApp`
   gains the `Attribute` enum.
+
+## Student Dashboard: queued, passed and submitted; getting around the doc, 2026-10-22
+
+- **Why:** walk-through findings 2, 8 and 3a, and the operator's ask for
+  tabs in the student doc.
+- **2, 13:** a submitted assignment read "Not started yet" until Flow 2
+  started: the Ledger stays ACTIVE (or COMPLETE, on a resubmission) until
+  an evaluation lands. The card now reads "Queued for evaluation…" while
+  the file has an open ReviewQueue row (PENDING or STAGED,
+  `dashQueuedFileIds_`) or a staging row at PENDING_INFERENCE, and Submit
+  is hidden while the work is queued or being evaluated. `submitMyWork`
+  refuses a second submit while the row is STAGED, not only PENDING.
+- **8, 13:** a COMPLETE card reads the Ledger's LastResult: PASSED is
+  "Passed ✓ — feedback is ready…" (green, DONE; Submit stays, to improve
+  the work); NEEDS_REVISION is "Feedback ready — revise, then submit
+  again…". A row from before LastResult reads as before.
+- **3a, 13:** every card with a SubmissionTS shows "Last submitted <time>";
+  it showed only on COMPLIANT cards, which nothing creates now.
+- **Getting around the doc, 02:** not Docs tabs: every reader of the
+  student's response (01, 03, 13, 37) reads the first tab's body, so the
+  work stays in one tab. The title is a Heading 1 and a new "Your response"
+  line a Heading 2, so the Docs outline lists both; "↓ Go to your
+  response" under the title and "↑ Back to the assignment" under the
+  heading jump between them through bookmarks, with "Write your answer
+  under the grey line below." Both links sit above the response marker.
+  New docs only.
+- **Not verified:** that a `#bookmark=` link jumps in the Docs app on a
+  Chromebook and on iOS; check the first doc made after the push.
+- **Tests:** `student-doc-service.test.js` (queued from each source, a
+  STAGED second submit refused, passed and revise wording, the submitted
+  line), `feedback-as-comment.test.js` (headings, the links followed to
+  their bookmarks, the response read the same). The sandbox's documents
+  record headings and bookmarks.
