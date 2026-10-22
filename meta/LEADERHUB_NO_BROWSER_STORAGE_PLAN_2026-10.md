@@ -4,7 +4,7 @@ The operator, 2026-10-22: "I don't want anything stored in the browser."
 cas-ccps and kos-personal already comply (`tests/tools/no-browser-storage.test.js`).
 leader-hub is the one system still built around `localStorage`, and moving
 it off is a migration rather than a fix, so it gets this plan and its own PRs.
-Phases 1 and 2 are done (2026-10-22); the rest is decided, not built.
+Phases 1 to 3 are done (2026-10-22), with the served app's part of Phase 4; the rest is decided, not built.
 
 ## Where leader-hub is today
 
@@ -102,32 +102,51 @@ not used, and a test enforces that, as it does for the other two projects.
   `localStorage` and writes through to the server; Phase 3 makes the server
   the only copy.
 
-### Phase 3: one load, server first
+### Phase 3: one load, server first (done 2026-10-22)
 
-- At boot, read everything from the server into memory before the first
-  render, with a loading state. No `localStorage` read.
-- `LS.get` and `LS.set` keep their names, so the roughly 300 call sites
-  don't change. `get` reads memory; `set` updates memory and pushes.
-- **A failed push** keeps the change in memory and shows a "Not saved yet —
-  retrying" bar with Retry. Leaving the page warns while anything is unsaved.
-  A conflict (compare-and-swap) shows what changed elsewhere and asks which
-  copy to keep. It never overwrites silently.
-- View state (group 4) is page memory: the app opens on the dashboard with
-  default filters after a reload (decided 2026-10-22).
+- **The page arrives with the server's data.** `doGet()` (Code.gs) reads
+  every config key, data domain and the SCR scores in one pass
+  (`lhBootData_`, Data.gs) and writes them into the page before the app's
+  scripts run (`window.__LH_BOOT__`, `lhInjectBootData_`). The app keeps
+  them in page memory (`_lhStore`). This replaces the planned loading state:
+  every `let x = LS.get(...)` already starts from the server's copy, with
+  no wait after the page appears and no browser storage read.
+- `LS.get` and `LS.set` kept their names, so the roughly 300 call sites
+  didn't change. `get` reads page memory; `set` updates it and pushes.
+- **A failed save** stays in page memory and shows a red "N changes not
+  saved yet — retrying" bar with **Retry now**, retried every 30 seconds.
+  Leaving the page asks first while anything is unsaved. A failed SCR
+  batch is queued again rather than dropped.
+- **A conflict is merged at once,** not left for the next load (nothing on
+  the device would survive a reload): the server's records plus this
+  page's, by id, this page's edit winning, pushed against the server's
+  version, with a "Merged with changes from another device" note. This
+  replaces "ask which copy to keep": `_lhMergeById_` already never drops an
+  edit, and a dialog on every background save would be noise.
+- **If the server's data can't be read,** the page says so in the red bar
+  and refuses every save, so it can't start empty and overwrite the server.
+- View state is page memory (Phase 2).
+- **Opened as a file from disk** there is no server, so `_lhStore` is still
+  `localStorage` there until Phase 5.
 
 ### Phase 4: move existing data, then remove browser storage
 
-- **A one-time import.** On first load after Phase 3, any `lh_*` key still
-  in this browser's `localStorage` that the server doesn't have is offered
-  as an import ("Found data saved in this browser: N items. Move it to your
-  account?"). After a successful import, those keys are deleted from
-  `localStorage`. Ids clash the same way two tabs would, so it uses the
-  same compare-and-swap path.
+- **The served app: done with Phase 3** (`lhMigrateFromBrowser_`, src/05).
+  On load, each `lh_*` key an earlier version left in that browser is
+  handled without asking: one the server lacks, or that wasn't finished
+  saving (its `lh_sync_pending`), goes into page memory and is pushed, and
+  is deleted from the browser once the server accepts it. One the server
+  already has is deleted at once. The id counters take the larger value.
+  Nothing is deleted before the server holds it.
+- **The standalone file: still to do.** Its data is in that file's own
+  browser storage, which the served app can't read. The file gets "Export
+  everything"; the served app's existing **Import** (Settings) now saves an
+  import to the server and reloads once it's in. That import is the move.
 - **Backups.** The "Export a backup" button writes a file download, not
-  browser storage, and stays as the offline copy.
-- **Enforcement.** `tests/tools/no-browser-storage.test.js` gains
-  `leader-hub/`, and `LEADERHUB_README.md`'s storage section and design
-  decisions are rewritten.
+  browser storage; served, it exports the server's copy.
+- **Enforcement.** `tests/leaderhub/no-browser-storage.test.js` checks the
+  served mode: nothing written to the browser, the move, the bar, the
+  merge, and no save when the data couldn't load.
 
 ### Phase 5: retire the standalone file (decided 2026-10-22)
 

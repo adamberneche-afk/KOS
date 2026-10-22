@@ -1,13 +1,40 @@
 <script>
-// Tracks whether a save-failed warning has already been shown this page
-// load — a full quota means EVERY subsequent LS.set() call fails too, and
-// nothing here should spam a toast on every single one of them.
+// ── Where the app's data lives (no browser storage, Phase 3, 2026-10-22,
+// meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md) ─────────────────────
+// Served by the web app, doGet() writes the server's copy of every domain
+// into the page (window.__LH_BOOT__, Data.gs's lhBootData_). The app then
+// keeps it in page memory (_lhStore) and saves every change to the server:
+// nothing is read from or written to browser storage, apart from a
+// one-time move of what an earlier version left there (lhMigrateFromBrowser_).
+// Opened as a file from disk there is no server, so _lhStore is
+// localStorage, as before, until the standalone file is retired (Phase 5).
+const LH_BOOT = (typeof window !== 'undefined' && window.__LH_BOOT__) || null;
+const LH_SERVED = !!LH_BOOT;
+// The server's data couldn't be read: the page says so and refuses to
+// save, rather than starting empty and overwriting the server.
+const LH_BOOT_FAILED = LH_SERVED && LH_BOOT.ok === false;
+const _lhMem = {};
+const _lhStore = LH_SERVED ? {
+  getItem: (k) => (Object.prototype.hasOwnProperty.call(_lhMem, k) ? _lhMem[k] : null),
+  setItem: (k, v) => { _lhMem[k] = String(v); },
+  removeItem: (k) => { delete _lhMem[k]; },
+  keys: () => Object.keys(_lhMem),
+} : {
+  getItem: (k) => localStorage.getItem(k),
+  setItem: (k, v) => localStorage.setItem(k, v),
+  removeItem: (k) => localStorage.removeItem(k),
+  keys: () => { const out = []; for (let i = 0; i < localStorage.length; i++) out.push(localStorage.key(i)); return out; },
+};
+
 // The Gemini API key a browser may still hold from before AI moved to
 // Workspace Flows (no code reads it since). Deleted at every load
 // (2026-10-22, meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md Phase 1):
 // a secret has no business staying in browser storage.
 const LH_RETIRED_SECRET_KEYS = ['lh_api_key'];
 try { LH_RETIRED_SECRET_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ }
+// Tracks whether a save-failed warning has already been shown this page
+// load — a full quota means EVERY subsequent LS.set() call fails too, and
+// nothing here should spam a toast on every single one of them.
 let _lsWriteFailWarned = false;
 let _lsReadFailWarned = false;
 // No browser storage, Phase 2 (2026-10-22,
@@ -64,7 +91,7 @@ const LS = {
       return Object.prototype.hasOwnProperty.call(_lhPageMemory, k) && _lhPageMemory[k] != null
         ? JSON.parse(_lhPageMemory[k]) : def;
     }
-    try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; }
+    try { const v=_lhStore.getItem(k); return v?JSON.parse(v):def; }
     catch (e) {
       console.error('[LS.get] read failed for key', k, e);
       if (!_lsReadFailWarned && typeof _showToast === 'function') {
@@ -87,9 +114,14 @@ const LS = {
       _lhPageMemory[k] = v == null ? null : JSON.stringify(v);
       return true;
     }
+    if (LH_BOOT_FAILED) {
+      // Nothing loaded, so nothing may be saved over the server's copy.
+      if (typeof _lhRenderUnsavedBar_ === 'function') _lhRenderUnsavedBar_();
+      return false;
+    }
     v = _lhWithLogIds_(k, v);
     try {
-      localStorage.setItem(k, JSON.stringify(v));
+      _lhStore.setItem(k, JSON.stringify(v));
       _lhSyncConfigKeyToServer_(k, v);
       _lhSyncDataKeyToServer_(k, v);
       return true;
@@ -182,13 +214,13 @@ const LH_SYNC_PENDING_KEY = 'lh_sync_pending';
 
 function _lhPendingAll_() {
   try {
-    const v = JSON.parse(localStorage.getItem(LH_SYNC_PENDING_KEY) || 'null');
+    const v = JSON.parse(_lhStore.getItem(LH_SYNC_PENDING_KEY) || 'null');
     return (v && typeof v === 'object') ? { config: v.config || {}, data: v.data || {} } : { config: {}, data: {} };
   } catch (e) { return { config: {}, data: {} }; }
 }
 
 function _lhPendingSave_(all) {
-  try { localStorage.setItem(LH_SYNC_PENDING_KEY, JSON.stringify(all)); } catch (e) {}
+  try { _lhStore.setItem(LH_SYNC_PENDING_KEY, JSON.stringify(all)); } catch (e) {}
 }
 
 // Marks `key` pending and returns this save's sequence number.
@@ -203,7 +235,12 @@ function _lhPendingMark_(kind, key) {
 // Clears `key` only if no newer save has been made since `seq`.
 function _lhPendingClear_(kind, key, seq) {
   const all = _lhPendingAll_();
-  if (Number(all[kind][key]) === seq) { delete all[kind][key]; _lhPendingSave_(all); }
+  if (Number(all[kind][key]) === seq) {
+    delete all[kind][key];
+    _lhPendingSave_(all);
+    _lhMigratedSaved_(key);
+    _lhRenderUnsavedBar_();
+  }
 }
 
 function _lhPendingKeys_(kind) { return Object.keys(_lhPendingAll_()[kind]); }
@@ -237,6 +274,9 @@ function _lhMergeById_(serverArr, localArr) {
 let _lhSyncFailWarned = {};
 function _lhWarnSyncFailedOnce_(key, message) {
   console.warn('[LeaderHub] ' + key + ' was not saved to the server: ' + message);
+  // Served, nothing is kept on this device: the "Not saved yet" bar says so
+  // and retries, instead of a toast promising the edit is safe here.
+  if (LH_SERVED) { _lhSaveFailed_ = true; _lhRenderUnsavedBar_(); return; }
   if (_lhSyncFailWarned[key]) return;
   _lhSyncFailWarned[key] = true;
   if (typeof _showToast === 'function') {
@@ -274,6 +314,8 @@ function _lhSyncConfigKeyToServer_(key, value) {
 // (not LS.set) so applying a value the server just gave us doesn't
 // immediately re-queue the exact same value right back to it.
 async function lhRefreshConfigFromServer_() {
+  // Served: the page arrived with the server's data (LH_BOOT); nothing to catch up.
+  if (LH_SERVED) return;
   if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
   let remote;
   try {
@@ -293,13 +335,13 @@ async function lhRefreshConfigFromServer_() {
   setTimeout(() => {
     pendingConfig.forEach(k => {
       try {
-        const raw = localStorage.getItem(k);
+        const raw = _lhStore.getItem(k);
         if (raw != null) _lhSyncConfigKeyToServer_(k, JSON.parse(raw));
       } catch (e) {}
     });
   }, 0);
 
-  const _write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+  const _write = (k, v) => { try { _lhStore.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
   // A key the server has never had, but this browser has: push it once, so
   // data kept only here moves to the server (no browser storage, Phase 2).
@@ -307,7 +349,7 @@ async function lhRefreshConfigFromServer_() {
     LH_SERVER_SYNCED_CONFIG_KEYS.forEach(k => {
       if (remote[k] != null || pendingConfig.indexOf(k) !== -1) return;
       try {
-        const raw = localStorage.getItem(k);
+        const raw = _lhStore.getItem(k);
         const v = raw == null ? null : JSON.parse(raw);
         if (v != null) _lhSyncConfigKeyToServer_(k, v);
       } catch (e) {}
@@ -477,13 +519,194 @@ const LH_SERVER_SYNCED_DATA_KEYS = {
   lh_scr_session_log: 'scr_session_log',
 };
 
+// Keys an earlier version left in this browser, waiting for the server to
+// accept them before they are deleted here.
+const _lhMigrating = new Set();
+function _lhMigratedSaved_(key) {
+  if (!_lhMigrating.has(key)) return;
+  _lhMigrating.delete(key);
+  try { localStorage.removeItem(key); } catch (e) {}
+  if (!_lhMigrating.size) _lhDropBrowserBookkeeping_();
+}
+function _lhDropBrowserBookkeeping_() {
+  try {
+    const all = [];
+    for (let i = 0; i < localStorage.length; i++) all.push(localStorage.key(i));
+    all.filter(k => k === LH_SYNC_PENDING_KEY || k.indexOf('lh_data_sync_') === 0).forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+}
+
+// One time, served: what an earlier version kept in this browser goes to
+// the server, then is deleted here. A key the server lacks, or that this
+// browser had not finished saving (its lh_sync_pending), is taken into page
+// memory and pushed; it is deleted here once the server accepts it. A key
+// the server already has is deleted now: the server's copy is current. The
+// id counters take the larger value. Nothing is deleted before the server
+// holds it.
+function lhMigrateFromBrowser_() {
+  let keys = [];
+  try { for (let i = 0; i < localStorage.length; i++) keys.push(localStorage.key(i)); } catch (e) { return; }
+  keys = keys.filter(k => k && k.indexOf('lh_') === 0);
+  if (!keys.length) return;
+  let pending = { config: {}, data: {} };
+  try {
+    const v = JSON.parse(localStorage.getItem(LH_SYNC_PENDING_KEY) || 'null');
+    if (v && typeof v === 'object') pending = { config: v.config || {}, data: v.data || {} };
+  } catch (e) {}
+  const read = (k) => { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return undefined; } };
+  const drop = (k) => { try { localStorage.removeItem(k); } catch (e) {} };
+  const pushConfig = [], pushData = [];
+  let pushScr = null;
+  keys.forEach(k => {
+    if (k === LH_SYNC_PENDING_KEY || k.indexOf('lh_data_sync_') === 0) return; // after the rest
+    const local = read(k);
+    if (local === undefined || local === null) { drop(k); return; }
+    if (LH_SERVER_SYNCED_CONFIG_KEYS.indexOf(k) !== -1) {
+      if (k === 'lh_next_id' || k === 'lh_next_slip_id') {
+        const server = _lhMem[k] != null ? JSON.parse(_lhMem[k]) : null;
+        let merged = local, ahead = server == null;
+        if (server != null && k === 'lh_next_slip_id') { ahead = Number(local) > Number(server); merged = Math.max(Number(local) || 0, Number(server) || 0); }
+        if (server != null && k === 'lh_next_id') {
+          merged = Object.assign({}, server);
+          Object.keys(local || {}).forEach(c => { if (!(Number(merged[c]) >= Number(local[c]))) { merged[c] = local[c]; ahead = true; } });
+        }
+        _lhMem[k] = JSON.stringify(merged);
+        if (ahead) { pushConfig.push(k); _lhMigrating.add(k); } else drop(k);
+        return;
+      }
+      if (_lhMem[k] == null || pending.config[k]) {
+        _lhMem[k] = JSON.stringify(local);
+        pushConfig.push(k); _lhMigrating.add(k);
+      } else drop(k);
+      return;
+    }
+    if (k in LH_SERVER_SYNCED_DATA_KEYS) {
+      if (!Array.isArray(local)) { drop(k); return; }
+      if (_lhMem[k] == null) {
+        _lhMem[k] = JSON.stringify(_lhWithLogIds_(k, local));
+        pushData.push(k); _lhMigrating.add(k);
+      } else if (pending.data[k]) {
+        _lhMem[k] = JSON.stringify(_lhMergeById_(JSON.parse(_lhMem[k]), _lhWithLogIds_(k, local)));
+        pushData.push(k); _lhMigrating.add(k);
+      } else drop(k);
+      return;
+    }
+    if (k === 'lh_scr_scores') {
+      if (_lhMem.lh_scr_scores == null && local && typeof local === 'object') {
+        _lhMem.lh_scr_scores = JSON.stringify(local);
+        pushScr = local; _lhMigrating.add(k);
+      } else drop(k);
+      return;
+    }
+    // Anything else (the standalone file's Email Bridge URL, a retired or
+    // unknown key): not needed when served.
+    drop(k);
+  });
+  if (!_lhMigrating.size) _lhDropBrowserBookkeeping_();
+  // Pushed once every fragment has loaded (the sync functions need the
+  // in-memory variables the pages declare).
+  setTimeout(() => {
+    pushConfig.forEach(k => _lhSyncConfigKeyToServer_(k, JSON.parse(_lhMem[k])));
+    pushData.forEach(k => _lhSyncDataKeyToServer_(k, JSON.parse(_lhMem[k])));
+    if (pushScr) {
+      Object.keys(pushScr).forEach(course => Object.keys(pushScr[course] || {}).forEach(period =>
+        Object.keys(pushScr[course][period] || {}).forEach(student =>
+          Object.keys(pushScr[course][period][student] || {}).forEach(comp =>
+            _lhQueueScrScoreSync_(course, period, student, comp, pushScr[course][period][student][comp])))));
+      _lhScrMigrationPending_ = true;
+    }
+  }, 0);
+}
+
+// ── "Not saved yet" (served) ─────────────────────────────────────────────
+// A change the server hasn't accepted exists only in this page. The bar says
+// how many, retries every 30 seconds and on Retry, and leaving the page asks
+// first while any are unsaved.
+let _lhSaveFailed_ = false;
+let _lhScrMigrationPending_ = false;
+let _lhRetryTimer_ = null;
+function _lhUnsavedCount_() {
+  return _lhPendingKeys_('config').length + _lhPendingKeys_('data').length +
+    (typeof _scrSyncQueue !== 'undefined' ? _scrSyncQueue.length : 0);
+}
+function _lhRenderUnsavedBar_() {
+  if (!LH_SERVED || typeof document === 'undefined' || !document.body) return;
+  let bar = document.getElementById('lh-unsaved-bar');
+  const count = _lhUnsavedCount_();
+  const show = LH_BOOT_FAILED || (_lhSaveFailed_ && count > 0);
+  if (!show) {
+    if (bar) bar.remove();
+    if (!count) { _lhSaveFailed_ = false; if (_lhRetryTimer_) { clearInterval(_lhRetryTimer_); _lhRetryTimer_ = null; } }
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'lh-unsaved-bar';
+    bar.setAttribute('role', 'alert');
+    bar.style.cssText = 'background:#7f1d1d;color:#fff;padding:.55rem 1rem;font-size:.85rem;font-weight:600;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap';
+    const host = document.getElementById('lh-banners');
+    if (host) host.prepend(bar); else document.body.prepend(bar);
+  }
+  if (LH_BOOT_FAILED) {
+    bar.textContent = '⚠ Your data couldn\'t be loaded from the server (' + (LH_BOOT.error || 'no answer') +
+      '). Reload the page. Nothing you change now will be saved.';
+    return;
+  }
+  bar.innerHTML = '';
+  const msg = document.createElement('span');
+  msg.textContent = '⚠ ' + count + ' change' + (count === 1 ? '' : 's') + ' not saved yet — retrying. ' +
+    'Keep this page open until this goes away.';
+  const btn = document.createElement('button');
+  btn.textContent = 'Retry now';
+  btn.style.cssText = 'background:#fff;color:#7f1d1d;border:none;border-radius:5px;padding:.25rem .7rem;font-weight:700;cursor:pointer';
+  btn.onclick = lhRetryUnsaved;
+  bar.appendChild(msg);
+  bar.appendChild(btn);
+  if (!_lhRetryTimer_) _lhRetryTimer_ = setInterval(lhRetryUnsaved, 30000);
+}
+// Pushes every unsaved change again from page memory.
+function lhRetryUnsaved() {
+  _lhPendingKeys_('config').forEach(k => {
+    const raw = _lhStore.getItem(k);
+    if (raw != null) _lhSyncConfigKeyToServer_(k, JSON.parse(raw));
+  });
+  _lhPendingKeys_('data').forEach(k => {
+    const raw = _lhStore.getItem(k);
+    if (raw != null) _lhSyncDataKeyToServer_(k, JSON.parse(raw));
+  });
+  if (typeof _scrSyncQueue !== 'undefined' && _scrSyncQueue.length && typeof _lhFlushScrScoreSync_ === 'function') _lhFlushScrScoreSync_();
+}
+// ── Served: load the boot data, then move anything left in this browser ──
+// (no browser storage, Phase 3). Runs before any other fragment reads LS,
+// so every `let x = LS.get(...)` further down starts from the server's copy.
+if (LH_SERVED && !LH_BOOT_FAILED) {
+  const cfg = LH_BOOT.config || {};
+  LH_SERVER_SYNCED_CONFIG_KEYS.forEach(k => { if (cfg[k] != null) _lhMem[k] = JSON.stringify(cfg[k]); });
+  Object.entries(LH_SERVER_SYNCED_DATA_KEYS).forEach(([key, domain]) => {
+    const d = (LH_BOOT.data || {})[domain];
+    if (!d || !d.found) return;
+    const arr = (d.rows || []).map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } }).filter(Boolean);
+    _lhMem[key] = JSON.stringify(arr);
+    _lhMem[_lhDataTrackerKey_(domain)] = JSON.stringify({ lastKnownRemoteUpdatedAt: d.updatedAt });
+  });
+  if (LH_BOOT.scr && LH_BOOT.scr.found) _lhMem.lh_scr_scores = JSON.stringify(LH_BOOT.scr.scores || {});
+  lhMigrateFromBrowser_();
+}
+
+if (LH_SERVED && typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('beforeunload', (e) => {
+    if (_lhUnsavedCount_() > 0) { e.preventDefault(); e.returnValue = ''; }
+  });
+  if (LH_BOOT_FAILED) window.addEventListener('DOMContentLoaded', _lhRenderUnsavedBar_);
+}
+
 function _lhDataTrackerKey_(domain) { return 'lh_data_sync_' + domain; }
 function _lhGetDataTracker_(domain) { return LS.get(_lhDataTrackerKey_(domain), { lastKnownRemoteUpdatedAt: null }); }
 // Raw localStorage, not LS.set() — a tracker key is bookkeeping about a
 // sync, not itself a synced domain, and must never recursively trigger
 // this same hook.
 function _lhSetDataTracker_(domain, tracker) {
-  try { localStorage.setItem(_lhDataTrackerKey_(domain), JSON.stringify(tracker)); } catch (e) {}
+  try { _lhStore.setItem(_lhDataTrackerKey_(domain), JSON.stringify(tracker)); } catch (e) {}
 }
 
 // One-warning-per-domain-per-page-load, same convention as LS.set/LS.get's
@@ -515,6 +738,27 @@ function _lhSyncDataKeyToServer_(key, value) {
   return next;
 }
 
+async function _lhMergeConflict_(key, domain, seq) {
+  let pulled;
+  try {
+    pulled = await new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhPullData({ domain });
+    });
+  } catch (e) { return false; }
+  if (!pulled || !pulled.ok || !pulled.found) return false;
+  const server = (pulled.rows || []).map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } }).filter(Boolean);
+  let mine = [];
+  try { mine = JSON.parse(_lhStore.getItem(key) || '[]'); } catch (e) { mine = []; }
+  const merged = _lhMergeById_(server, mine);
+  if (LH_DATA_APPLY[domain]) LH_DATA_APPLY[domain](merged); else _lhStore.setItem(key, JSON.stringify(merged));
+  _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: pulled.updatedAt });
+  if (typeof _showToast === 'function') _showToast('Merged with changes from another device.', 5000, '#1e3a5f');
+  _lhSyncDataKeyToServer_(key, merged);
+  return true;
+}
+
 async function _lhPushDataNow_(key, domain, value, seq) {
   // A newer save of this key is queued behind this one and carries a newer
   // value; let that one push instead.
@@ -534,6 +778,7 @@ async function _lhPushDataNow_(key, domain, value, seq) {
     });
   } catch (e) {
     console.warn('[LeaderHub] Sync failed for ' + domain + ':', (e && e.message) || e);
+    if (LH_SERVED) { _lhSaveFailed_ = true; _lhRenderUnsavedBar_(); }
     return;
   }
   if (res && res.ok) {
@@ -541,6 +786,14 @@ async function _lhPushDataNow_(key, domain, value, seq) {
     _lhPendingClear_('data', key, seq);
     return;
   }
+  // Served, a conflict is merged now: nothing on this device would survive
+  // a reload to merge later. The server's records plus this page's, by id,
+  // this page's edit winning (_lhMergeById_), then pushed against the
+  // server's version.
+  if (res && res.conflict && LH_SERVED) {
+    if (await _lhMergeConflict_(key, domain, seq)) return;
+  }
+  if (LH_SERVED) { _lhSaveFailed_ = true; _lhRenderUnsavedBar_(); return; }
   if (res && res.conflict && !_lhDataConflictWarned[domain]) {
     _lhDataConflictWarned[domain] = true;
     console.warn('[LeaderHub] ' + domain + ' has changes from elsewhere this browser hasn\'t synced yet — this edit stayed safe locally but wasn\'t pushed to the server.');
@@ -550,117 +803,124 @@ async function _lhPushDataNow_(key, domain, value, seq) {
   }
 }
 
+// What applying a domain's records means: the store, any in-memory copy
+// the page renders from, and a re-render if that view is open. Used by the
+// boot refresh (standalone file) and by a conflict merge (served).
+const LH_DATA_APPLY = {
+  trips: arr => {
+    trips = arr;
+    _lhStore.setItem('lh_trips', JSON.stringify(trips));
+    if (typeof renderTrips === 'function') renderTrips();
+    if (typeof renderDashboard === 'function') renderDashboard();
+  },
+  trip_archive: arr => {
+    tripArchive = arr;
+    _lhStore.setItem('lh_trip_archive', JSON.stringify(tripArchive));
+    if (typeof renderArchive === 'function') renderArchive();
+  },
+  deca_results: arr => {
+    // No persistent in-memory variable — every reader already calls
+    // LS.get('lh_deca_results', []) fresh, so the localStorage write is
+    // the whole refresh; re-render only if that view happens to be open.
+    _lhStore.setItem('lh_deca_results', JSON.stringify(arr));
+    // renderDecaResults() only returns an HTML string; the hub repaints
+    // through renderOrgHub(), the same way switching org tabs does.
+    if (typeof renderOrgHub === 'function' && document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+  },
+  wbl_roster: arr => {
+    WBL_STUDENTS = arr;
+    _lhStore.setItem('lh_wbl_students', JSON.stringify(WBL_STUDENTS));
+    if (typeof renderWBLTracker === 'function') renderWBLTracker();
+  },
+  store_inventory: arr => {
+    INVENTORY = arr;
+    _lhStore.setItem('lh_inventory', JSON.stringify(INVENTORY));
+    if (typeof renderProcurement === 'function') renderProcurement();
+  },
+  store_sales_log: arr => {
+    SALES_LOG = arr;
+    _lhStore.setItem('lh_sales_log', JSON.stringify(SALES_LOG));
+    if (typeof renderFinance === 'function') renderFinance();
+  },
+  store_purchase_orders: arr => {
+    PURCHASE_ORDERS = arr;
+    _lhStore.setItem('lh_purchase_orders', JSON.stringify(PURCHASE_ORDERS));
+    if (typeof renderProcurement === 'function') renderProcurement();
+  },
+  esports_players: arr => {
+    ES_PLAYERS = arr;
+    _lhStore.setItem('lh_es_players', JSON.stringify(ES_PLAYERS));
+    if (typeof renderESRoster === 'function') renderESRoster();
+  },
+  esports_matches: arr => {
+    ES_MATCHES = arr;
+    _lhStore.setItem('lh_es_matches', JSON.stringify(ES_MATCHES));
+    if (typeof renderMatchLog === 'function') renderMatchLog();
+  },
+  goals: arr => {
+    goals = arr;
+    _lhStore.setItem('lh_goals', JSON.stringify(goals));
+    if (typeof renderGoals === 'function') renderGoals();
+  },
+  events: arr => {
+    otherEvents = arr;
+    _lhStore.setItem('lh_events', JSON.stringify(otherEvents));
+    if (typeof renderEvents === 'function') renderEvents();
+    if (typeof renderDECAPipeline === 'function') renderDECAPipeline();
+  },
+  tasks: arr => {
+    // No persistent in-memory variable — every reader already calls
+    // LS.get('lh_tasks', []) fresh, so the localStorage write is the
+    // whole refresh; refreshNextAction() re-derives the action queue
+    // that reads from it.
+    _lhStore.setItem('lh_tasks', JSON.stringify(arr));
+    if (typeof refreshNextAction === 'function') refreshNextAction();
+  },
+  deadlines: arr => {
+    // The server copy can still hold last spring's built-ins
+    // (RETIRED_DEFAULT_DEADLINES, src/10).
+    DEADLINES = typeof dropRetiredDefaultDeadlines === 'function' ? dropRetiredDefaultDeadlines(arr) : arr;
+    _lhStore.setItem('lh_deadlines', JSON.stringify(DEADLINES));
+    if (typeof renderDeadlines === 'function') renderDeadlines();
+  },
+  journal_entries: arr => {
+    // No persistent in-memory variable (lh_journal_last, a single most-
+    // recent entry, is separate and untouched) — every reader calls
+    // LS.get('lh_journal_history', []) fresh.
+    _lhStore.setItem('lh_journal_history', JSON.stringify(arr));
+  },
+  observation_history: arr => {
+    _lhStore.setItem('lh_obs_history', JSON.stringify(arr));
+    if (typeof renderObsChecklist === 'function') renderObsChecklist();
+  },
+  brag_manual_wins: arr => {
+    _lhStore.setItem('lh_brag_manual_wins', JSON.stringify(arr));
+  },
+  // Phase 2 (no browser storage).
+  members: arr => {
+    students = arr;
+    _lhStore.setItem('lh_students', JSON.stringify(students));
+    if (typeof renderStudents === 'function' && document.getElementById('view-students')?.classList.contains('active')) renderStudents();
+  },
+  // The logs have no in-memory variable: every reader calls LS.get fresh.
+  daily_log: arr => { _lhStore.setItem('lh_daily_log', JSON.stringify(arr)); },
+  sub_plan_log: arr => { _lhStore.setItem('lh_sub_plan_log', JSON.stringify(arr)); },
+  brag_log: arr => { _lhStore.setItem('lh_brag_log', JSON.stringify(arr)); },
+  wbl_hours_log: arr => { _lhStore.setItem('lh_wbl_hours_log', JSON.stringify(arr)); },
+  scr_session_log: arr => { _lhStore.setItem('lh_scr_session_log', JSON.stringify(arr)); },
+};
+
 // Boot-time catch-up for every row-shaped domain, same shape as
 // lhRefreshConfigFromServer_() above — only overwrites this browser's
 // copy when the server actually has something (found:true); a
 // never-synced domain keeps whatever's already in localStorage (this
 // browser's own seed data, on the very first sync).
 async function lhRefreshDataDomainsFromServer_() {
+  // Served: the page arrived with the server's data (LH_BOOT); nothing to catch up.
+  if (LH_SERVED) return;
   if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
 
-  const APPLY = {
-    trips: arr => {
-      trips = arr;
-      localStorage.setItem('lh_trips', JSON.stringify(trips));
-      if (typeof renderTrips === 'function') renderTrips();
-      if (typeof renderDashboard === 'function') renderDashboard();
-    },
-    trip_archive: arr => {
-      tripArchive = arr;
-      localStorage.setItem('lh_trip_archive', JSON.stringify(tripArchive));
-      if (typeof renderArchive === 'function') renderArchive();
-    },
-    deca_results: arr => {
-      // No persistent in-memory variable — every reader already calls
-      // LS.get('lh_deca_results', []) fresh, so the localStorage write is
-      // the whole refresh; re-render only if that view happens to be open.
-      localStorage.setItem('lh_deca_results', JSON.stringify(arr));
-      // renderDecaResults() only returns an HTML string; the hub repaints
-      // through renderOrgHub(), the same way switching org tabs does.
-      if (typeof renderOrgHub === 'function' && document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
-    },
-    wbl_roster: arr => {
-      WBL_STUDENTS = arr;
-      localStorage.setItem('lh_wbl_students', JSON.stringify(WBL_STUDENTS));
-      if (typeof renderWBLTracker === 'function') renderWBLTracker();
-    },
-    store_inventory: arr => {
-      INVENTORY = arr;
-      localStorage.setItem('lh_inventory', JSON.stringify(INVENTORY));
-      if (typeof renderProcurement === 'function') renderProcurement();
-    },
-    store_sales_log: arr => {
-      SALES_LOG = arr;
-      localStorage.setItem('lh_sales_log', JSON.stringify(SALES_LOG));
-      if (typeof renderFinance === 'function') renderFinance();
-    },
-    store_purchase_orders: arr => {
-      PURCHASE_ORDERS = arr;
-      localStorage.setItem('lh_purchase_orders', JSON.stringify(PURCHASE_ORDERS));
-      if (typeof renderProcurement === 'function') renderProcurement();
-    },
-    esports_players: arr => {
-      ES_PLAYERS = arr;
-      localStorage.setItem('lh_es_players', JSON.stringify(ES_PLAYERS));
-      if (typeof renderESRoster === 'function') renderESRoster();
-    },
-    esports_matches: arr => {
-      ES_MATCHES = arr;
-      localStorage.setItem('lh_es_matches', JSON.stringify(ES_MATCHES));
-      if (typeof renderMatchLog === 'function') renderMatchLog();
-    },
-    goals: arr => {
-      goals = arr;
-      localStorage.setItem('lh_goals', JSON.stringify(goals));
-      if (typeof renderGoals === 'function') renderGoals();
-    },
-    events: arr => {
-      otherEvents = arr;
-      localStorage.setItem('lh_events', JSON.stringify(otherEvents));
-      if (typeof renderEvents === 'function') renderEvents();
-      if (typeof renderDECAPipeline === 'function') renderDECAPipeline();
-    },
-    tasks: arr => {
-      // No persistent in-memory variable — every reader already calls
-      // LS.get('lh_tasks', []) fresh, so the localStorage write is the
-      // whole refresh; refreshNextAction() re-derives the action queue
-      // that reads from it.
-      localStorage.setItem('lh_tasks', JSON.stringify(arr));
-      if (typeof refreshNextAction === 'function') refreshNextAction();
-    },
-    deadlines: arr => {
-      // The server copy can still hold last spring's built-ins
-      // (RETIRED_DEFAULT_DEADLINES, src/10).
-      DEADLINES = typeof dropRetiredDefaultDeadlines === 'function' ? dropRetiredDefaultDeadlines(arr) : arr;
-      localStorage.setItem('lh_deadlines', JSON.stringify(DEADLINES));
-      if (typeof renderDeadlines === 'function') renderDeadlines();
-    },
-    journal_entries: arr => {
-      // No persistent in-memory variable (lh_journal_last, a single most-
-      // recent entry, is separate and untouched) — every reader calls
-      // LS.get('lh_journal_history', []) fresh.
-      localStorage.setItem('lh_journal_history', JSON.stringify(arr));
-    },
-    observation_history: arr => {
-      localStorage.setItem('lh_obs_history', JSON.stringify(arr));
-      if (typeof renderObsChecklist === 'function') renderObsChecklist();
-    },
-    brag_manual_wins: arr => {
-      localStorage.setItem('lh_brag_manual_wins', JSON.stringify(arr));
-    },
-    // Phase 2 (no browser storage).
-    members: arr => {
-      students = arr;
-      localStorage.setItem('lh_students', JSON.stringify(students));
-      if (typeof renderStudents === 'function' && document.getElementById('view-students')?.classList.contains('active')) renderStudents();
-    },
-    // The logs have no in-memory variable: every reader calls LS.get fresh.
-    daily_log: arr => { localStorage.setItem('lh_daily_log', JSON.stringify(arr)); },
-    sub_plan_log: arr => { localStorage.setItem('lh_sub_plan_log', JSON.stringify(arr)); },
-    brag_log: arr => { localStorage.setItem('lh_brag_log', JSON.stringify(arr)); },
-    wbl_hours_log: arr => { localStorage.setItem('lh_wbl_hours_log', JSON.stringify(arr)); },
-    scr_session_log: arr => { localStorage.setItem('lh_scr_session_log', JSON.stringify(arr)); },
-  };
+  const APPLY = LH_DATA_APPLY;
 
   for (const [key, domain] of Object.entries(LH_SERVER_SYNCED_DATA_KEYS)) {
     let res;
@@ -678,7 +938,7 @@ async function lhRefreshDataDomainsFromServer_() {
     const pending = _lhPendingKeys_('data').indexOf(key) !== -1;
     let local = null;
     if (pending) {
-      try { local = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { local = null; }
+      try { local = JSON.parse(_lhStore.getItem(key) || 'null'); } catch (e) { local = null; }
     }
     if (res && res.ok && res.found) {
       let arr = (res.rows || [])
@@ -697,10 +957,10 @@ async function lhRefreshDataDomainsFromServer_() {
       // Never pushed from anywhere: this browser's copy seeds the server
       // (no browser storage, Phase 2). Logs get their ids on the way.
       let mine = null;
-      try { mine = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { mine = null; }
+      try { mine = JSON.parse(_lhStore.getItem(key) || 'null'); } catch (e) { mine = null; }
       if (Array.isArray(mine) && mine.length) {
         mine = _lhWithLogIds_(key, mine);
-        try { localStorage.setItem(key, JSON.stringify(mine)); } catch (e) {}
+        try { _lhStore.setItem(key, JSON.stringify(mine)); } catch (e) {}
         _lhSyncDataKeyToServer_(key, mine);
       }
     }
@@ -746,8 +1006,23 @@ async function _lhFlushScrScoreSync_() {
         .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
         .lhSaveScrScores(batch);
     });
+    if (_lhScrMigrationPending_ && !_scrSyncQueue.length) {
+      _lhScrMigrationPending_ = false;
+      _lhMigratedSaved_('lh_scr_scores');
+    }
+    _lhRenderUnsavedBar_();
   } catch (e) {
-    // Not re-queued automatically — the edit is already safe in scrScores/
+    // Served, nothing else holds these cells across a reload: put them back
+    // in the queue (unless a newer change to the same cell is already there)
+    // and show the "Not saved yet" bar, which retries.
+    if (LH_SERVED) {
+      batch.forEach(c => {
+        if (!_scrSyncQueue.some(q => q.course === c.course && q.period === c.period && q.studentKey === c.studentKey && q.compNum === c.compNum)) _scrSyncQueue.push(c);
+      });
+      _lhSaveFailed_ = true;
+      _lhRenderUnsavedBar_();
+    }
+    // Standalone: not re-queued automatically — the edit is already safe in scrScores/
     // localStorage via persistSCR() (setScore() calls that first, before
     // this ever runs); the next real edit to any cell queues and flushes
     // again, so a transient failure here doesn't strand an edit forever.
@@ -762,6 +1037,8 @@ async function _lhFlushScrScoreSync_() {
 // authoritative copy, since by the time any score has ever been synced,
 // the server is the source of truth every device should converge on.
 async function lhRefreshScrScoresFromServer_() {
+  // Served: the page arrived with the server's data (LH_BOOT); nothing to catch up.
+  if (LH_SERVED) return;
   if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
   let res;
   try {
@@ -777,7 +1054,7 @@ async function lhRefreshScrScoresFromServer_() {
   }
   if (res && res.ok && res.found) {
     scrScores = res.scores || {};
-    localStorage.setItem('lh_scr_scores', JSON.stringify(scrScores));
+    _lhStore.setItem('lh_scr_scores', JSON.stringify(scrScores));
     if (document.getElementById('view-competency')?.classList.contains('active') && typeof renderCompetencyView === 'function') {
       renderCompetencyView();
     }

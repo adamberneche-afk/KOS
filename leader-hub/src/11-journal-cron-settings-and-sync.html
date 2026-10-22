@@ -2622,16 +2622,17 @@ function lhJoinOrg(orgId, bridgeUrl) {
   }
 }
 
-// ── Whole-app backup — every lh_* localStorage key, in one file ─────────────
+// ── Whole-app backup — every lh_* key, in one file ─────────────────────────
+// Served, the keys come from page memory (the server's copy, _lhStore) and
+// an import is saved to the server; opened as a file, from localStorage.
 // This is the only backup mechanism a 100%-local, no-server app like this
 // one can have. Without it, a cleared cache or a device switch is silent,
 // unrecoverable data loss for a full year of tasks/journal/trip records.
 function lhExportBackup(){
   const data = {};
-  for (let i=0;i<localStorage.length;i++){
-    const k = localStorage.key(i);
-    if (k && k.startsWith('lh_')) data[k] = localStorage.getItem(k);
-  }
+  _lhStore.keys().forEach(k => {
+    if (k && k.startsWith('lh_') && !k.startsWith('lh_data_sync_') && k !== LH_SYNC_PENDING_KEY) data[k] = _lhStore.getItem(k);
+  });
   const payload = { app:'LeaderHub', version:1, exportedAt:new Date().toISOString(), data };
   const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
   const url  = URL.createObjectURL(blob);
@@ -2676,10 +2677,32 @@ function lhImportBackup(fileInput){
       // the completion message (and whether to reload at all) depends on
       // whether anything actually failed.
       const failedKeys = [];
-      keys.forEach(k => {
-        try { localStorage.setItem(k, data[k]); }
-        catch (e) { failedKeys.push(k); console.error('[lhImportBackup] failed to import key', k, e); }
-      });
+      if (LH_SERVED) {
+        // Saved to the server through LS.set; reload once every change is in.
+        keys.forEach(k => {
+          if (k.startsWith('lh_data_sync_') || k === LH_SYNC_PENDING_KEY) return;
+          let v;
+          try { v = JSON.parse(data[k]); } catch (e) { failedKeys.push(k); return; }
+          if (LS.set(k, v) === false) failedKeys.push(k);
+        });
+        if (failedKeys.length === 0) {
+          _showToast('Importing — saving to the server…', 4000);
+          const started = Date.now();
+          const wait = setInterval(() => {
+            if (_lhUnsavedCount_() === 0 || Date.now() - started > 60000) {
+              clearInterval(wait);
+              if (_lhUnsavedCount_() === 0) { _showToast('✅ Import complete — reloading…'); setTimeout(() => location.reload(), 900); }
+              else _showToast('⚠ Some of the import isn\'t saved yet. Keep the page open; the red bar retries.', 10000, '#991b1b');
+            }
+          }, 500);
+          return;
+        }
+      } else {
+        keys.forEach(k => {
+          try { localStorage.setItem(k, data[k]); }
+          catch (e) { failedKeys.push(k); console.error('[lhImportBackup] failed to import key', k, e); }
+        });
+      }
 
       if (failedKeys.length === 0) {
         _showToast('✅ Import complete — reloading…');
