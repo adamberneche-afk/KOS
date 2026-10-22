@@ -4314,3 +4314,50 @@ Order-of-work items 10 and 11 in `meta/UX_AUDIT_2026-10-22.md`
   identifier (`studentEmail`, `googleId`, `sisLogin`, `student.email` and
   the like). Four remain, in files being edited in parallel: 02 (three)
   and 07 (one).
+
+## Teacher Dashboard: 📅 Lessons dates, the lesson editor keeps its form, polish, 2026-10-22
+
+From `meta/UX_AUDIT_2026-10-22.md` (fix-first 9 and 10, order-of-work 6).
+All in `07_TeacherDashboard.js`'s client code.
+
+- **📅 Lessons dates save on Enter or leaving the box.** The box used to
+  save on `change`, which a browser fires as soon as it holds any valid
+  date: typing over a set date saved a wrong one on the first keystroke,
+  re-rendered the table and dropped focus. Now it saves only a whole,
+  real date (a year from 2000 to 2099). A half-typed date says "Not
+  saved" in its row. Enter then blur saves once. A reply that lands while
+  another date box has focus waits until focus leaves the date boxes. Each
+  row says "Saved ✓" or why not. A failed save no longer replaces the
+  table with "Could not load".
+- **The lesson editor keeps its form.** A failed save, submit, review or
+  withdraw re-shows the form as typed, with "Not saved: … Your changes are
+  still here". A lesson that can't be opened says why and has "← Back".
+  "← Back", × , Escape and a backdrop click ask before discarding unsaved
+  edits (changed fields, tiers, reason or an unsent review note), and
+  don't ask when nothing changed.
+- **Rows that need you come first.** In each lesson section, rows that
+  couldn't be checked or wait on your review sort above the rest, then by
+  period and name as before.
+- **Zeros print as 0.** `esc()` (00) treats 0 as empty, so the SCR queue
+  read "2 met,  not met". Counts in the SCR queue, the parent reports and
+  the profile go through a new `escNum()`. `esc()` itself is unchanged.
+- **The 🎓 SCR queue shows suggestions by default.** Rows with too little
+  evidence for a suggestion are counted ("N more have too little
+  evidence…") behind a Show them / Hide them toggle.
+- **✉ Parent Reports remembers addresses in this browser.** After a send,
+  the address is kept in `localStorage` for that student and prefilled
+  next week, with "Last sent to … on … from this browser". It is a
+  per-viewer convenience; nothing new is stored on the server.
+- **One panel helper.** The profile, review, 💬 Feedback, 📅 Lessons, ✉
+  Parent Reports and 🎓 SCR panels open and close through
+  `_openPanel()`/`_closePanel()`: focus moves to the × and back to the
+  button that opened it, Tab is trapped, and Escape closes the top panel
+  through its own close function.
+
+Tests: `teacher-dashboard-lesson-schedule.test.js` runs the panel's client
+code on a small fake page; `teacher-dashboard-inline-js.test.js` covers the
+roster order, the SCR toggle, zeros and the remembered address.
+
+Left for later: prefilling addresses from `ParentReportLog` on the server
+(the audit's fix), header buttons and counts, the roster "Not submitted" /
+period filter, and a warning when a lesson's docs are already shared.

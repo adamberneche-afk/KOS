@@ -2208,12 +2208,51 @@ function togglePendingReviewFilter() {
   if (_lastDashData) render(_lastDashData);
 }
 
+// esc() prints 0 as blank (it treats every falsy value as empty), so the
+// SCR queue read "2 met,  not met". Counts go through escNum() (2026-10-22,
+// UX audit).
+function escNum(n) {
+  return esc(String(n == null || n === "" ? 0 : n));
+}
+
+// ── One open/close helper for the panels (2026-10-22, UX audit) ────────────
+// Each panel (profile, review, 💬 Feedback, 📅 Lessons, ✉ Parent Reports,
+// 🎓 SCR) used to open and close itself: most ignored Escape, and closing
+// left focus behind the backdrop. _openPanel() remembers where focus was,
+// moves it to the panel's ×, and traps Tab; _closePanel() puts focus back.
+// Escape closes the top panel through its own close function, so a panel
+// that asks before discarding (📅 Lessons) still asks. The lesson-log modal
+// and its discard dialog keep their own handling below.
+const _panelStack = []; // [{ id, close, returnFocus }], top last
+
+function _openPanel(id, close) {
+  const backdrop = document.getElementById(id);
+  if (!backdrop) return null;
+  if (!backdrop.classList.contains("open")) {
+    _panelStack.push({ id: id, close: close, returnFocus: document.activeElement });
+    backdrop.classList.add("open");
+    document.addEventListener("keydown", _modalTrapKeydown);
+    const closeBtn = backdrop.querySelector(".modal-close");
+    if (closeBtn && closeBtn.focus) closeBtn.focus();
+  }
+  return backdrop;
+}
+
+function _closePanel(id) {
+  const backdrop = document.getElementById(id);
+  if (backdrop) backdrop.classList.remove("open");
+  let entry = null;
+  for (let i = _panelStack.length - 1; i >= 0; i--) {
+    if (_panelStack[i].id === id) { entry = _panelStack.splice(i, 1)[0]; break; }
+  }
+  if (!document.querySelector(".modal-backdrop.open")) document.removeEventListener("keydown", _modalTrapKeydown);
+  if (entry && entry.returnFocus && typeof entry.returnFocus.focus === "function") entry.returnFocus.focus();
+}
+
 // ── Student shadow-profile detail modal ─────────────────────────────────────
 // NEW (Say/Do Ledger cas-ccps finding #13). Opened from a "locked" roster
 // row's "View Profile →" button (see render() above). Read-only — no form
-// state, so it reuses the modal-backdrop convention but not the lesson
-// modal's discard-confirm/focus-restore machinery beyond focus trapping.
-let _profileModalReturnFocus = null;
+// state. Opens and closes through _openPanel()/_closePanel() (2026-10-22).
 
 function openStudentProfile(email, name) {
   const backdrop = document.getElementById("profile-modal-backdrop");
@@ -2224,11 +2263,7 @@ function openStudentProfile(email, name) {
   title.textContent = name ? name + "'s profile" : "Student profile";
   body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
 
-  _profileModalReturnFocus = document.activeElement;
-  backdrop.classList.add("open");
-  document.addEventListener("keydown", _modalTrapKeydown);
-  const closeBtn = backdrop.querySelector(".modal-close");
-  if (closeBtn) closeBtn.focus();
+  _openPanel("profile-modal-backdrop", closeStudentProfileModal);
 
   google.script.run
     .withSuccessHandler(function(profile) {
@@ -2256,8 +2291,8 @@ function renderStudentProfileModal(profile, fallbackName) {
   }
 
   let html = '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">' +
-    esc(profile.evalHistoryCount || 0) + ' evaluation' + ((profile.evalHistoryCount||0)===1?"":"s") +
-    ' logged · ' + esc(profile.warmupHistoryCount || 0) + ' warm-up response' +
+    escNum(profile.evalHistoryCount) + ' evaluation' + ((profile.evalHistoryCount||0)===1?"":"s") +
+    ' logged · ' + escNum(profile.warmupHistoryCount) + ' warm-up response' +
     ((profile.warmupHistoryCount||0)===1?"":"s") + ' · last updated ' + esc(profile.lastUpdated || "Never") +
     '</div>';
 
@@ -2280,14 +2315,7 @@ function renderStudentProfileModal(profile, fallbackName) {
 }
 
 function closeStudentProfileModal() {
-  const backdrop = document.getElementById("profile-modal-backdrop");
-  if (!backdrop) return;
-  backdrop.classList.remove("open");
-  document.removeEventListener("keydown", _modalTrapKeydown);
-  if (_profileModalReturnFocus && typeof _profileModalReturnFocus.focus === "function") {
-    _profileModalReturnFocus.focus();
-  }
-  _profileModalReturnFocus = null;
+  _closePanel("profile-modal-backdrop");
 }
 
 // ── Pending Review modal ─────────────────────────────────────────────────────
@@ -2297,8 +2325,6 @@ function closeStudentProfileModal() {
 // AI-suggested score as-is, or override it — either action round-trips to
 // teacherConfirmTurnInScore()/teacherOverrideTurnInScore() and, on success,
 // closes the modal and refreshes the roster.
-let _scoreReviewReturnFocus = null;
-
 function openScoreReview(configId, name, suggestedScore) {
   const backdrop = document.getElementById("score-review-modal-backdrop");
   const body     = document.getElementById("score-review-modal-body");
@@ -2308,11 +2334,7 @@ function openScoreReview(configId, name, suggestedScore) {
   title.textContent = name ? "Review — " + name : "Review submission";
   renderScoreReviewModal(configId, suggestedScore);
 
-  _scoreReviewReturnFocus = document.activeElement;
-  backdrop.classList.add("open");
-  document.addEventListener("keydown", _modalTrapKeydown);
-  const closeBtn = backdrop.querySelector(".modal-close");
-  if (closeBtn) closeBtn.focus();
+  _openPanel("score-review-modal-backdrop", closeScoreReviewModal);
 }
 
 function renderScoreReviewModal(configId, suggestedScore) {
@@ -2358,14 +2380,7 @@ function renderScoreReviewModal(configId, suggestedScore) {
 }
 
 function closeScoreReviewModal() {
-  const backdrop = document.getElementById("score-review-modal-backdrop");
-  if (!backdrop) return;
-  backdrop.classList.remove("open");
-  document.removeEventListener("keydown", _modalTrapKeydown);
-  if (_scoreReviewReturnFocus && typeof _scoreReviewReturnFocus.focus === "function") {
-    _scoreReviewReturnFocus.focus();
-  }
-  _scoreReviewReturnFocus = null;
+  _closePanel("score-review-modal-backdrop");
 }
 
 function _scoreReviewError(msg) {
@@ -2413,8 +2428,28 @@ function _handleTurnInDecisionResult(res) {
 
 let _parentReports = [];
 
+// The address each student's report last went to, remembered in this
+// browser only, so the weekly send isn't retyped (2026-10-22, UX audit). It
+// is a per-viewer convenience: nothing is stored on the server or shared,
+// and the field stays editable. The server's ParentReportLog stays the record.
+const PR_ADDR_KEY = "casParentReportAddr:";
+
+function _prRemembered(studentEmail) {
+  try {
+    const v = JSON.parse(localStorage.getItem(PR_ADDR_KEY + studentEmail) || "null");
+    return v && v.addr ? v : null;
+  } catch (e) { return null; }
+}
+
+function _prRemember(studentEmail, addr) {
+  try {
+    const sentOn = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    localStorage.setItem(PR_ADDR_KEY + studentEmail, JSON.stringify({ addr: addr, sentOn: sentOn }));
+  } catch (e) {}
+}
+
 function openFeedbackPlacementModal() {
-  document.getElementById("feedback-placement-modal-backdrop").classList.add("open");
+  _openPanel("feedback-placement-modal-backdrop", closeFeedbackPlacementModal);
   document.getElementById("feedback-placement-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
   google.script.run
@@ -2424,7 +2459,7 @@ function openFeedbackPlacementModal() {
 }
 
 function closeFeedbackPlacementModal() {
-  document.getElementById("feedback-placement-modal-backdrop").classList.remove("open");
+  _closePanel("feedback-placement-modal-backdrop");
 }
 
 function _feedbackPlacementFailed(e) {
@@ -2479,13 +2514,16 @@ function saveFeedbackPlacement(code, asComment) {
 }
 
 // ── Lesson schedule ─────────────────────────────────────────────────────────
-// One start date per lesson, saved as it changes. A change the rollout acts
-// on soon comes back with a question; Save again only after OK.
+// One start date per lesson, saved when the teacher leaves the box or presses
+// Enter. A change the rollout acts on soon comes back with a question; Save
+// again only after OK.
 
 let _lessonSchedule = null;
+let _lsDeferred = null;   // a schedule that came back while another date box was being typed in
+const _lsSaving = {};     // lesson key -> the value being saved, so Enter then blur saves once
 
 function openLessonScheduleModal() {
-  document.getElementById("lesson-schedule-modal-backdrop").classList.add("open");
+  _openPanel("lesson-schedule-modal-backdrop", closeLessonScheduleModal);
   document.getElementById("lesson-schedule-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
   google.script.run
@@ -2494,8 +2532,11 @@ function openLessonScheduleModal() {
     .getLessonSchedule();
 }
 
+// × , Escape and a backdrop click all come here; unsaved lesson-editor
+// edits are asked about first (2026-10-22, UX audit fix-first 10).
 function closeLessonScheduleModal() {
-  document.getElementById("lesson-schedule-modal-backdrop").classList.remove("open");
+  if (!_ldConfirmLeave()) return;
+  _closePanel("lesson-schedule-modal-backdrop");
 }
 
 function _lessonScheduleFailed(e) {
@@ -2527,10 +2568,12 @@ function renderLessonSchedule(data) {
     return;
   }
   _lessonSchedule = data;
+  _lsDeferred = null;
+  _ld = null;
   let html = '';
   if (data.error) html += '<p style="color:#b3261e;font-size:13px">' + esc(data.error) + '</p>';
   html += '<p style="font-size:13px;color:var(--text-secondary)">A lesson runs from its start date until the next ' +
-    'one starts. Each date saves when you change it, to the LessonSchedule tab. The nightly rollout makes a ' +
+    'one starts. Type or pick a date, then press Enter or leave the box: it saves to the LessonSchedule tab. The nightly rollout makes a ' +
     'lesson\\'s documents when it starts within ' + esc(String(data.leadDays)) + ' days and shares them the night before. ' +
     (data.rolloutRunAt ? 'Rollout column: the run of ' + esc(data.rolloutRunAt) + '.' : 'The rollout has not run yet.') + '</p>';
   if (!data.courses.length) html += '<p style="font-size:13px">No lessons in the LessonSchedule tab yet.</p>';
@@ -2551,9 +2594,9 @@ function renderLessonSchedule(data) {
         '</td>' +
         '<td style="padding:6px 4px;color:' + LS_STATUS_COLOR[l.status] + ';font-weight:600">' + esc(LS_STATUS_LABEL[l.status]) + '</td>' +
         '<td style="padding:6px 4px"><input type="date" id="' + id + '" value="' + esc(l.start) + '" ' +
-        'aria-label="Start date for ' + esc(l.lesson) + '" ' +
-        'onchange="saveLessonStartDate(\\'' + jsAttr(l.key) + '\\', this.value)">' +
-        (l.start ? ' <button style="font-size:12px" onclick="saveLessonStartDate(\\'' + jsAttr(l.key) + '\\', \\'\\')">Clear</button>' : '') +
+        'data-ls-key="' + esc(l.key) + '" aria-label="Start date for ' + esc(l.lesson) + '">' +
+        (l.start ? ' <button style="font-size:12px" id="' + id + '-clear" onclick="saveLessonStartDate(\\'' + jsAttr(l.key) + '\\', \\'\\')">Clear</button>' : '') +
+        '<div id="' + id + '-msg" role="status" aria-live="polite" style="font-size:12px"></div>' +
         '</td>' +
         '<td style="padding:6px 4px">' + _lsRolloutText(l) + '</td></tr>';
     });
@@ -2571,21 +2614,101 @@ function _lsFind(key) {
   return found;
 }
 
+// A date box used to save on "change", which a browser fires as soon as the
+// box holds any valid date: typing "11052026" over a set date saved
+// 2026-01-30 on the first keystroke, re-rendered the table and dropped focus.
+// Now a date saves on blur or Enter, only when it is a whole, real date, and
+// the table is not re-rendered while another date box has focus
+// (2026-10-22, UX audit fix-first 9).
+function _lsWholeDate(v) {
+  const m = /^(\\d{4})-(\\d{2})-(\\d{2})$/.exec(String(v || ""));
+  if (!m) return false;
+  const y = Number(m[1]), mo = Number(m[2]), d = Number(m[3]);
+  if (y < 2000 || y > 2099) return false;
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  return dt.getUTCMonth() === mo - 1 && dt.getUTCDate() === d;
+}
+
+function _lsIsDateBox(el) {
+  return !!(el && el.matches && el.matches("#lesson-schedule-modal-body input[data-ls-key]"));
+}
+
+function _lsMsg(key, ok, text) {
+  const el = document.getElementById("ls-" + key + "-msg");
+  if (!el) return;
+  el.style.color = ok ? "#137333" : "#b3261e";
+  el.textContent = text;
+}
+
+function _lsCommitDate(input) {
+  const key = input.getAttribute("data-ls-key");
+  const l = _lsFind(key);
+  if (!l) return false;
+  const v = input.value;
+  if (v === l.start || _lsSaving[key] === v) return false;
+  if (!_lsWholeDate(v)) {
+    _lsMsg(key, false, "Not saved: type the whole date (month, day and year), or use Clear.");
+    return false;
+  }
+  saveLessonStartDate(key, v);
+  return true;
+}
+
+// Re-renders with a new schedule unless a date box has focus: then it waits
+// until focus leaves the date boxes, so nothing typed is wiped.
+function _lsShow(res, savedKey, focusEl) {
+  const ok = !!(res && res.success);
+  const note = function() {
+    if (savedKey) _lsMsg(savedKey, ok, ok ? "Saved ✓" : "Not saved: " + ((res && res.error) || "unknown error"));
+  };
+  if (!res || !res.courses) { note(); return; }
+  _lessonSchedule = res;
+  const active = focusEl || document.activeElement;
+  if (_lsIsDateBox(active)) {
+    _lsDeferred = res;
+    note();
+    return;
+  }
+  const focusId = active && active.id ? active.id : "";
+  renderLessonSchedule(res);
+  note();
+  const back = focusId && document.getElementById(focusId);
+  if (back && back.focus) back.focus();
+}
+
 function saveLessonStartDate(key, value, confirmed) {
   const l = _lsFind(key);
   if (!l) return;
+  _lsSaving[key] = value;
+  _lsMsg(key, true, "Saving…");
   google.script.run
     .withSuccessHandler(function(res) {
+      delete _lsSaving[key];
       if (res && res.confirm) {
-        if (window.confirm(res.confirm)) saveLessonStartDate(key, value, true);
-        else renderLessonSchedule(_lessonSchedule);
+        if (window.confirm(res.confirm)) { saveLessonStartDate(key, value, true); return; }
+        // Put the box back, so leaving it doesn't ask again.
+        const box = document.getElementById("ls-" + key);
+        if (box) box.value = l.start || "";
+        _lsMsg(key, true, "Not changed.");
         return;
       }
-      renderLessonSchedule(res);
+      _lsShow(res, key);
     })
-    .withFailureHandler(_lessonScheduleFailed)
+    .withFailureHandler(function(e) {
+      delete _lsSaving[key];
+      _lsMsg(key, false, "Not saved: " + (e && e.message ? e.message : "unknown error") + ". Try again.");
+    })
     .setLessonStartDate(key, value, l.start, !!confirmed);
 }
+
+document.addEventListener("focusout", function(e) {
+  if (!_lsIsDateBox(e.target)) return;
+  const saving = _lsCommitDate(e.target);
+  if (!saving && _lsDeferred && !_lsIsDateBox(e.relatedTarget)) _lsShow(_lsDeferred, null, e.relatedTarget || document.body);
+});
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Enter" && _lsIsDateBox(e.target)) { e.preventDefault(); _lsCommitDate(e.target); }
+});
 
 // ── Lesson editor (65_LessonDrafts.js) ─────────────────────────────────────
 // Opened from a lesson's Edit button in the Lessons panel. Buttons carry
@@ -2624,8 +2747,44 @@ function openLessonEditor(key) {
   body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary)">Loading the lesson…</p>';
   google.script.run
     .withSuccessHandler(renderLessonEditor)
-    .withFailureHandler(_lessonScheduleFailed)
+    .withFailureHandler(_ldLoadFailed)
     .getLessonEditor(key);
+}
+
+// A lesson that can't be opened says why, with a way back (2026-10-22).
+function _ldLoadFailed(e) {
+  renderLessonEditor({ success: false, error: "Could not open the lesson: " + (e && e.message ? e.message : "unknown error") });
+}
+
+// A save, submit, review or withdraw that fails keeps the form as it was
+// typed and says what happened. It used to replace the form with "Could not
+// load" and no way back (2026-10-22, UX audit fix-first 10).
+function _ldFailed(e) {
+  if (!_ld) return;
+  _ldReadForm();
+  _ldRender({ ok: false, text: "Not saved: " + (e && e.message ? e.message : "unknown error") +
+    ". Your changes are still here; try again." });
+}
+
+// What the form holds, to compare with what was last saved.
+function _ldSnapshot() {
+  return JSON.stringify({ fields: _ld.fields, reason: _ld.reason || "" });
+}
+
+// True when the open editor has edits that aren't saved: changed fields or
+// tiers, or a review note typed but not sent.
+function _ldDirty() {
+  if (!_ld || !document.getElementById("lesson-schedule-modal-body")) return false;
+  if (!document.getElementById("ld-reason") && !document.getElementById("ld-review-note")) return false;
+  _ldReadForm();
+  return _ldSnapshot() !== _ld.saved || !!String(_ld.reviewNote || "").trim();
+}
+
+// "← Back" and × used to discard unsaved edits without asking (2026-10-22).
+function _ldConfirmLeave() {
+  if (_ldDirty() && !window.confirm("Discard your unsaved changes to this lesson?")) return false;
+  _ld = null;
+  return true;
 }
 
 function _ldCatalogItem(id) {
@@ -2659,6 +2818,8 @@ function _ldReadForm() {
   });
   const r = document.getElementById("ld-reason");
   if (r) _ld.reason = r.value;
+  const n = document.getElementById("ld-review-note");
+  if (n) _ld.reviewNote = n.value;
 }
 
 function renderLessonEditor(data) {
@@ -2672,6 +2833,7 @@ function renderLessonEditor(data) {
   _ld = { data: data, reason: draft ? draft.reason : "",
     fields: JSON.parse(JSON.stringify(draft ? draft.fields : data.lesson.current)) };
   ["competencyIds", "secondary", "tertiary"].forEach(function(k) { _ld.fields[k] = _ld.fields[k] || []; });
+  _ld.saved = _ldSnapshot();
   _ldRender();
 }
 
@@ -2706,7 +2868,7 @@ function _ldRender(message) {
     });
     if (draft.canReview) {
       h += '<label style="font-size:13px;display:block;margin-top:8px">Note (needed to return it)<br>' +
-        '<textarea id="ld-review-note" rows="3" style="width:100%"></textarea></label>' +
+        '<textarea id="ld-review-note" rows="3" style="width:100%">' + esc(_ld.reviewNote || "") + '</textarea></label>' +
         '<button data-ld="accept">Accept the proposal</button> <button data-ld="return">Return with my note</button>';
     } else {
       h += '<p style="font-size:13px;color:var(--text-secondary)">Only the account that submitted this draft can review it.</p>';
@@ -2777,7 +2939,9 @@ function _ldRender(message) {
 
 function _ldAfter(okText) {
   return function(res) {
+    if (!_ld) return;
     if (!res || !res.success) {
+      _ldReadForm();
       if (res && res.draft) _ld.data.draft = res.draft;
       _ldRender({ ok: false, text: (res && res.error ? res.error : "Not saved.") + (res && res.issues ? " " + res.issues.join(" ") : "") });
       return;
@@ -2788,7 +2952,9 @@ function _ldAfter(okText) {
       _ld.fields = JSON.parse(JSON.stringify(res.draft.fields));
       ["competencyIds", "secondary", "tertiary"].forEach(function(k) { _ld.fields[k] = _ld.fields[k] || []; });
       _ld.reason = res.draft.reason;
+      _ld.saved = _ldSnapshot();
     }
+    _ld.reviewNote = "";
     _ldRender({ ok: true, text: okText });
   };
 }
@@ -2799,31 +2965,31 @@ function _ldAction(el) {
   if (act === "new") {
     document.getElementById("lesson-schedule-modal-body").innerHTML =
       '<p style="font-size:13px;color:var(--text-secondary)">Opening a new lesson…</p>';
-    return google.script.run.withSuccessHandler(renderLessonEditor).withFailureHandler(_lessonScheduleFailed)
+    return google.script.run.withSuccessHandler(renderLessonEditor).withFailureHandler(_ldLoadFailed)
       .getNewLessonEditor(el.getAttribute("data-course"));
   }
-  if (act === "back") return openLessonScheduleModal();
+  if (act === "back") { if (_ldConfirmLeave()) openLessonScheduleModal(); return; }
   if (!_ld) return;
   const id = _ld.data.draft ? _ld.data.draft.draftId : "";
+  _ldReadForm();
   if (act === "save") {
-    _ldReadForm();
     const payload = _ld.data.isNew
       ? { kind: "NEW", course: _ld.data.lesson.course, draftId: id, fields: _ld.fields, reason: _ld.reason }
       : { lessonKey: _ld.data.lesson.key, fields: _ld.fields, reason: _ld.reason };
-    google.script.run.withSuccessHandler(_ldAfter("Draft saved.")).withFailureHandler(_lessonScheduleFailed)
+    google.script.run.withSuccessHandler(_ldAfter("Draft saved.")).withFailureHandler(_ldFailed)
       .saveLessonDraft(payload);
   } else if (act === "submit") {
-    google.script.run.withSuccessHandler(_ldAfter("Submitted for import.")).withFailureHandler(_lessonScheduleFailed)
+    google.script.run.withSuccessHandler(_ldAfter("Submitted for import.")).withFailureHandler(_ldFailed)
       .submitLessonDraft(id);
   } else if (act === "withdraw") {
     if (!window.confirm("Withdraw this draft? The lesson stays as it is.")) return;
-    google.script.run.withSuccessHandler(function() { if (_ld.data.isNew) openLessonScheduleModal(); else openLessonEditor(_ld.data.lesson.key); })
-      .withFailureHandler(_lessonScheduleFailed).withdrawLessonDraft(id);
+    const isNew = _ld.data.isNew, key = _ld.data.lesson.key;
+    google.script.run.withSuccessHandler(function() { _ld = null; if (isNew) openLessonScheduleModal(); else openLessonEditor(key); })
+      .withFailureHandler(_ldFailed).withdrawLessonDraft(id);
   } else if (act === "accept" || act === "return") {
-    const note = document.getElementById("ld-review-note");
     google.script.run.withSuccessHandler(_ldAfter(act === "accept" ? "Accepted." : "Returned with your note."))
-      .withFailureHandler(_lessonScheduleFailed)
-      .reviewLessonProposal(id, act === "accept", note ? note.value : "");
+      .withFailureHandler(_ldFailed)
+      .reviewLessonProposal(id, act === "accept", _ld.reviewNote || "");
   }
 }
 
@@ -2846,7 +3012,7 @@ document.addEventListener("change", function(e) {
 });
 
 function openParentReportModal() {
-  document.getElementById("parent-report-modal-backdrop").classList.add("open");
+  _openPanel("parent-report-modal-backdrop", closeParentReportModal);
   document.getElementById("parent-report-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading this week\\'s reports…</p>';
   google.script.run
@@ -2860,7 +3026,7 @@ function openParentReportModal() {
 }
 
 function closeParentReportModal() {
-  document.getElementById("parent-report-modal-backdrop").classList.remove("open");
+  _closePanel("parent-report-modal-backdrop");
 }
 
 function renderParentReportModal(data) {
@@ -2886,7 +3052,7 @@ function renderParentReportModal(data) {
   if (data.excludedStudentCount > 0) {
     html += '<div role="alert" style="background:#fef7e0;border:1px solid #f9dc8f;' +
       'border-radius:6px;padding:10px 12px;font-size:12.5px;margin-bottom:14px">' +
-      '<strong>' + esc(data.excludedStudentCount) + ' student' +
+      '<strong>' + escNum(data.excludedStudentCount) + ' student' +
       (data.excludedStudentCount === 1 ? ' is' : 's are') + ' not listed below.</strong> ' +
       'Their account does not match the district student-ID format, so no report ' +
       'was built for them. They will keep being skipped until the account is corrected.' +
@@ -2900,15 +3066,16 @@ function renderParentReportModal(data) {
   }
 
   _parentReports.forEach(function(r, i) {
+    const last = _prRemembered(r.studentEmail);
     const pending = r.pendingCount > 0
-      ? '<span style="color:#b06000"> · ' + esc(r.pendingCount) + ' awaiting your review</span>'
+      ? '<span style="color:#b06000"> · ' + escNum(r.pendingCount) + ' awaiting your review</span>'
       : '';
     html +=
       '<div style="border:1px solid #e8eaed;border-radius:8px;padding:14px;margin-bottom:12px">' +
         '<div style="font-weight:600;font-size:14px">' + esc(r.studentName || r.studentEmail) + '</div>' +
         '<div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px">' +
-          esc(r.confirmedCount) + ' confirmed score' + (r.confirmedCount === 1 ? '' : 's') +
-          pending + ' · ' + esc(r.progressCount) + ' competenc' +
+          escNum(r.confirmedCount) + ' confirmed score' + (r.confirmedCount === 1 ? '' : 's') +
+          pending + ' · ' + escNum(r.progressCount) + ' competenc' +
           (r.progressCount === 1 ? 'y' : 'ies') + ' to date' +
         '</div>' +
         '<details style="margin-bottom:10px">' +
@@ -2921,9 +3088,12 @@ function renderParentReportModal(data) {
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
           '<label for="pr-addr-' + i + '" style="font-size:12.5px">Parent email</label>' +
           '<input id="pr-addr-' + i + '" type="email" placeholder="name@example.com" ' +
+            (last ? 'value="' + esc(last.addr) + '" ' : '') +
             'style="flex:1;min-width:190px;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px">' +
           '<button class="btn" onclick="submitParentReportSend(' + i + ')">Send</button>' +
         '</div>' +
+        (last ? '<div style="font-size:12px;color:var(--text-secondary);margin-top:6px">Last sent to ' + esc(last.addr) +
+          (last.sentOn ? ' on ' + esc(last.sentOn) : '') + ' from this browser. Check it is still right before you send.</div>' : '') +
         '<div id="pr-msg-' + i + '" role="status" aria-live="polite" ' +
           'style="font-size:12.5px;margin-top:8px"></div>' +
       '</div>';
@@ -2958,6 +3128,7 @@ function submitParentReportSend(i) {
       // still remembers who it was meant for.
       msg.textContent = "✅ Sent to " + res.recipient;
       if (input) input.disabled = true;
+      _prRemember(report.studentEmail, res.recipient || addr);
       showToast("✅ Report sent to " + res.recipient);
     })
     .withFailureHandler(function(e) {
@@ -2973,11 +3144,16 @@ function submitParentReportSend(i) {
 // reuses that per-row-status pattern rather than the single-item Pending
 // Review modal's pattern (openScoreReview() etc. above).
 let _scrQueue = [];
+let _scrShowAll = false; // false: only rows with a suggestion (2026-10-22)
+
+function toggleScrShowAll() {
+  _scrShowAll = !_scrShowAll;
+  renderScrReviewModal({ success: true, suggestions: _scrQueue });
+}
 
 function openScrReviewModal() {
-  const backdrop = document.getElementById("scr-review-modal-backdrop");
-  backdrop.classList.add("open");
-  document.addEventListener("keydown", _modalTrapKeydown);
+  _openPanel("scr-review-modal-backdrop", closeScrReviewModal);
+  _scrShowAll = false;
   document.getElementById("scr-review-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
   google.script.run
@@ -2991,9 +3167,7 @@ function openScrReviewModal() {
 }
 
 function closeScrReviewModal() {
-  const backdrop = document.getElementById("scr-review-modal-backdrop");
-  backdrop.classList.remove("open");
-  document.removeEventListener("keydown", _modalTrapKeydown);
+  _closePanel("scr-review-modal-backdrop");
 }
 
 function renderScrReviewModal(data) {
@@ -3005,20 +3179,27 @@ function renderScrReviewModal(data) {
   }
   _scrQueue = data.suggestions || [];
 
-  if (!_scrQueue.length) {
-    body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary)">' +
-      'No competency ratings are waiting on your review right now.</p>';
-    return;
-  }
+  // Only rows with a suggestion are "waiting on your review" by default; the
+  // rest (too little evidence yet, often hundreds early in the year) are
+  // behind a toggle (2026-10-22, UX audit).
+  const suggestedCount = _scrQueue.filter(function(item) { return !!item.suggestedRating; }).length;
+  const otherCount = _scrQueue.length - suggestedCount;
 
   let html = '<p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">' +
-    esc(_scrQueue.length) + ' competenc' + (_scrQueue.length === 1 ? 'y' : 'ies') +
-    ' waiting on your review.</p>';
+    (suggestedCount
+      ? escNum(suggestedCount) + ' competenc' + (suggestedCount === 1 ? 'y' : 'ies') + ' waiting on your review.'
+      : 'No competency ratings are waiting on your review right now.') +
+    (otherCount
+      ? ' ' + escNum(otherCount) + ' more ' + (otherCount === 1 ? 'has' : 'have') + ' too little evidence for a suggestion yet. ' +
+        '<button id="scr-show-all-btn" onclick="toggleScrShowAll()" style="background:none;border:1px solid #1a73e8;color:#1557b0;' +
+        'border-radius:4px;padding:2px 9px;font-size:12px;cursor:pointer">' + (_scrShowAll ? 'Hide them' : 'Show them') + '</button>'
+      : '') + '</p>';
 
   _scrQueue.forEach(function(item, i) {
+    if (!_scrShowAll && !item.suggestedRating) return;
     const suggested = item.suggestedRating;
-    const evidenceNote = 'Evidence so far: ' + esc(item.metCount) + ' met, ' +
-      esc(item.notMetCount) + ' not met, ' + esc(item.partialCount) + ' partially met.';
+    const evidenceNote = 'Evidence so far: ' + escNum(item.metCount) + ' met, ' +
+      escNum(item.notMetCount) + ' not met, ' + escNum(item.partialCount) + ' partially met.';
 
     html +=
       '<div style="border:1px solid #e8eaed;border-radius:8px;padding:14px;margin-bottom:12px">' +
@@ -3334,7 +3515,9 @@ If you expect to see students here:
   }
 
   // One section per lesson (its assignment), students by period then name,
-  // the order SpeedGrader is easiest to follow in.
+  // the order SpeedGrader is easiest to follow in. Rows that need the
+  // teacher (couldn't be checked, or waiting on their review) come first in
+  // each section; this re-sort used to bury them by period (2026-10-22, UX audit).
   const units = {};
   const unitNames = {};
   studentsToShow.forEach(s => {
@@ -3342,7 +3525,8 @@ If you expect to see students here:
     if (!units[key]) { units[key] = []; unitNames[key] = s.assignmentName; }
     units[key].push(s);
   });
-  Object.keys(units).forEach(k => units[k].sort((a, b) =>
+  const needsYou = s => (s.statusClass === "flagged" || s.statusClass === "pending-review") ? 0 : 1;
+  Object.keys(units).forEach(k => units[k].sort((a, b) => needsYou(a) - needsYou(b) ||
     String(a.period).localeCompare(String(b.period), undefined, { numeric: true }) || a.name.localeCompare(b.name)));
 
   const badgeMap = {
@@ -4211,10 +4395,13 @@ function _showFrameLinkFallback(url) {
 // Escape key closes modal (only when it's actually open) — checked first
 // against the discard-confirm dialog, since it can be showing on top of the
 // lesson modal and should back out of just itself, not re-trigger closeModal().
+// Then the top panel opened with _openPanel() (2026-10-22).
 document.addEventListener("keydown", function(e) {
   if (e.key !== "Escape") return;
   if (document.getElementById("discard-confirm-backdrop").classList.contains("open")) {
     _cancelDiscardConfirm();
+  } else if (_panelStack.length) {
+    _panelStack[_panelStack.length - 1].close();
   } else if (document.getElementById("modal-backdrop").classList.contains("open")) {
     closeModal();
   }
