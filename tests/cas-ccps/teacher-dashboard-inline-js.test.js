@@ -173,3 +173,43 @@ test('the dashboard\'s onclick buttons use jsAttr() for names and ids', () => {
     assert.match(src, new RegExp('const ' + v + '\\s*=\\s*jsAttr\\('), v);
   });
 });
+
+// The warm-up readiness strip's numbers filter the roster. wrButton() wires
+// a click only on a <button>, and until 2026-10-22 the markup used spans, so
+// no number could be clicked (walk-through finding 7).
+test('the warm-up readiness numbers are buttons, and a click filters the roster', () => {
+  const html = renderDashboard().buildDashboardHtml_();
+  for (const id of ['wr-eval', 'wr-warmup', 'wr-confidence', 'wr-locked']) {
+    assert.match(html, new RegExp('<button type="button" class="wr-stat" id="' + id + '">'), id);
+  }
+  const context = firstContextWith(html, ['renderWarmUpReadiness', 'applyWrFilter']);
+  const els = {};
+  context.document = { getElementById: (id) => (els[id] = els[id] || { id, tagName: 'BUTTON', style: {} }) };
+  const applied = [];
+  context.applyWrFilter = (bucket) => applied.push(bucket);
+  context.renderWarmUpReadiness({ currentUnit: 'L06', total: 20, withEvalHistory: 5, withWarmUpHistory: 3,
+    withShadowConfidence: 0, locked: 2 });
+  assert.equal(els['wr-eval'].textContent, '5 of 20 students have evaluation history');
+  ['wr-eval', 'wr-warmup', 'wr-locked'].forEach((id) => els[id].onclick());
+  assert.deepEqual(applied, ['eval', 'warmup', 'locked']);
+  assert.equal(els['wr-confidence'].style.display, 'none', 'a zero count is hidden');
+  assert.equal(els['wr-confidence'].onclick, null);
+});
+
+// The 💬 Feedback panel says what the setting is now (finding 1).
+test('the Feedback panel shows the live FEEDBACK_AS_COMMENT setting', () => {
+  const html = renderDashboard().buildDashboardHtml_();
+  const context = firstContextWith(html, ['renderFeedbackPlacement']);
+  const body = { innerHTML: '' };
+  context.document = { getElementById: () => body };
+  const shown = (value) => {
+    context.renderFeedbackPlacement({ success: true, value, overriddenHere: false,
+      courses: [{ code: '8175', asComment: value !== 'off' }, { code: '8177', asComment: value === 'all' }] });
+    return body.innerHTML;
+  };
+  assert.match(shown('off'), /Now:<\/strong> in the document, for every course/);
+  assert.match(shown('all'), /Now:<\/strong> as a comment, for every course/);
+  assert.match(shown('8175'), /Now:<\/strong> as a comment for 8175 only; in the document for the others/);
+  assert.match(body.innerHTML, /<legend[^>]*>8175<\/legend>/);
+  assert.doesNotMatch(body.innerHTML, /No courses with assignments yet/);
+});

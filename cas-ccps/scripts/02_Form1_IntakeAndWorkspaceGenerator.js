@@ -365,7 +365,8 @@ function stampDocument_(fileId, configId, studentName, block,
 
   // With feedback as comments (FEEDBACK_AS_COMMENT, 00) the doc gets no
   // feedback zone: the header keeps who and what, and the dashboard link.
-  const feedbackInComments = feedbackAsCommentFor_(configId);
+  // The Ledger row doesn't exist yet, so the course comes from the class.
+  const feedbackInComments = feedbackAsCommentFor_(configId, className);
 
   // Who and what, the dashboard link and the feedback status live in the
   // page header (00's writeDocHeader_), in small grey text, so the page

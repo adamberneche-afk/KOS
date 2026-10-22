@@ -304,14 +304,20 @@ function _pivotValueOn_(raw, courseCode) {
 // a pivot flag: blank/"off", "all", or one course code). On, the harvest
 // (37) posts a comment, 03 adds nothing to the doc, and intake (02) builds
 // new docs without a feedback zone, so the doc holds only the assignment and
-// the student's work. ConfigIDs carry the course ("CAS-8175-L06"); an older
-// "VDOE-…" ID has none, so only "all" reaches it.
-function feedbackAsCommentFor_(configId) {
-  return feedbackAsCommentChecker_()(configId);
+// the student's work.
+//
+// A student's ConfigID is a workspace ID ("VDOE-XXXXXX-2026", 02), which
+// carries no course, so the course comes from a course name: the caller's
+// (intake, before the Ledger row exists) or the Ledger row's class, subject
+// or course name (ledgerRowCourseCode_). The Ledger is read only for a
+// one-course value; "off" and "all" need no course. A lesson's ConfigID
+// ("CAS-8175-L06") names its course directly.
+function feedbackAsCommentFor_(configId, courseName) {
+  return feedbackAsCommentChecker_()(configId, courseName);
 }
 
-// The same test with the flag read once, for a loop over many assignments
-// (the Student Dashboard builds one card per Ledger row).
+// The same test with the flag read once (and the Ledger at most once), for
+// a loop over many assignments.
 function feedbackAsCommentChecker_() {
   let raw = "";
   try {
@@ -319,10 +325,50 @@ function feedbackAsCommentChecker_() {
   } catch (e) {
     raw = ""; // unconfigured project: feedback stays in the doc
   }
-  return function (configId) {
-    const m = String(configId || "").match(/^CAS-(\d{4})-/);
-    return _pivotValueOn_(raw, m ? m[1] : null);
+  const value = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase();
+  let byConfigId = null;
+  return function (configId, courseName) {
+    if (value === "" || value === "off" || value === "all") return _pivotValueOn_(raw, null);
+    const id = String(configId || "").trim();
+    const m = id.match(/^CAS-(\d{4})-/);
+    let code = m ? m[1] : warmUpCourseCode_(courseName);
+    if (!code && id) {
+      if (!byConfigId) byConfigId = _ledgerCourseCodes_();
+      code = byConfigId[id] || "";
+    }
+    return _pivotValueOn_(raw, code);
   };
+}
+
+// "8175", "8177" or "" for a Ledger row, from the first of its class,
+// subject and course names that names a course. Roster enrollment (52)
+// writes the Canvas course name to all three.
+function ledgerRowCourseCode_(row) {
+  const cols = [LEDGER.CLASS_NAME, LEDGER.SUBJECT, LEDGER.COURSE_NAME];
+  for (let i = 0; i < cols.length; i++) {
+    const code = warmUpCourseCode_(row[cols[i]]);
+    if (code) return code;
+  }
+  return "";
+}
+
+// ConfigID → course code for every Ledger row. An unreadable Ledger gives
+// {}, so a one-course value keeps feedback in the doc, and says so.
+function _ledgerCourseCodes_() {
+  const out = {};
+  try {
+    const cfg = getConfig_();
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
+    if (!sheet || sheet.getLastRow() < 2) return out;
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER.COURSE_NAME + 1).getValues().forEach(function (row) {
+      const id = String(row[LEDGER.CONFIG_ID] || "").trim();
+      const code = ledgerRowCourseCode_(row);
+      if (id && code) out[id] = code;
+    });
+  } catch (e) {
+    Logger.log("[FEEDBACK_AS_COMMENT] Ledger unreadable, feedback stays in the doc: " + e.message);
+  }
+  return out;
 }
 
 // Whether a course's warm-ups are answered in a text box on the Student
