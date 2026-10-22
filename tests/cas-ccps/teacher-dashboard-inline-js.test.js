@@ -213,3 +213,57 @@ test('the Feedback panel shows the live FEEDBACK_AS_COMMENT setting', () => {
   assert.match(body.innerHTML, /<legend[^>]*>8175<\/legend>/);
   assert.doesNotMatch(body.innerHTML, /No courses with assignments yet/);
 });
+
+// Roster rendering (walk-through findings 3b, 16 and 18, 2026-10-22).
+function renderedRoster(students, lessonView) {
+  const html = renderDashboard().buildDashboardHtml_();
+  const context = firstContextWith(html, ['render', 'setLessonView', 'backToDashboard']);
+  const els = {};
+  const el = (id) => (els[id] = els[id] || {
+    id, style: {}, value: 'ALL', innerHTML: '', options: [], classList: { add() {}, remove() {} },
+    appendChild() {}, querySelectorAll: () => [], setAttribute() {}, addEventListener() {},
+  });
+  context.document = { getElementById: el, createElement: () => el('x' + Math.random()),
+    querySelector: () => null, querySelectorAll: () => [], addEventListener() {}, body: el('body') };
+  const data = { students, lessons: [{ id: 'L06', name: 'L06', current: true }], activeTerm: 'ALL', availableTerms: [] };
+  context.render(data);
+  if (lessonView) context.setLessonView(lessonView);
+  return { main: els.main.innerHTML, context, els };
+}
+
+const rosterStudent = (o) => Object.assign({
+  name: 'A Student', googleId: 'a@example.invalid', period: '1', block: '1', subject: 'Marketing',
+  assignmentId: 'L06', assignmentName: 'L06', isCurrentLesson: true, evalState: 'NOT_CHECKED', statusClass: 'not-started',
+  status: 'Not started', checkCount: 0, lastEval: 'Never', submittedAt: '—', docUrl: null,
+}, o);
+
+test('a roster row shows when the work was submitted', () => {
+  const { main } = renderedRoster([
+    rosterStudent({ submittedAt: 'Oct 21, 2026 9:05 AM' }),
+    rosterStudent({ name: 'B Student', googleId: 'b@example.invalid' }),
+  ]);
+  assert.match(main, /No checks yet · submitted Oct 21, 2026 9:05 AM/);
+  assert.equal((main.match(/· submitted /g) || []).length, 1, 'no "submitted —" for work never submitted');
+});
+
+test('"All assignments" counts assignments in its first card and says how many students', () => {
+  const two = [rosterStudent({}), rosterStudent({ assignmentId: 'L05', assignmentName: 'L05', isCurrentLesson: false })];
+  assert.match(renderedRoster(two).main, /<div class="count">1<\/div><div class="label">Students<\/div>/);
+  assert.match(renderedRoster(two, 'ALL').main, /<div class="count">2<\/div><div class="label">Assignments · 1 student<\/div>/);
+});
+
+test('Student Context has a way back to the roster without a reload', () => {
+  const html = renderDashboard().buildDashboardHtml_();
+  assert.match(html, /id="context-tab-btn" onclick="showStudentContext\(\)">Student Context</);
+  const { context, els } = renderedRoster([rosterStudent({})]);
+  context.renderTeacherRoster({ generatedAt: 'now', roster: [] });
+  assert.match(els['student-context-view'].innerHTML, /onclick="backToDashboard\(\)"[^>]*>← Back to dashboard</);
+  els['student-context-view'].style.display = 'block';
+  els.main.style.display = 'none';
+  let reloaded = false;
+  context.loadData = () => { reloaded = true; };
+  context.backToDashboard();
+  assert.equal(els['student-context-view'].style.display, 'none');
+  assert.equal(els.main.style.display, 'block');
+  assert.equal(reloaded, false);
+});
