@@ -7,7 +7,9 @@ at a time), except Phase A if the operator wants it sooner.
 **Asked for (2026-10-22):** a new course built from the VDOE SOL and
 competency requirements; a teacher can **submit the course they want
 built**; and it is **built so that teachers who adopt the platform later
-can adapt it to their class**.
+can adapt it to their class**; with a **public library and the option to
+stay private**, where using the public library means the lessons a teacher
+builds with CAS are filed in it too.
 
 ## How 8175 and 8177 were built
 
@@ -64,6 +66,34 @@ The rules that follow:
 - **Per-adopter settings are data**, as the backlog's adoption notes ask
   (`BACKLOG.md`, "Second teachers and adoption": the domain patterns and
   course numbers are hardcoded today).
+
+## Public and private
+
+The operator's direction (2026-10-22): a public library, and the option to
+remain private. **Using the public library requires that any lesson built
+with CAS is filed in the library as well**: the library grows from the
+classes that use it.
+
+| | Public | Private |
+|---|---|---|
+| Course frameworks (VDOE's text) | Uses the public library's entries | Uses them too (C7): VDOE's text is public already, and no teacher's work is in it |
+| Lessons from the public library | Can start a class from them | Not available |
+| Lessons the teacher builds with CAS | Filed in the public library, under its licence (C8), with credit to the teacher | Stay in the teacher's own Ledger and are never shared |
+| Switching | Lessons already filed stay filed (C9) | Can go public later; lessons built while private are then filed |
+
+What a filed lesson is: the lesson as the editor stores it (objective,
+activity, student task, warm-up anchor, vocabulary, competencies and their
+tiers), keyed to its library course. It never carries student work, names,
+feedback, grades or anything from the teacher's Ledger beyond the lesson
+itself. Each filed lesson names its course, author (as the teacher chooses,
+C10) and the date; later versions are filed as versions, not overwrites.
+
+How it is filed: the lesson editor's import (#245) already turns an
+accepted draft into a reviewed PR. For a public teacher the same accepted
+lesson also goes to the library through a PR of its own; the library
+maintainer (C6) checks it for student data and fit before it is merged.
+The teacher sees, when they choose public, and again on Submit, that the
+lesson will be shared.
 
 ## The plan
 
@@ -122,7 +152,16 @@ On the teacher's dashboard, a class set up from a library course:
 
 All of it is class data in their Ledger; none of it changes the library.
 
-### Phase E: go-live
+### Phase E: the public library
+
+The public/private choice per teacher (in their settings, asked once at
+setup), the library of lessons by course, starting a class from library
+lessons, and filing a public teacher's accepted lessons as above. It comes
+after Phase D because there is nothing to file until a class builds
+lessons; the operator's own 8175 and 8177 lessons are the first entries if
+the operator chooses public.
+
+### Phase F: go-live
 
 `LessonSchedule` dates, the Canvas section map, enrollment and warm-ups, as
 for 8175 and 8177 today.
@@ -138,11 +177,18 @@ for 8175 and 8177 today.
 | C5 | **Where an adopter's lessons live.** The operator's lessons are repo files built into 55b; an adopter has no repo | Class data in the teacher's Ledger, read by Apps Script; the operator's lessons move there too, with the repo keeping them as the example class. A change to how the lesson editor's import works (#245), so its own plan step |
 | C6 | **Who maintains the library.** VDOE revises frameworks; adopters get library updates | The operator reviews library PRs for fidelity to VDOE's text; releases carry library updates and never touch class data |
 
+| C7 | **A private teacher and VDOE frameworks.** Can a private teacher use the public library's course frameworks? | Yes: the framework entries are VDOE's text, not teachers' work; only lessons are share-alike |
+| C8 | **The licence for filed lessons.** cas-ccps has no licence file yet (`BACKLOG.md`) | A share-alike licence such as CC BY-SA 4.0, matching "use it, share back". **Check first whether the school division owns lessons its teachers write** (district policy on teacher-created materials); that decides whether a teacher can file them at all |
+| C9 | **Leaving the public library.** A teacher who goes private, or leaves | Lessons already filed stay under their licence; new lessons stay private from then on |
+| C10 | **Credit.** How a filed lesson names its author | The teacher's choice: their name, their school, or anonymous. Never a student |
+
 ## What to keep from today's rules
 
 - The library is changed only through a reviewed PR; a request changes
   nothing students see until it is accepted, merged and released.
 - Competency text is VDOE's, quoted as written; anything rebuilt is marked.
-- Student data never enters a request, the library or the import (the
-  student-data scan runs on the PR).
+- Student data never enters a request, the library, a filed lesson or the
+  import (the student-data scan runs on every library PR).
+- Nothing is shared without the teacher seeing that it will be: choosing
+  public says so, and so does Submit.
 - Check CI on the PR's head before merging.

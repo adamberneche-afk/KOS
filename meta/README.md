@@ -32,7 +32,8 @@ why this repo exists at all.
   building a new course from the VDOE framework, with teachers submitting
   the course they want, built so adopting teachers can adapt it: how 8175
   and 8177 were built, what assumes two courses, the library/class split,
-  five phases and the open decisions. Nothing built; after Oct 30.
+  the public library (lessons filed back) and the private option, six
+  phases and the open decisions. Nothing built; after Oct 30.
 - **`CAS_BUG_HANDOFF_2026-10-16.md`** — the first live student submissions
   through the Student Dashboard and Flow 2: the four bugs (two fixed in
   #175), the lesson-scheduling steps, the checklist for the next live
