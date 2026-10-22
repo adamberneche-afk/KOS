@@ -466,7 +466,7 @@ function getDashboardData(termFilter) {
 
   if (!_isAuthorizedTeacher_(cfg)) {
     Logger.log("[S07] getDashboardData denied — caller was " +
-      (Session.getActiveUser().getEmail() || "unknown") + ", expected " + teacherEmail);
+      _tdWhoForLog_(Session.getActiveUser().getEmail()) + ", expected " + teacherEmail);
     return { error: "This dashboard is only available to the teacher it's configured for." };
   }
 
@@ -911,8 +911,8 @@ function _recordScrDecision_(cfg, studentEmail, competencyId, overrideRating, de
   ]);
 
   SpreadsheetApp.flush();
-  Logger.log("[S07] SCR decision recorded — " + decisionType + " | " + studentEmail +
-    " | " + competencyId + " | final rating: " + finalRating);
+  Logger.log("[S07] SCR decision recorded — " + decisionType + " | " + competencyId +
+    " | final rating: " + finalRating);
 
   return { success: true, finalRating: finalRating, decisionType: decisionType };
 }
@@ -1279,7 +1279,7 @@ function getCompetencies() {
 
   if (!_isAuthorizedTeacher_(cfg)) {
     Logger.log("[M2] getCompetencies denied — caller was " +
-      (Session.getActiveUser().getEmail() || "unknown") + ", expected " + email);
+      _tdWhoForLog_(Session.getActiveUser().getEmail()) + ", expected " + email);
     return { error: "This dashboard is only available to the teacher it's configured for." };
   }
 
@@ -1419,7 +1419,7 @@ function submitLessonContext(payload) {
 
     if (!_isAuthorizedTeacher_(cfg)) {
       Logger.log("[M2] submitLessonContext denied — caller was " +
-        (Session.getActiveUser().getEmail() || "unknown") + ", expected " + cfg.teacherEmail);
+        _tdWhoForLog_(Session.getActiveUser().getEmail()) + ", expected " + cfg.teacherEmail);
       return { success: false, error: "This dashboard is only available to the teacher it's configured for." };
     }
 
@@ -1480,7 +1480,7 @@ function getStudentContextRoster() {
 
   if (!_isAuthorizedTeacher_(cfg)) {
     Logger.log("[M4] getStudentContextRoster denied — caller was " +
-      (Session.getActiveUser().getEmail() || "unknown") + ", expected " + cfg.teacherEmail);
+      _tdWhoForLog_(Session.getActiveUser().getEmail()) + ", expected " + cfg.teacherEmail);
     return { error: "This view is only available to the teacher." };
   }
 
@@ -1620,6 +1620,15 @@ function _tdFlagReason_(ledgerStatus) {
     return "The check ran, but its result couldn't be used. Next: ask the student to submit again.";
   }
   return "Something went wrong on the system's side. Next: tell your system admin (code " + ledgerStatus + ").";
+}
+
+// How a denial log names the caller (2026-10-22): a student who opens the
+// dashboard is "a student account" (7 digits @ the school domain), never
+// their address; a staff address is kept, so the operator knows who tried.
+function _tdWhoForLog_(email) {
+  const e = String(email || "").trim();
+  if (!e) return "unknown";
+  return /^\d{7}@/.test(e) ? "a student account" : e;
 }
 
 function resolveClass_(display) {
