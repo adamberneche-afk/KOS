@@ -733,7 +733,10 @@ class FakeParagraph {
   // only on the resulting text, but a file that calls them has to be able
   // to run at all. Note these live on the paragraph itself — distinct
   // from the editAsText() sub-object below, which has its own setBold().
-  setHeading() { return this; }
+  // Recorded so a test can check which paragraphs are headings (they make
+  // the Docs outline a student navigates by).
+  setHeading(h) { this.heading = h; return this; }
+  getHeading() { return this.heading; }
   setBold() { return this; }
   // Added when 26_CompetencyAlignmentLog.js's generateAlignmentReport()
   // got its first test coverage (tests/cas-ccps/lesson-frame-generator.test.js
@@ -903,6 +906,17 @@ class FakeDoc {
   }
   getUrl() { return 'https://docs.google.com/document/d/' + this.id + '/edit'; }
   getBody() { return this.body; }
+  // Real Apps Script API — Document.newPosition(element, offset) and
+  // addBookmark(position); a bookmark's id is what a "#bookmark=<id>" link
+  // jumps to. Recorded on the doc so a test can follow a link to its target.
+  newPosition(element, offset) { return { element, offset }; }
+  addBookmark(position) {
+    const id = 'id.' + ((this.bookmarks = this.bookmarks || []).length + 1);
+    const bookmark = { getId: () => id, getPosition: () => position, position };
+    this.bookmarks.push(bookmark);
+    return bookmark;
+  }
+  getBookmark(id) { return (this.bookmarks || []).find((b) => b.getId() === id) || null; }
   saveAndClose() {}
 }
 
