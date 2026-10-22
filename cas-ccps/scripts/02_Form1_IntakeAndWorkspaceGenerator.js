@@ -360,6 +360,26 @@ function _docFontSize_(para, size) {
   return para;
 }
 
+// The doc's own navigation (stampDocument_). None of it may contain the
+// response marker's text.
+const DOC_RESPONSE_HEADING   = "Your response";
+const DOC_WRITE_BELOW        = "Write your answer under the grey line below.";
+const DOC_JUMP_TO_RESPONSE   = "↓ Go to your response";
+const DOC_JUMP_TO_ASSIGNMENT = "↑ Back to the assignment";
+
+// Links `label` (the end of `para`'s text) to a bookmark at the start of
+// `target`. A doc that can't take the bookmark keeps the plain text.
+function _docLinkToBookmark_(doc, para, label, target) {
+  try {
+    const bookmark = doc.addBookmark(doc.newPosition(target, 0));
+    const text = para.getText();
+    const start = text.lastIndexOf(label);
+    para.editAsText().setLinkUrl(start, start + label.length - 1, "#bookmark=" + bookmark.getId());
+  } catch (e) {
+    Logger.log("stampDocument_: no jump link (" + label + "): " + e.message);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // stampDocument_ — builds the four-zone structure AND stamps system IDs
 // in a single open/close cycle. System IDs are written as invisible text
@@ -367,7 +387,8 @@ function _docFontSize_(para, size) {
 //
 // Zone 1: Feedback header  (prepend zone — Studio writes here)
 // Zone 2: Assignment prompt (injected from teacher's template)
-// Zone 3: Response divider + student work area
+// Zone 3: "Your response" heading, the jump link back, the response
+//         divider and the student work area
 // Zone 4: CONFIG_ID footer + system ID block (invisible)
 // ---------------------------------------------------------------------------
 function stampDocument_(fileId, configId, studentName, block,
@@ -412,7 +433,16 @@ function stampDocument_(fileId, configId, studentName, block,
     _docFontSize_(body.appendParagraph(""), DOC_BODY_FONT_SIZE);
   }
 
-  body.appendParagraph(unitName).editAsText().setFontSize(14).setBold(true);
+  // Getting around (2026-10-22, the operator's ask for tabs). The work has
+  // to stay in the doc's one tab: every reader of the response (01, 03, 13,
+  // 37) reads the first tab's body. So the title and "Your response" are
+  // headings, which the Docs outline lists, and two links jump between
+  // them through bookmarks. Both links sit above the response marker, so
+  // neither is ever read as the student's writing.
+  const title = body.appendParagraph(unitName);
+  title.setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  title.editAsText().setFontSize(14).setBold(true);
+  const toResponse = _docFontSize_(body.appendParagraph(DOC_JUMP_TO_RESPONSE), DOC_BODY_FONT_SIZE);
 
   if (promptContent) {
     promptContent.split("\n").forEach(line => {
@@ -421,6 +451,14 @@ function stampDocument_(fileId, configId, studentName, block,
   }
 
   _docFontSize_(body.appendParagraph(""), DOC_BODY_FONT_SIZE);
+
+  const responseHeading = body.appendParagraph(DOC_RESPONSE_HEADING);
+  responseHeading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  responseHeading.editAsText().setFontSize(DOC_RESPONSE_FONT_SIZE).setBold(true);
+  const toAssignment = _docFontSize_(
+    body.appendParagraph(DOC_WRITE_BELOW + "  ·  " + DOC_JUMP_TO_ASSIGNMENT), DOC_BODY_FONT_SIZE);
+  _docLinkToBookmark_(doc, toResponse, DOC_JUMP_TO_RESPONSE, responseHeading);
+  _docLinkToBookmark_(doc, toAssignment, DOC_JUMP_TO_ASSIGNMENT, title);
 
   // The marker text is read by the dashboard, the doc menu and the
   // evaluation (01, 13, 37 and others): keep it exactly.
