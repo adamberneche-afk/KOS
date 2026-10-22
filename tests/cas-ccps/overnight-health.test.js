@@ -12,7 +12,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '34c_OvernightHealth.js', '43_DeployVersionMarker_CentralLedger.js'].map(S);
+const FILES = ['00_SharedConfig.js', '34c_OvernightHealth.js', '43_DeployVersionMarker_CentralLedger.js', '64_LedgerCycle.js'].map(S);
 
 // Monday 2026-10-19, 6:00 a.m. in the harness's America/New_York.
 const NOW = new Date('2026-10-19T10:00:00Z');
@@ -148,4 +148,18 @@ test('the email goes once a day, not before 5 a.m., with the deployment and the 
   env.exported.overnightMaybeMail_({ problems: [], allClear: 'All clear: ok.' }, new Date('2026-10-20T10:00:00Z'));
   assert.match(sent()[1].subject, /2026-10-20: all clear/);
   assert.match(sent()[1].body, /All clear: ok\./);
+});
+
+// UX audit fix-first 5 (2026-10-22): a Ledger cycle job still failing is a problem line.
+test('a Ledger cycle job still failing is named, and there is no all-clear', () => {
+  const env = load();
+  warmUp(env, 'Q1', '2026-10-19', 'DELIVERED');
+  env.props.setProperty('LEDGER_CYCLE_ERRORS', JSON.stringify({
+    bridgeQueue: { streak: 12, since: NOW.getTime() - 12 * 60000, day: '2026-10-19', dayCount: 12 },
+    harvestFlowInputResults: { streak: 0, since: 0, day: '2026-10-19', dayCount: 2 },
+  }));
+  const h = env.exported.overnightHealth_(NOW);
+  assert.deepEqual(h.problems.filter((p) => /Ledger job/.test(p)),
+    ["Ledger job bridgeQueue: failing, 12 runs in a row (Executions in the Central Ledger's Apps Script project shows the errors)"]);
+  assert.equal(h.allClear, '');
 });

@@ -115,6 +115,53 @@ function scanHistory(kinds, allow) {
   return out;
 }
 
+// Log lines that print a student identifier. The operator pastes Apps
+// Script logs into sessions, so a Logger.log / console.* call in
+// cas-ccps/scripts must not pass a student's address, Google ID, SIS login
+// or name. Only these unambiguous variable names count: a plain `email`
+// is as often a teacher's, so it is not matched (a known gap; read the
+// call). String literals are blanked first, so wording never matches.
+// Warnings only: they do not change the exit status.
+const LOG_IDENT_RE = /(?:^|[^\w$.])(?:studentEmail|studentName|studentGoogleId|googleId|sisLogin)\b|\.(?:studentEmail|studentName|googleId|sisLogin)\b|\bstudent\.(?:email|name)\b/;
+const LOG_CALL_RE = /\b(?:Logger\.log|console\.(?:log|warn|error|info))\s*\(/g;
+
+function scanLogCalls(src, label, out) {
+  LOG_CALL_RE.lastIndex = 0;
+  let m;
+  while ((m = LOG_CALL_RE.exec(src)) !== null) {
+    let i = m.index + m[0].length;
+    let depth = 1;
+    let quote = null;
+    for (; i < src.length && depth > 0; i++) {
+      const c = src[i];
+      if (quote) {
+        if (c === '\\') i++;
+        else if (c === quote) quote = null;
+        continue;
+      }
+      if (c === '"' || c === "'" || c === '`') quote = c;
+      else if (c === '(') depth++;
+      else if (c === ')') depth--;
+    }
+    const args = src.slice(m.index + m[0].length, i - 1)
+      .replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|`(?:[^`\\]|\\.)*`/g, '""');
+    if (LOG_IDENT_RE.test(args)) {
+      out.push({ where: label + ':' + (src.slice(0, m.index).split('\n').length), kind: 'log-identifier' });
+    }
+  }
+  return out;
+}
+
+function scanLogs() {
+  const dir = path.join(ROOT, 'cas-ccps', 'scripts');
+  const out = [];
+  if (!fs.existsSync(dir)) return out;
+  fs.readdirSync(dir).filter((f) => /\.(js|gs)$/.test(f)).sort().forEach((f) => {
+    scanLogCalls(fs.readFileSync(path.join(dir, f), 'utf8'), path.join('cas-ccps', 'scripts', f), out);
+  });
+  return out;
+}
+
 function main(argv) {
   const ri = argv.indexOf('--roster');
   const kinds = KINDS.concat(loadRoster(ri !== -1 ? argv[ri + 1] : ''));
@@ -124,10 +171,15 @@ function main(argv) {
   const counts = {};
   findings.forEach((f) => { counts[f.kind] = (counts[f.kind] || 0) + 1; });
   findings.forEach((f) => console.log(f.where + '  ' + f.kind + '  ' + f.hash));
+  if (!history) {
+    const logs = scanLogs();
+    logs.forEach((f) => console.log(f.where + '  ' + f.kind + '  (warning)'));
+    if (logs.length) console.log(logs.length + ' log call(s) print a student identifier (warnings; see README).');
+  }
   console.log('student-data-scan (' + (history ? 'history' : 'working tree') + ') — ' + findings.length +
     ' finding(s)' + (findings.length ? ': ' + Object.entries(counts).map(([k, v]) => k + ' ' + v).join(', ') : ''));
   return findings.length ? 1 : 0;
 }
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
-module.exports = { scanText, hash, KINDS, loadRoster };
+module.exports = { scanText, hash, KINDS, loadRoster, scanLogCalls };

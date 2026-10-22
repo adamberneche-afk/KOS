@@ -7,7 +7,7 @@ incorrect instructions. Do not follow it.
 
 | Document | Purpose |
 |---|---|
-| `ADMIN_DEPLOYMENT_WALKTHROUGH.html` | Step-by-step admin deployment guide (current) |
+| `tools/clasp-sync/run.js` and `cas-ccps/DEPLOYMENT_HANDOFF.md` | The current deployment path. (`ADMIN_DEPLOYMENT_WALKTHROUGH.html` is retired; it now holds only the correct web-app settings and these pointers.) |
 | `SYSTEM_ARCHITECTURE.html` | How all components connect |
 | `STUDIO_FLOW_REFERENCE.html` | Studio Flow configuration |
 | `REGISTRY_SHEET_SETUP.md` | Script Registry Sheet setup |

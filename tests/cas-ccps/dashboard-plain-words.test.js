@@ -105,3 +105,56 @@ test('the doc shows a lesson\'s *emphasis* in italics, without the asterisks', (
   assert.deepEqual(JSON.parse(JSON.stringify(md.spans)), [[8, 10], [37, 40]]);
   assert.deepEqual(JSON.parse(JSON.stringify(exported._docItalicSpans_('No stars here').spans)), []);
 });
+
+// UX audit fix-first 2 (2026-10-22): after a successful Submit the card
+// shows "Waiting for feedback…" with Submit gone, instead of re-rendering
+// the old "Not started yet" card with Submit still active.
+test('after a successful Submit, the card says it is waiting and Submit is gone', () => {
+  const { student } = pages();
+  const start = student.indexOf('function submitWork(btn)');
+  const end = student.indexOf('\n}\n', start) + 2;
+  assert.ok(start > 0 && end > start);
+  const card = { fileId: 'f1', configId: 'C1', displayStatus: 'Not started yet', statusClass: 'NOT_STARTED', canSubmit: true, submittedAt: null };
+  const other = { fileId: 'f2', configId: 'C2', displayStatus: 'Not started yet', statusClass: 'NOT_STARTED', canSubmit: true };
+  let handler;
+  const runner = {
+    withSuccessHandler(fn) { handler = fn; return runner; },
+    withFailureHandler() { return runner; },
+    submitMyWork() { handler({ ok: true, aiFlowsLive: true, feedbackInComments: true }); },
+  };
+  const ctx = { google: { script: { run: runner } }, _submitMsgs: {}, _dashCache: {}, renders: 0,
+    _lastDashData: { assignments: [card, other] } };
+  ctx.render = () => { ctx.renders++; };
+  vm.runInNewContext(student.slice(start, end), ctx);
+  const btn = { attrs: { 'data-file': 'f1', 'data-config': 'C1' }, getAttribute(k) { return this.attrs[k]; } };
+  ctx.submitWork(btn);
+  assert.equal(card.displayStatus, 'Waiting for feedback…');
+  assert.equal(card.canSubmit, false);
+  assert.equal(card.submittedAt, 'just now');
+  assert.equal(other.canSubmit, true, 'only the submitted card changes');
+  assert.equal(ctx.renders, 1);
+  assert.match(ctx._submitMsgs.f1.text, /Comments/);
+});
+
+// UX audit fix-first 4 (2026-10-22): failures are worded as the system's,
+// the student isn't told to report what the teacher already knows, and the
+// teacher's row says why and what to do.
+test('a failed or timed-out check reads as the system\'s problem, with a next step for the teacher', () => {
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('07_TeacherDashboard.js')],
+    ['resolveStudentStatus_', '_tdFlagReason_']);
+  assert.match(exported.resolveStudentStatus_('ERROR_TIMEOUT'), /Taking longer than usual.*your teacher knows/);
+  assert.match(exported.resolveStudentStatus_('ERROR_EVALUATION'), /your teacher knows\. You can submit again/);
+  assert.match(exported.resolveStudentStatus_('ERROR_OTHER'), /tell your teacher/);
+  assert.match(exported._tdFlagReason_('ERROR_TIMEOUT'), /didn't finish in time\. Next:/);
+  assert.match(exported._tdFlagReason_('ERROR_EVALUATION'), /ask the student to submit again/);
+  assert.match(exported._tdFlagReason_('ERROR_X'), /Next: tell your system admin/);
+});
+
+// UX audit fix-first 11 (2026-10-22): the doc's task drops the Canvas text's
+// title line and its "Submission:" part, which contradicts CAS.
+test('the doc shows the task without the Canvas title line or the Submission part', () => {
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_docStudentTask_']);
+  const task = 'Title: Assignment: Brand Analysis\n\nDescription:\n\nDo it well.\n\nWhat your work needs to show:\n\n- A\n\nSubmission:\n\nSubmit your responses as a Text Entry.';
+  assert.equal(exported._docStudentTask_(task), 'Description:\n\nDo it well.\n\nWhat your work needs to show:\n\n- A');
+  assert.equal(exported._docStudentTask_('Just the task.'), 'Just the task.');
+});

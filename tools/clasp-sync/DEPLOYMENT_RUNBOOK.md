@@ -299,9 +299,9 @@ unchanged for every project.
    once.
 
 3. **`teacher-dashboard`/`student-dashboard` both need `ADMIN_SS_ID` set,
-   not just `CENTRAL_LEDGER_SS_ID`.** `ADMIN_DEPLOYMENT_WALKTHROUGH.html`'s
-   Step 10 was missing this (now fixed there too) —
-   `00_SharedConfig.js`'s `getConfig_()` hard-requires both, same value.
+   not just `CENTRAL_LEDGER_SS_ID`.** `00_SharedConfig.js`'s
+   `getConfig_()` hard-requires both, same value.
+   (`ADMIN_DEPLOYMENT_WALKTHROUGH.html` is retired, 2026-10-22.)
    While setting these, also confirm `student-dashboard`'s manifest has
    `executeAs: "USER_DEPLOYING"` and `access: "DOMAIN"` (changed
    2026-09-28 for the student-data access policy). It used to be

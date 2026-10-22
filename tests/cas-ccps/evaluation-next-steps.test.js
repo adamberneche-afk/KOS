@@ -14,9 +14,9 @@ const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 
 function load() {
   return loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '03_QueueBridge.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '03_QueueBridge.js'), path.join(SCRIPTS, '63_DocHeader.js')],
     ['markLedgerEvaluated_', 'buildNextStepsText_', 'processCompletedEvaluation_',
-     'backPropagateCompletions', 'notifyTimeoutToTeacher_']);
+     'backPropagateCompletions', 'notifyTimeoutToTeacher_', 'notifyFailedCheckToTeacher_']);
 }
 
 function ledgerWith(sandbox, statuses) {
@@ -202,4 +202,24 @@ test('the timeout email says to restart Flow 2 or resubmit from the dashboard, n
   assert.doesNotMatch(sent[0].body, /AI Evaluation Panel|Run Assignment Check|reopen their document/);
   exported.notifyTimeoutToTeacher_({}, 'UNKNOWN', 'file-0', 'VDOE-0');
   assert.equal(sandbox.MailApp.getSentMessages().length, 1, 'no teacher, no email');
+});
+
+// UX audit fix-first 4 (2026-10-22): a check whose result couldn't be used
+// (37 marks staging ERROR_EVALUATION) is closed at once, with an email that
+// says why and that a resubmission starts a fresh check.
+test('backPropagateCompletions: an ERROR_EVALUATION row is closed and the teacher told to have the student resubmit', () => {
+  const { exported, sandbox } = load();
+  const sent = [];
+  sandbox.MailApp.sendEmail = function (to, subject, body) { sent.push({ to, subject, body }); };
+  const { queue, ledger } = backpropFixture(sandbox, [
+    { queue: 'STAGED', staging: 'ERROR_EVALUATION', ledger: 'STAGED' },
+  ]);
+  exported.backPropagateCompletions();
+  assert.equal(queue.getRange(2, 6).getValue(), 'ERROR_EVALUATION');
+  assert.equal(ledger.getRange(2, 13).getValue(), 'ERROR_EVALUATION');
+  assert.equal(sent.length, 1);
+  assert.match(sent[0].subject, /Feedback couldn't be made/);
+  assert.match(sent[0].body, /Submit for Feedback again on the Student Dashboard/);
+  exported.backPropagateCompletions();
+  assert.equal(sent.length, 1, 'not emailed twice');
 });

@@ -4277,3 +4277,98 @@ the dashboards' words:
 Left as is: the overnight email (34c) goes to the admin and keeps its
 system names; its "names the problem, not the fix" finding is in the
 audit's failure-states work.
+
+## The admin walkthrough retired; student identifiers out of the logs, 2026-10-22
+
+Order-of-work items 10 and 11 in `meta/UX_AUDIT_2026-10-22.md`
+(fix-first 8 and the operator section's logs finding):
+
+- **Admin walkthrough retired.** `docs/ADMIN_DEPLOYMENT_WALKTHROUGH.html`
+  told an adopter to deploy the Student Dashboard as "User accessing" /
+  "Anyone with a Google account", which only works if every student can
+  open the whole Central Ledger. It also described 7 scripts against
+  about 46. A rewrite from `run.js` is item 13, so the page now holds a
+  warning, the two web apps' real settings from `clasp/manifests/`
+  (`USER_DEPLOYING` / `DOMAIN` for both dashboards), how to find student
+  access left on the Ledger, how `run.js` deploys (one version per push,
+  every deployment in `deployments.txt` moved to it, no hand-made
+  version), and pointers to the handoffs. `docs/index.html`, the outdated
+  guide's table, the UX reference, the runbook and two code comments (19,
+  21) point to the new sources. `SYSTEM_ARCHITECTURE.html` and
+  `PLATFORM_DOCUMENTATION.html` had the same wrong "Execute as: User" for
+  the Student Dashboard; corrected. `07`'s comment still cites the page's
+  old Step 10 (07 was being edited in parallel).
+- **Logs.** The operator pastes Apps Script logs into sessions, so log
+  lines now name a row, a count or a file instead of a student: the
+  data-access repair (50: no addresses for student accounts, a Ledger row
+  in place of the student's name, a count of student accounts on the
+  Ledger), the roster import (52: invalid accounts and failures counted by
+  section, no SIS logins), the context aggregator (29), profile updates
+  (23), SCR decisions and retries (30, 30b: the SCRDecisionLog row), the
+  parent report (36: the ParentReportLog row, no student or family
+  address), the warm-up lock (25) and the Ledger schema guard's cell
+  previews (38: an address or free text described by its shape). Returned
+  results keep their fields for callers.
+- **Scan.** `tools/student-data-scan/check.js` now warns, without failing,
+  on a log call in `cas-ccps/scripts/` that passes an unambiguous student
+  identifier (`studentEmail`, `googleId`, `sisLogin`, `student.email` and
+  the like). Four remain, in files being edited in parallel: 02 (three)
+  and 07 (one).
+
+## Teacher Dashboard: 📅 Lessons dates, the lesson editor keeps its form, polish, 2026-10-22
+
+From `meta/UX_AUDIT_2026-10-22.md` (fix-first 9 and 10, order-of-work 6).
+All in `07_TeacherDashboard.js`'s client code.
+
+- **📅 Lessons dates save on Enter or leaving the box.** The box used to
+  save on `change`, which a browser fires as soon as it holds any valid
+  date: typing over a set date saved a wrong one on the first keystroke,
+  re-rendered the table and dropped focus. Now it saves only a whole,
+  real date (a year from 2000 to 2099). A half-typed date says "Not
+  saved" in its row. Enter then blur saves once. A reply that lands while
+  another date box has focus waits until focus leaves the date boxes. Each
+  row says "Saved ✓" or why not. A failed save no longer replaces the
+  table with "Could not load".
+- **The lesson editor keeps its form.** A failed save, submit, review or
+  withdraw re-shows the form as typed, with "Not saved: … Your changes are
+  still here". A lesson that can't be opened says why and has "← Back".
+  "← Back", × , Escape and a backdrop click ask before discarding unsaved
+  edits (changed fields, tiers, reason or an unsent review note), and
+  don't ask when nothing changed.
+- **Rows that need you come first.** In each lesson section, rows that
+  couldn't be checked or wait on your review sort above the rest, then by
+  period and name as before.
+- **Zeros print as 0.** `esc()` (00) treats 0 as empty, so the SCR queue
+  read "2 met,  not met". Counts in the SCR queue, the parent reports and
+  the profile go through a new `escNum()`. `esc()` itself is unchanged.
+- **The 🎓 SCR queue shows suggestions by default.** Rows with too little
+  evidence for a suggestion are counted ("N more have too little
+  evidence…") behind a Show them / Hide them toggle.
+- **✉ Parent Reports remembers addresses in this browser.** After a send,
+  the address is kept in `localStorage` for that student and prefilled
+  next week, with "Last sent to … on … from this browser". It is a
+  per-viewer convenience; nothing new is stored on the server.
+- **One panel helper.** The profile, review, 💬 Feedback, 📅 Lessons, ✉
+  Parent Reports and 🎓 SCR panels open and close through
+  `_openPanel()`/`_closePanel()`: focus moves to the × and back to the
+  button that opened it, Tab is trapped, and Escape closes the top panel
+  through its own close function.
+
+Tests: `teacher-dashboard-lesson-schedule.test.js` runs the panel's client
+code on a small fake page; `teacher-dashboard-inline-js.test.js` covers the
+roster order, the SCR toggle, zeros and the remembered address.
+
+Left for later: prefilling addresses from `ParentReportLog` on the server
+(the audit's fix), header buttons and counts, the roster "Not submitted" /
+period filter, and a warning when a lesson's docs are already shared.
+
+## Nothing stored in the browser, 2026-10-22
+
+The operator: "I don't want anything stored in the browser." Parent
+Reports no longer remembers addresses (the entry above described it), and
+the lesson-log form's last period and draft (07) moved from
+`sessionStorage` to page memory, so they last until the page is reloaded.
+The same applies to kos-personal's ingest and engine-setup drafts, the
+Impact Dashboard and the M2 deployment guide. `tests/tools/no-browser-storage.test.js`
+keeps browser storage out of cas-ccps and kos-personal. leader-hub keeps
+its data in `localStorage` by design and is not covered yet.

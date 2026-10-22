@@ -218,7 +218,7 @@ test('retireOffDayWarmUps sets off-day warm-ups NOT_MEETING, keeps answered and 
 });
 
 test('34c leaves NOT_MEETING warm-ups out of today\'s count', () => {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('34c_OvernightHealth.js'),
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('34c_OvernightHealth.js'), S('64_LedgerCycle.js'),
     S('43_DeployVersionMarker_CentralLedger.js')], ['overnightHealth_']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);

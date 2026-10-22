@@ -67,6 +67,75 @@ function delEv(id){
 let emailTab = 'students';
 let emailContextTripId = null;
 
+// ── Season facts for the templates (UX audit 2026-10-22, fix-first 12) ──────
+// The ICDC, season-update and season-report templates used to be typed out
+// for 2025-26 (ICDC Atlanta, April 25–29, 2026; first payment due March 13),
+// so a family email sent a year later carried last season's city, dates and
+// deadlines. They now read the season the DECA Hub shows (DECA_SEASON, set
+// from the pipeline's Edit Season), and the email's trip when it is this
+// season's ICDC trip. What neither knows is left as a [BLANK] for the
+// sender, and lhEmailBlanks() names every blank before the email goes out.
+function _emailLongDate(iso) {
+  return iso ? new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' }) : '[DATE]';
+}
+function _emailDateRange(start, end) {
+  if (!start) return '[DATES]';
+  if (!end || end === start) return _emailLongDate(start);
+  const a = new Date(start + 'T00:00:00'), b = new Date(end + 'T00:00:00');
+  const month = d => d.toLocaleDateString('en-US', { month:'long' });
+  if (a.getFullYear() !== b.getFullYear()) return _emailLongDate(start) + ' – ' + _emailLongDate(end);
+  if (a.getMonth() === b.getMonth()) return `${month(a)} ${a.getDate()}–${b.getDate()}, ${b.getFullYear()}`;
+  return `${month(a)} ${a.getDate()} – ${month(b)} ${b.getDate()}, ${b.getFullYear()}`;
+}
+function _emailSeasonFacts(today) {
+  today = today || new Date();
+  const stages = ((typeof DECA_SEASON !== 'undefined' && DECA_SEASON && DECA_SEASON.stages) || []).filter(s => s && s.label);
+  const find = (re, not) => stages.find(s => re.test(s.label) && !(not && not.test(s.label)));
+  const icdc = find(/\bICDC\b/i, /registration|payment/i);
+  const icdcReg = find(/\bICDC\b.*registration/i);
+  const icdcPay = find(/\bICDC\b.*payment/i);
+  const slc = find(/\bSLC\b|\bstate\b/i, /registration|testing/i);
+  // "Apr 17–20 · Anaheim, CA · …" → "Anaheim, CA"
+  const cityOf = s => (String((s && s.detail) || '').split('·').map(x => x.trim()).find(x => /,\s*[A-Z]{2}$/.test(x))) || '';
+  const dates = stages.map(s => s.date).filter(Boolean).sort();
+  const y1 = dates.length ? dates[0].slice(0, 4) : '', y2 = dates.length ? dates[dates.length - 1].slice(0, 4) : '';
+  const status = s => (typeof _decaStageStatus === 'function') ? _decaStageStatus(s, today) : 'upcoming';
+  const line = s => `• ${s.label} — ${_emailDateRange(s.date, s.endDate)}${cityOf(s) ? ' (' + cityOf(s) + ')' : ''}`;
+  const seasonStart = dates[0] || '';
+  const todayIso = (typeof _localDateStr_ === 'function') ? _localDateStr_(today) : today.toISOString().slice(0, 10);
+  const doneTrips = (typeof trips !== 'undefined' ? trips : [])
+    .filter(t => t && t.date && seasonStart && t.date >= seasonStart && (t.retDate || t.date) < todayIso)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map(t => `• ${t.name} — ${_emailDateRange(t.date, t.retDate)}${t.dest1 ? ' · ' + t.dest1 : ''}${t.stuAtt ? ' · ' + t.stuAtt + ' students' : ''}`);
+  return {
+    seasonStart,
+    seasonLabel: y1 ? (y1 === y2 ? y1 : `${y1}–${y2.slice(2)}`) : '[SEASON]',
+    icdcYear: icdc && icdc.date ? icdc.date.slice(0, 4) : '',
+    icdcDates: icdc ? _emailDateRange(icdc.date, icdc.endDate) : '[ICDC DATES]',
+    icdcPlace: cityOf(icdc) || (icdc ? icdc.label.replace(/\bICDC\b/i, '').trim() : '') || '[ICDC LOCATION]',
+    icdcRegCloses: icdcReg ? _emailLongDate(icdcReg.endDate || icdcReg.date) : '[DATE]',
+    icdcPaymentDue: icdcPay ? _emailLongDate(icdcPay.date) : '[DATE]',
+    slcName: slc ? 'the DECA State Leadership Conference' : 'the State Leadership Conference',
+    slcDates: slc ? _emailDateRange(slc.date, slc.endDate) : '[DATES]',
+    doneLines: stages.filter(s => status(s) === 'done').map(line),
+    upcomingLines: stages.filter(s => status(s) !== 'done').map(line),
+    doneTrips,
+  };
+}
+// The ICDC facts for one email: the chosen trip's when it is an ICDC trip in
+// this season (last season's ICDC trip still sits in Trips), otherwise the
+// season's.
+function _emailIcdc(t, f) {
+  const trip = t && /\bICDC\b/i.test(t.name || '') && t.date && f.seasonStart && t.date >= f.seasonStart ? t : null;
+  return {
+    dates: trip ? _emailDateRange(trip.date, trip.retDate) : f.icdcDates,
+    place: (trip && trip.dest1) || f.icdcPlace,
+    cost: trip && trip.costStu ? '$' + trip.costStu : '[AMOUNT]',
+    housing: (trip && trip.housing) || '[HOTEL]',
+    transport: (trip && (trip.flight || trip.charterCo || trip.train)) || '[TRANSPORTATION]',
+  };
+}
+
 // ── Audience-specific template definitions ───────────────────────────────────
 const EMAIL_TEMPLATES = {
   students: [
@@ -78,8 +147,8 @@ const EMAIL_TEMPLATES = {
       }
     },
     { id:'stu-icdc-qualify', label:'🏆 ICDC Qualifier Notification',
-      subject: () => `CONGRATULATIONS — You Qualified for ICDC!`,
-      body: (t) => `Hi [Student Name],\n\nCONGRATULATIONS! Based on your performance at the DECA State Leadership Conference, you have qualified to compete at the DECA International Career Development Conference (ICDC) in Atlanta, GA!\n\n📅 ICDC DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n💰 ESTIMATED COST: ~$1,000/student\n\nIMPORTANT NEXT STEPS:\n1. ✅ Confirm your participation with ${PROFILE.courtesyName} by [DATE]\n2. 💰 First installment (~$400) due March 13\n3. 📋 ICDC permission form due [DATE]\n4. 📝 Complete the ICDC commitment letter packet\n\nREQUIREMENT REMINDER: You must have scored 70%+ on the SLC written test to attend ICDC. I will confirm your test score with you directly.\n\nRegistration window: March 2–13 ($155). I cannot register you after March 13 — no exceptions.\n\nThis is a huge achievement. I am incredibly proud of you. Let's make ICDC count!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
+      subject: () => `CONGRATULATIONS — You Qualified for ICDC ${_emailSeasonFacts().icdcYear}!`,
+      body: (t) => { const f = _emailSeasonFacts(), x = _emailIcdc(t, f); return `Hi [Student Name],\n\nCONGRATULATIONS! Based on your performance at ${f.slcName}, you have qualified to compete at the DECA International Career Development Conference (ICDC) in ${x.place}!\n\n📅 ICDC DATES: ${x.dates}\n📍 LOCATION: ${x.place}\n💰 ESTIMATED COST: ${x.cost}/student\n\nIMPORTANT NEXT STEPS:\n1. ✅ Accept your spot with ${PROFILE.courtesyName} by ${f.icdcRegCloses}. DECA locks ICDC registration after that, so I can't add you later.\n2. 📋 Return the ICDC permission form by [DATE]\n3. 💰 Payment to the chapter: [AMOUNT] by [DATE]\n4. 📝 Complete the ICDC commitment letter packet\n\nREQUIREMENT REMINDER: You must have scored 70%+ on the SLC written test to attend ICDC. I will confirm your test score with you directly.\n\nThis is a huge achievement. I am incredibly proud of you. Let's make ICDC count!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`; }
     },
     { id:'stu-permission-reminder', label:'📝 Permission Slip Reminder',
       subject: (t) => `REMINDER: Permission Slip Needed — ${t ? t.name : 'Upcoming Trip'}`,
@@ -104,20 +173,20 @@ const EMAIL_TEMPLATES = {
       body: (t) => {
         if(!t) return `Dear DECA Families,\n\nOur DECA chapter has an exciting trip coming up. Please watch for details and the permission form that will be sent home soon.\n\nIf you have any questions, please contact me at the information below.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
         const overnight = isOvernightTrip(t);
-        return `Dear ${t.name} Families,\n\nOur DECA chapter has an upcoming ${overnight ? 'overnight ' : ''}field trip and I want to make sure you have all of the information you need.\n\n📅 EVENT: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORTATION: ${t.charterCo ? 'Charter Bus — ' + t.charterCo : t.train ? 'Train/Amtrak' : t.parentTx ? 'Parent Transportation' : 'TBD'}\n💰 COST: $${t.costStu || 0}/student${t.afford ? '\n   Funding source: ' + t.afford : ''}\n👨‍🏫 CHAPERONES: ${t.chaperones || t.med1 || '${PROFILE.name}'}\n\nPERMISSION & PAYMENT:\nA signed permission form and payment of $${t.costStu || 0} must be returned to ${PROFILE.courtesyName} by [DATE]. Your student's spot is not secured until both are received.\n\n${overnight ? 'OVERNIGHT INFORMATION:\nStudents will be staying at ' + (t.housing || '[Hotel TBD]') + '. We will maintain a chaperone-to-student ratio throughout the trip.\n\n' : ''}If you have any questions or concerns, please reach out directly.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
+        return `Dear ${t.name} Families,\n\nOur DECA chapter has an upcoming ${overnight ? 'overnight ' : ''}field trip and I want to make sure you have all of the information you need.\n\n📅 EVENT: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORTATION: ${t.charterCo ? 'Charter Bus — ' + t.charterCo : t.train ? 'Train/Amtrak' : t.parentTx ? 'Parent Transportation' : 'TBD'}\n💰 COST: $${t.costStu || 0}/student${t.afford ? '\n   Funding source: ' + t.afford : ''}\n👨‍🏫 CHAPERONES: ${t.chaperones || t.med1 || PROFILE.name}\n\nPERMISSION & PAYMENT:\nA signed permission form and payment of $${t.costStu || 0} must be returned to ${PROFILE.courtesyName} by [DATE]. Your student's spot is not secured until both are received.\n\n${overnight ? 'OVERNIGHT INFORMATION:\nStudents will be staying at ' + (t.housing || '[Hotel TBD]') + '. We will maintain a chaperone-to-student ratio throughout the trip.\n\n' : ''}If you have any questions or concerns, please reach out directly.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
       }
     },
     { id:'par-icdc-info', label:'✈️ ICDC Qualifier Letter',
       subject: () => `DECA ICDC — Your Student Qualified! Information & Next Steps`,
-      body: () => `Dear [Student] Families,\n\nI am thrilled to share that your student has qualified to compete at the DECA International Career Development Conference (ICDC)!\n\n📅 EVENT: DECA ICDC\n📆 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n🚌 TRANSPORTATION: Airline (details to follow)\n🏨 HOUSING: Atlanta Hilton — $260/night, 4 to a room\n💰 ESTIMATED TOTAL COST: ~$1,000/student\n\nPAYMENT SCHEDULE:\n• Installment #1: ~$400 due March 13\n• Installment #2: ~$300 due March 27\n• Installment #3: ~$300 + forms due April 17\n\nIMPORTANT: ICDC is open only to students who placed in the Top 8 at the State Leadership Conference AND scored 70%+ on the SLC written test. I will confirm eligibility with each family individually.\n\nPlease contact me as soon as possible to confirm whether your student will attend, as the registration window closes March 13.\n\nThank you for your continued support of our DECA chapter!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
+      body: (t) => { const f = _emailSeasonFacts(), x = _emailIcdc(t, f); return `Dear [Student] Families,\n\nI am thrilled to share that your student has qualified to compete at the DECA International Career Development Conference (ICDC)!\n\n📅 EVENT: DECA ICDC ${f.icdcYear}\n📆 DATES: ${x.dates}\n📍 LOCATION: ${x.place}\n🚌 TRANSPORTATION: ${x.transport}\n🏨 HOUSING: ${x.housing}\n💰 ESTIMATED TOTAL COST: ${x.cost}/student\n\nPAYMENT SCHEDULE:\n• [AMOUNT] due [DATE]\n• [AMOUNT] + forms due [DATE]\n\nIMPORTANT: ICDC is open only to students who placed in the Top 8 at the State Leadership Conference AND scored 70%+ on the SLC written test. I will confirm eligibility with each family individually.\n\nPlease let me know by ${f.icdcRegCloses} whether your student will attend. DECA closes ICDC registration that day.\n\nThank you for your continued support of our DECA chapter!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`; }
     },
     { id:'par-permission-followup', label:'📝 Unsigned Permission Slip Followup',
       subject: (t) => `URGENT: Missing Permission Slip — ${t ? t.name : 'Upcoming Trip'}`,
       body: (t) => `Dear [Student]'s Family,\n\nThis is a follow-up regarding the permission slip for ${t ? t.name : 'the upcoming DECA trip'}.\n\nAs of today, we have not received a signed permission form for your student. Without a completed permission slip, your student WILL NOT be able to participate.\n\n📅 Trip Date: ${t ? fd(t.date) : '[Date]'}\n⚠️  Permission Deadline: [DATE]\n💰 Payment Remaining: $[AMOUNT]\n\nPlease return the signed form and any remaining payment to ${PROFILE.courtesyName} (Room [#]) by the deadline above.\n\nIf you have questions or need a new form, please contact me directly.\n\n${PROFILE.name}\n${PROFILE.phone} | ${PROFILE.email}`
     },
     { id:'par-season-update', label:'📅 Season / Calendar Update',
-      subject: () => `DECA 25-26 Season Update — Key Dates & Upcoming Events`,
-      body: () => `Dear DECA Families,\n\nI wanted to send a quick update on our DECA chapter's 25-26 season and share some important upcoming dates.\n\n✅ COMPLETED THIS SEASON:\n• Ultimate Power Trip — Nov 21–23, 2025 (Arlington, VA)\n• District Leadership Conference — Dec 3, 2025 (Chesterfield Towne Center)\n• State Leadership Conference — Feb 27–Mar 1, 2026 (Virginia Beach)\n\n📅 UPCOMING:\n• ICDC Registration: March 2–13, 2026 ($155/student — qualifiers only)\n• ICDC Payment Due: April 1, 2026\n• ICDC Atlanta: April 25–29, 2026\n\nMembership in DECA is $20 and accepted all year. If your student is not yet a paid member and would like to be involved in future activities, please have them see ${PROFILE.courtesyName}.\n\nThank you for your ongoing support!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}\nInstagram: @cloverhillsdeca`
+      subject: () => `DECA ${_emailSeasonFacts().seasonLabel} Season Update — Key Dates & Upcoming Events`,
+      body: () => { const f = _emailSeasonFacts(); return `Dear DECA Families,\n\nI wanted to send a quick update on our DECA chapter's ${f.seasonLabel} season and share some important upcoming dates.\n\n${f.doneLines.length ? '✅ COMPLETED THIS SEASON:\n' + f.doneLines.join('\n') + '\n\n' : ''}📅 UPCOMING:\n${f.upcomingLines.join('\n') || '• [Add upcoming dates]'}\n\nMembership in DECA is $20 and accepted all year. If your student is not yet a paid member and would like to be involved in future activities, please have them see ${PROFILE.courtesyName}.\n\nThank you for your ongoing support!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}\nInstagram: @cloverhillsdeca`; }
     },
     { id:'par-chaperone-request', label:'🙋 Chaperone Request',
       subject: (t) => `Seeking Chaperones: ${t ? t.name : 'Upcoming DECA Trip'}`,
@@ -141,12 +210,12 @@ const EMAIL_TEMPLATES = {
       body: (t) => `Dear Finance Office,\n\nI am writing to request a purchase order / payment processing for the following:\n\n📋 EVENT: ${t ? t.name : '[Event Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n💰 AMOUNT: $[AMOUNT]\n📁 ACCOUNT CODE: ${t ? (t.fund || 'DECA 4280') : 'DECA 4280'}\n📤 PAYABLE TO: [Vendor Name]\n\nDETAILS:\n[Brief description of what is being purchased — e.g., transportation, registration fees, hotel]\n\nPlease let me know what documentation you need to process this request.\n\nThank you,\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
     },
     { id:'sch-icdc-notification', label:'✈️ ICDC Admin Notification',
-      subject: () => `DECA ICDC — Students Advancing to Nationals — April 25–29, 2026`,
-      body: () => `Dear Administration,\n\nI am pleased to share that [#] ${PROFILE.chapterName} students have qualified to represent our school at the DECA International Career Development Conference (ICDC) — a national competition attended by approximately 20,000 students.\n\n📅 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA\n💰 STUDENT COST: ~$1,000/student (funded through SAF/student payments)\n🚌 TRANSPORT: Airline\n📁 ACCOUNT: DECA 4280\n\nQUALIFICATION: Students placed in the Top 8 at the Virginia DECA State Leadership Conference (Feb 27–Mar 1) AND scored 70%+ on the written assessment.\n\nThis is a tremendous achievement for our students and for ${PROFILE.school}. I will be submitting the field trip form through TripTracker and the Conference/Leave Request (PR3) form for administrative approval.\n\nPlease let me know if you need any additional information.\n\nThank you for your continued support of our DECA program!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
+      subject: (t) => `DECA ICDC — Students Advancing to Nationals — ${_emailIcdc(t, _emailSeasonFacts()).dates}`,
+      body: (t) => { const f = _emailSeasonFacts(), x = _emailIcdc(t, f); return `Dear Administration,\n\nI am pleased to share that [#] ${PROFILE.chapterName} students have qualified to represent our school at the DECA International Career Development Conference (ICDC) — a national competition attended by approximately 20,000 students.\n\n📅 DATES: ${x.dates}\n📍 LOCATION: ${x.place}\n💰 STUDENT COST: ${x.cost}/student (funded through SAF/student payments)\n🚌 TRANSPORT: ${x.transport}\n📁 ACCOUNT: DECA 4280\n\nQUALIFICATION: Students placed in the Top 8 at the Virginia DECA State Leadership Conference (${f.slcDates}) AND scored 70%+ on the written assessment.\n\nThis is a tremendous achievement for our students and for ${PROFILE.school}. I will be submitting the field trip form through TripTracker and the Conference/Leave Request (PR3) form for administrative approval.\n\nPlease let me know if you need any additional information.\n\nThank you for your continued support of our DECA program!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`; }
     },
     { id:'sch-season-report', label:'📊 Season Report / Summary',
-      subject: () => `DECA 25-26 Season Report — ${PROFILE.school}`,
-      body: () => `Dear Administration,\n\nI wanted to share a brief summary of the ${PROFILE.chapterName} chapter's 25-26 competitive season.\n\n✅ SEASON HIGHLIGHTS:\n\n1. Ultimate Power Trip (Nov 21–23, 2025)\n   • Location: Arlington, VA (Renaissance Arlington Capital View)\n   • 13 students attended · Transport: Amtrak\n   • PO# 26-316-3418\n\n2. District Leadership Conference (Dec 3, 2025)\n   • Location: Chesterfield Towne Center\n   • 15 students competed (23 invited)\n   • No transportation cost\n\n3. State Leadership Conference (Feb 27–Mar 1, 2026)\n   • Location: Virginia Beach Convention Center\n   • 15 students competed · Charter bus (Winn)\n   • PO# 26-0368-2559\n   • Results: [Add SLC results]\n\n4. ICDC — International Career Development Conference (Apr 25–29, 2026)\n   • [# qualifiers advancing]\n   • Atlanta, GA\n\nThe DECA program continues to grow in both membership and competitive achievement. I look forward to sharing full results at the end of the season.\n\nThank you for your support!\n\n${PROFILE.name}\n${PROFILE.title}\n${PROFILE.phone}`
+      subject: () => `DECA ${_emailSeasonFacts().seasonLabel} Season Report — ${PROFILE.school}`,
+      body: () => { const f = _emailSeasonFacts(); const done = f.doneTrips.length ? f.doneTrips : f.doneLines; return `Dear Administration,\n\nI wanted to share a brief summary of the ${PROFILE.chapterName} chapter's ${f.seasonLabel} competitive season.\n\n✅ SEASON HIGHLIGHTS:\n${done.join('\n') || '• [Add this season\'s events]'}\n\nRESULTS: [Add results]\n\n📅 STILL TO COME:\n${f.upcomingLines.join('\n') || '• Nothing else on the season calendar'}\n\nThe DECA program continues to grow in both membership and competitive achievement. I look forward to sharing full results at the end of the season.\n\nThank you for your support!\n\n${PROFILE.name}\n${PROFILE.title}\n${PROFILE.phone}`; }
     },
   ],
   faculty: [
@@ -168,7 +237,7 @@ const EMAIL_TEMPLATES = {
     },
     { id:'fac-dept-update', label:'📣 Dept / Team DECA Update',
       subject: () => `DECA Program Update — [Month] [Year]`,
-      body: () => `Hi Team,\n\nJust a quick update on where DECA is at this season and what's on the horizon.\n\nSEASON SO FAR:\n• Ultimate Power Trip ✅ — Nov 21–23 (Arlington, VA · 13 students)\n• DLC ✅ — Dec 3 (Chesterfield Towne Center · 15 students)\n• SLC ✅ — Feb 27–Mar 1 (Virginia Beach · 15 students · results pending)\n\nUPCOMING:\n• ICDC Registration: March 2–13 ($155 — qualifiers only)\n• ICDC Atlanta: April 25–29, 2026\n\nSTUDENTS TO WATCH: [Add names of strong performers]\n\nLet me know if you have any questions or if there's anything I can do to support your students who are in DECA.\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
+      body: () => { const f = _emailSeasonFacts(); const done = f.doneTrips.length ? f.doneTrips : f.doneLines; return `Hi Team,\n\nJust a quick update on where DECA is at this season and what's on the horizon.\n\nSEASON SO FAR:\n${done.join('\n') || '• The season is just getting started'}\n\nUPCOMING:\n${f.upcomingLines.slice(0, 4).join('\n') || '• [Add upcoming dates]'}\n\nSTUDENTS TO WATCH: [Add names of strong performers]\n\nLet me know if you have any questions or if there's anything I can do to support your students who are in DECA.\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`; }
     },
   ]
 };
@@ -176,51 +245,61 @@ const EMAIL_TEMPLATES = {
 // ── Email Composer State & Logic ─────────────────────────────────────────────
 function openEmailComposer(tripId, audience) {
   populateEmailContextDropdown();
-  if(tripId) {
-    document.getElementById('email-context-sel').value = tripId;
+  const sel = document.getElementById('email-context-sel');
+  if(tripId && sel.querySelector(`option[value="${tripId}"]`)) {
+    sel.value = tripId;
     emailContextTripId = tripId;
+  } else {
+    sel.value = '';
+    emailContextTripId = null;
   }
+  _emailUpdateContextLabel();
   if(audience) setEmailTab(audience, document.getElementById('etab-'+audience));
   else setEmailTab('students', document.getElementById('etab-students'));
   openModal('emailComposer');
 }
 
+// The trip list used to be the four 2025-26 DECA seed trips by id (3–6,
+// labelled "25–26") plus "other" trips with an id under 3, so a trip added
+// this year never appeared. Now: every trip that isn't archived, upcoming
+// first, then past.
 function populateEmailContextDropdown() {
   const sel = document.getElementById('email-context-sel');
   const currentVal = sel.value;
   sel.innerHTML = '<option value="">— General / No trip —</option>';
-  // DECA field trips
-  const decaGroup = document.createElement('optgroup');
-  decaGroup.label = '🏆 DECA Trips (25–26)';
-  const decaNames = {3:'Power Trip',4:'DLC',5:'SLC',6:'ICDC'};
-  trips.filter(t => t.id >= 3 && t.id <= 6).forEach(t => {
-    const o = document.createElement('option');
-    o.value = t.id;
-    o.textContent = `${t.name.replace('DECA ','').replace('— International Career Development Conference','')} (${fd(t.date)})`;
-    decaGroup.appendChild(o);
-  });
-  sel.appendChild(decaGroup);
-  // Other trips
-  const otherGroup = document.createElement('optgroup');
-  otherGroup.label = '🚌 Other Trips';
-  trips.filter(t => t.id < 3).forEach(t => {
-    const o = document.createElement('option');
-    o.value = t.id;
-    o.textContent = `${t.name} (${fd(t.date)})`;
-    otherGroup.appendChild(o);
-  });
-  if(otherGroup.children.length) sel.appendChild(otherGroup);
-  // Restore value
-  if(currentVal) sel.value = currentVal;
+  const todayIso = _localDateStr_(new Date());
+  const list = trips.filter(t => !t.archived).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+  const groups = [
+    ['🚌 Upcoming trips', list.filter(t => (t.retDate || t.date || '') >= todayIso)],
+    ['🗂 Past trips', list.filter(t => (t.retDate || t.date || '') < todayIso).reverse()],
+  ];
+  for (const [label, items] of groups) {
+    if (!items.length) continue;
+    const g = document.createElement('optgroup');
+    g.label = label;
+    items.forEach(t => {
+      const o = document.createElement('option');
+      o.value = t.id;
+      o.textContent = `${t.name} (${fd(t.date)})`;
+      g.appendChild(o);
+    });
+    sel.appendChild(g);
+  }
+  if(currentVal && sel.querySelector(`option[value="${currentVal}"]`)) sel.value = currentVal;
+}
+
+function _emailUpdateContextLabel() {
+  const t = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
+  const el = document.getElementById('email-context-label');
+  if (el) el.textContent = t ? t.name : 'General — no trip selected';
 }
 
 function onEmailContextChange() {
   const sel = document.getElementById('email-context-sel');
   emailContextTripId = sel.value ? parseInt(sel.value) : null;
   renderEmailTemplates();
-  // Update context label
-  const t = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
-  document.getElementById('email-context-label').textContent = t ? t.name : 'General — no trip selected';
+  _emailUpdateContextLabel();
+  _emailFillRecipients();
 }
 
 function setEmailTab(tab, btn) {
@@ -230,17 +309,80 @@ function setEmailTab(tab, btn) {
   else { const b = document.getElementById('etab-'+tab); if(b) b.classList.add('active'); }
   renderEmailTemplates();
   clearEmailComposer();
+  _emailFillRecipients();
 }
 
 function renderEmailTemplates() {
   const list = document.getElementById('email-template-list');
   if(!list) return;
   const templates = EMAIL_TEMPLATES[emailTab] || [];
-  const t = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
   list.innerHTML = templates.map(tpl => `
     <button class="etpl" onclick="loadEmailTemplate('${tpl.id}')">
       ${tpl.label}
     </button>`).join('');
+}
+
+// ── Recipients (UX audit 2026-10-22, fix-first 12) ──────────────────────────
+// "Email Families" used to put the literal words "DECA Families" in To, which
+// no mail program can deliver. Students and Parents now get real addresses:
+// the chosen trip's permission-slip list, or with no trip, the active members
+// of the current organization. They go in Bcc so families never see each
+// other's addresses; To is the sender's own address when Settings has one.
+// School and Faculty have no list to draw from, so To is left for the sender
+// to fill (the principal's address from Settings when there is one).
+function _emailRecipients(tab, trip) {
+  const parents = tab === 'parents';
+  const out = { to: '', cc: '', bcc: '', note: '' };
+  if (tab === 'school') {
+    out.to = PROFILE.adminEmail || '';
+    out.cc = PROFILE.email || '';
+    out.note = out.to ? '' : 'Type the principal\'s or office\'s address in To (or add it in Settings → My Profile & School).';
+    return out;
+  }
+  if (tab === 'faculty') {
+    out.cc = PROFILE.email || '';
+    out.note = 'Type your colleagues\' addresses in To.';
+    return out;
+  }
+  let people, from;
+  if (trip) {
+    people = getSlipRoster(trip.id).map(resolveSlipStudent);
+    from = `the ${trip.name} permission-slip list`;
+  } else {
+    people = students.filter(s => s.memberStatus !== 'alumni' && (!s.org || s.org === activeOrgId));
+    from = 'your active members';
+  }
+  const field = parents ? 'parentEmail' : 'email';
+  const emails = [...new Set(people.map(p => String(p[field] || '').trim()).filter(e => e.includes('@')))];
+  const missing = people.length - people.filter(p => String(p[field] || '').includes('@')).length;
+  out.to = emails.length ? (PROFILE.email || '') : '';
+  out.bcc = emails.join('; ');
+  const who = parents ? 'famil' + (emails.length === 1 ? 'y' : 'ies') : 'student' + (emails.length === 1 ? '' : 's');
+  if (!people.length) {
+    out.note = trip
+      ? `No one is on ${from} yet. Add students under Permission Slips, or type addresses here.`
+      : 'No active members yet. Add them under Members, or type addresses here.';
+  } else {
+    out.note = `Bcc: ${emails.length} ${who} from ${from}.` +
+      (missing ? ` ${missing} ${missing === 1 ? 'has' : 'have'} no ${parents ? 'parent ' : ''}email on file.` : '');
+  }
+  return out;
+}
+
+let _emailAutoFilled = { to: '', cc: '', bcc: '' };
+// Fills To/Cc/Bcc for the current tab and trip, but never over an address
+// the sender typed: a field is only replaced while it still holds what was
+// last filled in automatically (or is empty).
+function _emailFillRecipients() {
+  const trip = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
+  const r = _emailRecipients(emailTab, trip);
+  for (const k of ['to', 'cc', 'bcc']) {
+    const el = document.getElementById('email-' + k);
+    if (!el) continue;
+    if (!el.value || el.value === _emailAutoFilled[k]) { el.value = r[k]; _emailAutoFilled[k] = r[k]; }
+  }
+  const note = document.getElementById('email-recipient-note');
+  if (note) note.textContent = r.note;
 }
 
 function loadEmailTemplate(tplId) {
@@ -249,29 +391,61 @@ function loadEmailTemplate(tplId) {
   const trip = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
   document.getElementById('email-subject').value = typeof tpl.subject === 'function' ? tpl.subject(trip) : tpl.subject;
   document.getElementById('email-body').value = typeof tpl.body === 'function' ? tpl.body(trip) : tpl.body;
-  // Set TO defaults based on audience
-  const toDefaults = { students:'DECA Chapter Members', parents:'DECA Families', school:'Principal / Administration', faculty:'Colleagues / Dept. Team' };
-  if(!document.getElementById('email-to').value) {
-    document.getElementById('email-to').value = toDefaults[emailTab] || '';
-  }
-  const ccDefaults = { school:PROFILE.email, faculty:PROFILE.email };
-  if(!document.getElementById('email-cc').value && ccDefaults[emailTab]) {
-    document.getElementById('email-cc').value = ccDefaults[emailTab];
-  }
+  _emailFillRecipients();
   // Highlight active template
   document.querySelectorAll('.etpl').forEach(b => { b.classList.toggle('sel', b.textContent.trim() === (tpl.label||'').trim()); });
   document.getElementById('email-copy-confirm').textContent = '';
 }
 
+// ── Before it goes out ───────────────────────────────────────────────────────
+// Every bracketed blank a template leaves for the sender: [DATE],
+// [Student Name], [#], $[AMOUNT] …
+function lhEmailBlanks(text) {
+  return [...new Set(String(text || '').match(/\[[^\[\]\n]{1,40}\]/g) || [])];
+}
+function lhEmailAddressList(text) {
+  return String(text || '').split(/[;,\s]+/).map(a => a.trim()).filter(Boolean);
+}
+// Calls send() once the email has at least one real address and every
+// entry is an address; when blanks remain it asks first, naming them.
+function lhCheckEmailBeforeSending(fields, send) {
+  const addrs = lhEmailAddressList([fields.to, fields.cc, fields.bcc].join(';'));
+  const notAddrs = addrs.filter(a => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(a));
+  if (notAddrs.length) {
+    _showToast(`⚠ Not an email address: ${notAddrs.slice(0, 3).join(', ')}. Use real addresses, separated by ;`, 5000, '#991b1b');
+    return;
+  }
+  if (!lhEmailAddressList([fields.to, fields.bcc].join(';')).length) {
+    _showToast('⚠ Add at least one email address in To or Bcc.', 4000, '#991b1b');
+    return;
+  }
+  const blanks = lhEmailBlanks((fields.subject || '') + '\n' + (fields.body || ''));
+  if (!blanks.length) { send(); return; }
+  _showConfirm(
+    `This email still has ${blanks.length} blank${blanks.length === 1 ? '' : 's'} to fill in:\n` +
+      blanks.slice(0, 10).join('  ') + (blanks.length > 10 ? '  …' : '') +
+      '\n\nThe people you send it to will see them as written.',
+    send,
+    { confirmLabel: 'Send anyway', cancelLabel: 'Go back and fill them in', danger: false, ariaLabel: 'Unfilled blanks in this email' }
+  );
+}
+
+function _emailFields() {
+  const v = id => (document.getElementById(id) || {}).value || '';
+  return { to: v('email-to'), cc: v('email-cc'), bcc: v('email-bcc'), subject: v('email-subject'), body: v('email-body') };
+}
+
 function copyEmail() {
-  const subj = document.getElementById('email-subject').value;
-  const body = document.getElementById('email-body').value;
-  const to = document.getElementById('email-to').value;
-  const full = (to ? 'TO: ' + to + '\n' : '') + (subj ? 'SUBJECT: ' + subj + '\n\n' : '') + body;
-  navigator.clipboard.writeText(full).then(() => {
-    document.getElementById('email-copy-confirm').textContent = '✅ Copied to clipboard!';
-    setTimeout(() => { document.getElementById('email-copy-confirm').textContent = ''; }, 2500);
-  }).catch(() => {
+  const f = _emailFields();
+  const full = (f.to ? 'TO: ' + f.to + '\n' : '') + (f.bcc ? 'BCC: ' + f.bcc + '\n' : '') + (f.subject ? 'SUBJECT: ' + f.subject + '\n\n' : '') + f.body;
+  const blanks = lhEmailBlanks(f.subject + '\n' + f.body);
+  const confirmEl = document.getElementById('email-copy-confirm');
+  const done = (msg) => {
+    confirmEl.textContent = blanks.length ? `${msg} ${blanks.length} blank${blanks.length === 1 ? '' : 's'} still to fill: ${blanks.slice(0, 5).join(' ')}` : msg;
+    confirmEl.style.color = blanks.length ? '#b45309' : 'var(--green)';
+    setTimeout(() => { confirmEl.textContent = ''; }, blanks.length ? 6000 : 2500);
+  };
+  navigator.clipboard.writeText(full).then(() => done('✅ Copied to clipboard!')).catch(() => {
     // fallback
     try {
       const ta = document.createElement('textarea');
@@ -280,28 +454,35 @@ function copyEmail() {
       ta.select();
       document.execCommand('copy');
       document.body.removeChild(ta);
-      document.getElementById('email-copy-confirm').textContent = '✅ Copied!';
+      done('✅ Copied!');
     } catch (e) {
-      document.getElementById('email-copy-confirm').textContent = '⚠ Could not copy — select and copy the text manually';
+      confirmEl.textContent = '⚠ Could not copy — select and copy the text manually';
+      setTimeout(() => { confirmEl.textContent = ''; }, 3500);
     }
-    setTimeout(() => { document.getElementById('email-copy-confirm').textContent = ''; }, 3500);
   });
 }
 
+function _emailMailtoUrl(f) {
+  const enc = encodeURIComponent;
+  const to = lhEmailAddressList(f.to).join(',');
+  const params = [];
+  if (f.cc) params.push('cc=' + enc(lhEmailAddressList(f.cc).join(',')));
+  if (f.bcc) params.push('bcc=' + enc(lhEmailAddressList(f.bcc).join(',')));
+  params.push('subject=' + enc(f.subject || ''), 'body=' + enc(f.body || ''));
+  return `mailto:${enc(to).replace(/%2C/g, ',').replace(/%40/g, '@')}?${params.join('&')}`;
+}
+
 function openInMailClient() {
-  const subj = encodeURIComponent(document.getElementById('email-subject').value || '');
-  const body = encodeURIComponent(document.getElementById('email-body').value || '');
-  const to = encodeURIComponent(document.getElementById('email-to').value || '');
-  const cc = encodeURIComponent(document.getElementById('email-cc').value || '');
-  window.location.href = `mailto:${to}?subject=${subj}&body=${body}${cc?'&cc='+cc:''}`;
+  const f = _emailFields();
+  lhCheckEmailBeforeSending(f, () => { window.location.href = _emailMailtoUrl(f); });
 }
 
 function clearEmailComposer() {
-  document.getElementById('email-to').value = '';
-  document.getElementById('email-cc').value = '';
-  document.getElementById('email-subject').value = '';
-  document.getElementById('email-body').value = '';
+  ['email-to', 'email-cc', 'email-bcc', 'email-subject', 'email-body'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _emailAutoFilled = { to: '', cc: '', bcc: '' };
   document.getElementById('email-copy-confirm').textContent = '';
+  const note = document.getElementById('email-recipient-note');
+  if (note) note.textContent = '';
   document.querySelectorAll('.etpl').forEach(b => b.classList.remove('sel'));
 }
 
@@ -1204,7 +1385,7 @@ function saveEvent(){
   otherEvents.push({id:nextId.ev++,name,type:document.getElementById('ne-type').value,date:document.getElementById('ne-date').value,loc:document.getElementById('ne-loc').value||'TBD',stu:parseInt(document.getElementById('ne-stu').value)||0,notes:document.getElementById('ne-notes').value});
   persistNextId();
   persistEvents();
-  closeModal('newEvent');['ne-name','ne-loc','ne-stu','ne-notes','ne-date'].forEach(id=>document.getElementById(id).value='');
+  closeModal('newEvent', true);['ne-name','ne-loc','ne-stu','ne-notes','ne-date'].forEach(id=>document.getElementById(id).value='');
   renderEvents();
 }
 
@@ -1593,7 +1774,7 @@ function saveStudent(){
   students.push(s);
   persistNextId();
   persistStudents();
-  closeModal('addStudent');
+  closeModal('addStudent', true);
   renderStudents();
   _showToast('✅ Member added');
 }
@@ -1659,7 +1840,7 @@ function updateStudent(id){
   s.ev          = parseInt(document.getElementById('st-event')?.value)||null;
   s.notes       = document.getElementById('st-notes').value;
   persistStudents(); // was missing — edits (dues paid, contact info, etc.) never survived a reload
-  closeModal('addStudent');
+  closeModal('addStudent', true);
   renderStudents();
   _showToast('✅ Member updated');
 }
@@ -1699,10 +1880,19 @@ function exportMemberCSV(){
 
 // ── Registration & Alumni Email Helpers ──────────────────────────────────────
 
+// Sets To/Cc/Bcc for a composer opened for one person or one list, in
+// place of the tab's own list (_emailFillRecipients).
+function _emailSetRecipients(to, cc, bcc, note) {
+  const vals = { to: to || '', cc: cc || '', bcc: bcc || '' };
+  for (const k of ['to', 'cc', 'bcc']) { const el = document.getElementById('email-' + k); if (el) el.value = vals[k]; }
+  _emailAutoFilled = vals;
+  const n = document.getElementById('email-recipient-note');
+  if (n) n.textContent = note || '';
+}
+
 function openEmailComposerForMember(s){
   setEmailTab('parents', document.getElementById('etab-parents'));
-  document.getElementById('email-to').value = s.parentEmail || '';
-  document.getElementById('email-cc').value = s.email || '';
+  _emailSetRecipients(s.parentEmail, s.email, '', s.parentEmail ? '' : `No parent email on file for ${s.first} ${s.last}. Add one under Members, or type it in To.`);
   const _memberOrgName = (ORGANIZATIONS[s.org]||ORGANIZATIONS.deca).name;
   document.getElementById('email-subject').value = `${_memberOrgName} Registration Info Needed — ${s.first} ${s.last}`;
   document.getElementById('email-body').value =
@@ -1755,7 +1945,9 @@ function loadRegTemplate(){
 
   closeModal('memberReg');
   setEmailTab(tab, document.getElementById('etab-'+tab));
-  document.getElementById('email-to').value   = audience==='student'?'DECA Members':audience==='parent'?'DECA Families':'DECA Members; DECA Families';
+  // Real addresses, not the words "DECA Members" / "DECA Families".
+  const _regLists = (audience === 'both' ? ['students', 'parents'] : [tab]).map(k => _emailRecipients(k, null));
+  _emailSetRecipients(PROFILE.email, '', [...new Set(_regLists.flatMap(r => lhEmailAddressList(r.bcc)))].join('; '), _regLists.map(r => r.note).join(' '));
   document.getElementById('email-subject').value = `DECA Registration — Information Needed by ${deadline}`;
   document.getElementById('email-body').value =
 `Dear ${audience==='student'?'DECA Team':'DECA Families'},
@@ -1812,7 +2004,9 @@ async function generateRegEmail(){
 
 function loadAlumniExitTemplate(){
   setEmailTab('students', document.getElementById('etab-students'));
-  document.getElementById('email-to').value = 'DECA Alumni';
+  const _alumni = students.filter(s => s.memberStatus === 'alumni' && (s.email || '').includes('@'));
+  _emailSetRecipients(_alumni.length ? PROFILE.email : '', '', _alumni.map(s => s.email).join('; '),
+    _alumni.length ? `Bcc: ${_alumni.length} alumni with an email on file.` : 'No alumni with an email on file. Type addresses in To.');
   document.getElementById('email-subject').value = `DECA Exit Interview & Alumni Connection — ${PROFILE.chapterName}`;
   document.getElementById('email-body').value =
 `Dear [Student Name],
@@ -1872,14 +2066,13 @@ function sendAlumniExitEmail(studentId){
   const s = students.find(x=>x.id===studentId);
   if(!s) return;
   setEmailTab('students', document.getElementById('etab-students'));
-  document.getElementById('email-to').value = s.email || '';
   document.getElementById('email-subject').value = `DECA Exit Interview & Alumni Connection — ${s.first}, We'd Love to Hear from You`;
   // Load template then personalize
   loadAlumniExitTemplate();
   // Personalize greeting
   const body = document.getElementById('email-body');
   body.value = body.value.replace('Dear [Student Name],', `Dear ${s.first},`);
-  document.getElementById('email-to').value = s.email || '';
+  _emailSetRecipients(s.email, '', '', s.email ? '' : `No email on file for ${s.first} ${s.last}.`);
   openModal('emailComposer');
 }
 
@@ -1925,7 +2118,7 @@ ${PROFILE.phone} | ${PROFILE.email}`
       subject: ()=>'DECA Registration — Student Information Needed',
       body: ()=>`Dear DECA Families,
 
-To complete your student's DECA membership registration for the 25-26 season, I need the following information by [DATE].
+To complete your student's DECA membership registration for the ${_emailSeasonFacts().seasonLabel} season, I need the following information by [DATE].
 
 STUDENT INFORMATION:
 □ Full legal name (as on school ID)
@@ -2034,7 +2227,7 @@ function saveGoal(){
   const title=document.getElementById('gl-title').value.trim();if(!title)return _showToast('Enter goal title.', 2500, '#991b1b');
   goals.push({id:nextId.gl++,title,cat:document.getElementById('gl-cat').value,date:document.getElementById('gl-date').value,progress:parseInt(document.getElementById('gl-prog').value)||0,desc:document.getElementById('gl-desc').value,updatedAt:new Date().toISOString()});
   persistGoals(); persistNextId();
-  closeModal('addGoal');['gl-title','gl-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('gl-prog').value=0;document.getElementById('gl-pct').textContent='0%';
+  closeModal('addGoal', true);['gl-title','gl-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('gl-prog').value=0;document.getElementById('gl-pct').textContent='0%';
   renderGoals(); refreshNextAction();
 }
 

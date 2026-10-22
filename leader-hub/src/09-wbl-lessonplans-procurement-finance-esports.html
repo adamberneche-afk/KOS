@@ -169,6 +169,7 @@ function openWBLAddStudent() {
   document.getElementById('wbl-agreement').value = 'pending';
   document.getElementById('wbl-period').value = '2';
   document.getElementById('wbl-student-modal').style.display = 'block';
+  lhMarkFormClean('wbl-student-modal');
 }
 
 function openWBLEditStudent(id) {
@@ -184,6 +185,7 @@ function openWBLEditStudent(id) {
   document.getElementById('wbl-agreement').value = s.agreement;
   document.getElementById('wbl-period').value = s.period;
   document.getElementById('wbl-student-modal').style.display = 'block';
+  lhMarkFormClean('wbl-student-modal');
 }
 
 function saveWBLStudent() {
@@ -1720,6 +1722,7 @@ function openPOModal() {
     '<option value="__new__">➕ New item (not yet in Inventory)</option>';
   document.getElementById('po-item-new-wrap').style.display = 'none';
   document.getElementById('po-modal').style.display='block';
+  lhMarkFormClean('po-modal');
 }
 function closePOModal() { document.getElementById('po-modal').style.display='none'; }
 

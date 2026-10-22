@@ -260,7 +260,7 @@ function updateAllStudentProfiles() {
       }
 
     } catch (err) {
-      Logger.log("[S23] Error processing " + student.email + ": " + err.message);
+      Logger.log("[S23] Error processing student " + (students.indexOf(student) + 1) + " of " + students.length + ": " + err.message);
     }
   }
 
@@ -1097,7 +1097,7 @@ function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds, scrSta
   }
 
   // No profile found — student registered after last 3am run
-  Logger.log("[S23] No profile found for " + studentEmail +
+  Logger.log("[S23] No StudentProfiles row for this student" +
              " — using default snapshot. Profile will exist after tonight's 3am run.");
   return buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding);
 }

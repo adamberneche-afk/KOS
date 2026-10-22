@@ -62,7 +62,7 @@ function onFormSubmit_Intake(e) {
   if (res.ok) return;
 
   if (res.code === "INVALID_ACCOUNT") {
-    Logger.log("Form 1 rejected — '" + googleId + "' is not a valid student Google account (expected 7 digits @" + _studentEmailDomain_() + ").");
+    Logger.log("Form 1 rejected — the account entered is not a valid student Google account (expected 7 digits @" + _studentEmailDomain_() + ").");
     notifyIntakeRejected_(cfg, {
       studentName: studentName, googleId: googleId,
       teacherEmail: teacherEmail, unitConfigId: unitConfigId,
@@ -125,8 +125,7 @@ function onFormSubmit_Intake(e) {
       );
     }
 
-    Logger.log("Form 1 error — MASTER_STUDENT_TEMPLATE_ID not set. " +
-               "Student: " + studentName);
+    Logger.log("Form 1 error — MASTER_STUDENT_TEMPLATE_ID not set.");
   }
 }
 
@@ -377,6 +376,23 @@ function _docItalicSpans_(line) {
   return { text: text + line.slice(last), spans: spans };
 }
 
+// The task as the doc shows it (2026-10-22, UX audit fix-first 11): without
+// the Canvas text's second title line ("Title: Assignment: ...", the doc has
+// its own title heading) and its closing "Submission:" part ("Submit your
+// response as a Text Entry"), which contradicts CAS. The lesson data keeps
+// both: the lesson editor and the Canvas cartridge read it as written.
+function _docStudentTask_(text) {
+  const paras = String(text || "").trim().split(/\n{2,}/)
+    .filter(p => !/^(Title:|Assignment:)/.test(p.trim()));
+  const t = paras.join("\n\n");
+  const sub = t.search(/(^|\n\n)Submission:\s*(\n|$)/);
+  return (sub === -1 ? t : t.slice(0, sub)).trim();
+}
+
+// The writing space's empty lines, and the doc's last line (stampDocument_).
+const DOC_WRITING_LINES = 6;
+const DOC_BELOW_END_NOTE = "↑ Write under “Your response”, above the assignment-code line. Nothing below that line is checked.";
+
 // The doc's own navigation (stampDocument_). None of it may contain the
 // response marker's text.
 const DOC_RESPONSE_HEADING   = "Your response";
@@ -462,7 +478,7 @@ function stampDocument_(fileId, configId, studentName, block,
   const toResponse = _docFontSize_(body.appendParagraph(DOC_JUMP_TO_RESPONSE), DOC_BODY_FONT_SIZE);
 
   if (promptContent) {
-    promptContent.split("\n").forEach(line => {
+    _docStudentTask_(promptContent).split("\n").forEach(line => {
       const md = _docItalicSpans_(line);
       const para = _docFontSize_(body.appendParagraph(md.text), DOC_BODY_FONT_SIZE);
       md.spans.forEach(sp => para.editAsText().setItalic(sp[0], sp[1], true));
@@ -484,7 +500,11 @@ function stampDocument_(fileId, configId, studentName, block,
   body.appendParagraph("── YOUR RESPONSE BEGINS HERE ──")
     .editAsText().setFontSize(10).setForegroundColor(DOC_HEADER_GREY);
 
-  _docFontSize_(body.appendParagraph(""), DOC_RESPONSE_FONT_SIZE);  // Student writes here
+  // Student writes here: several empty lines, so the writing space looks
+  // like room to write (2026-10-22, UX audit fix-first 3).
+  for (let i = 0; i < DOC_WRITING_LINES; i++) {
+    _docFontSize_(body.appendParagraph(""), DOC_RESPONSE_FONT_SIZE);
+  }
 
   body.appendParagraph("[CONFIG_ID: " + configId + "] Do not delete this line.")
     .editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY);
@@ -506,6 +526,13 @@ function stampDocument_(fileId, configId, studentName, block,
       .setForegroundColor("#ffffff");
   }
 
+  // A normal last paragraph (2026-10-22, UX audit fix-first 3): the doc used
+  // to end on the 1pt white system block, so clicking below the text or
+  // pressing Ctrl+End put the cursor there and anything typed was invisible.
+  // Typing here is visible, and the line says it isn't checked.
+  body.appendParagraph(DOC_BELOW_END_NOTE)
+    .editAsText().setFontSize(DOC_BODY_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY);
+
   doc.saveAndClose();
 }
 
@@ -524,7 +551,7 @@ function shareToStudentDrive_(cfg, docFile, googleId, teacherEmail) {
     try {
       docFile.addEditor(googleId);
     } catch (err) {
-      Logger.log("Share warning for " + googleId + ": " + err.message);
+      Logger.log("Share warning for the student's account: " + err.message);
     }
   }
   if (teacherEmail) {

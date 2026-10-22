@@ -100,6 +100,60 @@ nav button.active{color:var(--gold);background:rgba(232,184,75,.15);}
     display:block; position:fixed; inset:64px 0 0 0; background:rgba(0,0,0,.35); z-index:140;
   }
 }
+/* PHONE + TABLET (UX audit 2026-10-22, fix-first 15). The top nav's eight
+   buttons are ~810px wide on their own, so below laptop width every view
+   scrolled sideways (949px on a 390px phone). The sidebar carries the same
+   destinations, so the top nav steps aside under 1100px; under 760px the
+   header tightens and every view keeps to the screen's width. */
+@media(max-width:1100px){
+  header nav{ display:none; }
+}
+@media(max-width:760px){
+  header{ padding:0 .5rem; gap:.35rem; }
+  header .logo{ font-size:1.35rem; letter-spacing:2px; white-space:nowrap; }
+  header .logo > span + span{ display:none; }
+  header .btn-sm{ padding:.35rem .55rem; }
+  .app, .main{ max-width:100vw; }
+  .main{ min-width:0; }
+  .main>.view.active:not(#view-dashboard){ padding:1rem; }
+  #view-dashboard{ padding:.75rem; }
+  .main .view{ overflow-x:hidden; }
+  .main .view table{ display:block; max-width:100%; overflow-x:auto; }
+  .fg2, .fg3{ grid-template-columns:1fr; }
+  /* Hand-written two- and three-column rows (season cards, slip and form
+     panels) stack; a grid or flex child may shrink below its content's
+     width, and a flex row that still can't fit wraps instead of running
+     off the edge. */
+  .main .view [style*="grid-template-columns:1fr 1fr"],
+  .main .view [style*="grid-template-columns:repeat(2"],
+  .main .view [style*="grid-template-columns:repeat(3"],
+  .main .view [style*="grid-template-columns:repeat(4"]{ grid-template-columns:1fr !important; }
+  .main .view .grid > *, .main .view [style*="grid-template-columns"] > *{ min-width:0; }
+  .main .view [style*="display:flex"]{ flex-wrap:wrap; }
+  .main .view img, .main .view pre{ max-width:100%; }
+  .modal, .mbox{ max-width:calc(100vw - 16px); }
+  /* Email Composer and Brag Board: the 230–260px side panel goes on top. */
+  .lh-split{ flex-direction:column; overflow-y:auto !important; }
+  .lh-split > *{ overflow:visible !important; }
+  .lh-split-side{ width:auto !important; border-right:none !important; border-bottom:1px solid var(--border); }
+  .lh-fields3{ grid-template-columns:1fr !important; }
+}
+/* REMINDER BANNERS (UX audit 2026-10-22, fix-first 15). The timed
+   reminders (deposit, payroll, morning comms, PLC, match day, DECA
+   tomorrow, school calendar ended, Brag Board) used to be
+   position:fixed;top:0, so they covered the header (and the ❓ Terms
+   button) and each other. They now stack in #lh-banners, in normal flow
+   between the header and the app; lhShowBanner() (src/11) puts them there
+   and keeps the app's height in step. */
+#lh-banners{ display:flex; flex-direction:column; }
+#lh-banners:empty{ display:none; }
+#lh-banners > div{ flex-wrap:wrap; }
+#lh-banners > div > div:first-of-type{ flex:1 1 220px !important; min-width:0; }
+#lh-banners > div > div:last-child{ flex-wrap:wrap; }
+#lh-banners > div + div{ border-top:1px solid rgba(255,255,255,.25); }
+.app{ height:calc(100vh - 64px - var(--lh-banners-h, 0px)); }
+/* The gradebook tracker's two cells ran 17px past a 1366px screen. */
+#sync-tracker-grid > *{ min-width:0; overflow-wrap:anywhere; }
 /* CARDS — hover lift; the base .card box model itself is defined once,
    below, under "DESIGN SYSTEM — CLEAN COMPONENT TOKENS" (a second .card
    rule used to live here too, with different border/padding values —

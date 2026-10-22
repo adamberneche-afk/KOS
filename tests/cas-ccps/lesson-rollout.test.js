@@ -47,6 +47,7 @@ function setup(opts) {
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   if (opts.autoApply) props.setProperty('ROLLOUT_AUTO_APPLY', opts.autoApply);
+  if (opts.configTab) ss.insertSheet('_CONFIG').getRange(1, 1, 2, 2).setValues([['Key', 'Value'], ['ROLLOUT_AUTO_APPLY', opts.configTab]]);
   sandbox._lsRows_ = () => SCHEDULE;
 
   const ledger = ss.insertSheet('Ledger');
@@ -235,4 +236,15 @@ test('_casSignalRollout_: counts the last day\'s PROBLEM rows and names the cour
   tab.appendRow([new Date(2026, 9, 16, 21), 'SHADOW', '8177', 'CAS-8177-X', 'ENROLL', 3, 'y']);
   tab.appendRow([new Date(2026, 9, 16, 21), '-', '-', '-', 'PROBLEM', 9, 'stale export']);
   assert.deepEqual(exported._casSignalRollout_(now), { problems: 2, shadow: '8177' });
+});
+
+// UX audit fix-first 6: the docs say a _CONFIG row turns the rollout on;
+// before 2026-10-22 the key wasn't in SHARED_CONFIG_KEYS and was ignored.
+test('ROLLOUT_AUTO_APPLY in the Ledger\'s _CONFIG tab turns the rollout on for that course', () => {
+  const { exported, seedCalls } = setup({ configTab: '8175', alreadySeeded: ['8177-handbook'] });
+  exported.lessonRollout_({ today: FRI });
+  assert.ok(seedCalls.some((c) => c.apply === true), '8175 applies');
+  const { exported: off, seedCalls: offCalls } = setup({ configTab: 'off', alreadySeeded: ['8177-handbook'] });
+  off.lessonRollout_({ today: FRI });
+  assert.ok(offCalls.every((c) => c.apply === false), 'off is the kill switch');
 });
