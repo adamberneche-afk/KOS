@@ -74,9 +74,11 @@ operator. This file holds what comes after them.
 ### Design threads (suggestions; nothing built)
 
 - **Lesson editing and writing from the Teacher Dashboard** (2026-10-21,
-  the operator's ask). Rollout status shipped (#243); editing and new
-  lessons wait on the decisions in
+  the operator's ask). Rollout status (#243), editing (#245) and new
+  lessons (#246) built 2026-10-21, with the evening import Routine; see
   [`LESSON_AUTHORING_PLAN_2026-10.md`](./LESSON_AUTHORING_PLAN_2026-10.md).
+  Open: phase 3 (a draft-it-for-me button on the dashboard), if drafting
+  turns out to be the slow part.
 
 - **Thread A: cross-course mastery map, remediation and anchors.** Start
   with the competency graph file and a teacher-approval tool.
