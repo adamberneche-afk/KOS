@@ -105,3 +105,33 @@ test('the doc shows a lesson\'s *emphasis* in italics, without the asterisks', (
   assert.deepEqual(JSON.parse(JSON.stringify(md.spans)), [[8, 10], [37, 40]]);
   assert.deepEqual(JSON.parse(JSON.stringify(exported._docItalicSpans_('No stars here').spans)), []);
 });
+
+// UX audit fix-first 2 (2026-10-22): after a successful Submit the card
+// shows "Waiting for feedback…" with Submit gone, instead of re-rendering
+// the old "Not started yet" card with Submit still active.
+test('after a successful Submit, the card says it is waiting and Submit is gone', () => {
+  const { student } = pages();
+  const start = student.indexOf('function submitWork(btn)');
+  const end = student.indexOf('\n}\n', start) + 2;
+  assert.ok(start > 0 && end > start);
+  const card = { fileId: 'f1', configId: 'C1', displayStatus: 'Not started yet', statusClass: 'NOT_STARTED', canSubmit: true, submittedAt: null };
+  const other = { fileId: 'f2', configId: 'C2', displayStatus: 'Not started yet', statusClass: 'NOT_STARTED', canSubmit: true };
+  let handler;
+  const runner = {
+    withSuccessHandler(fn) { handler = fn; return runner; },
+    withFailureHandler() { return runner; },
+    submitMyWork() { handler({ ok: true, aiFlowsLive: true, feedbackInComments: true }); },
+  };
+  const ctx = { google: { script: { run: runner } }, _submitMsgs: {}, _dashCache: {}, renders: 0,
+    _lastDashData: { assignments: [card, other] } };
+  ctx.render = () => { ctx.renders++; };
+  vm.runInNewContext(student.slice(start, end), ctx);
+  const btn = { attrs: { 'data-file': 'f1', 'data-config': 'C1' }, getAttribute(k) { return this.attrs[k]; } };
+  ctx.submitWork(btn);
+  assert.equal(card.displayStatus, 'Waiting for feedback…');
+  assert.equal(card.canSubmit, false);
+  assert.equal(card.submittedAt, 'just now');
+  assert.equal(other.canSubmit, true, 'only the submitted card changes');
+  assert.equal(ctx.renders, 1);
+  assert.match(ctx._submitMsgs.f1.text, /Comments/);
+});
