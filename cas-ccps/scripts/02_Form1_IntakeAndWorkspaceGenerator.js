@@ -360,6 +360,23 @@ function _docFontSize_(para, size) {
   return para;
 }
 
+// A lesson's *emphasis* in italics, not as literal asterisks (2026-10-22):
+// returns the line without them and the [start, end] ranges to italicize.
+function _docItalicSpans_(line) {
+  const spans = [];
+  let text = "";
+  let last = 0;
+  const re = /\*([^*\n]+)\*/g;
+  let m;
+  while ((m = re.exec(line)) !== null) {
+    text += line.slice(last, m.index);
+    spans.push([text.length, text.length + m[1].length - 1]);
+    text += m[1];
+    last = m.index + m[0].length;
+  }
+  return { text: text + line.slice(last), spans: spans };
+}
+
 // The doc's own navigation (stampDocument_). None of it may contain the
 // response marker's text.
 const DOC_RESPONSE_HEADING   = "Your response";
@@ -446,7 +463,9 @@ function stampDocument_(fileId, configId, studentName, block,
 
   if (promptContent) {
     promptContent.split("\n").forEach(line => {
-      _docFontSize_(body.appendParagraph(line), DOC_BODY_FONT_SIZE);
+      const md = _docItalicSpans_(line);
+      const para = _docFontSize_(body.appendParagraph(md.text), DOC_BODY_FONT_SIZE);
+      md.spans.forEach(sp => para.editAsText().setItalic(sp[0], sp[1], true));
     });
   }
 

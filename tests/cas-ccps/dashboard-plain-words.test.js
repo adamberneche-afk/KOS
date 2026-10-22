@@ -96,3 +96,12 @@ test('the doc menu\'s status pop-up uses the dashboard\'s words, never a raw sta
     assert.doesNotMatch(text, /AI Evaluation Panel|Run Assignment Check|Status: |2627_MP1|evaluat/i, status);
   }
 });
+
+// A lesson's *emphasis* reaches the student's doc as italics (02), not asterisks.
+test('the doc shows a lesson\'s *emphasis* in italics, without the asterisks', () => {
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_docItalicSpans_']);
+  const md = exported._docItalicSpans_('Explain *why* it worked and what comes *next*.');
+  assert.equal(md.text, 'Explain why it worked and what comes next.');
+  assert.deepEqual(JSON.parse(JSON.stringify(md.spans)), [[8, 10], [37, 40]]);
+  assert.deepEqual(JSON.parse(JSON.stringify(exported._docItalicSpans_('No stars here').spans)), []);
+});
