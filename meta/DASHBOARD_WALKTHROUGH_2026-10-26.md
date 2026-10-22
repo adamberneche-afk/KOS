@@ -97,7 +97,7 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 - [ ] The header reads "📊 Assignment Dashboard", with: **+ New Lesson** (only when M2 is on), **My Context**, **✉ Parent Reports**, **🎓 SCR Reviews**, **💬 Feedback**, **↻ Refresh** and the term dropdown.
 - [ ] **Warm-up readiness strip** under the header (M2 on): "📅 <unit id — unit name>" or "No active unit", "x of N students have evaluation history", "y with warm-up responses", and the profile lines.
   - Compare y with the number of students who actually **answered** a warm-up. Expect it to be higher, because blank (INCOMPLETE) warm-ups count (finding 6).
-  - **Click each number.** Expect nothing to happen: the filters aren't wired (finding 7).
+  - **Click each number.** Expect the roster to narrow to those students, with a blue "Showing n …" bar and **Clear filter** (finding 7, fixed 10-22).
   - N counts StudentProfiles rows, not the roster in view.
 - [ ] **Lesson picker** "Showing": it defaults to "Current lesson: <name>" (LessonSchedule's latest start_date on or before today, per course), and "All assignments" is at the bottom.
 - [ ] **Summary cards** for the lessons in view:
@@ -117,7 +117,7 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 
 ### 6. Teacher Dashboard: 💬 Feedback
 
-- [ ] Open it. Expect "Where feedback goes", then **"No courses with assignments yet."** The current setting (all) is shown nowhere and there is nothing to change (finding 1). If course rows do appear, write down which. That would mean some Ledger rows carry `CAS-####-…` ConfigIDs.
+- [ ] Open it. Expect "Where feedback goes", a **Now:** line with the live setting (all), and one row each for **8175** and **8177** (finding 1, fixed 10-22). A course missing from the list means its Ledger rows name no course in ClassName, Subject or CourseName: write down which.
 
 ### 7. Teacher Dashboard: My Context
 
@@ -133,7 +133,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
 
 ### Wrong result
 
-**1. 💬 Feedback panel lists no courses and can't show or change the live setting.**
+**1. 💬 Feedback panel lists no courses and can't show or change the live setting.** *Fixed 2026-10-22 (cas-ccps/HISTORY.md): the course comes from the row's names, in the panel and in `feedbackAsCommentChecker_`; the panel shows the setting.*
 - **Where:** `07_TeacherDashboard.js:1046-1064` (`_tdFeedbackPlacement_`), `07:2206-2207`, `00_SharedConfig.js:309-326`.
 - **What:** Courses are taken from Ledger ConfigIDs matching `^CAS-(\d{4})-`. But a Ledger row's ConfigID is the student's workspace ID, `VDOE-XXXXXX-YYYY` (`02:187,502-506`; 33's comment at `33:207`; 10-21 handoff). So `courses` is empty, and `data.value` is never rendered.
 - **Also:** the same mismatch means a one-course value ("8175") can never take effect. 13 (`:60,102`), 37 (`:685`), 03 (`:267`) and 02 (`:368`) all test the VDOE workspace ID, so only "all" and "off" work.
@@ -185,7 +185,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
 - **Scenario:** on 10-19, about 50 of about 53 warm-ups were INCOMPLETE, yet the strip would count almost every delivered student as "with warm-up responses".
 - **Fix:** in `buildShadowMatrixSummary_`, count a student only if some score has `word_count_score > 0`. Or record the status in the score object and skip INCOMPLETE there. Keep the INCOMPLETE rows for the shadow matrix as they are.
 
-**7. The readiness strip's numbers are meant to be filters but can't be clicked.**
+**7. The readiness strip's numbers are meant to be filters but can't be clicked.** *Fixed 2026-10-22: the spans are buttons.*
 - **Where:** `07:1634-1637` (`<span id="wr-…">`), compared with `07:1879-1888`.
 - **What:** `wrButton` wires `onclick` only when `el.tagName === "BUTTON"`, and the markup uses spans. `applyWrFilter`, the "View Profile →" buttons (`07:2754-2775`) and `getStudentShadowProfile` can't be reached from the UI.
 - **Scenario:** the teacher clicks "3 ready for fully personalized feedback" and nothing happens.

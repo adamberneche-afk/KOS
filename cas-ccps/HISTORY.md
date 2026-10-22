@@ -4057,3 +4057,33 @@ kind of failure every morning.
   merge, `seedLessonSchedule()` after the push.
 - **Tests:** `lesson-drafts.test.js` (new lessons), `tests/tools/import-lesson-drafts.test.js`
   (8175 and 8177 files built; a taken key refused).
+
+## The Feedback panel's courses, and the readiness numbers clickable, 2026-10-22
+
+- **Why:** walk-through findings 1 and 7 (`meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`),
+  fixed before the Oct 26 walk.
+- **The cause of 1:** a student's ConfigID is a workspace ID
+  (`VDOE-XXXXXX-2026`, 02's `generateConfigId_`), but the 💬 Feedback panel
+  and `feedbackAsCommentChecker_` (00) read the course from a
+  `CAS-####-` ConfigID. The panel found no courses, and a one-course
+  `FEEDBACK_AS_COMMENT` value ("8175") reached no student: only "all" and
+  "off" worked.
+- **00:** `feedbackAsCommentFor_(configId, courseName)`. The course comes
+  from a lesson ConfigID, the caller's course name, or the Ledger row's
+  class, subject or course name (`ledgerRowCourseCode_`, the
+  `warmUpCourseCode_` rule), read once per checker and only for a
+  one-course value. An unreadable Ledger keeps feedback in the doc and logs
+  it.
+- **02:** intake passes the class name (the Ledger row isn't written yet).
+  **13:** the card loop passes the row's course. 03, 35 and 37 are
+  unchanged: their ConfigID finds its Ledger row.
+- **07, 💬 Feedback:** courses from the Ledger rows' names; the live setting
+  shown at the top ("Now: as a comment for 8175 only…").
+- **07, readiness strip:** the four counts are `<button>`s styled as links,
+  so `wrButton` wires the click and the roster filters (`applyWrFilter`);
+  "View Profile →" is now reachable through the "ready for fully
+  personalized feedback" filter.
+- **Tests:** `feedback-as-comment.test.js` (real-shaped Ledger rows, the
+  course from a name or the row, one Ledger read per loop, none for
+  "off"/"all"), `teacher-dashboard-inline-js.test.js` (the strip's buttons
+  clicked, the panel's "Now:" line). Rendered in headless Chromium.
