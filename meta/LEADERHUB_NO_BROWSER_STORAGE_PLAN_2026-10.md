@@ -4,7 +4,7 @@ The operator, 2026-10-22: "I don't want anything stored in the browser."
 cas-ccps and kos-personal already comply (`tests/tools/no-browser-storage.test.js`).
 leader-hub is the one system still built around `localStorage`, and moving
 it off is a migration rather than a fix, so it gets this plan and its own PRs.
-Nothing is built yet.
+Phase 1 is done (2026-10-22); the rest is decided, not built.
 
 ## Where leader-hub is today
 
@@ -27,8 +27,11 @@ Nothing is built yet.
   write-through, and a failed push leaves the edit only in the browser.
 - **About 50 keys are local-only.** Measured from the source on 2026-10-22,
   they fall into four groups:
-  1. **Secrets and endpoints:** `lh_api_key` (the Gemini key) and
-     `lh_email_bridge_url`.
+  1. **Endpoints:** `lh_email_bridge_url`, needed only by the standalone
+     file (the served app calls the server directly). The Gemini key,
+     `lh_api_key`, is no longer in the code: AI moved to Workspace Flows
+     earlier, and `LEADERHUB_README.md` (superseded) is the only place that
+     still describes it.
   2. **Logs with no `id`:** `lh_daily_log`, `lh_sub_plan_log`,
      `lh_brag_log`, `lh_wbl_hours_log` and `lh_inventory_transactions`.
      Phase 8 left these local on purpose.
@@ -56,15 +59,16 @@ not used, and a test enforces that, as it does for the other two projects.
 
 ## Phases
 
-### Phase 1: secrets off the browser (small, first)
+### Phase 1: secrets off the browser (done 2026-10-22)
 
-- `lh_api_key` moves to a Script Property (`GEMINI_API_KEY`). AI calls go
-  through the server (`lhApiCall_`), so the key never reaches the page.
-- `lh_email_bridge_url` stops being needed when the app is served by
-  `doGet()`: calls are same-origin (`google.script.run`). The standalone
-  file's email setting goes with Phase 5.
-- Settings shows "Key saved on the server" with Replace and Remove buttons,
-  never the key itself.
+- No code reads or writes a Gemini key; AI runs in Workspace Flows with
+  the account's own Gemini access. A browser can still hold `lh_api_key`
+  from before that change, so the app now deletes it at every load
+  (`LH_RETIRED_SECRET_KEYS`, `src/05`), and a test checks nothing else
+  names it.
+- `lh_email_bridge_url` is not a secret (a web app URL behind the owner
+  check), and only the standalone file uses it. It goes with the
+  standalone file in Phase 5.
 
 ### Phase 2: the rest of the data onto the server
 
@@ -91,7 +95,7 @@ not used, and a test enforces that, as it does for the other two projects.
   A conflict (compare-and-swap) shows what changed elsewhere and asks which
   copy to keep. It never overwrites silently.
 - View state (group 4) is page memory: the app opens on the dashboard with
-  default filters after a reload.
+  default filters after a reload (decided 2026-10-22).
 
 ### Phase 4: move existing data, then remove browser storage
 
@@ -107,23 +111,25 @@ not used, and a test enforces that, as it does for the other two projects.
   `leader-hub/`, and `LEADERHUB_README.md`'s storage section and design
   decisions are rewritten.
 
-### Phase 5: the standalone file
+### Phase 5: retire the standalone file (decided 2026-10-22)
 
-With no browser storage, a file opened from disk can't keep anything between
-sessions. Options:
+With no browser storage, a file opened from disk can't keep anything
+between sessions, so the served app (`doGet()`) becomes the only way in.
+This waits for Phase 4: a file opened from disk keeps its data in that
+file's own browser storage, which the served app can't read. Retiring it
+first would strand that data. So, in order:
 
-- **Retire it (recommended).** The served app (`doGet()`) is the only way
-  in.
-- **Keep it for read-only demos.** It loads sample data into memory, and
-  nothing persists.
+1. The file shows "Export everything" and points to the web app link.
+2. The served app imports that export through Phase 4's import.
+3. The file then opens to a short page that points to the web app.
+4. `lh_email_bridge_url`, `setEmailBridgeUrl()` and `callGAS()`'s `fetch()`
+   path are removed.
 
-## Decisions needed
+## Decisions (2026-10-22)
 
-1. **Standalone file:** retire it (recommended), or keep it as a demo.
-2. **View state:** page memory, so it resets on reload (recommended); or a
-   per-user config key on the server.
-3. **Order:** Phase 1 alone first (secrets, small, worth doing now), or
-   Phases 1–4 together once the order of work allows.
+1. **Standalone file:** retired, after its data can be imported (Phase 5).
+2. **View state:** resets on reload (page memory).
+3. **Order:** Phase 1 now (done); Phases 2–5 in order as their own PRs.
 
 ## Risks
 
