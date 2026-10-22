@@ -24,7 +24,8 @@ const FILES = [
   path.join(KP, '13_StudioInputBuilder.gs'),
   path.join(KP, '19_StagingRequeue.gs'),
 ];
-const EXPOSE = ['requeueStagingRows', 'previewStagingRequeue', 'buildStudioInputRows', 'CFG'];
+const EXPOSE = ['requeueStagingRows', 'previewStagingRequeue', 'buildStudioInputRows',
+  'getFailedQueueRows', 'previewRetryFailedRow', 'retryFailedRow', 'CFG'];
 
 const STAGING_HEADERS = ['Timestamp', 'Payload_UID', 'Payload_Type', 'Doc_URL', 'File_ID', 'Status', 'Retry_Count'];
 const INPUT_HEADERS = ['Timestamp', 'Payload_UID', 'Payload_Type', 'File_ID', 'SourceText', 'Status'];
@@ -185,4 +186,67 @@ test('requeueStagingRows: uids requeues only the named rows', () => {
   assert.deepEqual(statusOf(staging, 'UID-B'), ['PENDING_FLOW', 0]);
   assert.deepEqual(statusOf(staging, 'UID-A'), ['AUDIT_REJECTED', 2]);
   assert.deepEqual(statusOf(staging, 'UID-C'), ['PROCESSED', 0]);
+});
+
+// ── The web app's failed list and Retry (UX audit 2026-10-22) ──────────────
+// The Queue tab's "Failed" tile had no rows behind it and requeue was
+// editor-only. getFailedQueueRows() lists them; previewRetryFailedRow() and
+// retryFailedRow() go through requeueStagingRows({uids: [uid]}), so the
+// five-place reset above is the only requeue path.
+
+test('getFailedQueueRows: lists every failed row, and says which can be retried', () => {
+  const { exported, staging } = setup();
+  staging.appendRow([new Date(), 'UID-E', 'SESSION_LOG', 'https://x/e', 'fe', 'PROCESSING_ERROR: boom', 1]);
+
+  const r = exported.getFailedQueueRows();
+
+  assert.equal(r.success, true);
+  assert.equal(r.total, 5, 'A, B, D, the fixture and E; PROCESSED C is not failed');
+  assert.deepEqual(r.byStatus, { AUDIT_REJECTED: 1, STUDIO_TIMEOUT: 3, PROCESSING_ERROR: 1 });
+  const byUid = Object.fromEntries(r.rows.map((row) => [row.uid, row]));
+  assert.ok(!byUid['UID-C']);
+  assert.equal(byUid['UID-A'].canRetry, true);
+  assert.equal(byUid['UID-B'].canRetry, true);
+  assert.equal(byUid['FIXTURE-SR-1'].canRetry, false, 'fixture rows are never requeued');
+  assert.equal(byUid['UID-E'].canRetry, false, 'no requeue path for a processing error');
+  assert.equal(byUid['UID-E'].status, 'PROCESSING_ERROR');
+  assert.equal(byUid['UID-E'].detail, 'boom');
+  assert.equal(typeof byUid['UID-A'].addedAt, 'string', 'no Date crosses google.script.run');
+});
+
+test('previewRetryFailedRow: says what a retry will do, and changes nothing', () => {
+  const { exported, props, staging, curator, returns } = setup();
+  const before = JSON.stringify([staging.rows, curator.rows, returns.rows, props.getProperties()]);
+
+  const a = exported.previewRetryFailedRow('UID-A');
+  assert.equal(a.success, true);
+  assert.equal(a.canRetry, true);
+  assert.equal(a.applied, false);
+  assert.equal(a.restoreDoc, true);
+  assert.match(a.message, /original text/);
+
+  const d = exported.previewRetryFailedRow('UID-D');
+  assert.equal(d.canRetry, false, 'SOURCE_LOST: nothing to restore the doc from');
+  assert.match(d.message, /can't be retried/);
+
+  const c = exported.previewRetryFailedRow('UID-C');
+  assert.equal(c.canRetry, false, 'a PROCESSED row is not retried');
+
+  assert.equal(exported.previewRetryFailedRow('').success, false);
+  assert.equal(JSON.stringify([staging.rows, curator.rows, returns.rows, props.getProperties()]), before);
+});
+
+test('retryFailedRow: requeues exactly that row through requeueStagingRows', () => {
+  const { exported, sandbox, staging, curator, returns, files } = setup();
+
+  const r = exported.retryFailedRow('UID-A');
+
+  assert.equal(r.success, true);
+  assert.equal(r.applied, true);
+  assert.deepEqual(statusOf(staging, 'UID-A'), ['PENDING_FLOW', 0]);
+  assert.deepEqual(statusOf(staging, 'UID-B'), ['STUDIO_TIMEOUT', 4], 'only the named row');
+  assert.equal(docText(sandbox, files.A), 'transcript A', 'the doc is restored, as in a batch requeue');
+  assert.ok(!uidsIn(curator).includes('UID-A'), 'its old input row is gone');
+  assert.ok(!uidsIn(returns).includes('UID-A'), 'its old return rows are gone');
+  assert.equal(exported.getFailedQueueRows().rows.some((row) => row.uid === 'UID-A'), false);
 });
