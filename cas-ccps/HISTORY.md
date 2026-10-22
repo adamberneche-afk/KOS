@@ -4198,3 +4198,82 @@ kind of failure every morning.
 - **Tests:** `dashboard-plain-words.test.js`; `student-doc-service` and
   `teacher-dashboard-inline-js` follow the new words.
 
+
+## The three guides rewritten in the dashboards' words, 2026-10-22
+
+- **Why:** the operator asked for plain words, with help where a term must
+  stay; the dashboards changed first (entry above), and the guides still
+  described the old system (UX audit 2026-10-22: Students "Student Quick
+  Start" and "Quick Start FAQ" rows, Classroom teacher "Teacher guides"
+  row).
+- **Student Quick Start:** the doc as 02's `stampDocument_` makes it (page
+  header with the "Your dashboard" link and the Feedback: line, the
+  assignment at 8 pt, "↓ Go to your response" / "↑ Back to the
+  assignment", "Your response", the grey line, the writing space, the
+  CONFIG_ID line, and only the text between them is checked). Feedback is
+  a comment, not text at the end of the doc. The card statuses as 13 shows
+  them; the 12-minute timeout (06) replaces the 10-minute rule; a new
+  warm-ups section (answer, score out of 10, a 10-word extra-credit
+  reply); Canvas turn-in as the cartridge words it; the edit-after-turn-in
+  answer corrected (Canvas holds the link, so the teacher sees the doc as
+  it is). FAQ is `<details>`/`<summary>`.
+- **Teacher Quick-Start:** the activation steps, rubric upload and
+  one-at-a-time registration with a Config ID are gone. It is now the first
+  week: lesson start dates in 📅 Lessons, the nightly rollout enrolling
+  from Canvas (58), what students do, the morning check, a quick reference.
+  Its checklist uses real checkboxes.
+- **Teacher Reference Guide:** "Day to Day" rebuilt around the dashboard:
+  header buttons (Student Context, not My Context), summary cards and
+  badges, lesson drafts through 📅 Lessons' Edit / + New lesson (so there
+  is an edit path), 💬 Feedback, the SCR scale in words with its direction,
+  parent reports marked not in use, archiving per school year (there is no
+  "All Terms" option). Dropped: the Pending Review step, feedback at the
+  end of the doc, the doc locking at turn-in, the folder tree, and lesson
+  logs feeding SCR evidence (ratings come from checks, 30).
+- **All three** end with "Words you'll see", copied from
+  `CAS_STUDENT_TERMS` / `CAS_TEACHER_TERMS` (00). Text is at least 12px and
+  4.5:1 (the big section numbers are decorative and `aria-hidden`); no
+  horizontal scroll at 390px or 1366px. `docs/index.html`'s two
+  descriptions follow. Not done: `docs/notebooklm-sources/`' Markdown
+  copies of these guides are now behind them.
+
+## Plain words everywhere else a student or teacher reads, 2026-10-22
+
+The rest of the audit's jargon list (`meta/UX_AUDIT_2026-10-22.md`), in
+the dashboards' words:
+
+- **Feedback comment (37).** Opens with the time and "Result: ✅ Passed."
+  or "Result: ✏️ Revise, then submit again."; "What to do next" without
+  the box-drawing rules; ends by saying a resolved comment can be found
+  again. The in-doc block keeps the markers 03 matches on. The canary (35)
+  matches the new wording in either case.
+- **Doc header (63).** "submitted {when}, waiting for feedback.", "✅ Passed
+  ({when}).", "✏️ Revise, then submit again ({when})."
+- **The doc's own menu (01).** "📊 Feedback → Submit for Feedback / Where
+  is my work? / Open my dashboard". The pop-ups say where feedback lands
+  and use the Student Dashboard's stage names. The status service (13) now
+  sends formatted dates, the marking period in words (`termLabel_` in 00)
+  and the last result. The dashboard link uses `readSystemIds()`, so a
+  student's copy finds it. The menu still doesn't run for student
+  accounts; the words matter for teachers and for when it does.
+- **Student Dashboard leftovers (13).** "Feedback is ready: …" replaces
+  "Evaluated — feedback ready"; "Turned in — waiting for your teacher" and
+  "Done ✓ — your teacher confirmed it" replace "awaiting teacher review"
+  and "compliant ✓".
+- **Canvas pages.** "your assignment doc" and its "Your response" heading
+  replace "CAS document" and "response zone"; a lesson's `*emphasis*`
+  becomes `<em>` (9 lessons); the dashboard link uses the
+  `/a/macros/ccpsnet.net/` form, which opens in the school account. The
+  student doc (02) shows the same emphasis in italics. Both cartridges
+  are rebuilt; **re-import them into Canvas** for the new text.
+- **Teacher emails.** The warm-up digest (25) says what kind of warm-up
+  works for each student instead of naming an archetype. The timeout
+  email (03) names the student and lesson and links the doc and the
+  dashboard. "Ready for students" (08) replaces "Your Assignment Is Now
+  Live".
+- **Setup alerts (28).** Name the Teacher Dashboard or the file
+  (`31_PacingGuideManager`) instead of "Script 07" / "Script 31".
+
+Left as is: the overnight email (34c) goes to the admin and keeps its
+system names; its "names the problem, not the fix" finding is in the
+audit's failure-states work.

@@ -562,18 +562,18 @@ function sendReviewEmail_(email, name, configId, config, reviewUrl) {
 }
 
 // ---------------------------------------------------------------------------
-// sendActivationEmail_ — unchanged
+// sendActivationEmail_ — plain words (2026-10-22)
 // ---------------------------------------------------------------------------
 function sendActivationEmail_(email, name, configId, unitName) {
   MailApp.sendEmail(
     email,
-    "Your Assignment Is Now Live — " + unitName,
+    "Ready for students — " + unitName,
     "Hello " + name + ",\n\n" +
-    "\"" + unitName + "\" is now live in the system.\n\n" +
-    "Students can be registered using the Student Intake Form.\n" +
-    "Monitor progress from your Assignment Dashboard.\n\n" +
-    "Assignment reference code: " + configId + "\n\n" +
-    "— Assignment System"
+    "\"" + unitName + "\" is set up and ready for students.\n\n" +
+    "Each student gets their own copy of the assignment doc when they fill in " +
+    "the Student Intake Form. You can follow their work on your Teacher Dashboard.\n\n" +
+    "If you need help with this assignment, give your system admin this code: " + configId + "\n\n" +
+    "— Classroom Agency System"
   );
 }
 

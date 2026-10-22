@@ -994,6 +994,12 @@ const FLOW2_SCORE_LABELS = { 2: "Adequate", 3: "Solid", 4: "Exceptional" };
 // Client copies of the above, plus termLabel() ("2627_MP1" -> "Marking
 // period 1, 2026-27"). Interpolate as `${CLIENT_WORDS_JS}` in a dashboard's
 // <script>, like CLIENT_ESC_JS.
+// The server's copy of termLabel, for text built in Apps Script.
+function termLabel_(t) {
+  const m = /^(\d{2})(\d{2})_MP(\d)$/.exec(String(t || "").trim());
+  return m ? "Marking period " + m[3] + ", 20" + m[1] + "\u2013" + m[2] : String(t || "").trim();
+}
+
 const CLIENT_WORDS_JS =
   "var SCR_RATING_LABELS = " + JSON.stringify(SCR_RATING_LABELS) + ";\n" +
   "var FLOW2_SCORE_LABELS = " + JSON.stringify(FLOW2_SCORE_LABELS) + ";\n" +

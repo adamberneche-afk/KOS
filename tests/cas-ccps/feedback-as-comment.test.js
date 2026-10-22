@@ -197,10 +197,10 @@ test('setDocFeedbackStatus_: checking stays grey; a result is color-coded and sa
   const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js')], ['setDocFeedbackStatus_'], { DocumentApp: sandbox.DocumentApp });
   const line = () => sandbox.DocumentApp.openById(id).getHeader().getChild(1);
   assert.equal(exported.setDocFeedbackStatus_(id, 'CHECKING', {}), true);
-  assert.match(line().getText(), /^Feedback: submitted .*, being checked\.$/);
+  assert.match(line().getText(), /^Feedback: submitted .*, waiting for feedback\.$/);
   assert.equal(line().color, '#5f6368');
   exported.setDocFeedbackStatus_(id, 'REVISE', { inComments: true });
-  assert.match(line().getText(), /^Feedback: ✏️ Revisions required \(.*\)\. See the comment on this doc, then submit again\.$/);
+  assert.match(line().getText(), /^Feedback: ✏️ Revise, then submit again \(.*\)\. Read the comment on this doc first\.$/);
   assert.equal(line().color, '#b06000');
   exported.setDocFeedbackStatus_(id, 'PASSED', { inComments: false });
   assert.match(line().getText(), /See the Feedback section below\.$/);
@@ -232,9 +232,9 @@ test('resolveStudentStatus_: an evaluated assignment points to Comments only whe
   const { exported } = loadGasFiles(
     [S('00_SharedConfig.js'), S('13_StudentDashboard.js')], ['resolveStudentStatus_']);
   assert.equal(exported.resolveStudentStatus_('COMPLETE', undefined, true),
-    'Evaluated — feedback ready: open your document and click Comments');
+    'Feedback is ready: open your document and click Comments');
   assert.equal(exported.resolveStudentStatus_('COMPLETE', undefined, false),
-    'Evaluated — feedback ready, check your document');
+    'Feedback is ready: check your document');
 });
 
 // The Teacher Dashboard's per-course control (07) writes the one shared row.

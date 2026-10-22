@@ -226,16 +226,16 @@ function renderSlipView() {
             const p = resolveSlipStudent(s);
             const stCls   = s.status==='returned'?'ss-yes':s.status==='missing'?'ss-no':'ss-pending';
             const stLabel = s.status==='returned'?'✅ Returned':s.status==='missing'?'⚠ Not Returned':'⏳ Pending';
-            const srcBadge = s.source==='deca' ? '<span style="font-size:.6rem;background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;margin-left:4px">DECA</span>'
-                           : s.source==='class' ? '<span style="font-size:.6rem;background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:4px;margin-left:4px">CLASS</span>'
+            const srcBadge = s.source==='deca' ? '<span style="font-size:.75rem;background:#fef3c7;color:#92400e;padding:1px 5px;border-radius:4px;margin-left:4px">DECA</span>'
+                           : s.source==='class' ? '<span style="font-size:.75rem;background:#e0f2fe;color:#0369a1;padding:1px 5px;border-radius:4px;margin-left:4px">CLASS</span>'
                            : '';
             const extraInfo = [p.dietaryNeeds ? '🍽 '+p.dietaryNeeds : '', p.shirtSize ? '👕 '+p.shirtSize : ''].filter(Boolean).join(' · ');
             return `<tr>
               <td>
                 <strong>${escH(p.first)} ${escH(p.last)}</strong>${srcBadge}
-                ${extraInfo ? `<div style="font-size:.68rem;color:var(--muted);margin-top:1px">${escH(extraInfo)}</div>` : ''}
+                ${extraInfo ? `<div style="font-size:.75rem;color:var(--muted);margin-top:1px">${escH(extraInfo)}</div>` : ''}
               </td>
-              <td><span style="font-size:.72rem">${s.tx==='parent'?'🚗 Parent':'🚌 CCPS Bus'}</span></td>
+              <td><span style="font-size:.75rem">${s.tx==='parent'?'🚗 Parent':'🚌 CCPS Bus'}</span></td>
               <td><span class="slip-status ${stCls}">${stLabel}</span></td>
               <td style="font-size:.75rem;font-family:'DM Mono',monospace">${escH(p.parentPhone || p.phone || '—')}</td>
               <td style="font-size:.75rem;color:#666">${escH(s.notes||'')}</td>
@@ -259,13 +259,13 @@ function renderSlipView() {
     <div class="card cal green">
       <div class="stitle">📊 Slip Progress</div>
       <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.65rem">
-        <div style="font-family:'Bebas Neue',cursive;font-size:2.8rem;color:${pct===100?'var(--green)':pct>=60?'var(--navy)':'var(--red)'};line-height:1">${pct}%</div>
+        <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:2.8rem;color:${pct===100?'var(--green)':pct>=60?'var(--navy)':'var(--red)'};line-height:1">${pct}%</div>
         <div style="flex:1">
           <div class="pbar" style="height:9px"><div class="pfill ${pct===100?'pf-ok':pct>=60?'pf-blue':'pf-danger'}" style="width:${pct}%"></div></div>
-          <div style="font-size:.72rem;color:var(--muted);margin-top:.25rem">${stats.returned} of ${stats.total} slips returned</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:.25rem">${stats.returned} of ${stats.total} slips returned</div>
         </div>
       </div>
-      ${pct===100?`<div class="alert as" style="font-size:.74rem"><span class="aico">✅</span>All slips returned! Trip roster complete.</div>`:''}
+      ${pct===100?`<div class="alert as" style="font-size:.75rem"><span class="aico">✅</span>All slips returned! Trip roster complete.</div>`:''}
     </div>
     <div class="card cal blue">
       <div class="stitle">📅 Slip Pacing</div>
@@ -728,21 +728,21 @@ function renderFTPermForm() {
   // Readiness panel
   document.getElementById('ftperm-readiness').innerHTML = `
     <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.7rem">
-      <div style="font-family:'Bebas Neue',cursive;font-size:2.5rem;color:${pct===100?'var(--green)':pct>=60?'var(--navy)':'var(--red)'};line-height:1">${pct}%</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:2.5rem;color:${pct===100?'var(--green)':pct>=60?'var(--navy)':'var(--red)'};line-height:1">${pct}%</div>
       <div style="flex:1">
         <div class="pbar" style="height:8px;margin-bottom:.25rem"><div class="pfill ${pclass}" style="width:${pct}%"></div></div>
-        <div style="font-size:.71rem;color:var(--muted)">${5-missing.length}/5 header fields complete</div>
+        <div style="font-size:.75rem;color:var(--muted)">${5-missing.length}/5 header fields complete</div>
       </div>
     </div>
     ${missing.length ? `
-      <div style="font-size:.71rem;font-weight:700;color:var(--red);margin-bottom:.35rem">⚠ Missing from Form Header</div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--red);margin-bottom:.35rem">⚠ Missing from Form Header</div>
       ${missing.map(m=>`<div class="field-row"><div class="field-dot fd-miss"></div><div class="field-name">${m}</div></div>`).join('')}
       <button class="btn btn-primary btn-sm" style="margin-top:.6rem" onclick="openFTPermFill()">✏️ Fill In Missing Fields</button>
     ` : `
       <div class="alert as" style="font-size:.77rem"><span class="aico">✅</span>Header complete! Print and distribute to students.</div>
       <button class="btn btn-green btn-sm" style="margin-top:.5rem" onclick="printFTPermForm()">🖨 Print Form</button>
     `}
-    <div style="margin-top:.75rem;padding-top:.65rem;border-top:1px solid var(--border);font-size:.73rem;color:#666">
+    <div style="margin-top:.75rem;padding-top:.65rem;border-top:1px solid var(--border);font-size:.75rem;color:#666">
       📋 Health info is collected via official school trip forms — ensure all families return completed forms to the front office before departure.
     </div>
   `;
@@ -876,7 +876,7 @@ function printFTPermForm() {
   const html = buildFTPermHTML(tripId);
   if(!html) return _showToast('Select a trip first.', 2500, '#991b1b');
   _openPrintWindow(
-    'FT Permission Form',
+    'Field Trip Permission Form',
     `body{font-family:'DM Sans',sans-serif;padding:1.5rem 2rem;max-width:720px;margin:0 auto;font-size:12px;}@media print{body{padding:.5rem;}}`,
     html,
     'width=780,height=1000' // was 'height:1000' (colon, not '=') — an invalid window-features token the browser silently dropped, so this window never actually got the intended height
@@ -918,14 +918,14 @@ function renderConfLeaveForm() {
 
   document.getElementById('conf-readiness').innerHTML = `
     <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.7rem">
-      <div style="font-family:'Bebas Neue',cursive;font-size:2.5rem;color:${pct===100?'var(--green)':pct>=60?'var(--navy)':'var(--red)'};line-height:1">${pct}%</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:2.5rem;color:${pct===100?'var(--green)':pct>=60?'var(--navy)':'var(--red)'};line-height:1">${pct}%</div>
       <div style="flex:1">
         <div class="pbar" style="height:8px;margin-bottom:.25rem"><div class="pfill ${pclass}" style="width:${pct}%"></div></div>
-        <div style="font-size:.71rem;color:var(--muted)">${total-missing.length}/${total} required fields complete</div>
+        <div style="font-size:.75rem;color:var(--muted)">${total-missing.length}/${total} required fields complete</div>
       </div>
     </div>
     ${missing.length?`
-      <div style="font-size:.71rem;font-weight:700;color:var(--red);margin-bottom:.35rem">⚠ Missing Required Fields</div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--red);margin-bottom:.35rem">⚠ Missing Required Fields</div>
       ${missing.map(k=>{const labels={emp:'Employee Name',pos:'Position/Title',school:'School',conf:'Conference/Event Name',city:'Location (City, State)',dates:'Date(s)',cat:'Leave Category'};return`<div class="field-row"><div class="field-dot fd-miss"></div><div class="field-name">${labels[k]||k}</div></div>`;}).join('')}
       <button class="btn btn-primary btn-sm" style="margin-top:.6rem" onclick="openConfFill()">✏️ Fill In</button>
     `:`
@@ -933,7 +933,7 @@ function renderConfLeaveForm() {
       <button class="btn btn-green btn-sm" style="margin-top:.5rem" onclick="printConfLeaveForm()">🖨 Print Form</button>
     `}
     ${costs>0?`<div style="margin-top:.65rem;padding-top:.5rem;border-top:1px solid var(--border);font-size:.78rem;font-weight:700;color:var(--navy)">💰 Total Estimated Cost: $${costs.toFixed(2)}</div>`:''}
-    <div style="margin-top:.6rem;padding-top:.55rem;border-top:1px solid var(--border);font-size:.73rem;color:#666">
+    <div style="margin-top:.6rem;padding-top:.55rem;border-top:1px solid var(--border);font-size:.75rem;color:#666">
       🔑 <strong>Category ${r.cat||'III'}</strong> — ${({I:'Needs Principal + Director + (out-of-state: CAO)',II:'Needs Principal only (written auth required)',III:'Needs Principal only — covers field trips & competitions',IV:'Needs Principal + Director + CAO'})[r.cat||'III']||''}
     </div>
   `;
@@ -1319,9 +1319,9 @@ function renderArchiveCard(a) {
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
         ${stars ? `<span style="font-size:.85rem">${stars}</span>` : ''}
-        ${a.outcome ? `<span style="font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:${outcomeColors[a.outcome]||'#f3f4f6'}">${outcomeLabels[a.outcome]||''}</span>` : ''}
-        <button class="btn btn-outline btn-xs" onclick="openArchiveModal(${t.id})" style="font-size:.65rem">✏️ Edit</button>
-        <button class="btn btn-outline btn-xs" onclick="deleteArchiveEntry(${a.id})" aria-label="Remove ${escH(t.name)} from archive" style="font-size:.65rem;color:var(--red);border-color:var(--red)">✕</button>
+        ${a.outcome ? `<span style="font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:20px;background:${outcomeColors[a.outcome]||'#f3f4f6'}">${outcomeLabels[a.outcome]||''}</span>` : ''}
+        <button class="btn btn-outline btn-xs" onclick="openArchiveModal(${t.id})" style="font-size:.75rem">✏️ Edit</button>
+        <button class="btn btn-outline btn-xs" onclick="deleteArchiveEntry(${a.id})" aria-label="Remove ${escH(t.name)} from archive" style="font-size:.75rem;color:var(--red);border-color:var(--red)">✕</button>
       </div>
     </div>
     <!-- Glows & Grow -->
@@ -1332,7 +1332,7 @@ function renderArchiveCard(a) {
         </div>
         <div style="display:flex;flex-direction:column;gap:.4rem">
           ${a.glows.map((g,i) => g ? `<div style="display:flex;gap:.4rem;align-items:flex-start;font-size:.78rem">
-            <span style="background:#22c55e;color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0;margin-top:1px">${i+1}</span>
+            <span style="background:#15803d;color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;margin-top:1px">${i+1}</span>
             <span style="color:#166534">${escH(g)}</span>
           </div>` : '').join('')}
         </div>
@@ -1342,15 +1342,15 @@ function renderArchiveCard(a) {
           <span class="arch-grow-badge">🌱 A Grow</span>
         </div>
         <div style="font-size:.78rem;color:#854d0e;line-height:1.5">${escH(a.grow)}</div>
-        ${a.notes ? `<div style="margin-top:.65rem;padding:.55rem .65rem;background:#f8f7f4;border-radius:6px;font-size:.73rem;color:var(--muted);border:1px solid var(--border)"><span style="font-weight:700;color:var(--ink)">📝 Notes: </span>${escH(a.notes)}</div>` : ''}
+        ${a.notes ? `<div style="margin-top:.65rem;padding:.55rem .65rem;background:#f8f7f4;border-radius:6px;font-size:.75rem;color:var(--muted);border:1px solid var(--border)"><span style="font-weight:700;color:var(--ink)">📝 Notes: </span>${escH(a.notes)}</div>` : ''}
       </div>
     </div>
     <!-- Footer actions -->
     <div style="padding:.55rem 1.1rem;border-top:1px solid var(--border);display:flex;gap:.4rem;flex-wrap:wrap;background:#faf9f6">
       <button class="btn btn-outline btn-xs" onclick="openTripDetail(${t.id})">📋 View Trip</button>
-      <button class="btn btn-outline btn-xs" onclick="openEmailComposerForTrip(${t.id},'students')" style="font-size:.65rem">✉️ Email Students</button>
-      <button class="btn btn-outline btn-xs" onclick="openEmailComposerForTrip(${t.id},'parents')" style="font-size:.65rem">✉️ Email Families</button>
-      <span style="margin-left:auto;font-size:.65rem;color:var(--muted);align-self:center">Archived ${new Date(a.archivedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
+      <button class="btn btn-outline btn-xs" onclick="openEmailComposerForTrip(${t.id},'students')" style="font-size:.75rem">✉️ Email Students</button>
+      <button class="btn btn-outline btn-xs" onclick="openEmailComposerForTrip(${t.id},'parents')" style="font-size:.75rem">✉️ Email Families</button>
+      <span style="margin-left:auto;font-size:.75rem;color:var(--muted);align-self:center">Archived ${new Date(a.archivedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
     </div>
   </div>`;
 }
@@ -1385,7 +1385,7 @@ function renderArchiveKBStrip() {
   el.innerHTML = `<div class="strip" style="flex-wrap:wrap;gap:.85rem">
     <div>
       <div class="strip-lbl">Archive Size</div>
-      <div style="font-size:1.6rem;font-family:'Bebas Neue',cursive;color:#fff">${tripArchive.length} Trip${tripArchive.length!==1?'s':''}</div>
+      <div style="font-size:1.6rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;color:#fff">${tripArchive.length} Trip${tripArchive.length!==1?'s':''}</div>
     </div>
     <div style="width:1px;background:rgba(255,255,255,.15);align-self:stretch"></div>
     <div>
@@ -1395,12 +1395,12 @@ function renderArchiveKBStrip() {
     <div style="width:1px;background:rgba(255,255,255,.15);align-self:stretch"></div>
     <div>
       <div class="strip-lbl">Top Recurring Glows</div>
-      <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.2rem">${topGlowThemes.map(t=>`<span style="background:rgba(34,197,94,.25);color:#4ade80;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:20px">${t}</span>`).join('') || '<span style="color:rgba(255,255,255,.4);font-size:.75rem">add more archive entries</span>'}</div>
+      <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.2rem">${topGlowThemes.map(t=>`<span style="background:rgba(34,197,94,.25);color:#4ade80;font-size:.75rem;font-weight:700;padding:2px 7px;border-radius:20px">${t}</span>`).join('') || '<span style="color:rgba(255,255,255,.75);font-size:.75rem">add more archive entries</span>'}</div>
     </div>
     <div style="width:1px;background:rgba(255,255,255,.15);align-self:stretch"></div>
     <div>
       <div class="strip-lbl">Top Recurring Grows</div>
-      <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.2rem">${topGrowThemes.map(t=>`<span style="background:rgba(234,179,8,.2);color:#fde047;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:20px">${t}</span>`).join('') || '<span style="color:rgba(255,255,255,.4);font-size:.75rem">add more archive entries</span>'}</div>
+      <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.2rem">${topGrowThemes.map(t=>`<span style="background:rgba(234,179,8,.2);color:#fde047;font-size:.75rem;font-weight:700;padding:2px 7px;border-radius:20px">${t}</span>`).join('') || '<span style="color:rgba(255,255,255,.75);font-size:.75rem">add more archive entries</span>'}</div>
     </div>
     <div style="width:1px;background:rgba(255,255,255,.15);align-self:stretch"></div>
     <div style="margin-left:auto">
@@ -1995,24 +1995,24 @@ function renderCompetencyView() {
 
   document.getElementById('scr-top-bar').innerHTML = `
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.65rem">
-      <span style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Period / Class:</span>
+      <span style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Period / Class:</span>
       ${periods.map(p => `<button class="scr-tab${p===scrActivePeriod?' active':''}" onclick="setPeriod('${p}',this)">${p}</button>`).join('')}
-      <span style="margin-left:.5rem;font-size:.72rem;color:var(--muted)">${students.length} students · ${totalComps} competencies (${reqComps} required)</span>
+      <span style="margin-left:.5rem;font-size:.75rem;color:var(--muted)">${students.length} students · ${totalComps} competencies (${reqComps} required)</span>
     </div>
     <div class="strip" style="flex-wrap:wrap">
-      <div><div class="strip-lbl">Completion</div><div style="font-size:1.4rem;font-family:'Bebas Neue',cursive;color:#fff">${classPct}%</div></div>
+      <div><div class="strip-lbl">Completion</div><div style="font-size:1.4rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;color:#fff">${classPct}%</div></div>
       <div style="width:1px;background:rgba(255,255,255,.15)"></div>
-      <div><div class="strip-lbl">Satisfactory Rate</div><div style="font-size:1.4rem;font-family:'Bebas Neue',cursive;color:#4ade80">${satPct}%</div></div>
+      <div><div class="strip-lbl">Satisfactory Rate</div><div style="font-size:1.4rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;color:#4ade80">${satPct}%</div></div>
       <div style="width:1px;background:rgba(255,255,255,.15)"></div>
-      <div><div class="strip-lbl">Scored</div><div style="font-size:1.4rem;font-family:'Bebas Neue',cursive;color:var(--gold)">${totalScored}</div></div>
+      <div><div class="strip-lbl">Scored</div><div style="font-size:1.4rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;color:var(--gold)">${totalScored}</div></div>
       <div style="width:1px;background:rgba(255,255,255,.15)"></div>
-      <div><div class="strip-lbl">Not Yet Scored</div><div style="font-size:1.4rem;font-family:'Bebas Neue',cursive;color:#f87171">${totalPossible - totalScored}</div></div>
+      <div><div class="strip-lbl">Not Yet Scored</div><div style="font-size:1.4rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;color:#f87171">${totalPossible - totalScored}</div></div>
       <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
-        <button class="scr-tab${scrViewMode==='grid'?' active':''}" style="font-size:.68rem" onclick="setScrViewMode('grid')">⊞ Grid</button>
-        <button class="scr-tab${scrViewMode==='list'?' active':''}" style="font-size:.68rem" onclick="setScrViewMode('list')">☰ Cards</button>
+        <button class="scr-tab${scrViewMode==='grid'?' active':''}" style="font-size:.75rem" onclick="setScrViewMode('grid')">⊞ Grid</button>
+        <button class="scr-tab${scrViewMode==='list'?' active':''}" style="font-size:.75rem" onclick="setScrViewMode('list')">☰ Cards</button>
         ${pacingBtn}
         <button class="btn btn-outline btn-xs" style="color:var(--gold);border-color:rgba(255,255,255,.3)" onclick="exportSCR()">📋 Export</button>
-        <span id="scr-last-saved" style="font-size:.63rem;color:rgba(255,255,255,.5);font-style:italic;opacity:.5;transition:opacity .5s;white-space:nowrap">Not saved yet</span>
+        <span id="scr-last-saved" style="font-size:.75rem;color:rgba(255,255,255,.9);font-style:italic;opacity:.85;transition:opacity .5s;white-space:nowrap">Not saved yet</span>
       </div>
     </div>`;
 
@@ -2034,7 +2034,7 @@ function renderLessonTags(compNum) {
   if (!entries || !entries.length) return '';
   const qColors = {1:'#1a3560',2:'#0369a1',3:'#065f46',4:'#7c3aed'};
   return `<div style="display:flex;flex-wrap:wrap;gap:2px;margin-top:3px">
-    ${entries.map(e => `<span style="font-size:.59rem;padding:1px 5px;border-radius:10px;background:${e.isNew?'#d97706':qColors[e.quarter]||'#555'};color:#fff;white-space:nowrap;${e.isNew?'outline:1px solid #f59e0b':''}" title="Q${e.quarter} Wk${e.weeks}">${e.isNew?'✨ NEW · ':('Q'+e.quarter+' · ')}${e.lesson.length>30?e.lesson.substring(0,29)+'…':e.lesson}</span>`).join('')}
+    ${entries.map(e => `<span style="font-size:.75rem;padding:1px 5px;border-radius:10px;background:${e.isNew?'#b45309':qColors[e.quarter]||'#555'};color:#fff;white-space:nowrap;${e.isNew?'outline:1px solid #b45309':''}" title="Q${e.quarter} Wk${e.weeks}">${e.isNew?'✨ NEW · ':('Q'+e.quarter+' · ')}${e.lesson.length>30?e.lesson.substring(0,29)+'…':e.lesson}</span>`).join('')}
   </div>`;
 }
 
@@ -2072,7 +2072,7 @@ function renderPacingView(course, students, myScores) {
       ${Object.entries(byQuarter).map(([q, entries]) => `
         <div style="border:1px solid ${Q_COLORS_BDR[q]};border-radius:12px;overflow:hidden">
           <!-- Quarter Header -->
-          <div style="background:${Q_COLORS_HDR[q]};color:#fff;padding:.65rem 1rem;font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px">
+          <div style="background:${Q_COLORS_HDR[q]};color:#fff;padding:.65rem 1rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1rem;letter-spacing:1.5px">
             ${quarterTitles[q]}
           </div>
           <!-- Lessons -->
@@ -2093,27 +2093,27 @@ function renderPacingView(course, students, myScores) {
               const isFullyCovered = PACING_8177.coveredByLessonPlan ? [...compNums].every(c=>PACING_8177.coveredByLessonPlan.has(c)) : false;
 
               return `
-              <div style="border-bottom:1px solid ${Q_COLORS_BDR[q]};padding:.75rem 1rem${entry.isNew?';border-left:4px solid #f59e0b;background:#fffbeb':''}">
+              <div style="border-bottom:1px solid ${Q_COLORS_BDR[q]};padding:.75rem 1rem${entry.isNew?';border-left:4px solid #b45309;background:#fffbeb':''}">
                 <!-- Lesson header row -->
                 <div style="display:flex;align-items:flex-start;gap:.75rem;flex-wrap:wrap;margin-bottom:.55rem">
                   <div style="flex:1;min-width:200px">
                     <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
-                      <span style="font-size:.63rem;font-weight:800;background:${Q_COLORS_HDR[q]};color:#fff;padding:1px 7px;border-radius:10px">Wk ${entry.weeks}</span>
-                      ${entry.isNew ? '<span style="font-size:.63rem;font-weight:800;background:#d97706;color:#fff;padding:1px 7px;border-radius:10px">✨ NEW LESSON</span>' : ''}
+                      <span style="font-size:.75rem;font-weight:800;background:${Q_COLORS_HDR[q]};color:#fff;padding:1px 7px;border-radius:10px">Wk ${entry.weeks}</span>
+                      ${entry.isNew ? '<span style="font-size:.75rem;font-weight:800;background:#b45309;color:#fff;padding:1px 7px;border-radius:10px">✨ NEW LESSON</span>' : ''}
                       <span style="font-weight:700;font-size:.87rem">${entry.lesson}</span>
-                      ${isFullyCovered && !entry.isNew ? '<span style="font-size:.62rem;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:10px;font-weight:700">✓ Lesson Plan Ready</span>' : ''}
-                      ${entry.isNew ? '<span style="font-size:.62rem;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:10px;font-weight:700">⚙ Needs Development</span>' : ''}
+                      ${isFullyCovered && !entry.isNew ? '<span style="font-size:.75rem;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:10px;font-weight:700">✓ Lesson Plan Ready</span>' : ''}
+                      ${entry.isNew ? '<span style="font-size:.75rem;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:10px;font-weight:700">⚙ Needs Development</span>' : ''}
                     </div>
-                    <div style="font-size:.72rem;color:var(--muted);margin-top:.2rem">${entry.unit}</div>
+                    <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">${entry.unit}</div>
                   </div>
                   <div style="display:flex;gap:.65rem;align-items:center;flex-shrink:0">
                     <div style="text-align:center">
-                      <div style="font-size:1rem;font-family:'Bebas Neue',cursive;color:${Q_COLORS_HDR[q]}">${covPct}%</div>
-                      <div style="font-size:.6rem;color:var(--muted)">scored</div>
+                      <div style="font-size:1rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;color:${Q_COLORS_HDR[q]}">${covPct}%</div>
+                      <div style="font-size:.75rem;color:var(--muted)">scored</div>
                     </div>
                     <div style="text-align:center">
-                      <div style="font-size:1rem;font-family:'Bebas Neue',cursive;color:${satPct>=80?'#22c55e':satPct>=60?'#f59e0b':'#ef4444'}">${scoredCells ? satPct+'%' : '—'}</div>
-                      <div style="font-size:.6rem;color:var(--muted)">satisfactory</div>
+                      <div style="font-size:1rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;color:${satPct>=80?'#15803d':satPct>=60?'#b45309':'#b91c1c'}">${scoredCells ? satPct+'%' : '—'}</div>
+                      <div style="font-size:.75rem;color:var(--muted)">satisfactory</div>
                     </div>
                   </div>
                 </div>
@@ -2121,30 +2121,30 @@ function renderPacingView(course, students, myScores) {
                 ${entry.isNew ? `
                 <!-- NEW LESSON PLAN FULL DETAIL -->
                 <div style="background:#fff;border:1px solid #fde68a;border-radius:8px;padding:.85rem;margin-bottom:.65rem">
-                  <div style="font-size:.65rem;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">📋 Lesson Plan Outline</div>
+                  <div style="font-size:.75rem;font-weight:800;color:#92400e;text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">📋 Lesson Plan Outline</div>
                   <p style="font-size:.78rem;color:#374151;line-height:1.55;margin-bottom:.65rem">${entry.description}</p>
 
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.65rem">
                     <div>
-                      <div style="font-size:.63rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">🎯 Learning Objectives</div>
-                      ${entry.objectives.map((o,i)=>`<div style="font-size:.73rem;padding:.2rem 0;border-bottom:1px solid #fef3c7;color:#374151"><span style="font-weight:700;color:#d97706">${i+1}.</span> ${o}</div>`).join('')}
+                      <div style="font-size:.75rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">🎯 Learning Objectives</div>
+                      ${entry.objectives.map((o,i)=>`<div style="font-size:.75rem;padding:.2rem 0;border-bottom:1px solid #fef3c7;color:#374151"><span style="font-weight:700;color:#b45309">${i+1}.</span> ${o}</div>`).join('')}
                     </div>
                     <div>
-                      <div style="font-size:.63rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">📦 Materials Needed</div>
-                      ${entry.materials.map(m=>`<div style="font-size:.73rem;padding:.2rem 0;border-bottom:1px solid #fef3c7;color:#374151">• ${m}</div>`).join('')}
+                      <div style="font-size:.75rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">📦 Materials Needed</div>
+                      ${entry.materials.map(m=>`<div style="font-size:.75rem;padding:.2rem 0;border-bottom:1px solid #fef3c7;color:#374151">• ${m}</div>`).join('')}
                     </div>
                   </div>
 
                   <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
                     <div>
-                      <div style="font-size:.63rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">📐 VDOE Standards Addressed</div>
-                      ${entry.standards.map(s=>`<div style="font-size:.72rem;padding:.2rem 0;border-bottom:1px solid #fef3c7;color:#374151">• ${s}</div>`).join('')}
+                      <div style="font-size:.75rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">📐 VDOE Standards Addressed</div>
+                      ${entry.standards.map(s=>`<div style="font-size:.75rem;padding:.2rem 0;border-bottom:1px solid #fef3c7;color:#374151">• ${s}</div>`).join('')}
                     </div>
                     <div>
-                      <div style="font-size:.63rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">📊 Assessment</div>
-                      <div style="font-size:.73rem;color:#374151;line-height:1.5;margin-bottom:.5rem">${entry.assessment}</div>
-                      <div style="font-size:.63rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">🔗 Curriculum Connections</div>
-                      <div style="font-size:.73rem;color:#374151;line-height:1.5">${entry.connections}</div>
+                      <div style="font-size:.75rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">📊 Assessment</div>
+                      <div style="font-size:.75rem;color:#374151;line-height:1.5;margin-bottom:.5rem">${entry.assessment}</div>
+                      <div style="font-size:.75rem;font-weight:800;color:#1a3560;text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem">🔗 Curriculum Connections</div>
+                      <div style="font-size:.75rem;color:#374151;line-height:1.5">${entry.connections}</div>
                     </div>
                   </div>
                 </div>` : ''}
@@ -2156,7 +2156,7 @@ function renderPacingView(course, students, myScores) {
                     const avgSat = scored.length ? Math.round(scored.filter(v=>v<=3).length/scored.length*100) : null;
                     const chipBg = avgSat===null?'#f3f4f6':avgSat>=80?'#dcfce7':avgSat>=60?'#fef9c3':'#fee2e2';
                     const chipColor = avgSat===null?'#6b7280':avgSat>=80?'#15803d':avgSat>=60?'#92400e':'#b91c1c';
-                    return `<span style="font-size:.68rem;padding:3px 8px;border-radius:6px;background:${chipBg};color:${chipColor};border:1px solid ${chipColor}30;cursor:default" title="#${c}: ${(compText[c]||'').substring(0,80)}">
+                    return `<span style="font-size:.75rem;padding:3px 8px;border-radius:6px;background:${chipBg};color:${chipColor};border:1px solid ${chipColor}30;cursor:default" title="#${c}: ${(compText[c]||'').substring(0,80)}">
                       <strong>#${c}</strong>${avgSat!==null?` · ${avgSat}%`:''}
                     </span>`;
                   }).join('')}
@@ -2167,12 +2167,12 @@ function renderPacingView(course, students, myScores) {
                     const scores = students.map(s=>(myScores[_scrStudentKey(s)]||{})[c]).filter(v=>v!=null);
                     const sat = scores.filter(v=>v<=3).length;
                     const pct = scores.length ? Math.round(sat/scores.length*100) : null;
-                    const bar = pct !== null ? `<div style="display:inline-block;width:40px;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;vertical-align:middle;margin-left:4px"><div style="height:100%;width:${pct}%;background:${pct>=80?'#22c55e':pct>=60?'#f59e0b':'#ef4444'}"></div></div>` : '';
+                    const bar = pct !== null ? `<div style="display:inline-block;width:40px;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;vertical-align:middle;margin-left:4px"><div style="height:100%;width:${pct}%;background:${pct>=80?'#15803d':pct>=60?'#b45309':'#b91c1c'}"></div></div>` : '';
                     const comp = course.competencies.find(x=>x.num===c);
-                    return `<div style="font-size:.71rem;padding:.15rem 0;display:flex;align-items:flex-start;gap:.3rem">
+                    return `<div style="font-size:.75rem;padding:.15rem 0;display:flex;align-items:flex-start;gap:.3rem">
                       <span style="font-family:'DM Mono',monospace;color:${Q_COLORS_HDR[q]};font-weight:700;flex-shrink:0;min-width:22px">${c}</span>
-                      <span style="color:#374151;flex:1">${compText[c]||''} ${comp&&comp.req!=='Required'?'<em style="color:#9ca3af">(Optional)</em>':''}</span>
-                      <span style="flex-shrink:0;font-size:.65rem;color:var(--muted)">${scores.length?sat+'/'+scores.length:''}</span>
+                      <span style="color:#374151;flex:1">${compText[c]||''} ${comp&&comp.req!=='Required'?'<em style="color:#4b5563">(Optional)</em>':''}</span>
+                      <span style="flex-shrink:0;font-size:.75rem;color:var(--muted)">${scores.length?sat+'/'+scores.length:''}</span>
                       ${bar}
                     </div>`;
                   }).join('')}
@@ -2186,17 +2186,17 @@ function renderPacingView(course, students, myScores) {
         <div class="stitle" style="margin-bottom:.75rem">📊 Course Coverage Summary — ${scrActiveCourse}</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
           <div>
-            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">All Lessons & Their Competencies</div>
+            <div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">All Lessons & Their Competencies</div>
             ${PACING.lessons.map(e=>`
-              <div style="display:flex;align-items:flex-start;gap:.5rem;padding:.2rem 0;border-bottom:1px solid var(--border);font-size:.73rem">
-                <span style="font-size:.62rem;background:${Q_COLORS_HDR[e.quarter]};color:#fff;padding:1px 5px;border-radius:8px;flex-shrink:0;margin-top:2px">Q${e.quarter}</span>
-                ${e.isNew?'<span style="font-size:.62rem;background:#d97706;color:#fff;padding:1px 5px;border-radius:8px;flex-shrink:0;margin-top:2px">NEW</span>':''}
+              <div style="display:flex;align-items:flex-start;gap:.5rem;padding:.2rem 0;border-bottom:1px solid var(--border);font-size:.75rem">
+                <span style="font-size:.75rem;background:${Q_COLORS_HDR[e.quarter]};color:#fff;padding:1px 5px;border-radius:8px;flex-shrink:0;margin-top:2px">Q${e.quarter}</span>
+                ${e.isNew?'<span style="font-size:.75rem;background:#b45309;color:#fff;padding:1px 5px;border-radius:8px;flex-shrink:0;margin-top:2px">NEW</span>':''}
                 <span style="flex:1;${e.isNew?'font-weight:600':''}">${e.lesson.length>45?e.lesson.substring(0,44)+'…':e.lesson}</span>
-                <span style="font-family:'DM Mono',monospace;font-size:.63rem;color:var(--muted);text-align:right;max-width:120px">${e.comps.join(', ')}</span>
+                <span style="font-family:'DM Mono',monospace;font-size:.75rem;color:var(--muted);text-align:right;max-width:120px">${e.comps.join(', ')}</span>
               </div>`).join('')}
           </div>
           <div>
-            <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Coverage Stats</div>
+            <div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Coverage Stats</div>
             ${buildCoverageStatsHTML(course, PACING)}
           </div>
         </div>
@@ -2214,32 +2214,32 @@ function buildCoverageStatsHTML(course, PACING) {
   let h = '';
   h += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.75rem">
     <div style="text-align:center;background:#f0fdf4;border-radius:8px;padding:.65rem">
-      <div style="font-size:1.8rem;font-family:'Bebas Neue',cursive;color:#15803d">${pct}%</div>
-      <div style="font-size:.65rem;color:var(--muted)">Pacing Coverage</div>
+      <div style="font-size:1.8rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;color:#15803d">${pct}%</div>
+      <div style="font-size:.75rem;color:var(--muted)">Pacing Coverage</div>
     </div>
     <div style="text-align:center;background:#eff6ff;border-radius:8px;padding:.65rem">
-      <div style="font-size:1.8rem;font-family:'Bebas Neue',cursive;color:#1d4ed8">${newLsns.length}</div>
-      <div style="font-size:.65rem;color:var(--muted)">New Lessons Created</div>
+      <div style="font-size:1.8rem;font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;color:#1d4ed8">${newLsns.length}</div>
+      <div style="font-size:.75rem;color:var(--muted)">New Lessons Created</div>
     </div>
   </div>`;
   if (newLsns.length) {
-    h += `<div style="font-size:.72rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem">✨ New Lessons — Gaps Closed</div>`;
+    h += `<div style="font-size:.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem">✨ New Lessons — Gaps Closed</div>`;
     for (const e of newLsns) {
       h += `<div style="background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:.5rem .7rem;margin-bottom:.35rem">
-        <div style="font-weight:700;font-size:.74rem;color:#78350f;margin-bottom:.15rem">${e.lesson}</div>
-        <div style="font-size:.67rem;color:#92400e">Closes: ${e.comps.join(', ')}</div>
+        <div style="font-weight:700;font-size:.75rem;color:#78350f;margin-bottom:.15rem">${e.lesson}</div>
+        <div style="font-size:.75rem;color:#92400e">Closes: ${e.comps.join(', ')}</div>
       </div>`;
     }
   }
   if (uncovered.length) {
-    h += `<div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:.7rem 0 .35rem">Covered by Lesson Plans (Not Named in Pacing)</div>`;
-    h += `<div style="font-size:.71rem;color:#92400e;background:#fef3c7;border-radius:6px;padding:.5rem;margin-bottom:.4rem">These ${uncovered.length} competencies are addressed through lesson plans but not listed lesson-by-lesson in the pacing guide.</div>`;
-    h += `<div style="font-family:'DM Mono',monospace;font-size:.67rem;color:var(--muted);line-height:1.9">${uncovered.join(', ')}</div>`;
+    h += `<div style="font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin:.7rem 0 .35rem">Covered by Lesson Plans (Not Named in Pacing)</div>`;
+    h += `<div style="font-size:.75rem;color:#92400e;background:#fef3c7;border-radius:6px;padding:.5rem;margin-bottom:.4rem">These ${uncovered.length} competencies are addressed through lesson plans but not listed lesson-by-lesson in the pacing guide.</div>`;
+    h += `<div style="font-family:'DM Mono',monospace;font-size:.75rem;color:var(--muted);line-height:1.9">${uncovered.join(', ')}</div>`;
   } else {
     h += `<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:.75rem;text-align:center;margin-top:.5rem">
       <div style="font-size:1.3rem">✅</div>
       <div style="font-weight:700;color:#15803d;font-size:.8rem">100% Coverage Achieved</div>
-      <div style="font-size:.7rem;color:var(--muted);margin-top:.2rem">All required competencies mapped to at least one lesson.</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-top:.2rem">All required competencies mapped to at least one lesson.</div>
     </div>`;
   }
   return h;

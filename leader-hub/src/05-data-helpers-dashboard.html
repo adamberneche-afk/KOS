@@ -1197,7 +1197,7 @@ const fmtDeadline = t => { const dl=subDeadline(t); if(!dl)return null; return d
 const tagClass = {fieldtrip:'tag-ft',deca:'tag-deca',leadership:'tag-lead',community:'tag-comm'};
 const tagEmoji = {fieldtrip:'🚌',deca:'🏆',leadership:'⭐',community:'🤝'};
 const rcColors = {'President':'#0f2044','Vice President':'#1a5fb4','Treasurer':'#d63d2f','Chapter Officer':'#6b21a8','Event Lead':'#c9962a','Community Lead':'#0369a1','Secretary':'#2a7a4b','Member':'#555'};
-const gcColors = {'DECA Competition':'var(--gold)','Community Service':'var(--green)','Leadership Development':'var(--navy)','Field Trip':'var(--blue)','Fundraising':'var(--red)','Membership Growth':'var(--purple)'};
+const gcColors = {'DECA Competition':'#92400e','Community Service':'var(--green)','Leadership Development':'var(--navy)','Field Trip':'var(--blue)','Fundraising':'var(--red)','Membership Growth':'var(--purple)'};
 
 // ============================================================
 // VIEWS
@@ -1265,7 +1265,7 @@ function showView(name, btn) {
   } catch(e) {
     console.error('showView('+name+') crashed:', e);
     const eb = document.createElement('div');
-    eb.style.cssText='position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:.75rem 1.25rem;border-radius:8px;font-family:monospace;font-size:.75rem;z-index:9999;max-width:80vw;';
+    eb.style.cssText='position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#b91c1c;color:#fff;padding:.75rem 1.25rem;border-radius:8px;font-family:monospace;font-size:.75rem;z-index:9999;max-width:80vw;';
     eb.textContent='Nav error ('+name+'): '+e.message;
     document.body.appendChild(eb);
     setTimeout(()=>eb.remove(),8000);
@@ -1404,7 +1404,7 @@ function renderFormHub() {
     // Phase 2: Fill FT Permission Form (parent handout)
     phases.push({
       n:'2', icon:'👨‍👩‍👧',
-      label:'Print & Distribute FT Permission Forms',
+      label:'Print & Distribute Field Trip Permission Forms',
       sub: fpDone ? `Header complete — print ${t.stuAtt||'?'} copies for parents` : `Missing: ${fpMissing.join(' · ')}`,
       dueLabel: dl ? `Complete before notifying students (${fd(fmtDeadline(t))})` : 'Complete before submission',
       state: fpDone ? 'done' : dtd<=14 ? 'active' : 'future',
@@ -1476,12 +1476,12 @@ function renderFormHub() {
       <!-- Trip header -->
       <div style="background:var(--navy);color:#fff;padding:.7rem 1.1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
         <div>
-          <div style="font-family:'Bebas Neue',cursive;font-size:1.25rem;letter-spacing:2px">${escH(t.name)}</div>
-          <div style="font-size:.71rem;color:rgba(255,255,255,.55)">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)} &nbsp;·&nbsp; ${t.sub?.replace('-',' ')||'same day'} &nbsp;·&nbsp; ${escH(t.dest1||'Destination TBD')}</div>
+          <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.25rem;letter-spacing:2px">${escH(t.name)}</div>
+          <div style="font-size:.75rem;color:rgba(255,255,255,.75)">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)} &nbsp;·&nbsp; ${t.sub?.replace('-',' ')||'same day'} &nbsp;·&nbsp; ${escH(t.dest1||'Destination TBD')}</div>
         </div>
         <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
-          <span style="font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:20px;background:${dtd<0&&t.status==='planned'?'var(--red)':dtd<=14&&t.status==='planned'?'var(--orange)':'rgba(255,255,255,.15)'};color:#fff">${urgLabel}</span>
-          <div style="font-size:.68rem;text-align:center"><div style="font-family:'Bebas Neue',cursive;font-size:1.5rem;line-height:1;color:${overallPct===100?'#4ade80':'var(--gold)'}">${overallPct}%</div><div style="color:rgba(255,255,255,.45)">forms done</div></div>
+          <span style="font-size:.75rem;font-weight:700;padding:3px 9px;border-radius:20px;background:${dtd<0&&t.status==='planned'?'var(--red)':dtd<=14&&t.status==='planned'?'var(--orange)':'rgba(255,255,255,.15)'};color:#fff">${urgLabel}</span>
+          <div style="font-size:.75rem;text-align:center"><div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.5rem;line-height:1;color:${overallPct===100?'#4ade80':'var(--gold)'}">${overallPct}%</div><div style="color:rgba(255,255,255,.75)">forms done</div></div>
         </div>
       </div>
 
@@ -1498,14 +1498,14 @@ function renderFormHub() {
             return `<div style="background:${stateBg};border:1px solid ${stateColor};border-radius:8px;padding:.6rem .75rem">
               <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
                 <div style="display:flex;align-items:center;gap:.35rem">
-                  <div style="width:22px;height:22px;border-radius:50%;background:${iconBg};color:${p.state==='active'?'var(--navy)':'#fff'};display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">${p.state==='done'?'✓':p.n}</div>
+                  <div style="width:22px;height:22px;border-radius:50%;background:${iconBg};color:${p.state==='active'?'var(--navy)':'#fff'};display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0">${p.state==='done'?'✓':p.n}</div>
                   <span style="font-size:.75rem;font-weight:700;color:${p.state==='done'?'var(--green)':p.state==='warn'?'var(--red)':p.state==='active'?'#7a5900':'#888'}">${p.icon}</span>
                 </div>
-                <span class="status ${p.badgeCls}" style="font-size:.58rem">${p.badge}</span>
+                <span class="status ${p.badgeCls}" style="font-size:.75rem">${p.badge}</span>
               </div>
               <div style="font-size:.77rem;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:.2rem">${p.label}</div>
-              <div style="font-size:.69rem;color:#666;line-height:1.4;margin-bottom:.35rem">${p.sub}</div>
-              <div style="font-size:.63rem;color:var(--muted);margin-bottom:.4rem">📅 ${p.dueLabel}</div>
+              <div style="font-size:.75rem;color:#666;line-height:1.4;margin-bottom:.35rem">${p.sub}</div>
+              <div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">📅 ${p.dueLabel}</div>
               <div style="display:flex;gap:.3rem;flex-wrap:wrap">
                 ${p.action?`<button class="btn btn-primary btn-xs" onclick="${p.action.fn}">${p.action.label}</button>`:''}
                 ${p.action2?`<button class="btn btn-outline btn-xs" onclick="${p.action2.fn}">${p.action2.label}</button>`:''}
@@ -1558,7 +1558,7 @@ function renderDashPriorityActions() {
       actions.push({
         urgency, sev: dtd <= 14 ? 'aw' : 'ai', icon: '👨‍👩‍👧',
         trip: t.name,
-        title: `Print FT Permission & Risk Form — ${fpMissing.length} header field${fpMissing.length===1?'':'s'} missing`,
+        title: `Print Field Trip Permission & Risk Form — ${fpMissing.length} header field${fpMissing.length===1?'':'s'} missing`,
         detail: `Missing: ${fpMissing.join(', ')}. Print one per student for parents to sign.`,
         deadline: `Complete before notifying students (after all approvals received)`,
         btnLabel: '✏️ Fill & Print',
@@ -1639,16 +1639,16 @@ function renderDashPriorityActions() {
     if(!items.length) return '';
     return `
       <div style="margin-bottom:.85rem">
-        <div style="font-size:.67rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:.45rem">${label}</div>
+        <div style="font-size:.75rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:.45rem">${label}</div>
         <div style="display:flex;flex-direction:column;gap:.5rem">
           ${items.map(a=>`
             <div class="alert ${a.sev}" style="padding:.6rem .85rem;align-items:flex-start;gap:.6rem">
               <span class="aico" style="font-size:1rem">${a.icon}</span>
               <div style="flex:1">
-                <div style="font-size:.69rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:inherit;opacity:.7;margin-bottom:.1rem">${escH(a.trip)}</div>
+                <div style="font-size:.75rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:inherit;opacity:.7;margin-bottom:.1rem">${escH(a.trip)}</div>
                 <div style="font-weight:700;font-size:.81rem;margin-bottom:.18rem">${a.title}</div>
-                <div style="font-size:.74rem;opacity:.85;line-height:1.45;margin-bottom:.28rem">${a.detail}</div>
-                <div style="font-size:.67rem;opacity:.7;margin-bottom:.35rem">📅 ${a.deadline}</div>
+                <div style="font-size:.75rem;opacity:.85;line-height:1.45;margin-bottom:.28rem">${a.detail}</div>
+                <div style="font-size:.75rem;opacity:.7;margin-bottom:.35rem">📅 ${a.deadline}</div>
                 <div style="display:flex;gap:.35rem;flex-wrap:wrap">
                   <button class="btn btn-primary btn-xs" onclick="${a.btnFn}">${a.btnLabel}</button>
                   ${a.btn2Label&&a.btn2Fn?`<button class="btn btn-outline btn-xs" onclick="${a.btn2Fn}">${a.btn2Label}</button>`:''}
@@ -1703,7 +1703,7 @@ function renderDashSlips() {
       ${s.total ? `
         <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.1rem">
           <div class="pbar" style="flex:1"><div class="pfill ${cls}" style="width:${pct}%"></div></div>
-          <span style="font-size:.67rem;font-family:'DM Mono',monospace;min-width:60px;text-align:right;color:${pct===100?'var(--green)':pct<50?'var(--red)':'var(--orange)'}">${s.returned}/${s.total} back</span>
+          <span style="font-size:.75rem;font-family:'DM Mono',monospace;min-width:60px;text-align:right;color:${pct===100?'var(--green)':pct<50?'var(--red)':'var(--orange)'}">${s.returned}/${s.total} back</span>
         </div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap">
           ${s.missing>0?`<span class="status st-urgent">⚠ ${s.missing} missing</span>`:''}
@@ -1726,22 +1726,22 @@ function renderReadinessCard(t, compact=false) {
   return `<div class="rcard">
     <div class="rcard-top">
       <div>
-        <div class="rcard-name">${escH(t.name)}${t.archived?' <span title="This trip has an Archive snapshot — editing it does not update the snapshot" style="font-size:.62rem;font-weight:700;color:#7c3aed;background:#ede9fe;padding:.1rem .4rem;border-radius:4px;vertical-align:middle">📦 ARCHIVED</span>':''}</div>
-        <div style="font-size:.72rem;color:var(--muted);margin-top:.15rem">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)}</div>
-        ${dtd<0&&t.status==='planned'?`<div class="alert ad" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">🚨</span>Deadline OVERDUE</div>`:dtd<=14&&dtd>=0&&t.status==='planned'?`<div class="alert aw" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">⚠️</span>Submit in ${dtd} day${dtd===1?'':'s'}</div>`:''}
+        <div class="rcard-name">${escH(t.name)}${t.archived?' <span title="This trip has an Archive snapshot — editing it does not update the snapshot" style="font-size:.75rem;font-weight:700;color:#7c3aed;background:#ede9fe;padding:.1rem .4rem;border-radius:4px;vertical-align:middle">📦 ARCHIVED</span>':''}</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-top:.15rem">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)}</div>
+        ${dtd<0&&t.status==='planned'?`<div class="alert ad" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.75rem"><span class="aico">🚨</span>Deadline OVERDUE</div>`:dtd<=14&&dtd>=0&&t.status==='planned'?`<div class="alert aw" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.75rem"><span class="aico">⚠️</span>Submit in ${dtd} day${dtd===1?'':'s'}</div>`:''}
       </div>
       <div style="text-align:center">
         <div class="rcard-pct">${pct}%</div>
-        <div style="font-size:.65rem;color:var(--muted)">complete</div>
+        <div style="font-size:.75rem;color:var(--muted)">complete</div>
       </div>
     </div>
     <div class="pbar" style="margin-bottom:.65rem"><div class="pfill ${pclass}" style="width:${pct}%"></div></div>
     ${missing.length ? `
       <div style="margin-bottom:.5rem">
-        <div style="font-size:.7rem;font-weight:700;color:var(--red);margin-bottom:.3rem">⚠ ${missing.length} Required Field${missing.length===1?'':'s'} Missing</div>
-        ${missing.slice(0,4).map(f=>`<div class="field-row"><div class="field-dot fd-miss"></div><div class="field-name">${f.label}</div><span style="font-size:.68rem;color:var(--muted)">${f.section}</span></div>`).join('')}
-        ${missing.length>4?`<div style="font-size:.7rem;color:var(--muted);padding:.2rem .4rem">+${missing.length-4} more...</div>`:''}
-      </div>` : `<div class="alert as" style="font-size:.74rem"><span class="aico">✅</span>All required fields complete! Ready for TripTracker.</div>`}
+        <div style="font-size:.75rem;font-weight:700;color:var(--red);margin-bottom:.3rem">⚠ ${missing.length} Required Field${missing.length===1?'':'s'} Missing</div>
+        ${missing.slice(0,4).map(f=>`<div class="field-row"><div class="field-dot fd-miss"></div><div class="field-name">${f.label}</div><span style="font-size:.75rem;color:var(--muted)">${f.section}</span></div>`).join('')}
+        ${missing.length>4?`<div style="font-size:.75rem;color:var(--muted);padding:.2rem .4rem">+${missing.length-4} more...</div>`:''}
+      </div>` : `<div class="alert as" style="font-size:.75rem"><span class="aico">✅</span>All required fields complete! Ready for TripTracker.</div>`}
     <div style="display:flex;gap:.4rem;margin-top:.55rem;flex-wrap:wrap">
       <button class="btn btn-primary btn-xs" onclick="openTripDetail(${t.id})">📋 View Details</button>
       <button class="btn btn-outline btn-xs" onclick="openEditModal(${t.id})">✏️ Fill In</button>
@@ -1749,7 +1749,7 @@ function renderReadinessCard(t, compact=false) {
       <button class="btn btn-outline btn-xs" onclick="openEmailComposerForTrip(${t.id},'parents')">✉️ Email</button>
       <button class="btn btn-outline btn-xs" onclick="openArchiveModal(${t.id})" style="color:#7c3aed;border-color:#c4b5fd">${t.archived?'🔄 Update Archive':'📦 Archive'}</button>
       ${pct===100?`<button class="btn btn-green btn-xs" onclick="generateFormPreview(${t.id})">📄 Preview Form</button>`:''}
-      <button class="btn btn-xs" onclick="deleteTrip(${t.id})" style="color:#dc2626;border-color:#fecaca;background:#fff;border:1px solid #fecaca;border-radius:5px;font-size:.68rem;padding:.18rem .5rem;cursor:pointer;font-weight:700">✕ Delete</button>
+      <button class="btn btn-xs" onclick="deleteTrip(${t.id})" style="color:#b91c1c;border-color:#fecaca;background:#fff;border:1px solid #fecaca;border-radius:5px;font-size:.75rem;padding:.18rem .5rem;cursor:pointer;font-weight:700">✕ Delete</button>
     </div>
   </div>`;
 }

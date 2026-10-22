@@ -71,9 +71,12 @@ test('a lesson assignment is the Canvas text without its title and submission li
   xml.forEach(([p, x]) => {
     assert.match(x, /<gradable points_possible="100">true<\/gradable>/, p);
     assert.match(x, /<format type="url"\/>/, p);
-    assert.match(x, /CAS document for this lesson/, p);
+    assert.match(x, /assignment doc for this lesson/, p);
+    assert.doesNotMatch(x, /CAS document|response zone|\*\w[^*]*\*/, p);
     assert.doesNotMatch(x, /Title: Assignment|Bell Ringer|Grading Tip|Pacing guide dates/, p);
   });
+  const l01 = xml.map(([, x]) => x).find((x) => /L01/.test(x));
+  assert.match(l01, /&lt;em&gt;next&lt;\/em&gt;/, 'a lesson\'s *emphasis* becomes <em>');
   const l06 = xml.map(([, x]) => x).find((x) => /L06 SKILL DEVELOPMENT PLAN/.test(x));
   assert.match(l06, /Write a 100-word plan/);
   assert.match(l06, /&lt;h3&gt;The Task&lt;\/h3&gt;/, '"The Task:" becomes a heading');
@@ -152,8 +155,8 @@ test('unit builder: an assignment sends the student to their CAS document and ta
   const xml = Object.entries(files).filter(([p]) => p.endsWith('assignment.xml'));
   assert.equal(xml.length, 18);
   xml.forEach(([p, x]) => {
-    assert.match(x, /CAS document for this unit/, p);
-    assert.doesNotMatch(x, /response zone below/, p);
+    assert.match(x, /assignment doc for this unit/, p);
+    assert.doesNotMatch(x, /CAS document|response zone/, p);
   });
 });
 

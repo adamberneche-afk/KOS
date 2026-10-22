@@ -12,11 +12,11 @@ function renderEvents(type) {
     const isActionNeeded = e.id===14 || e.id===15 || e.id===16; // ICDC reg, payment, trip
 
     let statusBadge = '';
-    if(isComplete) statusBadge = `<span class="status st-approved" style="font-size:.6rem">✅ Complete</span>`;
-    else if(e.status==='active') statusBadge = `<span class="status st-pending" style="font-size:.6rem">🔵 Awaiting Results</span>`;
-    else if(isActionNeeded) statusBadge = `<span class="status st-urgent" style="font-size:.6rem">⚠️ Action Required</span>`;
-    else if(isUrgent) statusBadge = `<span class="status st-urgent" style="font-size:.6rem">⏰ ${daysAway}d away</span>`;
-    else if(daysAway !== null) statusBadge = `<span class="status st-planned" style="font-size:.6rem">${du(e.date)}</span>`;
+    if(isComplete) statusBadge = `<span class="status st-approved" style="font-size:.75rem">✅ Complete</span>`;
+    else if(e.status==='active') statusBadge = `<span class="status st-pending" style="font-size:.75rem">🔵 Awaiting Results</span>`;
+    else if(isActionNeeded) statusBadge = `<span class="status st-urgent" style="font-size:.75rem">⚠️ Action Required</span>`;
+    else if(isUrgent) statusBadge = `<span class="status st-urgent" style="font-size:.75rem">⏰ ${daysAway}d away</span>`;
+    else if(daysAway !== null) statusBadge = `<span class="status st-planned" style="font-size:.75rem">${du(e.date)}</span>`;
 
     const urgentBorder = isActionNeeded ? '3px solid var(--red)' : isUrgent ? '3px solid var(--orange)' : '1px solid var(--border)';
 
@@ -33,7 +33,7 @@ function renderEvents(type) {
           ${e.stu?`<span>👥 ${e.stu} students${e.adults?' · '+e.adults+' adults':''}</span>`:''}
           ${e.cost?`<span>💰 ${e.cost}</span>`:''}
           ${e.transport?`<span>🚌 ${e.transport}</span>`:''}
-          ${e.notes?`<div style="color:${isActionNeeded?'#b91c1c':'#555'};margin-top:.25rem;font-size:.73rem;line-height:1.4">${e.notes}</div>`:''}
+          ${e.notes?`<div style="color:${isActionNeeded?'#b91c1c':'#555'};margin-top:.25rem;font-size:.75rem;line-height:1.4">${e.notes}</div>`:''}
         </div>
       </div>
       ${!isComplete && e.id<=16 ? `<div style="padding:.5rem .85rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.35rem">
@@ -328,7 +328,7 @@ function renderOrgHub() {
   // while they work. Shown here (and in Members, see renderStudents) too,
   // using the same _orgSyncStatusLine_ helper Settings itself now calls.
   const badgeEl = document.getElementById('orghub-sync-badge');
-  if (badgeEl) badgeEl.innerHTML = `<span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
+  if (badgeEl) badgeEl.innerHTML = `<span style="font-size:.75rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
   if (activeOrgId === 'deca') {
     if (titleEl) titleEl.textContent = '🏆 DECA Chapter Hub';
     renderDECAHub();
@@ -345,7 +345,7 @@ function renderGenericOrgHub(orgId) {
   const org = ORGANIZATIONS[orgId];
   if (!org) { el.innerHTML = ''; return; }
   const card = (title, icon, content) => `<div class="card" style="margin-bottom:1rem">
-    <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px;color:var(--navy);margin-bottom:.75rem">${icon} ${title}</div>
+    <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1rem;letter-spacing:1.5px;color:var(--navy);margin-bottom:.75rem">${icon} ${title}</div>
     ${content}
   </div>`;
   const officers = students.filter(s => s.org === orgId && isOfficer(s) && s.memberStatus !== 'alumni');
@@ -366,18 +366,18 @@ function renderDECAHub() {
 
   const card = (title, icon, content, urgent=false) =>
     `<div class="card" style="margin-bottom:1rem;${urgent?'border:2px solid var(--red)':''}">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px;color:${urgent?'var(--red)':'var(--navy)'};margin-bottom:.75rem">${icon} ${title}</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1rem;letter-spacing:1.5px;color:${urgent?'var(--red)':'var(--navy)'};margin-bottom:.75rem">${icon} ${title}</div>
       ${content}
     </div>`;
 
   const row = (label, val) => val ?
     `<div style="display:flex;gap:.5rem;margin-bottom:.3rem;font-size:.8rem">
-      <span style="color:var(--muted);min-width:160px;flex-shrink:0">${label}</span>
+      <span style="color:inherit;opacity:.8;min-width:160px;flex-shrink:0">${label}</span>
       <span style="font-weight:600">${val}</span>
     </div>` : '';
 
   const badge = (txt, color='var(--navy)') =>
-    `<span style="display:inline-block;background:${color};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;margin:2px">${txt}</span>`;
+    `<span style="display:inline-block;background:${color};color:#fff;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:20px;margin:2px">${txt}</span>`;
 
   // ── Season Timeline ───────────────────────────────────────────────────────
   // FIXED: this used to be a second, hardcoded stages array — a completely
@@ -414,9 +414,9 @@ function renderDECAHub() {
       const ic = done ? '✅' : act ? '🔵' : urg ? '⚠️' : s.icon;
       return `<div style="border:1.5px solid ${border};border-radius:8px;padding:.5rem;background:${bg};text-align:center">
         <div style="font-size:1rem">${escH(ic)}</div>
-        <div style="font-size:.65rem;font-weight:700;color:${urg?'var(--red)':done?'var(--muted)':'var(--navy)'};margin:.15rem 0;line-height:1.2">${escH(s.label)}</div>
-        <div style="font-size:.58rem;color:var(--muted)">${escH(s.dates)}</div>
-        <div style="font-size:.58rem;color:${urg?'var(--red)':'#666'};margin-top:.2rem;line-height:1.3">${escH(s.detail)}</div>
+        <div style="font-size:.75rem;font-weight:700;color:${urg?'var(--red)':done?'var(--muted)':'var(--navy)'};margin:.15rem 0;line-height:1.2">${escH(s.label)}</div>
+        <div style="font-size:.75rem;color:var(--muted)">${escH(s.dates)}</div>
+        <div style="font-size:.75rem;color:${urg?'var(--red)':'#666'};margin-top:.2rem;line-height:1.3">${escH(s.detail)}</div>
       </div>`;
     }).join('')}
   </div>`;
@@ -428,35 +428,35 @@ function renderDECAHub() {
 
   const icdcAlert = icdcUrgent ? `
     <div class="alert" style="background:#fef2f2;border:2px solid var(--red);border-radius:8px;padding:.85rem 1rem;margin-bottom:.75rem">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1px;color:var(--red);margin-bottom:.5rem">🚨 ICDC — ACTION REQUIRED NOW</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1rem;letter-spacing:1px;color:var(--red);margin-bottom:.5rem">🚨 ICDC — ACTION REQUIRED NOW</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;font-size:.78rem">
         <div style="background:#fff;border-radius:6px;padding:.6rem;border:1px solid #fecaca">
           <div style="font-weight:700;color:var(--red);margin-bottom:.2rem">Field Trip Form</div>
           <div>Submit to TripTracker by <strong>~Mar 11</strong></div>
-          <div style="color:var(--muted);font-size:.72rem">45-day lead for out-of-state overnight</div>
+          <div style="color:var(--muted);font-size:.75rem">45-day lead for out-of-state overnight</div>
           <div style="margin-top:.4rem">${icdcFormDeadline > 0 ? badge(icdcFormDeadline+'d left','var(--red)') : badge('OVERDUE','#7f1d1d')}</div>
-          <button class="btn btn-sm" onclick="openModal('newTrip')" style="margin-top:.4rem;width:100%;background:var(--red);color:#fff;border:none;font-size:.7rem">Start Form →</button>
+          <button class="btn btn-sm" onclick="openModal('newTrip')" style="margin-top:.4rem;width:100%;background:var(--red);color:#fff;border:none;font-size:.75rem">Start Form →</button>
         </div>
         <div style="background:#fff;border-radius:6px;padding:.6rem;border:1px solid #fecaca">
           <div style="font-weight:700;color:#b45309;margin-bottom:.2rem">Registration Window</div>
           <div>Opens <strong>Mar 2</strong> · Closes <strong>Mar 13</strong></div>
-          <div style="color:var(--muted);font-size:.72rem">$155/student · Top 8 + bumps from Top 10</div>
+          <div style="color:var(--muted);font-size:.75rem">$155/student · Top 8 + bumps from Top 10</div>
           <div style="margin-top:.4rem">${icdcDaysLeft > 0 ? badge('Reg closes in '+icdcDaysLeft+'d','var(--orange)') : badge('Reg CLOSED','#7f1d1d')}</div>
-          <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">70%+ SLC test score required</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">70%+ SLC test score required</div>
         </div>
         <div style="background:#fff;border-radius:6px;padding:.6rem;border:1px solid #fecaca">
           <div style="font-weight:700;color:var(--navy);margin-bottom:.2rem">Logistics</div>
           <div>Payment due <strong>Apr 1</strong></div>
-          <div style="color:var(--muted);font-size:.72rem">Atlanta Hilton · $260/night · 4/room</div>
-          <div style="font-size:.7rem;margin-top:.3rem">Coordinate flights + rooming with other CCPS advisors</div>
-          <div style="font-size:.7rem;font-weight:700;margin-top:.3rem">Apr 25–29 · Atlanta, GA</div>
+          <div style="color:var(--muted);font-size:.75rem">Atlanta Hilton · $260/night · 4/room</div>
+          <div style="font-size:.75rem;margin-top:.3rem">Coordinate flights + rooming with other CCPS advisors</div>
+          <div style="font-size:.75rem;font-weight:700;margin-top:.3rem">Apr 25–29 · Atlanta, GA</div>
         </div>
       </div>
       <div style="display:flex;gap:.5rem;margin-top:.65rem;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'students')" style="font-size:.72rem;background:var(--navy);color:#fff;border:none">✉️ Email Qualifiers</button>
-        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'parents')" style="font-size:.72rem;background:var(--navy);color:#fff;border:none">✉️ Email Families</button>
-        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'school')" style="font-size:.72rem;background:var(--navy);color:#fff;border:none">✉️ Notify Admin</button>
-        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'faculty')" style="font-size:.72rem;background:var(--navy);color:#fff;border:none">✉️ Notify Faculty</button>
+        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'students')" style="font-size:.75rem;background:var(--navy);color:#fff;border:none">✉️ Email Qualifiers</button>
+        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'parents')" style="font-size:.75rem;background:var(--navy);color:#fff;border:none">✉️ Email Families</button>
+        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'school')" style="font-size:.75rem;background:var(--navy);color:#fff;border:none">✉️ Notify Admin</button>
+        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'faculty')" style="font-size:.75rem;background:var(--navy);color:#fff;border:none">✉️ Notify Faculty</button>
       </div>
     </div>` : '';
 
@@ -464,7 +464,7 @@ function renderDECAHub() {
   const seasonCards = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.75rem">
       <div class="card" style="background:var(--navy);color:#fff;border:none">
-        <div style="font-size:.65rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Ultimate Power Trip · Nov 21–23</div>
+        <div style="font-size:.75rem;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:1px">Ultimate Power Trip · Nov 21–23</div>
         <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">13 students traveled</div>
         ${row('Location','Renaissance Arlington Capital View')}
         ${row('Transport','Amtrak from Staples Mills + Rental')}
@@ -474,17 +474,17 @@ function renderDECAHub() {
         ${row('Account','DECA 4280')}
       </div>
       <div class="card" style="background:var(--navy);color:#fff;border:none">
-        <div style="font-size:.65rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">District Leadership Conference · Dec 3</div>
+        <div style="font-size:.75rem;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:1px">District Leadership Conference · Dec 3</div>
         <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">15 students competed</div>
         ${row('Location','Chesterfield Towne Center')}
         ${row('Transport','Parent Transportation (1 vehicle)')}
         ${row('Students','9F / 6M · 23 invited')}
         ${row('Chaperones','Adam Berneche · Kristen Hangey')}
         ${row('Cost','$0 (included w/membership)')}
-        ${row('JI Topic','Ice Cream Innovator @ Sweet Scoops')}
+        ${row('Job interview topic','Ice Cream Innovator @ Sweet Scoops')}
       </div>
       <div class="card" style="background:var(--navy);color:#fff;border:none">
-        <div style="font-size:.65rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">State Leadership Conference · Feb 27–Mar 1 ⏳</div>
+        <div style="font-size:.75rem;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:1px">State Leadership Conference · Feb 27–Mar 1 ⏳</div>
         <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">15 students · RESULTS PENDING</div>
         ${row('Location','Virginia Beach Convention Center')}
         ${row('Housing','Hampton Inn North Oceanfront, $171/night, 4/room')}
@@ -507,9 +507,9 @@ function renderDECAHub() {
     : `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem">
     ${keyContactsList.map(c => `<div style="border:1px solid var(--border);border-radius:8px;padding:.6rem;background:var(--surface)">
       <div style="font-weight:700;font-size:.78rem">${escH(c.name)}</div>
-      <div style="font-size:.68rem;color:var(--muted);margin:.1rem 0">${escH(c.role)}</div>
-      ${c.phone && c.phone !== '—' ? `<div style="font-size:.7rem">📞 ${escH(c.phone)}</div>` : ''}
-      ${c.email && c.email !== '—' ? `<div style="font-size:.7rem">✉️ ${escH(c.email)}</div>` : ''}
+      <div style="font-size:.75rem;color:var(--muted);margin:.1rem 0">${escH(c.role)}</div>
+      ${c.phone && c.phone !== '—' ? `<div style="font-size:.75rem">📞 ${escH(c.phone)}</div>` : ''}
+      ${c.email && c.email !== '—' ? `<div style="font-size:.75rem">✉️ ${escH(c.email)}</div>` : ''}
     </div>`).join('')}
   </div>`;
 
@@ -559,12 +559,12 @@ function renderDECAHub() {
     card('📋 Admin Approval Checklist — CCPS Required Forms', '🏛️', renderDecaApprovalChecklist(), true) +
     `<div style="margin-bottom:.75rem">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-        <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px;color:var(--navy)">📊 Season Record</div>
+        <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1rem;letter-spacing:1.5px;color:var(--navy)">📊 Season Record</div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" style="font-size:.7rem" onclick="openEmailComposer(null,'students')">✉️ Email All Students</button>
-          <button class="btn btn-outline btn-sm" style="font-size:.7rem" onclick="openEmailComposer(null,'parents')">✉️ Email All Families</button>
-          <button class="btn btn-outline btn-sm" style="font-size:.7rem" onclick="openEmailComposer(null,'school')">✉️ Email Admin</button>
-          <button class="btn btn-outline btn-sm" style="font-size:.7rem" onclick="openEmailComposer(null,'faculty')">✉️ Email Faculty</button>
+          <button class="btn btn-outline btn-sm" style="font-size:.75rem" onclick="openEmailComposer(null,'students')">✉️ Email All Students</button>
+          <button class="btn btn-outline btn-sm" style="font-size:.75rem" onclick="openEmailComposer(null,'parents')">✉️ Email All Families</button>
+          <button class="btn btn-outline btn-sm" style="font-size:.75rem" onclick="openEmailComposer(null,'school')">✉️ Email Admin</button>
+          <button class="btn btn-outline btn-sm" style="font-size:.75rem" onclick="openEmailComposer(null,'faculty')">✉️ Email Faculty</button>
         </div>
       </div>
       ${seasonCards}
@@ -605,20 +605,20 @@ function renderDecaResults() {
 
   const summary = `<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.85rem">
     <div style="background:var(--navy);color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${totalResults}</div>
-      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Results Logged</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.4rem;line-height:1">${totalResults}</div>
+      <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.5px">Results Logged</div>
     </div>
     <div style="background:#15803d;color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${topPlaces}</div>
-      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Top-5 Finishes</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.4rem;line-height:1">${topPlaces}</div>
+      <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.5px">Top-5 Finishes</div>
     </div>
     <div style="background:#b45309;color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${icdcQuals}</div>
-      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">SLC Qualifiers</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.4rem;line-height:1">${icdcQuals}</div>
+      <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.5px">SLC Qualifiers</div>
     </div>
     <div style="background:#6d28d9;color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${icdcConfirmed}</div>
-      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">ICDC Entries</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.4rem;line-height:1">${icdcConfirmed}</div>
+      <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.5px">ICDC Entries</div>
     </div>
   </div>`;
 
@@ -640,24 +640,24 @@ function renderDecaResults() {
           <td style="padding:.35rem .5rem;font-size:.77rem;font-weight:600">${escH(r.student)}</td>
           <td style="padding:.35rem .5rem;font-size:.75rem;color:var(--muted)">${escH(r.event)}</td>
           <td style="padding:.35rem .5rem">
-            <span style="background:${placeColor(r.place)};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px">${escH(r.place)}</span>
+            <span style="background:${placeColor(r.place)};color:#fff;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:10px">${escH(r.place)}</span>
           </td>
-          <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
+          <td style="padding:.35rem .5rem;font-size:.75rem;color:var(--muted)">${escH(r.notes||'')}</td>
           <td style="padding:.35rem .5rem;text-align:right">
-            <button onclick="deleteDecaResult('${escJsAttr(r.id)}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
+            <button onclick="deleteDecaResult('${escJsAttr(r.id)}')" style="font-size:.75rem;background:none;border:none;color:#b91c1c;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
           </td>
         </tr>`).join('')
       : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
 
     return `<div style="margin-bottom:.85rem">
-      <div style="font-size:.72rem;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;border-bottom:2px solid var(--navy);padding-bottom:.2rem">${ev.label}</div>
+      <div style="font-size:.75rem;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;border-bottom:2px solid var(--navy);padding-bottom:.2rem">${ev.label}</div>
       <table style="width:100%;border-collapse:collapse">
         <thead>
           <tr style="background:#f3f4f6">
-            <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Student</th>
-            <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Event / Category</th>
-            <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Place</th>
-            <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Notes</th>
+            <th style="padding:.3rem .5rem;font-size:.75rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Student</th>
+            <th style="padding:.3rem .5rem;font-size:.75rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Event / Category</th>
+            <th style="padding:.3rem .5rem;font-size:.75rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Place</th>
+            <th style="padding:.3rem .5rem;font-size:.75rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Notes</th>
             <th></th>
           </tr>
         </thead>
@@ -669,24 +669,24 @@ function renderDecaResults() {
   // Add result form
   const addForm = `
     <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;margin-top:.5rem">
-      <div style="font-size:.72rem;font-weight:700;color:var(--navy);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.5px">+ Log a Result</div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.5px">+ Log a Result</div>
       <div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr auto;gap:.4rem;align-items:end">
         <div>
-          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Student Name</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Student Name</div>
           <input id="deca-res-student" placeholder="Last, First" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
         </div>
         <div>
-          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Event / Category</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Event / Category</div>
           <input id="deca-res-event" placeholder="e.g. Advertising Campaign" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
         </div>
         <div>
-          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Conference</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Conference</div>
           <select id="deca-res-conf" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
             ${DECA_RESULT_EVENTS.map(e=>`<option value="${e.id}"${e.id===lastDecaConf?' selected':''}>${e.short}</option>`).join('')}
           </select>
         </div>
         <div>
-          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Placement</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Placement</div>
           <select id="deca-res-place" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
             ${DECA_PLACE_OPTIONS.map(p=>`<option${p===lastDecaPlace?' selected':''}>${p}</option>`).join('')}
           </select>
@@ -694,7 +694,7 @@ function renderDecaResults() {
         <button onclick="addDecaResult()" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">Add ＋</button>
       </div>
       <div style="margin-top:.35rem">
-        <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Notes (optional)</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Notes (optional)</div>
         <input id="deca-res-notes" placeholder="e.g. Qualified for ICDC · Team event · Partner: Smith" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
       </div>
     </div>`;
@@ -792,12 +792,12 @@ function renderOrgResults(orgId) {
   const topPlaces = results.filter(r => ['1st','2nd','3rd','4th','5th'].includes(r.place)).length;
   const summary = `<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.85rem">
     <div style="background:var(--navy);color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${totalResults}</div>
-      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Results Logged</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.4rem;line-height:1">${totalResults}</div>
+      <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.5px">Results Logged</div>
     </div>
     <div style="background:#15803d;color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${topPlaces}</div>
-      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Top-5 Finishes</div>
+      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.4rem;line-height:1">${topPlaces}</div>
+      <div style="font-size:.75rem;text-transform:uppercase;letter-spacing:.5px">Top-5 Finishes</div>
     </div>
   </div>`;
 
@@ -813,18 +813,18 @@ function renderOrgResults(orgId) {
     <td style="padding:.35rem .5rem;font-size:.77rem;font-weight:600">${escH(r.student)}</td>
     <td style="padding:.35rem .5rem;font-size:.75rem;color:var(--muted)">${escH(r.event)}</td>
     <td style="padding:.35rem .5rem">
-      <span style="background:${placeColor(r.place)};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px">${escH(r.place)}</span>
+      <span style="background:${placeColor(r.place)};color:#fff;font-size:.75rem;font-weight:700;padding:2px 8px;border-radius:10px">${escH(r.place)}</span>
     </td>
-    <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
+    <td style="padding:.35rem .5rem;font-size:.75rem;color:var(--muted)">${escH(r.notes||'')}</td>
     <td style="padding:.35rem .5rem;text-align:right">
-      <button onclick="deleteOrgResult('${escJsAttr(orgId)}','${escJsAttr(r.id)}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
+      <button onclick="deleteOrgResult('${escJsAttr(orgId)}','${escJsAttr(r.id)}')" style="font-size:.75rem;background:none;border:none;color:#b91c1c;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
     </td>
   </tr>`;
   const resultTableHead = `<thead><tr style="background:#f3f4f6">
-    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Student</th>
-    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Event / Category</th>
-    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Place</th>
-    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Notes</th>
+    <th style="padding:.3rem .5rem;font-size:.75rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Student</th>
+    <th style="padding:.3rem .5rem;font-size:.75rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Event / Category</th>
+    <th style="padding:.3rem .5rem;font-size:.75rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Place</th>
+    <th style="padding:.3rem .5rem;font-size:.75rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Notes</th>
     <th></th>
   </tr></thead>`;
 
@@ -835,7 +835,7 @@ function renderOrgResults(orgId) {
       const rows = lvResults.length ? lvResults.map(resultRow).join('')
         : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
       return `<div style="margin-bottom:.85rem">
-        <div style="font-size:.72rem;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;border-bottom:2px solid var(--navy);padding-bottom:.2rem">${escH(lv.label)}</div>
+        <div style="font-size:.75rem;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;border-bottom:2px solid var(--navy);padding-bottom:.2rem">${escH(lv.label)}</div>
         <table style="width:100%;border-collapse:collapse">${resultTableHead}<tbody>${rows}</tbody></table>
       </div>`;
     }).join('');
@@ -847,7 +847,7 @@ function renderOrgResults(orgId) {
 
   const levelSelector = levels.length ? `
     <div>
-      <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Level</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Level</div>
       <select id="org-res-level" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
         ${levels.map(lv=>`<option value="${escH(lv.key)}"${lv.key===_lastOrgResultLevel[orgId]?' selected':''}>${escH(lv.label)}</option>`).join('')}
       </select>
@@ -855,19 +855,19 @@ function renderOrgResults(orgId) {
 
   const addForm = `
     <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;margin-top:.5rem">
-      <div style="font-size:.72rem;font-weight:700;color:var(--navy);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.5px">+ Log a Result</div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.5px">+ Log a Result</div>
       <div style="display:grid;grid-template-columns:1.5fr 1.5fr ${levels.length?'1fr ':''}1fr auto;gap:.4rem;align-items:end">
         <div>
-          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Student Name</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Student Name</div>
           <input id="org-res-student" placeholder="Last, First" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
         </div>
         <div>
-          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Event / Category</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Event / Category</div>
           <input id="org-res-event" placeholder="e.g. Chapter Meeting Award" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
         </div>
         ${levelSelector}
         <div>
-          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Placement</div>
+          <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Placement</div>
           <select id="org-res-place" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
             ${placeOptions.map(p=>`<option${p===_lastOrgResultPlace[orgId]?' selected':''}>${escH(p)}</option>`).join('')}
           </select>
@@ -875,7 +875,7 @@ function renderOrgResults(orgId) {
         <button onclick="addOrgResult('${orgId}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">Add ＋</button>
       </div>
       <div style="margin-top:.35rem">
-        <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Notes (optional)</div>
+        <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Notes (optional)</div>
         <input id="org-res-notes" placeholder="e.g. Qualified for next level" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
       </div>
     </div>`;
@@ -967,7 +967,7 @@ function renderDecaApprovalChecklist() {
     const critDone = critical.filter(isChecked).length;
     const allCritical = critDone === critical.length;
     const pct = Math.round(done / total * 100);
-    const barColor = allCritical ? '#22c55e' : done > 0 ? '#f59e0b' : '#e5e7eb';
+    const barColor = allCritical ? '#15803d' : done > 0 ? '#b45309' : '#e5e7eb';
 
     const steps = APPROVAL_STEPS.map(step => {
       const checked = isChecked(step);
@@ -977,23 +977,23 @@ function renderDecaApprovalChecklist() {
         // exact drift this unification exists to remove.
         return `<div style="display:flex;align-items:flex-start;gap:.45rem;padding:.22rem 0;font-size:.75rem;color:${checked?'var(--muted)':'inherit'};${checked?'text-decoration:line-through':''}">
           <span style="margin-top:1px;flex-shrink:0">${checked?'✅':'⬜'}</span>
-          <span><strong>${step.label}</strong> <span style="font-size:.62rem;color:#b91c1c">★ Required</span>
-            ${trip ? `<a href="javascript:void(0)" onclick="showView('trips');openTripDetail(${trip.id})" style="font-size:.62rem;color:var(--navy);margin-left:.3rem">synced from Trip Detail →</a>`
-                   : `<span style="font-size:.62rem;color:var(--red)"> — no matching trip found</span>`}
+          <span><strong>${step.label}</strong> <span style="font-size:.75rem;color:#b91c1c">★ Required</span>
+            ${trip ? `<a href="javascript:void(0)" onclick="showView('trips');openTripDetail(${trip.id})" style="font-size:.75rem;color:var(--navy);margin-left:.3rem">synced from Trip Detail →</a>`
+                   : `<span style="font-size:.75rem;color:var(--red)"> — no matching trip found</span>`}
           </span>
         </div>`;
       }
       return `<label style="display:flex;align-items:flex-start;gap:.45rem;cursor:pointer;padding:.22rem 0;font-size:.75rem;color:${checked?'var(--muted)':'inherit'};${checked?'text-decoration:line-through':''}">
         <input type="checkbox" ${checked?'checked':''} onchange="toggleDecaCheck('${ev.id}','${step.key}',this.checked)" style="margin-top:2px;accent-color:var(--navy);flex-shrink:0">
-        <span>${step.critical?'<strong>':''} ${step.label} ${step.critical?'</strong>':''}${step.critical?' <span style="font-size:.62rem;color:#b91c1c">★ Required</span>':''}</span>
+        <span>${step.critical?'<strong>':''} ${step.label} ${step.critical?'</strong>':''}${step.critical?' <span style="font-size:.75rem;color:#b91c1c">★ Required</span>':''}</span>
       </label>`;
     }).join('');
 
     return `<div style="border:${ev.urgent&&!allCritical?'2px solid var(--red)':'1px solid var(--border)'};border-radius:8px;padding:.7rem .85rem;margin-bottom:.55rem;background:${allCritical?'#f0fdf4':ev.urgent?'#fef9f9':'var(--surface)'}">
       <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem;flex-wrap:wrap">
         <div style="font-weight:700;font-size:.82rem;flex:1">${ev.urgent&&!allCritical?'⚠️ ':''}${ev.label}</div>
-        <span style="font-size:.65rem;background:${allCritical?'#dcfce7':'#f3f4f6'};color:${allCritical?'#15803d':'#555'};padding:1px 8px;border-radius:20px;font-weight:700">${allCritical?'✅ All Critical Done':`${critDone}/${critical.length} critical`}</span>
-        <span style="font-size:.65rem;color:var(--muted)">${done}/${total} steps</span>
+        <span style="font-size:.75rem;background:${allCritical?'#dcfce7':'#f3f4f6'};color:${allCritical?'#15803d':'#555'};padding:1px 8px;border-radius:20px;font-weight:700">${allCritical?'✅ All Critical Done':`${critDone}/${critical.length} critical`}</span>
+        <span style="font-size:.75rem;color:var(--muted)">${done}/${total} steps</span>
       </div>
       <div style="height:4px;border-radius:2px;background:#e5e7eb;margin-bottom:.55rem">
         <div style="height:4px;border-radius:2px;background:${barColor};width:${pct}%;transition:width .3s"></div>
@@ -1100,12 +1100,12 @@ function renderDECAPipeline() {
     <div class="card" style="background:var(--navy);color:#fff;padding:1rem 1.25rem;border:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:.5rem">
         <div>
-          <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;letter-spacing:2px;color:var(--gold)">🏆 ${escH(DECA_SEASON.title || 'DECA Season Pipeline')}</div>
-          <div style="font-size:.72rem;color:rgba(255,255,255,.5)">${escH(PROFILE.school)} · DECA Account 4280 · Advisor: ${escH(PROFILE.name)}</div>
+          <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.4rem;letter-spacing:2px;color:var(--gold)">🏆 ${escH(DECA_SEASON.title || 'DECA Season Pipeline')}</div>
+          <div style="font-size:.75rem;color:rgba(255,255,255,.75)">${escH(PROFILE.school)} · DECA Account 4280 · Advisor: ${escH(PROFILE.name)}</div>
         </div>
         <div style="display:flex;gap:.5rem;align-items:center">
-          <span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--green);color:#fff;font-weight:700">${doneCount} event${doneCount!==1?'s':''} complete</span>
-          ${hasUrgentOpen ? `<span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--red);color:#fff;font-weight:700">⚠️ Action needed</span>` : ''}
+          <span style="font-size:.75rem;padding:3px 9px;border-radius:20px;background:var(--green);color:#fff;font-weight:700">${doneCount} event${doneCount!==1?'s':''} complete</span>
+          ${hasUrgentOpen ? `<span style="font-size:.75rem;padding:3px 9px;border-radius:20px;background:var(--red);color:#fff;font-weight:700">⚠️ Action needed</span>` : ''}
           <button class="btn btn-sm btn-outline btn-on-navy" onclick="openDecaSeasonEditor()" style="color:#fff;border-color:rgba(255,255,255,.4)" title="Update next year's season timeline">✏️ Edit Season</button>
         </div>
       </div>
@@ -1120,9 +1120,9 @@ function renderDECAPipeline() {
           return `<div style="background:${bg};border:1.5px solid ${border};border-radius:8px;padding:.55rem .6rem;position:relative">
             ${isUrgent?`<div style="position:absolute;top:-5px;right:-5px;width:11px;height:11px;border-radius:50%;background:var(--red);border:2px solid var(--navy)"></div>`:''}
             <div style="font-size:1.1rem;margin-bottom:.18rem">${isDone?'✅':isActive?'🔵':escH(s.icon)}</div>
-            <div style="font-size:.68rem;font-weight:700;color:${isDone?'rgba(255,255,255,.6)':'#fff'};line-height:1.25;margin-bottom:.2rem">${escH(s.label)}</div>
-            <div style="font-size:.61rem;color:rgba(255,255,255,.5);margin-bottom:.25rem">${s.date?fd(s.date):''}</div>
-            <div style="font-size:.61rem;color:${isUrgent?'#fca5a5':'rgba(255,255,255,.45)'};line-height:1.35">${escH(s.detail)}</div>
+            <div style="font-size:.75rem;font-weight:700;color:${isDone?'rgba(255,255,255,.8)':'#fff'};line-height:1.25;margin-bottom:.2rem">${escH(s.label)}</div>
+            <div style="font-size:.75rem;color:rgba(255,255,255,.75);margin-bottom:.25rem">${s.date?fd(s.date):''}</div>
+            <div style="font-size:.75rem;color:${isUrgent?'#fca5a5':'rgba(255,255,255,.8)'};line-height:1.35">${escH(s.detail)}</div>
           </div>`;
         }).join('')}
       </div>
@@ -1152,7 +1152,7 @@ function openDecaSeasonEditor() {
     </div>
     <div style="font-size:.76rem;color:var(--muted);margin-bottom:.6rem">Edit as JSON — title, an array of stages ({label, date, endDate, icon, status or statusAuto:true, detail, color, urgent}), and an optional notice banner. Used at the start of each new season.</div>
     <textarea id="deca-season-json" style="width:100%;height:340px;font-family:'DM Mono',monospace;font-size:.76rem;border:1px solid var(--border);border-radius:8px;padding:.6rem">${JSON.stringify(DECA_SEASON, null, 2).replace(/</g,"&lt;")}</textarea>
-    <div id="deca-season-err" style="color:#dc2626;font-size:.75rem;margin-top:.4rem"></div>
+    <div id="deca-season-err" style="color:#b91c1c;font-size:.75rem;margin-top:.4rem"></div>
     <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem">
       <button class="btn btn-outline" onclick="lhUseBuiltInDecaSeason()" style="margin-right:auto" title="Replaces the season and the Virginia DECA entries in Deadlines">📅 Use the built-in ${escH(DECA_SEASON_YEAR)} season</button>
       <button class="btn btn-outline" onclick="this.closest('#deca-season-editor').remove()">Cancel</button>
@@ -1223,7 +1223,7 @@ const MEMBER_STATUS_MAP = {
   slc:         {label:'SLC Qualifier',    color:'#6d28d9', bg:'#ede9fe'},
   icdc:        {label:'ICDC Qualifier',   color:'#92400e', bg:'#fef3c7'},
   alumni:      {label:'Alumni',           color:'#475569', bg:'#f1f5f9'},
-  inactive:    {label:'Inactive',         color:'#9ca3af', bg:'#f9fafb'},
+  inactive:    {label:'Inactive',         color:'#4b5563', bg:'#f9fafb'},
 };
 
 // Legacy fallback list — used only for a roster row whose `org` doesn't
@@ -1299,7 +1299,7 @@ function renderStudents(){
   // renderOrgHub() — Members is the other place a co-advisor is actually
   // working with this organization's synced data.
   const syncBadgeEl = document.getElementById('member-sync-badge');
-  if (syncBadgeEl) syncBadgeEl.innerHTML = `<span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
+  if (syncBadgeEl) syncBadgeEl.innerHTML = `<span style="font-size:.75rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
   const search = (document.getElementById('member-search')?.value||'').toLowerCase();
   const content = document.getElementById('member-tab-content');
   if(!content) return;
@@ -1349,14 +1349,14 @@ function statusBadge(s){
 
 function positionBadge(pos){
   const isOff = _officerPositionsFor(activeOrgId).includes(pos);
-  return `<span style="font-size:.68rem;font-weight:700;padding:1px 7px;border-radius:20px;background:${isOff?'#0f2044':'#f3f4f6'};color:${isOff?'#fff':'#555'}">${escH(pos)}</span>`;
+  return `<span style="font-size:.75rem;font-weight:700;padding:1px 7px;border-radius:20px;background:${isOff?'#0f2044':'#f3f4f6'};color:${isOff?'#fff':'#555'}">${escH(pos)}</span>`;
 }
 
 function avatarBg(s){
   const map = {President:'#0f2044','Executive Vice President':'#1a3560','Treasurer':'#d63d2f',Secretary:'#2a7a4b',Parliamentarian:'#854d0e',Reporter:'#0369a1','Sergeant at Arms':'#7c3aed',Webmaster:'#065f46'};
   if(map[s.position]) return map[s.position];
   if(s.position.startsWith('Vice President')) return '#1a5fb4';
-  return s.memberStatus==='alumni' ? '#64748b' : '#555';
+  return s.memberStatus==='alumni' ? '#475569' : '#555';
 }
 
 function renderOfficerGrid(list){
@@ -1372,25 +1372,25 @@ function renderOfficerGrid(list){
         <div style="flex:1;min-width:0">
           <div style="font-weight:700;font-size:.9rem">${escH(s.first)} ${escH(s.last)}</div>
           <div style="margin:.2rem 0">${positionBadge(s.position)}</div>
-          <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.3rem">${statusBadge(s)}${s.paid?'<span style="font-size:.63rem;background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:20px;font-weight:700">✓ Paid</span>':'<span style="font-size:.63rem;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:20px;font-weight:700">⚠ Dues Owed</span>'}</div>
-          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">🏆 ${escH(s.competEvent)}</div>`:''}
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.3rem">${statusBadge(s)}${s.paid?'<span style="font-size:.75rem;background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:20px;font-weight:700">✓ Paid</span>':'<span style="font-size:.75rem;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:20px;font-weight:700">⚠ Dues Owed</span>'}</div>
+          ${s.competEvent?`<div style="font-size:.75rem;color:var(--muted);margin-top:.35rem">🏆 ${escH(s.competEvent)}</div>`:''}
         </div>
       </div>
       <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.4rem;flex-wrap:wrap">
-        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.68rem;color:var(--navy)">✉ Member</a><span style="color:var(--border)">|</span>`:''}
-        ${s.parentEmail?`<a href="mailto:${escH(s.parentEmail)}" style="font-size:.68rem;color:var(--navy)">✉ Parent</a><span style="color:var(--border)">|</span>`:''}
-        ${s.phone?`<span style="font-size:.68rem;color:var(--muted)">${escH(s.phone)}</span><span style="color:var(--border)">|</span>`:''}
-        <button class="btn btn-outline btn-xs" style="font-size:.63rem;margin-left:auto" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
-        <button class="btn btn-danger btn-xs" style="font-size:.63rem" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
+        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.75rem;color:var(--navy)">✉ Member</a><span style="color:var(--border)">|</span>`:''}
+        ${s.parentEmail?`<a href="mailto:${escH(s.parentEmail)}" style="font-size:.75rem;color:var(--navy)">✉ Parent</a><span style="color:var(--border)">|</span>`:''}
+        ${s.phone?`<span style="font-size:.75rem;color:var(--muted)">${escH(s.phone)}</span><span style="color:var(--border)">|</span>`:''}
+        <button class="btn btn-outline btn-xs" style="font-size:.75rem;margin-left:auto" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
+        <button class="btn btn-danger btn-xs" style="font-size:.75rem" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
       </div>
-      ${s.notes?`<div style="padding:.4rem 1rem .65rem;font-size:.72rem;color:var(--muted);font-style:italic">${escH(s.notes)}</div>`:''}    </div>`).join('')}
+      ${s.notes?`<div style="padding:.4rem 1rem .65rem;font-size:.75rem;color:var(--muted);font-style:italic">${escH(s.notes)}</div>`:''}    </div>`).join('')}
   </div>`;
 }
 
 function renderMemberTable(list){
   return `<div class="card" style="overflow-x:auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem;flex-wrap:wrap;gap:.4rem">
-      <div style="font-size:.72rem;color:var(--muted)">${list.length} member${list.length!==1?'s':''} shown</div>
+      <div style="font-size:.75rem;color:var(--muted)">${list.length} member${list.length!==1?'s':''} shown</div>
       <div style="display:flex;gap:.4rem">
         <button class="btn btn-outline btn-xs" onclick="exportMemberCSV()">📋 Export CSV</button>
         <button class="btn btn-outline btn-xs" onclick="openModal('memberReg')">📧 Reg Email</button>
@@ -1399,13 +1399,13 @@ function renderMemberTable(list){
     <table>
       <thead><tr><th>Member</th><th>Grade</th><th>Position</th><th>Event</th><th>Status</th><th>Dues</th><th>Contact</th><th></th></tr></thead>
       <tbody>${list.map(s=>`<tr>
-        <td><div style="display:flex;align-items:center;gap:.5rem"><div class="ava" style="background:${avatarBg(s)};width:28px;height:28px;font-size:.7rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div><strong>${escH(s.first)} ${escH(s.last)}</strong></div></td>
+        <td><div style="display:flex;align-items:center;gap:.5rem"><div class="ava" style="background:${avatarBg(s)};width:28px;height:28px;font-size:.75rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div><strong>${escH(s.first)} ${escH(s.last)}</strong></div></td>
         <td style="font-size:.78rem">${s.grade?s.grade+'th':''}</td>
         <td>${positionBadge(s.position)}</td>
         <td style="font-size:.75rem;max-width:160px">${escH(s.competEvent)||'—'}</td>
         <td>${statusBadge(s)}</td>
-        <td>${s.paid?'<span style="color:#15803d;font-size:.75rem;font-weight:700">✓ Paid</span>':'<span style="color:#d97706;font-size:.75rem;font-weight:700">⚠ Owed</span>'}</td>
-        <td style="font-size:.72rem">${s.email?`<a href="mailto:${escH(s.email)}" style="color:var(--navy)">${escH(s.email)}</a>`:''}</td>
+        <td>${s.paid?'<span style="color:#15803d;font-size:.75rem;font-weight:700">✓ Paid</span>':'<span style="color:#b45309;font-size:.75rem;font-weight:700">⚠ Owed</span>'}</td>
+        <td style="font-size:.75rem">${s.email?`<a href="mailto:${escH(s.email)}" style="color:var(--navy)">${escH(s.email)}</a>`:''}</td>
         <td style="white-space:nowrap">
           <button class="btn btn-outline btn-xs" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
           <button class="btn btn-danger btn-xs" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
@@ -1429,18 +1429,18 @@ function renderAlumniGrid(list){
     ${list.map(s=>`
     <div class="mb-card" style="border-left:4px solid #94a3b8">
       <div style="padding:.85rem 1rem;display:flex;gap:.75rem;align-items:flex-start">
-        <div class="ava" style="background:#64748b;width:42px;height:42px;font-size:.9rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div>
+        <div class="ava" style="background:#475569;width:42px;height:42px;font-size:.9rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div>
         <div style="flex:1">
           <div style="font-weight:700">${escH(s.first)} ${escH(s.last)}</div>
-          <div style="font-size:.72rem;color:var(--muted);margin:.15rem 0">Class of ${s.alumniYear||'—'} · Former ${escH(s.position)}</div>
-          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted)">🏆 ${escH(s.competEvent)}</div>`:''}
-          ${s.alumniPref?`<div style="margin-top:.3rem"><span style="font-size:.65rem;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;padding:2px 7px;border-radius:20px;font-weight:600">${escH(prefLabel[s.alumniPref]||s.alumniPref)}</span></div>`:''}
+          <div style="font-size:.75rem;color:var(--muted);margin:.15rem 0">Class of ${s.alumniYear||'—'} · Former ${escH(s.position)}</div>
+          ${s.competEvent?`<div style="font-size:.75rem;color:var(--muted)">🏆 ${escH(s.competEvent)}</div>`:''}
+          ${s.alumniPref?`<div style="margin-top:.3rem"><span style="font-size:.75rem;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;padding:2px 7px;border-radius:20px;font-weight:600">${escH(prefLabel[s.alumniPref]||s.alumniPref)}</span></div>`:''}
         </div>
       </div>
       <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.5rem;flex-wrap:wrap">
-        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.7rem;color:var(--navy)">✉ ${escH(s.email)}</a>`:'<span style="font-size:.7rem;color:var(--muted);font-style:italic">No email on file</span>'}
-        <button class="btn btn-outline btn-xs" style="margin-left:auto;font-size:.63rem" onclick="sendAlumniExitEmail(${s.id})">📋 Exit Interview</button>
-        <button class="btn btn-outline btn-xs" style="font-size:.63rem" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
+        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.75rem;color:var(--navy)">✉ ${escH(s.email)}</a>`:'<span style="font-size:.75rem;color:var(--muted);font-style:italic">No email on file</span>'}
+        <button class="btn btn-outline btn-xs" style="margin-left:auto;font-size:.75rem" onclick="sendAlumniExitEmail(${s.id})">📋 Exit Interview</button>
+        <button class="btn btn-outline btn-xs" style="font-size:.75rem" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
       </div>
     </div>`).join('')}
     </div>
@@ -1464,9 +1464,9 @@ function renderRegistrationTab(content){
           {section:'Membership Dues', fields:['$20 membership fee (cash or check to "Clover Hill DECA")','Due to Kristen Wettstein by November 1','State dues: $2 sent to Kristen W by Nov 1','Chapter membership form due December 1']},
         ].map(sec=>`
           <div>
-            <div style="font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--navy);margin-bottom:.3rem">${sec.section}</div>
+            <div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--navy);margin-bottom:.3rem">${sec.section}</div>
             ${sec.fields.map(f=>`<div style="display:flex;align-items:center;gap:.4rem;font-size:.76rem;padding:.18rem 0;border-bottom:1px dashed #eee">
-              <span style="color:#22c55e;font-size:.7rem">✓</span>${f}
+              <span style="color:#15803d;font-size:.75rem">✓</span>${f}
             </div>`).join('')}
           </div>`).join('')}
       </div>
@@ -1485,12 +1485,12 @@ function renderRegistrationTab(content){
           {date:'Mar 2–13',label:'ICDC Registration — $155/student (qualifiers only)'},
           {date:'Apr 1',  label:'ICDC full payment due'},
         ].map(d=>`<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.78rem">
-          <span style="font-family:'DM Mono',monospace;font-size:.7rem;background:var(--navy);color:var(--gold);padding:1px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0">${d.date}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:.75rem;background:var(--navy);color:var(--gold);padding:1px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0">${d.date}</span>
           <span>${d.label}</span>
         </div>`).join('')}
       </div>
 
-      <div class="card" style="border-left:4px solid #22c55e">
+      <div class="card" style="border-left:4px solid #15803d">
         <div class="stitle" style="margin-bottom:.7rem">✉️ Email Actions</div>
         <div style="display:flex;flex-direction:column;gap:.45rem">
           <button class="btn btn-primary" style="width:100%;text-align:left;font-size:.78rem" onclick="loadEmailTemplate('stu-registration-info');openEmailComposer(null,'students');setTimeout(()=>loadEmailTemplate('stu-registration-info'),80)">📋 Registration Info Request → Students</button>
@@ -1498,7 +1498,7 @@ function renderRegistrationTab(content){
           <button class="btn btn-gold" style="width:100%;text-align:left;font-size:.78rem" onclick="loadAlumniExitTemplate()">🎓 Exit Interview + Alumni Outreach → Alumni</button>
           <button class="btn btn-outline" style="width:100%;text-align:left;font-size:.78rem" onclick="openModal('memberReg')">⚙️ Custom Registration Email Generator</button>
         </div>
-        <div style="margin-top:.85rem;padding:.65rem;background:#f0fdf4;border-radius:6px;font-size:.73rem;color:#166534;border:1px solid #86efac">
+        <div style="margin-top:.85rem;padding:.65rem;background:#f0fdf4;border-radius:6px;font-size:.75rem;color:#166534;border:1px solid #86efac">
           <strong>Tip:</strong> After generating the registration email, use the Email Composer to customize and send via your mail client. All contact info in member profiles is pre-filled from registration responses.
         </div>
       </div>
@@ -1980,7 +1980,7 @@ function renderGoals(){
   orderedCats.forEach(cat => {
     const catGoals = grouped[cat];
     html += `<div style="margin-bottom:1.25rem">
-      <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${gcColors[cat]||'#555'};margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem">
+      <div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${gcColors[cat]||'#555'};margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem">
         ${cat}
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.65rem">
@@ -1990,16 +1990,16 @@ function renderGoals(){
           const border = done ? '#15803d' : overdue ? 'var(--red)' : 'var(--border)';
           return `<div style="border:1.5px solid ${border};border-radius:8px;padding:.9rem 1rem;background:${done?'#f0fdf4':overdue?'#fff8f8':'#fff'}">
             <div style="display:flex;justify-content:space-between;margin-bottom:.28rem">
-              <span style="font-size:.62rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:${gcColors[g.cat]||'#555'}">${g.cat}</span>
-              <span style="font-family:'DM Mono',monospace;font-size:.68rem;color:${overdue&&!done?'var(--red)':'var(--muted)'}">${g.date?fd(g.date):''}</span>
+              <span style="font-size:.75rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:${gcColors[g.cat]||'#555'}">${g.cat}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:.75rem;color:${overdue&&!done?'var(--red)':'var(--muted)'}">${g.date?fd(g.date):''}</span>
             </div>
             <div style="font-weight:700;font-size:.86rem;margin-bottom:.22rem;color:var(--navy)">${done?'✅ ':overdue?'⚠️ ':''}${g.title}</div>
-            ${g.desc?`<div style="font-size:.73rem;color:#666;margin-bottom:.42rem;line-height:1.45">${g.desc}</div>`:''}
+            ${g.desc?`<div style="font-size:.75rem;color:#666;margin-bottom:.42rem;line-height:1.45">${g.desc}</div>`:''}
             <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.4rem">
               <div class="gbar" style="flex:1"><div class="gfill" style="width:${g.progress}%;background:${done?'#15803d':overdue?'var(--red)':'var(--navy)'}"></div></div>
-              <span style="font-family:'DM Mono',monospace;font-size:.72rem;min-width:30px;color:var(--navy);text-align:right">${g.progress}%</span>
+              <span style="font-family:'DM Mono',monospace;font-size:.75rem;min-width:30px;color:var(--navy);text-align:right">${g.progress}%</span>
             </div>
-            ${g.updatedAt?`<div style="font-size:.63rem;color:var(--muted);margin-bottom:.25rem">Updated ${new Date(g.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`:''}
+            ${g.updatedAt?`<div style="font-size:.75rem;color:var(--muted);margin-bottom:.25rem">Updated ${new Date(g.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`:''}
             <div style="display:flex;align-items:center;gap:.4rem">
               <input type="range" min="0" max="100" value="${g.progress}" style="flex:1;cursor:pointer" oninput="updGoal(${g.id},this.value)">
               <button class="btn btn-danger btn-xs" onclick="delGoal(${g.id})" title="Remove goal" aria-label="Remove goal">✕</button>
