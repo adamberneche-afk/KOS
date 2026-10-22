@@ -4,7 +4,7 @@ The operator, 2026-10-22: "I don't want anything stored in the browser."
 cas-ccps and kos-personal already comply (`tests/tools/no-browser-storage.test.js`).
 leader-hub is the one system still built around `localStorage`, and moving
 it off is a migration rather than a fix, so it gets this plan and its own PRs.
-Phases 1 to 4 are done (2026-10-22); Phase 5 is decided, not built.
+All five phases are done (2026-10-22).
 
 ## Where leader-hub is today
 
@@ -154,25 +154,33 @@ not used, and a test enforces that, as it does for the other two projects.
   served mode: nothing written to the browser, the move, the bar, the
   merge, and no save when the data couldn't load.
 
-### Phase 5: retire the standalone file (decided 2026-10-22)
+### Phase 5: retire the standalone file (done 2026-10-22)
 
-With no browser storage, a file opened from disk can't keep anything
-between sessions, so the served app (`doGet()`) becomes the only way in.
-This waits for Phase 4: a file opened from disk keeps its data in that
-file's own browser storage, which the served app can't read. Retiring it
-first would strand that data. So, in order:
-
-1. The file shows "Export everything" and points to the web app link.
-2. The served app imports that export through Phase 4's import.
-3. The file then opens to a short page that points to the web app.
-4. `lh_email_bridge_url`, `setEmailBridgeUrl()` and `callGAS()`'s `fetch()`
-   path are removed.
+- **The app runs only as the web app.** The first script in `<head>`
+  (src/00) checks for `window.__LH_BOOT__`; without it (the file opened from
+  disk) it calls `window.stop()` and shows a short page: "LeaderHub now runs
+  as a web app", **Open the web app** (from the old Email Bridge URL, when a
+  safe `script.google.com` one is left), and, if that browser still holds
+  data, **Export everything** and then **Clear this browser's copy**. The
+  export is the same format **Settings → Import** reads. `?diag=probe`
+  gets the boot data too, so it still runs the app.
+- **Removed:** the local-storage branch of `_lhStore`, the boot catch-up
+  functions (`lhRefreshConfigFromServer_` and the data and SCR ones), the
+  Email Bridge URL field and `setEmailBridgeUrl()`/`clearEmailBridgeUrl()`,
+  `callGAS()`'s and Organization Sync's browser `fetch()` paths, Phase 4's
+  in-app move banner (now the retired page), and the unused public
+  `lhGetScrScores` entry point (the boot data carries the scores).
+- The web app's own URL, which Organization Sync's share codes carry, comes
+  from the server (`lhBootData_`'s `appUrl`).
+- **What still touches browser storage:** only `lhMigrateFromBrowser_` in
+  the web app (an earlier version's leftovers, moved then deleted) and the
+  retired page (reading and clearing the file's leftovers).
 
 ## Decisions (2026-10-22)
 
-1. **Standalone file:** retired, after its data can be imported (Phase 5).
+1. **Standalone file:** retired (Phase 5, done).
 2. **View state:** resets on reload (page memory).
-3. **Order:** Phase 1 now (done); Phases 2–5 in order as their own PRs.
+3. **Order:** Phases 1–5 in order, each its own PR (all done 2026-10-22).
 
 ## Risks
 
