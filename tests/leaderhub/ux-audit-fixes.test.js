@@ -172,3 +172,21 @@ test('pulse rings: an overdue DECA deadline and zero trips no longer read 100%',
   assert.match(data, /pct:decaDays===null\|\|decaDays<0\?null:/);
   assert.ok(!/\)\)\)\):50,/.test(data), 'no made-up 50% for "no DECA deadline"');
 });
+
+// meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md Phase 1 (2026-10-22):
+// no secret is kept in the browser. The Gemini key a browser may still
+// hold from before AI moved to Workspace Flows is deleted at every load,
+// and nothing reads or writes it.
+test('the old Gemini API key is deleted from browser storage at load and never written', () => {
+  const html = fs.readFileSync(path.join(LH, 'student-leader-hub.html'), 'utf8');
+  const removed = [];
+  const ctx = { localStorage: { removeItem: (k) => removed.push(k) } };
+  const src = SRC('05-data-helpers-dashboard.html');
+  const start = src.indexOf('const LH_RETIRED_SECRET_KEYS');
+  const end = src.indexOf('\n', src.indexOf('try { LH_RETIRED_SECRET_KEYS', start));
+  vm.runInNewContext(src.slice(start, end), ctx);
+  assert.deepEqual(removed, ['lh_api_key']);
+  const uses = html.split("'lh_api_key'").length - 1;
+  assert.equal(uses, 1, 'named once, in the list of keys to delete');
+  assert.doesNotMatch(html, /generativelanguage\.googleapis\.com|x-goog-api-key/);
+});

@@ -2,6 +2,12 @@
 // Tracks whether a save-failed warning has already been shown this page
 // load — a full quota means EVERY subsequent LS.set() call fails too, and
 // nothing here should spam a toast on every single one of them.
+// The Gemini API key a browser may still hold from before AI moved to
+// Workspace Flows (no code reads it since). Deleted at every load
+// (2026-10-22, meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md Phase 1):
+// a secret has no business staying in browser storage.
+const LH_RETIRED_SECRET_KEYS = ['lh_api_key'];
+try { LH_RETIRED_SECRET_KEYS.forEach(k => localStorage.removeItem(k)); } catch (e) { /* storage blocked */ }
 let _lsWriteFailWarned = false;
 let _lsReadFailWarned = false;
 const LS = {

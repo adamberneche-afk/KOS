@@ -1248,3 +1248,14 @@ The rest of leader-hub's share of `meta/UX_AUDIT_2026-10-22.md`: fix-first
   April 30, 2026) still names Atlanta and trip 6; the "25–26" vs "26–27"
   season label, Escape routing for the forced journal, and the other
   audit rows for leader-hub are left for their own change.
+
+## The old Gemini key is deleted from the browser, 2026-10-22
+
+The operator's rule is that nothing is stored in the browser, and leader-hub
+keeps its data in `localStorage` by design, so
+`meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md` plans the move to the
+server. Phase 1 is done: no code has read the Gemini key since AI moved to
+Workspace Flows, but a browser could still hold `lh_api_key`, so the app
+now deletes it at every load. Decided for later phases: the standalone
+file is retired once its data can be imported, and view state resets on
+reload.

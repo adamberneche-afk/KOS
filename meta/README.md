@@ -36,8 +36,9 @@ why this repo exists at all.
 - **`LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`** — a plan (2026-10-22)
   to move leader-hub off `localStorage` after the operator's "nothing stored
   in the browser": what is already on the server from the earlier
-  migration, the ~50 local-only keys, five phases (secrets first, the
-  standalone file last) and three decisions. Nothing built.
+  migration, the ~50 local-only keys, five phases and the decisions
+  taken. Phase 1 (no secret in the browser) done; the standalone file is
+  retired once its data can be imported.
 - **`COURSE_BUILDER_PLAN_2026-10.md`** — a decided plan (2026-10-22) for
   building a new course from the VDOE framework, with teachers submitting
   the course they want, built so adopting teachers can adapt it: how 8175
