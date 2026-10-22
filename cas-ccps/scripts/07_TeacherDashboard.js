@@ -1041,25 +1041,26 @@ function setFeedbackPlacement(courseCode, asComment) {
   return _tdFeedbackPlacement_(cfg);
 }
 
-// Courses come from the Ledger's ConfigIDs ("CAS-8175-L06"), so a new course
-// shows up once it has assignments.
+// Courses come from the Ledger rows' class, subject or course names
+// (ledgerRowCourseCode_, 00): a row's ConfigID is the student's workspace
+// ID and names no course. A new course shows up once it has assignments.
 function _tdFeedbackPlacement_(cfg) {
   const resolved = _resolveConfigValues_();
   const check = feedbackAsCommentChecker_();
   const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
   const codes = {};
   if (sheet && sheet.getLastRow() > 1) {
-    sheet.getRange(2, LEDGER.CONFIG_ID + 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) {
-      const m = String(r[0]).trim().match(/^CAS-(\d{4})-/);
-      if (m) codes[m[1]] = true;
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER.COURSE_NAME + 1).getValues().forEach(function (r) {
+      const code = ledgerRowCourseCode_(r);
+      if (code) codes[code] = true;
     });
   }
   return {
     success: true,
-    value: resolved.values.FEEDBACK_AS_COMMENT || "off",
+    value: String(resolved.values.FEEDBACK_AS_COMMENT || "off").trim() || "off",
     overriddenHere: resolved.sources.FEEDBACK_AS_COMMENT === "Script Property",
     courses: Object.keys(codes).sort().map(function (code) {
-      return { code: code, asComment: check("CAS-" + code + "-X") };
+      return { code: code, asComment: check("", code) };
     }),
   };
 }
@@ -1786,6 +1787,8 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
 #submit-btn{background:#1a73e8;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:background 0.15s}
 #submit-btn:hover{background:#1557b0}
 #submit-btn:disabled{background:#dadce0;color:var(--text-secondary);cursor:not-allowed}
+.wr-stat{background:none;border:none;padding:0;font:inherit;color:#1a73e8;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.wr-stat:hover{color:#174ea6}
 #cancel-btn{background:none;border:none;color:var(--text-secondary);font-size:14px;cursor:pointer;padding:9px 14px}
 #cancel-btn:hover{color:#202124}
 
@@ -1841,10 +1844,10 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
 <!-- ── M2: Warm-Up Readiness Panel ── -->
 <div id="warmup-readiness-panel" style="display:none;background:#f8f9fa;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:12.5px;color:var(--text-secondary);gap:24px;align-items:center;flex-wrap:wrap">
   <span id="wr-unit" style="font-weight:600;color:#1a73e8"></span>
-  <span id="wr-eval"></span>
-  <span id="wr-warmup"></span>
-  <span id="wr-confidence"></span>
-  <span id="wr-locked"></span>
+  <button type="button" class="wr-stat" id="wr-eval"></button>
+  <button type="button" class="wr-stat" id="wr-warmup"></button>
+  <button type="button" class="wr-stat" id="wr-confidence"></button>
+  <button type="button" class="wr-stat" id="wr-locked"></button>
 </div>
 <div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading class data…</p></div>
 <div id="main" class="main" style="display:none"></div>
@@ -2097,15 +2100,15 @@ function renderWarmUpReadiness(r) {
   // clickable filter into the roster instead of a static number — see
   // applyWrFilter()/clearWrFilter(). Made a real <button> (not just a
   // styled span) whenever its count is > 0, so it's keyboard-reachable
-  // and reads as interactive, not just decorated text.
+  // and reads as interactive, not just decorated text. (Until 2026-10-22
+  // the markup used spans, so no stat was ever wired: a test pins buttons.)
   function wrButton(el, count, label, bucket) {
     if (!el) return;
-    if (!count) { el.style.display = "none"; el.removeAttribute("onclick"); return; }
+    if (!count) { el.style.display = "none"; el.onclick = null; return; }
     el.style.display = "";
     el.textContent = label;
-    if (el.tagName === "BUTTON") {
-      el.onclick = function() { applyWrFilter(bucket); };
-    }
+    el.title = "Show only these students";
+    el.onclick = function() { applyWrFilter(bucket); };
   }
 
   // Eval history
@@ -2421,6 +2424,12 @@ function renderFeedbackPlacement(data) {
   let html = '<p style="font-size:13px;color:var(--text-secondary)">For each course, where a student\\'s ' +
     'evaluation goes. A comment keeps the document to the assignment and the student\\'s work; ' +
     'new documents are then made without a feedback section. Changes reach students within about 10 minutes.</p>';
+  const v = String(data.value || "off").toLowerCase();
+  const now = v === "off" ? "in the document, for every course"
+    : v === "all" ? "as a comment, for every course"
+    : "as a comment for " + v + " only; in the document for the others";
+  html += '<p style="font-size:13px;margin:10px 0"><strong>Now:</strong> ' + esc(now) +
+    ' <span style="color:var(--text-secondary)">(FEEDBACK_AS_COMMENT = ' + esc(v) + ')</span></p>';
   if (data.overriddenHere) {
     html += '<p style="font-size:13px;color:#d93025">This project has its own FEEDBACK_AS_COMMENT ' +
       'Script Property, which overrides this setting here. Delete it to use this panel.</p>';

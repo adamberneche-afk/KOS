@@ -99,7 +99,7 @@ function getStudentDashboardData(termFilter) {
       : false;
 
     const configId = String(row[LEDGER.CONFIG_ID]).trim();
-    const feedbackInComments = feedbackAsComment(configId);
+    const feedbackInComments = feedbackAsComment(configId, ledgerRowCourseCode_(row));
 
     assignments.push({
       configId:      configId,
