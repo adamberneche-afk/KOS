@@ -116,6 +116,23 @@ function checkLedgerSchema() {
   return result;
 }
 
+// lsgHeaderProblem_ — the header row only, for 34c's overnight check (which
+// runs often, so it doesn't read the rows the way _lsgAnalyze_ can). One line
+// naming the first column out of place, or "" when the order is canonical.
+function lsgHeaderProblem_(sheet) {
+  if (!sheet) throw new Error("no Ledger tab");
+  const lastCol = sheet.getLastColumn();
+  const headers = (lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [])
+    .map(function (h) { return String(h === null || h === undefined ? "" : h).trim(); });
+  while (headers.length && headers[headers.length - 1] === "") headers.pop();
+  if (_lsgMatchesCanonical_(headers)) return "";
+  let at = 0;
+  while (at < headers.length && headers[at] === LEDGER_CANONICAL_HEADERS[at]) at++;
+  return "Ledger columns out of order: column " + (at + 1) + " is \"" + (headers[at] || "(blank)") +
+    "\", expected \"" + (LEDGER_CANONICAL_HEADERS[at] || "(nothing)") + "\". Every reader takes columns by " +
+    "position, so run checkLedgerSchema() in the Central Ledger's Apps Script project";
+}
+
 // ---------------------------------------------------------------------------
 // repairLedgerSchemaDryRun — identical analysis, framed as what a repair
 // would do. Changes nothing. Exists so the decision and the action are two
