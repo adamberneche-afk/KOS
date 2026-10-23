@@ -137,9 +137,11 @@ shut its gateway in 2025.)
 
 1. **Make the sheet.** In Drive, create a Google Sheet named *Family Mail
    Sentinel*. Keep it private. Open Extensions → Apps Script.
-2. **Push the code.** With `run.ps1` (how it was done): bind the project once
-   with `clasp clone <Script ID>` into `clasp-registry\cas-ccps\family-sentinel\`,
-   then `run.ps1 -Only family-sentinel`. By hand instead: `node
+2. **Push the code.** With `run.js` (`tools/clasp-sync/run.js`, which
+   replaced `run.ps1` on 2026-10-17; the first push was done with
+   `run.ps1`): bind the project once with `clasp clone <Script ID>` into
+   `clasp-registry\cas-ccps\family-sentinel\`, then
+   `node run.js --latest --only family-sentinel`. By hand instead: `node
    tools/clasp-sync/sync.js family-sentinel`, copy
    `cas-ccps/clasp/templates/family-sentinel.clasp.json.template` to
    `cas-ccps/clasp/local/family-sentinel.clasp.json` with the Script ID, and

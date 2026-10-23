@@ -44,10 +44,13 @@ to upload that file to. Use exactly these values (case-insensitive):
 
 ## Which Files Go Where
 
-> **Out of date.** These lists predate scripts 15b–52 (Central Ledger now
-> has 35 files, among them `51_CourseYearBuilder` and `52_CanvasRosterImport`).
-> The authoritative list is `tools/gas-lint/project-map.json`; push with
-> `tools/clasp-sync/` (`run.ps1`) rather than pasting files by hand.
+> **Out of date.** These lists predate scripts 15b–65 (Central Ledger now
+> has 46 files, among them `51_CourseYearBuilder`, `58_LessonRollout` and
+> `64_LedgerCycle`; the Teacher Dashboard 13, among them `65_LessonDrafts`).
+> The installer also knows only these six targets: it has none for the
+> Family Mail Sentinel. The authoritative list is
+> `tools/gas-lint/project-map.json`; push with `tools/clasp-sync/run.js`
+> rather than pasting files by hand.
 
 Paste the complete contents of each script file into column C.
 

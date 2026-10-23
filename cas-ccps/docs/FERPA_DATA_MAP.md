@@ -143,10 +143,10 @@ marks or removes those rows yet.
 
 | | |
 |---|---|
-| **Fields** | Timestamp, GoogleID (student's district **email**, not a Google account ID — see note below), ConfigID, FileID, StudentName, Block, ClassName, TeacherName, TeacherEmail, Subject, CourseName, Period, Status, SubmissionTS, Notes, LastEval, AdminFileURL, StudentFileURL, AcademicYear |
+| **Fields** | Timestamp, GoogleID (student's district **email**, not a Google account ID — see note below), ConfigID, FileID, StudentName, Block, ClassName, TeacherName, TeacherEmail, Subject, CourseName, Period, Status, SubmissionTS, Notes, LastEval, AdminFileURL, StudentFileURL, AcademicYear; then the turn-in score columns (suggested score, final score, decided by, decided at) and the latest evaluation's CheckCount, LastResult, FirstPassedAt and LastSuggestedScore (`LEDGER` in `00`) |
 | **Why collected** | The system-of-record for every assignment: who submitted what, when, to which teacher, with what evaluation outcome. Every other tab in cas-ccps traces back to a Ledger row. |
-| **Written by** | Scripts 02 (intake, from the form or from 52's Canvas roster import, both through `intakeStudent_()`), 04 (turn-in gate), 10 (manual `archiveCompletedTerm()` and automatic `_archiveExpiredLedgerRows_()` — both only ever set `Status` to `ARCHIVED`, never any other field) |
-| **Read by** | Scripts 03, 07 (Teacher Dashboard), 10 (Admin Recovery Panel), 13 (Student Dashboard), 23, 24, 29, 30, 33 |
+| **Written by** | Scripts 02 (intake, from the form or from 52's Canvas roster import, both through `intakeStudent_()`; `SCHEDULED` for a doc made ahead), 03 (status as evaluations close), 13 (SubmissionTS on Submit), 37 (the evaluation result columns), 07 (a teacher's turn-in score decision), 52 (Period, when a period is relabeled), 58 (`SCHEDULED` to `ACTIVE` at release), 10 (manual `archiveCompletedTerm()` and automatic `_archiveExpiredLedgerRows_()` — both only ever set `Status` to `ARCHIVED`, never any other field). The turn-in gate (04) that also wrote it was retired on 2026-10-10. |
+| **Read by** | Scripts 03, 07 (Teacher Dashboard), 10 (Admin Recovery Panel), 13 (Student Dashboard), 23, 24, 29, 30, 33, 36, 37, 52, 58 |
 | **Visible to** | The student's own teacher (Teacher Dashboard, gated by `_isAuthorizedTeacher_()`); the student themselves (Student Dashboard, own row only); admin (Admin Recovery Panel) |
 | **Retention** | `LEDGER_RETENTION_YEARS` (Script Property, default 5, unconfirmed — see above) via `_archiveExpiredLedgerRows_()`, run automatically on every daily health check and every on-demand admin health check. A `COMPLIANT`/`ACTIVE`/`COMPLETE` row past the window gets `Status` set to `ARCHIVED`; `ERROR`-prefixed rows are left for admin review. Actual deletion is never automatic. |
 
@@ -184,7 +184,7 @@ marks or removes those rows yet.
 | **Fields** | The exports are Canvas's own gradebook CSVs and hold names, logins and grades. `52_CanvasRosterImport.js` reads only Student, SIS Login ID and Section, ignores every grade column, and writes nothing from them but the Ledger row `intakeStudent_()` writes for any enrolled student. `CanvasSectionMap` holds Canvas section names and class periods: no student data. |
 | **Why collected** | Enrolling a class roster without each student submitting the intake form. |
 | **Written by** | The teacher uploads the exports; S52 adds section names to `CanvasSectionMap`. |
-| **Visible to** | The exports: the teacher, in their own Drive. They are read by `52_CanvasRosterImport.js` in the Central Ledger project, which runs as the teacher (from the `TEACHER_FOLDER_ID` folder if set, otherwise any matching CSV the teacher owns). The execution log names accounts, not students. |
+| **Visible to** | The exports: the teacher, in their own Drive. They are read by `52_CanvasRosterImport.js` in the Central Ledger project, which runs as the teacher (from the `TEACHER_FOLDER_ID` folder if set, otherwise any matching CSV the teacher owns). Since 2026-10-22 the execution log counts invalid accounts and failures by section and prints no SIS login or name. |
 | **Retention** | The exports are the teacher's files; delete them after enrolling. Nothing else is kept. |
 
 ### PeriodOverride (S52)
@@ -245,10 +245,10 @@ content.
 | | |
 |---|---|
 | **Fields** | Queue ID, lesson ID, student email, student name, "GoogleID" (= email), lesson date, **lesson-context snapshot** and **student-profile snapshot** (both full JSON payloads sent to Studio Flows 3/5), status, generated doc ID/URL, word count, grammar/engagement/total scores, extra credit, Flow 4 feedback, response text, archetype, bridge output; after them `archive_status`, `delivered_at` and `answered_at` (2026-10-23: when it was delivered, and when the student last answered: the text box's save time or the doc's last edit) |
-| **Why collected** | The working table for warm-up generation, scoring, and feedback — Studio Flows 3, 4, and 5 all read/write directly against this tab via the Sheets connector. |
-| **Written by** | Script 24 (build), Script 25 (scoring), Studio Flow 3 (doc creation, archetype write-back), Studio Flow 5 (bridge output) |
-| **Read by** | Script 23 (nightly), Script 25 |
-| **Visible to** | Studio Flow 3/4/5 — the native Sheets/Ask-Gemini connector steps still read/write this tab directly with no gate in this repo's own code, but the pre/post-processing steps around them are now this repo's own code (`cas-ccps/studio-steps/`: `SelectWarmUpArchetypeStep.gs`/`CreateWarmUpDocStep.gs` for Flow 3, `ExtractWarmUpPromptTextStep.gs`/`FinalizeWarmUpScoreStep.gs` for Flow 4, `ExtractBridgeInputsStep.gs` for Flow 5 — **blocked on this account and superseded**: a custom step needs a standard Cloud project, and this pre/post-processing was ported into `41_WarmUpFlowBridge.js`, which reaches this tab from Apps Script under the same Script Properties as Scripts 24/25); the student, indirectly, via the generated warm-up doc |
+| **Why collected** | The working table for warm-up generation, scoring, and feedback. Studio Flows 3, 4 and 5 no longer touch it: `41_WarmUpFlowBridge.js` copies what each needs into `Flow3Input`/`Flow4Input`/`Flow5Input`, and applies their answers from `WarmUpFlowReturn` back here. |
+| **Written by** | Script 24 (build), Script 25 (scoring, `answered_at`), Script 41 (the harvest of Flows 3/4/5: doc creation or the text-box warm-up, archetype, bridge output, scores, `delivered_at`), Script 34 (`archive_status`) |
+| **Read by** | Script 23 (nightly), Script 25, Script 41, Script 34c (counts only) |
+| **Visible to** | Apps Script in the Central Ledger project (24, 25, 41, 34). Studio Flows 3/4/5 see only the input row 41 writes for them, which carries the lesson and profile snapshots (first name only, see "Flow 3 name exposure"). The custom steps that once did this pre/post-processing (`cas-ccps/studio-steps/`) are **blocked on this account and superseded** by 41. The student sees their own warm-up, in its doc or on the Student Dashboard. |
 | **Retention** | `WARMUP_QUEUE_RETENTION_YEARS` (Script Property, default 1 school year since 2026-10-13 — see the retention schedule above) via `_archiveExpiredWarmUpQueueRows_()` (`34_QueueWatchdog.js`, which already owns this tab's health monitoring), run automatically on every daily health check and every on-demand admin health check, anchored on `lesson_date`. A row past the window gets `archive_status` set to `"ARCHIVED"`; actual deletion is never automatic. Reversible via the `♻️ Reactivate WarmUpQueue Rows` menu item (`reactivateWarmUpQueueArchival()`), same operational-data treatment as CompetencyEvidence above — this was the one major operational tab with no retention mechanism at all until a third-party review found the gap. |
 
 > This is the tab the Bonus-2 fix below actually touches — see "Flow 3 name exposure" section.
@@ -275,9 +275,11 @@ unit. Read/written entirely within Script 29; not currently surfaced outside
 that script.
 
 ### StudentDocRegistry
-Student email/name + their assignment doc's ID/URL/creation and update
-timestamps. The doc itself is shared with the student via `addViewer(email)`
-— standard per-student Drive sharing, not a broad-access grant.
+Student email/name + their Student Context doc's (Script 29, the weekly
+per-student doc) ID/URL/creation and update timestamps. Not the assignment
+workspace docs, which the Ledger records. The doc itself is shared with the
+student via `addViewer(email)` — standard per-student Drive sharing, not a
+broad-access grant.
 
 ### CompetencyEvidence
 Evidence ID, student email, competency ID, milestone text, MET/NOT MET/PARTIAL
@@ -309,7 +311,8 @@ aggregation; actual deletion is never automatic. Reversible via the
 (`reactivateCompetencyEvidence()`), unlike SCRDecisionLog's archival below.
 
 ### ReviewQueue
-On the Admin spreadsheet. One row per "Run Assignment Check": timestamp,
+On the Admin spreadsheet. One row per Submit for Feedback (the Student
+Dashboard's button, or the doc menu's item): timestamp,
 **student email**, student file ID, ConfigID, status, result ref. The fifth
 column (`StudentText`) is always empty. Until 2026-10-03 the Student
 Dashboard (`13_StudentDashboard.js`) copied the student's whole response
@@ -427,7 +430,7 @@ student, sender, course or message detail, so no education record leaves.
 | | |
 |---|---|
 | **Where** | A Google Doc in the teacher's Drive, rewritten in place by `34b_CasAttentionSignal.js` (Central Ledger project) at the end of every queue-watchdog run. Its ID is in `CAS_SIGNAL_DOC_ID`. |
-| **Fields** | Counts only: submissions waiting on feedback, submissions that failed or timed out, SCR suggestions awaiting confirm (and how many students), students newly retry-eligible, students rated below satisfactory on the SCR, a 4 or 5 (and the change since yesterday), plus admin counts (watchdog mode, timed-out and unknown-status queue rows, rows with no timestamp, failing FERPA checks). No name, email, file ID, config ID, competency, rating per student or student text. |
+| **Fields** | Counts only: submissions waiting on feedback, submissions that failed or timed out, SCR suggestions awaiting confirm (and how many students), students newly retry-eligible, students rated below satisfactory on the SCR, a 4 or 5 (and the change since yesterday), plus admin counts (Ledger cycle jobs failing, by function name; watchdog mode, timed-out and unknown-status queue rows, rows with no timestamp, Submit for Feedback failures per error code, the nightly rollout's PROBLEM rows and courses in shadow, failing FERPA checks). No name, email, file ID, config ID, competency, rating per student or student text. |
 | **Why collected** | So the KOS Claude Project can tell the teacher what in CAS needs attention without reading any CAS sheet (SMP-018: RTP never reads CAS sheets). |
 | **Read by** | The teacher, and the KOS Claude Project through its Google Drive connector. |
 | **Retention** | Overwritten every run; it holds only the latest counts. To tell "since yesterday" apart, the Central Ledger's `CAS_SIGNAL_STATE` Script Property keeps yesterday's count and 12-character SHA-256 prefixes of the retry-eligible student and competency pairs, never the emails. |
@@ -438,8 +441,11 @@ goes only to the teacher's own Claude Project. Adding any field beyond counts
 is the teacher's decision.
 
 **The overnight email (34c).** `34c_OvernightHealth.js` writes the doc's
-LAST NIGHT section (stage run stamps, warm-up counts for today and tomorrow,
-Studio jobs with no return, failed warm-up returns) and emails the same
+LAST NIGHT section (Ledger cycle jobs still failing, stage run stamps,
+warm-up counts for today and tomorrow, Studio jobs with no return, failed
+warm-up returns, anchor fallbacks, and, at most every 6 hours since
+2026-10-23, the setup checks of 38, 40, 41 and 57, which report counts and
+header names only) and emails the same
 lines once a day to `ADMIN_NOTIFY_EMAIL`, or `TEACHER_EMAIL` if that is
 unset. The email carries the same counts plus the deployment (project,
 version marker, teacher account, time zone); no student name, email, queue
@@ -557,12 +563,13 @@ payload. Investigated options:
   `"true"`. An intentional, auditable escape hatch, not a silent gap — the
   admin health check (below) alerts if it's ever turned on.
 
-## Health checks (Bonus 1 — added; items 4-8 added later)
+## Health checks (Bonus 1 — added; items 4-9 added later)
 
 `10_AdminRecoveryPanel.js`'s `_ferpaHealthChecks_()` (shared by both
 `autoHealthAlert()`'s daily email and `runSystemHealthCheck()`'s on-demand
-dialog) now checks eight things — one per retention policy above, plus the
-three original safety-property checks:
+dialog) now checks nine things (its checks (a) to (i)) — one per retention
+policy above, the three original safety-property checks, and ReviewQueue's
+empty text column:
 
 1. **`GEMINI_API_KEY` is not set** — it was read only by a commented-out
    direct-Gemini call in `25_WarmUpWriter.js` (removed 2026-09-29) that would
@@ -601,6 +608,9 @@ three original safety-property checks:
    4-7, via `_countWarmUpQueueRowsPastRetentionUnarchived_()`, with
    `_archiveExpiredWarmUpQueueRows_()` (`34_QueueWatchdog.js`) run
    immediately before it (third-party review).
+9. **No `ReviewQueue` row holds a copy of a student's response** — via
+   `_countReviewQueueRowsWithText_()`; the fix is
+   `applyReviewQueueTextScrub()` (see the ReviewQueue section above).
 
 ## Newly-discovered gap (fixed alongside this document)
 

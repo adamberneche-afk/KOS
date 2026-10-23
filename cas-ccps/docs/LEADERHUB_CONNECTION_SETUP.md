@@ -26,12 +26,12 @@ ever stands between the request and `doPost()`'s own real check.
 `EmailBridge.gs` uses the same `ANYONE_ANONYMOUS` setting — checked
 directly against `EmailBridge.gs`'s own header comment, `leader-hub`'s
 `appsscript.json` [`"access": "DOMAIN"`], and `leader-hub/README.md`: it
-doesn't. `EmailBridge.gs` is actually deployed `access: DOMAIN`, and
-leader-hub's `callGAS()` reaches it successfully anyway with a plain,
-credential-less cross-origin `fetch()`. Why that particular combination
-works isn't fully explained here — flagged as a real, unresolved mechanics
-question, not glossed over — but it doesn't change the recommendation
-below: `ANYONE_ANONYMOUS` is still the right setting for this specific
+doesn't. `EmailBridge.gs` is actually deployed `access: DOMAIN`. leader-hub's
+`callGAS()` used to reach it with a plain, credential-less cross-origin
+`fetch()`; since 2026-10-22 leader-hub is served by that project and
+`callGAS()` uses `google.script.run`, so the comparison no longer applies.
+The connection to cas-ccps is still a browser `fetch()` with an ID token.
+None of this changes the recommendation below: `ANYONE_ANONYMOUS` is still the right setting for this specific
 deployment, justified on its own merits above, independent of what
 `EmailBridge.gs` happens to use.)
 
@@ -83,9 +83,10 @@ teacher's dashboard already checks incoming requests against their own
    Internal apps skip Google's external-app verification review entirely).
 3. **APIs & Services → Credentials → Create Credentials → OAuth Client ID**
    → Application type: **Web application**.
-4. **Authorized JavaScript origins**: add wherever `student-leader-hub.html`
-   is actually opened from (see leader-hub's own README for how it's
-   hosted/opened today).
+4. **Authorized JavaScript origins**: add the origin leader-hub's page runs
+   on. Since 2026-10-22 leader-hub runs only as its own Apps Script web app
+   (the standalone `student-leader-hub.html` file is retired), so that is
+   the web app's served page; see leader-hub's own README.
 5. Save. Copy the generated Client ID — this is a public value, safe to
    paste into leader-hub's Settings (see below) and safe to set as a
    Script Property; it is not a secret.
@@ -108,12 +109,12 @@ For each teacher's Teacher Dashboard project:
      passes through).
    - This creates a **second** `/exec` URL, distinct from the existing
      Teacher Dashboard URL used for the human-facing UI. Copy it.
-3. Paste that second URL into leader-hub → Settings → "Connect to
-   cas-ccps" → cas-ccps API URL, along with the same OAuth Client ID from
+3. Paste that second URL into leader-hub → Settings → "Connect to CAS"
+   → cas-ccps API URL, along with the same OAuth Client ID from
    the registration step above.
 4. Add that second deployment's ID to
    `clasp-registry\cas-ccps\teacher-dashboard\deployments.txt`, next to the
-   human-facing one. `tools/clasp-sync/run.ps1` only promotes the deployments
+   human-facing one. `tools/clasp-sync/run.js` only promotes the deployments
    listed there. An unlisted one stays on its old version, and leader-hub
    keeps calling old code after every push.
 
