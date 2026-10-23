@@ -86,14 +86,17 @@
 >   admin walkthrough retired, student identifiers out of the logs, 📅
 >   Lessons and lesson-editor fixes, nothing stored in the browser) and
 >   #265 (the overnight check runs the setup checks; `EvaluationLog`;
->   WarmUpQueue `delivered_at` / `answered_at`).
-> - **The next push** carries #237 to #265, plus the 2026-10-23 docs branch
->   once merged (for cas-ccps, doc and comment fixes only): `node run.js --latest --only
+>   WarmUpQueue `delivered_at` / `answered_at`) and #267 (cas-ccps comment
+>   and doc fixes from the documentation scan).
+> - **The next push** carries #237 to #267, plus the end-of-10-23 branch
+>   once merged (parent reports written by KOS and sent by the teacher, D1;
+>   bug 4's overnight line; rule 12's `typeof` guards removed; the Teacher
+>   Dashboard's manifest drops `script.send_mail`): `node run.js --latest --only
 >   central-ledger,teacher-dashboard,student-dashboard,master-student-template`
 >   (plus the other systems' projects), which promotes both web apps. The
 >   checks after it, and the rest of the operator's queue, are in
 >   `meta/HANDOFF_2026-10-22.md`.
-> - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4).
+> - **Bug 4 resolved (2026-10-23):** Flow 2 starts by itself on a submission.
 > - **After any manifest scope change** to a web app that runs as the deploying
 >   admin (both dashboards): run any function from that project's editor and
 >   approve every prompt, then test one submit, before a class depends on it.

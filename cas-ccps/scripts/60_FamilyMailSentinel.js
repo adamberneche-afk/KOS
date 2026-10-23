@@ -35,7 +35,8 @@
 // WHAT COUNTS AS FAMILY MAIL (_fmsDetectFamily_):
 //   student   — from @student.ccpsnet.net.
 //   parent    — from an address in the FamilyContacts tab (the teacher fills
-//               it in) or the Central Ledger's ParentReportLog.
+//               it in) or the Central Ledger's ParentReportLog (rows from
+//               before 2026-10-23; teachers now send reports themselves).
 //   staff     — from a ccpsnet.net colleague, naming a rostered student.
 //   canvas    — a Canvas notification naming a rostered student.
 //   external  — any other sender, not a mailing list, naming a rostered
@@ -1201,7 +1202,8 @@ function _fmsNameParts_(name) {
 }
 
 // Parent address → student email: the FamilyContacts tab, then every address
-// a weekly parent report was sent to (the Central Ledger's ParentReportLog).
+// a weekly parent report was sent to (the Central Ledger's ParentReportLog;
+// blank since 2026-10-23, when teachers began sending reports themselves).
 function _fmsLoadContacts_(ss) {
   const contacts = {};
   const tab = _fmsEnsureTab_(ss, FMS_CONTACTS_TAB, FMS_CONTACTS_HEADERS);

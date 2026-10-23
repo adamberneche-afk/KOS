@@ -1,5 +1,15 @@
 # KOS Changelog
 
+### The Drive sweeps stop before the time limit (2026-10-23)
+
+`runSemanticSweeper()` and `sweepRootForExhaust()` (6) and
+`runRegistrarIntake()` (11) walk a whole folder. Each now stops after
+`SWEEP_TIME_BUDGET_MS` (4 minutes, in 6) and leaves the rest for its next
+run, under Apps Script's 6-minute limit. All three skip what they already
+handled, so stopping loses nothing. Before, a timeout mid-sweep cost the
+Sweeper its `EXECUTION_LEDGER` rows (written after the loop) for files it
+had already renamed and moved.
+
 ### Why a session has no Vector State row (2026-10-23)
 
 The primer's Data Quality block said two sessions had no Vector State row,

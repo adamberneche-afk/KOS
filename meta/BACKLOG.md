@@ -117,10 +117,13 @@ operator. This file holds what comes after them.
 
 
 
-- **Parent reports (`36_WeeklyParentReport.js`) turned on.** Built, not
-  enabled; the only off-domain disclosure. Waits until the student and
+- **Parent reports (`36_WeeklyParentReport.js`) in use.** Since 2026-10-23
+  KOS writes them and the teacher copies each into an email from their own
+  account (D1); the report meets the audit's fix-first 13 apart from the
+  guardian list, which is the teacher's. Waits until the student and
   teacher dashboards are tightened (decided 2026-10-18; `PLAN_2026-10.md`,
-  "The next two weeks", D1), then a dry run: one report reviewed, none sent.
+  D1) and the code is pushed; then one report read in full before the
+  first is sent.
 
 - **Family Mail Sentinel redaction rework.** Keep the patch's new phrases
   (restrict "kms"), its quote-safe possessive handling and its two-letter
@@ -135,7 +138,8 @@ wait until after 2026-10-30.
 
 - **Second-user build (`SU_*`, reviewed 2026-10-13).** The order of work is
   sound, but some of its premises are wrong:
-  - Parent reports would send from the admin's mailbox.
+  - Parent reports would send from the admin's mailbox (moot since
+    2026-10-23: each teacher sends their own).
   - Consolidating the dashboards breaks every other teacher's `/exec` URL.
   - The installer can't set properties or triggers in other projects
     without the Apps Script API.

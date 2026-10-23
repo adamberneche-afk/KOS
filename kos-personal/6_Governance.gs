@@ -307,6 +307,13 @@ function applyMutation(docId, searchTag, payload) {
 // SEMANTIC SWEEPER — HOURLY TRIGGER
 // ================================================================
 
+// The Drive sweeps (here and runRegistrarIntake, 11) stop after this long
+// and leave the rest for the next run, under Apps Script's 6-minute limit.
+// Each skips what it already handled, so stopping early loses nothing; a
+// timeout mid-loop lost the Sweeper's EXECUTION_LEDGER rows, which it
+// writes after the loop.
+const SWEEP_TIME_BUDGET_MS = 4 * 60 * 1000;
+
 /**
  * Scans Drive root for files with CE-tagged names and routes each
  * to the correct system folder based on the CE tag prefix.
@@ -338,10 +345,12 @@ function runSemanticSweeper() {
       ledger   = _getOrCreateSheet(ss, 'EXECUTION_LEDGER');
     } catch (_) {}
 
-    let routed = 0, skipped = 0, noTag = 0, nullId = 0;
+    let routed = 0, skipped = 0, noTag = 0, nullId = 0, stoppedEarly = false;
     const ledgerRows = [];
+    const started = Date.now();
 
     while (files.hasNext()) {
+      if (Date.now() - started > SWEEP_TIME_BUDGET_MS) { stoppedEarly = true; break; }
       const file = files.next();
       const name = file.getName();
 
@@ -385,7 +394,8 @@ function runSemanticSweeper() {
       '[Sweeper] routed=' + routed +
       ' skipped=' + skipped +
       ' noTag='   + noTag   +
-      ' nullId='  + nullId
+      ' nullId='  + nullId +
+      (stoppedEarly ? ' (time budget reached; the rest on the next run)' : '')
     );
 
   } catch (e) {
@@ -467,8 +477,13 @@ function sweepRootForExhaust() {
     const exFolder = DriveApp.getFolderById(exId);
     const docs     = DriveApp.getRootFolder().getFilesByType(MimeType.GOOGLE_DOCS);
     let   count    = 0;
+    const started  = Date.now();
 
     while (docs.hasNext()) {
+      if (Date.now() - started > SWEEP_TIME_BUDGET_MS) {
+        console.log('[sweepRootForExhaust] Time budget reached; the rest on the next run.');
+        break;
+      }
       const f    = docs.next();
       const name = f.getName();
       // Target: files starting with CE: or KOS: that haven't been UID-stamped
