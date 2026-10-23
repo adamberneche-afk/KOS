@@ -176,7 +176,8 @@ function untilStable(text, re, rep) {
 // stray "<" after that: in well-formed HTML a literal "<" in text is
 // written "&lt;", which the entity step below turns back into "<".
 function htmlToText(html) {
-  const ent = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', mdash: '—', ndash: '–', rarr: '→', larr: '←', hellip: '…', middot: '·' };
+  const ent = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', mdash: '—', ndash: '–', rarr: '→', larr: '←', hellip: '…', middot: '·',
+    rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', times: '×', bull: '•', copy: '©' };
   let text = untilStable(html, /<(style|script|head|svg)\b[\s\S]*?<\/\1\s*>/gi, '');
   text = untilStable(text, /<!--[\s\S]*?-->/g, '');
   text = text
