@@ -7,6 +7,9 @@
 // in the Apps Script editor's Executions log. They're reached through the
 // same /exec or /dev URL as the app:
 //
+//   checkCasServerSignIn()  (editor) whether Apps Script's own OpenID
+//                      token could sign LeaderHub in to CAS server to
+//                      server, with no Cloud Console OAuth client; below.
 //   ?diag=1            A tiny server-checks page, no app code: who you're
 //                      signed in as, whether you're the owner, how big the
 //                      served app is, and two live google.script.run calls
@@ -369,6 +372,95 @@ function _lhDiagScriptTable_(html, all) {
   }).join('');
   return '<h2>Script elements as served</h2><table class="blocks"><tr><th>#</th><th>starts at</th>' +
     '<th>size</th><th>name</th><th>begins</th><th>ends</th></tr>' + rows + '</table>';
+}
+
+// ── Server-side sign-in check for the CAS connection (2026-10-23) ────────
+//
+// The CAS connection signs in from the browser with Google Identity
+// Services, which needs an OAuth client registered in Cloud Console, and
+// GCP access is off for ccpsnet.net (tools/gas-lint/gcp-map.json,
+// google-oauth-client). Since 2026-10-22 LeaderHub runs on the server, so it
+// could call CAS server to server with Apps Script's own OpenID token
+// instead (ScriptApp.getIdentityToken(), which needs the openid scope): no
+// client to register and no page origin. Whether that token exists on this
+// account is unknown; this answers it. Run from the editor; owner-only,
+// changes nothing, and never logs the token itself.
+//
+//   1. Gets the token. Empty means the openid scope isn't granted yet.
+//   2. Reads its claims: aud is the value CAS's LEADER_HUB_OAUTH_CLIENT_ID
+//      would have to hold; email has to equal CAS's TEACHER_EMAIL.
+//   3. Has Google verify it at tokeninfo, the same check CAS's
+//      _verifyLeaderHubToken_ (07) makes.
+//   4. If lh_cas_ccps_api_url is set, sends CAS one read-only
+//      getPacingGuide with it and reports the answer (counts only).
+function checkCasServerSignIn() {
+  _lhRequireOwner_();
+  const out = { token: false, claims: null, verified: null, cas: null };
+  const say = function (line) { console.log('[CasSignIn] ' + line); };
+
+  let token = '';
+  try { token = ScriptApp.getIdentityToken() || ''; } catch (e) {
+    say('ScriptApp.getIdentityToken() threw: ' + e.message);
+  }
+  if (!token) {
+    say('No identity token. appsscript.json needs the "openid" scope, and the owner has to approve it once ' +
+      '(run this from the editor and accept the prompt). If the scope is approved and this is still empty, the ' +
+      'account does not issue Apps Script identity tokens, and the server-to-server route is closed.');
+    return out;
+  }
+  out.token = true;
+
+  try {
+    const body = token.split('.')[1] || '';
+    const padded = body + '===='.slice((body.length + 3) % 4);
+    const c = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(padded)).getDataAsString());
+    out.claims = { aud: String(c.aud || ''), iss: String(c.iss || ''), email: String(c.email || ''),
+      emailVerified: c.email_verified === true || String(c.email_verified) === 'true',
+      minutesLeft: c.exp ? Math.round((Number(c.exp) * 1000 - Date.now()) / 60000) : null };
+    say('Token claims: aud=' + out.claims.aud + ', iss=' + out.claims.iss + ', email=' + out.claims.email +
+      ', email_verified=' + out.claims.emailVerified + ', expires in ' + out.claims.minutesLeft + ' min.');
+  } catch (e) {
+    say('The token could not be read: ' + e.message);
+  }
+
+  try {
+    const resp = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(token),
+      { muteHttpExceptions: true });
+    const code = resp.getResponseCode();
+    const info = code === 200 ? JSON.parse(resp.getContentText()) : {};
+    out.verified = { code: code, aud: String(info.aud || ''), email: String(info.email || '') };
+    say(code === 200
+      ? 'Google verified it (tokeninfo 200): aud=' + out.verified.aud + ', email=' + out.verified.email + '.'
+      : 'Google did not verify it (tokeninfo HTTP ' + code + ').');
+  } catch (e) {
+    say('tokeninfo call failed: ' + e.message);
+  }
+
+  const url = String(lhGetConfig_('lh_cas_ccps_api_url') || '');
+  if (!url) {
+    say('No CAS API URL in Settings (lh_cas_ccps_api_url), so CAS was not called.');
+  } else {
+    try {
+      const resp = UrlFetchApp.fetch(url, { method: 'post', contentType: 'text/plain;charset=utf-8',
+        payload: JSON.stringify({ idToken: token, action: 'getPacingGuide' }), muteHttpExceptions: true });
+      const code = resp.getResponseCode();
+      let r = {};
+      try { r = JSON.parse(resp.getContentText()); } catch (_) { r = {}; }
+      const units = Array.isArray(r.units) ? r.units.length : (r.data && Array.isArray(r.data.units) ? r.data.units.length : null);
+      out.cas = { code: code, success: r.success === true, message: String(r.message || '').slice(0, 200), units: units };
+      say('CAS answered HTTP ' + code + ': ' + (r.success === true
+        ? 'success' + (units != null ? ', ' + units + ' pacing unit(s)' : '')
+        : 'refused: ' + (out.cas.message || '(no message; not JSON)')) + '.');
+    } catch (e) {
+      say('The call to CAS failed: ' + e.message);
+    }
+  }
+
+  if (out.verified && out.verified.code === 200) {
+    say('For CAS to accept this token: on the teacher-dashboard project, set LEADER_HUB_OAUTH_CLIENT_ID to ' +
+      out.verified.aud + ', and TEACHER_EMAIL must be ' + out.verified.email + '. No Cloud Console client is needed.');
+  }
+  return out;
 }
 
 function _lhDiagEsc_(s) {

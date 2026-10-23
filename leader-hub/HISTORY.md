@@ -1318,3 +1318,18 @@ URL field and its functions, `callGAS()`'s and Organization Sync's browser
 `fetch()` paths, Phase 4's in-app move banner, and the unused public
 `lhGetScrScores`. The web app's own URL (for share codes) comes from the
 server. `?diag=probe` gets the boot data so it still runs the app.
+
+## Testing a server-to-server sign-in to CAS, 2026-10-23
+
+The CAS connection signs in from the browser with Google Identity Services,
+which needs an OAuth client from Cloud Console, and GCP access is off for
+ccpsnet.net. Running on the server, LeaderHub could instead send CAS Apps
+Script's own OpenID token. `checkCasServerSignIn()` (Diagnostics.gs,
+editor, owner-only, changes nothing) finds out whether this account issues
+one: it reports the token's `aud` and email, has Google verify it at
+tokeninfo as CAS does, and, with the CAS API URL set, sends CAS one
+read-only `getPacingGuide`. It never logs the token. The manifest gains the
+`openid` scope for it, so the next run asks for approval once. `?diag=1`
+also shows the page's own origin and whether Google's sign-in library
+loads, for the browser route. Test: `cas-server-signin.test.js`.
+
