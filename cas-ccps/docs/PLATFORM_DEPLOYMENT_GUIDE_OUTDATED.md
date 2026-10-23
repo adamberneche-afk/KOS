@@ -13,6 +13,7 @@ incorrect instructions. Do not follow it.
 | `REGISTRY_SHEET_SETUP.md` | Script Registry Sheet setup |
 | `USER_EXPERIENCE_REFERENCE.html` | Role-by-role UX walkthroughs, document anatomy, folder structure, full pipeline (added — reconciliation decision 5; salvaged from the now-archived `DEPLOYMENT_AND_UX_GUIDE.html`) |
 
-The current deployment takes approximately 1 hour and requires
-no manual script binding — the AutoInstaller (Script 21) handles
-all script project creation and configuration automatically.
+The current deployment pushes every project with clasp through
+`tools/clasp-sync/run.js` (see `DEPLOYMENT_HANDOFF.md`). The AutoInstaller
+(Script 21) is optional and its file lists are out of date
+(`REGISTRY_SHEET_SETUP.md`).
