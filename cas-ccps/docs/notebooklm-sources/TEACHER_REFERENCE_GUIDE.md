@@ -1,167 +1,235 @@
-# Teacher Reference Guide
+<!-- Generated from ../TEACHER_REFERENCE_GUIDE.html by tools/cas-ccps/build-guide-notebook-sources.js. Edit the HTML guide, then re-run it. -->
 
-Everything you need to know for day-to-day use of the Assignment System. This is a reference document — consult it when you have a question, not just during setup.
+# Your guide to the *Assignment System*
 
-Topics: creating assignments · registering students · reading your dashboard · handling problems · end of term.
+Notebook source: TEACHER_REFERENCE_GUIDE.
 
-## Your Setup
+Look things up here when you have a question. Each section starts with what to do. The words match the Teacher Dashboard and its ❓ Terms panel.
 
-You received an Admin Manual Google Doc with your name on it. When you first ran the setup wizard, it created your personal workspace automatically. Here's what was created and where to find it.
+⚙️
 
-| Asset | What it does | Where to find it |
-|---|---|---|
-| Teacher Manual Doc | Your operational hub — contains all your links and the ⚙️ Assignment System menu | In your Google Drive — the document you ran setup from |
-| Rubric Upload Form | Submit a new rubric to create an assignment | Link in your Teacher Setup Details page (end of manual) |
-| Student Registration Form | Register a student for an assignment | Link in your Teacher Setup Details page |
-| Canvas assignment | Where students turn in (their document's link) and where you grade | Your Canvas course (imported from the CAS cartridges) |
-| Student Dashboard | Where students submit for feedback and see where each assignment stands | The link near the top of every student document |
-| Teacher Matrix Sheet | Your assignment configurations — do not edit directly | Link in your Teacher Setup Details page |
-| Teacher Dashboard | Live view of all your students' progress | ⚙️ Assignment System → Open My Dashboard |
+## What's Where
 
-> 💡 **Keep your Teacher Manual bookmarked.** It's the starting point for every action — creating assignments, registering students, and opening your dashboard are all one click from the ⚙️ menu.
+Work from the Teacher Dashboard. You rarely need anything else.
 
-## Your Workspace at a Glance
+| Thing | What it's for | Where to find it |
+| --- | --- | --- |
+| Teacher Dashboard | Your students' progress, lessons, feedback setting and competency ratings | The link your admin gave you, or ⚙️ Assignment System → 📊 Open My Dashboard in your Teacher Manual |
+| Student Dashboard | Where students press Submit for Feedback, answer warm-ups and see where each assignment stands | The “Your dashboard” link in every student document's page header, and in each Canvas assignment |
+| Student documents | One Google Doc per student per lesson, where the student writes | “Open document ↗” on the student's row |
+| Canvas assignment | Where students turn in (their document's link) and where you grade | Your Canvas course |
+| Teacher Manual | The ⚙️ Assignment System menu and your setup details | Your Google Drive |
 
-Your workspace lives entirely within Google Drive. The folder structure is organized like this:
+> **Don't edit the system's spreadsheets by hand** (the Central Ledger, the Teacher Matrix). The dashboard changes what you need. The one exception is a step a timeout email asks for.
 
-```
-📁 Assignments/
-  📁 [Your Subject]/
-    📁 [Your Name]/                          ← your personal folder
-      📋 [Name] — Rubric Responses           ← rubric uploads land here
-      📊 [Name] — Teacher Matrix             ← your assignment configs
-      📬 [Name] — Rubric Upload Form
-      📬 [Name] — Assignment Review Form
-      📬 [Name] — Student Registration Form
-  📁 _Student Shared Folders/                ← no longer used for new work: each
-                                             student's doc is shared with that
-                                             student and you only, and appears in
-                                             their "Shared with me"
-```
+📁
 
-> 🚫 **Don't edit the Teacher Matrix directly.** It's managed by the system. Editing rows there can break the evaluation pipeline for your students.
+## Student Documents
 
-## Creating an Assignment
+Open a student's document from their row. Each document is shared with that student (they can edit) and with you (you can comment). Classmates have no access.
 
-Creating an assignment is a two-step process: upload your rubric, then confirm what the system extracted from it. Once confirmed, the assignment is live for students.
+**What the student sees, top to bottom:**
 
-1. **Create your prompt template document** — Write the student-facing assignment instructions in a Google Doc. This is what students will see in their document. Make it as clear as possible — the AI uses this context when evaluating responses. Share the doc as "Anyone with the link can view."
-2. **Prepare your rubric** — Write your evaluation rubric. The more specific and detailed it is, the better the AI evaluation will be. Include measurable criteria — "demonstrates understanding of X" is better than "understands X." You'll paste the full rubric text directly into the upload form.
-3. **Open the Rubric Upload Form** — Click `⚙️ Assignment System → Create New Assignment` in your manual. Fill in: your name, subject, course name, paste the rubric text, paste the prompt template Google Doc link, and select the academic tier.
-4. **Wait for the review email (1–5 min)** — The system processes your rubric and extracts the assignment criteria using AI. You'll receive an email with a pre-filled review link. This usually arrives within 5 minutes.
-5. **Review and confirm the extracted criteria** — Click the link in the email. You'll see a form pre-filled with what the system extracted: assignment name, AI coach persona, four milestones, and the passing standard. Review each field. Edit anything that's wrong. Submit when it looks right.
-6. **Receive your Config ID** — After confirming, the assignment status changes to LIVE and you receive a confirmation email containing your **Config ID** (format: `VDOE-XXXXXX-YYYY`). Record this — you need it when registering students.
+- A small grey page header: who and what (name, class, teacher, block, period, lesson), a “Your dashboard” link, and a “Feedback:” line that says where the work stands.
+- The lesson title, a “↓ Go to your response” link, and the assignment in small (8 pt) text.
+- A “Your response” heading, “Write your answer under the grey line below.” and “↑ Back to the assignment”.
+- The grey “── YOUR RESPONSE BEGINS HERE ──” line, then the student's writing space (10 pt).
+- A small grey “[CONFIG_ID: …] Do not delete this line.” at the bottom. Only the text between the grey line and this line is checked.
 
-> 💡 **If the review email doesn't arrive after 10 minutes:** check with your admin. The system may have encountered a processing issue with your rubric file. The admin can re-queue it from the Admin Controls panel.
+> **Feedback is a comment, not text in the document.** With feedback as a comment (the setting is on for every course), each check adds a new comment. Click Comments (top right) to read them. A student who presses Resolve doesn't delete it.
 
-> ⚠️ **Once confirmed, the assignment criteria are fixed.** There is no edit path for a live assignment — changes would invalidate evaluations already delivered. If you need to update the criteria significantly, create a new assignment and use the new Config ID for any remaining students.
-
-## Registering Students
-
-Each student needs to be individually registered for each assignment. Registration creates their personal document and shares it to their Google Drive automatically.
-
-1. **Open the Student Registration Form** — Click `⚙️ Assignment System → Register a Student` in your manual.
-2. **Fill in the student's details** — Required: student's Google account email, full name, class name, subject, course name, period, your name and email, the assignment Config ID, and the student's block.
-
-   > ⚠️ **The student's Google account email must be exact.** It's used to match the student to their document when they submit evaluations. A typo here means the student can't use the evaluation system. Double-check it before submitting.
-3. **Wait 1–2 minutes for the document to be created** — The system copies the master student template, injects your assignment prompt, and shares the document to the student's Google Drive. The student will find it in their "Shared with me" folder.
-4. **Tell the student to check Shared with me** — Send the student a quick message that their document is ready. They find it in Google Drive → Shared with me. The link to their assignment dashboard, where they submit for feedback, is near the top of the document.
-
-> 💡 **Register students in groups of 20–30.** Large batches can occasionally time out. If a student doesn't receive their document within 5 minutes, submit the registration form again — re-submission is safe. Check your dashboard to confirm the student appears.
-
-> 📋 **Course name must match exactly.** The course name in the registration form must match exactly what you used when creating the assignment. Case and spacing matter.
+📊
 
 ## Your Dashboard
 
-Your teacher dashboard shows where each student's work stands. Open it from `⚙️ Assignment System → Open My Dashboard`.
+Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** to see the latest: it doesn't update by itself.
 
-- **Lesson picker:** the dashboard opens on the **current lesson** for each course: the lesson in the LessonSchedule tab with the latest start date on or before today. The dropdown at the top switches to any other lesson, or to **All assignments**.
-- **Summary cards:** at the top, a count for each state (below). Click a card to show only those students; click it again to clear the filter.
-- **Order:** one section per lesson, students by period, then name, which is easiest to follow alongside SpeedGrader.
-- **Each student:** their state, how many checks they've run, the date of the last one, when they first passed, and the **suggested score** from their latest check (a reference only; you grade in Canvas).
-- **Term filter:** filters by academic term. The current term is selected by default.
-- **Refresh:** the dashboard doesn't update by itself. Click ↻ Refresh to see the latest.
+**Showing (the lesson picker).** It opens on the **current lesson** for each course: the lesson whose start date in 📅 Lessons is the latest on or before today. Pick another lesson, or **All assignments** at the bottom.
 
-> 💡 Click a student's "Open document ↗" link to open their document. Their evaluations are at the end of it, newest last, so it is the same view you get when you open their Canvas submission.
+**Summary cards.** Students, ✅ Passed, ↩️ Passed before, now revising, ✏️ Checked, not passing yet, ⚪ Not checked yet, and Needs attention. Click a card to show only those students; **Clear filter** shows everyone again. In All assignments the first card counts assignments, since a student has one row per assignment.
 
-## Understanding Student Status
+**Each student's row.** Name; block, period and course; “N checks · last <date>” or “No checks yet”, with “· submitted <time>” once they've submitted; “First passed <date>”; the AI's suggested score from the last check (“3 — Solid (2–4, higher is better)”); **Open document ↗**; and badges on the right. Rows are grouped by lesson, then ordered by period and name, which follows SpeedGrader.
 
-Every student's work for a lesson is in one of four states:
+**Warm-up readiness strip** (under the header, when warm-ups are on). The pacing guide unit, then “x of N students have had work checked”, “y answered a warm-up”, “building a personalized learning profile” and “ready for fully personalized feedback”. Click a number to show those students.
 
-| State | Meaning |
-|---|---|
-| **⚪ Not checked yet** | No evaluation has come back. The student hasn't clicked Submit for Feedback, or their first check is still running. |
-| **✏️ Checked, not passing yet** | One or more checks have come back and none passed. This is different from not checked: the student is working on it. |
-| **✅ Passed** | The latest check meets the standard. The student may turn it in on Canvas, or keep improving it. |
-| **↩️ Passed before, now revising** | An earlier check passed, and the latest one needs revision. |
+### Header buttons
 
-A second badge appears while a check is in progress or needs attention:
+| Button | What it does |
+| --- | --- |
+| + New Lesson | Opens “Log a lesson”: the day's objective, activity, vocabulary and the competencies taught, for one or more periods. Shown only when warm-ups (Module 2) are on. Not the same as 📅 Lessons' “+ New lesson” |
+| Student Context | One document per student that gathers their lessons, checks and warm-ups, updated weekly. “← Back to dashboard” returns to the roster |
+| ✉ Parent Reports | Not in use yet. See Parent Reports |
+| 🎓 Competency ratings | Confirm or set each student's SCR rating. See Grading and Competency Ratings |
+| 💬 Feedback | Where feedback goes, per course. See Where Feedback Goes |
+| 📅 Lessons | Start dates, rollout status, and lesson edits. See Lessons and Start Dates |
+| ❓ Terms | What each word and number on the dashboard means. Escape closes it |
+| ↻ Refresh | Loads the latest |
+| Whole school year | The year menu. Pick a marking period to see only that part of the year |
 
-| Badge | Meaning |
-|---|---|
-| **QUEUED** | The student clicked Submit for Feedback; the work is waiting to be evaluated. It should move on within a few minutes. |
-| **EVALUATING NOW** | The evaluation is running. |
-| **FLAGGED ⚠** | Something went wrong (a processing failure or timeout). Open the student's document; contact the admin if it doesn't clear. |
+🔍
 
-Passing isn't required before a student turns in on Canvas. If a submission arrives in Canvas from a student who is ⚪ or ✏️ here, that's your flag that it hasn't passed a check.
+## Understanding Status
 
-## What Module 2 Does and Why
+Each student's work for a lesson is in one of four states:
 
-Module 2 is the one part of this system that gets more useful the more you use it — it's what lets warm-up questions and feedback personalize to each student over time, instead of treating every student identically. Three pieces work together:
+- **⚪ Not checked yet**: No check has come back. The student hasn't pressed Submit for Feedback, or the first check is still running.
 
-**Competency checkboxes.** Every time you log Lesson Context, you check off which state competencies that lesson addressed. This is the only place that connects a specific day's teaching to a specific competency — checking these is what feeds a student's SCR (Student Competency Record) evidence and, downstream, the warm-up personalization below.
+- **✏️ Checked · not passing yet**: One or more checks came back, and none passed. The student is working on it.
 
-> 💡 If you skip the checkboxes for a lesson, that lesson simply doesn't count toward any competency's evidence — there's no way to recover it later. Logging Lesson Context without checking competencies still works for the roster/context features below, just not for SCR evidence.
+- **✅ Passed**: The latest check met the assignment's criteria. The student can turn it in on Canvas, or keep improving it.
 
-**"My Context" tab.** A roster view of every student's document, aggregating their lesson history, evaluation activity, and warm-up responses in one place — regenerated weekly, not live. Use it to see what a student's document actually contains without opening each one individually.
+- **↩️ Passed before · latest needs revision**: An earlier check passed, and the latest one needs revision.
 
-**Warm-up readiness.** The panel at the top of your dashboard shows how many students have enough history (evaluation results, warm-up responses, logged lesson context) for the system to generate a genuinely personalized warm-up question, versus a generic one. Click any of those numbers to filter your roster to exactly those students — the "building a personalized learning profile" group's next step is always the same: log more Lesson Context for that class (lessons drafted nightly from the pacing guide count too; adjusting a drafted lesson's competencies improves them).
+A second badge shows while a check is on its way, or when it failed:
 
-> 🔗 The throughline: Lesson Context + competency checkboxes → SCR evidence and warm-up readiness → more personalized questions and feedback for that class. Skipping the checkboxes doesn't break anything today, but it's the one habit that determines how much value Module 2 actually delivers later.
+- **Waiting to be checked**: Submitted and in line for its check. The student's card says “Waiting for feedback…”.
+
+- **Being checked now**: The check is running. The student sees the same words.
+
+- **Couldn't be checked ⚠**: The check failed or timed out. This isn't the student's work. A check still running after 12 minutes is stopped and lands here. These rows are counted under Needs attention. See When Students Have Problems.
+
+> Passing isn't required before a student turns in on Canvas. A Canvas submission from a student who is ⚪ or ✏️ here hasn't passed a check yet.
+
+📅
+
+## Lessons and Start Dates
+
+Give each lesson a start date in 📅 Lessons. To change what a lesson says, or add one, write a draft there. You don't upload rubrics or forms to make assignments.
+
+1. **Open 📅 Lessons**: One table per course: Lesson, Status (Current, Upcoming, Taught or No date), Starts, and Last rollout. Next to each course name: whether the rollout is on, or “in shadow (changes nothing)”.
+2. **Set a start date**: Pick a date in Starts. It saves when you change it. **Clear** removes it. A lesson runs from its start date until the next one starts.
+3. **Edit a lesson, or add one**: **Edit** opens the lesson's fields as a draft. **+ New lesson** (next to the course name) starts an empty one: title, objective, activity, the student task or a brief for it, a warm-up anchor, vocabulary, and competencies with a tier each.
+4. **Save draft, then Submit for import**: Submit only works once every required field is filled. The draft is imported that evening and comes back as a proposal.
+5. **Review the proposal**: Open it under Lesson drafts. Choose **Accept the proposal**, or **Return with my note** to send it back. An accepted lesson goes live once the change is reviewed and published (the screen calls this a PR: a reviewed change to the system's files).
+
+> **Competency tiers.** Each lesson's competencies are primary (must be shown to pass), secondary or tertiary (credited when shown). The draft won't submit unless the tiers follow those rules.
+
+👥
+
+## How Students Get Their Documents
+
+Nothing to do. You don't register students one at a time. The nightly rollout (about 9 p.m.) does it from the Canvas roster.
+
+1. **Enroll**: For the current lesson and any lesson starting within 2 days, the rollout enrolls every student on the Canvas roster export.
+2. **Make the documents**: Each student gets their own document for the lesson. Until the lesson's release night, it isn't shared yet.
+3. **Share them the night before**: The night before a lesson starts, each document is shared with its student and appears on their dashboard. A student who joins late gets theirs after the next run.
+
+> **A student is missing?** Check they're in the Canvas section. A late joiner only appears once a fresh Canvas roster export is in place; an old export shows as a ⚠ line in 📅 Lessons' Last rollout column. Tell your admin.
+
+💬
+
+## Where Feedback Goes
+
+Open **💬 Feedback** and choose, per course, *as a comment* on the document or *in the document*. The **Now:** line shows the live setting. Today it's “as a comment, for every course”.
+
+A comment keeps the document to the assignment and the student's work, and new documents are made without a feedback section. A change reaches students within about 10 minutes.
+
+**What a feedback comment says.** “Feedback, <date and time>”, then “✅ RESULT: YOUR WORK MEETS THE STANDARD” or “✏️ RESULT: REVISIONS REQUIRED”, then the report (overall assessment, each milestone MET / PARTIALLY MET / NOT MET, required revisions) and what to do next.
+
+🧭
+
+## Warm-ups and Lesson Logs
+
+Log the lessons you teach. That's what lets warm-ups fit each student over time. This part of the system is Module 2.
+
+**Log a lesson** (the header's **+ New Lesson**). Enter the date, one or more periods, the objective, what students did, vocabulary, and tick the competencies you taught. Teaching the same lesson to several periods? List them with commas: one log is made for each. Each log records which competencies you taught, for coverage reports, and feeds warm-up personalization.
+
+> Competency ratings come from checks of student work, not from lesson logs. A lesson you don't log just isn't counted toward coverage or personalization.
+
+**Warm-ups.** A short question at the start of class. Students answer it on their dashboard, and it's scored overnight out of 10 (length, grammar and engagement). Students can earn an extra point by replying to the feedback in at least 10 words by the date shown.
+
+**Warm-up readiness** (the strip under the header) shows how much the system knows about each student, from checks and warm-up answers. Click a number to see those students. “Building a personalized learning profile” means the system is still learning what kind of warm-up works for them; “ready for fully personalized feedback” means it's confident.
+
+✉️
+
+## Parent Reports
+
+> **Not in use yet. Don't send reports.** Weekly parent reports stay off until the school decides to start them. The ✉ Parent Reports button is there, but its wording and recipient checks are still being fixed.
+
+How it works, for when it starts: the panel lists this week's report for each student. Nothing is sent until you type an address and press Send for one student, and there's no “send all”. A second send for the same student and week is refused. Every send is recorded.
+
+🙋
 
 ## When Students Have Problems
 
 | Student says… | What's happening | What to do |
-|---|---|---|
-| "I don't see the 📊 menu in my document" | Expected: the district turns Apps Script off for student accounts, so the menu never appears for them | Send them to their assignment dashboard (link near the top of their document) and have them click **Submit for Feedback** |
-| "I submitted for feedback but nothing appeared" | The evaluation may still be running, or a pipeline issue | Feedback is added at the **end** of the document. Ask them to refresh it. If nothing after 10 minutes, check your dashboard: if they're still QUEUED, contact the admin to check the pipeline |
-| "The dashboard says I haven't written enough" | Fewer than 25 words below the response line | Ask them to write more below "── YOUR RESPONSE BEGINS HERE ──" |
-| "My assignment isn't on my dashboard" | Signed into the wrong Google account, or not registered | Have them sign into their school account. If they still don't appear on your dashboard, their registration may have failed |
-| "I accidentally deleted something in the document" | Student edited a protected zone (feedback, footer, prompt) | Ask them to use File → Version history → See version history to restore. If they deleted the CONFIG_ID footer, contact admin — the document may need to be re-created |
-| "I can't find my document" | Looking in the wrong place or wrong account | Tell them to go to drive.google.com → "Shared with me", or open it from their dashboard |
-| "How do I turn it in?" | They turn in on Canvas | Copy the document's link, open the Canvas assignment, Start Assignment → Website URL, paste, Submit |
+| --- | --- | --- |
+| “My card says Couldn't be checked ⚠” | The check failed or timed out. Not their fault; their work is safe | Follow the timeout email you got: it says whether to restart the check or ask the student to press Submit for Feedback again. Contact your admin if it keeps happening |
+| “I submitted but there's no feedback” | The check may still be in line or running | Feedback is a comment: have them open the document and click Comments. Their card says “Waiting for feedback…” or “Being checked now…” while it's on its way |
+| “It says Not enough to evaluate yet” | Fewer than 25 words below the grey line | Ask them to write more under “── YOUR RESPONSE BEGINS HERE ──”, above the “Do not delete this line” line |
+| “My assignment isn't on my dashboard” | Wrong Google account, the lesson hasn't been released, or they're not enrolled | Have them sign into their school account. Check the lesson has a start date in 📅 Lessons. If they're not on your roster either, see How Students Get Their Documents |
+| “I don't see the 📊 menu in my document” | Expected: that menu doesn't run for student accounts | Send them to their dashboard to press **Submit for Feedback** |
+| “I deleted part of my document” | They changed the assignment, the grey line or the bottom line | File → Version history → See version history to restore. If the grey line or the CONFIG_ID line is gone for good, contact your admin |
+| “My Info is wrong” | Their name, class, period or teacher is wrong on file | They can press ✉ Request a correction in My Info, which opens an email to you. Ask your admin to fix it |
+| “How do I turn it in?” | They turn in on Canvas | Copy the document's link, open the Canvas assignment, Start Assignment → Website URL, paste, Submit Assignment |
 
-## Turning In, Grading and the SCR
+🎓
 
-**Turning in happens in Canvas.** Each Canvas assignment asks students for their CAS document's link (Website URL). You grade there; CAS doesn't send grades to Canvas. The CAS Turn-In Form is retired and was never given to students.
+## Grading and Competency Ratings
 
-**CAS keeps the SCR current.** Every check writes competency evidence for the competencies its milestones are tied to. The weekly SCR suggestion counts **one piece of evidence per assignment**, using that assignment's best result, so drafts don't count against a student. It averages the student's **three best pieces** (Met = 2, Partially met = 3, Not met = 4) and rounds to the nearest rating. With fewer than three assignments the competency shows "insufficient evidence". Ratings 1 and 5 are never suggested; they're yours to enter as an override. Confirm or override each suggestion in the dashboard's SCR review.
+**Grade in Canvas.** Each Canvas assignment asks for the student's document link (Website URL). The system doesn't send grades to Canvas. The AI's suggested score on a passing check, 2 (Adequate), 3 (Solid) or 4 (Exceptional), is a reference only. Higher is better.
 
-## Term Management
+**Rate competencies in 🎓 Competency ratings.** Each item shows the student, the competency, “Evidence so far: n met, n not met, n partially met”, and the AI-suggested rating. Press **Confirm** to accept it, or type 1–5 under “Or enter 1–5” and press **Submit**. Items with too little evidence say so; you can still enter a rating.
 
-The system tracks which academic term each student registration belongs to. This allows dashboards to filter by term and allows completed terms to be archived cleanly.
+| Rating | Meaning (1 is the highest) |
+| --- | --- |
+| 1 | Can teach others |
+| 2 | Without supervision |
+| 3 | Limited supervision |
+| 4 | With supervision |
+| 5 | Cannot perform |
 
-> 📋 **Term management is handled by the admin** — not by teachers. This section explains what happens so you understand what you'll see at the start and end of each term.
+> **The two scales run in opposite directions.** On a competency rating, 1 is the highest. On the AI's suggested score, 4 is the highest. Changing a suggested rating from 2 to 4 lowers it.
 
-**Start of term.** The admin sets the current term (e.g. "2025-26 S2") before new students are registered. Your dashboard will automatically show the current term by default when you open it.
+**How the AI suggests a rating** (updated weekly). Every check records evidence for the competencies its milestones cover. One assignment counts once, at its best result, so drafts don't count against a student. With 3 or more assignments, it averages the 3 best (Met = 2, Partially met = 3, Not met = 4) and rounds. With fewer than 3, there's no suggestion yet. It only ever suggests 2, 3 or 4: 1 and 5 are yours alone.
 
-**During the term.** Your dashboard shows all students from the current term. Use the term filter dropdown to switch between terms — for example, to check whether a student completed work in a previous term.
+📅
 
-**End of term.** The admin archives completed terms via Admin Controls. Archived students disappear from the default dashboard view. Their records are preserved for academic integrity purposes — they're hidden, not deleted. To see archived students, select "All Terms" from the filter dropdown.
+## Marking Periods and the School Year
 
-> 💡 **Before the term ends:** check for students still ⚪ Not checked or ✏️ Not passing on assignments you expect to be finished, and reach out to them before the admin archives the term.
+Use the year menu in the header. It starts on **Whole school year**. Pick a marking period, such as “Marking period 1, 2026–27”, to see only that part. A student's work belongs to the marking period it was made in.
 
-## What Teachers Can and Can't Edit
+> **Archiving is your admin's job.** At the end of a school year, the admin archives it. Archived work no longer shows on the dashboard. It's kept, not deleted, and the admin can bring a year back.
 
-| Item | Can edit? | Notes |
-|---|---|---|
-| Prompt template document | ✅ Yes | Edit it anytime. Changes affect students registered after the edit — already-registered students have the prompt injected at creation time |
-| Assignment criteria (milestones, persona) | ⚠️ Create new assignment | Use the rubric upload flow to create a new assignment with updated criteria. Don't edit the Teacher Matrix directly |
-| Student registration details | ❌ Contact admin | Student name, email, class, period — these are locked in the Ledger. Admin can correct them |
-| Student's assignment document | 🚫 No | You have comment access to your own students' docs, for feedback. Only the student edits, and only until they turn it in; after that it's read-only for them too. Other teachers and classmates have no access |
-| Grades | ✅ In Canvas | CAS shows a suggested score as a reference; the grade is yours, in Canvas |
-| SCR ratings | ✅ In your dashboard | Confirm or override each suggestion in SCR review |
-| Teacher Matrix spreadsheet | ❌ Do not edit | System-managed. Editing rows directly can corrupt the evaluation pipeline |
+> **Before a marking period ends:** click ⚪ Not checked yet and ✏️ Checked, not passing yet, and reach out to those students.
 
----
-*Assignment System — Teacher Reference Guide. Contact your system admin for anything not covered here.*
+🔒
+
+## What You Can Change
+
+| Item | Can you change it? | How |
+| --- | --- | --- |
+| Lesson start dates | ✅ Yes | 📅 Lessons → Starts. Saves when you change it |
+| A lesson's text, task and competencies | ✅ Through a draft | 📅 Lessons → Edit. The draft is reviewed before students see it |
+| A new lesson | ✅ Through a draft | 📅 Lessons → + New lesson |
+| Where feedback goes | ✅ Yes | 💬 Feedback, per course |
+| Student details (name, class, period) | ❌ Ask your admin | They come from the Canvas roster |
+| A student's document | 💬 Comment only | The student edits; you can comment |
+| Grades | ✅ In Canvas | The suggested score is a reference; the grade is yours |
+| Competency ratings | ✅ Yes | 🎓 Competency ratings: confirm, or enter 1–5 |
+| The system's spreadsheets | ❌ Don't edit | Except a step a timeout email asks for |
+
+❓
+
+## Words You'll See
+
+The same list as **❓ Terms** on your dashboard.
+
+- **Check**: One AI evaluation of a submission against the assignment’s criteria (Flow 2). A student can be checked many times.
+- **Passed / Not passing yet**: Whether the latest check met the assignment’s criteria. “Passed before” means an earlier check passed and the latest needs revision.
+- **Waiting to be checked**: Submitted and in line for its check.
+- **Being checked now**: The check is running.
+- **Couldn’t be checked**: The check failed or timed out, not the student’s work. The timeout email says what to do.
+- **AI’s suggested score**: On a passing check, the AI suggests 2 (Adequate), 3 (Solid) or 4 (Exceptional). Higher is better. It never suggests 1 or 5.
+- **Competency rating (SCR)**: The Virginia CTE Student Competency Record, 1 to 5, where 1 is the highest: 1 Can teach others, 2 Without supervision, 3 Limited supervision, 4 With supervision, 5 Cannot perform. The AI suggests 2 to 4 once there are 3 pieces of evidence; 1 and 5 are yours alone.
+- **Competency tiers**: Each assignment’s competencies are primary (must be shown to pass), secondary or tertiary (credited when shown).
+- **Warm-up readiness**: How much the system knows about each student, from checks and warm-up answers. Click a number to see those students.
+- **Personalized learning profile**: The system’s growing guess of what kind of warm-up works for a student; “ready for fully personalized feedback” means it’s confident.
+- **Student Context**: One document per student that gathers their lessons, checks and warm-ups, updated weekly.
+- **Current lesson**: The lesson whose start date in 📅 Lessons is the latest on or before today, per course.
+- **Rollout**: The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead).
+- **Feedback as a comment**: Where a student’s feedback goes: a comment on the document, or written into it. Set per course in 💬 Feedback.
+- **3-Odd / 3-Even**: The two halves of period 3, which meet on alternate (odd or even) calendar dates.
+- **Marking period**: A term code like 2627_MP1 is marking period 1 of 2026–27.
+
+Assignment System — Teacher Reference Guide · Contact your system admin for anything not covered here.
