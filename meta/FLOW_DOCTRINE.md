@@ -318,6 +318,14 @@ original: `runLeaderHubConnectionCheck()`'s three data checks were failing on
 a `ReferenceError` while the test asserted they fail on empty tabs. The right
 verdict from the wrong program, which is the failure mode this rule names.
 
+**No `typeof fn === "function"` guard inside one project.** The guard is the
+same failure in production code: a missing file becomes a silent skip, and a
+sandbox that forgot the file goes green. Call the function directly and load
+its file in the test. The guard is right only where some project holding the
+file lacks the function (31's calls into 55, which the Teacher Dashboard
+doesn't load). **Enforced** by gas-lint check 15 (`typeof-guard-same-project`,
+2026-10-23), which removed nine.
+
 ## 13. Refuse to claim what you cannot know.
 
 `runLeaderHubConnectionCheck()` diagnoses three of the four causes of a broken
