@@ -25,18 +25,19 @@
  * multi-tenant logic needed, matching how Organization Sync (EmailBridge.gs)
  * already treats a co-advisor as a second, wholly separate deployment.
  *
- * THIS COVERS PHASES 1-2 of the server-migration plan (transport/serving
- * only — no data domain has moved off localStorage yet, zero behavior
- * change to any feature's data). doGet() serves the existing, unmodified
- * assembled HTML. lhApiCall_() below is the google.script.run entry point
+ * HISTORY: this began as Phases 1-2 of the server-migration plan
+ * (transport and serving only). Since 2026-10-22 every data domain lives
+ * on the server and the app runs only as this web app
+ * (meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md): doGet() writes the
+ * server's data into the page as window.__LH_BOOT__ (Data.gs
+ * lhBootData_/lhInjectBootData_), and the page saves each change back
+ * through google.script.run. lhApiCall_() below is the google.script.run entry point
  * the same-origin client (callGAS() in
  * leader-hub/src/10-command-engine-ai-and-widgets.html) now calls instead
  * of fetch()ing EmailBridge.gs's doPost() URL — same action dispatch table
  * (_lhDispatchAction_() in EmailBridge.gs), same underlying functions,
  * just a same-origin RPC instead of a cross-origin POST. doPost() itself
- * is untouched and still answers external JSON callers directly. Later
- * phases move individual data domains onto server-side storage one at a
- * time. See the migration plan for the full sequence.
+ * is untouched and still answers external JSON callers directly.
  *
  * ONE-TIME SETUP for a fresh deployment: Project Settings → Script
  * Properties → add OWNER_EMAIL = the Google account this deployment
@@ -44,19 +45,16 @@
  * including the person who deployed it — by design, same as
  * TEACHER_EMAIL's fail-closed behavior in cas-ccps/00_SharedConfig.js.
  *
- * doGet() also carries one permanent exception to "serve HTML, always": a
+ * doGet() also carries one exception to "serve HTML, always": a
  * `?api=horizon` request routes to EmailBridge.gs's
- * emailBridgeGetHorizonItems_() instead. This isn't a transitional shim —
- * leader-hub/student-leader-hub.html keeps working as a fully local file
- * indefinitely (no forced cutover, per the migration plan's deployment-
- * safety section), and a local file has no google.script.run available to
- * it at all, so EMAIL_BRIDGE.poll() (leader-hub/src/12-...-brag.html)
- * still needs a real fetch()-able GET endpoint for that mode. Only GAS
- * allows one doGet() per project, so merging EmailBridge.gs's project
- * into this one required exactly this kind of explicit routing rather
- * than a second doGet(). When served by this deployed web app, poll()
- * instead calls lhGetHorizonItems_() below via google.script.run and
- * never hits this branch at all.
+ * emailBridgeGetHorizonItems_() instead. It was the fetch() endpoint for
+ * the standalone file, which had no google.script.run; that file is
+ * retired (2026-10-22) and nothing in the app calls this branch now:
+ * EMAIL_BRIDGE.poll() (leader-hub/src/12-...-brag.html) calls
+ * lhGetHorizonItems_() below through google.script.run. The branch stays
+ * for any external GET caller. Only GAS allows one doGet() per project,
+ * which is why merging EmailBridge.gs's project into this one needed this
+ * explicit routing.
  *
  * NOTE for implementation follow-up: once this is actually deployed and
  * opened, check the browser console for CSP violations — the assembled
