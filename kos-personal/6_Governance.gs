@@ -54,8 +54,9 @@
 // ─────────────────────────────────────────────────────────────
 //  triggerSevenBridgesReview()  Assembles ONE shared stimulus document
 //                        and hands it to the operator to paste into
-//                        each of CFG.PERSONAS' separate Gemini Gem
-//                        conversations — real sequestration comes from
+//                        each of CFG.PERSONAS' separate conversations
+//                        (the Claude Project since 2026-10-06; Gemini
+//                        Gems before) — real sequestration comes from
 //                        that product boundary, not from anything built
 //                        here. See the function's own header on why no
 //                        code in this repo can enforce it.
@@ -507,7 +508,8 @@ function sweepRootForExhaust() {
  *
  * ENFORCEMENT LIMIT — read this before trusting the guarantee.
  * Sequestration is NOT enforced by any code in this repository, and
- * cannot be: the actual inference happens in Gemini Gem conversations
+ * cannot be: the actual inference happens in separate conversations
+ * (Claude Project ones since 2026-10-06; Gemini Gems before) that
  * the operator drives by hand, entirely outside this codebase. Nothing
  * here can verify that a verdict was produced in isolation. What KOS
  * guarantees is narrower and worth stating plainly — it will only ever
@@ -584,7 +586,7 @@ function triggerSevenBridgesReview() {
     body.appendParagraph(
       'BRIDGE_FIDELITY_001: A verdict produced with knowledge of another ' +
       "cog's verdict is VOID. Send this exact document to EACH cog " +
-      'independently — a fresh, separate Gemini Gem conversation per cog, ' +
+      'independently — a fresh, separate conversation per cog, ' +
       'with no shared context between them. Do not paste more than one ' +
       "cog's response into the same conversation, and do not summarize " +
       'one verdict into another cog\'s prompt.'
