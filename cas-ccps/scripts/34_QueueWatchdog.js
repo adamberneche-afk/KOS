@@ -207,8 +207,10 @@ const WD_TERMINAL_FAILED_STATUSES = ['STUDIO_TIMEOUT', 'ERROR', 'ERROR_TIMEOUT',
 
 const WD_RUBRIC_QUEUE_KNOWN_STATUSES = ['PENDING_EXTRACTION', 'COMPLETE'];
 const WD_STAGING_PIPELINE_KNOWN_STATUSES = ['PENDING_INFERENCE', 'IN_PROCESS', 'COMPLETE'];
+// NOT_MEETING (24's retireOffDayWarmUps, 2026-10-19): a warm-up queued for a
+// day the student's period doesn't meet. Final, and no flow picks it up.
 const WD_WARMUP_QUEUE_KNOWN_STATUSES = [
-  'PENDING', 'PENDING_BRIDGE', 'PENDING_EVAL', 'DELIVERED', 'SCORED', 'INCOMPLETE',
+  'PENDING', 'PENDING_BRIDGE', 'PENDING_EVAL', 'DELIVERED', 'SCORED', 'INCOMPLETE', 'NOT_MEETING',
 ];
 
 // The terminal status each queue escalates a stuck row to — deliberately
