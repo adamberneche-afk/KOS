@@ -58,7 +58,7 @@ Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** t
 | --- | --- |
 | + New Lesson | Opens “Log a lesson”: the day's objective, activity, vocabulary and the competencies taught, for one or more periods. Shown only when warm-ups (Module 2) are on. Not the same as 📅 Lessons' “+ New lesson” |
 | Student Context | One document per student that gathers their lessons, checks and warm-ups, updated weekly. “← Back to dashboard” returns to the roster |
-| ✉ Parent Reports | Not in use yet. See Parent Reports |
+| ✉ Parent Reports | This week's report for each student, to copy into an email you send yourself. See Parent Reports |
 | 🎓 Competency ratings | Confirm or set each student's SCR rating. See Grading and Competency Ratings |
 | 💬 Feedback | Where feedback goes, per course. See Where Feedback Goes |
 | 📅 Lessons | Start dates, rollout status, and lesson edits. See Lessons and Start Dates |
@@ -144,9 +144,17 @@ Log the lessons you teach. That's what lets warm-ups fit each student over time.
 
 ## Parent Reports
 
-> **Not in use yet. Don't send reports.** Weekly parent reports stay off until the school decides to start them. The ✉ Parent Reports button is there, but its wording and recipient checks are still being fixed.
+KOS writes a weekly report for each student on your roster. It never sends one: you copy it and email it to the family from your own school account.
 
-How it works, for when it starts: the panel lists this week's report for each student. Nothing is sent until you type an address and press Send for one student, and there's no “send all”. A second send for the same student and week is refused. Every send is recorded.
+1. Press **✉ Parent Reports**. Each student has a Subject line and a Report.
+2. Press **Copy subject** and paste it into a new email, then **Copy report** and paste it into the body. If the copy is refused, the text is selected for you: press Ctrl+C (⌘C on a Mac).
+3. Address and send the email yourself. Read it first; you can edit it in your email before you send.
+
+**What the report says:** each item due or turned in this week by its lesson title, with where it stands (Passed, Revising, Turned in and waiting for feedback, or Not turned in yet); a score only where you confirmed one; what the student still has to finish; and the competencies rated so far this marking period, in words, on Virginia's 1 to 5 scale where 1 is the highest. Students with nothing due this week still get a report. It ends with your name and email.
+
+> **Who it goes to is your call.** KOS has no guardian list. Send only to the student's parents or guardians on file with the school, and not to the family of a student who is 18 or older, or whose family asked not to get these, unless the school says otherwise.
+
+Copying a report records the time and your account, so the panel shows “Copied” next to it. It doesn't record who you sent it to, or whether you did.
 
 🙋
 

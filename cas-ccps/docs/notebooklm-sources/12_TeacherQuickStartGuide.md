@@ -57,7 +57,7 @@ Need to change what a lesson says, or add one? Use **Edit** or **+ New lesson** 
 | Rate competencies | 🎓 Competency ratings: confirm the suggestion, or enter 1–5 (1 is the highest) |
 | See each student's history | Student Context: one document per student, updated weekly |
 | Grade | Canvas (SpeedGrader). Students submit their document's link there |
-| Send parent reports | ✉ Parent Reports is not in use yet. Reports stay off until the school decides to start them |
+| Send parent reports | ✉ Parent Reports: copy a student's report and paste it into an email you send from your own account. KOS never sends it |
 | See another part of the year | The menu that says “Whole school year”: pick a marking period |
 
 ## First-Week Checklist

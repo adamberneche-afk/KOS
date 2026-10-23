@@ -21,7 +21,7 @@
 //   - warm-ups from earlier days still waiting on scoring (PENDING_EVAL)
 //   - Studio jobs with no return: Flow 3/4/5 inputs older than 30 minutes
 //     with nothing in WarmUpFlowReturn, Flow 2 FlowInput rows still READY
-//     after 15 minutes (open bug 4)
+//     after 15 minutes (bug 4, resolved 2026-10-23: Flow 2 starts itself)
 //   - warm-up returns that FAILED or need attention in the last 24 hours
 //   - warm-ups delivered as the teacher's anchor (41: junk output, or no return)
 //   - at most every 6 hours, the setup checks once run by hand: the Ledger's
@@ -135,7 +135,7 @@ function overnightHealth_(now, tz) {
       if (st.stalled[f] > 0) {
         problems.push("Studio Flow " + f + ": " + st.stalled[f] + " job(s) with no return after " +
           Math.round(ON_STUDIO_STALL_MS[f] / 60000) + " minutes" +
-          (f === 2 ? " (bug 4: start Flow 2 by hand)" : " (check the Flow's run history in Studio)"));
+          " (check the Flow's run history in Studio)");
       }
     });
     [3, 4, 5].forEach(function (f) {
