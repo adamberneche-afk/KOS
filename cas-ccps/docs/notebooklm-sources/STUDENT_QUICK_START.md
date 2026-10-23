@@ -40,7 +40,7 @@ Write in one place: under the grey line. Here's everything on the page, top to b
 
 Submit as many times as you like. Revising is the point, and there's no penalty.
 
-1. **Write at least 25 words**: Write under the grey line. With fewer than 25 words, the dashboard says “Not enough to evaluate yet” and tells you how many words it found.
+1. **Write at least 25 words**: Write under the grey line. With fewer than 25 words, the dashboard says “Write a little more first.” and tells you about how many words it found.
 2. **Press Submit for Feedback on your dashboard**: Open your dashboard (the **Your dashboard** link at the top of your document). Find the assignment and press **Submit for Feedback**. You'll see: “✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right).”
 3. **Wait a few minutes**: Press **↻ Refresh** on your dashboard. The card says **Waiting for feedback…**, then **Being checked now…**.
 4. **Open your document and click Comments**: Your feedback is a comment. Each time you submit, you get a new one. The newest is the one to read.
@@ -59,11 +59,15 @@ Each assignment has a card on your dashboard. The coloured label tells you what 
 
 - **Feedback ready — revise, then submit again: open your document and click Comments**: Read the feedback, change your work, then press Submit for Feedback again.
 
+- **Taking longer than usual ⚠ — your work is saved, and your teacher knows**: The check took more than 12 minutes and was stopped. Your teacher has been told. If the feedback arrives late, the card changes to show it.
+
+- **Couldn’t be checked this time ⚠ — your teacher knows. You can submit again**: The check ran, but its result could not be used. Your teacher has been told. You can press Submit for Feedback again.
+
 - **Couldn't be checked ⚠ — tell your teacher**: Something went wrong on our side, not with your work. Your work is safe. Tell your teacher. The card has a link to email them.
 
 The card also shows **Last submitted** (when you last pressed Submit for Feedback) and **Last checked** (when you last got feedback), or “Not checked yet”.
 
-> ⏱️ **Most checks take a few minutes.** If a check takes longer than 12 minutes, the system stops it and your card says “Couldn't be checked ⚠”. Tell your teacher. You don't need to submit again unless they ask you to.
+> ⏱️ **Most checks take a few minutes.** If a check takes longer than 12 minutes, the system stops it, your card says “Taking longer than usual ⚠”, and your teacher is told by email. You do not need to submit again unless they ask you to.
 
 ## Read Your Feedback
 
@@ -71,9 +75,9 @@ Open your document and click **Comments** (top right). Each comment starts with 
 
 > **Example comment: passed**
 >
-> Feedback, 2026-10-22 10:41
+> Feedback, Oct 22, 10:41 AM
 >
-> ✅ RESULT: YOUR WORK MEETS THE STANDARD
+> Result: ✅ Passed. Your work meets the standard.
 >
 > **Overall assessment**
 >
@@ -91,7 +95,7 @@ If your work needs more, the result line is different, and there's a list of wha
 
 > **Example comment: revise**
 >
-> ✏️ RESULT: REVISIONS REQUIRED
+> Result: ✏️ Revise, then submit again.
 >
 > **Required revisions**
 >
@@ -99,7 +103,7 @@ If your work needs more, the result line is different, and there's a list of wha
 >
 > **What to do next**
 >
-> Make the changes under the grey line, then press Submit for Feedback on your dashboard again. Repeat until you see ✅.
+> Change your work under the “Your response” heading, then press Submit for Feedback on your dashboard again. Repeat until you see ✅.
 
 > ✅ **Revising is normal.** Feedback is a coach, not a grade. Your teacher grades your work in Canvas.
 
@@ -140,9 +144,9 @@ Your dashboard is called **📚 My Assignments**. Open it from the **Your dashbo
 
 Press ↻ Refresh on your dashboard. If the card says “Waiting for feedback…” or “Being checked now…”, it's on its way: give it a few minutes. When it's ready, open your document and click **Comments** (top right). If the card says “Couldn't be checked ⚠”, tell your teacher.
 
-### It says “Not enough to evaluate yet.”
+### It says “Write a little more first.”
 
-You need at least 25 words under the grey line. The message says how many words it found. If it found none, check that you wrote under the “── YOUR RESPONSE BEGINS HERE ──” line and above the “Do not delete this line” line.
+You need at least 25 words under the grey line. The message says about how many words it found. If it says you have not written anything under “Your response” yet, check that you wrote under the “── YOUR RESPONSE BEGINS HERE ──” line and above the “Do not delete this line” line.
 
 ### It says “This is already waiting for feedback.”
 

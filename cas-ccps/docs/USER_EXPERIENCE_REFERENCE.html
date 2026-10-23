@@ -274,7 +274,13 @@
 </style>
 </head>
 <body>
-<div style="background:#fef7e0;border:1px solid #f9d77e;color:#3c4043;padding:12px 16px;margin:12px;border-radius:8px;font:14px/1.5 Arial,sans-serif" role="note"><strong>Current as of 2026-10-10:</strong> students submit for feedback from the Student Dashboard (<em>Submit for Feedback</em>), because the district turns Apps Script off for student accounts and the doc's 📊 menu never appears for them. They turn in on Canvas (their document's link), where grades are given; the Turn-In Form is retired, and on 2026-10-10 so were Script 04's turn-in checks (three-point match, approval-stamp check and forensic version-history check): none of them runs, the setup wizard no longer creates the form, and the Drive Advanced Service is no longer needed for them. Each evaluation is added at the end of the student's document. Where this page describes the doc menu, the Turn-In Form or the turn-in gate, that part is out of date. The Student Quick Start and the Teacher Reference Guide are current.</div>
+<div style="background:#fef7e0;border:1px solid #f9d77e;color:#3c4043;padding:12px 16px;margin:12px;border-radius:8px;font:14px/1.5 Arial,sans-serif" role="note"><strong>Note, 2026-10-23: the Admin, Teacher and Student Experience sections, Document Anatomy and Folder Structure below describe the original Module 1 design.</strong> The Full Pipeline at the end is current. What students and teachers do now:
+<ul style="margin:6px 0 0 18px">
+<li><strong>Students</strong> open their document from the Student Dashboard (📚 My Assignments), write under the grey line, press <em>Submit for Feedback</em> on the dashboard (the district turns Apps Script off for student accounts, so the doc&rsquo;s 📊 Feedback menu never appears for them), read the feedback as a comment on the document, answer warm-ups in the dashboard&rsquo;s text box, and turn in on Canvas with the document&rsquo;s link. There is no Turn-In Form (retired 2026-10-10) and no one-time authorization. See <code>STUDENT_QUICK_START.html</code>.</li>
+<li><strong>Teachers</strong> work from the Teacher Dashboard: lesson start dates and lesson drafts in 📅 Lessons, where feedback goes in 💬 Feedback, competency ratings in 🎓 Competency ratings, the ❓ Terms list. They do not upload rubrics or register students one at a time: the nightly lesson rollout (<code>58_LessonRollout.js</code>, about 9 p.m.) enrolls students from the Canvas roster and makes and shares each lesson&rsquo;s documents. Grading is in Canvas. See <code>TEACHER_REFERENCE_GUIDE.html</code>.</li>
+<li><strong>The student document</strong> now has its who-and-what, the &ldquo;Your dashboard&rdquo; link and a &ldquo;Feedback:&rdquo; status line in the page header; then the title, the assignment in small text, a &ldquo;Your response&rdquo; heading, the grey response line, the writing space and the CONFIG_ID line (<code>stampDocument_</code> in <code>02_Form1_IntakeAndWorkspaceGenerator.js</code>). With feedback as comments it has no feedback zone.</li>
+<li><strong>Admins</strong> deploy with <code>tools/clasp-sync/run.js</code> and follow <code>cas-ccps/DEPLOYMENT_HANDOFF.md</code>; <code>ADMIN_DEPLOYMENT_WALKTHROUGH.html</code> is retired. The morning check is the CAS signal&rsquo;s LAST NIGHT section and the daily email (<code>34c_OvernightHealth.js</code>).</li>
+</ul></div>
 
 <div class="page-wrap">
 
@@ -328,7 +334,7 @@
 
 <div class="section" id="ux-admin">
   <div class="section-eyebrow">User Experience</div>
-  <h2>The Admin Experience</h2>
+  <h2>The Admin Experience <span style="font-size:0.55em;font-weight:400">(original Module 1 design)</span></h2>
   <div class="role-header admin">
     <div class="role-icon">🔧</div>
     <div>
@@ -363,7 +369,7 @@
 
 <div class="section" id="ux-teacher">
   <div class="section-eyebrow">User Experience</div>
-  <h2>The Teacher Experience</h2>
+  <h2>The Teacher Experience <span style="font-size:0.55em;font-weight:400">(original Module 1 design)</span></h2>
   <div class="role-header teacher">
     <div class="role-icon">👩‍🏫</div>
     <div>
@@ -424,7 +430,7 @@
 
 <div class="section" id="ux-student">
   <div class="section-eyebrow">User Experience</div>
-  <h2>The Student Experience</h2>
+  <h2>The Student Experience <span style="font-size:0.55em;font-weight:400">(original Module 1 design)</span></h2>
   <div class="role-header student">
     <div class="role-icon">🎒</div>
     <div>
@@ -495,7 +501,7 @@
 
 <div class="section" id="doc-anatomy">
   <div class="section-eyebrow">Reference</div>
-  <h2>Document Anatomy</h2>
+  <h2>Document Anatomy <span style="font-size:0.55em;font-weight:400">(original Module 1 design)</span></h2>
   <p class="section-intro">Four zones. Created once by Script 02. Maintained throughout the assignment lifecycle.</p>
   <div class="doc-anatomy">
     <div class="doc-zone feedback">
@@ -539,7 +545,7 @@
 
 <div class="section" id="folder-structure">
   <div class="section-eyebrow">Reference</div>
-  <h2>Folder Structure</h2>
+  <h2>Folder Structure <span style="font-size:0.55em;font-weight:400">(original Module 1 design)</span></h2>
   <p style="font-weight:700; margin-bottom:10px; font-size:14px;">Admin Drive</p>
   <div class="folder-tree">
 <span class="folder">📁 Assignments/</span>
@@ -570,36 +576,43 @@
 <div class="section" id="pipeline">
   <div class="section-eyebrow">Reference</div>
   <h2>Full Pipeline</h2>
-  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:10px;">Assignment Creation</p>
+  <p class="section-intro">As the code runs it on 2026-10-23. The Central Ledger&rsquo;s frequent jobs run from one every-minute trigger, <code>runLedgerCycle()</code>, each at its own cadence.</p>
+  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 0 0 10px;">Lessons and Assignments</p>
   <div class="pipeline">
-    <div class="pipe-node highlight"><div class="pipe-icon">📤</div><div class="pipe-label">Teacher</div><div class="pipe-sub">Uploads rubric + prompt template</div></div>
-    <div class="pipe-node system"><div class="pipe-icon">📥</div><div class="pipe-label">Script 05</div><div class="pipe-sub">Validates, writes to RubricQueue</div></div>
-    <div class="pipe-node studio-node"><div class="pipe-icon">⚡</div><div class="pipe-label">Flow 1</div><div class="pipe-sub">Gemini extracts config → DRAFT row</div></div>
-    <div class="pipe-node system"><div class="pipe-icon">📧</div><div class="pipe-label">Script 08</div><div class="pipe-sub">Detects DRAFT, emails pre-filled review</div></div>
-    <div class="pipe-node highlight"><div class="pipe-icon">✅</div><div class="pipe-label">Teacher</div><div class="pipe-sub">Confirms → unit goes LIVE</div></div>
+    <div class="pipe-node highlight"><div class="pipe-icon">📅</div><div class="pipe-label">Teacher</div><div class="pipe-sub">Sets start dates in 📅 Lessons; edits or writes lessons as drafts</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">📥</div><div class="pipe-label">Script 65</div><div class="pipe-sub">Saves the draft to LessonDrafts; an evening import makes it a reviewed change</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">🗂️</div><div class="pipe-label">Script 55</div><div class="pipe-sub">LessonSchedule tab: each lesson&rsquo;s start date</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">🌙</div><div class="pipe-label">Script 58</div><div class="pipe-sub">Nightly rollout seeds each lesson in the TeacherMatrix as LIVE</div></div>
   </div>
-  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 24px 0 10px;">Student Registration</p>
+  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 24px 0 10px;">Students and Documents</p>
   <div class="pipeline">
-    <div class="pipe-node highlight"><div class="pipe-icon">📋</div><div class="pipe-label">Admin/Teacher</div><div class="pipe-sub">Submits Form 1</div></div>
-    <div class="pipe-node system"><div class="pipe-icon">📁</div><div class="pipe-label">Script 02</div><div class="pipe-sub">Creates 5-level folder hierarchy</div></div>
-    <div class="pipe-node system"><div class="pipe-icon">📄</div><div class="pipe-label">Script 02</div><div class="pipe-sub">Stamps doc, shares to student Drive</div></div>
-    <div class="pipe-node"><div class="pipe-icon">🎒</div><div class="pipe-label">Student</div><div class="pipe-sub">Doc in Shared With Me</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">👥</div><div class="pipe-label">Scripts 58 + 52</div><div class="pipe-sub">Enroll the Canvas roster for lessons starting within 2 days</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">📄</div><div class="pipe-label">Script 02</div><div class="pipe-sub">Makes and stamps each student&rsquo;s document</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">🔓</div><div class="pipe-label">Script 58</div><div class="pipe-sub">Shares it with the student the night before the lesson</div></div>
+    <div class="pipe-node"><div class="pipe-icon">🎒</div><div class="pipe-label">Student</div><div class="pipe-sub">Opens it from the Student Dashboard</div></div>
   </div>
   <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 24px 0 10px;">Evaluation Cycle</p>
   <div class="pipeline">
-    <div class="pipe-node highlight"><div class="pipe-icon">✍️</div><div class="pipe-label">Student</div><div class="pipe-sub">Writes, clicks Run Check</div></div>
-    <div class="pipe-node system"><div class="pipe-icon">📥</div><div class="pipe-label">Script 01</div><div class="pipe-sub">Roster validation → ReviewQueue</div></div>
+    <div class="pipe-node highlight"><div class="pipe-icon">✍️</div><div class="pipe-label">Student</div><div class="pipe-sub">Writes, presses Submit for Feedback on the dashboard</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">📥</div><div class="pipe-label">Script 13</div><div class="pipe-sub">Checks the account, document and length → ReviewQueue</div></div>
     <div class="pipe-node system"><div class="pipe-icon">🌉</div><div class="pipe-label">Script 03</div><div class="pipe-sub">Bridges to STAGING_PIPELINE</div></div>
-    <div class="pipe-node system"><div class="pipe-icon">🚦</div><div class="pipe-label">Script 06</div><div class="pipe-sub">Turnstile → IN_PROCESS</div></div>
-    <div class="pipe-node studio-node"><div class="pipe-icon">⚡</div><div class="pipe-label">Flow 2</div><div class="pipe-sub">Gemini evaluates → writes feedback</div></div>
-    <div class="pipe-node"><div class="pipe-icon">📊</div><div class="pipe-label">Student</div><div class="pipe-sub">Feedback at top of doc</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">🚦</div><div class="pipe-label">Script 06</div><div class="pipe-sub">One row per teacher lane → IN_PROCESS</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">🧾</div><div class="pipe-label">Script 37</div><div class="pipe-sub">Writes a resolved FlowInput row (READY)</div></div>
+    <div class="pipe-node studio-node"><div class="pipe-icon">⚡</div><div class="pipe-label">Flow 2</div><div class="pipe-sub">Gemini evaluates → GeminiFullOutput, EVALUATED</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">📝</div><div class="pipe-label">Script 37</div><div class="pipe-sub">Checks it; posts the comment; Ledger result, EvaluationLog</div></div>
+    <div class="pipe-node"><div class="pipe-icon">💬</div><div class="pipe-label">Student</div><div class="pipe-sub">Feedback as a comment on the doc</div></div>
   </div>
-  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 24px 0 10px;">Final Submission</p>
+  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 24px 0 10px;">Warm-ups</p>
   <div class="pipeline">
-    <div class="pipe-node highlight"><div class="pipe-icon">📬</div><div class="pipe-label">Student</div><div class="pipe-sub">Submits Form 2</div></div>
-    <div class="pipe-node system"><div class="pipe-icon">🔍</div><div class="pipe-label">Script 04</div><div class="pipe-sub">3-point + stamp + forensic checks</div></div>
-    <div class="pipe-node"><div class="pipe-icon">✅</div><div class="pipe-label">Ledger</div><div class="pipe-sub">Row → COMPLIANT</div></div>
-    <div class="pipe-node success"><div class="pipe-icon">📧</div><div class="pipe-label">Teacher</div><div class="pipe-sub">Verified submission notification</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">🌙</div><div class="pipe-label">Script 24</div><div class="pipe-sub">3:30 a.m.: builds the WarmUpQueue</div></div>
+    <div class="pipe-node studio-node"><div class="pipe-icon">⚡</div><div class="pipe-label">Flows 5 + 3</div><div class="pipe-sub">Bridge and warm-up text, through Flow5Input / Flow3Input (Script 41)</div></div>
+    <div class="pipe-node highlight"><div class="pipe-icon">✍️</div><div class="pipe-label">Student</div><div class="pipe-sub">Answers in the dashboard&rsquo;s text box</div></div>
+    <div class="pipe-node studio-node"><div class="pipe-icon">⚡</div><div class="pipe-label">Flow 4</div><div class="pipe-sub">Scores it overnight, through Flow4Input (Script 41)</div></div>
+  </div>
+  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 24px 0 10px;">Turning In</p>
+  <div class="pipeline">
+    <div class="pipe-node highlight"><div class="pipe-icon">📬</div><div class="pipe-label">Student</div><div class="pipe-sub">Submits the document&rsquo;s link in Canvas</div></div>
+    <div class="pipe-node success"><div class="pipe-icon">✅</div><div class="pipe-label">Teacher</div><div class="pipe-sub">Grades in Canvas (no CAS step; the Turn-In Form is retired)</div></div>
   </div>
 </div>
 
