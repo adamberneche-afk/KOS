@@ -51,10 +51,11 @@
 
 
 One standalone Apps Script project holding every custom Workspace
-Studio step cas-ccps uses, across all five flows. This is an 8th
-cas-ccps deployment target — the other 7 in `cas-ccps/clasp/manifests/`
-are each bound to a specific spreadsheet or doc; this one is standalone
-so it's installable across flows rather than tied to one document.
+Studio step cas-ccps uses, across all five flows. This is one of the 9
+cas-ccps deployment targets in `cas-ccps/clasp/manifests/`. The others are
+each bound to a specific spreadsheet or doc, or are one of the two dashboard
+web apps; this one is a standalone add-on so it's installable across flows
+rather than tied to one document.
 Registered in `tools/gas-lint/project-map.json` as `cas-ccps:studio-steps`
 and in `tools/clasp-sync/sync.js` the same way as every other cas-ccps
 project — both tools run clean against it.
@@ -135,8 +136,9 @@ of these files were committed:
 - **Fence-stripping before `JSON.parse`.** Gemini routinely wraps JSON
   output in a ```` ```json ```` fence even when asked for raw JSON.
   `CommitRubricDraftStep.gs` and `FinalizeWarmUpScoreStep.gs` strip it
-  first (`StepsShared.gs`'s shared `stripJsonFence_()`), matching
-  `25_WarmUpWriter.js:740`'s own convention — otherwise a perfectly
+  first (`StepsShared.gs`'s shared `stripJsonFence_()`), the same
+  treatment the live harvest now gives it (`41_WarmUpFlowBridge.js`'s
+  `wfbStripFence_()`) — otherwise a perfectly
   valid Gemini response fails validation for a formatting reason
   unrelated to its content.
 - **The U+2500 marker bug (`CommitStudentEvaluationStep.gs`).** An
@@ -190,7 +192,7 @@ a stored credential, never CI. See
 `kos-personal/rtp-core-router/protocols/KILL_SWITCH_PROTOCOL.md`'s
 reconciled note and `tools/clasp-sync/DEPLOYMENT_RUNBOOK.md`'s "Option
 2" for the full reasoning; this project follows the same model as the
-other 7 cas-ccps projects, not a separate one.
+other 8 cas-ccps projects, not a separate one.
 
 ## Adding the next step
 
