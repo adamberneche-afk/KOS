@@ -71,7 +71,7 @@ operator. This file holds what comes after them.
   last doc assignment of the week of Oct 19. Come back to these if time
   allows (operator, 2026-10-19).
 
-### Design threads (suggestions; nothing built)
+### Design threads (suggestions; what is built is marked)
 
 - **Lesson editing and writing from the Teacher Dashboard** (2026-10-21,
   the operator's ask). Rollout status (#243), editing (#245) and new
@@ -188,8 +188,9 @@ wait until after 2026-10-30.
   the report confirms what is live. Raised 2026-10-18.
 - **Retire `run.ps1`.** Remove it once `run.js` has run live, and change
   the manifest-agreement test to check `run.js` only.
-- **Fix `SANDBOX_CI_SETUP.md`.** It still says `clasp login --status`,
-  which clasp 3.x removed. Use `clasp show-authorized-user`.
+- ~~**Fix `SANDBOX_CI_SETUP.md`.**~~ Done 2026-10-23: its Step 2 now says
+  `clasp show-authorized-user` (clasp 3.x removed `clasp login --status`),
+  as `DEPLOYMENT_RUNBOOK.md` Part 0 already did.
 - **Regenerate the 2026-10-13 product guides** (outside the repo) with an
   "as of" line per system. The errors to fix are listed in the 10-17
   handoff.

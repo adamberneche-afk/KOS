@@ -23,11 +23,13 @@ why this repo exists at all.
   dashboard walk-through, prepared from the code on 2026-10-21: a checklist
   for the Student and Teacher Dashboards by student situation, and the
   findings read from the code, ranked.
-- **`LESSON_AUTHORING_PLAN_2026-10.md`** — a draft plan (2026-10-21) for
+- **`LESSON_AUTHORING_PLAN_2026-10.md`** — the decided plan (2026-10-21) for
   editing and writing lessons from the Teacher Dashboard: how a lesson
   reaches students today, three options (drafts imported through the repo,
-  Drive edits imported, live overrides), phases and the decisions they
-  need. Nothing built.
+  Drive edits imported, live overrides), phases and the decisions taken.
+  Phases 1 and 2 are built (#245, #246): the dashboard's lesson editor
+  (`65_LessonDrafts.js`) and the import tool
+  (`tools/cas-ccps/import-lesson-drafts.js`).
 - **`UX_AUDIT_2026-10-22.md`** — an end-to-end UX audit (2026-10-22) of
   every surface in the three systems, by stakeholder (students, teacher,
   families, operator and adopters, leader-hub, kos-personal): rendered and
@@ -37,22 +39,25 @@ why this repo exists at all.
   to move leader-hub off `localStorage` after the operator's "nothing stored
   in the browser": what is already on the server from the earlier
   migration, the ~50 local-only keys, five phases and the decisions
-  taken. All five phases done: the server is the only copy, and the standalone file is retired; the standalone file is
-  retired once its data can be imported.
+  taken. All five phases are done (#259, #261 to #264): the server is the only
+  copy, and the standalone file is retired, with an export for any data
+  still in its browser.
 - **`COURSE_BUILDER_PLAN_2026-10.md`** — a decided plan (2026-10-22) for
   building a new course from the VDOE framework, with teachers submitting
   the course they want, built so adopting teachers can adapt it: how 8175
   and 8177 were built, what assumes two courses, the library/class split,
-  the public library (lessons filed back) and the private option, six
-  phases and its decisions. Nothing built; after Oct 30.
+  the public library (lessons filed back) and the private option, seven
+  phases (an onboarding and deployment Phase 0, then A to F) and its
+  decisions. Nothing built; after Oct 30.
 - **`CAS_BUG_HANDOFF_2026-10-16.md`** — the first live student submissions
   through the Student Dashboard and Flow 2: the four bugs (two fixed in
   #175), the lesson-scheduling steps, the checklist for the next live
   submission, and the one-off probes.
 - **`CAS_COGNITIVE_EXHAUST_2026-10-16.md`** and
-  **`CAS_DESIGN_THREADS_2026-10-16.md`** — suggestions, nothing built:
-  student process traces and the authenticity-review plan; the cross-course
-  mastery map, a student-owned portfolio, and a nightly lesson rollout.
+  **`CAS_DESIGN_THREADS_2026-10-16.md`** — suggestions: student process
+  traces and the authenticity-review plan; the cross-course mastery map, a
+  student-owned portfolio, and a nightly lesson rollout. Only the rollout is
+  built (`58_LessonRollout.js`).
 - **`PRD_CAS_RESEARCH_PIVOT.md`** — the cas-ccps research-alignment PRD
   (revised 2026-10-10, checked against the code): a Phase 0 of live defects
   to fix before the warm-up week, then measurement, pedagogy and
