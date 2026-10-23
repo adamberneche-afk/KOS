@@ -147,8 +147,13 @@ test('repairWarmUpTextBox replaces unanswered junk with the anchor and leaves th
 });
 
 test('34c counts fallbacks; 33 stamps a stop with its reason', () => {
-  const env = loadGasFiles([path.join(CC, '00_SharedConfig.js'), path.join(CC, '34c_OvernightHealth.js'), path.join(CC, '64_LedgerCycle.js'),
-    path.join(CC, '43_DeployVersionMarker_CentralLedger.js')], ['overnightHealth_']);
+  // 34c with what its setup checks reach (38, 40, 41, 57 and their collaborators).
+  const env = loadGasFiles(['00_SharedConfig.js', '34c_OvernightHealth.js', '64_LedgerCycle.js',
+    '43_DeployVersionMarker_CentralLedger.js', '03_QueueBridge.js', '10_AdminRecoveryPanel.js',
+    '15b_StudioFlowPrompts_Flow2_Revised.js', '23_StudentProfileManager.js', '25_WarmUpWriter.js',
+    '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js', '36_WeeklyParentReport.js',
+    '37_FlowInputBuilder.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js', '41_WarmUpFlowBridge.js',
+    '54_StudentAssignments.js', '57_RetentionSchedule.js'].map((f) => path.join(CC, f)), ['overnightHealth_']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   const props = env.sandbox.PropertiesService.getScriptProperties();

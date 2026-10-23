@@ -456,6 +456,8 @@ function runWarmUpEvaluation() {
         continue;
       }
 
+      _stampWarmUpAnswered_(wqSheet, item, textBox[item.queueId]);
+
       // Write response text and word count score to WarmUpQueue and park
       // the row at PENDING_EVAL. 41_WarmUpFlowBridge.js builds the Flow 4
       // input from it and harvestWarmUpFlowReturns() writes the scores,
@@ -493,6 +495,20 @@ function runWarmUpEvaluation() {
   // the 0.75 threshold since last night. If so, send the teacher one digest
   // email — not one per student.
   checkShadowMatrixInterrupts_(ss, cfg);
+}
+
+// When the student last answered (2026-10-23): the text box's save time, or
+// the doc's last edit, read before anything writes the feedback into it.
+// Only for a warm-up with an answer. Never stops the scoring.
+function _stampWarmUpAnswered_(wqSheet, item, tbEntry) {
+  try {
+    const when = item.docId
+      ? DriveApp.getFileById(item.docId).getLastUpdated()
+      : (tbEntry && tbEntry.row[WTB.SUBMITTED_AT]) || "";
+    if (when) stampWarmUpTiming_(wqSheet, item.queueRowNum, WQ_TIMING.ANSWERED_AT, when);
+  } catch (e) {
+    Logger.log("[S25-J2] answered_at not recorded for queue " + item.queueId + ": " + e.message);
+  }
 }
 
 // ---------------------------------------------------------------------------

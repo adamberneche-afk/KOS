@@ -43,14 +43,16 @@ test('_retentionCutoff_: whole school years after the year ends, August start', 
 
 const TAB_NAMES = {
   Ledger: 'Ledger', StudentAssignments: 'StudentAssignments', StudentDocRegistry: 'StudentDocRegistry',
-  CompetencyEvidence: 'CompetencyEvidence', SCRDecisionLog: 'SCRDecisionLog', ParentReportLog: 'ParentReportLog',
+  CompetencyEvidence: 'CompetencyEvidence', SCRDecisionLog: 'SCRDecisionLog', EvaluationLog: 'EvaluationLog',
+  ParentReportLog: 'ParentReportLog',
   WarmUpQueue: 'WarmUpQueue', StudentProfiles: 'StudentProfiles', WarmUpRegistry: 'WarmUpRegistry',
   WarmUpTextBox: 'WarmUpTextBox',
   WarmUpResponses: 'WarmUpResponses', SCRSuggestions: 'SCRSuggestions', FlowInput: 'FlowInput',
   Flow3Input: 'Flow3Input', Flow4Input: 'Flow4Input', Flow5Input: 'Flow5Input',
   ReviewQueue: 'ReviewQueue', STAGING_PIPELINE: 'STAGING_PIPELINE',
 };
-const RECORD = ['Ledger', 'StudentAssignments', 'StudentDocRegistry', 'CompetencyEvidence', 'SCRDecisionLog', 'ParentReportLog'];
+const RECORD = ['Ledger', 'StudentAssignments', 'StudentDocRegistry', 'CompetencyEvidence', 'SCRDecisionLog', 'EvaluationLog',
+  'ParentReportLog'];
 
 function byLabel(results) {
   const r = {};
