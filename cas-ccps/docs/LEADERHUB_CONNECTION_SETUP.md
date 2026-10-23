@@ -64,6 +64,20 @@ What that leaves:
   the organization, and the district would have to allow that third-party
   app to sign in ccpsnet.net users.
 
+- **No Cloud client at all, server to server (being tested, 2026-10-23).**
+  Since leader-hub runs on the server, it could send CAS Apps Script's own
+  OpenID token (`ScriptApp.getIdentityToken()`) instead of a browser
+  sign-in. That needs no client to register and no page origin. Whether
+  this account issues that token is unknown. To find out: push leader-hub
+  (its manifest now asks for the `openid` scope), run
+  `checkCasServerSignIn()` from leader-hub's Apps Script editor, approve
+  the prompt once, and read its log. It reports the token's `aud` and
+  email and whether Google verifies it; if leader-hub's Settings has the
+  CAS API URL, it also sends CAS one read-only `getPacingGuide`. If that
+  works, CAS's `LEADER_HUB_OAUTH_CLIENT_ID` is set to that `aud`, and the
+  page would call CAS through the server instead of signing in. That
+  change isn't made yet.
+
 Until one of those happens, leader-hub keeps working from its own local
 pacing data and the connection stays off. Both halves of this dependency
 are declared in `tools/gas-lint/gcp-map.json` (`google-oauth-client`), and
