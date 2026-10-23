@@ -136,9 +136,15 @@ function runRegistrarIntake() {
 
     const ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
     let queued = 0;
+    const started = Date.now();
 
     const files = unc.getFiles();
     while (files.hasNext()) {
+      // 6_Governance.gs: the rest are queued on the next run.
+      if (Date.now() - started > SWEEP_TIME_BUDGET_MS) {
+        console.log('[Registrar] Time budget reached; the rest on the next run.');
+        break;
+      }
       const f = files.next();
       const id = f.getId();
       if (existingIds.has(id)) continue;

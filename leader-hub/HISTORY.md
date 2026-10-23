@@ -1333,3 +1333,10 @@ read-only `getPacingGuide`. It never logs the token. The manifest gains the
 also shows the page's own origin and whether Google's sign-in library
 loads, for the browser route. Test: `cas-server-signin.test.js`.
 
+## Settings size check without `unescape` (2026-10-23)
+
+`lhSaveConfig_` (Config.gs) counted a setting's UTF-8 bytes with the
+deprecated `unescape`; it now counts `encodeURIComponent`'s escapes, the
+same number. Its "too large" message divided by 1024 against a limit given
+in thousands, so a 9,206-byte setting read "9 KB; the limit is 9 KB"; it
+now reads "10 KB". Test: a multi-byte setting in `config-sync.test.js`.

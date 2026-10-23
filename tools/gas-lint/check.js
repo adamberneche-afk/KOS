@@ -720,15 +720,16 @@ function checkOAuthScopes() {
 // come up, the same way scope-map.json documents its own gaps, rather
 // than trying to enumerate every legitimate global up front.
 //
-// Known residual false-positive class, not worth chasing: a callback
-// passed as a function PARAMETER (e.g. `const tryInstall = (name, fn) =>
-// { fn(); ... }`) isn't a `const`/`let`/`var`/`function` declaration, so
-// findAnyDepthDeclNames won't see it and this check will flag the call.
-// Real cases seen on this check's first run: `fn`/`createFn` in
-// kos-personal/1_Config_And_Deploy.gs and cas-ccps/20_SetupCheckpoint.js.
-// Tracking parameter names would need real scope analysis, not worth it
-// for a heuristic warning-only check — read each new warning once and
-// judge for yourself rather than expecting zero false positives.
+// A callback passed as a function PARAMETER (e.g. `const tryInstall =
+// (name, fn) => { fn(); ... }`) isn't a declaration, so fileParamNames
+// collects every parameter name in the file and a call to one is skipped.
+// File-wide, not scoped: a parameter named like a missing function would
+// hide that call, a trade made for a warning-only check. A call to a name
+// the same file guards with `typeof NAME === "function"` is skipped too:
+// that guard is the documented way to call a file one project holds and
+// another doesn't (31's calls into 55, absent from the Teacher Dashboard).
+// Rule 12 forbids the guard when every project holding the file declares
+// the function; Check O holds the code to that.
 // -----------------------------------------------------------------------
 const ALLOWLIST = new Set([
   // GAS built-in globals/services
@@ -744,6 +745,39 @@ const ALLOWLIST = new Set([
   // (e.g. `if (...)`, `function foo(...)`, `return (...)`)
   'if', 'for', 'while', 'switch', 'catch', 'function', 'return', 'typeof', 'new',
 ]);
+
+const IDENT = /^[A-Za-z_$][\w$]*$/;
+
+// Every parameter name in a file: `function f(a, b)`, `(a, b) =>`, `a =>`.
+// Defaults and destructuring are split on `,`/`=`/braces; anything that
+// isn't a plain identifier afterwards is dropped.
+function fileParamNames(stripped) {
+  const names = new Set();
+  const addList = (list) => {
+    for (const part of list.split(',')) {
+      const name = part.replace(/[{}\[\]]/g, ' ').split('=')[0].replace(/^\s*\.\.\./, '').trim();
+      if (IDENT.test(name)) names.add(name);
+    }
+  };
+  let m;
+  const fnRe = /\bfunction\b\s*[\w$]*\s*\(([^)]*)\)/g;
+  while ((m = fnRe.exec(stripped))) addList(m[1]);
+  const arrowRe = /\(([^()]*)\)\s*=>/g;
+  while ((m = arrowRe.exec(stripped))) addList(m[1]);
+  const bareArrowRe = /(?<![\w$.])([A-Za-z_$][\w$]*)\s*=>/g;
+  while ((m = bareArrowRe.exec(stripped))) names.add(m[1]);
+  return names;
+}
+
+// Names a file guards with `typeof NAME === "function"` (read from the raw
+// source: stripping blanks the string).
+function typeofGuardedNames(raw) {
+  const names = new Set();
+  const re = /typeof\s+([A-Za-z_$][\w$]*)\s*===?\s*["']function["']/g;
+  let m;
+  while ((m = re.exec(raw))) names.add(m[1]);
+  return names;
+}
 
 function checkUndefinedFunctionCalls() {
   for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
@@ -762,7 +796,10 @@ function checkUndefinedFunctionCalls() {
 
     for (const relPath of files) {
       if (!exists(relPath)) continue;
-      const stripped = stripCommentsAndStrings(readFile(relPath));
+      const raw = readFile(relPath);
+      const stripped = stripCommentsAndStrings(raw);
+      const local = fileParamNames(stripped);
+      for (const name of typeofGuardedNames(raw)) local.add(name);
       const lines = stripped.split('\n');
       // Requires the identifier NOT be preceded by `.` (excludes method
       // calls like `sheet.getRange(...)`) — this check only cares about
@@ -773,7 +810,7 @@ function checkUndefinedFunctionCalls() {
         let m;
         while ((m = callRe.exec(line))) {
           const name = m[1];
-          if (declared.has(name) || ALLOWLIST.has(name)) continue;
+          if (declared.has(name) || ALLOWLIST.has(name) || local.has(name)) continue;
           warn(
             'possibly-undefined-in-project',
             `"${name}(...)" is called at ${relPath}:${i + 1} but is not declared in any file of project "${projectName}" and is not in check.js's built-in allowlist. May be a cross-project call bug (the class of bug this check exists for), or a legitimate global/allowlist gap.`,
@@ -1813,6 +1850,58 @@ function checkBoundedLoopConvention() {
 }
 
 // -----------------------------------------------------------------------
+// Check O — no `typeof fn === "function"` guard for a function the file's
+// own projects already declare (rule 12, meta/FLOW_DOCTRINE.md).
+//
+// The guard hides a missing file: a test sandbox that forgot to load it, or
+// a project-map change that dropped it, makes the call silently skip
+// instead of failing. It belongs only where some project that holds the
+// file lacks the function (31's calls into 55, which the Teacher Dashboard
+// doesn't load). Error-level: every such guard was removed on 2026-10-23.
+// -----------------------------------------------------------------------
+function findSameProjectTypeofGuards(projectMap) {
+  const holders = new Map(); // relPath -> [project names]
+  const declsByProject = new Map();
+  for (const [projectName, def] of Object.entries(projectMap)) {
+    if (projectName.startsWith('_') || !def || !Array.isArray(def.files)) continue;
+    const declared = new Set();
+    for (const relPath of def.files) {
+      if (relPath.endsWith('.html') || !exists(relPath)) continue;
+      for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
+      if (!holders.has(relPath)) holders.set(relPath, []);
+      holders.get(relPath).push(projectName);
+    }
+    declsByProject.set(projectName, declared);
+  }
+  const out = [];
+  for (const [relPath, projects] of holders) {
+    const raw = readFile(relPath);
+    const re = /typeof\s+([A-Za-z_$][\w$]*)\s*===?\s*["']function["']/g;
+    let m;
+    while ((m = re.exec(raw))) {
+      const name = m[1];
+      // A guard inside a string literal (21's generated installer code) is
+      // not code in this file.
+      const lineStart = raw.lastIndexOf('\n', m.index) + 1;
+      const before = raw.slice(lineStart, m.index);
+      if (/^\s*(["'`]|\/\/|\*)/.test(before)) continue;
+      if (projects.every(p => declsByProject.get(p).has(name))) {
+        out.push({ relPath, line: lineAt(raw, m.index), name, projects });
+      }
+    }
+  }
+  return out;
+}
+
+function checkSameProjectTypeofGuards() {
+  for (const g of findSameProjectTypeofGuards(PROJECT_MAP)) {
+    err('typeof-guard-same-project',
+      `${g.relPath}:${g.line} guards ${g.name}() with typeof, but every project that holds this file (${g.projects.join(', ')}) declares it. Call it directly: the guard turns a missing file into a silent skip (rule 12). If a test fails without it, load the declaring file in that test's sandbox.`,
+      g.relPath);
+  }
+}
+
+// -----------------------------------------------------------------------
 // Reusable primitives
 //
 // stripCommentsAndStrings() is the piece other tools most need and most
@@ -1856,6 +1945,9 @@ module.exports = {
   LOOP_CAP_RE,
   LOOP_PACING_RE,
   extractWhileLoopBody,
+  findSameProjectTypeofGuards,
+  fileParamNames,
+  typeofGuardedNames,
 };
 
 if (require.main !== module) return;
@@ -1878,6 +1970,7 @@ checkSandboxScope();
 checkPlausibilityGateDrift();
 checkWebAppAuthChecks();
 checkBoundedLoopConvention();
+checkSameProjectTypeofGuards();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

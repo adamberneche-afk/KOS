@@ -937,17 +937,10 @@ function teacherOverrideScrRating(studentEmail, competencyId, rating) {
 // Two more google.script.run entry points, same _isAuthorizedTeacher_ gate as
 // everything else exported from this file.
 //
-// This pair is the reason delivery lives in the dashboard rather than in
-// Gmail drafts. A draft the teacher addresses by hand leaves the system no
-// record of where a child's scores went; here the app addresses and sends,
-// so ParentReportLog can record the recipient. The most likely FERPA
-// incident this feature could produce is one child's report reaching another
-// child's parent, and a log that says who actually received what is the only
-// thing that makes that detectable after the fact.
-//
-// The authorization gate matters more here than on most functions in this
-// file: this is the one path in cas-ccps that sends student data outside the
-// school's Workspace domain.
+// D1 (2026-10-23): KOS writes each report; the teacher copies it here and
+// emails it from their own account to the guardians they know. Nothing in
+// this file sends it. teacherCopiedParentReport() records that a report was
+// copied (ParentReportLog), so the panel shows which ones went home.
 
 function getWeeklyParentReports() {
   const cfg = getConfig_();
@@ -961,19 +954,26 @@ function getWeeklyParentReports() {
       weekEnd: generated.weekEnd ? Utilities.formatDate(
         generated.weekEnd, Session.getScriptTimeZone(), "MMMM d, yyyy") : "",
       excludedStudentCount: generated.excludedStudentCount,
-      reports: generated.reports.map(function (r) {
-        return {
-          studentEmail: r.studentEmail,
-          studentName: r.studentName,
-          confirmedCount: r.confirmedCount,
-          pendingCount: r.pendingCount,
-          itemCount: r.thisWeek.length,
-          progressCount: r.progress.length,
-          // The exact text that would be sent, so the teacher reviews what
-          // the parent will actually read rather than a summary of it.
-          preview: renderWeeklyParentReportText_(r),
-        };
-      }),
+      reports: (function () {
+        const copied = _parentReportsCopiedThisWeek_(cfg, generated.weekStart);
+        return generated.reports.map(function (r) {
+          const at = copied[String(r.studentEmail).toLowerCase()];
+          return {
+            studentEmail: r.studentEmail,
+            studentName: r.studentName,
+            confirmedCount: r.confirmedCount,
+            pendingCount: r.pendingCount,
+            itemCount: r.thisWeek.length,
+            openCount: r.thisWeek.filter(function (i) { return i.open; }).length,
+            progressCount: r.progress.length,
+            // The exact text the teacher copies, so they review what the
+            // family will read rather than a summary of it.
+            subject: weeklyParentReportSubject_(r),
+            preview: renderWeeklyParentReportText_(r),
+            copiedAt: at ? Utilities.formatDate(at, Session.getScriptTimeZone(), "MMM d, h:mm a") : "",
+          };
+        });
+      })(),
     };
   } catch (e) {
     Logger.log("[S07] getWeeklyParentReports failed: " + e.message);
@@ -981,10 +981,10 @@ function getWeeklyParentReports() {
   }
 }
 
-function teacherSendWeeklyParentReport(studentEmail, recipientAddress) {
+function teacherCopiedParentReport(studentEmail) {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
-  return sendWeeklyParentReport(studentEmail, recipientAddress);
+  return recordParentReportCopied(studentEmail);
 }
 
 // ── M2 ──────────────────────────────────────────────────────────────────────
@@ -3031,8 +3031,8 @@ function renderParentReportModal(data) {
     'Week of <strong>' + esc(data.weekStart) + '</strong> – <strong>' +
     esc(data.weekEnd) + '</strong></p>' +
     '<p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">' +
-    'Scores appear only where you have already confirmed them. Anything still ' +
-    'awaiting your review is counted, never numbered.</p>';
+    'Copy a report, then paste it into an email to the family from your own account. ' +
+    'KOS does not send it. Scores appear only where you confirmed them.</p>';
 
   // Students dropped by _studentIdPattern_ are surfaced, not swallowed. In
   // the aggregator a skipped row is a cosmetic gap; here it is a family that
@@ -3049,78 +3049,90 @@ function renderParentReportModal(data) {
   }
 
   if (!_parentReports.length) {
-    html += '<p style="font-size:13px;color:var(--text-secondary)">No coursework recorded this week.</p>';
+    html += '<p style="font-size:13px;color:var(--text-secondary)">No students on your roster this school year.</p>';
     body.innerHTML = html;
     return;
   }
 
   _parentReports.forEach(function(r, i) {
-    const pending = r.pendingCount > 0
-      ? '<span style="color:#b06000"> · ' + escNum(r.pendingCount) + ' awaiting your review</span>'
+    const open = r.openCount > 0
+      ? '<span style="color:#b06000"> · ' + escNum(r.openCount) + ' still to finish</span>'
       : '';
     html +=
       '<div style="border:1px solid #e8eaed;border-radius:8px;padding:14px;margin-bottom:12px">' +
         '<div style="font-weight:600;font-size:14px">' + esc(r.studentName || r.studentEmail) + '</div>' +
         '<div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px">' +
-          escNum(r.confirmedCount) + ' confirmed score' + (r.confirmedCount === 1 ? '' : 's') +
-          pending + ' · ' + escNum(r.progressCount) + ' competenc' +
-          (r.progressCount === 1 ? 'y' : 'ies') + ' to date' +
+          escNum(r.itemCount) + ' item' + (r.itemCount === 1 ? '' : 's') + ' this week' + open +
+          ' · ' + escNum(r.progressCount) + ' competenc' + (r.progressCount === 1 ? 'y' : 'ies') +
+          ' rated this marking period' +
         '</div>' +
-        '<details style="margin-bottom:10px">' +
-          '<summary style="font-size:12.5px;cursor:pointer;color:#1557b0">' +
-            'Read what will be sent</summary>' +
-          '<pre style="white-space:pre-wrap;font-size:12px;background:#f8f9fa;' +
-            'border-radius:6px;padding:10px;margin-top:8px;font-family:inherit">' +
-            esc(r.preview) + '</pre>' +
-        '</details>' +
+        '<label for="pr-subject-' + i + '" style="font-size:12px;color:var(--text-secondary)">Subject</label>' +
+        '<input id="pr-subject-' + i + '" readonly value="' + esc(r.subject) + '" ' +
+          'style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px;margin-bottom:8px">' +
+        '<label for="pr-text-' + i + '" style="font-size:12px;color:var(--text-secondary)">Report</label>' +
+        '<textarea id="pr-text-' + i + '" readonly rows="10" ' +
+          'style="width:100%;box-sizing:border-box;font-size:12px;font-family:inherit;background:#f8f9fa;' +
+          'border:1px solid #dadce0;border-radius:6px;padding:10px;margin-bottom:8px">' + esc(r.preview) + '</textarea>' +
         '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-          '<label for="pr-addr-' + i + '" style="font-size:12.5px">Parent email</label>' +
-          '<input id="pr-addr-' + i + '" type="email" placeholder="name@example.com" ' +
-            'style="flex:1;min-width:190px;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px">' +
-          '<button class="btn" onclick="submitParentReportSend(' + i + ')">Send</button>' +
+          '<button class="btn" data-pr-copy="text" data-pr-i="' + i + '">Copy report</button>' +
+          '<button class="btn" data-pr-copy="subject" data-pr-i="' + i + '">Copy subject</button>' +
         '</div>' +
         '<div id="pr-msg-' + i + '" role="status" aria-live="polite" ' +
-          'style="font-size:12.5px;margin-top:8px"></div>' +
+          'style="font-size:12.5px;margin-top:8px;color:var(--text-secondary)">' +
+          (r.copiedAt ? 'Copied ' + esc(r.copiedAt) + '.' : '') + '</div>' +
       '</div>';
   });
   body.innerHTML = html;
 }
 
-function submitParentReportSend(i) {
+// Copy uses the clipboard API, then the selected text with execCommand,
+// then asks for Ctrl+C: the dashboard runs in Apps Script's frame, where the
+// clipboard API may be refused. Copying the report records it (36).
+function _prCopy(el, done) {
+  const text = el.value;
+  const fallback = function () {
+    el.focus();
+    el.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+    done(ok);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(function () { done(true); }, fallback);
+  } else {
+    fallback();
+  }
+}
+
+function copyParentReport(i, what) {
   const report = _parentReports[i];
   if (!report) return;
-  const input = document.getElementById("pr-addr-" + i);
-  const msg   = document.getElementById("pr-msg-" + i);
-  const addr  = input ? input.value.trim() : "";
-  if (!addr) {
-    msg.style.color = "#d93025";
-    msg.textContent = "Enter the parent's email address.";
-    return;
-  }
-  msg.style.color = "var(--text-secondary)";
-  msg.textContent = "Sending…";
-
-  google.script.run
-    .withSuccessHandler(function(res) {
-      if (!res || !res.success) {
-        msg.style.color = "#d93025";
-        msg.textContent = (res && res.error) || "Could not send — try again.";
-        return;
-      }
-      msg.style.color = "#188038";
-      // Echo the address back. The teacher typed it by hand, and this is the
-      // last moment a misdirected report can be noticed by the person who
-      // still remembers who it was meant for.
-      msg.textContent = "✅ Sent to " + res.recipient;
-      if (input) input.disabled = true;
-      showToast("✅ Report sent to " + res.recipient);
-    })
-    .withFailureHandler(function(e) {
-      msg.style.color = "#d93025";
-      msg.textContent = e && e.message ? e.message : "Could not send — try again.";
-    })
-    .teacherSendWeeklyParentReport(report.studentEmail, addr);
+  const el  = document.getElementById(what === "subject" ? "pr-subject-" + i : "pr-text-" + i);
+  const msg = document.getElementById("pr-msg-" + i);
+  if (!el || !msg) return;
+  _prCopy(el, function (ok) {
+    if (!ok) {
+      msg.style.color = "#b06000";
+      msg.textContent = "Couldn't copy here. The text is selected: press Ctrl+C (⌘C on a Mac).";
+      return;
+    }
+    msg.style.color = "#188038";
+    if (what === "subject") { msg.textContent = "Subject copied."; return; }
+    msg.textContent = "Report copied. Paste it into an email to " +
+      (report.studentName ? report.studentName.split(/\\s+/)[0] + "'s" : "the student's") + " family.";
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (res && res.success) msg.textContent += " Recorded as copied " + res.copiedAt + ".";
+      })
+      .withFailureHandler(function () {})
+      .teacherCopiedParentReport(report.studentEmail);
+  });
 }
+
+document.addEventListener("click", function (ev) {
+  const b = ev.target && ev.target.closest ? ev.target.closest("[data-pr-copy]") : null;
+  if (b) copyParentReport(Number(b.getAttribute("data-pr-i")), b.getAttribute("data-pr-copy"));
+});
 
 // ── SCR Review modal (Open Items #4) ────────────────────────────────────────
 // List-based like the Weekly Parent Reports modal just above — an SCR queue

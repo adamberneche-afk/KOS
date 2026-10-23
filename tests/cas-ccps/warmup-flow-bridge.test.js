@@ -798,7 +798,9 @@ test('harvestWarmUpFlowReturns (Flow 3): a fabricated warm-up prompt is caught b
 // (the tests above deliberately don't, so PromptText is "" there) and check
 // the substituted text itself, through the real row builders.
 
-const PROMPT_FILES = FILES.concat([path.join(CC, '40_FlowPrompts.js')]);
+// wfbBuildFlow3Row_ reads the course code with 24's courseCodeFromName_
+// (same GAS project, gas-lint Check K).
+const PROMPT_FILES = FILES.concat([path.join(CC, '40_FlowPrompts.js'), path.join(CC, '24_WarmUpBridge.js')]);
 const PROMPT_EXPOSE = EXPOSE.concat([
   'wfbPromptFor_', 'wfbBuildFlow3Row_', 'wfbBuildFlow4Row_', 'wfbBuildFlow5Row_',
   'WFB_PROMPT_VARS', 'flowPromptPlaceholders_',

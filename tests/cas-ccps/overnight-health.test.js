@@ -94,7 +94,8 @@ test('each problem gets its own line, and there is no all-clear', () => {
   assert.match(p, /Today's warm-ups not delivered yet: 1 of 3/);
   assert.match(p, /still waiting on scoring \(Flow 4\): 1/);
   assert.match(p, /Studio Flow 3: 1 job\(s\) with no return/);
-  assert.match(p, /Studio Flow 2: 1 job\(s\) with no return after 15 minutes \(bug 4/);
+  assert.match(p, /Studio Flow 2: 1 job\(s\) with no return after 15 minutes \(check the Flow's run history in Studio\)/);
+  assert.doesNotMatch(p, /bug 4/, 'bug 4 is resolved: Flow 2 starts itself');
   assert.match(p, /Flow 3 returns that failed or need attention in the last 24 hours: 1/);
   assert.equal(env.exported.overnightHealth_(NOW).allClear, '');
   assert.doesNotMatch(p, /Q\d|s@ccpsnet|Sam/, 'counts only');

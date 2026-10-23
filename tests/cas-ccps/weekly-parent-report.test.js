@@ -28,11 +28,14 @@ const PATHS = [
   path.join(SCRIPTS, '00_SharedConfig.js'),
   path.join(SCRIPTS, '29_StudentContextAggregator.js'),
   path.join(SCRIPTS, '36_WeeklyParentReport.js'),
+  // Lesson titles and competency text (55b is in both of 36's projects).
+  path.join(SCRIPTS, '55b_LessonAssignmentData.js'),
 ];
 
 const EXPORTS = [
   'generateWeeklyParentReports',
-  'sendWeeklyParentReport',
+  'recordParentReportCopied',
+  'weeklyParentReportSubject_',
   'buildWeeklyParentReport_',
   'renderWeeklyParentReportText_',
   'runWeeklyParentReportPrep',
@@ -139,7 +142,7 @@ test('an item with only a suggested score prints no number and counts as pending
   const body = exported.renderWeeklyParentReportText_(report);
   assert.ok(!/\b4\b/.test(body.split('Week of')[1] || body),
     'the suggested value 4 must not appear anywhere in the rendered body');
-  assert.match(body, /with your teacher for review/);
+  assert.match(body, /Turned in; waiting for feedback/, 'the item says where the work stands instead');
 });
 
 test('an item with a confirmed score prints that number', () => {
@@ -159,7 +162,7 @@ test('an item with a confirmed score prints that number', () => {
   assert.equal(report.pendingCount, 0);
 
   const body = exported.renderWeeklyParentReportText_(report);
-  assert.match(body, /score: 3/);
+  assert.match(body, /Teacher's score: 3 out of 5/);
   // The teacher overrode 4 down to 3. Only the decision may be shown.
   assert.ok(!/score: 4/.test(body), 'the overridden suggestion must not appear');
 });
@@ -181,7 +184,7 @@ test('a confirmed score of zero is reported as a score, not as pending', () => {
   assert.equal(report.thisWeek[0].score, 0);
   assert.equal(report.confirmedCount, 1);
   assert.equal(report.pendingCount, 0);
-  assert.match(exported.renderWeeklyParentReportText_(report), /score: 0/);
+  assert.match(exported.renderWeeklyParentReportText_(report), /Teacher's score: 0 out of 5/);
 });
 
 test('work assigned this week but never submitted still appears', () => {
@@ -203,6 +206,9 @@ test('work assigned this week but never submitted still appears', () => {
   assert.equal(report.thisWeek[0].status, 'PENDING');
   assert.equal(report.thisWeek[0].score, null);
   assert.equal(report.pendingCount, 1);
+  const body = exported.renderWeeklyParentReportText_(report);
+  assert.match(body, /Marketing \([^)]*\): Not turned in yet/);
+  assert.match(body, /WHAT TO DO THIS WEEK\n  Ask Alice to finish: Marketing\./);
 });
 
 // ── The competency section ───────────────────────────────────────────────
@@ -273,86 +279,47 @@ test('the progress section is labelled cumulative, not weekly', () => {
   assert.match(body, /not just this week/);
 });
 
-// ── Recipient capture and dedup ──────────────────────────────────────────
+// ── Copied, not sent (D1, 2026-10-23) ─────────────────────────────────────
 
-test('sending records the address it actually sent to', () => {
+test('copying a report records when and by whom, never a recipient, and sends nothing', () => {
   const { exported, sandbox } = load();
   const fx = setUpFixture(sandbox, exported, {
     ledgerRows: [
-      (sb, ts) => ledgerRow(sb, {
-        timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice', finalScore: 3,
-      }),
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice Smith', finalScore: 3 }),
     ],
   });
 
-  const res = exported.sendWeeklyParentReport(
-    '1234567@ccpsnet.net', 'parent@example.com', fx.now);
+  const res = exported.recordParentReportCopied('1234567@ccpsnet.net', fx.now);
   assert.equal(res.success, true);
+  assert.equal(sandbox.MailApp.getSentMessages().length, 0, 'KOS never emails a family');
 
-  const sent = sandbox.MailApp.getSentMessages();
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].to, 'parent@example.com');
-
-  // The log must agree with what MailApp was actually handed. This is the
-  // point of sending through the app rather than a hand-addressed draft:
-  // without it there is no record of whose parent received a child's scores.
-  const log = fx.ss.getSheetByName('ParentReportLog');
-  const rows = log.getDataRange().getValues();
+  const rows = fx.ss.getSheetByName('ParentReportLog').getDataRange().getValues();
+  assert.deepEqual(rows[0].slice(5, 9), ['recipient_address', 'generated_at', 'copied_at', 'copied_by']);
   assert.equal(rows.length, 2, 'header + one row');
   assert.equal(rows[1][1], '1234567@ccpsnet.net');
-  assert.equal(rows[1][5], 'parent@example.com');
-  assert.ok(rows[1][7], 'sent_at must be stamped on success');
+  assert.equal(rows[1][5], '', 'the teacher chooses the recipients; they are not recorded');
+  assert.ok(rows[1][7], 'copied_at is stamped');
 });
 
-test('a second send for the same student and week is refused', () => {
+test('copying again updates the same row, and a prepared row is reused', () => {
   const { exported, sandbox } = load();
   const fx = setUpFixture(sandbox, exported, {
-    ledgerRows: [
-      (sb, ts) => ledgerRow(sb, {
-        timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice', finalScore: 3,
-      }),
-    ],
+    ledgerRows: [(sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' })],
   });
-
-  assert.equal(exported.sendWeeklyParentReport(
-    '1234567@ccpsnet.net', 'parent@example.com', fx.now).success, true);
-  const second = exported.sendWeeklyParentReport(
-    '1234567@ccpsnet.net', 'parent@example.com', fx.now);
-
-  assert.equal(second.success, false);
-  assert.match(second.error, /already sent/i);
-  assert.equal(sandbox.MailApp.getSentMessages().length, 1,
-    'a duplicate request must not reach the parent');
+  exported.runWeeklyParentReportPrep(fx.now);
+  exported.recordParentReportCopied('1234567@ccpsnet.net', fx.now);
+  exported.recordParentReportCopied('1234567@ccpsnet.net', new sandbox.Date(fx.now.getTime() + 60000));
+  const rows = fx.ss.getSheetByName('ParentReportLog').getDataRange().getValues();
+  assert.equal(rows.length, 2, 'one row per student per week');
+  assert.ok(rows[1][7], 'copied_at is set on the prepared row');
 });
 
-test('a malformed recipient address is refused before anything is sent', () => {
+test('a student with no report this week cannot be recorded as copied', () => {
   const { exported, sandbox } = load();
   const fx = setUpFixture(sandbox, exported, {
-    ledgerRows: [
-      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' }),
-    ],
+    ledgerRows: [(sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' })],
   });
-  const res = exported.sendWeeklyParentReport('1234567@ccpsnet.net', 'not-an-address', fx.now);
-  assert.equal(res.success, false);
-  assert.equal(sandbox.MailApp.getSentMessages().length, 0);
-});
-
-test('an off-domain recipient is accepted — that is the point of this path', () => {
-  // Every other outbound surface in cas-ccps rejects off-domain addresses.
-  // This one must not, or the feature cannot work; the safety comes from
-  // who can trigger it and what it may contain, not from a domain check.
-  const { exported, sandbox } = load();
-  const fx = setUpFixture(sandbox, exported, {
-    ledgerRows: [
-      (sb, ts) => ledgerRow(sb, {
-        timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice', finalScore: 3,
-      }),
-    ],
-  });
-  const res = exported.sendWeeklyParentReport(
-    '1234567@ccpsnet.net', 'someone@gmail.com', fx.now);
-  assert.equal(res.success, true);
-  assert.equal(sandbox.MailApp.getSentMessages()[0].to, 'someone@gmail.com');
+  assert.equal(exported.recordParentReportCopied('7654321@ccpsnet.net', fx.now).success, false);
 });
 
 // ── Prepare-only paths never send ────────────────────────────────────────
@@ -382,8 +349,8 @@ test('the weekly trigger prepares rows with no recipient and no sent_at', () => 
     'nothing on a timer may ever email a parent');
 
   const rows = fx.ss.getSheetByName('ParentReportLog').getDataRange().getValues();
-  assert.equal(rows[1][5], '', 'recipient_address is unknown until a teacher sends');
-  assert.equal(rows[1][7], '', 'sent_at must be empty');
+  assert.equal(rows[1][5], '', 'recipient_address is never recorded');
+  assert.equal(rows[1][7], '', 'copied_at is empty until the teacher copies it');
 });
 
 test('the weekly trigger is idempotent within a week', () => {
@@ -530,4 +497,84 @@ test('with no TEACHER_EMAIL configured there is nobody to scope to, so no report
   });
   sandbox.PropertiesService.getScriptProperties().deleteProperty('TEACHER_EMAIL');
   assert.equal(exported.generateWeeklyParentReports(fx.now).reports.length, 0);
+});
+
+// ── What the report says (the UX audit's preconditions, 2026-10-23) ─────────
+
+test('every rostered student gets a report, with nothing due this week said plainly', () => {
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' }),
+      // Bob's only work is from the week before.
+      (sb) => ledgerRow(sb, { timestamp: new sb.Date(2026, 1, 24, 9), googleId: '2345678@ccpsnet.net', name: 'Bob Jones' }),
+    ],
+  });
+  const out = exported.generateWeeklyParentReports(fx.now);
+  assert.deepEqual(out.reports.map((r) => r.studentName), ['Alice', 'Bob Jones']);
+  const bob = exported.renderWeeklyParentReportText_(out.reports[1]);
+  assert.match(bob, /Weekly progress for Bob\n/);
+  assert.match(bob, /Nothing was due or turned in this week\./);
+  assert.match(bob, /Nothing is outstanding/);
+});
+
+test('items carry the lesson title and their real status; competencies their text', () => {
+  const { exported, sandbox } = load();
+  const D = sandbox.Date;
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [
+      (sb, ts) => { const r = ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice',
+        configId: 'VDOE-AAA-1' }); r[23] = 2; r[24] = 'NEEDS_REVISION'; return r.concat(['', '']); },
+      (sb, ts) => { const r = ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice',
+        configId: 'VDOE-AAA-2' }); r[23] = 1; r[24] = 'PASSED'; r[25] = ts; return r.concat(['']); },
+    ],
+    scrRows: [scrRow({ studentEmail: '1234567@ccpsnet.net', competencyId: '8175-39', finalRating: 2, decidedAt: new D(2026, 2, 2) })],
+  });
+  const sa = fx.ss.insertSheet('StudentAssignments');
+  sa.appendRow(['StudentConfigID', 'GoogleID', 'AssignmentConfigID', 'RecordedAt']);
+  sa.appendRow(['VDOE-AAA-1', '1234567@ccpsnet.net', 'CAS-8175-L01', new D()]);
+  sa.appendRow(['VDOE-AAA-2', '1234567@ccpsnet.net', 'CAS-8175-L02', new D()]);
+
+  const report = exported.generateWeeklyParentReports(fx.now).reports[0];
+  const body = exported.renderWeeklyParentReportText_(report);
+  assert.match(body, /The Seven Eras of Marketing \(Timeline Analysis\) \([^)]*\): Revising: feedback given, not passing yet/);
+  assert.match(body, /: Passed: met the standard/);
+  assert.match(body, /Ask Alice to finish: The Seven Eras of Marketing/);
+  assert.match(body, /Explain marketing as it relates to the sports, entertainment, and event industries \[8175-39\]: 2 \(without supervision\)/);
+  assert.match(body, /1 to 5 competency scale, where 1 is the highest/);
+});
+
+test('progress is the current marking period only, named in words', () => {
+  const { exported, sandbox } = load();
+  const D = sandbox.Date;
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [(sb) => ledgerRow(sb, { timestamp: new sb.Date(2026, 9, 20, 9), googleId: '1234567@ccpsnet.net', name: 'Alice' })],
+    scrRows: [
+      scrRow({ decisionId: 'a', studentEmail: '1234567@ccpsnet.net', competencyId: 'NOW-1', finalRating: 3, decidedAt: new D(2026, 9, 5) }),
+      scrRow({ decisionId: 'b', studentEmail: '1234567@ccpsnet.net', competencyId: 'LASTYEAR-1', finalRating: 1, decidedAt: new D(2026, 4, 5) }),
+    ],
+  });
+  // Wed 21 Oct 2026: marking period 1 of 2026-27 (00's default table, from August).
+  const report = exported.generateWeeklyParentReports(new D(2026, 9, 21, 12)).reports[0];
+  assert.deepEqual(report.progress.map((p) => p.competencyId), ['NOW-1']);
+  assert.match(exported.renderWeeklyParentReportText_(report), /PROGRESS SO FAR, MARKING PERIOD 1, 2026–27/);
+});
+
+test('the subject and greeting use the first name, never the account; the teacher signs it', () => {
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice Smith' }),
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '2345678@ccpsnet.net', name: '' }),
+    ],
+  });
+  sandbox.PropertiesService.getScriptProperties().setProperty('TEACHER_NAME', 'Ms. Rivera');
+  const [noName, alice] = exported.generateWeeklyParentReports(fx.now).reports
+    .sort((a, b) => a.studentName.localeCompare(b.studentName));
+  assert.match(exported.weeklyParentReportSubject_(alice), /^Weekly progress for Alice, week of March 2$/);
+  assert.doesNotMatch(exported.weeklyParentReportSubject_(noName), /@|\d{7}/);
+  const body = exported.renderWeeklyParentReportText_(noName);
+  assert.match(body, /Weekly progress for your student/);
+  assert.doesNotMatch(body, /2345678/);
+  assert.match(exported.renderWeeklyParentReportText_(alice), /Ms\. Rivera, teacher@ccpsnet\.net$/);
 });
