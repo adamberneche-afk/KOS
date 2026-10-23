@@ -98,3 +98,12 @@ test('lhSaveConfig_ refuses a value past Script Properties\' 9KB limit, with a r
   assert.match(res.error, /limit is 9 KB/);
   assert.equal(exported.lhGetConfig_('lh_keyContacts'), null);
 });
+
+test('lhSaveConfig_ counts UTF-8 bytes, not characters', () => {
+  const { exported } = load();
+  // 3,000 "é" are 3,000 characters but 6,000 bytes; 4,600 are past 9,000.
+  assert.equal(exported.lhSaveConfig_('lh_keyContacts', ['é'.repeat(3000)]).ok, true);
+  const res = exported.lhSaveConfig_('lh_keyContacts', ['é'.repeat(4600)]);
+  assert.equal(res.tooLarge, true);
+  assert.match(res.error, /\(10 KB;/);
+});

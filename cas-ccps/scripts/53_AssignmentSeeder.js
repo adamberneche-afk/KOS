@@ -250,11 +250,9 @@ function _asUnits_(opts) {
   ["8175", "8177"].forEach(code => {
     const unit = resolveUnitForCourseDate_(today, code); // 31
     out[code] = unit ? [unit.lesson_unit_id] : [];
-    if (typeof _lsRows_ === "function") {
-      (_lsRows_()[code] || []).forEach(r => {
-        if (r.start > today && r.start <= soon && out[code].indexOf(r.key) === -1) out[code].push(r.key);
-      });
-    }
+    (_lsRows_()[code] || []).forEach(r => {
+      if (r.start > today && r.start <= soon && out[code].indexOf(r.key) === -1) out[code].push(r.key);
+    });
   });
   return out;
 }

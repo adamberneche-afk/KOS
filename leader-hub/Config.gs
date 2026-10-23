@@ -120,10 +120,11 @@ function lhSaveConfig_(key, value) {
   // Script Properties hold at most 9KB per value, and setProperty() throws
   // past it. Refuse with a reason instead, so the page can say why the
   // setting didn't save rather than failing silently.
-  const bytes = unescape(encodeURIComponent(json)).length;
+  // UTF-8 length: each %XX escape is one byte.
+  const bytes = encodeURIComponent(json).replace(/%[0-9A-F]{2}/g, 'x').length;
   if (bytes > LH_CONFIG_MAX_BYTES) {
     return { ok: false, tooLarge: true,
-      error: 'too large to save (' + Math.ceil(bytes / 1024) + ' KB; the limit is 9 KB)' };
+      error: 'too large to save (' + Math.ceil(bytes / 1000) + ' KB; the limit is 9 KB)' };
   }
   PropertiesService.getScriptProperties().setProperty(_lhConfigPropName_(key), json);
   return { ok: true };

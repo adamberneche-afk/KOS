@@ -494,7 +494,7 @@ function getPeriodsForDay_(scheduleData, teacherEmail, dayType) {
 // warm-up matches the ODD and EVEN classes'; otherwise an odd date starts it.
 // ---------------------------------------------------------------------------
 function isHalfPeriodRestDay_(dateStr, date, courseCode) {
-  const row = typeof plannedWarmUpRow_ === "function" && courseCode ? plannedWarmUpRow_(dateStr, courseCode) : null;
+  const row = courseCode ? plannedWarmUpRow_(dateStr, courseCode) : null;
   if (row) return row.date !== dateStr;
   return getDayType_(date) !== "ODD";
 }
