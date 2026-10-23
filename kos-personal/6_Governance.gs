@@ -1086,27 +1086,12 @@ function _primerDataQuality_(vectorState) {
   dupGroups.forEach(g => g.drop.forEach(u => { dropped[u] = true; }));
 
   // Processed sessions (SESSION_LOG Curator rows, one per chunk) that have
-  // no VECTOR_MATRIX row. A copy already marked DUPLICATE is not counted.
-  const staging = ss.getSheetByName(CFG.STAGING_SHEET);
-  const resolvedDup = {};
-  if (staging && staging.getLastRow() > 1) {
-    const SC = CFG.STAGING_COLS;
-    staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues().forEach(r => {
-      if (String(r[SC.STATUS]).trim() !== 'DUPLICATE') return;
-      resolvedDup[String(r[SC.PAYLOAD_UID]).trim().replace(/_(?:CH\d+|VC\d+of\d+)$/, '')] = true;
-    });
-  }
-  const unclassified = {};
-  const log = ss.getSheetByName(CFG.SESSION_LOG_SHEET);
-  if (log && log.getLastRow() > 1) {
-    log.getRange(2, 1, log.getLastRow() - 1, 6).getValues().forEach(r => {
-      if (_isIntakeSessionLogRow_(r)) return;
-      const stem = String(r[0]).trim().replace(/_CH\d+$/, '');
-      if (!/^LOG-/.test(stem) || inMatrix[stem] || dropped[stem] || resolvedDup[stem]) return;
-      unclassified[stem] = true;
-    });
-  }
-  const unclassifiedCount = Object.keys(unclassified).length;
+  // no VECTOR_MATRIX row. A copy already marked DUPLICATE, or a copy of
+  // content another session has classified, is not counted
+  // (_vcsSessionsWithoutRow_, 20; explainUnclassifiedSessions() says why
+  // each counted one has no row).
+  const unclassifiedCount = _vcsSessionsWithoutRow_(ss, inMatrix, dropped)
+    .filter(s => !s.twinOf).length;
 
   const day = iso => iso ? String(iso).slice(0, 10) : '';
   const rederiveAt  = props.getProperty(CFG.PROP.VM_LAST_REDERIVE_AT);
@@ -1122,7 +1107,8 @@ function _primerDataQuality_(vectorState) {
     flags.push('VECTOR_MATRIX has not been rebuilt since the carried-forward-value fix, so older rows may hold another session\'s scores');
   }
   if (unclassifiedCount) {
-    flags.push(unclassifiedCount + ' processed session(s) have no Vector State row yet');
+    flags.push(unclassifiedCount + ' processed session(s) have no Vector State row yet ' +
+      '(explainUnclassifiedSessions() says why, and what to run)');
   }
   let rebuildPending = 0;
   try { rebuildPending = JSON.parse(props.getProperty(CFG.PROP.VM_REDERIVE_DONE) || '[]').length; } catch (_) {}

@@ -238,6 +238,13 @@ and removes itself when nothing is left to queue. It is not in
 Studio-side Classify Flow itself still has to exist and answer for any of
 this to produce data.
 
+**A session with no row (2026-10-23):** when the primer's Data Quality block
+says "N processed session(s) have no Vector State row yet", run
+`explainUnclassifiedSessions()` (read-only). It names each one, why it has
+no row (a part that failed or timed out, parts archived out of the
+requeue's reach, text that is gone, and so on) and the one call that fixes
+it. A copy of content another session has classified is no longer counted.
+
 **One session per row (2026-10-03):** each `VECTOR_MATRIX` row holds only
 its session's own scores, 0 for a theme it didn't score. The 0.92 decay is
 applied when the matrix is read (`_vmDecayedState_()`, used by
