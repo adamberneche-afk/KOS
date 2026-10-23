@@ -45,9 +45,10 @@ kos-personal warns about.
 ## The handshake
 
 ```
-Browser              POST action=aiDraft {type, payload}   → EmailBridge.gs
+Browser              callGAS('aiDraft', {type, payload})   → EmailBridge.gs
+                      (google.script.run → lhApiCall → _lhDispatchAction_)
 EmailBridge.gs        Appends a PENDING row to AI_Queue sheet, returns jobId
-Browser               Polls action=checkAiJob {jobId} every ~3s
+Browser               Polls callGAS('checkAiJob', {jobId}) every ~3s
 Workspace Flow        Polls AI_Queue sheet for Status=PENDING rows
 Workspace Flow        Reads Payload, calls Gemini, writes Result
 Workspace Flow        Sets Status=COMPLETE (or ERROR)
@@ -77,7 +78,7 @@ replacement for anything that already worked.
 > rather than `COMPLETE` — `pollAiJob_` already treats `ERROR` exactly
 > like a timeout, falling through to the same local deterministic draft,
 > so no client-side change was needed. Tracked per job type in the same
-> lifetime counters the **AI Flow Health** settings panel already reads —
+> lifetime counters the **AI Flow Health** settings panel (labelled "AI Drafting Status" on screen) already reads —
 > a `suspectFabrication` count there means a Flow is connected and
 > responding, just not engaging with its own input, which reads
 > differently from "Flow may not be built yet." `FIN_ANALYSIS`'s payload
@@ -99,8 +100,8 @@ Queue"** in your Drive root (via `SpreadsheetApp.create()` in
 `_getAiQueueSheet_()`) and stores its ID in Script Properties under
 `AI_QUEUE_SHEET_ID`. You don't need to create anything by hand — just
 trigger one `aiDraft` call first (e.g. click "✨ Generate" once on the
-Brag Board with an Apps Script bridge URL configured), then look for that
-sheet in your Drive.
+Brag Board in the web app; there is no bridge URL to configure), then look
+for that sheet in your Drive.
 
 **Sheet tab:** `AI_Queue`
 
@@ -326,7 +327,7 @@ the lesson's saved content if the teacher has edited/saved it locally
 lesson's full Google Doc content once it's been fetched and edited once;
 real Drive access requires auth Gemini can't do. `LP_ASSIST_FLOW_PROMPT.md`
 explicitly handles the empty-`planBody` case as normal, not an error. If
-no Apps Script bridge is configured, this box falls back to a small set
+the server can't be reached or no Flow answers in time, this box falls back to a small set
 of keyword-matched tip lists (see `lpRunAI()`) — the same fallback this
 feature always had before any backend existed.
 
@@ -433,8 +434,9 @@ between was substituted. This is client-side text substitution
 `generateAIInsights()`, `_wblGenerateNarrative()`, `lpRunAI()`, and
 `aiComposeEmail()` — `finAnalysis()` deliberately isn't on this list, per
 the `FIN_ANALYSIS` note above), not a schema field or a server-side
-feature — no student ID is ever stored anywhere but this browser's
-`localStorage`, same as everything else in LeaderHub.
+feature. The uploaded roster (`lh_student_id_map`) is saved like every
+other LeaderHub setting: as a Script Property on your own deployment
+(`Config.gs`), never in the browser and never in the AI queue.
 
 Substitution is **fail-open**, not fail-closed: any name not found in the
 uploaded roster (typos, students not yet added, non-student names) is
@@ -488,7 +490,7 @@ Two things worth knowing before you run 4:
   client action and never from a queue row.
 - **Fixtures don't show up as usage.** They're written straight to the sheet
   rather than through `queueAiJob_()`, so they never touch the per-type
-  counters behind Settings → AI Flow Health. The canary is the opposite: it
+  counters behind Settings → AI Drafting Status (the AI Flow Health panel). The canary is the opposite: it
   goes through the real queue path on purpose, so it uses the job type
   `CANARY`, which is deliberately absent from `AI_FLOW_TYPES` and therefore
   invisible in that panel. `cleanUpAiFlowCanary()` drops even the counter.
@@ -498,8 +500,9 @@ Two things worth knowing before you run 4:
 All six job types follow the same handshake, so the same test procedure
 applies to each — just swap the feature and status element referenced.
 
-1. Configure an Apps Script bridge URL in LeaderHub Settings if you
-   haven't already (existing `EmailBridge.gs` setup, unchanged).
+1. Open LeaderHub from its web app `/exec` (or `/dev`) link. There is no
+   bridge URL to configure: the page calls the server directly
+   (`callGAS()` over `google.script.run`).
 2. **Brag Board:** open Brag Board, pick a week with at least one win,
    click "✨ Generate". **Archive Insights:** open Trip Archive → "📊
    Archive Insights" → "✨ Generate Insights from Archive" on an archive

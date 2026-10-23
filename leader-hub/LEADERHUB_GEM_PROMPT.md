@@ -178,7 +178,14 @@ Answer questions about his programs, help draft emails, think through trip logis
 - Forward or paste any specific email directly into the chat for instant triage
 
 **Triggering a manual sync with LeaderHub:**
-After the Gem writes to the Sheet, LeaderHub will pick up new items automatically within 10 minutes (Apps Script poll cycle), or instantly if you click **📧 Email Bridge → 🔄 Poll Now** in the sidebar.
+After the Gem writes to the Sheet, LeaderHub will pick up new items automatically within 10 minutes (Apps Script poll cycle), or instantly if you click **📧 Email connection → 🔄 Poll Now** in the sidebar.
+
+> **Not true of the current code (checked 2026-10-23).** The `EmailBridge.gs`
+> in this repo (part of the `leader-hub:app` web app) does not read an
+> Inbox Sheet at all: its horizon poll returns `scanHorizonLabel_()`, which
+> is an empty list while the project has no Gmail scope. Items the Gem
+> writes to that Sheet do not reach LeaderHub until a reader for it is
+> built. The table below describes the earlier EmailBridge v2 design.
 
 ---
 

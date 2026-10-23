@@ -5,9 +5,13 @@
 > `EmailBridge.gs` actually in this repo today — none of those functions
 > or that property exist in the current file. The real, current setup
 > steps are `EmailBridge.gs`'s own header comment and the in-app "📧 Email
-> Bridge Setup" modal (`leader-hub/src/13-markup-modals-tail.html`), both
-> kept in sync with the actual shipped code; see `README.md`'s "JJ1 —
-> Server-deployed web app" section for the full current architecture.
+> Connection Setup (the Email Bridge)" modal (sidebar → **Email connection**,
+> `leader-hub/src/13-markup-modals-tail.html`), both kept in sync with the
+> actual shipped code; see `README.md`'s "Where the data lives" and "JJ1 —
+> Server-deployed web app" sections for the full current architecture.
+> The `EmailBridge.gs` code is now part of the one `leader-hub:app` web app
+> (`DEPLOYMENT_GUIDE.md`), not a separate project, and there is no URL to
+> paste into LeaderHub.
 
 # LeaderHub Email Bridge v2 — Setup Guide
 ### Three automatic intake channels. Zero API key required.
@@ -133,7 +137,7 @@ The log also prints the exact Gmail filters to create (copy them from there).
 
 Nothing to paste (2026-10-22): LeaderHub runs as this same web app, so the
 bridge is already connected. Open LeaderHub from the web app URL from Step 5;
-the **📧 Email Bridge** sidebar badge reads ✅ On.
+the sidebar's **📧 Email connection** badge reads ✅ On.
 
 ---
 
