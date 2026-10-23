@@ -4464,3 +4464,15 @@ Flow 2 starts by itself on a submission (reported by the operator after the
 #214 change: READY written as an edit). The overnight check's stalled-Flow-2
 line no longer says to start it by hand; like Flows 3 to 5 it says to check
 the run history in Studio.
+
+## No `typeof` guards inside one project (rule 12), 2026-10-23
+
+Nine `typeof fn === "function"` guards called a function every project
+holding the file already has (03, 24, 25, 34b, 34c, 35, 41 twice, 53):
+the guard only turned a missing file into a silent skip. They are gone,
+and gas-lint's check 15 (`typeof-guard-same-project`) fails the build on a
+new one. 31's two guards stay: 31 is in the Teacher Dashboard, which
+doesn't load 55. Removing 41's guard showed a test sandbox missing 24
+(`courseCodeFromName_`); `warmup-flow-bridge.test.js` loads it now. Check 6
+(possibly-undefined calls) no longer flags callback parameters or a name the
+file guards on purpose.

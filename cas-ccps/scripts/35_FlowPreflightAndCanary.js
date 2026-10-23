@@ -215,7 +215,7 @@ function _pfCheckTrigger_(handlerName, installer, purpose) {
     };
   }
   // 64_LedgerCycle.js: a job the Ledger cycle runs has no trigger of its own.
-  const inCycle = cycle > 0 && typeof lcRecordedJobs_ === "function" &&
+  const inCycle = cycle > 0 &&
     lcRecordedJobs_(PropertiesService.getScriptProperties()).indexOf(handlerName) !== -1;
   if (inCycle && installed === 0) {
     return { ok: true, label: 'Trigger: ' + handlerName, detail: purpose + ', run by runLedgerCycle (64).' };

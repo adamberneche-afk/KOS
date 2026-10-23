@@ -217,9 +217,7 @@ function backPropagateCompletions() {
             } else {
               notifyFailedCheckToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet);
             }
-            if (typeof setDocFeedbackStatus_ === "function") {
-              setDocFeedbackStatus_(fileId, stagingStatus === "ERROR_TIMEOUT" ? "TIMED_OUT" : "NOT_CHECKED", {});
-            }
+            setDocFeedbackStatus_(fileId, stagingStatus === "ERROR_TIMEOUT" ? "TIMED_OUT" : "NOT_CHECKED", {});
             Logger.log("[BACKPROP] " + stagingStatus + " closed — row " + rowNum +
                        " | Teacher: " + teacherEmail);
           }
