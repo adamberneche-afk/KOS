@@ -69,6 +69,8 @@ test('helpers: headings demoted outside fences, fences longer than any inner run
   // Nested or broken fragments can't survive as a tag; an escaped "<" in text does.
   assert.doesNotMatch(htmlToText('<scr<script>x</script>ipt>alert(1)<!-<!-- -->- -->ok <b'), /<(script|!--|b)/i);
   assert.equal(htmlToText('<p>a &lt;tag&gt; in text</p>'), 'a <tag> in text');
+  // The guides' curly quotes (the same list as build-guide-notebook-sources.js).
+  assert.equal(htmlToText('<p>&ldquo;the school&rsquo;s&rdquo; &lsquo;x&rsquo; 2&times;2 &bull; &copy;</p>'), '“the school’s” ‘x’ 2×2 • ©');
 });
 
 test('without git, the folder walk finds every tracked file (a zip of main builds the same sources)', NEEDS_GIT, () => {
