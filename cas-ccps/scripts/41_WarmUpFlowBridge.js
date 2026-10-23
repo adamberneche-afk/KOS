@@ -666,10 +666,8 @@ function wfbBuildFlow3Row_(sheet, row, queueId) {
     return false;
   }
 
-  const courseCode = typeof courseCodeFromName_ === "function"
-    ? courseCodeFromName_(lesson.course_name) : "";
-  const lockEnabled = typeof pivotFlagFor_ === "function" &&
-    pivotFlagFor_("PIVOT_ARCHETYPE_LOCK", courseCode);
+  const courseCode = courseCodeFromName_(lesson.course_name);
+  const lockEnabled = pivotFlagFor_("PIVOT_ARCHETYPE_LOCK", courseCode);
   const f = wfbBuildFlow3Fields_(lesson, profile, { lockEnabled: lockEnabled });
   sheet.appendRow([
     new Date(), queueId, "READY",

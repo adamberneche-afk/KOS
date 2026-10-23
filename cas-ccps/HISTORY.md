@@ -4421,3 +4421,58 @@ small HTML parser that keeps headings, paragraphs, numbered steps, callouts
 with "Notebook source: {NAME}." under each title. `--check` and
 `tests/tools/guide-notebook-sources.test.js` keep them in step with the
 guides. The notebook needs the four files re-uploaded.
+
+## Parent reports: KOS writes them, the teacher sends them (D1), 2026-10-23
+
+Decided by the operator: KOS writes each student's weekly report and the
+teacher copies it into an email sent from their own account. `36` has no
+mail call any more (`sendWeeklyParentReport` and the dashboard's address
+box and Send button are gone). ✉ Parent Reports shows a Subject and a
+Report per student with Copy buttons (clipboard, then the selected text,
+then a Ctrl+C hint); copying the report calls `recordParentReportCopied()`,
+which fills `ParentReportLog`'s columns 8 and 9, now `copied_at` and
+`copied_by`. `recipient_address` stays, blank. Choosing the recipients
+(one guardian or both, a student 18 or older, a family that opted out) is
+the teacher's; KOS has no guardian list.
+
+The report now meets the UX audit's fix-first 13, apart from the guardian
+list:
+- Each item by its lesson title (`StudentAssignments` → `LESSON_ASSIGNMENTS`
+  in `55b`), else the course, with where it stands: passed, revising,
+  turned in and waiting for feedback, or not turned in yet. Nothing that
+  was never turned in says "with your teacher".
+- Every rostered student this school year gets a report, including one
+  with nothing due ("Nothing was due or turned in this week.").
+- "So far this marking period" is the current marking period's dates
+  (`currentTerm_`), not every year in the log.
+- Competencies print their text and ID, rated in words on Virginia's 1 to 5
+  scale, with "1 is the highest" said once.
+- A "What to do this week" line names what is still open; the subject
+  names the student's first name and the week; the report ends with the
+  teacher's name and email, and "Reply to this email" works because the
+  teacher sent it.
+
+`29`'s `getWeeklyAssignments_()` entries also carry the submission time,
+check count, last result and first-passed time, which the status needs.
+Tests: `weekly-parent-report.test.js` (24) and the dashboard's copy flow in
+`teacher-dashboard-inline-js.test.js`. With no mail call left in its files,
+the Teacher Dashboard's manifest drops `script.send_mail`.
+
+## Bug 4 resolved, 2026-10-23
+
+Flow 2 starts by itself on a submission (reported by the operator after the
+#214 change: READY written as an edit). The overnight check's stalled-Flow-2
+line no longer says to start it by hand; like Flows 3 to 5 it says to check
+the run history in Studio.
+
+## No `typeof` guards inside one project (rule 12), 2026-10-23
+
+Nine `typeof fn === "function"` guards called a function every project
+holding the file already has (03, 24, 25, 34b, 34c, 35, 41 twice, 53):
+the guard only turned a missing file into a silent skip. They are gone,
+and gas-lint's check 15 (`typeof-guard-same-project`) fails the build on a
+new one. 31's two guards stay: 31 is in the Teacher Dashboard, which
+doesn't load 55. Removing 41's guard showed a test sandbox missing 24
+(`courseCodeFromName_`); `warmup-flow-bridge.test.js` loads it now. Check 6
+(possibly-undefined calls) no longer flags callback parameters or a name the
+file guards on purpose.

@@ -307,6 +307,14 @@ function getWeeklyAssignments_(ledgerSheet, windowStart, opts) {
       finalScore: _turnInScoreOrNull_(row[LEDGER.TURN_IN_FINAL_SCORE]),
       scoreDecidedBy: String(row[LEDGER.TURN_IN_SCORE_DECIDED_BY] || "").trim(),
       scoreDecidedAt: row[LEDGER.TURN_IN_SCORE_DECIDED_AT] || null,
+
+      // Where the work stands (37's recordEvaluationResult_), for the
+      // parent report's plain-words status (2026-10-23). Undefined on a
+      // Ledger no check has reached yet, read as "not checked".
+      submittedAt: (submissionTs instanceof Date) ? submissionTs : null,
+      checkCount: Number(row[LEDGER.CHECK_COUNT]) || 0,
+      lastResult: String(row[LEDGER.LAST_RESULT] || "").trim(),
+      firstPassedAt: (row[LEDGER.FIRST_PASSED_AT] instanceof Date) ? row[LEDGER.FIRST_PASSED_AT] : null,
     };
 
     if (!result.has(email)) result.set(email, []);

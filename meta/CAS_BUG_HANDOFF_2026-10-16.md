@@ -14,7 +14,7 @@ Prepared 2026-10-16 from the first live student submission through Flow 2. Cover
 | 1 | Submit for Feedback fails with "The assignment system didn't answer" | Deploying admin account never approved the new `documents` scope | Fixed operationally 2026-10-15; code hardened in #175 |
 | 2 | Feedback "never landed" in the student's doc | Harvest appended the evaluation at the end of the doc, not in the feedback zone | Fixed in #175 |
 | 3 | Late evaluation leaves ReviewQueue and Ledger at ERROR_TIMEOUT | Backprop only closes rows whose queue status is still `STAGED` | Fixed in the 2026-10-17 bug-3 PR (backprop finishes late rows); the one affected row was repaired by hand on 10-16 |
-| 4 | Flow 2 did not trigger on its own | Diagnosed 2026-10-19: Studio's "When a sheet changes" starter never fired on a row the script appended (40 days of history: one Test run, nothing else), and fired at once when ReadyStatus was retyped by hand (four rows, four runs) | Fixed in code: `buildFlowInputRows` (37) appends the row blank, then sets READY as its own edit; a row left blank is set on the next run |
+| 4 | Flow 2 did not trigger on its own | Diagnosed 2026-10-19: Studio's "When a sheet changes" starter never fired on a row the script appended (40 days of history: one Test run, nothing else), and fired at once when ReadyStatus was retyped by hand (four rows, four runs) | Fixed in code: `buildFlowInputRows` (37) appends the row blank, then sets READY as its own edit; a row left blank is set on the next run. **Resolved 2026-10-23:** Flow 2 starts by itself on live submissions |
 | 5 | Documents not created after a date was added to the schedule | Process gap (not a code bug) | Explained; steps in section 6 |
 
 The code changes are in one patch, `submit-failures.patch`, made against `KOS-main_21.zip`. Final check on a clean extract: 1,678 tests, 0 failures. `gas-lint` (0 errors, 19 warnings) and `doc-currency` (0 errors, 8 warnings) are unchanged from before the patch.
@@ -131,7 +131,7 @@ Do not confuse this with the 2 a.m. `buildUpcomingLessons()` trigger, which buil
 
 1. Student presses Submit for Feedback; a `PENDING` row appears in ReviewQueue.
 2. The row moves to `STAGED`, then staging shows `IN_PROCESS`; a `FlowInput` row appears as `READY` within about a minute.
-3. Flow 2 runs without a manual start. If it does not, that is open issue 4.
+3. Flow 2 runs without a manual start (issue 4, resolved 2026-10-23). If it does not, check Studio's run history.
 4. `FlowInput` reaches `EVALUATED` then `HARVESTED`; staging `COMPLETE`; ReviewQueue `COMPLETE`; Ledger `COMPLETE`.
 5. In the student's doc, the evaluation block sits inside the feedback zone, above the assignment, in normal-sized text, with its next steps. **With `FEEDBACK_AS_COMMENT` on (from 2026-10-18):** instead, the evaluation is a Drive comment on the doc, nothing is written into the body, and a doc with the new header shows the result on its `Feedback:` line.
 6. The Teacher Dashboard status changes (queue item 4 check).
