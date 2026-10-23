@@ -3346,9 +3346,9 @@ function handleDeploy() {
     armedIcon:  '<i class="ti ti-alert-triangle"></i>',
     armedLabel: (n) => 'Tap again to re-deploy · ' + n + 's',
     // Same aria-live convention as handleCouncil() above.
-    onArm: () => showDiagStatus('Tap "Re-run full deploy" again within 5 seconds to confirm.', undefined, beginDiagAction()),
+    onArm: () => showDiagStatus('Tap "Repair setup" again within 5 seconds to confirm.', undefined, beginDiagAction()),
     onExpire: () => {
-      resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
+      resetBtn('btn-deploy', 'ti-rocket', 'Repair setup (re-run it)');
       showDiagStatus('', undefined, beginDiagAction());
     },
     onConfirm: () => {
@@ -3360,7 +3360,7 @@ function handleDeploy() {
       showDiagStatus('Rebuilding system infrastructure… (usually under two minutes)', undefined, gen);
       callServer('deployFullSystem', [], (res) => {
         btn.disabled = false;
-        resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
+        resetBtn('btn-deploy', 'ti-rocket', 'Repair setup (re-run it)');
         if (res && res.success) {
           const errs = res.errors && res.errors.length;
           showDiagStatus(
@@ -3373,7 +3373,7 @@ function handleDeploy() {
         loadDiagnostics();
       }, (err) => {
         btn.disabled = false;
-        resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
+        resetBtn('btn-deploy', 'ti-rocket', 'Repair setup (re-run it)');
         showDiagStatus('Deploy error: ' + err.message, 'danger', gen);
       });
     }
