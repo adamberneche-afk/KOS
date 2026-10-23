@@ -558,7 +558,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
       <div class="step-n">1</div>
       <div class="step-body">
         <strong>Write at least 25 words</strong>
-        <p>Write under the grey line. With fewer than 25 words, the dashboard says “Not enough to evaluate yet” and tells you how many words it found.</p>
+        <p>Write under the grey line. With fewer than 25 words, the dashboard says “Write a little more first.” and tells you about how many words it found.</p>
       </div>
     </div>
     <div class="step">
@@ -609,6 +609,14 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
       <p>Read the feedback, change your work, then press Submit for Feedback again.</p>
     </div>
     <div class="status-item">
+      <span class="status-pill pill-red">Taking longer than usual ⚠ — your work is saved, and your teacher knows</span>
+      <p>The check took more than 12 minutes and was stopped. Your teacher has been told. If the feedback arrives late, the card changes to show it.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-red">Couldn&rsquo;t be checked this time ⚠ — your teacher knows. You can submit again</span>
+      <p>The check ran, but its result could not be used. Your teacher has been told. You can press Submit for Feedback again.</p>
+    </div>
+    <div class="status-item">
       <span class="status-pill pill-red">Couldn't be checked ⚠ — tell your teacher</span>
       <p>Something went wrong on our side, not with your work. Your work is safe. Tell your teacher. The card has a link to email them.</p>
     </div>
@@ -618,7 +626,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
 
   <div class="callout callout-info">
     <span class="callout-icon">⏱️</span>
-    <div class="callout-body"><strong>Most checks take a few minutes.</strong> If a check takes longer than 12 minutes, the system stops it and your card says “Couldn't be checked ⚠”. Tell your teacher. You don't need to submit again unless they ask you to.</div>
+    <div class="callout-body"><strong>Most checks take a few minutes.</strong> If a check takes longer than 12 minutes, the system stops it, your card says “Taking longer than usual ⚠”, and your teacher is told by email. You do not need to submit again unless they ask you to.</div>
   </div>
 </div>
 
@@ -631,8 +639,8 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
   <div class="eval-sample">
     <div class="eval-header">Example comment: passed</div>
     <div class="eval-section">
-      <p>Feedback, 2026-10-22 10:41</p>
-      <p style="margin-top:8px"><span class="stamp-approved">✅ RESULT: YOUR WORK MEETS THE STANDARD</span></p>
+      <p>Feedback, Oct 22, 10:41 AM</p>
+      <p style="margin-top:8px"><span class="stamp-approved">Result: ✅ Passed. Your work meets the standard.</span></p>
     </div>
     <div class="eval-section">
       <div class="eval-section-label">Overall assessment</div>
@@ -653,7 +661,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
   <div class="eval-sample">
     <div class="eval-header">Example comment: revise</div>
     <div class="eval-section">
-      <p><span class="stamp-revision">✏️ RESULT: REVISIONS REQUIRED</span></p>
+      <p><span class="stamp-revision">Result: ✏️ Revise, then submit again.</span></p>
     </div>
     <div class="eval-section">
       <div class="eval-section-label">Required revisions</div>
@@ -661,7 +669,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
     </div>
     <div class="eval-section">
       <div class="eval-section-label">What to do next</div>
-      <p>Make the changes under the grey line, then press Submit for Feedback on your dashboard again. Repeat until you see ✅.</p>
+      <p>Change your work under the “Your response” heading, then press Submit for Feedback on your dashboard again. Repeat until you see ✅.</p>
     </div>
   </div>
 
@@ -801,9 +809,9 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">It says “Not enough to evaluate yet.”<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
+      <summary class="faq-q">It says “Write a little more first.”<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        You need at least 25 words under the grey line. The message says how many words it found. If it found none, check that you wrote under the “── YOUR RESPONSE BEGINS HERE ──” line and above the “Do not delete this line” line.
+        You need at least 25 words under the grey line. The message says about how many words it found. If it says you have not written anything under “Your response” yet, check that you wrote under the “── YOUR RESPONSE BEGINS HERE ──” line and above the “Do not delete this line” line.
       </div>
     </details>
 
