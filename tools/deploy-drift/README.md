@@ -12,14 +12,16 @@ redeploy had actually taken effect.
 The obvious design — something in this repo reads each project's live
 state and diffs it against git — only works for one of the 11 GAS projects in `tools/gas-lint/project-map.json`.
 `access: MYSELF`/`DOMAIN` web apps (`kos-personal`, `leader-hub:app`,
-`cas-ccps:teacher-dashboard`) sit behind Google's own sign-in wall: an
+`cas-ccps:teacher-dashboard`, `cas-ccps:student-dashboard`) sit behind
+Google's own sign-in wall: an
 unauthenticated request never reaches `doGet()` at all, so polling them
 would need a production Google credential in CI — deliberately ruled out
 (see `tools/clasp-sync/SANDBOX_CI_SETUP.md`'s fence between sandbox and
 production credentials; Phase 3 isn't the thing that should erode it). The
-6 remaining projects with no web app at all have no inbound surface to
-poll regardless. Only `cas-ccps:student-dashboard` (`access: ANYONE`) is
-reachable by an anonymous external request.
+7 remaining projects (6 deployed, plus the blocked `cas-ccps:studio-steps`)
+have no web app at all, so no inbound surface to poll regardless. None of
+the 11 is reachable by an anonymous external request (the Student
+Dashboard's committed manifest is `access: DOMAIN`).
 
 So the design pushes instead. Apps Script already runs as a fully trusted
 execution context for itself — no credential is needed for it to call
@@ -27,9 +29,7 @@ execution context for itself — no credential is needed for it to call
 git currently expects for that project's files) via `UrlFetchApp` to
 GitHub's `repository_dispatch` API, which fires
 [`.github/workflows/deploy-drift.yml`](../../.github/workflows/deploy-drift.yml)
-immediately. One uniform mechanism for every project, web app or not —
-`student-dashboard` doesn't need a special case either, even though it
-*could* be polled directly.
+immediately. One uniform mechanism for every project, web app or not.
 
 ## How it works, end to end
 
@@ -76,7 +76,7 @@ commits have landed. The ritual, every time:
 4. clasp push; for a web app, then clasp version and
    clasp update-deployment <id> --versionNumber <n> to actually promote it —
    pushing HEAD alone does not update a web app's live /exec deployment
-   (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6, or run.ps1).
+   (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6, or run.js).
 ```
 
 Skipping step 2/3, or combining them with step 1, both break the match —
@@ -100,7 +100,7 @@ its next stamp.
 **A deliberate, narrower tradeoff in the `cas-ccps` marker files
 specifically:** `kos-personal`/`leader-hub`'s marker files hold *only*
 the SHA constant — every line of real reporting logic lives in a
-separate, fully-tracked file. `cas-ccps`'s 7 marker+wrapper files (e.g.
+separate, fully-tracked file. `cas-ccps`'s 8 marker+wrapper files (e.g.
 `43_DeployVersionMarker_CentralLedger.js`) also carry the thin
 `reportDeployVersion()` wrapper and `installDeployVersionReportTrigger()`
 — both excluded from `expected-marker.js`'s computation along with the
@@ -160,7 +160,7 @@ generating a credential is inherently something only you can do.
    directly from `project-map.json`, so there's no second file list to
    remember.
 6. `clasp push`, plus `clasp version` + `clasp update-deployment` for a web
-   app, as normal (or `tools/clasp-sync/run.ps1`) — for `cas-ccps`, run
+   app, as normal (or `tools/clasp-sync/run.js`) — for `cas-ccps`, run
    `node tools/clasp-sync/sync.js <project>` first, then push from
    `cas-ccps/.clasp-build/<project>/`.
 7. **Merge to `main` before expecting anything to react — and keep
@@ -236,6 +236,6 @@ fixed by a human running a real `clasp push` + `clasp deploy`.
   reporting function, with a mocked `UrlFetchApp`.
 - `tests/cas-ccps/deploy-version-report.test.js` — the shared
   `_reportDeployVersion_()` in `00_SharedConfig.js` once, then every one
-  of the 7 per-project marker+wrapper files, confirming each reports its
+  of the 8 per-project marker+wrapper files, confirming each reports its
   own real `project-map.json` key and its own `DEPLOY_VERSION_SHA` — the
-  one thing easy to typo across 7 near-identical files.
+  one thing easy to typo across 8 near-identical files.

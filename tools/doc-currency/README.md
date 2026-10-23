@@ -137,6 +137,10 @@ act is to report documentation that is doing its job correctly.
   `SCHEMA_REFERENCE.md` exactly 3 were dead, and all 3 were already
   labelled. Without this exclusion the tool's entire output is a complaint
   about the three rows that are documented correctly.
+- **`meta/notebook-codebase/` is skipped** (`excludeDirs`): the
+  notebook generator's output copies the repo's own docs, already checked
+  where they live, and its source inside fenced blocks, so checking it would
+  report every finding twice and read code as prose.
 - **Docs describing out-of-repo Apps Script report as unverifiable, not
   missing.** `processInbox()`, `auditInbox()` and `syncCalendar()` live in
   the operator's Script editor and were never committed here. Saying "this
@@ -160,7 +164,9 @@ should keep failing loudly on that alone.
 
 ## Tests
 
-`tests/tools/doc-currency-check.test.js`, run by `npm test`. It pins the
+`tests/tools/doc-currency-check.test.js` and
+`tests/tools/doc-currency-blocked-surfaces.test.js` (Check 5), run by
+`npm test`. They pin the
 pure functions rather than the checks themselves — the checks read the whole
 repo, so testing them directly would mean a suite that fails whenever a doc
 legitimately changes. Three bugs this tool has shipped with live in those

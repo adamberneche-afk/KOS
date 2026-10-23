@@ -19,17 +19,18 @@ sitting on a personal Google account rather than the district domain; in
 practice it is deployed on the same ccpsnet.net account. The project split is
 real, the account split is not — see `tools/gas-lint/gcp-map.json`.)
 
-`cas-ccps/scripts/` doesn't fit that model. It's actually **7 separate
+`cas-ccps/scripts/` doesn't fit that model. It's actually **8 separate
 bound/standalone Apps Script projects** sharing overlapping files —
-`00_SharedConfig.js` alone is pasted into 5 of them,
-`19_ClonedSheetConfig.js` into 2 — and `tools/gas-lint/project-map.json`
+`00_SharedConfig.js` alone is pasted into all 8 of them,
+`19_ClonedSheetConfig.js` into 3 — and `tools/gas-lint/project-map.json`
 is the existing record of exactly which files belong to which project
 (gas-lint's duplicate-declaration check depends on this same mapping
 being accurate). There's no single folder to point `clasp push` at
 without either sending files to a project that doesn't want them, or
-missing files a project needs. An 8th project, `cas-ccps/studio-steps/`,
-is standalone and shares no files with the other 7, but is still handled
-by this same tool under its `cas-ccps:*` scope.
+missing files a project needs. A 9th project, `cas-ccps/studio-steps/`,
+is standalone and shares no files with the other 8, but is still handled
+by this same tool under its `cas-ccps:*` scope (it is not deployed:
+custom Studio steps are blocked on this account).
 
 `sync.js` reads that same `project-map.json` and, for each of the 9
 `cas-ccps:*` projects, generates a throwaway push folder under
@@ -41,20 +42,21 @@ under `.clasp-build/` is ever hand-edited or committed (it's
 `.gitignore`d, and regenerated fresh — `fs.rmSync` clears the old
 contents — every run).
 
-## The 8 projects
+## The 9 projects
 
 | Project | Bound to | Files |
 |---|---|---|
-| `central-ledger` | Central Ledger spreadsheet | 35 |
+| `central-ledger` | Central Ledger spreadsheet | 46 |
 | `unified-manual` | Assignment System Manual Doc (setup wizard) | 9 |
 | `master-student-template` | Master Student Template Doc | 5 |
 | `rubric-response-sheet` | Rubric Response Sheet — **cloned per teacher** | 4 |
 | `teacher-matrix-sheet` | Teacher Matrix Sheet — **cloned per teacher** | 4 |
-| `teacher-dashboard` | Standalone web app | 11 |
-| `student-dashboard` | Standalone web app | 3 |
-| `studio-steps` | Standalone — not bound to a spreadsheet/doc | 9 |
+| `family-sentinel` | Family Mail Sentinel spreadsheet (the teacher's private sheet) | 4 |
+| `teacher-dashboard` | Standalone web app | 13 |
+| `student-dashboard` | Standalone web app | 4 |
+| `studio-steps` | Standalone — not bound to a spreadsheet/doc (blocked, not deployed) | 9 |
 
-File counts as of 2026-10-05; `tools/gas-lint/project-map.json` is the authoritative list.
+File counts (script files, not the manifest) as of 2026-10-23; `tools/gas-lint/project-map.json` is the authoritative list.
 
 **The two "cloned per teacher" projects don't have one live script ID —
 they have one per teacher's copy.** clasp can only meaningfully target
@@ -78,9 +80,9 @@ clasp login
 # code as-is — don't skip this and assume the tracked files already match):
 clasp clone <scriptId>
 
-# Only if no live project exists yet for one of the 7 spreadsheet/doc-bound
-# projects (studio-steps, the 8th, is --type standalone instead — see
-# cas-ccps/studio-steps/README.md):
+# Only if no live project exists yet for one of the spreadsheet/doc-bound
+# projects (the two web apps and studio-steps are --type standalone
+# instead — see cas-ccps/studio-steps/README.md):
 clasp create --type sheets --title "CAS — Central Ledger" --rootDir .
 ```
 
@@ -103,7 +105,7 @@ IDs (they live in Script Properties, not source).
 ## Usage
 
 ```bash
-# Rebuild all 8 project folders
+# Rebuild all 9 project folders
 node tools/clasp-sync/sync.js
 
 # Rebuild just one
@@ -144,7 +146,7 @@ before it fails silently at runtime.
 
 `sync.js` doesn't run `clasp push` for you, and it doesn't know your real
 script IDs — those two steps are inherently manual/credentialed and
-outside what CI can reach into. [`run.ps1`](#runps1--the-whole-push-from-windows)
+outside what CI can reach into. [`run.js`](#runjs--the-same-push-from-cmdexe)
 (below) drives them from the operator's own machine instead. It also doesn't solve
 propagating an update to a teacher's already-cloned
 `rubric-response-sheet`/`teacher-matrix-sheet` copy — see the table note

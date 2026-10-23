@@ -223,6 +223,9 @@ seven at once on introduction would make the check something to silence
 rather than act on. Those seven are now-visible, pre-existing findings,
 not a regression this change introduced — fixing them is follow-up work,
 not part of landing the check itself.
+Status 2026-10-23: none of the seven is fixed, and the check now reports
+eleven (`5_Error_And_Utilities.gs` ×2 and
+`cas-ccps/scripts/50_StudentDataAccess.js` ×3 among them).
 
 One real bug caught while building this, before it ever ran on real code:
 the first cut of both regexes (`[A-Za-z_$][\w$]*(?:MAX|LIMIT|CAP)[\w$]*\b`

@@ -46,8 +46,9 @@ rounds of dedicated UI/UX auditing (see
 have fixed real bugs including a race condition, an unguarded status-line
 race, and a data-loss bug where Escape could wipe an in-progress wizard.
 Since late September: a staging requeue, per-session vector classification,
-a `VECTOR_MATRIX` repair and the RTP notebook's briefing docs (files `19_`
-to `22_`; see [`kos-personal/README.md`](./kos-personal/README.md)).
+a `VECTOR_MATRIX` repair, the RTP notebook's briefing docs and the SMP-019
+moral debt counter (files `19_` to `23_`; see
+[`kos-personal/README.md`](./kos-personal/README.md)).
 
 ## [`cas-ccps/`](./cas-ccps/) — Classroom Agency System (CCPS)
 
@@ -89,9 +90,12 @@ covering the same course numbers. A personal command center for one
 teacher's full multi-role workload (classroom, DECA, school store,
 E-Sports, field trips). Now server-backed: a single Apps Script Web App
 (`leader-hub:app` — `Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`,
-`EmailBridge.gs`) serves the HTML front end and holds its data in a
-Spreadsheet, no longer client-side-only — see
-[`leader-hub/README.md`](./leader-hub/README.md)'s "JJ1 — Server-deployed
+`EmailBridge.gs` and five smaller `.gs` files) serves the HTML front end and
+holds its data in a Spreadsheet and Script Properties. Since 2026-10-22 the
+server is the only copy: nothing is stored in the browser, and the page no
+longer runs opened from disk (the standalone file is retired;
+[`meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`](./meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md)).
+See [`leader-hub/README.md`](./leader-hub/README.md)'s "JJ1 — Server-deployed
 web app" section for the migration. It also went through the same nine
 rounds of UI/UX auditing as the two systems above —
 see
@@ -245,7 +249,8 @@ blob in git history. Matches confirmed not to be student data are
 allowlisted by hash in `allow.json`. It also warns (without failing) on a
 `Logger.log` / `console.*` call in `cas-ccps/scripts/` that prints a
 student identifier. Added 2026-10-19 so the repo can stay
-public after a scrub; not yet a CI gate. See
+public after a scrub; a CI gate in `gas-lint.yml` (the working tree, without
+`--roster`) since the tree and history were cleared on 2026-10-20. See
 [`tools/student-data-scan/README.md`](./tools/student-data-scan/README.md).
 
 ## [`tools/watchdog/`](./tools/watchdog/check.js) — scheduled-job watchdog
@@ -253,9 +258,11 @@ public after a scrub; not yet a CI gate. See
 Catches the failure mode a red X can't: an invalid `.github/workflows/*.yml`
 file produces no run at all, so nothing fails loudly. Runs actionlint
 against every workflow file and checks that every workflow with an
-`on.schedule` trigger (currently `codeql.yml` and `watchdog.yml` itself -
-there's no self-exclusion, so it watches its own run history too) had its
-most recent scheduled run actually conclude successfully, publishing both to one
+`on.schedule` trigger (currently `call-hub.yml`, `codeql.yml` and
+`watchdog.yml` itself - there's no self-exclusion, so it watches its own run
+history too) had its most recent scheduled run actually conclude
+successfully, and lists open pull requests older than 14 days (reported,
+never a failure), publishing all three to one
 pinned "KOS Scheduled-Job Watchdog" issue updated in place rather than a
 fresh issue each run. Runs weekly via `.github/workflows/watchdog.yml`
 (the day after `codeql.yml`'s own schedule, so that run has landed);
@@ -273,7 +280,7 @@ healthy" floor.
 Catches the gap behind two real incidents: a live GAS project silently
 missing a function its own committed source already had, and separately,
 genuine uncertainty over whether a redeploy had actually taken effect.
-Most of the 9 deployed GAS projects (`cas-ccps:studio-steps` is blocked) sit behind Google's own sign-in wall or have no
+Most of the 10 deployed GAS projects (11 in `tools/gas-lint/project-map.json`; `cas-ccps:studio-steps` is blocked) sit behind Google's own sign-in wall or have no
 web app at all, so this repo can't poll them — instead, each project
 self-reports its own version marker outward via a `repository_dispatch`
 call, which `.github/workflows/deploy-drift.yml` compares against what
@@ -283,7 +290,7 @@ model, and why the marker has to live in its own file.
 
 ## [`tools/leaderhub-build/`](./tools/leaderhub-build/) — assembles `student-leader-hub.html`
 
-`leader-hub/student-leader-hub.html` (~22,000 lines) is generated from 14
+`leader-hub/student-leader-hub.html` (~20,000 lines) is generated from 14
 ordered fragments under `leader-hub/src/` — edit the fragment, run `node
 tools/leaderhub-build/build.js`, never hand-edit the assembled file
 directly. `--check` mode builds in memory and diffs against the committed
@@ -313,8 +320,10 @@ dependencies, like the rest of `tools/`.
   - `import-lesson-drafts.js` is the mechanical half of importing a Teacher Dashboard lesson draft: it re-checks drafts with 65's rules, writes the fields that have one home in the repo, rebuilds, and reports field by field what still differs (`cas-ccps/docs/LESSON_IMPORT_PROCEDURE.md` has the session's steps).
   - `build-canvas-cartridge.js` writes the 8175/8177 Canvas cartridges (from the teacher's lessons) in `cas-ccps/curriculum/canvas-cartridges/`, using `lesson-cards.js` (a `.docx` lesson-card reader) and `zip.js` (a zlib-only zip reader and writer).
   - `sync-pacing-vocabulary.js` sets the pacing guide's vocabulary fields from the lesson cards.
+  - `build-guide-notebook-sources.js` writes the Markdown copies of the four user guides (`cas-ccps/docs/notebooklm-sources/`) from the guides' HTML, for the user-guide notebook.
+  - `generate-family-mail-prompt.js` regenerates `61_FamilyMailPrompt.js` from `cas-ccps/docs/FAMILY_MAIL_TRIAGE_PROMPT.md`.
   - `generate-flow-prompts.js` regenerates `40_FlowPrompts.js`.
-  - All but the last take `--check`.
+  - Every builder above takes `--check`, as does `generate-family-mail-prompt.js`; `generate-flow-prompts.js` doesn't, and `import-lesson-drafts.js` takes `check`, `apply` or `verify` and a drafts file instead.
 - **kos-personal:**
   - `build-notebook-personas.js` writes the notebook persona editions in `kos-personal/rtp-core-router/notebook-sources/` (`--check`).
   - `generate-flow-prompts.js` regenerates `16_FlowPrompts.gs`.
@@ -341,7 +350,7 @@ Runs `node --check` on every inline `<script>` block of
 tests/cas-ccps/*.test.js tests/kos-personal/*.test.js` (`npm test`) runs
 real Node-`vm`-sandboxed coverage against the actual `.gs`/`.js` source
 via [`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js) —
-`tests/cas-ccps/` covers the course year builder (course data check, the CCPS calendar copy, course-aware pacing units, the rolling lesson drafts: `course-year-builder.test.js`), the Canvas roster import (`canvas-roster-import.test.js`), the Central Ledger's frequent jobs run by one every-minute cycle: install and rollback, cadence, most overdue first, errors contained and counted, the trigger failing after ten in a row, the time budget (`ledger-cycle.test.js`), the admin panel's Clear Staging Pipeline: a preview by status, unfinished submissions put back in line (`clear-staging-pipeline.test.js`), one period split into groups that meet on alternate days: text period labels, the relabel of enrolled students, off-day warm-ups set NOT_MEETING (`period-split.test.js`), the teacher's lessons on LessonSchedule dates (`lesson-schedule.test.js`), the nightly lesson rollout: docs made two days ahead, shared the night before, shadow until switched on, counts-only log (`lesson-rollout.test.js`), terms as school year plus marking period (`term-marking-periods.test.js`), the term rolling over by marking-period date, with MP1 students still enrolled in MP2 (`term-rollover.test.js`), the CAS attention signal and the STAGING_PIPELINE no-timestamp and unknown-status gaps (`cas-attention-signal.test.js`), the signal's LAST NIGHT section and its daily email: 3 a.m. stage stamps, warm-up counts, Studio jobs with no return, the all-clear line (`overnight-health.test.js`), the warm-up flows' pacing: at most ten input rows per run, and a job Studio dropped written again, at most twice (`warmup-flow-pacing.test.js`), Flow 3's shape gate: output that is the prompt, a description of it or a list is replaced by the teacher's anchor, the repair for rows already delivered, and 33's stamp when it stops early (`warmup-shape-gate.test.js`), the retention schedule, its school-year cutoff and its read-only check (`retention-schedule.test.js`), LIVE assignments seeded from the repo's unit rubrics (`assignment-seeder.test.js`), live assignments brought up to the repo's criteria, with a milestone's result counted for each competency it lists (`assignment-refresh.test.js`), the SCR suggestion engine's threshold/state
+`tests/cas-ccps/` covers the course year builder (course data check, the CCPS calendar copy, course-aware pacing units, the rolling lesson drafts: `course-year-builder.test.js`), the Canvas roster import (`canvas-roster-import.test.js`), the Central Ledger's frequent jobs run by one every-minute cycle: install and rollback, cadence, most overdue first, errors contained and counted, the trigger failing after ten in a row, the time budget (`ledger-cycle.test.js`), the admin panel's Clear Staging Pipeline: a preview by status, unfinished submissions put back in line (`clear-staging-pipeline.test.js`), one period split into groups that meet on alternate days: text period labels, the relabel of enrolled students, off-day warm-ups set NOT_MEETING (`period-split.test.js`), the teacher's lessons on LessonSchedule dates (`lesson-schedule.test.js`), the nightly lesson rollout: docs made two days ahead, shared the night before, shadow until switched on, counts-only log (`lesson-rollout.test.js`), terms as school year plus marking period (`term-marking-periods.test.js`), the term rolling over by marking-period date, with MP1 students still enrolled in MP2 (`term-rollover.test.js`), the CAS attention signal and the STAGING_PIPELINE no-timestamp and unknown-status gaps (`cas-attention-signal.test.js`), the signal's LAST NIGHT section and its daily email: 3 a.m. stage stamps, warm-up counts, Studio jobs with no return, the all-clear line, and the setup checks it runs at most every 6 hours (the Ledger's column order, FlowPrompts against the code, Studio returns in the right columns: `overnight-health.test.js`), the warm-up flows' pacing: at most ten input rows per run, and a job Studio dropped written again, at most twice (`warmup-flow-pacing.test.js`), Flow 3's shape gate: output that is the prompt, a description of it or a list is replaced by the teacher's anchor, the repair for rows already delivered, and 33's stamp when it stops early (`warmup-shape-gate.test.js`), the retention schedule, its school-year cutoff and its read-only check (`retention-schedule.test.js`), LIVE assignments seeded from the repo's unit rubrics (`assignment-seeder.test.js`), live assignments brought up to the repo's criteria, with a milestone's result counted for each competency it lists (`assignment-refresh.test.js`), the SCR suggestion engine's threshold/state
 machine, the student-context aggregator, `getCompetencyTextMap_`'s
 cache-with-fail-open behavior, Ledger retention, the opt-in Flow 2
 direct-evaluation escape hatch, the `cas-ccps/studio-steps/` custom steps
@@ -360,8 +369,8 @@ piece per assignment at its best outcome, for suggestions and retries alike
 (`scr-suggestion-engine.test.js`, `scr-retry-evidence-pieces.test.js`), what an
 evaluation leaves behind: the Ledger moved to COMPLETE and next steps pointing at
 the dashboard and Canvas (`evaluation-next-steps.test.js`), each evaluation's result on
-the Ledger (`evaluation-result-record.test.js`), feedback posted as a comment on the doc
-instead of into it, behind `FEEDBACK_AS_COMMENT` (`feedback-as-comment.test.js`), the Student Dashboard's Warm-ups card: the last warm-up's feedback with its extra-credit reply, the current warm-up and its answer box, saving only the student's own open warm-up (`student-dashboard-warmups.test.js`), warm-ups answered in a text box behind `WARMUP_TEXT_BOX`: delivered without a doc, scored from the saved answer, extra credit from the saved reply (`warmup-text-box.test.js`), the Teacher Dashboard's four states
+the Ledger, and its EvaluationLog row (times, attempt, minutes waited; never text: `evaluation-result-record.test.js`), feedback posted as a comment on the doc
+instead of into it, behind `FEEDBACK_AS_COMMENT` (`feedback-as-comment.test.js`), the Student Dashboard's Warm-ups card: the last warm-up's feedback with its extra-credit reply, the current warm-up and its answer box, saving only the student's own open warm-up (`student-dashboard-warmups.test.js`), warm-ups answered in a text box behind `WARMUP_TEXT_BOX`: delivered without a doc, scored from the saved answer, extra credit from the saved reply, and each warm-up's `delivered_at` and `answered_at` (`warmup-text-box.test.js`), the Teacher Dashboard's four states
 (not checked, not passing yet, passed, passed before) and its lesson grouping
 (`teacher-dashboard-eval-states.test.js`), both dashboards' contrast and plain words (no failing text colour, no text under 12px, term codes, SCR ratings and suggested scores in words, the old jargon gone, a Terms panel on each: `dashboard-plain-words.test.js`), the Teacher Dashboard's lesson schedule panel: start dates by course with the last rollout run, a stale or impossible date refused, a change the rollout acts on soon confirmed first, a date saved on Enter or blur only once it is whole, the lesson editor keeping its form on a failed save and asking before discarding edits, Escape closing the top panel, and every modal opened with the class the CSS uses (`teacher-dashboard-lesson-schedule.test.js`), the lesson editor's drafts: the lesson's current fields and tiers read from the generated data, the VDOE tasks and coverage, one open draft per lesson, Submit only with every required field and tiers the builder accepts, a proposal reviewed only by its submitter, new lessons keyed and checked (`lesson-drafts.test.js`), and the import tool on a copy of the curriculum: drafts re-checked, the warm-up, competency lines, tiers, 8177 vocabulary and objective written and rebuilt, the student task left for the session and named, a re-run changing nothing, a new lesson's files made in the builder's shape and built (`tests/tools/import-lesson-drafts.test.js`), and the student-data access
 policy: intake sharing, locking at submission, school-year scoping, the
