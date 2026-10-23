@@ -93,7 +93,7 @@
 >   (plus the other systems' projects), which promotes both web apps. The
 >   checks after it, and the rest of the operator's queue, are in
 >   `meta/HANDOFF_2026-10-22.md`.
-> - **Not yet reported:** a submission with Flow 2 starting by itself (bug 4).
+> - **Bug 4 resolved (2026-10-23):** Flow 2 starts by itself on a submission.
 > - **After any manifest scope change** to a web app that runs as the deploying
 >   admin (both dashboards): run any function from that project's editor and
 >   approve every prompt, then test one submit, before a class depends on it.

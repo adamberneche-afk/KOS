@@ -68,8 +68,11 @@ test('the parent-report controls reach server functions that exist', () => {
   // as a test failure rather than a dead control.
   const html = renderDashboard().buildDashboardHtml_();
   assert.match(html, /getWeeklyParentReports\(\)/);
-  assert.match(html, /teacherSendWeeklyParentReport\(/);
+  assert.match(html, /teacherCopiedParentReport\(/);
+  assert.match(html, /data-pr-copy="text"/);
   assert.match(html, /id="parent-report-btn"/);
+  // D1 (2026-10-23): KOS writes the report and the teacher sends it.
+  assert.doesNotMatch(html, /teacherSendWeeklyParentReport/);
 });
 
 // ── esc() / safeDocUrl() — FIXED by a third-party review's finding ─────────
@@ -321,29 +324,38 @@ test('the SCR queue with only too-little-evidence rows says nothing is waiting',
 // student's email.
 test('✉ Parent Reports stores nothing in the browser, and neither dashboard uses browser storage', () => {
   const html = renderDashboard().buildDashboardHtml_();
-  const context = firstContextWith(html, ['renderParentReportModal', 'submitParentReportSend']);
+  const context = firstContextWith(html, ['renderParentReportModal', 'copyParentReport']);
   const touched = [];
   const trap = { getItem(k) { touched.push(k); return null; }, setItem(k) { touched.push(k); }, removeItem(k) { touched.push(k); } };
   context.localStorage = trap;
   context.sessionStorage = trap;
   const els = {};
-  const el = (id) => (els[id] = els[id] || { id, style: {}, value: '', innerHTML: '', textContent: '' });
-  context.document = { getElementById: el };
-  let send = null;
-  const chain = { withSuccessHandler: (f) => { send = f; return chain; }, withFailureHandler: () => chain,
-    teacherSendWeeklyParentReport() {} };
+  const el = (id) => (els[id] = els[id] || { id, style: {}, value: '', innerHTML: '', textContent: '', focus() {}, select() {} });
+  context.document = { getElementById: el, execCommand: () => true };
+  context.navigator = {};
+  let recorded = null;
+  let done = null;
+  const chain = { withSuccessHandler: (f) => { done = f; return chain; }, withFailureHandler: () => chain,
+    teacherCopiedParentReport(email) { recorded = email; } };
   context.google = { script: { run: chain } };
   context.showToast = () => {};
   const data = { success: true, weekStart: 'Oct 19', weekEnd: 'Oct 25', excludedStudentCount: 0, reports: [
-    { studentEmail: 's@example.invalid', studentName: 'A Student', confirmedCount: 0, pendingCount: 0, progressCount: 0, preview: 'text' },
+    { studentEmail: 's@example.invalid', studentName: 'A Student', subject: 'Weekly progress for A, week of October 19',
+      itemCount: 0, openCount: 0, progressCount: 0, preview: 'text', copiedAt: '' },
   ] };
   context.renderParentReportModal(data);
-  assert.match(els['parent-report-modal-body'].innerHTML, /0 confirmed scores · 0 competencies to date/, 'zeros print as 0');
-  el('pr-addr-0').value = 'family@example.invalid';
-  context.submitParentReportSend(0);
-  send({ success: true, recipient: 'family@example.invalid' });
-  context.renderParentReportModal(data);
-  assert.doesNotMatch(els['parent-report-modal-body'].innerHTML, /value="family@example\.invalid"/);
+  const body = els['parent-report-modal-body'].innerHTML;
+  assert.match(body, /0 items this week · 0 competencies rated/, 'zeros print as 0');
+  assert.match(body, /KOS does not send it/);
+  assert.doesNotMatch(body, /type="email"|pr-addr-/, 'no address field: the teacher sends from their own account');
+  el('pr-text-0').value = 'text';
+  context.copyParentReport(0, 'subject');
+  assert.equal(recorded, null, 'copying the subject does not record the report as copied');
+  context.copyParentReport(0, 'text');
+  assert.equal(recorded, 's@example.invalid');
+  assert.match(els['pr-msg-0'].textContent, /Paste it into an email to A's family/);
+  done({ success: true, copiedAt: 'Oct 23, 9:00 AM' });
+  assert.match(els['pr-msg-0'].textContent, /Recorded as copied Oct 23, 9:00 AM/);
   assert.deepEqual(touched, []);
   const { exported } = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '13_StudentDashboard.js')], ['buildStudentDashboardHtml_']);
   for (const page of [html, exported.buildStudentDashboardHtml_()]) {
