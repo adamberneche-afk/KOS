@@ -1,7 +1,7 @@
 # notebook-codebase/
 
 The KOS repo as sources for a Gemini notebook ("KOS Codebase"): every
-Apps Script file, page source, tool, test and doc, cut into 12 sources plus
+Apps Script file, page source, tool, test and doc, cut into 14 sources plus
 an index, so the code can be asked about in plain language ("where does the
 backfill read archived chunks?", "what writes CURRENT_STATE?").
 
@@ -23,10 +23,10 @@ Never edit the generated files; rebuild them.
 |---|---|
 | `KOS_CODE_00_INDEX` | What the notebook holds, every source's file list, word count and fingerprint, and what is left out |
 | `KOS_CODE_KOS_PERSONAL_SOURCE` / `_DOCS` | kos-personal code; its docs, prompts, the RTP router and the notebook plan |
-| `KOS_CODE_CAS_CCPS_SOURCE_A` / `_B` | cas-ccps scripts 00–29; scripts 30 and up, Studio steps, forms, templates |
+| `KOS_CODE_CAS_CCPS_SOURCE_A` / `_B` / `_C` | cas-ccps scripts 00–29; scripts 30–49; scripts 50 and up, Studio steps, forms, templates |
 | `KOS_CODE_CAS_CCPS_DOCS` / `_CURRICULUM` | cas-ccps docs (HTML guides converted to text; the four user guides as their generated Markdown copies in `docs/notebooklm-sources/`); unit rubrics and lesson cards |
 | `KOS_CODE_LEADER_HUB_SOURCE` / `_DOCS` | leader-hub `.gs` files and `src/` page parts; its docs |
-| `KOS_CODE_TOOLS`, `KOS_CODE_TESTS`, `KOS_CODE_META` | repo tools and CI; tests and the GAS sandbox; repo-wide docs and Drive curation |
+| `KOS_CODE_TOOLS`, `KOS_CODE_TESTS_CAS_CCPS`, `KOS_CODE_TESTS`, `KOS_CODE_META` | repo tools and CI; cas-ccps tests; the other tests and the GAS sandbox; repo-wide docs and Drive curation |
 | `KOS_CODE_HISTORY` | the three change logs, marked as possibly superseded |
 
 - **Attributable sections.** Every file is its own section whose heading
