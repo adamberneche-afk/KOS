@@ -4409,3 +4409,15 @@ failure only clears once the teacher's settings are fixed; and re-queuing a
 timed-out Flow 2 evaluation unattended could evaluate it twice and put two
 feedback blocks in the student's doc. Stale inputs are already retried
 (`wfbRetryStaleInputs_`).
+
+## The user guides' notebook copies are generated, 2026-10-23
+
+`docs/notebooklm-sources/`'s four Markdown copies of the user guides were
+hand conversions made before #254 rewrote the guides, so the notebook was
+still describing the doc menu and the Turn-In Form. They are now written by
+`tools/cas-ccps/build-guide-notebook-sources.js` from the HTML guides: a
+small HTML parser that keeps headings, paragraphs, numbered steps, callouts
+(as quotes), tables, glossaries and FAQ answers and drops the page chrome,
+with "Notebook source: {NAME}." under each title. `--check` and
+`tests/tools/guide-notebook-sources.test.js` keep them in step with the
+guides. The notebook needs the four files re-uploaded.

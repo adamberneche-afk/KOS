@@ -8,7 +8,7 @@
 //   node tools/notebook-codebase/build.js --check   exit 1 if any differs from disk
 //
 // WHY A SCRIPT. cas-ccps/docs/notebooklm-sources/ was converted by hand and
-// its README says it goes stale silently; this repo's answer to that is a
+// went stale silently (it has its own generator since 2026-10-23); this repo's answer to that is a
 // generator (tools/kos-personal/build-notebook-personas.js and others).
 // The output is NOT committed (.gitignore): at 8+ MB it bloated every
 // clone, and a committed copy goes stale with every code change. The
@@ -53,7 +53,7 @@ const ALWAYS_EXCLUDE = [
   /^kos-personal\/rtp-core-router\/PERSONA_.*\.md$/,                 // in the RTP notebook
   /^kos-personal\/rtp-core-router\/notebook-sources\/PERSONA_.*\.md$/,
   /^kos-personal\/rtp-core-router\/notebook-sources\/cores\//,
-  // Four cas-ccps guides have hand-made Markdown versions in
+  // Four cas-ccps guides have generated Markdown versions in
   // docs/notebooklm-sources/; their HTML would be a duplicate.
   /^cas-ccps\/docs\/(12_TeacherQuickStartGuide|TEACHER_REFERENCE_GUIDE|STUDENT_QUICK_START|USER_EXPERIENCE_REFERENCE)\.html$/,
 ];
