@@ -159,3 +159,40 @@ test('a NOT_MEETING warm-up (24: its period does not meet that day) is never sco
   assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'NOT_MEETING');
   assert.equal(fx.wr.getRange(2, fx.exported.WR_TOTAL_SCORE + 1).getValue(), '');
 });
+
+// WarmUpQueue's timing columns (2026-10-23): delivered_at on DELIVERED (41),
+// answered_at at the nightly scoring (25), after archive_status.
+test('timing: delivered_at is set once on delivery, answered_at from the saved answer; an empty one has none', () => {
+  const fx = setup('all');
+  deliver(fx, 'WQ-A', daysAgoStr(1));
+  deliver(fx, 'WQ-B', daysAgoStr(1));
+  assert.deepEqual(fx.wq.getRange(1, 22, 1, 3).getValues()[0], ['archive_status', 'delivered_at', 'answered_at']);
+  const firstDelivered = fx.wq.getRange(2, 23).getValue();
+  assert.equal(Object.prototype.toString.call(firstDelivered), '[object Date]');
+
+  fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).setValue('PENDING');
+  fx.exported.wfbApplyFlow3_(fx.wq, fx.exported.wfbFindQueueRow_(fx.wq, 'WQ-A'), 'WQ-A', RAW);
+  assert.equal(fx.wq.getRange(2, 23).getValue(), firstDelivered, 'a second delivery keeps the first time');
+
+  fx.exported._registerDeliveredWarmUps_();
+  const saved = new Date(Date.now() - 20 * 3600 * 1000);
+  const tb = fx.ss.getSheetByName('WarmUpTextBox');
+  tb.getRange(2, fx.exported.WTB.RESPONSE + 1, 1, 2).setValues([[
+    'Fans pay more because the stadium is the only place to buy water and the experience is part of the price.', saved]]);
+  fx.exported.runWarmUpEvaluation();
+  assert.equal(fx.wq.getRange(2, 24).getValue().getTime(), saved.getTime());
+  assert.equal(fx.wq.getRange(3, 24).getValue(), '', 'no answer, no answered_at');
+});
+
+test('timing: a doc warm-up\'s answered_at is the doc\'s last edit; a Drive error stops nothing', () => {
+  const { exported, sandbox } = loadGasFiles(FILES, ['_stampWarmUpAnswered_']);
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  const wq = ss.insertSheet('WarmUpQueue');
+  wq.appendRow(new Array(21).fill('header'));
+  wq.appendRow(new Array(21).fill(''));
+  const edited = new Date('2026-10-22T14:05:00Z');
+  sandbox.DriveApp._files.set('doc-1', { getLastUpdated() { return edited; } });
+  exported._stampWarmUpAnswered_(wq, { docId: 'doc-1', queueRowNum: 2, queueId: 'WQ-1' }, null);
+  assert.equal(wq.getRange(2, 24).getValue().getTime(), edited.getTime());
+  assert.doesNotThrow(() => exported._stampWarmUpAnswered_(wq, { docId: 'gone', queueRowNum: 2, queueId: 'WQ-1' }, null));
+});

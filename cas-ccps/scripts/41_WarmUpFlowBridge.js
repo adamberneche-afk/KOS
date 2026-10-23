@@ -85,7 +85,9 @@
  * read by hardcoded WQ*_ index constants in Scripts 23, 24 and 25
  * (WQ25_COL_COUNT === 21 is asserted in several getRange calls). Widening it
  * means touching all three, which is exactly the trade kos-personal's
- * 10_Turnstile.gs refused for the same reason. So:
+ * 10_Turnstile.gs refused for the same reason. (Columns after the 21 are
+ * fine, since no index or 21-wide write reaches them: 34's archive_status,
+ * and 00's delivered_at and answered_at, WQ_TIMING.) So:
  *
  *   Flow3Input / Flow4Input / Flow5Input — one flat literal row per pending
  *       job, one tab per flow so each Flow's native "get row" step points at
@@ -1193,6 +1195,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
   wqSheet.getRange(found.sheetRow, WQ25_DOC_ID + 1).setValue(file.getId());
   wqSheet.getRange(found.sheetRow, WQ25_DOC_URL + 1).setValue(file.getUrl());
   wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("DELIVERED");
+  stampWarmUpTiming_(wqSheet, found.sheetRow, WQ_TIMING.DELIVERED_AT, new Date());
   SpreadsheetApp.flush();
   return fallback ? { ok: true, fallback: fallback } : { ok: true };
 }
@@ -1384,6 +1387,7 @@ function wfbDeliverToTextBox_(wqSheet, found, queueId, raw) {
     sheet.appendRow(row);
   }
   wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("DELIVERED");
+  stampWarmUpTiming_(wqSheet, found.sheetRow, WQ_TIMING.DELIVERED_AT, new Date());
   SpreadsheetApp.flush();
   return { ok: true };
 }
@@ -1785,6 +1789,29 @@ function checkFlowBinding() {
       'failing inside the Flow itself (case 4) rather than writing to the wrong place.');
   }
   return report;
+}
+
+// For 34c's overnight check: of the WarmUpFlowReturn rows written in the
+// last windowMs, how many checkFlowBinding() would flag. Counts only.
+function wfbRecentBindingCounts_(ss, now, windowMs) {
+  const out = { recent: 0, bad: 0 };
+  const returns = ss.getSheetByName(WFB_RETURN_TAB);
+  if (!returns || returns.getLastRow() < 2) return out;
+  const knownIds = {};
+  const wq = ss.getSheetByName(getConfig_().tabs.warmUpQueue);
+  if (wq && wq.getLastRow() > 1) {
+    wq.getRange(2, WQ25_QUEUE_ID + 1, wq.getLastRow() - 1, 1).getValues().forEach(function (r) {
+      const id = String(r[0]).trim();
+      if (id) knownIds[id] = true;
+    });
+  }
+  returns.getRange(2, 1, returns.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues().forEach(function (r) {
+    const at = sheetTimestampMs_(r[WFB_RET.TIMESTAMP]);
+    if (isNaN(at) || now.getTime() - at > windowMs) return;
+    out.recent++;
+    if (_wfbDiagnoseReturnRow_(r, knownIds).length) out.bad++;
+  });
+  return out;
 }
 
 /**

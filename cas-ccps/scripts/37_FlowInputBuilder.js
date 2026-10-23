@@ -655,6 +655,7 @@ function harvestFlowInputResults() {
                    " marked EVALUATED with no output — leaving for manual review.");
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_EMPTY_OUTPUT");
         if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
+        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_EMPTY_OUTPUT", null);
         continue;
       }
 
@@ -664,6 +665,7 @@ function harvestFlowInputResults() {
                    plausibility.reason);
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_SUSPECT_FABRICATION");
         if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
+        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_SUSPECT_FABRICATION", null);
         continue;
       }
 
@@ -723,8 +725,11 @@ function harvestFlowInputResults() {
             { "1": alsoShown.join(", ") }, { "1": "Also shown (tertiary competency)" }, { "1": "MET" });
         }
 
-        recordEvaluationResult_(ledgerSs.getSheetByName(cfg.tabs.ledger), studentFileId, configId,
+        const recorded = recordEvaluationResult_(ledgerSs.getSheetByName(cfg.tabs.ledger), studentFileId, configId,
           parsed.complianceStatus, parsed.suggestedScore);
+        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId,
+          parsed.complianceStatus === "APPROVED" ? "PASSED" : "NEEDS_REVISION", recorded,
+          parsed.suggestedScore);
 
         if (stagingSheet) {
           _fiMarkStagingComplete_(stagingSheet, stagingRowRef, studentFileId, configId);
@@ -736,6 +741,7 @@ function harvestFlowInputResults() {
         Logger.log("[FlowInputBuilder] Harvest failed for row " + rowNum + ": " + err.message);
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_HARVEST_FAILED");
         if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
+        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_HARVEST_FAILED", null);
       }
     }
 
@@ -764,15 +770,64 @@ function recordEvaluationResult_(ledgerSheet, fileId, configId, complianceStatus
     _ensureEvaluationResultColumns_(ledgerSheet);
     const passed = complianceStatus === "APPROVED";
     const firstPassed = data[i][LEDGER.FIRST_PASSED_AT] || (passed ? new Date() : "");
+    const checkCount = (Number(data[i][LEDGER.CHECK_COUNT]) || 0) + 1;
     ledgerSheet.getRange(i + 1, LEDGER.CHECK_COUNT + 1, 1, 4).setValues([[
-      (Number(data[i][LEDGER.CHECK_COUNT]) || 0) + 1,
+      checkCount,
       passed ? "PASSED" : "NEEDS_REVISION",
       firstPassed,
       suggestedScore == null ? "" : suggestedScore,
     ]]);
-    return;
+    return { attempt: checkCount, submittedAt: data[i][LEDGER.SUBMISSION_TS] };
   }
   Logger.log("[FlowInputBuilder] No Ledger row for ConfigID " + configId + " to record its result on.");
+  return null;
+}
+
+// _fiLogEvaluation_ — one EvaluationLog row per Flow 2 result (2026-10-23).
+// The Ledger keeps only the latest result and a count, so how long each
+// check took and how a student's attempts went were lost. Times, the
+// attempt number, the result and the minutes from the latest submission to
+// the result; never the student's writing or the feedback. Rows are only
+// appended. A failed harvest (ERROR_*) is a row too, with no attempt
+// number, since the Ledger's count only counts results the student got.
+// recorded: recordEvaluationResult_'s { attempt, submittedAt }, or null, in
+// which case the submission time is read from the Ledger. Never throws: by
+// the time it runs the student's feedback is already written, and a failed
+// log write mustn't mark that harvest failed.
+const EVAL_LOG_HEADERS = ["EvaluatedAt", "ConfigID", "StudentFileID", "Attempt", "Result",
+  "SubmittedAt", "WaitMinutes", "SuggestedScore"];
+
+function _fiLogEvaluation_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore) {
+  try {
+    _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore);
+  } catch (e) {
+    Logger.log("[FlowInputBuilder] EvaluationLog write failed (" + result + "): " + e.message);
+  }
+}
+
+function _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore) {
+  const name = (cfg.tabs && cfg.tabs.evaluationLog) || "EvaluationLog";
+  let sheet = ledgerSs.getSheetByName(name);
+  if (!sheet) {
+    sheet = ledgerSs.insertSheet(name);
+    sheet.appendRow(EVAL_LOG_HEADERS);
+  }
+  let submittedAt = recorded ? recorded.submittedAt : "";
+  if (!recorded) {
+    const ledger = ledgerSs.getSheetByName(cfg.tabs.ledger);
+    const data = ledger ? ledger.getDataRange().getValues() : [];
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][LEDGER.FILE_ID]).trim() === fileId && String(data[i][LEDGER.CONFIG_ID]).trim() === configId) {
+        submittedAt = data[i][LEDGER.SUBMISSION_TS];
+        break;
+      }
+    }
+  }
+  const now = new Date();
+  const sentMs = sheetTimestampMs_(submittedAt);
+  const wait = !submittedAt || isNaN(sentMs) || sentMs > now.getTime() ? "" : Math.round((now.getTime() - sentMs) / 60000);
+  sheet.appendRow([now, configId, fileId, recorded ? recorded.attempt : "", result,
+    isNaN(sentMs) || !submittedAt ? "" : new Date(sentMs), wait, suggestedScore == null ? "" : suggestedScore]);
 }
 
 // Tries the cheap path first (StagingRowRef as a direct row number,

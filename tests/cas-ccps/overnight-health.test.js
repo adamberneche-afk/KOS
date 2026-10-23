@@ -12,7 +12,13 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '34c_OvernightHealth.js', '43_DeployVersionMarker_CentralLedger.js', '64_LedgerCycle.js'].map(S);
+// 34c's setup checks reach 38, 40, 41 and 57, and those reach the rest
+// (the retention schedule names every record's tab and columns).
+const FILES = ['00_SharedConfig.js', '34c_OvernightHealth.js', '43_DeployVersionMarker_CentralLedger.js', '64_LedgerCycle.js',
+  '03_QueueBridge.js', '10_AdminRecoveryPanel.js', '15b_StudioFlowPrompts_Flow2_Revised.js', '23_StudentProfileManager.js',
+  '25_WarmUpWriter.js', '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js',
+  '36_WeeklyParentReport.js', '37_FlowInputBuilder.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js',
+  '41_WarmUpFlowBridge.js', '54_StudentAssignments.js', '57_RetentionSchedule.js'].map(S);
 
 // Monday 2026-10-19, 6:00 a.m. in the harness's America/New_York.
 const NOW = new Date('2026-10-19T10:00:00Z');
@@ -22,7 +28,8 @@ const WQ_HEADER = ['queue_id', 'lesson_id', 'student_email', 'student_name', 'go
   'lesson_context_snapshot', 'student_profile_snapshot', 'status'];
 
 function load(opts) {
-  const env = loadGasFiles(FILES, ['overnightHealth_', 'overnightMaybeMail_']);
+  const env = loadGasFiles(FILES, ['overnightHealth_', 'overnightMaybeMail_', 'syncFlowPromptsToSheet',
+    'LEDGER_CANONICAL_HEADERS']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   const props = env.sandbox.PropertiesService.getScriptProperties();
@@ -33,6 +40,10 @@ function load(opts) {
   STAGES.forEach((k) => props.setProperty(k, HOURS(3).toISOString()));
   const wq = opts && opts.noQueue ? null : ss.insertSheet('WarmUpQueue');
   if (wq) wq.appendRow(WQ_HEADER);
+  // A healthy install for the setup checks: the Ledger's canonical header
+  // row and the FlowPrompts tab in sync with the code.
+  ss.insertSheet('Ledger').appendRow(env.exported.LEDGER_CANONICAL_HEADERS.slice());
+  env.exported.syncFlowPromptsToSheet();
   return Object.assign(env, { ss, props, wq });
 }
 
@@ -161,5 +172,78 @@ test('a Ledger cycle job still failing is named, and there is no all-clear', () 
   const h = env.exported.overnightHealth_(NOW);
   assert.deepEqual(h.problems.filter((p) => /Ledger job/.test(p)),
     ["Ledger job bridgeQueue: failing, 12 runs in a row (Executions in the Central Ledger's Apps Script project shows the errors)"]);
+  assert.equal(h.allClear, '');
+});
+
+// The setup checks once run by hand (2026-10-23, from the 10-22 friction map
+// review): the Ledger's column order, FlowPrompts against the code, the last
+// day's Studio returns in the right columns, and retention date columns.
+
+function loadSetup(opts) {
+  const env = loadGasFiles(FILES, ['overnightHealth_', 'syncFlowPromptsToSheet', 'LEDGER_CANONICAL_HEADERS']);
+  const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
+  env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  const props = env.sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  props.setProperty('M2_ENABLED', 'true');
+  props.setProperty('TEACHER_EMAIL', 'teacher@ccpsnet.net');
+  STAGES.forEach((k) => props.setProperty(k, HOURS(3).toISOString()));
+  const wq = ss.insertSheet('WarmUpQueue');
+  wq.appendRow(WQ_HEADER);
+  const ledger = opts && opts.noLedger ? null : ss.insertSheet('Ledger');
+  if (ledger) ledger.appendRow(env.exported.LEDGER_CANONICAL_HEADERS.slice());
+  env.exported.syncFlowPromptsToSheet();
+  return Object.assign(env, { ss, props, wq, ledger });
+}
+
+const setupLines = (h) => h.problems.filter((p) => /Ledger columns|Flow prompts|wrong columns|Retention records/.test(p));
+
+test('setup checks: a healthy Ledger, prompts in sync and well-bound returns add nothing', () => {
+  const env = loadSetup();
+  env.wq.appendRow(['Q1', 'LES-1', 's@ccpsnet.net', 'Sam', 's@ccpsnet.net', '2026-10-19', '{}', '{}', 'DELIVERED']);
+  const ret = env.ss.insertSheet('WarmUpFlowReturn');
+  ret.appendRow(['Timestamp', 'Flow', 'QueueID', 'RawOutput', 'HarvestStatus', 'Attempts', 'Error']);
+  ret.appendRow([HOURS(2), 3, 'Q1', 'A warm-up question about pricing.', 'HARVESTED', 1, '']);
+  assert.deepEqual(setupLines(env.exported.overnightHealth_(NOW)), []);
+});
+
+test('setup checks: a shifted Ledger column, a drifted prompt and a shifted return are each one line', () => {
+  const env = loadSetup();
+  const headers = env.exported.LEDGER_CANONICAL_HEADERS.slice();
+  headers.splice(4, 0, 'FileURL');
+  env.ledger.getRange(1, 1, 1, headers.length).setValues([headers]);
+  const fp = env.ss.getSheetByName('FlowPrompts');
+  fp.getRange(2, 1, 1, fp.getLastColumn()).setValues([fp.getRange(2, 1, 1, fp.getLastColumn()).getValues()[0]
+    .map((v, i) => (i === 0 ? v : (String(v).length > 40 ? 'edited by hand' : v)))]);
+  env.wq.appendRow(['Q1', 'LES-1', 's@ccpsnet.net', 'Sam', 's@ccpsnet.net', '2026-10-19', '{}', '{}', 'DELIVERED']);
+  const ret = env.ss.insertSheet('WarmUpFlowReturn');
+  ret.appendRow(['Timestamp', 'Flow', 'QueueID', 'RawOutput', 'HarvestStatus', 'Attempts', 'Error']);
+  ret.appendRow([HOURS(2), '', 3, 'Q1', 'A warm-up question about pricing.', '', '']); // one column right
+  ret.appendRow([HOURS(48), '', 3, 'Q1', 'old', '', '']);                               // outside the 24 hours
+
+  const h = env.exported.overnightHealth_(NOW);
+  const lines = setupLines(h).join('\n');
+  assert.match(lines, /Ledger columns out of order: column 5 is "FileURL", expected "StudentName"/);
+  assert.match(lines, /Flow prompts on the FlowPrompts tab: 1 differ from the code, 0 missing/);
+  assert.match(lines, /Studio returns in the wrong columns \(last 24 hours\): 1 of 1 WarmUpFlowReturn rows/);
+  assert.equal(h.allClear, '');
+  assert.doesNotMatch(lines, /Q1|s@ccpsnet|Sam/, 'counts and header names only');
+});
+
+test('setup checks run at most every 6 hours; in between, the last lines are reused', () => {
+  const env = loadSetup();
+  const headers = env.exported.LEDGER_CANONICAL_HEADERS.slice();
+  headers.splice(4, 0, 'FileURL');
+  env.ledger.getRange(1, 1, 1, headers.length).setValues([headers]);
+  assert.equal(setupLines(env.exported.overnightHealth_(NOW)).length, 1);
+  env.ledger.deleteColumn(5);
+  assert.equal(setupLines(env.exported.overnightHealth_(new Date(NOW.getTime() + 3600 * 1000))).length, 1, 'cached');
+  assert.equal(setupLines(env.exported.overnightHealth_(new Date(NOW.getTime() + 7 * 3600 * 1000))).length, 0, 'rechecked');
+});
+
+test('a setup check that throws says unavailable and blocks the all-clear', () => {
+  const env = loadSetup({ noLedger: true });
+  const h = env.exported.overnightHealth_(NOW);
+  assert.ok(h.problems.includes('Ledger columns: unavailable (no Ledger tab)'), JSON.stringify(h.problems));
   assert.equal(h.allClear, '');
 });
