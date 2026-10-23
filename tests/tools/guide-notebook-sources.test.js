@@ -42,7 +42,7 @@ test('the converter keeps steps, callouts, tables, glossaries and FAQ answers', 
     '<div class="steps"><div class="step"><div class="step-n">1</div><div class="step-body"><strong>Open it</strong><p>From the menu.</p></div></div>' +
     '<div class="step"><div class="step-n">2</div><div class="step-body"><strong>Press Submit</strong><p>Wait.</p></div></div></div>' +
     '<div class="callout callout-gold"><span class="callout-icon">⚠️</span><div class="callout-body"><strong>Careful.</strong> Read this.</div></div>' +
-    '<table><tr><th>What</th><th>Where</th></tr><tr><td>Grade</td><td>Canvas | SpeedGrader</td></tr></table>' +
+    '<table><tr><th>What</th><th>Where</th></tr><tr><td>Grade</td><td>Canvas | SpeedGrader</td></tr><tr><td>Path</td><td>C:\\</td></tr></table>' +
     '<dl class="terms"><div><dt>Check</dt><dd>One evaluation.</dd></div></dl>' +
     '<details><summary>Where is my feedback?</summary><div class="faq-a"><p>In the comments.</p></div></details>' +
     '<script>alert(1)</script></body></html>';
@@ -52,6 +52,7 @@ test('the converter keeps steps, callouts, tables, glossaries and FAQ answers', 
   assert.match(md, /1\. \*\*Open it\*\*: From the menu\.\n2\. \*\*Press Submit\*\*: Wait\./);
   assert.match(md, /> ⚠️ \*\*Careful\.\*\* Read this\./);
   assert.match(md, /\| What \| Where \|\n\| --- \| --- \|\n\| Grade \| Canvas \\\| SpeedGrader \|/);
+  assert.ok(md.includes('| Path | C:\\\\ |'), 'a backslash is escaped too, so it cannot escape the cell divider');
   assert.match(md, /- \*\*Check\*\*: One evaluation\./);
   assert.match(md, /### Where is my feedback\?\n\nIn the comments\./);
   assert.doesNotMatch(md, /Jump|alert|color:red/);
