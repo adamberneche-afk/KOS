@@ -25,9 +25,12 @@ operator's queue in order.
 A personal AI-session knowledge pipeline: ingests one operator's AI working
 sessions, extracts structured knowledge (decisions, action items, vector
 weights, persona council verdicts), and routes it into a `BRAIN_TRUST_INDEX`
-spreadsheet. Governed by an external orchestration layer (`RTP_CORE_ROUTER`)
-that runs a 6-persona council with RID-weighted routing and a human-in-the-loop
-firewall.
+spreadsheet. The thinking surface (the 6-persona council, alignment
+guardrails, planning) is a Claude Project since 2026-10-06
+([`meta/PLAN_2026-10.md`](./meta/PLAN_2026-10.md)). The external orchestration
+layer it replaced, the RTP Gem and `RTP_CORE_ROUTER` (RID-weighted routing,
+a human-in-the-loop firewall), is frozen at V6.0; Gems retire for education
+on 2027-06-01 (ADR-010).
 
 **Status:** reconciled — the code, the docs, and the HTML client now agree.
 Every gap the docs previously described (missing server functions,
