@@ -4476,3 +4476,12 @@ doesn't load 55. Removing 41's guard showed a test sandbox missing 24
 (`courseCodeFromName_`); `warmup-flow-bridge.test.js` loads it now. Check 6
 (possibly-undefined calls) no longer flags callback parameters or a name the
 file guards on purpose.
+
+## The watchdog knows NOT_MEETING, 2026-10-23
+
+The live `KOS_CAS_SIGNAL` counted 47 WarmUpQueue rows "with an unknown
+status (check for Studio residue)". All 47 were `NOT_MEETING`, which 24's
+`retireOffDayWarmUps` has set since the period split (2026-10-19) on a
+warm-up queued for a day the student's period doesn't meet. The queue
+watchdog (34) never added it to its known WarmUpQueue statuses, so every
+retired warm-up read as residue. It's known now; a test holds it.
