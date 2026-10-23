@@ -23,7 +23,7 @@ It opens on **📊 Assignment Dashboard**, showing the current lesson for each c
 Students get a lesson's document only when that lesson has a start date. Set the dates, and the rest happens overnight.
 
 1. **Open 📅 Lessons**: Each course has a table: Lesson, Status (Current, Upcoming, Taught or No date), Starts, and Last rollout.
-2. **Set or change a start date**: Pick a date in the Starts column. It saves when you change it. A lesson runs from its start date until the next one starts.
+2. **Set or change a start date**: Type or pick a date in the Starts column, then press Enter or leave the box. The row says **Saved ✓**, or why it was not saved. A date in the next 2 days, in the past, or on the current lesson asks you to confirm first. A lesson runs from its start date until the next one starts.
 3. **Let the nightly rollout do the rest**: Each night, the rollout enrolls students from the Canvas roster, makes each student's document for lessons starting within 2 days, and shares it with the student the night before the lesson. You don't register students one at a time.
 
 > ⚠️ **Read the Last rollout column.** A ⚠ line there means a step failed, for example an old Canvas roster export. Tell your admin. A course marked “rollout in shadow (changes nothing)” is only practising: it makes no documents yet.
