@@ -26,7 +26,7 @@ The central queue. Every session chunk passes through this sheet.
 |---|---|
 | `SESSION_LOG` | Session transcript submitted via web app or Sensor 1 folder-drop |
 | `EXTERNAL_DATA` | Research or context submitted via web app Research tab |
-| `COG_STIMULUS` | Council stimulus doc — **one shared document per council run**, not one per cog. Sequestration is enforced by the operator running each persona in its own separate Gem conversation against that shared stimulus (BRIDGE_FIDELITY_001), not by minting a doc per cog. **No `.gs` writes a STAGING_PIPELINE row with this Payload_Type**: `generateSevenBridgesStimulus()` / `triggerSevenBridgesReview()` produce the Drive doc, and verdicts come back through `submitCogVerdict()`. The value is live in the Studio prompt contract (`CURATOR_PROMPT.md` §3.3) rather than in the intake pipeline |
+| `COG_STIMULUS` | Council stimulus doc — **one shared document per council run**, not one per cog. Sequestration is enforced by the operator running each persona in its own separate, fresh conversation against that shared stimulus (BRIDGE_FIDELITY_001), not by minting a doc per cog. **No `.gs` writes a STAGING_PIPELINE row with this Payload_Type**: `generateSevenBridgesStimulus()` / `triggerSevenBridgesReview()` produce the Drive doc, and verdicts come back through `submitCogVerdict()`. The value is live in the Studio prompt contract (`CURATOR_PROMPT.md` §3.3) rather than in the intake pipeline |
 | `EXTERNAL_TELEMETRY` | Data from Sensor 3 (onChange on BRAIN_TRUST_INDEX) |
 | `VECTOR_CLASSIFY` | Sentence-level vector classification, one row per part of a session (at most 8,000 characters, `LOG-xxxxxxxx_VC01of03`); the parts are aggregated into one VECTOR_MATRIX row per session (`20_VectorClassifySessions.gs`) — see STUDIO_INTEGRATION_SPEC.md's "Inference Flow — Sentence Classification" |
 
@@ -41,7 +41,7 @@ The central queue. Every session chunk passes through this sheet.
 | `NEEDS_CURATOR` | Queue Processor | JSON parse failed, retry 1 or 2 |
 | `FAILED_PARSE` | Queue Processor | Retry cap hit, manual intervention required |
 | `PROCESSED` | Queue Processor | Successfully routed to all ledgers |
-| `MISSING_FILE_ID` | Queue Processor | Row has no File_ID — terminal, non-retryable, archives on next sweep |
+| `MISSING_FILE_ID` | Queue Processor | Row has no File_ID — terminal, non-retryable. Stays in STAGING_PIPELINE (archiving moves finished rows only) and is listed under the web app's Queue → Failed items |
 | `PROCESSING_ERROR` | Queue Processor | Catch-all read/parse failure — retries like NEEDS_CURATOR, escalates to terminal after CFG.MAX_RETRIES |
 | `INTAKE_PROCESSED` | Queue Processor (legacy) | Alias for PROCESSED, used in v5.4 migration |
 | `INTAKE_ERROR` | Studio (error path) | Studio couldn't open or process the document |
@@ -61,6 +61,17 @@ repo, current or archived, ever writes. `10_Turnstile.gs` alerts once per
 row via `_sendChatAlert()`, and `getQueueMetrics()`
 count it as `unknown` rather than silently excluding it — see
 `CHANGELOG.md` for the fix.
+
+**Finished vs. failed.** The 7 terminal-failure statuses are
+`TERMINAL_FAILED_STATUSES` (`FAILED_PARSE`, `PHASE_2_ERROR`,
+`INTAKE_ERROR`, `MISSING_FILE_ID`, `PROCESSING_ERROR`, `STUDIO_TIMEOUT`,
+`AUDIT_REJECTED`); the finished ones are `STAGING_SUCCEEDED_STATUSES`
+(`PROCESSED`, `INTAKE_PROCESSED`, `PARTITIONED`, `CONSOLIDATED`). Only
+finished rows are ever moved to STAGING_ARCHIVE; failed rows stay, because
+`requeueStagingRows()` (`19_StagingRequeue.gs`) reads STAGING_PIPELINE
+only. The web app lists failed rows with `getFailedQueueRows()`, and offers
+Retry (`previewRetryFailedRow()`, then `retryFailedRow()`, both through
+`requeueStagingRows()`) for `STUDIO_TIMEOUT` and `AUDIT_REJECTED`.
 
 ---
 
@@ -439,6 +450,43 @@ lists the OPEN rows.
 `previewDecisionRegisterBackfill()` / `applyDecisionRegisterBackfill()`
 read in the decisions already in CURRENT_STATE, once.
 
+### SMP_REGISTER
+
+The one list of System Modification Proposals (`meta/SMP_PROCESS.md`). The
+operator writes it; `22_BriefingDocs.gs` renders `KOS_SMP_REGISTER` from
+it, and `nextSmpId()` prints the next free number. Headers come from
+`CFG.SMP_REGISTER_HEADERS`.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | SMP_ID | String | `SMP-NNN`, assigned here and nowhere else |
+| B | Title | String | |
+| C | Status | Enum | `APPROVED` is in force; `PENDING` and `NEEDS_REVIEW` are pending; anything else is listed as retired |
+| D | Rule | String | |
+| E | Filed_At | DateTime | |
+| F | Decided_At | DateTime | |
+| G | Doc_URL | String | The proposal doc in `01.3_SMP_PROPOSALS` |
+| H | Former_IDs | String | Numbers it carried before |
+| I | Notes | String | |
+
+### ERROR_LOG_ARCHIVE
+
+ERROR_LOG rows older than `CFG.ERROR_LOG_RETENTION_DAYS` (30) that the
+daily digest has already reported, moved aside by `archiveErrorLog()`
+(run from `sendDailyErrorReport()`), never deleted. Columns:
+`Archived_At`, then the five ERROR_LOG columns.
+
+### FlowBuildSpec, FlowPrompts, Preflight
+
+Tabs written by the build and check tools, each rewritten whole on every
+run; never edit them by hand.
+
+| Tab | Written by | Columns |
+|---|---|---|
+| `FlowBuildSpec` | `syncStudioFlowBuildSpec()` (`14_StudioFlowBuildSpec.gs`) | `flow`, `surface`, `tab`, `column`, `header`, `who_writes_it`, `notes` — what to build each Studio Flow from |
+| `FlowPrompts` | `syncFlowPrompts()` (`16_FlowPrompts.gs`) | `PromptName`, `PromptText`, `SourceFile`, `Notes` — one row each for `CURATOR_SYSTEM_PROMPT`, `VECTOR_CLASSIFY_SYSTEM_PROMPT` and `CURATOR_AUDITOR_SYSTEM_PROMPT`, read by the Flows' Ask Gemini steps |
+| `Preflight` | `runKosPersonalPreflight()` (`15_Preflight.gs`) | `Check`, `Status` (OK or FAIL), `Detail` |
+
 ### Inference_Buffer
 
 Provisioned by `deployFullSystem()` (`1_Config_And_Deploy.gs`, via
@@ -461,44 +509,42 @@ something else.
 
 ## Drive Folder Structure
 
+As `_buildFolderTree()` (`1_Config_And_Deploy.gs`) creates it:
+
 ```
-[KOS Root Folder]
+Active_Brain_Trust_System           ← root (CFG.SYSTEM_NAME)
 ├── 01_Canonical_Foundation
-│   ├── 01.1_Scripts_And_Code
-│   ├── 01.2_SOP_And_Flows
-│   └── 01.3_SMP_Proposals
-├── 02_Council_Alignments
-│   ├── PERSONA_ARCHITECT_V5
-│   ├── PERSONA_AUDITOR_V5
-│   ├── PERSONA_MUSE_V5
-│   ├── PERSONA_DEVELOPER_V5
-│   ├── PERSONA_ALIGNER_V5
-│   ├── PERSONA_CURATOR_V5
-│   └── PERSONA_ALIGNMENT_V5
+│   ├── 01.1_SCRIPTS
+│   ├── 01.2_SOP_AND_FLOWS
+│   └── 01.3_SMP_PROPOSALS
+├── 02_Council_Alignments           ← copies of the 6 CFG.PERSONAS docs (PERSONA_*_V5…)
 ├── 03_Dynamic_State
-│   ├── 03.1_Current_State         ← CURRENT_STATE doc, daily primers
-│   ├── 03.2_Pivots_And_Lessons    ← PIVOTS_AND_LESSONS doc
-│   ├── 03.3_Processed_Exhaust     ← Processed session docs
-│   ├── 03.4_Raw_Exhaust           ← Unprocessed intake docs
-│   └── 03.5_Inbound_Sessions      ← Folder-drop target for large payloads
+│   ├── 03.1_CURRENT_STATE          ← CURRENT_STATE doc, daily primers, KOS_* briefing docs
+│   ├── 03.2_PIVOTS_AND_LESSONS     ← PIVOTS_AND_LESSONS doc
+│   ├── 03.3_PROCESSED_EXHAUST      ← Processed session docs
+│   ├── 03.4_RAW_EXHAUST            ← Intake chunk docs, Seven Bridges stimulus docs
+│   └── 03.5_INBOUND_SESSIONS       ← Sensor 1 folder-drop target
 ├── 04_Council_Logs
-│   ├── 04.1_Architect_Logs
-│   ├── 04.2_Auditor_Logs
-│   ├── 04.3_Muse_Logs
-│   ├── 04.4_Developer_Logs
-│   ├── 04.5_Aligner_Logs
-│   ├── 04.6_Curator_Logs
-│   ├── 04.7_RTP_Logs
-│   └── 04.8_Graveyard
+│   ├── 04.1_ARCHITECT_SILO
+│   ├── 04.2_AUDITOR_SILO
+│   ├── 04.3_MUSE_SILO
+│   ├── 04.4_DEVELOPER_SILO
+│   ├── 04.5_ALIGNER_SILO           ← the ALIGNMENT cog (older folder name)
+│   ├── 04.6_CURATOR_SILO
+│   ├── 04.7_RTP_SILO
+│   └── 04.8_COG_GRAVEYARD
 ├── 05_Vector_Repository
-├── 06_Production_Assets
-│   ├── 06.1_Lesson_Plans
-│   ├── 06.2_Student_Facing
-│   ├── 06.3_Assessments
-│   └── 06.4_Communications
+├── 06_CLASSROOM_ASSETS             ← Registrar's default routing target
+│   ├── 06.1_LESSON_PLANS
+│   ├── 06.2_STUDENT_FACING
+│   ├── 06.3_ASSESSMENTS
+│   └── 06.4_COMMUNICATIONS
 ├── 07_Memory_Vault
 ├── 08_Project_Autopsies
-└── CCPS_Master_Templates
+├── CCPS_MASTER_TEMPLATES
+│   └── 01_Pending_Tagging
+└── 09_Unclassified_Curriculum_Drafts   ← Registrar [UNC] (CFG.REGISTRAR_UNC_FOLDER)
+    └── 09.1_HOLD_FOR_REVIEW            ← Registrar [HLD] (CFG.REGISTRAR_HLD_FOLDER)
 ```
 
 ---
@@ -512,11 +558,12 @@ something else.
 | `CURRENT_STATE` | 03.1_Current_State | Rolling state document — next steps and deferred decisions |
 | `PIVOTS_AND_LESSONS` | 03.2_Pivots_And_Lessons | Rolling lessons log — updated each session |
 | `DAILY_PRIMER_YYYY-MM-DD` | 03.1_Current_State | Daily session starter (generated 06:00 each morning) — one new file per day, kept forever as an audit trail |
-| `KOS_LATEST_PRIMER` | 03.1_Current_State | The same content as the dated primer above, but as one fixed-name doc overwritten in place every run instead of a new file each day — the integration point for anything external that watches a single Drive file for edits rather than a folder for new files (e.g. a NotebookLM source, which only auto-syncs an existing Drive-native file). Its doc ID is tracked in `CFG.PROP.LATEST_PRIMER_DOC_ID` so it's found by ID, not by name search, after the first run. Opens with a `Generated at:` stamp and a Data Quality block (OK or FLAGGED, and why). |
+| `KOS_LATEST_PRIMER` | 03.1_Current_State | The same content as the dated primer above, but as one fixed-name doc overwritten in place every run instead of a new file each day — the integration point for anything external that watches a single Drive file for edits rather than a folder for new files (the Claude Project opens it by link; earlier, the RTP notebook used it as a source). Its doc ID is tracked in `CFG.PROP.LATEST_PRIMER_DOC_ID` so it's found by ID, not by name search, after the first run. Opens with a `Generated at:` stamp and a Data Quality block (OK or FLAGGED, and why). |
 | `KOS_RECENT_SESSIONS` | 03.1_Current_State | The five newest processed sessions' summaries, plus any older session with an open decision (`22_BriefingDocs.gs`). Like the three below it, overwritten in place under one doc ID (`CFG.PROP.RECENT_SESSIONS_DOC_ID`), with a `Generated at:` stamp under the title; written after the primer each morning and on demand by `generateBriefingDocs()` |
 | `KOS_OPEN_DECISIONS` | 03.1_Current_State | Every OPEN row of `DECISION_REGISTER` (`CFG.PROP.OPEN_DECISIONS_DOC_ID`) |
 | `KOS_CORE_FACTS` | 03.1_Current_State | The operator-pinned Core facts ALIGNMENT Threshold D reads, plus the relational targets (`CFG.PROP.CORE_FACTS_DOC_ID`) |
-| `PERSONA_[NAME]_V5` | 02_Council_Alignments | AI persona calibration docs — one per `CFG.PERSONAS` entry (6), plus any archived version duplicates |
+| `KOS_SMP_REGISTER` | 03.1_Current_State | Every SMP in `SMP_REGISTER`: in force, pending, then retired (`CFG.PROP.SMP_REGISTER_DOC_ID`). The Claude Project reads it by link |
+| `PERSONA_[NAME]_V5…` | 02_Council_Alignments | AI persona calibration docs — `_copyPersonas()` copies the highest-version Drive doc for each `CFG.PERSONAS` entry (6) |
 
 ---
 
@@ -529,19 +576,20 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | Key | Description |
 |---|---|
 | `INDEX_ID` | BRAIN_TRUST_INDEX spreadsheet ID |
+| `ID_ROOT_SYSTEM_FOLDER` | Root `Active_Brain_Trust_System` folder ID (the system-folder ownership check, `_isWithinSystemFolderTree_()`) |
 | `ID_CURRENT_STATE` | CURRENT_STATE Google Doc ID |
 | `ID_PIVOTS_AND_LESSONS` | PIVOTS_AND_LESSONS Google Doc ID |
 | `ID_CORE_THESIS` | CORE_THESIS Google Doc ID |
-| `ID_00_RAW_EXHAUST` | 03.4_Raw_Exhaust folder ID |
-| `ID_01_1_SCRIPTS` | 01.1_Scripts_And_Code folder ID |
-| `ID_01_2_SOP_AND_FLOWS` | 01.2_SOP_And_Flows folder ID |
-| `ID_01_3_SMP_PROPOSALS` | 01.3_SMP_Proposals folder ID |
+| `ID_00_RAW_EXHAUST` | 03.4_RAW_EXHAUST folder ID |
+| `ID_01_1_SCRIPTS` | 01.1_SCRIPTS folder ID |
+| `ID_01_2_SOP_AND_FLOWS` | 01.2_SOP_AND_FLOWS folder ID |
+| `ID_01_3_SMP_PROPOSALS` | 01.3_SMP_PROPOSALS folder ID |
 | `ID_02_COUNCIL_ALIGNMENTS` | 02_Council_Alignments folder ID |
 | `ID_03_DYNAMIC_STATE` | 03_Dynamic_State folder ID |
-| `ID_03_1_CURRENT_STATE` | 03.1_Current_State folder ID |
-| `ID_03_2_PIVOTS` | 03.2_Pivots_And_Lessons folder ID |
-| `ID_03_3_PROCESSED` | 03.3_Processed_Exhaust folder ID |
-| `ID_03_5_INBOUND_SESSIONS` | 03.5_Inbound_Sessions folder ID |
+| `ID_03_1_CURRENT_STATE` | 03.1_CURRENT_STATE folder ID |
+| `ID_03_2_PIVOTS` | 03.2_PIVOTS_AND_LESSONS folder ID |
+| `ID_03_3_PROCESSED` | 03.3_PROCESSED_EXHAUST folder ID |
+| `ID_03_5_INBOUND_SESSIONS` | 03.5_INBOUND_SESSIONS folder ID |
 | `ID_04_COUNCIL_LOGS` | 04_Council_Logs folder ID |
 | `ID_04_1_ARCHITECT` | 04.1_ARCHITECT_SILO folder ID |
 | `ID_04_2_AUDITOR` | 04.2_AUDITOR_SILO folder ID |
@@ -590,7 +638,15 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `CORE_THESIS_VERIFIED` | `CFG.PROP.THESIS_VERIFIED` | `'true'` once onboarding is complete |
 | `KOS_ONBOARDING_DAY` | `CFG.PROP.ONBOARDING_DAY` | Current day number (1–21) |
 | `KOS_ONBOARDING_START` | `CFG.PROP.ONBOARDING_START` | ISO timestamp of onboarding completion |
+| `KOS_ONBOARDING_CLOSED` | `CFG.PROP.ONBOARDING_CLOSED` | Date the 21-day onboarding was closed out (`closeOutOnboarding()`); cleared by re-arming the engine |
 | `KOS_ADMIN_EMAIL` | — | Email address for daily error digests |
+
+### Access Control Keys (set by the operator, fail closed until set)
+
+| Key | CFG.PROP reference | Description |
+|---|---|---|
+| `KOS_OWNER_EMAIL` | `CFG.PROP.OWNER_EMAIL` | The one Google account `doGet()` lets open the web app (`_isAuthorizedOwner_()`, `7_WebApp.gs`). Required: until set, the web app refuses everyone |
+| `KOS_WEBHOOK_SHARED_SECRET` | `CFG.PROP.WEBHOOK_SHARED_SECRET` | The `?secret=` value `doPost()` (Sensor 2) requires (`_isAuthorizedWebhookCall_()`). Until set, every POST is refused |
 
 ### Optional Integration Keys (never hardcoded, unset by default)
 
@@ -601,7 +657,9 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `KOS_MANAGED_SERVICE_WEBHOOK_SECRET` | `CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET` | Shared HMAC secret matching `inference-service`'s `WEBHOOK_SECRET` env var; signs `POST /api/v1/jobs`. **Optional only against a dev service.** A production `inference-service` exits at startup without `WEBHOOK_SECRET` and 401s an unsigned request, so leaving this unset against production means every job submission fails. Read by `_submitManagedServiceJob_()` in `3_Queue_Processor.gs` |
 | `KOS_CHAT_WEBHOOK_URL` | `CFG.PROP.CHAT_WEBHOOK_URL` | Google Chat incoming webhook for `_sendChatAlert()` (Registrar Fail Loud Protocol, Apollo Kill-Switch). Degrades to a console.log no-op if unset |
 | `KOS_LATEST_PRIMER_DOC_ID` | `CFG.PROP.LATEST_PRIMER_DOC_ID` | Stable doc ID of `KOS_LATEST_PRIMER`. Written on the first `generateDailyPrimer()` run so later runs open the doc by ID instead of searching by name |
-| `KOS_RECENT_SESSIONS_DOC_ID`, `KOS_OPEN_DECISIONS_DOC_ID`, `KOS_CORE_FACTS_DOC_ID` | `CFG.PROP.RECENT_SESSIONS_DOC_ID` etc. | Stable doc IDs of the three briefing docs, written on their first run |
+| `KOS_RECENT_SESSIONS_DOC_ID`, `KOS_OPEN_DECISIONS_DOC_ID`, `KOS_CORE_FACTS_DOC_ID`, `KOS_SMP_REGISTER_DOC_ID` | `CFG.PROP.RECENT_SESSIONS_DOC_ID` etc. | Stable doc IDs of the four briefing docs, written on their first run |
+| `DEPLOY_DRIFT_GITHUB_TOKEN` | `CFG.PROP.DEPLOY_DRIFT_GITHUB_TOKEN` | Fine-grained GitHub token for `reportDeployVersion()` (`17_DeployVersionReport.gs`). Deliberately unprefixed, matching leader-hub and cas-ccps. A no-op if unset |
+| `MORAL_DEBT_MUSE_AT`, `MORAL_DEBT_HALF_LIFE_DAYS` | — | Optional overrides for the moral debt counter's MUSE threshold (default 3) and half-life (default 7 days) (`23_MoralDebt.gs`) |
 
 ### Runtime State
 
@@ -618,6 +676,13 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `KOS_VM_REDERIVE_DONE` | JSON list — session UIDs an unfinished rederive has already rebuilt; cleared when a run finishes |
 | `KOS_VM_REDERIVE_KEPT`, `KOS_VM_REDERIVE_KEPT_UIDS` | How many rows the last finished rederive kept (couldn't rebuild), and which (JSON `[{sessionUid, reason}]`). The primer flags the count; `resetUnrebuildableRows()` reads the list and lowers both as it resets rows |
 | `KOS_ADMIN_EMAIL` | Also listed under Operator Properties — recipient of the daily error digest |
+| `KOS_SENSOR1_FAILURE_COUNTS` | JSON map — inbound file ID → failure count; a file past `CFG.SENSOR1_QUARANTINE_THRESHOLD` failures is quarantined (`2_Ingestion_Sensors.gs`) |
+| `KOS_SENSOR3_LAST_ROW` | Sensor 3's EXTERNAL_TELEMETRY row cursor, so it reads only new rows |
+| `KOS_STALE_DEPRIORITIZE` | JSON map — Payload_UID → `{reason, attempt, at}` for rows the Turnstile deprioritized after a stale reset (`5_Error_And_Utilities.gs`) |
+| `KOS_STUDIO_DOC_WRITTEN` | JSON map — Payload_UID → when the harvest overwrote that payload's doc (`12_StudioReturnHarvest.gs`); pruned as it is consumed |
+| `KOS_COLD_GATE_LAST_REPORT` | JSON map — caller → when its blocked TIER_2 cold gate was last written to ERROR_LOG (`CFG.COLD_GATE_REPORT_INTERVAL_MINS`) |
+| `KOS_INCUBATOR_LAST_DECAY_MS` | When the incubator's half-life decay last ran (`4_Vector_Router.gs`) |
+| `MORAL_DEBT_VALUE`, `MORAL_DEBT_AS_OF` | The moral debt counter (SMP-019, `23_MoralDebt.gs`) and when it was last written; the primer's `Moral debt:` line decays it from there |
 | `SEVEN_BRIDGES_LAST_RUN` | Unix ms timestamp of the last Seven Bridges review. Serves double duty: `triggerSevenBridgesReview()`'s stasis guard (don't mint a new stimulus unless CURRENT_STATE has changed) **and** `autoCouncilCheck()`'s session-count anchor. That coupling is deliberate and load-bearing — the callee advancing this key is what stops the 2-hourly trigger from re-firing. See `6_Governance.gs`. |
 | `KOS_COUNCIL_REVIEWS` | JSON list of the last 10 advisor panel reviews started by `triggerSevenBridgesReview()`, newest first: `{councilId, docUrl, createdAt}`. Read by `getCouncilReviewForWebApp()` for the System tab's review panel and the Needs you strip. Kept by `resetProperties()`. See `6_Governance.gs`. |
 | `COUNCIL_LAST_RUN` | **Legacy — no longer read or written by any code.** Was the guard for the shared-context council generator deleted in Round 14 (see `CHANGELOG.md`). An existing stored value is a harmless orphan; there is no migration. |

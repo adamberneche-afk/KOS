@@ -43,33 +43,42 @@ the full list. The ones you'll meet most:
 
 ### Add (Ingest) — Where You Submit Sessions
 
-This is where you paste session content. There are two types:
+This is where you paste session content. There are three types, picked with the buttons at the top:
 
-**Session Log** — A transcript or summary of an AI working session. This is your primary input. The more complete and structured the session log, the better the extraction. A session log should typically be between 5,000 and 25,000 characters. Longer sessions are automatically split into multiple chunks.
+**AI session** (a session log) — A transcript or summary of an AI working session. This is your primary input. The more complete and structured the session log, the better the extraction. A session log should typically be between 5,000 and 25,000 characters. Longer sessions are automatically split into multiple chunks.
 
-**Research / Context** — An article, document, report, or dataset you want the system to file for pattern matching. Give it a descriptive title. The system processes it differently from session logs — it extracts domain signals but doesn't look for action items or decisions.
+**Reference** (research / context) — An article, document, report, or dataset you want the system to file for pattern matching. Give it a descriptive title. The system processes it differently from session logs — it extracts domain signals but doesn't look for action items or decisions.
 
-After submitting, a hint card appears explaining what happens next. The yellow card is not an error — it's confirmation that your session is in the queue and tells you where to check progress.
+**Advisor verdict** — One advisor's answer in an advisor panel review: the Review ID, the advisor, Approve / Flag a concern / Veto, and why. See "The Council Review" below.
+
+What you type here is kept only in the page's memory: it survives switching tabs, but a reload or a closed tab loses an unsent paste. Nothing is stored in your browser.
+
+After submitting, a hint card appears explaining what happens next. The card is not an error — it's confirmation that your session is in the queue and tells you where to check progress.
 
 ### Queue — Where You Monitor Progress
 
 The four metric cards show the current state of your queue:
 
-- **Pending (waiting for AI engine)** — Sessions that have been submitted and are waiting for the AI to pick them up. This number goes up when you submit and down when the AI starts processing. If it stays high for more than 15 minutes, check that your Studio integration is running.
-- **Processing (AI running now)** — Sessions the AI engine is actively working on. Under normal operation this is 0 or 1 — the system processes one at a time to avoid interference.
-- **Needs your help (action required)** — Sessions where the AI's output couldn't be read automatically. This requires a specific action from you — see the NEEDS YOUR HELP section below.
-- **Processed (complete)** — Sessions fully processed and routed to your ledgers.
-- **Failed** (shown only when nonzero) — Items that stopped and won't be tried again on their own. They're listed below under **Failed items**; see that section further down.
+- **Pending** (waiting for the AI) — Sessions that have been submitted and are waiting for the AI to pick them up. This number goes up when you submit and down when the AI starts processing. If it sits unchanged for 15 minutes while above zero, the tab shows a notice saying so; that usually means Google's AI flow (Studio) isn't running.
+- **Processing** (being read now) — Sessions the AI is working on. Under normal operation this is 0 or 1 — the system processes one at a time to avoid interference.
+- **Needs your help** — Sessions where the AI's output couldn't be read automatically. They're listed under **Needs review** — see the "Needs your help" section below.
+- **Processed** (complete) — Sessions fully processed and routed to your ledgers.
 
-**What to do on the Queue tab most of the time: nothing.** Check it after submitting a session to confirm it was received. If all numbers are 0 and you just submitted, wait 5 minutes and refresh.
+Three more cards appear only when their count is above zero:
+
+- **Failed** — Items that stopped and won't be tried again on their own. They're listed below under **Failed items**; see that section further down.
+- **Waiting on the AI flow** — Items the hand-off check keeps passing to the AI flow with nothing finishing them (`CFG.TURNSTILE_STUCK_THRESHOLD`, 3, or more stale resets). Not failed yet; usually a sign that no Studio flow is connected.
+- **Unrecognized status** — A row whose status the system doesn't know. Fix it in the STAGING_PIPELINE sheet.
+
+**What to do on the Queue tab most of the time: nothing.** Check it after submitting a session to confirm it was received. The tab refreshes itself every minute while it's open; **Refresh queue** checks now. If all numbers are 0 and you just submitted, wait 5 minutes.
 
 ### System (Diagnostics) — Where You See What the System Has Learned
 
 This tab shows the system's internal state. You'll visit it most often to:
-- See your ambient calibration progress (shadow matrix)
-- Check what themes are currently weighted in your work
-- Run a council review when you want structured advice on a decision
-- Trigger a daily primer when you want a session starter
+- See **Getting to know you** (ambient calibration, the shadow matrix)
+- Check **Topic focus** and **Emerging topics** (the themes weighted in your work)
+- Start an **advisor panel review** when you want structured advice on a decision, and follow it in the **Advisor panel review** section
+- Make **today's briefing** when you want a session starter
 
 ---
 
@@ -89,7 +98,7 @@ KOS works best with session logs that use the `[🧠 RTP` delimiter to mark sect
 **What not to submit as a session log:**
 - Single questions and answers ("What's the capital of France?")
 - Raw data exports without context
-- Code files (use Research / Context instead if you want to file them)
+- Code files (use Reference instead if you want to file them)
 
 **Size guidance:**
 - Under 150,000 characters: paste directly into the Add tab
@@ -197,17 +206,18 @@ The confidence percentages show how close each question is to VERIFIED (75% = th
 
 ## The Daily Primer
 
-Every morning at 06:00, KOS generates a session starter document in your 03.1_CURRENT_STATE folder. It contains:
-- Your current vector weights (what themes are most active in your work)
-- Your shadow matrix calibration status
+Every morning at 06:00, KOS generates a session starter document, `DAILY_PRIMER_[today's date]`, in your 03.1_CURRENT_STATE folder. It contains:
+- Your onboarding line and the `Moral debt:` line
 - Your 90-Day Vision (once set)
-- Your Relational Targets (once set)
+- Vector State: your current vector weights (what themes are most active in your work), headed with its Data Quality status
+- The Data Quality block
+- Your shadow matrix calibration status
 
-To use it: find the document named `DAILY_PRIMER_[today's date]` in your Drive, open it, and paste its contents at the top of a new AI session. This gives your AI assistant instant context about who you are and what you're working on, without you having to re-explain it every session.
+To use it: the KOS Claude Project opens `KOS_LATEST_PRIMER` (below) by link when you say `start` (`claude-project/README.md`). For any other AI assistant, open the primer and paste its contents at the top of a new session. Either way your assistant gets context about who you are and what you're working on, without you having to re-explain it every session.
 
 You can also generate a fresh primer on demand from the System tab: **Make today's briefing**.
 
-The same content is kept in `KOS_LATEST_PRIMER`, one doc overwritten in place (for a notebook or Gem that follows a single file). It opens with a `Generated at:` stamp and a **Data Quality** block: OK, or FLAGGED with the reasons (for example a `VECTOR_MATRIX` repair still to finish). Three more docs are rewritten with it each morning: `KOS_RECENT_SESSIONS`, `KOS_OPEN_DECISIONS` and `KOS_CORE_FACTS`. To refresh them now, run `generateBriefingDocs()` in the Apps Script editor.
+The same content is kept in `KOS_LATEST_PRIMER`, one doc overwritten in place, so its link never changes (the Claude Project opens it by that link). It opens with a `Generated at:` stamp and a **Data Quality** block: OK, or FLAGGED with the reasons (for example a `VECTOR_MATRIX` repair still to finish). Three more docs are rewritten with it each morning: `KOS_RECENT_SESSIONS`, `KOS_OPEN_DECISIONS` and `KOS_CORE_FACTS`. To refresh them now, run `generateBriefingDocs()` in the Apps Script editor.
 
 **Closing a deferred decision.** Each decision a session defers is recorded as OPEN in the `DECISION_REGISTER` sheet and listed in `KOS_OPEN_DECISIONS`. Set its Status to RESOLVED or DROPPED (or run `resolveDecision(id, note)`) and it leaves that doc on the next run.
 
@@ -215,7 +225,7 @@ The same content is kept in `KOS_LATEST_PRIMER`, one doc overwritten in place (f
 
 ## The Council Review
 
-The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than convened on demand):
+The system ships six AI personas, called advisors in the app (`CFG.PERSONAS`). ALIGNMENT is always active rather than convened on demand:
 - **ARCHITECT** — Systems thinking, structural decisions, long-term planning
 - **AUDITOR** — Verification, consistency, risk identification
 - **MUSE** — Creative connections, unexpected approaches
@@ -223,9 +233,9 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 - **CURATOR** — Organisation, synthesis, information retrieval
 - **ALIGNMENT** — Always active, monitors for boundary drift (also the cog behind the `04.5_ALIGNER_SILO` Calibration Silo folder and `CE-ALIGN` tag — same cog, older folder-naming convention)
 
-**What "Start an advisor panel review" (Run full council review) does today:** it's the real, sequestered "Seven Bridges" design (SMP-002) — no longer the older shared-context shortcut that asked one model to role-play ARCHITECT/AUDITOR/MUSE together in a single pass (that generator was **deleted** in Round 14, along with the menu item that duplicated it). The button calls `triggerSevenBridgesReview()`, which assembles **one shared stimulus document** and a fresh Council ID. Real sequestration comes from what you do next, not from anything the pipeline does automatically: send that one document to each cog independently — a separate Gemini Gem conversation per cog, no shared context between them — then log each cog's verdict back under that same Council ID via **Add → Advisor verdict**. Once enough verdicts are in, `compileCouncilVerdict_()` enforces the halt-execution rule (3 or more non-APPROVED verdicts halts) and the results land in COG_REGISTRY.
+**What "Start an advisor panel review" (Run full council review) does today:** it's the real, sequestered "Seven Bridges" design (SMP-002) — no longer the older shared-context shortcut that asked one model to role-play ARCHITECT/AUDITOR/MUSE together in a single pass (that generator was **deleted** in Round 14, along with the menu item that duplicated it). The button calls `triggerSevenBridgesReview()`, which assembles **one shared stimulus document** and a fresh Council ID. Real sequestration comes from what you do next, not from anything the pipeline does automatically: send that one document to each cog independently — a separate, fresh conversation per cog, no shared context between them (the review document's own wording still says a Gemini Gem conversation, from before the Claude Project replaced the Gem) — then log each cog's verdict back under that same Council ID via **Add → Advisor verdict**. Once enough verdicts are in, `compileCouncilVerdict_()` enforces the halt-execution rule (3 or more non-APPROVED verdicts halts) and the results land in COG_REGISTRY.
 
-**This one rule is on you, not the software.** BRIDGE_FIDELITY_001: *a verdict produced with knowledge of another cog's verdict is VOID.* KOS cannot enforce that — your Gem conversations happen outside it, and nothing in the system can tell whether a cog saw another's answer first. What it can do, and now does, is guarantee it will only ever hand you a sequestered stimulus. If you paste two cogs into one conversation, or summarise ARCHITECT's verdict into AUDITOR's prompt, the review is void and nothing will warn you. One cog, one fresh conversation, every time.
+**This one rule is on you, not the software.** BRIDGE_FIDELITY_001: *a verdict produced with knowledge of another cog's verdict is VOID.* KOS cannot enforce that — your advisor conversations happen outside it, and nothing in the system can tell whether a cog saw another's answer first. What it can do, and now does, is guarantee it will only ever hand you a sequestered stimulus. If you paste two cogs into one conversation, or summarise ARCHITECT's verdict into AUDITOR's prompt, the review is void and nothing will warn you. One cog, one fresh conversation, every time.
 
 **When to use it:**
 - Before a major decision that affects multiple stakeholders
@@ -233,15 +243,15 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 - When you're in a planning loop and want external challenge
 
 **How to trigger it:**
-Go to System → **Start an advisor panel review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, you'll get the stimulus document and a Council ID — send the document to each cog's own Gem conversation, then log each verdict via **Add → Advisor verdict** using that Council ID.
+Go to System → **Start an advisor panel review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, you'll get a link to the stimulus document and a Review ID (Council ID in the sheets), which is also filled in on the verdict form — send the document to each cog's own fresh conversation, then log each verdict via **Add → Advisor verdict** using that Review ID.
 
 The **Advisor panel review** section of the System tab keeps the latest review: its Review ID with a **Copy ID** button, **Open the review document**, **Record a verdict** (opens Add → Advisor verdict with the ID filled in), and which advisors have answered and which you're still waiting on. To check an earlier review, type its ID in **Look up a review by its ID**.
 
-From the spreadsheet instead of the web app, the same thing lives under **📥 Ingest & Context → Generate Seven Bridges Stimulus**. Both surfaces call the same function and produce the same artifact.
+From the spreadsheet instead of the web app (only when the script is bound to BRAIN_TRUST_INDEX; a standalone deploy has no menu), the same thing lives under **🧠 KOS v8.0 → 📥 Ingest & Context → Generate Seven Bridges Stimulus**. Both surfaces call the same function and produce the same artifact.
 
 **The automatic trigger generates a stimulus, not a finished review.** Every 2 hours KOS checks whether 5 new sessions (configurable, `CFG.COUNCIL_AUTO_TRIGGER_SESSIONS`) have accumulated since the last review. If so, it generates a Seven Bridges stimulus document into `03.4_RAW_EXHAUST` with a fresh Council ID — and stops there. **Nothing reviews it for you.** The fan-out to each cog's own conversation and the verdict logging are still yours to do; until you do them, that document is just a file waiting in a folder. It won't fire again for another 5 sessions once one has been generated.
 
-**Picking a review back up: System → Advisor panel review in the web app, or 📊 Diagnostics → Seven Bridges — Status & Verdict in the spreadsheet menu.** Because you run a council by hand across six separate conversations, it's normal to stop partway and come back later. Enter the Council ID and you get the whole picture: which cogs have verdicted and what they said, **which ones you're still waiting on**, and — once everyone's in — the compiled verdict and whether the halt rule tripped. Nothing was ever lost between sittings; each verdict was written down as it arrived. This is just the view that reads it back.
+**Picking a review back up: System → Advisor panel review in the web app, or 📊 Diagnostics → Seven Bridges — Status & Verdict in the spreadsheet menu.** Because you run a council by hand across six separate conversations, it's normal to stop partway and come back later. Enter the Review ID (Council ID) and you get the whole picture: which cogs have verdicted and what they said, **which ones you're still waiting on**, and — once everyone's in — the compiled verdict and whether the halt rule tripped. Nothing was ever lost between sittings; each verdict was written down as it arrived. This is just the view that reads it back.
 
 It also flags two things that otherwise pass silently, both consequences of the Cog field being free text:
 
@@ -254,7 +264,7 @@ Neither changes the arithmetic — a review whose count is inflated is flagged, 
 
 ## The Vector Weights
 
-The topic focus (vector weights) on the System tab show how strongly each knowledge domain featured in your last processed session. Seven domains are tracked by default:
+The **Topic focus** list (vector weights) on the System tab show how strongly each knowledge domain featured in your last processed session. Seven domains are tracked by default:
 
 | Domain | What it captures |
 |---|---|
@@ -268,7 +278,7 @@ The topic focus (vector weights) on the System tab show how strongly each knowle
 
 Scores run from 0.0 to 1.0. A score of 0.82 in ARCHITECTURE means that domain was strongly present in your last session. Scores decay over time if a domain isn't mentioned — the system models where your current attention actually is, not just your career history.
 
-New domains can be promoted from the incubator as your work evolves. If the same new theme appears consistently across sessions, it starts building up in the incubator and can be promoted to a tracked domain (Diagnostics → Check for new themes to promote).
+New domains can be promoted from the incubator as your work evolves. If the same new theme appears consistently across sessions, it starts building up in the incubator (shown as **Emerging topics**, each with its score toward the 3.00 bar) and can be promoted to a tracked domain (System → **Check for topics ready to establish**).
 
 ---
 
@@ -279,13 +289,15 @@ New domains can be promoted from the incubator as your work evolves. If the same
 | **Personalize your advisor** | First setup, or when your role/context has changed significantly |
 | **Make today's briefing** | On demand — replaces waiting for the 06:00 trigger |
 | **Start an advisor panel review** | Before major decisions, after significant project phases |
-| **Check for new themes to promote** | When you notice your work has shifted domains |
-| **Make it a core fact** (Pin to Core) | On an incubator theme you've already decided is permanent, when you don't want to wait for it to recur often enough to promote itself. Asks for a second tap; the note you attach becomes the asserted fact the Alignment persona checks later decisions against (Threshold D, Value-Consistency Drift) |
+| **Check for topics ready to establish** | When you notice your work has shifted domains |
+| **Make it a core fact** (Pin to Core) | A button under each emerging topic, not in the Actions row. On an incubator theme you've already decided is permanent, when you don't want to wait for it to recur often enough to promote itself. Asks for a second tap; the note you attach becomes the asserted fact the Alignment persona checks later decisions against (Threshold D, Value-Consistency Drift) |
 | **Archive finished rows** | Periodically, when STAGING_PIPELINE has many processed rows. The first tap counts; the button then asks for a second tap and says how many rows will move. Only finished rows move to STAGING_ARCHIVE; failed rows stay in the queue so they can be retried. A nightly timer does the same at 02:00 |
 | **Email me the error summary** | When you want to check the error log immediately |
-| **Re-run full deploy** | Only when something is broken and you need to rebuild infrastructure |
+| **Repair setup (re-run it)** | Only when something is broken and you need to rebuild infrastructure |
 
-The **Re-run full deploy** button asks for two taps with a visible countdown. It's safe to use — it's idempotent (it finds or creates, never duplicates) — but it takes 30–60 seconds and should only be needed when a folder or sheet is missing.
+The **Personalize your advisor** button shows only until you've done it.
+
+The **Repair setup** button (Re-run full deploy) asks for two taps with a visible countdown. It's safe to use — it's idempotent (it finds or creates, never duplicates) — but it takes 30–60 seconds and should only be needed when a folder or sheet is missing.
 
 ---
 
@@ -327,7 +339,7 @@ The session documents themselves (CURRENT_STATE, PIVOTS_AND_LESSONS, daily prime
 The queue processor runs every 10 minutes. If nothing has appeared after an hour, open STAGING_PIPELINE and check the Status column. If it shows FLOW_COMPLETE with nothing processed, run `processInferenceQueue()` manually from the Apps Script editor. If it shows NEEDS_CURATOR, see the NEEDS YOUR HELP section above. If it shows AUDIT_REJECTED, see the AUDIT_REJECTED section above.
 
 **I submitted a session but the Queue tab still shows 0 pending.**
-Refresh the Queue tab — it doesn't auto-refresh. If it still shows 0 after refresh, check STAGING_PIPELINE directly. It's possible the session was chunked into multiple rows.
+Tap **Refresh queue** (the tab also refreshes itself every minute while open). If it still shows 0, check STAGING_PIPELINE directly. It's possible the session was chunked into multiple rows.
 
 **The shadow matrix shows 0% on everything after 5 sessions.**
 The shadow matrix updates from `alignment_observations` in the inference JSON. If Studio isn't producing these observations, or is producing them with all-zero confidence deltas, the matrix won't update. Check whether your Studio configuration includes the `alignment_observations` section in its output prompt. Alternatively, use "Personalize your advisor" to set your values directly.
@@ -335,5 +347,5 @@ The shadow matrix updates from `alignment_observations` in the inference JSON. I
 **The vector weights look wrong for my session.**
 Vector weights are modulated by your operator calibration. If you haven't set calibration values, defaults are used (0.75 for all domains). Complete "Personalize your advisor" to get calibration values matched to your role.
 
-**I accidentally clicked "Re-run full deploy" and it ran.**
+**I accidentally clicked "Repair setup (re-run it)" and it ran.**
 No data was lost. The deploy function only creates what doesn't exist — it won't overwrite your CURRENT_STATE or PIVOTS_AND_LESSONS documents, won't clear your SESSION_LOG, and won't reset your PropertiesService values. The only effect is that any missing folders or sheets get recreated.
