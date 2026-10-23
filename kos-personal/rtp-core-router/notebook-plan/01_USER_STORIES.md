@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — User Stories
 
-**Status:** Draft v0.5 (Phase 1 status) · **Date:** 2026-10-05 · "RTP Gem" below means the RTP custom-instruction surface (a Gem today, likely a skill after Google's transition; see 03_ADRs ADR-010). · **Companion docs:** 02_PRD, 03_ADRs, 04_MIGRATION_AND_TEST_PLAN
+**Status:** Draft v0.5 (Phase 1 status) · **Frozen 2026-10-06** with the RTP Gem: the KOS Claude Project (`kos-personal/claude-project/`) replaced the Gem as the thinking surface (`meta/PLAN_2026-10.md`), so this plan is kept as history · **Date:** 2026-10-05 · "RTP Gem" below means the RTP custom-instruction surface (a Gem today, likely a skill after Google's transition; see 03_ADRs ADR-010). · **Companion docs:** 02_PRD, 03_ADRs, 04_MIGRATION_AND_TEST_PLAN
 
 Priority uses MoSCoW (Must / Should / Could). Acceptance criteria are written Given / When / Then so each one can become a conformance test (see 04).
 

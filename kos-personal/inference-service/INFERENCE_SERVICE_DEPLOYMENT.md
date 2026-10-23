@@ -164,6 +164,14 @@ PORT                      8080
 NODE_ENV                  production
 ```
 
+Optional values, with the defaults the code uses when unset (all listed in
+`.env.example`): `CREDITS_SESSION_LOG` (5), `CREDITS_EXTERNAL_DATA` (2),
+`CREDITS_COG_STIMULUS` (5), `CREDITS_VECTOR_CLASSIFY` (5),
+`FREE_CREDITS_ON_SIGNUP` (50), `MAX_JOB_RETRIES` (3), `LOG_LEVEL` (`info`),
+`DATABASE_CA_CERT` (the database's CA certificate, for verified TLS), and
+the worker's `WORKER_POLL_MS`, `STUCK_JOB_TIMEOUT_MINUTES` and
+`RUN_WORKER_IN_PROCESS` (see `src/worker.js` and `src/server.js`).
+
 **`TOKEN_ENCRYPTION_KEY` is required and the server refuses to start
 without it** — unconditionally, not just in production. It encrypts
 `users.access_token` / `users.refresh_token` at rest. A refresh token is
@@ -291,6 +299,7 @@ Each KOS operator connects their instance through the OAuth flow:
 4. They add two properties to their KOS Apps Script project (these are `CFG.PROP.MANAGED_SERVICE_BASE_URL` / `CFG.PROP.MANAGED_SERVICE_API_KEY` in `1_Config_And_Deploy.gs` — the names actually read by `_getManagedServiceStatus_()` in `3_Queue_Processor.gs`):
    - `KOS_MANAGED_SERVICE_BASE_URL` = `https://YOUR-URL.run.app`
    - `KOS_MANAGED_SERVICE_API_KEY` = the key shown on the confirmation page
+   - `KOS_MANAGED_SERVICE_WEBHOOK_SECRET` = the same value as this service's `WEBHOOK_SECRET` (`CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET`, read by `_submitManagedServiceJob_()`). Required against a production service: without it every job submission gets a 401 (see `README.md`'s "Webhook authentication")
 5. Set `CFG.INFERENCE_MODE = 'MANAGED_SERVICE'` in `1_Config_And_Deploy.gs` and re-run `setupAllTriggers()` in the Apps Script editor
 
 ### 7b. Verify the connection
@@ -328,7 +337,7 @@ Account: {"email":"user@example.com","credit_balance":50,"subscription_status":"
 
 **Wired up and testable — see the integration-status note at the top of this guide.** `10_Turnstile.gs` calls this service's `POST /api/v1/jobs` webhook whenever `CFG.INFERENCE_MODE === 'MANAGED_SERVICE'`, so a `STUDIO_ACTIVE` row will be picked up by this service once it's deployed and that mode is set. The steps below are a real, reproducible test of that hand-off.
 
-1. Submit a short session via the KOS web app Ingest tab
+1. Submit a short session via the KOS web app's Add tab (AI session)
 2. Wait up to 5 minutes for the Turnstile to release it (or run `runMatrixTurnstile()` manually)
 3. Check Cloud Run logs — you should see:
    ```
@@ -337,7 +346,7 @@ Account: {"email":"user@example.com","credit_balance":50,"subscription_status":"
    ```
 4. Check STAGING_PIPELINE — the row should now be FLOW_COMPLETE
 5. Run `processInferenceQueue()` manually to complete the routing
-6. Check SESSION_LOG and MATRIX_LEDGER for the new rows
+6. Check SESSION_LOG for the new row (MATRIX_LEDGER no longer gains rows; vector weights reach VECTOR_MATRIX only through the session's `VECTOR_CLASSIFY` parts — see `README.md`'s "Prompts by payload type")
 
 ---
 
