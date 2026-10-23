@@ -149,7 +149,7 @@ function table(n) {
   const walk = (x) => x.children.forEach((c) => {
     if (!c.tag || skipped(c)) return;
     if (c.tag === 'tr') rows.push(c.children.filter((d) => d.tag === 'td' || d.tag === 'th')
-      .map((d) => blocks(d).join(' ').replace(/\|/g, '\\|').replace(/  \n/g, ' ')));
+      .map((d) => blocks(d).join(' ').replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/  \n/g, ' ')));
     else walk(c);
   });
   walk(n);
