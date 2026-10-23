@@ -68,6 +68,8 @@ function _retentionSchedule_() {
     { label: "SCRDecisionLog", tier: RETENTION_TIER_RECORD, years: _scrRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.scrDecisionLog || "SCRDecisionLog"; }),
       dateCol: SCRDL.DECIDED_AT, archived: archivedIn(SCRDL.ARCHIVE_STATUS) },
+    { label: "EvaluationLog", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
+      where: ledger(function (cfg) { return cfg.tabs.evaluationLog || "EvaluationLog"; }), dateCol: "EvaluatedAt" },
     { label: "ParentReportLog", tier: RETENTION_TIER_RECORD, years: _parentReportRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.parentReportLog; }),
       dateCol: PRL.GENERATED_AT, archived: archivedIn(PRL.ARCHIVE_STATUS) },
@@ -163,6 +165,13 @@ function _retentionCountsFor_(entry, cfg, now) {
     if (entry.docCol !== undefined && String(row[entry.docCol] || "").trim()) out.linkedDocs++;
   }
   return out;
+}
+
+// For 34c's overnight check: the records whose tab exists but has no date
+// column, so none of their rows can be checked. Read-only.
+function retentionMissingDateColumns_(cfg, now) {
+  return _retentionSchedule_().map(function (e) { return _retentionCountsFor_(e, cfg, now); })
+    .filter(function (r) { return r.found && r.missingDateColumn; });
 }
 
 // Read-only. Logs the schedule and, per record, how many rows are past
