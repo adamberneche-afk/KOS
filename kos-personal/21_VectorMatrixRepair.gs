@@ -359,7 +359,8 @@ function dropUnrebuildableRowsWithoutSource() {
  * again. A row is unrebuildable when its session has no complete set of
  * PROCESSED part rows (live or archived), when the last finished rederive
  * kept it (that also covers a part doc that wouldn't parse), or when it is
- * named in opts.uids (a full session UID or its 8-character hash).
+ * named in opts.uids (a full session UID or its 8-character hash). A full
+ * session UID named there is classified again even with no matrix row.
  *
  * Per session, in one go: the new parts are queued from the session's
  * CuratorInput text (every chunk, 1..N, must be there); only if that worked
@@ -410,6 +411,14 @@ function resetUnrebuildableRows(opts) {
         const h = VMR_LOG_UID_RE.exec(uid);
         if ((uid === want || (h && h[1] === want)) && !reasons[uid]) reasons[uid] = 'NAMED';
       });
+      // A full session UID with no matrix row at all (2026-10-23): its parts
+      // finished and were archived but the row is gone, so neither the
+      // backfill (it has parts) nor the checks above (no row) would ever
+      // classify it again. explainUnclassifiedSessions() names these
+      // (PARTS_DONE_NO_ROW). Its text must still be whole, as for any reset.
+      if (!inMatrix[want] && VMR_LOG_UID_RE.test(want) && !_rqIsTestUid_(want) && !reasons[want]) {
+        reasons[want] = 'NAMED_NO_ROW';
+      }
     });
 
     // Where each candidate stands.
