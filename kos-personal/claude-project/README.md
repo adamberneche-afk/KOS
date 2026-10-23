@@ -15,7 +15,10 @@ SMP-005), the CAS attention signal and students-and-families first;
 family-signal link now opens the `KOS_FAMILY_SIGNAL` doc, the
 `KOS_CAS_SIGNAL` and `KOS_SMP_REGISTER` docs exist and the instructions
 were updated, and `KILL_SWITCH_PROTOCOL.md` was re-synced in knowledge.
-Left: re-test `start`. No SMP goes into knowledge.
+The commute trial chose Claude (2026-10-17), and the instructions were
+last re-pasted on 2026-10-21, after the moral debt counter and the family
+signal's two tiers (`meta/HANDOFF_2026-10-22.md`). No SMP goes into
+knowledge.
 
 | File | What it is |
 |---|---|

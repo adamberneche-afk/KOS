@@ -6,7 +6,7 @@
 
 > **For LLMs:** This document tells you what every piece of LeaderHub data looks like, where it lives, and how events flow from Canvas into the app. Read this before generating Apps Script code, writing pacing calendar entries, or building any integration.
 
-> ### ⚠️ CORRECTIONS — two of the Core Constraints below were true in v2.0 and are not true now
+> ### ⚠️ CORRECTIONS — three of the Core Constraints below were true in v2.0 and are not true now
 >
 > This doc is addressed to LLMs and tells them to read it before generating
 > code, so a stale constraint here doesn't just misinform — it gets built.
@@ -16,9 +16,10 @@
 >    server-backed: `leader-hub:app` is a real Apps Script project — every
 >    `.gs` file in this folder, listed authoritatively in
 >    `tools/gas-lint/project-map.json` — with a Web App deployment, `doGet`/`doPost`, and a `_lhDispatchAction_` action
->    dispatch. The HTML still runs standalone from a local file — that
->    capability was kept deliberately — but "no server" is not a constraint
->    to design against any more.
+>    dispatch. The HTML no longer runs standalone: since 2026-10-22 it runs
+>    only as that web app, and opened from disk it shows "LeaderHub now runs
+>    as a web app" and stops (`src/00-shell-head.html`). It is built from
+>    `src/` by `node tools/leaderhub-build/build.js`.
 >
 > 2. **`callAI()` does not exist, and there is no API key anywhere.** It was
 >    deleted from the HTML along with `getAPIKey()`/`setAPIKey()` — see the
@@ -29,11 +30,24 @@
 >    *Bifurcation Boundary*: `EmailBridge.gs` writes a job row to the
 >    `AI_Queue` tab, and a hand-built Google Workspace Flow picks it up and
 >    calls Gemini using the Workspace account's own built-in access, then
->    writes the result back. `EmailBridge.gs` says so at its own line 160:
->    "It never calls Gemini itself and never holds an API key." A
+>    writes the result back. `EmailBridge.gs` says so in its AI queue
+>    section: "It never calls Gemini itself and never holds an API key." A
 >    developer-key path is not merely unused here — it would need a standard
 >    Cloud project, which nothing in this repo has (see
 >    `tools/gas-lint/gcp-map.json`). Start from `LEADERHUB_AI_FLOW_SETUP.md`.
+>
+> 3. **Nothing is persisted in `localStorage`** (since 2026-10-22,
+>    `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`). `doGet()` writes
+>    the server's data into the page (`window.__LH_BOOT__`, `lhBootData_` in
+>    `Data.gs`); `LS.get()`/`LS.set()` read and write page memory
+>    (`_lhStore`) and save every change to the server: config keys
+>    (`LH_CONFIG_KEYS`, `Config.gs`) as Script Properties, record lists
+>    (`LH_DATA_TABS`, `Data.gs`) as tabs in the private "LeaderHub Data"
+>    spreadsheet, SCR scores per cell in its `scr_scores` tab (`SCR.gs`). The `lh_*` key names are
+>    still the keys. **Do not generate code that reads or writes browser
+>    storage**; `tests/leaderhub/no-browser-storage.test.js` fails on it.
+>    There is also no Email Bridge URL: `callGAS()` uses
+>    `google.script.run` only.
 
 ---
 
@@ -57,15 +71,15 @@
                                             │  (relay buffer)      │
                                             └──────────┬───────────┘
                                                        │
-                                            Apps Script doGet() Web App
+                                            Apps Script Web App
                                             polled on LeaderHub load
                                             + every 10 minutes
                                                        │
                                             ┌──────────▼───────────┐
                                             │     LeaderHub        │
-                                            │  student-leader-     │
-                                            │  hub.html            │
-                                            │  (localStorage)      │
+                                            │  (the same web app;  │
+                                            │  data on the server, │
+                                            │  see correction 3)   │
                                             └──────────────────────┘
 ```
 
@@ -77,13 +91,13 @@
 
 | # | Constraint | Why |
 |---|-----------|-----|
-| 1 | ~~LeaderHub is a single `.html` file~~ **— NO LONGER TRUE, see corrections above.** The HTML still runs standalone from a local file, but `leader-hub:app` is a real 6-file Apps Script project with a Web App deployment | No build step and no npm, still true |
-| 2 | All persistence is `localStorage` with `lh_` prefix | Use `LS.get()` / `LS.set()` — never raw `localStorage` |
+| 1 | ~~LeaderHub is a single `.html` file~~ **— NO LONGER TRUE, see corrections above.** `leader-hub:app` is a real Apps Script project (file list: `tools/gas-lint/project-map.json`) and the HTML runs only as its Web App | Built from `src/` by `tools/leaderhub-build/build.js`; still no npm dependencies |
+| 2 | ~~All persistence is `localStorage`~~ **— NO LONGER TRUE, see correction 3.** Keys keep the `lh_` prefix and go through `LS.get()` / `LS.set()`, which save to the server | Never touch `localStorage`, `sessionStorage` or IndexedDB |
 | 3 | ~~All AI calls go through `callAI()`~~ **— REMOVED, see corrections above.** AI jobs are queued to the `AI_Queue` tab by `EmailBridge.gs` and generated by a Workspace Flow | **No API key exists or should be introduced.** The Flow uses the Workspace account's built-in Gemini access |
 | 4 | No `console.group()` or `%c` logging | School browser blocks these; plain `console.log()` only |
 | 5 | FERPA — no student names in AI prompts | Anonymize with tokens (e.g., `STUDENT_1`) before sending |
 | 6 | Dashboard is `overflow:hidden` | Never add scrollable content to `#view-dashboard` |
-| 7 | `LESSON_PLANS` and `SCR_COURSES` are hardcoded | They live in the JS source, not in localStorage |
+| 7 | `LESSON_PLANS` and `SCR_COURSES` are hardcoded | They live in the JS source, not in saved data |
 
 ---
 
@@ -233,7 +247,7 @@ unpaid → active → slc (DLC qualifier) → icdc (SLC Top 8) → alumni
 | `esports` | Esports match or tournament |
 | `general` | Everything else |
 
-### `LESSON_PLANS` — Hardcoded in JS source (not in localStorage)
+### `LESSON_PLANS` — Hardcoded in JS source (not in saved data)
 
 ```javascript
 {
@@ -446,8 +460,14 @@ function findLesson(course, label) {
 
 ## Apps Script Web App Endpoints
 
-**URL stored in:** `localStorage` key `lh_bridge_url`  
-**Script Properties key:** `SHEET_URL`
+**URL stored in:** nowhere in LeaderHub any more. This section describes
+the v2 relay design; the `EmailBridge.gs` in this repo has no `SHEET_URL`
+property. In this repo the page reaches the server through
+`google.script.run` (`lhGetHorizonItems()`, and `lhApiCall('markConsumed',
+{ids})` for the POST below); `doGet()`'s `?api=horizon` GET remains for
+external callers. The horizon scan itself currently returns an empty list
+(`scanHorizonLabel_()`, no Gmail scope).
+**Script Properties key (v2 design):** `SHEET_URL`
 
 ### GET / — Fetch unconsumed items
 ```json
@@ -504,26 +524,33 @@ Create these one-time filters in Gmail to auto-label relevant emails with `Leade
 
 ---
 
-## localStorage Keys — Complete Reference
+## `lh_*` Keys — Reference (where each one lives now)
 
-| Key | Type | Contents |
-|-----|------|----------|
-| `lh_trips` | array | Field trip records |
-| `lh_events` | array | DECA/leadership/community events |
-| `lh_students` | array | DECA member roster |
-| `lh_slip_rosters` | object | `{tripId: slipEntry[]}` |
-| `lh_next_slip_id` | int | Auto-increment ID for slip entries |
-| `lh_next_id` | object | `{trip, ev, st, gl, tk}` — next IDs per type |
-| `lh_deadlines` | array | Deadline items |
-| `lh_horizon` | object | `{short:[], mid:[], long:[]}` |
-| `lh_tasks` | array | Dashboard task checklist |
-| `lh_goals` | array | Goals tracker |
-| `lh_lp_edits` | object | Teacher notes on lesson plans (keyed by docId) |
-| `lh_unit_notes` | object | Notes on unit plans (keyed by unit id) |
-| `lh_unit_expanded` | array | Which unit plan cards are expanded |
-| ~~`lh_api_key`~~ | — | **Dead key — no current code reads or writes it.** Left listed only so that finding one in a real browser's storage is recognizable as a leftover from the pre-Bifurcation design, and can be cleared. Do not reintroduce |
-| `lh_bridge_url` | string | Apps Script Web App URL |
-| `lh_journal` | array | Brain dump / journal entries |
-| `lh_inventory_transactions` | array | School store transaction log |
-| `lh_wbl_students` | array | WBL student records |
-| `lh_inventory` | array | School store product catalog |
+These were `localStorage` keys in v2.0. Since 2026-10-22 none is kept in
+the browser: "data tab" is a tab in the "LeaderHub Data" spreadsheet
+(`LH_SERVER_SYNCED_DATA_KEYS` in `src/05`, `LH_DATA_TABS` in `Data.gs`),
+"config" is a Script Property (`LH_CONFIG_KEYS` in `Config.gs`), and "page
+memory" is lost on reload (`LH_PAGE_MEMORY_KEYS` in `src/05`). This is a
+selection; `tests/leaderhub/no-browser-storage.test.js` checks every key.
+
+| Key | Type | Contents | Lives in |
+|-----|------|----------|----------|
+| `lh_trips` | array | Field trip records | data tab `trips` |
+| `lh_events` | array | DECA/leadership/community events | data tab `events` |
+| `lh_students` | array | DECA member roster | data tab `members` |
+| `lh_slip_rosters` | object | `{tripId: slipEntry[]}` | config |
+| `lh_next_slip_id` | int | Auto-increment ID for slip entries | config |
+| `lh_next_id` | object | `{trip, ev, st, gl, tk}` — next IDs per type | config |
+| `lh_deadlines` | array | Deadline items | data tab `deadlines` |
+| `lh_horizon` | object | `{short:[], mid:[], long:[]}` | config |
+| `lh_tasks` | array | Dashboard task checklist | data tab `tasks` |
+| `lh_goals` | array | Goals tracker | data tab `goals` |
+| `lh_lp_edits` | object | Teacher notes on lesson plans (keyed by docId) | config |
+| `lh_unit_notes` | object | Notes on unit plans (keyed by unit id) | config |
+| `lh_unit_expanded` | array | Which unit plan cards are expanded | page memory |
+| `lh_journal_history` | array | Journal entries | data tab `journal_entries` |
+| `lh_wbl_students` | array | WBL student records | data tab `wbl_roster` |
+| `lh_inventory` | array | School store product catalog | data tab `store_inventory` |
+| `lh_inventory_transactions` | array | School store transaction log | read in one place, never written |
+| ~~`lh_api_key`~~ | — | **Dead key.** The app deletes any leftover copy from the browser at every load (`LH_RETIRED_SECRET_KEYS`, `src/05`). Do not reintroduce | — |
+| ~~`lh_bridge_url`~~ / ~~`lh_email_bridge_url`~~ | — | **Removed 2026-10-22.** The web app calls its own server; only the retired-file page reads an old `lh_email_bridge_url` to offer an "Open the web app" link | — |

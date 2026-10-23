@@ -21,8 +21,9 @@ clasp writes to your machine's home directory.
 
 ## Step 1 — Build at least one sandbox copy
 
-Follow `DEPLOYMENT_RUNBOOK.md` §3.2, but you don't need all 8 projects before
-this is useful — start with just one. **`teacher-dashboard` is the
+Follow `DEPLOYMENT_RUNBOOK.md` §3.2, but you don't need all 8 cas-ccps projects the job
+knows (every cas-ccps project but `family-sentinel`, which the job doesn't
+push) before this is useful — start with just one. **`teacher-dashboard` is the
 recommended first pick**, since it's what the new cas-ccps↔leader-hub OAuth
 work (`getRoster`/`getPacingGuide`/`getCompetencyRegistry`) actually needs
 tested.
@@ -45,8 +46,7 @@ Repeat for any other project you want covered (`central-ledger`,
 `teacher-matrix-sheet`, `student-dashboard`, `studio-steps`) whenever
 you're ready — the CI job handles a partial set fine (see Step 3's note
 on this). `studio-steps` is standalone (not bound to a spreadsheet), so
-its sandbox copy comes from **File → Make a copy is not applicable
-here** — instead, `clasp create --type standalone` a fresh sandbox
+**File → Make a copy is not applicable here** — instead, `clasp create --type standalone` a fresh sandbox
 project the same way `DEPLOYMENT_RUNBOOK.md` §3.2b describes for a
 from-scratch build, using test-only data.
 
@@ -58,10 +58,11 @@ treats it: "no live audience, safe to fold in").
 ## Step 2 — Get your clasp login for the secret
 
 ```
-clasp login --status
+clasp show-authorized-user
 ```
 
-Confirms which account is currently logged in — this can be your regular
+(clasp 3.x; the 2.x `clasp login --status` no longer exists.) Confirms
+which account is currently logged in — this can be your regular
 personal account (the same one the sandbox copies from Step 1 live under),
 same as `DEPLOYMENT_RUNBOOK.md` §3.5 already does for its own illustrative
 job. A dedicated, fully separate "sandbox-only" Google account is a fine

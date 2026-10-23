@@ -45,6 +45,9 @@
  * ENTRY POINTS (no trailing underscore, so they show in the Run dropdown):
  *   checkVectorClassifySessions()      — read-only: sessions with parts
  *                                        stored but still waiting on others.
+ *   explainUnclassifiedSessions()      — read-only: why each session the
+ *                                        primer counts has no matrix row,
+ *                                        and what to run.
  *   previewVectorClassifyBackfill()    — dry run of the next backfill batch.
  *   queueVectorClassifyBackfillBatch() — queue it.
  *   queueVectorClassifyBackfill(opts)  — { apply: bool, limit: number }.
@@ -275,6 +278,58 @@ function _vcsMatrixHasSession_(ss, sessionUid) {
   return !!_vcsMatrixSessions_(ss)[sessionUid];
 }
 
+/**
+ * The sessions with no VECTOR_MATRIX row, as the primer's Data Quality
+ * block counts them: every SESSION_LOG Curator row's session (one row per
+ * chunk) that has no matrix row, minus copies findDuplicateSessions() would
+ * drop (`dropped`) and copies marked DUPLICATE, live or archived.
+ *
+ * Each entry's twinOf names another copy of the same content (same hash)
+ * that is classified or has classify parts. Such a copy isn't missing: the
+ * backfill skips it as DUPLICATE_HASH, so the block doesn't count it
+ * (2026-10-23: before, it counted these, and no requeue or backfill would
+ * ever clear the flag). Same rule as the backfill's hashOwner.
+ *
+ * @returns {{sessionUid: string, twinOf: string}[]}
+ */
+function _vcsSessionsWithoutRow_(ss, inMatrix, dropped) {
+  const SC = CFG.STAGING_COLS;
+  const resolvedDup = {};
+  const withParts = {};
+  const scan = function (sheet, offset) {
+    if (!sheet || sheet.getLastRow() <= 1) return;
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 7 + offset).getValues().forEach(function (r) {
+      const uid = String(r[offset + SC.PAYLOAD_UID] || '').trim();
+      const status = String(r[offset + SC.STATUS]).trim();
+      if (status === 'DUPLICATE') resolvedDup[uid.replace(/_(?:CH\d+|VC\d+of\d+)$/, '')] = true;
+      const part = _vcsParsePartUid_(uid);
+      if (part && status !== 'SUPERSEDED') withParts[part.sessionUid] = true;
+    });
+  };
+  scan(ss.getSheetByName(CFG.STAGING_SHEET), 0);
+  scan(ss.getSheetByName('STAGING_ARCHIVE'), 1);
+
+  const hashOwner = {};
+  Object.keys(inMatrix).concat(Object.keys(withParts)).forEach(function (uid) {
+    const h = VCS_LOG_HASH_RE.exec(uid);
+    if (h && !hashOwner[h[1]]) hashOwner[h[1]] = uid;
+  });
+
+  const out = {};
+  const log = ss.getSheetByName(CFG.SESSION_LOG_SHEET);
+  if (log && log.getLastRow() > 1) {
+    log.getRange(2, 1, log.getLastRow() - 1, 6).getValues().forEach(function (r) {
+      if (_isIntakeSessionLogRow_(r)) return;
+      const stem = String(r[0]).trim().replace(/_CH\d+$/, '');
+      if (!/^LOG-/.test(stem) || inMatrix[stem] || (dropped || {})[stem] || resolvedDup[stem] || out[stem]) return;
+      const h = VCS_LOG_HASH_RE.exec(stem);
+      const owner = h && hashOwner[h[1]];
+      out[stem] = { sessionUid: stem, twinOf: owner && owner !== stem ? owner : '' };
+    });
+  }
+  return Object.keys(out).sort().map(function (k) { return out[k]; });
+}
+
 // ================================================================
 // REPORT
 // ================================================================
@@ -493,7 +548,142 @@ function queueVectorClassifyBackfill(opts) {
   skipped.forEach(function (s) { console.log('[VectorClassify]   skip ' + s.sessionUid + ': ' + s.reason); });
 
   return { apply: apply, inFlight: inFlight, eligible: eligible.length, selected: batch.length,
+    eligibleUids: eligible.map(function (s) { return s.sessionUid; }),
     skipped: skipped, sessions: planned, message: message };
+}
+
+// ================================================================
+// WHY A SESSION HAS NO ROW — the Data Quality flag, explained
+// ================================================================
+
+/**
+ * Read-only. For each session the primer's Data Quality block counts as
+ * having no Vector State row ("N processed session(s) have no Vector State
+ * row yet"), says why, and the one thing to run, if anything. Written
+ * 2026-10-23: the flag named two sessions, and neither requeueStagingBatch()
+ * (STUDIO_TIMEOUT and AUDIT_REJECTED rows only) nor the backfill (sessions
+ * with no classify parts only) picked either up. The answers:
+ *
+ *   READY              the backfill will queue it: queueVectorClassifyBackfillBatch().
+ *   IN_FLIGHT          its parts are at Studio, or a batch is: wait.
+ *   PART_TIMED_OUT     a part ended STUDIO_TIMEOUT/AUDIT_REJECTED: requeueStagingBatch().
+ *   PART_FAILED        a part ended in another status (FAILED_PARSE,
+ *                      INTAKE_ERROR, ...), which the default requeue skips:
+ *                      the requeueStagingRows() call with its statuses.
+ *   AGGREGATION_FAILED every part is stored but the row wasn't written: fix
+ *                      the cause in ERROR_LOG, then requeue one part.
+ *   PARTS_DONE_NO_ROW  its parts are in STAGING_ARCHIVE (finished, or failed
+ *                      rows the old "Archive finished and failed rows" moved
+ *                      before 2026-10-22, out of the requeue's reach) and
+ *                      there is no row: the resetUnrebuildableRows() call
+ *                      that classifies it again from its CuratorInput text.
+ *   DUPLICATE_COPY     another copy of the same content has its row: not
+ *                      missing (the block no longer counts these).
+ *   TEXT_INCOMPLETE    a chunk or its CuratorInput text is gone, so it can't
+ *                      be classified: nothing to run.
+ *   NOT_IN_STAGING     no SESSION_LOG chunk rows in STAGING_PIPELINE or
+ *                      STAGING_ARCHIVE, so nothing can read its text back.
+ *
+ * Logs one line per session (UIDs and counts only) and returns the list.
+ */
+function explainUnclassifiedSessions() {
+  const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+  const SC = CFG.STAGING_COLS;
+  const inMatrix = _vcsMatrixSessions_(ss);
+  const dropped = {};
+  findDuplicateSessions({ apply: false }).groups.forEach(function (g) {
+    g.drop.forEach(function (u) { dropped[u] = true; });
+  });
+  const sessions = _vcsSessionsWithoutRow_(ss, inMatrix, dropped);
+  const backfill = queueVectorClassifyBackfill({ apply: false, limit: 0 });
+  const eligible = {};
+  backfill.eligibleUids.forEach(function (u) { eligible[u] = true; });
+  const skipReason = {};
+  backfill.skipped.forEach(function (s) { skipReason[s.sessionUid] = s.reason; });
+
+  // Each session's classify part rows, live and archived.
+  const partRows = {};
+  const scan = function (sheet, offset, live) {
+    if (!sheet || sheet.getLastRow() <= 1) return;
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 7 + offset).getValues().forEach(function (r) {
+      const uid = String(r[offset + SC.PAYLOAD_UID] || '').trim();
+      const p = _vcsParsePartUid_(uid);
+      if (!p) return;
+      (partRows[p.sessionUid] = partRows[p.sessionUid] || [])
+        .push({ uid: uid, of: p.of, status: String(r[offset + SC.STATUS]).trim(), live: live });
+    });
+  };
+  scan(ss.getSheetByName(CFG.STAGING_SHEET), 0, true);
+  scan(ss.getSheetByName('STAGING_ARCHIVE'), 1, false);
+  const stored = {};
+  _vcsPartRows_(_vcsPartsSheet_(ss)).forEach(function (r) {
+    const sid = String(r[VCS_PARTS_COLS.SESSION_UID]).trim();
+    stored[sid] = (stored[sid] || 0) + 1;
+  });
+
+  const quote = function (list) { return list.map(function (x) { return "'" + x + "'"; }).join(', '); };
+  const report = sessions.map(function (s) {
+    const uid = s.sessionUid;
+    const e = { sessionUid: uid, counted: !s.twinOf };
+    const live = (partRows[uid] || []).filter(function (p) { return p.live && p.status !== 'SUPERSEDED'; });
+    const inFlight = live.filter(function (p) { return VCS_IN_FLIGHT.indexOf(p.status) !== -1; });
+    const timedOut = live.filter(function (p) { return RQ_STATUSES.indexOf(p.status) !== -1; });
+    const failed = live.filter(function (p) {
+      return p.status !== 'PROCESSED' && VCS_IN_FLIGHT.indexOf(p.status) === -1 && RQ_STATUSES.indexOf(p.status) === -1;
+    });
+    const reason = skipReason[uid] || '';
+    if (s.twinOf) {
+      e.state = 'DUPLICATE_COPY';
+      e.detail = 'same content as ' + s.twinOf + ', which is classified or queued. Not missing; nothing to run.';
+    } else if (eligible[uid]) {
+      e.state = backfill.inFlight > 0 ? 'IN_FLIGHT' : 'READY';
+      e.detail = backfill.inFlight > 0
+        ? 'the backfill will queue it once the ' + backfill.inFlight + ' part(s) in flight finish.'
+        : 'run queueVectorClassifyBackfillBatch() (3 sessions a run).';
+    } else if (inFlight.length) {
+      e.state = 'IN_FLIGHT';
+      e.detail = inFlight.length + ' part(s) at Studio (' + inFlight.map(function (p) { return p.status; }).join(', ') + '): wait.';
+    } else if (timedOut.length) {
+      e.state = 'PART_TIMED_OUT';
+      e.detail = 'requeueStagingRows({apply: true, uids: [' + quote(timedOut.map(function (p) { return p.uid; })) + ']})';
+    } else if (failed.length) {
+      const statuses = failed.map(function (p) { return p.status; }).filter(function (x, i, a) { return a.indexOf(x) === i; });
+      e.state = 'PART_FAILED';
+      e.detail = failed.length + ' part(s) ended ' + statuses.join('/') + '. Check ERROR_LOG for the cause, then ' +
+        'requeueStagingRows({apply: true, uids: [' + quote(failed.map(function (p) { return p.uid; })) +
+        '], statuses: [' + quote(statuses) + ']})';
+    } else if (live.length && stored[uid] && stored[uid] >= live[0].of) {
+      e.state = 'AGGREGATION_FAILED';
+      e.detail = 'every part is stored but no row was written. Fix the cause in ERROR_LOG, then requeue one part: ' +
+        'requeueStagingRows({apply: true, uids: [' + quote([live[0].uid]) + '], statuses: [' + quote([live[0].status]) + ']})';
+    } else if (/^ALREADY_QUEUED/.test(reason) || (partRows[uid] || []).length) {
+      // Archived parts: finished (PROCESSED), or failed rows the web app's
+      // old "Archive finished and failed rows" moved before 2026-10-22,
+      // which requeueStagingRows() can't reach (it reads STAGING_PIPELINE).
+      const archivedStatuses = (partRows[uid] || []).filter(function (p) { return !p.live; })
+        .map(function (p) { return p.status; }).filter(function (x, i, a) { return a.indexOf(x) === i; });
+      e.state = 'PARTS_DONE_NO_ROW';
+      e.detail = 'its parts are archived' + (archivedStatuses.length ? ' (' + archivedStatuses.join('/') + ')' : '') +
+        ', so no requeue reaches them, and there is no row and nothing stored to build one. Classify it again: ' +
+        "resetUnrebuildableRows({apply: true, uids: ['" + uid + "']})";
+    } else if (/^(CHUNKS|SOURCE)_INCOMPLETE/.test(reason)) {
+      e.state = 'TEXT_INCOMPLETE';
+      e.detail = reason + '. Its text is gone, so it cannot be classified; nothing to run.';
+    } else if (/^DUPLICATE/.test(reason)) {
+      e.state = 'DUPLICATE_COPY';
+      e.detail = reason + '. Not missing; nothing to run.';
+    } else {
+      e.state = 'NOT_IN_STAGING';
+      e.detail = 'no SESSION_LOG chunk rows in STAGING_PIPELINE or STAGING_ARCHIVE, so its text cannot be read back.';
+    }
+    return e;
+  });
+
+  const counted = report.filter(function (e) { return e.counted; }).length;
+  console.log('[VectorClassify] ' + counted + ' session(s) counted as having no Vector State row' +
+    (report.length > counted ? ' (' + (report.length - counted) + ' more are copies of classified content, not counted)' : '') + ':');
+  report.forEach(function (e) { console.log('[VectorClassify]   ' + e.sessionUid + ': ' + e.state + ', ' + e.detail); });
+  return report;
 }
 
 // ================================================================

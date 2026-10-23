@@ -1981,8 +1981,8 @@ function buildActionQueue(){
     const _bDaysSinceBackup = _bLastBackup ? (Date.now() - new Date(_bLastBackup).getTime()) / 86400000 : Infinity;
     if ((!_bLastBackup && _bDaysSinceFirstUse >= 7) || _bDaysSinceBackup >= 14) {
       q.push({priority:38, icon:'💾', text: _bLastBackup
-          ? `Backup is ${Math.floor(_bDaysSinceBackup)} days old — everything here lives only in this browser.`
-          : `No backup taken yet — everything here lives only in this browser. Export a copy.`,
+          ? `Backup is ${Math.floor(_bDaysSinceBackup)} days old. Your data is saved to your Google account; export a second copy.`
+          : `No backup taken yet. Your data is saved to your Google account; export a second copy.`,
         role:'general', nav:'dashboard', action:'openBackupSettings', days:0});
     }
   }

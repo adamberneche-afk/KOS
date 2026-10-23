@@ -2,7 +2,10 @@
 
 **Status:** B done (PR #107, live 2026-10-06: kos-personal has 18
 triggers, including the nightly `archiveFinishedStagingRows`). Diagnosis
-(§4), C and A not started. Written 2026-10-06 from an outside review,
+(§4), the §3 tests, C, A, D and E not started (checked against the code
+2026-10-23: the lock mock's `tryLock()` still always succeeds,
+`handleCogExhaust()` has no content-hash check, and there is no
+kos-personal watchdog). Written 2026-10-06 from an outside review,
 corrected against the code on `main` the same day.
 
 **Symptom:** payloads queue faster than they clear. On 2026-10-05 a
@@ -32,8 +35,8 @@ records each requeue reason, and `harvestStudioReturns()` and
 ## 2. Likely cause: one Studio slot for everything
 
 ```js
-TURNSTILE_CONCURRENCY: 1,   // 1_Config_And_Deploy.gs:89
-SENSOR1_MAX_FILES_PER_RUN: 8,      // :111
+TURNSTILE_CONCURRENCY: 1,   // 1_Config_And_Deploy.gs:97
+SENSOR1_MAX_FILES_PER_RUN: 8,      // :119
 ```
 
 Every payload type (`SESSION_LOG`, `COG_EXHAUST`, `EXTERNAL_DATA`,
@@ -61,7 +64,7 @@ Why a backlog gets worse instead of clearing:
 
 ## 3. Tests: make the failure visible first
 
-The sandbox lock mock (`tests/harness/gas-sandbox.js:417`) now tracks
+The sandbox lock mock (`tests/harness/gas-sandbox.js:416`) now tracks
 `held`, but `tryLock()` still always succeeds, so no test exercises
 contention.
 

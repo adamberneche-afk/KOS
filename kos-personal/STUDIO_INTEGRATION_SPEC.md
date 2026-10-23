@@ -1,5 +1,14 @@
 # KOS v8.0 — Studio Integration Specification
 
+> **Current (2026-10-22):** both Flows (Curator and VECTOR_CLASSIFY) are
+> live and built by hand in Studio's UI from the `FlowBuildSpec` tab. Since
+> 2026-09-29 their Ask Gemini steps take their system prompts from the
+> `FlowPrompts` tab (`syncFlowPrompts()`), which is what fixed the
+> persona-shaped Curator output `STUDIO_REBIND_HANDOFF.md` describes (that
+> file is closed). Their last step is a native add-row into `STUDIO_RETURN`;
+> `harvestStudioReturns()` (`12_StudioReturnHarvest.gs`) does the write-back.
+> The 2026-09-08 status below is history.
+
 > **✅ STATUS (2026-09-08): both Flows built from this spec and verified
 > end to end** — real Studio returns, real `SESSION_LOG`/`VECTOR_MATRIX`
 > data, both confirmed against the same fixture. See `DEPLOYMENT_GUIDE.md`'s
@@ -12,7 +21,7 @@
 > non-default Cloud project; GCP is disabled org-wide for the
 > `ccpsnet.net` account this system is actually deployed on (SMP-004
 > describes a separate personal account — that is not what exists), so
-> `studio-steps/`'s two steps install without error and never appear in
+> `archive/studio-steps/`'s two steps install without error and never appear in
 > Studio's picker. That was true when this banner last said so.
 >
 > **What changed since: the live Docs-read step is gone too, not just the
@@ -52,7 +61,8 @@
 >    Drive permission of any kind, needed by this step or any other in
 >    the Flow.
 > 3. **Ask Gemini** — system prompt: `CURATOR_PROMPT.md` (Curator) or
->    `VECTOR_CLASSIFY_PROMPT.md` (classification), pasted verbatim ·
+>    `VECTOR_CLASSIFY_PROMPT.md` (classification), from the `FlowPrompts`
+>    tab as the live Flows do it (below), or pasted verbatim ·
 >    variable: `@trigger.SourceText`. Same prompts, same contract, same
 >    optional Auditor pass (row 2a below) as before — none of that
 >    changed. **Corrected since the Auditor step first shipped:** no
@@ -79,8 +89,9 @@
 > drifted since the last sync. If this document and that tab ever
 > disagree, the tab is right — it's generated, this is prose.
 >
-> **Optional, before building either Flow: `syncFlowPrompts()`**
-> (16_FlowPrompts.gs) writes a `FlowPrompts` tab carrying
+> **Before building either Flow: `syncFlowPrompts()`**
+> (16_FlowPrompts.gs; how the live Flows get their prompts since
+> 2026-09-29) writes a `FlowPrompts` tab carrying
 > `CURATOR_SYSTEM_PROMPT`/`VECTOR_CLASSIFY_SYSTEM_PROMPT`/
 > `CURATOR_AUDITOR_SYSTEM_PROMPT` — generated from this Curator prompt /
 > `VECTOR_CLASSIFY_PROMPT.md` / `CURATOR_AUDITOR_PROMPT.md` by
@@ -224,7 +235,7 @@ BRAIN_TRUST_INDEX spreadsheet ID is stored in `PropertiesService` under the key 
 1. Hard-code the spreadsheet ID in your Studio configuration after first deploy
 2. Read it from a known configuration document in Drive (e.g., a doc named `KOS_CONFIG` in the root folder)
 
-The spreadsheet URL is visible in the web app under Diagnostics → Sensor 2 webhook endpoint region, and directly accessible from the Diagnostics tab system state cards.
+The web app does not show the spreadsheet's URL; open `BRAIN_TRUST_INDEX` from Drive (it sits in the `Active_Brain_Trust_System` root folder) and copy it from there.
 
 ---
 
@@ -315,7 +326,7 @@ Read the external content. Produce a condensed summary and domain vector weights
 
 ### COG_STIMULUS inference
 
-The document body contains both the persona context and the stimulus. Read the persona section (marked with `─── YOUR PERSONA ───`) and act as that specific persona. Produce a verdict with `final_status: APPROVED | FLAG | VETO` in the `cog_verdicts` array. Include only the single cog verdict — not all seven. The `cog_name` in the verdict must match the persona name from the stimulus header.
+The document body contains both the persona context and the stimulus. Read the persona section (marked with `─── YOUR PERSONA ───`) and act as that specific persona. Produce a verdict with `final_status: APPROVED | FLAG | VETO` in the `cog_verdicts` array. Include only the single cog verdict — not all six. The `cog_name` in the verdict must match the persona name from the stimulus header.
 
 ---
 
@@ -410,7 +421,7 @@ Studio must write the complete inference output as JSON to the document body, re
 
 ### Schema notes
 
-**`session_uid`** — Use the Payload_UID from the STAGING_PIPELINE row if available. If not, generate one using the pattern `LOG-{unix_ms}-{8_char_hash}`.
+**`session_uid`** — Use the Payload_UID from the STAGING_PIPELINE row if available. If not, generate one using the pattern `LOG-{8_char_hash}` (older rows carry `LOG-{unix_ms}-{8_char_hash}`; see `SCHEMA_REFERENCE.md`).
 
 **`vector_weights`** — **Emit `null`. Always.** This is the only correct value the Curator flow ever produces — see `CURATOR_PROMPT.md` Rule 1. Real weights come solely from a separately-completed `VECTOR_CLASSIFY` row, aggregated by `_aggregateSentenceVectors_()` in `4_Vector_Router.gs`. The example object earlier in this document shows six populated keys; that is illustrative of the *shape* only, is missing the 7th `CFG.KNOWN_VECTORS` entry (`DOMAIN_COMPLIANCE`), and must not be read as a contract. Operator calibration is applied GAS-side by `_getCalibrationStatus()` / `_inferCalibrationWeights()` (`5_Error_And_Utilities.gs`) — never in Studio.
 
@@ -460,7 +471,7 @@ requests = [
 service.documents().batchUpdate(documentId=file_id, body={'requests': requests}).execute()
 ```
 
-**Important:** The document body must be valid JSON. The KOS queue processor calls `JSON.parse()` on the document body. If the parse fails, the row becomes `NEEDS_CURATOR`. Common causes of parse failure:
+**Important:** The document body must be valid JSON. The KOS queue processor calls `JSON.parse()` on the document body. If the parse fails, the row becomes `NEEDS_CURATOR`. (In the live design `harvestStudioReturns()` writes the body and strips a markdown fence itself; the rest of this list still applies to what the Flow returns.) Common causes of parse failure:
 - JSON wrapped in markdown code fences (` ```json ... ``` `)
 - Trailing comma in the last array/object element
 - Unescaped quote characters in string values
@@ -534,11 +545,11 @@ and `_isAuditFailure_()`/`_archiveAuditFailure_()` (`5_Error_And_Utilities.gs`).
 
 Do not write anything to the document body. Do not update the STAGING_PIPELINE row. KOS's staleness guard will reset the row to `PENDING_FLOW` after `TURNSTILE_STALE_MINS` (default 30 minutes), and the Turnstile will re-release it on its next run. The row's stale count (`KOS_TURNSTILE_STALE_COUNTS`) will increment; `Retry_Count` does not.
 
-After 3 failed retries, the row becomes `FAILED_PARSE` and requires manual intervention.
+Once the stale count passes `CFG.TURNSTILE_STUCK_THRESHOLD` (3), the Turnstile sets the terminal `STUDIO_TIMEOUT` status. The web app lists it under Queue → Failed items, with a Retry. (`FAILED_PARSE` is a different path: a return that arrived but couldn't be parsed, past `CFG.MAX_RETRIES`.)
 
 ### If the document cannot be opened
 
-Log the error. Update the STAGING_PIPELINE row Status to `INTAKE_ERROR` with the error message appended. This prevents the row from cycling indefinitely.
+Studio never opens it any more. `buildStudioInputRows()` skips a row whose doc it can't open and tries again on its next pass; if it never can, the row goes the stale-reset way above and ends at `STUDIO_TIMEOUT`.
 
 ### If the JSON output is truncated due to token limits
 
@@ -547,6 +558,17 @@ Split the session into smaller pieces before inference. The KOS `_semanticChunke
 ---
 
 ## COG_STIMULUS Special Handling
+
+> **History, not the current council.** No code writes a `COG_STIMULUS`
+> STAGING_PIPELINE row today (`SCHEMA_REFERENCE.md`). The Seven Bridges
+> review (`triggerSevenBridgesReview()`, `6_Governance.gs`) writes **one
+> shared stimulus document** headed `[🌉 SMP-002: SEVEN BRIDGES STIMULUS]`,
+> with a Council ID, the context, the laws and review instructions, and no
+> per-cog persona block. The operator gives it to each advisor in its own
+> fresh conversation and records each verdict on the web app's Add →
+> Advisor verdict form (`submitCogVerdict()`), which writes `COG_REGISTRY`
+> directly. The per-cog document shape below is kept as the Curator
+> prompt's `COG_STIMULUS` contract (`CURATOR_PROMPT.md` §3.3).
 
 Council stimulus documents (Payload_Type = `COG_STIMULUS`) require isolated processing. Each cog must be processed independently — the model must not be given the verdicts of other cogs as context.
 
@@ -678,7 +700,7 @@ layer underneath both.
 
 ### Minimum viable test
 
-1. Submit a short session log via the web app Ingest tab
+1. Submit a short session log via the web app's Add tab (AI session)
 2. Wait for Turnstile to set Status to `STUDIO_ACTIVE` (up to 5 minutes, or run `runMatrixTurnstile()` manually)
 3. Open the linked document — it contains the raw session text
 4. Replace the document body with the minimum valid JSON (see below)
@@ -749,8 +771,8 @@ If any ledger write failed, the `drip_failures` array in the queue processor log
 | `buildStudioInputRows()` opens the doc, writes `SourceText` into `CuratorInput`/`VectorClassifyInput`, `Status = READY` | Waits |
 | Waits | Polls `CuratorInput`/`VectorClassifyInput` for `Status = READY` (single condition, own tab per flow) |
 | Waits | Reads `@trigger.SourceText` — no Docs connector, no Drive access, needed |
-| Waits | Runs inference · *(optional)* Auditor verifies the Curator's claims, merged into the same JSON as `auditor_sign_off` — never a second object |
+| Waits | Runs inference · *(optional)* Auditor verifies the Curator's claims — its raw output goes in its own column, not merged in Studio |
 | Waits | Adds one row to `STUDIO_RETURN`: `Payload_UID`, `Payload_Type`, `Primary_JSON`, `Auditor_JSON` |
-| `harvestStudioReturns()` checks the groundedness gate, then writes the JSON to the doc body (replaces text entirely) and sets `Status = FLOW_COMPLETE` in STAGING_PIPELINE | Done |
+| `harvestStudioReturns()` checks the groundedness gate, merges `Auditor_JSON` under `auditor_sign_off`, then writes the JSON to the doc body (replaces text entirely) and sets `Status = FLOW_COMPLETE` in STAGING_PIPELINE | Done |
 | `processInferenceQueue()` parses JSON from the doc, checks `auditor_sign_off` | Done |
 | Audit passed (or absent): routes data to all ledgers, sets PROCESSED · Audit failed: archives to AUDIT_LOG, then reverts to PENDING_FLOW (priority retry) or escalates to AUDIT_REJECTED past CFG.MAX_RETRIES | Done |

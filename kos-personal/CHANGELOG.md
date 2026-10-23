@@ -1,5 +1,35 @@
 # KOS Changelog
 
+### Why a session has no Vector State row (2026-10-23)
+
+The primer's Data Quality block said two sessions had no Vector State row,
+and neither `requeueStagingBatch()` nor the classify backfill picked either
+up. Each only sees some of the ways a session can end up without a row:
+the requeue takes STUDIO_TIMEOUT and AUDIT_REJECTED rows in
+STAGING_PIPELINE, and the backfill takes sessions with no classify parts.
+
+- **`explainUnclassifiedSessions()` (`20_VectorClassifySessions.gs`),
+  read-only.** For each session the block counts, it gives the state and
+  the call to run: READY (the backfill), IN_FLIGHT, PART_TIMED_OUT,
+  PART_FAILED (a part ended FAILED_PARSE, INTAKE_ERROR or similar, which
+  the default requeue skips; it prints the `requeueStagingRows()` call with
+  those statuses), AGGREGATION_FAILED, PARTS_DONE_NO_ROW, DUPLICATE_COPY,
+  TEXT_INCOMPLETE and NOT_IN_STAGING. UIDs and counts only.
+- **PARTS_DONE_NO_ROW** is a session whose parts are in STAGING_ARCHIVE
+  with no row: finished, or failed rows the old "Archive finished and
+  failed rows" button moved before 2026-10-22, which no requeue can reach.
+  **`resetUnrebuildableRows({apply: true, uids: ['LOG-…']})`
+  (`21_VectorMatrixRepair.gs`)** now takes such a session by its full UID
+  and classifies it again from its CuratorInput text (before, it only took
+  sessions that had a matrix row).
+- **The block's count (`_primerDataQuality_`, 6)** now comes from
+  `_vcsSessionsWithoutRow_` (20). It no longer counts a copy of content
+  another session has classified or queued (the backfill skips those as
+  DUPLICATE_HASH, so the flag could never clear), or a copy archived as
+  DUPLICATE. The flag line names `explainUnclassifiedSessions()`.
+
+Test: `unclassified-sessions.test.js`.
+
 
 ### The web app stores nothing in the browser (2026-10-22)
 

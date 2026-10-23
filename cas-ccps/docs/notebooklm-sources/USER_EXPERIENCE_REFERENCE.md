@@ -1,6 +1,11 @@
 <!-- Generated from ../USER_EXPERIENCE_REFERENCE.html by tools/cas-ccps/build-guide-notebook-sources.js. Edit the HTML guide, then re-run it. -->
 
-**Current as of 2026-10-10:** students submit for feedback from the Student Dashboard (*Submit for Feedback*), because the district turns Apps Script off for student accounts and the doc's 📊 menu never appears for them. They turn in on Canvas (their document's link), where grades are given; the Turn-In Form is retired, and on 2026-10-10 so were Script 04's turn-in checks (three-point match, approval-stamp check and forensic version-history check): none of them runs, the setup wizard no longer creates the form, and the Drive Advanced Service is no longer needed for them. Each evaluation is added at the end of the student's document. Where this page describes the doc menu, the Turn-In Form or the turn-in gate, that part is out of date. The Student Quick Start and the Teacher Reference Guide are current.
+**Note, 2026-10-23: the Admin, Teacher and Student Experience sections, Document Anatomy and Folder Structure below describe the original Module 1 design.** The Full Pipeline at the end is current. What students and teachers do now:
+
+- **Students** open their document from the Student Dashboard (📚 My Assignments), write under the grey line, press *Submit for Feedback* on the dashboard (the district turns Apps Script off for student accounts, so the doc’s 📊 Feedback menu never appears for them), read the feedback as a comment on the document, answer warm-ups in the dashboard’s text box, and turn in on Canvas with the document’s link. There is no Turn-In Form (retired 2026-10-10) and no one-time authorization. See `STUDENT_QUICK_START.html`.
+- **Teachers** work from the Teacher Dashboard: lesson start dates and lesson drafts in 📅 Lessons, where feedback goes in 💬 Feedback, competency ratings in 🎓 Competency ratings, the ❓ Terms list. They do not upload rubrics or register students one at a time: the nightly lesson rollout (`58_LessonRollout.js`, about 9 p.m.) enrolls students from the Canvas roster and makes and shares each lesson’s documents. Grading is in Canvas. See `TEACHER_REFERENCE_GUIDE.html`.
+- **The student document** now has its who-and-what, the “Your dashboard” link and a “Feedback:” status line in the page header; then the title, the assignment in small text, a “Your response” heading, the grey response line, the writing space and the CONFIG_ID line (`stampDocument_` in `02_Form1_IntakeAndWorkspaceGenerator.js`). With feedback as comments it has no feedback zone.
+- **Admins** deploy with `tools/clasp-sync/run.js` and follow `cas-ccps/DEPLOYMENT_HANDOFF.md`; `ADMIN_DEPLOYMENT_WALKTHROUGH.html` is retired. The morning check is the CAS signal’s LAST NIGHT section and the daily email (`34c_OvernightHealth.js`).
 
 Classroom Agency System · Module 1
 
@@ -12,7 +17,7 @@ The role-by-role walkthroughs and structural reference material for Module 1 —
 
 > **Provenance note:** this content originally lived in `DEPLOYMENT_AND_UX_GUIDE.html` alongside a deployment walkthrough that had drifted out of date and internally self-contradicted on which script is the live setup wizard. That deployment content has been marked superseded in the original file (archived, not deleted); the four sections below were confirmed unique — absent from every other doc in this set — and consistent with the rest of this repo, so they were kept and promoted here. For deployment, see `tools/clasp-sync/run.js` and `cas-ccps/DEPLOYMENT_HANDOFF.md` (`ADMIN_DEPLOYMENT_WALKTHROUGH.html` is retired).
 
-## The Admin Experience
+## The Admin Experience (original Module 1 design)
 
 🔧
 
@@ -32,7 +37,7 @@ Makes a copy of the master Teacher Manual, shares it with the teacher. After the
 
 The ⚙️ Admin Controls menu in the central spreadsheet provides a System Health Check showing pipeline status, stuck rows, error counts, and flagged students in one alert. Twelve recovery operations are available without touching any script.
 
-## The Teacher Experience
+## The Teacher Experience (original Module 1 design)
 
 👩‍🏫
 
@@ -68,7 +73,7 @@ Opens the Teacher Dashboard from the menu. Sees every student's status grouped b
 
 Email notification for every submission that passes all three checks. Contains student name, block, period, class, and a direct document link. Ready to grade — no manual verification needed.
 
-## The Student Experience
+## The Student Experience (original Module 1 design)
 
 🎒
 
@@ -108,7 +113,7 @@ Once the top of the document shows ✅ passing, opens the Turn-In Form (link sha
 
 Bookmarked URL shows all assignments across all teachers, grouped by block and class. Each card shows status, last feedback time, and a direct document link. Submitted assignments show confirmation in green.
 
-## Document Anatomy
+## Document Anatomy (original Module 1 design)
 
 Four zones. Created once by Script 02. Maintained throughout the assignment lifecycle.
 
@@ -128,7 +133,7 @@ Begins at `── YOUR RESPONSE BEGINS HERE ──`. Everything between this lin
 
 Contains `[CONFIG_ID: VDOE-XXXXXX-YYYY]`. Placed below all student work. Scripts 01 and 04 scan for it here. If altered or missing, all validation fails. Students are instructed not to modify this section.
 
-## Folder Structure
+## Folder Structure (original Module 1 design)
 
 Admin Drive
 
@@ -140,63 +145,59 @@ Student Drive (Emma's view)
 
 ## Full Pipeline
 
-Assignment Creation
+As the code runs it on 2026-10-23. The Central Ledger’s frequent jobs run from one every-minute trigger, `runLedgerCycle()`, each at its own cadence.
 
-📤
+Lessons and Assignments
+
+📅
 
 **Teacher**
 
-Uploads rubric + prompt template
+Sets start dates in 📅 Lessons; edits or writes lessons as drafts
 
 📥
 
-**Script 05**
+**Script 65**
 
-Validates, writes to RubricQueue
+Saves the draft to LessonDrafts; an evening import makes it a reviewed change
 
-⚡
+🗂️
 
-**Flow 1**
+**Script 55**
 
-Gemini extracts config → DRAFT row
+LessonSchedule tab: each lesson’s start date
 
-📧
+🌙
 
-**Script 08**
+**Script 58**
 
-Detects DRAFT, emails pre-filled review
+Nightly rollout seeds each lesson in the TeacherMatrix as LIVE
 
-✅
+Students and Documents
 
-**Teacher**
+👥
 
-Confirms → unit goes LIVE
+**Scripts 58 + 52**
 
-Student Registration
-
-📋
-
-**Admin/Teacher**
-
-Submits Form 1
-
-📁
-
-**Script 02**
-
-Creates 5-level folder hierarchy
+Enroll the Canvas roster for lessons starting within 2 days
 
 📄
 
 **Script 02**
 
-Stamps doc, shares to student Drive
+Makes and stamps each student’s document
+
+🔓
+
+**Script 58**
+
+Shares it with the student the night before the lesson
 
 🎒
 
 **Student**
 
-Doc in Shared With Me
+Opens it from the Student Dashboard
 
 Evaluation Cycle
 
@@ -204,13 +205,13 @@ Evaluation Cycle
 
 **Student**
 
-Writes, clicks Run Check
+Writes, presses Submit for Feedback on the dashboard
 
 📥
 
-**Script 01**
+**Script 13**
 
-Roster validation → ReviewQueue
+Checks the account, document and length → ReviewQueue
 
 🌉
 
@@ -222,42 +223,68 @@ Bridges to STAGING_PIPELINE
 
 **Script 06**
 
-Turnstile → IN_PROCESS
+One row per teacher lane → IN_PROCESS
+
+🧾
+
+**Script 37**
+
+Writes a resolved FlowInput row (READY)
 
 ⚡
 
 **Flow 2**
 
-Gemini evaluates → writes feedback
+Gemini evaluates → GeminiFullOutput, EVALUATED
 
-📊
+📝
+
+**Script 37**
+
+Checks it; posts the comment; Ledger result, EvaluationLog
+
+💬
 
 **Student**
 
-Feedback at top of doc
+Feedback as a comment on the doc
 
-Final Submission
+Warm-ups
+
+🌙
+
+**Script 24**
+
+3:30 a.m.: builds the WarmUpQueue
+
+⚡
+
+**Flows 5 + 3**
+
+Bridge and warm-up text, through Flow5Input / Flow3Input (Script 41)
+
+✍️
+
+**Student**
+
+Answers in the dashboard’s text box
+
+⚡
+
+**Flow 4**
+
+Scores it overnight, through Flow4Input (Script 41)
+
+Turning In
 
 📬
 
 **Student**
 
-Submits Form 2
-
-🔍
-
-**Script 04**
-
-3-point + stamp + forensic checks
+Submits the document’s link in Canvas
 
 ✅
 
-**Ledger**
-
-Row → COMPLIANT
-
-📧
-
 **Teacher**
 
-Verified submission notification
+Grades in Canvas (no CAS step; the Turn-In Form is retired)

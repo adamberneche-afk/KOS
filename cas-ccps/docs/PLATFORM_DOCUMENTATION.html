@@ -157,7 +157,15 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
 </style>
 </head>
 <body>
-<div style="background:#fef7e0;border:1px solid #f9d77e;color:#3c4043;padding:12px 16px;margin:12px;border-radius:8px;font:14px/1.5 Arial,sans-serif" role="note"><strong>Current as of 2026-10-10:</strong> students submit for feedback from the Student Dashboard (<em>Submit for Feedback</em>), because the district turns Apps Script off for student accounts and the doc's 📊 menu never appears for them. They turn in on Canvas (their document's link), where grades are given; the Turn-In Form is retired, and on 2026-10-10 so were Script 04's turn-in checks (three-point match, approval-stamp check and forensic version-history check): none of them runs, the setup wizard no longer creates the form, and the Drive Advanced Service is no longer needed for them. Each evaluation is added at the end of the student's document. Where this page describes the doc menu, that part is out of date. The Student Quick Start and the Teacher Reference Guide are current.</div>
+<div style="background:#fef7e0;border:1px solid #f9d77e;color:#3c4043;padding:12px 16px;margin:12px;border-radius:8px;font:14px/1.5 Arial,sans-serif" role="note"><strong>Note, 2026-10-23: this page is the original platform plan.</strong> Its module statuses, script counts and build plan are as first written. What is current:
+<ul style="margin:6px 0 0 18px">
+<li><strong>Live.</strong> Modules 1 and 2 (Lightweight and Full, warm-ups included) run in the school&rsquo;s account, with all five Studio Flows. Module 3&rsquo;s student profile is built as Scripts 23 and 29 (StudentProfiles, the Student Context view). 9 Apps Script projects, about 70 script files: <code>tools/gas-lint/project-map.json</code> lists them.</li>
+<li><strong>Students</strong> submit from the Student Dashboard (<em>Submit for Feedback</em>; the district turns Apps Script off for student accounts, so the doc&rsquo;s 📊 Feedback menu never appears for them) and turn in on Canvas, where grades are given. The Turn-In Form and Script 04&rsquo;s turn-in checks are retired (2026-10-10). Feedback arrives as a comment on the doc (<code>FEEDBACK_AS_COMMENT</code>). Warm-ups are answered in a text box on the Student Dashboard (<code>WARMUP_TEXT_BOX</code>).</li>
+<li><strong>Flows.</strong> Studio makes only the model call. Apps Script writes a resolved input row and harvests the output: Flow 2 through <code>FlowInput</code> (<code>37_FlowInputBuilder.js</code>), Flows 3, 4 and 5 through <code>Flow3Input</code> / <code>Flow4Input</code> / <code>Flow5Input</code> and <code>WarmUpFlowReturn</code> (<code>41_WarmUpFlowBridge.js</code>). Studio never writes a student doc.</li>
+<li><strong>Triggers.</strong> The Central Ledger&rsquo;s frequent jobs run from one every-minute trigger, <code>runLedgerCycle()</code> (<code>64_LedgerCycle.js</code>); the warm-up queue is built nightly (<code>buildWarmUpQueues()</code>, Script 24).</li>
+<li><strong>Teachers</strong> set lesson start dates and edit or write lessons in the Teacher Dashboard&rsquo;s 📅 Lessons panel; the nightly lesson rollout (Script 58) does the rest.</li>
+</ul>
+For how the system works now, read <code>SYSTEM_ARCHITECTURE.html</code>&rsquo;s note, the Teacher Reference Guide and the Student Quick Start.</div>
 
 
 <!-- NAV -->
@@ -184,21 +192,21 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
       <div class="dot dot-amber"></div>
       <div>
         <div class="mod-name">Module 1 — Evaluation Engine</div>
-        <div class="mod-status">PRODUCTION READY · Pilot deployment</div>
+        <div class="mod-status">LIVE · in use with real students</div>
       </div>
     </div>
     <div class="hero-module">
       <div class="dot dot-teal"></div>
       <div>
         <div class="mod-name">Module 2 — Lesson Intelligence</div>
-        <div class="mod-status">Lightweight: PRODUCTION READY · Full: IN HAND, one script (27) pending</div>
+        <div class="mod-status">LIVE · Lightweight and Full, warm-ups included</div>
       </div>
     </div>
     <div class="hero-module">
       <div class="dot dot-violet"></div>
       <div>
         <div class="mod-name">Module 3 — Student Profile</div>
-        <div class="mod-status">DESIGNED · Depends on M1 + M2</div>
+        <div class="mod-status">PARTLY BUILT · StudentProfiles and Student Context (Scripts 23, 29)</div>
       </div>
     </div>
   </div>

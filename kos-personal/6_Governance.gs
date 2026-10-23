@@ -54,8 +54,9 @@
 // ─────────────────────────────────────────────────────────────
 //  triggerSevenBridgesReview()  Assembles ONE shared stimulus document
 //                        and hands it to the operator to paste into
-//                        each of CFG.PERSONAS' separate Gemini Gem
-//                        conversations — real sequestration comes from
+//                        each of CFG.PERSONAS' separate conversations
+//                        (the Claude Project since 2026-10-06; Gemini
+//                        Gems before) — real sequestration comes from
 //                        that product boundary, not from anything built
 //                        here. See the function's own header on why no
 //                        code in this repo can enforce it.
@@ -507,7 +508,8 @@ function sweepRootForExhaust() {
  *
  * ENFORCEMENT LIMIT — read this before trusting the guarantee.
  * Sequestration is NOT enforced by any code in this repository, and
- * cannot be: the actual inference happens in Gemini Gem conversations
+ * cannot be: the actual inference happens in separate conversations
+ * (Claude Project ones since 2026-10-06; Gemini Gems before) that
  * the operator drives by hand, entirely outside this codebase. Nothing
  * here can verify that a verdict was produced in isolation. What KOS
  * guarantees is narrower and worth stating plainly — it will only ever
@@ -584,7 +586,7 @@ function triggerSevenBridgesReview() {
     body.appendParagraph(
       'BRIDGE_FIDELITY_001: A verdict produced with knowledge of another ' +
       "cog's verdict is VOID. Send this exact document to EACH cog " +
-      'independently — a fresh, separate Gemini Gem conversation per cog, ' +
+      'independently — a fresh, separate conversation per cog, ' +
       'with no shared context between them. Do not paste more than one ' +
       "cog's response into the same conversation, and do not summarize " +
       'one verdict into another cog\'s prompt.'
@@ -1084,27 +1086,12 @@ function _primerDataQuality_(vectorState) {
   dupGroups.forEach(g => g.drop.forEach(u => { dropped[u] = true; }));
 
   // Processed sessions (SESSION_LOG Curator rows, one per chunk) that have
-  // no VECTOR_MATRIX row. A copy already marked DUPLICATE is not counted.
-  const staging = ss.getSheetByName(CFG.STAGING_SHEET);
-  const resolvedDup = {};
-  if (staging && staging.getLastRow() > 1) {
-    const SC = CFG.STAGING_COLS;
-    staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues().forEach(r => {
-      if (String(r[SC.STATUS]).trim() !== 'DUPLICATE') return;
-      resolvedDup[String(r[SC.PAYLOAD_UID]).trim().replace(/_(?:CH\d+|VC\d+of\d+)$/, '')] = true;
-    });
-  }
-  const unclassified = {};
-  const log = ss.getSheetByName(CFG.SESSION_LOG_SHEET);
-  if (log && log.getLastRow() > 1) {
-    log.getRange(2, 1, log.getLastRow() - 1, 6).getValues().forEach(r => {
-      if (_isIntakeSessionLogRow_(r)) return;
-      const stem = String(r[0]).trim().replace(/_CH\d+$/, '');
-      if (!/^LOG-/.test(stem) || inMatrix[stem] || dropped[stem] || resolvedDup[stem]) return;
-      unclassified[stem] = true;
-    });
-  }
-  const unclassifiedCount = Object.keys(unclassified).length;
+  // no VECTOR_MATRIX row. A copy already marked DUPLICATE, or a copy of
+  // content another session has classified, is not counted
+  // (_vcsSessionsWithoutRow_, 20; explainUnclassifiedSessions() says why
+  // each counted one has no row).
+  const unclassifiedCount = _vcsSessionsWithoutRow_(ss, inMatrix, dropped)
+    .filter(s => !s.twinOf).length;
 
   const day = iso => iso ? String(iso).slice(0, 10) : '';
   const rederiveAt  = props.getProperty(CFG.PROP.VM_LAST_REDERIVE_AT);
@@ -1120,7 +1107,8 @@ function _primerDataQuality_(vectorState) {
     flags.push('VECTOR_MATRIX has not been rebuilt since the carried-forward-value fix, so older rows may hold another session\'s scores');
   }
   if (unclassifiedCount) {
-    flags.push(unclassifiedCount + ' processed session(s) have no Vector State row yet');
+    flags.push(unclassifiedCount + ' processed session(s) have no Vector State row yet ' +
+      '(explainUnclassifiedSessions() says why, and what to run)');
   }
   let rebuildPending = 0;
   try { rebuildPending = JSON.parse(props.getProperty(CFG.PROP.VM_REDERIVE_DONE) || '[]').length; } catch (_) {}
