@@ -1,95 +1,202 @@
-# Your Assignment — Quick Start
+<!-- Generated from ../STUDENT_QUICK_START.html by tools/cas-ccps/build-guide-notebook-sources.js. Edit the HTML guide, then re-run it. -->
 
-Everything you need to know about writing your response, getting feedback, and submitting your final work.
+# Your Assignment, *Step by Step*
 
-📄 Find your document · ✍️ Write your response · 📊 Get AI feedback · ✅ Submit when ready
+Notebook source: STUDENT_QUICK_START.
 
-## 1. Finding Your Assignment Document
+Write in your document. Press Submit for Feedback. Read the comment. Turn it in on Canvas. Here's how each step works.
 
-Your teacher has created a personal document for you in Google Drive. It's already shared with your Google account — you don't need to create anything.
+📄 Open your document ✍️ Write under the grey line 📊 Submit for Feedback 💬 Read the comment ✅ Turn it in on Canvas
 
-1. **Open Google Drive** — Go to drive.google.com and make sure you're signed into the correct Google account — the one your teacher used when they registered you.
-2. **Look in "Shared with me"** — Click "Shared with me" in the left sidebar. Your assignment document will be there, named after the assignment and your name.
-3. **Open it and bookmark it** — Open the document. Bookmark this page in your browser — you'll return to it every time you work on this assignment.
+## Open Your Document
 
-> ⚠️ **Use your original document.** Don't copy it or create a new one. The system tracks your specific document — any other version won't work for submission.
+Every lesson has its own Google Doc, made just for you. You don't make it. It shows up the night before the lesson.
 
-## 2. Understanding Your Document
+1. **Sign in with your school Google account**: Your document and your dashboard only work with your school account.
+2. **Open it from your dashboard**: On your dashboard, find the assignment and press **Open My Document ↗**. The Canvas assignment also has a link to your dashboard.
+3. **Or find it in Google Drive**: Go to drive.google.com and click **Shared with me**. The document's name starts with the lesson's name and ends with your name.
 
-Your document has four distinct zones. Each one has a specific purpose.
+> ⚠️ **Use that document. Don't make a copy.** The system only reads the one made for you.
 
-| Zone | Purpose | Access |
-|---|---|---|
-| 📊 Feedback Zone | Says "No feedback yet" until your first check, and has the link to your assignment dashboard. Each evaluation is added at the end of your document, newest last. | System writes here |
-| 📋 Assignment Prompt | Your teacher's instructions. Read this carefully before you start writing. | Read only |
-| ✍️ Your Response | Everything below "── YOUR RESPONSE BEGINS HERE ──" is where you write. | You write here |
-| Footer / Tracking | Contains your assignment tracking code. | Do not edit |
+## What's in Your Document
 
-> 🚫 **One rule:** Only write in the response zone. Don't edit the feedback zone, the prompt, or the footer. The system uses those sections to track and verify your work.
+Write in one place: under the grey line. Here's everything on the page, top to bottom.
 
-## 3. Getting Your Feedback
+- **Page header (small grey text)** (System writes here): Your name, class, teacher, block, period and the lesson. A **Your dashboard** link. A **Feedback:** line that says where your work stands.
 
-When you're ready to get feedback on your work, the assignment has a built-in evaluation tool. You can use it as many times as you need — there's no penalty for running multiple checks.
+- **📋 The lesson title and the assignment** (Read this): What to do, in small print. **↓ Go to your response** jumps down to where you write.
 
-1. **Write your response** — Write your work below the "── YOUR RESPONSE BEGINS HERE ──" line. Aim for at least 25 words — shorter responses don't give the system enough to evaluate meaningfully.
-2. **Submit it from your dashboard** — Open your assignment dashboard (the link is in your document, under "Your assignment dashboard") and click **Submit for Feedback** on the assignment. The dashboard tells you right there whether it went through, or what's missing. If your document also shows a **📊 AI Evaluation Panel** menu, **Run Assignment Check** there does the same thing.
-3. **Wait 1–3 minutes** — Keep the document open. Your feedback will appear at the end of the document, usually within a few minutes. Refresh the page if you don't see it.
-4. **Read your feedback** — Scroll to the end of the document. Your newest evaluation is the last one there, with what to do next: revise and submit again, or, once it passes, turn it in on Canvas if you're done.
+- **“Your response” heading** (Read this): Under it: “Write your answer under the grey line below.” and **↑ Back to the assignment**.
 
-> 💡 **Check your status anytime.** Your dashboard shows where each assignment stands without waiting for feedback to arrive.
+- **✍️ ── YOUR RESPONSE BEGINS HERE ──** (You write here): The grey line. Write under it, in the bigger text.
 
-## 4. Reading Your Evaluation
+- **[CONFIG_ID: …] Do not delete this line.** (Do not edit): A small grey line at the bottom. It tells the system which assignment this is.
 
-Every evaluation report ends with one of two results.
+> 🚫 **Keep your writing between the grey line and the “Do not delete this line” line.** Anything above the grey line or below the bottom line isn't checked. Don't change the assignment, the grey line or the bottom line.
 
-**Example — passing result:**
+> 💡 **Your feedback isn't in the document text.** It's a comment on the document. Click **Comments** (top right) to see it.
 
-- **Overall Assessment:** "Your response demonstrates a solid understanding of the core concepts. Your argument in the second paragraph is particularly well-reasoned. The connection to real-world examples strengthens your analysis."
-- **Milestone Breakdown:** ✓ Milestone 1 — Clear thesis statement present · ✓ Milestone 2 — Evidence cited and explained · ⚠ Milestone 3 — Counterargument not addressed · ✓ Milestone 4 — Conclusion ties back to thesis
-- **Result:** ✅ YOUR WORK MEETS THE STANDARD — if you're done, turn it in on Canvas. Or keep revising and click Submit for Feedback on your dashboard again.
+## Get Feedback
 
-**Example — revision required:**
+Submit as many times as you like. Revising is the point, and there's no penalty.
 
-- **Required Revisions:** 1. Address the counterargument in paragraph 3. 2. Add at least one specific piece of evidence for your second claim. 3. Expand your conclusion — currently only one sentence.
-- **Result:** ✏️ REVISIONS REQUIRED — make the changes listed above, then click Submit for Feedback on your dashboard again.
+1. **Write at least 25 words**: Write under the grey line. With fewer than 25 words, the dashboard says “Not enough to evaluate yet” and tells you how many words it found.
+2. **Press Submit for Feedback on your dashboard**: Open your dashboard (the **Your dashboard** link at the top of your document). Find the assignment and press **Submit for Feedback**. You'll see: “✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right).”
+3. **Wait a few minutes**: Press **↻ Refresh** on your dashboard. The card says **Waiting for feedback…**, then **Being checked now…**.
+4. **Open your document and click Comments**: Your feedback is a comment. Each time you submit, you get a new one. The newest is the one to read.
 
-> ✅ **Revisions are normal.** Most students revise 2–3 times before passing. Each round of feedback shows you specifically what to improve — it's not a grade, it's a coach.
+## What your card says
 
-## 5. Turning In Your Work on Canvas
+Each assignment has a card on your dashboard. The coloured label tells you what to do next.
 
-You turn in on Canvas, where your teacher grades it. Getting a passing check first is a good idea, but it isn't required, and you can keep getting feedback for as long as you're working on it.
+- **Not started yet**: You haven't submitted this one. Write, then press Submit for Feedback.
 
-1. **Copy your document's link** — With your assignment document open, copy the address from your browser's address bar.
-2. **Open the Canvas assignment** — Find the same assignment in Canvas and choose **Start Assignment** → **Website URL**.
-3. **Paste the link and submit** — Paste your document's link and click **Submit Assignment**.
+- **Waiting for feedback…**: Your work is in line to be checked. Nothing to do yet. Check back in a few minutes.
 
-> 💡 **Your teacher sees your latest result.** When your teacher opens your document from Canvas, the newest evaluation at the end of it shows where your work stands.
+- **Being checked now…**: Your work is being read right now.
 
-## 6. Common Questions
+- **Passed ✓ — feedback is ready: open your document and click Comments**: Your work meets the standard. Turn it in on Canvas, or keep improving it and submit again.
 
-**I don't see the "📊 AI Evaluation Panel" menu in my document.**
-That's expected: the menu doesn't run for student accounts. Use your assignment dashboard instead (the link is near the top of your document) and click **Submit for Feedback**. If your dashboard doesn't list the assignment, make sure you're signed into your school Google account, then ask your teacher.
+- **Feedback ready — revise, then submit again: open your document and click Comments**: Read the feedback, change your work, then press Submit for Feedback again.
 
-**I submitted for feedback but nothing appeared after 5 minutes.**
-First, refresh the page — feedback sometimes appears without the page updating automatically. If it's still not there, check your dashboard to see if your submission is queued. If it says "Evaluating now…", give it another minute. If there's still no feedback 10 minutes after you submitted, let your teacher know.
+- **Couldn't be checked ⚠ — tell your teacher**: Something went wrong on our side, not with your work. Your work is safe. Tell your teacher. The card has a link to email them.
 
-**My dashboard says "Not enough to evaluate yet" when I click Submit for Feedback.**
-Your response needs to be at least 25 words before the system can give you meaningful feedback. Check how many words you've written — if it's close, try adding a few more sentences to fully express your ideas.
+The card also shows **Last submitted** (when you last pressed Submit for Feedback) and **Last checked** (when you last got feedback), or “Not checked yet”.
 
-**My dashboard says my response "has text copied from a feedback block."**
-Your response contains a line that belongs to a feedback block, such as one starting with [SYSTEM: or [SUGGESTED_SCORE. The dashboard shows which text it found. Delete that line from your response (the part above the [CONFIG_ID: line) and click Submit for Feedback again. Your own writing is fine; the system only refuses text that looks like its own.
+> ⏱️ **Most checks take a few minutes.** If a check takes longer than 12 minutes, the system stops it and your card says “Couldn't be checked ⚠”. Tell your teacher. You don't need to submit again unless they ask you to.
 
-**Do I have to pass before I turn it in on Canvas?**
-No. A passing check first is recommended, because it means your work meets the standard, but you can turn it in on Canvas whenever you're done. Your teacher sees your latest result in your document.
+## Read Your Feedback
 
-**Can I run more than one evaluation? Will it hurt my grade?**
-Yes — run as many evaluations as you need. There is no penalty for revising multiple times. The system is designed for iteration: write, get feedback, improve, repeat. Your teacher sees your final submitted work, not how many checks you ran.
+Open your document and click **Comments** (top right). Each comment starts with the date and a result line. Here's the shape of one. Your own will talk about your work.
 
-**I accidentally deleted part of my document — the footer or the zones.**
-Don't try to fix it yourself. Contact your teacher immediately and let them know what happened. They can restore the document or set up a new one for you. The document's version history (File → Version history) may also let you undo the change.
+> **Example comment: passed**
+>
+> Feedback, 2026-10-22 10:41
+>
+> ✅ RESULT: YOUR WORK MEETS THE STANDARD
+>
+> **Overall assessment**
+>
+> A few sentences on what your work does well and what would make it stronger.
+>
+> **Milestone breakdown**
+>
+> Each milestone (a part of the task) marked MET, PARTIALLY MET or NOT MET, with a reason.
+>
+> **What to do next**
+>
+> Done with it? Turn it in on Canvas. Want to make it stronger? Keep revising, then press Submit for Feedback again.
 
-**I submitted and then made more changes. Do I need to resubmit?**
-Once you submit and your submission is accepted, your work is recorded. Minor edits after submission don't change your submission record. If you made significant changes you want your teacher to see, contact them directly.
+If your work needs more, the result line is different, and there's a list of what to fix:
 
----
-*Assignment System — Student Guide. Contact your teacher if you need help with anything not covered here.*
+> **Example comment: revise**
+>
+> ✏️ RESULT: REVISIONS REQUIRED
+>
+> **Required revisions**
+>
+> A numbered list of the changes to make.
+>
+> **What to do next**
+>
+> Make the changes under the grey line, then press Submit for Feedback on your dashboard again. Repeat until you see ✅.
+
+> ✅ **Revising is normal.** Feedback is a coach, not a grade. Your teacher grades your work in Canvas.
+
+> 💬 **Resolving a comment doesn't delete it.** If you click Resolve, the comment is still in the document's comment history, and your teacher can still see it.
+
+## Warm-ups
+
+A warm-up is a short question at the start of class. You answer it on your dashboard, in the **Warm-ups** card at the top.
+
+1. **Type your answer and press Save answer**: Find **Today's warm-up**. Type in the box, then press **Save answer**. You can change it until the end of the day: the button then says **Update answer**.
+2. **Read your score and feedback**: Warm-ups are checked overnight. Next time, **Last warm-up** shows your score out of 10 (Length, Grammar and Engagement) and your feedback. Length is about word count: 30 words or more gets the full length points.
+3. **Earn extra credit**: Under the feedback, reply to it in **at least 10 words** by the date shown, and press **Save reply**. Replies are checked overnight. Once it counts, you'll see “✓ Extra credit earned” and “+1 extra credit”. Don't leave it to the last day.
+
+> 📄 **Some classes use a warm-up document instead.** If the card shows **Open warm-up ↗**, answer in that document, and reply under the feedback there for extra credit.
+
+## Turn It In on Canvas
+
+You turn in on Canvas. That's where your teacher grades it. Passing a check first is a good idea, but it isn't required.
+
+1. **Copy your document's link**: With your document open, copy the address from the browser's address bar.
+2. **Open the same assignment in Canvas**: Choose **Start Assignment** → **Website URL**.
+3. **Paste the link and submit**: Paste the link and press **Submit Assignment**.
+
+> 💡 **Your teacher opens your document from Canvas.** They see it as it is when they open it, with your feedback comments.
+
+## Your Dashboard
+
+Your dashboard is called **📚 My Assignments**. Open it from the **Your dashboard** link at the top of any of your documents.
+
+1. **The year menu**: It starts on **Whole school year**. Pick a marking period to see just that part of the year.
+2. **ℹ️ My Info**: What the system has on file for you: your name, class, period and teacher. If something is wrong, press **✉ Request a correction** or tell your teacher.
+3. **❓ What do these mean?**: Opens a list of the words on the page and what they mean. Press Escape or Close to shut it.
+4. **↻ Refresh**: The page doesn't update by itself. Press Refresh to see the latest.
+
+## Common Questions
+
+### I pressed Submit for Feedback. Where's my feedback?
+
+Press ↻ Refresh on your dashboard. If the card says “Waiting for feedback…” or “Being checked now…”, it's on its way: give it a few minutes. When it's ready, open your document and click **Comments** (top right). If the card says “Couldn't be checked ⚠”, tell your teacher.
+
+### It says “Not enough to evaluate yet.”
+
+You need at least 25 words under the grey line. The message says how many words it found. If it found none, check that you wrote under the “── YOUR RESPONSE BEGINS HERE ──” line and above the “Do not delete this line” line.
+
+### It says “This is already waiting for feedback.”
+
+You already submitted, and it's in line. You don't need to press it again. Check back in a few minutes.
+
+### It says my response “has text copied from a feedback block.”
+
+Your writing has a line the system uses itself, like one starting with `[SYSTEM:`. The message shows which. Delete that line and submit again. Your own words are fine.
+
+### Do I have to pass before I turn it in on Canvas?
+
+No. Passing first is a good idea, because it means your work meets the standard. But you can turn it in on Canvas whenever you're done.
+
+### Can I submit more than once? Will it hurt my grade?
+
+Submit as often as you need. There's no penalty. Write, get feedback, improve, repeat.
+
+### I changed my work after I turned it in on Canvas. What now?
+
+Canvas has your document's link, not a copy. Your teacher sees the document as it is when they open it. You can still press Submit for Feedback to get your changes checked. If you're not sure, ask your teacher.
+
+### My assignment isn't on my dashboard.
+
+Check that you're signed into your school Google account. A lesson's document shows up the night before the lesson. Check the year menu says “Whole school year”. If it's still missing, tell your teacher.
+
+### I don’t see a “📊 Feedback” menu in my document.
+
+That's normal. That menu doesn't work for student accounts. Use **Submit for Feedback** on your dashboard instead.
+
+### I deleted part of my document by accident.
+
+Try **File → Version history → See version history** and restore an earlier version. If you deleted the grey line or the bottom “Do not delete this line” line and can't get it back, tell your teacher.
+
+### Something in My Info is wrong.
+
+Open **ℹ️ My Info** and press **✉ Request a correction**, or tell your teacher.
+
+## Words You'll See
+
+The same list as **❓ What do these mean?** on your dashboard.
+
+- **Submit for Feedback**: Sends what you wrote under “Your response” to be checked. Press it when you’re ready; you can submit again after you revise.
+- **Waiting for feedback**: Your work is in line to be checked. Nothing to do yet; check back in a few minutes.
+- **Being checked now**: Your work is being read right now.
+- **Passed ✓**: Your work meets the standard for this assignment. You can still improve it and submit again.
+- **Feedback ready — revise**: Read the feedback, change your work, then press Submit for Feedback again.
+- **Couldn’t be checked**: Something went wrong on our side, not with your work. Tell your teacher.
+- **Comments**: Your feedback appears as a comment on your document. Open the document and click the Comments button (top right). Resolving a comment doesn’t delete it.
+- **Last submitted**: When you last pressed Submit for Feedback on this assignment.
+- **Last checked**: When your work was last checked and given feedback.
+- **Warm-up**: A short question at the start of class. Type your answer here and save it before the end of the day.
+- **Extra credit**: After a warm-up is checked, reply to its feedback in at least 10 words by the date shown for an extra point.
+- **Marking period**: Part of the school year. Use the menu at the top to see one marking period or the whole year.
+- **Block and period**: When your class meets. 3-Odd and 3-Even are the two halves of period 3 that meet on alternate days.
+- **My Info**: What the system has on file for you: your name, class, period and teacher. Tell your teacher if something is wrong.
+
+Assignment System — Student Guide · Ask your teacher if you need help with anything not covered here.

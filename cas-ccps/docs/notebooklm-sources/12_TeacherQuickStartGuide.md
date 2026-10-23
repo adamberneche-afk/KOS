@@ -1,81 +1,94 @@
-# Teacher Quick-Start Guide
+<!-- Generated from ../12_TeacherQuickStartGuide.html by tools/cas-ccps/build-guide-notebook-sources.js. Edit the HTML guide, then re-run it. -->
 
-Your workspace has been created by the Admin Manual wizard. This guide covers the two activation steps and how to create your first assignment.
+# Your first week with *the dashboard.*
 
-**Time:** Activation — 3 minutes · First assignment — 15 minutes · First student — 2 minutes
+Notebook source: 12_TeacherQuickStartGuide.
 
-## 1. Activate Your Workspace
+Lessons, student documents and enrollment run by themselves each night. This guide shows what to check, what students do, and where to act.
 
-Your workspace needs to be activated before you can use it. This takes about 3 minutes and only needs to be done once — ever.
+📅 Check lesson dates — 5 minutes 📊 Morning check — 2 minutes 🎓 Competency ratings — weekly
 
-Scroll to the **⚡ Two Quick Activation Steps** section at the end of your Teacher Manual document. You'll find two links there.
+## Open Your Dashboard
 
-### Activation Step 1 — Connect your Rubric Upload Form (~90 seconds)
+Bookmark the Teacher Dashboard link your admin gave you. You can also open it from your Teacher Manual: `⚙️ Assignment System → 📊 Open My Dashboard`.
 
-1. Open the link labelled **"Activation Step 1"** from your Teacher Manual's setup summary page.
-2. When the spreadsheet opens, a Google permission dialog will appear. Click **Allow**.
-3. A confirmation message will appear: *"✅ Rubric Form Activated — Your Assignment Rubric Upload Form is now fully connected and ready to use."*
-4. Close that tab and return here.
+It opens on **📊 Assignment Dashboard**, showing the current lesson for each course. The page doesn't update by itself: press **↻ Refresh** to see the latest.
 
-### Activation Step 2 — Connect your Assignment Review system (~90 seconds)
+> ❓ **Not sure what a word means?** Press **❓ Terms** in the header. The same list is at the end of this guide.
 
-1. Open the link labelled **"Activation Step 2"** from your Teacher Manual's setup summary page.
-2. The same permission dialog will appear. Click **Allow**.
-3. Confirmation: *"✅ Review System Activated — Your Assignment Review system is now connected and running."*
-4. Close that tab.
+> 💡 **Setting up a new teacher's workspace is your admin's job.** You don't need to activate anything to use the dashboard.
 
-> ✅ **Done.** You never need to open those spreadsheets again. Everything runs automatically from here.
+## Check Your Lesson Dates
 
-> 💡 **Can't find the activation links?** Open your Teacher Manual Google Doc and scroll to the end — they're on the "Your Teacher Setup Details" page. If the page isn't there, contact your admin.
+Students get a lesson's document only when that lesson has a start date. Set the dates, and the rest happens overnight.
 
-## 2. Create Your First Assignment
+1. **Open 📅 Lessons**: Each course has a table: Lesson, Status (Current, Upcoming, Taught or No date), Starts, and Last rollout.
+2. **Set or change a start date**: Pick a date in the Starts column. It saves when you change it. A lesson runs from its start date until the next one starts.
+3. **Let the nightly rollout do the rest**: Each night, the rollout enrolls students from the Canvas roster, makes each student's document for lessons starting within 2 days, and shares it with the student the night before the lesson. You don't register students one at a time.
 
-Before registering students, you need at least one assignment. Creating one generates a **Config ID** you'll use for every student registration.
+> ⚠️ **Read the Last rollout column.** A ⚠ line there means a step failed, for example an old Canvas roster export. Tell your admin. A course marked “rollout in shadow (changes nothing)” is only practising: it makes no documents yet.
 
-1. **Write your prompt template in a Google Doc** — Create a Google Doc with the student-facing assignment instructions. Set sharing to "Anyone with the link can view."
-2. **Open the Rubric Upload Form** — In your Teacher Manual: `⚙️ Assignment System → Create New Assignment`. Fill in your details, paste your rubric, paste the prompt template link, select the tier.
-3. **Wait for the review email (1–5 minutes)** — The system extracts your criteria using AI and emails you a review link. If nothing arrives after 10 minutes, ask your admin to check the system.
-4. **Review and confirm** — Click the pre-filled link in the email. Review the extracted assignment name, AI coach persona, four milestones, and passing standard. Edit anything wrong. Submit.
-5. **Record your Config ID** — Your activation email contains a Config ID: `VDOE-XXXXXX-YYYY`. You'll paste this into the student registration form for every student in this assignment.
+Need to change what a lesson says, or add one? Use **Edit** or **+ New lesson** in 📅 Lessons. That makes a draft, which is reviewed before students see it. See the Teacher Reference Guide.
 
-## 3. Register Your First Student
+## What Students Do
 
-1. **Open the Student Registration Form** — `⚙️ Assignment System → Register a Student`
-2. **Fill in the student's details** — Student Google account email (must be exact), name, block, class name, subject, course name, period, your details, and the Config ID.
+1. **Write in their document**: Under the grey “── YOUR RESPONSE BEGINS HERE ──” line. The page header has a “Your dashboard” link.
+2. **Press Submit for Feedback on the Student Dashboard**: At least 25 words. The check takes a few minutes.
+3. **Read the feedback comment**: Feedback is a comment on the document (Comments, top right), not text in it. You choose this per course in 💬 Feedback.
+4. **Turn in on Canvas**: They paste the document's link: Start Assignment → Website URL. Passing a check first is a good idea, not a rule. You grade in Canvas.
 
-   > ⚠️ **The Google account email must be exact.** A typo means the student can't use the evaluation system.
-3. **Tell the student their document is ready** — Within 1–2 minutes it appears in their Google Drive under "Shared with me." The link to their assignment dashboard, where they click Submit for Feedback, is near the top of the document. They turn in on Canvas.
+> 📄 Hand students the **Student Quick Start** (STUDENT_QUICK_START.html). It uses the same words as their dashboard.
 
-> 💡 **Registering a whole class?** Submit once per student. Register in groups of 20–30. Check your dashboard after each batch.
+## Your Morning Check
 
-## 4. Quick Reference
+1. **Look at the summary cards**: Students, ✅ Passed, ↩️ Passed before, now revising, ✏️ Checked, not passing yet, ⚪ Not checked yet, and Needs attention. Click a card to show only those students. Click **Clear filter** to go back.
+2. **Deal with Needs attention first**: These rows say **Couldn't be checked ⚠**: the check failed or timed out. It isn't the student's fault. You also get an email for a timed-out check, and it says what to do.
+3. **Open a student's work**: Press **Open document ↗** on their row. Their feedback is in the document's comments.
 
-| What you want to do | How |
-|---|---|
-| Create a new assignment | `⚙️ Assignment System → Create New Assignment` |
-| Register a student | `⚙️ Assignment System → Register a Student` |
-| Open your dashboard | `⚙️ Assignment System → Open My Dashboard` |
-| See who has passed a check | Dashboard: it opens on the current lesson, with ⚪ not checked / ✏️ not passing yet / ✅ passed counts |
-| View a student's document | Dashboard → "Open document ↗" next to any student |
-| Grade a turn-in | In Canvas (SpeedGrader); students submit their document's link there |
-| Review SCR suggestions | Dashboard → SCR review: confirm or override each one |
+## Quick Reference
 
-## 5. Setup Checklist
+| What you want to do | Where |
+| --- | --- |
+| See who has passed | The summary cards and each row's badge. The dashboard opens on the current lesson; the “Showing” menu picks another lesson or All assignments |
+| Set when a lesson starts | 📅 Lessons → Starts |
+| Change or add a lesson | 📅 Lessons → Edit, or + New lesson. A draft is reviewed before it goes live |
+| Add students | Nothing to do: the nightly rollout enrolls them from Canvas |
+| Choose where feedback goes | 💬 Feedback: a comment on the document, or written into it, per course |
+| Rate competencies | 🎓 Competency ratings: confirm the suggestion, or enter 1–5 (1 is the highest) |
+| See each student's history | Student Context: one document per student, updated weekly |
+| Grade | Canvas (SpeedGrader). Students submit their document's link there |
+| Send parent reports | ✉ Parent Reports is not in use yet. Reports stay off until the school decides to start them |
+| See another part of the year | The menu that says “Whole school year”: pick a marking period |
 
-- [ ] Ran the setup wizard in Teacher Manual
-- [ ] Opened Activation Step 1 link and clicked Allow
-- [ ] Saw "✅ Rubric Form Activated" confirmation
-- [ ] Opened Activation Step 2 link and clicked Allow
-- [ ] Saw "✅ Review System Activated" confirmation
-- [ ] Created a prompt template Google Doc (sharing: Anyone with link)
-- [ ] Submitted rubric via Rubric Upload Form
-- [ ] Received review email and confirmed the extracted criteria
-- [ ] Recorded the Config ID from the activation email
-- [ ] Registered at least one test student
-- [ ] Confirmed student document appeared in their Drive
-- [ ] Opened Teacher Dashboard — student appears
+## First-Week Checklist
 
-> 🎉 **All checked off?** You're fully set up. For deeper reference on day-to-day use, see the Teacher Reference Guide.
+- Bookmarked the Teacher Dashboard
+- Opened 📅 Lessons and checked every lesson this week has a start date
+- Checked the Last rollout column has no ⚠ lines
+- Checked 💬 Feedback shows the setting you want for each course
+- Gave students the Student Quick Start
+- Opened one student's document from the dashboard and found the feedback comment
+- Opened 🎓 Competency ratings once
 
----
-*Assignment System — Teacher Quick-Start. For detailed reference, see the Teacher Reference Guide.*
+> 🎉 **All checked off?** You're ready. For the details, see **TEACHER_REFERENCE_GUIDE.html**.
+
+## Words You'll See
+
+The same list as **❓ Terms** on your dashboard.
+
+- **Check**: One AI evaluation of a submission against the assignment’s criteria (Flow 2). A student can be checked many times.
+- **Passed / Not passing yet**: Whether the latest check met the assignment’s criteria. “Passed before” means an earlier check passed and the latest needs revision.
+- **Waiting to be checked**: Submitted and in line for its check.
+- **Being checked now**: The check is running.
+- **Couldn’t be checked**: The check failed or timed out, not the student’s work. The timeout email says what to do.
+- **AI’s suggested score**: On a passing check, the AI suggests 2 (Adequate), 3 (Solid) or 4 (Exceptional). Higher is better. It never suggests 1 or 5.
+- **Competency rating (SCR)**: The Virginia CTE Student Competency Record, 1 to 5, where 1 is the highest: 1 Can teach others, 2 Without supervision, 3 Limited supervision, 4 With supervision, 5 Cannot perform. The AI suggests 2 to 4 once there are 3 pieces of evidence; 1 and 5 are yours alone.
+- **Competency tiers**: Each assignment’s competencies are primary (must be shown to pass), secondary or tertiary (credited when shown).
+- **Warm-up readiness**: How much the system knows about each student, from checks and warm-up answers. Click a number to see those students.
+- **Personalized learning profile**: The system’s growing guess of what kind of warm-up works for a student; “ready for fully personalized feedback” means it’s confident.
+- **Student Context**: One document per student that gathers their lessons, checks and warm-ups, updated weekly.
+- **Current lesson**: The lesson whose start date in 📅 Lessons is the latest on or before today, per course.
+- **Rollout**: The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead).
+- **Feedback as a comment**: Where a student’s feedback goes: a comment on the document, or written into it. Set per course in 💬 Feedback.
+- **3-Odd / 3-Even**: The two halves of period 3, which meet on alternate (odd or even) calendar dates.
+- **Marking period**: A term code like 2627_MP1 is marking period 1 of 2026–27.
