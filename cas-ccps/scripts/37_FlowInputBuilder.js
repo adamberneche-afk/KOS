@@ -59,19 +59,22 @@
 // harvestFlowInputResults() below then does everything Flow 2's original
 // design asked Studio's native Docs/Sheets steps (plus the
 // GCP-blocked CommitStudentEvaluationStep.gs custom step) to do:
-// splitting the response, writing it into the student's doc, writing
-// CompetencyEvidence rows, and marking the originating STAGING_PIPELINE
-// row COMPLETE. It reuses existing, already-tested functions rather than
+// splitting the response, posting it as a comment on the student's doc
+// (FEEDBACK_AS_COMMENT) or writing it into the doc, setting the doc
+// header's feedback line (63), writing CompetencyEvidence rows, the
+// Ledger's result columns (recordEvaluationResult_) and an EvaluationLog
+// row (_fiLogEvaluation_), and marking the originating STAGING_PIPELINE
+// row COMPLETE, or ERROR_EVALUATION when the result can't be used. It reuses existing, already-tested functions rather than
 // duplicating them:
 //   _parseFlow2Response_()             — 15c_Flow2DirectEvaluationService.js
 //   writeCompetencyEvidenceFromFlow2_() — 15c_Flow2DirectEvaluationService.js
 // both already bound to this same project (see tools/gas-lint/project-map.json).
 //
 // WHAT THIS DELIBERATELY DOES NOT DO (yet):
-//   - Does not touch the ALREADY-DEPLOYED, ALREADY-RUNNING
-//     backPropagateCompletions() in 03_QueueBridge.js. This file only
-//     ever flips a STAGING_PIPELINE row to COMPLETE; that existing
-//     2-minute poller is what closes ReviewQueue, stamps Ledger's
+//   - Does not touch backPropagateCompletions() in 03_QueueBridge.js
+//     (a job of the Ledger cycle, 64, since 2026-10-19). This file only
+//     ever flips a STAGING_PIPELINE row to COMPLETE or ERROR_EVALUATION;
+//     that job is what closes ReviewQueue, stamps Ledger's
 //     LastEval, removes the "[No feedback yet." placeholder, and
 //     appends the "WHAT TO DO NEXT" block. Duplicating any of that here
 //     would just be a second, divergent copy of logic that already
@@ -79,17 +82,11 @@
 //     own cadence) cosmetic window where a student's doc shows both the
 //     placeholder and the real feedback at once. Self-heals every run;
 //     not worth a tighter coupling between two files for.
-//   - Does not add FlowInput to 34_QueueWatchdog.js's staleness
-//     monitoring or a retention/archival pass (see
-//     tests/cas-ccps/*-retention.test.js for the pattern every other
-//     long-lived tab in this system already follows). FlowInput is new
-//     and low-volume (one pilot teacher) — worth adding once real usage
-//     shows it's needed, not speculatively here.
-//   - Does not change Flows 3, 4, or 5. Warm-Up generation/evaluation/
-//     bridging were never built in Studio this session; whether they hit
-//     the same fixed-picker wall (likely, since WarmUpQueue is also
-//     per-teacher-routed) is a question for whoever builds them, using
-//     this same FlowInput-materialization pattern if so.
+//   - Since then: FlowInput is in the retention schedule (57, working
+//     data), and 34c's overnight check counts Flow 2 rows still READY
+//     after 15 minutes. Flows 3, 4 and 5 were built later on this same
+//     pattern, in 41_WarmUpFlowBridge.js (Flow3Input/Flow4Input/
+//     Flow5Input and WarmUpFlowReturn).
 // =============================================================================
 
 // ---------------------------------------------------------------------------
