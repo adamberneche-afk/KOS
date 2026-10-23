@@ -129,6 +129,10 @@ contention.
 - **F. The bounded-loop warnings.** gas-lint reports **11**
   `bounded-loop-convention` warnings, 7 of them in kos-personal (none in
   the queue path itself). Close them when the function is next touched.
+  *2026-10-23:* 8 left, 4 in kos-personal. The Semantic Sweeper, the root
+  exhaust sweep and the Registrar intake stop at `SWEEP_TIME_BUDGET_MS`
+  (6). The rest walk a file's parents or a name match (a few items), or
+  are FERPA sharing sweeps that must see every file.
 
 **Start with §4.** Two log checks and one sheet count say whether this is
 mainly the single slot (A, with C first) or the unpruned backlog (B, then
