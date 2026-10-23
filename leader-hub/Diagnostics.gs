@@ -11,7 +11,10 @@
 //                      signed in as, whether you're the owner, how big the
 //                      served app is, and two live google.script.run calls
 //                      (a ping, and lhGetAllConfig, the owner-only entry
-//                      point the app's settings sync uses).
+//                      point the app's settings sync uses). Also the
+//                      page's own origin and whether Google's sign-in
+//                      library loads there: the origin the CAS
+//                      connection's OAuth client must list.
 //   ?diag=probe        The full app, plus a status panel pinned to the
 //                      bottom of the screen: which of the page's script
 //                      blocks actually ran, every error with its block and
@@ -307,7 +310,12 @@ function _lhDiagServerPage_(cfg, owner) {
     '<tr><th>google.script.run</th><td id="gsr">not checked</td></tr>' +
     '<tr><th>Public server call (lhDiagPing)</th><td id="pub">waiting</td></tr>' +
     '<tr><th>Settings sync call (lhGetAllConfig)</th><td id="priv">waiting</td></tr>' +
+    '<tr><th>Page origin</th><td id="origin">not checked</td></tr>' +
+    '<tr><th>Google sign-in library</th><td id="gsi">waiting</td></tr>' +
     '</table>' +
+    '<p>Page origin is what the CAS connection\'s OAuth client needs under Authorized ' +
+    'JavaScript origins (cas-ccps/docs/LEADERHUB_CONNECTION_SETUP.md): Apps Script serves this ' +
+    'page, like the app, from its own googleusercontent.com address, not script.google.com.</p>' +
     '<p>The app loads and saves settings, data and SCR scores through owner-only public ' +
     'functions (Code.gs). If this call fails while the ping works, none of that is ' +
     'reaching the server.</p>' +
@@ -319,6 +327,12 @@ function _lhDiagServerPage_(cfg, owner) {
     '<script>(function(){' +
     'function set(id,t){document.getElementById(id).textContent=t;}' +
     'set("js","yes");' +
+    'set("origin",location.origin);' +
+    'var g=document.createElement("script");g.src="https://accounts.google.com/gsi/client";g.async=true;' +
+    'g.onload=function(){set("gsi",(window.google&&google.accounts&&google.accounts.id)?' +
+    '"loaded (google.accounts.id available)":"loaded, but google.accounts.id is missing");};' +
+    'g.onerror=function(){set("gsi","FAILED to load accounts.google.com/gsi/client");};' +
+    'document.head.appendChild(g);' +
     'if(!(window.google&&google.script&&google.script.run)){set("gsr","NOT available");return;}' +
     'set("gsr","available");' +
     'google.script.run.withSuccessHandler(function(r){set("pub","OK -- "+JSON.stringify(r));})' +
