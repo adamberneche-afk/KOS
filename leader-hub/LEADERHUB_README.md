@@ -10,7 +10,12 @@
 > was abandoned; neither exists in the code anymore, and the CSP no
 > longer allows the Gemini domain), and the FERPA section (this doc
 > says anonymization before AI calls is mandatory; it's actually
-> opt-in and off by default per `README.md`'s Privacy section). Don't
+> opt-in and off by default per `README.md`'s Privacy section). Since
+> 2026-10-22 the storage and "How to Use" sections are stale too:
+> LeaderHub no longer opens as a file from disk (it runs only as an Apps
+> Script web app), nothing is kept in `localStorage` (the server holds
+> every key; see `README.md`'s "Where the data lives"), and there is no
+> Email Bridge URL or Gemini API key to enter. Don't
 > treat anything below as current without checking it against
 > `README.md` first.
 
