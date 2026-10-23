@@ -24,6 +24,10 @@
 //     after 15 minutes (open bug 4)
 //   - warm-up returns that FAILED or need attention in the last 24 hours
 //   - warm-ups delivered as the teacher's anchor (41: junk output, or no return)
+//   - at most every 6 hours, the setup checks once run by hand: the Ledger's
+//     column order (38), FlowPrompts against the code (40), the last 24
+//     hours' Studio returns in the right columns (41), and each retention
+//     record's date column (57)
 // With no problem and nothing unreadable, one all-clear line says what ran.
 //
 // DATA BOUNDARY: counts only, as 34b: no names, emails, queue IDs, file IDs
@@ -43,6 +47,8 @@ const ON_STUDIO_STALL_MS = { 2: 15 * 60 * 1000, 3: 30 * 60 * 1000, 4: 30 * 60 * 
 const ON_RETURN_WINDOW_MS = 24 * 60 * 60 * 1000;
 const ON_MAIL_HOUR = 5;
 const ON_MAIL_STATE_KEY = "CAS_OVERNIGHT_MAILED";
+const ON_SETUP_CHECK_MS = 6 * 60 * 60 * 1000;
+const ON_SETUP_STATE_KEY = "CAS_OVERNIGHT_SETUP_CHECKS";
 const ON_DELIVERED = ["DELIVERED", "PENDING_EVAL", "SCORED", "INCOMPLETE", "EVAL_ERROR"];
 
 // Returns { problems: [], allClear: "" }. allClear is set only when every
@@ -93,6 +99,12 @@ function overnightHealth_(now, tz) {
   }
 
   const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
+
+  // The setup checks that used to be run by hand (2026-10-23).
+  const setup = _onSetupChecks_(props, ss, now);
+  setup.problems.forEach(function (p) { problems.push(p); });
+  if (setup.unreadable) unreadable = true;
+
   let wu = null;
   try {
     wu = _onWarmUpCounts_(ss, today, tomorrow);
@@ -150,6 +162,61 @@ function overnightHealth_(now, tz) {
         : "None built for tomorrow.");
   }
   return { problems: problems, allClear: allClear };
+}
+
+// The read-only setup checks, which were editor-only: the Ledger's column
+// order (38), the FlowPrompts tab against the code (40), the last 24 hours'
+// Flow 3/4/5 returns written to the right columns (41), and each retention
+// record's date column (57). They read whole tabs, so they run at most every
+// ON_SETUP_CHECK_MS and the lines are kept in ON_SETUP_STATE_KEY in between.
+// All four files are in the Central Ledger project. Counts and header names
+// only.
+function _onSetupChecks_(props, ss, now) {
+  let saved = null;
+  try { saved = JSON.parse(props.getProperty(ON_SETUP_STATE_KEY) || "null"); } catch (e) { saved = null; }
+  if (saved && now.getTime() - Number(saved.at || 0) < ON_SETUP_CHECK_MS && Array.isArray(saved.problems)) {
+    return { problems: saved.problems, unreadable: !!saved.unreadable };
+  }
+  const problems = [];
+  let unreadable = false;
+  const run = function (label, fn) {
+    try { fn(); } catch (e) {
+      unreadable = true;
+      problems.push(label + ": unavailable (" + e.message + ")");
+    }
+  };
+
+  run("Ledger columns", function () {
+    const p = lsgHeaderProblem_(ss.getSheetByName(getConfig_().tabs.ledger));
+    if (p) problems.push(p);
+  });
+
+  run("Flow prompts", function () {
+    const r = checkFlowPrompts();
+    if (r.drifted || r.missing) {
+      problems.push("Flow prompts on the FlowPrompts tab: " + r.drifted + " differ from the code, " + r.missing +
+        " missing. Studio reads that tab, so run syncFlowPromptsToSheet()");
+    }
+  });
+
+  run("Flow return columns", function () {
+    const c = wfbRecentBindingCounts_(ss, now, ON_RETURN_WINDOW_MS);
+    if (c.bad) {
+      problems.push("Studio returns in the wrong columns (last 24 hours): " + c.bad + " of " + c.recent +
+        " WarmUpFlowReturn rows. Run checkFlowBinding() to see which column each Flow's last step is off by");
+    }
+  });
+
+  run("Retention schedule", function () {
+    const missing = retentionMissingDateColumns_(getConfig_(), now);
+    if (missing.length) {
+      problems.push("Retention records with no date column, so none of their rows are checked: " +
+        missing.map(function (r) { return r.label + " (\"" + r.missingDateColumn + "\")"; }).join(", "));
+    }
+  });
+
+  props.setProperty(ON_SETUP_STATE_KEY, JSON.stringify({ at: now.getTime(), problems: problems, unreadable: unreadable }));
+  return { problems: problems, unreadable: unreadable };
 }
 
 // One read of WarmUpQueue's first columns (not the snapshot JSON). Columns

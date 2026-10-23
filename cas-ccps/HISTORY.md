@@ -4372,3 +4372,40 @@ The same applies to kos-personal's ingest and engine-setup drafts, the
 Impact Dashboard and the M2 deployment guide. `tests/tools/no-browser-storage.test.js`
 keeps browser storage out of cas-ccps and kos-personal. leader-hub keeps
 its data in `localStorage` by design and is not covered yet.
+
+## The overnight check runs the setup checks; evaluation and warm-up timing kept, 2026-10-23
+
+From the 2026-10-22 friction and exhaust map review. All Central Ledger.
+
+- **The setup checks run themselves (34c).** The overnight check (the CAS
+  signal's LAST NIGHT and the 5 a.m. email) now runs, at most every 6
+  hours, the read-only checks that were editor-only: the Ledger's column
+  order (38), the FlowPrompts tab against the code (40), the last 24 hours'
+  Studio returns written to the right columns (41), and each retention
+  record's date column (57). Each problem is one line naming the function
+  to run; a check that can't read its tab says "unavailable" and there is
+  no all-clear. Counts and header names only. Each file owns its part:
+  `lsgHeaderProblem_` (38, the header row only), `checkFlowPrompts` (40),
+  `wfbRecentBindingCounts_` (41) and `retentionMissingDateColumns_` (57).
+- **EvaluationLog (37).** One row per Flow 2 result, appended only:
+  when, the workspace's ConfigID and Doc, the attempt number, the result
+  (or the `ERROR_` a failed harvest ended in), the latest submission time,
+  the minutes waited and the suggested score. The Ledger keeps only the
+  latest result, so each check's wait and a student's sequence of attempts
+  were lost. No student writing or feedback text. A failed log write never
+  marks the harvest failed. Kept with the Ledger (`LEDGER_RETENTION_YEARS`),
+  in `checkRetentionSchedule()` and `FERPA_DATA_MAP.md`. Nothing reads it yet.
+- **WarmUpQueue `delivered_at` and `answered_at` (00, 41, 25),** after
+  `archive_status`: when the warm-up was delivered (set once), and when the
+  student last answered, read at the nightly scoring (the text box's save
+  time, or the doc's last edit). No index or 21-wide write reaches columns
+  past 21, so nothing else changes.
+
+Not built from the same review: automatic retries of the repair functions.
+The warm-up repairs (`repairFailedWarmUps`, `repairFailedWarmUpScoring`,
+`repairWarmUpTextBox`) re-apply rows that failed under checks since
+loosened, and new failures already fall back to the anchor; a folder-path
+failure only clears once the teacher's settings are fixed; and re-queuing a
+timed-out Flow 2 evaluation unattended could evaluate it twice and put two
+feedback blocks in the student's doc. Stale inputs are already retried
+(`wfbRetryStaleInputs_`).

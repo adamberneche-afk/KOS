@@ -152,6 +152,7 @@ function getConfig_() {
       draftUnits:      "DraftUnits",
       matrixRegistry:  "MatrixRegistry",   // Teacher Matrix SS ID lookup for Script 02
       flowInput:       "FlowInput",        // Script 37's materialized Flow 2 input row
+      evaluationLog:   "EvaluationLog",    // Script 37: one row per Flow 2 result, times and outcome only
       // Student Dashboard (13) appends one row (timestamp, error code, nothing
       // else) here each time Submit for Feedback fails for a system-side
       // reason; the CAS attention signal (34b) counts them. Created on the
@@ -423,6 +424,25 @@ function readWarmUpTextBox_(ss) {
     if (id) out[id] = { sheetRow: i + 2, row: row };
   });
   return out;
+}
+
+// WarmUpQueue's timing columns (2026-10-23), after 34's archive_status (21):
+// when the warm-up was delivered (41, on DELIVERED) and when the student
+// last answered it (25, at the nightly scoring: the text box's save time, or
+// the doc's last edit). So delivery-to-answer time is kept, not just the
+// score. Headers fill themselves in on first use, archive_status's too if
+// it's still blank, so the header row has no gap.
+const WQ_TIMING = { DELIVERED_AT: 22, ANSWERED_AT: 23 };
+const WQ_TIMING_HEADERS = ["archive_status", "delivered_at", "answered_at"];
+
+function stampWarmUpTiming_(wqSheet, sheetRow, col, when) {
+  const head = wqSheet.getRange(1, 22, 1, WQ_TIMING_HEADERS.length);
+  const have = head.getValues()[0];
+  if (have.some(function (h, i) { return String(h).trim() !== WQ_TIMING_HEADERS[i]; })) {
+    head.setValues([WQ_TIMING_HEADERS.map(function (h, i) { return String(have[i] || "").trim() || h; })]);
+  }
+  const cell = wqSheet.getRange(sheetRow, col + 1);
+  if (String(cell.getValue()).trim() === "" || col === WQ_TIMING.ANSWERED_AT) cell.setValue(when);
 }
 
 // Text a student or a model wrote, made safe to setValue: a leading = + - @

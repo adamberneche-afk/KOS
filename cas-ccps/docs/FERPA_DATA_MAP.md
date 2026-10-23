@@ -37,7 +37,7 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 
 | Tier | Period | Records | Script Property |
 |---|---|---|---|
-| Record: what a grade, a rating decision or a disclosure rests on | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry` | `LEDGER_RETENTION_YEARS` |
+| Record: what a grade, a rating decision or a disclosure rests on | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog` | `LEDGER_RETENTION_YEARS` |
 | | 5 years | `CompetencyEvidence` | `COMPETENCY_EVIDENCE_RETENTION_YEARS` |
 | | 5 years | `SCRDecisionLog` | `SCR_RETENTION_YEARS` |
 | | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
@@ -164,6 +164,18 @@ marks or removes those rows yet.
 | **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
 | **Retention** | Kept with the Ledger. A row whose Ledger row is archived is harmless and isn't read for anything else. |
 
+### EvaluationLog
+*Central Ledger tab (2026-10-23)*
+
+| | |
+|---|---|
+| **Fields** | EvaluatedAt, ConfigID (the student's workspace ID), StudentFileID (their workspace Doc), Attempt, Result (`PASSED`, `NEEDS_REVISION`, or an `ERROR_` harvest failure), SubmittedAt, WaitMinutes, SuggestedScore. No names, no emails, no student writing, no feedback text. |
+| **Why collected** | The Ledger keeps only the latest result and a count, so each check's wait and a student's sequence of attempts were lost. Waiting on feedback is friction that teaches nothing; this is how it's measured. |
+| **Written by** | `harvestFlowInputResults()` (37), one row per Flow 2 result, appended only. |
+| **Read by** | Nothing yet. |
+| **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
+| **Retention** | `LEDGER_RETENTION_YEARS`, with the Ledger (counted in `checkRetentionSchedule()`). No archive marker; deletion is the operator-approved disposition, as for every record. |
+
 ### Canvas gradebook exports and CanvasSectionMap (S52)
 *Teacher's own Drive folder; Central Ledger tab*
 
@@ -232,7 +244,7 @@ content.
 
 | | |
 |---|---|
-| **Fields** | Queue ID, lesson ID, student email, student name, "GoogleID" (= email), lesson date, **lesson-context snapshot** and **student-profile snapshot** (both full JSON payloads sent to Studio Flows 3/5), status, generated doc ID/URL, word count, grammar/engagement/total scores, extra credit, Flow 4 feedback, response text, archetype, bridge output |
+| **Fields** | Queue ID, lesson ID, student email, student name, "GoogleID" (= email), lesson date, **lesson-context snapshot** and **student-profile snapshot** (both full JSON payloads sent to Studio Flows 3/5), status, generated doc ID/URL, word count, grammar/engagement/total scores, extra credit, Flow 4 feedback, response text, archetype, bridge output; after them `archive_status`, `delivered_at` and `answered_at` (2026-10-23: when it was delivered, and when the student last answered: the text box's save time or the doc's last edit) |
 | **Why collected** | The working table for warm-up generation, scoring, and feedback — Studio Flows 3, 4, and 5 all read/write directly against this tab via the Sheets connector. |
 | **Written by** | Script 24 (build), Script 25 (scoring), Studio Flow 3 (doc creation, archetype write-back), Studio Flow 5 (bridge output) |
 | **Read by** | Script 23 (nightly), Script 25 |

@@ -63,3 +63,51 @@ test('_ensureEvaluationResultColumns_: keeps headers already there, fills only t
   exported._ensureEvaluationResultColumns_(sheet);
   assert.deepEqual(sheet.getRange(1, 20, 1, 8).getValues()[0], exported.LEDGER_LATER_HEADERS);
 });
+
+// One EvaluationLog row per Flow 2 result (2026-10-23): the Ledger keeps
+// only the latest, so wait times and the attempt sequence were lost.
+function loadLog() {
+  const loaded = loadGasFiles(
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '37_FlowInputBuilder.js')],
+    ['recordEvaluationResult_', '_fiLogEvaluation_', 'EVAL_LOG_HEADERS', 'LEDGER']);
+  const ss = loaded.sandbox.SpreadsheetApp.create('Central Ledger');
+  const ledger = ss.insertSheet('Ledger');
+  ledger.appendRow(new Array(19).fill('h'));
+  const row = new Array(19).fill('');
+  row[2] = 'VDOE-1'; row[3] = 'file-1'; row[12] = 'ACTIVE';
+  row[loaded.exported.LEDGER.SUBMISSION_TS] = new Date(Date.now() - 42 * 60000);
+  ledger.appendRow(row);
+  const cfg = { tabs: { ledger: 'Ledger', evaluationLog: 'EvaluationLog' } };
+  return Object.assign({ ss, ledger, cfg }, loaded);
+}
+
+test('_fiLogEvaluation_: each result is a row with its attempt and minutes waited, never text', () => {
+  const { exported, ss, ledger, cfg } = loadLog();
+  const first = exported.recordEvaluationResult_(ledger, 'file-1', 'VDOE-1', 'REVISION_REQUIRED', null);
+  exported._fiLogEvaluation_(ss, cfg, 'file-1', 'VDOE-1', 'NEEDS_REVISION', first, null);
+  const second = exported.recordEvaluationResult_(ledger, 'file-1', 'VDOE-1', 'APPROVED', 3);
+  exported._fiLogEvaluation_(ss, cfg, 'file-1', 'VDOE-1', 'PASSED', second, 3);
+
+  const rows = ss.getSheetByName('EvaluationLog').getDataRange().getValues();
+  assert.deepEqual(rows[0], exported.EVAL_LOG_HEADERS.slice());
+  assert.equal(rows.length, 3, 'appended, not overwritten');
+  assert.deepEqual(rows.slice(1).map((r) => [r[1], r[2], r[3], r[4], r[6], r[7]]),
+    [['VDOE-1', 'file-1', 1, 'NEEDS_REVISION', 42, ''], ['VDOE-1', 'file-1', 2, 'PASSED', 42, 3]]);
+  assert.equal(Object.prototype.toString.call(rows[1][0]), '[object Date]');
+  assert.equal(Object.prototype.toString.call(rows[1][5]), '[object Date]');
+});
+
+test('_fiLogEvaluation_: a failed harvest is a row with no attempt; the submission comes from the Ledger', () => {
+  const { exported, ss, cfg } = loadLog();
+  exported._fiLogEvaluation_(ss, cfg, 'file-1', 'VDOE-1', 'ERROR_EMPTY_OUTPUT', null);
+  exported._fiLogEvaluation_(ss, cfg, 'file-9', 'VDOE-1', 'ERROR_HARVEST_FAILED', null);
+  const rows = ss.getSheetByName('EvaluationLog').getDataRange().getValues().slice(1);
+  assert.deepEqual(rows.map((r) => [r[2], r[3], r[4], r[6]]),
+    [['file-1', '', 'ERROR_EMPTY_OUTPUT', 42], ['file-9', '', 'ERROR_HARVEST_FAILED', '']]);
+});
+
+test('_fiLogEvaluation_ never throws: the feedback is already written by then', () => {
+  const { exported, cfg } = loadLog();
+  const broken = { getSheetByName() { throw new Error('quota'); } };
+  assert.doesNotThrow(() => exported._fiLogEvaluation_(broken, cfg, 'file-1', 'VDOE-1', 'PASSED', null));
+});
