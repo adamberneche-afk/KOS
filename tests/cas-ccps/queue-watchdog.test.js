@@ -249,6 +249,22 @@ test('runQueueWatchdog: INCOMPLETE (a real, routine WarmUpQueue terminal status)
   assert.equal(healthCell(health, 12, 2), 0, 'WarmUpQueue unknown-status count must be 0');
 });
 
+// 2026-10-23: the live signal counted 47 "unknown" WarmUpQueue rows, all
+// NOT_MEETING (set by 24's retireOffDayWarmUps since the period split).
+test('runQueueWatchdog: NOT_MEETING (an off-day warm-up, 24) is never flagged unknown', () => {
+  const { exported, sandbox } = load();
+  const ss = sandbox.SpreadsheetApp.create('Admin');
+  setUpConfig(sandbox, ss);
+  const sheet = ss.insertSheet('WarmUpQueue');
+  sheet.appendRow(new Array(21).fill('header'));
+  sheet.appendRow(warmUpRow('Q1', 'NOT_MEETING'));
+  sheet.appendRow(warmUpRow('Q2', 'NOT_A_STATUS'));
+
+  exported.runQueueWatchdog();
+  const health = ss.getSheetByName('Health');
+  assert.equal(healthCell(health, 12, 2), 1, 'only the made-up status counts as unknown');
+});
+
 // ── Non-blocking fix: unknown-status scanning wired for all 3 queues ───────
 
 test('runQueueWatchdog: a genuinely unrecognized RubricQueue status is now counted (was dead code before)', () => {
