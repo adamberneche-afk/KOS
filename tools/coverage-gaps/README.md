@@ -3,7 +3,7 @@
 Finds a scheduled/triggered GAS function that no test in this repo ever
 actually *calls* — process-hardening sprint Phase 0a (see
 `meta/PROCESS_HARDENING_SPRINT.md`). Not a `gas-lint` check: every one of
-`gas-lint`'s twelve checks is pure static source analysis, deliberately
+`gas-lint`'s fourteen checks is pure static source analysis, deliberately
 never executing anything. This one has to actually run the real test suite
 under Node's built-in V8 coverage instrumentation to answer "was this
 function's body ever entered" — a different, slower, execution-based kind

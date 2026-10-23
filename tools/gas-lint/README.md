@@ -20,13 +20,18 @@ Exit code is `1` if any error-level finding exists, `0` otherwise
 
 ## CI
 
-`.github/workflows/gas-lint.yml`'s `gas-lint` job runs this check (plus
-`tools/clasp-sync/sync.js`, which now also refuses to build a project
-with an unmerged addendum — see that tool's README, and an `actionlint`
-self-check on the workflow file itself — GitHub Actions' schema has real
-rules a generic YAML parser can't catch, e.g. `secrets.*` isn't allowed
-inside an `if:` conditional; this caught exactly that bug once) on every
-push and pull request. That same workflow file has grown a second,
+`.github/workflows/gas-lint.yml`'s `gas-lint` job runs this check first,
+then `tools/doc-currency/check.js`, `tools/student-data-scan/check.js`,
+`tools/clasp-sync/sync.js` (which also refuses to build a project with an
+unmerged addendum — see that tool's README), `npm test`,
+`tools/coverage-gaps/check.js`, `tools/html-lint/check.js` on the built
+LeaderHub page, and an `actionlint` self-check on the workflow files
+(GitHub Actions' schema has real rules a generic YAML parser can't catch,
+e.g. `secrets.*` isn't allowed inside an `if:` conditional; this caught
+exactly that bug once), on every push and pull request. The same file's
+`docs-check` job (pull requests only) requires the matching README to be
+touched when a PR adds files, and `test-inference-service` tests
+`kos-personal/inference-service/`. That same workflow file has grown a second,
 unrelated job pair (`sandbox-deploy`/`sandbox-deploy-not-configured`,
 gated on `main` only — see `tools/clasp-sync/SANDBOX_CI_SETUP.md`) that
 pushes HEAD to sandbox Apps Script copies once configured; unrelated to
@@ -341,12 +346,13 @@ it — that gap is closed now.
       performs the action or returns the data directly, so "gated
       downstream" doesn't apply the way it does to a page shell. Warn, not
       error, if a check exists elsewhere in the project but isn't called
-      from `doPost()` itself — `leader-hub/EmailBridge.gs`'s `doPost()` is
-      exactly this case: the project's only checker (`_isAuthorizedOwner_`,
-      in `Code.gs`) isn't called from it. That might be fine — the
-      manifest's own `access: "DOMAIN"` restriction may be the intended
-      gate — or it might be a real gap nobody has looked at yet. This check
-      can't tell which, so it warns rather than deciding either way.
+      from `doPost()` itself — this check can't tell whether the manifest's
+      `access` setting is the intended gate or a real gap, so it warns
+      rather than deciding either way. `leader-hub/EmailBridge.gs`'s
+      `doPost()` was exactly this case when the check was written (the
+      project's only checker, `_isAuthorizedOwner_` in `Code.gs`, wasn't
+      called from it); it now calls `_isAuthorizedOwner_` itself (see that
+      file's FIX comment), so the check is silent on all five today.
 
     Like every other check here, this is a heuristic over stripped source,
     not a real call-graph analysis — it can't prove a same-project checker
@@ -363,14 +369,14 @@ it — that gap is closed now.
 
     This is a **new** convention, not a retrofit of existing code, and it's
     deliberately warning-level: a grep across the repo before writing it
-    turned up seven real production loops
-    (`kos-personal/1_Config_And_Deploy.gs`, `5_Error_And_Utilities.gs`,
+    turned up seven real production loops with neither a cap nor a pacing
+    call. Erroring on all of them at once would make this check something
+    to silence, not something to act on. A run on 2026-10-23 reports eleven
+    (`kos-personal/1_Config_And_Deploy.gs`, `5_Error_And_Utilities.gs` (×2),
     `6_Governance.gs` (×3), `11_Registrar_CogRelay.gs`,
-    `cas-ccps/scripts/10_AdminRecoveryPanel.js`) with neither a cap nor a pacing
-    call today. Erroring on all of them at once would make this check
-    something to silence, not something to act on. These seven are expected,
-    pre-existing findings, not a regression this check introduced — see
-    `meta/PROCESS_HARDENING_SPRINT.md` phase 2b.
+    `cas-ccps/scripts/10_AdminRecoveryPanel.js`,
+    `cas-ccps/scripts/50_StudentDataAccess.js` (×3)). These are expected,
+    pre-existing findings — see `meta/PROCESS_HARDENING_SPRINT.md` phase 2b.
 
     "References a cap" and "references pacing" are both read loosely on
     purpose: a `break`, or any identifier whose name contains
@@ -399,8 +405,9 @@ false positives.
 ## Extending it
 
 - New Apps Script project, or a file moves between projects → update
-  `project-map.json`. The tool warns (doesn't crash) if a listed file no
-  longer exists, so a stale map is visible, not silent.
+  `project-map.json`. A listed file that no longer exists is a
+  `missing-file` error, and a script file no project lists is an
+  `unmapped-file` error (check 1), so a stale map fails the run.
 - New GAS advanced service gets used somewhere → add it to
   `scope-map.json`'s `services` table.
 - Something starts needing a Cloud project → add a `surfaces` entry to

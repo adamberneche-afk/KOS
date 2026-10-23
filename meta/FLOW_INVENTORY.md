@@ -54,9 +54,10 @@ submission is queued to `ReviewQueue`, bridged into `STAGING_PIPELINE`
 (`03_QueueBridge.js`), materialized as a `FlowInput` row
 (`37_FlowInputBuilder.js`), evaluated by the Studio Flow against its rubric,
 and harvested back — the one Flow this system depends on to turn a
-submission `COMPLETE`. **Current as of 2026-10-10:** the Studio Flow is
-built (operator confirmed); no real student submission has gone through it
-yet; the Turn-In Form that used to feed this queue (`04`) is retired.
+submission `COMPLETE`. **Current as of 2026-10-23:** the Studio Flow is
+built (operator confirmed) and has evaluated real student submissions since
+the week of Oct 13 (`CAS_BUG_HANDOFF_2026-10-16.md`: the first one, and the bugs
+it found); the Turn-In Form that used to feed this queue (`04`) is retired.
 
 **Corrected (this document previously described Flow 2 as already
 human-built and live — it is not; then, later, as never built at all,
@@ -245,7 +246,8 @@ vocabulary).
 **What it does:** every AI-drafting feature (Brag Board email, Email
 Composer, Archive/WBL insights narratives, Lesson Plan assist, Financial
 analysis) submits a job to `EmailBridge.gs`'s `AI_Queue` sheet via
-`callGAS('aiDraft', {type, ...})`; a human-built Google Workspace Flow
+`callGAS('aiDraft', {type, ...})` (`google.script.run.lhApiCall`, the
+same dispatch table as `doPost()`); a human-built Google Workspace Flow
 (one per type, or a shared one branching on `type` — see
 `LEADERHUB_AI_FLOW_SETUP.md`) picks it up and writes the drafted text back.
 Every feature already degrades gracefully to a template/local draft when no
@@ -278,7 +280,9 @@ out still `PENDING`).
 
 For *has this type ever succeeded*: Settings → AI Flow Health,
 `student-leader-hub.html` (`renderAiFlowHealthSettings()`, calling the
-`flowHealth` action on whatever Email Bridge URL is configured).
+`flowHealth` action through `callGAS()`, which since 2026-10-22 is
+`google.script.run`'s `lhApiCall` in the web app; the Email Bridge URL
+setting it used to need is gone with the standalone file).
 
 For *is this Flow live right now*: `FlowOps.gs`'s
 `installAiFlowFixtures()` then `checkAiFlowFixtures()`. The counters above

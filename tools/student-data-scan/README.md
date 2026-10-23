@@ -45,7 +45,7 @@ text.
 **Log calls (warnings, since 2026-10-22).** The working-tree run also reads
 every `Logger.log` / `console.*` call in `cas-ccps/scripts/` and warns when
 one passes a student identifier, because the operator pastes Apps Script
-logs into sessions. It matches only unambiguous names (`studentEmail`,
+logs into sessions. It matches only unambiguous names (`studentEmail`, `studentGoogleId`,
 `studentName`, `googleId`, `sisLogin`, `student.email`, `student.name`,
 and the same as properties), after blanking string literals. A plain
 `email` is not matched: it is as often a teacher's address. Read the call

@@ -1,10 +1,11 @@
 # CAS Design Threads: Mastery Map, Anchors and Student Portfolio
 
 > **Filed 2026-10-17** from the operator's 2026-10-16 handoff package.
-> Suggestions only; nothing here is built. Where it sits in the order of
+> Suggestions only. Threads A and B are not built; Thread C's nightly
+> rollout is (status under its heading). Where it sits in the order of
 > work: [`HANDOFF_2026-10-22.md`](./HANDOFF_2026-10-22.md).
 
-Prepared 2026-10-16. Suggestions only; nothing here is built. These threads come from questions about aggregating student data across curriculum and courses, about a portable personal knowledge portfolio, and about rolling out lessons and distributing documents. They sit on top of the authenticity and process-trace suggestions in the Cognitive Exhaust document. Student data stays out of any analysis shared with Claude: only structure, counts and metrics.
+Prepared 2026-10-16. Suggestions only; nothing was built when this was written. These threads come from questions about aggregating student data across curriculum and courses, about a portable personal knowledge portfolio, and about rolling out lessons and distributing documents. They sit on top of the authenticity and process-trace suggestions in the Cognitive Exhaust document. Student data stays out of any analysis shared with Claude: only structure, counts and metrics.
 
 ## 1. Thread A: cross-course mastery map, remediation and anchors
 
@@ -100,6 +101,15 @@ The mastery map is the school-side, evolving view used for instruction. The port
 - Who owns the portfolio during the school years, given that the admin account owns the docs today.
 
 ## 5. Thread C: lesson rollout and document distribution (added 2026-10-16)
+
+**Status (2026-10-23): built** as `cas-ccps/scripts/58_LessonRollout.js`
+(`runLessonRollout`, nightly at about 9 p.m.; `tests/cas-ccps/lesson-rollout.test.js`):
+docs made two days ahead and shared the night before, shadow per course
+until `ROLLOUT_AUTO_APPLY` (Script Property or the Ledger's `_CONFIG` tab)
+switches it on, a counts-only `RolloutLog` with the stale-export warning,
+and its PROBLEM rows in the CAS signal (`34b_CasAttentionSignal.js`). Not
+built: the per-lesson `release` hold column. The design below is as
+proposed.
 
 **Goal.** A better way to roll out planned lessons and distribute documents to students, with less manual running of functions and with failures visible before class.
 
