@@ -70,7 +70,7 @@ test('checkCasServerSignIn: reports the claims, verifies at tokeninfo, calls CAS
   assert.equal(cas.length, 1);
   assert.deepEqual(JSON.parse(cas[0].params.payload), { idToken: TOKEN, action: 'getPacingGuide' });
   const text = env.logs.join('\n');
-  assert.match(text, new RegExp('set LEADER_HUB_OAUTH_CLIENT_ID to ' + AUD.replace(/\./g, '\\.')));
+  assert.ok(text.includes('set LEADER_HUB_OAUTH_CLIENT_ID to ' + AUD), 'names the aud CAS must hold');
   assert.ok(!text.includes(TOKEN) && !text.includes('signature-part'), 'the token is never logged');
 });
 
