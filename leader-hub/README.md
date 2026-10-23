@@ -1327,8 +1327,7 @@ Phase 2, `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`):
   and Organization Sync's browser `fetch()` paths and the boot catch-up
   calls are gone; the web app's own URL comes from the server
   (`lhBootData_`'s `appUrl`). `lh_inventory_transactions` is read in one
-  place and never written. `lh_inventory_transactions` is read in one place
-  and never written.
+  place and never written.
 - `tests/leaderhub/no-browser-storage.test.js` fails if a new `lh_*` key is
   not on the server, in page memory or a named exception.
 
