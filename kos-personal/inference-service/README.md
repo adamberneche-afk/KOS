@@ -62,9 +62,13 @@ inference-service/
 │   ├── google.js        Google OAuth (account linking)
 │   ├── inference.js     Anthropic SDK wrapper
 │   ├── flow-prompts.js  Generated copy of VECTOR_CLASSIFY_PROMPT.md
+│   ├── http-errors.js   Error responses: generic message plus a logged ref
+│   ├── token-crypto.js  AES-256-GCM encryption of OAuth tokens at rest
 │   └── logger.js        Winston logger setup
-└── sql/
-    └── schema.sql        Postgres schema (users, jobs, credit ledger)
+├── sql/
+│   ├── schema.sql        Postgres schema (users, jobs, credit ledger)
+│   └── migrate.js        `npm run migrate`: applies schema.sql
+└── test/                 `node --test` suites for the files above
 ```
 
 ## Migrations

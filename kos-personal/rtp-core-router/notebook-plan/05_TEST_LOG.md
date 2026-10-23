@@ -1,5 +1,7 @@
 # RTP Notebook Ecosystem — Test Log
 
+**Status:** closed 2026-10-06, when the RTP Gem and V6.0 router were frozen (`meta/PLAN_2026-10.md`); the last runs are below.
+
 One row per test per run (04_MIGRATION_AND_TEST_PLAN.md, "Recording results"). Test IDs are the conformance suite in 04; unknowns (U1–U10) are recorded in 04's checklist and 02_PRD §10. Safety tests CT-05 to CT-08 are release gates.
 
 **Setup for the runs below:** the RTP Gem on the school account with the RTP notebook attached. The notebook is a standalone Gemini Notebook (`notebook.google.com`), holding 17 sources on 2026-10-05: the seven Tier A docs (with `CURRENT_STATE` listed twice), the six persona editions and the three protocols.

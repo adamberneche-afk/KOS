@@ -11,18 +11,27 @@ The core problem it solves: you spend hours in AI sessions making decisions, bui
 
 This README documents the system as it is today. The full history of what was found and fixed — the original reconciliation pass, the Round 3 reupload batch, and nine rounds of dedicated UI/UX hardening — is in [`CHANGELOG.md`](./CHANGELOG.md), split out from here so this file stays a current-state reference instead of a changelog with documentation mixed in.
 
-> **Status (2026-10-05).** The Curator Flow's persona-shaped output (the
-> 2026-09-20 export's 114 harvest failures) was fixed in Studio on
-> 2026-09-29: its Ask-a-Gem steps became Ask Gemini steps reading the
-> `FlowPrompts` tab, so the rebind [`STUDIO_REBIND_HANDOFF.md`](./STUDIO_REBIND_HANDOFF.md)
-> describes was never needed (that file is closed). Real sessions are now
-> classified per session (`20_VectorClassifySessions.gs`) and the primer's
-> failure is fixed in code. What remains is operator work in the editor:
-> requeue the terminal backlog (`19_StagingRequeue.gs`) and finish the
-> `VECTOR_MATRIX` repair (`21_VectorMatrixRepair.gs`: duplicates, then the
-> rederive until it reports finished, then the unrebuildable-row reset).
-> [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) has the steps; the
-> primer's Data Quality block shows what is left.
+> **Status (2026-10-22).** The place to plan and decide is the KOS Claude
+> Project ([`claude-project/`](./claude-project/README.md),
+> `meta/PLAN_2026-10.md`); the RTP Gem and `RTP_CORE_ROUTER_V6_0.md` are
+> frozen. Both Studio Flows (Curator and VECTOR_CLASSIFY) are built by hand
+> in Studio: their Ask Gemini steps read the `FlowPrompts` tab, and their
+> last step is a native add-row into `STUDIO_RETURN`, which
+> `harvestStudioReturns()` writes back. The 2026-10-22 web app changes
+> (plain words and a ❓ Terms panel, the "Needs you" strip, failed items
+> with Retry, the advisor panel review, an archive that keeps failed rows,
+> nothing stored in the browser) are merged; `meta/HANDOFF_2026-10-22.md`
+> says what to check after the push. Still the operator's: the data
+> repairs in [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) (requeue
+> the terminal backlog with `19_StagingRequeue.gs` or Queue → Failed items
+> → Retry, and the `VECTOR_MATRIX` repair in `21_VectorMatrixRepair.gs`);
+> the primer's Data Quality block shows what is left.
+>
+> History: on 2026-09-29 the Curator Flow's Ask-a-Gem steps became Ask
+> Gemini steps reading `FlowPrompts`, which fixed its persona-shaped output
+> (the 2026-09-20 export's 114 harvest failures), so the rebind
+> [`STUDIO_REBIND_HANDOFF.md`](./STUDIO_REBIND_HANDOFF.md) describes was
+> never needed (that file is closed).
 
 ---
 
@@ -30,9 +39,9 @@ This README documents the system as it is today. The full history of what was fo
 
 Sessions flow through a five-stage pipeline. Sensor 1 scans a Drive folder for new session documents every 5 minutes and creates rows in STAGING_PIPELINE with status `PENDING_FLOW`. The Turnstile (running every 5 minutes) releases rows one at a time to `STUDIO_ACTIVE`. Workspace Studio picks up `STUDIO_ACTIVE` rows, runs inference on the session text, optionally runs a second Auditor pass that verifies the Curator's own claims against the transcript (merged into the same JSON as `auditor_sign_off` — see `CURATOR_PROMPT.md` Rule 8, never a second document), writes structured JSON back to the document, and sets status to `FLOW_COMPLETE`. The Queue Processor (running every 10 minutes) finds `FLOW_COMPLETE` rows, parses the JSON, checks `auditor_sign_off` if present, and — only once the audit passes (or none was run) — fans the data out to ten downstream ledgers via the JSON Drip architecture. A failed audit archives the payload to `AUDIT_LOG` and either requeues it with priority or, past `CFG.MAX_RETRIES`, escalates the row to the terminal `AUDIT_REJECTED` status instead of ever reaching the ledgers. Each branch — current state, pivots, session log, cog registry, action register, vector routing, shadow matrix — is isolated so a failure in one doesn't stop the others.
 
-The shadow matrix is the system's calibration model. It maintains confidence intervals for five operator values (admin ghost, relational targets, necessary struggle, prime directive, temporal constraints) and updates them passively from each processed session's alignment observations. At 0.75 confidence, a value is marked VERIFIED and auto-populated into the system's operator properties. The daily primer assembles current vector state, shadow matrix status, and the operator's 90-day vision into a session-ready context document every morning at 06:00. The sequestered council ("Seven Bridges," SMP-002 — now actually built, see `triggerSevenBridgesReview()`/`compileCouncilVerdict_()` in `6_Governance.gs`) assembles **one shared stimulus document**, not one per persona — real sequestration comes from sending that single document to each of the `CFG.PERSONAS` (6 real personas, not 7 — see that file's own naming-collision note) as a **separate Gemini Gem conversation**, entirely outside this pipeline. Each Gem's verdict is submitted back via `submitCogVerdict()` (`2_Ingestion_Sensors.gs`) as a `COG_VERDICT` payload, which deliberately skips the normal `PENDING_FLOW`/`STUDIO_ACTIVE` queue and writes straight to a `FLOW_COMPLETE`-equivalent state — collected in `COG_REGISTRY`, with a halt-execution rule (`CFG.COG_HALT_THRESHOLD`, `1_Config_And_Deploy.gs`) tripping once enough verdicts come back non-APPROVED. Both entry points into this — the web app's "Run full council review" button and the 2-hourly `autoCouncilCheck()` trigger — produce the same sequestered stimulus; the older shared-context generator that asked one model to role-play every persona at once was deleted outright in Round 14 (see `CHANGELOG.md`), not merely left uncalled.
+The shadow matrix is the system's calibration model. It maintains confidence intervals for five operator values (admin ghost, relational targets, necessary struggle, prime directive, temporal constraints) and updates them passively from each processed session's alignment observations. At 0.75 confidence, a value is marked VERIFIED and auto-populated into the system's operator properties. The daily primer assembles current vector state, shadow matrix status, and the operator's 90-day vision into a session-ready context document every morning at 06:00. The sequestered council ("Seven Bridges," SMP-002 — now actually built, see `triggerSevenBridgesReview()`/`compileCouncilVerdict_()` in `6_Governance.gs`) assembles **one shared stimulus document**, not one per persona — real sequestration comes from sending that single document to each of the `CFG.PERSONAS` (6 real personas, not 7 — see that file's own naming-collision note) as a **separate, fresh conversation** with no shared context (the stimulus document's own wording still says a Gemini Gem conversation, from before the Claude Project replaced the Gem), entirely outside this pipeline. Each advisor's verdict is submitted back via `submitCogVerdict()` (`2_Ingestion_Sensors.gs`) as a `COG_VERDICT` payload, which deliberately skips the normal `PENDING_FLOW`/`STUDIO_ACTIVE` queue and writes straight to a `FLOW_COMPLETE`-equivalent state — collected in `COG_REGISTRY`, with a halt-execution rule (`CFG.COG_HALT_THRESHOLD`, `1_Config_And_Deploy.gs`) tripping once enough verdicts come back non-APPROVED. Both entry points into this — the web app's "Start an advisor panel review" button (System tab) and the 2-hourly `autoCouncilCheck()` trigger — produce the same sequestered stimulus; the older shared-context generator that asked one model to role-play every persona at once was deleted outright in Round 14 (see `CHANGELOG.md`), not merely left uncalled.
 
-**What sequestration does and does not guarantee.** BRIDGE_FIDELITY_001 — *"a verdict produced with knowledge of another cog's verdict is VOID"* — is enforced by **operator discipline, not by code**, and this repository cannot enforce it even in principle: the actual inference happens in Gemini Gem conversations the operator drives by hand, entirely outside this pipeline. Nothing here can verify that a given verdict was produced in isolation. What KOS does guarantee is narrower and worth stating rather than assuming: it will only ever *produce* a sequestered stimulus — one static document, identical for every cog, never mutated after creation and never carrying another cog's verdict — and the governing law travels with that document in bold. On the recording side the guarantee is real and code-level: `submitCogVerdict()` never feeds one cog's verdict forward into another's context, and verdicts are only ever combined post-hoc in `compileCouncilVerdict_()`.
+**What sequestration does and does not guarantee.** BRIDGE_FIDELITY_001 — *"a verdict produced with knowledge of another cog's verdict is VOID"* — is enforced by **operator discipline, not by code**, and this repository cannot enforce it even in principle: the actual inference happens in conversations the operator drives by hand, entirely outside this pipeline. Nothing here can verify that a given verdict was produced in isolation. What KOS does guarantee is narrower and worth stating rather than assuming: it will only ever *produce* a sequestered stimulus — one static document, identical for every cog, never mutated after creation and never carrying another cog's verdict — and the governing law travels with that document in bold. On the recording side the guarantee is real and code-level: `submitCogVerdict()` never feeds one cog's verdict forward into another's context, and verdicts are only ever combined post-hoc in `compileCouncilVerdict_()`.
 
 ---
 
@@ -46,14 +55,14 @@ has it in history.
 
 ```
 appsscript.json            OAuth scopes, web app config                    ✅ in repo — scopes verified against actual code usage, clean
-1_Config_And_Deploy.gs     CFG constants, deploy, triggers                 ✅ in repo — all documented CFG keys present, 16-trigger install
+1_Config_And_Deploy.gs     CFG constants, deploy, triggers                 ✅ in repo — all documented CFG keys present, 17-trigger install
 2_Ingestion_Sensors.gs     Sensor 1 (Drive), Sensor 2 (webhook), Sensor 3   ✅ in repo
 3_Queue_Processor.gs       Queue processor, processIntakePayload           ✅ in repo — getQueueMetrics() + shadow matrix hook added
 4_Vector_Router.gs         Vector routing, incubator, decay, promotion     ✅ in repo
-5_Error_And_Utilities.gs   Error log, daily digest, utilities              ✅ in repo — shadow matrix + completeOnboarding() added
-6_Governance.gs            Mutations, sweepers, council simulation         ✅ in repo — daily primer + auto-council check added
+5_Error_And_Utilities.gs   Error log, daily digest, utilities              ✅ in repo — shadow matrix, completeOnboarding(), onboarding close-out, staging archive
+6_Governance.gs            Mutations, sweepers, Seven Bridges council      ✅ in repo — daily primer, auto-council check, getCouncilReviewForWebApp()
 7_WebApp.gs                doGet, doPost, server functions                 ✅ in repo — doGet() template-evaluates mode; getInboundFolderUrl() added
-8_WebApp_UI.html           Mobile web app (Ingest / Queue / Diagnostics)   ✅ in repo — all server calls now backed; managed_service panel restored, gated behind CFG.INFERENCE_MODE (see CHANGELOG.md)
+8_WebApp_UI.html           Mobile web app (Add / Queue / System tabs)      ✅ in repo — plain words + ❓ Terms panel (GLOSSARY), "Needs you" strip and tab badges, failed items with Retry, advisor panel review; nothing stored in the browser (drafts in page memory); managed_service panel gated behind CFG.INFERENCE_MODE
 9_UI_Diagnostics.gs        HITL functions, Socratic onboarding, menu       ✅ in repo
 10_Turnstile.gs            Matrix turnstile state machine                 ✅ in repo — rebuilt against the real schema (original was in archived/, removed — see the dead-code cleanup note below)
 11_Registrar_CogRelay.gs   Curriculum-drafts auditing pipeline (Registrar) ✅ in repo — see "Registrar / Cog Relay" below
@@ -64,7 +73,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 16_FlowPrompts.gs          FlowPrompts tab (generated from the prompt .md files) ✅ in repo
 17_DeployVersionReport.gs  reportDeployVersion() (deploy-drift)            ✅ in repo
 18_DeployVersionMarker.gs  Deploy SHA marker (stamped, never hand-edited)  ✅ in repo
-19_StagingRequeue.gs       previewStagingRequeue() / requeueStagingBatch() ✅ in repo
+19_StagingRequeue.gs       previewStagingRequeue() / requeueStagingBatch(); getFailedQueueRows() / retryFailedRow() for the web app ✅ in repo
 20_VectorClassifySessions.gs  Per-session classify parts and backfill      ✅ in repo
 21_VectorMatrixRepair.gs   Duplicates, rederive, unrebuildable-row reset   ✅ in repo
 22_BriefingDocs.gs         Notebook briefing docs, DECISION_REGISTER       ✅ in repo
@@ -161,6 +170,9 @@ Council cog verdict        COG_VERDICT  (submitCogVerdict(), skips PENDING_FLOW/
 | `buildStudioInputRows` | Every 1 min | Writes CuratorInput / VectorClassifyInput rows for STUDIO_ACTIVE payloads |
 | `harvestStudioReturns` | Every 5 min | Harvests STUDIO_RETURN rows into the payload docs and sets FLOW_COMPLETE |
 | `reportDeployVersion` | Every 6 hours | Reports the deploy marker (no-op without `DEPLOY_DRIFT_GITHUB_TOKEN`) |
+| `archiveFinishedStagingRows` | Daily 02:00 | Moves finished STAGING_PIPELINE rows to STAGING_ARCHIVE; failed rows stay |
+
+All 17 are installed by `setupAllTriggers()` (`KOS_TRIGGER_HANDLERS` in `1_Config_And_Deploy.gs`).
 
 ---
 
@@ -258,15 +270,17 @@ holds each persona doc as a notebook source (Phase 2 step 1): a cited core
 block first and the persona name in every heading. Generated by
 `tools/kos-personal/build-notebook-personas.js`.
 
-**RTP Core Router V6.0, draft 2, in the RTP Gem since 2026-10-05:**
-`rtp-core-router/RTP_CORE_ROUTER_V6_0.md` is the slimmed router for the RTP
-Gem's instructions (Phase 3), about 9,300 characters. `@Startup` reads
-`KOS_LATEST_PRIMER` first and takes all state from it, and the Gem no longer
-asks for a BRAIN_TRUST_INDEX read it can't make. The rules it moved out are in
-a new notebook source, `rtp-core-router/notebook-sources/TURN_LOOP_REFERENCE.md`.
-Test runs are logged in `rtp-core-router/notebook-plan/05_TEST_LOG.md`: the
-safety tests (CT-05, CT-06, CT-08) pass, and CT-01 waits on a push. V5.8 is
-the rollback: paste it back into the Gem's Instructions.
+**RTP Core Router V6.0 (history; frozen since 2026-10-06):**
+`rtp-core-router/RTP_CORE_ROUTER_V6_0.md` is the slimmed router that went
+into the RTP Gem's instructions (Phase 3), and it stays as the last Gem
+version. `@Startup` read `KOS_LATEST_PRIMER` first and took all state from
+it. The rules it moved out are in a notebook source,
+`rtp-core-router/notebook-sources/TURN_LOOP_REFERENCE.md`, now also Claude
+Project knowledge. Test runs are logged in
+`rtp-core-router/notebook-plan/05_TEST_LOG.md` (CT-01, CT-05, CT-06 and
+CT-08 passed). The KOS Claude Project (`claude-project/`) replaced the Gem
+as the thinking surface (`meta/PLAN_2026-10.md`); the commute trial chose
+Claude on 2026-10-17.
 
 **Migrating an existing live sheet.** If your `BRAIN_TRUST_INDEX`
 spreadsheet already has `VECTOR_MATRIX`/`INCUBATOR` tabs from before this
@@ -348,7 +362,7 @@ Studio UI action (pasting the prompt into a Studio flow there), not a
 repo-file task — nothing in this codebase can do that step for you.
 
 **Update — `getRegistrarStatus()` is now wired into the web app UI.**
-`8_WebApp_UI.html`'s Diagnostics tab has a "Curriculum auditing" panel
+`8_WebApp_UI.html`'s System tab has a "Curriculum checks" panel
 (hidden entirely until a deployment's `REGISTRAR_LEDGER` has any rows, so
 it's not diagnostics-tab noise for the majority of installs that never
 touch this second pipeline) showing a friendly `in_progress`/`needs_review`/
@@ -378,24 +392,22 @@ Drive — skipped" for it on every real run. Removed; see
 Drive folders and PropertiesService keys is a bigger, riskier change than
 fixing this one list.
 
-## Version control (clasp) — scaffolded, not yet connected
+## Version control (clasp) — pushed with `run.js`
 
-This directory's main flat folder is already laid out exactly the way
+This directory's main flat folder is laid out the way
 [clasp](https://github.com/google/clasp) wants — a single flat folder,
-one Apps Script project, `appsscript.json` already present. A
-`.clasp.json.template` and `.claspignore` (allowlisting only the real
-`.gs`/`.html`/`appsscript.json` files — everything else here, including
-`archived/` and the separate Node.js `inference-service/`, is excluded)
-are now in place. What's left is entirely credentialed and can't be done
-from a repo session: run `clasp login` against the real Google account,
-then `clasp clone <scriptId>` (pulls the actual live project down,
-byte-for-byte) or `clasp create` if starting fresh, and drop the real
-`scriptId` into a `.clasp.json` copied from the template — never
-committed, same convention as real Sheet/Doc IDs living in Script
-Properties, not source. See
+one Apps Script project, `appsscript.json` present. `.claspignore`
+allowlists only the real `.gs`/`.html`/`appsscript.json` files (everything
+else here, including `archive/` and the separate Node.js
+`inference-service/`, is excluded), and `.clasp.json.template` shows the
+shape of the real `.clasp.json`. The real `.clasp.json` and the list of
+live web app deployments are never committed: they live in the operator's
+`clasp-registry` folder outside the checkout. The operator pushes with
+`node run.js --latest` ([`tools/clasp-sync/README.md`](../tools/clasp-sync/README.md)),
+which runs `clasp push`, cuts one version and promotes each listed web app
+deployment onto it, so the `/exec` URL never changes. See
 [`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
-the full rationale and cas-ccps's harder version of this problem (8
-overlapping Apps Script projects, not 1).
+the rationale and cas-ccps's harder version of this problem.
 
 **Archived: a second project that could never be published on this account.**
 [`kos-personal/archive/studio-steps/`](./archive/studio-steps/README.md) — the custom
@@ -439,7 +451,7 @@ KOS is not a note-taking tool. It does not replace Notion, Obsidian, or any docu
 
 KOS is not a SaaS product. It is infrastructure you deploy and maintain. When something breaks, you fix it. The code is readable and the error log is descriptive, but there is no support team.
 
-KOS is not finished. Both Studio Flows run, but they are built by hand in Studio's UI, and some repairs (the terminal backlog, the `VECTOR_MATRIX` repair) are run by the operator from the editor. `devSetFlowComplete()` is only for testing without Studio.
+KOS is not finished. Both Studio Flows run, but they are built by hand in Studio's UI (`FlowBuildSpec` and `FlowPrompts` tabs), and some repairs (the terminal backlog, the `VECTOR_MATRIX` repair) are run by the operator from the editor. `devSetFlowComplete()` is only for testing without Studio.
 
 ---
 

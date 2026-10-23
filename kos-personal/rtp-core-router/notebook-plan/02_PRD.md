@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — Product Requirements
 
-**Status:** Draft v0.6 (V6.0 drafted; finding 8) · **Date:** 2026-10-05
+**Status:** Draft v0.6 (V6.0 drafted; finding 8) · **Frozen 2026-10-06** with the RTP Gem: the KOS Claude Project (`kos-personal/claude-project/`) replaced the Gem as the thinking surface (`meta/PLAN_2026-10.md`), so this plan is kept as history · **Date:** 2026-10-05
 
 > **Platform note (changes the plan):** Google is retiring Gems in favor of skills. Personal accounts transition in November 2026, Workspace business/enterprise no sooner than March 2027, Workspace education no sooner than June 2027 (see §10). "RTP Gem" in these documents therefore means "the RTP custom-instruction surface": a Gem now, a skill (or notebook instructions) after the transition. ADR-010 covers this. · **Companion docs:** 01_USER_STORIES, 03_ADRs, 04_MIGRATION_AND_TEST_PLAN
 

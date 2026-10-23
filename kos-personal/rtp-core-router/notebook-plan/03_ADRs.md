@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — Architecture Decision Records
 
-**Status of all records:** Proposed · **Version:** v0.5 (ADR-010 Instructions limit) · **Date:** 2026-10-05
+**Status of all records:** Proposed · **Frozen 2026-10-06** with the RTP Gem: the KOS Claude Project (`kos-personal/claude-project/`) replaced the Gem as the thinking surface (`meta/PLAN_2026-10.md`), so this plan is kept as history · **Version:** v0.5 (ADR-010 Instructions limit) · **Date:** 2026-10-05
 
 Each record: context, decision, consequences. Change the status to Accepted or Rejected as you decide.
 
