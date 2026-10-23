@@ -35,9 +35,10 @@
  * tabs left open, is exactly the case compare-and-swap catches. Unlike
  * Org Sync's user-initiated push/pull (with an interactive conflict
  * dialog), these pushes happen automatically in the background — so a
- * rejected push here fails closed (nothing is overwritten, ever) and
- * leaves the edit safe in the browser's own localStorage rather than
- * popping a dialog for a sync the user didn't consciously trigger; see
+ * rejected push here fails closed (nothing is overwritten, ever): the edit
+ * stays in page memory, is merged by id with the server's copy and saved
+ * again, rather than popping a dialog for a sync the user didn't
+ * consciously trigger; see
  * the client-side _lhSyncDataKeyToServer_() (leader-hub/src/05-data-
  * helpers-dashboard.html) for how that's surfaced.
  *
