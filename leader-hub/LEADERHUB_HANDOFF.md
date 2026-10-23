@@ -13,7 +13,14 @@
 > claim here is stale: the DSP framework content (`openDSP`,
 > `generateDSPReport()`, the DSP countdown pill, and related
 > DSP-specific framing) was deliberately removed from the shipped app —
-> see `README.md`'s "DSP framework content — removed" section. Treat
+> see `README.md`'s "DSP framework content — removed" section. The
+> "Single file rules" are stale too: the app is now built from `src/`
+> (`node tools/leaderhub-build/build.js`) and runs only as an Apps Script
+> web app; since 2026-10-22 nothing is kept in `localStorage` (`LS.get`/
+> `LS.set` read and write page memory and save to the server), `callGAS()`
+> goes over `google.script.run` with no Email Bridge URL, and the script
+> is split into many `<script>` blocks, not two. See `README.md`'s "Where
+> the data lives". Treat
 > this file as a record of build decisions made at the time, not a
 > description of what ships today.
 

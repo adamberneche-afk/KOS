@@ -72,7 +72,7 @@ th { background: var(--surface); }
 <div class="warning" role="note">
   <p><strong>Do not follow any older copy of this page.</strong> It was
   retired on 2026-10-22 because it had fallen years behind the code
-  (it described 7 scripts; there are about 46) and one of its steps was
+  (it described 7 scripts; there are now about 70 script files across 9 projects) and one of its steps was
   unsafe.</p>
   <p>It told you to deploy the Student Dashboard as <em>"User accessing
   the web app"</em> with access <em>"Anyone with a Google account"</em>.
@@ -100,11 +100,13 @@ runs as the admin and shows only the rows that match the signed-in
 student, so students need no access to the Ledger. If students were
 given Ledger access under the old instructions, run
 <code>previewStudentDataAccessRepair()</code> in the Central Ledger
-project: it lists student accounts the Ledger is shared with. Remove
-those by hand (Share, in the Ledger).
+project: its log says how many student accounts the Ledger is shared
+with (a count; the log names no student). Remove those by hand (Share,
+in the Ledger).
 Each Teacher Dashboard opens only for the account in its
 <code>TEACHER_EMAIL</code> Script Property. Both dashboards need
-<code>CENTRAL_LEDGER_SS_ID</code> and <code>ADMIN_SS_ID</code>.</p>
+<code>CENTRAL_LEDGER_SS_ID</code>; <code>ADMIN_SS_ID</code>, when unset,
+defaults to the same spreadsheet (<code>00_SharedConfig.js</code>).</p>
 
 <h2>How deployment works now</h2>
 <ul>

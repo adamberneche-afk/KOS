@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — Migration and Test Plan
 
-**Status:** Draft v0.7 (Phase 0.3 repair and Phase 1 live; V6.0 draft 2 under test) · **Date:** 2026-10-06 · **Companion docs:** 01_USER_STORIES, 02_PRD, 03_ADRs
+**Status:** Draft v0.7 (Phase 0.3 repair and Phase 1 live; V6.0 draft 2 tested) · **Frozen 2026-10-06** with the RTP Gem: the KOS Claude Project (`kos-personal/claude-project/`) replaced the Gem as the thinking surface (`meta/PLAN_2026-10.md`), so this plan is kept as history; its Phase 0 repairs and Phase 1 briefing docs are pipeline work and still run · **Date:** 2026-10-06 · **Companion docs:** 01_USER_STORIES, 02_PRD, 03_ADRs
 
 Each phase has an exit gate. Do not start the next phase until the gate is met.
 

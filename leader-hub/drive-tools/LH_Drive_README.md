@@ -151,6 +151,20 @@ Once preview is clean:
 
 Do this after Part 1 is complete and you have `manifest.json`.
 
+> **⚠ Written before the app was split into `src/` and served as a web
+> app — read this first.** `student-leader-hub.html` is now **generated**
+> from `leader-hub/src/*.html` by `node tools/leaderhub-build/build.js`, so
+> a patch made only to it is overwritten by the next build, and
+> `npm test` / `build.js --check` fail on the drift. `LESSON_PLANS` lives
+> in `leader-hub/src/09-wbl-lessonplans-procurement-finance-esports.html`.
+> Use the dry run below to get the list of docId changes, make the same
+> changes in that fragment, then run `node tools/leaderhub-build/build.js`
+> from the repo root. `LH_AppManifestUpdater.py` itself has not been
+> adapted to the fragment and is untested against it. The app also no
+> longer opens as a file in a browser: to check it, deploy to HEAD
+> (`node tools/clasp-sync/run.js --latest --head-only --only leader-hub`)
+> and open the printed `/dev` link.
+
 **Prerequisites:**
 - Python 3 installed (check: `python3 --version`)
 - Node.js installed (check: `node --version`) — needed for syntax check
@@ -178,9 +192,9 @@ The script:
 4. If syntax check passes, writes the updated HTML
 5. Prints a summary of all changes
 
-**Step 3 — Run the Principles Scorecard**
+**Step 3 — Check the app**
 
-After patching, open the updated `student-leader-hub.html` in a browser and verify the app loads correctly. Then run the Principles Scorecard from `LEADERHUB_HANDOFF.md` to confirm all 22+ checks pass.
+After patching (the `src/` fragment, then a rebuild — see the note at the top of Part 3), open the web app's `/dev` link and verify the app loads correctly; opened from disk, the file only shows "LeaderHub now runs as a web app". The Principles Scorecard in `LEADERHUB_HANDOFF.md` is from the April 2026 single-file design and is historical; `npm test` is the current check.
 
 ---
 
@@ -242,7 +256,7 @@ The TYPE in the Drive doc name reflects the primary Canvas assignment type for t
 
 The lesson IDs in the script (`lp_6115_11`, `lp_8175_01`, etc.) follow an inferred pattern based on the known Q4 IDs from the app (`lp_6115_42`–`lp_6115_53`, `lp_8177_26`–`lp_8177_29`). **Verify these against the actual `LESSON_PLANS` array in `student-leader-hub.html` before applying the manifest patch.** If any IDs don't match, update the manifest JSON by hand before running `LH_AppManifestUpdater.py`.
 
-To find all lesson IDs in the app:
+To find all lesson IDs in the app (the same IDs are in `../src/09-wbl-lessonplans-procurement-finance-esports.html`):
 ```bash
 grep -o "id:'lp_[^']*'" student-leader-hub.html | sort
 ```

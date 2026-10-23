@@ -10,7 +10,7 @@ bespoke design exercise.
 
 ## When this applies
 
-GAS gives each deployed project (`kos-personal`, `cas-ccps`'s 8
+GAS gives each deployed project (`kos-personal`, `cas-ccps`'s 9
 sub-projects, `leader-hub`) its own execution scope — there is no
 `import`/cross-project function call, ever. When the *exact same* logic or
 data genuinely needs to exist in two or more of them, someone writes it

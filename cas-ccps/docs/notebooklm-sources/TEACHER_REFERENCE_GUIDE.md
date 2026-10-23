@@ -48,7 +48,7 @@ Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** t
 
 **Summary cards.** Students, ✅ Passed, ↩️ Passed before, now revising, ✏️ Checked, not passing yet, ⚪ Not checked yet, and Needs attention. Click a card to show only those students; **Clear filter** shows everyone again. In All assignments the first card counts assignments, since a student has one row per assignment.
 
-**Each student's row.** Name; block, period and course; “N checks · last <date>” or “No checks yet”, with “· submitted <time>” once they've submitted; “First passed <date>”; the AI's suggested score from the last check (“3 — Solid (2–4, higher is better)”); **Open document ↗**; and badges on the right. Rows are grouped by lesson, then ordered by period and name, which follows SpeedGrader.
+**Each student's row.** Name; block, period and course; “N checks · last <date>” or “No checks yet”, with “· submitted <time>” once they've submitted; “First passed <date>”; the AI's suggested score from the last check (“3 — Solid (2–4, higher is better)”); **Open document ↗**; and badges on the right. Rows are grouped by lesson. In each lesson, rows that need you (Couldn’t be checked ⚠, or Waiting for your review) come first, then the rest by period and name, which follows SpeedGrader. A Couldn’t be checked ⚠ row also says why and what to do next.
 
 **Warm-up readiness strip** (under the header, when warm-ups are on). The pacing guide unit, then “x of N students have had work checked”, “y answered a warm-up”, “building a personalized learning profile” and “ready for fully personalized feedback”. Click a number to show those students.
 
@@ -86,7 +86,7 @@ A second badge shows while a check is on its way, or when it failed:
 
 - **Being checked now**: The check is running. The student sees the same words.
 
-- **Couldn't be checked ⚠**: The check failed or timed out. This isn't the student's work. A check still running after 12 minutes is stopped and lands here. These rows are counted under Needs attention. See When Students Have Problems.
+- **Couldn't be checked ⚠**: The check failed or timed out. This isn't the student's work. A check still running after 12 minutes is stopped and lands here (the student’s card then says “Taking longer than usual ⚠”). These rows are counted under Needs attention. See When Students Have Problems.
 
 > Passing isn't required before a student turns in on Canvas. A Canvas submission from a student who is ⚪ or ✏️ here hasn't passed a check yet.
 
@@ -97,7 +97,7 @@ A second badge shows while a check is on its way, or when it failed:
 Give each lesson a start date in 📅 Lessons. To change what a lesson says, or add one, write a draft there. You don't upload rubrics or forms to make assignments.
 
 1. **Open 📅 Lessons**: One table per course: Lesson, Status (Current, Upcoming, Taught or No date), Starts, and Last rollout. Next to each course name: whether the rollout is on, or “in shadow (changes nothing)”.
-2. **Set a start date**: Pick a date in Starts. It saves when you change it. **Clear** removes it. A lesson runs from its start date until the next one starts.
+2. **Set a start date**: Type or pick a date in Starts, then press Enter or leave the box. The row says **Saved ✓**, or **Not saved** and why. A date in the next 2 days, in the past, or on the current lesson asks you to confirm first. **Clear** removes it. A lesson runs from its start date until the next one starts.
 3. **Edit a lesson, or add one**: **Edit** opens the lesson's fields as a draft. **+ New lesson** (next to the course name) starts an empty one: title, objective, activity, the student task or a brief for it, a warm-up anchor, vocabulary, and competencies with a tier each.
 4. **Save draft, then Submit for import**: Submit only works once every required field is filled. The draft is imported that evening and comes back as a proposal.
 5. **Review the proposal**: Open it under Lesson drafts. Choose **Accept the proposal**, or **Return with my note** to send it back. An accepted lesson goes live once the change is reviewed and published (the screen calls this a PR: a reviewed change to the system's files).
@@ -124,7 +124,7 @@ Open **💬 Feedback** and choose, per course, *as a comment* on the document or
 
 A comment keeps the document to the assignment and the student's work, and new documents are made without a feedback section. A change reaches students within about 10 minutes.
 
-**What a feedback comment says.** “Feedback, <date and time>”, then “✅ RESULT: YOUR WORK MEETS THE STANDARD” or “✏️ RESULT: REVISIONS REQUIRED”, then the report (overall assessment, each milestone MET / PARTIALLY MET / NOT MET, required revisions) and what to do next.
+**What a feedback comment says.** “Feedback, <date and time>”, then “Result: ✅ Passed. Your work meets the standard.” or “Result: ✏️ Revise, then submit again.”, then the report (overall assessment, each milestone MET / PARTIALLY MET / NOT MET, required revisions) and what to do next.
 
 🧭
 
@@ -154,9 +154,9 @@ How it works, for when it starts: the panel lists this week's report for each st
 
 | Student says… | What's happening | What to do |
 | --- | --- | --- |
-| “My card says Couldn't be checked ⚠” | The check failed or timed out. Not their fault; their work is safe | Follow the timeout email you got: it says whether to restart the check or ask the student to press Submit for Feedback again. Contact your admin if it keeps happening |
+| “My card says Taking longer than usual ⚠” or “Couldn't be checked ⚠” | The check timed out, or its result could not be used. Not their fault; their work is safe | Follow the email you got. A timeout (“Feedback didn’t finish”) gives the steps to restart the check; the student does not need to do anything yet. A result that could not be used (“Feedback couldn’t be made”) asks you to have the student press Submit for Feedback again. The row on your dashboard says which. Contact your admin if it keeps happening |
 | “I submitted but there's no feedback” | The check may still be in line or running | Feedback is a comment: have them open the document and click Comments. Their card says “Waiting for feedback…” or “Being checked now…” while it's on its way |
-| “It says Not enough to evaluate yet” | Fewer than 25 words below the grey line | Ask them to write more under “── YOUR RESPONSE BEGINS HERE ──”, above the “Do not delete this line” line |
+| “It says Write a little more first” | Fewer than 25 words below the grey line | Ask them to write more under “── YOUR RESPONSE BEGINS HERE ──”, above the “Do not delete this line” line |
 | “My assignment isn't on my dashboard” | Wrong Google account, the lesson hasn't been released, or they're not enrolled | Have them sign into their school account. Check the lesson has a start date in 📅 Lessons. If they're not on your roster either, see How Students Get Their Documents |
 | “I don't see the 📊 menu in my document” | Expected: that menu doesn't run for student accounts | Send them to their dashboard to press **Submit for Feedback** |
 | “I deleted part of my document” | They changed the assignment, the grey line or the bottom line | File → Version history → See version history to restore. If the grey line or the CONFIG_ID line is gone for good, contact your admin |
@@ -169,7 +169,7 @@ How it works, for when it starts: the panel lists this week's report for each st
 
 **Grade in Canvas.** Each Canvas assignment asks for the student's document link (Website URL). The system doesn't send grades to Canvas. The AI's suggested score on a passing check, 2 (Adequate), 3 (Solid) or 4 (Exceptional), is a reference only. Higher is better.
 
-**Rate competencies in 🎓 Competency ratings.** Each item shows the student, the competency, “Evidence so far: n met, n not met, n partially met”, and the AI-suggested rating. Press **Confirm** to accept it, or type 1–5 under “Or enter 1–5” and press **Submit**. Items with too little evidence say so; you can still enter a rating.
+**Rate competencies in 🎓 Competency ratings.** Each item shows the student, the competency, “Evidence so far: n met, n not met, n partially met”, and the AI-suggested rating. Press **Confirm** to accept it, or type 1–5 under “Or enter 1–5” and press **Submit**. The list shows items with a suggestion. Items with too little evidence are counted under it (“N more have too little evidence for a suggestion yet”); **Show them** lists them, and you can still enter a rating.
 
 | Rating | Meaning (1 is the highest) |
 | --- | --- |
@@ -199,7 +199,7 @@ Use the year menu in the header. It starts on **Whole school year**. Pick a mark
 
 | Item | Can you change it? | How |
 | --- | --- | --- |
-| Lesson start dates | ✅ Yes | 📅 Lessons → Starts. Saves when you change it |
+| Lesson start dates | ✅ Yes | 📅 Lessons → Starts. Saves when you press Enter or leave the box |
 | A lesson's text, task and competencies | ✅ Through a draft | 📅 Lessons → Edit. The draft is reviewed before students see it |
 | A new lesson | ✅ Through a draft | 📅 Lessons → + New lesson |
 | Where feedback goes | ✅ Yes | 💬 Feedback, per course |

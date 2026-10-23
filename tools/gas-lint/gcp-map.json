@@ -95,7 +95,14 @@
       "status": "live-unverified",
       "why": "The 'Connect to cas-ccps' setting loads Google Identity Services (accounts.google.com/gsi/client) to obtain the ID token that cas-ccps's doPost() verifies, using the same OAuth client ID. Same dependency as the cas-ccps/scripts/07_TeacherDashboard.js entry, seen from the browser side. The client ID (Script Property LEADER_HUB_OAUTH_CLIENT_ID on the cas-ccps side, the Client ID field in leader-hub Settings on the other) has to be registered in Cloud Console, per step 1 of cas-ccps/docs/LEADERHUB_CONNECTION_SETUP.md. That can't happen inside the ccpsnet.net organization, where GCP access is confirmed disabled (see studio-steps above). What hasn't been tested is a client registered in a project OUTSIDE the organization, which would also need the district to allow that third-party app to sign in ccpsnet.net users. Never provisioned so far: runLeaderHubConnectionCheck on the live teacher-dashboard reported the property unset on 2026-09-26.",
       "if_unavailable": "leader-hub's connection to cas-ccps (live pacing guide, competency registry, and roster email linking for the SCR grid) stays off. doPost rejects every request before it reaches an action, and leader-hub keeps working from its own local pacing data, as it did before D1. Nothing else in either system depends on it.",
-      "revisit": "Try console.cloud.google.com with the ccpsnet.net account. If the organization block shows, this is live-blocked. If a Workspace admin enables GCP, or approves a client from outside the org, register one client for the whole district and move this to live-ok once runLeaderHubConnectionCheck passes 5/5."
+      "revisit": "Try console.cloud.google.com with the ccpsnet.net account. If the organization block shows, this is live-blocked. If a Workspace admin enables GCP, or approves a client from outside the org, register one client for the whole district and move this to live-ok once runLeaderHubConnectionCheck passes 5/5. Or skip the client: leader-hub/Diagnostics.gs checkCasServerSignIn() tests whether Apps Script's own OpenID token (ScriptApp.getIdentityToken, openid scope) verifies at tokeninfo and is accepted by CAS, a route with no Cloud Console client (2026-10-23)."
+    },
+    "leader-hub/Diagnostics.gs": {
+      "pattern": "google-oauth-client",
+      "status": "live-unverified",
+      "why": "?diag=1 loads Google Identity Services (accounts.google.com/gsi/client) only to report whether it loads on the web app's page, next to the page's own origin, which is what the CAS connection's OAuth client must list under Authorized JavaScript origins (cas-ccps/docs/LEADERHUB_CONNECTION_SETUP.md step 4). It signs nobody in and needs no client ID. The sign-in itself is the leader-hub/student-leader-hub.html entry above.",
+      "if_unavailable": "The Google sign-in library row reads FAILED; every other ?diag=1 row is unaffected.",
+      "revisit": "Same as the leader-hub/student-leader-hub.html entry: once an OAuth client exists, compare its Authorized JavaScript origins with the Page origin row."
     }
   }
 }

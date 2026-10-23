@@ -18,11 +18,10 @@ with cas-ccps beyond referencing the same course numbers. It began as a
 server, no build step — and **none of that is true any more** (since
 2026-10-22 nothing is stored in the browser at all, and the file no longer
 runs opened from disk): the app is
-now generated from 14 fragments in `src/` by `tools/leaderhub-build/build.js`,
-deployed as a real Apps Script Web App (`Code.gs`, `Data.gs`, `SCR.gs`,
-`Config.gs`), with most domains round-tripping to a private Spreadsheet.
-See "Server migration" below for what moved and what deliberately stayed
-in `localStorage`. The app's original design called for AI features
+now generated from 14 fragments in `src/` by `tools/leaderhub-build/build.js`
+and runs only as an Apps Script Web App (`Code.gs`, `Data.gs`, `SCR.gs`,
+`Config.gs`). See "Where the data lives" below, and "JJ1 — Server-deployed
+web app" for how it got there. The app's original design called for AI features
 calling Gemini directly from the browser with a user-supplied API key —
 that key was never obtainable, so every "AI"-branded feature shipped as
 deterministic local logic instead (see "AI drafting" below for the one
@@ -34,7 +33,7 @@ key at all).
 
 | Path | Contents |
 |---|---|
-| `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project) — open directly in a browser. **Generated** (external product review, Finding 4 / "this quarter" maintainability fix) from `src/*.html` via `tools/leaderhub-build/build.js` — stays committed at this path so opening it needs no build step, but **never hand-edit it directly**; edit the relevant fragment under `src/` and rebuild. See `tools/leaderhub-build/README.md`. |
+| `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project). `clasp` pushes it and `Code.gs`'s `doGet()` serves it; opened from disk it only shows "LeaderHub now runs as a web app" (see "Where the data lives"). **Generated** (external product review, Finding 4 / "this quarter" maintainability fix) from `src/*.html` via `tools/leaderhub-build/build.js` — stays committed at this path so a push needs no build step, but **never hand-edit it directly**; edit the relevant fragment under `src/` and rebuild. See `tools/leaderhub-build/README.md`. |
 | `src/` | The 14 fragments `student-leader-hub.html` is generated from, in file order — `00-shell-head.html` through `13-markup-modals-tail.html`. This is where you actually make edits. |
 | `EmailBridge.gs` | Apps Script bridge — sub-plan Docs, brag emails (sent via `MailApp`), horizon-item polling, Organization Sync, and the AI-drafting job queue (see below). Its Gmail-label horizon scan is currently **disabled**, along with every Gmail scope. They were removed while chasing the consent-dialog crash, which turned out to be unrelated (see the Fixed section below), so restoring them is now a separate decision. `LEADERHUB_AI_FLOW_SETUP.md` covers the queue; `LEADERHUB_EMAIL_SETUP.md` is superseded/historical. |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup) |
@@ -53,6 +52,44 @@ genuinely different from the live app, not a duplicate, kept for history)
 and `studentleaderhub_REACT_EXPLORATORY_DRAFT.jsx` (a React/JSX
 exploration draft, not the deployed artifact, referenced in HISTORY.md's
 "Fixed: two more narrow-blast-radius bugs").
+
+## Where the data lives
+
+Since 2026-10-22 (`meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`,
+all five phases done), the server is the only store:
+
+- **Load.** `doGet()` (`Code.gs`) reads every config key, data domain and
+  the SCR scores in one pass (`lhBootData_`, `Data.gs`) and writes them
+  into the page as `window.__LH_BOOT__` (`lhInjectBootData_`) before the
+  app's scripts run. The app keeps them in page memory (`_lhStore`,
+  `src/05`); `LS.get`/`LS.set` kept their names but read and write that
+  memory, not the browser.
+- **Save.** Every `LS.set` goes to the server: settings-shaped keys
+  (`LH_CONFIG_KEYS`, `Config.gs`) as Script Properties named
+  `LH_CONFIG__<key>`; record lists (`LH_DATA_TABS`, `Data.gs`) as tabs in
+  the private "LeaderHub Data" spreadsheet; SCR scores cell by cell
+  in its `scr_scores` tab (`SCR.gs`). Drafts and view state (`LH_PAGE_MEMORY_KEYS`) stay in page
+  memory only, so a reload opens on the dashboard.
+- **When a save fails** a red "N changes not saved yet — retrying" bar
+  appears with **Retry now**; leaving the page asks first. If the server's
+  data can't be read at load, the page says so and refuses to save.
+- **Browser storage** is touched only to move an earlier version's
+  leftovers (`lhMigrateFromBrowser_`: pushed, then deleted) and by the
+  retired-file page below. `tests/leaderhub/no-browser-storage.test.js`
+  enforces it.
+- **The standalone file is retired.** Opened from disk, `src/00`'s guard
+  stops the page and shows "LeaderHub now runs as a web app", with
+  **Export everything** and then **Clear this browser's copy**. In the web
+  app, Settings → Your Data → **⬆️ Import Backup** merges that export into
+  the server copy (`lhImportIntoServer_`) and replaces nothing.
+- **Gone:** the Email Bridge URL setting, the Gemini API key, and every
+  browser `fetch()` to this project (`callGAS()` is `google.script.run`
+  only). The one remaining `fetch()` is the separate cas-ccps connection
+  (`CAS_CCPS_BRIDGE`).
+
+The dated sections below say "in localStorage" or "localStorage-backed"
+where that was true when each was written. Every one of those keys is now
+on the server or in page memory, as above.
 
 ## Status
 
@@ -177,10 +214,12 @@ split, before any live test, which is the likeliest reason the split
   Sources panel, no network inspection. All testing is black-box, with
   screenshots and described behavior only. `Diagnostics.gs`'s `?diag`
   modes exist for this reason.
-- `.clasp.json` is gitignored. `tools/clasp-sync/run.ps1` copies each
-  project's real one in from the registry outside the checkout.
+- `.clasp.json` is gitignored. `tools/clasp-sync/run.js` (or its
+  PowerShell twin `run.ps1`) copies each project's real one in from the
+  registry outside the checkout.
 - The user deploys from a GitHub ZIP of main with
-  `tools/clasp-sync/run.ps1`; `git` is not available on that machine.
+  `node tools/clasp-sync/run.js --latest --only leader-hub`; `git` is not
+  available on that machine.
 
 **Current state:** zero Gmail scope in `appsscript.json` (7 scopes, none
 Gmail); `createBragDraft_()` sends via `MailApp.sendEmail()`;
@@ -208,10 +247,10 @@ healthy page shows 16 named blocks, none over 70,000 characters, and zero
 `sourceURL` comments.
 
 To try a change without touching users, push it to HEAD and use the
-`/dev` link that `run.ps1` prints:
+`/dev` link that `run.js` prints:
 
-```powershell
-.\run.ps1 -Latest -HeadOnly -Only leader-hub
+```
+node tools/clasp-sync/run.js --latest --head-only --only leader-hub
 ```
 
 **Server sync goes through public, owner-only functions.** Apps Script
@@ -296,11 +335,13 @@ result shown (or the existing deterministic fallback, on any failure).
   an unbuilt or broken Flow can't leak rows forever).
 - `student-leader-hub.html`'s `_generateBragEmailInner()`,
   `generateAIInsights()`, `_wblGenerateNarrative()`, `lpRunAI()`, and
-  `aiComposeEmail()` all try the AI path first (when an Apps Script
-  bridge URL is configured), polling for up to ~90 seconds via a shared
+  `aiComposeEmail()` all try the AI path first (through `callGAS()`, which
+  in the web app always reaches the server; it originally needed an Apps
+  Script bridge URL pasted into Settings, a setting removed 2026-10-22),
+  polling for up to ~90 seconds via a shared
   `pollAiJob_()` helper, and **always fall back to the existing
-  deterministic result** on any failure, timeout, or when no bridge is
-  configured at all — all five are purely additive; each keeps working
+  deterministic result** on any failure, timeout, or when the server
+  can't be reached — all five are purely additive; each keeps working
   exactly as it always has if its Flow is never built. `lpRunAI()` and
   `aiComposeEmail()` additionally guard against a slower, stale request's
   result overwriting a newer request's (a monotonic request-id check
@@ -339,7 +380,8 @@ result shown (or the existing deterministic fallback, on any failure).
   actually reachable regardless of whether AI drafting is ever
   configured.
 
-**What this doesn't include yet:** none of the five Workspace Flows are
+**What this didn't include at the time** (since done: all six Flows went
+live 2026-09-05, see `DEPLOYMENT_GUIDE.md`): none of the five Workspace Flows were
 built — building a no-code Flow happens in the live Google Workspace UI,
 not a file this repo can contain, same limitation kos-personal/cas-ccps's
 own unbuilt Studio flows already live with. `LEADERHUB_AI_FLOW_SETUP.md`
@@ -378,7 +420,7 @@ their own name instead of Adam's.
 Settings now has a "My Profile & School" panel — name, title(s), school,
 phone, email, email domain, and the DECA-specific Brag Board recipients
 (supervisor/admin/attendance-coordinator) — backed by a `PROFILE` object
-(`lh_profile` in localStorage) that every one of those templates reads from
+(`lh_profile`, a server config key since 2026-10-22) that every one of those templates reads from
 instead. Fields save as you leave them and take effect immediately, no
 reload required. This closes the identity/signature gap specifically.
 
@@ -398,7 +440,7 @@ Clover Hill's actual 2025-26 values hardcoded into four consts
 end of a school year.
 
 Settings now has a "School Calendar & Bell Schedule" panel backed by
-`lh_schedule_config` in localStorage:
+`lh_schedule_config` (a server config key since 2026-10-22):
 - **Day-of-Week Default Schedule** — 7 dropdowns (Sun–Sat), each picking a
   configured bell-schedule type or "No School".
 - **Quarter Dates** — 4 start/end date pairs (Q1–Q4).
@@ -426,7 +468,7 @@ e-sports team got the full set regardless, with no toggle anywhere in the
 codebase.
 
 Settings now has a "Modules" panel with three checkboxes — DECA, WBL /
-School Store, E-Sports — backed by `lh_modules` in localStorage
+School Store, E-Sports — backed by `lh_modules` (a server config key)
 (`MODULES`/`getModules()`/`saveModules()`, same pattern as `PROFILE`).
 Unchecking one immediately hides its nav button, its whole sidebar section
 (header + body + the one separator between it and its neighbors — the
@@ -476,7 +518,8 @@ editing this file directly.
 
 Adam's own 3 courses are unchanged — this is purely additive:
 
-- **`CUSTOM_COURSES`** (`lh_custom_courses`) is a new localStorage-backed
+- **`CUSTOM_COURSES`** (`lh_custom_courses`, then localStorage, now a
+  server config key) is a new
   overlay merged into `SCR_COURSES` at boot via `Object.assign()`. It can
   only ever add new course codes — `_parseCourseJson()` refuses to import
   a code that already exists (built-in or previously imported), so this
@@ -590,8 +633,8 @@ reference/contacts/email templates), same data. This round makes the
 underlying system generic so another teacher's club, CTSO, or student
 organization can be added the same way a Course Catalog course is:
 
-- **`ORGANIZATIONS`** (built-in `deca` + a `CUSTOM_ORGS` localStorage
-  overlay, same additive pattern as the Course Catalog) holds each
+- **`ORGANIZATIONS`** (built-in `deca` + a `CUSTOM_ORGS` overlay, then
+  localStorage, now a server config key, same additive pattern as the Course Catalog) holds each
   organization's name/icon, its own **officer position list**, its own
   **competition/achievement levels** (DECA's are `DLC`/`SLC`/`ICDC`; a
   differently-tiered CTSO or a non-competitive club can define its own, or
@@ -641,7 +684,7 @@ organization can be added the same way a Course Catalog course is:
 **Deliberately out of scope for this round** — a genuinely different,
 much larger undertaking, discussed with Adam and intentionally deferred:
 **sharing an organization between co-advisors.** Everything in LeaderHub
-today is single-browser localStorage; making an organization's roster/
+was then single-browser localStorage; making an organization's roster/
 results genuinely shared means introducing a real synced datastore (a
 Google Sheet via an extended `EmailBridge.gs`, in the direction agreed
 on) with actual conflict-handling for simultaneous edits — a separate,
@@ -668,8 +711,9 @@ scoping (legacy-row backfill, per-org filtering), and the `MODULES.deca`
 
 The "deliberately out of scope" item from the round above — sharing an
 organization's roster/results between co-advisors — is now built. It
-reuses `EmailBridge.gs`, the same optional Apps Script companion that
-already backs the Email Bridge and AI drafting features, extended with
+reuses `EmailBridge.gs`, the Apps Script code (now part of the one
+`leader-hub:app` web app) that backs the Email Bridge and AI drafting
+features, extended with
 three new POST actions and a **second, independent Spreadsheet**
 ("LeaderHub Org Sync" — never the AI Queue one) that acts as the shared
 datastore.
@@ -725,7 +769,7 @@ small but nonzero) — the compare-and-swap catches the much more common
 possible interleaving.
 
 **Client-side additions:**
-- `lh_org_sync` localStorage — per org, `{enabled, lastKnownRemoteUpdatedAt,
+- `lh_org_sync` (then localStorage, now a server config key) — per org, `{enabled, lastKnownRemoteUpdatedAt,
   lastSyncedAt, lastSyncedBy, bridgeUrl, ownBridgeUrl}`. `bridgeUrl` is the
   sharing advisor's `/exec` URL ('' = this deployment's own);
   `ownBridgeUrl` is this deployment's URL, which goes into the share code.
@@ -1013,7 +1057,7 @@ even-distribution guess.
   untouched). Accepts either one unit object or a whole term as an array,
   same flat field shape `lhDownloadLessonUnitTemplate()` already hands out
   — no new format to learn.
-- **`CUSTOM_PACING_UNITS`** (new, `lh_custom_pacing_units` in localStorage)
+- **`CUSTOM_PACING_UNITS`** (new, `lh_custom_pacing_units`, then localStorage, now a server config key)
   holds the imported units per course. Each is wrapped into the exact same
   shape `CAS_PACING_UNITS` already uses (`courses[course].objective/compIds`,
   `vocabulary`, `warmupAnchor`, `priorConnection`) so every existing
@@ -1080,14 +1124,14 @@ leader-hub's SCR grading grid and Pacing Calendar are now optional live
 clients of a connected cas-ccps Teacher Dashboard, instead of always
 relying on the frozen local copies (`CAS_PACING_UNITS`, the hand-typed
 `SCR_COURSES` roster) — a Settings → "Connect to cas-ccps" flow, deliberately
-separate from the existing Email Bridge connection since cas-ccps requires
+separate from leader-hub's own server connection since cas-ccps requires
 a real verified identity per request rather than trusting a bare URL.
 
 - **`CAS_CCPS_BRIDGE`** (`867d6f4`) — Google Identity Services
   ("Sign In With Google") client-side, a short-lived ID token kept in
   memory only (never localStorage), sent to cas-ccps's `doPost()` in a
-  `text/plain` POST body (same CORS-preflight-avoidance trick
-  `EMAIL_BRIDGE` already uses) rather than an `Authorization` header.
+  `text/plain` POST body (a CORS-preflight-avoidance trick `EMAIL_BRIDGE`
+  also used before its `fetch()` path was removed 2026-10-22) rather than an `Authorization` header.
   `refreshCasCcpsPacingGuide()` is a deliberate, button-triggered pull —
   nothing syncs automatically, same convention as Org Sync's push/pull.
 - **Student-email link** (`e1221d5`) — the SCR grading grid had no
@@ -1125,10 +1169,11 @@ defaults, matching the same "fresh adopter fills in Settings" pattern
   input for each, unaffected by this change.
 - **The Trips → Chapter Reference "Key Contacts" list** — used to be a
   hardcoded array of ~8 real people's names/phones/emails. Now reads from
-  `getKeyContacts()`/`saveKeyContacts()` (localStorage, same convention as
-  `PROFILE`), shipping empty by default. Populate your own list once,
-  locally, via the browser console — see that function's own comment in
-  source for the exact call. Never committed, never sent anywhere.
+  `getKeyContacts()`/`saveKeyContacts()` (`lh_keyContacts`, same convention
+  as `PROFILE`: then localStorage, now a server config key), shipping
+  empty by default. Populate your own list once via the browser console —
+  see that function's own comment in source for the exact call. Never
+  committed; saved only to your own deployment's Script Properties.
 
 `EmailBridge.gs`'s `CONFIG.defaultBragTo` and `drive-tools/LH_DriveDocSplitter.gs`'s
 four `sourceDocId` values got the same treatment — blanked/placeholder'd
@@ -1191,7 +1236,7 @@ needed no changes.
 
 ---
 
-## Version control (clasp) — scaffolded, not yet connected
+## Version control (clasp) — connected and deployed
 
 > **Deploying it?** [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) is the
 > step-by-step runbook — clasp connection, the `.claspignore` allowlist
@@ -1201,7 +1246,8 @@ needed no changes.
 
 
 The Apps Script project (now `EmailBridge.gs` + `Code.gs` + `Config.gs` +
-`Data.gs` + `SCR.gs` + `AiPrompts.gs` + `FlowOps.gs` — see "Server-deployed
+`Data.gs` + `SCR.gs` + `AiPrompts.gs` + `FlowOps.gs` + `DeployVersionReport.gs`
++ `DeployVersionMarker.gs` + `Diagnostics.gs` — see "Server-deployed
 web app" below; this is the one place this list is spelled out in prose, and
 `tools/gas-lint/project-map.json` is what the tooling actually reads) is laid out
 exactly the way [clasp](https://github.com/google/clasp) wants — a flat
@@ -1214,7 +1260,7 @@ have other causes (see the Fixed section near the top of this file, and
 `leader-hub/HISTORY.md`). A `.claspignore` that allowlists
 exactly those `.gs`
 files plus `appsscript.json` and `student-leader-hub.html` (everything
-else here — the `LEADERHUB_*`/`LH_0*` docs, `student-leader-hub.jsx`,
+else here — the `LEADERHUB_*`/`LH_0*` docs,
 `archived/`, and `drive-tools/`'s one-off paste-and-run utilities — is
 excluded), and a `.clasp.json.template` to fill in with a real
 `scriptId` once you've run `clasp login` + `clasp clone`/`create` against
@@ -1234,9 +1280,10 @@ URL could never have shown the hub UI regardless of configuration. This
 round makes leader-hub genuinely operate the way `cas-ccps/teacher-
 dashboard` does: a real Apps Script Web App reachable at a `/exec` URL,
 sign-in-gated to one owner, with most data domains synced to a private
-Spreadsheet — while `student-leader-hub.html` keeps working as a fully
-local, no-network file for as long as anyone wants it. There is no forced
-cutover date; the deployed app is purely additive.
+Spreadsheet — while `student-leader-hub.html` kept working as a fully
+local, no-network file. (That was the plan when this round shipped; the
+local file was retired 2026-10-22, and the web app is now the only way
+LeaderHub runs. See "Where the data lives" above.)
 
 **New files, one merged Apps Script project** (not two): `Code.gs`
 (`doGet()` serves the hub UI via `HtmlService.createHtmlOutputFromFile()`
@@ -1322,7 +1369,7 @@ Phase 2, `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`):
   only as the web app. Opened from disk, the page stops and says so
   (src/00's guard), with an **Export everything** of whatever an earlier
   version left in that browser and **Clear this browser's copy** after it;
-  **Settings → Import** in the web app adds that export to the server's
+  Settings → Your Data → **⬆️ Import Backup** in the web app adds that export to the server's
   copy rather than replacing it. The Email Bridge URL setting, `callGAS()`'s
   and Organization Sync's browser `fetch()` paths and the boot catch-up
   calls are gone; the web app's own URL comes from the server
@@ -1346,8 +1393,10 @@ same granularity editing one Sheet cell from two tabs would already give
 — deliberately simpler than `Data.gs`'s whole-domain compare-and-swap.
 `lhGetScrScores_()`'s `found:false` (this deployment has never had a
 score pushed) vs. `found:true` with an empty result (synced, then
-cleared) is what protects a fresh deployment's first pull from wiping out
-a teacher's real, already-graded local scores.
+cleared) is what protected a fresh deployment's first pull from wiping out
+a teacher's real, already-graded local scores. (Today the scores arrive
+with the boot data, and any left in an earlier version's browser storage
+are pushed once by `lhMigrateFromBrowser_`.)
 
 **ID generation stays client-side.** Every record already carries its own
 `id` (`Date.now()`, an incrementing counter, or a seed value) from

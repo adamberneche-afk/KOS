@@ -11,7 +11,8 @@ superseded, not-deployed predecessor — see `project-map.json`'s
 completion mechanics this prompt fires inside. `16_FlowPrompts.gs`
 generates a `FlowPrompts` sheet tab from this file's body (Section 1
 onward) so a Studio Flow can pull it in via a chip instead of this paste —
-see that file's own header.
+see that file's own header. The live Curator Flow's Ask Gemini step reads
+it from that tab (since 2026-09-29).
 
 This file did not previously exist. `STUDIO_INTEGRATION_SPEC.md` fully
 specified what this flow must produce (Steps 4-5) but, unlike its sibling

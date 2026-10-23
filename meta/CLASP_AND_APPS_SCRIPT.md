@@ -89,8 +89,8 @@ reconciliation quietly prevents, and kos-personal's Round 22
    `.clasp.json.template`'s shape: `{"scriptId": "...", "rootDir": "."}`)
    before the first `clasp push`.
 3. **Before trusting any `clasp push`, know the expected file count.**
-   For kos-personal's main project: 16 numbered `.gs`/`.html` files plus
-   `appsscript.json` = 17. Check `tools/gas-lint/project-map.json` for any
+   For kos-personal's main project: 23 numbered `.gs`/`.html` files plus
+   `appsscript.json` = 24 (its `.claspignore` allowlist, as of 2026-10-23). Check `tools/gas-lint/project-map.json` for any
    project's authoritative list rather than recounting by hand. If
    `clasp push`'s own output lists fewer files than expected, stop —
    don't assume it's fine, the missing ones are about to be deleted from
@@ -197,8 +197,10 @@ for even once the tooling exists to make the old habit unnecessary.
 
 Everything above was written while this was still a proposal, and the
 heading here used to say "scaffolded, not yet connected to a live account."
-That stopped being true. **All 8 `cas-ccps` projects now exist in a real
-`ccpsnet.net` Workspace account and have been pushed with this tooling** —
+That stopped being true. **All 8 `cas-ccps` projects of that first push now
+exist in a real `ccpsnet.net` Workspace account and have been pushed with
+this tooling** (a 9th, `family-sentinel`, came later and is in `run.js`'s
+manifest; `studio-steps` pushed but is blocked) —
 `cas-ccps/clasp/local/` holds their real script IDs and is gitignored, so a
 new session or machine recreates it from the templates rather than finding
 it in the repo. `cas-ccps/HISTORY.md`'s deployment section records what that
@@ -206,7 +208,8 @@ first push found, including three Studio walls that only a live account
 could reveal.
 
 `kos-personal`'s main project and `leader-hub`'s one are live too, pushed
-the same way by `tools/clasp-sync/run.ps1`. kos-personal's second project,
+the same way by `tools/clasp-sync/run.js` (which replaced `run.ps1` on
+2026-10-17). kos-personal's second project,
 `archive/studio-steps/`, was archived on 2026-09-29 (blocked on this
 account, like cas-ccps's).
 
@@ -232,24 +235,23 @@ The layout each system needs, which hasn't changed:
   it started as, but it's still exactly one Apps Script project either
   way, so the flat-folder model still applies unchanged.
 - **`cas-ccps/scripts/`** doesn't fit the one-folder-one-project model —
-  it's actually 8 separate projects (7 bound or web-app projects plus the standalone `studio-steps`) sharing overlapping
-  files (`00_SharedConfig.js` alone is pasted into 5 of them). See
+  it's actually 9 separate projects (8 bound or web-app projects plus the standalone `studio-steps`) sharing overlapping
+  files (`00_SharedConfig.js` alone is pasted into all 8 of them). See
   [`tools/clasp-sync/README.md`](../tools/clasp-sync/README.md) for how
   that's reconciled: a small script generates a throwaway per-project
   push folder for each, from the same `project-map.json` gas-lint already
   uses, so `cas-ccps/scripts/` itself never gets reorganized or
-  duplicated in git. An 8th project, `cas-ccps/studio-steps/` — blocked on
-  this account, kept because enabling GCP would make it reachable again —
-  was added
+  duplicated in git. `cas-ccps/studio-steps/` — blocked on this account,
+  kept because enabling GCP would make it reachable again — was added
   later for the Studio Steps adoption — standalone, sharing no files with
-  the other 7, but handled by the same tool and the same `cas-ccps:*`
+  the other 8, but handled by the same tool and the same `cas-ccps:*`
   scope.
-- Every one of the 10 real projects (kos-personal's 1 + cas-ccps's 8 +
+- Every one of the 11 real projects (kos-personal's 1 + cas-ccps's 9 +
   leader-hub's 1; kos-personal's archived studio-steps project kept its
   own) now has a committed `appsscript.json` —`cas-ccps` and
   `leader-hub` had none before this reconciliation; `oauthScopes` were
   derived from actual code usage against `tools/gas-lint/scope-map.json`,
-  and `gas-lint`'s existing OAuth-scope check now validates all 10 of
+  and `gas-lint`'s existing OAuth-scope check now validates all 11 of
   them, not just `kos-personal`'s main project.
 - **Setting up a second account is entirely credentialed and can't be
   done from a repo session** (for this account it is done): run `clasp login`

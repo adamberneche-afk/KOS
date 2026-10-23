@@ -1,6 +1,6 @@
 # Dashboard walk-through, week of Oct 26
 
-Read from `origin/main` at `dcc57f9` (#240). Files: `cas-ccps/scripts/13_StudentDashboard.js` (Student Dashboard project: 00, 13, 49, 63), `07_TeacherDashboard.js` plus `23_StudentProfileManager.js`'s `buildShadowMatrixSummary_` and `29`'s roster (Teacher Dashboard project: 00, 07, 22, 23, 26, 27, 29, 31, 32, 36, 48). I also read the code that writes what these screens show: 02, 03, 24, 25, 37, 41, 58. No student names, emails or file IDs appear here.
+Read from `origin/main` at `dcc57f9` (#240). The checklist's words were re-checked against the code at #266 (2026-10-23): the plain-words pass (#253, #254) renamed several labels, and the checks below use the current ones. Finding line numbers stay on `dcc57f9`. Files: `cas-ccps/scripts/13_StudentDashboard.js` (Student Dashboard project: 00, 13, 49, 63), `07_TeacherDashboard.js` plus `23_StudentProfileManager.js`'s `buildShadowMatrixSummary_` and `29`'s roster (Teacher Dashboard project: 00, 07, 22, 23, 26, 27, 29, 31, 32, 36, 48). I also read the code that writes what these screens show: 02, 03, 24, 25, 37, 41, 58. No student names, emails or file IDs appear here.
 
 Dates assume the walk is on **Mon Oct 26**. Odd and even days go by calendar date (24's `getDayType_`), so Oct 26 is an **EVEN** day:
 - 3-Even meets today.
@@ -96,22 +96,22 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 
 ### 4. Teacher Dashboard: header and summary (after redeploying)
 
-- [ ] The header reads "📊 Assignment Dashboard", with: **+ New Lesson** (only when M2 is on), **Student Context** (was My Context), **📅 Lessons**, **✉ Parent Reports**, **🎓 Competency ratings**, **❓ Terms**, **💬 Feedback**, **↻ Refresh** and the term dropdown.
+- [ ] The header reads "📊 Assignment Dashboard", with, in this order: **+ New Lesson** (only when M2 is on), **Student Context** (was My Context), **✉ Parent Reports**, **🎓 Competency ratings**, **💬 Feedback**, **📅 Lessons**, **❓ Terms**, **↻ Refresh** and the term dropdown ("Whole school year").
 - [ ] **Warm-up readiness strip** under the header (M2 on): "Pacing guide: <unit id — unit name>" or "No active unit", "x of N students have had work checked", "y answered a warm-up", and the profile lines.
   - Compare y with the number of students who actually **answered** a warm-up. Expect them to match: blank (INCOMPLETE) warm-ups no longer count (finding 6, fixed 10-22). Until the nightly profile rebuild after the push, an older score entry counts if it scored any points.
   - **Click each number.** Expect the roster to narrow to those students, with a blue "Showing n …" bar and **Clear filter** (finding 7, fixed 10-22).
   - N counts StudentProfiles rows, not the roster in view.
 - [ ] **Lesson picker** "Showing": it defaults to "Current lesson: <name>" (LessonSchedule's latest start_date on or before today, per course), and "All assignments" is at the bottom.
 - [ ] **Summary cards** for the lessons in view:
-  - Students, ✅ Passed, ↩️ Passed before (now revising), ✏️ Checked (not passing yet), ⚪ Not checked yet, Needs attention, and Pending Review (only if more than 0).
+  - Students, ✅ Passed, ↩️ Passed before, now revising, ✏️ Checked, not passing yet, ⚪ Not checked yet, Pending Review (only if more than 0), and Needs attention.
   - Passed + passed before + not passing + not checked = Students.
   - Click a card: the list filters, and a grey "Showing n: …" bar with **Clear filter** appears.
   - In "All assignments", the first card reads "Assignments · n students": the count is assignment rows, so the other cards still add up to it (finding 16, fixed 10-22).
 
 ### 5. Teacher Dashboard: roster rows
 
-- [ ] Each lesson section has a header: "<lesson> 12 students · 3 passed · … not checked". Students are ordered by period (1, 3-Even, 3-Odd, 4…), then name.
-- [ ] Each row shows the name, "Block x · Period 3-Odd · Subject", "N checks · last <date>" or "No checks yet", "First passed <date>", "AI's suggested score, last check: n — Adequate/Solid/Exceptional (2–4, higher is better)", **Open document ↗**, and on the right the state badge, plus a pipeline badge when the work is QUEUED, EVALUATING NOW, FLAGGED or PENDING REVIEW.
+- [ ] Each lesson section has a header: "<lesson> 12 students · 3 passed · … not checked", plus "· n couldn't be checked" in red when any row failed. Students are ordered by period (1, 3-Even, 3-Odd, 4…), then name.
+- [ ] Each row shows the name, "Block x · Period 3-Odd · Subject", "N checks · last <date>" or "No checks yet", "First passed <date>", "AI's suggested score, last check: n — Adequate/Solid/Exceptional (2–4, higher is better)", **Open document ↗**, and on the right the state badge (✅ Passed, ↩️ Passed before · latest needs revision, ✏️ Checked · not passing yet, ⚪ Not checked yet), plus a second badge while the work is in the pipeline: "Waiting to be checked", "Being checked now", "Couldn't be checked ⚠" or "Waiting for your review".
 - [ ] Student E's row shows the **Waiting to be checked** badge, and the student's own card says "Waiting for feedback…" (finding 2, fixed 10-22).
 - [ ] Student F's row shows "✅ Passed" with a first-passed date.
 - [ ] Period 3 students show **3-Odd / 3-Even**, never plain "3" (`PeriodOverride` / relabel).
@@ -121,7 +121,7 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 
 - [ ] Open it. Expect "Where feedback goes", a **Now:** line with the live setting (all), and one row each for **8175** and **8177** (finding 1, fixed 10-22). A course missing from the list means its Ledger rows name no course in ClassName, Subject or CourseName: write down which.
 
-### 7. Teacher Dashboard: My Context
+### 7. Teacher Dashboard: Student Context (was My Context)
 
 - [ ] **Student Context** replaces the roster with "Student Context — Full Roster", "Generated <time> · Updates weekly", and one row per student with an Active / No recent activity badge, the account, "last updated", and **Open doc ↗**.
 - [ ] **← Back to dashboard** at the top returns to the roster without reloading it (finding 18, fixed 10-22).
@@ -144,7 +144,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
   1. Work out the course from the row's class or course name with `warmUpCourseCode_` (00, the same rule `WARMUP_TEXT_BOX` uses), both in `_tdFeedbackPlacement_` and in a `feedbackAsCommentChecker_` that takes the row rather than the ConfigID.
   2. Show `data.value` at the top of the panel.
 
-**2. A submitted assignment reads "Not started yet" on the student's card while the teacher sees QUEUED.** *Fixed 2026-10-22: an open ReviewQueue row or a waiting staging row reads "Queued for evaluation…", Submit is hidden while queued, and a STAGED row refuses a second submit.*
+**2. A submitted assignment reads "Not started yet" on the student's card while the teacher sees QUEUED.** *Fixed 2026-10-22: an open ReviewQueue row or a waiting staging row reads "Waiting for feedback…" (first "Queued for evaluation…", renamed in the plain-words pass), Submit is hidden while queued, and a STAGED row refuses a second submit.*
 - **Where:** `13_StudentDashboard.js:619-670` (`resolveStudentStatus_` / `resolveStudentClass_`), compared with `07:1386-1389`.
 - **What:** 13 only knows a staging status of `IN_PROCESS`. Its `PENDING`/`STAGED` cases are dead, because no code ever writes those to the **Ledger**: 03 writes them to ReviewQueue only, and the Ledger goes ACTIVE → COMPLETE in `03:483-490`. 07 also maps staging `PENDING_INFERENCE` to QUEUED; 13 doesn't.
 - **Scenario:** student E presses Submit, refreshes, and sees "Not started yet" with the Submit button still there. Pressing Submit again after the bridge has moved the row to STAGED passes the `ALREADY_QUEUED` check (`13:554-556` only looks for PENDING) and stamps a new SubmissionTS. On a resubmission of evaluated work, the card keeps saying "Evaluated — feedback ready" until Flow 2 starts.

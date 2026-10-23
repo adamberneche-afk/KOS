@@ -456,9 +456,10 @@ and let it flow through the normal path, not to leave the hotfix standing.
 the deployed constant is a generated mirror of it, produced by a script, not
 by hand:**
 
-- `kos-personal/CURATOR_PROMPT.md` / `VECTOR_CLASSIFY_PROMPT.md` →
-  `tools/kos-personal/generate-flow-prompts.js` → `16_FlowPrompts.gs`'s
-  `CURATOR_SYSTEM_PROMPT` / `VECTOR_CLASSIFY_SYSTEM_PROMPT`.
+- `kos-personal/CURATOR_PROMPT.md` / `VECTOR_CLASSIFY_PROMPT.md` /
+  `CURATOR_AUDITOR_PROMPT.md` → `tools/kos-personal/generate-flow-prompts.js`
+  → `16_FlowPrompts.gs`'s `CURATOR_SYSTEM_PROMPT` /
+  `VECTOR_CLASSIFY_SYSTEM_PROMPT` / `CURATOR_AUDITOR_SYSTEM_PROMPT`.
 - `cas-ccps/docs/CAS_Flow3_Flow4_Specification.html` +
   `cas-ccps/scripts/15_StudioFlowPrompts.js` →
   `tools/cas-ccps/generate-flow-prompts.js` → `40_FlowPrompts.js`'s five
@@ -468,15 +469,21 @@ by hand:**
   four went through).
 - `leader-hub/*_FLOW_PROMPT.md` → `tools/leader-hub/generate-ai-prompts.js`
   → `AiPrompts.gs`'s six `AI_PROMPT_*` constants.
+- `cas-ccps/docs/FAMILY_MAIL_TRIAGE_PROMPT.md` →
+  `tools/cas-ccps/generate-family-mail-prompt.js` →
+  `61_FamilyMailPrompt.js`'s `FAMILY_MAIL_TRIAGE_PROMPT`.
 
-Each generator does a targeted in-place replacement of only the prompt
-constant(s) — never a full-file rewrite — so the surrounding sync/check/
+The first three generators do a targeted in-place replacement of only the
+prompt constant(s) — never a full-file rewrite — so the surrounding sync/check/
 substitution logic in `16_FlowPrompts.gs`/`40_FlowPrompts.js`/`AiPrompts.gs`
 is untouched by construction, not by care taken while editing.
+`61_FamilyMailPrompt.js` holds nothing but the constant, so its generator
+writes the whole file.
 
 **Enforced: partially.** Each system's own drift test
 (`tests/kos-personal/flow-prompts.test.js`,
-`tests/cas-ccps/flow-prompts.test.js`, `tests/leaderhub/ai-prompts.test.js`)
+`tests/cas-ccps/flow-prompts.test.js`, `tests/leaderhub/ai-prompts.test.js`,
+`tests/cas-ccps/family-mail-sentinel.test.js`)
 re-derives the constant from its canonical source at test time and fails on
 any mismatch — so a canonical source edited without regenerating the
 constant (or vice versa) is caught by `npm test`. What isn't enforced: a

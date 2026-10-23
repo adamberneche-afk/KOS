@@ -7,11 +7,17 @@
 // in the Apps Script editor's Executions log. They're reached through the
 // same /exec or /dev URL as the app:
 //
+//   checkCasServerSignIn()  (editor) whether Apps Script's own OpenID
+//                      token could sign LeaderHub in to CAS server to
+//                      server, with no Cloud Console OAuth client; below.
 //   ?diag=1            A tiny server-checks page, no app code: who you're
 //                      signed in as, whether you're the owner, how big the
 //                      served app is, and two live google.script.run calls
 //                      (a ping, and lhGetAllConfig, the owner-only entry
-//                      point the app's settings sync uses).
+//                      point the app's settings sync uses). Also the
+//                      page's own origin and whether Google's sign-in
+//                      library loads there: the origin the CAS
+//                      connection's OAuth client must list.
 //   ?diag=probe        The full app, plus a status panel pinned to the
 //                      bottom of the screen: which of the page's script
 //                      blocks actually ran, every error with its block and
@@ -307,7 +313,12 @@ function _lhDiagServerPage_(cfg, owner) {
     '<tr><th>google.script.run</th><td id="gsr">not checked</td></tr>' +
     '<tr><th>Public server call (lhDiagPing)</th><td id="pub">waiting</td></tr>' +
     '<tr><th>Settings sync call (lhGetAllConfig)</th><td id="priv">waiting</td></tr>' +
+    '<tr><th>Page origin</th><td id="origin">not checked</td></tr>' +
+    '<tr><th>Google sign-in library</th><td id="gsi">waiting</td></tr>' +
     '</table>' +
+    '<p>Page origin is what the CAS connection\'s OAuth client needs under Authorized ' +
+    'JavaScript origins (cas-ccps/docs/LEADERHUB_CONNECTION_SETUP.md): Apps Script serves this ' +
+    'page, like the app, from its own googleusercontent.com address, not script.google.com.</p>' +
     '<p>The app loads and saves settings, data and SCR scores through owner-only public ' +
     'functions (Code.gs). If this call fails while the ping works, none of that is ' +
     'reaching the server.</p>' +
@@ -319,6 +330,12 @@ function _lhDiagServerPage_(cfg, owner) {
     '<script>(function(){' +
     'function set(id,t){document.getElementById(id).textContent=t;}' +
     'set("js","yes");' +
+    'set("origin",location.origin);' +
+    'var g=document.createElement("script");g.src="https://accounts.google.com/gsi/client";g.async=true;' +
+    'g.onload=function(){set("gsi",(window.google&&google.accounts&&google.accounts.id)?' +
+    '"loaded (google.accounts.id available)":"loaded, but google.accounts.id is missing");};' +
+    'g.onerror=function(){set("gsi","FAILED to load accounts.google.com/gsi/client");};' +
+    'document.head.appendChild(g);' +
     'if(!(window.google&&google.script&&google.script.run)){set("gsr","NOT available");return;}' +
     'set("gsr","available");' +
     'google.script.run.withSuccessHandler(function(r){set("pub","OK -- "+JSON.stringify(r));})' +
@@ -355,6 +372,95 @@ function _lhDiagScriptTable_(html, all) {
   }).join('');
   return '<h2>Script elements as served</h2><table class="blocks"><tr><th>#</th><th>starts at</th>' +
     '<th>size</th><th>name</th><th>begins</th><th>ends</th></tr>' + rows + '</table>';
+}
+
+// ── Server-side sign-in check for the CAS connection (2026-10-23) ────────
+//
+// The CAS connection signs in from the browser with Google Identity
+// Services, which needs an OAuth client registered in Cloud Console, and
+// GCP access is off for ccpsnet.net (tools/gas-lint/gcp-map.json,
+// google-oauth-client). Since 2026-10-22 LeaderHub runs on the server, so it
+// could call CAS server to server with Apps Script's own OpenID token
+// instead (ScriptApp.getIdentityToken(), which needs the openid scope): no
+// client to register and no page origin. Whether that token exists on this
+// account is unknown; this answers it. Run from the editor; owner-only,
+// changes nothing, and never logs the token itself.
+//
+//   1. Gets the token. Empty means the openid scope isn't granted yet.
+//   2. Reads its claims: aud is the value CAS's LEADER_HUB_OAUTH_CLIENT_ID
+//      would have to hold; email has to equal CAS's TEACHER_EMAIL.
+//   3. Has Google verify it at tokeninfo, the same check CAS's
+//      _verifyLeaderHubToken_ (07) makes.
+//   4. If lh_cas_ccps_api_url is set, sends CAS one read-only
+//      getPacingGuide with it and reports the answer (counts only).
+function checkCasServerSignIn() {
+  _lhRequireOwner_();
+  const out = { token: false, claims: null, verified: null, cas: null };
+  const say = function (line) { console.log('[CasSignIn] ' + line); };
+
+  let token = '';
+  try { token = ScriptApp.getIdentityToken() || ''; } catch (e) {
+    say('ScriptApp.getIdentityToken() threw: ' + e.message);
+  }
+  if (!token) {
+    say('No identity token. appsscript.json needs the "openid" scope, and the owner has to approve it once ' +
+      '(run this from the editor and accept the prompt). If the scope is approved and this is still empty, the ' +
+      'account does not issue Apps Script identity tokens, and the server-to-server route is closed.');
+    return out;
+  }
+  out.token = true;
+
+  try {
+    const body = token.split('.')[1] || '';
+    const padded = body + '===='.slice((body.length + 3) % 4);
+    const c = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(padded)).getDataAsString());
+    out.claims = { aud: String(c.aud || ''), iss: String(c.iss || ''), email: String(c.email || ''),
+      emailVerified: c.email_verified === true || String(c.email_verified) === 'true',
+      minutesLeft: c.exp ? Math.round((Number(c.exp) * 1000 - Date.now()) / 60000) : null };
+    say('Token claims: aud=' + out.claims.aud + ', iss=' + out.claims.iss + ', email=' + out.claims.email +
+      ', email_verified=' + out.claims.emailVerified + ', expires in ' + out.claims.minutesLeft + ' min.');
+  } catch (e) {
+    say('The token could not be read: ' + e.message);
+  }
+
+  try {
+    const resp = UrlFetchApp.fetch('https://oauth2.googleapis.com/tokeninfo?id_token=' + encodeURIComponent(token),
+      { muteHttpExceptions: true });
+    const code = resp.getResponseCode();
+    const info = code === 200 ? JSON.parse(resp.getContentText()) : {};
+    out.verified = { code: code, aud: String(info.aud || ''), email: String(info.email || '') };
+    say(code === 200
+      ? 'Google verified it (tokeninfo 200): aud=' + out.verified.aud + ', email=' + out.verified.email + '.'
+      : 'Google did not verify it (tokeninfo HTTP ' + code + ').');
+  } catch (e) {
+    say('tokeninfo call failed: ' + e.message);
+  }
+
+  const url = String(lhGetConfig_('lh_cas_ccps_api_url') || '');
+  if (!url) {
+    say('No CAS API URL in Settings (lh_cas_ccps_api_url), so CAS was not called.');
+  } else {
+    try {
+      const resp = UrlFetchApp.fetch(url, { method: 'post', contentType: 'text/plain;charset=utf-8',
+        payload: JSON.stringify({ idToken: token, action: 'getPacingGuide' }), muteHttpExceptions: true });
+      const code = resp.getResponseCode();
+      let r = {};
+      try { r = JSON.parse(resp.getContentText()); } catch (_) { r = {}; }
+      const units = Array.isArray(r.units) ? r.units.length : (r.data && Array.isArray(r.data.units) ? r.data.units.length : null);
+      out.cas = { code: code, success: r.success === true, message: String(r.message || '').slice(0, 200), units: units };
+      say('CAS answered HTTP ' + code + ': ' + (r.success === true
+        ? 'success' + (units != null ? ', ' + units + ' pacing unit(s)' : '')
+        : 'refused: ' + (out.cas.message || '(no message; not JSON)')) + '.');
+    } catch (e) {
+      say('The call to CAS failed: ' + e.message);
+    }
+  }
+
+  if (out.verified && out.verified.code === 200) {
+    say('For CAS to accept this token: on the teacher-dashboard project, set LEADER_HUB_OAUTH_CLIENT_ID to ' +
+      out.verified.aud + ', and TEACHER_EMAIL must be ' + out.verified.email + '. No Cloud Console client is needed.');
+  }
+  return out;
 }
 
 function _lhDiagEsc_(s) {
