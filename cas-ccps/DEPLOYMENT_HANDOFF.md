@@ -87,7 +87,8 @@
 >   Lessons and lesson-editor fixes, nothing stored in the browser) and
 >   #265 (the overnight check runs the setup checks; `EvaluationLog`;
 >   WarmUpQueue `delivered_at` / `answered_at`).
-> - **The next push** carries #237 to #265: `node run.js --latest --only
+> - **The next push** carries #237 to #265, plus the 2026-10-23 docs branch
+>   once merged (for cas-ccps, doc and comment fixes only): `node run.js --latest --only
 >   central-ledger,teacher-dashboard,student-dashboard,master-student-template`
 >   (plus the other systems' projects), which promotes both web apps. The
 >   checks after it, and the rest of the operator's queue, are in
