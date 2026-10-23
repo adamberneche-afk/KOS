@@ -5,6 +5,13 @@
 > After each session, add a log entry and update item statuses.
 > Keep ACTIVE short — 3–5 items max. Move everything else to BACKLOG.
 
+> **Status (2026-10-23):** this log stopped at Session 20 and later work is
+> in `HISTORY.md` and `README.md`. The "Technical constraints", "Reference"
+> and "Session startup checklist" sections below describe the old
+> single-file, `localStorage`, Gemini-key design and are historical: since
+> 2026-10-22 LeaderHub runs only as an Apps Script web app and keeps
+> nothing in browser storage (`README.md`, "Where the data lives").
+
 ---
 
 ## ✅ COMPLETED (Session Log)
@@ -175,7 +182,7 @@
 
 ## 🔴 ACTIVE (Current Sprint)
 
-*Nothing blocking. System is live and pulling email.*
+*Nothing tracked here. The web app is live; Gmail-sourced horizon items are paused (no Gmail scope; `scanHorizonLabel_()` returns an empty list). Current work is in `README.md` and `HISTORY.md`.*
 
 ---
 
@@ -201,7 +208,7 @@
 
 - [ ] **Mobile graceful degradation** — `@media` breakpoint collapsing 4-column Row D on screens < 1200px.
 
-- [ ] **DECA events data freshness** — Hardcoded 2025-26 dates go stale. Add season reset for 2026-27.
+- [x] **DECA events data freshness** — Hardcoded 2025-26 dates go stale. Add season reset for 2026-27. *(Done: the season editor's "📅 Use the built-in 2026-27 season" button, `lhUseBuiltInDecaSeason()` with `DECA_SEASON_DEFAULT`; see `README.md`.)*
 
 - [ ] **Task completion history** — `resolvedAt` + `status` stored. Could surface a completed-tasks log.
 

@@ -14,7 +14,7 @@ Before exploring what's possible, here's what the current system does automatica
 
 - Canvas assignments → Google Calendar → Apps Script → Sheet → LeaderHub (pacing deadlines, lesson matching)
 - DECA Google Calendar events → Trip records + slip roster seeds
-- Gmail → Sheet → LeaderHub (urgent flagging, self-email shortcuts)
+- Gmail → Sheet → LeaderHub (urgent flagging, self-email shortcuts) — *paused: the project currently has no Gmail scope, so `scanHorizonLabel_()` returns an empty list*
 - LeaderHub slip tracker cross-referenced to DECA member roster and class rosters
 
 Everything below builds on or extends that foundation.
@@ -48,7 +48,7 @@ Everything below builds on or extends that foundation.
 **The integration:** When LeaderHub consumes a `DUE` item, check whether a `TEACH` event exists for the same course + title in the current quarter's pacing data. If not, surface a warning on the Lesson Plans view: "⚠ No TEACH event found for 'Tournament Sponsorship Proposal' in Q3. Was instruction logged?"
 
 **What it takes:**
-- Track consumed items by `[course, label, type]` in a small index in localStorage
+- Track consumed items by `[course, label, type]` in a small index saved with the app's other data (a config key in `Config.gs`; LeaderHub keeps nothing in browser storage since 2026-10-22)
 - Add a validation sweep in `renderPacingCalendar()` or `renderLessonPlans()` that flags lessons with a `DUE` but no `TEACH`
 
 **Payoff:** Closes the loop on pacing — you'll know immediately if you assigned something without a matching instruction day logged, which matters enormously for DSP Standard 1 documentation.
@@ -150,7 +150,7 @@ Apps Script creates an `'announcement'` channel item. LeaderHub stores these in 
 
 **What it takes:**
 - Apps Script: add `announce:` keyword handler to `processLHShortcuts()`
-- New `lh_announcements` localStorage array with `{id, date, course, text}` schema
+- New `lh_announcements` data domain (a tab in `Data.gs`'s `LH_DATA_TABS`, not browser storage) with `{id, date, course, text}` schema
 - Cockpit widget: last 5 announcements, copy-to-clipboard for DSP evidence binder
 
 **Payoff:** You're already writing Canvas announcements — copying the subject line to an LH: email takes 10 seconds. The log builds itself. At DSP review time, you have a timestamped communication record.

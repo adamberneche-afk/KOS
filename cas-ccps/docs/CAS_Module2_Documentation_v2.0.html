@@ -202,6 +202,17 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
 </style>
 </head>
 <body>
+<div style="max-width:900px;margin:72px auto 0;padding:18px 24px;border:2px solid #b45f06;border-radius:8px;background:#fef7e0;color:#3c2a06;font-family:system-ui,sans-serif;font-size:14px;line-height:1.6" role="note"><strong>What is current (checked against the code 2026-10-23):</strong> this is the Module 2 design document. The Lightweight build (lesson logs, AlignmentLog) runs as described. The warm-up build is live, but runs differently from the design below:
+<ul style="margin:8px 0 0 18px">
+<li><strong>Nightly order.</strong> 3:00 a.m. <code>updateAllStudentProfiles()</code> (23), 3:05 <code>syncArtifactCompetencies()</code> (33), 3:15 <code>runWarmUpEvaluation()</code> (25), 3:30 <code>buildWarmUpQueues()</code> (24), all installed by <code>installWarmUpTriggers()</code> and <code>installArtifactSyncTrigger()</code>. There is no 6 a.m. Studio cron.</li>
+<li><strong>Studio makes only the model call.</strong> <code>buildWarmUpFlowInputs()</code> (<code>41_WarmUpFlowBridge.js</code>, run every 5 minutes by the Ledger cycle, <code>runLedgerCycle()</code>) writes one resolved row per job to <code>Flow5Input</code> (bridging), <code>Flow3Input</code> (generation) or <code>Flow4Input</code> (scoring), at most 10 per run, and appends a row again if Studio has not returned in 30 minutes. Each Flow triggers on Status = READY, binds its PromptText chip, gives the Gemini step no Drive sources, and appends its raw output to <code>WarmUpFlowReturn</code>. <code>harvestWarmUpFlowReturns()</code> applies it. No Flow reads LessonContext, StudentProfiles or a doc, and none creates or shares a doc; the custom Studio steps are blocked on this account and replaced by 41.</li>
+<li><strong>Warm-ups are answered in a text box</strong> on the Student Dashboard (<code>WARMUP_TEXT_BOX</code> = all since 2026-10-19). Flow 3&rsquo;s harvest writes the warm-up to the <code>WarmUpTextBox</code> tab (no doc); the student saves an answer until the end of the lesson day and an extra-credit reply of at least 10 words. Students see the score out of 10 and its parts (length 0&ndash;6, grammar 0&ndash;1, engagement 0&ndash;3), reversing the feedback-only rule below.</li>
+<li><strong>Flow 3 output is checked.</strong> A shape gate (<code>wfbWarmUpShapeProblem_</code>) and a plausibility check (<code>wfbFlow3Plausible_</code>) refuse output that is not a warm-up; the teacher&rsquo;s <code>warmup_anchor</code> is delivered instead (ANCHOR_FALLBACK), as it is when Studio never returns (<code>wfbFallbackExhaustedInputs_</code>). Flow 4 has its own check (<code>wfbFlow4Plausible_</code>).</li>
+<li><strong>What a warm-up reviews.</strong> A random lesson already taught (<code>reviewWarmUpKey_</code>, <code>55_LessonSchedule.js</code>), shared by the odd and even classes; a WarmUpPlan row overrides it. ClassSchedule day types are DAILY, ODD, EVEN and DAILY_HALF (a new warm-up only on the first day of a pair); periods are labels such as 3-Odd and 3-Even, and a warm-up for a day the period does not meet is NOT_MEETING.</li>
+<li><strong>WarmUpQueue</strong> is 21 columns (<code>WQ25_COL_COUNT</code>), then archive_status (34), delivered_at and answered_at (<code>WQ_TIMING</code> in <code>00_SharedConfig.js</code>). Statuses: PENDING_BRIDGE, PENDING, DELIVERED, PENDING_EVAL, SCORED, plus INCOMPLETE, NOT_MEETING, ERROR and EVAL_ERROR. StudentProfiles has 14 columns (shadow_matrix and unit_current added).</li>
+<li><strong>The archetype lock</strong> and its teacher email are off unless <code>PIVOT_ARCHETYPE_LOCK</code> enables them (2026-10-10).</li>
+<li><strong>Each morning</strong> the CAS signal&rsquo;s LAST NIGHT section and the 5 a.m. email (<code>34c_OvernightHealth.js</code>) report each stage, the warm-ups delivered and failed, and anchor fallbacks.</li>
+</ul></div>
 
 <div style="max-width:900px;margin:24px auto 0;padding:18px 24px;border:2px solid #c0392b;border-radius:8px;background:#fdecea;color:#7b241c;font-family:system-ui,sans-serif;font-size:14px;line-height:1.6">
   <strong>⚠ RECONCILIATION NOTE (post-upload, repo-wide numbering decision) —</strong>
@@ -698,7 +709,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
       <tr><td class="tn">AlignmentLog</td><td class="tm">Lightweight</td><td class="tw">S26</td><td class="ta yes">Yes</td><td class="tm">9</td></tr>
       <tr><td class="tn">ReportRegistry</td><td class="tm">Lightweight</td><td class="tw">S26, S25</td><td class="ta yes">Yes</td><td class="tm">7</td></tr>
       <tr><td class="tn">StudentProfiles</td><td class="tm">Full</td><td class="tw">S23</td><td class="ta no">No (upsert)</td><td class="tm">12</td></tr>
-      <tr><td class="tn">WarmUpQueue</td><td class="tm">Full</td><td class="tw">S24, Flow 3, S25, Flow 4</td><td class="ta no">No (status + score updates)</td><td class="tm">19</td></tr>
+      <tr><td class="tn">WarmUpQueue</td><td class="tm">Full</td><td class="tw">S24, Flow 3, S25, Flow 4</td><td class="ta no">No (status + score updates)</td><td class="tm">21 + 3</td></tr>
       <tr><td class="tn">WarmUpRegistry</td><td class="tm">Full</td><td class="tw">S25</td><td class="ta no">Mostly (scores updated post-eval)</td><td class="tm">13</td></tr>
       <tr><td class="tn">ClassSchedule</td><td class="tm">Full</td><td class="tw">Manual / S28</td><td class="ta no">No</td><td class="tm">5</td></tr>
       <tr><td class="tn">PacingGuide</td><td class="tm">Full</td><td class="tw">S29 (import)</td><td class="ta no">No (read-only)</td><td class="tm">16</td></tr>
@@ -843,8 +854,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
         <h4>Create warm-up tabs — run <code>createWarmUpTabs_()</code> from Script 23</h4>
         <p>Creates: StudentProfiles · WarmUpQueue · WarmUpRegistry · ClassSchedule. Safe to re-run.</p>
         <div class="step-tags">
-          <span class="badge badge-orange">StudentProfiles — 12 cols</span>
-          <span class="badge badge-orange">WarmUpQueue — 19 cols</span>
+          <span class="badge badge-orange">StudentProfiles — 14 cols</span>
+          <span class="badge badge-orange">WarmUpQueue — 21 cols (+ archive_status, delivered_at, answered_at)</span>
           <span class="badge badge-orange">WarmUpRegistry — 13 cols</span>
           <span class="badge badge-orange">ClassSchedule — 5 cols</span>
         </div>

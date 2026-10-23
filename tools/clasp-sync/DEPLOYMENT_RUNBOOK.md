@@ -19,8 +19,8 @@ Three projects, three different shapes:
 | Project | Script projects involved | Who it's for | Stakes |
 |---|---|---|---|
 | kos-personal | 1 (the main flat-folder project; `kos-personal/archive/studio-steps/`, a second standalone project that could never be published on this account, is archived and not deployed) | You. SMP-004 describes a personal account here; in practice it is the same `ccpsnet.net` account as cas-ccps, which is why the org-wide GCP block reaches its Studio steps too | Low — no students touch this |
-| leader-hub | 1 (`leader-hub:app` — every `.gs` file in `leader-hub/`, one real Web App deployment; authoritative list in `tools/gas-lint/project-map.json`) | **Belongs to Adam Berneche per its own README, not confirmed as yours** | Depends on ownership — see Part 2 |
-| cas-ccps | 8 (`central-ledger`, `unified-manual`, `master-student-template`, `rubric-response-sheet`, `teacher-matrix-sheet`, `teacher-dashboard`, `student-dashboard`, `studio-steps`) | Students, district account | High — this is the one the whole air-gap policy (SMP-004) exists for |
+| leader-hub | 1 (`leader-hub:app` — every `.gs` file in `leader-hub/`, one real Web App deployment; authoritative list in `tools/gas-lint/project-map.json`) | You: the operator's own command center (its README); `run.js` promotes it with the others | Your own data, server-only since 2026-10-22; a push alone doesn't reach `/exec` — see Part 2 |
+| cas-ccps | 9 (`central-ledger`, `unified-manual`, `master-student-template`, `rubric-response-sheet`, `teacher-matrix-sheet`, `family-sentinel`, `teacher-dashboard`, `student-dashboard`, `studio-steps`; `studio-steps` is blocked by the org-wide GCP restriction and not deployed) | Students, district account | High — this is the one the whole air-gap policy (SMP-004) exists for |
 
 Do these in order. Parts 0 and 1 you can do today. Part 3 (cas-ccps) takes
 real setup time — budget it separately, and start with just the one pilot
@@ -107,17 +107,10 @@ protect.
 
 ## Part 2 — leader-hub
 
-**Stop and confirm ownership before doing anything else in this section.**
-`leader-hub/README.md` describes this as *"Adam Berneche's personal,
-single-file HTML command center"* — not a cas-ccps companion tool, and
-not something the rest of this repo's provenance ties to you. Before
-running any push against a live script here, confirm you're actually the
-one who owns/administers it. If it's a colleague's project sitting in this
-repo for reference or shared tooling, treat it the same way you'd treat
-pushing code to someone else's GitHub repo without asking — don't.
-
-If you *are* the owner (or this has changed since that README was
-written):
+**Ownership is settled.** This section used to open by asking you to
+confirm you own leader-hub before pushing. It is the operator's own
+command center (`leader-hub/README.md`, "What it is"), deployed from this
+account, and `run.js` promotes it with the other web apps.
 
 ### 2.1 One project now — `leader-hub:app` is a real Web App deployment
 
@@ -153,14 +146,17 @@ deployment users hit until `clasp update-deployment` points a real version at it
 
 ---
 
-## Part 3 — cas-ccps (8 projects, real students, the one that needs care)
+## Part 3 — cas-ccps (9 projects, real students, the one that needs care)
 
 This is the one SMP-004 exists for. The shape is different from the other
-two because cas-ccps isn't one project — it's eight, several of which
-share files (`00_SharedConfig.js` is pasted into six of them). The 8th,
-`studio-steps`, is standalone (not bound to any spreadsheet) and shares no
-files with the other seven — see 3.7 below for what's different about
-deploying it.
+two because cas-ccps isn't one project — it's nine, several of which
+share files (`00_SharedConfig.js` is in every one but `studio-steps`;
+`tools/gas-lint/project-map.json` has the lists). `family-sentinel` is
+bound to the teacher's private Family Mail Sentinel sheet and has no web
+app, so it follows the trigger-driven pattern below. `studio-steps` is
+standalone (not bound to any spreadsheet) and shares no files with the
+others — see 3.7 below for what's different about deploying it, and why
+it is not deployed (custom Studio steps are blocked on this account).
 `tools/clasp-sync/sync.js` exists specifically to solve that: it reads
 `tools/gas-lint/project-map.json` and builds a clean, throwaway push
 folder per project.
@@ -421,9 +417,8 @@ sandbox-deploy:
 Notice what this job *can't* do: every `.clasp.json` it's pushing against
 points at a HEAD deployment or a sandbox copy — none of them are the real
 ccpsnet.net-owned production projects. That's the whole reason this is
-safe to automate. leader-hub is deliberately left out of this job — its
-ownership isn't confirmed (see Part 2), so it doesn't get folded into
-shared CI automation the way kos-personal safely can.
+safe to automate. leader-hub and `family-sentinel` are not in the real job
+(it has no sandbox copy of either); both go out through `run.js`.
 
 ### 3.6 Production promotion (the human part — you, every time)
 
@@ -432,10 +427,10 @@ what you actually run yourself, from your own already-logged-in terminal,
 to move something into the real stadium. Nothing here is automated on
 purpose.
 
-**For the 5 trigger/menu-driven projects** (`central-ledger`,
+**For the 6 trigger/menu-driven projects** (`central-ledger`,
 `unified-manual`, `master-student-template`, `rubric-response-sheet`,
-`teacher-matrix-sheet`) — these have no version buffer, so this is the
-actual moment of consequence:
+`teacher-matrix-sheet`, `family-sentinel`) — these have no version buffer,
+so this is the actual moment of consequence:
 
 ```
 git pull
@@ -501,6 +496,14 @@ deployment IDs you list in its registry.
 
 ### 3.7 cas-ccps `studio-steps` — a different shape again
 
+**Blocked on this account.** A custom Studio step is a Workspace Add-on and
+needs a standard Google Cloud project; GCP is disabled org-wide for
+`ccpsnet.net`, so a push succeeds and the steps still never appear in
+Studio's picker. The flows run on native Studio steps with an Apps Script
+harvest instead (`37_FlowInputBuilder.js`, `41_WarmUpFlowBridge.js`), and
+`run.js` leaves this project out. The steps below are kept for an account
+where custom steps are allowed.
+
 Neither of the two other patterns above quite fits. `studio-steps` is
 standalone (not sheet/doc-bound, so no "which spreadsheet is this bound
 to" step), and it's a Workspace Studio add-on, not a web app — there's no
@@ -533,11 +536,11 @@ kos-personal's `studio-steps` project is archived
 |---|---|
 | kos-personal (main project), any change | `clasp push` → `clasp version "..."` → `clasp update-deployment <id> --versionNumber <n>` for each of its live deployments — it's a web app, so a push alone leaves every `/exec` URL on the old version |
 | cas-ccps, no live projects exist yet | `clasp create --type <sheets\|docs\|standalone>` per project (see 3.2b; `studio-steps` follows 3.7 instead) |
-| leader-hub (`leader-hub:app`), any change | same "push → version → deploy" pattern as a cas-ccps web app, once ownership is confirmed — see 2.2 |
+| leader-hub (`leader-hub:app`), any change | same "push → version → deploy" pattern as a cas-ccps web app — see 2.2 |
 | cas-ccps, testing a change | push to `main`, let sandbox-deploy CI job run |
 | cas-ccps trigger-driven project, promoting to production | `node tools/clasp-sync/sync.js <name>` → fill in production `.clasp.json` → `clasp push` |
 | cas-ccps web app, promoting to production | `clasp push` → `clasp version "..."` → `clasp list-deployments` → `clasp update-deployment <id> --versionNumber <the number just printed>` |
-| cas-ccps `studio-steps`, any change | `node tools/clasp-sync/sync.js studio-steps` → `clasp push` → `clasp create-deployment --description "..."` (see 3.7) |
+| cas-ccps `studio-steps`, any change | blocked on this account (see 3.7); elsewhere `node tools/clasp-sync/sync.js studio-steps` → `clasp push` → `clasp create-deployment --description "..."` |
 | any of the above, from Windows | `node run.js` (same folder; it replaced `run.ps1`) — see [its README section](./README.md#runjs--the-same-push-from-cmdexe) |
 
 ## Recommended order

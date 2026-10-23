@@ -7,6 +7,13 @@
 
 > **Re-run this audit annually** — ideally in August before the school year starts, and again in January after DECA season picks up. Run `auditInbox()` in Apps Script, paste `Audit_Senders` here, and update the three sections below.
 
+> **Status (2026-10-23):** the Gmail intake this audit tunes is paused. The
+> `leader-hub:app` project (which now includes `EmailBridge.gs`) requests no
+> Gmail scope, so `scanHorizonLabel_()` returns an empty list and no labelled
+> email reaches LeaderHub until that scope is restored. `auditInbox()` is not
+> in this repo's `EmailBridge.gs`; it lived in the earlier, separate
+> EmailBridge project.
+
 ---
 
 ## How to Run the Audit

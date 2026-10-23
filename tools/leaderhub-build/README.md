@@ -21,13 +21,14 @@ the regenerated output together.
 
 ## Why the assembled file stays committed (not gitignored)
 
-`leader-hub/README.md` and `leader-hub/.claspignore` both establish that
-this file is opened directly from a checkout — no deploy step, no build
-step, that's the whole design of leader-hub as a personal, no-infrastructure
-tool. Gitignoring the assembled output would force a mandatory build before
-the file even opens, undermining exactly that. `--check` mode (below) is
-what actually prevents the fragments and the assembled file from silently
-drifting apart, enforced as a gate instead.
+The file used to be opened straight from a checkout, with no build step;
+that is retired (2026-10-22, `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`
+Phase 5: opened from disk, it now stops and points to the web app). It is
+still committed because `clasp push` sends it as it is: `Code.gs`'s
+`doGet()` serves it, and `leader-hub/.claspignore` allowlists it, so a
+push from a zip of `main` (`tools/clasp-sync/run.js`) needs no build first.
+`--check` mode (below) is what actually prevents the fragments and the
+assembled file from silently drifting apart, enforced as a gate instead.
 
 ## Why a pure textual concatenation is safe here
 
@@ -81,10 +82,11 @@ closes it) for the full story of why this exists:
    chunk is verified with `node --check` before the split is trusted.
 
 Only a block that actually exceeds the size threshold gets hoisted, reordered and split;
-the small error-handler script is minified but left as one tag. This is
-why the real assembled file currently has 17 `<script>` blocks (the small
-error-handler one, plus 16 chunks of the giant one), not 2 — that count
-will drift as the giant script grows or shrinks, so don't treat "17" as a
+the small scripts (the retired-file check at the top of `00-shell-head.html`
+and the error handler) are minified but left as one tag each. This is
+why the real assembled file has 19 `<script>` blocks as of 2026-10-23 (the
+two small ones, plus 17 chunks of the giant one), not 3 — that count
+will drift as the giant script grows or shrinks, so don't treat "19" as a
 fact to keep in sync here; `node tools/html-lint/check.js
 leader-hub/student-leader-hub.html` always reports the real current count.
 
@@ -112,7 +114,7 @@ original vs. minified size, the reduction percentage, and (for a split
 block) every resulting chunk's size next to the target.
 
 **One region is honestly tangled, not cleanly modular:**
-`12-integrations-pacing-subplan-brag.html` (~3,600 lines, banner
+`12-integrations-pacing-subplan-brag.html` (~3,700 lines, banner
 "LEADERHUB COMMAND ENGINE v3" continues into it) mixes the AI-job engine,
 dashboard widgets, the journal/cron engine, Settings sub-panels, EmailBridge
 polling, the cas-ccps bridge, pacing calendar, sub-plan generator, and Brag

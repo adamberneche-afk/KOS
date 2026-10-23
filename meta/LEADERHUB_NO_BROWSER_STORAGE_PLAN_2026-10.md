@@ -6,7 +6,7 @@ leader-hub is the one system still built around `localStorage`, and moving
 it off is a migration rather than a fix, so it gets this plan and its own PRs.
 All five phases are done (2026-10-22).
 
-## Where leader-hub is today
+## Where leader-hub was before this plan (2026-10-22)
 
 - **The browser is the primary store.** `LS.get`/`LS.set`
   (`src/05-data-helpers-dashboard.html`) read and write `localStorage` under
@@ -191,3 +191,8 @@ not used, and a test enforces that, as it does for the other two projects.
   often. That path needs tests before Phase 3 ships.
 - **Losing data in the import.** Phase 4 must import, then verify the
   server copy, and only then delete from the browser.
+
+Status of these (2026-10-23): there is no loading state to word, because
+the page arrives with the server's data (Phase 3). The conflict merge, the
+move from the browser (deleted only once the server accepts it) and the
+import are each pinned by `tests/leaderhub/no-browser-storage.test.js`.

@@ -102,7 +102,7 @@ test('autoCouncilCheck: at the threshold, generates a sequestered Seven Bridges 
   // standing between the operator and a contaminated review.
   assert.match(text, /BRIDGE_FIDELITY_001/);
   assert.match(text, /verdict produced with knowledge of another cog's verdict is VOID/);
-  assert.match(text, /separate Gemini Gem conversation per cog/);
+  assert.match(text, /separate conversation per cog/);
   // A fresh SB_-prefixed council ID ties the fan-out back together.
   assert.match(text, /Council ID: SB_\d+/);
 

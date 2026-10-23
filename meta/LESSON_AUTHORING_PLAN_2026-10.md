@@ -1,8 +1,13 @@
 # Lesson editing and writing from the Teacher Dashboard: plan
 
 **Status:** decided 2026-10-21 (the operator's answers are under "Decided"
-below); nothing built yet. Phases 1 and 2 are due by **Fri Oct 30**, in
-[`PLAN_2026-10.md`](./PLAN_2026-10.md)'s week of Oct 26.
+below). Phases 1 and 2 are built (2026-10-21, #245 and #246; see "Phases" below):
+the Teacher Dashboard's lesson editor (`65_LessonDrafts.js`, pinned by
+`tests/cas-ccps/lesson-drafts.test.js`), the import tool
+(`tools/cas-ccps/import-lesson-drafts.js`, `tests/tools/import-lesson-drafts.test.js`)
+and its procedure (`cas-ccps/docs/LESSON_IMPORT_PROCEDURE.md`). They were
+due by **Fri Oct 30**, in [`PLAN_2026-10.md`](./PLAN_2026-10.md)'s week of
+Oct 26.
 
 **Asked for (2026-10-21):** from the Teacher Dashboard, (1) see each lesson's
 rollout status, (2) edit an existing lesson, (3) write a new one. Item 1
@@ -178,7 +183,7 @@ the submitter accepts.
 |---|---|---|
 | 0 ✓ | Rollout status per lesson | Shipped, #243 |
 | 1 ✓ | Edit existing lessons: the form with the VDOE cross-reference, `LessonDrafts`, Submit with the required-field check, the proposal view with Accept / Return, the import procedure (manual first) | Built 2026-10-21, #245 |
-| 2 ✓ | New lessons through the same form and states; the evening Routine for the import ("Lesson draft import", about 6 p.m. Eastern, the operator's time) | Built 2026-10-21 |
+| 2 ✓ | New lessons through the same form and states; the evening Routine for the import ("Lesson draft import", about 6 p.m. Eastern, the operator's time) | Built 2026-10-21, #246 |
 | 3 (if wanted) | Draft-it-for-me on the dashboard | After Oct 30 |
 
 Build order inside phase 1: the `LessonDrafts` tab and its server functions

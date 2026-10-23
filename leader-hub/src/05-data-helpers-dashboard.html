@@ -123,7 +123,7 @@ const LS = {
       console.error('[LS.set] write failed for key', k, e);
       if (!_lsWriteFailWarned && typeof _showToast === 'function') {
         _lsWriteFailWarned = true;
-        _showToast('⚠ Could not save — your device\'s storage may be full. Export a backup soon.', 6000, '#991b1b');
+        _showToast('⚠ Could not save that change. Export a backup soon.', 6000, '#991b1b');
       }
       return false;
     }
@@ -584,9 +584,9 @@ function _lhSetDataTracker_(domain, tracker) {
 let _lhDataConflictWarned = {};
 
 // Fire-and-forget — never blocks or throws back into the LS.set() caller.
-// A rejected (conflicting) push never overwrites the server and never
-// touches this browser's own localStorage copy either — the edit stays
-// exactly as safe as it always was, just not yet synced. No interactive
+// A rejected (conflicting) push never overwrites the server; the edit
+// stays in page memory (_lhStore), the conflict is merged by id, and the
+// "not saved yet" bar shows until it saves. No interactive
 // dialog here (contrast with Organization Sync's button-triggered push,
 // which does show one) — this runs in the background on every save, not
 // in response to a deliberate "sync now" click.
@@ -1133,8 +1133,8 @@ let PROFILE = getProfile();
 //     {name:'...', role:'Head Advisor / Sponsor', phone:'...', email:'...'},
 //     ...
 //   ]);
-// That call persists to this browser's own localStorage only — never
-// committed, never sent anywhere — exactly like every Settings field.
+// That call saves to the server's copy (a Script Property, like every
+// Settings field), never to this repo.
 const KEY_CONTACTS_DEFAULTS = [];
 function getKeyContacts() { return LS.get('lh_keyContacts', KEY_CONTACTS_DEFAULTS); }
 function saveKeyContacts(list) { LS.set('lh_keyContacts', list || []); }

@@ -2,7 +2,7 @@
 
 Paste everything below the line into the Claude Project's **Instructions**.
 Replace the six `<link>` placeholders first (README, "Setting it up").
-Last synced with the live Project instructions on 2026-10-12 (SMP-018, then the SMP register).
+Last pasted into the live Project on 2026-10-21 (`meta/HANDOFF_2026-10-22.md`), after the moral debt counter (SMP-019) and the family signal's two tiers; `node run.js --latest --instructions` produces the paste.
 
 ---
 

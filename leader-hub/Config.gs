@@ -2,12 +2,12 @@
  * LeaderHub — singleton config domains (server-migration Phase 3)
  *
  * A "singleton config domain" is a small settings object leader-hub keeps
- * in one localStorage key — Profile, Modules, Schedule Config, Key
+ * under one `lh_*` key — Profile, Modules, Schedule Config, Key
  * Contacts, and so on — as opposed to a growing multi-record list (trips,
  * roster, scores, ...), which gets its own real Spreadsheet tab in a later
  * phase with proper conflict handling. These are simple enough to live as
- * one JSON-stringified Script Property each, keyed by their own
- * localStorage key name so the mapping is obvious on both sides.
+ * one JSON-stringified Script Property each (LH_CONFIG__<key>), named
+ * after the page's own key so the mapping is obvious on both sides.
  *
  * LH_CONFIG_KEYS is the single whitelist driving every check below — the
  * same "one table, not several that could drift" shape as
@@ -17,13 +17,11 @@
  * Client side: leader-hub/src/05-data-helpers-dashboard.html's LS.set()
  * calls _lhSyncConfigKeyToServer_() for any key in this same list (client
  * keeps its own copy of the list — see that file — since it can't require()
- * this one), which calls lhSaveConfig_() below via google.script.run. This
- * is write-through, not a replacement for localStorage: a failed sync logs
- * a console warning and localStorage still has the value — nothing here
- * blocks a save or risks losing an edit if the round trip fails.
- * lhRefreshConfigFromServer_() (same client file) pulls lhGetAllConfig_()
- * once at boot to catch up on anything saved from a different browser/
- * device since this one last opened the app.
+ * this one), which calls lhSaveConfig_() below via google.script.run.
+ * Since 2026-10-22 this is the only copy: the page arrives with every key
+ * in window.__LH_BOOT__ (Data.gs lhBootData_) and keeps it in page memory;
+ * a save that fails shows the "not saved yet" bar and is retried, and
+ * nothing is kept in the browser.
  */
 
 const LH_CONFIG_KEYS = [
@@ -145,8 +143,8 @@ function lhGetConfig_(key) {
   }
 }
 
-// One round trip for the boot-time refresh instead of 20 — see
-// lhRefreshConfigFromServer_() client-side.
+// Every key in one call: lhBootData_() (Data.gs) for the page, and the
+// ?diag=1 page's settings check (lhGetAllConfig in Code.gs).
 function lhGetAllConfig_() {
   const out = {};
   LH_CONFIG_KEYS.forEach(function (k) {

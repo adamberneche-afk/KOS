@@ -1,8 +1,24 @@
 # KOS v8.0 — Deployment Guide
 
-> ## ⛔ SUPERSEDED IN PART (2026-09-21): both Curator Flow Gemini steps are bound to the wrong prompt
+> ## Current status (2026-10-22)
 >
-> **Read `STUDIO_REBIND_HANDOFF.md` before acting on the banner below.** The
+> Both Studio Flows (Curator and VECTOR_CLASSIFY) are built by hand in
+> Studio and write back through a native add-row into `STUDIO_RETURN`,
+> harvested by `harvestStudioReturns()` (`12_StudioReturnHarvest.gs`). Their
+> Ask Gemini steps read their prompts from the `FlowPrompts` tab
+> (`syncFlowPrompts()`); that change, on 2026-09-29, replaced the Curator
+> Flow's Ask-a-Gem steps (the real cause of the persona-shaped output the
+> 2026-09-21 note below blames on a prompt binding), so the rebind in
+> `STUDIO_REBIND_HANDOFF.md` was never needed (that file is closed).
+> `setupAllTriggers()` installs 17 triggers (Phase 9). The operator pushes
+> with `node run.js --latest` (`tools/clasp-sync/README.md`); a hand paste
+> (Phase 3) is only for an account without clasp. The two banners below are
+> history, kept as the record of how the Flows were built.
+>
+> ## History: SUPERSEDED IN PART (2026-09-21): both Curator Flow Gemini steps were bound to the wrong prompt
+>
+> **Closed 2026-09-29 (see the current status above); its diagnosis was
+> wrong.** The
 > 2026-09-08 banner is accurate about what it claims — both Flows were built,
 > and they do write back — but "verified end to end" has not held since. A
 > live export taken 2026-09-20 shows 114 of 233 `STUDIO_RETURN` rows failing
@@ -14,10 +30,9 @@
 > so the harvest cannot parse the Auditor and the audit gate correctly
 > rejects the Curator.
 >
-> Nothing downstream is broken; it is a prompt binding, and the rebind is an
-> operator action. That handoff has the evidence, the steps and the checks.
+> Nothing downstream was broken. That handoff has the evidence.
 >
-> ## ✅ STATUS (2026-09-08): BOTH STUDIO FLOWS BUILT AND VERIFIED END TO END — the second attempt succeeded
+> ## History: ✅ STATUS (2026-09-08): BOTH STUDIO FLOWS BUILT AND VERIFIED END TO END — the second attempt succeeded
 >
 > Phases 1-3 and 5-10 of this guide were done as of 2026-09-05: the project
 > already existed (a real `scriptId` in `.clasp.json` from an earlier
@@ -152,10 +167,12 @@
 > since-deleted `.clasp.json`. `clasp push` fully mirrors local → remote:
 > a file `.claspignore` doesn't match gets deleted from the live project,
 > silently, with no warning. Before a push you're not fully sure about,
-> confirm the local folder has exactly the 16 numbered files (no
-> zero-padded duplicates, no stray copies) and a real `.clasp.json` with
-> the correct `scriptId`, and that `clasp push`'s own output lists all 16
-> files plus `appsscript.json` — not fewer.
+> confirm the local folder has exactly the 23 numbered files (1–23: 22
+> `.gs` files plus `8_WebApp_UI.html`; no zero-padded duplicates, no stray
+> copies) and a real `.clasp.json` with the correct `scriptId`, and that
+> `clasp push`'s own output lists all 23 files plus `appsscript.json` — not
+> fewer. (`run.js` takes the `.clasp.json` from the operator's
+> `clasp-registry`, so a checkout never needs one of its own.)
 
 This guide takes you from zero to a fully deployed KOS instance with your first session processed. It assumes you have a Google account and basic familiarity with Google Drive.
 
@@ -167,7 +184,7 @@ Estimated time: 20–30 minutes for first deploy. 5 minutes for subsequent deplo
 
 You need:
 - A Google account (personal Gmail or Google Workspace)
-- The 23 project files (21 numbered .gs files, 1–22 without 8, plus 8_WebApp_UI.html and appsscript.json) — see the corrected Phase 3 list, `tools/gas-lint/project-map.json` is authoritative
+- The 24 project files (22 numbered .gs files, 1–23 without 8, plus 8_WebApp_UI.html and appsscript.json) — see the Phase 3 list; `tools/gas-lint/project-map.json` and `.claspignore` are authoritative
 - A Workspace Studio subscription or equivalent AI inference tool for the processing step
 
 You do not need:
@@ -197,7 +214,7 @@ This is a one-time step. Every future deploy uses the same GCP project.
 > It does not create or link a *standard* (non-default) Cloud project, and
 > neither does enabling the Drive API in Troubleshooting below. Some
 > capabilities do need a standard project: publishing a Workspace Add-on,
-> which is what `studio-steps/`'s two custom Studio steps are, and calling
+> which is what `archive/studio-steps/`'s two custom Studio steps are, and calling
 > the Gemini API or Vertex directly with a key. Before building on any of
 > those, read the linked project in **Project Settings** rather than
 > assuming this phase covered it, and declare what you find in
@@ -259,10 +276,12 @@ For each file, click **+** (Add a file) → **Script**, name it exactly as liste
 20_VectorClassifySessions
 21_VectorMatrixRepair
 22_BriefingDocs
+23_MoralDebt
 ```
 
-`clasp push` (`tools/clasp-sync/run.ps1`) sends exactly these files, from
-`.claspignore`; a hand paste is only for an account without clasp.
+`clasp push` (through `node run.js`, `tools/clasp-sync/README.md`) sends
+exactly these files, from `.claspignore`; a hand paste is only for an
+account without clasp.
 
 **Add the HTML file:**
 Click **+** → **HTML**, name it exactly `8_WebApp_UI` (no extension — GAS adds .html automatically). Paste the contents of `8_WebApp_UI.html`.
@@ -298,10 +317,11 @@ originates a `COG_EXHAUST` payload must authenticate as the same Google
 account that deployed the script (an OAuth-authenticated call, a
 same-account trigger, or a Gemini/Apps Script integration running as that
 identity) — this isn't compatible with a generic public third-party
-webhook source, but it means no shared-secret validation is needed either:
-Google's own OAuth layer enforces the identity check for you.
+webhook source. On top of Google's own OAuth check, `doPost()` also
+requires the shared secret `KOS_WEBHOOK_SHARED_SECRET` as a `?secret=`
+query parameter (below).
 
-**Deployment A — Dashboard (Ingest/Queue/Diagnostics UI):**
+**Deployment A — Dashboard (the Add / Queue / System web app):**
 1. Click **Deploy** → **New deployment**
 2. Click the gear icon next to **Type** → select **Web app**
 3. Set **Description** to `KOS v8.0 — Dashboard`
@@ -354,11 +374,11 @@ tell at a glance rather than rediscovering this by hitting the same wall.
 1. Open the web app URL in a browser
 2. Google shows an authorization screen listing the permissions the app needs — these match what's declared in `appsscript.json` and should all appear at once
 3. Click **Allow**
-4. The Bootstrap screen appears: "Build My Studio"
+4. The Bootstrap screen appears, with a **Set up my workspace** button
 5. Click the button
-6. Watch the five progress steps animate — this takes 30–60 seconds
-7. When complete, the screen shows "Your studio is ready"
-8. The page reloads automatically to the three-tab operational UI
+6. Watch the five progress steps animate — usually under two minutes
+7. When complete, the screen shows "Your workspace is ready."
+8. The page reloads automatically to the three-tab operational UI (**Add**, **Queue**, **System**)
 
 If the progress steps freeze and an error appears: check the technical detail (click "Show technical detail"), look for a red line, and see the Troubleshooting section at the end of this guide.
 
@@ -369,7 +389,7 @@ If the progress steps freeze and an error appears: check the technical detail (c
 The system runs immediately after Bootstrap but with default calibration weights. For meaningful vector routing, set your operator-specific values.
 
 **Option A — Fast path (recommended for most users):**
-In the web app, go to **Diagnostics** → click **Personalise your advisor**. Complete the 4-step form. This sets your calibration weights, seeds your CORE_THESIS document, and generates your Identity Key. Takes 5 minutes.
+In the web app, go to **System** → click **Personalize your advisor** (the button shows until this is done, and the "Needs you" strip lists it). Complete the 4-step form. This sets your calibration weights, seeds your CORE_THESIS document, and generates your Identity Key. Takes 5 minutes.
 
 **Option B — Editor path (for developers):**
 Open `5_Error_And_Utilities.gs` in the Apps Script editor. Find `setupCalibration()`. Fill in your values, run the function once, then immediately clear the values from the function body. The values are now stored in PropertiesService and never appear in code again.
@@ -421,7 +441,8 @@ Expected trigger list:
 It checks the exact same 17-handler list (one call per handler, not a copy an
 operator has to keep matching this table) — plus the four Studio-adjacent
 tabs' widths (`STAGING_PIPELINE`, `STUDIO_RETURN`, `CuratorInput`,
-`VectorClassifyInput`) and whether `KOS_ADMIN_EMAIL` is set — and writes a
+`VectorClassifyInput`) and three Script Properties (`KOS_OWNER_EMAIL`,
+required; `KOS_WEBHOOK_SHARED_SECRET` and `KOS_ADMIN_EMAIL`, soft) — and writes a
 `Preflight` tab in BRAIN_TRUST_INDEX with a pass/fail line per check. Safe to
 run any time, including before `deployFullSystem()` has ever run (it reports
 one clear failure rather than a Google Apps Script stack trace).
@@ -431,12 +452,12 @@ one clear failure rather than a Google Apps Script stack trace).
 ## Phase 10 — First Session Test
 
 1. Open the web app
-2. Go to the **Ingest** tab
-3. Paste any session text (minimum 20 characters — use a real session or a test paragraph)
-4. Click **Queue Payload**
-5. The success toast says "1 chunk queued. The AI engine will process it within 5 minutes."
+2. Go to the **Add** tab, with **AI session** selected
+3. Paste any session text (minimum 50 characters — use a real session or a test paragraph)
+4. Click **Submit**
+5. The success toast says "✅ 1 chunk queued.", and a "What happens now" card explains the next step
 6. Switch to the **Queue** tab
-7. You should see **Pending: 1** and the metric subtitle "waiting for AI engine"
+7. You should see **Pending: 1** and the metric subtitle "waiting for the AI"
 
 At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `STUDIO_ACTIVE` within 5 minutes. Studio then needs to process it — see the **Studio Integration** section below.
 
@@ -578,8 +599,8 @@ Normal if two triggers fire within milliseconds of each other. The next trigger 
 **Triggers showing as installed but not firing**
 Re-run `setupAllTriggers()`. Installable triggers occasionally become orphaned after a GAS quota reset. The function cleans and reinstalls all triggers.
 
-**ERROR_LOG filling up with TIER_1 cold gate warnings**
-Normal before calibration is complete. The system logs "engine cold, skipping" for TIER_1 gated functions. These stop once you complete the "Personalise your advisor" setup in the Diagnostics tab.
+**Cold engine messages before calibration**
+Normal before calibration is complete. TIER_1 gated functions (submitting a session, for example) log a `[COLD_ENGINE_TIER_1]` console warning and carry on; TIER_2 gated functions (`processInferenceQueue()`) are blocked and write a `[COLD_ENGINE_TIER_2]` row to ERROR_LOG at most once every 6 hours per caller (`CFG.COLD_GATE_REPORT_INTERVAL_MINS`). Both stop once you complete **Personalize your advisor** on the System tab.
 
 **NEEDS_CURATOR rows appearing**
 The inference JSON from Studio couldn't be parsed. Open the linked document, check if the body is valid JSON (not a mix of natural language and JSON, not truncated). Replace the body with clean JSON and the queue processor will retry automatically within 10 minutes.
@@ -587,5 +608,5 @@ The inference JSON from Studio couldn't be parsed. Open the linked document, che
 **Web app shows BOOTSTRAP after already deploying**
 PropertiesService lost the `INDEX_ID` property. Open the editor → `1_Config_And_Deploy.gs` → run `setupRoutingProperties()`. This re-scans Drive by name and repopulates all ID pointers.
 
-**"Deploy" button in web app takes longer than 60 seconds**
+**"Repair setup (re-run it)" in the web app takes longer than 60 seconds**
 Normal on large Drive accounts where folder searches take time. The progress steps will catch up. If the browser tab closes during deploy, run `setupAllTriggers()` from the editor to ensure triggers are installed — the folder structure will be intact.

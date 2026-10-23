@@ -15,6 +15,12 @@
 > the next Studio integration in this repo (cas-ccps's and kos-personal's
 > included).
 >
+> *(The banner above is the 2026-09-05 first-deploy record. Since then
+> the project has grown to the file list in `tools/gas-lint/project-map.json`,
+> and since 2026-10-22 LeaderHub runs only as this web app: the page loads
+> its data from the server and keeps nothing in browser storage. The steps
+> below are current.)*
+>
 > **A pre-existing project shell, same pattern as kos-personal.** Before
 > pushing, `leader-hub/.clasp.json` already held a real script ID and
 > `clasp deployments` already listed an unlabelled `@1` deployment and a
@@ -50,7 +56,7 @@ is.
 Unlike `kos-personal/DEPLOYMENT_GUIDE.md`, there is **no Phase 1 here**.
 leader-hub needs no Google Cloud project, no API key, and no add-on
 publication. Its AI work crosses the Bifurcation Boundary
-(`EmailBridge.gs`, line 160): Apps Script writes a job row, a hand-built
+(`EmailBridge.gs`, the AI queue section): Apps Script writes a job row, a hand-built
 Workspace Flow generates the text with the Workspace account's own built-in
 Gemini access, and writes the result back. Nothing in this system calls a
 model or holds a key.
@@ -157,7 +163,9 @@ hand in the UI — `appsscript.json` declares `"executeAs": "USER_DEPLOYING"`
 and `"access": "DOMAIN"` ("Execute as: Me · Access: Anyone in your domain").
 Execute-as-Me is load-bearing for the Organizations feature: whoever deploys
 owns the backing spreadsheets, so a co-advisor never needs Drive sharing of
-their own — they point their own LeaderHub Settings at this same `/exec` URL.
+their own. They join with a share code (`<orgId>@<this /exec URL>`, from
+**📋 Copy share code** in Settings → Organizations), and their own LeaderHub
+relays to this deployment server-side (`lhOrgSyncCall`).
 
 ```bash
 clasp create-deployment --description "v1"
@@ -167,11 +175,12 @@ clasp open-web-app --deploymentId <id>   # or open https://script.google.com/mac
 
 That `create-deployment` is for the **first** deployment only. Every later
 release updates the same deployment in place, so the `/exec` URL never
-changes. Use `tools/clasp-sync/run.ps1`:
-`.\run.ps1 -Latest -HeadOnly -Only leader-hub` pushes to HEAD for testing
-at `/dev`; `.\run.ps1 -Latest -Only leader-hub` releases. See
+changes. Use `tools/clasp-sync/run.js` (the Node port of `run.ps1`, which still
+works): `node tools/clasp-sync/run.js --latest --head-only --only leader-hub`
+pushes to HEAD for testing at `/dev`;
+`node tools/clasp-sync/run.js --latest --only leader-hub` releases. See
 `tools/clasp-sync/README.md`. Put the new deployment's ID in the
-registry's `leader-hub\deployments.txt` so `run.ps1` keeps it live.
+registry's `leader-hub\deployments.txt` so `run.js` keeps it live.
 
 Then in the editor: **Deploy → Test deployments** (or Run any function once)
 and complete the OAuth consent prompt. The manifest declares seven scopes
@@ -189,9 +198,15 @@ pushing if you added any service call.
 > was once suspected of causing the consent-dialog crash; it wasn't. The
 > crash is fixed (see `README.md`).
 
-## Phase 4 — Nothing to configure by hand
+## Phase 4 — One Script Property, then nothing else by hand
 
-There is no properties-setup phase. All three backing spreadsheets
+Set **`OWNER_EMAIL`** once (Project Settings → Script Properties) to the
+Google account this deployment belongs to. `doGet()` (`Code.gs`) serves the
+app only to that account, and every function the page calls checks it
+(`_lhRequireOwner_`). Until it is set, the page shows "Not authorized" to
+everyone, including you. That is by design.
+
+Nothing else needs setting. All three backing spreadsheets
 self-provision on first use — `_getAiQueueSheet_()` ("LeaderHub AI Queue"),
 `_getLhDataSpreadsheet_()` ("LeaderHub Data") and `_getOrgSyncSpreadsheet_()`
 ("LeaderHub Org Sync") each create their file and record its ID in a Script
@@ -208,6 +223,26 @@ needs configuring: the page is same-origin with the script, so `callGAS()`
 goes over `google.script.run`. (The Settings bridge-URL field for the
 standalone file went with that file, 2026-10-22: LeaderHub runs only as
 this web app.)
+
+**Where your data lives.** `doGet()` reads everything once
+(`lhBootData_`, `Data.gs`) and writes it into the page as
+`window.__LH_BOOT__` before the app's scripts run. Every change is saved
+straight back: settings-shaped keys as Script Properties named
+`LH_CONFIG__<key>` (`LH_CONFIG_KEYS`, `Config.gs`), records as tabs in the
+"LeaderHub Data" spreadsheet (`LH_DATA_TABS`, `Data.gs`), SCR scores per
+cell in its `scr_scores` tab (`SCR.gs`). Nothing is kept in browser storage. If a save fails, a red
+"N changes not saved yet — retrying" bar appears with **Retry now**; if the
+server's data can't be read at load, the page says so and refuses to save
+rather than start empty.
+
+**Moving data from the old standalone file.** Open the old
+`student-leader-hub.html` from disk in the browser that holds the data: it
+shows "LeaderHub now runs as a web app" with **Export everything**. In the
+web app, open Settings → Your Data → **⬆️ Import Backup** (the old page calls
+it "Settings → Import") and choose that file; it merges into the server copy
+(`lhImportIntoServer_`) and replaces nothing. Then use **Clear this browser's copy** on the old
+page. Data an earlier *web app* version left in its own browser storage
+moves automatically on the first load (`lhMigrateFromBrowser_`).
 
 ## Phase 5 — Verify, from the Run dropdown
 

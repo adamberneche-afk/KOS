@@ -96,7 +96,7 @@ LeaderHub tracks four Synergy grade update deadlines in Q4. Missing these is a D
 | Synergy Update 3 | April 18 | All graded work through April 17 |
 | Synergy Update 4 | May 2 | All graded work through May 1 |
 
-**LeaderHub reminder:** The P80 Synergy signal fires when `lh_sync_tracker.synergy` is more than 14 days stale. Tap "Done" in the sync tracker after each update to reset the clock.
+**LeaderHub reminder:** The P80 grades signal (shown on screen as "Gradebook grades overdue") fires when `lh_sync_tracker.synergy` is more than 14 days stale. Tap "✓ Done" on the dashboard's "Gradebook & Canvas up to date" card (the sync tracker) after each update to reset the clock.
 
 ---
 

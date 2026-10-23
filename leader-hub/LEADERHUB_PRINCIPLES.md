@@ -12,7 +12,7 @@ This dashboard exists to keep everything in sight so that everything stays in mi
 
 ## What This Is
 
-LeaderHub is a **single-file, offline-first command center** built for one specific person: a CTE business teacher at Clover Hill High School who is simultaneously managing five distinct professional roles, navigating a high-stakes performance plan, and doing it all without institutional software support.
+LeaderHub is a **single-page command center** built for one specific person: a CTE business teacher at Clover Hill High School who is simultaneously managing five distinct professional roles, navigating a high-stakes performance plan, and doing it all without institutional software support.
 
 It is not a general-purpose tool. Every decision — from the data structures to the banner timing to the AI prompts — is made in service of one user's actual daily reality.
 
@@ -82,14 +82,20 @@ The FERPA boundary is non-negotiable: student names never leave the browser. Ano
 > README's "Names by default, with an opt-in substitution path" section
 > and `LEADERHUB_AI_FLOW_SETUP.md` give the rationale (personal
 > professional communication, not education records). Student records
-> are also no longer browser-only: the deployed Web App syncs them to one
-> private, owner-only Spreadsheet (`Data.gs`).
+> are no longer in the browser at all: since 2026-10-22 the Web App is the
+> only copy, kept in one private, owner-only Spreadsheet (`Data.gs`) and
+> the project's Script Properties (`Config.gs`), with nothing in browser
+> storage.
+
+> **Also stale: "offline-first, single file."** LeaderHub began as one HTML
+> file opened from disk. It is now built from `src/` and runs only as an
+> Apps Script web app that loads its data from the server on every visit.
 
 ### 5. The system trusts the user's professional judgment
 
 There are no confirmation dialogs before every action. There is no "are you sure?" on most deletions. The app is built for an adult professional who knows what they're doing and needs the tool to move at the speed of their thinking.
 
-Where irreversible actions exist, a single confirm is enough. Where data is critical, it is protected through architecture — localStorage persistence, log keeping, automatic timestamping — not through friction.
+Where irreversible actions exist, a single confirm is enough. Where data is critical, it is protected through architecture — server-side saving (originally localStorage), log keeping, automatic timestamping, a "not saved yet" bar that retries — not through friction.
 
 ### 6. The DSP is a first-class context, not a background concern
 
@@ -142,9 +148,10 @@ LeaderHub is not a gradebook. It does not replace Synergy or Canvas — it track
 
 > **⚠ Partly stale** — the shipped app now has a server (an Apps Script
 > Web App), an owner sign-in gate (`Code.gs`'s `OWNER_EMAIL` check), a
-> private sync spreadsheet (`Data.gs`), and Organization Sync for sharing
-> an org with a co-advisor (`EmailBridge.gs`). It is still built for one
-> owner. See `README.md`'s "Status".
+> private spreadsheet that holds the data (`Data.gs`), and Organization
+> Sync for sharing an org with a co-advisor (`EmailBridge.gs`). It no longer
+> uses localStorage or opens as a file from disk. It is still built for one
+> owner. See `README.md`'s "Where the data lives".
 
 Every shortcut in its architecture — single HTML file, localStorage persistence, no server, no auth — is a deliberate choice made in service of the specific constraint that this tool needs to work immediately, with zero IT involvement, in a CCPS browser, for one person.
 
