@@ -309,6 +309,11 @@ test('?diag=1 shows the owner the page facts and both server calls', () => {
   assert.match(page, /typeof priv\.lhGetAllConfig!=="function"/);
   assert.match(page, new RegExp('Block names in raw text</th><td>' + markerNames(APP_HTML).length + '<'));
   assert.match(page, /sourceURL comments in raw text<\/th><td>0 /);
+  // The origin the CAS connection's OAuth client must list, read live
+  // (2026-10-23), and whether Google's sign-in library loads there.
+  assert.match(page, /<th>Page origin<\/th><td id="origin">/);
+  assert.match(page, /set\("origin",location\.origin\)/);
+  assert.match(page, /accounts\.google\.com\/gsi\/client/);
   // The page's own script must at least parse.
   const js = between(page, '<script>', '</script>');
   assert.doesNotThrow(() => new vm.Script(js));

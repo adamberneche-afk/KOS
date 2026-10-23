@@ -85,8 +85,13 @@ teacher's dashboard already checks incoming requests against their own
    → Application type: **Web application**.
 4. **Authorized JavaScript origins**: add the origin leader-hub's page runs
    on. Since 2026-10-22 leader-hub runs only as its own Apps Script web app
-   (the standalone `student-leader-hub.html` file is retired), so that is
-   the web app's served page; see leader-hub's own README.
+   (the standalone `student-leader-hub.html` file is retired). Apps Script
+   serves a web app's page from its own `https://…-script.googleusercontent.com`
+   address, not from `script.google.com`, so read the exact value from the
+   app itself: open leader-hub's web app URL with `?diag=1` added and copy
+   the **Page origin** row (the row below it says whether Google's sign-in
+   library loads there). Google doesn't document that address as fixed, so
+   if sign-in stops working after a new deployment, check the row again.
 5. Save. Copy the generated Client ID — this is a public value, safe to
    paste into leader-hub's Settings (see below) and safe to set as a
    Script Property; it is not a secret.
