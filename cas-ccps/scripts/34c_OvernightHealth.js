@@ -87,12 +87,10 @@ function overnightHealth_(now, tz) {
 
   // The Ledger cycle's jobs still failing (64), 2026-10-22.
   try {
-    if (typeof lcFailingJobs_ === "function") {
-      lcFailingJobs_(props, now.getTime()).filter(function (f) { return f.streak > 0; }).forEach(function (f) {
-        problems.push("Ledger job " + f.fn + ": failing, " + f.streak + " run" + (f.streak === 1 ? "" : "s") +
-          " in a row (Executions in the Central Ledger's Apps Script project shows the errors)");
-      });
-    }
+    lcFailingJobs_(props, now.getTime()).filter(function (f) { return f.streak > 0; }).forEach(function (f) {
+      problems.push("Ledger job " + f.fn + ": failing, " + f.streak + " run" + (f.streak === 1 ? "" : "s") +
+        " in a row (Executions in the Central Ledger's Apps Script project shows the errors)");
+    });
   } catch (e) {
     unreadable = true;
     problems.push("Ledger job failures: unavailable (" + e.message + ")");

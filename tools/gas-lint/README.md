@@ -140,11 +140,13 @@ it — that gap is closed now.
    fails at runtime if called from a file bound to a different project,
    since GAS's per-project global scope means there's nothing to catch it
    at "compile" time otherwise. Reported as `possibly-undefined-in-project`
-   **warnings**, not errors — heuristic by nature (a real allowlist gap or
-   a function passed in as a parameter, e.g. `fn`/`createFn`/`validateFn`,
-   both look identical to a real cross-project bug from this check's
-   point of view), so every warning is worth reading once, not
-   auto-fixing.
+   **warnings**, not errors — heuristic by nature, so every warning is
+   worth reading once, not auto-fixing. Two kinds of call are skipped: a
+   call to any parameter name in the same file (a callback such as
+   `fn`/`createFn`/`validateFn`; file-wide, not scoped), and a call to a
+   name the same file guards with `typeof NAME === "function"` (the
+   documented way to call into a file one project holds and another
+   doesn't; check 15 keeps that guard from being used anywhere else).
 
 7. **Undeclared GCP dependencies** (`checkGcpSurfaces`). Nothing in this
    repo's default architecture needs a Google Cloud project: every system
@@ -388,6 +390,16 @@ it — that gap is closed now.
     negative (a real cap this doesn't recognize) is the safer failure mode
     here than a false positive on code that already does the right thing
     under a naming style this didn't anticipate.
+
+15. **No `typeof` guard inside one project** (`checkSameProjectTypeofGuards`,
+    rule 12). An **error** when a file guards a call with
+    `typeof fn === "function"` and every project holding that file
+    declares `fn`: the guard turns a missing file (a sandbox that didn't
+    load it, a project-map change that dropped it) into a silent skip.
+    Allowed only where some project holding the file lacks the function,
+    such as 31's calls into 55, which the Teacher Dashboard doesn't load.
+    Guards inside string literals (21's generated installer) are ignored.
+    Tests: `tests/tools/gas-lint-typeof-guard.test.js`.
 
 ## What this is NOT
 
