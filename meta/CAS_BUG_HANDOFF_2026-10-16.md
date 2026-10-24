@@ -1,8 +1,12 @@
 # CAS Student Dashboard and Flow 2: Bug Handoff (2026-10-16)
 
 > **Filed 2026-10-17** from the operator's handoff package. Bugs 1 and 2
-> landed as PR #175 (the patch below, applied unchanged); the queue that
-> uses this document is [`HANDOFF_2026-10-22.md`](./HANDOFF_2026-10-22.md).
+> landed as PR #175 (the patch below, applied unchanged), bug 3 as #179 and
+> bug 4 as #214; all four are fixed and live (checked against the code
+> 2026-10-24). The queue that uses this document is
+> [`HANDOFF_2026-10-22.md`](./HANDOFF_2026-10-22.md); what is still current
+> here is section 6 (scheduling a lesson), section 8 (the checklist for each
+> Flow 2 submission) and the one open item in section 9.
 > Point-in-time: where it disagrees with the code, the code wins.
 
 Prepared 2026-10-16 from the first live student submission through Flow 2. Covers what broke, why, what we changed, and what is still open. No student names, emails, file IDs or ConfigIDs appear here by design.
@@ -13,7 +17,7 @@ Prepared 2026-10-16 from the first live student submission through Flow 2. Cover
 |---|---|---|---|
 | 1 | Submit for Feedback fails with "The assignment system didn't answer" | Deploying admin account never approved the new `documents` scope | Fixed operationally 2026-10-15; code hardened in #175 |
 | 2 | Feedback "never landed" in the student's doc | Harvest appended the evaluation at the end of the doc, not in the feedback zone | Fixed in #175 |
-| 3 | Late evaluation leaves ReviewQueue and Ledger at ERROR_TIMEOUT | Backprop only closes rows whose queue status is still `STAGED` | Fixed in the 2026-10-17 bug-3 PR (backprop finishes late rows); the one affected row was repaired by hand on 10-16 |
+| 3 | Late evaluation leaves ReviewQueue and Ledger at ERROR_TIMEOUT | Backprop only closes rows whose queue status is still `STAGED` | Fixed in #179 (backprop finishes late rows), live since 2026-10-18; the one affected row was repaired by hand on 10-16 |
 | 4 | Flow 2 did not trigger on its own | Diagnosed 2026-10-19: Studio's "When a sheet changes" starter never fired on a row the script appended (40 days of history: one Test run, nothing else), and fired at once when ReadyStatus was retyped by hand (four rows, four runs) | Fixed in code: `buildFlowInputRows` (37) appends the row blank, then sets READY as its own edit; a row left blank is set on the next run. **Resolved 2026-10-23:** Flow 2 starts by itself on live submissions |
 | 5 | Documents not created after a date was added to the schedule | Process gap (not a code bug) | Explained; steps in section 6 |
 
@@ -62,7 +66,7 @@ The code changes are in one patch, `submit-failures.patch`, made against `KOS-ma
 
 **Existing docs.** Evaluation blocks already written stay at the bottom of their docs with the old wording and are unaffected. For the affected student, the teacher can cut the `── EVALUATION … END EVALUATION ──` block and paste it above `── END FEEDBACK ──`, deleting the quoted marker line from the revision text if present.
 
-## 4. Bug 3 (open): late evaluation leaves rows at ERROR_TIMEOUT
+## 4. Bug 3 (fixed, #179): late evaluation leaves rows at ERROR_TIMEOUT
 
 **Symptom.** A test submission stalled on the ReviewQueue tab with `ERROR_TIMEOUT`, yet the FlowInput row showed `HARVESTED` and STAGING_PIPELINE showed `COMPLETE`.
 
@@ -74,11 +78,13 @@ The code changes are in one patch, `submit-failures.patch`, made against `KOS-ma
 
 Note that `markLedgerEvaluated_` already accepts `ERROR_TIMEOUT` as a state it can move to `COMPLETE`, so late results were anticipated, but the case is only half handled.
 
-**Workaround for an affected row.** Confirm the feedback is in the doc, then change that one ReviewQueue row's status from `ERROR_TIMEOUT` back to `STAGED`. On its next run backprop marks the queue and Ledger rows `COMPLETE` and runs the post-processing (which checks whether it was already done). Do not use the Admin Recovery Panel reset for this case: it re-queues the submission and the harvest would append a second feedback block.
+**Workaround for an affected row (no longer needed since #179 went live on 2026-10-18).** Confirm the feedback is in the doc, then change that one ReviewQueue row's status from `ERROR_TIMEOUT` back to `STAGED`. On its next run backprop marks the queue and Ledger rows `COMPLETE` and runs the post-processing (which checks whether it was already done). Do not use the Admin Recovery Panel reset for this case: it re-queues the submission and the harvest would append a second feedback block.
 
-**Fix (2026-10-17, after this handoff).** Backprop's `COMPLETE` branch now also finishes a row whose queue status is `ERROR_TIMEOUT`, with tests (`cas-ccps/HISTORY.md`, "Late evaluations finish their rows"). Once it is pushed, the workaround above is no longer needed.
+**Fix (#179, 2026-10-17; live 2026-10-18).** Backprop's `COMPLETE` branch now also finishes a row whose queue status is `ERROR_TIMEOUT`, with tests (`cas-ccps/HISTORY.md`, "Late evaluations finish their rows"; `evaluation-next-steps.test.js`). No second email goes to the teacher. Since #259 a timeout also sets the doc header to `TIMED_OUT`; a late result's harvest sets it again to the result (`PASSED` / `REVISE`), and the teacher's timeout email says to retype `READY` on the FlowInput row rather than use the Admin Recovery Panel reset.
 
-## 5. Open question: Flow 2 did not trigger on its own
+## 5. Bug 4 (resolved 2026-10-23): Flow 2 did not trigger on its own
+
+**Resolved.** Diagnosed 2026-10-19: Studio's "When a sheet changes" starter fires on an edit of a cell, not on an appended row. #214 makes `buildFlowInputRows` (37) append the row blank and set `READY` as its own edit; the operator reported on 2026-10-23 that Flow 2 starts by itself on live submissions. The rest of this section is the original question, kept for the diagnosis steps.
 
 The pipeline after the turnstile releases a row: `buildFlowInputRows()` (1-minute trigger) writes a `FlowInput` row with `ReadyStatus = READY`; Studio Flow 2 runs, writes `GeminiFullOutput` and `EVALUATED`; `harvestFlowInputResults()` (5-minute trigger) harvests it; `backPropagateCompletions()` closes the queue row.
 
@@ -88,7 +94,7 @@ The pipeline after the turnstile releases a row: `buildFlowInputRows()` (1-minut
 
 **To diagnose.** Check Flow 2's run history in Studio for any run before the manual one. Run `checkFlow2Liveness()` and `checkFlow2Binding()` in the Central Ledger project. Confirm `buildFlowInputRows` and `harvestFlowInputResults` appear in Triggers (`installFlowInputTriggers()` installs them). Look at the `FlowInput` row: no row means the builder did not run; `READY` with an empty output means the flow never wrote back; `EVALUATED` with output means the harvest or timing is at fault.
 
-**Timing.** A good run needs the 1-minute build, the Studio run, then up to 5 minutes until the next harvest, against a 12-minute limit. A slow Studio run can use the whole window. Look at the trigger before changing the limit.
+**Timing.** A good run needs the 1-minute build, the Studio run, then up to 5 minutes until the next harvest, against a 12-minute limit. Backprop then closes the queue row within 2 minutes. All of these now run inside the Ledger cycle (`64_LedgerCycle.js`, one 1-minute trigger), not as triggers of their own. A slow Studio run can use the whole window. Look at the trigger before changing the limit.
 
 ## 6. Scheduling a lesson (process, not a bug)
 
@@ -123,7 +129,7 @@ Do not confuse this with the 2 a.m. `buildUpcomingLessons()` trigger, which buil
 - Tests: `student-doc-service`, `cas-attention-signal`, `flow-input-builder`, plus fake-document attribute support in `tests/harness/gas-sandbox.js`.
 - `HISTORY.md`: two new entries recording the causes and rules above.
 
-**Deploy.** `clasp push` for the affected projects, then the usual `clasp version` and `clasp update-deployment` for the two web apps. After pushing, run `clasp deployments` to confirm the Student Dashboard moved off v12 (executions showed v12; the zip has no git history, so whether v12 matches the repo is unconfirmed). If the manifest changes again, repeat the scope-approval step from section 2.
+**Deploy (done 2026-10-17; how it was done then).** Pushes now go through `node run.js`, which cuts the version and moves each web-app deployment; see the current handoff. At the time: `clasp push` for the affected projects, then the usual `clasp version` and `clasp update-deployment` for the two web apps. After pushing, run `clasp deployments` to confirm the Student Dashboard moved off v12 (executions showed v12; the zip has no git history, so whether v12 matches the repo is unconfirmed). If the manifest changes again, repeat the scope-approval step from section 2.
 
 **First-run behavior.** The `SubmitFailures` tab does not exist until the first failure. The signal treats a missing tab as zero. It was not added to the retention schedule because it holds no student data; add it if every tab should be listed.
 
@@ -141,7 +147,7 @@ Do not confuse this with the 2 a.m. `buildUpcomingLessons()` trigger, which buil
 
 - How real Google Docs formats the inserted paragraph after the attribute copy. Tests use a fake document, so inspect the first live result.
 - Whether Studio's sheet trigger fires on script-written rows (open issue 4). **Answered 2026-10-19: not on an appended row; yes on an edit of an existing cell.**
-- Backprop's actual trigger interval (the code comment mentions 2 minutes; the effective cadence was not checked).
+- Backprop's actual trigger interval (the code comment mentions 2 minutes; the effective cadence was not checked). **Answered from the code 2026-10-24: every 2 minutes, run by the Ledger cycle (`LC_JOBS` in 64), since a plain trigger can't run every 2 minutes.**
 - Whether the live web app matches the repo (v12 versus later pushes). **Answered 2026-10-20: the Student Dashboard is well past v12.**
 - Two odd rows at the top of the Ledger tab (rows 2 and 3: `IN_PROCESS`, no timestamp, placeholder-style ConfigIDs). They look like leftover test rows from a canary or fixture run. Check before deleting.
 
