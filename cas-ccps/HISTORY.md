@@ -4663,3 +4663,25 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   had no assignments, before the footer ("Last refreshed: … · account")
   was set, so it stayed blank. Both paths now call `_setFooter`.
 - **Tests:** `student-dashboard-warmups.test.js` (fails without the fix).
+
+## Warm-ups a missed night left unscored; a probe for odd Ledger rows, 2026-10-24
+
+- **Why:** the nightly run (25) scored only warm-ups dated yesterday. A
+  night its 3:15 a.m. run didn't happen or stopped (M2 off, an error) left
+  that day's answers DELIVERED for good: "Waiting to be checked" on the
+  card, and, under the 10-24 window rule, no extra-credit chance.
+- **The catch-up, 25:** `_selectWarmUpsToScore_` picks yesterday's
+  unscored warm-ups as before, plus any from the `WARMUP_CATCHUP_DAYS` (6)
+  days before that which are still DELIVERED with no total ("missed_night";
+  a row already parked or scored isn't picked up again), plus late answers
+  (`_answeredLate_`). Today's and later days' are never scored early. The
+  run logs its count by reason. `getYesterday_` went with it.
+- **The preview, 25:** `previewMissedWarmUpScoring()` logs what the next
+  run will score, by reason and lesson date, counts only.
+- **The Ledger rows probe, 38:** `previewOddLedgerRows()` lists rows that
+  fail `LSG_FIELD_SHAPES_` or have no Timestamp, for the bug handoff's two
+  rows at the top of the tab (2026-10-16, section 9). Per row: Status, the
+  failing fields, the ConfigID's shape (letters as A, digits as 9), whether
+  the file opens, and whether a ReviewQueue or staging row points at it.
+  Read-only; it logs no names, emails or IDs.
+- **Tests:** `warmup-text-box.test.js`, `ledger-schema-guard.test.js`.
