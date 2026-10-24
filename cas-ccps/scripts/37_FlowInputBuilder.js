@@ -262,6 +262,12 @@ function buildFlowInputRows() {
         continue;
       }
 
+      // The student's process reflection for this submission, if one was
+      // asked (13, REFLECTION_ON_SUBMIT): into the prompt, and back to the
+      // student as a comment once the row is in.
+      const reflection = _fiSubmissionReflection_(ledgerSs, cfg, configId, studentFileId,
+        sheetTimestampMs_(stagingData[i][STG_TIMESTAMP]));
+
       fiSheet.appendRow([
         new Date(),                // Timestamp
         i + 1,                     // StagingRowRef
@@ -292,9 +298,10 @@ function buildFlowInputRows() {
         "", // GeminiFullOutput — Studio Flow 2 fills this in
         // The Flow 2 prompt with every placeholder resolved EXCEPT
         // {{STUDENT_TEXT}} — see _fiBuildPromptText_ below.
-        _fiBuildPromptText_(matrixRow),
+        _fiBuildPromptText_(matrixRow, _fiReflectionPromptText_(reflection)),
       ]);
       newRows.push(fiSheet.getLastRow());
+      if (reflection.length) _fiPostReflectionComment_(studentFileId, reflection);
       existingKeys.add(key);
       built++;
     }
@@ -439,7 +446,12 @@ function _fiFindTeacherMatrixRow_(matrixSsId, configId) {
 // returns "" and logs — the flow still works off a pasted prompt, it just
 // doesn't get the chip.
 // ---------------------------------------------------------------------------
-function _fiBuildPromptText_(matrixRow) {
+//
+// The process reflection (2026-10-24) is the one piece of student writing
+// substituted here: the student typed it on the dashboard, and 13 already
+// keeps it in ReflectionLog, so it is in the Ledger either way
+// (docs/FERPA_DATA_MAP.md, ReflectionLog). The response itself still never is.
+function _fiBuildPromptText_(matrixRow, processReflection) {
   if (typeof substituteFlowPrompt_ !== "function" ||
       typeof FLOW_2_SYSTEM_PROMPT !== "string") {
     Logger.log("[FlowInputBuilder] 40_FlowPrompts.js or 15b's FLOW_2_SYSTEM_PROMPT " +
@@ -456,8 +468,62 @@ function _fiBuildPromptText_(matrixRow) {
     MILESTONE_3: matrixRow.milestone3,
     MILESTONE_4: matrixRow.milestone4,
     DOD:         matrixRow.dod,
+    PROCESS_REFLECTION: processReflection || "(none)",
     // STUDENT_TEXT deliberately omitted — keepUnmatched leaves it in place.
   }, true);
+}
+
+// ---------------------------------------------------------------------------
+// The process reflection for one submission (13 writes it to ReflectionLog
+// just before queueing the work). A submission's answers share one
+// SubmittedAt; this takes the latest group from at most 6 hours before the
+// staging row up to 2 minutes after it, so an answer from an earlier
+// submission is never read as this one's. [] when none was asked.
+// ---------------------------------------------------------------------------
+const FI_REFLECTION_WINDOW_MS = 6 * 60 * 60 * 1000;
+
+function _fiSubmissionReflection_(ledgerSs, cfg, configId, studentFileId, stagedAtMs) {
+  let rows;
+  try {
+    rows = readReflections_(ledgerSs, cfg, configId, studentFileId);
+  } catch (e) {
+    Logger.log("[FlowInputBuilder] ReflectionLog unreadable for ConfigID " + configId + ": " + e.message);
+    return [];
+  }
+  if (!rows.length || !stagedAtMs) return [];
+  const inWindow = rows.filter(function (r) {
+    return r.submittedAt && r.submittedAt <= stagedAtMs + 2 * 60 * 1000 &&
+           r.submittedAt >= stagedAtMs - FI_REFLECTION_WINDOW_MS;
+  });
+  if (!inWindow.length) return [];
+  const latest = Math.max.apply(null, inWindow.map(function (r) { return r.submittedAt; }));
+  return inWindow.filter(function (r) { return r.submittedAt === latest; });
+}
+
+// The answers as Flow 2 reads them, each after its question. Braces are
+// taken out so an answer can't look like one of the prompt's placeholders.
+function _fiReflectionPromptText_(reflection) {
+  if (!reflection || !reflection.length) return "";
+  const clean = function (t) { return String(t || "").replace(/\{\{|\}\}/g, "").trim(); };
+  return reflection.map(function (r) {
+    return "Question" + (r.competencyId ? " (about " + r.competencyId + ")" : "") + ": " + clean(r.question) +
+           "\nAnswer: " + clean(r.answer);
+  }).join("\n\n");
+}
+
+// The student's answers back to them as a comment on their doc, for
+// reference while they work (decided 2026-10-24). It sits outside the body,
+// so no reader of the response sees it; nothing reads it back.
+function _fiPostReflectionComment_(fileId, reflection) {
+  const when = Utilities.formatDate(new Date(reflection[0].submittedAt), Session.getScriptTimeZone(), "MMM d");
+  const text = "Your reflection (" + when + "). This is for you to look back at while you work. " +
+    "It isn't part of your work.\n\n" +
+    reflection.map(function (r) { return r.question + "\n" + r.answer; }).join("\n\n");
+  try {
+    Drive.Comments.create({ content: text }, fileId, { fields: "id" });
+  } catch (e) {
+    Logger.log("[FlowInputBuilder] Could not post the reflection comment: " + e.message);
+  }
 }
 
 // ---------------------------------------------------------------------------

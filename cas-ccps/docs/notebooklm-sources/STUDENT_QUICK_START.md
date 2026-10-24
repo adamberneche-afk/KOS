@@ -41,7 +41,7 @@ Write in one place: under the grey line. Here's everything on the page, top to b
 Submit as many times as you like. Revising is the point, and there's no penalty.
 
 1. **Write at least 25 words**: Write under the grey line. With fewer than 25 words, the dashboard says “Write a little more first.” and tells you about how many words it found.
-2. **Press Submit for Feedback on your dashboard**: Open your dashboard (the **Your dashboard** link at the top of your document). Find the assignment and press **Submit for Feedback**. You'll see: “✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right).”
+2. **Press Submit for Feedback on your dashboard**: Open your dashboard (the **Your dashboard** link at the top of your document). Find the assignment and press **Submit for Feedback**. You'll see: “✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right).” Your card may first ask one or two short questions about how you worked, such as where your work shows a skill, or the hardest choice you made. Answer each in at least 10 words, then press **Submit for Feedback** again. Your answers are not part of your work: they come back to you as a comment on your document, so you can look at them while you revise.
 3. **Wait a few minutes**: Press **↻ Refresh** on your dashboard. The card says **Waiting for feedback…**, then **Being checked now…**.
 4. **Open your document and click Comments**: Your feedback is a comment. Each time you submit, you get a new one. The newest is the one to read.
 

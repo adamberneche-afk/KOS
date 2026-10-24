@@ -4497,3 +4497,39 @@ minute, then run `installLedgerCycle()`, which takes the three timed
 triggers over and runs backprop every 2 minutes. The bug handoff
 (`meta/CAS_BUG_HANDOFF_2026-10-16.md`) now reads bugs 1 to 4 as fixed and
 live, each checked against the code.
+
+## The process reflection on Submit, 2026-10-24
+
+Phase 1 of `meta/STUDENT_WORK_PLAN_2026-10.md` (the operator's direction,
+10-24): before work goes in for feedback, the student says how they worked,
+so the system sees process and judgement and not only the product. Off
+until `REFLECTION_ON_SUBMIT` is set (`all` or one course code; Script
+Property or the Ledger's `_CONFIG`).
+
+- **00.** The question frames (Evidence, Approach, Choice; three each) and
+  `chooseReflectionQuestions_`: an Evidence question on every Submit that
+  names one of the assignment's competencies (milestones 1 to 3, primary
+  first, then rotating), plus one Approach or Choice question on a first
+  Submit, never a frame the student has already answered while an unused
+  one is left. Chosen in code, so the same inputs give the same questions.
+  `reflectionMatrixRow_` reads the competencies the way 37 does (the
+  Student Dashboard project holds only 00, 13, 49 and 63).
+  `ReflectionLog` (one row per answer, written as plain text). The
+  reflection markers count as system text.
+- **13.** Submit asks `getSubmitReflection` first: the same checks as a
+  submit (too little writing is said before any question), then the
+  questions, shown on the card with a word count and kept in page memory.
+  `submitMyWork` chooses the questions again, needs 10 words an answer,
+  refuses a system marker, writes the answers, then queues the work. The
+  doc menu, which can't ask, answers `USE_DASHBOARD` while it's on.
+- **37, 15b, 15c.** Flow 2's prompt has a PROCESS REFLECTION block: the
+  submission's answers (or "(none)"), judged as support for the
+  competency they name and never in place of the work, and a YOUR PROCESS
+  section of feedback. 37 fills it into `PromptText` (no Studio change),
+  taking the latest answers from within 6 hours before the staging row,
+  and posts them back to the student as a comment on the doc, for
+  reference only.
+- **Records.** `ReflectionLog` is the first student writing kept in the
+  Ledger outside WarmUpQueue (`FERPA_DATA_MAP.md`); working data, 1 school
+  year (57). The feedback reflection before a resubmission (Phase 2) waits
+  until this runs reliably.
