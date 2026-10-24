@@ -139,7 +139,10 @@ const WORD_COUNT_THRESHOLDS = [
   { min:  0, score: 0 }
 ];
 const EXTRA_CREDIT_MIN_WORDS = 10;
-const MAX_FEEDBACK_CHARS     = 500; // cap Flow 4 feedback stored in queue row
+// Cap on Flow 4 feedback stored in the queue row, which the Student
+// Dashboard shows to a text-box student. It was 500 and cut long feedback
+// mid-word (walk-through finding 14); a cut now ends with "…".
+const MAX_FEEDBACK_CHARS     = 2000;
 // How many days past total_score being finalized _recheckExtraCredit_()
 // keeps re-scanning a row for a late extra-credit reply before giving up
 // and stamping it done. See that function's own header for why this sweep
@@ -935,8 +938,13 @@ function writeFinalScores_(wqSheet, queueRowNum,
   row[WQ25_GRAMMAR_SCORE]    = grammar;
   row[WQ25_ENGAGEMENT_SCORE] = engagement;
   row[WQ25_TOTAL_SCORE]      = total;
-  row[WQ25_FLOW4_FEEDBACK]   = (feedback || "").substring(0, MAX_FEEDBACK_CHARS);
+  row[WQ25_FLOW4_FEEDBACK]   = _capFeedback_(feedback);
   wqSheet.getRange(queueRowNum, 1, 1, WQ25_COL_COUNT).setValues([row]);
+}
+
+function _capFeedback_(feedback) {
+  const f = String(feedback || "");
+  return f.length > MAX_FEEDBACK_CHARS ? f.substring(0, MAX_FEEDBACK_CHARS - 1) + "…" : f;
 }
 
 // ---------------------------------------------------------------------------

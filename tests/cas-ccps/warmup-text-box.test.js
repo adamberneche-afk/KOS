@@ -18,7 +18,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
 const EXPOSE = ['wfbApplyFlow3_', 'wfbFindQueueRow_', '_registerDeliveredWarmUps_', 'runWarmUpEvaluation',
   'warmUpTextBoxFor_', 'WQ25_COL_COUNT', 'WQ25_STATUS', 'WQ25_DOC_ID', 'WQ25_RESPONSE_TEXT',
   'WQ25_WORD_COUNT_SCORE', 'WQ25_TOTAL_SCORE', 'WQ25_EXTRA_CREDIT', 'WR_COL_COUNT', 'WR_QUEUE_ID',
-  'WR_DOC_ID', 'WR_TOTAL_SCORE', 'WR_EXTRA_CREDIT', 'WTB'];
+  'WR_DOC_ID', 'WR_TOTAL_SCORE', 'WR_EXTRA_CREDIT', 'WTB', '_capFeedback_', 'MAX_FEEDBACK_CHARS'];
 
 function daysAgoStr(k) {
   const d = new Date();
@@ -223,4 +223,14 @@ test('timing: a doc warm-up\'s answered_at is the doc\'s last edit; a Drive erro
   exported._stampWarmUpAnswered_(wq, { docId: 'doc-1', queueRowNum: 2, queueId: 'WQ-1' }, null);
   assert.equal(wq.getRange(2, 24).getValue().getTime(), edited.getTime());
   assert.doesNotThrow(() => exported._stampWarmUpAnswered_(wq, { docId: 'gone', queueRowNum: 2, queueId: 'WQ-1' }, null));
+});
+
+test('Flow 4 feedback is kept up to 2,000 characters; a longer one ends with "…" (finding 14)', () => {
+  const { exported } = setup();
+  const long600 = 'word '.repeat(120);
+  assert.equal(exported._capFeedback_(long600), long600, '600 characters are kept whole (the old cap was 500)');
+  const cut = exported._capFeedback_('x'.repeat(2500));
+  assert.equal(cut.length, exported.MAX_FEEDBACK_CHARS);
+  assert.ok(cut.endsWith('…'));
+  assert.equal(exported._capFeedback_(null), '');
 });

@@ -65,6 +65,11 @@ function getStudentDashboardData(termFilter) {
 
   const assignments    = [];
   const availableTerms = new Set();
+  // Walk-through finding 11: every lesson's doc is a new Ledger row with a
+  // fresh Timestamp, so "just registered" fired for each new assignment.
+  // A class counts as new only when its earliest row is (any term, any
+  // status, this school year).
+  const firstRegistered = {}; // class + teacher -> { className, teacherName, at }
 
   const year = _currentSchoolYear_();
   const feedbackAsComment = feedbackAsCommentChecker_();
@@ -74,6 +79,16 @@ function getStudentDashboardData(termFilter) {
     // Access policy: only this school year's work is visible, whatever term
     // the page asks for.
     if (!_isCurrentSchoolYearRow_(row, year)) continue;
+
+    const regAt = row[LEDGER.TIMESTAMP] ? new Date(row[LEDGER.TIMESTAMP]) : null;
+    if (regAt && !isNaN(regAt.getTime())) {
+      const cls = String(row[LEDGER.CLASS_NAME]).trim();
+      const tch = String(row[LEDGER.TEACHER_NAME]).trim();
+      const key = (cls + "|" + tch).toLowerCase();
+      if (!firstRegistered[key] || regAt < firstRegistered[key].at) {
+        firstRegistered[key] = { className: cls, teacherName: tch, at: regAt };
+      }
+    }
 
     // Collect all terms for this student regardless of filter
     const rowTerm = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
@@ -100,13 +115,9 @@ function getStudentDashboardData(termFilter) {
     // NEW (Say/Do Ledger cas-ccps finding #7): a student previously had no
     // way to see what's actually on file for them (name, class, period,
     // teacher) or to know a registration just happened at all — the only
-    // notice was a one-time email, easy to miss. registeredAt/isNew feed
-    // an in-app "just registered" notice; studentName feeds the persistent
-    // "My Info" view below.
-    const registeredAtRaw = row[LEDGER.TIMESTAMP] || null;
-    const isNewRegistration = registeredAtRaw
-      ? (Date.now() - new Date(registeredAtRaw).getTime()) < (3 * 24 * 60 * 60 * 1000)
-      : false;
+    // notice was a one-time email, easy to miss. newRegistrations (below)
+    // feeds an in-app "just registered" notice; studentName feeds the
+    // persistent "My Info" view.
 
     const configId = String(row[LEDGER.CONFIG_ID]).trim();
     const feedbackInComments = feedbackAsComment(configId, ledgerRowCourseCode_(row));
@@ -131,8 +142,6 @@ function getStudentDashboardData(termFilter) {
       period:        String(row[LEDGER.PERIOD]).trim(),
       subject:       String(row[LEDGER.SUBJECT]).trim(),
       term:          rowTerm,
-      registeredAt:      registeredAtRaw ? formatDate_(registeredAtRaw) : null,
-      isNewRegistration: isNewRegistration,
       status:        status,
       displayStatus: resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult),
       statusClass:   resolveStudentClass_(status, pipeline, lastResult),
@@ -170,6 +179,12 @@ function getStudentDashboardData(termFilter) {
     return a.className.localeCompare(b.className);
   });
 
+  // One line per class first registered in the last 3 days.
+  const newRegistrations = Object.keys(firstRegistered).map(function (k) { return firstRegistered[k]; })
+    .filter(function (r) { return Date.now() - r.at.getTime() < DASH_NEW_REG_MS; })
+    .sort(function (a, b) { return a.at - b.at; })
+    .map(function (r) { return { className: r.className, teacherName: r.teacherName, registeredAt: formatDate_(r.at) }; });
+
   // Warm-ups aren't Ledger rows, and they don't follow the term filter: the
   // card shows the last warm-up and the current one.
   const warmUps = getStudentWarmUps_(ss, cfg, googleId, new Date());
@@ -185,6 +200,7 @@ function getStudentDashboardData(termFilter) {
       googleId:    googleId,
       assignments: [],
       warmUps:     warmUps,
+      newRegistrations: newRegistrations,
       emptyReason: filteredByTerm
         ? "No assignments for " + activeTerm + ".\n\nChoose \"Whole school year\" at the top to see the rest of the year."
         : "No assignments found for " + googleId + ".\n\n" +
@@ -202,6 +218,7 @@ function getStudentDashboardData(termFilter) {
     googleId:       googleId,
     assignments:    assignments,
     warmUps:        warmUps,
+    newRegistrations: newRegistrations,
     activeTerm:     activeTerm,
     availableTerms: [...availableTerms].sort().reverse(),
     generatedAt:    formatDate_(new Date())
@@ -243,6 +260,7 @@ const DASH_WQ_TOTAL        = 16;
 const DASH_SCORE_MAX       = 10; // length 6 + grammar 1 + engagement 3 (25's thresholds, 41's ranges)
 const DASH_WQ_FEEDBACK     = 17;
 const DASH_WQ_WIDTH        = 18;
+const DASH_NEW_REG_MS      = 3 * 24 * 60 * 60 * 1000; // "just registered" for 3 days
 const DASH_EC_DAYS         = 6; // the latest day the last warm-up stays open; 25's window is 7 nights
 const DASH_EC_MIN_WORDS    = 10;
 const DASH_ANSWER_MAX      = 5000;
@@ -362,6 +380,11 @@ function _dashWarmUpView_(w, tz, today, closesOn) {
     score: status === "SCORED" ? {
       points:     Number(w.row[DASH_WQ_TOTAL] || 0) - (credited ? 1 : 0),
       max:        DASH_SCORE_MAX,
+      // Each part's maximum (finding 13): 25's word-count thresholds (30+
+      // words for 6) and 41's grammar and engagement ranges.
+      lengthMax:     6,
+      grammarMax:    1,
+      engagementMax: 3,
       length:     Number(w.row[DASH_WQ_LENGTH] || 0),
       grammar:    Number(w.row[DASH_WQ_GRAMMAR] || 0),
       engagement: Number(w.row[DASH_WQ_ENGAGEMENT] || 0),
@@ -1021,6 +1044,9 @@ function buildStudentDashboardHtml_() {
   .wu-parts{color:var(--text-secondary);font-size:13px}
   .wu-feedback{font-size:14px;line-height:1.55;background:#f1f3f4;border-radius:8px;padding:10px 12px;margin-bottom:10px;white-space:pre-line}
   .wu-answer{font-size:14px;line-height:1.5;white-space:pre-line;color:#3c4043}
+  .wu-recall{margin-bottom:10px;font-size:14px}
+  .wu-recall summary{cursor:pointer;color:#1557b0;font-weight:500;padding:4px 0}
+  .wu-recall .wu-prompt{margin:6px 0}
   .wu-ec{font-size:13px;color:#7627bb;font-weight:500;margin-bottom:6px}
   .wu-ec.done{color:#137333}
   .wu-note{font-size:13px;color:var(--text-secondary);margin-top:6px}
@@ -1062,7 +1088,7 @@ function buildStudentDashboardHtml_() {
 <!-- NEW (finding #7): in-app notice for a recent registration, replacing
      the easy-to-miss one-time email — visible for a few days after a new
      registration is recorded, then fades out on its own as it ages past
-     the "recent" window computed server-side (isNewRegistration). -->
+     the "recent" window computed server-side (newRegistrations). -->
 <!-- FIXED (external UX audit): matches the role="status" aria-live="polite"
      convention 07_TeacherDashboard.js already uses for its own dynamically
      shown/hidden notice regions (lesson-payoff-hint, draft-stale-hint) —
@@ -1336,11 +1362,21 @@ function _wuPrevious(w) {
     return h + '</div>';
   }
   if (w.late && w.answer) h += '<div class="wu-note">Answered late: scored, with no feedback or extra credit.</div>';
+  // The question and what the student wrote, collapsed, so the feedback
+  // (and a reply to it) can be read against them (walk-through finding 10).
+  if (w.textBox && (w.warmup || w.answer)) {
+    h += '<details class="wu-recall"><summary>Show the question and your answer</summary>' +
+      (w.warmup ? '<div class="wu-prompt">' + esc(w.warmup) + '</div>' : '') +
+      '<div class="wu-answer"><b>Your answer</b><br>' + (w.answer ? esc(w.answer) : '<i>No answer was saved.</i>') + '</div>' +
+      '</details>';
+  }
   if (w.score) {
     h += '<div class="wu-score"><b>' + esc(w.score.points) + '/' + esc(w.score.max) + '</b>' +
       (w.score.extra ? ' <span class="wu-plus">+' + esc(w.score.extra) + ' extra credit</span>' : '') +
-      '<span class="wu-parts">Length ' + esc(w.score.length) + ' · Grammar ' + esc(w.score.grammar) +
-      ' · Engagement ' + esc(w.score.engagement) + '</span></div>';
+      '<span class="wu-parts">Length ' + esc(w.score.length) + '/' + esc(w.score.lengthMax) +
+      ' · Grammar ' + esc(w.score.grammar) + '/' + esc(w.score.grammarMax) +
+      ' · Engagement ' + esc(w.score.engagement) + '/' + esc(w.score.engagementMax) +
+      ' (30+ words for full length)</span></div>';
   }
   if (w.feedback) h += '<div class="wu-feedback">' + esc(w.feedback) + '</div>';
   if (!w.textBox) h += _wuOpenLink(w);
@@ -1579,13 +1615,13 @@ function submitDone(fileId, configId, res) {
 }
 
 // NEW (finding #7): an immediate, in-app "just registered" notice —
-// replacing the original easy-to-miss one-time email — for every
-// registration flagged isNewRegistration by the server (within the last
-// few days). Naturally stops showing once that window passes; no
-// separate "seen it" state to track.
+// replacing the original easy-to-miss one-time email — one line per class
+// the server lists in newRegistrations (first registered within the last
+// few days; walk-through finding 11). Naturally stops showing once that
+// window passes; no separate "seen it" state to track.
 function renderNewRegistrationBanner(data) {
   const el = document.getElementById("new-registration-banner");
-  const fresh = (data.assignments || []).filter(a => a.isNewRegistration);
+  const fresh = data.newRegistrations || [];
   if (!fresh.length) { el.style.display = "none"; el.innerHTML = ""; return; }
   el.style.display = "block";
   el.innerHTML = fresh.map(a =>
@@ -1608,7 +1644,15 @@ function toggleMyInfo() {
 
 function renderMyInfo(data) {
   const panel = document.getElementById("my-info-panel");
-  const regs  = data.assignments || [];
+  // One card per class, period and teacher, not one per assignment
+  // (walk-through finding 12).
+  const seen = {};
+  const regs = (data.assignments || []).filter(a => {
+    const key = [a.className, a.period, a.teacherName].join("|").toLowerCase();
+    if (seen[key]) return false;
+    seen[key] = true;
+    return true;
+  });
   if (!regs.length) {
     panel.innerHTML = '<div class="empty-state"><p>No registration on file yet.</p></div>';
     return;
