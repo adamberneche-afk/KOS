@@ -81,15 +81,15 @@ test('feedbackAsCommentFor_: a workspace ID takes its course from a course name 
   assert.equal(reads, 0);
 });
 
-function stamp(flag, configId) {
+function stamp(flag, configId, prompt) {
   const { exported, sandbox } = loadGasFiles(
     [S('00_SharedConfig.js'), S('63_DocHeader.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['stampDocument_']);
   setFlag(sandbox, flag);
   const doc = sandbox.DocumentApp.create('Lesson 06 — student');
   exported.stampDocument_(doc.getId(), configId, 'A Student', 'B2', 'Sports Marketing', 'Teacher',
-    '3', 'L06 SKILL DEVELOPMENT PLAN', 'Write your plan.', 'ledger-id', 'admin-id', 'https://example.test/exec');
+    '3', 'L06 SKILL DEVELOPMENT PLAN', prompt || 'Write your plan.', 'ledger-id', 'admin-id', 'https://example.test/exec');
   const d = sandbox.DocumentApp.openById(doc.getId());
-  return { text: d.getBody().getText(), header: d.getHeader(), sandbox, id: doc.getId() };
+  return { text: d.getBody().getText(), header: d.getHeader(), footer: d.getFooter(), sandbox, id: doc.getId() };
 }
 
 test('stampDocument_: who, what, the dashboard link and the feedback status are in a small grey page header', () => {
@@ -119,17 +119,20 @@ test('stampDocument_: with the flag on, the body is the assignment and the respo
   assert.ok(text.includes('[SYS_DASHBOARD_URL:https://example.test/exec]'), 'the menu still finds the dashboard');
 });
 
-// 2026-10-22: the assignment at 8 pt and the student's writing space at 10,
-// set on the paragraphs so the empty writing space keeps its size.
-test('stampDocument_: the assignment is 8 pt and the student\'s writing space 10 pt', () => {
+// 2026-10-22: the student's writing space at 10 pt, set on the paragraphs
+// so the empty writing space keeps its size. Since 2026-10-24 the assignment
+// is in a table at 9 pt.
+test('stampDocument_: the assignment is 9 pt in its table and the student\'s writing space 10 pt', () => {
   for (const flag of ['all', undefined]) {
     const { sandbox, id } = stamp(flag, 'CAS-8175-L06');
     const body = sandbox.DocumentApp.openById(id).getBody();
     const paras = Array.from({ length: body.getNumChildren() }, (_, i) => body.getChild(i));
     const size = (p) => p.getAttributes().FONT_SIZE;
-    const at = (t) => paras.findIndex((p) => p.getText() === t);
+    const at = (t) => paras.findIndex((p) => p.getType() !== 'TABLE' && p.getText() === t);
     const marker = at('── YOUR RESPONSE BEGINS HERE ──');
-    assert.equal(size(paras[at('Write your plan.')]), 8, flag + ': the assignment');
+    const table = paras.find((p) => p.getType() === 'TABLE');
+    assert.equal(table.getCell(1, 0).getChild(0).getText(), 'Write your plan.');
+    assert.equal(size(table.getCell(1, 0).getChild(0)), 9, flag + ': the assignment');
     assert.equal(paras[marker + 1].getText(), '');
     assert.equal(size(paras[marker + 1]), 10, flag + ': the writing space');
     if (!flag) {
@@ -167,7 +170,8 @@ test('stampDocument_: headings and two jump links move between the assignment an
     assert.equal(up.to, title);
     const marker = at('── YOUR RESPONSE BEGINS HERE ──');
     assert.ok(down.from < marker && up.from < marker, 'no link inside the response zone');
-    assert.ok(at('Write your plan.') > down.from && at('Write your plan.') < at('Your response'));
+    const table = paras.findIndex((p) => p.getType() === 'TABLE');
+    assert.ok(table > down.from && table < at('Your response'), 'the assignment table sits between the two links');
     assert.match(paras[up.from].getText(), /^Write your answer under the grey line below\./);
   }
 });
@@ -301,9 +305,54 @@ test('Teacher Dashboard feedback control: says when a Script Property overrides 
 test('stampDocument_: the doc ends on a visible note, after the system block, with room to write', () => {
   const { text } = stamp('all', 'CAS-8175-L06');
   const lines = text.split('\n');
-  assert.match(lines[lines.length - 1], /Nothing below that line is checked/);
-  assert.ok(text.indexOf('[SYS_DASHBOARD_URL:') < text.lastIndexOf('Nothing below that line'));
+  assert.match(lines[lines.length - 1], /Nothing below this is checked/);
+  assert.ok(text.indexOf('[SYS_DASHBOARD_URL:') < text.lastIndexOf('Nothing below this'));
   const marker = lines.indexOf('── YOUR RESPONSE BEGINS HERE ──');
   const cfg = lines.findIndex((l) => l.startsWith('[CONFIG_ID:'));
   assert.ok(cfg - marker - 1 >= 6, 'at least six empty writing lines');
+});
+
+// 2026-10-24, the operator's layout: the code moves to the page footer, and
+// the "[CONFIG_ID:" end marker every reader (and Studio's Flow 2) stops at
+// stays in the body, hidden in the white 1pt system line.
+test('stampDocument_: the code is in the footer; the end marker is hidden with the system IDs', () => {
+  const { sandbox, id, footer, text } = stamp('all', 'VDOE-ABC123-2026');
+  const body = sandbox.DocumentApp.openById(id).getBody();
+  const paras = Array.from({ length: body.getNumChildren() }, (_, i) => body.getChild(i));
+  const hidden = paras.find((p) => p.getType() !== 'TABLE' && p.getText().startsWith('[CONFIG_ID: VDOE-ABC123-2026]'));
+  assert.ok(hidden, 'one line holds the end marker');
+  assert.equal(hidden.getText(), '[CONFIG_ID: VDOE-ABC123-2026][SYS_LEDGER_SS_ID:ledger-id][SYS_ADMIN_SS_ID:admin-id]' +
+    '[SYS_DASHBOARD_URL:https://example.test/exec]');
+  assert.equal(hidden.fontSize, 1);
+  assert.equal(hidden.color, '#ffffff');
+  assert.ok(!text.includes('Do not delete this line'), 'no visible code line');
+  assert.equal(footer.getText().trim(), 'Assignment code: VDOE-ABC123-2026');
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js')],
+    ['dashExtractResponse_']);
+  const written = text.replace('── YOUR RESPONSE BEGINS HERE ──\n', '── YOUR RESPONSE BEGINS HERE ──\nMy answer here.\n');
+  assert.equal(exported.dashExtractResponse_(written).trim(), 'My answer here.', 'the response still ends at the hidden marker');
+});
+
+test('stampDocument_: the assignment table: the task with headings and bullets, then the objectives as a checklist', () => {
+  const prompt = 'Title: Assignment: Plan\n\nDescription:\n\nEmployers want *soft* skills.\n\nThe Task:\n\n- Watch the videos.\n- Write a plan.\n\n' +
+    'What your work needs to show:\n\n- I can plan to grow professionally (required)\n- I can write clearly\n\n' +
+    'You can also show (not required):\n\n- I can show a strong work ethic\n\nSubmission:\n\nSubmit your plan as a Text Entry.';
+  const { sandbox, id } = stamp('all', 'CAS-8175-L06', prompt);
+  const body = sandbox.DocumentApp.openById(id).getBody();
+  const table = Array.from({ length: body.getNumChildren() }, (_, i) => body.getChild(i)).find((p) => p.getType() === 'TABLE');
+  assert.equal(table.getNumRows(), 4);
+  assert.equal(table.getCell(0, 0).getText(), 'The assignment');
+  assert.equal(table.getCell(0, 0).getBackgroundColor(), '#e8eaed');
+  assert.equal(table.getCell(2, 0).getText(), 'What your work needs to show');
+  assert.equal(table.getCell(2, 0).getBackgroundColor(), '#d2e3fc');
+  const kids = (c) => Array.from({ length: c.getNumChildren() }, (_, i) => c.getChild(i));
+  const task = kids(table.getCell(1, 0));
+  assert.deepEqual(task.map((p) => [p.getType(), p.getText()]), [
+    ['PARAGRAPH', 'Description'], ['PARAGRAPH', 'Employers want soft skills.'], ['PARAGRAPH', 'The Task'],
+    ['LIST_ITEM', 'Watch the videos.'], ['LIST_ITEM', 'Write a plan.']]);
+  assert.deepEqual(kids(table.getCell(3, 0)).map((p) => p.getText()), [
+    '☐ I can plan to grow professionally (required)', '☐ I can write clearly', 'You can also show (not required)',
+    '☐ I can show a strong work ethic']);
+  assert.ok(!table.getText().includes('Submission'), 'the Canvas submission line stays out');
+  assert.ok(!table.getText().includes('Title:'), 'the Canvas title line stays out');
 });
