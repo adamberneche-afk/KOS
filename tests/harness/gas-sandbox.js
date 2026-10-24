@@ -745,6 +745,9 @@ class FakeParagraph {
   appendHorizontalRule() { return this; }
   setIndentStart() { return this; }
   setItalic() { return this; }
+  // Real Apps Script API — Paragraph.setFontSize(size), chained by 29's
+  // weekly Student Context section. Recorded like editAsText()'s.
+  setFontSize(size) { this.fontSize = size; return this; }
   // Real Apps Script API — Paragraph.getAttributes()/setAttributes(). Kept as
   // an opaque map so a test can assert one paragraph was given another's
   // formatting (37's evaluation block takes the feedback zone's).
