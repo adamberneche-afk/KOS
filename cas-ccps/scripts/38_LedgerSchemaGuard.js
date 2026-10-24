@@ -408,3 +408,78 @@ function _lsgLogReport_(result) {
     }
   }
 }
+
+// ---------------------------------------------------------------------------
+// previewOddLedgerRows — read-only. Lists Ledger rows that don't look like a
+// real registration: no Timestamp, or a field (GoogleID, ConfigID, FileID,
+// TeacherEmail, AdminFileURL) that fails LSG_FIELD_SHAPES_. Written for the
+// bug handoff's two rows at the top of the tab (2026-10-16 section 9:
+// IN_PROCESS, no timestamp, placeholder-style ConfigIDs) so the operator can
+// decide whether to delete them; it deletes nothing.
+//
+// Logs no student data: for each row, its sheet row number, Status, which
+// fields fail their shape, the ConfigID's shape (letters as "A", digits as
+// "9"), whether its FileID opens in Drive, and whether any ReviewQueue or
+// staging row points at it.
+// ---------------------------------------------------------------------------
+function previewOddLedgerRows() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.ledger);
+  if (!sheet || sheet.getLastRow() < 2) {
+    Logger.log("[LedgerGuard] No Ledger rows to check.");
+    return [];
+  }
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER_MIN_CANONICAL_WIDTH).getValues();
+  const referenced = _lsgReferencedFileIds_(ss, cfg);
+  const odd = [];
+  rows.forEach(function (row, i) {
+    const failed = LSG_FIELD_SHAPES_.filter(function (f) { return !f.test(row[f.index]); })
+      .map(function (f) { return f.name; });
+    if (!failed.length) return;
+    const fileId = String(row[LEDGER.FILE_ID] || "").trim();
+    let fileOpens = false;
+    if (fileId) {
+      try { DriveApp.getFileById(fileId); fileOpens = true; } catch (e) { fileOpens = false; }
+    }
+    odd.push({
+      sheetRow:     i + 2,
+      status:       String(row[LEDGER.STATUS] || "").trim() || "(blank)",
+      failedShapes: failed,
+      configShape:  String(row[LEDGER.CONFIG_ID] || "").trim()
+        .replace(/[A-Za-z]/g, "A").replace(/[0-9]/g, "9").substring(0, 24) || "(blank)",
+      fileOpens:    fileOpens,
+      inReviewQueue: !!(fileId && referenced.reviewQueue[fileId]),
+      inStaging:     !!(fileId && referenced.staging[fileId])
+    });
+  });
+  Logger.log("[LedgerGuard] " + odd.length + " of " + rows.length + " Ledger row(s) don't look like a registration" +
+    (odd.length ? ":\n" + odd.slice(0, 25).map(function (r) { return JSON.stringify(r); }).join("\n") : "."));
+  if (odd.length > 25) Logger.log("[LedgerGuard] (first 25 shown)");
+  return odd;
+}
+
+// FileIDs that a ReviewQueue row (column C) or a STAGING_PIPELINE row
+// (StudentFileID) points at: a Ledger row they point at is in use.
+function _lsgReferencedFileIds_(ss, cfg) {
+  const out = { reviewQueue: {}, staging: {} };
+  const rq = ss.getSheetByName(cfg.tabs.reviewQueue || "ReviewQueue");
+  if (rq && rq.getLastRow() > 1) {
+    rq.getRange(2, 3, rq.getLastRow() - 1, 1).getValues().forEach(function (r) {
+      const id = String(r[0] || "").trim();
+      if (id) out.reviewQueue[id] = true;
+    });
+  }
+  const sp = ss.getSheetByName(cfg.tabs.stagingPipeline || "STAGING_PIPELINE");
+  if (sp && sp.getLastRow() > 1) {
+    const data = sp.getDataRange().getValues();
+    const col = data[0].map(function (h) { return String(h).trim(); }).indexOf("StudentFileID");
+    if (col !== -1) {
+      data.slice(1).forEach(function (r) {
+        const id = String(r[col] || "").trim();
+        if (id) out.staging[id] = true;
+      });
+    }
+  }
+  return out;
+}
