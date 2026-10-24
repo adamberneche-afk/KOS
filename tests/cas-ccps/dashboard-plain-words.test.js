@@ -161,3 +161,9 @@ test('the doc shows the task without the Canvas title line or the Submission par
   assert.equal(exported._docStudentTask_(task), 'Description:\n\nDo it well.\n\nWhat your work needs to show:\n\n- A');
   assert.equal(exported._docStudentTask_('Just the task.'), 'Just the task.');
 });
+
+test('the Teacher Dashboard has one "+ New lesson" (📅 Lessons drafts one); the header logs today\'s lesson', () => {
+  const { teacher } = pages();
+  assert.ok(teacher.includes(">+ Log today's lesson</button>"));
+  assert.ok(!teacher.includes('>+ New Lesson</button>'));
+});
