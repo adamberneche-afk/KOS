@@ -3,7 +3,7 @@
 > **Filed 2026-10-17** from the operator's 2026-10-16 handoff package.
 > Suggestions only. Threads A and B are not built; Thread C's nightly
 > rollout is (status under its heading). Where it sits in the order of
-> work: [`HANDOFF_2026-10-22.md`](./HANDOFF_2026-10-22.md).
+> work: [`HANDOFF_2026-10-24.md`](./HANDOFF_2026-10-24.md).
 
 Prepared 2026-10-16. Suggestions only; nothing was built when this was written. These threads come from questions about aggregating student data across curriculum and courses, about a portable personal knowledge portfolio, and about rolling out lessons and distributing documents. They sit on top of the authenticity and process-trace suggestions in the Cognitive Exhaust document. Student data stays out of any analysis shared with Claude: only structure, counts and metrics.
 
