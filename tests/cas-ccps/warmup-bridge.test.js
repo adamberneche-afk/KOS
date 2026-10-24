@@ -319,3 +319,14 @@ test('buildShadowMatrixSummary_: a student whose warm-ups were all blank is not 
   assert.equal(r.withWarmUpHistory, 2);
   assert.deepEqual(r.withWarmupEmails, ['answered@example.invalid', 'older@example.invalid']);
 });
+
+test('updateShadowMatrix_ skips baseline warm-ups (D6): they say nothing about a lesson archetype', () => {
+  const { exported, sandbox } = loadProfile();
+  sandbox.resolveUnitForDate_ = () => ({ unit_id: 'S1-U2' });
+  const wq = shadowQueue(exported, SHADOW_SPECS.concat([
+    { queueId: 'WUQ-5', lessonId: 'LES-5', date: '2026-10-27', engagement: 3, archetype: 'BASELINE 8175-14' },
+  ]));
+  const scores = exported.buildWarmupData_(wq)['ada@example.invalid'].scores;
+  const unit = exported.updateShadowMatrix_('ada@example.invalid', {}, scores, wq)['S1-U2'];
+  assert.deepEqual(unit.archetype_history.map((h) => h.archetype), ['PARADOX', 'PARADOX', 'BRIDGE']);
+});

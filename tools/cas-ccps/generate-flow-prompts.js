@@ -1,7 +1,7 @@
 'use strict';
-// Regenerates cas-ccps/scripts/40_FlowPrompts.js's five prompt constants FROM
+// Regenerates cas-ccps/scripts/40_FlowPrompts.js's six prompt constants FROM
 // their real sources — cas-ccps/docs/CAS_Flow3_Flow4_Specification.html
-// (Flows 3 A/B, 4, 5) and cas-ccps/scripts/15_StudioFlowPrompts.js (Flow 1) —
+// (Flows 3 A/B/C, 4, 5) and cas-ccps/scripts/15_StudioFlowPrompts.js (Flow 1) —
 // the same relationship tools/kos-personal/generate-flow-prompts.js has to
 // CURATOR_PROMPT.md/VECTOR_CLASSIFY_PROMPT.md there.
 //
@@ -98,6 +98,7 @@ function main() {
   const REQUIRED_TITLES = [
     'System Prompt — Mode A (Anchor-Aware)',
     'System Prompt — Mode B (Generative)',
+    'System Prompt — Mode C (Baseline)',
     'System Prompt — Studio Flow 4',
     'System Prompt — Flow 5 Bridging',
   ];
@@ -110,6 +111,7 @@ function main() {
     FLOW_1_PROMPT: extractFlow1(flow1Src),
     FLOW_3_PROMPT_MODE_A: spec['System Prompt — Mode A (Anchor-Aware)'],
     FLOW_3_PROMPT_MODE_B: spec['System Prompt — Mode B (Generative)'],
+    FLOW_3_PROMPT_MODE_C: spec['System Prompt — Mode C (Baseline)'],
     FLOW_4_PROMPT: spec['System Prompt — Studio Flow 4'],
     FLOW_5_PROMPT: spec['System Prompt — Flow 5 Bridging'],
   };
@@ -124,7 +126,7 @@ function main() {
   });
 
   if (target === before) {
-    console.log('No change — all five constants in ' + TARGET_PATH + ' already match their sources.');
+    console.log('No change — all six constants in ' + TARGET_PATH + ' already match their sources.');
     return;
   }
 

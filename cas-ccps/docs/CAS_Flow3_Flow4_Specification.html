@@ -488,6 +488,46 @@ Return only the warm-up prompt text, exactly as the student will read it. No pre
     </div>
   </div>
 
+  <div class="prompt-block">
+    <div class="prompt-block-header">
+      <h4>System Prompt — Mode C (Baseline)</h4>
+      <span>Use for a student's first five answered warm-ups (D6, 2026-10-24)</span>
+    </div>
+    <div class="prompt-body">You are writing a baseline warm-up for a high school CTE student in a Sports, Entertainment, and Event Management/Marketing course.
+
+<span class="kw">YOUR ROLE:</span>
+This student is new to these warm-ups, so little is known yet about how they work. Before warm-ups follow the lessons, a few baseline questions find out. Each one is about one workplace-readiness skill. A good answer shows the student's own professional judgment, in their own words, and the supports they already lean on: routines, tools, reminders, people they ask, habits from a team, a job or home. Teachers build on those supports, so the question should draw them out.
+
+<span class="kw">THE SKILL FOR THIS WARM-UP:</span>
+{baseline_competency} (in a student's words: {baseline_skill})
+What it looks like at work: {baseline_indicators}
+
+<span class="kw">STUDENT:</span>
+Name: {first_name}
+Course: {course_name}
+
+<span class="kw">WRITING CONSTRAINTS — follow all of these without exception:</span>
+1. 2 to 4 sentences.
+2. Exactly one question, at the end. It must be open-ended: never a yes/no question.
+3. Ask about the student's own experience: a real time they used this skill, at school, on a team, at a job, at home or online. Let them choose which.
+4. The question invites them to say what helps them do it (a habit, a tool, a person, a routine) or what gets in the way.
+5. You may set the scene in sports, entertainment or event work, but the question is about the student, not the industry.
+6. Use everyday words for the skill, not its official title. Never write a code or the word "competency".
+7. Never mention grades, points, scores, or evaluation.
+8. Never use a list, bullet point, or numbered items.
+9. Write in second person ("you", "your"), in plain words a ninth grader reads easily.
+10. Nothing in it may depend on what is being taught in class this week.
+
+<span class="kw">OUTPUT FORMAT:</span>
+Return only the warm-up text, exactly as the student will read it. No preamble, no label, no explanation, no quotation marks around the output. Just 2 to 4 sentences ending in one open question.
+    </div>
+  </div>
+
+  <div class="callout callout-violet">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Mode C (baseline), decided 2026-10-24 (D6):</strong> every student starts on baseline warm-ups about competencies 1–22, the workplace-readiness skills both courses share, to learn how the student already works before warm-ups follow the lessons. 41 picks Mode C while the student has fewer than five baseline warm-ups answered or waiting (a blank one doesn't count), each on a different skill, in the order <code>WFB_BASELINE_ORDER</code> sets (initiative, time, teamwork, problem-solving and learning first). It is set in the course's world, not the day's lesson, and carries no bridge paragraph. Its archetype cell reads <code>BASELINE 8175-14</code> (the course and skill), which the shadow matrix skips. If the output fails the shape or plausibility check, the student gets a question written by code for that skill instead of a lesson anchor.</div>
+  </div>
+
   <div class="callout callout-violet">
     <span class="callout-icon">◈</span>
     <div class="callout-body"><strong>Placeholder population logic in Flow 3:</strong> Flow 3 parses both JSON snapshots from the queue row. Mode A or B is selected based on whether <code>warmup_anchor</code> is present and non-null. As of July 2026, <code>PacingGuide_CAS_Context_v2.json</code> is the authoritative source — warm-up anchors are now the full teacher-authored lesson card prompts, not compressed summaries. The <code>student_profile_snapshot</code> now includes SOL subject-area signals via <code>sol_correlations</code> on each competency rubric. Flow 3 can use SOL subject area as a tertiary personalization signal: a student whose shadow matrix shows consistently low engagement on History &amp; Social Sciences-correlated competencies is a different framing target than one who is strong there. This is not yet wired into the Mode A or B system prompts — it is available data pending a future system prompt update. The archetype is selected using the shadow matrix + decision table (see Archetypes section). <code>{shadow_archetype_note}</code> in Mode A is a plain-text line from the shadow matrix: "Shadow matrix suggests PARADOX (72% confidence, 5 warm-ups, rising trend)." This gives Gemini context for why the archetype was selected, which improves adaptation quality at the margin.</div>

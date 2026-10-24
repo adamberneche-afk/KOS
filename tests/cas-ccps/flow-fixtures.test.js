@@ -936,3 +936,74 @@ test('an EVALUATED fixture row with no output is parked, not harvested', () => {
   assert.equal(fiRowStatus(ss, exported, rowNum), 'ERROR_EMPTY_OUTPUT',
     'an empty answer must be distinguishable from a harvest that failed');
 });
+
+// ── D6 (2026-10-24): baseline warm-ups on competencies 1–22 ─────────────────
+
+// The fixtures' Flow 3 row (status PENDING), copied for a real student.
+function addRealStudentFlow3Row(sandbox, queueId, googleId, extra) {
+  const wq = sandbox.SpreadsheetApp._registry.get(
+    sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID')).getSheetByName('WarmUpQueue');
+  const rows = wq.getDataRange().getValues();
+  const fx = rows.find((r) => String(r[8]) === 'PENDING');
+  assert.ok(fx, 'the fixtures have a Flow 3 row');
+  const row = fx.slice();
+  row[0] = queueId;
+  row[4] = googleId;
+  wq.appendRow(row);
+  (extra || []).forEach((r) => wq.appendRow(r));
+  return { wq, template: fx };
+}
+
+function flow3Inputs(sandbox, exported) {
+  const ss = sandbox.SpreadsheetApp._registry.get(
+    sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'));
+  return ss.getSheetByName(exported.WFB_INPUT_TABS[3]).getDataRange().getValues().slice(1);
+}
+
+test('D6: a student with no baseline history gets a baseline warm-up (Mode C, competency 3 first, no bridge)', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  exported.installWarmUpFixtures();
+  const { wq } = addRealStudentFlow3Row(sandbox, 'WUQ-REAL-1', 'real@ccpsnet.net');
+  exported.buildWarmUpFlowInputs();
+
+  const rows = wq.getDataRange().getValues();
+  const real = rows.find((r) => r[0] === 'WUQ-REAL-1');
+  assert.match(String(real[exported.WQ25_ARCHETYPE]), /^BASELINE 817[57]-3$/);
+  const fixture = rows.find((r) => String(r[0]).indexOf(exported.FX_QUEUE_PREFIX) === 0 &&
+    String(r[exported.WQ25_ARCHETYPE]).trim());
+  assert.ok(fixture && String(fixture[exported.WQ25_ARCHETYPE]).indexOf('BASELINE') !== 0,
+    'the canary\'s fixture student keeps a lesson warm-up');
+
+  const input = flow3Inputs(sandbox, exported).find((r) => r[1] === 'WUQ-REAL-1');
+  const h = exported.WFB_FLOW3_HEADERS;
+  assert.equal(input[h.indexOf('Mode')], 'C');
+  assert.equal(input[h.indexOf('Archetype')], 'BASELINE');
+  assert.equal(input[h.indexOf('BridgeOutput')], '');
+});
+
+test('D6: each baseline warm-up is a new skill; five answered or on their way ends the baseline; a blank one doesn\'t count', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  exported.installWarmUpFixtures();
+  const past = (id, n, status) => {
+    const r = new Array(21).fill('');
+    r[0] = id; r[4] = 'real@ccpsnet.net'; r[8] = status; r[exported.WQ25_ARCHETYPE] = 'BASELINE 8175-' + n;
+    return r;
+  };
+  // 3 and 14 answered, 10 blank, 2 delivered: next is 10 again (blank), then 13.
+  const { wq } = addRealStudentFlow3Row(sandbox, 'WUQ-REAL-2', 'real@ccpsnet.net',
+    [past('P1', 3, 'SCORED'), past('P2', 14, 'PENDING_EVAL'), past('P3', 10, 'INCOMPLETE'), past('P4', 2, 'DELIVERED')]);
+  exported.buildWarmUpFlowInputs();
+  const pick = () => String(wq.getDataRange().getValues().find((r) => r[0] === 'WUQ-REAL-2')[exported.WQ25_ARCHETYPE]);
+  assert.match(pick(), /-10$/, 'the blank one is asked again');
+
+  const done = load();
+  setUp(done.sandbox);
+  done.exported.installWarmUpFixtures();
+  const five = [3, 14, 10, 2, 13].map((n, i) => past('Q' + i, n, i === 4 ? 'DELIVERED' : 'SCORED'));
+  const r2 = addRealStudentFlow3Row(done.sandbox, 'WUQ-REAL-3', 'real@ccpsnet.net', five);
+  done.exported.buildWarmUpFlowInputs();
+  const after = String(r2.wq.getDataRange().getValues().find((r) => r[0] === 'WUQ-REAL-3')[exported.WQ25_ARCHETYPE]);
+  assert.ok(after && after.indexOf('BASELINE') !== 0, 'five counted: back to lesson warm-ups (' + after + ')');
+});

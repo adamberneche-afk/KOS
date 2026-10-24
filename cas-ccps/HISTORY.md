@@ -4707,3 +4707,49 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   fixed on 10-22 (only rows with a suggestion count).
 - **Tests:** `student-dashboard-warmups.test.js`,
   `dashboard-plain-words.test.js`.
+
+## D6: every student starts on baseline warm-ups (competencies 1–22), 2026-10-24
+
+- **The decision (the operator):** students start with warm-ups based on
+  competencies 1–22, the workplace-readiness skills both courses share, to
+  gather context on the student themselves: open-ended questions that show
+  their professional judgment and the supports they already use. Five
+  answered, then lesson warm-ups; everyone starts now; set in the course's
+  world, not the day's lesson. Before this, every student without history
+  got a lesson warm-up as BRIDGE, which "connects to what you've covered"
+  from coverage the system didn't have.
+- **Selection, 41:** `wfbBaselineState_` counts each student's baseline
+  warm-ups that are answered or on their way (PENDING, PENDING_BRIDGE,
+  DELIVERED, PENDING_EVAL, EVAL_ERROR, SCORED; a blank INCOMPLETE one
+  doesn't count, so its skill comes back). Under `WFB_BASELINE_TARGET` (5),
+  `buildWarmUpFlowInputs` builds Mode C on the next skill in
+  `WFB_BASELINE_ORDER` (initiative, time, teamwork, problem-solving,
+  learning, then the rest). The archetype cell records it: `BASELINE
+  8175-14`. A rebuilt job keeps its skill. The canary's fixture student
+  (`.invalid`) keeps lesson warm-ups.
+- **The prompt, spec → 40:** "System Prompt — Mode C (Baseline)" in
+  `CAS_Flow3_Flow4_Specification.html`, generated into
+  `FLOW_3_PROMPT_MODE_C` (`FLOW_3_MODE_C` in the FlowPrompts registry). It
+  gets the skill's wording, a student's wording of it and its demonstration
+  indicators (`WFB_BASELINE_SKILLS`, from `data/CompetencyRubrics.json`,
+  identical for 8175 and 8177; a test keeps them in step), the student's
+  first name and the course. Studio needs no change: Flow 3's Gemini step
+  reads the PromptText chip. 42's build spec says so.
+- **Checks and fallback, 41:** a baseline warm-up is checked (shape,
+  plausibility) against its skill, not the lesson, and one that fails gets
+  `wfbBaselineQuestion_`, a question code writes for that skill, never a
+  lesson anchor. It carries no bridge paragraph (Flow 5 still runs for
+  students with an earlier answer; its output isn't shown on a baseline
+  warm-up).
+- **23:** the shadow matrix skips `BASELINE` rows: they say nothing about
+  which lesson archetype works for a student.
+- **The blank lines, 41:** `wfbDropBlankLines_` drops a Flow 3 prompt line
+  whose every field is blank, " (Stage …)" when the stage is blank, and a
+  block left with only its heading. A line with any value is kept (filled).
+  Every lesson warm-up's prompt had "(Stage )" and an empty "Competencies
+  addressed:" line: the pacing guide was replaced by the teacher's lessons,
+  and a seeded lesson carries no competency IDs.
+- **After the push:** `syncFlowPromptsToSheet()` (a new prompt key). The
+  first build after it gives every student a baseline warm-up.
+- **Tests:** `warmup-flow-bridge.test.js`, `flow-fixtures.test.js`,
+  `warmup-text-box.test.js`, `warmup-bridge.test.js`, `flow-prompts.test.js`.
