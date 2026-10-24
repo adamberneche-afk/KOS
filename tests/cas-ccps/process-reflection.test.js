@@ -104,7 +104,7 @@ function sessionAs(email) {
   };
 }
 
-function loadDashboard(flag, docBody) {
+function loadDashboard(flag, docBody, objectives) {
   const loaded = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js')],
     ['submitMyWork', 'getSubmitReflection', 'LEDGER', 'handleStudentDocRequest_'],
     { Session: sessionAs('ben@ccpsnet.net') });
@@ -137,6 +137,7 @@ function loadDashboard(flag, docBody) {
   tm[0] = 'CAS-8177-SURVEY'; tm[1] = 'Venue Market Research';
   tm[4] = '8177-83 Develop a market research project.'; tm[15] = '8177-83';
   tm[5] = '8177-2 Demonstrate critical thinking and problem-solving.'; tm[16] = '8177-2';
+  if (objectives) tm[20] = JSON.stringify(objectives);
   matrix.getSheetByName('TeacherMatrix').appendRow(tm);
   return { exported, ss, fileId: doc.getId() };
 }
@@ -157,6 +158,21 @@ test('reflection on: the questions name the assignment\'s primary competency', (
   assert.equal(res.questions.length, 2);
   assert.equal(res.questions[0].competencyId, '8177-83');
   assert.match(res.questions[0].question, /Develop a market research project/);
+});
+
+// 2026-10-24: with the row's StudentObjectives (53), a question quotes the
+// student's own "I can" objective instead of the competency's title.
+test('reflection on: a question quotes the student\'s "I can" objective when the row has one', () => {
+  const { exported, fileId } = loadDashboard('all', undefined, {
+    '8177-83': 'I can build a market research survey by making the Google Form and explaining what each question tells the store.',
+  });
+  const qs = plain(exported.getSubmitReflection(fileId, 'VDOE-BEN-2026').questions);
+  assert.equal(qs[0].competencyId, '8177-83');
+  assert.match(qs[0].question, /“I can build a market research survey by making the Google Form and explaining what each question tells the store”/);
+  assert.doesNotMatch(qs[0].question, /Develop a market research project/);
+  const { exported: x2, fileId: f2 } = loadDashboard('all', undefined, { '8177-2': 'I can spot bias.' });
+  assert.match(plain(x2.getSubmitReflection(f2, 'VDOE-BEN-2026').questions)[0].question, /Develop a market research project/,
+    'a competency with no objective keeps its title');
 });
 
 test('reflection on: too little writing in the doc is said before any question is asked', () => {

@@ -4544,3 +4544,26 @@ as the student's Doc follows its Ledger row) in 57, and
 `FERPA_DATA_MAP.md` marks it portfolio material: a copy for the student
 through the export Thread B describes (`meta/CAS_DESIGN_THREADS_2026-10-16.md`),
 never removed from the school's records and never an evaluative record.
+
+## The "I can" objectives in the doc and the reflection questions, 2026-10-24
+
+The learning objectives approved on 10-24
+(`curriculum/lessons/STUDENT_CRITERIA.json`) wired in:
+
+- **The task.** `build-lesson-assignments.js` lists each competency under
+  "What your work needs to show" as the student's own "I can" objective
+  (a competency without one keeps its title) and carries them as each
+  lesson's `objectives` in 55b. The cartridges are rebuilt (re-import).
+  Flow 2 sees them in the task inside the Definition of Done; its
+  milestones keep the VDOE titles it judges against.
+- **The TeacherMatrix (53).** A `StudentObjectives` column (21, JSON),
+  written by the seeder and kept current by `refreshAssignments()`, which
+  now also rewrites a row's prompt doc when its text differs from the
+  repo's: intake (02) copies that doc into every new student doc, so a
+  lesson seeded earlier gets the objectives too. Docs already made for
+  students keep their text.
+- **The reflection questions (00).** `reflectionMatrixRow_` reads the
+  column and `reflectionCriteria_` quotes the objective ("Where in your
+  work do you show this: “I can …”?"), or the title where there is none.
+- The import procedure says a new lesson or changed tier needs its
+  objectives.
