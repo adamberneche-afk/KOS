@@ -453,6 +453,28 @@ test('getStudentDashboardData: a SCHEDULED assignment has no card until it is op
   assert.equal(scheduled.exported.getStudentDashboardData('ALL').assignments.length, 0);
 });
 
+test('getStudentDashboardData: "just registered" once per class, from its earliest row (finding 11)', () => {
+  const sub = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), 'ACTIVE');
+  const withClass = (cls, daysAgo, configId) => {
+    const r = ledgerRow('ben@ccpsnet.net', configId, 'file-' + configId, 'ACTIVE');
+    r[0] = new Date(Date.now() - daysAgo * 86400000).toISOString();
+    r[6] = cls;
+    return r;
+  };
+  sub.ledger.getRange(2, 7).setValue('Sports Marketing');
+  sub.ledger.getRange(2, 1).setValue(new Date(Date.now() - 20 * 86400000).toISOString()); // registered weeks ago
+  sub.ledger.appendRow(withClass('Sports Marketing', 0, 'CFG-NEW1')); // a new lesson's doc
+  sub.ledger.appendRow(withClass('Sports Marketing', 0, 'CFG-NEW2'));
+  let data = sub.exported.getStudentDashboardData('ALL');
+  assert.equal(data.assignments.length, 3);
+  assert.deepEqual(data.newRegistrations, [], 'a new lesson in a class they were in is not a registration');
+
+  sub.ledger.appendRow(withClass('Business Law', 1, 'CFG-BL1'));
+  sub.ledger.appendRow(withClass('Business Law', 0, 'CFG-BL2'));
+  data = sub.exported.getStudentDashboardData('ALL');
+  assert.deepEqual(data.newRegistrations.map((r) => [r.className, r.teacherName]), [['Business Law', 'Ms. Teacher']]);
+});
+
 // Walk-through findings 2, 8 and 3a (2026-10-22): what a student's card says
 // once the work is submitted, once it passed, and when it was submitted.
 function cardAfter(setup) {

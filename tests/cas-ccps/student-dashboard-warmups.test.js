@@ -115,7 +115,7 @@ test('with no later class queued, the last warm-up stays open through day + 6, t
 test('the score shows with the feedback: out of 10, its parts, extra credit on top', () => {
   let { exported, ss } = load([{ wq: wqRow({ date: '2026-10-20', status: 'SCORED', scores: [5, 1, 2, 8] }), tb: {} }]);
   assert.deepEqual(exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.score,
-    { points: 8, max: 10, length: 5, grammar: 1, engagement: 2, extra: 0 });
+    { points: 8, max: 10, lengthMax: 6, grammarMax: 1, engagementMax: 3, length: 5, grammar: 1, engagement: 2, extra: 0 });
   ({ exported, ss } = load([{ wq: wqRow({ date: '2026-10-20', status: 'SCORED', extraCredit: 1, scores: [5, 1, 2, 9] }), tb: {} }]));
   const sc = exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.score;
   assert.deepEqual([sc.points, sc.extra], [8, 1]);
@@ -275,4 +275,48 @@ test('a NOT_MEETING warm-up is not shown: the card falls back to the next one', 
   ]);
   const w = exported.getStudentWarmUps_(ss, CFG, ME, NOW);
   assert.equal(w.current.warmup, 'Meeting day');
+});
+
+// The page itself: its inline script run with a bare document, so what a
+// function renders can be read back (walk-through findings 10, 11, 12, 13).
+function page() {
+  const html = load([]).exported.buildStudentDashboardHtml_();
+  const els = {};
+  const el = () => ({ style: {}, innerHTML: '', setAttribute() {}, classList: { add() {}, remove() {} } });
+  const ctx = {
+    document: { getElementById: (id) => els[id] || (els[id] = el()), addEventListener() {}, querySelectorAll: () => [] },
+    google: { script: { run: new Proxy({}, { get: () => function () { return this; } }) } },
+    console, setTimeout() {}, setInterval() {}, navigator: {},
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  extractInlineScripts(html).forEach((code) => vm.runInContext(code, ctx));
+  return { ctx, els };
+}
+
+test('Last warm-up: the score shows each part out of its maximum; the question and answer are there, collapsed', () => {
+  const { exported, ss } = load([{ wq: wqRow({ date: '2026-10-20', status: 'SCORED', feedback: 'Name a price.', scores: [3, 1, 2, 6] }),
+    tb: { warmup: 'Why pay $5 for water?', response: 'Because it is the only water.', submittedAt: new Date('2026-10-20T15:00:00Z') } }]);
+  const prev = exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous;
+  const h = page().ctx._wuPrevious(prev);
+  assert.match(h, /Length 3\/6 · Grammar 1\/1 · Engagement 2\/3 \(30\+ words for full length\)/);
+  assert.match(h, /<details class="wu-recall"><summary>Show the question and your answer<\/summary>/);
+  assert.ok(h.includes('Why pay $5 for water?') && h.includes('Because it is the only water.'));
+  assert.ok(h.indexOf('wu-recall') < h.indexOf('wu-score'), 'above the score');
+  assert.ok(!h.includes('<details open'), 'collapsed by default');
+});
+
+test('My Info: one card per class, period and teacher, not one per assignment', () => {
+  const { ctx, els } = page();
+  const a = { studentName: 'Sam', className: 'Sports Marketing', period: '3-Odd', teacherName: 'Ms. Teacher' };
+  ctx.renderMyInfo({ assignments: [a, Object.assign({}, a), Object.assign({}, a, { className: 'Business Law' })] });
+  assert.equal((els['my-info-panel'].innerHTML.match(/class="info-card"/g) || []).length, 2);
+});
+
+test('the "just registered" banner: one line per class the server lists, none without', () => {
+  const { ctx, els } = page();
+  ctx.renderNewRegistrationBanner({ newRegistrations: [{ className: 'Sports Marketing', teacherName: 'Ms. Teacher', registeredAt: 'Oct 21' }] });
+  assert.equal((els['new-registration-banner'].innerHTML.match(/new-reg-notice/g) || []).length, 1);
+  ctx.renderNewRegistrationBanner({ assignments: [{ className: 'x', isNewRegistration: true }] });
+  assert.equal(els['new-registration-banner'].style.display, 'none');
 });
