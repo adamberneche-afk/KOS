@@ -331,3 +331,106 @@ function _asParentFolder_(fileId) {
     return null;
   }
 }
+
+// ---------------------------------------------------------------------------
+// Video links in docs already made (2026-10-24)
+//
+// A lesson's video links (curriculum/lessons/VIDEO_LINKS.json, through the
+// generator into LESSON_ASSIGNMENTS[key].videos and its task text) reach new
+// student docs through the prompt doc (refreshAssignments). A doc already
+// made keeps its old task text, so these add "Video: <title> (<url>)" as a
+// link under the task's "Watch" line in each of that lesson's student docs
+// (found through StudentAssignments, 54). Only the assignment part changes:
+// the search stops at the "Your response" heading, so a student's own
+// writing is never touched. A doc that already has the link is left alone,
+// so running it again is safe. Logs counts per lesson, never names or IDs.
+// ---------------------------------------------------------------------------
+function previewVideoLinkRefresh() {
+  return videoLinkRefresh_({ apply: false });
+}
+
+function applyVideoLinkRefresh() {
+  return videoLinkRefresh_({ apply: true });
+}
+
+function videoLinkRefresh_(opts) {
+  const apply = !!(opts && opts.apply === true);
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const lessons = typeof LESSON_ASSIGNMENTS !== "undefined" ? LESSON_ASSIGNMENTS : {};
+  const byConfig = {};
+  Object.keys(lessons).forEach(k => {
+    if ((lessons[k].videos || []).length) byConfig[lessonConfigId_(k)] = { key: k, videos: lessons[k].videos };
+  });
+  const result = { apply: apply, lessons: {}, message: "" };
+  if (!Object.keys(byConfig).length) {
+    result.message = "No lesson has a video link yet (curriculum/lessons/VIDEO_LINKS.json). Nothing to do.";
+    Logger.log("[S53] " + result.message);
+    return result;
+  }
+  const assigned = readStudentAssignments_(ss).byStudent;
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  const rows = ledger && ledger.getLastRow() > 1 ? ledger.getDataRange().getValues().slice(1) : [];
+  rows.forEach(row => {
+    const lesson = byConfig[assigned[String(row[LEDGER.CONFIG_ID] || "").trim()]];
+    if (!lesson) return;
+    const counts = result.lessons[lesson.key] || (result.lessons[lesson.key] =
+      { added: 0, alreadyHas: 0, noWatchLine: 0, unreadable: 0 });
+    const fileId = String(row[LEDGER.FILE_ID] || "").trim();
+    let doc;
+    try {
+      doc = DocumentApp.openById(fileId);
+    } catch (e) {
+      counts.unreadable++;
+      return;
+    }
+    const body = doc.getBody();
+    const text = body.getText();
+    const missing = lesson.videos.filter(v => text.indexOf(v.url) === -1);
+    if (!missing.length) { counts.alreadyHas++; return; }
+    const at = _asFindTaskLine_(body, /\bWatch\b/);
+    if (!at) { counts.noWatchLine++; return; }
+    counts.added++;
+    if (!apply) return;
+    missing.slice().reverse().forEach(v => {
+      const line = "Video: " + v.title + " (" + v.url + ")";
+      const para = at.container.insertParagraph(at.index + 1, line);
+      try { para.setAttributes(at.paragraph.getAttributes()); } catch (e) { /* keeps the default style */ }
+      const start = line.indexOf(v.url);
+      para.editAsText().setLinkUrl(start, start + v.url.length - 1, v.url);
+    });
+    doc.saveAndClose();
+  });
+  result.message = (apply ? "Added" : "Would add") + " video links: " +
+    Object.keys(result.lessons).map(k => k + " " + JSON.stringify(result.lessons[k])).join("; ");
+  Logger.log("[S53] " + result.message);
+  return result;
+}
+
+// The first paragraph matching `re` in the assignment part of a doc (before
+// the "Your response" heading), searching inside tables too.
+// { container, index, paragraph } or null.
+function _asFindTaskLine_(body, re) {
+  let stop = false;
+  const walk = container => {
+    for (let i = 0; i < container.getNumChildren() && !stop; i++) {
+      const child = container.getChild(i);
+      const type = child.getType();
+      if (type === DocumentApp.ElementType.TABLE) {
+        for (let r = 0; r < child.getNumRows(); r++) {
+          for (let c = 0; c < child.getRow(r).getNumCells(); c++) {
+            const hit = walk(child.getRow(r).getCell(c));
+            if (hit || stop) return hit;
+          }
+        }
+        continue;
+      }
+      if (type !== DocumentApp.ElementType.PARAGRAPH && type !== DocumentApp.ElementType.LIST_ITEM) continue;
+      const t = child.getText();
+      if (t.trim() === DOC_RESPONSE_HEADING || t.indexOf("YOUR RESPONSE BEGINS HERE") !== -1) { stop = true; return null; }
+      if (re.test(t)) return { container: container, index: i, paragraph: child };
+    }
+    return null;
+  };
+  return walk(body);
+}
