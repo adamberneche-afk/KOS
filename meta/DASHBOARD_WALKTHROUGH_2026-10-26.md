@@ -29,8 +29,8 @@ Dates assume the walk is on **Mon Oct 26**. Odd and even days go by calendar dat
 
 - [ ] The header reads "📚 My Assignments", with the account label on the right, a term dropdown, **ℹ️ My Info** and **↻ Refresh**.
 - [ ] The term dropdown starts on "Whole school year" and lists this year's marking periods ("Marking period 1, 2026–27"). Picking a term with nothing in it gives "No assignments for …" and points to "Whole school year". It must not say "No assignments found for <account>".
-- [ ] **"🎉 You were just registered…" banner.** Note how many lines it has and whether this student really registered in the last 3 days. Expect a line for each assignment row made in the last 3 days (finding 11).
-- [ ] **ℹ️ My Info** opens "My Info — What Is On File". Check that name, class, **period (3-Odd / 3-Even for period 3)** and teacher are right. Count the cards: expect one per assignment, not one per class (finding 12).
+- [ ] **"🎉 You were just registered…" banner.** Expect none for a student registered weeks ago, even the morning after a new lesson's doc is made; a class first registered in the last 3 days gets one line (finding 11, fixed 10-24 in #282).
+- [ ] **ℹ️ My Info** opens "My Info — What Is On File". Check that name, class, **period (3-Odd / 3-Even for period 3)** and teacher are right. Expect one card per class, not one per assignment (finding 12, fixed in #282).
 
 ### 2. Student Dashboard: Warm-ups card (top of the page)
 
@@ -38,17 +38,20 @@ The card sits under a "WARM-UPS" heading above the assignments. It has at most t
 
 **Student A (scored, text box):**
 - [ ] "Last warm-up · <day, date>", the course name in grey, and the pill "Checked — feedback is below" (green).
-- [ ] The score line reads **N/10** in bold, then "Length x · Grammar y · Engagement z".
+- [ ] The score line reads **N/10** in bold, then "Length x/6 · Grammar y/1 · Engagement z/3 (30+ words for full length)" (finding 13, fixed in #282).
   - x is 0, 3, 5 or 6. That is the word-count score, not the number of words: 30+ words gives 6, 25–29 gives 5, 15–24 gives 3. y is 0–1 and z is 0–3, and N = x + y + z.
   - Compare it with the WarmUpQueue row: columns M+N+O (12–14 zero-based) should add up to Q (16), minus 1 if P (15) is 1.
-  - The parts have no "/6, /1, /3" after them. Note whether a student would understand them (finding 13).
-- [ ] The feedback shows in a grey box with its line breaks. If it stops mid-sentence, that is the 500-character cap (finding 14).
-- [ ] The question the student answered and their answer are **not** shown under Last warm-up. Note whether the feedback makes sense without them (finding 10).
+- [ ] The feedback shows in a grey box with its line breaks. Feedback scored after the push is kept up to 2,000 characters, ending "…" if cut; feedback scored before it may still stop at 500 (finding 14, fixed in #282).
+- [ ] **Show the question and your answer**, above the score, opens to the question and what the student wrote (finding 10, fixed in #282).
 - [ ] **Extra credit**, while it is open and not yet earned: a purple line reads "Extra credit: reply to this feedback in at least 10 words by <date>", with a reply box.
-  - The date shown is lesson date + 7 days. 25 actually stops checking at 3:15 a.m. on that day (finding 4).
+  - The date shown is the end of the student's next class day, never more than lesson date + 6 (the 10-24 rule, #281; finding 4).
   - Save a reply of 10 words or more. "Saved <time>. It's checked overnight." appears, and after Refresh the box keeps the text with "Your reply is saved and checked overnight."
 - [ ] Once credited (the morning after a reply of 10+ words): "✓ Extra credit earned", the score still shows **N/10**, and a green "+1 extra credit" appears next to it.
-- [ ] If the student's last warm-up is newer than one with an open window, the older one's reply box is gone (finding 5). Try this with C: by Oct 26 their last warm-up is Oct 23, and the Oct 21 window is no longer reachable.
+- [ ] Only the last warm-up is ever open (the 10-24 rule; finding 5 is moot). After the student's next class day ends, its reply box is gone and its feedback stays readable.
+
+**A student who missed the last warm-up (text box), on their next class day (#281):**
+- [ ] "Last warm-up" shows the question, "You missed this one. Answer it by the end of <day> for points…", and an answer box. The pill reads "Not answered — you can still answer it".
+- [ ] Save an answer: the pill reads "Answered late — checked overnight". After the next 3:15 a.m. run and Flow 4, it reads "Checked — answered late, so no feedback", with a score, no feedback and no reply box.
 
 **Today's / Next warm-up (text box):**
 - [ ] The bridge paragraph, if there is one, is in grey italics above the question (Flow 5's 2–3 sentences). Read a few (BACKLOG item, D6). Most students have none.
@@ -57,12 +60,12 @@ The card sits under a "WARM-UPS" heading above the assignments. It has at most t
 
 **Student C (3-Odd) on Oct 26:**
 - [ ] No warm-up dated Oct 26 or any other even day. If one appears, the NOT_MEETING filter isn't deployed (see 0.1).
-- [ ] Once tomorrow's is delivered (after the 3:30 a.m. build and Flow 3): "Next warm-up · Tue, Oct 27", but the pill says **"Ready — answer today"** and the note says "until the end of the day" (finding 9). It *can* be answered today (decided 10-17). Note whether a student reads it as due today.
+- [ ] Once tomorrow's is delivered (after the 3:30 a.m. build and Flow 3): "Next warm-up · Tue, Oct 27" with the pill "Opens Tue, Oct 27" and no answer box: it opens on its day (the 10-24 rule replaces the 10-17 decision; finding 9, #281).
 
 **Student D (period 1, rest day Oct 26):**
 - [ ] "Last warm-up · Fri, Oct 23": its score, its feedback, and the extra-credit reply box. That is what the rest day is for (DEPLOYMENT_HANDOFF 17d).
 - [ ] If the Oct 23 warm-up shows "Being checked — your work is saved" and no score, Flow 4 hasn't returned. Note the time.
-- [ ] Also check for a "Next warm-up · Tue, Oct 27" with an answer box open, which would compete with the reply box (finding 9).
+- [ ] A "Next warm-up · Tue, Oct 27" shows "Opens Tue, Oct 27" with no answer box, so nothing competes with the reply box (finding 9, #281).
 
 **Student B (no warm-ups):**
 - [ ] No "Warm-ups" heading and no card at all. The assignment cards start at the top.
@@ -71,7 +74,7 @@ The card sits under a "WARM-UPS" heading above the assignments. It has at most t
 - [ ] "Open warm-up ↗" appears, and the extra-credit line says to reply under the feedback in the doc.
 
 **Other statuses you may see:**
-- "Waiting to be checked": a past day, not yet scored. It shows even when the student wrote nothing, until 3:15 a.m.
+- "Waiting to be checked": a past day with an answer, not yet scored. A blank text-box answer reads "Not answered" instead (finding 15, #281).
 - "Being checked — your work is saved": PENDING_EVAL or EVAL_ERROR.
 - "No response was written": INCOMPLETE.
 
