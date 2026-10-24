@@ -42,7 +42,7 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 | | 5 years | `SCRDecisionLog` | `SCR_RETENTION_YEARS` |
 | | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
 | Working data: queues, Flow inputs and profiles | 1 year | `WarmUpQueue` | `WARMUP_QUEUE_RETENTION_YEARS` (was 5 years) |
-| | 1 year | `StudentProfiles`, `WarmUpRegistry`, `WarmUpTextBox`, `WarmUpResponses`, `SCRSuggestions`, `FlowInput`, `Flow3Input`, `Flow4Input`, `Flow5Input`, `ReviewQueue`, `STAGING_PIPELINE` | `WORKING_DATA_RETENTION_YEARS` |
+| | 1 year | `ReflectionLog`, `StudentProfiles`, `WarmUpRegistry`, `WarmUpTextBox`, `WarmUpResponses`, `SCRSuggestions`, `FlowInput`, `Flow3Input`, `Flow4Input`, `Flow5Input`, `ReviewQueue`, `STAGING_PIPELINE` | `WORKING_DATA_RETENTION_YEARS` |
 | Student Docs | with their row | A student's workspace Doc follows its `Ledger` row; a warm-up Doc follows its `WarmUpQueue` row. Feedback posted as comments (`FEEDBACK_AS_COMMENT`) is part of the Doc and goes with it | — |
 
 Kept on their own rules, outside the schedule: `WarmUpFlowReturn` (harvested
@@ -175,6 +175,18 @@ marks or removes those rows yet.
 | **Read by** | Nothing yet. |
 | **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
 | **Retention** | `LEDGER_RETENTION_YEARS`, with the Ledger (counted in `checkRetentionSchedule()`). No archive marker; deletion is the operator-approved disposition, as for every record. |
+
+### ReflectionLog
+*Central Ledger tab (2026-10-24)*
+
+| | |
+|---|---|
+| **Fields** | SubmittedAt, GoogleID (district email), ConfigID (the student's workspace ID), StudentFileID (their workspace Doc), Kind, FrameID and CompetencyID (which question), Question (as asked), **Answer: the student's own words**, one row per answer. No names. |
+| **Why collected** | The process reflection on Submit (`REFLECTION_ON_SUBMIT`, `meta/STUDENT_WORK_PLAN_2026-10.md`): how a student worked and what they weighed, kept together so it can build their context across assignments (operator's decision, 2026-10-24). This is the first student writing kept in the Ledger outside WarmUpQueue: the work itself still stays only in the student's Doc. |
+| **Written by** | `submitMyWork()` (13), before the work is queued, written as plain text (never a formula). |
+| **Read by** | 13 (which questions the student has already answered) and 37 (`buildFlowInputRows`: the submission's answers go into that FlowInput row's `PromptText` for Flow 2, and back to the student as a comment on their Doc). |
+| **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. Studio's Flow 2 sees one submission's answers in its prompt. The student sees their own answers as a comment on their Doc; the teacher, who can comment on the Doc, sees that comment too. |
+| **Retention** | `WORKING_DATA_RETENTION_YEARS` (1 school year), with the working data (counted in `checkRetentionSchedule()`). The comment on the Doc goes with the Doc. |
 
 ### Canvas gradebook exports and CanvasSectionMap (S52)
 *Teacher's own Drive folder; Central Ledger tab*
@@ -344,7 +356,9 @@ this one Central Ledger spreadsheet), writes the raw Gemini evaluation
 text back into `GeminiFullOutput`, and `harvestFlowInputResults()` takes
 it from there — same PII class as Ledger (student email, no raw response
 text; the response text itself is read from and stays in the student's
-own Doc, never copied in here). Retention: working data, 1 school year
+own Doc, never copied in here). Since 2026-10-24 a row's `PromptText`
+also carries that submission's process reflection, when one was asked
+(the answers, already kept in `ReflectionLog`). Retention: working data, 1 school year
 after the year ends (`WORKING_DATA_RETENTION_YEARS`; see the retention
 schedule above), reported by `checkRetentionSchedule()`.
 
