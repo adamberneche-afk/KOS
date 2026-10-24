@@ -50,6 +50,7 @@ const ALWAYS_EXCLUDE = [
   /^leader-hub\/student-leader-hub\.html$/,   // built from leader-hub/src/
   /^cas-ccps\/\.clasp-build\//,
   /^meta\/notebook-codebase\//,                // this tool's own output
+  /^meta\/notebook-context\/KOS_CONTEXT_.*\.md$/, // notebook-context's output (its GUIDE.md stays)
   /^kos-personal\/rtp-core-router\/PERSONA_.*\.md$/,                 // in the RTP notebook
   /^kos-personal\/rtp-core-router\/notebook-sources\/PERSONA_.*\.md$/,
   /^kos-personal\/rtp-core-router\/notebook-sources\/cores\//,
