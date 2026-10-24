@@ -36,7 +36,11 @@ const AS_TAB_HEADERS = [
   "DefinitionOfDone", "InstructorEmail", "Created", "Status",
   "PromptTemplateID", "Subject", "CourseName",
   "Milestone1CompetencyId", "Milestone2CompetencyId",
-  "Milestone3CompetencyId", "Milestone4CompetencyId", "LessonUnitId"
+  "Milestone3CompetencyId", "Milestone4CompetencyId", "LessonUnitId",
+  // The assignment's learning objectives, as JSON { competencyId: "I can …" }
+  // (2026-10-24): the Student Dashboard's reflection questions quote them
+  // (00, reflectionMatrixRow_). Appended last, so no reader's column moves.
+  "StudentObjectives"
 ];
 
 function previewAssignmentSeed() {
@@ -110,7 +114,8 @@ function seedAssignments_(opts) {
         a.definitionOfDone, matrix.teacherEmail, new Date(), "LIVE",
         doc.getId(), a.subject, a.courseName,
         a.milestoneCompetencyIds[0], a.milestoneCompetencyIds[1],
-        a.milestoneCompetencyIds[2], a.milestoneCompetencyIds[3], a.unitId || a.key
+        a.milestoneCompetencyIds[2], a.milestoneCompetencyIds[3], a.unitId || a.key,
+        _asObjectivesJson_(a)
       ];
       const at = tab.getLastRow() + 1;
       // Text first: Sheets reads "8175-1" as a date (competencyIdText_, 32).
@@ -142,16 +147,29 @@ function seedAssignments_(opts) {
 // by seedAssignments(), so a fix to its criteria in the repo never reached it
 // (2026-10-19: L07 graded peer replies Flow 2 can't see, and two of its
 // competencies had no criteria). This rewrites the milestones, the
-// Definition of Done and the milestone competency IDs of each row whose
-// ConfigID the repo knows, where they differ. Flow 2 reads them when a
-// student submits (37), so the next submission uses them; a FlowInput row
-// already written keeps its text. Nothing else in the row changes.
+// Definition of Done, the milestone competency IDs and the "I can"
+// objectives (2026-10-24) of each row whose ConfigID the repo knows, where
+// they differ, and the task text in the row's prompt doc, which new student
+// docs are made from. Flow 2 reads the row when a student submits (37), so
+// the next submission uses it; a FlowInput row already written, and a
+// student doc already made, keep their text. Nothing else in the row changes.
 //
 //   previewAssignmentRefresh()  lists each row that would change, and which
 //                               fields. Changes nothing.
 //   refreshAssignments()        writes them.
 // ---------------------------------------------------------------------------
-const AS_REFRESH_COLS_ = { MILESTONES: 4, DOD: 8, COMP_IDS: 15 }; // 0-based, AS_TAB_HEADERS
+const AS_REFRESH_COLS_ = { MILESTONES: 4, DOD: 8, PROMPT_DOC: 12, COMP_IDS: 15, OBJECTIVES: 20 }; // 0-based, AS_TAB_HEADERS
+
+// The assignment's "I can" objectives as the TeacherMatrix keeps them: JSON,
+// keys in a fixed order so an unchanged set compares equal. "" with none.
+function _asObjectivesJson_(a) {
+  const o = (a && a.objectives) || {};
+  const keys = Object.keys(o).sort();
+  if (!keys.length) return "";
+  const out = {};
+  keys.forEach(k => { out[k] = o[k]; });
+  return JSON.stringify(out);
+}
 
 function previewAssignmentRefresh() {
   return refreshAssignments_({ apply: false });
@@ -187,7 +205,11 @@ function refreshAssignments_(opts) {
     return result;
   }
   const repo = _asByConfigId_();
-  const width = AS_REFRESH_COLS_.COMP_IDS + 4;
+  const width = AS_REFRESH_COLS_.OBJECTIVES + 1;
+  // The header for the objectives column on a sheet made before it existed.
+  if (apply && String(sheet.getRange(1, AS_REFRESH_COLS_.OBJECTIVES + 1).getValue()).trim() === "") {
+    sheet.getRange(1, AS_REFRESH_COLS_.OBJECTIVES + 1).setValue(AS_TAB_HEADERS[AS_REFRESH_COLS_.OBJECTIVES]).setFontWeight("bold");
+  }
   const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(width, sheet.getLastColumn())).getValues();
   rows.forEach((r, i) => {
     const configId = String(r[0]).trim();
@@ -198,15 +220,33 @@ function refreshAssignments_(opts) {
       milestones: a.milestones.slice(0, 4),
       dod: a.definitionOfDone,
       ids: a.milestoneCompetencyIds.slice(0, 4).map(v => v || ""),
+      objectives: _asObjectivesJson_(a),
     };
     const have = {
       milestones: r.slice(AS_REFRESH_COLS_.MILESTONES, AS_REFRESH_COLS_.MILESTONES + 4).map(v => String(v).trim()),
       dod: String(r[AS_REFRESH_COLS_.DOD]).trim(),
       ids: r.slice(AS_REFRESH_COLS_.COMP_IDS, AS_REFRESH_COLS_.COMP_IDS + 4).map(competencyIdText_),
+      objectives: String(r[AS_REFRESH_COLS_.OBJECTIVES] || "").trim(),
     };
     if (want.milestones.some((m, j) => m.trim() !== have.milestones[j])) fields.push("milestones");
     if (want.dod.trim() !== have.dod) fields.push("definition of done");
     if (want.ids.some((m, j) => m !== have.ids[j])) fields.push("competency IDs");
+    if (want.objectives !== have.objectives) fields.push("objectives");
+    // The task text new student docs are made from (02 reads the prompt
+    // doc), so a lesson seeded before a task change gets it too. Only the
+    // template changes: docs already made for students keep their text.
+    const promptDocId = String(r[AS_REFRESH_COLS_.PROMPT_DOC] || "").trim();
+    let promptDoc = null;
+    if (promptDocId && a.promptText) {
+      try {
+        promptDoc = DocumentApp.openById(promptDocId);
+        if (promptDoc.getBody().getText().trim() !== String(a.promptText).trim()) fields.push("task text");
+        else promptDoc = null;
+      } catch (e) {
+        Logger.log("[S53] Prompt doc for " + configId + " not read: " + e.message);
+        promptDoc = null;
+      }
+    }
     if (!fields.length) { result.unchanged++; return; }
     result.changed.push({ configId: configId, unitName: a.unitName, fields: fields.join(", ") });
     if (!apply) return;
@@ -216,6 +256,13 @@ function refreshAssignments_(opts) {
     const ids = sheet.getRange(at, AS_REFRESH_COLS_.COMP_IDS + 1, 1, 4);
     ids.setNumberFormat("@");
     ids.setValues([want.ids]);
+    const obj = sheet.getRange(at, AS_REFRESH_COLS_.OBJECTIVES + 1);
+    obj.setNumberFormat("@");
+    obj.setValue(want.objectives);
+    if (promptDoc) {
+      promptDoc.getBody().setText(a.promptText);
+      promptDoc.saveAndClose();
+    }
   });
   result.message = (apply ? "Refreshed " : "DRY RUN: would refresh ") + result.changed.length +
     " assignment(s) from the repo (" + (result.changed.map(c => c.configId + ": " + c.fields).join("; ") || "none") +
