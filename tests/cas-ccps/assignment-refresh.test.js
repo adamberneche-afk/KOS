@@ -120,7 +120,7 @@ test('a tiered assignment: primary, secondaries and tertiaries in the Definition
   assert.match(a.definitionOfDone, /PRIMARY COMPETENCY \(Milestone 1; must be MET\)/);
   assert.match(a.definitionOfDone, /PASSING RULE: APPROVED when Milestone 1/);
   tiers.tertiary.forEach((id) => assert.match(a.definitionOfDone, new RegExp('\\n- ' + id + ' ')));
-  assert.match(a.promptText, /What your work needs to show:[\s\S]*\(required\)[\s\S]*You can also show \(not required\):/);  // The checklist sits before a closing Submission: part, which the Canvas cartridge drops.
+  assert.match(a.promptText, /What your work needs to show:[\s\S]*\(required\)[\s\S]*You can also show:/);  // The checklist sits before a closing Submission: part, which the Canvas cartridge drops.
   const sub = a.promptText.search(/\n\nSubmission:/);
   if (sub !== -1) assert.ok(a.promptText.indexOf('What your work needs to show:') < sub);
 });

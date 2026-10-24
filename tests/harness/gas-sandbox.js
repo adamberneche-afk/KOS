@@ -777,6 +777,8 @@ class FakeParagraph {
   // the last, then clears the survivor's text via exactly this path
   // rather than removing it.
   asParagraph() { return this; }
+  // Real Apps Script API — Paragraph.setSpacingBefore(points); recorded.
+  setSpacingBefore(pt) { this.spacingBefore = pt; return this; }
   setText(text) { this.text = text; return this; }
   setGlyphType() { return this; }
   // Real Apps Script API — Element.asText(), the Text-typed view
@@ -842,6 +844,8 @@ class FakeDocBody {
   }
   setText(text) { this.paragraphs = [new FakeParagraph(text)]; return this; }
   getText() { return this.paragraphs.map((p) => p.text).join('\n'); }
+  // Real Apps Script API — Body.appendTable(). See FakeTable.
+  appendTable() { const t = new FakeTable(); this.paragraphs.push(t); return t; }
   // Real Apps Script API, backing _clearDocBody_()'s workaround above —
   // getNumChildren()/getChild(i)/removeChild() rather than clear(), since
   // real GAS's Body.clear() can throw "Can't remove the last paragraph in
@@ -888,12 +892,51 @@ class FakeDocBody {
   }
 }
 
+// Real Apps Script API — a Table in a body (Body.appendTable(),
+// Table.appendTableRow(), TableRow.appendTableCell(text)). A cell is a
+// container like the body: it starts with one paragraph holding its text and
+// takes appendParagraph/appendListItem/removeChild. Its text is part of the
+// body's getText(), as in real Docs, which every response reader relies on.
+// Background colors and borders are recorded so a test can check the layout.
+// First needed by 02's stampDocument_ (the assignment table, 2026-10-24).
+class FakeTableCell extends FakeDocBody {
+  constructor(text) { super(); this.paragraphs = [new FakeParagraph(String(text || ''))]; }
+  setBackgroundColor(c) { this.background = c; return this; }
+  getBackgroundColor() { return this.background || null; }
+  setPaddingTop() { return this; }
+  setPaddingBottom() { return this; }
+  setPaddingLeft() { return this; }
+  setPaddingRight() { return this; }
+  getType() { return 'TABLE_CELL'; }
+}
+class FakeTableRow {
+  constructor() { this.cells = []; }
+  appendTableCell(text) { const c = new FakeTableCell(text); this.cells.push(c); return c; }
+  getNumCells() { return this.cells.length; }
+  getCell(i) { return this.cells[i]; }
+  getText() { return this.cells.map((c) => c.getText()).join('\n'); }
+}
+class FakeTable {
+  constructor() { this.rows = []; }
+  appendTableRow() { const r = new FakeTableRow(); this.rows.push(r); return r; }
+  getNumRows() { return this.rows.length; }
+  getRow(i) { return this.rows[i]; }
+  getCell(r, c) { return this.rows[r].cells[c]; }
+  getText() { return this.rows.map((r) => r.getText()).join('\n'); }
+  get text() { return this.getText(); }
+  getType() { return 'TABLE'; }
+  setBorderColor(c) { this.borderColor = c; return this; }
+  setBorderWidth(w) { this.borderWidth = w; return this; }
+  getAttributes() { return {}; }
+}
+
 class FakeDoc {
   constructor(id, title) {
     this.id = id;
     this.title = title;
     this.body = new FakeDocBody();
     this.header = null;
+    this.footer = null;
   }
   getId() { return this.id; }
   // Real Apps Script API — the page header (a HeaderSection: clear,
@@ -903,6 +946,13 @@ class FakeDoc {
     if (this.header) throw new Error('The document already has a header.');
     this.header = new FakeDocBody();
     return this.header;
+  }
+  // Real Apps Script API — the page footer, a section like the header.
+  getFooter() { return this.footer; }
+  addFooter() {
+    if (this.footer) throw new Error('The document already has a footer.');
+    this.footer = new FakeDocBody();
+    return this.footer;
   }
   getUrl() { return 'https://docs.google.com/document/d/' + this.id + '/edit'; }
   getBody() { return this.body; }
@@ -930,6 +980,8 @@ function makeDocumentAppMock(driveAppMock) {
     // resolves instead of throwing on undefined.
     // Real Apps Script API — the Element.getType() enum.
     ElementType: { PARAGRAPH: 'PARAGRAPH', LIST_ITEM: 'LIST_ITEM', TABLE: 'TABLE' },
+    // Real Apps Script API — ListItem.setGlyphType()'s enum.
+    GlyphType: { BULLET: 'BULLET', HOLLOW_BULLET: 'HOLLOW_BULLET', SQUARE_BULLET: 'SQUARE_BULLET', NUMBER: 'NUMBER' },
     // Real Apps Script API — the attribute keys for Paragraph.setAttributes().
     Attribute: { FONT_SIZE: 'FONT_SIZE', FOREGROUND_COLOR: 'FOREGROUND_COLOR', BOLD: 'BOLD' },
     ParagraphHeading: {
