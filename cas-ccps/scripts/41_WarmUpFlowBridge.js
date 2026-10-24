@@ -348,6 +348,139 @@ function wfbFormatEvaluationSignals_(signals) {
  * plain strings. Pure — no sheet or Drive access — so the whole archetype
  * decision is unit-testable without a live queue.
  */
+// ── Baseline warm-ups (D6, the operator, 2026-10-24) ────────────────────────
+//
+// Every student starts on warm-ups about competencies 1–22, the
+// workplace-readiness skills both courses share (same numbers and wording in
+// 8175 and 8177), to learn how the student already works: open-ended
+// questions that show their professional judgment and the supports they
+// already use. A student stays on them until WFB_BASELINE_TARGET of them are
+// answered or on their way (delivered, being built or being scored); a blank
+// one (INCOMPLETE) doesn't count, so its skill can come back. Each is a
+// different skill, in WFB_BASELINE_ORDER. They are set in the course's
+// world, not the day's lesson (Mode C), and carry no bridge paragraph.
+//
+// The WarmUpQueue archetype cell records which skill: "BASELINE 8175-14".
+// 23's shadow matrix skips those rows, since they aren't a lesson archetype.
+const WFB_ARCHETYPE_BASELINE = "BASELINE";
+const WFB_BASELINE_TARGET = 5;
+// Initiative, time, teamwork, problem-solving and learning first: the five
+// that say most about the supports a student already leans on.
+const WFB_BASELINE_ORDER = [3, 14, 10, 2, 13, 5, 7, 6, 1, 12, 15, 20, 21, 11, 4, 8, 9, 19, 18, 17, 16, 22];
+// Statuses that count toward the target: answered, or on the way to the
+// student. INCOMPLETE (blank), ERROR and NOT_MEETING don't.
+const WFB_BASELINE_COUNTED = {
+  PENDING: true, PENDING_BRIDGE: true, DELIVERED: true, PENDING_EVAL: true, EVAL_ERROR: true, SCORED: true,
+};
+
+// Competencies 1–22 as data/CompetencyRubrics.json words them (identical in
+// both courses; warmup-flow-bridge.test.js keeps them in step), with a
+// student's wording of each for the prompt and the fallback question.
+const WFB_BASELINE_SKILLS = {
+  1: { text: "Demonstrate creativity and innovation", skill: "coming up with new ideas",
+    indicators: "discussing the importance of creativity and innovation in the workplace; brainstorming and contributing ideas, strategies, and solutions; developing and/or improving products, services, or processes; identifying and allocating available resources" },
+  2: { text: "Demonstrate critical thinking and problem-solving", skill: "solving a problem",
+    indicators: "recognizing and analyzing problems; evaluating potential solutions and resources; using a logical approach to make decisions and solve problems; implementing effective courses of action" },
+  3: { text: "Demonstrate initiative and self-direction", skill: "getting started on something without being told",
+    indicators: "recognizing the importance of proactive, independent decision making; identifying workplace needs; completing tasks with minimal direct supervision; applying solutions" },
+  4: { text: "Demonstrate integrity", skill: "doing the right thing when no one is watching",
+    indicators: "defining integrity; recognizing the importance of having integrity in the workplace; complying with local, state, and federal laws; adhering to workplace policies and procedures; exhibiting honesty, fairness, and respect toward self, others, and property" },
+  5: { text: "Demonstrate work ethic", skill: "sticking with work until it's done",
+    indicators: "defining work ethic; recognizing the importance of having a strong work ethic; demonstrating diligence (e.g., working with persistence to accomplish a task); maintaining dependability (e.g., being reliable); accounting for one\u2019s decisions and actions; accepting the consequences of decisions and actions" },
+  6: { text: "Demonstrate conflict-resolution skills", skill: "working out a disagreement",
+    indicators: "Demonstrate conflict-resolution skills" },
+  7: { text: "Demonstrate listening and speaking skills", skill: "listening and explaining things clearly",
+    indicators: "defining nonverbal cues; employing active listening techniques (e.g., asking clarifying questions, paraphrasing what was said); exhibiting public speaking skills (e.g., making presentations); articulating ideas in a manner appropriate to the setting and audience (e.g., considering the chosen communication method and audience\u2019s level of knowledge)" },
+  8: { text: "Demonstrate respect for diversity", skill: "working with people who are different from you",
+    indicators: "defining diversity and discussing its importance; identifying individual differences (e.g., age, gender, ethnicity, culture, race, viewpoints, socioeconomic status, and ability); showing respect for and valuing individual differences in the workplace; being self-aware and mindful of one\u2019s own bias; collaborating with people of diverse backgrounds, viewpoints, and experiences" },
+  9: { text: "Demonstrate customer service skills", skill: "helping a customer or someone you were serving",
+    indicators: "defining customer service (e.g., internal customer service ; external customer service ); identifying the benefits of providing helpful, courteous, and knowledgeable customer service; prioritizing customer service (both within an organization and to external customers and stakeholders); anticipating needs of customers and coworkers; demonstrating how to provide helpful, courteous, and knowledgeable service to address customer and/or coworker needs" },
+  10: { text: "Collaborate with team members", skill: "working as part of a team",
+    indicators: "defining collaboration and teamwork; discussing the benefits of teamwork; establishing expectations, roles, and goals; contributing to the success of the team by sharing responsibility; respecting the thoughts, opinions, and contributions of other team members" },
+  11: { text: "Demonstrate big-picture thinking", skill: "seeing how your part fits the bigger picture",
+    indicators: "defining big-picture thinking as an understanding of one's role in fulfilling the mission of the workplace and a consideration of the social, economic, and environmental effects of one's actions; identifying the organization\u2019s structure, culture, policies, and procedures, as well as its role and position within the community, industry, and economy" },
+  12: { text: "Demonstrate career- and life-management skills", skill: "planning your goals and next steps",
+    indicators: "recognizing the importance of education and career planning (e.g., minimum job qualifications, advancement and professional-development opportunities); identifying available benefits and professional resources (e.g., labor unions, professional organizations, employee-assistance programs, insurance and retirement benefits); managing personal growth and wellness (e.g., stress management, self-care, financial planning); setting goals (e.g., specific, measurable, attainable, realistic, time-bound [SMART] goals)" },
+  13: { text: "Demonstrate continuous learning and adaptability", skill: "learning something new or adjusting when things change",
+    indicators: "describing the importance of continuous learning; identifying resources for continuous learning (e.g., publications, trade organizations, professional networking, workshops/classes); modifying work performance based on feedback (i.e., being coachable); acquiring industry-related professional skills and knowledge (e.g., credentials/certifications); adapting to changing job requirements" },
+  14: { text: "Manage time and resources", skill: "managing your time",
+    indicators: "defining efficiency and productivity as they relate to time and resource management; developing a plan of work; differentiating between high- and low-priority tasks; adapting work goals based on time and resources; human (personnel)\u2014capitalizing on strengths; respecting professional goals; capital\u2014maintaining equipment to ensure longevity and efficiency; natural\u2014using responsible and sustainable practices; natural\u2014using responsible and sustainable practices" },
+  15: { text: "Demonstrate information-literacy skills", skill: "finding and checking information",
+    indicators: "defining information literacy; locating and evaluating credible and relevant sources of information; using information effectively to accomplish work-related tasks" },
+  16: { text: "Demonstrate an understanding of information security", skill: "keeping information and accounts safe",
+    indicators: "identifying various information types/formats (e.g., paper, electronic); describing cybersecurity (e.g., risks, threats, vulnerabilities); using technology ethically (e.g., appropriately using social networks, managing personal information); abiding by workplace policies (e.g., acceptable use policy [AUP]); protecting confidentiality (e.g., protecting login information and customer information); following workplace security procedures" },
+  17: { text: "Maintain working knowledge of current information-technology (IT) systems", skill: "keeping up with the technology you use",
+    indicators: "hardware and devices (e.g., peripherals); software and applications; cloud-based services; file-sharing techniques; emerging technologies; troubleshooting protocols and techniques" },
+  18: { text: "Demonstrate proficiency with technologies, tools, and machines common to a specific occupation", skill: "learning to use a new tool or app",
+    indicators: "Demonstrate proficiency with technologies, tools, and machines common to a specific occupation" },
+  19: { text: "Apply mathematical skills to job-specific tasks", skill: "using math to get a real task done",
+    indicators: "performing calculations (e.g., percentages, fractions, addition, subtraction, averages, measurement, conversions, monetary transactions); applying mathematical processes to accomplish job-specific tasks (e.g., estimating required supplies, completing expense reports); managing personal finance (e.g., understanding wage rates, paycheck deductions, taxes, sales receipts)" },
+  20: { text: "Demonstrate professionalism", skill: "acting professionally",
+    indicators: "defining professionalism; practicing punctuality and attendance; adhering to work-schedule expectations; exercising etiquette (e.g., language, manners, and behaviors suitable for the workplace and online; appropriate verbal and nonverbal communication); exhibiting professional self-representation (e.g., using a firm handshake, introducing oneself, making eye contact); maintaining professional appearance (e.g., maintaining personal hygiene, adhering to a dress code)" },
+  21: { text: "Demonstrate reading and writing skills", skill: "reading and writing to get something done",
+    indicators: "reading and interpreting workplace documents; ability to convey messages with clarity; professional tone, appropriate to audience; grammar; forms and conventions (e.g., formatting documents, using an email signature); forms and conventions (e.g., formatting documents, using an email signature)" },
+  22: { text: "Demonstrate workplace safety", skill: "staying safe and keeping others safe",
+    indicators: "interpreting safety data sheets (SDS); identifying and using personal protective equipment (PPE); identifying and using personal protective equipment (PPE); maintaining universal precautions (e.g., to protect against bloodborne pathogens); identifying risks and hazards in the workplace; following emergency protocols (e.g., evacuation routes)" },
+};
+
+// "BASELINE 8175-14" -> { course: "8175", n: 14 }; anything else -> null.
+function wfbParseBaseline_(archetypeCell) {
+  const m = String(archetypeCell || "").trim().match(/^BASELINE\s+(\d{4})-(\d{1,2})$/);
+  return m && WFB_BASELINE_SKILLS[Number(m[2])] ? { course: m[1], n: Number(m[2]) } : null;
+}
+
+// Per student (google_id, lower case): how many baseline warm-ups count
+// toward the target, and which skills they used.
+function wfbBaselineState_(rows) {
+  const out = {};
+  rows.forEach(function (row) {
+    const b = wfbParseBaseline_(row[WQ25_ARCHETYPE]);
+    if (!b) return;
+    const gid = String(row[WQ25_GOOGLE_ID] || "").trim().toLowerCase();
+    if (!gid) return;
+    const st = out[gid] || (out[gid] = { count: 0, asked: {} });
+    if (WFB_BASELINE_COUNTED[String(row[WQ25_STATUS] || "").trim()]) {
+      st.count++;
+      st.asked[b.n] = true;
+    }
+  });
+  return out;
+}
+
+// The skill a student's next warm-up asks about, or 0 once they're done.
+function wfbBaselineChoice_(state) {
+  const st = state || { count: 0, asked: {} };
+  if (st.count >= WFB_BASELINE_TARGET) return 0;
+  for (let i = 0; i < WFB_BASELINE_ORDER.length; i++) {
+    if (!st.asked[WFB_BASELINE_ORDER[i]]) return WFB_BASELINE_ORDER[i];
+  }
+  return 0;
+}
+
+// The question written by code: what a student gets when Flow 3's output
+// for a baseline warm-up fails the checks, never a lesson anchor.
+function wfbBaselineQuestion_(n) {
+  const sk = WFB_BASELINE_SKILLS[n];
+  if (!sk) return "";
+  return "Think of a real time, at school, on a team, at a job or at home, that involved " + sk.skill +
+    ". What did you do, and what helped you do it?";
+}
+
+function wfbBuildBaselineFields_(lesson, profile, n) {
+  const sk = WFB_BASELINE_SKILLS[n];
+  const course = courseCodeFromName_(lesson.course_name) || "8175";
+  return {
+    mode: "C",
+    archetype: WFB_ARCHETYPE_BASELINE,
+    archetypeCell: WFB_ARCHETYPE_BASELINE + " " + course + "-" + n,
+    firstName: String(profile.student_name || "").trim().split(/\s+/)[0] || "",
+    courseName: lesson.course_name || "",
+    baselineCompetency: sk.text,
+    baselineSkill: sk.skill,
+    baselineIndicators: sk.indicators,
+  };
+}
+
 function wfbBuildFlow3Fields_(lesson, profile, opts) {
   const mode = (lesson.warmup_anchor !== null && lesson.warmup_anchor !== undefined &&
     lesson.warmup_anchor !== "") ? "A" : "B";
@@ -570,6 +703,7 @@ function buildWarmUpFlowInputs() {
   result.fallback = wfbFallbackExhaustedInputs_(ctx.ss, tabs[3], wqSheet, new Date());
   let budget = WFB_INPUTS_PER_RUN - result.retried;
   let textBox = null; // WarmUpTextBox rows, read once if a Flow 4 job needs them
+  const baseline = wfbBaselineState_(data); // D6: who is still on baseline warm-ups
 
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
@@ -591,7 +725,17 @@ function buildWarmUpFlowInputs() {
         if (wfbBuildFlow5Row_(tabs[5], row, queueId)) result.flow5++;
         else result.skipped++;
       } else if (flow === 3) {
-        const archetype = wfbBuildFlow3Row_(tabs[3], row, queueId);
+        const gid = String(row[WQ25_GOOGLE_ID] || "").trim().toLowerCase();
+        const kept = wfbParseBaseline_(row[WQ25_ARCHETYPE]); // a rebuild keeps its skill
+        // The canary's fixture student (an .invalid address, 39) keeps the
+        // lesson warm-up, so the canary still runs Modes A and B.
+        const n = kept ? kept.n : (/\.invalid$/.test(gid) ? 0 : wfbBaselineChoice_(baseline[gid]));
+        const archetype = wfbBuildFlow3Row_(tabs[3], row, queueId, n);
+        if (archetype && n && !kept && gid) {
+          const st = baseline[gid] || (baseline[gid] = { count: 0, asked: {} });
+          st.count++;
+          st.asked[n] = true;
+        }
         if (archetype) {
           result.flow3++;
           // FIX (P0-02): nothing used to write the chosen archetype back, so
@@ -651,7 +795,8 @@ function wfbBuildFlow5Row_(sheet, row, queueId) {
   return true;
 }
 
-function wfbBuildFlow3Row_(sheet, row, queueId) {
+// baselineN: a competency 1–22 for a baseline warm-up (Mode C), or 0.
+function wfbBuildFlow3Row_(sheet, row, queueId, baselineN) {
   let lesson, profile;
   try {
     lesson = JSON.parse(String(row[WQ25_LESSON_CTX_SNAP] || "{}"));
@@ -668,7 +813,9 @@ function wfbBuildFlow3Row_(sheet, row, queueId) {
 
   const courseCode = courseCodeFromName_(lesson.course_name);
   const lockEnabled = pivotFlagFor_("PIVOT_ARCHETYPE_LOCK", courseCode);
-  const f = wfbBuildFlow3Fields_(lesson, profile, { lockEnabled: lockEnabled });
+  const f = baselineN && WFB_BASELINE_SKILLS[baselineN]
+    ? wfbBuildBaselineFields_(lesson, profile, baselineN)
+    : wfbBuildFlow3Fields_(lesson, profile, { lockEnabled: lockEnabled });
   sheet.appendRow([
     new Date(), queueId, "READY",
     f.mode, f.archetype, f.firstName, f.warmupAnchor,
@@ -677,14 +824,14 @@ function wfbBuildFlow3Row_(sheet, row, queueId) {
     f.priorConnection, f.competencyTexts, f.competencyGaps, f.evaluationSignals,
     f.avgEngagementScore, f.extraCreditCount, f.shadowArchetypeNote,
     f.competenciesAddressedCount, f.totalCompetencies,
-    String(row[WQ25_BRIDGE_OUTPUT] || ""),
+    f.mode === "C" ? "" : String(row[WQ25_BRIDGE_OUTPUT] || ""),
     String(row[WQ25_GOOGLE_ID] || ""), String(row[WQ25_STUDENT_NAME] || ""),
     row[WQ25_LESSON_DATE],
     wfbPromptFor_(3, f),
   ]);
   // The caller records this on the WarmUpQueue row (column 19), where the
-  // shadow matrix reads it back.
-  return f.archetype;
+  // shadow matrix reads it back ("BASELINE 8175-14" for a baseline one).
+  return f.archetypeCell || f.archetype;
 }
 
 function wfbBuildFlow4Row_(sheet, row, queueId, tb) {
@@ -756,6 +903,9 @@ const WFB_PROMPT_VARS = {
     archetype: "archetype",
     competencies_addressed_count: "competenciesAddressedCount",
     total_competencies: "totalCompetencies",
+    baseline_competency: "baselineCompetency",
+    baseline_skill: "baselineSkill",
+    baseline_indicators: "baselineIndicators",
   },
   4: {
     original_prompt_text: "originalPrompt",
@@ -786,10 +936,12 @@ function wfbPromptFor_(flow, vars) {
   if (flow === 5 && typeof FLOW_5_PROMPT === "string") template = FLOW_5_PROMPT;
   if (flow === 4 && typeof FLOW_4_PROMPT === "string") template = FLOW_4_PROMPT;
   if (flow === 3) {
-    // Flow 3 has two prompts: Mode A is anchor-aware, Mode B generative.
-    const modeA = (vars && vars.mode === "A");
-    if (modeA && typeof FLOW_3_PROMPT_MODE_A === "string") template = FLOW_3_PROMPT_MODE_A;
-    if (!modeA && typeof FLOW_3_PROMPT_MODE_B === "string") template = FLOW_3_PROMPT_MODE_B;
+    // Flow 3 has three prompts: Mode A is anchor-aware, Mode B generative,
+    // Mode C the baseline (D6).
+    const mode = (vars && vars.mode) || "";
+    if (mode === "A" && typeof FLOW_3_PROMPT_MODE_A === "string") template = FLOW_3_PROMPT_MODE_A;
+    if (mode === "C" && typeof FLOW_3_PROMPT_MODE_C === "string") template = FLOW_3_PROMPT_MODE_C;
+    if (mode !== "A" && mode !== "C" && typeof FLOW_3_PROMPT_MODE_B === "string") template = FLOW_3_PROMPT_MODE_B;
   }
   if (!template) return "";
   const map = WFB_PROMPT_VARS[flow] || {};
@@ -799,7 +951,34 @@ function wfbPromptFor_(flow, vars) {
     const value = fields[map[placeholder]];
     resolved[placeholder] = (value === null || value === undefined) ? "" : String(value);
   });
+  if (flow === 3) template = wfbDropBlankLines_(template, resolved);
   return substituteFlowPrompt_(template, resolved, true);
+}
+
+// D6 (2026-10-24): a line whose every field is blank never reaches Gemini.
+// Flow 3's "Stage" and "Competencies" lines were blank for every warm-up
+// (the pacing guide was replaced by the teacher's lessons, and a seeded
+// lesson carries no competency IDs), so the model read "Stage )" and an
+// empty list. A line is kept when any of its fields has a value (filled);
+// "(Stage …)" goes when the stage is blank; a block left with only its
+// heading goes too.
+function wfbDropBlankLines_(template, resolved) {
+  const blank = function (name) {
+    return Object.prototype.hasOwnProperty.call(resolved, name) && !String(resolved[name]).trim();
+  };
+  let t = String(template);
+  if (blank("pacing_stage")) t = t.replace(/ \(Stage \{pacing_stage\}\)/g, "");
+  return t.split("\n\n").map(function (para) {
+    let dropped = false;
+    const kept = para.split("\n").filter(function (line) {
+      const names = (line.match(/\{([a-z_0-9]+)\}/g) || []).map(function (p) { return p.slice(1, -1); })
+        .filter(function (nm) { return Object.prototype.hasOwnProperty.call(resolved, nm); });
+      if (names.length && names.every(blank)) { dropped = true; return false; }
+      return true;
+    });
+    if (dropped && kept.every(function (line) { return /:\s*$/.test(line); })) return null;
+    return kept.join("\n");
+  }).filter(function (para) { return para !== null; }).join("\n\n");
 }
 
 // ── Plausibility gate ────────────────────────────────────────────────────────
@@ -1111,13 +1290,24 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
   const teacherName = lesson.teacher_name || "";
   const period = lesson.period != null ? String(lesson.period) : "";
 
+  // A baseline warm-up (D6) is checked against its skill, not the lesson,
+  // and its fallback is the question code writes for that skill.
+  const baselineOf = wfbParseBaseline_(row[WQ25_ARCHETYPE]);
+  const gate = baselineOf ? {
+    warmup_anchor: wfbBaselineQuestion_(baselineOf.n),
+    objective: WFB_BASELINE_SKILLS[baselineOf.n].text,
+    activity: WFB_BASELINE_SKILLS[baselineOf.n].indicators,
+    vocabulary: WFB_BASELINE_SKILLS[baselineOf.n].skill,
+  } : lesson;
+  const bridge = baselineOf ? "" : String(row[WQ25_BRIDGE_OUTPUT] || "");
+
   // Shape gate first: output that is the prompt itself, a description of it
   // or a list of its fields is never shown. The teacher's own anchor goes
   // out instead, and the harvest records the fallback (34c counts it).
   let fallback = forcedFallback || "";
-  const shape = fallback ? "" : wfbWarmUpShapeProblem_(raw, lesson.warmup_anchor);
+  const shape = fallback ? "" : wfbWarmUpShapeProblem_(raw, gate.warmup_anchor);
   if (fallback || shape) {
-    const anchor = String(lesson.warmup_anchor || "").trim();
+    const anchor = String(gate.warmup_anchor || "").trim();
     if (!anchor) return { ok: false, error: "NOT_A_WARMUP: " + (shape || fallback) };
     raw = anchor;
     fallback = fallback || shape;
@@ -1130,9 +1320,9 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
     // A failure gets the teacher's anchor too, like the shape gate: a retry
     // of the same output fails the same way, and the row would otherwise end
     // at ERROR with no warm-up for the day (four on 2026-10-20).
-    const plausibility = wfbFlow3Plausible_(lesson, raw);
+    const plausibility = wfbFlow3Plausible_(gate, raw);
     if (!plausibility.ok) {
-      const anchor = String(lesson.warmup_anchor || "").trim();
+      const anchor = String(gate.warmup_anchor || "").trim();
       if (!anchor) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
       raw = anchor;
       fallback = "SUSPECT_FABRICATION: " + plausibility.reason;
@@ -1142,7 +1332,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
   // The text box needs no folder, so the folder-path fields are checked only
   // for a doc. Checked first, a blank teacher_name failed every warm-up.
   if (courseName && warmUpTextBoxFor_(courseName)) {
-    const delivered = wfbDeliverToTextBox_(wqSheet, found, queueId, raw);
+    const delivered = wfbDeliverToTextBox_(wqSheet, found, queueId, raw, bridge);
     if (fallback) delivered.fallback = fallback;
     return delivered;
   }
@@ -1160,7 +1350,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
   try {
     const folder = wfbResolveWarmUpFolder_(adminRoot, courseName, teacherName, period, studentName);
     file = wfbCreateWarmUpDoc_(folder, dateIso, firstName, dateReadable,
-      String(raw).trim(), String(row[WQ25_BRIDGE_OUTPUT] || ""));
+      String(raw).trim(), bridge);
   } catch (e) {
     return { ok: false, error: "DOC_CREATE_FAILED: " + e.message };
   }
@@ -1221,7 +1411,8 @@ const WFB_ANCHOR_FALLBACK = "ANCHOR_FALLBACK";
 // Most of the rest had no question mark: a sentence about the anchor (that
 // it already fits), not the anchor. The question rule applies only with an
 // anchor to compare, since 5 of the 67 lesson anchors have no "?".
-const WFB_WARMUP_PROMPT_ECHO = ["you are personalizing a warm-up", "you are generating a warm-up", "your role:"];
+const WFB_WARMUP_PROMPT_ECHO = ["you are personalizing a warm-up", "you are generating a warm-up",
+  "you are writing a baseline warm-up", "your role:"];
 
 /**
  * @param anchor  optional: the teacher's anchor. With it, a warm-up must ask
@@ -1373,14 +1564,15 @@ function wfbRepairFailedScoring_(dryRun) {
 // WARMUP_TEXT_BOX (00): the warm-up goes on the Student Dashboard instead of
 // into a doc. Unlike a doc, a second attempt can't duplicate anything: a row
 // already written for this queue_id is kept and the status re-stamped.
-function wfbDeliverToTextBox_(wqSheet, found, queueId, raw) {
+// bridge: the paragraph shown above the warm-up ("" for a baseline one).
+function wfbDeliverToTextBox_(wqSheet, found, queueId, raw, bridge) {
   const ss = wfbLedger_().ss;
   const sheet = warmUpTextBoxSheet_(ss);
   if (!readWarmUpTextBox_(ss)[queueId]) {
     const row = new Array(WTB_HEADERS.length).fill("");
     row[WTB.QUEUE_ID]    = queueId;
     row[WTB.LESSON_DATE] = wfbNormalizeDateIso_(found.row[WQ25_LESSON_DATE]);
-    row[WTB.BRIDGE]      = sheetSafeText_(String(found.row[WQ25_BRIDGE_OUTPUT] || "").trim());
+    row[WTB.BRIDGE]      = sheetSafeText_(String(bridge === undefined ? found.row[WQ25_BRIDGE_OUTPUT] || "" : bridge).trim());
     row[WTB.WARMUP]      = sheetSafeText_(String(raw).trim());
     sheet.appendRow(row);
   }
