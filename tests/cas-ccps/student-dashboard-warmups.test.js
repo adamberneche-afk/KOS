@@ -54,9 +54,9 @@ const CFG = { tabs: { warmUpQueue: 'WarmUpQueue', warmUpTextBox: 'WarmUpTextBox'
 // Wed Oct 21, noon in New York.
 const NOW = new Date('2026-10-21T16:00:00Z');
 
-test('the card shows only the last warm-up and the current one, for the signed-in student', () => {
+test('the card shows the last warm-up and the current one, for the signed-in student', () => {
   const { exported, ss } = load([
-    { wq: wqRow({ date: '2026-10-19', status: 'SCORED', feedback: 'Old feedback' }), tb: {} },
+    { wq: wqRow({ date: '2026-10-19', status: 'SCORED', extraCredit: 1, feedback: 'Old feedback' }), tb: {} },
     { wq: wqRow({ date: '2026-10-20', status: 'SCORED', feedback: 'Good connection to the 4 Ps.' }), tb: { response: 'My answer' } },
     { wq: wqRow({ date: '2026-10-21', status: 'DELIVERED' }), tb: { warmup: 'Why pay $5 for water?', bridge: 'Yesterday you said…' } },
     { wq: wqRow({ date: '2026-10-22', status: 'DELIVERED' }), tb: {} },
@@ -68,7 +68,7 @@ test('the card shows only the last warm-up and the current one, for the signed-i
   assert.equal(wu.previous.feedback, 'Good connection to the 4 Ps.');
   assert.equal(wu.previous.extraCredit.open, true);
   assert.equal(wu.previous.extraCredit.canReply, true);
-  assert.equal(wu.previous.extraCredit.byLabel, 'Tue, Oct 27');
+  assert.equal(wu.previous.extraCredit.byLabel, 'Mon, Oct 26');
   assert.equal(wu.current.dateLabel, 'Wed, Oct 21');
   assert.equal(wu.current.isToday, true);
   assert.equal(wu.current.textBox, true);
@@ -76,7 +76,7 @@ test('the card shows only the last warm-up and the current one, for the signed-i
   assert.equal(wu.current.bridge, 'Yesterday you said…');
   assert.equal(wu.current.canAnswer, true);
   assert.ok(!JSON.stringify(wu).includes('not mine'));
-  assert.ok(!JSON.stringify(wu).includes('Old feedback'));
+  assert.ok(!JSON.stringify(wu).includes('Old feedback'), 'an older warm-up already credited is not listed');
 });
 
 test('a doc warm-up opens its doc; feedback still shows on the card', () => {
@@ -93,13 +93,70 @@ test('a doc warm-up opens its doc; feedback still shows on the card', () => {
   assert.equal(wu.previous.extraCredit.canReply, false, 'a doc warm-up is replied to in the doc');
 });
 
-test('extra credit: closed once credited or after 7 days', () => {
+test('extra credit: closed once credited or after the window', () => {
   let { exported, ss } = load([{ wq: wqRow({ date: '2026-10-20', status: 'SCORED', extraCredit: 1 }), tb: {} }]);
   let ec = exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.extraCredit;
   assert.deepEqual([ec.credited, ec.open], [true, false]);
   ({ exported, ss } = load([{ wq: wqRow({ date: '2026-10-13', status: 'SCORED' }), tb: {} }]));
   ec = exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.extraCredit;
   assert.equal(ec.open, false);
+});
+
+test('extra credit: the card takes replies through lesson day + 6, the last day 25 credits (finding 4)', () => {
+  let { exported, ss } = load([{ wq: wqRow({ date: '2026-10-15', status: 'SCORED' }), tb: {} }]);
+  let ec = exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.extraCredit;
+  assert.deepEqual([ec.open, ec.byLabel], [true, 'Wed, Oct 21']);
+  ({ exported, ss } = load([{ wq: wqRow({ date: '2026-10-14', status: 'SCORED' }), tb: {} }]));
+  ec = exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.extraCredit;
+  assert.equal(ec.open, false, 'day + 7: 25 has already made its last check');
+});
+
+test('an earlier warm-up still open for extra credit stays on the card (finding 5)', () => {
+  const { exported, ss } = load([
+    { wq: wqRow({ date: '2026-10-13', status: 'SCORED', feedback: 'Too old' }), tb: {} },
+    { wq: wqRow({ date: '2026-10-15', status: 'SCORED', feedback: 'Oct 15 feedback' }), tb: {} },
+    { wq: wqRow({ date: '2026-10-16', status: 'SCORED', extraCredit: 1, feedback: 'Credited' }), tb: {} },
+    { wq: wqRow({ date: '2026-10-17', status: 'SCORED', feedback: 'Oct 17 feedback' }), tb: {} },
+    { wq: wqRow({ date: '2026-10-19', status: 'INCOMPLETE' }), tb: {} },
+  ]);
+  const wu = exported.getStudentWarmUps_(ss, CFG, ME, NOW);
+  assert.equal(wu.previous.dateLabel, 'Mon, Oct 19');
+  assert.deepEqual(wu.earlier.map((w) => w.feedback), ['Oct 17 feedback', 'Oct 15 feedback']);
+  assert.ok(wu.earlier.every((w) => w.extraCredit.canReply));
+});
+
+test('submitWarmUpReply: an earlier open warm-up takes a reply too', () => {
+  const d = (k) => new Date(Date.now() - k * 86400000).toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  const { exported, tb } = load([
+    { wq: wqRow({ date: d(4), status: 'SCORED' }), tb: {} },
+    { wq: wqRow({ date: d(2), status: 'SCORED' }), tb: {} },
+  ]);
+  assert.equal(exported.submitWarmUpReply('WQ-' + (n - 1), 'I would change my answer to name the price first.').ok, true);
+  assert.equal(tb.getRange(2, 7).getValue(), 'I would change my answer to name the price first.');
+});
+
+test('a later day\'s warm-up is open, not due today (finding 9)', () => {
+  const { exported, ss } = load([{ wq: wqRow({ date: '2026-10-22', status: 'DELIVERED' }), tb: {} }]);
+  const cur = exported.getStudentWarmUps_(ss, CFG, ME, NOW).current;
+  assert.equal(cur.displayStatus, 'Open — for Thu, Oct 22');
+  assert.equal(cur.canAnswer, true);
+  assert.equal(cur.openUntil, 'Thu');
+  const today = load([{ wq: wqRow({ date: '2026-10-21', status: 'DELIVERED' }), tb: {} }]);
+  const t = today.exported.getStudentWarmUps_(today.ss, CFG, ME, NOW).current;
+  assert.deepEqual([t.displayStatus, t.openUntil], ['Ready — answer today', 'the day']);
+});
+
+test('a past warm-up left blank reads "Not answered" (finding 15)', () => {
+  const { exported, ss } = load([
+    { wq: wqRow({ date: '2026-10-19', status: 'DELIVERED' }), tb: { response: 'I answered' } },
+    { wq: wqRow({ date: '2026-10-20', status: 'DELIVERED' }), tb: {} },
+  ]);
+  assert.equal(exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous.displayStatus, 'Not answered');
+  const answered = load([{ wq: wqRow({ date: '2026-10-20', status: 'DELIVERED' }), tb: { response: 'I answered' } }]);
+  assert.equal(answered.exported.getStudentWarmUps_(answered.ss, CFG, ME, NOW).previous.displayStatus, 'Waiting to be checked');
+  const doc = load([{ wq: wqRow({ date: '2026-10-20', status: 'DELIVERED', docId: 'doc-1' }) }]);
+  assert.equal(doc.exported.getStudentWarmUps_(doc.ss, CFG, ME, NOW).previous.displayStatus, 'Waiting to be checked',
+    'a doc warm-up\'s text is not read here, so it is not called unanswered');
 });
 
 test('the score shows with the feedback: out of 10, its parts, extra credit on top', () => {
@@ -115,7 +172,7 @@ test('the score shows with the feedback: out of 10, its parts, extra credit on t
 
 test('no warm-ups is no card', () => {
   const { exported, ss } = load([]);
-  assert.deepEqual(exported.getStudentWarmUps_(ss, CFG, ME, NOW), { current: null, previous: null });
+  assert.deepEqual(exported.getStudentWarmUps_(ss, CFG, ME, NOW), { current: null, previous: null, earlier: [] });
 });
 
 test('submitWarmUpAnswer: saves the student\'s own open warm-up, and refuses others', () => {
