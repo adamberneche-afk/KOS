@@ -165,7 +165,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
   1. Show "Last submitted <time>" on any student card with `submittedAt`.
   2. Add "submitted <time>" to the teacher's `.last-eval` line.
 
-**4. The extra-credit window on the card runs one day past when 25 stops counting.** *Fixed 2026-10-24: the card closes after day + 6 and says so.*
+**4. The extra-credit window on the card runs one day past when 25 stops counting.** *Fixed 2026-10-24: the last warm-up closes at the end of the next class day, never past day + 6.*
 - **Where:** `13:275-276,305` (`ecOpen`, `byLabel`), compared with `25_WarmUpWriter.js:548-551,569-611`.
 - **What:**
   - The card keeps the reply box open, and says "by <lesson+7>", through all of day L+7.
@@ -174,7 +174,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
 - **Scenario:** a student with an Oct 20 warm-up saves a 15-word reply on Oct 27 at 2 p.m. The card said "by Tue, Oct 27" and accepted it. The Oct 28 run skips the row (already stamped), and no +1 ever appears.
 - **Fix:** close the window on the card a day earlier (open while `lessonDate > ecFrom`, label "by <lesson+6>"). Or change 25 to compare `yyyy-MM-dd` strings so the last check is the 3:15 run on L+8.
 
-**5. Only the most recent past warm-up is offered for extra credit, so the 7-day window closes after about 2 days for alternate-day groups.** *Fixed 2026-10-24: each earlier warm-up still open shows as "Earlier warm-up" with its own reply box.*
+**5. Only the most recent past warm-up is offered for extra credit, so the 7-day window closes after about 2 days for alternate-day groups.** *Moot since 2026-10-24: only the last warm-up is open, until the end of the next class day (the operator's rule).*
 - **Where:** `13:257-262` (`prev = past[past.length-1]`), compared with `25:548-611`.
 - **What:** 25 still accepts replies for 7 days, but a text-box reply can only be typed on the dashboard, and the reply box exists only on "Last warm-up". As soon as a newer lesson date passes, the older warm-up disappears from the card.
 - **Scenario:**
@@ -204,7 +204,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
   - PASSED: "Passed ✓ — feedback is in Comments", class DONE.
   - NEEDS_REVISION: "Feedback ready — revise and submit again", class NEEDS_ACTION.
 
-**9. A warm-up for a later day says "Ready — answer today".** *Fixed 2026-10-24: it reads "Open — for <day>".*
+**9. A warm-up for a later day says "Ready — answer today".** *Fixed 2026-10-24: it reads "Opens <day>" and opens on its day.*
 - **Where:** `13:327-329` (`resolveWarmUpStatus_`), `13:1104,1111`.
 - **What:** Every DELIVERED warm-up with `lessonDate >= today` gets "Ready — answer today", and the saved note says "until the end of the day". "Next warm-up" is used only when the date is in the future.
 - **Scenario:** on Oct 26, a 3-Odd student, or a period 1 student on their rest day, sees "Next warm-up · Tue, Oct 27 — Ready — answer today" next to the reply box. They may answer it today thinking it's due.
