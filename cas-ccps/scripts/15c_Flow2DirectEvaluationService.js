@@ -89,7 +89,8 @@
 function _sanitizeFlow2StudentText_(text) {
   return String(text || "")
     .replace(/<<<\s*END_STUDENT_SUBMISSION\s*>>>/gi, "< < < END_STUDENT_SUBMISSION > > >")
-    .replace(/<<<\s*STUDENT_SUBMISSION\s*>>>/gi, "< < < STUDENT_SUBMISSION > > >");
+    .replace(/<<<\s*STUDENT_SUBMISSION\s*>>>/gi, "< < < STUDENT_SUBMISSION > > >")
+    .replace(/<<<\s*(END_)?PROCESS_REFLECTION\s*>>>/gi, "< < < PROCESS_REFLECTION > > >");
 }
 
 // ---------------------------------------------------------------------------
@@ -99,9 +100,10 @@ function _sanitizeFlow2StudentText_(text) {
 // variable-mapping step does, reimplemented in code so it's testable.
 //
 // vars: { unitName, tier, persona, milestone1, milestone2, milestone3,
-//         milestone4, dod, studentText }. Any missing field substitutes
-// an empty string rather than leaving the literal "{{...}}" placeholder
-// in the prompt sent to Gemini. studentText specifically is run through
+//         milestone4, dod, studentText, processReflection }. Any missing
+// field substitutes an empty string ("(none)" for processReflection) rather
+// than leaving the literal "{{...}}" placeholder in the prompt sent to
+// Gemini. studentText specifically is run through
 // _sanitizeFlow2StudentText_ first — see that function's header.
 // ---------------------------------------------------------------------------
 function _buildFlow2Prompt_(vars) {
@@ -115,6 +117,7 @@ function _buildFlow2Prompt_(vars) {
     .replace(/\{\{MILESTONE_3\}\}/g, v.milestone3 || "")
     .replace(/\{\{MILESTONE_4\}\}/g, v.milestone4 || "")
     .replace(/\{\{DOD\}\}/g, v.dod || "")
+    .replace(/\{\{PROCESS_REFLECTION\}\}/g, _sanitizeFlow2StudentText_(v.processReflection) || "(none)")
     .replace(/\{\{STUDENT_TEXT\}\}/g, _sanitizeFlow2StudentText_(v.studentText));
 }
 

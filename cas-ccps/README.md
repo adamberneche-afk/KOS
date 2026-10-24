@@ -208,6 +208,13 @@ doc's feedback zone), records the result on the Ledger row and in
 `backPropagateCompletions` (every 2 minutes) closes out the queue/ledger
 rows, appends the "what to do next" block, and for a timeout or an
 `ERROR_EVALUATION` emails the teacher and sets the doc header.
+With `REFLECTION_ON_SUBMIT` on (off by default; `all` or one course code),
+Submit first asks one or two questions about how the student worked
+(fixed frames chosen in `00`, at least 10 words each), writes the answers
+to the `ReflectionLog` tab and only then queues the work; 37 puts that
+submission's answers into Flow 2's `PromptText` and posts them back to the
+student as a comment on the doc
+(`meta/STUDENT_WORK_PLAN_2026-10.md`, Phase 1).
 Students turn in on Canvas, where the teacher grades. The Turn-In Form and
 its handler (Script 04's 3-point match, stamp check and forensic
 Drive-revision check) were retired on 2026-10-10 (HISTORY.md, P0-04): no
@@ -251,8 +258,8 @@ teachers have their own copies.
    folder and email, the Student Dashboard URL, the email domain, the
    leader-hub OAuth client ID, the master template IDs, and the switches
    and calendar every project shares: `PIVOT_ARCHETYPE_LOCK`,
-   `MARKING_PERIOD_ENDS`, `FEEDBACK_AS_COMMENT`, `WARMUP_TEXT_BOX` and
-   `ROLLOUT_AUTO_APPLY` (`SHARED_CONFIG_KEYS` in `00`).
+   `MARKING_PERIOD_ENDS`, `FEEDBACK_AS_COMMENT`, `WARMUP_TEXT_BOX`,
+   `ROLLOUT_AUTO_APPLY` and `REFLECTION_ON_SUBMIT` (`SHARED_CONFIG_KEYS` in `00`).
 
 A project that is attached to the Ledger, or to a teacher's cloned sheet,
 therefore needs no properties for these at all. The dashboards need only

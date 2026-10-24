@@ -111,8 +111,10 @@ test('the doc shows a lesson\'s *emphasis* in italics, without the asterisks', (
 // the old "Not started yet" card with Submit still active.
 test('after a successful Submit, the card says it is waiting and Submit is gone', () => {
   const { student } = pages();
+  // submitWork asks for the reflection questions first (2026-10-24); with
+  // none, it submits and submitDone updates the card.
   const start = student.indexOf('function submitWork(btn)');
-  const end = student.indexOf('\n}\n', start) + 2;
+  const end = student.indexOf('// NEW (finding #7)', start);
   assert.ok(start > 0 && end > start);
   const card = { fileId: 'f1', configId: 'C1', displayStatus: 'Not started yet', statusClass: 'NOT_STARTED', canSubmit: true, submittedAt: null };
   const other = { fileId: 'f2', configId: 'C2', displayStatus: 'Not started yet', statusClass: 'NOT_STARTED', canSubmit: true };
@@ -120,9 +122,10 @@ test('after a successful Submit, the card says it is waiting and Submit is gone'
   const runner = {
     withSuccessHandler(fn) { handler = fn; return runner; },
     withFailureHandler() { return runner; },
+    getSubmitReflection() { handler({ ok: true, questions: [] }); },
     submitMyWork() { handler({ ok: true, aiFlowsLive: true, feedbackInComments: true }); },
   };
-  const ctx = { google: { script: { run: runner } }, _submitMsgs: {}, _dashCache: {}, renders: 0,
+  const ctx = { google: { script: { run: runner } }, _submitMsgs: {}, _dashCache: {}, _reflect: {}, renders: 0,
     _lastDashData: { assignments: [card, other] } };
   ctx.render = () => { ctx.renders++; };
   vm.runInNewContext(student.slice(start, end), ctx);
