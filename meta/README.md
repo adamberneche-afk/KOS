@@ -30,11 +30,12 @@ why this repo exists at all.
   Phases 1 and 2 are built (#245, #246): the dashboard's lesson editor
   (`65_LessonDrafts.js`) and the import tool
   (`tools/cas-ccps/import-lesson-drafts.js`).
-- **`STUDENT_WORK_PLAN_2026-10.md`** — a proposed plan (2026-10-24) for the
-  student's side of an assignment, from rendering two new student docs:
-  multi-part lessons split into one doc per step, a "How I worked" form on
-  Submit, a revision statement before resubmitting after feedback, and
-  Flow 2 reading both. Nothing built; open decisions at its end.
+- **`STUDENT_WORK_PLAN_2026-10.md`** — the plan (direction decided
+  2026-10-24) for the student's side of an assignment, from rendering two
+  new student docs: multi-part lessons split into parts that unlock in
+  order (one Canvas assignment per lesson), short varied reflections on
+  Submit tied to the lesson's competencies, Flow 2 reading them, and where
+  each cost lands. Nothing built; open decisions at its end.
 - **`UX_AUDIT_2026-10-22.md`** — an end-to-end UX audit (2026-10-22) of
   every surface in the three systems, by stakeholder (students, teacher,
   families, operator and adopters, leader-hub, kos-personal): rendered and
