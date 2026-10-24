@@ -4567,3 +4567,27 @@ The learning objectives approved on 10-24
   work do you show this: “I can …”?"), or the title where there is none.
 - The import procedure says a new lesson or changed tier needs its
   objectives.
+
+## The student doc: the assignment in a table, the code in the footer, 2026-10-24
+
+The operator's layout, from a rendered mock-up (02, `stampDocument_`):
+
+- **The assignment is a two-row table:** "The assignment" (grey label) with
+  the task's own headings in bold and its "- " lines as real bullets, then
+  "What your work needs to show" (blue label) with the student's "I can"
+  objectives as a "☐" checklist and "You can also show" under them (the
+  bold heading alone: its "(not required)" note dropped, the operator,
+  10-24, in the generator, 55b and the cartridges). Text at 9 pt (it was
+  loose 8 pt paragraphs). The Canvas title and "Submission:"
+  lines stay out, as before.
+- **The assignment code is in the page footer** ("Assignment code: …"). The
+  visible grey "[CONFIG_ID: …] Do not delete this line." line is gone. The
+  `[CONFIG_ID:` marker every response reader stops at (01, 03, 13, and
+  Studio's Flow 2 extract step, 42) still ends the response zone: it now
+  starts the hidden white 1pt system line, so nothing in Studio or the doc
+  menu changes. The last line reads "↑ Write your response above. Nothing
+  below this is checked."
+- Only new docs change; docs already made keep their layout. The guides
+  (and their notebook copies) describe both.
+- The test sandbox's fake Docs gained tables (`FakeTable`, rows, cells),
+  a footer, `GlyphType` and `setSpacingBefore`.

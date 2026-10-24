@@ -140,7 +140,7 @@ function applyTiers(a, comps, t, grading, vocab) {
   // Before a closing "Submission:" part, which the Canvas cartridge drops.
   const checklist = 'What your work needs to show:\n\n' +
     [plainLine(t.primary) + ' (required)'].concat(secondary.map(plainLine)).join('\n') +
-    (tertiary.length ? '\n\nYou can also show (not required):\n\n' + tertiary.map(plainLine).join('\n') : '');
+    (tertiary.length ? '\n\nYou can also show:\n\n' + tertiary.map(plainLine).join('\n') : '');
   const task = String(a.promptText || '').trim();
   const sub = task.search(/\n\nSubmission:\s*\n/);
   a.promptText = sub === -1 ? task + '\n\n' + checklist : task.slice(0, sub) + '\n\n' + checklist + task.slice(sub);
