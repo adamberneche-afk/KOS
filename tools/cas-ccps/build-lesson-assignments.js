@@ -385,7 +385,9 @@ function build() {
       if (a) { out[a.key] = a; order[8177].push(a.key); }
     });
   }
-  return { assignments: out, order, review: reviewFile() };
+  const b = { assignments: out, order, review: reviewFile() };
+  b.waitingVideos = addVideos(b);
+  return b;
 }
 
 function dataFile(b) {
@@ -411,8 +413,61 @@ function dataFile(b) {
 
 const REVIEW_FILE = path.join(LESSONS, 'COMPETENCY_REVIEW.md');
 
+// Videos a lesson's task tells students to watch (2026-10-24): lesson key ->
+// [{ title, url }]. An empty list is a lesson still waiting on its link.
+const VIDEO_FILE = path.join(LESSONS, 'VIDEO_LINKS.json');
+
+function videoLinks() {
+  if (!fs.existsSync(VIDEO_FILE)) return {};
+  const raw = JSON.parse(fs.readFileSync(VIDEO_FILE, 'utf8'));
+  const out = {};
+  Object.keys(raw).filter((k) => k[0] !== '_').forEach((k) => {
+    const list = raw[k];
+    if (!Array.isArray(list)) throw new Error(VIDEO_FILE + ': ' + k + ' is not a list');
+    list.forEach((v, i) => {
+      if (!v || !String(v.title || '').trim()) throw new Error(VIDEO_FILE + ': ' + k + ' video ' + (i + 1) + ' has no title');
+      if (!/^https:\/\/[^\s()<>"]+$/.test(String(v.url || ''))) {
+        throw new Error(VIDEO_FILE + ': ' + k + ' video ' + (i + 1) + ' needs an https:// link with no spaces');
+      }
+    });
+    out[k] = list.map((v) => ({ title: String(v.title).trim(), url: String(v.url).trim() }));
+  });
+  return out;
+}
+
+/**
+ * The task with one "- Video: <title> (<url>)" line per video, right under
+ * its "Watch" line (or above "What your work needs to show:", or at the end).
+ */
+function withVideos(promptText, videos) {
+  if (!videos || !videos.length) return promptText;
+  const lines = videos.map((v) => '- Video: ' + v.title + ' (' + v.url + ')');
+  const all = String(promptText).split('\n');
+  let at = all.findIndex((l) => /\bWatch\b/.test(l));
+  if (at === -1) {
+    const show = all.findIndex((l) => /^What your work needs to show:/.test(l));
+    if (show !== -1) { all.splice(show, 0, ...lines, ''); return all.join('\n'); }
+    return promptText + '\n\n' + lines.join('\n');
+  }
+  all.splice(at + 1, 0, ...lines);
+  return all.join('\n');
+}
+
+function addVideos(b) {
+  const links = videoLinks();
+  Object.keys(links).forEach((k) => {
+    const a = b.assignments[k];
+    if (!a) throw new Error(VIDEO_FILE + ': no lesson ' + k);
+    if (!links[k].length) return;
+    a.promptText = withVideos(a.promptText, links[k]);
+    a.videos = links[k];
+  });
+  return Object.keys(links).filter((k) => !links[k].length);
+}
+
 function main() {
   const b0 = build();
+  const waiting = b0.waitingVideos;
   const text = dataFile(b0);
   const have = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : null;
   const haveReview = fs.existsSync(REVIEW_FILE) ? fs.readFileSync(REVIEW_FILE, 'utf8') : null;
@@ -429,7 +484,8 @@ function main() {
   const b = b0;
   console.log('Wrote ' + path.relative(ROOT, OUT) + ': ' + b.order[8175].length + ' 8175 lesson(s), ' +
     b.order[8177].length + ' 8177 lesson(s) with an approved prompt.');
+  if (waiting.length) console.log('Still waiting on video links (VIDEO_LINKS.json): ' + waiting.join(', '));
 }
 
 if (require.main === module) main();
-module.exports = { build, dataFile, slug, studentPrompt };
+module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE };

@@ -185,3 +185,12 @@ test('parseDocumentXml keeps paragraphs, bold runs, list items and nested tables
   assert.equal(b[2].rows[0][1][0].type, 'table');
   assert.equal(textOf(b[2].rows[0][1]), 'inner');
 });
+
+test('a lesson task\'s https:// address (a video link) is a link in Canvas; a trailing ")" stays text', () => {
+  const { assignmentXml } = require('../../tools/cas-ccps/build-canvas-cartridge.js');
+  const xml = assignmentXml('id1', 'L06', 'The Task:\n\n- Watch: the videos.\n- Video: Soft skills (https://example.org/watch?v=a&t=1)', null, '');
+  // The assignment XML carries its HTML escaped once more.
+  const html = xml.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  assert.ok(html.includes('Soft skills (<a href="https://example.org/watch?v=a&amp;t=1">https://example.org/watch?v=a&amp;t=1</a>)'),
+    html.slice(0, 600));
+});
