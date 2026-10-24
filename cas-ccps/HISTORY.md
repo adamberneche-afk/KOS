@@ -4753,3 +4753,25 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   first build after it gives every student a baseline warm-up.
 - **Tests:** `warmup-flow-bridge.test.js`, `flow-fixtures.test.js`,
   `warmup-text-box.test.js`, `warmup-bridge.test.js`, `flow-prompts.test.js`.
+
+## Student Context shows text-box warm-ups, and baseline answers by skill, 2026-10-24
+
+- **Why:** 29's weekly Student Context doc read warm-up answers only from
+  the old Warm-Up Response form's tab (`WarmUpResponses`). Every warm-up
+  since 2026-10-19 is answered in the Student Dashboard's text box, so the
+  record showed none of them, and the baseline answers D6 collects (#287)
+  would have reached no page a teacher reads.
+- **The reader, 29:** `getWeeklyTextBoxWarmUps_` joins WarmUpTextBox to
+  WarmUpQueue by queue_id and takes answers saved in the trailing week
+  (blank ones skipped), with the question asked and, for a baseline
+  warm-up, the skill's wording (41's `wfbParseBaseline_` and
+  `WFB_BASELINE_SKILLS`, behind `typeof` guards: 29 is also in the Teacher
+  Dashboard project, which doesn't carry 41). `mergeWarmUpMaps_` adds them
+  to the form's answers, matched to the Ledger's spelling of the email.
+- **The section, 29:** baseline answers first, under "How They Work
+  (baseline warm-ups)": the skill, the date, "Asked: …" and the answer.
+  Lesson warm-ups stay under "Warm-Up Reflections", now with the question.
+- Docs already written keep their weeks; the next weekly run adds the new
+  parts.
+- **Tests:** `student-context-aggregator.test.js`; the test sandbox's
+  paragraph gains `setFontSize`.
