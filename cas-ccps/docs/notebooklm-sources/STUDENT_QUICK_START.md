@@ -115,7 +115,8 @@ A warm-up is a short question at the start of class. You answer it on your dashb
 
 1. **Type your answer and press Save answer**: Find **Today's warm-up**. Type in the box, then press **Save answer**. You can change it until the end of the day: the button then says **Update answer**.
 2. **Read your score and feedback**: Warm-ups are checked overnight. Next time, **Last warm-up** shows your score out of 10 (Length, Grammar and Engagement) and your feedback. Length is about word count: 30 words or more gets the full length points.
-3. **Earn extra credit**: Under the feedback, reply to it in **at least 10 words** by the date shown, and press **Save reply**. Replies are checked overnight. Once it counts, you'll see “✓ Extra credit earned” and “+1 extra credit”. Don't leave it to the last day.
+3. **Earn extra credit**: Under the feedback, reply to it in **at least 10 words** by the date shown (the end of your next class day), and press **Save reply**. Replies are checked overnight. Once it counts, you'll see “✓ Extra credit earned” and “+1 extra credit”.
+4. **Missed a warm-up?**: If you didn't answer last class's warm-up, **Last warm-up** shows it with a box until the end of your next class day. A late answer is scored, but you don't get feedback on it or a chance at extra credit.
 
 > 📄 **Some classes use a warm-up document instead.** If the card shows **Open warm-up ↗**, answer in that document, and reply under the feedback there for extra credit.
 
@@ -197,8 +198,8 @@ The same list as **❓ What do these mean?** on your dashboard.
 - **Comments**: Your feedback appears as a comment on your document. Open the document and click the Comments button (top right). Resolving a comment doesn’t delete it.
 - **Last submitted**: When you last pressed Submit for Feedback on this assignment.
 - **Last checked**: When your work was last checked and given feedback.
-- **Warm-up**: A short question at the start of class. Type your answer here and save it before the end of the day.
-- **Extra credit**: After a warm-up is checked, reply to its feedback in at least 10 words by the date shown for an extra point.
+- **Warm-up**: A short question at the start of class. Type your answer here and save it before the end of the day. Missed one? You can answer it late until the end of your next class day, for points but no feedback or extra credit.
+- **Extra credit**: After a warm-up is checked, reply to its feedback in at least 10 words by the date shown (the end of your next class day) for an extra point.
 - **Marking period**: Part of the school year. Use the menu at the top to see one marking period or the whole year.
 - **Block and period**: When your class meets. 3-Odd and 3-Even are the two halves of period 3 that meet on alternate days.
 - **My Info**: What the system has on file for you: your name, class, period and teacher. Tell your teacher if something is wrong.

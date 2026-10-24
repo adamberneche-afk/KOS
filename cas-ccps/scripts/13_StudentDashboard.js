@@ -171,7 +171,7 @@ function getStudentDashboardData(termFilter) {
   });
 
   // Warm-ups aren't Ledger rows, and they don't follow the term filter: the
-  // card always shows the last two weeks.
+  // card shows the last warm-up and the current one.
   const warmUps = getStudentWarmUps_(ss, cfg, googleId, new Date());
 
   // Empty state with helpful context. "No results" from picking a term
@@ -209,19 +209,26 @@ function getStudentDashboardData(termFilter) {
 }
 
 // ---------------------------------------------------------------------------
-// Warm-ups card: the last warm-up's feedback (and its extra-credit reply
-// while that window is open) and the current warm-up. Older warm-ups stay
-// in the Ledger; the card doesn't list them.
+// Warm-ups card: the student's last warm-up and the current one (the
+// operator's rule, 2026-10-24). The current warm-up is answered on its own
+// day. The last one stays open until the end of the student's next class
+// day: a student who answered it replies to its feedback for extra credit;
+// one who didn't can answer it late, and the late answer is scored without
+// feedback or extra credit (25 scores it the night after). Older warm-ups
+// stay in the Ledger; the card doesn't list them.
 //
 // WarmUpQueue (25_WarmUpWriter.js's WQ25_*; 25 isn't in this project, so
 // the columns are repeated here): google_id 4, lesson_date 5,
 // lesson_context_snapshot 6, status 8, doc_id 9, word_count_score 12,
 // grammar_score 13, engagement_score 14, extra_credit 15, total_score 16
 // (the total includes extra credit once it is earned), flow4_feedback 17. A warm-up answered here (WARMUP_TEXT_BOX) has a
-// WarmUpTextBox row (00's WTB) and no doc. The student answers on the
-// lesson day; the 3:15am run after it (runWarmUpEvaluation) scores it, and
-// replies are checked each night for EXTRA_CREDIT_RECHECK_WINDOW_DAYS (7)
-// with at least EXTRA_CREDIT_MIN_WORDS (10) words.
+// WarmUpTextBox row (00's WTB) and no doc. The 3:15am run after the lesson
+// day (runWarmUpEvaluation) scores it, and replies are checked each night
+// for EXTRA_CREDIT_RECHECK_WINDOW_DAYS (7) with at least
+// EXTRA_CREDIT_MIN_WORDS (10) words. 25's last check is the 3:15am run on
+// lesson day + 7 (it reads the lesson date as UTC midnight, the evening
+// before here), so the window never runs past day + 6 (walk-through finding
+// 4), even when the next class is further off or not queued yet.
 // ---------------------------------------------------------------------------
 const DASH_WQ_GOOGLE_ID    = 4;
 const DASH_WQ_LESSON_DATE  = 5;
@@ -236,64 +243,109 @@ const DASH_WQ_TOTAL        = 16;
 const DASH_SCORE_MAX       = 10; // length 6 + grammar 1 + engagement 3 (25's thresholds, 41's ranges)
 const DASH_WQ_FEEDBACK     = 17;
 const DASH_WQ_WIDTH        = 18;
-const DASH_EC_DAYS         = 7;
+const DASH_EC_DAYS         = 6; // the latest day the last warm-up stays open; 25's window is 7 nights
 const DASH_EC_MIN_WORDS    = 10;
 const DASH_ANSWER_MAX      = 5000;
 const DASH_REPLY_MAX       = 2000;
 
-// The student's own warm-ups, oldest first, each with its WarmUpTextBox row.
+// The student's own delivered warm-ups, oldest first, each with its
+// WarmUpTextBox row, and every date they have a warm-up queued for
+// (delivered or not), which says when their next class is.
 function _dashOwnWarmUps_(ss, cfg, googleId, tz) {
   const sheet = ss.getSheetByName(cfg.tabs.warmUpQueue);
-  if (!sheet || sheet.getLastRow() < 2) return [];
+  const out = { list: [], classDates: [] };
+  if (!sheet || sheet.getLastRow() < 2) return out;
   const me = String(googleId).trim().toLowerCase();
   const textBox = readWarmUpTextBox_(ss);
-  const out = [];
   sheet.getRange(2, 1, sheet.getLastRow() - 1, DASH_WQ_WIDTH).getValues().forEach(function (row, i) {
     if (String(row[DASH_WQ_GOOGLE_ID] || "").trim().toLowerCase() !== me) return;
-    const queueId = String(row[0] || "").trim();
-    const docId = String(row[DASH_WQ_DOC_ID] || "").trim();
-    const tb = textBox[queueId] || null;
-    if (!queueId || (!docId && !tb)) return; // not delivered yet
     // NOT_MEETING (24): queued for a day the student's period doesn't meet.
     if (String(row[DASH_WQ_STATUS] || "").trim() === "NOT_MEETING") return;
     const lessonDate = dashIsoDate_(row[DASH_WQ_LESSON_DATE], tz);
     if (!lessonDate) return;
-    out.push({ queueId: queueId, sheetRow: i + 2, row: row, tb: tb, docId: docId, lessonDate: lessonDate });
+    out.classDates.push(lessonDate);
+    const queueId = String(row[0] || "").trim();
+    const docId = String(row[DASH_WQ_DOC_ID] || "").trim();
+    const tb = textBox[queueId] || null;
+    if (!queueId || (!docId && !tb)) return; // not delivered yet
+    out.list.push({ queueId: queueId, sheetRow: i + 2, row: row, tb: tb, docId: docId, lessonDate: lessonDate });
   });
-  out.sort(function (a, b) { return a.lessonDate < b.lessonDate ? -1 : a.lessonDate > b.lessonDate ? 1 : 0; });
+  out.list.sort(function (a, b) { return a.lessonDate < b.lessonDate ? -1 : a.lessonDate > b.lessonDate ? 1 : 0; });
   return out;
 }
 
-function getStudentWarmUps_(ss, cfg, googleId, now) {
+// "YYYY-MM-DD" plus n days, and its noon as a Date for formatting.
+function _dashDayNoon_(iso, n) {
+  const [y, m, d] = iso.split("-").map(Number);
+  return new Date(y, m - 1, d + (n || 0), 12);
+}
+
+// The current and last warm-ups, each { w, view }. The last one's window
+// closes at the end of the student's next class day, or day + 6 if that is
+// sooner or no later warm-up is queued yet.
+function _dashWarmUpPair_(ss, cfg, googleId, now) {
   const tz    = Session.getScriptTimeZone();
   const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
-  const ecFrom = Utilities.formatDate(new Date(now.getTime() - DASH_EC_DAYS * 86400000), tz, "yyyy-MM-dd");
   const own = _dashOwnWarmUps_(ss, cfg, googleId, tz);
-  const upcoming = own.filter(function (w) { return w.lessonDate >= today; });
-  const past = own.filter(function (w) { return w.lessonDate < today; });
+  const upcoming = own.list.filter(function (w) { return w.lessonDate >= today; });
+  const past = own.list.filter(function (w) { return w.lessonDate < today; });
   const cur = upcoming.length ? upcoming[0] : null;
   const prev = past.length ? past[past.length - 1] : null;
+  let prevView = null;
+  if (prev) {
+    const cap = Utilities.formatDate(_dashDayNoon_(prev.lessonDate, DASH_EC_DAYS), tz, "yyyy-MM-dd");
+    const next = own.classDates.filter(function (d) { return d > prev.lessonDate; }).sort()[0];
+    const closesOn = next && next < cap ? next : cap;
+    prevView = _dashWarmUpView_(prev, tz, today, closesOn);
+  }
   return {
-    current:  cur ? _dashWarmUpView_(cur, tz, today, ecFrom) : null,
-    previous: prev ? _dashWarmUpView_(prev, tz, today, ecFrom) : null
+    own: own.list,
+    current:  cur ? { w: cur, view: _dashWarmUpView_(cur, tz, today, null) } : null,
+    previous: prev ? { w: prev, view: prevView } : null
   };
 }
 
-function _dashWarmUpView_(w, tz, today, ecFrom) {
+function getStudentWarmUps_(ss, cfg, googleId, now) {
+  const pair = _dashWarmUpPair_(ss, cfg, googleId, now);
+  return {
+    current:  pair.current ? pair.current.view : null,
+    previous: pair.previous ? pair.previous.view : null
+  };
+}
+
+// closesOn: "YYYY-MM-DD", the last day the student's last warm-up stays
+// open; null for any other warm-up.
+function _dashWarmUpView_(w, tz, today, closesOn) {
   const status = String(w.row[DASH_WQ_STATUS] || "").trim();
   const tbRow = w.tb ? w.tb.row : null;
   let course = "";
   try { course = String(JSON.parse(String(w.row[DASH_WQ_LESSON_SNAP] || "{}")).course_name || ""); }
   catch (e) { /* a snapshot that doesn't parse just leaves the course off */ }
-  const [y, m, d] = w.lessonDate.split("-").map(Number);
-  const st = resolveWarmUpStatus_(status, w.lessonDate, today, !!tbRow);
+  const answer = tbRow ? String(tbRow[WTB.RESPONSE] || "") : "";
+  const answered = answer.trim() !== "";
+  const open = !!closesOn && today <= closesOn;
+  // Late: answered after its lesson day (the save time says so), or not
+  // answered on its day and still open for a late answer. A late answer is
+  // scored, but its feedback isn't shown and it earns no extra credit.
+  const savedLate = !!tbRow && !!tbRow[WTB.SUBMITTED_AT] &&
+    dashIsoDate_(tbRow[WTB.SUBMITTED_AT], tz) > w.lessonDate;
+  const missed = !!tbRow && w.lessonDate < today &&
+    (status === "INCOMPLETE" || (status === "DELIVERED" && (!answered || savedLate)));
+  const late = savedLate || missed;
+  const st = resolveWarmUpStatus_(status, w.lessonDate, today, !!tbRow, tbRow ? answered : null,
+    Utilities.formatDate(_dashDayNoon_(w.lessonDate), tz, "EEE, MMM d"),
+    { late: late, lateOpen: missed && open });
   const credited = Number(w.row[DASH_WQ_EXTRA_CREDIT] || 0) === 1;
-  const ecOpen = status === "SCORED" && !credited && w.lessonDate >= ecFrom;
-  const deadline = new Date(y, m - 1, d + DASH_EC_DAYS, 12);
+  const ecOpen = open && status === "SCORED" && !credited && !late;
+  const closesLabel = closesOn ? Utilities.formatDate(_dashDayNoon_(closesOn), tz, "EEE, MMM d") : "";
   return {
     queueId:       w.queueId,
-    dateLabel:     Utilities.formatDate(new Date(y, m - 1, d, 12), tz, "EEE, MMM d"),
+    dateLabel:     Utilities.formatDate(_dashDayNoon_(w.lessonDate), tz, "EEE, MMM d"),
     isToday:       w.lessonDate === today,
+    // When the answer box closes: the end of the lesson day, or of the
+    // last day a late answer is taken.
+    openUntil:     missed ? Utilities.formatDate(_dashDayNoon_(closesOn || w.lessonDate), tz, "EEE") : "the day",
+    late:          late,
     course:        course,
     textBox:       !!tbRow,
     docUrl:        w.docId ? "https://docs.google.com/document/d/" + w.docId + "/edit" : null,
@@ -301,10 +353,10 @@ function _dashWarmUpView_(w, tz, today, ecFrom) {
     statusClass:   st.statusClass,
     bridge:        tbRow ? String(tbRow[WTB.BRIDGE] || "") : "",
     warmup:        tbRow ? String(tbRow[WTB.WARMUP] || "") : "",
-    answer:        tbRow ? String(tbRow[WTB.RESPONSE] || "") : "",
+    answer:        answer,
     savedAt:       tbRow && tbRow[WTB.SUBMITTED_AT] ? formatDate_(tbRow[WTB.SUBMITTED_AT]) : null,
-    canAnswer:     !!tbRow && status === "DELIVERED" && w.lessonDate >= today,
-    feedback:      status === "SCORED" ? String(w.row[DASH_WQ_FEEDBACK] || "") : "",
+    canAnswer:     !!tbRow && ((status === "DELIVERED" && w.lessonDate === today) || (missed && open)),
+    feedback:      status === "SCORED" && !late ? String(w.row[DASH_WQ_FEEDBACK] || "") : "",
     // Shown with the feedback, by the operator's choice (2026-10-17): the
     // score out of 10 and its parts, extra credit added on top.
     score: status === "SCORED" ? {
@@ -318,7 +370,7 @@ function _dashWarmUpView_(w, tz, today, ecFrom) {
     extraCredit: {
       credited:  credited,
       open:      ecOpen,
-      byLabel:   Utilities.formatDate(deadline, tz, "EEE, MMM d"),
+      byLabel:   closesLabel,
       minWords:  DASH_EC_MIN_WORDS,
       reply:     tbRow ? String(tbRow[WTB.REPLY] || "") : "",
       canReply:  ecOpen && !!tbRow
@@ -335,19 +387,40 @@ function dashIsoDate_(v, tz) {
   return m ? m[1] + "-" + m[2] + "-" + m[3] : "";
 }
 
-// Same statusClass names (and colors) as the assignment cards.
-function resolveWarmUpStatus_(status, lessonDate, today, textBox) {
+// Same statusClass names (and colors) as the assignment cards. `answered` is
+// true or false for a text-box warm-up and null for a doc one, whose text
+// the dashboard doesn't read; `dateLabel` names a later day's warm-up.
+// opts.late: answered (or still answerable) after its day; opts.lateOpen:
+// not answered on its day and still open for a late answer.
+function resolveWarmUpStatus_(status, lessonDate, today, textBox, answered, dateLabel, opts) {
   const where = textBox ? "below" : "in your doc";
+  const late = !!(opts && opts.late);
+  const lateOpen = !!(opts && opts.lateOpen);
+  if (lateOpen && !answered) {
+    return { displayStatus: "Not answered — you can still answer it", statusClass: "NEEDS_ACTION" };
+  }
+  if (late && answered && (status === "DELIVERED" || status === "INCOMPLETE")) {
+    return { displayStatus: "Answered late — checked overnight", statusClass: "IN_PROGRESS" };
+  }
   switch (status) {
     case "DELIVERED":
-      return lessonDate >= today
-        ? { displayStatus: "Ready — answer today", statusClass: "NEEDS_ACTION" }
+      // Walk-through finding 9: a later day's warm-up isn't due today, and
+      // it opens on its own day (2026-10-24).
+      if (lessonDate > today) {
+        return { displayStatus: "Opens " + (dateLabel || lessonDate), statusClass: "NOT_STARTED" };
+      }
+      if (lessonDate === today) return { displayStatus: "Ready — answer today", statusClass: "NEEDS_ACTION" };
+      // Finding 15: a blank past answer isn't waiting for anything.
+      return answered === false
+        ? { displayStatus: "Not answered", statusClass: "NOT_STARTED" }
         : { displayStatus: "Waiting to be checked", statusClass: "IN_PROGRESS" };
     case "PENDING_EVAL":
     case "EVAL_ERROR":
       return { displayStatus: "Being checked — your work is saved", statusClass: "IN_PROGRESS" };
     case "SCORED":
-      return { displayStatus: "Checked — feedback is " + where, statusClass: "DONE" };
+      return late
+        ? { displayStatus: "Checked — answered late, so no feedback", statusClass: "DONE" }
+        : { displayStatus: "Checked — feedback is " + where, statusClass: "DONE" };
     case "INCOMPLETE":
       return { displayStatus: "No response was written", statusClass: "NOT_STARTED" };
     default:
@@ -379,16 +452,16 @@ function _dashWarmUpSave_(queueId, text, kind) {
   try {
     const cfg = getConfig_();
     const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
-    const tz  = Session.getScriptTimeZone();
     const now = new Date();
-    const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
-    const w = _dashOwnWarmUps_(ss, cfg, googleId, tz).filter(function (x) { return x.queueId === String(queueId); })[0];
+    const pair = _dashWarmUpPair_(ss, cfg, googleId, now);
+    const w = pair.own.filter(function (x) { return x.queueId === String(queueId); })[0];
     if (!w || !w.tb) return { ok: false, error: "That warm-up wasn't found. Refresh the page." };
-    const view = _dashWarmUpView_(w, tz, today,
-      Utilities.formatDate(new Date(now.getTime() - DASH_EC_DAYS * 86400000), tz, "yyyy-MM-dd"));
+    // Only the current warm-up and the last one can be open.
+    const hit = [pair.current, pair.previous].filter(function (p) { return p && p.w.queueId === w.queueId; })[0];
+    const view = hit ? hit.view : { canAnswer: false, extraCredit: { canReply: false } };
     const sheet = ss.getSheetByName(cfg.tabs.warmUpTextBox);
     if (kind === "answer") {
-      if (!view.canAnswer) return { ok: false, error: "This warm-up is closed. It is checked overnight after its day." };
+      if (!view.canAnswer) return { ok: false, error: "This warm-up is closed." };
       sheet.getRange(w.tb.sheetRow, WTB.RESPONSE + 1, 1, 2).setValues([[sheetSafeText_(t), now]]);
     } else {
       if (!view.extraCredit.canReply) return { ok: false, error: "The extra-credit window for this warm-up has closed." };
@@ -1244,8 +1317,25 @@ function _wuBox(kind, w, saved, label, rows) {
     '<div id="wu-msg-' + kind + '-' + esc(w.queueId) + '" class="submit-msg ' + (msg ? (msg.ok ? "ok" : "err") : "") + '" role="status">' + (msg ? esc(msg.text) : "") + '</div>';
 }
 
+// The answer box, and the saved note under it.
+function _wuAnswer(w) {
+  let h = _wuBox("answer", w, w.answer, "Your answer", 5);
+  if (w.answer && !_wuMsgs["answer:" + w.queueId]) {
+    h += '<div class="wu-note">Saved ' + esc(w.savedAt || "") + '. You can change it until the end of ' + esc(w.openUntil || "the day") + '.</div>';
+  }
+  return h;
+}
+
 function _wuPrevious(w) {
   let h = '<div class="wu-section">' + _wuHead("Last warm-up", w);
+  if (w.canAnswer) {
+    // Missed on its day: answer it late, scored without feedback.
+    h += '<div class="wu-prompt">' + esc(w.warmup) + '</div>' +
+      '<div class="wu-ec">You missed this one. Answer it by the end of ' + esc(w.openUntil) +
+      ' for points. A late answer gets no feedback and no extra credit.</div>' + _wuAnswer(w);
+    return h + '</div>';
+  }
+  if (w.late && w.answer) h += '<div class="wu-note">Answered late: scored, with no feedback or extra credit.</div>';
   if (w.score) {
     h += '<div class="wu-score"><b>' + esc(w.score.points) + '/' + esc(w.score.max) + '</b>' +
       (w.score.extra ? ' <span class="wu-plus">+' + esc(w.score.extra) + ' extra credit</span>' : '') +
@@ -1273,10 +1363,7 @@ function _wuCurrent(w) {
   if (w.bridge) h += '<div class="wu-bridge">' + esc(w.bridge) + '</div>';
   h += '<div class="wu-prompt">' + esc(w.warmup) + '</div>';
   if (w.canAnswer) {
-    h += _wuBox("answer", w, w.answer, "Your answer", 5);
-    if (w.answer && !_wuMsgs["answer:" + w.queueId]) {
-      h += '<div class="wu-note">Saved ' + esc(w.savedAt || "") + '. You can change it until the end of the day.</div>';
-    }
+    h += _wuAnswer(w);
   } else if (w.answer) {
     h += '<div class="wu-answer"><b>Your answer</b><br>' + esc(w.answer) + '</div>';
   }
@@ -1301,13 +1388,14 @@ function saveWarmUp(btn) {
     btn.textContent = label;
     const msgEl = document.getElementById("wu-msg-" + kind + "-" + id);
     if (res && res.ok) {
+      const wu = (_lastDashData && _lastDashData.warmUps) || {};
+      const w = [wu.current, wu.previous].filter(function (x) { return x && x.queueId === id; })[0];
       _wuMsgs[key] = { ok: true, text: "Saved " + res.savedAt + "." +
-        (kind === "answer" ? " You can change it until the end of the day." : " It's checked overnight.") };
+        (kind === "answer" ? " You can change it until the end of " + ((w && w.openUntil) || "the day") + "." : " It's checked overnight.") };
       delete _wuDrafts[key];
       _dashCache = {}; // the next refresh fetches the saved text
-      const wu = (_lastDashData && _lastDashData.warmUps) || {};
-      if (kind === "answer" && wu.current && wu.current.queueId === id) wu.current.answer = text;
-      if (kind === "reply" && wu.previous && wu.previous.queueId === id) wu.previous.extraCredit.reply = text;
+      if (w && kind === "answer") w.answer = text;
+      if (w && kind === "reply") w.extraCredit.reply = text;
     } else {
       _wuMsgs[key] = { ok: false, text: (res && res.error) ||
         "Couldn't save. Your writing is still in the box: try again in a minute." };

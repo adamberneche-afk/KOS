@@ -4591,3 +4591,43 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   (and their notebook copies) describe both.
 - The test sandbox's fake Docs gained tables (`FakeTable`, rows, cells),
   a footer, `GlyphType` and `setSpacingBefore`.
+
+## The warm-ups card: one window, the next class day, 2026-10-24
+
+- **The rule (the operator, 2026-10-24):** a student answers the current
+  day's warm-up on its day, and replies to the last warm-up's feedback for
+  extra credit until the end of their next class day. A student who didn't
+  answer the last warm-up can answer it late in the same window: it is
+  scored, but they don't see its feedback and can't earn its extra credit.
+  Older warm-ups are never open. This also settles walk-through findings 4,
+  5, 9 and 15 (`meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`).
+- **The window, 13:** the last warm-up closes at the end of the student's
+  next class day: the next date they have a warm-up queued for (delivered
+  or not; NOT_MEETING rows don't count), or lesson day + 6 if that is
+  sooner or nothing later is queued yet. Day + 6 is 25's limit: its last
+  extra-credit check is the 3:15am run on day + 7 (it reads the lesson date
+  as UTC midnight, the evening before here), so a reply saved on day + 7
+  was never credited (finding 4). The card says "by <that day>". Saving
+  checks the same window.
+- **Late answers, 13 and 25:** a text-box warm-up not answered on its day
+  (INCOMPLETE, or still DELIVERED and blank) shows its question and a box
+  on the card ("Not answered — you can still answer it"). An answer saved
+  after the lesson day (its WarmUpTextBox `submitted_at`) is late: the card
+  reads "Answered late — checked overnight", then "Checked — answered late,
+  so no feedback" with the score and no feedback or reply box. 25's nightly
+  run now also picks up an INCOMPLETE row whose text box has an answer
+  (`_answeredLate_`) and parks it at PENDING_EVAL with no extra credit, like
+  an on-time answer; Flow 4 scores it and the registry gets the total.
+- **Later days, 13 (finding 9):** a warm-up for a later day reads "Opens
+  <EEE, MMM d>" and can't be answered until its day; it read "Ready —
+  answer today".
+- **Blank answers, 13 (finding 15):** a past text-box warm-up left blank
+  and no longer open reads "Not answered", not "Waiting to be checked". A
+  doc warm-up keeps "Waiting to be checked": the dashboard doesn't read the
+  doc. 25 still scores on-time answers only on the night after the lesson
+  day, so a missed 3:15 run leaves one waiting; noted, not changed.
+- **Finding 5** (an older warm-up's reply box hidden by a newer one) is
+  moot: only the last warm-up is ever open.
+- The Terms panel, the student guide (and its notebook copy) and the README
+  say the new rule.
+- **Tests:** `student-dashboard-warmups.test.js`, `warmup-text-box.test.js`.
