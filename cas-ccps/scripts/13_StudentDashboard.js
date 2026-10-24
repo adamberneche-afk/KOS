@@ -1045,6 +1045,7 @@ function buildStudentDashboardHtml_() {
   .wu-feedback{font-size:14px;line-height:1.55;background:#f1f3f4;border-radius:8px;padding:10px 12px;margin-bottom:10px;white-space:pre-line}
   .wu-answer{font-size:14px;line-height:1.5;white-space:pre-line;color:#3c4043}
   .wu-recall{margin-bottom:10px;font-size:14px}
+  .refresh-note{color:#b3261e;font-size:13px;padding-bottom:0}
   .wu-recall summary{cursor:pointer;color:#1557b0;font-weight:500;padding:4px 0}
   .wu-recall .wu-prompt{margin:6px 0}
   .wu-ec{font-size:13px;color:#7627bb;font-weight:500;margin-bottom:6px}
@@ -1095,6 +1096,7 @@ function buildStudentDashboardHtml_() {
      this banner is the same shape (server-driven, appears without any
      user action) and had none. -->
 <div id="new-registration-banner" class="main" role="status" aria-live="polite" style="display:none;padding-bottom:0"></div>
+<div id="refresh-note" class="main refresh-note" role="status" aria-live="polite" style="display:none"></div>
 <div id="main" class="main" style="display:none"></div>
 <footer id="footer"></footer>
 <script>
@@ -1118,6 +1120,7 @@ let _submitMsgs = {};
 // reflection questions. Page memory only: a reload starts them again.
 let _reflect = {};
 const REFLECT_MIN_WORDS = ${REFLECTION_MIN_WORDS};
+const EC_MIN_WORDS = ${DASH_EC_MIN_WORDS};
 
 // A round-trip that happens to finish in well under this many ms would
 // otherwise flash the spinner on and off almost instantly, which reads as
@@ -1183,7 +1186,13 @@ function loadData() {
     })
     .withFailureHandler(function(e) {
       if (myGen !== _loadGen) return;
-      if (cached) { if (refreshBtn) refreshBtn.disabled = false; return; } // still showing valid (if slightly stale) cached data
+      if (cached) {
+        // Still showing the cached data, but say so: a failed refresh used to
+        // look exactly like one that found nothing new (UX audit, 2026-10-22).
+        _showRefreshNote(cached);
+        if (refreshBtn) refreshBtn.disabled = false;
+        return;
+      }
       // Plain-language message for the student; the real e.message is
       // already logged server-side by whatever threw it, so it isn't
       // repeated here — a stack-trace fragment isn't actionable for them.
@@ -1197,7 +1206,17 @@ function loadData() {
     .getStudentDashboardData(term);
 }
 
+function _showRefreshNote(data) {
+  const el = document.getElementById("refresh-note");
+  if (!el) return;
+  el.textContent = "Couldn't refresh. Showing what loaded at " + ((data && data.generatedAt) || "an earlier time") +
+    ". Check your connection and press Refresh.";
+  el.style.display = "block";
+}
+
 function render(data) {
+  const note = document.getElementById("refresh-note");
+  if (note) { note.style.display = "none"; note.textContent = ""; }
   const loading = document.getElementById("loading");
   const main    = document.getElementById("main");
   // Any refresh (manual, term change, or a cache revalidation) rebuilds the
@@ -1345,6 +1364,9 @@ function _wuBox(kind, w, saved, label, rows) {
     '<textarea id="wu-' + kind + '-' + esc(w.queueId) + '" class="wu-text" rows="' + rows + '" data-key="' + esc(key) + '" oninput="wuDraft(this)">' + esc(value || "") + '</textarea>' +
     '<div class="card-actions"><button class="submit-btn" data-kind="' + kind + '" data-queue="' + esc(w.queueId) + '" onclick="saveWarmUp(this)">' +
     (kind === "answer" ? (saved ? "Update answer" : "Save answer") : (saved ? "Update reply" : "Save reply")) + '</button></div>' +
+    (kind === "reply"
+      ? '<div id="wu-n-' + esc(w.queueId) + '" class="wu-note">' + _wuReplyCount(value) + '</div>'
+      : '') +
     '<div id="wu-msg-' + kind + '-' + esc(w.queueId) + '" class="submit-msg ' + (msg ? (msg.ok ? "ok" : "err") : "") + '" role="status">' + (msg ? esc(msg.text) : "") + '</div>';
 }
 
@@ -1391,7 +1413,7 @@ function _wuPrevious(w) {
   } else if (ec.open && ec.canReply) {
     h += '<div class="wu-ec">Extra credit: reply to this feedback in at least ' + esc(ec.minWords) + ' words by ' + esc(ec.byLabel) + '.</div>' +
       _wuBox("reply", w, ec.reply, "Your reply to the feedback", 3) +
-      (ec.reply ? '<div class="wu-note">Your reply is saved and checked overnight.</div>' : '');
+      (ec.reply && wuWords(ec.reply) >= EC_MIN_WORDS ? '<div class="wu-note">Your reply is saved and checked overnight.</div>' : '');
   } else if (ec.open) {
     h += '<div class="wu-ec">Extra credit: reply under the feedback in your doc (at least ' + esc(ec.minWords) + ' words) by ' + esc(ec.byLabel) + '.</div>';
   }
@@ -1411,8 +1433,26 @@ function _wuCurrent(w) {
   return h + '</div>';
 }
 
+// Counted as 25 counts a reply (_warmUpWordCount_: split on spaces), so
+// the number here is the number the nightly check uses. A reply under 10
+// words is still saved, but used to read as if it would count (UX audit).
+function wuWords(text) {
+  const t = String(text || "").trim();
+  return t ? t.split(/\\s+/).length : 0;
+}
+
+function _wuReplyCount(text) {
+  const n = wuWords(text);
+  return n >= EC_MIN_WORDS ? n + " words ✓" : n + " of " + EC_MIN_WORDS + " words needed for extra credit";
+}
+
 function wuDraft(el) {
-  _wuDrafts[el.getAttribute("data-key")] = el.value;
+  const key = el.getAttribute("data-key");
+  _wuDrafts[key] = el.value;
+  if (key.indexOf("reply:") === 0) {
+    const n = document.getElementById("wu-n-" + key.slice(6));
+    if (n) n.textContent = _wuReplyCount(el.value);
+  }
 }
 
 function saveWarmUp(btn) {
@@ -1431,8 +1471,11 @@ function saveWarmUp(btn) {
     if (res && res.ok) {
       const wu = (_lastDashData && _lastDashData.warmUps) || {};
       const w = [wu.current, wu.previous].filter(function (x) { return x && x.queueId === id; })[0];
-      _wuMsgs[key] = { ok: true, text: "Saved " + res.savedAt + "." +
-        (kind === "answer" ? " You can change it until the end of " + ((w && w.openUntil) || "the day") + "." : " It's checked overnight.") };
+      const short = kind === "reply" && wuWords(text) < EC_MIN_WORDS;
+      _wuMsgs[key] = { ok: !short, text: "Saved " + res.savedAt + "." +
+        (kind === "answer" ? " You can change it until the end of " + ((w && w.openUntil) || "the day") + "."
+          : short ? " It has " + wuWords(text) + " words: it needs at least " + EC_MIN_WORDS + " to earn extra credit."
+          : " It's checked overnight.") };
       delete _wuDrafts[key];
       _dashCache = {}; // the next refresh fetches the saved text
       if (w && kind === "answer") w.answer = text;
