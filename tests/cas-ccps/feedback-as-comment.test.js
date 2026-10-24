@@ -336,7 +336,7 @@ test('stampDocument_: the code is in the footer; the end marker is hidden with t
 test('stampDocument_: the assignment table: the task with headings and bullets, then the objectives as a checklist', () => {
   const prompt = 'Title: Assignment: Plan\n\nDescription:\n\nEmployers want *soft* skills.\n\nThe Task:\n\n- Watch the videos.\n- Write a plan.\n\n' +
     'What your work needs to show:\n\n- I can plan to grow professionally (required)\n- I can write clearly\n\n' +
-    'You can also show (not required):\n\n- I can show a strong work ethic\n\nSubmission:\n\nSubmit your plan as a Text Entry.';
+    'You can also show:\n\n- I can show a strong work ethic\n\nSubmission:\n\nSubmit your plan as a Text Entry.';
   const { sandbox, id } = stamp('all', 'CAS-8175-L06', prompt);
   const body = sandbox.DocumentApp.openById(id).getBody();
   const table = Array.from({ length: body.getNumChildren() }, (_, i) => body.getChild(i)).find((p) => p.getType() === 'TABLE');
@@ -351,7 +351,7 @@ test('stampDocument_: the assignment table: the task with headings and bullets, 
     ['PARAGRAPH', 'Description'], ['PARAGRAPH', 'Employers want soft skills.'], ['PARAGRAPH', 'The Task'],
     ['LIST_ITEM', 'Watch the videos.'], ['LIST_ITEM', 'Write a plan.']]);
   assert.deepEqual(kids(table.getCell(3, 0)).map((p) => p.getText()), [
-    '☐ I can plan to grow professionally (required)', '☐ I can write clearly', 'You can also show (not required)',
+    '☐ I can plan to grow professionally (required)', '☐ I can write clearly', 'You can also show',
     '☐ I can show a strong work ethic']);
   assert.ok(!table.getText().includes('Submission'), 'the Canvas submission line stays out');
   assert.ok(!table.getText().includes('Title:'), 'the Canvas title line stays out');

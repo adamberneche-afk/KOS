@@ -4575,8 +4575,10 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
 - **The assignment is a two-row table:** "The assignment" (grey label) with
   the task's own headings in bold and its "- " lines as real bullets, then
   "What your work needs to show" (blue label) with the student's "I can"
-  objectives as a "☐" checklist and "You can also show" under them. Text at
-  9 pt (it was loose 8 pt paragraphs). The Canvas title and "Submission:"
+  objectives as a "☐" checklist and "You can also show" under them (the
+  bold heading alone: its "(not required)" note dropped, the operator,
+  10-24, in the generator, 55b and the cartridges). Text at 9 pt (it was
+  loose 8 pt paragraphs). The Canvas title and "Submission:"
   lines stay out, as before.
 - **The assignment code is in the page footer** ("Assignment code: …"). The
   visible grey "[CONFIG_ID: …] Do not delete this line." line is gone. The
