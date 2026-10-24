@@ -64,7 +64,13 @@ const POINTS = 100;
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // A lesson's *emphasis* as <em>, not literal asterisks (2026-10-22).
-const inline = (s) => esc(s).replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+// An https:// address in a task (a lesson's video link, VIDEO_LINKS.json)
+// becomes a link; a trailing "." or ")" isn't part of it.
+const linkUrls = (h) => h.replace(/https:\/\/[^\s<()]+/g, (u) => {
+  const url = u.replace(/[.,;:]+$/, '');
+  return '<a href="' + url + '">' + url + '</a>' + u.slice(url.length);
+});
+const inline = (s) => linkUrls(esc(s).replace(/\*([^*\n]+)\*/g, '<em>$1</em>'));
 const ident = (...parts) => 'g' + crypto.createHash('md5').update(parts.join('|')).digest('hex');
 const isHeading = (b) => b.type === 'p' && b.runs.some((r) => r.text.trim()) &&
   b.runs.every((r) => r.bold || !r.text.trim()) && textOf(b) === textOf(b).toUpperCase();
@@ -345,4 +351,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, buildCourse, buildLessonCourse, filterForCourse, blocksHtml, studentDashboardUrl };
+module.exports = { build, buildCourse, buildLessonCourse, filterForCourse, blocksHtml, studentDashboardUrl, assignmentXml };

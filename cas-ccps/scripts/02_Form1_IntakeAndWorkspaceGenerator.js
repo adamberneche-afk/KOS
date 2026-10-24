@@ -432,6 +432,7 @@ function _docTableSection_(table, section, text, checklist) {
     }
     _docFontSize_(para, DOC_TABLE_FONT_SIZE);
     md.spans.forEach(sp => para.editAsText().setItalic(sp[0], sp[1], true));
+    _docLinkUrls_(para);
   });
   // A new cell starts with one empty paragraph; drop it once there is text.
   if (cell.getNumChildren() > 1) cell.removeChild(cell.getChild(0));
@@ -447,6 +448,23 @@ function _docAssignmentTable_(body, promptContent) {
   }
   table.setBorderColor("#9aa0a6");
   return table;
+}
+
+// Makes every https:// address in a paragraph a link (a lesson's video
+// links, VIDEO_LINKS.json, 2026-10-24). A trailing ")" or "." isn't part of
+// the address. A paragraph that can't take a link keeps the plain text.
+function _docLinkUrls_(para) {
+  const text = para.getText();
+  const re = /https:\/\/[^\s()<>"]+/g;
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const url = m[0].replace(/[.,;:]+$/, "");
+    try {
+      para.editAsText().setLinkUrl(m.index, m.index + url.length - 1, url);
+    } catch (e) {
+      Logger.log("stampDocument_: no link for an address in the task: " + e.message);
+    }
+  }
 }
 
 // The doc's own navigation (stampDocument_). None of it may contain the
