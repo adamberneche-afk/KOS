@@ -88,10 +88,15 @@
 >   #265 (the overnight check runs the setup checks; `EvaluationLog`;
 >   WarmUpQueue `delivered_at` / `answered_at`) and #267 (cas-ccps comment
 >   and doc fixes from the documentation scan).
-> - **The next push** carries #237 to #267, plus the end-of-10-23 branch
->   once merged (parent reports written by KOS and sent by the teacher, D1;
->   bug 4's overnight line; rule 12's `typeof` guards removed; the Teacher
->   Dashboard's manifest drops `script.send_mail`): `node run.js --latest --only
+> - **2026-10-23: the Central Ledger was pushed** and runs at least #265
+>   (the overnight setup checks show in `KOS_CAS_SIGNAL`); which commit, and
+>   whether the other cas-ccps projects went with it, is for `run.js`'s
+>   output to confirm.
+> - **The next push** carries #268 (parent reports written by KOS and sent
+>   by the teacher, D1; bug 4's overnight line; rule 12's `typeof` guards
+>   removed; the Teacher Dashboard's manifest drops `script.send_mail`) and
+>   #271 (the watchdog knows `NOT_MEETING`), and #237 to #267 to any
+>   project the 10-23 push missed: `node run.js --latest --only
 >   central-ledger,teacher-dashboard,student-dashboard,master-student-template`
 >   (plus the other systems' projects), which promotes both web apps. The
 >   checks after it, and the rest of the operator's queue, are in
