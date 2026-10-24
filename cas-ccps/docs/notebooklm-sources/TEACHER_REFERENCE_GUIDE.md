@@ -31,10 +31,10 @@ Open a student's document from their row. Each document is shared with that stud
 **What the student sees, top to bottom:**
 
 - A small grey page header: who and what (name, class, teacher, block, period, lesson), a “Your dashboard” link, and a “Feedback:” line that says where the work stands.
-- The lesson title, a “↓ Go to your response” link, and the assignment in small (8 pt) text.
+- The lesson title, a “↓ Go to your response” link, and the assignment in a two-row box (9 pt): “The assignment” (the task, with its headings and bullets), then “What your work needs to show” (the student’s “I can” objectives as a checklist).
 - A “Your response” heading, “Write your answer under the grey line below.” and “↑ Back to the assignment”.
 - The grey “── YOUR RESPONSE BEGINS HERE ──” line, then the student's writing space (10 pt).
-- A small grey “[CONFIG_ID: …] Do not delete this line.” at the bottom. Only the text between the grey line and this line is checked.
+- A last line, “↑ Write your response above. Nothing below this is checked.” Only the text between the grey line and the end of the writing space is checked. The assignment code is in the page footer. (Older docs end on a grey “[CONFIG_ID: …] Do not delete this line.” line instead.)
 
 > **Feedback is a comment, not text in the document.** With feedback as a comment (the setting is on for every course), each check adds a new comment. Click Comments (top right) to read them. A student who presses Resolve doesn't delete it.
 
@@ -164,7 +164,7 @@ Copying a report records the time and your account, so the panel shows “Copied
 | --- | --- | --- |
 | “My card says Taking longer than usual ⚠” or “Couldn't be checked ⚠” | The check timed out, or its result could not be used. Not their fault; their work is safe | Follow the email you got. A timeout (“Feedback didn’t finish”) gives the steps to restart the check; the student does not need to do anything yet. A result that could not be used (“Feedback couldn’t be made”) asks you to have the student press Submit for Feedback again. The row on your dashboard says which. Contact your admin if it keeps happening |
 | “I submitted but there's no feedback” | The check may still be in line or running | Feedback is a comment: have them open the document and click Comments. Their card says “Waiting for feedback…” or “Being checked now…” while it's on its way |
-| “It says Write a little more first” | Fewer than 25 words below the grey line | Ask them to write more under “── YOUR RESPONSE BEGINS HERE ──”, above the “Do not delete this line” line |
+| “It says Write a little more first” | Fewer than 25 words below the grey line | Ask them to write more under “── YOUR RESPONSE BEGINS HERE ──”, above the last line of the page |
 | “My assignment isn't on my dashboard” | Wrong Google account, the lesson hasn't been released, or they're not enrolled | Have them sign into their school account. Check the lesson has a start date in 📅 Lessons. If they're not on your roster either, see How Students Get Their Documents |
 | “I don't see the 📊 menu in my document” | Expected: that menu doesn't run for student accounts | Send them to their dashboard to press **Submit for Feedback** |
 | “I deleted part of my document” | They changed the assignment, the grey line or the bottom line | File → Version history → See version history to restore. If the grey line or the CONFIG_ID line is gone for good, contact your admin |

@@ -24,15 +24,15 @@ Write in one place: under the grey line. Here's everything on the page, top to b
 
 - **Page header (small grey text)** (System writes here): Your name, class, teacher, block, period and the lesson. A **Your dashboard** link. A **Feedback:** line that says where your work stands.
 
-- **📋 The lesson title and the assignment** (Read this): What to do, in small print. **↓ Go to your response** jumps down to where you write.
+- **📋 The lesson title and the assignment** (Read this): The assignment is in a box: **The assignment** says what to do, and **What your work needs to show** lists your “I can” goals as a checklist. **↓ Go to your response** jumps down to where you write.
 
 - **“Your response” heading** (Read this): Under it: “Write your answer under the grey line below.” and **↑ Back to the assignment**.
 
 - **✍️ ── YOUR RESPONSE BEGINS HERE ──** (You write here): The grey line. Write under it, in the bigger text.
 
-- **[CONFIG_ID: …] Do not delete this line.** (Do not edit): A small grey line at the bottom. It tells the system which assignment this is.
+- **“↑ Write your response above. Nothing below this is checked.”** (Do not edit): The last line of the page. Your assignment code is in the page footer. (Older documents have a grey “[CONFIG_ID: …] Do not delete this line.” line here instead: write above it.)
 
-> 🚫 **Keep your writing between the grey line and the “Do not delete this line” line.** Anything above the grey line or below the bottom line isn't checked. Don't change the assignment, the grey line or the bottom line.
+> 🚫 **Keep your writing under the grey line and above the last line of the page.** Anything above the grey line or below the last line is not checked. Do not change the assignment, the grey line or the last line.
 
 > 💡 **Your feedback isn't in the document text.** It's a comment on the document. Click **Comments** (top right) to see it.
 
@@ -146,7 +146,7 @@ Press ↻ Refresh on your dashboard. If the card says “Waiting for feedback…
 
 ### It says “Write a little more first.”
 
-You need at least 25 words under the grey line. The message says about how many words it found. If it says you have not written anything under “Your response” yet, check that you wrote under the “── YOUR RESPONSE BEGINS HERE ──” line and above the “Do not delete this line” line.
+You need at least 25 words under the grey line. The message says about how many words it found. If it says you have not written anything under “Your response” yet, check that you wrote under the “── YOUR RESPONSE BEGINS HERE ──” line and above the last line of the page.
 
 ### It says “This is already waiting for feedback.”
 
@@ -178,7 +178,7 @@ That's normal. That menu doesn't work for student accounts. Use **Submit for Fee
 
 ### I deleted part of my document by accident.
 
-Try **File → Version history → See version history** and restore an earlier version. If you deleted the grey line or the bottom “Do not delete this line” line and can't get it back, tell your teacher.
+Try **File → Version history → See version history** and restore an earlier version. If you deleted the grey line or the end of the page and cannot get it back, tell your teacher.
 
 ### Something in My Info is wrong.
 
