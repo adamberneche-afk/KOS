@@ -34,7 +34,10 @@ the lesson data (`55b_LessonAssignmentData.js`, 67 lessons):
   link" (counted by matching the task text, so approximate). Flow 2 is
   handed the doc, so a pasted link is only a URL to the work.
 - **Missing material.** All 8 lessons that mention videos have no link in
-  the task (8175 L06: "Watch the provided videos").
+  the task (8175 L06: "Watch the provided videos"). *Corrected 2026-10-24:
+  two tasks send students to a video (8175 L06 and L34); the other six only
+  mention one. The path for the links is built (#289); the links are the
+  teacher's.*
 - **The criteria are hard to find.** "What your work needs to show" is
   plain 8 pt text like the rest, and its items are VDOE competency titles
   ("Demonstrate professionalism"), not checks a student can apply.

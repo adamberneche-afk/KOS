@@ -24,3 +24,10 @@ returned (escape characters such as `\!`, `\#`, `\[` kept as-is).
 Not copied: the "WINTER OLYMPICS 2026" slide deck and "LEADERHUB_MANIFEST_IDS" doc in the
 8175 folder. The 8177 folder has two identical "Lesson Plan: Employee Handbook & Operations"
 docs; only one copy is kept (`8177/employee-handbook-operations.md`).
+
+`VIDEO_LINKS.json` holds the videos a lesson's student task tells students to watch (8175 L06 and
+L34 today), keyed by lesson (`8175-L06`), each `{ "title": …, "url": "https://…" }`. The generator
+adds a `- Video: <title> (<url>)` line under the task's "Watch" line; new student docs and the Canvas
+cartridge make it a link. Docs already made get it from `previewVideoLinkRefresh()` /
+`applyVideoLinkRefresh()` (Central Ledger, 53). An empty list is a lesson still waiting on its link,
+and a lesson whose task says to watch a video must be listed (`lesson-assignments.test.js`).
