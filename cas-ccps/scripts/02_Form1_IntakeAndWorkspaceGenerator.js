@@ -391,7 +391,63 @@ function _docStudentTask_(text) {
 
 // The writing space's empty lines, and the doc's last line (stampDocument_).
 const DOC_WRITING_LINES = 6;
-const DOC_BELOW_END_NOTE = "↑ Write under “Your response”, above the assignment-code line. Nothing below that line is checked.";
+const DOC_BELOW_END_NOTE = "↑ Write your response above. Nothing below this is checked.";
+
+// The assignment in a two-row table (2026-10-24, the operator's layout): the
+// task under a grey label, and what the work needs to show (the student's
+// "I can" objectives, as a checklist) under a blue one. Text at 9 pt.
+const DOC_TABLE_FONT_SIZE = 9;
+const DOC_SHOW_HEADING = "What your work needs to show:";
+const DOC_TABLE_SECTIONS = {
+  task: { label: "The assignment", labelColor: "#e8eaed", bodyColor: "#ffffff" },
+  show: { label: "What your work needs to show", labelColor: "#d2e3fc", bodyColor: "#f4f8fe" }
+};
+
+// One table section: a label row, then a body row with the text laid out:
+// a short line ending ":" is a bold heading, "- " lines are a bulleted list
+// (a checklist "☐" in the objectives section), the rest plain paragraphs.
+function _docTableSection_(table, section, text, checklist) {
+  const head = table.appendTableRow().appendTableCell(section.label);
+  head.setBackgroundColor(section.labelColor);
+  head.getChild(0).asParagraph().editAsText().setFontSize(DOC_TABLE_FONT_SIZE).setBold(true);
+  const cell = table.appendTableRow().appendTableCell("");
+  cell.setBackgroundColor(section.bodyColor);
+  String(text || "").split("\n").forEach(raw => {
+    const line = raw.trim();
+    if (!line) return;
+    const item = /^- /.test(line);
+    const md = _docItalicSpans_(item ? line.slice(2) : line);
+    let para;
+    if (item && !checklist) {
+      para = cell.appendListItem(md.text).setGlyphType(DocumentApp.GlyphType.BULLET);
+    } else if (item) {
+      para = cell.appendParagraph("☐ " + md.text);
+      md.spans = md.spans.map(sp => [sp[0] + 2, sp[1] + 2]);
+    } else if (/:$/.test(line) && line.length < 60) {
+      para = cell.appendParagraph(md.text.replace(/:$/, ""));
+      para.editAsText().setBold(true);
+      para.setSpacingBefore(6);
+    } else {
+      para = cell.appendParagraph(md.text);
+    }
+    _docFontSize_(para, DOC_TABLE_FONT_SIZE);
+    md.spans.forEach(sp => para.editAsText().setItalic(sp[0], sp[1], true));
+  });
+  // A new cell starts with one empty paragraph; drop it once there is text.
+  if (cell.getNumChildren() > 1) cell.removeChild(cell.getChild(0));
+}
+
+function _docAssignmentTable_(body, promptContent) {
+  const task = _docStudentTask_(promptContent);
+  const cut = task.indexOf(DOC_SHOW_HEADING);
+  const table = body.appendTable();
+  _docTableSection_(table, DOC_TABLE_SECTIONS.task, cut === -1 ? task : task.slice(0, cut), false);
+  if (cut !== -1) {
+    _docTableSection_(table, DOC_TABLE_SECTIONS.show, task.slice(cut + DOC_SHOW_HEADING.length), true);
+  }
+  table.setBorderColor("#9aa0a6");
+  return table;
+}
 
 // The doc's own navigation (stampDocument_). None of it may contain the
 // response marker's text.
@@ -419,10 +475,12 @@ function _docLinkToBookmark_(doc, para, label, target) {
 // below the CONFIG_ID footer for Script 01's ID fallback.
 //
 // Zone 1: Feedback header  (prepend zone — Studio writes here)
-// Zone 2: Assignment prompt (injected from teacher's template)
+// Zone 2: Assignment prompt (injected from teacher's template), as a two-row
+//         table: the task, then what the work needs to show
 // Zone 3: "Your response" heading, the jump link back, the response
 //         divider and the student work area
-// Zone 4: CONFIG_ID footer + system ID block (invisible)
+// Zone 4: CONFIG_ID + system ID block (one invisible line, the response
+//         zone's end) and the assignment code in the page footer
 // ---------------------------------------------------------------------------
 function stampDocument_(fileId, configId, studentName, block,
                          className, teacherName, period, unitName,
@@ -477,13 +535,7 @@ function stampDocument_(fileId, configId, studentName, block,
   title.editAsText().setFontSize(14).setBold(true);
   const toResponse = _docFontSize_(body.appendParagraph(DOC_JUMP_TO_RESPONSE), DOC_BODY_FONT_SIZE);
 
-  if (promptContent) {
-    _docStudentTask_(promptContent).split("\n").forEach(line => {
-      const md = _docItalicSpans_(line);
-      const para = _docFontSize_(body.appendParagraph(md.text), DOC_BODY_FONT_SIZE);
-      md.spans.forEach(sp => para.editAsText().setItalic(sp[0], sp[1], true));
-    });
-  }
+  if (promptContent) _docAssignmentTable_(body, promptContent);
 
   _docFontSize_(body.appendParagraph(""), DOC_BODY_FONT_SIZE);
 
@@ -506,25 +558,30 @@ function stampDocument_(fileId, configId, studentName, block,
     _docFontSize_(body.appendParagraph(""), DOC_RESPONSE_FONT_SIZE);
   }
 
-  body.appendParagraph("[CONFIG_ID: " + configId + "] Do not delete this line.")
-    .editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY);
-
-  // Zone 4b: System ID block — invisible white 1pt text for Script 01 fallback
-  // Must be last so body.clear() earlier in this function doesn't wipe it
+  // Zone 4: the end of the response zone and the system IDs, in one line of
+  // invisible white 1pt text. "[CONFIG_ID:" is where every reader of the
+  // response stops (01, 03, 13, and Studio's Flow 2 extract step, 42), and
+  // 01 reads the code from it; it used to be a visible grey line ("Do not
+  // delete this line"), which students could edit. The code a person reads
+  // is in the page footer now (2026-10-24, the operator's layout).
   // SYS_DASHBOARD_URL is what the doc's menu actually uses now: it asks the
   // Student Dashboard web app (which runs as the admin) for the student's
   // Ledger row, rather than opening the Ledger as the student. The two
   // spreadsheet IDs stay for older copies of Script 01.
-  if (ledgerSsId && adminSsId) {
-    const sysBlock =
-      "[SYS_LEDGER_SS_ID:" + ledgerSsId + "]" +
-      "[SYS_ADMIN_SS_ID:"  + adminSsId  + "]" +
-      (studentDashboardUrl ? "[SYS_DASHBOARD_URL:" + studentDashboardUrl + "]" : "");
-    const sysPara = body.appendParagraph(sysBlock);
-    sysPara.editAsText()
-      .setFontSize(1)
-      .setForegroundColor("#ffffff");
-  }
+  const sysBlock = "[CONFIG_ID: " + configId + "]" +
+    (ledgerSsId && adminSsId
+      ? "[SYS_LEDGER_SS_ID:" + ledgerSsId + "]" +
+        "[SYS_ADMIN_SS_ID:"  + adminSsId  + "]" +
+        (studentDashboardUrl ? "[SYS_DASHBOARD_URL:" + studentDashboardUrl + "]" : "")
+      : "");
+  body.appendParagraph(sysBlock).editAsText().setFontSize(1).setForegroundColor("#ffffff");
+
+  // The page footer: the assignment code, for the teacher and support.
+  const footer = doc.getFooter() || doc.addFooter();
+  footer.clear();
+  const code = footer.getNumChildren() ? footer.getChild(0).asParagraph() : footer.appendParagraph("");
+  code.setText("Assignment code: " + configId);
+  code.editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY);
 
   // A normal last paragraph (2026-10-22, UX audit fix-first 3): the doc used
   // to end on the 1pt white system block, so clicking below the text or
