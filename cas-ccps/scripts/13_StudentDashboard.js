@@ -171,7 +171,8 @@ function getStudentDashboardData(termFilter) {
   });
 
   // Warm-ups aren't Ledger rows, and they don't follow the term filter: the
-  // card always shows the last two weeks.
+  // card shows the last warm-up, any earlier one still open for extra
+  // credit, and the current one.
   const warmUps = getStudentWarmUps_(ss, cfg, googleId, new Date());
 
   // Empty state with helpful context. "No results" from picking a term
@@ -210,8 +211,10 @@ function getStudentDashboardData(termFilter) {
 
 // ---------------------------------------------------------------------------
 // Warm-ups card: the last warm-up's feedback (and its extra-credit reply
-// while that window is open) and the current warm-up. Older warm-ups stay
-// in the Ledger; the card doesn't list them.
+// while that window is open), any earlier warm-up whose extra-credit window
+// is still open (walk-through finding 5: an alternate-day group's newer
+// warm-up used to hide it after two days), and the current warm-up. Older
+// warm-ups stay in the Ledger; the card doesn't list them.
 //
 // WarmUpQueue (25_WarmUpWriter.js's WQ25_*; 25 isn't in this project, so
 // the columns are repeated here): google_id 4, lesson_date 5,
@@ -221,7 +224,10 @@ function getStudentDashboardData(termFilter) {
 // WarmUpTextBox row (00's WTB) and no doc. The student answers on the
 // lesson day; the 3:15am run after it (runWarmUpEvaluation) scores it, and
 // replies are checked each night for EXTRA_CREDIT_RECHECK_WINDOW_DAYS (7)
-// with at least EXTRA_CREDIT_MIN_WORDS (10) words.
+// with at least EXTRA_CREDIT_MIN_WORDS (10) words. 25's last check is the
+// 3:15am run on lesson day + 7 (it reads the lesson date as UTC midnight,
+// the evening before here), so the card takes replies through day + 6
+// (walk-through finding 4): a reply saved on day + 7 was never credited.
 // ---------------------------------------------------------------------------
 const DASH_WQ_GOOGLE_ID    = 4;
 const DASH_WQ_LESSON_DATE  = 5;
@@ -236,7 +242,7 @@ const DASH_WQ_TOTAL        = 16;
 const DASH_SCORE_MAX       = 10; // length 6 + grammar 1 + engagement 3 (25's thresholds, 41's ranges)
 const DASH_WQ_FEEDBACK     = 17;
 const DASH_WQ_WIDTH        = 18;
-const DASH_EC_DAYS         = 7;
+const DASH_EC_DAYS         = 6; // the last day the card takes a reply; 25's window is 7 nights
 const DASH_EC_MIN_WORDS    = 10;
 const DASH_ANSWER_MAX      = 5000;
 const DASH_REPLY_MAX       = 2000;
@@ -273,9 +279,14 @@ function getStudentWarmUps_(ss, cfg, googleId, now) {
   const past = own.filter(function (w) { return w.lessonDate < today; });
   const cur = upcoming.length ? upcoming[0] : null;
   const prev = past.length ? past[past.length - 1] : null;
+  // Older warm-ups whose reply window is still open, newest first.
+  const earlier = past.slice(0, -1).reverse()
+    .map(function (w) { return _dashWarmUpView_(w, tz, today, ecFrom); })
+    .filter(function (v) { return v.extraCredit.open; });
   return {
     current:  cur ? _dashWarmUpView_(cur, tz, today, ecFrom) : null,
-    previous: prev ? _dashWarmUpView_(prev, tz, today, ecFrom) : null
+    previous: prev ? _dashWarmUpView_(prev, tz, today, ecFrom) : null,
+    earlier:  earlier
   };
 }
 
@@ -286,7 +297,11 @@ function _dashWarmUpView_(w, tz, today, ecFrom) {
   try { course = String(JSON.parse(String(w.row[DASH_WQ_LESSON_SNAP] || "{}")).course_name || ""); }
   catch (e) { /* a snapshot that doesn't parse just leaves the course off */ }
   const [y, m, d] = w.lessonDate.split("-").map(Number);
-  const st = resolveWarmUpStatus_(status, w.lessonDate, today, !!tbRow);
+  const answer = tbRow ? String(tbRow[WTB.RESPONSE] || "") : "";
+  const dayName = Utilities.formatDate(new Date(y, m - 1, d, 12), tz, "EEE");
+  const st = resolveWarmUpStatus_(status, w.lessonDate, today, !!tbRow,
+    tbRow ? answer.trim() !== "" : null,
+    Utilities.formatDate(new Date(y, m - 1, d, 12), tz, "EEE, MMM d"));
   const credited = Number(w.row[DASH_WQ_EXTRA_CREDIT] || 0) === 1;
   const ecOpen = status === "SCORED" && !credited && w.lessonDate >= ecFrom;
   const deadline = new Date(y, m - 1, d + DASH_EC_DAYS, 12);
@@ -294,6 +309,8 @@ function _dashWarmUpView_(w, tz, today, ecFrom) {
     queueId:       w.queueId,
     dateLabel:     Utilities.formatDate(new Date(y, m - 1, d, 12), tz, "EEE, MMM d"),
     isToday:       w.lessonDate === today,
+    // The answer can be changed until the end of the lesson day.
+    openUntil:     w.lessonDate === today ? "the day" : dayName,
     course:        course,
     textBox:       !!tbRow,
     docUrl:        w.docId ? "https://docs.google.com/document/d/" + w.docId + "/edit" : null,
@@ -301,7 +318,7 @@ function _dashWarmUpView_(w, tz, today, ecFrom) {
     statusClass:   st.statusClass,
     bridge:        tbRow ? String(tbRow[WTB.BRIDGE] || "") : "",
     warmup:        tbRow ? String(tbRow[WTB.WARMUP] || "") : "",
-    answer:        tbRow ? String(tbRow[WTB.RESPONSE] || "") : "",
+    answer:        answer,
     savedAt:       tbRow && tbRow[WTB.SUBMITTED_AT] ? formatDate_(tbRow[WTB.SUBMITTED_AT]) : null,
     canAnswer:     !!tbRow && status === "DELIVERED" && w.lessonDate >= today,
     feedback:      status === "SCORED" ? String(w.row[DASH_WQ_FEEDBACK] || "") : "",
@@ -335,13 +352,21 @@ function dashIsoDate_(v, tz) {
   return m ? m[1] + "-" + m[2] + "-" + m[3] : "";
 }
 
-// Same statusClass names (and colors) as the assignment cards.
-function resolveWarmUpStatus_(status, lessonDate, today, textBox) {
+// Same statusClass names (and colors) as the assignment cards. `answered` is
+// true or false for a text-box warm-up and null for a doc one, whose text
+// the dashboard doesn't read; `dateLabel` names a later day's warm-up.
+function resolveWarmUpStatus_(status, lessonDate, today, textBox, answered, dateLabel) {
   const where = textBox ? "below" : "in your doc";
   switch (status) {
     case "DELIVERED":
-      return lessonDate >= today
-        ? { displayStatus: "Ready — answer today", statusClass: "NEEDS_ACTION" }
+      // Walk-through finding 9: a later day's warm-up isn't due today.
+      if (lessonDate > today) {
+        return { displayStatus: "Open — for " + (dateLabel || lessonDate), statusClass: "NEEDS_ACTION" };
+      }
+      if (lessonDate === today) return { displayStatus: "Ready — answer today", statusClass: "NEEDS_ACTION" };
+      // Finding 15: a blank past answer isn't waiting for anything.
+      return answered === false
+        ? { displayStatus: "Not answered", statusClass: "NOT_STARTED" }
         : { displayStatus: "Waiting to be checked", statusClass: "IN_PROGRESS" };
     case "PENDING_EVAL":
     case "EVAL_ERROR":
@@ -1215,9 +1240,11 @@ let _wuMsgs = {};   // same keys -> { ok, text } from this visit's saves
 
 function renderWarmUps(data) {
   const wu = data.warmUps || {};
-  if (!wu.current && !wu.previous) return "";
+  const earlier = wu.earlier || [];
+  if (!wu.current && !wu.previous && !earlier.length) return "";
   let html = '<div class="group-header">Warm-ups</div><div class="card warmup-card" role="region" aria-label="Warm-ups">';
-  if (wu.previous) html += _wuPrevious(wu.previous);
+  if (wu.previous) html += _wuPrevious(wu.previous, "Last warm-up");
+  earlier.forEach(function (w) { html += _wuPrevious(w, "Earlier warm-up"); });
   if (wu.current) html += _wuCurrent(wu.current);
   return html + '</div>';
 }
@@ -1244,8 +1271,8 @@ function _wuBox(kind, w, saved, label, rows) {
     '<div id="wu-msg-' + kind + '-' + esc(w.queueId) + '" class="submit-msg ' + (msg ? (msg.ok ? "ok" : "err") : "") + '" role="status">' + (msg ? esc(msg.text) : "") + '</div>';
 }
 
-function _wuPrevious(w) {
-  let h = '<div class="wu-section">' + _wuHead("Last warm-up", w);
+function _wuPrevious(w, label) {
+  let h = '<div class="wu-section">' + _wuHead(label, w);
   if (w.score) {
     h += '<div class="wu-score"><b>' + esc(w.score.points) + '/' + esc(w.score.max) + '</b>' +
       (w.score.extra ? ' <span class="wu-plus">+' + esc(w.score.extra) + ' extra credit</span>' : '') +
@@ -1275,7 +1302,7 @@ function _wuCurrent(w) {
   if (w.canAnswer) {
     h += _wuBox("answer", w, w.answer, "Your answer", 5);
     if (w.answer && !_wuMsgs["answer:" + w.queueId]) {
-      h += '<div class="wu-note">Saved ' + esc(w.savedAt || "") + '. You can change it until the end of the day.</div>';
+      h += '<div class="wu-note">Saved ' + esc(w.savedAt || "") + '. You can change it until the end of ' + esc(w.openUntil || "the day") + '.</div>';
     }
   } else if (w.answer) {
     h += '<div class="wu-answer"><b>Your answer</b><br>' + esc(w.answer) + '</div>';
@@ -1301,13 +1328,18 @@ function saveWarmUp(btn) {
     btn.textContent = label;
     const msgEl = document.getElementById("wu-msg-" + kind + "-" + id);
     if (res && res.ok) {
+      const wu = (_lastDashData && _lastDashData.warmUps) || {};
+      const cur = wu.current && wu.current.queueId === id ? wu.current : null;
       _wuMsgs[key] = { ok: true, text: "Saved " + res.savedAt + "." +
-        (kind === "answer" ? " You can change it until the end of the day." : " It's checked overnight.") };
+        (kind === "answer" ? " You can change it until the end of " + ((cur && cur.openUntil) || "the day") + "." : " It's checked overnight.") };
       delete _wuDrafts[key];
       _dashCache = {}; // the next refresh fetches the saved text
-      const wu = (_lastDashData && _lastDashData.warmUps) || {};
-      if (kind === "answer" && wu.current && wu.current.queueId === id) wu.current.answer = text;
-      if (kind === "reply" && wu.previous && wu.previous.queueId === id) wu.previous.extraCredit.reply = text;
+      if (kind === "answer" && cur) cur.answer = text;
+      if (kind === "reply") {
+        [wu.previous].concat(wu.earlier || []).forEach(function (w) {
+          if (w && w.queueId === id) w.extraCredit.reply = text;
+        });
+      }
     } else {
       _wuMsgs[key] = { ok: false, text: (res && res.error) ||
         "Couldn't save. Your writing is still in the box: try again in a minute." };

@@ -4591,3 +4591,30 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   (and their notebook copies) describe both.
 - The test sandbox's fake Docs gained tables (`FakeTable`, rows, cells),
   a footer, `GlyphType` and `setSpacingBefore`.
+
+## The warm-ups card: extra-credit dates, earlier warm-ups, later days, blank answers, 2026-10-24
+
+- **Why:** walk-through findings 4, 5, 9 and 15
+  (`meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`), the ones that told a
+  student something wrong.
+- **4, 13:** the card took an extra-credit reply through lesson day + 7,
+  but 25 makes its last check at 3:15am on day + 7 (it reads the lesson
+  date as UTC midnight, the evening before here) and then stamps the row
+  expired, so a reply saved that day was never credited. `DASH_EC_DAYS` is
+  now 6: the card says "by <day + 6>" and closes after it. 25 is unchanged.
+- **5, 13:** only the most recent past warm-up offered extra credit, so for
+  an alternate-day group a newer warm-up hid the older one's reply box
+  after about two days, and a blank (INCOMPLETE) day hid the one before it
+  at once. `getStudentWarmUps_` adds `earlier`: every older warm-up still
+  open for a reply, newest first, each shown as "Earlier warm-up" with its
+  own reply box. Saving checks the same window as before.
+- **9, 13:** a later day's warm-up read "Ready — answer today". It now
+  reads "Open — for <EEE, MMM d>", and the saved note says it can be
+  changed until the end of that day (`openUntil`). It can still be
+  answered ahead.
+- **15, 13:** a past text-box warm-up with a blank answer read "Waiting to
+  be checked". It now reads "Not answered". A doc warm-up keeps "Waiting to
+  be checked": the dashboard doesn't read the doc. 25 still scores only
+  yesterday's warm-ups, so one missed 3:15 run leaves an answered warm-up
+  waiting; noted, not changed this week.
+- **Tests:** `student-dashboard-warmups.test.js`.
