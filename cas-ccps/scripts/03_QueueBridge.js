@@ -1,9 +1,10 @@
 // =============================================================================
 // FILE: 03_QueueBridge.js
 // BOUND TO: Central Ledger spreadsheet
-// TRIGGERS:
-//   bridgeQueue              — Time-driven, every 1 minute
-//   backPropagateCompletions — Time-driven, every 2 minutes
+// TRIGGERS: both run inside the Ledger cycle (64, installLedgerCycle()):
+//   bridgeQueue              — every 1 minute
+//   backPropagateCompletions — every 2 minutes (a cadence only the cycle can
+//                              give; a plain trigger takes 1, 5, 10, 15 or 30)
 // =============================================================================
 
 // Ledger column indices (0-based)

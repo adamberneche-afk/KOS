@@ -4485,3 +4485,15 @@ status (check for Studio residue)". All 47 were `NOT_MEETING`, which 24's
 warm-up queued for a day the student's period doesn't meet. The queue
 watchdog (34) never added it to its known WarmUpQueue statuses, so every
 retired warm-up read as residue. It's known now; a test holds it.
+
+## Backprop's trigger text matches the Ledger cycle, 2026-10-24
+
+16's setup text (the Ledger's SETUP INSTRUCTIONS tab and the admin
+manual) said to set `backPropagateCompletions` as a trigger "every 2
+minutes", and 03's header said the same. Apps Script takes only 1, 5, 10,
+15 or 30, so that trigger could never be made. The cadence is real only
+inside the Ledger cycle (64's `LC_JOBS`). The text now says to set it every
+minute, then run `installLedgerCycle()`, which takes the three timed
+triggers over and runs backprop every 2 minutes. The bug handoff
+(`meta/CAS_BUG_HANDOFF_2026-10-16.md`) now reads bugs 1 to 4 as fixed and
+live, each checked against the code.
