@@ -32,3 +32,6 @@ cas-ccps/clasp/local/
 # notebook sources (8+ MB). Generate locally from the zip of main; never
 # committed, so it can't go stale in the repo. See that folder's README.
 meta/notebook-codebase/KOS_CODE_*.md
+# The same for tools/notebook-context/build.js: GUIDE.md and the README are
+# committed, the generated sources are not.
+meta/notebook-context/KOS_CONTEXT_*.md
