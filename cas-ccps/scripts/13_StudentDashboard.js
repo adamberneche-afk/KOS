@@ -1233,6 +1233,7 @@ function render(data) {
     </div>\`;
     loading.style.display = "none";
     main.style.display    = "block";
+    _setFooter(data); // walk-through finding 17: it stayed blank here
     _populateTermDropdown(data);
     return;
   }
@@ -1300,10 +1301,14 @@ function render(data) {
   loading.style.display = "none";
   main.style.display    = "block";
   main.scrollTop = _scrollTop;
-  document.getElementById("footer").textContent =
-    "Last refreshed: " + data.generatedAt + "  ·  " + data.googleId;
+  _setFooter(data);
 
   _populateTermDropdown(data);
+}
+
+function _setFooter(data) {
+  document.getElementById("footer").textContent =
+    "Last refreshed: " + data.generatedAt + "  ·  " + data.googleId;
 }
 
 // Warm-ups card, above the assignments: the last warm-up's feedback (with

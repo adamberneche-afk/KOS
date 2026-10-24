@@ -320,3 +320,9 @@ test('the "just registered" banner: one line per class the server lists, none wi
   ctx.renderNewRegistrationBanner({ assignments: [{ className: 'x', isNewRegistration: true }] });
   assert.equal(els['new-registration-banner'].style.display, 'none');
 });
+
+test('the footer is set when the student has no assignments too (finding 17)', () => {
+  const { ctx, els } = page();
+  ctx.render({ googleId: ME, generatedAt: 'Oct 24, 2026', assignments: [], warmUps: {}, emptyReason: 'No assignments.' });
+  assert.equal(els.footer.textContent, 'Last refreshed: Oct 24, 2026  ·  ' + ME);
+});
