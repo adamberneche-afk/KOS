@@ -45,7 +45,13 @@ its `review_note` first: it is what the teacher wants changed):
      `## Key terms` and `## Example` sections of `lessons/8177/prompts/<slug>.md`
      (the builder joins them in that order). Leave out the generated
      checklist ("What your work needs to show"): the builder writes it from
-     the tiers.
+     the tiers and the lesson's "I can" objectives.
+   - the **"I can" objectives** (`curriculum/lessons/STUDENT_CRITERIA.json`):
+     one line per competency the tiers give the lesson, in the student's
+     voice, "I can [the skill] [how this task shows it]", 30 words at most.
+     A new lesson or a changed tier needs them (`student-criteria.test.js`
+     fails until every tiered competency has one); draft them and name them
+     in the proposal for the teacher to approve.
    - an **8175 objective**: the first paragraph of the task's Description.
    - **8175 vocabulary**: there is no field; the terms go into the task's
      text if the teacher wants students to see them.

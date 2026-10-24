@@ -18,7 +18,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
   '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js'].map(S);
 const TEACHER = 'owner.teacher@ccpsnet.net';
 
-function setup() {
+function setup(opts) {
   const { exported, sandbox } = loadGasFiles(FILES,
     ['previewAssignmentRefresh', 'refreshAssignments', 'LESSON_ASSIGNMENTS', 'UNIT_ASSIGNMENTS', 'AS_TAB_HEADERS']);
   const props = sandbox.PropertiesService.getScriptProperties();
@@ -36,12 +36,12 @@ function setup() {
   // An L07 row as seeded before the fix, and a row the repo doesn't know.
   const old = ['CAS-8175-L07', 'L07 ETHICAL DILEMMAS DISCUSSION', 'Tier 1 Core', 'persona',
     'm1', 'm2', 'm3', 'm4', 'old definition with Peer Replies', TEACHER, new Date(), 'LIVE',
-    'tmpl', 'Marketing (CTE)', '8175 Sports Entertainment and Event Marketing',
+    (opts && opts.promptDoc) || 'tmpl', 'Marketing (CTE)', '8175 Sports Entertainment and Event Marketing',
     '8175-4', '8175-6', '8175-20', '8175-51', '8175-L07'];
   tab.appendRow(old);
   tab.appendRow(['VDOE-HANDMADE-2026', 'Teacher-made', 'Tier 1 Core', 'p', 'a', 'b', 'c', 'd', 'dod', TEACHER,
     new Date(), 'LIVE', 'x', 'Marketing (CTE)', 'c', '', '', '', '', '']);
-  return { exported, tab, old };
+  return { exported, tab, old, sandbox };
 }
 
 test('L07\'s repo criteria: no peer replies; an untiered milestone lists every competency it holds', () => {
@@ -74,7 +74,7 @@ test('preview names the stale row and changes nothing; refresh rewrites only its
   const { exported, tab, old } = setup();
   const p = exported.previewAssignmentRefresh();
   assert.deepEqual(p.changed.map((c) => [c.configId, c.fields]),
-    [['CAS-8175-L07', 'milestones, definition of done, competency IDs']]);
+    [['CAS-8175-L07', 'milestones, definition of done, competency IDs, objectives']]);
   assert.equal(p.notInRepo, 1);
   assert.equal(tab.getRange(2, 9).getValue(), old[8], 'a preview writes nothing');
 
@@ -85,6 +85,9 @@ test('preview names the stale row and changes nothing; refresh rewrites only its
   assert.equal(row[8], a.definitionOfDone);
   assert.deepEqual(row.slice(15, 19), a.milestoneCompetencyIds);
   assert.deepEqual([row[0], row[1], row[11], row[12], row[19]], [old[0], old[1], old[11], old[12], old[19]]);
+  const objectives = JSON.parse(tab.getRange(2, 21).getValue());
+  assert.equal(objectives[a.milestoneCompetencyIds[0]], a.objectives[a.milestoneCompetencyIds[0]]);
+  assert.match(objectives[a.milestoneCompetencyIds[0]], /^I can /, 'the student\'s own objective, in column 21');
   assert.equal(tab.getRange(3, 9).getValue(), 'dod', 'a row the repo does not know is left alone');
   assert.equal(exported.previewAssignmentRefresh().changed.length, 0, 'a second run changes nothing');
 });
@@ -120,4 +123,22 @@ test('a tiered assignment: primary, secondaries and tertiaries in the Definition
   assert.match(a.promptText, /What your work needs to show:[\s\S]*\(required\)[\s\S]*You can also show \(not required\):/);  // The checklist sits before a closing Submission: part, which the Canvas cartridge drops.
   const sub = a.promptText.search(/\n\nSubmission:/);
   if (sub !== -1) assert.ok(a.promptText.indexOf('What your work needs to show:') < sub);
+});
+
+// 2026-10-24: the task text lives in each row's prompt doc, which intake (02)
+// copies into every new student doc. The refresh brings a stale one up to the
+// repo, so a lesson seeded before the "I can" objectives shows them.
+test('refresh rewrites a stale prompt doc with the repo task, "I can" objectives and all', () => {
+  const env = setup({ promptDoc: '' });
+  const doc = env.sandbox.DocumentApp.create('L07 prompt template');
+  doc.getBody().setText('Old task\n\nWhat your work needs to show:\n\n- Demonstrate integrity (required)');
+  env.tab.getRange(2, 13).setValue(doc.getId());
+  const p = env.exported.previewAssignmentRefresh();
+  assert.match(p.changed[0].fields, /task text$/);
+  assert.match(doc.getBody().getText(), /^Old task/, 'a preview writes nothing');
+  env.exported.refreshAssignments();
+  const a = env.exported.LESSON_ASSIGNMENTS['8175-L07'];
+  assert.equal(doc.getBody().getText().trim(), a.promptText.trim());
+  assert.match(doc.getBody().getText(), /What your work needs to show:\n\n- I can /);
+  assert.equal(env.exported.previewAssignmentRefresh().changed.length, 0, 'a second run changes nothing');
 });

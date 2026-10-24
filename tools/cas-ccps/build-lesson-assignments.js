@@ -95,6 +95,13 @@ const MAP_FILE = path.join(LESSONS, 'COMPETENCY_MAP.json');
 // assignment without an entry keeps the untiered criteria.
 const TIERS_FILE = path.join(LESSONS, 'COMPETENCY_TIERS.json');
 const competencyTiers = () => (fs.existsSync(TIERS_FILE) ? JSON.parse(fs.readFileSync(TIERS_FILE, 'utf8')) : {});
+
+// Each competency as a learning objective the student owns ("I can …",
+// approved 2026-10-24, meta/STUDENT_WORK_PLAN_2026-10.md). Shown in the task
+// in place of the competency's title, and carried as a.objectives for the
+// reflection questions (00). A competency without one keeps its title.
+const OBJECTIVES_FILE = path.join(LESSONS, 'STUDENT_CRITERIA.json');
+const studentObjectives = () => (fs.existsSync(OBJECTIVES_FILE) ? JSON.parse(fs.readFileSync(OBJECTIVES_FILE, 'utf8')) : {});
 // Keys starting with _ are notes, not assignments.
 
 const TIER_RULE = 'PASSING RULE: APPROVED when Milestone 1 (the primary competency) is MET and Milestones 2, 3 ' +
@@ -126,8 +133,10 @@ function applyTiers(a, comps, t, grading, vocab) {
   ];
   if (!secondary.length) ms[1] = { text: vocab ? 'Uses the lesson vocabulary accurately: ' + vocab + '.' :
     'Explains the reasoning behind each part, in the student\'s own words.', id: '' };
-  // The student sees what the work needs to show, in the task itself.
-  const plainLine = (id) => '- ' + byId[id].competency_text.replace(/\.$/, '').trim();
+  // The student sees what the work needs to show, in the task itself: each
+  // competency as their own "I can" objective, or its title if it has none.
+  const objectives = studentObjectives()[a.key] || {};
+  const plainLine = (id) => '- ' + (objectives[id] || byId[id].competency_text).replace(/\.$/, '').trim();
   // Before a closing "Submission:" part, which the Canvas cartridge drops.
   const checklist = 'What your work needs to show:\n\n' +
     [plainLine(t.primary) + ' (required)'].concat(secondary.map(plainLine)).join('\n') +
@@ -138,6 +147,8 @@ function applyTiers(a, comps, t, grading, vocab) {
   a.milestones = ms.map((m) => m.text);
   a.milestoneCompetencyIds = ms.map((m) => m.id);
   a.tertiaryCompetencyIds = tertiary.slice();
+  a.objectives = {};
+  all.forEach((id) => { if (objectives[id]) a.objectives[id] = objectives[id]; });
 
   const block = (ids) => ids.flatMap((id) => ['- ' + line(byId[id]), ...evidenceLines(byId[id])]);
   return [
