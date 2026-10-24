@@ -1,0 +1,5 @@
+{
+  "_about": "Videos a lesson's student task tells students to watch. Each entry is { \"title\": \"…\", \"url\": \"https://…\" }. tools/cas-ccps/build-lesson-assignments.js adds one line per video under the task's \"Watch\" line; new student docs and the Canvas cartridge make it a link, and previewVideoLinkRefresh() / applyVideoLinkRefresh() (Central Ledger, 53) add it to docs already made. An empty list is a lesson still waiting on its link (the generator lists them).",
+  "8175-L06": [],
+  "8175-L34": []
+}

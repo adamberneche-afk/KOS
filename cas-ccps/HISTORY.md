@@ -4775,3 +4775,36 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   parts.
 - **Tests:** `student-context-aggregator.test.js`; the test sandbox's
   paragraph gains `setFontSize`.
+
+## Video links for lesson tasks, from one file to every doc, 2026-10-24
+
+- **Why:** two lessons' student tasks send students to a video with no
+  link: 8175 L06 ("Watch the provided videos…", the Simon Sinek talk in its
+  hook) and L34 ("Watch the Video on Interview Skills"). The work plan's
+  "8 lessons" counted every lesson that mentions a video; the other six
+  don't ask students to watch one. The links are the operator's to supply,
+  so this builds the path for them.
+- **The source:** `curriculum/lessons/VIDEO_LINKS.json`, lesson key ->
+  `[{ title, url }]` (https only). Both lessons are listed with empty
+  lists; the generator names lessons still waiting, and a test keeps the
+  file in step with the tasks that say to watch a video.
+- **The task, generator:** `build-lesson-assignments.js` adds `- Video:
+  <title> (<url>)` under the task's "Watch" line (`withVideos`) and the
+  list as `videos` on the lesson in 55b. 55b is unchanged until a link is
+  added.
+- **New docs, 02:** `_docLinkUrls_` makes each https:// address in the
+  assignment table a link (a trailing ")" or "." isn't part of it).
+- **Canvas, cartridge:** `inline` links https:// addresses; the committed
+  cartridges are unchanged (no task has one yet).
+- **Docs already made, 53:** `previewVideoLinkRefresh()` /
+  `applyVideoLinkRefresh()` find each lesson's student docs through
+  StudentAssignments (54) and add the video line, linked, under the task's
+  "Watch" line. The search stops at "Your response" (or the old response
+  marker), so the student's writing is never touched; a doc that has the
+  link already is left alone. Logs counts per lesson only.
+- **To use it:** add the links to VIDEO_LINKS.json, run the generator and
+  the cartridge builder, push, then `refreshAssignments()` (the prompt doc
+  for new docs), `previewVideoLinkRefresh()`, `applyVideoLinkRefresh()`,
+  and re-import the cartridges.
+- **Tests:** `video-links.test.js`, `lesson-assignments.test.js`,
+  `canvas-cartridge.test.js`.
