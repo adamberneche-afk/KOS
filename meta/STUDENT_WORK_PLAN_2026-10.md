@@ -1,7 +1,11 @@
 # The student's side of an assignment: plan
 
 **Status:** direction decided 2026-10-24 (under "Decided" below); details
-open (at the end). Nothing is built. Starts in the week of Oct 26 as part
+open (at the end). **Phase 1 (the process reflection on Submit) is built**
+(2026-10-24, behind `REFLECTION_ON_SUBMIT`, off; `cas-ccps/HISTORY.md`, "The
+process reflection on Submit"), using the Appendix A frames as drafted until
+they are approved. The feedback reflection (Phase 2) waits until Phase 1
+runs reliably (the operator, 10-24). Starts in the week of Oct 26 as part
 of the dashboard review and runs into the week of Nov 2
 ([`PLAN_2026-10.md`](./PLAN_2026-10.md), both weeks); how far it gets
 depends on the build credits available.
@@ -323,6 +327,20 @@ Phases 1 and 2 don't depend on 3: they work on today's one-doc lessons (a
 whole lesson is one part) and carry over unchanged. Phase 4 needs Phase 3's
 part files.
 
+## Turning Phase 1 on
+
+1. Push the Central Ledger and the Student Dashboard (`run.js`). Then, from
+   the Central Ledger's editor, `syncFlowPromptsToSheet()`: Flow 2's prompt
+   changed, so the overnight check's "Flow prompts" line shows until it
+   runs. Studio needs no change (Flow 2 reads the PromptText chip).
+2. Set `REFLECTION_ON_SUBMIT` to one course code (or `all`) in the Ledger's
+   `_CONFIG`, after grades are in (Oct 30) unless decided otherwise.
+3. Submit one piece of work as a test student. Check: the card asks two
+   questions; a short answer is refused; after Submit, `ReflectionLog` has
+   two rows; a minute later the FlowInput row's `PromptText` holds them in
+   its PROCESS REFLECTION block; the doc has a "Your reflection" comment;
+   the feedback has a YOUR PROCESS part.
+
 ## Open decisions
 
 1. **The question frames** (Appendix A): approve or give revision
@@ -330,6 +348,9 @@ part files.
 2. **The first lesson's parts** (Appendix B): approve or give revision
    directions; the other 34 multi-part lessons follow its pattern.
 3. **Phase 1 on before Oct 30?** Proposed off until grades are in.
+4. **`ReflectionLog`'s retention:** working data, 1 school year (as built,
+   like WarmUpQueue's answers), or kept with the record (5 years) for
+   context across years?
 
 ## Appendix A: the question frames (draft 1, 2026-10-24)
 
