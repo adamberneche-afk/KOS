@@ -62,7 +62,17 @@ the lesson data (`55b_LessonAssignmentData.js`, 67 lessons):
    thing from adding to the system's, though the system's health is also
    the teacher's (and the operator's) in the end.
 10. **Timing:** start in the week of Oct 26 as part of the dashboard
-    review; finish in the week of Nov 2 if needed.
+    review; finish in the week of Nov 2 if needed. The dashboard
+    walk-throughs stay that week's first job, and how far this plan gets
+    depends on the build budget.
+11. **Drafts by the agent, approval by the operator** (10-24): the question
+    frames and each part's tiers and criteria are drafted here; the
+    operator approves them or gives revision directions. First drafts are
+    in the appendix.
+12. **Canva lessons move to Slides.**
+13. **The reflection also comes back as a comment** on the student's work
+    file, for the student to look at while they work. It is reference only,
+    never part of the work; the sheet keeps the raw answers.
 
 ## The design
 
@@ -185,8 +195,16 @@ each:
 - **System:** the sheet is a read; comments are a crawl of every doc's
   threads and a guess at each reply's meaning.
 
-**The doc gets no copy** by default: the work file stays the work. (A copy
-in the doc is an option if the teacher wants it next to the work.)
+**The student sees their reflection as a comment** (decided 10-24). After
+a Submit, the system posts the answers as a Drive comment on the part's
+work file, the way feedback is posted today (37): "Your reflection
+(Oct 27): …", each question with its answer. It is reference for the
+student while they revise, not part of the work: comments sit outside the
+document body, so no reader of the response ever sees it. The student can
+resolve it. `ReflectionLog` keeps the raw answers; the comment is a copy
+and nothing reads it back. A Form has no comment pane in its editor (as far
+as is known; check when built), so for a Form part the reflection shows on
+the dashboard card instead.
 
 ### 4. Flow 2 reads the reflections
 
@@ -251,11 +269,9 @@ reads a doc now, so Studio's flow changes only in where it reads.
   form's questions and settings, never its responses, unless a lesson
   needs the counts, in which case only counts.
 - **Canva** (10 lessons) has no way in from Apps Script (no Google Cloud
-  project on this account, `tools/gas-lint/gcp-map.json`). Options: the
-  part becomes a Slides part (Slides covers most of what these tasks use
-  Canva for), or the student downloads the design as a PDF into a Drive
-  folder CAS makes for the part and the snapshot records the file and its
-  page count, with the teacher judging the design itself.
+  project on this account, `tools/gas-lint/gcp-map.json`). **Decided
+  10-24: those parts become Slides parts**, their task text rewritten for
+  Slides as the parts are drafted.
 - **Drawings** (1 lesson): read like an image only; treat as Slides.
 - Images aren't described in the snapshot; a design judged on how it looks
   stays with the teacher unless Flow 2 can take images (not checked).
@@ -309,11 +325,105 @@ part files.
 
 ## Open decisions
 
-1. **The question frames:** the examples in section 2 are a first draft;
-   rewrite or approve them (Phase 1).
-2. **Part tiers and criteria:** approve the drafts per lesson (Phase 0),
-   as the lesson tiers were on 10-20.
-3. **Canva lessons:** move to Slides, or a PDF the teacher judges?
-4. **A copy of the reflections in the doc**, next to the work: no
-   (proposed), or yes?
-5. **Phase 1 on before Oct 30?** Proposed off until grades are in.
+1. **The question frames** (Appendix A): approve or give revision
+   directions.
+2. **The first lesson's parts** (Appendix B): approve or give revision
+   directions; the other 34 multi-part lessons follow its pattern.
+3. **Phase 1 on before Oct 30?** Proposed off until grades are in.
+
+## Appendix A: the question frames (draft 1, 2026-10-24)
+
+Rules: one **Evidence** question on every Submit, plus at most one other.
+A first Submit adds an Approach or Choice question (alternating by part); a
+resubmission after the primary wasn't met adds a Feedback question instead.
+Never a frame the student has already answered in this lesson. `{criterion}`
+is one of the part's criteria (Appendix B's student wording), primary first,
+then rotating. Each answer needs 10 words.
+
+**Evidence** (every Submit)
+- E1. "Where in your work do you show this: *{criterion}*? Point to the
+  sentence or slide."
+- E2. "Look at this one: *{criterion}*. What in your work shows it, and what
+  would make it stronger?"
+- E3. "If your teacher read only one part of your work to check *{criterion}*,
+  which part should it be? Why?"
+
+**Approach** (a first Submit)
+- A1. "What did you do first in this part, and why start there?"
+- A2. "What did you leave out or cut, and why?"
+- A3. "What did you look back at in the lesson while you worked, and what
+  did it help with?"
+
+**Choice** (a first Submit)
+- C1. "What was the hardest choice in this part, and what did you pick?"
+- C2. "What would someone who disagrees with your work say? What would you
+  tell them?"
+- C3. "What other way could you have done this part? Why didn't you?"
+
+**Feedback** (a resubmission after the primary wasn't met; `{criterion}` is
+the one the feedback found short)
+- F1. "The feedback said *{criterion}* needs more. What are you changing, and
+  why will that fix it?"
+- F2. "What part of the feedback do you agree with most, and what are you
+  doing about it?"
+- F3. "Is there anything in the feedback you disagree with? Say what, and
+  what you're doing about the rest."
+
+## Appendix B: the first lesson's parts (draft 1, 2026-10-24)
+
+**8177 Venue Market Research & Survey Design** (`8177-market-research-survey-design`).
+Lesson tiers today: primary 8177-83, secondary 8177-2 and 8177-79, tertiary
+8177-18, 8177-81 and 8177-93. Split into the task's five parts; the
+lead-in (background, where data comes from, the two kinds of data, bias,
+key terms, the example) goes with Part 1 and is linked from the rest. Each
+part's primary unlocks the next. Every lesson competency is covered: 83
+(Parts 2, 3), 2 (Parts 4, 5), 79 (Part 5), 18 (Part 2), 81 (Part 1), 93
+(Part 1).
+
+| Part | Work file | Primary (unlocks the next part) | Secondary | Tertiary |
+|---|---|---|---|---|
+| 1. The Target Market | Doc | 8177-81 Develop a market segmentation analysis | 8177-2 Critical thinking | 8177-93 What motivates consumers |
+| 2. Build the Survey | **Form** | 8177-83 Develop a market research project | 8177-18 Technologies and tools | — |
+| 3. Why These Questions Work | Doc | 8177-83 Develop a market research project | — | — |
+| 4. Spot the Bias | Doc | 8177-2 Critical thinking | — | — |
+| 5. Beyond the Survey | Doc | 8177-79 Sources of market research data | 8177-2 Critical thinking | — |
+
+Why: Part 1 is a segmentation choice (which group, and why it matters
+most), so 81 is its primary there though it is tertiary for the lesson.
+Parts 2 and 3 are the research project itself (the instrument, then what it
+measures). Part 4 is critical thinking alone. Part 5 is sources of data,
+with the "what it tells the store that the survey can't" comparison as
+critical thinking. Only Part 2 tests a tool, so 18 sits there.
+
+**Criteria in a student's words** (shown under "What your work needs to
+show", and named by the Evidence questions):
+
+- **Part 1**
+  - *(required)* You pick one group (students, parents or staff) and say
+    what makes them different from the other two as customers.
+  - You give a reason the store should care about that group most: what
+    they buy, how often, or how easy they are to reach.
+  - *(not required)* You say what makes that group want to buy from the
+    store or show up to school events.
+- **Part 2** (a Form; the reader checks the first two for certain)
+  - *(required)* Your form has all three questions set up as shown:
+    checkboxes for Question 1 (choose up to two), a 1–5 scale with its two
+    labels for Question 2, a short answer for Question 3.
+  - Email collection is turned off in the form's settings.
+- **Part 3**
+  - *(required)* For each of the three questions, you say whether it
+    collects quantitative or qualitative data and one thing the store would
+    learn from the answers.
+- **Part 4**
+  - *(required)* For each biased question, you name what pushes people (a
+    leading word, a leading question or a loaded choice) and rewrite it so
+    someone with the opposite opinion could answer just as easily.
+- **Part 5**
+  - *(required)* You name one more primary source and one secondary source
+    the Cavalier Shop could really use.
+  - For each source, you say one thing it would tell the store that the
+    survey can't.
+
+**Changed in the task text:** Part 2 loses "Paste your form's link into
+this document" (the form is the work file). The vocabulary line ("Use these
+terms accurately…") is split by part, each part listing the terms it uses.
