@@ -68,6 +68,11 @@ function _retentionSchedule_() {
     { label: "SCRDecisionLog", tier: RETENTION_TIER_RECORD, years: _scrRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.scrDecisionLog || "SCRDecisionLog"; }),
       dateCol: SCRDL.DECIDED_AT, archived: archivedIn(SCRDL.ARCHIVE_STATUS) },
+    // The student's own words about their work, kept as long as the work
+    // itself (their Doc follows its Ledger row) and theirs to take in their
+    // portfolio (the operator, 2026-10-24).
+    { label: "ReflectionLog", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
+      where: ledger(function (cfg) { return cfg.tabs.reflectionLog || "ReflectionLog"; }), dateCol: "SubmittedAt" },
     { label: "EvaluationLog", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.evaluationLog || "EvaluationLog"; }), dateCol: "EvaluatedAt" },
     { label: "ParentReportLog", tier: RETENTION_TIER_RECORD, years: _parentReportRetentionYears_,
@@ -78,8 +83,6 @@ function _retentionSchedule_() {
       where: ledger(function (cfg) { return cfg.tabs.warmUpQueue || "WarmUpQueue"; }),
       dateCol: WD_WARMUP_QUEUE_COLUMNS.LESSON_DATE, docCol: WQ25_DOC_ID,
       archived: archivedIn(WD_WARMUP_QUEUE_COLUMNS.ARCHIVE_STATUS) },
-    { label: "ReflectionLog", tier: RETENTION_TIER_WORKING, years: working,
-      where: ledger(function (cfg) { return cfg.tabs.reflectionLog || "ReflectionLog"; }), dateCol: "SubmittedAt" },
     { label: "StudentProfiles", tier: RETENTION_TIER_WORKING, years: working,
       where: ledger(function (cfg) { return cfg.tabs.studentProfiles; }), dateCol: SP_LAST_UPDATED },
     { label: "WarmUpRegistry", tier: RETENTION_TIER_WORKING, years: working,
