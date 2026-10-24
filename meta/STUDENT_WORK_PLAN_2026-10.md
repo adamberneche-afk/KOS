@@ -347,11 +347,13 @@ part files.
 
 1. ~~**The question frames** (Appendix A)~~: **approved 2026-10-24**, in the
    wording built in `00_SharedConfig.js` (`REFLECTION_FRAMES`).
-2. **The learning objectives** for every lesson, as "I can …" statements
-   the student owns (the operator, 2026-10-24; draft 2,
-   `cas-ccps/curriculum/lessons/STUDENT_CRITERIA.json`): approve or give
-   revision directions. Until approved, a question names the competency's
-   VDOE title.
+2. ~~**The learning objectives**~~: **approved 2026-10-24** as written
+   (draft 2, "I can …" statements the student owns,
+   `cas-ccps/curriculum/lessons/STUDENT_CRITERIA.json`), with the 11
+   tertiaries the task gives little room to show kept. Next: wire them in,
+   so the doc shows them under "What your work needs to show" and the
+   reflection questions quote them; until then a question names the
+   competency's VDOE title.
 3. **The first lesson's parts** (Appendix B): approve or give revision
    directions; the other 34 multi-part lessons follow its pattern.
 4. **Phase 1 on before Oct 30?** Proposed off until grades are in.
