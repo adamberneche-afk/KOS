@@ -123,3 +123,23 @@ test('the data file loads as Apps Script', () => {
     ';this.A = LESSON_ASSIGNMENTS; this.O = LESSON_ORDER;', c);
   assert.equal(c.O['8175'].length, 36);
 });
+
+// ── Video links (2026-10-24, curriculum/lessons/VIDEO_LINKS.json) ────────────
+
+test('a video line goes right under the task\'s "Watch" line, one per video', () => {
+  const task = 'The Task:\n\n- Watch: Watch the provided videos.\n- Plan: Write a plan.\n\nWhat your work needs to show:\n\n- I can plan';
+  const out = gen.withVideos(task, [{ title: 'Soft skills', url: 'https://example.org/a' }, { title: 'Interviews', url: 'https://example.org/b' }]);
+  assert.equal(out, 'The Task:\n\n- Watch: Watch the provided videos.\n- Video: Soft skills (https://example.org/a)\n' +
+    '- Video: Interviews (https://example.org/b)\n- Plan: Write a plan.\n\nWhat your work needs to show:\n\n- I can plan');
+  const noWatch = gen.withVideos('Do this.\n\nWhat your work needs to show:\n\n- I can', [{ title: 'T', url: 'https://example.org/c' }]);
+  assert.match(noWatch, /Do this\.\n\n- Video: T \(https:\/\/example\.org\/c\)\n\nWhat your work needs to show:/);
+  assert.equal(gen.withVideos(task, []), task);
+});
+
+test('VIDEO_LINKS.json lists every lesson whose task sends students to a video, and only those', () => {
+  const links = gen.videoLinks();
+  const asked = Object.keys(built.assignments).filter((k) => /\bWatch\b[^\n]*\bvideos?\b/i.test(built.assignments[k].promptText));
+  assert.deepEqual(Object.keys(links).sort(), asked.sort());
+  Object.keys(links).forEach((k) => links[k].forEach((v) => assert.match(v.url, /^https:\/\//)));
+  assert.deepEqual([...built.waitingVideos].sort(), Object.keys(links).filter((k) => !links[k].length).sort());
+});
