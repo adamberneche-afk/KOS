@@ -104,10 +104,10 @@ function runWeeklyStudentAggregation_() {
   const weeklyWarmUps = warmUpSheet
     ? getWeeklyWarmUps_(warmUpSheet, windowStart)
     : new Map();
-
-  if (!warmUpSheet) {
-    Logger.log("[S29] WarmUpResponses tab not found — proceeding with assignments only.");
-  }
+  // Every warm-up since 2026-10-19 is answered in the Student Dashboard's
+  // text box, not the old form, so this record showed none of them; the
+  // baseline answers (D6) are the student's own account of how they work.
+  mergeWarmUpMaps_(weeklyWarmUps, getWeeklyTextBoxWarmUps_(ss, cfg, windowStart));
 
   // ── Step 3: for each student, look up/create their Doc, append if needed ─
   let docsCreated = 0;
@@ -372,6 +372,60 @@ function getWeeklyWarmUps_(warmUpSheet, windowStart) {
 }
 
 // ---------------------------------------------------------------------------
+// getWeeklyTextBoxWarmUps_
+// Returns Map<email, [{ lessonUnitId, response, timestamp, question,
+// baseline }]> for warm-ups answered in the Student Dashboard's text box
+// (WarmUpTextBox, joined to WarmUpQueue by queue_id) and saved in the
+// trailing 7-day window. baseline is the skill's wording for a baseline
+// warm-up (41, D6), or "". Keyed by lower-case email; mergeWarmUpMaps_
+// matches them to the roster's spelling.
+// ---------------------------------------------------------------------------
+function getWeeklyTextBoxWarmUps_(ss, cfg, windowStart) {
+  const result = new Map();
+  const wq = ss.getSheetByName(cfg.tabs.warmUpQueue);
+  if (!wq || wq.getLastRow() < 2 || typeof readWarmUpTextBox_ !== "function") return result;
+  const textBox = readWarmUpTextBox_(ss);
+  const tz = Session.getScriptTimeZone();
+  wq.getRange(2, 1, wq.getLastRow() - 1, 20).getValues().forEach(function (row) {
+    const tb = textBox[String(row[0] || "").trim()];
+    if (!tb) return;
+    const response = String(tb.row[WTB.RESPONSE] || "").trim();
+    const savedAt = tb.row[WTB.SUBMITTED_AT];
+    const isDate = function (v) { return Object.prototype.toString.call(v) === "[object Date]"; };
+    if (!response || !isDate(savedAt) || savedAt < windowStart) return;
+    const email = String(row[4] || "").trim();
+    if (!_studentIdPattern_().test(email.toLowerCase())) return;
+    const parsed = typeof wfbParseBaseline_ === "function" ? wfbParseBaseline_(row[19]) : null;
+    const lessonDate = isDate(row[5]) ? Utilities.formatDate(row[5], tz, "yyyy-MM-dd") : String(row[5] || "").trim();
+    const entry = {
+      lessonUnitId: "Warm-up for " + lessonDate,
+      response: response,
+      timestamp: savedAt,
+      question: String(tb.row[WTB.WARMUP] || "").trim(),
+      baseline: parsed && typeof WFB_BASELINE_SKILLS !== "undefined" ? WFB_BASELINE_SKILLS[parsed.n].text : "",
+    };
+    const key = email.toLowerCase();
+    if (!result.has(key)) result.set(key, []);
+    result.get(key).push(entry);
+  });
+  return result;
+}
+
+// Adds `extra`'s entries (keyed by lower-case email) to `into` (keyed by the
+// roster's spelling), oldest first.
+function mergeWarmUpMaps_(into, extra) {
+  const byLower = {};
+  for (const k of into.keys()) byLower[k.toLowerCase()] = k;
+  for (const [k, list] of extra.entries()) {
+    const key = byLower[k] || k;
+    if (!into.has(key)) into.set(key, []);
+    into.get(key).push.apply(into.get(key), list);
+    into.get(key).sort(function (a, b) { return a.timestamp - b.timestamp; });
+  }
+  return into;
+}
+
+// ---------------------------------------------------------------------------
 // getOrCreateStudentDoc_
 // Looks up the student's Doc in StudentDocRegistry. Creates a new Doc and
 // registry row if none exists. Returns { docId, isNew } or null on failure.
@@ -480,12 +534,28 @@ function appendWeeklySection_(docId, runTimestamp, assignments, warmUps) {
     });
   }
 
-  if (warmUps.length > 0) {
+  // Baseline warm-ups (D6) first, under their own heading: what the
+  // student says about how they work and what helps them, by skill.
+  const baseline = warmUps.filter(w => w.baseline);
+  const lessonWarmUps = warmUps.filter(w => !w.baseline);
+  if (baseline.length > 0) {
+    body.appendParagraph("How They Work (baseline warm-ups)")
+      .setHeading(DocumentApp.ParagraphHeading.HEADING3);
+    baseline.forEach(w => {
+      body.appendParagraph(w.baseline + "  ·  " + formatDateShort_(w.timestamp))
+        .setBold(true).setFontSize(10);
+      if (w.question) body.appendParagraph("Asked: " + w.question).setFontSize(9);
+      body.appendParagraph(w.response).setItalic(true);
+    });
+  }
+
+  if (lessonWarmUps.length > 0) {
     body.appendParagraph("Warm-Up Reflections")
       .setHeading(DocumentApp.ParagraphHeading.HEADING3);
-    warmUps.forEach(w => {
+    lessonWarmUps.forEach(w => {
       body.appendParagraph(w.lessonUnitId + "  ·  " + formatDateShort_(w.timestamp))
         .setBold(true).setFontSize(10);
+      if (w.question) body.appendParagraph("Asked: " + w.question).setFontSize(9);
       body.appendParagraph(w.response).setItalic(true);
     });
   }

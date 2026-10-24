@@ -127,3 +127,71 @@ test('getStudentDocForViewer_: a viewer with no registry row gets null, never so
 
   assert.equal(exported.getStudentDocForViewer_('9999999@ccpsnet.net'), null);
 });
+
+// ── Text-box warm-ups and baseline answers (2026-10-24) ─────────────────────
+// Every warm-up since 2026-10-19 is answered in the Student Dashboard's text
+// box, which this record never read; baseline answers (41, D6) go under
+// their own heading.
+
+function loadWithWarmUps() {
+  const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
+  return loadGasFiles(
+    [SHARED_CONFIG_PATH, path.join(CC, '24_WarmUpBridge.js'), path.join(CC, '41_WarmUpFlowBridge.js'), AGGREGATOR_PATH],
+    ['getWeeklyTextBoxWarmUps_', 'mergeWarmUpMaps_', 'appendWeeklySection_'],
+    { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => 'teacher@ccpsnet.net' }) } },
+  );
+}
+
+function warmUpFixture(sandbox) {
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', 'fake-admin-ss');
+  const wq = ss.insertSheet('WarmUpQueue');
+  wq.appendRow(new Array(21).fill('h'));
+  const tb = ss.insertSheet('WarmUpTextBox');
+  tb.appendRow(['queue_id', 'lesson_date', 'bridge_text', 'warmup_text', 'response_text', 'submitted_at', 'reply_text', 'replied_at']);
+  const add = (id, email, date, archetype, question, answer, savedAt) => {
+    const r = new Array(21).fill('');
+    r[0] = id; r[4] = email; r[5] = date; r[8] = 'SCORED'; r[19] = archetype;
+    wq.appendRow(r);
+    tb.appendRow([id, date, '', question, answer, savedAt, '', '']);
+  };
+  const recent = new Date(Date.now() - 2 * 86400000);
+  add('Q1', '1234567@CCPSNET.net', '2026-10-21', 'BASELINE 8175-14', 'How do you keep track of time?', 'I use a planner and my coach reminds me.', recent);
+  add('Q2', '1234567@ccpsnet.net', '2026-10-22', 'PARADOX', 'Why pay $5 for water?', 'Because it is the only water there.', recent);
+  add('Q3', '1234567@ccpsnet.net', '2026-10-01', 'BRIDGE', 'Old question', 'Old answer', new Date(Date.now() - 20 * 86400000));
+  add('Q4', '2345678@ccpsnet.net', '2026-10-22', 'BASELINE 8175-3', 'Started alone?', '', recent); // blank: not shown
+  return ss;
+}
+
+test('getWeeklyTextBoxWarmUps_: this week\'s answered text-box warm-ups, with the baseline skill named', () => {
+  const { exported, sandbox } = loadWithWarmUps();
+  const ss = warmUpFixture(sandbox);
+  const cfg = { tabs: { warmUpQueue: 'WarmUpQueue', warmUpTextBox: 'WarmUpTextBox' } };
+  const map = exported.getWeeklyTextBoxWarmUps_(ss, cfg, new Date(Date.now() - 7 * 86400000));
+  const mine = map.get('1234567@ccpsnet.net');
+  assert.equal(mine.length, 2, 'the 20-day-old one is outside the week');
+  assert.deepEqual(mine.map((w) => w.baseline), ['Manage time and resources', '']);
+  assert.equal(mine[0].question, 'How do you keep track of time?');
+  assert.equal(map.has('2345678@ccpsnet.net'), false, 'a blank answer is not shown');
+
+  const merged = exported.mergeWarmUpMaps_(new Map([['1234567@ccpsnet.net', []]]), map);
+  assert.equal(merged.get('1234567@ccpsnet.net').length, 2, 'matched to the roster\'s spelling');
+});
+
+test('appendWeeklySection_: baseline answers go under "How They Work", lesson ones under "Warm-Up Reflections"', () => {
+  const { exported, sandbox } = loadWithWarmUps();
+  const doc = sandbox.DocumentApp.create('Student Context');
+  const now = new Date();
+  exported.appendWeeklySection_(doc.getId(), now, [], [
+    { lessonUnitId: 'Warm-up for 2026-10-21', response: 'I use a planner.', timestamp: now, question: 'How do you keep track?', baseline: 'Manage time and resources' },
+    { lessonUnitId: 'Warm-up for 2026-10-22', response: 'Only water there.', timestamp: now, question: 'Why pay $5?', baseline: '' },
+  ]);
+  const text = sandbox.DocumentApp.openById(doc.getId()).getBody().getText();
+  const how = text.indexOf('How They Work (baseline warm-ups)');
+  const refl = text.indexOf('Warm-Up Reflections');
+  assert.ok(how !== -1 && refl > how);
+  assert.ok(text.indexOf('Manage time and resources') > how && text.indexOf('Manage time and resources') < refl);
+  assert.ok(text.indexOf('Asked: How do you keep track?') !== -1 && text.indexOf('I use a planner.') !== -1);
+  assert.ok(text.indexOf('Only water there.') > refl);
+});
