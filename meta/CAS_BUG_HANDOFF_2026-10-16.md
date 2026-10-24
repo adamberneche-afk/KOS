@@ -4,7 +4,7 @@
 > landed as PR #175 (the patch below, applied unchanged), bug 3 as #179 and
 > bug 4 as #214; all four are fixed and live (checked against the code
 > 2026-10-24). The queue that uses this document is
-> [`HANDOFF_2026-10-22.md`](./HANDOFF_2026-10-22.md); what is still current
+> [`HANDOFF_2026-10-24.md`](./HANDOFF_2026-10-24.md); what is still current
 > here is section 6 (scheduling a lesson), section 8 (the checklist for each
 > Flow 2 submission) and the one open item in section 9.
 > Point-in-time: where it disagrees with the code, the code wins.
