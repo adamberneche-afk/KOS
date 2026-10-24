@@ -1840,7 +1840,9 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
   <h1>📊 Assignment Dashboard</h1>
   <!-- ── M2: New Lesson button ── -->
   <!-- Hidden until loadData() confirms M2_ENABLED — see the m2Enabled toggle below. -->
-  <button id="new-lesson-btn" onclick="openModal()" style="display:none">+ New Lesson</button>
+  <!-- Logs a lesson taught today; 📅 Lessons' "+ New lesson" drafts a new
+       lesson. One name for each (UX audit, 2026-10-22). -->
+  <button id="new-lesson-btn" onclick="openModal()" style="display:none">+ Log today's lesson</button>
   <!-- ── M4: My Context tab — this template is only ever built for the
        authorized teacher now (doGet() branches by identity before
        building any HTML — see finding #9), so this always shows the full

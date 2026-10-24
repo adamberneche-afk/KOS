@@ -326,3 +326,26 @@ test('the footer is set when the student has no assignments too (finding 17)', (
   ctx.render({ googleId: ME, generatedAt: 'Oct 24, 2026', assignments: [], warmUps: {}, emptyReason: 'No assignments.' });
   assert.equal(els.footer.textContent, 'Last refreshed: Oct 24, 2026  ·  ' + ME);
 });
+
+test('extra credit: the reply box counts words as 25 does, and says when a reply is too short to count', () => {
+  const { exported, ss } = load([{ wq: wqRow({ date: '2026-10-20', status: 'SCORED', feedback: 'Name a price.' }),
+    tb: { reply: 'I agree with that' } }]);
+  const prev = exported.getStudentWarmUps_(ss, CFG, ME, NOW).previous;
+  const { ctx, els } = page();
+  const h = ctx._wuPrevious(prev);
+  assert.match(h, /4 of 10 words needed for extra credit/);
+  assert.ok(!h.includes('Your reply is saved and checked overnight'), 'a 4-word reply is not called counted');
+  assert.equal(ctx.wuWords('  one   two\nthree — four  '), 5, 'split on spaces, like 25');
+  const counter = ctx.document.getElementById('wu-n-' + prev.queueId);
+  ctx.wuDraft({ value: 'one two three four five six seven eight nine ten', getAttribute: () => 'reply:' + prev.queueId });
+  assert.equal(counter.textContent, '10 words ✓');
+});
+
+test('a failed refresh says so; the next render clears it', () => {
+  const { ctx, els } = page();
+  ctx._showRefreshNote({ generatedAt: 'Oct 24, 9:05 AM' });
+  assert.match(els['refresh-note'].textContent, /Couldn't refresh\. Showing what loaded at Oct 24, 9:05 AM/);
+  assert.equal(els['refresh-note'].style.display, 'block');
+  ctx.render({ googleId: ME, generatedAt: 'Oct 24, 9:10 AM', assignments: [], warmUps: {} });
+  assert.equal(els['refresh-note'].style.display, 'none');
+});

@@ -45,6 +45,7 @@ The card sits under a "WARM-UPS" heading above the assignments. It has at most t
 - [ ] **Show the question and your answer**, above the score, opens to the question and what the student wrote (finding 10, fixed in #282).
 - [ ] **Extra credit**, while it is open and not yet earned: a purple line reads "Extra credit: reply to this feedback in at least 10 words by <date>", with a reply box.
   - The date shown is the end of the student's next class day, never more than lesson date + 6 (the 10-24 rule, #281; finding 4).
+  - Under the reply box, a count reads "n of 10 words needed for extra credit" and turns to "n words ✓" at 10 (#286). A shorter reply saves with a red "It has n words: it needs at least 10…".
   - Save a reply of 10 words or more. "Saved <time>. It's checked overnight." appears, and after Refresh the box keeps the text with "Your reply is saved and checked overnight."
 - [ ] Once credited (the morning after a reply of 10+ words): "✓ Extra credit earned", the score still shows **N/10**, and a green "+1 extra credit" appears next to it.
 - [ ] Only the last warm-up is ever open (the 10-24 rule; finding 5 is moot). After the student's next class day ends, its reply box is gone and its feedback stays readable.
