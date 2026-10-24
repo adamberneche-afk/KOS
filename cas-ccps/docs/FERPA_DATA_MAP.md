@@ -37,12 +37,12 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 
 | Tier | Period | Records | Script Property |
 |---|---|---|---|
-| Record: what a grade, a rating decision or a disclosure rests on | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog` | `LEDGER_RETENTION_YEARS` |
+| Record: what a grade, a rating decision or a disclosure rests on, and the student's own work | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog`, `ReflectionLog` | `LEDGER_RETENTION_YEARS` |
 | | 5 years | `CompetencyEvidence` | `COMPETENCY_EVIDENCE_RETENTION_YEARS` |
 | | 5 years | `SCRDecisionLog` | `SCR_RETENTION_YEARS` |
 | | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
 | Working data: queues, Flow inputs and profiles | 1 year | `WarmUpQueue` | `WARMUP_QUEUE_RETENTION_YEARS` (was 5 years) |
-| | 1 year | `ReflectionLog`, `StudentProfiles`, `WarmUpRegistry`, `WarmUpTextBox`, `WarmUpResponses`, `SCRSuggestions`, `FlowInput`, `Flow3Input`, `Flow4Input`, `Flow5Input`, `ReviewQueue`, `STAGING_PIPELINE` | `WORKING_DATA_RETENTION_YEARS` |
+| | 1 year | `StudentProfiles`, `WarmUpRegistry`, `WarmUpTextBox`, `WarmUpResponses`, `SCRSuggestions`, `FlowInput`, `Flow3Input`, `Flow4Input`, `Flow5Input`, `ReviewQueue`, `STAGING_PIPELINE` | `WORKING_DATA_RETENTION_YEARS` |
 | Student Docs | with their row | A student's workspace Doc follows its `Ledger` row; a warm-up Doc follows its `WarmUpQueue` row. Feedback posted as comments (`FEEDBACK_AS_COMMENT`) is part of the Doc and goes with it | — |
 
 Kept on their own rules, outside the schedule: `WarmUpFlowReturn` (harvested
@@ -186,7 +186,8 @@ marks or removes those rows yet.
 | **Written by** | `submitMyWork()` (13), before the work is queued, written as plain text (never a formula). |
 | **Read by** | 13 (which questions the student has already answered) and 37 (`buildFlowInputRows`: the submission's answers go into that FlowInput row's `PromptText` for Flow 2, and back to the student as a comment on their Doc). |
 | **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. Studio's Flow 2 sees one submission's answers in its prompt. The student sees their own answers as a comment on their Doc; the teacher, who can comment on the Doc, sees that comment too. |
-| **Retention** | `WORKING_DATA_RETENTION_YEARS` (1 school year), with the working data (counted in `checkRetentionSchedule()`). The comment on the Doc goes with the Doc. |
+| **Retention** | With the student's work (the operator, 2026-10-24): `LEDGER_RETENTION_YEARS`, as their workspace Doc follows its Ledger row (counted in `checkRetentionSchedule()`). The comment on the Doc goes with the Doc. |
+| **Portfolio** | The student's own writing, so it belongs to the portfolio they take at graduation (`meta/CAS_DESIGN_THREADS_2026-10-16.md`, Thread B): a copy given to the student through an export they choose, not removed from the school's records. The question each answer responds to goes with it, so the export reads on its own. Not an evaluative record: no score or flag is kept with it. |
 
 ### Canvas gradebook exports and CanvasSectionMap (S52)
 *Teacher's own Drive folder; Central Ledger tab*
