@@ -43,7 +43,7 @@ function load() {
       'getFlowPrompt', 'syncFlowPromptsToSheet', 'checkFlowPrompts',
       'substituteFlowPrompt_', 'flowPromptPlaceholders_', 'flowPromptText_',
       'FLOW_PROMPT_KEYS', 'FLOW_PROMPT_TAB', 'FLOW_PROMPT_HEADERS',
-      'FLOW_1_PROMPT', 'FLOW_3_PROMPT_MODE_A', 'FLOW_3_PROMPT_MODE_B',
+      'FLOW_1_PROMPT', 'FLOW_3_PROMPT_MODE_A', 'FLOW_3_PROMPT_MODE_B', 'FLOW_3_PROMPT_MODE_C',
       'FLOW_4_PROMPT', 'FLOW_5_PROMPT',
     ],
   );
@@ -91,6 +91,8 @@ test('FLOW_3/4/5 constants are byte-identical to the HTML spec they were extract
     'Flow 3 Mode A has drifted from CAS_Flow3_Flow4_Specification.html');
   assert.equal(exported.FLOW_3_PROMPT_MODE_B, spec['System Prompt — Mode B (Generative)'],
     'Flow 3 Mode B has drifted from the spec');
+  assert.equal(exported.FLOW_3_PROMPT_MODE_C, spec['System Prompt — Mode C (Baseline)'],
+    'Flow 3 Mode C has drifted from the spec');
   assert.equal(exported.FLOW_4_PROMPT, spec['System Prompt — Studio Flow 4'],
     'Flow 4 has drifted from the spec');
   assert.equal(exported.FLOW_5_PROMPT, spec['System Prompt — Flow 5 Bridging'],
@@ -113,6 +115,7 @@ test('every prompt is non-trivial and carries the placeholders its flow needs', 
     FLOW_2: ['{{UNIT_NAME}}', '{{TIER}}', '{{PERSONA}}', '{{STUDENT_TEXT}}'],
     FLOW_3_MODE_A: ['{archetype}', '{warmup_anchor}', '{first_name}'],
     FLOW_3_MODE_B: ['{archetype}', '{objective}', '{first_name}'],
+    FLOW_3_MODE_C: ['{baseline_competency}', '{baseline_skill}', '{baseline_indicators}', '{first_name}', '{course_name}'],
     FLOW_4: ['{response_text}', '{word_count_score}'],
     FLOW_5: ['{flow5_prior_response}', '{pacing_prior_connection}', '{course_name}'],
   };

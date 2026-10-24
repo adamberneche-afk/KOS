@@ -18,7 +18,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
 const EXPOSE = ['wfbApplyFlow3_', 'wfbFindQueueRow_', '_registerDeliveredWarmUps_', 'runWarmUpEvaluation',
   'warmUpTextBoxFor_', 'WQ25_COL_COUNT', 'WQ25_STATUS', 'WQ25_DOC_ID', 'WQ25_RESPONSE_TEXT',
   'WQ25_WORD_COUNT_SCORE', 'WQ25_TOTAL_SCORE', 'WQ25_EXTRA_CREDIT', 'WR_COL_COUNT', 'WR_QUEUE_ID',
-  'WR_DOC_ID', 'WR_TOTAL_SCORE', 'WR_EXTRA_CREDIT', 'WTB', '_capFeedback_', 'MAX_FEEDBACK_CHARS', 'previewMissedWarmUpScoring'];
+  'WR_DOC_ID', 'WR_TOTAL_SCORE', 'WR_EXTRA_CREDIT', 'WTB', '_capFeedback_', 'MAX_FEEDBACK_CHARS', 'previewMissedWarmUpScoring', 'WQ25_ARCHETYPE', 'WQ25_BRIDGE_OUTPUT'];
 
 function daysAgoStr(k) {
   const d = new Date();
@@ -265,4 +265,33 @@ test('a missed night: a blank warm-up from it is stamped INCOMPLETE, like yester
   fx.exported._registerDeliveredWarmUps_();
   fx.exported.runWarmUpEvaluation();
   assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'INCOMPLETE');
+});
+
+// ── D6 (2026-10-24): a baseline warm-up's checks and fallback ────────────────
+
+function deliverBaseline(fx, queueId, raw) {
+  const row = pendingRow(fx.exported, queueId, daysAgoStr(0));
+  row[fx.exported.WQ25_ARCHETYPE] = 'BASELINE 8175-14';
+  row[fx.exported.WQ25_BRIDGE_OUTPUT] = 'A bridge about last lesson.';
+  fx.wq.appendRow(row);
+  return fx.exported.wfbApplyFlow3_(fx.wq, fx.exported.wfbFindQueueRow_(fx.wq, queueId), queueId, raw);
+}
+
+test('D6: a baseline warm-up that passes goes out as written, with no bridge paragraph', () => {
+  const fx = setup('all');
+  const good = 'Think about a week when practice, homework and work all landed at once. How did you manage your time, and what helps you keep track?';
+  assert.deepEqual(deliverBaseline(fx, 'WQ-B1', good), { ok: true });
+  const tb = fx.ss.getSheetByName('WarmUpTextBox').getRange(2, 1, 1, 8).getValues()[0];
+  assert.equal(tb[fx.exported.WTB.WARMUP], good);
+  assert.equal(tb[fx.exported.WTB.BRIDGE], '', 'a baseline warm-up is about the student, not the last lesson');
+});
+
+test('D6: a baseline warm-up that fails a check gets the question code writes for its skill, never a lesson anchor', () => {
+  const fx = setup('all');
+  const out = deliverBaseline(fx, 'WQ-B2', 'You are writing a baseline warm-up for a high school CTE student. YOUR ROLE: ...');
+  assert.match(String(out.fallback), /own prompt/);
+  const tb = fx.ss.getSheetByName('WarmUpTextBox').getRange(2, 1, 1, 8).getValues()[0];
+  assert.equal(tb[fx.exported.WTB.WARMUP],
+    'Think of a real time, at school, on a team, at a job or at home, that involved managing your time. What did you do, and what helped you do it?');
+  assert.ok(!/stadium/i.test(tb[fx.exported.WTB.WARMUP]), 'not the lesson\'s anchor');
 });

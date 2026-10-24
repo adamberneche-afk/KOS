@@ -805,6 +805,7 @@ const PROMPT_EXPOSE = EXPOSE.concat([
   'wfbPromptFor_', 'wfbBuildFlow3Row_', 'wfbBuildFlow4Row_', 'wfbBuildFlow5Row_',
   'WFB_PROMPT_VARS', 'flowPromptPlaceholders_',
   'FLOW_3_PROMPT_MODE_A', 'FLOW_3_PROMPT_MODE_B', 'FLOW_4_PROMPT', 'FLOW_5_PROMPT',
+  'wfbBuildBaselineFields_', 'WFB_BASELINE_SKILLS', 'WFB_BASELINE_ORDER',
 ]);
 
 function loadWithPrompts() {
@@ -859,11 +860,14 @@ test('every placeholder in each warm-up prompt has a row in WFB_PROMPT_VARS', ()
 
 test('WFB_PROMPT_VARS names only fields the Flow 3 builder actually produces', () => {
   const { exported } = loadWithPrompts();
-  const fields = exported.wfbBuildFlow3Fields_({}, {});
+  // Modes A and B come from wfbBuildFlow3Fields_, Mode C (baseline, D6) from
+  // wfbBuildBaselineFields_: every placeholder is filled by one of them.
+  const fields = Object.assign({}, exported.wfbBuildFlow3Fields_({}, {}),
+    exported.wfbBuildBaselineFields_({}, {}, 3));
   Object.keys(exported.WFB_PROMPT_VARS[3]).forEach((p) => {
     const field = exported.WFB_PROMPT_VARS[3][p];
     assert.ok(Object.prototype.hasOwnProperty.call(fields, field),
-      '{' + p + '} maps to "' + field + '", which wfbBuildFlow3Fields_ never returns');
+      '{' + p + '} maps to "' + field + '", which neither Flow 3 field builder returns');
   });
 });
 
@@ -965,4 +969,54 @@ test('_wfbDiagnoseReturnRow_: the harvest\'s own anchor-fallback row is not a bi
   row[R.HARVEST_STATUS] = 'HARVESTED'; row[R.ATTEMPTS] = 0;
   row[R.ERROR] = 'ANCHOR_FALLBACK: no return from Studio after 2 retries';
   assert.deepEqual(exported._wfbDiagnoseReturnRow_(row, { 'WUQ-1': true }), []);
+});
+
+// ── D6 (2026-10-24): Mode C and the blank lines ──────────────────────────────
+
+test('D6: the baseline skills match data/CompetencyRubrics.json for competencies 1–22 in both courses', () => {
+  const { exported } = loadWithPrompts();
+  const data = JSON.parse(require('fs').readFileSync(path.join(CC, '..', 'data', 'CompetencyRubrics.json'), 'utf8'));
+  const by = {};
+  data.competency_rubrics.forEach((c) => { by[c.competency_id] = c; });
+  for (let n = 1; n <= 22; n++) {
+    ['8175', '8177'].forEach((course) => {
+      const c = by[course + '-' + n];
+      assert.equal(exported.WFB_BASELINE_SKILLS[n].text, c.competency_text, course + '-' + n);
+      assert.equal(exported.WFB_BASELINE_SKILLS[n].indicators, c.demonstration_indicators.join('; '), course + '-' + n);
+    });
+  }
+  assert.deepEqual([...exported.WFB_BASELINE_ORDER].sort((a, b) => a - b), Array.from({ length: 22 }, (_, i) => i + 1));
+});
+
+test('D6: a Mode C prompt is fully substituted, names the skill and none of the lesson', () => {
+  const { exported } = loadWithPrompts();
+  let appended = null;
+  const cell = exported.wfbBuildFlow3Row_({ appendRow: (r) => { appended = r; } },
+    queueRow(exported, Object.assign({}, FULL_LESSON, { course_name: 'Sports Entertainment and Event Marketing' }),
+      { student_name: 'Ada Lovelace' }), 'WUQ-TEST', 14);
+  assert.equal(cell, 'BASELINE 8175-14');
+  const prompt = appended[appended.length - 1];
+  assert.deepEqual(exported.flowPromptPlaceholders_(prompt), []);
+  assert.match(prompt, /You are writing a baseline warm-up/);
+  assert.match(prompt, /Manage time and resources \(in a student's words: managing your time\)/);
+  assert.match(prompt, /Name: Ada/);
+  assert.ok(!/ANCHOR-TEXT|LESSON-OBJ|PRIOR-RESPONSE/.test(prompt), 'nothing from the lesson');
+});
+
+test('D6: blank lines are dropped from Flow 3 prompts and filled ones kept', () => {
+  const { exported } = loadWithPrompts();
+  const blank = builtPrompt(exported, 'wfbBuildFlow3Row_',
+    queueRow(exported, Object.assign({}, FULL_LESSON, { pacing_stage: null }), {}));
+  assert.ok(!/\(Stage/.test(blank), 'no "(Stage )" when the stage is blank');
+  assert.ok(!/Competencies addressed:/.test(blank), 'no empty competencies line');
+  assert.match(blank, /Unit: UNIT-NAME\n/);
+  const filled = builtPrompt(exported, 'wfbBuildFlow3Row_', queueRow(exported, Object.assign({}, FULL_LESSON, {
+    competency_texts: [{ id: '8175-30', text: 'Explain pricing' }],
+  }), {}));
+  assert.match(filled, /Unit: UNIT-NAME \(Stage 3\)/);
+  assert.match(filled, /Competencies addressed: - 8175-30: Explain pricing/);
+  const noUnit = builtPrompt(exported, 'wfbBuildFlow3Row_', queueRow(exported, Object.assign({}, FULL_LESSON, {
+    pacing_unit_name: '', pacing_stage: null, course_objective: '', pacing_prior_connection: '', pacing_key_vocabulary: '',
+  }), {}));
+  assert.ok(!/UNIT CONTEXT:/.test(noUnit), 'a block left with only its heading goes too');
 });
