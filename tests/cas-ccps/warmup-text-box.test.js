@@ -111,6 +111,34 @@ test('registered without a doc, then the saved answer is scored the next night; 
   assert.equal(b[fx.exported.WQ25_STATUS], 'INCOMPLETE');
 });
 
+test('a late answer: an INCOMPLETE warm-up answered afterwards is scored on a later night, with no extra credit', () => {
+  const fx = setup('all');
+  deliver(fx, 'WQ-L', daysAgoStr(1));
+  deliver(fx, 'WQ-OLD', daysAgoStr(3)); // stamped INCOMPLETE on an earlier night
+  fx.exported._registerDeliveredWarmUps_();
+  fx.wq.getRange(3, fx.exported.WQ25_STATUS + 1).setValue('INCOMPLETE');
+  fx.wr.getRange(3, fx.exported.WR_TOTAL_SCORE + 1).setValue(0);
+
+  fx.exported.runWarmUpEvaluation();
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'INCOMPLETE', 'blank on its night');
+  assert.equal(fx.wq.getRange(3, fx.exported.WQ25_STATUS + 1).getValue(), 'INCOMPLETE', 'still blank: left alone');
+
+  const tb = fx.ss.getSheetByName('WarmUpTextBox');
+  const answer = 'Fans pay more because the stadium is the only place to buy water and the experience is part of the price.';
+  tb.getRange(2, fx.exported.WTB.RESPONSE + 1).setValue(answer);
+  tb.getRange(3, fx.exported.WTB.RESPONSE + 1).setValue(answer);
+  fx.exported.runWarmUpEvaluation();
+  [2, 3].forEach((r) => {
+    const row = fx.wq.getRange(r, 1, 1, fx.exported.WQ25_COL_COUNT).getValues()[0];
+    assert.equal(row[fx.exported.WQ25_STATUS], 'PENDING_EVAL', 'parked for Flow 4 like an on-time answer');
+    assert.equal(row[fx.exported.WQ25_RESPONSE_TEXT], answer);
+    assert.equal(row[fx.exported.WQ25_EXTRA_CREDIT], 0);
+  });
+
+  fx.exported.runWarmUpEvaluation();
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'PENDING_EVAL', 'picked up once');
+});
+
 test('extra credit: a reply of 10+ words saved on the dashboard is credited', () => {
   const fx = setup('all');
   deliver(fx, 'WQ-C', daysAgoStr(3));
