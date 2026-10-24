@@ -246,11 +246,11 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
 
 **16. "Students" counts assignment rows.** *Fixed 2026-10-22.* `07:2668` (`inView.length`). In "All assignments" one student counts once per assignment. Label it "Assignments" in the ALL view, or count distinct `googleId`.
 
-**17. The footer stays blank when a student has no assignments.** `13:964-972` returns before the footer is set at `13:1037`. Set the footer in that branch too.
+**17. The footer stays blank when a student has no assignments.** *Fixed 2026-10-24.* `13:964-972` returns before the footer is set at `13:1037`. Set the footer in that branch too.
 
 **18. "My Context" opens "Student Context — Full Roster", with no way back except Refresh.** *Fixed 2026-10-22: renamed, with a back link that keeps the roster.* `07:1612,2866-2891`. Rename the button "Student Context" and add a "← Back to dashboard" link that calls the page's `loadData` (client-side).
 
-**19. A stale comment says the card shows "the last two weeks".** `13:157-158`. The card shows only the last warm-up and the current one (`13:251-264`). Fix the comment.
+**19. A stale comment says the card shows "the last two weeks".** *Fixed 2026-10-24 (#281).* `13:157-158`. The card shows only the last warm-up and the current one (`13:251-264`). Fix the comment.
 
 ### Unverified
 
