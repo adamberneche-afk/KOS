@@ -206,9 +206,11 @@ function _fbsAppendWarmUpFlows_(rows) {
     { flow: 5, headers: WFB_FLOW5_HEADERS, prompt: "FLOW_5",
       note: "Bridging. Its three inputs all come out of one lesson_context_snapshot blob, " +
         "which is why this materializer exists." },
-    { flow: 3, headers: WFB_FLOW3_HEADERS, prompt: "FLOW_3_MODE_A / FLOW_3_MODE_B",
+    { flow: 3, headers: WFB_FLOW3_HEADERS, prompt: "FLOW_3_MODE_A/B/C",
       note: "Warm-Up Generation. Mode is materialized: A when a warmup_anchor exists, B " +
-        "otherwise. Branch the Gemini step on the Mode column and use the matching prompt key." },
+        "otherwise, C for a student's baseline warm-ups on competencies 1–22 (D6). The " +
+        "PromptText column carries the matching prompt, already filled in: the Gemini step " +
+        "reads that chip, so a new mode needs no Studio change." },
     { flow: 4, headers: WFB_FLOW4_HEADERS, prompt: "FLOW_4",
       note: "Warm-Up Scoring. OriginalPromptText is extracted from the student's doc by " +
         "evaluateWarmUpDoc_, not reconstructed from the snapshot — so it is the exact text " +

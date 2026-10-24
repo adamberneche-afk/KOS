@@ -651,7 +651,9 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
     if (email !== studentEmail) continue;
     const queueId   = String(row[WQ23_QUEUE_ID]    || "").trim();
     const archetype = String(row[WQ23_ARCHETYPE]   || "").trim(); // col 19
-    if (queueId && archetype) archetypeByWarmUpId[queueId] = archetype;
+    // A baseline warm-up (41, D6: "BASELINE 8175-14") asks about the student,
+    // not the lesson, so it says nothing about which lesson archetype works.
+    if (queueId && archetype && archetype.indexOf("BASELINE") !== 0) archetypeByWarmUpId[queueId] = archetype;
   }
 
   // Process each scored warm-up — assign to its unit via pacing guide
