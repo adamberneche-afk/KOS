@@ -4533,3 +4533,14 @@ Property or the Ledger's `_CONFIG`).
   Ledger outside WarmUpQueue (`FERPA_DATA_MAP.md`); working data, 1 school
   year (57). The feedback reflection before a resubmission (Phase 2) waits
   until this runs reliably.
+
+## ReflectionLog is kept with the student's work, 2026-10-24
+
+The operator: student work follows the retention rules for student
+artifacts and the portfolio, so a student can take a corpus of their own
+work at graduation for their own AI use. `ReflectionLog` moves from
+working data (1 school year) to the record tier (`LEDGER_RETENTION_YEARS`,
+as the student's Doc follows its Ledger row) in 57, and
+`FERPA_DATA_MAP.md` marks it portfolio material: a copy for the student
+through the export Thread B describes (`meta/CAS_DESIGN_THREADS_2026-10-16.md`),
+never removed from the school's records and never an evaluative record.

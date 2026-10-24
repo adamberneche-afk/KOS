@@ -59,6 +59,11 @@ Prepared 2026-10-16. Suggestions only; nothing was built when this was written. 
 - `29_StudentContextAggregator` already writes a weekly per-student living doc.
 - Teacher-confirmed SCR ratings are the kind of verified claim a portfolio needs.
 - Competency IDs, SOL correlations and evidence rows provide stable identifiers.
+- `ReflectionLog` (2026-10-24): the student's own answers about how they
+  worked, each with the question it answers, kept with the record
+  (`LEDGER_RETENTION_YEARS`). The operator's aim: a student leaves with a
+  corpus of their own work and reasoning to use with their own AI tools;
+  reflections are part of it, alongside the artifacts.
 
 ### Three problems to solve first
 

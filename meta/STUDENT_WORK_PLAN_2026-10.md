@@ -352,9 +352,12 @@ part files.
 3. **The first lesson's parts** (Appendix B): approve or give revision
    directions; the other 34 multi-part lessons follow its pattern.
 4. **Phase 1 on before Oct 30?** Proposed off until grades are in.
-5. **`ReflectionLog`'s retention:** working data, 1 school year (as built,
-   like WarmUpQueue's answers), or kept with the record (5 years) for
-   context across years?
+5. ~~**`ReflectionLog`'s retention**~~: **decided 2026-10-24**: the student's
+   work is kept by the record rules for student artifacts and the
+   portfolio. `ReflectionLog` is a record kept as long as the Ledger
+   (`LEDGER_RETENTION_YEARS`, as the student's Doc), and it is portfolio
+   material: the student's own corpus of work to take at graduation for
+   their own AI use (`CAS_DESIGN_THREADS_2026-10-16.md`, Thread B).
 
 ## Appendix A: the question frames (approved 2026-10-24)
 
