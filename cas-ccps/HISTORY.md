@@ -4656,3 +4656,10 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
 - **Tests:** `student-dashboard-warmups.test.js` (the page's own script,
   run in a sandbox), `student-doc-service.test.js`,
   `warmup-text-box.test.js`.
+
+## The Student Dashboard's footer with no assignments, 2026-10-24
+
+- **Why:** walk-through finding 17. `render` returned early when a student
+  had no assignments, before the footer ("Last refreshed: … · account")
+  was set, so it stayed blank. Both paths now call `_setFooter`.
+- **Tests:** `student-dashboard-warmups.test.js` (fails without the fix).
