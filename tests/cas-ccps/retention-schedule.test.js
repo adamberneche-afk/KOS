@@ -51,7 +51,7 @@ const TAB_NAMES = {
   Flow3Input: 'Flow3Input', Flow4Input: 'Flow4Input', Flow5Input: 'Flow5Input',
   ReviewQueue: 'ReviewQueue', STAGING_PIPELINE: 'STAGING_PIPELINE',
 };
-const RECORD = ['Ledger', 'StudentAssignments', 'StudentDocRegistry', 'CompetencyEvidence', 'SCRDecisionLog', 'EvaluationLog',
+const RECORD = ['Ledger', 'StudentAssignments', 'StudentDocRegistry', 'CompetencyEvidence', 'SCRDecisionLog', 'EvaluationLog', 'ReflectionLog',
   'ParentReportLog'];
 
 function byLabel(results) {
