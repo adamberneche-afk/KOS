@@ -41,6 +41,10 @@ operator. This file holds what comes after them.
   question required, Flow 3's own plausibility check; the Central Ledger
   removed from Flow 3's Gemini sources. Watch: the fallback line in each
   overnight email (11 on 10-21) and any "is Flow 3's own prompt" reason.
+- **After the walk-through, if it matters** (2026-10-24): Escape and focus
+  handling in the Teacher Dashboard's modals; a "who hasn't submitted"
+  roster filter; walk-through finding 20 (each warm-up save holds the lock
+  while it reads the whole tab; check save times in Executions first).
 - **The bridge paragraph (Flow 5): keep, enrich, merge or drop** (2026-10-21,
   from the operator's questions). Flow 5 writes 2–3 sentences above a new
   warm-up linking the student's last answer to the lesson. Today it adds
