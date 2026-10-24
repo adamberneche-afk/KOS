@@ -343,16 +343,24 @@ part files.
 
 ## Open decisions
 
-1. **The question frames** (Appendix A): approve or give revision
-   directions.
-2. **The first lesson's parts** (Appendix B): approve or give revision
+1. ~~**The question frames** (Appendix A)~~: **approved 2026-10-24**, in the
+   wording built in `00_SharedConfig.js` (`REFLECTION_FRAMES`).
+2. **The criteria in a student's words** for every lesson (drafted
+   2026-10-24, `cas-ccps/curriculum/lessons/STUDENT_CRITERIA.json`):
+   approve or give revision directions. Until approved, a question names
+   the competency's VDOE title.
+3. **The first lesson's parts** (Appendix B): approve or give revision
    directions; the other 34 multi-part lessons follow its pattern.
-3. **Phase 1 on before Oct 30?** Proposed off until grades are in.
-4. **`ReflectionLog`'s retention:** working data, 1 school year (as built,
+4. **Phase 1 on before Oct 30?** Proposed off until grades are in.
+5. **`ReflectionLog`'s retention:** working data, 1 school year (as built,
    like WarmUpQueue's answers), or kept with the record (5 years) for
    context across years?
 
-## Appendix A: the question frames (draft 1, 2026-10-24)
+## Appendix A: the question frames (approved 2026-10-24)
+
+As built for today's one-doc lessons, "this part" reads "this assignment"
+and E1 ends "the sentence or part"; with parts (Phase 3) the wording
+returns to "this part". The Feedback frames are Phase 2, not built.
 
 Rules: one **Evidence** question on every Submit, plus at most one other.
 A first Submit adds an Approach or Choice question (alternating by part); a
