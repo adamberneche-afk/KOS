@@ -1431,13 +1431,16 @@ function reflectionCriterionText_(milestone) {
 }
 
 // The assignment's competencies from its TeacherMatrix row, primary first:
-// [{ id, text }] for milestones 1 to 3 that carry a competency ID.
+// [{ id, text }] for milestones 1 to 3 that carry a competency ID. The text
+// is the student's own "I can" objective for it (approved 2026-10-24, the
+// row's StudentObjectives), or the competency's title where there is none.
 function reflectionCriteria_(matrixRow) {
   const out = [];
   if (!matrixRow) return out;
+  const objectives = matrixRow.objectives || {};
   [1, 2, 3].forEach(function (n) {
     const id = String(matrixRow["milestone" + n + "CompetencyId"] || "").trim();
-    const text = reflectionCriterionText_(matrixRow["milestone" + n]);
+    const text = reflectionCriterionText_(objectives[id] || matrixRow["milestone" + n]);
     if (id && text) out.push({ id: id, text: text });
   });
   return out;
@@ -1521,14 +1524,18 @@ function reflectionMatrixRow_(cfg, studentConfigId, teacherEmail) {
   if (!regRow) return null;
   const tm = SpreadsheetApp.openById(String(regRow[2]).trim()).getSheetByName(cfg.tabs.teacherMatrix || "TeacherMatrix");
   if (!tm) return null;
-  // TeacherMatrix columns: 37's FI_TM_COLUMNS_ (milestones 4-7, IDs 15-18).
+  // TeacherMatrix columns: 37's FI_TM_COLUMNS_ (milestones 4-7, IDs 15-18),
+  // and 53's StudentObjectives (20).
   const row = tm.getDataRange().getValues().slice(1).filter(function (r) {
     return String(r[0] || "").trim() === assignmentId;
   })[0];
   if (!row) return null;
   const at = function (n) { return String(row[n] || "").trim(); };
+  let objectives = {};
+  try { objectives = at(20) ? JSON.parse(at(20)) : {}; } catch (e) { objectives = {}; }
   return { milestone1: at(4), milestone2: at(5), milestone3: at(6),
-           milestone1CompetencyId: at(15), milestone2CompetencyId: at(16), milestone3CompetencyId: at(17) };
+           milestone1CompetencyId: at(15), milestone2CompetencyId: at(16), milestone3CompetencyId: at(17),
+           objectives: objectives };
 }
 
 // This student's earlier answers for one workspace (ConfigID + doc), as
