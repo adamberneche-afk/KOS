@@ -132,7 +132,7 @@ A comment keeps the document to the assignment and the student's work, and new d
 
 Log the lessons you teach. That's what lets warm-ups fit each student over time. This part of the system is Module 2.
 
-**Log a lesson** (the header's **+ New Lesson**). Enter the date, one or more periods, the objective, what students did, vocabulary, and tick the competencies you taught. Teaching the same lesson to several periods? List them with commas: one log is made for each. Each log records which competencies you taught, for coverage reports, and feeds warm-up personalization.
+**Log a lesson** (the header's **+ Log today's lesson**). Enter the date, one or more periods, the objective, what students did, vocabulary, and tick the competencies you taught. Teaching the same lesson to several periods? List them with commas: one log is made for each. Each log records which competencies you taught, for coverage reports, and feeds warm-up personalization.
 
 > Competency ratings come from checks of student work, not from lesson logs. A lesson you don't log just isn't counted toward coverage or personalization.
 

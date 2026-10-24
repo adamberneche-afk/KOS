@@ -4685,3 +4685,25 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   the file opens, and whether a ReviewQueue or staging row points at it.
   Read-only; it logs no names, emails or IDs.
 - **Tests:** `warmup-text-box.test.js`, `ledger-schema-guard.test.js`.
+
+## Three UX audit rows: short replies, a failed refresh, the header's lesson button, 2026-10-24
+
+- **Why:** rows still open in `meta/UX_AUDIT_2026-10-22.md`'s Students and
+  Classroom teacher tables.
+- **Short extra-credit replies, 13:** a reply under 10 words was saved
+  with "checked overnight" and never earned the +1, silently. The reply box
+  now counts as you type ("4 of 10 words needed for extra credit", "10
+  words ✓"), counting as 25 does (`wuWords`: split on spaces), and saving
+  a short reply says how many words it has and that it needs 10. It is
+  still saved, so a half-written reply isn't lost.
+- **A failed refresh, 13:** when a refresh failed while cached data was on
+  screen, nothing said so. A red line now reads "Couldn't refresh. Showing
+  what loaded at <time>…"; the next render clears it.
+- **The header's lesson button, 07:** the header's "+ New Lesson" logs
+  today's lesson, while 📅 Lessons' "+ New lesson" drafts a new one. The
+  header's now reads "+ Log today's lesson"; the teacher guide (and its
+  notebook copy) says so.
+- The audit's "waiting on your review" row for 🎓 SCR Reviews was already
+  fixed on 10-22 (only rows with a suggestion count).
+- **Tests:** `student-dashboard-warmups.test.js`,
+  `dashboard-plain-words.test.js`.
