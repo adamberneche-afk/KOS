@@ -193,7 +193,8 @@ function _fbsAppendFlow2_(rows) {
   rows.push(["Flow 2", "read", "student Doc", "", "── YOUR RESPONSE BEGINS HERE ──",
     "stampDocument_ ZONE 3", "Start of the response zone. Box-drawing characters, not hyphens."]);
   rows.push(["Flow 2", "read", "student Doc", "", "[CONFIG_ID:",
-    "stampDocument_ ZONE 4", "End of the response zone."]);
+    "stampDocument_ ZONE 4", "End of the response zone. Since 2026-10-24 it starts the hidden (white 1pt) " +
+    "system line, and the code a person reads is in the page footer; the marker itself is unchanged."]);
   rows.push(["Flow 2", "prompt", FLOW_PROMPT_TAB, "", "FLOW_2", "40_FlowPrompts.js",
     "Or bind the PromptText chip above, which is already substituted for this student."]);
 }
