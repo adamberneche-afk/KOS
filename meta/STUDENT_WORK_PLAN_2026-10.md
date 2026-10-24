@@ -156,9 +156,11 @@ right on its own:
   demonstrated?") test knowledge of the competency, not how this work shows
   it.
 
-So the slot takes **each part's own criteria in a student's words**: one
-line per competency, for this task ("Your plan says what you'll do before
-your first day, not just what you believe"). That is Phase 0's "criteria a
+So the slot takes **each part's own learning objectives, owned by the
+student** (the operator, 2026-10-24): one "I can …" line per competency,
+naming the skill and how this task shows it ("I can analyze a team or
+company's position by naming 2 internal strengths, 2 weaknesses, 2 outside
+opportunities and 2 threats it faces"). That is Phase 0's "criteria a
 student can check", and it does double duty: the doc shows it under "What
 your work needs to show", and the questions name it. Drafted from the task
 and the indicators, approved by the teacher with the part tiers.
@@ -317,7 +319,7 @@ Nov 2's measurement) and Studio's limit on runs per day is checked.
 
 | Phase | What | When |
 |---|---|---|
-| 0 | Content: the 8 missing video links; each lesson's criteria in a student's words, shown as a heading; part tiers and part criteria drafted for the teacher's approval | Week of Oct 26 |
+| 0 | Content: the 8 missing video links; each lesson's "I can" learning objectives, shown as a heading; part tiers and part criteria drafted for the teacher's approval | Week of Oct 26 |
 | 1 | The process reflection on Submit: the question frames, the selection, `ReflectionLog`, Flow 2 reads it, Student Context shows it. Behind a setting, off until grades are in (Oct 30) | Week of Oct 26, on after Oct 30 |
 | 2 | The feedback reflection, from `CompetencyEvidence`; Flow 2 checks it was carried out | Week of Nov 2 |
 | 3 | Parts in both courses: the builder splits tasks, a ConfigID and file per part, made with the lesson, unlocked on the primary, both dashboards group them, the teacher's unlock, cartridges list them | Week of Nov 2, after the measurement; likely runs past it |
@@ -343,16 +345,30 @@ part files.
 
 ## Open decisions
 
-1. **The question frames** (Appendix A): approve or give revision
-   directions.
-2. **The first lesson's parts** (Appendix B): approve or give revision
+1. ~~**The question frames** (Appendix A)~~: **approved 2026-10-24**, in the
+   wording built in `00_SharedConfig.js` (`REFLECTION_FRAMES`).
+2. ~~**The learning objectives**~~: **approved 2026-10-24** as written
+   (draft 2, "I can …" statements the student owns,
+   `cas-ccps/curriculum/lessons/STUDENT_CRITERIA.json`), with the 11
+   tertiaries the task gives little room to show kept. Next: wire them in,
+   so the doc shows them under "What your work needs to show" and the
+   reflection questions quote them; until then a question names the
+   competency's VDOE title.
+3. **The first lesson's parts** (Appendix B): approve or give revision
    directions; the other 34 multi-part lessons follow its pattern.
-3. **Phase 1 on before Oct 30?** Proposed off until grades are in.
-4. **`ReflectionLog`'s retention:** working data, 1 school year (as built,
-   like WarmUpQueue's answers), or kept with the record (5 years) for
-   context across years?
+4. **Phase 1 on before Oct 30?** Proposed off until grades are in.
+5. ~~**`ReflectionLog`'s retention**~~: **decided 2026-10-24**: the student's
+   work is kept by the record rules for student artifacts and the
+   portfolio. `ReflectionLog` is a record kept as long as the Ledger
+   (`LEDGER_RETENTION_YEARS`, as the student's Doc), and it is portfolio
+   material: the student's own corpus of work to take at graduation for
+   their own AI use (`CAS_DESIGN_THREADS_2026-10-16.md`, Thread B).
 
-## Appendix A: the question frames (draft 1, 2026-10-24)
+## Appendix A: the question frames (approved 2026-10-24)
+
+As built for today's one-doc lessons, "this part" reads "this assignment"
+and E1 ends "the sentence or part"; with parts (Phase 3) the wording
+returns to "this part". The Feedback frames are Phase 2, not built.
 
 Rules: one **Evidence** question on every Submit, plus at most one other.
 A first Submit adds an Approach or Choice question (alternating by part); a
@@ -383,8 +399,9 @@ then rotating. Each answer needs 10 words.
 
 **Feedback** (a resubmission after the primary wasn't met; `{criterion}` is
 the one the feedback found short)
-- F1. "The feedback said *{criterion}* needs more. What are you changing, and
-  why will that fix it?"
+- F1. "The feedback says your work doesn't show this yet: *{criterion}*.
+  What are you changing, and why will that fix it?" (reworded 2026-10-24 so
+  an "I can" objective reads inside it)
 - F2. "What part of the feedback do you agree with most, and what are you
   doing about it?"
 - F3. "Is there anything in the feedback you disagree with? Say what, and
