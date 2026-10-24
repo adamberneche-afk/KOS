@@ -45,7 +45,7 @@ const TAB_NAMES = {
   Ledger: 'Ledger', StudentAssignments: 'StudentAssignments', StudentDocRegistry: 'StudentDocRegistry',
   CompetencyEvidence: 'CompetencyEvidence', SCRDecisionLog: 'SCRDecisionLog', EvaluationLog: 'EvaluationLog',
   ParentReportLog: 'ParentReportLog',
-  WarmUpQueue: 'WarmUpQueue', StudentProfiles: 'StudentProfiles', WarmUpRegistry: 'WarmUpRegistry',
+  WarmUpQueue: 'WarmUpQueue', ReflectionLog: 'ReflectionLog', StudentProfiles: 'StudentProfiles', WarmUpRegistry: 'WarmUpRegistry',
   WarmUpTextBox: 'WarmUpTextBox',
   WarmUpResponses: 'WarmUpResponses', SCRSuggestions: 'SCRSuggestions', FlowInput: 'FlowInput',
   Flow3Input: 'Flow3Input', Flow4Input: 'Flow4Input', Flow5Input: 'Flow5Input',

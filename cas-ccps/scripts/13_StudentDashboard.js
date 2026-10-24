@@ -461,7 +461,13 @@ function handleStudentDocRequest_(googleId, req) {
 
   const hasText = (req && req.hasText === true) || !!String((req && req.text) || "").trim();
   if (!hasText) return { ok: false, error: "EMPTY" };
-  return queueSubmission_(cfg, googleId, fileId, configId);
+  // The doc menu can't ask the reflection questions, so with them on the
+  // student submits from the dashboard (2026-10-24).
+  if (pivotFlagFor_("REFLECTION_ON_SUBMIT", ledgerRowCourseCode_(row))) {
+    return { ok: false, error: "USE_DASHBOARD" };
+  }
+  const queued = queueSubmission_(cfg, googleId, fileId, configId);
+  return queued.ok ? { ok: true } : queued;
 }
 
 // The signed-in student's Ledger row for this doc, or null. All three must
@@ -485,7 +491,7 @@ function queueSubmission_(cfg, googleId, fileId, configId) {
   queue.appendRow([now, googleId, fileId, configId, "", "PENDING", ""]);
   stampSubmissionTs_(cfg, googleId, fileId, configId, now);
   setDocFeedbackStatus_(fileId, "CHECKING", { when: now }); // the doc's header (00)
-  return { ok: true };
+  return { ok: true, at: now };
 }
 
 // The Ledger's SubmissionTS: when the student last submitted this work. Both
@@ -552,14 +558,14 @@ const DASH_NO_SUBMIT_STATUSES = {
   ARCHIVED: "NOT_REGISTERED", SCHEDULED: "NOT_OPEN_YET"
 };
 
-function submitMyWork(fileId, configId) {
+function submitMyWork(fileId, configId, answers) {
   // Anything thrown used to reach the page as a failed call, which shows
   // "didn't answer… try again" and was recorded nowhere but Executions
   // (the second failed submission, 2026-10-15). Caught here, it is counted
   // in SubmitFailures like the other system-side failures and the student
   // is told to tell the teacher.
   try {
-    return _dashSubmit_(fileId, configId);
+    return _dashSubmit_(fileId, configId, answers);
   } catch (e) {
     Logger.log("submitMyWork: unexpected error for ConfigID " + String(configId || "").trim() + ": " + e.message);
     let cfg = null;
@@ -569,7 +575,94 @@ function submitMyWork(fileId, configId) {
   }
 }
 
-function _dashSubmit_(fileId, configId) {
+// The process reflection (00, REFLECTION_ON_SUBMIT): the dashboard asks
+// for the questions first (getSubmitReflection), shows them on the card, and
+// sends the answers with the submit. The server chooses the questions again
+// and checks the answers against them, so a page can't pick its own. The
+// answers go to ReflectionLog before the work is queued; if that write
+// fails the work still goes in (the failure is counted in SubmitFailures).
+function getSubmitReflection(fileId, configId) {
+  try {
+    const checked = _dashSubmitChecks_(fileId, configId);
+    if (!checked.ok) return checked;
+    return { ok: true, questions: _dashReflectionQuestions_(checked) };
+  } catch (e) {
+    Logger.log("getSubmitReflection: unexpected error for ConfigID " + String(configId || "").trim() + ": " + e.message);
+    return { ok: false, error: "SERVER_ERROR" };
+  }
+}
+
+// [] when the reflection is off for this student's course.
+function _dashReflectionQuestions_(checked) {
+  if (!pivotFlagFor_("REFLECTION_ON_SUBMIT", ledgerRowCourseCode_(checked.row))) return [];
+  const cfg = checked.cfg;
+  let criteria = [];
+  try {
+    criteria = reflectionCriteria_(reflectionMatrixRow_(cfg, checked.configId,
+      String(checked.row[LEDGER.TEACHER_EMAIL] || "")));
+  } catch (e) {
+    // Without the assignment's competencies the questions are still asked,
+    // just without one that names a competency.
+    Logger.log("[Reflection] TeacherMatrix not read for ConfigID " + checked.configId + ": " + e.message);
+  }
+  const prior = readReflections_(SpreadsheetApp.openById(cfg.ledgerSsId), cfg, checked.configId, checked.fileId);
+  return chooseReflectionQuestions_(criteria, prior, checked.configId).map(function (q) {
+    return { frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, question: q.question };
+  });
+}
+
+function _dashSubmit_(fileId, configId, answers) {
+  const checked = _dashSubmitChecks_(fileId, configId);
+  if (!checked.ok) return checked;
+  const cfg = checked.cfg, googleId = checked.googleId;
+  fileId = checked.fileId;
+  configId = checked.configId;
+
+  const questions = _dashReflectionQuestions_(checked);
+  let reflectionRows = [];
+  if (questions.length) {
+    const given = Array.isArray(answers) ? answers : [];
+    const matches = given.length === questions.length && questions.every(function (q, i) {
+      return given[i] && String(given[i].frameId) === q.frameId &&
+             String(given[i].competencyId || "") === q.competencyId;
+    });
+    if (!matches) return { ok: false, error: "REFLECTION_NEEDED", questions: questions };
+    const texts = given.map(function (g) { return String(g.answer || "").trim(); });
+    if (texts.some(function (t) { return reflectionWordCount_(t) < REFLECTION_MIN_WORDS; })) {
+      return { ok: false, error: "REFLECTION_SHORT", minWords: REFLECTION_MIN_WORDS };
+    }
+    const found = texts.map(findSystemText_).filter(Boolean)[0];
+    if (found) return { ok: false, error: "SYSTEM_TEXT_IN_REFLECTION", found: found };
+    reflectionRows = questions.map(function (q, i) {
+      return [null, googleId, configId, fileId, q.kind, q.frameId, q.competencyId, q.question, texts[i]];
+    });
+  }
+
+  // The answers go in before the queue row, so 37 finds them when it builds
+  // the Flow 2 input a minute later. Their time is the submission's.
+  const now = new Date();
+  if (reflectionRows.length) {
+    try {
+      reflectionRows.forEach(function (r) { r[0] = now; });
+      appendReflections_(SpreadsheetApp.openById(cfg.ledgerSsId), cfg, reflectionRows);
+    } catch (e) {
+      Logger.log("submitMyWork: reflection not saved for ConfigID " + configId + ": " + e.message);
+      dashRecordFailure_(cfg, "REFLECTION_NOT_SAVED");
+    }
+  }
+
+  const res = queueSubmission_(cfg, googleId, fileId, configId);
+  if (!res.ok) return res;
+  Logger.log("Dashboard submission — ConfigID: " + configId +
+             (reflectionRows.length ? " | reflection: " + reflectionRows.length + " answer(s)" : ""));
+  return { ok: true, aiFlowsLive: !!cfg.aiFlowsLive, feedbackInComments: feedbackAsCommentFor_(configId),
+           reflected: reflectionRows.length > 0 };
+}
+
+// Everything Submit checks before anything is asked or written: the
+// student, their row, an open queue row, and enough writing in the doc.
+// { ok: true, cfg, googleId, row, fileId, configId } or { ok: false, error }.
+function _dashSubmitChecks_(fileId, configId) {
   const googleId = Session.getActiveUser().getEmail();
   if (!googleId) return { ok: false, error: "NO_USER" };
   fileId   = String(fileId   || "").trim();
@@ -620,10 +713,7 @@ function _dashSubmit_(fileId, configId) {
   const systemText = findSystemText_(text);
   if (systemText) return { ok: false, error: "SYSTEM_TEXT_IN_RESPONSE", found: systemText };
 
-  const res = queueSubmission_(cfg, googleId, fileId, configId);
-  if (!res.ok) return res;
-  Logger.log("Dashboard submission — ConfigID: " + configId);
-  return { ok: true, aiFlowsLive: !!cfg.aiFlowsLive, feedbackInComments: feedbackAsCommentFor_(configId) };
+  return { ok: true, cfg: cfg, googleId: googleId, row: row, fileId: fileId, configId: configId };
 }
 
 // One row per system-side failure (a doc the admin account can't open, a
@@ -832,6 +922,15 @@ function buildStudentDashboardHtml_() {
   .submit-msg{font-size:13px;margin-top:8px;line-height:1.45;white-space:pre-line}
   .submit-msg.ok{color:#137333}
   .submit-msg.err{color:#c5221f}
+  /* The process reflection on Submit (2026-10-24): questions on the card. */
+  .reflect{margin-top:12px;padding:12px;border:1px solid #c6dafc;border-radius:8px;background:#f8fbff}
+  .reflect-intro{font-size:13px;color:var(--text-secondary);margin-bottom:10px;line-height:1.45}
+  .reflect-q{display:block;font-size:14px;font-weight:500;margin:10px 0 4px;line-height:1.4}
+  .reflect-a{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;padding:8px;border:1px solid #9aa0a6;border-radius:6px;resize:vertical}
+  .reflect-count{font-size:12px;color:var(--text-secondary);margin-top:2px}
+  .reflect-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+  .reflect-cancel{background:white;color:#3c4043;border:1px solid #80868b;padding:8px 18px;border-radius:6px;font-size:14px;cursor:pointer;font-family:inherit}
+  .reflect-cancel:hover{background:#f1f3f4}
   /* Warm-ups card: the last warm-up's feedback, then the current one. */
   .warmup-card{border-left-color:#1a73e8}
   .warmup-card:hover{transform:none}
@@ -916,6 +1015,10 @@ let _myInfoOpen = false;
 // fileId -> { ok, text } from this visit's Submit clicks, so a refresh or
 // term change that rebuilds the cards doesn't wipe the student's answer.
 let _submitMsgs = {};
+// fileId -> { configId, questions, answers, msg } while a card shows the
+// reflection questions. Page memory only: a reload starts them again.
+let _reflect = {};
+const REFLECT_MIN_WORDS = ${REFLECTION_MIN_WORDS};
 
 // A round-trip that happens to finish in well under this many ms would
 // otherwise flash the spinner on and off almost instantly, which reads as
@@ -1072,11 +1175,12 @@ function render(data) {
           ? \`<a href="\${esc(safeDocUrl(a.docUrl))}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
           : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
         }
-        \${a.canSubmit
+        \${a.canSubmit && !_reflect[a.fileId]
           ? \`<button class="submit-btn" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
           : ""
         }
         </div>
+        \${a.canSubmit && _reflect[a.fileId] ? reflectFormHtml(a) : ""}
         \${_submitMsgs[a.fileId]
           ? \`<div class="submit-msg \${_submitMsgs[a.fileId].ok ? "ok" : "err"}" role="status">\${esc(_submitMsgs[a.fileId].text)}</div>\`
           : ""
@@ -1241,7 +1345,108 @@ function submitWork(btn) {
   const fileId = btn.getAttribute("data-file");
   const configId = btn.getAttribute("data-config");
   btn.disabled = true;
+  btn.textContent = "Checking…";
+  // First ask whether this submit needs the reflection questions. The
+  // server runs the same checks as a submit, so a doc with too little
+  // writing says so before any question is asked.
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.ok && res.questions && res.questions.length) {
+        _reflect[fileId] = { configId: configId, questions: res.questions, answers: [], msg: "" };
+        if (_lastDashData) render(_lastDashData);
+        return;
+      }
+      if (res && res.ok) { sendSubmit(fileId, configId, null); return; }
+      submitDone(fileId, configId, res);
+    })
+    .withFailureHandler(function() { submitDone(fileId, configId, null); })
+    .getSubmitReflection(fileId, configId);
+}
+
+function reflectFormHtml(a) {
+  const r = _reflect[a.fileId];
+  const one = r.questions.length === 1;
+  let h = '<div class="reflect" role="group" aria-label="Before you submit">' +
+    '<div class="reflect-intro">Before you submit, answer ' + (one ? "this question" : "these questions") +
+    " about how you worked: a sentence or two, at least " + REFLECT_MIN_WORDS + " words" + (one ? "" : " each") +
+    ". Your answers are not part of your work. You will see them as a comment on your document.</div>";
+  r.questions.forEach(function(q, i) {
+    const id = "rf-" + i + "-" + a.fileId;
+    const n = countWords(r.answers[i]);
+    h += '<label class="reflect-q" for="' + esc(id) + '">' + esc(q.question) + "</label>" +
+      '<textarea id="' + esc(id) + '" class="reflect-a" rows="3" data-file="' + esc(a.fileId) +
+      '" data-i="' + i + '" oninput="reflectInput(this)">' + esc(r.answers[i] || "") + "</textarea>" +
+      '<div class="reflect-count" id="' + esc(id) + '-n">' + n + " of " + REFLECT_MIN_WORDS + " words</div>";
+  });
+  h += '<div class="reflect-actions">' +
+    '<button class="submit-btn" data-file="' + esc(a.fileId) + '" data-config="' + esc(a.configId) +
+    '" onclick="sendReflection(this)">Submit for Feedback</button>' +
+    '<button class="reflect-cancel" data-file="' + esc(a.fileId) + '" onclick="cancelReflection(this)">Cancel</button></div>';
+  if (r.msg) h += '<div class="submit-msg err" role="status">' + esc(r.msg) + "</div>";
+  return h + "</div>";
+}
+
+function countWords(text) {
+  return String(text || "").split(/\\s+/).filter(function(w) { return /[A-Za-z0-9]/.test(w); }).length;
+}
+
+// Typing only updates page memory and the word count, so the box keeps
+// its focus; nothing re-renders.
+function reflectInput(el) {
+  const r = _reflect[el.getAttribute("data-file")];
+  if (!r) return;
+  const i = Number(el.getAttribute("data-i"));
+  r.answers[i] = el.value;
+  const n = document.getElementById(el.id + "-n");
+  if (n) n.textContent = countWords(el.value) + " of " + REFLECT_MIN_WORDS + " words";
+}
+
+function cancelReflection(btn) {
+  delete _reflect[btn.getAttribute("data-file")];
+  if (_lastDashData) render(_lastDashData);
+}
+
+function sendReflection(btn) {
+  const fileId = btn.getAttribute("data-file");
+  const configId = btn.getAttribute("data-config");
+  const r = _reflect[fileId];
+  if (!r) return;
+  const short = r.questions.some(function(q, i) { return countWords(r.answers[i]) < REFLECT_MIN_WORDS; });
+  if (short) {
+    r.msg = "Answer each question in at least " + REFLECT_MIN_WORDS + " words.";
+    if (_lastDashData) render(_lastDashData);
+    return;
+  }
+  btn.disabled = true;
   btn.textContent = "Submitting…";
+  sendSubmit(fileId, configId, r.questions.map(function(q, i) {
+    return { frameId: q.frameId, competencyId: q.competencyId, answer: r.answers[i] || "" };
+  }));
+}
+
+function sendSubmit(fileId, configId, answers) {
+  google.script.run
+    .withSuccessHandler(function(res) { submitDone(fileId, configId, res); })
+    .withFailureHandler(function() { submitDone(fileId, configId, null); })
+    .submitMyWork(fileId, configId, answers);
+}
+
+function submitDone(fileId, configId, res) {
+  const r = _reflect[fileId];
+  // Problems with the answers stay on the open questions, with what was
+  // typed kept.
+  if (r && res && (res.error === "REFLECTION_SHORT" || res.error === "SYSTEM_TEXT_IN_REFLECTION" ||
+                   res.error === "REFLECTION_NEEDED")) {
+    if (res.error === "REFLECTION_NEEDED" && res.questions) { r.questions = res.questions; r.answers = []; }
+    r.msg = res.error === "REFLECTION_SHORT"
+      ? "Answer each question in at least " + (res.minWords || REFLECT_MIN_WORDS) + " words."
+      : res.error === "SYSTEM_TEXT_IN_REFLECTION"
+        ? "An answer has text copied from a feedback block: " + (res.found || "[SYSTEM:") + ". Take it out and submit again."
+        : "The questions changed since this page loaded. Answer these, then submit.";
+    if (_lastDashData) render(_lastDashData);
+    return;
+  }
+  if (res && res.ok) delete _reflect[fileId];
   const done = function(msg) {
     _submitMsgs[fileId] = msg;
     _dashCache = {};
@@ -1260,33 +1465,29 @@ function submitWork(btn) {
     }
     if (_lastDashData) render(_lastDashData);
   };
-  google.script.run
-    .withSuccessHandler(function(res) {
-      if (res && res.ok) {
-        done({ ok: true, text: !res.aiFlowsLive
-          ? "✅ Submitted. Your teacher can see your work and will review it directly."
-          : res.feedbackInComments
-            ? "✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right)."
-            : "✅ Submitted. In a few minutes your feedback will appear in your document, just above “Your response”. Refresh the document to see it." });
-        return;
-      }
-      const code = res && res.error;
-      if (code === "TOO_SHORT") {
-        const w = res.words || 0;
-        done({ ok: false, text: "Write a little more first. " +
-          (w > 0 ? "You've written about " + w + " word" + (w === 1 ? "" : "s") + "." : "You haven't written anything under “Your response” yet.") +
-          "\\nAim for at least 25 words under “Your response” in your document." });
-        return;
-      }
-      if (code === "SYSTEM_TEXT_IN_RESPONSE") {
-        done({ ok: false, text: "Your response has text copied from a feedback block: " +
-          (res.found || "[SYSTEM:") + "\\nDelete that line from your response and submit again." });
-        return;
-      }
-      done({ ok: false, text: SUBMIT_ERRORS[code] || SUBMIT_FALLBACK });
-    })
-    .withFailureHandler(function() { done({ ok: false, text: SUBMIT_FALLBACK }); })
-    .submitMyWork(fileId, configId);
+  if (res && res.ok) {
+    done({ ok: true, text: (!res.aiFlowsLive
+      ? "✅ Submitted. Your teacher can see your work and will review it directly."
+      : res.feedbackInComments
+        ? "✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right)."
+        : "✅ Submitted. In a few minutes your feedback will appear in your document, just above “Your response”. Refresh the document to see it.") +
+      (res.reflected ? " Your answers about how you worked will be a comment on your document too." : "") });
+    return;
+  }
+  const code = res && res.error;
+  if (code === "TOO_SHORT") {
+    const w = res.words || 0;
+    done({ ok: false, text: "Write a little more first. " +
+      (w > 0 ? "You've written about " + w + " word" + (w === 1 ? "" : "s") + "." : "You haven't written anything under “Your response” yet.") +
+      "\\nAim for at least 25 words under “Your response” in your document." });
+    return;
+  }
+  if (code === "SYSTEM_TEXT_IN_RESPONSE") {
+    done({ ok: false, text: "Your response has text copied from a feedback block: " +
+      (res.found || "[SYSTEM:") + "\\nDelete that line from your response and submit again." });
+    return;
+  }
+  done({ ok: false, text: SUBMIT_ERRORS[code] || SUBMIT_FALLBACK });
 }
 
 // NEW (finding #7): an immediate, in-app "just registered" notice —

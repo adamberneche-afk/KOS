@@ -153,6 +153,7 @@ function getConfig_() {
       matrixRegistry:  "MatrixRegistry",   // Teacher Matrix SS ID lookup for Script 02
       flowInput:       "FlowInput",        // Script 37's materialized Flow 2 input row
       evaluationLog:   "EvaluationLog",    // Script 37: one row per Flow 2 result, times and outcome only
+      reflectionLog:   "ReflectionLog",    // Script 13: the student's process reflection, one row per answer
       // Student Dashboard (13) appends one row (timestamp, error code, nothing
       // else) here each time Submit for Feedback fails for a system-side
       // reason; the CAS attention signal (34b) counts them. Created on the
@@ -252,7 +253,9 @@ const SHARED_CONFIG_KEYS = [
   // The nightly lesson rollout's switch (58); read through pivotFlagFor_().
   // Missing until 2026-10-22, so a _CONFIG row was ignored though the docs
   // said it worked there (UX audit, fix-first 6).
-  "ROLLOUT_AUTO_APPLY"
+  "ROLLOUT_AUTO_APPLY",
+  // The process reflection on Submit (13); read through pivotFlagFor_().
+  "REFLECTION_ON_SUBMIT"
 ];
 
 // System text a student response must not contain (P0-03,
@@ -267,6 +270,7 @@ const SYSTEM_TEXT_PATTERNS = [
   /\[\s*SYSTEM\s*:/i,
   /\[\s*SUGGESTED_SCORE/i,
   /\[\s*MILESTONE_OUTCOMES/i,
+  /<<<\s*(END_)?PROCESS_REFLECTION\s*>>>/i,
 ];
 
 // The first system-text token in `text` (for example "[SYSTEM:"), or "".
@@ -1373,4 +1377,188 @@ function _reportDeployVersion_(projectName, sha) {
     console.error('[DeployVersionReport] Failed to report ' + projectName + ': ' + e.message);
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// The process reflection on Submit (meta/STUDENT_WORK_PLAN_2026-10.md,
+// Phase 1, decided 2026-10-24)
+//
+// With REFLECTION_ON_SUBMIT on for a course (blank/"off", "all", or a course
+// code, as pivotFlagFor_ reads it), Submit for Feedback on the Student
+// Dashboard (13) first asks one or two short questions about how the student
+// worked. The answers go to the Central Ledger's ReflectionLog tab, one row
+// per answer: the raw data for the student's context. Flow 2 reads the
+// latest submission's answers in its prompt (37), and the student gets them
+// back as a comment on their doc, for reference only (37).
+//
+// The questions come from fixed frames, chosen here in code, not by a model:
+// the same inputs always give the same questions, so the teacher can see why
+// a student got one and a test can pin it. An Evidence question names one of
+// the assignment's competencies (milestones 1 to 3, primary first, then
+// rotating); it is asked on every Submit when the assignment has any. A
+// first Submit adds one Approach or Choice question. No frame is asked twice
+// of the same student for the same assignment while an unused one is left.
+// The feedback reflection (a resubmission after Revise) is Phase 2 and not
+// built: a resubmission gets an Evidence question only.
+// ---------------------------------------------------------------------------
+const REFLECTION_MIN_WORDS = 10;
+
+const REFLECTION_FRAMES = [
+  { id: "E1", kind: "EVIDENCE", text: "Where in your work do you show this: \u201c{criterion}\u201d? Point to the sentence or part." },
+  { id: "E2", kind: "EVIDENCE", text: "Look at this one: \u201c{criterion}\u201d. What in your work shows it, and what would make it stronger?" },
+  { id: "E3", kind: "EVIDENCE", text: "If your teacher read only one part of your work to check \u201c{criterion}\u201d, which part should it be? Why?" },
+  { id: "A1", kind: "APPROACH", text: "What did you do first in this assignment, and why start there?" },
+  { id: "A2", kind: "APPROACH", text: "What did you leave out or cut, and why?" },
+  { id: "A3", kind: "APPROACH", text: "What did you look back at in the lesson while you worked, and what did it help with?" },
+  { id: "C1", kind: "CHOICE",   text: "What was the hardest choice in this assignment, and what did you pick?" },
+  { id: "C2", kind: "CHOICE",   text: "What would someone who disagrees with your work say? What would you tell them?" },
+  { id: "C3", kind: "CHOICE",   text: "What other way could you have done this? Why didn't you?" }
+];
+
+const REFLECTION_LOG_HEADERS = ["SubmittedAt", "GoogleID", "ConfigID", "StudentFileID", "Kind",
+  "FrameID", "CompetencyID", "Question", "Answer"];
+const RL = { SUBMITTED_AT: 0, GOOGLE_ID: 1, CONFIG_ID: 2, FILE_ID: 3, KIND: 4,
+  FRAME_ID: 5, COMPETENCY_ID: 6, QUESTION: 7, ANSWER: 8 };
+
+function reflectionWordCount_(text) {
+  return String(text || "").split(/\s+/).filter(function (w) { return /[A-Za-z0-9]/.test(w); }).length;
+}
+
+// A milestone line ("8177-83 Develop a market research project.") as the
+// words a student reads: the competency ID and the closing period dropped.
+function reflectionCriterionText_(milestone) {
+  return String(milestone || "").trim().replace(/^\d{4}-\d+[a-z]?\s+/i, "").replace(/\.\s*$/, "").trim();
+}
+
+// The assignment's competencies from its TeacherMatrix row, primary first:
+// [{ id, text }] for milestones 1 to 3 that carry a competency ID.
+function reflectionCriteria_(matrixRow) {
+  const out = [];
+  if (!matrixRow) return out;
+  [1, 2, 3].forEach(function (n) {
+    const id = String(matrixRow["milestone" + n + "CompetencyId"] || "").trim();
+    const text = reflectionCriterionText_(matrixRow["milestone" + n]);
+    if (id && text) out.push({ id: id, text: text });
+  });
+  return out;
+}
+
+// A small, stable number from a string, so which Approach or Choice frame a
+// first Submit gets varies by assignment but never between two calls.
+function _reflectionHash_(s) {
+  let h = 0;
+  const str = String(s || "");
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 100003;
+  return h;
+}
+
+// The questions for this Submit. criteria: reflectionCriteria_(); prior:
+// this student's earlier ReflectionLog rows for this assignment, as
+// [{ frameId, kind, competencyId, submittedAt }]; key: the assignment's
+// ConfigID (seeds the variety). Returns [{ frameId, kind, competencyId,
+// question }], one or two of them.
+function chooseReflectionQuestions_(criteria, prior, key) {
+  criteria = criteria || [];
+  prior = prior || [];
+  const used = {};
+  const submits = {};
+  let evidenceAsked = 0;
+  prior.forEach(function (p) {
+    used[p.frameId] = (used[p.frameId] || 0) + 1;
+    submits[String(p.submittedAt)] = true;
+    if (p.kind === "EVIDENCE") evidenceAsked++;
+  });
+  const firstSubmit = Object.keys(submits).length === 0;
+  const seed = _reflectionHash_(key);
+  const pick = function (kind, offset) {
+    const frames = REFLECTION_FRAMES.filter(function (f) { return f.kind === kind; });
+    const start = (seed + offset) % frames.length;
+    let best = null;
+    for (let i = 0; i < frames.length; i++) {
+      const f = frames[(start + i) % frames.length];
+      if (!best || (used[f.id] || 0) < (used[best.id] || 0)) best = f;
+    }
+    return best;
+  };
+  const out = [];
+  if (criteria.length) {
+    const c = criteria[evidenceAsked % criteria.length];
+    const f = pick("EVIDENCE", evidenceAsked);
+    out.push({ frameId: f.id, kind: f.kind, competencyId: c.id, question: f.text.replace("{criterion}", c.text) });
+  }
+  if (firstSubmit || !criteria.length) {
+    const kinds = seed % 2 === 0 ? ["APPROACH", "CHOICE"] : ["CHOICE", "APPROACH"];
+    const wanted = criteria.length ? 1 : 2;
+    for (let k = 0; k < wanted; k++) {
+      const f = pick(kinds[k], 0);
+      out.push({ frameId: f.id, kind: f.kind, competencyId: "", question: f.text });
+    }
+  }
+  return out;
+}
+
+// The TeacherMatrix row a student's workspace belongs to, read the way 37
+// does (StudentAssignments, then MatrixRegistry by the teacher's email):
+// { milestone1..3, milestone1CompetencyId..3 } or null. Here, not in 37,
+// because the Student Dashboard project holds only 00, 13, 49 and 63.
+function reflectionMatrixRow_(cfg, studentConfigId, teacherEmail) {
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  let assignmentId = studentConfigId;
+  const sa = ss.getSheetByName("StudentAssignments"); // 54's tab
+  if (sa && sa.getLastRow() > 1) {
+    sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
+      if (String(r[0] || "").trim() === studentConfigId && String(r[2] || "").trim()) {
+        assignmentId = String(r[2]).trim();
+      }
+    });
+  }
+  const reg = ss.getSheetByName(cfg.tabs.matrixRegistry);
+  if (!reg) return null;
+  const lower = String(teacherEmail || "").trim().toLowerCase();
+  const regRow = reg.getDataRange().getValues().slice(1).filter(function (r) {
+    return String(r[1] || "").trim().toLowerCase() === lower && String(r[2] || "").trim();
+  })[0];
+  if (!regRow) return null;
+  const tm = SpreadsheetApp.openById(String(regRow[2]).trim()).getSheetByName(cfg.tabs.teacherMatrix || "TeacherMatrix");
+  if (!tm) return null;
+  // TeacherMatrix columns: 37's FI_TM_COLUMNS_ (milestones 4-7, IDs 15-18).
+  const row = tm.getDataRange().getValues().slice(1).filter(function (r) {
+    return String(r[0] || "").trim() === assignmentId;
+  })[0];
+  if (!row) return null;
+  const at = function (n) { return String(row[n] || "").trim(); };
+  return { milestone1: at(4), milestone2: at(5), milestone3: at(6),
+           milestone1CompetencyId: at(15), milestone2CompetencyId: at(16), milestone3CompetencyId: at(17) };
+}
+
+// This student's earlier answers for one workspace (ConfigID + doc), as
+// chooseReflectionQuestions_ takes them. A missing tab is no answers.
+function readReflections_(ss, cfg, configId, fileId) {
+  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.reflectionLog) || "ReflectionLog");
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, REFLECTION_LOG_HEADERS.length).getValues()
+    .filter(function (r) {
+      return String(r[RL.CONFIG_ID]).trim() === configId && String(r[RL.FILE_ID]).trim() === fileId;
+    })
+    .map(function (r) {
+      return { submittedAt: sheetTimestampMs_(r[RL.SUBMITTED_AT]), kind: String(r[RL.KIND]).trim(),
+               frameId: String(r[RL.FRAME_ID]).trim(), competencyId: String(r[RL.COMPETENCY_ID]).trim(),
+               question: String(r[RL.QUESTION]), answer: String(r[RL.ANSWER]) };
+    });
+}
+
+// Appends one Submit's answers. Written as plain text, so an answer that
+// starts with "=" stays words and never becomes a formula.
+function appendReflections_(ss, cfg, rows) {
+  if (!rows.length) return;
+  const name = (cfg.tabs && cfg.tabs.reflectionLog) || "ReflectionLog";
+  let sheet = ss.getSheetByName(name);
+  if (!sheet) {
+    sheet = ss.insertSheet(name);
+    sheet.getRange(1, 1, 1, REFLECTION_LOG_HEADERS.length).setValues([REFLECTION_LOG_HEADERS]);
+    sheet.setFrozenRows(1);
+  }
+  const at = sheet.getLastRow() + 1;
+  sheet.getRange(at, 2, rows.length, REFLECTION_LOG_HEADERS.length - 1).setNumberFormat("@");
+  sheet.getRange(at, 1, rows.length, REFLECTION_LOG_HEADERS.length).setValues(rows);
 }
