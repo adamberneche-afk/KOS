@@ -4631,3 +4631,28 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
 - The Terms panel, the student guide (and its notebook copy) and the README
   say the new rule.
 - **Tests:** `student-dashboard-warmups.test.js`, `warmup-text-box.test.js`.
+
+## The Student Dashboard: walk-through findings 10 to 14, 2026-10-24
+
+- **10, 13:** "Last warm-up" has a collapsed "Show the question and your
+  answer" above the score, so the feedback (and a reply to it) can be read
+  against what the student wrote. Text-box warm-ups only; a doc warm-up's
+  text stays in its doc.
+- **11, 13:** "You were just registered" fired for every new assignment,
+  because each lesson's doc is a new Ledger row with a fresh Timestamp.
+  `getStudentDashboardData` now returns `newRegistrations`: one entry per
+  class and teacher whose **earliest** row (any term or status, this school
+  year) is under 3 days old. The banner shows one line per entry. The
+  per-row `registeredAt` and `isNewRegistration` are gone.
+- **12, 13:** My Info shows one card per class, period and teacher, not one
+  per assignment.
+- **13, 13:** the score parts show their maximums: "Length 3/6 · Grammar
+  1/1 · Engagement 2/3 (30+ words for full length)" (25's word-count
+  thresholds, 41's ranges).
+- **14, 25:** Flow 4 feedback stored in WarmUpQueue was cut at 500
+  characters, mid-word, and a text-box student reads only that copy.
+  `MAX_FEEDBACK_CHARS` is 2,000, and a cut ends with "…" (`_capFeedback_`).
+  Feedback already stored stays as it is.
+- **Tests:** `student-dashboard-warmups.test.js` (the page's own script,
+  run in a sandbox), `student-doc-service.test.js`,
+  `warmup-text-box.test.js`.
