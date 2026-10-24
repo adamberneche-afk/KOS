@@ -332,12 +332,24 @@ dependencies, like the rest of `tools/`.
 ## [`tools/notebook-codebase/`](./tools/notebook-codebase/build.js) — the repo as Gemini notebook sources
 
 Writes `meta/notebook-codebase/`: the whole repo (code, docs, tools, tests)
-as 12 Markdown sources plus an index, for a "KOS Codebase" notebook. Every
+as 14 Markdown sources plus an index, for a "KOS Codebase" notebook. Every
 section heading names its source and file, and every source carries its
 `Notebook source:` line. Unlike the generators above, its output is not
 committed (it is gitignored): run it in the unzipped copy of `main`, which
 needs no git, and upload what it writes. `--check` reports which sources
 changed since the last build. See `meta/notebook-codebase/README.md`.
+
+## [`tools/notebook-context/`](./tools/notebook-context/build.js) — the "KOS Context" notebook
+
+Writes `meta/notebook-context/`: six sources for a notebook about why KOS
+exists rather than how its code works. A guide written for it
+(`meta/notebook-context/GUIDE.md`: the three systems, their North Stars,
+the value proposition by audience, and which sources are dated), then
+copies of the North Star documents, the Economics of Depth paper and its
+assumptions audit, the value review and audits, the system READMEs and
+architecture, and the plan and handoff. The file list is chosen by hand in
+the generator, and a missing file stops the build. Output gitignored, as
+above; `--check` reports what changed. See `meta/notebook-context/README.md`.
 
 ## [`tools/html-lint/`](./tools/html-lint/check.js) — inline `<script>` syntax check
 
@@ -395,7 +407,7 @@ per-session vector classification and its backfill
 the size-capped error digest (`error-digest.test.js`),
 the Registrar's stage validators (`registrar-validators.test.js`), its anonymous intervention triage (a role and a link; emails, IDs and percentages scrubbed: `registrar-anonymous-triage.test.js`), and Deploy_Trigger deploying only an APPROVED Blackboard row (`governance-deploy-guard.test.js`);
 `tests/tools/` covers
-the deploy script `tools/clasp-sync/run.js` against a fake clasp (promote, head-only, rollback, the `--zip` extractor, the stale-copy check, and its manifest matching `run.ps1` and `project-map.json`: `clasp-run.test.js`), the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`, and check 15's no-`typeof`-guard-inside-one-project rule with the undefined-call check's parameter and guard skips, `gas-lint-typeof-guard.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the student-data scan reporting locations and hashes only, and its log-call warning (`student-data-scan.test.js`), no cas-ccps or kos-personal page using browser storage (`no-browser-storage.test.js`), the generated cas-ccps unit rubrics, lesson assignments, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `lesson-assignments.test.js`, `canvas-cartridge.test.js`), LeaderHub's retired spring-2026 default deadlines (`retired-default-deadlines.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the Markdown copies of the four cas-ccps user guides matching their generator, with no page markup (`guide-notebook-sources.test.js`), the `leaderhub-build` drift gate, and the split script's
+the deploy script `tools/clasp-sync/run.js` against a fake clasp (promote, head-only, rollback, the `--zip` extractor, the stale-copy check, and its manifest matching `run.ps1` and `project-map.json`: `clasp-run.test.js`), the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`, and check 15's no-`typeof`-guard-inside-one-project rule with the undefined-call check's parameter and guard skips, `gas-lint-typeof-guard.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the student-data scan reporting locations and hashes only, and its log-call warning (`student-data-scan.test.js`), no cas-ccps or kos-personal page using browser storage (`no-browser-storage.test.js`), the generated cas-ccps unit rubrics, lesson assignments, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `lesson-assignments.test.js`, `canvas-cartridge.test.js`), LeaderHub's retired spring-2026 default deadlines (`retired-default-deadlines.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the notebook-context generator (its listed files exist, the guide names every source and every file its table cites: `notebook-context.test.js`), the Markdown copies of the four cas-ccps user guides matching their generator, with no page markup (`guide-notebook-sources.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 
