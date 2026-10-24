@@ -130,6 +130,7 @@ Cards are grouped under "BLOCK <block> - <class> - <teacher>".
 
 - [ ] **Student Context** replaces the roster with "Student Context — Full Roster", "Generated <time> · Updates weekly", and one row per student with an Active / No recent activity badge, the account, "last updated", and **Open doc ↗**.
 - [ ] **← Back to dashboard** at the top returns to the roster without reloading it (finding 18, fixed 10-22).
+- [ ] After the first weekly run past the push (#288), open one student's doc: the week's section has "How They Work (baseline warm-ups)" with each skill, "Asked: …" and the student's answer, and "Warm-Up Reflections" with the text-box answers. Before #288 no text-box answer appeared at all.
 - [ ] As a student, open the Teacher Dashboard URL. You get only the student's own small My Context page ("No context recorded yet…" or their own doc link), never the roster.
 
 ---
