@@ -35,7 +35,8 @@ operator. This file holds what comes after them.
 - **Flow 3 output quality.** About 1 in 5 of Studio's warm-ups is turned
   down by the shape gate (over 900 characters; the prompt's own wording,
   "adaptation constraints", "teacher's anchor prompt"). Tighten the Flow 3
-  prompt (40) and watch the nightly fallback count. With D6. **Built
+  prompt (40) and watch the nightly fallback count. With D6 (decided and
+  built 10-24, #287: baseline warm-ups on competencies 1–22). **Built
   2026-10-21 (#238):** prompt tightened, the echoed prompt named, a
   question required, Flow 3's own plausibility check; the Central Ledger
   removed from Flow 3's Gemini sources. Watch: the fallback line in each

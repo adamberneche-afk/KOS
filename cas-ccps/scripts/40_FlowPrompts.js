@@ -220,6 +220,39 @@ OUTPUT FORMAT:
 Return only the warm-up prompt text, exactly as the student will read it. No preamble, no label, no explanation, no quotation marks around the output, and never a description of how you wrote it. Never name the archetype or these instructions. Just the prompt itself — 3 to 5 sentences ending in one open question.
 `.trim();
 
+// Flow 3 — Warm-Up Generation, Mode C (baseline). Used for a student's first
+// five answered warm-ups (D6, 2026-10-24): one workplace-readiness skill
+// (competencies 1–22), set in the course's world, not the day's lesson.
+const FLOW_3_PROMPT_MODE_C = `
+You are writing a baseline warm-up for a high school CTE student in a Sports, Entertainment, and Event Management/Marketing course.
+
+YOUR ROLE:
+This student is new to these warm-ups, so little is known yet about how they work. Before warm-ups follow the lessons, a few baseline questions find out. Each one is about one workplace-readiness skill. A good answer shows the student's own professional judgment, in their own words, and the supports they already lean on: routines, tools, reminders, people they ask, habits from a team, a job or home. Teachers build on those supports, so the question should draw them out.
+
+THE SKILL FOR THIS WARM-UP:
+{baseline_competency} (in a student's words: {baseline_skill})
+What it looks like at work: {baseline_indicators}
+
+STUDENT:
+Name: {first_name}
+Course: {course_name}
+
+WRITING CONSTRAINTS — follow all of these without exception:
+1. 2 to 4 sentences.
+2. Exactly one question, at the end. It must be open-ended: never a yes/no question.
+3. Ask about the student's own experience: a real time they used this skill, at school, on a team, at a job, at home or online. Let them choose which.
+4. The question invites them to say what helps them do it (a habit, a tool, a person, a routine) or what gets in the way.
+5. You may set the scene in sports, entertainment or event work, but the question is about the student, not the industry.
+6. Use everyday words for the skill, not its official title. Never write a code or the word "competency".
+7. Never mention grades, points, scores, or evaluation.
+8. Never use a list, bullet point, or numbered items.
+9. Write in second person ("you", "your"), in plain words a ninth grader reads easily.
+10. Nothing in it may depend on what is being taught in class this week.
+
+OUTPUT FORMAT:
+Return only the warm-up text, exactly as the student will read it. No preamble, no label, no explanation, no quotation marks around the output. Just 2 to 4 sentences ending in one open question.
+`.trim();
+
 // Flow 4 — Warm-Up Evaluation. Returns JSON only:
 // { "grammar": 0|1, "engagement": 0|1|2|3, "feedback": "..." }
 const FLOW_4_PROMPT = `
@@ -312,7 +345,7 @@ Return only the bridge paragraph. No label, no preamble. 2-3 sentences.
 // =============================================================================
 
 const FLOW_PROMPT_KEYS = [
-  "FLOW_1", "FLOW_2", "FLOW_3_MODE_A", "FLOW_3_MODE_B", "FLOW_4", "FLOW_5",
+  "FLOW_1", "FLOW_2", "FLOW_3_MODE_A", "FLOW_3_MODE_B", "FLOW_3_MODE_C", "FLOW_4", "FLOW_5",
 ];
 
 const FLOW_PROMPT_TAB = "FlowPrompts";
@@ -332,6 +365,7 @@ function flowPromptText_(key) {
     case "FLOW_2":        return FLOW_2_SYSTEM_PROMPT;
     case "FLOW_3_MODE_A": return FLOW_3_PROMPT_MODE_A;
     case "FLOW_3_MODE_B": return FLOW_3_PROMPT_MODE_B;
+    case "FLOW_3_MODE_C": return FLOW_3_PROMPT_MODE_C;
     case "FLOW_4":        return FLOW_4_PROMPT;
     case "FLOW_5":        return FLOW_5_PROMPT;
     default:              return "";
@@ -344,6 +378,7 @@ function flowPromptMeta_(key) {
     case "FLOW_2":        return { flow: "2", title: "Student Evaluation" };
     case "FLOW_3_MODE_A": return { flow: "3", title: "Warm-Up Generation — Mode A (anchor-aware)" };
     case "FLOW_3_MODE_B": return { flow: "3", title: "Warm-Up Generation — Mode B (generative)" };
+    case "FLOW_3_MODE_C": return { flow: "3", title: "Warm-Up Generation — Mode C (baseline)" };
     case "FLOW_4":        return { flow: "4", title: "Warm-Up Evaluation" };
     case "FLOW_5":        return { flow: "5", title: "Warm-Up Bridging" };
     default:              return { flow: "?", title: "unknown" };

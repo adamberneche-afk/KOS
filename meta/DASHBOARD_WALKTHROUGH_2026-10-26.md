@@ -55,7 +55,8 @@ The card sits under a "WARM-UPS" heading above the assignments. It has at most t
 - [ ] Save an answer: the pill reads "Answered late — checked overnight". After the next 3:15 a.m. run and Flow 4, it reads "Checked — answered late, so no feedback", with a score, no feedback and no reply box.
 
 **Today's / Next warm-up (text box):**
-- [ ] The bridge paragraph, if there is one, is in grey italics above the question (Flow 5's 2–3 sentences). Read a few (BACKLOG item, D6). Most students have none.
+- [ ] **Baseline warm-ups (D6, #287), after the push:** each student's warm-ups are about one workplace skill at a time (getting started on your own, managing your time, working on a team…), asking about the student's own experience and what helps them, with no bridge paragraph. Five answered, then lesson warm-ups. Read a few: do they sound like a real question to a ninth grader? A question starting "Think of a real time, at school, on a team…" is the code-written fallback (the model's output failed a check); note how many.
+- [ ] The bridge paragraph, on a lesson warm-up only, is in grey italics above the question (Flow 5's 2–3 sentences). Most students have none.
 - [ ] The question shows, with an answer box and **Save answer**. After saving: "Saved <time>. You can change it until the end of the day." The button reads **Update answer** after Refresh.
 - [ ] Students C′ (3-Even) and A on a day their period meets: "Today's warm-up · Mon, Oct 26", pill "Ready — answer today" (purple).
 
