@@ -210,28 +210,28 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
 - **Scenario:** on Oct 26, a 3-Odd student, or a period 1 student on their rest day, sees "Next warm-up · Tue, Oct 27 — Ready — answer today" next to the reply box. They may answer it today thinking it's due.
 - **Fix:** when `lessonDate > today`, use the pill "Open — for <EEE, MMM d>" and the note "You can change it until the end of <EEE>".
 
-**10. "Last warm-up" shows feedback without the question or the student's answer.**
+**10. "Last warm-up" shows feedback without the question or the student's answer.** *Fixed 2026-10-24: both are there, collapsed.*
 - **Where:** `13:1080-1101` (`_wuPrevious`). `w.warmup` and `w.answer` are already in the view (`13:287-288`) but aren't rendered.
 - **Scenario:** a student reads "Your second sentence could use a specific example…" without seeing what they wrote 2 days ago, and has to write an extra-credit reply to it.
 - **Fix:** add the question and the student's answer above the score, both collapsed by default.
 
-**11. The "🎉 You were just registered" banner fires for every new assignment.**
+**11. The "🎉 You were just registered" banner fires for every new assignment.** *Fixed 2026-10-24: one line per class, from its earliest row.*
 - **Where:** `13:96-99,1221-1229`; rows come from 58's rollout (`58:11-20`, made up to 2 days ahead).
 - **What:** `isNewRegistration` is set per Ledger row, and each lesson's doc is a new Ledger row with a fresh Timestamp. The banner prints one line per such row, with no dedupe.
 - **Scenario:** when a new lesson is rolled out, a student who registered in September sees "You were just registered for <class> with <teacher>". After `refreshAssignments()` they may see several identical lines.
 - **Fix:** take the **earliest** Timestamp per class and teacher. Show the banner only if that earliest one is within 3 days, and show one line per class.
 
-**12. My Info shows one identical card per assignment.**
+**12. My Info shows one identical card per assignment.** *Fixed 2026-10-24.*
 - **Where:** `13:1244-1273` (`renderMyInfo` maps every assignment row).
 - **Scenario:** a student with 8 lessons sees 8 copies of the same name, class, period and teacher.
 - **Fix:** dedupe on class + period + teacher.
 
-**13. The score parts have no maximums.**
+**13. The score parts have no maximums.** *Fixed 2026-10-24: "Length 3/6 · Grammar 1/1 · Engagement 2/3".*
 - **Where:** `13:1083-1086`.
 - **What:** "Length 3 · Grammar 1 · Engagement 2". A student can't tell that Length is a word-count score (0/3/5/6 from `25:135-140`, not a word count) or that grammar is out of 1.
 - **Fix:** "Length 3/6 · Grammar 1/1 · Engagement 2/3". Optionally add "(30+ words for full length)".
 
-**14. Text-box students see feedback cut at 500 characters, without an ellipsis.**
+**14. Text-box students see feedback cut at 500 characters, without an ellipsis.** *Fixed 2026-10-24: kept to 2,000, with "…" if cut.*
 - **Where:** `25:142,897` (`writeFinalScores_` caps WarmUpQueue's flow4_feedback), read at `13:291`.
 - **What:** Doc warm-ups get the full text (`41:1438` passes the untruncated `feedback` to the doc), but the dashboard only has the WarmUpQueue copy.
 - **Scenario:** a long Flow 4 reply ends mid-word on the card.
