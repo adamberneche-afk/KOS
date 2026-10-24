@@ -313,7 +313,11 @@ function markLessonContextDelivered_(lcSheet, lcData, lessonId) {
 // ---------------------------------------------------------------------------
 // runWarmUpEvaluation
 // Entry point for the 3:15am trigger.
-// Finds yesterday's WarmUpRegistry rows where total_score is empty.
+// Finds yesterday's WarmUpRegistry rows where total_score is empty, and any
+// warm-up stamped INCOMPLETE that the student has since answered late in
+// the text box (the Student Dashboard takes a late answer until the end of
+// their next class day, 2026-10-24): it is scored the same way, and the
+// dashboard hides its feedback and gives it no extra credit.
 // For each: opens the doc once, extracts response text and checks for
 // extra credit reply in the same pass. Writes response_text to WarmUpQueue.
 // Zero-response docs are stamped INCOMPLETE immediately, skipping Flow 4.
@@ -393,9 +397,11 @@ function runWarmUpEvaluation() {
     const queueId    = String(row[WR_QUEUE_ID]      || "").trim();
 
     if (tEmail !== teacherEmail.toLowerCase()) continue;
-    if (lessonDate !== yesterdayStr)           continue;
-    if (totalScore !== "")                     continue; // already scored
     if (!queueId)                              continue;
+    if (lessonDate !== yesterdayStr || totalScore !== "") {
+      // Not yesterday's, or already scored: only a late answer is picked up.
+      if (!_answeredLate_(wqData[queueRowByQueueId[queueId] - 1], textBox[queueId])) continue;
+    }
     if (notMeeting[queueId])                   continue;
     if (!docId && !textBox[queueId])           continue; // neither a doc nor a text box
 
@@ -495,6 +501,14 @@ function runWarmUpEvaluation() {
   // the 0.75 threshold since last night. If so, send the teacher one digest
   // email — not one per student.
   checkShadowMatrixInterrupts_(ss, cfg);
+}
+
+// A text-box warm-up stamped INCOMPLETE (blank on its night) whose answer
+// the student has since written on the Student Dashboard.
+function _answeredLate_(wqRow, tbEntry) {
+  if (!wqRow || !tbEntry) return false;
+  if (String(wqRow[WQ25_STATUS] || "").trim() !== "INCOMPLETE") return false;
+  return String(tbEntry.row[WTB.RESPONSE] || "").trim() !== "";
 }
 
 // When the student last answered (2026-10-23): the text box's save time, or

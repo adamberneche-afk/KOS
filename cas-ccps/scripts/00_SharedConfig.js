@@ -1049,8 +1049,8 @@ const CAS_STUDENT_TERMS = [
   ["Comments", "Your feedback appears as a comment on your document. Open the document and click the Comments button (top right). Resolving a comment doesn’t delete it."],
   ["Last submitted", "When you last pressed Submit for Feedback on this assignment."],
   ["Last checked", "When your work was last checked and given feedback."],
-  ["Warm-up", "A short question at the start of class. Type your answer here and save it before the end of the day."],
-  ["Extra credit", "After a warm-up is checked, reply to its feedback in at least 10 words by the date shown for an extra point."],
+  ["Warm-up", "A short question at the start of class. Type your answer here and save it before the end of the day. Missed one? You can answer it late until the end of your next class day, for points but no feedback or extra credit."],
+  ["Extra credit", "After a warm-up is checked, reply to its feedback in at least 10 words by the date shown (the end of your next class day) for an extra point."],
   ["Marking period", "Part of the school year. Use the menu at the top to see one marking period or the whole year."],
   ["Block and period", "When your class meets. 3-Odd and 3-Even are the two halves of period 3 that meet on alternate days."],
   ["My Info", "What the system has on file for you: your name, class, period and teacher. Tell your teacher if something is wrong."]
