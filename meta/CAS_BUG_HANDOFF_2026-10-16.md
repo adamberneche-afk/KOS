@@ -149,7 +149,7 @@ Do not confuse this with the 2 a.m. `buildUpcomingLessons()` trigger, which buil
 - Whether Studio's sheet trigger fires on script-written rows (open issue 4). **Answered 2026-10-19: not on an appended row; yes on an edit of an existing cell.**
 - Backprop's actual trigger interval (the code comment mentions 2 minutes; the effective cadence was not checked). **Answered from the code 2026-10-24: every 2 minutes, run by the Ledger cycle (`LC_JOBS` in 64), since a plain trigger can't run every 2 minutes.**
 - Whether the live web app matches the repo (v12 versus later pushes). **Answered 2026-10-20: the Student Dashboard is well past v12.**
-- Two odd rows at the top of the Ledger tab (rows 2 and 3: `IN_PROCESS`, no timestamp, placeholder-style ConfigIDs). They look like leftover test rows from a canary or fixture run. Check before deleting.
+- Two odd rows at the top of the Ledger tab (rows 2 and 3: `IN_PROCESS`, no timestamp, placeholder-style ConfigIDs). They look like leftover test rows from a canary or fixture run. Check before deleting. **Since 2026-10-24:** `previewOddLedgerRows()` (Central Ledger, 38) lists rows like these with their Status, failing fields, ConfigID shape, whether the file opens and whether anything points at them; read-only, no names or IDs.
 
 ## 10. Reference
 

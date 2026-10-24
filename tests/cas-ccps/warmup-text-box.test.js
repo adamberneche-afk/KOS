@@ -18,7 +18,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
 const EXPOSE = ['wfbApplyFlow3_', 'wfbFindQueueRow_', '_registerDeliveredWarmUps_', 'runWarmUpEvaluation',
   'warmUpTextBoxFor_', 'WQ25_COL_COUNT', 'WQ25_STATUS', 'WQ25_DOC_ID', 'WQ25_RESPONSE_TEXT',
   'WQ25_WORD_COUNT_SCORE', 'WQ25_TOTAL_SCORE', 'WQ25_EXTRA_CREDIT', 'WR_COL_COUNT', 'WR_QUEUE_ID',
-  'WR_DOC_ID', 'WR_TOTAL_SCORE', 'WR_EXTRA_CREDIT', 'WTB', '_capFeedback_', 'MAX_FEEDBACK_CHARS'];
+  'WR_DOC_ID', 'WR_TOTAL_SCORE', 'WR_EXTRA_CREDIT', 'WTB', '_capFeedback_', 'MAX_FEEDBACK_CHARS', 'previewMissedWarmUpScoring'];
 
 function daysAgoStr(k) {
   const d = new Date();
@@ -233,4 +233,36 @@ test('Flow 4 feedback is kept up to 2,000 characters; a longer one ends with "â€
   assert.equal(cut.length, exported.MAX_FEEDBACK_CHARS);
   assert.ok(cut.endsWith('â€¦'));
   assert.equal(exported._capFeedback_(null), '');
+});
+
+test('a missed night: warm-ups its own run never scored are scored on a later night, up to 6 days back', () => {
+  const fx = setup('all');
+  deliver(fx, 'WQ-Y', daysAgoStr(1));   // yesterday: the usual case
+  deliver(fx, 'WQ-M', daysAgoStr(3));   // its night's run never happened
+  deliver(fx, 'WQ-OLD', daysAgoStr(8)); // past the catch-up window
+  deliver(fx, 'WQ-T', daysAgoStr(0));   // today's: never scored early
+  fx.exported._registerDeliveredWarmUps_();
+  const tb = fx.ss.getSheetByName('WarmUpTextBox');
+  const answer = 'Fans pay more because the stadium is the only place to buy water and the experience is part of the price.';
+  [2, 3, 4, 5].forEach((r) => tb.getRange(r, fx.exported.WTB.RESPONSE + 1).setValue(answer));
+
+  const preview = fx.exported.previewMissedWarmUpScoring();
+  assert.deepEqual([preview.total, preview.byReason.yesterday, preview.byReason.missed_night], [2, 1, 1]);
+  assert.equal(fx.wq.getRange(3, fx.exported.WQ25_STATUS + 1).getValue(), 'DELIVERED', 'the preview changes nothing');
+
+  fx.exported.runWarmUpEvaluation();
+  const status = (r) => fx.wq.getRange(r, fx.exported.WQ25_STATUS + 1).getValue();
+  assert.deepEqual([status(2), status(3), status(4), status(5)], ['PENDING_EVAL', 'PENDING_EVAL', 'DELIVERED', 'DELIVERED']);
+
+  fx.exported.runWarmUpEvaluation();
+  assert.equal(fx.exported.previewMissedWarmUpScoring().byReason.missed_night, undefined,
+    'a missed-night warm-up, once parked, is not picked up again');
+});
+
+test('a missed night: a blank warm-up from it is stamped INCOMPLETE, like yesterday\'s', () => {
+  const fx = setup('all');
+  deliver(fx, 'WQ-B', daysAgoStr(2));
+  fx.exported._registerDeliveredWarmUps_();
+  fx.exported.runWarmUpEvaluation();
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'INCOMPLETE');
 });

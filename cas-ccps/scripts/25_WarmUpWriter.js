@@ -148,6 +148,10 @@ const MAX_FEEDBACK_CHARS     = 2000;
 // and stamping it done. See that function's own header for why this sweep
 // exists at all.
 const EXTRA_CREDIT_RECHECK_WINDOW_DAYS = 7;
+// How many days back the nightly run looks for a warm-up its own night's run
+// never scored (a run that didn't happen or stopped). Matches the Student
+// Dashboard's day + 6 window (13's DASH_EC_DAYS).
+const WARMUP_CATCHUP_DAYS = 6;
 
 // =============================================================================
 // JOB 1 — POST-GENERATION REGISTRATION
@@ -316,7 +320,9 @@ function markLessonContextDelivered_(lcSheet, lcData, lessonId) {
 // ---------------------------------------------------------------------------
 // runWarmUpEvaluation
 // Entry point for the 3:15am trigger.
-// Finds yesterday's WarmUpRegistry rows where total_score is empty, and any
+// Finds yesterday's WarmUpRegistry rows where total_score is empty, any
+// warm-up from the WARMUP_CATCHUP_DAYS before that which a missed night left
+// unscored (_selectWarmUpsToScore_), and any
 // warm-up stamped INCOMPLETE that the student has since answered late in
 // the text box (the Student Dashboard takes a late answer until the end of
 // their next class day, 2026-10-24): it is scored the same way, and the
@@ -370,54 +376,10 @@ function runWarmUpEvaluation() {
   const wqData = wqSheet.getDataRange().getValues();
   const textBox = readWarmUpTextBox_(ss);
 
-  // Find WarmUpRegistry rows from yesterday where total_score is not yet set
-  const yesterday     = getYesterday_();
-  const yesterdayStr  = formatDateYMD_(yesterday);
-
-  // Build queue_id → wq row index map for fast lookup
-  const queueRowByQueueId = {};
-  const notMeeting = {}; // set NOT_MEETING by 24's retireOffDayWarmUps(): never scored
-  for (let i = 1; i < wqData.length; i++) {
-    const qId = String(wqData[i][WQ25_QUEUE_ID] || "").trim();
-    if (qId) queueRowByQueueId[qId] = i + 1; // 1-based
-    if (qId && String(wqData[i][WQ25_STATUS] || "").trim() === "NOT_MEETING") notMeeting[qId] = true;
-  }
-
-  const toEvaluate = []; // { wrRowNum, queueId, docId, queueRowNum }
-
-  for (let i = 1; i < wrData.length; i++) {
-    const row        = wrData[i];
-    // _normalizeLessonDateCell_ (22_LessonContextHandler.js) — this was the
-    // one remaining raw String() cast on a lesson_date cell in the pipeline.
-    // If WarmUpRegistry's lesson_date cell ever gets Sheets-coerced to a
-    // real Date, String() on it produces a non-"YYYY-MM-DD" string that
-    // never equals yesterdayStr, silently and permanently stopping the
-    // nightly warm-up evaluation job from finding anything to score.
-    const lessonDate = _normalizeLessonDateCell_(row[WR_LESSON_DATE]);
-    const tEmail     = String(row[WR_TEACHER_EMAIL] || "").trim().toLowerCase();
-    const totalScore = String(row[WR_TOTAL_SCORE]   || "").trim();
-    const docId      = String(row[WR_DOC_ID]        || "").trim();
-    const queueId    = String(row[WR_QUEUE_ID]      || "").trim();
-
-    if (tEmail !== teacherEmail.toLowerCase()) continue;
-    if (!queueId)                              continue;
-    if (lessonDate !== yesterdayStr || totalScore !== "") {
-      // Not yesterday's, or already scored: only a late answer is picked up.
-      if (!_answeredLate_(wqData[queueRowByQueueId[queueId] - 1], textBox[queueId])) continue;
-    }
-    if (notMeeting[queueId])                   continue;
-    if (!docId && !textBox[queueId])           continue; // neither a doc nor a text box
-
-    const queueRowNum = queueRowByQueueId[queueId];
-    if (!queueRowNum) continue;
-
-    toEvaluate.push({
-      wrRowNum:    i + 1, // 1-based
-      queueId:     queueId,
-      docId:       docId,
-      queueRowNum: queueRowNum
-    });
-  }
+  const picked = _selectWarmUpsToScore_(wrData, wqData, textBox, teacherEmail, new Date());
+  const queueRowByQueueId = picked.queueRowByQueueId;
+  const toEvaluate = picked.toEvaluate;
+  const yesterdayStr = picked.yesterdayStr;
 
   // ── Extra credit re-check sweep ──────────────────────────────────────────
   // Runs regardless of whether there's anything new in toEvaluate below —
@@ -430,7 +392,7 @@ function runWarmUpEvaluation() {
   _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId, textBox);
 
   if (toEvaluate.length === 0) {
-    Logger.log("[S25-J2] No warm-ups to evaluate for " + yesterdayStr + ".");
+    Logger.log("[S25-J2] No warm-ups to evaluate for " + yesterdayStr + " or earlier.");
     // A quiet night is still a run: 34c reads the stamp each morning.
     PropertiesService.getScriptProperties().setProperties({
       "M2_STAGE2_LAST_RUN": new Date().toISOString(),
@@ -439,8 +401,8 @@ function runWarmUpEvaluation() {
     return;
   }
 
-  Logger.log("[S25-J2] Evaluating " + toEvaluate.length +
-             " warm-up(s) from " + yesterdayStr);
+  Logger.log("[S25-J2] Evaluating " + toEvaluate.length + " warm-up(s): " +
+             JSON.stringify(_countBy_(toEvaluate, "reason")));
 
   let parked      = 0;
   let incomplete  = 0;
@@ -504,6 +466,107 @@ function runWarmUpEvaluation() {
   // the 0.75 threshold since last night. If so, send the teacher one digest
   // email — not one per student.
   checkShadowMatrixInterrupts_(ss, cfg);
+}
+
+// The warm-ups tonight's run scores, each with why:
+//   yesterday     yesterday's, not scored yet (the usual case);
+//   missed_night  from the WARMUP_CATCHUP_DAYS before that, never scored:
+//                 its own night's run didn't happen or stopped (M2 off, an
+//                 error), so it was still DELIVERED (2026-10-24; it used to
+//                 wait at "Waiting to be checked" for good);
+//   late_answer   stamped INCOMPLETE, then answered on the Student Dashboard
+//                 (_answeredLate_).
+// NOT_MEETING rows, rows with neither a doc nor a text box, and other
+// teachers' rows are skipped, as before.
+function _selectWarmUpsToScore_(wrData, wqData, textBox, teacherEmail, now) {
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayStr = formatDateYMD_(today);
+  const yesterdayStr = formatDateYMD_(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1));
+  const fromStr = formatDateYMD_(new Date(today.getFullYear(), today.getMonth(), today.getDate() - WARMUP_CATCHUP_DAYS));
+
+  // queue_id → WarmUpQueue sheet row (1-based)
+  const queueRowByQueueId = {};
+  const notMeeting = {}; // set NOT_MEETING by 24's retireOffDayWarmUps(): never scored
+  for (let i = 1; i < wqData.length; i++) {
+    const qId = String(wqData[i][WQ25_QUEUE_ID] || "").trim();
+    if (qId) queueRowByQueueId[qId] = i + 1;
+    if (qId && String(wqData[i][WQ25_STATUS] || "").trim() === "NOT_MEETING") notMeeting[qId] = true;
+  }
+
+  const toEvaluate = []; // { wrRowNum, queueId, docId, queueRowNum, lessonDate, reason }
+  for (let i = 1; i < wrData.length; i++) {
+    const row        = wrData[i];
+    // _normalizeLessonDateCell_ (22_LessonContextHandler.js): a lesson_date
+    // cell Sheets turned into a Date would otherwise never match a
+    // "YYYY-MM-DD" string, and nothing would ever be scored.
+    const lessonDate = _normalizeLessonDateCell_(row[WR_LESSON_DATE]);
+    const tEmail     = String(row[WR_TEACHER_EMAIL] || "").trim().toLowerCase();
+    const totalScore = String(row[WR_TOTAL_SCORE]   || "").trim();
+    const docId      = String(row[WR_DOC_ID]        || "").trim();
+    const queueId    = String(row[WR_QUEUE_ID]      || "").trim();
+
+    if (tEmail !== teacherEmail.toLowerCase()) continue;
+    if (!queueId)                              continue;
+    if (notMeeting[queueId])                   continue;
+    if (!docId && !textBox[queueId])           continue; // neither a doc nor a text box
+    const queueRowNum = queueRowByQueueId[queueId];
+    if (!queueRowNum) continue;
+    const wqRow = wqData[queueRowNum - 1];
+
+    let reason = "";
+    if (totalScore === "" && lessonDate === yesterdayStr) {
+      reason = "yesterday";
+    } else if (totalScore === "" && lessonDate >= fromStr && lessonDate < yesterdayStr &&
+               String(wqRow[WQ25_STATUS] || "").trim() === "DELIVERED") {
+      reason = "missed_night";
+    } else if (_answeredLate_(wqRow, textBox[queueId])) {
+      reason = "late_answer";
+    }
+    if (!reason) continue;
+    if (lessonDate >= todayStr) continue; // never today's or a later day's
+
+    toEvaluate.push({
+      wrRowNum:    i + 1, // 1-based
+      queueId:     queueId,
+      docId:       docId,
+      queueRowNum: queueRowNum,
+      lessonDate:  lessonDate,
+      reason:      reason
+    });
+  }
+  return { toEvaluate: toEvaluate, queueRowByQueueId: queueRowByQueueId, yesterdayStr: yesterdayStr };
+}
+
+function _countBy_(items, key) {
+  const out = {};
+  items.forEach(function (it) { out[it[key]] = (out[it[key]] || 0) + 1; });
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// previewMissedWarmUpScoring — read-only. What tonight's 3:15am run would
+// score, counted by reason and lesson date. No names, no text. Run it after
+// a push, or after a night the run didn't happen, before the next run.
+// ---------------------------------------------------------------------------
+function previewMissedWarmUpScoring() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const wqSheet = ss.getSheetByName(cfg.tabs.warmUpQueue);
+  const wrSheet = ss.getSheetByName(cfg.tabs.warmUpRegistry);
+  if (!wqSheet || !wrSheet) {
+    Logger.log("[S25-preview] WarmUpQueue or WarmUpRegistry tab not found.");
+    return null;
+  }
+  const picked = _selectWarmUpsToScore_(wrSheet.getDataRange().getValues(),
+    wqSheet.getDataRange().getValues(), readWarmUpTextBox_(ss), cfg.teacherEmail, new Date());
+  const byDate = {};
+  picked.toEvaluate.forEach(function (it) {
+    const k = it.lessonDate + " " + it.reason;
+    byDate[k] = (byDate[k] || 0) + 1;
+  });
+  const result = { total: picked.toEvaluate.length, byReason: _countBy_(picked.toEvaluate, "reason"), byDateAndReason: byDate };
+  Logger.log("[S25-preview] The next 3:15am run would score: " + JSON.stringify(result));
+  return result;
 }
 
 // A text-box warm-up stamped INCOMPLETE (blank on its night) whose answer
@@ -1255,12 +1318,6 @@ function _checkCronHealth_(stampKey, stageName, maxAgeMinutes, notifyEmail) {
 // =============================================================================
 // HELPERS
 // =============================================================================
-
-function getYesterday_() {
-  const d = new Date();
-  d.setDate(d.getDate() - 1);
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-}
 
 // formatDateYMD_(date) is defined in 23_StudentProfileManager.js — both
 // files are bound to the Central Ledger project, so it's already in

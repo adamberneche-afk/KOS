@@ -28,7 +28,7 @@ function load() {
     [SHARED_CONFIG_PATH, GUARD_PATH],
     [
       'checkLedgerSchema', 'repairLedgerSchema', 'repairLedgerSchemaDryRun',
-      'LEDGER_CANONICAL_HEADERS', 'LEDGER', 'LEDGER_MIN_CANONICAL_WIDTH',
+      'LEDGER_CANONICAL_HEADERS', 'LEDGER', 'LEDGER_MIN_CANONICAL_WIDTH', 'previewOddLedgerRows',
     ],
   );
 }
@@ -286,4 +286,37 @@ test('checkLedgerSchema: a missing Ledger tab is reported, not thrown', () => {
     assert.equal(result.ok, false);
     assert.match(result.detail, /not found/);
   });
+});
+
+// ── previewOddLedgerRows (bug handoff 2026-10-16, section 9) ────────────────
+
+test('previewOddLedgerRows: lists rows that are not a registration by shape only, and changes nothing', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  const sheet = ss.insertSheet('Ledger');
+  sheet.appendRow(exported.LEDGER_CANONICAL_HEADERS.slice(0, 19));
+  const odd = canonicalRow(sandbox, { timestamp: '' });
+  odd[2] = 'CONFIG_ID_PLACEHOLDER';
+  odd[3] = 'placeholder';
+  odd[4] = 'Should Not Be Logged';
+  odd[12] = 'IN_PROCESS';
+  sheet.appendRow(odd);
+  sheet.appendRow(canonicalRow(sandbox));
+  const rq = ss.insertSheet('ReviewQueue');
+  rq.appendRow(['Timestamp', 'GoogleID', 'FileID', 'ConfigID', 'Text', 'Status', 'Notes']);
+  rq.appendRow(['', 'student@example.com', 'placeholder', 'CONFIG_ID_PLACEHOLDER', '', 'COMPLETE', '']);
+  const before = JSON.stringify(sheet.getDataRange().getValues());
+
+  const logs = [];
+  sandbox.Logger.log = (m) => logs.push(String(m));
+  const out = exported.previewOddLedgerRows();
+  assert.equal(out.length, 1, 'the well-formed row is not listed');
+  assert.deepEqual(
+    { sheetRow: out[0].sheetRow, status: out[0].status, failedShapes: [...out[0].failedShapes],
+      configShape: out[0].configShape, fileOpens: out[0].fileOpens, inReviewQueue: out[0].inReviewQueue, inStaging: out[0].inStaging },
+    { sheetRow: 2, status: 'IN_PROCESS', failedShapes: ['Timestamp', 'ConfigID', 'FileID'],
+      configShape: 'AAAAAA_AA_AAAAAAAAAAA', fileOpens: false, inReviewQueue: true, inStaging: false });
+  const logged = logs.join('\n');
+  assert.ok(!/Should Not Be Logged|student@example\.com|PLACEHOLDER|placeholder/.test(logged), 'no names, emails or raw IDs in the log');
+  assert.equal(JSON.stringify(sheet.getDataRange().getValues()), before, 'read-only');
 });
