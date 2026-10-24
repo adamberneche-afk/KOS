@@ -1,6 +1,6 @@
 {
-  "_note": "Each assignment's competencies in a student's words: one sentence per competency saying what this task's work needs to show. Drafted 2026-10-24 from each task text, the competency tiers (COMPETENCY_TIERS.json) and their why; awaiting the teacher's approval (meta/STUDENT_WORK_PLAN_2026-10.md). Once approved, they are what the reflection questions name (00's REFLECTION_FRAMES) and what the doc shows under What your work needs to show. Not read by any code yet. _concerns lists tertiary competencies whose task gives little to show them.",
-  "_status": "draft, 2026-10-24",
+  "_note": "Each assignment's learning objectives, owned by the student: one \"I can\" sentence per competency, naming the skill and how this task's work shows it. Draft 1 (2026-10-24) was written to the student (\"You ...\"); draft 2 rewrites it in the student's voice (the operator's direction, 2026-10-24). Awaiting the teacher's approval (meta/STUDENT_WORK_PLAN_2026-10.md). Once approved, the reflection questions quote them (00's REFLECTION_FRAMES) and the doc shows them under What your work needs to show. Not read by any code yet. _concerns lists tertiary competencies whose task gives little room to show them.",
+  "_status": "draft 2, 2026-10-24",
   "_concerns": [
     {
       "lesson": "8175-L01",
@@ -59,487 +59,487 @@
     }
   ],
   "8175-L01": {
-    "8175-39": "You give the time period and main focus of each of the seven eras, from the Trade Era to the Collaboration Era, in one sentence per era.",
-    "8175-43": "You name all seven functions of marketing, then pick two and give a real sports or entertainment example that shows each one at work.",
-    "8175-41": "You explain how the Marketing Company Era differed from the Selling Era by saying what businesses started doing for customers instead of tricking them into buying.",
-    "8175-11": "You explain in your prediction how AI, virtual reality, or privacy laws could change the way businesses treat the people they market to.",
-    "8175-45": "You connect the eras on your timeline and your next-era prediction to how sports or entertainment marketing has changed and might change next.",
-    "8175-47": "You use at least one real trend, such as AI, virtual reality, or privacy laws, to back up your 3-sentence prediction and the name of the next era."
+    "8175-39": "I can explain how marketing has changed over time by giving the time period and main focus of each of the seven eras, from Trade to Collaboration.",
+    "8175-43": "I can describe the seven functions of marketing by naming all seven and showing two at work with real sports or entertainment examples.",
+    "8175-41": "I can explain the marketing concept by comparing the Selling Era with the Marketing Company Era and saying what businesses started doing for customers instead of tricking them.",
+    "8175-11": "I can think about the big picture by explaining in my prediction how AI, virtual reality, or privacy laws could change how businesses treat the people they market to.",
+    "8175-45": "I can connect marketing's past to its future by linking my timeline and next-era prediction to how sports or entertainment marketing has changed and might change next.",
+    "8175-47": "I can analyze trends by using at least one real trend, such as AI, virtual reality, or privacy laws, to back up my prediction and next-era name."
   },
   "8175-L02": {
-    "8175-107": "You name one thing you do because you love it and explain in 2 to 3 sentences why you enjoy it.",
-    "8175-3": "You show that you keep doing this thing on your own, without money, grades, or anyone pushing you, and say what keeps you going."
+    "8175-107": "I can identify a personal interest that drives me by naming one thing I do because I love it and explaining in 2 to 3 sentences why I enjoy it.",
+    "8175-3": "I can explain what drives me by showing that I keep doing this thing on my own, without money, rewards, or anyone pushing me, and saying what keeps me going."
   },
   "8175-L03": {
-    "8175-64": "You state your USP, explain why a team should pick you over the 100 other applicants, and name who would benefit most from what you offer.",
-    "8175-107": "You name your strengths and attributes and explain what value they let you give to people.",
-    "8175-12": "You connect your brand statement to the kind of job or team you want, showing how your strengths could help you get there.",
-    "8175-56": "You pull your value, USP, and audience together into a personal brand statement that sounds like you and tells others what you stand for."
+    "8175-64": "I can position myself like a product by stating my USP, explaining why a team should pick me over 100 other applicants, and naming who would benefit most.",
+    "8175-107": "I can identify my personal strengths by naming my strengths and attributes and explaining what value they let me give to people.",
+    "8175-12": "I can plan my career path by connecting my brand statement to the kind of job or team I want and showing how my strengths could get me there.",
+    "8175-56": "I can explain branding by pulling my value, USP, and audience together into a personal brand statement that sounds like me and shows what I stand for."
   },
   "8175-L04": {
-    "8175-56": "You explain what makes your public figure well known and how others describe them, so a reader gets a clear picture of their brand.",
-    "8175-105": "You give one strength, one weakness, one opportunity, and one threat for your public figure, each in a complete sentence.",
-    "8175-2": "You decide whether your public figure’s reputation matches who they really seem to be, and give reasons from what you found to back it up.",
-    "8175-57": "You explain how your public figure’s personal brand connects to their sport, show, or industry and helps them grow their career.",
-    "8175-86": "You explain how the threat you named could spread through news or social media and what it could do to your public figure’s brand."
+    "8175-56": "I can explain a personal brand by describing what makes my public figure well known and how others describe them, so a reader gets a clear picture.",
+    "8175-105": "I can identify the parts of a SWOT analysis by giving one strength, one weakness, one opportunity, and one threat for my public figure, each in a complete sentence.",
+    "8175-2": "I can think critically by deciding whether my public figure's reputation matches who they really seem to be and backing up my answer with reasons from what I found.",
+    "8175-57": "I can explain branding in sports and entertainment by showing how my public figure's personal brand connects to their sport, show, or industry and grows their career.",
+    "8175-86": "I can analyze the effects of negative media by explaining how the threat I named could spread through news or social media and hurt my public figure's brand."
   },
   "8175-L05": {
-    "8175-12": "You name the communities that support you, say what they have done to help you succeed, and say whether any of your communities hold you back.",
-    "8175-3": "You name a specific step you will take on your own to join a new community that could support you.",
-    "8175-109": "You name a new group you could join that connects to sports, entertainment, or events and say how you would get involved and stay connected."
+    "8175-12": "I can manage my own support system by naming the communities that support me, what they have done to help me succeed, and whether any hold me back.",
+    "8175-3": "I can take initiative by naming a specific step I can take on my own to join a new community that could support me.",
+    "8175-109": "I can plan how to build my network by naming a new sports, entertainment, or events group I could join and saying how I would get involved and stay connected."
   },
   "8175-L06": {
-    "8175-20": "You write a 100-word plan with specific ways you will practice soft skills like patience, face-to-face communication, and resilience before starting a new job.",
-    "8175-112": "You name one specific thing you could do to help yourself in an interview and explain how it would help.",
-    "8175-21": "You write your plan clearly in about 100 words, answer all three questions, and check it for spelling and grammar.",
-    "8175-5": "You show in your plan how you will keep practicing these skills over time, even when it is hard or no one is checking."
+    "8175-20": "I can plan to grow professionally by writing a 100-word plan with specific ways to practice patience, face-to-face communication, and resilience before starting a new job.",
+    "8175-112": "I can prepare for a job interview by naming one specific thing I could do to help myself in an interview and explaining how it would help.",
+    "8175-21": "I can write clearly by keeping my plan to about 100 words, answering all three questions, and checking it for spelling and grammar.",
+    "8175-5": "I can show a strong work ethic by explaining in my plan how I'll keep practicing these skills over time, even when it is hard or no one is checking."
   },
   "8175-L07": {
-    "8175-4": "You name the scenario you chose and outline exactly what you would do, showing you would act honestly and fairly even when it is hard.",
-    "8175-51": "You name what is unethical in your scenario and explain why it is wrong, not just against the rules.",
-    "8175-20": "You write your planned response in a calm, respectful tone you could actually use at work, without insults or slang.",
-    "8175-6": "You explain how you would handle the people involved in your scenario so the problem gets solved without making the conflict worse.",
-    "8175-49": "You explain what you would say to the people in your scenario, and how saying it that way would protect your working relationship with them."
+    "8175-4": "I can act with integrity by naming my scenario and outlining exactly what I would do to act honestly and fairly even when it is hard.",
+    "8175-51": "I can identify unethical business practices by naming what is unethical in my scenario and explaining why it is wrong, not just against the rules.",
+    "8175-20": "I can act professionally by writing my planned response in a calm, respectful tone I could really use at work, without insults or slang.",
+    "8175-6": "I can resolve conflict by explaining how I would handle the people in my scenario so the problem gets solved without making the conflict worse.",
+    "8175-49": "I can explain how communication shapes work relationships by saying what I would tell the people in my scenario and how saying it that way protects our relationship."
   },
   "8175-L08": {
-    "8175-50": "You build a 3 to 5 slide deck that follows the Rule of Six and write a speaker-notes script that adds to the slides instead of repeating them.",
-    "8175-48": "You label in your speaker notes one place you use verbal communication, one place you use nonverbal, and one place you use visual.",
-    "8175-18": "You use PowerPoint or Google Slides to make high-contrast slides with a light background, dark font, no more than 2 images, and minimal animations.",
-    "8175-7": "You write your speaker notes the way you would actually say them out loud, with clear words that fit your audience."
+    "8175-50": "I can present like a professional by building a 3 to 5 slide deck that follows the Rule of Six, with speaker notes that add to my slides.",
+    "8175-48": "I can identify types of communication by labeling in my speaker notes one place I use verbal, one I use nonverbal, and one I use visual communication.",
+    "8175-18": "I can use presentation software well by making high-contrast slides in PowerPoint or Google Slides with a light background, dark font, no more than 2 images, and minimal animations.",
+    "8175-7": "I can speak clearly to an audience by writing my speaker notes the way I would actually say them out loud, in clear words that fit my audience."
   },
   "8175-L09": {
-    "8175-56": "You say what branding is not, define it simply, explain why people buy a real brand like Apple or Coca Cola, and explain how a brand is a promise.",
-    "8175-54": "You explain branding in everyday words someone with no business background would understand, and explain any business term you use.",
-    "8175-21": "You write at least 250 words with an introduction, an example, the promise, and a conclusion, and check it for spelling and grammar.",
-    "8175-2": "You explain the real reasons people choose your example brand over others instead of only describing the brand.",
-    "8175-57": "You use a sports, entertainment, or event example to show how branding builds trust with fans."
+    "8175-56": "I can explain branding by saying what it is not, defining it simply, explaining why people buy a real brand like Apple, and showing how a brand is a promise.",
+    "8175-54": "I can translate business language into everyday words by explaining branding so someone with no business background understands it, including any business term I use.",
+    "8175-21": "I can write a clear explanation of at least 250 words with an introduction, an example, the promise, and a conclusion, checked for spelling and grammar.",
+    "8175-2": "I can think critically about brands by explaining the real reasons people choose my example brand over others instead of only describing it.",
+    "8175-57": "I can explain branding in sports, entertainment, or events by using an example from one of them to show how a brand builds trust with fans."
   },
   "8175-L10": {
-    "8175-52": "You explain what the company did to stand out from competitors, how it made you feel, and how it changed the value of your purchase.",
-    "8175-55": "You describe a time service went wrong and use the LAST steps from class to explain how the employee should have handled the complaint.",
-    "8175-21": "You write at least 10 complete sentences that answer all four questions clearly and check them for spelling and grammar.",
-    "8175-9": "You point out the specific helpful, courteous, or knowledgeable actions that made the good service work and were missing when service went wrong.",
-    "8175-11": "You explain how great or bad service from one employee affects the whole company and whether customers come back.",
-    "8175-46": "You explain how the way you were welcomed and treated as a guest shaped your whole experience, not just the product.",
-    "8175-53": "You say what kind of service you got in each story, such as self-service or full service, and how that type affected your experience."
+    "8175-52": "I can explain why customer service matters by describing what a company did to stand out, how it made me feel, and how it changed the value of my purchase.",
+    "8175-55": "I can describe how to handle a customer complaint by using the LAST steps to explain how the employee should have handled a time service went wrong.",
+    "8175-21": "I can write a clear reflection of at least 10 complete sentences that answers all four questions and is checked for spelling and grammar.",
+    "8175-9": "I can recognize good customer service by naming the helpful, courteous, or knowledgeable actions that made the good service work and were missing when service went wrong.",
+    "8175-11": "I can think about the big picture by explaining how great or bad service from one employee affects the whole company and whether customers come back.",
+    "8175-46": "I can explain hospitality by showing how the way I was welcomed and treated as a guest shaped my whole experience, not just the product.",
+    "8175-53": "I can compare types of customer interaction by saying what kind of service I got in each story, such as self-service or full service, and how it affected my experience."
   },
   "8175-L11": {
-    "8175-57": "You assess the Cavalier brand by explaining what the logo, the colors, and the reputation say to the community, and name specific areas for improvement.",
-    "8175-42": "You identify who Clover Hill High School serves, using both demographics and psychographics, in at least 75 words.",
-    "8175-59": "You explain how current cultural and societal trends, such as social media or mental health awareness, could push the school to rebrand.",
-    "8175-21": "You write at least 250 words, meet the word count for each of the three sections, and check your essay for spelling and grammar.",
-    "8175-47": "You name at least one current trend and explain how it changes what students and the community expect from the school’s brand."
+    "8175-57": "I can evaluate a school brand by explaining what the Cavalier logo, colors, and reputation say to the community and naming specific areas for improvement.",
+    "8175-42": "I can explain target marketing by identifying who Clover Hill High School serves using both demographics and psychographics in at least 75 words.",
+    "8175-59": "I can explain reasons for rebranding by showing how current cultural and societal trends, such as social media or mental health awareness, could push the school to rebrand.",
+    "8175-21": "I can write a clear essay of at least 250 words that meets the word count for each section and is checked for spelling and grammar.",
+    "8175-47": "I can analyze trends by naming at least one current trend and explaining how it changes what students and the community expect from the school's brand."
   },
   "8175-L12": {
-    "8175-105": "You list 2 internal strengths, 2 internal weaknesses, 2 external opportunities, and 2 external threats for the team or company you chose.",
-    "8175-101": "You name at least one real competitor or competing option in your analysis and explain how it affects your team or company.",
-    "8175-102": "You give one specific recommendation to the General Manager and show which parts of your SWOT analysis it is based on."
+    "8175-105": "I can analyze a team or company's position by naming 2 internal strengths, 2 weaknesses, 2 outside opportunities and 2 threats it faces.",
+    "8175-101": "I can explain competition by naming at least one real competitor or competing option in my analysis and explaining how it affects my team or company.",
+    "8175-102": "I can plan a marketing move by giving the General Manager one specific recommendation and showing which parts of my SWOT analysis it comes from."
   },
   "8175-L13": {
-    "8175-103": "You list 3 specific focus group questions that would show whether students really connect with your brand ideas, without leading them to an answer.",
-    "8175-50": "You build a 5 to 7 slide deck that covers every required slide and uses images and visuals more than text to start a conversation.",
-    "8175-1": "You create a new tagline or theme for the school and show a desired future that is clearly different from the current reality.",
-    "8175-85": "You explain on your rollout slide how you would announce the new brand to students and staff inside the school and to families and the community outside it."
+    "8175-103": "I can plan useful market research by writing 3 specific focus group questions that show whether students really connect with my brand ideas without leading them to an answer.",
+    "8175-50": "I can present to start a conversation by building a 5 to 7 slide deck that covers every required slide and uses more images and visuals than text.",
+    "8175-1": "I can think creatively by creating a new tagline or theme for the school and showing a desired future that is clearly different from the current reality.",
+    "8175-85": "I can explain internal and external public relations by showing on my rollout slide how I'd announce the new brand inside the school and to families and the community."
   },
   "8175-L14": {
-    "8175-69": "You name your business’s ownership type and explain how it changes who makes decisions and who takes the risk.",
-    "8175-47": "You predict at least one change for your business in the next 5 years and explain which AI tool or trend would cause it.",
-    "8175-50": "You build a minimal-text slide deck from your script and present it as a consultant to the class.",
-    "8175-7": "You write your word-for-word script so it sounds natural spoken aloud and is clear to a class audience.",
-    "8175-10": "You use at least one piece of feedback from your Day 3 partner to improve your final presentation.",
-    "8175-15": "You base your brand analysis on real information about the business and can say where that information came from.",
-    "8175-23": "You explain in one or two sentences how your business plans ahead.",
-    "8175-24": "You explain in one or two sentences how your business is managed.",
-    "8175-25": "You explain in one or two sentences how your business handles its money.",
-    "8175-26": "You explain in one or two sentences the skills the business’s workers need to do their jobs.",
-    "8175-27": "You explain in one or two sentences the technology your business runs on.",
-    "8175-28": "You name one labor issue your business faces and explain it in one or two sentences.",
-    "8175-30": "You name one health, safety, or environmental issue your business faces and explain it in one or two sentences.",
-    "8175-44": "You explain why your business matters to the people who go there and to the local community.",
-    "8175-68": "You show how your business’s brand, products, offerings, planning, management, and money fit together to keep it running.",
-    "8175-106": "You name specific jobs at your business when you describe the skills its workers need."
+    "8175-69": "I can compare types of business ownership by naming my business's ownership type and explaining how it changes who makes decisions and who takes the risk.",
+    "8175-47": "I can analyze trends by predicting at least one change for my business in the next 5 years and explaining which AI tool or trend would cause it.",
+    "8175-50": "I can present like a consultant by building a minimal-text slide deck from my script and presenting it to the class.",
+    "8175-7": "I can speak clearly to an audience by writing my word-for-word script so it sounds natural spoken aloud and is clear to my classmates.",
+    "8175-10": "I can collaborate with a partner by using at least one piece of feedback from my Day 3 partner to improve my final presentation.",
+    "8175-15": "I can use reliable information by basing my brand analysis on real facts about the business and saying where those facts came from.",
+    "8175-23": "I can examine how a business plans by explaining in one or two sentences how my business plans ahead.",
+    "8175-24": "I can examine how a business is managed by explaining in one or two sentences how my business is run.",
+    "8175-25": "I can examine financial responsibility by explaining in one or two sentences how my business handles its money.",
+    "8175-26": "I can identify the skills workers need by explaining in one or two sentences what my business's workers must be able to do in their jobs.",
+    "8175-27": "I can explain the technology behind a business by describing in one or two sentences the technology my business runs on.",
+    "8175-28": "I can examine labor issues by naming one labor issue my business faces and explaining it in one or two sentences.",
+    "8175-30": "I can examine health, safety, and environmental issues by naming one my business faces and explaining it in one or two sentences.",
+    "8175-44": "I can explain why the sports and entertainment industry matters by showing why my business matters to the people who go there and to the local community.",
+    "8175-68": "I can explain how a sports or entertainment business works by showing how my business's brand, products, offerings, planning, management, and money fit together to keep it running.",
+    "8175-106": "I can identify jobs in the industry by naming specific jobs at my business when I describe the skills its workers need."
   },
   "8175-L15": {
-    "8175-98": "You take a clear side on whether hosting is a smart investment or a trap and back it up with the cost, the revenue, and what happened to the stadiums.",
-    "8175-15": "You list at least 3 sources at the bottom of your essay and use specific facts from them as examples.",
-    "8175-21": "You write a 200-word persuasive essay that states your position clearly, supports it with examples, and is checked for spelling and grammar.",
-    "8175-29": "You explain how hosting affected the host city and its people, such as the empty stadiums in Athens or Rio.",
-    "8175-99": "You explain whether the host country’s economy was growing or in a recession and how that affected the results of the Games.",
-    "8175-100": "You explain how demand for tickets, hotels, or stadiums during the Games compared with afterward, and how that affected the city’s money."
+    "8175-98": "I can explain the economics of hosting the Olympics by arguing it is a smart investment or a trap, using the cost, the revenue, and what happened to the stadiums.",
+    "8175-15": "I can use sources well by listing at least 3 sources at the bottom of my essay and using specific facts from them as examples.",
+    "8175-21": "I can write persuasively in a 200-word essay that states my position clearly, supports it with examples, and is checked for spelling and grammar.",
+    "8175-29": "I can examine community issues by explaining how hosting affected the host city and its people, such as the empty stadiums in Athens or Rio.",
+    "8175-99": "I can explain how the business cycle affects big events by saying whether the host country's economy was growing or in a recession and how that affected the Games' results.",
+    "8175-100": "I can explain supply and demand by comparing demand for tickets, hotels, or stadiums during the Games with afterward and how that affected the city's money."
   },
   "8175-L16": {
-    "8175-19": "You show your work to find how many pizzas you must sell to cover the 500 dollar rent at 10 dollars and at 7 dollars.",
-    "8175-67": "You choose price skimming or market penetration for your new pizza brand and justify your choice in 2 sentences.",
-    "8175-95": "You create a combo, give it a price, and explain why a fan would buy the bundle instead of the pizza alone.",
-    "8175-40": "You describe your stand’s product, place, and promotion in one sentence each.",
-    "8175-66": "You use your break-even numbers or what fans will pay to explain why your chosen price makes sense.",
-    "8175-97": "You explain how your stand’s combo or setup fits what fans want to buy at the football stadium.",
-    "8175-101": "You explain how your price or combo would help your stand win fans over other food choices at the stadium."
+    "8175-19": "I can calculate a break-even point by showing my work to find how many pizzas I must sell to cover the 500 dollar rent at 10 and at 7 dollars.",
+    "8175-67": "I can choose a pricing strategy by picking price skimming or market penetration for my new pizza brand and justifying my choice in 2 sentences.",
+    "8175-95": "I can explain bundling by creating a combo, giving it a price, and explaining why a fan would buy the bundle instead of the pizza alone.",
+    "8175-40": "I can identify the Ps of the marketing mix by describing my stand's product, place, and promotion in one sentence each.",
+    "8175-66": "I can explain a pricing decision by using my break-even numbers or what fans will pay to show why my chosen price makes sense.",
+    "8175-97": "I can explain stadium concessions by showing how my stand's combo or setup fits what fans want to buy at the football stadium.",
+    "8175-101": "I can explain competition by showing how my price or combo would help my stand win fans over other food choices at the stadium."
   },
   "8175-L17": {
-    "8175-70": "You identify the producer, the intermediary, and the consumer in a concert ticket sale and explain each one’s role in getting the ticket to the fan.",
-    "8175-51": "You take a clear stand in your 100-word opinion piece on whether bot scalping is smart business or unethical, and say whether it should be illegal.",
-    "8175-71": "You explain why a stadium versus a club changes how tickets get to fans.",
-    "8175-100": "You use supply and demand to explain why the scalper can resell tickets for double the price."
+    "8175-70": "I can explain a distribution channel by identifying the producer, intermediary, and consumer in a concert ticket sale and each one's role in getting the ticket to the fan.",
+    "8175-51": "I can judge whether a business practice is ethical by taking a clear stand in my 100-word opinion piece on bot scalping and saying whether it should be illegal.",
+    "8175-71": "I can identify distribution challenges by explaining why a stadium versus a club changes how tickets get to fans.",
+    "8175-100": "I can explain supply and demand by using it to show why the scalper can resell tickets for double the price."
   },
   "8175-L18": {
-    "8175-60": "You give your new sport a name and concept, explain how it works and its rules, and explain why it would be a good Olympic event.",
-    "8175-42": "You describe who is watching your sport using demographics, and use psychographics to explain why your event appeals to them.",
-    "8175-87": "You name specific companies that would sponsor your sport and explain why each would want to be connected to it.",
-    "8175-10": "You and your partner each build clear parts of the proposal and combine them into one project that fits together.",
-    "8175-65": "You name two things you can’t control that could hurt your event and explain how you would plan for each.",
-    "8175-76": "You explain how advertising will show up at your event and how it helps your sponsors reach fans."
+    "8175-60": "I can plan a new product by giving my sport a name and concept, explaining how it works and its rules, and why it would make a good Olympic event.",
+    "8175-42": "I can explain target marketing by describing who watches my sport using demographics and using psychographics to explain why my event appeals to them.",
+    "8175-87": "I can explain sponsorship by naming specific companies that would sponsor my sport and explaining why each would want to be connected to it.",
+    "8175-10": "I can collaborate with a partner by each of us building clear parts of the proposal and combining them into one project that fits together.",
+    "8175-65": "I can plan for things outside my control by naming two things that could hurt my event and explaining how I would prepare for each.",
+    "8175-76": "I can explain advertising at events by showing how advertising will appear at my event and how it helps my sponsors reach fans."
   },
   "8175-L19": {
-    "8175-93": "You map a two-month timeline with 7 promotional activities each week, and your pitch includes a customer profile, branding message, ad mockup, PR talking points and success metrics.",
-    "8175-73": "You mix different kinds of promotion into your weekly schedule, including one public appearance, one fan interaction and one interview.",
-    "8175-104": "You estimate what your two-month plan would cost and explain how you would know it paid off, using sales, streams or followers gained for each dollar spent.",
-    "8175-22": "You follow the class safety rules for cutting tools, hot glue and paint while altering your sleeve and vinyl, and keep your station clear.",
-    "8175-42": "You build your customer profile around one specific group of fans and aim your branding message and ad mockup at them.",
-    "8175-60": "You alter the sleeve and the vinyl so every change adds perceived value, and your cover clearly shows the Artist Name and Album Name.",
-    "8175-61": "You plan your timeline so promotion builds interest in the month before release and keeps the album selling in the month after.",
-    "8175-75": "You make an ad mockup that clearly shows the album, the artist and a reason for fans to listen or buy.",
-    "8175-77": "You tie your success metrics to your ad mockup, saying what the ad is trying to do and how you would tell if it worked.",
-    "8175-84": "You write PR talking points the band could use in the interview and public appearance to get positive attention for the album."
+    "8175-93": "I can describe the parts of a promotional campaign by mapping a two-month hype timeline and pitching a customer profile, branding message, ad mockup, PR talking points and success metrics.",
+    "8175-73": "I can explain how different kinds of promotion work together by mixing them into my weekly schedule, including a public appearance, a fan interaction and an interview.",
+    "8175-104": "I can explain why a marketing plan's return on investment matters by estimating my two-month plan's cost and showing how sales, streams or followers per dollar prove it paid off.",
+    "8175-22": "I can work safely by following the class rules for cutting tools, hot glue and paint while altering my sleeve and vinyl, and keeping my station clear.",
+    "8175-42": "I can explain target marketing by building my customer profile around one specific group of fans and aiming my branding message and ad mockup at them.",
+    "8175-60": "I can plan a product fans will value by altering my sleeve and vinyl so every change adds perceived value and the cover clearly shows the artist and album name.",
+    "8175-61": "I can explain a product's life cycle by planning my timeline so promotion builds interest the month before release and keeps the album selling the month after.",
+    "8175-75": "I can identify the parts of an advertisement by making an ad mockup that clearly shows the album, the artist and a reason for fans to listen or buy.",
+    "8175-77": "I can explain what an ad is trying to do and how to measure it by tying my success metrics to my ad mockup.",
+    "8175-84": "I can use public relations tools by writing PR talking points the band could use in the interview and public appearance to get positive attention for the album."
   },
   "8175-L20": {
-    "8175-83": "You explain how the partnership helps both the athlete's personal brand and the non profit, looking at it the way a marketer would.",
-    "8175-11": "You explain why the athlete chose this cause and connect that reason to what both the athlete and the non profit gain.",
-    "8175-90": "You explain how the athlete and non profit teaming up for My Cause My Cleats is an example of co-branding with a cause.",
-    "8175-2": "You back up your answer about why the athlete chose this cause with facts you found, not just a guess.",
-    "8175-8": "You describe the athlete's cause and the people it serves with respect and care."
+    "8175-83": "I can explain public relations in sports by showing, as a marketer would, how the My Cause My Cleats partnership helps both the athlete's personal brand and the non profit.",
+    "8175-11": "I can see the bigger picture by connecting why my athlete chose this cause to what both the athlete and the non profit gain from it.",
+    "8175-90": "I can identify sponsorship trends by explaining how my athlete and non profit teaming up for My Cause My Cleats is co-branding with a cause.",
+    "8175-2": "I can think critically by backing up my answer about why the athlete chose this cause with facts I found, not just a guess.",
+    "8175-8": "I can show respect for others by describing my athlete's cause and the people it serves with care."
   },
   "8175-L21": {
-    "8175-87": "You write a 5-sentence naming rights proposal explaining why your chosen real company would want its name on the Clover Hill High School football stadium.",
-    "8175-88": "You explain the difference between a sponsorship and an endorsement and give one reason a brand might choose each.",
-    "8175-58": "You define ambush marketing and explain in 2 sentences whether it is genius or dishonest toward the brands that paid to sponsor the event.",
-    "8175-89": "You explain what fee or rule ambush marketers get around when they advertise near the Olympics without paying the Olympic Committee.",
-    "8175-91": "You explain how the brand, the school and its fans would each gain something from the naming rights deal."
+    "8175-87": "I can explain how sponsorships work by writing a 5-sentence naming rights proposal for why my chosen real company wants its name on the Clover Hill football stadium.",
+    "8175-88": "I can compare sponsorships and endorsements by explaining the difference between them and giving one reason a brand might choose each.",
+    "8175-58": "I can explain brand protection by defining ambush marketing and judging in 2 sentences whether it is genius or dishonest toward the brands that paid to sponsor the event.",
+    "8175-89": "I can identify the rules that protect sponsors by explaining what fee or rule ambush marketers get around when they advertise near the Olympics without paying the Olympic Committee.",
+    "8175-91": "I can explain how stakeholders are connected by showing what the brand, the school and its fans would each gain from the naming rights deal."
   },
   "8175-L22": {
-    "8175-93": "You explain how your cleats will get attention, propose one specific fundraising idea, and pick one sales promotion, all fitting your athlete and non profit.",
-    "8175-92": "You choose one sales promotion, like a giveaway, contest, coupon or limited-edition item, and give one advantage and one disadvantage of it.",
-    "8175-1": "You show an original cleat design and one merch item that visually represents the athlete, the non profit and the NFL team at once.",
-    "8175-50": "You pitch your concept to the NFL in about 5 to 7 clear slides, with each slide covering one part of the plan.",
-    "8175-74": "You name the specific places or channels your campaign will use to get the cleats seen when you explain how they will get attention.",
-    "8175-87": "You explain the “Why” behind the athlete and non profit partnership in a way that shows what each side gains from the deal."
+    "8175-93": "I can plan a promotional campaign by explaining how my cleats will get attention, proposing one fundraising idea and picking a sales promotion that fits my athlete and non profit.",
+    "8175-92": "I can weigh the pros and cons of sales promotions by choosing one giveaway, contest, coupon or limited-edition item and giving one advantage and one disadvantage of it.",
+    "8175-1": "I can create original ideas by designing my own cleats and one merch item that shows the athlete, the non profit and the NFL team at once.",
+    "8175-50": "I can present a business idea clearly by pitching my concept to the NFL in about 5 to 7 slides, each covering one part of the plan.",
+    "8175-74": "I can identify ways to get a campaign seen by naming the specific places or channels my campaign will use to get the cleats noticed.",
+    "8175-87": "I can explain what a sponsorship or endorsement deal gives each side by showing what the athlete and the non profit each gain from their partnership."
   },
   "8175-L23": {
-    "8175-1": "You make an eye-catching front cover and lay out your articles and ads so the publication looks original and finished.",
-    "8175-75": "You make one colorful, eye-catching advertisement per group member, each clearly showing what is being sold and aimed at your demographic.",
-    "8175-82": "You explain two ways your magazine could make money online, such as digital ads, subscriptions, sponsored posts or video.",
-    "8175-10": "You do your assigned role, write your own article, and give useful feedback in the Day 2 Peer Review.",
-    "8175-14": "You meet each daily checkpoint, from the Topic and Target Market on Day 1 to the finished, bound project on Day 5.",
-    "8175-50": "You help give a group presentation that clearly highlights your demographic, articles and pricing strategy.",
-    "8175-81": "You explain how making money online for your magazine differs from selling the printed, bound copy."
+    "8175-1": "I can create an original publication by designing an eye-catching front cover and laying out our articles and ads so the magazine looks finished.",
+    "8175-75": "I can design an effective advertisement by making a colorful, eye-catching ad that clearly shows what is being sold and is aimed at our demographic.",
+    "8175-82": "I can explain how digital media makes money by describing two ways our magazine could earn online, such as digital ads, subscriptions, sponsored posts or video.",
+    "8175-10": "I can work well on a team by doing my assigned role, writing my own article and giving useful feedback in the Day 2 Peer Review.",
+    "8175-14": "I can manage my time by meeting each daily checkpoint, from our Topic and Target Market on Day 1 to the finished, bound project on Day 5.",
+    "8175-50": "I can present to an audience by helping give a group presentation that clearly highlights our demographic, articles and pricing strategy.",
+    "8175-81": "I can compare traditional and digital marketing by explaining how making money online for our magazine differs from selling the printed, bound copy."
   },
   "8175-L24": {
-    "8175-94": "You define personal selling and non-personal selling and list 2 benefits and 2 negatives for each.",
-    "8175-96": "You list the 6 steps of the selling process in the right order and finish the sentence that starts “Selling is.”",
-    "8175-7": "You record your roleplay: what you sold, your opening line, the Customer's two rejections, what you said after each one, and the line that got the “Yes.”",
-    "8175-10": "You work with your partner as Salesperson and Customer, follow the two-rejection rule, and reflect on whether you had to change your strategy."
+    "8175-94": "I can explain the types of selling by defining personal and non-personal selling and listing 2 benefits and 2 negatives of each.",
+    "8175-96": "I can explain the selling process by listing its 6 steps in the right order and finishing the sentence \"Selling is ...\".",
+    "8175-7": "I can listen and respond in a sales conversation by recording what I sold, my opening line, the Customer's two rejections, my replies, and the line that won the \"Yes.\"",
+    "8175-10": "I can work with a partner by playing Salesperson and Customer, following the two-rejection rule, and reflecting on whether I had to change my strategy."
   },
   "8175-L25": {
-    "8175-15": "You research one Black entrepreneur and put three specific, accurate facts about their background or business ventures into your card.",
-    "8175-1": "You design an original Valentine's Day card, with your own verse and layout, that works the three facts in creatively.",
-    "8175-8": "You honor the entrepreneur's background and impact on their industry with care and respect in your card."
+    "8175-15": "I can research a person using reliable information by putting three specific, accurate facts about one Black entrepreneur's background or business ventures into my card.",
+    "8175-1": "I can be creative by designing an original Valentine's Day card, with my own verse and layout, that works the three facts in.",
+    "8175-8": "I can show respect for others' backgrounds by honoring my entrepreneur's background and impact on their industry with care in my card."
   },
   "8175-L26": {
-    "8175-12": "You fill in two to three specific examples from your own life for each of Education, Top Strengths, Achievements and Academic Projects.",
-    "8175-109": "You name two to three types of companies that interest you and two to three people you look up to.",
-    "8175-7": "You pick Interesting Facts that set you apart and would sound strong said out loud in a 30-second pitch."
+    "8175-12": "I can describe what I bring to a career by filling in two to three specific examples from my own life for Education, Top Strengths, Achievements and Academic Projects.",
+    "8175-109": "I can start a networking plan by naming two to three types of companies that interest me and two to three people I look up to.",
+    "8175-7": "I can prepare to speak about myself by choosing Interesting Facts that set me apart and would sound strong said out loud in a 30-second pitch."
   },
   "8175-L27": {
-    "8175-72": "You give specific marketing examples you noticed over Spring Break and describe how one campaign likely went from an idea to what you saw.",
-    "8175-79": "You explain how the brand tried to keep you after the first ad, such as with a follow, email sign-up, loyalty app or discount code.",
-    "8175-104": "You explain how the company could tell whether the campaign earned back what it cost.",
-    "8175-2": "You reason through who likely approved the budget and who designed the graphics, rather than only describing the ad.",
-    "8175-78": "You name the online marketing tools you ran into, such as sponsored posts, email sign-ups or loyalty apps, and say how each one worked.",
-    "8175-80": "You say why the brand chose the app, site or feed where you saw its ad to reach people like you."
+    "8175-72": "I can explain promotion by giving specific marketing examples I noticed over Spring Break and describing how one campaign likely went from an idea to what I saw.",
+    "8175-79": "I can identify ways brands keep customers by explaining how one brand tried to keep me after the first ad, like a follow, email sign-up, loyalty app or discount code.",
+    "8175-104": "I can explain why a campaign's return on investment matters by describing how the company could tell whether the campaign earned back what it cost.",
+    "8175-2": "I can think critically by reasoning through who likely approved the budget and who designed the graphics, rather than only describing the ad.",
+    "8175-78": "I can describe online marketing tools by naming the ones I ran into, such as sponsored posts, email sign-ups or loyalty apps, and saying how each worked.",
+    "8175-80": "I can explain how brands pick platforms by saying why the brand chose the app, site or feed where I saw its ad to reach people like me."
   },
   "8175-L28": {
-    "8175-62": "You write two quantitative questions and one qualitative question that would find out what customers want from the new service.",
-    "8175-2": "You check each question for bias and say in one or two sentences which question you rewrote and what you changed to make it neutral.",
-    "8175-17": "You build your three questions in Google Forms, with answer choices for the two quantitative ones, and paste the form's send link.",
-    "8175-103": "You make each question ask something whose answers could actually help us decide how to design the new service."
+    "8175-62": "I can explain what market research is for by writing two quantitative questions and one qualitative question that would find out what customers want from the new service.",
+    "8175-2": "I can spot and fix bias by checking each question and explaining in one or two sentences which question I rewrote and what I changed to make it neutral.",
+    "8175-17": "I can use Google Forms by building my three questions, with answer choices for the two quantitative ones, and pasting the form's send link.",
+    "8175-103": "I can explain why research matters to a marketing plan by asking questions whose answers could actually help us decide how to design the new service."
   },
   "8175-L29": {
-    "8175-105": "You critique the class survey under Strengths, Weaknesses, Opportunities and Threats, naming specific questions or problems in each part.",
-    "8175-10": "You give specific changes in The Fix that would make the shared class survey clearer, more consistent or less biased.",
-    "8175-103": "You say in Opportunities what else the survey could find out about our customers and how knowing it would help."
+    "8175-105": "I can use a SWOT analysis by critiquing the class survey under Strengths, Weaknesses, Opportunities and Threats, naming specific questions or problems in each part.",
+    "8175-10": "I can help improve a team's shared work by giving specific changes in The Fix that would make the class survey clearer, more consistent or less biased.",
+    "8175-103": "I can explain why research matters to a marketing plan by saying in Opportunities what else the survey could learn about our customers and how knowing it would help."
   },
   "8175-L30": {
-    "8175-63": "You write 10 closed and 2 open questions, and for each market segment name the questions that check it exists and the one that tells how to reach it.",
-    "8175-17": "You build all 12 questions in Google Forms with the right question types and paste the form's send link with your questions typed below.",
-    "8175-103": "You make your questions about reaching each segment useful for deciding where and how to market to that segment."
+    "8175-63": "I can create a survey for primary research by writing 10 closed and 2 open questions and naming which ones check each market segment exists and how to reach it.",
+    "8175-17": "I can use Google Forms by building all 12 questions with the right question types and pasting the form's send link with my questions typed below.",
+    "8175-103": "I can explain why research matters to a marketing plan by writing questions about reaching each segment that would help decide where and how to market to it."
   },
   "8175-L31": {
-    "8175-2": "You give one concrete suggestion for how our league or event should be run differently, based on what the survey feedback shows.",
-    "8175-103": "You cite specific numbers or responses from the survey to justify your suggestion.",
-    "8175-16": "You leave out every respondent's name and email and explain in one sentence why survey data must be kept private.",
-    "8175-19": "You use numbers like counts or percentages from the summary charts when describing your three data points."
+    "8175-2": "I can solve a problem using data by giving one concrete suggestion for how our league or event should be run differently, based on what the survey feedback shows.",
+    "8175-103": "I can use research to back a marketing decision by citing specific numbers or responses from the survey to justify my suggestion.",
+    "8175-16": "I can protect private information by leaving out every respondent's name and email and explaining in one sentence why survey data must be kept private.",
+    "8175-19": "I can use math to read survey results by giving counts or percentages from the summary charts when I describe my three interesting findings."
   },
   "8175-L32": {
-    "8175-13": "You describe in your 200-word essay how AI will change the workforce, explain specific steps you will take to be prepared, and name one job to research further.",
-    "8175-15": "You list the five fastest growing industries predicted for the next decade and cite at least three different sources from your research."
+    "8175-13": "I can plan to adapt to a changing job market by explaining in my 200-word essay how AI may reshape work, how I can prepare, and one job to research.",
+    "8175-15": "I can find and use reliable information by listing the five fastest growing industries predicted for the next decade and citing at least three different sources from my research."
   },
   "8175-L33": {
-    "8175-110": "You make a one-page resume with the full header, education, experience bullets that each start with an action verb, and soft and hard skills.",
-    "8175-108": "You find one real job or internship posting on TeamWork Online, Indeed, Handshake or a team's careers page and paste its link at the bottom.",
-    "8175-34": "You use a professional email address and share only the contact details the header asks for.",
-    "8175-111": "You fill in your school, graduation date, GPA and experience accurately, the same way you would on a real job application."
+    "8175-110": "I can write a professional resume by making a one-page resume with the full header, education, experience bullets that each start with an action verb, and soft and hard skills.",
+    "8175-108": "I can find job search resources by locating one real job or internship posting on TeamWork Online, Indeed, Handshake or a team's careers page and pasting its link.",
+    "8175-34": "I can stay safe online by using a professional email address and sharing only the contact details my resume header asks for.",
+    "8175-111": "I can complete a job application by filling in my school, graduation date, GPA and experience accurately, the same way I would on a real application."
   },
   "8175-L34": {
-    "8175-112": "You explain what the interview skills video taught you that you did not expect and name one specific thing you could do in an interview.",
-    "8175-3": "You write a 100-word plan for practicing your body language, tone and confidence on your own before an interview."
+    "8175-112": "I can describe how a job interview works by explaining what surprised me in the interview skills video and naming one specific thing I could do in an interview.",
+    "8175-3": "I can take charge of my own growth by writing a 100-word plan for practicing my body language, tone and confidence on my own before an interview."
   },
   "8175-L35": {
-    "8175-112": "You give the question and a polished final answer for all five Interview Warmup questions.",
-    "8175-13": "You write, under each final answer, one piece of feedback the tool gave you and what you changed because of it.",
-    "8175-7": "You answer all five questions out loud in the tool and listen to its feedback before writing your final answers.",
-    "8175-113": "You treat the Interview Warmup like a real mock interview, answering each question out loud as you would for an employer."
+    "8175-112": "I can answer interview questions well by giving the question and a polished final answer for all five Interview Warmup questions.",
+    "8175-13": "I can learn from feedback by writing, under each final answer, one piece of feedback the tool gave me and what I changed because of it.",
+    "8175-7": "I can speak and listen in an interview by answering all five questions out loud in the tool and using its feedback before writing my final answers.",
+    "8175-113": "I can practice a mock interview by treating the Interview Warmup like a real one, answering each question out loud as I would for an employer."
   },
   "8175-L36": {
-    "8175-1": "You design a brochure with a creative logo on the front cover and a panel that showcases a memorable project from the course.",
-    "8175-106": "You name three careers this class might prepare you for on Panel Three.",
-    "8175-20": "You give honest pros and cons of the teaching approach on Panel Four, worded respectfully, as you would in a workplace review."
+    "8175-1": "I can design creatively by making a brochure with a creative logo on the front cover and a panel that showcases a memorable project from the course.",
+    "8175-106": "I can identify careers in sports, entertainment and events by naming three careers this class might prepare me for on Panel Three.",
+    "8175-20": "I can give feedback professionally by sharing honest pros and cons of the teaching approach on Panel Four, worded respectfully as in a workplace review."
   },
   "8177-the-business-of-the-game": {
-    "8177-86": "You name your team or company’s top three sources of revenue and explain, in one sentence each, how that source brings in money.",
-    "8177-52": "You say who owns your team or company, name its type of ownership (sole proprietorship, partnership or corporation), and explain how you know.",
-    "8177-50": "You describe one specific way your team or company affects its home city, good or bad, such as jobs, charity, a new stadium or game-day traffic.",
-    "8177-15": "You give your team or company’s current value with its source, and list every source at the end with the website name and link.",
-    "8177-24": "You explain how the way your team or company is owned affects who makes its big decisions and who takes the risk.",
-    "8177-53": "You explain one advantage or disadvantage of how your team or company is owned, compared with a nonprofit like the Green Bay Packers.",
-    "8177-94": "You name your team or company’s biggest indirect competitor for a Friday night’s money and explain why fans might choose it instead."
+    "8177-86": "I can identify how a team or company makes money by naming its top three revenue sources and explaining in a sentence how each one brings in money.",
+    "8177-52": "I can explain how a team or company is organized by naming who owns it, its type of ownership, and how I know.",
+    "8177-50": "I can explain how a business affects its local economy by describing one specific way my team or company affects its home city, good or bad.",
+    "8177-15": "I can find and cite reliable information by giving my team or company’s current value with its source and listing every source with the website name and link.",
+    "8177-24": "I can explain how ownership shapes management by showing who makes my team or company’s big decisions and who takes the risk.",
+    "8177-53": "I can compare for-profit and nonprofit ownership by explaining one advantage or disadvantage of how my team or company is owned versus the Green Bay Packers.",
+    "8177-94": "I can explain what competes for fans’ attendance by naming my team or company’s biggest indirect competitor for a Friday night’s money and why fans might choose it."
   },
   "8177-the-4-ps-of-the-fan-experience": {
-    "8177-97": "You write all five parts of your signature item plan: product, price, place, promotion, and what happens to the other three Ps if you change one.",
-    "8177-46": "You give your signature item’s price, its estimated cost to make and the profit on each one, and explain why fans at the venue will pay that price.",
-    "8177-10": "You name the P you will present in your team’s pitch, and your plan shows the ideas your marketing team agreed on, written in your own words.",
-    "8177-47": "You explain how fans would buy your signature item in the team app or online, and why that place fits the item."
+    "8177-97": "I can plan a marketing mix by writing my signature item’s product, price, place and promotion, and explaining what happens to the other three Ps if I change one.",
+    "8177-46": "I can explain how an on-site item earns money for a venue by giving my signature item’s price, cost to make and profit each, and why fans will pay it.",
+    "8177-10": "I can collaborate with my marketing team by writing the ideas we agreed on in my own words and naming the P I’ll present in our pitch.",
+    "8177-47": "I can explain how online and app sales affect a venue by describing how fans would buy my signature item in the team app or online and why that fits."
   },
   "8177-chhs-school-store-company-description": {
-    "8177-21": "You write a company description of at least five complete sentences in a professional voice, with no slang and no “I think.”",
-    "8177-56": "You say what the Cavalier Shop sells and how it is run, name its target market, and state its unique selling proposition in a sentence you bolded or underlined.",
-    "8177-23": "You answer every Plan It question in a few words before you write, so your company description is built around the store’s USP.",
-    "8177-11": "You explain how the Cavalier Shop supports school spirit and events, and end with what customers are really supporting when they buy.",
-    "8177-93": "You give two reasons a student or parent would buy Cavalier gear at the shop for a spirit day or game night instead of shopping online."
+    "8177-21": "I can write a professional company description for the Cavalier Shop in at least five complete sentences, without slang or ‘I think’ statements.",
+    "8177-56": "I can identify the building blocks of a new business by saying what the Cavalier Shop sells, how it’s run, its target market, and its USP in a bolded sentence.",
+    "8177-23": "I can plan before I write by answering every Plan It question so my company description is built around the Cavalier Shop’s USP.",
+    "8177-11": "I can connect the Cavalier Shop to the bigger school community by explaining how it supports school spirit and events and what customers really support when they buy.",
+    "8177-93": "I can explain what motivates customers by giving two reasons a student or parent would buy Cavalier gear at the shop for a spirit day or game night, not online."
   },
   "8177-what-is-branding-reflection-essay": {
-    "8177-21": "You write an essay of at least 500 words that opens with a simple definition of branding, gives three examples in their own paragraphs, and ends with why branding matters.",
-    "8177-2": "You list three class projects with what each taught you about branding, then underline and rewrite every sentence in your essay a beginner wouldn’t understand.",
-    "8177-11": "You explain why branding matters both to a business and to you, as someone who buys from brands.",
-    "8177-97": "You use your 4 Ps signature item as one example and explain how its price, place and promotion helped build its brand."
+    "8177-21": "I can write a clear essay of at least 500 words that defines branding simply, gives three examples in their own paragraphs, and ends with why branding matters.",
+    "8177-2": "I can think critically about my learning and writing by naming what three class projects taught me about branding and rewriting every sentence a beginner wouldn’t understand.",
+    "8177-11": "I can see the big picture of branding by explaining why it matters both to a business and to me as someone who buys from brands.",
+    "8177-97": "I can explain how marketing choices build a brand by using my 4 Ps signature item to show how its price, place and promotion shaped its brand."
   },
   "8177-school-store-planogram-customer-experience": {
-    "8177-45": "You draw a top-down map with arrows for traffic flow, explain how it prevents a lunch-rush bottleneck, and label three merchandise zones, the hot zone and impulse buys.",
-    "8177-22": "You mark every exit and the 36-inch clear walkways on your map, with no merchandise or displays blocking an exit or door.",
-    "8177-95": "You mark where each staff member stands during a shift and explain how each spot helps customers or prevents loss.",
-    "8177-1": "You explain at least one way your layout improves on how the Cavalier Shop is set up now, such as a new path or hot zone display.",
-    "8177-11": "You explain how your layout’s atmospherics, like lighting, music, colors or signs, make the store feel like part of the Cavalier brand.",
-    "8177-72": "You explain how your 36-inch walkways let customers who use wheelchairs move through the store, as the ADA requires.",
-    "8177-73": "You explain how safety rules, like keeping walkways 36 inches wide and never blocking an exit, shaped where you put shelves, racks and tables.",
-    "8177-92": "You plan the store like a small venue, explaining how your layout handles a busy lunch rush from the moment customers enter until they check out."
+    "8177-45": "I can plan how a store’s space works by mapping traffic-flow arrows, preventing a lunch-rush bottleneck, and labeling three merchandise zones, the hot zone and impulse buys.",
+    "8177-22": "I can design a safe store by marking every exit and the 36-inch clear walkways on my map, with nothing blocking an exit or door.",
+    "8177-95": "I can analyze staffing needs by marking where each staff member stands during a shift and explaining how each spot helps customers or prevents loss.",
+    "8177-1": "I can improve on an existing design by explaining how my layout beats the Cavalier Shop’s current setup, like a new path or hot zone display.",
+    "8177-11": "I can connect a store’s layout to its brand by explaining how my atmospherics, like lighting, music, colors or signs, make the store feel like part of the Cavalier brand.",
+    "8177-72": "I can explain how the ADA shapes store design by showing how my 36-inch walkways let customers who use wheelchairs move through the store.",
+    "8177-73": "I can explain how legal safety rules shape operations by showing how 36-inch walkways and never blocking an exit decided where I put shelves, racks and tables.",
+    "8177-92": "I can plan a store like a small venue by explaining how my layout handles a busy lunch rush from the moment customers enter until they check out."
   },
   "8177-product-pitch-financial-analysis": {
-    "8177-19": "You show every calculation for cost per finished item, profit per item, margin, total batch cost, break-even point, expected profit and turnover, with correct answers.",
-    "8177-96": "You name a real supplier with a link, list each material’s cost, the minimum order and shipping, and estimate how many the class can make in one class period.",
-    "8177-93": "You explain who will buy your product, whether CHHS students, families or fans, and when they will want it, like a season, a big game or spirit week.",
-    "8177-2": "You explain the strategy behind your retail price and how it covers your cost and leaves a profit while staying a price students will actually pay.",
-    "8177-7": "You write your pitch so the General Manager could quickly understand what the product is, who will buy it and why it will make money."
+    "8177-19": "I can calculate whether a product will make money by correctly showing cost per finished item, profit per item, margin, total batch cost, break-even point, expected profit and turnover.",
+    "8177-96": "I can figure out production costs by naming a real supplier with a link, listing each material’s cost, minimum order and shipping, and estimating items per class period.",
+    "8177-93": "I can explain what makes customers buy by describing who will want my product, whether CHHS students, families or fans, and when, like a season, big game or spirit week.",
+    "8177-2": "I can justify a price by explaining the strategy behind my retail price and how it covers my cost, leaves a profit and stays a price students will actually pay.",
+    "8177-7": "I can communicate a pitch clearly by writing it so the General Manager quickly understands what the product is, who will buy it and why it will make money."
   },
   "8177-the-economics-of-the-arena": {
-    "8177-19": "You calculate the total revenue at all five prices for each of the three games, showing price × tickets sold for every one.",
-    "8177-94": "You explain in your own words why the playoff game can charge much more than Snowy Tuesday, using supply, demand and scarcity.",
-    "8177-2": "You choose a price for each game and explain it with your math, then take a side on whether the $100 and $20 seats are fair and back it up.",
-    "8177-86": "You explain what the team gains besides ticket money, like concession sales, when it picks a lower price to fill the arena."
+    "8177-19": "I can calculate ticket revenue by showing price × tickets sold at all five prices for each of the three games.",
+    "8177-94": "I can explain how demand affects ticket prices by using supply, demand and scarcity to show why the playoff game can charge much more than Snowy Tuesday.",
+    "8177-2": "I can make and defend a decision by choosing a price for each game using my math and taking a side on whether the $100 and $20 seats are fair.",
+    "8177-86": "I can identify revenue beyond tickets by explaining what the team gains, like concession sales, when it picks a lower price to fill the arena."
   },
   "8177-market-research-survey-design": {
-    "8177-83": "You build the Google Form, paste its link, and for each of the three questions say whether it collects quantitative or qualitative data and what the store will learn.",
-    "8177-2": "You explain what is wrong with each of the three biased questions and rewrite each one so it is neutral.",
-    "8177-79": "You name one more primary source and one secondary source the Cavalier Shop could really use, and say what each tells the store that the survey can’t.",
-    "8177-18": "You set up each question in Google Forms with the right type: checkboxes for up to two, a 1-to-5 linear scale, short answer, and email collection turned off.",
-    "8177-81": "You pick one target market, students, parents or staff, and explain why that group matters most to the Cavalier Shop.",
-    "8177-93": "You explain what Question 2 will tell the store about whether supporting CHHS student activities makes people want to buy."
+    "8177-83": "I can build a market research survey by making the Google Form, pasting its link, and explaining whether each question collects quantitative or qualitative data and what the store learns.",
+    "8177-2": "I can spot and fix bias by explaining what’s wrong with each of the three biased questions and rewriting each one so it’s neutral.",
+    "8177-79": "I can identify sources of market research data by choosing one more primary and one secondary source for the Cavalier Shop and saying what each adds that the survey can’t.",
+    "8177-18": "I can use Google Forms like a researcher by setting up checkboxes for up to two, a 1-to-5 linear scale and a short answer, with email collection turned off.",
+    "8177-81": "I can choose a target market by picking students, parents or staff and explaining why that group matters most to the Cavalier Shop.",
+    "8177-93": "I can explain what motivates customers by saying what Question 2 will tell the store about whether supporting CHHS student activities makes people want to buy."
   },
   "8177-survey-deployment-statistical-significance": {
-    "8177-83": "You explain why the store needs 323 responses instead of 5 or 10 friends, and keep a log of the date, place and number of surveys taken each time.",
-    "8177-14": "You plan when and where you will collect your 15 responses and who you will ask, reaching people beyond your closest friends.",
-    "8177-4": "You explain why every response must be real, and your log has no names, with each person counted only once.",
-    "8177-7": "You write a 10-second pitch that says who you are, what the survey is for, and how quick it is.",
-    "8177-82": "You describe what worked best in collecting your responses and what you would do differently next time."
+    "8177-83": "I can carry out a market research survey by explaining why the store needs 323 responses, not 5 or 10 friends, and logging the date, place and count each time.",
+    "8177-14": "I can manage my time and resources by planning when and where I’ll collect my 15 responses and who I’ll ask, reaching beyond my closest friends.",
+    "8177-4": "I can act with integrity by explaining why every response must be real and keeping a log with no names and each person counted only once.",
+    "8177-7": "I can ask people for help clearly by writing a 10-second pitch that says who I am, what the survey is for and how quick it is.",
+    "8177-82": "I can reflect on how a research project ran by describing what worked best in collecting my responses and what I would do differently next time."
   },
   "8177-survey-results-analysis": {
-    "8177-84": "You state three findings from the real survey results, each with its number, and explain what each one means for the Cavalier Shop.",
-    "8177-2": "You recommend one specific change to the Cavalier Shop’s layout, hours, products or promotion, and use the numbers from your data points to back it up.",
-    "8177-78": "You pick three marketing functions and write one sentence for each on how the survey results help it, or one question a future survey should ask.",
-    "8177-21": "You write one professional report of at least 250 words in complete sentences, with no slang, that you could hand to the principal.",
-    "8177-45": "You explain how your recommended change to the store’s layout or hours would change how the Cavalier Shop runs day to day.",
-    "8177-77": "You explain how the survey results help the Cavalier Shop make better marketing decisions than it could by guessing."
+    "8177-84": "I can evaluate survey results by stating three findings from the real data, each with its number, and explaining what each one means for the Cavalier Shop.",
+    "8177-2": "I can solve a business problem with data by recommending one specific change to the Cavalier Shop’s layout, hours, products or promotion and backing it with numbers from my findings.",
+    "8177-78": "I can explain why marketing functions need research by writing one sentence for each of three functions on how the survey helps it or what a future survey should ask.",
+    "8177-21": "I can write a professional report of at least 250 words, in complete sentences with no slang, that I could hand to the principal.",
+    "8177-45": "I can explain how a change affects store operations by showing how my recommended layout or hours change would change how the Cavalier Shop runs day to day.",
+    "8177-77": "I can explain the value of market research by showing how the survey results help the Cavalier Shop make better marketing decisions than guessing."
   },
   "8177-promotional-flyer-design": {
-    "8177-1": "You design a black-and-white flyer with a headline that makes someone stop walking, the logo, hours and location, and three items with their real prices.",
-    "8177-18": "You build your flyer in Canva, Adobe Express or Google Slides, check the logo in grayscale, and add the PDF or its link to this document.",
-    "8177-21": "You type the flyer’s exact words and write a short paragraph explaining what you made biggest and why, how you used contrast, and where you left negative space.",
-    "8177-14": "You design your flyer to print well on the school’s black-and-white copier, avoiding light grays and thin text that would turn muddy.",
-    "8177-97": "You explain how your flyer’s headline and items will get students walking past in the hallway to come into the Cavalier Shop."
+    "8177-1": "I can design an eye-catching black-and-white flyer with a headline that stops people walking, the logo, hours and location, and three items with their real prices.",
+    "8177-18": "I can use design software by building my flyer in Canva, Adobe Express or Google Slides, checking the logo in grayscale, and adding the PDF or its link.",
+    "8177-21": "I can write about design clearly by typing my flyer’s exact words and explaining what I made biggest and why, how I used contrast and where I left negative space.",
+    "8177-14": "I can make the most of limited resources by designing my flyer to print well on the school’s black-and-white copier, avoiding light grays and thin text.",
+    "8177-97": "I can plan promotion that brings customers in by explaining how my flyer’s headline and items will get students walking the hallway to come into the Cavalier Shop."
   },
   "8177-the-hype-machine": {
-    "8177-97": "You build a campaign with a paid ad mockup showing audience, placement and cost, a PR stunt the news would cover, and a sales promotion with a deadline.",
-    "8177-42": "You list how you would spend the $5,000 item by item without going over, and explain why every promise in your campaign would hold up on game night."
+    "8177-97": "I can plan a promotional campaign with a paid ad mockup with audience, placement and cost, a PR stunt the news would cover, and a sales promotion with a deadline.",
+    "8177-42": "I can make a manager’s campaign decisions by budgeting the $5,000 item by item without going over and explaining why every promise would hold up on game night."
   },
   "8177-the-richmond-festival-blueprint": {
-    "8177-92": "You answer every question in all three phases, vision, logistics and business, with specific answers, including a Richmond location and why you chose it.",
-    "8177-95": "You list five specific jobs you need to hire for and explain what each one does at your event.",
-    "8177-67": "You name one thing that could go wrong at your event and explain exactly how you will prepare for it.",
-    "8177-1": "You create an event name, theme and vibe that would make your crowd want to pay to come.",
-    "8177-68": "You explain how something you can’t control, like a rainstorm or power outage, could change your plans and how your event would still run.",
-    "8177-87": "You name what will cost the most for your event, like the performers, venue rental, insurance or security, and say why.",
-    "8177-96": "You list where your event’s money comes in and what costs the most, so a reader can see how the event would pay for itself.",
-    "8177-97": "You write a 3-sentence social media post announcing that tickets are on sale, with a hashtag, aimed at the crowd you picked."
+    "8177-92": "I can plan an event step by step by answering every vision, logistics and business question specifically, including a Richmond location and why I chose it.",
+    "8177-95": "I can analyze staffing needs by listing five specific jobs to hire for and explaining what each one does at my event.",
+    "8177-67": "I can manage risk by naming one thing that could go wrong at my event and explaining exactly how I’d prepare for it.",
+    "8177-1": "I can create an event concept by inventing a name, theme and vibe that would make my crowd want to pay to come.",
+    "8177-68": "I can plan for things I can’t control by explaining how a rainstorm, power outage or similar problem could change my plans and how my event would still run.",
+    "8177-87": "I can identify event expenses by naming what will cost the most for my event, like performers, venue rental, insurance or security, and saying why.",
+    "8177-96": "I can analyze how an event pays for itself by listing where my event’s money comes in and what costs the most.",
+    "8177-97": "I can market an event to its crowd by writing a 3-sentence social media post, with a hashtag, announcing that tickets are on sale."
   },
   "8177-game-day-takeover": {
-    "8177-99": "You list everyone who helped and what each did, write a specific thank-you note to one staff member, and draft a public thank-you to customers.",
-    "8177-95": "You build a staffing chart showing every role at the pop-up, who fills it, and who backs them up.",
-    "8177-10": "You write your role and shift in the run of show and describe what you did during your shift to help the team.",
-    "8177-58": "You describe one customer you served during your shift and one problem that came up and how it was handled.",
-    "8177-100": "You build the run of show from setup to cleanup with the busy times marked, plus a supply list and one risk with a backup plan.",
-    "8177-101": "You compare the event’s real numbers with your goals and name one thing to keep and one to change, using the results."
+    "8177-99": "I can recognize the people behind an event by listing everyone who helped and what each did, writing one staff member a specific thank-you note, and drafting a customer thank-you.",
+    "8177-95": "I can plan staffing for an event by building a staffing chart showing every pop-up role, who fills it and who backs them up.",
+    "8177-10": "I can work as part of a team by writing my role and shift in the run of show and describing how I helped the team during my shift.",
+    "8177-58": "I can serve customers well by describing one customer I served during my shift and one problem that came up and how it was handled.",
+    "8177-100": "I can manage an event by building a setup-to-cleanup run of show with the busy times marked, a supply list, and one risk with a backup plan.",
+    "8177-101": "I can judge an event’s success by comparing its real numbers with our goals and naming one thing to keep and one to change, using the results."
   },
   "8177-tournament-sponsorship-proposal": {
-    "8177-21": "You write a one-page formal business letter with the hook, connection, value and call to action paragraphs, in correct letter format, and fix every error when proofreading.",
-    "8177-15": "You find a real Richmond or Chesterfield business, its sponsorship decision-maker’s name, title and mailing address, and explain why its customers match the tournament crowd.",
-    "8177-97": "You say exactly what the sponsor gets for its money in your Value paragraph, using the sponsor benefits your teacher gave you.",
-    "8177-20": "You keep your letter free of slang, greet the contact by last name with a colon, and close with “Sincerely,” and your name.",
-    "8177-96": "You explain in your letter what the sponsor’s money would help pay for at the tournament."
+    "8177-21": "I can write a formal business letter with hook, connection, value and call to action paragraphs in correct letter format, proofreading to fix every error.",
+    "8177-15": "I can research a real local business by finding its sponsorship decision-maker’s name, title and mailing address and explaining why its customers match our tournament crowd.",
+    "8177-97": "I can pitch a sponsor’s marketing value by saying exactly what the sponsor gets for its money in my Value paragraph, using the benefits my teacher gave me.",
+    "8177-20": "I can write professionally by keeping my letter free of slang, greeting the contact by last name with a colon, and closing with ‘Sincerely,’ and my name.",
+    "8177-96": "I can explain how sponsor money supports an event by saying in my letter what the sponsor’s money would help pay for at the tournament."
   },
   "8177-the-millionaire-s-strike": {
-    "8177-28": "You give your side's position and a fair reason on all four issues, say what each side gave up in the deal, and explain why players are hard to replace.",
-    "8177-70": "You explain the right the National Labor Relations Act gives the players and why owners want the draft and salary cap in a CBA instead of agreed among themselves.",
-    "8177-50": "You name three specific Richmond businesses or hourly jobs a lost season would hurt, and for each one explain exactly how its income depends on game days.",
-    "8177-49": "You explain how lost game-day paychecks could spread into less spending and more unemployment around the city.",
-    "8177-69": "You record the final terms of the new collective bargaining agreement on each of the four issues and explain what the contract settles for both sides.",
-    "8177-71": "You explain what the players' union is and how bargaining together gives athletes power they wouldn't have negotiating one at a time."
+    "8177-28": "I can analyze a labor dispute by giving my side's position and reason on all four issues, what each side gave up, and why players are hard to replace.",
+    "8177-70": "I can explain how labor law shapes pro sports by naming the right the National Labor Relations Act gives players and why owners want the draft and salary cap bargained.",
+    "8177-50": "I can explain how a lost season hurts a local economy by naming three Richmond businesses or hourly jobs and how each one's income depends on game days.",
+    "8177-49": "I can explain how lost game-day paychecks could spread into less spending and more unemployment around the city.",
+    "8177-69": "I can identify the terms of a contract by recording the new collective bargaining agreement's final terms on all four issues and explaining what it settles for both sides.",
+    "8177-71": "I can explain what a players' union is and how bargaining together gives athletes power they wouldn't have negotiating one at a time."
   },
   "8177-the-stadium-economy": {
-    "8177-49": "You explain the stadium's effect on consumer spending and GDP, say which new-spending estimate you trust and why, and use the numbers to show how interest and inflation raise costs.",
-    "8177-50": "You compare the county's yearly loan payment with the taxes it would collect each year on truly new spending, and say whether the county comes out ahead.",
-    "8177-45": "You recommend a seating capacity for the stadium and use the law of diminishing returns and the team's 4,500-fan average to explain why.",
-    "8177-29": "You explain who in Chesterfield County would pay for the stadium and who would benefit from it.",
-    "8177-66": "You name a benefit to the community beyond money that could make the stadium worth some of its cost, and say whether it changes your verdict."
+    "8177-49": "I can analyze a stadium's economic effects by explaining its impact on consumer spending and GDP, choosing the new-spending estimate I trust, and showing how interest and inflation raise costs.",
+    "8177-50": "I can judge whether a stadium pays off for the county by comparing its yearly loan payment with the yearly taxes on truly new spending.",
+    "8177-45": "I can plan a facility's size by recommending a seating capacity and using the law of diminishing returns and the team's 4,500-fan average to explain why.",
+    "8177-29": "I can examine a community issue by explaining who in Chesterfield County would pay for the stadium and who would benefit from it.",
+    "8177-66": "I can describe a stadium's value to the community by naming a benefit beyond money and saying whether it changes my verdict."
   },
   "8177-the-cloud-behind-the-game": {
-    "8177-65": "You explain at least three ways Story A and Story B use the same facts to leave readers with opposite impressions, then write a balanced headline and three-sentence story.",
-    "8177-64": "You make a T-chart with three pros and three cons covering economic, social and environmental sides, and back your recommendation on the data center and AI option with fact-sheet facts.",
-    "8177-44": "You draw an organizational chart for your startup with at least five roles at launch showing who reports to whom, and show how it changes by year three.",
-    "8177-15": "You mark every number or claim in both stories “true,” “true but missing context” or “not on the fact sheet” after checking it against the fact sheet.",
-    "8177-48": "You explain how esports or another event that happens mostly online depends on data centers, in your step-by-step walkthrough or your startup idea.",
-    "8177-55": "You name the problem or need your startup spots and explain which parts of the entrepreneurial mindset it takes to go after it.",
-    "8177-57": "You say how many jobs your startup would create and how it would help other local businesses grow."
+    "8177-65": "I can analyze media bias by explaining three ways Story A and Story B use the same facts to leave opposite impressions, then writing a balanced headline and three-sentence story.",
+    "8177-64": "I can weigh economic, social and environmental concerns in a decision using a T-chart of three pros and three cons and fact-sheet facts behind my data center recommendation.",
+    "8177-44": "I can organize a business's roles by drawing my startup's organizational chart with five or more launch roles, who reports to whom, and how it changes by year three.",
+    "8177-15": "I can check information against a source by marking every number or claim in both stories “true,” “true but missing context” or “not on the fact sheet.”",
+    "8177-48": "I can explain how esports or another mostly online event depends on data centers in my step-by-step walkthrough or my startup idea.",
+    "8177-55": "I can describe the entrepreneurial mindset by naming the problem or need my startup spots and explaining which parts of that mindset it takes to go after it.",
+    "8177-57": "I can explain how a small business drives growth by saying how many jobs my startup would create and how it would help other local businesses grow."
   },
   "8177-the-global-expansion": {
-    "8177-74": "You explain why your brand has a market in your city, convert a ticket price at today's real exchange rate with math and source, and solve one real overseas problem.",
-    "8177-80": "You describe one specific change to your event or marketing that fits the local culture and explain why local fans would respond to it.",
-    "8177-51": "You explain how a cultural or political factor in your chosen country, like local customs or tax rules, could affect how much money the event makes."
+    "8177-74": "I can explain outside factors abroad by showing why my brand has a market in my city, converting a ticket price at today's exchange rate, and solving one overseas problem.",
+    "8177-80": "I can adapt marketing to a culture by describing one change to my event or marketing that fits local culture and explaining why local fans would respond.",
+    "8177-51": "I can explain how a cultural or political factor in my chosen country, like local customs or tax rules, could affect how much money the event makes."
   },
   "8177-brand-board": {
-    "8177-1": "You invent a new event or venue and build a brand board with five colors, one font, two logo versions, your three words and four images of the customer experience.",
-    "8177-45": "You explain how your colors and logo would show up inside the actual venue, such as on the walls, in the lighting, or on signs and screens.",
-    "8177-42": "You explain how your colors, font and images each match your three words, so anyone making a sign, shirt or post for your event keeps the brand consistent.",
-    "8177-11": "You explain how one consistent look across tickets, signs, jerseys and posts would shape what customers think of your whole event or venue.",
-    "8177-21": "You write your idea and explanations in clear, complete sentences that use brand, brand identity, color palette, typography, logo and atmospherics accurately.",
-    "8177-93": "You describe who your event or venue is for and explain what in the experience your four images show would make them want to come.",
-    "8177-97": "You show how your brand would appear in promotion, like social posts, digital tickets or jerseys, to get people to come to your event."
+    "8177-1": "I can create an original brand by inventing an event or venue and building its brand board: five colors, one font, two logo versions, my three words and four images.",
+    "8177-45": "I can connect a brand to a facility by explaining how my colors and logo would show up inside the venue: on walls, in lighting, or on signs and screens.",
+    "8177-42": "I can make brand decisions others can follow by explaining how my colors, font and images match my three words, so anyone making a sign, shirt or post stays consistent.",
+    "8177-11": "I can see the big picture by explaining how one consistent look across tickets, signs, jerseys and posts would shape what customers think of my whole event or venue.",
+    "8177-21": "I can write clear, complete sentences that use brand, brand identity, color palette, typography, logo and atmospherics accurately when I explain my idea.",
+    "8177-93": "I can explain what motivates customers by describing who my event or venue is for and what in the experience my four images show would make them want to come.",
+    "8177-97": "I can plan how a brand promotes an event by showing how mine would appear in social posts, digital tickets or jerseys to get people to come."
   },
   "8177-employee-handbook-operations": {
-    "8177-25": "You explain the Z-Out in your own words (what's counted, what's subtracted, what it's checked against) and describe a real problem each of the Two-Person and scan-everything rules prevents.",
-    "8177-95": "You give one responsibility for each of the four roles and explain what goes wrong in the shop if nobody does it.",
-    "8177-58": "You write exactly what you'd say to the customers waiting in line during the rush, keeping it polite, calm and professional.",
-    "8177-4": "You explain how the Two-Person Rule and scanning everything, even a free giveaway, keep the shop honest with its cash and stock.",
-    "8177-5": "You explain what goes wrong for the whole team when one person doesn't do their part, like skipping a restock or leaving the drawer open.",
-    "8177-10": "You say who does what during the rush so the team handles the waiting line and the jammed register together.",
-    "8177-14": "You put your rush plan in a clear order of what gets done first, so the line keeps moving while the register gets fixed.",
-    "8177-20": "You use professional language, not slang, in what you say to the waiting customers, the way the handbook's greeting does.",
-    "8177-45": "You list the four opening procedures in the right order, starting with clearing the 36-inch walkways.",
-    "8177-72": "You explain why the 36-inch walkways have to be completely clear of boxes before the shop opens.",
-    "8177-73": "You name the rules behind the first opening step, ADA and fire code, when you list the opening procedures."
+    "8177-25": "I can explain financial controls by describing the Z-Out in my own words and a real problem each of the Two-Person and scan-everything rules prevents.",
+    "8177-95": "I can analyze staffing needs by giving one responsibility for each of the four roles and explaining what goes wrong in the shop if nobody does it.",
+    "8177-58": "I can serve customers during a rush by writing exactly what I'd say to the waiting line, keeping it polite, calm and professional.",
+    "8177-4": "I can explain how the Two-Person Rule and scanning everything, even a free giveaway, keep the shop honest with its cash and stock.",
+    "8177-5": "I can explain why work ethic matters by showing what goes wrong for the whole team when one person skips their part, like a restock or leaving the drawer open.",
+    "8177-10": "I can coordinate a team by saying who does what during the rush so we handle the waiting line and the jammed register together.",
+    "8177-14": "I can prioritize under pressure by putting my rush plan in a clear order so the line keeps moving while the register gets fixed.",
+    "8177-20": "I can speak professionally by using polished language, not slang, in what I say to the waiting customers, the way the handbook's greeting does.",
+    "8177-45": "I can explain how a venue opens by listing the four opening procedures in the right order, starting with clearing the 36-inch walkways.",
+    "8177-72": "I can explain how the ADA shapes a facility by saying why the 36-inch walkways have to be completely clear of boxes before the shop opens.",
+    "8177-73": "I can connect laws to operations by naming ADA and fire code as the rules behind the first opening step when I list the opening procedures."
   },
   "8177-secure-the-perimeter": {
-    "8177-90": "You say where fans should go and why using lightning safety, and your map shows each section's route with arrows and how the main gate avoids a bottleneck.",
-    "8177-91": "You write an emergency action plan with a calm three-sentence PA announcement that says exactly where to go, and explain how one school drill is an emergency action plan.",
-    "8177-89": "You explain where the police officers, guest services staff and athletic trainers go and what each group's job is during the evacuation.",
-    "8177-27": "You explain how a tool like two-way radios or the PA system helps your staff move fans safely during the evacuation.",
-    "8177-30": "You explain why staying on the metal bleachers during lightning is dangerous and why the place you send fans is safer.",
-    "8177-68": "You plan for what you can't control, like the gym holding only about 1,500 people when 3,000 fans need shelter."
+    "8177-90": "I can explain a venue's security needs by sending fans somewhere safe from lightning and mapping each section's route with arrows so the main gate avoids a bottleneck.",
+    "8177-91": "I can plan for an emergency by writing an emergency action plan with a calm three-sentence PA announcement and explaining how one school drill is an emergency action plan.",
+    "8177-89": "I can explain how different staff keep people safe by saying where the police officers, guest services staff and athletic trainers go and what each does during the evacuation.",
+    "8177-27": "I can explain how a tool like two-way radios or the PA system helps my staff move fans safely during the evacuation.",
+    "8177-30": "I can explain a safety hazard by saying why staying on metal bleachers during lightning is dangerous and why the place I send fans is safer.",
+    "8177-68": "I can plan for what I can't control, like the gym holding only about 1,500 people when 3,000 fans need shelter."
   },
   "8177-the-back-room": {
-    "8177-41": "You compare the purchase order, the packing slip and your count for all four items, and list every missing, wrong, damaged and backordered problem.",
-    "8177-14": "You make a table showing how many usable items of each kind we can actually print on, and explain why each item you didn't count can't be used.",
-    "8177-26": "You write a professional email to Blank Canvas Wholesale that lists each problem, gives the purchase order number and credit amount, and asks for replacements and a ship date.",
-    "8177-27": "You explain why a wrong or missing supply, like the black t-shirts or the backordered transfer paper, keeps us from printing."
+    "8177-41": "I can check a shipment by comparing the purchase order, packing slip and my count for all four items and listing every missing, wrong, damaged and backordered problem.",
+    "8177-14": "I can manage our resources by making a table of how many usable items of each kind we can print on and explaining why each uncounted item can't be used.",
+    "8177-26": "I can write a professional email to Blank Canvas Wholesale that lists each problem, gives the purchase order number and credit amount, and asks for replacements and a ship date.",
+    "8177-27": "I can explain how production depends on the right supplies by showing why the black t-shirts or the backordered transfer paper keep us from printing."
   },
   "8177-the-battle-for-the-entertainment-dollar": {
-    "8177-93": "You describe your persona's typical week and how much of their budget one outing costs, and explain why the top motivator you picked fits them.",
-    "8177-94": "You name one local indirect competitor and why it threatens your persona, then describe one promotion that would win them over and fits their motivator and budget.",
-    "8177-2": "You explain how your promotion solves the problem of getting your persona off the couch and away from the competitor while staying within their budget."
+    "8177-93": "I can explain what motivates a fan by describing my persona's typical week and how much of their budget one outing costs, and why their top motivator fits them.",
+    "8177-94": "I can analyze competition for attendance by naming one local indirect competitor that threatens my persona and a promotion that fits their motivator and budget to win them over.",
+    "8177-2": "I can solve a problem by explaining how my promotion gets my persona off the couch and away from the competitor while staying within their budget."
   },
   "8177-the-bottom-line": {
-    "8177-98": "You choose your fee, ticket and concession prices, calculate revenue and every expense, and build a budget in Google Sheets that reaches at least a 15% profit margin.",
-    "8177-85": "You list every expense from the price list as its own line and label each one a fixed cost or a variable cost.",
-    "8177-88": "You calculate net profit and profit margin, show both versions if you missed 15%, and name the two biggest risks in your memo with what you'd do about each.",
-    "8177-16": "You share your budget sheet only with your teacher and keep its numbers confidential.",
-    "8177-34": "You set your Google Sheet's sharing so only your teacher can open the link you add to this document.",
-    "8177-87": "You calculate each expense from the price list correctly, like the referee hours, the gym fee and the cost of the player t-shirts."
+    "8177-98": "I can build an event budget by choosing my fee, ticket and concession prices, calculating revenue and every expense in Google Sheets, and reaching at least a 15% profit margin.",
+    "8177-85": "I can identify the parts of a budget by listing every expense from the price list as its own line and labeling each a fixed or variable cost.",
+    "8177-88": "I can analyze a budget by calculating net profit and profit margin, showing both versions if I missed 15%, and naming two big risks and my plan for each.",
+    "8177-16": "I can protect financial information by sharing my budget sheet only with my teacher and keeping its numbers confidential.",
+    "8177-34": "I can follow safe sharing practices by setting my Google Sheet so only my teacher can open the link I add to this document.",
+    "8177-87": "I can calculate event expenses correctly from the price list, like the referee hours, the gym fee and the cost of the player t-shirts."
   },
   "8177-the-final-whistle": {
-    "8177-108": "You build one plan for your first job from three career paths, five resume bullets, three STAR stories, your network, and a strategy for each of two barriers.",
-    "8177-43": "You describe what each of your three jobs involves and name the class project that prepared you for it.",
-    "8177-104": "You name the education and training each of your three jobs usually requires, such as a degree, an internship, a certification or experience.",
-    "8177-12": "You write three STAR stories from this year that you could use to answer an interview question like “Tell me about a time you solved a problem.”",
-    "8177-13": "You show in your resume bullets or STAR stories something you learned or got better at as the year went on.",
-    "8177-32": "You name one professional organization, like DECA, you could join and explain how being a member could help your career.",
-    "8177-101": "You write a SWOT analysis of a real school event with at least two strengths, weaknesses, opportunities and threats, and name one thing you'd measure next time.",
-    "8177-102": "You name a real source for each of your three jobs, like a job posting, a careers page or the Occupational Outlook Handbook.",
-    "8177-103": "You choose three different jobs and explain where each fits, from a first job you could get soon to one you'd work up to.",
-    "8177-105": "You name two things that could make your first job hard to get and write a specific strategy to get past each one.",
-    "8177-106": "You name one person or organization you could ask for an informational interview and explain how it could help you grow in the field.",
-    "8177-107": "You research at least one real employer through its job posting or careers page and say what the job there involves."
+    "8177-108": "I can plan my career by building one plan for my first job from three career paths, five resume bullets, three STAR stories, my network, and strategies for two barriers.",
+    "8177-43": "I can evaluate career options by describing what each of my three jobs involves and naming the class project that prepared me for it.",
+    "8177-104": "I can identify the education and training each of my three jobs usually requires, such as a degree, an internship, a certification or experience.",
+    "8177-12": "I can tell my own story to an employer by writing three STAR stories from this year that answer interview questions about a time I solved a problem.",
+    "8177-13": "I can show how I've grown by pointing to something in my resume bullets or STAR stories that I learned or got better at as the year went on.",
+    "8177-32": "I can explain the value of membership by naming one professional organization, like DECA, I could join and how being a member could help my career.",
+    "8177-101": "I can evaluate an event's success by writing a SWOT analysis of a real school event with at least two of each and naming one thing I'd measure next time.",
+    "8177-102": "I can find career information by naming a real source for each of my three jobs, like a job posting, a careers page or the Occupational Outlook Handbook.",
+    "8177-103": "I can map career levels by choosing three different jobs and explaining where each fits, from a first job I could get soon to one I'd work up to.",
+    "8177-105": "I can plan around barriers by naming two things that could make my first job hard to get and a specific strategy to get past each one.",
+    "8177-106": "I can find ways to grow professionally by naming one person or organization I could ask for an informational interview and how it could help me in the field.",
+    "8177-107": "I can research a prospective employer through its job posting or careers page and say what the job there involves."
   },
   "8177-the-franchise-evolution": {
-    "8177-86": "You create three new ways for the Kickers to make money, a priced bundle, a brand extension and a naming-rights deal, that don't depend on selling more regular tickets.",
-    "8177-46": "You price your bundle item by item with the bundle price and the fan's savings, and explain why your local business fits the stadium area it names.",
-    "8177-23": "You explain which stage of the product life cycle the Kickers are in and how your three ideas help them grow again.",
-    "8177-54": "You explain how your brand extension is a new business the Kickers could launch and who would buy it.",
-    "8177-76": "You explain how your brand extension uses the Kickers name and logo, and how the team could earn a royalty from it."
+    "8177-86": "I can identify new revenue sources by creating a priced bundle, a brand extension and a naming-rights deal that earn the Kickers money without selling more regular tickets.",
+    "8177-46": "I can plan on-site revenue by pricing my bundle item by item with the bundle price and fan's savings, and explaining why my local business fits its stadium area.",
+    "8177-23": "I can plan for growth by explaining which product life cycle stage the Kickers are in and how my three ideas help them grow again.",
+    "8177-54": "I can spot an entrepreneurship opportunity by explaining how my brand extension is a new business the Kickers could launch and who would buy it.",
+    "8177-76": "I can explain how licensing works by showing how my brand extension uses the Kickers name and logo and how the team could earn a royalty from it."
   },
   "8177-the-front-lines": {
-    "8177-9": "You write what you'd say at each T.H.A.N.K.S. step to the fan behind the pillar, including the solution you offer.",
-    "8177-60": "You script all six selling steps for the dealership owner, with at least two open-ended questions and three suite features turned into benefits for them.",
-    "8177-61": "You explain why the solution you offer the fan behind the pillar is fair to both the fan and the team.",
-    "8177-41": "You explain how winning the suite sale and fixing the pillar complaint each help the team succeed with its customers.",
-    "8177-59": "You explain how your solution for the upset fan could keep them coming back to games instead of leaving for good."
+    "8177-9": "I can recover a customer's experience by writing what I'd say at each T.H.A.N.K.S. step to the fan behind the pillar, including the solution I offer.",
+    "8177-60": "I can respond to a customer's needs by scripting all six selling steps for the dealership owner, with two open-ended questions and three suite features turned into benefits.",
+    "8177-61": "I can explain a policy decision to a customer by showing why the solution I offer the fan behind the pillar is fair to both the fan and the team.",
+    "8177-41": "I can explain how winning the suite sale and fixing the pillar complaint each help the team succeed with its customers.",
+    "8177-59": "I can explain customer retention by showing how my solution for the upset fan could keep them coming back to games instead of leaving for good."
   },
   "8177-the-nil-deal": {
-    "8177-42": "You explain why your public figure's audience beats someone with more followers, give one advantage and one risk of your choice, and name the numbers you'll track.",
-    "8177-75": "You include a clear, easy-to-see #ad or #sponsored FTC disclosure on your post mockup.",
-    "8177-20": "You choose a public figure whose image fits CHHS's core values and label any mockup with a real person or logo “For educational purposes only.”"
+    "8177-42": "I can justify a sponsorship choice by explaining why my public figure's audience beats someone with more followers, giving one advantage and one risk, and naming the numbers I'll track.",
+    "8177-75": "I can follow advertising law by including a clear, easy-to-see #ad or #sponsored FTC disclosure on my post mockup.",
+    "8177-20": "I can act professionally by choosing a public figure whose image fits CHHS's core values and labeling any mockup with a real person or logo “For educational purposes only.”"
   },
   "8177-the-sponsorship-negotiation": {
-    "8177-6": "You answer the two most likely objections with Feel, Felt, Found, and explain how you stayed calm and pivoted when your partner said no.",
-    "8177-8": "You include at least two businesses in your CRM that are owned by women or minority-group members or that serve Richmond's diverse communities, and say why each fits.",
-    "8177-17": "You build your CRM tracker in Google Sheets with all five columns, five real local businesses and a status for each, and add the link.",
-    "8177-3": "You research five real local businesses on your own and fill in each one's contact person, title and contact information.",
-    "8177-41": "You explain in your CRM why each business is a good fit, so your pitch is planned around what that partner needs.",
-    "8177-86": "You explain in your pitch what the business gets for its $500 banner sponsorship."
+    "8177-6": "I can resolve conflict by answering the two most likely objections with Feel, Felt, Found and explaining how I stayed calm and pivoted when my partner said no.",
+    "8177-8": "I can build diverse partnerships by including two businesses in my CRM owned by women or minority-group members or serving Richmond's diverse communities, and saying why each fits.",
+    "8177-17": "I can use a CRM tool by building my tracker in Google Sheets with all five columns, five real local businesses and a status for each, and adding the link.",
+    "8177-3": "I can take initiative by researching five real local businesses on my own and filling in each one's contact person, title and contact information.",
+    "8177-41": "I can plan a pitch around a partner's needs by explaining in my CRM why each business is a good fit.",
+    "8177-86": "I can explain the value of a sponsorship by saying in my pitch what the business gets for its $500 banner sponsorship."
   },
   "8177-the-ticket-office": {
-    "8177-41": "You set a quota for each rep, design a sales contest with at least one prize that isn't money, and plan two support activities to help Alex succeed.",
-    "8177-19": "You calculate how many $750 plans it takes to reach $60,000 and show the math for how the reps' quotas add up to that total.",
-    "8177-63": "You write a three-rule code of ethics for your sales team and explain the problem each rule prevents.",
-    "8177-39": "You explain your job as director of ticket sales in setting goals for, motivating and supporting your four reps.",
-    "8177-40": "You explain why each quota is challenging but possible for that rep, like giving Taylor, who just started, a different goal than Jordan.",
-    "8177-42": "You explain why you chose each rep's quota and your contest prize, and why those choices will work for the team.",
-    "8177-62": "You explain how your two support activities would give Alex useful feedback to improve, not just tell Alex they're behind."
+    "8177-41": "I can manage a sales team by setting each rep's quota, designing a contest with at least one non-money prize, and planning two support activities to help Alex succeed.",
+    "8177-19": "I can calculate a sales goal by showing how many $750 plans it takes to reach $60,000 and how the reps' quotas add up to that total.",
+    "8177-63": "I can identify ethical issues in sales by writing a three-rule code of ethics for my team and explaining the problem each rule prevents.",
+    "8177-39": "I can explain my role as director of ticket sales in setting goals for, motivating and supporting my four reps.",
+    "8177-40": "I can use a manager's judgment by explaining why each quota is challenging but possible for that rep, like giving Taylor, who just started, a different goal than Jordan.",
+    "8177-42": "I can justify management decisions by explaining why I chose each rep's quota and my contest prize, and why those choices will work for the team.",
+    "8177-62": "I can explain how my two support activities would give Alex useful, constructive feedback to improve, not just tell Alex they're behind."
   }
 }
