@@ -4832,3 +4832,22 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   `CYB_NO_SCHOOL_2026_27` too, so from 10-26 (the window reaches 11-02) three
   tests failed on `main`. The expected days now skip that list.
 - **Tests:** `warmup-flow-pacing.test.js`, `course-year-builder.test.js`.
+
+## Accepting feedback the Flow 4 check missed, 2026-10-26
+
+- **Found:** the 10-22 warm-up sent again by `rescoreEvalErrorWarmUps()`
+  came back `FAILED` a second time, "shares none of the answer's or
+  prompt's distinguishing words (10 checked)". The teacher read the
+  feedback: it fit the answer (a pay negotiation) but paraphrased it
+  ("market value", "industry standards"), so no word stem matched. Sending
+  it again would likely fail the same way.
+- **Fix:** `previewAcceptFailedWarmUpFeedback()` /
+  `acceptFailedWarmUpFeedback()` (41, Central Ledger): the same jobs as
+  `repairFailedWarmUpScoring()` (a Flow 4 return `FAILED` as
+  `SUSPECT_FABRICATION` on an `EVAL_ERROR` row), scored from the saved
+  output without the plausibility check (`wfbApplyFlow4_`'s
+  `opts.accepted`). The JSON parse and the score-range check still apply.
+  The return is marked `HARVESTED` with `ACCEPTED_BY_TEACHER: <reason>`.
+  For the teacher to run only after reading each counted row's RawOutput.
+  Both repairs now log the lesson dates they score (`byDate`).
+- **Tests:** `warmup-flow-pacing.test.js`.
