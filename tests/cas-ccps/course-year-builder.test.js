@@ -124,11 +124,17 @@ const SCHEDULE = [
 ];
 
 // The slots the builder should plan, computed independently.
+// The builder also skips the division's own no-school days, so a window
+// that reaches one (2026-11-02, from Oct 26) expects none on it.
+const BUILT_IN_NO_SCHOOL = JSON.parse('[' + /const CYB_NO_SCHOOL_2026_27 = \[([\s\S]*?)\];/
+  .exec(fs.readFileSync(path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '51_CourseYearBuilder.js'), 'utf8'))[1] + ']');
+
 function expectedSlots(noSchool) {
   const out = [];
   for (let i = 1; i <= 7; i++) {
     const d = addDays(TODAY, i);
-    if (d.getDay() === 0 || d.getDay() === 6 || (noSchool || []).includes(ymd(d))) continue;
+    if (d.getDay() === 0 || d.getDay() === 6 || BUILT_IN_NO_SCHOOL.includes(ymd(d)) ||
+        (noSchool || []).includes(ymd(d))) continue;
     const odd = d.getDate() % 2 === 1;
     out.push([ymd(d), '1']);
     out.push([ymd(d), odd ? '2' : '3']);
