@@ -1523,14 +1523,24 @@ function wfbRepairFailedWarmUps_(dryRun) {
 function previewFailedWarmUpScoring() { return wfbRepairFailedScoring_(true); }
 function repairFailedWarmUpScoring() { return wfbRepairFailedScoring_(false); }
 
-function wfbRepairFailedScoring_(dryRun) {
+// The same jobs, when the teacher has read each one's feedback (RawOutput in
+// WarmUpFlowReturn) and judged it fits the answer: scores them without the
+// plausibility check, which misses feedback that paraphrases (2026-10-26:
+// "market value" and "industry standards" for an answer about negotiating
+// pay). Parse and score-range checks still apply. Read every row the
+// preview counts before running it.
+function previewAcceptFailedWarmUpFeedback() { return wfbRepairFailedScoring_(true, true); }
+function acceptFailedWarmUpFeedback() { return wfbRepairFailedScoring_(false, true); }
+
+function wfbRepairFailedScoring_(dryRun, accept) {
   const ctx = wfbLedger_();
   const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
   const wrSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpRegistry);
   const ret = ctx.ss.getSheetByName(WFB_RETURN_TAB);
-  const result = { dryRun: dryRun, failed: 0, scored: 0, stillFailing: 0, notEvalError: 0 };
+  const result = { dryRun: dryRun, failed: 0, scored: 0, stillFailing: 0, notEvalError: 0, byDate: {} };
+  const label = accept ? "acceptFailedWarmUpFeedback" : "repairFailedWarmUpScoring";
   if (!wqSheet || !ret || ret.getLastRow() < 2) {
-    Logger.log("[WFB] repairFailedWarmUpScoring: " + JSON.stringify(result));
+    Logger.log("[WFB] " + label + ": " + JSON.stringify(result));
     return result;
   }
   const rows = ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues();
@@ -1543,22 +1553,32 @@ function wfbRepairFailedScoring_(dryRun) {
     if (!found || String(found.row[WQ25_STATUS] || "").trim() !== "EVAL_ERROR") { result.notEvalError++; return; }
     if (dryRun) {
       // The same gate the apply runs, with no writes.
-      let feedback = "";
-      try { feedback = String(JSON.parse(wfbStripFence_(r[WFB_RET.RAW_OUTPUT])).feedback || ""); } catch (e) { /* counted below */ }
-      const ok = feedback && wfbFlow4Plausible_(found.row[WQ25_RESPONSE_TEXT],
-        wfbFlow4PromptText_(ctx.ss, queueId), feedback).ok;
-      if (ok) result.scored++; else result.stillFailing++;
+      let parsed = null;
+      try { parsed = JSON.parse(wfbStripFence_(r[WFB_RET.RAW_OUTPUT])); } catch (e) { /* counted below */ }
+      const feedback = parsed ? String(parsed.feedback || "") : "";
+      const ok = feedback && (accept
+        ? wfbScoreInRange_(Number(parsed.grammar), 0, 1) && wfbScoreInRange_(Number(parsed.engagement), 0, 3)
+        : wfbFlow4Plausible_(found.row[WQ25_RESPONSE_TEXT], wfbFlow4PromptText_(ctx.ss, queueId), feedback).ok);
+      if (ok) wfbCountScored_(result, found.row); else result.stillFailing++;
       return;
     }
-    const out = wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, String(r[WFB_RET.RAW_OUTPUT] || ""));
+    const out = wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, String(r[WFB_RET.RAW_OUTPUT] || ""),
+      { accepted: !!accept });
     if (!out.ok) { result.stillFailing++; return; }
-    wfbMarkReturn_(ret, i + 2, "HARVESTED", "", r[WFB_RET.ATTEMPTS]);
+    wfbMarkReturn_(ret, i + 2, "HARVESTED", accept ? "ACCEPTED_BY_TEACHER: " + r[WFB_RET.ERROR] : "",
+      r[WFB_RET.ATTEMPTS]);
     wfbConsumeInputRow_(ctx.ss, 4, queueId);
-    result.scored++;
+    wfbCountScored_(result, found.row);
   });
   if (!dryRun) SpreadsheetApp.flush();
-  Logger.log("[WFB] repairFailedWarmUpScoring: " + JSON.stringify(result));
+  Logger.log("[WFB] " + label + ": " + JSON.stringify(result));
   return result;
+}
+
+function wfbCountScored_(result, row) {
+  result.scored++;
+  const date = wfbNormalizeDateIso_(row[WQ25_LESSON_DATE]) || "no date";
+  result.byDate[date] = (result.byDate[date] || 0) + 1;
 }
 
 // Warm-ups at EVAL_ERROR whose saved feedback still fails the check (what
@@ -1651,7 +1671,10 @@ function wfbDeliverToTextBox_(wqSheet, found, queueId, raw, bridge) {
 
 // Flow 4: parse the evaluation JSON, then hand off to Script 25's own
 // write-backs rather than a second copy of them.
-function wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw) {
+// opts.accepted: the teacher read the feedback and accepted it
+// (acceptFailedWarmUpFeedback), so the plausibility gate is skipped; the
+// parse and score-range checks still run.
+function wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw, opts) {
   const row = found.row;
   if (String(row[WQ25_STATUS] || "").trim() === "SCORED") {
     return { ok: true, duplicate: true };
@@ -1685,7 +1708,7 @@ function wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw) {
   // documented, retained field this project legitimately holds (see this
   // section's own header comment), so the check compares straight against
   // the real response.
-  const plausibility = wfbFlow4Plausible_(row[WQ25_RESPONSE_TEXT],
+  const plausibility = (opts && opts.accepted) ? { ok: true } : wfbFlow4Plausible_(row[WQ25_RESPONSE_TEXT],
     wfbFlow4PromptText_(wfbLedger_().ss, queueId), feedback);
   if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
 
