@@ -18,7 +18,8 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
 const EXPOSE = ['buildWarmUpFlowInputs', 'wfbRetryStaleInputs_', 'wfbConsumeInputRow_',
   'WFB_INPUTS_PER_RUN', 'WFB_FLOW3_HEADERS', 'WQ25_COL_COUNT', 'harvestWarmUpFlowReturns',
   'previewFailedWarmUpRepair', 'repairFailedWarmUps', 'previewFailedWarmUpScoring',
-  'repairFailedWarmUpScoring', 'WFB_FLOW4_HEADERS', 'wfbFlow3Plausible_'];
+  'repairFailedWarmUpScoring', 'WFB_FLOW4_HEADERS', 'wfbFlow3Plausible_',
+  'previewEvalErrorRescore', 'rescoreEvalErrorWarmUps'];
 
 function setup() {
   const { exported, sandbox } = loadGasFiles(FILES, EXPOSE);
@@ -352,4 +353,65 @@ test('repairFailedWarmUpScoring scores an EVAL_ERROR job that passes the Flow 4 
   assert.deepEqual([row[4], row[6]], ['HARVESTED', '']);
   assert.equal(fx.ss.getSheetByName('Flow4Input').getRange(2, 3).getValue(), 'CONSUMED');
   assert.equal(fx.exported.repairFailedWarmUpScoring().scored, 0, 'a second run does nothing');
+});
+
+// 2026-10-26: one job's saved feedback still failed the check, so the repair
+// above left it at EVAL_ERROR and its card read "Being checked" for good.
+test('rescoreEvalErrorWarmUps sends an EVAL_ERROR answer to Flow 4 again', () => {
+  const fx = setup();
+  const answer = 'Teams sell tickets and sponsorships.';
+  scoringJob(fx, 'Q-RESEND', 'EVAL_ERROR', answer);
+  scoringJob(fx, 'Q-NOBOX', 'EVAL_ERROR', answer); // no doc and no text-box row
+  scoringJob(fx, 'Q-DONE', 'SCORED', answer);
+  const tb = fx.ss.insertSheet('WarmUpTextBox');
+  tb.appendRow(['queue_id', 'lesson_date', 'bridge_text', 'warmup_text', 'response_text',
+    'submitted_at', 'reply_text', 'replied_at']);
+  tb.appendRow(['Q-RESEND', '2026-10-19', '', PROMPT, answer, new Date(), '', '']);
+  const ret = fx.ss.insertSheet('WarmUpFlowReturn');
+  ret.appendRow(RET_HEADERS);
+  const fab = 'SUSPECT_FABRICATION: the output shares none of this row\'s distinguishing content';
+  ret.appendRow([new Date(), 4, 'Q-RESEND', evaluation('Great work overall, well done!'), 'FAILED', 3, fab]);
+  ret.appendRow([new Date(), 4, 'Q-DONE', evaluation('x'), 'HARVESTED', 1, '']);
+  const input = fx.ss.getSheetByName('Flow4Input');
+
+  const preview = fx.exported.previewEvalErrorRescore();
+  assert.deepEqual([preview.evalError, preview.resent, preview.noAnswer], [2, 1, 1]);
+  assert.deepEqual(preview.byDate, { '2026-10-19': 1 });
+  assert.equal(statusOf(fx, 'Q-RESEND'), 'EVAL_ERROR', 'the preview changes nothing');
+  assert.equal(input.getLastRow(), 4);
+  assert.equal(ret.getLastRow(), 3);
+
+  const r = fx.exported.rescoreEvalErrorWarmUps();
+  assert.deepEqual([r.evalError, r.resent, r.noAnswer], [2, 1, 1]);
+  assert.equal(statusOf(fx, 'Q-RESEND'), 'PENDING_EVAL');
+  assert.equal(statusOf(fx, 'Q-NOBOX'), 'EVAL_ERROR');
+  const rows = input.getRange(2, 1, input.getLastRow() - 1, 9).getValues();
+  const mine = rows.filter((x) => x[1] === 'Q-RESEND');
+  assert.deepEqual(mine.map((x) => x[2]), ['CONSUMED', 'READY'], 'the old job closed, a new one open');
+  assert.equal(mine[1][4], answer);
+  assert.match(mine[1][8], /Teams sell tickets/, 'the new job carries its prompt text');
+  const left = ret.getRange(2, 1, ret.getLastRow() - 1, 7).getValues();
+  assert.deepEqual(left.map((x) => x[2]), ['Q-DONE'], 'the FAILED return is gone; others stay');
+
+  // The new feedback comes back and is scored as usual.
+  const h = harvestOne(fx, 'Q-RESEND', 'You named ticket sales and sponsorships as ways a team earns money.');
+  assert.equal(h.applied, 1, JSON.stringify(h));
+  assert.equal(statusOf(fx, 'Q-RESEND'), 'SCORED');
+  assert.equal(fx.exported.rescoreEvalErrorWarmUps().resent, 0, 'a second run sends nothing new');
+});
+
+test('rescoreEvalErrorWarmUps sends at most WFB_INPUTS_PER_RUN a run', () => {
+  const fx = setup();
+  const cap = fx.exported.WFB_INPUTS_PER_RUN;
+  const tb = fx.ss.insertSheet('WarmUpTextBox');
+  tb.appendRow(['queue_id', 'lesson_date', 'bridge_text', 'warmup_text', 'response_text',
+    'submitted_at', 'reply_text', 'replied_at']);
+  for (let i = 0; i < cap + 3; i++) {
+    scoringJob(fx, 'Q-' + i, 'EVAL_ERROR', 'Teams sell tickets.');
+    tb.appendRow(['Q-' + i, '2026-10-19', '', PROMPT, 'Teams sell tickets.', new Date(), '', '']);
+  }
+  const r = fx.exported.rescoreEvalErrorWarmUps();
+  assert.deepEqual([r.resent, r.deferred], [cap, 3]);
+  const r2 = fx.exported.rescoreEvalErrorWarmUps();
+  assert.deepEqual([r2.resent, r2.deferred], [3, 0]);
 });
