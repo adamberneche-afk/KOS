@@ -1561,6 +1561,73 @@ function wfbRepairFailedScoring_(dryRun) {
   return result;
 }
 
+// Warm-ups at EVAL_ERROR whose saved feedback still fails the check (what
+// repairFailedWarmUpScoring leaves as stillFailing): sends each answer to
+// Flow 4 again for new feedback, and puts the row back at PENDING_EVAL. Its
+// old input rows are marked CONSUMED and its FAILED Flow 4 returns deleted,
+// so the new job is retried and counted like any other. At most
+// WFB_INPUTS_PER_RUN per run (Studio drops runs when many rows land at
+// once); run again for the rest. Counts and lesson dates only.
+function previewEvalErrorRescore() { return wfbRescoreEvalErrors_(true); }
+function rescoreEvalErrorWarmUps() { return wfbRescoreEvalErrors_(false); }
+
+function wfbRescoreEvalErrors_(dryRun) {
+  const result = { dryRun: dryRun, evalError: 0, resent: 0, noAnswer: 0, deferred: 0, byDate: {} };
+  // The harvest's lock: this deletes return rows the harvest reads by number.
+  const lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(15000);
+  } catch (e) {
+    Logger.log("[WFB] rescoreEvalErrorWarmUps: the harvest holds the lock — try again in a minute.");
+    return result;
+  }
+  try {
+    const ctx = wfbLedger_();
+    const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
+    if (!wqSheet || wqSheet.getLastRow() < 2) {
+      Logger.log("[WFB] rescoreEvalErrorWarmUps: " + JSON.stringify(result));
+      return result;
+    }
+    const data = wqSheet.getRange(2, 1, wqSheet.getLastRow() - 1, WQ25_COL_COUNT).getValues();
+    const textBox = readWarmUpTextBox_(ctx.ss);
+    const input = dryRun ? null : wfbTab_(ctx.ss, WFB_INPUT_TABS[4], WFB_FLOW4_HEADERS);
+    const resent = {};
+    data.forEach(function (row, i) {
+      const queueId = String(row[WQ25_QUEUE_ID] || "").trim();
+      if (!queueId || String(row[WQ25_STATUS] || "").trim() !== "EVAL_ERROR") return;
+      result.evalError++;
+      if (!String(row[WQ25_DOC_ID] || "").trim() && !textBox[queueId]) { result.noAnswer++; return; }
+      if (result.resent >= WFB_INPUTS_PER_RUN) { result.deferred++; return; }
+      if (!dryRun) {
+        wfbConsumeInputRow_(ctx.ss, 4, queueId); // the old job is finished
+        if (!wfbBuildFlow4Row_(input, row, queueId, textBox[queueId])) { result.noAnswer++; return; }
+        wqSheet.getRange(i + 2, WQ25_STATUS + 1).setValue(WFB_TRIGGER_STATUS[4]);
+        resent[queueId] = true;
+      }
+      result.resent++;
+      const date = wfbNormalizeDateIso_(row[WQ25_LESSON_DATE]) || "no date";
+      result.byDate[date] = (result.byDate[date] || 0) + 1;
+    });
+    // Bottom up, so the rows above keep their numbers. Studio's new returns
+    // land below these and arrive with no HarvestStatus.
+    const ret = dryRun ? null : ctx.ss.getSheetByName(WFB_RETURN_TAB);
+    if (ret && ret.getLastRow() > 1) {
+      const rows = ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues();
+      for (let j = rows.length - 1; j >= 0; j--) {
+        if (Number(rows[j][WFB_RET.FLOW]) === 4 && resent[String(rows[j][WFB_RET.QUEUE_ID]).trim()] &&
+            String(rows[j][WFB_RET.HARVEST_STATUS] || "").trim() === "FAILED") {
+          ret.deleteRow(j + 2);
+        }
+      }
+    }
+    if (!dryRun) SpreadsheetApp.flush();
+    Logger.log("[WFB] rescoreEvalErrorWarmUps: " + JSON.stringify(result));
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // WARMUP_TEXT_BOX (00): the warm-up goes on the Student Dashboard instead of
 // into a doc. Unlike a doc, a second attempt can't duplicate anything: a row
 // already written for this queue_id is kept and the status re-stamped.
