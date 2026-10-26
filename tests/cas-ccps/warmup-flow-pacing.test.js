@@ -19,7 +19,8 @@ const EXPOSE = ['buildWarmUpFlowInputs', 'wfbRetryStaleInputs_', 'wfbConsumeInpu
   'WFB_INPUTS_PER_RUN', 'WFB_FLOW3_HEADERS', 'WQ25_COL_COUNT', 'harvestWarmUpFlowReturns',
   'previewFailedWarmUpRepair', 'repairFailedWarmUps', 'previewFailedWarmUpScoring',
   'repairFailedWarmUpScoring', 'WFB_FLOW4_HEADERS', 'wfbFlow3Plausible_',
-  'previewEvalErrorRescore', 'rescoreEvalErrorWarmUps'];
+  'previewEvalErrorRescore', 'rescoreEvalErrorWarmUps', 'previewAcceptFailedWarmUpFeedback',
+  'acceptFailedWarmUpFeedback'];
 
 function setup() {
   const { exported, sandbox } = loadGasFiles(FILES, EXPOSE);
@@ -414,4 +415,33 @@ test('rescoreEvalErrorWarmUps sends at most WFB_INPUTS_PER_RUN a run', () => {
   assert.deepEqual([r.resent, r.deferred], [cap, 3]);
   const r2 = fx.exported.rescoreEvalErrorWarmUps();
   assert.deepEqual([r2.resent, r2.deferred], [3, 0]);
+});
+
+// 2026-10-26: feedback that paraphrased the answer ("market value",
+// "industry standards") failed the check twice; the teacher read it and
+// accepted it. The score-range check still applies.
+test('acceptFailedWarmUpFeedback scores feedback the check missed, but never an out-of-range score', () => {
+  const fx = setup();
+  scoringJob(fx, 'Q-PARAPHRASE', 'EVAL_ERROR', 'I would ask for more money and see what they say.');
+  scoringJob(fx, 'Q-RANGE', 'EVAL_ERROR', 'I would ask for more money and see what they say.');
+  const ret = fx.ss.insertSheet('WarmUpFlowReturn');
+  ret.appendRow(RET_HEADERS);
+  const fab = "SUSPECT_FABRICATION: the output shares none of the answer's or prompt's distinguishing words (10 checked)";
+  ret.appendRow([new Date(), 4, 'Q-PARAPHRASE', evaluation('Research your market value before the room.'), 'FAILED', 3, fab]);
+  ret.appendRow([new Date(), 4, 'Q-RANGE', JSON.stringify({ grammar: 1, engagement: 9, feedback: 'x' }), 'FAILED', 3, fab]);
+
+  assert.equal(fx.exported.previewFailedWarmUpScoring().scored, 0, 'the check still misses it');
+  const preview = fx.exported.previewAcceptFailedWarmUpFeedback();
+  assert.deepEqual([preview.failed, preview.scored, preview.stillFailing], [2, 1, 1]);
+  assert.deepEqual(preview.byDate, { '2026-10-19': 1 });
+  assert.equal(statusOf(fx, 'Q-PARAPHRASE'), 'EVAL_ERROR', 'the preview changes nothing');
+
+  const r = fx.exported.acceptFailedWarmUpFeedback();
+  assert.deepEqual([r.scored, r.stillFailing], [1, 1]);
+  assert.equal(statusOf(fx, 'Q-PARAPHRASE'), 'SCORED');
+  assert.equal(statusOf(fx, 'Q-RANGE'), 'EVAL_ERROR');
+  const row = ret.getRange(2, 1, 1, 7).getValues()[0];
+  assert.equal(row[4], 'HARVESTED');
+  assert.match(row[6], /^ACCEPTED_BY_TEACHER: SUSPECT_FABRICATION/);
+  assert.equal(fx.exported.acceptFailedWarmUpFeedback().scored, 0, 'a second run does nothing');
 });
