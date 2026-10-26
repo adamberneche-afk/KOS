@@ -4808,3 +4808,27 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   and re-import the cartridges.
 - **Tests:** `video-links.test.js`, `lesson-assignments.test.js`,
   `canvas-cartridge.test.js`.
+
+## Sending an EVAL_ERROR warm-up to Flow 4 again, 2026-10-26
+
+- **Found:** after the 10-25 push, `previewFailedWarmUpScoring()` reported
+  `{"failed":1,"scored":0,"stillFailing":1}`: one warm-up's saved Flow 4
+  feedback still fails the check, so the repair can't score it. Its row
+  stays `EVAL_ERROR` and the student's card reads "Being checked — your
+  work is saved" with no end. Nothing sent it back: 25's nightly run picks
+  `DELIVERED` rows only.
+- **Fix:** `previewEvalErrorRescore()` / `rescoreEvalErrorWarmUps()` (41,
+  Central Ledger). For each `EVAL_ERROR` row with a doc or a text-box row:
+  its old `Flow4Input` rows are marked `CONSUMED`, a new one is written
+  (`wfbBuildFlow4Row_`, the same build the 5-minute run uses, so the answer
+  and prompt are read fresh), the row goes back to `PENDING_EVAL`, and its
+  `FAILED` Flow 4 returns are deleted, so the stale-input retry and 34c's
+  stall count treat the new job like any other. At most
+  `WFB_INPUTS_PER_RUN` a run (`deferred` counts the rest). Under the
+  harvest's lock. Logs counts and lesson dates only. If the new feedback
+  also fails three times, the row is `EVAL_ERROR` again.
+- **Also:** `course-year-builder.test.js` expected a lesson on every
+  weekday in the next 7 days, but the builder skips
+  `CYB_NO_SCHOOL_2026_27` too, so from 10-26 (the window reaches 11-02) three
+  tests failed on `main`. The expected days now skip that list.
+- **Tests:** `warmup-flow-pacing.test.js`, `course-year-builder.test.js`.
