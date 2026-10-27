@@ -1099,11 +1099,14 @@ function openSurveyModal(){
       <div id="sched-import-status" style="font-size:.75rem;margin-bottom:.6rem;min-height:1.1em"></div>
       <button onclick="lhUseBuiltInSchoolCalendar()" style="width:100%;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer;margin-bottom:1.2rem">📅 Use the built-in ${escH(SCHOOL_CALENDAR_YEAR)} CCPS calendar (replaces quarters, no-school and early-release dates)</button>
 
+      <button onclick="lhUseBuiltInBellSchedule()" style="width:100%;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer;margin-bottom:1.2rem">🔔 Use the built-in Clover Hill bell schedule (bell times, and A/B by date: Fridays turn A from Nov. 23)</button>
+
       <div style="font-size:.75rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Day-of-Week Default Schedule</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">${DAY_SCHEDULE_MAP ? 'Saved here: used every week, all year.' : 'Built in: the rotation for today; it changes by date. Changing one saves your own, used all year.'}</div>
       <div class="fgrid" style="grid-template-columns:repeat(7,1fr);gap:.35rem;margin-bottom:.9rem">
         ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`
         <div class="fg"><label style="font-size:.75rem">${d}</label>
-          <select id="sched-dow-${i}" onchange="lhSaveDayMap()" style="width:100%;padding:.35rem .3rem;border:1px solid var(--border);border-radius:6px;font-size:.75rem;background:#fff">${_schedTypeOptions(DAY_SCHEDULE_MAP[i])}</select>
+          <select id="sched-dow-${i}" onchange="lhSaveDayMap()" style="width:100%;padding:.35rem .3rem;border:1px solid var(--border);border-radius:6px;font-size:.75rem;background:#fff">${_schedTypeOptions((DAY_SCHEDULE_MAP || _defaultDayMapFor(_localDateStr_()))[i])}</select>
         </div>`).join('')}
       </div>
 
@@ -1659,6 +1662,17 @@ function lhSaveEarlyRelease() {
 // adds dates, so last year's would stay. Also swaps the CCPS calendar
 // entries in Deadlines (ids cal_*) for this year's. Bell times, the
 // day-of-week map and hand-entered deadlines are kept.
+// Clears a saved copy of the bell times and the day-of-week map, so the
+// built-in ones (checked against the school's page, with the dated A/B
+// rotation) apply again.
+function lhUseBuiltInBellSchedule() {
+  const msg = 'Use the built-in Clover Hill bell schedule?\n\nThis replaces any bell times and day-of-week schedule saved here. Quarter, no-school and early-release dates are kept.';
+  _showConfirm(msg, () => {
+    saveScheduleConfig({ bellSchedules: null, dayOfWeekMap: null });
+    _schedSaveStatus('✓ Using the built-in bell schedule');
+  });
+}
+
 function lhUseBuiltInSchoolCalendar() {
   const msg = 'Replace your quarter dates, no-school dates and early-release dates with the built-in ' +
     SCHOOL_CALENDAR_YEAR + ' CCPS calendar?\n\nBell times and the day-of-week schedule are kept. In Deadlines, only the CCPS calendar entries are replaced.';
