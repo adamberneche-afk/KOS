@@ -89,6 +89,14 @@ test('getDashboardData: each student carries its state, checks, first pass and s
   assert.equal(by.Di.lastSuggestedScore, null);
 });
 
+test('getDashboardData: each row carries its course code, for the course filter', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox, exported);
+  const data = exported.getDashboardData('ALL');
+  assert.ok(data.students.length > 0);
+  data.students.forEach(s => assert.equal(s.courseCode, '8175', s.name));
+});
+
 test('getDashboardData: students are grouped by lesson, and the current lesson is the latest one started', () => {
   const { exported, sandbox } = load();
   setUp(sandbox, exported);
