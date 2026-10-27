@@ -47,6 +47,7 @@ From the operator's walk of the Teacher Dashboard (2026-10-26):
 | 4 | Filters | Course, Period, Student. Not remembered between visits: each load starts unfiltered |
 | 5 | Settings per course | Per course, for any number of courses. The stored value becomes a list ("8175,8177"); "off", "all" and one code keep working |
 | 6 | Order | Either; filters first (smallest, most used) |
+| 7 | A competency counter (added 2026-10-27) | "n of the course total" per course: a competency counts once the teacher's latest confirmed rating is 1–3 (limited supervision or better); the total is every active competency in the course (113 for 8175, 108 for 8177). Shown on the student's page, in the Student Context list (the teacher's own ratings) and on the Student Dashboard (every teacher's). Part of PR 2 |
 
 ## The work, in order
 

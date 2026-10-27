@@ -1012,6 +1012,114 @@ const CLIENT_SAFE_DOC_URL_JS = `function safeDocUrl(u) {
 // Server values (Ledger statuses, ConfigIDs, term codes) never change; only
 // what a person reads.
 // =============================================================================
+// =============================================================================
+// COMPETENCY COMPLETION — n of the course's competencies, per student
+// =============================================================================
+// A competency counts as done once the teacher's latest confirmed rating
+// for it (SCRDecisionLog) is SCR_COMPLETED_MAX_RATING or better: 1 is the
+// highest, so 1–3, "Limited supervision" or better (decided 2026-10-27).
+// The total is every active competency in the course (CompetencyRegistry),
+// 113 for 8175 and 108 for 8177. Shown on the Teacher Dashboard's student
+// page and Student Context list, and on the Student Dashboard.
+const SCR_COMPLETED_MAX_RATING = 3;
+
+// The latest confirmed rating per student and competency. Archived rows are
+// left out: past the retention window a row is restricted pending
+// disposition. decidedBy keeps one teacher's decisions only (a teacher sees
+// their own; a student sees every teacher's).
+// Map: email (lower case) -> [{ competencyId, rating, decidedAt }].
+function readLatestScrRatings_(ss, cfg, decidedBy) {
+  const onlyBy = decidedBy ? String(decidedBy).trim().toLowerCase() : "";
+  const sheet = ss.getSheetByName(cfg.tabs.scrDecisionLog);
+  const byStudent = new Map();
+  if (!sheet || sheet.getLastRow() < 2) return byStudent;
+
+  // One past SCRDL's highest index — the decision log's own width, NOT
+  // ParentReportLog's. Bounded rather than getDataRange() for the reason
+  // LEDGER_COL_COUNT documents: one stray far-right value can widen a
+  // sheet's used range permanently.
+  const SCRDL_COL_COUNT = SCRDL.ARCHIVE_STATUS + 1;
+  const data = sheet.getRange(1, 1, sheet.getLastRow(), SCRDL_COL_COUNT).getValues();
+
+  // Keyed by email + U+0000 + competencyId — a separator neither an email
+  // address nor a competency ID can contain, so two different (email,
+  // competency) pairs cannot collide into one key.
+  const latest = new Map();
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const email = String(row[SCRDL.STUDENT_EMAIL] || "").trim().toLowerCase();
+    const compId = String(row[SCRDL.COMPETENCY_ID] || "").trim();
+    if (!email || !compId) continue;
+
+    if (String(row[SCRDL.ARCHIVE_STATUS] || "").trim() !== "") continue;
+    if (onlyBy && String(row[SCRDL.DECIDED_BY] || "").trim().toLowerCase() !== onlyBy) continue;
+
+    const rating = row[SCRDL.FINAL_RATING];
+    if (rating === "" || rating === null || rating === undefined) continue;
+
+    const decidedAt = (row[SCRDL.DECIDED_AT] instanceof Date) ? row[SCRDL.DECIDED_AT] : null;
+    const key = email + "\u0000" + compId;
+    const prior = latest.get(key);
+    // No decidedAt sorts oldest, so a row with a real timestamp always wins
+    // over one missing it rather than depending on sheet order.
+    if (!prior || (decidedAt && (!prior.decidedAt || decidedAt > prior.decidedAt))) {
+      latest.set(key, { email: email, competencyId: compId, rating: rating, decidedAt: decidedAt });
+    }
+  }
+
+  for (const entry of latest.values()) {
+    if (!byStudent.has(entry.email)) byStudent.set(entry.email, []);
+    byStudent.get(entry.email).push({
+      competencyId: entry.competencyId,
+      rating: entry.rating,
+      decidedAt: entry.decidedAt,
+    });
+  }
+  for (const list of byStudent.values()) {
+    list.sort((a, b) => String(a.competencyId).localeCompare(String(b.competencyId)));
+  }
+  return byStudent;
+}
+
+// Active competencies per course from the CompetencyRegistry tab, by the
+// course in each competency_id ("8175-14"): { "8175": 113, ... }. {} with
+// no tab, so a counter shows its count with no total.
+function competencyCourseTotals_(ss, cfg) {
+  const sheet = ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry");
+  const totals = {};
+  if (!sheet || sheet.getLastRow() < 2) return totals;
+  const data = sheet.getDataRange().getValues();
+  const head = data[0].map(function (h) { return String(h).trim().toLowerCase(); });
+  const idCol = head.indexOf("competency_id");
+  const activeCol = head.indexOf("active");
+  if (idCol === -1) return totals;
+  const seen = {};
+  for (let i = 1; i < data.length; i++) {
+    const id = String(data[i][idCol] || "").trim();
+    if (!id || seen[id]) continue;
+    if (activeCol !== -1 && String(data[i][activeCol]).trim().toUpperCase() === "FALSE") continue;
+    seen[id] = true;
+    const course = id.split("-")[0];
+    totals[course] = (totals[course] || 0) + 1;
+  }
+  return totals;
+}
+
+// [{ course, done, total }] for the given courses (sorted), from one
+// student's latest ratings (readLatestScrRatings_). A rating in a course
+// not listed is left out.
+function competencyCompletionFor_(ratings, totals, courses) {
+  const out = {};
+  (courses || []).forEach(function (c) { out[c] = { course: c, done: 0, total: totals[c] || 0 }; });
+  (ratings || []).forEach(function (r) {
+    const course = String(r.competencyId).split("-")[0];
+    const n = Number(r.rating);
+    if (out[course] && n >= 1 && n <= SCR_COMPLETED_MAX_RATING) out[course].done++;
+  });
+  return Object.keys(out).sort().map(function (c) { return out[c]; });
+}
+
 // The Virginia CTE Student Competency Record scale: 1 is the HIGHEST.
 const SCR_RATING_LABELS = { 1: "Can teach others", 2: "Without supervision",
   3: "Limited supervision", 4: "With supervision", 5: "Cannot perform" };
@@ -1040,6 +1148,7 @@ const CLIENT_WORDS_JS =
 
 // What each dashboard's Terms panel explains: [word on screen, meaning].
 const CAS_STUDENT_TERMS = [
+  ["Competencies done", "Competencies in your course that your teacher has rated you able to do with limited supervision or better (1 to 3 on the state's 5-point scale), out of every competency in the course."],
   ["Submit for Feedback", "Sends what you wrote under “Your response” to be checked. Press it when you’re ready; you can submit again after you revise."],
   ["Waiting for feedback", "Your work is in line to be checked. Nothing to do yet; check back in a few minutes."],
   ["Being checked now", "Your work is being read right now."],
@@ -1056,6 +1165,7 @@ const CAS_STUDENT_TERMS = [
   ["My Info", "What the system has on file for you: your name, class, period and teacher. Tell your teacher if something is wrong."]
 ];
 const CAS_TEACHER_TERMS = [
+  ["Competencies done", "For each course, the competencies you have rated 1 to 3 (limited supervision or better) in Competency ratings, out of every competency in the course (the CompetencyRegistry tab). Only your own confirmed ratings count."],
   ["Check", "One AI evaluation of a submission against the assignment’s criteria (Flow 2). A student can be checked many times."],
   ["Passed / Not passing yet", "Whether the latest check met the assignment’s criteria. “Passed before” means an earlier check passed and the latest needs revision."],
   ["Waiting to be checked", "Submitted and in line for its check."],

@@ -210,58 +210,7 @@ function _weekWindow_(now) {
 // putting it in front of a parent is exactly the use it's restricted from.
 // ---------------------------------------------------------------------------
 function _readConfirmedCompetencyDecisions_(cfg, decidedBy) {
-  const onlyBy = decidedBy ? String(decidedBy).trim().toLowerCase() : "";
-  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName(cfg.tabs.scrDecisionLog);
-  const byStudent = new Map();
-  if (!sheet || sheet.getLastRow() < 2) return byStudent;
-
-  // One past SCRDL's highest index — the decision log's own width, NOT
-  // ParentReportLog's. Bounded rather than getDataRange() for the reason
-  // LEDGER_COL_COUNT documents: one stray far-right value can widen a
-  // sheet's used range permanently.
-  const SCRDL_COL_COUNT = SCRDL.ARCHIVE_STATUS + 1;
-  const data = sheet.getRange(1, 1, sheet.getLastRow(), SCRDL_COL_COUNT).getValues();
-
-  // Keyed by email + U+0000 + competencyId — a separator neither an email
-  // address nor a competency ID can contain, so two different (email,
-  // competency) pairs cannot collide into one key.
-  const latest = new Map();
-
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const email = String(row[SCRDL.STUDENT_EMAIL] || "").trim().toLowerCase();
-    const compId = String(row[SCRDL.COMPETENCY_ID] || "").trim();
-    if (!email || !compId) continue;
-
-    if (String(row[SCRDL.ARCHIVE_STATUS] || "").trim() !== "") continue;
-    if (onlyBy && String(row[SCRDL.DECIDED_BY] || "").trim().toLowerCase() !== onlyBy) continue;
-
-    const rating = row[SCRDL.FINAL_RATING];
-    if (rating === "" || rating === null || rating === undefined) continue;
-
-    const decidedAt = (row[SCRDL.DECIDED_AT] instanceof Date) ? row[SCRDL.DECIDED_AT] : null;
-    const key = email + "\u0000" + compId;
-    const prior = latest.get(key);
-    // No decidedAt sorts oldest, so a row with a real timestamp always wins
-    // over one missing it rather than depending on sheet order.
-    if (!prior || (decidedAt && (!prior.decidedAt || decidedAt > prior.decidedAt))) {
-      latest.set(key, { email: email, competencyId: compId, rating: rating, decidedAt: decidedAt });
-    }
-  }
-
-  for (const entry of latest.values()) {
-    if (!byStudent.has(entry.email)) byStudent.set(entry.email, []);
-    byStudent.get(entry.email).push({
-      competencyId: entry.competencyId,
-      rating: entry.rating,
-      decidedAt: entry.decidedAt,
-    });
-  }
-  for (const list of byStudent.values()) {
-    list.sort((a, b) => String(a.competencyId).localeCompare(String(b.competencyId)));
-  }
-  return byStudent;
+  return readLatestScrRatings_(SpreadsheetApp.openById(cfg.ledgerSsId), cfg, decidedBy);
 }
 
 // ---------------------------------------------------------------------------
