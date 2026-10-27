@@ -71,6 +71,16 @@ operator. This file holds what comes after them.
 - ~~**Retention check: report a missing date column.**~~ Built 2026-10-21:
   `checkRetentionSchedule` names the header it looked for.
 
+- **The Teacher Dashboard sprint's leftovers** (2026-10-27,
+  `SPRINT_DASHBOARD_2026-11.md`): a link straight to one week inside a
+  Student Context doc (a bookmark per week, written into each doc); past
+  weeks' parent reports on the student's page (the report is built for
+  the current week only; `ParentReportLog` keeps no text).
+- **The classify backfill's "ALREADY_QUEUED" label** for a copy of a
+  classified session that has old part rows (`-edd1075a`, 2026-10-26):
+  check "same content" before "has parts" (kos-personal 20), so it reads
+  `DUPLICATE_HASH`. Cosmetic: nothing is stalled.
+
 - **Assignments that aren't a document.** Some of the week's assignments
   are on paper or don't fit a doc, so CAS has no record of them; L07 is the
   last doc assignment of the week of Oct 19. Come back to these if time
