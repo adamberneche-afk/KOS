@@ -43,14 +43,8 @@ function _studentIdPattern_() {
   return new RegExp("^\\d{7}@" + escapedDomain + "$");
 }
 
-// StudentDocRegistry column indices (0-based) — canonical order
-const SDR_STUDENT_EMAIL = 0;
-const SDR_STUDENT_NAME = 1;
-const SDR_DOC_ID = 2;
-const SDR_DOC_URL = 3;
-const SDR_CREATED_AT = 4;
-const SDR_LAST_UPDATED_AT = 5;
-const SDR_LAST_RUN_HAD_CONTENT = 6;
+// StudentDocRegistry column indices (SDR_*) live in 00_SharedConfig.js
+// (2026-10-27), so the Student Dashboard can find a student's doc too.
 
 // WarmUpResponses column indices (0-based) — canonical order
 // This tab is the backing sheet for the student-facing Warm-Up Response form.
