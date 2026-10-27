@@ -199,22 +199,55 @@ test('the warm-up readiness numbers are buttons, and a click filters the roster'
   assert.equal(els['wr-confidence'].onclick, null);
 });
 
-// The 💬 Feedback panel says what the setting is now (finding 1).
-test('the Feedback panel shows the live FEEDBACK_AS_COMMENT setting', () => {
+// ⚙ Settings (2026-10-27, replaced 💬 Feedback): a switch per feature and
+// course, confirmed in the panel before it is saved.
+function settingsPanel() {
   const html = renderDashboard().buildDashboardHtml_();
-  const context = firstContextWith(html, ['renderFeedbackPlacement']);
+  assert.match(html, /id="settings-btn" onclick="openSettingsModal\(\)">⚙ Settings</);
+  assert.doesNotMatch(html, /💬 Feedback|openFeedbackPlacementModal/);
+  const context = firstContextWith(html, ['renderSettings', 'askSetting', 'confirmSetting']);
   const body = { innerHTML: '' };
-  context.document = { getElementById: () => body };
-  const shown = (value) => {
-    context.renderFeedbackPlacement({ success: true, value, overriddenHere: false,
-      courses: [{ code: '8175', asComment: value !== 'off' }, { code: '8177', asComment: value === 'all' }] });
-    return body.innerHTML;
-  };
-  assert.match(shown('off'), /Now:<\/strong> in the document, for every course/);
-  assert.match(shown('all'), /Now:<\/strong> as a comment, for every course/);
-  assert.match(shown('8175'), /Now:<\/strong> as a comment for 8175 only; in the document for the others/);
-  assert.match(body.innerHTML, /<legend[^>]*>8175<\/legend>/);
-  assert.doesNotMatch(body.innerHTML, /No courses with assignments yet/);
+  context.document = { getElementById: () => body, querySelector: () => null, addEventListener() {} };
+  const calls = [];
+  const run = { withSuccessHandler() { return run; }, withFailureHandler() { return run; },
+    setSettingForCourse(...a) { calls.push(a); }, getSettings() {} };
+  context.google = { script: { run } };
+  const data = { success: true, courses: ['8175', '8177'], log: [{ at: 'Oct 27', key: 'WARMUP_TEXT_BOX', from: 'off', to: 'all' }],
+    settings: [{ key: 'FEEDBACK_AS_COMMENT', label: 'Feedback as a comment', on: 'It goes on as a comment.', off: 'It goes in the doc.',
+      value: 'all', overriddenHere: false, courses: [{ code: '8175', on: true }, { code: '8177', on: true }] },
+    { key: 'ROLLOUT_AUTO_APPLY', label: 'Nightly lesson rollout', on: 'Makes the docs.', off: 'Only records.',
+      value: 'off', overriddenHere: true, courses: [{ code: '8175', on: false }, { code: '8177', on: false }] }],
+    markingPeriods: { isDefault: true, overriddenHere: false, ends: [{ term: '2627_MP1', end: '2026-10-30' }] } };
+  context.renderSettings(data);
+  return { context, body, calls };
+}
+
+test('⚙ Settings lists each feature with a switch per course, what on and off do, and the dates', () => {
+  const { body } = settingsPanel();
+  const h = body.innerHTML;
+  assert.match(h, /<legend>Feedback as a comment<\/legend>/);
+  assert.match(h, /<strong>On:<\/strong> It goes on as a comment\.<br><strong>Off:<\/strong> It goes in the doc\./);
+  assert.match(h, /data-st-key="FEEDBACK_AS_COMMENT" data-st-code="8177" checked/);
+  assert.match(h, /data-st-key="ROLLOUT_AUTO_APPLY" data-st-code="8175">/, 'off: unchecked');
+  assert.match(h, /own ROLLOUT_AUTO_APPLY Script Property/);
+  assert.match(h, /Marking period 1, 2026–27 <input type="date" data-mp-i="0" value="2026-10-30">/);
+  assert.match(h, /the district calendar's dates/);
+  assert.match(h, /Oct 27: WARMUP_TEXT_BOX off → all/);
+});
+
+test('⚙ Settings asks before a change, saves only on Confirm, and Cancel changes nothing', () => {
+  const { context, body, calls } = settingsPanel();
+  context.askSetting('ROLLOUT_AUTO_APPLY', '8175', true);
+  assert.match(body.innerHTML, /Turn <strong>Nightly lesson rollout<\/strong> on for 8175\? Makes the docs\./);
+  assert.match(body.innerHTML, /data-st-code="8175" disabled/, 'the box waits for the answer');
+  assert.equal(calls.length, 0, 'nothing saved yet');
+  context.cancelSetting();
+  assert.doesNotMatch(body.innerHTML, /setting-confirm/);
+  assert.equal(calls.length, 0);
+  context.askSetting('FEEDBACK_AS_COMMENT', '8177', false);
+  assert.match(body.innerHTML, /off for 8177\? It goes in the doc\./);
+  context.confirmSetting();
+  assert.deepEqual(calls, [['FEEDBACK_AS_COMMENT', '8177', false]]);
 });
 
 // Roster rendering (walk-through findings 3b, 16 and 18, 2026-10-22).
