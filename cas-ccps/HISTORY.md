@@ -4894,3 +4894,14 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   opens the student's page. The Copy buttons now have a style.
 - **Tests:** `teacher-dashboard-student-page.test.js` (new),
   `teacher-dashboard-inline-js.test.js`.
+- **Competencies done (added the same day):** "n of the course total" per
+  course. 00's `readLatestScrRatings_` (moved from 36's
+  `_readConfirmedCompetencyDecisions_`, which now calls it),
+  `competencyCourseTotals_` (active `CompetencyRegistry` rows by course)
+  and `competencyCompletionFor_` (latest rating 1 to
+  `SCR_COMPLETED_MAX_RATING`, 3). On the student's page and the Student
+  Context list (this teacher's ratings, this teacher's courses) and on the
+  Student Dashboard above the warm-ups (every teacher's ratings, the
+  student's courses). A "Competencies done" entry in both Terms panels.
+  Tests: `teacher-dashboard-student-page.test.js`,
+  `student-dashboard-warmups.test.js`.
