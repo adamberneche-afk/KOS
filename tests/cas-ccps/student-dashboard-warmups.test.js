@@ -321,6 +321,17 @@ test('the "just registered" banner: one line per class the server lists, none wi
   assert.equal(els['new-registration-banner'].style.display, 'none');
 });
 
+test('competencies done: one line per course above the warm-ups, none without ratings data', () => {
+  const { ctx, els } = page();
+  ctx.render({ googleId: ME, generatedAt: 'Oct 27', assignments: [], warmUps: {}, emptyReason: 'x',
+    competencies: [{ course: '8175', className: '8175 Sports Marketing', done: 12, total: 113 },
+      { course: '8177', className: '', done: 0, total: 108 }] });
+  const h = els.main.innerHTML;
+  assert.match(h, /8175 Sports Marketing:<\/span> <strong>12<\/strong> of 113 competencies done/);
+  assert.match(h, /8177:<\/span> <strong>0<\/strong> of 108 competencies done/, 'a zero shows as 0');
+  assert.equal(ctx.renderCompetencies({ competencies: [] }), '');
+});
+
 test('the footer is set when the student has no assignments too (finding 17)', () => {
   const { ctx, els } = page();
   ctx.render({ googleId: ME, generatedAt: 'Oct 24, 2026', assignments: [], warmUps: {}, emptyReason: 'No assignments.' });
