@@ -299,14 +299,23 @@ function pivotFlagFor_(flagName, courseCode) {
   return _pivotValueOn_(raw, courseCode);
 }
 
+// A value can also list courses ("8175,8177"), as the Teacher Dashboard's
+// ⚙ Settings writes it (2026-10-27): on for each one listed.
 function _pivotValueOn_(raw, courseCode) {
   const value = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase();
   if (value === "" || value === "off") return false;
   if (value === "all") return true;
   const course = String(courseCode === undefined || courseCode === null ? "" : courseCode)
     .trim().toLowerCase();
-  return course !== "" && value === course;
+  return course !== "" && value.split(",").some(function (c) { return c.trim() === course; });
 }
+
+// The settings the Teacher Dashboard's ⚙ Settings panel changes (07's
+// TD_SETTINGS, plus the marking period end dates). The Central Ledger's
+// nightly signal names any of them set as a Script Property there (34c),
+// since that would override the panel without it knowing.
+const DASHBOARD_SETTING_KEYS = ["FEEDBACK_AS_COMMENT", "WARMUP_TEXT_BOX", "ROLLOUT_AUTO_APPLY",
+  "REFLECTION_ON_SUBMIT", "PIVOT_ARCHETYPE_LOCK", "MARKING_PERIOD_ENDS"];
 
 // Whether a submission's Flow 2 feedback goes on the student's doc as a
 // comment instead of into its feedback zone (FEEDBACK_AS_COMMENT, read like
@@ -1179,7 +1188,8 @@ const CAS_TEACHER_TERMS = [
   ["Student Context", "One document per student that gathers their lessons, checks and warm-ups, updated weekly."],
   ["Current lesson", "The lesson whose start date in 📅 Lessons is the latest on or before today, per course."],
   ["Rollout", "The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead)."],
-  ["Feedback as a comment", "Where a student’s feedback goes: a comment on the document, or written into it. Set per course in 💬 Feedback."],
+  ["Feedback as a comment", "Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings."],
+  ["⚙ Settings", "Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab."],
   ["3-Odd / 3-Even", "The two halves of period 3, which meet on alternate (odd or even) calendar dates."],
   ["Marking period", "A term code like 2627_MP1 is marking period 1 of 2026–27."]
 ];
