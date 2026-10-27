@@ -150,7 +150,7 @@ test('every modal backdrop opens and closes with the "open" class the CSS uses',
   assert.ok(uses.length >= 6);
   assert.deepEqual([...new Set(uses)], ['open']);
   // 2026-10-22: the six panels open and close through one helper.
-  for (const id of ['profile', 'score-review', 'feedback-placement', 'lesson-schedule', 'parent-report', 'scr-review']) {
+  for (const id of ['profile', 'score-review', 'settings', 'lesson-schedule', 'parent-report', 'scr-review']) {
     assert.match(html, new RegExp('_openPanel\\("' + id + '-modal-backdrop"'), id);
     assert.match(html, new RegExp('_closePanel\\("' + id + '-modal-backdrop"\\)'), id);
   }

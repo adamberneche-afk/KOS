@@ -1111,47 +1111,112 @@ function teacherCopiedParentReport(studentEmail) {
 //   For now scaffolding is always an empty array — zero UI cost.
 // ── M2 ──────────────────────────────────────────────────────────────────────
 // ---------------------------------------------------------------------------
-// Feedback placement (FEEDBACK_AS_COMMENT, 00): per course, Flow 2 feedback
-// goes into the student's doc or on it as a comment. The setting is one row
-// in the Central Ledger's _CONFIG tab ("off", one course code, or "all"),
-// which reaches the Central Ledger (the harvest) and the Student Dashboard
-// within the shared-config cache time. A Script Property of the same name
-// in a project overrides the tab there, so the panel says when this
-// project has one.
+// ⚙ Settings (2026-10-27, meta/SPRINT_DASHBOARD_2026-11.md, PR 3): the
+// features turned on per course, and the marking period end dates. Each is
+// one row in the Central Ledger's _CONFIG tab (DASHBOARD_SETTING_KEYS, 00),
+// which reaches the Central Ledger and the Student Dashboard within the
+// shared-config cache time and this project at once. A switch's value is
+// "off", "all", or the courses it is on for ("8175" or "8175,8177" once a
+// third course exists); every known course on is written "all", which is
+// what course-wide actions (the archetype lock's email) need. A Script
+// Property of the same name in a project overrides the tab there: this
+// panel says when this project has one, and the Central Ledger's nightly
+// signal says when it does (34c). Each change is a SettingsLog row.
+// Replaced 💬 Feedback (FEEDBACK_AS_COMMENT only).
 // ---------------------------------------------------------------------------
-function getFeedbackPlacement() {
+const TD_SETTINGS = [
+  { key: "FEEDBACK_AS_COMMENT", label: "Feedback as a comment",
+    on: "A checked submission's feedback goes on the student's document as a comment. New documents are made without a feedback section.",
+    off: "Feedback goes into the document, in its feedback section." },
+  { key: "WARMUP_TEXT_BOX", label: "Warm-ups on the Student Dashboard",
+    on: "Students answer warm-ups in a text box on their dashboard.",
+    off: "Each warm-up is a Google Doc in the student's folder." },
+  { key: "ROLLOUT_AUTO_APPLY", label: "Nightly lesson rollout",
+    on: "Each night the rollout makes the next lesson's student documents and shares them the night before the lesson starts.",
+    off: "The rollout only records what it would do (📅 Lessons shows each run). Documents are made by hand." },
+  { key: "REFLECTION_ON_SUBMIT", label: "Reflection on Submit",
+    on: "Submit for Feedback asks one or two short questions about how the student worked. The answers go with the work to be checked.",
+    off: "Submit for Feedback sends the work straight away." },
+  { key: "PIVOT_ARCHETYPE_LOCK", label: "Warm-up style lock (research)",
+    on: "Once the system is confident which warm-up style works for a student, it keeps using it. The email about students reaching that point goes out only when every course is on.",
+    off: "The warm-up style keeps being chosen fresh each time." },
+];
+const TD_SETTINGS_LOG_TAB = "SettingsLog";
+const TD_SETTINGS_LOG_HEADERS = ["Timestamp", "ChangedBy", "Setting", "From", "To"];
+
+function getSettings() {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
-  return _tdFeedbackPlacement_(cfg);
+  return _tdSettings_(cfg);
 }
 
-function setFeedbackPlacement(courseCode, asComment) {
+// Turns one feature on or off for one course.
+function setSettingForCourse(key, courseCode, on) {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
-  const current = _tdFeedbackPlacement_(cfg);
+  const def = TD_SETTINGS.filter(function (d) { return d.key === key; })[0];
+  if (!def) return { success: false, error: "Unknown setting: " + key };
+  const courses = _tdKnownCourses_(cfg);
   const code = String(courseCode || "").trim();
-  if (!current.courses.some(function (c) { return c.code === code; })) {
-    return { success: false, error: "Unknown course: " + code };
+  if (courses.indexOf(code) === -1) return { success: false, error: "Unknown course: " + code };
+  const raw = String(_resolveConfigValues_().values[key] || "").trim();
+  // Courses on now: the known ones the value turns on, plus any course code
+  // it lists that has no assignments yet (kept, not dropped).
+  const listed = raw.toLowerCase() === "all" || raw.toLowerCase() === "off" ? [] :
+    raw.split(",").map(function (c) { return c.trim(); }).filter(Boolean);
+  const onNow = courses.filter(function (c) { return _pivotValueOn_(raw, c); });
+  listed.forEach(function (c) { if (onNow.indexOf(c) === -1) onNow.push(c); });
+  const next = onNow.filter(function (c) { return c !== code; });
+  if (on) next.push(code);
+  next.sort();
+  const value = !next.length ? "off"
+    : courses.every(function (c) { return next.indexOf(c) !== -1; }) && next.length === courses.length ? "all"
+    : next.join(",");
+  _tdWriteSetting_(cfg, key, raw || "off", value);
+  return _tdSettings_(cfg);
+}
+
+// The marking period end dates: [{ term: "2627_MP1", end: "2026-10-30" }, ...].
+function setMarkingPeriodEnds(ends) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  const list = (ends || []).map(function (e) {
+    return String((e && e.term) || "").trim().toUpperCase() + "=" + String((e && e.end) || "").trim();
+  });
+  const table = _markingPeriodEnds_(list.join(","));
+  if (!list.length || table.length !== list.length) {
+    return { success: false, error: "Each marking period needs a whole date (yyyy-mm-dd)." };
   }
-  const on = current.courses
-    .filter(function (c) { return c.code === code ? !!asComment : c.asComment; })
-    .map(function (c) { return c.code; });
-  let value;
-  if (on.length === 0) value = "off";
-  else if (on.length === current.courses.length) value = "all";
-  else if (on.length === 1) value = on[0];
-  else return { success: false, error: "The setting holds one course or all of them; turn the others on or off together." };
-  setSharedConfigValue_("FEEDBACK_AS_COMMENT", value);
-  Logger.log("[Dashboard] FEEDBACK_AS_COMMENT set to " + value + ".");
-  return _tdFeedbackPlacement_(cfg);
+  for (let i = 1; i < table.length; i++) {
+    if (table[i].end === table[i - 1].end) return { success: false, error: "Two marking periods end on the same day." };
+  }
+  const value = table.map(function (t) { return t.term + "=" + t.end; }).join(",");
+  const raw = String(_resolveConfigValues_().values.MARKING_PERIOD_ENDS || "").trim();
+  _tdWriteSetting_(cfg, "MARKING_PERIOD_ENDS", raw || "(the district calendar)", value);
+  return _tdSettings_(cfg);
+}
+
+function _tdWriteSetting_(cfg, key, from, to) {
+  if (String(from) === String(to)) return;
+  setSharedConfigValue_(key, to);
+  Logger.log("[Dashboard] " + key + " set to " + to + ".");
+  try {
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    let log = ss.getSheetByName(TD_SETTINGS_LOG_TAB);
+    if (!log) {
+      log = ss.insertSheet(TD_SETTINGS_LOG_TAB);
+      log.appendRow(TD_SETTINGS_LOG_HEADERS);
+    }
+    log.appendRow([new Date(), String(Session.getActiveUser().getEmail() || cfg.teacherEmail), key, from, to]);
+  } catch (e) {
+    Logger.log("[Dashboard] SettingsLog not written: " + e.message);
+  }
 }
 
 // Courses come from the Ledger rows' class, subject or course names
 // (ledgerRowCourseCode_, 00): a row's ConfigID is the student's workspace
 // ID and names no course. A new course shows up once it has assignments.
-function _tdFeedbackPlacement_(cfg) {
-  const resolved = _resolveConfigValues_();
-  const check = feedbackAsCommentChecker_();
+function _tdKnownCourses_(cfg) {
   const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
   const codes = {};
   if (sheet && sheet.getLastRow() > 1) {
@@ -1160,13 +1225,45 @@ function _tdFeedbackPlacement_(cfg) {
       if (code) codes[code] = true;
     });
   }
+  return Object.keys(codes).sort();
+}
+
+function _tdSettings_(cfg) {
+  const resolved = _resolveConfigValues_();
+  const courses = _tdKnownCourses_(cfg);
+  const mpRaw = String(resolved.values.MARKING_PERIOD_ENDS || "").trim();
+  let table = _markingPeriodEnds_(mpRaw);
+  const mpDefault = !table.length;
+  if (mpDefault) table = _markingPeriodEnds_(DEFAULT_MARKING_PERIOD_ENDS);
+  let log = [];
+  try {
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TD_SETTINGS_LOG_TAB);
+    if (sheet && sheet.getLastRow() > 1) {
+      const first = Math.max(2, sheet.getLastRow() - 7);
+      log = sheet.getRange(first, 1, sheet.getLastRow() - first + 1, TD_SETTINGS_LOG_HEADERS.length).getValues()
+        .reverse().map(function (r) {
+          return { at: r[0] instanceof Date ? formatDate_(r[0]) : String(r[0]), key: String(r[2]), from: String(r[3]), to: String(r[4]) };
+        });
+    }
+  } catch (e) { log = []; }
   return {
     success: true,
-    value: String(resolved.values.FEEDBACK_AS_COMMENT || "off").trim() || "off",
-    overriddenHere: resolved.sources.FEEDBACK_AS_COMMENT === "Script Property",
-    courses: Object.keys(codes).sort().map(function (code) {
-      return { code: code, asComment: check("", code) };
+    courses: courses,
+    settings: TD_SETTINGS.map(function (d) {
+      const raw = String(resolved.values[d.key] || "").trim();
+      return {
+        key: d.key, label: d.label, on: d.on, off: d.off,
+        value: raw || "off",
+        overriddenHere: resolved.sources[d.key] === "Script Property",
+        courses: courses.map(function (c) { return { code: c, on: _pivotValueOn_(raw, c) }; }),
+      };
     }),
+    markingPeriods: {
+      ends: table.map(function (t) { return { term: t.term, end: t.end }; }),
+      isDefault: mpDefault,
+      overriddenHere: resolved.sources.MARKING_PERIOD_ENDS === "Script Property",
+    },
+    log: log,
   };
 }
 
@@ -1849,6 +1946,14 @@ header button:focus-visible,header select:focus-visible{outline:2px solid white;
 .ctx-week .ctx-h{font-weight:600;margin-top:10px}
 button[data-pr-copy]{background:#1557b0;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:13px;cursor:pointer}
 button[data-pr-copy="subject"]{background:#fff;color:#1557b0;border:1px solid #1557b0}
+.setting-row{border:1px solid #e8eaed;border-radius:6px;margin:10px 0;padding:8px 12px}
+.setting-row legend{font-weight:600;font-size:14px;padding:0 4px}
+.setting-help{font-size:12.5px;color:var(--text-secondary);margin-bottom:8px;line-height:1.45}
+.setting-switches{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;margin-bottom:6px;align-items:center}
+.setting-confirm{background:#fef7e0;border:1px solid #f9dc8f;border-radius:6px;padding:8px 10px;font-size:12.5px;margin-top:6px}
+.setting-confirm button,.setting-row > button{font-size:12.5px;border-radius:4px;padding:4px 10px;cursor:pointer;border:1px solid #1557b0;background:#fff;color:#1557b0}
+.setting-confirm .st-yes{background:#1557b0;color:#fff}
+.setting-log{font-size:12.5px;margin-top:8px}
 .name-link{background:none;border:none;padding:0;font:inherit;color:#1557b0;cursor:pointer;text-align:left}
 .name-link:hover{text-decoration:underline}
 .roster-filters button{background:none;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer}
@@ -1992,9 +2097,9 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
        review queue of AI-suggested Module 5 competency ratings; nothing
        is decided until the teacher confirms or overrides one. -->
   <button id="scr-review-btn" onclick="openScrReviewModal()">🎓 Competency ratings</button>
-  <!-- Feedback placement per course (FEEDBACK_AS_COMMENT, 00): in the doc or
-       as a comment on it. -->
-  <button id="feedback-placement-btn" onclick="openFeedbackPlacementModal()">💬 Feedback</button>
+  <!-- ⚙ Settings (sprint PR 3): the features turned on per course and the
+       marking period end dates, each a _CONFIG row (00). -->
+  <button id="settings-btn" onclick="openSettingsModal()">⚙ Settings</button>
   <!-- Lesson schedule (LessonSchedule tab, 55): start dates by course, with
        what the last nightly rollout (58) did for each lesson. -->
   <button id="lesson-schedule-btn" onclick="openLessonScheduleModal()">📅 Lessons</button>
@@ -2184,13 +2289,13 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
      a full preview of the text that would be sent: the teacher is
      authorizing a disclosure outside the school's domain, so they read the
      actual message, not a summary of it. -->
-<div class="modal-backdrop" id="feedback-placement-modal-backdrop" onclick="if(event.target===this)closeFeedbackPlacementModal()">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="feedback-placement-modal-title" style="max-width:520px">
+<div class="modal-backdrop" id="settings-modal-backdrop" onclick="if(event.target===this)closeSettingsModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title" style="max-width:640px">
     <div class="modal-header">
-      <h2 id="feedback-placement-modal-title">Where feedback goes</h2>
-      <button class="modal-close" onclick="closeFeedbackPlacementModal()" aria-label="Close">×</button>
+      <h2 id="settings-modal-title">Settings</h2>
+      <button class="modal-close" onclick="closeSettingsModal()" aria-label="Close">×</button>
     </div>
-    <div class="modal-body" id="feedback-placement-modal-body">
+    <div class="modal-body" id="settings-modal-body">
       <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
     </div>
   </div>
@@ -2562,7 +2667,7 @@ function escNum(n) {
 }
 
 // ── One open/close helper for the panels (2026-10-22, UX audit) ────────────
-// Each panel (profile, review, 💬 Feedback, 📅 Lessons, ✉ Parent Reports,
+// Each panel (profile, review, ⚙ Settings, 📅 Lessons, ✉ Parent Reports,
 // 🎓 SCR) used to open and close itself: most ignored Escape, and closing
 // left focus behind the backdrop. _openPanel() remembers where focus was,
 // moves it to the panel's ×, and traps Tab; _closePanel() puts focus back.
@@ -2774,70 +2879,132 @@ function _handleTurnInDecisionResult(res) {
 
 let _parentReports = [];
 
-function openFeedbackPlacementModal() {
-  _openPanel("feedback-placement-modal-backdrop", closeFeedbackPlacementModal);
-  document.getElementById("feedback-placement-modal-body").innerHTML =
+// ── ⚙ Settings (sprint PR 3) ─────────────────────────────────────────────
+// A switch per feature and course. A change is confirmed in the panel first
+// (what turning it on or off does, and when it reaches students), then
+// saved; the panel redraws from what the server read back.
+let _settings = null;
+let _stPending = null; // { key, code, on } waiting for Confirm
+
+function openSettingsModal() {
+  _stPending = null;
+  _openPanel("settings-modal-backdrop", closeSettingsModal);
+  document.getElementById("settings-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
   google.script.run
-    .withSuccessHandler(renderFeedbackPlacement)
-    .withFailureHandler(_feedbackPlacementFailed)
-    .getFeedbackPlacement();
+    .withSuccessHandler(renderSettings)
+    .withFailureHandler(_settingsFailed)
+    .getSettings();
 }
 
-function closeFeedbackPlacementModal() {
-  _closePanel("feedback-placement-modal-backdrop");
+function closeSettingsModal() {
+  _closePanel("settings-modal-backdrop");
 }
 
-function _feedbackPlacementFailed(e) {
-  document.getElementById("feedback-placement-modal-body").innerHTML =
+function _settingsFailed(e) {
+  document.getElementById("settings-modal-body").innerHTML =
     '<p style="color:#b3261e;font-size:13px">Could not load: ' +
     esc(e && e.message ? e.message : "unknown error") + '</p>';
 }
 
-function renderFeedbackPlacement(data) {
-  const body = document.getElementById("feedback-placement-modal-body");
+function renderSettings(data) {
+  const body = document.getElementById("settings-modal-body");
   if (!data || !data.success) {
     body.innerHTML = '<p style="color:#b3261e;font-size:13px">' +
-      esc((data && data.error) || "Could not load the setting.") + '</p>';
+      esc((data && data.error) || "Could not load the settings.") + '</p>';
     return;
   }
-  let html = '<p style="font-size:13px;color:var(--text-secondary)">For each course, where a student\\'s ' +
-    'evaluation goes. A comment keeps the document to the assignment and the student\\'s work; ' +
-    'new documents are then made without a feedback section. Changes reach students within about 10 minutes.</p>';
-  const v = String(data.value || "off").toLowerCase();
-  const now = v === "off" ? "in the document, for every course"
-    : v === "all" ? "as a comment, for every course"
-    : "as a comment for " + v + " only; in the document for the others";
-  html += '<p style="font-size:13px;margin:10px 0"><strong>Now:</strong> ' + esc(now) +
-    ' <span style="color:var(--text-secondary)">(FEEDBACK_AS_COMMENT = ' + esc(v) + ')</span></p>';
-  if (data.overriddenHere) {
-    html += '<p style="font-size:13px;color:#b3261e">This project has its own FEEDBACK_AS_COMMENT ' +
-      'Script Property, which overrides this setting here. Delete it to use this panel.</p>';
-  }
-  if (!data.courses.length) {
-    html += '<p style="font-size:13px">No courses with assignments yet.</p>';
-  }
-  data.courses.forEach(function(c) {
-    const name = "fp-" + esc(c.code);
-    html += '<fieldset style="border:1px solid #e8eaed;border-radius:6px;margin:8px 0;padding:8px 12px">' +
-      '<legend style="font-weight:600">' + esc(c.code) + '</legend>' +
-      '<label style="margin-right:16px"><input type="radio" name="' + name + '"' + (c.asComment ? '' : ' checked') +
-      ' onchange="saveFeedbackPlacement(\\'' + esc(c.code) + '\\', false)"> In the document</label>' +
-      '<label><input type="radio" name="' + name + '"' + (c.asComment ? ' checked' : '') +
-      ' onchange="saveFeedbackPlacement(\\'' + esc(c.code) + '\\', true)"> As a comment</label>' +
-      '</fieldset>';
+  _settings = data;
+  let html = '<p style="font-size:13px;color:var(--text-secondary)">Each feature is on or off per course. ' +
+    'A change shows here at once and reaches students and the overnight jobs within about 10 minutes.</p>';
+  if (!data.courses.length) html += '<p style="font-size:13px">No courses with assignments yet.</p>';
+  data.settings.forEach(function (st) {
+    html += '<fieldset class="setting-row"><legend>' + esc(st.label) + '</legend>' +
+      '<div class="setting-help"><strong>On:</strong> ' + esc(st.on) + '<br><strong>Off:</strong> ' + esc(st.off) + '</div>';
+    if (st.overriddenHere) {
+      html += '<p style="font-size:12.5px;color:#b3261e">This dashboard\\'s project has its own ' + esc(st.key) +
+        ' Script Property, which overrides this setting here. Delete it to use this switch.</p>';
+    }
+    html += '<div class="setting-switches">' + st.courses.map(function (c) {
+      const pending = _stPending && _stPending.key === st.key && _stPending.code === c.code;
+      return '<label><input type="checkbox" data-st-key="' + esc(st.key) + '" data-st-code="' + esc(c.code) + '"' +
+        (c.on ? ' checked' : '') + (pending ? ' disabled' : '') + '> ' + esc(c.code) + '</label>';
+    }).join("") + '</div>';
+    if (_stPending && _stPending.key === st.key) {
+      html += '<div class="setting-confirm" role="alert">Turn <strong>' + esc(st.label) + '</strong> ' +
+        (_stPending.on ? 'on' : 'off') + ' for ' + esc(_stPending.code) + '? ' +
+        esc(_stPending.on ? st.on : st.off) +
+        ' <button type="button" class="st-yes" onclick="confirmSetting()">' + (_stPending.on ? 'Turn on' : 'Turn off') + '</button>' +
+        ' <button type="button" onclick="cancelSetting()">Cancel</button></div>';
+    }
+    html += '</fieldset>';
   });
+  const mp = data.markingPeriods;
+  html += '<fieldset class="setting-row"><legend>Marking periods</legend>' +
+    '<div class="setting-help">The last day of each marking period. The term on both dashboards and in the reports changes the day after.' +
+    (mp.isDefault ? ' These are the district calendar\\'s dates; nothing has been changed here yet.' : '') + '</div>';
+  if (mp.overriddenHere) {
+    html += '<p style="font-size:12.5px;color:#b3261e">This dashboard\\'s project has its own MARKING_PERIOD_ENDS Script Property, which overrides these dates here.</p>';
+  }
+  html += '<div class="setting-switches">' + mp.ends.map(function (e, i) {
+    return '<label>' + esc(termLabel(e.term)) + ' <input type="date" data-mp-i="' + i + '" value="' + esc(e.end) + '"></label>';
+  }).join("") + '</div><button type="button" onclick="saveMarkingPeriods()">Save dates</button></fieldset>';
+  if ((data.log || []).length) {
+    html += '<details class="setting-log"><summary>Recent changes</summary><ul>' + data.log.map(function (l) {
+      return '<li>' + esc(l.at) + ': ' + esc(l.key) + ' ' + esc(l.from) + ' → ' + esc(l.to) + '</li>';
+    }).join("") + '</ul></details>';
+  }
+  if (data.error) html += '<p style="color:#b3261e;font-size:13px">' + esc(data.error) + '</p>';
   body.innerHTML = html;
 }
 
-function saveFeedbackPlacement(code, asComment) {
-  document.getElementById("feedback-placement-modal-body").innerHTML =
+// A switch click asks first; the box goes back to what is saved until then.
+function askSetting(key, code, on) {
+  _stPending = { key: key, code: code, on: !!on };
+  if (_settings) renderSettings(_settings);
+}
+function cancelSetting() {
+  _stPending = null;
+  if (_settings) renderSettings(_settings);
+}
+function confirmSetting() {
+  const p = _stPending;
+  if (!p) return;
+  _stPending = null;
+  document.getElementById("settings-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Saving…</p>';
   google.script.run
-    .withSuccessHandler(renderFeedbackPlacement)
-    .withFailureHandler(_feedbackPlacementFailed)
-    .setFeedbackPlacement(code, asComment);
+    .withSuccessHandler(_settingsSaved)
+    .withFailureHandler(_settingsFailed)
+    .setSettingForCourse(p.key, p.code, p.on);
 }
+function saveMarkingPeriods() {
+  if (!_settings) return;
+  const ends = _settings.markingPeriods.ends.map(function (e, i) {
+    const box = document.querySelector('[data-mp-i="' + i + '"]');
+    return { term: e.term, end: box ? box.value : e.end };
+  });
+  document.getElementById("settings-modal-body").innerHTML =
+    '<p style="font-size:13px;color:var(--text-secondary)">Saving…</p>';
+  google.script.run
+    .withSuccessHandler(_settingsSaved)
+    .withFailureHandler(_settingsFailed)
+    .setMarkingPeriodEnds(ends);
+}
+// A refused save keeps the last good settings on screen with the reason.
+function _settingsSaved(data) {
+  if (data && !data.success && _settings) {
+    renderSettings(Object.assign({}, _settings, { error: data.error }));
+    return;
+  }
+  renderSettings(data);
+}
+document.addEventListener("change", function (ev) {
+  const box = ev.target && ev.target.getAttribute ? ev.target : null;
+  if (box && box.getAttribute("data-st-key")) {
+    askSetting(box.getAttribute("data-st-key"), box.getAttribute("data-st-code"), box.checked);
+  }
+});
 
 // ── Lesson schedule ─────────────────────────────────────────────────────────
 // One start date per lesson, saved when the teacher leaves the box or presses
