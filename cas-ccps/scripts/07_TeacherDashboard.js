@@ -997,7 +997,15 @@ function getStudentDetail(studentEmail) {
   const email = String(studentEmail || "").trim().toLowerCase();
   if (!email) return { success: false, error: "No student chosen." };
   const tz = Session.getScriptTimeZone();
-  const out = { success: true, studentEmail: email, report: null, context: null };
+  const out = { success: true, studentEmail: email, report: null, context: null, competencies: [] };
+  try {
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const courses = _tdStudentCourses_(ss, cfg)[email] || [];
+    out.competencies = competencyCompletionFor_(
+      readLatestScrRatings_(ss, cfg, cfg.teacherEmail).get(email), competencyCourseTotals_(ss, cfg), courses);
+  } catch (e) {
+    Logger.log("[S07] getStudentDetail competencies failed: " + e.message);
+  }
   try {
     const generated = generateWeeklyParentReports(undefined, email);
     if (generated.weekStart) {
@@ -1025,6 +1033,27 @@ function getStudentDetail(studentEmail) {
     Logger.log("[S07] getStudentDetail context failed: " + e.message);
     out.contextError = "The Student Context doc could not be read: " + e.message;
   }
+  return out;
+}
+
+// email (lower case) -> this teacher's course codes for that student this
+// school year, from the Ledger rows (ledgerRowCourseCode_, 00).
+function _tdStudentCourses_(ss, cfg) {
+  const out = {};
+  const sheet = ss.getSheetByName(cfg.tabs.ledger);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const teacher = String(cfg.teacherEmail || "").trim().toLowerCase();
+  const year = _currentSchoolYear_();
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER_COL_COUNT).getValues().forEach(function (row) {
+    const email = String(row[LEDGER.GOOGLE_ID] || "").trim().toLowerCase();
+    if (!email || String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== teacher) return;
+    if (!_isCurrentSchoolYearRow_(row, year)) return;
+    const code = ledgerRowCourseCode_(row);
+    if (!code) return;
+    const list = out[email] = out[email] || [];
+    if (list.indexOf(code) === -1) list.push(code);
+  });
+  Object.keys(out).forEach(function (k) { out[k].sort(); });
   return out;
 }
 
@@ -1560,8 +1589,21 @@ function getStudentContextRoster() {
   }
 
   const roster = getAllStudentDocsForTeacher_(cfg.teacherEmail); // from Script 29, scoped to this teacher only
+  // Competencies done per course (00, 2026-10-27); the list still loads
+  // without them.
+  let courses = {}, ratings = new Map(), totals = {};
+  try {
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    courses = _tdStudentCourses_(ss, cfg);
+    ratings = readLatestScrRatings_(ss, cfg, cfg.teacherEmail);
+    totals = competencyCourseTotals_(ss, cfg);
+  } catch (e) {
+    Logger.log("[M4] competency counts failed: " + e.message);
+  }
   return {
     roster: roster.map(r => ({
+      competencies: competencyCompletionFor_(ratings.get(String(r.email).toLowerCase()), totals,
+        courses[String(r.email).toLowerCase()] || []),
       name: r.name,
       email: r.email,
       docUrl: r.docUrl,
@@ -2431,6 +2473,9 @@ function studentPanelInner(students) {
     return h + '<p style="font-size:13px;color:#b3261e;margin-top:10px">Could not load: ' + esc((d.data && d.data.error) || "unknown error") + '</p>';
   }
   const data = d.data;
+  if ((data.competencies || []).length) {
+    h += '<div style="font-size:13px;margin-top:6px" title="Rated 1 to 3 (limited supervision or better) in Competency ratings">🎓 ' + competencyLine(data.competencies) + '</div>';
+  }
   let report = '<div><h4>This week\\'s parent report</h4>';
   if (data.weekStart) report += '<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px">Week of ' + esc(data.weekStart) + ' – ' + esc(data.weekEnd) + '</p>';
   if (data.reportError) report += '<p style="font-size:13px;color:#b3261e">' + esc(data.reportError) + '</p>';
@@ -2443,6 +2488,12 @@ function studentPanelInner(students) {
   else ctx += contextWeekHtml(data.context);
   ctx += '</div>';
   return h + '<div class="student-panel-grid">' + report + ctx + '</div>';
+}
+// "8175: 12 of 113 competencies done" per course (00's
+// competencyCompletionFor_: the teacher's confirmed rating 1–3).
+function competencyLine(list) {
+  return (list || []).map(c => esc(c.course) + ': <strong>' + escNum(c.done) + '</strong>' +
+    (c.total ? ' of ' + escNum(c.total) : '') + ' competencies done').join(' · ');
 }
 // One week of the context doc, with older/newer and the doc's link.
 function contextWeekHtml(c) {
@@ -4065,7 +4116,8 @@ function renderTeacherRoster(result) {
         ? '<span class="status-badge badge-compliant">Active</span>'
         : '<span class="status-badge badge-not-started">No recent activity</span>';
       html += '<div style="background:white;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.08);">';
-      html += '<div>' + activityBadge + ' <strong style="margin-left:6px">' + esc(s.name) + '</strong><div style="font-size:12px;color:var(--text-secondary);margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
+      html += '<div>' + activityBadge + ' <strong style="margin-left:6px">' + esc(s.name) + '</strong><div style="font-size:12px;color:var(--text-secondary);margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div>' +
+        ((s.competencies || []).length ? '<div style="font-size:12.5px;margin-left:16px;margin-top:2px">🎓 ' + competencyLine(s.competencies) + '</div>' : '') + '</div>';
       html += '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end">' +
         '<button type="button" class="name-link" style="font-size:12px" data-student="' + esc(String(s.email).toLowerCase()) + '">By week →</button>';
       html += safeDocUrl(s.docUrl)

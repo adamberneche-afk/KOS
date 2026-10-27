@@ -356,6 +356,7 @@ const detail = () => ({
   success: true, studentEmail: 'amy@example.invalid', weekStart: 'October 26, 2026', weekEnd: 'October 30, 2026',
   report: { studentEmail: 'amy@example.invalid', studentName: 'Amy', itemCount: 2, openCount: 0, progressCount: 1,
     subject: 'Amy this week', preview: 'Dear family, Amy finished L06.', copiedAt: '' },
+  competencies: [{ course: '8175', done: 12, total: 113 }],
   context: { docUrl: 'https://docs.google.com/document/d/abc/edit', lastUpdatedAt: 'Oct 26',
     weeks: [{ label: 'Week of October 26, 2026', items: [{ text: 'Warm-Up Reflections', heading: true }, { text: 'Tickets.', heading: false }] },
       { label: 'Week of October 19, 2026', items: [{ text: 'Completed Assignments', heading: true }] }] },
@@ -376,6 +377,7 @@ test('a name in the list opens that student\'s page: report and Student Context 
   calls.success(detail());
   const panel = () => els['student-panel'].innerHTML;
   assert.match(panel(), /This week's parent report/);
+  assert.match(panel(), /🎓 8175: <strong>12<\/strong> of 113 competencies done/);
   assert.match(panel(), /data-pr-copy="text" data-pr-i="student"/);
   assert.match(panel(), /Dear family, Amy finished L06\./);
   assert.match(panel(), /<strong>Week of October 26, 2026<\/strong>/);
@@ -428,9 +430,11 @@ test('✉ Parent Reports and Student Context narrow by course and student', () =
   assert.doesNotMatch(body.innerHTML, /font-size:14px">AMY</, 'only the chosen student\'s card');
 
   context.renderTeacherRoster({ generatedAt: 'now', roster: reports.map((r) => ({ name: r.studentName,
-    email: r.studentEmail, docUrl: null, lastUpdatedAt: 'Oct 26', hasRecentActivity: true })) });
+    email: r.studentEmail, docUrl: null, lastUpdatedAt: 'Oct 26', hasRecentActivity: true,
+    competencies: [{ course: '8175', done: 0, total: 113 }] })) });
   const view = () => els['student-context-view'].innerHTML;
   assert.equal((view().match(/By week →/g) || []).length, 3);
+  assert.equal((view().match(/8175: <strong>0<\/strong> of 113 competencies done/g) || []).length, 3);
   context.setScCourse('8177');
   assert.equal((view().match(/By week →/g) || []).length, 1);
   assert.match(view(), /data-student="cy@example.invalid"/);
