@@ -4905,3 +4905,34 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   student's courses). A "Competencies done" entry in both Terms panels.
   Tests: `teacher-dashboard-student-page.test.js`,
   `student-dashboard-warmups.test.js`.
+
+## The Teacher Dashboard's ⚙ Settings, 2026-10-27
+
+- **Why:** the features turned on so far were set by editing the Ledger's
+  `_CONFIG` tab; only feedback placement had a control (💬 Feedback).
+  Sprint PR 3 of `meta/SPRINT_DASHBOARD_2026-11.md`. Before building,
+  `showConfigSources()` in the Central Ledger and Student Dashboard showed
+  no Script Property overriding any of them (`ROLLOUT_AUTO_APPLY` unset:
+  the rollout only logs).
+- **Values, 00:** a switch's value may list courses ("8175,8177"):
+  `_pivotValueOn_` is on for each one listed, so `pivotFlagFor_` and
+  `feedbackAsCommentChecker_` read lists too. "off", "all" and one code
+  are unchanged. `DASHBOARD_SETTING_KEYS` names the panel's keys.
+- **Server, 07:** `getSettings()`, `setSettingForCourse(key, course, on)`
+  and `setMarkingPeriodEnds(ends)`, teacher-gated, replace
+  `getFeedbackPlacement`/`setFeedbackPlacement`. `TD_SETTINGS` describes
+  each feature in plain words. Every known course on is written "all"
+  (what course-wide actions need); a listed course with no assignments yet
+  is kept. Each change appends a `SettingsLog` row (when, who, setting,
+  from, to); an unchanged value writes nothing.
+- **Page, 07:** ⚙ Settings replaces 💬 Feedback: a box per feature with
+  what on and off do and a switch per course; a switch asks first ("Turn …
+  on for 8175? …", Turn on / Cancel); the marking period dates as date
+  boxes (the district calendar until changed); the last changes; a
+  warning when a Script Property here overrides a setting.
+- **Signal, 34c:** a setup check names any `DASHBOARD_SETTING_KEYS`
+  Script Property in the Central Ledger, which would override the panel
+  there.
+- **Tests:** `feedback-as-comment.test.js`, `overnight-health.test.js`,
+  `teacher-dashboard-inline-js.test.js`,
+  `teacher-dashboard-lesson-schedule.test.js`.
