@@ -349,6 +349,202 @@ function getStudentWarmUps_(ss, cfg, googleId, now) {
   };
 }
 
+// ── The student's own record (2026-10-27) ─────────────────────────────────
+// Three tabs beside Assignments, each loaded when first opened, each only
+// the signed-in student's own data (identity from the session, never a
+// parameter): their competencies with the teacher's confirmed rating and
+// the evidence behind it, every past warm-up with its feedback, and their
+// Student Context doc by week. The AI's suggested ratings stay
+// teacher-only (decided 2026-10-27).
+
+// The student's courses this school year, and each workspace's assignment
+// name, from their own Ledger rows.
+function _dashOwnCourses_(ss, cfg, email) {
+  const out = { courses: {}, assignmentOf: {} };
+  const sheet = ss.getSheetByName(cfg.tabs.ledger);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const year = _currentSchoolYear_();
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER_COL_COUNT).getValues().forEach(function (row) {
+    if (String(row[LEDGER.GOOGLE_ID] || "").trim().toLowerCase() !== email) return;
+    if (!_isCurrentSchoolYearRow_(row, year)) return;
+    const code = ledgerRowCourseCode_(row);
+    if (code && !out.courses[code]) out.courses[code] = String(row[LEDGER.CLASS_NAME] || "").trim();
+    const id = String(row[LEDGER.CONFIG_ID] || "").trim();
+    if (id) out.assignmentOf[id] = String(row[LEDGER.COURSE_NAME] || "").trim();
+  });
+  return out;
+}
+
+const DASH_EVIDENCE_WORDS = { MET: "Shown", PARTIALLY_MET: "Partly shown", NOT_MET: "Not shown yet" };
+const DASH_EVIDENCE_RANK = { MET: 3, PARTIALLY_MET: 2, NOT_MET: 1 };
+
+// Every competency in each of the student's courses, by duty area in task
+// order: the teacher's latest confirmed rating (or none) and each piece of
+// evidence, newest first. One assignment counts once, at its best result
+// (30's aggregateEvidence_), so each piece says whether it counts.
+function getMyCompetencies() {
+  const email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
+  if (!email) return { success: false, error: "Could not identify your Google account." };
+  try {
+    const cfg = getConfig_();
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const tz = Session.getScriptTimeZone();
+    const own = _dashOwnCourses_(ss, cfg, email);
+    const codes = Object.keys(own.courses).sort();
+    const ratingList = readLatestScrRatings_(ss, cfg, "").get(email) || [];
+    const ratings = {};
+    ratingList.forEach(function (r) { ratings[r.competencyId] = r; });
+
+    const evidence = {};
+    const ev = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+    if (ev && ev.getLastRow() > 1) {
+      const data = ev.getDataRange().getValues();
+      const h = data[0].map(function (x) { return String(x).trim().toLowerCase(); });
+      const col = function (n) { return h.indexOf(n); };
+      const E = { email: col("student_email"), comp: col("competency_id"), milestone: col("milestone_text"),
+        outcome: col("outcome"), config: col("config_id"), at: col("evaluated_at"), archive: col("archive_status") };
+      for (let i = 1; i < data.length; i++) {
+        const r = data[i];
+        if (String(r[E.email] || "").trim().toLowerCase() !== email) continue;
+        if (E.archive !== -1 && String(r[E.archive] || "").trim() !== "") continue;
+        const outcome = String(r[E.outcome] || "").trim().toUpperCase();
+        if (!DASH_EVIDENCE_WORDS[outcome]) continue;
+        String(r[E.comp] || "").split(",").map(function (c) { return c.trim(); }).filter(Boolean).forEach(function (comp) {
+          (evidence[comp] = evidence[comp] || []).push({ outcome: outcome, configId: String(r[E.config] || "").trim(),
+            milestone: String(r[E.milestone] || "").trim(),
+            at: Object.prototype.toString.call(r[E.at]) === "[object Date]" ? r[E.at] : null });
+        });
+      }
+    }
+
+    const reg = ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry");
+    const byCourse = {};
+    codes.forEach(function (c) { byCourse[c] = []; });
+    if (reg && reg.getLastRow() > 1) {
+      const data = reg.getDataRange().getValues();
+      const h = data[0].map(function (x) { return String(x).trim().toLowerCase(); });
+      const idC = h.indexOf("competency_id"), textC = h.indexOf("competency_text"),
+        areaC = h.indexOf("strand"), activeC = h.indexOf("active");
+      const seen = {};
+      for (let i = 1; i < data.length; i++) {
+        const id = String(data[i][idC] || "").trim();
+        const course = id.split("-")[0];
+        if (!id || seen[id] || !byCourse[course]) continue;
+        if (activeC !== -1 && String(data[i][activeC]).trim().toUpperCase() === "FALSE") continue;
+        seen[id] = true;
+        byCourse[course].push({ id: id, task: Number(id.split("-")[1]) || 0,
+          text: String(data[i][textC] || "").trim(), area: areaC === -1 ? "" : String(data[i][areaC] || "").trim() });
+      }
+    }
+    const totals = competencyCourseTotals_(ss, cfg);
+    const done = {};
+    competencyCompletionFor_(ratingList, totals, codes)
+      .forEach(function (c) { done[c.course] = c; });
+
+    const courses = codes.map(function (code) {
+      const areas = [];
+      const areaOf = {};
+      byCourse[code].sort(function (a, b) { return a.task - b.task; }).forEach(function (c) {
+        const list = (evidence[c.id] || []).slice().sort(function (a, b) {
+          return (b.at ? b.at.getTime() : 0) - (a.at ? a.at.getTime() : 0);
+        });
+        const best = {};
+        list.forEach(function (e) {
+          const k = e.configId || "?";
+          if (!best[k] || DASH_EVIDENCE_RANK[e.outcome] > DASH_EVIDENCE_RANK[best[k].outcome]) best[k] = e;
+        });
+        const rated = ratings[c.id];
+        const item = {
+          id: c.id, task: c.task, text: c.text,
+          rating: rated ? Number(rated.rating) : null,
+          ratedAt: rated && rated.decidedAt ? Utilities.formatDate(rated.decidedAt, tz, "MMM d, yyyy") : "",
+          evidence: list.map(function (e) {
+            return { assignment: own.assignmentOf[e.configId] || "An assignment", milestone: e.milestone,
+              outcome: DASH_EVIDENCE_WORDS[e.outcome], outcomeKey: e.outcome,
+              date: e.at ? Utilities.formatDate(e.at, tz, "MMM d") : "", counts: best[e.configId || "?"] === e };
+          }),
+        };
+        const area = c.area || "Other";
+        if (!areaOf[area]) { areaOf[area] = { name: area, items: [] }; areas.push(areaOf[area]); }
+        areaOf[area].items.push(item);
+      });
+      const d = done[code] || { done: 0, total: totals[code] || 0 };
+      return { code: code, className: own.courses[code], done: d.done, total: d.total, areas: areas };
+    });
+    return { success: true, courses: courses };
+  } catch (e) {
+    Logger.log("[S13] getMyCompetencies failed: " + e.message);
+    return { success: false, error: "Your competencies could not be loaded. Try again in a minute." };
+  }
+}
+
+// Every warm-up before today, newest first, as the card shows it (score,
+// feedback, the question and the answer), with nothing left to answer.
+const DASH_WARMUP_HISTORY_MAX = 200;
+function getMyWarmUpHistory() {
+  const email = String(Session.getActiveUser().getEmail() || "").trim();
+  if (!email) return { success: false, error: "Could not identify your Google account." };
+  try {
+    const cfg = getConfig_();
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const tz = Session.getScriptTimeZone();
+    const today = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+    const past = _dashOwnWarmUps_(ss, cfg, email, tz).list
+      .filter(function (w) { return w.lessonDate < today; })
+      .reverse().slice(0, DASH_WARMUP_HISTORY_MAX);
+    return { success: true, warmUps: past.map(function (w) { return _dashWarmUpView_(w, tz, today, null); }) };
+  } catch (e) {
+    Logger.log("[S13] getMyWarmUpHistory failed: " + e.message);
+    return { success: false, error: "Your warm-ups could not be loaded. Try again in a minute." };
+  }
+}
+
+// A Student Context doc's weeks, newest first: the twin of 07's
+// _tdContextWeeks_ (a test keeps the two the same). each "Week of <date>" Heading 2
+// (29's appendWeeklySection_) starts one; its Heading 3 sections and lines
+// follow as items. Anything before the first week is left out.
+const DASH_CONTEXT_MAX_WEEKS = 60;
+function _dashContextWeeks_(docId) {
+  const body = DocumentApp.openById(docId).getBody();
+  const weeks = [];
+  let week = null;
+  for (let i = 0; i < body.getNumChildren(); i++) {
+    const el = body.getChild(i);
+    const type = el.getType();
+    let p = null;
+    if (type === DocumentApp.ElementType.PARAGRAPH) p = el.asParagraph();
+    else if (type === DocumentApp.ElementType.LIST_ITEM) p = el.asListItem();
+    if (!p) continue;
+    const text = String(p.getText() || "").trim();
+    const heading = p.getHeading();
+    if (heading === DocumentApp.ParagraphHeading.HEADING2 && text.indexOf("Week of ") === 0) {
+      week = { label: text, items: [] };
+      weeks.push(week);
+      continue;
+    }
+    if (!week || !text) continue;
+    week.items.push({ text: text, heading: heading === DocumentApp.ParagraphHeading.HEADING3 });
+  }
+  return weeks.reverse().slice(0, DASH_CONTEXT_MAX_WEEKS);
+}
+
+// The student's Student Context doc (29, weekly) by week, newest first.
+function getMyContext() {
+  const email = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
+  if (!email) return { success: false, error: "Could not identify your Google account." };
+  try {
+    const cfg = getConfig_();
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const doc = studentContextDocFor_(ss, cfg, email);
+    if (!doc || !doc.docId) return { success: true, context: null };
+    return { success: true, context: { docUrl: doc.docUrl,
+      lastUpdatedAt: doc.lastUpdatedAt ? formatDate_(doc.lastUpdatedAt) : "", weeks: _dashContextWeeks_(doc.docId) } };
+  } catch (e) {
+    Logger.log("[S13] getMyContext failed: " + e.message);
+    return { success: false, error: "Your Student Context could not be loaded. Try again in a minute." };
+  }
+}
+
 // closesOn: "YYYY-MM-DD", the last day the student's last warm-up stays
 // open; null for any other warm-up.
 function _dashWarmUpView_(w, tz, today, closesOn) {
@@ -948,6 +1144,28 @@ function buildStudentDashboardHtml_() {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Assignments</title>
 <style>
+.dash-tabs{display:flex;gap:4px;flex-wrap:wrap;padding:10px 24px 0;border-bottom:1px solid #e8eaed;background:#fff}
+.dash-tabs button{background:none;border:none;border-bottom:3px solid transparent;padding:10px 14px;font-size:14px;cursor:pointer;color:var(--text-secondary)}
+.dash-tabs button[aria-selected="true"]{border-bottom-color:#0d652d;color:#0d652d;font-weight:600}
+.rec-course{margin:6px 0 18px}
+.rec-course h2{font-size:17px;margin:0 0 4px}
+.rec-sub{font-size:13px;color:var(--text-secondary);margin-bottom:10px}
+.rec-area{background:#fff;border:1px solid #e8eaed;border-radius:8px;margin:0 0 10px;padding:4px 12px}
+.rec-area > summary{font-weight:600;font-size:14px;padding:8px 0;cursor:pointer}
+.rec-comp{border-top:1px solid #f1f3f4;padding:6px 0}
+.rec-comp > summary{cursor:pointer;font-size:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:baseline}
+.rec-chip{font-size:12px;border-radius:10px;padding:1px 8px;background:#f1f3f4;color:#3c4043;white-space:nowrap}
+.rec-chip.done{background:#e6f4ea;color:#0d652d}
+.rec-ev{font-size:13px;margin:6px 0 6px 18px;line-height:1.5}
+.rec-ev .rec-milestone{color:var(--text-secondary)}
+.rec-empty{font-size:13px;color:var(--text-secondary)}
+.ctx-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:14px}
+.ctx-nav button{background:#fff;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:4px 10px;font-size:13px;cursor:pointer}
+.ctx-nav button[disabled]{opacity:.45;cursor:not-allowed}
+.ctx-week{background:#fff;border:1px solid #e8eaed;border-radius:8px;padding:12px 16px;font-size:14px;line-height:1.55}
+.ctx-week p{margin:0 0 6px}
+.ctx-week .ctx-h{font-weight:600;margin-top:10px}
+
 .competency-strip{display:flex;flex-wrap:wrap;gap:8px 20px;background:#fff;border:1px solid #e8eaed;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:14px}
 
   /* FIXED (Say/Do Ledger cas-ccps finding #14): #80868b (used for
@@ -1089,11 +1307,23 @@ function buildStudentDashboardHtml_() {
       <option value="ALL">Whole school year</option>
     </select>
     <button id="my-info-btn" class="refresh-btn" onclick="toggleMyInfo()" aria-expanded="false" aria-controls="my-info-panel">ℹ️ My Info</button>
-    <button id="refresh-btn" class="refresh-btn" onclick="loadData()" aria-label="Refresh assignments">↻ Refresh</button>
+    <button id="refresh-btn" class="refresh-btn" onclick="refreshAll()" aria-label="Refresh">↻ Refresh</button>
     <button id="cas-terms-btn" class="refresh-btn" onclick="casOpenTerms()" aria-haspopup="dialog">❓ What do these mean?</button>
     <div id="account-label">Loading…</div>
   </div>
 </header>
+<!-- The student's record (2026-10-27): Assignments, then three tabs each
+     loaded when first opened. Only the signed-in student's own data. -->
+<nav class="dash-tabs" role="tablist" aria-label="Your record">
+  <button type="button" role="tab" id="tab-assignments" data-tab="assignments" aria-selected="true" aria-controls="panel-assignments">📋 Assignments</button>
+  <button type="button" role="tab" id="tab-competencies" data-tab="competencies" aria-selected="false" aria-controls="panel-competencies">🎓 Competencies</button>
+  <button type="button" role="tab" id="tab-warmups" data-tab="warmups" aria-selected="false" aria-controls="panel-warmups">✏️ Warm-ups</button>
+  <button type="button" role="tab" id="tab-context" data-tab="context" aria-selected="false" aria-controls="panel-context">🗂️ My Context</button>
+</nav>
+<div id="panel-competencies" class="main" role="tabpanel" aria-labelledby="tab-competencies" style="display:none"></div>
+<div id="panel-warmups" class="main" role="tabpanel" aria-labelledby="tab-warmups" style="display:none"></div>
+<div id="panel-context" class="main" role="tabpanel" aria-labelledby="tab-context" style="display:none"></div>
+<div id="panel-assignments" role="tabpanel" aria-labelledby="tab-assignments">
 <div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading your assignments…</p></div>
 <!-- NEW (finding #7): persistent "My Info" view — what's actually on file
      for this student (name, class, period, teacher), available any time
@@ -1118,6 +1348,7 @@ function buildStudentDashboardHtml_() {
 <div id="new-registration-banner" class="main" role="status" aria-live="polite" style="display:none;padding-bottom:0"></div>
 <div id="refresh-note" class="main refresh-note" role="status" aria-live="polite" style="display:none"></div>
 <div id="main" class="main" style="display:none"></div>
+</div>
 <footer id="footer"></footer>
 <script>
 // Per-term client cache — switching the term filter back and forth used to
@@ -1367,6 +1598,129 @@ function renderCompetencies(data) {
     '</div>';
 }
 
+// ── The record tabs (2026-10-27) ─────────────────────────────────────────
+// Each tab loads once, the first time it opens; ↻ Refresh reloads the
+// assignments and the open tab. Page memory only.
+let _activeTab = "assignments";
+const _tabData = {};
+let _compOnlyEvidence = false;
+let _ctxWeekI = 0;
+const TAB_LOADERS = { competencies: "getMyCompetencies", warmups: "getMyWarmUpHistory", context: "getMyContext" };
+
+function showTab(tab) {
+  _activeTab = tab;
+  ["assignments", "competencies", "warmups", "context"].forEach(function (t) {
+    const b = document.getElementById("tab-" + t);
+    if (b) b.setAttribute("aria-selected", String(t === tab));
+    const p = document.getElementById("panel-" + t);
+    if (p) p.style.display = t === tab ? "block" : "none";
+  });
+  if (tab !== "assignments" && !_tabData[tab]) _loadTab(tab);
+}
+function _loadTab(tab) {
+  const panel = document.getElementById("panel-" + tab);
+  panel.innerHTML = '<div class="spinner"></div><p style="text-align:center;color:var(--text-secondary)">Loading…</p>';
+  google.script.run
+    .withSuccessHandler(function (d) { _tabData[tab] = d; renderTab(tab); })
+    .withFailureHandler(function (e) {
+      panel.innerHTML = '<p style="color:#b3261e;padding:16px 0">Could not load this. ' + esc((e && e.message) || "") + '</p>';
+    })[TAB_LOADERS[tab]]();
+}
+function refreshAll() {
+  Object.keys(_tabData).forEach(function (k) { delete _tabData[k]; });
+  loadData();
+  if (_activeTab !== "assignments") _loadTab(_activeTab);
+}
+function renderTab(tab) {
+  const panel = document.getElementById("panel-" + tab);
+  const d = _tabData[tab];
+  if (!d || !d.success) {
+    panel.innerHTML = '<p style="color:#b3261e;padding:16px 0">' + esc((d && d.error) || "Could not load this.") + '</p>';
+    return;
+  }
+  panel.innerHTML = tab === "competencies" ? renderCompetencyTab(d)
+    : tab === "warmups" ? renderWarmUpHistory(d) : renderContextTab(d);
+}
+
+// Every competency in each course, by duty area: the teacher's rating (in
+// words, 1 is the highest) and each piece of evidence.
+function renderCompetencyTab(d) {
+  if (!d.courses.length) return '<p class="rec-empty">No courses on file yet.</p>';
+  let h = '<p class="rec-sub">Every competency in your course. Your teacher rates each one on the state\\'s 1 to 5 scale, where 1 is the highest; ' +
+    '1 to 3 count as done. Evidence is what your checked work showed. An assignment counts once, at its best result.</p>' +
+    '<label class="rec-sub" style="display:block"><input type="checkbox" onchange="toggleCompEvidence(this.checked)"' +
+    (_compOnlyEvidence ? ' checked' : '') + '> Show only competencies with evidence or a rating</label>';
+  d.courses.forEach(function (c) {
+    h += '<section class="rec-course"><h2>' + esc(c.className || c.code) + '</h2>' +
+      '<div class="rec-sub">🎓 <strong>' + esc(String(c.done)) + '</strong>' + (c.total ? ' of ' + esc(String(c.total)) : '') + ' competencies done</div>';
+    let shown = 0;
+    c.areas.forEach(function (a) {
+      const items = a.items.filter(function (it) { return !_compOnlyEvidence || it.rating || it.evidence.length; });
+      if (!items.length) return;
+      shown += items.length;
+      const rated = a.items.filter(function (it) { return it.rating; }).length;
+      h += '<details class="rec-area"' + (_compOnlyEvidence ? ' open' : '') + '><summary>' + esc(a.name) +
+        ' <span class="rec-chip">' + esc(String(rated)) + ' of ' + esc(String(a.items.length)) + ' rated</span></summary>';
+      items.forEach(function (it) {
+        const done = it.rating && it.rating <= 3;
+        h += '<details class="rec-comp"><summary><span>' + esc(String(it.task)) + '. ' + esc(it.text) + '</span>' +
+          '<span class="rec-chip' + (done ? ' done' : '') + '">' + (it.rating ? esc(scrLabel(it.rating)) : 'Not rated yet') + '</span>' +
+          '<span class="rec-chip">' + (it.evidence.length ? esc(String(it.evidence.length)) + ' piece' + (it.evidence.length === 1 ? '' : 's') + ' of evidence' : 'No evidence yet') + '</span></summary>';
+        if (it.rating && it.ratedAt) h += '<div class="rec-ev">Rated ' + esc(it.ratedAt) + '.</div>';
+        h += it.evidence.length ? it.evidence.map(function (e) {
+          return '<div class="rec-ev">' + (e.date ? esc(e.date) + ' · ' : '') + esc(e.assignment) + ': <strong>' + esc(e.outcome) + '</strong>' +
+            (e.counts ? ' (counts)' : ' (an earlier check; your best one counts)') +
+            (e.milestone ? '<br><span class="rec-milestone">' + esc(e.milestone) + '</span>' : '') + '</div>';
+        }).join("") : '<div class="rec-ev rec-empty">No evidence yet.</div>';
+        h += '</details>';
+      });
+      h += '</details>';
+    });
+    if (!shown) h += '<p class="rec-empty">No evidence or ratings yet.</p>';
+    h += '</section>';
+  });
+  return h;
+}
+function toggleCompEvidence(on) {
+  _compOnlyEvidence = !!on;
+  renderTab("competencies");
+}
+
+// Every past warm-up, newest first, as the card shows it.
+function renderWarmUpHistory(d) {
+  if (!d.warmUps.length) return '<p class="rec-empty">No past warm-ups yet.</p>';
+  return '<p class="rec-sub">Your warm-ups before today, newest first. Today\\'s, and the last one while it is still open, are on the Assignments tab.</p>' +
+    '<div class="card warmup-card">' + d.warmUps.map(function (w) { return _wuPrevious(w, "Warm-up"); }).join("") + '</div>';
+}
+
+// The Student Context doc one week at a time, with its link on every week.
+function renderContextTab(d) {
+  const c = d.context;
+  if (!c) return '<p class="rec-empty">No Student Context yet. It is made the first week you have a checked assignment or a warm-up answer, and updated each week.</p>';
+  const url = safeDocUrl(c.docUrl);
+  const link = url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">Open the doc ↗</a>' : '';
+  const weeks = c.weeks || [];
+  if (!weeks.length) return '<p class="rec-empty">Your doc has no weeks yet. ' + link + '</p>';
+  if (_ctxWeekI > weeks.length - 1) _ctxWeekI = weeks.length - 1;
+  const w = weeks[_ctxWeekI];
+  return '<p class="rec-sub">What the system has gathered about your work, updated weekly' + (c.lastUpdatedAt ? ' (last ' + esc(c.lastUpdatedAt) + ')' : '') + '.</p>' +
+    '<div class="ctx-nav"><button type="button" onclick="stepMyContext(1)"' + (_ctxWeekI >= weeks.length - 1 ? ' disabled' : '') + ' aria-label="Older week">‹ Older</button>' +
+    '<strong>' + esc(w.label) + '</strong> <span style="color:var(--text-secondary)">(' + esc(String(_ctxWeekI + 1)) + ' of ' + esc(String(weeks.length)) + ')</span>' +
+    '<button type="button" onclick="stepMyContext(-1)"' + (_ctxWeekI === 0 ? ' disabled' : '') + ' aria-label="Newer week">Newer ›</button>' +
+    '<span style="margin-left:auto">' + link + '</span></div>' +
+    '<div class="ctx-week">' + (w.items.length ? w.items.map(function (it) {
+      return '<p' + (it.heading ? ' class="ctx-h"' : '') + '>' + esc(it.text) + '</p>';
+    }).join("") : '<p class="rec-empty">Nothing recorded this week.</p>') + '</div>';
+}
+function stepMyContext(delta) {
+  _ctxWeekI = Math.max(0, _ctxWeekI + delta);
+  renderTab("context");
+}
+document.addEventListener("click", function (ev) {
+  const b = ev.target && ev.target.closest ? ev.target.closest("[data-tab]") : null;
+  if (b) showTab(b.getAttribute("data-tab"));
+});
+
 function renderWarmUps(data) {
   const wu = data.warmUps || {};
   if (!wu.current && !wu.previous) return "";
@@ -1410,8 +1764,8 @@ function _wuAnswer(w) {
   return h;
 }
 
-function _wuPrevious(w) {
-  let h = '<div class="wu-section">' + _wuHead("Last warm-up", w);
+function _wuPrevious(w, label) {
+  let h = '<div class="wu-section">' + _wuHead(label || "Last warm-up", w);
   if (w.canAnswer) {
     // Missed on its day: answer it late, scored without feedback.
     h += '<div class="wu-prompt">' + esc(w.warmup) + '</div>' +
@@ -1439,6 +1793,7 @@ function _wuPrevious(w) {
   if (w.feedback) h += '<div class="wu-feedback">' + esc(w.feedback) + '</div>';
   if (!w.textBox) h += _wuOpenLink(w);
   const ec = w.extraCredit || {};
+  if (label && ec.reply) h += '<div class="wu-answer"><b>Your reply</b><br>' + esc(ec.reply) + '</div>';
   if (ec.credited) {
     h += '<div class="wu-ec done">✓ Extra credit earned</div>';
   } else if (ec.open && ec.canReply) {

@@ -1057,7 +1057,9 @@ function _tdStudentCourses_(ss, cfg) {
   return out;
 }
 
-// A context doc's weeks, newest first: each "Week of <date>" Heading 2
+// A Student Context doc's weeks, newest first. 13's _dashContextWeeks_ is
+// its twin for the Student Dashboard (00 can't hold it: every project loads
+// 00, and not all of them may open Docs); a test keeps the two the same. each "Week of <date>" Heading 2
 // (29's appendWeeklySection_) starts one; its Heading 3 sections and lines
 // follow as items. Anything before the first week is left out.
 const TD_CONTEXT_MAX_WEEKS = 60;
