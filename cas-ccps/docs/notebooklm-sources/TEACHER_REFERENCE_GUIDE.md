@@ -44,6 +44,14 @@ Open a student's document from their row. Each document is shared with that stud
 
 Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** to see the latest: it doesn't update by itself.
 
+**Course, Period, Student (the filters).** Above the lesson picker. Pick a course, then a period, then a student; each list shows only what the one before it allows, and changing a course or period starts the narrower ones over. The lesson picker, the summary cards, the list and the warm-up readiness numbers all follow the filters. **Clear filters** shows everyone. They start over each time you open the dashboard.
+
+**One student's page.** Pick a student in the Student filter, or click a student's name in the list. A panel opens above their assignments (all of them, not just the current lesson) with:
+
+- **🎓 Competencies done** for each of your courses they take: the competencies you've rated 1 to 3, out of every competency in the course (for example “8175: 12 of 113 competencies done”). See Grading and Competency Ratings.
+- **This week's parent report**, with Copy subject and Copy report, the same as in ✉ Parent Reports.
+- **Student Context**, one week at a time: **‹ Older** and **Newer ›** move between weeks, and **Open the doc ↗** is on every week.
+
 **Showing (the lesson picker).** It opens on the **current lesson** for each course: the lesson whose start date in 📅 Lessons is the latest on or before today. Pick another lesson, or **All assignments** at the bottom.
 
 **Summary cards.** Students, ✅ Passed, ↩️ Passed before, now revising, ✏️ Checked, not passing yet, ⚪ Not checked yet, and Needs attention. Click a card to show only those students; **Clear filter** shows everyone again. In All assignments the first card counts assignments, since a student has one row per assignment.
@@ -56,11 +64,11 @@ Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** t
 
 | Button | What it does |
 | --- | --- |
-| + New Lesson | Opens “Log a lesson”: the day's objective, activity, vocabulary and the competencies taught, for one or more periods. Shown only when warm-ups (Module 2) are on. Not the same as 📅 Lessons' “+ New lesson” |
-| Student Context | One document per student that gathers their lessons, checks and warm-ups, updated weekly. “← Back to dashboard” returns to the roster |
-| ✉ Parent Reports | This week's report for each student, to copy into an email you send yourself. See Parent Reports |
+| + Log today's lesson | Opens “Log a lesson”: the day's objective, activity, vocabulary and the competencies taught, for one or more periods. Shown only when warm-ups (Module 2) are on. Not the same as 📅 Lessons' “+ New lesson” |
+| Student Context | One document per student that gathers their lessons, checks and warm-ups, updated weekly. Course and Student pickers narrow the list; each student shows their competencies done, **By week →** opens their page, and “← Back to dashboard” returns to the roster |
+| ✉ Parent Reports | This week's report for each student, to copy into an email you send yourself. Course and Student pickers show one course or one student. See Parent Reports |
 | 🎓 Competency ratings | Confirm or set each student's SCR rating. See Grading and Competency Ratings |
-| 💬 Feedback | Where feedback goes, per course. See Where Feedback Goes |
+| ⚙ Settings | Each feature on or off per course, and the marking period dates. See Settings |
 | 📅 Lessons | Start dates, rollout status, and lesson edits. See Lessons and Start Dates |
 | ❓ Terms | What each word and number on the dashboard means. Escape closes it |
 | ↻ Refresh | Loads the latest |
@@ -116,13 +124,21 @@ Nothing to do. You don't register students one at a time. The nightly rollout (a
 
 > **A student is missing?** Check they're in the Canvas section. A late joiner only appears once a fresh Canvas roster export is in place; an old export shows as a ⚠ line in 📅 Lessons' Last rollout column. Tell your admin.
 
-💬
+⚙️
 
-## Where Feedback Goes
+## Settings
 
-Open **💬 Feedback** and choose, per course, *as a comment* on the document or *in the document*. The **Now:** line shows the live setting. Today it's “as a comment, for every course”.
+**⚙ Settings** turns each feature on or off for each course, and sets the marking period dates. Each feature says what on and off do. Click a course's box and the panel asks first (“Turn Nightly lesson rollout on for 8175? …”); nothing changes until you press **Turn on** or **Turn off**. A change shows on your dashboard at once and reaches students and the overnight jobs within about 10 minutes. Every change is kept in the **SettingsLog** tab, and the panel lists the recent ones.
 
-A comment keeps the document to the assignment and the student's work, and new documents are made without a feedback section. A change reaches students within about 10 minutes.
+| Feature | On | Off |
+| --- | --- | --- |
+| Feedback as a comment | A checked submission's feedback goes on the student's document as a comment; new documents are made without a feedback section | Feedback goes into the document's feedback section |
+| Warm-ups on the Student Dashboard | Students answer warm-ups in a text box on their dashboard | Each warm-up is a Google Doc |
+| Nightly lesson rollout | Each night it makes the next lesson's documents and shares them the night before the lesson starts | It only records what it would do (📅 Lessons shows each run) |
+| Reflection on Submit | Submit for Feedback asks one or two short questions about how the student worked; the answers go with the work | Submit sends the work straight away |
+| Warm-up style lock (research) | Keeps the warm-up style the system is confident works for a student; its email goes out only when every course is on | The style is chosen fresh each time |
+
+**Marking periods.** The last day of each marking period, as dates. The term on both dashboards and in the reports changes the day after. Until you change one, they're the district calendar's. Press **Save dates**.
 
 **What a feedback comment says.** “Feedback, <date and time>”, then “Result: ✅ Passed. Your work meets the standard.” or “Result: ✏️ Revise, then submit again.”, then the report (overall assessment, each milestone MET / PARTIALLY MET / NOT MET, required revisions) and what to do next.
 
@@ -146,7 +162,7 @@ Log the lessons you teach. That's what lets warm-ups fit each student over time.
 
 KOS writes a weekly report for each student on your roster. It never sends one: you copy it and email it to the family from your own school account.
 
-1. Press **✉ Parent Reports**. Each student has a Subject line and a Report.
+1. Press **✉ Parent Reports**. Each student has a Subject line and a Report. Use the Course and Student pickers to show one course or one student; one student's page on the dashboard has their report too.
 2. Press **Copy subject** and paste it into a new email, then **Copy report** and paste it into the body. If the copy is refused, the text is selected for you: press Ctrl+C (⌘C on a Mac).
 3. Address and send the email yourself. Read it first; you can edit it in your email before you send.
 
@@ -189,13 +205,15 @@ Copying a report records the time and your account, so the panel shows “Copied
 
 > **The two scales run in opposite directions.** On a competency rating, 1 is the highest. On the AI's suggested score, 4 is the highest. Changing a suggested rating from 2 to 4 lowers it.
 
+**Competencies done.** For each course, a student's competencies you have rated 1 to 3 (limited supervision or better), out of every competency in the course: 113 for 8175, 108 for 8177. Only your confirmed ratings count, not the AI's suggestions, and a later rating replaces an earlier one. It shows on the student's page and in Student Context; students see their own on their dashboard, counting every teacher's ratings.
+
 **How the AI suggests a rating** (updated weekly). Every check records evidence for the competencies its milestones cover. One assignment counts once, at its best result, so drafts don't count against a student. With 3 or more assignments, it averages the 3 best (Met = 2, Partially met = 3, Not met = 4) and rounds. With fewer than 3, there's no suggestion yet. It only ever suggests 2, 3 or 4: 1 and 5 are yours alone.
 
 📅
 
 ## Marking Periods and the School Year
 
-Use the year menu in the header. It starts on **Whole school year**. Pick a marking period, such as “Marking period 1, 2026–27”, to see only that part. A student's work belongs to the marking period it was made in.
+Use the year menu in the header. It starts on **Whole school year**. Pick a marking period, such as “Marking period 1, 2026–27”, to see only that part. A student's work belongs to the marking period it was made in. The dates each marking period ends are in ⚙ Settings.
 
 > **Archiving is your admin's job.** At the end of a school year, the admin archives it. Archived work no longer shows on the dashboard. It's kept, not deleted, and the admin can bring a year back.
 
@@ -210,7 +228,8 @@ Use the year menu in the header. It starts on **Whole school year**. Pick a mark
 | Lesson start dates | ✅ Yes | 📅 Lessons → Starts. Saves when you press Enter or leave the box |
 | A lesson's text, task and competencies | ✅ Through a draft | 📅 Lessons → Edit. The draft is reviewed before students see it |
 | A new lesson | ✅ Through a draft | 📅 Lessons → + New lesson |
-| Where feedback goes | ✅ Yes | 💬 Feedback, per course |
+| Features (feedback as a comment, warm-ups, the rollout, the reflection) | ✅ Yes | ⚙ Settings, per course |
+| Marking period dates | ✅ Yes | ⚙ Settings → Marking periods |
 | Student details (name, class, period) | ❌ Ask your admin | They come from the Canvas roster |
 | A student's document | 💬 Comment only | The student edits; you can comment |
 | Grades | ✅ In Canvas | The suggested score is a reference; the grade is yours |
@@ -223,6 +242,7 @@ Use the year menu in the header. It starts on **Whole school year**. Pick a mark
 
 The same list as **❓ Terms** on your dashboard.
 
+- **Competencies done**: For each course, the competencies you have rated 1 to 3 (limited supervision or better) in Competency ratings, out of every competency in the course (the CompetencyRegistry tab). Only your own confirmed ratings count.
 - **Check**: One AI evaluation of a submission against the assignment’s criteria (Flow 2). A student can be checked many times.
 - **Passed / Not passing yet**: Whether the latest check met the assignment’s criteria. “Passed before” means an earlier check passed and the latest needs revision.
 - **Waiting to be checked**: Submitted and in line for its check.
@@ -236,7 +256,8 @@ The same list as **❓ Terms** on your dashboard.
 - **Student Context**: One document per student that gathers their lessons, checks and warm-ups, updated weekly.
 - **Current lesson**: The lesson whose start date in 📅 Lessons is the latest on or before today, per course.
 - **Rollout**: The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead).
-- **Feedback as a comment**: Where a student’s feedback goes: a comment on the document, or written into it. Set per course in 💬 Feedback.
+- **Feedback as a comment**: Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings.
+- **⚙ Settings**: Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab.
 - **3-Odd / 3-Even**: The two halves of period 3, which meet on alternate (odd or even) calendar dates.
 - **Marking period**: A term code like 2627_MP1 is marking period 1 of 2026–27.
 
