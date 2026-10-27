@@ -1,6 +1,6 @@
 # Sprint: the Teacher Dashboard's filters, one student's page, and Settings
 
-**Status:** decided with the operator on 2026-10-27. Runs the rest of the
+**Status:** decided with the operator on 2026-10-27; **all four PRs merged the same day** (#297 filters, #298 the student's page and competencies done, #299 ⚙ Settings, #300 docs). Runs the rest of the
 week of Oct 26 and the week of Nov 2, inside `PLAN_2026-10.md`'s
 "tighten the student and teacher dashboards" window. Grades are due Oct 30,
 so the first PR is the small one. No student names, emails, file IDs or

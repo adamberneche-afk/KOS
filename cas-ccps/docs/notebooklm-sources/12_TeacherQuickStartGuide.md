@@ -34,7 +34,7 @@ Need to change what a lesson says, or add one? Use **Edit** or **+ New lesson** 
 
 1. **Write in their document**: Under the grey “── YOUR RESPONSE BEGINS HERE ──” line. The page header has a “Your dashboard” link.
 2. **Press Submit for Feedback on the Student Dashboard**: At least 25 words. The check takes a few minutes.
-3. **Read the feedback comment**: Feedback is a comment on the document (Comments, top right), not text in it. You choose this per course in 💬 Feedback.
+3. **Read the feedback comment**: Feedback is a comment on the document (Comments, top right), not text in it. You choose this per course in ⚙ Settings.
 4. **Turn in on Canvas**: They paste the document's link: Start Assignment → Website URL. Passing a check first is a good idea, not a rule. You grade in Canvas.
 
 > 📄 Hand students the **Student Quick Start** (STUDENT_QUICK_START.html). It uses the same words as their dashboard.
@@ -53,8 +53,9 @@ Need to change what a lesson says, or add one? Use **Edit** or **+ New lesson** 
 | Set when a lesson starts | 📅 Lessons → Starts |
 | Change or add a lesson | 📅 Lessons → Edit, or + New lesson. A draft is reviewed before it goes live |
 | Add students | Nothing to do: the nightly rollout enrolls them from Canvas |
-| Choose where feedback goes | 💬 Feedback: a comment on the document, or written into it, per course |
+| Turn a feature on or off (where feedback goes, warm-ups, the nightly rollout, the reflection) | ⚙ Settings: a switch per course; it asks before it changes anything |
 | Rate competencies | 🎓 Competency ratings: confirm the suggestion, or enter 1–5 (1 is the highest) |
+| Look at one student | The Course, Period and Student filters, or click their name: their assignments, competencies done, this week's parent report and their Student Context by week |
 | See each student's history | Student Context: one document per student, updated weekly |
 | Grade | Canvas (SpeedGrader). Students submit their document's link there |
 | Send parent reports | ✉ Parent Reports: copy a student's report and paste it into an email you send from your own account. KOS never sends it |
@@ -65,7 +66,7 @@ Need to change what a lesson says, or add one? Use **Edit** or **+ New lesson** 
 - Bookmarked the Teacher Dashboard
 - Opened 📅 Lessons and checked every lesson this week has a start date
 - Checked the Last rollout column has no ⚠ lines
-- Checked 💬 Feedback shows the setting you want for each course
+- Checked ⚙ Settings shows each feature the way you want it for each course
 - Gave students the Student Quick Start
 - Opened one student's document from the dashboard and found the feedback comment
 - Opened 🎓 Competency ratings once
@@ -76,6 +77,7 @@ Need to change what a lesson says, or add one? Use **Edit** or **+ New lesson** 
 
 The same list as **❓ Terms** on your dashboard.
 
+- **Competencies done**: For each course, the competencies you have rated 1 to 3 (limited supervision or better) in Competency ratings, out of every competency in the course (the CompetencyRegistry tab). Only your own confirmed ratings count.
 - **Check**: One AI evaluation of a submission against the assignment’s criteria (Flow 2). A student can be checked many times.
 - **Passed / Not passing yet**: Whether the latest check met the assignment’s criteria. “Passed before” means an earlier check passed and the latest needs revision.
 - **Waiting to be checked**: Submitted and in line for its check.
@@ -89,6 +91,7 @@ The same list as **❓ Terms** on your dashboard.
 - **Student Context**: One document per student that gathers their lessons, checks and warm-ups, updated weekly.
 - **Current lesson**: The lesson whose start date in 📅 Lessons is the latest on or before today, per course.
 - **Rollout**: The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead).
-- **Feedback as a comment**: Where a student’s feedback goes: a comment on the document, or written into it. Set per course in 💬 Feedback.
+- **Feedback as a comment**: Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings.
+- **⚙ Settings**: Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab.
 - **3-Odd / 3-Even**: The two halves of period 3, which meet on alternate (odd or even) calendar dates.
 - **Marking period**: A term code like 2627_MP1 is marking period 1 of 2026–27.

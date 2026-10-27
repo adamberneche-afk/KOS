@@ -165,7 +165,7 @@ code{font-family:monospace;font-size:12.5px;background:#f0f0ea;border:1px solid 
       <div class="step-n">3</div>
       <div class="step-body">
         <strong>Read the feedback comment</strong>
-        <p>Feedback is a comment on the document (Comments, top right), not text in it. You choose this per course in 💬 Feedback.</p>
+        <p>Feedback is a comment on the document (Comments, top right), not text in it. You choose this per course in ⚙ Settings.</p>
       </div>
     </div>
     <div class="step">
@@ -227,8 +227,9 @@ code{font-family:monospace;font-size:12.5px;background:#f0f0ea;border:1px solid 
       <tr><td>Set when a lesson starts</td><td>📅 Lessons → Starts</td></tr>
       <tr><td>Change or add a lesson</td><td>📅 Lessons → Edit, or + New lesson. A draft is reviewed before it goes live</td></tr>
       <tr><td>Add students</td><td>Nothing to do: the nightly rollout enrolls them from Canvas</td></tr>
-      <tr><td>Choose where feedback goes</td><td>💬 Feedback: a comment on the document, or written into it, per course</td></tr>
+      <tr><td>Turn a feature on or off (where feedback goes, warm-ups, the nightly rollout, the reflection)</td><td>⚙ Settings: a switch per course; it asks before it changes anything</td></tr>
       <tr><td>Rate competencies</td><td>🎓 Competency ratings: confirm the suggestion, or enter 1–5 (1 is the highest)</td></tr>
+      <tr><td>Look at one student</td><td>The Course, Period and Student filters, or click their name: their assignments, competencies done, this week's parent report and their Student Context by week</td></tr>
       <tr><td>See each student's history</td><td>Student Context: one document per student, updated weekly</td></tr>
       <tr><td>Grade</td><td>Canvas (SpeedGrader). Students submit their document's link there</td></tr>
       <tr><td>Send parent reports</td><td>✉ Parent Reports: copy a student's report and paste it into an email you send from your own account. KOS never sends it</td></tr>
@@ -247,7 +248,7 @@ code{font-family:monospace;font-size:12.5px;background:#f0f0ea;border:1px solid 
     <li><label><input type="checkbox"> Bookmarked the Teacher Dashboard</label></li>
     <li><label><input type="checkbox"> Opened 📅 Lessons and checked every lesson this week has a start date</label></li>
     <li><label><input type="checkbox"> Checked the Last rollout column has no ⚠ lines</label></li>
-    <li><label><input type="checkbox"> Checked 💬 Feedback shows the setting you want for each course</label></li>
+    <li><label><input type="checkbox"> Checked ⚙ Settings shows each feature the way you want it for each course</label></li>
     <li><label><input type="checkbox"> Gave students the Student Quick Start</label></li>
     <li><label><input type="checkbox"> Opened one student's document from the dashboard and found the feedback comment</label></li>
     <li><label><input type="checkbox"> Opened 🎓 Competency ratings once</label></li>
@@ -267,6 +268,7 @@ code{font-family:monospace;font-size:12.5px;background:#f0f0ea;border:1px solid 
   <p style="color:var(--mid);margin-bottom:16px">The same list as <strong>❓ Terms</strong> on your dashboard.</p>
   <!-- Same words and meanings as CAS_TEACHER_TERMS in scripts/00_SharedConfig.js -->
   <dl class="terms">
+    <div><dt>Competencies done</dt><dd>For each course, the competencies you have rated 1 to 3 (limited supervision or better) in Competency ratings, out of every competency in the course (the CompetencyRegistry tab). Only your own confirmed ratings count.</dd></div>
     <div><dt>Check</dt><dd>One AI evaluation of a submission against the assignment’s criteria (Flow 2). A student can be checked many times.</dd></div>
     <div><dt>Passed / Not passing yet</dt><dd>Whether the latest check met the assignment’s criteria. “Passed before” means an earlier check passed and the latest needs revision.</dd></div>
     <div><dt>Waiting to be checked</dt><dd>Submitted and in line for its check.</dd></div>
@@ -280,7 +282,8 @@ code{font-family:monospace;font-size:12.5px;background:#f0f0ea;border:1px solid 
     <div><dt>Student Context</dt><dd>One document per student that gathers their lessons, checks and warm-ups, updated weekly.</dd></div>
     <div><dt>Current lesson</dt><dd>The lesson whose start date in 📅 Lessons is the latest on or before today, per course.</dd></div>
     <div><dt>Rollout</dt><dd>The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead).</dd></div>
-    <div><dt>Feedback as a comment</dt><dd>Where a student’s feedback goes: a comment on the document, or written into it. Set per course in 💬 Feedback.</dd></div>
+    <div><dt>Feedback as a comment</dt><dd>Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings.</dd></div>
+    <div><dt>⚙ Settings</dt><dd>Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab.</dd></div>
     <div><dt>3-Odd / 3-Even</dt><dd>The two halves of period 3, which meet on alternate (odd or even) calendar dates.</dd></div>
     <div><dt>Marking period</dt><dd>A term code like 2627_MP1 is marking period 1 of 2026–27.</dd></div>
   </dl>
