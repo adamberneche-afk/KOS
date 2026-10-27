@@ -241,10 +241,11 @@ test('resolveStudentStatus_: an evaluated assignment points to Comments only whe
     'Feedback is ready: check your document');
 });
 
-// The Teacher Dashboard's per-course control (07) writes the one shared row.
+// The Teacher Dashboard's ⚙ Settings (07, 2026-10-27; was 💬 Feedback)
+// writes one shared row per setting.
 function loadTeacher(viewer) {
   const loaded = loadGasFiles([S('00_SharedConfig.js'), S('07_TeacherDashboard.js')],
-    ['getFeedbackPlacement', 'setFeedbackPlacement'],
+    ['getSettings', 'setSettingForCourse', 'setMarkingPeriodEnds', 'pivotFlagFor_', 'feedbackAsCommentFor_'],
     { Session: { getActiveUser: () => ({ getEmail: () => viewer }), getScriptTimeZone: () => 'America/New_York' } });
   const { sandbox } = loaded;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -259,45 +260,104 @@ function loadTeacher(viewer) {
   [['VDOE-AAAAAA-2026', 'Sports and Entertainment Marketing'], ['VDOE-BBBBBB-2026', 'Entrepreneurship 8177'],
     ['VDOE-CCCCCC-2026', 'Sports and Entertainment Marketing'], ['VDOE-DDDDDD-2026', '']]
     .forEach(([id, name]) => ledger.appendRow(ledgerRow(id, name)));
-  const config = () => {
+  const config = (key) => {
     const tab = ss.getSheetByName('_CONFIG');
-    return tab ? tab.getDataRange().getValues().filter((r) => r[0] === 'FEEDBACK_AS_COMMENT').map((r) => r[1]) : [];
+    return tab ? tab.getDataRange().getValues().filter((r) => r[0] === (key || 'FEEDBACK_AS_COMMENT')).map((r) => r[1]) : [];
   };
   return Object.assign({ ss, config }, loaded);
 }
+const setting = (res, key) => res.settings.find((s) => s.key === key);
 
-test('Teacher Dashboard feedback control: per course, written as one _CONFIG row', () => {
+test('⚙ Settings: each feature per course, written as one _CONFIG row, "all" when every course is on', () => {
   const { exported, config } = loadTeacher('Teacher@ccpsnet.net');
-  let res = exported.getFeedbackPlacement();
-  assert.deepEqual(res.courses.map((c) => [c.code, c.asComment]), [['8175', false], ['8177', false]]);
-  assert.equal(res.value, 'off', 'the live setting is sent for the panel to show');
+  let res = exported.getSettings();
+  assert.deepEqual(res.courses, ['8175', '8177']);
+  assert.deepEqual(res.settings.map((s) => s.key), ['FEEDBACK_AS_COMMENT', 'WARMUP_TEXT_BOX', 'ROLLOUT_AUTO_APPLY',
+    'REFLECTION_ON_SUBMIT', 'PIVOT_ARCHETYPE_LOCK']);
+  assert.deepEqual(setting(res, 'FEEDBACK_AS_COMMENT').courses.map((c) => [c.code, c.on]), [['8175', false], ['8177', false]]);
+  assert.equal(setting(res, 'FEEDBACK_AS_COMMENT').value, 'off', 'the live value is sent for the panel');
 
-  res = exported.setFeedbackPlacement('8175', true);
+  res = exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', true);
   assert.deepEqual(config(), ['8175']);
-  assert.deepEqual(res.courses.map((c) => c.asComment), [true, false], 'read back at once in this project');
-
-  assert.equal(res.value, '8175');
-  exported.setFeedbackPlacement('8177', true);
+  assert.deepEqual(setting(res, 'FEEDBACK_AS_COMMENT').courses.map((c) => c.on), [true, false], 'read back at once here');
+  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8177', true);
   assert.deepEqual(config(), ['all'], 'still one row');
-  exported.setFeedbackPlacement('8175', false);
+  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', false);
   assert.deepEqual(config(), ['8177']);
-  exported.setFeedbackPlacement('8177', false);
+  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8177', false);
   assert.deepEqual(config(), ['off']);
+
+  exported.setSettingForCourse('ROLLOUT_AUTO_APPLY', '8177', true);
+  assert.deepEqual(config('ROLLOUT_AUTO_APPLY'), ['8177']);
+  assert.equal(exported.pivotFlagFor_('ROLLOUT_AUTO_APPLY', '8177'), true);
+  assert.equal(exported.pivotFlagFor_('ROLLOUT_AUTO_APPLY', '8175'), false);
 });
 
-test('Teacher Dashboard feedback control: only the authorized teacher, and only a known course', () => {
+test('⚙ Settings: a listed course with no assignments yet is kept, and a list turns on each course in it', () => {
+  const { exported, config, sandbox, ss } = loadTeacher('teacher@ccpsnet.net');
+  const tab = ss.insertSheet('_CONFIG');
+  tab.appendRow(['Key', 'Value']);
+  tab.appendRow(['REFLECTION_ON_SUBMIT', '8179']);
+  exported.setSettingForCourse('REFLECTION_ON_SUBMIT', '8175', true);
+  assert.deepEqual(config('REFLECTION_ON_SUBMIT'), ['8175,8179']);
+  assert.equal(exported.pivotFlagFor_('REFLECTION_ON_SUBMIT', '8175'), true);
+  assert.equal(exported.pivotFlagFor_('REFLECTION_ON_SUBMIT', '8179'), true);
+  assert.equal(exported.pivotFlagFor_('REFLECTION_ON_SUBMIT', '8177'), false);
+  assert.equal(exported.pivotFlagFor_('REFLECTION_ON_SUBMIT', null), false, 'a course-wide action needs "all"');
+  exported.setSettingForCourse('REFLECTION_ON_SUBMIT', '8177', true);
+  assert.deepEqual(config('REFLECTION_ON_SUBMIT'), ['8175,8177,8179'], 'not "all": 8179 is listed but not known');
+  sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', '8175,8177');
+  assert.equal(exported.feedbackAsCommentFor_('CAS-8177-L01', ''), true, 'feedback placement reads a list too');
+});
+
+test('⚙ Settings: each change is a SettingsLog row, and an unchanged value writes none', () => {
+  const { exported, ss } = loadTeacher('teacher@ccpsnet.net');
+  exported.setSettingForCourse('WARMUP_TEXT_BOX', '8175', true);
+  exported.setSettingForCourse('WARMUP_TEXT_BOX', '8175', true);
+  const res = exported.setSettingForCourse('WARMUP_TEXT_BOX', '8175', false);
+  const rows = ss.getSheetByName('SettingsLog').getDataRange().getValues();
+  assert.deepEqual(rows[0], ['Timestamp', 'ChangedBy', 'Setting', 'From', 'To']);
+  assert.deepEqual(rows.slice(1).map((r) => r.slice(1)), [
+    ['teacher@ccpsnet.net', 'WARMUP_TEXT_BOX', 'off', '8175'],
+    ['teacher@ccpsnet.net', 'WARMUP_TEXT_BOX', '8175', 'off'],
+  ]);
+  assert.deepEqual(res.log.map((l) => [l.key, l.from, l.to]), [['WARMUP_TEXT_BOX', '8175', 'off'], ['WARMUP_TEXT_BOX', 'off', '8175']],
+    'newest first for the panel');
+});
+
+test('⚙ Settings: the marking period dates, the district calendar until changed, a broken date refused', () => {
+  const { exported, config } = loadTeacher('teacher@ccpsnet.net');
+  let mp = exported.getSettings().markingPeriods;
+  assert.equal(mp.isDefault, true);
+  assert.deepEqual(mp.ends.map((e) => e.term), ['2627_MP1', '2627_MP2', '2627_MP3', '2627_MP4']);
+  const ends = mp.ends.map((e) => ({ term: e.term, end: e.end }));
+  ends[0].end = '2026-11-02';
+  const res = exported.setMarkingPeriodEnds(ends);
+  assert.equal(res.success, true);
+  assert.equal(res.markingPeriods.isDefault, false);
+  assert.match(config('MARKING_PERIOD_ENDS')[0], /^2627_MP1=2026-11-02,2627_MP2=2027-01-22,/);
+  ends[1].end = '2027-1-2';
+  assert.match(exported.setMarkingPeriodEnds(ends).error, /whole date/);
+  ends[1].end = '2026-11-02';
+  assert.match(exported.setMarkingPeriodEnds(ends).error, /same day/);
+});
+
+test('⚙ Settings: only the authorized teacher, and only a known setting and course', () => {
   const other = loadTeacher('student@ccpsnet.net');
-  assert.equal(other.exported.setFeedbackPlacement('8175', true).success, false);
-  assert.equal(other.exported.getFeedbackPlacement().success, false);
+  assert.equal(other.exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', true).success, false);
+  assert.equal(other.exported.getSettings().success, false);
+  assert.equal(other.exported.setMarkingPeriodEnds([]).success, false);
   assert.deepEqual(other.config(), []);
   const teacher = loadTeacher('teacher@ccpsnet.net');
-  assert.match(teacher.exported.setFeedbackPlacement('9999', true).error, /Unknown course/);
+  assert.match(teacher.exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '9999', true).error, /Unknown course/);
+  assert.match(teacher.exported.setSettingForCourse('M2_ENABLED', '8175', true).error, /Unknown setting/);
 });
 
-test('Teacher Dashboard feedback control: says when a Script Property overrides the tab here', () => {
+test('⚙ Settings: says when a Script Property overrides the tab here', () => {
   const { exported, sandbox } = loadTeacher('teacher@ccpsnet.net');
   sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', 'all');
-  assert.equal(exported.getFeedbackPlacement().overriddenHere, true);
+  assert.equal(setting(exported.getSettings(), 'FEEDBACK_AS_COMMENT').overriddenHere, true);
+  assert.equal(setting(exported.getSettings(), 'WARMUP_TEXT_BOX').overriddenHere, false);
 });
 
 // UX audit fix-first 3 (2026-10-22): the doc no longer ends on the 1pt white

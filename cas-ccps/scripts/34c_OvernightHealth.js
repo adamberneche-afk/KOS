@@ -165,10 +165,11 @@ function overnightHealth_(now, tz) {
 // The read-only setup checks, which were editor-only: the Ledger's column
 // order (38), the FlowPrompts tab against the code (40), the last 24 hours'
 // Flow 3/4/5 returns written to the right columns (41), and each retention
-// record's date column (57). They read whole tabs, so they run at most every
-// ON_SETUP_CHECK_MS and the lines are kept in ON_SETUP_STATE_KEY in between.
-// All four files are in the Central Ledger project. Counts and header names
-// only.
+// record's date column (57), and any ⚙ Settings key (00's
+// DASHBOARD_SETTING_KEYS) set as a Script Property here. They read whole
+// tabs, so they run at most every ON_SETUP_CHECK_MS and the lines are kept
+// in ON_SETUP_STATE_KEY in between. All these files are in the Central
+// Ledger project. Counts, header names and setting names only.
 function _onSetupChecks_(props, ss, now) {
   let saved = null;
   try { saved = JSON.parse(props.getProperty(ON_SETUP_STATE_KEY) || "null"); } catch (e) { saved = null; }
@@ -210,6 +211,15 @@ function _onSetupChecks_(props, ss, now) {
     if (missing.length) {
       problems.push("Retention records with no date column, so none of their rows are checked: " +
         missing.map(function (r) { return r.label + " (\"" + r.missingDateColumn + "\")"; }).join(", "));
+    }
+  });
+
+  run("Settings", function () {
+    const all = props.getProperties();
+    const here = DASHBOARD_SETTING_KEYS.filter(function (k) { return String(all[k] || "").trim() !== ""; });
+    if (here.length) {
+      problems.push("Settings set as Script Properties in the Central Ledger, which override the Teacher " +
+        "Dashboard's ⚙ Settings here: " + here.join(", ") + ". Set each in ⚙ Settings, then delete the property");
     }
   });
 
