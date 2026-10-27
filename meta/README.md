@@ -32,6 +32,11 @@ why this repo exists at all.
   Phases 1 and 2 are built (#245, #246): the dashboard's lesson editor
   (`65_LessonDrafts.js`) and the import tool
   (`tools/cas-ccps/import-lesson-drafts.js`).
+- **`SPRINT_DASHBOARD_2026-11.md`** — the sprint decided 2026-10-27 for
+  the Teacher Dashboard: course, period and student filters on the home
+  page, one student's page (their parent report and Student Context by
+  week), and a ⚙ Settings panel for the features turned on per course,
+  with a change log. Four PRs, filters first.
 - **`STUDENT_WORK_PLAN_2026-10.md`** — the plan (direction decided
   2026-10-24) for the student's side of an assignment, from rendering two
   new student docs: multi-part lessons split into parts that unlock in

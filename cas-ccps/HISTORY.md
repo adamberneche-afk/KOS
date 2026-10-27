@@ -4851,3 +4851,22 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   For the teacher to run only after reading each counted row's RawOutput.
   Both repairs now log the lesson dates they score (`byDate`).
 - **Tests:** `warmup-flow-pacing.test.js`.
+
+## The Teacher Dashboard's course, period and student filters, 2026-10-27
+
+- **Why:** the operator's walk of the Teacher Dashboard (10-26): the home
+  page filtered by lesson, term and status, but not by course, period or
+  student. Sprint PR 1 of `meta/SPRINT_DASHBOARD_2026-11.md`.
+- **Server, 07:** each roster row carries `courseCode`
+  (`ledgerRowCourseCode_`, 00). Nothing else changes on the server.
+- **Page, 07:** a filter bar above the lesson picker: Course, then Period
+  (the course's periods), then Student (that course and period's
+  students), with Clear filters. The lesson picker lists only the
+  filtered students' lessons; the summary cards, the list and the warm-up
+  readiness numbers (`scopedReadiness`) follow the filters. Choosing one
+  student shows all their assignments. A wider filter's change resets the
+  narrower ones; a refresh that drops a filtered value drops the filter.
+  Filters live in page memory and reset on a reload (decided: not
+  remembered).
+- **Tests:** `teacher-dashboard-inline-js.test.js`,
+  `teacher-dashboard-eval-states.test.js`.
