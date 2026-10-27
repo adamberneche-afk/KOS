@@ -108,7 +108,9 @@ const DB_ROLES = {
 // four names/DAY_SCHEDULE_MAP exactly as before — only where their values
 // come from changed.
 const BELL_SCHEDULES_DEFAULT = {
-  // ── Schedule A — Regular (Mon/Tue/Thu on non-B days) ──────────────────────
+  // Checked against Clover Hill's bell schedule page (2026-10-27): the A and
+  // B lunch waves are 25 minutes; the altered schedules were already right.
+  // ── Schedule A — Mon/Tue (and Fri from Nov 23) ────────────────────────────
   A: {
     label: 'Schedule A',
     periods: [
@@ -116,17 +118,17 @@ const BELL_SCHEDULES_DEFAULT = {
       { label:'1st Block',     start:'08:30', end:'09:20', block:1 },
       { label:'Passing',       start:'09:20', end:'09:25' },
       { label:'2nd Block',     start:'09:25', end:'11:05', block:2 },
-      { label:'A Lunch',       start:'11:28', end:'11:51', lunch:true },
-      { label:'B Lunch',       start:'11:56', end:'12:19', lunch:true },
-      { label:'C Lunch',       start:'12:24', end:'12:47', lunch:true },
-      { label:'D Lunch',       start:'12:52', end:'13:15', lunch:true },
+      { label:'A Lunch',       start:'11:20', end:'11:45', lunch:true },
+      { label:'B Lunch',       start:'11:50', end:'12:15', lunch:true },
+      { label:'C Lunch',       start:'12:20', end:'12:45', lunch:true },
+      { label:'D Lunch',       start:'12:50', end:'13:15', lunch:true },
       { label:'3rd Block',     start:'11:10', end:'13:15', block:3 },
       { label:'Passing',       start:'13:15', end:'13:20' },
       { label:'4th Block',     start:'13:20', end:'15:00', block:4 },
       { label:'After School',  start:'15:00', end:'17:30' },
     ]
   },
-  // ── Schedule B — Cav Morning (Thu/Fri) / Homeroom (Wed) ───────────────────
+  // ── Schedule B — Wed/Thu (and Fri until Nov 20): CM Wed/Thu, Homeroom Fri ─
   B: {
     label: 'Schedule B',
     periods: [
@@ -135,10 +137,10 @@ const BELL_SCHEDULES_DEFAULT = {
       { label:'CM / H.R.',     start:'09:20', end:'09:45', advisory:true },
       { label:'Passing',       start:'09:45', end:'09:50' },
       { label:'2nd Block',     start:'09:50', end:'11:20', block:2 },
-      { label:'A Lunch',       start:'11:38', end:'12:01', lunch:true },
-      { label:'B Lunch',       start:'12:06', end:'12:29', lunch:true },
-      { label:'C Lunch',       start:'12:34', end:'12:57', lunch:true },
-      { label:'D Lunch',       start:'13:02', end:'13:25', lunch:true },
+      { label:'A Lunch',       start:'11:30', end:'11:55', lunch:true },
+      { label:'B Lunch',       start:'12:00', end:'12:25', lunch:true },
+      { label:'C Lunch',       start:'12:30', end:'12:55', lunch:true },
+      { label:'D Lunch',       start:'13:00', end:'13:25', lunch:true },
       { label:'3rd Block',     start:'11:25', end:'13:25', block:3 },
       { label:'Passing',       start:'13:25', end:'13:30' },
       { label:'4th Block',     start:'13:30', end:'15:00', block:4 },
@@ -220,16 +222,31 @@ const NO_SCHOOL_DEFAULT = [
   '2027-05-31',
 ];
 
-// Sun=0..Sat=6 → schedule type key (null = no school that day of week).
-// Matches Clover Hill's actual rotation: Mon/Tue = A, Wed/Thu/Fri = B.
+// Sun=0..Sat=6 → schedule type key (null = no school that day of week),
+// by date range: Clover Hill's "Regular Bell Schedule Dates 2026-27" (A
+// every day to Sept. 4; Mon/Tue A and Wed/Thu/Fri B to Nov. 20; Mon/Tue/Fri
+// A and Wed/Thu B from Nov. 23). Exams (mid-May on) are TBD and keep the
+// last rotation until they're published. A day-of-week map saved in
+// Settings replaces all of this.
+const DAY_SCHEDULE_RANGES_DEFAULT = [
+  { from: '2026-08-24', to: '2026-09-04', map: { 0:null, 1:'A', 2:'A', 3:'A', 4:'A', 5:'A', 6:null } },
+  { from: '2026-09-05', to: '2026-11-22', map: { 0:null, 1:'A', 2:'A', 3:'B', 4:'B', 5:'B', 6:null } },
+  { from: '2026-11-23', to: '2027-07-31', map: { 0:null, 1:'A', 2:'A', 3:'B', 4:'B', 5:'A', 6:null } },
+];
+// The map outside every range (and the shape Settings shows): the
+// Sept.–Nov. rotation.
 const DAY_SCHEDULE_MAP_DEFAULT = { 0:null, 1:'A', 2:'A', 3:'B', 4:'B', 5:'B', 6:null };
+function _defaultDayMapFor(dateKey) {
+  const r = DAY_SCHEDULE_RANGES_DEFAULT.find(x => dateKey >= x.from && dateKey <= x.to);
+  return r ? r.map : DAY_SCHEDULE_MAP_DEFAULT;
+}
 
 const SCHOOL_PERIODS = [];
 
 let BELL_SCHEDULES         = BELL_SCHEDULES_DEFAULT;
 let CCPS_SCHEDULE_OVERRIDES = SCHEDULE_OVERRIDES_DEFAULT;
 let CCPS_NO_SCHOOL         = new Set(NO_SCHOOL_DEFAULT);
-let DAY_SCHEDULE_MAP       = DAY_SCHEDULE_MAP_DEFAULT;
+let DAY_SCHEDULE_MAP       = null; // a map saved in Settings, else the dated defaults
 
 function getScheduleConfig() { return LS.get('lh_schedule_config', {}); }
 // NOTE: this eager call only ever runs BELL_SCHEDULES/overrides/noSchool/
@@ -247,7 +264,7 @@ function _applyScheduleConfig() {
   BELL_SCHEDULES          = cfg.bellSchedules || BELL_SCHEDULES_DEFAULT;
   CCPS_SCHEDULE_OVERRIDES = cfg.overrides     || SCHEDULE_OVERRIDES_DEFAULT;
   CCPS_NO_SCHOOL          = new Set(cfg.noSchool || NO_SCHOOL_DEFAULT);
-  DAY_SCHEDULE_MAP        = cfg.dayOfWeekMap  || DAY_SCHEDULE_MAP_DEFAULT;
+  DAY_SCHEDULE_MAP        = cfg.dayOfWeekMap  || null;
 }
 _applyScheduleConfig();
 
@@ -285,15 +302,17 @@ function _localDateStr_(date) {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
+// The bell schedule for a date (YYYY-MM-DD): no school, then an override
+// (early release, delay), then the day-of-week map in effect that day.
+function getScheduleTypeFor(dateKey) {
+  if (CCPS_NO_SCHOOL.has(dateKey)) return null; // no school
+  if (CCPS_SCHEDULE_OVERRIDES[dateKey]) return CCPS_SCHEDULE_OVERRIDES[dateKey];
+  const dow = new Date(dateKey + 'T12:00:00').getDay(); // 0=Sun,1=Mon,...6=Sat
+  return (DAY_SCHEDULE_MAP || _defaultDayMapFor(dateKey))[dow] ?? null;
+}
+
 function getTodayScheduleType() {
-  const now = new Date();
-  const key = _localDateStr_(now);
-
-  if (CCPS_NO_SCHOOL.has(key)) return null; // no school
-  if (CCPS_SCHEDULE_OVERRIDES[key]) return CCPS_SCHEDULE_OVERRIDES[key];
-
-  const dow = now.getDay(); // 0=Sun,1=Mon,...6=Sat
-  return DAY_SCHEDULE_MAP[dow] ?? null;
+  return getScheduleTypeFor(_localDateStr_(new Date()));
 }
 
 function getCurrentPeriodInfo() {
@@ -315,7 +334,8 @@ function getCurrentPeriodInfo() {
 
   let label = cur.label;
   if (cur.block) label = cur.label + ' (' + sched.label + ')';
-  if (cur.advisory) label = schedType === 'B' && now.getDay() === 3 ? 'Homeroom' : 'Cav Morning';
+  // Homeroom on Fridays, Cav Morning on Wednesdays and Thursdays.
+  if (cur.advisory) label = now.getDay() === 5 ? 'Homeroom' : 'Cav Morning';
   if (cur.lunch) label = cur.label + ' Lunch';
 
   return { label, schedType, block: cur.block || null, raw: cur };
