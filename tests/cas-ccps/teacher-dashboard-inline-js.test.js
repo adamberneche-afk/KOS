@@ -280,7 +280,7 @@ const filterRoster3 = () => [
   rosterStudent({ name: 'Cy', googleId: 'cy@example.invalid', courseCode: '8177', className: '8177 Sports Management', period: '2',
     assignmentId: 'M01', assignmentName: 'M01' }),
 ];
-const names = (main) => [...main.matchAll(/<div class="student-name">([^<]+)</g)].map((m) => m[1]);
+const names = (main) => [...main.matchAll(/<div class="student-name">(?:<button[^>]*>)?([^<]+)</g)].map((m) => m[1]);
 const options = (main, id) => {
   const sel = new RegExp('<select id="' + id + '"[^>]*>(.*?)</select>').exec(main)[1];
   return [...sel.matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]);
@@ -343,6 +343,99 @@ test('the warm-up readiness numbers count only the filtered students', () => {
   assert.deepEqual([scoped.total, scoped.withEvalHistory, scoped.withWarmUpHistory, scoped.locked], [2, 1, 2, 0]);
 });
 
+// ── One student's page (2026-10-27, sprint PR 2) ─────────────────────────
+function runStub(calls) {
+  const run = {
+    withSuccessHandler(cb) { calls.success = cb; return run; },
+    withFailureHandler(cb) { calls.failure = cb; return run; },
+    getStudentDetail(key) { calls.keys.push(key); },
+  };
+  return run;
+}
+const detail = () => ({
+  success: true, studentEmail: 'amy@example.invalid', weekStart: 'October 26, 2026', weekEnd: 'October 30, 2026',
+  report: { studentEmail: 'amy@example.invalid', studentName: 'Amy', itemCount: 2, openCount: 0, progressCount: 1,
+    subject: 'Amy this week', preview: 'Dear family, Amy finished L06.', copiedAt: '' },
+  context: { docUrl: 'https://docs.google.com/document/d/abc/edit', lastUpdatedAt: 'Oct 26',
+    weeks: [{ label: 'Week of October 26, 2026', items: [{ text: 'Warm-Up Reflections', heading: true }, { text: 'Tickets.', heading: false }] },
+      { label: 'Week of October 19, 2026', items: [{ text: 'Completed Assignments', heading: true }] }] },
+});
+
+test('a name in the list opens that student\'s page: report and Student Context by week', () => {
+  const { main, context, els } = renderedRoster(filterRoster3());
+  assert.match(main, /<button type="button" class="name-link" data-student="amy@example.invalid"[^>]*>Amy<\/button>/);
+  const calls = { keys: [] };
+  context.google = { script: { run: runStub(calls) } };
+  context.openStudent('AMY@example.invalid');
+  assert.deepEqual(calls.keys, ['amy@example.invalid']);
+  let page = els.main.innerHTML;
+  assert.match(page, /<section id="student-panel"/);
+  assert.match(page, /Loading this student's parent report and Student Context/);
+  assert.doesNotMatch(page, /data-student="amy@example.invalid"/, 'no link to the page already open');
+
+  calls.success(detail());
+  const panel = () => els['student-panel'].innerHTML;
+  assert.match(panel(), /This week's parent report/);
+  assert.match(panel(), /data-pr-copy="text" data-pr-i="student"/);
+  assert.match(panel(), /Dear family, Amy finished L06\./);
+  assert.match(panel(), /<strong>Week of October 26, 2026<\/strong>/);
+  assert.match(panel(), /\(1 of 2\)/);
+  assert.match(panel(), /aria-label="Newer week"[^>]*>|disabled aria-label="Newer week"/);
+  assert.match(panel(), /href="https:\/\/docs\.google\.com\/document\/d\/abc\/edit"[^>]*>Open the doc ↗/);
+  assert.match(panel(), /<p class="ctx-h">Warm-Up Reflections<\/p><p>Tickets\.<\/p>/);
+
+  context.stepContextWeek(1);
+  assert.match(panel(), /<strong>Week of October 19, 2026<\/strong>/);
+  assert.match(panel(), /\(2 of 2\)/);
+  assert.match(panel(), /Open the doc ↗/, 'the doc link on every week');
+  context.stepContextWeek(1);
+  assert.match(panel(), /\(2 of 2\)/, 'no week past the oldest');
+
+  // A re-render (a refresh, a filter click) doesn't fetch again.
+  context.render({ students: filterRoster3(), lessons: [{ id: 'L06', name: 'L06', current: true }],
+    activeTerm: 'ALL', availableTerms: [] });
+  assert.equal(calls.keys.length, 1);
+});
+
+test('a student with no report or doc says so, and a failed load says why', () => {
+  const { context, els } = renderedRoster(filterRoster3());
+  const calls = { keys: [] };
+  context.google = { script: { run: runStub(calls) } };
+  context.openStudent('bo@example.invalid');
+  calls.success({ success: true, studentEmail: 'bo@example.invalid', report: null, context: null });
+  assert.match(els['student-panel'].innerHTML, /No report for this student this week/);
+  assert.match(els['student-panel'].innerHTML, /No Student Context doc yet/);
+  context.openStudent('cy@example.invalid');
+  calls.failure({ message: 'Exceeded maximum execution time' });
+  assert.match(els['student-panel'].innerHTML, /Could not load: Exceeded maximum execution time/);
+});
+
+test('✉ Parent Reports and Student Context narrow by course and student', () => {
+  const { context, els } = renderedRoster(filterRoster3());
+  const reports = ['amy', 'bo', 'cy'].map((n) => ({ studentEmail: n + '@example.invalid', studentName: n.toUpperCase(),
+    itemCount: 1, openCount: 0, progressCount: 0, subject: 's', preview: 'p', copiedAt: '' }));
+  const body = { innerHTML: '' };
+  const realGet = context.document.getElementById;
+  context.document.getElementById = (id) => (id === 'parent-report-modal-body' ? body : realGet(id));
+  context.renderParentReportModal({ success: true, weekStart: 'Oct 26', weekEnd: 'Oct 30', reports });
+  assert.equal((body.innerHTML.match(/data-pr-copy="text"/g) || []).length, 3);
+  context.setPrCourse('8177');
+  assert.equal((body.innerHTML.match(/data-pr-copy="text"/g) || []).length, 1);
+  assert.match(body.innerHTML, /data-pr-i="2"/, 'a card keeps its index for Copy');
+  context.setPrCourse('8175');
+  context.setPrStudent('bo@example.invalid');
+  assert.match(body.innerHTML, /font-size:14px">BO</);
+  assert.doesNotMatch(body.innerHTML, /font-size:14px">AMY</, 'only the chosen student\'s card');
+
+  context.renderTeacherRoster({ generatedAt: 'now', roster: reports.map((r) => ({ name: r.studentName,
+    email: r.studentEmail, docUrl: null, lastUpdatedAt: 'Oct 26', hasRecentActivity: true })) });
+  const view = () => els['student-context-view'].innerHTML;
+  assert.equal((view().match(/By week →/g) || []).length, 3);
+  context.setScCourse('8177');
+  assert.equal((view().match(/By week →/g) || []).length, 1);
+  assert.match(view(), /data-student="cy@example.invalid"/);
+});
+
 // ── Teacher Dashboard polish (2026-10-22, UX audit order-of-work item 6) ───
 test('rows that need the teacher come first in each lesson section', () => {
   const { main } = renderedRoster([
@@ -351,7 +444,7 @@ test('rows that need the teacher come first in each lesson section', () => {
     rosterStudent({ name: 'B Middle', googleId: 'b@example.invalid', period: '2' }),
     rosterStudent({ name: 'Y Flagged', googleId: 'y@example.invalid', period: '3', statusClass: 'flagged', status: 'ERROR_TIMEOUT' }),
   ]);
-  const order = [...main.matchAll(/<div class="student-name">([^<]+)</g)].map((m) => m[1]);
+  const order = [...main.matchAll(/<div class="student-name">(?:<button[^>]*>)?([^<]+)</g)].map((m) => m[1]);
   assert.deepEqual(order, ['Y Flagged', 'Z Review', 'A Early', 'B Middle']);
 });
 

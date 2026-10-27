@@ -521,7 +521,10 @@ function renderWeeklyParentReportText_(report) {
 // that never hears from the school, so the count is surfaced for the
 // dashboard to display rather than swallowed.
 // ---------------------------------------------------------------------------
-function generateWeeklyParentReports(now) {
+// onlyEmail (optional): build just that student's report, for the Teacher
+// Dashboard's one-student page; the roster scope and excluded count are the
+// same either way.
+function generateWeeklyParentReports(now, onlyEmail) {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const ledgerSheet = ss.getSheetByName(cfg.tabs.ledger);
@@ -582,7 +585,9 @@ function generateWeeklyParentReports(now) {
   }
 
   const reports = [];
+  const only = String(onlyEmail || "").trim().toLowerCase();
   names.forEach(function (name, email) {
+    if (only && String(email).toLowerCase() !== only) return;
     reports.push(buildWeeklyParentReport_(
       email,
       name,

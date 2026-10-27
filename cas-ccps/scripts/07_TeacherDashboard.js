@@ -959,29 +959,101 @@ function getWeeklyParentReports() {
       excludedStudentCount: generated.excludedStudentCount,
       reports: (function () {
         const copied = _parentReportsCopiedThisWeek_(cfg, generated.weekStart);
-        return generated.reports.map(function (r) {
-          const at = copied[String(r.studentEmail).toLowerCase()];
-          return {
-            studentEmail: r.studentEmail,
-            studentName: r.studentName,
-            confirmedCount: r.confirmedCount,
-            pendingCount: r.pendingCount,
-            itemCount: r.thisWeek.length,
-            openCount: r.thisWeek.filter(function (i) { return i.open; }).length,
-            progressCount: r.progress.length,
-            // The exact text the teacher copies, so they review what the
-            // family will read rather than a summary of it.
-            subject: weeklyParentReportSubject_(r),
-            preview: renderWeeklyParentReportText_(r),
-            copiedAt: at ? Utilities.formatDate(at, Session.getScriptTimeZone(), "MMM d, h:mm a") : "",
-          };
-        });
+        return generated.reports.map(function (r) { return _tdParentReportView_(r, copied); });
       })(),
     };
   } catch (e) {
     Logger.log("[S07] getWeeklyParentReports failed: " + e.message);
     return { success: false, error: e.message };
   }
+}
+
+function _tdParentReportView_(r, copied) {
+  const at = copied[String(r.studentEmail).toLowerCase()];
+  return {
+    studentEmail: r.studentEmail,
+    studentName: r.studentName,
+    confirmedCount: r.confirmedCount,
+    pendingCount: r.pendingCount,
+    itemCount: r.thisWeek.length,
+    openCount: r.thisWeek.filter(function (i) { return i.open; }).length,
+    progressCount: r.progress.length,
+    // The exact text the teacher copies, so they review what the
+    // family will read rather than a summary of it.
+    subject: weeklyParentReportSubject_(r),
+    preview: renderWeeklyParentReportText_(r),
+    copiedAt: at ? Utilities.formatDate(at, Session.getScriptTimeZone(), "MMM d, h:mm a") : "",
+  };
+}
+
+// One student's page (2026-10-27, meta/SPRINT_DASHBOARD_2026-11.md, PR 2):
+// this week's parent report and the student's context doc (29) by week,
+// newest first. The same teacher gate and roster scope as the panels it
+// narrows: the report comes only for this teacher's students (36), the doc
+// only through getAllStudentDocsForTeacher_ (29). Each half fails alone.
+function getStudentDetail(studentEmail) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  const email = String(studentEmail || "").trim().toLowerCase();
+  if (!email) return { success: false, error: "No student chosen." };
+  const tz = Session.getScriptTimeZone();
+  const out = { success: true, studentEmail: email, report: null, context: null };
+  try {
+    const generated = generateWeeklyParentReports(undefined, email);
+    if (generated.weekStart) {
+      out.weekStart = Utilities.formatDate(generated.weekStart, tz, "MMMM d, yyyy");
+      out.weekEnd = Utilities.formatDate(generated.weekEnd, tz, "MMMM d, yyyy");
+    }
+    const r = generated.reports[0];
+    if (r) out.report = _tdParentReportView_(r, _parentReportsCopiedThisWeek_(cfg, generated.weekStart));
+  } catch (e) {
+    Logger.log("[S07] getStudentDetail report failed: " + e.message);
+    out.reportError = "The parent report could not be built: " + e.message;
+  }
+  try {
+    const doc = getAllStudentDocsForTeacher_(cfg.teacherEmail)
+      .filter(function (d) { return d.email.toLowerCase() === email; })[0];
+    const ids = doc ? getStudentDocForViewer_(email) : null;
+    if (doc && ids && ids.docId) {
+      out.context = {
+        docUrl: doc.docUrl,
+        lastUpdatedAt: doc.lastUpdatedAt ? formatDate_(doc.lastUpdatedAt) : "Never",
+        weeks: _tdContextWeeks_(ids.docId),
+      };
+    }
+  } catch (e) {
+    Logger.log("[S07] getStudentDetail context failed: " + e.message);
+    out.contextError = "The Student Context doc could not be read: " + e.message;
+  }
+  return out;
+}
+
+// A context doc's weeks, newest first: each "Week of <date>" Heading 2
+// (29's appendWeeklySection_) starts one; its Heading 3 sections and lines
+// follow as items. Anything before the first week is left out.
+const TD_CONTEXT_MAX_WEEKS = 60;
+function _tdContextWeeks_(docId) {
+  const body = DocumentApp.openById(docId).getBody();
+  const weeks = [];
+  let week = null;
+  for (let i = 0; i < body.getNumChildren(); i++) {
+    const el = body.getChild(i);
+    const type = el.getType();
+    let p = null;
+    if (type === DocumentApp.ElementType.PARAGRAPH) p = el.asParagraph();
+    else if (type === DocumentApp.ElementType.LIST_ITEM) p = el.asListItem();
+    if (!p) continue;
+    const text = String(p.getText() || "").trim();
+    const heading = p.getHeading();
+    if (heading === DocumentApp.ParagraphHeading.HEADING2 && text.indexOf("Week of ") === 0) {
+      week = { label: text, items: [] };
+      weeks.push(week);
+      continue;
+    }
+    if (!week || !text) continue;
+    week.items.push({ text: text, heading: heading === DocumentApp.ParagraphHeading.HEADING3 });
+  }
+  return weeks.reverse().slice(0, TD_CONTEXT_MAX_WEEKS);
 }
 
 function teacherCopiedParentReport(studentEmail) {
@@ -1723,6 +1795,20 @@ header button:focus-visible,header select:focus-visible{outline:2px solid white;
 .roster-filters{display:flex;align-items:center;gap:8px 16px;margin-bottom:10px;flex-wrap:wrap}
 .roster-filters label{font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:6px}
 .roster-filters select{padding:6px 10px;border-radius:4px;border:1px solid #dadce0;font-size:13px;max-width:100%}
+.student-panel{background:#fff;border:1px solid #e8eaed;border-radius:8px;padding:14px 16px;margin-bottom:14px}
+.student-panel h3{font-size:15px;margin:0 0 2px}
+.student-panel h4{font-size:13px;margin:0 0 8px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.3px}
+.student-panel-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:12px}
+.ctx-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;font-size:13px}
+.ctx-nav button{background:none;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer}
+.ctx-nav button[disabled]{opacity:.45;cursor:not-allowed}
+.ctx-week{font-size:13px;line-height:1.5;max-height:420px;overflow:auto}
+.ctx-week p{margin:0 0 6px}
+.ctx-week .ctx-h{font-weight:600;margin-top:10px}
+button[data-pr-copy]{background:#1557b0;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:13px;cursor:pointer}
+button[data-pr-copy="subject"]{background:#fff;color:#1557b0;border:1px solid #1557b0}
+.name-link{background:none;border:none;padding:0;font:inherit;color:#1557b0;cursor:pointer;text-align:left}
+.name-link:hover{text-decoration:underline}
 .roster-filters button{background:none;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer}
 .badges{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 .badge-passed-before{background:#e0f2f1;color:#00695c}
@@ -2283,6 +2369,123 @@ function scopedReadiness(r, scoped) {
   const n = list => (list || []).filter(e => keys.has(String(e).toLowerCase())).length;
   return Object.assign({}, r, { total: keys.size, withEvalHistory: n(r.withEvalEmails),
     withWarmUpHistory: n(r.withWarmupEmails), withShadowConfidence: n(r.withConfEmails), locked: n(r.lockedEmails) });
+}
+
+// ── One student's page (2026-10-27, sprint PR 2) ──────────────────────────
+// Shown above the list whenever the Student filter has one student: this
+// week's parent report and their Student Context doc by week, newest
+// first (getStudentDetail, loaded once per student chosen).
+let _studentDetail = null; // { key, loading } or { key, data }
+let _ctxWeek = 0;
+function openStudent(key) {
+  _studentFilter = String(key || "").toLowerCase();
+  _rerenderFilters();
+  const main = document.getElementById("main");
+  if (main) main.scrollTop = 0;
+}
+function _loadStudentDetail(key) {
+  google.script.run
+    .withSuccessHandler(function (d) {
+      if (!_studentDetail || _studentDetail.key !== key) return;
+      _studentDetail = { key: key, data: d };
+      _refreshStudentPanel();
+    })
+    .withFailureHandler(function (e) {
+      if (!_studentDetail || _studentDetail.key !== key) return;
+      _studentDetail = { key: key, data: { success: false, error: (e && e.message) || "unknown error" } };
+      _refreshStudentPanel();
+    })
+    .getStudentDetail(key);
+}
+function _refreshStudentPanel() {
+  const el = document.getElementById("student-panel");
+  if (el) el.innerHTML = studentPanelInner(_lastDashData ? _lastDashData.students : []);
+}
+function stepContextWeek(delta) {
+  _ctxWeek = Math.max(0, _ctxWeek + delta);
+  _refreshStudentPanel();
+}
+// The panel for the chosen student; starts loading their detail the first
+// time they are chosen.
+function studentPanelHtml(students) {
+  if (!_studentFilter) return "";
+  if (!_studentDetail || _studentDetail.key !== _studentFilter) {
+    _studentDetail = { key: _studentFilter, loading: true };
+    _ctxWeek = 0;
+    _loadStudentDetail(_studentFilter);
+  }
+  return '<section id="student-panel" class="student-panel" aria-label="This student">' + studentPanelInner(students) + '</section>';
+}
+function studentPanelInner(students) {
+  const rows = (students || []).filter(s => rosterKey(s) === _studentFilter);
+  const first = rows[0] || {};
+  const courses = Array.from(new Set(rows.map(s => s.courseCode).filter(Boolean))).sort();
+  const periods = Array.from(new Set(rows.map(s => String(s.period || "")).filter(Boolean))).sort();
+  let h = '<h3>' + esc(first.name || _studentFilter) + '</h3>' +
+    '<div style="font-size:12.5px;color:var(--text-secondary)">' +
+    (courses.length ? esc(courses.join(", ")) : "") + (periods.length ? " · Period " + esc(periods.join(", ")) : "") +
+    ' · ' + escNum(rows.length) + ' assignment' + (rows.length === 1 ? '' : 's') + ' below</div>';
+  const d = _studentDetail && _studentDetail.key === _studentFilter ? _studentDetail : null;
+  if (!d || d.loading) return h + '<p style="font-size:13px;color:var(--text-secondary);margin-top:10px">Loading this student\\'s parent report and Student Context…</p>';
+  if (!d.data || !d.data.success) {
+    return h + '<p style="font-size:13px;color:#b3261e;margin-top:10px">Could not load: ' + esc((d.data && d.data.error) || "unknown error") + '</p>';
+  }
+  const data = d.data;
+  let report = '<div><h4>This week\\'s parent report</h4>';
+  if (data.weekStart) report += '<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px">Week of ' + esc(data.weekStart) + ' – ' + esc(data.weekEnd) + '</p>';
+  if (data.reportError) report += '<p style="font-size:13px;color:#b3261e">' + esc(data.reportError) + '</p>';
+  else if (!data.report) report += '<p style="font-size:13px;color:var(--text-secondary)">No report for this student this week. A student whose account does not match the district student-ID format gets none; ✉ Parent Reports says how many.</p>';
+  else report += parentReportCard(data.report, "student");
+  report += '</div>';
+  let ctx = '<div><h4>Student Context</h4>';
+  if (data.contextError) ctx += '<p style="font-size:13px;color:#b3261e">' + esc(data.contextError) + '</p>';
+  else if (!data.context) ctx += '<p style="font-size:13px;color:var(--text-secondary)">No Student Context doc yet. It is made the first week this student has a completed assignment or warm-up answer.</p>';
+  else ctx += contextWeekHtml(data.context);
+  ctx += '</div>';
+  return h + '<div class="student-panel-grid">' + report + ctx + '</div>';
+}
+// One week of the context doc, with older/newer and the doc's link.
+function contextWeekHtml(c) {
+  const weeks = c.weeks || [];
+  const url = safeDocUrl(c.docUrl);
+  const link = url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" style="color:#1557b0">Open the doc ↗</a>' : '';
+  if (!weeks.length) return '<p style="font-size:13px;color:var(--text-secondary)">The doc has no weeks yet. ' + link + '</p>';
+  if (_ctxWeek > weeks.length - 1) _ctxWeek = weeks.length - 1;
+  const w = weeks[_ctxWeek];
+  let h = '<div class="ctx-nav">' +
+    '<button type="button" onclick="stepContextWeek(1)"' + (_ctxWeek >= weeks.length - 1 ? ' disabled' : '') + ' aria-label="Older week">‹ Older</button>' +
+    '<strong>' + esc(w.label) + '</strong>' +
+    '<span style="color:var(--text-secondary)">(' + escNum(_ctxWeek + 1) + ' of ' + escNum(weeks.length) + ')</span>' +
+    '<button type="button" onclick="stepContextWeek(-1)"' + (_ctxWeek === 0 ? ' disabled' : '') + ' aria-label="Newer week">Newer ›</button>' +
+    '<span style="margin-left:auto">' + link + '</span></div>';
+  h += '<div class="ctx-week">' + (w.items.length
+    ? w.items.map(it => '<p' + (it.heading ? ' class="ctx-h"' : '') + '>' + esc(it.text) + '</p>').join("")
+    : '<p style="color:var(--text-secondary)">Nothing recorded this week.</p>') + '</div>';
+  return h;
+}
+// Course and student pickers for the ✉ Parent Reports and Student Context
+// panels: the courses come from the roster on the page, the students from
+// the panel's own list. onCourse/onStudent name the handler functions.
+function _coursesByEmail() {
+  const by = {};
+  ((_lastDashData && _lastDashData.students) || []).forEach(s => {
+    const k = rosterKey(s);
+    if (k && s.courseCode) (by[k] = by[k] || {})[s.courseCode] = true;
+  });
+  return by;
+}
+function panelPicker(course, student, people, onCourse, onStudent) {
+  const courses = rosterFilterOptions((_lastDashData && _lastDashData.students) || []).courses;
+  const opt = (value, label, current) => '<option value="' + esc(value) + '"' + (value === current ? ' selected' : '') + '>' + esc(label) + '</option>';
+  return '<div class="roster-filters" role="group" aria-label="Choose a course and student">' +
+    '<label>Course <select onchange="' + onCourse + '(this.value)">' + opt("", "All courses", course) +
+    courses.map(c => opt(c.code, c.code, course)).join("") + '</select></label>' +
+    '<label>Student <select onchange="' + onStudent + '(this.value)">' + opt("", "All students", student) +
+    people.map(p => opt(p.key, p.name, student)).join("") + '</select></label></div>';
+}
+function _pickerPeople(list, course) {
+  const by = _coursesByEmail();
+  return list.filter(p => !course || (by[p.key] || {})[course]).sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function setLessonView(v) {
@@ -3084,6 +3287,8 @@ document.addEventListener("change", function(e) {
 });
 
 function openParentReportModal() {
+  _prCourse = _courseFilter;
+  _prStudent = _studentFilter;
   _openPanel("parent-report-modal-backdrop", closeParentReportModal);
   document.getElementById("parent-report-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading this week\\'s reports…</p>';
@@ -3137,35 +3342,52 @@ function renderParentReportModal(data) {
     return;
   }
 
+  // Course and student pickers (2026-10-27): the reports shown follow
+  // them; each card keeps its index in _parentReports for Copy.
+  _prData = data;
+  const people = _pickerPeople(_parentReports.map(r => ({ key: String(r.studentEmail).toLowerCase(), name: r.studentName || r.studentEmail })), _prCourse);
+  if (_prStudent && !people.some(p => p.key === _prStudent)) _prStudent = "";
+  html += panelPicker(_prCourse, _prStudent, people, "setPrCourse", "setPrStudent");
+  const shown = new Set(people.map(p => p.key));
+  let count = 0;
   _parentReports.forEach(function(r, i) {
-    const open = r.openCount > 0
-      ? '<span style="color:#b06000"> · ' + escNum(r.openCount) + ' still to finish</span>'
-      : '';
-    html +=
-      '<div style="border:1px solid #e8eaed;border-radius:8px;padding:14px;margin-bottom:12px">' +
-        '<div style="font-weight:600;font-size:14px">' + esc(r.studentName || r.studentEmail) + '</div>' +
-        '<div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px">' +
-          escNum(r.itemCount) + ' item' + (r.itemCount === 1 ? '' : 's') + ' this week' + open +
-          ' · ' + escNum(r.progressCount) + ' competenc' + (r.progressCount === 1 ? 'y' : 'ies') +
-          ' rated this marking period' +
-        '</div>' +
-        '<label for="pr-subject-' + i + '" style="font-size:12px;color:var(--text-secondary)">Subject</label>' +
-        '<input id="pr-subject-' + i + '" readonly value="' + esc(r.subject) + '" ' +
-          'style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px;margin-bottom:8px">' +
-        '<label for="pr-text-' + i + '" style="font-size:12px;color:var(--text-secondary)">Report</label>' +
-        '<textarea id="pr-text-' + i + '" readonly rows="10" ' +
-          'style="width:100%;box-sizing:border-box;font-size:12px;font-family:inherit;background:#f8f9fa;' +
-          'border:1px solid #dadce0;border-radius:6px;padding:10px;margin-bottom:8px">' + esc(r.preview) + '</textarea>' +
-        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-          '<button class="btn" data-pr-copy="text" data-pr-i="' + i + '">Copy report</button>' +
-          '<button class="btn" data-pr-copy="subject" data-pr-i="' + i + '">Copy subject</button>' +
-        '</div>' +
-        '<div id="pr-msg-' + i + '" role="status" aria-live="polite" ' +
-          'style="font-size:12.5px;margin-top:8px;color:var(--text-secondary)">' +
-          (r.copiedAt ? 'Copied ' + esc(r.copiedAt) + '.' : '') + '</div>' +
-      '</div>';
+    const key = String(r.studentEmail).toLowerCase();
+    if (!shown.has(key) || (_prStudent && key !== _prStudent)) return;
+    count++;
+    html += parentReportCard(r, i);
   });
+  if (!count) html += '<p style="font-size:13px;color:var(--text-secondary)">No report matches this course and student.</p>';
   body.innerHTML = html;
+}
+
+// One report: subject and text to copy, and whether it was copied. key is
+// its index in _parentReports, or "student" on one student's page.
+function parentReportCard(r, i) {
+  const open = r.openCount > 0
+    ? '<span style="color:#b06000"> · ' + escNum(r.openCount) + ' still to finish</span>'
+    : '';
+  return '<div style="border:1px solid #e8eaed;border-radius:8px;padding:14px;margin-bottom:12px">' +
+      '<div style="font-weight:600;font-size:14px">' + esc(r.studentName || r.studentEmail) + '</div>' +
+      '<div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px">' +
+        escNum(r.itemCount) + ' item' + (r.itemCount === 1 ? '' : 's') + ' this week' + open +
+        ' · ' + escNum(r.progressCount) + ' competenc' + (r.progressCount === 1 ? 'y' : 'ies') +
+        ' rated this marking period' +
+      '</div>' +
+      '<label for="pr-subject-' + i + '" style="font-size:12px;color:var(--text-secondary)">Subject</label>' +
+      '<input id="pr-subject-' + i + '" readonly value="' + esc(r.subject) + '" ' +
+        'style="width:100%;box-sizing:border-box;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px;margin-bottom:8px">' +
+      '<label for="pr-text-' + i + '" style="font-size:12px;color:var(--text-secondary)">Report</label>' +
+      '<textarea id="pr-text-' + i + '" readonly rows="10" ' +
+        'style="width:100%;box-sizing:border-box;font-size:12px;font-family:inherit;background:#f8f9fa;' +
+        'border:1px solid #dadce0;border-radius:6px;padding:10px;margin-bottom:8px">' + esc(r.preview) + '</textarea>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+        '<button class="btn" data-pr-copy="text" data-pr-i="' + i + '">Copy report</button>' +
+        '<button class="btn" data-pr-copy="subject" data-pr-i="' + i + '">Copy subject</button>' +
+      '</div>' +
+      '<div id="pr-msg-' + i + '" role="status" aria-live="polite" ' +
+        'style="font-size:12.5px;margin-top:8px;color:var(--text-secondary)">' +
+        (r.copiedAt ? 'Copied ' + esc(r.copiedAt) + '.' : '') + '</div>' +
+    '</div>';
 }
 
 // Copy uses the clipboard API, then the selected text with execCommand,
@@ -3188,7 +3410,9 @@ function _prCopy(el, done) {
 }
 
 function copyParentReport(i, what) {
-  const report = _parentReports[i];
+  const report = i === "student"
+    ? (_studentDetail && _studentDetail.data && _studentDetail.data.report)
+    : _parentReports[Number(i)];
   if (!report) return;
   const el  = document.getElementById(what === "subject" ? "pr-subject-" + i : "pr-text-" + i);
   const msg = document.getElementById("pr-msg-" + i);
@@ -3214,8 +3438,18 @@ function copyParentReport(i, what) {
 
 document.addEventListener("click", function (ev) {
   const b = ev.target && ev.target.closest ? ev.target.closest("[data-pr-copy]") : null;
-  if (b) copyParentReport(Number(b.getAttribute("data-pr-i")), b.getAttribute("data-pr-copy"));
+  if (b) copyParentReport(b.getAttribute("data-pr-i"), b.getAttribute("data-pr-copy"));
+  const st = ev.target && ev.target.closest ? ev.target.closest("[data-student]") : null;
+  if (st) {
+    if (document.getElementById("student-context-view").style.display === "block") backToDashboard();
+    openStudent(st.getAttribute("data-student"));
+  }
 });
+let _prData = null;
+let _prCourse = "";
+let _prStudent = "";
+function setPrCourse(v) { _prCourse = v || ""; _prStudent = ""; if (_prData) renderParentReportModal(_prData); }
+function setPrStudent(v) { _prStudent = v || ""; if (_prData) renderParentReportModal(_prData); }
 
 // ── SCR Review modal (Open Items #4) ────────────────────────────────────────
 // List-based like the Weekly Parent Reports modal just above — an SCR queue
@@ -3531,7 +3765,7 @@ If you expect to see students here:
   const inView = scoped.filter(s =>
     view === "ALL" ? true : view === "CURRENT" ? s.isCurrentLesson : s.assignmentId === view);
   const currentNames = lessons.filter(l => l.current).map(l => l.name).join(" · ");
-  let html = rosterFilterBar(data.students) + \`<div class="lesson-picker">
+  let html = rosterFilterBar(data.students) + studentPanelHtml(data.students) + \`<div class="lesson-picker">
     <label for="lesson-view">Showing</label>
     <select id="lesson-view" onchange="setLessonView(this.value)">
       \${hasCurrent ? \`<option value="CURRENT"\${view === "CURRENT" ? " selected" : ""}>Current lesson\${lessons.filter(l => l.current).length === 1 ? "" : "s"}: \${esc(currentNames)}</option>\` : ""}
@@ -3690,7 +3924,7 @@ If you expect to see students here:
         ? \`<div class="status-badge \${badgeMap[s.statusClass] || 'badge-unknown'}">\${esc(BADGE_WORDS[s.statusClass] || s.status)}</div>\` : "";
       html += \`<div class="student-row \${s.statusClass} es-\${s.evalState}">
         <div>
-          <div class="student-name">\${esc(s.name)}</div>
+          <div class="student-name">\${rosterKey(s) && rosterKey(s) !== _studentFilter ? '<button type="button" class="name-link" data-student="' + esc(rosterKey(s)) + '" title="Show this student\\'s page">' + esc(s.name) + '</button>' : esc(s.name)}</div>
           <div class="student-meta">\${[s.block && "Block "+esc(s.block), s.period && "Period "+esc(s.period), esc(s.subject)].filter(Boolean).join(" · ") || "No class info on file"}</div>
           <div class="last-eval">\${s.checkCount ? s.checkCount + " check" + (s.checkCount === 1 ? "" : "s") + " · last " + esc(s.lastEval) : "No checks yet"}\${s.submittedAt && s.submittedAt !== "—" ? " · submitted " + esc(s.submittedAt) : ""}</div>
           \${s.firstPassedAt ? \`<div class="last-eval">First passed \${esc(s.firstPassedAt)}</div>\` : ""}
@@ -3763,7 +3997,14 @@ const BADGE_WORDS = { queued: "Waiting to be checked", active: "Being checked no
 // this always shows the full roster — no more try-the-teacher-path,
 // fall-back-on-error ambiguity, and no more renderOwnContext() dead code
 // sitting in a template a student never actually receives.
+let _scData = null;
+let _scCourse = "";
+let _scStudent = "";
+function setScCourse(v) { _scCourse = v || ""; _scStudent = ""; if (_scData) renderTeacherRoster(_scData); }
+function setScStudent(v) { _scStudent = v || ""; if (_scData) renderTeacherRoster(_scData); }
 function showStudentContext() {
+  _scCourse = _courseFilter;
+  _scStudent = _studentFilter;
   document.getElementById("main").style.display = "none";
   document.getElementById("loading").style.display = "none";
   const view = document.getElementById("student-context-view");
@@ -3806,10 +4047,15 @@ function renderTeacherRoster(result) {
   // aggregated view of every student doc's context (lesson history,
   // evaluation/warm-up activity), not just a read-only listing.
   html += '<p style="font-size:12px;color:#1557b0;margin-bottom:16px;">💡 This feeds every student’s warm-up personalization and shadow-profile confidence — the more Lesson Context logged, the richer this gets.</p>';
+  _scData = result;
+  const people = _pickerPeople(result.roster.map(s => ({ key: String(s.email).toLowerCase(), name: s.name })), _scCourse);
+  if (_scStudent && !people.some(p => p.key === _scStudent)) _scStudent = "";
+  if (result.roster.length) html += panelPicker(_scCourse, _scStudent, people, "setScCourse", "setScStudent");
+  const shownKeys = new Set(people.filter(p => !_scStudent || p.key === _scStudent).map(p => p.key));
   if (result.roster.length === 0) {
     html += '<p style="color:var(--text-secondary);">No student docs yet. They are created automatically the first week a student has a completed assignment or warm-up response.</p>';
   } else {
-    result.roster.forEach(function(s) {
+    result.roster.filter(s => shownKeys.has(String(s.email).toLowerCase())).forEach(function(s) {
       // FIXED (Say/Do Ledger cas-ccps finding #15): was a bare color-only
       // dot (green/gray) with no text label — reuses the same
       // .status-badge/.badge-* text+color convention every other status
@@ -3820,10 +4066,12 @@ function renderTeacherRoster(result) {
         : '<span class="status-badge badge-not-started">No recent activity</span>';
       html += '<div style="background:white;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.08);">';
       html += '<div>' + activityBadge + ' <strong style="margin-left:6px">' + esc(s.name) + '</strong><div style="font-size:12px;color:var(--text-secondary);margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
+      html += '<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:flex-end">' +
+        '<button type="button" class="name-link" style="font-size:12px" data-student="' + esc(String(s.email).toLowerCase()) + '">By week →</button>';
       html += safeDocUrl(s.docUrl)
         ? '<a href="' + esc(safeDocUrl(s.docUrl)) + '" target="_blank" style="font-size:12px;color:#1557b0;text-decoration:none;">Open doc ↗</a>'
         : '<span style="font-size:12px;color:var(--text-secondary);">Document not yet available</span>';
-      html += '</div>';
+      html += '</div></div>';
     });
   }
   view.innerHTML = html;
