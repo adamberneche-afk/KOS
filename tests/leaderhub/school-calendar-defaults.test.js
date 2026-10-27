@@ -22,10 +22,10 @@ const F12 = path.join(SRC, '12-integrations-pacing-subplan-brag.html');
 const F07 = path.join(SRC, '07-events-email-members-goals.html');
 
 function load() {
-  const cal = extractLines(F10, 197, 225, [
+  const cal = extractLines(F10, 199, 238, [
     "const SCHOOL_CALENDAR_YEAR", 'const SCHEDULE_OVERRIDES_DEFAULT', 'const NO_SCHOOL_DEFAULT',
   ]);
-  const deadlines = extractLines(F10, 1545, 1588, ['const DECA_DEADLINES_DEFAULT', 'const CCPS_CALENDAR_DEADLINES_DEFAULT']);
+  const deadlines = extractLines(F10, 1565, 1608, ['const DECA_DEADLINES_DEFAULT', 'const CCPS_CALENDAR_DEADLINES_DEFAULT']);
   const season = extractLines(F07, 1222, 1249, ['const DECA_SEASON_YEAR', 'const DECA_SEASON_DEFAULT']);
   const quarters = extractLines(F12, 523, 528, ['const QUARTERS_DEFAULT']);
   return runInSandbox([cal, deadlines, quarters, season].join('\n'), {}, [
@@ -115,4 +115,49 @@ test('the built-in DECA season and deadlines are one school year, in date order'
     assert.ok(d.date >= prev, d.id + ' is out of order');
     prev = d.date;
   });
+});
+
+// Clover Hill's bell schedule page (2026-27, checked 2026-10-27): the A and
+// B lunch waves, and which days are A or B ("Regular Bell Schedule Dates").
+function loadBells() {
+  const fs = require('fs');
+  const lines = fs.readFileSync(F10, 'utf8').split('\n');
+  const at = (prefix, from) => lines.findIndex((l, i) => i >= (from || 0) && l.startsWith(prefix)) + 1;
+  const bellStart = at('const BELL_SCHEDULES_DEFAULT');
+  const bellEnd = at('};', bellStart);
+  const calStart = at('const SCHOOL_CALENDAR_YEAR');
+  const fnStart = at('function _defaultDayMapFor(');
+  const fnEnd = at('}', fnStart);
+  const typeStart = at('function getScheduleTypeFor(');
+  const typeEnd = at('}', typeStart);
+  const src = [
+    extractLines(F10, bellStart, bellEnd, ['const BELL_SCHEDULES_DEFAULT']),
+    extractLines(F10, calStart, fnEnd, ['const DAY_SCHEDULE_RANGES_DEFAULT', 'function _defaultDayMapFor(']),
+    'let CCPS_NO_SCHOOL = new Set(NO_SCHOOL_DEFAULT); let CCPS_SCHEDULE_OVERRIDES = SCHEDULE_OVERRIDES_DEFAULT; let DAY_SCHEDULE_MAP = null;',
+    extractLines(F10, typeStart, typeEnd, ['function getScheduleTypeFor(']),
+  ].join('\n');
+  return runInSandbox(src, {}, ['BELL_SCHEDULES_DEFAULT', 'getScheduleTypeFor']);
+}
+
+test('the A and B bell schedules match the school\'s page, lunch waves included', () => {
+  const b = loadBells().BELL_SCHEDULES_DEFAULT;
+  const times = (k, kind) => b[k].periods.filter((p) => p[kind]).map((p) => p.start + '-' + p.end);
+  assert.deepEqual(times('A', 'block'), ['08:30-09:20', '09:25-11:05', '11:10-13:15', '13:20-15:00']);
+  assert.deepEqual(times('A', 'lunch'), ['11:20-11:45', '11:50-12:15', '12:20-12:45', '12:50-13:15']);
+  assert.deepEqual(times('B', 'block'), ['08:30-09:15', '09:50-11:20', '11:25-13:25', '13:30-15:00']);
+  assert.deepEqual(times('B', 'lunch'), ['11:30-11:55', '12:00-12:25', '12:30-12:55', '13:00-13:25']);
+  assert.deepEqual(times('B', 'advisory'), ['09:20-09:45']);
+});
+
+test('A or B by date: every day A to Sept. 4, Fridays B to Nov. 20, then Fridays A', () => {
+  const t = loadBells().getScheduleTypeFor;
+  assert.equal(t('2026-09-02'), 'A', 'a Wednesday in the first two weeks');
+  assert.equal(t('2026-10-27'), 'A', 'Tuesday');
+  assert.equal(t('2026-10-28'), 'B', 'Wednesday');
+  assert.equal(t('2026-11-20'), 'B', 'the last B Friday');
+  assert.equal(t('2026-12-04'), 'A', 'Fridays are A from Nov. 23');
+  assert.equal(t('2026-12-03'), 'B', 'Thursday stays B');
+  assert.equal(t('2026-10-30'), 'EARLY3', 'an early release');
+  assert.equal(t('2026-11-03'), null, 'Election Day');
+  assert.equal(t('2026-10-31'), null, 'a Saturday');
 });
