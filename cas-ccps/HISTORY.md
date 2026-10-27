@@ -4936,3 +4936,35 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
 - **Tests:** `feedback-as-comment.test.js`, `overnight-health.test.js`,
   `teacher-dashboard-inline-js.test.js`,
   `teacher-dashboard-lesson-schedule.test.js`.
+
+## The Student Dashboard: the student's own record, 2026-10-27
+
+- **Why:** the operator, after the walk-through: students need to see the
+  gathered context, their competency list, the ratings earned in each, the
+  evidence collected for each, and the feedback from past warm-ups.
+- **Decided:** only the teacher's confirmed rating is shown, never the AI
+  suggestion; each piece of evidence in plain words, marked whether it
+  counts; every competency in the course, grouped by duty area; built
+  now, pushed after grades (Oct 30).
+- **Server, 13:** `getMyCompetencies()` (every active competency in the
+  student's courses by `strand`, in task order; the latest confirmed
+  rating; each `CompetencyEvidence` row, newest first, "Shown / Partly
+  shown / Not shown yet", the assignment's name from the student's Ledger
+  row, and `counts` on the best result per assignment, as 30 aggregates),
+  `getMyWarmUpHistory()` (every warm-up before today, as the card's view,
+  read-only) and `getMyContext()` (the context doc by week). Identity from
+  the session only. `studentContextDocFor_` and the `SDR_*` columns (were
+  29's) moved to 00. The week reader stays out of 00, since every project
+  loads 00 and gas-lint requires the Docs scope wherever `DocumentApp`
+  appears: 13's `_dashContextWeeks_` is a twin of 07's `_tdContextWeeks_`,
+  and a test keeps them the same.
+- **Page, 13:** tabs under the header (📋 Assignments, 🎓 Competencies,
+  ✏️ Warm-ups, 🗂️ My Context), each loaded the first time it opens; ↻
+  Refresh reloads the open one. Competencies: a course's counter, a box
+  per duty area ("n of m rated"), each competency with its rating chip and
+  evidence, and "Show only competencies with evidence or a rating".
+  Warm-ups: the card's layout per warm-up with the student's reply. My
+  Context: ‹ Older / Newer › with the doc's link. Three new student Terms.
+- **Docs:** the student guide (the tabs, the words), its notebook copy,
+  `docs/FERPA_DATA_MAP.md` (what each tab reads).
+- **Tests:** `student-dashboard-record.test.js` (new).
