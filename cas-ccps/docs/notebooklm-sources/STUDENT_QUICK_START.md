@@ -135,9 +135,10 @@ You turn in on Canvas. That's where your teacher grades it. Passing a check firs
 Your dashboard is called **📚 My Assignments**. Open it from the **Your dashboard** link at the top of any of your documents.
 
 1. **The year menu**: It starts on **Whole school year**. Pick a marking period to see just that part of the year.
-2. **ℹ️ My Info**: What the system has on file for you: your name, class, period and teacher. If something is wrong, press **✉ Request a correction** or tell your teacher.
-3. **❓ What do these mean?**: Opens a list of the words on the page and what they mean. Press Escape or Close to shut it.
-4. **↻ Refresh**: The page doesn't update by itself. Press Refresh to see the latest.
+2. **🎓 Competencies done**: At the top, one line per course: how many of the course's competencies your teacher has rated you able to do with limited supervision or better, out of all of them (for example “12 of 113”). It goes up as your teacher rates your work.
+3. **ℹ️ My Info**: What the system has on file for you: your name, class, period and teacher. If something is wrong, press **✉ Request a correction** or tell your teacher.
+4. **❓ What do these mean?**: Opens a list of the words on the page and what they mean. Press Escape or Close to shut it.
+5. **↻ Refresh**: The page doesn't update by itself. Press Refresh to see the latest.
 
 ## Common Questions
 
@@ -189,6 +190,7 @@ Open **ℹ️ My Info** and press **✉ Request a correction**, or tell your tea
 
 The same list as **❓ What do these mean?** on your dashboard.
 
+- **Competencies done**: Competencies in your course that your teacher has rated you able to do with limited supervision or better (1 to 3 on the state's 5-point scale), out of every competency in the course.
 - **Submit for Feedback**: Sends what you wrote under “Your response” to be checked. Press it when you’re ready; you can submit again after you revise.
 - **Waiting for feedback**: Your work is in line to be checked. Nothing to do yet; check back in a few minutes.
 - **Being checked now**: Your work is being read right now.
