@@ -231,6 +231,18 @@ test('setup checks: a shifted Ledger column, a drifted prompt and a shifted retu
   assert.doesNotMatch(lines, /Q1|s@ccpsnet|Sam/, 'counts and header names only');
 });
 
+// ⚙ Settings (2026-10-27): a Script Property in the Central Ledger would
+// override the Teacher Dashboard's switch there without the panel knowing.
+test('setup checks: a ⚙ Settings key set as a Central Ledger Script Property is one line, naming it', () => {
+  const env = loadSetup();
+  env.props.setProperty('ROLLOUT_AUTO_APPLY', '8175');
+  env.props.setProperty('WARMUP_TEXT_BOX', '');
+  const lines = env.exported.overnightHealth_(NOW).problems.filter((p) => /Settings set as Script Properties/.test(p));
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /override the Teacher Dashboard's ⚙ Settings here: ROLLOUT_AUTO_APPLY\. Set each in ⚙ Settings/);
+  assert.doesNotMatch(lines[0], /8175|WARMUP_TEXT_BOX/, 'names only, and a blank property is unset');
+});
+
 test('setup checks run at most every 6 hours; in between, the last lines are reused', () => {
   const env = loadSetup();
   const headers = env.exported.LEDGER_CANONICAL_HEADERS.slice();
