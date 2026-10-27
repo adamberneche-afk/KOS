@@ -70,6 +70,7 @@ function getStudentDashboardData(termFilter) {
   // A class counts as new only when its earliest row is (any term, any
   // status, this school year).
   const firstRegistered = {}; // class + teacher -> { className, teacherName, at }
+  const courseNames = {}; // course code -> a class name, for the competency counter
 
   const year = _currentSchoolYear_();
   const feedbackAsComment = feedbackAsCommentChecker_();
@@ -89,6 +90,9 @@ function getStudentDashboardData(termFilter) {
         firstRegistered[key] = { className: cls, teacherName: tch, at: regAt };
       }
     }
+
+    const courseCode = ledgerRowCourseCode_(row);
+    if (courseCode && !courseNames[courseCode]) courseNames[courseCode] = String(row[LEDGER.CLASS_NAME]).trim();
 
     // Collect all terms for this student regardless of filter
     const rowTerm = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
@@ -189,6 +193,18 @@ function getStudentDashboardData(termFilter) {
   // card shows the last warm-up and the current one.
   const warmUps = getStudentWarmUps_(ss, cfg, googleId, new Date());
 
+  // Competencies done per course (00, 2026-10-27): every teacher's
+  // confirmed ratings for this student, 1–3 counting.
+  let competencies = [];
+  try {
+    competencies = competencyCompletionFor_(
+      readLatestScrRatings_(ss, cfg, "").get(googleId.toLowerCase()),
+      competencyCourseTotals_(ss, cfg), Object.keys(courseNames))
+      .map(function (c) { return Object.assign({ className: courseNames[c.course] }, c); });
+  } catch (e) {
+    Logger.log("[S13] competency counts failed: " + e.message);
+  }
+
   // Empty state with helpful context. "No results" from picking a term
   // with nothing in it is a completely different situation from "not
   // registered at all" — the account-troubleshooting copy below used to
@@ -200,6 +216,7 @@ function getStudentDashboardData(termFilter) {
       googleId:    googleId,
       assignments: [],
       warmUps:     warmUps,
+      competencies: competencies,
       newRegistrations: newRegistrations,
       emptyReason: filteredByTerm
         ? "No assignments for " + activeTerm + ".\n\nChoose \"Whole school year\" at the top to see the rest of the year."
@@ -218,6 +235,7 @@ function getStudentDashboardData(termFilter) {
     googleId:       googleId,
     assignments:    assignments,
     warmUps:        warmUps,
+    competencies:   competencies,
     newRegistrations: newRegistrations,
     activeTerm:     activeTerm,
     availableTerms: [...availableTerms].sort().reverse(),
@@ -930,6 +948,8 @@ function buildStudentDashboardHtml_() {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Assignments</title>
 <style>
+.competency-strip{display:flex;flex-wrap:wrap;gap:8px 20px;background:#fff;border:1px solid #e8eaed;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:14px}
+
   /* FIXED (Say/Do Ledger cas-ccps finding #14): #80868b (used for
      secondary/meta text) is ~3.68:1 against white — below WCAG AA's
      4.5:1 minimum for normal text. #5f6368 (already used elsewhere in
@@ -1246,7 +1266,7 @@ function render(data) {
   if (_myInfoOpen) renderMyInfo(data);
 
   if (!data.assignments || data.assignments.length === 0) {
-    main.innerHTML = renderWarmUps(data) + \`<div class="empty-state">
+    main.innerHTML = renderCompetencies(data) + renderWarmUps(data) + \`<div class="empty-state">
       <div class="icon">📋</div>
       <p>\${esc(data.emptyReason || "No assignments found.")}</p>
     </div>\`;
@@ -1273,7 +1293,7 @@ function render(data) {
     return a.localeCompare(b);
   });
 
-  let html = renderWarmUps(data);
+  let html = renderCompetencies(data) + renderWarmUps(data);
   sortedGroups.forEach(gk => {
     html += \`<div class="group-header">Block \${esc(gk)}</div>\`;
     groups[gk].forEach(a => {
@@ -1335,6 +1355,17 @@ function _setFooter(data) {
 // is shown until a student has a warm-up.
 let _wuDrafts = {}; // "answer:QUEUE" / "reply:QUEUE" -> text typed, kept across re-renders
 let _wuMsgs = {};   // same keys -> { ok, text } from this visit's saves
+
+// "12 of 113 competencies done" per course (00's competencyCompletionFor_:
+// a teacher's confirmed rating of 1 to 3).
+function renderCompetencies(data) {
+  const list = (data && data.competencies) || [];
+  if (!list.length) return "";
+  return '<div class="competency-strip" title="Competencies your teacher has rated you able to do with limited supervision or better">' +
+    list.map(c => '<div class="competency-item">🎓 <span>' + esc(c.className || c.course) + ':</span> <strong>' +
+      esc(String(c.done)) + '</strong>' + (c.total ? ' of ' + esc(String(c.total)) : '') + ' competencies done</div>').join("") +
+    '</div>';
+}
 
 function renderWarmUps(data) {
   const wu = data.warmUps || {};
