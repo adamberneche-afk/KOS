@@ -271,6 +271,78 @@ test('Student Context has a way back to the roster without a reload', () => {
   assert.equal(reloaded, false);
 });
 
+// ── Course, period and student filters (2026-10-27) ─────────────────────
+const filterRoster3 = () => [
+  rosterStudent({ name: 'Amy', googleId: 'amy@example.invalid', courseCode: '8175', className: '8175 Sports Marketing', period: '1' }),
+  rosterStudent({ name: 'Amy', googleId: 'amy@example.invalid', courseCode: '8175', className: '8175 Sports Marketing', period: '1',
+    assignmentId: 'L05', assignmentName: 'L05', isCurrentLesson: false, evalState: 'PASSED', statusClass: 'compliant' }),
+  rosterStudent({ name: 'Bo', googleId: 'bo@example.invalid', courseCode: '8175', className: '8175 Sports Marketing', period: '3' }),
+  rosterStudent({ name: 'Cy', googleId: 'cy@example.invalid', courseCode: '8177', className: '8177 Sports Management', period: '2',
+    assignmentId: 'M01', assignmentName: 'M01' }),
+];
+const names = (main) => [...main.matchAll(/<div class="student-name">([^<]+)</g)].map((m) => m[1]);
+const options = (main, id) => {
+  const sel = new RegExp('<select id="' + id + '"[^>]*>(.*?)</select>').exec(main)[1];
+  return [...sel.matchAll(/<option value="([^"]*)"/g)].map((m) => m[1]);
+};
+
+test('the roster filters list each course, then its periods, then their students', () => {
+  const { main, context, els } = renderedRoster(filterRoster3(), 'ALL');
+  assert.deepEqual(options(main, 'course-filter'), ['', '8175', '8177']);
+  assert.match(main, /<option value="8175">8175 Sports Marketing<\/option>/);
+  assert.deepEqual(options(main, 'period-filter'), ['', '1', '2', '3']);
+  assert.match(main, /<option value="amy@example.invalid">Amy \(Period 1\)<\/option>/);
+  assert.doesNotMatch(main, /Clear filters/, 'nothing to clear yet');
+
+  context.setCourseFilter('8175');
+  let after = els.main.innerHTML;
+  assert.deepEqual(options(after, 'period-filter'), ['', '1', '3']);
+  assert.deepEqual(options(after, 'student-filter'), ['', 'amy@example.invalid', 'bo@example.invalid']);
+  assert.deepEqual(names(after).sort(), ['Amy', 'Bo']);
+  assert.match(after, /onclick="clearRosterFilters\(\)">Clear filters</);
+  assert.doesNotMatch(after, /<option value="M01"/, 'the lesson picker lists only the course\'s lessons');
+
+  context.setPeriodFilter('3');
+  after = els.main.innerHTML;
+  assert.deepEqual(options(after, 'student-filter'), ['', 'bo@example.invalid']);
+  assert.deepEqual(names(after), ['Bo']);
+
+  context.clearRosterFilters();
+  assert.deepEqual(names(els.main.innerHTML).sort(), ['Amy', 'Bo', 'Cy'], 'every course\'s current lesson again');
+});
+
+test('choosing one student shows all their assignments, and a wider filter change resets it', () => {
+  const { context, els } = renderedRoster(filterRoster3());
+  context.setStudentFilter('amy@example.invalid');
+  const main = els.main.innerHTML;
+  assert.deepEqual(names(main), ['Amy', 'Amy'], 'both assignments, not only the current lesson');
+  assert.match(main, /<div class="count">2<\/div><div class="label">Assignments · 1 student<\/div>/);
+  assert.match(main, /<option value="amy@example.invalid" selected>/);
+  context.setCourseFilter('8177');
+  assert.deepEqual(names(els.main.innerHTML), ['Cy']);
+  assert.doesNotMatch(els.main.innerHTML, /<option value="amy@example.invalid"/);
+});
+
+test('a refresh that no longer has the filtered student drops the filter', () => {
+  const { context, els } = renderedRoster(filterRoster3());
+  context.setStudentFilter('bo@example.invalid');
+  const data = { students: filterRoster3().filter((s) => s.name !== 'Bo'),
+    lessons: [{ id: 'L06', name: 'L06', current: true }], activeTerm: 'ALL', availableTerms: [] };
+  context.render(data);
+  assert.deepEqual(names(els.main.innerHTML).sort(), ['Amy', 'Cy'], 'back to the current lesson, unfiltered');
+});
+
+test('the warm-up readiness numbers count only the filtered students', () => {
+  const { context } = renderedRoster(filterRoster3());
+  const r = { total: 3, withEvalHistory: 2, withWarmUpHistory: 3, withShadowConfidence: 0, locked: 1,
+    withEvalEmails: ['amy@example.invalid', 'cy@example.invalid'], withWarmupEmails: ['AMY@example.invalid', 'bo@example.invalid', 'cy@example.invalid'],
+    withConfEmails: [], lockedEmails: ['cy@example.invalid'] };
+  assert.equal(context.scopedReadiness(r, filterRoster3()), r, 'no filter: the server\'s numbers as they are');
+  context.setCourseFilter('8175');
+  const scoped = context.scopedReadiness(r, context.filterRoster(filterRoster3()));
+  assert.deepEqual([scoped.total, scoped.withEvalHistory, scoped.withWarmUpHistory, scoped.locked], [2, 1, 2, 0]);
+});
+
 // ── Teacher Dashboard polish (2026-10-22, UX audit order-of-work item 6) ───
 test('rows that need the teacher come first in each lesson section', () => {
   const { main } = renderedRoster([

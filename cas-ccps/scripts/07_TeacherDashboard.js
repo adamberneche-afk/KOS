@@ -550,6 +550,9 @@ function getDashboardData(termFilter) {
       block:       String(row[LEDGER.BLOCK]).trim(),
       className:   String(row[LEDGER.CLASS_NAME]).trim(),
       period:      String(row[LEDGER.PERIOD]).trim(),
+      // The course filter's key (ledgerRowCourseCode_, 00): "8175", "8177"
+      // or "" when no name on the row names a course.
+      courseCode:  ledgerRowCourseCode_(row),
       subject:     String(row[LEDGER.SUBJECT]).trim(),
       unitCode:    unitCode,
       configId:    String(row[LEDGER.CONFIG_ID]).trim(),
@@ -1717,6 +1720,10 @@ header button:focus-visible,header select:focus-visible{outline:2px solid white;
 .lesson-picker{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
 .lesson-picker label{font-size:13px;color:var(--text-secondary)}
 .lesson-picker select{padding:6px 10px;border-radius:4px;border:1px solid #dadce0;font-size:13px;max-width:100%}
+.roster-filters{display:flex;align-items:center;gap:8px 16px;margin-bottom:10px;flex-wrap:wrap}
+.roster-filters label{font-size:13px;color:var(--text-secondary);display:flex;align-items:center;gap:6px}
+.roster-filters select{padding:6px 10px;border-radius:4px;border:1px solid #dadce0;font-size:13px;max-width:100%}
+.roster-filters button{background:none;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer}
 .badges{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
 .badge-passed-before{background:#e0f2f1;color:#00695c}
 .student-row.es-PASSED:not(.flagged){border-left-color:#137333}
@@ -2204,6 +2211,80 @@ const EVAL_FILTER_LABEL = {
   PASSED: "passed", PASSED_BEFORE: "passed before, latest needs revision",
   NOT_PASSING: "checked, not passing yet", NOT_CHECKED: "not checked yet", FLAGGED: "need attention"
 };
+// Course, period and student filters (2026-10-27, meta/SPRINT_DASHBOARD_2026-11.md).
+// Page memory only: a reload starts unfiltered. "" means all. A narrower
+// filter resets when a wider one changes, and the lesson picker goes back
+// to its default (all assignments once one student is chosen).
+let _courseFilter = "";
+let _periodFilter = "";
+let _studentFilter = "";
+function _rerenderFilters() {
+  _lessonView = null;
+  _evalFilter = null;
+  if (_lastDashData) render(_lastDashData);
+}
+function setCourseFilter(v) { _courseFilter = v || ""; _periodFilter = ""; _studentFilter = ""; _rerenderFilters(); }
+function setPeriodFilter(v) { _periodFilter = v || ""; _studentFilter = ""; _rerenderFilters(); }
+function setStudentFilter(v) { _studentFilter = v || ""; _rerenderFilters(); }
+function clearRosterFilters() { _courseFilter = ""; _periodFilter = ""; _studentFilter = ""; _rerenderFilters(); }
+function rosterKey(s) { return String(s.googleId || "").toLowerCase(); }
+function _rosterMatch(s, upTo) {
+  if (_courseFilter && s.courseCode !== _courseFilter) return false;
+  if (upTo === "course") return true;
+  if (_periodFilter && String(s.period) !== _periodFilter) return false;
+  if (upTo === "period") return true;
+  return !_studentFilter || rosterKey(s) === _studentFilter;
+}
+// The rows the filters keep.
+function filterRoster(students) { return (students || []).filter(s => _rosterMatch(s, "student")); }
+// Each filter's choices come from the rows the wider filters keep.
+function rosterFilterOptions(students) {
+  const all = students || [];
+  const courses = {};
+  all.forEach(s => { if (s.courseCode && !courses[s.courseCode]) courses[s.courseCode] = s.className || ""; });
+  const periods = {};
+  all.filter(s => _rosterMatch(s, "course")).forEach(s => { if (String(s.period)) periods[String(s.period)] = true; });
+  const people = {};
+  all.filter(s => _rosterMatch(s, "period")).forEach(s => {
+    const k = rosterKey(s);
+    if (k && !people[k]) people[k] = { key: k, name: s.name, period: String(s.period || "") };
+  });
+  return {
+    courses: Object.keys(courses).sort().map(c => ({ code: c, name: courses[c] })),
+    periods: Object.keys(periods).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+    students: Object.keys(people).map(k => people[k]).sort((a, b) => a.name.localeCompare(b.name)),
+  };
+}
+// Drops a filter value a refresh or term change has left with no rows.
+function _syncRosterFilters(students) {
+  let o = rosterFilterOptions(students);
+  if (_courseFilter && !o.courses.some(c => c.code === _courseFilter)) { _courseFilter = ""; _periodFilter = ""; _studentFilter = ""; o = rosterFilterOptions(students); }
+  if (_periodFilter && o.periods.indexOf(_periodFilter) === -1) { _periodFilter = ""; _studentFilter = ""; o = rosterFilterOptions(students); }
+  if (_studentFilter && !o.students.some(p => p.key === _studentFilter)) _studentFilter = "";
+}
+function rosterFilterBar(students) {
+  const o = rosterFilterOptions(students);
+  const opt = (value, label, current) => '<option value="' + esc(value) + '"' + (value === current ? ' selected' : '') + '>' + esc(label) + '</option>';
+  let h = '<div class="roster-filters" role="group" aria-label="Filter the roster">';
+  h += '<label>Course <select id="course-filter" onchange="setCourseFilter(this.value)">' + opt("", "All courses", _courseFilter) +
+    o.courses.map(c => opt(c.code, c.name && c.name.indexOf(c.code) === -1 ? c.code + " · " + c.name : (c.name || c.code), _courseFilter)).join("") + '</select></label>';
+  h += '<label>Period <select id="period-filter" onchange="setPeriodFilter(this.value)">' + opt("", "All periods", _periodFilter) +
+    o.periods.map(p => opt(p, "Period " + p, _periodFilter)).join("") + '</select></label>';
+  h += '<label>Student <select id="student-filter" onchange="setStudentFilter(this.value)">' + opt("", "All students", _studentFilter) +
+    o.students.map(p => opt(p.key, p.name + (!_periodFilter && p.period ? " (Period " + p.period + ")" : ""), _studentFilter)).join("") + '</select></label>';
+  if (_courseFilter || _periodFilter || _studentFilter) h += '<button type="button" onclick="clearRosterFilters()">Clear filters</button>';
+  return h + '</div>';
+}
+// The readiness numbers for the filtered students only (its email lists
+// are the whole roster's).
+function scopedReadiness(r, scoped) {
+  if (!r || !(_courseFilter || _periodFilter || _studentFilter)) return r;
+  const keys = new Set(scoped.map(rosterKey));
+  const n = list => (list || []).filter(e => keys.has(String(e).toLowerCase())).length;
+  return Object.assign({}, r, { total: keys.size, withEvalHistory: n(r.withEvalEmails),
+    withWarmUpHistory: n(r.withWarmupEmails), withShadowConfidence: n(r.withConfEmails), locked: n(r.lockedEmails) });
+}
+
 function setLessonView(v) {
   _lessonView = v;
   _evalFilter = null;
@@ -3437,13 +3518,20 @@ If you expect to see students here:
 
   // The lesson picker: the current lesson(s) by default (LessonSchedule
   // dates), any one lesson, or everything.
-  const lessons = data.lessons || [];
+  // The course, period and student filters narrow everything below,
+  // the lesson picker included.
+  _syncRosterFilters(data.students);
+  const scoped = filterRoster(data.students);
+  const scopedLessons = new Set(scoped.map(s => s.assignmentId).filter(Boolean));
+  const lessons = (data.lessons || []).filter(l => scopedLessons.has(l.id));
   const hasCurrent = lessons.some(l => l.current);
-  const view = _lessonView || (hasCurrent ? "CURRENT" : "ALL");
-  const inView = data.students.filter(s =>
+  const knownView = _lessonView === "ALL" || (_lessonView === "CURRENT" && hasCurrent) ||
+    lessons.some(l => l.id === _lessonView);
+  const view = (knownView && _lessonView) || (_studentFilter || !hasCurrent ? "ALL" : "CURRENT");
+  const inView = scoped.filter(s =>
     view === "ALL" ? true : view === "CURRENT" ? s.isCurrentLesson : s.assignmentId === view);
   const currentNames = lessons.filter(l => l.current).map(l => l.name).join(" · ");
-  let html = \`<div class="lesson-picker">
+  let html = rosterFilterBar(data.students) + \`<div class="lesson-picker">
     <label for="lesson-view">Showing</label>
     <select id="lesson-view" onchange="setLessonView(this.value)">
       \${hasCurrent ? \`<option value="CURRENT"\${view === "CURRENT" ? " selected" : ""}>Current lesson\${lessons.filter(l => l.current).length === 1 ? "" : "s"}: \${esc(currentNames)}</option>\` : ""}
@@ -3628,7 +3716,7 @@ If you expect to see students here:
   document.getElementById("footer").textContent = "Last refreshed: " + data.generatedAt;
 
   // ── M2: Render warm-up readiness panel ───────────────────────────────────
-  renderWarmUpReadiness(data.warmUpReadiness || null);
+  renderWarmUpReadiness(scopedReadiness(data.warmUpReadiness || null, scoped));
 
   // "+ New Lesson" opens a form that posts to submitLessonContext(), which
   // is entirely a Module 2 feature — previously always rendered, so a
