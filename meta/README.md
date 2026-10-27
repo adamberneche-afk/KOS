@@ -39,6 +39,12 @@ why this repo exists at all.
   page, one student's page (their parent report and Student Context by
   week), and a ⚙ Settings panel for the features turned on per course,
   with a change log. Four PRs, filters first.
+- **`SPRINT_LESSON_DOCS_2026-11.md`** — the sprint decided 2026-10-27 for
+  the week of Nov 2: one teacher doc per lesson (the plan, an itinerary
+  drafted from the lesson, look-fors, each day it runs, a class status
+  snapshot) in place of the per-period Lesson Frames, and a Google Slides
+  agenda per course per day; with Clover Hill's official 2026-27 bell
+  schedule and which days are A or B.
 - **`STUDENT_WORK_PLAN_2026-10.md`** — the plan (direction decided
   2026-10-24) for the student's side of an assignment, from rendering two
   new student docs: multi-part lessons split into parts that unlock in
