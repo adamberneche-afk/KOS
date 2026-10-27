@@ -1340,3 +1340,28 @@ deprecated `unescape`; it now counts `encodeURIComponent`'s escapes, the
 same number. Its "too large" message divided by 1024 against a limit given
 in thousands, so a 9,206-byte setting read "9 KB; the limit is 9 KB"; it
 now reads "10 KB". Test: a multi-byte setting in `config-sync.test.js`.
+
+## The bell schedule checked against Clover Hill's page, 2026-10-27
+
+- **Found** (the operator's PDF of the school's bell schedule page): the A
+  and B lunch waves were 23 minutes at the wrong times (they are 25:
+  A 11:20, 11:50, 12:20, 12:50; B 11:30, 12:00, 12:30, 1:00); A and B by
+  weekday were fixed all year (Mon/Tue A, Wed–Fri B), but the school runs
+  A every day to Sept. 4 and switches Fridays to A from Nov. 23; the 9:20
+  slot read "Homeroom" on Wednesdays, when Homeroom is Friday and Cav
+  Morning Wednesday and Thursday; and the sub plan guessed its schedule
+  from its own weekday list. Activity, 2-Hour Delay and Early Release
+  were already right; the CCPS calendar matched.
+- **Fix, src/10:** the lunch times; `DAY_SCHEDULE_RANGES_DEFAULT` (the A/B
+  rotation by date) and `_defaultDayMapFor`; `getScheduleTypeFor(date)`
+  (no school, then an override, then the rotation that day), which
+  `getTodayScheduleType()` and the sub plan (src/12) now share; the
+  advisory label by weekday. A day-of-week map saved in Settings still
+  replaces the rotation, all year.
+- **Settings, src/11:** "🔔 Use the built-in Clover Hill bell schedule"
+  clears a saved copy of the bell times and the day-of-week map, so the
+  corrected ones apply; the weekday row says whether it is saved or built
+  in.
+- **Tests:** `school-calendar-defaults.test.js` (the A and B times and
+  lunches, A or B by date); fixed line ranges in it and in
+  `pacing-and-calendar.test.js` moved with the source.

@@ -2985,11 +2985,8 @@ function onSubPlanDateChange() {
   const dateStr = document.getElementById('sp-date').value;
   if (!dateStr) return;
 
-  // Auto-detect schedule type
-  const override = CCPS_SCHEDULE_OVERRIDES[dateStr];
-  const dow = new Date(dateStr + 'T12:00:00').getDay(); // 0=Sun
-  let schedType = override || (['A','A','B','B','B'][dow - 1] || 'A');
-  if (CCPS_NO_SCHOOL.has(dateStr)) schedType = null;
+  // Auto-detect schedule type (the bell schedule module's dated rotation)
+  const schedType = getScheduleTypeFor(dateStr);
   document.getElementById('sp-schedule').value = schedType || 'A';
 
   // Auto-detect odd/even
