@@ -1022,6 +1022,33 @@ const CLIENT_SAFE_DOC_URL_JS = `function safeDocUrl(u) {
 // what a person reads.
 // =============================================================================
 // =============================================================================
+// STUDENT CONTEXT DOCS (29 writes them, weekly)
+// =============================================================================
+// StudentDocRegistry column indices (0-based) — canonical order
+const SDR_STUDENT_EMAIL = 0;
+const SDR_STUDENT_NAME = 1;
+const SDR_DOC_ID = 2;
+const SDR_DOC_URL = 3;
+const SDR_CREATED_AT = 4;
+const SDR_LAST_UPDATED_AT = 5;
+const SDR_LAST_RUN_HAD_CONTENT = 6;
+
+// A student's doc from StudentDocRegistry: { docId, docUrl, lastUpdatedAt }
+// or null.
+function studentContextDocFor_(ss, cfg, email) {
+  const sheet = ss.getSheetByName(cfg.tabs.studentDocRegistry || "StudentDocRegistry");
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  const want = String(email || "").trim().toLowerCase();
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][SDR_STUDENT_EMAIL]).trim().toLowerCase() !== want) continue;
+    return { docId: String(data[i][SDR_DOC_ID]).trim(), docUrl: String(data[i][SDR_DOC_URL]).trim(),
+      lastUpdatedAt: data[i][SDR_LAST_UPDATED_AT] || null };
+  }
+  return null;
+}
+
+// =============================================================================
 // COMPETENCY COMPLETION — n of the course's competencies, per student
 // =============================================================================
 // A competency counts as done once the teacher's latest confirmed rating
@@ -1067,7 +1094,7 @@ function readLatestScrRatings_(ss, cfg, decidedBy) {
     const rating = row[SCRDL.FINAL_RATING];
     if (rating === "" || rating === null || rating === undefined) continue;
 
-    const decidedAt = (row[SCRDL.DECIDED_AT] instanceof Date) ? row[SCRDL.DECIDED_AT] : null;
+    const decidedAt = Object.prototype.toString.call(row[SCRDL.DECIDED_AT]) === "[object Date]" ? row[SCRDL.DECIDED_AT] : null;
     const key = email + "\u0000" + compId;
     const prior = latest.get(key);
     // No decidedAt sorts oldest, so a row with a real timestamp always wins
@@ -1158,6 +1185,9 @@ const CLIENT_WORDS_JS =
 // What each dashboard's Terms panel explains: [word on screen, meaning].
 const CAS_STUDENT_TERMS = [
   ["Competencies done", "Competencies in your course that your teacher has rated you able to do with limited supervision or better (1 to 3 on the state's 5-point scale), out of every competency in the course."],
+  ["Competency rating", "Your teacher's rating of a competency on Virginia's 1 to 5 scale, where 1 is the highest: 1 Can teach others, 2 Without supervision, 3 Limited supervision, 4 With supervision, 5 Cannot perform. “Not rated yet” until your teacher decides."],
+  ["Evidence", "What a checked piece of your work showed for a competency: Shown, Partly shown or Not shown yet. Each assignment counts once, at its best result, so an early draft doesn't count against you."],
+  ["My Context", "What the system has gathered about your work, week by week: your checked assignments and your warm-up answers. The same document your teacher sees."],
   ["Submit for Feedback", "Sends what you wrote under “Your response” to be checked. Press it when you’re ready; you can submit again after you revise."],
   ["Waiting for feedback", "Your work is in line to be checked. Nothing to do yet; check back in a few minutes."],
   ["Being checked now", "Your work is being read right now."],
