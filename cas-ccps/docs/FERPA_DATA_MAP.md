@@ -280,7 +280,8 @@ warm-up) and the Student Dashboard (13, the answer and reply, only for the
 signed-in student's own row); read by the nightly scoring (25), which copies
 the answer into WarmUpQueue's `response_text` as it does for a doc warm-up.
 The Student Dashboard shows a student only their own last and current
-warm-up. Retention: working data, 1 year, on `lesson_date`.
+warm-up, and (since 2026-10-27, its ✏️ Warm-ups tab) their own past ones,
+read-only. Retention: working data, 1 year, on `lesson_date`.
 
 ### WarmUpResponses
 Raw student-written warm-up response text, keyed by student email + lesson
@@ -292,7 +293,10 @@ Student email/name + their Student Context doc's (Script 29, the weekly
 per-student doc) ID/URL/creation and update timestamps. Not the assignment
 workspace docs, which the Ledger records. The doc itself is shared with the
 student via `addViewer(email)` — standard per-student Drive sharing, not a
-broad-access grant.
+broad-access grant. Since 2026-10-27 the Student Dashboard's 🗂️ My Context
+tab (13's `getMyContext`) and the Teacher Dashboard's student page read the
+doc's text by week; the student sees only their own, from the session's
+identity.
 
 ### CompetencyEvidence
 Evidence ID, student email, competency ID, milestone text, MET/NOT MET/PARTIAL
@@ -313,7 +317,7 @@ key, which needs the same project. The live writer is
 `37_FlowInputBuilder.js`'s `harvestFlowInputResults()`, which calls that same
 `writeCompetencyEvidenceFromFlow2_()` from Apps Script on a time trigger — so
 the schema and header seeding described below are unchanged, and the tab is
-created by the harvest if missing rather than by the Studio step. Read by Script 30's evidence aggregation and Script 30b.
+created by the harvest if missing rather than by the Studio step. Read by Script 30's evidence aggregation and Script 30b, and (since 2026-10-27) by the Student Dashboard's 🎓 Competencies tab (13's `getMyCompetencies`): the signed-in student's own non-archived rows only, as the assignment name, date, milestone text and outcome.
 **Retention:** `COMPETENCY_EVIDENCE_RETENTION_YEARS` (Script Property,
 default 5 — see the retention note above) via
 `_archiveExpiredCompetencyEvidence_()`, run automatically on every daily
@@ -386,7 +390,7 @@ SCRDecisionLog once a teacher actually confirms a rating.
 | **Fields** | Decision ID, student email, competency ID, suggested rating, final rating, decision type, decided-at, decided-by, evidence snapshot, archive status |
 | **Why collected** | **The actual legally-retained record** — this is the one tab in cas-ccps whose retention obligation is named in a code comment already (the Library of Virginia's General Schedule GS-21 for public school divisions / 8VAC20-120-120; earlier versions of this map called GS-21 VDOE's), append-only — rows are never deleted by any code path, though a row can now be marked archived (see Retention below). |
 | **Read by** | `exportToWorkbookGrid_()` (Script 30), via the admin-facing `exportScrDecisionLogForAudit()` menu item. The export is a pivoted grid — one tab per class, one row per student, one column per competency holding that student's latest final rating — **not** a dump of this tab's own columns; `decision_type`, `decided_by`, `suggested_rating` and `evidence_snapshot` do not appear in it. It now also carries a **Student Doc** column joined from `StudentDocRegistry`, so an auditor reading a rating can reach the work behind it. That link implies no new sharing: the doc is already shared with its own student via `addViewer()`, and the workbook is already domain-restricted at creation. |
-| **Visible to** | Admin (via export, now shared directly with specific central-office accounts on the same domain — see Extension 3 note above) |
+| **Visible to** | Admin (via export, now shared directly with specific central-office accounts on the same domain — see Extension 3 note above). Since 2026-10-27, the student's own latest final rating per competency (not the suggested rating, decision type or evidence snapshot) on the Student Dashboard's 🎓 Competencies tab and counter, and the teacher's own students' counts on the Teacher Dashboard (`readLatestScrRatings_`, 00) |
 | **Retention** | `SCR_RETENTION_YEARS` (Script Property, default 5 — see the Extension 3 note above) via `_archiveExpiredScrDecisions_()`, run automatically on every daily health check and every on-demand admin health check. A row past the window gets `archive_status` set to "ARCHIVED — pending disposition review"; actual deletion is never automatic. Deliberately has no reactivate action, unlike Ledger and CompetencyEvidence below — this status is a disposition hold on the legally-retained record itself, not a hibernate state meant to be casually reversed. |
 
 ### ParentReportLog
@@ -494,7 +498,7 @@ their CAS document), under Canvas's own controls, outside cas-ccps.
 ## Trust surfaces and access boundaries
 
 - **Teacher Dashboard** — gated by `_isAuthorizedTeacher_(cfg)`; a teacher only ever sees their own students' rows (Ledger's `TeacherEmail` column, StudentProfiles' `SP_TEACHER_EMAIL`).
-- **Student Dashboard** — a student only ever sees their own row.
+- **Student Dashboard** — a student only ever sees their own row. Its record tabs (2026-10-27: Competencies, Warm-ups, My Context) read the student's own CompetencyEvidence, SCRDecisionLog final ratings, WarmUpQueue and WarmUpTextBox rows and Student Context doc, by the session's identity, never a parameter. SCRSuggestions (the AI's suggested ratings) stay teacher-only.
 - **Admin Recovery Panel** — full read access to Ledger, StudentProfiles, and (via export) SCRDecisionLog. This is the one surface with the broadest reach into student data, and the one place a health-check gap (see below) mattered most.
 - **Studio Flows 1–5** — the native Sheets/Docs/Ask-Gemini connector steps in every flow are still outside this repo's own access-control code; the pre/post-processing around them is this repo's own code and carries no additional access gating beyond what each step's own input mapping already scopes it to. That code used to be the custom steps in `cas-ccps/studio-steps/` (one per flow — see the table above); those are blocked on this account and it now runs in Apps Script (`37_FlowInputBuilder.js`, `41_WarmUpFlowBridge.js`), which moves it inside this repo's own Script-Property and trigger boundary rather than Studio's. The data it touches is unchanged. Flows 1, 2, 4, 5 never receive a real student name (opaque IDs/content only, already true before this document). **Flow 3 is the one exception** — see below.
 - **leader-hub JSON API** (`07_TeacherDashboard.js`'s `doPost()`, D1/Addendum 24) — a separate, machine-to-machine trust surface, not a browser session: gated by a Google ID token verified server-side against `oauth2.googleapis.com/tokeninfo`, checked against this deployment's own `TEACHER_EMAIL` (same identity boundary as `_isAuthorizedTeacher_()`, re-implemented for an HTTP caller instead of `Session.getActiveUser()`). Two of its three actions (`getPacingGuide`, `getCompetencyRegistry`) carry no student PII. The third, **`getRoster`** (Addendum 26), does — name, email, and a free-text period field, per-teacher-scoped the same way as everything else in this table. Once returned, this data is out of cas-ccps's control; leader-hub's own handling of it is documented in `leader-hub/README.md`, not here.
