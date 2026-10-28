@@ -19,18 +19,18 @@
  *
  * Written by apply: the tiers (COMPETENCY_TIERS.json, with the reason added to
  * "why"), a competency line added or removed in the lesson's alignment list,
- * the warm-up anchor (8175: the Bell Ringer; 8177: the prompt file's
- * "## Warm-up"), and for 8177 the vocabulary ("## Vocabulary") and the
- * objective (the first Learning Objectives line). Left for the session, and
- * named in the report: the student task (8175: the CANVAS ASSIGNMENT TEXT
- * section; 8177: the prompt file's Prompt, Background, Key terms and Example),
- * an 8175 objective (the first paragraph of the task's Description), 8175
- * vocabulary (no home), and a competency on a line shared with others.
+ * the warm-up anchor (the prompt file's "## Warm-up"), the vocabulary
+ * ("## Vocabulary"), and for 8177 the objective (the first Learning
+ * Objectives line). Both courses keep the student side in a prompt file,
+ * lessons/<course>/prompts/<lesson>.md (2026-10-28). Left for the session,
+ * and named in the report: the student task (the prompt file's Prompt,
+ * Background, Key terms and Example), an 8175 objective (the first paragraph
+ * of the prompt's Description), and a competency on a line shared with others.
  *
  * A NEW draft (phase 2) gets its lesson files made in the shape the builder
  * reads, only when they don't exist yet, so a re-run never overwrites the
- * session's hand edits: 8175, lessons/8175/L<NN>.md; 8177, lessons/8177/
- * <slug>.md and prompts/<slug>.md (status approved, since the draft's PR is
+ * session's hand edits: 8175, lessons/8175/L<NN>.md and prompts/L<NN>.md;
+ * 8177, lessons/8177/<slug>.md and prompts/<slug>.md (status approved, since the draft's PR is
  * merged only after the submitter accepts it). A task left to a brief is
  * written as a marked placeholder, named in the report for the session.
  *
@@ -170,9 +170,7 @@ function competencyLines(lines, course) {
 function lessonFile(key) {
   const [course, ...rest] = key.split('-');
   const name = rest.join('-');
-  return course === '8175'
-    ? { course, lesson: path.join(LESSONS, '8175', name + '.md'), prompt: null }
-    : { course, lesson: path.join(LESSONS, '8177', name + '.md'), prompt: path.join(LESSONS, '8177', 'prompts', name + '.md') };
+  return { course, lesson: path.join(LESSONS, course, name + '.md'), prompt: path.join(LESSONS, course, 'prompts', name + '.md') };
 }
 
 function apply(d, current, fields, report) {
@@ -181,7 +179,7 @@ function apply(d, current, fields, report) {
   const changed = (k) => JSON.stringify(norm(fields[k])) !== JSON.stringify(norm(current[k]));
   const rubricText = Object.fromEntries(catalog(course).list.map((c) => [c.id, c.text]));
   let lesson = fs.readFileSync(files.lesson, 'utf8');
-  let prompt = files.prompt ? fs.readFileSync(files.prompt, 'utf8') : null;
+  let prompt = fs.readFileSync(files.prompt, 'utf8');
 
   // Competencies: add a line per new one, remove a line that holds only a dropped one.
   if (changed('competencyIds')) {
@@ -213,32 +211,18 @@ function apply(d, current, fields, report) {
     }
   }
 
-  // Warm-up anchor.
-  if (changed('warmupAnchor')) {
-    if (course === '8175') {
-      const next = setLabelled(lesson, 'Bell Ringer', '"' + fields.warmupAnchor.replace(/^"|"$/g, '') + '"');
-      if (next === null) report.hand.push({ field: 'warmupAnchor', why: 'no Bell Ringer label in ' + rel(files.lesson) });
-      else { lesson = next; report.applied.push('warmupAnchor'); }
-    } else {
-      const next = setSection(prompt, /^## Warm-up/, fields.warmupAnchor);
-      if (next === null) report.hand.push({ field: 'warmupAnchor', why: 'no "## Warm-up" in ' + rel(files.prompt) });
-      else { prompt = next; report.applied.push('warmupAnchor'); }
-    }
-  }
-
-  // Vocabulary: 8177 only.
-  if (changed('vocabulary')) {
-    if (course === '8175') report.hand.push({ field: 'vocabulary', why: '8175 lessons have no vocabulary field; add the terms to the student task instead' });
-    else {
-      const next = setSection(prompt, /^## Vocabulary/, fields.vocabulary);
-      if (next === null) report.hand.push({ field: 'vocabulary', why: 'no "## Vocabulary" in ' + rel(files.prompt) });
-      else { prompt = next; report.applied.push('vocabulary'); }
-    }
-  }
+  // Warm-up anchor and vocabulary: the prompt file's sections, made when missing.
+  [['warmupAnchor', 'Warm-up'], ['vocabulary', 'Vocabulary']].forEach(([field, heading]) => {
+    if (!changed(field)) return;
+    const re = new RegExp('^## ' + heading);
+    prompt = setSection(prompt, re, fields[field]) ||
+      prompt.replace(/\n*$/, '\n\n## ' + heading + '\n\n' + fields[field] + '\n');
+    report.applied.push(field);
+  });
 
   // Objective: 8177's first Learning Objectives line; 8175's is part of the task.
   if (changed('objective')) {
-    if (course === '8175') report.hand.push({ field: 'objective', why: "8175's objective is the first paragraph of the task's Description; edit it there" });
+    if (course === '8175') report.hand.push({ field: 'objective', why: "8175's objective is the first paragraph of the Description in " + rel(files.prompt) + '; edit it there' });
     else {
       const lines = lesson.split('\n');
       const r = sectionRange(lines, /Learning Objectives/i);
@@ -254,15 +238,13 @@ function apply(d, current, fields, report) {
   }
 
   if (changed('promptText')) {
-    report.hand.push({ field: 'promptText', why: course === '8175'
-      ? 'map the task into the CANVAS ASSIGNMENT TEXT section of ' + rel(files.lesson)
-      : 'map the task into the Prompt, Background, Key terms and Example sections of ' + rel(files.prompt) });
+    report.hand.push({ field: 'promptText', why: 'map the task into the Prompt, Background, Key terms and Example sections of ' + rel(files.prompt) });
   }
 
   if (['primary', 'secondary', 'tertiary', 'competencyIds'].some(changed)) writeTiers(d, fields, report);
 
   fs.writeFileSync(files.lesson, lesson);
-  if (prompt !== null) fs.writeFileSync(files.prompt, prompt);
+  fs.writeFileSync(files.prompt, prompt);
 }
 
 // The number a lesson's alignment line uses for a task: COMPETENCY_MAP.json's,
@@ -290,9 +272,6 @@ function createLesson(d, f, report) {
   const text = Object.fromEntries(catalog(course).list.map((c) => [c.id, String(c.text || '').replace(/\.?\s*$/, '.')]));
   const task = f.promptText || PLACEHOLDER + ' ' + f.brief;
   if (!f.promptText) report.hand.push({ field: 'promptText', why: 'draft the student task from the brief, in place of ' + PLACEHOLDER });
-  if (course === '8175' && f.vocabulary) {
-    report.hand.push({ field: 'vocabulary', why: '8175 lessons have no vocabulary field; the terms are under Key Vocabulary in the teacher instructions, and go into the task if students should see them' });
-  }
   if (fs.existsSync(files.lesson)) {
     if (!ownFile(d)) throw new Fatal(rel(files.lesson) + ' already exists and was not made by ' + d.draftId + '.');
     report.applied.push('lesson files (already made; left as edited)');
@@ -308,16 +287,18 @@ function createLesson(d, f, report) {
       '### I. COMPETENCY ALIGNMENT', '', '**Specific Competencies Covered:**', '',
       ...f.competencyIds.map((id) => '  - **' + lineNumber(id).padStart(3, '0') + ':** ' + text[id]), '',
       '### II. TEACHER INSTRUCTIONS', '',
-      '**Bell Ringer (The Do Now):**', '', '"' + f.warmupAnchor.replace(/^"|"$/g, '') + '"', '',
       '**Activity:**', '', f.activity, '',
-      '**Key Vocabulary:**', '', f.vocabulary, '',
-      '### III. CANVAS ASSIGNMENT TEXT (STUDENT VIEW)', '',
-      '**Title:** Assignment: ' + f.title, '',
-      '**Description:**', '', f.objective, '',
-      '**The Task:**', '', task, '',
-      '**Submission:**', '', 'Submit your responses in a text entry box.', '',
     ].join('\n'));
-    report.applied.push('lesson file ' + rel(files.lesson));
+    fs.writeFileSync(files.prompt, [
+      '<!-- lesson: L' + num + ' -->',
+      '<!-- status: approved ' + new Date().toISOString().slice(0, 10) + ' (' + stamp(d) +
+        '; its PR is merged only after the submitter accepts it on the dashboard) -->', '',
+      '## Prompt', '', 'Assignment: ' + f.title, '', 'Description:', '', f.objective, '',
+      'The Task:', '', task, '',
+      '## Warm-up', '', f.warmupAnchor, '',
+      '## Vocabulary', '', f.vocabulary, '',
+    ].join('\n'));
+    report.applied.push('lesson files ' + rel(files.lesson) + ', ' + rel(files.prompt));
   } else {
     const slug = d.lessonKey.slice('8177-'.length);
     fs.writeFileSync(files.lesson, [

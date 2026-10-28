@@ -216,15 +216,17 @@ function _readConfirmedCompetencyDecisions_(cfg, decidedBy) {
 // ---------------------------------------------------------------------------
 // _prLessonTitles_
 // { assignmentConfigId: title } from 55b's lessons (in both projects): the
-// title the assignment itself carries ("Title: Assignment: ..." in its
-// student task), else the lesson's unit name. "CAS-8175-L06" is lesson key
-// "8175-L06" (55's configIdForLesson_ rule).
+// title an 8175 assignment carries (its task's first line, "Assignment: ..."
+// or "Project: ..."; "Title: Assignment: ..." before 2026-10-28), else the
+// lesson's unit name, as 8177's reports have always used. "CAS-8175-L06" is
+// lesson key "8175-L06" (55's configIdForLesson_ rule).
 // ---------------------------------------------------------------------------
 function _prLessonTitles_() {
   const out = {};
   Object.keys(LESSON_ASSIGNMENTS).forEach(function (key) {
     const l = LESSON_ASSIGNMENTS[key];
-    const m = /^Title:\s*(?:Assignment:\s*)?(.+)$/m.exec(String(l.promptText || ""));
+    const first = String(l.promptText || "").split("\n")[0];
+    const m = l.code === "8175" ? /^(?:Title:\s*)?(?:Assignment:\s*)?(.+)$/.exec(first) : null;
     out["CAS-" + String(key).toUpperCase()] = (m ? m[1] : String(l.unitName || "")).trim();
   });
   return out;

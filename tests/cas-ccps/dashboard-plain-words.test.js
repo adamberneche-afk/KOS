@@ -160,6 +160,10 @@ test('the doc shows the task without the Canvas title line or the Submission par
   const task = 'Title: Assignment: Brand Analysis\n\nDescription:\n\nDo it well.\n\nWhat your work needs to show:\n\n- A\n\nSubmission:\n\nSubmit your responses as a Text Entry.';
   assert.equal(exported._docStudentTask_(task), 'Description:\n\nDo it well.\n\nWhat your work needs to show:\n\n- A');
   assert.equal(exported._docStudentTask_('Just the task.'), 'Just the task.');
+  // Since 2026-10-28 the task opens with its title line alone; an 8175 project's too.
+  assert.equal(exported._docStudentTask_('Assignment: Brand Analysis\n\nDescription:\n\nDo it.'), 'Description:\n\nDo it.');
+  assert.equal(exported._docStudentTask_('Project: The Album Drop\n\nDescription:\n\nDo it.'), 'Description:\n\nDo it.');
+  assert.equal(exported._docStudentTask_('Do it.\n\nProject: a later line stays.'), 'Do it.\n\nProject: a later line stays.');
 });
 
 test('the Teacher Dashboard has one "+ New lesson" (📅 Lessons drafts one); the header logs today\'s lesson', () => {

@@ -36,14 +36,16 @@ its `review_note` first: it is what the teacher wants changed):
    the branch its first import made).
 2. `node tools/cas-ccps/import-lesson-drafts.js apply drafts.json <draft_id>`.
    It writes the fields that have one home (tiers, competency lines, the
-   warm-up anchor, an 8177 lesson's vocabulary and objective), rebuilds 55b
+   warm-up anchor and vocabulary in the prompt file, an 8177 lesson's
+   objective), rebuilds 55b
    and both cartridges, and reports each changed field as `matches the
    draft`, `built, differs from the draft` or `not built yet`. Its `hand` list
    names what it left for the session, and where:
-   - the **student task**: 8175, the `CANVAS ASSIGNMENT TEXT` section of
-     `lessons/8175/L<NN>.md`; 8177, the `## Prompt`, `## Background`,
-     `## Key terms` and `## Example` sections of `lessons/8177/prompts/<slug>.md`
-     (the builder joins them in that order). Leave out the generated
+   - the **student task**: the `## Prompt`, `## Background`, `## Key terms`
+     and `## Example` sections of the lesson's prompt file,
+     `lessons/8175/prompts/L<NN>.md` or `lessons/8177/prompts/<slug>.md`
+     (the builder joins them in that order; both courses alike since
+     2026-10-28). Leave out the generated
      checklist ("What your work needs to show"): the builder writes it from
      the tiers and the lesson's "I can" objectives.
    - the **"I can" objectives** (`curriculum/lessons/STUDENT_CRITERIA.json`):
@@ -52,9 +54,8 @@ its `review_note` first: it is what the teacher wants changed):
      A new lesson or a changed tier needs them (`student-criteria.test.js`
      fails until every tiered competency has one); draft them and name them
      in the proposal for the teacher to approve.
-   - an **8175 objective**: the first paragraph of the task's Description.
-   - **8175 vocabulary**: there is no field; the terms go into the task's
-     text if the teacher wants students to see them.
+   - an **8175 objective**: the first paragraph after `Description:` in the
+     prompt file's `## Prompt`.
    - a competency on a line shared with another (8177's "Competencies 3 &
      4:"): edit that line by hand.
 3. Make those edits, then **propose** the edits and formatting the plan asks
@@ -97,8 +98,9 @@ Steps 1 and 2 hold, with these differences:
 - The draft's `lesson_key` is the new lesson's key: `8175-L<NN>` (the next
   free number) or `8177-<slug>` (from the title, as the builder makes it).
 - `apply` makes the lesson files, only if they don't exist yet:
-  `lessons/8175/L<NN>.md`, or `lessons/8177/<slug>.md` and
-  `lessons/8177/prompts/<slug>.md` (with `status: approved`, since the PR is
+  `lessons/8175/L<NN>.md` and `lessons/8175/prompts/L<NN>.md`, or
+  `lessons/8177/<slug>.md` and `lessons/8177/prompts/<slug>.md` (the prompt
+  file with `status: approved`, since the PR is
   merged only after the submitter accepts). It writes the tiers. A re-run
   leaves the files as edited.
 - A task left to a **brief** is written as `[TO DRAFT FROM THE BRIEF] <brief>`:
@@ -108,8 +110,8 @@ Steps 1 and 2 hold, with these differences:
 - The built task always carries its assignment title (and, for 8175, the
   Description with the objective), so `promptText` reads `built, differs
   from the draft`: that is expected; the proposal shows the full task.
-- An 8175 lesson's vocabulary sits under Key Vocabulary in the teacher
-  instructions; the builder doesn't read it.
+- An 8175 lesson's vocabulary goes in its prompt file's `## Vocabulary`, as
+  8177's does.
 - Write the lesson's teacher-facing parts (an 8177 plan's Instructional
   Sequence, an 8175 lesson's Hook and grading tip) from the draft's
   activity, in the course's usual shape, and name them in the proposal note.

@@ -503,12 +503,15 @@ the repo first; its Drive copy was created from it. `game-day-takeover.md`
 was also written in the repo first, and its Drive copy was created from it. `tools/cas-ccps/build-lesson-assignments.js` turns
 them into `scripts/55b_LessonAssignmentData.js`:
 
-- **8175:** the prompt is the lesson's own "Canvas assignment text", the
-  warm-up seed its bell ringer, and the rubric its competencies plus the
-  grading tip.
-- **8177:** the plans have no student assignment, so a lesson is used only
-  once `lessons/8177/prompts/<lesson>.md` holds a prompt the teacher approved.
-  A prompt file can also carry `## Background`, `## Key terms` and
+- **Both courses** keep the student side in a prompt file, used only once
+  the teacher approved it (`status: approved`): `lessons/8175/prompts/L<NN>.md`
+  or `lessons/8177/prompts/<lesson>.md`, with the task (`## Prompt`), the
+  warm-up seed (`## Warm-up`) and the vocabulary (`## Vocabulary`). The 8175
+  files were moved out of each lesson's "Canvas assignment text" and bell
+  ringer on 2026-10-28, wording unchanged; the rubric is still the lesson's
+  competencies plus its grading tip.
+- **8177:** the plans have no student assignment, so the prompt files were
+  drafted in the repo. A prompt file (either course) can also carry `## Background`, `## Key terms` and
   `## Example`: the background a student needs, in plain classroom language.
   They come first in the student's doc and in Canvas, under those headings,
   with the task after them under "Your Task". A file marked `status: draft`

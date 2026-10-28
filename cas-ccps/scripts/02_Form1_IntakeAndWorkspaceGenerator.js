@@ -377,13 +377,16 @@ function _docItalicSpans_(line) {
 }
 
 // The task as the doc shows it (2026-10-22, UX audit fix-first 11): without
-// the Canvas text's second title line ("Title: Assignment: ...", the doc has
-// its own title heading) and its closing "Submission:" part ("Submit your
-// response as a Text Entry"), which contradicts CAS. The lesson data keeps
-// both: the lesson editor and the Canvas cartridge read it as written.
+// the task's title line ("Assignment: ...", or an 8175 lesson's "Project:",
+// "Discussion:" or "Extra Credit:" first line; "Title: Assignment: ..."
+// before 2026-10-28; the doc has its own title heading) and its closing
+// "Submission:" part ("Submit your response as a Text Entry"), which
+// contradicts CAS. The lesson data keeps both: the lesson editor and the
+// Canvas cartridge read it as written.
 function _docStudentTask_(text) {
   const paras = String(text || "").trim().split(/\n{2,}/)
-    .filter(p => !/^(Title:|Assignment:)/.test(p.trim()));
+    .filter((p, i) => !/^(Title:|Assignment:)/.test(p.trim()) &&
+      !(i === 0 && /^(Project|Discussion|Extra Credit):/.test(p.trim())));
   const t = paras.join("\n\n");
   const sub = t.search(/(^|\n\n)Submission:\s*(\n|$)/);
   return (sub === -1 ? t : t.slice(0, sub)).trim();
