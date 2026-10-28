@@ -5409,3 +5409,18 @@ upcoming, until it is cleared:
 Not built, by decision: persistent per-course docs, which the
 lessons-in-parts design (one doc per part) replaced. Student-requested doc
 creation waits until the rollout has run live for a few weeks.
+
+## Student docs: the lesson on its own header line, the response on its own page, 2026-10-28
+
+The operator's two layout notes on student docs (02's `stampDocument_`):
+- The page header's first line is who and where (name, class and teacher,
+  block, period). The lesson and the **Your dashboard** link are on a line
+  of their own (63's `writeDocHeader_` takes the lesson), then the
+  Feedback line. `setDocFeedbackStatus_` finds that line by its prefix, so
+  older docs' two-line headers still update.
+- A page break follows the assignment table, so the "Your response"
+  heading and the writing space always start a page and never split
+  across the directions' last page.
+
+Docs already made keep their layout; new docs get it.
+
