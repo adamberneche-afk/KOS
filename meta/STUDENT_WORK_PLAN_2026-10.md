@@ -324,7 +324,7 @@ Nov 2's measurement) and Studio's limit on runs per day is checked.
 |---|---|---|
 | 0 | Content: the missing video links (two lessons, 8175 L06 and L34; the path is built, #289, and waits on the links); each lesson's "I can" learning objectives, shown as a heading (**done 2026-10-24**: the objectives in the doc, and the assignment in a two-row table with the code in the page footer); part tiers and part criteria drafted for the teacher's approval | Week of Oct 26 |
 | 1 | The process reflection on Submit: the question frames, the selection, `ReflectionLog`, Flow 2 reads it, Student Context shows it. Behind a setting, off until grades are in (Oct 30) | Week of Oct 26, on after Oct 30 |
-| 2 | The feedback reflection, from `CompetencyEvidence`; Flow 2 checks it was carried out | Week of Nov 2 |
+| 2 | The feedback reflection, from `CompetencyEvidence`; Flow 2 checks it was carried out | **Built 2026-10-27** (behind the same setting): a resubmission after the primary wasn't met asks F1 to F3; Flow 2 says whether the revision carries it out |
 | 3 | Parts in both courses: the builder splits tasks, a ConfigID and file per part, made with the lesson, unlocked on the primary, both dashboards group them, the teacher's unlock, cartridges list them | Week of Nov 2, after the measurement; likely runs past it |
 | 4 | Work files by type: Forms, then Slides, then Sheets; Canva parts to Slides | After Phase 3 |
 
@@ -371,7 +371,8 @@ part files.
 
 As built for today's one-doc lessons, "this part" reads "this assignment"
 and E1 ends "the sentence or part"; with parts (Phase 3) the wording
-returns to "this part". The Feedback frames are Phase 2, not built.
+returns to "this part". The Feedback frames (Phase 2) were built
+2026-10-27: F1 is asked first, since it names what fell short.
 
 Rules: one **Evidence** question on every Submit, plus at most one other.
 A first Submit adds an Approach or Choice question (alternating by part); a

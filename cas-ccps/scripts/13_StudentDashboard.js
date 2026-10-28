@@ -915,8 +915,17 @@ function _dashReflectionQuestions_(checked) {
     // just without one that names a competency.
     Logger.log("[Reflection] TeacherMatrix not read for ConfigID " + checked.configId + ": " + e.message);
   }
-  const prior = readReflections_(SpreadsheetApp.openById(cfg.ledgerSsId), cfg, checked.configId, checked.fileId);
-  return chooseReflectionQuestions_(criteria, prior, checked.configId).map(function (q) {
+  const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const prior = readReflections_(ledgerSs, cfg, checked.configId, checked.fileId);
+  // A resubmission after the primary wasn't met gets a Feedback question
+  // (Phase 2, 2026-10-27).
+  let shortfall = null;
+  try {
+    shortfall = prior.length ? reflectionShortfall_(ledgerSs, cfg, checked.fileId, criteria) : null;
+  } catch (e) {
+    Logger.log("[Reflection] CompetencyEvidence not read for ConfigID " + checked.configId + ": " + e.message);
+  }
+  return chooseReflectionQuestions_(criteria, prior, checked.configId, shortfall).map(function (q) {
     return { frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, question: q.question };
   });
 }

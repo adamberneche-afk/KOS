@@ -143,7 +143,9 @@ or insufficient. If all milestones are fully met, write exactly:
 Under the heading YOUR PROCESS, one or two sentences to the student about how
 they worked, drawn from their reflection and their work: one thing that
 helped, and one thing to try next time. Where a reflection answer names a
-competency, you may say whether the work bears it out. Never mention points,
+competency, you may say whether the work bears it out. Where a question is
+"about the last feedback", the student said what they are changing: say
+plainly whether this revision carries that out. Never mention points,
 scores or grades.
 
 3b. ALSO SHOWN -- ONLY IF THE DEFINITION OF DONE LISTS TERTIARY COMPETENCIES
