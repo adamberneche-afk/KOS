@@ -728,26 +728,35 @@ function _dashWarmUpSave_(queueId, text, kind) {
   if (!t) return { ok: false, error: kind === "answer" ? "Write your answer first." : "Write your reply first." };
   if (t.length > max) return { ok: false, error: "That's too long: keep it under " + max + " characters." };
 
+  // Which warm-up, and whether it is open, are read before the lock: the
+  // whole WarmUpQueue and WarmUpTextBox reads took the lock with them, so a
+  // class saving at once queued behind each other (walk-through finding 20,
+  // 2026-10-28). The lock covers only the one row's check and write.
+  const cfg = getConfig_();
+  const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const now = new Date();
+  const pair = _dashWarmUpPair_(ss, cfg, googleId, now);
+  const w = pair.own.filter(function (x) { return x.queueId === String(queueId); })[0];
+  if (!w || !w.tb) return { ok: false, error: "That warm-up wasn't found. Refresh the page." };
+  // Only the current warm-up and the last one can be open.
+  const hit = [pair.current, pair.previous].filter(function (p) { return p && p.w.queueId === w.queueId; })[0];
+  const view = hit ? hit.view : { canAnswer: false, extraCredit: { canReply: false } };
+  if (kind === "answer" && !view.canAnswer) return { ok: false, error: "This warm-up is closed." };
+  if (kind !== "answer" && !view.extraCredit.canReply) {
+    return { ok: false, error: "The extra-credit window for this warm-up has closed." };
+  }
+  const sheet = ss.getSheetByName(cfg.tabs.warmUpTextBox);
+
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return { ok: false, error: "The system is busy. Try again in a minute." };
   try {
-    const cfg = getConfig_();
-    const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
-    const now = new Date();
-    const pair = _dashWarmUpPair_(ss, cfg, googleId, now);
-    const w = pair.own.filter(function (x) { return x.queueId === String(queueId); })[0];
-    if (!w || !w.tb) return { ok: false, error: "That warm-up wasn't found. Refresh the page." };
-    // Only the current warm-up and the last one can be open.
-    const hit = [pair.current, pair.previous].filter(function (p) { return p && p.w.queueId === w.queueId; })[0];
-    const view = hit ? hit.view : { canAnswer: false, extraCredit: { canReply: false } };
-    const sheet = ss.getSheetByName(cfg.tabs.warmUpTextBox);
-    if (kind === "answer") {
-      if (!view.canAnswer) return { ok: false, error: "This warm-up is closed." };
-      sheet.getRange(w.tb.sheetRow, WTB.RESPONSE + 1, 1, 2).setValues([[sheetSafeText_(t), now]]);
-    } else {
-      if (!view.extraCredit.canReply) return { ok: false, error: "The extra-credit window for this warm-up has closed." };
-      sheet.getRange(w.tb.sheetRow, WTB.REPLY + 1, 1, 2).setValues([[sheetSafeText_(t), now]]);
+    // The row read above is still this warm-up's (a nightly job may have
+    // added or moved rows since).
+    if (String(sheet.getRange(w.tb.sheetRow, WTB.QUEUE_ID + 1).getValue()).trim() !== w.queueId) {
+      return { ok: false, error: "That warm-up moved while you were writing. Refresh the page; your text is still in the box." };
     }
+    const col = kind === "answer" ? WTB.RESPONSE : WTB.REPLY;
+    sheet.getRange(w.tb.sheetRow, col + 1, 1, 2).setValues([[sheetSafeText_(t), now]]);
     return { ok: true, savedAt: formatDate_(now) };
   } finally {
     lock.releaseLock();

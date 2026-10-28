@@ -330,7 +330,7 @@ function renderedRoster(students, lessonView) {
   const data = { students, lessons: [{ id: 'L06', name: 'L06', current: true }], activeTerm: 'ALL', availableTerms: [] };
   context.render(data);
   if (lessonView) context.setLessonView(lessonView);
-  return { main: els.main.innerHTML, context, els };
+  return { main: els.main.innerHTML, context, els, data };
 }
 
 const rosterStudent = (o) => Object.assign({
@@ -346,6 +346,28 @@ test('a roster row shows when the work was submitted', () => {
   ]);
   assert.match(main, /No checks yet · submitted Oct 21, 2026 9:05 AM/);
   assert.equal((main.match(/· submitted /g) || []).length, 1, 'no "submitted —" for work never submitted');
+});
+
+test('who hasn\'t submitted: a count under the cards that filters the roster, and clears again', () => {
+  const students = [
+    rosterStudent({ name: 'A Student', submittedAt: 'Oct 21, 2026 9:05 AM' }),
+    rosterStudent({ name: 'B Student', googleId: 'b@example.invalid' }),
+    rosterStudent({ name: 'C Student', googleId: 'c@example.invalid', submittedAt: undefined }),
+  ];
+  const { main, context, els, data } = renderedRoster(students);
+  assert.match(main, /onclick="toggleEvalFilter\('NOT_SUBMITTED'\)" aria-pressed="false">📭 2 haven't submitted yet<\/button>/);
+  context.toggleEvalFilter('NOT_SUBMITTED');
+  context.render(data); // the page re-renders from its last loaded data
+  const filtered = els.main.innerHTML;
+  assert.match(filtered, /Showing 2: haven&#39;t submitted yet/);
+  assert.ok(filtered.includes('B Student') && filtered.includes('C Student'));
+  assert.ok(!/>A Student</.test(filtered), 'a student who submitted is not listed');
+  context.toggleEvalFilter('NOT_SUBMITTED');
+  context.render(data);
+  assert.doesNotMatch(els.main.innerHTML, /Showing 2:/, 'a second click clears it');
+  const all = renderedRoster([rosterStudent({ submittedAt: 'Oct 21, 2026 9:05 AM' })]).main;
+  assert.doesNotMatch(all, /submitted yet<\/button>/, 'no control when everyone has submitted');
+  assert.match(renderedRoster([students[1]]).main, /📭 1 hasn't submitted yet/);
 });
 
 test('"All assignments" counts assignments in its first card and says how many students', () => {
