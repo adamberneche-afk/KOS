@@ -385,3 +385,36 @@ test('aggregateEvidence_: a tab missing a required column returns an empty map a
   assert.equal(agg.size, 0);
   assert.ok(logs.some((l) => /missing required columns/.test(l)), logs.join('\n'));
 });
+
+// ── The Run-menu entry points (2026-10-27) ──────────────────────────────────
+// createSCRTabs_() and installSCRTrigger_() end in "_", hidden from the
+// editor's Run dropdown, so the weekly run may never have been installed.
+
+test('setupCompetencySuggestions, then preview writes nothing and a run writes one suggestion per pair', () => {
+  const { sandbox } = load();
+  const vm = require('vm');
+  const run = (name) => vm.runInContext(name + '()', sandbox);
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', 'fake-admin-ss');
+
+  assert.match(run('previewCompetencySuggestions').error, /CompetencyEvidence/);
+  assert.equal(run('setupCompetencySuggestions').triggerInstalled, true);
+  run('setupCompetencySuggestions');
+  assert.deepEqual(sandbox.ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction()),
+    ['runWeeklySCRSuggestionUpdate_']);
+
+  const ev = ss.getSheetByName('CompetencyEvidence');
+  ['CFG-1', 'CFG-2', 'CFG-3'].forEach((c, i) =>
+    ev.appendRow(['E' + i, '1234567@ccpsnet.net', '8175-3', 'm', 'MET', c, '2026-10-20', 'F' + i, '']));
+
+  const preview = run('previewCompetencySuggestions');
+  assert.equal(preview.dryRun, true);
+  assert.equal(preview.newRows, 1);
+  assert.equal(ss.getSheetByName('SCRSuggestions').getLastRow(), 1, 'preview wrote nothing');
+
+  assert.equal(run('buildCompetencySuggestionsNow').newRows, 1);
+  assert.equal(ss.getSheetByName('SCRSuggestions').getLastRow(), 2);
+  assert.equal(run('buildCompetencySuggestionsNow').unchanged, 1, 'a re-run rewrites nothing');
+});
