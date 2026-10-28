@@ -378,7 +378,10 @@ function _cybLessonPayload_(teacher, dateStr, period, code, unit) {
       " Submit a lesson for this period to replace it.",
     keyVocabulary: String(unit.key_vocabulary || "").trim(),
     priorLessonConnection: String(unit.prior_lesson_connection || "").trim(),
-    competencyIds: String(unit["competency_ids_" + code] || "").trim()
+    competencyIds: String(unit["competency_ids_" + code] || "").trim(),
+    // One lesson doc per lesson (66) replaces the per-period Lesson Frame
+    // these rows used to make (2026-10-27).
+    noFrame: true
   };
 }
 
