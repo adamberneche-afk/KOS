@@ -522,12 +522,13 @@ function stampDocument_(fileId, configId, studentName, block,
   // itself holds only the assignment and the student's work. The dashboard
   // link used to be a body line; the menu (01) finds the URL in the system
   // block below.
+  // Line 1 who and where; line 2 the lesson and the link (2026-10-28).
   writeDocHeader_(doc,
     [studentName, className + " — " + teacherName,
-     block ? "Block " + block : "", period ? "Period " + period : "", unitName]
+     block ? "Block " + block : "", period ? "Period " + period : ""]
       .filter(function (x) { return String(x || "").trim() !== ""; })
       .join("  ·  "),
-    studentDashboardUrl);
+    studentDashboardUrl, unitName);
 
   // With feedback in the doc (FEEDBACK_AS_COMMENT off) its zone stays:
   // 03 and 37 write between the markers.
@@ -558,7 +559,9 @@ function stampDocument_(fileId, configId, studentName, block,
 
   if (promptContent) _docAssignmentTable_(body, promptContent);
 
-  _docFontSize_(body.appendParagraph(""), DOC_BODY_FONT_SIZE);
+  // The response starts on a new page, so it never splits across the
+  // directions' last page (2026-10-28, the operator's ask).
+  body.appendPageBreak();
 
   const responseHeading = body.appendParagraph(DOC_RESPONSE_HEADING);
   responseHeading.setHeading(DocumentApp.ParagraphHeading.HEADING2);
