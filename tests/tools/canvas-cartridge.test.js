@@ -73,7 +73,7 @@ test('a lesson assignment is the Canvas text without its title and submission li
     assert.match(x, /<format type="url"\/>/, p);
     assert.match(x, /assignment doc for this lesson/, p);
     assert.doesNotMatch(x, /CAS document|response zone|\*\w[^*]*\*/, p);
-    assert.doesNotMatch(x, /Title: Assignment|Bell Ringer|Grading Tip|Pacing guide dates/, p);
+    assert.doesNotMatch(x, /Title: Assignment|<p>Project: |Bell Ringer|Grading Tip|Pacing guide dates/, p);
   });
   const l01 = xml.map(([, x]) => x).find((x) => /L01/.test(x));
   assert.match(l01, /&lt;em&gt;next&lt;\/em&gt;/, 'a lesson\'s *emphasis* becomes <em>');

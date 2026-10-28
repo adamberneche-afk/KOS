@@ -167,7 +167,8 @@ function assignmentXml(id, title, promptText, unit, dashboardUrl) {
   } else {
     // A teacher's lesson: drop its title line and its Canvas "Submission:" part,
     // which the CAS instructions below replace.
-    paras = paras.filter((para) => !/^(Title:|Assignment:)/.test(para.trim()));
+    paras = paras.filter((para, i) => !/^(Title:|Assignment:)/.test(para.trim()) &&
+      !(i === 0 && /^(Project|Discussion|Extra Credit):/.test(para.trim())));
     const sub = paras.findIndex((para) => /^Submission:\s*$/.test(para.trim()));
     if (sub !== -1) paras = paras.slice(0, sub);
   }
