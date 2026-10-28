@@ -260,7 +260,7 @@ test('previewUpcomingLessons plans one lesson per school day and meeting period,
   r.planned.forEach((s) => assert.equal(s.unit, s.period === '1' ? 'T-8175' : 'T-8177'));
 });
 
-test('buildUpcomingLessons writes each lesson through onLessonContextSubmit_, with its frame Doc', () => {
+test('buildUpcomingLessons writes each lesson through onLessonContextSubmit_, with no per-period frame Doc (66 makes one per lesson)', () => {
   const { exported, ss } = setup({ units: liveUnits(), schedule: SCHEDULE });
   const r = exported.buildUpcomingLessonPlan_({ apply: true, today: TODAY });
   const want = expectedSlots();
@@ -274,8 +274,8 @@ test('buildUpcomingLessons writes each lesson through onLessonContextSubmit_, wi
     assert.equal(row[9], is8175 ? '8175-1,8175-2' : '8177-1,8177-2');
     assert.match(row[5], /^Auto-drafted from the pacing guide: T-817[57]/);
     assert.match(row[5], /Warm-up: Anchor for 817[57]\./);
-    assert.equal(row[10], 'FRAME_GENERATED', 'alignment logged and the Lesson Frame Doc made');
-    assert.ok(row[16], 'frame Doc URL recorded');
+    assert.equal(row[10], 'ALIGNMENT_LOGGED', 'alignment logged; no Lesson Frame Doc (2026-10-27)');
+    assert.ok(!row[16], 'no frame Doc URL');
   });
 
   const again = exported.buildUpcomingLessonPlan_({ apply: true, today: TODAY });
@@ -390,8 +390,7 @@ test('removeDraftedLessons_ supersedes drafts from today on and trashes their Do
 
   const r = exported.removeDraftedLessons_({ apply: true, today: TODAY });
   assert.equal(r.superseded, liveDrafts.length);
-  assert.equal(r.docsTrashed, liveDrafts.length);
-  liveDrafts.forEach((d) => assert.equal(sandbox.DriveApp.getFileById(d[15]).isTrashed(), true));
+  assert.equal(r.docsTrashed, 0, 'drafted rows have made no frame Doc since 2026-10-27');
   drafts().forEach((d) => assert.equal(d[10] === 'SUPERSEDED', d[3] >= ymd(TODAY)));
   const mine = rows(ss, 'LessonContext').find((x) => x[5] === 'My own lesson.');
   assert.notEqual(mine[10], 'SUPERSEDED');
