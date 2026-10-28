@@ -67,9 +67,10 @@ operator. This file holds what comes after them.
 - **Retention disposition.** A dry-run report of records past their cutoff,
   then deletion only after the operator approves it. The schedule is
   confirmed (2026-10-17), so this is ready when wanted. 2026-10-13, after #174.
-  **Dry run built 2026-10-21** (`previewRetentionDisposition`, 57); the
-  deletion step, run on the operator's approval of that report, is still
-  open (D3, after Oct 30).
+  **Dry run built 2026-10-21** (`previewRetentionDisposition`, 57); **the
+  deletion step built 2026-10-28** (`applyRetentionDisposition`, gated on
+  the report's approval code). Done; run it once records pass their
+  period.
 - ~~**Retention check: report a missing date column.**~~ Built 2026-10-21:
   `checkRetentionSchedule` names the header it looked for.
 
