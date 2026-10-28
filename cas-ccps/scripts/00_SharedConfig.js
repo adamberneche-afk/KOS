@@ -255,7 +255,10 @@ const SHARED_CONFIG_KEYS = [
   // said it worked there (UX audit, fix-first 6).
   "ROLLOUT_AUTO_APPLY",
   // The process reflection on Submit (13); read through pivotFlagFor_().
-  "REFLECTION_ON_SUBMIT"
+  "REFLECTION_ON_SUBMIT",
+  // Friday's parent report rows prepared ahead (36); read through
+  // _pivotValueOn_, per course.
+  "PARENT_REPORT_PREP"
 ];
 
 // System text a student response must not contain (P0-03,
@@ -315,7 +318,7 @@ function _pivotValueOn_(raw, courseCode) {
 // nightly signal names any of them set as a Script Property there (34c),
 // since that would override the panel without it knowing.
 const DASHBOARD_SETTING_KEYS = ["FEEDBACK_AS_COMMENT", "WARMUP_TEXT_BOX", "ROLLOUT_AUTO_APPLY",
-  "REFLECTION_ON_SUBMIT", "PIVOT_ARCHETYPE_LOCK", "MARKING_PERIOD_ENDS"];
+  "REFLECTION_ON_SUBMIT", "PIVOT_ARCHETYPE_LOCK", "PARENT_REPORT_PREP", "MARKING_PERIOD_ENDS"];
 
 // Whether a submission's Flow 2 feedback goes on the student's doc as a
 // comment instead of into its feedback zone (FEEDBACK_AS_COMMENT, read like
@@ -1219,7 +1222,7 @@ const CAS_TEACHER_TERMS = [
   ["Current lesson", "The lesson whose start date in 📅 Lessons is the latest on or before today, per course."],
   ["Rollout", "The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead)."],
   ["Feedback as a comment", "Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings."],
-  ["⚙ Settings", "Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab."],
+  ["⚙ Settings", "Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock, parent reports ready on Fridays) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab."],
   ["3-Odd / 3-Even", "The two halves of period 3, which meet on alternate (odd or even) calendar dates."],
   ["Marking period", "A term code like 2627_MP1 is marking period 1 of 2026–27."]
 ];

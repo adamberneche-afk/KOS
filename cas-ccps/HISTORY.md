@@ -5029,3 +5029,28 @@ and logs:
 - A last line, "TO TURN ON:", naming each installer still to run.
 
 Tests: `setup-status.test.js`.
+
+## ⚙ Settings: Parent reports ready on Fridays, 2026-10-27
+
+36's weekly prep (`runWeeklyParentReportPrep`, Fridays 5 a.m.: the week's
+parent reports logged in ParentReportLog as ready, not yet copied; nothing
+sent) had an installer but no switch, and ✉ Parent Reports builds each
+report live anyway. The operator asked for it as a toggle.
+
+- **00:** `PARENT_REPORT_PREP` in `SHARED_CONFIG_KEYS` and
+  `DASHBOARD_SETTING_KEYS` (so 34c names it if set as a Central Ledger
+  Script Property). Per course, like the others.
+- **07:** a sixth ⚙ Settings feature. Turning it on for any course installs
+  the Friday job in the Teacher Dashboard's own project (36 is there, with
+  the teacher's `TEACHER_EMAIL`) through `installWeeklyParentReportTrigger()`;
+  off for every course removes it (`_tdSyncParentReportPrepTrigger_`). A
+  failure is logged and the setting still saved.
+- **36:** the job reads the setting each run: off prepares nothing (not even
+  the tab); a course list prepares only students with a Ledger row in a
+  listed course (`_prStudentCourses_`).
+- **35:** `showSetupStatus()` no longer expects the job in the Central
+  Ledger; one there shows under "Other triggers".
+- **Docs:** the teacher reference guide's Settings table, the Terms entry,
+  the quick start, their notebook copies.
+- **Tests:** `weekly-parent-report.test.js` (off, per course),
+  `feedback-as-comment.test.js` (the job added once, removed when off).
