@@ -260,7 +260,7 @@ Severity: **wrong result** (the screen shows or does something false, or a docum
 
 ### Unverified
 
-**20. *Unverified:* saves may hit "busy" when a whole class saves at once.** `13:361-362`. Every answer or reply save takes the script lock for up to 10 s, and while holding it reads the whole WarmUpQueue and WarmUpTextBox. At the start of class, 25+ students saving within seconds could get "The system is busy". This depends on how long the reads take on the live sheets, which I can't measure. To check: watch Executions for `submitWarmUpAnswer` durations during a class. If they run above about 0.5 s, read only the student's rows, or lock only the write.
+**20. ~~*Unverified:* saves may hit "busy" when a whole class saves at once.~~ Fixed 2026-10-28:** the reads now happen before the lock, which covers only the one row's check and write (13's `_dashWarmUpSave_`). `13:361-362`. Every answer or reply save takes the script lock for up to 10 s, and while holding it reads the whole WarmUpQueue and WarmUpTextBox. At the start of class, 25+ students saving within seconds could get "The system is busy". This depends on how long the reads take on the live sheets, which I can't measure. To check: watch Executions for `submitWarmUpAnswer` durations during a class. If they run above about 0.5 s, read only the student's rows, or lock only the write.
 
 **21. *Unverified:* one warm-up card across courses.** `13:256-262`. A student with warm-ups in two courses would see only the earliest "current" one. 24's shared-period note says no student is in both courses, so this is probably moot.
 
