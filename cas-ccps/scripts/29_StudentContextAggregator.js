@@ -15,6 +15,8 @@
 //     and no doc existed)
 //   previewStudentContextDocs()  — what a run would do; changes nothing
 //   buildStudentContextDocsNow()  — a run now, instead of waiting a week
+//   addContextWeekBookmarks()  — once: bookmarks the weeks written before
+//     each week had one (the dashboards' link to one week)
 //
 // DOES NOT RUN ON DEMAND. There is no live-query path in this script by
 // design — the per-student Doc reflects what existed as of the most recent
@@ -556,8 +558,9 @@ function appendWeeklySection_(docId, runTimestamp, assignments, warmUps) {
     runTimestamp, Session.getScriptTimeZone(), "MMMM d, yyyy"
   );
 
-  body.appendParagraph("Week of " + dateStr)
+  const heading = body.appendParagraph("Week of " + dateStr)
     .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  _s29BookmarkWeek_(doc, heading);
 
   if (assignments.length > 0) {
     body.appendParagraph("Completed Assignments")
@@ -604,6 +607,63 @@ function appendWeeklySection_(docId, runTimestamp, assignments, warmUps) {
 
   body.appendParagraph("");
   doc.saveAndClose();
+}
+
+// A bookmark at the start of a week's heading, so the dashboards can link
+// straight to that week ("<doc url>#bookmark=<id>"; 07 and 13 find it by
+// the heading's text). Docs gives a heading no stable link of its own from
+// Apps Script. Best effort: a week without one still opens with the doc.
+function _s29BookmarkWeek_(doc, heading) {
+  try {
+    doc.addBookmark(doc.newPosition(heading, 0));
+  } catch (e) {
+    Logger.log("[S29] Week bookmark not added: " + e.message);
+  }
+}
+
+// Editor, once (2026-10-28): adds the week bookmark to the weeks written
+// before weeks had one, in every doc in StudentDocRegistry. A week that
+// has one is left alone, so it is safe to run again, and it stops at the
+// time budget: run it again to finish.
+function addContextWeekBookmarks() {
+  const cfg = getConfig_();
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.studentDocRegistry);
+  const out = { docs: 0, added: 0, failed: 0, notReached: 0 };
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const started = Date.now();
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, SDR_DOC_ID + 1).getValues().forEach(function (r) {
+    const docId = String(r[SDR_DOC_ID] || "").trim();
+    if (!docId) return;
+    if (Date.now() - started > S29_BUDGET_MS) { out.notReached++; return; }
+    try {
+      const doc = DocumentApp.openById(docId);
+      const marked = {};
+      doc.getBookmarks().forEach(function (b) {
+        let el = b.getPosition().getElement();
+        if (el.getType() === DocumentApp.ElementType.TEXT) el = el.getParent();
+        if (el.getType() === DocumentApp.ElementType.PARAGRAPH) marked[String(el.asParagraph().getText()).trim()] = true;
+      });
+      const body = doc.getBody();
+      for (let i = 0; i < body.getNumChildren(); i++) {
+        const el = body.getChild(i);
+        if (el.getType() !== DocumentApp.ElementType.PARAGRAPH) continue;
+        const p = el.asParagraph();
+        const text = String(p.getText() || "").trim();
+        if (p.getHeading() !== DocumentApp.ParagraphHeading.HEADING2 || text.indexOf("Week of ") !== 0 || marked[text]) continue;
+        doc.addBookmark(doc.newPosition(p, 0));
+        marked[text] = true;
+        out.added++;
+      }
+      doc.saveAndClose();
+      out.docs++;
+    } catch (e) {
+      out.failed++;
+      Logger.log("[S29] Week bookmarks not added to a doc: " + e.message);
+    }
+  });
+  Logger.log("[S29] Week bookmarks: " + out.added + " added in " + out.docs + " doc(s); " + out.failed + " failed" +
+    (out.notReached ? "; " + out.notReached + " not reached (time budget): run addContextWeekBookmarks() again" : "") + ".");
+  return out;
 }
 
 // ---------------------------------------------------------------------------

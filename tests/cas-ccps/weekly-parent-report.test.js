@@ -32,7 +32,7 @@ const PATHS = [
   path.join(SCRIPTS, '55b_LessonAssignmentData.js'),
 ];
 
-const EXPORTS = [
+const EXPORTS = ['_parentReportsPastFor_', 
   'generateWeeklyParentReports',
   'recordParentReportCopied',
   'weeklyParentReportSubject_',
@@ -299,6 +299,9 @@ test('copying a report records when and by whom, never a recipient, and sends no
   assert.equal(rows[1][1], '1234567@ccpsnet.net');
   assert.equal(rows[1][5], '', 'the teacher chooses the recipients; they are not recorded');
   assert.ok(rows[1][7], 'copied_at is stamped');
+  assert.deepEqual(rows[0].slice(12, 14), ['report_subject', 'report_text']);
+  assert.match(rows[1][12], /Alice/, 'the subject as copied');
+  assert.match(rows[1][13], /Alice/, 'the report text as copied');
 });
 
 test('copying again updates the same row, and a prepared row is reused', () => {
@@ -313,6 +316,28 @@ test('copying again updates the same row, and a prepared row is reused', () => {
   const rows = fx.ss.getSheetByName('ParentReportLog').getDataRange().getValues();
   assert.equal(rows.length, 2, 'one row per student per week');
   assert.ok(rows[1][7], 'copied_at is set on the prepared row');
+});
+
+test('the text the dashboard copied is kept; past weeks come back newest first, this week and archived rows left out', () => {
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [(sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' })],
+  });
+  exported.recordParentReportCopied('1234567@ccpsnet.net', fx.now, { subject: 'S now', text: 'T now' });
+  const sheet = fx.ss.getSheetByName('ParentReportLog');
+  const D = (y, m, d) => new sandbox.Date(y, m, d);
+  const add = (ws, text, archived) => sheet.appendRow(['id', '1234567@ccpsnet.net', 'Alice', ws, D(2026, 0, 1), '', ws, ws, 't',
+    0, 0, archived || '', 'S ' + text, text]);
+  add(D(2026, 1, 9), 'feb 9');
+  add(D(2026, 1, 23), 'feb 23');
+  add(D(2026, 1, 16), 'archived', 'ARCHIVED — pending disposition review');
+  sheet.appendRow(['id', '1234567@ccpsnet.net', 'Alice', D(2026, 1, 2), '', '', D(2026, 1, 2), '', '', 0, 0, '', '', '']);
+  const rows = sheet.getDataRange().getValues();
+  assert.deepEqual(rows[1].slice(12, 14), ['S now', 'T now']);
+  const past = exported._parentReportsPastFor_({ ledgerSsId: fx.ss.getId(), tabs: { parentReportLog: 'ParentReportLog' } },
+    '1234567@ccpsnet.net', rows[1][3]);
+  assert.deepEqual(past.map((p) => p.text), ['feb 23', 'feb 9'], 'not this week, not archived, not a row never copied');
+  assert.equal(past[0].subject, 'S feb 23');
 });
 
 test('a student with no report this week cannot be recorded as copied', () => {

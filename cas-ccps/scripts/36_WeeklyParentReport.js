@@ -107,13 +107,21 @@ const PRL = {
   CONFIRMED_ITEM_COUNT: 9,
   PENDING_ITEM_COUNT: 10,
   ARCHIVE_STATUS: 11,
+  // What the teacher copied (2026-10-28, the operator's choice): the subject
+  // and report text as sent, so the student's page can show past weeks.
+  // Blank on rows never copied and on rows from before.
+  REPORT_SUBJECT: 12,
+  REPORT_TEXT: 13,
 };
 
 const PARENT_REPORT_LOG_HEADERS = [
   "report_id", "student_email", "student_name", "week_start", "week_end",
   "recipient_address", "generated_at", "copied_at", "copied_by",
   "confirmed_item_count", "pending_item_count", "archive_status",
+  "report_subject", "report_text",
 ];
+// A report is a few hundred words; this only bounds a pasted runaway.
+const PRL_TEXT_MAX = 20000;
 
 // The retention marker. Deliberately SCRDecisionLog's legal-hold wording
 // rather than the reversible "ARCHIVED" that Ledger and CompetencyEvidence
@@ -168,11 +176,11 @@ function _getParentReportLogSheet_(cfg) {
 // Needed for a tab created before this column existed.
 // ---------------------------------------------------------------------------
 function _ensureParentReportArchiveColumn_(sheet) {
-  const col = PRL.ARCHIVE_STATUS + 1;
-  const cell = sheet.getRange(1, col);
-  if (String(cell.getValue()).trim() !== "archive_status") {
-    cell.setValue("archive_status");
-  }
+  // And the copied-text columns (2026-10-28), after it.
+  [PRL.ARCHIVE_STATUS, PRL.REPORT_SUBJECT, PRL.REPORT_TEXT].forEach(function (i) {
+    const cell = sheet.getRange(1, i + 1);
+    if (String(cell.getValue()).trim() !== PARENT_REPORT_LOG_HEADERS[i]) cell.setValue(PARENT_REPORT_LOG_HEADERS[i]);
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -595,9 +603,11 @@ function _findParentReportRow_(sheet, studentEmail, weekStart) {
 // account (D1, 2026-10-23). Records when and by whom, so the dashboard can
 // show "Copied" and the log says which reports went home; the recipients
 // are the teacher's choice and aren't recorded. Copying again updates the
-// time: a teacher may need to resend.
+// time: a teacher may need to resend. The subject and text are kept too
+// (2026-10-28): copied, when the dashboard sends what it put on the
+// clipboard, or else this week's report as built now.
 // ---------------------------------------------------------------------------
-function recordParentReportCopied(studentEmail, now) {
+function recordParentReportCopied(studentEmail, now, copied) {
   const cfg = getConfig_();
   const generated = generateWeeklyParentReports(now);
   const report = generated.reports.filter(function (r) {
@@ -610,13 +620,17 @@ function recordParentReportCopied(studentEmail, now) {
   const stamp = now || new Date();
   const teacherEmail = Session.getActiveUser().getEmail();
   const existingRow = _findParentReportRow_(sheet, report.studentEmail, report.weekStart);
+  const c = copied || {};
+  const subject = String(c.subject || weeklyParentReportSubject_(report)).slice(0, 500);
+  const text = String(c.text || renderWeeklyParentReportText_(report)).slice(0, PRL_TEXT_MAX);
   if (existingRow > 0) {
     sheet.getRange(existingRow, PRL.COPIED_AT + 1, 1, 4)
       .setValues([[stamp, teacherEmail, report.confirmedCount, report.pendingCount]]);
+    sheet.getRange(existingRow, PRL.REPORT_SUBJECT + 1, 1, 2).setValues([[subject, text]]);
   } else {
     sheet.appendRow([
       Utilities.getUuid(), report.studentEmail, report.studentName, report.weekStart, report.weekEnd,
-      "", stamp, stamp, teacherEmail, report.confirmedCount, report.pendingCount, "",
+      "", stamp, stamp, teacherEmail, report.confirmedCount, report.pendingCount, "", subject, text,
     ]);
   }
   Logger.log("[S36] A weekly report was copied to send (ParentReportLog).");
@@ -636,6 +650,30 @@ function _parentReportsCopiedThisWeek_(cfg, weekStart) {
     out[String(r[PRL.STUDENT_EMAIL] || "").trim().toLowerCase()] = r[PRL.COPIED_AT];
   });
   return out;
+}
+
+// One student's past copied reports, newest first: the weeks before
+// beforeWeekStart whose report the teacher copied (and so has its text),
+// not archived. [{ weekStart, weekEnd, copiedAt, subject, text }], dates as
+// Dates.
+const PRL_PAST_MAX = 52;
+function _parentReportsPastFor_(cfg, studentEmail, beforeWeekStart) {
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.parentReportLog);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const want = String(studentEmail || "").trim().toLowerCase();
+  const before = beforeWeekStart instanceof Date ? beforeWeekStart.getTime() : Infinity;
+  const out = [];
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, PARENT_REPORT_LOG_HEADERS.length).getValues().forEach(function (r) {
+    if (String(r[PRL.STUDENT_EMAIL] || "").trim().toLowerCase() !== want) return;
+    const ws = r[PRL.WEEK_START];
+    if (!(ws instanceof Date) || ws.getTime() >= before) return;
+    if (String(r[PRL.ARCHIVE_STATUS] || "").trim() !== "" || !String(r[PRL.REPORT_TEXT] || "").trim()) return;
+    out.push({ weekStart: ws, weekEnd: r[PRL.WEEK_END], copiedAt: r[PRL.COPIED_AT],
+      subject: String(r[PRL.REPORT_SUBJECT] || ""), text: String(r[PRL.REPORT_TEXT]) });
+  });
+  out.sort(function (a, b) { return b.weekStart.getTime() - a.weekStart.getTime(); });
+  return out.slice(0, PRL_PAST_MAX);
 }
 
 // ---------------------------------------------------------------------------
