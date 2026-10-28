@@ -1142,6 +1142,9 @@ const TD_SETTINGS = [
   { key: "PIVOT_ARCHETYPE_LOCK", label: "Warm-up style lock (research)",
     on: "Once the system is confident which warm-up style works for a student, it keeps using it. The email about students reaching that point goes out only when every course is on.",
     off: "The warm-up style keeps being chosen fresh each time." },
+  { key: "PARENT_REPORT_PREP", label: "Parent reports ready on Fridays",
+    on: "Each Friday at 5 a.m. the week's parent reports for this course's students are logged in ParentReportLog as ready, not yet copied. Nothing is sent.",
+    off: "A report is built when you open ✉ Parent Reports, and only the ones you copy are logged." },
 ];
 const TD_SETTINGS_LOG_TAB = "SettingsLog";
 const TD_SETTINGS_LOG_HEADERS = ["Timestamp", "ChangedBy", "Setting", "From", "To"];
@@ -1162,40 +1165,112 @@ function setSettingForCourse(key, courseCode, on) {
   const code = String(courseCode || "").trim();
   if (courses.indexOf(code) === -1) return { success: false, error: "Unknown course: " + code };
   const raw = String(_resolveConfigValues_().values[key] || "").trim();
-  // Courses on now: the known ones the value turns on, plus any course code
-  // it lists that has no assignments yet (kept, not dropped).
+  const change = {};
+  change[code] = !!on;
+  const value = _tdSettingValue_(raw, courses, change);
+  _tdWriteSetting_(cfg, key, raw || "off", value);
+  if (key === "PARENT_REPORT_PREP") _tdSyncParentReportPrepTrigger_(value !== "off");
+  return _tdSettings_(cfg);
+}
+
+// A setting's next stored value: `raw` with each course in `changes`
+// ({ code: true|false }) turned on or off. Courses on now are the known
+// ones the value turns on, plus any course code it lists that has no
+// assignments yet (kept, not dropped). "all" when every known course is on
+// and nothing else is listed; "off" when none is.
+function _tdSettingValue_(raw, courses, changes) {
   const listed = raw.toLowerCase() === "all" || raw.toLowerCase() === "off" ? [] :
     raw.split(",").map(function (c) { return c.trim(); }).filter(Boolean);
   const onNow = courses.filter(function (c) { return _pivotValueOn_(raw, c); });
   listed.forEach(function (c) { if (onNow.indexOf(c) === -1) onNow.push(c); });
-  const next = onNow.filter(function (c) { return c !== code; });
-  if (on) next.push(code);
+  let next = onNow;
+  Object.keys(changes).forEach(function (code) {
+    next = next.filter(function (c) { return c !== code; });
+    if (changes[code]) next.push(code);
+  });
   next.sort();
-  const value = !next.length ? "off"
+  return !next.length ? "off"
     : courses.every(function (c) { return next.indexOf(c) !== -1; }) && next.length === courses.length ? "all"
     : next.join(",");
-  _tdWriteSetting_(cfg, key, raw || "off", value);
+}
+
+// The panel's one Save (2026-10-27): every switch changed since the panel
+// opened ([{ key, code, on }]) and the marking period dates (null when
+// unchanged). Everything is checked before anything is written, so an
+// unknown course or a broken date saves nothing. One _CONFIG row and one
+// SettingsLog row per setting, however many of its courses changed.
+function saveSettings(changes, ends) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  const courses = _tdKnownCourses_(cfg);
+  const byKey = {};
+  const list = changes || [];
+  for (let i = 0; i < list.length; i++) {
+    const key = String((list[i] && list[i].key) || "");
+    const code = String((list[i] && list[i].code) || "").trim();
+    if (!TD_SETTINGS.some(function (d) { return d.key === key; })) return { success: false, error: "Unknown setting: " + key };
+    if (courses.indexOf(code) === -1) return { success: false, error: "Unknown course: " + code };
+    (byKey[key] = byKey[key] || {})[code] = !!list[i].on;
+  }
+  let mp = null;
+  if (ends) {
+    mp = _tdMarkingPeriodValue_(ends);
+    if (mp.error) return { success: false, error: mp.error };
+  }
+  const resolved = _resolveConfigValues_().values;
+  Object.keys(byKey).forEach(function (key) {
+    const raw = String(resolved[key] || "").trim();
+    const value = _tdSettingValue_(raw, courses, byKey[key]);
+    _tdWriteSetting_(cfg, key, raw || "off", value);
+    if (key === "PARENT_REPORT_PREP") _tdSyncParentReportPrepTrigger_(value !== "off");
+  });
+  if (mp) {
+    const raw = String(resolved.MARKING_PERIOD_ENDS || "").trim();
+    _tdWriteSetting_(cfg, "MARKING_PERIOD_ENDS", raw || "(the district calendar)", mp.value);
+  }
   return _tdSettings_(cfg);
+}
+
+// Parent reports ready on Fridays: its Friday 5 a.m. job lives in this
+// project (36 is here, with this teacher's TEACHER_EMAIL), installed when
+// the setting turns on for any course and removed when it is off for all.
+// The job reads the setting itself, so a course turned off is skipped
+// without touching the trigger. A failure is logged; the setting is saved.
+function _tdSyncParentReportPrepTrigger_(on) {
+  try {
+    const mine = ScriptApp.getProjectTriggers()
+      .filter(function (t) { return t.getHandlerFunction() === "runWeeklyParentReportPrep"; });
+    if (on && !mine.length) installWeeklyParentReportTrigger();
+    if (!on) mine.forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  } catch (e) {
+    Logger.log("[Dashboard] The Friday parent report job could not be " + (on ? "added" : "removed") + ": " + e.message);
+  }
 }
 
 // The marking period end dates: [{ term: "2627_MP1", end: "2026-10-30" }, ...].
 function setMarkingPeriodEnds(ends) {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  const mp = _tdMarkingPeriodValue_(ends);
+  if (mp.error) return { success: false, error: mp.error };
+  const raw = String(_resolveConfigValues_().values.MARKING_PERIOD_ENDS || "").trim();
+  _tdWriteSetting_(cfg, "MARKING_PERIOD_ENDS", raw || "(the district calendar)", mp.value);
+  return _tdSettings_(cfg);
+}
+
+// [{ term, end }] -> { value: "2627_MP1=2026-10-30,..." } or { error }.
+function _tdMarkingPeriodValue_(ends) {
   const list = (ends || []).map(function (e) {
     return String((e && e.term) || "").trim().toUpperCase() + "=" + String((e && e.end) || "").trim();
   });
   const table = _markingPeriodEnds_(list.join(","));
   if (!list.length || table.length !== list.length) {
-    return { success: false, error: "Each marking period needs a whole date (yyyy-mm-dd)." };
+    return { error: "Each marking period needs a whole date (yyyy-mm-dd)." };
   }
   for (let i = 1; i < table.length; i++) {
-    if (table[i].end === table[i - 1].end) return { success: false, error: "Two marking periods end on the same day." };
+    if (table[i].end === table[i - 1].end) return { error: "Two marking periods end on the same day." };
   }
-  const value = table.map(function (t) { return t.term + "=" + t.end; }).join(",");
-  const raw = String(_resolveConfigValues_().values.MARKING_PERIOD_ENDS || "").trim();
-  _tdWriteSetting_(cfg, "MARKING_PERIOD_ENDS", raw || "(the district calendar)", value);
-  return _tdSettings_(cfg);
+  return { value: table.map(function (t) { return t.term + "=" + t.end; }).join(",") };
 }
 
 function _tdWriteSetting_(cfg, key, from, to) {
@@ -1952,9 +2027,13 @@ button[data-pr-copy="subject"]{background:#fff;color:#1557b0;border:1px solid #1
 .setting-row legend{font-weight:600;font-size:14px;padding:0 4px}
 .setting-help{font-size:12.5px;color:var(--text-secondary);margin-bottom:8px;line-height:1.45}
 .setting-switches{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;margin-bottom:6px;align-items:center}
-.setting-confirm{background:#fef7e0;border:1px solid #f9dc8f;border-radius:6px;padding:8px 10px;font-size:12.5px;margin-top:6px}
-.setting-confirm button,.setting-row > button{font-size:12.5px;border-radius:4px;padding:4px 10px;cursor:pointer;border:1px solid #1557b0;background:#fff;color:#1557b0}
-.setting-confirm .st-yes{background:#1557b0;color:#fff}
+#settings-modal-body{max-height:calc(100vh - 170px);overflow-y:auto}
+.setting-savebar{position:sticky;bottom:0;box-shadow:0 -4px 10px rgba(0,0,0,.06);background:#fef7e0;border:1px solid #f9dc8f;border-radius:6px;padding:8px 10px;font-size:12.5px;margin-top:10px}
+.setting-savebar ul{margin:4px 0 8px 18px;padding:0}
+.setting-savebar .st-none{color:var(--text-secondary)}
+.setting-savebar button{font-size:12.5px;border-radius:4px;padding:4px 10px;cursor:pointer;border:1px solid #1557b0;background:#fff;color:#1557b0}
+.setting-savebar .st-yes{background:#1557b0;color:#fff}
+.setting-savebar .st-yes[disabled]{opacity:.5;cursor:default}
 .setting-log{font-size:12.5px;margin-top:8px}
 .name-link{background:none;border:none;padding:0;font:inherit;color:#1557b0;cursor:pointer;text-align:left}
 .name-link:hover{text-decoration:underline}
@@ -2881,15 +2960,18 @@ function _handleTurnInDecisionResult(res) {
 
 let _parentReports = [];
 
-// ── ⚙ Settings (sprint PR 3) ─────────────────────────────────────────────
-// A switch per feature and course. A change is confirmed in the panel first
-// (what turning it on or off does, and when it reaches students), then
-// saved; the panel redraws from what the server read back.
+// ── ⚙ Settings (sprint PR 3; one Save, 2026-10-27) ────────────────────────
+// A switch per feature and course, and the marking period dates. Changes
+// are kept in the panel until Save, which sends them in one call; the bar
+// above Save lists each one with what it does. Closing the panel, Escape, a
+// backdrop click or leaving the page with changes not saved asks first.
 let _settings = null;
-let _stPending = null; // { key, code, on } waiting for Confirm
+let _stDraft = {};    // "KEY|code" -> true/false, only where it differs from what is saved
+let _mpDraft = null;  // the marking period dates as typed, or null when untouched
 
 function openSettingsModal() {
-  _stPending = null;
+  _stDraft = {};
+  _mpDraft = null;
   _openPanel("settings-modal-backdrop", closeSettingsModal);
   document.getElementById("settings-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
@@ -2899,7 +2981,33 @@ function openSettingsModal() {
     .getSettings();
 }
 
+// The changes not saved yet: [{ key, code, on, label, what }], plus
+// whether the dates changed.
+function _stChanges() {
+  if (!_settings) return { list: [], dates: false };
+  const list = [];
+  _settings.settings.forEach(function (st) {
+    st.courses.forEach(function (c) {
+      const k = st.key + "|" + c.code;
+      if (Object.prototype.hasOwnProperty.call(_stDraft, k)) {
+        list.push({ key: st.key, code: c.code, on: _stDraft[k], label: st.label, what: _stDraft[k] ? st.on : st.off });
+      }
+    });
+  });
+  const saved = _settings.markingPeriods.ends;
+  const dates = !!_mpDraft && _mpDraft.some(function (d, i) { return d !== saved[i].end; });
+  return { list: list, dates: dates };
+}
+function _stUnsaved() {
+  const ch = _stChanges();
+  return ch.list.length + (ch.dates ? 1 : 0);
+}
+
 function closeSettingsModal() {
+  const n = _stUnsaved();
+  if (n && !window.confirm("Leave Settings without saving? " + n + (n === 1 ? " change" : " changes") + " will be lost.")) return;
+  _stDraft = {};
+  _mpDraft = null;
   _closePanel("settings-modal-backdrop");
 }
 
@@ -2918,7 +3026,8 @@ function renderSettings(data) {
   }
   _settings = data;
   let html = '<p style="font-size:13px;color:var(--text-secondary)">Each feature is on or off per course. ' +
-    'A change shows here at once and reaches students and the overnight jobs within about 10 minutes.</p>';
+    'Tick or untick the boxes and change the dates, then press <strong>Save changes</strong>. ' +
+    'Saved changes show here at once and reach students and the overnight jobs within about 10 minutes.</p>';
   if (!data.courses.length) html += '<p style="font-size:13px">No courses with assignments yet.</p>';
   data.settings.forEach(function (st) {
     html += '<fieldset class="setting-row"><legend>' + esc(st.label) + '</legend>' +
@@ -2928,18 +3037,11 @@ function renderSettings(data) {
         ' Script Property, which overrides this setting here. Delete it to use this switch.</p>';
     }
     html += '<div class="setting-switches">' + st.courses.map(function (c) {
-      const pending = _stPending && _stPending.key === st.key && _stPending.code === c.code;
+      const k = st.key + "|" + c.code;
+      const on = Object.prototype.hasOwnProperty.call(_stDraft, k) ? _stDraft[k] : c.on;
       return '<label><input type="checkbox" data-st-key="' + esc(st.key) + '" data-st-code="' + esc(c.code) + '"' +
-        (c.on ? ' checked' : '') + (pending ? ' disabled' : '') + '> ' + esc(c.code) + '</label>';
-    }).join("") + '</div>';
-    if (_stPending && _stPending.key === st.key) {
-      html += '<div class="setting-confirm" role="alert">Turn <strong>' + esc(st.label) + '</strong> ' +
-        (_stPending.on ? 'on' : 'off') + ' for ' + esc(_stPending.code) + '? ' +
-        esc(_stPending.on ? st.on : st.off) +
-        ' <button type="button" class="st-yes" onclick="confirmSetting()">' + (_stPending.on ? 'Turn on' : 'Turn off') + '</button>' +
-        ' <button type="button" onclick="cancelSetting()">Cancel</button></div>';
-    }
-    html += '</fieldset>';
+        (on ? ' checked' : '') + '> ' + esc(c.code) + '</label>';
+    }).join("") + '</div></fieldset>';
   });
   const mp = data.markingPeriods;
   html += '<fieldset class="setting-row"><legend>Marking periods</legend>' +
@@ -2949,63 +3051,101 @@ function renderSettings(data) {
     html += '<p style="font-size:12.5px;color:#b3261e">This dashboard\\'s project has its own MARKING_PERIOD_ENDS Script Property, which overrides these dates here.</p>';
   }
   html += '<div class="setting-switches">' + mp.ends.map(function (e, i) {
-    return '<label>' + esc(termLabel(e.term)) + ' <input type="date" data-mp-i="' + i + '" value="' + esc(e.end) + '"></label>';
-  }).join("") + '</div><button type="button" onclick="saveMarkingPeriods()">Save dates</button></fieldset>';
+    const v = _mpDraft ? _mpDraft[i] : e.end;
+    return '<label>' + esc(termLabel(e.term)) + ' <input type="date" data-mp-i="' + i + '" value="' + esc(v) + '"></label>';
+  }).join("") + '</div></fieldset>';
   if ((data.log || []).length) {
     html += '<details class="setting-log"><summary>Recent changes</summary><ul>' + data.log.map(function (l) {
       return '<li>' + esc(l.at) + ': ' + esc(l.key) + ' ' + esc(l.from) + ' → ' + esc(l.to) + '</li>';
     }).join("") + '</ul></details>';
   }
   if (data.error) html += '<p style="color:#b3261e;font-size:13px">' + esc(data.error) + '</p>';
+  html += '<div class="setting-savebar" id="st-savebar" role="status">' + _stSaveBarHtml() + '</div>';
   body.innerHTML = html;
 }
 
-// A switch click asks first; the box goes back to what is saved until then.
-function askSetting(key, code, on) {
-  _stPending = { key: key, code: code, on: !!on };
-  if (_settings) renderSettings(_settings);
-}
-function cancelSetting() {
-  _stPending = null;
-  if (_settings) renderSettings(_settings);
-}
-function confirmSetting() {
-  const p = _stPending;
-  if (!p) return;
-  _stPending = null;
-  document.getElementById("settings-modal-body").innerHTML =
-    '<p style="font-size:13px;color:var(--text-secondary)">Saving…</p>';
-  google.script.run
-    .withSuccessHandler(_settingsSaved)
-    .withFailureHandler(_settingsFailed)
-    .setSettingForCourse(p.key, p.code, p.on);
-}
-function saveMarkingPeriods() {
-  if (!_settings) return;
-  const ends = _settings.markingPeriods.ends.map(function (e, i) {
-    const box = document.querySelector('[data-mp-i="' + i + '"]');
-    return { term: e.term, end: box ? box.value : e.end };
+// What Save will do, then Save and Discard; "All changes saved." when
+// nothing is waiting.
+function _stSaveBarHtml() {
+  const ch = _stChanges();
+  if (!ch.list.length && !ch.dates) {
+    return '<span class="st-none">All changes saved.</span> <button type="button" class="st-yes" disabled>Save changes</button>';
+  }
+  const items = ch.list.map(function (c) {
+    return '<li>Turn <strong>' + esc(c.label) + '</strong> ' + (c.on ? 'on' : 'off') + ' for ' + esc(c.code) + ': ' + esc(c.what) + '</li>';
   });
+  if (ch.dates) items.push('<li>The marking period dates</li>');
+  return '<strong>Not saved yet:</strong><ul>' + items.join("") + '</ul>' +
+    '<button type="button" class="st-yes" onclick="saveSettingsChanges()">Save changes</button> ' +
+    '<button type="button" onclick="discardSettingsChanges()">Discard</button>';
+}
+function _stRefreshSaveBar() {
+  const bar = document.getElementById("st-savebar");
+  if (bar) bar.innerHTML = _stSaveBarHtml();
+}
+
+// A box ticked back to what is saved is no longer a change.
+function setSettingDraft(key, code, on) {
+  if (!_settings) return;
+  const st = _settings.settings.filter(function (s) { return s.key === key; })[0];
+  const c = st && st.courses.filter(function (x) { return x.code === code; })[0];
+  if (!c) return;
+  const k = key + "|" + code;
+  if (!!on === c.on) delete _stDraft[k]; else _stDraft[k] = !!on;
+  _stRefreshSaveBar();
+}
+function setMarkingPeriodDraft(i, value) {
+  if (!_settings) return;
+  if (!_mpDraft) _mpDraft = _settings.markingPeriods.ends.map(function (e) { return e.end; });
+  _mpDraft[i] = value;
+  _stRefreshSaveBar();
+}
+function discardSettingsChanges() {
+  _stDraft = {};
+  _mpDraft = null;
+  if (_settings) renderSettings(_settings);
+}
+function saveSettingsChanges() {
+  const ch = _stChanges();
+  if (!ch.list.length && !ch.dates) return;
+  const changes = ch.list.map(function (c) { return { key: c.key, code: c.code, on: c.on }; });
+  const ends = ch.dates ? _settings.markingPeriods.ends.map(function (e, i) { return { term: e.term, end: _mpDraft[i] }; }) : null;
   document.getElementById("settings-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Saving…</p>';
   google.script.run
     .withSuccessHandler(_settingsSaved)
-    .withFailureHandler(_settingsFailed)
-    .setMarkingPeriodEnds(ends);
+    .withFailureHandler(_settingsSaveFailed)
+    .saveSettings(changes, ends);
 }
-// A refused save keeps the last good settings on screen with the reason.
+// Saved: the drafts go and the panel shows what the server read back. A
+// refused save keeps the changes on screen with the reason.
 function _settingsSaved(data) {
   if (data && !data.success && _settings) {
     renderSettings(Object.assign({}, _settings, { error: data.error }));
     return;
   }
+  _stDraft = {};
+  _mpDraft = null;
   renderSettings(data);
+}
+function _settingsSaveFailed(e) {
+  if (!_settings) return _settingsFailed(e);
+  renderSettings(Object.assign({}, _settings, { error: "Not saved: " + (e && e.message ? e.message : "unknown error") }));
 }
 document.addEventListener("change", function (ev) {
   const box = ev.target && ev.target.getAttribute ? ev.target : null;
-  if (box && box.getAttribute("data-st-key")) {
-    askSetting(box.getAttribute("data-st-key"), box.getAttribute("data-st-code"), box.checked);
+  if (!box) return;
+  if (box.getAttribute("data-st-key")) {
+    setSettingDraft(box.getAttribute("data-st-key"), box.getAttribute("data-st-code"), box.checked);
+  } else if (box.getAttribute("data-mp-i") !== null && box.getAttribute("data-mp-i") !== undefined) {
+    setMarkingPeriodDraft(Number(box.getAttribute("data-mp-i")), box.value);
   }
+});
+// Leaving or reloading the page with Settings changes not saved asks first.
+window.addEventListener("beforeunload", function (ev) {
+  if (!_stUnsaved()) return;
+  ev.preventDefault();
+  ev.returnValue = "";
 });
 
 // ── Lesson schedule ─────────────────────────────────────────────────────────

@@ -303,6 +303,7 @@ test('copying a report records when and by whom, never a recipient, and sends no
 
 test('copying again updates the same row, and a prepared row is reused', () => {
   const { exported, sandbox } = load();
+  sandbox.PropertiesService.getScriptProperties().setProperty('PARENT_REPORT_PREP', 'all');
   const fx = setUpFixture(sandbox, exported, {
     ledgerRows: [(sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' })],
   });
@@ -337,6 +338,7 @@ test('generateWeeklyParentReports sends nothing', () => {
 
 test('the weekly trigger prepares rows with no recipient and no sent_at', () => {
   const { exported, sandbox } = load();
+  sandbox.PropertiesService.getScriptProperties().setProperty('PARENT_REPORT_PREP', 'all');
   const fx = setUpFixture(sandbox, exported, {
     ledgerRows: [
       (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' }),
@@ -355,6 +357,7 @@ test('the weekly trigger prepares rows with no recipient and no sent_at', () => 
 
 test('the weekly trigger is idempotent within a week', () => {
   const { exported, sandbox } = load();
+  sandbox.PropertiesService.getScriptProperties().setProperty('PARENT_REPORT_PREP', 'all');
   const fx = setUpFixture(sandbox, exported, {
     ledgerRows: [
       (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' }),
@@ -364,6 +367,25 @@ test('the weekly trigger is idempotent within a week', () => {
   const second = exported.runWeeklyParentReportPrep(fx.now);
   assert.equal(second.prepared, 0);
   assert.equal(fx.ss.getSheetByName('ParentReportLog').getDataRange().getValues().length, 2);
+});
+
+test('the weekly trigger prepares nothing while ⚙ Settings has it off, and only the courses it is on for', () => {
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice', courseName: 'Sports and Entertainment Marketing' }),
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '2345678@ccpsnet.net', name: 'Bob', courseName: 'Entrepreneurship 8177' }),
+    ],
+  });
+  const res = exported.runWeeklyParentReportPrep(fx.now);
+  assert.equal(res.prepared, 0);
+  assert.equal(res.off, true);
+  assert.equal(fx.ss.getSheetByName('ParentReportLog'), null, 'off writes nothing, not even the tab');
+
+  sandbox.PropertiesService.getScriptProperties().setProperty('PARENT_REPORT_PREP', '8177');
+  assert.equal(exported.runWeeklyParentReportPrep(fx.now).prepared, 1);
+  const rows = fx.ss.getSheetByName('ParentReportLog').getDataRange().getValues();
+  assert.deepEqual(rows.slice(1).map((r) => r[1]), ['2345678@ccpsnet.net'], 'only the 8177 student');
 });
 
 // ── Excluded students ────────────────────────────────────────────────────
