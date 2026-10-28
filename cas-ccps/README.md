@@ -357,6 +357,10 @@ are the criteria.
    (`enrollCanvasRoster_`, script 52). A lesson whose release night hasn't
    come gets unshared `SCHEDULED` docs; the current lesson and tomorrow's
    get shared ones, so late joiners can start at once.
+4. **Lesson doc.** Each of those lessons gets the teacher's lesson doc once
+   (script 66, below); later nights refresh its Class status.
+5. **Agenda.** The next school day's agenda deck for the course (script 67,
+   below).
 
 It runs in **shadow** until `ROLLOUT_AUTO_APPLY` is set (Script Property or
 the Ledger's `_CONFIG` tab: `8175`, `8177` or `all`; `off` stops it again):
@@ -367,6 +371,44 @@ hit its time budget, unmapped Canvas sections, a Canvas export more than 7
 days old). The CAS signal reports PROBLEM rows from the last day, and says
 while a course is still in shadow. `previewLessonRollout()` runs it once as
 a dry run from the editor. The steps below still work by hand.
+
+## The teacher's lesson doc (script 66)
+
+`66_LessonDoc.js` (Central Ledger and Teacher Dashboard, 2026-10-27) makes
+one teacher doc per lesson, "Lesson Plan — 8175 L06 …", in a *Lesson Plans*
+folder, in place of the per-period Lesson Frames (27) the lesson builder
+(51) made for every class meeting: the builder's rows now make none, and a
+lesson logged by hand still gets one. The doc holds the plan (objective, "I
+can" goals, competencies by tier, vocabulary, the student task); an
+**itinerary** per day of the lesson, drafted from the lesson's own sections
+(55b's `plan`), with minutes for each of the course's blocks on Schedule A
+and B (00's bell schedule and `itineraryFor_`), which the teacher edits and
+the daily agenda will read; look-fors (each competency's "I can" goal and
+the state's indicators); a heading per class meeting with room for notes;
+and **Class status** per period (docs made, shared, submitted, waiting for
+feedback, passed; counts only). It is made once: the nightly rollout (for
+courses with it on) or **Make lesson doc** in 📅 Lessons; after that, both
+only refresh Class status, so the teacher's edits stay. The `LessonDocs`
+tab records each doc by lesson. From the editor: `previewLessonDocs()`,
+`makeLessonDocsNow()`.
+
+## The daily agenda deck (script 67)
+
+`67_AgendaDeck.js` (Central Ledger and Teacher Dashboard, 2026-10-27) makes
+one Google Slides deck per course per school day, "Agenda — 8175 — Wed Oct
+28", in an *Agendas* folder: the day (date, schedule, lesson, today's "I can"
+goals, and "3rd block: Lunch (your wave)" when a 3rd-block period meets), a
+slide per itinerary block with its mode and each meeting period's minutes,
+and "Before you go" (submit on the Student Dashboard; whether the lesson ends
+today). The blocks come from the lesson doc's itinerary table, so the
+teacher's edits there carry into every deck, or from the lesson's plan when
+no doc exists; a multi-day lesson uses the plan's day for that meeting.
+Minutes are the doc's column for the block on Schedule A or B; any other day
+fits the A column to the period. Made by the nightly rollout for the next
+school day (courses with it on) and by **Today's agenda** in 📅 Lessons;
+remaking a day's deck replaces its slides. The `AgendaDecks` tab records
+each by course and date. Needs the presentations scope in the Central
+Ledger and Teacher Dashboard (a one-time approval after the push).
 
 ## Canvas roster import (script 52)
 

@@ -5099,3 +5099,73 @@ approved 2026-10-24), behind the same `REFLECTION_ON_SUBMIT`:
   push.
 - **Tests:** `process-reflection.test.js` (the choice, the shortfall, the
   prompt, the dashboard end to end).
+## The lesson doc sprint, PR 1: each lesson's class plan and the bell schedule, 2026-10-27
+
+The first of three PRs for `meta/SPRINT_LESSON_DOCS_2026-11.md` (one teacher
+doc per lesson, and a daily agenda deck). This one is data and arithmetic;
+nothing is made yet.
+- **The generator** (`tools/cas-ccps/build-lesson-assignments.js`) adds a
+  `plan` to every lesson in 55b: `{ duration, days: [{ label, blocks }] }`,
+  each block `{ title, minutes, mode, detail, fixed }`. 8175: the Bell
+  Ringer as the warm-up (5, fixed), the Hook (10; listening when it shows
+  something, else discussion), the task (no minutes: it takes the rest,
+  Chromebooks out) and the Checkout Slip (5, fixed). 8177: the warm-up, then
+  each timed Instructional Sequence step, in a heading or a bulleted line,
+  split by "Day n" headings. Modes come from each block's words
+  (`modeOf`). All 67 lessons have a plan; two 8177 lessons have two days.
+- **00:** Clover Hill's bell schedule (`BELL_CLASS_MINUTES`,
+  `bellScheduleFor_`, `bellBlockOf_`, `classMinutesFor_`, with the early
+  release days and called days as overrides) and `itineraryFor_`, which
+  fits a day's plan to a period's minutes exactly (fixed blocks kept, the
+  open block takes the rest, timed blocks scaled, rounded to 5).
+- **Tests:** `lesson-itinerary.test.js` (new).
+
+## The lesson doc sprint, PR 2: one teacher doc per lesson, 2026-10-27
+
+`66_LessonDoc.js` (Central Ledger and Teacher Dashboard), on PR 1's plans and
+bell schedule. `makeOrRefreshLessonDoc_(key)` makes "Lesson Plan — <course>
+<lesson>" in a *Lesson Plans* folder, once, and records it in a new
+`LessonDocs` tab; a second call rewrites only Class status, the doc's last
+section, so the teacher's edits stay.
+- **Sections:** the plan (objective, "I can" goals, competencies by tier,
+  vocabulary, the student task); the itinerary, a table per plan day with
+  minutes for each block the course meets in (ClassSchedule) on A and B
+  (`itineraryFor_`); look-fors (the goal and CompetencyRubrics' indicators,
+  32); each day it runs (school days from the start to the next lesson's
+  start, skipping weekends and NoSchoolDays, with the schedule and the
+  periods meeting, ODD/EVEN by day of month as 24 does); Class status per
+  period from the Ledger rows StudentAssignments ties to the lesson (counts
+  only).
+- **Where it's made:** the nightly rollout (58, a LESSON_DOC step, for
+  courses with it on, inside its time budget); **Make lesson doc** / **Refresh
+  status** in 📅 Lessons (07's `openLessonDoc`, teacher-gated; the link
+  shows once made); `previewLessonDocs()` / `makeLessonDocsNow()` in the
+  editor.
+- **The per-period frames stop:** 51's rows carry `noFrame`, and 22 returns
+  after alignment for them, so the builder makes no Lesson Frame; a lesson
+  the teacher logs by hand still gets one.
+- **Docs:** the cas-ccps README, the FERPA data map, the teacher reference
+  guide (📅 Lessons) and its notebook copy.
+- **Tests:** `lesson-doc.test.js` (new); `course-year-builder.test.js` (no
+  frame per period); `lesson-rollout.test.js` loads 66.
+
+## The lesson doc sprint, PR 3: the daily agenda deck, 2026-10-27
+
+`67_AgendaDeck.js` (Central Ledger and Teacher Dashboard).
+`makeAgendaDeck_(code, ymd)` makes "Agenda — <course> — <day>" in an
+*Agendas* folder: the day (date, schedule, lesson, up to three "I can"
+goals, the 3rd-block lunch note), a slide per itinerary block (mode, title,
+each meeting period's minutes, the detail) and "Before you go" (with "last
+day for this lesson" when the next lesson starts after it). Blocks come
+from the lesson doc's itinerary tables (`_agDocTables_`), so the teacher's
+edits carry in, or the plan when no doc exists; minutes are the doc's
+"<block> <A|B>" column, else the A column fitted to the period by
+`itineraryFor_`. Remaking replaces the slides; `AgendaDecks` records each.
+- **Made by:** the nightly rollout's AGENDA step (58, the next school day,
+  `nextAgendaDay_`) and **Today's agenda** in 📅 Lessons (07's
+  `openAgendaDeck`: today, or the next class day).
+- **Scope:** `presentations` added to the Central Ledger and Teacher
+  Dashboard manifests, and `SlidesApp` to gas-lint's scope map. The push
+  asks for it once.
+- **Tests:** `agenda-deck.test.js` (new, with a SlidesApp stand-in); the
+  harness's date formatter learned `EEEE`; `lesson-rollout.test.js` loads 67.
