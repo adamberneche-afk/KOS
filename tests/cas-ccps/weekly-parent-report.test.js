@@ -566,6 +566,26 @@ test('items carry the lesson title and their real status; competencies their tex
   assert.match(body, /1 to 5 competency scale, where 1 is the highest/);
 });
 
+test('8177 items and the parts of a lesson carry their assignment title too, not the unit name', () => {
+  const { exported, sandbox } = load();
+  const D = sandbox.Date;
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice', configId: 'VDOE-AAA-1' }),
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice', configId: 'VDOE-AAA-2' }),
+    ],
+    scrRows: [],
+  });
+  const sa = fx.ss.insertSheet('StudentAssignments');
+  sa.appendRow(['StudentConfigID', 'GoogleID', 'AssignmentConfigID', 'RecordedAt']);
+  sa.appendRow(['VDOE-AAA-1', '1234567@ccpsnet.net', 'CAS-8177-THE-FRONT-LINES', new D()]);
+  sa.appendRow(['VDOE-AAA-2', '1234567@ccpsnet.net', 'CAS-8177-THE-TICKET-OFFICE-P2', new D()]);
+  const body = exported.renderWeeklyParentReportText_(exported.generateWeeklyParentReports(fx.now).reports[0]);
+  assert.doesNotMatch(body, /The Front Lines \(Customer Service & Sales\)/, 'not the lesson\'s unit name');
+  assert.match(body, /The Sales Management Playbook — Part 2 of 4: The Sales Contest/);
+  assert.doesNotMatch(body, /Assignment: /, 'the label word is dropped');
+});
+
 test('progress is the current marking period only, named in words', () => {
   const { exported, sandbox } = load();
   const D = sandbox.Date;
