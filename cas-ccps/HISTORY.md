@@ -5007,3 +5007,25 @@ never have been installed.
   (29's and 30's).
 - **Tests:** `scr-suggestion-engine.test.js` (setup, preview, run, re-run),
   `overnight-health.test.js`, `period-split.test.js`.
+
+## showSetupStatus: what is on in the Central Ledger, 2026-10-27
+
+29's and 30's weekly runs had never been installed, and nothing listed what
+should be running. `showSetupStatus()` (35, Central Ledger) is read-only
+and logs:
+- **Triggers:** the Ledger cycle and each of its jobs (in the cycle, its own
+  trigger, both, or off), then each other expected trigger (the 3 a.m.
+  warm-up stages, the 2 a.m. lesson plans, the 9 p.m. rollout, the weekly
+  Student Context, competency suggestions and parent report prep, the
+  artifact sync, the deploy version report, the daily health alert): on, or
+  OFF with the function that installs it. Any trigger it doesn't know is
+  listed by name.
+- **Switches:** `M2_ENABLED`, `AI_FLOWS_LIVE`, `EVALUATION_MODE`,
+  `CAS_WATCHDOG_DRY_RUN` and `CURRENT_TERM` with their values, or what unset
+  means. Keys, URLs and addresses only as set or not set.
+- **⚙ Settings** as this project resolves them, with their source.
+- **Tabs:** row counts of StudentDocRegistry, CompetencyEvidence,
+  SCRSuggestions and SCRDecisionLog.
+- A last line, "TO TURN ON:", naming each installer still to run.
+
+Tests: `setup-status.test.js`.
