@@ -325,7 +325,7 @@ Nov 2's measurement) and Studio's limit on runs per day is checked.
 | 0 | Content: the missing video links (two lessons, 8175 L06 and L34; the path is built, #289, and waits on the links); each lesson's "I can" learning objectives, shown as a heading (**done 2026-10-24**: the objectives in the doc, and the assignment in a two-row table with the code in the page footer); part tiers and part criteria drafted for the teacher's approval | Week of Oct 26 |
 | 1 | The process reflection on Submit: the question frames, the selection, `ReflectionLog`, Flow 2 reads it, Student Context shows it. Behind a setting, off until grades are in (Oct 30) | Week of Oct 26, on after Oct 30 |
 | 2 | The feedback reflection, from `CompetencyEvidence`; Flow 2 checks it was carried out | **Built 2026-10-27** (behind the same setting): a resubmission after the primary wasn't met asks F1 to F3; Flow 2 says whether the revision carries it out |
-| 3 | Parts in both courses: the builder splits tasks, a ConfigID and file per part, made with the lesson, unlocked on the primary, both dashboards group them, the teacher's unlock, cartridges list them | **Started 2026-10-27** at the operator's word, alongside the measurement: 3a the data (8177 Market Research, Appendix B), 3b made and unlocked (68); 3c (2026-10-28) both dashboards group parts, the teacher's unlock button, the lesson doc counts parts; Flow 2 given the earlier parts (2026-10-28, the EARLIER PARTS block); the other 34 lessons' parts drafted for approval (2026-10-28, `meta/LESSON_PARTS_DRAFTS_2026-10.md`) |
+| 3 | Parts in both courses: the builder splits tasks, a ConfigID and file per part, made with the lesson, unlocked on the primary, both dashboards group them, the teacher's unlock, cartridges list them | **Started 2026-10-27** at the operator's word, alongside the measurement: 3a the data (8177 Market Research, Appendix B), 3b made and unlocked (68); 3c (2026-10-28) both dashboards group parts, the teacher's unlock button, the lesson doc counts parts; Flow 2 given the earlier parts (2026-10-28, the EARLIER PARTS block); the other 34 lessons' parts drafted and approved together (2026-10-28, `meta/LESSON_PARTS_2026-10.md`), to be edited as they are taught |
 | 4 | Work files by type: Forms, then Slides, then Sheets; Canva parts to Slides | After Phase 3 |
 
 Phases 1 and 2 don't depend on 3: they work on today's one-doc lessons (a
@@ -358,7 +358,8 @@ part files.
    and the reflection questions quote them (from the TeacherMatrix's
    `StudentObjectives`, after `refreshAssignments()`).
 3. ~~**The first lesson's parts** (Appendix B)~~: **approved 2026-10-27**;
-   the other 34 multi-part lessons follow its pattern.
+   the other 34 multi-part lessons follow its pattern (drafted and approved
+   2026-10-28, `meta/LESSON_PARTS_2026-10.md`).
 4. **Phase 1 on before Oct 30?** Proposed off until grades are in.
 5. ~~**`ReflectionLog`'s retention**~~: **decided 2026-10-24**: the student's
    work is kept by the record rules for student artifacts and the
