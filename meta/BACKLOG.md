@@ -119,9 +119,11 @@ operator. This file holds what comes after them.
   manifest for one or two volunteer students. Waits on district policy for
   exporting student work. Same doc, §2.
 - **Thread C, what's left.** The nightly rollout is built (2026-10-17,
-  `58_LessonRollout.js`, shadow first). Still open: a per-lesson `release`
-  hold column in `LessonSchedule`, student-requested doc creation, and
-  persistent per-course docs. Same doc, §5.
+  `58_LessonRollout.js`, shadow first), and the per-lesson `release` hold
+  (2026-10-28, `HOLD` in `LessonSchedule`, 📅 Lessons' Hold button). Still
+  open: student-requested doc creation, after a few weeks of the rollout
+  running live. Persistent per-course docs are set aside: lessons in parts
+  give each part its own doc. Same doc, §5.
 - **Cognitive exhaust and authenticity review.** Student process traces,
   for assignment docs (not warm-ups). Decided 2026-10-17: nothing on the
   student's doc, results on the Teacher Dashboard only; the county's account
