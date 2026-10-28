@@ -48,7 +48,7 @@ function load(rows, viewer = ME) {
     wq.appendRow(r.wq);
     if (r.tb) tb.appendRow([r.wq[0], r.wq[5], r.tb.bridge || '', r.tb.warmup || 'Warm-up text', r.tb.response || '', r.tb.submittedAt || '', r.tb.reply || '', '']);
   });
-  return { exported, ss, wq, tb };
+  return { exported, ss, wq, tb, sandbox };
 }
 
 const CFG = { tabs: { warmUpQueue: 'WarmUpQueue', warmUpTextBox: 'WarmUpTextBox' } };
@@ -226,6 +226,35 @@ test('a past warm-up left blank reads "Not answered" once it can no longer be an
   const doc = load([{ wq: wqRow({ date: '2026-10-20', status: 'DELIVERED', docId: 'doc-1' }) }]);
   assert.equal(doc.exported.getStudentWarmUps_(doc.ss, CFG, ME, NOW).previous.displayStatus, 'Waiting to be checked',
     'a doc warm-up\'s text is not read here, so it is not called unanswered');
+});
+
+// Walk-through finding 20 (2026-10-28): the reads that find the warm-up and
+// whether it is open happen before the lock, which covers only the row's
+// check and write, so a class saving at once doesn't queue on the reads.
+test('a warm-up save takes the lock only to write; a refused save never takes it; a moved row is not overwritten', () => {
+  const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/New_York' });
+  const { exported, tb, sandbox } = load([
+    { wq: wqRow({ date: today, status: 'DELIVERED' }), tb: {} },
+    { wq: wqRow({ date: '2020-01-01', status: 'DELIVERED' }), tb: {} },
+  ]);
+  const [mine, old] = [n - 1, n].map((i) => 'WQ-' + i);
+  const real = sandbox.LockService.getScriptLock;
+  let locks = 0;
+  let onLock = null;
+  sandbox.LockService.getScriptLock = () => { locks++; if (onLock) onLock(); return real(); };
+
+  assert.match(exported.submitWarmUpAnswer(old, 'late').error, /closed/);
+  assert.match(exported.submitWarmUpAnswer('WQ-404', 'x').error, /wasn't found/);
+  assert.equal(locks, 0, 'a refused save is decided before the lock');
+
+  assert.equal(exported.submitWarmUpAnswer(mine, 'My answer about ticket prices.').ok, true);
+  assert.equal(locks, 1);
+
+  // A nightly job moves the row between the read and the lock.
+  onLock = () => tb.getRange(2, 1).setValue('WQ-someone-else');
+  const res = exported.submitWarmUpAnswer(mine, 'A second try.');
+  assert.match(res.error, /moved while you were writing\. Refresh the page; your text is still in the box\./);
+  assert.equal(String(tb.getRange(2, 5).getValue()), 'My answer about ticket prices.', 'nothing overwritten');
 });
 
 test('submitWarmUpReply: only on the last warm-up, scored on time, while its window is open', () => {

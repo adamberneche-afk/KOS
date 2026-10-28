@@ -5342,3 +5342,22 @@ before. A lesson's parts are listed too, each with its own title ("The
 Sales Management Playbook — Part 2 of 4: The Sales Contest"); a part's item
 used the Ledger row's name before. `weekly-parent-report.test.js` checks
 both.
+
+## The smaller dashboard fixes, 2026-10-28
+
+The backlog's "after the walk-through" items:
+- **Escape and focus in the Teacher Dashboard's panels:** already done.
+  Every panel opens through `_openPanel` (2026-10-22): Escape closes the
+  top one, Tab stays inside it, and focus goes back where it was. The ❓
+  Terms panel is a native dialog. Backlog line corrected.
+- **Who hasn't submitted (07):** under the summary cards, **📭 n haven't
+  submitted yet** filters the roster to the work in view with no Submit on
+  record (`submittedAt` "—"). It is not a card, since the cards add up to
+  the total and these are among "Not checked yet". Click again to clear.
+- **Walk-through finding 20 (13):** a warm-up answer or reply save held the
+  script lock while it read the whole WarmUpQueue and WarmUpTextBox, so a
+  class saving at once queued on the reads. `_dashWarmUpSave_` now finds
+  the warm-up and checks it is open before the lock. The lock covers only
+  a one-cell check that the row is still that warm-up's, and the write. A
+  refused save never takes the lock, and a row moved in between is
+  refused, not overwritten.
