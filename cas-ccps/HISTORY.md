@@ -5256,3 +5256,26 @@ This PR is data only; nothing makes, shares or unlocks a part yet (3b).
   default).
 - **Tests:** `flow2-earlier-parts.test.js` (new); 13 test files that load 37
   now load 68 (and 03 or 55b where they didn't).
+
+## One lesson format for both courses, 2026-10-28
+
+The operator's call: the two courses' lessons in one format, so the builder
+gives both the same outcomes (parts, support sections, vocabulary).
+- **8175 prompt files:** each lesson's CANVAS ASSIGNMENT TEXT and Bell
+  Ringer moved into `lessons/8175/prompts/L<NN>.md`, the 8177 shape (`##
+  Prompt`, `## Warm-up`; `## Vocabulary` and the support sections when a
+  lesson gets them), `status: approved`, wording unchanged. The only change
+  in 55b: the task's first line lost its "Title:" label ("Assignment: …",
+  as 8177's reads); every other field and the class plans are identical
+  (checked lesson by lesson against the build before). The lesson copies
+  keep their Canvas text as the Drive docs have it; the builder no longer
+  reads it.
+- **The builder:** `lesson8175` reads the prompt file as `lesson8177` does
+  (no approved prompt file, no lesson), takes the objective from the
+  Description's first paragraph and the grading tip from the plan, and
+  builds parts from PARTS.json. A prompt's title line may be "Assignment:",
+  "Project:", "Discussion:" or "Extra Credit:" (`TITLE_LINE`).
+- **The importer:** an 8175 draft's warm-up and vocabulary go into the
+  prompt file (8175 vocabulary has a home now); a NEW 8175 draft gets a
+  prompt file beside its plan.
+- **Next:** the 34 lessons' parts drafted through the one path.

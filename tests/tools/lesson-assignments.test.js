@@ -23,9 +23,9 @@ test('the committed 55b data file and COMPETENCY_REVIEW.md match the generator',
     built.review);
 });
 
-test('8175 Lesson 06: the prompt is the lesson\'s Canvas text and the warm-up its bell ringer', () => {
+test('8175 Lesson 06: the prompt and warm-up come from its prompt file (moved from the Canvas text and bell ringer)', () => {
   const a = built.assignments['8175-L06'];
-  assert.match(a.promptText, /^Title: Assignment: Skill Development Plan/);
+  assert.match(a.promptText, /^Assignment: Skill Development Plan/);
   assert.match(a.promptText, /Write a 100-word plan/);
   assert.doesNotMatch(a.promptText, /Bell Ringer|Grading Tip|\*\*/, 'teacher-only sections and markdown stay out');
   assert.match(a.warmupAnchor, /^What is a 'soft skill'\?/);
