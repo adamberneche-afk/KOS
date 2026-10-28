@@ -224,14 +224,18 @@ function _ldocMeetings_(ss, cfg, code, start, end) {
 }
 
 // Per period, from the Ledger rows whose workspace belongs to this lesson
-// (StudentAssignments). Counts only.
+// (StudentAssignments). Counts only. A lesson in parts (68) counts each part
+// on its own row: "3 · Part 2".
 function _ldocClassStatus_(ss, cfg, key) {
-  const lessonId = "CAS-" + String(key).toUpperCase();
+  const label = {}; // assignment ConfigID -> "" (the whole lesson) or " · Part n"
+  label["CAS-" + String(key).toUpperCase()] = "";
+  (lessonPartsOf_(key) || []).forEach(function (p) { label[p.configId] = " · Part " + p.n; });
   const mine = {};
   const sa = ss.getSheetByName("StudentAssignments");
   if (sa && sa.getLastRow() > 1) {
     sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
-      if (String(r[2] || "").trim() === lessonId) mine[String(r[0] || "").trim()] = true;
+      const aid = String(r[2] || "").trim().toUpperCase();
+      if (label[aid] !== undefined) mine[String(r[0] || "").trim()] = label[aid];
     });
   }
   const byPeriod = {};
@@ -240,11 +244,12 @@ function _ldocClassStatus_(ss, cfg, key) {
   const teacher = String(cfg.teacherEmail || "").trim().toLowerCase();
   const isDate = function (v) { return Object.prototype.toString.call(v) === "[object Date]"; };
   ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER_COL_COUNT).getValues().forEach(function (row) {
-    if (!mine[String(row[LEDGER.CONFIG_ID] || "").trim()]) return;
+    const part = mine[String(row[LEDGER.CONFIG_ID] || "").trim()];
+    if (part === undefined) return;
     if (teacher && String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== teacher) return;
     const status = String(row[LEDGER.STATUS] || "").trim();
     if (status === "ARCHIVED") return;
-    const period = String(row[LEDGER.PERIOD] || "").trim() || "—";
+    const period = (String(row[LEDGER.PERIOD] || "").trim() || "—") + part;
     const c = byPeriod[period] = byPeriod[period] || { docs: 0, shared: 0, submitted: 0, waiting: 0, passed: 0 };
     const result = String(row[LEDGER.LAST_RESULT] || "").trim();
     const passed = result === "PASSED" || isDate(row[LEDGER.FIRST_PASSED_AT]);
