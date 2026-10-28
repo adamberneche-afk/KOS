@@ -137,6 +137,7 @@ Nothing to do. You don't register students one at a time. The nightly rollout (a
 | Nightly lesson rollout | Each night it makes the next lesson's documents and shares them the night before the lesson starts | It only records what it would do (📅 Lessons shows each run) |
 | Reflection on Submit | Submit for Feedback asks one or two short questions about how the student worked; the answers go with the work | Submit sends the work straight away |
 | Warm-up style lock (research) | Keeps the warm-up style the system is confident works for a student; its email goes out only when every course is on | The style is chosen fresh each time |
+| Parent reports ready on Fridays | Each Friday at 5 a.m. the week's reports for that course's students are logged in ParentReportLog as ready, not yet copied; nothing is sent | A report is built when you open ✉ Parent Reports; only the ones you copy are logged |
 
 **Marking periods.** The last day of each marking period, as dates. The term on both dashboards and in the reports changes the day after. Until you change one, they're the district calendar's. Press **Save dates**.
 
@@ -257,7 +258,7 @@ The same list as **❓ Terms** on your dashboard.
 - **Current lesson**: The lesson whose start date in 📅 Lessons is the latest on or before today, per course.
 - **Rollout**: The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead).
 - **Feedback as a comment**: Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings.
-- **⚙ Settings**: Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab.
+- **⚙ Settings**: Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock, parent reports ready on Fridays) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab.
 - **3-Odd / 3-Even**: The two halves of period 3, which meet on alternate (odd or even) calendar dates.
 - **Marking period**: A term code like 2627_MP1 is marking period 1 of 2026–27.
 
