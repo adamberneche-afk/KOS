@@ -11,7 +11,7 @@ const gen = require('../../tools/cas-ccps/build-lesson-assignments.js');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const load = () => loadGasFiles([S('00_SharedConfig.js'), S('55b_LessonAssignmentData.js')],
-  ['bellScheduleFor_', 'classMinutesFor_', 'bellBlockOf_', 'itineraryFor_', 'LESSON_ASSIGNMENTS', 'ITINERARY_MODES']).exported;
+  ['bellScheduleFor_', 'classMinutesFor_', 'bellBlockOf_', 'itineraryFor_', 'bellScheduleDays_', 'LESSON_ASSIGNMENTS', 'ITINERARY_MODES']).exported;
 const sum = (blocks) => blocks.reduce((n, b) => n + b.minutes, 0);
 
 test('8175: warm-up, the Hook, the task with no minutes (it takes the rest), the Checkout Slip', () => {
@@ -84,4 +84,21 @@ test('an itinerary fits the period exactly: fixed blocks kept, the open block ta
   assert.ok(er.every((b) => b.minutes >= 5 && b.minutes % 5 === 0));
   Object.values(LESSON_ASSIGNMENTS).forEach((a) => a.plan.days.forEach((d) => [30, 45, 79, 95, 100].forEach((m) =>
     assert.equal(sum(itineraryFor_(d.blocks, m)), m, a.key + ' at ' + m))));
+});
+
+test('the days set in ⚙ Settings (SCHEDULE_DAYS) change the schedule of those days; a passed list wins', () => {
+  const env = loadGasFiles([S('00_SharedConfig.js')], ['bellScheduleFor_', 'classMinutesFor_', 'bellScheduleDays_']);
+  const { exported, sandbox } = env;
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  const tab = ss.insertSheet('_CONFIG');
+  tab.appendRow(['Key', 'Value']);
+  tab.appendRow(['SCHEDULE_DAYS', '2026-11-05=DELAY, 2026-11-12=activity,2026-11-19=SNOW,bad']);
+  assert.deepEqual(exported.bellScheduleDays_('2026-11-05=DELAY, 2026-11-12=activity,2026-11-19=SNOW,bad'),
+    { '2026-11-05': 'DELAY', '2026-11-12': 'ACTIVITY' }, 'an unknown schedule or a broken entry is skipped');
+  assert.equal(exported.bellScheduleFor_('2026-11-05'), 'DELAY', 'a Thursday called as a delay');
+  assert.equal(exported.classMinutesFor_('2026-11-12', '3-Odd'), 79, 'activity day, 3rd block');
+  assert.equal(exported.bellScheduleFor_('2026-11-19'), 'B', 'not a schedule: the usual day');
+  assert.equal(exported.bellScheduleFor_('2026-11-05', {}), 'B', 'a list passed in is used instead');
 });

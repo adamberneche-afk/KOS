@@ -3,8 +3,8 @@
 **Status:** decided with the operator on 2026-10-27, and built the same
 night at the operator's word: #309 (each lesson's plan and the bell
 schedule), #310 (the lesson doc, `66_LessonDoc.js`) and #311 (the agenda
-deck, `67_AgendaDeck.js`). Not built yet: the ⚙ Settings field for
-activity and delay days (until then they run as their weekday's A or B). No student names, emails,
+deck, `67_AgendaDeck.js`). The ⚙ Settings field for activity and delay
+days followed on 2026-10-28 (`SCHEDULE_DAYS`). No student names, emails,
 file IDs or ConfigIDs appear here, by design.
 
 ## Why
@@ -91,8 +91,10 @@ time), 3-Odd and 3-Even → 3rd on alternate dates, and so on.
 
 ## Open
 
-- The ⚙ Settings field for activity and delay days: 00's `bellScheduleFor_`
-  already takes them as overrides; nothing sets them yet.
+- ~~The ⚙ Settings field for activity and delay days~~: built 2026-10-28.
+  ⚙ Settings → Activity and delay days stores them in `_CONFIG`'s
+  `SCHEDULE_DAYS` ("2026-11-05=DELAY,…"), and 00's `bellScheduleFor_`
+  reads them when no list is passed.
 - Exam days, once the school publishes them.
 - Any other day that changes the schedule (testing, assemblies): set it in
   ⚙ Settings when it's called.

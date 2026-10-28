@@ -225,7 +225,9 @@ function settingsPanel() {
       value: 'all', overriddenHere: false, courses: [{ code: '8175', on: true }, { code: '8177', on: true }] },
     { key: 'ROLLOUT_AUTO_APPLY', label: 'Nightly lesson rollout', on: 'Makes the docs.', off: 'Only records.',
       value: 'off', overriddenHere: true, courses: [{ code: '8175', on: false }, { code: '8177', on: false }] }],
-    markingPeriods: { isDefault: true, overriddenHere: false, ends: [{ term: '2627_MP1', end: '2026-10-30' }] } };
+    markingPeriods: { isDefault: true, overriddenHere: false, ends: [{ term: '2627_MP1', end: '2026-10-30' }] },
+    scheduleDays: { overriddenHere: false, days: [{ date: '2026-11-05', schedule: 'DELAY' }],
+      choices: [{ code: 'ACTIVITY', label: 'Activity schedule' }, { code: 'DELAY', label: '2-hour delay' }, { code: 'A', label: 'Schedule A' }] } };
   context.renderSettings(data);
   return { context, body, bar, calls, closed, data };
 }
@@ -259,7 +261,38 @@ test('⚙ Settings keeps changes until one Save, listing each with what it does;
   assert.doesNotMatch(bar.innerHTML, /Feedback as a comment/, 'back to saved');
   context.saveSettingsChanges();
   assert.deepEqual(JSON.parse(JSON.stringify(calls)), [[[{ key: 'ROLLOUT_AUTO_APPLY', code: '8175', on: true }],
-    [{ term: '2627_MP1', end: '2026-11-02' }]]]);
+    [{ term: '2627_MP1', end: '2026-11-02' }], null]]);
+});
+
+test('⚙ Settings: activity and delay days are listed, added, changed and removed, and go with the one Save', () => {
+  const { context, body, bar, calls } = settingsPanel();
+  let h = body.innerHTML;
+  assert.match(h, /<legend>Activity and delay days<\/legend>/);
+  assert.match(h, /<input type="date" data-sd-i="0" value="2026-11-05">/);
+  assert.match(h, /<option value="DELAY" selected>2-hour delay<\/option>/);
+  assert.match(h, /press Today's agenda in 📅 Lessons again/);
+  context.addScheduleDay();
+  h = body.innerHTML;
+  assert.match(h, /data-sd-i="1" value="">/, 'a new row, its date to fill in');
+  context.setScheduleDayDraft(1, 'date', '2026-11-12');
+  assert.match(bar.innerHTML, /The activity and delay days/);
+  context.setScheduleDayDraft(0, 'schedule', 'A');
+  context.removeScheduleDay(1);
+  context.removeScheduleDay(0);
+  assert.match(body.innerHTML, /None set: every day runs its usual A or B schedule\./);
+  context.addScheduleDay();
+  context.setScheduleDayDraft(0, 'date', '2026-11-12');
+  context.saveSettingsChanges();
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [[[], null, [{ date: '2026-11-12', schedule: 'ACTIVITY' }]]]);
+});
+
+test('⚙ Settings: a day put back as it was saved is no change', () => {
+  const { context, bar } = settingsPanel();
+  context.setScheduleDayDraft(0, 'schedule', 'A');
+  assert.match(bar.innerHTML, /The activity and delay days/);
+  context.setScheduleDayDraft(0, 'schedule', 'DELAY');
+  assert.match(bar.innerHTML, /All changes saved\./);
+  assert.equal(context._stUnsaved(), 0);
 });
 
 test('⚙ Settings asks before closing or leaving with changes not saved; Discard and a save clear them', () => {
