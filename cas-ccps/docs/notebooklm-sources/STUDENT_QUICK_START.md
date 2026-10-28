@@ -22,11 +22,11 @@ Every lesson has its own Google Doc, made just for you. You don't make it. It sh
 
 Write in one place: under the grey line. Here's everything on the page, top to bottom.
 
-- **Page header (small grey text)** (System writes here): Your name, class, teacher, block, period and the lesson. A **Your dashboard** link. A **Feedback:** line that says where your work stands.
+- **Page header (small grey text)** (System writes here): Your name, class, teacher, block and period. On the next line, the lesson and a **Your dashboard** link. A **Feedback:** line that says where your work stands.
 
 - **📋 The lesson title and the assignment** (Read this): The assignment is in a box: **The assignment** says what to do, and **What your work needs to show** lists your “I can” goals as a checklist. **↓ Go to your response** jumps down to where you write.
 
-- **“Your response” heading** (Read this): Under it: “Write your answer under the grey line below.” and **↑ Back to the assignment**.
+- **“Your response” heading** (Read this): At the top of a new page, so your writing never starts at the bottom of the assignment's page. Under it: “Write your answer under the grey line below.” and **↑ Back to the assignment**.
 
 - **✍️ ── YOUR RESPONSE BEGINS HERE ──** (You write here): The grey line. Write under it, in the bigger text.
 
