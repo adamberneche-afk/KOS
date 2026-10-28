@@ -215,19 +215,24 @@ function _readConfirmedCompetencyDecisions_(cfg, decidedBy) {
 
 // ---------------------------------------------------------------------------
 // _prLessonTitles_
-// { assignmentConfigId: title } from 55b's lessons (in both projects): the
-// title an 8175 assignment carries (its task's first line, "Assignment: ..."
-// or "Project: ..."; "Title: Assignment: ..." before 2026-10-28), else the
-// lesson's unit name, as 8177's reports have always used. "CAS-8175-L06" is
-// lesson key "8175-L06" (55's configIdForLesson_ rule).
+// { assignmentConfigId: title } from 55b's lessons and their parts (in both
+// projects): the title the assignment carries, its task's first line
+// ("Assignment: The Sales Management Playbook", an 8175 "Project: ...";
+// "Title: Assignment: ..." before 2026-10-28), else the lesson's unit name.
+// Both courses alike since 2026-10-28; 8177's used the unit name before. A
+// part's is its own ("... — Part 2 of 4: The Sales Contest"). "CAS-8175-L06"
+// is lesson key "8175-L06" (55's configIdForLesson_ rule).
 // ---------------------------------------------------------------------------
 function _prLessonTitles_() {
   const out = {};
-  Object.keys(LESSON_ASSIGNMENTS).forEach(function (key) {
-    const l = LESSON_ASSIGNMENTS[key];
+  const add = function (key, l) {
     const first = String(l.promptText || "").split("\n")[0];
-    const m = l.code === "8175" ? /^(?:Title:\s*)?(?:Assignment:\s*)?(.+)$/.exec(first) : null;
+    const m = /^(?:Title:\s*)?(?:Assignment:\s*)?(.+)$/.exec(first);
     out["CAS-" + String(key).toUpperCase()] = (m ? m[1] : String(l.unitName || "")).trim();
+  };
+  Object.keys(LESSON_ASSIGNMENTS).forEach(function (key) { add(key, LESSON_ASSIGNMENTS[key]); });
+  Object.keys(LESSON_PARTS).forEach(function (key) {
+    LESSON_PARTS[key].forEach(function (p) { add(p.key, p); });
   });
   return out;
 }
