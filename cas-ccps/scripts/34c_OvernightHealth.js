@@ -166,7 +166,8 @@ function overnightHealth_(now, tz) {
 // order (38), the FlowPrompts tab against the code (40), the last 24 hours'
 // Flow 3/4/5 returns written to the right columns (41), and each retention
 // record's date column (57), and any ⚙ Settings key (00's
-// DASHBOARD_SETTING_KEYS) set as a Script Property here. They read whole
+// DASHBOARD_SETTING_KEYS) set as a Script Property here, and 29's weekly
+// Student Context trigger. They read whole
 // tabs, so they run at most every ON_SETUP_CHECK_MS and the lines are kept
 // in ON_SETUP_STATE_KEY in between. All these files are in the Central
 // Ledger project. Counts, header names and setting names only.
@@ -220,6 +221,17 @@ function _onSetupChecks_(props, ss, now) {
     if (here.length) {
       problems.push("Settings set as Script Properties in the Central Ledger, which override the Teacher " +
         "Dashboard's ⚙ Settings here: " + here.join(", ") + ". Set each in ⚙ Settings, then delete the property");
+    }
+  });
+
+  // 29's weekly Student Context run (2026-10-27): its installer was hidden
+  // from the Run dropdown, so no doc had ever been made and nothing said so.
+  run("Student Context", function () {
+    const has = ScriptApp.getProjectTriggers()
+      .some(function (t) { return t.getHandlerFunction() === "runWeeklyStudentAggregation_"; });
+    if (!has) {
+      problems.push("Student Context docs: the weekly run has no trigger, so no doc is made or updated. " +
+        "Run setupStudentContextDocs()");
     }
   });
 
