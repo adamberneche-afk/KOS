@@ -54,7 +54,7 @@ Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** t
 
 **Showing (the lesson picker).** It opens on the **current lesson** for each course: the lesson whose start date in 📅 Lessons is the latest on or before today. Pick another lesson, or **All assignments** at the bottom.
 
-**Summary cards.** Students, ✅ Passed, ↩️ Passed before, now revising, ✏️ Checked, not passing yet, ⚪ Not checked yet, and Needs attention. Click a card to show only those students; **Clear filter** shows everyone again. In All assignments the first card counts assignments, since a student has one row per assignment.
+**Summary cards.** Students, ✅ Passed, ↩️ Passed before, now revising, ✏️ Checked, not passing yet, ⚪ Not checked yet, and Needs attention. Click a card to show only those students; **Clear filter** shows everyone again. In All assignments the first card counts assignments, since a student has one row per assignment. Under the cards, **📭 n haven't submitted yet** shows only the students with no Submit on record for the work in view (they're among the ⚪ Not checked yet); click it again to show everyone.
 
 **Each student's row.** Name; block, period and course; “N checks · last <date>” or “No checks yet”, with “· submitted <time>” once they've submitted; “First passed <date>”; the AI's suggested score from the last check (“3 — Solid (2–4, higher is better)”); **Open document ↗**; and badges on the right. Rows are grouped by lesson. In each lesson, rows that need you (Couldn’t be checked ⚠, or Waiting for your review) come first, then the rest by period and name, which follows SpeedGrader. A Couldn’t be checked ⚠ row also says why and what to do next.
 
