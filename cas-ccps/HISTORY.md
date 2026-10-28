@@ -5128,3 +5128,24 @@ section, so the teacher's edits stay.
   guide (📅 Lessons) and its notebook copy.
 - **Tests:** `lesson-doc.test.js` (new); `course-year-builder.test.js` (no
   frame per period); `lesson-rollout.test.js` loads 66.
+
+## The lesson doc sprint, PR 3: the daily agenda deck, 2026-10-27
+
+`67_AgendaDeck.js` (Central Ledger and Teacher Dashboard).
+`makeAgendaDeck_(code, ymd)` makes "Agenda — <course> — <day>" in an
+*Agendas* folder: the day (date, schedule, lesson, up to three "I can"
+goals, the 3rd-block lunch note), a slide per itinerary block (mode, title,
+each meeting period's minutes, the detail) and "Before you go" (with "last
+day for this lesson" when the next lesson starts after it). Blocks come
+from the lesson doc's itinerary tables (`_agDocTables_`), so the teacher's
+edits carry in, or the plan when no doc exists; minutes are the doc's
+"<block> <A|B>" column, else the A column fitted to the period by
+`itineraryFor_`. Remaking replaces the slides; `AgendaDecks` records each.
+- **Made by:** the nightly rollout's AGENDA step (58, the next school day,
+  `nextAgendaDay_`) and **Today's agenda** in 📅 Lessons (07's
+  `openAgendaDeck`: today, or the next class day).
+- **Scope:** `presentations` added to the Central Ledger and Teacher
+  Dashboard manifests, and `SlidesApp` to gas-lint's scope map. The push
+  asks for it once.
+- **Tests:** `agenda-deck.test.js` (new, with a SlidesApp stand-in); the
+  harness's date formatter learned `EEEE`; `lesson-rollout.test.js` loads 67.
