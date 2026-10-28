@@ -1396,6 +1396,8 @@ function openAgendaDeck(code) {
     return res;
   } catch (e) {
     return { success: false, error: "The agenda could not be made: " + e.message };
+  }
+}
 
 // The teacher's unlock for a lesson in parts (68): the student's next
 // locked part, shared now. Teacher-gated, and only for the teacher's own
