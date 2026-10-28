@@ -45,6 +45,13 @@ why this repo exists at all.
   snapshot) in place of the per-period Lesson Frames, and a Google Slides
   agenda per course per day; with Clover Hill's official 2026-27 bell
   schedule and which days are A or B.
+- **`LESSON_PARTS_2026-10.md`** — every lesson split into parts (35), in
+  the first lesson's pattern (the student work plan's Appendix B): each
+  part's work file and tiers, why, the criteria in a student's words, and
+  what is still open, with the issues that run across lessons first. The
+  other 34 were drafted and approved together on 2026-10-28. Generated from
+  `cas-ccps/curriculum/lessons/PARTS.json` (and any drafts in
+  `PARTS_DRAFTS.json`) by `tools/cas-ccps/render-parts-drafts.js`; edit the JSON.
 - **`STUDENT_WORK_PLAN_2026-10.md`** — the plan (direction decided
   2026-10-24) for the student's side of an assignment, from rendering two
   new student docs: multi-part lessons split into parts that unlock in

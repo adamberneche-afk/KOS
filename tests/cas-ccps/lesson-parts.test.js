@@ -28,7 +28,11 @@ test('the market research lesson is five parts, each its own assignment, in orde
   });
   assert.equal(parts[1].workFile, 'form');
   assert.equal(parts[1].workFileNow, 'doc', 'a doc with the form link until Phase 4');
-  Object.keys(LESSON_ASSIGNMENTS).filter((k) => k !== KEY).forEach((k) => assert.ok(!LESSON_ASSIGNMENTS[k].partKeys, k));
+  // Every lesson with parts lists them; the others have none (35 with parts since 2026-10-28).
+  Object.keys(LESSON_ASSIGNMENTS).forEach((k) => assert.deepEqual(LESSON_ASSIGNMENTS[k].partKeys,
+    LESSON_PARTS[k] ? LESSON_PARTS[k].map((p) => p.key) : undefined, k));
+  assert.equal(Object.keys(LESSON_PARTS).length, 35);
+  assert.ok(LESSON_PARTS['8175-L24'], 'an 8175 lesson splits too');
 });
 
 test('each part\'s tiers are Appendix B\'s, and every lesson competency is in some part', () => {
