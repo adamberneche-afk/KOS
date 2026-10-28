@@ -868,3 +868,115 @@ function _canaryCommentText_(fileId) {
     return "";
   }
 }
+
+// =============================================================================
+// showSetupStatus — what is on in this Central Ledger (2026-10-27).
+// Read-only. One line per expected trigger (installed, run by the Ledger
+// cycle, or missing with the function that installs it), any trigger this
+// list doesn't know, each switch as this project resolves it, and the
+// row counts of the tabs the weekly runs fill. Built after 29's and 30's
+// weekly runs turned out never to have been installed: an installer hidden
+// from the Run dropdown, and nothing that listed what should be running.
+// Logs names, values of non-secret switches, "set"/"not set" for keys and
+// URLs, and counts only: no student data, IDs or secrets.
+// =============================================================================
+const SETUP_STATUS_TRIGGERS = [
+  { fn: "updateAllStudentProfiles",      installer: "installWarmUpTriggers()",            what: "Warm-ups, 3:00 a.m.: profiles" },
+  { fn: "runWarmUpEvaluation",           installer: "installWarmUpTriggers()",            what: "Warm-ups, 3:15 a.m.: scoring" },
+  { fn: "buildWarmUpQueues",             installer: "installWarmUpTriggers()",            what: "Warm-ups, 3:30 a.m.: the next warm-ups" },
+  { fn: "buildUpcomingLessons",          installer: "installLessonPlanTrigger()",         what: "Lessons, 2 a.m.: upcoming lesson plans" },
+  { fn: "runLessonRollout",              installer: "installLessonRolloutTrigger()",      what: "Lessons, 9 p.m.: the nightly rollout" },
+  { fn: "runWeeklyStudentAggregation_",  installer: "setupStudentContextDocs()",          what: "Weekly: Student Context docs" },
+  { fn: "runWeeklySCRSuggestionUpdate_", installer: "setupCompetencySuggestions()",       what: "Weekly: competency suggestions" },
+  { fn: "runWeeklyParentReportPrep",     installer: "installWeeklyParentReportTrigger()", what: "Weekly: parent report rows" },
+  { fn: "syncArtifactCompetencies",      installer: "installArtifactSyncTrigger()",       what: "Daily: artifact competency sync" },
+  { fn: "reportDeployVersion",           installer: "installDeployVersionReportTrigger()", what: "Every 6 hours: deployed version" },
+  { fn: "autoHealthAlert",               installer: "setupAutoHealthTrigger()",           what: "Daily, 6 a.m.: health alert" },
+];
+
+// Script Properties whose value is safe to log, with what blank means.
+const SETUP_STATUS_SWITCHES = [
+  { key: "M2_ENABLED",           unset: "false (warm-ups off)" },
+  { key: "AI_FLOWS_LIVE",        unset: "false" },
+  { key: "EVALUATION_MODE",      unset: "STUDIO (Flow 2 scores)" },
+  { key: "CAS_WATCHDOG_DRY_RUN", unset: "dry run (reports stuck rows, releases none)" },
+  { key: "CURRENT_TERM",         unset: "from the marking period dates" },
+];
+// Present or not; never the value.
+const SETUP_STATUS_SECRETS = ["DIRECT_GEMINI_API_KEY", "GEMINI_API_KEY", "CAS_CHAT_WEBHOOK_URL",
+  "ADMIN_NOTIFY_EMAIL", "TEACHER_EMAIL", "TEACHER_FOLDER_ID", "ADMIN_ROOT_FOLDER_ID",
+  "STUDENT_DASHBOARD_URL", "TEACHER_DASHBOARD_URL", "DEPLOY_DRIFT_GITHUB_TOKEN"];
+
+function showSetupStatus() {
+  const props = PropertiesService.getScriptProperties();
+  const all = props.getProperties();
+  const lines = [];
+  const missing = [];
+
+  // Triggers.
+  const handlers = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
+  const count = function (fn) { return handlers.filter(function (h) { return h === fn; }).length; };
+  const cycleOn = count(LC_TRIGGER_FN) > 0;
+  const cycleJobs = cycleOn ? lcRecordedJobs_(props) : [];
+  lines.push("TRIGGERS");
+  lines.push("  " + (cycleOn ? "on " : "OFF") + "  Ledger cycle (" + LC_TRIGGER_FN + "), every minute" +
+    (cycleOn ? "" : ": run installLedgerCycle()") + (count(LC_TRIGGER_FN) > 1 ? " [installed " + count(LC_TRIGGER_FN) + " times]" : ""));
+  if (!cycleOn) missing.push("installLedgerCycle()");
+  LC_JOBS.forEach(function (j) {
+    const own = count(j.fn);
+    const inCycle = cycleJobs.indexOf(j.fn) !== -1;
+    let state;
+    if (inCycle && own) state = "on   " + j.fn + ": in the cycle AND its own trigger, so it runs twice";
+    else if (inCycle) state = "on   " + j.fn + ": in the cycle, every " + j.every + " min";
+    else if (own) state = "on   " + j.fn + ": its own trigger";
+    else state = "OFF  " + j.fn + ": not in the cycle and no trigger";
+    lines.push("  " + state);
+  });
+  const expected = { };
+  expected[LC_TRIGGER_FN] = true;
+  LC_JOBS.forEach(function (j) { expected[j.fn] = true; });
+  SETUP_STATUS_TRIGGERS.forEach(function (t) {
+    expected[t.fn] = true;
+    const n = count(t.fn);
+    lines.push("  " + (n ? "on " : "OFF") + "  " + t.what + " (" + t.fn + ")" +
+      (n ? (n > 1 ? " [installed " + n + " times]" : "") : ": run " + t.installer));
+    if (!n && missing.indexOf(t.installer) === -1) missing.push(t.installer);
+  });
+  const other = handlers.filter(function (h, i) { return !expected[h] && handlers.indexOf(h) === i; });
+  if (other.length) lines.push("  Other triggers: " + other.join(", "));
+
+  // Switches.
+  lines.push("SWITCHES (Script Properties here)");
+  SETUP_STATUS_SWITCHES.forEach(function (s) {
+    const v = String(all[s.key] || "").trim();
+    lines.push("  " + s.key + " = " + (v || "(unset) → " + s.unset));
+  });
+  SETUP_STATUS_SECRETS.forEach(function (k) {
+    lines.push("  " + k + ": " + (String(all[k] || "").trim() ? "set" : "not set"));
+  });
+  lines.push("⚙ SETTINGS (as this project reads them)");
+  let resolved = { values: {}, sources: {} };
+  try { resolved = _resolveConfigValues_(); } catch (e) { lines.push("  unreadable: " + e.message); }
+  DASHBOARD_SETTING_KEYS.forEach(function (k) {
+    const v = String(resolved.values[k] || "").trim();
+    lines.push("  " + k + " = " + (v || "(off)") + (v ? "  <- " + (resolved.sources[k] || "?") : ""));
+  });
+
+  // Tabs the weekly runs fill.
+  lines.push("TABS (rows below the header)");
+  try {
+    const cfg = getConfig_();
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    [cfg.tabs.studentDocRegistry, cfg.tabs.competencyEvidence, cfg.tabs.scrSuggestions,
+      cfg.tabs.scrDecisionLog].forEach(function (name) {
+      const sh = name ? ss.getSheetByName(name) : null;
+      lines.push("  " + name + ": " + (sh ? Math.max(0, sh.getLastRow() - 1) : "MISSING"));
+    });
+  } catch (e) {
+    lines.push("  unreadable: " + e.message);
+  }
+
+  lines.push(missing.length ? "TO TURN ON: " + missing.join(", ") : "Every expected trigger is installed.");
+  lines.forEach(function (l) { Logger.log(l); });
+  return { lines: lines, missing: missing };
+}
