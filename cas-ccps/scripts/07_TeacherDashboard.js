@@ -1379,6 +1379,26 @@ function openLessonDoc(key) {
   }
 }
 
+// The course's agenda deck (67) for today, or the next class day when today
+// isn't one; remade when it exists. Returns { success, deckUrl, date } or
+// { success: false, error }.
+function openAgendaDeck(code) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  try {
+    const c = String(code || "").trim();
+    const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+    let res = makeAgendaDeck_(c, today);
+    if (!res.success) {
+      const next = nextAgendaDay_(c, today);
+      if (next) res = makeAgendaDeck_(c, next);
+    }
+    return res;
+  } catch (e) {
+    return { success: false, error: "The agenda could not be made: " + e.message };
+  }
+}
+
 function getLessonSchedule() {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
@@ -3237,7 +3257,9 @@ function renderLessonSchedule(data) {
     html += '<h3 style="font-size:15px;margin:16px 0 6px">' + esc(c.code) +
       ' <span style="font-weight:400;font-size:12px;color:var(--text-secondary)">rollout ' +
       (c.rolloutMode === "APPLY" ? 'on' : c.rolloutMode === "SHADOW" ? 'in shadow (changes nothing)' : 'not seen yet') +
-      '</span> <button style="font-size:12px" data-ld="new" data-course="' + esc(c.code) + '">+ New lesson</button></h3>' +
+      '</span> <button style="font-size:12px" data-ld="new" data-course="' + esc(c.code) + '">+ New lesson</button>' +
+      ' <button style="font-size:12px" data-ld="agenda" data-course="' + esc(c.code) + '">Today\\'s agenda</button>' +
+      ' <span id="ag-' + esc(c.code) + '" style="font-size:12px;font-weight:400"></span></h3>' +
       '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
       '<tr style="text-align:left;color:var(--text-secondary)"><th style="padding:4px">Lesson</th>' +
       '<th style="padding:4px">Status</th><th style="padding:4px">Starts</th><th style="padding:4px">Last rollout</th></tr>';
@@ -3638,10 +3660,29 @@ function _lsMakeDoc(key) {
     .openLessonDoc(key);
 }
 
+// The course's agenda deck for today (or the next class day), made or remade
+// from the lesson doc's itinerary (67); a link once ready.
+function _lsMakeAgenda(code) {
+  const slot = document.getElementById('ag-' + code);
+  if (slot) slot.innerHTML = '<span style="color:var(--text-secondary)">Making the agenda…</span>';
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!slot) return;
+      slot.innerHTML = res && res.success
+        ? '<a href="' + esc(res.deckUrl) + '" target="_blank" rel="noopener">Agenda for ' + esc(res.date) + ' ↗</a>'
+        : '<span role="status" style="color:#b3261e">' + esc((res && res.error) || 'Not made.') + '</span>';
+    })
+    .withFailureHandler(function(e) {
+      if (slot) slot.innerHTML = '<span role="status" style="color:#b3261e">' + esc(e && e.message ? e.message : 'Not made.') + '</span>';
+    })
+    .openAgendaDeck(code);
+}
+
 function _ldAction(el) {
   const act = el.getAttribute("data-ld");
   if (act === "edit") return openLessonEditor(el.getAttribute("data-key"));
   if (act === "doc") return _lsMakeDoc(el.getAttribute("data-key"));
+  if (act === "agenda") return _lsMakeAgenda(el.getAttribute("data-course"));
   if (act === "new") {
     document.getElementById("lesson-schedule-modal-body").innerHTML =
       '<p style="font-size:13px;color:var(--text-secondary)">Opening a new lesson…</p>';
