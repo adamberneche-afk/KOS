@@ -5332,3 +5332,13 @@ lesson doc (66) and the agenda deck (67) use the day's minutes. The
 district's early release days stay built in. An agenda made the night
 before a delay is called is remade from Today's agenda. Teacher guide and
 its notebook copy updated.
+
+## Parent reports: the assignment title for 8177 too, 2026-10-28
+
+36's `_prLessonTitles_` takes every assignment's title from its task's first
+line ("Assignment: The Front Lines"), in both courses; 8177's reports used
+the lesson's unit name ("The Front Lines (Customer Service & Sales)")
+before. A lesson's parts are listed too, each with its own title ("The
+Sales Management Playbook — Part 2 of 4: The Sales Contest"); a part's item
+used the Ledger row's name before. `weekly-parent-report.test.js` checks
+both.
