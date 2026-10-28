@@ -1764,3 +1764,97 @@ function appendReflections_(ss, cfg, rows) {
   sheet.getRange(at, 2, rows.length, REFLECTION_LOG_HEADERS.length - 1).setNumberFormat("@");
   sheet.getRange(at, 1, rows.length, REFLECTION_LOG_HEADERS.length).setValues(rows);
 }
+
+// =============================================================================
+// CLOVER HILL'S BELL SCHEDULE AND THE LESSON ITINERARY (2026-10-27)
+// =============================================================================
+// From the school's 2026-27 bell schedule page (meta/SPRINT_LESSON_DOCS_2026-11.md,
+// checked against the operator's PDF; leader-hub holds the same in its own
+// copy). Class minutes per block, 1st to 4th; 3rd block is shown minus its
+// lunch wave. Here because the lesson doc and the agenda deck are made in
+// the Central Ledger (the nightly rollout) and the Teacher Dashboard (its
+// button) alike. Pure data and arithmetic: no service is called.
+const BELL_CLASS_MINUTES = {
+  A:             [50, 100, 100, 100],
+  B:             [45, 90, 95, 90],
+  ACTIVITY:      [40, 80, 79, 90],
+  DELAY:         [30, 65, 75, 65],
+  EARLY_RELEASE: [30, 55, 55, 55],
+};
+const BELL_SCHEDULE_LABELS = {
+  A: "Schedule A", B: "Schedule B", ACTIVITY: "Activity schedule",
+  DELAY: "2-hour delay", EARLY_RELEASE: "3-hour early release",
+};
+const BELL_EARLY_RELEASE_2026_27 = ["2026-10-30", "2026-11-13", "2027-01-22", "2027-02-05",
+  "2027-04-23", "2027-06-03", "2027-06-04"];
+
+// Which schedule a school day ("yyyy-MM-dd") runs. `overrides` is
+// { "2026-11-05": "DELAY", ... } for the days called as they come (an
+// activity day, a delay). A every day to Sept. 4; Mon/Tue A and Wed-Fri B
+// to Nov. 20; from Nov. 23, Mon/Tue/Fri A and Wed/Thu B.
+function bellScheduleFor_(ymd, overrides) {
+  const day = String(ymd || "").slice(0, 10);
+  const o = overrides || {};
+  if (o[day] && BELL_CLASS_MINUTES[o[day]]) return o[day];
+  if (BELL_EARLY_RELEASE_2026_27.indexOf(day) !== -1) return "EARLY_RELEASE";
+  const p = day.split("-").map(Number);
+  const dow = new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay();
+  if (day <= "2026-09-04") return "A";
+  if (day <= "2026-11-20") return dow === 1 || dow === 2 ? "A" : "B";
+  return dow === 3 || dow === 4 ? "B" : "A";
+}
+
+// A period's block: its leading number ("1" → 1st, "3-Odd" → 3rd), or 0
+// when it names none.
+function bellBlockOf_(period) {
+  const n = parseInt(String(period || "").trim(), 10);
+  return n >= 1 && n <= 4 ? n : 0;
+}
+
+// Class minutes for a period on a day, or 0 when the period names no block.
+function classMinutesFor_(ymd, period, overrides) {
+  const block = bellBlockOf_(period);
+  return block ? BELL_CLASS_MINUTES[bellScheduleFor_(ymd, overrides)][block - 1] : 0;
+}
+
+// What the class is doing in each itinerary block (55b's plan modes).
+const ITINERARY_MODES = {
+  warmup:  "✏️ Warm-up",
+  devices: "💻 Chromebooks out",
+  listen:  "🎧 Listening",
+  discuss: "💬 Discussion",
+  write:   "✏️ Writing",
+};
+
+// One day of a lesson's plan (55b: [{ title, minutes, mode, detail, fixed }])
+// fitted to `minutes` of class. Fixed blocks (the warm-up, a checkout slip)
+// keep their minutes. A block with no minutes (8175's task) takes what is
+// left after the others; with none, every other block is scaled to fit.
+// Rounded to 5, at least 5 each; the longest block absorbs the rounding.
+// Returns copies with `minutes` set; the plan is not changed.
+function itineraryFor_(blocks, minutes) {
+  const out = (blocks || []).map(function (b) { return Object.assign({}, b); });
+  if (!out.length || !(minutes > 0)) return out;
+  const round5 = function (n) { return Math.max(5, Math.round(n / 5) * 5); };
+  const fixed = out.filter(function (b) { return b.fixed; });
+  const flex = out.filter(function (b) { return !b.fixed; });
+  const left = Math.max(0, minutes - fixed.reduce(function (n, b) { return n + (b.minutes || 0); }, 0));
+  const timed = flex.filter(function (b) { return b.minutes > 0; });
+  const open = flex.filter(function (b) { return !(b.minutes > 0); });
+  const given = timed.reduce(function (n, b) { return n + b.minutes; }, 0);
+  if (open.length) {
+    const room = Math.max(0, left - 10 * open.length);
+    const scale = given > room && given ? room / given : 1;
+    timed.forEach(function (b) { b.minutes = round5(b.minutes * scale); });
+    const rest = left - timed.reduce(function (n, b) { return n + b.minutes; }, 0);
+    open.forEach(function (b) { b.minutes = round5(rest / open.length); });
+  } else if (given) {
+    timed.forEach(function (b) { b.minutes = round5(b.minutes * left / given); });
+  }
+  const total = out.reduce(function (n, b) { return n + (b.minutes || 0); }, 0);
+  if (flex.length && total !== minutes) {
+    const longest = flex.reduce(function (m, b) { return b.minutes > m.minutes ? b : m; }, flex[0]);
+    longest.minutes = Math.max(5, longest.minutes + minutes - total);
+  }
+  return out;
+}

@@ -18,6 +18,11 @@
 //      (52's enrollCanvasRoster_). A lesson that hasn't reached its release
 //      night gets docs that aren't shared yet (SCHEDULED); the current lesson
 //      and tomorrow's get shared ones, so a late joiner can start at once.
+//   3b. LESSON DOC. With the rollout on for the course, each of those
+//      lessons gets the teacher's lesson doc (66) once; later nights refresh
+//      its Class status.
+//   3c. AGENDA. With the rollout on, the next school day's agenda deck for
+//      the course (67), made from the lesson doc's itinerary.
 //
 // SHADOW FIRST. ROLLOUT_AUTO_APPLY (Script Property or the Ledger's _CONFIG
 // tab; blank/"off", one course code, or "all", like the pivot flags) decides
@@ -146,6 +151,44 @@ function lessonRollout_(opts) {
         log(mode, course, lesson, "PROBLEM", 0, "enrollment failed: " + e.message);
       }
     });
+  });
+
+  // 3b. The teacher's lesson doc (66), once per lesson; a later night only
+  // refreshes its Class status. For courses the rollout acts for.
+  Object.keys(plan).forEach(function (course) {
+    if (modes[course] !== "APPLY") return;
+    plan[course].lessons.forEach(function (l) {
+      const lesson = lessonConfigId_(l.key);
+      if (Date.now() > deadline) {
+        log("APPLY", course, lesson, "PROBLEM", 0, "lesson doc not reached: time budget used; the next run continues");
+        return;
+      }
+      try {
+        const res = makeOrRefreshLessonDoc_(l.key, { today: now });
+        if (res.success) log("APPLY", course, lesson, "LESSON_DOC", 1, res.created ? "lesson doc made" : "class status refreshed");
+        else log("APPLY", course, lesson, "PROBLEM", 0, "lesson doc: " + res.error);
+      } catch (e) {
+        log("APPLY", course, lesson, "PROBLEM", 0, "lesson doc failed: " + e.message);
+      }
+    });
+  });
+
+  // 3c. The next school day's agenda deck (67), per course with it on.
+  Object.keys(plan).forEach(function (course) {
+    if (modes[course] !== "APPLY") return;
+    if (Date.now() > deadline) {
+      log("APPLY", course, "-", "PROBLEM", 0, "agenda not reached: time budget used; make it from 📅 Lessons");
+      return;
+    }
+    try {
+      const day = nextAgendaDay_(course, formatDateYMD_(now));
+      if (!day) return;
+      const res = makeAgendaDeck_(course, day);
+      if (res.success) log("APPLY", course, "-", "AGENDA", 1, (res.created ? "agenda made for " : "agenda remade for ") + day);
+      else log("APPLY", course, "-", "PROBLEM", 0, "agenda for " + day + ": " + res.error);
+    } catch (e) {
+      log("APPLY", course, "-", "PROBLEM", 0, "agenda failed: " + e.message);
+    }
   });
 
   // 4. A stale Canvas export misses late joiners and section changes.
