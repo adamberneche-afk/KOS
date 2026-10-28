@@ -23,7 +23,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '22b_Competen
 const EXPOSE = ['seedLessonSchedule', 'scheduledLessonUnit_', 'resolveUnitForCourseDate_', 'buildUpcomingLessonPlan_',
   'seedAssignments_', 'archiveAssignment_', 'recordStudentAssignment_', 'getWarmUpAnchor_', 'PG_HEADERS',
   'LESSON_ASSIGNMENTS', 'seedWarmUpPlan', 'plannedWarmUpUnit_', 'WARMUP_PLAN_SEED', 'plannedWarmUpRow_',
-  'isHalfPeriodRestDay_', 'getPeriodsForDay_', 'reviewWarmUpKey_'];
+  'isHalfPeriodRestDay_', 'getPeriodsForDay_', 'reviewWarmUpKey_', '_lsRows_'];
 const TEACHER = 'teacher@ccpsnet.net';
 const PACING = JSON.parse(fs.readFileSync(path.join(ROOT, 'cas-ccps/curriculum/PacingGuide_CAS_Context.json'), 'utf8')).pacing_guide;
 const RUBRICS = JSON.parse(fs.readFileSync(path.join(ROOT, 'cas-ccps/data/CompetencyRubrics.json'), 'utf8')).competency_rubrics;
@@ -95,6 +95,20 @@ test('seedLessonSchedule adds every lesson once, with the first two dated, and k
   exported.seedLessonSchedule();
   assert.equal(rows(ss, 'LessonSchedule').length, n, 'nothing added twice');
   assert.equal(String(sheet.getRange(l07, 4).getValue()), '2026-10-13', 'a typed date is kept');
+});
+
+test('the release column: HOLD holds a lesson from the rollout, not from its dates; an old tab gets the header', () => {
+  const { exported, ss } = setup();
+  const sheet = ss.insertSheet('LessonSchedule');
+  sheet.appendRow(['course', 'lesson_key', 'lesson', 'start_date', 'config_id', 'notes']);
+  sheet.appendRow(['8175', '8175-L06', 'L06', '2026-10-08', 'CAS-8175-L06', '']);
+  sheet.appendRow(['8175', '8175-L07', 'L07', '2026-10-13', 'CAS-8175-L07', '']);
+  assert.deepEqual(exported._lsRows_()['8175'].map((r) => r.hold), [false, false], 'no column: nothing held');
+  exported.seedLessonSchedule();
+  assert.equal(sheet.getRange(1, 7).getValue(), 'release');
+  sheet.getRange(3, 7).setValue('hold');
+  assert.deepEqual(exported._lsRows_()['8175'].map((r) => [r.key, r.hold]), [['8175-L06', false], ['8175-L07', true]]);
+  assert.equal(exported.resolveUnitForCourseDate_('2026-10-13', '8175').lesson_unit_id, '8175-L07', 'still taught on its date');
 });
 
 test('the lesson for a date is the latest one started; the pacing guide covers the days before', () => {
