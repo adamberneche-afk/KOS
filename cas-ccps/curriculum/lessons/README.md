@@ -53,3 +53,10 @@ prompt's opening plus its own "Part n:" paragraphs and vocabulary (Part 1 also c
 background, key terms and example). It refuses a part with no primary, a tier that isn't one of the
 lesson's competencies, or a lesson competency no part covers. First lesson: 8177 Market Research
 (Appendix B, approved 2026-10-27).
+
+`PARTS_DRAFTS.json` (2026-10-28) holds the other 34 multi-part lessons' splits, drafted for the
+teacher's approval in `PARTS.json`'s shape, each with its status, why and concerns. The builder
+never reads it. `node tools/cas-ccps/check-parts-drafts.js` builds every draft as if it were in
+`PARTS.json`; `node tools/cas-ccps/render-parts-drafts.js` writes the review copy,
+`meta/LESSON_PARTS_DRAFTS_2026-10.md`. Approving a lesson moves its entry, unchanged, into
+`PARTS.json`.

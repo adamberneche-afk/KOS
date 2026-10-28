@@ -31,7 +31,7 @@ function lessonNames() {
   return Object.fromEntries(Object.entries(ctx.LESSON_ASSIGNMENTS).map(([k, a]) => [k, a.unitName]));
 }
 
-function render(drafts) {
+function render(drafts, across) {
   const text = Object.fromEntries(JSON.parse(fs.readFileSync(RUBRICS, 'utf8')).competency_rubrics
     .map((r) => [r.competency_id, r.competency_text]));
   const names = lessonNames();
@@ -51,6 +51,10 @@ function render(drafts) {
     '',
     'For each lesson: **approve**, or give revision directions. The "To decide" lines are the',
     'drafter\'s questions for you.',
+    '',
+    '## Across lessons',
+    '',
+    ...across.map((a) => '- ' + a),
     '',
     '## Lessons',
     '',
@@ -83,7 +87,7 @@ function render(drafts) {
 }
 
 function main() {
-  const md = render(draftsIn(DRAFTS_FILE));
+  const md = render(draftsIn(DRAFTS_FILE), JSON.parse(fs.readFileSync(DRAFTS_FILE, 'utf8'))._across || []);
   if (process.argv.includes('--check')) {
     const cur = fs.existsSync(OUT) ? fs.readFileSync(OUT, 'utf8') : '';
     if (cur !== md) {
