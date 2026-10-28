@@ -72,6 +72,22 @@ test('_studentIdPattern_: accepts exactly 7 digits @ the configured district dom
   assert.equal(pattern.test('notanumber@ccpsnet.net'), false);
 });
 
+// 2026-10-28: getConfig_() reads every Script Property. The pattern was
+// rebuilt per Ledger row and per student, so a 92-student preview spent its
+// whole time budget there; it is read once per execution now.
+test('_studentIdPattern_: the config is read once, however many rows are checked', () => {
+  const { exported, sandbox } = load();
+  const { ledger } = setUpFixture(sandbox);
+  for (let i = 0; i < 300; i++) ledger.appendRow(ledgerRow({ googleId: String(1000000 + i) + '@ccpsnet.net', name: 'S' + i, teacherEmail: 'teacherA@ccpsnet.net' }));
+  const real = sandbox.getConfig_;
+  let reads = 0;
+  sandbox.getConfig_ = function () { reads++; return real.apply(this, arguments); };
+  const roster = exported.buildValidatedStudentRoster_(ledger);
+  assert.ok(roster.size >= 300);
+  assert.equal(exported._studentIdPattern_().test('7654321@ccpsnet.net'), true);
+  assert.ok(reads <= 1, 'getConfig_ was read ' + reads + ' times');
+});
+
 test('buildValidatedStudentRoster_: excludes malformed GoogleIDs, keeps valid ones', () => {
   const { exported, sandbox } = load();
   const { ledger } = setUpFixture(sandbox);

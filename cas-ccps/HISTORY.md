@@ -5446,3 +5446,14 @@ The two items `meta/SPRINT_DASHBOARD_2026-11.md` left out:
   text. The text is a student record: it goes with its row under the
   retention schedule (FERPA_DATA_MAP.md).
 
+## Student Context: the student-ID check read the config on every row, 2026-10-28
+
+The first `previewStudentContextDocs()` on the live Ledger (92 students)
+spent 2 minutes building the roster and reached only 44 students before
+its time budget, writing nothing. `_studentIdPattern_()` (29) called
+`getConfig_()`, which reads every Script Property, on each Ledger row and
+each student; the weekly trigger would never have reached the last 48. The
+domain and pattern are now read once per execution. The weekly parent
+report (36), the roster import (52) and student data access (50) call the
+same function and get faster too.
+
