@@ -43,7 +43,8 @@ function setUp() {
   body.appendParagraph('Completed Assignments').setHeading('HEADING3');
   body.appendParagraph('• 8175 L05  —  COMPLIANT');
   body.appendParagraph('');
-  body.appendParagraph('Week of October 26, 2026').setHeading('HEADING2');
+  const week26 = body.appendParagraph('Week of October 26, 2026').setHeading('HEADING2');
+  doc.addBookmark(doc.newPosition(week26, 0));
   body.appendParagraph('Warm-Up Reflections').setHeading('HEADING3');
   body.appendParagraph('Asked: How does a team make money?');
   body.appendParagraph('Tickets and sponsors.');
@@ -72,6 +73,7 @@ test('getStudentDetail: this week\'s report and the context doc by week, newest 
     { text: 'Tickets and sponsors.', heading: false },
   ]);
   assert.equal(d.context.weeks[1].items.length, 2, 'blank lines and the title are left out');
+  assert.deepEqual(d.context.weeks.map(w => w.bookmark), ['id.1', ''], 'the week\'s bookmark, for a link to it');
 });
 
 test('getStudentDetail: another teacher\'s student gets neither report nor doc', () => {

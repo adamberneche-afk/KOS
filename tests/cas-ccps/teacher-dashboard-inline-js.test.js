@@ -479,7 +479,7 @@ const detail = () => ({
     subject: 'Amy this week', preview: 'Dear family, Amy finished L06.', copiedAt: '' },
   competencies: [{ course: '8175', done: 12, total: 113 }],
   context: { docUrl: 'https://docs.google.com/document/d/abc/edit', lastUpdatedAt: 'Oct 26',
-    weeks: [{ label: 'Week of October 26, 2026', items: [{ text: 'Warm-Up Reflections', heading: true }, { text: 'Tickets.', heading: false }] },
+    weeks: [{ label: 'Week of October 26, 2026', bookmark: 'id.abc123', items: [{ text: 'Warm-Up Reflections', heading: true }, { text: 'Tickets.', heading: false }] },
       { label: 'Week of October 19, 2026', items: [{ text: 'Completed Assignments', heading: true }] }] },
 });
 
@@ -504,13 +504,13 @@ test('a name in the list opens that student\'s page: report and Student Context 
   assert.match(panel(), /<strong>Week of October 26, 2026<\/strong>/);
   assert.match(panel(), /\(1 of 2\)/);
   assert.match(panel(), /aria-label="Newer week"[^>]*>|disabled aria-label="Newer week"/);
-  assert.match(panel(), /href="https:\/\/docs\.google\.com\/document\/d\/abc\/edit"[^>]*>Open the doc ↗/);
+  assert.match(panel(), /href="https:\/\/docs\.google\.com\/document\/d\/abc\/edit#bookmark=id\.abc123"[^>]*>Open this week ↗/);
   assert.match(panel(), /<p class="ctx-h">Warm-Up Reflections<\/p><p>Tickets\.<\/p>/);
 
   context.stepContextWeek(1);
   assert.match(panel(), /<strong>Week of October 19, 2026<\/strong>/);
   assert.match(panel(), /\(2 of 2\)/);
-  assert.match(panel(), /Open the doc ↗/, 'the doc link on every week');
+  assert.match(panel(), /href="https:\/\/docs\.google\.com\/document\/d\/abc\/edit"[^>]*>Open the doc ↗/, 'a week with no bookmark links the doc');
   context.stepContextWeek(1);
   assert.match(panel(), /\(2 of 2\)/, 'no week past the oldest');
 
@@ -518,6 +518,33 @@ test('a name in the list opens that student\'s page: report and Student Context 
   context.render({ students: filterRoster3(), lessons: [{ id: 'L06', name: 'L06', current: true }],
     activeTerm: 'ALL', availableTerms: [] });
   assert.equal(calls.keys.length, 1);
+});
+
+test('the student page: past copied reports, one at a time, newest first', () => {
+  const { context, els } = renderedRoster(filterRoster3());
+  const calls = { keys: [] };
+  context.google = { script: { run: runStub(calls) } };
+  context.openStudent('amy@example.invalid');
+  const d = detail();
+  d.pastReports = [
+    { weekStart: 'October 19, 2026', weekEnd: 'October 25, 2026', copiedAt: 'Oct 23, 9:00 AM', subject: 'Amy, week of Oct 19', text: 'Amy finished L05.' },
+    { weekStart: 'October 12, 2026', weekEnd: 'October 18, 2026', copiedAt: '', subject: 'Amy, week of Oct 12', text: 'Amy <started> L04.' },
+  ];
+  calls.success(d);
+  const panel = () => els['student-panel'].innerHTML;
+  assert.match(panel(), /<h4[^>]*>Past reports<\/h4>/);
+  assert.match(panel(), /<strong>Week of October 19, 2026<\/strong>.*\(1 of 2\)/);
+  assert.match(panel(), /Copied Oct 23, 9:00 AM\. Subject: Amy, week of Oct 19/);
+  assert.match(panel(), />Amy finished L05\.<\/textarea>/);
+  context.stepPastReport(1);
+  assert.match(panel(), /Week of October 12, 2026.*\(2 of 2\)/);
+  assert.match(panel(), />Amy &lt;started&gt; L04\.<\/textarea>/, 'the text is escaped');
+  context.stepPastReport(1);
+  assert.match(panel(), /\(2 of 2\)/, 'no report past the oldest');
+
+  context.openStudent('bo@example.invalid');
+  calls.success({ success: true, studentEmail: 'bo@example.invalid', report: null, context: null, pastReports: [] });
+  assert.match(panel(), /Past reports: none yet\. A report is kept here once you copy it\./);
 });
 
 test('a student with no report or doc says so, and a failed load says why', () => {
@@ -624,9 +651,10 @@ test('✉ Parent Reports stores nothing in the browser, and neither dashboard us
   context.document = { getElementById: el, execCommand: () => true };
   context.navigator = {};
   let recorded = null;
+  let copiedText = null;
   let done = null;
   const chain = { withSuccessHandler: (f) => { done = f; return chain; }, withFailureHandler: () => chain,
-    teacherCopiedParentReport(email) { recorded = email; } };
+    teacherCopiedParentReport(email, subject, text) { recorded = email; copiedText = [subject, text]; } };
   context.google = { script: { run: chain } };
   context.showToast = () => {};
   const data = { success: true, weekStart: 'Oct 19', weekEnd: 'Oct 25', excludedStudentCount: 0, reports: [
@@ -643,6 +671,7 @@ test('✉ Parent Reports stores nothing in the browser, and neither dashboard us
   assert.equal(recorded, null, 'copying the subject does not record the report as copied');
   context.copyParentReport(0, 'text');
   assert.equal(recorded, 's@example.invalid');
+  assert.deepEqual(copiedText, ['Weekly progress for A, week of October 19', 'text'], 'what was copied is sent to be kept');
   assert.match(els['pr-msg-0'].textContent, /Paste it into an email to A's family/);
   done({ success: true, copiedAt: 'Oct 23, 9:00 AM' });
   assert.match(els['pr-msg-0'].textContent, /Recorded as copied Oct 23, 9:00 AM/);
