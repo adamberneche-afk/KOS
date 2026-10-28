@@ -31,3 +31,11 @@ adds a `- Video: <title> (<url>)` line under the task's "Watch" line; new studen
 cartridge make it a link. Docs already made get it from `previewVideoLinkRefresh()` /
 `applyVideoLinkRefresh()` (Central Ledger, 53). An empty list is a lesson still waiting on its link,
 and a lesson whose task says to watch a video must be listed (`lesson-assignments.test.js`).
+
+Each lesson's **class plan** (`plan` in `55b_LessonAssignmentData.js`, 2026-10-27) is drafted by the
+generator from the lesson's own sections, for the teacher's lesson doc and the daily agenda
+(`meta/SPRINT_LESSON_DOCS_2026-11.md`): an 8175 lesson's Bell Ringer (the warm-up), Hook, task and
+Checkout Slip; an 8177 lesson's timed Instructional Sequence steps ("B. The Bias Bootcamp (15
+Minutes)", or "- **Step:** (5 mins)"), split by "Day 1" / "Day 2" headings when it has them. Each
+block gets a mode (Chromebooks out, listening, discussion, writing) from its words. Write a step's
+minutes in its heading for the plan to use them.
