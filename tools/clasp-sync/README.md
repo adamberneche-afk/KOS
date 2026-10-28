@@ -240,7 +240,11 @@ that isn't a KOS checkout, a folder your shell is standing in, or one
 holding a real `.clasp.json` the registry doesn't have a copy of.
 
 Each project prints its deploy-marker SHA before it pushes, and a summary
-at the end lists them. After the run, reload each editor tab and run
+at the end lists them. `run.js` stamps that marker itself (2026-10-28):
+with `--zip` or `--latest`, each build carries the commit its zip was cut
+from, or the last push's commit when its code hasn't changed
+(`tools/deploy-drift/README.md`, "run.js stamps the push"; `run.ps1`
+doesn't). After the run, reload each editor tab and run
 `reportDeployVersion`; it should report the same SHA. `clasp run` can't do
 that step for you, because it needs a GCP project.
 

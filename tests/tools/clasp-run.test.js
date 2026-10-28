@@ -99,8 +99,8 @@ test('quoteForCmd leaves plain arguments alone and quotes spaces and shell chara
 
 // ── zip extraction ───────────────────────────────────────────────────────────
 
-/** A minimal zip writer: [{ name, data?, method? }]; a name ending in / is a directory. */
-function makeZip(entries) {
+/** A minimal zip writer: [{ name, data?, method? }]; a name ending in / is a directory. comment: the archive comment. */
+function makeZip(entries, comment) {
   const locals = [];
   const central = [];
   let offset = 0;
@@ -127,7 +127,9 @@ function makeZip(entries) {
   eocd.writeUInt32LE(0x06054b50, 0);
   eocd.writeUInt16LE(entries.length, 8); eocd.writeUInt16LE(entries.length, 10);
   eocd.writeUInt32LE(cd.length, 12); eocd.writeUInt32LE(offset, 16);
-  return Buffer.concat([...locals, cd, eocd]);
+  const note = Buffer.from(comment || '', 'utf8');
+  eocd.writeUInt16LE(note.length, 20);
+  return Buffer.concat([...locals, cd, eocd, note]);
 }
 
 function tmp(prefix) {
@@ -436,11 +438,11 @@ test('a stale copy of run.js stops the run before anything is pushed', () => {
 
 // ── --zip ────────────────────────────────────────────────────────────────────
 
-function kosZip(w, files) {
+function kosZip(w, files, commit) {
   const entries = [{ name: 'KOS-main/' }];
   for (const [name, data] of Object.entries(files)) entries.push({ name: `KOS-main/${name}`, data });
   const zip = path.join(w.work, 'KOS-main.zip');
-  fs.writeFileSync(zip, makeZip(entries));
+  fs.writeFileSync(zip, makeZip(entries, commit));
   return zip;
 }
 
@@ -595,3 +597,86 @@ test('after a push, a changed template is a reminder to run --instructions; an u
   assert.match(w.run(['--only', 'leader-hub'], env).out,
     /instructions changed since your last filled copy\. Run: node run\.js --instructions/);
 });
+
+// ── The deploy marker tracks the push (2026-10-28) ───────────────────────────
+// A GitHub zip's archive comment is the commit it was cut from; each build's
+// marker is stamped with it, and an unchanged build keeps its last commit so
+// a web app cuts no new version.
+
+const C1 = '1'.repeat(40);
+const C2 = '2'.repeat(40);
+const LH_MARKER = (sha) => `const LH_DEPLOY_VERSION_SHA = '${sha}';\n`;
+
+test('zipCommit reads a GitHub zip\'s commit from its archive comment, else empty', () => {
+  const dir = tmp('zipc-');
+  const z = (name, comment) => { const f = path.join(dir, name); fs.writeFileSync(f, makeZip([{ name: 'a.txt', data: 'x' }], comment)); return f; };
+  assert.equal(run.zipCommit(z('a.zip', C1)), C1);
+  assert.equal(run.zipCommit(z('b.zip', 'not a commit')), '');
+  assert.equal(run.zipCommit(z('c.zip')), '');
+});
+
+test('stampBuild stamps every marker form; an unchanged build keeps the last commit; no commit leaves it alone', () => {
+  const dir = tmp('stamp-');
+  const repo = path.join(dir, 'repo');
+  const build = path.join(dir, 'build');
+  const reg = path.join(dir, 'reg');
+  [repo, build, reg].forEach((d) => fs.mkdirSync(d));
+  fs.writeFileSync(path.join(build, '43_DeployVersionMarker_X.js'), "const DEPLOY_VERSION_SHA = '" + 'a'.repeat(40) + "'; // stamped\n");
+  fs.writeFileSync(path.join(build, 'Code.js'), 'v1');
+  assert.equal(run.stampBuild(build, repo, reg), null, 'no recorded commit: nothing stamped');
+  assert.match(fs.readFileSync(path.join(build, '43_DeployVersionMarker_X.js'), 'utf8'), /'a{40}'/);
+
+  fs.writeFileSync(path.join(repo, run.BUILD_COMMIT_FILE), C1 + '\n');
+  const first = run.stampBuild(build, repo, reg);
+  assert.deepEqual([first.sha, first.reused], [C1, false]);
+  assert.equal(fs.readFileSync(path.join(build, '43_DeployVersionMarker_X.js'), 'utf8'), `const DEPLOY_VERSION_SHA = '${C1}'; // stamped\n`);
+  fs.writeFileSync(path.join(reg, run.LAST_BUILD_FILE), JSON.stringify({ hash: first.hash, commit: first.sha }));
+
+  fs.writeFileSync(path.join(repo, run.BUILD_COMMIT_FILE), C2 + '\n');
+  const same = run.stampBuild(build, repo, reg);
+  assert.deepEqual([same.sha, same.reused], [C1, true], 'same code, a newer zip: the marker keeps C1');
+  fs.writeFileSync(path.join(build, 'Code.js'), 'v2');
+  const changed = run.stampBuild(build, repo, reg);
+  assert.deepEqual([changed.sha, changed.reused], [C2, false]);
+  assert.notEqual(changed.hash, first.hash);
+});
+
+test('--zip with a commit: the push carries it, and a later zip with the same code keeps it', () => {
+  const w = world();
+  const files = { 'tools/clasp-sync/sync.js': SYNC_STUB, 'leader-hub/DeployVersionMarker.gs': LH_MARKER('0'.repeat(40)), 'leader-hub/Code.gs': 'v1' };
+  const r = w.run(['--zip', kosZip(w, files, C1), '--only', 'leader-hub']);
+  assert.equal(r.status, 0, r.out);
+  assert.equal(fs.readFileSync(path.join(w.repo, run.BUILD_COMMIT_FILE), 'utf8').trim(), C1);
+  assert.equal(fs.readFileSync(path.join(w.repo, 'leader-hub', 'DeployVersionMarker.gs'), 'utf8'), LH_MARKER(C1));
+  assert.match(r.out, /commit 1111111 \(from the zip\)/);
+  assert.match(r.out, /leader-hub\s+1111111\s+v4 -> 2\/2/);
+  const last = JSON.parse(fs.readFileSync(path.join(w.registry, 'leader-hub', run.LAST_BUILD_FILE), 'utf8'));
+  assert.equal(last.commit, C1);
+
+  const again = w.run(['--zip', kosZip(w, files, C2), '--only', 'leader-hub']);
+  assert.equal(again.status, 0, again.out);
+  assert.match(again.out, /code unchanged since the last push: the marker keeps that push's commit/);
+  assert.equal(fs.readFileSync(path.join(w.repo, 'leader-hub', 'DeployVersionMarker.gs'), 'utf8'), LH_MARKER(C1));
+
+  const changed = w.run(['--zip', kosZip(w, Object.assign({}, files, { 'leader-hub/Code.gs': 'v2' }), C2), '--only', 'leader-hub']);
+  assert.equal(changed.status, 0, changed.out);
+  assert.equal(fs.readFileSync(path.join(w.repo, 'leader-hub', 'DeployVersionMarker.gs'), 'utf8'), LH_MARKER(C2));
+});
+
+test('a failed push records nothing, so the next run stamps afresh', () => {
+  const w = world({ state: { pushMode: 'fail' } });
+  const files = { 'tools/clasp-sync/sync.js': SYNC_STUB, 'leader-hub/DeployVersionMarker.gs': LH_MARKER('0'.repeat(40)) };
+  const r = w.run(['--zip', kosZip(w, files, C1), '--only', 'leader-hub']);
+  assert.equal(r.status, 1);
+  assert.equal(fs.existsSync(path.join(w.registry, 'leader-hub', run.LAST_BUILD_FILE)), false);
+});
+
+test('a zip with no commit says so and leaves the marker as committed', () => {
+  const w = world();
+  const r = w.run(['--zip', kosZip(w, { 'tools/clasp-sync/sync.js': SYNC_STUB, 'leader-hub/DeployVersionMarker.gs': LH_MARKER('3'.repeat(40)) }), '--only', 'leader-hub']);
+  assert.equal(r.status, 0, r.out);
+  assert.match(r.out, /records no commit/);
+  assert.match(r.out, /no commit recorded for this checkout/);
+  assert.equal(fs.readFileSync(path.join(w.repo, 'leader-hub', 'DeployVersionMarker.gs'), 'utf8'), LH_MARKER('3'.repeat(40)));
+});
+
