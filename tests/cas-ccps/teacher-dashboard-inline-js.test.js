@@ -200,18 +200,26 @@ test('the warm-up readiness numbers are buttons, and a click filters the roster'
 });
 
 // ⚙ Settings (2026-10-27, replaced 💬 Feedback): a switch per feature and
-// course, confirmed in the panel before it is saved.
+// course and the marking period dates, kept in the panel until one Save.
 function settingsPanel() {
   const html = renderDashboard().buildDashboardHtml_();
   assert.match(html, /id="settings-btn" onclick="openSettingsModal\(\)">⚙ Settings</);
   assert.doesNotMatch(html, /💬 Feedback|openFeedbackPlacementModal/);
-  const context = firstContextWith(html, ['renderSettings', 'askSetting', 'confirmSetting']);
+  const context = firstContextWith(html, ['renderSettings', 'setSettingDraft', 'saveSettingsChanges']);
   const body = { innerHTML: '' };
-  context.document = { getElementById: () => body, querySelector: () => null, addEventListener() {} };
+  const bar = { innerHTML: '' };
+  const listeners = {};
+  context.document = {
+    getElementById: (id) => (id === 'st-savebar' ? bar : body), querySelector: () => null, addEventListener() {},
+    removeEventListener() {},
+  };
+  context.window = { confirm: () => context.__confirm, addEventListener(t, f) { listeners[t] = f; } };
   const calls = [];
+  const closed = [];
   const run = { withSuccessHandler() { return run; }, withFailureHandler() { return run; },
-    setSettingForCourse(...a) { calls.push(a); }, getSettings() {} };
+    saveSettings(...a) { calls.push(a); }, getSettings() {} };
   context.google = { script: { run } };
+  context._closePanel = (id) => closed.push(id);
   const data = { success: true, courses: ['8175', '8177'], log: [{ at: 'Oct 27', key: 'WARMUP_TEXT_BOX', from: 'off', to: 'all' }],
     settings: [{ key: 'FEEDBACK_AS_COMMENT', label: 'Feedback as a comment', on: 'It goes on as a comment.', off: 'It goes in the doc.',
       value: 'all', overriddenHere: false, courses: [{ code: '8175', on: true }, { code: '8177', on: true }] },
@@ -219,7 +227,7 @@ function settingsPanel() {
       value: 'off', overriddenHere: true, courses: [{ code: '8175', on: false }, { code: '8177', on: false }] }],
     markingPeriods: { isDefault: true, overriddenHere: false, ends: [{ term: '2627_MP1', end: '2026-10-30' }] } };
   context.renderSettings(data);
-  return { context, body, calls };
+  return { context, body, bar, calls, closed, data };
 }
 
 test('⚙ Settings lists each feature with a switch per course, what on and off do, and the dates', () => {
@@ -233,21 +241,46 @@ test('⚙ Settings lists each feature with a switch per course, what on and off 
   assert.match(h, /Marking period 1, 2026–27 <input type="date" data-mp-i="0" value="2026-10-30">/);
   assert.match(h, /the district calendar's dates/);
   assert.match(h, /Oct 27: WARMUP_TEXT_BOX off → all/);
+  assert.match(h, /All changes saved\.<\/span> <button type="button" class="st-yes" disabled>Save changes/);
+  assert.doesNotMatch(h, /Save dates|Turn on<\/button>/, 'no per-switch confirm and no separate dates button');
 });
 
-test('⚙ Settings asks before a change, saves only on Confirm, and Cancel changes nothing', () => {
-  const { context, body, calls } = settingsPanel();
-  context.askSetting('ROLLOUT_AUTO_APPLY', '8175', true);
-  assert.match(body.innerHTML, /Turn <strong>Nightly lesson rollout<\/strong> on for 8175\? Makes the docs\./);
-  assert.match(body.innerHTML, /data-st-code="8175" disabled/, 'the box waits for the answer');
+test('⚙ Settings keeps changes until one Save, listing each with what it does; a box ticked back is no change', () => {
+  const { context, bar, calls } = settingsPanel();
+  context.setSettingDraft('ROLLOUT_AUTO_APPLY', '8175', true);
+  context.setSettingDraft('FEEDBACK_AS_COMMENT', '8177', false);
+  context.setMarkingPeriodDraft(0, '2026-11-02');
   assert.equal(calls.length, 0, 'nothing saved yet');
-  context.cancelSetting();
-  assert.doesNotMatch(body.innerHTML, /setting-confirm/);
-  assert.equal(calls.length, 0);
-  context.askSetting('FEEDBACK_AS_COMMENT', '8177', false);
-  assert.match(body.innerHTML, /off for 8177\? It goes in the doc\./);
-  context.confirmSetting();
-  assert.deepEqual(calls, [['FEEDBACK_AS_COMMENT', '8177', false]]);
+  assert.match(bar.innerHTML, /Not saved yet:/);
+  assert.match(bar.innerHTML, /Turn <strong>Nightly lesson rollout<\/strong> on for 8175: Makes the docs\./);
+  assert.match(bar.innerHTML, /Turn <strong>Feedback as a comment<\/strong> off for 8177: It goes in the doc\./);
+  assert.match(bar.innerHTML, /The marking period dates/);
+  context.setSettingDraft('FEEDBACK_AS_COMMENT', '8177', true);
+  assert.doesNotMatch(bar.innerHTML, /Feedback as a comment/, 'back to saved');
+  context.saveSettingsChanges();
+  assert.deepEqual(JSON.parse(JSON.stringify(calls)), [[[{ key: 'ROLLOUT_AUTO_APPLY', code: '8175', on: true }],
+    [{ term: '2627_MP1', end: '2026-11-02' }]]]);
+});
+
+test('⚙ Settings asks before closing or leaving with changes not saved; Discard and a save clear them', () => {
+  const { context, body, closed, data } = settingsPanel();
+  context.setSettingDraft('ROLLOUT_AUTO_APPLY', '8177', true);
+  context.__confirm = false;
+  context.closeSettingsModal();
+  assert.deepEqual(closed, [], 'Cancel keeps the panel open');
+  context.__confirm = true;
+  context.discardSettingsChanges();
+  assert.match(body.innerHTML, /All changes saved\./);
+  context.closeSettingsModal();
+  assert.deepEqual(closed, ['settings-modal-backdrop'], 'nothing unsaved: closes without asking');
+  context.setSettingDraft('ROLLOUT_AUTO_APPLY', '8177', true);
+  context._settingsSaved(data);
+  assert.equal(context._stUnsaved(), 0, 'a save clears the drafts');
+  context._settingsSaved({ success: false, error: 'Unknown course: 9999' });
+  assert.match(body.innerHTML, /Unknown course: 9999/);
+  assert.match(renderDashboard().buildDashboardHtml_(),
+    /addEventListener\("beforeunload", function \(ev\) \{\s*if \(!_stUnsaved\(\)\) return;\s*ev\.preventDefault\(\);/,
+    'leaving the page with changes not saved asks too');
 });
 
 // Roster rendering (walk-through findings 3b, 16 and 18, 2026-10-22).
