@@ -63,8 +63,13 @@
 //                                       shape: one tab per class, students
 //                                       as rows, competency numbers as
 //                                       the header row.
-//   createSCRTabs_()                 — MANUAL, one-time setup
-//   installSCRTrigger_()             — MANUAL, one-time setup
+//   setupCompetencySuggestions()     — run once from the editor: the
+//                                       tabs and the weekly trigger
+//                                       (createSCRTabs_() and
+//                                       installSCRTrigger_(), which the Run
+//                                       dropdown hides)
+//   previewCompetencySuggestions()   — what a run would write; writes nothing
+//   buildCompetencySuggestionsNow()  — a run now, instead of waiting a week
 // =============================================================================
 
 // SCRSuggestions column indices (0-based) — canonical order
@@ -113,23 +118,32 @@ const OUTCOME_SCR_SCORE = { MET: 2, PARTIALLY_MET: 3, NOT_MET: 4 };
 // runWeeklySCRSuggestionUpdate_ — primary entry point, time-triggered
 // ---------------------------------------------------------------------------
 function runWeeklySCRSuggestionUpdate_() {
+  return _s30Run_({});
+}
+
+// The run. opts.dryRun counts what would be written and writes nothing.
+function _s30Run_(opts) {
+  const dryRun = !!(opts && opts.dryRun);
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
 
   const evidenceSheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
   const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
 
+  const summary = { dryRun: dryRun, pairs: 0, newRows: 0, updated: 0, unchanged: 0, skippedFrozen: 0 };
   if (!evidenceSheet) {
     Logger.log("[S30] CompetencyEvidence tab not found. Aborting run.");
-    return;
+    summary.error = "CompetencyEvidence tab not found";
+    return summary;
   }
   if (!suggestionsSheet) {
-    Logger.log("[S30] SCRSuggestions tab not found. Run createSCRTabs_() first.");
-    return;
+    Logger.log("[S30] SCRSuggestions tab not found. Run setupCompetencySuggestions() first.");
+    summary.error = "SCRSuggestions tab not found: run setupCompetencySuggestions()";
+    return summary;
   }
 
   const runTimestamp = new Date();
-  Logger.log("[S30] Weekly SCR suggestion update starting.");
+  Logger.log("[S30] " + (dryRun ? "Preview" : "Weekly SCR suggestion update") + " starting.");
 
   // ── Step 1: aggregate ALL evidence by student+competency pair ──────────
   // Unlike Module 4's weekly trigger, this does NOT filter to a trailing
@@ -175,14 +189,20 @@ function runWeeklySCRSuggestionUpdate_() {
       continue;
     }
 
-    writeSuggestionRow_(suggestionsSheet, existing, pairKey, counts, result, runTimestamp);
+    if (!dryRun) writeSuggestionRow_(suggestionsSheet, existing, pairKey, counts, result, runTimestamp);
     if (existing) updated++; else newRows++;
   }
 
-  Logger.log("[S30] Run complete. New: " + newRows +
-    " | Updated: " + updated +
+  Logger.log("[S30] " + (dryRun ? "Preview (nothing written). Would add: " : "Run complete. New: ") + newRows +
+    " | " + (dryRun ? "Would update: " : "Updated: ") + updated +
     " | Unchanged: " + unchanged +
     " | Skipped (frozen — already decided): " + skippedFrozen);
+  summary.pairs = aggregates.size;
+  summary.newRows = newRows;
+  summary.updated = updated;
+  summary.unchanged = unchanged;
+  summary.skippedFrozen = skippedFrozen;
+  return summary;
 }
 
 // ---------------------------------------------------------------------------
@@ -1358,8 +1378,34 @@ function installSCRTrigger_() {
     cfg.tabs.scrDecisionLog || "SCRDecisionLog",
   ].forEach(tabName => {
     const sheet = ss.getSheetByName(tabName);
-    Logger.log("[S30] Tab '" + tabName + "': " + (sheet ? "FOUND" : "MISSING — run createSCRTabs_() first, or confirm Flow 2 has been deployed for CompetencyEvidence."));
+    Logger.log("[S30] Tab '" + tabName + "': " + (sheet ? "FOUND" : "MISSING — run setupCompetencySuggestions() first, or confirm Flow 2 has been deployed for CompetencyEvidence."));
   });
+}
+
+// ---------------------------------------------------------------------------
+// setupCompetencySuggestions / previewCompetencySuggestions /
+// buildCompetencySuggestionsNow — the Run-menu entry points (2026-10-27).
+// createSCRTabs_() and installSCRTrigger_() end in "_", so the editor's Run
+// dropdown hides them, as it hid 29's (36's header named the trap). Safe to
+// re-run: tabs and the trigger are checked first, a decided pair is never
+// touched, and an unchanged pair is not rewritten.
+// ---------------------------------------------------------------------------
+function setupCompetencySuggestions() {
+  createSCRTabs_();
+  installSCRTrigger_();
+  const installed = ScriptApp.getProjectTriggers()
+    .some(function (t) { return t.getHandlerFunction() === "runWeeklySCRSuggestionUpdate_"; });
+  Logger.log("[S30] Setup done. Weekly trigger " + (installed ? "installed" : "NOT installed") +
+    ". Next: previewCompetencySuggestions(), then buildCompetencySuggestionsNow().");
+  return { triggerInstalled: installed };
+}
+
+function previewCompetencySuggestions() {
+  return _s30Run_({ dryRun: true });
+}
+
+function buildCompetencySuggestionsNow() {
+  return _s30Run_({});
 }
 
 // ---------------------------------------------------------------------------
