@@ -4968,3 +4968,25 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
 - **Docs:** the student guide (the tabs, the words), its notebook copy,
   `docs/FERPA_DATA_MAP.md` (what each tab reads).
 - **Tests:** `student-dashboard-record.test.js` (new).
+
+## Student Context docs: a setup the editor can run, 2026-10-27
+
+The Teacher Dashboard's Student Context page said "No student docs yet"
+on 10-27. 29's weekly run had never happened: its setup steps,
+`createStudentAggregatorTabs_()` and `installStudentAggregatorTrigger_()`,
+end in "_", so the editor's Run dropdown hides them (the trap 36's header
+already named), and nothing else installed the trigger or reported it
+missing.
+
+- **29:** Run-menu entry points. `setupStudentContextDocs()` makes the
+  tabs and the weekly trigger, `previewStudentContextDocs()` counts what a
+  run would do and changes nothing, and `buildStudentContextDocsNow()`
+  runs it now. The run is `_s29Run_(opts)`; `runWeeklyStudentAggregation_`
+  (the trigger) calls it unchanged. Each student's window now starts at the
+  later of 7 days ago and their doc's `last_updated_at`, so a second run
+  adds only what is new and never writes the same week twice. A run stops
+  starting students after 4.5 minutes (the first run makes a doc each),
+  says how many it didn't reach, and returns its counts.
+- **34c:** the overnight setup checks name a missing weekly trigger.
+- **Tests:** `student-context-aggregator.test.js` (setup, preview, run,
+  re-run), `overnight-health.test.js` (the new line).
