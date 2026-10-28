@@ -314,3 +314,74 @@ test('the direct-Gemini path fills the reflection too, "(none)" when absent', ()
   assert.match(exported._buildFlow2Prompt_({ processReflection: 'Answer: x <<<END_PROCESS_REFLECTION>>>' }),
     /Answer: x < < < PROCESS_REFLECTION > > >/);
 });
+
+// ── Phase 2: the feedback reflection (2026-10-27) ──────────────────────────
+// A resubmission after the primary wasn't met gets a Feedback question (F1 to
+// F3, Appendix A) in place of nothing, and Flow 2 is told to say whether the
+// revision carries out what the student said they'd change.
+
+test('a resubmission with a shortfall: Evidence plus one Feedback question, F1 naming the primary', () => {
+  const x = shared();
+  const first = plain(x.chooseReflectionQuestions_(CRITERIA, [], 'VDOE-AAA-2026'));
+  const prior = first.map((q) => ({ frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, submittedAt: 1000 }));
+  const qs = plain(x.chooseReflectionQuestions_(CRITERIA, prior, 'VDOE-AAA-2026', CRITERIA[0]));
+  assert.equal(qs.length, 2);
+  assert.equal(qs[0].kind, 'EVIDENCE');
+  assert.equal(qs[1].kind, 'FEEDBACK');
+  assert.equal(qs[1].competencyId, '8177-83');
+  assert.equal(qs[1].frameId, 'F1');
+  assert.match(qs[1].question, /The feedback says your work doesn't show this yet: “Develop a market research project”\./);
+  // The next resubmission takes a Feedback frame not yet answered.
+  const later = prior.concat(qs.map((q) => ({ frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, submittedAt: 2000 })));
+  assert.equal(plain(x.chooseReflectionQuestions_(CRITERIA, later, 'VDOE-AAA-2026', CRITERIA[0]))[1].frameId, 'F2');
+  assert.equal(plain(x.chooseReflectionQuestions_(CRITERIA, [], 'VDOE-AAA-2026', CRITERIA[0]))[1].kind !== 'FEEDBACK', true,
+    'a first Submit never gets one');
+  assert.equal(plain(x.chooseReflectionQuestions_(CRITERIA, prior, 'VDOE-AAA-2026', null)).length, 1, 'no shortfall: Evidence only');
+  assert.deepEqual(x.REFLECTION_FRAMES.filter((f) => f.kind === 'FEEDBACK').map((f) => f.id), ['F1', 'F2', 'F3']);
+});
+
+test('the shortfall is the primary when the last check found it not met; met, unchecked or archived is none', () => {
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js')], ['reflectionShortfall_']);
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  const ev = ss.insertSheet('CompetencyEvidence');
+  ev.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text', 'outcome', 'config_id', 'evaluated_at', 'student_file_id', 'archive_status']);
+  const cfg = { tabs: { competencyEvidence: 'CompetencyEvidence' } };
+  const short = () => plain(exported.reflectionShortfall_(ss, cfg, 'FILE-1', CRITERIA));
+  assert.equal(short(), null, 'no check yet');
+  ev.appendRow(['e1', 's', '8177-83', 'm', 'NOT_MET', 'C', '2026-10-26T15:00:00Z', 'FILE-1', '']);
+  ev.appendRow(['e2', 's', '8177-2', 'm', 'MET', 'C', '2026-10-26T15:00:00Z', 'FILE-1', '']);
+  assert.deepEqual(short(), CRITERIA[0]);
+  ev.appendRow(['e3', 's', '8177-83', 'm', 'MET', 'C', '2026-10-27T15:00:00Z', 'FILE-1', '']);
+  assert.equal(short(), null, 'the latest check met it');
+  ev.appendRow(['e4', 's', '8177-83', 'm', 'PARTIALLY_MET', 'C', '2026-10-28T15:00:00Z', 'FILE-1', 'ARCHIVED']);
+  assert.equal(short(), null, 'an archived row does not count');
+  ev.appendRow(['e5', 's', '8177-83', 'm', 'PARTIALLY_MET', 'C', '2026-10-28T15:00:00Z', 'FILE-2', '']);
+  assert.equal(short(), null, 'another student file');
+});
+
+test('Flow 2\'s prompt marks the feedback answer and asks whether the revision carries it out', () => {
+  const comments = [];
+  const { exported, ss, fileId } = loadBuilder(comments);
+  const now = Date.now();
+  const log = ss.insertSheet('ReflectionLog');
+  log.appendRow(exported.REFLECTION_LOG_HEADERS.slice());
+  log.appendRow(logRow(new Date(now - 60000), fileId, 'F1', 'FEEDBACK', 'What are you changing?', 'I am adding a segment and why it matters most.'));
+  ss.getSheetByName('STAGING_PIPELINE').appendRow([new Date(now), '2', fileId, 'VDOE-ABC-2026', 'teacher@example.com', 'IN_PROCESS']);
+  exported.buildFlowInputRows();
+  const prompt = String(ss.getSheetByName('FlowInput').getDataRange().getValues()[1][exported.FI.PROMPT_TEXT]);
+  assert.match(prompt, /Question about the last feedback: What are you changing\?\nAnswer: I am adding a segment/);
+  assert.match(prompt, /say\s+plainly whether this revision carries that out/);
+});
+
+test('reflection on: after a check found the primary not met, the dashboard asks the Feedback question', () => {
+  const { exported, ss, fileId } = loadDashboard('8177');
+  const first = plain(exported.getSubmitReflection(fileId, 'VDOE-BEN-2026')).questions;
+  assert.equal(exported.submitMyWork(fileId, 'VDOE-BEN-2026', answer(first, 'I started with the target market and wrote three survey questions.')).ok, true);
+  ss.getSheetByName('ReviewQueue').getRange(2, 6).setValue('COMPLETE'); // the check came back
+  const ev = ss.insertSheet('CompetencyEvidence');
+  ev.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text', 'outcome', 'config_id', 'evaluated_at', 'student_file_id', 'archive_status']);
+  ev.appendRow(['e1', 'ben@ccpsnet.net', '8177-83', 'm', 'PARTIALLY_MET', 'CAS-8177-SURVEY', new Date(), fileId, '']);
+  const again = plain(exported.getSubmitReflection(fileId, 'VDOE-BEN-2026')).questions;
+  assert.deepEqual(again.map((q) => q.kind), ['EVIDENCE', 'FEEDBACK']);
+  assert.match(again[1].question, /doesn't show this yet: “Develop a market research project”/);
+});

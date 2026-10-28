@@ -506,7 +506,8 @@ function _fiReflectionPromptText_(reflection) {
   if (!reflection || !reflection.length) return "";
   const clean = function (t) { return String(t || "").replace(/\{\{|\}\}/g, "").trim(); };
   return reflection.map(function (r) {
-    return "Question" + (r.competencyId ? " (about " + r.competencyId + ")" : "") + ": " + clean(r.question) +
+    return "Question" + (r.kind === "FEEDBACK" ? " about the last feedback" : "") +
+           (r.competencyId ? " (about " + r.competencyId + ")" : "") + ": " + clean(r.question) +
            "\nAnswer: " + clean(r.answer);
   }).join("\n\n");
 }
