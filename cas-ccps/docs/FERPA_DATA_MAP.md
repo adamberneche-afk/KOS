@@ -485,6 +485,14 @@ email address is refused when saved, and the import runs the student-data
 scan before anything reaches the repo. Out of the retention schedule, like
 the other teacher-level tabs.
 
+### LessonDocs (S66) and the lesson docs
+One row per lesson's teacher doc (2026-10-27): lesson key, doc ID and URL,
+when made and when its status was refreshed. The doc, in the teacher's
+*Lesson Plans* folder and shared with no one, holds curriculum and, under
+Class status, counts per period (docs made, shared, submitted, waiting,
+passed): no student name, account or file. Teacher-level; out of the
+retention schedule, like the other teacher-level tabs.
+
 ### Unit rubrics and Canvas course cartridges
 `curriculum/unit-rubrics/*.md` and `curriculum/canvas-cartridges/*.imscc` are
 generated in the repo from the pacing guide, the lesson cards and

@@ -209,6 +209,10 @@ function onLessonContextSubmit_(payload) {
   let frameDocUrl = null;
   try {
     const alignResult = logAlignmentForLesson_(lessonId);
+    // The lesson builder's rows (51) make no Lesson Frame: one lesson doc per
+    // lesson (66) replaces the per-period frames (2026-10-27). A lesson the
+    // teacher logs by hand still gets one.
+    if (alignResult.success && payload.noFrame) return { success: true, lessonId: lessonId, frameDocUrl: null };
     if (!alignResult.success) {
       // Alignment logging failed — row is written and RECEIVED, safety-net
       // trigger will retry. Not a user-facing error. Frame generation is

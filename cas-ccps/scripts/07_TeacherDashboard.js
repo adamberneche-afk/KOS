@@ -1367,6 +1367,18 @@ const TD_ROLLOUT_LOG_TAB = "RolloutLog";
 // 58's ROLLOUT_LEAD_DAYS, which lives in the Central Ledger project.
 const TD_ROLLOUT_LEAD_DAYS = 2;
 
+// The lesson's teacher doc (66): made the first time, and its Class status
+// refreshed after. Returns { success, created, docUrl } or { success: false, error }.
+function openLessonDoc(key) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  try {
+    return makeOrRefreshLessonDoc_(String(key || "").trim());
+  } catch (e) {
+    return { success: false, error: "The lesson doc could not be made: " + e.message };
+  }
+}
+
 function getLessonSchedule() {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
@@ -1456,6 +1468,14 @@ function _tdLessonSchedule_(cfg, now) {
   const rows = sheet.getLastRow() > 1
     ? sheet.getRange(2, 1, sheet.getLastRow() - 1, TD_LS.NOTES + 1).getValues() : [];
   const rollout = _tdLastRollout_(ss);
+  // Each lesson's teacher doc (66's LessonDocs), when made.
+  const docs = {};
+  const ldocs = ss.getSheetByName("LessonDocs");
+  if (ldocs && ldocs.getLastRow() > 1) {
+    ldocs.getRange(2, 1, ldocs.getLastRow() - 1, 3).getValues().forEach(function (r) {
+      if (String(r[0]).trim() && String(r[2]).trim()) docs[String(r[0]).trim()] = String(r[2]).trim();
+    });
+  }
   const byCourse = {};
   const order = [];
   rows.forEach(function (r) {
@@ -1470,6 +1490,7 @@ function _tdLessonSchedule_(cfg, now) {
       key: key, lesson: String(r[TD_LS.LESSON] || key), configId: configId,
       start: _tdIsRealYmd_(start) ? start : "", unreadable: start !== "" && !_tdIsRealYmd_(start),
       notes: String(r[TD_LS.NOTES] || ""),
+      docUrl: docs[key] || "",
       rollout: (rollout.byLesson[key.toUpperCase()] || rollout.byLesson[configId.toUpperCase()] || null),
     });
   });
@@ -3225,6 +3246,7 @@ function renderLessonSchedule(data) {
       html += '<tr style="border-top:1px solid #e8eaed;vertical-align:top">' +
         '<td style="padding:6px 4px">' + esc(l.lesson) +
         ' <button style="font-size:12px" data-ld="edit" data-key="' + esc(l.key) + '">Edit</button>' +
+        ' <span id="' + id + '-doc">' + _lsDocHtml(l.key, l.docUrl) + '</span>' +
         (l.warnings.length ? '<div style="color:#b06000;font-size:12px">⚠ ' + l.warnings.map(esc).join('; ') + '</div>' : '') +
         '</td>' +
         '<td style="padding:6px 4px;color:' + LS_STATUS_COLOR[l.status] + ';font-weight:600">' + esc(LS_STATUS_LABEL[l.status]) + '</td>' +
@@ -3594,9 +3616,32 @@ function _ldAfter(okText) {
   };
 }
 
+// A lesson's teacher doc: a link once made, and a button that makes it or
+// refreshes its Class status (66).
+function _lsDocHtml(key, url) {
+  return (url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" style="font-size:12px">Lesson doc ↗</a> ' : '') +
+    '<button style="font-size:12px" data-ld="doc" data-key="' + esc(key) + '">' + (url ? 'Refresh status' : 'Make lesson doc') + '</button>';
+}
+function _lsMakeDoc(key) {
+  const slot = document.getElementById('ls-' + key + '-doc');
+  if (slot) slot.innerHTML = '<span style="font-size:12px;color:var(--text-secondary)">Working…</span>';
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!slot) return;
+      slot.innerHTML = res && res.success
+        ? _lsDocHtml(key, res.docUrl) + ' <span role="status" style="font-size:12px;color:#188038">' + (res.created ? 'Made.' : 'Status refreshed.') + '</span>'
+        : _lsDocHtml(key, '') + ' <span role="status" style="font-size:12px;color:#b3261e">' + esc((res && res.error) || 'Not made.') + '</span>';
+    })
+    .withFailureHandler(function(e) {
+      if (slot) slot.innerHTML = _lsDocHtml(key, '') + ' <span role="status" style="font-size:12px;color:#b3261e">' + esc(e && e.message ? e.message : 'Not made.') + '</span>';
+    })
+    .openLessonDoc(key);
+}
+
 function _ldAction(el) {
   const act = el.getAttribute("data-ld");
   if (act === "edit") return openLessonEditor(el.getAttribute("data-key"));
+  if (act === "doc") return _lsMakeDoc(el.getAttribute("data-key"));
   if (act === "new") {
     document.getElementById("lesson-schedule-modal-body").innerHTML =
       '<p style="font-size:13px;color:var(--text-secondary)">Opening a new lesson…</p>';

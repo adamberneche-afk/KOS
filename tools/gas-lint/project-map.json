@@ -80,7 +80,8 @@
       "cas-ccps/scripts/57_RetentionSchedule.js",
       "cas-ccps/scripts/58_LessonRollout.js",
       "cas-ccps/scripts/63_DocHeader.js",
-      "cas-ccps/scripts/64_LedgerCycle.js"
+      "cas-ccps/scripts/64_LedgerCycle.js",
+      "cas-ccps/scripts/66_LessonDoc.js"
     ]
   },
   "cas-ccps:unified-manual": {
@@ -145,7 +146,8 @@
       "cas-ccps/scripts/36_WeeklyParentReport.js",
       "cas-ccps/scripts/48_DeployVersionMarker_TeacherDashboard.js",
       "cas-ccps/scripts/55b_LessonAssignmentData.js",
-      "cas-ccps/scripts/65_LessonDrafts.js"
+      "cas-ccps/scripts/65_LessonDrafts.js",
+      "cas-ccps/scripts/66_LessonDoc.js"
     ]
   },
   "cas-ccps:student-dashboard": {
