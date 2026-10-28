@@ -5212,3 +5212,26 @@ This PR is data only; nothing makes, shares or unlocks a part yet (3b).
 - **Tests:** `lesson-parts-unlock.test.js` (new); `lesson-rollout.test.js`
   (parts made and released, a whole lesson left whole); three test files
   load 68.
+
+## Lessons in parts, Phase 3c: the dashboards, the unlock button, the lesson doc, 2026-10-28
+
+- **Teacher Dashboard (07):** a part counts under its whole lesson
+  (`partOfConfigId_`'s `lessonConfigId`, the LessonSchedule row), so the
+  lesson picker and "current lesson" work as for any lesson. 68's
+  `foldPartRows_` makes one row per student: their furthest open part, with
+  "Part 2 of 5: <title>", links to the earlier parts' docs, and **Open
+  Part 3 now** (`unlockStudentPart`). No button before the release: Part 1
+  is opened by the release, not the teacher.
+- **Student Dashboard (13):** a lesson's open parts show together, in
+  order, under the lesson's name ("2 of 5 parts open"), each card titled
+  "Part n of 5: <title>"; each locked part is a line saying what opens it.
+  13 reads the part from StudentAssignments (the "-P<n>" ConfigID) and the
+  titles from the Ledger row's name, since 55b and 68 aren't in the
+  Student Dashboard project. A lesson with no part open shows nothing, as
+  before.
+- **Lesson doc (66):** Class status counts each part on its own row
+  ("3 · Part 2").
+- **Not yet:** Flow 2 given the earlier parts as context (the prompt, the
+  marker list and 37: its own change); the other 34 lessons' parts drafted.
+- **Tests:** `lesson-parts-dashboards.test.js` (new); `lesson-doc.test.js`
+  (class status by part); `agenda-deck.test.js` loads 68.
