@@ -44,6 +44,9 @@ function load(opts) {
   // row and the FlowPrompts tab in sync with the code.
   ss.insertSheet('Ledger').appendRow(env.exported.LEDGER_CANONICAL_HEADERS.slice());
   env.exported.syncFlowPromptsToSheet();
+  if (!(opts && opts.noContextTrigger)) {
+    env.sandbox.ScriptApp.newTrigger('runWeeklyStudentAggregation_').timeBased().everyDays(7).create();
+  }
   return Object.assign(env, { ss, props, wq });
 }
 
@@ -241,6 +244,13 @@ test('setup checks: a ⚙ Settings key set as a Central Ledger Script Property i
   assert.equal(lines.length, 1);
   assert.match(lines[0], /override the Teacher Dashboard's ⚙ Settings here: ROLLOUT_AUTO_APPLY\. Set each in ⚙ Settings/);
   assert.doesNotMatch(lines[0], /8175|WARMUP_TEXT_BOX/, 'names only, and a blank property is unset');
+});
+
+test('setup checks: no weekly Student Context trigger is one line, naming the setup function', () => {
+  const env = load({ noContextTrigger: true });
+  const lines = env.exported.overnightHealth_(NOW).problems.filter((p) => /Student Context/.test(p));
+  assert.equal(lines.length, 1);
+  assert.match(lines[0], /no trigger, so no doc is made or updated\. Run setupStudentContextDocs\(\)/);
 });
 
 test('setup checks run at most every 6 hours; in between, the last lines are reused', () => {

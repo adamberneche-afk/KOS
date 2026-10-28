@@ -195,3 +195,64 @@ test('appendWeeklySection_: baseline answers go under "How They Work", lesson on
   assert.ok(text.indexOf('Asked: How do you keep track?') !== -1 && text.indexOf('I use a planner.') !== -1);
   assert.ok(text.indexOf('Only water there.') > refl);
 });
+
+// ── The Run-menu entry points (2026-10-27) ──────────────────────────────────
+// The installer and tab creator end in "_", hidden from the editor's Run
+// dropdown, so the weekly trigger was never installed and no doc existed.
+
+function loadRun() {
+  return loadGasFiles(
+    [SHARED_CONFIG_PATH, AGGREGATOR_PATH],
+    ['setupStudentContextDocs', 'previewStudentContextDocs', 'buildStudentContextDocsNow', 'runWeeklyStudentAggregation_'],
+    { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => 'teacher@ccpsnet.net' }) } },
+  );
+}
+
+function runFixture(sandbox) {
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', 'fake-admin-ss');
+  const ledger = ss.insertSheet('Ledger');
+  ledger.appendRow(new Array(9).fill('header'));
+  ledger.appendRow(ledgerRow({ googleId: '1234567@ccpsnet.net', name: 'Alice', teacherEmail: 'teacher@ccpsnet.net' }));
+  ledger.appendRow(ledgerRow({ googleId: '2345678@ccpsnet.net', name: 'Bob', teacherEmail: 'teacher@ccpsnet.net' }));
+  return ss;
+}
+
+test('setupStudentContextDocs: makes both tabs and the weekly trigger, once', () => {
+  const { exported, sandbox } = loadRun();
+  const ss = runFixture(sandbox);
+  assert.equal(exported.setupStudentContextDocs().triggerInstalled, true);
+  exported.setupStudentContextDocs();
+  assert.ok(ss.getSheetByName('StudentDocRegistry') && ss.getSheetByName('WarmUpResponses'));
+  const handlers = sandbox.ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction());
+  assert.deepEqual(handlers, ['runWeeklyStudentAggregation_']);
+});
+
+test('preview changes nothing; a run makes a doc only for a student with something this week; a re-run adds nothing', () => {
+  const { exported, sandbox } = loadRun();
+  const ss = runFixture(sandbox);
+  assert.match(exported.previewStudentContextDocs().error, /setupStudentContextDocs/);
+  exported.setupStudentContextDocs();
+  const wur = ss.getSheetByName('WarmUpResponses');
+  wur.appendRow([new sandbox.Date(Date.now() - 86400000), '1234567', 'L07', 'I would ask my manager first.']);
+
+  const preview = exported.previewStudentContextDocs();
+  assert.equal(preview.dryRun, true);
+  assert.equal(preview.created, 1);
+  assert.equal(preview.noContent, 1);
+  assert.equal(ss.getSheetByName('StudentDocRegistry').getLastRow(), 1, 'preview made no doc');
+
+  const run = exported.buildStudentContextDocsNow();
+  assert.equal(run.created, 1);
+  const reg = ss.getSheetByName('StudentDocRegistry').getDataRange().getValues();
+  assert.equal(reg.length, 2);
+  assert.equal(reg[1][0], '1234567@ccpsnet.net');
+
+  const again = exported.buildStudentContextDocsNow();
+  assert.equal(again.created + again.updated, 0, 'nothing new since the last section, so no second week');
+
+  wur.appendRow([new sandbox.Date(Date.now() + 1000), '1234567', 'L08', 'A newer answer.']);
+  assert.equal(exported.buildStudentContextDocsNow().updated, 1, 'only what is new');
+});
