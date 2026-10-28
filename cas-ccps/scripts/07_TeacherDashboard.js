@@ -493,7 +493,7 @@ function getDashboardData(termFilter) {
     if (fid) pipelineStatus[fid] = st;
   }
 
-  const students  = [];
+  let students    = [];
   const unitMap   = {};
   const allTerms  = new Set();
   const year      = _currentSchoolYear_();
@@ -529,7 +529,10 @@ function getDashboardData(termFilter) {
       ? null : Number(suggestedScoreRaw);
 
     const studentConfigId = String(row[LEDGER.CONFIG_ID]).trim();
-    const assignmentId    = lessonCtx.assignmentOf[studentConfigId] || "";
+    // A part of a lesson (68) counts under its lesson: it is in LessonSchedule
+    // as the whole lesson, and its rows fold into one per student below.
+    const partInfo        = partOfConfigId_(lessonCtx.assignmentOf[studentConfigId]);
+    const assignmentId    = partInfo ? partInfo.lessonConfigId : (lessonCtx.assignmentOf[studentConfigId] || "");
     const lesson          = lessonCtx.lessons[assignmentId];
     const lastResult      = String(row[LEDGER.LAST_RESULT] || "").trim();
     const scoreRaw        = row[LEDGER.LAST_SUGGESTED_SCORE];
@@ -538,7 +541,10 @@ function getDashboardData(termFilter) {
       // The lesson this workspace is for (StudentAssignments → LessonSchedule).
       // A workspace from before StudentAssignments falls back to its course.
       assignmentId:   assignmentId,
-      assignmentName: lesson ? lesson.name : (assignmentId || unitCode || "Unassigned"),
+      assignmentName: lesson ? lesson.name
+        : partInfo ? String(partInfo.part.a.unitName).split(" — Part ")[0]
+        : (assignmentId || unitCode || "Unassigned"),
+      part:           partInfo ? { n: partInfo.n, count: partInfo.count, title: partInfo.part.a.partTitle } : null,
       isCurrentLesson: !!assignmentId && lessonCtx.current.has(assignmentId),
       // Each evaluation's result (37's recordEvaluationResult_).
       evalState:       _tdEvalState_(lastResult, row[LEDGER.FIRST_PASSED_AT]),
@@ -579,6 +585,8 @@ function getDashboardData(termFilter) {
     else                                 unitMap[unitCode].pending++;
   }
 
+  // One row per student for a lesson in parts (68), not one per part.
+  students = foldPartRows_(students);
   students.sort((a, b) => {
     if (a.statusClass === "flagged" && b.statusClass !== "flagged") return -1;
     if (b.statusClass === "flagged" && a.statusClass !== "flagged") return 1;
@@ -3898,12 +3906,50 @@ function copyParentReport(i, what) {
 document.addEventListener("click", function (ev) {
   const b = ev.target && ev.target.closest ? ev.target.closest("[data-pr-copy]") : null;
   if (b) copyParentReport(b.getAttribute("data-pr-i"), b.getAttribute("data-pr-copy"));
+  const up = ev.target && ev.target.closest ? ev.target.closest("[data-unlock-part]") : null;
+  if (up) unlockPart(up);
   const st = ev.target && ev.target.closest ? ev.target.closest("[data-student]") : null;
   if (st) {
     if (document.getElementById("student-context-view").style.display === "block") backToDashboard();
     openStudent(st.getAttribute("data-student"));
   }
 });
+// A lesson in parts (68): the part the student is on, links to the parts
+// before it, and the teacher's unlock for the next one.
+function partLine(s) {
+  const earlier = (s.parts || []).filter(p => p.open && p.n !== s.part.n && safeDocUrl(p.docUrl))
+    .map(p => '<a class="doc-link" href="' + esc(safeDocUrl(p.docUrl)) + '" target="_blank">Part ' + p.n + ' ↗</a>');
+  let html = '<div class="last-eval"><b>Part ' + s.part.n + ' of ' + s.part.count + '</b>' +
+    (s.part.title ? ': ' + esc(s.part.title) : '') + (earlier.length ? ' · ' + earlier.join(' ') : '') + '</div>';
+  if (s.nextPart) {
+    html += '<button type="button" data-unlock-part="' + esc(s.configId) + '" data-unlock-name="' + esc(s.name) + '"' +
+      ' title="Opens it now, without waiting for the check to find Part ' + s.part.n + ' met"' +
+      ' style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1557b0;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">' +
+      'Open Part ' + s.nextPart.n + ' now</button>';
+  }
+  return html;
+}
+
+function unlockPart(btn) {
+  const name = btn.getAttribute("data-unlock-name");
+  const label = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Opening…";
+  const failed = function (msg) {
+    btn.disabled = false;
+    btn.textContent = label;
+    showToast(msg || "The part was not opened.", true);
+  };
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res || !res.success) return failed(res && res.error);
+      showToast(res.unlocked + " is open for " + name + ".");
+      loadData();
+    })
+    .withFailureHandler(function (e) { failed(e && e.message); })
+    .unlockStudentPart(btn.getAttribute("data-unlock-part"));
+}
+
 let _prData = null;
 let _prCourse = "";
 let _prStudent = "";
@@ -4385,6 +4431,7 @@ If you expect to see students here:
         <div>
           <div class="student-name">\${rosterKey(s) && rosterKey(s) !== _studentFilter ? '<button type="button" class="name-link" data-student="' + esc(rosterKey(s)) + '" title="Show this student\\'s page">' + esc(s.name) + '</button>' : esc(s.name)}</div>
           <div class="student-meta">\${[s.block && "Block "+esc(s.block), s.period && "Period "+esc(s.period), esc(s.subject)].filter(Boolean).join(" · ") || "No class info on file"}</div>
+          \${s.part ? partLine(s) : ""}
           <div class="last-eval">\${s.checkCount ? s.checkCount + " check" + (s.checkCount === 1 ? "" : "s") + " · last " + esc(s.lastEval) : "No checks yet"}\${s.submittedAt && s.submittedAt !== "—" ? " · submitted " + esc(s.submittedAt) : ""}</div>
           \${s.firstPassedAt ? \`<div class="last-eval">First passed \${esc(s.firstPassedAt)}</div>\` : ""}
           \${s.lastSuggestedScore != null ? \`<div class="last-eval">AI's suggested score, last check: <b>\${esc(scoreLabel(s.lastSuggestedScore))}</b> (2–4, higher is better)</div>\` : ""}

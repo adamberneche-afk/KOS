@@ -428,6 +428,13 @@ next part from the Teacher Dashboard (`unlockStudentPart`). Each unlock is a
 PRIMARY_MET or TEACHER). A lesson students already have as one whole doc is
 never split under them. `previewPartUnlocks()` counts what would open now.
 
+On the dashboards (Phase 3c, 2026-10-28) a lesson in parts is one lesson.
+The Teacher Dashboard shows one row per student on their furthest open
+part ("Part 2 of 5"), with links to the parts before it and **Open Part 3
+now**. The Student Dashboard shows the open parts together under the
+lesson's name, and a line for each locked part saying what opens it. The
+lesson doc's Class status counts each part on its own row.
+
 ## Canvas roster import (script 52)
 
 Warm-ups, profiles and dashboards only see a student with a Ledger row, and
