@@ -232,6 +232,7 @@ test('34c leaves NOT_MEETING warm-ups out of today\'s count', () => {
   props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   ss.insertSheet('Ledger').appendRow(env.exported.LEDGER_CANONICAL_HEADERS.slice());
   env.exported.syncFlowPromptsToSheet();
+  env.sandbox.ScriptApp.newTrigger('runWeeklyStudentAggregation_').timeBased().everyDays(7).create();
   props.setProperty('M2_ENABLED', 'true');
   const now = new Date('2026-10-19T10:00:00Z');
   ['M2_STAGE1_LAST_RUN', 'M2_STAGE1B_LAST_RUN', 'M2_STAGE2_LAST_RUN', 'M2_STAGE3_LAST_RUN']

@@ -9,8 +9,12 @@
 //
 // ENTRY POINT:
 //   runWeeklyStudentAggregation_()  — installed as a 7-day time trigger
-//   installStudentAggregatorTrigger_()  — run once manually to install it
-//   createStudentAggregatorTabs_()  — run once manually before first use
+//   setupStudentContextDocs()  — run once from the editor: makes the tabs
+//     and installs the trigger (the two underscore functions it calls are
+//     hidden from the Run dropdown, so until 2026-10-27 neither had been run
+//     and no doc existed)
+//   previewStudentContextDocs()  — what a run would do; changes nothing
+//   buildStudentContextDocsNow()  — a run now, instead of waiting a week
 //
 // DOES NOT RUN ON DEMAND. There is no live-query path in this script by
 // design — the per-student Doc reflects what existed as of the most recent
@@ -57,27 +61,46 @@ const WUR_RESPONSE = 3;
 // runWeeklyStudentAggregation_ — primary entry point, time-triggered
 // ---------------------------------------------------------------------------
 function runWeeklyStudentAggregation_() {
+  return _s29Run_({});
+}
+
+// Stops starting new students after this long, inside Apps Script's 6-minute
+// limit: the first run makes a doc for every student, a few seconds each.
+const S29_BUDGET_MS = 4.5 * 60 * 1000;
+
+// The run. opts.dryRun counts what would happen and changes nothing.
+// Each student's window starts at the later of 7 days ago and their doc's
+// last update, so a second run (a budget stop, a manual run before the
+// trigger) adds only what is new and never repeats a week.
+function _s29Run_(opts) {
+  const o = opts || {};
+  const dryRun = !!o.dryRun;
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
 
   const ledgerSheet = ss.getSheetByName(cfg.tabs.ledger);
   const registrySheet = ss.getSheetByName(cfg.tabs.studentDocRegistry);
   const warmUpSheet = ss.getSheetByName(cfg.tabs.warmUpResponses);
+  const summary = { dryRun: dryRun, roster: 0, created: 0, updated: 0, noContent: 0,
+    invalidId: 0, failed: 0, notReached: 0 };
 
   if (!ledgerSheet) {
     Logger.log("[S29] Ledger tab not found. Aborting run.");
-    return;
+    summary.error = "Ledger tab not found";
+    return summary;
   }
   if (!registrySheet) {
-    Logger.log("[S29] StudentDocRegistry tab not found. Run createStudentAggregatorTabs_() first.");
-    return;
+    Logger.log("[S29] StudentDocRegistry tab not found. Run setupStudentContextDocs() first.");
+    summary.error = "StudentDocRegistry tab not found: run setupStudentContextDocs()";
+    return summary;
   }
 
+  const started = Date.now();
   const windowStart = new Date();
   windowStart.setDate(windowStart.getDate() - 7);
   const runTimestamp = new Date();
 
-  Logger.log("[S29] Weekly aggregation run starting. Window: " +
+  Logger.log("[S29] " + (dryRun ? "Preview" : "Weekly aggregation run") + " starting. Window: " +
     windowStart.toISOString() + " → " + runTimestamp.toISOString());
 
   // ── Step 1: build the student roster for this run ──────────────────────
@@ -86,11 +109,12 @@ function runWeeklyStudentAggregation_() {
   // separate roster sheet; the Ledger already accumulates this as students
   // submit work, and duplicating it would create a second source of truth.
   const roster = buildValidatedStudentRoster_(ledgerSheet);
+  summary.roster = roster.size;
   Logger.log("[S29] Roster built: " + roster.size + " valid student(s) found in Ledger.");
 
   if (roster.size === 0) {
     Logger.log("[S29] No valid students found this run. Nothing to do.");
-    return;
+    return summary;
   }
 
   // ── Step 2: pull this week's data, grouped by student email ────────────
@@ -102,63 +126,87 @@ function runWeeklyStudentAggregation_() {
   // text box, not the old form, so this record showed none of them; the
   // baseline answers (D6) are the student's own account of how they work.
   mergeWarmUpMaps_(weeklyWarmUps, getWeeklyTextBoxWarmUps_(ss, cfg, windowStart));
+  const lastUpdated = _s29LastUpdatedByEmail_(registrySheet);
 
   // ── Step 3: for each student, look up/create their Doc, append if needed ─
-  let docsCreated = 0;
-  let docsUpdated = 0;
-  let docsSkippedNoContent = 0;
-  let docsSkippedInvalidId = 0;
-
   // Logs name a student by their place in this run's roster, never by
   // address or name (the operator pastes these logs into sessions).
   let rosterPos = 0;
   for (const [email, name] of roster.entries()) {
     rosterPos++;
     const who = "roster entry " + rosterPos + " of " + roster.size;
+    if (Date.now() - started > S29_BUDGET_MS) {
+      summary.notReached = roster.size - rosterPos + 1;
+      Logger.log("[S29] Time budget reached; " + summary.notReached + " student(s) not reached. " +
+        "Run buildStudentContextDocsNow() again to finish them.");
+      break;
+    }
     if (!_studentIdPattern_().test(email)) {
       // Defensive — buildValidatedStudentRoster_ already filters, but never
       // trust a single validation point when writing to permanent Docs.
       Logger.log("[S29] Skipping invalid student identifier at write stage: " + who);
-      docsSkippedInvalidId++;
+      summary.invalidId++;
       continue;
     }
 
-    const assignments = weeklyAssignments.get(email) || [];
-    const warmUps = weeklyWarmUps.get(email) || [];
+    const since = lastUpdated.get(email.toLowerCase());
+    const isNewer = function (e) { return !since || e.timestamp > since; };
+    const assignments = (weeklyAssignments.get(email) || []).filter(isNewer);
+    const warmUps = (weeklyWarmUps.get(email) || []).filter(isNewer);
 
     if (assignments.length === 0 && warmUps.length === 0) {
       // No new content this week for this student — do not write an
       // empty section. A living document should only grow when there is
       // something to show; an empty "Week of ..." header every week for
       // a student who submitted nothing is noise, not signal.
-      docsSkippedNoContent++;
+      summary.noContent++;
+      continue;
+    }
+
+    if (dryRun) {
+      if (lastUpdated.has(email.toLowerCase())) summary.updated++; else summary.created++;
       continue;
     }
 
     const docInfo = getOrCreateStudentDoc_(registrySheet, email, name, cfg);
     if (!docInfo) {
       Logger.log("[S29] Could not get or create doc for " + who + " — skipping this run.");
+      summary.failed++;
       continue;
     }
 
-    const wasNewDoc = docInfo.isNew;
     try {
       appendWeeklySection_(docInfo.docId, runTimestamp, assignments, warmUps);
       updateRegistryTimestamp_(registrySheet, email, runTimestamp, true);
-      if (wasNewDoc) {
-        docsCreated++;
-      } else {
-        docsUpdated++;
-      }
+      if (docInfo.isNew) summary.created++; else summary.updated++;
     } catch (err) {
+      summary.failed++;
       Logger.log("[S29] Failed to append section to doc " + docInfo.docId + " (" + who + "): " + err.message);
     }
   }
 
-  Logger.log("[S29] Run complete. Created: " + docsCreated +
-    " | Updated: " + docsUpdated +
-    " | Skipped (no content): " + docsSkippedNoContent +
-    " | Skipped (invalid ID): " + docsSkippedInvalidId);
+  Logger.log("[S29] " + (dryRun ? "Preview (nothing changed). Would create: " : "Run complete. Created: ") +
+    summary.created + " | " + (dryRun ? "Would update: " : "Updated: ") + summary.updated +
+    " | Skipped (no content): " + summary.noContent +
+    " | Skipped (invalid ID): " + summary.invalidId +
+    " | Failed: " + summary.failed +
+    " | Not reached: " + summary.notReached);
+  return summary;
+}
+
+// Map<lower-case email, Date> of each registry row's last_updated_at.
+// A row with a doc but no update yet (a failed first append) has no date,
+// so its first section still gets the whole week.
+function _s29LastUpdatedByEmail_(registrySheet) {
+  const out = new Map();
+  const data = registrySheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    const email = String(data[i][SDR_STUDENT_EMAIL] || "").trim().toLowerCase();
+    if (!email) continue;
+    const at = data[i][SDR_LAST_UPDATED_AT];
+    out.set(email, Object.prototype.toString.call(at) === "[object Date]" ? at : null);
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -732,6 +780,32 @@ function installStudentAggregatorTrigger_() {
     const sheet = ss.getSheetByName(tabName);
     Logger.log("[S29] Tab '" + tabName + "': " + (sheet ? "FOUND" : "MISSING — run createStudentAggregatorTabs_() first."));
   });
+}
+
+// ---------------------------------------------------------------------------
+// setupStudentContextDocs / previewStudentContextDocs /
+// buildStudentContextDocsNow — the Run-menu entry points (2026-10-27).
+// The setup steps above end in "_", so the editor's Run dropdown hides them
+// and the weekly trigger was never installed. Safe to re-run: each step
+// checks what exists first, and a run adds only what is new since a
+// student's last section.
+// ---------------------------------------------------------------------------
+function setupStudentContextDocs() {
+  createStudentAggregatorTabs_();
+  installStudentAggregatorTrigger_();
+  const installed = ScriptApp.getProjectTriggers()
+    .some(function (t) { return t.getHandlerFunction() === "runWeeklyStudentAggregation_"; });
+  Logger.log("[S29] Setup done. Weekly trigger " + (installed ? "installed" : "NOT installed") +
+    ". Next: previewStudentContextDocs(), then buildStudentContextDocsNow() to make this week's docs now.");
+  return { triggerInstalled: installed };
+}
+
+function previewStudentContextDocs() {
+  return _s29Run_({ dryRun: true });
+}
+
+function buildStudentContextDocsNow() {
+  return _s29Run_({});
 }
 
 // ---------------------------------------------------------------------------
