@@ -15,8 +15,11 @@ const {
   buildDriftIssueBody,
   publishDriftStatus,
   issueTitle,
+  commitContains,
   SHA_RE,
 } = require('../../tools/deploy-drift/check.js');
+const { NEEDS_GIT } = require('../harness/git.js');
+const { execFileSync } = require('child_process');
 
 const REAL_SHA = 'a'.repeat(40);
 const OTHER_SHA = 'b'.repeat(40);
@@ -181,3 +184,29 @@ test('evaluateReport: reportedAt keeps only a real timestamp, since it lands in 
   assert.equal(hostile.reportedAt, 'an unreported time');
   assert.doesNotMatch(buildDriftIssueBody(hostile), /@someone|evil\.example/);
 });
+
+// ── A later commit that contains the change is live too (2026-10-28) ───────
+// run.js stamps a build with the commit its zip was cut from, which is
+// usually after the project's own last change.
+
+test('evaluateReport: a later commit that contains the expected one is a match; one that does not is drift', () => {
+  const contains = (yes) => (expected, reported) => {
+    assert.deepEqual([expected, reported], [REAL_SHA, OTHER_SHA]);
+    return yes;
+  };
+  assert.equal(evaluateReport({ project: 'kos-personal', reportedSha: OTHER_SHA, reportedAt: 'now' },
+    fakeExpected(REAL_SHA), contains(true)).status, 'match');
+  assert.equal(evaluateReport({ project: 'kos-personal', reportedSha: OTHER_SHA, reportedAt: 'now' },
+    fakeExpected(REAL_SHA), contains(false)).status, 'drift');
+});
+
+test('commitContains: a commit contains itself and its ancestors, not its descendants or an unknown commit', NEEDS_GIT, () => {
+  const sha = (rev) => execFileSync('git', ['rev-parse', rev], { encoding: 'utf8' }).trim();
+  const head = sha('HEAD');
+  const parent = sha('HEAD~1');
+  assert.equal(commitContains(head, head), true);
+  assert.equal(commitContains(parent, head), true);
+  assert.equal(commitContains(head, parent), false);
+  assert.equal(commitContains(parent, 'f'.repeat(40)), false);
+});
+

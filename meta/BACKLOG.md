@@ -206,10 +206,11 @@ wait until after 2026-10-30.
 
 ## Repo and tooling
 
-- **A deploy marker that tracks the push.** `reportDeployVersion` reported
-  `965b94d` after every push on 2026-10-17/18 because the marker files are
-  stamped separately; have `run.js` (or the push) stamp the zip's commit, so
-  the report confirms what is live. Raised 2026-10-18.
+- ~~**A deploy marker that tracks the push.**~~ Built 2026-10-28: `run.js`
+  stamps each build with its zip's commit (kept when the code is
+  unchanged, so no new version), and the drift check accepts any commit
+  that contains the project's latest change (`tools/deploy-drift/README.md`,
+  "run.js stamps the push").
 - **Retire `run.ps1`.** Remove it once `run.js` has run live, and change
   the manifest-agreement test to check `run.js` only.
 - ~~**Fix `SANDBOX_CI_SETUP.md`.**~~ Done 2026-10-23: its Step 2 now says
