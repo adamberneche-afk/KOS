@@ -12,7 +12,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = [S('00_SharedConfig.js'), S('07_TeacherDashboard.js')];
-const EXPOSE = ['getLessonSchedule', 'setLessonStartDate'];
+const EXPOSE = ['getLessonSchedule', 'setLessonStartDate', 'setLessonHold'];
 const TEACHER = 'teacher@example.com'; // the sandbox's default Session user
 
 // "Today" as the dashboard sees it (America/New_York), and days from it.
@@ -126,6 +126,25 @@ test('clearing the current lesson and a past date both ask first', () => {
   assert.match(env.exported.setLessonStartDate('8175-L02', '', day(-3)).confirm,
     /lesson the course is on now; clearing its date makes the previous lesson current again/);
   assert.match(env.exported.setLessonStartDate('8175-L05', day(-1), '').confirm, /in the past/);
+});
+
+test('Hold and Release: the release cell, its header on an old tab, and the date warning', () => {
+  const env = setUp({ rows: rows() });
+  assert.equal(env.exported.getLessonSchedule().courses[0].lessons[2].hold, false, 'no column: nothing held');
+  const out = env.exported.setLessonHold('8175-L03', true);
+  assert.equal(out.success, true);
+  assert.equal(env.ls.getRange(1, 7).getValue(), 'release');
+  assert.equal(env.ls.getRange(4, 7).getValue(), 'HOLD');
+  assert.deepEqual(out.courses[0].lessons.map((l) => l.hold), [false, false, true, false, false]);
+  assert.match(env.exported.setLessonStartDate('8175-L03', day(2), day(1)).confirm, /held from the rollout/);
+  env.exported.setLessonHold('8175-L03', false);
+  assert.equal(env.ls.getRange(4, 7).getValue(), '');
+  assert.match(env.exported.setLessonHold('8175-L99', true).error, /No lesson 8175-L99/);
+});
+
+test('only the configured teacher can hold a lesson', () => {
+  const env = setUp({ teacher: 'someone.else@example.com', rows: rows() });
+  assert.deepEqual(env.exported.setLessonHold('8175-L03', true), { success: false, error: 'Not authorized.' });
 });
 
 test('an edit over a newer sheet value, or a date that does not exist, is refused', () => {
@@ -279,6 +298,33 @@ test('📅 Lessons: a save that lands while another date box has focus waits, th
   assert.equal(page.els['ls-8175-L04-msg'].textContent, 'Saved ✓');
   page.fire('focusout', { target: other, relatedTarget: null });
   assert.match(page.els['lesson-schedule-modal-body'].innerHTML, /id="ls-8175-L04" value="2026-11-05"/);
+});
+
+test('📅 Lessons: Hold and Release buttons; holding a started lesson asks first', () => {
+  const page = fakePage();
+  const data = schedule();
+  data.courses[0].lessons[1].hold = true;
+  page.ctx.renderLessonSchedule(data);
+  const body = page.els['lesson-schedule-modal-body'].innerHTML;
+  assert.match(body, /data-ld="hold" data-key="8175-L04"[^>]*>Hold<\/button>/);
+  assert.match(body, /data-ld="hold" data-key="8175-L05"[^>]*>Release<\/button>/);
+  assert.match(body, /Held: no student docs/);
+  page.fakeEl('ls-8175-L04-msg');
+  page.ctx._ldAction({ getAttribute: (k) => (k === 'data-ld' ? 'hold' : '8175-L04') });
+  const call = page.calls.find((c) => c.name === 'setLessonHold');
+  assert.deepEqual([...call.args], ['8175-L04', true]);
+  assert.equal(page.confirms.length, 0, 'an upcoming lesson does not ask');
+  call.ok({ success: false, error: 'Locked' });
+  assert.match(page.els['ls-8175-L04-msg'].textContent, /Not changed: Locked/);
+
+  const started = schedule();
+  started.courses[0].lessons[0].status = 'current';
+  page.ctx.renderLessonSchedule(started);
+  page.calls.length = 0;
+  page.win.confirmAnswer = false;
+  page.ctx._ldAction({ getAttribute: (k) => (k === 'data-ld' ? 'hold' : '8175-L04') });
+  assert.match(page.confirms[0], /Docs students already have stay shared/);
+  assert.equal(page.calls.length, 0, 'declined: nothing sent');
 });
 
 test('📅 Lessons: a failed date save says so in the row and leaves the table', () => {

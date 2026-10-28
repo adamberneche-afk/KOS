@@ -22,6 +22,13 @@
  *                         warm-ups (24), use the schedule wherever it has a
  *                         dated lesson, and the pacing guide before that.
  *
+ * The release column (2026-10-28, Thread C) holds a lesson back from the
+ * nightly rollout (58): HOLD there and the rollout neither makes nor
+ * shares its student docs, whatever its date, until the cell is cleared.
+ * The lesson is still the one taught on its dates. Blank (or AUTO) is the
+ * normal nightly rollout. The 📅 Lessons panel (07) sets it; a tab made
+ * before the column existed gets its header from seedLessonSchedule().
+ *
  * Warm-ups review: each pair of class days takes a random seed from the
  * lessons taught so far (a LessonSchedule start_date on or before the day),
  * the same for the ODD and EVEN classes (reviewWarmUpKey_, 2026-10-19). A
@@ -39,7 +46,9 @@
  */
 
 const LS_TAB = "LessonSchedule";
-const LS_HEADERS = ["course", "lesson_key", "lesson", "start_date", "config_id", "notes"];
+const LS_HEADERS = ["course", "lesson_key", "lesson", "start_date", "config_id", "notes", "release"];
+const LS_RELEASE_COL = LS_HEADERS.indexOf("release") + 1;
+const LS_HOLD = "HOLD";
 const LS_FIRST_DATES = { "8175-L06": "2026-10-08", "8177-employee-handbook-operations": "2026-10-08" };
 
 /** "CAS-8175-L06", "CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS". */
@@ -54,6 +63,8 @@ function seedLessonSchedule() {
     sheet = ss.insertSheet(LS_TAB);
     sheet.getRange(1, 1, 1, LS_HEADERS.length).setValues([LS_HEADERS]).setFontWeight("bold");
     sheet.setFrozenRows(1);
+  } else if (String(sheet.getRange(1, LS_RELEASE_COL).getValue()).trim() !== "release") {
+    sheet.getRange(1, LS_RELEASE_COL).setValue("release").setFontWeight("bold");
   }
   const have = {};
   if (sheet.getLastRow() > 1) {
@@ -63,7 +74,7 @@ function seedLessonSchedule() {
   ["8175", "8177"].forEach(code => (LESSON_ORDER[code] || []).forEach(key => {
     if (have[key]) return;
     const a = LESSON_ASSIGNMENTS[key];
-    add.push([code, key, a.unitName, LS_FIRST_DATES[key] || "", lessonConfigId_(key), ""]);
+    add.push([code, key, a.unitName, LS_FIRST_DATES[key] || "", lessonConfigId_(key), "", ""]);
   }));
   if (add.length) {
     const at = sheet.getLastRow() + 1;
@@ -78,7 +89,11 @@ function seedLessonSchedule() {
 // One read per execution: the builder and the warm-ups ask once per period.
 let _lsCache_ = null;
 
-/** { "8175": [{ key, start }], "8177": [...] }, dated rows only, by start. */
+/**
+ * { "8175": [{ key, start, hold }], "8177": [...] }, dated rows only, by
+ * start. hold: the release column says HOLD (a tab without the column holds
+ * nothing).
+ */
 function _lsRows_() {
   if (_lsCache_) return _lsCache_;
   const out = { "8175": [], "8177": [] };
@@ -86,11 +101,14 @@ function _lsRows_() {
     const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
     const sheet = ss.getSheetByName(LS_TAB);
     if (sheet && sheet.getLastRow() > 1) {
-      sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues().forEach(r => {
+      const width = Math.max(4, Math.min(sheet.getLastColumn(), LS_RELEASE_COL));
+      const holdAt = width >= LS_RELEASE_COL &&
+        String(sheet.getRange(1, LS_RELEASE_COL).getValue()).trim().toLowerCase() === "release" ? LS_RELEASE_COL - 1 : -1;
+      sheet.getRange(2, 1, sheet.getLastRow() - 1, width).getValues().forEach(r => {
         const code = String(r[0]).trim(), key = String(r[1]).trim();
         const start = _normalizeLessonDateCell_(r[3]); // 22: Sheets stores a typed date as a Date
         if (!out[code] || !key || !/^\d{4}-\d{2}-\d{2}$/.test(start) || !LESSON_ASSIGNMENTS[key]) return;
-        out[code].push({ key: key, start: start });
+        out[code].push({ key: key, start: start, hold: holdAt !== -1 && String(r[holdAt]).trim().toUpperCase() === LS_HOLD });
       });
     }
   } catch (e) {
@@ -162,6 +180,8 @@ function seedWarmUpPlan() {
     sheet = ss.insertSheet(WUP_TAB);
     sheet.getRange(1, 1, 1, WUP_HEADERS.length).setValues([WUP_HEADERS]).setFontWeight("bold");
     sheet.setFrozenRows(1);
+  } else if (String(sheet.getRange(1, LS_RELEASE_COL).getValue()).trim() !== "release") {
+    sheet.getRange(1, LS_RELEASE_COL).setValue("release").setFontWeight("bold");
   }
   const have = {};
   if (sheet.getLastRow() > 1) {

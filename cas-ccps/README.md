@@ -373,6 +373,15 @@ days old). The CAS signal reports PROBLEM rows from the last day, and says
 while a course is still in shadow. `previewLessonRollout()` runs it once as
 a dry run from the editor. The steps below still work by hand.
 
+**Hold a lesson.** `LessonSchedule`'s `release` column (2026-10-28): `HOLD`
+keeps the rollout from seeding, enrolling or releasing that lesson, current
+or upcoming, whatever its date; blank (or `AUTO`) is normal. The lesson is
+still the one taught on its dates, and still gets its lesson doc and
+agenda. Each run logs a `HOLD` row for it. The 📅 Lessons panel's
+**Hold**/**Release** button sets it (`setLessonHold`, script 07);
+`seedLessonSchedule()` adds the header to an older tab. Docs already shared
+stay shared.
+
 ## The teacher's lesson doc (script 66)
 
 `66_LessonDoc.js` (Central Ledger and Teacher Dashboard, 2026-10-27) makes
