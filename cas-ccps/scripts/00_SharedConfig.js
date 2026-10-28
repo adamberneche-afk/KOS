@@ -245,6 +245,9 @@ const SHARED_CONFIG_KEYS = [
   "PIVOT_ARCHETYPE_LOCK",
   // When each marking period ends; read through currentTerm_().
   "MARKING_PERIOD_ENDS",
+  // Activity, delay and other days called as they come ("2026-11-05=DELAY,
+  // ..."); read through bellScheduleFor_() (2026-10-28).
+  "SCHEDULE_DAYS",
   // Where Flow 2 feedback goes; read through feedbackAsCommentFor_().
   "FEEDBACK_AS_COMMENT",
   // Warm-ups answered on the Student Dashboard; read through
@@ -319,7 +322,7 @@ function _pivotValueOn_(raw, courseCode) {
 // nightly signal names any of them set as a Script Property there (34c),
 // since that would override the panel without it knowing.
 const DASHBOARD_SETTING_KEYS = ["FEEDBACK_AS_COMMENT", "WARMUP_TEXT_BOX", "ROLLOUT_AUTO_APPLY",
-  "REFLECTION_ON_SUBMIT", "PIVOT_ARCHETYPE_LOCK", "PARENT_REPORT_PREP", "MARKING_PERIOD_ENDS"];
+  "REFLECTION_ON_SUBMIT", "PIVOT_ARCHETYPE_LOCK", "PARENT_REPORT_PREP", "MARKING_PERIOD_ENDS", "SCHEDULE_DAYS"];
 
 // Whether a submission's Flow 2 feedback goes on the student's doc as a
 // comment instead of into its feedback zone (FEEDBACK_AS_COMMENT, read like
@@ -1789,13 +1792,38 @@ const BELL_SCHEDULE_LABELS = {
 const BELL_EARLY_RELEASE_2026_27 = ["2026-10-30", "2026-11-13", "2027-01-22", "2027-02-05",
   "2027-04-23", "2027-06-03", "2027-06-04"];
 
+// The days called as they come (an activity day, a delay), from ⚙ Settings
+// (SCHEDULE_DAYS, "2026-11-05=DELAY,2026-11-12=ACTIVITY"): { ymd: schedule }.
+// A day must be a whole date and the schedule one of BELL_CLASS_MINUTES'; any
+// other entry is skipped.
+function bellScheduleDays_(raw) {
+  const out = {};
+  String(raw || "").split(",").forEach(function (pair) {
+    const m = /^\s*(\d{4}-\d{2}-\d{2})\s*=\s*([A-Z_]+)\s*$/.exec(pair.toUpperCase());
+    if (m && BELL_CLASS_MINUTES[m[2]]) out[m[1]] = m[2];
+  });
+  return out;
+}
+
+// SCHEDULE_DAYS as saved, read once per run (the lesson doc and agenda ask
+// for every day and period); {} where no config can be read.
+let _bellSavedDaysCache_ = null;
+function bellSavedDays_() {
+  if (_bellSavedDaysCache_) return _bellSavedDaysCache_;
+  let raw = "";
+  try { raw = _resolveConfigValues_().values.SCHEDULE_DAYS || ""; } catch (e) { raw = ""; }
+  _bellSavedDaysCache_ = bellScheduleDays_(raw);
+  return _bellSavedDaysCache_;
+}
+
 // Which schedule a school day ("yyyy-MM-dd") runs. `overrides` is
 // { "2026-11-05": "DELAY", ... } for the days called as they come (an
-// activity day, a delay). A every day to Sept. 4; Mon/Tue A and Wed-Fri B
-// to Nov. 20; from Nov. 23, Mon/Tue/Fri A and Wed/Thu B.
+// activity day, a delay); left out, the days saved in ⚙ Settings are used.
+// A every day to Sept. 4; Mon/Tue A and Wed-Fri B to Nov. 20; from Nov. 23,
+// Mon/Tue/Fri A and Wed/Thu B.
 function bellScheduleFor_(ymd, overrides) {
   const day = String(ymd || "").slice(0, 10);
-  const o = overrides || {};
+  const o = overrides === undefined ? bellSavedDays_() : (overrides || {});
   if (o[day] && BELL_CLASS_MINUTES[o[day]]) return o[day];
   if (BELL_EARLY_RELEASE_2026_27.indexOf(day) !== -1) return "EARLY_RELEASE";
   const p = day.split("-").map(Number);

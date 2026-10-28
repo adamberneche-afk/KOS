@@ -5317,3 +5317,18 @@ Ledger (`LEDGER_RETENTION_YEARS`, 5 years), by its `UnlockedAt` date, like
 `StudentAssignments`. No archive marker, so past its period it is only
 counted for the disposition review. The FERPA data map's table and its
 PartUnlocks entry say so; `retention-schedule.test.js` expects it.
+## ⚙ Settings: activity and delay days, 2026-10-28
+
+The lesson-doc sprint's last item. ⚙ Settings → **Activity and delay
+days** lists the days that run a different bell schedule (activity, 2-hour
+delay, an early release not on the district calendar, or an A or B day
+swapped), each a date and a schedule, added and removed in the panel and
+saved with the one Save. They are stored in `_CONFIG`'s `SCHEDULE_DAYS`
+("2026-11-05=DELAY,2026-11-12=ACTIVITY", in date order), logged in
+`SettingsLog` and refused whole on a broken date, an unknown schedule or a
+day listed twice. 00's `bellScheduleDays_` parses the value, and
+`bellScheduleFor_` reads it (once per run) when no list is passed, so the
+lesson doc (66) and the agenda deck (67) use the day's minutes. The
+district's early release days stay built in. An agenda made the night
+before a delay is called is remade from Today's agenda. Teacher guide and
+its notebook copy updated.
