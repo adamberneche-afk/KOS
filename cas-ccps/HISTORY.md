@@ -5424,3 +5424,25 @@ The operator's two layout notes on student docs (02's `stampDocument_`):
 
 Docs already made keep their layout; new docs get it.
 
+## The Teacher Dashboard sprint's leftovers, 2026-10-28
+
+The two items `meta/SPRINT_DASHBOARD_2026-11.md` left out:
+- **A link to one week of a Student Context doc.** Docs gives a heading no
+  stable link from Apps Script, so 29's `appendWeeklySection_` puts a
+  bookmark at each "Week of …" heading. The week readers (07's
+  `_tdContextWeeks_`, 13's twin) return each week's bookmark id, found by
+  its heading's text. The student page and My Context link "Open this week ↗"
+  to `<doc>#bookmark=<id>`; a week without one keeps "Open the doc ↗".
+  `addContextWeekBookmarks()` (29, editor, once) bookmarks the weeks
+  written before; it skips weeks that have one and stops at the time budget.
+- **Past weeks' parent reports.** The operator chose to keep what was
+  copied: Copy report sends the subject and text it put on the clipboard,
+  and 36's `recordParentReportCopied` writes them to two new
+  `ParentReportLog` columns (`report_subject`, `report_text`, added to an
+  older tab by `_ensureParentReportArchiveColumn_`). `getStudentDetail` (07)
+  returns the student's earlier copied weeks, newest first, not archived
+  (`_parentReportsPastFor_`), and the page shows one at a time with
+  ‹ Older / Newer ›. Weeks before 2026-10-28, or never copied, have no
+  text. The text is a student record: it goes with its row under the
+  retention schedule (FERPA_DATA_MAP.md).
+

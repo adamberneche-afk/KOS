@@ -49,8 +49,8 @@ Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** t
 **One student's page.** Pick a student in the Student filter, or click a student's name in the list. A panel opens above their assignments (all of them, not just the current lesson) with:
 
 - **🎓 Competencies done** for each of your courses they take: the competencies you've rated 1 to 3, out of every competency in the course (for example “8175: 12 of 113 competencies done”). See Grading and Competency Ratings.
-- **This week's parent report**, with Copy subject and Copy report, the same as in ✉ Parent Reports.
-- **Student Context**, one week at a time: **‹ Older** and **Newer ›** move between weeks, and **Open the doc ↗** is on every week.
+- **This week's parent report**, with Copy subject and Copy report, the same as in ✉ Parent Reports. Under it, **Past reports**: each earlier week's report exactly as you copied it, with **‹ Older** and **Newer ›**. A report is kept once you press Copy report (from 2026-10-28 on); a week you never copied isn't there.
+- **Student Context**, one week at a time: **‹ Older** and **Newer ›** move between weeks, and **Open this week ↗** opens the doc at that week. (A week from before 2026-10-28 shows **Open the doc ↗** until your admin adds its link.)
 
 **Showing (the lesson picker).** It opens on the **current lesson** for each course: the lesson whose start date in 📅 Lessons is the latest on or before today. Pick another lesson, or **All assignments** at the bottom.
 

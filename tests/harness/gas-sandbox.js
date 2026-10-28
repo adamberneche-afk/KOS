@@ -971,7 +971,7 @@ class FakeDoc {
   // Real Apps Script API — Document.newPosition(element, offset) and
   // addBookmark(position); a bookmark's id is what a "#bookmark=<id>" link
   // jumps to. Recorded on the doc so a test can follow a link to its target.
-  newPosition(element, offset) { return { element, offset }; }
+  newPosition(element, offset) { return { element, offset, getElement: () => element, getOffset: () => offset }; }
   addBookmark(position) {
     const id = 'id.' + ((this.bookmarks = this.bookmarks || []).length + 1);
     const bookmark = { getId: () => id, getPosition: () => position, position };
@@ -979,6 +979,10 @@ class FakeDoc {
     return bookmark;
   }
   getBookmark(id) { return (this.bookmarks || []).find((b) => b.getId() === id) || null; }
+  // Real Apps Script API — Document.getBookmarks(). A position's element is
+  // the paragraph it was made at (real Docs may give its Text instead; the
+  // readers handle both).
+  getBookmarks() { return (this.bookmarks || []).slice(); }
   saveAndClose() {}
 }
 
@@ -991,7 +995,7 @@ function makeDocumentAppMock(driveAppMock) {
     // is a no-op); it exists so `DocumentApp.ParagraphHeading.HEADING1`
     // resolves instead of throwing on undefined.
     // Real Apps Script API — the Element.getType() enum.
-    ElementType: { PARAGRAPH: 'PARAGRAPH', LIST_ITEM: 'LIST_ITEM', TABLE: 'TABLE' },
+    ElementType: { PARAGRAPH: 'PARAGRAPH', LIST_ITEM: 'LIST_ITEM', TABLE: 'TABLE', TEXT: 'TEXT' },
     // Real Apps Script API — ListItem.setGlyphType()'s enum.
     GlyphType: { BULLET: 'BULLET', HOLLOW_BULLET: 'HOLLOW_BULLET', SQUARE_BULLET: 'SQUARE_BULLET', NUMBER: 'NUMBER' },
     // Real Apps Script API — the attribute keys for Paragraph.setAttributes().

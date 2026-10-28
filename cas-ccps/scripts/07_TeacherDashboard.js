@@ -1005,7 +1005,7 @@ function getStudentDetail(studentEmail) {
   const email = String(studentEmail || "").trim().toLowerCase();
   if (!email) return { success: false, error: "No student chosen." };
   const tz = Session.getScriptTimeZone();
-  const out = { success: true, studentEmail: email, report: null, context: null, competencies: [] };
+  const out = { success: true, studentEmail: email, report: null, context: null, competencies: [], pastReports: [] };
   try {
     const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
     const courses = _tdStudentCourses_(ss, cfg)[email] || [];
@@ -1025,6 +1025,19 @@ function getStudentDetail(studentEmail) {
   } catch (e) {
     Logger.log("[S07] getStudentDetail report failed: " + e.message);
     out.reportError = "The parent report could not be built: " + e.message;
+  }
+  // Past weeks' reports, as copied (36 keeps the text since 2026-10-28).
+  try {
+    const fmt = function (d) { return d instanceof Date ? Utilities.formatDate(d, tz, "MMMM d, yyyy") : ""; };
+    const thisWeek = _weekWindow_(new Date()).start;
+    out.pastReports = _parentReportsPastFor_(cfg, email, thisWeek).map(function (p) {
+      return { weekStart: fmt(p.weekStart), weekEnd: fmt(p.weekEnd),
+        copiedAt: p.copiedAt instanceof Date ? Utilities.formatDate(p.copiedAt, tz, "MMM d, h:mm a") : "",
+        subject: p.subject, text: p.text };
+    });
+  } catch (e) {
+    Logger.log("[S07] getStudentDetail past reports failed: " + e.message);
+    out.pastReports = [];
   }
   try {
     const doc = getAllStudentDocsForTeacher_(cfg.teacherEmail)
@@ -1069,10 +1082,21 @@ function _tdStudentCourses_(ss, cfg) {
 // its twin for the Student Dashboard (00 can't hold it: every project loads
 // 00, and not all of them may open Docs); a test keeps the two the same. each "Week of <date>" Heading 2
 // (29's appendWeeklySection_) starts one; its Heading 3 sections and lines
-// follow as items. Anything before the first week is left out.
+// follow as items. Anything before the first week is left out. bookmark:
+// the week's bookmark id, for a link straight to it ("" for none).
 const TD_CONTEXT_MAX_WEEKS = 60;
 function _tdContextWeeks_(docId) {
-  const body = DocumentApp.openById(docId).getBody();
+  const doc = DocumentApp.openById(docId);
+  const body = doc.getBody();
+  // Each week's bookmark (29), by its heading's text: the link to that week.
+  const marks = {};
+  doc.getBookmarks().forEach(function (b) {
+    let el = b.getPosition().getElement();
+    if (el.getType() === DocumentApp.ElementType.TEXT) el = el.getParent();
+    if (el.getType() !== DocumentApp.ElementType.PARAGRAPH) return;
+    const label = String(el.asParagraph().getText() || "").trim();
+    if (label.indexOf("Week of ") === 0 && !marks[label]) marks[label] = b.getId();
+  });
   const weeks = [];
   let week = null;
   for (let i = 0; i < body.getNumChildren(); i++) {
@@ -1085,7 +1109,7 @@ function _tdContextWeeks_(docId) {
     const text = String(p.getText() || "").trim();
     const heading = p.getHeading();
     if (heading === DocumentApp.ParagraphHeading.HEADING2 && text.indexOf("Week of ") === 0) {
-      week = { label: text, items: [] };
+      week = { label: text, bookmark: marks[text] || "", items: [] };
       weeks.push(week);
       continue;
     }
@@ -1095,10 +1119,12 @@ function _tdContextWeeks_(docId) {
   return weeks.reverse().slice(0, TD_CONTEXT_MAX_WEEKS);
 }
 
-function teacherCopiedParentReport(studentEmail) {
+// subject and text: what the page put on the clipboard, kept in
+// ParentReportLog so the student's page can show it in later weeks.
+function teacherCopiedParentReport(studentEmail, subject, text) {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
-  return recordParentReportCopied(studentEmail);
+  return recordParentReportCopied(studentEmail, undefined, { subject: subject, text: text });
 }
 
 // ── M2 ──────────────────────────────────────────────────────────────────────
@@ -2748,6 +2774,7 @@ function scopedReadiness(r, scoped) {
 // first (getStudentDetail, loaded once per student chosen).
 let _studentDetail = null; // { key, loading } or { key, data }
 let _ctxWeek = 0;
+let _prPast = 0;
 function openStudent(key) {
   _studentFilter = String(key || "").toLowerCase();
   _rerenderFilters();
@@ -2783,6 +2810,7 @@ function studentPanelHtml(students) {
   if (!_studentDetail || _studentDetail.key !== _studentFilter) {
     _studentDetail = { key: _studentFilter, loading: true };
     _ctxWeek = 0;
+    _prPast = 0;
     _loadStudentDetail(_studentFilter);
   }
   return '<section id="student-panel" class="student-panel" aria-label="This student">' + studentPanelInner(students) + '</section>';
@@ -2810,6 +2838,7 @@ function studentPanelInner(students) {
   if (data.reportError) report += '<p style="font-size:13px;color:#b3261e">' + esc(data.reportError) + '</p>';
   else if (!data.report) report += '<p style="font-size:13px;color:var(--text-secondary)">No report for this student this week. A student whose account does not match the district student-ID format gets none; ✉ Parent Reports says how many.</p>';
   else report += parentReportCard(data.report, "student");
+  report += pastReportsHtml(data.pastReports || []);
   report += '</div>';
   let ctx = '<div><h4>Student Context</h4>';
   if (data.contextError) ctx += '<p style="font-size:13px;color:#b3261e">' + esc(data.contextError) + '</p>';
@@ -2818,20 +2847,48 @@ function studentPanelInner(students) {
   ctx += '</div>';
   return h + '<div class="student-panel-grid">' + report + ctx + '</div>';
 }
+// Past weeks' parent reports, as copied (36), one at a time with
+// older/newer. Only reports copied since 2026-10-28 have their text.
+function pastReportsHtml(list) {
+  if (!list.length) return '<p style="font-size:12.5px;color:var(--text-secondary);margin-top:10px">Past reports: none yet. A report is kept here once you copy it.</p>';
+  if (_prPast > list.length - 1) _prPast = list.length - 1;
+  const p = list[_prPast];
+  return '<h4 style="margin-top:14px">Past reports</h4>' +
+    '<div class="ctx-nav">' +
+    '<button type="button" onclick="stepPastReport(1)"' + (_prPast >= list.length - 1 ? ' disabled' : '') + ' aria-label="Older report">‹ Older</button>' +
+    '<strong>Week of ' + esc(p.weekStart) + '</strong>' +
+    '<span style="color:var(--text-secondary)">(' + escNum(_prPast + 1) + ' of ' + escNum(list.length) + ')</span>' +
+    '<button type="button" onclick="stepPastReport(-1)"' + (_prPast === 0 ? ' disabled' : '') + ' aria-label="Newer report">Newer ›</button></div>' +
+    '<div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:6px">' + (p.copiedAt ? 'Copied ' + esc(p.copiedAt) + '. ' : '') +
+    'Subject: ' + esc(p.subject) + '</div>' +
+    '<textarea readonly rows="8" aria-label="The report as copied" style="width:100%;box-sizing:border-box;font-size:12px;font-family:inherit;' +
+    'background:#f8f9fa;border:1px solid #dadce0;border-radius:6px;padding:10px">' + esc(p.text) + '</textarea>';
+}
+function stepPastReport(delta) {
+  _prPast = Math.max(0, _prPast + delta);
+  _refreshStudentPanel();
+}
 // "8175: 12 of 113 competencies done" per course (00's
 // competencyCompletionFor_: the teacher's confirmed rating 1–3).
 function competencyLine(list) {
   return (list || []).map(c => esc(c.course) + ': <strong>' + escNum(c.done) + '</strong>' +
     (c.total ? ' of ' + escNum(c.total) : '') + ' competencies done').join(' · ');
 }
-// One week of the context doc, with older/newer and the doc's link.
+// A link straight to one week of the context doc (29's bookmark), or the
+// doc itself when the week has none.
+function weekDocUrl(url, bookmark) {
+  if (!url) return "";
+  return /^[A-Za-z0-9._-]+$/.test(String(bookmark || "")) ? url.split("#")[0] + "#bookmark=" + bookmark : url;
+}
+// One week of the context doc, with older/newer and a link to that week.
 function contextWeekHtml(c) {
   const weeks = c.weeks || [];
   const url = safeDocUrl(c.docUrl);
-  const link = url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" style="color:#1557b0">Open the doc ↗</a>' : '';
+  let link = url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" style="color:#1557b0">Open the doc ↗</a>' : '';
   if (!weeks.length) return '<p style="font-size:13px;color:var(--text-secondary)">The doc has no weeks yet. ' + link + '</p>';
   if (_ctxWeek > weeks.length - 1) _ctxWeek = weeks.length - 1;
   const w = weeks[_ctxWeek];
+  if (url && w.bookmark) link = '<a href="' + esc(weekDocUrl(url, w.bookmark)) + '" target="_blank" rel="noopener" style="color:#1557b0">Open this week ↗</a>';
   let h = '<div class="ctx-nav">' +
     '<button type="button" onclick="stepContextWeek(1)"' + (_ctxWeek >= weeks.length - 1 ? ' disabled' : '') + ' aria-label="Older week">‹ Older</button>' +
     '<strong>' + esc(w.label) + '</strong>' +
@@ -4067,7 +4124,7 @@ function copyParentReport(i, what) {
         if (res && res.success) msg.textContent += " Recorded as copied " + res.copiedAt + ".";
       })
       .withFailureHandler(function () {})
-      .teacherCopiedParentReport(report.studentEmail);
+      .teacherCopiedParentReport(report.studentEmail, report.subject, report.preview);
   });
 }
 

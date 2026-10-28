@@ -211,9 +211,10 @@ test('the record tabs: shown in the header order, each loaded once', () => {
 
   ctx.showTab('context');
   reply({ success: true, context: { docUrl: 'https://docs.google.com/document/d/abc/edit', lastUpdatedAt: 'Oct 26',
-    weeks: [{ label: 'Week of October 26, 2026', items: [{ text: 'Warm-Up Reflections', heading: true }] },
+    weeks: [{ label: 'Week of October 26, 2026', bookmark: 'id.x1', items: [{ text: 'Warm-Up Reflections', heading: true }] },
       { label: 'Week of October 19, 2026', items: [] }] } });
   assert.match(els['panel-context'].innerHTML, /<strong>Week of October 26, 2026<\/strong>.*\(1 of 2\)/);
+  assert.match(els['panel-context'].innerHTML, /href="https:\/\/docs\.google\.com\/document\/d\/abc\/edit#bookmark=id\.x1"[^>]*>Open this week ↗/);
   ctx.stepMyContext(1);
   assert.match(els['panel-context'].innerHTML, /Week of October 19, 2026.*Nothing recorded this week/);
   assert.match(els['panel-context'].innerHTML, /Open the doc ↗/);
