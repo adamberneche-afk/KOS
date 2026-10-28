@@ -223,7 +223,7 @@ test('34c leaves NOT_MEETING warm-ups out of today\'s count', () => {
     S('43_DeployVersionMarker_CentralLedger.js'), S('03_QueueBridge.js'), S('10_AdminRecoveryPanel.js'),
     S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('23_StudentProfileManager.js'), S('25_WarmUpWriter.js'),
     S('29_StudentContextAggregator.js'), S('30_SCRSuggestionEngine.js'), S('34_QueueWatchdog.js'),
-    S('36_WeeklyParentReport.js'), S('37_FlowInputBuilder.js'), S('38_LedgerSchemaGuard.js'), S('40_FlowPrompts.js'),
+    S('36_WeeklyParentReport.js'), S('37_FlowInputBuilder.js'), S('68_LessonParts.js'), S('38_LedgerSchemaGuard.js'), S('40_FlowPrompts.js'),
     S('41_WarmUpFlowBridge.js'), S('54_StudentAssignments.js'), S('57_RetentionSchedule.js')],
   ['overnightHealth_', 'syncFlowPromptsToSheet', 'LEDGER_CANONICAL_HEADERS']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');

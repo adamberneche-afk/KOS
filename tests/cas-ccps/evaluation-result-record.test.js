@@ -12,7 +12,7 @@ const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 
 function load() {
   const loaded = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '37_FlowInputBuilder.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '37_FlowInputBuilder.js'), path.join(SCRIPTS, '68_LessonParts.js'), path.join(SCRIPTS, '03_QueueBridge.js')],
     ['recordEvaluationResult_', '_ensureEvaluationResultColumns_', 'LEDGER', 'LEDGER_LATER_HEADERS']);
   const sheet = loaded.sandbox.SpreadsheetApp.create('Central Ledger').insertSheet('Ledger');
   const headers = new Array(19).fill('h');
@@ -68,7 +68,7 @@ test('_ensureEvaluationResultColumns_: keeps headers already there, fills only t
 // only the latest, so wait times and the attempt sequence were lost.
 function loadLog() {
   const loaded = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '37_FlowInputBuilder.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '37_FlowInputBuilder.js'), path.join(SCRIPTS, '68_LessonParts.js'), path.join(SCRIPTS, '03_QueueBridge.js')],
     ['recordEvaluationResult_', '_fiLogEvaluation_', 'EVAL_LOG_HEADERS', 'LEDGER']);
   const ss = loaded.sandbox.SpreadsheetApp.create('Central Ledger');
   const ledger = ss.insertSheet('Ledger');
