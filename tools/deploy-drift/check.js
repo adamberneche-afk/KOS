@@ -32,6 +32,10 @@
 // =============================================================================
 
 const { expectedMarkerForProject, knownProjectNames } = require('./expected-marker.js');
+const path = require('path');
+const { execFileSync } = require('child_process');
+
+const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 const GITHUB_API = 'https://api.github.com';
 const SHA_RE = /^[0-9a-f]{40}$/;
@@ -51,10 +55,29 @@ function issueTitle(project) {
   return `Deploy drift: ${project}`;
 }
 
-// Pure — no network, no git. Given a self-report and a way to look up what
-// git expects, decides what happened. Split out from main() so this is
-// testable with a fake `expectedMarkerFn` instead of the real git-backed one.
-function evaluateReport({ project, reportedSha, reportedAt }, expectedMarkerFn = expectedMarkerForProject) {
+// True when `reported` is a commit in this repo's history that contains
+// `expected` (expected is reported, or an ancestor of it). False for an
+// unknown commit, an older one, or any git error.
+function commitContains(expected, reported, cwd = REPO_ROOT) {
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', expected, reported],
+      { cwd, stdio: 'ignore' });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// No network. Given a self-report and a way to look up what git expects,
+// decides what happened. Split out from main() so this is testable with a
+// fake `expectedMarkerFn` (and `containsFn`) instead of the git-backed ones.
+//
+// A match is the project's own latest commit, as stamp.js writes, or since
+// 2026-10-28 any later commit that contains it: run.js stamps a build with
+// the commit its zip was cut from (tools/clasp-sync/run.js, stampBuild).
+// An older commit, or one git doesn't know, is drift.
+function evaluateReport({ project, reportedSha, reportedAt }, expectedMarkerFn = expectedMarkerForProject,
+  containsFn = commitContains) {
   if (!project || !knownProjectNames().includes(project)) {
     return { status: 'invalid', reason: `"${project}" is not a known project (see tools/gas-lint/project-map.json)` };
   }
@@ -73,7 +96,7 @@ function evaluateReport({ project, reportedSha, reportedAt }, expectedMarkerFn =
     return { status: 'invalid', reason: `git has no commit history for project "${project}"'s files` };
   }
 
-  return expected.sha === reportedSha
+  return expected.sha === reportedSha || containsFn(expected.sha, reportedSha)
     ? { status: 'match', project, expected, reportedSha, reportedAt }
     : { status: 'drift', project, expected, reportedSha, reportedAt };
 }
@@ -82,7 +105,7 @@ function buildDriftIssueBody({ project, expected, reportedSha, reportedAt }) {
   return [
     `**${project}** self-reported a version that doesn't match what git expects.`,
     '',
-    `- Git expects: \`${expected.sha}\` (${expected.subject}, ${expected.committedAt})`,
+    `- Git expects: \`${expected.sha}\` (${expected.subject}, ${expected.committedAt}), or any later commit that contains it`,
     `- Live project reported: \`${reportedSha}\` as of ${reportedAt}`,
     '',
     'This usually means either a `clasp push` didn\'t fully land, or the code was ' +
@@ -197,5 +220,6 @@ module.exports = {
   publishDriftStatus,
   issueTitle,
   issueLabel,
+  commitContains,
   SHA_RE,
 };

@@ -83,6 +83,33 @@ Skipping step 2/3, or combining them with step 1, both break the match —
 by design, this is exactly the kind of slip the whole mechanism exists to
 surface, not silently tolerate.
 
+### run.js stamps the push (2026-10-28)
+
+The ritual above kept the committed marker in step with git, not with
+what was pushed: every push on 2026-10-17/18 reported `965b94d`, whatever
+it carried (BACKLOG, "A deploy marker that tracks the push"). Now
+`tools/clasp-sync/run.js` stamps each build itself, so the marker says
+what is live:
+
+- A GitHub "Download ZIP" carries the commit it was cut from as its
+  archive comment. `--zip`/`--latest` saves it in the checkout as
+  `.kos-build-commit`, and each project's build has its marker file(s)
+  stamped with it just before the push. The committed files are not
+  changed in git; only the pushed copy is.
+- A build whose code (everything but its marker file and `.clasp.json`)
+  is the same as the last one pushed keeps that push's commit, read from
+  the registry's `<project>/last-build.json`. Its marker doesn't change,
+  so the push stays "already up to date" and a web app cuts no new
+  version (Apps Script caps versions per project).
+- `check.js` accepts the project's own latest commit (what `stamp.js`
+  writes) **or any later commit that contains it** (`git merge-base
+  --is-ancestor`). An older commit, or one git doesn't know, is still drift.
+- A checkout with no recorded commit (not from a GitHub zip) pushes the
+  committed marker as before, and `run.js` says so.
+
+So with `run.js` there is nothing to stamp or commit; `stamp.js` and the
+ritual above remain for a push made another way.
+
 **Step 2 has to compute the SHA the same way the check does, not just
 "the current commit."** `stamp.js` delegates to `expected-marker.js`'s
 own `expectedMarkerForProject()` rather than a bare `git rev-parse HEAD`

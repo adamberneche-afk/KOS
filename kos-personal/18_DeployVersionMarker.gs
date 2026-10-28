@@ -14,6 +14,11 @@
  * `node tools/deploy-drift/stamp.js kos-personal` — correctly matches
  * what git expects once both commits have landed.
  *
+ * Since 2026-10-28 tools/clasp-sync/run.js stamps the copy it pushes with
+ * the commit its GitHub zip was cut from, so the value committed here is
+ * not what goes live from run.js (tools/deploy-drift/README.md, "run.js
+ * stamps the push"). The steps below are only for a push made another way.
+ *
  * NEVER hand-edit this file, and NEVER combine a stamp with a functional
  * code change in the same commit — either breaks the match above. Always:
  *   1. Commit your real kos-personal code change(s) normally.
