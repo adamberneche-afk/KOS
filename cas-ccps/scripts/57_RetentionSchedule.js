@@ -16,7 +16,8 @@
 // (_retentionCutoff_() in 00, August start):
 //   RECORD  — what a grade, a rating decision or a disclosure rests on:
 //             5 years. Ledger, StudentAssignments, StudentDocRegistry,
-//             CompetencyEvidence, SCRDecisionLog, ParentReportLog.
+//             CompetencyEvidence, SCRDecisionLog, ParentReportLog,
+//             EvaluationLog, ReflectionLog, PartUnlocks.
 //   WORKING — queues, Flow inputs and profiles that feed the system but
 //             are not the record: 1 year. WarmUpQueue and the rest below.
 // A student's workspace Doc follows its Ledger row; a warm-up Doc follows
@@ -75,6 +76,10 @@ function _retentionSchedule_() {
       where: ledger(function (cfg) { return cfg.tabs.reflectionLog || "ReflectionLog"; }), dateCol: "SubmittedAt" },
     { label: "EvaluationLog", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.evaluationLog || "EvaluationLog"; }), dateCol: "EvaluatedAt" },
+    // What opened each part of a lesson for a student, their check or the
+    // teacher (68), kept as long as the work it opened (2026-10-28).
+    { label: "PartUnlocks", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
+      where: ledger(LP_LOG_TAB), dateCol: "UnlockedAt" },
     { label: "ParentReportLog", tier: RETENTION_TIER_RECORD, years: _parentReportRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.parentReportLog; }),
       dateCol: PRL.GENERATED_AT, archived: archivedIn(PRL.ARCHIVE_STATUS) },
