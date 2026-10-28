@@ -493,6 +493,12 @@ Class status, counts per period (docs made, shared, submitted, waiting,
 passed): no student name, account or file. Teacher-level; out of the
 retention schedule, like the other teacher-level tabs.
 
+### AgendaDecks (S67) and the agenda decks
+One row per course per day: course, date, deck ID and URL, when made. The
+deck, in the teacher's *Agendas* folder and shared with no one until the
+teacher projects or shares it, holds curriculum only (the lesson, its
+goals, the itinerary, the periods meeting): no student data.
+
 ### Unit rubrics and Canvas course cartridges
 `curriculum/unit-rubrics/*.md` and `curriculum/canvas-cartridges/*.imscc` are
 generated in the repo from the pacing guide, the lesson cards and

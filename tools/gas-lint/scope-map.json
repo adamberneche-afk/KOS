@@ -10,6 +10,7 @@
     "MailApp":         ["https://www.googleapis.com/auth/script.send_mail"],
     "GmailApp":        ["https://www.googleapis.com/auth/gmail.readonly"],
     "CalendarApp":     ["https://www.googleapis.com/auth/calendar"],
+    "SlidesApp":       ["https://www.googleapis.com/auth/presentations"],
     "ScriptApp":       ["https://www.googleapis.com/auth/script.scriptapp"],
     "Session":         ["https://www.googleapis.com/auth/userinfo.email"],
     "Drive":           ["https://www.googleapis.com/auth/drive"],
