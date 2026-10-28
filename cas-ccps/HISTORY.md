@@ -5361,3 +5361,30 @@ The backlog's "after the walk-through" items:
   a one-cell check that the row is still that warm-up's, and the write. A
   refused save never takes the lock, and a row moved in between is
   refused, not overwritten.
+
+## Retention: the disposition, approved by the operator (D3), 2026-10-28
+
+The retention work's last step (57). `previewRetentionDisposition()` still
+deletes nothing. It now saves what it found as the pending disposition
+(`RETENTION_DISPOSITION_PENDING`: per record the cutoff and the counts, no
+row content) and logs an approval code. Once the operator sets
+`RETENTION_DISPOSITION_APPROVE` to that code, `applyRetentionDisposition()`
+removes exactly what the report counted:
+- **Refused whole** if:
+  - the code doesn't match;
+  - the approval is over 7 days old;
+  - a period changed;
+  - any record has more rows to remove than were approved.
+- **Docs first:** a row's Doc goes to the Drive trash (recoverable for 30
+  days) before the row is deleted. A row whose Doc can't be trashed is kept.
+- **Batched:** at most 1,500 rows a run, deleted bottom-up. It says when
+  it's done, and done clears the approval.
+- **Logged:** a `DispositionLog` row per record per run, counts only.
+
+`retention-schedule.test.js` covers:
+- refusals without, or with a wrong, code;
+- the removal, with a Doc trashed and a row kept;
+- the log;
+- done clearing the approval;
+- growth after the report;
+- a stale approval.
