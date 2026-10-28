@@ -5099,3 +5099,32 @@ nothing is made yet.
   fits a day's plan to a period's minutes exactly (fixed blocks kept, the
   open block takes the rest, timed blocks scaled, rounded to 5).
 - **Tests:** `lesson-itinerary.test.js` (new).
+
+## The lesson doc sprint, PR 2: one teacher doc per lesson, 2026-10-27
+
+`66_LessonDoc.js` (Central Ledger and Teacher Dashboard), on PR 1's plans and
+bell schedule. `makeOrRefreshLessonDoc_(key)` makes "Lesson Plan — <course>
+<lesson>" in a *Lesson Plans* folder, once, and records it in a new
+`LessonDocs` tab; a second call rewrites only Class status, the doc's last
+section, so the teacher's edits stay.
+- **Sections:** the plan (objective, "I can" goals, competencies by tier,
+  vocabulary, the student task); the itinerary, a table per plan day with
+  minutes for each block the course meets in (ClassSchedule) on A and B
+  (`itineraryFor_`); look-fors (the goal and CompetencyRubrics' indicators,
+  32); each day it runs (school days from the start to the next lesson's
+  start, skipping weekends and NoSchoolDays, with the schedule and the
+  periods meeting, ODD/EVEN by day of month as 24 does); Class status per
+  period from the Ledger rows StudentAssignments ties to the lesson (counts
+  only).
+- **Where it's made:** the nightly rollout (58, a LESSON_DOC step, for
+  courses with it on, inside its time budget); **Make lesson doc** / **Refresh
+  status** in 📅 Lessons (07's `openLessonDoc`, teacher-gated; the link
+  shows once made); `previewLessonDocs()` / `makeLessonDocsNow()` in the
+  editor.
+- **The per-period frames stop:** 51's rows carry `noFrame`, and 22 returns
+  after alignment for them, so the builder makes no Lesson Frame; a lesson
+  the teacher logs by hand still gets one.
+- **Docs:** the cas-ccps README, the FERPA data map, the teacher reference
+  guide (📅 Lessons) and its notebook copy.
+- **Tests:** `lesson-doc.test.js` (new); `course-year-builder.test.js` (no
+  frame per period); `lesson-rollout.test.js` loads 66.
