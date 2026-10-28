@@ -37,7 +37,7 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 
 | Tier | Period | Records | Script Property |
 |---|---|---|---|
-| Record: what a grade, a rating decision or a disclosure rests on, and the student's own work | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog`, `ReflectionLog` | `LEDGER_RETENTION_YEARS` |
+| Record: what a grade, a rating decision or a disclosure rests on, and the student's own work | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog`, `ReflectionLog`, `PartUnlocks` | `LEDGER_RETENTION_YEARS` |
 | | 5 years | `CompetencyEvidence` | `COMPETENCY_EVIDENCE_RETENTION_YEARS` |
 | | 5 years | `SCRDecisionLog` | `SCR_RETENTION_YEARS` |
 | | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
@@ -509,9 +509,11 @@ goals, the itinerary, the periods meeting): no student data.
 One row per part opened for a student (2026-10-27): when, the student's
 workspace ConfigID (as StudentAssignments holds it), the part's ConfigID,
 and whether their check opened it or the teacher did. No name, email or
-file. Not yet a record in the retention schedule (57): it should follow the
-Ledger's (`LEDGER_RETENTION_YEARS`), like StudentAssignments, before it holds
-a school year of rows.
+file. A record in the retention schedule (57, 2026-10-28): kept as long as
+the Ledger (`LEDGER_RETENTION_YEARS`), like StudentAssignments, read by its
+`UnlockedAt` date. It has no archive marker, so past its period it is
+counted for the operator's disposition review, never archived or deleted
+automatically.
 
 ### Unit rubrics and Canvas course cartridges
 `curriculum/unit-rubrics/*.md` and `curriculum/canvas-cartridges/*.imscc` are
