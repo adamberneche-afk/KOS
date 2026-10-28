@@ -25,7 +25,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
   '29_StudentContextAggregator.js', '31_PacingGuideManager.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
   '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js',
-  '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js', '58_LessonRollout.js', '32_CompetencyRubricImporter.js', '66_LessonDoc.js', '67_AgendaDeck.js'].map(S);
+  '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js', '58_LessonRollout.js', '32_CompetencyRubricImporter.js', '66_LessonDoc.js', '67_AgendaDeck.js', '68_LessonParts.js'].map(S);
 const EXPOSE = ['lessonRollout_', '_lrPlan_', 'previewLessonRollout'];
 
 const FRI = new Date(2026, 9, 16, 21, 0); // Friday 2026-10-16, 9 p.m.
@@ -48,7 +48,7 @@ function setup(opts) {
   props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   if (opts.autoApply) props.setProperty('ROLLOUT_AUTO_APPLY', opts.autoApply);
   if (opts.configTab) ss.insertSheet('_CONFIG').getRange(1, 1, 2, 2).setValues([['Key', 'Value'], ['ROLLOUT_AUTO_APPLY', opts.configTab]]);
-  sandbox._lsRows_ = () => SCHEDULE;
+  sandbox._lsRows_ = () => opts.schedule || SCHEDULE;
 
   const ledger = ss.insertSheet('Ledger');
   ledger.appendRow(new Array(23).fill('header'));
@@ -247,4 +247,32 @@ test('ROLLOUT_AUTO_APPLY in the Ledger\'s _CONFIG tab turns the rollout on for t
   const { exported: off, seedCalls: offCalls } = setup({ configTab: 'off', alreadySeeded: ['8177-handbook'] });
   off.lessonRollout_({ today: FRI });
   assert.ok(offCalls.every((c) => c.apply === false), 'off is the kill switch');
+});
+
+// ── A lesson in parts (68, 2026-10-27) ──────────────────────────────────────
+const PARTS_LESSON = '8177-market-research-survey-design';
+const PART = (n) => 'CAS-' + PARTS_LESSON.toUpperCase() + '-P' + n;
+const PARTS_SCHEDULE = { '8175': [], '8177': [{ key: PARTS_LESSON, start: '2026-10-16' }] };
+
+test('a lesson in parts seeds and enrolls each part; Part 1 is shared on release night, the rest wait unshared', () => {
+  const { exported, seedCalls, enrollCalls, shared, ledger } = setup({
+    autoApply: 'all', schedule: PARTS_SCHEDULE,
+    students: [['VDOE-A1', '1234567@ccpsnet.net', 'SCHEDULED', PART(1)], ['VDOE-A2', '1234567@ccpsnet.net', 'SCHEDULED', PART(2)]],
+  });
+  exported.lessonRollout_({ today: FRI });
+  assert.deepEqual([...seedCalls.find((c) => c.apply).units], [1, 2, 3, 4, 5].map((n) => PARTS_LESSON + '-P' + n));
+  const byPart = Object.fromEntries(enrollCalls.map((c) => [c.assignmentConfigId, c.deferShare]));
+  assert.deepEqual([1, 2, 3, 4, 5].map((n) => byPart[PART(n)]), [false, true, true, true, true]);
+  assert.equal(byPart['CAS-' + PARTS_LESSON.toUpperCase()], undefined, 'the whole lesson is not enrolled');
+  assert.deepEqual(shared, [['file-VDOE-A1', '1234567@ccpsnet.net']], 'Part 1 released; Part 2 stays locked');
+  assert.deepEqual([2, 3].map((r) => ledger.getRange(r, 13).getValue()), ['ACTIVE', 'SCHEDULED']);
+});
+
+test('a lesson students already have whole is never split under them', () => {
+  const { exported, seedCalls } = setup({
+    autoApply: 'all', schedule: PARTS_SCHEDULE,
+    students: [['VDOE-W', '1234567@ccpsnet.net', 'ACTIVE', 'CAS-' + PARTS_LESSON.toUpperCase()]],
+  });
+  exported.lessonRollout_({ today: FRI });
+  assert.deepEqual([...seedCalls.find((c) => c.apply).units], [PARTS_LESSON]);
 });
