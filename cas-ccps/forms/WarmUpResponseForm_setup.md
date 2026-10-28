@@ -53,7 +53,7 @@ all the normalization logic lives in Script 29, in one place.
 ## Linking the form to WarmUpResponses
 When creating the form, do NOT let Google Forms create its own response
 spreadsheet. Instead:
-1. Run `createStudentAggregatorTabs_()` first so WarmUpResponses already
+1. Run `setupStudentContextDocs()` (29) first so WarmUpResponses already
    exists with the correct headers (timestamp, student_email,
    lesson_unit_id, response).
 2. In the Form's Responses tab, click the Sheets icon → "Select existing
