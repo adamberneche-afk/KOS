@@ -15,8 +15,8 @@ const TEACHER = 'teacher@ccpsnet.net';
 
 function load() {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'), S('26_CompetencyAlignmentLog.js'),
-    S('23_StudentProfileManager.js'), S('27_LessonFrameGenerator.js'), S('32_CompetencyRubricImporter.js'), S('55b_LessonAssignmentData.js'), S('66_LessonDoc.js')],
-  ['makeOrRefreshLessonDoc_', 'onLessonContextSubmit_'],
+    S('23_StudentProfileManager.js'), S('27_LessonFrameGenerator.js'), S('32_CompetencyRubricImporter.js'), S('55b_LessonAssignmentData.js'), S('66_LessonDoc.js'), S('68_LessonParts.js')],
+  ['makeOrRefreshLessonDoc_', 'onLessonContextSubmit_', '_ldocClassStatus_'],
   { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => TEACHER }) } });
   const { sandbox } = env;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -109,6 +109,26 @@ test('class status counts by period, for this lesson only; a second call refresh
   assert.equal(text.split('Class status').length, 2, 'one status section');
   assert.match(text.slice(text.lastIndexOf('Class status')), /\n1\n3\n3\n2\n2\n0\n/);
   assert.equal(ss.getSheetByName('LessonDocs').getLastRow(), 2, 'still one registry row');
+});
+
+test('class status for a lesson in parts: a row per period and part', () => {
+  const { exported, sandbox, ss } = load();
+  const L = 'CAS-8177-MARKET-RESEARCH-SURVEY-DESIGN';
+  const add = (sid, period, status, part) => {
+    const r = new Array(27).fill('');
+    r[1] = sid + '@ccpsnet.net'; r[2] = sid; r[8] = TEACHER; r[11] = period; r[12] = status;
+    ss.getSheetByName('Ledger').appendRow(r);
+    ss.getSheetByName('StudentAssignments').appendRow([sid, sid + '@ccpsnet.net', L + '-P' + part]);
+  };
+  add('P1a', '3', 'ACTIVE', 1); add('P2a', '3', 'ACTIVE', 2); add('P3a', '3', 'SCHEDULED', 3);
+  add('P1b', '3', 'ACTIVE', 1); add('P2b', '3', 'SCHEDULED', 2);
+  const s = exported._ldocClassStatus_(ss, { tabs: { ledger: 'Ledger' }, teacherEmail: TEACHER }, '8177-market-research-survey-design');
+  assert.deepEqual(Object.keys(s).sort(), ['3 · Part 1', '3 · Part 2', '3 · Part 3']);
+  assert.equal(s['3 · Part 1'].docs, 2);
+  assert.deepEqual([s['3 · Part 2'].docs, s['3 · Part 2'].shared], [2, 1]);
+  assert.equal(s['3 · Part 3'].shared, 0);
+  assert.equal(Object.keys(exported._ldocClassStatus_(ss, { tabs: { ledger: 'Ledger' }, teacherEmail: TEACHER }, '8175-L06'))
+    .some(k => k.includes('Part')), false, 'a whole lesson has no part rows');
 });
 
 test('a multi-day 8177 lesson gets a table per day; an unknown lesson is refused', () => {
