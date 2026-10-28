@@ -1399,6 +1399,19 @@ function openAgendaDeck(code) {
   }
 }
 
+// The teacher's unlock for a lesson in parts (68): the student's next
+// locked part, shared now. Teacher-gated, and only for the teacher's own
+// student.
+function unlockStudentPart(studentConfigId) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  try {
+    return unlockNextPart_(cfg, studentConfigId, cfg.teacherEmail);
+  } catch (e) {
+    return { success: false, error: "The part could not be unlocked: " + e.message };
+  }
+}
+
 function getLessonSchedule() {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };

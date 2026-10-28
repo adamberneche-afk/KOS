@@ -18,7 +18,7 @@ const S = (f) => path.join(ROOT, 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '22b_CompetencyRegistryImporter.js',
   '23_StudentProfileManager.js', '24_WarmUpBridge.js', '26_CompetencyAlignmentLog.js',
   '27_LessonFrameGenerator.js', '31_PacingGuideManager.js', '32_CompetencyRubricImporter.js',
-  '51_CourseYearBuilder.js', '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js', '54_StudentAssignments.js',
+  '51_CourseYearBuilder.js', '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js', '68_LessonParts.js', '54_StudentAssignments.js',
   '55b_LessonAssignmentData.js', '55_LessonSchedule.js'].map(S);
 const EXPOSE = ['seedLessonSchedule', 'scheduledLessonUnit_', 'resolveUnitForCourseDate_', 'buildUpcomingLessonPlan_',
   'seedAssignments_', 'archiveAssignment_', 'recordStudentAssignment_', 'getWarmUpAnchor_', 'PG_HEADERS',

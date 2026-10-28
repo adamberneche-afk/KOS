@@ -499,6 +499,14 @@ deck, in the teacher's *Agendas* folder and shared with no one until the
 teacher projects or shares it, holds curriculum only (the lesson, its
 goals, the itinerary, the periods meeting): no student data.
 
+### PartUnlocks (S68)
+One row per part opened for a student (2026-10-27): when, the student's
+workspace ConfigID (as StudentAssignments holds it), the part's ConfigID,
+and whether their check opened it or the teacher did. No name, email or
+file. Not yet a record in the retention schedule (57): it should follow the
+Ledger's (`LEDGER_RETENTION_YEARS`), like StudentAssignments, before it holds
+a school year of rows.
+
 ### Unit rubrics and Canvas course cartridges
 `curriculum/unit-rubrics/*.md` and `curriculum/canvas-cartridges/*.imscc` are
 generated in the repo from the pacing guide, the lesson cards and
