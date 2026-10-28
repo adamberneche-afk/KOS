@@ -2088,6 +2088,7 @@ header button:focus-visible,header select:focus-visible{outline:2px solid white;
 /* ── MAIN ── */
 .main{padding:20px 24px}
 .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.not-submitted-row{margin:-14px 0 20px;font-size:13px}
 .summary-card{background:white;border-radius:8px;padding:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .summary-card .count{font-size:32px;font-weight:600;line-height:1;margin-bottom:6px}
 .summary-card .label{font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
@@ -2622,8 +2623,12 @@ const EVAL_BADGE = {
 };
 const EVAL_FILTER_LABEL = {
   PASSED: "passed", PASSED_BEFORE: "passed before, latest needs revision",
-  NOT_PASSING: "checked, not passing yet", NOT_CHECKED: "not checked yet", FLAGGED: "need attention"
+  NOT_PASSING: "checked, not passing yet", NOT_CHECKED: "not checked yet", FLAGGED: "need attention",
+  NOT_SUBMITTED: "haven't submitted yet"
 };
+// Who hasn't submitted (2026-10-28, the walk-through's ask): no Submit on
+// record (the Ledger's SubmissionTS) for the work in view.
+const notSubmitted = s => !s.submittedAt || s.submittedAt === "—";
 // Course, period and student filters (2026-10-27, meta/SPRINT_DASHBOARD_2026-11.md).
 // Page memory only: a reload starts unfiltered. "" means all. A narrower
 // filter resets when a wider one changes, and the lesson picker goes back
@@ -4399,6 +4404,12 @@ If you expect to see students here:
     \${pendingReview ? \`<div class="summary-card card-pending-review" onclick="togglePendingReviewFilter()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePendingReviewFilter();}"><div class="count">\${pendingReview}</div><div class="label">Pending Review</div></div>\` : ""}
     \${card("FLAGGED", "card-flagged", flagged, "Needs attention")}
   </div>\`;
+  // Not one of the cards above, which add up to the total: work not yet
+  // submitted is a part of "Not checked yet".
+  const unsubmitted = inView.filter(notSubmitted).length;
+  if (unsubmitted || _evalFilter === "NOT_SUBMITTED") {
+    html += \`<div class="not-submitted-row"><button type="button" class="name-link" onclick="toggleEvalFilter('NOT_SUBMITTED')" aria-pressed="\${_evalFilter === "NOT_SUBMITTED"}">📭 \${unsubmitted} \${unsubmitted === 1 ? "hasn\\'t" : "haven\\'t"} submitted yet</button></div>\`;
+  }
 
   // NEW (finding #13): the warm-up readiness panel's stats are clickable
   // filters into this roster — apply the active one (if any) before
@@ -4428,7 +4439,8 @@ If you expect to see students here:
 
   if (_evalFilter) {
     studentsToShow = studentsToShow.filter(s =>
-      _evalFilter === "FLAGGED" ? s.statusClass === "flagged" : s.evalState === _evalFilter);
+      _evalFilter === "FLAGGED" ? s.statusClass === "flagged"
+        : _evalFilter === "NOT_SUBMITTED" ? notSubmitted(s) : s.evalState === _evalFilter);
     html += \`<div style="background:#f1f3f4;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
       <span style="font-size:13px;color:#3c4043">Showing \${studentsToShow.length}: \${esc(EVAL_FILTER_LABEL[_evalFilter] || "")}</span>
       <button onclick="toggleEvalFilter(null)" style="background:none;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
