@@ -845,6 +845,15 @@ class FakeDocBody {
     this.paragraphs.splice(index, 0, p);
     return p;
   }
+  // Real Apps Script API — Body.appendPageBreak(): a new paragraph holding
+  // the break, with no text of its own. First needed by 02's stampDocument_
+  // (the response on its own page, 2026-10-28).
+  appendPageBreak() {
+    const p = new FakeParagraph('');
+    p.pageBreak = true;
+    this.paragraphs.push(p);
+    return { getType: () => 'PAGE_BREAK', getParent: () => p };
+  }
   setText(text) { this.paragraphs = [new FakeParagraph(text)]; return this; }
   getText() { return this.paragraphs.map((p) => p.text).join('\n'); }
   // Real Apps Script API — Body.appendTable(). See FakeTable.

@@ -30,7 +30,7 @@ Open a student's document from their row. Each document is shared with that stud
 
 **What the student sees, top to bottom:**
 
-- A small grey page header: who and what (name, class, teacher, block, period, lesson), a “Your dashboard” link, and a “Feedback:” line that says where the work stands.
+- A small grey page header: who and where (name, class, teacher, block, period), then the lesson and a “Your dashboard” link on their own line, and a “Feedback:” line that says where the work stands.
 - The lesson title, a “↓ Go to your response” link, and the assignment in a two-row box (9 pt): “The assignment” (the task, with its headings and bullets), then “What your work needs to show” (the student’s “I can” objectives as a checklist).
 - A “Your response” heading, “Write your answer under the grey line below.” and “↑ Back to the assignment”.
 - The grey “── YOUR RESPONSE BEGINS HERE ──” line, then the student's writing space (10 pt).

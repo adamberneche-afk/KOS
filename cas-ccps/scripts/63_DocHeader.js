@@ -35,20 +35,27 @@ const DOC_FEEDBACK_STATES  = {
                    "told. You can submit again from your dashboard.", color: "#b06000", bold: true }
 };
 
-// Builds the header on a doc being stamped (02). identity is line 1's text.
-function writeDocHeader_(doc, identity, dashboardUrl) {
+// Builds the header on a doc being stamped (02). identity is line 1's text
+// (who, the class, the block and period); lesson, when given, is line 2,
+// with the dashboard link after it (2026-10-28, the operator's ask: the
+// lesson and link on their own line). The feedback line comes last.
+function writeDocHeader_(doc, identity, dashboardUrl, lesson) {
   const header = doc.getHeader() || doc.addHeader();
   header.clear();
   const linkText = "Your dashboard";
-  const line1 = header.appendParagraph(identity + (dashboardUrl ? "  ·  " + linkText : ""));
-  line1.editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY);
+  const style = function (p) { p.editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY); return p; };
+  let linkLine = identity;
+  if (lesson) {
+    style(header.appendParagraph(identity));
+    linkLine = lesson;
+  }
+  const line = style(header.appendParagraph(linkLine + (dashboardUrl ? "  ·  " + linkText : "")));
   if (dashboardUrl) {
-    const t = line1.editAsText();
-    const at = identity.length + 5;
-    t.setLinkUrl(at, at + linkText.length - 1, dashboardUrl);
+    const at = linkLine.length + 5;
+    line.editAsText().setLinkUrl(at, at + linkText.length - 1, dashboardUrl);
   }
   _styleDocFeedbackLine_(header.appendParagraph(""), "NOT_SUBMITTED", {});
-  // clear() leaves one empty paragraph ahead of the two just added.
+  // clear() leaves one empty paragraph ahead of the lines just added.
   const first = header.getChild(0);
   if (header.getNumChildren() > 2 && String(first.asText().getText()) === "") header.removeChild(first);
 }
