@@ -1142,6 +1142,9 @@ const TD_SETTINGS = [
   { key: "PIVOT_ARCHETYPE_LOCK", label: "Warm-up style lock (research)",
     on: "Once the system is confident which warm-up style works for a student, it keeps using it. The email about students reaching that point goes out only when every course is on.",
     off: "The warm-up style keeps being chosen fresh each time." },
+  { key: "PARENT_REPORT_PREP", label: "Parent reports ready on Fridays",
+    on: "Each Friday at 5 a.m. the week's parent reports for this course's students are logged in ParentReportLog as ready, not yet copied. Nothing is sent.",
+    off: "A report is built when you open ✉ Parent Reports, and only the ones you copy are logged." },
 ];
 const TD_SETTINGS_LOG_TAB = "SettingsLog";
 const TD_SETTINGS_LOG_HEADERS = ["Timestamp", "ChangedBy", "Setting", "From", "To"];
@@ -1175,7 +1178,24 @@ function setSettingForCourse(key, courseCode, on) {
     : courses.every(function (c) { return next.indexOf(c) !== -1; }) && next.length === courses.length ? "all"
     : next.join(",");
   _tdWriteSetting_(cfg, key, raw || "off", value);
+  if (key === "PARENT_REPORT_PREP") _tdSyncParentReportPrepTrigger_(value !== "off");
   return _tdSettings_(cfg);
+}
+
+// Parent reports ready on Fridays: its Friday 5 a.m. job lives in this
+// project (36 is here, with this teacher's TEACHER_EMAIL), installed when
+// the setting turns on for any course and removed when it is off for all.
+// The job reads the setting itself, so a course turned off is skipped
+// without touching the trigger. A failure is logged; the setting is saved.
+function _tdSyncParentReportPrepTrigger_(on) {
+  try {
+    const mine = ScriptApp.getProjectTriggers()
+      .filter(function (t) { return t.getHandlerFunction() === "runWeeklyParentReportPrep"; });
+    if (on && !mine.length) installWeeklyParentReportTrigger();
+    if (!on) mine.forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  } catch (e) {
+    Logger.log("[Dashboard] The Friday parent report job could not be " + (on ? "added" : "removed") + ": " + e.message);
+  }
 }
 
 // The marking period end dates: [{ term: "2627_MP1", end: "2026-10-30" }, ...].

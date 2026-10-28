@@ -718,7 +718,23 @@ function runWeeklyParentReportPrep(now) {
   // explicitly, and so this function is testable against a fixed week
   // rather than only against whatever week the suite happens to run in.
   const asOf = (now instanceof Date) ? now : null;
+  // ⚙ Settings' "Parent reports ready on Fridays" (2026-10-27): off for
+  // every course, nothing is prepared; otherwise only students in a course
+  // that has it on.
+  let flag = "";
+  try { flag = String(_resolveConfigValues_().values.PARENT_REPORT_PREP || "").trim(); } catch (e) { flag = ""; }
+  if (!flag || flag.toLowerCase() === "off") {
+    Logger.log("[S36] Weekly prep: Parent reports ready on Fridays is off in ⚙ Settings.");
+    return { prepared: 0, off: true };
+  }
   const generated = generateWeeklyParentReports(asOf);
+  if (flag.toLowerCase() !== "all") {
+    const courses = _prStudentCourses_(cfg);
+    generated.reports = generated.reports.filter(function (r) {
+      const mine = courses.get(String(r.studentEmail).toLowerCase()) || [];
+      return mine.some(function (c) { return _pivotValueOn_(flag, c); });
+    });
+  }
   if (!generated.reports.length) {
     Logger.log("[S36] Weekly prep: nothing to prepare.");
     return { prepared: 0 };
@@ -751,9 +767,30 @@ function runWeeklyParentReportPrep(now) {
   return { prepared: prepared };
 }
 
+// Map<lower-case student email, [course codes]> from this teacher's Ledger
+// rows (00's ledgerRowCourseCode_), for the per-course prep setting.
+function _prStudentCourses_(cfg) {
+  const out = new Map();
+  const teacher = String(cfg.teacherEmail || "").trim().toLowerCase();
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER_COL_COUNT).getValues().forEach(function (row) {
+    if (String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== teacher) return;
+    const email = String(row[LEDGER.GOOGLE_ID] || "").trim().toLowerCase();
+    const code = ledgerRowCourseCode_(row);
+    if (!email || !code) return;
+    if (!out.has(email)) out.set(email, []);
+    if (out.get(email).indexOf(code) === -1) out.get(email).push(code);
+  });
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // installWeeklyParentReportTrigger
-// One-time manual setup. Run from the Script Editor.
+// ⚙ Settings' "Parent reports ready on Fridays" calls this in the Teacher
+// Dashboard's project when it turns on (07), and removes the trigger when
+// it is off for every course. Can still be run from the Script Editor; the
+// job does nothing while the setting is off.
 //
 // onWeekDay(FRIDAY), not everyDays(7). The two existing weekly triggers use
 // everyDays(7), which is a rolling interval anchored to whenever it happened
