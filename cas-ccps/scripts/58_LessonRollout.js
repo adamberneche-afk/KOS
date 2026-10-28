@@ -24,6 +24,11 @@
 //   3c. AGENDA. With the rollout on, the next school day's agenda deck for
 //      the course (67), made from the lesson doc's itinerary.
 //
+// HOLD. A lesson whose LessonSchedule release cell says HOLD (55) is left
+// out of steps 1 to 3: no student doc is made or shared for it, current or
+// upcoming, until the teacher clears the hold. Its teacher lesson doc (3b)
+// and the agenda (3c) still come, and each run logs it as a HOLD row.
+//
 // SHADOW FIRST. ROLLOUT_AUTO_APPLY (Script Property or the Ledger's _CONFIG
 // tab; blank/"off", one course code, or "all", like the pivot flags) decides
 // per course whether the run acts or only logs what it would do. Off, it
@@ -77,15 +82,20 @@ function lessonRollout_(opts) {
   };
 
   const plan = _lrPlan_(now);
+  const modes = {};
+  Object.keys(plan).forEach(function (course) {
+    modes[course] = !opts.forceShadow && pivotFlagFor_("ROLLOUT_AUTO_APPLY", course) ? "APPLY" : "SHADOW";
+  });
+  Object.keys(plan).forEach(function (course) {
+    plan[course].held.forEach(function (l) {
+      log(modes[course], course, lessonConfigId_(l.key), "HOLD", 0, "held in LessonSchedule: no student docs made or shared");
+    });
+  });
   // A lesson in parts (68): its parts, unless students already have it whole.
   Object.keys(plan).forEach(function (course) {
     plan[course].lessons.forEach(function (l) {
       l.parts = lessonUsesParts_(ss, l.key) ? lessonPartsOf_(l.key) : null;
     });
-  });
-  const modes = {};
-  Object.keys(plan).forEach(function (course) {
-    modes[course] = !opts.forceShadow && pivotFlagFor_("ROLLOUT_AUTO_APPLY", course) ? "APPLY" : "SHADOW";
   });
 
   // 1. Release first: it is the step a class is waiting on.
@@ -173,7 +183,7 @@ function lessonRollout_(opts) {
   // refreshes its Class status. For courses the rollout acts for.
   Object.keys(plan).forEach(function (course) {
     if (modes[course] !== "APPLY") return;
-    plan[course].lessons.forEach(function (l) {
+    plan[course].lessons.concat(plan[course].held).forEach(function (l) {
       const lesson = lessonConfigId_(l.key);
       if (Date.now() > deadline) {
         log("APPLY", course, lesson, "PROBLEM", 0, "lesson doc not reached: time budget used; the next run continues");
@@ -230,6 +240,7 @@ function lessonRollout_(opts) {
 // Per course: the current lesson (the latest that has started) and every
 // lesson starting within ROLLOUT_LEAD_DAYS. releaseNow is true for the
 // current lesson and one starting tomorrow: its docs are shared tonight.
+// A lesson held in LessonSchedule goes in `held` instead of `lessons`.
 function _lrPlan_(now) {
   const today = formatDateYMD_(now);
   const tomorrow = formatDateYMD_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
@@ -241,11 +252,15 @@ function _lrPlan_(now) {
     let current = null;
     rows.forEach(function (r) { if (r.start <= today) current = r; });
     const lessons = [];
-    if (current) lessons.push({ key: current.key, start: current.start, releaseNow: true });
+    const held = [];
+    const add = function (r, releaseNow) {
+      (r.hold ? held : lessons).push({ key: r.key, start: r.start, releaseNow: releaseNow });
+    };
+    if (current) add(current, true);
     rows.forEach(function (r) {
-      if (r.start > today && r.start <= lead) lessons.push({ key: r.key, start: r.start, releaseNow: r.start <= tomorrow });
+      if (r.start > today && r.start <= lead) add(r, r.start <= tomorrow);
     });
-    if (lessons.length) plan[course] = { lessons: lessons };
+    if (lessons.length || held.length) plan[course] = { lessons: lessons, held: held };
   });
   return plan;
 }

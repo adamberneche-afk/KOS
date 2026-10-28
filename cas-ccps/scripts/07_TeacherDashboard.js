@@ -1407,7 +1407,7 @@ function _tdSettings_(cfg) {
 // Teacher-level data only; RolloutLog rows are counts and reasons.
 // ---------------------------------------------------------------------------
 const TD_LS_TAB = "LessonSchedule";
-const TD_LS = { COURSE: 0, KEY: 1, LESSON: 2, START: 3, CONFIG_ID: 4, NOTES: 5 };
+const TD_LS = { COURSE: 0, KEY: 1, LESSON: 2, START: 3, CONFIG_ID: 4, NOTES: 5, RELEASE: 6 };
 const TD_ROLLOUT_LOG_TAB = "RolloutLog";
 // 58's ROLLOUT_LEAD_DAYS, which lives in the Central Ledger project.
 const TD_ROLLOUT_LEAD_DAYS = 2;
@@ -1517,6 +1517,40 @@ function setLessonStartDate(lessonKey, dateStr, expected, confirmed) {
   }
 }
 
+/**
+ * Holds a lesson back from the nightly rollout (hold true: "HOLD" in its
+ * LessonSchedule release cell, 55) or lets it go again (""). Held, the
+ * rollout makes and shares no student doc for it; docs already shared stay
+ * shared. Adds the release header to a tab made before it existed.
+ */
+function setLessonHold(lessonKey, hold) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  const key = String(lessonKey || "").trim();
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (e) {
+    return { success: false, error: "Another change is being saved; try again." };
+  }
+  try {
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TD_LS_TAB);
+    if (!sheet || sheet.getLastRow() < 2) return { success: false, error: "No LessonSchedule tab on the Central Ledger." };
+    const keys = sheet.getRange(2, TD_LS.KEY + 1, sheet.getLastRow() - 1, 1).getValues();
+    const i = keys.findIndex(function (r) { return String(r[0]).trim() === key; });
+    if (i === -1) return { success: false, error: "No lesson " + key + " in LessonSchedule." };
+    if (String(sheet.getRange(1, TD_LS.RELEASE + 1).getValue()).trim() !== "release") {
+      sheet.getRange(1, TD_LS.RELEASE + 1).setValue("release").setFontWeight("bold");
+    }
+    sheet.getRange(i + 2, TD_LS.RELEASE + 1).setValue(hold ? "HOLD" : "");
+    SpreadsheetApp.flush();
+    Logger.log("[Dashboard] LessonSchedule " + key + ": " + (hold ? "held from" : "released to") + " the nightly rollout.");
+    return _tdLessonSchedule_(cfg, new Date());
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // Why a change needs a second look, or "" when it doesn't.
 function _tdScheduleChangeWarning_(today, from, to, lesson, course) {
   const soon = _tdAddDaysYmd_(today, TD_ROLLOUT_LEAD_DAYS);
@@ -1527,7 +1561,9 @@ function _tdScheduleChangeWarning_(today, from, to, lesson, course) {
       (to ? "moving its date can change which lesson is current" : "clearing its date makes the previous lesson current again"));
   }
   if (to && to < today) reasons.push("the new date is in the past, so the lesson becomes current at once (if it is the latest dated)");
-  else if (to && to <= soon) {
+  else if (to && to <= soon && lesson && lesson.hold) {
+    reasons.push("the lesson is held from the rollout, so no student docs are made until you release it");
+  } else if (to && to <= soon) {
     reasons.push(acts
       ? "tonight's rollout will make and share this lesson's student docs (the course's rollout is on)"
       : "tonight's rollout will plan this lesson's docs (shadow only; nothing is made while the rollout is off)");
@@ -1544,7 +1580,9 @@ function _tdLessonSchedule_(cfg, now) {
   const sheet = ss.getSheetByName(TD_LS_TAB);
   if (!sheet) return { success: false, error: "No LessonSchedule tab on the Central Ledger (seedLessonSchedule, 55, makes it)." };
   const rows = sheet.getLastRow() > 1
-    ? sheet.getRange(2, 1, sheet.getLastRow() - 1, TD_LS.NOTES + 1).getValues() : [];
+    ? sheet.getRange(2, 1, sheet.getLastRow() - 1, TD_LS.RELEASE + 1).getValues() : [];
+  // A tab made before the release column (55) holds nothing.
+  const hasRelease = String(sheet.getRange(1, TD_LS.RELEASE + 1).getValue()).trim().toLowerCase() === "release";
   const rollout = _tdLastRollout_(ss);
   // Each lesson's teacher doc (66's LessonDocs), when made.
   const docs = {};
@@ -1568,6 +1606,7 @@ function _tdLessonSchedule_(cfg, now) {
       key: key, lesson: String(r[TD_LS.LESSON] || key), configId: configId,
       start: _tdIsRealYmd_(start) ? start : "", unreadable: start !== "" && !_tdIsRealYmd_(start),
       notes: String(r[TD_LS.NOTES] || ""),
+      hold: hasRelease && String(r[TD_LS.RELEASE] || "").trim().toUpperCase() === "HOLD",
       docUrl: docs[key] || "",
       rollout: (rollout.byLesson[key.toUpperCase()] || rollout.byLesson[configId.toUpperCase()] || null),
     });
@@ -3393,7 +3432,11 @@ function renderLessonSchedule(data) {
         ' <span id="' + id + '-doc">' + _lsDocHtml(l.key, l.docUrl) + '</span>' +
         (l.warnings.length ? '<div style="color:#b06000;font-size:12px">⚠ ' + l.warnings.map(esc).join('; ') + '</div>' : '') +
         '</td>' +
-        '<td style="padding:6px 4px;color:' + LS_STATUS_COLOR[l.status] + ';font-weight:600">' + esc(LS_STATUS_LABEL[l.status]) + '</td>' +
+        '<td style="padding:6px 4px"><span style="color:' + LS_STATUS_COLOR[l.status] + ';font-weight:600">' + esc(LS_STATUS_LABEL[l.status]) + '</span>' +
+        (l.hold ? '<div style="color:#b06000;font-size:12px;font-weight:600">Held: no student docs</div>' : '') +
+        '<div><button style="font-size:12px" data-ld="hold" data-key="' + esc(l.key) + '" title="' +
+        (l.hold ? 'Let the nightly rollout make and share this lesson\\'s student docs again' : 'Stop the nightly rollout making or sharing this lesson\\'s student docs') +
+        '">' + (l.hold ? 'Release' : 'Hold') + '</button></div></td>' +
         '<td style="padding:6px 4px"><input type="date" id="' + id + '" value="' + esc(l.start) + '" ' +
         'data-ls-key="' + esc(l.key) + '" aria-label="Start date for ' + esc(l.lesson) + '">' +
         (l.start ? ' <button style="font-size:12px" id="' + id + '-clear" onclick="saveLessonStartDate(\\'' + jsAttr(l.key) + '\\', \\'\\')">Clear</button>' : '') +
@@ -3500,6 +3543,29 @@ function saveLessonStartDate(key, value, confirmed) {
       _lsMsg(key, false, "Not saved: " + (e && e.message ? e.message : "unknown error") + ". Try again.");
     })
     .setLessonStartDate(key, value, l.start, !!confirmed);
+}
+
+// Holds a lesson from the nightly rollout, or releases it (55's release
+// column). Docs already shared stay shared, so a lesson students have
+// already started asks first.
+function _lsToggleHold(key) {
+  const l = _lsFind(key);
+  if (!l) return;
+  const hold = !l.hold;
+  if (hold && (l.status === "current" || l.status === "taught") &&
+      !window.confirm("Hold " + l.lesson + "? Docs students already have stay shared; the rollout only stops making and sharing new ones (late joiners, the next part).")) return;
+  _lsMsg(key, true, hold ? "Holding…" : "Releasing…");
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.success) {
+        _lsShow(res, null);
+        _lsMsg(key, true, hold ? "Held ✓ The rollout makes nothing for it." : "Released ✓ Tonight's rollout includes it.");
+      } else _lsMsg(key, false, "Not changed: " + ((res && res.error) || "unknown error"));
+    })
+    .withFailureHandler(function(e) {
+      _lsMsg(key, false, "Not changed: " + (e && e.message ? e.message : "unknown error") + ". Try again.");
+    })
+    .setLessonHold(key, hold);
 }
 
 document.addEventListener("focusout", function(e) {
@@ -3805,6 +3871,7 @@ function _ldAction(el) {
   if (act === "edit") return openLessonEditor(el.getAttribute("data-key"));
   if (act === "doc") return _lsMakeDoc(el.getAttribute("data-key"));
   if (act === "agenda") return _lsMakeAgenda(el.getAttribute("data-course"));
+  if (act === "hold") return _lsToggleHold(el.getAttribute("data-key"));
   if (act === "new") {
     document.getElementById("lesson-schedule-modal-body").innerHTML =
       '<p style="font-size:13px;color:var(--text-secondary)">Opening a new lesson…</p>';

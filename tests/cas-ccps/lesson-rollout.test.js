@@ -276,3 +276,31 @@ test('a lesson students already have whole is never split under them', () => {
   exported.lessonRollout_({ today: FRI });
   assert.deepEqual([...seedCalls.find((c) => c.apply).units], [PARTS_LESSON]);
 });
+
+// A lesson held in LessonSchedule's release column (55, 2026-10-28).
+const HELD = {
+  '8175': [
+    { key: '8175-L06', start: '2026-10-14' }, { key: '8175-L07', start: '2026-10-17', hold: true },
+    { key: '8175-L08', start: '2026-10-18' },
+  ],
+  '8177': [{ key: '8177-handbook', start: '2026-10-08', hold: true }],
+};
+
+test('a held lesson is planned as held: not seeded, enrolled or released, and logged HOLD', () => {
+  const { exported, seedCalls, enrollCalls, shared, ledger, log } = setup({
+    autoApply: 'all', schedule: HELD,
+    students: [['VDOE-A', '1234567@ccpsnet.net', 'SCHEDULED', 'CAS-8175-L07']],
+  });
+  const plan = exported._lrPlan_(FRI);
+  assert.deepEqual(plan['8175'].lessons.map((l) => l.key), ['8175-L06', '8175-L08']);
+  assert.deepEqual(plan['8175'].held.map((l) => l.key), ['8175-L07']);
+  assert.deepEqual(plan['8177'].lessons.map((l) => l.key), [], 'a course with only a held lesson stays in the plan');
+  exported.lessonRollout_({ today: FRI });
+  const units = seedCalls.flatMap((c) => [...c.units]);
+  assert.ok(!units.includes('8175-L07') && !units.includes('8177-handbook'));
+  assert.ok(!enrollCalls.some((c) => c.assignmentConfigId === 'CAS-8175-L07' || c.assignmentConfigId === 'CAS-8177-HANDBOOK'));
+  assert.deepEqual(shared, [], 'its SCHEDULED docs are not shared');
+  assert.equal(ledger.getRange(2, 13).getValue(), 'SCHEDULED');
+  const holds = log().filter((r) => r[4] === 'HOLD').map((r) => [r[1], r[2], r[3]]);
+  assert.deepEqual(holds, [['APPLY', '8175', 'CAS-8175-L07'], ['APPLY', '8177', 'CAS-8177-HANDBOOK']]);
+});
