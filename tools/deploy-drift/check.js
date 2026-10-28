@@ -58,10 +58,10 @@ function issueTitle(project) {
 // True when `reported` is a commit in this repo's history that contains
 // `expected` (expected is reported, or an ancestor of it). False for an
 // unknown commit, an older one, or any git error.
-function commitContains(expected, reported) {
+function commitContains(expected, reported, cwd = REPO_ROOT) {
   try {
     execFileSync('git', ['merge-base', '--is-ancestor', expected, reported],
-      { cwd: REPO_ROOT, stdio: 'ignore' });
+      { cwd, stdio: 'ignore' });
     return true;
   } catch (e) {
     return false;
