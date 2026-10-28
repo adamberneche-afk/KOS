@@ -128,7 +128,7 @@ Nothing to do. You don't register students one at a time. The nightly rollout (a
 
 ## Settings
 
-**⚙ Settings** turns each feature on or off for each course, and sets the marking period dates. Each feature says what on and off do. Click a course's box and the panel asks first (“Turn Nightly lesson rollout on for 8175? …”); nothing changes until you press **Turn on** or **Turn off**. A change shows on your dashboard at once and reaches students and the overnight jobs within about 10 minutes. Every change is kept in the **SettingsLog** tab, and the panel lists the recent ones.
+**⚙ Settings** turns each feature on or off for each course, and sets the marking period dates. Each feature says what on and off do. Tick or untick a course's box and change any dates; the bar at the bottom lists what isn't saved yet and what each change does (“Turn Nightly lesson rollout on for 8175: …”). Nothing changes until you press **Save changes**, which saves them all at once; **Discard** puts them back. Closing the panel or leaving the page with changes not saved asks first. A saved change shows on your dashboard at once and reaches students and the overnight jobs within about 10 minutes. Every change is kept in the **SettingsLog** tab, and the panel lists the recent ones.
 
 | Feature | On | Off |
 | --- | --- | --- |
@@ -139,7 +139,7 @@ Nothing to do. You don't register students one at a time. The nightly rollout (a
 | Warm-up style lock (research) | Keeps the warm-up style the system is confident works for a student; its email goes out only when every course is on | The style is chosen fresh each time |
 | Parent reports ready on Fridays | Each Friday at 5 a.m. the week's reports for that course's students are logged in ParentReportLog as ready, not yet copied; nothing is sent | A report is built when you open ✉ Parent Reports; only the ones you copy are logged |
 
-**Marking periods.** The last day of each marking period, as dates. The term on both dashboards and in the reports changes the day after. Until you change one, they're the district calendar's. Press **Save dates**.
+**Marking periods.** The last day of each marking period, as dates. The term on both dashboards and in the reports changes the day after. Until you change one, they're the district calendar's. They save with **Save changes**.
 
 **What a feedback comment says.** “Feedback, <date and time>”, then “Result: ✅ Passed. Your work meets the standard.” or “Result: ✏️ Revise, then submit again.”, then the report (overall assessment, each milestone MET / PARTIALLY MET / NOT MET, required revisions) and what to do next.
 
@@ -258,7 +258,7 @@ The same list as **❓ Terms** on your dashboard.
 - **Current lesson**: The lesson whose start date in 📅 Lessons is the latest on or before today, per course.
 - **Rollout**: The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead).
 - **Feedback as a comment**: Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings.
-- **⚙ Settings**: Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock, parent reports ready on Fridays) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab.
+- **⚙ Settings**: Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock, parent reports ready on Fridays) and sets the marking period end dates. Changes wait for Save changes, closing with unsaved changes asks first, and each saved change is kept in the SettingsLog tab.
 - **3-Odd / 3-Even**: The two halves of period 3, which meet on alternate (odd or even) calendar dates.
 - **Marking period**: A term code like 2627_MP1 is marking period 1 of 2026–27.
 

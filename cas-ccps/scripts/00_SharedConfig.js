@@ -1222,7 +1222,7 @@ const CAS_TEACHER_TERMS = [
   ["Current lesson", "The lesson whose start date in 📅 Lessons is the latest on or before today, per course."],
   ["Rollout", "The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead)."],
   ["Feedback as a comment", "Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings."],
-  ["⚙ Settings", "Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock, parent reports ready on Fridays) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab."],
+  ["⚙ Settings", "Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock, parent reports ready on Fridays) and sets the marking period end dates. Changes wait for Save changes, closing with unsaved changes asks first, and each saved change is kept in the SettingsLog tab."],
   ["3-Odd / 3-Even", "The two halves of period 3, which meet on alternate (odd or even) calendar dates."],
   ["Marking period", "A term code like 2627_MP1 is marking period 1 of 2026–27."]
 ];

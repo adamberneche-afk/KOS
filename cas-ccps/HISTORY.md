@@ -5054,3 +5054,27 @@ report live anyway. The operator asked for it as a toggle.
   the quick start, their notebook copies.
 - **Tests:** `weekly-parent-report.test.js` (off, per course),
   `feedback-as-comment.test.js` (the job added once, removed when off).
+
+## ⚙ Settings: one Save, and a warning before leaving unsaved, 2026-10-27
+
+With six features and two courses, confirming and saving each box one at a
+time was tedious (the operator). The panel now keeps every change until
+**Save changes**.
+- **07, server:** `saveSettings(changes, ends)` takes every changed switch
+  and, if changed, the marking period dates. It checks all of them before
+  writing any (an unknown course or a broken date saves nothing), then
+  writes one `_CONFIG` row and one SettingsLog row per setting, however many
+  of its courses changed. `_tdSettingValue_` (a value with several courses
+  changed) and `_tdMarkingPeriodValue_` came out of `setSettingForCourse`
+  and `setMarkingPeriodEnds`, which stay.
+- **07, page:** boxes and dates are drafts (`_stDraft`, `_mpDraft`); a bar
+  pinned to the bottom of the panel lists each change with what it does,
+  with **Save changes** and **Discard**, or "All changes saved." A box
+  ticked back is no change. Closing (×, Escape, the backdrop) with changes
+  not saved asks first; so does leaving or reloading the page
+  (`beforeunload`). The per-switch confirm and **Save dates** are gone.
+- **Docs:** the reference guide, the quick start, the Terms entry and their
+  notebook copies.
+- **Tests:** `teacher-dashboard-inline-js.test.js` (drafts, the bar, the
+  close warning, a refused save), `feedback-as-comment.test.js` (one row per
+  setting, nothing written on a bad course or date).

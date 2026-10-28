@@ -199,7 +199,7 @@ function fakePage() {
     },
   });
   const confirms = [];
-  const win = { confirmAnswer: true, confirm: (q) => { confirms.push(q); return win.confirmAnswer; }, open() {} };
+  const win = { confirmAnswer: true, confirm: (q) => { confirms.push(q); return win.confirmAnswer; }, open() {}, addEventListener() {} };
   const { exported } = loadGasFiles(FILES, ['buildDashboardHtml_']);
   const code = extractInlineScripts(exported.buildDashboardHtml_()).find((c) => c.includes('function renderLessonSchedule'));
   const store = {};
