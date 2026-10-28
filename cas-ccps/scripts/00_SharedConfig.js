@@ -274,6 +274,7 @@ const SYSTEM_TEXT_PATTERNS = [
   /\[\s*SUGGESTED_SCORE/i,
   /\[\s*MILESTONE_OUTCOMES/i,
   /<<<\s*(END_)?PROCESS_REFLECTION\s*>>>/i,
+  /<<<\s*(END_)?EARLIER_PARTS\s*>>>/i,
 ];
 
 // The first system-text token in `text` (for example "[SYSTEM:"), or "".

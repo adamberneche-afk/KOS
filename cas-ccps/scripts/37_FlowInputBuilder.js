@@ -298,7 +298,8 @@ function buildFlowInputRows() {
         "", // GeminiFullOutput — Studio Flow 2 fills this in
         // The Flow 2 prompt with every placeholder resolved EXCEPT
         // {{STUDENT_TEXT}} — see _fiBuildPromptText_ below.
-        _fiBuildPromptText_(matrixRow, _fiReflectionPromptText_(reflection)),
+        _fiBuildPromptText_(matrixRow, _fiReflectionPromptText_(reflection),
+          _fiEarlierPartsText_(ledgerSs, cfg, ledgerRow.googleId, assignments, assignments[configId])),
       ]);
       newRows.push(fiSheet.getLastRow());
       if (reflection.length) _fiPostReflectionComment_(studentFileId, reflection);
@@ -451,7 +452,7 @@ function _fiFindTeacherMatrixRow_(matrixSsId, configId) {
 // substituted here: the student typed it on the dashboard, and 13 already
 // keeps it in ReflectionLog, so it is in the Ledger either way
 // (docs/FERPA_DATA_MAP.md, ReflectionLog). The response itself still never is.
-function _fiBuildPromptText_(matrixRow, processReflection) {
+function _fiBuildPromptText_(matrixRow, processReflection, earlierParts) {
   if (typeof substituteFlowPrompt_ !== "function" ||
       typeof FLOW_2_SYSTEM_PROMPT !== "string") {
     Logger.log("[FlowInputBuilder] 40_FlowPrompts.js or 15b's FLOW_2_SYSTEM_PROMPT " +
@@ -469,8 +470,62 @@ function _fiBuildPromptText_(matrixRow, processReflection) {
     MILESTONE_4: matrixRow.milestone4,
     DOD:         matrixRow.dod,
     PROCESS_REFLECTION: processReflection || "(none)",
+    EARLIER_PARTS: earlierParts || "(none)",
     // STUDENT_TEXT deliberately omitted — keepUnmatched leaves it in place.
   }, true);
+}
+
+// ---------------------------------------------------------------------------
+// A later part of a lesson in parts (68): the student's own work on the
+// parts before it, for Flow 2's EARLIER PARTS block (2026-10-28). Each open
+// earlier part's response zone (03's responseZoneBounds_), read from its
+// doc, under its title, with braces and <<< >>> markers taken out and at
+// most FI_EARLIER_PART_MAX characters. "" for a first part or a whole lesson.
+// byStudent is StudentAssignments (workspace ConfigID -> assignment).
+// ---------------------------------------------------------------------------
+const FI_EARLIER_PART_MAX = 6000;
+
+function _fiEarlierPartsText_(ledgerSs, cfg, googleId, byStudent, assignmentId) {
+  const info = partOfConfigId_(assignmentId);
+  if (!info || info.n === 1) return "";
+  const ledger = ledgerSs.getSheetByName(cfg.tabs.ledger);
+  if (!ledger || ledger.getLastRow() < 2) return "";
+  const me = String(googleId || "").trim().toLowerCase();
+  const files = {}; // part number -> { fileId, title }
+  ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER_COL_COUNT).getValues().forEach(function (r) {
+    if (String(r[LEDGER.GOOGLE_ID]).trim().toLowerCase() !== me) return;
+    const status = String(r[LEDGER.STATUS]).trim();
+    if (status === "ARCHIVED" || status === "SCHEDULED") return;
+    const p = partOfConfigId_(byStudent[String(r[LEDGER.CONFIG_ID]).trim()]);
+    if (!p || p.lessonKey !== info.lessonKey || p.n >= info.n) return;
+    files[p.n] = { fileId: String(r[LEDGER.FILE_ID]).trim(), title: p.part.a.partTitle || "" };
+  });
+  return Object.keys(files).map(Number).sort(function (a, b) { return a - b; }).map(function (n) {
+    let text = "";
+    try {
+      const full = DocumentApp.openById(files[n].fileId).getBody().getText();
+      const zone = responseZoneBounds_(full);
+      text = zone ? full.substring(zone.from, zone.to).trim() : "";
+    } catch (e) {
+      Logger.log("[FlowInputBuilder] Earlier part " + n + " unreadable: " + e.message);
+    }
+    text = text.replace(/\{\{|\}\}|<<<|>>>/g, "");
+    if (text.length > FI_EARLIER_PART_MAX) text = text.slice(0, FI_EARLIER_PART_MAX) + " […]";
+    return "Part " + n + (files[n].title ? ": " + files[n].title : "") + "\n" + (text || "(nothing written)");
+  }).join("\n\n");
+}
+
+// The earlier parts' text is the student's work, which the Ledger otherwise
+// never holds (FERPA data map): it stays in PromptText only while the check
+// runs, and goes once the row is harvested or fails.
+const FI_EARLIER_PARTS_RE = /(<<<EARLIER_PARTS>>>\n)[\s\S]*?(\n<<<END_EARLIER_PARTS>>>)/;
+
+function _fiScrubEarlierParts_(fiSheet, rowNum, promptText) {
+  const text = String(promptText || "");
+  const m = FI_EARLIER_PARTS_RE.exec(text);
+  if (!m || m[0] === m[1] + "(none)" + m[2]) return;
+  fiSheet.getRange(rowNum, FI.PROMPT_TEXT + 1)
+    .setValue(text.replace(FI_EARLIER_PARTS_RE, "$1(removed after the check)$2"));
 }
 
 // ---------------------------------------------------------------------------
@@ -718,6 +773,7 @@ function harvestFlowInputResults() {
         Logger.log("[FlowInputBuilder] Row " + rowNum +
                    " marked EVALUATED with no output — leaving for manual review.");
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_EMPTY_OUTPUT");
+        _fiScrubEarlierParts_(fiSheet, rowNum, fiData[i][FI.PROMPT_TEXT]);
         if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
         _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_EMPTY_OUTPUT", null);
         continue;
@@ -728,6 +784,7 @@ function harvestFlowInputResults() {
         Logger.log("[FlowInputBuilder] Row " + rowNum + " ERROR_SUSPECT_FABRICATION: " +
                    plausibility.reason);
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_SUSPECT_FABRICATION");
+        _fiScrubEarlierParts_(fiSheet, rowNum, fiData[i][FI.PROMPT_TEXT]);
         if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
         _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_SUSPECT_FABRICATION", null);
         continue;
@@ -800,10 +857,12 @@ function harvestFlowInputResults() {
         }
 
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("HARVESTED");
+        _fiScrubEarlierParts_(fiSheet, rowNum, fiData[i][FI.PROMPT_TEXT]);
         harvested++;
       } catch (err) {
         Logger.log("[FlowInputBuilder] Harvest failed for row " + rowNum + ": " + err.message);
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_HARVEST_FAILED");
+        _fiScrubEarlierParts_(fiSheet, rowNum, fiData[i][FI.PROMPT_TEXT]);
         if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
         _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_HARVEST_FAILED", null);
       }

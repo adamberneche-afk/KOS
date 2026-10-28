@@ -5235,3 +5235,24 @@ This PR is data only; nothing makes, shares or unlocks a part yet (3b).
   marker list and 37: its own change); the other 34 lessons' parts drafted.
 - **Tests:** `lesson-parts-dashboards.test.js` (new); `lesson-doc.test.js`
   (class status by part); `agenda-deck.test.js` loads 68.
+
+## Lessons in parts: Flow 2 reads the earlier parts, 2026-10-28
+
+- **The prompt (15b):** a new EARLIER PARTS block (`{{EARLIER_PARTS}}`,
+  between `<<<EARLIER_PARTS>>>` markers) after the process reflection. Flow 2
+  reads it for context only: every milestone is judged on the part itself,
+  never credited or faulted for what only an earlier part contains.
+- **37:** `_fiEarlierPartsText_` fills it for a later part: the student's
+  open earlier parts of the same lesson, each part's response zone (03's
+  `responseZoneBounds_`) under its title, braces and `<<< >>>` taken out, at
+  most 6,000 characters a part. "(none)" for a first part or a whole lesson.
+- **Held only while the check runs:** the Ledger never held student work
+  before (FERPA data map), so `_fiScrubEarlierParts_` replaces the block in
+  `PromptText` with "(removed after the check)" when the row is harvested
+  or fails. A row that never gets an answer keeps it until the working-data
+  retention clears it.
+- **Markers:** 00's `SYSTEM_TEXT_PATTERNS` refuses a submission carrying
+  them; 15c's direct path escapes them and fills the block ("(none)" by
+  default).
+- **Tests:** `flow2-earlier-parts.test.js` (new); 13 test files that load 37
+  now load 68 (and 03 or 55b where they didn't).
