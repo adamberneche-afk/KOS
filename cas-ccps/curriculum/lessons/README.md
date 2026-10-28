@@ -1,9 +1,15 @@
 # Lesson plan sources (8175 / 8177)
 
 Markdown copies of the teacher's lesson-plan Google Docs, first copied 2026-10-07.
-`tools/cas-ccps/build-lesson-assignments.js` turns them into assignments (8177 lessons
-only with an approved `8177/prompts/<slug>.md`), and `build-canvas-cartridge.js` into the
-Canvas cartridges. Edit the Drive doc or these files deliberately; do not reformat, and
+`tools/cas-ccps/build-lesson-assignments.js` turns them into assignments, and
+`build-canvas-cartridge.js` into the Canvas cartridges. The student side of every lesson,
+in both courses, is its **prompt file** (`8175/prompts/L<NN>.md`, `8177/prompts/<slug>.md`):
+`## Prompt` (the task, its first line "Assignment: …"), and when it has them `## Background`,
+`## Key terms`, `## Example`, `## Warm-up` and `## Vocabulary`. A lesson is built only once its
+prompt file says `status: approved`. The 8175 prompt files were moved out of each lesson copy's
+CANVAS ASSIGNMENT TEXT and Bell Ringer on 2026-10-28, wording unchanged (only the "Title:"
+label went); those sections stay in the copies as the Drive docs have them, but the builder
+no longer reads them: edit the prompt file. Edit the Drive doc or these files deliberately; do not reformat, and
 keep the two in step: in October 2026 the 8177 files were edited in the repo (competency
 lines re-matched to the 2025 task list, lessons expanded) and the Drive docs were updated
 to match on 2026-10-12. Two 8177 lessons were written in the repo first:
@@ -14,7 +20,7 @@ same day.
 
 | Folder | Course | Drive folder ID | Contents |
 |---|---|---|---|
-| `8175/` | 8175 Sports & Entertainment Marketing | `1BksIMpLiRAt4RdEam3mKIYExT8NZGusa` | `L01.md`–`L36.md`, one per "8175 \| Qn \| … \| Lesson NN: …" doc (teacher instructions + Canvas student-view assignment text), and `COMPETENCY_TRACKER.md` (written in the repo; no Drive copy) |
+| `8175/` | 8175 Sports & Entertainment Marketing | `1BksIMpLiRAt4RdEam3mKIYExT8NZGusa` | `L01.md`–`L36.md`, one per "8175 \| Qn \| … \| Lesson NN: …" doc (teacher instructions + Canvas student-view assignment text), `prompts/L01.md`–`L36.md` (the student side, written in the repo 2026-10-28), and `COMPETENCY_TRACKER.md` (written in the repo; no Drive copy) |
 | `8177/` | 8177 Sports, Entertainment, and Event Management | `1O5T04ktNN5GWi3fDnpKTbNWjW0Abn73U` | `PACING_GUIDE.md`, `COMPETENCY_TRACKER.md`, and one `<slug>.md` per "Lesson Plan: <Name>" doc |
 
 Each file starts with an HTML-comment header giving the source Google Doc ID, the exact
@@ -34,7 +40,7 @@ and a lesson whose task says to watch a video must be listed (`lesson-assignment
 
 Each lesson's **class plan** (`plan` in `55b_LessonAssignmentData.js`, 2026-10-27) is drafted by the
 generator from the lesson's own sections, for the teacher's lesson doc and the daily agenda
-(`meta/SPRINT_LESSON_DOCS_2026-11.md`): an 8175 lesson's Bell Ringer (the warm-up), Hook, task and
+(`meta/SPRINT_LESSON_DOCS_2026-11.md`): an 8175 lesson's warm-up (its prompt file's), Hook, task and
 Checkout Slip; an 8177 lesson's timed Instructional Sequence steps ("B. The Bias Bootcamp (15
 Minutes)", or "- **Step:** (5 mins)"), split by "Day 1" / "Day 2" headings when it has them. Each
 block gets a mode (Chromebooks out, listening, discussion, writing) from its words. Write a step's

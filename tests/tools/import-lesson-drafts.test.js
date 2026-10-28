@@ -93,7 +93,8 @@ test('apply (8175): the warm-up, a new competency line and the tiers are written
   assert.equal(r.out.proposal.fields.warmupAnchor, fields.warmupAnchor);
 
   const md = fs.readFileSync(path.join(dir, 'cas-ccps/curriculum/lessons/8175/L04.md'), 'utf8');
-  assert.match(md, /\*\*Bell Ringer \(The Do Now\):\*\*\n\n"Which athlete rebuilt their brand after a mistake, and how did they do it\?"\n\n\*\*The Hook/);
+  const prompt = fs.readFileSync(path.join(dir, 'cas-ccps/curriculum/lessons/8175/prompts/L04.md'), 'utf8');
+  assert.match(prompt, /## Warm-up\n\nWhich athlete rebuilt their brand after a mistake, and how did they do it\?\n/);
   assert.match(md, /\n {2}- \*\*106:\*\* /);
   const tiers = JSON.parse(fs.readFileSync(path.join(dir, 'cas-ccps/curriculum/lessons/COMPETENCY_TIERS.json'), 'utf8'));
   assert.deepEqual(tiers['8175-L04'].secondary, ['8175-105']);
@@ -101,7 +102,8 @@ test('apply (8175): the warm-up, a new competency line and the tiers are written
   // The builders' own checks pass on the result.
   execFileSync(process.execPath, [path.join(dir, 'tools/cas-ccps/build-lesson-assignments.js'), '--check'], { cwd: dir });
 
-  const snapshot = () => ['cas-ccps/curriculum/lessons/8175/L04.md', 'cas-ccps/curriculum/lessons/COMPETENCY_TIERS.json',
+  const snapshot = () => ['cas-ccps/curriculum/lessons/8175/L04.md', 'cas-ccps/curriculum/lessons/8175/prompts/L04.md',
+    'cas-ccps/curriculum/lessons/COMPETENCY_TIERS.json',
     'cas-ccps/scripts/55b_LessonAssignmentData.js'].map((f) => fs.readFileSync(path.join(dir, f), 'utf8'));
   const before = snapshot();
   const again = run(dir, ['apply', file, 'LD-9']);
@@ -133,15 +135,17 @@ test('apply (8177): vocabulary and objective written; the student task is left f
   assert.match(plan, /\n1\. {2}Outline the six steps of the selling process\.\n/, 'the list number stays');
 });
 
-test('8175 vocabulary and objective have no home of their own, so they are named for the session', () => {
+test('8175: vocabulary goes into the prompt file; the objective (the Description\'s first paragraph) is named for the session', () => {
   const dir = copy();
   const cur = current(dir, '8175-L04');
   const fields = Object.assign({}, cur, { vocabulary: 'brand, reputation', objective: 'Analyze a public figure\'s brand.' });
   const file = draftsFile(dir, [draft({ draft_id: 'LD-5', course: '8175', lesson_key: '8175-L04', reason: 'Terms', fields, original: cur })]);
   const r = run(dir, ['apply', file, 'LD-5']);
   assert.equal(r.code, 0, r.err);
-  assert.deepEqual(r.out.hand.map((h) => h.field).sort(), ['objective', 'vocabulary']);
-  assert.equal(r.out.fields.vocabulary, 'not built yet');
+  assert.deepEqual(r.out.hand.map((h) => h.field), ['objective']);
+  assert.match(r.out.hand[0].why, /prompts\/L04\.md/);
+  assert.equal(r.out.fields.vocabulary, 'matches the draft');
+  assert.match(fs.readFileSync(path.join(dir, 'cas-ccps/curriculum/lessons/8175/prompts/L04.md'), 'utf8'), /## Vocabulary\n\nbrand, reputation\n/);
 });
 
 test('an incomplete draft, an accepted one or a missing one is not imported', () => {
@@ -170,18 +174,21 @@ const NEW = {
   competencyIds: ['8175-56', '8175-105', '8175-2'], primary: '8175-56', secondary: ['8175-105'], tertiary: ['8175-2'], brief: '',
 };
 
-test('NEW (8175): the lesson file is made, builds with its tiers, and a re-run leaves it as edited', () => {
+test('NEW (8175): the plan and prompt files are made, build with their tiers, and a re-run leaves them as edited', () => {
   const dir = copy();
   const file = draftsFile(dir, [draft({ draft_id: 'LD-N1', kind: 'NEW', course: '8175', lesson_key: '8175-L37',
     reason: '', fields: NEW, original: {} })]);
   const r = run(dir, ['apply', file, 'LD-N1']);
   assert.equal(r.code, 0, r.err);
-  assert.deepEqual(r.out.hand.map((h) => h.field), ['vocabulary']);
+  assert.deepEqual(r.out.hand, []);
   const md = fs.readFileSync(path.join(dir, 'cas-ccps/curriculum/lessons/8175/L37.md'), 'utf8');
+  const prompt = fs.readFileSync(path.join(dir, 'cas-ccps/curriculum/lessons/8175/prompts/L37.md'), 'utf8');
+  assert.match(prompt, /<!-- status: approved [\s\S]*## Prompt\n\nAssignment: Sponsorship Pitch\n\nDescription:\n\nBuild a sponsorship pitch/);
+  assert.match(prompt, /## Warm-up\n\nWhat would make a business pay[\s\S]*## Vocabulary\n\nsponsorship, activation\n/);
   assert.match(md, /^<!-- written in the repo \d{4}-\d{2}-\d{2} from Teacher Dashboard draft LD-N1; no Drive doc yet -->/);
   assert.match(md, /## LESSON 37: SPONSORSHIP PITCH/);
   assert.match(md, / {2}- \*\*056:\*\* Explain branding\./);
-  ['warmupAnchor', 'objective', 'competencyIds', 'primary', 'secondary', 'tertiary'].forEach((k) =>
+  ['warmupAnchor', 'vocabulary', 'objective', 'competencyIds', 'primary', 'secondary', 'tertiary'].forEach((k) =>
     assert.equal(r.out.fields[k], 'matches the draft', k));
   assert.match(r.out.proposal.fields.promptText, /Assignment: Sponsorship Pitch[\s\S]*Write a one-page sponsorship pitch/);
   execFileSync(process.execPath, [path.join(dir, 'tools/cas-ccps/build-lesson-assignments.js'), '--check'], { cwd: dir });
