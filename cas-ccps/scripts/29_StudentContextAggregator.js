@@ -41,12 +41,22 @@
 // read cfg.studentEmailDomain (00_SharedConfig.js), defaulting to the
 // same "ccpsnet.net" value so behavior is unchanged unless a project
 // explicitly configures a different domain.
+//
+// Read once per execution (2026-10-28): getConfig_() reads every Script
+// Property, and these are called per Ledger row and per student. A
+// preview of 92 students spent its whole time budget here and reached 44.
+let _studentEmailDomainMemo_ = "";
+let _studentIdPatternMemo_ = null;
 function _studentEmailDomain_() {
-  return getConfig_().studentEmailDomain || "ccpsnet.net";
+  if (!_studentEmailDomainMemo_) _studentEmailDomainMemo_ = getConfig_().studentEmailDomain || "ccpsnet.net";
+  return _studentEmailDomainMemo_;
 }
 function _studentIdPattern_() {
-  const escapedDomain = _studentEmailDomain_().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp("^\\d{7}@" + escapedDomain + "$");
+  if (!_studentIdPatternMemo_) {
+    const escapedDomain = _studentEmailDomain_().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    _studentIdPatternMemo_ = new RegExp("^\\d{7}@" + escapedDomain + "$");
+  }
+  return _studentIdPatternMemo_;
 }
 
 // StudentDocRegistry column indices (SDR_*) live in 00_SharedConfig.js
