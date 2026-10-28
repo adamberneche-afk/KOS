@@ -1,0 +1,72 @@
+{
+  "_about": "A lesson split into parts, one work file each, unlocked in order when a part's primary is MET (meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3). Each part: its title and the marker that starts its paragraph in the lesson's prompt ('Part 1:'), its work file, its tiers (from the lesson's own competencies; every lesson competency in some part), its criteria in the student's words (shown under 'What your work needs to show' and named by the reflection questions), and the vocabulary it uses. Part 1 carries the lesson's background, key terms and example; later parts point back to it. Generated into 55b's LESSON_PARTS by tools/cas-ccps/build-lesson-assignments.js.",
+  "8177-market-research-survey-design": {
+    "approved": "2026-10-27 (Appendix B, draft 1 of 2026-10-24)",
+    "parts": [
+      {
+        "title": "The Target Market",
+        "marker": "Part 1:",
+        "workFile": "doc",
+        "primary": "8177-81",
+        "secondary": ["8177-2"],
+        "tertiary": ["8177-93"],
+        "criteria": {
+          "8177-81": "You pick one group (students, parents or staff) and say what makes them different from the other two as customers.",
+          "8177-2": "You give a reason the store should care about that group most: what they buy, how often, or how easy they are to reach.",
+          "8177-93": "You say what makes that group want to buy from the store or show up to school events."
+        },
+        "vocabulary": ["market research", "target market"]
+      },
+      {
+        "title": "Build the Survey",
+        "marker": "Part 2:",
+        "workFile": "form",
+        "primary": "8177-83",
+        "secondary": ["8177-18"],
+        "tertiary": [],
+        "criteria": {
+          "8177-83": "Your form has all three questions set up as shown: checkboxes for Question 1 (choose up to two), a 1–5 scale with its two labels for Question 2, a short answer for Question 3.",
+          "8177-18": "Email collection is turned off in the form's settings."
+        },
+        "vocabulary": ["survey"]
+      },
+      {
+        "title": "Why These Questions Work",
+        "marker": "Part 3:",
+        "workFile": "doc",
+        "primary": "8177-83",
+        "secondary": [],
+        "tertiary": [],
+        "criteria": {
+          "8177-83": "For each of the three questions, you say whether it collects quantitative or qualitative data and one thing the store would learn from the answers."
+        },
+        "vocabulary": ["quantitative data", "qualitative data"]
+      },
+      {
+        "title": "Spot the Bias",
+        "marker": "Part 4:",
+        "workFile": "doc",
+        "primary": "8177-2",
+        "secondary": [],
+        "tertiary": [],
+        "criteria": {
+          "8177-2": "For each biased question, you name what pushes people (a leading word, a leading question or a loaded choice) and rewrite it so someone with the opposite opinion could answer just as easily."
+        },
+        "vocabulary": ["bias", "leading question"]
+      },
+      {
+        "title": "Beyond the Survey",
+        "marker": "Part 5:",
+        "workFile": "doc",
+        "primary": "8177-79",
+        "secondary": ["8177-2"],
+        "tertiary": [],
+        "criteria": {
+          "8177-79": "You name one more primary source and one secondary source the Cavalier Shop could really use.",
+          "8177-2": "For each source, you say one thing it would tell the store that the survey can't."
+        },
+        "vocabulary": ["primary data", "secondary data"]
+      }
+    ]
+  }
+}

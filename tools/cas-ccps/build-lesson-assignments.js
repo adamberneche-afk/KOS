@@ -135,7 +135,7 @@ function applyTiers(a, comps, t, grading, vocab) {
     'Explains the reasoning behind each part, in the student\'s own words.', id: '' };
   // The student sees what the work needs to show, in the task itself: each
   // competency as their own "I can" objective, or its title if it has none.
-  const objectives = studentObjectives()[a.key] || {};
+  const objectives = a.criteriaOverride || studentObjectives()[a.key] || {};
   const plainLine = (id) => '- ' + (objectives[id] || byId[id].competency_text).replace(/\.$/, '').trim();
   // Before a closing "Submission:" part, which the Canvas cartridge drops.
   const checklist = 'What your work needs to show:\n\n' +
@@ -361,6 +361,75 @@ function plan8177(text, warm) {
   return { duration: live.length > 1 ? live.length + ' class periods' : '', days: live };
 }
 
+// ── Parts (meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3; 2026-10-27) ──────────
+// A lesson in PARTS.json becomes one assignment per part (LESSON_PARTS in
+// 55b): its own ConfigID ("CAS-<lesson>-P2"), tiers, criteria and task. The
+// task is the prompt's opening (title and scenario), the part's own
+// paragraphs (from its "Part n:" marker to the next part's), the vocabulary
+// it uses, and for Part 1 the lesson's background, key terms and example;
+// later parts point back to Part 1. Checked: each part has a primary, every
+// tier is one of the lesson's competencies, and every lesson competency is in
+// some part.
+const PARTS_FILE = path.join(LESSONS, 'PARTS.json');
+const lessonParts = () => (fs.existsSync(PARTS_FILE) ? JSON.parse(fs.readFileSync(PARTS_FILE, 'utf8')) : {});
+
+function buildParts(a, comps, promptMd, def) {
+  const where = 'PARTS.json ' + a.key + ': ';
+  const task = section(promptMd, /^## Prompt/).trim();
+  const paras = task.split(/\n{2,}/);
+  const title = /^Assignment:/.test(paras[0]) ? paras.shift() : 'Assignment: ' + a.unitName;
+  const starts = def.parts.map((p) => {
+    const at = paras.findIndex((x) => x.indexOf(p.marker) === 0);
+    if (at === -1) throw new Error(where + 'no paragraph starts with "' + p.marker + '"');
+    return at;
+  });
+  const opening = paras.slice(0, starts[0]).filter((x) => !/^Use these terms accurately/.test(x));
+  const support = SUPPORT.map(([h, re]) => [h, section(promptMd, re).trim()]).filter(([, body]) => body);
+  const byId = {};
+  comps.forEach((r) => { if (r.competency_id) byId[r.competency_id] = r; });
+  const covered = new Set();
+  const out = def.parts.map((p, i) => {
+    if (!p.primary) throw new Error(where + 'part ' + (i + 1) + ' has no primary');
+    const ids = [p.primary].concat(p.secondary || [], p.tertiary || []);
+    ids.forEach((id) => {
+      if (!byId[id]) throw new Error(where + 'part ' + (i + 1) + ': ' + id + ' is not one of the lesson\'s competencies');
+      covered.add(id);
+    });
+    const end = i + 1 < starts.length ? starts[i + 1] : paras.findIndex((x, k) => k > starts[i] && /^Use these terms accurately/.test(x));
+    const own = paras.slice(starts[i], end === -1 ? paras.length : end)
+      .filter((x) => !/^Use these terms accurately/.test(x));
+    const n = i + 1;
+    const vocab = (p.vocabulary || []).join(', ');
+    const body = [title + ' — Part ' + n + ' of ' + def.parts.length + ': ' + p.title]
+      .concat(opening)
+      .concat(n === 1 ? support.map(([h, b]) => h + ':\n\n' + b) : ['Part 1 has the background, the key terms and an example: look back at it.'])
+      .concat(['Your Task:'], own, vocab ? ['Use these terms accurately: ' + vocab + '.'] : []);
+    const pa = {
+      key: a.key + '-P' + n, code: a.code, lessonId: a.lessonId + '-P' + n,
+      unitName: a.unitName + ' — Part ' + n + ': ' + p.title,
+      subject: a.subject, courseName: a.courseName, tier: a.tier, persona: a.persona,
+      objective: p.criteria[p.primary] || a.objective,
+      warmupAnchor: a.warmupAnchor, vocabulary: vocab,
+      competencyIds: ids.slice(), approved: true, source: a.source,
+      partOf: a.key, part: n, partCount: def.parts.length, partTitle: p.title,
+      workFile: p.workFile || 'doc',
+      // Phase 4 makes Forms the work file; until then a Form part is a doc
+      // with the form's link pasted in, as the task says.
+      workFileNow: 'doc',
+      promptText: body.join('\n\n'),
+      criteriaOverride: p.criteria,
+    };
+    const partComps = ids.map((id) => byId[id]);
+    pa.definitionOfDone = applyTiers(pa, partComps,
+      { primary: p.primary, secondary: p.secondary || [], tertiary: p.tertiary || [] }, '', vocab);
+    delete pa.criteriaOverride;
+    return pa;
+  });
+  const missing = Object.keys(byId).filter((id) => !covered.has(id));
+  if (missing.length) throw new Error(where + 'no part covers ' + missing.join(', '));
+  return out;
+}
+
 /** Drops a repeat: the same ID, or (with no ID) the same wording ("107 & 108" share one line). */
 const uniq = (comps) => comps.filter((r, i) => comps.findIndex((x) =>
   (r.competency_id ? x.competency_id === r.competency_id : !x.competency_id && x.competency_text === r.competency_text)) === i);
@@ -421,6 +490,10 @@ function lesson8177(file, rubrics) {
   Object.assign(a, milestones(comps, title, vocab));
   a.promptText = prompt;
   a.plan = plan8177(text, warm);
+  const partsDef = lessonParts()[a.key];
+  if (partsDef) {
+    a.parts = buildParts(a, comps, p, partsDef);
+  }
   const tiers8177 = competencyTiers()[a.key];
   a.definitionOfDone = tiers8177 ? applyTiers(a, comps, tiers8177, '', vocab) : definitionOfDone(a, comps, '', vocab);
   return a;
@@ -451,7 +524,13 @@ function build() {
       if (a) { out[a.key] = a; order[8177].push(a.key); }
     });
   }
-  const b = { assignments: out, order, review: reviewFile() };
+  // Parts live apart from the lessons (LESSON_PARTS), so nothing that walks
+  // the lessons meets them by accident.
+  const parts = {};
+  Object.keys(out).forEach((k) => {
+    if (out[k].parts) { parts[k] = out[k].parts; out[k].partKeys = out[k].parts.map((x) => x.key); delete out[k].parts; }
+  });
+  const b = { assignments: out, order, parts, review: reviewFile() };
   b.waitingVideos = addVideos(b);
   return b;
 }
@@ -473,6 +552,10 @@ function dataFile(b) {
     '',
     '// Each course\'s lessons in teaching order: LessonSchedule is seeded in this order.',
     'const LESSON_ORDER = ' + JSON.stringify(b.order, null, 2) + ';',
+    '',
+    '// A lesson split into parts (PARTS.json): its parts in order, each an assignment of its',
+    '// own ("<lesson>-P2", ConfigID "CAS-<LESSON>-P2"), unlocked when the one before is passed.',
+    'const LESSON_PARTS = ' + JSON.stringify(b.parts || {}, null, 2) + ';',
     '',
   ].join('\n');
 }
@@ -554,4 +637,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE, modeOf, plan8175, plan8177 };
+module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE, modeOf, plan8175, plan8177, buildParts };

@@ -39,3 +39,11 @@ Checkout Slip; an 8177 lesson's timed Instructional Sequence steps ("B. The Bias
 Minutes)", or "- **Step:** (5 mins)"), split by "Day 1" / "Day 2" headings when it has them. Each
 block gets a mode (Chromebooks out, listening, discussion, writing) from its words. Write a step's
 minutes in its heading for the plan to use them.
+
+`PARTS.json` (2026-10-27) splits a lesson into **parts**, one work file each, unlocked in order
+(`meta/STUDENT_WORK_PLAN_2026-10.md`, Phase 3). The generator makes each part an assignment of its
+own in 55b's `LESSON_PARTS` ("<lesson>-P2"): its tiers and criteria from the file, its task from the
+prompt's opening plus its own "Part n:" paragraphs and vocabulary (Part 1 also carries the
+background, key terms and example). It refuses a part with no primary, a tier that isn't one of the
+lesson's competencies, or a lesson competency no part covers. First lesson: 8177 Market Research
+(Appendix B, approved 2026-10-27).
