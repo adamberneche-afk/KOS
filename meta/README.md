@@ -10,12 +10,16 @@ why this repo exists at all.
   does what (Gemini runs the Google-side flows; a Claude Project is the
   thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
   pipeline kept and repaired, and the RTP Gem frozen.
-- **`HANDOFF_2026-10-27.md`** — the repo-wide session handoff: which
-  handoff docs are current, where each system stands (merged vs. live),
-  the operator's queue in order (the push, the overnight email, grades,
-  then the reflection and the rollout in ⚙ Settings), open decisions, and
-  the rules for an agent session picking the work up. Start here.
-  `HANDOFF_2026-10-24.md` (superseded for the queue; its agent notes still
+- **`HANDOFF_2026-10-28.md`** — the repo-wide session handoff: which
+  handoff docs are current, what merged on the night of 10-27 and on 10-28
+  (the weekly runs' setups, `showSetupStatus()`, one Save in ⚙ Settings,
+  the lesson doc and agenda deck, the feedback reflection, lessons in parts
+  through all 35 lessons, one lesson format), the operator's queue in order
+  (the push and its 55b size watch, the editor runs, trying the lesson doc
+  and agenda, the first split lesson), what is still open, and the rules
+  for an agent session picking the work up. Start here.
+  `HANDOFF_2026-10-27.md` (superseded for the queue; its agent notes still
+  hold), `HANDOFF_2026-10-24.md` (superseded for the queue; its agent notes still
   hold), `HANDOFF_2026-10-22.md` (superseded for the queue; its system state,
   open items and agent notes still hold), `HANDOFF_2026-10-21.md`, `HANDOFF_2026-10-20.md` and `HANDOFF_2026-10-19.md` (their agent notes still hold), `HANDOFF_2026-10-18.md`, `HANDOFF_2026-10-17.md`, `HANDOFF_2026-10-12.md`, `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
   `HANDOFF_2026-10-06.md` and `HANDOFF_2026-10-05.md` are earlier days', superseded.
