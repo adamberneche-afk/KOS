@@ -5388,3 +5388,24 @@ removes exactly what the report counted:
 - done clearing the approval;
 - growth after the report;
 - a stale approval.
+
+## Thread C: the per-lesson rollout hold, 2026-10-28
+
+The last small item from the Thread C design. `LessonSchedule` gains a
+`release` column (55); `HOLD` there keeps the nightly rollout (58) from
+seeding, enrolling or releasing that lesson's student docs, current or
+upcoming, until it is cleared:
+- `_lsRows_` reads the column by its header, so a tab without it holds
+  nothing; `seedLessonSchedule()` adds the header.
+- `_lrPlan_` puts a held lesson in `held`, not `lessons`. A held lesson
+  still gets the teacher's lesson doc and the agenda, since it is still
+  taught on its dates. Each run logs a `HOLD` row.
+- 📅 Lessons (07): a **Hold**/**Release** button per lesson
+  (`setLessonHold`, teacher-gated, under the script lock). Holding a lesson
+  that has started asks first: docs already shared stay shared. A date
+  change inside the rollout window says the lesson is held rather than
+  that tonight's rollout will make its docs.
+
+Not built, by decision: persistent per-course docs, which the
+lessons-in-parts design (one doc per part) replaced. Student-requested doc
+creation waits until the rollout has run live for a few weeks.
