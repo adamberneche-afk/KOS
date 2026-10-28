@@ -5169,3 +5169,21 @@ edits carry in, or the plan when no doc exists; minutes are the doc's
   asks for it once.
 - **Tests:** `agenda-deck.test.js` (new, with a SlidesApp stand-in); the
   harness's date formatter learned `EEEE`; `lesson-rollout.test.js` loads 67.
+## Lessons in parts, Phase 3a: the data, 2026-10-27
+
+The student work plan's Phase 3 (meta/STUDENT_WORK_PLAN_2026-10.md), started
+the night Appendix B was approved, while Flow 2's run data is gathered.
+This PR is data only; nothing makes, shares or unlocks a part yet (3b).
+- **`curriculum/lessons/PARTS.json`** (new): 8177 Market Research in five
+  parts, as Appendix B: each part's marker in the prompt, work file (Part 2
+  a Form; a doc with the link pasted until Phase 4), tiers, criteria in the
+  student's words and vocabulary.
+- **The generator:** `buildParts` makes each part an assignment ("<lesson>-P2",
+  so ConfigID "CAS-<LESSON>-P2") with its own milestones and Definition of
+  Done (the lessons' `applyTiers`, its criteria as the "What your work needs
+  to show" lines and the reflection's criteria), and a task of the prompt's
+  opening, its own paragraphs and vocabulary; Part 1 carries the background,
+  key terms and example. It refuses a part with no primary, a tier outside
+  the lesson, or a lesson competency no part covers. 55b gains
+  `LESSON_PARTS`, kept apart from the lessons; the lesson gets `partKeys`.
+- **Tests:** `lesson-parts.test.js` (new).
