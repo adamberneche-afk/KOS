@@ -27,8 +27,11 @@ those are archived (counts only; it changes nothing; a missing date
 column is named). `previewRetentionDisposition()` is the dry run of a
 disposition: per record, the rows it would remove (past, and archived
 where the tab has an archive marker) and the Docs that go with them, and
-the rows it can't decide yet. It deletes nothing; the disposition itself
-is a separate step run only on the operator's approval, and is not built.
+the rows it can't decide yet. It deletes nothing. It saves what it found
+(per record: the cutoff and the counts, no row content) as the pending
+disposition and logs the code that approves it. `applyRetentionDisposition()`
+(2026-10-28) is the disposition itself, run only once the operator has
+set `RETENTION_DISPOSITION_APPROVE` to that code (below).
 
 Periods are counted in whole school years after the year ends, with the
 same August start the dashboards use (`_retentionCutoff_()` in
@@ -54,7 +57,24 @@ exports (deleted after enrolling).
 (`Ledger`, `CompetencyEvidence`, `SCRDecisionLog`, `ParentReportLog`,
 `WarmUpQueue`) is archived automatically by the health checks, as below.
 Nothing is deleted automatically. Deletion is a separate step the operator
-approves after reviewing what is past its period.
+approves after reviewing what is past its period:
+1. Run `previewRetentionDisposition()` and read its report.
+2. Set the Script Property `RETENTION_DISPOSITION_APPROVE` to the code the
+   report gives.
+3. Run `applyRetentionDisposition()`. It removes only what the report
+   counted, and refuses the whole run if:
+   - the code doesn't match;
+   - the approval is more than 7 days old;
+   - a period changed;
+   - any record now has more rows to remove than were approved.
+
+A removed row's Doc (a Ledger row's workspace Doc, a `StudentDocRegistry`
+Doc, a warm-up Doc) goes to the Drive trash first, where it is recoverable
+for 30 days. A row whose Doc can't be trashed is kept. A run removes at most
+1,500 rows: run it again until it says done, which clears the approval. Each
+run writes a `DispositionLog` row per record: the time, the approval code,
+the record, its cutoff, rows removed, Docs trashed, and rows kept. Counts
+only; it holds no student data.
 
 The history below is how each archive pass came to exist; where it says
 "default 5 years, unconfirmed", the table above is now the schedule.
