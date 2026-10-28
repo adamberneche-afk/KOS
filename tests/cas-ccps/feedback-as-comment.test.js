@@ -94,16 +94,25 @@ function stamp(flag, configId, prompt) {
 
 test('stampDocument_: who, what, the dashboard link and the feedback status are in a small grey page header', () => {
   const { header } = stamp('all', 'CAS-8175-L06');
-  assert.equal(header.getNumChildren(), 2);
-  const [line1, line2] = [header.getChild(0), header.getChild(1)];
-  assert.equal(line1.getText(),
-    'A Student  ·  Sports Marketing — Teacher  ·  Block B2  ·  Period 3  ·  L06 SKILL DEVELOPMENT PLAN  ·  Your dashboard');
-  assert.deepEqual(line1.links, [{ text: 'Your dashboard', url: 'https://example.test/exec' }]);
-  assert.match(line2.getText(), /^Feedback: not submitted yet/);
-  for (const p of [line1, line2]) {
+  assert.equal(header.getNumChildren(), 3);
+  const [line1, line2, line3] = [0, 1, 2].map((i) => header.getChild(i));
+  assert.equal(line1.getText(), 'A Student  ·  Sports Marketing — Teacher  ·  Block B2  ·  Period 3');
+  assert.equal(line2.getText(), 'L06 SKILL DEVELOPMENT PLAN  ·  Your dashboard', 'the lesson and link on their own line');
+  assert.deepEqual(line2.links, [{ text: 'Your dashboard', url: 'https://example.test/exec' }]);
+  assert.match(line3.getText(), /^Feedback: not submitted yet/);
+  for (const p of [line1, line2, line3]) {
     assert.equal(p.fontSize, 8);
     assert.equal(p.color, '#5f6368');
   }
+});
+
+test('stampDocument_: a page break between the directions and the response', () => {
+  const { sandbox, id } = stamp('all', 'CAS-8175-L06');
+  const ps = sandbox.DocumentApp.openById(id).getBody().paragraphs;
+  const brk = ps.findIndex((p) => p.pageBreak);
+  const table = ps.findIndex((p) => p.getType && p.getType() === 'TABLE');
+  const heading = ps.findIndex((p) => p.text === 'Your response');
+  assert.ok(table !== -1 && table < brk && brk === heading - 1, 'the break sits right after the directions, before Your response');
 });
 
 test('stampDocument_: with the flag on, the body is the assignment and the response space only', () => {
@@ -199,7 +208,7 @@ test('stampDocument_: with the flag off, the feedback zone is built as before', 
 test('setDocFeedbackStatus_: checking stays grey; a result is color-coded and says where the feedback is', () => {
   const { sandbox, id } = stamp('all', 'CAS-8175-L06');
   const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js')], ['setDocFeedbackStatus_'], { DocumentApp: sandbox.DocumentApp });
-  const line = () => sandbox.DocumentApp.openById(id).getHeader().getChild(1);
+  const line = () => sandbox.DocumentApp.openById(id).getHeader().getChild(2); // the feedback line, under the two identity lines
   assert.equal(exported.setDocFeedbackStatus_(id, 'CHECKING', {}), true);
   assert.match(line().getText(), /^Feedback: submitted .*, waiting for feedback\.$/);
   assert.equal(line().color, '#5f6368');
