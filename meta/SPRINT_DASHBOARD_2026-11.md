@@ -64,9 +64,10 @@ show whether any of these flags is a Script Property today.
 
 ## Not in this sprint
 
-- A link straight to one week inside the context doc. Docs gives a heading
-  no stable link from Apps Script; a bookmark per week would do it, written
-  into each doc. Ask if wanted.
-- Past weeks' parent reports. The report is built for the current week;
-  `ParentReportLog` records what was copied, not the text.
+- ~~A link straight to one week inside the context doc.~~ Built 2026-10-28:
+  29 bookmarks each week's heading; both dashboards link to it
+  (`addContextWeekBookmarks()` once for older weeks).
+- ~~Past weeks' parent reports.~~ Built 2026-10-28: Copy report keeps the
+  subject and text in `ParentReportLog`, and the student's page shows past
+  copied weeks.
 - The one-time setup switches in Settings (decision 1).

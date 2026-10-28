@@ -74,11 +74,11 @@ operator. This file holds what comes after them.
 - ~~**Retention check: report a missing date column.**~~ Built 2026-10-21:
   `checkRetentionSchedule` names the header it looked for.
 
-- **The Teacher Dashboard sprint's leftovers** (2026-10-27,
-  `SPRINT_DASHBOARD_2026-11.md`): a link straight to one week inside a
-  Student Context doc (a bookmark per week, written into each doc); past
-  weeks' parent reports on the student's page (the report is built for
-  the current week only; `ParentReportLog` keeps no text).
+- ~~**The Teacher Dashboard sprint's leftovers**~~ (2026-10-27,
+  `SPRINT_DASHBOARD_2026-11.md`): built 2026-10-28. A link straight to one
+  week of a Student Context doc (a bookmark per week), and past weeks'
+  parent reports on the student's page (the copied text, kept in
+  `ParentReportLog`).
 - **The classify backfill's "ALREADY_QUEUED" label** for a copy of a
   classified session that has old part rows (`-edd1075a`, 2026-10-26):
   check "same content" before "has parts" (kos-personal 20), so it reads
