@@ -546,10 +546,21 @@ function getMyWarmUpHistory() {
 // A Student Context doc's weeks, newest first: the twin of 07's
 // _tdContextWeeks_ (a test keeps the two the same). each "Week of <date>" Heading 2
 // (29's appendWeeklySection_) starts one; its Heading 3 sections and lines
-// follow as items. Anything before the first week is left out.
+// follow as items. Anything before the first week is left out. bookmark:
+// the week's bookmark id, for a link straight to it ("" for none).
 const DASH_CONTEXT_MAX_WEEKS = 60;
 function _dashContextWeeks_(docId) {
-  const body = DocumentApp.openById(docId).getBody();
+  const doc = DocumentApp.openById(docId);
+  const body = doc.getBody();
+  // Each week's bookmark (29), by its heading's text: the link to that week.
+  const marks = {};
+  doc.getBookmarks().forEach(function (b) {
+    let el = b.getPosition().getElement();
+    if (el.getType() === DocumentApp.ElementType.TEXT) el = el.getParent();
+    if (el.getType() !== DocumentApp.ElementType.PARAGRAPH) return;
+    const label = String(el.asParagraph().getText() || "").trim();
+    if (label.indexOf("Week of ") === 0 && !marks[label]) marks[label] = b.getId();
+  });
   const weeks = [];
   let week = null;
   for (let i = 0; i < body.getNumChildren(); i++) {
@@ -562,7 +573,7 @@ function _dashContextWeeks_(docId) {
     const text = String(p.getText() || "").trim();
     const heading = p.getHeading();
     if (heading === DocumentApp.ParagraphHeading.HEADING2 && text.indexOf("Week of ") === 0) {
-      week = { label: text, items: [] };
+      week = { label: text, bookmark: marks[text] || "", items: [] };
       weeks.push(week);
       continue;
     }
@@ -1784,15 +1795,22 @@ function renderWarmUpHistory(d) {
 }
 
 // The Student Context doc one week at a time, with its link on every week.
+// A link straight to one week of the context doc (29's bookmark), or the
+// doc itself when the week has none.
+function weekDocUrl(url, bookmark) {
+  if (!url) return "";
+  return /^[A-Za-z0-9._-]+$/.test(String(bookmark || "")) ? url.split("#")[0] + "#bookmark=" + bookmark : url;
+}
 function renderContextTab(d) {
   const c = d.context;
   if (!c) return '<p class="rec-empty">No Student Context yet. It is made the first week you have a checked assignment or a warm-up answer, and updated each week.</p>';
   const url = safeDocUrl(c.docUrl);
-  const link = url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">Open the doc ↗</a>' : '';
+  let link = url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">Open the doc ↗</a>' : '';
   const weeks = c.weeks || [];
   if (!weeks.length) return '<p class="rec-empty">Your doc has no weeks yet. ' + link + '</p>';
   if (_ctxWeekI > weeks.length - 1) _ctxWeekI = weeks.length - 1;
   const w = weeks[_ctxWeekI];
+  if (url && w.bookmark) link = '<a href="' + esc(weekDocUrl(url, w.bookmark)) + '" target="_blank" rel="noopener">Open this week ↗</a>';
   return '<p class="rec-sub">What the system has gathered about your work, updated weekly' + (c.lastUpdatedAt ? ' (last ' + esc(c.lastUpdatedAt) + ')' : '') + '.</p>' +
     '<div class="ctx-nav"><button type="button" onclick="stepMyContext(1)"' + (_ctxWeekI >= weeks.length - 1 ? ' disabled' : '') + ' aria-label="Older week">‹ Older</button>' +
     '<strong>' + esc(w.label) + '</strong> <span style="color:var(--text-secondary)">(' + esc(String(_ctxWeekI + 1)) + ' of ' + esc(String(weeks.length)) + ')</span>' +

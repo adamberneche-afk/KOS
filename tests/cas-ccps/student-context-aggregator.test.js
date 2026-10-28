@@ -196,6 +196,39 @@ test('appendWeeklySection_: baseline answers go under "How They Work", lesson on
   assert.ok(text.indexOf('Only water there.') > refl);
 });
 
+// 2026-10-28: each week's heading gets a bookmark, the dashboards' link
+// straight to that week; addContextWeekBookmarks() adds one to older weeks.
+test('appendWeeklySection_: the week heading is bookmarked', () => {
+  const { exported, sandbox } = loadWithWarmUps();
+  const doc = sandbox.DocumentApp.create('Student Context');
+  exported.appendWeeklySection_(doc.getId(), new Date(2026, 9, 26), [], []);
+  const marks = doc.getBookmarks();
+  assert.equal(marks.length, 1);
+  assert.equal(marks[0].getPosition().element.getText(), 'Week of October 26, 2026');
+});
+
+test('addContextWeekBookmarks: bookmarks each older week once; a re-run adds nothing', () => {
+  const { exported, sandbox } = loadGasFiles([SHARED_CONFIG_PATH, AGGREGATOR_PATH], ['addContextWeekBookmarks']);
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  const doc = sandbox.DocumentApp.create('Context');
+  const body = doc.getBody();
+  body.appendParagraph('STUDENT CONTEXT RECORD').setHeading('HEADING1');
+  const w1 = body.appendParagraph('Week of October 19, 2026').setHeading('HEADING2');
+  body.appendParagraph('Completed Assignments').setHeading('HEADING3');
+  const w2 = body.appendParagraph('Week of October 26, 2026').setHeading('HEADING2');
+  doc.addBookmark(doc.newPosition(w2, 0));
+  const reg = ss.insertSheet('StudentDocRegistry');
+  reg.appendRow(['student_email', 'student_name', 'doc_id', 'doc_url', 'created_at', 'last_updated_at', 'last_run_had_content']);
+  reg.appendRow(['1234567@ccpsnet.net', 'A', doc.getId(), 'u', new Date(), '', '']);
+  reg.appendRow(['2345678@ccpsnet.net', 'B', 'missing-doc', 'u', new Date(), '', '']);
+  const out = exported.addContextWeekBookmarks();
+  assert.deepEqual({ docs: out.docs, added: out.added, failed: out.failed }, { docs: 1, added: 1, failed: 1 });
+  assert.deepEqual(doc.getBookmarks().map((b) => b.getPosition().element), [w2, w1]);
+  assert.equal(exported.addContextWeekBookmarks().added, 0);
+});
+
 // ── The Run-menu entry points (2026-10-27) ──────────────────────────────────
 // The installer and tab creator end in "_", hidden from the editor's Run
 // dropdown, so the weekly trigger was never installed and no doc existed.
