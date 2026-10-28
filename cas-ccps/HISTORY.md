@@ -4990,3 +4990,20 @@ missing.
 - **34c:** the overnight setup checks name a missing weekly trigger.
 - **Tests:** `student-context-aggregator.test.js` (setup, preview, run,
   re-run), `overnight-health.test.js` (the new line).
+
+## Competency suggestions: a setup the editor can run, 2026-10-27
+
+The same trap as 29's, in 30: `createSCRTabs_()` and `installSCRTrigger_()`
+are hidden from the Run dropdown, so the weekly run that writes
+SCRSuggestions (what 🎓 Competency ratings asks the teacher to confirm) may
+never have been installed.
+
+- **30:** `setupCompetencySuggestions()` (the tabs and the weekly trigger),
+  `previewCompetencySuggestions()` (counts, writes nothing) and
+  `buildCompetencySuggestionsNow()`. The run is `_s30Run_(opts)`;
+  `runWeeklySCRSuggestionUpdate_` (the trigger) calls it unchanged and now
+  returns its counts. A decided pair is still never touched.
+- **34c:** the setup check is "Weekly runs", one line per missing trigger
+  (29's and 30's).
+- **Tests:** `scr-suggestion-engine.test.js` (setup, preview, run, re-run),
+  `overnight-health.test.js`, `period-split.test.js`.
