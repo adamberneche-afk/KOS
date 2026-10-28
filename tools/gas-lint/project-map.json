@@ -82,7 +82,8 @@
       "cas-ccps/scripts/63_DocHeader.js",
       "cas-ccps/scripts/64_LedgerCycle.js",
       "cas-ccps/scripts/66_LessonDoc.js",
-      "cas-ccps/scripts/67_AgendaDeck.js"
+      "cas-ccps/scripts/67_AgendaDeck.js",
+      "cas-ccps/scripts/68_LessonParts.js"
     ]
   },
   "cas-ccps:unified-manual": {
@@ -149,7 +150,8 @@
       "cas-ccps/scripts/55b_LessonAssignmentData.js",
       "cas-ccps/scripts/65_LessonDrafts.js",
       "cas-ccps/scripts/66_LessonDoc.js",
-      "cas-ccps/scripts/67_AgendaDeck.js"
+      "cas-ccps/scripts/67_AgendaDeck.js",
+      "cas-ccps/scripts/68_LessonParts.js"
     ]
   },
   "cas-ccps:student-dashboard": {

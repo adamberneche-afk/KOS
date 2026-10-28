@@ -411,6 +411,23 @@ remaking a day's deck replaces its slides. The `AgendaDecks` tab records
 each by course and date. Needs the presentations scope in the Central
 Ledger and Teacher Dashboard (a one-time approval after the push).
 
+## Lessons in parts (script 68)
+
+`68_LessonParts.js` (Central Ledger and Teacher Dashboard, 2026-10-27; the
+student work plan's Phase 3). A lesson in `curriculum/lessons/PARTS.json`
+runs as its parts, each its own assignment and doc (55b's `LESSON_PARTS`,
+ConfigID "CAS-<LESSON>-P2"). The nightly rollout seeds and enrolls every
+part when the lesson comes up: Part 1 is shared on its release night like
+any lesson, the rest are made unshared (`SCHEDULED`). A part unlocks for a
+student when their latest check of the part before found that part's
+primary MET (`CompetencyEvidence`): `unlockReadyParts()`, a Ledger cycle job
+every 5 minutes (`installPartUnlocks()` adds it), shares the next part and
+sets it `ACTIVE`, the same as a release. The teacher can unlock a student's
+next part from the Teacher Dashboard (`unlockStudentPart`). Each unlock is a
+`PartUnlocks` row (the student's workspace ConfigID, the part, and
+PRIMARY_MET or TEACHER). A lesson students already have as one whole doc is
+never split under them. `previewPartUnlocks()` counts what would open now.
+
 ## Canvas roster import (script 52)
 
 Warm-ups, profiles and dashboards only see a student with a Ledger row, and
