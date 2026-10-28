@@ -349,6 +349,33 @@ test('⚙ Settings: one Save writes one _CONFIG row and one SettingsLog row per 
   assert.deepEqual(config('WARMUP_TEXT_BOX'), []);
 });
 
+test('⚙ Settings: activity and delay days, saved with the one Save, in date order; a broken one saves nothing', () => {
+  const { exported, config, ss } = loadTeacher('teacher@ccpsnet.net');
+  let sd = exported.getSettings().scheduleDays;
+  assert.deepEqual(sd.days, []);
+  assert.deepEqual(sd.choices.map((c) => c.code), ['ACTIVITY', 'DELAY', 'EARLY_RELEASE', 'A', 'B']);
+  assert.equal(sd.choices[1].label, '2-hour delay');
+  let res = exported.saveSettings([], null, [{ date: '2026-11-12', schedule: 'activity' }, { date: '2026-11-05', schedule: 'DELAY' }]);
+  assert.equal(res.success, true);
+  assert.deepEqual(config('SCHEDULE_DAYS'), ['2026-11-05=DELAY,2026-11-12=ACTIVITY']);
+  assert.deepEqual(res.scheduleDays.days, [{ date: '2026-11-05', schedule: 'DELAY' }, { date: '2026-11-12', schedule: 'ACTIVITY' }]);
+  const log = ss.getSheetByName('SettingsLog').getDataRange().getValues().slice(1).map((r) => [r[2], r[3], r[4]]);
+  assert.deepEqual(log, [['SCHEDULE_DAYS', '(none)', '2026-11-05=DELAY,2026-11-12=ACTIVITY']]);
+
+  [[{ date: '2026-11', schedule: 'DELAY' }, /whole date/], [{ date: '2026-11-19', schedule: 'SNOW' }, /Choose a schedule for 2026-11-19/]]
+    .forEach(([day, err]) => {
+      res = exported.saveSettings([{ key: 'WARMUP_TEXT_BOX', code: '8175', on: true }], null, [day]);
+      assert.match(res.error, err);
+    });
+  res = exported.saveSettings([], null, [{ date: '2026-11-05', schedule: 'A' }, { date: '2026-11-05', schedule: 'B' }]);
+  assert.match(res.error, /2026-11-05 is listed twice/);
+  assert.deepEqual(config('WARMUP_TEXT_BOX'), [], 'nothing else in a refused save is written');
+
+  res = exported.saveSettings([], null, []);
+  assert.deepEqual(res.scheduleDays.days, [], 'removing every day clears them');
+  assert.deepEqual(config('SCHEDULE_DAYS').slice(-1), ['(none)']);
+});
+
 test('⚙ Settings: each change is a SettingsLog row, and an unchanged value writes none', () => {
   const { exported, ss } = loadTeacher('teacher@ccpsnet.net');
   exported.setSettingForCourse('WARMUP_TEXT_BOX', '8175', true);

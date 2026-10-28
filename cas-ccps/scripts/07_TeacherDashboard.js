@@ -1203,11 +1203,12 @@ function _tdSettingValue_(raw, courses, changes) {
 }
 
 // The panel's one Save (2026-10-27): every switch changed since the panel
-// opened ([{ key, code, on }]) and the marking period dates (null when
-// unchanged). Everything is checked before anything is written, so an
-// unknown course or a broken date saves nothing. One _CONFIG row and one
-// SettingsLog row per setting, however many of its courses changed.
-function saveSettings(changes, ends) {
+// opened ([{ key, code, on }]), the marking period dates and the activity
+// and delay days ([{ date, schedule }]; each null when unchanged).
+// Everything is checked before anything is written, so an unknown course
+// or a broken date saves nothing. One _CONFIG row and one SettingsLog row
+// per setting, however many of its courses changed.
+function saveSettings(changes, ends, days) {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
   const courses = _tdKnownCourses_(cfg);
@@ -1225,6 +1226,11 @@ function saveSettings(changes, ends) {
     mp = _tdMarkingPeriodValue_(ends);
     if (mp.error) return { success: false, error: mp.error };
   }
+  let sd = null;
+  if (days) {
+    sd = _tdScheduleDaysValue_(days);
+    if (sd.error) return { success: false, error: sd.error };
+  }
   const resolved = _resolveConfigValues_().values;
   Object.keys(byKey).forEach(function (key) {
     const raw = String(resolved[key] || "").trim();
@@ -1236,7 +1242,32 @@ function saveSettings(changes, ends) {
     const raw = String(resolved.MARKING_PERIOD_ENDS || "").trim();
     _tdWriteSetting_(cfg, "MARKING_PERIOD_ENDS", raw || "(the district calendar)", mp.value);
   }
+  if (sd) {
+    const raw = String(resolved.SCHEDULE_DAYS || "").trim();
+    _tdWriteSetting_(cfg, "SCHEDULE_DAYS", raw || "(none)", sd.value || "(none)");
+  }
   return _tdSettings_(cfg);
+}
+
+// The schedules a day can be set to in ⚙ Settings, in the order offered.
+const TD_SCHEDULE_DAY_CHOICES = ["ACTIVITY", "DELAY", "EARLY_RELEASE", "A", "B"];
+
+// [{ date, schedule }] -> { value: "2026-11-05=DELAY,..." } (dates in
+// order; "(none)" is stored as no days) or { error }.
+function _tdScheduleDaysValue_(days) {
+  const seen = {};
+  const list = [];
+  for (let i = 0; i < days.length; i++) {
+    const date = String((days[i] && days[i].date) || "").trim();
+    const sched = String((days[i] && days[i].schedule) || "").trim().toUpperCase();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Each activity or delay day needs a whole date (yyyy-mm-dd)." };
+    if (TD_SCHEDULE_DAY_CHOICES.indexOf(sched) === -1) return { error: "Choose a schedule for " + date + "." };
+    if (seen[date]) return { error: date + " is listed twice." };
+    seen[date] = true;
+    list.push(date + "=" + sched);
+  }
+  list.sort();
+  return { value: list.join(",") };
 }
 
 // Parent reports ready on Fridays: its Friday 5 a.m. job lives in this
@@ -1320,6 +1351,7 @@ function _tdSettings_(cfg) {
   let table = _markingPeriodEnds_(mpRaw);
   const mpDefault = !table.length;
   if (mpDefault) table = _markingPeriodEnds_(DEFAULT_MARKING_PERIOD_ENDS);
+  const sdMap = bellScheduleDays_(resolved.values.SCHEDULE_DAYS);
   let log = [];
   try {
     const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TD_SETTINGS_LOG_TAB);
@@ -1347,6 +1379,11 @@ function _tdSettings_(cfg) {
       ends: table.map(function (t) { return { term: t.term, end: t.end }; }),
       isDefault: mpDefault,
       overriddenHere: resolved.sources.MARKING_PERIOD_ENDS === "Script Property",
+    },
+    scheduleDays: {
+      days: Object.keys(sdMap).sort().map(function (d) { return { date: d, schedule: sdMap[d] }; }),
+      choices: TD_SCHEDULE_DAY_CHOICES.map(function (c) { return { code: c, label: BELL_SCHEDULE_LABELS[c] }; }),
+      overriddenHere: resolved.sources.SCHEDULE_DAYS === "Script Property",
     },
     log: log,
   };
@@ -3030,10 +3067,12 @@ let _parentReports = [];
 let _settings = null;
 let _stDraft = {};    // "KEY|code" -> true/false, only where it differs from what is saved
 let _mpDraft = null;  // the marking period dates as typed, or null when untouched
+let _sdDraft = null;  // the activity and delay days as edited ([{ date, schedule }]), or null
 
 function openSettingsModal() {
   _stDraft = {};
   _mpDraft = null;
+  _sdDraft = null;
   _openPanel("settings-modal-backdrop", closeSettingsModal);
   document.getElementById("settings-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
@@ -3058,11 +3097,16 @@ function _stChanges() {
   });
   const saved = _settings.markingPeriods.ends;
   const dates = !!_mpDraft && _mpDraft.some(function (d, i) { return d !== saved[i].end; });
-  return { list: list, dates: dates };
+  const days = !!_sdDraft && _sdKey(_sdDraft) !== _sdKey(_settings.scheduleDays.days);
+  return { list: list, dates: dates, days: days };
+}
+// The activity and delay days in one comparable string.
+function _sdKey(rows) {
+  return rows.map(function (r) { return r.date + "=" + r.schedule; }).sort().join(",");
 }
 function _stUnsaved() {
   const ch = _stChanges();
-  return ch.list.length + (ch.dates ? 1 : 0);
+  return ch.list.length + (ch.dates ? 1 : 0) + (ch.days ? 1 : 0);
 }
 
 function closeSettingsModal() {
@@ -3070,6 +3114,7 @@ function closeSettingsModal() {
   if (n && !window.confirm("Leave Settings without saving? " + n + (n === 1 ? " change" : " changes") + " will be lost.")) return;
   _stDraft = {};
   _mpDraft = null;
+  _sdDraft = null;
   _closePanel("settings-modal-backdrop");
 }
 
@@ -3116,6 +3161,28 @@ function renderSettings(data) {
     const v = _mpDraft ? _mpDraft[i] : e.end;
     return '<label>' + esc(termLabel(e.term)) + ' <input type="date" data-mp-i="' + i + '" value="' + esc(v) + '"></label>';
   }).join("") + '</div></fieldset>';
+  // Activity and delay days (2026-10-28): the bell schedule of a day called
+  // as it comes, which the lesson doc and the daily agenda use (00's
+  // bellScheduleFor_).
+  const sd = data.scheduleDays;
+  const sdRows = _sdDraft || sd.days;
+  html += '<fieldset class="setting-row"><legend>Activity and delay days</legend>' +
+    '<div class="setting-help">A day that runs a different bell schedule than usual: an activity day, a 2-hour delay, ' +
+    'an early release not on the district calendar, or an A or B day swapped. The lesson doc and the daily agenda use its minutes. ' +
+    'An agenda already made for that day changes when you press Today\\'s agenda in 📅 Lessons again. ' +
+    'The district calendar\\'s early release days are already known.</div>';
+  if (sd.overriddenHere) {
+    html += '<p style="font-size:12.5px;color:#b3261e">This dashboard\\'s project has its own SCHEDULE_DAYS Script Property, which overrides these days here.</p>';
+  }
+  html += sdRows.map(function (r, i) {
+    return '<div class="setting-switches"><label>Day <input type="date" data-sd-i="' + i + '" value="' + esc(r.date) + '"></label> ' +
+      '<label>Schedule <select data-sd-s="' + i + '">' + sd.choices.map(function (c) {
+        return '<option value="' + esc(c.code) + '"' + (c.code === r.schedule ? ' selected' : '') + '>' + esc(c.label) + '</option>';
+      }).join("") + '</select></label> ' +
+      '<button type="button" onclick="removeScheduleDay(' + i + ')">Remove</button></div>';
+  }).join("") +
+    (sdRows.length ? '' : '<p style="font-size:12.5px;color:var(--text-secondary)">None set: every day runs its usual A or B schedule.</p>') +
+    '<button type="button" onclick="addScheduleDay()">+ Add a day</button></fieldset>';
   if ((data.log || []).length) {
     html += '<details class="setting-log"><summary>Recent changes</summary><ul>' + data.log.map(function (l) {
       return '<li>' + esc(l.at) + ': ' + esc(l.key) + ' ' + esc(l.from) + ' → ' + esc(l.to) + '</li>';
@@ -3130,13 +3197,14 @@ function renderSettings(data) {
 // nothing is waiting.
 function _stSaveBarHtml() {
   const ch = _stChanges();
-  if (!ch.list.length && !ch.dates) {
+  if (!ch.list.length && !ch.dates && !ch.days) {
     return '<span class="st-none">All changes saved.</span> <button type="button" class="st-yes" disabled>Save changes</button>';
   }
   const items = ch.list.map(function (c) {
     return '<li>Turn <strong>' + esc(c.label) + '</strong> ' + (c.on ? 'on' : 'off') + ' for ' + esc(c.code) + ': ' + esc(c.what) + '</li>';
   });
   if (ch.dates) items.push('<li>The marking period dates</li>');
+  if (ch.days) items.push('<li>The activity and delay days</li>');
   return '<strong>Not saved yet:</strong><ul>' + items.join("") + '</ul>' +
     '<button type="button" class="st-yes" onclick="saveSettingsChanges()">Save changes</button> ' +
     '<button type="button" onclick="discardSettingsChanges()">Discard</button>';
@@ -3162,22 +3230,45 @@ function setMarkingPeriodDraft(i, value) {
   _mpDraft[i] = value;
   _stRefreshSaveBar();
 }
+function _sdRows() {
+  if (!_sdDraft) _sdDraft = _settings.scheduleDays.days.map(function (d) { return { date: d.date, schedule: d.schedule }; });
+  return _sdDraft;
+}
+function addScheduleDay() {
+  if (!_settings) return;
+  _sdRows().push({ date: "", schedule: "ACTIVITY" });
+  renderSettings(_settings);
+}
+function removeScheduleDay(i) {
+  if (!_settings) return;
+  _sdRows().splice(i, 1);
+  renderSettings(_settings);
+}
+function setScheduleDayDraft(i, field, value) {
+  if (!_settings) return;
+  const row = _sdRows()[i];
+  if (!row) return;
+  row[field] = value;
+  _stRefreshSaveBar();
+}
 function discardSettingsChanges() {
   _stDraft = {};
   _mpDraft = null;
+  _sdDraft = null;
   if (_settings) renderSettings(_settings);
 }
 function saveSettingsChanges() {
   const ch = _stChanges();
-  if (!ch.list.length && !ch.dates) return;
+  if (!ch.list.length && !ch.dates && !ch.days) return;
   const changes = ch.list.map(function (c) { return { key: c.key, code: c.code, on: c.on }; });
   const ends = ch.dates ? _settings.markingPeriods.ends.map(function (e, i) { return { term: e.term, end: _mpDraft[i] }; }) : null;
+  const days = ch.days ? _sdDraft.map(function (r) { return { date: r.date, schedule: r.schedule }; }) : null;
   document.getElementById("settings-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Saving…</p>';
   google.script.run
     .withSuccessHandler(_settingsSaved)
     .withFailureHandler(_settingsSaveFailed)
-    .saveSettings(changes, ends);
+    .saveSettings(changes, ends, days);
 }
 // Saved: the drafts go and the panel shows what the server read back. A
 // refused save keeps the changes on screen with the reason.
@@ -3188,6 +3279,7 @@ function _settingsSaved(data) {
   }
   _stDraft = {};
   _mpDraft = null;
+  _sdDraft = null;
   renderSettings(data);
 }
 function _settingsSaveFailed(e) {
@@ -3201,6 +3293,10 @@ document.addEventListener("change", function (ev) {
     setSettingDraft(box.getAttribute("data-st-key"), box.getAttribute("data-st-code"), box.checked);
   } else if (box.getAttribute("data-mp-i") !== null && box.getAttribute("data-mp-i") !== undefined) {
     setMarkingPeriodDraft(Number(box.getAttribute("data-mp-i")), box.value);
+  } else if (box.getAttribute("data-sd-i") !== null && box.getAttribute("data-sd-i") !== undefined) {
+    setScheduleDayDraft(Number(box.getAttribute("data-sd-i")), "date", box.value);
+  } else if (box.getAttribute("data-sd-s") !== null && box.getAttribute("data-sd-s") !== undefined) {
+    setScheduleDayDraft(Number(box.getAttribute("data-sd-s")), "schedule", box.value);
   }
 });
 // Leaving or reloading the page with Settings changes not saved asks first.

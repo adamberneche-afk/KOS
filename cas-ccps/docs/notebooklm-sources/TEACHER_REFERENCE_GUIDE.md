@@ -68,7 +68,7 @@ Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** t
 | Student Context | One document per student that gathers their lessons, checks and warm-ups, updated weekly. Course and Student pickers narrow the list; each student shows their competencies done, **By week →** opens their page, and “← Back to dashboard” returns to the roster |
 | ✉ Parent Reports | This week's report for each student, to copy into an email you send yourself. Course and Student pickers show one course or one student. See Parent Reports |
 | 🎓 Competency ratings | Confirm or set each student's SCR rating. See Grading and Competency Ratings |
-| ⚙ Settings | Each feature on or off per course, and the marking period dates. See Settings |
+| ⚙ Settings | Each feature on or off per course, the marking period dates, and activity and delay days. See Settings |
 | 📅 Lessons | Start dates, rollout status, and lesson edits. See Lessons and Start Dates |
 | ❓ Terms | What each word and number on the dashboard means. Escape closes it |
 | ↻ Refresh | Loads the latest |
@@ -140,6 +140,8 @@ Nothing to do. You don't register students one at a time. The nightly rollout (a
 | Parent reports ready on Fridays | Each Friday at 5 a.m. the week's reports for that course's students are logged in ParentReportLog as ready, not yet copied; nothing is sent | A report is built when you open ✉ Parent Reports; only the ones you copy are logged |
 
 **Marking periods.** The last day of each marking period, as dates. The term on both dashboards and in the reports changes the day after. Until you change one, they're the district calendar's. They save with **Save changes**.
+
+**Activity and delay days.** A day that runs a different bell schedule from usual: an activity day, a 2-hour delay, an early release that isn't on the district calendar, or an A or B day swapped. Press **+ Add a day**, pick the date and the schedule, and save. The lesson doc and the daily agenda then use that day's minutes. An agenda already made for the day changes when you press **Today's agenda** in 📅 Lessons again. The district calendar's early release days are already known, so you don't need to add them.
 
 **What a feedback comment says.** “Feedback, <date and time>”, then “Result: ✅ Passed. Your work meets the standard.” or “Result: ✏️ Revise, then submit again.”, then the report (overall assessment, each milestone MET / PARTIALLY MET / NOT MET, required revisions) and what to do next.
 
@@ -231,6 +233,7 @@ Use the year menu in the header. It starts on **Whole school year**. Pick a mark
 | A new lesson | ✅ Through a draft | 📅 Lessons → + New lesson |
 | Features (feedback as a comment, warm-ups, the rollout, the reflection) | ✅ Yes | ⚙ Settings, per course |
 | Marking period dates | ✅ Yes | ⚙ Settings → Marking periods |
+| Activity and delay days | ✅ Yes | ⚙ Settings → Activity and delay days |
 | Student details (name, class, period) | ❌ Ask your admin | They come from the Canvas roster |
 | A student's document | 💬 Comment only | The student edits; you can comment |
 | Grades | ✅ In Canvas | The suggested score is a reference; the grade is yours |
