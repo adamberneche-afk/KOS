@@ -7,13 +7,17 @@
  * 53_AssignmentSeeder.js. The operator replaced the generated pacing-guide
  * units with these lessons (2026-10-07).
  *
- *   8175: each L<NN>.md has its own student-facing "CANVAS ASSIGNMENT TEXT"
- *         (the prompt, as written), a bell ringer (the warm-up seed), the
- *         competencies it covers and a grading tip.
- *   8177: the lesson plans have no student-facing assignment. A lesson is
- *         used only once lessons/8177/prompts/<slug>.md holds a prompt the
- *         teacher approved ("status: approved"); its competencies and
- *         objectives come from the plan.
+ *   Both courses: the student-facing side of a lesson is its prompt file,
+ *         lessons/<course>/prompts/<lesson>.md (Prompt, and when it has them
+ *         Background, Key terms, Example, Warm-up, Vocabulary). A lesson is
+ *         used only once its prompt file says "status: approved". The
+ *         teacher's plan beside it gives the competencies and the class plan.
+ *   8175: the plan is L<NN>.md (a Drive copy); its CANVAS ASSIGNMENT TEXT
+ *         and Bell Ringer were moved into prompts/L<NN>.md on 2026-10-28 and
+ *         are no longer read from the plan. The objective is the first
+ *         paragraph of the prompt's Description; the grading tip is the plan's.
+ *   8177: the plan is <slug>.md; the objective is its first Learning
+ *         Objectives line.
  *
  * Milestones and the definition of done follow build-unit-rubrics.js.
  *
@@ -261,6 +265,10 @@ function definitionOfDone(a, comps, grading, vocab) {
 function lesson8175(file, rubrics) {
   const text = fs.readFileSync(path.join(LESSONS, '8175', file), 'utf8');
   const num = /^L(\d+)\.md$/.exec(file)[1];
+  const promptFile = path.join(LESSONS, '8175', 'prompts', file);
+  if (!fs.existsSync(promptFile)) return null;
+  const p = fs.readFileSync(promptFile, 'utf8');
+  if (!/status:\s*approved/.test(p)) return null;
   const heading = /^##\s*LESSON\s*\d+:\s*(.+)$/m.exec(text);
   if (!heading) throw new Error('8175 ' + file + ': no "## LESSON NN:" heading');
   const title = strip(heading[1]);
@@ -272,28 +280,30 @@ function lesson8175(file, rubrics) {
   });
   if (!comps.length) throw new Error('8175 ' + file + ': no competencies');
   comps.splice(0, comps.length, ...uniq(comps));
-  const canvas = section(text, /CANVAS ASSIGNMENT TEXT/);
-  if (!canvas.trim()) throw new Error('8175 ' + file + ': no CANVAS ASSIGNMENT TEXT');
-  const promptText = plain(canvas);
-  const bell = strip(labelled(text, 'Bell Ringer')).replace(/^"|"$/g, '');
+  const task = section(p, /^## Prompt/).trim();
+  if (!task) throw new Error('8175 prompts/' + file + ': no "## Prompt"');
+  const warm = section(p, /^## Warm-up/).trim();
+  const vocab = section(p, /^## Vocabulary/).trim();
   const grading = plain(labelled(text, 'Quick Grading Tip'));
-  const description = plain(labelled(canvas, 'Description'));
+  const description = (/(?:^|\n)Description:\n\n([\s\S]*?)(?:\n\n|$)/.exec(task) || [, ''])[1];
   const a = {
     key: '8175-L' + num, code: '8175', lessonId: 'L' + num,
     unitName: 'L' + num + ' ' + title,
     subject: 'Marketing (CTE)', courseName: '8175 ' + COURSES[8175], tier: 'Tier 1 Core', persona: PERSONAS[8175],
-    objective: description.split('\n\n')[0] || title,
-    warmupAnchor: bell,
-    vocabulary: '',
+    objective: description || title,
+    warmupAnchor: warm,
+    vocabulary: vocab,
     competencyIds: comps.map((r) => r.competency_id).filter(Boolean),
     approved: true,
     source: 'lessons/8175/' + file,
   };
-  Object.assign(a, milestones(comps, title, ''));
-  a.promptText = promptText;
-  a.plan = plan8175(text, strip((/\*\*Title:\*\*\s*(.+)$/m.exec(canvas) || [, title])[1]).replace(/^Assignment:\s*/i, ''), bell);
+  Object.assign(a, milestones(comps, title, vocab));
+  a.promptText = studentPrompt(p);
+  a.plan = plan8175(text, task.split('\n')[0].replace(/^Assignment:\s*/i, '') || title, warm);
+  const partsDef = lessonParts()[a.key];
+  if (partsDef) a.parts = buildParts(a, comps, p, partsDef);
   const tiers8175 = competencyTiers()[a.key];
-  a.definitionOfDone = tiers8175 ? applyTiers(a, comps, tiers8175, grading, '') : definitionOfDone(a, comps, grading, '');
+  a.definitionOfDone = tiers8175 ? applyTiers(a, comps, tiers8175, grading, vocab) : definitionOfDone(a, comps, grading, vocab);
   return a;
 }
 
@@ -377,7 +387,7 @@ function buildParts(a, comps, promptMd, def) {
   const where = 'PARTS.json ' + a.key + ': ';
   const task = section(promptMd, /^## Prompt/).trim();
   const paras = task.split(/\n{2,}/);
-  const title = /^Assignment:/.test(paras[0]) ? paras.shift() : 'Assignment: ' + a.unitName;
+  const title = TITLE_LINE.test(paras[0]) ? paras.shift() : 'Assignment: ' + a.unitName;
   const starts = def.parts.map((p) => {
     const at = paras.findIndex((x) => x.indexOf(p.marker) === 0);
     if (at === -1) throw new Error(where + 'no paragraph starts with "' + p.marker + '"');
@@ -436,7 +446,11 @@ const uniq = (comps) => comps.filter((r, i) => comps.findIndex((x) =>
 
 const slug = (s) => String(s).toLowerCase().replace(/&/g, ' ').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
-// The student-facing support an 8177 prompt file can carry ahead of the task,
+// A prompt's first line names it: "Assignment: …", or for some 8175 lessons
+// "Project: …", "Discussion: …" or "Extra Credit: …".
+const TITLE_LINE = /^(Assignment|Project|Discussion|Extra Credit):\s*(.+)$/;
+
+// The student-facing support a prompt file can carry ahead of the task,
 // in plain classroom language: what the student needs to know to do it.
 const SUPPORT = [['Background', /^## Background/], ['Key Terms', /^## Key terms/i], ['Example', /^## Example/]];
 
@@ -450,7 +464,7 @@ function studentPrompt(p) {
   const parts = SUPPORT.map(([h, re]) => [h, section(p, re).trim()]).filter(([, body]) => body);
   if (!parts.length) return task;
   const paras = task.split(/\n{2,}/);
-  const title = /^Assignment:/.test(paras[0]) ? paras.shift() : '';
+  const title = TITLE_LINE.test(paras[0]) ? paras.shift() : '';
   return [title, ...parts.map(([h, body]) => h + ':\n\n' + body), 'Your Task:\n\n' + paras.join('\n\n')]
     .filter(Boolean).join('\n\n');
 }
@@ -508,7 +522,7 @@ function build() {
   if (fs.existsSync(d75)) {
     fs.readdirSync(d75).filter((f) => /^L\d+\.md$/.test(f)).sort().forEach((f) => {
       const a = lesson8175(f, rubrics);
-      out[a.key] = a; order[8175].push(a.key);
+      if (a) { out[a.key] = a; order[8175].push(a.key); }
     });
   }
   // 8177: the pacing guide's order where it names the lesson, then the rest alphabetically.
