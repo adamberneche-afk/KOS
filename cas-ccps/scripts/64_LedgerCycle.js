@@ -68,6 +68,7 @@ const LC_JOBS = [
   { fn: "registerDeliveredWarmUps",  every: 5  }, // 25
   { fn: "runAlignmentLogBackfill_",  every: 5  }, // 22
   { fn: "runQueueWatchdog",          every: 10 }, // 34
+  { fn: "unlockReadyParts",          every: 5  }, // 68
 ];
 
 /** The cycle. Time trigger, every minute. */

@@ -77,6 +77,12 @@ function lessonRollout_(opts) {
   };
 
   const plan = _lrPlan_(now);
+  // A lesson in parts (68): its parts, unless students already have it whole.
+  Object.keys(plan).forEach(function (course) {
+    plan[course].lessons.forEach(function (l) {
+      l.parts = lessonUsesParts_(ss, l.key) ? lessonPartsOf_(l.key) : null;
+    });
+  });
   const modes = {};
   Object.keys(plan).forEach(function (course) {
     modes[course] = !opts.forceShadow && pivotFlagFor_("ROLLOUT_AUTO_APPLY", course) ? "APPLY" : "SHADOW";
@@ -96,9 +102,12 @@ function lessonRollout_(opts) {
   }
 
   // 2. Seed every lesson in the window that isn't in the TeacherMatrix yet.
+  // A lesson in parts (68) seeds each part instead.
   const keys = [];
   Object.keys(plan).forEach(function (course) {
-    plan[course].lessons.forEach(function (l) { keys.push(l.key); });
+    plan[course].lessons.forEach(function (l) {
+      (l.parts ? l.parts.map(function (p) { return p.key; }) : [l.key]).forEach(function (k) { keys.push(k); });
+    });
   });
   const seeded = {};
   ["APPLY", "SHADOW"].forEach(function (mode) {
@@ -119,7 +128,14 @@ function lessonRollout_(opts) {
   // 3. Enroll each lesson in the window.
   Object.keys(plan).forEach(function (course) {
     const mode = modes[course];
+    const targets = [];
     plan[course].lessons.forEach(function (l) {
+      // Part 1 is released like a lesson; later parts stay unshared until
+      // they unlock (68).
+      if (l.parts) l.parts.forEach(function (p) { targets.push({ key: p.key, releaseNow: p.n === 1 && l.releaseNow }); });
+      else targets.push(l);
+    });
+    targets.forEach(function (l) {
       const lesson = lessonConfigId_(l.key);
       if (Date.now() > deadline) {
         log(mode, course, lesson, "PROBLEM", 0, "enrollment not reached: time budget used; the next run continues");
@@ -240,7 +256,7 @@ function _lrRelease_(ss, cfg, plan, modes, deadline) {
   const releasing = {};
   Object.keys(plan).forEach(function (course) {
     plan[course].lessons.forEach(function (l) {
-      if (l.releaseNow) releasing[lessonConfigId_(l.key)] = course;
+      if (l.releaseNow) releasing[l.parts ? l.parts[0].configId : lessonConfigId_(l.key)] = course;
     });
   });
   const out = {};
