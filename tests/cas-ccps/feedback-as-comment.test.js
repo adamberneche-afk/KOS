@@ -244,8 +244,9 @@ test('resolveStudentStatus_: an evaluated assignment points to Comments only whe
 // The Teacher Dashboard's ⚙ Settings (07, 2026-10-27; was 💬 Feedback)
 // writes one shared row per setting.
 function loadTeacher(viewer) {
-  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('07_TeacherDashboard.js')],
-    ['getSettings', 'setSettingForCourse', 'setMarkingPeriodEnds', 'pivotFlagFor_', 'feedbackAsCommentFor_'],
+  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('07_TeacherDashboard.js'), S('29_StudentContextAggregator.js'),
+    S('36_WeeklyParentReport.js')],
+    ['getSettings', 'setSettingForCourse', 'saveSettings', 'setMarkingPeriodEnds', 'pivotFlagFor_', 'feedbackAsCommentFor_'],
     { Session: { getActiveUser: () => ({ getEmail: () => viewer }), getScriptTimeZone: () => 'America/New_York' } });
   const { sandbox } = loaded;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -273,7 +274,7 @@ test('⚙ Settings: each feature per course, written as one _CONFIG row, "all" w
   let res = exported.getSettings();
   assert.deepEqual(res.courses, ['8175', '8177']);
   assert.deepEqual(res.settings.map((s) => s.key), ['FEEDBACK_AS_COMMENT', 'WARMUP_TEXT_BOX', 'ROLLOUT_AUTO_APPLY',
-    'REFLECTION_ON_SUBMIT', 'PIVOT_ARCHETYPE_LOCK']);
+    'REFLECTION_ON_SUBMIT', 'PIVOT_ARCHETYPE_LOCK', 'PARENT_REPORT_PREP']);
   assert.deepEqual(setting(res, 'FEEDBACK_AS_COMMENT').courses.map((c) => [c.code, c.on]), [['8175', false], ['8177', false]]);
   assert.equal(setting(res, 'FEEDBACK_AS_COMMENT').value, 'off', 'the live value is sent for the panel');
 
@@ -308,6 +309,44 @@ test('⚙ Settings: a listed course with no assignments yet is kept, and a list 
   assert.deepEqual(config('REFLECTION_ON_SUBMIT'), ['8175,8177,8179'], 'not "all": 8179 is listed but not known');
   sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', '8175,8177');
   assert.equal(exported.feedbackAsCommentFor_('CAS-8177-L01', ''), true, 'feedback placement reads a list too');
+});
+
+test('⚙ Settings: Parent reports ready on Fridays adds the Friday 5 a.m. job here when on for any course, and removes it when off for all', () => {
+  const { exported, config, sandbox } = loadTeacher('teacher@ccpsnet.net');
+  const jobs = () => sandbox.ScriptApp.getProjectTriggers().filter((t) => t.getHandlerFunction() === 'runWeeklyParentReportPrep');
+  exported.setSettingForCourse('PARENT_REPORT_PREP', '8175', true);
+  assert.deepEqual(config('PARENT_REPORT_PREP'), ['8175']);
+  assert.equal(jobs().length, 1);
+  assert.deepEqual(jobs()[0].__calls.map((c) => c.method), ['timeBased', 'onWeekDay', 'atHour']);
+  exported.setSettingForCourse('PARENT_REPORT_PREP', '8177', true);
+  assert.equal(jobs().length, 1, 'never a second job');
+  exported.setSettingForCourse('PARENT_REPORT_PREP', '8175', false);
+  assert.equal(jobs().length, 1, 'still on for 8177');
+  exported.setSettingForCourse('PARENT_REPORT_PREP', '8177', false);
+  assert.deepEqual(config('PARENT_REPORT_PREP'), ['off']);
+  assert.equal(jobs().length, 0);
+});
+
+test('⚙ Settings: one Save writes one _CONFIG row and one SettingsLog row per setting; a bad course or date saves nothing', () => {
+  const { exported, config, ss } = loadTeacher('teacher@ccpsnet.net');
+  let res = exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8175', on: true }, { key: 'FEEDBACK_AS_COMMENT', code: '8177', on: true },
+    { key: 'ROLLOUT_AUTO_APPLY', code: '8177', on: true }], [{ term: '2627_MP1', end: '2026-11-02' }, { term: '2627_MP2', end: '2027-01-22' },
+    { term: '2627_MP3', end: '2027-03-25' }, { term: '2627_MP4', end: '2027-06-04' }]);
+  assert.equal(res.success, true);
+  assert.deepEqual(config(), ['all']);
+  assert.deepEqual(config('ROLLOUT_AUTO_APPLY'), ['8177']);
+  assert.match(String(config('MARKING_PERIOD_ENDS')[0]), /2627_MP1=2026-11-02/);
+  const log = ss.getSheetByName('SettingsLog').getDataRange().getValues().slice(1).map((r) => [r[2], r[4]]);
+  assert.deepEqual(log.map((l) => l[0]), ['FEEDBACK_AS_COMMENT', 'ROLLOUT_AUTO_APPLY', 'MARKING_PERIOD_ENDS'], 'one row each');
+  assert.deepEqual(log[0], ['FEEDBACK_AS_COMMENT', 'all']);
+
+  res = exported.saveSettings([{ key: 'WARMUP_TEXT_BOX', code: '8175', on: true }, { key: 'WARMUP_TEXT_BOX', code: '9999', on: true }], null);
+  assert.equal(res.success, false);
+  assert.match(res.error, /Unknown course: 9999/);
+  assert.deepEqual(config('WARMUP_TEXT_BOX'), [], 'the good change in the same save was not written either');
+  res = exported.saveSettings([{ key: 'WARMUP_TEXT_BOX', code: '8175', on: true }], [{ term: '2627_MP1', end: '2026-11' }]);
+  assert.match(res.error, /whole date/);
+  assert.deepEqual(config('WARMUP_TEXT_BOX'), []);
 });
 
 test('⚙ Settings: each change is a SettingsLog row, and an unchanged value writes none', () => {

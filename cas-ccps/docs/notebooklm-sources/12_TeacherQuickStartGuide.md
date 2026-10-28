@@ -53,7 +53,7 @@ Need to change what a lesson says, or add one? Use **Edit** or **+ New lesson** 
 | Set when a lesson starts | 📅 Lessons → Starts |
 | Change or add a lesson | 📅 Lessons → Edit, or + New lesson. A draft is reviewed before it goes live |
 | Add students | Nothing to do: the nightly rollout enrolls them from Canvas |
-| Turn a feature on or off (where feedback goes, warm-ups, the nightly rollout, the reflection) | ⚙ Settings: a switch per course; it asks before it changes anything |
+| Turn a feature on or off (where feedback goes, warm-ups, the nightly rollout, the reflection, parent reports ready on Fridays) | ⚙ Settings: a switch per course; nothing changes until you press Save changes |
 | Rate competencies | 🎓 Competency ratings: confirm the suggestion, or enter 1–5 (1 is the highest) |
 | Look at one student | The Course, Period and Student filters, or click their name: their assignments, competencies done, this week's parent report and their Student Context by week |
 | See each student's history | Student Context: one document per student, updated weekly |
@@ -92,6 +92,6 @@ The same list as **❓ Terms** on your dashboard.
 - **Current lesson**: The lesson whose start date in 📅 Lessons is the latest on or before today, per course.
 - **Rollout**: The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead).
 - **Feedback as a comment**: Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings.
-- **⚙ Settings**: Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock) and sets the marking period end dates. Each change asks first and is kept in the SettingsLog tab.
+- **⚙ Settings**: Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock, parent reports ready on Fridays) and sets the marking period end dates. Changes wait for Save changes, closing with unsaved changes asks first, and each saved change is kept in the SettingsLog tab.
 - **3-Odd / 3-Even**: The two halves of period 3, which meet on alternate (odd or even) calendar dates.
 - **Marking period**: A term code like 2627_MP1 is marking period 1 of 2026–27.

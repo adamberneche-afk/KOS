@@ -5029,3 +5029,52 @@ and logs:
 - A last line, "TO TURN ON:", naming each installer still to run.
 
 Tests: `setup-status.test.js`.
+
+## ⚙ Settings: Parent reports ready on Fridays, 2026-10-27
+
+36's weekly prep (`runWeeklyParentReportPrep`, Fridays 5 a.m.: the week's
+parent reports logged in ParentReportLog as ready, not yet copied; nothing
+sent) had an installer but no switch, and ✉ Parent Reports builds each
+report live anyway. The operator asked for it as a toggle.
+
+- **00:** `PARENT_REPORT_PREP` in `SHARED_CONFIG_KEYS` and
+  `DASHBOARD_SETTING_KEYS` (so 34c names it if set as a Central Ledger
+  Script Property). Per course, like the others.
+- **07:** a sixth ⚙ Settings feature. Turning it on for any course installs
+  the Friday job in the Teacher Dashboard's own project (36 is there, with
+  the teacher's `TEACHER_EMAIL`) through `installWeeklyParentReportTrigger()`;
+  off for every course removes it (`_tdSyncParentReportPrepTrigger_`). A
+  failure is logged and the setting still saved.
+- **36:** the job reads the setting each run: off prepares nothing (not even
+  the tab); a course list prepares only students with a Ledger row in a
+  listed course (`_prStudentCourses_`).
+- **35:** `showSetupStatus()` no longer expects the job in the Central
+  Ledger; one there shows under "Other triggers".
+- **Docs:** the teacher reference guide's Settings table, the Terms entry,
+  the quick start, their notebook copies.
+- **Tests:** `weekly-parent-report.test.js` (off, per course),
+  `feedback-as-comment.test.js` (the job added once, removed when off).
+
+## ⚙ Settings: one Save, and a warning before leaving unsaved, 2026-10-27
+
+With six features and two courses, confirming and saving each box one at a
+time was tedious (the operator). The panel now keeps every change until
+**Save changes**.
+- **07, server:** `saveSettings(changes, ends)` takes every changed switch
+  and, if changed, the marking period dates. It checks all of them before
+  writing any (an unknown course or a broken date saves nothing), then
+  writes one `_CONFIG` row and one SettingsLog row per setting, however many
+  of its courses changed. `_tdSettingValue_` (a value with several courses
+  changed) and `_tdMarkingPeriodValue_` came out of `setSettingForCourse`
+  and `setMarkingPeriodEnds`, which stay.
+- **07, page:** boxes and dates are drafts (`_stDraft`, `_mpDraft`); a bar
+  pinned to the bottom of the panel lists each change with what it does,
+  with **Save changes** and **Discard**, or "All changes saved." A box
+  ticked back is no change. Closing (×, Escape, the backdrop) with changes
+  not saved asks first; so does leaving or reloading the page
+  (`beforeunload`). The per-switch confirm and **Save dates** are gone.
+- **Docs:** the reference guide, the quick start, the Terms entry and their
+  notebook copies.
+- **Tests:** `teacher-dashboard-inline-js.test.js` (drafts, the bar, the
+  close warning, a refused save), `feedback-as-comment.test.js` (one row per
+  setting, nothing written on a bad course or date).
