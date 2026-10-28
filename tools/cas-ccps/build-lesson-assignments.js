@@ -291,9 +291,74 @@ function lesson8175(file, rubrics) {
   };
   Object.assign(a, milestones(comps, title, ''));
   a.promptText = promptText;
+  a.plan = plan8175(text, strip((/\*\*Title:\*\*\s*(.+)$/m.exec(canvas) || [, title])[1]).replace(/^Assignment:\s*/i, ''), bell);
   const tiers8175 = competencyTiers()[a.key];
   a.definitionOfDone = tiers8175 ? applyTiers(a, comps, tiers8175, grading, '') : definitionOfDone(a, comps, grading, '');
   return a;
+}
+
+// ── The class plan (2026-10-27) ─────────────────────────────────────────────
+// What the lesson doc's itinerary is drafted from: the lesson's own
+// sections, each with its minutes when the lesson gives them and a mode
+// (what the class is doing). 8175 lessons have a Bell Ringer, a Hook, the
+// task and a Checkout Slip; 8177 lessons have timed sections ("B. The Bias
+// Bootcamp (15 Minutes)"), some split by day. The warm-up is the Student
+// Dashboard's. Minutes are scaled to the period in Apps Script (00's
+// itineraryFor_); a block with no minutes takes what is left.
+const MODES = [
+  ['devices', /\b(lab|independent|practice|build(ing)?|creat(e|ing)|workspace|digital|google (form|doc|slide|sheet)s?|canva|draft(ing)?|research|design lab|application)\b/i],
+  ['discuss', /\b(discuss(ion)?|hook|brainstorm(ing)?|debat(e|ing)|pitch(es|ing)?|shar(e|ing)|present(ation)?s?|role[- ]play|vot(e|ing)|think[- ]pair|gallery|tabletop)\b/i],
+  ['listen', /\b(direct instruction|instruction|crash course|bootcamp|walk-?through|lecture|concept|watch|video|explain|model(ing)?|demo)\b/i],
+];
+function modeOf(text, fallback) {
+  for (const [mode, re] of MODES) if (re.test(text)) return mode;
+  return fallback;
+}
+const oneLine = (s) => plain(s).replace(/\s*\n+\s*/g, ' ').replace(/^- /, '').trim();
+
+function plan8175(text, title, bell) {
+  const hook = oneLine(labelled(text, 'The Hook')).replace(/^"|"$/g, '');
+  const checkout = oneLine(labelled(text, 'Checkout Slip')).replace(/^"|"$/g, '');
+  const duration = strip((/\*\*Duration:\*\*\s*(.+)$/m.exec(text) || [, ''])[1]);
+  const blocks = [{ title: 'Warm-up', minutes: 5, mode: 'warmup', detail: bell, fixed: true }];
+  // A hook is talk or something to watch, never the Chromebooks' work.
+  if (hook) blocks.push({ title: 'The Hook', minutes: 10, mode: /\b(watch|video|clip|show)\b/i.test(hook) ? 'listen' : 'discuss', detail: hook.slice(0, 400) });
+  blocks.push({ title: title, minutes: null, mode: 'devices', detail: 'Self-paced: the assignment, on the Student Dashboard.' });
+  if (checkout) blocks.push({ title: 'Checkout Slip', minutes: 5, mode: 'write', detail: checkout, fixed: true });
+  return { duration: duration, days: [{ label: '', blocks: blocks }] };
+}
+
+function plan8177(text, warm) {
+  const seq = section(text, /Instructional Sequence/i);
+  const days = [];
+  let day = null;
+  const start = (label) => { day = { label: label, blocks: [] }; days.push(day); };
+  const lines = seq.split('\n');
+  for (let i = 0; i < lines.length; i++) {
+    // A bulleted step: "- **The Venue Context:** (5 mins) Discussion on ..."
+    const b = /^\s*-\s*\*\*(.+?):\*\*\s*\((\d+)\s*(?:minutes?|mins?)\)\s*(.*)$/i.exec(lines[i]);
+    if (b) {
+      if (!day) start('');
+      const detail = oneLine(b[3]);
+      day.blocks.push({ title: strip(b[1]), minutes: Number(b[2]), mode: modeOf(strip(b[1]) + ' ' + detail, 'listen'), detail: detail });
+      continue;
+    }
+    const h = /^#{3,4}\s*(.+)$/.exec(lines[i]);
+    if (!h) continue;
+    const head = strip(h[1]);
+    const mins = /\((\d+)\s*(?:Minutes?|mins?)\b[^)]*\)\s*$/i.exec(head);
+    const name = head.replace(/\s*\([^)]*\)\s*$/, '').replace(/^[A-Z]\.\s*/, '').trim();
+    if (/^Day\s+\d+/i.test(name)) { start(name); continue; }
+    if (!mins) continue;
+    if (!day) start('');
+    const body = [];
+    for (let j = i + 1; j < lines.length && !/^#/.test(lines[j]); j++) body.push(lines[j]);
+    const detail = oneLine(body.join('\n')).slice(0, 400);
+    day.blocks.push({ title: name, minutes: Number(mins[1]), mode: modeOf(name + ' ' + detail.slice(0, 120), 'listen'), detail: detail });
+  }
+  const live = days.filter((d) => d.blocks.length);
+  live.forEach((d) => d.blocks.unshift({ title: 'Warm-up', minutes: 5, mode: 'warmup', detail: oneLine(warm), fixed: true }));
+  return { duration: live.length > 1 ? live.length + ' class periods' : '', days: live };
 }
 
 /** Drops a repeat: the same ID, or (with no ID) the same wording ("107 & 108" share one line). */
@@ -355,6 +420,7 @@ function lesson8177(file, rubrics) {
   };
   Object.assign(a, milestones(comps, title, vocab));
   a.promptText = prompt;
+  a.plan = plan8177(text, warm);
   const tiers8177 = competencyTiers()[a.key];
   a.definitionOfDone = tiers8177 ? applyTiers(a, comps, tiers8177, '', vocab) : definitionOfDone(a, comps, '', vocab);
   return a;
@@ -488,4 +554,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE };
+module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE, modeOf, plan8175, plan8177 };
