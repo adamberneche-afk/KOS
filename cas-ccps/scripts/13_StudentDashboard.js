@@ -74,6 +74,8 @@ function getStudentDashboardData(termFilter) {
 
   const year = _currentSchoolYear_();
   const feedbackAsComment = feedbackAsCommentChecker_();
+  const partsOf = _dashPartsOf_(ss);
+  const locked = []; // parts made but not open yet (68)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (String(row[LEDGER.GOOGLE_ID]).toLowerCase() !== googleId.toLowerCase()) continue;
@@ -102,7 +104,12 @@ function getStudentDashboardData(termFilter) {
     // (58's nightly rollout) isn't shared with the student until the night
     // before, so its card would open a doc they can't reach.
     const rowStatus = String(row[LEDGER.STATUS]).trim();
-    if (rowStatus === "SCHEDULED") continue;
+    const part = partsOf[String(row[LEDGER.CONFIG_ID]).trim()];
+    if (rowStatus === "SCHEDULED") {
+      // A locked part still shows, as a line under the parts already open.
+      if (part) locked.push(Object.assign({ title: _dashPartNames_(row[LEDGER.COURSE_NAME]).title }, part));
+      continue;
+    }
     if (rowStatus === "ARCHIVED") {
       // Still count the term for dropdown, just don't show in assignments
       continue;
@@ -158,6 +165,8 @@ function getStudentDashboardData(termFilter) {
       // own doc, which docUrl already carries.
       fileId:        fileId,
       canSubmit:     !!fileId && !DASH_NO_SUBMIT_STATUSES[status] && !inLine,
+      // A part of a lesson (68): { lesson, n, count, lessonName, title }.
+      part:          part ? Object.assign(_dashPartNames_(row[LEDGER.COURSE_NAME]), part) : null,
       folderLabel:   String(row[LEDGER.BLOCK]).trim() + " - " +
                      String(row[LEDGER.CLASS_NAME]).trim() + " - " +
                      String(row[LEDGER.TEACHER_NAME]).trim()
@@ -181,6 +190,18 @@ function getStudentDashboardData(termFilter) {
     const ib = blockOrder.indexOf(b.block);
     if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
     return a.className.localeCompare(b.className);
+  });
+
+  // Each lesson's part count (the student has every part, open or not),
+  // and the locked parts of the lessons with a part open.
+  const partCount = {};
+  assignments.concat(locked).forEach(function (a) {
+    const p = a.part || a;
+    if (p.lesson) partCount[p.lesson] = Math.max(partCount[p.lesson] || 0, p.n);
+  });
+  assignments.forEach(function (a) { if (a.part) a.part.count = partCount[a.part.lesson]; });
+  const lockedParts = locked.filter(function (l) {
+    return assignments.some(function (a) { return a.part && a.part.lesson === l.lesson; });
   });
 
   // One line per class first registered in the last 3 days.
@@ -215,6 +236,7 @@ function getStudentDashboardData(termFilter) {
     return {
       googleId:    googleId,
       assignments: [],
+      lockedParts: [],
       warmUps:     warmUps,
       competencies: competencies,
       newRegistrations: newRegistrations,
@@ -234,6 +256,7 @@ function getStudentDashboardData(termFilter) {
   return {
     googleId:       googleId,
     assignments:    assignments,
+    lockedParts:    lockedParts,
     warmUps:        warmUps,
     competencies:   competencies,
     newRegistrations: newRegistrations,
@@ -241,6 +264,27 @@ function getStudentDashboardData(termFilter) {
     availableTerms: [...availableTerms].sort().reverse(),
     generatedAt:    formatDate_(new Date())
   };
+}
+
+// Lessons in parts (68): each part row's lesson and place, from
+// StudentAssignments (a part's assignment ConfigID ends "-P<n>"; 68 and 55b
+// aren't in this project). { studentConfigId: { lesson, n } }.
+function _dashPartsOf_(ss) {
+  const out = {};
+  const sa = ss.getSheetByName("StudentAssignments");
+  if (!sa || sa.getLastRow() < 2) return out;
+  sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
+    const sid = String(r[0] || "").trim();
+    const m = /^(.+)-P(\d+)$/i.exec(String(r[2] || "").trim());
+    if (sid && m) out[sid] = { lesson: m[1].toUpperCase(), n: Number(m[2]) };
+  });
+  return out;
+}
+
+// A part's Ledger name, "<lesson> — Part 2: <title>", in its two halves.
+function _dashPartNames_(unitName) {
+  const m = /^(.*?) — Part \d+: (.*)$/.exec(String(unitName || "").trim());
+  return m ? { lessonName: m[1], title: m[2] } : { lessonName: String(unitName || "").trim(), title: "" };
 }
 
 // ---------------------------------------------------------------------------
@@ -1228,6 +1272,10 @@ function buildStudentDashboardHtml_() {
   .info-card .correction-link:hover{text-decoration:underline}
   .group-header{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-secondary);padding:4px 0 10px;border-bottom:2px solid #e8eaed;margin:28px 0 14px}
   .group-header:first-child{margin-top:0}
+  .parts-head{font-size:15px;font-weight:600;margin:4px 0 8px}
+  .parts-head span{font-size:12px;font-weight:400;color:var(--text-secondary);margin-left:6px}
+  .part-locked{background:#f8f9fa;border:1px dashed #dadce0;border-radius:12px;padding:12px 20px;margin-bottom:12px;font-size:14px;color:var(--text-secondary)}
+  .part-locked div{font-size:12px;margin-top:2px}
   .card{background:white;border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-left:5px solid #dadce0;transition:box-shadow .15s,transform .1s}
   .card:hover{box-shadow:0 3px 10px rgba(0,0,0,.15);transform:translateY(-1px)}
   /* Colors match the teacher dashboard's equivalent statusClass exactly
@@ -1536,43 +1584,14 @@ function render(data) {
   let html = renderCompetencies(data) + renderWarmUps(data);
   sortedGroups.forEach(gk => {
     html += \`<div class="group-header">Block \${esc(gk)}</div>\`;
+    // A lesson in parts (68) shows as one block: its open parts in order,
+    // then the ones still locked, where its first card would be.
+    const shownLessons = {};
     groups[gk].forEach(a => {
-      const isDone = a.statusClass === "DONE";
-      html += \`<div class="card \${a.statusClass}">
-        <div class="card-top">
-          <div class="unit-name">\${esc(a.unitName)}</div>
-          <div class="pill pill-\${a.statusClass}">\${esc(a.displayStatus)}</div>
-        </div>
-        <!-- FIXED: was a fixed "Period X · Subject" template — a blank
-             period rendered as a dangling "Period  ·" (empty label, double
-             space). Mirrors the teacher dashboard's conditional-join
-             pattern (07_TeacherDashboard.js's student-meta line). -->
-        <div class="card-meta">\${[a.period && "Period "+esc(a.period), esc(a.subject)].filter(Boolean).join(" &nbsp;·&nbsp; ") || "No class info on file"}</div>
-        <div class="eval-line">\${a.lastEval ? "Last checked: " + esc(a.lastEval) : "Not checked yet"}</div>
-        <div class="card-actions">
-        \${safeDocUrl(a.docUrl)
-          ? \`<a href="\${esc(safeDocUrl(a.docUrl))}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
-          : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
-        }
-        \${a.canSubmit && !_reflect[a.fileId]
-          ? \`<button class="submit-btn" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
-          : ""
-        }
-        </div>
-        \${a.canSubmit && _reflect[a.fileId] ? reflectFormHtml(a) : ""}
-        \${_submitMsgs[a.fileId]
-          ? \`<div class="submit-msg \${_submitMsgs[a.fileId].ok ? "ok" : "err"}" role="status">\${esc(_submitMsgs[a.fileId].text)}</div>\`
-          : ""
-        }
-        \${a.submittedAt
-          ? \`<div class="submitted-note">Last submitted \${esc(a.submittedAt)}</div>\`
-          : ""
-        }
-        \${a.statusClass === "ISSUE" && a.teacherEmail
-          ? \`<div style="margin-top:8px"><a href="mailto:\${esc(a.teacherEmail)}?subject=\${encodeURIComponent("Question about: " + a.unitName)}" style="font-size:13px;color:#1557b0;text-decoration:none;font-weight:500">✉ Email \${esc(a.teacherName || "your teacher")}</a></div>\`
-          : ""
-        }
-      </div>\`;
+      if (!a.part) { html += cardHtml(a); return; }
+      if (shownLessons[a.part.lesson]) return;
+      shownLessons[a.part.lesson] = true;
+      html += partsHtml(a.part, groups[gk], data.lockedParts || []);
     });
   });
 
@@ -1583,6 +1602,59 @@ function render(data) {
   _setFooter(data);
 
   _populateTermDropdown(data);
+}
+
+// One assignment's card.
+function cardHtml(a) {
+  const isDone = a.statusClass === "DONE";
+  return \`<div class="card \${a.statusClass}">
+    <div class="card-top">
+      <div class="unit-name">\${esc(a.part ? "Part " + a.part.n + " of " + a.part.count + (a.part.title ? ": " + a.part.title : "") : a.unitName)}</div>
+      <div class="pill pill-\${a.statusClass}">\${esc(a.displayStatus)}</div>
+    </div>
+    <!-- FIXED: was a fixed "Period X · Subject" template — a blank
+         period rendered as a dangling "Period  ·" (empty label, double
+         space). Mirrors the teacher dashboard's conditional-join
+         pattern (07_TeacherDashboard.js's student-meta line). -->
+    <div class="card-meta">\${[a.period && "Period "+esc(a.period), esc(a.subject)].filter(Boolean).join(" &nbsp;·&nbsp; ") || "No class info on file"}</div>
+    <div class="eval-line">\${a.lastEval ? "Last checked: " + esc(a.lastEval) : "Not checked yet"}</div>
+    <div class="card-actions">
+    \${safeDocUrl(a.docUrl)
+      ? \`<a href="\${esc(safeDocUrl(a.docUrl))}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
+      : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
+    }
+    \${a.canSubmit && !_reflect[a.fileId]
+      ? \`<button class="submit-btn" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
+      : ""
+    }
+    </div>
+    \${a.canSubmit && _reflect[a.fileId] ? reflectFormHtml(a) : ""}
+    \${_submitMsgs[a.fileId]
+      ? \`<div class="submit-msg \${_submitMsgs[a.fileId].ok ? "ok" : "err"}" role="status">\${esc(_submitMsgs[a.fileId].text)}</div>\`
+      : ""
+    }
+    \${a.submittedAt
+      ? \`<div class="submitted-note">Last submitted \${esc(a.submittedAt)}</div>\`
+      : ""
+    }
+    \${a.statusClass === "ISSUE" && a.teacherEmail
+      ? \`<div style="margin-top:8px"><a href="mailto:\${esc(a.teacherEmail)}?subject=\${encodeURIComponent("Question about: " + a.unitName)}" style="font-size:13px;color:#1557b0;text-decoration:none;font-weight:500">✉ Email \${esc(a.teacherName || "your teacher")}</a></div>\`
+      : ""
+    }
+  </div>\`;
+}
+
+// A lesson in parts: "Part 2 of 5 open", the open parts' cards, and a line
+// for each locked part saying what opens it.
+function partsHtml(part, list, locked) {
+  const open = list.filter(a => a.part && a.part.lesson === part.lesson).sort((x, y) => x.part.n - y.part.n);
+  const shut = locked.filter(l => l.lesson === part.lesson).sort((x, y) => x.n - y.n);
+  let html = \`<div class="parts-head">\${esc(part.lessonName)} <span>\${open.length} of \${part.count} parts open</span></div>\`;
+  open.forEach(a => { html += cardHtml(a); });
+  shut.forEach(l => {
+    html += \`<div class="part-locked">🔒 Part \${l.n} of \${part.count}\${l.title ? ": " + esc(l.title) : ""}<div>Opens when the check finds Part \${l.n - 1} meets its main goal, or when your teacher opens it.</div></div>\`;
+  });
+  return html;
 }
 
 function _setFooter(data) {

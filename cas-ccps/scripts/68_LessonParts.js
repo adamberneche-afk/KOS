@@ -17,6 +17,7 @@
 //   installPartUnlocks()     puts it in the cycle (run once from the editor)
 //   previewPartUnlocks()     what it would unlock now; changes nothing
 //   unlockNextPart_(...)     the teacher's unlock (07)
+//   foldPartRows_(students)  the Teacher Dashboard's one row per student (07)
 //
 // A lesson students have already started as one whole doc stays whole: its
 // parts are used only when no student has the lesson's own assignment yet.
@@ -36,8 +37,9 @@ function lessonPartsOf_(lessonKey) {
   return parts.map(function (a) { return { key: a.key, configId: "CAS-" + String(a.key).toUpperCase(), n: a.part, a: a }; });
 }
 
-// A part's place, from its assignment ConfigID: { lessonKey, n, count, part,
-// next } (next is the following part or null), or null for anything else.
+// A part's place, from its assignment ConfigID: { lessonKey, lessonConfigId,
+// n, count, part, next } (next is the following part or null), or null for
+// anything else. lessonConfigId is the whole lesson's (LessonSchedule's).
 function partOfConfigId_(configId) {
   if (typeof LESSON_PARTS === "undefined") return null;
   const id = String(configId || "").trim().toUpperCase();
@@ -46,7 +48,7 @@ function partOfConfigId_(configId) {
     const parts = lessonPartsOf_(lessons[i]);
     for (let j = 0; j < parts.length; j++) {
       if (parts[j].configId === id) {
-        return { lessonKey: lessons[i], n: parts[j].n, count: parts.length, part: parts[j], next: parts[j + 1] || null };
+        return { lessonKey: lessons[i], lessonConfigId: "CAS-" + lessons[i].toUpperCase(), n: parts[j].n, count: parts.length, part: parts[j], next: parts[j + 1] || null };
       }
     }
   }
@@ -189,6 +191,36 @@ function previewPartUnlocks() {
 // 5-minute trigger when the cycle isn't installed. Safe to re-run.
 function installPartUnlocks() {
   return lcInstallJob_(LP_JOB);
+}
+
+// The Teacher Dashboard's rows (07) for lessons in parts, one per student
+// and lesson: the student's furthest open part stands for the lesson, with
+// every part's state in `parts` and the next locked one in `nextPart` (null
+// when none is left, or when no part is open yet: the lesson's release opens
+// Part 1). A row is a part when it has `part` ({ n, count, title }); other
+// rows pass through. The order is kept, each lesson where its first part was.
+function foldPartRows_(students) {
+  const groups = {};
+  const out = [];
+  students.forEach(function (s) {
+    if (!s.part) { out.push(s); return; }
+    const k = String(s.googleId).toLowerCase() + "|" + s.assignmentId;
+    if (!groups[k]) { groups[k] = []; out.push(groups[k]); }
+    groups[k].push(s);
+  });
+  return out.map(function (x) {
+    if (!Array.isArray(x)) return x;
+    x.sort(function (a, b) { return a.part.n - b.part.n; });
+    const open = x.filter(function (s) { return s.status !== "SCHEDULED"; });
+    const cur = open.length ? open[open.length - 1] : x[0];
+    const next = open.length ? x.filter(function (s) { return s.status === "SCHEDULED" && s.part.n > cur.part.n; })[0] : null;
+    return Object.assign({}, cur, {
+      parts: x.map(function (s) {
+        return { n: s.part.n, title: s.part.title, open: s.status !== "SCHEDULED", docUrl: s.status !== "SCHEDULED" ? s.docUrl : null };
+      }),
+      nextPart: next ? { n: next.part.n, title: next.part.title } : null
+    });
+  });
 }
 
 // The teacher's unlock: the earliest SCHEDULED part of a lesson for the
