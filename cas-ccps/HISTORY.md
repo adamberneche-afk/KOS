@@ -5078,3 +5078,24 @@ time was tedious (the operator). The panel now keeps every change until
 - **Tests:** `teacher-dashboard-inline-js.test.js` (drafts, the bar, the
   close warning, a refused save), `feedback-as-comment.test.js` (one row per
   setting, nothing written on a bad course or date).
+
+## The lesson doc sprint, PR 1: each lesson's class plan and the bell schedule, 2026-10-27
+
+The first of three PRs for `meta/SPRINT_LESSON_DOCS_2026-11.md` (one teacher
+doc per lesson, and a daily agenda deck). This one is data and arithmetic;
+nothing is made yet.
+- **The generator** (`tools/cas-ccps/build-lesson-assignments.js`) adds a
+  `plan` to every lesson in 55b: `{ duration, days: [{ label, blocks }] }`,
+  each block `{ title, minutes, mode, detail, fixed }`. 8175: the Bell
+  Ringer as the warm-up (5, fixed), the Hook (10; listening when it shows
+  something, else discussion), the task (no minutes: it takes the rest,
+  Chromebooks out) and the Checkout Slip (5, fixed). 8177: the warm-up, then
+  each timed Instructional Sequence step, in a heading or a bulleted line,
+  split by "Day n" headings. Modes come from each block's words
+  (`modeOf`). All 67 lessons have a plan; two 8177 lessons have two days.
+- **00:** Clover Hill's bell schedule (`BELL_CLASS_MINUTES`,
+  `bellScheduleFor_`, `bellBlockOf_`, `classMinutesFor_`, with the early
+  release days and called days as overrides) and `itineraryFor_`, which
+  fits a day's plan to a period's minutes exactly (fixed blocks kept, the
+  open block takes the rest, timed blocks scaled, rounded to 5).
+- **Tests:** `lesson-itinerary.test.js` (new).
