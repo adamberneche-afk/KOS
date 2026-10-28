@@ -18,7 +18,6 @@ const {
   commitContains,
   SHA_RE,
 } = require('../../tools/deploy-drift/check.js');
-const { NEEDS_GIT } = require('../harness/git.js');
 const { execFileSync } = require('child_process');
 
 const REAL_SHA = 'a'.repeat(40);
@@ -200,13 +199,23 @@ test('evaluateReport: a later commit that contains the expected one is a match; 
     fakeExpected(REAL_SHA), contains(false)).status, 'drift');
 });
 
-test('commitContains: a commit contains itself and its ancestors, not its descendants or an unknown commit', NEEDS_GIT, () => {
-  const sha = (rev) => execFileSync('git', ['rev-parse', rev], { encoding: 'utf8' }).trim();
-  const head = sha('HEAD');
-  const parent = sha('HEAD~1');
-  assert.equal(commitContains(head, head), true);
-  assert.equal(commitContains(parent, head), true);
-  assert.equal(commitContains(head, parent), false);
-  assert.equal(commitContains(parent, 'f'.repeat(40)), false);
+// Its own two-commit repo: CI's checkout of this one is shallow.
+test('commitContains: a commit contains itself and its ancestors, not its descendants or an unknown commit', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'contains-'));
+  const git = (...a) => execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@example.invalid', ...a],
+    { cwd: dir, encoding: 'utf8' }).trim();
+  git('init', '-q');
+  fs.writeFileSync(path.join(dir, 'a'), '1');
+  git('add', 'a'); git('commit', '-qm', 'one');
+  const parent = git('rev-parse', 'HEAD');
+  fs.writeFileSync(path.join(dir, 'a'), '2');
+  git('commit', '-qam', 'two');
+  const head = git('rev-parse', 'HEAD');
+  assert.equal(commitContains(head, head, dir), true);
+  assert.equal(commitContains(parent, head, dir), true);
+  assert.equal(commitContains(head, parent, dir), false);
+  assert.equal(commitContains(parent, 'f'.repeat(40), dir), false);
 });
-
