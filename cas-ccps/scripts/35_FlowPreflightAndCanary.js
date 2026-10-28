@@ -888,11 +888,14 @@ const SETUP_STATUS_TRIGGERS = [
   { fn: "runLessonRollout",              installer: "installLessonRolloutTrigger()",      what: "Lessons, 9 p.m.: the nightly rollout" },
   { fn: "runWeeklyStudentAggregation_",  installer: "setupStudentContextDocs()",          what: "Weekly: Student Context docs" },
   { fn: "runWeeklySCRSuggestionUpdate_", installer: "setupCompetencySuggestions()",       what: "Weekly: competency suggestions" },
-  { fn: "runWeeklyParentReportPrep",     installer: "installWeeklyParentReportTrigger()", what: "Weekly: parent report rows" },
   { fn: "syncArtifactCompetencies",      installer: "installArtifactSyncTrigger()",       what: "Daily: artifact competency sync" },
   { fn: "reportDeployVersion",           installer: "installDeployVersionReportTrigger()", what: "Every 6 hours: deployed version" },
   { fn: "autoHealthAlert",               installer: "setupAutoHealthTrigger()",           what: "Daily, 6 a.m.: health alert" },
 ];
+
+// Not listed: runWeeklyParentReportPrep. ⚙ Settings' "Parent reports ready
+// on Fridays" installs it in the Teacher Dashboard's project (07); one here
+// shows under "Other triggers".
 
 // Script Properties whose value is safe to log, with what blank means.
 const SETUP_STATUS_SWITCHES = [
