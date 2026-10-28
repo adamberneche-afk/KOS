@@ -5187,3 +5187,28 @@ This PR is data only; nothing makes, shares or unlocks a part yet (3b).
   the lesson, or a lesson competency no part covers. 55b gains
   `LESSON_PARTS`, kept apart from the lessons; the lesson gets `partKeys`.
 - **Tests:** `lesson-parts.test.js` (new).
+
+## Lessons in parts, Phase 3b: made, released and unlocked, 2026-10-27
+
+`68_LessonParts.js` (Central Ledger and Teacher Dashboard), on 3a's data.
+- **The rollout (58):** a lesson with parts in its window, and no student
+  holding the whole lesson's assignment, seeds and enrolls each part
+  instead (`lessonUsesParts_`, `lessonPartsOf_`): Part 1 is enrolled and
+  released like a lesson, the later parts are made unshared (SCHEDULED) and
+  never released by the nightly step. 53's `_asAssignment_` resolves a part
+  key ("<lesson>-P2") to its assignment.
+- **The unlock:** `unlockReadyParts()` (a Ledger cycle job, 64's `LC_JOBS`,
+  every 5 minutes; `installPartUnlocks()` adds it to an installed cycle)
+  finds each student's SCHEDULED part whose previous part's latest
+  CompetencyEvidence row for that part's primary is MET (archived rows
+  ignored), shares it and sets it ACTIVE, as a release does.
+  `previewPartUnlocks()` counts. `unlockNextPart_` is the teacher's unlock
+  (07's `unlockStudentPart`, teacher-gated, own students only): the
+  student's earliest locked part in that lesson. Each unlock is a
+  `PartUnlocks` row: time, the student's workspace ConfigID, the part,
+  PRIMARY_MET or TEACHER.
+- **Not yet (3c):** both dashboards still show each open part as its own
+  card or row; the unlock button; Flow 2 told it may read earlier parts.
+- **Tests:** `lesson-parts-unlock.test.js` (new); `lesson-rollout.test.js`
+  (parts made and released, a whole lesson left whole); three test files
+  load 68.

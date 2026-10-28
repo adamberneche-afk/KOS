@@ -272,6 +272,9 @@ function refreshAssignments_(opts) {
 }
 
 function _asAssignment_(id, code) {
+  // A lesson's part ("8177-…-P2", 68) seeds like a lesson of its own.
+  const part = partOfConfigId_("CAS-" + String(id).toUpperCase());
+  if (part) return part.part.a.code === code ? { a: part.part.a, configId: part.part.configId } : "OTHER_COURSE";
   const lessons = typeof LESSON_ASSIGNMENTS !== "undefined" ? LESSON_ASSIGNMENTS : {};
   if (lessons[id]) {
     return lessons[id].code === code ? { a: lessons[id], configId: lessonConfigId_(id) } : "OTHER_COURSE";
