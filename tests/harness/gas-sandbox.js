@@ -1021,7 +1021,7 @@ makeDocumentAppMock._counter = 0;
 
 // Real Apps Script API — Utilities.formatDate(date, timeZone, format).
 // Implements the SimpleDateFormat tokens this repo actually uses (yyyy,
-// MMMM, MMM, MM, dd, d, EEE, HH, h, mm, ss, a) — enough to exercise real
+// MMMM, MMM, MM, dd, d, EEEE, EEE, HH, h, mm, ss, a) — enough to exercise real
 // date-formatting call sites without pulling in a full date-format
 // library. timeZone is applied (several past bugs in this repo were
 // hardcoded timezone strings — see CreateWarmUpDocStep.gs's own header).
@@ -1048,7 +1048,9 @@ function formatDateMock(date, timeZone, format) {
   const H = +fields.hour % 24, m = +fields.minute, sec = +fields.second;
   const tokens = {
     yyyy: String(y), MMMM: months[M - 1], MMM: months[M - 1].slice(0, 3),
-    MM: pad2(M), dd: pad2(d), d: String(d), EEE: fields.weekday, HH: pad2(H),
+    MM: pad2(M), dd: pad2(d), d: String(d), EEE: fields.weekday,
+    EEEE: { Sun: 'Sunday', Mon: 'Monday', Tue: 'Tuesday', Wed: 'Wednesday', Thu: 'Thursday', Fri: 'Friday', Sat: 'Saturday' }[fields.weekday],
+    HH: pad2(H),
     h: String(H % 12 === 0 ? 12 : H % 12), mm: pad2(m), ss: pad2(sec), a: H < 12 ? 'AM' : 'PM',
   };
   // SimpleDateFormat-style: runs of one letter are a token; anything else
