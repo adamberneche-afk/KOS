@@ -112,9 +112,13 @@ The mastery map is the school-side, evolving view used for instruction. The port
 docs made two days ahead and shared the night before, shadow per course
 until `ROLLOUT_AUTO_APPLY` (Script Property or the Ledger's `_CONFIG` tab)
 switches it on, a counts-only `RolloutLog` with the stale-export warning,
-and its PROBLEM rows in the CAS signal (`34b_CasAttentionSignal.js`). Not
-built: the per-lesson `release` hold column. The design below is as
-proposed.
+and its PROBLEM rows in the CAS signal (`34b_CasAttentionSignal.js`). The
+per-lesson `release` hold column was built 2026-10-28 (`HOLD` in
+`LessonSchedule`, set from 📅 Lessons). Not built: the two larger options
+below. Student-requested creation waits on the rollout running live for a
+few weeks; persistent per-course docs are set aside, since the lessons-in-parts
+design (approved 2026-10-24) gives each part its own doc. The design below
+is as proposed.
 
 **Goal.** A better way to roll out planned lessons and distribute documents to students, with less manual running of functions and with failures visible before class.
 
