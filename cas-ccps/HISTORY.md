@@ -5308,3 +5308,12 @@ gives both the same outcomes (parts, support sections, vocabulary).
 - **L01's prompt:** "Part 4:" now starts its own paragraph (a blank line
   was missing), so the lesson can split; the task's words are unchanged.
 - **Tests:** `tests/tools/parts-drafts.test.js` (new).
+
+## PartUnlocks in the retention schedule, 2026-10-28
+
+`PartUnlocks` (68: what opened each part of a lesson for a student, their
+check or the teacher) is now a record in 57's schedule: kept as long as the
+Ledger (`LEDGER_RETENTION_YEARS`, 5 years), by its `UnlockedAt` date, like
+`StudentAssignments`. No archive marker, so past its period it is only
+counted for the disposition review. The FERPA data map's table and its
+PartUnlocks entry say so; `retention-schedule.test.js` expects it.
