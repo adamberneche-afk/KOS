@@ -5079,6 +5079,26 @@ time was tedious (the operator). The panel now keeps every change until
   close warning, a refused save), `feedback-as-comment.test.js` (one row per
   setting, nothing written on a bad course or date).
 
+## The feedback reflection (the student work plan's Phase 2), 2026-10-27
+
+Phase 1's reflection on Submit asked an Evidence question every time and an
+Approach or Choice question on a first Submit; a resubmission got Evidence
+only. Phase 2 (meta/STUDENT_WORK_PLAN_2026-10.md, Appendix A's F1 to F3,
+approved 2026-10-24), behind the same `REFLECTION_ON_SUBMIT`:
+- **00:** the three FEEDBACK frames; `reflectionShortfall_(ss, cfg, fileId,
+  criteria)`, the primary criterion when this student file's latest check
+  in CompetencyEvidence found it not MET (archived rows ignored);
+  `chooseReflectionQuestions_` takes it as a 4th argument and, on a
+  resubmission with a shortfall, adds a Feedback question: F1 first (it
+  names what fell short), then the least answered.
+- **13:** the dashboard passes the shortfall once the student has answered
+  before for this file.
+- **37 / 15b:** the answer reaches Flow 2 as "Question about the last
+  feedback", and YOUR PROCESS says plainly whether the revision carries it
+  out. Flow 2's prompt changed: run `syncFlowPromptsToSheet()` after the
+  push.
+- **Tests:** `process-reflection.test.js` (the choice, the shortfall, the
+  prompt, the dashboard end to end).
 ## The lesson doc sprint, PR 1: each lesson's class plan and the bell schedule, 2026-10-27
 
 The first of three PRs for `meta/SPRINT_LESSON_DOCS_2026-11.md` (one teacher

@@ -1565,7 +1565,12 @@ const REFLECTION_FRAMES = [
   { id: "A3", kind: "APPROACH", text: "What did you look back at in the lesson while you worked, and what did it help with?" },
   { id: "C1", kind: "CHOICE",   text: "What was the hardest choice in this assignment, and what did you pick?" },
   { id: "C2", kind: "CHOICE",   text: "What would someone who disagrees with your work say? What would you tell them?" },
-  { id: "C3", kind: "CHOICE",   text: "What other way could you have done this? Why didn't you?" }
+  { id: "C3", kind: "CHOICE",   text: "What other way could you have done this? Why didn't you?" },
+  // Phase 2 (meta/STUDENT_WORK_PLAN_2026-10.md, Appendix A, approved
+  // 2026-10-24): a resubmission after the primary wasn't met.
+  { id: "F1", kind: "FEEDBACK", text: "The feedback says your work doesn't show this yet: \u201c{criterion}\u201d. What are you changing, and why will that fix it?" },
+  { id: "F2", kind: "FEEDBACK", text: "What part of the feedback do you agree with most, and what are you doing about it?" },
+  { id: "F3", kind: "FEEDBACK", text: "Is there anything in the feedback you disagree with? Say what, and what you're doing about the rest." }
 ];
 
 const REFLECTION_LOG_HEADERS = ["SubmittedAt", "GoogleID", "ConfigID", "StudentFileID", "Kind",
@@ -1611,9 +1616,12 @@ function _reflectionHash_(s) {
 // The questions for this Submit. criteria: reflectionCriteria_(); prior:
 // this student's earlier ReflectionLog rows for this assignment, as
 // [{ frameId, kind, competencyId, submittedAt }]; key: the assignment's
-// ConfigID (seeds the variety). Returns [{ frameId, kind, competencyId,
-// question }], one or two of them.
-function chooseReflectionQuestions_(criteria, prior, key) {
+// ConfigID (seeds the variety); shortfall: reflectionShortfall_(), the
+// primary criterion when the last check found it not met yet, else null.
+// Returns [{ frameId, kind, competencyId, question }], one or two of them:
+// an Evidence question every time, plus an Approach or Choice question on a
+// first Submit, or a Feedback question on a resubmission with a shortfall.
+function chooseReflectionQuestions_(criteria, prior, key, shortfall) {
   criteria = criteria || [];
   prior = prior || [];
   const used = {};
@@ -1642,6 +1650,14 @@ function chooseReflectionQuestions_(criteria, prior, key) {
     const f = pick("EVIDENCE", evidenceAsked);
     out.push({ frameId: f.id, kind: f.kind, competencyId: c.id, question: f.text.replace("{criterion}", c.text) });
   }
+  if (!firstSubmit && shortfall && criteria.length) {
+    // F1 first (it names what fell short), then the least answered, in order.
+    const f = REFLECTION_FRAMES.filter(function (x) { return x.kind === "FEEDBACK"; })
+      .reduce(function (b, x) { return (used[x.id] || 0) < (used[b.id] || 0) ? x : b; });
+    out.push({ frameId: f.id, kind: f.kind, competencyId: shortfall.id,
+               question: f.text.replace("{criterion}", shortfall.text) });
+    return out;
+  }
   if (firstSubmit || !criteria.length) {
     const kinds = seed % 2 === 0 ? ["APPROACH", "CHOICE"] : ["CHOICE", "APPROACH"];
     const wanted = criteria.length ? 1 : 2;
@@ -1651,6 +1667,32 @@ function chooseReflectionQuestions_(criteria, prior, key) {
     }
   }
   return out;
+}
+
+// The primary criterion ({ id, text }) when this student file's last check
+// found it not met yet (MET is the only outcome that isn't a shortfall), or
+// null: no check yet, the primary met, or the evidence unreadable. Read from
+// CompetencyEvidence by header; the latest evaluated_at is the last check.
+function reflectionShortfall_(ss, cfg, fileId, criteria) {
+  if (!criteria || !criteria.length) return null;
+  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  const rows = sheet.getDataRange().getValues();
+  const h = rows[0].map(function (x) { return String(x).trim(); });
+  const iFile = h.indexOf("student_file_id"), iComp = h.indexOf("competency_id"),
+    iOut = h.indexOf("outcome"), iAt = h.indexOf("evaluated_at"), iArch = h.indexOf("archive_status");
+  if (iFile === -1 || iComp === -1 || iOut === -1 || iAt === -1) return null;
+  const mine = rows.slice(1).filter(function (r) {
+    return String(r[iFile]).trim() === fileId && (iArch === -1 || !String(r[iArch]).trim());
+  });
+  if (!mine.length) return null;
+  const latest = Math.max.apply(null, mine.map(function (r) { return sheetTimestampMs_(r[iAt]) || 0; }));
+  const primary = criteria[0];
+  const last = mine.filter(function (r) {
+    return (sheetTimestampMs_(r[iAt]) || 0) === latest && String(r[iComp]).trim() === primary.id;
+  })[0];
+  if (!last) return null;
+  return String(last[iOut]).trim().toUpperCase() === "MET" ? null : primary;
 }
 
 // The TeacherMatrix row a student's workspace belongs to, read the way 37
