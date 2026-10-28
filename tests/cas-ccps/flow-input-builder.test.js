@@ -31,12 +31,13 @@ const TURNIN_GATE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts',
 const FLOW2_PROMPT_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15b_StudioFlowPrompts_Flow2_Revised.js');
 const SERVICE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15c_Flow2DirectEvaluationService.js');
 const BUILDER_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '37_FlowInputBuilder.js');
+const PARTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '68_LessonParts.js');
 const ASSIGNMENTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '54_StudentAssignments.js');
 const PROMPTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '40_FlowPrompts.js');
 
 function load(extraGlobals) {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, DOC_HEADER_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PROMPTS_PATH,
+    [SHARED_CONFIG_PATH, DOC_HEADER_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PARTS_PATH, PROMPTS_PATH,
       ASSIGNMENTS_PATH],
     [
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',

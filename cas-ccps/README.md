@@ -435,6 +435,13 @@ now**. The Student Dashboard shows the open parts together under the
 lesson's name, and a line for each locked part saying what opens it. The
 lesson doc's Class status counts each part on its own row.
 
+Flow 2 reads a later part with the student's earlier parts beside it
+(2026-10-28): 37 puts the student's own work on the parts before it, read
+from their docs, in the prompt's EARLIER PARTS block, to read for context
+only (every milestone is judged on the part itself). It leaves the
+FlowInput row once the check is done. After pushing, run
+`syncFlowPromptsToSheet()`: Flow 2's prompt changed.
+
 ## Canvas roster import (script 52)
 
 Warm-ups, profiles and dashboards only see a student with a Ledger row, and

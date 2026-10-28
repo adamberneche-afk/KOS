@@ -237,7 +237,7 @@ test('reflection on: the doc menu can\'t ask the questions, so it sends the stud
 
 function loadBuilder(comments) {
   const files = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
-    '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '37_FlowInputBuilder.js',
+    '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '37_FlowInputBuilder.js', '68_LessonParts.js', '55b_LessonAssignmentData.js',
     '40_FlowPrompts.js', '54_StudentAssignments.js'].map(S);
   const loaded = loadGasFiles(files, ['buildFlowInputRows', 'FI', 'LEDGER', '_buildFlow2Prompt_', 'REFLECTION_LOG_HEADERS'],
     { Drive: { Comments: { create(body, fileId) { comments.push({ fileId, content: body.content }); return { id: 'c1' }; } } } });
