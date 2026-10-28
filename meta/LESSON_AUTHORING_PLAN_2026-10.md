@@ -22,7 +22,7 @@ Six places hold a lesson, and the repo generates most of them:
 |---|---|---|
 | The teacher's Drive lesson doc | The lesson as the teacher wrote it | The teacher |
 | `cas-ccps/curriculum/lessons/8175/L<NN>.md`, `8177/<slug>.md` | A copy of that doc, kept in step by hand (its header names the Doc ID) | Copied, then edited deliberately |
-| `8177/prompts/<slug>.md` | 8177's student assignment, used only once `status: approved` | Drafted in the repo, approved by the teacher |
+| `8175/prompts/L<NN>.md`, `8177/prompts/<slug>.md` | The student assignment (prompt, support sections, warm-up, vocabulary), used only once `status: approved`. 8175's were moved out of the lesson copies' Canvas text and Bell Ringer on 2026-10-28, wording unchanged | Drafted in the repo, approved by the teacher |
 | `COMPETENCY_TIERS.json` | Each assignment's primary, secondary and tertiary competencies | Drafted, approved by the teacher (2026-10-20) |
 | `cas-ccps/scripts/55b_LessonAssignmentData.js` | The assignment data Apps Script reads: prompt, milestones, definition of done, warm-up anchor, vocabulary, competency IDs, the teaching order | `build-lesson-assignments.js` |
 | `canvas-cartridges/8175.imscc`, `8177.imscc` | The Canvas modules | `build-canvas-cartridge.js` |
