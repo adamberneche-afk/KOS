@@ -28,7 +28,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = [
   S('00_SharedConfig.js'), S('15b_StudioFlowPrompts_Flow2_Revised.js'),
-  S('25_WarmUpWriter.js'), S('37_FlowInputBuilder.js'), S('40_FlowPrompts.js'),
+  S('25_WarmUpWriter.js'), S('37_FlowInputBuilder.js'), S('68_LessonParts.js'), S('03_QueueBridge.js'), S('40_FlowPrompts.js'),
   S('41_WarmUpFlowBridge.js'), S('42_FlowBuildSpec.js'),
 ];
 

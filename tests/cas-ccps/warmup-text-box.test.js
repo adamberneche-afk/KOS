@@ -13,7 +13,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
-  '04_Form2_TurnInGate.js', '25_WarmUpWriter.js', '37_FlowInputBuilder.js', '41_WarmUpFlowBridge.js']
+  '04_Form2_TurnInGate.js', '25_WarmUpWriter.js', '37_FlowInputBuilder.js', '68_LessonParts.js', '03_QueueBridge.js', '41_WarmUpFlowBridge.js']
   .map((f) => path.join(CC, f));
 const EXPOSE = ['wfbApplyFlow3_', 'wfbFindQueueRow_', '_registerDeliveredWarmUps_', 'runWarmUpEvaluation',
   'warmUpTextBoxFor_', 'WQ25_COL_COUNT', 'WQ25_STATUS', 'WQ25_DOC_ID', 'WQ25_RESPONSE_TEXT',

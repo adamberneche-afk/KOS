@@ -363,7 +363,13 @@ it from there — same PII class as Ledger (student email, no raw response
 text; the response text itself is read from and stays in the student's
 own Doc, never copied in here). Since 2026-10-24 a row's `PromptText`
 also carries that submission's process reflection, when one was asked
-(the answers, already kept in `ReflectionLog`). Retention: working data, 1 school year
+(the answers, already kept in `ReflectionLog`). Since 2026-10-28, for a
+later part of a lesson in parts, it also carries the student's own work on
+the earlier parts (read from their Docs, at most 6,000 characters a part,
+the same reader the student text already goes to); that block is replaced
+with "(removed after the check)" as soon as the row is harvested or fails,
+so the work is held here only while its check runs (a row Flow 2 never
+answers keeps it until the retention below). Retention: working data, 1 school year
 after the year ends (`WORKING_DATA_RETENTION_YEARS`; see the retention
 schedule above), reported by `checkRetentionSchedule()`.
 
