@@ -349,9 +349,8 @@ function getKeepList(file) {
 }
 
 /**
- * The SHA this build will report from reportDeployVersion. The zip has no
- * .git, so the correct value can't be computed here -- but printing it is
- * what would have caught a stale-folder push before it happened.
+ * The SHA this build will report from reportDeployVersion (7 characters).
+ * stampBuild() writes it first when the checkout came from a GitHub zip.
  */
 function getMarker(dir) {
   const files = fs.readdirSync(dir, { withFileTypes: true })
@@ -363,6 +362,97 @@ function getMarker(dir) {
     if (m) return m[1];
   }
   return '(none)';
+}
+
+// ---------------------------------------------------------------------------
+// The deploy marker tracks the push (2026-10-28; BACKLOG, "A deploy marker
+// that tracks the push"). A GitHub zip carries the commit it was cut from as
+// its archive comment; --zip saves it beside the checkout (BUILD_COMMIT_FILE)
+// and each build's marker file is stamped with it before the push, so
+// reportDeployVersion says which commit is live. tools/deploy-drift/check.js
+// accepts any commit that contains the project's latest change.
+//
+// A build whose code is the same as the last one pushed keeps that push's
+// commit (the registry's last-build.json, per project), so its marker file
+// doesn't change: the push stays "already up to date" and a web app cuts no
+// new version. Apps Script caps versions per project.
+// ---------------------------------------------------------------------------
+const BUILD_COMMIT_FILE = '.kos-build-commit';
+const LAST_BUILD_FILE = 'last-build.json';
+const SHA40 = /^[0-9a-f]{40}$/;
+const MARKER_CONST = /((?:const|var|let)\s+[A-Z_]*DEPLOY_VERSION_SHA\s*=\s*)'[0-9a-f]{40}'/;
+
+/** The 40-hex commit in a zip's archive comment, or '' (not a GitHub zip). */
+function zipCommit(zipPath) {
+  const buf = fs.readFileSync(zipPath);
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 22 - 0xffff); i--) {
+    if (buf.readUInt32LE(i) !== 0x06054b50) continue;
+    const text = buf.toString('utf8', i + 22, i + 22 + buf.readUInt16LE(i + 20)).trim();
+    return SHA40.test(text) ? text : '';
+  }
+  return '';
+}
+
+/** The commit the checkout was extracted from, or ''. */
+function readBuildCommit(repoRoot) {
+  try {
+    const sha = readText(path.join(repoRoot, BUILD_COMMIT_FILE)).trim();
+    return SHA40.test(sha) ? sha : '';
+  } catch { return ''; }
+}
+
+function markerFiles(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isFile() && /deployversionmarker/i.test(e.name))
+    .map((e) => e.name);
+}
+
+/** sha256 of the build's files, without its marker file(s) and .clasp.json. */
+function buildHash(dir) {
+  const skip = new Set([...markerFiles(dir), '.clasp.json']);
+  const hash = crypto.createHash('sha256');
+  const walk = (rel) => {
+    const entries = fs.readdirSync(path.join(dir, rel), { withFileTypes: true })
+      .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
+    for (const e of entries) {
+      const r = rel ? rel + '/' + e.name : e.name;
+      if (e.isDirectory()) walk(r);
+      else if (e.isFile() && !(rel === '' && skip.has(e.name))) {
+        hash.update(r + '\0');
+        hash.update(fs.readFileSync(path.join(dir, r)));
+        hash.update('\0');
+      }
+    }
+  };
+  walk('');
+  return hash.digest('hex');
+}
+
+/**
+ * Stamps the build's marker file(s) for this push. Returns { sha, hash,
+ * reused } or null when the checkout has no recorded commit (the marker
+ * stays as committed).
+ */
+function stampBuild(workingDir, repoRoot, regDir) {
+  const commit = readBuildCommit(repoRoot);
+  if (!commit) return null;
+  const hash = buildHash(workingDir);
+  let last = null;
+  try { last = readJson(path.join(regDir, LAST_BUILD_FILE)); } catch { /* none yet */ }
+  const reused = !!(last && last.hash === hash && SHA40.test(String(last.commit)));
+  const sha = reused ? last.commit : commit;
+  for (const name of markerFiles(workingDir)) {
+    const file = path.join(workingDir, name);
+    const src = readText(file);
+    if (MARKER_CONST.test(src)) writeUtf8NoBom(file, src.replace(MARKER_CONST, `$1'${sha}'`));
+  }
+  return { sha, hash, reused };
+}
+
+/** After a push lands: what was pushed, so an unchanged build keeps its commit. */
+function recordBuild(regDir, stamp) {
+  writeUtf8NoBom(path.join(regDir, LAST_BUILD_FILE),
+    JSON.stringify({ hash: stamp.hash, commit: stamp.sha, at: new Date().toISOString() }, null, 2) + '\n');
 }
 
 // ---------------------------------------------------------------------------
@@ -769,6 +859,13 @@ function updateCheckout(zipArg, repoRoot, registry) {
     if (fs.existsSync(staging)) removeTree(staging);
   }
   out(`Checkout replaced from ${zipPath}`);
+  const commit = zipCommit(zipPath);
+  if (commit) {
+    writeUtf8NoBom(path.join(repoRoot, BUILD_COMMIT_FILE), commit + '\n');
+    out(`  commit ${commit.slice(0, 7)} (from the zip): each build's deploy marker is stamped with it`);
+  } else {
+    warn('  this zip records no commit (not a GitHub "Download ZIP"?): deploy markers stay as committed');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -1025,22 +1122,32 @@ function invokeProject(ctx, p) {
     return invokeRollback(ctx, workingDir, deploymentsFile, opts.rollbackTo, p.name);
   }
 
+  const stamp = stampBuild(workingDir, repoRoot, regDir);
+  if (!stamp) warn('  no commit recorded for this checkout (use --zip or --latest): the marker is the committed one, which may be stale');
+  else if (stamp.reused) out('  code unchanged since the last push: the marker keeps that push\'s commit');
   const marker = getMarker(workingDir);
   out(`  marker in this build: ${marker}  (reportDeployVersion should say the same after the push)`);
   ctx.markers[p.name] = marker;
 
+  let result;
   if (p.mode === 'push') {
     if (opts.headOnly) out('  (--head-only: this project has no /dev buffer; its triggers run the pushed code)');
-    return invokePushOnly(ctx, workingDir);
+    result = invokePushOnly(ctx, workingDir);
+  } else if (opts.headOnly) {
+    result = invokeHeadOnly(ctx, workingDir, p.name);
+  } else {
+    result = invokePushAndPromote(ctx, workingDir, deploymentsFile, marker, p.name);
   }
-  if (opts.headOnly) return invokeHeadOnly(ctx, workingDir, p.name);
-  return invokePushAndPromote(ctx, workingDir, deploymentsFile, marker, p.name);
+  // Recorded once the code is on HEAD, whatever happened to the versions.
+  if (stamp && !/^(FAILED: push|SKIPPED)/.test(result)) recordBuild(regDir, stamp);
+  return result;
 }
 
 // ---------------------------------------------------------------------------
 module.exports = {
   MANIFEST, Fatal, parseArgs, parseDeploymentLines, getKeepList, getMarker,
   quoteForCmd, crc32, extractZip, isoLocal, run, parseLinks, fillInstructions,
+  zipCommit, readBuildCommit, buildHash, stampBuild, BUILD_COMMIT_FILE, LAST_BUILD_FILE,
 };
 
 if (require.main === module) {
