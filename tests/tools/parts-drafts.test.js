@@ -1,7 +1,8 @@
 'use strict';
-// The drafted lesson parts awaiting approval (lessons/PARTS_DRAFTS.json): every
-// draft builds with the lesson builder as if it were in PARTS.json, none is
-// already approved, and the teacher's review copy is current.
+// Lessons in parts: every approved lesson (lessons/PARTS.json) and any draft
+// awaiting approval (lessons/PARTS_DRAFTS.json) passes the draft checks with
+// the lesson builder, no draft is already approved, and the teacher's copy
+// (meta/LESSON_PARTS_2026-10.md) is current.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -14,11 +15,17 @@ const { check, draftsIn, DRAFTS_FILE } = require('../../tools/cas-ccps/check-par
 const ROOT = path.join(__dirname, '..', '..');
 const PARTS = JSON.parse(fs.readFileSync(path.join(ROOT, 'cas-ccps/curriculum/lessons/PARTS.json'), 'utf8'));
 
-test('every drafted lesson builds and passes the draft checks', () => {
-  const r = check();
-  const bad = r.lessons.filter((l) => l.problems.length).map((l) => l.key + ': ' + l.problems.join('; '));
-  assert.deepEqual(bad, []);
-  assert.ok(r.lessons.length > 0);
+const PARTS_FILE = path.join(ROOT, 'cas-ccps/curriculum/lessons/PARTS.json');
+const failing = (r) => r.lessons.filter((l) => l.problems.length).map((l) => l.key + ': ' + l.problems.join('; '));
+
+test('every approved lesson in parts passes the draft checks (one part per marker, a criterion per tier, ...)', () => {
+  const r = check(PARTS_FILE);
+  assert.deepEqual(failing(r), []);
+  assert.equal(r.lessons.length, 35);
+});
+
+test('every draft awaiting approval builds and passes the draft checks', () => {
+  assert.deepEqual(failing(check()), []);
 });
 
 test('no draft is a lesson already approved in PARTS.json', () => {
@@ -26,12 +33,13 @@ test('no draft is a lesson already approved in PARTS.json', () => {
   assert.deepEqual(both, []);
 });
 
-test('each draft carries its status, why and concerns for the teacher', () => {
+test('each draft carries its status, why and concerns; each approved lesson its approval', () => {
   Object.entries(draftsIn(DRAFTS_FILE)).forEach(([k, d]) => {
     assert.match(d.status, /^draft \d+, \d{4}-\d{2}-\d{2}$/, k);
     assert.ok(String(d.why).length > 40, k);
     assert.ok(Array.isArray(d.concerns), k);
   });
+  Object.entries(draftsIn(PARTS_FILE)).forEach(([k, d]) => assert.match(String(d.approved), /^\d{4}-\d{2}-\d{2}/, k));
 });
 
 test('the checker names what is wrong with a broken draft', () => {
@@ -51,6 +59,6 @@ test('the checker names what is wrong with a broken draft', () => {
   assert.match(check(file).lessons[0].problems.join('\n'), /the builder refused it: .*no part covers 8177-79/);
 });
 
-test('the review copy (meta/LESSON_PARTS_DRAFTS_2026-10.md) matches the drafts', () => {
+test('the teacher\'s copy (meta/LESSON_PARTS_2026-10.md) matches PARTS.json and the drafts', () => {
   execFileSync(process.execPath, [path.join(ROOT, 'tools/cas-ccps/render-parts-drafts.js'), '--check'], { cwd: ROOT });
 });
