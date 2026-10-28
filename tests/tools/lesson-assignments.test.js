@@ -85,8 +85,8 @@ test('a competency number whose state wording differs keeps the doc\'s words and
   const file = path.join(ROOT, 'cas-ccps/curriculum/lessons/8175/L16.md');
   const read = fs.readFileSync;
   fs.readFileSync = function (f, ...rest) {
-    // L16's tiers name 8175-19, which this test removes; tiers aren't under test here.
-    if (/COMPETENCY_TIERS\.json$/.test(String(f))) return '{}';
+    // L16's tiers and parts name 8175-19, which this test removes; neither is under test here.
+    if (/(COMPETENCY_TIERS|PARTS)\.json$/.test(String(f))) return '{}';
     const s = read.call(fs, f, ...rest);
     return path.resolve(String(f)) === file
       ? String(s).replace(/\*\*019:\*\* [^\n]*/, '**041:** Calculate break-even point.') : s;
