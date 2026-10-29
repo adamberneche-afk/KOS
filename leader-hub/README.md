@@ -214,9 +214,8 @@ split, before any live test, which is the likeliest reason the split
   Sources panel, no network inspection. All testing is black-box, with
   screenshots and described behavior only. `Diagnostics.gs`'s `?diag`
   modes exist for this reason.
-- `.clasp.json` is gitignored. `tools/clasp-sync/run.js` (or its
-  PowerShell twin `run.ps1`) copies each project's real one in from the
-  registry outside the checkout.
+- `.clasp.json` is gitignored. `tools/clasp-sync/run.js` copies each
+  project's real one in from the registry outside the checkout.
 - The user deploys from a GitHub ZIP of main with
   `node tools/clasp-sync/run.js --latest --only leader-hub`; `git` is not
   available on that machine.

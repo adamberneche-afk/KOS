@@ -21,7 +21,7 @@
  *   4. node tools/clasp-sync/sync.js student-dashboard, then from
  *      cas-ccps/.clasp-build/student-dashboard/: clasp push, clasp version, and
  *      clasp update-deployment <id> --versionNumber <n> to actually promote
- *      it (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.6, or run.ps1) — pushing
+ *      it (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.6, or run.js) — pushing
  *      HEAD alone does not update a live web app's /exec deployment.
  *
  * ONE-TIME SETUP: Script Properties → DEPLOY_DRIFT_GITHUB_TOKEN (a

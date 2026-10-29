@@ -4,11 +4,11 @@
  * tools/clasp-sync/run.js
  * ========================
  * Drives the clasp CLI side of a full push across the in-scope KOS Apps
- * Script projects. A Node port of run.ps1 so it runs from plain cmd.exe
+ * Script projects. A Node port of the retired run.ps1 so it runs from plain cmd.exe
  * (or any shell) with nothing but Node and clasp installed: no PowerShell,
  * no execution-policy fights, no Expand-Archive. Node built-ins only.
  *
- * Out of scope (same as run.ps1): cas-ccps's studio-steps project (custom
+ * Out of scope: cas-ccps's studio-steps project (custom
  * Studio steps are blocked by the org-wide GCP restriction); kos-personal's
  * archived project.
  *

@@ -146,7 +146,7 @@ before it fails silently at runtime.
 
 `sync.js` doesn't run `clasp push` for you, and it doesn't know your real
 script IDs — those two steps are inherently manual/credentialed and
-outside what CI can reach into. [`run.js`](#runjs--the-same-push-from-cmdexe)
+outside what CI can reach into. [`run.js`](#runjs--the-whole-push-from-cmdexe)
 (below) drives them from the operator's own machine instead. It also doesn't solve
 propagating an update to a teacher's already-cloned
 `rubric-response-sheet`/`teacher-matrix-sheet` copy — see the table note
@@ -192,21 +192,20 @@ job that automates sandbox pushes, and the human-run production-promotion
 steps for all three systems in this repo — see
 [`DEPLOYMENT_RUNBOOK.md`](./DEPLOYMENT_RUNBOOK.md) (same folder).
 
-## run.ps1 — the whole push from Windows
+## run.js — the whole push from cmd.exe
 
-> **Since 2026-10-17, use [`run.js`](#runjs--the-same-push-from-cmdexe)**:
-> PowerShell is no longer usable for deployment on the operator's machine.
-> `run.js` does everything below with the same registry; this section stays
-> as the description of what both scripts do, and `run.ps1` stays only
-> while the manifest test keeps the two in step.
-
-`run.ps1` drives the clasp side of a full push across every in-scope
+`run.js` drives the clasp side of a full push across every in-scope
 project (kos-personal, leader-hub and the cas-ccps projects; the two
 studio-steps projects are out while the GCP block holds). It runs on the
-operator's machine, never in CI. It automates the process and leaves two
-decisions to a human, recorded once in a **registry** folder that lives
-*outside* the checkout. The script reads the registry but never writes to
-it, and it never falls back to `clasp create`:
+operator's machine, never in CI, from plain `cmd.exe`: it needs only Node
+(20 or later) and clasp on `PATH`, and uses Node's built-ins only. It
+replaced the PowerShell `run.ps1` on 2026-10-17; `run.ps1` was removed
+on 2026-10-29, after `run.js` had pushed live.
+
+It automates the process and leaves two decisions to a human, recorded
+once in a **registry** folder that lives *outside* the checkout. The
+script reads the registry (it writes only `last-build.json`, below) and
+never falls back to `clasp create`:
 
 ```
 clasp-registry\
@@ -232,47 +231,57 @@ version number. Live deployments that aren't listed are reported and left
 alone, and no version is cut when clasp says the script is already up to
 date. The other projects are push-only.
 
-**`-Zip`** takes a fresh GitHub "Download ZIP" of main and replaces the
+**`--zip`** takes a fresh GitHub "Download ZIP" of main and replaces the
 checkout with it before anything runs. A stale folder therefore can't be
 pushed, and a file deleted upstream can't linger locally and get pushed
 back (`clasp push` mirrors the whole folder). It refuses to delete a folder
 that isn't a KOS checkout, a folder your shell is standing in, or one
-holding a real `.clasp.json` the registry doesn't have a copy of.
+holding a real `.clasp.json` the registry doesn't have a copy of. It reads
+the zip itself, checking every file's CRC and refusing entries that would
+land outside the checkout.
 
 Each project prints its deploy-marker SHA before it pushes, and a summary
 at the end lists them. `run.js` stamps that marker itself (2026-10-28):
 with `--zip` or `--latest`, each build carries the commit its zip was cut
-from, or the last push's commit when its code hasn't changed
-(`tools/deploy-drift/README.md`, "run.js stamps the push"; `run.ps1`
-doesn't). After the run, reload each editor tab and run
+from, or the last push's commit when its code hasn't changed (the
+registry's `<project>\last-build.json`; `tools/deploy-drift/README.md`,
+"run.js stamps the push"). After the run, reload each editor tab and run
 `reportDeployVersion`; it should report the same SHA. `clasp run` can't do
 that step for you, because it needs a GCP project.
 
-```powershell
-cd C:\Users\<you>\kos                  # the folder holding run.ps1, the registry and the checkout
-.\run.ps1 -Zip $HOME\Downloads\KOS-main.zip -RepoRoot kos-main
-.\run.ps1 -RepoRoot kos-main -Only teacher-dashboard,student-dashboard
+```
+cd C:\Users\<you>\kos
+node run.js --latest
+node run.js --zip %USERPROFILE%\Downloads\KOS-main.zip --repo-root kos-main
+node run.js --repo-root kos-main --only teacher-dashboard,student-dashboard
+node run.js --help
 ```
 
 Keep your working copy of the script next to the registry, not inside
-the checkout, because `-Zip` deletes the checkout. That also means a new
-zip never updates your copy. So before pushing anything, `run.ps1`
-compares itself with the checkout's `tools\clasp-sync\run.ps1`. If they
-differ, it stops and prints the `Copy-Item` command that updates it; run
-that, then run your command again. `-SkipScriptCheck` runs your copy
-anyway, for testing a local edit. (An old copy from before this check
-won't do this, so update it by hand once.)
+the checkout, because `--zip` deletes the checkout. That also means a new
+zip never updates your copy. So before pushing anything, `run.js`
+compares itself with the checkout's `tools\clasp-sync\run.js`. If they
+differ, it stops and prints the `copy /Y` command that updates it; run
+that, then run your command again. `--skip-script-check` runs your copy
+anyway, for testing a local edit.
 
-**Faster test cycles:**
+**Flags:** `--zip`, `--latest`, `--head-only`, `--rollback-to`,
+`--repo-root`, `--registry`, `--skip-script-check`, `--only`,
+`--instructions`. The old PowerShell spellings (`-Zip`, `-Latest`,
+`-HeadOnly`, `-RollbackTo`, `-RepoRoot`, `-Registry`, `-SkipScriptCheck`,
+`-Only`) work too, in any case, so a command copied from an older note
+still runs. `--only a,b`, `--only a --only b` and `--only a b` are the
+same. `--rollback-to` takes a version of 1 or more. The exit code is 1 if
+any project failed or the stale-copy check stopped the run, otherwise 0.
 
 | Option | What it does |
 |---|---|
-| `-Latest` | Uses the newest `KOS-main*.zip` in the current folder or `~\Downloads` as `-Zip`, and prints which one it picked and when it was saved. |
-| `-HeadOnly` | Pushes without cutting a version or moving a deployment. Live users keep the current version; test the new code at the printed `/dev` link. Push-only projects have no such buffer and are pushed as normal. |
-| `-SkipScriptCheck` | Runs this copy of `run.ps1` even though it differs from the checkout's. |
-| `-RollbackTo <n>` | Points every deployment in `deployments.txt` back to version *n*, pushing nothing. Takes exactly one web app in `-Only`. A promote run prints the version it replaced. |
+| `--latest` | Uses the newest `KOS-main*.zip` in the current folder or `~\Downloads` as `--zip`, and prints which one it picked and when it was saved. |
+| `--head-only` | Pushes without cutting a version or moving a deployment. Live users keep the current version; test the new code at the printed `/dev` link. Push-only projects have no such buffer and are pushed as normal. |
+| `--skip-script-check` | Runs this copy of `run.js` even though it differs from the checkout's. |
+| `--rollback-to <n>` | Points every deployment in `deployments.txt` back to version *n*, pushing nothing. Takes exactly one web app in `--only`. A promote run prints the version it replaced. |
 
-A release run after a `-HeadOnly` test still releases. clasp reports the
+A release run after a `--head-only` test still releases. clasp reports the
 code as "already up to date", but the script checks each deployment's
 description (it writes `<marker> v<n>` on every promote) and cuts a
 version from HEAD if any deployment isn't on the current marker yet.
@@ -280,59 +289,17 @@ version from HEAD if any deployment isn't on the current marker yet.
 The summary ends with each project's editor link and its `/exec` or
 `/dev` links.
 
-```powershell
-.\run.ps1 -Latest -HeadOnly -Only leader-hub      # try a fix without touching users
-.\run.ps1 -Latest -Only leader-hub                # release it
-.\run.ps1 -RollbackTo 6 -Only leader-hub          # undo the release
+```
+node run.js --latest --head-only --only leader-hub   # try a fix without touching users
+node run.js --latest --only leader-hub               # release it
+node run.js --rollback-to 6 --only leader-hub        # undo the release
 ```
 
-## run.js — the same push from cmd.exe
-
-`run.js` is a Node port of `run.ps1`: same manifest, same registry, same
-promote / head-only / rollback behavior, same stale-copy check. It needs
-only Node (20 or later) and clasp on `PATH`, so it runs from plain
-`cmd.exe` with no PowerShell and no execution-policy setting. It uses
-Node's built-ins only; the `--zip` step reads the zip itself (checking
-every file's CRC and refusing entries that would land outside the
-checkout) instead of calling `Expand-Archive`.
-
-```
-cd C:\Users\<you>\kos
-node run.js --zip %USERPROFILE%\Downloads\KOS-main.zip --repo-root kos-main
-node run.js --repo-root kos-main --only teacher-dashboard,student-dashboard
-node run.js --latest --head-only --only leader-hub
-node run.js --rollback-to 6 --only leader-hub
-node run.js --help
-```
-
-Flags are the `run.ps1` options in GNU style: `--zip`, `--latest`,
-`--head-only`, `--rollback-to`, `--repo-root`, `--registry`,
-`--skip-script-check`, `--only`. The old spellings (`-Zip`, `-Latest`,
-`-HeadOnly`, `-RollbackTo`, `-RepoRoot`, `-Registry`, `-SkipScriptCheck`,
-`-Only`) work too, in any case, so a command copied from an older note
-still runs. `--only a,b`, `--only a --only b` and `--only a b` are the
-same. `--rollback-to` takes a version of 1 or more (a 0 used to be read as
-"no rollback", which pushed and promoted instead). The exit code is 1 if any
-project failed or the stale-copy check stopped the run, otherwise 0.
-
-Differences from `run.ps1`:
-
-- The stale-copy check compares against the checkout's
-  `tools\clasp-sync\run.js`, and prints a `copy /Y` command instead of
-  `Copy-Item`.
-- It checks that clasp runs once, up front, rather than failing once per
-  project.
-- On Windows it prints clasp's box-drawing file list as ASCII, because
-  cmd.exe's default code page can't draw it. Set `KOS_RUN_UNICODE=1`
-  (after `chcp 65001`) to keep the original characters.
-- `KOS_RUN_CLASP` overrides the clasp command (the tests use it to
-  substitute a fake).
-- Your registry (`.clasp.json`, `deployments.txt`) is unchanged and shared
-  by both scripts. `tests/tools/clasp-run.test.js` checks the two
-  manifests agree for as long as both files exist.
-
-Keep your working copy next to the registry, not inside the checkout,
-for the same reason as `run.ps1`: `--zip` deletes the checkout.
+Also: it checks that clasp runs once, up front. On Windows it prints
+clasp's box-drawing file list as ASCII, because cmd.exe's default code
+page can't draw it; set `KOS_RUN_UNICODE=1` (after `chcp 65001`) to keep
+the original characters. `KOS_RUN_CLASP` overrides the clasp command (the
+tests use it to substitute a fake).
 
 ### --instructions — the KOS Project instructions, links filled in
 

@@ -26,7 +26,7 @@
  *   3. Commit ONLY the resulting change to this file, by itself.
  *   4. clasp push, clasp version, then clasp update-deployment <id>
  *      --versionNumber <n> for each live deployment to actually promote it
- *      (see tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.6, or run.ps1) —
+ *      (see tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.6, or run.js) —
  *      pushing HEAD alone does not update the live web app's /exec
  *      deployment.
  */

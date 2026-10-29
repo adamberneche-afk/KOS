@@ -175,8 +175,7 @@ clasp open-web-app --deploymentId <id>   # or open https://script.google.com/mac
 
 That `create-deployment` is for the **first** deployment only. Every later
 release updates the same deployment in place, so the `/exec` URL never
-changes. Use `tools/clasp-sync/run.js` (the Node port of `run.ps1`, which still
-works): `node tools/clasp-sync/run.js --latest --head-only --only leader-hub`
+changes. Use `tools/clasp-sync/run.js`: `node tools/clasp-sync/run.js --latest --head-only --only leader-hub`
 pushes to HEAD for testing at `/dev`;
 `node tools/clasp-sync/run.js --latest --only leader-hub` releases. See
 `tools/clasp-sync/README.md`. Put the new deployment's ID in the
