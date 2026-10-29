@@ -103,6 +103,8 @@ function processInferenceQueue() {
     const SC   = CFG.STAGING_COLS;
 
     let processed = 0, requeued = 0, failed = 0;
+    const started = Date.now();
+    let handled = 0, deferred = 0;
     // Studio answered these rows, so the Turnstile's run of stale resets
     // for each is over (see _readTurnstileStaleCounts_).
     const answeredUids = [];
@@ -127,6 +129,14 @@ function processInferenceQueue() {
 
       // ── Only process rows Studio has marked FLOW_COMPLETE ────
       if (status !== 'FLOW_COMPLETE') continue;
+      // At most QUEUE_MAX_ROWS_PER_RUN, within QUEUE_TIME_BUDGET_MS: each
+      // row reads its return and writes a ledger, and a long run held the
+      // script lock every other trigger needs (ingestion hardening E).
+      if (handled >= CFG.QUEUE_MAX_ROWS_PER_RUN || Date.now() - started > CFG.QUEUE_TIME_BUDGET_MS) {
+        deferred++;
+        continue;
+      }
+      handled++;
       answeredUids.push(String(data[i][SC.PAYLOAD_UID]));
 
       const fileId = data[i][SC.FILE_ID];
@@ -318,7 +328,8 @@ function processInferenceQueue() {
     console.log(
       '[Queue] processed=' + processed +
       ' requeued='  + requeued  +
-      ' failed='    + failed
+      ' failed='    + failed +
+      (deferred ? ' deferred=' + deferred + ' (QUEUE_MAX_ROWS_PER_RUN or the time budget; next run)' : '')
     );
 
   } catch (e) {
@@ -642,6 +653,35 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
  *
  * @returns {Object} { success, counts, needs_curator[], total, last_updated, managed_service }
  */
+/**
+ * Editor: the Queue tab's counts in the execution log, plus what the
+ * ingestion diagnosis (meta/KOS_INGESTION_HARDENING_PLAN.md §4) asks for:
+ * STAGING_PIPELINE's row count, how many are terminal, and the oldest
+ * PENDING_FLOW row's age. getQueueMetrics() returns its counts to the web
+ * app and logs nothing. Counts and ages only; no payload text.
+ */
+function logQueueMetrics() {
+  const m = getQueueMetrics();
+  if (!m.success) { console.log('[Queue] metrics unavailable: ' + m.message); return m; }
+  const c = m.counts;
+  console.log('[Queue] queued=' + c.queued + ' active=' + c.active + ' needs_curator=' + c.needs_curator +
+    ' processed=' + c.processed + ' failed=' + c.failed + ' cycling=' + c.cycling + ' unknown=' + c.unknown);
+  const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+  const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+  const SC = CFG.STAGING_COLS;
+  const rows = staging.getLastRow() > 1 ? staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues() : [];
+  const terminal = rows.filter(r => {
+    const st = String(r[SC.STATUS]);
+    return st === 'PROCESSED' || st === 'INTAKE_PROCESSED' || TERMINAL_FAILED_STATUSES.some(p => st.startsWith(p));
+  }).length;
+  const pending = rows.filter(r => String(r[SC.STATUS]) === 'PENDING_FLOW')
+    .map(r => new Date(r[SC.TIMESTAMP]).getTime()).filter(t => !isNaN(t));
+  const oldestMin = pending.length ? Math.round((Date.now() - Math.min.apply(null, pending)) / 60000) : null;
+  console.log('[Queue] STAGING_PIPELINE rows=' + rows.length + ' terminal=' + terminal +
+    ' oldest PENDING_FLOW=' + (oldestMin === null ? 'none' : oldestMin + ' min'));
+  return Object.assign({}, m, { rows: rows.length, terminal: terminal, oldestPendingMinutes: oldestMin });
+}
+
 function getQueueMetrics() {
   try {
     const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);

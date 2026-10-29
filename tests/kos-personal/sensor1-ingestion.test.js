@@ -30,7 +30,7 @@ const EXPOSE = [
   '_moveStagingRowsToArchive_', '_stagingArchiveSheet_',
   '_groupLinesForArchiveWrite_', '_archiveRawLog_',
   '_recordSensor1Failure_', '_clearSensor1Failure_', '_chunkAndQueue',
-  'CFG',
+  'CFG', 'handleCogExhaust',
 ];
 
 function load() {
@@ -401,3 +401,20 @@ test('sensor1_scanInboundSessions: a hardening-audit hit is logged, and the log 
   assert.ok(stagingRows(ss).length > 0, 'the audit stays non-fatal: the log is still queued');
   assert.equal(inbound.files.length, 0);
 });
+
+// Ingestion hardening D (2026-10-29): Sensor 2 queued a webhook delivered
+// twice, because its UID was a timestamp. It is the content hash now.
+test('handleCogExhaust: the same payload twice queues once; a different verdict queues', () => {
+  const { exported, sandbox } = load();
+  const { ss } = setUpSensor1(sandbox);
+  const payload = { cog_name: 'Auditor', task_id: 'T-1', verdict: 'PASS', artifact_text: 'The artifact.' };
+  const first = exported.handleCogExhaust(payload);
+  assert.equal(first.success, true, JSON.stringify(first));
+  assert.match(first.uid, /^COG-[0-9a-f]{8}-T-1$/);
+  const again = exported.handleCogExhaust(Object.assign({}, payload));
+  assert.equal(again.duplicate, true);
+  assert.equal(stagingRows(ss).length, 1);
+  assert.equal(exported.handleCogExhaust(Object.assign({}, payload, { verdict: 'FAIL' })).success, true);
+  assert.equal(stagingRows(ss).length, 2);
+});
+
