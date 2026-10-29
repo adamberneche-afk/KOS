@@ -143,6 +143,25 @@ function onFormSubmit_Intake(e) {
 //         { ok: false, code: INVALID_ACCOUNT | NO_LIVE_ASSIGNMENT | NO_MASTER_TEMPLATE }
 // Nothing is written on failure; the caller decides how to report it.
 // ---------------------------------------------------------------------------
+// What intakeStudent_ looks up that is the same for every student in a run
+// (2026-10-29): the assignment (the Ledger, MatrixRegistry and the whole
+// Teacher Matrix), the teacher's prompt doc, the admin folders and the
+// Ledger itself. A roster run used to repeat all of it per student, so a
+// rollout run made about 20 docs before its time budget. Kept for one
+// execution only; a failed lookup is not kept, so the next student retries.
+let _intakeMemo_ = null;
+function _intakeMemoFor_(cfg) {
+  if (!_intakeMemo_ || _intakeMemo_.ledgerSsId !== cfg.ledgerSsId) {
+    _intakeMemo_ = { ledgerSsId: cfg.ledgerSsId, assignments: {}, prompts: {}, folders: {}, ledger: null };
+  }
+  return _intakeMemo_;
+}
+function _intakeLedgerSs_(cfg) {
+  const m = _intakeMemoFor_(cfg);
+  if (!m.ledger) m.ledger = SpreadsheetApp.openById(cfg.ledgerSsId);
+  return m.ledger;
+}
+
 function intakeStudent_(cfg, s) {
   const googleId = String(s.googleId || "").trim().toLowerCase();
   const studentName = s.studentName, block = s.block, className = s.className;
@@ -160,9 +179,11 @@ function intakeStudent_(cfg, s) {
   // an unrelated Google account while the real student is locked out.
   if (!_studentIdPattern_().test(googleId)) return { ok: false, code: "INVALID_ACCOUNT" };
 
-  // Fetch LIVE assignment from Teacher Matrix via MatrixRegistry
-  const assignment = fetchAssignment_(cfg, unitConfigId);
+  // Fetch LIVE assignment from Teacher Matrix via MatrixRegistry (once a run)
+  const memo = _intakeMemoFor_(cfg);
+  const assignment = memo.assignments[unitConfigId] || fetchAssignment_(cfg, unitConfigId);
   if (!assignment) return { ok: false, code: "NO_LIVE_ASSIGNMENT" };
+  memo.assignments[unitConfigId] = assignment;
 
   // The assigning teacher is the owner of the matrix the assignment came
   // from (MatrixRegistry). The form's "Teacher Email" is typed by the
@@ -185,10 +206,10 @@ function intakeStudent_(cfg, s) {
   // Generate student-specific CONFIG_ID
   const studentConfigId = generateConfigId_();
 
-  // Resolve admin folder hierarchy
+  // Resolve admin folder hierarchy (each level once a run)
   const adminStudentFolder = resolveAdminPath_(cfg.adminRootFolderId, [
     subject, courseName, teacherName, "Period " + period, studentName
-  ]);
+  ], memo.folders);
 
   const masterFile = DriveApp.getFileById(masterTemplateId);
   const docFile    = masterFile.makeCopy(
@@ -197,8 +218,13 @@ function intakeStudent_(cfg, s) {
   );
   const fileId = docFile.getId();
 
-  // Fetch teacher prompt content to inject into Zone 2
-  const promptContent = fetchPromptContent_(assignment.promptTemplateId);
+  // Fetch teacher prompt content to inject into Zone 2 (once a run)
+  const promptKey = assignment.promptTemplateId || "";
+  let promptContent = memo.prompts[promptKey];
+  if (promptContent === undefined) {
+    promptContent = fetchPromptContent_(assignment.promptTemplateId);
+    if (promptContent !== PROMPT_LOAD_FAILED) memo.prompts[promptKey] = promptContent;
+  }
 
   // Build the full three-zone document structure AND stamp system IDs
   // in a single open/close cycle to prevent document lock errors
@@ -221,7 +247,7 @@ function intakeStudent_(cfg, s) {
                   block, className, teacherName, assignedTeacherEmail,
                   subject, courseName, period, docFile.getUrl(),
                   deferShare ? "SCHEDULED" : "ACTIVE");
-  recordStudentAssignment_(SpreadsheetApp.openById(cfg.ledgerSsId), studentConfigId, googleId, unitConfigId);
+  recordStudentAssignment_(_intakeLedgerSs_(cfg), studentConfigId, googleId, unitConfigId);
 
   // No name: execution logs get copied out of the account (a roster import's
   // log, pasted 2026-10-07, carried every student's name). The Ledger row has it.
@@ -330,6 +356,7 @@ function fetchAssignment_(cfg, unitConfigId) {
 // fetchPromptContent_ — reads the teacher's prompt template doc as plain text
 // Returns the content to inject into Zone 2 of the student doc
 // ---------------------------------------------------------------------------
+const PROMPT_LOAD_FAILED = "[Assignment prompt could not be loaded. Contact your teacher.]";
 function fetchPromptContent_(promptTemplateId) {
   if (!promptTemplateId) return "";
   try {
@@ -339,7 +366,7 @@ function fetchPromptContent_(promptTemplateId) {
     return body.getText().trim();
   } catch (e) {
     Logger.log("fetchPromptContent_ error: " + e.message);
-    return "[Assignment prompt could not be loaded. Contact your teacher.]";
+    return PROMPT_LOAD_FAILED;
   }
 }
 
@@ -650,7 +677,7 @@ function shareToStudentDrive_(cfg, docFile, googleId, teacherEmail) {
 function registerLedger_(cfg, googleId, studentName, configId, fileId,
                           block, className, teacherName, teacherEmail,
                           subject, courseName, period, docUrl, status) {
-  const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const ss    = _intakeLedgerSs_(cfg);
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
 
   // AcademicYear: the current marking period (currentTerm_(), 00), by date.
@@ -693,11 +720,17 @@ function generateConfigId_() {
 // ---------------------------------------------------------------------------
 // resolveAdminPath_ — walks/creates folder hierarchy from root
 // ---------------------------------------------------------------------------
-function resolveAdminPath_(rootId, segments) {
-  let folder = DriveApp.getFolderById(rootId);
+// seen (optional): { path: Folder } kept across calls in one run, so the
+// levels students share are looked up once.
+function resolveAdminPath_(rootId, segments, seen) {
+  let key = String(rootId);
+  let folder = seen && seen[key] ? seen[key] : DriveApp.getFolderById(rootId);
+  if (seen) seen[key] = folder;
   for (const seg of segments) {
     if (!seg) continue;
-    folder = resolveFolder_(folder, seg);
+    key += "/" + seg;
+    folder = seen && seen[key] ? seen[key] : resolveFolder_(folder, seg);
+    if (seen) seen[key] = folder;
   }
   return folder;
 }

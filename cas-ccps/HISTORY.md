@@ -5480,3 +5480,16 @@ PROBLEM rows reached only the signal doc. Now (58):
 - **The overnight email (34c)** reports the last day's rollout problems
   and whether the latest run stopped short.
 
+## Faster student docs: intake's lookups once a run, 2026-10-29
+
+A rollout run made 15 to 21 docs before its time budget, about 7 to 11
+seconds each. `intakeStudent_` (02) looked up, for every student, what is
+the same for the whole lesson: the assignment (opening the Ledger,
+MatrixRegistry and the whole Teacher Matrix), the teacher's prompt doc,
+four of the five admin folder levels, and the Ledger twice more for the
+student's rows. These are now kept for the run (`_intakeMemo_`); a failed
+lookup is not kept, so the next student retries it. Copying, stamping and
+sharing each doc are still per student.
+`student-data-access-intake.test.js` runs three students through intake
+and counts the lookups.
+
