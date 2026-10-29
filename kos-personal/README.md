@@ -20,8 +20,10 @@ This README documents the system as it is today. The full history of what was fo
 > `harvestStudioReturns()` writes back. The 2026-10-22 web app changes
 > (plain words and a ❓ Terms panel, the "Needs you" strip, failed items
 > with Retry, the advisor panel review, an archive that keeps failed rows,
-> nothing stored in the browser) are merged; `meta/HANDOFF_2026-10-22.md`
-> says what to check after the push. Still the operator's: the data
+> nothing stored in the browser) are merged and live. Ingestion D and E
+> (#336: Sensor 2's duplicate guard, at most 20 rows a queue run,
+> `logQueueMetrics()`) were pushed 10-29; `meta/HANDOFF_2026-10-29.md`
+> is the current handoff. Still the operator's: the data
 > repairs in [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) (requeue
 > the terminal backlog with `19_StagingRequeue.gs` or Queue → Failed items
 > → Retry, and the `VECTOR_MATRIX` repair in `21_VectorMatrixRepair.gs`);
