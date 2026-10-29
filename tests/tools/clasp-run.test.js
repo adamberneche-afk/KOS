@@ -1,5 +1,5 @@
 'use strict';
-// tools/clasp-sync/run.js is the Node port of run.ps1: it drives clasp across
+// tools/clasp-sync/run.js (the Node port of the retired run.ps1) drives clasp across
 // the in-scope projects, and it is the last step before code reaches a live
 // web app, so its decisions are tested rather than trusted. Pure helpers are
 // tested directly; everything that touches clasp is tested end to end against
@@ -522,15 +522,8 @@ test('the real repo zip layout works: extractZip reproduces this checkout\'s cla
   }
 });
 
-test('the manifest matches run.ps1 while both exist, and every non-held project has a project-map entry', () => {
-  const ps1 = path.join(ROOT, 'tools', 'clasp-sync', 'run.ps1');
-  if (fs.existsSync(ps1)) {
-    const text = fs.readFileSync(ps1, 'utf8');
-    for (const p of run.MANIFEST) {
-      const re = new RegExp(`Name\\s*=\\s*"${p.name}";\\s*Type\\s*=\\s*"${p.type}";\\s*Mode\\s*=\\s*"${p.mode}"`);
-      assert.match(text, re, `${p.name} differs between run.js and run.ps1`);
-    }
-  }
+test('every non-held project in the manifest has a project-map entry; run.ps1 is gone', () => {
+  assert.equal(fs.existsSync(path.join(ROOT, 'tools', 'clasp-sync', 'run.ps1')), false, 'retired 2026-10-29');
   const map = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'gas-lint', 'project-map.json'), 'utf8'));
   for (const p of run.MANIFEST) {
     const key = p.type === 'flat' ? (p.name === 'leader-hub' ? 'leader-hub:app' : p.name) : `cas-ccps:${p.name}`;
