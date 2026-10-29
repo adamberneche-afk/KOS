@@ -31,6 +31,12 @@ why this repo exists at all.
   hold), `HANDOFF_2026-10-22.md` (superseded for the queue; its system state,
   open items and agent notes still hold), `HANDOFF_2026-10-21.md`, `HANDOFF_2026-10-20.md` and `HANDOFF_2026-10-19.md` (their agent notes still hold), `HANDOFF_2026-10-18.md`, `HANDOFF_2026-10-17.md`, `HANDOFF_2026-10-12.md`, `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
   `HANDOFF_2026-10-06.md` and `HANDOFF_2026-10-05.md` are earlier days', superseded.
+- **`AUDIT_DEAD_ENDS_2026-10-29.md`** — the first repo-wide audit of dead
+  ends and half-built work: what runs and fails or runs for nothing, what
+  to finish, what is built and parked (decide and mark), dead weight to
+  remove, docs that say the wrong thing, and operator items that fell off
+  the queue. Its actions are in `PLAN_2026-11.md`; repeated at each sprint
+  boundary.
 - **`BACKLOG.md`** — ideas for future sprints, by system: offered small
   PRs, the CAS design threads, the second-user and KOS Lite concepts
   (deferred until after Oct 30), and repo chores. Nothing in it is
