@@ -1,8 +1,10 @@
 # kos-personal ingestion: test, diagnose, harden
 
 **Status:** B done (PR #107, live 2026-10-06: kos-personal has 18
-triggers, including the nightly `archiveFinishedStagingRows`). Diagnosis
-(§4), the §3 tests, C, A, D and E not started (checked against the code
+triggers, including the nightly `archiveFinishedStagingRows`). D and E
+built 2026-10-29 (Sensor 2's content-hash duplicate guard; a per-run cap
+on `processInferenceQueue()`), with `logQueueMetrics()` for §4 item 1.
+Diagnosis (§4), the other §3 tests, C and A not started (checked against the code
 2026-10-23: the lock mock's `tryLock()` still always succeeds,
 `handleCogExhaust()` has no content-hash check, and there is no
 kos-personal watchdog). Written 2026-10-06 from an outside review,
@@ -77,14 +79,17 @@ contention.
   *Accept:* a test pins how many rows `processInferenceQueue()` reads
   (call counts; the sandbox has no real timings), so a cap or cursor (E)
   shows up as a change in the number.
-- [ ] **Sensor 2 duplicates.** *Accept:* a test calls `handleCogExhaust()`
+- [x] **Sensor 2 duplicates** (2026-10-29, `sensor1-ingestion.test.js`). *Accept:* a test calls `handleCogExhaust()`
   twice with the same payload and asserts what happens. Today both queue;
   after D, the second is refused.
 
 ## 4. Diagnose: cheapest first (operator runs these)
 
-1. Queue counts: the web app's Queue tab (`getQueueMetrics()`, run from
-   the editor works too) gives queued / active / needs-curator / processed
+1. Queue counts: the web app's Queue tab, or `logQueueMetrics()` from the
+   editor (2026-10-29; it also logs `STAGING_PIPELINE`'s row count, how
+   many are terminal, and the oldest `PENDING_FLOW` row's age, which covers
+   item 3; `getQueueMetrics()` itself returns to the web app and logs
+   nothing) gives queued / active / needs-curator / processed
    / failed counts; sort `STAGING_PIPELINE` by timestamp for the oldest
    `PENDING_FLOW` row. Many `PENDING_FLOW` rows while `STUDIO_ACTIVE` sits
    at 0–1 means the single slot is the limit. (The reviewed plan named a
@@ -120,9 +125,16 @@ contention.
     `STUDIO_TIMEOUT` (`HANDOFF_2026-09-28.md`), and more parallel Studio
     runs could bring that back. Raise it by one, and watch the timeout
     rate for a week.
+- **D. Done 2026-10-29.** The UID is `COG-<content hash>-<task>`, checked
+  against live and archived rows before the doc is made; a test sends the
+  same payload twice. As planned:
 - **D. Sensor 2 duplicate guard.** Give `handleCogExhaust()` the same
   content-hash check `submitSessionLog()` / `submitExternalData()` use,
   before it creates the Drive doc. *Accept:* the §3 duplicate test flips.
+- **E. Done 2026-10-29, as a cap:** at most `QUEUE_MAX_ROWS_PER_RUN` (20)
+  `FLOW_COMPLETE` rows a run, within `QUEUE_TIME_BUDGET_MS` (4 min); the
+  rest wait for the next run. The scan itself is one range read; the cost
+  was the per-row work while holding the script lock. As planned:
 - **E. Cap or cursor `processInferenceQueue()`'s scan**, like Sensor 1's
   `SENSOR1_MAX_FILES_PER_RUN`. *Accept:* the §3 scan-cost number drops and
   is pinned.

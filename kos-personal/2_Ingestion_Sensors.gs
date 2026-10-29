@@ -343,11 +343,9 @@ function submitSessionLog(text) {
  */
 function handleCogExhaust(payload) {
   // Same unlocked check-then-append race as submitSessionLog/
-  // submitExternalData — see the comment on submitSessionLog. This
-  // endpoint's own duplicate check (_queuePayload's fileId match) is
-  // weaker since every call creates a fresh Drive doc first, but the
-  // lock at least makes whatever check does run atomic against a
-  // concurrent webhook delivery of the same payload.
+  // submitExternalData — see the comment on submitSessionLog. The lock makes
+  // the content-hash duplicate check below atomic against a concurrent
+  // webhook delivery of the same payload.
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) {
     return { success: false, message: 'System busy — try again in a moment.' };
@@ -369,7 +367,19 @@ function handleCogExhaust(payload) {
       new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
     const safeTaskId  = (task_id  || 'NOTASK').replace(/[^a-zA-Z0-9_-]/g, '');
     const safeCogName = (cog_name || 'COG').replace(/[^a-zA-Z0-9_-]/g,    '');
-    const uid         = 'COG-' + new Date().getTime() + '-' + safeTaskId;
+    // The UID is the payload's content hash (2026-10-29, ingestion
+    // hardening D), the same deterministic check submitSessionLog and
+    // submitExternalData use: a webhook delivered twice used to queue twice,
+    // because the UID was a timestamp and _queuePayload's fileId check
+    // compares a Drive doc made fresh on every call.
+    const hash = _generateLogUUID([cog_name, task_id || '', verdict || '', artifact_text.trim()].join('\n'))
+      .replace(/^LOG-/, '');
+    const uid  = 'COG-' + hash + '-' + safeTaskId;
+    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+    if (_stagingPayloadUids_(staging).concat(_archivedPayloadUids_(ss)).includes(uid)) {
+      return { success: false, duplicate: true, message: 'Duplicate: this COG_EXHAUST has already been queued.' };
+    }
 
     const content = [
       '=== COG EXHAUST ===',
@@ -390,8 +400,6 @@ function handleCogExhaust(payload) {
     DriveApp.getFileById(dId).moveTo(rawFolder);
 
     const docUrl  = DriveApp.getFileById(dId).getUrl();
-    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
-    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
     const queued  = _queuePayload(uid, 'COG_EXHAUST', docUrl, dId, staging);
     SpreadsheetApp.flush();
 
