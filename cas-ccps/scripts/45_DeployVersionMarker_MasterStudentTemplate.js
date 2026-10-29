@@ -20,7 +20,7 @@
  *   3. Commit ONLY the resulting change to this file, by itself.
  *   4. node tools/clasp-sync/sync.js master-student-template, then clasp push from
  *      cas-ccps/.clasp-build/master-student-template/ (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md
- *      §3.5, or run.ps1). Not a web app, so HEAD is what runs and the push is
+ *      §3.5, or run.js). Not a web app, so HEAD is what runs and the push is
  *      the whole deploy.
  *
  * ONE-TIME SETUP: Script Properties → DEPLOY_DRIFT_GITHUB_TOKEN (a
