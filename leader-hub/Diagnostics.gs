@@ -35,7 +35,7 @@
 // they're signed in as, and probe mode serves nothing to them.
 //
 // Test changes at the /dev link without touching users:
-//   .\run.ps1 -Latest -HeadOnly -Only leader-hub
+//   node run.js --latest --head-only --only leader-hub
 // =============================================================================
 
 // The attribute build.js puts on each script block's opening tag
