@@ -26,7 +26,8 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
   '29_StudentContextAggregator.js', '31_PacingGuideManager.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
   '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js',
   '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js', '58_LessonRollout.js', '32_CompetencyRubricImporter.js', '66_LessonDoc.js', '67_AgendaDeck.js', '68_LessonParts.js'].map(S);
-const EXPOSE = ['lessonRollout_', '_lrPlan_', 'previewLessonRollout'];
+const EXPOSE = ['lessonRollout_', '_lrPlan_', 'previewLessonRollout', 'runLessonRollout', 'runLessonRolloutCatchUp',
+  '_lrEnrollOrder_', 'ROLLOUT_CATCHUP_MAX', 'ROLLOUT_TIME_BUDGET_MS', 'ROLLOUT_DOCS_RESERVE_MS'];
 
 const FRI = new Date(2026, 9, 16, 21, 0); // Friday 2026-10-16, 9 p.m.
 // 8175: L06 started Oct 14 (current), L07 starts tomorrow, L08 on Sunday
@@ -304,3 +305,83 @@ test('a held lesson is planned as held: not seeded, enrolled or released, and lo
   const holds = log().filter((r) => r[4] === 'HOLD').map((r) => [r[1], r[2], r[3]]);
   assert.deepEqual(holds, [['APPLY', '8175', 'CAS-8175-L07'], ['APPLY', '8177', 'CAS-8177-HANDBOOK']]);
 });
+
+// ── Catching up (2026-10-29) ─────────────────────────────────────────────────
+// A run made about 20 docs; on 10-27 and 10-28 one 8175 lesson used every
+// run and 8177's current lesson got none.
+
+test('enrollment order: tonight\'s releases first, the courses taking turns', () => {
+  const { exported } = setup();
+  const plan = {
+    '8175': { lessons: [{ key: '8175-L10', releaseNow: true }, { key: '8175-L11', releaseNow: false }], held: [] },
+    '8177': { lessons: [{ key: '8177-x', releaseNow: true, parts: [{ key: '8177-x-P1', n: 1 }, { key: '8177-x-P2', n: 2 }] }], held: [] },
+  };
+  assert.deepEqual(exported._lrEnrollOrder_(plan).map((t) => [t.key, t.releaseNow]),
+    [['8175-L10', true], ['8177-x-P1', true], ['8175-L11', false], ['8177-x-P2', false]]);
+});
+
+test('each lesson gets a share of the time left; the lesson docs keep a reserve', () => {
+  const { exported, enrollCalls } = setup({ autoApply: 'all' });
+  const before = Date.now();
+  exported.lessonRollout_({ today: FRI });
+  const end = before + exported.ROLLOUT_TIME_BUDGET_MS - exported.ROLLOUT_DOCS_RESERVE_MS;
+  assert.equal(enrollCalls.length, 4);
+  assert.deepEqual(enrollCalls.map((c) => c.assignmentConfigId),
+    ['CAS-8175-L06', 'CAS-8177-HANDBOOK', 'CAS-8175-L07', 'CAS-8175-L08'], '8177 is not behind every 8175 lesson');
+  const first = enrollCalls[0].deadline - before;
+  assert.ok(first <= (end - before) / 4 + 1000, 'the first of four gets about a quarter: ' + first);
+  assert.ok(enrollCalls.every((c) => c.deadline <= end + 1000));
+});
+
+function catchUps(sandbox) {
+  return sandbox.ScriptApp.getProjectTriggers().filter((t) => t.getHandlerFunction() === 'runLessonRolloutCatchUp');
+}
+
+test('a run that stops short schedules one catch-up; the catch-up removes its trigger and schedules the next', () => {
+  const { exported, sandbox } = setup({ autoApply: 'all', enrollResult: () => ({ timedOut: true }) });
+  const res = exported.runLessonRollout();
+  assert.equal(res.unfinished, true);
+  assert.equal(catchUps(sandbox).length, 1);
+  assert.ok(catchUps(sandbox)[0].__calls.some((c) => c.method === 'after'));
+  exported.runLessonRollout();
+  assert.equal(catchUps(sandbox).length, 1, 'never two pending');
+
+  const first = catchUps(sandbox)[0];
+  exported.runLessonRolloutCatchUp();
+  assert.equal(catchUps(sandbox).length, 1);
+  assert.notEqual(catchUps(sandbox)[0], first, 'its own trigger removed, a new one made');
+  const props = sandbox.PropertiesService.getScriptProperties();
+  assert.equal(JSON.parse(props.getProperty('ROLLOUT_CATCHUP')).count, 2);
+  assert.equal(props.getProperty('ROLLOUT_BUSY_UNTIL'), null, 'the busy mark is cleared');
+});
+
+test('catch-ups stop at the daily cap; a run that finishes clears the count', () => {
+  const env = setup({ autoApply: 'all', enrollResult: () => ({ timedOut: true }) });
+  const props = env.sandbox.PropertiesService.getScriptProperties();
+  const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+  props.setProperty('ROLLOUT_CATCHUP', JSON.stringify({ day, count: env.exported.ROLLOUT_CATCHUP_MAX }));
+  env.exported.runLessonRollout();
+  assert.equal(catchUps(env.sandbox).length, 0);
+
+  const ok = setup({ autoApply: 'all' });
+  const p2 = ok.sandbox.PropertiesService.getScriptProperties();
+  p2.setProperty('ROLLOUT_CATCHUP', JSON.stringify({ day, count: 3 }));
+  assert.equal(ok.exported.runLessonRollout().unfinished, false);
+  assert.equal(p2.getProperty('ROLLOUT_CATCHUP'), null);
+  assert.equal(catchUps(ok.sandbox).length, 0);
+});
+
+test('a run while another is going does nothing but schedule a catch-up; a preview never schedules one', () => {
+  const env = setup({ autoApply: 'all', enrollResult: () => ({ timedOut: true }) });
+  const props = env.sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('ROLLOUT_BUSY_UNTIL', String(Date.now() + 60000));
+  const res = env.exported.runLessonRollout();
+  assert.equal(res.busy, true);
+  assert.equal(env.enrollCalls.length, 0);
+  assert.equal(catchUps(env.sandbox).length, 1);
+
+  const pv = setup({ autoApply: 'all', enrollResult: () => ({ timedOut: true }) });
+  assert.equal(pv.exported.previewLessonRollout().unfinished, false);
+  assert.equal(catchUps(pv.sandbox).length, 0);
+});
+
