@@ -334,6 +334,16 @@ Differences from `run.ps1`:
 Keep your working copy next to the registry, not inside the checkout,
 for the same reason as `run.ps1`: `--zip` deletes the checkout.
 
+### --verify — is every web app on the last push?
+
+`node run.js --verify` pushes and moves nothing. For each web app it lists
+every deployment in `deployments.txt` with its version and the marker in
+its description (a promote writes `<marker> v<n>`), and says **OK** when
+that marker is the commit last pushed (the registry's `last-build.json`)
+or **BEHIND** when it isn't. A push-only project has no deployment, so it
+shows the last push only. The exit code is 1 when any deployment is behind
+or missing. Combine it with `--only`; it refuses the flags that push.
+
 ### --instructions — the KOS Project instructions, links filled in
 
 `kos-personal/claude-project/PROJECT_INSTRUCTIONS.md` names its Google
