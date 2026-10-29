@@ -45,6 +45,22 @@
 //
 // installLessonRolloutTrigger() runs it nightly at about 9 p.m.
 // previewLessonRollout() runs it once as a dry run from the editor.
+//
+// CATCHING UP (2026-10-29). A run makes about 20 docs before its time
+// budget, so a lesson for a whole course took several nights: on 10-27 and
+// 10-28 one 8175 lesson used every run and 8177's current lesson got no docs
+// at all. Now:
+//   - A run that stops short (the time budget, or a step not reached)
+//     schedules runLessonRolloutCatchUp a few minutes later, and that one
+//     does the same, until a run finishes or ROLLOUT_CATCHUP_MAX runs have
+//     gone in a day (ROLLOUT_CATCHUP state in Script Properties).
+//   - Enrollment shares the run's time: lessons released tonight first,
+//     taking turns between courses, each given an equal share of what's
+//     left, so one large lesson can't hold up another course's.
+//   - Enrollment stops ROLLOUT_DOCS_RESERVE_MS early when the lesson docs
+//     and agendas (3b, 3c) still have to run.
+//   - ROLLOUT_BUSY_UNTIL keeps two runs (the nightly one, a catch-up, one
+//     from the editor) from overlapping.
 // =============================================================================
 
 const ROLLOUT_LEAD_DAYS = 2;
@@ -54,10 +70,66 @@ const ROLLOUT_TRIGGER_FN = "runLessonRollout";
 // Under the 6-minute trigger limit, leaving time to write the log.
 const ROLLOUT_TIME_BUDGET_MS = 4.5 * 60 * 1000;
 const ROLLOUT_STALE_EXPORT_DAYS = 7;
+const ROLLOUT_CATCHUP_FN = "runLessonRolloutCatchUp";
+const ROLLOUT_CATCHUP_DELAY_MS = 3 * 60 * 1000;
+const ROLLOUT_CATCHUP_MAX = 12;
+const ROLLOUT_CATCHUP_PROP = "ROLLOUT_CATCHUP";
+const ROLLOUT_BUSY_PROP = "ROLLOUT_BUSY_UNTIL";
+const ROLLOUT_BUSY_MS = 6 * 60 * 1000;
+const ROLLOUT_DOCS_RESERVE_MS = 60 * 1000;
+// A PROBLEM row that means the run stopped short, so a catch-up run follows.
+const ROLLOUT_UNFINISHED_RE = /time budget|not reached/;
 
-// Nightly trigger handler.
+// Nightly trigger handler; also the one to run from the editor to catch up.
 function runLessonRollout() {
-  return lessonRollout_({});
+  return _lrRunAndCatchUp_({});
+}
+
+// The catch-up a run that stopped short scheduled. Removes its own one-off
+// trigger, runs, and schedules the next if this one stops short too.
+function runLessonRolloutCatchUp() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === ROLLOUT_CATCHUP_FN) ScriptApp.deleteTrigger(t);
+  });
+  return _lrRunAndCatchUp_({ catchUp: true });
+}
+
+function _lrRunAndCatchUp_(opts) {
+  const props = PropertiesService.getScriptProperties();
+  const now = Date.now();
+  if (Number(props.getProperty(ROLLOUT_BUSY_PROP) || 0) > now) {
+    Logger.log("[S58] A rollout run is still going; this one will catch up after it.");
+    _lrScheduleCatchUp_(props, new Date(now));
+    return { rows: [], problems: 0, busy: true };
+  }
+  props.setProperty(ROLLOUT_BUSY_PROP, String(now + ROLLOUT_BUSY_MS));
+  let res;
+  try {
+    res = lessonRollout_(opts);
+  } finally {
+    props.deleteProperty(ROLLOUT_BUSY_PROP);
+  }
+  if (res.unfinished) _lrScheduleCatchUp_(props, new Date(now));
+  else props.deleteProperty(ROLLOUT_CATCHUP_PROP);
+  return res;
+}
+
+// One catch-up a few minutes out, at most ROLLOUT_CATCHUP_MAX a day.
+function _lrScheduleCatchUp_(props, now) {
+  const day = formatDateYMD_(now);
+  let state = {};
+  try { state = JSON.parse(props.getProperty(ROLLOUT_CATCHUP_PROP) || "{}"); } catch (e) { state = {}; }
+  const count = state.day === day ? Number(state.count) || 0 : 0;
+  if (count >= ROLLOUT_CATCHUP_MAX) {
+    Logger.log("[S58] Not scheduling another catch-up: " + count + " ran today. Tomorrow night's run continues.");
+    return false;
+  }
+  if (ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === ROLLOUT_CATCHUP_FN; })) return false;
+  ScriptApp.newTrigger(ROLLOUT_CATCHUP_FN).timeBased().after(ROLLOUT_CATCHUP_DELAY_MS).create();
+  props.setProperty(ROLLOUT_CATCHUP_PROP, JSON.stringify({ day: day, count: count + 1 }));
+  Logger.log("[S58] The run stopped short; catch-up " + (count + 1) + " of at most " + ROLLOUT_CATCHUP_MAX +
+    " today in about " + Math.round(ROLLOUT_CATCHUP_DELAY_MS / 60000) + " minutes.");
+  return true;
 }
 
 // Editor: what tonight's run would do, acting on nothing.
@@ -135,48 +207,47 @@ function lessonRollout_(opts) {
     }
   });
 
-  // 3. Enroll each lesson in the window.
-  Object.keys(plan).forEach(function (course) {
+  // 3. Enroll each lesson in the window, in the order _lrEnrollOrder_ gives
+  // (tonight's releases first, the courses taking turns), each with an equal
+  // share of the time left. With lesson docs or agendas still to make, the
+  // last ROLLOUT_DOCS_RESERVE_MS is kept for them.
+  const docsAfter = Object.keys(plan).some(function (c) { return modes[c] === "APPLY"; });
+  const enrollDeadline = docsAfter ? deadline - ROLLOUT_DOCS_RESERVE_MS : deadline;
+  const order = _lrEnrollOrder_(plan);
+  order.forEach(function (l, i) {
+    const course = l.course;
     const mode = modes[course];
-    const targets = [];
-    plan[course].lessons.forEach(function (l) {
-      // Part 1 is released like a lesson; later parts stay unshared until
-      // they unlock (68).
-      if (l.parts) l.parts.forEach(function (p) { targets.push({ key: p.key, releaseNow: p.n === 1 && l.releaseNow }); });
-      else targets.push(l);
-    });
-    targets.forEach(function (l) {
-      const lesson = lessonConfigId_(l.key);
-      if (Date.now() > deadline) {
-        log(mode, course, lesson, "PROBLEM", 0, "enrollment not reached: time budget used; the next run continues");
-        return;
+    const lesson = lessonConfigId_(l.key);
+    if (Date.now() > enrollDeadline) {
+      log(mode, course, lesson, "PROBLEM", 0, "enrollment not reached: time budget used; the next run continues");
+      return;
+    }
+    const share = Date.now() + Math.floor((enrollDeadline - Date.now()) / (order.length - i));
+    if (mode === "SHADOW" && seeded[lesson] === false) {
+      log(mode, course, lesson, "ENROLL", 0, "not checked: the lesson isn't seeded yet (it would be tonight)");
+      return;
+    }
+    try {
+      const res = enrollCanvasRoster_({
+        apply: mode === "APPLY", assignmentConfigId: lesson,
+        deferShare: !l.releaseNow, deadline: share, quiet: true,
+      });
+      const n = mode === "APPLY" ? res.enrolled : res.planned.length;
+      log(mode, course, lesson, "ENROLL", n, _lrEnrollDetail_(res, mode, l.releaseNow));
+      if (res.failed.length) {
+        log(mode, course, lesson, "PROBLEM", res.failed.length, "enrollment failed: " + _lrReasonCounts_(res.failed));
       }
-      if (mode === "SHADOW" && seeded[lesson] === false) {
-        log(mode, course, lesson, "ENROLL", 0, "not checked: the lesson isn't seeded yet (it would be tonight)");
-        return;
+      if (res.timedOut) log(mode, course, lesson, "PROBLEM", 0, "enrollment stopped at the time budget; the next run continues");
+      if (res.unmappedSections.length) {
+        log(mode, course, lesson, "PROBLEM", res.unmappedSections.length,
+          "Canvas section(s) with no period in CanvasSectionMap");
       }
-      try {
-        const res = enrollCanvasRoster_({
-          apply: mode === "APPLY", assignmentConfigId: lesson,
-          deferShare: !l.releaseNow, deadline: deadline, quiet: true,
-        });
-        const n = mode === "APPLY" ? res.enrolled : res.planned.length;
-        log(mode, course, lesson, "ENROLL", n, _lrEnrollDetail_(res, mode, l.releaseNow));
-        if (res.failed.length) {
-          log(mode, course, lesson, "PROBLEM", res.failed.length, "enrollment failed: " + _lrReasonCounts_(res.failed));
-        }
-        if (res.timedOut) log(mode, course, lesson, "PROBLEM", 0, "enrollment stopped at the time budget; the next run continues");
-        if (res.unmappedSections.length) {
-          log(mode, course, lesson, "PROBLEM", res.unmappedSections.length,
-            "Canvas section(s) with no period in CanvasSectionMap");
-        }
-        if (!res.planned.length && !res.enrolled && res.message.indexOf("No LIVE assignment") === 0) {
-          log(mode, course, lesson, "PROBLEM", 0, "no LIVE assignment for this lesson");
-        }
-      } catch (e) {
-        log(mode, course, lesson, "PROBLEM", 0, "enrollment failed: " + e.message);
+      if (!res.planned.length && !res.enrolled && res.message.indexOf("No LIVE assignment") === 0) {
+        log(mode, course, lesson, "PROBLEM", 0, "no LIVE assignment for this lesson");
       }
-    });
+    } catch (e) {
+      log(mode, course, lesson, "PROBLEM", 0, "enrollment failed: " + e.message);
+    }
   });
 
   // 3b. The teacher's lesson doc (66), once per lesson; a later night only
@@ -233,8 +304,39 @@ function lessonRollout_(opts) {
   if (!rows.length) log("-", "-", "-", "IDLE", 0, "no lesson starts within " + ROLLOUT_LEAD_DAYS + " days and none is current");
   _lrWriteLog_(ss, rows);
   const problems = rows.filter(function (r) { return r[4] === "PROBLEM"; }).length;
-  Logger.log("[S58] Lesson rollout: " + rows.length + " log row(s), " + problems + " problem(s). See " + ROLLOUT_LOG_TAB + ".");
-  return { rows: rows, problems: problems };
+  // A dry run never needs a catch-up.
+  const unfinished = !opts.forceShadow && rows.some(function (r) {
+    return r[4] === "PROBLEM" && r[1] === "APPLY" && ROLLOUT_UNFINISHED_RE.test(String(r[6]));
+  });
+  Logger.log("[S58] Lesson rollout: " + rows.length + " log row(s), " + problems + " problem(s)" +
+    (unfinished ? "; stopped short" : "") + ". See " + ROLLOUT_LOG_TAB + ".");
+  return { rows: rows, problems: problems, unfinished: unfinished };
+}
+
+// The lessons (or parts) to enroll, in order: those released tonight first
+// (the current lesson, tomorrow's, Part 1 of a lesson in parts), then the
+// rest; within each group the courses take turns. [{ course, key, releaseNow }].
+function _lrEnrollOrder_(plan) {
+  const byCourse = {};
+  Object.keys(plan).sort().forEach(function (course) {
+    const list = byCourse[course] = [];
+    plan[course].lessons.forEach(function (l) {
+      // Part 1 is released like a lesson; later parts stay unshared until
+      // they unlock (68).
+      if (l.parts) l.parts.forEach(function (p) { list.push({ course: course, key: p.key, releaseNow: p.n === 1 && l.releaseNow }); });
+      else list.push({ course: course, key: l.key, releaseNow: l.releaseNow });
+    });
+  });
+  const out = [];
+  [true, false].forEach(function (releaseNow) {
+    const queues = Object.keys(byCourse).map(function (c) {
+      return byCourse[c].filter(function (t) { return t.releaseNow === releaseNow; });
+    });
+    for (let i = 0; queues.some(function (q) { return i < q.length; }); i++) {
+      queues.forEach(function (q) { if (i < q.length) out.push(q[i]); });
+    }
+  });
+  return out;
 }
 
 // Per course: the current lesson (the latest that has started) and every
