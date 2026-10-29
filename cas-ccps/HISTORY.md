@@ -5457,3 +5457,26 @@ domain and pattern are now read once per execution. The weekly parent
 report (36), the roster import (52) and student data access (50) call the
 same function and get faster too.
 
+## The nightly rollout catches up, 2026-10-29
+
+The first live nights (10-27, 10-28) showed the rollout's limit: a run made
+15 to 21 docs before its time budget. One 8175 lesson (71 students) used
+every run, so 8177's current lesson, The Front Lines, got no docs, and no
+lesson doc or agenda was made. The email didn't say so: RolloutLog's
+PROBLEM rows reached only the signal doc. Now (58):
+- **Catch-up runs.** A run that stops short (a "time budget" or "not
+  reached" PROBLEM in APPLY) schedules `runLessonRolloutCatchUp` in about
+  3 minutes, a one-off trigger it deletes when it fires, until a run
+  finishes or 12 have run that day (`ROLLOUT_CATCHUP`). A run that
+  finishes clears the count. `ROLLOUT_BUSY_UNTIL` keeps runs from
+  overlapping; one that finds another going only schedules a catch-up. A
+  preview never schedules one.
+- **Shared time.** `_lrEnrollOrder_`: tonight's releases first (the
+  current lesson, tomorrow's, Part 1 of a split lesson), then the rest,
+  the courses taking turns. Each lesson's enrollment stops at an equal
+  share of the time left, so leftover time passes on to the next.
+- **A reserve** of a minute for the lesson docs (3b) and agendas (3c)
+  when a course's rollout is on.
+- **The overnight email (34c)** reports the last day's rollout problems
+  and whether the latest run stopped short.
+

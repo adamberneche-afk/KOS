@@ -272,3 +272,23 @@ test('a setup check that throws says unavailable and blocks the all-clear', () =
   assert.ok(h.problems.includes('Ledger columns: unavailable (no Ledger tab)'), JSON.stringify(h.problems));
   assert.equal(h.allClear, '');
 });
+
+// 2026-10-29: the rollout fell behind on two nights and the email said
+// nothing; its PROBLEM rows reached only the signal doc.
+test('the lesson rollout: its problems in the last day, and a latest run that stopped short', () => {
+  const env = load();
+  const log = env.ss.insertSheet('RolloutLog');
+  log.appendRow(['Timestamp', 'Mode', 'Course', 'Lesson', 'Step', 'Count', 'Detail']);
+  log.appendRow([HOURS(40), 'APPLY', '8175', 'CAS-8175-L10', 'PROBLEM', 0, 'enrollment stopped at the time budget; the next run continues']);
+  log.appendRow([HOURS(9), 'APPLY', '8175', 'CAS-8175-L10', 'ENROLL', 21, 'enrolled (shared now)']);
+  log.appendRow([HOURS(9), 'APPLY', '8177', 'CAS-8177-X-P1', 'PROBLEM', 0, 'enrollment not reached: time budget used; the next run continues']);
+  log.appendRow([HOURS(9), '-', '-', '-', 'PROBLEM', 9, 'the newest Canvas export is 9 days old; export a fresh one']);
+  let p = env.exported.overnightHealth_(NOW).problems.join('\n');
+  assert.match(p, /Lesson rollout problems in the last 24 hours: 2; its latest run stopped short/);
+
+  // A later run that finished: still the day's problems, no longer short.
+  log.appendRow([HOURS(8), 'APPLY', '8177', 'CAS-8177-X-P1', 'ENROLL', 21, 'enrolled (shared now)']);
+  p = env.exported.overnightHealth_(NOW).problems.join('\n');
+  assert.match(p, /Lesson rollout problems in the last 24 hours: 2\. See the RolloutLog tab/);
+});
+

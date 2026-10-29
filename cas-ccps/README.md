@@ -373,6 +373,16 @@ days old). The CAS signal reports PROBLEM rows from the last day, and says
 while a course is still in shadow. `previewLessonRollout()` runs it once as
 a dry run from the editor. The steps below still work by hand.
 
+**Catching up (2026-10-29).** A run makes about 20 student docs before its
+time budget. A run that stops short schedules `runLessonRolloutCatchUp` a
+few minutes later, which does the same, until a run finishes (at most
+`ROLLOUT_CATCHUP_MAX`, 12, a day). Enrollment goes to tonight's releases
+first with the courses taking turns, each lesson getting an equal share of
+the time left, and keeps a minute for the lesson docs and agendas. Running
+`runLessonRollout()` from the editor starts the same chain. The overnight
+email reports the day's rollout problems and whether the latest run
+stopped short.
+
 **Hold a lesson.** `LessonSchedule`'s `release` column (2026-10-28): `HOLD`
 keeps the rollout from seeding, enrolling or releasing that lesson, current
 or upcoming, whatever its date; blank (or `AUTO`) is normal. The lesson is

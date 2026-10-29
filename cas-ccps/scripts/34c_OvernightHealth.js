@@ -24,6 +24,8 @@
 //     after 15 minutes (bug 4, resolved 2026-10-23: Flow 2 starts itself)
 //   - warm-up returns that FAILED or need attention in the last 24 hours
 //   - warm-ups delivered as the teacher's anchor (41: junk output, or no return)
+//   - the lesson rollout's (58) PROBLEM rows, and whether its latest run
+//     stopped short of making every student's doc
 //   - at most every 6 hours, the setup checks once run by hand: the Ledger's
 //     column order (38), FlowPrompts against the code (40), the last 24
 //     hours' Studio returns in the right columns (41), and each retention
@@ -149,6 +151,21 @@ function overnightHealth_(now, tz) {
   } catch (e) {
     unreadable = true;
     problems.push("Studio job counts: unavailable (" + e.message + ")");
+  }
+
+  // The lesson rollout (58), 2026-10-29: its PROBLEM rows reached only the
+  // signal doc, so the email said nothing on the two nights it fell behind.
+  try {
+    const ro = _onRollout_(ss, now);
+    if (ro.problems > 0) {
+      problems.push("Lesson rollout problems in the last 24 hours: " + ro.problems +
+        (ro.stoppedShort ? "; its latest run stopped short, so some student docs aren't made yet (" +
+          "a catch-up run follows; runLessonRollout() from the editor does the same)" : "") +
+        ". See the RolloutLog tab");
+    }
+  } catch (e) {
+    unreadable = true;
+    problems.push("Lesson rollout: unavailable (" + e.message + ")");
   }
 
   let allClear = "";
@@ -320,6 +337,30 @@ function _onStudioCounts_(ss, now) {
 }
 
 // A row with no readable timestamp counts as old: it never ages otherwise.
+// RolloutLog's last 24 hours: PROBLEM rows, and whether the latest run (the
+// rows within ON_ROLLOUT_RUN_MS of the newest) stopped short. A dry run
+// (SHADOW) never counts as stopped short. No tab is a quiet zero.
+const ON_ROLLOUT_RUN_MS = 10 * 60 * 1000;
+function _onRollout_(ss, now) {
+  const out = { problems: 0, stoppedShort: false };
+  const sheet = ss.getSheetByName("RolloutLog");
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues().filter(function (r) {
+    const t = new Date(r[0]).getTime();
+    return !isNaN(t) && now.getTime() - t <= ON_RETURN_WINDOW_MS;
+  });
+  out.problems = rows.filter(function (r) { return r[4] === "PROBLEM"; }).length;
+  const runs = rows.filter(function (r) { return r[1] === "APPLY"; });
+  if (runs.length) {
+    const newest = Math.max.apply(null, runs.map(function (r) { return new Date(r[0]).getTime(); }));
+    out.stoppedShort = runs.some(function (r) {
+      return newest - new Date(r[0]).getTime() <= ON_ROLLOUT_RUN_MS && r[4] === "PROBLEM" &&
+        /time budget|not reached/.test(String(r[6]));
+    });
+  }
+  return out;
+}
+
 function _onOlderThan_(value, now, ms) {
   const t = sheetTimestampMs_(value);
   return isNaN(t) || now.getTime() - t > ms;
