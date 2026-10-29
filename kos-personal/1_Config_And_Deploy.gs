@@ -117,6 +117,11 @@ const CFG = {
   // it stayed in the inbound folder and got retried in full on every
   // future run, forever.
   SENSOR1_MAX_FILES_PER_RUN: 8,      // stop after this many; the rest wait for next run
+  // processInferenceQueue: FLOW_COMPLETE rows handled per run, and a time
+  // budget under the 6-minute limit; the rest wait for the next run
+  // (2026-10-29, ingestion hardening E).
+  QUEUE_MAX_ROWS_PER_RUN: 20,
+  QUEUE_TIME_BUDGET_MS: 4 * 60 * 1000,
   SENSOR1_PACING_MS: 300,            // Utilities.sleep() between files, shrinks burst rate
   SENSOR1_QUARANTINE_THRESHOLD: 3,   // failures on the same file before it's quarantined,
                                      // not retried forever (mirrors TURNSTILE_STUCK_THRESHOLD)
