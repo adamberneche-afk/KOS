@@ -211,8 +211,9 @@ wait until after 2026-10-30.
   unchanged, so no new version), and the drift check accepts any commit
   that contains the project's latest change (`tools/deploy-drift/README.md`,
   "run.js stamps the push").
-- **Retire `run.ps1`.** Remove it once `run.js` has run live, and change
-  the manifest-agreement test to check `run.js` only.
+- ~~**Retire `run.ps1`.**~~ Removed 2026-10-29, after `run.js` pushed live
+  on 10-28; the manifest test checks `run.js` against `project-map.json`
+  only.
 - ~~**Fix `SANDBOX_CI_SETUP.md`.**~~ Done 2026-10-23: its Step 2 now says
   `clasp show-authorized-user` (clasp 3.x removed `clasp login --status`),
   as `DEPLOYMENT_RUNBOOK.md` Part 0 already did.
