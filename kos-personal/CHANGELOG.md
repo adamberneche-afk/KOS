@@ -1,5 +1,25 @@
 # KOS Changelog
 
+### Ingestion hardening D and E, and logQueueMetrics (2026-10-29)
+
+From `meta/KOS_INGESTION_HARDENING_PLAN.md` (#336, live 2026-10-29):
+
+- **D. Sensor 2's duplicate guard.** `handleCogExhaust()` (2) gives a
+  COG_EXHAUST payload the UID `COG-<content hash>-<task>` (the cog name,
+  task, verdict and artifact, hashed as `_generateLogUUID` does) and checks
+  it against live and archived rows before it makes the doc. The UID was a
+  timestamp, so a webhook delivered twice was queued twice.
+- **E. A cap on each queue run.** `processInferenceQueue()` (3) handles at
+  most `QUEUE_MAX_ROWS_PER_RUN` (20) `FLOW_COMPLETE` rows within
+  `QUEUE_TIME_BUDGET_MS` (4 minutes, both in 1); the rest wait for the
+  next run, and its log line counts them as deferred. A long run held the
+  script lock every sensor and the Turnstile need.
+- **`logQueueMetrics()` (3), from the editor.** The Queue tab's counts,
+  plus STAGING_PIPELINE's row count, its terminal rows and the oldest
+  PENDING_FLOW row's age. `getQueueMetrics()` returns to the web app and
+  logs nothing. Its first run (10-29): queue empty, 23 rows in no count,
+  most likely DUPLICATE rows, which it doesn't count yet (BACKLOG).
+
 ### The Drive sweeps stop before the time limit (2026-10-23)
 
 `runSemanticSweeper()` and `sweepRootForExhaust()` (6) and

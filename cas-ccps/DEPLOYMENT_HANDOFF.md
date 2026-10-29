@@ -1,8 +1,15 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-23)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-29)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-24.md`](../meta/HANDOFF_2026-10-24.md)**:
+> **2026-10-29: everything merged through #337 is pushed** to every
+> project with `run.js` and checked with `node run.js --verify` (every web
+> app on its last push). The nightly rollout runs in APPLY for both
+> courses and catches itself up (#333). The bullets below are the history
+> of earlier pushes; what is live now, and the operator's queue, are in
+> [`meta/HANDOFF_2026-10-29.md`](../meta/HANDOFF_2026-10-29.md).
+>
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-29.md`](../meta/HANDOFF_2026-10-29.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
@@ -622,6 +629,11 @@ one evaluation goes into the doc instead and the log says why.
 Docs for a lesson two days out are made with the Ledger status `SCHEDULED`:
 not shared, no Student Dashboard card, shown as SCHEDULED on the Teacher
 Dashboard. The run the night before shares them and sets them `ACTIVE`.
+A run makes about 25–30 docs before its time budget; one that stops short
+schedules `runLessonRolloutCatchUp` a few minutes later until every doc is
+made (2026-10-29; at most 12 a day). `runLessonRollout()` from the editor
+starts the same chain. A lesson whose `release` cell in `LessonSchedule`
+says `HOLD` (📅 Lessons → **Hold**) is left out until it is released.
 Keep the Canvas exports fresh: an export older than 7 days is a PROBLEM row.
 `removeLessonRolloutTrigger()` takes it out.
 
