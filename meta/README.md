@@ -6,7 +6,12 @@ why this repo exists at all.
 
 ## Contents
 
-- **`PLAN_2026-10.md`** — the plan of record agreed on 2026-10-06: which AI
+- **`PLAN_2026-11.md`** — the plan of record from 2026-10-29 (proposed
+  until confirmed the week of Nov 2): measure Flow 2 and warm-ups, Phase 4
+  (Forms, Slides, Sheets as work files), and packaging CAS for more
+  teachers; the next 14 days in detail, the rest of November and December
+  in outline, and the decisions D8 to D12.
+- **`PLAN_2026-10.md`** — October's plan of record, agreed on 2026-10-06; its order of work is replaced by `PLAN_2026-11.md`, its design still holds: which AI
   does what (Gemini runs the Google-side flows; a Claude Project is the
   thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
   pipeline kept and repaired, and the RTP Gem frozen.
@@ -26,10 +31,16 @@ why this repo exists at all.
   hold), `HANDOFF_2026-10-22.md` (superseded for the queue; its system state,
   open items and agent notes still hold), `HANDOFF_2026-10-21.md`, `HANDOFF_2026-10-20.md` and `HANDOFF_2026-10-19.md` (their agent notes still hold), `HANDOFF_2026-10-18.md`, `HANDOFF_2026-10-17.md`, `HANDOFF_2026-10-12.md`, `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
   `HANDOFF_2026-10-06.md` and `HANDOFF_2026-10-05.md` are earlier days', superseded.
+- **`AUDIT_DEAD_ENDS_2026-10-29.md`** — the first repo-wide audit of dead
+  ends and half-built work: what runs and fails or runs for nothing, what
+  to finish, what is built and parked (decide and mark), dead weight to
+  remove, docs that say the wrong thing, and operator items that fell off
+  the queue. Its actions are in `PLAN_2026-11.md`; repeated at each sprint
+  boundary.
 - **`BACKLOG.md`** — ideas for future sprints, by system: offered small
   PRs, the CAS design threads, the second-user and KOS Lite concepts
   (deferred until after Oct 30), and repo chores. Nothing in it is
-  committed work; `PLAN_2026-10.md` wins. Reviewed at each sprint boundary.
+  committed work; `PLAN_2026-11.md` wins. Reviewed at each sprint boundary.
 - **`DASHBOARD_WALKTHROUGH_2026-10-26.md`** — the week of Oct 26's
   dashboard walk-through, prepared from the code on 2026-10-21: a checklist
   for the Student and Teacher Dashboards by student situation, and the

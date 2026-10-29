@@ -56,6 +56,7 @@ const SOURCES = [
     'meta/FLOW_DOCTRINE.md',
   ] },
   { name: 'KOS_CONTEXT_DIRECTION', title: 'Where the work stands and where it is going', files: [
+    'meta/PLAN_2026-11.md',
     'meta/PLAN_2026-10.md',
     'meta/HANDOFF_2026-10-29.md',
     'meta/BACKLOG.md',
