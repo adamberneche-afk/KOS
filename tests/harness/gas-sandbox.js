@@ -1145,7 +1145,7 @@ function makeScriptAppMock() {
     const builder = {};
     for (const name of [
       'timeBased', 'everyDays', 'everyHours', 'everyMinutes', 'everyWeeks',
-      'atHour', 'nearMinute', 'onWeekDay', 'onMonthDay', 'inTimezone',
+      'atHour', 'nearMinute', 'onWeekDay', 'onMonthDay', 'inTimezone', 'after',
     ]) {
       builder[name] = (...args) => { calls.push({ method: name, args }); return builder; };
     }
