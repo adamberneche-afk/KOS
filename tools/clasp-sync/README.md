@@ -301,6 +301,16 @@ page can't draw it; set `KOS_RUN_UNICODE=1` (after `chcp 65001`) to keep
 the original characters. `KOS_RUN_CLASP` overrides the clasp command (the
 tests use it to substitute a fake).
 
+### --verify — is every web app on the last push?
+
+`node run.js --verify` pushes and moves nothing. For each web app it lists
+every deployment in `deployments.txt` with its version and the marker in
+its description (a promote writes `<marker> v<n>`), and says **OK** when
+that marker is the commit last pushed (the registry's `last-build.json`)
+or **BEHIND** when it isn't. A push-only project has no deployment, so it
+shows the last push only. The exit code is 1 when any deployment is behind
+or missing. Combine it with `--only`; it refuses the flags that push.
+
 ### --instructions — the KOS Project instructions, links filled in
 
 `kos-personal/claude-project/PROJECT_INSTRUCTIONS.md` names its Google
