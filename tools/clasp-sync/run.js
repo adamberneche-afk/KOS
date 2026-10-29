@@ -35,6 +35,7 @@
  *   node run.js --latest --head-only --only leader-hub
  *   node run.js --rollback-to 6 --only leader-hub
  *   node run.js --latest --instructions
+ *   node run.js --verify
  *   node run.js --help
  *
  * Flags (run.ps1's spellings -Zip, -Latest, -HeadOnly, -RollbackTo,
@@ -56,6 +57,8 @@
  *                         a project marked onHold in the manifest.
  *   --skip-script-check   Run this copy even though it differs from the one
  *                         in the checkout.
+ *   --verify              Read only: is each web app's live deployment on the
+ *                         commit last pushed (the registry's last-build.json)?
  *   --instructions        Fill the KOS Claude Project instructions
  *                         (kos-personal/claude-project/PROJECT_INSTRUCTIONS.md)
  *                         with the doc links in <registry>\kos-project-links.txt,
@@ -125,7 +128,7 @@ class Fatal extends Error {}
 // Arguments
 // ---------------------------------------------------------------------------
 const VALUE_FLAGS = new Set(['zip', 'rollbackto', 'reporoot', 'registry', 'only']);
-const SWITCH_FLAGS = new Set(['latest', 'headonly', 'skipscriptcheck', 'instructions', 'help']);
+const SWITCH_FLAGS = new Set(['latest', 'headonly', 'skipscriptcheck', 'instructions', 'verify', 'help']);
 
 /**
  * Accepts --zip x, --zip=x, -Zip x, --head-only, -HeadOnly, any case.
@@ -135,7 +138,7 @@ function parseArgs(argv) {
   const opts = {
     zip: '', latest: false, headOnly: false, rollbackTo: 0,
     repoRoot: 'KOS-main', registry: 'clasp-registry',
-    skipScriptCheck: false, only: [], instructions: false, help: false,
+    skipScriptCheck: false, only: [], instructions: false, verify: false, help: false,
   };
   let lastFlag = '';
   for (let i = 0; i < argv.length; i++) {
@@ -155,6 +158,7 @@ function parseArgs(argv) {
       else if (name === 'headonly') opts.headOnly = true;
       else if (name === 'skipscriptcheck') opts.skipScriptCheck = true;
       else if (name === 'instructions') opts.instructions = true;
+      else if (name === 'verify') opts.verify = true;
       else opts.help = true;
     } else if (VALUE_FLAGS.has(name)) {
       let value = m[2];
@@ -198,6 +202,8 @@ function usage() {
     '  --skip-script-check   run this copy even if it differs from the checkout\'s',
     '  --instructions        fill the KOS Project instructions with the links in',
     `                        <registry>\\${LINKS_FILE} and copy them; pushes nothing`,
+    '  --verify              read only: is each web app\'s live deployment on the',
+    '                        commit last pushed? Pushes and moves nothing',
     '',
     'Projects: ' + MANIFEST.map((p) => p.name).join(', '),
     '',
@@ -559,6 +565,9 @@ function run(argv) {
   if (opts.instructions && (opts.rollbackTo || opts.headOnly || opts.only.length)) {
     throw new Fatal('--instructions pushes nothing, so it only combines with --latest or --zip.');
   }
+  if (opts.verify && (opts.rollbackTo || opts.headOnly || opts.zip || opts.latest || opts.instructions)) {
+    throw new Fatal('--verify only reads, so it combines with --only and nothing else.');
+  }
   if (opts.rollbackTo && opts.only.length !== 1) {
     throw new Fatal('--rollback-to needs exactly one project in --only: version numbers are per project.');
   }
@@ -641,6 +650,7 @@ function run(argv) {
   }
 
   const ctx = { opts, repoRoot, registry, markers: {}, links: {}, lastDeploymentLines: [] };
+  if (opts.verify) return verifyDeployments(ctx, targets);
   const results = {};
   for (const project of targets) {
     // One project failing doesn't stop the rest; the summary says which.
@@ -800,6 +810,61 @@ function isSameFile(a, b) {
   } catch {
     return false;
   }
+}
+
+// ---------------------------------------------------------------------------
+// --verify (2026-10-29): read only. For each web app, is every deployment in
+// deployments.txt on the commit last pushed (the registry's
+// last-build.json)? It reads the marker from each deployment's description,
+// which a promote writes as "<marker> v<n>". A push-only project has no
+// deployment: HEAD runs, so it shows the last push only. On 10-28 the list
+// printed after a promote still showed the Teacher Dashboard's old version;
+// this answers that without pushing or opening the editor.
+// ---------------------------------------------------------------------------
+function verifyDeployments(ctx, targets) {
+  const rows = [];
+  let bad = 0;
+  for (const p of targets) {
+    const regDir = p.type === 'flat' ? path.join(ctx.registry, p.name) : path.join(ctx.registry, 'cas-ccps', p.name);
+    let last = '';
+    try { last = String(readJson(path.join(regDir, LAST_BUILD_FILE)).commit || ''); } catch { /* not pushed by run.js yet */ }
+    const lastShort = SHA40.test(last) ? last.slice(0, 7) : '';
+    const lastText = lastShort ? 'last push ' + lastShort : 'no push recorded by run.js yet';
+    if (p.mode === 'push') { rows.push([p.name, 'push-only: HEAD runs; ' + lastText]); continue; }
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'kos-verify-'));
+    try {
+      if (!getBoundConfig(path.join(regDir, '.clasp.json'), path.join(tmpDir, '.clasp.json'))) {
+        rows.push([p.name, 'SKIPPED: not in registry']);
+        continue;
+      }
+      const keep = getKeepList(path.join(regDir, 'deployments.txt'));
+      if (!keep || !keep.length) { rows.push([p.name, 'SKIPPED: no deployments.txt']); continue; }
+      const live = getDeployments(ctx, tmpDir);
+      for (const id of keep) {
+        const d = live.find((x) => x.id === id);
+        const shortId = id.slice(0, 10) + '…';
+        if (!d) { bad++; rows.push([p.name, `${shortId} NOT LIVE (in deployments.txt, missing from clasp)`]); continue; }
+        const m = /^([0-9a-f]{7})\b/i.exec(d.description);
+        const on = m ? m[1].toLowerCase() : '';
+        const ok = !!lastShort && on === lastShort;
+        if (!ok) bad++;
+        rows.push([p.name, `${shortId} v${d.version} ${on || '(no marker)'}: ` +
+          (ok ? 'OK' : lastShort ? 'BEHIND (' + lastText + ')' : 'unknown (' + lastText + ')')]);
+      }
+    } catch (e) {
+      bad++;
+      rows.push([p.name, 'FAILED: ' + e.message]);
+    } finally {
+      removeTree(tmpDir);
+    }
+  }
+  out('');
+  out('================ Verify (read only) ================');
+  rows.forEach((r) => out(`  ${r[0].padEnd(24)} ${r[1]}`));
+  out('');
+  out(bad ? `${bad} deployment(s) not on the last push. Run node run.js --latest --only <project> to release it.`
+    : 'Every web app deployment is on the commit last pushed.');
+  return bad ? 1 : 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -1147,7 +1212,7 @@ function invokeProject(ctx, p) {
 module.exports = {
   MANIFEST, Fatal, parseArgs, parseDeploymentLines, getKeepList, getMarker,
   quoteForCmd, crc32, extractZip, isoLocal, run, parseLinks, fillInstructions,
-  zipCommit, readBuildCommit, buildHash, stampBuild, BUILD_COMMIT_FILE, LAST_BUILD_FILE,
+  zipCommit, readBuildCommit, buildHash, stampBuild, BUILD_COMMIT_FILE, LAST_BUILD_FILE, verifyDeployments,
 };
 
 if (require.main === module) {
