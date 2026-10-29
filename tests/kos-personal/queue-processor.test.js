@@ -288,3 +288,23 @@ test('processIntakePayload takes and releases the lock when called on its own', 
   }), 'FIXTURE-LOCK2');
   assert.equal(sandbox.LockService.getScriptLock().hasLock(), false);
 });
+
+// Ingestion hardening E (2026-10-29): a run handled every FLOW_COMPLETE row,
+// holding the script lock the sensors and the Turnstile need.
+test('processInferenceQueue handles at most QUEUE_MAX_ROWS_PER_RUN rows; the rest wait for the next run', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported._getOrCreateSheet(ss, 'STAGING_PIPELINE');
+  exported._getOrCreateSheet(ss, 'STUDIO_RETURN');
+  const doc = sandbox.DocumentApp.create('not json');
+  doc.getBody().setText('not json at all');
+  const cap = exported.CFG.QUEUE_MAX_ROWS_PER_RUN;
+  for (let i = 0; i < cap + 5; i++) appendStagingRow(ss, { uid: 'UID-' + i, type: 'SESSION_LOG', fileId: doc.getId() });
+
+  exported.processInferenceQueue();
+  const statuses = () => ss.getSheetByName('STAGING_PIPELINE').getDataRange().getValues().slice(1).map((r) => r[5]);
+  assert.equal(statuses().filter((st) => st === 'FLOW_COMPLETE').length, 5, 'five left for the next run');
+  exported.processInferenceQueue();
+  assert.equal(statuses().filter((st) => st === 'FLOW_COMPLETE').length, 0);
+});
+
