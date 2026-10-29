@@ -157,8 +157,9 @@ operator. This file holds what comes after them.
 
 ## Second teachers and adoption
 
-Two concept sets exist from outside the repo; neither is filed yet. Both
-wait until after 2026-10-30.
+**Promoted 2026-10-29** into [`PLAN_2026-11.md`](./PLAN_2026-11.md),
+"Packaging CAS for more teachers" (D9 to D11, steps 1 to 5). The two
+concept sets below, from outside the repo and not filed, are its inputs.
 
 - **Second-user build (`SU_*`, reviewed 2026-10-13).** The order of work is
   sound, but some of its premises are wrong:
