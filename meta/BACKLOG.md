@@ -180,6 +180,8 @@ wait until after 2026-10-30.
   - Correct the docs' factual errors: markers are full 40-character SHAs;
     the cas-ccps registry path is `<registry>\cas-ccps\<project>`; clasp
     3.x uses `create-script` and `show-authorized-user`.
+- ~~**Marker-level verify.**~~ Built 2026-10-29: `node run.js --verify`
+  (read only) compares each deployment's marker with the last push.
 - **Marker-level verify, which works today.** `clasp list-deployments`
   shows each deployment's `<marker> v<n>` description, so a read-only
   check can compare it with the repo's markers. One gap: a rollback

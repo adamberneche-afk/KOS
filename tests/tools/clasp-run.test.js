@@ -680,3 +680,41 @@ test('a zip with no commit says so and leaves the marker as committed', () => {
   assert.equal(fs.readFileSync(path.join(w.repo, 'leader-hub', 'DeployVersionMarker.gs'), 'utf8'), LH_MARKER('3'.repeat(40)));
 });
 
+// ── --verify (2026-10-29): read only ─────────────────────────────────────────
+
+test('--verify: each registered deployment against the last push; pushes and moves nothing', () => {
+  const C = 'abcdef1' + '0'.repeat(33);
+  const w = world({
+    state: {
+      deployments: [
+        { id: 'HEADID', version: 'HEAD', desc: '' },
+        { id: 'DEPA', version: '9', desc: 'abcdef1 v9' },
+        { id: 'DEPB', version: '8', desc: '1234567 v8' },
+      ],
+    },
+  });
+  fs.writeFileSync(path.join(w.registry, 'leader-hub', run.LAST_BUILD_FILE), JSON.stringify({ hash: 'h', commit: C }));
+  const r = w.run(['--verify', '--only', 'leader-hub,central-ledger']);
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /leader-hub\s+DEPA… v9 abcdef1: OK/);
+  assert.match(r.out, /leader-hub\s+DEPB… v8 1234567: BEHIND \(last push abcdef1\)/);
+  assert.match(r.out, /central-ledger\s+push-only: HEAD runs; no push recorded by run\.js yet/);
+  assert.match(r.out, /1 deployment\(s\) not on the last push/);
+  assert.equal(w.calls('push').length, 0);
+  assert.equal(w.calls('version').length, 0);
+  assert.equal(w.calls('update-deployment').length, 0);
+});
+
+test('--verify: all current exits 0; it refuses flags that push or move anything', () => {
+  const C = 'abcdef1' + '0'.repeat(33);
+  const w = world({
+    state: { deployments: [{ id: 'DEPA', version: '9', desc: 'abcdef1 v9' }, { id: 'DEPB', version: '9', desc: 'abcdef1 v9' }] },
+  });
+  fs.writeFileSync(path.join(w.registry, 'leader-hub', run.LAST_BUILD_FILE), JSON.stringify({ hash: 'h', commit: C }));
+  const r = w.run(['--verify', '--only', 'leader-hub']);
+  assert.equal(r.status, 0, r.out);
+  assert.match(r.out, /Every web app deployment is on the commit last pushed/);
+  assert.match(w.run(['--verify', '--latest']).out, /--verify only reads/);
+  assert.match(w.run(['--verify', '--head-only']).out, /--verify only reads/);
+});
+
