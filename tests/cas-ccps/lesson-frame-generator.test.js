@@ -28,6 +28,7 @@ const { loadGasFiles, FakeDriveFolder } = require('../harness/gas-sandbox');
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const PATHS = [
   path.join(SCRIPTS, '00_SharedConfig.js'),
+  path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'),
   path.join(SCRIPTS, '22_LessonContextHandler.js'),
   path.join(SCRIPTS, '26_CompetencyAlignmentLog.js'),
   path.join(SCRIPTS, '32_CompetencyRubricImporter.js'),

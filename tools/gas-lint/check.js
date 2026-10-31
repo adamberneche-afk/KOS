@@ -1750,6 +1750,92 @@ function checkWebAppAuthChecks() {
 }
 
 // -----------------------------------------------------------------------
+// Check M2 — every public function of a shared web app checks its caller.
+//
+// In Apps Script, google.script.run can call ANY top-level function whose
+// name doesn't end in "_", from any page the project serves. A web app that
+// runs as its owner (executeAs USER_DEPLOYING) with access wider than
+// MYSELF therefore runs, as the owner, whatever public function a visitor
+// names: in the Teacher Dashboard, a student could overwrite a classmate's
+// parent-report record through 36's recordParentReportCopied, a function
+// shared in from another file (KOS Audit Docket IV, High, 2026-10-31).
+// Check M only looks at doGet/doPost; this one looks at every public
+// function in every file of such a project.
+//
+// A function passes when its body, or a private helper it calls (up to
+// three hops), calls a named owner/teacher check (OWNER_GATE_RE), or it is
+// listed in webapp-public-allow.json with the reason anyone may call it.
+// Session.getActiveUser() alone doesn't count: reading the caller's
+// address (to stamp a row, say) is not a check.
+// -----------------------------------------------------------------------
+const OWNER_GATE_RE = /\b(?:_isAuthorizedTeacher_|requireScriptOwner_|_lhRequireOwner_|_isAuthorizedOwner_)\s*\(/;
+const PRIVATE_CALL_RE = /\b([A-Za-z_$][\w$]*_)\s*\(/g;
+const WEBAPP_PUBLIC_ALLOW = require('./webapp-public-allow.json');
+
+// Pure decision logic over stripped sources, for tests. `files` is
+// [{ path, stripped, decls: [{ name, line }] }]; `allowed` maps function
+// name -> reason. Returns { ungated: [{ name, file, line }], staleAllow: [name] }.
+function evaluatePublicFunctionGates(files, allowed) {
+  const bodies = new Map();
+  for (const f of files) {
+    for (const d of f.decls) {
+      const body = findFunctionBody(f.stripped, d.name);
+      if (body !== null && !bodies.has(d.name)) bodies.set(d.name, { file: f.path, line: d.line, body });
+    }
+  }
+  const gated = (name) => {
+    const seen = new Set();
+    const walk = (names, depth) => names.some((n) => {
+      if (seen.has(n) || !bodies.has(n)) return false;
+      seen.add(n);
+      const b = bodies.get(n).body;
+      if (OWNER_GATE_RE.test(b)) return true;
+      return depth < 3 && walk([...b.matchAll(PRIVATE_CALL_RE)].map((m) => m[1]), depth + 1);
+    });
+    const own = bodies.get(name).body;
+    return OWNER_GATE_RE.test(own) || walk([...own.matchAll(PRIVATE_CALL_RE)].map((m) => m[1]), 1);
+  };
+  const ungated = [];
+  for (const [name, x] of bodies) {
+    if (name.endsWith('_') || name === 'doGet' || name === 'doPost') continue;
+    if (Object.prototype.hasOwnProperty.call(allowed, name)) continue;
+    if (!gated(name)) ungated.push({ name, file: x.file, line: x.line });
+  }
+  const staleAllow = Object.keys(allowed).filter((n) => !bodies.has(n));
+  return { ungated, staleAllow };
+}
+
+function checkWebAppPublicFunctions() {
+  for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
+    if (projectName.startsWith('_') || !def.manifest || !exists(def.manifest)) continue;
+    let webapp;
+    try { webapp = JSON.parse(readFile(def.manifest)).webapp; } catch (e) { continue; }
+    if (!webapp || webapp.access === 'MYSELF') continue;
+    const files = (def.files || [])
+      .filter((f) => /\.(js|gs)$/.test(f) && exists(f))
+      .map((f) => ({ path: f, stripped: stripCommentsAndStrings(readFile(f)), decls: findTopLevelDecls(f) }));
+    const allowed = WEBAPP_PUBLIC_ALLOW[projectName] || {};
+    const { ungated, staleAllow } = evaluatePublicFunctionGates(files, allowed);
+    for (const u of ungated) {
+      err('web-app-public-function',
+        `${u.file}:${u.line} — ${u.name}() is public in project "${projectName}", a web app that runs as ` +
+        `its owner with access "${webapp.access}", so any visitor can call it from the page through ` +
+        `google.script.run, and it runs as the owner. It calls no owner or teacher check ` +
+        `(requireScriptOwner_(), _isAuthorizedTeacher_(), _lhRequireOwner_()). Add one as its first line, ` +
+        `rename it with a trailing "_" if nothing outside the code calls it, or, if any signed-in visitor ` +
+        `may call it, list it with the reason in tools/gas-lint/webapp-public-allow.json.`,
+        u.file);
+    }
+    for (const n of staleAllow) {
+      warn('web-app-public-function',
+        `tools/gas-lint/webapp-public-allow.json lists ${n}() for project "${projectName}", which no file ` +
+        `of that project declares any more. Remove the entry.`,
+        'tools/gas-lint/webapp-public-allow.json');
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
 // Check N — bounded-loop convention (warning-level).
 //
 // A `while (x.hasNext())` loop over a Drive/Docs/Sheets iterator
@@ -1939,6 +2025,8 @@ module.exports = {
   AUTH_CALL_RE,
   findFunctionBody,
   evaluateWebAppAuthForProject,
+  evaluatePublicFunctionGates,
+  OWNER_GATE_RE,
   findMissingOAuthScopes,
   findUnusedOAuthScopes,
   HASNEXT_WHILE_RE,
@@ -1969,6 +2057,7 @@ checkFixtureConsumers();
 checkSandboxScope();
 checkPlausibilityGateDrift();
 checkWebAppAuthChecks();
+checkWebAppPublicFunctions();
 checkBoundedLoopConvention();
 checkSameProjectTypeofGuards();
 

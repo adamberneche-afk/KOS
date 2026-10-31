@@ -489,6 +489,7 @@ function renderWeeklyParentReportText_(report) {
 // Dashboard's one-student page; the roster scope and excluded count are the
 // same either way.
 function generateWeeklyParentReports(now, onlyEmail) {
+  requireScriptOwner_();
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const ledgerSheet = ss.getSheetByName(cfg.tabs.ledger);
@@ -608,6 +609,7 @@ function _findParentReportRow_(sheet, studentEmail, weekStart) {
 // clipboard, or else this week's report as built now.
 // ---------------------------------------------------------------------------
 function recordParentReportCopied(studentEmail, now, copied) {
+  requireScriptOwner_();
   const cfg = getConfig_();
   const generated = generateWeeklyParentReports(now);
   const report = generated.reports.filter(function (r) {
@@ -740,6 +742,7 @@ function _countParentReportsPastRetentionUnarchived_() {
 // tell the operator to "run once manually from the Script Editor."
 // ---------------------------------------------------------------------------
 function archiveExpiredParentReports() {
+  requireScriptOwner_();
   const result = _archiveExpiredParentReports_();
   Logger.log("[S36] Archive run: " + result.archived + " of " + result.checked + " row(s).");
   return result;
@@ -756,6 +759,7 @@ function archiveExpiredParentReports() {
 // check what it does.
 // ---------------------------------------------------------------------------
 function runWeeklyParentReportPrep(now) {
+  requireScriptOwner_();
   const cfg = getConfig_();
   // `now` is optional and normally absent — a trigger passes an event
   // object, not a date, and the default is the current week. It exists so a
@@ -846,6 +850,7 @@ function _prStudentCourses_(cfg) {
 // Public name for the same reason as archiveExpiredParentReports() above.
 // ---------------------------------------------------------------------------
 function installWeeklyParentReportTrigger() {
+  requireScriptOwner_();
   const existing = ScriptApp.getProjectTriggers()
     .filter(function (t) { return t.getHandlerFunction() === "runWeeklyParentReportPrep"; });
   if (existing.length > 0) {

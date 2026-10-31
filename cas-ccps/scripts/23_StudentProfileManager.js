@@ -134,6 +134,7 @@ const MAX_EVAL_DOC_OPENS = 50;
 // Called by 3:00am time trigger. Runs Stage 1 of the nightly cron sequence.
 // ---------------------------------------------------------------------------
 function updateAllStudentProfiles() {
+  requireScriptOwner_();
   const cfg = getConfig_();
 
   // ── M2 guard ──────────────────────────────────────────────────────────────
@@ -1164,6 +1165,7 @@ function buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding) {
 // in "_", so this is the entry point; installWarmUpTriggers_ does the work.
 // ---------------------------------------------------------------------------
 function installWarmUpTriggers() {
+  requireScriptOwner_();
   installWarmUpTriggers_();
 }
 
@@ -1316,6 +1318,7 @@ function _createTabIfAbsent_(ss, tabName, headers, textColumns) {
 // validateStudentProfiles — run manually to check data integrity
 // ---------------------------------------------------------------------------
 function validateStudentProfiles() {
+  requireScriptOwner_();
   const cfg   = getConfig_();
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.studentProfiles);

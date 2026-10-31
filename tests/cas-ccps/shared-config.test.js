@@ -11,12 +11,15 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFile, FakeSheet } = require('../harness/gas-sandbox');
+const { loadGasFiles, FakeSheet } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 
+// 00b: the seeders refuse a caller other than the script's own account.
+const GUARD_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00b_ScriptOwnerGuard.js');
+
 function load(exposeNames = ['getConfig_']) {
-  return loadGasFile(SHARED_CONFIG_PATH, exposeNames);
+  return loadGasFiles([SHARED_CONFIG_PATH, GUARD_PATH], exposeNames);
 }
 
 test('getConfig_: throws a clear, actionable error when the Ledger ID can\'t be found anywhere', () => {
