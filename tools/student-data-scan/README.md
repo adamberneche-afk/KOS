@@ -42,6 +42,19 @@ cached views, and the repo went public again. CI can't check names: run
 `--roster` locally for each section after any change that adds example
 text.
 
+**What this scan does not read (2026-10-31).** It reads text files only
+(`TEXT_EXT` in `check.js`), so binary files are never opened: no `.xlsx`,
+`.docx`, `.pptx` or `.imscc`. That is how five Drive catalog workbooks
+(`drive-curation/Drive_Curriculum_Catalog_v2.xlsx` to `_v6.xlsx`), each
+with a "Sensitive Items" sheet naming student records, passed the
+2026-10-20 scrub (KOS Audit Docket IV, Critical). At the operator's
+decision on 2026-10-31 they were removed with `git filter-repo
+--invert-paths` from every commit, and all branches and tags were
+force-pushed. Every Office and zip file in history was then unpacked and
+searched (student addresses, ID-shaped addresses, IEP, 504, "Sensitive
+Items"); only those five matched. A clean result from this scan says
+nothing about binary files until it unpacks them, which is planned.
+
 **Log calls (warnings, since 2026-10-22).** The working-tree run also reads
 every `Logger.log` / `console.*` call in `cas-ccps/scripts/` and warns when
 one passes a student identifier, because the operator pastes Apps Script
