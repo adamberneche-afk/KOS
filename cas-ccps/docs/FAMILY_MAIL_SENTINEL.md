@@ -36,7 +36,10 @@ thread that is already family mail. The roster is the Central Ledger's
 `Ledger` tab; a full name matches with a hyphenated or several-word surname
 too ("Smith-Jones", "De La Cruz"), in either order. **Never family mail:**
 Google's system notices (`FMS_SYSTEM_SENDERS`: Drive shares, Docs
-comments, Classroom), even when they name a student.
+comments, Classroom), even when they name a student. When Gemini says an
+outside sender's message is not family mail, `KOS/Family` comes off its
+thread only if no other message in the thread is family mail, flagged, or
+still waiting on Gemini.
 
 **The signal doc** (`KOS_FAMILY_SIGNAL`, the same file every run) looks like:
 
@@ -94,7 +97,11 @@ title or a capitalized name the roster doesn't hold, or shares no content
 word with the message (it was made up).
 
 **What's left:** mail that arrives between two scans (up to 15 minutes) isn't
-labeled yet. The KOS Project still excludes `student.ccpsnet.net` and Canvas
+labeled yet. After an outage, or on the first run, one scan reads at most
+300 messages (5 list pages, 2 minutes); it then leaves the scan mark
+(`FAMILY_SENTINEL_LAST_SCAN_AT`) where it was and records
+`FAMILY_SENTINEL_SCAN_PENDING` (two timestamps), and the next runs read new
+mail first, then the rest. The KOS Project still excludes `student.ccpsnet.net` and Canvas
 by sender, and is told to count, not read, anything else about a student.
 A Gmail filter can close the gap for students: `from:student.ccpsnet.net` →
 apply label `KOS/Family`.
