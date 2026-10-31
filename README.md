@@ -454,6 +454,17 @@ addendum. The two named-but-not-uploaded files this section used to list
 (`27_LessonFrameGenerator` in cas-ccps, the `PERSONA_*` duplicates in
 kos-personal) are both in the repo now.
 
+## Floor checks 7 and 8 — doc-link-check and doc-placeholder-check
+
+`.github/workflows/doc-link-check.yml` and `.github/workflows/doc-placeholder-check.yml` are **byte-identical copies** of the canonical files in the Mothership hub (see that repo's `CICD_FLOOR.md`) and must not be edited here — a change belongs upstream. Everything that differs about this repo lives in `.github/floor.json`.
+
+| check | catches | configured by |
+|---|---|---|
+| doc-link-check | a relative link in a Markdown doc that points at a file that no longer exists (offline: external URLs are never fetched, so it cannot flake) | `docExcludePaths` |
+| doc-placeholder-check | unedited template text left in a shipped doc: an unfilled company-name field, filler Latin, an unreplaced URL placeholder. Not ordinary TODOs | `placeholderPatterns`, `docExcludePaths` |
+
+Both run on pull requests that touch Markdown or `.github/floor.json`. `archive` is excluded because archived docs are kept as written: one, `kos-personal/archive/studio-steps/README.md`, links to a gas-lint map that has since moved. A line that must quote placeholder text on purpose can carry `floor-allow-placeholder`.
+
 ## Floor check 10 — secrets-doctor
 
 `scripts/secrets-doctor.mjs` confirms every secret this repo's workflows reference is actually configured and non-empty. It is a **byte-identical copy** of the canonical file in the Mothership hub (see that repo's `CICD_FLOOR.md`) and must not be edited here — a change belongs upstream.
