@@ -664,10 +664,15 @@ function _parentReportsPastFor_(cfg, studentEmail, beforeWeekStart) {
   const sheet = ss.getSheetByName(cfg.tabs.parentReportLog);
   if (!sheet || sheet.getLastRow() < 2) return [];
   const want = String(studentEmail || "").trim().toLowerCase();
+  // Only this dashboard's teacher's reports: the log is shared by every
+  // teacher on the Ledger (Docket IV, Low; latent while there is one).
+  const teacher = String(cfg.teacherEmail || "").trim().toLowerCase();
+  if (!teacher) return [];
   const before = beforeWeekStart instanceof Date ? beforeWeekStart.getTime() : Infinity;
   const out = [];
   sheet.getRange(2, 1, sheet.getLastRow() - 1, PARENT_REPORT_LOG_HEADERS.length).getValues().forEach(function (r) {
     if (String(r[PRL.STUDENT_EMAIL] || "").trim().toLowerCase() !== want) return;
+    if (String(r[PRL.COPIED_BY] || "").trim().toLowerCase() !== teacher) return;
     const ws = r[PRL.WEEK_START];
     if (!(ws instanceof Date) || ws.getTime() >= before) return;
     if (String(r[PRL.ARCHIVE_STATUS] || "").trim() !== "" || !String(r[PRL.REPORT_TEXT] || "").trim()) return;
