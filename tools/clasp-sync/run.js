@@ -36,6 +36,7 @@
  *   node run.js --rollback-to 6 --only leader-hub
  *   node run.js --latest --instructions
  *   node run.js --verify
+ *   node run.js --latest --hub latest
  *   node run.js --help
  *
  * Flags (run.ps1's spellings -Zip, -Latest, -HeadOnly, -RollbackTo,
@@ -65,6 +66,12 @@
  *                         copy the result to the clipboard and save it as
  *                         <registry>\PROJECT_INSTRUCTIONS.filled.md. Pushes
  *                         nothing. Combine with --latest to refresh first.
+ *   --hub <zip|dir|latest> Also deploy the Mothership hub (Mothership's gas/
+ *                         folder) as one more web app, then have it install its
+ *                         own triggers. A zip is extracted to Mothership-main
+ *                         beside the KOS checkout; "latest" is the newest
+ *                         Mothership-main*.zip here or in ~\Downloads. Needs
+ *                         <registry>\mothership-hub\ (see HUB below).
  *
  * Exit code: 0 when nothing failed, 1 otherwise.
  */
@@ -127,7 +134,7 @@ class Fatal extends Error {}
 // ---------------------------------------------------------------------------
 // Arguments
 // ---------------------------------------------------------------------------
-const VALUE_FLAGS = new Set(['zip', 'rollbackto', 'reporoot', 'registry', 'only']);
+const VALUE_FLAGS = new Set(['zip', 'rollbackto', 'reporoot', 'registry', 'only', 'hub']);
 const SWITCH_FLAGS = new Set(['latest', 'headonly', 'skipscriptcheck', 'instructions', 'verify', 'help']);
 
 /**
@@ -139,6 +146,7 @@ function parseArgs(argv) {
     zip: '', latest: false, headOnly: false, rollbackTo: 0,
     repoRoot: 'KOS-main', registry: 'clasp-registry',
     skipScriptCheck: false, only: [], instructions: false, verify: false, help: false,
+    hub: '',
   };
   let lastFlag = '';
   for (let i = 0; i < argv.length; i++) {
@@ -170,6 +178,7 @@ function parseArgs(argv) {
       else if (name === 'reporoot') opts.repoRoot = value;
       else if (name === 'registry') opts.registry = value;
       else if (name === 'only') opts.only.push(...splitList(value));
+      else if (name === 'hub') opts.hub = value;
       else {
         const n = Number(value);
         // Versions start at 1. A 0 used to read as "no rollback", so
@@ -204,6 +213,7 @@ function usage() {
     `                        <registry>\\${LINKS_FILE} and copy them; pushes nothing`,
     '  --verify              read only: is each web app\'s live deployment on the',
     '                        commit last pushed? Pushes and moves nothing',
+    '  --hub <zip|dir|latest> also deploy the Mothership hub and install its triggers',
     '',
     'Projects: ' + MANIFEST.map((p) => p.name).join(', '),
     '',
@@ -568,6 +578,11 @@ function run(argv) {
   if (opts.verify && (opts.rollbackTo || opts.headOnly || opts.zip || opts.latest || opts.instructions)) {
     throw new Fatal('--verify only reads, so it combines with --only and nothing else.');
   }
+  if (opts.hub && (opts.rollbackTo || opts.headOnly || opts.instructions || opts.verify)) {
+    // --head-only above all: the hub's triggers run whatever is pushed, so
+    // a "test" push would be a production push.
+    throw new Fatal('--hub only combines with a normal run (--zip, --latest, --only): the hub has no safe --head-only, --rollback-to, --instructions or --verify.');
+  }
   if (opts.rollbackTo && opts.only.length !== 1) {
     throw new Fatal('--rollback-to needs exactly one project in --only: version numbers are per project.');
   }
@@ -601,6 +616,7 @@ function run(argv) {
   }
 
   const names = MANIFEST.map((p) => p.name);
+  if (opts.hub) names.push(HUB_NAME);
   const unknown = opts.only.filter((n) => !names.includes(n));
   if (unknown.length) throw new Fatal(`Not in the manifest: ${unknown.join(', ')}`);
 
@@ -643,6 +659,9 @@ function run(argv) {
 
   if (opts.instructions) return writeInstructions(repoRoot, registry);
 
+  const runHub = !!opts.hub && (!opts.only.length || opts.only.includes(HUB_NAME));
+  const hubRoot = runHub ? prepareHub(opts.hub, repoRoot) : null;
+
   // Fail early and plainly if clasp isn't installed, instead of once per project.
   const version = runClasp(['--version'], process.cwd());
   if (version.status !== 0) {
@@ -659,6 +678,14 @@ function run(argv) {
     } catch (e) {
       warn(`  ${project.name}: ${e.message}`);
       results[project.name] = `FAILED: ${e.message}`;
+    }
+  }
+  if (hubRoot) {
+    try {
+      results[HUB_NAME] = invokeHub(ctx, hubRoot);
+    } catch (e) {
+      warn(`  ${HUB_NAME}: ${e.message}`);
+      results[HUB_NAME] = `FAILED: ${e.message}`;
     }
   }
 
@@ -1206,6 +1233,132 @@ function invokeProject(ctx, p) {
   // Recorded once the code is on HEAD, whatever happened to the versions.
   if (stamp && !/^(FAILED: push|SKIPPED)/.test(result)) recordBuild(regDir, stamp);
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// HUB: the Mothership hub (github.com/adamberneche-afk/Mothership, its gas/
+// folder) deployed as one more web app, so one run on this machine - where
+// clasp is already signed in - releases KOS and the hub together, and no
+// Google credential has to live in GitHub. Mothership's code stays in
+// Mothership; this only pushes it.
+//
+// Registry, once: <registry>\mothership-hub\ holding
+//   .clasp.json      from `clasp clone <the hub's scriptId>`
+//   deployments.txt  the hub's live deployment ID (its /exec URL never changes)
+//   admin-token.txt  the hub's ADMIN_SETTINGS_TOKEN Script Property, so the
+//                    run can ask the hub to install its own triggers
+//                    (clasp run can't - it needs a GCP project)
+//
+// Differences from a KOS web app: the marker is read, never stamped
+// (Mothership stamps gas/deploy_version_marker.js in its own commits, and its
+// deploy-drift check expects exactly that commit), and there is no
+// --head-only, because the hub's triggers run whatever is pushed.
+// ---------------------------------------------------------------------------
+const HUB_NAME = 'mothership-hub';
+const HUB_FOLDER = 'Mothership-main';
+const HUB_TOKEN_FILE = 'admin-token.txt';
+const HUB_INSTALL_REL = path.join('scripts', 'install-hub-triggers.mjs');
+
+function looksLikeHub(dir) {
+  return fs.existsSync(path.join(dir, 'gas', 'Code.js')) && fs.existsSync(path.join(dir, HUB_INSTALL_REL));
+}
+
+/** A hub checkout to deploy from: an existing folder as is, or a zip extracted beside the KOS checkout. */
+function prepareHub(hubArg, repoRoot) {
+  let src = hubArg;
+  if (/^latest$/i.test(hubArg)) {
+    const found = [];
+    for (const d of [process.cwd(), path.join(os.homedir(), 'Downloads')].filter((x) => fs.existsSync(x))) {
+      for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+        if (e.isFile() && /^Mothership-main.*\.zip$/i.test(e.name)) {
+          const full = path.join(d, e.name);
+          found.push({ name: e.name, full, mtime: fs.statSync(full).mtime });
+        }
+      }
+    }
+    if (found.length === 0) throw new Fatal('--hub latest found no Mothership-main*.zip here or in ~\\Downloads.');
+    found.sort((a, b) => b.mtime - a.mtime);
+    src = found[0].full;
+    out(`Using newest hub zip: ${found[0].name} (saved ${found[0].mtime.toLocaleString()})`);
+  }
+  const full = resolveFull(src);
+  if (!fs.existsSync(full)) throw new Fatal(`--hub: not found: ${full}`);
+  if (fs.statSync(full).isDirectory()) {
+    if (!looksLikeHub(full)) throw new Fatal(`--hub: ${full} doesn't look like a Mothership checkout (no gas/Code.js or ${HUB_INSTALL_REL}).`);
+    return full;
+  }
+
+  const target = path.join(path.dirname(repoRoot), HUB_FOLDER);
+  if (fs.existsSync(target)) {
+    if (sameOrInside(process.cwd(), target)) throw new Fatal(`Run this from outside ${target} when using --hub with a zip.`);
+    if (!looksLikeHub(target)) throw new Fatal(`${target} exists but doesn't look like a Mothership checkout. Not deleting it.`);
+  }
+  const staging = path.join(os.tmpdir(), 'hub-zip-' + crypto.randomBytes(8).toString('hex'));
+  try {
+    extractZip(full, staging);
+    const top = fs.readdirSync(staging, { withFileTypes: true });
+    if (top.length !== 1 || !top[0].isDirectory()) {
+      throw new Fatal(`Expected one top-level folder in ${full}, found: ${top.map((e) => e.name).join(', ')}`);
+    }
+    const topDir = path.join(staging, top[0].name);
+    if (!looksLikeHub(topDir)) throw new Fatal(`${full} doesn't look like a Mothership zip (no gas/Code.js or ${HUB_INSTALL_REL}).`);
+    if (fs.existsSync(target)) removeTree(target);
+    moveTree(topDir, target);
+  } finally {
+    if (fs.existsSync(staging)) removeTree(staging);
+  }
+  out(`Hub checkout replaced from ${full}`);
+  return target;
+}
+
+/** The 7-character SHA in gas/deploy_version_marker.js, or (none). */
+function hubMarker(workingDir) {
+  try {
+    const m = /DEPLOY_VERSION_SHA\s*=\s*'([0-9a-f]{7})/.exec(readText(path.join(workingDir, 'deploy_version_marker.js')));
+    if (m) return m[1];
+  } catch { /* no marker file */ }
+  return '(none)';
+}
+
+function invokeHub(ctx, hubRoot) {
+  out('');
+  out(`== ${HUB_NAME} (Mothership gas/, promote) ==`);
+  const regDir = path.join(ctx.registry, HUB_NAME);
+  const workingDir = path.join(hubRoot, 'gas');
+  if (!getBoundConfig(path.join(regDir, '.clasp.json'), path.join(workingDir, '.clasp.json'))) {
+    return 'SKIPPED: not in registry';
+  }
+  try {
+    addLink(ctx, HUB_NAME, 'editor', `https://script.google.com/d/${readJson(path.join(regDir, '.clasp.json')).scriptId}/edit`);
+  } catch { /* the link is only a convenience */ }
+
+  const marker = hubMarker(workingDir);
+  out(`  marker in this build: ${marker}  (as committed in Mothership)`);
+  ctx.markers[HUB_NAME] = marker;
+
+  const deploymentsFile = path.join(regDir, 'deployments.txt');
+  const result = invokePushAndPromote(ctx, workingDir, deploymentsFile, marker, HUB_NAME);
+  if (/^(FAILED|SKIPPED)/.test(result)) return result;
+
+  // Triggers: the hub installs its own, through its install-triggers endpoint.
+  const tokenFile = path.join(regDir, HUB_TOKEN_FILE);
+  if (!fs.existsSync(tokenFile)) {
+    warn(`  no ${tokenFile} -- triggers not installed. Put the hub's ADMIN_SETTINGS_TOKEN in it, or run installSpokePollerTriggers() etc. from the editor.`);
+    return `${result}; triggers: SKIPPED (no ${HUB_TOKEN_FILE})`;
+  }
+  const token = readText(tokenFile).trim();
+  const url = `https://script.google.com/macros/s/${getKeepList(deploymentsFile)[0]}/exec`;
+  out(`  installing the hub's triggers via ${url}`);
+  const r = cp.spawnSync(process.execPath, [path.join(hubRoot, HUB_INSTALL_REL), url], {
+    cwd: hubRoot, encoding: 'utf8', env: { ...process.env, ADMIN_SETTINGS_TOKEN: token },
+  });
+  echo(splitLines(r.stdout));
+  echo(splitLines(r.stderr));
+  if (r.status !== 0) {
+    warn('  trigger install failed (the deploy itself succeeded)');
+    return `FAILED: ${result}; trigger install failed`;
+  }
+  return `${result}; triggers ok`;
 }
 
 // ---------------------------------------------------------------------------

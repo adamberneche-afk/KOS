@@ -311,6 +311,47 @@ or **BEHIND** when it isn't. A push-only project has no deployment, so it
 shows the last push only. The exit code is 1 when any deployment is behind
 or missing. Combine it with `--only`; it refuses the flags that push.
 
+### --hub — the Mothership hub, released in the same run
+
+The Mothership hub (the `gas/` folder of
+[Mothership](https://github.com/adamberneche-afk/Mothership)) is an Apps
+Script web app too, and it reviews KOS on its own timer. `--hub` releases
+it from this machine, where clasp is already signed in, so no Google
+credential has to be stored in GitHub. Mothership's code stays in
+Mothership; this only pushes it.
+
+```
+node run.js --latest --hub latest                       # KOS and the hub
+node run.js --hub %USERPROFILE%\Downloads\Mothership-main.zip --only mothership-hub
+node run.js --hub C:\code\Mothership --only mothership-hub   # a folder works too
+```
+
+`latest` is the newest `Mothership-main*.zip` here or in `~\Downloads`. A
+zip is extracted to `Mothership-main` beside the KOS checkout; a folder is
+used as it is. The hub runs last, after the KOS projects, and is a web app
+like the others: push, cut one version, move its registered deployment, so
+its `/exec` URL never changes. Then the run asks the hub to install its own
+triggers (spoke poller, review queue, deploy-version report). `clasp run`
+can't do that, because it needs a GCP project; the hub's install-triggers
+endpoint can, because the web app runs as you. Each trigger is installed
+only once, however often this runs.
+
+One-time registry folder, `clasp-registry\mothership-hub\`:
+
+| File | What goes in it |
+|---|---|
+| `.clasp.json` | from `clasp clone <the hub's scriptId>` |
+| `deployments.txt` | the hub's live deployment ID, one line |
+| `admin-token.txt` | the hub's `ADMIN_SETTINGS_TOKEN` Script Property. Without it the deploy still runs and the summary says the triggers were skipped |
+
+Differences from a KOS web app: the hub's deploy marker is read as
+Mothership committed it, never re-stamped, because Mothership's own
+deploy-drift check expects exactly that commit. `--hub` refuses
+`--head-only`, `--rollback-to`, `--verify` and `--instructions`; above all
+`--head-only`, because the hub's triggers run whatever is pushed, so a test
+push would be a production push. A failed trigger install fails the run
+even though the deploy landed, and says so.
+
 ### --instructions — the KOS Project instructions, links filled in
 
 `kos-personal/claude-project/PROJECT_INSTRUCTIONS.md` names its Google
