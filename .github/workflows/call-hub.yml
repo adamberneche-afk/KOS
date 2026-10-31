@@ -1,3 +1,10 @@
+# BEING RETIRED (2026-10-31). The Mothership hub now pulls: it reviews this
+# repo on its own timer with its own credential, so this heartbeat and its
+# two secrets are redundant. Do not repair it or set the secrets - a red run
+# here is expected. It is deleted once the owner has run
+# `node tools/clasp-sync/run.js --hub latest` and the hub's poll status shows
+# KOS settled. See README.md, "The hub now pulls".
+#
 # Heartbeat workflow that pings the AI CTO Hub (adamberneche-afk/Mothership)
 # for an autonomous debug/hunt/refactor review, targeting the Hub's Apps
 # Script deployment.
