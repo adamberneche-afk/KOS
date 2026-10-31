@@ -5506,3 +5506,16 @@ code covers that list; a run holds the script lock, refuses the whole run
 if the list was edited, removes only rows whose fingerprint is on it, and
 leaves (and counts) any other. Done clears the list. Nothing is past its
 cutoff this school year, so no disposition has run yet.
+
+## The duplicate repair opens each duplicate first, 2026-10-31
+
+KOS Audit Docket III item 18 (re-filed in Docket IV): `repairRosterDuplicates`
+(52) kept each student's earliest workspace per assignment and trashed the
+later docs without opening them, so a student who had worked in a later copy
+lost that work. A tested fix written on 2026-10-21 never landed. Now every
+duplicate is checked first: its Ledger row (a submit or a check) and the doc
+itself (writing below the response line, or any text in a doc without it;
+a doc that can't be opened counts as work). The kept workspace is one with
+work, then the recorded one, then the earliest; only empty duplicates are
+archived and trashed, and any other one with work gets a Notes line for the
+teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).

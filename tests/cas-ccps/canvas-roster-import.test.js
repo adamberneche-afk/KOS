@@ -22,7 +22,7 @@ const { loadGasFiles, FakeDriveFolder } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '29_StudentContextAggregator.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
-  '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '54_StudentAssignments.js'].map(S);
+  '03_QueueBridge.js', '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '54_StudentAssignments.js'].map(S);
 const EXPOSE = ['previewRosterEnrollment', 'applyRosterEnrollment', 'prepareRosterSections', '_criParseGradebook_',
   'repairRosterDuplicates_', 'enrollCanvasRoster_'];
 const TEACHER = 'owner.teacher@ccpsnet.net';
@@ -394,6 +394,69 @@ test('repairRosterDuplicates_ keeps each student\'s earliest workspace, archives
   const again = exported.applyRosterEnrollment('CFG-1');
   assert.deepEqual(again.skipped.filter((s) => s.reason === 'ALREADY_ENROLLED').map((s) => s.account).sort(),
     ['1234567@ccpsnet.net', '2345678@ccpsnet.net']);
+});
+
+// Docket III item 18 (closed 2026-10-31): duplicates are opened first.
+test('repairRosterDuplicates_ opens each duplicate: the one with the student\'s work is kept, and no doc with work is trashed', () => {
+  const t = setup({ sectionMap: MAPPED });
+  const { exported, sandbox, ledgerSs } = t;
+  const MARK = '── YOUR RESPONSE BEGINS HERE ──';
+  const doc = (name, written) => {
+    const d = sandbox.DocumentApp.create(name);
+    d.getBody().appendParagraph('Task text\n' + MARK + '\n' + (written || ''));
+    return d.getId();
+  };
+  const mk = (acct, sid, day, fileId, extra) => Object.assign([new Date(2026, 9, 7, 23, day), acct, sid, fileId, 'n', '3', 'c',
+    't', TEACHER, 's', '8175 Sports Entertainment and Event Marketing', '3', 'ACTIVE', '', '', '', '', '', ''], extra || {});
+  const N = 'S1-U1 Industry Overview — A';
+  const emptyEarly = doc(N, '');
+  const workedLate = doc(N, 'My market research plan starts with the fans.');
+  const emptyLate = doc(N, '   ');
+  // A second student: both workspaces were worked in, one through a submit the Ledger shows.
+  const bWorked = doc('S1-U1 Industry Overview — B', 'Answer one.');
+  const bSubmitted = doc('S1-U1 Industry Overview — B', '');
+  const ledger = ledgerSs.getSheetByName('Ledger');
+  [mk('1234567@ccpsnet.net', 'VDOE-1', 1, emptyEarly), mk('1234567@ccpsnet.net', 'VDOE-2', 5, workedLate),
+    mk('1234567@ccpsnet.net', 'VDOE-3', 9, emptyLate),
+    mk('2345678@ccpsnet.net', 'VDOE-4', 1, bWorked), mk('2345678@ccpsnet.net', 'VDOE-5', 6, bSubmitted, { 13: new Date(2026, 9, 9) }),
+  ].forEach((r) => ledger.appendRow(r));
+
+  const preview = exported.repairRosterDuplicates_({ apply: false });
+  assert.deepEqual([preview.kept, preview.duplicates, preview.leftWithWork], [2, 2, 1]);
+  const r = exported.repairRosterDuplicates_({ apply: true });
+  assert.deepEqual([r.archived, r.trashed, r.leftWithWork], [2, 2, 1]);
+  const status = (row) => ledger.getRange(row, 13).getValue();
+  assert.equal(status(3), 'ACTIVE', 'the later workspace with the student\'s writing is the one kept');
+  assert.deepEqual([status(2), status(4)], ['ARCHIVED', 'ARCHIVED'], 'only the empty ones go');
+  assert.equal(sandbox.DriveApp.getFileById(workedLate).isTrashed(), false);
+  assert.equal(sandbox.DriveApp.getFileById(emptyEarly).isTrashed(), true);
+  // Student B: both have work; one is kept, the other is left with a Notes line, nothing trashed.
+  assert.deepEqual([status(5), status(6)], ['ACTIVE', 'ACTIVE']);
+  assert.equal(sandbox.DriveApp.getFileById(bWorked).isTrashed(), false);
+  assert.equal(sandbox.DriveApp.getFileById(bSubmitted).isTrashed(), false);
+  const notes = [5, 6].map((row) => String(ledger.getRange(row, 15).getValue()));
+  assert.equal(notes.filter((n) => /Possible duplicate workspace/.test(n)).length, 1);
+  assert.doesNotMatch(r.message, /1234567|2345678/, 'counts only');
+});
+
+test('repairRosterDuplicates_: a duplicate doc that can\'t be opened is never trashed', () => {
+  const t = setup({ sectionMap: MAPPED });
+  const { exported, sandbox, ledgerSs } = t;
+  const first = sandbox.DocumentApp.create('S1-U1 Industry Overview — A').getId();
+  const ledger = ledgerSs.getSheetByName('Ledger');
+  const row = (sid, day, fileId) => [new Date(2026, 9, 7, 23, day), '1234567@ccpsnet.net', sid, fileId, 'n', '3', 'c',
+    't', TEACHER, 's', '8175 Sports Entertainment and Event Marketing', '3', 'ACTIVE', '', '', '', '', '', ''];
+  ledger.appendRow(row('VDOE-1', 1, first));
+  // Drive knows the file (so its assignment is found by name), but it can't be opened as a Doc.
+  let trashed = false;
+  sandbox.DriveApp._files.set('DOC-LOCKED', { getName: () => 'S1-U1 Industry Overview — A', setTrashed: (v) => { trashed = v; } });
+  ledger.appendRow(row('VDOE-2', 9, 'DOC-LOCKED'));
+  const r = exported.repairRosterDuplicates_({ apply: true });
+  assert.equal(r.unresolved, 0, 'both rows resolve to the same assignment');
+  assert.deepEqual([r.kept, r.archived, r.trashed, r.leftWithWork], [1, 1, 1, 0]);
+  assert.equal(trashed, false, 'the unreadable doc is the one kept: it may hold the student\'s work');
+  assert.equal(ledger.getRange(3, 13).getValue(), 'ACTIVE');
+  assert.equal(ledger.getRange(2, 13).getValue(), 'ARCHIVED', 'the empty one goes');
 });
 
 // The nightly rollout (58) calls the import directly.
