@@ -12,8 +12,11 @@
 // Project's `start` brief say how urgent it is, without names or wording:
 //
 //   1. scanFamilyMail() finds family mail in the inbox and labels its
-//      thread KOS/Family. The KOS Project's mail search excludes that label,
-//      so Claude never opens these threads.
+//      thread KOS/Family. The KOS Project's instructions exclude that label
+//      from its mail search, so Claude doesn't open these threads. That is
+//      an instruction to Claude, not something this code enforces: a
+//      thread without the label (one this scan missed, or one whose label
+//      was removed) is not protected by it.
 //   2. It queues each message for the Gemini flow (Google-side, like every
 //      other cas-ccps flow) with names, addresses and numbers redacted.
 //   3. harvestFamilyMailReturns() reads Gemini's category, urgency, safety
@@ -1217,11 +1220,11 @@ function _fmsSignalDoc_() {
   if (id) {
     try { return DocumentApp.openById(id); } catch (e) { /* recreated below */ }
   }
+  // Made in My Drive; move it by hand if wanted (it keeps its ID). Moving it
+  // here needed the full Drive scope beside gmail.modify, so the one project
+  // that reads a school mailbox could also read the whole Drive (KOS Audit
+  // Docket IV, 2026-10-31). FAMILY_SIGNAL_FOLDER_ID is no longer read.
   const doc = DocumentApp.create(FMS_SIGNAL_TITLE);
-  const folderId = props.getProperty("FAMILY_SIGNAL_FOLDER_ID");
-  if (folderId) {
-    try { DriveApp.getFileById(doc.getId()).moveTo(DriveApp.getFolderById(folderId)); } catch (e) { /* stays in My Drive */ }
-  }
   props.setProperty("FAMILY_SIGNAL_DOC_ID", doc.getId());
   return doc;
 }
