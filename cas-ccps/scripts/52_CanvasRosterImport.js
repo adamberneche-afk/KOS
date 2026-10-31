@@ -639,10 +639,21 @@ function previewRosterRepair() {
  * For this teacher's Ledger rows this term with no StudentAssignments entry:
  * works out the assignment from the workspace doc's name ("<UnitName> — …",
  * 02) and the TeacherMatrix row with that UnitName in the student's course;
- * keeps each student's earliest workspace per assignment and records its
- * assignment; archives the later ones (Status ARCHIVED, a Notes line) and
+ * keeps one workspace per student and assignment and records its
+ * assignment; archives the others (Status ARCHIVED, a Notes line) and
  * trashes their docs. Rows whose assignment can't be worked out are left
  * alone and counted. Logs counts only, no names or accounts.
+ *
+ * Every duplicate is opened before anything happens to it (KOS Audit
+ * Docket III item 18, closed 2026-10-31): it used to trash the later docs
+ * unread, so a student who had worked in the "duplicate" lost that work.
+ * A workspace has the student's work when its Ledger row shows a submit or
+ * a check, or the doc has writing below the response line (or any text,
+ * for a doc without that line); a doc that can't be opened counts as work.
+ * The one kept is one with work if any, then the recorded one, then the
+ * earliest. Any other duplicate with work is left as it is, with a Notes
+ * line, for the teacher to look at: only empty duplicates are archived and
+ * trashed.
  */
 function repairRosterDuplicates() {
   return repairRosterDuplicates_({ apply: true });
@@ -679,7 +690,8 @@ function repairRosterDuplicates_(opts) {
 
   const term = currentTerm_();
   const assignments = readStudentAssignments_(ss);
-  const data = ledger.getRange(2, 1, ledger.getLastRow() - 1, 19).getValues();
+  const width = Math.max(19, Math.min(ledger.getLastColumn(), LEDGER.CHECK_COUNT + 1));
+  const data = ledger.getRange(2, 1, ledger.getLastRow() - 1, width).getValues();
   const groups = {};
   data.forEach((r, i) => {
     if (String(r[8] || "").trim().toLowerCase() !== teacherEmail) return;
@@ -698,18 +710,32 @@ function repairRosterDuplicates_(opts) {
     const key = account + "|" + assignment;
     (groups[key] = groups[key] || []).push({ row: i + 2, at: new Date(r[0]).getTime() || 0, sid: sid,
       account: account, fileId: String(r[3]).trim(), assignment: assignment, recorded: recorded,
-      notes: String(r[14] || "") });
+      notes: String(r[14] || ""),
+      submitted: String(r[LEDGER.SUBMISSION_TS] || "").trim() !== "" || Number(r[LEDGER.CHECK_COUNT] || 0) > 0 });
   });
 
+  result.leftWithWork = 0;
   Object.keys(groups).forEach(key => {
-    // Keep a recorded workspace if there is one, else the earliest.
-    const g = groups[key].sort((a, b) => (b.recorded - a.recorded) || (a.at - b.at));
+    const g = groups[key];
+    if (g.length > 1) g.forEach(d => { d.hasWork = d.submitted || _criDocHasWork_(d.fileId); });
+    // Keep one with the student's work, else the recorded one, else the earliest.
+    g.sort((a, b) => (!!b.hasWork - !!a.hasWork) || (b.recorded - a.recorded) || (a.at - b.at));
     const keep = g[0];
     result.kept++;
-    result.duplicates += g.length - 1;
+    const others = g.slice(1);
+    const withWork = others.filter(d => d.hasWork);
+    const empty = others.filter(d => !d.hasWork);
+    result.duplicates += empty.length;
+    result.leftWithWork += withWork.length;
     if (!apply) return;
     if (!keep.recorded) { recordStudentAssignment_(ss, keep.sid, keep.account, keep.assignment); result.recorded++; }
-    g.slice(1).forEach(d => {
+    withWork.forEach(d => {
+      if (/Possible duplicate workspace/.test(d.notes)) return;
+      ledger.getRange(d.row, 15).setValue((d.notes ? d.notes + " | " : "") +
+        "Possible duplicate workspace with the student's work in it; left for the teacher " +
+        new Date().toISOString().slice(0, 10) + ".");
+    });
+    empty.forEach(d => {
       ledger.getRange(d.row, 13).setValue("ARCHIVED");
       ledger.getRange(d.row, 15).setValue((d.notes ? d.notes + " | " : "") +
         "Duplicate workspace from a roster import re-run; archived " + new Date().toISOString().slice(0, 10) + ".");
@@ -722,9 +748,22 @@ function repairRosterDuplicates_(opts) {
     ? "Kept " + result.kept + " workspace(s) (" + result.recorded + " newly recorded); archived " +
       result.archived + " duplicate(s) and trashed " + result.trashed + " doc(s)"
     : "DRY RUN: " + result.kept + " workspace(s) to keep, " + result.duplicates + " duplicate(s) to archive") +
+    (result.leftWithWork ? "; " + result.leftWithWork + " duplicate(s) with the student's work in them left for the teacher" +
+      " (a Notes line on each)" : "") +
     "; " + result.unresolved + " row(s) whose assignment couldn't be found were left alone.";
   Logger.log("[S52] " + result.message);
   return result;
+}
+
+// Whether a workspace doc holds the student's work: writing below the
+// response line (03's responseZoneBounds_), or any text in a doc without
+// that line. A doc that can't be opened counts as work, so it is never
+// trashed unread. Reads the doc; returns only true or false.
+function _criDocHasWork_(fileId) {
+  let text;
+  try { text = DocumentApp.openById(fileId).getBody().getText(); } catch (e) { return true; }
+  const zone = responseZoneBounds_(text);
+  return (zone ? text.substring(zone.from, zone.to) : text).trim() !== "";
 }
 
 /** "1" from a CCPS section code ending "-P01]"; "" when there is none. */
