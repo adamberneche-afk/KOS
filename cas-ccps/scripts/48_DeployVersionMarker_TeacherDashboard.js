@@ -32,6 +32,7 @@
 const DEPLOY_VERSION_SHA = '965b94dd60050772502dad7095c39887fd820821'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
 
 function reportDeployVersion() {
+  requireScriptOwner_();
   return _reportDeployVersion_('cas-ccps:teacher-dashboard', DEPLOY_VERSION_SHA);
 }
 
@@ -42,6 +43,7 @@ function reportDeployVersion() {
  * this file's header).
  */
 function installDeployVersionReportTrigger() {
+  requireScriptOwner_();
   ScriptApp.getProjectTriggers().forEach(function (t) {
     if (t.getHandlerFunction() === 'reportDeployVersion') ScriptApp.deleteTrigger(t);
   });

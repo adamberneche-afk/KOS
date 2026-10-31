@@ -123,7 +123,12 @@
       "",
       "`allow` below is for a name that is genuinely absent in production too, or one the analysis mis-reads (an object key that happens to match a declaration elsewhere in the project). It is not for making a finding go away: the fix for a real gap is to load the file, which costs one line. Every entry needs a `why` that would survive someone else reading it."
     ],
-    "allow": {}
+    "allow": {
+      "tests/cas-ccps/script-owner-guard.test.js": {
+        "names": ["requireScriptOwner_"],
+        "why": "One test loads 00_SharedConfig.js without 00b on purpose: five projects (unified-manual, master-student-template, rubric-response-sheet, teacher-matrix-sheet, family-sentinel) load 00 but not 00b, and 00's editor functions must still run there. requireScriptOwner_ really is absent in those projects."
+      }
+    }
   },
   "flowSurfaces": {
     "cas-ccps:flow-2": {

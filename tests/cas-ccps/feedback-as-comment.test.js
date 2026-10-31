@@ -253,7 +253,7 @@ test('resolveStudentStatus_: an evaluated assignment points to Comments only whe
 // The Teacher Dashboard's ⚙ Settings (07, 2026-10-27; was 💬 Feedback)
 // writes one shared row per setting.
 function loadTeacher(viewer) {
-  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('07_TeacherDashboard.js'), S('29_StudentContextAggregator.js'),
+  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'), S('07_TeacherDashboard.js'), S('29_StudentContextAggregator.js'),
     S('36_WeeklyParentReport.js')],
     ['getSettings', 'setSettingForCourse', 'saveSettings', 'setMarkingPeriodEnds', 'pivotFlagFor_', 'feedbackAsCommentFor_'],
     { Session: { getActiveUser: () => ({ getEmail: () => viewer }), getScriptTimeZone: () => 'America/New_York' } });

@@ -636,6 +636,7 @@ function _s29BookmarkWeek_(doc, heading) {
 // has one is left alone, so it is safe to run again, and it stops at the
 // time budget: run it again to finish.
 function addContextWeekBookmarks() {
+  requireScriptOwner_();
   const cfg = getConfig_();
   const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.studentDocRegistry);
   const out = { docs: 0, added: 0, failed: 0, notReached: 0 };
@@ -861,6 +862,7 @@ function installStudentAggregatorTrigger_() {
 // student's last section.
 // ---------------------------------------------------------------------------
 function setupStudentContextDocs() {
+  requireScriptOwner_();
   createStudentAggregatorTabs_();
   installStudentAggregatorTrigger_();
   const installed = ScriptApp.getProjectTriggers()
@@ -871,10 +873,12 @@ function setupStudentContextDocs() {
 }
 
 function previewStudentContextDocs() {
+  requireScriptOwner_();
   return _s29Run_({ dryRun: true });
 }
 
 function buildStudentContextDocsNow() {
+  requireScriptOwner_();
   return _s29Run_({});
 }
 
