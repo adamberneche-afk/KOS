@@ -200,30 +200,54 @@ test('applyRetentionDisposition: removes the approved rows, trashes their Docs, 
   assert.ok(!JSON.stringify(log).includes('s1@x.net'), 'counts only');
 });
 
-test('applyRetentionDisposition: done clears the approval; more rows than approved, or a stale approval, is refused', () => {
+test('applyRetentionDisposition: only the rows the report named; a row past its period since then is left (Docket IV)', () => {
   const env = dispositionFixture();
-  const { exported, sdr, props, old } = env;
+  const { exported, sdr, props, old, ss } = env;
   sdr.deleteRow(5); // no undeletable Doc this time
-  let report = exported.previewRetentionDisposition();
+  const report = exported.previewRetentionDisposition();
   props.setProperty('RETENTION_DISPOSITION_APPROVE', report.approvalCode);
+  const list = ss.getSheetByName('DispositionPending').getDataRange().getValues();
+  assert.deepEqual(list[0], ['Record', 'RowKey']);
+  assert.equal(list.length, 3, 'one fingerprint per approved row');
+  assert.ok(!JSON.stringify(list).includes('s1@x.net'), 'fingerprints only, no row content');
   sdr.appendRow(['s6@x.net', 'S Six', '', 'u', old]); // past, added after the report
-  assert.match(exported.applyRetentionDisposition().error, /more rows to remove \(3\) than were approved \(2\)/);
-  assert.equal(sdr.getLastRow(), 5, 'refused whole');
-
-  report = exported.previewRetentionDisposition();
-  props.setProperty('RETENTION_DISPOSITION_APPROVE', report.approvalCode);
   const res = exported.applyRetentionDisposition();
-  assert.deepEqual([res.removed, res.done], [3, true]);
+  assert.deepEqual([res.ok, res.removed, res.notApproved, res.done], [true, 2, 1, true]);
+  assert.deepEqual(sdr.getDataRange().getValues().slice(1).map((r) => r[0]), ['s3@x.net', 's6@x.net'],
+    'the row the report never named is still there');
   assert.equal(props.getProperty('RETENTION_DISPOSITION_APPROVE'), null, 'cleared when done');
   assert.equal(props.getProperty('RETENTION_DISPOSITION_PENDING'), null);
+  assert.equal(ss.getSheetByName('DispositionPending').getLastRow(), 0, 'the list is cleared too');
+});
 
-  sdr.appendRow(['s7@x.net', 'S Seven', '', 'u', old]);
+test('applyRetentionDisposition: a row changed since the report is left; an edited list of rows is refused whole', () => {
+  const env = dispositionFixture();
+  const { exported, sdr, props, ss } = env;
+  sdr.deleteRow(5);
+  let report = exported.previewRetentionDisposition();
+  props.setProperty('RETENTION_DISPOSITION_APPROVE', report.approvalCode);
+  sdr.getRange(3, 2).setValue('S Two, renamed'); // the second old row changes after the report
+  let res = exported.applyRetentionDisposition();
+  assert.deepEqual([res.removed, res.notApproved], [1, 1]);
+  assert.deepEqual(sdr.getDataRange().getValues().slice(1).map((r) => r[0]), ['s2@x.net', 's3@x.net']);
+
   report = exported.previewRetentionDisposition();
   props.setProperty('RETENTION_DISPOSITION_APPROVE', report.approvalCode);
+  const list = ss.getSheetByName('DispositionPending');
+  list.appendRow(['StudentDocRegistry', 'f'.repeat(64)]); // someone adds a row to the list
+  assert.match(exported.applyRetentionDisposition().error, /doesn't match the report/);
+  assert.equal(sdr.getLastRow(), 3, 'refused whole: nothing removed');
+});
+
+test('applyRetentionDisposition: a stale approval is refused', () => {
+  const env = dispositionFixture();
+  const { exported, sdr, props } = env;
+  sdr.deleteRow(5);
+  exported.previewRetentionDisposition();
   const pending = JSON.parse(props.getProperty('RETENTION_DISPOSITION_PENDING'));
   pending.at = '2026-01-02';
   props.setProperty('RETENTION_DISPOSITION_PENDING', JSON.stringify(pending));
   props.setProperty('RETENTION_DISPOSITION_APPROVE', exported._retentionApprovalCode_(JSON.stringify(pending)));
   assert.match(exported.applyRetentionDisposition().error, /over 7 days old/);
-  assert.equal(sdr.getLastRow(), 3, 'a stale approval removes nothing');
+  assert.equal(sdr.getLastRow(), 4, 'a stale approval removes nothing');
 });

@@ -61,17 +61,27 @@ approves after reviewing what is past its period:
 1. Run `previewRetentionDisposition()` and read its report.
 2. Set the Script Property `RETENTION_DISPOSITION_APPROVE` to the code the
    report gives.
-3. Run `applyRetentionDisposition()`. It removes only what the report
-   counted, and refuses the whole run if:
+3. Run `applyRetentionDisposition()`. It removes only the rows the report
+   named, and refuses the whole run if:
    - the code doesn't match;
    - the approval is more than 7 days old;
    - a period changed;
-   - any record now has more rows to remove than were approved.
+   - the list of approved rows was changed.
+
+   The report names each row by a fingerprint (a SHA-256 of its cells, no
+   content), kept in the Ledger's `DispositionPending` tab, and the code
+   covers that list (since 2026-10-31, KOS Audit Docket IV: an approval
+   used to be a count per record, so rows that became removable between
+   two runs could go under it). A run holds the script lock while it reads
+   and removes rows. A row that became removable after the report, or
+   changed since, is left for the next report and counted in the run's
+   log line.
 
 A removed row's Doc (a Ledger row's workspace Doc, a `StudentDocRegistry`
 Doc, a warm-up Doc) goes to the Drive trash first, where it is recoverable
 for 30 days. A row whose Doc can't be trashed is kept. A run removes at most
-1,500 rows: run it again until it says done, which clears the approval. Each
+1,500 rows: run it again until it says done, which clears the approval and
+the `DispositionPending` list. Each
 run writes a `DispositionLog` row per record: the time, the approval code,
 the record, its cutoff, rows removed, Docs trashed, and rows kept. Counts
 only; it holds no student data.

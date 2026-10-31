@@ -5493,6 +5493,20 @@ sharing each doc are still per student.
 `student-data-access-intake.test.js` runs three students through intake
 and counts the lookups.
 
+## Retention disposition approves rows by fingerprint, 2026-10-31
+
+KOS Audit Docket IV (Medium): `applyRetentionDisposition` (57) checked an
+approval as a count per record, a run removes at most 1,500 rows, and the
+approval lasted until a run finished, so rows that became removable between
+runs could be deleted (and their Docs trashed) under an approval that never
+named them; it also took no lock while deleting by row numbers read
+earlier. Now `previewRetentionDisposition` writes a SHA-256 fingerprint of
+each removable row to the Ledger's `DispositionPending` tab and the approval
+code covers that list; a run holds the script lock, refuses the whole run
+if the list was edited, removes only rows whose fingerprint is on it, and
+leaves (and counts) any other. Done clears the list. Nothing is past its
+cutoff this school year, so no disposition has run yet.
+
 ## The duplicate repair opens each duplicate first, 2026-10-31
 
 KOS Audit Docket III item 18 (re-filed in Docket IV): `repairRosterDuplicates`
