@@ -261,7 +261,7 @@ public after a scrub; a CI gate in `gas-lint.yml` (the working tree, without
 Catches the failure mode a red X can't: an invalid `.github/workflows/*.yml`
 file produces no run at all, so nothing fails loudly. Runs actionlint
 against every workflow file and checks that every workflow with an
-`on.schedule` trigger (currently `call-hub.yml`, `codeql.yml` and
+`on.schedule` trigger (currently `call-hub.yml` — being retired, see [the hub now pulls](#the-hub-now-pulls--call-hubyml-is-being-retired) — `codeql.yml` and
 `watchdog.yml` itself - there's no self-exclusion, so it watches its own run
 history too) had its most recent scheduled run actually conclude
 successfully, and lists open pull requests older than 14 days (reported,
@@ -478,8 +478,20 @@ The expected list is **derived from the workflow files**, never hand-written. Th
 
 The workflow splits by what each half needs to see. Its `drift` job runs on **every pull request** with no access to the secrets context at all, so a workflow that starts needing a new secret turns a PR red until the block is regenerated. Its `probe` job runs on dispatch only and receives one boolean per secret — `${{ secrets.NAME != '' }}`, compared inside the expression — so a job is shipped only the secret it names and no value ever reaches the environment.
 
-Four secrets are in scope here. `APPS_SCRIPT_URL` and `TENANT_CALLER_KEY` (`call-hub.yml`) are required. `CAS_SANDBOX_SCRIPT_IDS` and `CLASP_SANDBOX_CREDENTIALS` are declared optional in `.github/floor.json`, because `gas-lint.yml`'s `check-sandbox-secrets` job turns them into a `configured` output that every downstream job gates on — absent simply means the sandbox push lane is off, which is a supported state.
+Four secrets are in scope here. `APPS_SCRIPT_URL` and `TENANT_CALLER_KEY` (`call-hub.yml`) are required for as long as that workflow exists, which is not much longer: see [the hub now pulls](#the-hub-now-pulls--call-hubyml-is-being-retired) below. `CAS_SANDBOX_SCRIPT_IDS` and `CLASP_SANDBOX_CREDENTIALS` are declared optional in `.github/floor.json`, because `gas-lint.yml`'s `check-sandbox-secrets` job turns them into a `configured` output that every downstream job gates on — absent simply means the sandbox push lane is off, which is a supported state.
 
 Worth noting for anyone extending the scanner: `gas-lint.yml` explains itself with the phrase *"a bare `secrets.X` reference inside an `if:` conditional"*, and `needs.check-sandbox-secrets.outputs.configured` contains the substring `secrets.outputs`. A naive scan reports two credentials named `X` and `outputs` that nobody needs. Both were found against this repo while the extractor was being written, and both are pinned by tests upstream — comments are stripped and a left boundary is required.
+
+### The hub now pulls — `call-hub.yml` is being retired
+
+As of 2026-10-31 the Mothership hub reviews KOS **on its own timer** instead of waiting for KOS to call it. A time-driven trigger inside the hub polls every active spoke (debug every 6 hours, hunt Wednesdays at noon, refactor Sundays at midnight), reads KOS's latest commit with the hub's own GitHub credential, and reviews it through the same path a heartbeat request used to take. Nothing in KOS has to call in, so KOS needs no hub secrets. Details are in Mothership's README, [The Pull Model](https://github.com/adamberneche-afk/Mothership#the-pull-model-gasspoke_pollerjs), and its `SESSION_HANDOFF.md` item 28.
+
+That makes `call-hub.yml` redundant. It never worked: `APPS_SCRIPT_URL` and `TENANT_CALLER_KEY` were never set to matching values, and all 233 of its runs between 2026-09-19 and 2026-10-31 failed. **Do not repair it or set its secrets.** A red `call-hub.yml` run, and the watchdog issue listing it, are expected until it is removed.
+
+Removal waits on one owner step, so the pull model is confirmed working before the old path goes:
+
+1. The owner runs `node tools/clasp-sync/run.js --hub latest` (see [`tools/clasp-sync/README.md`](./tools/clasp-sync/README.md)'s `--hub` section). That deploys the hub and installs its triggers.
+2. In the hub's Apps Script editor, the poll status (showSpokePollStatus) lists KOS as `settled` or `unchanged`.
+3. Then, in one PR: delete `.github/workflows/call-hub.yml`, run `node scripts/secrets-doctor.mjs --sync` so the two secrets leave `secrets-doctor.yml`, take `call-hub.yml` out of the watchdog paragraph above and out of this section, and delete the two repository secrets.
 
 Not adopted here: floor checks 6 and 9. KOS's own `tools/doc-currency` and `tools/coverage-gaps` predate the floor and are the versions Mothership's were built **from**, so they keep their own configuration and are not driven from `.github/floor.json`.
