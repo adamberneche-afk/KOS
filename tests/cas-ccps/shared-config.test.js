@@ -447,3 +447,18 @@ test('getCompetencyTextMap_: a missing registry sheet returns an empty map, neve
   const { exported } = load(['getCompetencyTextMap_']);
   assert.deepEqual(exported.getCompetencyTextMap_(null), {});
 });
+
+test('claimRunSlot_: one run claims the slot; a second is refused until it expires (Docket IV)', () => {
+  const { exported, sandbox } = load(['claimRunSlot_']);
+  const props = sandbox.PropertiesService.getScriptProperties();
+  assert.equal(exported.claimRunSlot_('X_BUSY_UNTIL', 60000), true);
+  assert.equal(exported.claimRunSlot_('X_BUSY_UNTIL', 60000), false, 'held');
+  props.setProperty('X_BUSY_UNTIL', String(Date.now() - 1));
+  assert.equal(exported.claimRunSlot_('X_BUSY_UNTIL', 60000), true, 'expired, so free again');
+});
+
+test('claimRunSlot_: no lock within 5 seconds counts as taken', () => {
+  const { exported } = loadGasFiles([SHARED_CONFIG_PATH, GUARD_PATH], ['claimRunSlot_'],
+    { LockService: { getScriptLock: () => ({ tryLock: () => false, releaseLock() {} }) } });
+  assert.equal(exported.claimRunSlot_('X_BUSY_UNTIL', 60000), false);
+});

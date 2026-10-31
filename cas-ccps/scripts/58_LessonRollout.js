@@ -97,12 +97,11 @@ function runLessonRolloutCatchUp() {
 function _lrRunAndCatchUp_(opts) {
   const props = PropertiesService.getScriptProperties();
   const now = Date.now();
-  if (Number(props.getProperty(ROLLOUT_BUSY_PROP) || 0) > now) {
+  if (!claimRunSlot_(ROLLOUT_BUSY_PROP, ROLLOUT_BUSY_MS)) {
     Logger.log("[S58] A rollout run is still going; this one will catch up after it.");
     _lrScheduleCatchUp_(props, new Date(now));
     return { rows: [], problems: 0, busy: true };
   }
-  props.setProperty(ROLLOUT_BUSY_PROP, String(now + ROLLOUT_BUSY_MS));
   let res;
   try {
     res = lessonRollout_(opts);
