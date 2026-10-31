@@ -491,3 +491,26 @@ test('stampDocument_: the assignment table: the task with headings and bullets, 
   assert.ok(!table.getText().includes('Submission'), 'the Canvas submission line stays out');
   assert.ok(!table.getText().includes('Title:'), 'the Canvas title line stays out');
 });
+
+test('⚙ Settings: a save while another holds the lock changes nothing and says so (Docket IV)', () => {
+  const { exported, config, sandbox } = loadTeacher('teacher@ccpsnet.net');
+  sandbox.LockService.getScriptLock = () => ({ tryLock: () => false, releaseLock() {} });
+  const res = exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', true);
+  assert.equal(res.success, false);
+  assert.match(res.error, /being saved elsewhere/);
+  assert.deepEqual(config('FEEDBACK_AS_COMMENT'), [], 'nothing written');
+  assert.equal(exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8175', on: true }]).success, false);
+});
+
+test('⚙ Settings: a change reads the _CONFIG tab, not a stale cached copy, so a change made elsewhere is kept', () => {
+  const { exported, config, sandbox } = loadTeacher('teacher@ccpsnet.net');
+  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', true);
+  // Another dashboard turns 8177 on, writing the tab directly; this project's cache still says 8175 only.
+  const tab = sandbox.SpreadsheetApp.openById(sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
+    .getSheetByName('_CONFIG');
+  const rows = tab.getDataRange().getValues();
+  const at = rows.findIndex((r) => r[0] === 'FEEDBACK_AS_COMMENT');
+  tab.getRange(at + 1, 2).setValue('all');
+  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', false);
+  assert.deepEqual(config('FEEDBACK_AS_COMMENT'), ['8177'], 'the other change survives');
+});

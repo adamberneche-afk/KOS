@@ -90,7 +90,10 @@ function writeCasSignal_(watchdog, now) {
         ", " + f.today + " failure" + (f.today === 1 ? "" : "s") + " today (Executions in the Central Ledger's Apps Script project shows the errors)");
     });
   } catch (e) {
-    admin.push("Ledger job failures: unavailable (" + e.message + ")");
+    // The error text goes to Executions, never the doc: it can carry row
+    // content, and the doc promises counts only (Docket IV).
+    console.error("[CasSignal] Ledger job failures failed: " + e.message);
+    admin.push("Ledger job failures: unavailable (Executions shows why)");
   }
 
   // ── Queue counts (every run) ──
@@ -126,7 +129,7 @@ function writeCasSignal_(watchdog, now) {
     }
   }
   if (state.retryError) {
-    students.push("Students newly eligible for a retry: unavailable (" + state.retryError + ")");
+    students.push("Students newly eligible for a retry: unavailable (Executions shows why)");
   } else if (state.retryNew > 0) {
     students.push("Students newly eligible for a retry: " + state.retryNew +
       (state.prevRetry ? "" : " (first scan, so every eligible student counts as new)"));
@@ -174,7 +177,8 @@ function writeCasSignal_(watchdog, now) {
     const failing = _ferpaHealthChecks_().filter(function (c) { return !c.ok; }).length;
     if (failing > 0) admin.push("FERPA checks failing: " + failing + " (run the System Health Check)");
   } catch (e) {
-    admin.push("FERPA checks: unavailable (" + e.message + ")");
+    console.error("[CasSignal] FERPA checks failed: " + e.message);
+    admin.push("FERPA checks: unavailable (Executions shows why)");
   }
 
   // ── Last night (34c): the 3 a.m. runs and warm-ups; emailed once a day ──
@@ -183,7 +187,7 @@ function writeCasSignal_(watchdog, now) {
     lastNight = overnightHealth_(now, tz);
   } catch (e) {
     console.error("[CasSignal] Overnight check failed: " + e.message);
-    lastNight = { problems: ["Overnight check: unavailable (" + e.message + ")"], allClear: "" };
+    lastNight = { problems: ["Overnight check: unavailable (Executions shows why)"], allClear: "" };
   }
   try {
     overnightMaybeMail_(lastNight, now, tz);

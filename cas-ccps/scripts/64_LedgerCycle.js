@@ -17,8 +17,9 @@
 // next minute instead of piling up.
 //
 // Each job keeps its own cadence (LC_JOBS) and its own document lock; the
-// cycle takes no lock of its own (the jobs' locks aren't re-entrant), only a
-// LEDGER_CYCLE_BUSY_UNTIL guard so two cycles don't overlap. The most overdue
+// cycle holds no lock while it runs (the jobs' locks aren't re-entrant), only a
+// LEDGER_CYCLE_BUSY_UNTIL guard so two cycles don't overlap, claimed under a
+// brief script lock (00's claimRunSlot_) so two can't claim it at once. The most overdue
 // job runs first, and none starts after LC_BUDGET_MS.
 //
 // installLedgerCycle() replaces the jobs' own triggers with this one and
@@ -75,12 +76,10 @@ const LC_JOBS = [
 function runLedgerCycle() {
   const props = PropertiesService.getScriptProperties();
   const started = Date.now();
-  const busyUntil = Number(props.getProperty(LC_PROP_BUSY) || 0);
-  if (busyUntil > started) {
+  if (!claimRunSlot_(LC_PROP_BUSY, LC_BUSY_MS)) {
     Logger.log("[LC] A cycle is still running; skipping this minute.");
     return { ran: [], errors: [], skipped: "busy" };
   }
-  props.setProperty(LC_PROP_BUSY, String(started + LC_BUSY_MS));
   const result = { ran: [], errors: [], deferred: [] };
   try {
     // A job that has its own trigger again (an installer re-run) is left to

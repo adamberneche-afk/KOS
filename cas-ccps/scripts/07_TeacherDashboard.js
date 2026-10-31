@@ -1199,13 +1199,33 @@ function setSettingForCourse(key, courseCode, on) {
   const courses = _tdKnownCourses_(cfg);
   const code = String(courseCode || "").trim();
   if (courses.indexOf(code) === -1) return { success: false, error: "Unknown course: " + code };
-  const raw = String(_resolveConfigValues_().values[key] || "").trim();
-  const change = {};
-  change[code] = !!on;
-  const value = _tdSettingValue_(raw, courses, change);
-  _tdWriteSetting_(cfg, key, raw || "off", value);
-  if (key === "PARENT_REPORT_PREP") _tdSyncParentReportPrepTrigger_(value !== "off");
+  const locked = _tdWithSettingsLock_(function () {
+    const raw = String(freshConfigValues_()[key] || "").trim();
+    const change = {};
+    change[code] = !!on;
+    const value = _tdSettingValue_(raw, courses, change);
+    _tdWriteSetting_(cfg, key, raw || "off", value);
+    if (key === "PARENT_REPORT_PREP") _tdSyncParentReportPrepTrigger_(value !== "off");
+  });
+  if (locked) return locked;
   return _tdSettings_(cfg);
+}
+
+// A change to a shared setting reads the _CONFIG tab and writes it back:
+// two saves at once (two tabs, or two teachers on one Ledger) could each
+// write over the other's change. The read and the write run under the
+// script lock, from the tab itself rather than a cached copy (Docket IV,
+// Low). These settings are per course, so they apply to every teacher of
+// that course on the Ledger. Returns an error result, or null when done.
+function _tdWithSettingsLock_(fn) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) return { success: false, error: "Settings are being saved elsewhere. Try again in a moment." };
+  try {
+    fn();
+    return null;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // A setting's next stored value: `raw` with each course in `changes`
@@ -1258,21 +1278,24 @@ function saveSettings(changes, ends, days) {
     sd = _tdScheduleDaysValue_(days);
     if (sd.error) return { success: false, error: sd.error };
   }
-  const resolved = _resolveConfigValues_().values;
-  Object.keys(byKey).forEach(function (key) {
-    const raw = String(resolved[key] || "").trim();
-    const value = _tdSettingValue_(raw, courses, byKey[key]);
-    _tdWriteSetting_(cfg, key, raw || "off", value);
-    if (key === "PARENT_REPORT_PREP") _tdSyncParentReportPrepTrigger_(value !== "off");
+  const locked = _tdWithSettingsLock_(function () {
+    const resolved = freshConfigValues_();
+    Object.keys(byKey).forEach(function (key) {
+      const raw = String(resolved[key] || "").trim();
+      const value = _tdSettingValue_(raw, courses, byKey[key]);
+      _tdWriteSetting_(cfg, key, raw || "off", value);
+      if (key === "PARENT_REPORT_PREP") _tdSyncParentReportPrepTrigger_(value !== "off");
+    });
+    if (mp) {
+      const raw = String(resolved.MARKING_PERIOD_ENDS || "").trim();
+      _tdWriteSetting_(cfg, "MARKING_PERIOD_ENDS", raw || "(the district calendar)", mp.value);
+    }
+    if (sd) {
+      const raw = String(resolved.SCHEDULE_DAYS || "").trim();
+      _tdWriteSetting_(cfg, "SCHEDULE_DAYS", raw || "(none)", sd.value || "(none)");
+    }
   });
-  if (mp) {
-    const raw = String(resolved.MARKING_PERIOD_ENDS || "").trim();
-    _tdWriteSetting_(cfg, "MARKING_PERIOD_ENDS", raw || "(the district calendar)", mp.value);
-  }
-  if (sd) {
-    const raw = String(resolved.SCHEDULE_DAYS || "").trim();
-    _tdWriteSetting_(cfg, "SCHEDULE_DAYS", raw || "(none)", sd.value || "(none)");
-  }
+  if (locked) return locked;
   return _tdSettings_(cfg);
 }
 

@@ -157,10 +157,12 @@ shut its gateway in 2025.)
    and limits Gmail to `gmail.modify`. Without its scope list Apps Script asks
    for full mailbox access.
 3. **Script Properties:** `CENTRAL_LEDGER_SS_ID` (the Central Ledger's ID,
-   for the roster). Optional: `FAMILY_SIGNAL_FOLDER_ID` (where the
-   signal doc goes), `DEPLOY_DRIFT_GITHUB_TOKEN`.
+   for the roster). Optional: `DEPLOY_DRIFT_GITHUB_TOKEN`. The signal doc
+   is made in My Drive; move it to a folder by hand if you like (it keeps
+   its ID). Since 2026-10-31 the script has no Drive scope, so it can't
+   move it, and `FAMILY_SIGNAL_FOLDER_ID` is no longer read.
 4. **Run `setupFamilySentinel()`** and approve the scopes (Gmail modify,
-   Sheets, Docs, Drive, external requests). It makes the tabs, both labels,
+   Sheets, Docs, external requests; no Drive since 2026-10-31). It makes the tabs, both labels,
    the signal doc and the `FamilyMailBuildSpec` tab.
 4a. **Phone alerts:** install the free ntfy app on the iPhone and allow its
    notifications (and Time Sensitive). Run `makeFamilyAlertTopic()`; its log

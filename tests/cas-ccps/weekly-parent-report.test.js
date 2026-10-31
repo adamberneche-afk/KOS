@@ -327,17 +327,19 @@ test('the text the dashboard copied is kept; past weeks come back newest first, 
   exported.recordParentReportCopied('1234567@ccpsnet.net', fx.now, { subject: 'S now', text: 'T now' });
   const sheet = fx.ss.getSheetByName('ParentReportLog');
   const D = (y, m, d) => new sandbox.Date(y, m, d);
-  const add = (ws, text, archived) => sheet.appendRow(['id', '1234567@ccpsnet.net', 'Alice', ws, D(2026, 0, 1), '', ws, ws, 't',
-    0, 0, archived || '', 'S ' + text, text]);
+  const add = (ws, text, archived, by) => sheet.appendRow(['id', '1234567@ccpsnet.net', 'Alice', ws, D(2026, 0, 1), '', ws, ws,
+    by || 'teacher@ccpsnet.net', 0, 0, archived || '', 'S ' + text, text]);
   add(D(2026, 1, 9), 'feb 9');
+  add(D(2026, 1, 12), 'another teacher', '', 'other.teacher@ccpsnet.net');
   add(D(2026, 1, 23), 'feb 23');
   add(D(2026, 1, 16), 'archived', 'ARCHIVED — pending disposition review');
   sheet.appendRow(['id', '1234567@ccpsnet.net', 'Alice', D(2026, 1, 2), '', '', D(2026, 1, 2), '', '', 0, 0, '', '', '']);
   const rows = sheet.getDataRange().getValues();
   assert.deepEqual(rows[1].slice(12, 14), ['S now', 'T now']);
-  const past = exported._parentReportsPastFor_({ ledgerSsId: fx.ss.getId(), tabs: { parentReportLog: 'ParentReportLog' } },
-    '1234567@ccpsnet.net', rows[1][3]);
-  assert.deepEqual(past.map((p) => p.text), ['feb 23', 'feb 9'], 'not this week, not archived, not a row never copied');
+  const cfg = { ledgerSsId: fx.ss.getId(), tabs: { parentReportLog: 'ParentReportLog' }, teacherEmail: 'Teacher@ccpsnet.net' };
+  const past = exported._parentReportsPastFor_(cfg, '1234567@ccpsnet.net', rows[1][3]);
+  assert.deepEqual(past.map((p) => p.text), ['feb 23', 'feb 9'],
+    'not this week, not archived, not a row never copied, not another teacher\'s');
   assert.equal(past[0].subject, 'S feb 23');
 });
 

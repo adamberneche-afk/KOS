@@ -322,7 +322,6 @@ function _bounceRegistrarRow(ledger, sheetRow, row, fallbackState, reason) {
   const RC = CFG.REGISTRAR_COLS;
   const attempts = (parseInt(row[RC.ATTEMPT], 10) || 0) + 1;
   const fileId    = row[RC.FILE_ID];
-  const fileName  = row[RC.FILE_NAME];
   const prevError = String(row[RC.ERROR_LOG] || '');
   const ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   const errorEntry = '[' + ts + '] ' + reason;
@@ -335,11 +334,11 @@ function _bounceRegistrarRow(ledger, sheetRow, row, fallbackState, reason) {
     );
     _sendChatAlert(
       '🔴 CRITICAL_FAILURE — Registrar/Cog Relay\n' +
-      'File: ' + fileName + ' (' + fileId + ')\n' +
+      'File: https://drive.google.com/open?id=' + fileId + '\n' +
       'Reason: ' + reason + '\n' +
       'Exceeded retry limit (' + CFG.REGISTRAR_RETRY_LIMIT + '). Human review required.'
     );
-    console.error('[Registrar] ' + fileName + ' → CRITICAL_FAILURE after ' + attempts + ' attempts: ' + reason);
+    console.error('[Registrar] row ' + sheetRow + ' → CRITICAL_FAILURE after ' + attempts + ' attempts: ' + reason);
     return false;
   }
 
@@ -348,7 +347,7 @@ function _bounceRegistrarRow(ledger, sheetRow, row, fallbackState, reason) {
   ledger.getRange(sheetRow, RC.ERROR_LOG + 1).setValue(
     (prevError ? prevError + '\n' : '') + errorEntry + ' — bounced to ' + fallbackState + '.'
   );
-  console.log('[Registrar] ' + fileName + ' bounced to ' + fallbackState + ' (attempt ' + attempts + '): ' + reason);
+  console.log('[Registrar] row ' + sheetRow + ' bounced to ' + fallbackState + ' (attempt ' + attempts + '): ' + reason);
   return true;
 }
 
@@ -452,7 +451,7 @@ function _validateRegistrarStage1(ledger, sheetRow, row) {
   }
 
   ledger.getRange(sheetRow, RC.STATE + 1).setValue('READY_FOR_COG_2');
-  console.log('[Registrar] ' + row[RC.FILE_NAME] + ' passed Stage 1 validation → READY_FOR_COG_2.');
+  console.log('[Registrar] row ' + sheetRow + ' passed Stage 1 validation → READY_FOR_COG_2.');
 }
 
 /**
@@ -503,7 +502,7 @@ function _validateRegistrarStage2(ledger, sheetRow, row) {
   }
 
   ledger.getRange(sheetRow, RC.STATE + 1).setValue('READY_FOR_TRANSLATION');
-  console.log('[Registrar] ' + row[RC.FILE_NAME] + ' passed Stage 2 validation → READY_FOR_TRANSLATION.');
+  console.log('[Registrar] row ' + sheetRow + ' passed Stage 2 validation → READY_FOR_TRANSLATION.');
 }
 
 
@@ -570,7 +569,9 @@ function _translateAndRouteRegistrarRow(ledger, sheetRow, row) {
     ledger.getRange(sheetRow, RC.STATE + 1).setValue('AWAITING_CARBON');
     _sendChatAlert(
       '🟡 APOLLO KILL-SWITCH — human intervention required\n' +
-      'File: ' + row[RC.FILE_NAME] + ' (https://drive.google.com/open?id=' + fileId + ')\n' +
+      // The link, not the file name: a session file's name can carry a
+      // student's name, and the triage itself is anonymized (Docket IV).
+      'File: https://drive.google.com/open?id=' + fileId + '\n' +
       'Target: ' + triage.target_entity + '\n' +
       'Friction source: ' + triage.friction_source + '\n' +
       'Pedagogical gap: ' + triage.pedagogical_gap_identified + '\n' +
@@ -582,7 +583,7 @@ function _translateAndRouteRegistrarRow(ledger, sheetRow, row) {
     } catch (moveErr) {
       _reportError('_translateAndRouteRegistrarRow:moveToHLD', moveErr, null);
     }
-    console.log('[Registrar] ' + row[RC.FILE_NAME] + ' → AWAITING_CARBON (Apollo Kill-Switch).');
+    console.log('[Registrar] row ' + sheetRow + ' → AWAITING_CARBON (Apollo Kill-Switch).');
     return;
   }
 
@@ -637,7 +638,7 @@ function _translateAndRouteRegistrarRow(ledger, sheetRow, row) {
   const ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   ledger.getRange(sheetRow, RC.STATE + 1).setValue('COMPLETELY_ROUTED');
   ledger.getRange(sheetRow, RC.TS_FINAL + 1).setValue(ts);
-  console.log('[Registrar] ' + row[RC.FILE_NAME] + ' → COMPLETELY_ROUTED.');
+  console.log('[Registrar] row ' + sheetRow + ' → COMPLETELY_ROUTED.');
 }
 
 
@@ -675,7 +676,7 @@ function clearInterventionTriage(fileId) {
     const sheetRow = idx + 2;
     ledger.getRange(sheetRow, RC.STATE + 1).setValue('READY_FOR_TRANSLATION');
     SpreadsheetApp.flush();
-    console.log('[Registrar] Triage cleared for ' + data[idx][RC.FILE_NAME] + ' — re-queued for translation & routing.');
+    console.log('[Registrar] Triage cleared for row ' + sheetRow + ' — re-queued for translation & routing.');
     return 'Cleared. Row will finish routing on the next runRegistrarProcessor() pass.';
   } catch (e) {
     _reportError('clearInterventionTriage', e, null);

@@ -293,6 +293,27 @@ function findSystemText_(text) {
   return "";
 }
 
+// Claims a run slot: true, and the Script Property `key` set to now + ms,
+// when no other run holds it; false when one does. The read and the write
+// happen under the script lock, so two runs that start together can't both
+// see the slot free (KOS Audit Docket IV, Low: the rollout's and the Ledger
+// cycle's guards were a plain check-then-set). The lock is held only for
+// that, not for the run: the jobs a run calls take their own locks. A run
+// that can't get the lock in 5 seconds treats the slot as taken.
+function claimRunSlot_(key, ms) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return false;
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const now = Date.now();
+    if (Number(props.getProperty(key) || 0) > now) return false;
+    props.setProperty(key, String(now + ms));
+    return true;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // The same text with every system-text token replaced, for a student's
 // words that reach a model prompt after the submit-time check has run: a
 // warm-up answer (Flow 4), an earlier part re-read from a doc the student
@@ -727,6 +748,18 @@ function setSharedConfigValue_(key, value) {
   if (!written) sheet.appendRow([key, value]);
   try { CacheService.getScriptCache().remove(SHARED_CONFIG_CACHE_PREFIX + ledgerId); } catch (e) { /* ignore */ }
   _sharedConfigMemo_ = null;
+}
+
+// The config as the Ledger's _CONFIG tab has it now, not this project's
+// cached copy (up to 10 minutes old): for a read-modify-write of a shared
+// setting, under the caller's lock (07's ⚙ Settings, Docket IV).
+function freshConfigValues_() {
+  const ledgerId = _resolveConfigValues_().values.CENTRAL_LEDGER_SS_ID;
+  if (ledgerId) {
+    try { CacheService.getScriptCache().remove(SHARED_CONFIG_CACHE_PREFIX + ledgerId); } catch (e) { /* ignore */ }
+  }
+  _sharedConfigMemo_ = null;
+  return _resolveConfigValues_().values;
 }
 
 // Run from the Apps Script editor after editing the Ledger's _CONFIG tab
