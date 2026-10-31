@@ -955,7 +955,7 @@ function wfbPromptFor_(flow, vars) {
   // A student's own words (the answer Flow 4 scores, the prior answer Flow 5
   // builds on) never reach the prompt with system text in them (Docket IV).
   ["response_text", "flow5_prior_response"].forEach(function (k) {
-    if (resolved[k] && typeof neutralizeSystemText_ === "function") resolved[k] = neutralizeSystemText_(resolved[k]);
+    if (resolved[k]) resolved[k] = neutralizeSystemText_(resolved[k]);
   });
   return substituteFlowPrompt_(template, resolved, true);
 }
