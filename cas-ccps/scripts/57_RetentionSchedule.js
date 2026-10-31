@@ -32,14 +32,20 @@
 //      logs an approval code.
 //   2. The operator reads the report and sets the Script Property
 //      RETENTION_DISPOSITION_APPROVE to that code.
-//   3. applyRetentionDisposition() removes exactly that: refused whole if
-//      the code doesn't match, the approval is over 7 days old, a period
-//      changed, or any record has more rows to remove than were approved.
-//      A row's Doc goes to the Drive trash first (recoverable for 30
-//      days); a row whose Doc can't be trashed is kept. At most
-//      RETENTION_DISPOSE_MAX_ROWS rows a run: run it again until it says
-//      done, which clears the approval. Each run is a DispositionLog row,
-//      counts only.
+//   3. applyRetentionDisposition() removes exactly those rows: refused
+//      whole if the code doesn't match, the approval is over 7 days old, a
+//      period changed, or the list of approved rows was changed. The
+//      approval names each row, not a count (KOS Audit Docket IV,
+//      2026-10-31): the preview writes a fingerprint of every removable
+//      row (a SHA-256 of its cells, no content) to the DispositionPending
+//      tab, and the code covers that list. A run re-reads the tabs under
+//      the script lock and removes only rows whose fingerprint is on the
+//      list; a row that became removable after the report, or changed
+//      since, is left for the next report and counted. A row's Doc goes to
+//      the Drive trash first (recoverable for 30 days); a row whose Doc
+//      can't be trashed is kept. At most RETENTION_DISPOSE_MAX_ROWS rows a
+//      run: run it again until it says done, which clears the approval and
+//      the list. Each run is a DispositionLog row, counts only.
 //
 // Not in the schedule: WarmUpFlowReturn (41 deletes harvested rows after
 // 14 days), the Family Mail Sentinel tabs (60's own rules, FERPA_DATA_MAP),
@@ -147,7 +153,8 @@ function _retentionDate_(value) {
 // linkedDocs (Doc IDs on the disposable rows). Counts only: no row
 // content leaves the sheet.
 // With `targets` (an array), each removable row is pushed onto it as
-// { sheet, sheetRow, docId } for applyRetentionDisposition.
+// { sheet, sheetRow, docId, key } for the disposition; key is the row's
+// fingerprint (_retentionRowKey_).
 function _retentionCountsFor_(entry, cfg, now, targets) {
   const years = entry.years();
   const cutoff = _retentionCutoff_(years, now);
@@ -188,7 +195,7 @@ function _retentionCountsFor_(entry, cfg, now, targets) {
     out.disposable++;
     const docId = entry.docCol !== undefined ? String(row[entry.docCol] || "").trim() : "";
     if (docId) out.linkedDocs++;
-    if (targets) targets.push({ sheet: sheet, sheetRow: i + 1, docId: docId });
+    if (targets) targets.push({ sheet: sheet, sheetRow: i + 1, docId: docId, key: _retentionRowKey_(row) });
   }
   return out;
 }
@@ -234,12 +241,40 @@ const RETENTION_APPROVAL_DAYS = 7;
 const RETENTION_DISPOSE_MAX_ROWS = 1500; // a run's cap, inside Apps Script's 6 minutes
 const RETENTION_LOG_TAB = "DispositionLog";
 const RETENTION_LOG_HEADERS = ["RanAt", "ApprovalCode", "Record", "Cutoff", "RowsRemoved", "DocsTrashed", "KeptDocFailed", "Done"];
+// The approved rows' fingerprints, one per row. Hashes only: no student data.
+const RETENTION_PENDING_TAB = "DispositionPending";
+
+// A row's fingerprint: SHA-256 of its cells (dates as ISO), in hex. Two
+// identical rows share one, and the list counts them.
+function _retentionRowKey_(row) {
+  const text = JSON.stringify(row.map(function (c) { return c instanceof Date ? c.toISOString() : c; }));
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text)
+    .map(function (b) { return ("0" + (b & 0xff).toString(16)).slice(-2); }).join("");
+}
+
+// One digest of the whole list, in a fixed order, for the approval code.
+function _retentionKeysDigest_(pairs) {
+  return _retentionRowKey_(pairs.map(function (p) { return p[0] + ":" + p[1]; }).sort());
+}
+
+function _retentionPendingSheet_(cfg, create) {
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  let sheet = ss.getSheetByName(RETENTION_PENDING_TAB);
+  if (!sheet && create) sheet = ss.insertSheet(RETENTION_PENDING_TAB);
+  return sheet;
+}
 
 function previewRetentionDisposition() {
   const cfg = getConfig_();
   const now = new Date();
   const tz = Session.getScriptTimeZone();
-  const results = _retentionSchedule_().map(function (e) { return _retentionCountsFor_(e, cfg, now); });
+  const keys = [];
+  const results = _retentionSchedule_().map(function (e) {
+    const targets = [];
+    const r = _retentionCountsFor_(e, cfg, now, targets);
+    targets.forEach(function (t) { keys.push([r.label, t.key]); });
+    return r;
+  });
   const totals = { disposable: 0, linkedDocs: 0, awaitingArchive: 0, undecided: 0 };
   const lines = ["Retention disposition, dry run: nothing is deleted (" + RETENTION_ADOPTED + ")."];
   results.forEach(function (r) {
@@ -268,7 +303,11 @@ function previewRetentionDisposition() {
       records: results.filter(function (r) { return r.found && r.disposable; }).map(function (r) {
         return { label: r.label, cutoff: Utilities.formatDate(r.cutoff, tz, "yyyy-MM-dd"), rows: r.disposable, docs: r.linkedDocs };
       }),
+      keys: _retentionKeysDigest_(keys),
     };
+    const list = _retentionPendingSheet_(cfg, true);
+    list.clear();
+    list.getRange(1, 1, keys.length + 1, 2).setValues([["Record", "RowKey"]].concat(keys));
     const props = PropertiesService.getScriptProperties();
     props.setProperty(RETENTION_PENDING_KEY, JSON.stringify(pending));
     code = _retentionApprovalCode_(JSON.stringify(pending));
@@ -307,19 +346,52 @@ function applyRetentionDisposition() {
   if ((now.getTime() - at.getTime()) / 86400000 > RETENTION_APPROVAL_DAYS + 0.5) {
     return refuse("the approval is over " + RETENTION_APPROVAL_DAYS + " days old. Run previewRetentionDisposition() again.");
   }
+  const list = _retentionPendingSheet_(cfg, false);
+  const pairs = list && list.getLastRow() > 1
+    ? list.getRange(2, 1, list.getLastRow() - 1, 2).getValues().map(function (r) { return [String(r[0]), String(r[1])]; })
+    : [];
+  if (!pending.keys || _retentionKeysDigest_(pairs) !== pending.keys) {
+    return refuse("the list of approved rows (" + RETENTION_PENDING_TAB + ") doesn't match the report. Run previewRetentionDisposition() again.");
+  }
+  // How many rows of each fingerprint, per record, were approved.
+  const allowed = {};
+  pairs.forEach(function (p) {
+    const k = p[0] + ":" + p[1];
+    allowed[k] = (allowed[k] || 0) + 1;
+  });
   const approved = {};
   pending.records.forEach(function (r) { approved[r.label] = r; });
+
+  // Rows are read and removed by row number, and other jobs write these
+  // tabs every few minutes: the whole run holds the script lock.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return refuse("the Ledger is busy. Try again in a few minutes.");
+  try {
+    return _retentionApplyLocked_(cfg, now, tz, code, props, approved, allowed);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function _retentionApplyLocked_(cfg, now, tz, code, props, approved, allowed) {
+  const refuse = function (msg) { Logger.log("Retention disposition refused: " + msg); return { ok: false, error: msg }; };
   const plan = [];
+  let notApproved = 0;
   const schedule = _retentionSchedule_();
   for (let i = 0; i < schedule.length; i++) {
     const targets = [];
     const r = _retentionCountsFor_(schedule[i], cfg, now, targets);
     if (!r.disposable) continue;
     const a = approved[r.label];
-    if (!a) return refuse(r.label + " has " + r.disposable + " row(s) to remove that were not in the approved report.");
-    if (Utilities.formatDate(r.cutoff, tz, "yyyy-MM-dd") !== a.cutoff) return refuse(r.label + "'s period changed since the report.");
-    if (r.disposable > a.rows) return refuse(r.label + " has more rows to remove (" + r.disposable + ") than were approved (" + a.rows + ").");
-    plan.push({ label: r.label, cutoff: a.cutoff, targets: targets });
+    if (a && Utilities.formatDate(r.cutoff, tz, "yyyy-MM-dd") !== a.cutoff) return refuse(r.label + "'s period changed since the report.");
+    // Only rows named in the report; anything else waits for the next one.
+    const named = targets.filter(function (t) {
+      const k = r.label + ":" + t.key;
+      if (!allowed[k]) { notApproved++; return false; }
+      allowed[k]--;
+      return true;
+    });
+    if (named.length) plan.push({ label: r.label, cutoff: a.cutoff, targets: named });
   }
 
   let budget = RETENTION_DISPOSE_MAX_ROWS;
@@ -351,11 +423,15 @@ function applyRetentionDisposition() {
   if (done) {
     props.deleteProperty(RETENTION_APPROVE_KEY);
     props.deleteProperty(RETENTION_PENDING_KEY);
+    const list = _retentionPendingSheet_(cfg, false);
+    if (list) list.clear();
   }
   Logger.log("Retention disposition: " + total.removed + " row(s) removed, " + total.docsTrashed + " Doc(s) trashed" +
     (total.keptDocFailed ? ", " + total.keptDocFailed + " row(s) kept: their Doc could not be trashed" : "") +
+    (notApproved ? ", " + notApproved + " row(s) left: not in the approved report (the next report lists them)" : "") +
     (done ? ". Done; the approval is cleared." : ". Not done: run applyRetentionDisposition() again."));
-  return { ok: true, removed: total.removed, docsTrashed: total.docsTrashed, keptDocFailed: total.keptDocFailed, done: done };
+  return { ok: true, removed: total.removed, docsTrashed: total.docsTrashed, keptDocFailed: total.keptDocFailed,
+    notApproved: notApproved, done: done };
 }
 
 function _retentionLogDisposition_(cfg, now, code, rows, done) {
