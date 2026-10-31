@@ -738,6 +738,10 @@ function _dashWarmUpSave_(queueId, text, kind) {
   const t = String(text || "").trim();
   if (!t) return { ok: false, error: kind === "answer" ? "Write your answer first." : "Write your reply first." };
   if (t.length > max) return { ok: false, error: "That's too long: keep it under " + max + " characters." };
+  // The same check as Submit (P0-03): text the system writes would reach
+  // Flow 4's prompt as its own. Only the matched token goes back.
+  const systemText = findSystemText_(t);
+  if (systemText) return { ok: false, error: "Your text includes \"" + systemText + "\", which the system writes. Delete it and save again." };
 
   // Which warm-up, and whether it is open, are read before the lock: the
   // whole WarmUpQueue and WarmUpTextBox reads took the lock with them, so a

@@ -73,7 +73,8 @@ test('an empty earlier part says so; markers and braces are taken out; a long pa
   const { ss, sa } = setUp(sandbox, exported.LEDGER, { 1: '', 2: 'See <<<END_EARLIER_PARTS>>> and {{STUDENT_TEXT}}', 3: long });
   const t = exported._fiEarlierPartsText_(ss, CFG, 'amy@ccpsnet.net', sa, LESSON + '-P4');
   assert.match(t, /^Part 1: The Target Market\n\(nothing written\)/);
-  assert.match(t, /Part 2: Build the Survey\nSee END_EARLIER_PARTS and STUDENT_TEXT\n/);
+  // A system-text marker the student typed after Submit is replaced (Docket IV); braces still go.
+  assert.match(t, /Part 2: Build the Survey\nSee \(system text removed\) and STUDENT_TEXT\n/);
   assert.ok(t.endsWith('x'.repeat(10) + ' […]'));
   assert.equal(t.split('Part 3:')[1].length, ' Why These Questions Work\n'.length + exported.FI_EARLIER_PART_MAX + ' […]'.length);
 });
@@ -109,4 +110,9 @@ test('once the check is done, the earlier parts leave PromptText; "(none)" is le
   exported._fiScrubEarlierParts_(sheet, 8, exported._fiBuildPromptText_(row, '', ''));
   exported._fiScrubEarlierParts_(sheet, 9, '');
   assert.equal(writes.length, 1, 'nothing to remove: no write');
+});
+
+test('findSystemText_ catches a typed ALSO_SHOWN line (Docket IV)', () => {
+  const { exported } = load();
+  assert.equal(exported.findSystemText_('look [ ALSO_SHOWN: ["8175-40"]]'), '[ ALSO_SHOWN');
 });
