@@ -750,6 +750,18 @@ function setSharedConfigValue_(key, value) {
   _sharedConfigMemo_ = null;
 }
 
+// The config as the Ledger's _CONFIG tab has it now, not this project's
+// cached copy (up to 10 minutes old): for a read-modify-write of a shared
+// setting, under the caller's lock (07's ⚙ Settings, Docket IV).
+function freshConfigValues_() {
+  const ledgerId = _resolveConfigValues_().values.CENTRAL_LEDGER_SS_ID;
+  if (ledgerId) {
+    try { CacheService.getScriptCache().remove(SHARED_CONFIG_CACHE_PREFIX + ledgerId); } catch (e) { /* ignore */ }
+  }
+  _sharedConfigMemo_ = null;
+  return _resolveConfigValues_().values;
+}
+
 // Run from the Apps Script editor after editing the Ledger's _CONFIG tab
 // to use the new values in this project now, instead of within 10 minutes.
 // Each project caches separately, so this clears only the project it runs
