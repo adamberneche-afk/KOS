@@ -36,7 +36,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // it the three data checks failed on a ReferenceError rather than on empty
 // tabs — the right answer for the wrong reason, which is what gas-lint's
 // Check K (FLOW_DOCTRINE.md rule 12) exists to stop.
-const FILES = [S('00_SharedConfig.js'), S('07_TeacherDashboard.js'),
+const FILES = [S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'), S('07_TeacherDashboard.js'),
                S('31_PacingGuideManager.js'), S('22_LessonContextHandler.js'), S('23_StudentProfileManager.js')];
 
 const EXPOSE = [

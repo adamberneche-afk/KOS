@@ -616,6 +616,9 @@ function syncAiPromptsToSheet() {
 // that Flow produces nothing.
 // ---------------------------------------------------------------------------
 function checkAiPrompts() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it reads the deployment's own setup, so it is owner-only.
+  _lhRequireOwner_();
   const sheet = _getAiPromptSheet_();
   const keyCol = AI_PROMPT_HEADERS.indexOf('job_type');
   const textCol = AI_PROMPT_HEADERS.indexOf('prompt_text');

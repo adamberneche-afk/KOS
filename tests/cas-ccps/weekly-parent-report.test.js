@@ -26,6 +26,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const PATHS = [
   path.join(SCRIPTS, '00_SharedConfig.js'),
+  path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'),
   path.join(SCRIPTS, '29_StudentContextAggregator.js'),
   path.join(SCRIPTS, '36_WeeklyParentReport.js'),
   // Lesson titles and competency text (55b is in both of 36's projects).

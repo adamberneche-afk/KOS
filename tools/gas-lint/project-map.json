@@ -1,5 +1,5 @@
 {
-  "_comment": "Which files share a single Apps Script global scope. GAS concatenates every file bound to one project into one namespace, so two files in the same entry here that both declare a top-level `function foo()` or `const foo` will crash the whole project at parse time. Membership here is taken from each file's own header comment (BOUND TO: / INCLUDE IN: / INCLUDED IN:), not assumed from filename or README tables — those two disagreed at least once (see cas-ccps/README.md's Module 1 table vs. 20_SetupCheckpoint.js's own header) and the file's own header wins. A file can legitimately appear in more than one project (00_SharedConfig.js and 19_ClonedSheetConfig.js are each pasted into multiple projects by design).",
+  "_comment": "Which files share a single Apps Script global scope. GAS concatenates every file bound to one project into one namespace, so two files in the same entry here that both declare a top-level `function foo()` or `const foo` will crash the whole project at parse time. Membership here is taken from each file's own header comment (BOUND TO: / INCLUDE IN: / INCLUDED IN:), not assumed from filename or README tables \u2014 those two disagreed at least once (see cas-ccps/README.md's Module 1 table vs. 20_SetupCheckpoint.js's own header) and the file's own header wins. A file can legitimately appear in more than one project (00_SharedConfig.js and 19_ClonedSheetConfig.js are each pasted into multiple projects by design).",
   "kos-personal": {
     "_bound_to": "Single standalone Apps Script project (web app + all triggers)",
     "manifest": "kos-personal/appsscript.json",
@@ -36,6 +36,7 @@
     "manifest": "cas-ccps/clasp/manifests/central-ledger.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/00b_ScriptOwnerGuard.js",
       "cas-ccps/scripts/02_Form1_IntakeAndWorkspaceGenerator.js",
       "cas-ccps/scripts/03_QueueBridge.js",
       "cas-ccps/scripts/04_Form2_TurnInGate.js",
@@ -87,7 +88,7 @@
     ]
   },
   "cas-ccps:unified-manual": {
-    "_bound_to": "Assignment System Manual Google Doc (container-bound) — the setup wizard's own project",
+    "_bound_to": "Assignment System Manual Google Doc (container-bound) \u2014 the setup wizard's own project",
     "manifest": "cas-ccps/clasp/manifests/unified-manual.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
@@ -137,6 +138,7 @@
     "manifest": "cas-ccps/clasp/manifests/teacher-dashboard.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/00b_ScriptOwnerGuard.js",
       "cas-ccps/scripts/07_TeacherDashboard.js",
       "cas-ccps/scripts/22_LessonContextHandler.js",
       "cas-ccps/scripts/23_StudentProfileManager.js",
@@ -159,13 +161,14 @@
     "manifest": "cas-ccps/clasp/manifests/student-dashboard.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/00b_ScriptOwnerGuard.js",
       "cas-ccps/scripts/13_StudentDashboard.js",
       "cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js",
       "cas-ccps/scripts/63_DocHeader.js"
     ]
   },
   "cas-ccps:studio-steps": {
-    "_bound_to": "Standalone Workspace Studio add-on project (not bound to any spreadsheet, so it's installable across every flow rather than tied to one document) — the custom steps behind Flows 1-5",
+    "_bound_to": "Standalone Workspace Studio add-on project (not bound to any spreadsheet, so it's installable across every flow rather than tied to one document) \u2014 the custom steps behind Flows 1-5",
     "manifest": "cas-ccps/clasp/manifests/studio-steps.appsscript.json",
     "files": [
       "cas-ccps/studio-steps/StepsShared.gs",
@@ -190,7 +193,7 @@
     ]
   },
   "leader-hub:app": {
-    "_bound_to": "Its own single-script project (Gmail-bound), not shared with anything — no collision surface to check against another project, but promoted to a top-level entry (not '_excluded') anyway so Check E (OAuth scope coverage) runs against it, and now Check D (google.script.run <-> server function cross-reference) too now that Code.gs/student-leader-hub.html exist. Renamed from 'leader-hub:email-bridge' now that this project serves the HTML web app as well as the JSON API — see the leader-hub server-migration plan.",
+    "_bound_to": "Its own single-script project (Gmail-bound), not shared with anything \u2014 no collision surface to check against another project, but promoted to a top-level entry (not '_excluded') anyway so Check E (OAuth scope coverage) runs against it, and now Check D (google.script.run <-> server function cross-reference) too now that Code.gs/student-leader-hub.html exist. Renamed from 'leader-hub:email-bridge' now that this project serves the HTML web app as well as the JSON API \u2014 see the leader-hub server-migration plan.",
     "manifest": "leader-hub/appsscript.json",
     "files": [
       "leader-hub/EmailBridge.gs",
@@ -213,8 +216,8 @@
     "leader-hub/drive-tools/LH_8177_Rename.gs",
     "leader-hub/drive-tools/LH_DriveDocSplitter.gs"
   ],
-  "_note_on_15b": "15b_StudioFlowPrompts_Flow2_Revised.js moved OUT of the excluded list above and into cas-ccps:central-ledger's real files (external product review, Finding 3) — it's now loaded into that live GAS project so 15c_Flow2DirectEvaluationService.js can reference FLOW_2_SYSTEM_PROMPT directly. This does NOT mean Flow 2 itself is deployed in Studio — it still isn't (see cas-ccps/README.md). 15b's own header comment explains the distinction.",
+  "_note_on_15b": "15b_StudioFlowPrompts_Flow2_Revised.js moved OUT of the excluded list above and into cas-ccps:central-ledger's real files (external product review, Finding 3) \u2014 it's now loaded into that live GAS project so 15c_Flow2DirectEvaluationService.js can reference FLOW_2_SYSTEM_PROMPT directly. This does NOT mean Flow 2 itself is deployed in Studio \u2014 it still isn't (see cas-ccps/README.md). 15b's own header comment explains the distinction.",
   "_archived_not_linted": [
-    "kos-personal/archive/studio-steps/ — kos-personal's two custom Workspace Studio steps (WriteCuratorOutputStep, WriteClassificationOutputStep), archived 2026-09-29. The org-wide GCP block means custom steps can never be installed on this account, and 12_StudioReturnHarvest.gs replaced them. Kept for reference and still covered by tests/kos-personal/write-*-step.test.js; not a deployable project, so gas-lint, clasp-sync and deploy-drift ignore it."
+    "kos-personal/archive/studio-steps/ \u2014 kos-personal's two custom Workspace Studio steps (WriteCuratorOutputStep, WriteClassificationOutputStep), archived 2026-09-29. The org-wide GCP block means custom steps can never be installed on this account, and 12_StudioReturnHarvest.gs replaced them. Kept for reference and still covered by tests/kos-personal/write-*-step.test.js; not a deployable project, so gas-lint, clasp-sync and deploy-drift ignore it."
   ]
 }

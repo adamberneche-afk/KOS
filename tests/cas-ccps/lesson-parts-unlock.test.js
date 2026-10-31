@@ -14,7 +14,7 @@ const PART = (n) => 'CAS-' + KEY.toUpperCase() + '-P' + n;
 const TEACHER = 'teacher@ccpsnet.net';
 
 function setup() {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('55b_LessonAssignmentData.js'), S('64_LedgerCycle.js'), S('68_LessonParts.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'), S('55b_LessonAssignmentData.js'), S('64_LedgerCycle.js'), S('68_LessonParts.js')],
     ['unlockReadyParts', 'previewPartUnlocks', 'unlockNextPart_', 'partOfConfigId_', 'lessonPartsOf_', 'getConfig_']);
   const { sandbox } = env;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');

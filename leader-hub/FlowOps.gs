@@ -188,6 +188,9 @@ const AI_FIXTURE_PAYLOADS = {
  * code indexes by position. Read-only — it never writes.
  */
 function checkAiQueueSchema() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it reads the deployment's own setup, so it is owner-only.
+  _lhRequireOwner_();
   const report = { ok: true, tabs: [] };
 
   const specs = [
@@ -288,6 +291,9 @@ function repairAiQueueSchema() {
  * deployment at any time.
  */
 function runLeaderHubPreflight() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it reads the deployment's own setup, so it is owner-only.
+  _lhRequireOwner_();
   const checks = [];
   function record(name, pass, detail) { checks.push({ name: name, pass: !!pass, detail: detail || '' }); }
 
@@ -415,6 +421,9 @@ function installAiFlowFixtures() {
  * means no Flow has touched that type yet, anything else means one has.
  */
 function checkAiFlowFixtures() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it reads the deployment's own setup, so it is owner-only.
+  _lhRequireOwner_();
   const rows = _flowOpsFindFixtureRows_();
   const byStatus = { PENDING: [], COMPLETE: [], ERROR: [], OTHER: [] };
   rows.forEach(function (r) {
@@ -498,6 +507,9 @@ const AI_TERMINAL_STATUSES = ['COMPLETE', 'ERROR'];
  * rather than transcribed, so it cannot drift from what the code reads.
  */
 function checkAiFlowBinding() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it reads the deployment's own setup, so it is owner-only.
+  _lhRequireOwner_();
   const report = { rows: 0, ok: 0, problems: [], expected: [] };
 
   AI_QUEUE_HEADERS.forEach(function (name, idx) {
