@@ -42,7 +42,8 @@
 //   external  — any other sender, not a mailing list, naming a rostered
 //               student's full name, or first name with a parent word
 //               ("my son"). Gemini confirms; a NOT_FAMILY verdict removes
-//               the label.
+//               the label, unless another message in the thread is family
+//               mail, flagged, or still waiting on Gemini.
 //   The roster is the Central Ledger's Ledger tab (names, course, period),
 //   read by ID through getConfig_().ledgerSsId. A surname may be hyphenated
 //   or several words ("De La Cruz"); _fmsNameParts_() keeps every form.
@@ -156,7 +157,10 @@ const FMS_SYSTEM_SENDERS = [
 const FMS_SCAN_QUERY = "-in:sent -in:chats -in:spam -in:trash";
 const FMS_SCAN_WINDOW_HOURS = 48;   // the first scan, and the furthest back any scan looks
 const FMS_SCAN_OVERLAP_HOURS = 1;   // each scan re-reads the last hour, for mail that arrives late
-const FMS_SCAN_MAX = 100;
+const FMS_SCAN_MAX = 100;           // messages per Gmail list page
+const FMS_SCAN_MAX_PAGES = 5;       // list pages per run
+const FMS_SCAN_MAX_READS = 300;     // messages read (Messages.get) per run
+const FMS_SCAN_BUDGET_MS = 2 * 60 * 1000; // the scan's share of a run; the harvest and signal follow
 const FMS_BODY_MAX_CHARS = 3000;
 const FMS_ASK_MAX_CHARS = 140;
 const FMS_INPUT_MAX_AGE_HOURS = 48;   // counted from the first time a message was queued
@@ -299,6 +303,16 @@ function setupFamilySentinel() {
 
 // Finds new family mail, labels its thread and queues it for the Flow.
 // Mail that is not family mail is left untouched and unrecorded.
+//
+// Gmail lists newest first, a page at a time. The scan follows
+// nextPageToken until the list ends or a cap is reached (FMS_SCAN_MAX_PAGES
+// pages, FMS_SCAN_MAX_READS messages read, FMS_SCAN_BUDGET_MS). A scan that
+// reaches the end with every message read moves FAMILY_SENTINEL_LAST_SCAN_AT
+// to its start. One a cap stops leaves that mark where it was and records
+// FAMILY_SENTINEL_SCAN_PENDING ({coveredTo, before}: this run's start, and
+// the oldest message it read), so the next run reads new mail first and then
+// the older mail this one never reached. The one-hour overlap and the log's
+// Message_IDs (`seen`) keep a message from being logged twice.
 function scanFamilyMail(opts) {
   opts = opts || {};
   const ss = _fmsSpreadsheet_();
@@ -313,18 +327,26 @@ function scanFamilyMail(opts) {
   const labels = _fmsEnsureLabels_();
   const props = PropertiesService.getScriptProperties();
   const startedAt = Date.now();
-  const list = Gmail.Users.Messages.list("me", { q: _fmsScanQuery_(props, startedAt), maxResults: FMS_SCAN_MAX }) || {};
-  const refs = list.messages || [];
   const familyThreads = {};
   _fmsRows_(logSheet).forEach(function (r) {
     const st = String(r[FMS_LOG.STATUS]);
     if (r[FMS_LOG.THREAD_ID] && st !== FMS_STATUS.NOT_FAMILY && st !== FMS_STATUS.FIXTURE) familyThreads[String(r[FMS_LOG.THREAD_ID])] = r;
   });
 
-  const out = { checked: 0, queued: 0, safety: 0, errors: 0 };
-  refs.forEach(function (ref) {
+  const out = { checked: 0, queued: 0, safety: 0, errors: 0, pages: 0, complete: true };
+  const pending = _fmsScanPending_(props);
+  const ranges = _fmsScanRanges_(props, startedAt, pending);
+  let reads = 0;
+  let stoppedIn = null; // the range a cap stopped
+
+  function readCapped() {
+    return reads >= FMS_SCAN_MAX_READS || Date.now() - startedAt > FMS_SCAN_BUDGET_MS;
+  }
+
+  function processRef(ref, range) {
     if (seen[ref.id]) return;
     out.checked++;
+    reads++;
     let msg;
     try {
       msg = _fmsReadMessage_(Gmail.Users.Messages.get("me", ref.id, { format: "full" }));
@@ -335,6 +357,7 @@ function scanFamilyMail(opts) {
       out.lastError = String(e);
       return;
     }
+    if (!(range.oldest <= msg.receivedAt)) range.oldest = msg.receivedAt;
     const fam = _fmsDetectFamily_(msg, roster, contacts, operator) ||
       _fmsFromFamilyThread_(msg, familyThreads[msg.threadId], operator);
     if (!fam) return;
@@ -362,19 +385,68 @@ function scanFamilyMail(opts) {
     seen[msg.id] = true;
     familyThreads[msg.threadId] = row;
     out.queued++;
-  });
-  if (!out.errors) props.setProperty("FAMILY_SENTINEL_LAST_SCAN_AT", String(startedAt));
+  }
+
+  for (let ri = 0; ri < ranges.length && !stoppedIn; ri++) {
+    const range = ranges[ri];
+    let pageToken = null;
+    do {
+      if (readCapped() || out.pages >= FMS_SCAN_MAX_PAGES) { stoppedIn = range; break; }
+      const req = { q: range.q, maxResults: FMS_SCAN_MAX };
+      if (pageToken) req.pageToken = pageToken;
+      const list = Gmail.Users.Messages.list("me", req) || {};
+      out.pages++;
+      const refs = list.messages || [];
+      for (let i = 0; i < refs.length && !stoppedIn; i++) {
+        if (!seen[refs[i].id] && readCapped()) stoppedIn = range;
+        else processRef(refs[i], range);
+      }
+      pageToken = list.nextPageToken || null;
+    } while (pageToken && !stoppedIn);
+  }
+
+  if (stoppedIn) {
+    // The mark stays. With an unreadable message nothing moves at all: it
+    // may be newer than the oldest read, and must not be passed over.
+    out.complete = false;
+    if (!out.errors) {
+      const before = stoppedIn.oldest !== undefined ? stoppedIn.oldest : (stoppedIn.before || startedAt);
+      props.setProperty("FAMILY_SENTINEL_SCAN_PENDING", JSON.stringify({ coveredTo: startedAt, before: before }));
+    }
+  } else if (!out.errors) {
+    props.setProperty("FAMILY_SENTINEL_LAST_SCAN_AT", String(startedAt));
+    if (pending) props.deleteProperty("FAMILY_SENTINEL_SCAN_PENDING");
+  }
   return out;
 }
 
-// Only mail since the last scan (less an hour's overlap), never more than
-// FMS_SCAN_WINDOW_HOURS back. Without the mark every run re-read two days of
-// mail that was already checked and wasn't family mail.
-function _fmsScanQuery_(props, nowMs) {
+// What the scan asks Gmail for, in order. Normally one range: mail since the
+// last scan (less an hour's overlap), never more than FMS_SCAN_WINDOW_HOURS
+// back. Without the mark every run re-read two days of mail that was already
+// checked and wasn't family mail. After a run a cap stopped
+// (FAMILY_SENTINEL_SCAN_PENDING), two: new mail since that run, then the
+// older mail it never reached.
+function _fmsScanRanges_(props, nowMs, pending) {
   const last = Number(props.getProperty("FAMILY_SENTINEL_LAST_SCAN_AT")) || 0;
   const floor = nowMs - FMS_SCAN_WINDOW_HOURS * 3600 * 1000;
-  const from = Math.max(floor, last - FMS_SCAN_OVERLAP_HOURS * 3600 * 1000);
-  return FMS_SCAN_QUERY + " after:" + Math.floor(from / 1000);
+  const overlap = FMS_SCAN_OVERLAP_HOURS * 3600 * 1000;
+  function after(ms) { return FMS_SCAN_QUERY + " after:" + Math.floor(Math.max(floor, ms) / 1000); }
+  if (!pending) return [{ q: after(last - overlap) }];
+  return [
+    { q: after(pending.coveredTo - overlap) },
+    // +1 s: the oldest message read is listed again rather than risk missing
+    // one sent the same second; `seen` skips it if it was logged.
+    { q: after(last - overlap) + " before:" + (Math.floor(pending.before / 1000) + 1), before: pending.before },
+  ];
+}
+
+function _fmsScanPending_(props) {
+  try {
+    const p = JSON.parse(props.getProperty("FAMILY_SENTINEL_SCAN_PENDING") || "null");
+    return p && Number(p.coveredTo) && Number(p.before) ? { coveredTo: Number(p.coveredTo), before: Number(p.before) } : null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // A reply in a thread that is already family mail is family mail, whoever
@@ -569,6 +641,22 @@ function reclassifySystemSenderThreads(dryRun) {
   return out;
 }
 
+// How many log rows, other than rows[except], hold thread `thread` as family
+// mail: any status but NOT_FAMILY and the fixtures (so CLASSIFIED, a QUEUED
+// one still waiting on Gemini, FAILED, UNCLASSIFIED), or any row with a
+// safety flag. While one does, KOS/Family stays on the thread.
+function _fmsOtherFamilyRows_(rows, thread, except) {
+  let n = 0;
+  if (!thread) return 0;
+  rows.forEach(function (r, i) {
+    if (i === except || String(r[FMS_LOG.THREAD_ID] || "") !== thread) return;
+    const st = String(r[FMS_LOG.STATUS]);
+    if (st === FMS_STATUS.FIXTURE || st === FMS_STATUS.SAFETY_FIXTURE) return;
+    if (st !== FMS_STATUS.NOT_FAMILY || _fmsTrue_(r[FMS_LOG.SAFETY])) n++;
+  });
+  return n;
+}
+
 // The real run of reclassifySystemSenderThreads(), for the Run button.
 function reclassifySystemSenderThreadsNow() {
   return reclassifySystemSenderThreads(false);
@@ -682,11 +770,19 @@ function harvestFamilyMailReturns() {
     } else if (!verdict.value.is_family && String(row[FMS_LOG.SOURCE]) === "external" && !row[FMS_LOG.SAFETY]) {
       row[FMS_LOG.STATUS] = FMS_STATUS.NOT_FAMILY;
       row[FMS_LOG.CLASSIFIED_AT] = new Date();
-      labels = labels || _fmsEnsureLabels_();
-      try {
-        Gmail.Users.Threads.modify({ removeLabelIds: [labels[FMS_LABEL]] }, "me", String(row[FMS_LOG.THREAD_ID]));
-      } catch (e) {
-        row[FMS_LOG.NOTE] = _fmsJoinNote_(row[FMS_LOG.NOTE], "label not removed: " + e);
+      // The label is the thread's: it stays while another message in the
+      // thread is family mail, flagged or still waiting on Gemini.
+      const keep = _fmsOtherFamilyRows_(logRows, String(row[FMS_LOG.THREAD_ID]), li);
+      if (keep) {
+        row[FMS_LOG.NOTE] = _fmsJoinNote_(row[FMS_LOG.NOTE], "label kept: " + keep + " other family message(s) in thread");
+        out.labelKept = (out.labelKept || 0) + 1;
+      } else {
+        labels = labels || _fmsEnsureLabels_();
+        try {
+          Gmail.Users.Threads.modify({ removeLabelIds: [labels[FMS_LABEL]] }, "me", String(row[FMS_LOG.THREAD_ID]));
+        } catch (e) {
+          row[FMS_LOG.NOTE] = _fmsJoinNote_(row[FMS_LOG.NOTE], "label not removed: " + e);
+        }
       }
       out.notFamily++;
     } else {

@@ -283,6 +283,39 @@ test('an outside sender with a first name and a parent word is a candidate; Gemi
   assert.deepEqual(fx.gmail.labelNames('t7'), [], 'a NOT_FAMILY verdict removes the label');
 });
 
+test('a NOT_FAMILY verdict keeps the label on a thread that also holds family mail', () => {
+  const later = {
+    id: 'm1x', threadId: 't1', internalDate: now - 2 * HOUR,
+    from: 'Vendor <rep@vendor.example>', subject: 'Re: Makeup test', body: 'About Jordan Rivers: our catalog is attached.',
+  };
+  const fx = setUp([MAIL.student, later]);
+  assert.equal(fx.exported.scanFamilyMail().queued, 2);
+  const LOG = fx.exported.FMS_LOG;
+  assert.equal(logByMessage(fx.ss, LOG, 'm1x')[LOG.SOURCE], 'external');
+  playFlow(fx.ss, (id) => id === 'FMS-m1'
+    ? { is_family: true, category: 'absence_makeup', urgency: 3, safety: false, ask: 'The student asks when to make up the quiz.', due: '' }
+    : { is_family: false, category: 'other', urgency: 1, safety: false, ask: '', due: '' });
+  const out = fx.exported.harvestFamilyMailReturns();
+  assert.equal(out.notFamily, 1);
+  assert.equal(out.labelKept, 1);
+  const row = logByMessage(fx.ss, LOG, 'm1x');
+  assert.equal(row[LOG.STATUS], 'NOT_FAMILY');
+  assert.match(String(row[LOG.NOTE]), /^label kept: 1 other family message/);
+  assert.deepEqual(fx.gmail.labelNames('t1'), ['KOS/Family'], 'the family message keeps its thread labeled');
+});
+
+test('a thread whose messages are all NOT_FAMILY loses the label', () => {
+  const a = { id: 'm9a', threadId: 't9', internalDate: now - 3 * HOUR,
+    from: 'Sam <sam@example.net>', subject: 'Question', body: 'My son Jordan says the project is due Friday.' };
+  const b = Object.assign({}, a, { id: 'm9b', internalDate: now - 2 * HOUR, body: 'Also, my son Jordan has a question.' });
+  const fx = setUp([a, b]);
+  assert.equal(fx.exported.scanFamilyMail().queued, 2);
+  playFlow(fx.ss, () => ({ is_family: false, category: 'other', urgency: 1, safety: false, ask: '', due: '' }));
+  const out = fx.exported.harvestFamilyMailReturns();
+  assert.equal(out.notFamily, 2);
+  assert.deepEqual(fx.gmail.labelNames('t9'), [], 'removed once no message in the thread is family mail');
+});
+
 // ── Safety ──────────────────────────────────────────────────────────────────
 
 test('a safety message is flagged before Gemini runs and is never summarized', () => {
@@ -477,6 +510,68 @@ test('each scan asks Gmail only for mail since the last scan, less an hour', () 
   assert.ok(Math.abs(after1 - (before - 48 * HOUR)) < 5000, 'first scan looks back 48 hours');
   assert.ok(Math.abs(after2 - (before - 1 * HOUR)) < 5000, 'later scans look back to the last scan less an hour');
   assert.match(queries[0], /-in:sent -in:chats -in:spam -in:trash/);
+});
+
+// n synthetic student messages, newest first, 4 minutes apart, and a list()
+// that pages like Gmail's: honours after:/before:, maxResults and pageToken.
+function pagedMail(n) {
+  const mail = [];
+  for (let i = 0; i < n; i++) {
+    mail.push({ id: 'p' + i, threadId: 'tp' + i, internalDate: now - i * 4 * 60 * 1000,
+      from: 'Kid ' + i + ' <kid' + i + '@student.ccpsnet.net>', subject: 'Question ' + i, body: 'When is the quiz?' });
+  }
+  return mail;
+}
+function pagedList(mail, calls) {
+  return (u, opts) => {
+    calls.push(opts);
+    const a = /after:(\d+)/.exec(opts.q), b = /before:(\d+)/.exec(opts.q);
+    const hits = mail.filter((m) => (!a || m.internalDate / 1000 >= Number(a[1])) && (!b || m.internalDate / 1000 < Number(b[1])));
+    const start = Number(opts.pageToken || 0);
+    const page = hits.slice(start, start + opts.maxResults);
+    const out = { messages: page.map((m) => ({ id: m.id, threadId: m.threadId })) };
+    if (start + opts.maxResults < hits.length) out.nextPageToken = String(start + opts.maxResults);
+    return out;
+  };
+}
+
+test('more messages than one list page are all scanned, page by page', () => {
+  const mail = pagedMail(250);
+  const fx = setUp(mail);
+  const calls = [];
+  fx.gmail.Users.Messages.list = pagedList(mail, calls);
+  const out = fx.exported.scanFamilyMail();
+  assert.equal(out.queued, 250);
+  assert.equal(out.pages, 3);
+  assert.equal(out.complete, true);
+  assert.deepEqual(calls.map((c) => c.pageToken), [undefined, '100', '200']);
+  assert.ok(Number(fx.props.getProperty('FAMILY_SENTINEL_LAST_SCAN_AT')) > 0, 'a finished scan moves the mark');
+  assert.equal(fx.props.getProperty('FAMILY_SENTINEL_SCAN_PENDING'), null);
+});
+
+test('a scan stopped by the cap does not move the mark; the next run reads the rest, logging none twice', () => {
+  const mail = pagedMail(500);
+  const fx = setUp(mail);
+  const calls = [];
+  fx.gmail.Users.Messages.list = pagedList(mail, calls);
+  const first = fx.exported.scanFamilyMail();
+  assert.equal(first.complete, false);
+  assert.equal(first.queued, 300, 'stops at the per-run read cap');
+  assert.equal(fx.props.getProperty('FAMILY_SENTINEL_LAST_SCAN_AT'), null, 'the mark is not moved to the run start');
+  const pending = JSON.parse(fx.props.getProperty('FAMILY_SENTINEL_SCAN_PENDING'));
+  assert.equal(pending.before, mail[299].internalDate, 'pending holds the oldest message read');
+
+  calls.length = 0;
+  const second = fx.exported.scanFamilyMail();
+  assert.equal(second.complete, true);
+  assert.equal(second.queued, 200);
+  assert.match(calls[0].q, /after:\d+$/, 'new mail first');
+  assert.match(calls[calls.length - 1].q, /before:\d+/, 'then the older mail the first run did not reach');
+  const ids = rows(fx.ss, 'FamilyMailLog').map((r) => String(r[fx.exported.FMS_LOG.MESSAGE_ID]));
+  assert.equal(ids.length, 500);
+  assert.equal(new Set(ids).size, 500, 'no message logged twice');
+  assert.ok(Number(fx.props.getProperty('FAMILY_SENTINEL_LAST_SCAN_AT')) > 0);
+  assert.equal(fx.props.getProperty('FAMILY_SENTINEL_SCAN_PENDING'), null);
 });
 
 test('coursework words do not trip the safety check', () => {
