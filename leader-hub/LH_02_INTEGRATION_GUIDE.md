@@ -132,7 +132,7 @@
   fund:      '4280',
   po:        '26-0368-2559',
   sponsor:   'Adam Berneche',
-  cell:      '[phone removed]',
+  cell:      '(804) 555-0100',
   coord:     'Adam Berneche',
   acctNotes: 'DECA Account 4280',
   why:       'CTSO competition...',

@@ -60,8 +60,7 @@ appropriate to `audienceLabel`.
    "Mr. Berneche" (optionally with a title line) reads right; for
    `Parents/Families`, `School Administration`, and `Faculty/Colleagues`,
    sign as `Adam Berneche` followed by `DECA Advisor — Clover Hill High
-   School` and, when it fits the formality, `[phone removed] |
-   adam_berneche@ccpsnet.net` on their own lines.
+   School` and, when it fits the formality, `adam_berneche@ccpsnet.net` on their own lines.
 5. **Output plain text only.** No markdown formatting (no `**bold**`, no
    `#` headers, no bullet-point markdown — plain hyphens or a numbered
    list in prose form are fine if the content calls for a short list).
