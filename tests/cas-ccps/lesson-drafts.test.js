@@ -18,7 +18,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '07_TeacherDashboard.js', '32_CompetencyRubricImporter.js',
   '55b_LessonAssignmentData.js', '65_LessonDrafts.js'].map(S);
 const EXPOSE = ['getLessonEditor', 'getNewLessonEditor', 'listLessonDrafts', 'saveLessonDraft', 'submitLessonDraft',
-  'reviewLessonProposal', 'withdrawLessonDraft', 'LD_HEADERS', 'LD'];
+  'reviewLessonProposal', 'withdrawLessonDraft', 'LD_HEADERS', 'LD', '_ldSafePrUrl_'];
 const TEACHER = 'teacher@example.com'; // the sandbox's default Session user
 
 // 8175-L04 lists 8175-2, -56, -86, -105, -57; primary 56, secondary 105 and 2,
@@ -260,4 +260,14 @@ test('a new 8177 lesson is keyed by its title; a brief can stand in for the task
     fields: Object.assign({}, f, { title: 'Ticket Tiers & Pricing' }) }).draft;
   assert.equal(renamed.lessonKey, '8177-ticket-tiers-pricing');
   assert.ok(!renamed.issues.some((x) => /already exists/.test(x)));
+});
+
+test('a PR link is shown only when it is an https://github.com/ address (Docket IV)', () => {
+  const { exported } = loadGasFiles(FILES, ['_ldSafePrUrl_']);
+  assert.equal(exported._ldSafePrUrl_('https://github.com/o/r/pull/12'), 'https://github.com/o/r/pull/12');
+  assert.equal(exported._ldSafePrUrl_('javascript:alert(1)'), '');
+  assert.equal(exported._ldSafePrUrl_('http://github.com/o/r/pull/12'), '', 'not https');
+  assert.equal(exported._ldSafePrUrl_('https://evil.example/pull/12'), '');
+  assert.equal(exported._ldSafePrUrl_('https://github.com/o" onmouseover="x'), '');
+  assert.equal(exported._ldSafePrUrl_(''), '');
 });

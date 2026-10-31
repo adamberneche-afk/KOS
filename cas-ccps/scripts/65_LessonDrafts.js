@@ -503,7 +503,7 @@ function _ldRows_(cfg) {
       fields: json(r[LD.FIELDS_JSON]) || {}, original: json(r[LD.ORIGINAL_JSON]) || {},
       reason: String(r[LD.REASON] || ""), missing: String(r[LD.MISSING] || ""),
       proposal: json(r[LD.PROPOSAL_JSON]), proposalNote: String(r[LD.PROPOSAL_NOTE] || ""),
-      prUrl: String(r[LD.PR_URL] || ""), reviewNote: String(r[LD.REVIEW_NOTE] || ""),
+      prUrl: _ldSafePrUrl_(r[LD.PR_URL]), reviewNote: String(r[LD.REVIEW_NOTE] || ""),
     };
   }).filter(function (d) { return d.draftId; });
 }
@@ -547,4 +547,13 @@ function _ldWithLock_(fn) {
   } finally {
     lock.releaseLock();
   }
+}
+
+// The PR link the import agent writes, shown as a link on the Teacher
+// Dashboard: only an https://github.com/ address, else none, so a
+// "javascript:" or other scheme in the cell can never become a live link
+// (Docket IV, Low; the page escapes it, which stops markup, not a scheme).
+function _ldSafePrUrl_(value) {
+  const url = String(value || "").trim();
+  return /^https:\/\/github\.com\/[^\s"'<>]+$/i.test(url) ? url : "";
 }
