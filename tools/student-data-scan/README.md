@@ -52,8 +52,9 @@ decision on 2026-10-31 they were removed with `git filter-repo
 --invert-paths` from every commit, and all branches and tags were
 force-pushed. Every Office and zip file in history was then unpacked and
 searched (student addresses, ID-shaped addresses, IEP, 504, "Sensitive
-Items"); only those five matched. A clean result from this scan says
-nothing about binary files until it unpacks them, which is planned.
+Items"); only those five matched. The scan has opened Office and zip
+files itself since the same day (below), and names every file type it
+still doesn't read.
 
 **Log calls (warnings, since 2026-10-22).** The working-tree run also reads
 every `Logger.log` / `console.*` call in `cas-ccps/scripts/` and warns when
