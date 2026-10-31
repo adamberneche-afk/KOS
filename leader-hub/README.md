@@ -98,6 +98,19 @@ Actively developed (~20 sessions per its own `LEADERHUB_WIP.md`). The
 **not yet run against real data** — treat them as drafts pending a
 deliberate execution decision, not as already-applied changes.
 
+**2026-10-31 (KOS Audit Docket IV; merged, not pushed):** the web app runs
+as the owner with domain access, so every public server function now
+checks its caller: the read-only setup checks (`checkAiPrompts`,
+`checkAiQueueSchema`, `runLeaderHubPreflight`, `checkAiFlowFixtures`,
+`checkAiFlowBinding`) call `_lhRequireOwner_`, and `reportDeployVersion`,
+which a trigger runs, calls the trigger-safe `requireScriptOwner_` (Code.gs).
+gas-lint's `web-app-public-function` check enforces it; the `?diag=1`
+page's `lhDiagPing` and `lhDiagReport` are listed as open by design in
+`tools/gas-lint/webapp-public-allow.json`. Personal phone numbers were
+removed from the trip data and from the repo's history; the AI email
+signature now gives the address only (run `syncAiPromptsToSheet()` after
+the push).
+
 **2026-10-03: the built-in school calendar is CCPS 2026-27**, and the
 importer reads the district's published calendar. The `_DEFAULT` consts
 (`src/10-command-engine-ai-and-widgets.html`, `QUARTERS_DEFAULT` in `src/12`)
