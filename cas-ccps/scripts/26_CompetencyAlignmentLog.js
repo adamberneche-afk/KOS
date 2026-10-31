@@ -283,6 +283,7 @@ const RR_REPORT_TYPE  = 6;
 //   accumulates all past reports. Script Properties point to the most recent.
 // ---------------------------------------------------------------------------
 function generateAlignmentReport() {
+  requireScriptOwner_();
   const cfg         = getConfig_();
   const props       = PropertiesService.getScriptProperties();
   const currentTerm = currentTerm_() || "All Terms";
@@ -588,6 +589,7 @@ function generateReportId_() {
 // from Script Properties. Run from Script Editor or call from a menu.
 // ---------------------------------------------------------------------------
 function getLastReport() {
+  requireScriptOwner_();
   const props = PropertiesService.getScriptProperties();
   const docId  = props.getProperty("M2_LAST_REPORT_DOC_ID") || "";
   const docUrl = props.getProperty("M2_LAST_REPORT_URL")    || "";

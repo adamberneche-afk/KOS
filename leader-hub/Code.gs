@@ -151,6 +151,18 @@ function _lhRequireOwner_() {
   }
 }
 
+// Refuses a call from anyone but the account the script runs as, and lets a
+// trigger through (it has no signed-in user, or the owner). For a public
+// function a trigger runs, where _lhRequireOwner_ would refuse the trigger.
+// The web app runs as the owner with domain access, so any district account
+// can call a public function from a page it serves (KOS Audit Docket IV).
+function requireScriptOwner_() {
+  let active = '', effective = '';
+  try { active = String(Session.getActiveUser().getEmail() || '').toLowerCase(); } catch (e) { active = ''; }
+  try { effective = String(Session.getEffectiveUser().getEmail() || '').toLowerCase(); } catch (e) { effective = ''; }
+  if (active && effective && active !== effective) throw new Error('Not authorized.');
+}
+
 function lhApiCall(action, payload) { _lhRequireOwner_(); return lhApiCall_(action, payload); }
 function lhOrgSyncCall(bridgeUrl, action, payload) { _lhRequireOwner_(); return lhOrgSyncCall_(bridgeUrl, action, payload); }
 function lhGetHorizonItems() { _lhRequireOwner_(); return lhGetHorizonItems_(); }

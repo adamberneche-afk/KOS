@@ -630,6 +630,8 @@ function _readSharedConfig_(ledgerId) {
 // from the tab is logged as a conflict for you to settle by hand. Safe to
 // run from several projects to fill different gaps.
 function seedLedgerConfigTab() {
+  // 00b is only in the projects that serve a web app beyond the owner.
+  if (typeof requireScriptOwner_ === "function") requireScriptOwner_();
   const resolved = _resolveConfigValues_();
   const ledgerId = resolved.values.CENTRAL_LEDGER_SS_ID;
   const props    = PropertiesService.getScriptProperties().getProperties();
@@ -717,6 +719,8 @@ function setSharedConfigValue_(key, value) {
 // in: run it in each one that needs the change straight away. Then reports
 // the fresh values, same as showConfigSources().
 function refreshSharedConfig() {
+  // 00b is only in the projects that serve a web app beyond the owner.
+  if (typeof requireScriptOwner_ === "function") requireScriptOwner_();
   const props = PropertiesService.getScriptProperties().getProperties();
   let ledgerId = props.CENTRAL_LEDGER_SS_ID || "";
   if (!ledgerId) {
@@ -735,6 +739,8 @@ function refreshSharedConfig() {
 // before deleting a Script Property the tab now covers. Values are only
 // file IDs, URLs and addresses; no secret is ever a SHARED_CONFIG_KEYS entry.
 function showConfigSources() {
+  // 00b is only in the projects that serve a web app beyond the owner.
+  if (typeof requireScriptOwner_ === "function") requireScriptOwner_();
   const resolved = _resolveConfigValues_();
   const keys = ["CENTRAL_LEDGER_SS_ID", "ADMIN_SS_ID"].concat(SHARED_CONFIG_KEYS);
   const report = {};
