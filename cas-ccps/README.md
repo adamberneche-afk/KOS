@@ -499,8 +499,12 @@ for this assignment (an earlier unit's doesn't count), as recorded in the
 `StudentAssignments` tab, and reports, never removes, students who left the
 course. A workspace made before that tab existed is skipped as
 `UNRECORDED_WORKSPACE` until `previewRosterRepair()` / `repairRosterDuplicates()`
-records its assignment (from the doc's name and the TeacherMatrix), keeping each
-student's earliest workspace and archiving the duplicates that re-runs made.
+records its assignment (from the doc's name and the TeacherMatrix), keeping one
+workspace per student and archiving the duplicates that re-runs made. Since
+2026-10-31 it opens every duplicate first (KOS Audit Docket III item 18): the
+one kept is one with the student's work (a submit or check on its Ledger row,
+or writing below the response line), and a duplicate that also has work, or
+that can't be opened, is never trashed; it gets a Notes line for the teacher.
 
 A student listed in the `PeriodOverride` tab (`student_account`, `period`)
 takes that period whatever their Canvas section, in enrollment, the nightly
