@@ -51,3 +51,18 @@ and the same as properties), after blanking string literals. A plain
 `email` is not matched: it is as often a teacher's address. Read the call
 for those. Warnings print `path:line log-identifier (warning)` and don't
 change the exit status. Log a row number, a count or a file ID instead.
+
+**Office and zip files (since 2026-10-31).** `.xlsx`, `.xlsm`, `.docx`,
+`.pptx`, `.odt`, `.ods`, `.odp`, `.imscc` and `.zip` files are unpacked in
+memory (Node built-ins only; a zip inside one is unpacked too) and each
+text member (`.xml`, `.rels`, `.html`, `.txt`, `.csv`, `.json`, `.md`, and
+the text extensions above) is scanned with the same patterns, in the
+working tree and with `--history`. A finding reads `path!member:line`;
+`path!member#text:line` is a line of the member with its XML tags
+removed, which catches an address Word or Excel split across runs. A
+container that can't be opened (corrupt, encrypted, an unsupported
+compression method) is an `unreadable-container` finding, hashed by the
+file's bytes, and fails the run. A member over 20 MB uncompressed is
+skipped with a warning. Every other file is counted in a closing line,
+`not read: .png 12, .pdf 3`, so a clean result says what it didn't open;
+those don't fail the run.
