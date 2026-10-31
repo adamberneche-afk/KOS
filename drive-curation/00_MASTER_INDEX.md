@@ -24,7 +24,7 @@ Everything below is real — created via Drive tools, confirmed in responses. **
 
 | Document | Purpose | Status |
 |---|---|---|
-| **Drive_Curriculum_Catalog_v6.xlsx** | The full audit catalog — every folder/file category, verification status, recommended actions. Start here for "what's in my Drive and what should happen to it." | Current, final version. v1-v5 in the outputs folder are superseded drafts — safe to ignore/discard, kept only as a record of how the audit evolved. |
+| ~~**Drive_Curriculum_Catalog_v6.xlsx**~~ | The full audit catalog. | **Removed 2026-10-31**, with v2 to v5, from the repo and its git history: their "Sensitive Items" sheet named student records. Only v1 remains here. |
 | **Drive_Organizational_Patterns.md** | The context-harness reference — governing principles (retention over deletion, tier model, naming conventions, verified-vs-inferred duplication, aspirational scaffolding) that should shape any future decision about this Drive. | Current, consistency-checked end-to-end (fixed one broken cross-reference, added a 5th tier for shared-not-owned content, folded in 4 findings that had only ever lived in chat) |
 | **Watch_List.md** | Low-confidence, single-instance observations not yet worth a rule. Currently 1 entry (Canvas Assignment docs). | Current |
 | **Recurring_Drive_Curation_Workflow.md** | The reusable methodology + ready-to-paste system prompt for running future curation/translation passes on this Drive. | Current |
