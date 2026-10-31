@@ -952,6 +952,11 @@ function wfbPromptFor_(flow, vars) {
     resolved[placeholder] = (value === null || value === undefined) ? "" : String(value);
   });
   if (flow === 3) template = wfbDropBlankLines_(template, resolved);
+  // A student's own words (the answer Flow 4 scores, the prior answer Flow 5
+  // builds on) never reach the prompt with system text in them (Docket IV).
+  ["response_text", "flow5_prior_response"].forEach(function (k) {
+    if (resolved[k] && typeof neutralizeSystemText_ === "function") resolved[k] = neutralizeSystemText_(resolved[k]);
+  });
   return substituteFlowPrompt_(template, resolved, true);
 }
 

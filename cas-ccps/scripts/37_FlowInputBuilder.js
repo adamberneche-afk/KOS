@@ -509,7 +509,7 @@ function _fiEarlierPartsText_(ledgerSs, cfg, googleId, byStudent, assignmentId) 
     } catch (e) {
       Logger.log("[FlowInputBuilder] Earlier part " + n + " unreadable: " + e.message);
     }
-    text = text.replace(/\{\{|\}\}|<<<|>>>/g, "");
+    text = neutralizeSystemText_(text).replace(/\{\{|\}\}|<<<|>>>/g, "");
     if (text.length > FI_EARLIER_PART_MAX) text = text.slice(0, FI_EARLIER_PART_MAX) + " […]";
     return "Part " + n + (files[n].title ? ": " + files[n].title : "") + "\n" + (text || "(nothing written)");
   }).join("\n\n");
@@ -1051,7 +1051,10 @@ function _fiTierRulePasses_(outcomes) {
 // The tertiary competencies Flow 2 says the work showed: its ALSO_SHOWN line,
 // kept only where the ID is one of this assignment's tertiaries.
 function _fiAlsoShown_(fullText, tertiary) {
-  const m = /\[ALSO_SHOWN:\s*(\[[^\]]*\])\]/.exec(String(fullText || ""));
+  // The last one: the evaluator writes its line at the end, and an earlier
+  // one can only be the student's text echoed back (Docket IV).
+  const all = String(fullText || "").match(/\[ALSO_SHOWN:\s*(\[[^\]]*\])\]/g);
+  const m = all ? /\[ALSO_SHOWN:\s*(\[[^\]]*\])\]/.exec(all[all.length - 1]) : null;
   if (!m) return [];
   let ids;
   try { ids = JSON.parse(m[1]); } catch (e) { return []; }

@@ -278,6 +278,9 @@ const SYSTEM_TEXT_PATTERNS = [
   /\[\s*MILESTONE_OUTCOMES/i,
   /<<<\s*(END_)?PROCESS_REFLECTION\s*>>>/i,
   /<<<\s*(END_)?EARLIER_PARTS\s*>>>/i,
+  // The evaluator's tertiary-evidence line (#216); 37 parses the last one
+  // it wrote, and a student's copy must never reach it (Docket IV).
+  /\[\s*ALSO_SHOWN/i,
 ];
 
 // The first system-text token in `text` (for example "[SYSTEM:"), or "".
@@ -288,6 +291,19 @@ function findSystemText_(text) {
     if (m) return m[0];
   }
   return "";
+}
+
+// The same text with every system-text token replaced, for a student's
+// words that reach a model prompt after the submit-time check has run: a
+// warm-up answer (Flow 4), an earlier part re-read from a doc the student
+// can still edit (Flow 2). Checking only at submit left those paths open
+// (KOS Audit Docket IV, 2026-10-31). Words around a token are kept.
+function neutralizeSystemText_(text) {
+  let s = String(text === undefined || text === null ? "" : text);
+  for (let i = 0; i < SYSTEM_TEXT_PATTERNS.length; i++) {
+    s = s.replace(new RegExp(SYSTEM_TEXT_PATTERNS[i].source, "gi"), "(system text removed)");
+  }
+  return s;
 }
 
 // Whether a research-pivot flag is on for a course. Values: blank or "off"
