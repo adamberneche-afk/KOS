@@ -711,3 +711,128 @@ test('--verify: all current exits 0; it refuses flags that push or move anything
   assert.match(w.run(['--verify', '--head-only']).out, /--verify only reads/);
 });
 
+
+// ── --hub: the Mothership hub as one more web app ───────────────────────────
+
+// The stand-in for Mothership's scripts/install-hub-triggers.mjs: records how
+// run.js called it, and exits with HUB_STUB_EXIT.
+const HUB_INSTALL_STUB = `
+import fs from 'fs';
+fs.writeFileSync(process.env.HUB_STUB_LOG, JSON.stringify({ url: process.argv[2], token: process.env.ADMIN_SETTINGS_TOKEN }));
+console.log('Installed: pollSpokesDebug.');
+process.exit(Number(process.env.HUB_STUB_EXIT || 0));
+`;
+
+function hubFiles() {
+  return {
+    'gas/Code.js': 'function doPost() {}\n',
+    'gas/deploy_version_marker.js': "const DEPLOY_VERSION_SHA = 'def5678aaaabbbbccccddddeeeeffff000011112';\n",
+    'scripts/install-hub-triggers.mjs': HUB_INSTALL_STUB,
+  };
+}
+
+/** world() plus a Mothership checkout and its registry entry. */
+function hubWorld(opts = {}) {
+  const w = world({
+    registerLeaderHub: false,
+    state: { deployments: [{ id: 'HEADID', version: 'HEAD', desc: '' }, { id: 'HUBDEP', version: '2', desc: 'old v2' }] },
+  });
+  w.hub = path.join(w.work, 'my-mothership');
+  for (const [rel, text] of Object.entries(hubFiles())) {
+    fs.mkdirSync(path.dirname(path.join(w.hub, rel)), { recursive: true });
+    fs.writeFileSync(path.join(w.hub, rel), text);
+  }
+  const reg = path.join(w.registry, 'mothership-hub');
+  fs.mkdirSync(reg, { recursive: true });
+  fs.writeFileSync(path.join(reg, '.clasp.json'), JSON.stringify({ scriptId: 'SCRIPT-HUB' }));
+  fs.writeFileSync(path.join(reg, 'deployments.txt'), 'HUBDEP\n');
+  if (opts.token !== false) fs.writeFileSync(path.join(reg, 'admin-token.txt'), 'tok-9\n');
+  w.stubLog = path.join(w.work, 'hub-stub.json');
+  w.hubRun = (args, env = {}) => w.run(args, { HUB_STUB_LOG: w.stubLog, ...env });
+  return w;
+}
+
+test('--hub: pushes gas/, promotes the hub deployment on its committed marker, then installs its triggers', () => {
+  const w = hubWorld();
+  const r = w.hubRun(['--hub', w.hub, '--only', 'mothership-hub']);
+  assert.equal(r.status, 0, r.out);
+  assert.equal(w.calls('push').length, 1);
+  assert.equal(w.calls('push')[0].cwd, fs.realpathSync(path.join(w.hub, 'gas')));
+  const upd = w.calls('update-deployment');
+  assert.deepEqual(upd.map((c) => c.args[1]), ['HUBDEP']);
+  assert.equal(upd[0].args[upd[0].args.indexOf('--description') + 1], 'def5678 v4', 'the committed Mothership marker');
+  const stub = JSON.parse(fs.readFileSync(w.stubLog, 'utf8'));
+  assert.equal(stub.url, 'https://script.google.com/macros/s/HUBDEP/exec');
+  assert.equal(stub.token, 'tok-9', 'the token comes from the registry, trimmed');
+  assert.match(r.out, /mothership-hub\s+def5678\s+v4 -> 1\/1 deployment\(s\) \(was v2; undo: --rollback-to 2\); triggers ok/);
+  assert.equal(JSON.parse(fs.readFileSync(path.join(w.hub, 'gas', '.clasp.json'), 'utf8')).scriptId, 'SCRIPT-HUB');
+  assert.match(fs.readFileSync(path.join(w.hub, 'gas', 'deploy_version_marker.js'), 'utf8'), /def5678aaaa/, 'the marker is never re-stamped');
+});
+
+test('--hub: no admin-token.txt deploys anyway and says the triggers were skipped', () => {
+  const w = hubWorld({ token: false });
+  const r = w.hubRun(['--hub', w.hub, '--only', 'mothership-hub']);
+  assert.equal(r.status, 0, r.out);
+  assert.match(r.out, /triggers: SKIPPED \(no admin-token\.txt\)/);
+  assert.equal(fs.existsSync(w.stubLog), false, 'the install was never called');
+});
+
+test('--hub: a failed trigger install fails the run, though the deploy itself landed', () => {
+  const w = hubWorld();
+  const r = w.hubRun(['--hub', w.hub, '--only', 'mothership-hub'], { HUB_STUB_EXIT: '1' });
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /mothership-hub\s+def5678\s+FAILED: v4 -> 1\/1.*trigger install failed/);
+  assert.equal(w.calls('update-deployment').length, 1);
+});
+
+test('--hub refuses --head-only (the hub\'s triggers run what is pushed) and the read-only modes', () => {
+  const w = hubWorld();
+  for (const extra of [['--head-only'], ['--verify'], ['--instructions'], ['--rollback-to', '2']]) {
+    assert.match(w.hubRun(['--hub', w.hub, ...extra]).out, /--hub only combines with a normal run/);
+  }
+  assert.equal(w.calls('push').length, 0);
+});
+
+test('mothership-hub is only a project name when --hub is given; without a registry entry it is skipped', () => {
+  const w = hubWorld();
+  assert.match(w.hubRun(['--only', 'mothership-hub']).out, /Not in the manifest: mothership-hub/);
+  fs.rmSync(path.join(w.registry, 'mothership-hub'), { recursive: true, force: true });
+  const r = w.hubRun(['--hub', w.hub, '--only', 'mothership-hub']);
+  assert.match(r.out, /mothership-hub\s+\S+\s+SKIPPED: not in registry/);
+  assert.equal(w.calls('push').length, 0);
+});
+
+test('--hub <zip> extracts to Mothership-main beside the KOS checkout; refuses a non-Mothership zip or folder', () => {
+  const w = hubWorld();
+  const entries = [{ name: 'Mothership-main/' }];
+  for (const [name, data] of Object.entries(hubFiles())) entries.push({ name: `Mothership-main/${name}`, data });
+  const zip = path.join(w.work, 'Mothership-main.zip');
+  fs.writeFileSync(zip, makeZip(entries));
+  const r = w.hubRun(['--hub', zip, '--only', 'mothership-hub']);
+  assert.equal(r.status, 0, r.out);
+  assert.match(r.out, /Hub checkout replaced from/);
+  const target = path.join(w.work, 'Mothership-main');
+  assert.ok(fs.existsSync(path.join(target, 'gas', 'Code.js')));
+  assert.equal(w.calls('push')[0].cwd, fs.realpathSync(path.join(target, 'gas')));
+
+  const bad = path.join(w.work, 'not-hub.zip');
+  fs.writeFileSync(bad, makeZip([{ name: 'Other/' }, { name: 'Other/readme.md', data: 'x' }]));
+  assert.match(w.hubRun(['--hub', bad, '--only', 'mothership-hub']).out, /doesn't look like a Mothership zip/);
+
+  fs.rmSync(target, { recursive: true, force: true });
+  fs.mkdirSync(target);
+  fs.writeFileSync(path.join(target, 'precious.txt'), 'keep');
+  assert.match(w.hubRun(['--hub', zip, '--only', 'mothership-hub']).out, /doesn't look like a Mothership checkout\. Not deleting it/);
+  assert.ok(fs.existsSync(path.join(target, 'precious.txt')));
+  assert.match(w.hubRun(['--hub', path.join(w.work, 'nope'), '--only', 'mothership-hub']).out, /--hub: not found/);
+});
+
+test('--hub runs after the KOS projects in a full run, and a KOS failure does not stop it', () => {
+  const w = hubWorld();
+  // leader-hub is unregistered in hubWorld, so the KOS side only skips; the hub still deploys.
+  const r = w.hubRun(['--hub', w.hub]);
+  assert.match(r.out, /leader-hub\s+\S+\s+SKIPPED/);
+  assert.match(r.out, /mothership-hub\s+def5678\s+v4/);
+  const names = [...r.out.matchAll(/^== (\S+)/gm)].map((m) => m[1]);
+  assert.equal(names[names.length - 1], 'mothership-hub', 'the hub runs last');
+});
