@@ -83,6 +83,7 @@ const RUBRIC_CACHE_PREFIX  = "M2_RUBRIC_";
 // Safe to re-run — clears existing data before writing.
 // ---------------------------------------------------------------------------
 function importCompetencyRubrics() {
+  requireScriptOwner_();
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
 
@@ -175,6 +176,7 @@ function competencyIdText_(value) {
 // Logs summary by course and flags any rows with missing required data.
 // ---------------------------------------------------------------------------
 function validateRubricImport() {
+  requireScriptOwner_();
   const cfg   = getConfig_();
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName("CompetencyRubrics");

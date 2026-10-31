@@ -162,6 +162,7 @@ function _lpReady_(ss, cfg) {
 
 // The Ledger cycle's job. Counts only in the log.
 function unlockReadyParts() {
+  requireScriptOwner_();
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const r = _lpReady_(ss, cfg);
@@ -181,6 +182,7 @@ function unlockReadyParts() {
 }
 
 function previewPartUnlocks() {
+  requireScriptOwner_();
   const cfg = getConfig_();
   const r = _lpReady_(SpreadsheetApp.openById(cfg.ledgerSsId), cfg);
   Logger.log("[S68] Would unlock " + r.ready.length + " part(s) now.");
@@ -190,6 +192,7 @@ function previewPartUnlocks() {
 // Puts unlockReadyParts in the Ledger cycle (64), or gives it its own
 // 5-minute trigger when the cycle isn't installed. Safe to re-run.
 function installPartUnlocks() {
+  requireScriptOwner_();
   return lcInstallJob_(LP_JOB);
 }
 
