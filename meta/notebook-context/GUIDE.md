@@ -121,8 +121,10 @@ backed by data in the repo.
   Studio Flows run. Warm-ups go out nightly, and the nightly lesson rollout
   makes every student's lesson docs, catching itself up when a run stops
   short. Everything merged through #337 was pushed and checked live on
-  10-29; the handoff's queue says what is left for the operator
-  (`meta/HANDOFF_2026-10-29.md`). October's plan, CAS live by 2026-10-30
+  10-29. On 10-31 every code finding of an external security audit (KOS
+  Audit Docket IV) was fixed, not yet pushed, and student records and
+  phone numbers were removed from the repo's whole history; the handoff's
+  queue says what is left for the operator (`meta/HANDOFF_2026-10-31.md`). October's plan, CAS live by 2026-10-30
   one feature at a time (`meta/PLAN_2026-10.md`), was met. November's plan
   (`meta/PLAN_2026-11.md`) is to measure Flow 2 and the warm-ups, build
   work files in Forms, Slides and Sheets, and start packaging CAS so a
@@ -151,7 +153,7 @@ backed by data in the repo.
 | Economics of Depth and its assumptions audit (April 2026) | A thought exercise written for colleague and administrator discussion, with its own open questions |
 | `meta/PRD_CAS_RESEARCH_PIVOT.md` (Oct 10) | The plan to make CAS implement the research it cites. Phase 0 is done; later phases wait on the first real weeks of use |
 | `meta/PRODUCT_EXPERIENCE_GAP_AUDIT.md`, `meta/UX_AUDIT_2026-10-22.md` | Where the experience falls short of the promise, by stakeholder. The UX audit's Status section says what was fixed (nearly all of it, by 2026-10-23) |
-| `meta/PLAN_2026-11.md`, `meta/HANDOFF_2026-10-29.md` | Current: the order of work and where each system stands |
+| `meta/PLAN_2026-11.md`, `meta/HANDOFF_2026-10-31.md` | Current: the order of work and where each system stands |
 | `meta/PLAN_2026-10.md` | October's plan: its order of work is replaced; its design (which AI does what) and decision record still hold |
 | `meta/BACKLOG.md`, the design threads, the course builder and lesson authoring plans | Direction: ideas and plans, not built work, unless they say so |
 

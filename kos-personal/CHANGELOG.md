@@ -1,5 +1,14 @@
 # KOS Changelog
 
+### Registrar alerts name no file (2026-10-31)
+
+From KOS Audit Docket IV (#350, merged, not pushed): the Registrar's Chat
+alerts (`11_Registrar_CogRelay.gs`, the kill-switch and CRITICAL_FAILURE
+alerts) gave the session file's name, which can include a student's name,
+though the triage itself is anonymized. They now give the Drive link, and
+its log lines the row number. Git history was rewritten on 2026-10-31
+(student records and phone numbers removed): cite PR numbers, not commit IDs.
+
 ### Ingestion hardening D and E, and logQueueMetrics (2026-10-29)
 
 From `meta/KOS_INGESTION_HARDENING_PLAN.md` (#336, live 2026-10-29):

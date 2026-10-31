@@ -1,5 +1,10 @@
 # Audit: dead ends and half-built work (2026-10-29)
 
+**Progress (2026-10-31):** #1 settled by #349 (the hub pulls; `call-hub.yml`
+is retired, deleted after `run.js --hub`). #2's Chat alerts no longer name
+files (#350); its triggers wait on D14. KOS Audit Docket IV's fixes
+(#342–#351) closed several neighbours of this audit's rows; the rest stand.
+
 **Status:** the first repo-wide audit of its kind, done 2026-10-29 at the
 operator's request ("make sure we aren't leaving too many dead ends and
 half built functionalities"). Its actions are scheduled in

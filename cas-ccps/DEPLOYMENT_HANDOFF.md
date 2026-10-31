@@ -1,6 +1,15 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-29)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-31)
+>
+> **2026-10-31: #338 to #351 are merged, not pushed.** They fix every code
+> finding of KOS Audit Docket IV: a caller check on every public function
+> of both dashboards (new file `00b_ScriptOwnerGuard.js`), injection guards,
+> retention approved by row, the duplicate repair opening each duplicate,
+> the Family Sentinel's label, scan and scope (no Drive: run any function
+> once after the push to approve). Git history was rewritten on 10-31:
+> re-clone or download a fresh ZIP before pushing. The checks after the
+> push are in [`meta/HANDOFF_2026-10-31.md`](../meta/HANDOFF_2026-10-31.md).
 >
 > **2026-10-29: everything merged through #337 is pushed** to every
 > project with `run.js` and checked with `node run.js --verify` (every web
@@ -9,7 +18,7 @@
 > of earlier pushes; what is live now, and the operator's queue, are in
 > [`meta/HANDOFF_2026-10-29.md`](../meta/HANDOFF_2026-10-29.md).
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-29.md`](../meta/HANDOFF_2026-10-29.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-31.md`](../meta/HANDOFF_2026-10-31.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
