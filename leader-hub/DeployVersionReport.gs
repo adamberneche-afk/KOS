@@ -25,6 +25,9 @@
  *      to re-run, it removes any existing copy of this trigger first.
  */
 function reportDeployVersion() {
+  // Public and runs on a trigger: refuses a web-app caller, not the trigger
+  // (_lhRequireOwner_ would refuse a trigger, which has no signed-in user).
+  requireScriptOwner_();
   try {
     const token = PropertiesService.getScriptProperties().getProperty('DEPLOY_DRIFT_GITHUB_TOKEN');
     if (!token) {

@@ -77,6 +77,7 @@
 // student PII).
 // ---------------------------------------------------------------------------
 function runLeaderHubConnectionCheck() {
+  requireScriptOwner_();
   const cfg = getConfig_();
   const checks = [];
   function record(name, ok, detail) { checks.push({ name: name, ok: !!ok, detail: detail || "" }); }

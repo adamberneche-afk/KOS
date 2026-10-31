@@ -124,6 +124,7 @@ const PACING_UNIT_CACHE_SAFE_BYTES = 9000;
 // Safe to re-run — clears existing data and rewrites from JSON.
 // ---------------------------------------------------------------------------
 function importPacingGuide() {
+  requireScriptOwner_();
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
 
@@ -211,6 +212,7 @@ function importPacingGuide() {
 // validatePacingGuide — run after import to verify data integrity
 // ---------------------------------------------------------------------------
 function validatePacingGuide() {
+  requireScriptOwner_();
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName("PacingGuide");

@@ -319,6 +319,21 @@ it — that gap is closed now.
     GAS code, including literal `loadGasFiles(...)` snippets that would
     otherwise be analysed as real sandboxes.
 
+13b. **Every public function of a shared web app** (`checkWebAppPublicFunctions`,
+    `web-app-public-function`, since 2026-10-31). In a project whose
+    manifest serves a web app beyond `MYSELF` and runs as its owner,
+    `google.script.run` can call any top-level function without a trailing
+    `_`, from any page it serves, and the function runs as the owner. KOS
+    Audit Docket IV found a student could overwrite a classmate's parent-report
+    record this way through a function shared in from another file. Each
+    public function must call an owner or teacher check
+    (`requireScriptOwner_`, `_isAuthorizedTeacher_`, `_lhRequireOwner_`,
+    `_isAuthorizedOwner_`), itself or through private helpers up to three
+    hops, or be listed in `webapp-public-allow.json` with the reason any
+    visitor may call it (the Student Dashboard's own-record functions, say).
+    Reading `Session.getActiveUser()` alone doesn't count. Error; a stale
+    allowlist entry is a warning.
+
 13. **Web-app auth-check presence** (`checkWebAppAuthChecks`). Every
     `doGet()`/`doPost()` needs a visible caller-identity check somewhere
     reachable from it. This catches the exact bug class

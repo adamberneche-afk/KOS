@@ -102,7 +102,7 @@ for (const { file, project } of MARKER_FILES) {
   test(`${file}: reportDeployVersion() reports exactly "${project}" and its own DEPLOY_VERSION_SHA`, () => {
     let capturedPayload;
     const { exported, sandbox } = loadGasFiles(
-      [SHARED_CONFIG, path.join(SCRIPTS, file)],
+      [SHARED_CONFIG, path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'), path.join(SCRIPTS, file)],
       ['reportDeployVersion', 'installDeployVersionReportTrigger', 'DEPLOY_VERSION_SHA'],
       { UrlFetchApp: { fetch: (url, opts) => { capturedPayload = JSON.parse(opts.payload); return { getResponseCode: () => 204 }; } } }
     );
@@ -116,7 +116,7 @@ for (const { file, project } of MARKER_FILES) {
 
   test(`${file}: installDeployVersionReportTrigger() creates exactly one 6-hourly trigger, idempotently`, () => {
     const { exported, sandbox } = loadGasFiles(
-      [SHARED_CONFIG, path.join(SCRIPTS, file)],
+      [SHARED_CONFIG, path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'), path.join(SCRIPTS, file)],
       ['installDeployVersionReportTrigger']
     );
     exported.installDeployVersionReportTrigger();

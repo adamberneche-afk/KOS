@@ -83,10 +83,12 @@ function makeOrRefreshLessonDoc_(key, opts) {
 // Editor: which lessons this week would get a doc (the current lesson and
 // any starting within the rollout's lead days), changing nothing.
 function previewLessonDocs() {
+  requireScriptOwner_();
   return _ldocThisWeek_(false);
 }
 // Editor: make them now (or refresh their Class status).
 function makeLessonDocsNow() {
+  requireScriptOwner_();
   return _ldocThisWeek_(true);
 }
 

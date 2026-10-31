@@ -1,0 +1,20 @@
+{
+  "_comment": "Public functions in a web-app project shared beyond the owner (manifest webapp.access other than MYSELF) that are meant to be called by any signed-in visitor, so they carry no owner or teacher check. Each acts only on the caller's own identity (Session.getActiveUser()) or does nothing a visitor could misuse. Check web-app-public-function (tools/gas-lint/check.js) fails every other public function there that has no owner or teacher check. Add a function here only with the reason it is safe for anyone to call.",
+  "cas-ccps:student-dashboard": {
+    "getStudentDashboardData": "the caller's own assignments, from the session's identity",
+    "getMyCompetencies": "the caller's own competencies, from the session's identity",
+    "getMyWarmUpHistory": "the caller's own warm-ups, from the session's identity",
+    "getMyContext": "the caller's own Student Context doc, from the session's identity",
+    "submitWarmUpAnswer": "writes only the caller's own open warm-up row, under a lock (_dashWarmUpSave_)",
+    "submitWarmUpReply": "writes only the caller's own open warm-up row, under a lock (_dashWarmUpSave_)",
+    "submitMyWork": "submits only a Ledger row whose student is the caller (_dashSubmit_)",
+    "getSubmitReflection": "the reflection questions for the caller's own row (_dashSubmitChecks_)"
+  },
+  "cas-ccps:teacher-dashboard": {
+    "getMyStudentContext": "the My Context page the dashboard serves a non-teacher: the caller's own Student Context doc"
+  },
+  "leader-hub:app": {
+    "lhDiagPing": "the ?diag=1 page's ping: the server time and the caller's own address",
+    "lhDiagReport": "the ?diag=1 page's report: logs a capped summary to Executions, nothing else"
+  }
+}
