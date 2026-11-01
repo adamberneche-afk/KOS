@@ -123,6 +123,23 @@ const FMS_LOG = {
 const FMS_CONTACTS_TAB = "FamilyContacts";
 const FMS_CONTACTS_HEADERS = ["Parent_Email", "Student_Email", "Note"];
 
+// The teacher's list of the names a student goes by that the roster doesn't
+// hold ("Bobby" for Robert, "AJ"): one row per student, keyed by the
+// student's account like FamilyContacts, the nicknames comma-separated. Each
+// is redacted, leak-checked and matched like a first name. A list the
+// teacher keeps, not prefixes made automatically: a prefix rule redacts
+// ordinary words (Andrew → "and", Diego → "die"), which blinds Gemini's
+// safety check and blanks most asks (the 2026-10-13 patch review).
+const FMS_NICKNAMES_TAB = "Nicknames";
+const FMS_NICKNAMES_HEADERS = ["Student_Email", "Nicknames", "Note"];
+
+// Two-letter words that are never redacted as a name. Any other two-letter
+// name on the roster (Al, Bo, Ed, Jo, Ty) is.
+const FMS_SHORT_WORDS = ["ad", "ah", "am", "an", "as", "at", "ax", "be", "by", "dr", "eh", "em", "er",
+  "ex", "go", "ha", "he", "hi", "hm", "ho", "id", "if", "in", "is", "it", "ma", "me", "mm", "mr", "ms",
+  "my", "no", "of", "oh", "ok", "on", "or", "pa", "pm", "re", "so", "st", "to", "tv", "uh", "um", "up",
+  "us", "vs", "we", "ya", "ye", "yo"];
+
 const FMS_SPEC_TAB = "FamilyMailBuildSpec";
 
 const FMS_STATUS = {
@@ -297,6 +314,7 @@ function setupFamilySentinel() {
   _fmsEnsureTab_(ss, FMS_RETURN_TAB, FMS_RETURN_HEADERS);
   _fmsEnsureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
   _fmsEnsureTab_(ss, FMS_CONTACTS_TAB, FMS_CONTACTS_HEADERS);
+  _fmsEnsureTab_(ss, FMS_NICKNAMES_TAB, FMS_NICKNAMES_HEADERS);
   const labels = _fmsEnsureLabels_();
   const doc = _fmsSignalDoc_();
   syncFamilyMailFlowBuildSpec();
@@ -560,21 +578,42 @@ function _fmsDetectFamily_(msg, roster, contacts, operator) {
 
 // Finds a rostered student in text: full name (either order) first, then a
 // first name on its own (only used with a parent word; see above). Every
-// surname form counts ("de la cruz", "cruz", "smith-jones", "smith jones").
+// surname form counts ("de la cruz", "cruz", "smith-jones", "smith jones"),
+// and a nickname from the Nicknames tab counts as a first name. Possessives
+// and quotes, straight or curly, don't hide a name ("Ana's", "‘Ana’").
 function _fmsFindRosterName_(text, roster) {
-  const lower = " " + String(text).toLowerCase().replace(/[^a-z' -]+/g, " ").replace(/\s+/g, " ") + " ";
+  const lower = " " + _fmsNameTokens_(text).join(" ") + " ";
   let full = null, first = null;
   for (let i = 0; i < roster.students.length && !full; i++) {
     const s = roster.students[i];
-    const lasts = s.surnames || (s.last ? [s.last] : []);
-    if (!s.first || !lasts.length) continue;
-    for (let j = 0; j < lasts.length && !full; j++) {
-      if (lower.indexOf(" " + s.first + " " + lasts[j] + " ") !== -1 ||
-          lower.indexOf(" " + lasts[j] + " " + s.first + " ") !== -1) full = s;
+    const lasts = (s.surnames || (s.last ? [s.last] : [])).map(function (l) { return l.replace(/-/g, " "); });
+    const firsts = (s.first ? [s.first] : []).concat(s.nicknames || []);
+    if (!firsts.length || !lasts.length) continue;
+    for (let f = 0; f < firsts.length && !full; f++) {
+      for (let j = 0; j < lasts.length && !full; j++) {
+        if (lower.indexOf(" " + firsts[f] + " " + lasts[j] + " ") !== -1 ||
+            lower.indexOf(" " + lasts[j] + " " + firsts[f] + " ") !== -1) full = s;
+      }
+      if (!full && !first && firsts[f].length >= 3 && lower.indexOf(" " + firsts[f] + " ") !== -1) first = s;
     }
-    if (!full && !first && s.first.length >= 3 && lower.indexOf(" " + s.first + " ") !== -1) first = s;
   }
   return { full: full, first: first };
+}
+
+// Text as name tokens: lower case, curly apostrophes read as straight, split
+// at anything but a letter or apostrophe (so hyphens split), with quotes at
+// a word's edges and a possessive dropped. "Ana’s" → "ana", "'Bo'" → "bo",
+// "Smith-Jones" → "smith", "jones"; "O'Brien" stays "o'brien".
+function _fmsNameTokens_(text) {
+  return String(text || "").toLowerCase().replace(/[‘’ʼ]/g, "'").split(/[^a-z']+/)
+    .map(function (w) { return w.replace(/^'+/, "").replace(/'s$/, "").replace(/'+$/, ""); })
+    .filter(Boolean);
+}
+
+// Whether a roster or sender word is redacted as a name: two letters or
+// more, and not a common two-letter word.
+function _fmsIsNameWord_(w) {
+  return !!w && w.length >= 2 && !(w.length === 2 && FMS_SHORT_WORDS.indexOf(w) !== -1);
 }
 
 function _fmsIsSystemSender_(email) {
@@ -680,25 +719,33 @@ function _fmsBuildPromptText_(msg, fam, roster) {
 }
 
 // Every name the redactor and the leak check look for: all rostered first
-// and last names, and the sender's own name.
+// and last names, each student's nicknames (the Nicknames tab), and the
+// sender's own name. Two-letter names count, less FMS_SHORT_WORDS.
 function _fmsRedactionContext_(msg, roster) {
   const names = {};
   roster.students.forEach(function (s) {
-    (s.words || [s.first, s.last]).forEach(function (n) { if (n && n.length >= 3) names[n] = "[STUDENT]"; });
+    (s.words || [s.first, s.last]).concat(s.nicknames || []).forEach(function (n) {
+      if (_fmsIsNameWord_(n)) names[n] = "[STUDENT]";
+    });
   });
-  String(msg && msg.fromName || "").toLowerCase().split(/[^a-z']+/).forEach(function (n) {
-    if (n.length >= 3 && !names[n]) names[n] = "[SENDER]";
+  _fmsNameTokens_(msg && msg.fromName).forEach(function (n) {
+    if (_fmsIsNameWord_(n) && !names[n]) names[n] = "[SENDER]";
   });
   return { names: names };
 }
 
+// Addresses, phone numbers and long numbers, then every name in ctx. A name
+// is found inside quotes, straight or curly, and before a possessive, which
+// is kept: "Ana's" → "[STUDENT]'s".
 function _fmsRedact_(text, ctx) {
   let t = String(text || "");
   t = t.replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[EMAIL]");
   t = t.replace(/(\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g, "[PHONE]");
   t = t.replace(/\b\d{5,}\b/g, "[NUMBER]");
-  return t.replace(/[A-Za-z']+/g, function (word) {
-    return ctx.names[word.toLowerCase()] || word;
+  return t.replace(/[A-Za-z'\u2018\u2019\u02BC]+/g, function (word) {
+    const m = /^(['\u2018\u2019\u02BC]*)(.*?)((?:['\u2018\u2019\u02BC][sS])?['\u2018\u2019\u02BC]*)$/.exec(word);
+    const tag = ctx.names[m[2].toLowerCase().replace(/[\u2018\u2019\u02BC]/g, "'")];
+    return tag ? m[1] + tag + m[3] : word;
   });
 }
 
@@ -946,7 +993,7 @@ function _fmsLeaks_(text, ctx) {
   const t = String(text || "");
   if (!t) return false;
   if (/@/.test(t) || /\d{5,}/.test(t) || /\d{3}[\s.-]\d{4}/.test(t)) return true;
-  const words = t.toLowerCase().split(/[^a-z']+/);
+  const words = _fmsNameTokens_(t);
   for (let i = 0; i < words.length; i++) if (ctx.names[words[i]]) return true;
   // A name the roster doesn't hold (a parent, a sibling): a title, or a
   // capitalized word mid-sentence that isn't a day, a month or a known term.
@@ -1265,7 +1312,25 @@ function _fmsLoadRoster_() {
     roster.byEmail[email] = s;
     roster.students.push(s);
   });
+  _fmsApplyNicknames_(roster);
   return roster;
+}
+
+// Adds each student's nicknames from the Nicknames tab (FMS_NICKNAMES_TAB):
+// s.nicknames, each word of each nickname. A row for an account not on the
+// roster, or a missing tab, adds nothing.
+function _fmsApplyNicknames_(roster) {
+  let sheet = null;
+  try { sheet = _fmsSpreadsheet_().getSheetByName(FMS_NICKNAMES_TAB); } catch (e) { return; }
+  if (!sheet) return;
+  _fmsRows_(sheet).forEach(function (r) {
+    const s = roster.byEmail[String(r[0] || "").trim().toLowerCase()];
+    if (!s) return;
+    s.nicknames = s.nicknames || [];
+    _fmsNameTokens_(String(r[1] || "").replace(/-/g, " ")).forEach(function (w) {
+      if (s.nicknames.indexOf(w) === -1) s.nicknames.push(w);
+    });
+  });
 }
 
 // { first, last, surnames, words }. "Last, First" (Canvas) keeps the whole
@@ -1759,8 +1824,11 @@ function _fmsJoinNote_(a, b) { return a ? String(a) + "; " + b : b; }
 function _fmsTrue_(v) { return v === true || String(v).toUpperCase() === "TRUE"; }
 function _fmsEndsWith_(s, suffix) { return s.length >= suffix.length && s.slice(-suffix.length) === suffix; }
 // Whole words or phrases only: "gun" must not match "begun".
+// Whole-word phrase match. Curly apostrophes read as straight, and quotes
+// at a word's edges are dropped, so 'suicide' and ‘suicide’ both match.
 function _fmsHasAny_(text, terms) {
-  const t = " " + String(text).toLowerCase().replace(/[^a-z'-]+/g, " ") + " ";
+  const t = " " + String(text).toLowerCase().replace(/[\u2018\u2019\u02BC]/g, "'").replace(/[^a-z'-]+/g, " ")
+    .split(" ").map(function (w) { return w.replace(/^'+|'+$/g, ""); }).join(" ") + " ";
   for (let i = 0; i < terms.length; i++) if (t.indexOf(" " + terms[i] + " ") !== -1) return true;
   return false;
 }
