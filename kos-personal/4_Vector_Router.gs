@@ -4,8 +4,8 @@
 // ================================================================
 //
 // Replaces: PART 12 (routeVectorWeights and sub-functions) from
-//           KOS_MASTER_v3_1.gs. Supersedes the transitional
-//           versions in KOS_PHASE0_PATCHES.gs.
+//           KOS_MASTER_v3_1.gs. (The transitional versions in
+//           KOS_PHASE0_PATCHES.gs are gone with that file.)
 //
 // ARCHITECTURE NOTE — TWO PARALLEL SHEETS
 // ─────────────────────────────────────────────────────────────

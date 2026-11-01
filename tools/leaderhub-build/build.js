@@ -97,14 +97,11 @@
  * leader-hub/student-leader-hub.html directly — edit the fragment(s)
  * under leader-hub/src/ that hold the section you're changing, then run
  * `node tools/leaderhub-build/build.js` to regenerate it. It stays
- * committed at its current path (not gitignored) — leader-hub/README.md
- * and .claspignore already establish that this file is opened directly
- * from a checkout with no deploy step; gitignoring the assembled output
- * would force a mandatory build before the file even opens, which this
- * repo's whole "no build step" framing for leader-hub was built around.
- * (That framing is about opening/deploying the file, not about
- * regenerating it — this script itself has always been a real, if tiny,
- * build step; it just has zero npm dependencies of its own.)
+ * committed at its current path (not gitignored): it is the page the
+ * leader-hub web app serves, pushed with clasp like the .gs files, so a
+ * push needs no build. (The app runs only as an Apps Script web app now;
+ * opening the file from a checkout shows "LeaderHub now runs as a web
+ * app". See leader-hub/README.md.) This script has zero npm dependencies.
  * `--check` mode (below) is what actually prevents silent drift between
  * the fragments and the committed assembled file, enforced in CI instead.
  *

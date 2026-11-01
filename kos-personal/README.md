@@ -195,6 +195,7 @@ items from the Apps Script editor's **Run** menu instead:
 | `generateLicenseReport` | The license report |
 | `deployFullSystem` | Re-runs the full deploy |
 | `nuclearWipeForRelease` | Irreversible wipe; read it before running |
+| `getKOSCalibration` | Reads one calibration weight (a Script Property) by key; logs `[CALIBRATION_MISSING]` if it isn't set. Not on the menu, and nothing calls it: a check by hand after `setupCalibration` |
 
 Any of these that shows a dialog (`getUi()`) can't do so from a standalone
 project; read the function before relying on it from the editor.

@@ -952,7 +952,8 @@ function nuclearWipeForRelease() {
 // ═══════════════════════════════════════════════════════════════
 // ALL 9 FILES COMPLETE
 // ─────────────────────────────────────────────────────────────
-// KOS_PHASE0_PATCHES.gs  — Bridge patch (delete after v8.0 live)
+// (KOS_PHASE0_PATCHES.gs, the v5.4 bridge patch, is deleted; DEPLOYMENT_GUIDE.md
+//  says how to recover it for a v5.4 migration.)
 // 1_Config_And_Deploy.gs — CFG, deploy, triggers, cold gate
 // 2_Ingestion_Sensors.gs — Sensors 1/2/3, web app ingest API
 // 3_Queue_Processor.gs   — Queue processor, processIntakePayload

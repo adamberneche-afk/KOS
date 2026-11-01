@@ -33,6 +33,24 @@ canary. Open until the operator builds the two flows in Studio and
 (`69_EvaluationHealth.js`) reads `EvaluationLog` into the `Measures` tab and
 the overnight email.
 
+**Progress (2026-11-01, the stale comments):** the comments the
+"Dead weight" section lists are fixed, with no change to code:
+- kos-personal's pointers to the deleted `KOS_PHASE0_PATCHES.gs` (3, 4, 5,
+  9) and to `archived/10_Turnstile_ORIGINAL.gs` (10);
+- 30's "not yet built" reopen note (30b is that path);
+- 51's header on Lesson Frames (builder rows make none);
+- the leaderhub-build note on opening the page from a checkout;
+- the router README's V5.8 "Canonical".
+
+The four editor entry points with no docs are now documented:
+- `runFlowPreflightCheckNow` and `runFlow2CanaryNow` (cas-ccps README, 35);
+- `removeFamilySentinelTrigger` (the Sentinel's setup guide);
+- `getKOSCalibration` (kos-personal README, editor-only functions).
+
+They are thin wrappers: a dialog around a tested function, a trigger
+removal, and a property read. They have no tests of their own;
+`runFlowPreflightCheckNow` is exercised by the preflight test.
+
 **Progress (2026-11-01, the docs PR):** "The docs that say the wrong
 thing" are fixed:
 - the student work plan's header, revisionProbe, unlock and Appendix B
@@ -144,7 +162,9 @@ lives, so it stops reading as live work.
 
 ## Dead weight: remove (one clean-up PR, no behaviour change)
 
-**Done 2026-11-01 (clean-up PR 2),** with two departures: the shadow
+**Done 2026-11-01 (clean-up PR 2), except the stale comments, which were
+done in a later PR the same day (see the progress lines above),** with two
+departures: the shadow
 matrix's two values are constants in 00 rather than config reads (23 uses
 them per student, and `getConfig_()` reads every Script Property); and
 `ParentReportLog`'s `recipient_address` column and the Sentinel's fallback
