@@ -665,21 +665,28 @@ function logQueueMetrics() {
   if (!m.success) { console.log('[Queue] metrics unavailable: ' + m.message); return m; }
   const c = m.counts;
   console.log('[Queue] queued=' + c.queued + ' active=' + c.active + ' needs_curator=' + c.needs_curator +
-    ' processed=' + c.processed + ' failed=' + c.failed + ' cycling=' + c.cycling + ' unknown=' + c.unknown);
+    ' processed=' + c.processed + ' duplicate=' + c.duplicate + ' failed=' + c.failed + ' cycling=' + c.cycling +
+    ' unknown=' + c.unknown);
   const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
   const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
   const SC = CFG.STAGING_COLS;
   const rows = staging.getLastRow() > 1 ? staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues() : [];
+  // Every status, so no row goes uncounted (2026-10-29: 23 rows, none in
+  // any count). Terminal: finished (STAGING_ARCHIVABLE_STATUSES, DUPLICATE
+  // included) or failed.
+  const byStatus = {};
+  rows.forEach(r => { const st = String(r[SC.STATUS]).trim() || '(blank)'; byStatus[st] = (byStatus[st] || 0) + 1; });
   const terminal = rows.filter(r => {
     const st = String(r[SC.STATUS]);
-    return st === 'PROCESSED' || st === 'INTAKE_PROCESSED' || TERMINAL_FAILED_STATUSES.some(p => st.startsWith(p));
+    return STAGING_ARCHIVABLE_STATUSES.some(p => st.startsWith(p)) || TERMINAL_FAILED_STATUSES.some(p => st.startsWith(p));
   }).length;
   const pending = rows.filter(r => String(r[SC.STATUS]) === 'PENDING_FLOW')
     .map(r => new Date(r[SC.TIMESTAMP]).getTime()).filter(t => !isNaN(t));
   const oldestMin = pending.length ? Math.round((Date.now() - Math.min.apply(null, pending)) / 60000) : null;
   console.log('[Queue] STAGING_PIPELINE rows=' + rows.length + ' terminal=' + terminal +
     ' oldest PENDING_FLOW=' + (oldestMin === null ? 'none' : oldestMin + ' min'));
-  return Object.assign({}, m, { rows: rows.length, terminal: terminal, oldestPendingMinutes: oldestMin });
+  console.log('[Queue] by status: ' + Object.keys(byStatus).sort().map(k => k + '=' + byStatus[k]).join(' '));
+  return Object.assign({}, m, { rows: rows.length, terminal: terminal, byStatus: byStatus, oldestPendingMinutes: oldestMin });
 }
 
 function getQueueMetrics() {
@@ -713,6 +720,8 @@ function getQueueMetrics() {
     // excluded from every bucket here, exactly like MISSING_FILE_ID/
     // PROCESSING_ERROR were before the FIXED note below.
     let unknown = 0;
+    // A resolved copy (21's duplicate repair): finished, not failed.
+    let duplicate = 0;
     const needsCuratorRows = [];
 
     if (staging.getLastRow() > 1) {
@@ -725,7 +734,10 @@ function getQueueMetrics() {
         if      (s === 'PENDING_FLOW')                               queued++;
         else if (s === 'STUDIO_ACTIVE' || s === 'FLOW_COMPLETE')     active++;
         else if (s === 'NEEDS_CURATOR')                              needsReview++;
-        else if (s === 'PROCESSED' || s === 'INTAKE_PROCESSED')      processed++;
+        // PARTITIONED/CONSOLIDATED (v5.4-legacy) finished too; counted here
+        // since 2026-11-01, when logQueueMetrics found rows no count showed.
+        else if (STAGING_SUCCEEDED_STATUSES.indexOf(s) !== -1)        processed++;
+        else if (s === 'DUPLICATE')                                  duplicate++;
         // FIXED: these used to be silently excluded. A row stuck in one of these
         // terminal-failure statuses was invisible in every Queue tab tile,
         // and could make totalActivity read 0 (renderQueue(), 8_WebApp_UI.html),
@@ -768,13 +780,14 @@ function getQueueMetrics() {
       failed,
       cycling,
       unknown,
+      duplicate,
     };
 
     return {
       success:         true,
       counts,
       needs_curator:   needsCuratorRows,
-      total:           queued + active + needsReview + processed + failed,
+      total:           queued + active + needsReview + processed + failed + duplicate,
       last_updated:    new Date().toLocaleTimeString(),
       managed_service: _getManagedServiceStatus_(),
     };

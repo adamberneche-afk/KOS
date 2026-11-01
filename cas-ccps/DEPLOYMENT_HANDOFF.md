@@ -463,6 +463,7 @@ unreadable.
 | # | Function | Why, and what to expect |
 |---|---|---|
 | 1 | `checkLedgerSchema()` | **First, and read the log before running anything else.** The live Ledger's columns had shifted, which made `LEDGER.TEACHER_EMAIL` return a person's *name* and silently broke every MatrixRegistry lookup with no error anywhere. If it reports drift, run `repairLedgerSchema()` — it backs the tab up to `Ledger_BACKUP_<timestamp>` first and refuses outright if it cannot verify the repair is safe from the headers alone. Nothing downstream is trustworthy until this is clean. |
+| 1b | `showSetupStatus()` | What is on, in one list: each expected trigger (on, in the Ledger cycle, or OFF with the function that installs it), the rollout's catch-up if one is pending, any trigger it doesn't know, each switch and setting as this project reads them, and the weekly tabs' row counts. Ends with a "TO TURN ON" line naming every installer to run. Names, values of non-secret switches and counts only. |
 | 2 | `runFlowPreflightCheck()` | Structure: every tab present and wide enough, all four flow triggers installed **exactly once** (a duplicate is reported as a failure, not a pass — two copies of a harvest race each other), the required Script Properties set, the self-healing tabs healthy. Each finding says which of the four questions it answers. Run this before the canaries; a canary failing for a missing tab wastes the canary. |
 
 ### Phase 2 — give the flows something to read and something to run on

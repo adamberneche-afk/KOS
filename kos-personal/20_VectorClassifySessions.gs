@@ -486,11 +486,14 @@ function queueVectorClassifyBackfill(opts) {
     if (_rqIsTestUid_(s.sessionUid)) return;
     if (duplicate[s.sessionUid])  return skipped.push({ sessionUid: s.sessionUid, reason: 'DUPLICATE' });
     if (classified[s.sessionUid]) return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_CLASSIFIED' });
-    if (hasParts[s.sessionUid])   return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_QUEUED' });
+    // Same content before "has parts" (BACKLOG, 2026-10-26): a copy of a
+    // classified session that still has old part rows is a copy, and read
+    // ALREADY_QUEUED when this came second.
     const hash = VCS_LOG_HASH_RE.exec(s.sessionUid);
     if (hash && hashOwner[hash[1]] && hashOwner[hash[1]] !== s.sessionUid) {
       return skipped.push({ sessionUid: s.sessionUid, reason: 'DUPLICATE_HASH: same content as ' + hashOwner[hash[1]] });
     }
+    if (hasParts[s.sessionUid])   return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_QUEUED' });
     s.chunks.sort(function (a, b) { return a.n - b.n; });
     // Every chunk must be here, live or archived: classifying the chunks
     // that happen to remain would mark a partial session done for good.

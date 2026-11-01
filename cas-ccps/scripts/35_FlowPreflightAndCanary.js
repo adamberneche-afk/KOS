@@ -945,6 +945,16 @@ function showSetupStatus() {
       (n ? (n > 1 ? " [installed " + n + " times]" : "") : ": run " + t.installer));
     if (!n && missing.indexOf(t.installer) === -1) missing.push(t.installer);
   });
+  // The rollout's catch-up (58): a one-off trigger a run that stopped short
+  // schedules, so never "missing". Named here; it used to show under
+  // "Other triggers" (10-29 handoff).
+  expected[ROLLOUT_CATCHUP_FN] = true;
+  let catchUpState = {};
+  try { catchUpState = JSON.parse(props.getProperty(ROLLOUT_CATCHUP_PROP) || "{}"); } catch (e) { catchUpState = {}; }
+  const catchUpToday = catchUpState.day === formatDateYMD_(new Date()) ? Number(catchUpState.count) || 0 : 0;
+  lines.push("  " + (count(ROLLOUT_CATCHUP_FN) ? "pending  " : "none     ") +
+    "Lessons: rollout catch-up (" + ROLLOUT_CATCHUP_FN + "), one-off, " + catchUpToday + " of at most " +
+    ROLLOUT_CATCHUP_MAX + " today" + (count(ROLLOUT_CATCHUP_FN) ? "" : "; scheduled only when the nightly rollout stops short"));
   const other = handlers.filter(function (h, i) { return !expected[h] && handlers.indexOf(h) === i; });
   if (other.length) lines.push("  Other triggers: " + other.join(", "));
 

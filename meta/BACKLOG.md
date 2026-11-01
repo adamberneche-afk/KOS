@@ -79,11 +79,15 @@ operator. This file holds what comes after them.
   week of a Student Context doc (a bookmark per week), and past weeks'
   parent reports on the student's page (the copied text, kept in
   `ParentReportLog`).
-- **kos-personal staging rows no count shows** (2026-10-29, from the
+- ~~**kos-personal staging rows no count shows**~~ **Done 2026-11-01**
+  (`getQueueMetrics` counts PARTITIONED/CONSOLIDATED as processed and
+  DUPLICATE on its own; `logQueueMetrics` logs every status; both archives
+  move DUPLICATE rows). (2026-10-29, from the
   first `logQueueMetrics()` run: 23 rows, none in any count). Count every
   status and treat `DUPLICATE`, `PARTITIONED` and `CONSOLIDATED` as
   terminal there, and have the nightly archive move `DUPLICATE` rows too.
-- **The classify backfill's "ALREADY_QUEUED" label** for a copy of a
+- ~~**The classify backfill's "ALREADY_QUEUED" label**~~ **Done
+  2026-11-01** (same content is checked first). For a copy of a
   classified session that has old part rows (`-edd1075a`, 2026-10-26):
   check "same content" before "has parts" (kos-personal 20), so it reads
   `DUPLICATE_HASH`. Cosmetic: nothing is stalled.

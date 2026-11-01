@@ -395,3 +395,24 @@ test('queueVectorClassifyBackfill: never classifies a second copy of the same co
   assert.equal(reasons['LOG-1789059068989-edd1075a'], 'DUPLICATE_HASH: same content as LOG-1789058964096-edd1075a');
   assert.equal(reasons['LOG-aaaa1111'], 'DUPLICATE_HASH: same content as LOG-1789000000001-aaaa1111');
 });
+
+// BACKLOG (2026-10-26): the live -edd1075a copy also had old classify part
+// rows, and read ALREADY_QUEUED. Same content is checked first now.
+test('queueVectorClassifyBackfill: a copy with old part rows still reads as a copy', () => {
+  const env = setup();
+  const { curator, ss } = env;
+  const archive = ss.insertSheet('STAGING_ARCHIVE');
+  archive.appendRow(['Archived_At'].concat(STAGING_HEADERS));
+  const gone = (uid, day, type, status) => archive.appendRow(
+    [new Date(), new Date('2026-09-' + day), uid, type || 'SESSION_LOG', 'u', 'f-' + uid, status || 'PROCESSED', 0]);
+  const matrix = ss.insertSheet('VECTOR_MATRIX');
+  matrix.appendRow(['Session_UID', 'Timestamp', 'ARCHITECTURE']);
+  matrix.appendRow(['LOG-1789058964096-edd1075a', new Date(), 0.5]);
+  gone('LOG-1789059068989-edd1075a_CH01', 10);
+  curator.appendRow([new Date(), 'LOG-1789059068989-edd1075a_CH01', 'SESSION_LOG', 'f', 'text', 'READY']);
+  gone('LOG-1789059068989-edd1075a_VC01of01', 10, 'VECTOR_CLASSIFY', 'PROCESSED');
+
+  const r = env.exported.queueVectorClassifyBackfill({ apply: false, limit: 5 });
+  const reasons = Object.fromEntries(r.skipped.map((x) => [x.sessionUid, x.reason]));
+  assert.equal(reasons['LOG-1789059068989-edd1075a'], 'DUPLICATE_HASH: same content as LOG-1789058964096-edd1075a');
+});
