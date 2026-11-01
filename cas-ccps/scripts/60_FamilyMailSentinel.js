@@ -36,11 +36,11 @@
 // INBOX (archived) counts as handled and is in neither list.
 //
 // WHAT COUNTS AS FAMILY MAIL (_fmsDetectFamily_):
-//   student   — from @student.ccpsnet.net.
+//   student   — from the student mail domain (STUDENT_MAIL_DOMAIN; @student.ccpsnet.net).
 //   parent    — from an address in the FamilyContacts tab (the teacher fills
 //               it in) or the Central Ledger's ParentReportLog (rows from
 //               before 2026-10-23; teachers now send reports themselves).
-//   staff     — from a ccpsnet.net colleague, naming a rostered student.
+//   staff     — from a staff-domain colleague (STAFF_MAIL_DOMAIN; ccpsnet.net), naming a rostered student.
 //   canvas    — a Canvas notification naming a rostered student.
 //   external  — any other sender, not a mailing list, naming a rostered
 //               student's full name, or first name with a parent word
@@ -144,8 +144,11 @@ const FMS_ITEM_PREFIX = "FMS-";
 const FMS_FIXTURE_PREFIX = "FMS-FIXTURE-";
 const FMS_CANARY_PREFIX = "FMS-CANARY-";
 
-const FMS_STUDENT_DOMAIN = "@student.ccpsnet.net";
-const FMS_DISTRICT_DOMAIN = "@ccpsnet.net";
+// The school's student and staff mail domains, "@..." (00's schoolProfile_:
+// STUDENT_MAIL_DOMAIN, STAFF_MAIL_DOMAIN; @student.ccpsnet.net and
+// @ccpsnet.net by default).
+function _fmsStudentDomain_() { return "@" + schoolProfile_().studentMailDomain; }
+function _fmsDistrictDomain_() { return "@" + schoolProfile_().staffMailDomain; }
 const FMS_CANVAS_DOMAIN = "instructure.com";
 
 // Google's notification senders: a Drive share, a Docs comment, Classroom.
@@ -543,9 +546,9 @@ function _fmsDetectFamily_(msg, roster, contacts, operator) {
     };
   }
 
-  if (_fmsEndsWith_(from, FMS_STUDENT_DOMAIN)) return hit("student", roster.byEmail[from] || named.full || null);
+  if (_fmsEndsWith_(from, _fmsStudentDomain_())) return hit("student", roster.byEmail[from] || named.full || null);
   if (contacts[from]) return hit("parent", roster.byEmail[contacts[from]] || named.full || null);
-  if (_fmsEndsWith_(from, FMS_DISTRICT_DOMAIN)) return named.full ? hit("staff", named.full) : null;
+  if (_fmsEndsWith_(from, _fmsDistrictDomain_())) return named.full ? hit("staff", named.full) : null;
   if (_fmsEndsWith_(from, "." + FMS_CANVAS_DOMAIN) || _fmsEndsWith_(from, "@" + FMS_CANVAS_DOMAIN)) {
     return named.full ? hit("canvas", named.full) : null;
   }

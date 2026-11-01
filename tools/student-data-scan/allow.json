@@ -170,6 +170,11 @@
       "hash": "2f43cbfb135d",
       "file": "tests/tools/student-data-scan.test.js",
       "why": "Placeholder: the operator looked at the line and confirmed a dummy account (2026-10-20)"
+    },
+    {
+      "hash": "0a397d2c5a6f",
+      "file": "tests/cas-ccps/school-profile.test.js",
+      "why": "Synthetic: a sequence-of-digits test address at the student mail subdomain, written for this test (2026-11-01), checking it is not a student account"
     }
   ]
 }

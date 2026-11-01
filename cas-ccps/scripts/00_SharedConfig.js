@@ -65,7 +65,7 @@ function getConfig_() {
     // validation regex — a district domain change would have silently
     // dropped every student from that module. Defaults to the same value
     // so behavior is unchanged unless a project sets STUDENT_EMAIL_DOMAIN.
-    studentEmailDomain:   p.STUDENT_EMAIL_DOMAIN     || "ccpsnet.net",
+    studentEmailDomain:   p.STUDENT_EMAIL_DOMAIN     || SCHOOL_DEFAULTS.STUDENT_EMAIL_DOMAIN,
 
     // ── Evaluation escape hatch (external product review, Finding 3,
     // "this quarter") — same CFG.INFERENCE_MODE pattern kos-personal
@@ -245,6 +245,14 @@ const SHARED_CONFIG_KEYS = [
   "ADMIN_NOTIFY_EMAIL",
   "STUDENT_DASHBOARD_URL",
   "STUDENT_EMAIL_DOMAIN",
+  // The school (packaging step 1): read through schoolProfile_().
+  "SCHOOL_COURSES",
+  "STUDENT_ID_PATTERN",
+  "STUDENT_MAIL_DOMAIN",
+  "STAFF_MAIL_DOMAIN",
+  "EARLY_RELEASE_DAYS",
+  "SCHOOL_DAYS_OFF",
+  "BELL_SCHEDULE",
   "LEADER_HUB_OAUTH_CLIENT_ID",
   "MASTER_STUDENT_TEMPLATE_ID",
   "MASTER_RUBRIC_RESPONSE_SS_ID",
@@ -401,8 +409,8 @@ function feedbackAsCommentChecker_() {
   return function (configId, courseName) {
     if (value === "" || value === "off" || value === "all") return _pivotValueOn_(raw, null);
     const id = String(configId || "").trim();
-    const m = id.match(/^CAS-(\d{4})-/);
-    let code = m ? m[1] : warmUpCourseCode_(courseName);
+    const m = id.match(/^CAS-([A-Za-z0-9]+)-/);
+    let code = m && schoolCourseCodes_().indexOf(m[1]) !== -1 ? m[1] : warmUpCourseCode_(courseName);
     if (!code && id) {
       if (!byConfigId) byConfigId = _ledgerCourseCodes_();
       code = byConfigId[id] || "";
@@ -452,12 +460,171 @@ function warmUpTextBoxFor_(courseName) {
   return pivotFlagFor_("WARMUP_TEXT_BOX", warmUpCourseCode_(courseName));
 }
 
-// "8175", "8177" or "" from a course name (24's courseCodeFromName_ rule).
+// A configured course's code, or "", from a course name (schoolCourseOf_;
+// the one rule 24's courseCodeFromName_ and 51's _cybCourseCode_ share).
 function warmUpCourseCode_(courseName) {
+  return schoolCourseOf_(courseName);
+}
+
+// =============================================================================
+// THE SCHOOL: what used to be written into the code (packaging step 1,
+// 2026-11-01; meta/PLAN_2026-11.md, "No hardcoded school")
+// =============================================================================
+// Each value comes from configuration (a Script Property, or the Central
+// Ledger's _CONFIG tab: SHARED_CONFIG_KEYS), with today's school as the
+// default, so an install that sets none of them behaves exactly as before.
+//
+//   SCHOOL_COURSES       "8175=marketing,8177=management": each course's
+//                        code, and a word that also names it in a course
+//                        name. The first that a name matches wins.
+//   STUDENT_EMAIL_DOMAIN "ccpsnet.net": students' account domain.
+//   STUDENT_ID_PATTERN   "\\d{7}": a student account's part before the @, as
+//                        a regular expression (seven digits).
+//   STUDENT_MAIL_DOMAIN  "student.ccpsnet.net": the domain students' mail
+//                        comes from (the Family Mail Sentinel, 60).
+//   STAFF_MAIL_DOMAIN    "ccpsnet.net": the district's staff mail (60).
+//   EARLY_RELEASE_DAYS   the 2026-27 early-release dates, "yyyy-MM-dd,...".
+//   SCHOOL_DAYS_OFF      "" : weekdays without school, "yyyy-MM-dd,...". A
+//                        part held by a failed check (68) skips them.
+//   BELL_SCHEDULE        JSON: { "classMinutes": { name: [minutes per
+//                        block] }, "labels": { name: label }, "rotation":
+//                        [{ "until": "yyyy-MM-dd" or "", "byDay": [name for
+//                        Sunday ... Saturday] }] }. Each part left out keeps
+//                        its default (Clover Hill's 2026-27 schedule, below).
+//
+// What stays course-specific on purpose: the lesson and unit data (53b, 55b,
+// generated per course), the pacing guide's objective_8175 / _8177 columns
+// (31, 23, 28: that sheet's schema, until the course builder replaces it),
+// and the two courses' expected registry counts (51). The Unified Manual's
+// library ID lives in the manifests, and comes from the install registry
+// (packaging step 3).
+const SCHOOL_DEFAULTS = {
+  SCHOOL_COURSES: "8175=marketing,8177=management",
+  STUDENT_EMAIL_DOMAIN: "ccpsnet.net",
+  STUDENT_ID_PATTERN: "\\d{7}",
+  STUDENT_MAIL_DOMAIN: "student.ccpsnet.net",
+  STAFF_MAIL_DOMAIN: "ccpsnet.net",
+  EARLY_RELEASE_DAYS: "2026-10-30,2026-11-13,2027-01-22,2027-02-05,2027-04-23,2027-06-03,2027-06-04",
+  SCHOOL_DAYS_OFF: "",
+};
+
+// The school as configured, read once per run. `values` (tests, or a caller
+// holding resolved config) skips the read and the cache. A value that doesn't
+// parse falls back to its default, and says so in the log.
+let _schoolProfileCache_ = null;
+function schoolProfile_(values) {
+  if (!values && _schoolProfileCache_) return _schoolProfileCache_;
+  let v = values;
+  if (!v) {
+    try { v = _resolveConfigValues_().values; } catch (e) { v = {}; }
+  }
+  const get = function (k) {
+    const x = v[k];
+    return x === undefined || x === null || String(x).trim() === "" ? SCHOOL_DEFAULTS[k] : String(x).trim();
+  };
+  const out = {
+    courses: _schoolCourses_(get("SCHOOL_COURSES")),
+    studentEmailDomain: get("STUDENT_EMAIL_DOMAIN").replace(/^@/, "").toLowerCase(),
+    studentIdPattern: _schoolIdPattern_(get("STUDENT_ID_PATTERN")),
+    studentMailDomain: get("STUDENT_MAIL_DOMAIN").replace(/^@/, "").toLowerCase(),
+    staffMailDomain: get("STAFF_MAIL_DOMAIN").replace(/^@/, "").toLowerCase(),
+    earlyReleaseDays: _schoolDates_(get("EARLY_RELEASE_DAYS")),
+    daysOff: _schoolDates_(get("SCHOOL_DAYS_OFF") || ""),
+    bell: _schoolBell_(v.BELL_SCHEDULE),
+  };
+  if (!values) _schoolProfileCache_ = out;
+  return out;
+}
+
+// "8175=marketing,8177=management" → [{ code, word }]. A code is letters and
+// digits; the word is optional. None valid → the default.
+function _schoolCourses_(raw) {
+  const out = [];
+  String(raw || "").split(",").forEach(function (pair) {
+    const m = /^\s*([A-Za-z0-9]+)\s*(?:=\s*(.*?))?\s*$/.exec(pair);
+    if (m && !out.some(function (c) { return c.code === m[1]; })) out.push({ code: m[1], word: m[2] || "" });
+  });
+  if (out.length) return out;
+  Logger.log("[SCHOOL] SCHOOL_COURSES names no course; using the default.");
+  return raw === SCHOOL_DEFAULTS.SCHOOL_COURSES ? [] : _schoolCourses_(SCHOOL_DEFAULTS.SCHOOL_COURSES);
+}
+
+// The student-ID expression's source, or the default's if it won't compile.
+function _schoolIdPattern_(raw) {
+  try { new RegExp("^(?:" + raw + ")$"); return raw; } catch (e) {
+    Logger.log("[SCHOOL] STUDENT_ID_PATTERN is not a valid expression; using the default.");
+    return SCHOOL_DEFAULTS.STUDENT_ID_PATTERN;
+  }
+}
+
+// "yyyy-MM-dd,..." → the whole dates in it.
+function _schoolDates_(raw) {
+  return String(raw || "").split(",").map(function (d) { return d.trim(); })
+    .filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); });
+}
+
+// BELL_SCHEDULE over the defaults, part by part.
+function _schoolBell_(raw) {
+  const bell = { classMinutes: BELL_DEFAULT_CLASS_MINUTES, labels: BELL_DEFAULT_LABELS, rotation: BELL_DEFAULT_ROTATION };
+  if (raw === undefined || raw === null || String(raw).trim() === "") return bell;
+  let o;
+  try { o = typeof raw === "string" ? JSON.parse(raw) : raw; } catch (e) {
+    Logger.log("[SCHOOL] BELL_SCHEDULE is not valid JSON; using the default.");
+    return bell;
+  }
+  const cm = o && o.classMinutes;
+  if (cm && typeof cm === "object" && Object.keys(cm).length &&
+      Object.keys(cm).every(function (k) { return Array.isArray(cm[k]) && cm[k].length && cm[k].every(function (n) { return typeof n === "number" && n >= 0; }); })) {
+    bell.classMinutes = cm;
+  } else if (cm) Logger.log("[SCHOOL] BELL_SCHEDULE.classMinutes is not { name: [minutes, ...] }; using the default.");
+  if (o && o.labels && typeof o.labels === "object") bell.labels = o.labels;
+  const rot = o && o.rotation;
+  if (Array.isArray(rot) && rot.length && rot.every(function (r) {
+    return r && Array.isArray(r.byDay) && r.byDay.length === 7 && r.byDay.every(function (n) { return bell.classMinutes[n]; }) &&
+      (!r.until || /^\d{4}-\d{2}-\d{2}$/.test(r.until));
+  })) {
+    bell.rotation = rot;
+  } else if (rot) Logger.log("[SCHOOL] BELL_SCHEDULE.rotation is not [{ until, byDay: [7 schedule names] }]; using the default.");
+  return bell;
+}
+
+// The configured course codes, in order: ["8175", "8177"] by default.
+function schoolCourseCodes_() {
+  return schoolProfile_().courses.map(function (c) { return c.code; });
+}
+
+// The configured course a name names (its code in the name, or its word,
+// any case), or "".
+function schoolCourseOf_(courseName) {
   const name = String(courseName || "");
-  if (name.indexOf("8175") !== -1 || /marketing/i.test(name)) return "8175";
-  if (name.indexOf("8177") !== -1 || /management/i.test(name)) return "8177";
+  if (!name) return "";
+  const courses = schoolProfile_().courses;
+  for (let i = 0; i < courses.length; i++) {
+    const c = courses[i];
+    if (name.indexOf(c.code) !== -1) return c.code;
+    if (c.word && name.toLowerCase().indexOf(c.word.toLowerCase()) !== -1) return c.code;
+  }
   return "";
+}
+
+// A bare student ID (no @): /^(?:STUDENT_ID_PATTERN)$/. The whole account
+// is 29's _studentIdPattern_(), the ID then "@" and STUDENT_EMAIL_DOMAIN.
+function studentIdRegex_() {
+  return new RegExp("^(?:" + schoolProfile_().studentIdPattern + ")$");
+}
+
+// How messages describe a student account's ID: "7 digits" for the default
+// pattern, otherwise "the school's student ID".
+function studentIdDescription_() {
+  return schoolProfile_().studentIdPattern === SCHOOL_DEFAULTS.STUDENT_ID_PATTERN ? "7 digits" : "the school's student ID";
+}
+
+// A school day: a weekday that isn't in SCHOOL_DAYS_OFF.
+function isSchoolDay_(ymd) {
+  const day = String(ymd || "").slice(0, 10);
+  const p = day.split("-").map(Number);
+  const dow = new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay();
+  return dow !== 0 && dow !== 6 && schoolProfile_().daysOff.indexOf(day) === -1;
 }
 
 // WarmUpTextBox: one row per warm-up delivered to the dashboard, keyed by
@@ -2084,29 +2251,53 @@ function appendReflections_(ss, cfg, rows) {
 // lunch wave. Here because the lesson doc and the agenda deck are made in
 // the Central Ledger (the nightly rollout) and the Teacher Dashboard (its
 // button) alike. Pure data and arithmetic: no service is called.
-const BELL_CLASS_MINUTES = {
+// The defaults; read the school's through bellClassMinutes_() and
+// bellScheduleLabels_() (BELL_SCHEDULE, "THE SCHOOL" above).
+const BELL_DEFAULT_CLASS_MINUTES = {
   A:             [50, 100, 100, 100],
   B:             [45, 90, 95, 90],
   ACTIVITY:      [40, 80, 79, 90],
   DELAY:         [30, 65, 75, 65],
   EARLY_RELEASE: [30, 55, 55, 55],
 };
-const BELL_SCHEDULE_LABELS = {
+const BELL_DEFAULT_LABELS = {
   A: "Schedule A", B: "Schedule B", ACTIVITY: "Activity schedule",
   DELAY: "2-hour delay", EARLY_RELEASE: "3-hour early release",
 };
-const BELL_EARLY_RELEASE_2026_27 = ["2026-10-30", "2026-11-13", "2027-01-22", "2027-02-05",
-  "2027-04-23", "2027-06-03", "2027-06-04"];
+// A every day to Sept. 4; Mon/Tue A and Wed-Fri B to Nov. 20; from Nov. 23,
+// Mon/Tue/Fri A and Wed/Thu B. Each entry runs until its date (inclusive);
+// the last has none. byDay is Sunday to Saturday. (The early-release dates
+// are SCHOOL_DEFAULTS.EARLY_RELEASE_DAYS.)
+const BELL_DEFAULT_ROTATION = [
+  { until: "2026-09-04", byDay: ["A", "A", "A", "A", "A", "A", "A"] },
+  { until: "2026-11-20", byDay: ["B", "A", "A", "B", "B", "B", "B"] },
+  { until: "", byDay: ["A", "A", "A", "B", "B", "A", "A"] },
+];
+
+// The school's bell schedules: { name: [class minutes per block] }.
+function bellClassMinutes_() { return schoolProfile_().bell.classMinutes; }
+// { name: label } for the same schedules; a name without one shows itself.
+function bellScheduleLabels_() { return schoolProfile_().bell.labels; }
+function bellScheduleLabel_(name) { return bellScheduleLabels_()[name] || String(name || ""); }
+// The schedules the rotation runs on ordinary days, in first-use order
+// (["A", "B"] by default): the lesson doc's itinerary has a column for each.
+function bellRegularSchedules_() {
+  const out = [];
+  schoolProfile_().bell.rotation.forEach(function (r) {
+    r.byDay.forEach(function (n) { if (out.indexOf(n) === -1) out.push(n); });
+  });
+  return out;
+}
 
 // The days called as they come (an activity day, a delay), from ⚙ Settings
 // (SCHEDULE_DAYS, "2026-11-05=DELAY,2026-11-12=ACTIVITY"): { ymd: schedule }.
-// A day must be a whole date and the schedule one of BELL_CLASS_MINUTES'; any
+// A day must be a whole date and the schedule one of bellClassMinutes_()'s; any
 // other entry is skipped.
 function bellScheduleDays_(raw) {
   const out = {};
   String(raw || "").split(",").forEach(function (pair) {
     const m = /^\s*(\d{4}-\d{2}-\d{2})\s*=\s*([A-Z_]+)\s*$/.exec(pair.toUpperCase());
-    if (m && BELL_CLASS_MINUTES[m[2]]) out[m[1]] = m[2];
+    if (m && bellClassMinutes_()[m[2]]) out[m[1]] = m[2];
   });
   return out;
 }
@@ -2125,31 +2316,38 @@ function bellSavedDays_() {
 // Which schedule a school day ("yyyy-MM-dd") runs. `overrides` is
 // { "2026-11-05": "DELAY", ... } for the days called as they come (an
 // activity day, a delay); left out, the days saved in ⚙ Settings are used.
-// A every day to Sept. 4; Mon/Tue A and Wed-Fri B to Nov. 20; from Nov. 23,
-// Mon/Tue/Fri A and Wed/Thu B.
+// Otherwise an early-release day (EARLY_RELEASE_DAYS) runs EARLY_RELEASE,
+// and any other day its rotation entry's schedule for that weekday
+// (BELL_SCHEDULE's rotation; BELL_DEFAULT_ROTATION).
 function bellScheduleFor_(ymd, overrides) {
   const day = String(ymd || "").slice(0, 10);
   const o = overrides === undefined ? bellSavedDays_() : (overrides || {});
-  if (o[day] && BELL_CLASS_MINUTES[o[day]]) return o[day];
-  if (BELL_EARLY_RELEASE_2026_27.indexOf(day) !== -1) return "EARLY_RELEASE";
+  const minutes = bellClassMinutes_();
+  if (o[day] && minutes[o[day]]) return o[day];
+  const school = schoolProfile_();
+  if (minutes.EARLY_RELEASE && school.earlyReleaseDays.indexOf(day) !== -1) return "EARLY_RELEASE";
   const p = day.split("-").map(Number);
   const dow = new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay();
-  if (day <= "2026-09-04") return "A";
-  if (day <= "2026-11-20") return dow === 1 || dow === 2 ? "A" : "B";
-  return dow === 3 || dow === 4 ? "B" : "A";
+  const rot = school.bell.rotation;
+  for (let i = 0; i < rot.length; i++) {
+    if (!rot[i].until || day <= rot[i].until) return rot[i].byDay[dow];
+  }
+  return rot[rot.length - 1].byDay[dow];
 }
 
 // A period's block: its leading number ("1" → 1st, "3-Odd" → 3rd), or 0
-// when it names none.
+// when it names none (or more blocks than the bell schedule has).
 function bellBlockOf_(period) {
   const n = parseInt(String(period || "").trim(), 10);
-  return n >= 1 && n <= 4 ? n : 0;
+  const minutes = bellClassMinutes_();
+  const blocks = Math.max.apply(null, Object.keys(minutes).map(function (k) { return minutes[k].length; }));
+  return n >= 1 && n <= blocks ? n : 0;
 }
 
 // Class minutes for a period on a day, or 0 when the period names no block.
 function classMinutesFor_(ymd, period, overrides) {
   const block = bellBlockOf_(period);
-  return block ? BELL_CLASS_MINUTES[bellScheduleFor_(ymd, overrides)][block - 1] : 0;
+  return block ? (bellClassMinutes_()[bellScheduleFor_(ymd, overrides)][block - 1] || 0) : 0;
 }
 
 // What the class is doing in each itinerary block (55b's plan modes).

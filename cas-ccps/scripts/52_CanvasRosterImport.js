@@ -352,7 +352,7 @@ function _criParseGradebook_(text) {
     if (!rawName || /points possible/i.test(rawName) || /^student,\s*test$|^test student$/i.test(rawName)) return;
     const sisLogin = String(r[iLogin] || "").trim();
     let account = sisLogin.toLowerCase();
-    if (/^\d{7}$/.test(account)) account += "@" + domain;
+    if (studentIdRegex_().test(account)) account += "@" + domain;
     const parts = rawName.split(",");
     const name = parts.length === 2 ? (parts[1].trim() + " " + parts[0].trim()) : rawName;
     out.push({ name: name, sisLogin: sisLogin, account: account,

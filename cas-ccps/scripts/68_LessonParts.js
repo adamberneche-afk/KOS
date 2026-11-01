@@ -38,11 +38,11 @@ const LP_JOB = "unlockReadyParts";
 // so the next part can't unlock on its own; flagged once a full school day
 // has passed since the submit (meta/STUDENT_WORK_PLAN_2026-10.md, "What
 // reaches the teacher anyway"; dead-ends audit #5). The teacher unlocks it
-// (07's "Open Part n now"). School days are weekdays here: the district's
-// calendar isn't in code yet (packaging step 1).
+// (07's "Open Part n now"). School days are weekdays not listed in
+// SCHOOL_DAYS_OFF (00's isSchoolDay_; packaging step 1).
 const LP_FAILED_CHECK_STATUSES = ["ERROR_TIMEOUT", "ERROR_EVALUATION"];
 
-// Whole weekdays strictly between the failed submit's day and today: 0 the
+// Whole school days strictly between the failed submit's day and today: 0 the
 // same day or the next, 1 once a school day has fully passed.
 function partHeldSchoolDays_(failedAtMs, now) {
   if (!failedAtMs || isNaN(failedAtMs)) return 0;
@@ -51,7 +51,8 @@ function partHeldSchoolDays_(failedAtMs, now) {
   const d = day(new Date(failedAtMs));
   let n = 0;
   for (d.setDate(d.getDate() + 1); d < today && n < 60; d.setDate(d.getDate() + 1)) {
-    if (d.getDay() !== 0 && d.getDay() !== 6) n++;
+    const ymd = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+    if (isSchoolDay_(ymd)) n++; // 00: a weekday not in SCHOOL_DAYS_OFF
   }
   return n;
 }

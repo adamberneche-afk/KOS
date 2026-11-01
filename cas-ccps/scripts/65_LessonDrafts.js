@@ -55,7 +55,6 @@ LD_HEADERS.forEach(function (h, i) { LD[h.toUpperCase()] = i; });
 
 const LD_TEXT_FIELDS = ["promptText", "warmupAnchor", "objective", "vocabulary", "title", "activity", "brief"];
 const LD_NEW_REQUIRED = ["title", "objective", "activity", "warmupAnchor", "vocabulary"];
-const LD_COURSES = ["8175", "8177"];
 const LD_REQUIRED_TEXT = ["promptText", "warmupAnchor", "objective"];
 const LD_FIELD_LABELS = {
   promptText: "Student task", warmupAnchor: "Warm-up anchor", objective: "Objective", vocabulary: "Vocabulary",
@@ -103,7 +102,7 @@ function getLessonEditor(lessonKey) {
 function getNewLessonEditor(course) {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
-  if (LD_COURSES.indexOf(String(course)) === -1) return { success: false, error: "No course " + course + "." };
+  if (schoolCourseCodes_().indexOf(String(course)) === -1) return { success: false, error: "No course " + course + "." };
   return _ldNewEditor_(String(course), null);
 }
 
@@ -187,7 +186,7 @@ function saveLessonDraft(payload) {
 // change between saves).
 function _ldSaveNew_(cfg, p) {
   const course = String(p.course || "").trim();
-  if (LD_COURSES.indexOf(course) === -1) return { success: false, error: "No course " + course + "." };
+  if (schoolCourseCodes_().indexOf(course) === -1) return { success: false, error: "No course " + course + "." };
   const fields = _ldCleanFields_(p.fields || {});
   const email = _ldEmailIn_(fields, p.reason);
   if (email) return { success: false, error: email };
@@ -226,22 +225,24 @@ function _ldSaveNew_(cfg, p) {
   });
 }
 
-// 8175: the next lesson number no lesson or open draft has. 8177: the
-// builder's slug of the title (lessons/8177/<slug>.md).
+// A course whose lessons are numbered (8175: "8175-L06") gets the next
+// number no lesson or open draft has. Any other course (8177) gets the
+// builder's slug of the title (lessons/<course>/<slug>.md).
 function _ldNewKey_(course, title, keep, otherDrafts) {
   const open = otherDrafts.filter(function (r) { return ["MERGED", "WITHDRAWN"].indexOf(r.status) === -1; })
     .map(function (r) { return r.lessonKey; });
-  if (course === "8175") {
+  const numbered = new RegExp("^" + course + "-L(\\d+)$");
+  if (Object.keys(LESSON_ASSIGNMENTS).some(function (k) { return numbered.test(k); })) {
     if (keep) return keep;
     let n = 0;
     Object.keys(LESSON_ASSIGNMENTS).concat(open).forEach(function (k) {
-      const m = /^8175-L(\d+)$/.exec(k);
+      const m = numbered.exec(k);
       if (m) n = Math.max(n, Number(m[1]));
     });
-    return "8175-L" + String(n + 1).padStart(2, "0");
+    return course + "-L" + String(n + 1).padStart(2, "0");
   }
   const slug = String(title || "").toLowerCase().replace(/&/g, " ").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-  return "8177-" + (slug || "untitled");
+  return course + "-" + (slug || "untitled");
 }
 
 /** SUBMITTED, but only with every required field and tiers that pass; otherwise the list of what to fix. */
@@ -337,7 +338,7 @@ function _ldCheckNew_(course, key, fields, catalog, otherDrafts) {
   if (typeof LESSON_ASSIGNMENTS !== "undefined" && LESSON_ASSIGNMENTS[key]) {
     issues.push("A lesson " + key + " already exists; give the new one another title.");
   }
-  if (key === "8177-untitled") issues.push("Title is empty.");
+  if (/-untitled$/.test(key)) issues.push("Title is empty.");
   (otherDrafts || []).forEach(function (r) {
     if (r.lessonKey === key && ["MERGED", "WITHDRAWN"].indexOf(r.status) === -1) {
       issues.push("Another open draft is for " + key + "; give this one another title.");

@@ -1411,8 +1411,14 @@ function saveSettings(changes, ends, days) {
   return _tdSettings_(cfg);
 }
 
-// The schedules a day can be set to in ⚙ Settings, in the order offered.
-const TD_SCHEDULE_DAY_CHOICES = ["ACTIVITY", "DELAY", "EARLY_RELEASE", "A", "B"];
+// The schedules a day can be set to in ⚙ Settings, in the order offered:
+// these first when the school's bell schedule has them, then its others.
+const TD_SCHEDULE_DAY_ORDER = ["ACTIVITY", "DELAY", "EARLY_RELEASE", "A", "B"];
+function _tdScheduleDayChoices_() {
+  const names = Object.keys(bellClassMinutes_());
+  return TD_SCHEDULE_DAY_ORDER.filter(function (n) { return names.indexOf(n) !== -1; })
+    .concat(names.filter(function (n) { return TD_SCHEDULE_DAY_ORDER.indexOf(n) === -1; }));
+}
 
 // [{ date, schedule }] -> { value: "2026-11-05=DELAY,..." } (dates in
 // order; "(none)" is stored as no days) or { error }.
@@ -1423,7 +1429,7 @@ function _tdScheduleDaysValue_(days) {
     const date = String((days[i] && days[i].date) || "").trim();
     const sched = String((days[i] && days[i].schedule) || "").trim().toUpperCase();
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Each activity or delay day needs a whole date (yyyy-mm-dd)." };
-    if (TD_SCHEDULE_DAY_CHOICES.indexOf(sched) === -1) return { error: "Choose a schedule for " + date + "." };
+    if (_tdScheduleDayChoices_().indexOf(sched) === -1) return { error: "Choose a schedule for " + date + "." };
     if (seen[date]) return { error: date + " is listed twice." };
     seen[date] = true;
     list.push(date + "=" + sched);
@@ -1544,7 +1550,7 @@ function _tdSettings_(cfg) {
     },
     scheduleDays: {
       days: Object.keys(sdMap).sort().map(function (d) { return { date: d, schedule: sdMap[d] }; }),
-      choices: TD_SCHEDULE_DAY_CHOICES.map(function (c) { return { code: c, label: BELL_SCHEDULE_LABELS[c] }; }),
+      choices: _tdScheduleDayChoices_().map(function (c) { return { code: c, label: bellScheduleLabel_(c) }; }),
       overriddenHere: resolved.sources.SCHEDULE_DAYS === "Script Property",
     },
     log: log,
@@ -2219,7 +2225,7 @@ function _tdFlagReason_(ledgerStatus) {
 function _tdWhoForLog_(email) {
   const e = String(email || "").trim();
   if (!e) return "unknown";
-  return /^\d{7}@/.test(e) ? "a student account" : e;
+  return e.indexOf("@") > 0 && studentIdRegex_().test(e.split("@")[0]) ? "a student account" : e;
 }
 
 function resolveClass_(display) {

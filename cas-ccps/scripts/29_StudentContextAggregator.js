@@ -49,13 +49,13 @@
 let _studentEmailDomainMemo_ = "";
 let _studentIdPatternMemo_ = null;
 function _studentEmailDomain_() {
-  if (!_studentEmailDomainMemo_) _studentEmailDomainMemo_ = getConfig_().studentEmailDomain || "ccpsnet.net";
+  if (!_studentEmailDomainMemo_) _studentEmailDomainMemo_ = schoolProfile_().studentEmailDomain;
   return _studentEmailDomainMemo_;
 }
 function _studentIdPattern_() {
   if (!_studentIdPatternMemo_) {
     const escapedDomain = _studentEmailDomain_().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    _studentIdPatternMemo_ = new RegExp("^\\d{7}@" + escapedDomain + "$");
+    _studentIdPatternMemo_ = new RegExp("^(?:" + schoolProfile_().studentIdPattern + ")@" + escapedDomain + "$");
   }
   return _studentIdPatternMemo_;
 }
@@ -264,7 +264,7 @@ function buildValidatedStudentRoster_(ledgerSheet) {
     if (!_studentIdPattern_().test(email)) {
       if (!invalidSeen.has(email)) {
         Logger.log("[S29] Invalid GoogleID format, excluded from roster: Ledger row " + (i + 1) +
-          " (expected 7 digits @ccpsnet.net)");
+          " (expected " + studentIdDescription_() + " @" + _studentEmailDomain_() + ")");
         invalidSeen.add(email);
       }
       continue;
@@ -410,7 +410,7 @@ function getWeeklyWarmUps_(warmUpSheet, windowStart) {
     // (see WarmUpResponseForm_setup.md) to keep the form itself free of
     // any Apps Script. Normalize to the full school address here, before
     // validation, rather than requiring the form to produce it.
-    if (/^\d{7}$/.test(email)) {
+    if (studentIdRegex_().test(email)) {
       email = email + "@" + _studentEmailDomain_();
     }
 

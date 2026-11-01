@@ -471,7 +471,7 @@ function wfbBaselineQuestion_(n) {
 
 function wfbBuildBaselineFields_(lesson, profile, n) {
   const sk = WFB_BASELINE_SKILLS[n];
-  const course = courseCodeFromName_(lesson.course_name) || "8175";
+  const course = courseCodeFromName_(lesson.course_name) || schoolCourseCodes_()[0] || "";
   return {
     mode: "C",
     archetype: WFB_ARCHETYPE_BASELINE,
