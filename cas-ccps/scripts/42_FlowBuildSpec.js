@@ -202,15 +202,19 @@ function _fbsAppendFlow2_(rows) {
 // Flows 3, 4 and 5 — one materialized input tab each, all three returning
 // through one shared tab.
 function _fbsAppendWarmUpFlows_(rows) {
+  // Flow 5 (the bridge) is RETIRED, merged into Flow 3 (2026-11-01): one row
+  // says so, and nothing is listed to build.
+  rows.push(["Flow 5", "retired", WFB_INPUT_TABS[5], "", "", "41_WarmUpFlowBridge.js",
+    "RETIRED 2026-11-01: Flow 3 writes the lead-in now. Turn Flow 5 off in Studio (or delete " +
+    "it); nothing writes " + WFB_INPUT_TABS[5] + " any more, and its old rows stay for retention."]);
   const specs = [
-    { flow: 5, headers: WFB_FLOW5_HEADERS, prompt: "FLOW_5",
-      note: "Bridging. Its three inputs all come out of one lesson_context_snapshot blob, " +
-        "which is why this materializer exists." },
     { flow: 3, headers: WFB_FLOW3_HEADERS, prompt: "FLOW_3_MODE_A/B/C",
       note: "Warm-Up Generation. Mode is materialized: A when a warmup_anchor exists, B " +
         "otherwise, C for a student's baseline warm-ups on competencies 1–22 (D6). The " +
         "PromptText column carries the matching prompt, already filled in: the Gemini step " +
-        "reads that chip, so a new mode needs no Studio change." },
+        "reads that chip, so a new mode needs no Studio change. Since 2026-11-01 (Flow 5 merged " +
+        "in) the answer may start with a LEAD-IN: line before WARM-UP:; the harvest splits them, " +
+        "so the return binding is unchanged." },
     { flow: 4, headers: WFB_FLOW4_HEADERS, prompt: "FLOW_4",
       note: "Warm-Up Scoring. OriginalPromptText is extracted from the student's doc by " +
         "evaluateWarmUpDoc_, not reconstructed from the snapshot — so it is the exact text " +
@@ -235,7 +239,7 @@ function _fbsAppendWarmUpFlows_(rows) {
       "Alternative to the PromptText chip above."]);
   });
 
-  rows.push(["Flows 3/4/5", "narrative", "", "", "",
+  rows.push(["Flows 3/4", "narrative", "", "", "",
     "cas-ccps/docs/CAS_Flow3_Flow4_Specification.html",
     "Connector names, Gemini settings and the archetype decision table's reasoning. NOTE: " +
     "the five custom steps that spec's connector tables call for are BLOCKED on this " +
@@ -249,7 +253,7 @@ function _fbsAppendReturnSurface_(rows) {
     const flowWrites = i <= WFB_RET.RAW_OUTPUT;
     let note;
     if (i === WFB_RET.FLOW) {
-      note = "The literal 3, 4 or 5 — not a name. The harvest skips any other value.";
+      note = "The literal 3 or 4 — not a name (5 was the retired bridge flow). The harvest skips any other value.";
     } else if (i === WFB_RET.QUEUE_ID) {
       note = "From the trigger row's QueueID. Never a row number: the harvest matches on it.";
     } else if (i === WFB_RET.RAW_OUTPUT) {

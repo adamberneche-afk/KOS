@@ -304,7 +304,9 @@ function installFlow2Fixture() {
 // Flows 3, 4, 5 — WarmUpQueue, one row parked at each Studio-watched status.
 //
 // Real status machine (confirmed against the code, not the summary docs):
-//   PENDING_BRIDGE --Flow 5--> PENDING --Flow 3--> DELIVERED
+//   PENDING --Flow 3--> DELIVERED
+// (Until 2026-11-01 a returning student started at PENDING_BRIDGE for
+// Flow 5's bridge; Flow 5 is merged into Flow 3, which writes the lead-in.)
 //     --25_WarmUpWriter.js runWarmUpEvaluation()--> PENDING_EVAL
 //     --Flow 4--> SCORED
 //
@@ -432,9 +434,8 @@ function installWarmUpFixtures() {
     shadow_archetype_note: null,
   };
 
-  // Flow 5's row carries the prior-response fields buildWarmUpQueues() only
-  // adds for a RETURNING student — that's precisely what makes a row start at
-  // PENDING_BRIDGE instead of PENDING.
+  // The F3L row carries the prior-response fields buildWarmUpQueues() only
+  // adds for a RETURNING student: Flow 3 answers it with a lead-in.
   const ctxWithPrior = Object.assign({}, ctxBase, {
     flow5_prior_response:
       "FIXTURE PRIOR RESPONSE — I picked families with young children because " +
@@ -444,7 +445,7 @@ function installWarmUpFixtures() {
   });
 
   const specs = [
-    { suffix: "F5", status: "PENDING_BRIDGE", ctx: ctxWithPrior, response: "" },
+    { suffix: "F3L", status: "PENDING", ctx: ctxWithPrior, response: "" },
     { suffix: "F3", status: "PENDING", ctx: ctxBase, response: "" },
     // withDoc: Flow 4's materialization refuses a row with no Doc_ID, and
     // reads the original prompt out of the doc via evaluateWarmUpDoc_(). A
@@ -549,8 +550,8 @@ function checkFlowFixtures() {
     FI.STUDENT_EMAIL, FX_STUDENT_EMAIL, "READY", FI.READY_STATUS);
 
   const wq = ledgerSs.getSheetByName(cfg.tabs.warmUpQueue || "WarmUpQueue");
-  check("Flow 5 — WarmUpQueue PENDING_BRIDGE", wq,
-    WQ24_QUEUE_ID, FX_QUEUE_PREFIX + "F5", "PENDING_BRIDGE", WQ24_STATUS);
+  check("Flow 3 (lead-in) — WarmUpQueue PENDING", wq,
+    WQ24_QUEUE_ID, FX_QUEUE_PREFIX + "F3L", "PENDING", WQ24_STATUS);
   check("Flow 3 — WarmUpQueue PENDING", wq,
     WQ24_QUEUE_ID, FX_QUEUE_PREFIX + "F3", "PENDING", WQ24_STATUS);
   check("Flow 4 — WarmUpQueue PENDING_EVAL", wq,
