@@ -47,7 +47,9 @@ operator. This file holds what comes after them.
   focus return and Tab trapping were already in every panel (`_openPanel`,
   2026-10-22); the roster's **📭 n haven't submitted yet** filter and the
   warm-up save that locks only its write (13) were built.
-- **The bridge paragraph (Flow 5): keep, enrich, merge or drop** (2026-10-21,
+- ~~**The bridge paragraph (Flow 5): keep, enrich, merge or drop**~~ **Decided
+  2026-11-01: merged into Flow 3** (Flow 3 writes the lead-in; Flow 5 retired;
+  turn it off in Studio). (2026-10-21,
   from the operator's questions). Flow 5 writes 2–3 sentences above a new
   warm-up linking the student's last answer to the lesson. Today it adds
   little: only students with an earlier answer get one (3 answered on

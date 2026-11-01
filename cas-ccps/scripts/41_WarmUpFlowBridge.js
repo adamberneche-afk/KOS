@@ -2369,10 +2369,11 @@ function runWarmUpFlowCanary() {
     step("a fenced Flow 4 payload parses",
       JSON.parse(wfbStripFence_("```json\n{\"grammar\":2}\n```")).grammar === 2, "");
 
-    // Flow 5 end to end, which needs no Drive access: bridge text in, col 20
-    // and PENDING out.
+    // Flow 5 merged into Flow 3 (2026-11-01). A row left at PENDING_BRIDGE
+    // becomes a Flow 3 input whose prompt carries the last answer, and Flow
+    // 3's answer splits into the lead-in and the warm-up. No Drive access.
     const snapshot = JSON.stringify({
-      flow5_prior_response: "prior", pacing_prior_connection: "connects", course_name: "CAS",
+      flow5_prior_response: "CANARY-PRIOR-ANSWER", pacing_prior_connection: "connects", course_name: "CAS",
     });
     const wqRow = [];
     for (let i = 0; i < WQ25_COL_COUNT; i++) wqRow.push("");
@@ -2380,38 +2381,26 @@ function runWarmUpFlowCanary() {
     wqRow[WQ25_LESSON_CTX_SNAP] = snapshot;
     wqRow[WQ25_STATUS] = "PENDING_BRIDGE";
     wqRow[WQ25_STUDENT_NAME] = "Canary Student";
+    // .invalid keeps it on lesson warm-ups (Mode A/B), as the fixture
+    // student does; a new student's baseline warm-up (Mode C) has no lead-in.
+    wqRow[WQ25_GOOGLE_ID] = "canary-student@example.invalid";
     wqSheet.appendRow(wqRow);
 
     const built = buildWarmUpFlowInputs();
-    step("buildWarmUpFlowInputs materialized a Flow 5 row", built.flow5 >= 1, JSON.stringify(built));
+    const f3Tab = wfbLedger_().ss.getSheetByName(WFB_INPUT_TABS[3]);
+    const f3Rows = f3Tab && f3Tab.getLastRow() > 1
+      ? f3Tab.getRange(2, 1, f3Tab.getLastRow() - 1, WFB_FLOW3_HEADERS.length).getValues() : [];
+    const mine = f3Rows.filter(function (r) { return String(r[1]).trim() === queueId; })[0];
+    step("a PENDING_BRIDGE row becomes a Flow 3 input, its prompt carrying the last answer",
+      !!mine && String(mine[WFB_FLOW3_HEADERS.length - 1]).indexOf("CANARY-PRIOR-ANSWER") !== -1,
+      JSON.stringify(built));
 
-    // References the snapshot's own "connects" text deliberately — not
-    // decoration. The plausibility gate added to wfbApplyFlow5_ checks the
-    // bridge paragraph against this row's own lesson snapshot, and a purely
-    // generic bridge paragraph with no reference to it is exactly what that
-    // gate now flags as SUSPECT_FABRICATION.
-    returns.appendRow([new Date(), 5, queueId,
-      "A bridge paragraph that connects today's lesson to what came before.", "", 0, ""]);
-    const harvested = harvestWarmUpFlowReturns();
-    step("harvest applied the Flow 5 return", harvested.applied >= 1, JSON.stringify(harvested));
-
-    const after = wfbFindQueueRow_(wqSheet, queueId);
-    step("bridge output written and status advanced to PENDING",
-      after && String(after.row[WQ25_STATUS]).trim() === "PENDING" &&
-      String(after.row[WQ25_BRIDGE_OUTPUT]).indexOf("bridge paragraph") !== -1,
-      after ? String(after.row[WQ25_STATUS]) : "row missing");
-
-    returns.appendRow([new Date(), 5, queueId,
-      "A stale second bridge that also connects to what came before.", "", 0, ""]);
-    harvestWarmUpFlowReturns();
-    const afterDup = wfbFindQueueRow_(wqSheet, queueId);
-    // Reads the QUEUE row, not the return row — an earlier draft of this
-    // assertion indexed a WarmUpQueue row with WFB_RET constants, which
-    // would have passed for the wrong reason.
-    step("a duplicate return does not overwrite the first",
-      afterDup && String(afterDup.row[WQ25_BRIDGE_OUTPUT]).indexOf("bridge paragraph") !== -1 &&
-      String(afterDup.row[WQ25_BRIDGE_OUTPUT]).indexOf("stale second") === -1,
-      afterDup ? String(afterDup.row[WQ25_BRIDGE_OUTPUT]) : "row missing");
+    const split = wfbSplitLeadIn_("LEAD-IN: You said before that prices rise.\nWARM-UP: Why would a fan pay more?");
+    step("Flow 3's answer splits into the lead-in and the warm-up",
+      split.leadIn === "You said before that prices rise." && split.warmUp === "Why would a fan pay more?",
+      JSON.stringify(split));
+    step("an answer without labels is all warm-up",
+      wfbSplitLeadIn_("Why would a fan pay more?").leadIn === "", "");
   } catch (e) {
     step("canary ran without throwing", false, e.message);
   } finally {
