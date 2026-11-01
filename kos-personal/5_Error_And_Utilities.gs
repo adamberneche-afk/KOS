@@ -836,6 +836,13 @@ function _getOrCreateSheet(ss, name) {
     'VectorClassifyInput': [
       'Timestamp','Payload_UID','Payload_Type','File_ID','SourceText','Status',
     ],
+    // The Registrar's two flows (24_RegistrarFlows.gs, D14): the two input
+    // tabs and the return tab. Literals for the reason above; the same as
+    // RG_INPUT_HEADERS / RG_RETURN_HEADERS there, which
+    // tests/kos-personal/registrar-flows.test.js holds them to.
+    'RegistrarStage1Input': ['Timestamp','Release_ID','File_ID','SourceText','Status'],
+    'RegistrarStage2Input': ['Timestamp','Release_ID','File_ID','SourceText','Status'],
+    'REGISTRAR_RETURN': ['Returned_At','Release_ID','Output_JSON','Harvest_Status','Error'],
     'STAGING_ARCHIVE': [
       'Archived_At','Timestamp','Payload_UID','Payload_Type',
       'Doc_URL','File_ID','Status','Retry_Count',

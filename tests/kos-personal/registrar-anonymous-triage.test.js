@@ -10,7 +10,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const KP = path.join(__dirname, '..', '..', 'kos-personal');
-const FILES = ['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '11_Registrar_CogRelay.gs']
+const FILES = ['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '11_Registrar_CogRelay.gs', '12_StudioReturnHarvest.gs', '24_RegistrarFlows.gs']
   .map((f) => path.join(KP, f));
 
 test('the triage keeps a role and scrubs emails, IDs and percentages', () => {
