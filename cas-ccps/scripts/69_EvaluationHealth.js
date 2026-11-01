@@ -35,6 +35,11 @@ const EH_HEADERS = ["WeekOf", "Course", "Checks", "Passed", "NeedsRevision", "Er
   "ErrorSuspectFabrication", "ErrorHarvestFailed", "ErrorOther", "NeverReturned", "FailureRate",
   "WaitMedianMin", "WaitSlowestTenthMin", "StudentLessons", "DraftsPerStudentLesson", "MostDrafts",
   "WarmUpsDelivered", "WarmUpsAnswered", "WarmUpAnswerRate", "UpdatedAt"];
+// WarmUpQueue's lesson_context_snapshot column (25's WQ25_LESSON_CTX_SNAP):
+// the course is its course_name. Column 1 is the lesson ID (LES-...), which
+// names no course; until 2026-11-01 this read column 1, so every warm-up
+// counted under "(unknown)".
+const EH_WQ_SNAPSHOT = 6;
 // D8's bar: split more lessons if fewer than about 1 in 20 checks fail.
 const EH_D8_FAILURE_BAR = 0.05;
 
@@ -107,7 +112,9 @@ function evaluationHealth_(opts) {
     wq.getRange(2, 1, wq.getLastRow() - 1, WQ_TIMING.ANSWERED_AT + 1).getValues().forEach(function (r) {
       const at = sheetTimestampMs_(r[WQ_TIMING.DELIVERED_AT]);
       if (!r[WQ_TIMING.DELIVERED_AT] || !inWindow(at)) return;
-      const c = cell(_ehWeekKey_(at), warmUpCourseCode_(r[1]) || "(unknown)");
+      let courseName = "";
+      try { courseName = String(JSON.parse(String(r[EH_WQ_SNAPSHOT] || "{}")).course_name || ""); } catch (e) { courseName = ""; }
+      const c = cell(_ehWeekKey_(at), warmUpCourseCode_(courseName) || "(unknown)");
       c.delivered++;
       if (String(r[WQ_TIMING.ANSWERED_AT] || "").trim()) c.answered++;
     });
