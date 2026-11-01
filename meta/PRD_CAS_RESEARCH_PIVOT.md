@@ -1,5 +1,14 @@
 # PRD: CAS-CCPS Research-Alignment Pivot (revised)
 
+> **Status (D16, 2026-11-01):** Phase 0 done. Phase 1's gate (the first real
+> week of Flow 2) passed weeks ago, but no plan picked the rest up. P1-02's
+> first block, Flow 2's checks and results per course, is covered by
+> `reportEvaluationHealth()` (`69_EvaluationHealth.js`, 2026-11-01; per
+> course and week, without the "<5" cell rule, since it stays in the Central
+> Ledger). The rest of P1-02 (SCR decisions by review mode, the archetype
+> mix, the success metrics) and everything else past Phase 0 is **parked**:
+> a later plan has to choose it before it is work.
+
 Oct 10, 2026 · revision of the Oct 9 draft, checked against the repo at `cdcc6f3` (1,567 tests passing)
 
 ## Overview

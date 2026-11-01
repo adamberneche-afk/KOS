@@ -63,7 +63,10 @@ function _studentIdPattern_() {
 // StudentDocRegistry column indices (SDR_*) live in 00_SharedConfig.js
 // (2026-10-27), so the Student Dashboard can find a student's doc too.
 
-// WarmUpResponses column indices (0-based) — canonical order
+// WarmUpResponses column indices (0-based) — canonical order. Its Google
+// Form is RETIRED (D16, 2026-11-01; forms/WarmUpResponseForm_setup.md):
+// warm-ups come from the text box below (getWeeklyTextBoxWarmUps_). This
+// tab is still read so its old rows keep showing.
 // This tab is the backing sheet for the student-facing Warm-Up Response form.
 const WUR_TIMESTAMP = 0;
 const WUR_STUDENT_EMAIL = 1;
@@ -942,15 +945,4 @@ function previewStudentContextDocs() {
 function buildStudentContextDocsNow() {
   requireScriptOwner_();
   return _s29Run_({});
-}
-
-// ---------------------------------------------------------------------------
-// runStudentAggregationNow_ — MANUAL TESTING ONLY
-// Identical to the trigger entry point but callable directly from the
-// Script Editor for testing without waiting a week. Not wired to any
-// trigger or client call — exists purely for verification during setup.
-// ---------------------------------------------------------------------------
-function runStudentAggregationNow_() {
-  Logger.log("[S29] Manual test run invoked — identical logic to the weekly trigger.");
-  runWeeklyStudentAggregation_();
 }

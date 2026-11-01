@@ -229,14 +229,16 @@ test('a competency ID missing from the rubric tab is noted, not silently dropped
   assert.match(text, /not found in the competency registry/);
 });
 
-test('the warm-up section always appears with a labeled placeholder, never a fabricated value', () => {
+// D16 (2026-11-01): the placeholder section promised a value it never had,
+// so the frame has no warm-up section now, and never a fabricated one.
+test('the frame has no warm-up section: no placeholder, never a fabricated value', () => {
   const { exported, sandbox } = load();
   const fx = setUpFixture(sandbox);
   submitLesson(exported);
   const row = lcRow(fx.lc);
   const text = docTextFor(sandbox, row[15]);
-  assert.match(text, /Suggested Warm-Up/);
-  assert.match(text, /Generated separately by the nightly warm-up flow/);
+  assert.doesNotMatch(text, /Suggested Warm-Up/);
+  assert.doesNotMatch(text, /Generated separately by the nightly warm-up flow/);
 });
 
 // ── Registration ─────────────────────────────────────────────────────────

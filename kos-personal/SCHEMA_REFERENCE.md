@@ -178,7 +178,7 @@ skips intake rows and counts a log's chunks as one session.
 
 ### MATRIX_LEDGER
 
-Calibrated vector scores per session. Primary audit trail for domain weighting.
+Calibrated vector scores per session. Primary audit trail for domain weighting. **Audit log (D16, 2026-11-01):** written, never read by code; kept as history for you to read.
 
 | Col | Name | Type | Description |
 |---|---|---|---|
@@ -267,7 +267,7 @@ Column order matches `CFG.REGISTRAR_COLS` exactly.
 
 ### ACTION_REGISTER
 
-All action items extracted from sessions.
+All action items extracted from sessions. **Audit log (D16, 2026-11-01):** written, never read by code; kept as history for you to read.
 
 | Col | Name | Type | Description |
 |---|---|---|---|
@@ -328,7 +328,7 @@ mutation.
 
 ### EXECUTION_LEDGER
 
-Audit log of all files processed by the Semantic Sweeper.
+Audit log of all files processed by the Semantic Sweeper. **Audit log (D16, 2026-11-01):** written, never read by code; kept as history for you to read.
 
 | Col | Name | Type | Description |
 |---|---|---|---|
@@ -342,7 +342,7 @@ Audit log of all files processed by the Semantic Sweeper.
 
 ### ONBOARDING_TRACKER
 
-Day-by-day log of onboarding milestones.
+Day-by-day log of onboarding milestones. **Audit log (D16, 2026-11-01):** written, never read by code; kept as history for you to read.
 
 | Col | Name | Type | Description |
 |---|---|---|---|
@@ -489,13 +489,11 @@ run; never edit them by hand.
 
 ### Inference_Buffer
 
-Provisioned by `deployFullSystem()` (`1_Config_And_Deploy.gs`, via
-`CFG.INFERENCE_BUFFER_SHEET`) and given headers by the schema map in
-`5_Error_And_Utilities.gs`. **Legacy — kept for backward compatibility
-with pre-v8 deployments; nothing in the current pipeline reads or writes
-rows here.** Documented because a real deployment will have the tab and a
-reader who doesn't find it here would reasonably assume it was created by
-something else.
+**Not created since 2026-11-01** (dead-ends audit): `deployFullSystem()`
+used to provision it (`CFG.INFERENCE_BUFFER_SHEET`), and nothing ever read
+or wrote its rows. An older deployment still has the tab; it can be
+deleted. Documented because a reader who finds it would otherwise assume
+something current made it.
 
 | Col | Name | Type | Description |
 |---|---|---|---|

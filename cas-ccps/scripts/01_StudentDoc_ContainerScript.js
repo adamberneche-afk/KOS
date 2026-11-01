@@ -1,6 +1,12 @@
 // =============================================================================
 // FILE: 01_StudentDoc_ContainerScript.js
 // BOUND TO: Master Student Template Google Doc (container-bound)
+//
+// STATUS (D16, 2026-11-01): UNREACHABLE FOR STUDENTS. The district doesn't
+// let students run Apps Script, so this doc menu never works for them; they
+// submit from the Student Dashboard (13). Kept because each student doc is a
+// copy of the template this is bound to, and its menu still works for the
+// teacher. Don't build student features here.
 // =============================================================================
 
 // Document zone markers

@@ -82,6 +82,23 @@ the August codebase review (North Star).
 
 ## Built and parked: decide, then mark it (D16)
 
+**Decided 2026-11-01 (D16, the operator took every leaning) and marked in
+clean-up PR 2:** #13 `EVALUATION_MODE` no longer shown as a switch, 15c
+marked a parked fallback (the opt-in guard stays; its tests use it). #14
+inference service DORMANT, its Dependabot bumps off (closing #291–#294 is a
+separate step). #15 drive steward PARKED. #16 leader-hub's AI flows marked
+**unverified since 2026-09-05**, not parked: `leader-hub/HISTORY.md` records
+all six verified live that day, so this row overstated it; run
+`checkAiFlowFixtures()` and park them if they fail. #17 the CAS link parked
+until `checkCasServerSignIn()` passes. #18 frames kept for hand-logged
+lessons, their placeholder warm-up section removed. #19 the student doc menu
+marked unreachable for students. #20 the WarmUpResponses form RETIRED (the
+operator turns off "Accepting responses"); 29 still reads its old rows. #21
+kos-personal's menu marked editor-only, its items listed in the README. #22
+the four tabs kept as audit logs. #23 Flow 5: Monday's planning. #24
+unchanged. #25 the PRD's status line (P1-02's checks block is
+`reportEvaluationHealth`; the rest parked). #26 dropped. #27 fine as is.
+
 Each of these is built, or half built, and nothing uses it today. Each
 needs one line of decision, then a "parked" or "dropped" marker where it
 lives, so it stops reading as live work.
@@ -105,6 +122,14 @@ lives, so it stops reading as live work.
 | 27 | The sandbox deploy job (CI): skipped on every push, its secrets unset (declared optional) | Fine as is, or set it up with packaging step 4 |
 
 ## Dead weight: remove (one clean-up PR, no behaviour change)
+
+**Done 2026-11-01 (clean-up PR 2),** with two departures: the shadow
+matrix's two values are constants in 00 rather than config reads (23 uses
+them per student, and `getConfig_()` reads every Script Property); and
+`ParentReportLog`'s `recipient_address` column and the Sentinel's fallback
+that reads it stay, because rows from before 2026-10-23 can hold a real
+parent address (00's comment on the tab now says so). `Inference_Buffer` is
+no longer created; an existing tab can be deleted by hand.
 
 - cas-ccps config fields never read: `shadowMatrixConfidenceThreshold`,
   `shadowMatrixDecayFactor` (23 and 25 hard-code the same values; read

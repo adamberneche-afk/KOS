@@ -1,5 +1,9 @@
 # Drive Steward — Deployment Package
 
+> **PARKED (D16, 2026-11-01).** Never run against a real Drive, and not linted
+> (no project in `tools/gas-lint/project-map.json`). Kept as written; nothing
+> here is live or scheduled. Decide again before deploying it.
+
 ## What this is
 
 `../Drive_Steward_Methodology_and_Prompt.md` is the methodology — the

@@ -550,6 +550,10 @@ health-check surface.
 
 ## Phase 4 — Curator/Auditor Studio Flow split
 
+> **DROPPED (D16, 2026-11-01).** Not scheduled by any plan, and the
+> Curator's Auditor pass runs as one Flow without trouble. Kept below as
+> the reasoning, should the split ever be wanted.
+
 *(your other idea — the biggest item in this sprint, and the only one that
 isn't just a PR.)*
 

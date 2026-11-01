@@ -1,5 +1,11 @@
 # Warm-Up Response Form — Setup Specification
 
+> **RETIRED (D16, 2026-11-01).** Warm-ups are answered in the Student
+> Dashboard's text box (`WARMUP_TEXT_BOX`), and Student Context reads those
+> (29, since #288). Don't set this form up. On a deployment that has it,
+> turn off "Accepting responses"; the WarmUpResponses tab keeps its old rows
+> and 29 still reads them, until the retention schedule (57) ages them out.
+
 ## Purpose
 Backs the WarmUpResponses tab that Script 29 (Student Context Aggregator)
 reads from. This is the student-facing capture point for warm-up answers
