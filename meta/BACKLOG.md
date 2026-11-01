@@ -169,8 +169,12 @@ the dead-ends audit's backlog fixes):
   #337 on 10-29); reading one report in full is in `PLAN_2026-11.md`'s
   window for the week of Nov 2.
 
-- **Family Mail Sentinel redaction rework.** **Promoted 2026-11-01** into
-  `PLAN_2026-11.md`'s window (the agent builds it). Keep the patch's new phrases
+- ~~**Family Mail Sentinel redaction rework.**~~ **Built 2026-11-01**: the
+  teacher's `Nicknames` tab in place of automatic prefixes; names found in
+  straight or curly quotes and before a possessive; two-letter names, less
+  common two-letter words; the safety tripwire reads through quotes; tests
+  for each. (The patch itself was never in the repo; its new phrases weren't
+  recoverable, so `FMS_SAFETY_TERMS` is unchanged.) Keep the patch's new phrases
   (restrict "kms"), its quote-safe possessive handling and its two-letter
   names. Replace the automatic nickname prefixes with a nickname list the
   teacher keeps, and add tests for curly quotes and roster-name

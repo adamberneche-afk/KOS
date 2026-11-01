@@ -464,11 +464,11 @@ specifically to answer "what did we tell whom," which is the question a
 records request asks — so the gap between a placeholder default and a real
 retention decision matters more for this tab than for any other.
 
-### Family Mail Sentinel tabs (FamilyMailInput, FamilyMailReturn, FamilyMailLog, FamilyContacts)
+### Family Mail Sentinel tabs (FamilyMailInput, FamilyMailReturn, FamilyMailLog, FamilyContacts, Nicknames)
 | | |
 |---|---|
 | **Where** | The teacher's private *Family Mail Sentinel* spreadsheet, not the Central Ledger (`cas-ccps:family-sentinel`, `60_FamilyMailSentinel.js`) |
-| **Fields** | `FamilyMailLog` also records `Alerted_At`, when a safety push went out for that message. `FamilyMailInput`: the Gemini prompt with one student or parent email, names, addresses, phone numbers and long numbers redacted. `FamilyMailReturn`: Gemini's JSON answer. `FamilyMailLog`: Gmail message and thread IDs, received time, source (student/parent/staff/canvas/external), a hashed family key, course, period, status, category, urgency, safety and sensitive flags, a one-line ask checked to name nobody, a due date, whether it needs a reply (`Needs_Reply`, 2026-10-20). `FamilyContacts`: parent address → student email, entered by the teacher. |
+| **Fields** | `FamilyMailLog` also records `Alerted_At`, when a safety push went out for that message. `FamilyMailInput`: the Gemini prompt with one student or parent email, names, addresses, phone numbers and long numbers redacted. `FamilyMailReturn`: Gemini's JSON answer. `FamilyMailLog`: Gmail message and thread IDs, received time, source (student/parent/staff/canvas/external), a hashed family key, course, period, status, category, urgency, safety and sensitive flags, a one-line ask checked to name nobody, a due date, whether it needs a reply (`Needs_Reply`, 2026-10-20). `FamilyContacts`: parent address → student email, entered by the teacher. | `Nicknames` (since 2026-11-01): a student's account and the names they go by that the roster doesn't hold, typed by the teacher, so the redactor can hide them; never sent anywhere.
 | **Why collected** | So the KOS Claude Project can say how urgent student and parent mail is without reading it: the log feeds the name-free `KOS_FAMILY_SIGNAL` doc. |
 | **Read by** | `60_FamilyMailSentinel.js` and the Workspace Flow (which reads `FamilyMailInput` and writes `FamilyMailReturn`). The roster comes from the Central Ledger's `Ledger` tab and parent addresses from `ParentReportLog`, both read-only. |
 | **Visible to** | The teacher who owns the sheet. |
