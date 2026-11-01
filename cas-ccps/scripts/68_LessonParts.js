@@ -18,6 +18,8 @@
 //   previewPartUnlocks()     what it would unlock now; changes nothing
 //   unlockNextPart_(...)     the teacher's unlock (07)
 //   foldPartRows_(students)  the Teacher Dashboard's one row per student (07)
+//   partsHeldByFailure_(...) parts held a school day or more by a failed
+//                            check (the overnight email, 34c; audit #5)
 //
 // A lesson students have already started as one whole doc stays whole: its
 // parts are used only when no student has the lesson's own assignment yet.
@@ -29,6 +31,30 @@
 const LP_LOG_TAB = "PartUnlocks";
 const LP_LOG_HEADERS = ["UnlockedAt", "StudentConfigID", "PartConfigID", "By"];
 const LP_JOB = "unlockReadyParts";
+
+// A part is HELD BY A FAILED CHECK when the student's furthest open part's
+// last check ended in a failure that wasn't their work (the lane timed out,
+// or the result couldn't be used: Ledger ERROR_TIMEOUT / ERROR_EVALUATION),
+// so the next part can't unlock on its own; flagged once a full school day
+// has passed since the submit (meta/STUDENT_WORK_PLAN_2026-10.md, "What
+// reaches the teacher anyway"; dead-ends audit #5). The teacher unlocks it
+// (07's "Open Part n now"). School days are weekdays here: the district's
+// calendar isn't in code yet (packaging step 1).
+const LP_FAILED_CHECK_STATUSES = ["ERROR_TIMEOUT", "ERROR_EVALUATION"];
+
+// Whole weekdays strictly between the failed submit's day and today: 0 the
+// same day or the next, 1 once a school day has fully passed.
+function partHeldSchoolDays_(failedAtMs, now) {
+  if (!failedAtMs || isNaN(failedAtMs)) return 0;
+  const day = function (d) { return new Date(d.getFullYear(), d.getMonth(), d.getDate()); };
+  const today = day(now || new Date());
+  const d = day(new Date(failedAtMs));
+  let n = 0;
+  for (d.setDate(d.getDate() + 1); d < today && n < 60; d.setDate(d.getDate() + 1)) {
+    if (d.getDay() !== 0 && d.getDay() !== 6) n++;
+  }
+  return n;
+}
 
 // The lesson's parts, or null when it has none: [{ key, configId, n, a }].
 function lessonPartsOf_(lessonKey) {
@@ -202,7 +228,7 @@ function installPartUnlocks() {
 // when none is left, or when no part is open yet: the lesson's release opens
 // Part 1). A row is a part when it has `part` ({ n, count, title }); other
 // rows pass through. The order is kept, each lesson where its first part was.
-function foldPartRows_(students) {
+function foldPartRows_(students, now) {
   const groups = {};
   const out = [];
   students.forEach(function (s) {
@@ -217,13 +243,52 @@ function foldPartRows_(students) {
     const open = x.filter(function (s) { return s.status !== "SCHEDULED"; });
     const cur = open.length ? open[open.length - 1] : x[0];
     const next = open.length ? x.filter(function (s) { return s.status === "SCHEDULED" && s.part.n > cur.part.n; })[0] : null;
+    const heldDays = next && LP_FAILED_CHECK_STATUSES.indexOf(cur.ledgerStatus) !== -1
+      ? partHeldSchoolDays_(cur.submittedAtMs, now || new Date()) : 0;
     return Object.assign({}, cur, {
+      // Held a school day or more by a failed check (see LP_FAILED_CHECK_STATUSES).
+      heldByFailure: heldDays >= 1 ? { schoolDays: heldDays } : null,
       parts: x.map(function (s) {
         return { n: s.part.n, title: s.part.title, open: s.status !== "SCHEDULED", docUrl: s.status !== "SCHEDULED" ? s.docUrl : null };
       }),
       nextPart: next ? { n: next.part.n, title: next.part.title } : null
     });
   });
+}
+
+// The students whose furthest open part in a lesson is held a school day or
+// more by a failed check (LP_FAILED_CHECK_STATUSES), next part still
+// locked: { students, parts } counts for the overnight email (34c). Counts
+// only, never who.
+function partsHeldByFailure_(ss, cfg, now) {
+  _lpSaCache_ = null;
+  const out = { students: 0, parts: 0 };
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (!ledger || ledger.getLastRow() < 2) return out;
+  const assignmentOf = _lpAssignmentOf_(ss);
+  const data = ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER_COL_COUNT).getValues();
+  const byStudent = {};
+  data.forEach(function (r) {
+    const info = partOfConfigId_(assignmentOf[String(r[LEDGER.CONFIG_ID]).trim()]);
+    if (!info || String(r[LEDGER.STATUS]).trim() === "ARCHIVED") return;
+    const k = String(r[LEDGER.GOOGLE_ID]).trim().toLowerCase() + "|" + info.lessonKey;
+    (byStudent[k] = byStudent[k] || {})[info.n] = String(r[LEDGER.STATUS]).trim() === "SCHEDULED" ? null : r;
+  });
+  const who = {};
+  Object.keys(byStudent).forEach(function (k) {
+    const parts = byStudent[k];
+    const open = Object.keys(parts).map(Number).filter(function (n) { return parts[n]; }).sort(function (a, b) { return a - b; });
+    if (!open.length) return;
+    const cur = open[open.length - 1];
+    if (!(cur + 1 in parts) || parts[cur + 1] !== null) return;
+    const r = parts[cur];
+    if (LP_FAILED_CHECK_STATUSES.indexOf(String(r[LEDGER.STATUS]).trim()) === -1) return;
+    if (partHeldSchoolDays_(sheetTimestampMs_(r[LEDGER.SUBMISSION_TS]), now) < 1) return;
+    out.parts++;
+    who[k.split("|")[0]] = true;
+  });
+  out.students = Object.keys(who).length;
+  return out;
 }
 
 // The teacher's unlock: the earliest SCHEDULED part of a lesson for the

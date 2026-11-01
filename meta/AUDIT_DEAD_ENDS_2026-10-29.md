@@ -33,6 +33,11 @@ canary. Open until the operator builds the two flows in Studio and
 (`69_EvaluationHealth.js`) reads `EvaluationLog` into the `Measures` tab and
 the overnight email.
 
+**Progress (2026-11-01):** #5 and #6 closed: a part held a school day or
+more by a failed check is flagged on the Teacher Dashboard and counted in
+the overnight email (68, 07, 34c); the Canvas cartridges list each lesson's
+parts (one assignment and grade per lesson, as planned).
+
 **Status:** the first repo-wide audit of its kind, done 2026-10-29 at the
 operator's request ("make sure we aren't leaving too many dead ends and
 half built functionalities"). Its actions are scheduled in

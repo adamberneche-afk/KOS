@@ -15,7 +15,8 @@ const TEACHER = 'teacher@ccpsnet.net';
 
 function setup() {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'), S('55b_LessonAssignmentData.js'), S('64_LedgerCycle.js'), S('68_LessonParts.js')],
-    ['unlockReadyParts', 'previewPartUnlocks', 'unlockNextPart_', 'partOfConfigId_', 'lessonPartsOf_', 'getConfig_']);
+    ['unlockReadyParts', 'previewPartUnlocks', 'unlockNextPart_', 'partOfConfigId_', 'lessonPartsOf_', 'getConfig_',
+      'partHeldSchoolDays_', 'partsHeldByFailure_', 'foldPartRows_']);
   const { sandbox } = env;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -31,9 +32,9 @@ function setup() {
   ev.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text', 'outcome', 'config_id', 'evaluated_at', 'student_file_id', 'archive_status']);
   const shared = [];
   sandbox.DriveApp.getFileById = (id) => ({ addEditor: (who) => shared.push([id, who]) });
-  const add = (sid, who, n, status) => {
+  const add = (sid, who, n, status, submittedAt) => {
     const r = new Array(27).fill('');
-    r[1] = who; r[2] = sid; r[3] = 'file-' + sid; r[8] = TEACHER; r[12] = status;
+    r[1] = who; r[2] = sid; r[3] = 'file-' + sid; r[8] = TEACHER; r[12] = status; r[13] = submittedAt || '';
     ledger.appendRow(r);
     sa.appendRow([sid, who, PART(n)]);
   };
@@ -98,4 +99,48 @@ test('the teacher unlocks a student\'s earliest locked part; another teacher\'s 
   assert.match(exported.unlockNextPart_(cfg, 'VDOE-A1', 'other@ccpsnet.net').error, /Not your student/);
   ss.getSheetByName('StudentAssignments').appendRow(['VDOE-W', 'x', 'CAS-8175-L06']);
   assert.match(exported.unlockNextPart_(cfg, 'VDOE-W', TEACHER).error, /isn't part of a lesson in parts/);
+});
+
+// A part held by a failed check (audit #5, 2026-11-01): the furthest open
+// part's last check timed out or couldn't be used, so the next part can't
+// unlock on its own; flagged once a full school day (a weekday) has passed.
+const MON = new Date(2026, 9, 26, 10, 0, 0);  // Monday 10/26
+const WED = new Date(2026, 9, 28, 12, 0, 0);  // Wednesday 10/28
+const FRI = new Date(2026, 9, 30, 10, 0, 0);  // Friday 10/30
+
+test('school days held: weekdays fully passed since the failed submit', () => {
+  const { exported } = setup();
+  const days = (from, to) => exported.partHeldSchoolDays_(from.getTime(), to);
+  assert.equal(days(MON, MON), 0, 'the same day');
+  assert.equal(days(MON, new Date(2026, 9, 27, 15)), 0, 'the next day: none has fully passed');
+  assert.equal(days(MON, WED), 1, 'Tuesday passed');
+  assert.equal(days(FRI, new Date(2026, 10, 2, 9)), 0, 'Friday to Monday: only the weekend');
+  assert.equal(days(FRI, new Date(2026, 10, 3, 9)), 1, 'Monday passed');
+  assert.equal(exported.partHeldSchoolDays_(0, WED), 0, 'no submit time');
+});
+
+test('partsHeldByFailure_: counts a student whose open part failed a school day ago and whose next part is locked', () => {
+  const { exported, add, ss } = setup();
+  add('VDOE-A1', '1234567@ccpsnet.net', 1, 'ERROR_TIMEOUT', MON);   // held
+  add('VDOE-A2', '1234567@ccpsnet.net', 2, 'SCHEDULED');
+  add('VDOE-B1', '2345678@ccpsnet.net', 1, 'ERROR_EVALUATION', WED); // failed today: not yet
+  add('VDOE-B2', '2345678@ccpsnet.net', 2, 'SCHEDULED');
+  add('VDOE-C1', '3456789@ccpsnet.net', 1, 'ACTIVE', MON);          // not a failed check
+  add('VDOE-C2', '3456789@ccpsnet.net', 2, 'SCHEDULED');
+  add('VDOE-D1', '4567890@ccpsnet.net', 1, 'ERROR_TIMEOUT', MON);   // its next part is open already
+  add('VDOE-D2', '4567890@ccpsnet.net', 2, 'ACTIVE');
+  const held = exported.partsHeldByFailure_(ss, exported.getConfig_(), WED);
+  assert.deepEqual({ students: held.students, parts: held.parts }, { students: 1, parts: 1 });
+});
+
+test('foldPartRows_: the Teacher Dashboard row carries the held flag, only when the next part is locked', () => {
+  const { exported } = setup();
+  const row = (n, status, ledgerStatus) => ({ googleId: 'a@x', assignmentId: 'L', part: { n: n, count: 3, title: 'P' + n },
+    status: status, ledgerStatus: ledgerStatus, submittedAtMs: MON.getTime(), configId: 'C' + n });
+  const held = exported.foldPartRows_([row(1, 'TIMED OUT', 'ERROR_TIMEOUT'), row(2, 'SCHEDULED', 'SCHEDULED')], WED)[0];
+  assert.deepEqual(held.heldByFailure, { schoolDays: 1 });
+  const fine = exported.foldPartRows_([row(1, 'EVALUATED', 'ACTIVE'), row(2, 'SCHEDULED', 'SCHEDULED')], WED)[0];
+  assert.equal(fine.heldByFailure, null);
+  const last = exported.foldPartRows_([row(1, 'TIMED OUT', 'ERROR_TIMEOUT')], WED)[0];
+  assert.equal(last.heldByFailure, null, 'no next part to hold');
 });

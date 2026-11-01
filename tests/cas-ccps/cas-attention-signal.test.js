@@ -20,7 +20,7 @@ const FILES = [
   '50_StudentDataAccess.js', '64_LedgerCycle.js',
   // What 34c's setup checks reach (38, 40, 41, 57 and their collaborators).
   '03_QueueBridge.js', '15b_StudioFlowPrompts_Flow2_Revised.js', '25_WarmUpWriter.js', '29_StudentContextAggregator.js',
-  '37_FlowInputBuilder.js', '68_LessonParts.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js', '41_WarmUpFlowBridge.js',
+  '37_FlowInputBuilder.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js', '41_WarmUpFlowBridge.js',
   '54_StudentAssignments.js', '57_RetentionSchedule.js', '69_EvaluationHealth.js',
 ].map(S);
 

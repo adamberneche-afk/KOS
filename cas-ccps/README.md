@@ -447,6 +447,15 @@ next part from the Teacher Dashboard (`unlockStudentPart`). Each unlock is a
 `PartUnlocks` row (the student's workspace ConfigID, the part, and
 PRIMARY_MET or TEACHER). A lesson students already have as one whole doc is
 never split under them. `previewPartUnlocks()` counts what would open now.
+Since 2026-11-01 (dead-ends audit #5) a part **held by a failed check** is
+flagged: when a student's furthest open part last ended in a timeout or an
+unusable result (Ledger `ERROR_TIMEOUT` / `ERROR_EVALUATION`) and its next
+part is still locked, the Teacher Dashboard row says so once a school day
+has fully passed (weekdays, until the calendar is in configuration), above
+its "Open Part n now" button, and the overnight email counts those students
+(`partsHeldByFailure_`). The Canvas cartridges list a lesson's parts (audit
+#6): still one assignment and grade per lesson, its page naming each part,
+saying each opens in turn, and asking for the last part's link.
 
 `69_EvaluationHealth.js` (Central Ledger, 2026-11-01) is the first reader of
 `EvaluationLog`, and the numbers D8 waits on. `reportEvaluationHealth()`,
