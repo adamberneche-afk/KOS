@@ -132,7 +132,8 @@ function writeCasSignal_(watchdog, now) {
     students.push("Students newly eligible for a retry: unavailable (Executions shows why)");
   } else if (state.retryNew > 0) {
     students.push("Students newly eligible for a retry: " + state.retryNew +
-      (state.prevRetry ? "" : " (first scan, so every eligible student counts as new)"));
+      (state.prevRetry ? "" : " (first scan, so every eligible student counts as new)") +
+      ". The Teacher Dashboard's SCR Review lists them; confirm on each student's page");
   }
 
   // ── Admin ──
@@ -368,10 +369,12 @@ function _casSignalMaybeRetryScan_(state, now, suggestionData) {
     const newStudents = {};
     const prev = state.prevRetry ? state.prevRetry.reduce(function (m, h) { m[h] = true; return m; }, {}) : null;
     const candidates = retryCandidates_(data);
+    // One read of the evidence and the teachers' matrices for the scan (30b).
+    const cache = { suggestions: data };
     for (let i = 0; i < candidates.length; i++) {
       if (Date.now() - started > CAS_SIGNAL_RETRY_BUDGET_MS) throw new Error("scan ran past its time budget");
       const c = candidates[i];
-      if (!checkRetryEligibility_(c.studentEmail, c.competencyId).eligible) continue;
+      if (!checkRetryEligibility_(c.studentEmail, c.competencyId, cache).eligible) continue;
       const h = _casSignalHash_(c.studentEmail.toLowerCase() + "|" + c.competencyId);
       hashes.push(h);
       if (!prev || !prev[h]) newStudents[c.studentEmail.toLowerCase()] = true;

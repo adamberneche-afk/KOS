@@ -1027,6 +1027,248 @@ function _scrTeacherMayDecide_(cfg, teacherEmail, studentEmail, competencyId) {
   return _scrIsMine_(_scrOwnership_(cfg, teacher), roster, studentEmail, competencyId);
 }
 
+
+// =============================================================================
+// THE SCR RULE AND THE SCR RETRY (moved here 2026-11-01, D15)
+// =============================================================================
+// The rule (30_SCRSuggestionEngine.js's header): a suggested rating is the
+// average of a student's three best pieces of evidence for a competency, one
+// piece per assignment at its best outcome. Here, not in 30, because the SCR
+// retry runs it in the central-ledger project (30b, the attention signal's
+// count in 34b) and on both dashboards (07's student page, 13's
+// Competencies tab).
+
+const VALID_OUTCOMES = ["MET", "PARTIALLY_MET", "NOT_MET"];
+const EVIDENCE_THRESHOLD = 3; // pieces needed for a suggestion, and how many are averaged
+// SCR rating each best outcome contributes to the average.
+const OUTCOME_SCR_SCORE = { MET: 2, PARTIALLY_MET: 3, NOT_MET: 4 };
+
+// ---------------------------------------------------------------------------
+// One piece of evidence per assignment. Shared by 30's weekly suggestion
+// run and the SCR retry below (both dashboards and 30b).
+//
+// evidenceAssignmentKey_: the assignment a CompetencyEvidence row came from,
+// its config_id (the student's workspace for that assignment), else its
+// student_file_id. A row with neither, written before those columns
+// existed, is its own piece.
+// ---------------------------------------------------------------------------
+function evidenceAssignmentKey_(row, iConfigId, iFileId, rowIndex) {
+  const configId = iConfigId !== -1 ? String(row[iConfigId] || "").trim() : "";
+  if (configId) return "config:" + configId;
+  const fileId = iFileId !== -1 ? String(row[iFileId] || "").trim() : "";
+  if (fileId) return "file:" + fileId;
+  return "row:" + rowIndex;
+}
+
+// Keeps the better of an assignment's outcomes: MET over PARTIALLY_MET over
+// NOT_MET.
+function keepBestOutcome_(byAssignment, assignmentKey, outcome) {
+  const current = byAssignment.get(assignmentKey);
+  if (!current || OUTCOME_SCR_SCORE[outcome] < OUTCOME_SCR_SCORE[current]) {
+    byAssignment.set(assignmentKey, outcome);
+  }
+}
+
+function countOutcomes_(byAssignment) {
+  const counts = { metCount: 0, notMetCount: 0, partialCount: 0 };
+  for (const outcome of byAssignment.values()) {
+    if (outcome === "MET") counts.metCount++;
+    else if (outcome === "NOT_MET") counts.notMetCount++;
+    else if (outcome === "PARTIALLY_MET") counts.partialCount++;
+  }
+  return counts;
+}
+
+// ---------------------------------------------------------------------------
+// computeSuggestion_ — THE RULE (header): the average of the 3 best pieces.
+// Input: { metCount, notMetCount, partialCount }, counted in pieces
+// Output: { suggestedRating: 2|3|4|null, status: string }
+// ---------------------------------------------------------------------------
+function computeSuggestion_(counts) {
+  const totalCount = counts.metCount + counts.notMetCount + counts.partialCount;
+
+  if (totalCount < EVIDENCE_THRESHOLD) {
+    return { suggestedRating: null, status: "INSUFFICIENT_EVIDENCE" };
+  }
+  // The best pieces are the METs, then the PARTIALLY_METs, then the NOT_METs.
+  let left = EVIDENCE_THRESHOLD;
+  let sum = 0;
+  [["MET", counts.metCount], ["PARTIALLY_MET", counts.partialCount], ["NOT_MET", counts.notMetCount]]
+    .forEach(([outcome, n]) => {
+      const take = Math.min(n, left);
+      sum += take * OUTCOME_SCR_SCORE[outcome];
+      left -= take;
+    });
+  // sum is a whole number from 6 to 12, so the average is a third at worst
+  // and never lands on .5: Math.round is nearest-rating rounding.
+  return { suggestedRating: Math.round(sum / EVIDENCE_THRESHOLD), status: "SUGGESTED" };
+}
+
+
+// ---------------------------------------------------------------------------
+// The SCR retry (30b's rule, built 2026-11-01 for D15). A competency the
+// teacher rated 3 or 4 can be re-rated once the student has shown enough
+// since: 5 or more pieces MET across the primary and its linked secondary
+// competencies, and 2 secondary pieces MET for every primary piece NOT_MET.
+// The re-rating is the rule's rating from all the primary's evidence, and
+// it counts only when it is better (a lower number) than the current one.
+// The teacher confirms it; the old rating stays in SCRDecisionLog.
+//
+// Primary and secondary come from each assignment's milestones (the
+// operator's decision, 2026-11-01): milestone 1's competency is the
+// assignment's primary, milestones 2 and 3 its secondaries, as every
+// assignment's definition of done says. A competency's linked secondaries
+// are the secondaries of every assignment where it is the primary. This
+// replaced 30b's LessonPrimarySecondary tab and an evidence_role column,
+// neither of which was ever made or written.
+// ---------------------------------------------------------------------------
+const SCR_RETRY_MIN_MET = 5;
+
+// { byConfig: { configId: { primary, secondaries[] } }, linked: { primary:
+// [secondary ids] } } from StudentAssignments (a student's workspace ->
+// its assignment) and every TeacherMatrix in MatrixRegistry (columns as
+// reflectionMatrixRow_ reads them). A matrix that can't be opened is left
+// out, so its evidence counts as it did before roles existed.
+function scrRetryRoles_(ss, cfg) {
+  const out = { byConfig: {}, linked: {} };
+  const byAssignment = {};
+  const reg = ss.getSheetByName(cfg.tabs.matrixRegistry);
+  const seen = {};
+  if (reg && reg.getLastRow() > 1) {
+    reg.getDataRange().getValues().slice(1).forEach(function (r) {
+      const id = String(r[2] || "").trim();
+      if (!id || seen[id]) return;
+      seen[id] = true;
+      try {
+        const tm = SpreadsheetApp.openById(id).getSheetByName(cfg.tabs.teacherMatrix || "TeacherMatrix");
+        if (!tm || tm.getLastRow() < 2) return;
+        tm.getDataRange().getValues().slice(1).forEach(function (row) {
+          const assignmentId = String(row[0] || "").trim();
+          const primary = String(row[15] || "").trim();
+          if (!assignmentId || !primary) return;
+          const secondaries = [row[16], row[17]].map(function (x) { return String(x || "").trim(); })
+            .filter(function (x) { return x && x !== primary; });
+          byAssignment[assignmentId] = { primary: primary, secondaries: secondaries };
+          const list = out.linked[primary] = out.linked[primary] || [];
+          secondaries.forEach(function (x) { if (list.indexOf(x) === -1) list.push(x); });
+        });
+      } catch (e) {
+        Logger.log("[SCR retry] A TeacherMatrix could not be read: " + e.message);
+      }
+    });
+  }
+  Object.keys(byAssignment).forEach(function (a) { out.byConfig[a] = byAssignment[a]; });
+  const sa = ss.getSheetByName("StudentAssignments"); // 54's tab
+  if (sa && sa.getLastRow() > 1) {
+    sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
+      const configId = String(r[0] || "").trim(), assignmentId = String(r[2] || "").trim();
+      if (configId && byAssignment[assignmentId]) out.byConfig[configId] = byAssignment[assignmentId];
+    });
+  }
+  return out;
+}
+
+// Active CompetencyEvidence rows with a valid outcome, as { email (lower
+// case), comp, outcome, configId, key } (key: evidenceAssignmentKey_).
+// onlyEmail keeps one student's.
+function scrRetryEvidence_(ss, cfg, onlyEmail) {
+  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  const data = sheet.getDataRange().getValues();
+  const h = data[0].map(function (x) { return String(x).trim(); });
+  const iEmail = h.indexOf("student_email"), iComp = h.indexOf("competency_id"), iOut = h.indexOf("outcome");
+  const iConfig = h.indexOf("config_id"), iFile = h.indexOf("student_file_id"), iArch = h.indexOf("archive_status");
+  if (iEmail === -1 || iComp === -1 || iOut === -1) return [];
+  const only = onlyEmail ? String(onlyEmail).trim().toLowerCase() : "";
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    if (iArch !== -1 && String(r[iArch] || "").trim()) continue;
+    const email = String(r[iEmail] || "").trim().toLowerCase();
+    if (!email || (only && email !== only)) continue;
+    const outcome = String(r[iOut] || "").trim();
+    if (VALID_OUTCOMES.indexOf(outcome) === -1) continue;
+    rows.push({ email: email, comp: String(r[iComp] || "").trim(), outcome: outcome,
+      configId: iConfig === -1 ? "" : String(r[iConfig] || "").trim(), key: evidenceAssignmentKey_(r, iConfig, iFile, i) });
+  }
+  return rows;
+}
+
+// Everything a retry check reads, read once: { roles, evidence }.
+function scrRetryContext_(ss, cfg, onlyEmail) {
+  return { roles: scrRetryRoles_(ss, cfg), evidence: scrRetryEvidence_(ss, cfg, onlyEmail) };
+}
+
+// One student and one competency, with the rating that stands now:
+//   { applies: false } when the rating isn't 3 or 4 (a retry can't help);
+//   else { applies, eligible, improved, currentRating, newRating, primary,
+//   secondary, all (counts), secondaryIds, needMet, needSecondary,
+//   needPrimaryMet, reason }.
+// Eligibility counts by role: primary pieces are this competency's evidence
+// from assignments where it is the primary; secondary pieces are its linked
+// competencies' evidence from assignments where they are secondaries.
+// newRating is the rule's rating from ALL of this competency's evidence,
+// whatever its role, exactly as 30's weekly run rates it (the operator,
+// 2026-11-01: "all of it"), or null with too few pieces.
+// needMet: more MET pieces (primary or secondary) for the 5; needSecondary:
+// more secondary MET pieces for the 2-to-1; needPrimaryMet: more MET pieces
+// on this competency before newRating beats the current rating.
+// A row whose assignment has no known milestones counts as primary evidence
+// for its own competency, as rows did before roles existed.
+function scrRetryStatus_(ctx, studentEmail, competencyId, currentRating) {
+  const rating = Number(currentRating);
+  if (rating !== 3 && rating !== 4) return { applies: false };
+  const email = String(studentEmail || "").trim().toLowerCase();
+  const p = String(competencyId || "").trim();
+  const secondaryIds = (ctx.roles.linked[p] || []).slice();
+  const prim = new Map(), sec = new Map(), every = new Map();
+  ctx.evidence.forEach(function (e) {
+    if (e.email !== email) return;
+    if (e.comp === p) keepBestOutcome_(every, e.key, e.outcome);
+    const role = ctx.roles.byConfig[e.configId];
+    if (e.comp === p && (!role || role.primary === p)) {
+      keepBestOutcome_(prim, e.key, e.outcome);
+    } else if (role && secondaryIds.indexOf(e.comp) !== -1 && role.secondaries.indexOf(e.comp) !== -1) {
+      keepBestOutcome_(sec, e.comp + "|||" + e.key, e.outcome);
+    }
+  });
+  const primary = countOutcomes_(prim), secondary = countOutcomes_(sec), all = countOutcomes_(every);
+  const totalMet = primary.metCount + secondary.metCount;
+  const needMet = Math.max(0, SCR_RETRY_MIN_MET - totalMet);
+  const needSecondary = Math.max(0, 2 * primary.notMetCount - secondary.metCount);
+  const eligible = secondaryIds.length > 0 && needMet === 0 && needSecondary === 0;
+  const newRating = computeSuggestion_(all).suggestedRating;
+  let needPrimaryMet = 0;
+  while (needPrimaryMet < EVIDENCE_THRESHOLD + 1) {
+    const r = computeSuggestion_({ metCount: all.metCount + needPrimaryMet,
+      notMetCount: all.notMetCount, partialCount: all.partialCount }).suggestedRating;
+    if (r !== null && r < rating) break;
+    needPrimaryMet++;
+  }
+  const improved = newRating !== null && newRating < rating;
+  let reason;
+  if (!secondaryIds.length) reason = "No assignment names this competency as its primary with secondaries, so there is nothing to retry through.";
+  else if (eligible && improved) reason = "Ready: the evidence now gives " + newRating + " (rated " + rating + ").";
+  else if (eligible) reason = "Eligible, but its evidence still gives " + (newRating === null ? "no rating" : newRating) + ".";
+  else reason = "Not yet: " + [needMet ? needMet + " more MET (this competency or a linked one)" : "",
+    needSecondary ? needSecondary + " more MET on a linked competency" : ""].filter(Boolean).join("; ") + ".";
+  return { applies: true, eligible: eligible, improved: improved, currentRating: rating, newRating: newRating,
+    primary: primary, secondary: secondary, all: all, secondaryIds: secondaryIds, totalMet: totalMet,
+    needMet: needMet, needSecondary: needSecondary, needPrimaryMet: needPrimaryMet, reason: reason };
+}
+
+// The permanent record of a confirmed retry: one SCRDecisionLog row,
+// RETRY_IMPROVED, the old rating named in its snapshot. The caller has
+// checked the teacher and re-run scrRetryStatus_ under the script lock, and
+// updates SCRSuggestions with its own column map (SCRS stays in 30).
+function scrAppendRetryDecision_(decisionLogSheet, decisionId, studentEmail, competencyId, status, teacherEmail, now) {
+  const snapshot = "MET:" + status.all.metCount + " NOT_MET:" + status.all.notMetCount +
+    " PARTIALLY_MET:" + status.all.partialCount + " (retry -- previous official rating: " + status.currentRating +
+    "; secondary MET:" + status.secondary.metCount + ")";
+  decisionLogSheet.appendRow([decisionId, studentEmail, competencyId, status.newRating, status.newRating,
+    "RETRY_IMPROVED", now, teacherEmail, snapshot, ""]);
+}
+
 // =============================================================================
 // CLIENT_ESC_JS — exact source of the client-side esc() HTML-escaping
 // helper, shared verbatim by every dashboard's inline <script> block so

@@ -14,8 +14,8 @@ Prepared 2026-10-16. Suggestions only; nothing was built when this was written. 
 ### What the system already has
 
 - **Per-student, per-competency evidence.** Flow 2 writes `CompetencyEvidence`. `30_SCRSuggestionEngine` turns it into a suggested rating (2, 3 or 4) from at least three pieces, counting each assignment at its best outcome. Ratings 1 and 5 are teacher-only.
-- **Cross-course links at unit level.** `LessonPrimarySecondary_Seed.csv` links each lesson unit's primary competency to secondary ones across both courses. The SOL transitive mapping ties 8177 tasks to the 8175 tasks they parallel and to inherited SOLs.
-- **A remediation path.** `30b_SCRRetryRemediation` uses secondary-competency evidence to unlock a retry on a primary competency. Original ratings are never erased.
+- **Cross-course links at unit level.** (Superseded for the retry, 2026-11-01: it reads each assignment's milestones instead; the seed was never imported.) `LessonPrimarySecondary_Seed.csv` links each lesson unit's primary competency to secondary ones across both courses. The SOL transitive mapping ties 8177 tasks to the 8175 tasks they parallel and to inherited SOLs.
+- **A remediation path.** `30b_SCRRetryRemediation` uses secondary-competency evidence to unlock a retry on a primary competency. Original ratings are never erased. Live since 2026-11-01 (D15): the teacher re-rates on the student's page.
 - **Per-unit confidence.** The shadow matrix in `23_StudentProfileManager` holds student-by-unit confidence with cross-unit decay (0.85). `29_StudentContextAggregator` writes a weekly per-student doc.
 - **A registry** of 221 competencies across the two courses, each with a strand and subject.
 
