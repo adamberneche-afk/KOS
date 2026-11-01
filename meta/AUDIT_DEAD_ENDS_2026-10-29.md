@@ -99,7 +99,7 @@ lessons, their placeholder warm-up section removed. #19 the student doc menu
 marked unreachable for students. #20 the WarmUpResponses form RETIRED (the
 operator turns off "Accepting responses"); 29 still reads its old rows. #21
 kos-personal's menu marked editor-only, its items listed in the README. #22
-the four tabs kept as audit logs. #23 Flow 5: Monday's planning. #24
+the four tabs kept as audit logs. #23 Flow 5: decided 2026-11-01, merged into Flow 3 (Flow 3 writes the lead-in; Flow 5 retired). #24
 unchanged. #25 the PRD's status line (P1-02's checks block is
 `reportEvaluationHealth`; the rest parked). #26 dropped. #27 fine as is.
 

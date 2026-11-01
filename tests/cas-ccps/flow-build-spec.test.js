@@ -144,9 +144,9 @@ test('each warm-up input tab is listed at its real width', () => {
   const widths = {
     3: exported.WFB_FLOW3_HEADERS.length,
     4: exported.WFB_FLOW4_HEADERS.length,
-    5: exported.WFB_FLOW5_HEADERS.length,
   };
-  [3, 4, 5].forEach((flow) => {
+  // Flow 5 is retired (merged into Flow 3, 2026-11-01): no columns to build.
+  [3, 4].forEach((flow) => {
     const tab = exported.WFB_INPUT_TABS[flow];
     const cols = rows.filter((r) => r.tab === tab && r.column && r.surface === 'read');
     assert.equal(cols.length, widths[flow], tab + ' listed ' + cols.length + ' of ' + widths[flow]);
@@ -159,16 +159,20 @@ test('each flow names its trigger condition, taken from the status constants', (
   exported.syncFlowBuildSpec();
   const triggers = specRows(exported, ss).filter((r) => r.surface === 'trigger');
 
-  // Five flows, five trigger rows. A flow whose trigger condition an operator
-  // has to infer is the second of the four causes of "nothing happened".
-  assert.ok(triggers.length >= 5, 'only ' + triggers.length + ' trigger rows');
-  [3, 4, 5].forEach((flow) => {
+  // Four live flows, four trigger rows (Flow 5 retired 2026-11-01). A flow
+  // whose trigger condition an operator has to infer is the second of the
+  // four causes of "nothing happened".
+  assert.ok(triggers.length >= 4, 'only ' + triggers.length + ' trigger rows');
+  [3, 4].forEach((flow) => {
     const row = triggers.find((r) => r.flow === 'Flow ' + flow);
     assert.match(String(row.notes), new RegExp(exported.WFB_TRIGGER_STATUS[flow]),
       'Flow ' + flow + ' should name the WarmUpQueue status it materializes from');
   });
   assert.match(String(triggers.find((r) => r.flow === 'Flow 1').notes), /PENDING_EXTRACTION/);
   assert.match(String(triggers.find((r) => r.flow === 'Flow 2').notes), /READY/);
+  const retired = specRows(exported, ss).find((r) => r.flow === 'Flow 5');
+  assert.equal(retired.surface, 'retired');
+  assert.match(String(retired.notes), /Turn Flow 5 off/);
 });
 
 // ── Ownership, the thing a mis-binding gets wrong ────────────────────────────
@@ -252,7 +256,7 @@ test('prompts are referenced by key rather than pasted', () => {
   const ss = setUp(sandbox);
   exported.syncFlowBuildSpec();
   const prompts = specRows(exported, ss).filter((r) => r.surface === 'prompt');
-  assert.ok(prompts.length >= 5);
+  assert.ok(prompts.length >= 4);
   prompts.forEach((r) => {
     assert.equal(r.tab, exported.FLOW_PROMPT_TAB);
     // Pasting prompt text into this sheet would make it a second copy to keep

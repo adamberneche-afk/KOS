@@ -128,6 +128,9 @@ const WFB_RET = {
   HARVEST_STATUS: 4, ATTEMPTS: 5, ERROR: 6,
 };
 
+// RETIRED (2026-11-01): Flow 5 merged into Flow 3, which writes the lead-in.
+// No Flow5Input row is written; the headers stay for the tab's old rows
+// (retention, 57) and the build spec's retired row (42).
 // Flow 5 needs three values that all live inside the single
 // lesson_context_snapshot blob — the one genuinely non-native-friendly part
 // of that flow, and the whole reason ExtractBridgeInputsStep existed.
@@ -478,6 +481,7 @@ function wfbBuildBaselineFields_(lesson, profile, n) {
     baselineCompetency: sk.text,
     baselineSkill: sk.skill,
     baselineIndicators: sk.indicators,
+    priorResponse: "", // a baseline warm-up has no lead-in
   };
 }
 
@@ -510,6 +514,9 @@ function wfbBuildFlow3Fields_(lesson, profile, opts) {
     shadowArchetypeNote: profile.shadow_archetype_note || "",
     competenciesAddressedCount: String(addressed),
     totalCompetencies: String(addressed + gapCount),
+    // The student's last answer, for the lead-in (Flow 5 merged in,
+    // 2026-11-01); blank for a first warm-up.
+    priorResponse: String(lesson.flow5_prior_response || "").trim(),
   };
 }
 
@@ -590,7 +597,8 @@ function wfbRetryStaleInputs_(ss, tabs, budget, now) {
     });
   }
   let retried = 0;
-  [3, 4, 5].forEach(function (flow) {
+  // Not Flow 5 (retired 2026-11-01): a re-added Flow5Input row would wake it.
+  [3, 4].forEach(function (flow) {
     const sheet = tabs[flow];
     const lastRow = sheet.getLastRow();
     if (lastRow <= 1 || retried >= budget) return;
@@ -676,7 +684,7 @@ function wfbFallbackExhaustedInputs_(ss, flow3Tab, wqSheet, now) {
  * same student would generate two warm-up docs.
  */
 function buildWarmUpFlowInputs() {
-  const result = { flow3: 0, flow4: 0, flow5: 0, skipped: 0, errors: 0, retried: 0, deferred: 0, fallback: 0 };
+  const result = { flow3: 0, flow4: 0, skipped: 0, errors: 0, retried: 0, deferred: 0, fallback: 0 };
   const ctx = wfbLedger_();
   const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
   if (!wqSheet) {
@@ -690,12 +698,10 @@ function buildWarmUpFlowInputs() {
   const tabs = {
     3: wfbTab_(ctx.ss, WFB_INPUT_TABS[3], WFB_FLOW3_HEADERS),
     4: wfbTab_(ctx.ss, WFB_INPUT_TABS[4], WFB_FLOW4_HEADERS),
-    5: wfbTab_(ctx.ss, WFB_INPUT_TABS[5], WFB_FLOW5_HEADERS),
   };
   const seen = {
     3: wfbExistingInputIds_(tabs[3]),
     4: wfbExistingInputIds_(tabs[4]),
-    5: wfbExistingInputIds_(tabs[5]),
   };
 
   // Dropped jobs first: they are the oldest.
@@ -711,9 +717,11 @@ function buildWarmUpFlowInputs() {
     const queueId = String(row[WQ25_QUEUE_ID] || "").trim();
     if (!queueId) continue;
 
+    // Flow 5 is retired (2026-11-01, merged into Flow 3): no Flow5Input row
+    // is written. A row 24 queued at PENDING_BRIDGE before then goes to
+    // Flow 3 like any PENDING row, and Flow 3 writes its lead-in.
     let flow = 0;
-    if (status === WFB_TRIGGER_STATUS[5]) flow = 5;
-    else if (status === WFB_TRIGGER_STATUS[3]) flow = 3;
+    if (status === WFB_TRIGGER_STATUS[3] || status === WFB_TRIGGER_STATUS[5]) flow = 3;
     else if (status === WFB_TRIGGER_STATUS[4]) flow = 4;
     if (!flow) continue;
 
@@ -721,10 +729,7 @@ function buildWarmUpFlowInputs() {
     if (budget <= 0) { result.deferred++; continue; }
 
     try {
-      if (flow === 5) {
-        if (wfbBuildFlow5Row_(tabs[5], row, queueId)) result.flow5++;
-        else result.skipped++;
-      } else if (flow === 3) {
+      if (flow === 3) {
         const gid = String(row[WQ25_GOOGLE_ID] || "").trim().toLowerCase();
         const kept = wfbParseBaseline_(row[WQ25_ARCHETYPE]); // a rebuild keeps its skill
         // The canary's fixture student (an .invalid address, 39) keeps the
@@ -764,35 +769,6 @@ function buildWarmUpFlowInputs() {
 
   Logger.log("[WFB] buildWarmUpFlowInputs: " + JSON.stringify(result));
   return result;
-}
-
-function wfbBuildFlow5Row_(sheet, row, queueId) {
-  let lesson;
-  try {
-    lesson = JSON.parse(String(row[WQ25_LESSON_CTX_SNAP] || "{}"));
-  } catch (e) {
-    Logger.log("[WFB] " + queueId + " flow 5: LESSON_SNAPSHOT_PARSE_FAILED");
-    return false;
-  }
-  const prior = lesson.flow5_prior_response;
-  if (prior === null || prior === undefined || String(prior).trim() === "") {
-    // The trigger status alone can select a row with no prior response; the
-    // step this replaces returned NO_PRIOR_RESPONSE_IN_SNAPSHOT here. There
-    // is nothing to bridge from, so no input row is written and the Flow is
-    // never handed a job it cannot do.
-    Logger.log("[WFB] " + queueId + " flow 5: no prior response in snapshot — skipped");
-    return false;
-  }
-  sheet.appendRow([
-    new Date(), queueId, "READY",
-    String(prior), lesson.pacing_prior_connection || "", lesson.course_name || "",
-    wfbPromptFor_(5, {
-      priorResponse: String(prior),
-      pacingPriorConnection: lesson.pacing_prior_connection || "",
-      courseName: lesson.course_name || "",
-    }),
-  ]);
-  return true;
 }
 
 // baselineN: a competency 1–22 for a baseline warm-up (Mode C), or 0.
@@ -906,6 +882,10 @@ const WFB_PROMPT_VARS = {
     baseline_competency: "baselineCompetency",
     baseline_skill: "baselineSkill",
     baseline_indicators: "baselineIndicators",
+    // The student's last warm-up answer, for Flow 3's lead-in (Flow 5's job
+    // until 2026-11-01). Blank for a first warm-up or a baseline one, and
+    // then its block drops out (wfbDropBlankLines_).
+    prior_response: "priorResponse",
   },
   4: {
     original_prompt_text: "originalPrompt",
@@ -954,7 +934,7 @@ function wfbPromptFor_(flow, vars) {
   if (flow === 3) template = wfbDropBlankLines_(template, resolved);
   // A student's own words (the answer Flow 4 scores, the prior answer Flow 5
   // builds on) never reach the prompt with system text in them (Docket IV).
-  ["response_text", "flow5_prior_response"].forEach(function (k) {
+  ["response_text", "flow5_prior_response", "prior_response"].forEach(function (k) {
     if (resolved[k]) resolved[k] = neutralizeSystemText_(resolved[k]);
   });
   return substituteFlowPrompt_(template, resolved, true);
@@ -1240,7 +1220,8 @@ function wfbApplyReturn_(wqSheet, wrSheet, flow, queueId, raw) {
 }
 
 // Flow 5: the bridge paragraph goes in col 20 and the row advances to
-// PENDING, which is what hands it to Flow 3.
+// PENDING, which is what hands it to Flow 3. Retired 2026-11-01 (Flow 3
+// writes the lead-in); kept so an answer already on its way still lands.
 function wfbApplyFlow5_(wqSheet, found, raw) {
   const status = String(found.row[WQ25_STATUS] || "").trim();
   if (status === "PENDING" || status === "DELIVERED") {
@@ -1260,6 +1241,35 @@ function wfbApplyFlow5_(wqSheet, found, raw) {
   wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("PENDING");
   SpreadsheetApp.flush();
   return { ok: true };
+}
+
+// Flow 3's answer split into { leadIn, warmUp } (2026-11-01): "LEAD-IN: …"
+// then "WARM-UP: …", or "WARM-UP: …" alone, or (an answer without markers)
+// all of it the warm-up.
+function wfbSplitLeadIn_(raw) {
+  const text = String(raw || "").trim();
+  const w = /(^|\n)\s*\**WARM-?UP:\**\s*/i.exec(text);
+  if (!w) return { leadIn: "", warmUp: text };
+  const before = text.slice(0, w.index);
+  const lead = /^\s*\**LEAD-?IN:\**\s*([\s\S]*)$/i.exec(before);
+  return { leadIn: lead ? lead[1].trim() : "", warmUp: text.slice(w.index + w[0].length).trim() };
+}
+
+// Why a lead-in can't be shown, or "". Short, prose, and about the
+// student's last answer (the plausibility gate Flow 5's bridge had).
+const WFB_LEAD_IN_MAX_CHARS = 400;
+function wfbLeadInProblem_(leadIn, lesson) {
+  const t = String(leadIn || "").trim();
+  if (!t) return "empty";
+  if (t.length > WFB_LEAD_IN_MAX_CHARS) return "longer than " + WFB_LEAD_IN_MAX_CHARS + " characters";
+  if (/\n\s*([-*•]|\d+[.)])\s/.test("\n" + t)) return "a list";
+  if (!String((lesson || {}).flow5_prior_response || "").trim()) return "no last answer to connect";
+  const plausibility = _wfbCheckPlausible_({
+    priorResponse: lesson.flow5_prior_response,
+    priorConnection: lesson.pacing_prior_connection,
+    courseName: lesson.course_name,
+  }, t);
+  return plausibility.ok ? "" : "SUSPECT_FABRICATION: " + plausibility.reason;
 }
 
 // Flow 3: create the doc, stamp the zones, share it, record doc_id/url and
@@ -1304,7 +1314,24 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
     activity: WFB_BASELINE_SKILLS[baselineOf.n].indicators,
     vocabulary: WFB_BASELINE_SKILLS[baselineOf.n].skill,
   } : lesson;
-  const bridge = baselineOf ? "" : String(row[WQ25_BRIDGE_OUTPUT] || "");
+  // Flow 3's answer: an optional lead-in line, then the warm-up (Flow 5
+  // merged in, 2026-11-01). The lead-in is checked on its own and dropped,
+  // never the warm-up, if it doesn't hold. An answer with no markers is the
+  // warm-up alone, as before. A bridge Flow 5 wrote before then still shows.
+  let bridge = baselineOf ? "" : String(row[WQ25_BRIDGE_OUTPUT] || "");
+  if (!forcedFallback) {
+    const parts = wfbSplitLeadIn_(raw);
+    raw = parts.warmUp;
+    if (parts.leadIn && !baselineOf) {
+      const leadCheck = wfbLeadInProblem_(parts.leadIn, lesson);
+      if (leadCheck) {
+        Logger.log("[WFB] " + queueId + ": lead-in dropped (" + leadCheck + "); the warm-up goes out without it.");
+      } else {
+        bridge = parts.leadIn;
+        wqSheet.getRange(found.sheetRow, WQ25_BRIDGE_OUTPUT + 1).setValue(bridge);
+      }
+    }
+  }
 
   // Shape gate first: output that is the prompt itself, a description of it
   // or a list of its fields is never shown. The teacher's own anchor goes
@@ -2342,10 +2369,11 @@ function runWarmUpFlowCanary() {
     step("a fenced Flow 4 payload parses",
       JSON.parse(wfbStripFence_("```json\n{\"grammar\":2}\n```")).grammar === 2, "");
 
-    // Flow 5 end to end, which needs no Drive access: bridge text in, col 20
-    // and PENDING out.
+    // Flow 5 merged into Flow 3 (2026-11-01). A row left at PENDING_BRIDGE
+    // becomes a Flow 3 input whose prompt carries the last answer, and Flow
+    // 3's answer splits into the lead-in and the warm-up. No Drive access.
     const snapshot = JSON.stringify({
-      flow5_prior_response: "prior", pacing_prior_connection: "connects", course_name: "CAS",
+      flow5_prior_response: "CANARY-PRIOR-ANSWER", pacing_prior_connection: "connects", course_name: "CAS",
     });
     const wqRow = [];
     for (let i = 0; i < WQ25_COL_COUNT; i++) wqRow.push("");
@@ -2353,38 +2381,26 @@ function runWarmUpFlowCanary() {
     wqRow[WQ25_LESSON_CTX_SNAP] = snapshot;
     wqRow[WQ25_STATUS] = "PENDING_BRIDGE";
     wqRow[WQ25_STUDENT_NAME] = "Canary Student";
+    // .invalid keeps it on lesson warm-ups (Mode A/B), as the fixture
+    // student does; a new student's baseline warm-up (Mode C) has no lead-in.
+    wqRow[WQ25_GOOGLE_ID] = "canary-student@example.invalid";
     wqSheet.appendRow(wqRow);
 
     const built = buildWarmUpFlowInputs();
-    step("buildWarmUpFlowInputs materialized a Flow 5 row", built.flow5 >= 1, JSON.stringify(built));
+    const f3Tab = wfbLedger_().ss.getSheetByName(WFB_INPUT_TABS[3]);
+    const f3Rows = f3Tab && f3Tab.getLastRow() > 1
+      ? f3Tab.getRange(2, 1, f3Tab.getLastRow() - 1, WFB_FLOW3_HEADERS.length).getValues() : [];
+    const mine = f3Rows.filter(function (r) { return String(r[1]).trim() === queueId; })[0];
+    step("a PENDING_BRIDGE row becomes a Flow 3 input, its prompt carrying the last answer",
+      !!mine && String(mine[WFB_FLOW3_HEADERS.length - 1]).indexOf("CANARY-PRIOR-ANSWER") !== -1,
+      JSON.stringify(built));
 
-    // References the snapshot's own "connects" text deliberately — not
-    // decoration. The plausibility gate added to wfbApplyFlow5_ checks the
-    // bridge paragraph against this row's own lesson snapshot, and a purely
-    // generic bridge paragraph with no reference to it is exactly what that
-    // gate now flags as SUSPECT_FABRICATION.
-    returns.appendRow([new Date(), 5, queueId,
-      "A bridge paragraph that connects today's lesson to what came before.", "", 0, ""]);
-    const harvested = harvestWarmUpFlowReturns();
-    step("harvest applied the Flow 5 return", harvested.applied >= 1, JSON.stringify(harvested));
-
-    const after = wfbFindQueueRow_(wqSheet, queueId);
-    step("bridge output written and status advanced to PENDING",
-      after && String(after.row[WQ25_STATUS]).trim() === "PENDING" &&
-      String(after.row[WQ25_BRIDGE_OUTPUT]).indexOf("bridge paragraph") !== -1,
-      after ? String(after.row[WQ25_STATUS]) : "row missing");
-
-    returns.appendRow([new Date(), 5, queueId,
-      "A stale second bridge that also connects to what came before.", "", 0, ""]);
-    harvestWarmUpFlowReturns();
-    const afterDup = wfbFindQueueRow_(wqSheet, queueId);
-    // Reads the QUEUE row, not the return row — an earlier draft of this
-    // assertion indexed a WarmUpQueue row with WFB_RET constants, which
-    // would have passed for the wrong reason.
-    step("a duplicate return does not overwrite the first",
-      afterDup && String(afterDup.row[WQ25_BRIDGE_OUTPUT]).indexOf("bridge paragraph") !== -1 &&
-      String(afterDup.row[WQ25_BRIDGE_OUTPUT]).indexOf("stale second") === -1,
-      afterDup ? String(afterDup.row[WQ25_BRIDGE_OUTPUT]) : "row missing");
+    const split = wfbSplitLeadIn_("LEAD-IN: You said before that prices rise.\nWARM-UP: Why would a fan pay more?");
+    step("Flow 3's answer splits into the lead-in and the warm-up",
+      split.leadIn === "You said before that prices rise." && split.warmUp === "Why would a fan pay more?",
+      JSON.stringify(split));
+    step("an answer without labels is all warm-up",
+      wfbSplitLeadIn_("Why would a fan pay more?").leadIn === "", "");
   } catch (e) {
     step("canary ran without throwing", false, e.message);
   } finally {

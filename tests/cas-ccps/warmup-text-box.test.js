@@ -295,3 +295,43 @@ test('D6: a baseline warm-up that fails a check gets the question code writes fo
     'Think of a real time, at school, on a team, at a job or at home, that involved managing your time. What did you do, and what helped you do it?');
   assert.ok(!/stadium/i.test(tb[fx.exported.WTB.WARMUP]), 'not the lesson\'s anchor');
 });
+
+// Flow 5 merged into Flow 3 (2026-11-01): Flow 3 answers "LEAD-IN: …" then
+// "WARM-UP: …" when the student has a last answer; the harvest splits them.
+function deliverWithPrior(fx, queueId, raw) {
+  const row = pendingRow(fx.exported, queueId, daysAgoStr(0));
+  const ctx = JSON.parse(row[6]);
+  ctx.flow5_prior_response = 'Concession prices at the ballpark go up because fans have nowhere else to buy.';
+  row[6] = JSON.stringify(ctx);
+  fx.wq.appendRow(row);
+  const found = fx.exported.wfbFindQueueRow_(fx.wq, queueId);
+  return fx.exported.wfbApplyFlow3_(fx.wq, found, queueId, raw);
+}
+const textBoxRow = (fx) => fx.ss.getSheetByName('WarmUpTextBox').getRange(2, 1, 1, 8).getValues()[0];
+
+test('the lead-in: split from the warm-up, shown above it, kept on the queue row', () => {
+  const fx = setup('all');
+  const lead = 'Last time you said concession prices rise because fans at the ballpark have nowhere else to buy.';
+  assert.deepEqual(deliverWithPrior(fx, 'WQ-L1', 'LEAD-IN: ' + lead + '\nWARM-UP: ' + RAW), { ok: true });
+  assert.equal(textBoxRow(fx)[fx.exported.WTB.BRIDGE], lead);
+  assert.equal(textBoxRow(fx)[fx.exported.WTB.WARMUP], RAW, 'the label is not shown');
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_BRIDGE_OUTPUT + 1).getValue(), lead);
+});
+
+test('a lead-in that has nothing to do with the last answer is dropped; the warm-up still goes out', () => {
+  const fx = setup('all');
+  const out = deliverWithPrior(fx, 'WQ-L2', 'LEAD-IN: Photosynthesis turns sunlight into chemical energy in leaves.\nWARM-UP: ' + RAW);
+  assert.deepEqual(out, { ok: true });
+  assert.equal(textBoxRow(fx)[fx.exported.WTB.BRIDGE], '');
+  assert.equal(textBoxRow(fx)[fx.exported.WTB.WARMUP], RAW);
+});
+
+test('an answer with only WARM-UP:, or no labels at all, is the warm-up, with no lead-in', () => {
+  const fx = setup('all');
+  deliverWithPrior(fx, 'WQ-L3', 'WARM-UP: ' + RAW);
+  assert.equal(textBoxRow(fx)[fx.exported.WTB.WARMUP], RAW);
+  assert.equal(textBoxRow(fx)[fx.exported.WTB.BRIDGE], '');
+  const fx2 = setup('all');
+  deliverWithPrior(fx2, 'WQ-L4', RAW);
+  assert.equal(textBoxRow(fx2)[fx2.exported.WTB.WARMUP], RAW, 'as before the merge');
+});

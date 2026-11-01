@@ -118,8 +118,9 @@ test('installFlowFixtures: seeds all five flows, each at its own trigger status'
   assert.ok(fiRow, 'a FlowInput fixture row exists');
   assert.equal(fiRow[exported.FI.READY_STATUS], 'READY');
 
-  // Flows 5/3/4 — WarmUpQueue, one row at each watched status. The real
-  // machine is PENDING_BRIDGE -> PENDING -> DELIVERED -> PENDING_EVAL -> SCORED,
+  // Flows 3/4 — WarmUpQueue, one row at each watched status, and a returning
+  // student's row for Flow 3's lead-in (Flow 5 merged in, 2026-11-01). The
+  // machine is PENDING -> DELIVERED -> PENDING_EVAL -> SCORED,
   // and Flow 4 triggers on PENDING_EVAL (not DELIVERED — that hop belongs to
   // 25_WarmUpWriter.js), so all three Studio-watched statuses must be present
   // at once or one of the three flows has nothing to build against.
@@ -129,7 +130,7 @@ test('installFlowFixtures: seeds all five flows, each at its own trigger status'
       String(r[exported.WQ24_QUEUE_ID]).trim() === exported.FX_QUEUE_PREFIX + suffix);
     return row ? String(row[exported.WQ24_STATUS]).trim() : null;
   };
-  assert.equal(statusOf('F5'), 'PENDING_BRIDGE');
+  assert.equal(statusOf('F3L'), 'PENDING');
   assert.equal(statusOf('F3'), 'PENDING');
   assert.equal(statusOf('F4'), 'PENDING_EVAL');
 });
@@ -186,10 +187,10 @@ test('installWarmUpFixtures: snapshots are valid JSON carrying the keys the flow
     assert.ok(k in profile, 'profile must carry ' + k);
   });
 
-  // Flow 5's row is the RETURNING-student case — the prior-response fields
-  // are exactly what makes buildWarmUpQueues() start a row at PENDING_BRIDGE.
-  const f5ctx = JSON.parse(rowFor('F5')[exported.WQ24_LESSON_CTX_SNAP]);
-  assert.ok(f5ctx.flow5_prior_response, 'Flow 5 needs a prior response to bridge from');
+  // The F3L row is the RETURNING-student case: Flow 3 writes its lead-in
+  // from the prior response.
+  const f5ctx = JSON.parse(rowFor('F3L')[exported.WQ24_LESSON_CTX_SNAP]);
+  assert.ok(f5ctx.flow5_prior_response, 'the lead-in needs a prior response to connect');
   assert.ok(f5ctx.flow5_prior_date);
   assert.ok('flow5_prior_score' in f5ctx);
   assert.equal('flow5_prior_response' in ctx, false,
@@ -248,19 +249,19 @@ test('checkFlowFixtures: a consumed fixture reads as not-ready, and says why', (
   const ss = setUp(sandbox);
   exported.installFlowFixtures();
 
-  // Simulate a live Flow 5 having advanced its fixture, which is what
-  // success looks like from the flow's side.
+  // Simulate a live Flow 3 having delivered its lead-in fixture, which is
+  // what success looks like from the flow's side.
   const wq = ss.getSheetByName('WarmUpQueue');
   const data = wq.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][exported.WQ24_QUEUE_ID]).trim() === exported.FX_QUEUE_PREFIX + 'F5') {
-      wq.getRange(i + 1, exported.WQ24_STATUS + 1).setValue('PENDING');
+    if (String(data[i][exported.WQ24_QUEUE_ID]).trim() === exported.FX_QUEUE_PREFIX + 'F3L') {
+      wq.getRange(i + 1, exported.WQ24_STATUS + 1).setValue('DELIVERED');
     }
   }
 
   const report = exported.checkFlowFixtures();
   assert.equal(report.ready, 4);
-  const f5 = report.report.find((r) => r.label.indexOf('Flow 5') === 0);
+  const f5 = report.report.find((r) => r.label.indexOf('Flow 3 (lead-in)') === 0);
   assert.equal(f5.ok, false);
   assert.match(f5.detail, /already consumed it/,
     'must explain that a consumed fixture is a pass for the flow, not a failure');
@@ -291,7 +292,7 @@ test('removeFlowFixtures: clears every fixture row and leaves real rows untouche
     .every((r) => String(r[idx]).trim() !== needle);
   assert.ok(gone('RubricQueue', 1, exported.FX_TEACHER_EMAIL));
   assert.ok(gone('FlowInput', exported.FI.STUDENT_EMAIL, exported.FX_STUDENT_EMAIL));
-  assert.ok(gone('WarmUpQueue', exported.WQ24_QUEUE_ID, exported.FX_QUEUE_PREFIX + 'F5'));
+  assert.ok(gone('WarmUpQueue', exported.WQ24_QUEUE_ID, exported.FX_QUEUE_PREFIX + 'F3L'));
 
   const survives = (tab, idx, needle) => ss.getSheetByName(tab).getDataRange().getValues()
     .some((r) => String(r[idx]).trim() === needle);
@@ -347,14 +348,13 @@ test('fixture markers never collide with the canary markers in file 35', () => {
 // wfbBuildFlow4Row_ log "no Doc_ID — skipped" and write nothing, so the flow
 // had nothing to latch onto while the fixture looked installed.
 
-test('the fixtures materialize an input row for all three flows', () => {
+test('the fixtures materialize input rows for Flows 3 and 4 (Flow 5 retired)', () => {
   const { exported, sandbox } = load();
   setUp(sandbox);
   exported.installWarmUpFixtures();
 
   const built = exported.buildWarmUpFlowInputs();
-  assert.equal(built.flow5, 1, 'Flow 5: ' + JSON.stringify(built));
-  assert.equal(built.flow3, 1, 'Flow 3: ' + JSON.stringify(built));
+  assert.equal(built.flow3, 2, 'Flow 3, with and without a last answer: ' + JSON.stringify(built));
   assert.equal(built.flow4, 1, 'Flow 4 — a status-only fixture would be 0 here: ' +
     JSON.stringify(built));
 });
@@ -365,7 +365,7 @@ test('materializing twice does not duplicate — two docs per student would foll
   exported.installWarmUpFixtures();
   exported.buildWarmUpFlowInputs();
   const second = exported.buildWarmUpFlowInputs();
-  assert.equal(second.flow3 + second.flow4 + second.flow5, 0);
+  assert.equal(second.flow3 + second.flow4, 0);
   assert.equal(second.skipped, 3);
 });
 
@@ -442,7 +442,7 @@ test('building Flow 3\'s input records the chosen archetype on the queue row, on
 
   exported.buildWarmUpFlowInputs();
   assert.equal(archetypeOf('F3'), 'CONCRETE_SCENARIO');
-  assert.equal(archetypeOf('F5'), '', 'only Flow 3 chooses an archetype');
+  assert.ok(archetypeOf('F3L'), 'the lead-in row is a Flow 3 row too');
   assert.equal(archetypeOf('F4'), '');
 
   // A second build skips the row, and a value already on it is kept.
@@ -460,37 +460,34 @@ test('removeFlowFixtures clears the bridge tabs too', () => {
   exported.installWarmUpFixtures();
   exported.buildWarmUpFlowInputs();
 
-  const before = [3, 4, 5].map((f) =>
+  const before = [3, 4].map((f) =>
     ss.getSheetByName(exported.WFB_INPUT_TABS[f]).getLastRow());
-  assert.deepEqual(before, [2, 2, 2], 'one materialized row per flow');
+  assert.deepEqual(before, [3, 2], 'Flow 3: two rows (F3, F3L); Flow 4: one');
 
   exported.removeFlowFixtures();
 
   // Left behind, these input rows point at queue rows that no longer exist,
   // and every later harvest pass reports them as failures forever.
-  [3, 4, 5].forEach((f) => {
+  [3, 4].forEach((f) => {
     const values = ss.getSheetByName(exported.WFB_INPUT_TABS[f]).getDataRange().getValues();
     const live = values.slice(1).filter((r) => String(r[1]).trim() !== '');
     assert.deepEqual(live, [], 'Flow ' + f + ' input tab still holds ' + JSON.stringify(live));
   });
 });
 
-test('a Flow 5 fixture with no prior response materializes nothing, by design', () => {
+// Flow 5 merged into Flow 3 (2026-11-01): the returning student's row goes
+// to Flow 3, its prompt carrying the last answer; no Flow 5 input is built.
+test('the lead-in fixture builds a Flow 3 input carrying the last answer, and no Flow 5 input', () => {
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   exported.installWarmUpFixtures();
-
-  // Strip the prior response the way a first-time student's row would lack
-  // it. The bridge must not hand Flow 5 a job with nothing to bridge from.
-  const sheet = ss.getSheetByName('WarmUpQueue');
-  const rows = sheet.getDataRange().getValues();
-  const idx = rows.findIndex((r) => String(r[exported.WQ24_QUEUE_ID]).indexOf('F5') !== -1);
-  const ctx = JSON.parse(String(rows[idx][exported.WQ24_LESSON_CTX_SNAP]));
-  delete ctx.flow5_prior_response;
-  sheet.getRange(idx + 1, exported.WQ24_LESSON_CTX_SNAP + 1).setValue(JSON.stringify(ctx));
-
-  const built = exported.buildWarmUpFlowInputs();
-  assert.equal(built.flow5, 0);
+  exported.buildWarmUpFlowInputs();
+  const f3 = ss.getSheetByName('Flow3Input').getDataRange().getValues();
+  const row = f3.find((r) => String(r[1]).trim() === exported.FX_QUEUE_PREFIX + 'F3L');
+  assert.ok(row, 'a Flow 3 input row for the lead-in fixture');
+  assert.match(String(row[row.length - 1]), /FIXTURE PRIOR RESPONSE/);
+  const f5 = ss.getSheetByName('Flow5Input');
+  assert.ok(!f5 || f5.getLastRow() <= 1, 'no Flow 5 input');
 });
 
 // ── The Flow 2 fixture, checked against its consumers ────────────────────────

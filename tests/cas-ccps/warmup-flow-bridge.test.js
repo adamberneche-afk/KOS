@@ -377,7 +377,13 @@ test('Flow 3 headers cover every field wfbBuildFlow3Fields_ produces', () => {
   // unfilled. Compared case-insensitively because the headers are TitleCase
   // and the field keys are camelCase.
   const headers = exported.WFB_FLOW3_HEADERS.map((h) => h.toLowerCase());
-  Object.keys(exported.wfbBuildFlow3Fields_({}, {})).forEach((key) => {
+  // priorResponse (the student's last answer, for the lead-in; Flow 5 merged
+  // in 2026-11-01) reaches Studio inside PromptText only, which the
+  // "fully substituted" test below checks. No column of its own: one would
+  // widen a live tab Studio is bound to, and keep a student's words in a
+  // second cell.
+  const noColumn = ['priorResponse'];
+  Object.keys(exported.wfbBuildFlow3Fields_({}, {})).filter((k) => noColumn.indexOf(k) === -1).forEach((key) => {
     assert.ok(headers.indexOf(key.toLowerCase()) !== -1,
       'field "' + key + '" has no column in WFB_FLOW3_HEADERS');
   });
@@ -802,7 +808,7 @@ test('harvestWarmUpFlowReturns (Flow 3): a fabricated warm-up prompt is caught b
 // (same GAS project, gas-lint Check K).
 const PROMPT_FILES = FILES.concat([path.join(CC, '40_FlowPrompts.js'), path.join(CC, '24_WarmUpBridge.js')]);
 const PROMPT_EXPOSE = EXPOSE.concat([
-  'wfbPromptFor_', 'wfbBuildFlow3Row_', 'wfbBuildFlow4Row_', 'wfbBuildFlow5Row_',
+  'wfbPromptFor_', 'wfbBuildFlow3Row_', 'wfbBuildFlow4Row_',
   'WFB_PROMPT_VARS', 'flowPromptPlaceholders_',
   'FLOW_3_PROMPT_MODE_A', 'FLOW_3_PROMPT_MODE_B', 'FLOW_4_PROMPT', 'FLOW_5_PROMPT',
   'wfbBuildBaselineFields_', 'WFB_BASELINE_SKILLS', 'WFB_BASELINE_ORDER',
@@ -899,13 +905,14 @@ test('Flow 4 PromptText carries the prompt, the response and the word-count scor
   assert.match(prompt, /\b5\b/);
 });
 
-test('Flow 5 PromptText carries the prior response it bridges from', () => {
+// Flow 5 merged into Flow 3 (2026-11-01): Flow 3's prompt carries the
+// student's last answer, for its lead-in.
+test('Flow 3 PromptText carries the student\'s last answer, for the lead-in', () => {
   const { exported } = loadWithPrompts();
-  const prompt = builtPrompt(exported, 'wfbBuildFlow5Row_', queueRow(exported, FULL_LESSON, {}));
+  const prompt = builtPrompt(exported, 'wfbBuildFlow3Row_', queueRow(exported, FULL_LESSON, {}));
   assert.deepEqual(exported.flowPromptPlaceholders_(prompt), []);
-  assert.match(prompt, /PRIOR-RESPONSE/);
-  assert.match(prompt, /PRIOR-CONN/);
-  assert.match(prompt, /COURSE-NAME/);
+  assert.match(prompt, /STUDENT'S LAST WARM-UP ANSWER[^\n]*\nPRIOR-RESPONSE/);
+  assert.match(prompt, /LEAD-IN:/);
 });
 
 test('an absent field fills its placeholder with "", never literal braces', () => {

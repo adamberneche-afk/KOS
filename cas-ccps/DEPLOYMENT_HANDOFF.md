@@ -197,7 +197,7 @@
 >    harvest function checks for a specific status value, confirm *what writes
 >    that value* before assuming a "write the output column" instruction is
 >    complete.
-> 4. **A `PromptText` chip (`FlowInput`/`Flow3Input`/`Flow4Input`/`Flow5Input`,
+> 4. **A `PromptText` chip (`FlowInput`/`Flow3Input`/`Flow4Input`, and `Flow5Input` until Flow 5 was retired on 2026-11-01,
 >    always the last read-only column before the Flow's own writes) is already
 >    fully substituted** — including, for Flow 3, already resolved between its
 >    Mode A/B templates. Bind Gemini's system prompt directly to that chip.
