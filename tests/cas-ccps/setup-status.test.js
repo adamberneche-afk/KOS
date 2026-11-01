@@ -12,7 +12,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 
 function load() {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('35_FlowPreflightAndCanary.js'), S('64_LedgerCycle.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('35_FlowPreflightAndCanary.js'), S('58_LessonRollout.js'), S('23_StudentProfileManager.js'), S('64_LedgerCycle.js')],
     ['showSetupStatus']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -44,6 +44,21 @@ test('a job run by the Ledger cycle reads "in the cycle"; an unknown trigger is 
   const r = env.exported.showSetupStatus();
   assert.ok(r.lines.some((l) => /on\s+bridgeQueue: in the cycle/.test(l)));
   assert.ok(r.lines.some((l) => /Other triggers: someOldHandler/.test(l)));
+});
+
+// 10-29 handoff: a pending catch-up showed under "Other triggers".
+test('the rollout catch-up is named: pending with today\'s count, or none, and never "missing"', () => {
+  const env = load();
+  const r0 = env.exported.showSetupStatus();
+  assert.ok(r0.lines.some((l) => /none\s+Lessons: rollout catch-up \(runLessonRolloutCatchUp\), one-off, 0 of at most 12 today; scheduled only/.test(l)));
+  assert.ok(!r0.missing.some((m) => /CatchUp/.test(m)));
+  env.sandbox.ScriptApp.newTrigger('runLessonRolloutCatchUp').timeBased().create();
+  const d = new Date();
+  const ymd = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  env.props.setProperty('ROLLOUT_CATCHUP', JSON.stringify({ day: ymd, count: 3 }));
+  const r = env.exported.showSetupStatus();
+  assert.ok(r.lines.some((l) => /pending\s+Lessons: rollout catch-up .*3 of at most 12 today$/.test(l)));
+  assert.ok(!r.lines.some((l) => /Other triggers: .*runLessonRolloutCatchUp/.test(l)));
 });
 
 test('switches show their value or what unset means; secrets only say set or not set', () => {

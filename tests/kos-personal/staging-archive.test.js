@@ -5,8 +5,8 @@
 // archiveFinishedStagingRows() is the nightly trigger: it moves finished
 // rows only. A STUDIO_TIMEOUT part must stay in STAGING_PIPELINE, because
 // requeueStagingRows() and checkVectorClassifySessions() read that sheet
-// only, and DUPLICATE rows stay because the duplicate finder reads them
-// there. archiveStagingPipeline() (the web app button) moved finished AND
+// only. DUPLICATE rows (a resolved copy) move too since 2026-11-01: every
+// reader of them scans STAGING_ARCHIVE as well (10-29 handoff). archiveStagingPipeline() (the web app button) moved finished AND
 // failed rows until 2026-10-22 (UX audit fix-first 14), which put a failed
 // row beyond any retry; it now moves the same set as the nightly run, and
 // previewStagingArchive() gives the web app its confirm count. Both move
@@ -55,12 +55,13 @@ test('archiveFinishedStagingRows: moves finished rows only, in order', () => {
   const r = exported.archiveFinishedStagingRows();
 
   assert.equal(r.success, true);
-  assert.equal(r.archived, 5);
-  assert.equal(r.remaining, 5);
-  assert.deepEqual(stagingUids(staging), ['UID-2', 'UID-3', 'UID-4', 'UID-6', 'UID-7'],
-    'STUDIO_TIMEOUT, DUPLICATE, in-flight and AUDIT_REJECTED rows stay, in their order');
+  assert.equal(r.archived, 6);
+  assert.equal(r.remaining, 4);
+  assert.deepEqual(stagingUids(staging), ['UID-2', 'UID-4', 'UID-6', 'UID-7'],
+    'STUDIO_TIMEOUT, in-flight and AUDIT_REJECTED rows stay, in their order');
   const archive = ss.getSheetByName('STAGING_ARCHIVE');
-  assert.deepEqual(archiveUids(archive), ['UID-0', 'UID-1', 'UID-5', 'UID-8', 'UID-9']);
+  assert.deepEqual(archiveUids(archive), ['UID-0', 'UID-1', 'UID-3', 'UID-5', 'UID-8', 'UID-9'],
+    'DUPLICATE moves with the finished rows');
   const row = archive.getDataRange().getValues()[1];
   assert.equal(Object.prototype.toString.call(row[0]), '[object Date]', 'Archived_At comes first');
   assert.equal(row[6], 'PROCESSED', 'the staging columns follow unchanged');
@@ -87,19 +88,19 @@ test('archiveStagingPipeline: moves finished rows only; failed rows stay so they
   const { exported, ss, staging } = setup(MIXED.concat(['FAILED_PARSE', 'PROCESSING_ERROR: boom']));
   const r = exported.archiveStagingPipeline();
   assert.equal(r.success, true);
-  assert.equal(r.archived, 5);
-  assert.equal(r.succeeded, 5);
+  assert.equal(r.archived, 6);
+  assert.equal(r.succeeded, 6);
   assert.equal(r.failed, 0, 'no failed row is archived');
   assert.equal(r.failedKept, 4, 'STUDIO_TIMEOUT, AUDIT_REJECTED, FAILED_PARSE and PROCESSING_ERROR stay');
-  assert.deepEqual(stagingUids(staging), ['UID-2', 'UID-3', 'UID-4', 'UID-6', 'UID-7', 'UID-10', 'UID-11']);
-  assert.deepEqual(archiveUids(ss.getSheetByName('STAGING_ARCHIVE')), ['UID-0', 'UID-1', 'UID-5', 'UID-8', 'UID-9']);
+  assert.deepEqual(stagingUids(staging), ['UID-2', 'UID-4', 'UID-6', 'UID-7', 'UID-10', 'UID-11']);
+  assert.deepEqual(archiveUids(ss.getSheetByName('STAGING_ARCHIVE')), ['UID-0', 'UID-1', 'UID-3', 'UID-5', 'UID-8', 'UID-9']);
 });
 
 test('previewStagingArchive: counts what the button would move, and changes nothing', () => {
   const { exported, ss, staging } = setup(MIXED.concat(['FAILED_PARSE']));
   const p = exported.previewStagingArchive();
   assert.equal(p.success, true);
-  assert.equal(p.finished, 5);
+  assert.equal(p.finished, 6);
   assert.equal(p.failedKept, 3);
   assert.equal(staging.getLastRow(), 12, 'every row is still in the queue');
   assert.equal(ss.getSheetByName('STAGING_ARCHIVE'), null, 'no archive sheet was made');

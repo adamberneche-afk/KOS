@@ -1916,9 +1916,10 @@ function _clearTurnstileStaleCounts_(uids) {
 }
 
 /**
- * Moves the rows that finished successfully (STAGING_SUCCEEDED_STATUSES:
- * PROCESSED, INTAKE_PROCESSED, PARTITIONED, CONSOLIDATED) from
- * STAGING_PIPELINE to STAGING_ARCHIVE. Fully headless — no ui.alert.
+ * Moves the rows that finished (STAGING_ARCHIVABLE_STATUSES: PROCESSED,
+ * INTAKE_PROCESSED, PARTITIONED, CONSOLIDATED, and since 2026-11-01
+ * DUPLICATE) from STAGING_PIPELINE to STAGING_ARCHIVE. Fully headless — no
+ * ui.alert.
  *
  * FIXED (UX audit 2026-10-22, fix-first 14): this also moved every
  * TERMINAL_FAILED_STATUSES row (FAILED_PARSE … STUDIO_TIMEOUT,
@@ -1961,7 +1962,7 @@ function archiveStagingPipeline() {
     const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
     const archive = _stagingArchiveSheet_(ss);
-    const r = _moveStagingRowsToArchive_(staging, archive, STAGING_SUCCEEDED_STATUSES);
+    const r = _moveStagingRowsToArchive_(staging, archive, STAGING_ARCHIVABLE_STATUSES);
     const done = r.moved.length;
     const failedKept = _countFailedStagingRows_(staging);
 
@@ -1993,7 +1994,7 @@ function previewStagingArchive() {
     let finished = 0;
     for (let i = 1; i < data.length; i++) {
       const s = String(data[i][CFG.STAGING_COLS.STATUS]);
-      if (STAGING_SUCCEEDED_STATUSES.some(p => s.startsWith(p))) finished++;
+      if (STAGING_ARCHIVABLE_STATUSES.some(p => s.startsWith(p))) finished++;
     }
     return { success: true, finished: finished, failedKept: _countFailedStagingRows_(staging) };
   } catch (e) {
@@ -2016,13 +2017,13 @@ function _countFailedStagingRows_(staging) {
 
 /**
  * Nightly trigger handler (setupAllTriggers, 02:00). Moves only the rows
- * that finished successfully (STAGING_SUCCEEDED_STATUSES) to
+ * that finished (STAGING_ARCHIVABLE_STATUSES) to
  * STAGING_ARCHIVE, the same set the web app button (archiveStagingPipeline())
  * moves since 2026-10-22. It leaves every failed row in place: requeueStagingRows() and checkVectorClassifySessions() read
  * STAGING_PIPELINE only, so a STUDIO_TIMEOUT part archived on a timer could
  * no longer be requeued, and its session's matrix row would stay
- * incomplete. DUPLICATE rows stay too; the duplicate finder, the matrix
- * repair and the governance count look for them in STAGING_PIPELINE.
+ * incomplete. DUPLICATE rows move too since 2026-11-01: see
+ * STAGING_ARCHIVABLE_STATUSES for why that is now safe.
  *
  * Before this trigger, nothing archived STAGING_PIPELINE except the web app button, so the
  * sheet had reached ~400 rows, nearly all PROCESSED (2026-10-06).
@@ -2038,7 +2039,7 @@ function archiveFinishedStagingRows() {
   try {
     const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
-    const r = _moveStagingRowsToArchive_(staging, _stagingArchiveSheet_(ss), STAGING_SUCCEEDED_STATUSES);
+    const r = _moveStagingRowsToArchive_(staging, _stagingArchiveSheet_(ss), STAGING_ARCHIVABLE_STATUSES);
     if (r.moved.length > 0) SpreadsheetApp.flush();
     console.log('[archiveFinishedStagingRows] Archived ' + r.moved.length + ' finished row(s); ' +
       r.remaining + ' row(s) remain in ' + CFG.STAGING_SHEET + '.');
@@ -2053,6 +2054,13 @@ function archiveFinishedStagingRows() {
 
 // Statuses that mean a staging row finished successfully.
 const STAGING_SUCCEEDED_STATUSES = ['PROCESSED', 'INTAKE_PROCESSED', 'PARTITIONED', 'CONSOLIDATED'];
+// What both archives move: the finished rows, and DUPLICATE (a resolved
+// copy; terminal, nothing releases or requeues it). DUPLICATE rows stayed
+// on the sheet until 2026-11-01 (10-29 handoff), for readers that looked
+// only in STAGING_PIPELINE; the backfill (20), the unclassified count (20,
+// read by the governance primer) now scan STAGING_ARCHIVE too, and the
+// matrix repair (21) has nothing left to do for a resolved copy.
+const STAGING_ARCHIVABLE_STATUSES = STAGING_SUCCEEDED_STATUSES.concat(['DUPLICATE']);
 
 function _stagingArchiveSheet_(ss) {
   let archive = ss.getSheetByName('STAGING_ARCHIVE');

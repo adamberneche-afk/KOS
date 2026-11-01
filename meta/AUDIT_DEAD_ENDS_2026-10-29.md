@@ -24,6 +24,11 @@ FlowPrompts, FlowBuildSpec rows, binding/liveness checks, a fixture and a
 canary. Open until the operator builds the two flows in Studio and
 `checkRegistrarFlowLiveness()` shows an answer.
 
+**Progress (2026-11-01, the next-push fixes):** #8 closed
+(`showSetupStatus()` names the rollout catch-up, and
+`cas-ccps/DEPLOYMENT_HANDOFF.md` lists it) and #10 closed
+(`logQueueMetrics()` counts every status; DUPLICATE rows are archived).
+
 **Status:** the first repo-wide audit of its kind, done 2026-10-29 at the
 operator's request ("make sure we aren't leaving too many dead ends and
 half built functionalities"). Its actions are scheduled in
