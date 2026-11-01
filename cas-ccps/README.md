@@ -730,7 +730,12 @@ deliberately — it verifies the code path, not the flow.
 6. Retry thresholds (5 pieces MET across a competency and its linked ones,
    2 linked pieces MET per primary piece NOT_MET; `SCR_RETRY_MIN_MET` and
    `scrRetryStatus_` in `00_SharedConfig.js` since 2026-11-01) remain
-   provisional, unvalidated defaults. Since D15 the retry is live: the
+   provisional, unvalidated defaults. Since 2026-11-01 both are settings
+   (`SCR_RETRY_MIN_MET`, `SCR_RETRY_LINKED_PER_MISS` in the Ledger's
+   `_CONFIG` tab; `scrRetryThresholds_`), the Teacher Dashboard's
+   explanation shows the values in force, and `previewScrRetryThresholds()`
+   (30b, from the editor) counts how many ratings of 3 or 4 would be ready
+   at the current values and one step either side, counts only. Since D15 the retry is live: the
    Teacher Dashboard's student page re-rates, SCR Review lists the ready
    ones, and the student's Competencies tab says what unlocks one.
 7. ~~Scripts 22, 22b, 23, 24, 26, 28, 31, 32, 33 not uploaded~~ — **closed**,

@@ -29,7 +29,10 @@
 // THE THRESHOLDS (provisional, unvalidated defaults; cas-ccps/README.md):
 // 5 or more pieces MET across the primary and its linked secondaries, and 2
 // secondary pieces MET for every primary piece NOT_MET (a ratio, so one miss
-// doesn't block a student who has shown plenty elsewhere).
+// doesn't block a student who has shown plenty elsewhere). Since 2026-11-01
+// both are settings (SCR_RETRY_MIN_MET, SCR_RETRY_LINKED_PER_MISS; 00's
+// scrRetryThresholds_), and previewScrRetryThresholds() shows how the
+// current values and their neighbours play out, counts only.
 //
 // ENTRY POINTS:
 //   checkRetryEligibility_(studentEmail, competencyId, cache)
@@ -40,6 +43,8 @@
 //       -- what a re-rating would give; changes nothing
 //   confirmRetryImprovement_(studentEmail, competencyId, teacherEmail)
 //       -- the re-rating, for the signed-in teacher who owns the rating
+//   previewScrRetryThresholds()   -- counts at the thresholds and their
+//          neighbours, from the editor; changes nothing
 // =============================================================================
 
 // The pairs a retry can apply to: a teacher-decided rating of 3 or 4.
@@ -120,6 +125,57 @@ function getAllRetryEligibleStudents_() {
   Logger.log("[S30b] Retry eligibility scan: " + candidates.length +
     " candidate(s) at rating 3/4 checked, " + eligible.length + " eligible.");
   return { eligible: eligible, generatedAt: new Date().toISOString() };
+}
+
+// ---------------------------------------------------------------------------
+// previewScrRetryThresholds -- run from the editor (2026-11-01). The two
+// thresholds are provisional; this shows how they play out on the real
+// ratings before anyone tunes them (SCR_RETRY_MIN_MET and
+// SCR_RETRY_LINKED_PER_MISS in the Ledger's _CONFIG tab). For every rating
+// of 3 or 4, at the current values and at one step either side of each:
+// how many are ready (eligible and the evidence gives a better rating),
+// eligible but not better, and not yet. Counts only: no names, no IDs.
+// Changes nothing.
+// ---------------------------------------------------------------------------
+function previewScrRetryThresholds() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  if (!suggestionsSheet) { Logger.log("[S30b] SCRSuggestions tab not found."); return { error: "SCRSuggestions tab not found." }; }
+  const data = suggestionsSheet.getDataRange().getValues();
+  const candidates = retryCandidates_(data).map(function (c) {
+    const found = _retrySuggestionRow_(data, c.studentEmail, c.competencyId);
+    return Object.assign({ rating: Number(found.row[SCRS.CONFIRMED_RATING]) }, c);
+  });
+  const ctx = scrRetryContext_(ss, cfg);
+  const current = ctx.thresholds;
+  const variants = [current,
+    { minMet: current.minMet - 1, linkedPerMiss: current.linkedPerMiss },
+    { minMet: current.minMet + 1, linkedPerMiss: current.linkedPerMiss },
+    { minMet: current.minMet, linkedPerMiss: current.linkedPerMiss - 1 },
+    { minMet: current.minMet, linkedPerMiss: current.linkedPerMiss + 1 }]
+    .filter(function (t) { return t.minMet >= 1 && t.linkedPerMiss >= 1; });
+  const rows = variants.map(function (t) {
+    const out = { minMet: t.minMet, linkedPerMiss: t.linkedPerMiss, ready: 0, eligibleNotBetter: 0, notYet: 0, noLinked: 0 };
+    const c2 = { roles: ctx.roles, evidence: ctx.evidence, thresholds: t };
+    candidates.forEach(function (c) {
+      const st = scrRetryStatus_(c2, c.studentEmail, c.competencyId, c.rating);
+      if (!st.applies) return;
+      if (!st.secondaryIds.length) out.noLinked++;
+      else if (st.eligible && st.improved) out.ready++;
+      else if (st.eligible) out.eligibleNotBetter++;
+      else out.notYet++;
+    });
+    return out;
+  });
+  Logger.log("[S30b] SCR retry thresholds: " + candidates.length + " rating(s) of 3 or 4. Current: " +
+    current.minMet + " MET, " + current.linkedPerMiss + " linked per miss.");
+  rows.forEach(function (r, i) {
+    Logger.log("[S30b] " + (i === 0 ? "current " : "if      ") + r.minMet + " MET, " + r.linkedPerMiss +
+      " linked per miss: ready " + r.ready + ", eligible but not better " + r.eligibleNotBetter +
+      ", not yet " + r.notYet + ", no linked competency " + r.noLinked + ".");
+  });
+  return { candidates: candidates.length, rows: rows };
 }
 
 // ---------------------------------------------------------------------------

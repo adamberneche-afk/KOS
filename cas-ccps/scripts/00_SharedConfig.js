@@ -248,6 +248,9 @@ const SHARED_CONFIG_KEYS = [
   // The school (packaging step 1): read through schoolProfile_().
   "SCHOOL_COURSES",
   "STUDENT_ID_PATTERN",
+  // The SCR retry's two thresholds: read through scrRetryThresholds_().
+  "SCR_RETRY_MIN_MET",
+  "SCR_RETRY_LINKED_PER_MISS",
   "STUDENT_MAIL_DOMAIN",
   "STAFF_MAIL_DOMAIN",
   "EARLY_RELEASE_DAYS",
@@ -1299,6 +1302,27 @@ function computeSuggestion_(counts) {
 // neither of which was ever made or written.
 // ---------------------------------------------------------------------------
 const SCR_RETRY_MIN_MET = 5;
+const SCR_RETRY_LINKED_PER_MISS = 2;
+
+// The two thresholds as configured (2026-11-01): SCR_RETRY_MIN_MET (pieces
+// MET across the competency and its linked ones) and
+// SCR_RETRY_LINKED_PER_MISS (linked pieces MET for each primary piece not
+// met), shared keys like the school's, so the teacher can tune them from the
+// Ledger's _CONFIG tab after previewScrRetryThresholds() (30b) shows how
+// they play out. Each must be a whole number from 1 to 20; anything else
+// keeps its default (5, 2). `values` for tests.
+function scrRetryThresholds_(values) {
+  let v = values;
+  if (!v) {
+    try { v = _resolveConfigValues_().values; } catch (e) { v = {}; }
+  }
+  const pick = function (key, dflt) {
+    const n = Number(String(v[key] === undefined || v[key] === null ? "" : v[key]).trim());
+    return Number.isInteger(n) && n >= 1 && n <= 20 ? n : dflt;
+  };
+  return { minMet: pick("SCR_RETRY_MIN_MET", SCR_RETRY_MIN_MET),
+    linkedPerMiss: pick("SCR_RETRY_LINKED_PER_MISS", SCR_RETRY_LINKED_PER_MISS) };
+}
 
 // { byConfig: { configId: { primary, secondaries[] } }, linked: { primary:
 // [secondary ids] } } from StudentAssignments (a student's workspace ->
@@ -1372,7 +1396,8 @@ function scrRetryEvidence_(ss, cfg, onlyEmail) {
 
 // Everything a retry check reads, read once: { roles, evidence }.
 function scrRetryContext_(ss, cfg, onlyEmail) {
-  return { roles: scrRetryRoles_(ss, cfg), evidence: scrRetryEvidence_(ss, cfg, onlyEmail) };
+  return { roles: scrRetryRoles_(ss, cfg), evidence: scrRetryEvidence_(ss, cfg, onlyEmail),
+    thresholds: scrRetryThresholds_() };
 }
 
 // One student and one competency, with the rating that stands now:
@@ -1410,8 +1435,9 @@ function scrRetryStatus_(ctx, studentEmail, competencyId, currentRating) {
   });
   const primary = countOutcomes_(prim), secondary = countOutcomes_(sec), all = countOutcomes_(every);
   const totalMet = primary.metCount + secondary.metCount;
-  const needMet = Math.max(0, SCR_RETRY_MIN_MET - totalMet);
-  const needSecondary = Math.max(0, 2 * primary.notMetCount - secondary.metCount);
+  const th = ctx.thresholds || { minMet: SCR_RETRY_MIN_MET, linkedPerMiss: SCR_RETRY_LINKED_PER_MISS };
+  const needMet = Math.max(0, th.minMet - totalMet);
+  const needSecondary = Math.max(0, th.linkedPerMiss * primary.notMetCount - secondary.metCount);
   const eligible = secondaryIds.length > 0 && needMet === 0 && needSecondary === 0;
   const newRating = computeSuggestion_(all).suggestedRating;
   let needPrimaryMet = 0;

@@ -1123,6 +1123,7 @@ function getStudentDetail(studentEmail) {
   // stands for a retry (D15).
   try {
     out.retries = _tdRetryRows_(cfg, SpreadsheetApp.openById(cfg.ledgerSsId), email);
+    out.retryThresholds = scrRetryThresholds_();
   } catch (e) {
     Logger.log("[S07] getStudentDetail retries failed: " + e.message);
     out.retriesError = "Re-ratings could not be checked: " + e.message;
@@ -2999,7 +3000,7 @@ function retryPanelHtml(data) {
   const ready = list.filter(r => r.eligible && r.improved).length;
   let h = '<details class="retry-panel" style="margin-top:8px;font-size:13px"' + (ready ? ' open' : '') + '>' +
     '<summary>Re-ratings: ' + escNum(ready) + ' ready of ' + escNum(list.length) + ' rated 3 or 4</summary>' +
-    '<p style="font-size:12px;color:var(--text-secondary);margin:6px 0">A rating of 3 or 4 can be re-rated once the student has 5 pieces of work meeting it or a linked competency (milestones 2–3 of the assignments where it is the primary), with 2 linked ones met for each time it was not met. The new rating is the usual rule over all its evidence; your first rating stays in the decision log.</p>';
+    '<p style="font-size:12px;color:var(--text-secondary);margin:6px 0">A rating of 3 or 4 can be re-rated once the student has ' + escNum((data.retryThresholds || {}).minMet || 5) + ' pieces of work meeting it or a linked competency (milestones 2–3 of the assignments where it is the primary), with ' + escNum((data.retryThresholds || {}).linkedPerMiss || 2) + ' linked ones met for each time it was not met. The new rating is the usual rule over all its evidence; your first rating stays in the decision log.</p>';
   list.forEach(function (r, i) {
     h += '<div style="border-top:1px solid #e8eaed;padding:6px 0">' +
       '<strong>' + esc(r.competencyId) + '</strong> ' + esc(r.competencyText) + ' · rated ' + esc(scrLabel(r.currentRating)) + '<br>' +

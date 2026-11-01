@@ -229,7 +229,7 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
         <span class="col-field">lesson_id</span>
         <span class="col-type">String</span>
         <span class="col-writer">S22</span>
-        <span class="col-desc">Auto-generated UUID. Format: <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">LES-{YYYYMMDD}-{6hex}</code> (widened from 4 to 6 hex chars — the original 65,536-value/day space had a real collision risk against WarmUpRegistry's queue_id lookup map). Primary key. Used in AlignmentLog foreign key.</span>
+        <span class="col-desc">Auto-generated UUID. Format: <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">LES-{YYYYMMDD}-{12hex}</code> (12 hex since 2026-11-01, 6 before, 4 originally; older IDs stay valid. Widened from 4 to 6 hex chars — the original 65,536-value/day space had a real collision risk against WarmUpRegistry's queue_id lookup map). Primary key. Used in AlignmentLog foreign key.</span>
       </div>
       <div class="schema-row cols-4">
         <span class="col-field">teacher_email</span>
