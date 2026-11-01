@@ -66,7 +66,7 @@ As our Gold Sponsor, Rapid Road Driving School would have its logo printed on th
 
 ## Warm-up
 
-If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can.
+If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can. Then pick the one that would gain the most and explain why in a sentence or two.
 
 ## Vocabulary
 

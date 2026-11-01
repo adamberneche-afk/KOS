@@ -77,7 +77,7 @@ A short sample profile for a persona not on the list: Maya, a 16-year-old high s
 
 ## Warm-up
 
-If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can.
+If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can. Then pick the strongest one and explain why in a sentence or two.
 
 ## Vocabulary
 

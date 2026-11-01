@@ -37,8 +37,11 @@ the dead-ends audit's backlog fixes):
   "list as many ways as you can" gets 0 of 6 for word count from a correct
   list (`WORD_COUNT_THRESHOLDS`, 25). Either seed list prompts differently
   or score lists by item count. A grading rule, so the teacher decides.
-  **Promoted 2026-11-01** into `PLAN_2026-11.md`'s window: the agent brings
-  a proposal, and the operator decides.
+  **Decided and built 2026-11-01: option B, seed list prompts
+  differently.** The six list anchors that asked for no reason now end
+  "Then pick one and explain why in a sentence or two"; Flow 3 keeps that
+  part (Mode A) and adds it to any list it writes (Mode B). The scoring is
+  unchanged. `warmup-list-anchors.test.js` pins both.
 - ~~**Flow 3 output quality.**~~ **Done (#238)**; what remains is watching
   the overnight email's fallback line. About 1 in 5 of Studio's warm-ups is turned
   down by the shape gate (over 900 characters; the prompt's own wording,

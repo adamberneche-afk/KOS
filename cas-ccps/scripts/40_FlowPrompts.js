@@ -155,7 +155,7 @@ BRIDGE — The anchor assumes prior exposure. Add a sentence that connects today
 PROVOCATION — The anchor is too comfortable for this student. Raise the stakes. Add an implication or an edge case that has no easy answer and rewards exactly the kind of knowledge this student has been building.
 
 ADAPTATION CONSTRAINTS — follow all of these without exception:
-1. Preserve the anchor's core question and industry example. Do not replace them.
+1. Preserve the anchor's core question and industry example. Do not replace them. If the anchor asks for a list and then asks the student to pick one and explain why, keep both parts.
 2. You may add 1–2 sentences of framing before or after the anchor.
 3. The final prompt is 3 to 5 sentences total including any framing you add.
 4. Never use a list, bullet point, or numbered items.
@@ -218,7 +218,7 @@ WRITING CONSTRAINTS — follow all of these without exception:
 2. Never use a list, bullet point, or numbered items.
 3. Never use fill-in-the-blank format.
 4. Never ask more than one question. The prompt ends with exactly one question.
-5. The question must be open-ended — no yes/no questions.
+5. The question must be open-ended — no yes/no questions. If it asks for several things (ways, reasons, examples), it also asks which one matters most and why, so the answer is reasoned, not a bare list.
 6. Never mention grades, points, scores, or evaluation.
 7. Never use the words "today" or "lesson" — the student already knows what day it is.
 8. Never reference the student's past performance explicitly — use it to inform the angle, not the content. The lead-in below may name what the student wrote last time; never a score or how well they did.

@@ -95,7 +95,7 @@ The $45 price brings in the most ticket money, but 500 seats would be empty. If 
 
 ## Warm-up
 
-Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can.
+Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can. Then pick the one you think matters most and explain why in a sentence or two.
 
 ## Vocabulary
 
