@@ -80,6 +80,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 21_VectorMatrixRepair.gs   Duplicates, rederive, unrebuildable-row reset   ✅ in repo
 22_BriefingDocs.gs         Notebook briefing docs, DECISION_REGISTER       ✅ in repo
 23_MoralDebt.gs            SMP-019 moral debt counter (primer line)        ✅ in repo
+24_RegistrarFlows.gs       The Registrar's two Studio flows, Apps Script half ✅ in repo — see "Registrar / Cog Relay" below
 inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see CHANGELOG.md + its own README (its OAuth grant no longer requests Drive access at all — Open Items #6, CHANGELOG.md; and read a model response by block type, never content[0] — its README's "Reading the model's output" note; checkout now takes its price from the server: `/checkout/credits` accepts only a `credits` value from `/api/v1/pricing`'s bundles, and a subscription grants credits only for a configured price, `test/billing-pricing.test.js`; failed requests return `Internal server error` plus a logged `ref`, never the raw error text, except a 400's or a 402's own message, `src/http-errors.js` and `test/http-errors.test.js`; `VECTOR_CLASSIFY` jobs get the Studio classifier prompt from the generated `src/flow-prompts.js`, not the Curator one, `test/inference-classify.test.js`)
 rtp-core-router/protocols/ governance/protocol docs                       ✅ filed in — see CHANGELOG.md. SMPs aren't kept here: `SMP_REGISTER` + `01.3_SMP_PROPOSALS` (meta/SMP_PROCESS.md)
 claude-project/            Claude Project instructions + session-log format ✅ in repo — replaces the RTP Gem (meta/PLAN_2026-10.md)
@@ -363,12 +364,37 @@ beyond "[HLD] for review" as the failure path — every successfully-routed
 file currently lands in `06_CLASSROOM_ASSETS` itself (not a subfolder)
 via `CFG.REGISTRAR_ROUTED_FOLDER`, pending a real per-type routing rule.
 
-**What this doesn't include yet:** the two Studio flows themselves aren't
-built — `REGISTRAR_STAGE1_AUDITOR_PROMPT.md` and
-`REGISTRAR_STAGE2_CURATOR_PROMPT.md` are what to build them against, same
-convention as `VECTOR_CLASSIFY_PROMPT.md`. Building them is a Workspace
-Studio UI action (pasting the prompt into a Studio flow there), not a
-repo-file task — nothing in this codebase can do that step for you.
+**The two Studio flows (D14, 2026-11-01).** `24_RegistrarFlows.gs` is
+their Apps Script half, in the shape `meta/FLOW_DOCTRINE.md` requires (the
+original design had each flow read Drive and write the ledger itself):
+
+- **Materialize.** When `runRegistrarMicrobatch` releases a row it first
+  writes a flat input row: `RegistrarStage1Input` (the draft's text, its
+  first 25,000 characters) or `RegistrarStage2Input` (one labelled cell: the
+  draft, Stage 1's JSON, and a digest of the `VECTOR_*` docs in
+  `05_Vector_Repository` as the "Master Vector Primer", within a cell's
+  50,000 characters). No flow reads Drive. A file that isn't a Google Doc
+  fails at once with what to do; a Doc that won't open this minute waits.
+- **The flow.** Trigger on its own tab's `Status = READY`; one Ask Gemini
+  step whose System Prompt is the `REGISTRAR_STAGE1_SYSTEM_PROMPT` /
+  `REGISTRAR_STAGE2_SYSTEM_PROMPT` PromptText chip (FlowPrompts) followed by
+  `@trigger.SourceText`; a last step adding `Returned_At`, `Release_ID`
+  (from the trigger row) and `Output_JSON` to `REGISTRAR_RETURN`.
+- **Harvest.** `runRegistrarProcessor` runs `harvestRegistrarReturns()`
+  before its sweep: a return for the row's current release becomes
+  `Cog_N_JSON_Output` and `PENDING_VALIDATION_N`; an old release's answer is
+  set aside (`STALE`); a Stage 1 answer not grounded in the draft bounces
+  the row (`NOT_GROUNDED`). The validators then run as before.
+- **Checks.** `checkRegistrarFlowBinding()`, `checkRegistrarFlowLiveness()`,
+  `installRegistrarFlowFixture()` / `removeRegistrarFlowFixtures()` (a
+  scratch draft that routes nothing) and `runRegistrarFlowCanary()` (the
+  flow stubbed, and it says so).
+
+**To build them:** push; let `runRegistrarProcessor` run once (it makes the
+three tabs); run `syncFlowPrompts()` and `syncStudioFlowBuildSpec()`; build
+each flow in Studio from the FlowBuildSpec tab's `Registrar 1` / `Registrar 2`
+/ `Registrar 1+2` rows; then `installRegistrarFlowFixture()` and, after the
+next two processor passes, `checkRegistrarFlowLiveness()`.
 
 **Update — `getRegistrarStatus()` is now wired into the web app UI.**
 `8_WebApp_UI.html`'s System tab has a "Curriculum checks" panel

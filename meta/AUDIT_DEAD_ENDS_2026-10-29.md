@@ -18,6 +18,12 @@ assignment's milestones; the teacher re-rates on the student's page (SCR
 Review lists the ready ones) and the student's Competencies tab says what
 unlocks one.
 
+**Progress (2026-11-01, D14):** #2's Apps Script half built
+(`24_RegistrarFlows.gs`): input tabs, a return tab and harvest, prompts in
+FlowPrompts, FlowBuildSpec rows, binding/liveness checks, a fixture and a
+canary. Open until the operator builds the two flows in Studio and
+`checkRegistrarFlowLiveness()` shows an answer.
+
 **Status:** the first repo-wide audit of its kind, done 2026-10-29 at the
 operator's request ("make sure we aren't leaving too many dead ends and
 half built functionalities"). Its actions are scheduled in

@@ -277,6 +277,8 @@ For each file, click **+** (Add a file) → **Script**, name it exactly as liste
 21_VectorMatrixRepair
 22_BriefingDocs
 23_MoralDebt
+24_RegistrarFlows       ← the Registrar's two Studio flows, Apps Script
+                           half (D14): input tabs, REGISTRAR_RETURN harvest
 ```
 
 `clasp push` (through `node run.js`, `tools/clasp-sync/README.md`) sends
