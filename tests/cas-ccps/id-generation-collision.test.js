@@ -32,34 +32,32 @@ function load() {
   return loadGasFiles(PATHS, ['generateQueueId_', 'generateLessonId_']);
 }
 
-// Kept intentionally well under the 6-hex space (16^6 ≈ 16.8M): a genuinely
-// uniform random sample this size still exercises the fix meaningfully
-// (format regex on every draw; a revert to the old 4-hex/65536-value space
-// fails the format assertion immediately, not on a chance duplicate), while
-// keeping this test's own birthday-paradox false-positive rate negligible
-// (~0.07% at n=150, vs. ~11% it would have been at a naively "thorough"
-// n=2000 against this same space — a real flake this test hit once during
-// its own development, not a fix bug).
-const SAMPLE_SIZE = 150;
+// The suffix is 12 hex characters (16^12 ≈ 2.8e14) since 2026-11-01. At 6,
+// this test's own chance of a repeat at n=150 was about 0.07%, and it
+// failed by chance on 10-31; the same odds applied to a day's real IDs. At
+// 12, n=2000 has about a 1-in-140-million chance of a repeat, so a failure
+// here means the ID is no longer random enough, not bad luck. A revert to a
+// shorter suffix fails the format check on the first draw.
+const SAMPLE_SIZE = 2000;
 
-test('generateQueueId_() produces WUQ-YYYYMMDD-{6hex} with no duplicates at scale', () => {
+test('generateQueueId_() produces WUQ-YYYYMMDD-{12hex} with no duplicates at scale', () => {
   const { exported } = load();
   const ids = new Set();
   for (let i = 0; i < SAMPLE_SIZE; i++) {
     const id = exported.generateQueueId_();
-    assert.match(id, /^WUQ-\d{8}-[0-9A-F]{6}$/, 'must match the 6-hex format');
+    assert.match(id, /^WUQ-\d{8}-[0-9A-F]{12}$/, 'must match the 12-hex format');
     ids.add(id);
   }
   assert.equal(ids.size, SAMPLE_SIZE,
     `expected ${SAMPLE_SIZE} unique IDs — a collision here means the fix regressed`);
 });
 
-test('generateLessonId_() produces LES-YYYYMMDD-{6hex} with no duplicates at scale', () => {
+test('generateLessonId_() produces LES-YYYYMMDD-{12hex} with no duplicates at scale', () => {
   const { exported } = load();
   const ids = new Set();
   for (let i = 0; i < SAMPLE_SIZE; i++) {
     const id = exported.generateLessonId_();
-    assert.match(id, /^LES-\d{8}-[0-9A-F]{6}$/, 'must match the 6-hex format');
+    assert.match(id, /^LES-\d{8}-[0-9A-F]{12}$/, 'must match the 12-hex format');
     ids.add(id);
   }
   assert.equal(ids.size, SAMPLE_SIZE,

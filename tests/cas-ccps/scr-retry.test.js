@@ -154,7 +154,7 @@ test('only ratings of 3 or 4 apply; archived evidence is left out', () => {
 
 function central(evidence, opts) {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('30_SCRSuggestionEngine.js'), S('30b_SCRRetryRemediation.js')],
-    ['checkRetryEligibility_', 'getAllRetryEligibleStudents_', 'attemptPrimaryRetry_']);
+    ['checkRetryEligibility_', 'getAllRetryEligibleStudents_', 'attemptPrimaryRetry_', 'previewScrRetryThresholds']);
   return Object.assign(env, fixture(env.sandbox, evidence, opts));
 }
 
@@ -249,4 +249,49 @@ test('13: not yet names the linked skills in words and how much more', () => {
   assert.equal(r.ready, false);
   assert.match(r.text, /^To be re-rated: show 2 more times one of the skills that go with it: “Describe the functions”/);
   assert.equal(student(READY)(2).P, undefined, 'a 2 gets nothing');
+});
+
+
+// ── The thresholds as settings (2026-11-01) ─────────────────────────────────
+
+test('the thresholds come from config: defaults 5 and 2; a bad value keeps the default', () => {
+  const { scrRetryThresholds_ } = loadGasFiles([S('00_SharedConfig.js')], ['scrRetryThresholds_']).exported;
+  assert.deepEqual({ ...scrRetryThresholds_({}) }, { minMet: 5, linkedPerMiss: 2 });
+  assert.deepEqual({ ...scrRetryThresholds_({ SCR_RETRY_MIN_MET: '4', SCR_RETRY_LINKED_PER_MISS: '1' }) }, { minMet: 4, linkedPerMiss: 1 });
+  for (const bad of ['0', '-1', '2.5', 'five', '21']) {
+    assert.deepEqual({ ...scrRetryThresholds_({ SCR_RETRY_MIN_MET: bad, SCR_RETRY_LINKED_PER_MISS: bad }) },
+      { minMet: 5, linkedPerMiss: 2 }, bad);
+  }
+});
+
+test('a configured minimum changes eligibility: one short of 5 is ready at 4', () => {
+  const short = READY.filter(([c]) => c !== 'S3');
+  assert.equal(shared(short).status().eligible, false, 'not yet at the default 5');
+  const env = shared(short);
+  env.sandbox.PropertiesService.getScriptProperties().setProperty('SCR_RETRY_MIN_MET', '4');
+  const st = env.exported.scrRetryStatus_(env.exported.scrRetryContext_(env.ss, env.cfg), ME, 'P', 3);
+  assert.equal(st.eligible, true);
+  assert.equal(st.needMet, 0);
+});
+
+test('a configured ratio changes eligibility: one linked per miss clears what two did not', () => {
+  const twoMisses = READY.concat([['P', 'NOT_MET', 'C4'], ['P', 'NOT_MET', 'C5']]);
+  const env = shared(twoMisses);
+  env.sandbox.PropertiesService.getScriptProperties().setProperty('SCR_RETRY_LINKED_PER_MISS', '1');
+  const st = env.exported.scrRetryStatus_(env.exported.scrRetryContext_(env.ss, env.cfg), ME, 'P', 3);
+  assert.equal(st.needSecondary, 0, '2 linked MET needed at 1 per miss, 3 shown');
+});
+
+test('30b: previewScrRetryThresholds counts at the current values and one step either side, names nobody', () => {
+  const env = central(READY.filter(([c]) => c !== 'S3'));
+  const logs = [];
+  env.sandbox.Logger.log = (m) => logs.push(String(m));
+  const r = env.exported.previewScrRetryThresholds();
+  assert.equal(r.candidates, 1);
+  const row = (m, l) => r.rows.find((x) => x.minMet === m && x.linkedPerMiss === l);
+  assert.equal(row(5, 2).notYet, 1, 'current: one short');
+  assert.equal(row(4, 2).ready, 1, 'at 4 it would be ready');
+  assert.equal(row(6, 2).notYet, 1);
+  assert.equal(r.rows.length, 5);
+  assert.doesNotMatch(logs.join('\n'), /@|1234567/, 'counts only');
 });

@@ -460,7 +460,11 @@ function generateLessonId_() {
   const yyyy = now.getFullYear();
   const mm   = String(now.getMonth() + 1).padStart(2, "0");
   const dd   = String(now.getDate()).padStart(2, "0");
-  const hex  = Utilities.getUuid().replace(/-/g, "").substring(0, 6).toUpperCase();
+  // 12 hex characters (2026-11-01; 6 before): at 6, a day's few hundred IDs
+  // had about a 1-in-1,500 chance of a repeat, and a repeat misattributes a
+  // row. At 12 it is negligible. Older 6-character IDs stay valid: nothing
+  // parses the suffix.
+  const hex  = Utilities.getUuid().replace(/-/g, "").substring(0, 12).toUpperCase();
   return "LES-" + yyyy + mm + dd + "-" + hex;
 }
 
