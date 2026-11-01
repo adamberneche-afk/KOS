@@ -24,6 +24,7 @@
 //     after 15 minutes (bug 4, resolved 2026-10-23: Flow 2 starts itself)
 //   - warm-up returns that FAILED or need attention in the last 24 hours
 //   - warm-ups delivered as the teacher's anchor (41: junk output, or no return)
+//   - students held at a part a school day or more by a failed check (68)
 //   - the lesson rollout's (58) PROBLEM rows, and whether its latest run
 //     stopped short of making every student's doc
 //   - in the email only, once a day: Flow 2's week so far (69's
@@ -168,6 +169,19 @@ function overnightHealth_(now, tz) {
   } catch (e) {
     unreadable = true;
     problems.push("Lesson rollout: unavailable (" + e.message + ")");
+  }
+
+  // Parts held a school day or more by a failed check (68, 2026-11-01; audit
+  // #5): the next part can't unlock on its own. Counts only.
+  try {
+    const held = partsHeldByFailure_(ss, getConfig_(), now);
+    if (held.students > 0) {
+      problems.push("Students held at a part for a school day or more because its last check didn't finish: " +
+        held.students + ". Open their next part on the Teacher Dashboard (\"Open Part n now\") or ask them to submit again");
+    }
+  } catch (e) {
+    unreadable = true;
+    problems.push("Parts held by a failed check: unavailable (" + e.message + ")");
   }
 
   let allClear = "";

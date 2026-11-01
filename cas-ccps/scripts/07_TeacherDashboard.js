@@ -565,6 +565,9 @@ function getDashboardData(termFilter) {
       configId:    String(row[LEDGER.CONFIG_ID]).trim(),
       status:      displayStatus,
       statusClass: statusClass,
+      // For foldPartRows_ (68): a part held by a failed check is flagged.
+      ledgerStatus: ledgerStatus,
+      submittedAtMs: row[LEDGER.SUBMISSION_TS] ? sheetTimestampMs_(row[LEDGER.SUBMISSION_TS]) : 0,
       lastEval:    row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : "Never",
       submittedAt: row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : "—",
       flagReason:  statusClass === "flagged" ? _tdFlagReason_(ledgerStatus) : "",
@@ -4329,6 +4332,11 @@ function partLine(s) {
     .map(p => '<a class="doc-link" href="' + esc(safeDocUrl(p.docUrl)) + '" target="_blank">Part ' + p.n + ' ↗</a>');
   let html = '<div class="last-eval"><b>Part ' + s.part.n + ' of ' + s.part.count + '</b>' +
     (s.part.title ? ': ' + esc(s.part.title) : '') + (earlier.length ? ' · ' + earlier.join(' ') : '') + '</div>';
+  if (s.heldByFailure) {
+    html += '<div class="last-eval" style="color:#b3261e"><b>Held ' + escNum(s.heldByFailure.schoolDays) + ' school day' +
+      (s.heldByFailure.schoolDays === 1 ? '' : 's') + '</b>: the last check of Part ' + s.part.n +
+      ' didn\\'t finish, so Part ' + (s.nextPart ? s.nextPart.n : s.part.n + 1) + ' can\\'t open on its own. Open it now, or ask the student to submit again.</div>';
+  }
   if (s.nextPart) {
     html += '<button type="button" data-unlock-part="' + esc(s.configId) + '" data-unlock-name="' + esc(s.name) + '"' +
       ' title="Opens it now, without waiting for the check to find Part ' + s.part.n + ' met"' +

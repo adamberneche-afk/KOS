@@ -159,7 +159,13 @@ function page(title, body) {
 
 const fmtDate = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
-function assignmentXml(id, title, promptText, unit, dashboardUrl) {
+// parts: a lesson in parts' [{ part, partTitle }] (PARTS.json, 2026-11-01;
+// dead-ends audit #6), or none. Canvas keeps one assignment and one grade per
+// lesson (meta/STUDENT_WORK_PLAN_2026-10.md, "Where the costs land"); the
+// page lists the parts, says each has its own doc that opens in turn, and
+// asks for the last part's link.
+function assignmentXml(id, title, promptText, unit, dashboardUrl, parts) {
+  const inParts = Array.isArray(parts) && parts.length > 1;
   let paras = promptText.split(/\n{2,}/);
   if (unit) {
     paras.shift(); // the unit title line; Canvas shows the assignment title
@@ -179,10 +185,22 @@ function assignmentXml(id, title, promptText, unit, dashboardUrl) {
     return '<p>' + lines.map(inline).join('<br>') + '</p>';
   });
   const where = unit ? 'unit' : 'lesson';
+  const partsHtml = inParts ? [
+    '<h3>This lesson is in ' + parts.length + ' parts</h3>',
+    '<ol>\n' + parts.map((p) => '<li>' + esc(p.partTitle) + '</li>').join('\n') + '\n</ol>',
+    '<p>Each part has its own assignment doc. Part 1 opens with the lesson. Each later part opens on your ' +
+      'assignment dashboard once the part before it is checked and shows what that part asks for, or when your ' +
+      'teacher opens it.</p>',
+  ] : [];
   const html = [
     ...promptHtml,
+    ...partsHtml,
     '<h3>Where to do this work</h3>',
-    '<p>Work in your assignment doc for this ' + where + ', not in Canvas. It is a Google Doc shared with you in ' +
+    inParts
+      ? '<p>Work in each part\'s assignment doc, not in Canvas. They are Google Docs shared with you in Google Drive ' +
+        '(<strong>Shared with me</strong>); each name starts with this lesson\'s name and its part, and ends with your ' +
+        'name. Write under each doc\'s <strong>Your response</strong> heading.</p>'
+      : '<p>Work in your assignment doc for this ' + where + ', not in Canvas. It is a Google Doc shared with you in ' +
       'Google Drive (<strong>Shared with me</strong>), and its name starts with this ' + where + '\'s name and ends ' +
       'with your name. Write under its <strong>Your response</strong> heading.</p>',
     ...(dashboardUrl ? [
@@ -192,7 +210,11 @@ function assignmentXml(id, title, promptText, unit, dashboardUrl) {
         'A passing check before you turn it in is a good idea, but it isn\'t required.</p>',
     ] : []),
     '<h3>How to submit</h3>',
-    '<p>When you are finished, copy the link to that document, then choose <strong>Start Assignment</strong> → ' +
+    inParts
+      ? '<p>When you have finished every part, copy the link to your Part ' + parts.length + ' document, then choose ' +
+        '<strong>Start Assignment</strong> → <strong>Website URL</strong> here and paste it. Your teacher can see ' +
+        'every part.</p>'
+      : '<p>When you are finished, copy the link to that document, then choose <strong>Start Assignment</strong> → ' +
       '<strong>Website URL</strong> here and paste it.</p>',
     ...(unit ? ['<p><em>Pacing guide dates for this unit: ' + esc(fmtDate(unit.approx_start)) + ' to ' +
       esc(fmtDate(unit.approx_end)) + '.</em></p>'] : []),
@@ -274,7 +296,7 @@ function buildLessonCourse(code, lessons, dashboardUrl) {
     const a = lessons.assignments[key];
     const asgId = ident(code, 'lesson-assignment', key);
     const asgHref = asgId + '/assignment.xml';
-    files.push([asgHref, assignmentXml(asgId, a.unitName, a.promptText, null, dashboardUrl)]);
+    files.push([asgHref, assignmentXml(asgId, a.unitName, a.promptText, null, dashboardUrl, (lessons.parts || {})[key])]);
     resources.push({ id: asgId, type: 'assignment_xmlv1p0', href: asgHref });
     modules.push({ id: ident(code, 'lesson-module', key), title: a.unitName,
       items: [{ id: ident(code, 'lesson-item', key), ref: asgId, title: a.unitName }] });

@@ -71,7 +71,7 @@ test('a lesson assignment is the Canvas text without its title and submission li
   xml.forEach(([p, x]) => {
     assert.match(x, /<gradable points_possible="100">true<\/gradable>/, p);
     assert.match(x, /<format type="url"\/>/, p);
-    assert.match(x, /assignment doc for this lesson/, p);
+    assert.match(x, /assignment doc for this lesson|each part\\'s assignment doc|each part&#39;s assignment doc|each part's assignment doc/, p);
     assert.doesNotMatch(x, /CAS document|response zone|\*\w[^*]*\*/, p);
     assert.doesNotMatch(x, /Title: Assignment|<p>Project: |Bell Ringer|Grading Tip|Pacing guide dates/, p);
   });
@@ -84,6 +84,31 @@ test('a lesson assignment is the Canvas text without its title and submission li
   const eh = Object.values(course('8177').files).find((x) => /Cavalier Shop Operations Brief|Part 1: The Team/.test(x));
   assert.match(eh, /Part 4: The Rush/);
   assert.match(eh, /Use these terms accurately/);
+});
+
+// Audit #6 (2026-11-01): a lesson in parts (PARTS.json) stays one Canvas
+// assignment and grade; its page lists the parts and asks for the last
+// part's link.
+test('a lesson in parts lists its parts, each in order, and asks for the last part\'s link', () => {
+  const parts = require('../../tools/cas-ccps/build-lesson-assignments.js').build().parts;
+  const inParts = Object.keys(parts).filter((k) => parts[k].length > 1);
+  assert.ok(inParts.length > 0);
+  ['8175', '8177'].forEach((code) => {
+    const xml = Object.entries(course(code).files).filter(([p]) => p.endsWith('assignment.xml')).map(([, x]) => x);
+    inParts.filter((k) => k.indexOf(code) === 0).forEach((k) => {
+      const list = parts[k];
+      // The page is HTML inside XML, so its text is escaped twice.
+      const un = (t) => [0, 1].reduce((v) => v.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>').replace(/&amp;/g, '&'), t);
+      const x = xml.find((t) => t.indexOf('This lesson is in ' + list.length + ' parts') !== -1 &&
+        list.every((p) => un(t).indexOf('<li>' + p.partTitle + '</li>') !== -1));
+      assert.ok(x, k + ': no assignment lists its ' + list.length + ' parts');
+      assert.match(x, new RegExp('link to your Part ' + list.length + ' document'));
+      assert.match(x, /&lt;ol&gt;/);
+    });
+  });
+  const plain = Object.values(course('8175').files).filter((x) => /assignment doc for this lesson/.test(x));
+  assert.ok(plain.length > 0 && plain.every((x) => !/This lesson is in \d+ parts/.test(x)), 'a lesson not in parts says nothing of parts');
 });
 
 // P0-06: the cartridges link the Student Dashboard, where students submit for

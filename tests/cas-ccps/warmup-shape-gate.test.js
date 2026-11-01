@@ -13,7 +13,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
-  '04_Form2_TurnInGate.js', '25_WarmUpWriter.js', '37_FlowInputBuilder.js', '68_LessonParts.js', '41_WarmUpFlowBridge.js']
+  '04_Form2_TurnInGate.js', '25_WarmUpWriter.js', '37_FlowInputBuilder.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '41_WarmUpFlowBridge.js']
   .map((f) => path.join(CC, f));
 const EXPOSE = ['wfbApplyFlow3_', 'wfbFindQueueRow_', 'wfbWarmUpShapeProblem_', 'repairWarmUpTextBox',
   'harvestWarmUpFlowReturns', 'WQ25_COL_COUNT', 'WQ25_STATUS', 'WTB', 'WTB_HEADERS'];
@@ -152,7 +152,7 @@ test('34c counts fallbacks; 33 stamps a stop with its reason', () => {
     '43_DeployVersionMarker_CentralLedger.js', '03_QueueBridge.js', '10_AdminRecoveryPanel.js',
     '15b_StudioFlowPrompts_Flow2_Revised.js', '23_StudentProfileManager.js', '25_WarmUpWriter.js',
     '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js', '36_WeeklyParentReport.js',
-    '37_FlowInputBuilder.js', '68_LessonParts.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js', '41_WarmUpFlowBridge.js',
+    '37_FlowInputBuilder.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js', '41_WarmUpFlowBridge.js',
     '54_StudentAssignments.js', '57_RetentionSchedule.js'].map((f) => path.join(CC, f)), ['overnightHealth_']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
