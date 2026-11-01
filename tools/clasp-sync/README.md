@@ -295,6 +295,11 @@ node run.js --latest --only leader-hub               # release it
 node run.js --rollback-to 6 --only leader-hub        # undo the release
 ```
 
+**Tested on Windows in CI** (2026-11-01): `.github/workflows/run-js-windows.yml`
+runs `tests/tools/clasp-run.test.js` on `windows-latest` whenever `run.js`,
+its test or `project-map.json` changes, so the `.cmd` launcher and the
+Windows paths are exercised, not only the Linux ones.
+
 Also: it checks that clasp runs once, up front. On Windows it prints
 clasp's box-drawing file list as ASCII, because cmd.exe's default code
 page can't draw it; set `KOS_RUN_UNICODE=1` (after `chcp 65001`) to keep

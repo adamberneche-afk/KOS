@@ -217,9 +217,9 @@ concept sets below, from outside the repo and not filed, are its inputs.
     3.x uses `create-script` and `show-authorized-user`.
 - ~~**Marker-level verify.**~~ Built 2026-10-29: `node run.js --verify`
   (read only) compares each deployment's marker with the last push.
-- **Windows CI job for `run.js`.** Cheap, and independent of the rest.
-  The test already builds a `.cmd` launcher on win32. **Promoted
-  2026-11-01** into `PLAN_2026-11.md`'s window.
+- ~~**Windows CI job for `run.js`.**~~ **Built 2026-11-01**:
+  `.github/workflows/run-js-windows.yml` runs `clasp-run.test.js` on
+  `windows-latest` when `run.js`, its test or `project-map.json` changes.
 
 ## kos-personal
 
