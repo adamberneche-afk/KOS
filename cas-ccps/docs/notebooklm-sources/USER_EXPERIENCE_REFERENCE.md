@@ -259,9 +259,9 @@ Warm-ups
 
 ⚡
 
-**Flows 5 + 3**
+**Flow 3**
 
-Bridge and warm-up text, through Flow5Input / Flow3Input (Script 41)
+Warm-up text, with a returning student’s lead-in, through Flow3Input (Script 41; Flow 5 merged into it 2026-11-01)
 
 ✍️
 

@@ -1,8 +1,16 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-31)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-11-01)
 >
-> **2026-10-31: #338 to #351 are merged, not pushed.** They fix every code
+> **2026-11-01: #338 to #361 are merged, not pushed.** Since 10-31: the SCR
+> retry (D15), Flow 2's health numbers (`69`, a `Measures` tab), Flow 5
+> merged into Flow 3 (turn Flow 5 off in Studio and run
+> `syncFlowPromptsToSheet()` after the push), a part held by a failed check
+> flagged, and the Canvas cartridges listing parts (re-import both). The
+> after-push checks are in
+> [`meta/HANDOFF_2026-11-01.md`](../meta/HANDOFF_2026-11-01.md).
+>
+> **2026-10-31: #338 to #351 were merged.** They fix every code
 > finding of KOS Audit Docket IV: a caller check on every public function
 > of both dashboards (new file `00b_ScriptOwnerGuard.js`), injection guards,
 > retention approved by row, the duplicate repair opening each duplicate,
@@ -18,7 +26,7 @@
 > of earlier pushes; what is live now, and the operator's queue, are in
 > [`meta/HANDOFF_2026-10-29.md`](../meta/HANDOFF_2026-10-29.md).
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-31.md`](../meta/HANDOFF_2026-10-31.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-11-01.md`](../meta/HANDOFF_2026-11-01.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >

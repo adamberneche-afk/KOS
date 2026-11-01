@@ -15,12 +15,14 @@ why this repo exists at all.
   does what (Gemini runs the Google-side flows; a Claude Project is the
   thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
   pipeline kept and repaired, and the RTP Gem frozen.
-- **`HANDOFF_2026-10-31.md`** — the repo-wide session handoff: git history
-  rewritten twice on 10-31 (the catalog workbooks, three phone numbers),
-  what merged #338–#351 (the November plan and dead-ends audit, and every
-  code finding of KOS Audit Docket IV fixed), what is live (through #337;
-  #338 on not pushed), the operator's queue in order, what is still open,
-  and the rules for an agent session. Start here.
+- **`HANDOFF_2026-11-01.md`** — the repo-wide session handoff: what merged
+  #352–#361 (the plan's week of Nov 2 built a day early: both clean-up PRs,
+  the SCR retry, the Registrar's flows, `reportEvaluationHealth`, Flow 5
+  merged into Flow 3, audit #5 and #6, D9 decided), what is live (through
+  #337; #338 on not pushed), the operator's queue in order, what is still
+  open, and the rules for an agent session. Start here.
+  `HANDOFF_2026-10-31.md` (superseded for the queue; its record of the two
+  history rewrites and its agent notes still hold),
   `HANDOFF_2026-10-29.md` (superseded for the queue; its build and agent
   notes still hold),
   `HANDOFF_2026-10-28.md` (superseded for the queue; its build notes and
