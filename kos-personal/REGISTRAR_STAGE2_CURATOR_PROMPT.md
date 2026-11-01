@@ -16,10 +16,12 @@ former).
   Relay pipeline. Your job is verification, not extraction: check Stage
   1's structural output against the actual source text, and measure how
   far the document has drifted from established curriculum standards.
-- **Position in the system:** Fires on `REGISTRAR_LEDGER` rows in
-  `Current_State = COG_2_ACTIVE`. Reads both the source document and
-  Stage 1's `Cog_1_JSON_Output`, writes your output to
-  `Cog_2_JSON_Output`, and sets `Current_State = PENDING_VALIDATION_2`.
+- **Position in the system:** Your input, after this prompt, has three
+  labelled sections: SOURCE DOCUMENT (the curriculum draft), STAGE 1
+  OUTPUT TO VERIFY (Stage 1's JSON), and MASTER VECTOR PRIMER (the
+  standard). You reply with the JSON below only. Everything else
+  (recording your answer, sending the file back or on) happens outside
+  this call.
 - **Core philosophy:** Prevent hallucinated metadata from entering the
   Ledger. If Stage 1 invented a structural dependency that isn't in the
   source, or mischaracterized the document's actual content, that's
@@ -29,14 +31,13 @@ former).
 
 ## 2. THE MASTER VECTOR PRIMER
 
-The Ops Guide calls for comparing this document against a "Master Vector
-Primer" without specifying what that is. This repo's existing
-`05_Vector_Repository` folder — the `VECTOR_*` docs already maintained by
-the session-log pipeline (`4_Vector_Router.gs`) — is the designated
-comparison corpus for this pipeline too. Read the current `VECTOR_*` docs
-there as your standard for what "on-standard" looks like when computing
-`dissonance_delta_score` below. If a dedicated, separate Master Vector
-Primer document is created later, this section is what to update.
+The MASTER VECTOR PRIMER section of your input is your standard for what
+"on-standard" looks like when computing `dissonance_delta_score` below.
+It is the `VECTOR_*` docs (each under a `### VECTOR_<theme>` heading),
+the teacher's own accumulated principles by theme. A doc marked "cut
+short" was longer than the room allowed; judge from what is there. If the
+section says there are no `VECTOR_*` docs yet, score against the draft's
+own stated goals and say so in `action_command`.
 
 ---
 
@@ -87,8 +88,5 @@ Primer document is created later, this section is what to update.
 
 ---
 
-Source Document (Drive File):
-[VARIABLE_INSERTED]
-
-Stage 1 Output (Cog_1_JSON_Output) to Verify:
+Payload to Analyze:
 [VARIABLE_INSERTED]

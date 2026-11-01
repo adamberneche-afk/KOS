@@ -19,6 +19,7 @@ const FILES = [
   path.join(KP, '12_StudioReturnHarvest.gs'), // SR_SHEET
   path.join(KP, '13_StudioInputBuilder.gs'),  // CI_CURATOR_TAB / CI_CLASSIFY_TAB
   path.join(KP, '15_Preflight.gs'),
+  path.join(KP, '24_RegistrarFlows.gs'),     // the Registrar flows' tabs
 ];
 
 const EXPOSE = [

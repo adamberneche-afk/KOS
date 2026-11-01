@@ -85,13 +85,15 @@
 //                            → CRITICAL_FAILURE (Fail Loud Protocol —
 //                            _sendChatAlert fires immediately)
 //
-// WHAT THIS DOESN'T INCLUDE YET
-//   The two Studio flows themselves (Stage 1 Auditor, Stage 2 Curator)
-//   aren't built — REGISTRAR_STAGE1_AUDITOR_PROMPT.md and
-//   REGISTRAR_STAGE2_CURATOR_PROMPT.md are what to build them against,
-//   same convention as VECTOR_CLASSIFY_PROMPT.md. Building the Studio
-//   flows themselves is a Workspace Studio UI action, not a repo file
-//   this codebase can contain — nothing here builds or replaces that.
+// THE TWO STUDIO FLOWS (D14, 2026-11-01)
+//   24_RegistrarFlows.gs is their Apps Script half. Release writes a flat
+//   input row (RegistrarStage1Input / RegistrarStage2Input) with the draft's
+//   text, so no flow reads Drive; each flow makes one Gemini call and adds a
+//   row to REGISTRAR_RETURN; runRegistrarProcessor harvests it into
+//   Cog_N_JSON_Output and PENDING_VALIDATION_N. Where this header says a
+//   flow "writes Cog_N_JSON_Output and sets PENDING_VALIDATION_N", the
+//   harvest does it. The flows themselves are built in Workspace Studio
+//   from the FlowBuildSpec tab (14) with the prompts from FlowPrompts (16).
 //
 //   getRegistrarStatus() IS now wired into the web app's Diagnostics tab
 //   (8_WebApp_UI.html's "Curriculum auditing" panel) as a read-only
@@ -243,11 +245,25 @@ function runRegistrarMicrobatch() {
     let releasedCount = 0;
 
     const releasedNow = new Set();
+    // Each release writes the flow's flat input row first (24_RegistrarFlows.gs,
+    // D14): no row, no release. A file that can never be read (not a Google
+    // Doc) fails now rather than after the retry limit (FLOW_DOCTRINE rule
+    // 17); one that can't be read this minute stays where it is.
+    const flowCtx = { ss: ss };
+    let notReadable = 0;
     const releaseByState = (fromState, toState) => {
+      const stage = toState === 'COG_1_ACTIVE' ? 1 : 2;
       for (let i = 0; i < data.length && releasedCount < freed; i++) {
         const sheetRow = i + 2;
         if (String(data[i][RC.STATE]) !== fromState) continue;
         const fileId = String(data[i][RC.FILE_ID]);
+        const m = _rgMaterialize_(flowCtx, data[i], stage, nowMs);
+        if (!m.ok) {
+          notReadable++;
+          if (m.deterministic) _failRegistrarRowNow_(ledger, sheetRow, data[i], m.reason);
+          else console.warn('[Registrar] row ' + sheetRow + ' not released: ' + m.reason);
+          continue;
+        }
         ledger.getRange(sheetRow, RC.STATE + 1).setValue(toState);
         released[fileId] = nowMs;
         releasedNow.add(fileId);
@@ -273,7 +289,8 @@ function runRegistrarMicrobatch() {
     console.log(
       '[Registrar] Microbatch — active=' + activeCount +
       ' released=' + releasedCount +
-      ' staleReset=' + staleReset
+      ' staleReset=' + staleReset +
+      ' notReadable=' + notReadable
     );
   } catch (e) {
     _reportError('runRegistrarMicrobatch', e, null);
@@ -352,6 +369,23 @@ function _bounceRegistrarRow(ledger, sheetRow, row, fallbackState, reason) {
 }
 
 
+/**
+ * A failure no retry can fix (FLOW_DOCTRINE rule 17): straight to
+ * CRITICAL_FAILURE with the reason, one alert, no retry cycle.
+ */
+function _failRegistrarRowNow_(ledger, sheetRow, row, reason) {
+  const RC = CFG.REGISTRAR_COLS;
+  const prevError = String(row[RC.ERROR_LOG] || '');
+  const ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  ledger.getRange(sheetRow, RC.STATE + 1).setValue('CRITICAL_FAILURE');
+  ledger.getRange(sheetRow, RC.ERROR_LOG + 1).setValue(
+    (prevError ? prevError + '\n' : '') + '[' + ts + '] ' + reason + ' — CRITICAL_FAILURE (no retry can fix this).');
+  _sendChatAlert('🔴 CRITICAL_FAILURE — Registrar/Cog Relay\n' +
+    'File: https://drive.google.com/open?id=' + row[RC.FILE_ID] + '\n' + 'Reason: ' + reason);
+  console.error('[Registrar] row ' + sheetRow + ' → CRITICAL_FAILURE: ' + reason);
+}
+
+
 // ================================================================
 // PHASE 1/2 VALIDATION + PHASE 3 TRANSLATION & ROUTING
 // ================================================================
@@ -382,6 +416,13 @@ function runRegistrarProcessor() {
     return;
   }
   try {
+    // The flows' answers first (24_RegistrarFlows.gs, D14), so a harvested
+    // row is validated in this same pass. Its failure doesn't stop the sweep.
+    try {
+      harvestRegistrarReturns();
+    } catch (hErr) {
+      _reportError('runRegistrarProcessor:harvest', hErr, null);
+    }
     const ss     = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const ledger = _getOrCreateSheet(ss, CFG.REGISTRAR_LEDGER_SHEET);
     const lastRow = ledger.getLastRow();
@@ -584,6 +625,16 @@ function _translateAndRouteRegistrarRow(ledger, sheetRow, row) {
       _reportError('_translateAndRouteRegistrarRow:moveToHLD', moveErr, null);
     }
     console.log('[Registrar] row ' + sheetRow + ' → AWAITING_CARBON (Apollo Kill-Switch).');
+    return;
+  }
+
+  // A fixture (24's installRegistrarFlowFixture) proves the flows answer;
+  // it deposits nothing in the Calibration Silos and moves no file.
+  if (String(row[RC.FILE_NAME]).indexOf(RG_FIXTURE_PREFIX) === 0) {
+    const fts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+    ledger.getRange(sheetRow, RC.TRANSLATION + 1).setValue('(fixture: not routed)');
+    ledger.getRange(sheetRow, RC.STATE + 1).setValue('COMPLETELY_ROUTED');
+    ledger.getRange(sheetRow, RC.TS_FINAL + 1).setValue(fts);
     return;
   }
 

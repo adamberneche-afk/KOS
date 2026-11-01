@@ -1,5 +1,20 @@
 # KOS Changelog
 
+### The Registrar's two Studio flows, Apps Script half (D14, 2026-11-01)
+
+The Registrar's triggers ran, but the two Studio flows they fed were never
+built (dead-ends audit #2), so every drafted file failed three times. D14
+(the operator, 2026-11-01): build them. `24_RegistrarFlows.gs` gives them
+the shape `meta/FLOW_DOCTRINE.md` requires instead of the original design's
+live Drive read and direct ledger writes: release writes a flat input row
+with the draft's text (Stage 2's adds Stage 1's JSON and a `VECTOR_*`
+digest); each flow adds a row to `REGISTRAR_RETURN`; the processor harvests
+it by `Release_ID`, sets stale answers aside and checks Stage 1 is grounded
+in the draft. A file that isn't a Google Doc fails at once. The two prompts
+now describe this input and are generated into `16_FlowPrompts.gs`;
+FlowBuildSpec lists every binding. The flows themselves are built in
+Studio by hand after the push.
+
 ### Registrar alerts name no file (2026-10-31)
 
 From KOS Audit Docket IV (#350, merged, not pushed): the Registrar's Chat

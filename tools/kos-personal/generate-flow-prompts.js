@@ -46,6 +46,10 @@ const SOURCES = [
   { mdFile: 'CURATOR_PROMPT.md', constName: 'CURATOR_SYSTEM_PROMPT', trailerKey: 'single' },
   { mdFile: 'VECTOR_CLASSIFY_PROMPT.md', constName: 'VECTOR_CLASSIFY_SYSTEM_PROMPT', trailerKey: 'single' },
   { mdFile: 'CURATOR_AUDITOR_PROMPT.md', constName: 'CURATOR_AUDITOR_SYSTEM_PROMPT', trailerKey: 'auditor' },
+  // The Registrar's two flows (24_RegistrarFlows.gs, D14). Each has one
+  // variable: Stage 2's three inputs arrive as one labelled SourceText cell.
+  { mdFile: 'REGISTRAR_STAGE1_AUDITOR_PROMPT.md', constName: 'REGISTRAR_STAGE1_SYSTEM_PROMPT', trailerKey: 'single' },
+  { mdFile: 'REGISTRAR_STAGE2_CURATOR_PROMPT.md', constName: 'REGISTRAR_STAGE2_SYSTEM_PROMPT', trailerKey: 'single' },
 ];
 
 const START_MARKER = '## 1. IDENTITY & SCOPE';
@@ -87,8 +91,9 @@ function main() {
  * GENERATED FILE — do not hand-edit the prompt constants below.
  * Regenerate with: node tools/kos-personal/generate-flow-prompts.js
  * (reads CURATOR_PROMPT.md / VECTOR_CLASSIFY_PROMPT.md /
- * CURATOR_AUDITOR_PROMPT.md, which stay the canonical, human-read prompt
- * source — meta/FLOW_DOCTRINE.md rule 16).
+ * CURATOR_AUDITOR_PROMPT.md and the two REGISTRAR_STAGE*_PROMPT.md files,
+ * which stay the canonical, human-read prompt source — meta/FLOW_DOCTRINE.md
+ * rule 16).
  * tests/kos-personal/flow-prompts.test.js fails if this file and those
  * .md files ever disagree.
  *
@@ -189,7 +194,8 @@ function syncFlowPrompts() {
   sheet.setFrozenRows(1);
 
   console.log('[FlowPrompts] wrote ' + (rows.length - 1) + ' row(s) to ' + FP_TAB + '.');
-  console.log('[FlowPrompts] In Studio, for CURATOR_SYSTEM_PROMPT / VECTOR_CLASSIFY_SYSTEM_PROMPT: ' +
+  console.log('[FlowPrompts] In Studio, for CURATOR_SYSTEM_PROMPT / VECTOR_CLASSIFY_SYSTEM_PROMPT / ' +
+    'REGISTRAR_STAGE1_SYSTEM_PROMPT / REGISTRAR_STAGE2_SYSTEM_PROMPT: ' +
     'add a Sheets "Get row"/"Look up row" step filtered on PromptName = <the row you want>, then ' +
     'build the Gemini step\\'s System Prompt field as exactly two chips back to back — that step\\'s ' +
     'PromptText output, then @trigger.SourceText — nothing typed in between.');

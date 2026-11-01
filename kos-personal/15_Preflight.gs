@@ -85,6 +85,11 @@ function runKosPersonalPreflight() {
     'harvestStudioReturns()\'s first run, or a Studio flow\'s own "add row to sheet" step'));
   results.push(_kpCheckSelfHealingTab_(ss, CI_CURATOR_TAB, 6, 'buildStudioInputRows()'));
   results.push(_kpCheckSelfHealingTab_(ss, CI_CLASSIFY_TAB, 6, 'buildStudioInputRows()'));
+  // The Registrar's two flows (24_RegistrarFlows.gs, D14).
+  results.push(_kpCheckSelfHealingTab_(ss, RG_STAGE1_TAB, RG_INPUT_HEADERS.length, 'runRegistrarProcessor()'));
+  results.push(_kpCheckSelfHealingTab_(ss, RG_STAGE2_TAB, RG_INPUT_HEADERS.length, 'runRegistrarProcessor()'));
+  results.push(_kpCheckSelfHealingTab_(ss, RG_RETURN_TAB, RG_RETURN_HEADERS.length,
+    'runRegistrarProcessor()'));
 
   KOS_TRIGGER_HANDLERS.forEach(function (handler) {
     results.push(_kpCheckTrigger_(handler));

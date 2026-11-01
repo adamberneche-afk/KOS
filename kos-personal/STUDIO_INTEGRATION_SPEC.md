@@ -8,6 +8,15 @@
 > file is closed). Their last step is a native add-row into `STUDIO_RETURN`;
 > `harvestStudioReturns()` (`12_StudioReturnHarvest.gs`) does the write-back.
 > The 2026-09-08 status below is history.
+>
+> **The Registrar's two flows (D14, 2026-11-01)** follow the same shape on
+> their own tabs: `RegistrarStage1Input` / `RegistrarStage2Input` →
+> one Ask Gemini step (`REGISTRAR_STAGE1_SYSTEM_PROMPT` /
+> `REGISTRAR_STAGE2_SYSTEM_PROMPT` from FlowPrompts, then
+> `@trigger.SourceText`) → an add-row into `REGISTRAR_RETURN`, harvested by
+> `harvestRegistrarReturns()` (`24_RegistrarFlows.gs`). The FlowBuildSpec
+> tab's `Registrar` rows have every tab, column and binding; this document's
+> steps below are the session-log flows'.
 
 > **✅ STATUS (2026-09-08): both Flows built from this spec and verified
 > end to end** — real Studio returns, real `SESSION_LOG`/`VECTOR_MATRIX`

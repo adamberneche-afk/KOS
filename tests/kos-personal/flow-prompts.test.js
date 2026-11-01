@@ -63,11 +63,11 @@ function extractPromptBody(mdText) {
   return mdText.slice(startIdx, endIdx).trim();
 }
 
-test('syncFlowPrompts: writes a FlowPrompts tab with all three prompts', () => {
+test('syncFlowPrompts: writes a FlowPrompts tab with all five prompts', () => {
   const { exported, sandbox } = load();
   indexSpreadsheet(exported, sandbox);
   const result = exported.syncFlowPrompts();
-  assert.equal(result.rows, 3);
+  assert.equal(result.rows, 5); // + the Registrar's two (D14)
 
   const ss = indexSpreadsheet(exported, sandbox);
   const sheet = ss.getSheetByName(exported.FP_TAB);
@@ -78,6 +78,8 @@ test('syncFlowPrompts: writes a FlowPrompts tab with all three prompts', () => {
   const names = rows.slice(1).map((r) => r[0]);
   assert.ok(names.includes('CURATOR_SYSTEM_PROMPT'));
   assert.ok(names.includes('VECTOR_CLASSIFY_SYSTEM_PROMPT'));
+  assert.ok(names.includes('REGISTRAR_STAGE1_SYSTEM_PROMPT'));
+  assert.ok(names.includes('REGISTRAR_STAGE2_SYSTEM_PROMPT'));
   assert.ok(names.includes('CURATOR_AUDITOR_SYSTEM_PROMPT'));
 });
 

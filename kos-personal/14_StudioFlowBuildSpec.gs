@@ -51,6 +51,7 @@ function syncStudioFlowBuildSpec() {
   _sfbsAppendCuratorFlow_(rows);
   _sfbsAppendClassifyFlow_(rows);
   _sfbsAppendReturnSurface_(rows);
+  _sfbsAppendRegistrarFlows_(rows);
 
   let sheet = ss.getSheetByName(SFBS_TAB);
   if (!sheet) sheet = ss.insertSheet(SFBS_TAB);
@@ -139,6 +140,40 @@ function _sfbsAppendReturnSurface_(rows) {
   });
 }
 
+// The Registrar's two flows (24_RegistrarFlows.gs, D14): two input tabs of
+// the same shape and one return tab. Headers come from RG_INPUT_HEADERS /
+// RG_RETURN_HEADERS, the arrays 24 writes the tabs with.
+function _sfbsAppendRegistrarFlows_(rows) {
+  [['Registrar 1', RG_STAGE1_TAB, 'REGISTRAR_STAGE1_SYSTEM_PROMPT', 'REGISTRAR_STAGE1_AUDITOR_PROMPT.md',
+      'the draft\'s text (its first ' + CFG.REGISTRAR_MAX_CHARS + ' characters)'],
+   ['Registrar 2', RG_STAGE2_TAB, 'REGISTRAR_STAGE2_SYSTEM_PROMPT', 'REGISTRAR_STAGE2_CURATOR_PROMPT.md',
+      'three labelled sections in one cell: the draft, Stage 1\'s JSON, and the VECTOR_* primer']]
+    .forEach(function (f) {
+      rows.push([f[0], 'trigger', f[1], '', '', '24_RegistrarFlows.gs',
+        'Trigger on Status = READY. Single condition: this tab carries only this stage\'s rows ' +
+        '(meta/FLOW_DOCTRINE.md rule 14). runRegistrarProcessor() creates the tab with its headers.']);
+      RG_INPUT_HEADERS.forEach(function (header, col) {
+        rows.push([f[0], 'read', f[1], col + 1, header, '24_RegistrarFlows.gs',
+          header === 'SourceText' ? 'The Gemini step\'s variable: @trigger.SourceText, ' + f[4] + '. No Drive or Docs step.' :
+          header === 'Release_ID' ? 'Carry it, unchanged, into the return row\'s Release_ID.' : '']);
+      });
+      rows.push([f[0], 'prompt', '', '', '', f[3],
+        'Bind the Ask Gemini step\'s System Prompt as two chips back to back: the ' + f[2] +
+        ' row\'s PromptText from the FlowPrompts tab (syncFlowPrompts()), then @trigger.SourceText. Nothing typed.']);
+    });
+  rows.push(['Registrar 1+2', 'trigger (write)', RG_RETURN_TAB, '', '', 'each flow\'s own last step',
+    'Native "add row to sheet": NOT a trigger to build. Both Registrar flows\' last step writes here; ' +
+    'runRegistrarProcessor() harvests it (harvestRegistrarReturns()).']);
+  RG_RETURN_HEADERS.forEach(function (header, col) {
+    const flowWrites = col <= RG_RETURN_COLS.OUTPUT_JSON;
+    rows.push(['Registrar 1+2', 'write', RG_RETURN_TAB, col + 1, header,
+      flowWrites ? 'the Flow' : 'harvestRegistrarReturns(): leave EMPTY',
+      header === 'Release_ID' ? '@trigger.Release_ID, unchanged; checkRegistrarFlowBinding() checks it.' :
+      header === 'Output_JSON' ? 'The Ask Gemini step\'s output.' :
+      header === 'Returned_At' ? 'The run\'s date and time.' : '']);
+  });
+}
+
 // Column-index maps carry their own constant names (TIMESTAMP, PAYLOAD_UID,
 // ...), not the sheet's real header text — these translate one to the
 // other, derived from the same _getOrCreateSheet H-map headers
@@ -169,6 +204,7 @@ function checkStudioFlowBuildSpec() {
   _sfbsAppendCuratorFlow_(expected);
   _sfbsAppendClassifyFlow_(expected);
   _sfbsAppendReturnSurface_(expected);
+  _sfbsAppendRegistrarFlows_(expected);
 
   const actual = sheet.getDataRange().getValues();
   const keyOf = function (r) { return [r[0], r[1], r[2], r[3], r[4]].join('|'); };

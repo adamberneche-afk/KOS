@@ -168,6 +168,16 @@
       "fixture": "installStudioFlowFixture",
       "_note": "materialize added when 13_StudioInputBuilder.gs closed the live in-Studio Docs-read both flows used to have (the exact surface CHANGELOG.md's Round 17 incident hit) -- the payload no longer lives ONLY in a Drive Doc a native step reads directly; it is copied into CuratorInput/VectorClassifyInput first. runStudioInputCanary() (13_StudioInputBuilder.gs) is the materialize-side canary; runStudioReturnCanary() above covers the harvest side, unchanged."
     },
+    "kos-personal:registrar-flows": {
+      "project": "kos-personal",
+      "materialize": "runRegistrarMicrobatch",
+      "harvest": "harvestRegistrarReturns",
+      "canary": "runRegistrarFlowCanary",
+      "binding": "checkRegistrarFlowBinding",
+      "liveness": "checkRegistrarFlowLiveness",
+      "fixture": "installRegistrarFlowFixture",
+      "_note": "D14, 2026-11-01: the Registrar's Stage 1 (Auditor) and Stage 2 (Curator) flows. runRegistrarMicrobatch (11) writes the flat input row at release through _rgMaterialize_ (24_RegistrarFlows.gs): RegistrarStage1Input / RegistrarStage2Input, the draft's text in SourceText, so no flow reads Drive. Each flow adds a row to REGISTRAR_RETURN; harvestRegistrarReturns runs inside runRegistrarProcessor (11), under its lock, before its sweep, rather than on a trigger of its own."
+    },
     "cas-ccps:family-mail": {
       "project": "cas-ccps:family-sentinel",
       "materialize": "scanFamilyMail",

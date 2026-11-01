@@ -48,7 +48,7 @@ test('an intake failure inside processInferenceQueue writes one ERROR_LOG row', 
 
 test('a Registrar translation parse failure bounces the row instead of failing every run', () => {
   const { exported, sandbox } = loadGasFiles(
-    ['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '11_Registrar_CogRelay.gs'].map((f) => path.join(KP, f)),
+    ['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '11_Registrar_CogRelay.gs', '12_StudioReturnHarvest.gs', '24_RegistrarFlows.gs'].map((f) => path.join(KP, f)),
     ['_translateAndRouteRegistrarRow']);
   const ss = sandbox.SpreadsheetApp.create('BRAIN_TRUST_INDEX');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);

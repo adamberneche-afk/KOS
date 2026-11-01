@@ -15,16 +15,6 @@
     "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up, not fixed as part of introducing this check."
   },
   {
-    "file": "kos-personal/11_Registrar_CogRelay.gs",
-    "function": "runRegistrarMicrobatch",
-    "reason": "Same as runRegistrarIntake above — pre-existing gap, flagged for follow-up."
-  },
-  {
-    "file": "kos-personal/11_Registrar_CogRelay.gs",
-    "function": "runRegistrarProcessor",
-    "reason": "Same as runRegistrarIntake above — pre-existing gap, flagged for follow-up."
-  },
-  {
     "file": "kos-personal/2_Ingestion_Sensors.gs",
     "function": "sensor3_externalTelemetry",
     "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Notably the same file as Sensor 1, the incident that motivated this whole check; worth prioritizing over the others in this list precisely because of that."

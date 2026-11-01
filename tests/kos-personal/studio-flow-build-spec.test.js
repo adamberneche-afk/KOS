@@ -18,6 +18,7 @@ const FILES = [
   path.join(KP, '12_StudioReturnHarvest.gs'),
   path.join(KP, '13_StudioInputBuilder.gs'),
   path.join(KP, '14_StudioFlowBuildSpec.gs'),
+  path.join(KP, '24_RegistrarFlows.gs'),
 ];
 
 const EXPOSE = [
