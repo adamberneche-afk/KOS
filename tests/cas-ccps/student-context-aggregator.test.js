@@ -154,7 +154,7 @@ function loadWithWarmUps() {
   const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
   return loadGasFiles(
     [SHARED_CONFIG_PATH, path.join(CC, '24_WarmUpBridge.js'), path.join(CC, '41_WarmUpFlowBridge.js'), AGGREGATOR_PATH],
-    ['getWeeklyTextBoxWarmUps_', 'mergeWarmUpMaps_', 'appendWeeklySection_'],
+    ['getWeeklyTextBoxWarmUps_', 'mergeWarmUpMaps_', 'appendWeeklySection_', 'getWeeklyReflections_'],
     { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => 'teacher@ccpsnet.net' }) } },
   );
 }
@@ -211,6 +211,68 @@ test('appendWeeklySection_: baseline answers go under "How They Work", lesson on
   assert.ok(text.indexOf('Manage time and resources') > how && text.indexOf('Manage time and resources') < refl);
   assert.ok(text.indexOf('Asked: How do you keep track?') !== -1 && text.indexOf('I use a planner.') !== -1);
   assert.ok(text.indexOf('Only water there.') > refl);
+});
+
+// ── The process reflections (2026-11-01, dead-ends audit #4) ───────────────
+// 13 writes each Submit's answers to ReflectionLog; the student work plan
+// has the teacher reading them in Student Context, which never showed them.
+
+test('getWeeklyReflections_: this week\'s answers by student, oldest first; blank, old and malformed rows left out', () => {
+  const { exported, sandbox } = loadWithWarmUps();
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  const rl = ss.insertSheet('ReflectionLog');
+  rl.appendRow(['SubmittedAt', 'GoogleID', 'ConfigID', 'StudentFileID', 'Kind', 'FrameID', 'CompetencyID', 'Question', 'Answer']);
+  const day = (n) => new Date(Date.now() - n * 86400000);
+  rl.appendRow([day(1), '1234567@CCPSNET.net', 'CFG1', 'f1', 'APPROACH', 'A1', '', 'What did you do first?', 'I read the case study first.']);
+  rl.appendRow([day(2), '1234567@ccpsnet.net', 'CFG1', 'f1', 'EVIDENCE', 'E1', '8177-83', 'Where do you show this?', 'In my second paragraph.']);
+  rl.appendRow([day(20), '1234567@ccpsnet.net', 'CFG0', 'f0', 'CHOICE', 'C1', '', 'Hardest choice?', 'Too old to show.']);
+  rl.appendRow([day(1), '2345678@ccpsnet.net', 'CFG1', 'f2', 'APPROACH', 'A2', '', 'What did you cut?', '   ']);
+  rl.appendRow([day(1), '12345@ccpsnet.net', 'CFG1', 'f3', 'APPROACH', 'A2', '', 'What did you cut?', 'Malformed ID.']);
+  const map = exported.getWeeklyReflections_(ss, { tabs: { reflectionLog: 'ReflectionLog' } }, day(7));
+  assert.deepEqual([...map.keys()], ['1234567@ccpsnet.net']);
+  assert.deepEqual(map.get('1234567@ccpsnet.net').map((r) => r.response),
+    ['In my second paragraph.', 'I read the case study first.']);
+  assert.equal(exported.getWeeklyReflections_(sandbox.SpreadsheetApp.create('Empty'), { tabs: {} }, day(7)).size, 0,
+    'no ReflectionLog tab yet: nothing, and no error');
+});
+
+test('appendWeeklySection_: reflections go under "Reflections on Submit", one block per Submit, named by course', () => {
+  const { exported, sandbox } = loadWithWarmUps();
+  const doc = sandbox.DocumentApp.create('Student Context');
+  const t1 = new Date(Date.now() - 86400000);
+  const t2 = new Date();
+  exported.appendWeeklySection_(doc.getId(), t2,
+    [{ courseName: 'Marketing', configId: 'CFG1', status: 'Submitted', timestamp: t1 }], [],
+    [
+      { timestamp: t1, configId: 'CFG1', kind: 'EVIDENCE', competencyId: '8177-83', question: 'Where do you show this?', response: 'In my second paragraph.' },
+      { timestamp: t1, configId: 'CFG1', kind: 'APPROACH', competencyId: '', question: 'What did you do first?', response: 'I read the case first.' },
+      { timestamp: t2, configId: 'CFG9', kind: 'FEEDBACK', competencyId: '', question: 'What are you changing?', response: 'My conclusion.' },
+    ]);
+  const paras = sandbox.DocumentApp.openById(doc.getId()).getBody().getText().split('\n');
+  const at = paras.indexOf('Reflections on Submit');
+  assert.ok(at !== -1);
+  const after = paras.slice(at + 1).filter(Boolean);
+  assert.equal(after.filter((p) => p.startsWith('Marketing  ·  ')).length, 1, 'one header for the two answers of one Submit');
+  assert.equal(after.filter((p) => p.startsWith('Assignment  ·  ')).length, 1, 'a part with no Ledger row this week is still shown');
+  assert.ok(after.includes('Asked: Where do you show this?') && after.includes('In my second paragraph.'));
+  assert.ok(after.includes('Asked (about the feedback): What are you changing?'));
+});
+
+test('a run writes a week for a student whose only news is a reflection', () => {
+  const { exported, sandbox } = loadRun();
+  const ss = runFixture(sandbox);
+  exported.setupStudentContextDocs();
+  const rl = ss.insertSheet('ReflectionLog');
+  rl.appendRow(['SubmittedAt', 'GoogleID', 'ConfigID', 'StudentFileID', 'Kind', 'FrameID', 'CompetencyID', 'Question', 'Answer']);
+  rl.appendRow([new sandbox.Date(Date.now() - 3600000), '2345678@ccpsnet.net', 'CFG1', 'f2', 'APPROACH', 'A1', '', 'What did you do first?', 'I made an outline.']);
+  const run = exported.buildStudentContextDocsNow();
+  assert.equal(run.created, 1);
+  assert.equal(run.noContent, 1);
+  const reg = ss.getSheetByName('StudentDocRegistry').getDataRange().getValues();
+  const text = sandbox.DocumentApp.openById(reg[1][2]).getBody().getText();
+  assert.ok(text.includes('Reflections on Submit') && text.includes('I made an outline.'));
+  assert.equal(exported.buildStudentContextDocsNow().updated, 0, 'not written twice');
 });
 
 // 2026-10-28: each week's heading gets a bookmark, the dashboards' link

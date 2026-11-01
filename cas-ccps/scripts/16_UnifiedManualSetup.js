@@ -585,6 +585,7 @@ function persistAdminProperties_(result, adminEmail, orgName) {
     // Central infrastructure — inherited by all teacher copies
     ADMIN_ROOT_FOLDER_ID:         result.assignmentsFolderId,
     CENTRAL_LEDGER_SS_ID:         result.ledgerSsId,
+    CENTRAL_LEDGER_SS_URL:        centralLedgerUrl_(result.ledgerSsId),
     ADMIN_SS_ID:                  result.ledgerSsId,
 
     // Master template pointers — hardened references
@@ -1459,9 +1460,17 @@ function openTeacherDashboard() {
     url || "Dashboard URL not configured yet — contact your admin after they deploy Script 07.");
 }
 
+// The Central Ledger's link. Setup writes it (since 2026-11-01); a manual
+// set up before then has only the ID, so the link is built from that.
 function openAdminHealthCheck() {
+  const p = PropertiesService.getScriptProperties();
   showLink_("Open the Central Ledger Spreadsheet to access Admin Controls:",
-    PropertiesService.getScriptProperties().getProperty("CENTRAL_LEDGER_SS_URL") || "");
+    p.getProperty("CENTRAL_LEDGER_SS_URL") || centralLedgerUrl_(p.getProperty("CENTRAL_LEDGER_SS_ID")));
+}
+
+function centralLedgerUrl_(ssId) {
+  const id = String(ssId || "").trim();
+  return id ? "https://docs.google.com/spreadsheets/d/" + id + "/edit" : "";
 }
 
 function showAdminSummary() {
