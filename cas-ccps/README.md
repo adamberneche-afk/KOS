@@ -448,6 +448,18 @@ next part from the Teacher Dashboard (`unlockStudentPart`). Each unlock is a
 PRIMARY_MET or TEACHER). A lesson students already have as one whole doc is
 never split under them. `previewPartUnlocks()` counts what would open now.
 
+`69_EvaluationHealth.js` (Central Ledger, 2026-11-01) is the first reader of
+`EvaluationLog`, and the numbers D8 waits on. `reportEvaluationHealth()`,
+from the editor, logs per course and per week (Monday to Sunday, the last
+eight): Flow 2's results by kind (`PASSED`, `NEEDS_REVISION`, the three
+`ERROR_` kinds and any other), submissions that never got a result
+(`STAGING_PIPELINE` rows still `ERROR_TIMEOUT`), the failure rate, minutes
+from Submit to feedback (median and slowest tenth), drafts per student per
+lesson, and the warm-up answer rate (`WarmUpQueue`'s `delivered_at` /
+`answered_at`). It rewrites the `Measures` tab with the same rows. The
+overnight email (34c) runs it once a day and adds one line: this week's
+checks and failure rate against D8's bar of 1 in 20. Counts only.
+
 On the dashboards (Phase 3c, 2026-10-28) a lesson in parts is one lesson.
 The Teacher Dashboard shows one row per student on their furthest open
 part ("Part 2 of 5"), with links to the parts before it and **Open Part 3

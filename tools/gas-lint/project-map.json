@@ -85,7 +85,8 @@
       "cas-ccps/scripts/64_LedgerCycle.js",
       "cas-ccps/scripts/66_LessonDoc.js",
       "cas-ccps/scripts/67_AgendaDeck.js",
-      "cas-ccps/scripts/68_LessonParts.js"
+      "cas-ccps/scripts/68_LessonParts.js",
+      "cas-ccps/scripts/69_EvaluationHealth.js"
     ]
   },
   "cas-ccps:unified-manual": {

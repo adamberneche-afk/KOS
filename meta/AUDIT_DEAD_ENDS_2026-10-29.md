@@ -29,6 +29,10 @@ canary. Open until the operator builds the two flows in Studio and
 `cas-ccps/DEPLOYMENT_HANDOFF.md` lists it) and #10 closed
 (`logQueueMetrics()` counts every status; DUPLICATE rows are archived).
 
+**Progress (2026-11-01):** #7 closed: `reportEvaluationHealth()`
+(`69_EvaluationHealth.js`) reads `EvaluationLog` into the `Measures` tab and
+the overnight email.
+
 **Status:** the first repo-wide audit of its kind, done 2026-10-29 at the
 operator's request ("make sure we aren't leaving too many dead ends and
 half built functionalities"). Its actions are scheduled in
