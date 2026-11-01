@@ -1,5 +1,10 @@
 # Product Experience Gap Audit
 
+> **Status (noted 2026-11-01):** a point-in-time audit, in the repo by
+> 2026-10-27. Some findings have since been fixed. For CAS, the UX audit's
+> Status section (`UX_AUDIT_2026-10-22.md`) and `cas-ccps/HISTORY.md` say
+> what changed. Where this file and a README disagree, the README wins.
+
 **What this is:** a final gap audit of the three systems as one *product
 experience* — not the code architecture `meta/FLOW_DOCTRINE.md` and
 `meta/FLOW_INVENTORY.md` already own, but what an actual student, operator,

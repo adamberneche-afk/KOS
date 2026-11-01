@@ -33,6 +33,18 @@ canary. Open until the operator builds the two flows in Studio and
 (`69_EvaluationHealth.js`) reads `EvaluationLog` into the `Measures` tab and
 the overnight email.
 
+**Progress (2026-11-01, the docs PR):** "The docs that say the wrong
+thing" are fixed:
+- the student work plan's header, revisionProbe, unlock and Appendix B
+  lines;
+- the backlog (reviewed, with "Dropped" filled in);
+- `PLAN_2026-10.md`'s D2;
+- status lines on the gap audit and the PSD;
+- the codebase review's studio-steps line;
+- the UX audit's item 6;
+- the loop-warning count (8);
+- the old handoff pointers.
+
 **Progress (2026-11-01):** #5 and #6 closed: a part held a school day or
 more by a failed check is flagged on the Teacher Dashboard and counted in
 the overnight email (68, 07, 34c); the Canvas cartridges list each lesson's

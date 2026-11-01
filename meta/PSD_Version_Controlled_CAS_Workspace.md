@@ -1,6 +1,12 @@
 # PSD: Version-Controlled Development Workspace for CAS
 Product Specification Document — v1, DRAFT
 
+> **Status (noted 2026-11-01):** in the repo by 2026-10-27; its goals are
+> met. This repo is the single version history, and `tools/clasp-sync/run.js`
+> pushes every project from it (`--latest`), checks each deployment against
+> the last push (`--verify`), and stamps each build with its commit. Read
+> this as the reasoning; the clasp-sync README is current.
+
 ---
 
 ## 1. Problem Statement
