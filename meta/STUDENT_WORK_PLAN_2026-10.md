@@ -265,16 +265,17 @@ reads a doc now, so Studio's flow changes only in where it reads.
   checkboxes "select up to two", a 1–5 scale and a short answer, email
   collection off. The reader checks the type, choices and email setting
   for certain and gives a precise "not yet" before Flow 2 runs, a
-  cheaper and more reliable check than a model's reading. (Whether
-  "select up to two" can be read back depends on what `FormApp` returns for
-  a checkbox item's validation, to confirm when built.)
+  cheaper and more reliable check than a model's reading. ("Select up to
+  two" can't be read back: `FormApp` sets a checkbox's validation but has
+  no getter. Confirmed 2026-11-01; see "The design check" below.)
 - **The snapshot freezes what was evaluated.** The teacher sees exactly
   what Flow 2 judged, even if the student changes the file afterwards; a
   doc submission could get one too.
 - **Process signal.** The Drive API lists revisions for Docs, Sheets and
   Slides, so the authenticity collector (D4 in `PLAN_2026-10.md`) works
-  the same across them; Forms, as far as is known, keep no revision
-  history the Drive API returns (to confirm).
+  the same across them. Forms list revisions too (confirmed 2026-11-01,
+  against the earlier guess), with the same limit as Docs: close edits
+  merge into one revision, so revisions count sittings, not edits.
 
 **Care needed.**
 - A form's **responses** (8177's survey deployment and results lessons)
@@ -292,8 +293,36 @@ reads a doc now, so Studio's flow changes only in where it reads.
 **The design check (2026-11-01).** `probeWorkFileTypes()` (`70_WorkFileProbe.js`,
 run once from the Central Ledger's editor) makes a scratch form, deck and
 sheet shaped like the lessons' tasks, reads each back as a reader would,
-and writes one answer per question to the Ledger's `WorkFileProbe` tab. Its
-answers go here when the operator has run it. Known before it runs:
+and writes one answer per question to the Ledger's `WorkFileProbe` tab.
+
+**The answers (the operator's run, 2026-11-01, 30 answers):**
+
+| | Form | Slides | Sheet |
+|---|---|---|---|
+| What the reader needs reads back | Yes: question types, choices, a scale's ends and labels, the description, `collectsEmail` (false; `getEmailCollectionType` = `DO_NOT_COLLECT`), `isPublished` | Yes: slide count, each title (either title placeholder), body text, speaker notes, images; `getSheetsCharts` counts linked charts only, and a chart pasted as a picture is an image | Yes: tab names, the filled range, formulas told from typed numbers, each chart's type, title and range |
+| A checkbox's "select up to two" | Settable, **not readable** (no `getValidation`) | | |
+| Read time | 916 ms (3 questions) | 135 ms (3 slides) | 967 ms (2 tabs) |
+| Drive lists revisions | Yes | Yes | Yes |
+| An edit seconds later is a new revision | No: merged | No: merged | No: merged |
+| A Drive copy keeps the template's settings | Yes | Yes | Yes |
+
+**What it decides for Phase 4:**
+- **The readers are feasible as designed.** Every exact check the table
+  in §5 names can be made, at Submit, in under a second.
+- **"Select up to two" moves into the wording.** The reader can't see the
+  limit, and a student editing their form could remove it unseen. So the
+  task asks for it in the question's own text ("Choose up to two"), which
+  the reader can check; the limit itself stays the template's, and Flow 2
+  reads the question text in the snapshot.
+- **A new form is published (live) from the start.** A survey part's form
+  can take responses as soon as the student shares it, which the survey
+  lessons want; the reader still never reads responses.
+- **Revisions work the same for all three and for Docs** (D4): sittings,
+  not edits, as the 10-18 revisionProbe found for a doc.
+- **Templates are copied as docs are.** The rollout can copy a form, deck
+  or sheet template per student and keep its settings.
+
+Known before it ran, and still true:
 - The Central Ledger has the Drive (with revisions), Slides and Sheets
   scopes. The Forms scope was added for the probe.
 - The **Student Dashboard**, where Submit runs, has only the Docs and Sheets
