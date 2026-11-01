@@ -2,7 +2,7 @@
 
 > ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-11-01)
 >
-> **2026-11-01: #338 to #361 are merged, not pushed.** Since 10-31: the SCR
+> **2026-11-01: #338 on are merged, not pushed.** Since 10-31: the SCR
 > retry (D15), Flow 2's health numbers (`69`, a `Measures` tab), Flow 5
 > merged into Flow 3 (turn Flow 5 off in Studio and run
 > `syncFlowPromptsToSheet()` after the push), a part held by a failed check
