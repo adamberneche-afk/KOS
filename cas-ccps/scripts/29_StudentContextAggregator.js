@@ -1,8 +1,9 @@
 // =============================================================================
 // FILE: 29_StudentContextAggregator.js
 // BOUND TO: Central Ledger spreadsheet
-// PURPOSE: Weekly aggregation of each student's completed assignments and
-//          warm-up responses into a single living Google Doc, owned by the
+// PURPOSE: Weekly aggregation of each student's completed assignments,
+//          warm-up responses and process reflections (ReflectionLog, from
+//          Submit on the Student Dashboard) into a single living Google Doc, owned by the
 //          student and visible to the teacher. Runs on a time trigger, not
 //          on demand — growth is allowed to accumulate for a week before
 //          being written.
@@ -138,6 +139,10 @@ function _s29Run_(opts) {
   // text box, not the old form, so this record showed none of them; the
   // baseline answers (D6) are the student's own account of how they work.
   mergeWarmUpMaps_(weeklyWarmUps, getWeeklyTextBoxWarmUps_(ss, cfg, windowStart));
+  // The process reflections on Submit (13, REFLECTION_ON_SUBMIT): the
+  // student's own account of how they did the work, which the teacher reads
+  // here (STUDENT_WORK_PLAN_2026-10.md, Phase 1; dead-ends audit #4).
+  const weeklyReflections = getWeeklyReflections_(ss, cfg, windowStart);
   const lastUpdated = _s29LastUpdatedByEmail_(registrySheet);
 
   // ── Step 3: for each student, look up/create their Doc, append if needed ─
@@ -165,8 +170,9 @@ function _s29Run_(opts) {
     const isNewer = function (e) { return !since || e.timestamp > since; };
     const assignments = (weeklyAssignments.get(email) || []).filter(isNewer);
     const warmUps = (weeklyWarmUps.get(email) || []).filter(isNewer);
+    const reflections = (weeklyReflections.get(email.toLowerCase()) || []).filter(isNewer);
 
-    if (assignments.length === 0 && warmUps.length === 0) {
+    if (assignments.length === 0 && warmUps.length === 0 && reflections.length === 0) {
       // No new content this week for this student — do not write an
       // empty section. A living document should only grow when there is
       // something to show; an empty "Week of ..." header every week for
@@ -188,7 +194,7 @@ function _s29Run_(opts) {
     }
 
     try {
-      appendWeeklySection_(docInfo.docId, runTimestamp, assignments, warmUps);
+      appendWeeklySection_(docInfo.docId, runTimestamp, assignments, warmUps, reflections);
       updateRegistryTimestamp_(registrySheet, email, runTimestamp, true);
       if (docInfo.isNew) summary.created++; else summary.updated++;
     } catch (err) {
@@ -465,6 +471,39 @@ function getWeeklyTextBoxWarmUps_(ss, cfg, windowStart) {
   return result;
 }
 
+// ---------------------------------------------------------------------------
+// getWeeklyReflections_
+// Returns Map<lower-case email, [{ timestamp, configId, kind, competencyId,
+// question, response }]> for process-reflection answers (ReflectionLog,
+// written by 13 on Submit; columns in 00's RL) saved in the trailing 7-day
+// window, oldest first. A blank answer is left out. Keyed by lower-case
+// email; the caller matches them to the roster's spelling.
+// ---------------------------------------------------------------------------
+function getWeeklyReflections_(ss, cfg, windowStart) {
+  const result = new Map();
+  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.reflectionLog) || "ReflectionLog");
+  if (!sheet || sheet.getLastRow() < 2) return result;
+  const since = windowStart.getTime();
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, REFLECTION_LOG_HEADERS.length).getValues().forEach(function (r) {
+    const ms = sheetTimestampMs_(r[RL.SUBMITTED_AT]);
+    const answer = String(r[RL.ANSWER] || "").trim();
+    const email = String(r[RL.GOOGLE_ID] || "").trim().toLowerCase();
+    if (!ms || isNaN(ms) || ms < since || !answer) return;
+    if (!_studentIdPattern_().test(email)) return;
+    if (!result.has(email)) result.set(email, []);
+    result.get(email).push({
+      timestamp: new Date(ms),
+      configId: String(r[RL.CONFIG_ID] || "").trim(),
+      kind: String(r[RL.KIND] || "").trim(),
+      competencyId: String(r[RL.COMPETENCY_ID] || "").trim(),
+      question: String(r[RL.QUESTION] || "").trim(),
+      response: answer,
+    });
+  });
+  for (const list of result.values()) list.sort(function (a, b) { return a.timestamp - b.timestamp; });
+  return result;
+}
+
 // Adds `extra`'s entries (keyed by lower-case email) to `into` (keyed by the
 // roster's spelling), oldest first.
 function mergeWarmUpMaps_(into, extra) {
@@ -514,8 +553,9 @@ function getOrCreateStudentDoc_(registrySheet, email, name, cfg) {
       .setHeading(DocumentApp.ParagraphHeading.HEADING1);
     body.appendParagraph(name + "  ·  " + email);
     body.appendParagraph(
-      "This document accumulates weekly. It shows completed assignments " +
-      "and warm-up reflections as they happen across the year. Only weeks " +
+      "This document accumulates weekly. It shows completed assignments, " +
+      "warm-up reflections and the reflections written on Submit as they " +
+      "happen across the year. Only weeks " +
       "with new activity are recorded — gaps in the timeline mean no new " +
       "submissions that week, not a missed entry."
     ).setItalic(true);
@@ -557,10 +597,10 @@ function getOrCreateStudentDoc_(registrySheet, email, name, cfg) {
 // ---------------------------------------------------------------------------
 // appendWeeklySection_
 // Appends one dated section to the student's Doc covering this week's
-// assignments and warm-up responses. Never overwrites prior content —
-// always appends at the end of the body.
+// assignments, warm-up responses and process reflections. Never overwrites
+// prior content — always appends at the end of the body.
 // ---------------------------------------------------------------------------
-function appendWeeklySection_(docId, runTimestamp, assignments, warmUps) {
+function appendWeeklySection_(docId, runTimestamp, assignments, warmUps, reflections) {
   const doc = DocumentApp.openById(docId);
   const body = doc.getBody();
 
@@ -612,6 +652,28 @@ function appendWeeklySection_(docId, runTimestamp, assignments, warmUps) {
         .setBold(true).setFontSize(10);
       if (w.question) body.appendParagraph("Asked: " + w.question).setFontSize(9);
       body.appendParagraph(w.response).setItalic(true);
+    });
+  }
+
+  // The process reflections (13), one block per Submit: the assignment and
+  // the day, then each question as asked and the student's answer.
+  const refl = reflections || [];
+  if (refl.length > 0) {
+    const courseFor = {};
+    assignments.forEach(a => { if (a.configId && a.courseName) courseFor[a.configId] = a.courseName; });
+    body.appendParagraph("Reflections on Submit")
+      .setHeading(DocumentApp.ParagraphHeading.HEADING3);
+    let lastKey = "";
+    refl.forEach(r => {
+      const key = r.configId + "|" + r.timestamp.getTime();
+      if (key !== lastKey) {
+        lastKey = key;
+        body.appendParagraph((courseFor[r.configId] || "Assignment") + "  ·  " + formatDateShort_(r.timestamp))
+          .setBold(true).setFontSize(10);
+      }
+      body.appendParagraph("Asked" + (r.kind === "FEEDBACK" ? " (about the feedback)" : "") + ": " + r.question)
+        .setFontSize(9);
+      body.appendParagraph(r.response).setItalic(true);
     });
   }
 

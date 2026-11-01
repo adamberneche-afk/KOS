@@ -5,6 +5,12 @@ is retired, deleted after `run.js --hub`). #2's Chat alerts no longer name
 files (#350); its triggers wait on D14. KOS Audit Docket IV's fixes
 (#342–#351) closed several neighbours of this audit's rows; the rest stand.
 
+**Progress (2026-11-01):** clean-up PR 1 closes #4 (Student Context shows
+the process reflections) and #9 (`CENTRAL_LEDGER_SS_URL` written at setup).
+D14 and D15 were decided the other way from the leanings: **build** the
+Registrar's two Studio flows (#2) and the SCR retry on the student's page
+(#3), each in its own PR.
+
 **Status:** the first repo-wide audit of its kind, done 2026-10-29 at the
 operator's request ("make sure we aren't leaving too many dead ends and
 half built functionalities"). Its actions are scheduled in
