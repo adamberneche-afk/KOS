@@ -177,6 +177,28 @@ Council cog verdict        COG_VERDICT  (submitCogVerdict(), skips PENDING_FLOW/
 
 All 17 are installed by `setupAllTriggers()` (`KOS_TRIGGER_HANDLERS` in `1_Config_And_Deploy.gs`).
 
+## Editor-only functions
+
+The `onOpen()` menu (`9_UI_Diagnostics.gs`) never shows: this deployment is a
+standalone project, not bound to BRAIN_TRUST_INDEX (D16, 2026-11-01). Run its
+items from the Apps Script editor's **Run** menu instead:
+
+| Function | What it does |
+|---|---|
+| `openWebApp` | Logs the web app's URL |
+| `buildSessionContext` | Builds the session-context paste for a new chat |
+| `generateSevenBridgesStimulus` / `sevenBridgesReview` | The Seven Bridges stimulus, and its status and verdict |
+| `consolidateInferenceChunks` | Consolidates a session's inference chunks |
+| `checkOnboardingProgress`, `auditCalibrationHealth`, `verifyFidelityClause`, `checkLicenseCompliance` | Read-only checks |
+| `dumpAllPropertiesUI` | Lists the Script Properties |
+| `runSocraticOnboarding`, `updateRelationalTargets` | Advisor personalization |
+| `generateLicenseReport` | The license report |
+| `deployFullSystem` | Re-runs the full deploy |
+| `nuclearWipeForRelease` | Irreversible wipe; read it before running |
+
+Any of these that shows a dialog (`getUi()`) can't do so from a standalone
+project; read the function before relying on it from the editor.
+
 ---
 
 ## Before deploying a change — run gas-lint

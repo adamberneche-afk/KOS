@@ -629,8 +629,8 @@ function buildWarmupData_(wqData) {
 // Returns: updated shadow matrix object
 // ---------------------------------------------------------------------------
 function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
-  const DECAY_FACTOR         = 0.85; // KOS-derived decay for cross-unit confidence
-  const CONFIDENCE_THRESHOLD = 0.75; // threshold for email interrupt
+  const DECAY_FACTOR         = SHADOW_MATRIX_DECAY_FACTOR;         // 00
+  const CONFIDENCE_THRESHOLD = SHADOW_MATRIX_CONFIDENCE_THRESHOLD; // 00
 
   const matrix = existing || {};
 
@@ -854,7 +854,7 @@ function buildShadowMatrixSummary_(ss, cfg) {
         // same student in both buckets with no way for a teacher to tell
         // they overlapped. Made mutually exclusive: withConf now means
         // "building confidence but not yet locked."
-        if (maxConf >= 0.75)      { locked++;   lockedEmails.push(rowEmail); }
+        if (maxConf >= SHADOW_MATRIX_CONFIDENCE_THRESHOLD) { locked++; lockedEmails.push(rowEmail); }
         else if (maxConf > 0.5)  { withConf++; withConfEmails.push(rowEmail); }
       }
     } catch(e) {}
@@ -930,7 +930,7 @@ function getStudentShadowProfile_(ss, cfg, studentEmail) {
         // Same 0.75/0.5 thresholds buildShadowMatrixSummary_() uses, so a
         // unit's status here always agrees with which bucket got this
         // student onto this view in the first place.
-        status: conf >= 0.75 ? "Ready for personalized feedback"
+        status: conf >= SHADOW_MATRIX_CONFIDENCE_THRESHOLD ? "Ready for personalized feedback"
               : conf > 0.5   ? "Building confidence"
               : "Not yet enough data"
       };
@@ -1040,7 +1040,7 @@ function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds, scrSta
     const unitCurrent     = String(data[i][SP_UNIT_CURRENT] || "").trim();
     const unitMatrixEntry = unitCurrent ? shadowMatrix[unitCurrent] : null;
     let shadowArchetypeNote = null;
-    if (unitMatrixEntry && unitMatrixEntry.cross_confidence >= 0.75) {
+    if (unitMatrixEntry && unitMatrixEntry.cross_confidence >= SHADOW_MATRIX_CONFIDENCE_THRESHOLD) {
       shadowArchetypeNote =
         "Shadow matrix suggests " + unitMatrixEntry.best_archetype +
         " (" + Math.round(unitMatrixEntry.cross_confidence * 100) + "% confidence, " +

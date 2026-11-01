@@ -1301,6 +1301,9 @@ function extractFormEntryIds_(form) {
 // ---------------------------------------------------------------------------
 // persistTeacherProperties_
 // ---------------------------------------------------------------------------
+// Not written since 2026-11-01 (dead-ends audit, nothing read them):
+// TEACHER_MATRIX_SS_URL, RUBRIC_RESPONSE_SS_ID/_URL, RUBRIC_FORM_ID,
+// INTAKE_FORM_ID. An install that has them keeps them; nothing uses them.
 function persistTeacherProperties_(result, teacherName, teacherEmail, subject) {
   PropertiesService.getScriptProperties().setProperties({
     TEACHER_NAME:             teacherName,
@@ -1309,15 +1312,10 @@ function persistTeacherProperties_(result, teacherName, teacherEmail, subject) {
     TEACHER_FOLDER_ID:        result.teacherFolderId,
     TEACHER_FOLDER_URL:       result.teacherFolderUrl,
     TEACHER_MATRIX_SS_ID:     result.matrixSsId,
-    TEACHER_MATRIX_SS_URL:    result.matrixSsUrl,
-    RUBRIC_RESPONSE_SS_ID:    result.rubricSsId,
-    RUBRIC_RESPONSE_SS_URL:   result.rubricSsUrl,
     RUBRIC_QUEUE_TAB:         result.queueTabName,
-    RUBRIC_FORM_ID:           result.rubricFormId,
     RUBRIC_FORM_URL:          result.rubricFormUrl,
     CONFIRM_REVIEW_FORM_ID:   result.confirmFormId,
     CONFIRM_REVIEW_FORM_URL:  result.confirmFormUrl,
-    INTAKE_FORM_ID:           result.intakeFormId,
     INTAKE_FORM_URL:          result.intakeFormUrl,
     ...result.confirmEntryIds
   });

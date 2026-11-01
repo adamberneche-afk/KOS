@@ -850,9 +850,6 @@ function _getOrCreateSheet(ss, name) {
     'EXECUTION_LEDGER': [
       'UID','TIMESTAMP','SEMANTIC_TAG','FILE_URL','STATUS','ATTEMPT_TRACKER',
     ],
-    [CFG.INFERENCE_BUFFER_SHEET]: [
-      'Timestamp','Session_ID','Chunk_ID','Inference_Payload','Status',
-    ],
 
     // ── Vector & matrix ───────────────────────────────────────
     // MATRIX_LEDGER: fixed audit log of raw scores per session.

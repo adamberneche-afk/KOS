@@ -1,5 +1,11 @@
 # kos-personal inference service (optional)
 
+> **DORMANT (D16, 2026-11-01).** Not deployed and not planned: `INFERENCE_MODE`
+> is hard-coded to Studio, and the Cloud Run deploy needs Google Cloud, which
+> is off for the district. CI still runs its tests; Dependabot's weekly bumps
+> are off (`.github/dependabot.yml` says how to turn them back on). Decide
+> again before deploying it.
+
 A standalone Node.js/Express service that replaces native Workspace
 Studio inference with a hosted, multi-tenant, credit-metered alternative
 — Postgres for account/job state, Stripe for subscriptions and credit

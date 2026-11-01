@@ -49,7 +49,9 @@ const CFG = {
 
   // ── Sheet Names ───────────────────────────────────────────────
   STAGING_SHEET:            'STAGING_PIPELINE',
-  INFERENCE_BUFFER_SHEET:   'Inference_Buffer',         // legacy — kept for backward compat
+  // MATRIX_LEDGER, ACTION_REGISTER, ONBOARDING_TRACKER and EXECUTION_LEDGER
+  // are audit logs (D16, 2026-11-01): written, never read by code, kept as
+  // history for the operator (SCHEMA_REFERENCE.md).
   MATRIX_LEDGER_SHEET:      'MATRIX_LEDGER',
   DYNAMIC_STATE_MATRIX:     'DYNAMIC_STATE_MATRIX',
   BLACKBOARD_SHEET:         'Blackboard',
@@ -453,7 +455,6 @@ function deployFullSystem() {
     const sheetNames = [
       CFG.STAGING_SHEET,
       'EXECUTION_LEDGER',
-      CFG.INFERENCE_BUFFER_SHEET,
       CFG.MATRIX_LEDGER_SHEET,
       CFG.DYNAMIC_STATE_MATRIX,
       CFG.BLACKBOARD_SHEET,

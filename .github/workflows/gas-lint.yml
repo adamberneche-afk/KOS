@@ -118,8 +118,8 @@ jobs:
   docs-check:
     runs-on: ubuntu-latest
     # Only meaningful against a PR's own diff - the "did docs come along
-    # with this new file" question doesn't apply to a push/workflow_dispatch
-    # run, which has no base to diff against.
+    # with this new file" question doesn't apply to a push run, which has
+    # no base to diff against.
     if: github.event_name == 'pull_request'
     permissions:
       contents: read

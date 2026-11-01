@@ -77,51 +77,8 @@
 // prose.
 // =============================================================================
 
-/*
-  const confirmForm = FormApp.create(safeName + " -- Assignment Review & Confirm");
-  confirmForm.setDescription(
-    "Review what the system extracted from your rubric. Edit anything " +
-    "incorrect, then submit."
-  );
-  confirmForm.setCollectEmail(true);
-
-  [
-    { title: "Draft ID", para: false, help: "Auto-filled -- do not edit." },
-    { title: "Assignment Name", para: false, help: "The name students will see." },
-    { title: "AI Coach Persona", para: true, help: "e.g. 'rigorous science writing coach'" },
-    { title: "Milestone 1", para: true, help: "First major evaluation criterion." },
-    { title: "Milestone 2", para: true, help: "" },
-    { title: "Milestone 3", para: true, help: "" },
-    { title: "Milestone 4", para: true, help: "" },
-    // -- REPAIR NOTE 3 -- placeholder wording, see note above. Replace
-    // before treating this file as final. --
-    { title: "Passing Standard", para: true, help: "Hidden from students. Used as the final passing standard for evaluation." },
-  ].forEach(f => {
-    const item = (f.para ? confirmForm.addParagraphTextItem() : confirmForm.addTextItem())
-      .setTitle(f.title).setRequired(true);
-    if (f.help) item.setHelpText(f.help);
-  });
-
-  // -- M5 -- four new competency dropdown items, added after the eight
-  // pre-existing items above. Item order on a Form determines display
-  // order -- placing this call here means the dropdowns appear after
-  // Milestone 4 and Passing Standard, matching the natural reading order
-  // a teacher would expect: review each milestone's text, then tag it. --
-  addCompetencyDropdownItems_(confirmForm, centralSsId);
-
-  const matrixSs = SpreadsheetApp.openById(matrixSsId);
-  const confirmRespSheet = matrixSs.insertSheet("ConfirmationResponses");
-  setHeaders_(confirmRespSheet, [
-    "Timestamp","Email Address","Draft ID","Assignment Name",
-    "AI Coach Persona","Milestone 1","Milestone 2",
-    "Milestone 3","Milestone 4","Passing Standard",
-    // -- M5 -- four new trailing headers, matching the four new form items --
-    "Competency — Milestone 1","Competency — Milestone 2",
-    "Competency — Milestone 3","Competency — Milestone 4"
-  ]);
-  confirmForm.setDestination(FormApp.DestinationType.SPREADSHEET, matrixSsId);
-  DriveApp.getFileById(confirmForm.getId()).moveTo(teacherFolder);
-*/
+// The commented-out Confirm-form block that stood here was applied long ago
+// (16_UnifiedManualSetup.js has it); removed 2026-11-01 (dead-ends audit).
 
 // ---------------------------------------------------------------------------
 // -- M5 -- addCompetencyDropdownItems_

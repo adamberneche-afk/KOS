@@ -901,7 +901,6 @@ const SETUP_STATUS_TRIGGERS = [
 const SETUP_STATUS_SWITCHES = [
   { key: "M2_ENABLED",           unset: "false (warm-ups off)" },
   { key: "AI_FLOWS_LIVE",        unset: "false" },
-  { key: "EVALUATION_MODE",      unset: "STUDIO (Flow 2 scores)" },
   { key: "CAS_WATCHDOG_DRY_RUN", unset: "dry run (reports stuck rows, releases none)" },
   { key: "CURRENT_TERM",         unset: "from the marking period dates" },
 ];

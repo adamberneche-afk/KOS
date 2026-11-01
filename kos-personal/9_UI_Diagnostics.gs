@@ -94,10 +94,13 @@ function _getUi() {
 /**
  * Creates the KOS menu when BRAIN_TRUST_INDEX is opened.
  * Only fires when this script is BOUND to BRAIN_TRUST_INDEX.
- * In standalone deployment (web app only) this function is a no-op.
  *
- * To bind: open BRAIN_TRUST_INDEX → Extensions → Apps Script
- * and paste all v8.0 files. The onOpen menu will appear.
+ * STATUS (D16, 2026-11-01): EDITOR-ONLY. This deployment is a standalone
+ * project (the web app), so this menu never shows. Every item below is a
+ * top-level function: run it from the Apps Script editor's Run menu
+ * instead (kos-personal/README.md, "Editor-only functions"). Kept so a
+ * bound deployment still gets the menu; don't add items expecting them to
+ * be seen.
  */
 function onOpen() {
   try {

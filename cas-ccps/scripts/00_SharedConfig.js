@@ -42,6 +42,14 @@
 //   CONFIRM_ENTRY_DRAFT_ID ... CONFIRM_ENTRY_DOD
 // =============================================================================
 
+// The shadow matrix's two numbers (23 builds it, 25 emails on it). Constants
+// here, not in each file (dead-ends audit 2026-10-29): 23 and 25 used to
+// hard-code the same values beside config fields nothing read. Not read
+// through getConfig_(), which reads every Script Property: 23 uses them per
+// student.
+const SHADOW_MATRIX_CONFIDENCE_THRESHOLD = 0.75; // a unit's archetype "locks"; the teacher's digest
+const SHADOW_MATRIX_DECAY_FACTOR = 0.85;         // KOS-derived cross-unit decay
+
 function getConfig_() {
   const p = _resolveConfigValues_().values;
 
@@ -72,6 +80,10 @@ function getConfig_() {
     // logic testable/runnable without a live Studio Flow — see
     // 15c_Flow2DirectEvaluationService.js's own header comment and
     // cas-ccps/README.md's Finding 3 writeup.
+    // PARKED (D16, 2026-11-01): this is not a live switch. Nothing in the
+    // pipeline reads it; it only lets runFlow2DirectGemini_() (15c) run when
+    // called from the editor. Flow 2 always runs in Studio. Not listed by
+    // showSetupStatus() since then.
     evaluationMode:       p.EVALUATION_MODE         || "STUDIO",
 
     // ── AI-feedback promise gate (external UX audit) ─────────────────────
@@ -108,8 +120,6 @@ function getConfig_() {
 
     // ── Teacher spreadsheets ──
     teacherMatrixSsId:    p.TEACHER_MATRIX_SS_ID     || "",
-    rubricResponseSsId:   p.RUBRIC_RESPONSE_SS_ID    || "",
-    confirmResponseSsId:  p.CONFIRM_RESPONSE_SS_ID   || "",
     rubricQueueTab:       p.RUBRIC_QUEUE_TAB         || "RubricQueue",
 
     // ── Teacher forms ──
@@ -139,8 +149,6 @@ function getConfig_() {
     // M2_ENABLED = true in Script Properties to activate. A cloned ledger
     // without this property skips all M2 handlers.
     m2Enabled:                       p.M2_ENABLED || "false",
-    shadowMatrixConfidenceThreshold: 0.75,  // threshold for email interrupt
-    shadowMatrixDecayFactor:         0.85,  // KOS-derived cross-unit decay
 
     // ── Shared tab names (consistent across all projects) ──
     tabs: {
@@ -202,11 +210,12 @@ function getConfig_() {
       competencyEvidence: "CompetencyEvidence",
 
       // ── 36_WeeklyParentReport.js ──
-      // One row per student per week: what was prepared, what was sent, and
-      // — the point of the tab — the address it was actually sent to. This
-      // is the only record in cas-ccps of student data leaving the school's
-      // domain, which is why the address is captured by the app that sends
-      // rather than left to whatever the teacher typed into a mail client.
+      // One row per student per week: what was prepared, and when the
+      // teacher copied it (with the copied text, since 2026-10-28). Since
+      // D1 (2026-10-23) the teacher sends each report from their own
+      // account, so recipient_address is left blank: the app never knows who
+      // it went to. Rows from before then can hold an address, which the
+      // Family Mail Sentinel (60) still reads to recognise a parent.
       parentReportLog:    "ParentReportLog"
     }
   };

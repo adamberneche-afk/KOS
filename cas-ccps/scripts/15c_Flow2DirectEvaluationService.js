@@ -2,6 +2,12 @@
 // FILE: 15c_Flow2DirectEvaluationService.js
 // BOUND TO: Central Ledger spreadsheet
 //
+// STATUS — PARKED (D16, 2026-11-01): a fallback that needs wiring. Nothing
+// calls runFlow2DirectGemini_(); EVALUATION_MODE only unlocks it from the
+// editor and changes nothing live. Wiring it into the release loop (06/37)
+// would be its own decision, with an API key the district would have to
+// allow. Kept, tested, because Flow 2 has no other fallback.
+//
 // PURPOSE: Opt-in escape hatch for Flow 2 (Student Evaluation) — external
 // product review, Finding 3, "this quarter" tier. When this was written
 // Flow 2 had not been built in Studio (see cas-ccps/README.md); the operator

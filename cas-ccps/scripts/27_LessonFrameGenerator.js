@@ -30,6 +30,11 @@
 // 26_CompetencyAlignmentLog.js's generateAlignmentReport(), whose Doc-
 // building idiom this file reuses directly.
 //
+// STATUS (D16, 2026-11-01): frames are kept for lessons logged by hand
+// (22's onLessonContextSubmit_), which have no lesson doc; a rolled-out
+// lesson gets the lesson doc (66) instead. The "Suggested Warm-Up"
+// placeholder section was removed then: it promised a value it never had.
+//
 // WHAT THIS DOES NOT INCLUDE: a real "suggested warm-up question."
 // PLATFORM_DOCUMENTATION.html describes one, but LessonContext and
 // WarmUpQueue are unrelated subsystems — 24_WarmUpBridge.js's findLesson_()
@@ -37,8 +42,8 @@
 // never the reverse. At the moment a frame is generated (synchronously, at
 // submission time), no warm-up exists yet for that lesson in the ordinary
 // case. Rather than fabricate one or build a lookup that would almost
-// always come up empty, the frame doc carries a labeled placeholder section
-// instead — honest about what isn't wired yet rather than silent about it.
+// always come up empty, the frame has no warm-up section (since 2026-11-01;
+// it used to carry a labeled placeholder).
 //
 // ENTRY POINT:
 //   generateLessonFrame_(lessonId) — called by
@@ -204,14 +209,6 @@ function generateLessonFrame_(lessonId) {
         .editAsText().setForegroundColor("#999999");
     });
   }
-
-  // Labeled placeholder — see this file's header for why a real value isn't
-  // available here.
-  body.appendParagraph("Suggested Warm-Up").setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph(
-    "Generated separately by the nightly warm-up flow, not at lesson-submission " +
-    "time — check WarmUpQueue for this lesson once that run has completed."
-  ).editAsText().setItalic(true);
 
   doc.saveAndClose();
 

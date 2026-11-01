@@ -392,6 +392,12 @@ result shown (or the existing deterministic fallback, on any failure).
   actually reachable regardless of whether AI drafting is ever
   configured.
 
+> **Status (D16, 2026-11-01): unverified since 2026-09-05.** The six AI
+> drafting Flows were built and verified live that day (`HISTORY.md`), but
+> nothing since shows one completing, and the app falls back to its
+> templates without saying so. Run `checkAiFlowFixtures()` once: if the
+> fixtures move off `PENDING`, they're live; if not, mark them parked here.
+
 **What this didn't include at the time** (since done: all six Flows went
 live 2026-09-05, see `DEPLOYMENT_GUIDE.md`): none of the five Workspace Flows were
 built — building a no-code Flow happens in the live Google Workspace UI,
@@ -1131,6 +1137,13 @@ from a teacher filling in the template, same as it always would have.
 ---
 
 ## cas-ccps↔leader-hub integration (D1 + Addendum 26)
+
+> **Status (D16, 2026-11-01): parked until `checkCasServerSignIn()` passes.**
+> The browser sign-in needs an OAuth client from Cloud Console, which is off
+> for ccpsnet.net; the server-to-server route (Apps Script's own OpenID
+> token) is untested. Run `checkCasServerSignIn()` once from the editor: if
+> CAS accepts the token, finish the server route; if not, this stays parked
+> and the frozen local copies stay in use.
 
 leader-hub's SCR grading grid and Pacing Calendar are now optional live
 clients of a connected cas-ccps Teacher Dashboard, instead of always

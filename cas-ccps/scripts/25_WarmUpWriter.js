@@ -732,7 +732,7 @@ function checkShadowMatrixInterrupts_(ss, cfg) {
     Logger.log("[S25] Shadow matrix: lock email off (PIVOT_ARCHETYPE_LOCK is not 'all').");
     return;
   }
-  const CONFIDENCE_THRESHOLD = 0.75;
+  const CONFIDENCE_THRESHOLD = SHADOW_MATRIX_CONFIDENCE_THRESHOLD; // 00
   const props       = PropertiesService.getScriptProperties();
   const teacherEmail = cfg.teacherEmail;
   const teacherName  = cfg.teacherName || teacherEmail;

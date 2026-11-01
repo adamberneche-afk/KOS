@@ -21,9 +21,11 @@ const WARMUP_BRIDGE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts
 // formatDateYMD_, which _normalizeLessonDateCell_ calls for a Date cell. Same
 // Central Ledger project in production.
 const PROFILE_MANAGER_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '23_StudentProfileManager.js');
+// 00 is in every project; 23 reads the shadow matrix's two constants from it (2026-11-01).
+const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 
 function load() {
-  return loadGasFiles([LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
+  return loadGasFiles([SHARED_CONFIG_PATH, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
     'getPriorWarmUpResponse_',
     'WQ24_QUEUE_ID', 'WQ24_LESSON_ID', 'WQ24_STUDENT_EMAIL', 'WQ24_LESSON_DATE',
     'WQ24_STATUS', 'WQ24_TOTAL_SCORE', 'WQ24_RESPONSE_TEXT',
@@ -196,7 +198,7 @@ test('getEnrolledStudents_: a course code keeps only that course\'s students in 
 // BRIDGE. resolveUnitForDate_ lives in 31; it is stubbed to one unit here.
 
 function loadProfile() {
-  return loadGasFiles([LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
+  return loadGasFiles([SHARED_CONFIG_PATH, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
     'buildWarmupData_', 'updateShadowMatrix_',
     'WQ23_QUEUE_ID', 'WQ23_LESSON_ID', 'WQ23_STUDENT_EMAIL', 'WQ23_LESSON_DATE',
     'WQ23_STATUS', 'WQ23_ENGAGEMENT_SCORE', 'WQ23_ARCHETYPE',
@@ -297,7 +299,7 @@ test('buildWarmupData_ records each score\'s status', () => {
 });
 
 test('buildShadowMatrixSummary_: a student whose warm-ups were all blank is not "with warm-up responses"', () => {
-  const { exported, sandbox } = loadGasFiles([LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH],
+  const { exported, sandbox } = loadGasFiles([SHARED_CONFIG_PATH, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH],
     ['buildShadowMatrixSummary_']);
   sandbox.resolveUnitForDate_ = () => null;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
