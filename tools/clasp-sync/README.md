@@ -346,7 +346,7 @@ One-time registry folder, `clasp-registry\mothership-hub\`:
 | File | What goes in it |
 |---|---|
 | `.clasp.json` | from `clasp clone <the hub's scriptId>` |
-| `deployments.txt` | the hub's live deployment ID, one line |
+| `deployments.txt` | the hub's live deployment ID alone on one line: not the ` @n` that `clasp list-deployments` prints after it (with it, `run.js` doesn't recognise the deployment and moves nothing) |
 | `admin-token.txt` | the hub's `ADMIN_SETTINGS_TOKEN` Script Property. Without it the deploy still runs and the summary says the triggers were skipped |
 
 Differences from a KOS web app: the hub's deploy marker is read as

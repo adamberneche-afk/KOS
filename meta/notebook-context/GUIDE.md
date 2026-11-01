@@ -126,9 +126,10 @@ backed by data in the repo.
   removed from the repo's whole history. On 11-01 the plan's first week was
   built a day early (the SCR retry, the Registrar's flows, Flow 2's health
   numbers, Flow 5 merged into Flow 3) and D9 was decided: one install per
-  teacher, with a student's teachers sharing context. #338 to #361 are
-  merged, not yet pushed; the handoff's queue says what is left for the
-  operator (`meta/HANDOFF_2026-11-01.md`). October's plan, CAS live by 2026-10-30
+  teacher, with a student's teachers sharing context. Everything through
+  #370 was pushed the same day, and the Mothership hub now polls KOS on
+  its own; the handoff's queue says what is left for the operator
+  (`meta/HANDOFF_2026-11-01.md`). October's plan, CAS live by 2026-10-30
   one feature at a time (`meta/PLAN_2026-10.md`), was met. November's plan
   (`meta/PLAN_2026-11.md`) is to measure Flow 2 and the warm-ups, build
   work files in Forms, Slides and Sheets, and start packaging CAS so a

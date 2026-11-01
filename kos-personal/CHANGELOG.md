@@ -17,7 +17,7 @@ Studio by hand after the push.
 
 ### Registrar alerts name no file (2026-10-31)
 
-From KOS Audit Docket IV (#350, merged, not pushed): the Registrar's Chat
+From KOS Audit Docket IV (#350; pushed 2026-11-01, v68): the Registrar's Chat
 alerts (`11_Registrar_CogRelay.gs`, the kill-switch and CRITICAL_FAILURE
 alerts) gave the session file's name, which can include a student's name,
 though the triage itself is anonymized. They now give the Drive link, and

@@ -2,7 +2,14 @@
 
 > ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-11-01)
 >
-> **2026-11-01: #338 on are merged, not pushed.** Since 10-31: the SCR
+> **2026-11-01: everything through #370 is pushed** (`run.js --latest`,
+> commit `9090981`: every project; the web apps on new versions, Teacher
+> Dashboard v36, Student Dashboard v26). Merged since, not yet pushed:
+> #373 (69 counts warm-ups under their course). The after-push steps and
+> what each run showed are in
+> [`meta/HANDOFF_2026-11-01.md`](../meta/HANDOFF_2026-11-01.md).
+>
+> **What #338 to #370 brought, since 10-31:** the SCR
 > retry (D15), Flow 2's health numbers (`69`, a `Measures` tab), Flow 5
 > merged into Flow 3 (turn Flow 5 off in Studio and run
 > `syncFlowPromptsToSheet()` after the push), a part held by a failed check
