@@ -39,6 +39,8 @@ const EXPORTS = [
   'sendFamilySafetyAlerts', 'sendFamilyAlertTest', 'makeFamilyAlertTopic', 'runFamilySafetyAlertFixture',
   'reclassifySystemSenderThreads', 'reclassifySystemSenderThreadsNow',
   'FAMILY_MAIL_TRIAGE_PROMPT', 'FMS_LOG', 'FMS_LOG_HEADERS',
+  '_fmsLoadRoster_', '_fmsRedactionContext_', '_fmsRedact_', '_fmsLeaks_', '_fmsSafetyTripwire_',
+  '_fmsFindRosterName_', '_fmsNameTokens_',
 ];
 
 const HOUR = 3600 * 1000;
@@ -1098,4 +1100,84 @@ test('full names with hyphenated and multi-word surnames match, in either order,
     const sent = String(r[3]).slice(fx.exported.FAMILY_MAIL_TRIAGE_PROMPT.length);
     assert.doesNotMatch(sent, /avery|smith|jones|cruz|riley|dorn/i);
   });
+});
+
+
+// ── The redaction rework (2026-11-01; the 2026-10-13 patch review) ───────────
+// A synthetic roster that collides with ordinary words: a two-letter name, a
+// surname that is a common word, a name inside another student's name, and
+// two students who share a first name.
+const COLLIDE = [
+  { email: 'bo@example.org', name: 'Bo Park', course: '8175', period: '3' },
+  { email: 'will@example.org', name: 'Will Hope', course: '8175', period: '3' },
+  { email: 'ana1@example.org', name: "Ana O'Brien", course: '8177', period: '6' },
+  { email: 'ana2@example.org', name: 'Ana Smith-Jones', course: '8177', period: '6' },
+  { email: 'rob@example.org', name: 'Robert Dale', course: '8175', period: '4' },
+];
+
+function redactWith(fx, text, fromName) {
+  const roster = fx.exported._fmsLoadRoster_();
+  const ctx = fx.exported._fmsRedactionContext_({ fromName: fromName || '' }, roster);
+  return { out: fx.exported._fmsRedact_(text, ctx), ctx, roster };
+}
+
+test('a possessive or a quote, straight or curly, does not hide a name', () => {
+  const fx = setUp([], { roster: COLLIDE });
+  const { out, ctx } = redactWith(fx, "Ana's essay, Ana’s draft, 'Park' and ‘Dale’, O'Brien and O’Brien, the Smith-Jones' plan.");
+  assert.doesNotMatch(out, /ana|park|dale|brien|smith|jones/i);
+  assert.match(out, /\[STUDENT\]'s essay/, 'the possessive is kept after the tag');
+  assert.match(out, /\[STUDENT\]’s draft/);
+  for (const t of ["Ana's", 'Ana’s', "'Park'", '‘Dale’', 'O’Brien']) {
+    assert.equal(fx.exported._fmsLeaks_('Please see ' + t.toLowerCase() + ' work.', ctx), true, t);
+  }
+});
+
+test('a two-letter name is redacted; a common two-letter word is not', () => {
+  const fx = setUp([], { roster: COLLIDE });
+  const { out } = redactWith(fx, 'Bo is on it, so we go to class.', 'Al Park');
+  assert.equal(out, '[STUDENT] is on it, so we go to class.');
+  const sender = redactWith(fx, 'Al wrote to me.', 'Al Smith').out;
+  assert.equal(sender, '[SENDER] wrote to me.');
+});
+
+test('roster names that are ordinary words are redacted, and nothing else is', () => {
+  const fx = setUp([], { roster: COLLIDE });
+  // "Will" and "Hope" are a student's names, so the words are redacted too:
+  // the cost the 10-13 review accepted, against leaking a name. No prefix
+  // rule: "and", "die", "rob" (from Robert) are left alone unless a name.
+  const { out } = redactWith(fx, 'I will hope Robert and Diego are fine; Rob said he would die laughing.');
+  assert.equal(out, 'I [STUDENT] [STUDENT] [STUDENT] and Diego are fine; Rob said he would die laughing.');
+});
+
+test('two students with one first name: both surnames are found, and either full name matches its student', () => {
+  const fx = setUp([], { roster: COLLIDE });
+  const roster = fx.exported._fmsLoadRoster_();
+  const a = fx.exported._fmsFindRosterName_("My daughter Ana O'Brien was out.", roster);
+  const b = fx.exported._fmsFindRosterName_('Ana Smith Jones was out.', roster);
+  assert.equal(a.full.email, 'ana1@example.org');
+  assert.equal(b.full.email, 'ana2@example.org');
+});
+
+test('the Nicknames tab: each nickname is redacted, leak-checked and matched like a first name', () => {
+  const fx = setUp([], { roster: COLLIDE });
+  const tab = fx.ss.getSheetByName('Nicknames');
+  assert.ok(tab, 'setup makes the Nicknames tab');
+  assert.deepEqual(tab.getRange(1, 1, 1, 3).getValues()[0], ['Student_Email', 'Nicknames', 'Note']);
+  tab.appendRow(['rob@example.org', 'Bobby, Rob', '']);
+  tab.appendRow(['nobody@example.org', 'Ghost', 'not on the roster: ignored']);
+  const { out, ctx, roster } = redactWith(fx, "Bobby's grade, and Rob was absent; Ghost too.");
+  assert.equal(out, "[STUDENT]'s grade, and [STUDENT] was absent; Ghost too.");
+  assert.equal(fx.exported._fmsLeaks_('ask about bobby', ctx), true);
+  const found = fx.exported._fmsFindRosterName_('Bobby Dale missed class.', roster);
+  assert.equal(found.full.email, 'rob@example.org');
+  assert.equal(fx.exported._fmsFindRosterName_('my son Bobby', roster).first.email, 'rob@example.org');
+});
+
+test('the safety tripwire reads through quotes, straight or curly', () => {
+  const fx = setUp([]);
+  for (const t of ["She said 'suicide' in class.", 'She said ‘suicide’ in class.', 'He said "kill myself".',
+    'He wrote “kill myself”.', "I'm being bullied.", 'It’s bullying.']) {
+    assert.equal(fx.exported._fmsSafetyTripwire_(t), true, t);
+  }
+  assert.equal(fx.exported._fmsSafetyTripwire_("The project's suicide-squeeze play"), false, 'still whole words only');
 });

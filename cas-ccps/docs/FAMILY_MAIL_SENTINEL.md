@@ -85,7 +85,7 @@ in neither list (it still counts toward the reply times).
 
 | | Sees |
 |---|---|
-| Gmail, the sentinel sheet, Gemini (all inside the school's Google account) | The mail, as today. Gemini gets it with rostered names, the sender's name, addresses, phone numbers and long numbers redacted. |
+| Gmail, the sentinel sheet, Gemini (all inside the school's Google account) | The mail, as today. Gemini gets it with rostered names (two letters or more, in quotes or with a possessive too), nicknames from the `Nicknames` tab, the sender's name, addresses, phone numbers and long numbers redacted. |
 | `FamilyMailInput` tab | The redacted text, only until Gemini answers (or 48 hours from when it was first queued), then deleted. A row Studio drops is written again after 30 minutes, at most twice; the old row is marked `RETRIED`. |
 | `FamilyMailLog` tab | Message and thread IDs, course, period, category, urgency, the one-line ask, whether it needs a reply. No names, no text. Kept 30 days. |
 | `KOS_FAMILY_SIGNAL` doc, and so Claude | Course, period, source, category, ask, hours waiting, repeat-contact count. Sensitive categories (accommodation, health, discipline, family situation, safety) show none of those, only "sensitive" and the wait. |
@@ -173,7 +173,11 @@ shut its gateway in 2025.)
    path, and the phone shows "KOS TEST / Test: A family message needs you
    now..."; the row is removed afterwards).
 5. **Optional:** add parent addresses to `FamilyContacts` (parent email,
-   student email).
+   student email), and the names students go by to `Nicknames` (student
+   email, nicknames comma-separated: "Bobby, Rob"). A nickname is redacted
+   before Gemini sees the mail, checked for in Gemini's answer, and matched
+   like a first name. Nothing makes nicknames automatically: a rule that
+   guesses them (Andrew → "and") redacts ordinary words.
 6. **Build the Flow** in Workspace Studio from the `FamilyMailBuildSpec` tab:
    starter = a row in `FamilyMailInput` with `Status` = `READY`; Ask Gemini
    with instructions `@trigger.PromptText`; add a row to `FamilyMailReturn`
