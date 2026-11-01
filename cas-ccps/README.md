@@ -498,6 +498,20 @@ lesson, and the warm-up answer rate (`WarmUpQueue`'s `delivered_at` /
 overnight email (34c) runs it once a day and adds one line: this week's
 checks and failure rate against D8's bar of 1 in 20. Counts only.
 
+`70_WorkFileProbe.js` (Central Ledger, 2026-11-01) is Phase 4's design check
+(the student work plan, §5). `probeWorkFileTypes()`, run once from the
+editor, does three things:
+- It makes a scratch form, deck and sheet shaped like the lessons' tasks,
+  in a "CAS work file probe (delete me)" folder.
+- It reads each one back as a Form, Slides or Sheets reader would, and
+  records whether Drive lists its revisions and whether a Drive copy keeps
+  what the template set.
+- It writes one answer per question to the `WorkFileProbe` tab, then trashes
+  the scratch files. `{ keep: true }` leaves them.
+
+It never opens a student's file or a form's responses. The Ledger's manifest
+gained the Forms scope for it.
+
 On the dashboards (Phase 3c, 2026-10-28) a lesson in parts is one lesson.
 The Teacher Dashboard shows one row per student on their furthest open
 part ("Part 2 of 5"), with links to the parts before it and **Open Part 3

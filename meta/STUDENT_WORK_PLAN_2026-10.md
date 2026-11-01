@@ -285,6 +285,18 @@ reads a doc now, so Studio's flow changes only in where it reads.
 - Images aren't described in the snapshot; a design judged on how it looks
   stays with the teacher unless Flow 2 can take images (not checked).
 
+**The design check (2026-11-01).** `probeWorkFileTypes()` (`70_WorkFileProbe.js`,
+run once from the Central Ledger's editor) makes a scratch form, deck and
+sheet shaped like the lessons' tasks, reads each back as a reader would,
+and writes one answer per question to the Ledger's `WorkFileProbe` tab. Its
+answers go here when the operator has run it. Known before it runs:
+- The Central Ledger has the Drive (with revisions), Slides and Sheets
+  scopes. The Forms scope was added for the probe.
+- The **Student Dashboard**, where Submit runs, has only the Docs and Sheets
+  scopes. A reader at Submit needs the Forms and Slides scopes added there,
+  and the Drive scope if it lists revisions. That is a new consent when
+  pushed, so it is planned with Phase 4a, not slipped in.
+
 **Order inside the phase:** Forms first (5 lessons, the clearest checks),
 then Slides (11), then Sheets (3); Canva lessons move to Slides as their
 parts are written.
