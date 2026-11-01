@@ -18,8 +18,10 @@ why this repo exists at all.
 - **`HANDOFF_2026-11-01.md`** — the repo-wide session handoff: what merged
   #352–#361 (the plan's week of Nov 2 built a day early: both clean-up PRs,
   the SCR retry, the Registrar's flows, `reportEvaluationHealth`, Flow 5
-  merged into Flow 3, audit #5 and #6, D9 decided), what is live (through
-  #337; #338 on not pushed), the operator's queue in order, what is still
+  merged into Flow 3, audit #5 and #6, D9 decided; then packaging step 1,
+  the Phase 4 probe, the backlog items and `call-hub.yml`'s retirement,
+  through #373), what is live (through #370, pushed 11-01, and the hub),
+  the operator's queue in order with what each run showed, what is still
   open, and the rules for an agent session. Start here.
   `HANDOFF_2026-10-31.md` (superseded for the queue; its record of the two
   history rewrites and its agent notes still hold),

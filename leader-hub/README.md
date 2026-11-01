@@ -98,7 +98,7 @@ Actively developed (~20 sessions per its own `LEADERHUB_WIP.md`). The
 **not yet run against real data** — treat them as drafts pending a
 deliberate execution decision, not as already-applied changes.
 
-**2026-10-31 (KOS Audit Docket IV; merged, not pushed):** the web app runs
+**2026-10-31 (KOS Audit Docket IV; pushed 2026-11-01, v70):** the web app runs
 as the owner with domain access, so every public server function now
 checks its caller: the read-only setup checks (`checkAiPrompts`,
 `checkAiQueueSchema`, `runLeaderHubPreflight`, `checkAiFlowFixtures`,
@@ -395,8 +395,11 @@ result shown (or the existing deterministic fallback, on any failure).
 > **Status (D16, 2026-11-01): unverified since 2026-09-05.** The six AI
 > drafting Flows were built and verified live that day (`HISTORY.md`), but
 > nothing since shows one completing, and the app falls back to its
-> templates without saying so. Run `checkAiFlowFixtures()` once: if the
-> fixtures move off `PENDING`, they're live; if not, mark them parked here.
+> templates without saying so. Run `installAiFlowFixtures()` first (it
+> plants the six test rows; `checkAiFlowFixtures()` alone finds none, as
+> it did on 2026-11-01), wait a few minutes, then `checkAiFlowFixtures()`:
+> if the fixtures move off `PENDING`, they're live; if not, mark them
+> parked here. `removeAiFlowFixtures()` clears them.
 
 **What this didn't include at the time** (since done: all six Flows went
 live 2026-09-05, see `DEPLOYMENT_GUIDE.md`): none of the five Workspace Flows were
