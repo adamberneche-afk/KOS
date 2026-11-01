@@ -26,6 +26,8 @@
 //   - warm-ups delivered as the teacher's anchor (41: junk output, or no return)
 //   - the lesson rollout's (58) PROBLEM rows, and whether its latest run
 //     stopped short of making every student's doc
+//   - in the email only, once a day: Flow 2's week so far (69's
+//     evaluationHealth_), which also rewrites the Measures tab
 //   - at most every 6 hours, the setup checks once run by hand: the Ledger's
 //     column order (38), FlowPrompts against the code (40), the last 24
 //     hours' Studio returns in the right columns (41), and each retention
@@ -388,6 +390,14 @@ function overnightMaybeMail_(health, now, tz) {
   if (!to) return false;
 
   const n = health.problems.length;
+  // Flow 2's week (69, 2026-11-01): one line, and the Measures tab rewritten
+  // once a day. Its failure doesn't hold the email back.
+  let measures = "";
+  try {
+    measures = evaluationHealth_({ now: now, write: true }).line;
+  } catch (e) {
+    measures = "Flow 2's week: unavailable (" + e.message + ")";
+  }
   const marker = typeof DEPLOY_VERSION_SHA !== "undefined" ? String(DEPLOY_VERSION_SHA).slice(0, 7) : "unknown";
   const subject = "CAS overnight " + today + ": " + (n ? n + (n === 1 ? " problem" : " problems") : "all clear") +
     " (" + (cfg.teacherEmail || "no TEACHER_EMAIL") + ")";
@@ -396,6 +406,8 @@ function overnightMaybeMail_(health, now, tz) {
     "Deployment: cas-ccps:central-ledger, version marker " + marker +
       ", teacher " + (cfg.teacherEmail || "not set") + ".",
     "Counts only. The same lines are in KOS_CAS_SIGNAL under LAST NIGHT.",
+    "",
+    measures,
     "",
   ].concat(n ? health.problems.map(function (p) { return "- " + p; }) : [health.allClear || "No problems found."])
     .join("\n");

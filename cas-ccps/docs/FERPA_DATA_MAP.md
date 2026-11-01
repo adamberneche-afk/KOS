@@ -194,6 +194,18 @@ marks or removes those rows yet.
 | **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
 | **Retention** | Kept with the Ledger. A row whose Ledger row is archived is harmless and isn't read for anything else. |
 
+### Measures
+*Central Ledger tab (2026-11-01)*
+
+| | |
+|---|---|
+| **Fields** | Per course and week: counts of Flow 2 results by kind and of submissions never returned, the failure rate, Submit-to-feedback minutes (median, slowest tenth), drafts per student per lesson (mean, most), warm-ups delivered and answered. No names, emails, file IDs, ConfigIDs or student text. |
+| **Why collected** | Whether Flow 2 is reliable enough to split more lessons into parts (D8), and how long students wait. |
+| **Written by** | `evaluationHealth_()` (69), rewritten whole by `reportEvaluationHealth()` and once a day by the overnight email (34c). |
+| **Read by** | The operator. |
+| **Visible to** | Whoever can open the Central Ledger. |
+| **Retention** | Holds only the last eight weeks; each run replaces it. Aggregates, not student records. |
+
 ### EvaluationLog
 *Central Ledger tab (2026-10-23)*
 
@@ -202,7 +214,7 @@ marks or removes those rows yet.
 | **Fields** | EvaluatedAt, ConfigID (the student's workspace ID), StudentFileID (their workspace Doc), Attempt, Result (`PASSED`, `NEEDS_REVISION`, or an `ERROR_` harvest failure), SubmittedAt, WaitMinutes, SuggestedScore. No names, no emails, no student writing, no feedback text. |
 | **Why collected** | The Ledger keeps only the latest result and a count, so each check's wait and a student's sequence of attempts were lost. Waiting on feedback is friction that teaches nothing; this is how it's measured. |
 | **Written by** | `harvestFlowInputResults()` (37), one row per Flow 2 result, appended only. |
-| **Read by** | Nothing yet. |
+| **Read by** | `evaluationHealth_()` (69, since 2026-11-01), for counts, rates and minutes per course and week in the `Measures` tab and one line of the overnight email; no identifier leaves it. |
 | **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
 | **Retention** | `LEDGER_RETENTION_YEARS`, with the Ledger (counted in `checkRetentionSchedule()`). No archive marker; deletion is the operator-approved disposition, as for every record. |
 
