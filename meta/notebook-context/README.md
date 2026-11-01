@@ -38,7 +38,7 @@ hand. A missing file stops the build.
   Change its "Where the promise and the system stand" section when a
   system's state changes, and its "Which sources are current and which are
   dated" table when a listed doc changes status.
-- **When a new handoff replaces `HANDOFF_2026-10-31.md`**, or a plan or
+- **When a new handoff replaces `HANDOFF_2026-11-01.md`**, or a plan or
   audit is superseded, change `SOURCES` and the guide together.
   `tests/tools/notebook-context.test.js` fails if the guide doesn't name
   every source, or cites a file that doesn't exist.

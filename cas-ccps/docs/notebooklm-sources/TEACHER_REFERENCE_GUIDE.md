@@ -206,6 +206,10 @@ Copying a report records the time and your account, so the panel shows “Copied
 | 4 | With supervision |
 | 5 | Cannot perform |
 
+**Re-rate a 3 or a 4.** A student's page shows **Re-ratings: n ready of n rated 3 or 4**. A rating of 3 or 4 can be re-rated once the student has 5 pieces of work meeting that competency or a linked one, with 2 linked pieces for each primary piece not met. Each row says what is still needed; a ready one has a **Re-rate** button with the rating the evidence now gives. The student's Competencies tab tells them what would unlock a re-rating.
+
+**Lessons in parts.** Some lessons run as parts, each its own document. A student's next part opens on its own once their latest check of the part before meets its main competency. On the Teacher Dashboard, a student's row shows their part, and **Open Part n now** opens the next one by hand. If a check didn't finish (it timed out or came back unusable) and the next part has stayed locked for a school day, the row says so in red: open the part, or ask the student to submit again. The overnight email counts these students. In Canvas a lesson in parts is still one assignment and one grade: the student turns in the link to their last part.
+
 > **The two scales run in opposite directions.** On a competency rating, 1 is the highest. On the AI's suggested score, 4 is the highest. Changing a suggested rating from 2 to 4 lowers it.
 
 **Competencies done.** For each course, a student's competencies you have rated 1 to 3 (limited supervision or better), out of every competency in the course: 113 for 8175, 108 for 8177. Only your confirmed ratings count, not the AI's suggestions, and a later rating replaces an earlier one. It shows on the student's page and in Student Context; students see their own on their dashboard, counting every teacher's ratings.
