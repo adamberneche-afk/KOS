@@ -276,7 +276,9 @@ actionlint is pinned to one version (1.7.7) in both `watchdog.yml` and
 `.github/dependabot.yml`
 (weekly npm + GitHub Actions updates) and `.github/workflows/codeql.yml`
 (CodeQL code scanning) round out the same "is the repo's own machinery
-healthy" floor.
+healthy" floor. `.github/workflows/run-js-windows.yml` runs `run.js`'s
+tests on Windows, where the operator pushes from, whenever `run.js` or its
+test changes.
 
 ## [`tools/deploy-drift/`](./tools/deploy-drift/) — is what's live actually what git expects?
 
