@@ -344,9 +344,10 @@ function _ldocWriteItinerary_(body, a, blocks) {
     .map(function (k) { return ITINERARY_MODES[k]; }).join(", ") + ".");
   const cols = [];
   blocks.forEach(function (b) {
-    ["A", "B"].forEach(function (s) {
-      cols.push({ label: LDOC_BLOCK_NAMES[b - 1] + " " + s + " (" + BELL_CLASS_MINUTES[s][b - 1] + ")",
-        minutes: BELL_CLASS_MINUTES[s][b - 1] });
+    bellRegularSchedules_().forEach(function (s) {
+      const minutes = bellClassMinutes_()[s][b - 1] || 0;
+      cols.push({ label: (LDOC_BLOCK_NAMES[b - 1] || "Block " + b) + " " + s + " (" + minutes + ")",
+        minutes: minutes });
     });
   });
   const days = (a.plan && a.plan.days) || [];
@@ -394,7 +395,7 @@ function _ldocWriteMeetings_(body, meetings) {
     return;
   }
   meetings.forEach(function (m) {
-    _ldocH_(body, _ldocFmt_(m.date, "EEE MMM d") + " · " + BELL_SCHEDULE_LABELS[m.schedule] +
+    _ldocH_(body, _ldocFmt_(m.date, "EEE MMM d") + " · " + bellScheduleLabel_(m.schedule) +
       (m.periods.length ? " · period " + m.periods.join(", ") : " · no period meets"), 3);
     body.appendParagraph("Notes:");
   });

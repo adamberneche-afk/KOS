@@ -65,7 +65,7 @@ function makeAgendaDeck_(code, ymd) {
     DriveApp.getFileById(pres.getId()).moveTo(_agFolder_(cfg));
   }
   const old = pres.getSlides();
-  _agSlide_(pres, _ldocFmt_(ymd, "EEEE, MMMM d") + " · " + BELL_SCHEDULE_LABELS[meeting.schedule],
+  _agSlide_(pres, _ldocFmt_(ymd, "EEEE, MMMM d") + " · " + bellScheduleLabel_(meeting.schedule),
     [a.unitName].concat(_agGoals_(a).map(function (g) { return "• " + g; }),
       periods.some(function (p) { return bellBlockOf_(p.period) === 3; }) ? ["3rd block: Lunch (your wave)."] : []).join("\n"));
   rows.forEach(function (r, i) {

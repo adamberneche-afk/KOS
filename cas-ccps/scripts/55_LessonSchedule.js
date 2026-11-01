@@ -71,7 +71,7 @@ function seedLessonSchedule() {
     sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues().forEach(r => { have[String(r[0]).trim()] = true; });
   }
   const add = [];
-  ["8175", "8177"].forEach(code => (LESSON_ORDER[code] || []).forEach(key => {
+  schoolCourseCodes_().forEach(code => (LESSON_ORDER[code] || []).forEach(key => {
     if (have[key]) return;
     const a = LESSON_ASSIGNMENTS[key];
     add.push([code, key, a.unitName, LS_FIRST_DATES[key] || "", lessonConfigId_(key), "", ""]);
@@ -96,7 +96,8 @@ let _lsCache_ = null;
  */
 function _lsRows_() {
   if (_lsCache_) return _lsCache_;
-  const out = { "8175": [], "8177": [] };
+  const out = {};
+  schoolCourseCodes_().forEach(code => { out[code] = []; });
   try {
     const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
     const sheet = ss.getSheetByName(LS_TAB);

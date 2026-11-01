@@ -270,6 +270,35 @@ properties; `showConfigSources()` shows where each value came from. See
 [`DEPLOYMENT_HANDOFF.md`](./DEPLOYMENT_HANDOFF.md#script-properties-reference)
 for which properties are safe to delete afterwards.
 
+**The school, from configuration (packaging step 1, 2026-11-01).** What used
+to be written into the code is now read through `schoolProfile_()` (`00`,
+"THE SCHOOL"). Each value is a shared key, so it can be set as a Script
+Property or in the Ledger's `_CONFIG` tab, and today's school is the default
+when a value is unset:
+- `SCHOOL_COURSES` (`8175=marketing,8177=management`): the courses and a word
+  that names each. It drives `schoolCourseOf_()`, the one course-from-name
+  rule that 00, 24 and 51 share, and every "for each course" loop (53, 55, 65).
+- `STUDENT_EMAIL_DOMAIN` (`ccpsnet.net`) and `STUDENT_ID_PATTERN` (`\d{7}`):
+  what a student account looks like (29's `_studentIdPattern_()`,
+  `studentIdRegex_()`).
+- `STUDENT_MAIL_DOMAIN` and `STAFF_MAIL_DOMAIN`: the Family Mail Sentinel's
+  student and staff mail.
+- `EARLY_RELEASE_DAYS`, `SCHOOL_DAYS_OFF` and `BELL_SCHEDULE` (JSON: class
+  minutes per schedule, labels, and a rotation by weekday): the calendar.
+  They feed `bellScheduleFor_()`, the lesson doc and agenda deck, the
+  ⚙ Settings day choices, and `isSchoolDay_()`, which the held-part count
+  (68) uses.
+
+A value that doesn't parse falls back to its default and logs `[SCHOOL]`.
+Some things stay course-specific on purpose:
+- the lesson and unit data (53b, 55b);
+- the pacing guide's `objective_8175` / `_8177` columns (31, 23, 28);
+- 51's expected registry counts.
+
+The Unified Manual's library ID is in the manifests and comes with the
+install registry (step 3). `tests/cas-ccps/school-profile.test.js` pins the
+defaults and checks each override.
+
 ## Module status
 
 | Module | Purpose | Status |

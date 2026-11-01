@@ -499,12 +499,9 @@ function isHalfPeriodRestDay_(dateStr, date, courseCode) {
 // students only. A single-course period keeps its plain period key.
 // ---------------------------------------------------------------------------
 
-/** "8175", "8177" or "" from a course name (same rule as getWarmUpAnchor_ in 31). */
+/** A configured course's code, or "", from a course name (00's schoolCourseOf_). */
 function courseCodeFromName_(courseName) {
-  const name = String(courseName || "");
-  if (name.indexOf("8175") !== -1 || /marketing/i.test(name)) return "8175";
-  if (name.indexOf("8177") !== -1 || /management/i.test(name)) return "8177";
-  return "";
+  return schoolCourseOf_(courseName);
 }
 
 /** The periods in getPeriodsForDay_()'s list where more than one course meets. */

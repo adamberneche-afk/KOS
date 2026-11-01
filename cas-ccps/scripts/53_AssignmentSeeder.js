@@ -83,8 +83,8 @@ function seedAssignments_(opts) {
     });
   }
 
-  ["8175", "8177"].forEach(code => {
-    units[code].forEach(unitId => {
+  schoolCourseCodes_().forEach(code => {
+    (units[code] || []).forEach(unitId => {
       const found = _asAssignment_(unitId, code);
       if (found === "OTHER_COURSE") return;
       const configId = found ? found.configId : assignmentConfigId_(unitId, code);
@@ -292,12 +292,16 @@ function _asUnits_(opts) {
   const prop = opts.units ||
     String(PropertiesService.getScriptProperties().getProperty("SEED_UNITS") || "")
       .split(",").map(s => s.trim()).filter(Boolean);
-  if (prop.length) return { "8175": prop, "8177": prop };
+  if (prop.length) {
+    const all = {};
+    schoolCourseCodes_().forEach(code => { all[code] = prop; });
+    return all;
+  }
   const now = opts.today || new Date();
   const today = formatDateYMD_(now);
   const soon = formatDateYMD_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7));
   const out = {};
-  ["8175", "8177"].forEach(code => {
+  schoolCourseCodes_().forEach(code => {
     const unit = resolveUnitForCourseDate_(today, code); // 31
     out[code] = unit ? [unit.lesson_unit_id] : [];
     (_lsRows_()[code] || []).forEach(r => {

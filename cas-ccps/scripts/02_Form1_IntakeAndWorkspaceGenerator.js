@@ -62,12 +62,12 @@ function onFormSubmit_Intake(e) {
   if (res.ok) return;
 
   if (res.code === "INVALID_ACCOUNT") {
-    Logger.log("Form 1 rejected — the account entered is not a valid student Google account (expected 7 digits @" + _studentEmailDomain_() + ").");
+    Logger.log("Form 1 rejected — the account entered is not a valid student Google account (expected " + studentIdDescription_() + " @" + _studentEmailDomain_() + ").");
     notifyIntakeRejected_(cfg, {
       studentName: studentName, googleId: googleId,
       teacherEmail: teacherEmail, unitConfigId: unitConfigId,
       reason: "\"" + googleId + "\" is not a district student account. Student accounts " +
-              "are 7 digits @" + _studentEmailDomain_() + ".",
+              "are " + studentIdDescription_() + " @" + _studentEmailDomain_() + ".",
       fix:    "Have the student resubmit the intake form with their school account."
     });
     return;
