@@ -1,0 +1,39 @@
+name: run.js on Windows
+
+# tools/clasp-sync/run.js pushes every Apps Script project, and the operator
+# runs it on Windows (C:\Users\...\KOS). Every other job here runs on Linux,
+# so the Windows paths in tests/tools/clasp-run.test.js (the .cmd launcher,
+# backslash paths, spawning clasp through cmd.exe) never ran in CI. This job
+# runs that one test file on windows-latest. It needs no npm install: run.js
+# and its test use Node's own modules only. (meta/BACKLOG.md, promoted
+# 2026-11-01.)
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'tools/clasp-sync/**'
+      - 'tests/tools/clasp-run.test.js'
+      - 'tools/gas-lint/project-map.json'
+      - '.github/workflows/run-js-windows.yml'
+  pull_request:
+    paths:
+      - 'tools/clasp-sync/**'
+      - 'tests/tools/clasp-run.test.js'
+      - 'tools/gas-lint/project-map.json'
+      - '.github/workflows/run-js-windows.yml'
+  workflow_dispatch:
+
+# Read-only by default; a job that needs more says so itself.
+permissions:
+  contents: read
+
+jobs:
+  clasp-run-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '20'
+      - name: run.js tests on Windows
+        run: node --test tests/tools/clasp-run.test.js
