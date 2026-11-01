@@ -476,4 +476,7 @@ the other two systems is the highest-leverage next step for the whole repo
 to actually deliver, end to end, on what each of its own North Star
 documents already promises — with cas-ccps's half of that gap now
 partially closed (custom-step code for Flows 2-5 exists and is tested;
-what remains is deployment, not code).
+what remains is deployment, not code). *Superseded (noted 2026-11-01): the
+custom steps were never deployed; Apps Script now writes each flow's input
+row and harvests its output (37, 41; `meta/FLOW_DOCTRINE.md`), and
+`cas-ccps/studio-steps/` is kept only as a record.*

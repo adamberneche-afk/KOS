@@ -1,10 +1,16 @@
 # KOS backlog: ideas for future sprints
 
 **Status:** started 2026-10-17. Nothing here is committed work.
-[`PLAN_2026-10.md`](./PLAN_2026-10.md) is the plan of record and wins
-whenever the two disagree. [`HANDOFF_2026-10-22.md`](./HANDOFF_2026-10-22.md)
-holds the operator's current queue and the decisions waiting on the
-operator. This file holds what comes after them.
+[`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and wins
+whenever the two disagree. [`HANDOFF_2026-11-01.md`](./HANDOFF_2026-11-01.md)
+holds the operator's current queue. This file holds what comes after them.
+
+**Reviewed 2026-11-01** (the first sprint-boundary review, due 10-30, with
+the dead-ends audit's backlog fixes):
+- Done items are struck, citing their PRs.
+- Dropped items are in "Dropped".
+- Three items are promoted into the plan's window: the Sentinel redaction
+  rework, the Windows CI job, and list answers in warm-ups.
 
 ## How to use this file
 
@@ -30,9 +36,11 @@ operator. This file holds what comes after them.
 - **Word count penalises list answers.** A warm-up that asks students to
   "list as many ways as you can" gets 0 of 6 for word count from a correct
   list (`WORD_COUNT_THRESHOLDS`, 25). Either seed list prompts differently
-  or score lists by item count. A grading rule, so the teacher decides;
-  after Oct 30.
-- **Flow 3 output quality.** About 1 in 5 of Studio's warm-ups is turned
+  or score lists by item count. A grading rule, so the teacher decides.
+  **Promoted 2026-11-01** into `PLAN_2026-11.md`'s window: the agent brings
+  a proposal, and the operator decides.
+- ~~**Flow 3 output quality.**~~ **Done (#238)**; what remains is watching
+  the overnight email's fallback line. About 1 in 5 of Studio's warm-ups is turned
   down by the shape gate (over 900 characters; the prompt's own wording,
   "adaptation constraints", "teacher's anchor prompt"). Tighten the Flow 3
   prompt (40) and watch the nightly fallback count. With D6 (decided and
@@ -66,7 +74,8 @@ operator. This file holds what comes after them.
 
 ### Offered, small, ready to build
 
-- **Retention disposition.** A dry-run report of records past their cutoff,
+- ~~**Retention disposition.**~~ **Done** (dry run 10-21; the deletion step 10-28, #327;
+  approval by fingerprint, #346). A dry-run report of records past their cutoff,
   then deletion only after the operator approves it. The schedule is
   confirmed (2026-10-17), so this is ready when wanted. 2026-10-13, after #174.
   **Dry run built 2026-10-21** (`previewRetentionDisposition`, 57); **the
@@ -97,7 +106,8 @@ operator. This file holds what comes after them.
 - **Assignments that aren't a document.** Some of the week's assignments
   are on paper or don't fit a doc, so CAS has no record of them; L07 is the
   last doc assignment of the week of Oct 19. Come back to these if time
-  allows (operator, 2026-10-19).
+  allows (operator, 2026-10-19). Phase 4 (Forms, Slides, Sheets) covers the
+  digital ones; paper still has no record. Needs a design conversation.
 
 ### Design threads (suggestions; what is built is marked)
 
@@ -113,8 +123,9 @@ operator. This file holds what comes after them.
   shared course library (VDOE's text) and each teacher's class (their
   adaptation) kept apart. A teacher submits a course code and its VDOE
   framework; an agent session imports it into the library through a PR.
-  First, the library and a class list in place of the four hardcoded
-  8175/8177 rules. See
+  First, the library and a class list. The four hardcoded 8175/8177 rules
+  are gone: packaging step 1 (#363) put the courses in configuration
+  (`SCHOOL_COURSES`). See
   [`COURSE_BUILDER_PLAN_2026-10.md`](./COURSE_BUILDER_PLAN_2026-10.md);
   A public library and a private option; using the public library files
   the lessons a teacher builds with CAS in it. C1 to C10 decided 2026-10-22
@@ -132,20 +143,21 @@ operator. This file holds what comes after them.
   `58_LessonRollout.js`, shadow first), and the per-lesson `release` hold
   (2026-10-28, `HOLD` in `LessonSchedule`, 📅 Lessons' Hold button). Still
   open: student-requested doc creation, after a few weeks of the rollout
-  running live. Persistent per-course docs are set aside: lessons in parts
-  give each part its own doc. Same doc, §5.
+  running live. (Persistent per-course docs: see "Dropped".) Same doc, §5.
 - **Cognitive exhaust and authenticity review.** Student process traces,
   for assignment docs (not warm-ups). Decided 2026-10-17: nothing on the
   student's doc, results on the Teacher Dashboard only; the county's account
-  monitoring covers policy; no students excluded. Waits on a
-  `revisionProbe` result.
+  monitoring covers policy; no students excluded. The revisionProbe ran on
+  10-18 (`cas-ccps/HISTORY.md`): paste detection from revision history isn't
+  possible, so this is the lean collector, D4 in `PLAN_2026-11.md`. The
+  Phase 4 probe (`70_WorkFileProbe.js`) adds whether Forms, Slides and
+  Sheets list revisions.
   [`CAS_COGNITIVE_EXHAUST_2026-10-16.md`](./CAS_COGNITIVE_EXHAUST_2026-10-16.md).
 - **PRD research-pivot requirements past Phase 0.** Measurement, pedagogy
-  and student experience. [`PRD_CAS_RESEARCH_PIVOT.md`](./PRD_CAS_RESEARCH_PIVOT.md).
+  and student experience. P1-02's checks block is `reportEvaluationHealth`
+  (#357); the rest is parked (D16). [`PRD_CAS_RESEARCH_PIVOT.md`](./PRD_CAS_RESEARCH_PIVOT.md).
 
 ### Waiting on another piece of work
-
-
 
 - **Parent reports (`36_WeeklyParentReport.js`) in use.** Since 2026-10-23
   KOS writes them and the teacher copies each into an email from their own
@@ -153,9 +165,12 @@ operator. This file holds what comes after them.
   guardian list, which is the teacher's. Waits until the student and
   teacher dashboards are tightened (decided 2026-10-18; `PLAN_2026-10.md`,
   D1) and the code is pushed; then one report read in full before the
-  first is sent.
+  first is sent. **2026-11-01:** both conditions are met (pushed through
+  #337 on 10-29); reading one report in full is in `PLAN_2026-11.md`'s
+  window for the week of Nov 2.
 
-- **Family Mail Sentinel redaction rework.** Keep the patch's new phrases
+- **Family Mail Sentinel redaction rework.** **Promoted 2026-11-01** into
+  `PLAN_2026-11.md`'s window (the agent builds it). Keep the patch's new phrases
   (restrict "kms"), its quote-safe possessive handling and its two-letter
   names. Replace the automatic nickname prefixes with a nickname list the
   teacher keeps, and add tests for curly quotes and roster-name
@@ -174,15 +189,17 @@ concept sets below, from outside the repo and not filed, are its inputs.
   - Consolidating the dashboards breaks every other teacher's `/exec` URL.
   - The installer can't set properties or triggers in other projects
     without the Apps Script API.
-  - Course numbers are hardcoded into `31`.
+  - Course numbers are hardcoded into `31`. (Mostly settled by #363: the
+    courses are configuration. 31's per-course pacing columns remain until
+    the course builder.)
   - cas-ccps and leader-hub have no license files.
 - **KOS Lite (`LT_*`, reviewed 2026-10-17).** Signed pull-only releases,
   `kos verify` and `kos apply`, and reuse of `run.js`. Before any of it
   is built:
   - Settle per-adopter config. The Unified Manual manifest hardcodes the
-    operator's Central Ledger library ID. The code hardcodes the domain
-    patterns and the course numbers. Deploy versions report to the
-    operator's repo.
+    operator's Central Ledger library ID (packaging step 3). ~~The code
+    hardcodes the domain patterns and the course numbers~~ (configuration
+    since #363). Deploy versions report to the operator's repo.
   - Decide which files a release may contain. A zip of the repo would
     publish staff addresses and the meta docs.
   - Decide whether the repo goes private.
@@ -193,20 +210,16 @@ concept sets below, from outside the repo and not filed, are its inputs.
     3.x uses `create-script` and `show-authorized-user`.
 - ~~**Marker-level verify.**~~ Built 2026-10-29: `node run.js --verify`
   (read only) compares each deployment's marker with the last push.
-- **Marker-level verify, which works today.** `clasp list-deployments`
-  shows each deployment's `<marker> v<n>` description, so a read-only
-  check can compare it with the repo's markers. One gap: a rollback
-  writes "rollback to v<n>" with no marker.
 - **Windows CI job for `run.js`.** Cheap, and independent of the rest.
-  The test already builds a `.cmd` launcher on win32.
+  The test already builds a `.cmd` launcher on win32. **Promoted
+  2026-11-01** into `PLAN_2026-11.md`'s window.
 
 ## kos-personal
 
-- **The Registrar's Studio flows (2026-10-20).** Stage 1 (Auditor) and
-  Stage 2 (Curator) were never built (`11_Registrar_CogRelay.gs`). When they
-  are, serve their prompts from the `FlowPrompts` tab like the other three:
-  add both `.md` files to `generate-flow-prompts.js` and `16_FlowPrompts.gs`,
-  rather than a hand-pasted system prompt.
+- ~~**The Registrar's Studio flows (2026-10-20).**~~ **Apps Script half
+  done 2026-11-01 (#355, D14)**, with both prompts served from the
+  `FlowPrompts` tab as this item asked. The operator builds the two flows
+  in Studio after the push (the 11-01 handoff, item 5).
 - **Ingestion hardening, steps C and A.** These come after the §4
   diagnosis. [`KOS_INGESTION_HARDENING_PLAN.md`](./KOS_INGESTION_HARDENING_PLAN.md).
 
@@ -214,8 +227,11 @@ concept sets below, from outside the repo and not filed, are its inputs.
 
 - **D1 link to CAS.** Blocked until there is a Google Cloud OAuth client.
   [`../cas-ccps/docs/LEADERHUB_CONNECTION_SETUP.md`](../cas-ccps/docs/LEADERHUB_CONNECTION_SETUP.md).
-- **New features.** Frozen until CAS is live (PLAN_2026-10). Use
+- **New features.** CAS is live, so the freeze can lift, but nothing is
+  planned for leader-hub in November (`PLAN_2026-11.md`); fixes only. Use
   `LEADERHUB_WIP.md` for these.
+- The D1 link above is parked until `checkCasServerSignIn()` passes (D16,
+  audit #17).
 
 ## Repo and tooling
 
@@ -236,4 +252,18 @@ concept sets below, from outside the repo and not filed, are its inputs.
 
 ## Dropped
 
-_(None yet. Each entry: the item, the date, and why.)_
+Each entry: the item, the date, and why.
+
+- **Persistent per-course docs** (Thread C), moved here 2026-11-01: set
+  aside when lessons in parts were designed, since each part has its own
+  doc.
+- **The Teacher Dashboard remembering parent addresses**, 2026-10-22:
+  nothing is stored in the browser, and since 10-23 each teacher sends
+  parent reports from their own account (D1).
+- **Marker-level verify, the second entry**, 2026-11-01: a duplicate of the
+  one built on 10-29 (`node run.js --verify`).
+- **Flow 5, the bridge paragraph**, 2026-11-01: merged into Flow 3 (#359).
+- **Process hardening Phase 4, the Curator/Auditor split** (the dead-ends
+  audit's #26), 2026-11-01 (D16): no plan scheduled it, and the Curator's
+  Auditor pass runs as one Flow without trouble (`PROCESS_HARDENING_SPRINT.md`,
+  Phase 4).

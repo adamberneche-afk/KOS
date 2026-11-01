@@ -3,7 +3,8 @@
 > **Decided 2026-10-17:** assignment docs only (not warm-ups); no status or
 > flag on the student's doc, results on the Teacher Dashboard only; the
 > county's account monitoring covers the policy question in §4; no students
-> to exclude. The collector still waits on the `revisionProbe`.
+> to exclude. The collector waited on the `revisionProbe`, which ran on
+> 10-18 (below); it is now D4 in `PLAN_2026-11.md`.
 >
 > **revisionProbe run 2026-10-18** (one student assignment doc, counts only):
 > 6 revisions over 9 days. Drive merges a whole sitting into one revision
@@ -22,7 +23,7 @@
 >
 > **Filed 2026-10-17** from the operator's 2026-10-16 handoff package.
 > Suggestions only; nothing here is built. Where it sits in the order of
-> work: [`HANDOFF_2026-10-22.md`](./HANDOFF_2026-10-22.md).
+> work: [`HANDOFF_2026-11-01.md`](./HANDOFF_2026-11-01.md) (the order of work is [`PLAN_2026-11.md`](./PLAN_2026-11.md)).
 
 Prepared 2026-10-16. Suggestions only; nothing here is built yet. "Cognitive exhaust" is read as the process traces students leave while producing work: drafts, revisions, attempts and pauses. It builds on the authenticity-review plan (log revision-history metrics for every submission, baseline across students and assignments, flag anomalies for review with the student). Student writing stays out of any log; only numbers and timestamps are kept.
 

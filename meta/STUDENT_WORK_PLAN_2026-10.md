@@ -1,14 +1,16 @@
 # The student's side of an assignment: plan
 
-**Status:** direction decided 2026-10-24 (under "Decided" below); details
-open (at the end). **Phase 1 (the process reflection on Submit) is built**
-(2026-10-24, behind `REFLECTION_ON_SUBMIT`, off; `cas-ccps/HISTORY.md`, "The
-process reflection on Submit"), using the Appendix A frames as drafted until
-they are approved. The feedback reflection (Phase 2) waits until Phase 1
-runs reliably (the operator, 10-24). Starts in the week of Oct 26 as part
-of the dashboard review and runs into the week of Nov 2
-([`PLAN_2026-10.md`](./PLAN_2026-10.md), both weeks); how far it gets
-depends on the build credits available.
+**Status (2026-11-01):**
+- Direction decided 2026-10-24 (under "Decided" below).
+- **Phases 1 to 3 are built:**
+  - the process reflection on Submit (behind `REFLECTION_ON_SUBMIT`);
+  - the feedback reflection;
+  - lessons in parts in both courses, with Student Context showing the
+    reflections (#353) and the Canvas cartridges listing the parts (#360).
+- Appendix A's frames and Appendix B's parts are approved.
+- **Phase 4** (work files by type) is next. Its design check
+  (`70_WorkFileProbe.js`, #364) runs after the 11-02 push.
+- The order of work is [`PLAN_2026-11.md`](./PLAN_2026-11.md).
 
 ## Why
 
@@ -28,7 +30,8 @@ the lesson data (`55b_LessonAssignmentData.js`, 67 lessons):
   what they weighed or how sure they are. Process shows only in the doc's
   revision history, which nothing reads (the `revisionProbe` in
   [`CAS_BUG_HANDOFF_2026-10-16.md`](./CAS_BUG_HANDOFF_2026-10-16.md)'s
-  appendix was never built).
+  appendix ran once on 10-18: revisions are listed, but paste detection
+  from them isn't possible; `cas-ccps/HISTORY.md`).
 - **Work outside the doc.** Lessons send the student to Forms (5), Slides
   (11), Sheets (3), Canva (10) and Drawings (1), often ending "paste the
   link" (counted by matching the task text, so approximate). Flow 2 is
@@ -115,8 +118,9 @@ on a hard part, or a result the teacher disagrees with).
 (58) already makes a lesson's files ahead of time, unshared (Ledger
 `SCHEDULED`), and shares them on release night. A lesson's parts are all
 made when the lesson is released; Part 1 is shared, the rest stay
-`SCHEDULED`. When a part's primary is met, the harvest's own pass (37,
-then 03) shares the next part's file and sets it `ACTIVE`. No file is made
+`SCHEDULED`. When a part's primary is met, `unlockReadyParts()` (68, a
+Ledger cycle job every 5 minutes) shares the next part's file and sets it
+`ACTIVE`. No file is made
 during the school day, so the daytime cost is one share.
 
 **Parts depend on each other** (8177 Part 4 uses Part 2's survey). Part 1
@@ -372,7 +376,8 @@ part files.
 3. ~~**The first lesson's parts** (Appendix B)~~: **approved 2026-10-27**;
    the other 34 multi-part lessons follow its pattern (drafted and approved
    2026-10-28, `meta/LESSON_PARTS_2026-10.md`).
-4. **Phase 1 on before Oct 30?** Proposed off until grades are in.
+4. ~~**Phase 1 on before Oct 30?**~~ Moot: it stayed off until grades
+   were in. Turning it on is in `PLAN_2026-11.md`'s first row (Nov 2).
 5. ~~**`ReflectionLog`'s retention**~~: **decided 2026-10-24**: the student's
    work is kept by the record rules for student artifacts and the
    portfolio. `ReflectionLog` is a record kept as long as the Ledger
@@ -424,7 +429,7 @@ the one the feedback found short)
 - F3. "Is there anything in the feedback you disagree with? Say what, and
   what you're doing about the rest."
 
-## Appendix B: the first lesson's parts (draft 1, 2026-10-24)
+## Appendix B: the first lesson's parts (approved 2026-10-27)
 
 **8177 Venue Market Research & Survey Design** (`8177-market-research-survey-design`).
 Lesson tiers today: primary 8177-83, secondary 8177-2 and 8177-79, tertiary
