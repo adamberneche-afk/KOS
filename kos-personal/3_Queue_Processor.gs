@@ -6,8 +6,8 @@
 // Replaces: PART 9 (processInferenceQueue), PART 10
 //           (processIntakePayload), and the ui.alert version of
 //           _coldEngineGate from KOS_MASTER_v3_1.gs.
-//           Supersedes the transitional versions in
-//           KOS_PHASE0_PATCHES.gs.
+//           (The transitional versions in KOS_PHASE0_PATCHES.gs are
+//           gone with that file.)
 //
 // PIPELINE FLOW
 // ─────────────────────────────────────────────────────────────

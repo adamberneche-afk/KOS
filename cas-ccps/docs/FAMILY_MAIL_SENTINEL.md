@@ -185,6 +185,8 @@ shut its gateway in 2025.)
    Flow has answered the fixture, `runFamilySentinel()` once and
    `checkFamilyMailFlowLiveness()`.
 8. **Run `installFamilySentinelTrigger()`** (every 15 minutes).
+   `removeFamilySentinelTrigger()` takes it off again (the Sentinel stops
+   labelling and triaging until it is reinstalled).
 9. **Give the KOS Project the doc:** paste the `KOS_FAMILY_SIGNAL` link into
    the Project instructions (`kos-personal/claude-project/README.md`).
 

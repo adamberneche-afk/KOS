@@ -13,11 +13,8 @@
 // functions. Remove the following duplicates to prevent GAS
 // compile errors (duplicate function declarations):
 //
-//   FROM 1_Config_And_Deploy.gs — REMOVE:
-//     _getOrCreateSheet()
-//
-//   FROM KOS_PHASE0_PATCHES.gs — DELETE the entire file once
-//     all five patch functions are superseded by v8.0 files.
+//   (Both done: 1_Config_And_Deploy.gs no longer has its own
+//   _getOrCreateSheet(), and KOS_PHASE0_PATCHES.gs is deleted.)
 //
 // ── KEY CHANGES FROM v5.4 ────────────────────────────────────
 // _reportError()         No longer sends email on every error.
@@ -791,8 +788,8 @@ function _isUnderFolderId_(start, rootId) {
  * Returns the named sheet tab from `ss`, creating it with the
  * correct header row if it does not yet exist.
  *
- * CANONICAL v8.0 version. Supersedes the copies in
- * 1_Config_And_Deploy.gs and KOS_PHASE0_PATCHES.gs — remove those.
+ * The only copy: the ones that were in 1_Config_And_Deploy.gs and
+ * KOS_PHASE0_PATCHES.gs are gone.
  *
  * @param  {Spreadsheet} ss    Open spreadsheet.
  * @param  {string}      name  Sheet tab name.

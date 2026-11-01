@@ -19,9 +19,10 @@
  *                            period meeting that day (ClassSchedule), writes a
  *                            LessonContext row from the pacing-guide unit for
  *                            that course, through onLessonContextSubmit_()
- *                            (22), so alignment logging and the Lesson Frame
- *                            Doc (27) happen exactly as for a hand-entered
- *                            lesson. A slot that already has a lesson is never
+ *                            (22), so alignment logging happens as for a
+ *                            hand-entered lesson. No Lesson Frame Doc is made
+ *                            for these rows (22; D16: frames are for lessons
+ *                            logged by hand). A slot that already has a lesson is never
  *                            touched: the teacher's own entry always wins.
  *   installLessonPlanTrigger() runs buildUpcomingLessons() daily at 2am, before
  *                            the 3:30am warm-up queue builder (24) reads

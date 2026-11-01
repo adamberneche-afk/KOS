@@ -6,8 +6,9 @@
 // REBUILT (reconciliation decision 2) — the original 10_Turnstile.gs
 // used an incompatible schema (Status/Payload columns, PENDING_INFERENCE/
 // IN_PROCESS values, ID_BRAIN_TRUST_INDEX property key) that did not
-// match the real STAGING_PIPELINE sheet the other 9 files write to. See
-// archived/10_Turnstile_ORIGINAL.gs for the superseded version.
+// match the real STAGING_PIPELINE sheet the other 9 files write to. The
+// superseded version is no longer in the working tree; CHANGELOG.md
+// (the Turnstile rebuild) describes it.
 //
 // PURPOSE
 // ─────────────────────────────────────────────────────────────

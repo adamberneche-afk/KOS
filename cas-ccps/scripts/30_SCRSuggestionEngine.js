@@ -1375,7 +1375,10 @@ function runSCRUpdateNow_() {
 // human decision actually occurs.
 //
 // WHAT HAPPENS WHEN NEW EVIDENCE ARRIVES AFTER A CONFIRMED/OVERRIDDEN
-// DECISION — NOT YET BUILT:
+// DECISION — BUILT SINCE (2026-11-01, D15): the SCR retry,
+// 30b_SCRRetryRemediation.js, is the reopen path for a 3 or 4: once enough
+// new evidence is in, the teacher re-rates it on the student's page.
+// What follows is the original note.
 // This version freezes a pair permanently once decided. If a student
 // produces new evidence for an already-decided competency (e.g. a later
 // assignment also addresses it), that evidence accumulates in
