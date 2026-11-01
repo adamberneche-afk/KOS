@@ -419,6 +419,42 @@ function _dashOwnCourses_(ss, cfg, email) {
   return out;
 }
 
+// The SCR retry (D15, 2026-11-01), as the student reads it: for each
+// competency rated 3 or 4, either that it is ready for the teacher to
+// re-rate, or what more work would unlock a re-rating (00's
+// scrRetryStatus_). The re-rating's number is never shown here: it is the
+// rule's suggestion until the teacher confirms it, and SCRSuggestions'
+// unreviewed values stay teacher-side. Competencies with no linked ones
+// (no assignment has them as its primary with secondaries) get nothing.
+// { competencyId: { ready, text } }.
+function _dashRetryFor_(ss, cfg, email, ratingList) {
+  const out = {};
+  const candidates = (ratingList || []).filter(function (r) { return Number(r.rating) === 3 || Number(r.rating) === 4; });
+  if (!candidates.length) return out;
+  const ctx = scrRetryContext_(ss, cfg, email);
+  const texts = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry"));
+  const name = function (id) { return texts[id] ? "“" + texts[id] + "”" : id; };
+  candidates.forEach(function (r) {
+    const st = scrRetryStatus_(ctx, email, r.competencyId, r.rating);
+    if (!st.applies || !st.secondaryIds.length) return;
+    if (st.eligible && st.improved) {
+      out[r.competencyId] = { ready: true, text: "Your work since this rating is enough for your teacher to re-rate it. Your teacher decides." };
+      return;
+    }
+    const parts = [];
+    if (st.needSecondary) {
+      parts.push("show " + st.needSecondary + " more time" + (st.needSecondary === 1 ? "" : "s") + " one of the skills that go with it: " +
+        st.secondaryIds.map(name).join("; "));
+    }
+    const moreMet = Math.max(0, st.needMet - st.needSecondary);
+    if (moreMet) parts.push("show this skill or one that goes with it in " + moreMet + " more assignment" + (moreMet === 1 ? "" : "s"));
+    if (st.needPrimaryMet) parts.push("show this skill itself in " + st.needPrimaryMet + " more assignment" + (st.needPrimaryMet === 1 ? "" : "s"));
+    if (!parts.length) return;
+    out[r.competencyId] = { ready: false, text: "To be re-rated: " + parts.join("; and ") + ". Work that is checked as “Shown” counts." };
+  });
+  return out;
+}
+
 const DASH_EVIDENCE_WORDS = { MET: "Shown", PARTIALLY_MET: "Partly shown", NOT_MET: "Not shown yet" };
 const DASH_EVIDENCE_RANK = { MET: 3, PARTIALLY_MET: 2, NOT_MET: 1 };
 
@@ -438,6 +474,12 @@ function getMyCompetencies() {
     const ratingList = readLatestScrRatings_(ss, cfg, "").get(email) || [];
     const ratings = {};
     ratingList.forEach(function (r) { ratings[r.competencyId] = r; });
+    let retryFor = {};
+    try {
+      retryFor = _dashRetryFor_(ss, cfg, email, ratingList);
+    } catch (e) {
+      Logger.log("[S13] Retry status not read: " + e.message);
+    }
 
     const evidence = {};
     const ev = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
@@ -502,6 +544,7 @@ function getMyCompetencies() {
           id: c.id, task: c.task, text: c.text,
           rating: rated ? Number(rated.rating) : null,
           ratedAt: rated && rated.decidedAt ? Utilities.formatDate(rated.decidedAt, tz, "MMM d, yyyy") : "",
+          retry: retryFor[c.id] || null,
           evidence: list.map(function (e) {
             return { assignment: own.assignmentOf[e.configId] || "An assignment", milestone: e.milestone,
               outcome: DASH_EVIDENCE_WORDS[e.outcome], outcomeKey: e.outcome,
@@ -1772,6 +1815,7 @@ function renderCompetencyTab(d) {
           '<span class="rec-chip' + (done ? ' done' : '') + '">' + (it.rating ? esc(scrLabel(it.rating)) : 'Not rated yet') + '</span>' +
           '<span class="rec-chip">' + (it.evidence.length ? esc(String(it.evidence.length)) + ' piece' + (it.evidence.length === 1 ? '' : 's') + ' of evidence' : 'No evidence yet') + '</span></summary>';
         if (it.rating && it.ratedAt) h += '<div class="rec-ev">Rated ' + esc(it.ratedAt) + '.</div>';
+        if (it.retry) h += '<div class="rec-ev"><strong>' + (it.retry.ready ? 'Ready for a re-rating' : 'Re-rating') + ':</strong> ' + esc(it.retry.text) + '</div>';
         h += it.evidence.length ? it.evidence.map(function (e) {
           return '<div class="rec-ev">' + (e.date ? esc(e.date) + ' · ' : '') + esc(e.assignment) + ': <strong>' + esc(e.outcome) + '</strong>' +
             (e.counts ? ' (counts)' : ' (an earlier check; your best one counts)') +

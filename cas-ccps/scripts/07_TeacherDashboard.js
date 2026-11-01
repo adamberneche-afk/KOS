@@ -822,7 +822,15 @@ function getScrReviewQueue() {
     return a.studentName.localeCompare(b.studentName) || a.competencyId.localeCompare(b.competencyId);
   });
 
-  return { success: true, suggestions: results, generatedAt: new Date().toISOString() };
+  // Re-ratings ready to confirm (the SCR retry, D15): eligible, and the
+  // evidence gives a better rating. Fails alone; the queue still shows.
+  let retries = [];
+  try {
+    retries = _tdRetryRows_(cfg, ss).filter(function (r) { return r.eligible && r.improved; });
+  } catch (e) {
+    Logger.log("[S07] getScrReviewQueue retries failed: " + e.message);
+  }
+  return { success: true, suggestions: results, retries: retries, generatedAt: new Date().toISOString() };
 }
 
 // ---------------------------------------------------------------------------
@@ -945,6 +953,99 @@ function teacherOverrideScrRating(studentEmail, competencyId, rating) {
   return _recordScrDecision_(cfg, studentEmail, competencyId, rating, "OVERRIDDEN");
 }
 
+// ── The SCR retry (D15, 2026-11-01) ──────────────────────────────────────────
+// A competency this teacher rated 3 or 4 can be re-rated once the student's
+// evidence since unlocks it (00's scrRetryStatus_, the rule 30b documents).
+// The student's page lists each one with what it needs; SCR Review lists the
+// ready ones; teacherConfirmScrRetry records a re-rating. Only ratings built
+// from this teacher's assignments (rule 3), as everywhere else here.
+
+// [{ studentEmail, studentName, competencyId, competencyText, currentRating,
+// eligible, improved, newRating, reason, needMet, needSecondary,
+// needPrimaryMet, secondaryIds }] for this teacher's decided ratings of 3
+// or 4; onlyEmail narrows to one student.
+function _tdRetryRows_(cfg, ss, onlyEmail) {
+  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  if (!suggestionsSheet || suggestionsSheet.getLastRow() < 2) return [];
+  const only = onlyEmail ? String(onlyEmail).trim().toLowerCase() : "";
+  const roster = _getRosterForEmail_(cfg, cfg.teacherEmail);
+  const myEmails = new Set(roster.map(function (s) { return s.email.toLowerCase(); }));
+  const nameByEmail = {};
+  roster.forEach(function (s) { nameByEmail[s.email.toLowerCase()] = s.name; });
+  const ownership = _scrOwnership_(cfg, cfg.teacherEmail);
+  const pairs = [];
+  suggestionsSheet.getDataRange().getValues().slice(1).forEach(function (row) {
+    const email = String(row[DASHBOARD_SCRS.STUDENT_EMAIL]).trim();
+    const compId = String(row[DASHBOARD_SCRS.COMPETENCY_ID]).trim();
+    if (!email || !compId || (only && email.toLowerCase() !== only)) return;
+    const status = String(row[DASHBOARD_SCRS.STATUS]).trim();
+    if (status !== "CONFIRMED" && status !== "OVERRIDDEN") return;
+    const rating = Number(row[DASHBOARD_SCRS.CONFIRMED_RATING]);
+    if (rating !== 3 && rating !== 4) return;
+    if (!myEmails.has(email.toLowerCase()) || !_scrIsMine_(ownership, myEmails, email, compId)) return;
+    pairs.push({ email: email, compId: compId, rating: rating });
+  });
+  if (!pairs.length) return [];
+  const ctx = scrRetryContext_(ss, cfg, only);
+  const texts = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry));
+  return pairs.map(function (p) {
+    const st = scrRetryStatus_(ctx, p.email, p.compId, p.rating);
+    return {
+      studentEmail: p.email, studentName: nameByEmail[p.email.toLowerCase()] || p.email,
+      competencyId: p.compId, competencyText: texts[p.compId] || "",
+      currentRating: p.rating, eligible: st.eligible, improved: st.improved, newRating: st.newRating,
+      reason: st.reason, needMet: st.needMet, needSecondary: st.needSecondary, needPrimaryMet: st.needPrimaryMet,
+      secondaryIds: st.secondaryIds,
+    };
+  }).sort(function (a, b) {
+    return a.studentName.localeCompare(b.studentName) || a.competencyId.localeCompare(b.competencyId);
+  });
+}
+
+// The re-rating, from the student's page or SCR Review. Checked again under
+// the script lock: the student on this teacher's roster, the rating theirs
+// (rule 3), still 3 or 4, eligible, and the evidence's rating better. Then
+// SCRSuggestions' current rating is updated and a RETRY_IMPROVED row
+// appended to SCRDecisionLog; the original decision row stays.
+function teacherConfirmScrRetry(studentEmail, competencyId) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  const email = String(studentEmail || "").trim();
+  const compId = String(competencyId || "").trim();
+  if (!email || !compId) return { success: false, error: "No student or competency given." };
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) return { success: false, error: "Another change is being saved. Try again in a moment." };
+  try {
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const row = _tdRetryRows_(cfg, ss, email).filter(function (r) { return r.competencyId === compId; })[0];
+    if (!row) return { success: false, error: "No rating of 3 or 4 of yours for this student and competency." };
+    if (!row.eligible) return { success: false, error: row.reason };
+    if (!row.improved) return { success: false, error: "The evidence does not give a better rating than " + row.currentRating + " yet." };
+    const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+    const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+    if (!decisionLogSheet) return { success: false, error: "SCRDecisionLog tab not found." };
+    const data = suggestionsSheet.getDataRange().getValues();
+    let rowIndex = -1;
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][DASHBOARD_SCRS.STUDENT_EMAIL]).trim().toLowerCase() === email.toLowerCase() &&
+          String(data[i][DASHBOARD_SCRS.COMPETENCY_ID]).trim() === compId) { rowIndex = i + 1; break; }
+    }
+    if (rowIndex === -1) return { success: false, error: "SCRSuggestions row not found." };
+    const now = new Date();
+    suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.CONFIRMED_RATING + 1).setValue(row.newRating);
+    suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.CONFIRMED_AT + 1).setValue(now);
+    suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.CONFIRMED_BY + 1).setValue(cfg.teacherEmail);
+    const ctx = scrRetryContext_(ss, cfg, email);
+    scrAppendRetryDecision_(decisionLogSheet, _generateScrDecisionId_(), email, compId,
+      scrRetryStatus_(ctx, email, compId, row.currentRating), cfg.teacherEmail, now);
+    SpreadsheetApp.flush();
+    Logger.log("[S07] SCR retry recorded -- " + compId + " | " + row.currentRating + " -> " + row.newRating);
+    return { success: true, previousRating: row.currentRating, newRating: row.newRating };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // ── Weekly parent reports (36_WeeklyParentReport.js) ────────────────────────
 // Two more google.script.run entry points, same _isAuthorizedTeacher_ gate as
 // everything else exported from this file.
@@ -1006,7 +1107,7 @@ function getStudentDetail(studentEmail) {
   const email = String(studentEmail || "").trim().toLowerCase();
   if (!email) return { success: false, error: "No student chosen." };
   const tz = Session.getScriptTimeZone();
-  const out = { success: true, studentEmail: email, report: null, context: null, competencies: [], pastReports: [] };
+  const out = { success: true, studentEmail: email, report: null, context: null, competencies: [], pastReports: [], retries: [] };
   try {
     const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
     const courses = _tdStudentCourses_(ss, cfg)[email] || [];
@@ -1014,6 +1115,14 @@ function getStudentDetail(studentEmail) {
       readLatestScrRatings_(ss, cfg, cfg.teacherEmail).get(email), competencyCourseTotals_(ss, cfg), courses);
   } catch (e) {
     Logger.log("[S07] getStudentDetail competencies failed: " + e.message);
+  }
+  // This teacher's ratings of 3 or 4 for the student and where each
+  // stands for a retry (D15).
+  try {
+    out.retries = _tdRetryRows_(cfg, SpreadsheetApp.openById(cfg.ledgerSsId), email);
+  } catch (e) {
+    Logger.log("[S07] getStudentDetail retries failed: " + e.message);
+    out.retriesError = "Re-ratings could not be checked: " + e.message;
   }
   try {
     const generated = generateWeeklyParentReports(undefined, email);
@@ -2857,6 +2966,7 @@ function studentPanelInner(students) {
   if ((data.competencies || []).length) {
     h += '<div style="font-size:13px;margin-top:6px" title="Rated 1 to 3 (limited supervision or better) in Competency ratings">🎓 ' + competencyLine(data.competencies) + '</div>';
   }
+  h += retryPanelHtml(data);
   let report = '<div><h4>This week\\'s parent report</h4>';
   if (data.weekStart) report += '<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px">Week of ' + esc(data.weekStart) + ' – ' + esc(data.weekEnd) + '</p>';
   if (data.reportError) report += '<p style="font-size:13px;color:#b3261e">' + esc(data.reportError) + '</p>';
@@ -2870,6 +2980,55 @@ function studentPanelInner(students) {
   else ctx += contextWeekHtml(data.context);
   ctx += '</div>';
   return h + '<div class="student-panel-grid">' + report + ctx + '</div>';
+}
+// The SCR retry (D15): this teacher's ratings of 3 or 4 for the student,
+// each with where it stands; a ready one has a Re-rate button.
+function retryPanelHtml(data) {
+  if (data.retriesError) return '<p style="font-size:12.5px;color:#b3261e;margin-top:8px">' + esc(data.retriesError) + '</p>';
+  const list = data.retries || [];
+  if (!list.length) return '';
+  const ready = list.filter(r => r.eligible && r.improved).length;
+  let h = '<details class="retry-panel" style="margin-top:8px;font-size:13px"' + (ready ? ' open' : '') + '>' +
+    '<summary>Re-ratings: ' + escNum(ready) + ' ready of ' + escNum(list.length) + ' rated 3 or 4</summary>' +
+    '<p style="font-size:12px;color:var(--text-secondary);margin:6px 0">A rating of 3 or 4 can be re-rated once the student has 5 pieces of work meeting it or a linked competency (milestones 2–3 of the assignments where it is the primary), with 2 linked ones met for each time it was not met. The new rating is the usual rule over all its evidence; your first rating stays in the decision log.</p>';
+  list.forEach(function (r, i) {
+    h += '<div style="border-top:1px solid #e8eaed;padding:6px 0">' +
+      '<strong>' + esc(r.competencyId) + '</strong> ' + esc(r.competencyText) + ' · rated ' + esc(scrLabel(r.currentRating)) + '<br>' +
+      '<span style="font-size:12.5px;color:var(--text-secondary)">' + esc(retryNeedsText(r)) + '</span>';
+    if (r.eligible && r.improved) {
+      h += '<br><button type="button" onclick="confirmRetry(' + i + ')" style="margin-top:4px;background:#7627bb;color:white;border:none;' +
+        'border-radius:4px;padding:5px 12px;font-size:12.5px;font-weight:600;cursor:pointer">Re-rate ' + esc(scrLabel(r.newRating)) + '</button>';
+    }
+    h += '<div id="retry-msg-' + i + '" role="status" aria-live="polite" style="font-size:12.5px"></div></div>';
+  });
+  return h + '</details>';
+}
+function retryNeedsText(r) {
+  if (r.eligible && r.improved) return 'Ready: the evidence now gives ' + scrLabel(r.newRating) + '.';
+  if (!(r.secondaryIds || []).length) return 'No assignment has this as its primary with linked competencies yet, so there is no retry path.';
+  const parts = [];
+  if (r.needMet) parts.push(r.needMet + ' more piece' + (r.needMet === 1 ? '' : 's') + ' meeting it or a linked competency');
+  if (r.needSecondary) parts.push(r.needSecondary + ' more meeting a linked competency (' + r.secondaryIds.join(', ') + ')');
+  if (r.needPrimaryMet) parts.push(r.needPrimaryMet + ' more meeting ' + r.competencyId + ' itself');
+  return parts.length ? 'Needs ' + parts.join('; ') + '.' : r.reason;
+}
+function confirmRetry(i) {
+  const d = _studentDetail && _studentDetail.data;
+  const r = d && (d.retries || [])[i];
+  if (!r) return;
+  const msg = document.getElementById("retry-msg-" + i);
+  msg.style.color = "var(--text-secondary)";
+  msg.textContent = "Saving…";
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res || !res.success) { msg.style.color = "#d93025"; msg.textContent = (res && res.error) || "Could not save."; return; }
+      r.eligible = false; r.improved = false; r.reason = "Re-rated just now.";
+      r.currentRating = res.newRating; r.needMet = 0; r.needSecondary = 0; r.needPrimaryMet = 0;
+      _refreshStudentPanel();
+      showToast("✅ Re-rated " + res.previousRating + " → " + res.newRating);
+    })
+    .withFailureHandler(function (e) { msg.style.color = "#d93025"; msg.textContent = (e && e.message) || "Could not save — try again."; })
+    .teacherConfirmScrRetry(r.studentEmail, r.competencyId);
 }
 // Past weeks' parent reports, as copied (36), one at a time with
 // older/newer. Only reports copied since 2026-10-28 have their text.
@@ -4212,6 +4371,7 @@ function setPrStudent(v) { _prStudent = v || ""; if (_prData) renderParentReport
 // Review modal's pattern (openScoreReview() etc. above).
 let _scrQueue = [];
 let _scrShowAll = false; // false: only rows with a suggestion (2026-10-22)
+let _scrRetries = []; // re-ratings ready to confirm (the SCR retry, D15)
 
 function toggleScrShowAll() {
   _scrShowAll = !_scrShowAll;
@@ -4221,6 +4381,7 @@ function toggleScrShowAll() {
 function openScrReviewModal() {
   _openPanel("scr-review-modal-backdrop", closeScrReviewModal);
   _scrShowAll = false;
+  _scrRetries = [];
   document.getElementById("scr-review-modal-body").innerHTML =
     '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
   google.script.run
@@ -4245,6 +4406,7 @@ function renderScrReviewModal(data) {
     return;
   }
   _scrQueue = data.suggestions || [];
+  _scrRetries = data.retries || _scrRetries;
 
   // Only rows with a suggestion are "waiting on your review" by default; the
   // rest (too little evidence yet, often hundreds early in the year) are
@@ -4261,6 +4423,19 @@ function renderScrReviewModal(data) {
         '<button id="scr-show-all-btn" onclick="toggleScrShowAll()" style="background:none;border:1px solid #1a73e8;color:#1557b0;' +
         'border-radius:4px;padding:2px 9px;font-size:12px;cursor:pointer">' + (_scrShowAll ? 'Hide them' : 'Show them') + '</button>'
       : '') + '</p>';
+
+  if (_scrRetries.length) {
+    html += '<h4 style="margin:0 0 8px">Re-ratings ready (' + escNum(_scrRetries.length) + ')</h4>' +
+      '<p style="font-size:12px;color:var(--text-secondary);margin:0 0 10px">Ratings of 3 or 4 whose evidence now gives a better one. ' +
+      'Open the student to see why and to re-rate.</p>';
+    _scrRetries.forEach(function(r) {
+      html += '<div style="border:1px solid #e8eaed;border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:13px">' +
+        '<strong>' + esc(r.studentName) + '</strong> · ' + esc(r.competencyId) + ' ' + esc(r.competencyText) + '<br>' +
+        'Rated ' + esc(scrLabel(r.currentRating)) + '; the evidence now gives ' + esc(scrLabel(r.newRating)) + '. ' +
+        '<button type="button" onclick="closeScrReviewModal()" data-student="' + esc(String(r.studentEmail).toLowerCase()) + '" ' +
+        'style="background:none;border:1px solid #1a73e8;color:#1557b0;border-radius:4px;padding:2px 9px;font-size:12px;cursor:pointer">Open student</button></div>';
+    });
+  }
 
   _scrQueue.forEach(function(item, i) {
     if (!_scrShowAll && !item.suggestedRating) return;

@@ -257,7 +257,7 @@ test('writeCasSignal_: retry scan runs once a day and counts only students new s
 
   eligible = new Set(['a@s.net', 'b@s.net']);
   env.exported.writeCasSignal_(okWatchdog(), new Date('2026-10-13T15:00:00Z'));
-  assert.match(signalText(env), /newly eligible for a retry: 1\n/);
+  assert.match(signalText(env), /newly eligible for a retry: 1\. The Teacher Dashboard's SCR Review lists them/);
   const state = env.props.getProperty('CAS_SIGNAL_STATE');
   assert.ok(!state.includes('@'), 'no emails kept between runs');
 });

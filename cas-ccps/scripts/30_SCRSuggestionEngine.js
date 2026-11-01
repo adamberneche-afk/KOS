@@ -109,10 +109,10 @@ const SCRS = {
 // that tried would fail loudly at load rather than quietly render an
 // unreviewed rating to someone.
 
-const VALID_OUTCOMES = ["MET", "PARTIALLY_MET", "NOT_MET"];
-const EVIDENCE_THRESHOLD = 3; // pieces needed for a suggestion, and how many are averaged
-// SCR rating each best outcome contributes to the average.
-const OUTCOME_SCR_SCORE = { MET: 2, PARTIALLY_MET: 3, NOT_MET: 4 };
+// VALID_OUTCOMES, EVIDENCE_THRESHOLD and OUTCOME_SCR_SCORE, and the rule's
+// helpers (evidenceAssignmentKey_, keepBestOutcome_, countOutcomes_,
+// computeSuggestion_), live in 00_SharedConfig.js since 2026-11-01: the SCR
+// retry (D15) runs the same rule on both dashboards.
 
 // ---------------------------------------------------------------------------
 // runWeeklySCRSuggestionUpdate_ — primary entry point, time-triggered
@@ -273,66 +273,6 @@ function aggregateEvidence_(evidenceSheet) {
   return result;
 }
 
-// ---------------------------------------------------------------------------
-// One piece of evidence per assignment. These three are shared with
-// 30b_SCRRetryRemediation.js (same project).
-//
-// evidenceAssignmentKey_: the assignment a CompetencyEvidence row came from,
-// its config_id (the student's workspace for that assignment), else its
-// student_file_id. A row with neither, written before those columns
-// existed, is its own piece.
-// ---------------------------------------------------------------------------
-function evidenceAssignmentKey_(row, iConfigId, iFileId, rowIndex) {
-  const configId = iConfigId !== -1 ? String(row[iConfigId] || "").trim() : "";
-  if (configId) return "config:" + configId;
-  const fileId = iFileId !== -1 ? String(row[iFileId] || "").trim() : "";
-  if (fileId) return "file:" + fileId;
-  return "row:" + rowIndex;
-}
-
-// Keeps the better of an assignment's outcomes: MET over PARTIALLY_MET over
-// NOT_MET.
-function keepBestOutcome_(byAssignment, assignmentKey, outcome) {
-  const current = byAssignment.get(assignmentKey);
-  if (!current || OUTCOME_SCR_SCORE[outcome] < OUTCOME_SCR_SCORE[current]) {
-    byAssignment.set(assignmentKey, outcome);
-  }
-}
-
-function countOutcomes_(byAssignment) {
-  const counts = { metCount: 0, notMetCount: 0, partialCount: 0 };
-  for (const outcome of byAssignment.values()) {
-    if (outcome === "MET") counts.metCount++;
-    else if (outcome === "NOT_MET") counts.notMetCount++;
-    else if (outcome === "PARTIALLY_MET") counts.partialCount++;
-  }
-  return counts;
-}
-
-// ---------------------------------------------------------------------------
-// computeSuggestion_ — THE RULE (header): the average of the 3 best pieces.
-// Input: { metCount, notMetCount, partialCount }, counted in pieces
-// Output: { suggestedRating: 2|3|4|null, status: string }
-// ---------------------------------------------------------------------------
-function computeSuggestion_(counts) {
-  const totalCount = counts.metCount + counts.notMetCount + counts.partialCount;
-
-  if (totalCount < EVIDENCE_THRESHOLD) {
-    return { suggestedRating: null, status: "INSUFFICIENT_EVIDENCE" };
-  }
-  // The best pieces are the METs, then the PARTIALLY_METs, then the NOT_METs.
-  let left = EVIDENCE_THRESHOLD;
-  let sum = 0;
-  [["MET", counts.metCount], ["PARTIALLY_MET", counts.partialCount], ["NOT_MET", counts.notMetCount]]
-    .forEach(([outcome, n]) => {
-      const take = Math.min(n, left);
-      sum += take * OUTCOME_SCR_SCORE[outcome];
-      left -= take;
-    });
-  // sum is a whole number from 6 to 12, so the average is a third at worst
-  // and never lands on .5: Math.round is nearest-rating rounding.
-  return { suggestedRating: Math.round(sum / EVIDENCE_THRESHOLD), status: "SUGGESTED" };
-}
 
 // ---------------------------------------------------------------------------
 // loadExistingSuggestions_

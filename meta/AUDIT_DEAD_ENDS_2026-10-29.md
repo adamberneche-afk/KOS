@@ -11,6 +11,13 @@ D14 and D15 were decided the other way from the leanings: **build** the
 Registrar's two Studio flows (#2) and the SCR retry on the student's page
 (#3), each in its own PR.
 
+**Progress (2026-11-01, D15):** #3 built. The retry could never fire: its
+LessonPrimarySecondary tab and evidence_role column were never made, so the
+signal's count was always 0. Primary and secondary now come from each
+assignment's milestones; the teacher re-rates on the student's page (SCR
+Review lists the ready ones) and the student's Competencies tab says what
+unlocks one.
+
 **Status:** the first repo-wide audit of its kind, done 2026-10-29 at the
 operator's request ("make sure we aren't leaving too many dead ends and
 half built functionalities"). Its actions are scheduled in
