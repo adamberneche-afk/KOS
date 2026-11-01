@@ -69,7 +69,7 @@ A short scouting report on the Green Bay Packers (use a different team for yours
 
 ## Warm-up
 
-How does a sports team make money? List as many ways as you can think of, and circle the one you think brings in the most.
+How does a sports team make money? List as many ways as you can think of. Then pick the one you think brings in the most and explain why in a sentence or two.
 
 ## Vocabulary
 

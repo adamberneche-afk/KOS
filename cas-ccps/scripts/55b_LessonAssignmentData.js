@@ -1004,7 +1004,7 @@ const LESSON_ASSIGNMENTS = {
     "tier": "Tier 1 Core",
     "persona": "A sports and entertainment marketing director coaching a junior team member: specific, encouraging, and strict about evidence.",
     "objective": "You have analyzed the brand. Now, you have to sell the new vision. We are going to use this slide deck to conduct Focus Groups with students and staff. Your goal is to turn your written thoughts into visuals that will spark a conversation.",
-    "warmupAnchor": "How do you know if a movie is good before you watch it? How do you know if a restaurant is safe before you eat there? List three ways we research before we buy.",
+    "warmupAnchor": "How do you know if a movie is good before you watch it? How do you know if a restaurant is safe before you eat there? List three ways we research before we buy. Then pick the one you trust most and explain why in a sentence or two.",
     "vocabulary": "",
     "competencyIds": [
       "8175-1",
@@ -1037,7 +1037,7 @@ const LESSON_ASSIGNMENTS = {
               "title": "Warm-up",
               "minutes": 5,
               "mode": "warmup",
-              "detail": "How do you know if a movie is good before you watch it? How do you know if a restaurant is safe before you eat there? List three ways we research before we buy.",
+              "detail": "How do you know if a movie is good before you watch it? How do you know if a restaurant is safe before you eat there? List three ways we research before we buy. Then pick the one you trust most and explain why in a sentence or two.",
               "fixed": true
             },
             {
@@ -3022,7 +3022,7 @@ const LESSON_ASSIGNMENTS = {
     "tier": "Tier 1 Core",
     "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
     "objective": "1.  Differentiate between a sports franchise's on-field performance and its corporate financial performance.",
-    "warmupAnchor": "How does a sports team make money? List as many ways as you can think of, and circle the one you think brings in the most.",
+    "warmupAnchor": "How does a sports team make money? List as many ways as you can think of. Then pick the one you think brings in the most and explain why in a sentence or two.",
     "vocabulary": "revenue, profit, sole proprietorship, partnership, corporation, direct competition, indirect competition",
     "competencyIds": [
       "8177-15",
@@ -3058,7 +3058,7 @@ const LESSON_ASSIGNMENTS = {
               "title": "Warm-up",
               "minutes": 5,
               "mode": "warmup",
-              "detail": "How does a sports team make money? List as many ways as you can think of, and circle the one you think brings in the most.",
+              "detail": "How does a sports team make money? List as many ways as you can think of. Then pick the one you think brings in the most and explain why in a sentence or two.",
               "fixed": true
             },
             {
@@ -3569,7 +3569,7 @@ const LESSON_ASSIGNMENTS = {
     "tier": "Tier 1 Core",
     "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
     "objective": "1.  Define supply, demand, and scarcity in the context of venue capacity.",
-    "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can.",
+    "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can. Then pick the one you think matters most and explain why in a sentence or two.",
     "vocabulary": "supply, demand, scarcity, revenue, fixed pricing, dynamic pricing",
     "competencyIds": [
       "8177-2",
@@ -3602,7 +3602,7 @@ const LESSON_ASSIGNMENTS = {
               "title": "Warm-up",
               "minutes": 5,
               "mode": "warmup",
-              "detail": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can.",
+              "detail": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can. Then pick the one you think matters most and explain why in a sentence or two.",
               "fixed": true
             },
             {
@@ -4184,7 +4184,7 @@ const LESSON_ASSIGNMENTS = {
     "tier": "Tier 1 Core",
     "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
     "objective": "1.  Build a run of show and a staffing chart for a real event.",
-    "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed.",
+    "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed. Then pick one and explain in a sentence or two what would go wrong if they didn't show up.",
     "vocabulary": "event manager, run of show, staffing chart, closeout, follow-up, recognition, goal",
     "competencyIds": [
       "8177-10",
@@ -4219,7 +4219,7 @@ const LESSON_ASSIGNMENTS = {
               "title": "Warm-up",
               "minutes": 5,
               "mode": "warmup",
-              "detail": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed.",
+              "detail": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed. Then pick one and explain in a sentence or two what would go wrong if they didn't show up.",
               "fixed": true
             },
             {
@@ -4249,7 +4249,7 @@ const LESSON_ASSIGNMENTS = {
               "title": "Warm-up",
               "minutes": 5,
               "mode": "warmup",
-              "detail": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed.",
+              "detail": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed. Then pick one and explain in a sentence or two what would go wrong if they didn't show up.",
               "fixed": true
             },
             {
@@ -4307,7 +4307,7 @@ const LESSON_ASSIGNMENTS = {
     "tier": "Tier 1 Core",
     "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
     "objective": "1.  Differentiate between \"philanthropy\" (a donation) and \"sponsorship\" (a mutually beneficial marketing partnership).",
-    "warmupAnchor": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can.",
+    "warmupAnchor": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can. Then pick the one that would gain the most and explain why in a sentence or two.",
     "vocabulary": "sponsorship, donation, target market, value proposition, call to action",
     "competencyIds": [
       "8177-15",
@@ -4341,7 +4341,7 @@ const LESSON_ASSIGNMENTS = {
               "title": "Warm-up",
               "minutes": 5,
               "mode": "warmup",
-              "detail": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can.",
+              "detail": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can. Then pick the one that would gain the most and explain why in a sentence or two.",
               "fixed": true
             },
             {
@@ -5176,7 +5176,7 @@ const LESSON_ASSIGNMENTS = {
     "tier": "Tier 1 Core",
     "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
     "objective": "1.  Define \"Discretionary Income\" and explain its importance to the entertainment industry.",
-    "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can.",
+    "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can. Then pick the strongest one and explain why in a sentence or two.",
     "vocabulary": "discretionary income, motivator, direct competition, indirect competition, consumer persona",
     "competencyIds": [
       "8177-2",
@@ -5208,7 +5208,7 @@ const LESSON_ASSIGNMENTS = {
               "title": "Warm-up",
               "minutes": 5,
               "mode": "warmup",
-              "detail": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can.",
+              "detail": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can. Then pick the strongest one and explain why in a sentence or two.",
               "fixed": true
             },
             {
@@ -6626,7 +6626,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You name the team or company and give its current value with the source it came from (website name and link).",
-      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of, and circle the one you think brings in the most.",
+      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of. Then pick the one you think brings in the most and explain why in a sentence or two.",
       "vocabulary": "",
       "competencyIds": [
         "8177-15"
@@ -6668,7 +6668,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You name who owns it, say whether it is a sole proprietorship, partnership or corporation, and explain how you know.",
-      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of, and circle the one you think brings in the most.",
+      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of. Then pick the one you think brings in the most and explain why in a sentence or two.",
       "vocabulary": "sole proprietorship, partnership, corporation",
       "competencyIds": [
         "8177-52",
@@ -6716,7 +6716,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You name its top three sources of revenue and explain in a sentence how each one brings in money.",
-      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of, and circle the one you think brings in the most.",
+      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of. Then pick the one you think brings in the most and explain why in a sentence or two.",
       "vocabulary": "revenue, profit",
       "competencyIds": [
         "8177-86"
@@ -6758,7 +6758,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You describe one specific way the business affects its home city, good or bad, such as jobs, charity, a stadium paid for with tax money, or game-day traffic.",
-      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of, and circle the one you think brings in the most.",
+      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of. Then pick the one you think brings in the most and explain why in a sentence or two.",
       "vocabulary": "",
       "competencyIds": [
         "8177-50"
@@ -6800,7 +6800,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You name its biggest indirect competitor for a Friday night's money and explain why fans might choose it instead.",
-      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of, and circle the one you think brings in the most.",
+      "warmupAnchor": "How does a sports team make money? List as many ways as you can think of. Then pick the one you think brings in the most and explain why in a sentence or two.",
       "vocabulary": "direct competition, indirect competition",
       "competencyIds": [
         "8177-94",
@@ -7785,7 +7785,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You show price × tickets sold, worked correctly, at all five prices for each of the three games.",
-      "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can.",
+      "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can. Then pick the one you think matters most and explain why in a sentence or two.",
       "vocabulary": "revenue",
       "competencyIds": [
         "8177-19"
@@ -7827,7 +7827,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You choose a price for each game and explain each choice using the revenue it brings in.",
-      "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can.",
+      "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can. Then pick the one you think matters most and explain why in a sentence or two.",
       "vocabulary": "revenue",
       "competencyIds": [
         "8177-2",
@@ -7873,7 +7873,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You use supply, demand and scarcity to explain why the playoff game can charge much more than Snowy Tuesday with the same team and arena.",
-      "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can.",
+      "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can. Then pick the one you think matters most and explain why in a sentence or two.",
       "vocabulary": "supply, demand, scarcity",
       "competencyIds": [
         "8177-94"
@@ -7915,7 +7915,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You take a clear side on whether the $100 Saturday seat and the $20 Tuesday seat are fair and give at least one reason that backs it up.",
-      "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can.",
+      "warmupAnchor": "Why might a ticket to the same seat cost $15 on a Tuesday night and $85 on a Saturday night? List as many reasons as you can. Then pick the one you think matters most and explain why in a sentence or two.",
       "vocabulary": "fixed pricing, dynamic pricing",
       "competencyIds": [
         "8177-2"
@@ -8926,7 +8926,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You build the pop-up's timeline from setup to cleanup using the game schedule, with the busy times (before the game and halftime) marked.",
-      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed.",
+      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed. Then pick one and explain in a sentence or two what would go wrong if they didn't show up.",
       "vocabulary": "run of show",
       "competencyIds": [
         "8177-100",
@@ -8970,7 +8970,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "Your staffing chart lists every role (shift lead, cashier, sales floor/runner, inventory and setup), who fills it and who backs them up.",
-      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed.",
+      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed. Then pick one and explain in a sentence or two what would go wrong if they didn't show up.",
       "vocabulary": "event manager, staffing chart, goal",
       "competencyIds": [
         "8177-95",
@@ -9014,7 +9014,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You list everyone who helped and what each did, type a thank-you note to one staff member saying what they did and why it mattered, and draft a public thank-you.",
-      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed.",
+      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed. Then pick one and explain in a sentence or two what would go wrong if they didn't show up.",
       "vocabulary": "follow-up, recognition",
       "competencyIds": [
         "8177-99"
@@ -9056,7 +9056,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You compare each goal from Part 2 with the real number from the event log and say whether it was met.",
-      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed.",
+      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed. Then pick one and explain in a sentence or two what would go wrong if they didn't show up.",
       "vocabulary": "goal, closeout",
       "competencyIds": [
         "8177-101",
@@ -9102,7 +9102,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You name one thing to keep and one thing to change for the next event and explain each one using the event's results.",
-      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed.",
+      "warmupAnchor": "Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed. Then pick one and explain in a sentence or two what would go wrong if they didn't show up.",
       "vocabulary": "",
       "competencyIds": [
         "8177-101"
@@ -9146,7 +9146,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You name a real Richmond or Chesterfield business, its sponsorship decision-maker's name, title and mailing address, and why its customers are the people at our tournament.",
-      "warmupAnchor": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can.",
+      "warmupAnchor": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can. Then pick the one that would gain the most and explain why in a sentence or two.",
       "vocabulary": "target market",
       "competencyIds": [
         "8177-15"
@@ -9188,7 +9188,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You write a one-page formal business letter with a Hook, Connection, Value and Call to Action paragraph, in correct business letter format.",
-      "warmupAnchor": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can.",
+      "warmupAnchor": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can. Then pick the one that would gain the most and explain why in a sentence or two.",
       "vocabulary": "sponsorship, value proposition, call to action",
       "competencyIds": [
         "8177-21",
@@ -9236,7 +9236,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "Your final letter has no slang, greets the contact by last name with a colon, and closes with \"Sincerely,\" and your name.",
-      "warmupAnchor": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can.",
+      "warmupAnchor": "If a tournament brought 500 teenagers and their parents into our gym, which local businesses would want to advertise to that crowd? List as many as you can. Then pick the one that would gain the most and explain why in a sentence or two.",
       "vocabulary": "",
       "competencyIds": [
         "8177-20",
@@ -10823,7 +10823,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You describe your persona: who they are, what a typical week looks like for them, and how much of their monthly budget one outing to your event would cost.",
-      "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can.",
+      "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can. Then pick the strongest one and explain why in a sentence or two.",
       "vocabulary": "consumer persona, discretionary income",
       "competencyIds": [
         "8177-93"
@@ -10865,7 +10865,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You pick one of the five motivators as your persona's top reason to go out and explain, with details from their life, why it fits them.",
-      "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can.",
+      "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can. Then pick the strongest one and explain why in a sentence or two.",
       "vocabulary": "motivator, consumer persona",
       "competencyIds": [
         "8177-93"
@@ -10907,7 +10907,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You name one specific local indirect competitor that could win your persona's money on a Friday night instead of your event.",
-      "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can.",
+      "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can. Then pick the strongest one and explain why in a sentence or two.",
       "vocabulary": "indirect competition, direct competition, discretionary income",
       "competencyIds": [
         "8177-94",
@@ -10951,7 +10951,7 @@ const LESSON_PARTS = {
       "tier": "Tier 1 Core",
       "persona": "A sports and entertainment management executive coaching a junior manager: specific, encouraging, and strict about evidence.",
       "objective": "You describe one specific promotion or experience the event could offer and say why it would make your persona choose the event over your competitor.",
-      "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can.",
+      "warmupAnchor": "If the view on TV is better, the food is cheaper and there's no traffic, why do thousands of people still go to the stadium? List as many reasons as you can. Then pick the strongest one and explain why in a sentence or two.",
       "vocabulary": "motivator, indirect competition, discretionary income, consumer persona",
       "competencyIds": [
         "8177-94",

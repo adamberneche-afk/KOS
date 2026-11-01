@@ -78,7 +78,7 @@ A sample handwritten thank-you note.
 
 ## Warm-up
 
-Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed.
+Think of a game, concert or school event you went to. Name three people who had to do their jobs for that event to happen, but who the crowd probably never noticed. Then pick one and explain in a sentence or two what would go wrong if they didn't show up.
 
 ## Vocabulary
 
