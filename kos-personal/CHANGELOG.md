@@ -1,5 +1,31 @@
 # KOS Changelog
 
+### The Registrar's flows built and verified; a fixture the grounding check reads (2026-11-02)
+
+The operator built both Registrar flows in Studio on 11-02 and ran the
+fixture through them: answered at each stage, both returns `HARVESTED`,
+the ledger row `COMPLETELY_ROUTED`, `checkRegistrarFlowBinding` ok. An
+earlier fixture, planted on 11-01 before the flows existed, was released
+four times and stopped at `CRITICAL_FAILURE`, so the stale reset and the
+retry limit are verified too.
+
+The run left one gap. Stage 1 answered with the schema's empty defaults,
+nothing from the draft, and the fixture's draft was shorter than
+`SR_GROUNDEDNESS_MIN_CHARS`, so the groundedness check was skipped and an
+answer that never saw the draft could not be told from one that read it.
+The fixture's draft (`RG_FIXTURE_DRAFT`) is longer now and carries what the
+Stage 1 schema should pick up (a lesson code, the Workspace tools, three
+timed parts), so the check runs on it: the 11-02 answer would bounce as
+`NOT_GROUNDED`, and an answer that read the draft passes. A test holds both.
+
+Found on the same run: Stage 2 said "no vector documents exist yet". The
+four `VECTOR_*` docs in `05_Vector_Repository` exist, but they are the
+templates setup made on 2026-05-18, never filled in, and nothing writes to
+them since the classify flow replaced the inference path that did
+(`_routeToVectorDocs` is only called from `_routeVectorWeightsInternal`).
+Stage 2 scores every draft 0.0 until they say something. Open, for the
+operator (see the 11-01 handoff).
+
 ### The Registrar's two Studio flows, Apps Script half (D14, 2026-11-01)
 
 The Registrar's triggers ran, but the two Studio flows they fed were never
