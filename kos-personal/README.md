@@ -416,7 +416,9 @@ original design had each flow read Drive and write the ledger itself):
   approved SMPs. The operator's own principles go above each doc's marker
   and are never touched. `checkVectorDocs()` reports the docs, items
   awaiting a label, empty pinned facts, and compiled items that may name a
-  person (a list to read once, not a filter). A file that isn't a Google Doc
+  person (a list to read once, not a filter). `listPersonalItems()` says
+  where the record holds the items labelled PERSONAL (tab and row), for
+  scrubbing student data from KOS; it changes nothing. A file that isn't a Google Doc
   fails at once with what to do; a Doc that won't open this minute waits.
 - **The flow.** Trigger on its own tab's `Status = READY`; one Ask Gemini
   step whose System Prompt is the `REGISTRAR_STAGE1_SYSTEM_PROMPT` /
