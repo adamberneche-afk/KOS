@@ -162,14 +162,42 @@ function _rgVectorPrimer_(maxChars) {
   }
   if (!docs.length) return '(No VECTOR_* docs in 05_Vector_Repository yet.)';
   docs.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
-  const share = Math.max(0, Math.floor(budget / docs.length) - 60);
-  return docs.map(function (d) {
-    let text = '';
-    try { text = DocumentApp.openById(d.id).getBody().getText(); }
-    catch (e) { text = '(could not be read: ' + e.message + ')'; }
-    const cut = text.length > share;
-    return '### ' + d.name + '\n' + (cut ? text.slice(0, share) + '\n[… cut short: this doc is longer]' : text);
+  docs.forEach(function (d) {
+    try { d.text = DocumentApp.openById(d.id).getBody().getText(); }
+    catch (e) { d.text = '(could not be read: ' + e.message + ')'; }
+  });
+  const room = _rgPrimerShares_(docs.map(function (d) { return d.text.length; }),
+    Math.max(0, budget - docs.length * 60));
+  return docs.map(function (d, i) {
+    return '### ' + d.name + '\n' + _rgCutAtLine_(d.text, room[i]);
   }).join('\n\n');
+}
+
+/**
+ * Each doc's room: an equal share, with what a short doc doesn't need
+ * passed on to the longer ones. So a doc is cut only when the docs
+ * together are longer than the budget.
+ */
+function _rgPrimerShares_(lengths, budget) {
+  const room = lengths.map(function () { return 0; });
+  let left = budget;
+  let open = lengths.map(function (_, i) { return i; });
+  while (open.length && left > 0) {
+    const share = Math.floor(left / open.length);
+    const fits = open.filter(function (i) { return lengths[i] <= share; });
+    if (!fits.length) { open.forEach(function (i) { room[i] = share; }); break; }
+    fits.forEach(function (i) { room[i] = lengths[i]; left -= lengths[i]; });
+    open = open.filter(function (i) { return lengths[i] > share; });
+  }
+  return room;
+}
+
+// A doc longer than its room loses its last lines, never half a line: the
+// compiled docs (25_VectorDocs.gs) put their least authoritative items last.
+function _rgCutAtLine_(text, room) {
+  if (text.length <= room) return text;
+  const cut = text.lastIndexOf('\n', room);
+  return text.slice(0, cut > 0 ? cut : room) + '\n[… cut short: this doc is longer]';
 }
 
 /**

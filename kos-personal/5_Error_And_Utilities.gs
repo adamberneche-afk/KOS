@@ -840,6 +840,13 @@ function _getOrCreateSheet(ss, name) {
     'RegistrarStage1Input': ['Timestamp','Release_ID','File_ID','SourceText','Status'],
     'RegistrarStage2Input': ['Timestamp','Release_ID','File_ID','SourceText','Status'],
     'REGISTRAR_RETURN': ['Returned_At','Release_ID','Output_JSON','Harvest_Status','Error'],
+    // The Vector Item Labeler (25_VectorDocs.gs): its input and return
+    // tabs, and the labels it keeps (the operator may correct a label by
+    // hand; a label row is never rewritten). Literals for the reason above;
+    // tests/kos-personal/vector-docs.test.js holds them to VI_*_HEADERS.
+    'VectorItemInput': ['Timestamp','Batch_ID','Item_Count','SourceText','Status'],
+    'VECTOR_ITEM_RETURN': ['Returned_At','Batch_ID','Output_JSON','Harvest_Status','Error'],
+    'VECTOR_ITEM_LABELS': ['Item_ID','Source','Session','Theme','Kind','Labeled_At','Batch_ID','Text'],
     'STAGING_ARCHIVE': [
       'Archived_At','Timestamp','Payload_UID','Payload_Type',
       'Doc_URL','File_ID','Status','Retry_Count',
