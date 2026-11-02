@@ -987,6 +987,19 @@ function generateDailyPrimer() {
     // ERROR_LOG and named in the result.
     const briefing = generateBriefingDocs_(folder, now);
 
+    // The VECTOR_* docs, the Registrar's Stage 2 standard (25_VectorDocs.gs),
+    // from the same record. Each doc is written on its own; failures are in
+    // ERROR_LOG and never hold back the primer.
+    let vectorLine = '';
+    try {
+      const v = compileVectorDocs_();
+      vectorLine = ' Vector docs: ' + v.written.length + ' updated, ' + v.unchanged.length + ' unchanged' +
+        (v.failed.length ? ', ' + v.failed.length + ' failed (' + v.failed.map(f => f.doc).join(', ') + ')' : '') + '.';
+    } catch (ve) {
+      _reportError('generateDailyPrimer:compileVectorDocs_', ve, null);
+      vectorLine = ' Vector docs NOT compiled: ' + ve.message + '.';
+    }
+
     console.log('[generateDailyPrimer] Created: ' + docName);
     const ok = briefing.failed.length === 0;
     return {
@@ -994,7 +1007,7 @@ function generateDailyPrimer() {
       message: 'Daily primer saved to 03.1_CURRENT_STATE.' + (ok
         ? ' Briefing docs updated: ' + briefing.written.join(', ') + '.'
         : ' Briefing docs NOT updated: ' + briefing.failed.map(f => f.doc + ' (' + f.message + ')').join('; ') +
-          '. Their stamps were left unchanged, so they read as stale.'),
+          '. Their stamps were left unchanged, so they read as stale.') + vectorLine,
     };
 
   } catch (e) {

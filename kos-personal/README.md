@@ -81,6 +81,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 22_BriefingDocs.gs         Notebook briefing docs, DECISION_REGISTER       ✅ in repo
 23_MoralDebt.gs            SMP-019 moral debt counter (primer line)        ✅ in repo
 24_RegistrarFlows.gs       The Registrar's two Studio flows, Apps Script half ✅ in repo — see "Registrar / Cog Relay" below
+25_VectorDocs.gs           VECTOR_* docs compiled daily (Stage 2's standard) ✅ in repo — see "Registrar / Cog Relay" below
 inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see CHANGELOG.md + its own README (its OAuth grant no longer requests Drive access at all — Open Items #6, CHANGELOG.md; and read a model response by block type, never content[0] — its README's "Reading the model's output" note; checkout now takes its price from the server: `/checkout/credits` accepts only a `credits` value from `/api/v1/pricing`'s bundles, and a subscription grants credits only for a configured price, `test/billing-pricing.test.js`; failed requests return `Internal server error` plus a logged `ref`, never the raw error text, except a 400's or a 402's own message, `src/http-errors.js` and `test/http-errors.test.js`; `VECTOR_CLASSIFY` jobs get the Studio classifier prompt from the generated `src/flow-prompts.js`, not the Curator one, `test/inference-classify.test.js`)
 rtp-core-router/protocols/ governance/protocol docs                       ✅ filed in — see CHANGELOG.md. SMPs aren't kept here: `SMP_REGISTER` + `01.3_SMP_PROPOSALS` (meta/SMP_PROCESS.md)
 claude-project/            Claude Project instructions + session-log format ✅ in repo — replaces the RTP Gem (meta/PLAN_2026-10.md)
@@ -396,7 +397,15 @@ original design had each flow read Drive and write the ledger itself):
   first 25,000 characters) or `RegistrarStage2Input` (one labelled cell: the
   draft, Stage 1's JSON, and a digest of the `VECTOR_*` docs in
   `05_Vector_Repository` as the "Master Vector Primer", within a cell's
-  50,000 characters). No flow reads Drive. A file that isn't a Google Doc
+  50,000 characters). No flow reads Drive. The `VECTOR_*` docs are
+  compiled every morning by `25_VectorDocs.gs` (from `generateDailyPrimer`)
+  from the operator's own record, with no model call: pinned core facts,
+  resolved decisions with the operator's note, session decisions, lessons,
+  and open decisions marked as no standard, each with its date and
+  session, assigned to themes by the session's `VECTOR_MATRIX` scores.
+  `VECTOR_GOVERNANCE` holds the approved SMPs. The operator writes their
+  own principles above each doc's marker; that part is never touched and
+  Stage 2 ranks it first. `checkVectorDocs()` reports each doc. A file that isn't a Google Doc
   fails at once with what to do; a Doc that won't open this minute waits.
 - **The flow.** Trigger on its own tab's `Status = READY`; one Ask Gemini
   step whose System Prompt is the `REGISTRAR_STAGE1_SYSTEM_PROMPT` /

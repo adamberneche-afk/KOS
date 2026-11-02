@@ -531,7 +531,7 @@ Active_Brain_Trust_System           ← root (CFG.SYSTEM_NAME)
 │   ├── 04.6_CURATOR_SILO
 │   ├── 04.7_RTP_SILO
 │   └── 04.8_COG_GRAVEYARD
-├── 05_Vector_Repository
+├── 05_Vector_Repository           ← VECTOR_<THEME> + VECTOR_GOVERNANCE, compiled daily (25_VectorDocs.gs)
 ├── 06_CLASSROOM_ASSETS             ← Registrar's default routing target
 │   ├── 06.1_LESSON_PLANS
 │   ├── 06.2_STUDENT_FACING

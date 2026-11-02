@@ -78,9 +78,12 @@ const RG_RETURN_HEADERS = ['Returned_At', 'Release_ID', 'Output_JSON', 'Harvest_
 
 // A Sheets cell holds 50,000 characters. Stage 2's cell: the draft (up to
 // CFG.REGISTRAR_MAX_CHARS), Stage 1's JSON (up to RG_STAGE1_JSON_MAX), and
-// the primer in what is left, at most RG_PRIMER_MAX_CHARS.
+// the primer in what is left, at most RG_PRIMER_MAX_CHARS. A short draft
+// leaves the primer more room; a long one less. Since 2026-11-02 the
+// VECTOR_* docs are compiled daily (25_VectorDocs.gs), most authoritative
+// first, so a doc cut short loses its least authoritative items.
 const RG_CELL_MAX = 49000;
-const RG_PRIMER_MAX_CHARS = 15000;
+const RG_PRIMER_MAX_CHARS = 30000;
 const RG_STAGE1_JSON_MAX = 8000;
 const RG_STAGE2_LABELS = {
   source: 'SOURCE DOCUMENT (the curriculum draft):\n',

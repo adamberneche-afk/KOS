@@ -279,6 +279,8 @@ For each file, click **+** (Add a file) → **Script**, name it exactly as liste
 23_MoralDebt
 24_RegistrarFlows       ← the Registrar's two Studio flows, Apps Script
                            half (D14): input tabs, REGISTRAR_RETURN harvest
+25_VectorDocs           ← the VECTOR_* docs, compiled daily from the
+                           operator's record (Stage 2's standard)
 ```
 
 `clasp push` (through `node run.js`, `tools/clasp-sync/README.md`) sends

@@ -23,8 +23,25 @@ four `VECTOR_*` docs in `05_Vector_Repository` exist, but they are the
 templates setup made on 2026-05-18, never filled in, and nothing writes to
 them since the classify flow replaced the inference path that did
 (`_routeToVectorDocs` is only called from `_routeVectorWeightsInternal`).
-Stage 2 scores every draft 0.0 until they say something. Open, for the
-operator (see the 11-01 handoff).
+Stage 2 scores every draft 0.0 until they say something.
+
+**The fix: `25_VectorDocs.gs` compiles them every morning** (from
+`generateDailyPrimer`), from the operator's own record, with no model call.
+Each theme's doc lists, most authoritative first and newest first within
+each: core facts the operator pinned; decisions the operator resolved, with
+their resolution note; decisions sessions recorded; lessons and pivots; and
+open decisions, marked as no standard. Every line carries its date and
+session. A session's items go to the themes its `VECTOR_MATRIX` scores
+give it (at least 0.25, or its top theme); a session with no scores is
+counted, not guessed at. `DROPPED` decisions are left out.
+`VECTOR_GOVERNANCE` holds the approved SMPs. The operator's own principles
+go above each doc's marker and are never touched; the setup template is
+replaced. A doc is rewritten only when its compiled part changed. The
+Stage 2 prompt now reads the docs in that order of authority, scores only
+conflict with applicable items, names the item a score rests on, and says
+when no standard applied rather than reporting 0.0 as on-standard. The
+primer's room went from 15,000 to 30,000 characters (still within the
+cell), so a short draft gets more of the standard.
 
 ### The Registrar's two Studio flows, Apps Script half (D14, 2026-11-01)
 
