@@ -287,7 +287,10 @@ when a value is unset:
   minutes per schedule, labels, and a rotation by weekday): the calendar.
   They feed `bellScheduleFor_()`, the lesson doc and agenda deck, the
   ⚙ Settings day choices, and `isSchoolDay_()`, which the held-part count
-  (68) uses.
+  (68) uses. The days off are the Ledger's `NoSchoolDays` tab (the
+  district calendar; add a snow day there) plus any extra in
+  `SCHOOL_DAYS_OFF`, read the first time a day is checked. A date typed
+  into `_CONFIG` is read as the `yyyy-MM-dd` it was typed as.
 
 A value that doesn't parse falls back to its default and logs `[SCHOOL]`.
 Some things stay course-specific on purpose:

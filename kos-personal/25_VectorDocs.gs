@@ -65,6 +65,7 @@
 //   checkVectorItemLiveness()    — has the flow ever answered?
 //   installVectorItemFixture()   — a two-item batch for a built flow
 //   runVectorItemLabelCanary()   — the Apps Script half, flow stubbed
+//   listPersonalItems()          — where the record holds PERSONAL items
 // ================================================================
 
 const VI_INPUT_TAB = 'VectorItemInput';
@@ -162,8 +163,11 @@ function _vdRegister_(ss) {
   const sheet = ss.getSheetByName(CFG.DECISION_REGISTER_SHEET);
   if (!sheet) return [];
   const C = _bdCols_();
-  return _bdRows_(sheet).filter(function (r) { return String(r[C.Decision_ID]).trim(); }).map(function (r) {
+  return _bdRows_(sheet).map(function (r, i) { return { r: r, row: i + 2 }; })
+    .filter(function (x) { return String(x.r[C.Decision_ID]).trim(); }).map(function (x) {
+    const r = x.r;
     return {
+      loc: CFG.DECISION_REGISTER_SHEET + ' row ' + x.row,
       status: String(r[C.Status] || 'OPEN').trim().toUpperCase(),
       sessionUid: String(r[C.Session_UID]).trim(),
       at: r[C.Recorded_At],
@@ -179,8 +183,12 @@ function _vdSessionDecisions_(ss) {
   const sheet = ss.getSheetByName(CFG.ACTION_REGISTER_SHEET);
   if (!sheet || sheet.getLastRow() <= 1) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues()
-    .filter(function (r) { return String(r[2]).trim().toUpperCase() === 'DECISION' && String(r[3]).trim(); })
-    .map(function (r) { return { sessionUid: String(r[0]).trim(), at: r[1], item: String(r[3]) }; });
+    .map(function (r, i) { return { r: r, row: i + 2 }; })
+    .filter(function (x) { return String(x.r[2]).trim().toUpperCase() === 'DECISION' && String(x.r[3]).trim(); })
+    .map(function (x) {
+      return { sessionUid: String(x.r[0]).trim(), at: x.r[1], item: String(x.r[3]),
+        loc: CFG.ACTION_REGISTER_SHEET + ' row ' + x.row };
+    });
 }
 
 /**
@@ -200,7 +208,8 @@ function _vdLessons_() {
     if (!text) continue;
     const m = /^\[Session: ([^|\]]+)\|\s*([^\]]+)\]$/.exec(text);
     if (m) { current = { at: m[1].trim(), sessionUid: m[2].trim() }; continue; }
-    if (current) out.push({ sessionUid: current.sessionUid, at: current.at, item: text });
+    if (current) out.push({ sessionUid: current.sessionUid, at: current.at, item: text,
+      loc: 'PIVOTS_AND_LESSONS, under [Session: ' + current.at + ' | ' + current.sessionUid + ']' });
   }
   return out;
 }
@@ -214,28 +223,28 @@ function _viItems_(ss) {
   const byId = {};
   const dropped = [];
   const open = [];
-  const add = function (source, sessionUid, at, text, display) {
+  const add = function (source, sessionUid, at, text, loc) {
     const session = _bdSessionStem_(sessionUid);
     if (!String(text).trim() || /^FIXTURE/.test(session)) return;
     const id = _viItemId_(source, session, text);
     if (byId[id]) return;
     const item = { id: id, source: source, session: session, t: _vdTime_(at), date: _bdDay_(at) || 'undated',
-      text: display || String(text) };
+      text: String(text), loc: loc || '' };
     items.push(item);
     byId[id] = item;
   };
   _vdRegister_(ss).forEach(function (r) {
     if (r.status === 'RESOLVED') {
-      add('SETTLED', r.sessionUid, r.resolvedAt || r.at, r.decision + (r.note ? ' — Resolved: ' + r.note : ''));
+      add('SETTLED', r.sessionUid, r.resolvedAt || r.at, r.decision + (r.note ? ' — Resolved: ' + r.note : ''), r.loc);
     } else if (r.status === 'DROPPED') {
       dropped.push(r.decision);
     } else {
       open.push(r.decision);
-      add('OPEN', r.sessionUid, r.at, r.decision);
+      add('OPEN', r.sessionUid, r.at, r.decision, r.loc);
     }
   });
-  _vdSessionDecisions_(ss).forEach(function (r) { add('DECIDED', r.sessionUid, r.at, r.item); });
-  _vdLessons_().forEach(function (r) { add('LESSON', r.sessionUid, r.at, r.item); });
+  _vdSessionDecisions_(ss).forEach(function (r) { add('DECIDED', r.sessionUid, r.at, r.item, r.loc); });
+  _vdLessons_().forEach(function (r) { add('LESSON', r.sessionUid, r.at, r.item, r.loc); });
   return { items: items, byId: byId, dropped: dropped, open: open };
 }
 
@@ -876,6 +885,35 @@ function checkVectorDocs() {
   report.docs.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
   console.log('[VectorDocs] ' + JSON.stringify(report));
   return report;
+}
+
+/**
+ * Read-only. Where the record holds items the labeler marked PERSONAL (a
+ * named person, or private life): tab and row, or the lessons doc's session
+ * heading, with the item. For the operator's 10-19 decision to scrub
+ * student data from KOS: this lists, it changes nothing. Items not yet
+ * labelled aren't listed; run it again once checkVectorDocs shows none
+ * awaiting.
+ * @returns {{personal:number, awaiting:number, items:{loc:string, session:string, text:string}[]}}
+ */
+function listPersonalItems() {
+  const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+  const record = _viItems_(ss);
+  const sheet = ss.getSheetByName(VI_LABEL_TAB);
+  const labels = sheet ? _viLabels_(sheet) : {};
+  const out = { personal: 0, awaiting: 0, items: [] };
+  record.items.forEach(function (it) {
+    const l = labels[it.id];
+    if (!l) { out.awaiting++; return; }
+    if (l.kind !== 'PERSONAL') return;
+    out.personal++;
+    out.items.push({ loc: it.loc, session: it.session, text: _vdClip_(it.text, 200) });
+  });
+  out.items.sort(function (a, b) { return a.loc < b.loc ? -1 : a.loc > b.loc ? 1 : 0; });
+  console.log('[VectorItems] ' + out.personal + ' PERSONAL item(s) in the record' +
+    (out.awaiting ? '; ' + out.awaiting + ' not labelled yet, so not checked' : '') + '.');
+  out.items.forEach(function (x) { console.log('  ' + x.loc + ' (' + x.session + '): ' + x.text); });
+  return out;
 }
 
 // ================================================================

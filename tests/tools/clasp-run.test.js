@@ -646,9 +646,14 @@ test('--zip with a commit: the push carries it, and a later zip with the same co
   const last = JSON.parse(fs.readFileSync(path.join(w.registry, 'leader-hub', run.LAST_BUILD_FILE), 'utf8'));
   assert.equal(last.commit, C1);
 
+  const versionsBefore = w.calls('version').length;
   const again = w.run(['--zip', kosZip(w, files, C2), '--only', 'leader-hub']);
   assert.equal(again.status, 0, again.out);
   assert.match(again.out, /code unchanged since the last push: the marker keeps that push's commit/);
+  // clasp pushes a flat project's files whether or not they changed; the
+  // build record says they didn't, so no version is cut (leader-hub v72, 11-02).
+  assert.equal(w.calls('version').length, versionsBefore, 'no new version for unchanged code');
+  assert.match(again.out, /code unchanged since the last push and every deployment is already on 1111111 -- no new version/);
   assert.equal(fs.readFileSync(path.join(w.repo, 'leader-hub', 'DeployVersionMarker.gs'), 'utf8'), LH_MARKER(C1));
 
   const changed = w.run(['--zip', kosZip(w, Object.assign({}, files, { 'leader-hub/Code.gs': 'v2' }), C2), '--only', 'leader-hub']);

@@ -286,6 +286,13 @@ code as "already up to date", but the script checks each deployment's
 description (it writes `<marker> v<n>` on every promote) and cuts a
 version from HEAD if any deployment isn't on the current marker yet.
 
+The same check runs when clasp pushes files whose code hasn't changed.
+clasp says "already up to date" for the cas-ccps builds but re-uploads a
+flat project (leader-hub, kos-personal) every time, so before 2026-11-02 an
+unchanged flat project still cut a version. Now the build's own record
+decides: code unchanged since the last push, and every deployment already
+on its marker, means no new version.
+
 The summary ends with each project's editor link and its `/exec` or
 `/dev` links.
 

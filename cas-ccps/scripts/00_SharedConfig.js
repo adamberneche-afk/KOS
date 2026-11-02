@@ -487,8 +487,10 @@ function warmUpCourseCode_(courseName) {
 //                        comes from (the Family Mail Sentinel, 60).
 //   STAFF_MAIL_DOMAIN    "ccpsnet.net": the district's staff mail (60).
 //   EARLY_RELEASE_DAYS   the 2026-27 early-release dates, "yyyy-MM-dd,...".
-//   SCHOOL_DAYS_OFF      "" : weekdays without school, "yyyy-MM-dd,...". A
-//                        part held by a failed check (68) skips them.
+//   SCHOOL_DAYS_OFF      "" : extra weekdays without school, "yyyy-MM-dd,...",
+//                        on top of the Ledger's NoSchoolDays tab (the
+//                        calendar; add a snow day there). A part held by a
+//                        failed check (68) skips them.
 //   BELL_SCHEDULE        JSON: { "classMinutes": { name: [minutes per
 //                        block] }, "labels": { name: label }, "rotation":
 //                        [{ "until": "yyyy-MM-dd" or "", "byDay": [name for
@@ -533,6 +535,7 @@ function schoolProfile_(values) {
     staffMailDomain: get("STAFF_MAIL_DOMAIN").replace(/^@/, "").toLowerCase(),
     earlyReleaseDays: _schoolDates_(get("EARLY_RELEASE_DAYS")),
     daysOff: _schoolDates_(get("SCHOOL_DAYS_OFF") || ""),
+    ledgerId: values ? "" : String(v.CENTRAL_LEDGER_SS_ID || ""),
     bell: _schoolBell_(v.BELL_SCHEDULE),
   };
   if (!values) _schoolProfileCache_ = out;
@@ -560,10 +563,57 @@ function _schoolIdPattern_(raw) {
   }
 }
 
+// The days off: the Ledger's NoSchoolDays tab (the district calendar, which
+// the course builder (51) and the lesson docs (66) already read, and where a
+// snow day is added), plus any extra in SCHOOL_DAYS_OFF. Until 2026-11-02 only
+// SCHOOL_DAYS_OFF counted here, so the same calendar had to be typed twice,
+// and a single date typed into _CONFIG became a date cell this dropped.
+// Read the first time a day is checked, not with the profile: most runs
+// never ask, and the profile is read on every one.
+const SCHOOL_NO_SCHOOL_TAB = "NoSchoolDays";
+let _schoolDaysOffCache_ = null;
+function schoolDaysOff_() {
+  if (_schoolDaysOffCache_) return _schoolDaysOffCache_;
+  const p = schoolProfile_();
+  _schoolDaysOffCache_ = _schoolDaysOff_(p.daysOff, p.ledgerId);
+  return _schoolDaysOffCache_;
+}
+function _schoolDaysOff_(fromConfig, ledgerId) {
+  const out = fromConfig.slice();
+  if (!ledgerId) return out;
+  try {
+    const sheet = SpreadsheetApp.openById(ledgerId).getSheetByName(SCHOOL_NO_SCHOOL_TAB);
+    if (sheet && sheet.getLastRow() > 1) {
+      sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) {
+        const d = _schoolDateCell_(r[0]);
+        if (d && out.indexOf(d) === -1) out.push(d);
+      });
+    }
+  } catch (e) {
+    Logger.log("[SCHOOL] NoSchoolDays could not be read (" + e.message + "); using SCHOOL_DAYS_OFF alone.");
+  }
+  return out.sort();
+}
+
+// A date cell as "yyyy-MM-dd": a Date (any realm), "yyyy-MM-dd", or "m/d/yyyy".
+// A Date's own fields: Apps Script runs in the script's time zone, so no
+// Session call (one project's manifest lacks the scope it needs).
+function _schoolYmd_(d) {
+  return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+}
+function _schoolDateCell_(value) {
+  if (value instanceof Date || Object.prototype.toString.call(value) === "[object Date]") {
+    return isNaN(value.getTime()) ? "" : _schoolYmd_(value);
+  }
+  const s = String(value || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);
+  return m ? m[3] + "-" + ("0" + m[1]).slice(-2) + "-" + ("0" + m[2]).slice(-2) : "";
+}
+
 // "yyyy-MM-dd,..." → the whole dates in it.
 function _schoolDates_(raw) {
-  return String(raw || "").split(",").map(function (d) { return d.trim(); })
-    .filter(function (d) { return /^\d{4}-\d{2}-\d{2}$/.test(d); });
+  return String(raw || "").split(",").map(_schoolDateCell_).filter(Boolean);
 }
 
 // BELL_SCHEDULE over the defaults, part by part.
@@ -627,7 +677,7 @@ function isSchoolDay_(ymd) {
   const day = String(ymd || "").slice(0, 10);
   const p = day.split("-").map(Number);
   const dow = new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay();
-  return dow !== 0 && dow !== 6 && schoolProfile_().daysOff.indexOf(day) === -1;
+  return dow !== 0 && dow !== 6 && schoolDaysOff_().indexOf(day) === -1;
 }
 
 // WarmUpTextBox: one row per warm-up delivered to the dashboard, keyed by
@@ -775,7 +825,12 @@ function _readConfigTab_(ss) {
   const map = {};
   for (let i = 0; i < rows.length; i++) {
     const key = String(rows[i][0] === undefined ? "" : rows[i][0]).trim();
-    const val = String(rows[i][1] === undefined ? "" : rows[i][1]).trim();
+    // A date typed into a cell becomes a Date; String() of one is "Tue Nov 03
+    // 2026 ...", which nothing reads. Keep it as the yyyy-MM-dd it was typed as.
+    const cell = rows[i][1];
+    const val = (Object.prototype.toString.call(cell) === "[object Date]" && !isNaN(cell.getTime())
+      ? _schoolYmd_(cell)
+      : String(cell === undefined ? "" : cell)).trim();
     if (key && key !== "Key" && val) map[key] = val;
   }
   return map;

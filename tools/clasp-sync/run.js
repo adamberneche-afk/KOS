@@ -1035,7 +1035,7 @@ function invokePushOnly(ctx, workingDir) {
 // ---------------------------------------------------------------------------
 // Web apps: push, cut one version, point every registered deployment at it.
 // ---------------------------------------------------------------------------
-function invokePushAndPromote(ctx, workingDir, deploymentsFile, marker, projectName) {
+function invokePushAndPromote(ctx, workingDir, deploymentsFile, marker, projectName, codeUnchanged) {
   const keep = getKeepList(deploymentsFile);
   if (keep === null) {
     warn(`  no ${deploymentsFile} -- skipping. Put the deployment IDs to keep live in it, one per line. Currently live on this project:`);
@@ -1052,7 +1052,11 @@ function invokePushAndPromote(ctx, workingDir, deploymentsFile, marker, projectN
     warn(`  clasp push failed (exit ${push.status}) -- stopping before versioning.`);
     return 'FAILED: push';
   }
-  if (push.state === 'unchanged') {
+  // clasp says "already up to date" for the cas-ccps builds, but pushes a
+  // flat project's files every time (leader-hub went v71 -> v72 on
+  // 2026-11-02 with no change). The build's own record is the better
+  // signal: the same code as the last push keeps its marker (stampBuild).
+  if (push.state === 'unchanged' || codeUnchanged) {
     // HEAD already has this code. That alone doesn't mean it's released: a
     // --head-only test push, or a push whose promote step never ran, leaves
     // HEAD ahead of the deployments. This script describes each deployment
@@ -1062,7 +1066,9 @@ function invokePushAndPromote(ctx, workingDir, deploymentsFile, marker, projectN
     const current = getDeployments(ctx, workingDir).filter((d) => keep.includes(d.id));
     const behind = current.filter((d) => !d.description.toLowerCase().startsWith((marker + ' ').toLowerCase()));
     if (current.length === keep.length && behind.length === 0) {
-      warn(`  nothing new pushed and every deployment is already on ${marker} -- nothing to do.`);
+      warn(push.state === 'unchanged'
+        ? `  nothing new pushed and every deployment is already on ${marker} -- nothing to do.`
+        : `  code unchanged since the last push and every deployment is already on ${marker} -- no new version.`);
       return 'unchanged (already up to date)';
     }
     out(`    code already on HEAD, but not every deployment is on ${marker} yet -- cutting a version from HEAD`);
@@ -1228,7 +1234,7 @@ function invokeProject(ctx, p) {
   } else if (opts.headOnly) {
     result = invokeHeadOnly(ctx, workingDir, p.name);
   } else {
-    result = invokePushAndPromote(ctx, workingDir, deploymentsFile, marker, p.name);
+    result = invokePushAndPromote(ctx, workingDir, deploymentsFile, marker, p.name, !!(stamp && stamp.reused));
   }
   // Recorded once the code is on HEAD, whatever happened to the versions.
   if (stamp && !/^(FAILED: push|SKIPPED)/.test(result)) recordBuild(regDir, stamp);

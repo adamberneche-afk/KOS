@@ -28,7 +28,7 @@ const EXPOSE = ['compileVectorDocs', 'compileVectorDocs_', 'checkVectorDocs', 'r
   'VD_MARKER', 'RG_STAGE2_TAB', 'runVectorItemLabeler', 'buildVectorItemBatches', 'harvestVectorItemReturns',
   'checkVectorItemBinding', 'checkVectorItemLiveness', 'installVectorItemFixture', 'runVectorItemLabelCanary',
   'VI_INPUT_TAB', 'VI_RETURN_TAB', 'VI_LABEL_TAB', 'VI_INPUT_HEADERS', 'VI_RETURN_HEADERS', 'VI_LABEL_HEADERS',
-  'VI_MAX_ATTEMPTS', '_rgVectorPrimer_'];
+  'VI_MAX_ATTEMPTS', '_rgVectorPrimer_', 'listPersonalItems'];
 
 const TEMPLATE = ['VECTOR: PEDAGOGY', 'Domain: Teaching, Learning & Student Outcomes', 'Core Principles',
   '[What foundational beliefs govern this domain?]', 'Key Decisions Log', '[DATE]  |  [DECISION]  |  [RATIONALE]',
@@ -362,4 +362,15 @@ test('an item naming a person is PERSONAL and never a standard; a labeler miss i
   const notes = t.x.checkVectorDocs().notes.join(' ');
   assert.match(notes, /VECTOR_RELATIONAL DECIDED:[0-9a-f]{16}: "Placed Marisol"/, '...and listed for the operator to read');
   assert.doesNotMatch(notes, /Seven Bridges|Apps Script/);
+});
+
+test('listPersonalItems says where each PERSONAL item lives, and changes nothing', () => {
+  const t = setup();
+  const before = t.rows('ACTION_REGISTER').length;
+  assert.equal(t.x.listPersonalItems().awaiting, 11, 'nothing labelled yet: nothing checked');
+  labelAndCompile(t);
+  const r = t.x.listPersonalItems();
+  assert.equal(r.personal, 1);
+  assert.deepEqual(r.items[0], { loc: 'ACTION_REGISTER row 7', session: 'LOG-eee', text: 'Assigned Jordan Rivera as President' });
+  assert.equal(t.rows('ACTION_REGISTER').length, before);
 });

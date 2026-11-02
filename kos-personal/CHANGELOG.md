@@ -1,5 +1,14 @@
 # KOS Changelog
 
+### Where the record holds named people: listPersonalItems (2026-11-02)
+
+`listPersonalItems()` (25) lists every item the Vector Item Labeler marked
+PERSONAL, with where it lives: `ACTION_REGISTER` or `DECISION_REGISTER` and
+its row, or the lessons doc's session heading. It is the list the 10-19
+decision ("existing student data in KOS to be scrubbed") needs, made by the
+labeler rather than a name pattern (which matched 179 of 453 items). It
+reads only; the operator decides what to remove.
+
 ### A named person never becomes a standard (2026-11-02)
 
 The live record the Vector Item Labeler reads holds student names, one with

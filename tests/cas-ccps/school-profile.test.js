@@ -14,7 +14,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const NAMES = ['schoolProfile_', 'schoolCourseCodes_', 'schoolCourseOf_', 'warmUpCourseCode_', 'studentIdRegex_',
   'studentIdDescription_', 'isSchoolDay_', 'bellScheduleFor_', 'classMinutesFor_', 'bellBlockOf_',
   'bellClassMinutes_', 'bellScheduleLabel_', 'bellRegularSchedules_', '_studentIdPattern_', '_studentEmailDomain_',
-  'courseCodeFromName_', '_cybCourseCode_', 'partHeldSchoolDays_', 'SCHOOL_DEFAULTS'];
+  'courseCodeFromName_', '_cybCourseCode_', 'partHeldSchoolDays_', 'SCHOOL_DEFAULTS', 'schoolDaysOff_'];
 
 // A fresh sandbox, with these Script Properties set before anything reads them.
 function load(props) {
@@ -136,4 +136,35 @@ test('school days: weekdays, less SCHOOL_DAYS_OFF; a held part skips them', () =
   const y = load({ SCHOOL_DAYS_OFF: '2026-11-03, 2026-11-11' });
   assert.ok(!y.isSchoolDay_('2026-11-03'));
   assert.equal(y.partHeldSchoolDays_(failed, wed), 1, 'Election Day is not counted');
+});
+
+test('school days: the Ledger\'s NoSchoolDays tab counts too, date cells and all; SCHOOL_DAYS_OFF adds to it', () => {
+  const { exported: x, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('29_StudentContextAggregator.js'),
+    S('24_WarmUpBridge.js'), S('51_CourseYearBuilder.js'), S('55b_LessonAssignmentData.js'), S('68_LessonParts.js')], NAMES);
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  const tab = ss.insertSheet('NoSchoolDays');
+  tab.appendRow(['date', 'note']);
+  tab.appendRow(['2026-11-02', 'CCPS 2026-27 calendar']);
+  tab.appendRow([new Date(2026, 10, 3), 'typed as a date']); // Sheets stores a typed date as a Date
+  tab.appendRow(['11/25/2026', 'typed m/d/yyyy']);
+  const sp = sandbox.PropertiesService.getScriptProperties();
+  sp.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  sp.setProperty('SCHOOL_DAYS_OFF', '2026-12-07');
+  assert.deepEqual(x.schoolDaysOff_(), ['2026-11-02', '2026-11-03', '2026-11-25', '2026-12-07']);
+  assert.ok(!x.isSchoolDay_('2026-11-03'), 'from the tab alone: nothing typed twice');
+  assert.ok(!x.isSchoolDay_('2026-12-07'), 'an extra from _CONFIG');
+  assert.ok(x.isSchoolDay_('2026-11-04'));
+});
+
+test('a date typed into _CONFIG is read as the yyyy-MM-dd it was typed as', () => {
+  const { exported: x, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('29_StudentContextAggregator.js'),
+    S('24_WarmUpBridge.js'), S('51_CourseYearBuilder.js'), S('55b_LessonAssignmentData.js'), S('68_LessonParts.js')], NAMES);
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  const cfg = ss.insertSheet('_CONFIG');
+  cfg.appendRow(['Key', 'Value']);
+  cfg.appendRow(['SCHOOL_DAYS_OFF', new Date(2026, 10, 3)]); // what typing 11/3/2026 leaves (seen 2026-11-02)
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  assert.deepEqual(x.schoolProfile_().daysOff, ['2026-11-03']);
 });
