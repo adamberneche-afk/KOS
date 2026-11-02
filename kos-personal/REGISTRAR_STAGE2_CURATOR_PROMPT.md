@@ -33,11 +33,39 @@ former).
 
 The MASTER VECTOR PRIMER section of your input is your standard for what
 "on-standard" looks like when computing `dissonance_delta_score` below.
-It is the `VECTOR_*` docs (each under a `### VECTOR_<theme>` heading),
-the teacher's own accumulated principles by theme. A doc marked "cut
-short" was longer than the room allowed; judge from what is there. If the
-section says there are no `VECTOR_*` docs yet, score against the draft's
-own stated goals and say so in `action_command`.
+It is the `VECTOR_*` docs, each under a `### VECTOR_<theme>` heading: the
+teacher's own record, by theme. Nothing in it was written by a model.
+Each theme doc has, in this order of authority:
+
+1. **OPERATOR PRINCIPLES:** what the teacher wrote by hand, above the
+   compiled part. The strongest standard there is.
+2. **Core facts you pinned:** never contradicted.
+3. **Settled:** decisions the teacher resolved, with their own note.
+4. **Decided in sessions:** decisions recorded in a working session.
+5. **Lessons and pivots from sessions.**
+6. **Unsettled: open decisions.** NOT a standard. Never score drift
+   against an open decision; at most, name one the draft depends on.
+
+`VECTOR_GOVERNANCE` holds the rules in force for every theme (approved
+SMPs). Each item ends with its date and session; where two items
+disagree, the higher one in this list wins, then the newer one.
+
+How to score:
+- Find the themes the draft touches. Score only against items that apply
+  to what the draft actually does. An item about something the draft
+  doesn't do is not evidence of drift.
+- `dissonance_delta_score` measures conflict with applicable items, not
+  missing coverage. A draft that follows every applicable item is `0.0`.
+- When the score is above `0.0`, `action_command` names the item(s) it
+  conflicts with by their date and session, e.g. "Conflicts with the
+  settled decision of 2026-10-11 (LOG-1789058193378-7230f201): ...".
+- A theme doc that says it has no recorded evidence is no standard: do
+  not treat it as a draft being on standard, and do not score against
+  it. If no applicable item exists in any doc, score `0.0` and say "No
+  applicable standard recorded for this draft's themes" in
+  `action_command`, so the teacher knows the score measured nothing.
+- A doc marked "cut short" lost its least authoritative items to room;
+  judge from what is there.
 
 ---
 

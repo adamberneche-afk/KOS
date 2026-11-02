@@ -78,9 +78,12 @@ const RG_RETURN_HEADERS = ['Returned_At', 'Release_ID', 'Output_JSON', 'Harvest_
 
 // A Sheets cell holds 50,000 characters. Stage 2's cell: the draft (up to
 // CFG.REGISTRAR_MAX_CHARS), Stage 1's JSON (up to RG_STAGE1_JSON_MAX), and
-// the primer in what is left, at most RG_PRIMER_MAX_CHARS.
+// the primer in what is left, at most RG_PRIMER_MAX_CHARS. A short draft
+// leaves the primer more room; a long one less. Since 2026-11-02 the
+// VECTOR_* docs are compiled daily (25_VectorDocs.gs), most authoritative
+// first, so a doc cut short loses its least authoritative items.
 const RG_CELL_MAX = 49000;
-const RG_PRIMER_MAX_CHARS = 15000;
+const RG_PRIMER_MAX_CHARS = 30000;
 const RG_STAGE1_JSON_MAX = 8000;
 const RG_STAGE2_LABELS = {
   source: 'SOURCE DOCUMENT (the curriculum draft):\n',
@@ -159,14 +162,42 @@ function _rgVectorPrimer_(maxChars) {
   }
   if (!docs.length) return '(No VECTOR_* docs in 05_Vector_Repository yet.)';
   docs.sort(function (a, b) { return a.name < b.name ? -1 : a.name > b.name ? 1 : 0; });
-  const share = Math.max(0, Math.floor(budget / docs.length) - 60);
-  return docs.map(function (d) {
-    let text = '';
-    try { text = DocumentApp.openById(d.id).getBody().getText(); }
-    catch (e) { text = '(could not be read: ' + e.message + ')'; }
-    const cut = text.length > share;
-    return '### ' + d.name + '\n' + (cut ? text.slice(0, share) + '\n[… cut short: this doc is longer]' : text);
+  docs.forEach(function (d) {
+    try { d.text = DocumentApp.openById(d.id).getBody().getText(); }
+    catch (e) { d.text = '(could not be read: ' + e.message + ')'; }
+  });
+  const room = _rgPrimerShares_(docs.map(function (d) { return d.text.length; }),
+    Math.max(0, budget - docs.length * 60));
+  return docs.map(function (d, i) {
+    return '### ' + d.name + '\n' + _rgCutAtLine_(d.text, room[i]);
   }).join('\n\n');
+}
+
+/**
+ * Each doc's room: an equal share, with what a short doc doesn't need
+ * passed on to the longer ones. So a doc is cut only when the docs
+ * together are longer than the budget.
+ */
+function _rgPrimerShares_(lengths, budget) {
+  const room = lengths.map(function () { return 0; });
+  let left = budget;
+  let open = lengths.map(function (_, i) { return i; });
+  while (open.length && left > 0) {
+    const share = Math.floor(left / open.length);
+    const fits = open.filter(function (i) { return lengths[i] <= share; });
+    if (!fits.length) { open.forEach(function (i) { room[i] = share; }); break; }
+    fits.forEach(function (i) { room[i] = lengths[i]; left -= lengths[i]; });
+    open = open.filter(function (i) { return lengths[i] > share; });
+  }
+  return room;
+}
+
+// A doc longer than its room loses its last lines, never half a line: the
+// compiled docs (25_VectorDocs.gs) put their least authoritative items last.
+function _rgCutAtLine_(text, room) {
+  if (text.length <= room) return text;
+  const cut = text.lastIndexOf('\n', room);
+  return text.slice(0, cut > 0 ? cut : room) + '\n[… cut short: this doc is longer]';
 }
 
 /**
@@ -433,6 +464,30 @@ function checkRegistrarFlowLiveness() {
   return report;
 }
 
+// The fixture's draft. Longer than SR_GROUNDEDNESS_MIN_CHARS (12_StudioReturnHarvest.gs), so the
+// harvest's groundedness check runs on it: the first fixture (11-02) was
+// shorter, so the check was skipped, and a Stage 1 answer of empty
+// defaults could not be told from one that read the draft. This one
+// carries what the Stage 1 schema should pick up: a lesson code for
+// doc_uid, the Workspace tools for required_workspace_apis, sections for
+// complexity_score. A Stage 1 answer that read it echoes some of its
+// words; one that never saw it bounces as NOT_GROUNDED. Nothing in it is
+// friction a teacher would need to see, so Stage 1 has no reason to set
+// human_intervention_required and stop the fixture at the kill-switch.
+const RG_FIXTURE_DRAFT =
+  'FIXTURE CURRICULUM DRAFT — planted by installRegistrarFlowFixture(). Disposable.\n\n' +
+  'Lesson BALLPARK-L07: Ticket pricing for a minor-league ballpark (Sports Marketing, Unit 3).\n\n' +
+  'Objective: students compare dynamic pricing with fixed pricing and recommend one to the ' +
+  'general manager of the Riverhawks.\n\n' +
+  'Part 1 (20 minutes): students log last season\'s attendance and ticket prices in a shared ' +
+  'Google Sheets spreadsheet, one row per home game, and chart attendance against price.\n\n' +
+  'Part 2 (15 minutes): in pairs, students list three factors a promoter weighs (weather, ' +
+  'opponent, giveaway night) and survey classmates with a Google Forms questionnaire about ' +
+  'what they would pay.\n\n' +
+  'Part 3 (15 minutes): each student writes a two-paragraph recommendation to the general ' +
+  'manager, citing the spreadsheet and the questionnaire results.\n\n' +
+  'Assessment: a four-point rubric on evidence, reasoning and clarity, returned in Google Classroom.';
+
 /**
  * A scratch draft in a scratch Doc, queued for Stage 1 like a real one, so
  * a built flow has something to match. runRegistrarMicrobatch releases it
@@ -444,12 +499,7 @@ function installRegistrarFlowFixture() {
   const ledger = _getOrCreateSheet(ss, CFG.REGISTRAR_LEDGER_SHEET);
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss');
   const doc = DocumentApp.create(RG_FIXTURE_PREFIX + stamp);
-  doc.getBody().setText(
-    'FIXTURE CURRICULUM DRAFT — planted by installRegistrarFlowFixture(). Disposable.\n\n' +
-    'Lesson: Ticket pricing for a minor-league ballpark. Students compare dynamic pricing with ' +
-    'fixed pricing, list three factors a promoter weighs (weather, opponent, giveaway night), and ' +
-    'write a two-paragraph recommendation for the general manager. Assessment: a short rubric on ' +
-    'evidence and clarity.');
+  doc.getBody().setText(RG_FIXTURE_DRAFT);
   doc.saveAndClose();
   const ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   ledger.appendRow([doc.getId(), RG_FIXTURE_PREFIX + stamp, 'QUEUED_FOR_COG_1', '', '', '', 0, '', ts, '']);

@@ -429,6 +429,29 @@ row and removed. `applyUnrebuildableReset()` clears a session's rows.
 | E | Of | Integer | Parts in the session |
 | F | Exchanges_JSON | String | The part's classified exchange array |
 
+### VectorItemInput / VECTOR_ITEM_RETURN / VECTOR_ITEM_LABELS
+
+The Vector Item Labeler flow (`25_VectorDocs.gs`, 2026-11-02).
+`VectorItemInput` (`Timestamp`, `Batch_ID`, `Item_Count`, `SourceText`,
+`Status` = READY) holds up to 40 recorded items per row as
+`[ITEM_ID] (SOURCE, date) text`; the flow adds `Returned_At`, `Batch_ID`,
+`Output_JSON` to `VECTOR_ITEM_RETURN`, and the harvest fills
+`Harvest_Status`, `Error`.
+
+| Col | Header (`VECTOR_ITEM_LABELS`) | Notes |
+|---|---|---|
+| A | Item_ID | `SOURCE:` + 16 hex (MD5 of source, session and text); stable |
+| B | Source | SETTLED, DECIDED, LESSON or OPEN |
+| C | Session | The session stem (`LOG-…`) |
+| D | Theme | A known vector theme, or NONE. The operator may edit it |
+| E | Kind | PRINCIPLE, CONSTRAINT, OPEN_QUESTION, HOUSEKEEPING, STALE, OTHER, or UNLABELED (given up after three batches). The operator may edit it |
+| F | Labeled_At | When the harvest wrote it |
+| G | Batch_ID | The batch it came from (empty for UNLABELED) |
+| H | Text | The item, for reading; the compiler copies from the source, not from here |
+
+A label row is never rewritten by the code. The `VECTOR_*` docs list the
+items labelled PRINCIPLE or CONSTRAINT.
+
 ### DECISION_REGISTER
 
 Deferred decisions, one row each (`22_BriefingDocs.gs`). The intake records
@@ -531,7 +554,7 @@ Active_Brain_Trust_System           ← root (CFG.SYSTEM_NAME)
 │   ├── 04.6_CURATOR_SILO
 │   ├── 04.7_RTP_SILO
 │   └── 04.8_COG_GRAVEYARD
-├── 05_Vector_Repository
+├── 05_Vector_Repository           ← VECTOR_<THEME> + VECTOR_GOVERNANCE, compiled from labelled items (25_VectorDocs.gs)
 ├── 06_CLASSROOM_ASSETS             ← Registrar's default routing target
 │   ├── 06.1_LESSON_PLANS
 │   ├── 06.2_STUDENT_FACING

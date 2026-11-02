@@ -610,13 +610,14 @@ const KOS_TRIGGER_HANDLERS = [
   'runRegistrarProcessor',
   'reportDeployVersion',
   'archiveFinishedStagingRows',
+  'runVectorItemLabeler',
 ];
 
 /**
  * Installs all background triggers for the v8.0 headless system.
  * Idempotent — removes existing KOS triggers before re-installing.
  *
- * Triggers installed (17 total — matches DEPLOYMENT_GUIDE.md's
+ * Triggers installed (18 total — matches DEPLOYMENT_GUIDE.md's
  * "Expected trigger list"):
  *   sensor1_scanInboundSessions   → every 5 min  (time-driven)
  *   runMatrixTurnstile            → every 5 min  (time-driven) — 10_Turnstile.gs
@@ -635,6 +636,7 @@ const KOS_TRIGGER_HANDLERS = [
  *   runRegistrarProcessor         → every 10 min (time-driven) — 11_Registrar_CogRelay.gs
  *   reportDeployVersion           → every 6 hours (time-driven) — 17_DeployVersionReport.gs
  *   archiveFinishedStagingRows    → daily 02:00  (time-driven) — 5_Error_And_Utilities.gs
+ *   runVectorItemLabeler          → hourly        (time-driven) — 25_VectorDocs.gs
  *
  * Note: Sensor 2 (COG_EXHAUST) is the doPost() web app endpoint —
  * it requires no installable trigger.
@@ -761,6 +763,14 @@ function setupAllTriggers() {
   tryInstall('archiveFinishedStagingRows', () =>
     ScriptApp.newTrigger('archiveFinishedStagingRows')
       .timeBased().atHour(2).everyDays(1).create()
+  );
+
+  // ── Vector Item Labeler — hourly (25_VectorDocs.gs) ──
+  // Harvests the labeler flow's answers, recompiles the VECTOR_* docs when a
+  // label arrived, and batches whatever is still unlabelled.
+  tryInstall('runVectorItemLabeler', () =>
+    ScriptApp.newTrigger('runVectorItemLabeler')
+      .timeBased().everyHours(1).create()
   );
 
   // ── Sensor 3 — onChange on BRAIN_TRUST_INDEX ───────────────

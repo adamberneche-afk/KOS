@@ -52,6 +52,7 @@ function syncStudioFlowBuildSpec() {
   _sfbsAppendClassifyFlow_(rows);
   _sfbsAppendReturnSurface_(rows);
   _sfbsAppendRegistrarFlows_(rows);
+  _sfbsAppendVectorItemFlow_(rows);
 
   let sheet = ss.getSheetByName(SFBS_TAB);
   if (!sheet) sheet = ss.insertSheet(SFBS_TAB);
@@ -174,6 +175,34 @@ function _sfbsAppendRegistrarFlows_(rows) {
   });
 }
 
+// The Vector Item Labeler (25_VectorDocs.gs): one input tab, one return
+// tab. Headers come from VI_INPUT_HEADERS / VI_RETURN_HEADERS, the arrays 25
+// reads the tabs by.
+function _sfbsAppendVectorItemFlow_(rows) {
+  const f = 'Vector Item Labeler';
+  rows.push([f, 'trigger', VI_INPUT_TAB, '', '', '25_VectorDocs.gs',
+    'Name the flow "KOS - Vector Item Labeler". Trigger on Status = READY, the only condition (meta/FLOW_DOCTRINE.md ' +
+    'rule 14). runVectorItemLabeler() creates the tab with its headers.']);
+  VI_INPUT_HEADERS.forEach(function (header, col) {
+    rows.push([f, 'read', VI_INPUT_TAB, col + 1, header, '25_VectorDocs.gs',
+      header === 'SourceText' ? 'The Gemini step\'s variable: @trigger.SourceText, the THEMES list and up to ' +
+        VI_BATCH_SIZE + ' ITEMS, one per line. No Drive or Docs step.' :
+      header === 'Batch_ID' ? 'Carry it, unchanged, into the return row\'s Batch_ID.' : '']);
+  });
+  rows.push([f, 'prompt', '', '', '', 'VECTOR_ITEM_LABEL_PROMPT.md',
+    'Bind the Ask Gemini step\'s System Prompt as two chips back to back: the VECTOR_ITEM_LABEL_SYSTEM_PROMPT ' +
+    'row\'s PromptText from the FlowPrompts tab (syncFlowPrompts()), then @trigger.SourceText. Nothing typed.']);
+  rows.push([f, 'trigger (write)', VI_RETURN_TAB, '', '', 'the flow\'s own last step',
+    'Native "add row to sheet": NOT a trigger to build. runVectorItemLabeler() harvests it (harvestVectorItemReturns()).']);
+  VI_RETURN_HEADERS.forEach(function (header, col) {
+    rows.push([f, 'write', VI_RETURN_TAB, col + 1, header,
+      col <= VI_RETURN.OUTPUT_JSON ? 'the Flow' : 'harvestVectorItemReturns(): leave EMPTY',
+      header === 'Batch_ID' ? '@trigger.Batch_ID, unchanged; checkVectorItemBinding() checks it.' :
+      header === 'Output_JSON' ? 'The Ask Gemini step\'s output.' :
+      header === 'Returned_At' ? 'The run\'s date and time (not @trigger.Timestamp).' : '']);
+  });
+}
+
 // Column-index maps carry their own constant names (TIMESTAMP, PAYLOAD_UID,
 // ...), not the sheet's real header text — these translate one to the
 // other, derived from the same _getOrCreateSheet H-map headers
@@ -205,6 +234,7 @@ function checkStudioFlowBuildSpec() {
   _sfbsAppendClassifyFlow_(expected);
   _sfbsAppendReturnSurface_(expected);
   _sfbsAppendRegistrarFlows_(expected);
+  _sfbsAppendVectorItemFlow_(expected);
 
   const actual = sheet.getDataRange().getValues();
   const keyOf = function (r) { return [r[0], r[1], r[2], r[3], r[4]].join('|'); };

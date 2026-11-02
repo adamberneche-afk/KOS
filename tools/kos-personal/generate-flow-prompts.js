@@ -50,6 +50,9 @@ const SOURCES = [
   // variable: Stage 2's three inputs arrive as one labelled SourceText cell.
   { mdFile: 'REGISTRAR_STAGE1_AUDITOR_PROMPT.md', constName: 'REGISTRAR_STAGE1_SYSTEM_PROMPT', trailerKey: 'single' },
   { mdFile: 'REGISTRAR_STAGE2_CURATOR_PROMPT.md', constName: 'REGISTRAR_STAGE2_SYSTEM_PROMPT', trailerKey: 'single' },
+  // The Vector Item Labeler (25_VectorDocs.gs): labels the operator's own
+  // items by theme and kind for the compiled VECTOR_* docs.
+  { mdFile: 'VECTOR_ITEM_LABEL_PROMPT.md', constName: 'VECTOR_ITEM_LABEL_SYSTEM_PROMPT', trailerKey: 'single' },
 ];
 
 const START_MARKER = '## 1. IDENTITY & SCOPE';
@@ -195,7 +198,7 @@ function syncFlowPrompts() {
 
   console.log('[FlowPrompts] wrote ' + (rows.length - 1) + ' row(s) to ' + FP_TAB + '.');
   console.log('[FlowPrompts] In Studio, for CURATOR_SYSTEM_PROMPT / VECTOR_CLASSIFY_SYSTEM_PROMPT / ' +
-    'REGISTRAR_STAGE1_SYSTEM_PROMPT / REGISTRAR_STAGE2_SYSTEM_PROMPT: ' +
+    'REGISTRAR_STAGE1_SYSTEM_PROMPT / REGISTRAR_STAGE2_SYSTEM_PROMPT / VECTOR_ITEM_LABEL_SYSTEM_PROMPT: ' +
     'add a Sheets "Get row"/"Look up row" step filtered on PromptName = <the row you want>, then ' +
     'build the Gemini step\\'s System Prompt field as exactly two chips back to back — that step\\'s ' +
     'PromptText output, then @trigger.SourceText — nothing typed in between.');

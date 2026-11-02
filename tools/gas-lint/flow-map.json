@@ -178,6 +178,16 @@
       "fixture": "installRegistrarFlowFixture",
       "_note": "D14, 2026-11-01: the Registrar's Stage 1 (Auditor) and Stage 2 (Curator) flows. runRegistrarMicrobatch (11) writes the flat input row at release through _rgMaterialize_ (24_RegistrarFlows.gs): RegistrarStage1Input / RegistrarStage2Input, the draft's text in SourceText, so no flow reads Drive. Each flow adds a row to REGISTRAR_RETURN; harvestRegistrarReturns runs inside runRegistrarProcessor (11), under its lock, before its sweep, rather than on a trigger of its own."
     },
+    "kos-personal:vector-item-labeler": {
+      "project": "kos-personal",
+      "materialize": "buildVectorItemBatches",
+      "harvest": "harvestVectorItemReturns",
+      "canary": "runVectorItemLabelCanary",
+      "binding": "checkVectorItemBinding",
+      "liveness": "checkVectorItemLiveness",
+      "fixture": "installVectorItemFixture",
+      "_note": "2026-11-02: labels the operator's own recorded items (settled and session decisions, lessons, open decisions) by theme and kind, by item ID only; 25_VectorDocs.gs compiles the VECTOR_* docs (the Registrar's Stage 2 standard) from the items labelled PRINCIPLE or CONSTRAINT, word for word. runVectorItemLabeler (hourly) harvests, recompiles and batches."
+    },
     "cas-ccps:family-mail": {
       "project": "cas-ccps:family-sentinel",
       "materialize": "scanFamilyMail",

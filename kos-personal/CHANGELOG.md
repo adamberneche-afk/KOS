@@ -1,5 +1,65 @@
 # KOS Changelog
 
+### The Registrar's flows built and verified; a fixture the grounding check reads (2026-11-02)
+
+The operator built both Registrar flows in Studio on 11-02 and ran the
+fixture through them: answered at each stage, both returns `HARVESTED`,
+the ledger row `COMPLETELY_ROUTED`, `checkRegistrarFlowBinding` ok. An
+earlier fixture, planted on 11-01 before the flows existed, was released
+four times and stopped at `CRITICAL_FAILURE`, so the stale reset and the
+retry limit are verified too.
+
+The run left one gap. Stage 1 answered with the schema's empty defaults,
+nothing from the draft, and the fixture's draft was shorter than
+`SR_GROUNDEDNESS_MIN_CHARS`, so the groundedness check was skipped and an
+answer that never saw the draft could not be told from one that read it.
+The fixture's draft (`RG_FIXTURE_DRAFT`) is longer now and carries what the
+Stage 1 schema should pick up (a lesson code, the Workspace tools, three
+timed parts), so the check runs on it: the 11-02 answer would bounce as
+`NOT_GROUNDED`, and an answer that read the draft passes. A test holds both.
+
+Found on the same run: Stage 2 said "no vector documents exist yet". The
+four `VECTOR_*` docs in `05_Vector_Repository` exist, but they are the
+templates setup made on 2026-05-18, never filled in, and nothing writes to
+them since the classify flow replaced the inference path that did
+(`_routeToVectorDocs` is only called from `_routeVectorWeightsInternal`).
+Stage 2 scores every draft 0.0 until they say something.
+
+**The fix, `25_VectorDocs.gs`, in two halves.** A first version gave each
+session's items to every theme `VECTOR_MATRIX` scored the session for; run
+against the live record it put a classroom layout under ARCHITECTURE and a
+food-drive flyer under UI, listed open questions as decisions, and lost
+whole sections to truncation. So:
+
+- **KOS - Vector Item Labeler**, a third Studio flow, labels every recorded
+  item (settled decisions with the operator's note, session decisions,
+  lessons, open decisions) with one theme and one kind (PRINCIPLE,
+  CONSTRAINT, OPEN_QUESTION, HOUSEKEEPING, STALE, OTHER), by item ID only:
+  it writes no text. `runVectorItemLabeler` (hourly) batches unlabelled
+  items, 40 to a row; the harvest accepts only IDs from the row's own batch
+  with a known theme and kind; an item sent three times with no label is
+  marked UNLABELED for the operator. A label row is never rewritten, so a
+  hand correction in `VECTOR_ITEM_LABELS` stays.
+- **The compiler** (no model call) lists in each theme doc, word for word
+  with date and session, the items labelled to it as PRINCIPLE or
+  CONSTRAINT, most authoritative first, then its open decisions marked as
+  no standard. A session decision matching an open or dropped register row
+  is set aside, one a settled decision covers is left to it, and the same
+  text from several sessions is listed once. Every section heading carries
+  its count, even when room runs out. Fixture sessions and empty pinned
+  facts are left out (the latter reported). `VECTOR_GOVERNANCE` holds the
+  approved SMPs. The operator's text above each doc's marker is never
+  touched.
+- **The primer** (24) gives each doc the room it needs, passing what a
+  short doc doesn't use to the long ones, and cuts at a line. Its room went
+  from 15,000 to 30,000 characters (still within the cell).
+- **Stage 2's prompt** reads the docs by authority, scores only conflict
+  with applicable items, names the item a score rests on, and says when no
+  standard applied rather than reporting 0.0 as on-standard.
+
+Against the live record (11-02): 240 items, labelled in 6 batches on the
+first hourly run.
+
 ### The Registrar's two Studio flows, Apps Script half (D14, 2026-11-01)
 
 The Registrar's triggers ran, but the two Studio flows they fed were never

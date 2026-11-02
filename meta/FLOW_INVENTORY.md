@@ -241,6 +241,28 @@ vocabulary).
 
 ---
 
+## kos-personal — the Registrar's two flows, and the Vector Item Labeler
+
+**The Registrar's Stage 1 and Stage 2 flows** (D14, `24_RegistrarFlows.gs`;
+Studio: "KOS - Registrar 1" / "KOS - Registrar 2"): `runRegistrarMicrobatch`
+writes the draft into `RegistrarStage1Input` / `RegistrarStage2Input`; each
+flow adds a row to `REGISTRAR_RETURN`; `runRegistrarProcessor` harvests it.
+**Built and verified 2026-11-02** (the fixture through both stages).
+Checks: `checkRegistrarFlowBinding()`, `checkRegistrarFlowLiveness()`.
+
+**The Vector Item Labeler** (`25_VectorDocs.gs`; Studio: "KOS - Vector Item
+Labeler", built from FlowBuildSpec's `Vector Item Labeler` rows): labels the
+operator's recorded items by theme and kind for the `VECTOR_*` docs, Stage
+2's standard. `runVectorItemLabeler` (hourly) writes `VectorItemInput`
+batches and harvests `VECTOR_ITEM_RETURN`. Checks:
+`checkVectorItemBinding()`, `checkVectorItemLiveness()` (no jobs → no
+batch yet; never completed → batches with no return; healthy → a return),
+`runVectorItemLabelCanary()`, `installVectorItemFixture()`;
+`checkVectorDocs()` reports items still awaiting a label. Code 2026-11-02;
+the flow is built by the operator after the push.
+
+---
+
 ## leader-hub — 6 AI-drafting Flow types
 
 **What it does:** every AI-drafting feature (Brag Board email, Email

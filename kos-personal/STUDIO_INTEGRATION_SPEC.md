@@ -17,6 +17,13 @@
 > `harvestRegistrarReturns()` (`24_RegistrarFlows.gs`). The FlowBuildSpec
 > tab's `Registrar` rows have every tab, column and binding; this document's
 > steps below are the session-log flows'.
+>
+> **The Vector Item Labeler (2026-11-02)** is the same shape again:
+> `VectorItemInput` → one Ask Gemini step (`VECTOR_ITEM_LABEL_SYSTEM_PROMPT`
+> from FlowPrompts, then `@trigger.SourceText`) → an add-row into
+> `VECTOR_ITEM_RETURN`, harvested by `runVectorItemLabeler()`
+> (`25_VectorDocs.gs`). FlowBuildSpec's `Vector Item Labeler` rows have the
+> bindings.
 
 > **✅ STATUS (2026-09-08): both Flows built from this spec and verified
 > end to end** — real Studio returns, real `SESSION_LOG`/`VECTOR_MATRIX`

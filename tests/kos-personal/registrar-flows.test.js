@@ -18,7 +18,7 @@ const FILES = ['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '11_Registr
 const EXPOSE = ['runRegistrarMicrobatch', 'runRegistrarProcessor', 'harvestRegistrarReturns',
   'installRegistrarFlowFixture', 'removeRegistrarFlowFixtures', 'checkRegistrarFlowBinding',
   'checkRegistrarFlowLiveness', 'runRegistrarFlowCanary', 'CFG', 'RG_STAGE1_TAB', 'RG_STAGE2_TAB',
-  'RG_RETURN_TAB', 'RG_INPUT_HEADERS', 'RG_RETURN_HEADERS', 'RG_CELL_MAX'];
+  'RG_RETURN_TAB', 'RG_INPUT_HEADERS', 'RG_RETURN_HEADERS', 'RG_CELL_MAX', 'SR_GROUNDEDNESS_MIN_CHARS'];
 
 const STAGE1_OK = JSON.stringify({ doc_uid: '', intervention_triage: { human_intervention_required: false },
   architect_data: { topic: 'ticket pricing for a ballpark promoter' }, muse_data: {}, developer_data: {},
@@ -122,6 +122,36 @@ test('a Stage 1 answer that shares nothing with the draft bounces it back, count
   assert.equal(r[2], 'QUEUED_FOR_COG_1');
   assert.equal(r[6], 1);
   assert.match(r[7], /not grounded/);
+});
+
+// The first live fixture run (11-02) returned this: the schema with empty
+// defaults, nothing from the draft. The fixture was then under
+// SR_GROUNDEDNESS_MIN_CHARS, so the check was skipped and it was harvested.
+const STAGE1_EMPTY_DEFAULTS = JSON.stringify({ doc_uid: '',
+  intervention_triage: { human_intervention_required: false, target_entity: 'Student', friction_source: '', pedagogical_gap_identified: '' },
+  architect_data: { structural_dependencies: [], external_apis_requested: [], data_models_defined: false, complexity_score: 1 },
+  muse_data: { student_agency_level: 'moderate', relational_flow_metrics: [], ux_friction_points: [], rigid_constraints_detected: [] },
+  developer_data: { required_workspace_apis: [], state_change_triggers: [], idempotency_risks: [], code_formatting_dod: true },
+  aligner_data: { canonical_laws_cited: [], pedagogical_dissonance_flags: [], vector_weights: {} },
+  rtp_data: { temporal_urgency: 'normal', suggested_rid_lead: '', hitl_firewall_status: true } });
+
+test('the fixture is long enough to be grounding-checked: empty defaults bounce, an answer that read it passes', () => {
+  const env = load();
+  const { fileId } = env.x.installRegistrarFlowFixture();
+  env.x.runRegistrarMicrobatch();
+  const [first] = inputRows(env, env.x.RG_STAGE1_TAB);
+  assert.ok(first[3].length >= env.x.SR_GROUNDEDNESS_MIN_CHARS, 'under the minimum, the check is skipped');
+  flowAnswers(env, first[1], STAGE1_EMPTY_DEFAULTS);
+  assert.equal(env.x.harvestRegistrarReturns().notGrounded, 1);
+  assert.equal(ledgerRow(env, fileId)[2], 'QUEUED_FOR_COG_1');
+
+  env.x.runRegistrarMicrobatch();
+  const second = inputRows(env, env.x.RG_STAGE1_TAB)[1];
+  const read = JSON.parse(STAGE1_EMPTY_DEFAULTS);
+  read.doc_uid = 'BALLPARK-L07';
+  read.developer_data.required_workspace_apis = ['Google Sheets', 'Google Forms', 'Google Classroom'];
+  flowAnswers(env, second[1], JSON.stringify(read));
+  assert.equal(env.x.harvestRegistrarReturns().harvested, 1);
 });
 
 test('an answer saying it could not read its source is not grounded, however short', () => {
