@@ -45,6 +45,9 @@ const RULES = [
   [/Whether reflections are required/, 'PEDAGOGY', 'OPEN_QUESTION'],
   [/Grade warm-ups for points each week/, 'PEDAGOGY', 'PRINCIPLE'],
   [/Exit tickets/, 'PEDAGOGY', 'PRINCIPLE'],
+  [/Assigned Jordan Rivera/, 'RELATIONAL', 'PERSONAL'],
+  // A labeler miss: a named person labelled PRINCIPLE. The review list catches it.
+  [/Placed Marisol Okafor/, 'RELATIONAL', 'PRINCIPLE'],
 ];
 const labelFor = (line) => {
   const r = RULES.find(([re]) => re.test(line));
@@ -83,6 +86,9 @@ function setup() {
   actions.appendRow(['LOG-ccc_CH01', '2026-10-06 09:00:00', 'DECISION',
     'Grade warm-ups for points each week', 'operator', 'NO']);
   actions.appendRow(['LOG-ccc_CH02', '2026-10-07 09:00:00', 'DECISION', 'Warm-ups stay under five minutes', 'operator', 'NO']);
+  actions.appendRow(['LOG-eee_CH01', '2026-10-03 09:00:00', 'DECISION', 'Assigned Jordan Rivera as President', 'operator', 'NO']);
+  actions.appendRow(['LOG-eee_CH01', '2026-10-03 09:00:00', 'DECISION',
+    'Placed Marisol Okafor in a leadership role to build a multi-year pipeline', 'operator', 'NO']);
 
   pivots.getBody().appendParagraph('[Session: 2026-10-02 10:00:00 | LOG-aaa_CH02]');
   pivots.getBody().appendListItem('Short prompts get more answers than long ones');
@@ -162,7 +168,7 @@ test('every recorded item is batched once by ID; fixtures and DROPPED decisions 
   const t = setup();
   const b = t.x.buildVectorItemBatches();
   const text = t.rows(t.x.VI_INPUT_TAB).map((r) => r[3]).join('\n');
-  assert.equal(b.items, 9);
+  assert.equal(b.items, 11);
   assert.match(text, /\[SETTLED:[0-9a-f]{16}\] \(SETTLED, 2026-10-11\) Warm-ups stay under five minutes — Resolved: Confirmed/);
   assert.match(text, /\[OPEN:[0-9a-f]{16}\] \(OPEN, 2026-10-02\) Whether reflections are required/);
   assert.match(text, /\[LESSON:[0-9a-f]{16}\] \(LESSON, 2026-10-02\) Short prompts/);
@@ -190,7 +196,7 @@ test('the harvest takes only IDs from the batch, with a known theme and kind, an
   assert.deepEqual([h.harvested, h.labels, h.rejected, h.badId, h.notJson, h.notGrounded], [1, 1, 3, 1, 1, 1]);
   const status = t.rows(t.x.VI_RETURN_TAB).map((r) => r[3]);
   assert.deepEqual(status, ['HARVESTED', 'BAD_BATCH_ID', 'NOT_JSON', 'NOT_GROUNDED']);
-  assert.match(t.rows(t.x.VI_RETURN_TAB)[0][4], /labelled 1; rejected 3; missing 8/);
+  assert.match(t.rows(t.x.VI_RETURN_TAB)[0][4], /labelled 1; rejected 3; missing 10/);
 
   // The operator corrects the one label by hand; a later answer for the same item changes nothing.
   t.ss.getSheetByName(t.x.VI_LABEL_TAB).getRange(2, 5).setValue('HOUSEKEEPING');
@@ -204,16 +210,16 @@ test('the harvest takes only IDs from the batch, with a known theme and kind, an
 test('an item sent 3 times with no label is given up on, for the operator to label by hand', () => {
   const t = setup();
   for (let i = 0; i < t.x.VI_MAX_ATTEMPTS; i++) {
-    assert.equal(t.x.buildVectorItemBatches().items, 9, 'attempt ' + (i + 1));
+    assert.equal(t.x.buildVectorItemBatches().items, 11, 'attempt ' + (i + 1));
     // No answer came, and the wait has passed: the next run sends them again.
     const s = t.ss.getSheetByName(t.x.VI_INPUT_TAB);
     for (let r = 2; r <= s.getLastRow(); r++) s.getRange(r, 1).setValue(new Date('2026-01-01T00:00:00'));
   }
   const b = t.x.buildVectorItemBatches();
-  assert.deepEqual([b.givenUp, b.items], [9, 0]);
+  assert.deepEqual([b.givenUp, b.items], [11, 0]);
   assert.ok(t.rows(t.x.VI_LABEL_TAB).every((r) => r[4] === 'UNLABELED' && r[3] === 'NONE'));
   t.x.compileVectorDocs_();
-  assert.match(t.x.checkVectorDocs().notes.join(' '), /9 item\(s\) were sent 3 times with no label/);
+  assert.match(t.x.checkVectorDocs().notes.join(' '), /11 item\(s\) were sent 3 times with no label/);
 });
 
 test('a theme doc holds only its PRINCIPLE and CONSTRAINT items, word for word, most authoritative first', () => {
@@ -261,7 +267,7 @@ test('VECTOR_GOVERNANCE carries the approved SMPs only', () => {
 test('items still awaiting a label are counted in the doc, not guessed at', () => {
   const t = setup();
   t.x.compileVectorDocs_();
-  assert.match(t.doc('VECTOR_PEDAGOGY').getBody().getText(), /9 of the record's items still await a label/);
+  assert.match(t.doc('VECTOR_PEDAGOGY').getBody().getText(), /11 of the record's items still await a label/);
 });
 
 test('the operator\'s own text above the marker is never touched; only the compiled part changes', () => {
@@ -345,4 +351,15 @@ test('the canary passes with the flow stubbed, says so, and leaves no rows behin
   assert.equal(c.stubbed, true);
   assert.equal(t.rows(t.x.VI_INPUT_TAB).length, 0);
   assert.equal(t.rows(t.x.VI_RETURN_TAB).length, 0);
+});
+
+test('an item naming a person is PERSONAL and never a standard; a labeler miss is listed for review', () => {
+  const t = setup();
+  labelAndCompile(t);
+  const rel = t.doc('VECTOR_RELATIONAL').getBody().getText();
+  assert.doesNotMatch(rel, /Jordan Rivera/, 'PERSONAL is never compiled');
+  assert.match(rel, /Placed Marisol Okafor/, 'the miss is compiled as labelled...');
+  const notes = t.x.checkVectorDocs().notes.join(' ');
+  assert.match(notes, /VECTOR_RELATIONAL DECIDED:[0-9a-f]{16}: "Placed Marisol"/, '...and listed for the operator to read');
+  assert.doesNotMatch(notes, /Seven Bridges|Apps Script/);
 });

@@ -719,7 +719,10 @@ test('--verify: all current exits 0; it refuses flags that push or move anything
 const HUB_INSTALL_STUB = `
 import fs from 'fs';
 fs.writeFileSync(process.env.HUB_STUB_LOG, JSON.stringify({ url: process.argv[2], token: process.env.ADMIN_SETTINGS_TOKEN }));
-console.log('Installed: pollSpokesDebug.');
+if (!process.env.HUB_STUB_SILENT) {
+  console.log('Installed: pollSpokesDebug.');
+  console.log('Triggers now present: ' + (process.env.HUB_STUB_PRESENT || 'runHarvestReviewResults, pollSpokesDebug, pollSpokesHunt') + '.');
+}
 process.exit(Number(process.env.HUB_STUB_EXIT || 0));
 `;
 
@@ -783,6 +786,21 @@ test('--hub: a failed trigger install fails the run, though the deploy itself la
   assert.equal(r.status, 1, r.out);
   assert.match(r.out, /mothership-hub\s+def5678\s+FAILED: v4 -> 1\/1.*trigger install failed/);
   assert.equal(w.calls('update-deployment').length, 1);
+});
+
+test('--hub: a trigger script that exits cleanly but reports nothing fails the run (the 2026-11-02 Windows case)', () => {
+  const w = hubWorld();
+  const r = w.hubRun(['--hub', w.hub, '--only', 'mothership-hub'], { HUB_STUB_SILENT: '1' });
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /exited without reporting the hub's triggers/);
+  assert.match(r.out, /mothership-hub\s+def5678\s+FAILED: .*triggers not confirmed/);
+});
+
+test('--hub: a trigger list without the spoke poller fails the run', () => {
+  const w = hubWorld();
+  const r = w.hubRun(['--hub', w.hub, '--only', 'mothership-hub'], { HUB_STUB_PRESENT: 'runHarvestReviewResults' });
+  assert.equal(r.status, 1, r.out);
+  assert.match(r.out, /don't include pollSpokesDebug/);
 });
 
 test('--hub refuses --head-only (the hub\'s triggers run what is pushed) and the read-only modes', () => {

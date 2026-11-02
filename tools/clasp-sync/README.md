@@ -355,7 +355,11 @@ deploy-drift check expects exactly that commit. `--hub` refuses
 `--head-only`, `--rollback-to`, `--verify` and `--instructions`; above all
 `--head-only`, because the hub's triggers run whatever is pushed, so a test
 push would be a production push. A failed trigger install fails the run
-even though the deploy landed, and says so.
+even though the deploy landed, and says so. So does a script that exits
+cleanly without printing `Triggers now present:` with `pollSpokesDebug`
+in it: on 2026-11-02 Mothership's script never ran on Windows (its
+main-module check compares a `file:///C:/` URL with a `C:\` path) and the
+run still said "triggers ok".
 
 ### --instructions — the KOS Project instructions, links filled in
 
