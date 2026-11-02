@@ -77,7 +77,7 @@ const VI_INPUT = { TIMESTAMP: 0, BATCH_ID: 1, ITEM_COUNT: 2, SOURCE_TEXT: 3, STA
 const VI_RETURN = { RETURNED_AT: 0, BATCH_ID: 1, OUTPUT_JSON: 2, HARVEST_STATUS: 3, ERROR: 4 };
 const VI_LABEL = { ID: 0, SOURCE: 1, SESSION: 2, THEME: 3, KIND: 4, AT: 5, BATCH: 6, TEXT: 7 };
 
-const VI_KINDS = ['PRINCIPLE', 'CONSTRAINT', 'OPEN_QUESTION', 'HOUSEKEEPING', 'STALE', 'OTHER'];
+const VI_KINDS = ['PERSONAL', 'PRINCIPLE', 'CONSTRAINT', 'OPEN_QUESTION', 'HOUSEKEEPING', 'STALE', 'OTHER'];
 const VI_STANDARD_KINDS = ['PRINCIPLE', 'CONSTRAINT'];
 const VI_GIVEN_UP = 'UNLABELED'; // after VI_MAX_ATTEMPTS batches with no label
 const VI_BATCH_SIZE = 40;
@@ -564,6 +564,30 @@ const VD_SECTIONS = [
 ];
 const VD_SECTION_OF = { SETTLED: 'settled', DECIDED: 'decided', LESSON: 'lessons', OPEN: 'open' };
 
+// Two capitalized words in a row, the first of them not a word that
+// usually starts a tool, product or protocol name: "Lennox Taylor" is
+// listed, "Apps Script" and "Seven Bridges" are not. For review only.
+const VD_NAME_REVIEW_MAX = 60;
+const VD_NOT_A_NAME = ['Google', 'Apps', 'Workspace', 'Claude', 'Gemini', 'Core', 'Seven', 'Web', 'Morning', 'Governance',
+  'Vector', 'Central', 'Ledger', 'Drop', 'Custom', 'Cold', 'Warm', 'Master', 'Studio', 'Admin', 'Evidence', 'Calibration',
+  'The', 'Rule', 'Resolution', 'Genesis', 'Pre', 'Pointer', 'Socratic', 'Polyform', 'Single', 'Control', 'Free', 'Unique',
+  'Unified', 'Supreme', 'Bifurcated', 'Idempotent', 'Integration', 'Implemented', 'Implement', 'Adopted', 'Adopt',
+  'Approve', 'Commit', 'Establish', 'Recognized', 'Replaced', 'Applied', 'Multi', 'Micro', 'Dual', 'Three', 'Red'];
+function _vdPossibleName_(text) {
+  const re = /\b([A-Z][a-z]+(?:['’-][A-Za-z]+)?)\s+([A-Z][a-z]+(?:['’-][A-Za-z]+)?)\b/g;
+  let m;
+  while ((m = re.exec(String(text || ''))) !== null) {
+    if (VD_NOT_A_NAME.indexOf(m[1].split(/['’-]/)[0]) === -1) return m[1] + ' ' + m[2];
+  }
+  return '';
+}
+
+// Open decisions are listed as no standard, so only the other sections
+// need a second look.
+function _vdIsStandardEntry_(d, e) {
+  return d.open.indexOf(e) === -1;
+}
+
 /** Core facts the operator pinned, with an empty fact reported rather than shown. */
 function _vdPinned_(ss) {
   const ok = [];
@@ -589,7 +613,8 @@ function _vdCollect_(ss, themes) {
   themes.forEach(function (t) {
     docs['VECTOR_' + t] = { theme: t, pinned: [], settled: [], decided: [], lessons: [], open: [], sessions: {} };
   });
-  const stats = { items: record.items.length, awaiting: 0, givenUp: 0, notStandard: 0, setAside: 0, duplicates: 0, emptyPinned: [] };
+  const stats = { items: record.items.length, awaiting: 0, givenUp: 0, notStandard: 0, setAside: 0, duplicates: 0,
+    emptyPinned: [], nameReview: [] };
   const pinned = _vdPinned_(ss);
   stats.emptyPinned = pinned.empty;
   pinned.ok.forEach(function (f) {
@@ -611,7 +636,7 @@ function _vdCollect_(ss, themes) {
       return;
     }
     if (it.source === 'SETTLED') settledTexts.push(it.text);
-    d[section].push({ t: it.t, date: it.date, session: it.session, raw: it.text,
+    d[section].push({ id: it.id, t: it.t, date: it.date, session: it.session, raw: it.text,
       text: _vdClip_(it.text) + ' (' + it.date + ', ' + it.session + ')' });
     d.sessions[it.session] = true;
   });
@@ -637,6 +662,13 @@ function _vdCollect_(ss, themes) {
     });
     kept.forEach(function (e) {
       if (e.also) e.text += ' (also recorded in ' + e.also + ' other session' + (e.also === 1 ? '' : 's') + ')';
+      // Not a filter: on the live record a name pattern matched 179 of 453
+      // items, nearly all of them tools and protocols. The labeler's
+      // PERSONAL rule keeps names out; this lists what to read once.
+      if (e.id && _vdIsStandardEntry_(d, e)) {
+        const pair = _vdPossibleName_(e.raw);
+        if (pair && stats.nameReview.length < VD_NAME_REVIEW_MAX) stats.nameReview.push(name + ' ' + e.id + ': "' + pair + '"');
+      }
     });
   });
   return { docs: docs, stats: stats };
@@ -818,6 +850,8 @@ function checkVectorDocs() {
   if (s && s.awaiting) report.notes.push(s.awaiting + ' item(s) await a label. If that does not fall, check checkVectorItemLiveness().');
   if (s && s.givenUp) report.notes.push(s.givenUp + ' item(s) were sent ' + VI_MAX_ATTEMPTS + ' times with no label: Kind ' +
     VI_GIVEN_UP + ' in ' + VI_LABEL_TAB + '. Label them there by hand.');
+  if (s && s.nameReview && s.nameReview.length) report.notes.push('Read these compiled item(s) once: each has what may be ' +
+    'a person\'s name. If one does name a person, set its Kind to PERSONAL in ' + VI_LABEL_TAB + ': ' + s.nameReview.join('; '));
   if (s && s.emptyPinned && s.emptyPinned.length) report.notes.push('Pinned core fact(s) with no text, left out: ' +
     s.emptyPinned.join(', ') + '. Write the fact in INCUBATOR\'s Core_Fact column.');
   const folderId = props.getProperty('ID_05_VECTOR_REPOSITORY');

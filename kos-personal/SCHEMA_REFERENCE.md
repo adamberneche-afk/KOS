@@ -444,7 +444,7 @@ The Vector Item Labeler flow (`25_VectorDocs.gs`, 2026-11-02).
 | B | Source | SETTLED, DECIDED, LESSON or OPEN |
 | C | Session | The session stem (`LOG-…`) |
 | D | Theme | A known vector theme, or NONE. The operator may edit it |
-| E | Kind | PRINCIPLE, CONSTRAINT, OPEN_QUESTION, HOUSEKEEPING, STALE, OTHER, or UNLABELED (given up after three batches). The operator may edit it |
+| E | Kind | PERSONAL (names a person or is private; never a standard), PRINCIPLE, CONSTRAINT, OPEN_QUESTION, HOUSEKEEPING, STALE, OTHER, or UNLABELED (given up after three batches). The operator may edit it |
 | F | Labeled_At | When the harvest wrote it |
 | G | Batch_ID | The batch it came from (empty for UNLABELED) |
 | H | Text | The item, for reading; the compiler copies from the source, not from here |

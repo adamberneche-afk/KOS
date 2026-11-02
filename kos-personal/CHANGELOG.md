@@ -1,5 +1,23 @@
 # KOS Changelog
 
+### A named person never becomes a standard (2026-11-02)
+
+The live record the Vector Item Labeler reads holds student names, one with
+a note about a student's anxiety, and items about the operator's home and
+family. Nothing said what the labeler should do with them, so a lesson
+naming a student could have been labelled PRINCIPLE and copied into a
+`VECTOR_*` doc that goes to Gemini with every curriculum draft. The
+operator turned the flow off before it labelled anything.
+
+- **PERSONAL**, a new kind and the labeler's first rule: an item that names
+  a person, or is about private life, is PERSONAL even when it also states
+  a principle. PERSONAL is never a standard.
+- **A review list, not a filter.** A name pattern run over the live record
+  matched 179 of 453 items, nearly all tools and protocols ("Apps Script",
+  "Seven Bridges"), so it can't decide alone. `checkVectorDocs` lists the
+  compiled items with a possible name, for the operator to read once; one
+  that names a person gets Kind PERSONAL in `VECTOR_ITEM_LABELS` by hand.
+
 ### The Registrar's flows built and verified; a fixture the grounding check reads (2026-11-02)
 
 The operator built both Registrar flows in Studio on 11-02 and ran the

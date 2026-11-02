@@ -1358,6 +1358,18 @@ function invokeHub(ctx, hubRoot) {
     warn('  trigger install failed (the deploy itself succeeded)');
     return `FAILED: ${result}; trigger install failed`;
   }
+  // A clean exit is not proof. On 2026-11-02 the script's own "am I the main
+  // module?" check never matched on Windows, so it exited 0 having called
+  // nothing, and the spoke poller's triggers were never installed. The
+  // script prints the hub's trigger list when it really ran; require it.
+  const present = /Triggers now present: ([^\r\n]*)/.exec(r.stdout || '');
+  if (!present || present[1].indexOf('pollSpokesDebug') === -1) {
+    warn(present
+      ? `  the hub answered, but its triggers don't include pollSpokesDebug: ${present[1]}`
+      : '  the trigger script exited without reporting the hub\'s triggers: it may not have run at all. ' +
+        'In the hub\'s editor, run installSpokePollerTriggers(), then check the Triggers page.');
+    return `FAILED: ${result}; triggers not confirmed`;
+  }
   return `${result}; triggers ok`;
 }
 

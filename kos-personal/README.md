@@ -401,8 +401,9 @@ original design had each flow read Drive and write the ledger itself):
 - **The `VECTOR_*` docs** (`25_VectorDocs.gs`, 2026-11-02) are built from
   the operator's own record: settled decisions with their note, session
   decisions, lessons, open decisions. A third flow, **KOS - Vector Item
-  Labeler**, labels each item by ID with a theme and a kind (PRINCIPLE,
-  CONSTRAINT, OPEN_QUESTION, HOUSEKEEPING, STALE, OTHER) and writes no
+  Labeler**, labels each item by ID with a theme and a kind (PERSONAL,
+  PRINCIPLE, CONSTRAINT, OPEN_QUESTION, HOUSEKEEPING, STALE, OTHER; an
+  item naming a person is PERSONAL whatever else it says) and writes no
   text; `runVectorItemLabeler` (hourly) batches unlabelled items into
   `VectorItemInput`, harvests `VECTOR_ITEM_RETURN` into
   `VECTOR_ITEM_LABELS` (only IDs from the batch; a label row is never
@@ -414,7 +415,8 @@ original design had each flow read Drive and write the ledger itself):
   one is set aside; repeats are listed once. `VECTOR_GOVERNANCE` holds the
   approved SMPs. The operator's own principles go above each doc's marker
   and are never touched. `checkVectorDocs()` reports the docs, items
-  awaiting a label and empty pinned facts. A file that isn't a Google Doc
+  awaiting a label, empty pinned facts, and compiled items that may name a
+  person (a list to read once, not a filter). A file that isn't a Google Doc
   fails at once with what to do; a Doc that won't open this minute waits.
 - **The flow.** Trigger on its own tab's `Status = READY`; one Ask Gemini
   step whose System Prompt is the `REGISTRAR_STAGE1_SYSTEM_PROMPT` /
