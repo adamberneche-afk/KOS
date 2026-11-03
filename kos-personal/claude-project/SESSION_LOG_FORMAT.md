@@ -41,6 +41,8 @@ Deferred decisions:
 - {question still open} (owner: {who}; blocking: {what it blocks})
 Next steps:
 - {action} (owner: {who}; by: {date or "unscheduled"})
+Code review:
+- {item from KOS_CODE_REPLY}: {agree | disagree}: {one sentence, with the source checked} — or "none"
 Alignment:
 - Status at close: {GREEN | YELLOW | RED}
 - Thresholds crossed: {one line per mandatory pause, "{A|B|C|D}: {PROCEED | REDESIGN | DEFER} — {what}", or "none"}
@@ -60,5 +62,8 @@ Alignment:
   "Thresholds crossed". The pipeline counts the literal `PROCEED` there for
   the moral debt counter (SMP-019); don't write PROCEED anywhere else in
   that block.
+- **Code review answers each Pushback or Needs-you item in Claude Code's
+  reply once.** One round: anything still disputed goes to the operator,
+  not to another round.
 - **No email addresses, account IDs or passwords.**
 - **Plain text only.** No JSON, no tables; markdown bullets are fine.

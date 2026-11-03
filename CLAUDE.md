@@ -44,6 +44,46 @@ students, family members or colleagues; family or conference details;
 Drive IDs or links; anything from the operator's private life. The logs
 are personal records and this repo may be public.
 
+## Answering the RTP: `KOS_CODE_REPLY`
+
+After reading new logs, rewrite the Google Doc `KOS_CODE_REPLY` in the
+operator's Drive (one doc, rewritten in place; find it by name, never
+record its ID). It is a view of the plan section, never edited by hand:
+
+    Claude Code's reply — logs read through <date> — written <date>
+    Accepted <n> · Pushback <n> · Needs you <n>
+    PUSHBACK
+    - L3 (11-02 rollout count): <one sentence, citing the code>
+    NEEDS YOU
+    - L9 (#19): <the decision, as a question>
+    ACCEPTED
+    - L1 (11-03 #8 release checks): <what will be built; PR when there is one>
+
+The RTP reads the counts at `start`, opens Pushback and Needs you only,
+and answers each once in its closeout's `Code review:`. Read those answers
+with the next log. **One round per item:** if the RTP still disagrees,
+the item moves to Needs you with both positions in a sentence each; never
+argue a second round. Only a disputed item waits; the rest proceeds.
+
+## The weekly review (Sundays)
+
+A scheduled Claude Code run on Sunday evening rewrites the Google Doc
+`KOS_WEEKLY_REVIEW`; `sendWeeklyReview()` (kos-personal, 26) mails it on
+Monday at 06:00, or mails that it is missing. It exists so the loop is
+never silent: accepted items are listed too. One page, plain text:
+
+    KOS weekly review — week of <Monday's date>
+    THE LOOP: logs read <n> (<dates>); items Accepted <n>, Pushback <n>, Needs you <n>
+    NEEDS YOU (each as a question)
+    DECIDED WITHOUT YOU THIS WEEK (each accepted item, one line)
+    BUILT: PRs merged this week, one line each; what is merged but not pushed
+    PUSHBACK STILL OPEN, with both positions
+    RTP HARNESS NOTES added this week
+    NEXT WEEK: the plan's window for the coming week, from the plan
+
+Same rules as the plan: no log text, no names, no Drive IDs. If no log
+arrived this week, say so in THE LOOP line.
+
 ## The logs as data about the RTP itself
 
 The logs also show how the RTP harness behaves

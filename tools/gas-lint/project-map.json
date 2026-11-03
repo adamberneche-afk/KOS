@@ -27,7 +27,8 @@
       "kos-personal/22_BriefingDocs.gs",
       "kos-personal/23_MoralDebt.gs",
       "kos-personal/24_RegistrarFlows.gs",
-      "kos-personal/25_VectorDocs.gs"
+      "kos-personal/25_VectorDocs.gs",
+      "kos-personal/26_WeeklyReview.gs"
     ],
     "html": [
       "kos-personal/8_WebApp_UI.html"
