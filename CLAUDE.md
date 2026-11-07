@@ -124,13 +124,21 @@ text, so a log can't be checked against itself. Two checks:
   the exchanges behind it.
 - **(b) A random 10%, drawn by Apps Script** (`27_FidelitySample.gs`) when
   the log is ingested, after the RTP wrote it. A drawn log is a
-  `FIDELITY_AUDIT` row in BRAIN_TRUST_INDEX; the operator pastes the
-  session's full chat into a Doc named `TRANSCRIPT — <Session_UID>` in
-  `03.6_SESSION_TRANSCRIPTS`, and Apps Script marks it RECEIVED. Compare
-  each RECEIVED transcript with its log: what the log omits, softens or
-  gets wrong. Then, through the Sheets connector, write only that row's
-  `Compared_At`, `Result` (`MATCHES`, or `DIFFERS: <n>`) and Status
-  `COMPARED`. Never write any other cell, row or tab.
+  `FIDELITY_AUDIT` row in BRAIN_TRUST_INDEX. The operator pastes the whole
+  chat with the log at its end, so the transcript is the raw copy,
+  `[RAW]_<Session_UID>` in `03.4_RAW_EXHAUST` (the row's
+  `Transcript_Name`), and the row starts RECEIVED. Only a log pasted
+  without its chat asks for a Doc named `TRANSCRIPT — <Session_UID>` in
+  `03.6_SESSION_TRANSCRIPTS`, and turns RECEIVED when it arrives. For each
+  RECEIVED row, first list the log's exchanges with no chat behind them
+  (a paste can skip the middle of a chat), then compare the rest: what the
+  log omits, softens or gets wrong. Then, through the Sheets connector,
+  write only that row's `Compared_At`, `Result` (`MATCHES`,
+  `DIFFERS: <n>`, and `PARTIAL: <k> of <n> exchanges covered` when chat
+  is missing, e.g. `PARTIAL: 6 of 48 exchanges covered; MATCHES`) and
+  Status `COMPARED`. Never write any other cell, row or tab. A partial
+  copy is a finding too: the closeout for the uncovered exchanges went
+  unchecked.
 
 Findings from either go under "RTP harness notes" (no log or transcript
 text in the repo); a material one is also a Needs-you line. The daily

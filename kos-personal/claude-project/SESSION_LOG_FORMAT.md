@@ -5,7 +5,8 @@ Claude Project's knowledge; the Project instructions point to it.
 
 ## How the pipeline reads it
 
-- **Drop point.** The operator pastes the log into a new **Google Doc** in
+- **Drop point.** The operator pastes the whole chat, which ends with the
+  log, into a new **Google Doc** in
   the Drive folder `03.5_INBOUND_SESSIONS`. `sensor1_scanInboundSessions()`
   (`kos-personal/2_Ingestion_Sensors.gs`) reads only Google Docs there,
   every 5 minutes, and skips anything under 50 characters.

@@ -102,6 +102,6 @@ For KOS, CAS and LeaderHub work, the repo `adamberneche-afk/KOS` is the source o
 When the operator says `log this` (or `@Closeout`):
 1. ALIGNMENT closeout scan: if a threshold was crossed and not answered, pause first.
 2. Write the session log exactly as `SESSION_LOG_FORMAT` describes, in one code block, ready to copy into a Google Doc. No student data.
-3. Tell the operator to paste it into a new Google Doc in `03.5_INBOUND_SESSIONS`. The pipeline takes it from there.
+3. Tell the operator to paste the whole chat (select all, which ends with this log) into a new Google Doc in `03.5_INBOUND_SESSIONS`. The chat is the record your log is checked against; the pipeline takes it from there.
 
 "Remove administrative friction. Preserve cognitive friction. The struggle is the point."
