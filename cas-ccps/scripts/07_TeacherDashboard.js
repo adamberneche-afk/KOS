@@ -2279,6 +2279,9 @@ header h1{font-size:18px;font-weight:500;flex:1}
 header button:not(#refresh-btn):not(#new-lesson-btn){background:white;color:#1557b0;border:1px solid white;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;min-height:34px;cursor:pointer;font-family:inherit}
 header button:not(#refresh-btn):not(#new-lesson-btn):hover{background:#e8f0fe}
 header button:focus-visible,header select:focus-visible{outline:2px solid white;outline-offset:2px}
+/* Touch screens (2026-11-07): the header's buttons and menus at least 44px
+   tall. !important because #refresh-btn and others set their own height. */
+@media (pointer: coarse){header button,header select{min-height:44px !important}}
 #term-filter option{color:#202124;background:#fff}
 #refresh-btn:hover{background:rgba(0,0,0,0.35)}
 #term-filter{padding:6px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:13px;margin-left:0}
@@ -2343,7 +2346,10 @@ button[data-pr-copy="subject"]{background:#fff;color:#1557b0;border:1px solid #1
 .setting-savebar .st-yes{background:#1557b0;color:#fff}
 .setting-savebar .st-yes[disabled]{opacity:.5;cursor:default}
 .setting-log{font-size:12.5px;margin-top:8px}
-.name-link{background:none;border:none;padding:0;font:inherit;color:#1557b0;cursor:pointer;text-align:left}
+/* A student's name opens their page. The padding gives a 24px target
+   (2026-11-07; it was about 16px) and the negative margin keeps the row's
+   layout where it was. */
+.name-link{background:none;border:none;padding:4px 2px;margin:-4px -2px;min-height:24px;font:inherit;color:#1557b0;cursor:pointer;text-align:left}
 .name-link:hover{text-decoration:underline}
 .roster-filters button{background:none;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer}
 .badges{display:flex;flex-direction:column;align-items:flex-end;gap:4px}

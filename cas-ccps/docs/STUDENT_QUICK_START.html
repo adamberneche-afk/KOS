@@ -586,40 +586,45 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
   </div>
 
   <h2 style="font-size:24px;margin-top:32px">What your card says</h2>
-  <p>Each assignment has a card on your dashboard. The coloured label tells you what to do next.</p>
+  <p>Each assignment has a card on your dashboard. The coloured label says where it stands in a word or two; the line under the title says what to do. The filled button is the next step.</p>
+  <p>Cards that need you are listed first, under <strong>Do next</strong>, at the top of the page. Click one to jump to its card.</p>
 
   <div class="status-list">
     <div class="status-item">
-      <span class="status-pill pill-grey">Not started yet</span>
-      <p>You haven't submitted this one. Write, then press Submit for Feedback.</p>
+      <span class="status-pill pill-grey">Not started</span>
+      <p>You haven't submitted this one. Open your document, write, then press Submit for Feedback.</p>
     </div>
     <div class="status-item">
-      <span class="status-pill pill-amber">Waiting for feedback…</span>
+      <span class="status-pill pill-amber">Waiting for feedback</span>
       <p>Your work is in line to be checked. Nothing to do yet. Check back in a few minutes.</p>
     </div>
     <div class="status-item">
-      <span class="status-pill pill-amber">Being checked now…</span>
+      <span class="status-pill pill-amber">Being checked</span>
       <p>Your work is being read right now.</p>
     </div>
     <div class="status-item">
-      <span class="status-pill pill-green">Passed ✓ — feedback is ready: open your document and click Comments</span>
-      <p>Your work meets the standard. Turn it in on Canvas, or keep improving it and submit again.</p>
+      <span class="status-pill pill-green">Passed ✓</span>
+      <p>Your work meets the standard. The line under the title says where your feedback is. Turn it in on Canvas, or keep improving it and submit again.</p>
     </div>
     <div class="status-item">
-      <span class="status-pill pill-purple">Feedback ready — revise, then submit again: open your document and click Comments</span>
-      <p>Read the feedback, change your work, then press Submit for Feedback again.</p>
+      <span class="status-pill pill-purple">Revise</span>
+      <p>Read the feedback, change your work, then press Submit for Feedback again. A <strong>Not yet:</strong> line names the part of the assignment your last check didn't find yet: start there.</p>
     </div>
     <div class="status-item">
-      <span class="status-pill pill-red">Taking longer than usual ⚠ — your work is saved, and your teacher knows</span>
-      <p>The check took more than 12 minutes and was stopped. Your teacher has been told. If the feedback arrives late, the card changes to show it.</p>
+      <span class="status-pill pill-amber">Turned in</span>
+      <p>Your teacher is reviewing your work. Nothing to do yet.</p>
     </div>
     <div class="status-item">
-      <span class="status-pill pill-red">Couldn&rsquo;t be checked this time ⚠ — your teacher knows. You can submit again</span>
-      <p>The check ran, but its result could not be used. Your teacher has been told. You can press Submit for Feedback again.</p>
+      <span class="status-pill pill-green">Done ✓</span>
+      <p>Your teacher confirmed this assignment.</p>
     </div>
     <div class="status-item">
-      <span class="status-pill pill-red">Couldn't be checked ⚠ — tell your teacher</span>
-      <p>Something went wrong on our side, not with your work. Your work is safe. Tell your teacher. The card has a link to email them.</p>
+      <span class="status-pill pill-red">Taking longer ⚠</span>
+      <p>The check took more than 12 minutes and was stopped. Your work is saved and your teacher has been told. If the feedback arrives late, the card changes to show it.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-red">Couldn&rsquo;t be checked ⚠</span>
+      <p>Something went wrong on our side, not with your work. The line under the title says whether you can submit again or should tell your teacher; the card has a link to email them.</p>
     </div>
   </div>
 
@@ -627,7 +632,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
 
   <div class="callout callout-info">
     <span class="callout-icon">⏱️</span>
-    <div class="callout-body"><strong>Most checks take a few minutes.</strong> If a check takes longer than 12 minutes, the system stops it, your card says “Taking longer than usual ⚠”, and your teacher is told by email. You do not need to submit again unless they ask you to.</div>
+    <div class="callout-body"><strong>Most checks take a few minutes.</strong> If a check takes longer than 12 minutes, the system stops it, your card says “Taking longer ⚠”, and your teacher is told by email. You do not need to submit again unless they ask you to.</div>
   </div>
 </div>
 
@@ -914,10 +919,16 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
     <div><dt>Evidence</dt><dd>What a checked piece of your work showed for a competency: Shown, Partly shown or Not shown yet. Each assignment counts once, at its best result, so an early draft doesn't count against you.</dd></div>
     <div><dt>My Context</dt><dd>What the system has gathered about your work, week by week: your checked assignments and your warm-up answers. The same document your teacher sees.</dd></div>
     <div><dt>Submit for Feedback</dt><dd>Sends what you wrote under “Your response” to be checked. Press it when you’re ready; you can submit again after you revise.</dd></div>
+    <div><dt>Do next</dt><dd>The list at the top of your assignments: the ones waiting on you. Click one to jump to it.</dd></div>
+    <div><dt>Not started</dt><dd>You haven’t submitted this one yet. Open your document, write under “Your response”, then press Submit for Feedback.</dd></div>
     <div><dt>Waiting for feedback</dt><dd>Your work is in line to be checked. Nothing to do yet; check back in a few minutes.</dd></div>
-    <div><dt>Being checked now</dt><dd>Your work is being read right now.</dd></div>
+    <div><dt>Being checked</dt><dd>Your work is being read right now.</dd></div>
     <div><dt>Passed ✓</dt><dd>Your work meets the standard for this assignment. You can still improve it and submit again.</dd></div>
-    <div><dt>Feedback ready — revise</dt><dd>Read the feedback, change your work, then press Submit for Feedback again.</dd></div>
+    <div><dt>Revise</dt><dd>Read the feedback, change your work, then press Submit for Feedback again.</dd></div>
+    <div><dt>Not yet</dt><dd>The part of the assignment your last check didn’t find in your work yet. Start your revision there.</dd></div>
+    <div><dt>Turned in</dt><dd>Your teacher is reviewing your work. Nothing to do yet.</dd></div>
+    <div><dt>Done ✓</dt><dd>Your teacher confirmed this assignment.</dd></div>
+    <div><dt>Taking longer</dt><dd>The check is taking longer than usual. Your work is saved and your teacher knows; nothing to do.</dd></div>
     <div><dt>Couldn’t be checked</dt><dd>Something went wrong on our side, not with your work. Tell your teacher.</dd></div>
     <div><dt>Comments</dt><dd>Your feedback appears as a comment on your document. Open the document and click the Comments button (top right). Resolving a comment doesn’t delete it.</dd></div>
     <div><dt>Last submitted</dt><dd>When you last pressed Submit for Feedback on this assignment.</dd></div>
