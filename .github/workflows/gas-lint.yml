@@ -311,7 +311,12 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: '20'
-      - run: npm install -g @google/clasp
+      # Pinned: this job holds the sandbox clasp credentials, so a new
+      # clasp release must not run with them until someone chooses it.
+      # 3.x is what run.js and SANDBOX_CI_SETUP.md are written for (the
+      # .clasprc.json format, show-authorized-user); this job only runs
+      # `clasp push --force`. Bump it on purpose, in its own PR.
+      - run: npm install -g @google/clasp@3.4.1
       - name: Restore sandbox-account clasp credentials
         run: echo "$CLASP_SANDBOX_CREDENTIALS" > "$HOME/.clasprc.json"
         env:
