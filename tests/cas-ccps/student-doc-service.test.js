@@ -247,7 +247,7 @@ test('the menu says the link was refused, and sends nothing, when the doc\'s lin
   assert.equal(alerts.length, 3);
   for (const a of alerts) {
     assert.match(a, /isn't a school Apps Script link, so it wasn't used/);
-    assert.ok(!a.includes('evil.com'), 'the bad link is not shown as something to open');
+    assert.doesNotMatch(a, /evil\.com/, 'the bad link is not shown as something to open');
   }
   assert.equal(calls.length, 0);
 });
