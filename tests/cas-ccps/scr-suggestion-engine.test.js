@@ -1,9 +1,10 @@
 'use strict';
 // Regression tests for 30_SCRSuggestionEngine.js's two highest-risk pieces
 // flagged by the external product review (Finding 2 / "this month" test
-// coverage): THE RULE (computeSuggestion_, aggregateEvidence_) and the
-// suggest -> confirm/override lifecycle (recordConfirmation_/recordOverride_,
-// via the shared recordDecision_).
+// coverage): THE RULE (computeSuggestion_, aggregateEvidence_). The
+// confirm/override lifecycle is the Teacher Dashboard's now (07's
+// teacherConfirmScrRating/teacherOverrideScrRating, teacher-dashboard-scr-review.test.js);
+// 30's own uncalled copies were deleted 2026-11-07.
 //
 // Loaded together with 00_SharedConfig.js because 30_SCRSuggestionEngine.js
 // calls getConfig_() — both files are bound to the same GAS project
@@ -18,69 +19,18 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 const SCR_ENGINE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '30_SCRSuggestionEngine.js');
 
-function load(signedInAs = 'teacher@ccpsnet.net') {
+function load() {
   return loadGasFiles(
     [SHARED_CONFIG_PATH, SCR_ENGINE_PATH],
-    ['computeSuggestion_', 'aggregateEvidence_', 'recordConfirmation_', 'recordOverride_', 'createSCRTabs_'],
+    ['computeSuggestion_', 'aggregateEvidence_', 'createSCRTabs_'],
     {
       Session: {
-        getActiveUser() { return { getEmail() { return signedInAs; } }; },
+        getActiveUser() { return { getEmail() { return 'teacher@ccpsnet.net'; } }; },
         getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
         getScriptTimeZone() { return 'America/New_York'; },
       },
     },
   );
-}
-
-// A current-year Ledger row making `teacherEmail` the assigning teacher of
-// `studentEmail` on assignment `configId`.
-function ledgerRow(studentEmail, teacherEmail, configId) {
-  const row = new Array(23).fill('');
-  row[0] = '2025-09-15';
-  row[1] = studentEmail;
-  row[2] = configId;
-  row[8] = teacherEmail;
-  row[18] = '2025-26';
-  return row;
-}
-
-// A fresh SCRSuggestions/SCRDecisionLog pair, with the Ledger's required
-// Script Properties already set so getConfig_() doesn't throw, and one
-// SUGGESTED row ready for a teacher decision. Mirrors gas-sandbox.js's own
-// documented pattern of reaching into `sandbox` directly to set up state
-// the public API doesn't expose.
-function setUpSuggestionsFixture(sandbox, { suggestedRating = 3, status = 'SUGGESTED', evidenceConfigIds = [] } = {}) {
-  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
-  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
-  sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', 'fake-admin-ss');
-  sandbox.PropertiesService.getScriptProperties().setProperty('CURRENT_TERM', '2025-26');
-
-  // teacher@ assigned CFG-T to the student; other@ assigned CFG-O.
-  const ledger = ss.insertSheet('Ledger');
-  ledger.appendRow(new Array(23).fill('header'));
-  ledger.appendRow(ledgerRow('student@ccpsnet.net', 'teacher@ccpsnet.net', 'CFG-T'));
-  ledger.appendRow(ledgerRow('student@ccpsnet.net', 'other@ccpsnet.net', 'CFG-O'));
-  const evidence = ss.insertSheet('CompetencyEvidence');
-  evidence.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text',
-    'outcome', 'config_id', 'evaluated_at', 'student_file_id']);
-  evidenceConfigIds.forEach((c, i) => evidence.appendRow(
-    ['EVD-' + i, 'student@ccpsnet.net', 'CAS-M5-1', 'm', 'MET', c, new Date(), 'f']));
-
-  const suggestions = ss.insertSheet('SCRSuggestions');
-  suggestions.appendRow(['student_email', 'competency_id', 'suggested_rating',
-    'met_count', 'not_met_count', 'partial_count', 'status', 'last_computed_at',
-    'confirmed_rating', 'confirmed_at', 'confirmed_by']);
-  suggestions.appendRow([
-    'student@ccpsnet.net', 'CAS-M5-1',
-    suggestedRating === null ? '' : suggestedRating,
-    2, 0, 1, status, new Date(), '', '', '',
-  ]);
-
-  const decisionLog = ss.insertSheet('SCRDecisionLog');
-  decisionLog.appendRow(['decision_id', 'student_email', 'competency_id', 'suggested_rating',
-    'final_rating', 'decision_type', 'decided_at', 'decided_by', 'evidence_snapshot', 'archive_status']);
-
-  return { ss, suggestions, decisionLog };
 }
 
 // ── THE RULE (computeSuggestion_) — restated in the file's own header: the
@@ -134,75 +84,6 @@ test('computeSuggestion_: never auto-suggests 1 or 5 across a wide sweep of coun
       }
     }
   }
-});
-
-// ── The suggest -> confirm/override lifecycle ───────────────────────────────
-
-test('recordConfirmation_: confirms a SUGGESTED row as-is and freezes it', () => {
-  const { exported, sandbox } = load();
-  const { suggestions, decisionLog } = setUpSuggestionsFixture(sandbox, { suggestedRating: 3 });
-
-  const result = exported.recordConfirmation_('student@ccpsnet.net', 'CAS-M5-1', 'teacher@ccpsnet.net');
-  assert.equal(result.success, true);
-  assert.equal(result.finalRating, 3);
-
-  const row = suggestions.getRange(2, 1, 1, 11).getValues()[0];
-  assert.equal(row[6], 'CONFIRMED');   // STATUS
-  assert.equal(row[8], 3);             // CONFIRMED_RATING
-
-  const logRow = decisionLog.getRange(2, 1, 1, 10).getValues()[0];
-  assert.equal(logRow[5], 'CONFIRMED'); // DECISION_TYPE
-  assert.equal(logRow[4], 3);           // FINAL_RATING
-});
-
-test('recordOverride_: rejects a rating outside 1-5 without touching any sheet', () => {
-  const { exported, sandbox } = load();
-  const { suggestions } = setUpSuggestionsFixture(sandbox, { suggestedRating: 3 });
-
-  const result = exported.recordOverride_('student@ccpsnet.net', 'CAS-M5-1', 7, 'teacher@ccpsnet.net');
-  assert.equal(result.success, false);
-  assert.match(result.error, /integer from 1 to 5/);
-
-  // Untouched — still SUGGESTED, not silently frozen by a rejected call.
-  const row = suggestions.getRange(2, 1, 1, 11).getValues()[0];
-  assert.equal(row[6], 'SUGGESTED');
-});
-
-test('recordOverride_: a teacher may override to 1 or 5 even though the system never suggests them', () => {
-  const { exported, sandbox } = load();
-  setUpSuggestionsFixture(sandbox, { suggestedRating: 3 });
-
-  const result = exported.recordOverride_('student@ccpsnet.net', 'CAS-M5-1', 1, 'teacher@ccpsnet.net');
-  assert.equal(result.success, true);
-  assert.equal(result.finalRating, 1);
-  assert.equal(result.decisionType, 'OVERRIDDEN');
-});
-
-test('recordConfirmation_: cannot confirm an INSUFFICIENT_EVIDENCE row (nothing to confirm)', () => {
-  const { exported, sandbox } = load();
-  setUpSuggestionsFixture(sandbox, { suggestedRating: null, status: 'INSUFFICIENT_EVIDENCE' });
-
-  const result = exported.recordConfirmation_('student@ccpsnet.net', 'CAS-M5-1', 'teacher@ccpsnet.net');
-  assert.equal(result.success, false);
-  assert.match(result.error, /no suggestion to confirm/);
-});
-
-test('a pair already CONFIRMED or OVERRIDDEN is frozen — a second decision is rejected', () => {
-  const { exported, sandbox } = load();
-  setUpSuggestionsFixture(sandbox, { suggestedRating: 3, status: 'CONFIRMED' });
-
-  const result = exported.recordConfirmation_('student@ccpsnet.net', 'CAS-M5-1', 'teacher@ccpsnet.net');
-  assert.equal(result.success, false);
-  assert.match(result.error, /already been decided \(CONFIRMED\)/);
-});
-
-test('recordDecision_ (via recordConfirmation_): no matching suggestion row -> a clear error, not a throw', () => {
-  const { exported, sandbox } = load();
-  setUpSuggestionsFixture(sandbox, { suggestedRating: 3 });
-
-  const result = exported.recordConfirmation_('student@ccpsnet.net', 'CAS-NOPE', 'teacher@ccpsnet.net');
-  assert.equal(result.success, false);
-  assert.match(result.error, /No suggestion row found/);
 });
 
 // ── createSCRTabs_ — the tab-creation gap the Studio Steps review found:
@@ -260,47 +141,6 @@ test('createSCRTabs_: safe to re-run -- skips a tab that already has real data r
   assert.equal(evidence.getLastRow(), 2, 'the existing real row must survive a re-run untouched');
   assert.ok(ss.getSheetByName('SCRSuggestions'), 'the two tabs that did NOT already exist still get created');
   assert.ok(ss.getSheetByName('SCRDecisionLog'));
-});
-
-// ── Access policy, rule 3: only the assigning teacher rates ────────────────
-// recordDecision_() used to trust the teacherEmail it was given.
-
-test('recordConfirmation_: refuses when the named teacher is not the signed-in user', () => {
-  const { exported, sandbox } = load('other@ccpsnet.net');
-  const { suggestions } = setUpSuggestionsFixture(sandbox, { suggestedRating: 3 });
-
-  const result = exported.recordConfirmation_('student@ccpsnet.net', 'CAS-M5-1', 'teacher@ccpsnet.net');
-
-  assert.equal(result.success, false);
-  assert.match(result.error, /signed-in teacher/);
-  assert.equal(suggestions.getRange(2, 7).getValue(), 'SUGGESTED');
-});
-
-test('recordConfirmation_: refuses a teacher whose assignments did not produce the evidence', () => {
-  const { exported, sandbox } = load('other@ccpsnet.net');
-  setUpSuggestionsFixture(sandbox, { suggestedRating: 3, evidenceConfigIds: ['CFG-T'] });
-
-  const result = exported.recordConfirmation_('student@ccpsnet.net', 'CAS-M5-1', 'other@ccpsnet.net');
-
-  assert.equal(result.success, false);
-  assert.match(result.error, /whose assignments produced/);
-});
-
-test('recordConfirmation_: the teacher whose assignment produced the evidence may rate', () => {
-  const { exported, sandbox } = load('teacher@ccpsnet.net');
-  setUpSuggestionsFixture(sandbox, { suggestedRating: 3, evidenceConfigIds: ['CFG-T'] });
-
-  assert.equal(exported.recordConfirmation_('student@ccpsnet.net', 'CAS-M5-1', 'teacher@ccpsnet.net').success, true);
-});
-
-test('recordOverride_: a teacher who does not have the student at all is refused', () => {
-  const { exported, sandbox } = load('stranger@ccpsnet.net');
-  setUpSuggestionsFixture(sandbox, { suggestedRating: 3 });
-
-  const result = exported.recordOverride_('student@ccpsnet.net', 'CAS-M5-1', 2, 'stranger@ccpsnet.net');
-
-  assert.equal(result.success, false);
-  assert.match(result.error, /whose assignments produced/);
 });
 
 // ── Pieces of evidence: one per assignment, at its best outcome ────────────

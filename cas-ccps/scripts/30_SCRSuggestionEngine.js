@@ -47,15 +47,9 @@
 // ENTRY POINTS:
 //   runWeeklySCRSuggestionUpdate_()  — installed as a 7-day time trigger,
 //                                       same cadence as Module 4's Script 29
-//   recordConfirmation_(studentEmail, competencyId, confirmedRating)
-//                                     — called by the Script 07 dashboard
-//                                       addition when a teacher clicks
-//                                       Confirm with the suggested value
-//                                       unchanged
-//   recordOverride_(studentEmail, competencyId, overrideRating)
-//                                     — called by the same dashboard
-//                                       addition when a teacher enters a
-//                                       different rating than suggested
+//   (A teacher's confirm or override is the Teacher Dashboard's:
+//   07_TeacherDashboard.js's teacherConfirmScrRating/teacherOverrideScrRating.
+//   This file's own uncalled copies were deleted 2026-11-07.)
 //   exportToWorkbookGrid_()          — MANUAL, run from the Script Editor
 //                                       or a Teacher Dashboard button.
 //                                       Produces a Google Sheet matching
@@ -335,202 +329,6 @@ function writeSuggestionRow_(sheet, existing, pairKey, counts, result, runTimest
 }
 
 // ---------------------------------------------------------------------------
-// recordConfirmation_ — ENTRY POINT, called by the Script 07 dashboard
-// addition when a teacher confirms a suggestion AS-IS (no change to the
-// suggested rating). Promotes SCRSuggestions row to CONFIRMED, writes the
-// permanent record to SCRDecisionLog.
-//
-// Returns { success: true } or { success: false, error: "..." }
-// ---------------------------------------------------------------------------
-function recordConfirmation_(studentEmail, competencyId, teacherEmail) {
-  return recordDecision_(studentEmail, competencyId, teacherEmail, null, "CONFIRMED");
-}
-
-// ---------------------------------------------------------------------------
-// recordOverride_ — ENTRY POINT, called when a teacher enters a DIFFERENT
-// rating than what was suggested (or enters one cold, when status was
-// INSUFFICIENT_EVIDENCE — overrideRating can be any of 1-5 in that case,
-// since the {2,3,4}-only restriction applies to what the SYSTEM may
-// propose, never to what a teacher may decide).
-//
-// Returns { success: true } or { success: false, error: "..." }
-// ---------------------------------------------------------------------------
-function recordOverride_(studentEmail, competencyId, overrideRating, teacherEmail) {
-  const rating = Number(overrideRating);
-  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-    return { success: false, error: "Rating must be an integer from 1 to 5." };
-  }
-  return recordDecision_(studentEmail, competencyId, teacherEmail, rating, "OVERRIDDEN");
-}
-
-// ---------------------------------------------------------------------------
-// _scrDecisionRefusal_ — the error a central-ledger SCR writer returns, or
-// null when the signed-in user may record this decision. The teacher named
-// in the call must be the signed-in user, and must own the rating (rule 3).
-// 30b_SCRRetryRemediation.js (same project) uses it too.
-function _scrDecisionRefusal_(cfg, teacherEmail, studentEmail, competencyId) {
-  const caller = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
-  if (!caller || caller !== String(teacherEmail || "").trim().toLowerCase()) {
-    return "Decisions are recorded under the signed-in teacher's own account.";
-  }
-  if (!_scrTeacherMayDecide_(cfg, caller, studentEmail, competencyId)) {
-    return "Only the teacher whose assignments produced this competency's evidence can rate it.";
-  }
-  return null;
-}
-
-// ---------------------------------------------------------------------------
-// recordDecision_ — shared logic for confirm and override
-// ---------------------------------------------------------------------------
-function recordDecision_(studentEmail, competencyId, teacherEmail, overrideRating, decisionType) {
-  const cfg = getConfig_();
-  // Access policy, rule 3. This used to trust the teacherEmail it was
-  // given, so anyone who could run code in this project could rate any
-  // student under any teacher's name.
-  const refusal = _scrDecisionRefusal_(cfg, teacherEmail, studentEmail, competencyId);
-  if (refusal) return { success: false, error: refusal };
-  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
-  const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
-
-  if (!suggestionsSheet || !decisionLogSheet) {
-    return { success: false, error: "SCRSuggestions or SCRDecisionLog tab not found." };
-  }
-
-  const data = suggestionsSheet.getDataRange().getValues();
-  let rowIndex = -1;
-  let row = null;
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][SCRS.STUDENT_EMAIL]).trim().toLowerCase() === studentEmail.toLowerCase() &&
-        String(data[i][SCRS.COMPETENCY_ID]).trim() === competencyId) {
-      rowIndex = i + 1;
-      row = data[i];
-      break;
-    }
-  }
-
-  if (!row) {
-    return { success: false, error: "No suggestion row found for " + studentEmail + " / " + competencyId + "." };
-  }
-
-  const currentStatus = String(row[SCRS.STATUS]).trim();
-  if (currentStatus === "CONFIRMED" || currentStatus === "OVERRIDDEN") {
-    return { success: false, error: "This competency has already been decided (" + currentStatus + "). " +
-      "A new decision requires a process not yet built — see architectural notes." };
-  }
-
-  const suggestedRating = row[SCRS.SUGGESTED_RATING] === "" ? null : Number(row[SCRS.SUGGESTED_RATING]);
-
-  if (decisionType === "CONFIRMED" && suggestedRating === null) {
-    return { success: false, error: "Cannot confirm — there is no suggestion to confirm " +
-      "(status is INSUFFICIENT_EVIDENCE). Use an override instead if you want to enter a rating now." };
-  }
-
-  const finalRating = decisionType === "CONFIRMED" ? suggestedRating : overrideRating;
-  const now = new Date();
-
-  // ── Update SCRSuggestions row — freeze it ──
-  suggestionsSheet.getRange(rowIndex, SCRS.STATUS + 1).setValue(decisionType);
-  suggestionsSheet.getRange(rowIndex, SCRS.CONFIRMED_RATING + 1).setValue(finalRating);
-  suggestionsSheet.getRange(rowIndex, SCRS.CONFIRMED_AT + 1).setValue(now);
-  suggestionsSheet.getRange(rowIndex, SCRS.CONFIRMED_BY + 1).setValue(teacherEmail);
-
-  // ── Append to SCRDecisionLog — the permanent record ──
-  const evidenceSnapshot = "MET:" + row[SCRS.MET_COUNT] +
-    " NOT_MET:" + row[SCRS.NOT_MET_COUNT] +
-    " PARTIALLY_MET:" + row[SCRS.PARTIAL_COUNT];
-
-  decisionLogSheet.appendRow([
-    generateDecisionId_(),
-    studentEmail,
-    competencyId,
-    suggestedRating === null ? "" : suggestedRating,
-    finalRating,
-    decisionType,
-    now,
-    teacherEmail,
-    evidenceSnapshot,
-    "", // archive_status — blank until _archiveExpiredScrDecisions_() ages it out
-  ]);
-
-  Logger.log("[S30] Decision recorded — " + decisionType + " | SCRDecisionLog row " +
-    decisionLogSheet.getLastRow() + " | " + competencyId + " | final rating: " + finalRating + " | by: " + teacherEmail);
-
-  return { success: true, finalRating, decisionType };
-}
-
-// ---------------------------------------------------------------------------
-// generateDecisionId_
-// Format: SCD-YYYYMMDD-XXXX (4 hex chars) — same ID pattern as
-// ALG-/LES-/RPT-/EVD- elsewhere in this codebase.
-// ---------------------------------------------------------------------------
-function generateDecisionId_() {
-  const now = new Date();
-  const yyyy = now.getFullYear();
-  const mm = String(now.getMonth() + 1).padStart(2, "0");
-  const dd = String(now.getDate()).padStart(2, "0");
-  const hex = Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, "0");
-  return "SCD-" + yyyy + mm + dd + "-" + hex;
-}
-
-// ---------------------------------------------------------------------------
-// getSCRDashboardData_ — NOT Script 07's actual entry point (correcting
-// this function's own former claim — Open Items #4). Script 07
-// (cas-ccps:teacher-dashboard) is a separate Apps Script project from this
-// one (cas-ccps:central-ledger, see tools/gas-lint/project-map.json) with
-// no shared runtime, so it structurally cannot call this function. The
-// dashboard's real, teacher-scoped entry point is getScrReviewQueue() in
-// 07_TeacherDashboard.js, a from-scratch reimplementation of this same
-// query plus the per-teacher roster filter this function has never
-// actually had, despite once claiming to scope to "the calling teacher's
-// students" — the loop below returns every non-frozen suggestion for
-// EVERY teacher's students, with no filter at all. Kept here as an
-// untested, uncalled-in-production utility (still exercised only by
-// tests/cas-ccps/scr-suggestion-engine.test.js) in case a future
-// central-ledger-bound admin view wants an all-teachers version of this
-// same data — do not assume it is teacher-scoped without adding that
-// filter first.
-// ---------------------------------------------------------------------------
-function getSCRDashboardData_() {
-  const cfg = getConfig_();
-  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
-  const registrySheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
-
-  if (!suggestionsSheet) return { error: "SCRSuggestions tab not found." };
-
-  // getCompetencyTextMap_() (00_SharedConfig.js) — CacheService-backed,
-  // external product review Finding 6. Replaces a getDataRange() +
-  // header-lookup block that used to run fresh on every single dashboard
-  // load.
-  const compTextMap = getCompetencyTextMap_(registrySheet);
-
-  const data = suggestionsSheet.getDataRange().getValues();
-  const results = [];
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const status = String(row[SCRS.STATUS]).trim();
-    if (status !== "SUGGESTED" && status !== "INSUFFICIENT_EVIDENCE") continue;
-
-    results.push({
-      studentEmail: String(row[SCRS.STUDENT_EMAIL]).trim(),
-      competencyId: String(row[SCRS.COMPETENCY_ID]).trim(),
-      competencyText: compTextMap[String(row[SCRS.COMPETENCY_ID]).trim()] || "(text not found in registry)",
-      suggestedRating: row[SCRS.SUGGESTED_RATING] === "" ? null : Number(row[SCRS.SUGGESTED_RATING]),
-      metCount: Number(row[SCRS.MET_COUNT]) || 0,
-      notMetCount: Number(row[SCRS.NOT_MET_COUNT]) || 0,
-      partialCount: Number(row[SCRS.PARTIAL_COUNT]) || 0,
-      status,
-    });
-  }
-
-  results.sort((a, b) => a.studentEmail.localeCompare(b.studentEmail) ||
-    a.competencyId.localeCompare(b.competencyId));
-
-  return { suggestions: results, generatedAt: new Date().toISOString() };
-}
-
-// ---------------------------------------------------------------------------
 // getStudentScrStandingForCompetencies_ — NEW (Say/Do Ledger cas-ccps
 // Extension 1: SCR-to-warmup bridge). Feeds a student's current SCR
 // standing into warm-up generation as a soft signal/tie-breaker — called by
@@ -542,9 +340,9 @@ function getSCRDashboardData_() {
 // file (lines ~703-733) — consumed as-is, stale or not, per this
 // extension's own scoping.
 //
-// Unlike getSCRDashboardData_() above (which exists to show a teacher what
-// still needs a decision, so it deliberately EXCLUDES CONFIRMED/OVERRIDDEN
-// rows), this function's job is "what does the record actually say about
+// Unlike the Teacher Dashboard's getScrReviewQueue() (07, which shows a
+// teacher what still needs a decision, so it deliberately EXCLUDES
+// CONFIRMED/OVERRIDDEN rows), this function's job is "what does the record actually say about
 // this student on these competencies right now" — so a teacher's already-
 // confirmed rating counts here, not just an unconfirmed AI suggestion.
 //
@@ -587,8 +385,7 @@ function getStudentScrStandingForCompetencies_(studentEmail, competencyIds) {
     else {
       const registrySheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
       // getCompetencyTextMap_() (00_SharedConfig.js) — CacheService-backed,
-      // external product review Finding 6. Same replacement as
-      // getSCRDashboardData_() above.
+      // external product review Finding 6.
       const compTextMap = getCompetencyTextMap_(registrySheet);
       _scrStandingRawCache_ = { data: suggestionsSheet.getDataRange().getValues(), compTextMap: compTextMap };
     }
@@ -1346,15 +1143,6 @@ function previewCompetencySuggestions() {
 
 function buildCompetencySuggestionsNow() {
   return _s30Run_({});
-}
-
-// ---------------------------------------------------------------------------
-// runSCRUpdateNow_ — MANUAL TESTING ONLY. Identical to the trigger entry
-// point, callable directly for verification without waiting a week.
-// ---------------------------------------------------------------------------
-function runSCRUpdateNow_() {
-  Logger.log("[S30] Manual test run invoked — identical logic to the weekly trigger.");
-  runWeeklySCRSuggestionUpdate_();
 }
 
 // =============================================================================

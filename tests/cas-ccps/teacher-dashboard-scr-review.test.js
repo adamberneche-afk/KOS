@@ -4,8 +4,8 @@
 // teacherOverrideScrRating(), and the shared _recordScrDecision_() they
 // both call.
 //
-// WHY THIS FILE EXISTS AT ALL. 30_SCRSuggestionEngine.js's
-// recordConfirmation_/recordOverride_/getSCRDashboardData_ were dead code
+// WHY THIS FILE EXISTS AT ALL. 30_SCRSuggestionEngine.js's old
+// confirm/override/query functions (deleted 2026-11-07) were dead code
 // in production — only tests/cas-ccps/scr-suggestion-engine.test.js ever
 // called them, because that file is bound to cas-ccps:central-ledger, a
 // DIFFERENT Apps Script project from this standalone teacher-dashboard web
@@ -119,7 +119,7 @@ test('getScrReviewQueue: returns only SUGGESTED/INSUFFICIENT_EVIDENCE rows for s
       scrRow('student1@ccpsnet.net', 'CAS-M5-3', 4, 'CONFIRMED', { confirmedRating: 4 }), // frozen — must be excluded
       // Belongs to a DIFFERENT teacher's student — must be excluded even
       // though it's SUGGESTED. This is the real per-teacher filter
-      // getSCRDashboardData_() (30_SCRSuggestionEngine.js) never had.
+      // 30_SCRSuggestionEngine.js's old getSCRDashboardData_() never had.
       scrRow('other-student@ccpsnet.net', 'CAS-M5-1', 3, 'SUGGESTED'),
     ],
     registryRows: [

@@ -1241,26 +1241,6 @@ function _scrIsMine_(ownership, rosterEmails, email, competencyId) {
   return rosterEmails.has(String(email || "").trim().toLowerCase());
 }
 
-// _scrTeacherMayDecide_ — rule 3 for a writer that has no teacher-dashboard
-// roster at hand (30_SCRSuggestionEngine.js, 30b_SCRRetryRemediation.js in
-// the central-ledger project). The fallback roster is every student the
-// teacher is TEACHER_EMAIL for on a current-year Ledger row.
-function _scrTeacherMayDecide_(cfg, teacherEmail, studentEmail, competencyId) {
-  const teacher = String(teacherEmail || "").trim().toLowerCase();
-  if (!teacher) return false;
-  const roster = new Set();
-  const ledger = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
-  if (ledger && ledger.getLastRow() > 1) {
-    const year = _currentSchoolYear_();
-    ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER.ACADEMIC_YEAR + 1).getValues().forEach(function (row) {
-      if (!_isCurrentSchoolYearRow_(row, year)) return;
-      if (String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== teacher) return;
-      roster.add(String(row[LEDGER.GOOGLE_ID] || "").trim().toLowerCase());
-    });
-  }
-  return _scrIsMine_(_scrOwnership_(cfg, teacher), roster, studentEmail, competencyId);
-}
-
 
 // =============================================================================
 // THE SCR RULE AND THE SCR RETRY (moved here 2026-11-01, D15)
@@ -1966,8 +1946,8 @@ const SCRDL = {
 // at setup (22b_CompetencyRegistryImporter.js) and re-imported only on a
 // deliberate admin action — read constantly (every SCR dashboard load,
 // every warm-up bridge call, every alignment log write) but changes rarely.
-// 30_SCRSuggestionEngine.js's getSCRDashboardData_() and
-// getStudentScrStandingForCompetencies_() used to each independently
+// 30_SCRSuggestionEngine.js's getStudentScrStandingForCompetencies_() (and
+// the since-deleted getSCRDashboardData_()) used to each independently
 // getDataRange() + build this same map from scratch on every call. This
 // wraps that identical block once, backed by Apps Script's own
 // CacheService (a real cross-execution cache with a TTL, unlike a

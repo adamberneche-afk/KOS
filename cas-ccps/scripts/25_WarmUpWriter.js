@@ -113,7 +113,7 @@ const WR_COL_COUNT    = 14;
 const LC25_LESSON_ID          = 0;
 const LC25_TEACHER_EMAIL      = 1;
 const LC25_LEARNING_OBJ       = 6;
-const LC25_WARM_UP_GENERATED  = 14; // added by Script 24's createLessonContextWarmUpColumn_()
+const LC25_WARM_UP_GENERATED  = 14; // written by createModule2Tabs_() (22) / the Module 2 wizard (28)
 
 // ── ReportRegistry column indices (0-based) — from Script 26 ─────────────────
 const RR25_REPORT_ID     = 0;
@@ -1341,28 +1341,6 @@ function generateReportId25_() {
     String(now.getMonth() + 1).padStart(2, "0") +
     String(now.getDate()).padStart(2, "0") + "-" +
     Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, "0");
-}
-
-// ---------------------------------------------------------------------------
-// installRegistrationTrigger_
-// Installs the 5-minute Job 1 safety-net trigger for registerDeliveredWarmUps.
-// Called once manually. Safe to re-run. From the Run menu, use
-// installRegistrationTrigger() (64), which puts it in the Ledger cycle.
-// ---------------------------------------------------------------------------
-function installRegistrationTrigger_() {
-  const existing = ScriptApp.getProjectTriggers()
-    .map(t => t.getHandlerFunction());
-
-  if (existing.includes("registerDeliveredWarmUps")) {
-    Logger.log("[S25] registerDeliveredWarmUps trigger already installed.");
-    return;
-  }
-
-  ScriptApp.newTrigger("registerDeliveredWarmUps")
-    .timeBased()
-    .everyMinutes(5)
-    .create();
-  Logger.log("[S25] Installed: registerDeliveredWarmUps every 5 minutes.");
 }
 
 // ---------------------------------------------------------------------------

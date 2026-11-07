@@ -632,9 +632,8 @@ function getDashboardData(termFilter) {
 // submission — this is what finally makes the auto-approval terminal,
 // closing the North Star violation the finding was about ("the turn-in gate
 // auto-approves silently, and the only override lives outside the teacher's
-// own dashboard"). Mirrors 30_SCRSuggestionEngine.js's recordConfirmation_/
-// recordOverride_/recordDecision_ shape exactly, per the decision's own
-// instruction to reuse that pattern — freeze the row on decision, reject
+// own dashboard"). Mirrors the SCR confirm/override below (_recordScrDecision_)
+// exactly, per the decision's own instruction to reuse that pattern — freeze the row on decision, reject
 // re-deciding an already-decided row, restrict overrides to a valid 1-5
 // integer. This writes into the same Ledger tab as SCRSuggestions/
 // SCRDecisionLog live alongside, but is a separate, Ledger-row-keyed
@@ -726,9 +725,9 @@ function teacherOverrideTurnInScore(configId, score) {
 // The teacher's own confirm/override decision on an AI-suggested Module 5
 // competency rating (SCRSuggestions, computed weekly by
 // 30_SCRSuggestionEngine.js's runWeeklySCRSuggestionUpdate_()). Until this,
-// nothing anywhere actually called that file's recordConfirmation_/
-// recordOverride_/getSCRDashboardData_ except tests, because those
-// functions live in cas-ccps:central-ledger — a DIFFERENT Apps Script
+// nothing anywhere actually called that file's confirm/override/query
+// functions except tests (deleted 2026-11-07), because they lived in
+// cas-ccps:central-ledger — a DIFFERENT Apps Script
 // project from this standalone dashboard (cas-ccps:teacher-dashboard, see
 // tools/gas-lint/project-map.json) — with no shared runtime. This section
 // reimplements the same confirm/override/query logic natively in THIS
@@ -768,10 +767,9 @@ const DASHBOARD_SCRS = {
 // getScrReviewQueue — called client-side via google.script.run. Returns
 // every NON-FROZEN SCRSuggestions row (status SUGGESTED or
 // INSUFFICIENT_EVIDENCE) for students on THIS teacher's own roster.
-// Unlike 30_SCRSuggestionEngine.js's getSCRDashboardData_() — which despite
-// its own comment claiming to scope to "the calling teacher's students" has
-// no such filter at all (that function is untested and uncalled in
-// production; see its own header for the correction) — this one actually
+// Unlike 30_SCRSuggestionEngine.js's old getSCRDashboardData_() (deleted
+// 2026-11-07: uncalled, and despite its comment it never scoped to "the
+// calling teacher's students"), this one actually
 // joins against the Ledger via _getRosterForEmail_ (already used above for
 // the leader-hub API) to enforce that scoping for real.
 // ---------------------------------------------------------------------------
@@ -838,10 +836,9 @@ function getScrReviewQueue() {
 
 // ---------------------------------------------------------------------------
 // _generateScrDecisionId_ — same "SCD-" + yyyyMMdd + "-" + 4-hex-char shape
-// as 30_SCRSuggestionEngine.js's own generateDecisionId_(), duplicated for
-// the same cross-project reason as DASHBOARD_SCRS above — both writers of
-// SCRDecisionLog should produce IDs in one recognizable format even though
-// they're two independent GAS projects that can't share a literal function.
+// SCRDecisionLog has always used. 30_SCRSuggestionEngine.js's own
+// generateDecisionId_() went with its uncalled confirm/override (2026-11-07),
+// so the dashboard is the only writer that mints one now.
 // ---------------------------------------------------------------------------
 function _generateScrDecisionId_() {
   const now  = new Date();
@@ -853,12 +850,12 @@ function _generateScrDecisionId_() {
 }
 
 // ---------------------------------------------------------------------------
-// _recordScrDecision_ — shared logic for confirm and override, mirroring
-// 30_SCRSuggestionEngine.js's recordDecision_() shape exactly (freeze on
-// decision, reject re-deciding, evidence-snapshot denormalization), plus
-// one check that file doesn't need: a real roster-ownership check, since
-// this project (unlike central-ledger) is reachable by exactly one
-// teacher's deployment but reads a Ledger shared across every teacher.
+// _recordScrDecision_ — shared logic for confirm and override (freeze on
+// decision, reject re-deciding, evidence-snapshot denormalization), plus a
+// real roster-ownership check, since this project is reachable by exactly
+// one teacher's deployment but reads a Ledger shared across every teacher.
+// (30_SCRSuggestionEngine.js's uncalled recordDecision_() was deleted
+// 2026-11-07; this is the only SCR confirm/override.)
 // ---------------------------------------------------------------------------
 function _recordScrDecision_(cfg, studentEmail, competencyId, overrideRating, decisionType) {
   const roster   = _getRosterForEmail_(cfg, cfg.teacherEmail);
