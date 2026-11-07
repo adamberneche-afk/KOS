@@ -393,7 +393,7 @@ sandbox-deploy:
     - uses: actions/setup-node@v4
       with:
         node-version: "20"
-    - run: npm install -g @google/clasp
+    - run: npm install -g @google/clasp@3.4.1  # pinned, as in gas-lint.yml
     - name: Restore sandbox-account clasp credentials
       run: echo "$CLASP_SANDBOX_CREDENTIALS" > $HOME/.clasprc.json
       env:
