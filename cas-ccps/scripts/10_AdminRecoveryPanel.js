@@ -162,7 +162,17 @@ function _stagingPipelineHealthChecks_(ss, cfg) {
 //   alertText   — daily-email wording (only used when !ok)
 //   displayLine — on-demand dialog's one-line summary (always shown)
 // ---------------------------------------------------------------------------
-function _ferpaHealthChecks_() {
+// Check (c)'s Drive walk over "SCR Export — " files (process hardening 2b):
+// one file per export run, so 200 is far past real use; 60 seconds keeps the
+// daily health check well inside Apps Script's 6-minute limit. Stopping at
+// either fails check (c), so the stop reaches the admin alert.
+const FERPA_MAX_EXPORT_FILES = 200;
+const FERPA_EXPORT_SCAN_MS   = 60 * 1000;
+
+function _ferpaHealthChecks_(opts) {
+  const o = opts || {};
+  const maxExportFiles = o.maxExportFiles || FERPA_MAX_EXPORT_FILES;
+  const exportScanMs = o.exportScanMs || FERPA_EXPORT_SCAN_MS;
   const checks = [];
   const scriptProps = PropertiesService.getScriptProperties();
 
@@ -210,9 +220,21 @@ function _ferpaHealthChecks_() {
   // be widened by hand afterward — spot-check any file matching its naming
   // pattern for sharing broader than private (named viewers only).
   let overShared = [];
+  let scanStopped = "";
   try {
     const files = DriveApp.searchFiles('title contains "SCR Export — "');
+    const scanStarted = Date.now();
+    let scanned = 0;
     while (files.hasNext()) {
+      if (scanned >= maxExportFiles) {
+        scanStopped = "more than " + maxExportFiles + " SCR export files (FERPA_MAX_EXPORT_FILES)";
+        break;
+      }
+      if (Date.now() - scanStarted > exportScanMs) {
+        scanStopped = "the scan hit its time limit after " + scanned + " file(s)";
+        break;
+      }
+      scanned++;
       const f = files.next();
       const access = f.getSharingAccess();
       // Domain-wide counts too: students are on the domain, and the export
@@ -224,18 +246,26 @@ function _ferpaHealthChecks_() {
   } catch (e) {
     Logger.log("[FERPA HEALTH] SCR export sharing scan failed: " + e.message);
   }
+  if (scanStopped) Logger.log("[FERPA HEALTH] SCR export sharing scan STOPPED EARLY: " + scanStopped + ".");
+  const stopText = scanStopped
+    ? "⚠️ SCR EXPORT SHARING SCAN STOPPED EARLY\n" +
+      "   " + scanStopped + "; the rest were not checked.\n" +
+      "   Action: delete old \"SCR Export — \" files, then run the health check again."
+    : "";
   checks.push({
-    ok: overShared.length === 0,
-    alertText: overShared.length
+    ok: overShared.length === 0 && !scanStopped,
+    alertText: (overShared.length
       ? "🚨 SCR EXPORT SHARED BEYOND THE ORGANIZATION\n" +
         "   " + overShared.length + " file(s) matching \"SCR Export — \" are shared\n" +
         "   with anyone, not just your organization:\n" +
         overShared.map(n => "     • " + n).join("\n") + "\n" +
         "   Action: Open each file → Share → restrict access to your organization."
-      : "",
+      : "") + (overShared.length && stopText ? "\n" : "") + stopText,
     displayLine: overShared.length
       ? "🚨  " + overShared.length + " SCR export file(s) shared beyond the org — see admin alert"
-      : "✅  No SCR export files shared beyond the organization",
+      : scanStopped
+        ? "⚠️  SCR export sharing scan stopped early (" + scanStopped + ") — see admin alert"
+        : "✅  No SCR export files shared beyond the organization",
   });
 
   // (d) SCRDecisionLog rows past the configured retention window that

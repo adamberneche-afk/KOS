@@ -227,6 +227,9 @@ Status 2026-10-23: none of the seven is fixed, and the check now reports
 eleven (`5_Error_And_Utilities.gs` ×2 and
 `cas-ccps/scripts/50_StudentDataAccess.js` ×3 among them).
 *2026-11-01:* gas-lint reports 8, 4 of them in kos-personal (`KOS_INGESTION_HARDENING_PLAN.md`, F).
+*2026-11-07:* cas-ccps's four are fixed (`50_StudentDataAccess.js` ×3 and
+`10_AdminRecoveryPanel.js`: `MAX_*` caps and a time limit, a stop reported
+as a failure, never a silent cut). The 4 in kos-personal remain.
 
 One real bug caught while building this, before it ever ran on real code:
 the first cut of both regexes (`[A-Za-z_$][\w$]*(?:MAX|LIMIT|CAP)[\w$]*\b`

@@ -49,6 +49,20 @@ const SDA_TIME_BUDGET_MS = 4.5 * 60 * 1000;
 const SDA_CURSOR_PROP = "STUDENT_DATA_ACCESS_REPAIR_CURSOR";
 const SDA_CLASS_FOLDERS_NAME = "_Student Shared Folders";
 
+// Caps on the two Drive walks that run after the files (process hardening
+// 2b: a loop over a Drive iterator stops at a cap and a time limit, and
+// says so). Sized well past today's data: one "_Student Shared Folders"
+// (more means copies); a class folder per class period, about ten for
+// ~95-120 students, so 200 still holds a folder per student; one
+// "SCR Export — " file per export run. A walk that stops early is a
+// failure line in the result and the log, never a silent cut, and a cap or
+// the time limit is the only way it stops early.
+const SDA_MAX_SHARED_ROOTS = 5;
+const SDA_MAX_CLASS_FOLDERS = 200;
+const SDA_MAX_EXPORTS = 200;
+// Apps Script stops a run at 6 minutes; the walks stop at 5.5 from the start.
+const SDA_HARD_STOP_MS = 5.5 * 60 * 1000;
+
 function previewStudentDataAccessRepair() {
   return runStudentDataAccessRepair_({ apply: false });
 }
@@ -58,9 +72,12 @@ function applyStudentDataAccessRepair() {
 }
 
 /**
- * @param {{apply?: boolean, now?: Date, budgetMs?: number}} opts
+ * @param {{apply?: boolean, now?: Date, budgetMs?: number, hardStopMs?: number,
+ *          maxRoots?: number, maxClassFolders?: number, maxExports?: number}} opts
+ *        (the last four override the SDA_ caps, for tests)
  * @returns {{apply: boolean, done: boolean, schoolYear: string, files: number,
- *            changes: Object[], failures: Object[], ledgerStudentAccess: string[]}}
+ *            changes: Object[], failures: Object[], ledgerStudentAccess: string[],
+ *            stoppedEarly: boolean}}
  */
 function runStudentDataAccessRepair_(opts) {
   const o = opts || {};
@@ -72,7 +89,7 @@ function runStudentDataAccessRepair_(opts) {
   const year = _currentSchoolYear_(o.now);
   const props = PropertiesService.getScriptProperties();
   const result = { apply: apply, done: false, schoolYear: year, files: 0,
-    changes: [], failures: [], ledgerStudentAccess: [] };
+    changes: [], failures: [], ledgerStudentAccess: [], stoppedEarly: false };
 
   const targets = _sdaTargets_(cfg, ss, year);
   const start = apply ? (Number(props.getProperty(SDA_CURSOR_PROP)) || 0) : 0;
@@ -87,8 +104,15 @@ function runStudentDataAccessRepair_(opts) {
   result.done = i >= targets.length;
 
   if (result.done) {
-    _sdaFixClassFolders_(apply, result);
-    _sdaFixExports_(apply, result);
+    const walk = {
+      started: started,
+      stopMs: o.hardStopMs || SDA_HARD_STOP_MS,
+      maxRoots: o.maxRoots || SDA_MAX_SHARED_ROOTS,
+      maxClassFolders: o.maxClassFolders || SDA_MAX_CLASS_FOLDERS,
+      maxExports: o.maxExports || SDA_MAX_EXPORTS,
+    };
+    _sdaFixClassFolders_(apply, result, walk);
+    _sdaFixExports_(apply, result, walk);
     result.ledgerStudentAccess = _sdaLedgerStudentAccess_(cfg);
     if (apply) props.deleteProperty(SDA_CURSOR_PROP);
   } else if (apply) {
@@ -98,7 +122,8 @@ function runStudentDataAccessRepair_(opts) {
   Logger.log("[S50] " + (apply ? "APPLIED" : "DRY RUN") + " for school year " + year + ": " +
     result.files + " file(s) checked, " + result.changes.length + " change(s)" +
     (apply ? "" : " would be made") + ", " + result.failures.length + " failure(s)." +
-    (result.done ? "" : " Stopped at the time budget; run it again to continue from file " + i + "."));
+    (result.done ? "" : " Stopped at the time budget; run it again to continue from file " + i + ".") +
+    (result.stoppedEarly ? " A Drive walk STOPPED EARLY; see its FAILED line." : ""));
   // The log names no student: the operator pastes it into sessions. A
   // student account reads "a student account"; staff addresses are kept so
   // the operator knows whose access changed. The returned result keeps the
@@ -235,13 +260,37 @@ function _sdaFixFile_(t, apply, result) {
 // Every class folder under "_Student Shared Folders" loses every viewer and
 // editor except its owner: those grants are what gave each classmate access
 // to every doc inside.
-function _sdaFixClassFolders_(apply, result) {
+function _sdaFixClassFolders_(apply, result, walk) {
   let roots;
   try { roots = DriveApp.getFoldersByName(SDA_CLASS_FOLDERS_NAME); } catch (e) { return; }
+  let rootCount = 0;
+  let folderCount = 0;
   while (roots.hasNext()) {
+    if (rootCount >= walk.maxRoots) {
+      _sdaStoppedEarly_(result, "class folders", "more than " + walk.maxRoots + " folders named \"" +
+        SDA_CLASS_FOLDERS_NAME + "\" (SDA_MAX_SHARED_ROOTS); the rest were not checked");
+      break;
+    }
+    if (Date.now() - walk.started > walk.stopMs) {
+      _sdaStoppedEarly_(result, "class folders", "stopped at the time limit after " + folderCount +
+        " class folder(s); the rest were not checked. Run it again.");
+      break;
+    }
+    rootCount++;
     const root = roots.next();
     const classFolders = root.getFolders();
     while (classFolders.hasNext()) {
+      if (folderCount >= walk.maxClassFolders) {
+        _sdaStoppedEarly_(result, "class folders", "more than " + walk.maxClassFolders +
+          " class folders (SDA_MAX_CLASS_FOLDERS); the rest were not checked");
+        return;
+      }
+      if (Date.now() - walk.started > walk.stopMs) {
+        _sdaStoppedEarly_(result, "class folders", "stopped at the time limit after " + folderCount +
+          " class folder(s); the rest were not checked. Run it again.");
+        return;
+      }
+      folderCount++;
       const folder = classFolders.next();
       let owner = "";
       try { owner = String(folder.getOwner().getEmail() || "").toLowerCase(); } catch (e) { /* shared drive */ }
@@ -259,10 +308,22 @@ function _sdaFixClassFolders_(apply, result) {
   }
 }
 
-function _sdaFixExports_(apply, result) {
+function _sdaFixExports_(apply, result, walk) {
   let files;
   try { files = DriveApp.searchFiles('title contains "SCR Export — "'); } catch (e) { return; }
+  let count = 0;
   while (files.hasNext()) {
+    if (count >= walk.maxExports) {
+      _sdaStoppedEarly_(result, "SCR exports", "more than " + walk.maxExports +
+        " \"SCR Export — \" files (SDA_MAX_EXPORTS); the rest were not checked. Delete old exports.");
+      break;
+    }
+    if (Date.now() - walk.started > walk.stopMs) {
+      _sdaStoppedEarly_(result, "SCR exports", "stopped at the time limit after " + count +
+        " file(s); the rest were not checked. Run it again.");
+      break;
+    }
+    count++;
     const f = files.next();
     if (f.getSharingAccess() === DriveApp.Access.PRIVATE) continue;
     result.changes.push({ target: "export " + f.getName(), what: "make private", email: "(link sharing)", reason: "" });
@@ -271,6 +332,14 @@ function _sdaFixExports_(apply, result) {
       result.failures.push({ target: "export " + f.getName(), error: e.message });
     }
   }
+}
+
+// A Drive walk that stopped before the end: a failure (so the summary's
+// failure count and the FAILED lines show it) and a log line now.
+function _sdaStoppedEarly_(result, target, why) {
+  result.stoppedEarly = true;
+  result.failures.push({ target: target, error: "STOPPED EARLY: " + why });
+  Logger.log("[S50] " + target + ": STOPPED EARLY: " + why);
 }
 
 // Student accounts with access to the Central Ledger spreadsheet. Reported
