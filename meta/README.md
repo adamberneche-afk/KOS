@@ -73,6 +73,14 @@ why this repo exists at all.
   other 34 were drafted and approved together on 2026-10-28. Generated from
   `cas-ccps/curriculum/lessons/PARTS.json` (and any drafts in
   `PARTS_DRAFTS.json`) by `tools/cas-ccps/render-parts-drafts.js`; edit the JSON.
+- **`TURN_IN_CODE_PLAN_2026-11.md`** — the turn-in code's design, from the
+  operator's decisions of 2026-11-07: a code in a Canvas text-entry box
+  earns formative completion credit once the student has answered one
+  question about their feedback (checked by an Apps Script screen and a
+  Studio flow); no code for a broken check; the teacher's grant; a
+  per-course switch; the standing rules that keep the grade from poisoning
+  the competency measure; the per-lesson engagement-to-competency report;
+  what to verify in a Canvas submissions ZIP; and the build stages.
 - **`STUDENT_WORK_PLAN_2026-10.md`** — the plan (direction decided
   2026-10-24) for the student's side of an assignment, from rendering two
   new student docs: multi-part lessons split into parts that unlock in
