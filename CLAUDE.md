@@ -113,8 +113,8 @@ the operator starts.
 
 ## Closeout fidelity (decided 2026-11-07)
 
-A log is the RTP's own distillation, and ingestion's raw copy is the same
-text, so a log can't be checked against itself. Two checks:
+A log is the RTP's own distillation, so it can't be checked against
+itself; the chat the operator pastes ahead of it can. Two checks:
 
 - **(a) Every log.** Check the closeout against the log's own exchanges:
   every `DECISION:` line appears under "Decisions made"; no
