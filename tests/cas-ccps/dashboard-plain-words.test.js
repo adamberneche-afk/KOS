@@ -171,3 +171,156 @@ test('the Teacher Dashboard has one "+ New lesson" (📅 Lessons drafts one); th
   assert.ok(teacher.includes(">+ Log today's lesson</button>"));
   assert.ok(!teacher.includes('>+ New Lesson</button>'));
 });
+
+// ── The Student Dashboard's cards (2026-11-07) ──────────────────────────
+// A short pill with the rest of the status on its own line, one filled
+// button chosen by the status, no "Not checked yet" while the work is being
+// checked, a "Do next" list of the cards that need the student, and a
+// "Not yet:" line from the last check's evidence on a card to revise.
+
+const ME = 'amy@ccpsnet.net';
+function studentData() {
+  const session = {
+    getActiveUser() { return { getEmail() { return ME; } }; },
+    getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
+    getScriptTimeZone() { return 'America/New_York'; },
+  };
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js')],
+    ['getStudentDashboardData', 'buildStudentDashboardHtml_', 'LEDGER'], { Session: session });
+  const L = exported.LEDGER;
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  props.setProperty('ADMIN_SS_ID', ss.getId());
+  const ledger = ss.insertSheet('Ledger');
+  ledger.appendRow(new Array(27).fill('h'));
+  const row = (id, unit, status, block, lastResult, lastEval) => {
+    const r = new Array(27).fill('');
+    r[L.TIMESTAMP] = new Date(); r[L.GOOGLE_ID] = ME; r[L.CONFIG_ID] = id; r[L.FILE_ID] = 'f-' + id;
+    r[L.STUDENT_NAME] = 'Amy'; r[L.COURSE_NAME] = unit; r[L.CLASS_NAME] = '8175 Sports Marketing';
+    r[L.BLOCK] = block; r[L.PERIOD] = block; r[L.STATUS] = status;
+    r[L.LAST_RESULT] = lastResult || ''; r[L.LAST_EVAL] = lastEval || '';
+    ledger.appendRow(r);
+  };
+  row('A1', 'Lesson 01 Revenue', 'COMPLETE', '1', 'PASSED', new Date('2026-10-20T10:00:00'));
+  row('A2', 'Lesson 02 Sponsors', 'ACTIVE', '1');
+  row('A3', 'Lesson 03 SWOT', 'COMPLETE', '3', 'NEEDS_REVISION', new Date('2026-10-21T10:00:00'));
+  row('A4', 'Lesson 04 Pricing', 'ACTIVE', '3');
+  // A4 is being checked right now.
+  const sp = ss.insertSheet('STAGING_PIPELINE');
+  sp.appendRow(['StudentFileID', 'Status']);
+  sp.appendRow(['f-A4', 'IN_PROCESS']);
+  // A3's checks: the first (Oct 19) missed milestone 2; the last (Oct 21)
+  // met the primary (milestone 1) and missed milestone 2 again.
+  const ev = ss.insertSheet('CompetencyEvidence');
+  ev.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text', 'outcome', 'config_id',
+    'evaluated_at', 'student_file_id', 'archive_status']);
+  const e = (comp, text, outcome, at) => ev.appendRow(['e', ME, comp, text, outcome, 'A3', new Date(at), 'f-A3', '']);
+  e('8175-30', '8175-30 Explain two revenue streams.', 'NOT_MET', '2026-10-19T10:00:00');
+  e('8175-30', '8175-30 Explain two revenue streams.', 'MET', '2026-10-21T10:00:00');
+  e('8175-31', '8175-31 Compare two sponsors by cost.', 'PARTIALLY_MET', '2026-10-21T10:00:00');
+  const data = JSON.parse(JSON.stringify(exported.getStudentDashboardData('')));
+  return { exported, data, by: Object.fromEntries(data.assignments.map(a => [a.configId, a])) };
+}
+
+function studentPage(exported) {
+  const els = {};
+  const el = (id) => els[id] || (els[id] = { id, style: {}, innerHTML: '', options: [], setAttribute() {}, appendChild() {},
+    classList: { add() {}, remove() {} } });
+  const ctx = {
+    document: { getElementById: el, addEventListener() {}, querySelectorAll: () => [] },
+    google: { script: { run: new Proxy({}, { get: () => function () { return this; } }) } },
+    console, setTimeout() {}, setInterval() {}, navigator: {},
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  const { extractInlineScripts } = require('../../tools/html-lint/check.js');
+  extractInlineScripts(exported.buildStudentDashboardHtml_()).forEach(code => vm.runInContext(code, ctx));
+  return { ctx, els };
+}
+
+test('Student Dashboard: a short pill, with the rest of the status on its own line', () => {
+  const { by } = studentData();
+  assert.deepEqual([by.A1.statusPill, by.A2.statusPill, by.A3.statusPill, by.A4.statusPill],
+    ['Passed ✓', 'Not started', 'Revise', 'Being checked']);
+  assert.equal(by.A1.statusNote, 'Feedback is ready: check your document');
+  assert.equal(by.A3.statusNote, 'Revise, then submit again: check your document');
+  assert.equal(by.A2.statusNote, '', 'the pill says it all');
+  assert.equal(by.A4.statusNote, '');
+  assert.match(by.A3.displayStatus, /^Feedback ready — revise/, 'displayStatus is unchanged for the doc menu');
+  const { exported } = studentData();
+  const words = exported.buildStudentDashboardHtml_();
+  for (const pill of ['Not started', 'Being checked', 'Revise', 'Turned in', 'Done ✓', 'Taking longer', 'Not yet', 'Do next']) {
+    assert.ok(words.includes('<dt>' + pill + '</dt>'), 'the Terms panel explains ' + pill);
+  }
+  assert.doesNotMatch(words, /max-width:55%/, 'no right-aligned pill squeezing the title');
+});
+
+test('Student Dashboard: one filled button per card, chosen by its status', () => {
+  const { exported, by } = studentData();
+  const { ctx } = studentPage(exported);
+  const filled = (a) => {
+    const h = ctx.cardHtml(a);
+    const m = [...h.matchAll(/<(?:a|button)[^>]*class="act act-primary[^"]*"[^>]*>([^<]*)</g)];
+    assert.equal(m.length, 1, 'exactly one primary on ' + a.configId);
+    assert.equal((h.match(/act-secondary/g) || []).length, (h.match(/class="act /g) || []).length - 1);
+    return m[0][1].trim();
+  };
+  assert.equal(filled(by.A2), 'Open My Document ↗', 'not started: open the doc');
+  assert.equal(filled(by.A4), 'Open My Document ↗', 'being checked: open the doc');
+  assert.equal(filled(by.A3), 'Submit for Feedback', 'to revise: submit');
+  assert.equal(filled(by.A1), 'View feedback ↗', 'passed: view the feedback');
+  assert.ok(ctx.cardHtml(by.A3).indexOf('Submit for Feedback') < ctx.cardHtml(by.A3).indexOf('Open My Document'),
+    'the primary comes first');
+  assert.match(ctx.cardHtml(by.A2), /<button type="button" class="act act-secondary"[^>]*>Submit for Feedback/,
+    'Submit stays a real button');
+  assert.equal(filled(Object.assign({}, by.A3, { canSubmit: false })), 'Open My Document ↗',
+    'Submit can\'t be pressed: the doc is the primary');
+});
+
+test('Student Dashboard: no "Not checked yet" while the work is being checked', () => {
+  const { exported, by } = studentData();
+  const { ctx } = studentPage(exported);
+  assert.equal(ctx.evalLine(by.A4), '');
+  assert.doesNotMatch(ctx.cardHtml(by.A4), /Not checked yet|eval-line/);
+  assert.equal(ctx.evalLine(by.A2), '', 'nor before it was started');
+  const failed = Object.assign({}, by.A2, { status: 'ERROR_EVALUATION', statusClass: 'ISSUE', statusPill: 'Couldn’t be checked ⚠',
+    statusNote: 'Your teacher knows. You can submit again', lastEval: '' });
+  assert.equal(ctx.evalLine(failed), '', 'nor on a check that failed: its own line says what happened');
+  assert.doesNotMatch(ctx.cardHtml(failed), /Not checked yet|eval-line/);
+  assert.equal(ctx.evalLine(Object.assign({}, failed, { status: 'ERROR_TIMEOUT', statusPill: 'Taking longer ⚠' })), '');
+  assert.match(ctx.evalLine(by.A3), /^Last checked: Oct 21, 2026/);
+  assert.equal(ctx.evalLine({ statusClass: 'IN_PROGRESS', statusPill: 'Waiting for feedback', lastEval: '' }), 'Not checked yet');
+});
+
+test('Student Dashboard: "Do next" lists the cards that need the student, only when there are any', () => {
+  const { exported, data, by } = studentData();
+  const { ctx, els } = studentPage(exported);
+  ctx.render(data);
+  const h = els.main.innerHTML;
+  assert.match(h, /<section class="do-next" aria-labelledby="do-next-h"><h2 id="do-next-h">Do next<\/h2><ul><li><a href="#card-A3"[^>]*>Lesson 03 SWOT<\/a><span class="pill pill-NEEDS_ACTION">Revise<\/span><\/li><\/ul><\/section>/);
+  assert.ok(h.indexOf('class="do-next"') < h.indexOf('class="group-header"'), 'above the classes');
+  assert.ok(h.includes('id="card-A3" tabindex="-1"'), 'the link\'s target');
+  assert.equal((h.match(/class="group-header"/g) || []).length, 2, 'grouping stays below');
+  assert.equal(ctx.doNextHtml([by.A1, by.A2, by.A4]), '', 'nothing needs the student: no band');
+  assert.equal(ctx.doNextHtml([Object.assign({}, by.A4, { statusClass: 'ISSUE', status: 'ERROR_TIMEOUT' })]), '',
+    'a timeout is not the student\'s to do');
+});
+
+test('Student Dashboard: a card to revise says what the last check didn\'t find yet', () => {
+  const { exported, by } = studentData();
+  assert.equal(by.A3.notYet, 'Compare two sponsors by cost', 'the last check\'s first milestone not met');
+  assert.equal(by.A1.notYet, '');
+  assert.equal(by.A2.notYet, '');
+  const { ctx } = studentPage(exported);
+  assert.match(ctx.cardHtml(by.A3), /<div class="next-step"><b>Not yet:<\/b> Compare two sponsors by cost<\/div>/);
+  assert.doesNotMatch(ctx.cardHtml(Object.assign({}, by.A3, { statusClass: 'IN_PROGRESS' })), /Not yet:/,
+    'gone once it is resubmitted');
+});
+
+test('touch screens get 44px targets; the teacher\'s student names are at least 24px', () => {
+  const { student, teacher } = pages();
+  assert.match(student, /@media \(pointer: coarse\)\{\s*button,select,\.act\{min-height:44px !important\}/);
+  assert.match(teacher, /@media \(pointer: coarse\)\{header button,header select\{min-height:44px !important\}\}/);
+  assert.match(teacher, /\.name-link\{[^}]*padding:4px 2px;margin:-4px -2px;min-height:24px/);
+});

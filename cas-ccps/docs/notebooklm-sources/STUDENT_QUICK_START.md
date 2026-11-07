@@ -47,27 +47,31 @@ Submit as many times as you like. Revising is the point, and there's no penalty.
 
 ## What your card says
 
-Each assignment has a card on your dashboard. The coloured label tells you what to do next.
+Each assignment has a card on your dashboard. The coloured label says where it stands in a word or two; the line under the title says what to do. The filled button is the next step.
 
-- **Not started yet**: You haven't submitted this one. Write, then press Submit for Feedback.
+Cards that need you are listed first, under **Do next**, at the top of the page. Click one to jump to its card.
 
-- **Waiting for feedback…**: Your work is in line to be checked. Nothing to do yet. Check back in a few minutes.
+- **Not started**: You haven't submitted this one. Open your document, write, then press Submit for Feedback.
 
-- **Being checked now…**: Your work is being read right now.
+- **Waiting for feedback**: Your work is in line to be checked. Nothing to do yet. Check back in a few minutes.
 
-- **Passed ✓ — feedback is ready: open your document and click Comments**: Your work meets the standard. Turn it in on Canvas, or keep improving it and submit again.
+- **Being checked**: Your work is being read right now.
 
-- **Feedback ready — revise, then submit again: open your document and click Comments**: Read the feedback, change your work, then press Submit for Feedback again.
+- **Passed ✓**: Your work meets the standard. The line under the title says where your feedback is. Turn it in on Canvas, or keep improving it and submit again.
 
-- **Taking longer than usual ⚠ — your work is saved, and your teacher knows**: The check took more than 12 minutes and was stopped. Your teacher has been told. If the feedback arrives late, the card changes to show it.
+- **Revise**: Read the feedback, change your work, then press Submit for Feedback again. A **Not yet:** line names the part of the assignment your last check didn't find yet: start there.
 
-- **Couldn’t be checked this time ⚠ — your teacher knows. You can submit again**: The check ran, but its result could not be used. Your teacher has been told. You can press Submit for Feedback again.
+- **Turned in**: Your teacher is reviewing your work. Nothing to do yet.
 
-- **Couldn't be checked ⚠ — tell your teacher**: Something went wrong on our side, not with your work. Your work is safe. Tell your teacher. The card has a link to email them.
+- **Done ✓**: Your teacher confirmed this assignment.
+
+- **Taking longer ⚠**: The check took more than 12 minutes and was stopped. Your work is saved and your teacher has been told. If the feedback arrives late, the card changes to show it.
+
+- **Couldn’t be checked ⚠**: Something went wrong on our side, not with your work. The line under the title says whether you can submit again or should tell your teacher; the card has a link to email them.
 
 The card also shows **Last submitted** (when you last pressed Submit for Feedback) and **Last checked** (when you last got feedback), or “Not checked yet”.
 
-> ⏱️ **Most checks take a few minutes.** If a check takes longer than 12 minutes, the system stops it, your card says “Taking longer than usual ⚠”, and your teacher is told by email. You do not need to submit again unless they ask you to.
+> ⏱️ **Most checks take a few minutes.** If a check takes longer than 12 minutes, the system stops it, your card says “Taking longer ⚠”, and your teacher is told by email. You do not need to submit again unless they ask you to.
 
 ## Read Your Feedback
 
@@ -196,10 +200,16 @@ The same list as **❓ What do these mean?** on your dashboard.
 - **Evidence**: What a checked piece of your work showed for a competency: Shown, Partly shown or Not shown yet. Each assignment counts once, at its best result, so an early draft doesn't count against you.
 - **My Context**: What the system has gathered about your work, week by week: your checked assignments and your warm-up answers. The same document your teacher sees.
 - **Submit for Feedback**: Sends what you wrote under “Your response” to be checked. Press it when you’re ready; you can submit again after you revise.
+- **Do next**: The list at the top of your assignments: the ones waiting on you. Click one to jump to it.
+- **Not started**: You haven’t submitted this one yet. Open your document, write under “Your response”, then press Submit for Feedback.
 - **Waiting for feedback**: Your work is in line to be checked. Nothing to do yet; check back in a few minutes.
-- **Being checked now**: Your work is being read right now.
+- **Being checked**: Your work is being read right now.
 - **Passed ✓**: Your work meets the standard for this assignment. You can still improve it and submit again.
-- **Feedback ready — revise**: Read the feedback, change your work, then press Submit for Feedback again.
+- **Revise**: Read the feedback, change your work, then press Submit for Feedback again.
+- **Not yet**: The part of the assignment your last check didn’t find in your work yet. Start your revision there.
+- **Turned in**: Your teacher is reviewing your work. Nothing to do yet.
+- **Done ✓**: Your teacher confirmed this assignment.
+- **Taking longer**: The check is taking longer than usual. Your work is saved and your teacher knows; nothing to do.
 - **Couldn’t be checked**: Something went wrong on our side, not with your work. Tell your teacher.
 - **Comments**: Your feedback appears as a comment on your document. Open the document and click the Comments button (top right). Resolving a comment doesn’t delete it.
 - **Last submitted**: When you last pressed Submit for Feedback on this assignment.

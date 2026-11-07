@@ -138,6 +138,7 @@ function getStudentDashboardData(termFilter) {
       : queuedFiles[fileId] ? "QUEUED" : pipelineStatus[fileId];
     const lastResult = String(row[LEDGER.LAST_RESULT] || "").trim();
     const inLine = pipeline === "IN_PROCESS" || pipeline === "QUEUED";
+    const displayStatus = resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult);
 
     assignments.push({
       configId:      configId,
@@ -154,8 +155,15 @@ function getStudentDashboardData(termFilter) {
       subject:       String(row[LEDGER.SUBJECT]).trim(),
       term:          rowTerm,
       status:        status,
-      displayStatus: resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult),
+      displayStatus: displayStatus,
       statusClass:   resolveStudentClass_(status, pipeline, lastResult),
+      // The card's short pill and the line under the title (UX audit,
+      // "Status pills: short pills"): displayStatus split in two.
+      statusPill:    resolveStudentPill_(status, pipeline, lastResult),
+      statusNote:    studentStatusNote_(displayStatus),
+      // "Not yet: <what the last check didn't find>", filled below for a
+      // card that needs revising (_dashNotYet_).
+      notYet:        "",
       lastEval:      lastEval     || "",
       submittedAt:   submittedAt  || null,
       docUrl:        fileId
@@ -191,6 +199,18 @@ function getStudentDashboardData(termFilter) {
     if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
     return a.className.localeCompare(b.className);
   });
+
+  // The next-step line on a card to revise (F3): from CompetencyEvidence,
+  // already in this Ledger, read once and only when a card needs it.
+  const toRevise = assignments.filter(function (a) { return a.statusClass === "NEEDS_ACTION" && a.fileId; });
+  if (toRevise.length) {
+    try {
+      const notYet = _dashNotYet_(ss, cfg, toRevise.map(function (a) { return a.fileId; }));
+      toRevise.forEach(function (a) { a.notYet = notYet[a.fileId] || ""; });
+    } catch (e) {
+      Logger.log("[S13] next-step line not read: " + e.message);
+    }
+  }
 
   // Each lesson's part count (the student has every part, open or not),
   // and the locked parts of the lessons with a part open.
@@ -264,6 +284,49 @@ function getStudentDashboardData(termFilter) {
     availableTerms: [...availableTerms].sort().reverse(),
     generatedAt:    formatDate_(new Date())
   };
+}
+
+// The next step on a card to revise: the first milestone the file's last
+// check found not met yet ({ fileId: text }). Flow 2 writes a check's
+// evidence rows in milestone order (15c's writeCompetencyEvidenceFromFlow2_),
+// so the first row is the primary milestone; when the primary was met, the
+// next one that wasn't. The text is the milestone as the student reads it
+// (00's reflectionCriterionText_), or the competency's title. Read by
+// header, like reflectionShortfall_ (00); no new column (FLOW_DOCTRINE 6).
+function _dashNotYet_(ss, cfg, fileIds) {
+  const out = {};
+  const want = {};
+  fileIds.forEach(function (f) { want[f] = true; });
+  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const rows = sheet.getDataRange().getValues();
+  const h = rows[0].map(function (x) { return String(x).trim(); });
+  const iFile = h.indexOf("student_file_id"), iComp = h.indexOf("competency_id"), iText = h.indexOf("milestone_text"),
+    iOut = h.indexOf("outcome"), iAt = h.indexOf("evaluated_at"), iArch = h.indexOf("archive_status");
+  if (iFile === -1 || iOut === -1 || iAt === -1) return out;
+  const byFile = {};
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const f = String(r[iFile]).trim();
+    if (!want[f] || (iArch !== -1 && String(r[iArch]).trim())) continue;
+    (byFile[f] = byFile[f] || []).push(r);
+  }
+  let names = null;
+  Object.keys(byFile).forEach(function (f) {
+    const mine = byFile[f];
+    const latest = Math.max.apply(null, mine.map(function (r) { return sheetTimestampMs_(r[iAt]) || 0; }));
+    const short = mine.filter(function (r) {
+      return (sheetTimestampMs_(r[iAt]) || 0) === latest && String(r[iOut]).trim().toUpperCase() !== "MET";
+    })[0];
+    if (!short) return;
+    let text = iText === -1 ? "" : reflectionCriterionText_(short[iText]);
+    if (!text && iComp !== -1) {
+      if (!names) names = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry"));
+      text = names[String(short[iComp]).trim()] || "";
+    }
+    if (text) out[f] = text;
+  });
+  return out;
 }
 
 // Lessons in parts (68): each part row's lesson and place, from
@@ -1230,6 +1293,41 @@ function resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult)
   }
 }
 
+// The card's pill: one or two words from the same vocabulary as
+// resolveStudentStatus_ and the Terms panel (CAS_STUDENT_TERMS, 00). The
+// rest of the status goes on its own line (studentStatusNote_), so the pill
+// never wraps beside the title.
+function resolveStudentPill_(status, pipeline, lastResult) {
+  if (pipeline === "IN_PROCESS") return "Being checked";
+  if (pipeline === "QUEUED" || pipeline === "PENDING_INFERENCE") return "Waiting for feedback";
+  switch (status) {
+    case "ACTIVE":              return "Not started";
+    case "PENDING": case "STAGED": return "Waiting for feedback";
+    case "COMPLETE":
+      if (lastResult === "PASSED") return "Passed ✓";
+      if (lastResult === "NEEDS_REVISION") return "Revise";
+      return "Feedback ready";
+    case "PENDING_TEACHER_REVIEW": return "Turned in";
+    case "COMPLIANT":           return "Done ✓";
+    case "ERROR_TIMEOUT":       return "Taking longer ⚠";
+    default:
+      return String(status || "").startsWith("ERROR") ? "Couldn’t be checked ⚠" : "Ask your teacher";
+  }
+}
+
+// The line under the title: what displayStatus says after its " — ", or
+// the whole of a status that is an instruction ("Feedback is ready: …").
+// "" when the pill says it all ("Not started yet", "Being checked now…").
+function studentStatusNote_(displayStatus) {
+  const s = String(displayStatus || "");
+  const i = s.indexOf(" — ");
+  if (i !== -1) {
+    const note = s.slice(i + 3);
+    return note.charAt(0).toUpperCase() + note.slice(1);
+  }
+  return /^Feedback is ready/.test(s) ? s : "";
+}
+
 function resolveStudentClass_(status, pipeline, lastResult) {
   // Evaluating-now shares IN_PROGRESS's visual bucket (same pill/border
   // color) — the distinction is carried by displayStatus's text, not a
@@ -1306,7 +1404,6 @@ function buildStudentDashboardHtml_() {
   #term-filter option{color:#202124;background:#fff}
   @media (max-width:480px){
     header{padding:14px 16px}
-    .pill{max-width:none;text-align:left}
     .refresh-btn{min-height:44px}
     #account-label{max-width:100%}
     header h1{font-size:17px}
@@ -1360,7 +1457,13 @@ function buildStudentDashboardHtml_() {
      (font-size/padding/border-radius) — this renders the identical
      "current status" chip concept, but used to be a fully-rounded pill at
      a different size, a visible seam between the two dashboards. */
-  .pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:12px;max-width:55%;text-align:right;line-height:1.35}
+  .pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:12px;line-height:1.35}
+  /* A card's pill is one or two words (statusPill), so it stays on one
+     line beside the title; the rest of the status is .status-note. */
+  .card-top .pill{white-space:nowrap;flex-shrink:0}
+  .status-note{font-size:13.5px;color:#3c4043;margin:-4px 0 8px;line-height:1.45}
+  .next-step{font-size:14px;margin:0 0 8px;line-height:1.45}
+  .next-step b{color:#7627bb}
   .pill-NOT_STARTED{background:#f1f3f4;color:var(--text-secondary)}
   .pill-IN_PROGRESS{background:#fef3e2;color:#9c5000}
   .pill-NEEDS_ACTION{background:#f3e8fd;color:#7627bb}
@@ -1368,12 +1471,27 @@ function buildStudentDashboardHtml_() {
   .pill-ISSUE{background:#fce8e6;color:#b3261e}
   .card-meta{font-size:13px;color:var(--text-secondary);margin-bottom:10px}
   .eval-line{font-size:13px;color:var(--text-secondary);margin-bottom:12px}
-  .open-btn{display:inline-block;background:#1967d2;color:white;text-decoration:none;padding:9px 20px;border-radius:6px;font-size:14px;font-weight:500;transition:background .15s}
-  .open-btn:hover{background:#1557b0}
-  .open-btn.done-btn{background:#137333}
-  .open-btn.done-btn:hover{background:#0d652d}
+  /* A card's actions (2026-11-07): one filled primary, chosen by the
+     card's status (primaryActionFor), the others outlined. */
+  .act{display:inline-flex;align-items:center;padding:8px 18px;border-radius:6px;font-size:14px;font-weight:500;font-family:inherit;text-decoration:none;cursor:pointer;border:1px solid #1967d2;transition:background .15s}
+  .act-primary{background:#1967d2;color:white}
+  .act-primary:hover{background:#1557b0}
+  .act-primary.act-done{background:#137333;border-color:#137333}
+  .act-primary.act-done:hover{background:#0d652d}
+  .act-secondary{background:white;color:#1557b0;border-color:#1557b0}
+  .act-secondary:hover{background:#e8f0fe}
+  .act:disabled{opacity:.6;cursor:default}
+  .act:focus-visible{outline:2px solid #1557b0;outline-offset:2px}
+  /* "Do next": the cards that need the student, across every class. */
+  .do-next{background:white;border:1px solid #d7c1f5;border-left:5px solid #9334e6;border-radius:12px;padding:12px 18px;margin-bottom:16px}
+  .do-next h2{font-size:15px;font-weight:600;margin:0 0 6px}
+  .do-next ul{list-style:none;margin:0;padding:0}
+  .do-next li{padding:4px 0;font-size:14px;display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+  .do-next a{color:#1557b0;font-weight:500}
+  .card:focus{outline:2px solid #1557b0;outline-offset:2px}
   .submitted-note{font-size:13px;color:#137333;margin-top:8px;font-weight:500}
   .card-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  /* The reflection form's own Submit (reflectFormHtml). */
   .submit-btn{background:white;color:#137333;border:1px solid #137333;padding:8px 18px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
   .submit-btn:hover{background:#e6f4ea}
   .submit-btn:disabled{opacity:.6;cursor:default}
@@ -1420,6 +1538,13 @@ function buildStudentDashboardHtml_() {
   .empty-state{text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line}
   .empty-state .icon{font-size:48px;margin-bottom:16px}
   footer{text-align:center;padding:20px;font-size:13px;color:var(--text-secondary);border-top:1px solid #e8eaed;margin-top:32px}
+  /* Touch screens (2026-11-07): every button, select and button-like link
+     at least 44px tall; card buttons were about 37px. !important because
+     the header's buttons and term menu set their own height. */
+  @media (pointer: coarse){
+    button,select,.act{min-height:44px !important}
+    .do-next a{display:inline-flex;align-items:center;min-height:44px}
+  }
 </style>
 </head>
 <body>
@@ -1648,7 +1773,7 @@ function render(data) {
     return a.localeCompare(b);
   });
 
-  let html = renderCompetencies(data) + renderWarmUps(data);
+  let html = renderCompetencies(data) + renderWarmUps(data) + doNextHtml(data.assignments);
   sortedGroups.forEach(gk => {
     html += \`<div class="group-header">Block \${esc(gk)}</div>\`;
     // A lesson in parts (68) shows as one block: its open parts in order,
@@ -1671,29 +1796,95 @@ function render(data) {
   _populateTermDropdown(data);
 }
 
+// What a card's filled (primary) button is, by its status. The other
+// actions on the card are outlined (secondary). The statuses are the ones
+// resolveStudentClass_ and resolveStudentPill_ already use:
+//
+//   statusClass   pill                                    primary
+//   NOT_STARTED   Not started                             Open My Document
+//   IN_PROGRESS   Waiting for feedback / Being checked /  Open My Document
+//                 Turned in
+//   NEEDS_ACTION  Revise / Feedback ready                 Submit for Feedback
+//   DONE          Passed ✓ / Done ✓                       View feedback (the doc)
+//   ISSUE         Taking longer / Couldn't be checked     Open My Document
+//
+// Submit is primary only when it can be pressed (canSubmit, and the
+// reflection questions aren't open); otherwise the document is.
+function primaryActionFor(a) {
+  const canSubmit = a.canSubmit && !_reflect[a.fileId];
+  if (a.statusClass === "NEEDS_ACTION" && canSubmit) return "submit";
+  if (a.statusClass === "DONE") return "view";
+  return "open";
+}
+
+// The "Last checked" line, from the status: nothing while the work is
+// being checked (it used to say "Not checked yet" beside "Being checked
+// now…"), before it was ever started, or on a check that failed or timed
+// out (ISSUE): its own line already says what happened, and "Not checked
+// yet" beside "Couldn't be checked" read as a contradiction.
+function evalLine(a) {
+  if (a.statusPill === "Being checked" || a.statusClass === "NOT_STARTED" || a.statusClass === "ISSUE") return "";
+  return a.lastEval ? "Last checked: " + a.lastEval : "Not checked yet";
+}
+
+function cardTitle(a) {
+  return a.part ? "Part " + a.part.n + " of " + a.part.count + (a.part.title ? ": " + a.part.title : "") : a.unitName;
+}
+
+function cardId(a) {
+  return "card-" + String(a.configId || a.fileId || "").replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+// "Do next", above the classes: every card that needs the student, in the
+// server's order (ISSUE, then NEEDS_ACTION). A timeout is left out: the
+// student has nothing to do ("your teacher knows"). Nothing when empty.
+function doNextHtml(list) {
+  const items = (list || []).filter(a => a.statusClass === "NEEDS_ACTION" ||
+    (a.statusClass === "ISSUE" && a.status !== "ERROR_TIMEOUT"));
+  if (!items.length) return "";
+  return '<section class="do-next" aria-labelledby="do-next-h"><h2 id="do-next-h">Do next</h2><ul>' +
+    items.map(a => '<li><a href="#' + esc(cardId(a)) + '" onclick="return goToCard(\\'' + esc(cardId(a)) + '\\')">' +
+      esc(cardTitle(a)) + '</a><span class="pill pill-' + esc(a.statusClass) + '">' + esc(a.statusPill || a.displayStatus) + '</span></li>').join("") +
+    '</ul></section>';
+}
+
+// Scrolls to a card and moves focus there (the card has tabindex="-1").
+function goToCard(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    if (el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (el.focus) el.focus({ preventScroll: true });
+  }
+  return false;
+}
+
 // One assignment's card.
 function cardHtml(a) {
-  const isDone = a.statusClass === "DONE";
-  return \`<div class="card \${a.statusClass}">
+  const primary = primaryActionFor(a);
+  const cls = (p) => "act " + (p ? "act-primary" : "act-secondary");
+  const doc = safeDocUrl(a.docUrl);
+  const docBtn = doc
+    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}">\${primary === "view" ? "View feedback" : "Open My Document"} ↗</a>\`
+    : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>';
+  const submitBtn = a.canSubmit && !_reflect[a.fileId]
+    ? \`<button type="button" class="\${cls(primary === "submit")}" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
+    : "";
+  const ev = evalLine(a);
+  return \`<div class="card \${a.statusClass}" id="\${esc(cardId(a))}" tabindex="-1">
     <div class="card-top">
-      <div class="unit-name">\${esc(a.part ? "Part " + a.part.n + " of " + a.part.count + (a.part.title ? ": " + a.part.title : "") : a.unitName)}</div>
-      <div class="pill pill-\${a.statusClass}">\${esc(a.displayStatus)}</div>
+      <div class="unit-name">\${esc(cardTitle(a))}</div>
+      <div class="pill pill-\${a.statusClass}">\${esc(a.statusPill || a.displayStatus)}</div>
     </div>
+    \${a.statusNote ? \`<div class="status-note">\${esc(a.statusNote)}</div>\` : ""}
+    \${a.statusClass === "NEEDS_ACTION" && a.notYet ? \`<div class="next-step"><b>Not yet:</b> \${esc(a.notYet)}</div>\` : ""}
     <!-- FIXED: was a fixed "Period X · Subject" template — a blank
          period rendered as a dangling "Period  ·" (empty label, double
          space). Mirrors the teacher dashboard's conditional-join
          pattern (07_TeacherDashboard.js's student-meta line). -->
     <div class="card-meta">\${[a.period && "Period "+esc(a.period), esc(a.subject)].filter(Boolean).join(" &nbsp;·&nbsp; ") || "No class info on file"}</div>
-    <div class="eval-line">\${a.lastEval ? "Last checked: " + esc(a.lastEval) : "Not checked yet"}</div>
+    \${ev ? \`<div class="eval-line">\${esc(ev)}</div>\` : ""}
     <div class="card-actions">
-    \${safeDocUrl(a.docUrl)
-      ? \`<a href="\${esc(safeDocUrl(a.docUrl))}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
-      : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
-    }
-    \${a.canSubmit && !_reflect[a.fileId]
-      ? \`<button class="submit-btn" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
-      : ""
-    }
+    \${primary === "submit" ? submitBtn + docBtn : docBtn + submitBtn}
     </div>
     \${a.canSubmit && _reflect[a.fileId] ? reflectFormHtml(a) : ""}
     \${_submitMsgs[a.fileId]
@@ -2172,6 +2363,8 @@ function submitDone(fileId, configId, res) {
       (_lastDashData.assignments || []).forEach(function(a) {
         if (a.fileId !== fileId || a.configId !== configId) return;
         a.displayStatus = "Waiting for feedback…";
+        a.statusPill = "Waiting for feedback";
+        a.statusNote = "";
         a.statusClass = "IN_PROGRESS";
         a.canSubmit = false;
         a.submittedAt = "just now";
