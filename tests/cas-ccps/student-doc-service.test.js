@@ -129,7 +129,8 @@ function loadDocScript(docText, reply) {
   const calls = [];
   const loaded = loadGasFiles(
     [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '01_StudentDoc_ContainerScript.js')],
-    ['readSystemIds', 'validateRoster_', 'submitToQueue_'],
+    ['readSystemIds', 'validateRoster_', 'submitToQueue_', 'isSchoolServiceUrl_',
+      'runSystemCheck', 'checkSubmissionStatus', 'openStudentDashboard'],
     {
       UrlFetchApp: {
         fetch(url, opts) {
@@ -158,6 +159,97 @@ test('readSystemIds: finds the service URL in the stamped system block, then the
   assert.deepEqual(loadDocScript('Your assignment dashboard: ' + URL + ' — bookmark this.', {})
     .exported.readSystemIds(), { serviceUrl: URL });
   assert.equal(loadDocScript('no markers here', {}).exported.readSystemIds(), null);
+});
+
+// ── The dashboard link is pinned (the doc sends an OAuth token to it) ─────
+// The link lives in the doc body, which a student can edit, and the request
+// carries the signed-in user's token (all their Sheets and Docs). Only the
+// school domain's Apps Script web apps are used; nothing else gets a request.
+
+const BAD_URLS = [
+  'https://evil.example.com/exec',
+  'https://evil.example.com/a/macros/ccpsnet.net/s/DASH/exec',
+  'http://script.google.com/a/macros/ccpsnet.net/s/DASH/exec',
+  'https://script.google.com.evil.com/a/macros/ccpsnet.net/s/DASH/exec',
+  'https://script.google.com@evil.com/a/macros/ccpsnet.net/s/DASH/exec',
+  'https://script.google.com:443@evil.com/a/macros/ccpsnet.net/s/DASH/exec',
+  'https://script.google.com/a/macros/otherschool.org/s/DASH/exec',
+  'https://script.google.com/a/macros/ccpsnet.net.evil.com/s/DASH/exec',
+  'https://script.google.com/a/macros/ccpsnetxnet/s/DASH/exec',
+  'https://script.google.com/macros/s/DASH/exec',
+  'https://script.google.com/a/macros/ccpsnet.net/s/DASH/exec/../../../../evil',
+  'https://script.google.com/a/macros/ccpsnet.net/s/../../evil/s/DASH/exec',
+  'https://script.google.com/a/macros/ccpsnet.net/s/DASH/exec?next=https://evil.com',
+  'https://script.google.com/a/macros/ccpsnet.net/s/DASH/exec#x',
+  'https://script.google.com/a/macros/ccpsnet.net/s/DASH/dev',
+  'https://script.google.com/a/macros/ccpsnet.net/s/DA%2FSH/exec',
+  'https://googleusercontent.com/a/macros/ccpsnet.net/s/DASH/exec',
+];
+
+test('readSystemIds: a dashboard link that is not a school Apps Script link is never used', () => {
+  for (const bad of BAD_URLS) {
+    for (const body of ['[SYS_DASHBOARD_URL:' + bad + ']', 'Your assignment dashboard: ' + bad]) {
+      const { exported } = loadDocScript(body, {});
+      assert.equal(exported.readSystemIds(), null, body);
+    }
+  }
+});
+
+test('readSystemIds: a bad stamped link does not hide a good dashboard line, and vice versa', () => {
+  const evil = 'https://script.google.com.evil.com/a/macros/ccpsnet.net/s/DASH/exec';
+  assert.deepEqual(loadDocScript('[SYS_DASHBOARD_URL:' + evil + ']\nYour assignment dashboard: ' + URL, {})
+    .exported.readSystemIds(), { serviceUrl: URL });
+  assert.deepEqual(loadDocScript('[SYS_DASHBOARD_URL:' + URL + ']\nYour assignment dashboard: ' + evil, {})
+    .exported.readSystemIds(), { serviceUrl: URL });
+});
+
+test('readSystemIds: the STUDENT_DASHBOARD_URL property is checked the same way', () => {
+  const bad = loadDocScript('[SYS_DASHBOARD_URL:' + URL + ']', {});
+  bad.sandbox.PropertiesService.getScriptProperties().setProperty('STUDENT_DASHBOARD_URL', 'https://evil.example.com/exec');
+  assert.deepEqual(bad.exported.readSystemIds(), { serviceUrl: URL }, 'a bad property falls through to the doc');
+  const only = loadDocScript('', {});
+  only.sandbox.PropertiesService.getScriptProperties().setProperty('STUDENT_DASHBOARD_URL', 'https://evil.example.com/exec');
+  assert.equal(only.exported.readSystemIds(), null);
+  const good = loadDocScript('', {});
+  good.sandbox.PropertiesService.getScriptProperties().setProperty('STUDENT_DASHBOARD_URL', URL);
+  assert.deepEqual(good.exported.readSystemIds(), { serviceUrl: URL });
+});
+
+test('the school domain comes from STUDENT_EMAIL_DOMAIN, defaulting to the school\'s', () => {
+  const other = 'https://script.google.com/a/macros/otherschool.org/s/DASH/exec';
+  const { exported, sandbox } = loadDocScript('[SYS_DASHBOARD_URL:' + other + ']', {});
+  assert.equal(exported.readSystemIds(), null);
+  sandbox.PropertiesService.getScriptProperties().setProperty('STUDENT_EMAIL_DOMAIN', '@OtherSchool.org');
+  assert.deepEqual(exported.readSystemIds(), { serviceUrl: other });
+  assert.equal(sandbox.isSchoolServiceUrl_(URL), false, 'the old domain no longer matches');
+});
+
+test('no request, and no token, goes to a link that is not a school Apps Script link', () => {
+  for (const bad of BAD_URLS) {
+    const { exported, calls } = loadDocScript('', { ok: true, info: { status: 'ACTIVE' } });
+    const res = exported.validateRoster_({ serviceUrl: bad }, 'amy', 'file-a', 'CFG-A');
+    assert.deepEqual(res, { ok: false, error: 'BAD_SERVICE_URL' }, bad);
+    assert.throws(() => exported.submitToQueue_({ serviceUrl: bad }, 'amy', 'file-a', 'CFG-A'), /BAD_SERVICE_URL/);
+    assert.equal(calls.length, 0, bad);
+  }
+});
+
+test('the menu says the link was refused, and sends nothing, when the doc\'s link is bad', () => {
+  const evil = 'https://script.google.com@evil.com/a/macros/ccpsnet.net/s/DASH/exec';
+  const { sandbox, calls } = loadDocScript('[SYS_DASHBOARD_URL:' + evil + ']\n[CONFIG_ID: CFG-A]', { ok: true });
+  const alerts = [];
+  sandbox.DocumentApp.getUi = () => ({
+    alert(...args) { alerts.push(args.slice(0, 2).join(' | ')); },
+    ButtonSet: { OK: 'OK' },
+  });
+  sandbox.Session = { getActiveUser: () => ({ getEmail: () => 'teacher@ccpsnet.net' }) };
+  for (const fn of ['runSystemCheck', 'checkSubmissionStatus', 'openStudentDashboard']) sandbox[fn]();
+  assert.equal(alerts.length, 3);
+  for (const a of alerts) {
+    assert.match(a, /isn't a school Apps Script link, so it wasn't used/);
+    assert.ok(!a.includes('evil.com'), 'the bad link is not shown as something to open');
+  }
+  assert.equal(calls.length, 0);
 });
 
 test('validateRoster_: asks the web app with the student\'s token, never the Ledger', () => {
