@@ -1,7 +1,7 @@
 # Turn-in code: proof of engagement in Canvas (2026-11-07)
 
 **Status:** design, from the operator's decisions of 2026-11-07. Stage 1 is
-built (PR #PRNUM), behind a switch that is off; see "Build stages". The decisions below are the operator's; the open questions are
+built (PR #391), behind a switch that is off; see "Build stages". The decisions below are the operator's; the open questions are
 marked. [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
 wins where the two disagree. No student names, emails, file IDs or
 ConfigIDs appear here, by design.
@@ -193,7 +193,7 @@ competency with no student text. It is not needed now.
    - The per-course switch.
    - For testing only, a stub verdict in place of the flow.
 
-   **Stage 1 built (PR #PRNUM)**, `cas-ccps/scripts/71_TurnInCodes.js`,
+   **Stage 1 built (PR #391)**, `cas-ccps/scripts/71_TurnInCodes.js`,
    `tests/cas-ccps/turn-in-code.test.js`. Details settled in the build
    (the file's header has each in full):
    - *The switch* is `TURN_IN_CODE_COURSES`, read like the other per-course
