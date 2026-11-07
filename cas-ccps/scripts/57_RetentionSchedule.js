@@ -17,7 +17,8 @@
 //   RECORD  — what a grade, a rating decision or a disclosure rests on:
 //             5 years. Ledger, StudentAssignments, StudentDocRegistry,
 //             CompetencyEvidence, SCRDecisionLog, ParentReportLog,
-//             EvaluationLog, ReflectionLog, PartUnlocks.
+//             EvaluationLog, ReflectionLog, PartUnlocks, TurnInCodes,
+//             TurnInChecks.
 //   WORKING — queues, Flow inputs and profiles that feed the system but
 //             are not the record: 1 year. WarmUpQueue and the rest below.
 // A student's workspace Doc follows its Ledger row; a warm-up Doc follows
@@ -98,6 +99,13 @@ function _retentionSchedule_() {
     // teacher (68), kept as long as the work it opened (2026-10-28).
     { label: "PartUnlocks", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
       where: ledger(LP_LOG_TAB), dateCol: "UnlockedAt" },
+    // The turn-in code (71): who was issued which code and how (what a
+    // completion grade rests on), and the answers to the feedback question
+    // (the student's own words, kept like ReflectionLog).
+    { label: "TurnInCodes", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
+      where: ledger(TURN_IN_CODES_TAB), dateCol: "IssuedAt" },
+    { label: "TurnInChecks", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
+      where: ledger(TURN_IN_CHECKS_TAB), dateCol: "SubmittedAt" },
     { label: "ParentReportLog", tier: RETENTION_TIER_RECORD, years: _parentReportRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.parentReportLog; }),
       dateCol: PRL.GENERATED_AT, archived: archivedIn(PRL.ARCHIVE_STATUS) },

@@ -158,7 +158,7 @@ test('the student page and the Student Context list carry the counter for the st
 });
 
 test('the Student Dashboard shows the student every teacher\'s count for each of their courses', () => {
-  const SD = ['00_SharedConfig.js', '63_DocHeader.js', '13_StudentDashboard.js']
+  const SD = ['00_SharedConfig.js', '63_DocHeader.js', '13_StudentDashboard.js', '71_TurnInCodes.js']
     .map(f => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f));
   const { exported, sandbox } = loadGasFiles(SD, ['getStudentDashboardData', 'LEDGER', 'SCRDL', 'buildStudentDashboardHtml_'],
     { Session: { getActiveUser: () => ({ getEmail: () => AMY }), getEffectiveUser: () => ({ getEmail: () => AMY }),

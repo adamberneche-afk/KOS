@@ -105,7 +105,7 @@ function studentLoad(viewer) {
     getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
     getScriptTimeZone() { return 'America/New_York'; },
   };
-  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js')],
+  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js')],
     ['getStudentDashboardData', 'buildStudentDashboardHtml_', 'LEDGER'], { Session: session });
 }
 

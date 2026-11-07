@@ -34,7 +34,7 @@ function wqRow({ googleId = ME, date, status, docId = '', extraCredit = '', feed
 // rows: [{ wq, tb? }] where tb is { warmup, response, submittedAt, reply }.
 function load(rows, viewer = ME) {
   const { exported, sandbox } = loadGasFiles(
-    [S('00_SharedConfig.js'), S('13_StudentDashboard.js')],
+    [S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js')],
     ['getStudentWarmUps_', 'resolveWarmUpStatus_', 'buildStudentDashboardHtml_', 'submitWarmUpAnswer', 'submitWarmUpReply'],
     { Session: { getActiveUser: () => ({ getEmail: () => viewer }), getScriptTimeZone: () => 'America/New_York' } });
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');

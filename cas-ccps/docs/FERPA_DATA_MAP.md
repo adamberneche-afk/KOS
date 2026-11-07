@@ -40,7 +40,7 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 
 | Tier | Period | Records | Script Property |
 |---|---|---|---|
-| Record: what a grade, a rating decision or a disclosure rests on, and the student's own work | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog`, `ReflectionLog`, `PartUnlocks` | `LEDGER_RETENTION_YEARS` |
+| Record: what a grade, a rating decision or a disclosure rests on, and the student's own work | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog`, `ReflectionLog`, `PartUnlocks`, `TurnInCodes`, `TurnInChecks` | `LEDGER_RETENTION_YEARS` |
 | | 5 years | `CompetencyEvidence` | `COMPETENCY_EVIDENCE_RETENTION_YEARS` |
 | | 5 years | `SCRDecisionLog` | `SCR_RETENTION_YEARS` |
 | | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
@@ -230,6 +230,18 @@ marks or removes those rows yet.
 | **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. Studio's Flow 2 sees one submission's answers in its prompt. The student sees their own answers as a comment on their Doc; the teacher, who can comment on the Doc, sees that comment too. Since 2026-11-01 they are also in the student's Student Context doc: the student (view-only, their own doc) and the teacher (the Teacher Dashboard's student page) read them there. |
 | **Retention** | With the student's work (the operator, 2026-10-24): `LEDGER_RETENTION_YEARS`, as their workspace Doc follows its Ledger row (counted in `checkRetentionSchedule()`). The comment on the Doc goes with the Doc. |
 | **Portfolio** | The student's own writing, so it belongs to the portfolio they take at graduation (`meta/CAS_DESIGN_THREADS_2026-10-16.md`, Thread B): a copy given to the student through an export they choose, not removed from the school's records. The question each answer responds to goes with it, so the export reads on its own. Not an evaluative record: no score or flag is kept with it. |
+
+### TurnInChecks and TurnInCodes (S71)
+*Central Ledger tabs (2026-11-07), written only with `TURN_IN_CODE_COURSES` on (off by default)*
+
+| | |
+|---|---|
+| **Fields** | `TurnInChecks`: CheckID, SubmittedAt, GoogleID (district email), StudentConfigID, StudentFileID, AssignmentID, Course, Kind (NOT_YET or PASSED), Milestone and Question (as asked), **Answer: the student's own words** (system text neutralized, stored as plain text), Status (`PENDING_CHECK`, `ADDRESSES`, `NOT_YET`), Reason (the check's one line), DecidedAt. `TurnInCodes`: Code, GoogleID, AssignmentID, StudentConfigID, Course, Lesson, IssuedAt, How (`CHECK` or `GRANT`), GrantReason (the teacher's). No names. |
+| **Why collected** | The turn-in code (`meta/TURN_IN_CODE_PLAN_2026-11.md`, D17): completion credit in Canvas for answering one question about the feedback. The code is bound to one student and one assignment here, never by anything in the student's doc. The answer is kept apart from `ReflectionLog`, whose rows choose the next reflection questions and feed Flow 2 and the Student Context doc. |
+| **Written by** | `submitTurnInAnswer()` (an answer that passes the screen) and `applyTurnInVerdict_()` (the verdict; stage 2's harvest will call it), and `grantTurnInCode()` (the teacher, from the editor). |
+| **Read by** | The Student Dashboard (13/71): each student sees only their own question, state and code. From stage 2, the Studio flow will see one answer, its question and milestone, and return a verdict. |
+| **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
+| **Retention** | `LEDGER_RETENTION_YEARS`, with the Ledger (counted in `checkRetentionSchedule()`). The answers are the student's own writing, like `ReflectionLog`. Code and answer counts are never evidence of learning (the plan's standing rules). |
 
 ### Canvas gradebook exports and CanvasSectionMap (S52)
 *Teacher's own Drive folder; Central Ledger tab*

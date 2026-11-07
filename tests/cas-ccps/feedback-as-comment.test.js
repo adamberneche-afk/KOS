@@ -187,7 +187,7 @@ test('stampDocument_: headings and two jump links move between the assignment an
 
 test('stampDocument_: the response a student writes is read the same with the new lines', () => {
   const { sandbox, id } = stamp('all', 'CAS-8175-L06');
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js')],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js')],
     ['dashExtractResponse_']);
   const body = sandbox.DocumentApp.openById(id).getBody();
   const paras = Array.from({ length: body.getNumChildren() }, (_, i) => body.getChild(i));
@@ -462,7 +462,7 @@ test('stampDocument_: the code is in the footer; the end marker is hidden with t
   assert.equal(hidden.color, '#ffffff');
   assert.ok(!text.includes('Do not delete this line'), 'no visible code line');
   assert.equal(footer.getText().trim(), 'Assignment code: VDOE-ABC123-2026');
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js')],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js')],
     ['dashExtractResponse_']);
   const written = text.replace('── YOUR RESPONSE BEGINS HERE ──\n', '── YOUR RESPONSE BEGINS HERE ──\nMy answer here.\n');
   assert.equal(exported.dashExtractResponse_(written).trim(), 'My answer here.', 'the response still ends at the hidden marker');
