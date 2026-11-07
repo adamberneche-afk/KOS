@@ -144,3 +144,51 @@ test('warm-up docs: open ones stay editable, closed ones are read-only, last yea
   assert.equal(closed._access(ALICE), 'viewer');
   assert.equal(old._access(ALICE), null);
 });
+
+// Process hardening 2b: the two Drive walks after the files stop at a cap
+// or a time limit, and say so (a failure line and stoppedEarly), never a
+// silent cut.
+test('the class folder walk stops at its cap and reports it', () => {
+  const fx = setup();
+  const shared = fx.sandbox.DriveApp.getFoldersByName('_Student Shared Folders').next();
+  shared.createFolder('B - Marketing - Ms. T').addViewer(ALICE);
+  shared.createFolder('C - Marketing - Ms. T').addViewer(BOB);
+
+  const r = fx.exported.runStudentDataAccessRepair_({ apply: false, maxClassFolders: 2 });
+
+  assert.equal(r.stoppedEarly, true);
+  const folders = new Set(r.changes.filter((c) => c.target.startsWith('class folder')).map((c) => c.target));
+  assert.equal(folders.size, 2, 'the first two are still checked');
+  const stop = r.failures.find((f) => f.target === 'class folders');
+  assert.match(stop.error, /STOPPED EARLY: more than 2 class folders/);
+});
+
+test('the SCR export walk stops at its cap and reports it', () => {
+  const fx = setup();
+  ['2026-09-01', '2026-09-08', '2026-09-15'].forEach((d) => fx.doc('SCR Export — ' + d, {}).setSharing('DOMAIN', 'VIEW'));
+
+  const r = fx.exported.runStudentDataAccessRepair_({ apply: true, maxExports: 2 });
+
+  assert.equal(r.stoppedEarly, true);
+  assert.equal(r.changes.filter((c) => c.target.startsWith('export')).length, 2);
+  assert.match(r.failures.find((f) => f.target === 'SCR exports').error, /STOPPED EARLY: more than 2/);
+});
+
+test('past the hard stop, the Drive walks check nothing more and report it', () => {
+  const fx = setup();
+  fx.doc('SCR Export — 2026-09-01', {}).setSharing('DOMAIN', 'VIEW');
+
+  const r = fx.exported.runStudentDataAccessRepair_({ apply: true, hardStopMs: -1 });
+
+  assert.equal(r.stoppedEarly, true);
+  assert.equal(fx.classFolder._access(ALICE), 'viewer', 'the class folder was not reached');
+  assert.match(r.failures.find((f) => f.target === 'class folders').error, /time limit/);
+  assert.match(r.failures.find((f) => f.target === 'SCR exports').error, /time limit/);
+});
+
+test('under the caps nothing stops early', () => {
+  const fx = setup();
+  const r = fx.exported.runStudentDataAccessRepair_({ apply: false });
+  assert.equal(r.stoppedEarly, false);
+  assert.deepEqual(r.failures, []);
+});

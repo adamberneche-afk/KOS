@@ -402,7 +402,10 @@ instead of the Ledger (`student-doc-service.test.js`,
 `student-data-access-intake.test.js`,
 `lock-doc-after-submission.test.js`, `school-year-scope.test.js`,
 `student-data-access-repair.test.js`, and no student writing in ReviewQueue:
-`review-queue-text-scrub.test.js`);
+`review-queue-text-scrub.test.js`); the Drive walks over class folders and
+SCR exports stopping at a cap or a time limit and saying so, in the access
+repair and in the FERPA health check (`student-data-access-repair.test.js`,
+`ferpa-export-scan-cap.test.js`);
 `tests/leaderhub/` covers escaping/XSS guards (including the School
 Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
 the pacing/calendar helpers (with the published CCPS 2026-27 calendar as an import fixture, `fixtures/ccps-2026-27-calendar.txt`, and the built-in calendar's own consistency, `school-calendar-defaults.test.js`), the page's sync code never overwriting an
