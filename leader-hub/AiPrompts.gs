@@ -430,7 +430,7 @@ You will receive a JSON object with this shape:
 \`\`\`json
 {
   "audience": "green",
-  "audienceLabel": "Ms. Green",
+  "audienceLabel": "Supervisor",
   "tone": "a description of the tone and framing this specific audience expects",
   "weekLabel": "a short date label, e.g. August 11",
   "sections": [

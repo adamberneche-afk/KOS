@@ -216,7 +216,7 @@ on `Type`.
 ```json
 {
   "audience": "green",
-  "audienceLabel": "Ms. Green",
+  "audienceLabel": "Supervisor",
   "tone": "professional supervisor update with DSP evidence framing — reference Standard 1 (Instructional Planning) and Standard 2 (Professionalism/CTSO) where applicable. Be specific and evidence-oriented.",
   "weekLabel": "August 11",
   "sections": [
@@ -231,7 +231,7 @@ draft already assembles (see `_generateBragEmailInner()` in
 `student-leader-hub.html`) — the Flow's only job is turning that raw list
 into a well-written email in the given `tone`, not re-deriving what
 happened this week. `tone` comes straight from `BRAG_AUDIENCE[audience].tone`
-in the client — four audience presets (Ms. Green, Admin, DECA Parents,
+in the client — four audience presets (Supervisor, Admin, DECA Parents,
 Personal Log) each with their own tone description.
 
 **`ARCHIVE_INSIGHTS`:**

@@ -151,7 +151,7 @@ Canvas modules should mirror LeaderHub's quarter/unit structure so students can 
 
 1. **Canvas** — Close out the module. Make sure all rubrics are finalized.
 2. **Synergy** — Final grade entry must be complete before the report card deadline. LeaderHub will show the Synergy deadline as P90 (overdue if missed).
-3. **LeaderHub** — Update DSP goal progress for the quarter. Generate a Brag Board email for Ms. Green before the final Green meeting.
+3. **LeaderHub** — Update DSP goal progress for the quarter. Generate a Brag Board email for the supervisor before the final supervisor meeting.
 
 ---
 

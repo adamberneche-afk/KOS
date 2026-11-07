@@ -128,7 +128,7 @@ A field trip is a multi-week paperwork process with a non-negotiable approval ch
 At 2:30 PM, the journal modal opens automatically and locks until completed — this is the one moment of gentle coercion in the app, because the reflection data feeds the cron engine that adjusts tomorrow's priority stack. The six-step guided journal takes about two minutes. Mood is captured. The avoided task is surfaced for tomorrow's queue. The entry stores and feeds the Brag Board's weekly data gathering.
 
 ### Experience 5 — Friday Close
-Two banners stack on Friday afternoon — Workday payroll at noon, Brag Board prompt at 2:00. The Brag Board auto-gathers the week's completed tasks, DECA results, archived trips, and resolved email items, then offers four pre-addressed audience tabs: Ms. Green (DSP framing), Admin (formal concise), DECA Parents (newsletter energy), Self (honest log). AI drafts the email in each tone. One click opens it in the mail client. Communicating your wins for DSP purposes should feel easy, not performative.
+Two banners stack on Friday afternoon — Workday payroll at noon, Brag Board prompt at 2:00. The Brag Board auto-gathers the week's completed tasks, DECA results, archived trips, and resolved email items, then offers four pre-addressed audience tabs: Supervisor (DSP framing), Admin (formal concise), DECA Parents (newsletter energy), Self (honest log). AI drafts the email in each tone. One click opens it in the mail client. Communicating your wins for DSP purposes should feel easy, not performative.
 
 ### Experience 6 — DSP Evidence Snapshot
 
@@ -138,7 +138,7 @@ Two banners stack on Friday afternoon — Workday payroll at noon, Brag Board pr
 > experience walkthrough is kept as a record of what the app used to
 > do, not what it does now.
 
-At any point — before a meeting with Ms. Green, before a check-in with administration — Adam can open the DSP Evidence Report. It pulls from every data source in the app: lesson plans edited, SCR coverage percentage, observation log entries, comms triage completions, journal entries, trip counts, WBL hours, SBE checklist progress. It requires no extra input. It is a real-time snapshot of what the app already knows.
+At any point — before a meeting with the supervisor, before a check-in with administration — Adam can open the DSP Evidence Report. It pulls from every data source in the app: lesson plans edited, SCR coverage percentage, observation log entries, comms triage completions, journal entries, trip counts, WBL hours, SBE checklist progress. It requires no extra input. It is a real-time snapshot of what the app already knows.
 
 ---
 

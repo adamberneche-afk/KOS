@@ -2,7 +2,7 @@
 ## Inbox Scrape Methodology, Filter Spec & Rule Registry
 
 **Audited:** March 2026 · 180-day lookback · ~500 threads  
-**Account:** adam_berneche@ccpsnet.net  
+**Account:** the operator's school account  
 **Companion docs:** `LH_02_INTEGRATION_GUIDE.md` · `EmailBridge.gs`
 
 > **Re-run this audit annually** — ideally in August before the school year starts, and again in January after DECA season picks up. Run `auditInbox()` in Apps Script, paste `Audit_Senders` here, and update the three sections below.
@@ -78,23 +78,29 @@ function auditInbox() {
 
 ## Sender Classification Table — March 2026
 
-Every sender with 3+ emails in the 180-day window. Updated from live audit data.
+Every sender with 3+ emails in the 180-day window, from the live audit.
+
+> **Roles, not names (2026-11-07).** This repo may be public, so people
+> appear here by role and their addresses are left out: `<role address>`
+> stands for the real address, which lives in your Gmail filters and the
+> `Audit_Senders` tab, never here. Counts and categories are as audited.
+> Company and system addresses stay.
 
 ### 🟢 CAPTURE — Active rules in EmailBridge.gs
 
-| Sender | Email | Vol | Rule | Role | Urgency |
+| Sender (role) | Email | Vol | Rule | Role | Urgency |
 |--------|-------|-----|------|------|---------|
-| Ms. Green (supervisor) | renee_green@ccpsnet.net | 8 | `green` — always capture | inferred | high (always) |
-| David Altizer (AP) | david_altizer@ccpsnet.net | 35 | `admin` — always capture | inferred | high |
-| Katherine White (principal) | katherine_swhite@ccpsnet.net | 12 | `admin` — always capture *(fixed: was `cwhite`, now `k_swhite`)* | inferred | high |
+| Supervisor (associate principal) | `<supervisor address>` | 8 | `green` — always capture | inferred | high (always) |
+| Administrator A (assistant principal) | `<admin A address>` | 35 | `admin` — always capture | inferred | high |
+| Administrator B (principal) | `<admin B address>` | 12 | `admin` — always capture *(fixed: the rule matched an old short form of the address)* | inferred | high |
 | Canvas student messages | notifications@instructure.com | 70 | `canvas-msg` — "just sent you a message" only | teach | medium |
-| Shannon Tual / DECA VA | stateadvisor@vadeca.org | 7 | `vadeca` — always capture | deca | high |
+| DECA Virginia state advisor | stateadvisor@vadeca.org | 7 | `vadeca` — always capture | deca | high |
 | DECA judge coordinator | judge@vadeca.org | 3 | `vadeca` — always capture | deca | high |
 | PlayVS (esports) | hello@playvs.com + hello@email.playvs.com | 10 | `playvs` — match/settled/upcoming only | esports | medium |
-| WBL coordinator | tisa_fagan@ccpsnet.net | 9 | `wbl` — always capture | store | medium |
-| Finance / bookkeeper | teri_evans@ccpsnet.net | 3 | `finance` — always capture | deca | medium |
-| CTE / PLC coordinator | anne_moore@ccpsnet.net | 3 | `plc` — always capture | teach | medium |
-| SOL test coordinator | marquita_winiecki@ccpsnet.net | 17 | `sol` — **date-bearing emails only** | teach | medium |
+| WBL coordinator | `<WBL coordinator address>` | 9 | `wbl` — always capture | store | medium |
+| Finance / bookkeeper | `<bookkeeper address>` | 3 | `finance` — always capture | deca | medium |
+| CTE / PLC coordinator | `<CTE coordinator address>` | 3 | `plc` — always capture | teach | medium |
+| SOL test coordinator | `<SOL coordinator address>` | 17 | `sol` — **date-bearing emails only** | teach | medium |
 | DECA Inc. / membership | communications@deca.org + registermychapter.com | 10 | `deca-nat` — action/payment keywords only | deca | medium |
 
 ### 🔴 SUPPRESS — Explicitly blocked in EmailBridge.gs
@@ -102,43 +108,40 @@ Every sender with 3+ emails in the 180-day window. Updated from live audit data.
 | Sender | Email | Vol | Reason |
 |--------|-------|-----|--------|
 | SmartFind Express (sub system) | noreply_chesterfield@sfesubsystem.com | 8 | You check sub system directly; auto-notices are noise |
-| Workday / payroll | chesterfield@myworkday.com | 12 | No actionable date; you get a separate reminder from Jayla Ford |
+| Workday / payroll | chesterfield@myworkday.com | 12 | No actionable date; the payroll contact sends a separate reminder |
 | IT helpdesk | tickets@ccps.incidentiq.com | 10 | Tickets are self-service; not LeaderHub relevant |
-| Amanda Berneche (wife/colleague) | amanda_berneche@ccpsnet.net | 5 | Personal/family — should not mix with work tracking |
-| Lillymay's teacher | kara_gallagher@ccpsnet.net | 5 | Personal/family |
-| Calder's teacher | anthony_taylor@ccpsnet.net | 3 | Personal/family |
-| OrthoVirginia MyChart | mychartnotify.orthovirginia.com | 6 | Personal medical |
-| Anthem insurance | email.anthem.com | 6 | Personal insurance |
-| Claude onboarding | email.claude.com | 5 | Noise |
+| Personal / family (3 district senders) | — | 13 | Personal — kept out of work tracking |
+| Personal services (2 senders) | — | 12 | Personal — kept out of work tracking |
+| Vendor onboarding | — | 5 | Noise |
 
 ### ⚪ FALLBACK — Caught by @ccpsnet.net catch-all if no rule matches
 
 These hit the generic `📌` rule. Volume is low enough that false positives are acceptable. Review periodically and promote to named rules if they become frequent or consistently actionable.
 
-| Sender | Email | Vol | Notes |
+| Sender (role) | Email | Vol | Notes |
 |--------|-------|-----|-------|
-| Nykia Ward (secretary) | nykia_ward@ccpsnet.net | 21 | Late buses / reminders. Actionable but inconsistent — stays in fallback for now |
-| Jayla Ford (payroll) | jayla_ford@ccpsnet.net | 17 | "Submit Workday" reminders — redundant with Workday suppress; let fallback catch if needed |
-| Kimberly Sylvester (attendance) | kimberly_sylvester@ccpsnet.net | 17 | Attendance reports — informational, not action items |
-| Eric Garcia (security) | eric_garcia@ccpsnet.net | 7 | Tornado drill, lockdown — safety info, not pacing-relevant |
-| School-wide blasts | arthur_thompson@, victoria_kirtley@, etc. | 3–10 | General school news — caught by fallback, low noise |
+| School secretary | `<secretary address>` | 21 | Late buses / reminders. Actionable but inconsistent — stays in fallback for now |
+| Payroll contact | `<payroll address>` | 17 | "Submit Workday" reminders — redundant with Workday suppress; let fallback catch if needed |
+| Attendance clerk | `<attendance address>` | 17 | Attendance reports — informational, not action items |
+| School security | `<security address>` | 7 | Tornado drill, lockdown — safety info, not pacing-relevant |
+| School-wide blasts | several staff senders | 3–10 | General school news — caught by fallback, low noise |
 
 ### 🚫 IGNORE — No rule needed (not @ccpsnet.net, not actionable)
 
 | Sender | Email | Vol | Notes |
 |--------|-------|-----|-------|
-| Sports Career Consulting | chris@sportscareerconsulting.com | 15 | Curriculum newsletter — useful content, but you read it in Gmail, not LeaderHub |
+| Curriculum newsletter vendor | — | 15 | Useful content, but you read it in Gmail, not LeaderHub |
 | Everfi K-12 | k12team@everfi.com | 6 | Ed-tech marketing — ignore |
-| AI/training vendors | vsandadi@inspiritai-hs.org, etc. | 4 | Ignore |
+| AI/training vendors | (several) | 4 | Ignore |
 | CCPS family newsletter | ccpsinfo@ccpsnet.net | 7 | District PR blast — ignore |
 | College Board | myaccount.collegeboard.org | 4 | Not course-relevant — ignore |
-| The Marketing Teacher | reachme@themarketingteacher.com | 4 | Sales email — ignore |
+| Teaching-resources vendor | — | 4 | Sales email — ignore |
 
 ---
 
 ## Gmail Filter Spec
 
-Create these filters in **Gmail Settings → Filters and Blocked Addresses → Create new filter**. These are one-time setup — they apply the `LeaderHub` label so EmailBridge picks up the emails automatically.
+Create these filters in **Gmail Settings → Filters and Blocked Addresses → Create new filter**. These are one-time setup — they apply the `LeaderHub` label so EmailBridge picks up the emails automatically. Where a filter names a role (`<WBL coordinator address>`), type that person's real address in Gmail; it is not kept in this repo.
 
 **Filter 9 — Synergy missing attendance alert**
 ```
@@ -173,25 +176,25 @@ Action: Apply label "LeaderHub"
 
 **Filter 4 — WBL coordinator**
 ```
-From: tisa_fagan@ccpsnet.net
+From: <WBL coordinator address>
 Action: Apply label "LeaderHub"
 ```
 
 **Filter 5 — Finance / bookkeeper**
 ```
-From: teri_evans@ccpsnet.net
+From: <bookkeeper address>
 Action: Apply label "LeaderHub"
 ```
 
 **Filter 6 — CTE / PLC coordinator**
 ```
-From: anne_moore@ccpsnet.net
+From: <CTE coordinator address>
 Action: Apply label "LeaderHub"
 ```
 
 **Filter 7 — SOL testing coordinator (date-bearing only)**
 ```
-From: marquita_winiecki@ccpsnet.net
+From: <SOL coordinator address>
 Has the words: today OR tomorrow OR Monday OR Tuesday OR Wednesday OR Thursday OR Friday OR this week OR [date pattern]
 Action: Apply label "LeaderHub"
 ```
@@ -207,9 +210,9 @@ Action: Apply label "LeaderHub"
 ### Existing Filters (verify these are already in place)
 
 ```
-From: renee_green@ccpsnet.net            → Label: LeaderHub  ✓
-From: david_altizer@ccpsnet.net          → Label: LeaderHub  ✓
-From: katherine_swhite@ccpsnet.net       → Label: LeaderHub  ✓ (confirm email is k_swhite, not cwhite)
+From: <supervisor address>               → Label: LeaderHub  ✓
+From: <admin A address>                  → Label: LeaderHub  ✓
+From: <admin B address>                  → Label: LeaderHub  ✓ (confirm it is the full address, not the old short form)
 *@ccpsnet.net + "deadline"               → Label: LeaderHub  ✓
 *@ccpsnet.net + "field trip"             → Label: LeaderHub  ✓
 *@ccpsnet.net + "DECA"                   → Label: LeaderHub  ✓
@@ -217,7 +220,7 @@ From: katherine_swhite@ccpsnet.net       → Label: LeaderHub  ✓ (confirm emai
 *@ccpsnet.net + "action required"        → Label: LeaderHub  ✓
 ```
 
-**⚠ Fix required:** If you have a filter for `cwhite@ccpsnet.net`, delete it — her real address is `katherine_swhite@ccpsnet.net`. The EmailBridge rule has been patched but the Gmail filter may still be wrong.
+**⚠ Fix required:** If you have a filter for the principal's old short-form address, delete it and use the full address. The EmailBridge rule has been patched but the Gmail filter may still be wrong.
 
 ---
 
@@ -237,7 +240,7 @@ LH: trips [task]                 → role:trips
 **Canvas student message follow-up**
 ```
 LH: canvas msg [student name] re [topic]
-Example: LH: canvas msg Aydin Main re missing assignment
+Example: LH: canvas msg Placeholder Student re missing assignment
 ```
 → Creates a `role:teach` task so you don't lose the thread after marking Canvas read.
 
@@ -274,7 +277,7 @@ Example: LH: workday due Friday
 LH: plc [what] by [date]
 Example: LH: plc submit summer PD registration by Feb 21
 ```
-→ Role `teach`, captures the deadline from Anne Moore emails you'd otherwise miss.
+→ Role `teach`, captures the deadline from the CTE coordinator's emails you'd otherwise miss.
 
 ---
 
@@ -294,14 +297,14 @@ Key patterns extracted from `Audit_Subjects` (180-day lookback, top patterns by 
 
 | Pattern | Count | Sender | Disposition |
 |---------|-------|--------|-------------|
-| `congratulations` | 8 | arthur_thompson, others | School blast — suppressed |
+| `congratulations` | 8 | colleague A, others | School blast — suppressed |
 | `your february teacher of the month!` | 7 | Multiple | School blast — suppressed |
-| `black history presentations / door contest` | 9 | cherel_white, denise_flanagan | School blast — suppressed |
+| `black history presentations / door contest` | 9 | colleagues B and C | School blast — suppressed |
 | `green & gold - our new lit mag` | 4 | Multiple | School blast — suppressed |
-| `recycling today` | 3 | cynthia_gay | Operational blast — suppressed |
-| `vhsl / state championship results` | 6 | kwame_mcfadden, victoria_kirtley | Athletics news — not your dept, suppressed |
-| `show choir competition` | 3 | nicole_whitby | Performing arts blast — suppressed |
-| `math/sci opportunities night` | 3 | nathanial_henry | School event blast — suppressed |
+| `recycling today` | 3 | colleague D | Operational blast — suppressed |
+| `vhsl / state championship results` | 6 | athletics staff (2) | Athletics news — not your dept, suppressed |
+| `show choir competition` | 3 | performing-arts staff | Performing arts blast — suppressed |
+| `math/sci opportunities night` | 3 | colleague E | School event blast — suppressed |
 
 ### Patterns already handled correctly
 
@@ -311,22 +314,22 @@ Key patterns extracted from `Audit_Subjects` (180-day lookback, top patterns by 
 | `attendance reports` | 16 | ✅ Informational — hits @ccpsnet fallback at most |
 | `assignment notice / absence creation \| smartfind express` | 8 | ✅ Suppressed by sfesubsystem.com rule |
 | `enter time / request time off - successfully completed` | 8 | ✅ Suppressed by myworkday.com rule |
-| `ticket #169854 has been updated` | 4 | ✅ Suppressed by incidentiq.com rule |
+| `ticket #[n] has been updated` | 4 | ✅ Suppressed by incidentiq.com rule |
 | `deca direct weekly` | 4 | ✅ Keyword-gated by DECA national rule |
 | `[student name] just sent you a message in canvas` | 10+ | ✅ Captured by Canvas student message rule |
-| `wbl student mentor` | 10 | ✅ Captured by tisa_fagan rule; sara_anderson (gmail) hits meeting rule |
-| `fundraiser account` | 3 | ✅ Captured by teri_evans finance rule |
+| `wbl student mentor` | 10 | ✅ Captured by the WBL coordinator rule; an outside mentor's personal address hits the meeting rule |
+| `fundraiser account` | 3 | ✅ Captured by the bookkeeper finance rule |
 
 ### Notable one-off patterns (watch list for next audit)
 
 | Pattern | Count | Notes |
 |---------|-------|-------|
 | `duty swap?` | 12 | Peer coverage request — hits @ccpsnet fallback as `general`. Frequent enough to consider a named rule next year. |
-| `sick leave` / `if you have to be out` | 6 | Sub coverage protocol from Brian DeLeon — currently fallback. If volume grows, add rule. |
-| `please reach out to ms. bell` | 3 | Guidance counselor referral about a specific student — ad hoc, no rule needed |
-| `jalen` / `t. richards` | 3 | One-word student name subjects from colleagues — peer flags, ad hoc |
-| `esports/playvs` | 6 | Anne Judy (esports coordinator) asking about matches — currently fallback; could add anne_judy@ rule if esports expands |
-| `deca?` | 3 | Marcia Edmundson asking informal DECA questions — hits fallback as general, fine |
+| `sick leave` / `if you have to be out` | 6 | Sub coverage protocol from an administrator — currently fallback. If volume grows, add rule. |
+| `please reach out to [counselor]` | 3 | Guidance counselor referral about a specific student — ad hoc, no rule needed |
+| single-name subjects (a student's name) | 3 | Peer flags about one student — ad hoc |
+| `esports/playvs` | 6 | The esports coordinator asking about matches — currently fallback; could add a rule if esports expands |
+| `deca?` | 3 | A colleague asking informal DECA questions — hits fallback as general, fine |
 
 ---
 
@@ -334,14 +337,14 @@ Key patterns extracted from `Audit_Subjects` (180-day lookback, top patterns by 
 
 | Date | Change | Source | Reason |
 |------|--------|--------|--------|
-| Mar 2026 | Fixed C. White rule: `cwhite` → `katherine_swhite` | Sender audit | Her actual email is k_swhite@ — old rule never fired |
-| Mar 2026 | Added `stateadvisor@vadeca.org` + `judge@vadeca.org` rules | Sender audit | Shannon Tual / DECA VA — 7 high-value emails uncaptured |
+| Mar 2026 | Fixed the principal's rule: old short-form address → full address | Sender audit | The old rule never fired |
+| Mar 2026 | Added `stateadvisor@vadeca.org` + `judge@vadeca.org` rules | Sender audit | DECA Virginia — 7 high-value emails uncaptured |
 | Mar 2026 | Added Canvas student message rule (subject: "just sent you a message") | Sender audit | 70 Canvas emails; only student messages are actionable |
 | Mar 2026 | Added PlayVS rules (both playvs.com domains) | Sender audit | 10 esports emails uncaptured; match alerts are time-sensitive |
-| Mar 2026 | Added tisa_fagan@ WBL rule | Sender audit | WBL coordinator — student mentors and meetings need tracking |
-| Mar 2026 | Added teri_evans@ finance rule | Sender audit | Deposits and fundraiser account — role:deca |
-| Mar 2026 | Added anne_moore@ CTE/PLC rule | Sender audit | PLC meetings and VDOE deadlines — role:teach |
-| Mar 2026 | Added marquita_winiecki@ SOL rule (date-bearing only) | Sender audit | Bathroom duty = noise; testing schedule dates = actionable |
+| Mar 2026 | Added WBL coordinator rule | Sender audit | Student mentors and meetings need tracking |
+| Mar 2026 | Added bookkeeper finance rule | Sender audit | Deposits and fundraiser account — role:deca |
+| Mar 2026 | Added CTE/PLC coordinator rule | Sender audit | PLC meetings and VDOE deadlines — role:teach |
+| Mar 2026 | Added SOL coordinator rule (date-bearing only) | Sender audit | Bathroom duty = noise; testing schedule dates = actionable |
 | Mar 2026 | Added DECA Inc. / registermychapter.com rule (keyword-gated) | Sender audit | Payment confirmations are actionable; newsletters are not |
 | Mar 2026 | Added explicit suppression: sfesubsystem, myworkday, incidentiq | Sender audit | Prevented ~30 noisy emails/month hitting @ccpsnet fallback |
 | Mar 2026 | Added family/personal suppressions | Sender audit | Kept personal life out of work task tracker |
@@ -350,6 +353,7 @@ Key patterns extracted from `Audit_Subjects` (180-day lookback, top patterns by 
 | Mar 2026 | Added `excusal` subject keyword rule | Subject audit | Captures all department excusal notices (athletics, arts, etc.) |
 | Mar 2026 | Added BLAST_SENDERS suppression list (17 senders) | Subject audit | School-wide blast senders polluting @ccpsnet fallback |
 | Mar 2026 | Expanded inferRole_: added `attendance`, `excusal`, `health update`, `concussion`, `vadeca`, `registermychapter`, `playvs`, `mentor`, `deposit`, `fundraiser`, `sol`, `testing`, `plc` | Both audits | Better role tagging across all new rules |
+| 2026-11-07 | Names and staff addresses in this doc replaced by role labels | Privacy scrub | The repo may be public; the scan in `tools/student-data-scan` now fails on a staff address |
 
 ---
 
@@ -362,9 +366,9 @@ Run every August (before school) and January (DECA season ramp-up).
 - [ ] For every sender with Count > 5: is it captured, suppressed, or falling through?
 - [ ] Check for new DECA contacts (new state advisor, new national staff)
 - [ ] Check PlayVS domains — they occasionally change sending addresses
-- [ ] Verify Katherine White / principal email hasn't changed (new AP, new principal)
+- [ ] Verify the administrators' addresses haven't changed (new AP, new principal)
 - [ ] Check `Audit_Subjects` for recurring patterns with Count > 8 that have no matching rule
-- [ ] Update this document's changelog with any new rules added
+- [ ] Update this document's changelog with any new rules added — by role, never by name or address
 - [ ] Re-verify Gmail filters match current EmailBridge rules (they can drift)
 
 ---
@@ -375,9 +379,9 @@ After this audit, the expected capture rates are:
 
 | Channel | Before audit | After audit | Notes |
 |---------|-------------|-------------|-------|
-| Ms. Green emails | 100% | 100% | Was working |
-| D. Altizer / K. White emails | 100% / 0% | 100% / 100% | White rule was broken — now fixed |
-| DECA Virginia (Shannon Tual) | 0% | 100% | New rule |
+| Supervisor emails | 100% | 100% | Was working |
+| Administrator A / B emails | 100% / 0% | 100% / 100% | B's rule was broken — now fixed |
+| DECA Virginia (state advisor) | 0% | 100% | New rule |
 | PlayVS match alerts | 0% | ~90% | Subject-keyword gated |
 | Canvas student messages | 0% | ~100% | Subject-exact match |
 | WBL coordinator | 0% | 100% | New rule |
@@ -386,7 +390,7 @@ After this audit, the expected capture rates are:
 | Personal/family emails hitting fallback | ~19/month | ~0/month | Explicit suppressions |
 | Synergy attendance alerts | 0% | ~100% | Subject pattern: "missing attendance" → urgency HIGH, date = today |
 | Student health / concussion notices | 0% | ~100% | Subject pattern: "student health update / concussion" |
-| Duty swaps (non-Green senders) | 0% | ~100% | Subject pattern: "duty swap" catches any sender |
+| Duty swaps (non-supervisor senders) | 0% | ~100% | Subject pattern: "duty swap" catches any sender |
 | Athletic excusals | 0% | ~90% | Excusal keyword added to field trip rule |
 | School-wide blast noise hitting fallback | ~30/month | ~0/month | BLAST_SENDERS array + subject suppressions |
 
@@ -400,9 +404,9 @@ From `Audit_Subjects` tab. Patterns with Count ≥ 3 evaluated for rule creation
 |---------|-------|----------|-----------|
 | recent canvas notifications | 28 | Suppress | Canvas sender rule returns immediately for non-message emails |
 | missing attendance on [DATE] | 18 | **CAPTURE HIGH** | Synergy alert rule — urgency forced high, date = today |
-| attendance reports | 16 | Ignore | Informational only — Kimberly Sylvester, stays in fallback |
+| attendance reports | 16 | Ignore | Informational only — attendance clerk, stays in fallback |
 | duty swap? | 12 | **CAPTURE** | Subject pattern rule — any sender |
-| wbl student mentor | 10 | Capture (Tisa only) | tisa_fagan sender rule; Sara Anderson gmail excluded |
+| wbl student mentor | 10 | Capture (WBL coordinator only) | WBL coordinator sender rule; the outside mentor's personal address excluded |
 | enter/request time workday | 8 | Suppress | myworkday.com domain suppression |
 | assignment notice \| smartfind | 4 | Suppress | sfesubsystem.com domain suppression |
 | absence creation \| smartfind | 4 | Suppress | sfesubsystem.com domain suppression |
@@ -410,8 +414,8 @@ From `Audit_Subjects` tab. Patterns with Count ≥ 3 evaluated for rule creation
 | track team excusal | 3 | **CAPTURE** | Excusal keyword added to field trip rule |
 | sick leave | 3 | Suppress | Subject suppression — handled in moment |
 | late bus | 3 | Suppress | Subject suppression — handled in moment |
-| please reach out to ms. bell | 3 | Suppress | Student referral — handled in moment |
-| t. richards / jalen (single names) | 3 each | Suppress | Student referral — handled in moment |
+| please reach out to [counselor] | 3 | Suppress | Student referral — handled in moment |
+| single-name subjects (a student's name) | 3 each | Suppress | Student referral — handled in moment |
 | if you have to be out | 3 | Suppress | Subject suppression — sub plan handled directly |
 | show choir competition | 3 | Suppress | Subject suppression — school event noise |
 | state championship results | 3 | Suppress | Subject suppression — school news noise |

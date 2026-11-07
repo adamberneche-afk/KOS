@@ -845,220 +845,18 @@ async function _lhFlushScrScoreSync_() {
 // ============================================================
 // DATA
 // ============================================================
-let trips = [
-  {id:1, name:'City Museum Field Trip', sub:'same-day', date:'2026-03-18',
-   origin:'Chester Middle School', depTime:'09:45', retTime:'13:30', depDate:'2026-03-18', retDate:'2026-03-18',
-   dest1:'The Children\'s Museum of Richmond, 2626 W Broad St, Richmond VA 23220', arr1:'10:15', dep1:'12:45', dest2:'', arr2:'', dep2:'',
-   oneway:'NO', status:'active',
-   ccpsBus:1, charter:0, rental:0, walk:'', parentTx:'', train:'', charterCo:'', rentalCo:'',
-   grade:'9-10', classMem:'Economics Class', invited:28, stuAtt:24, adultAtt:3,
-   stuMF:'12/12', adultMF:'1/2', costStu:0, costAdult:0, chap:'1/2', wc:0,
-   afford:'No cost trip — transportation covered by school budget',
-   nonatt:'Students with unresolved discipline issues',
-   sped:'No special accommodations required',
-   med:'YES', allergy:'YES',
-   med1:'Jane Smith, (804) 555-1001', med2:'Bob Jones, (804) 555-1002',
-   fund:'FT-2026-001', po:'TT-2026-0041', sponsor:'Ms. Rivera', cell:'(804) 555-2010', coord:'Mr. Hughes', acctNotes:'',
-   why:'Connects to Unit 3: Consumer Economics — students analyze real-world marketplace decisions.',
-   pre:'Pre-trip reading on economic systems; vocabulary preview worksheet.',
-   post:'Reflection essay: 3 economic concepts observed during visit.',
-   isOn:'', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-   reason:'Academic enrichment — economics curriculum', acttype:'Museum Visit',
-   notes:'Student-led Q&A session with museum educators.',
-   ap:{coord:true,principal:true,bookkeeper:true,risk:false,transport:false}
-  },
-  {id:2, name:'Science Center Trip', sub:'same-day', date:'2026-05-06',
-   origin:'Chester Middle School', depTime:'09:45', retTime:'13:30', depDate:'2026-05-06', retDate:'2026-05-06',
-   dest1:'Science Museum of Virginia, 2500 W Broad St, Richmond VA 23220', arr1:'10:15', dep1:'12:30', dest2:'', arr2:'', dep2:'',
-   oneway:'NO', status:'planned',
-   ccpsBus:2, charter:0, rental:0, walk:'', parentTx:'', train:'', charterCo:'', rentalCo:'',
-   grade:'9-12', classMem:'All enrolled students', invited:36, stuAtt:32, adultAtt:4,
-   stuMF:'', adultMF:'', costStu:0, costAdult:0, chap:'', wc:0,
-   afford:'', nonatt:'', sped:'',
-   med:'', allergy:'',
-   med1:'', med2:'',
-   fund:'', po:'', sponsor:'Mr. Chen', cell:'', coord:'', acctNotes:'',
-   why:'', pre:'', post:'',
-   isOn:'', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-   reason:'STEM enrichment', acttype:'Science Center Visit',
-   notes:'Innovation exhibit + engineering challenge.',
-   ap:{coord:false,principal:false,bookkeeper:false,risk:false,transport:false}
-  },
-];
+// No built-in trips (2026-11-07). This used to seed two example trips and
+// last season's real DECA trips, with colleagues' and family members'
+// names, a phone number and PO numbers, which also showed on a fresh start
+// as overdue. A new install starts empty; trips come from the store
+// (lh_trips, overlaid below) or the New Trip form.
+let trips = [];
 
-// ─── DECA Field Trips injected from Google Drive data ────────────────────────
-trips.push(
-  // DECA Ultimate Power Trip — Nov 21–23, 2025 — COMPLETE
-  {id:3, name:'DECA Ultimate Power Trip', sub:'overnight', date:'2025-11-21',
-   origin:'Clover Hill High School', depTime:'08:00', retTime:'17:00', depDate:'2025-11-21', retDate:'2025-11-23',
-   dest1:'Renaissance Arlington Capital View, 2800 South Potomac Ave, Arlington, VA 22202', arr1:'13:00', dep1:'13:00',
-   dest2:'Staples Mills Train Station, 7519 Staples Mill Rd, Richmond, VA 23228', arr2:'12:00', dep2:'16:00',
-   oneway:'NO', status:'complete',
-   ccpsBus:0, charter:0, rental:1, walk:'', parentTx:'', train:'AmTrak', charterCo:'', rentalCo:'',
-   grade:'9-12', classMem:'DECA Members', invited:50, stuAtt:13, adultAtt:2,
-   stuMF:'7/6', adultMF:'1/1', costStu:250, costAdult:250, chap:'1/1', wc:0,
-   afford:'SAF Funds', nonatt:'Student Choice', sped:'',
-   med:'Y', allergy:'Y',
-   med1:'Adam Berneche', med2:'Regina Warriner',
-   fund:'4280', po:'26-316-3418', sponsor:'Adam Berneche', cell:'', coord:'Adam Berneche', acctNotes:'DECA Account 4280',
-   why:'This trip supports DECA which is the CTSO of the Marketing classes which is required by the DoE.',
-   pre:'Students prepared for the DECA conference through practice sessions at chapter meetings and classroom experience.',
-   post:'Conference attendees had the opportunity to qualify competing at further DECA Conferences.',
-   isOn:'X', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-   reason:'DECA CTSO — Student Competition Conference', acttype:'Student Conference',
-   notes:'Amtrak from Staples Mills. Drivers: Adam Berneche & Regina Warriner.',
-   ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
-  },
-  // DECA District Leadership Conference — Dec 3, 2025 — COMPLETE
-  {id:4, name:'DECA District Leadership Conference', sub:'same-day', date:'2025-12-03',
-   origin:'Clover Hill High School', depTime:'09:00', retTime:'14:00', depDate:'2025-12-03', retDate:'2025-12-03',
-   dest1:'Chesterfield Towne Center, 11500 Midlothian Tpke, Richmond, VA 23235', arr1:'09:30', dep1:'13:30',
-   dest2:'', arr2:'', dep2:'',
-   oneway:'NO', status:'complete',
-   ccpsBus:0, charter:0, rental:0, walk:'', parentTx:'1', train:'', charterCo:'', rentalCo:'',
-   grade:'9-12', classMem:'DECA Members', invited:23, stuAtt:15, adultAtt:2,
-   stuMF:'9/6', adultMF:'1/1', costStu:0, costAdult:0, chap:'1/1', wc:0,
-   afford:'SAF Funds', nonatt:'Student Choice', sped:'',
-   med:'Y', allergy:'Y',
-   med1:'Adam Berneche', med2:'Kristen Hangey',
-   fund:'4280', po:'', sponsor:'Adam Berneche', cell:'', coord:'Adam Berneche', acctNotes:'No Transportation Costs. Contact: Shannon Tual (703) 860-5000',
-   why:'DECA Students participated in competitive events applying classroom knowledge in predetermined scenarios and networked with district peers.',
-   pre:'Practice sessions at chapter meetings; knowledge from classroom.',
-   post:'Conference attendees had the opportunity to qualify for SLC.',
-   isOn:'', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-   reason:'DECA competitive events — district qualifier', acttype:'Conference',
-   notes:'Parent transportation (1 vehicle). 15 students attended.',
-   ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
-  },
-  // DECA State Leadership Conference — Feb 27–Mar 2, 2026 — COMPLETE
-  {id:5, name:'DECA State Leadership Conference', sub:'overnight-is', date:'2026-02-27',
-   origin:'Meadowbrook High School (bus origin)', depTime:'09:00', retTime:'14:00', depDate:'2026-02-27', retDate:'2026-03-02',
-   dest1:'Virginia Beach Convention Center, 1000 19th St, Virginia Beach, VA 23451', arr1:'12:00', dep1:'11:00',
-   dest2:'Hampton Inn North Oceanfront, 3107 Atlantic Ave, Virginia Beach, VA 23451', arr2:'13:00', dep2:'07:00',
-   oneway:'NO', status:'complete',
-   ccpsBus:0, charter:1, rental:0, walk:'', parentTx:'', train:'', charterCo:'Winn Transportation', rentalCo:'',
-   grade:'9-12', classMem:'DECA Members', invited:30, stuAtt:15, adultAtt:2,
-   stuMF:'8/7', adultMF:'1/1', costStu:350, costAdult:350, chap:'1/1', wc:0,
-   afford:'SAF Funds', nonatt:'Student Choice', sped:'',
-   med:'Y', allergy:'Y',
-   med1:'Adam Berneche', med2:'Amanda Berneche',
-   fund:'4280', po:'26-0368-2559', sponsor:'Adam Berneche', cell:'', coord:'Adam Berneche', acctNotes:'Contact: Shannon Tual (703) 860-5000. Bus ~$70/student.',
-   why:'This trip supports DECA which is the CTSO of the Marketing classes which is required by the DoE.',
-   pre:'Practice sessions at chapter meetings and classroom experience.',
-   post:'Top 8 finishers qualify for ICDC. Top 10 may receive bumps. Must have 70%+ SLC test score.',
-   isOn:'X', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-   reason:'DECA CTSO — State Competition', acttype:'Conference',
-   notes:'Housing: Hampton Inn North Oceanfront ($171/night, 4/room). Charter: Winn. Awaiting SLC results for ICDC qualifiers.',
-   ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
-  },
-  // DECA ICDC — Apr 25–29, 2026 — PLANNED ⚠️ URGENT
-  {id:6, name:'DECA ICDC — International Career Development Conference', sub:'overnight-oos', date:'2026-04-25',
-   origin:'Clover Hill High School', depTime:'', retTime:'', depDate:'2026-04-25', retDate:'2026-04-29',
-   dest1:'Atlanta, GA — Atlanta Hilton + Convention Center', arr1:'', dep1:'',
-   dest2:'', arr2:'', dep2:'',
-   oneway:'NO', status:'planned',
-   ccpsBus:0, charter:0, rental:0, walk:'', parentTx:'', train:'', charterCo:'', rentalCo:'',
-   grade:'9-12', classMem:'SLC Qualifiers (Top 8 + bumps, 70%+ test)', invited:0, stuAtt:0, adultAtt:2,
-   stuMF:'', adultMF:'1/1', costStu:1000, costAdult:0, chap:'1/1', wc:0,
-   afford:'SAF Funds', nonatt:'Did not qualify at SLC or scored below 70% on SLC test', sped:'',
-   med:'Y', allergy:'Y',
-   med1:'Adam Berneche', med2:'TBD — need 2nd trained adult',
-   fund:'4280', po:'', sponsor:'Adam Berneche', cell:'', coord:'Adam Berneche',
-   acctNotes:'Registration: $155/student (opens Mar 2, closes Mar 13, payment due Apr 1). Housing: Atlanta Hilton $260/night, 4/room. Coordinate flights with other CCPS advisors.',
-   why:'DECA students who qualified at the State level will compete at the National competition. Attended by 20,000 qualifiers from across the U.S. and internationally.',
-   pre:'Use judges\' SLC comments to improve test scores and role play presentations. Practice with mentors.',
-   post:'Review successes and areas of improvement. Thrive Academy participants begin planning next year.',
-   isOn:'', oos:'X', oosOn:'X', intl:'', flight:'Airline — coordinate with CCPS advisors',
-   waivers:'',
-   reason:'DECA CTSO — National Competition (SLC qualifiers only)', acttype:'Conference',
-   notes:'⚠️ Reg opens Mar 2–13 ($155/student). Payment due Apr 1. Field trip form needed NOW — 45-day lead required. Airline transport. Atlanta Hilton 4/room ($260/night).',
-   ap:{coord:false,principal:false,bookkeeper:false,risk:false,transport:false,director:false,chief:false}
-  }
-);
-
-// ─── DECA EVENTS — 25-26 SEASON (sourced from Google Drive field trip forms + DECA to Know) ──
-const _otherEventsDefault = [
-  // ── COMPLETED ──────────────────────────────────────────────────────────────
-  {id:10, name:'DECA Ultimate Power Trip', type:'deca', date:'2025-11-21',
-   endDate:'2025-11-23', loc:'Renaissance Arlington Capital View, 2800 South Potomac Ave, Arlington, VA 22202',
-   stu:13, adults:2, stuMF:'7M/6F', adultMF:'1M/1F', status:'complete',
-   cost:'~$250/student', transport:'Amtrak (from Staples Mills) + Rental Vehicle',
-   chaperones:'Adam Berneche · Regina Warriner',
-   po:'26-316-3418', account:'DECA 4280', contact:'Shannon Tual (703) 860-5000',
-   notes:'In-state overnight. Amtrak from Staples Mill Station (7519 Staples Mill Rd, Richmond VA 23228). Students competed in written events and role-plays. Trip entered 10/9/2025.'},
-
-  {id:11, name:'DECA District Leadership Conference (DLC)', type:'deca', date:'2025-12-03',
-   loc:'Chesterfield Towne Center, 11500 Midlothian Tpke, Richmond, VA 23235',
-   stu:15, adults:2, stuMF:'9F/6M', adultMF:'1M/1F', status:'complete',
-   cost:'$0 (included with membership)', transport:'Parent Transportation (1 vehicle)',
-   chaperones:'Adam Berneche · Kristen Hangey',
-   po:'', account:'DECA 4280', contact:'Shannon Tual (703) 860-5000',
-   notes:'Day trip. Depart CHHS 9am, arrive CTC 9:30am, depart 1:30pm, return ~2pm. 23 students invited, 15 attended. Job Interview topic: Ice Cream Innovator @ Sweet Scoops ($13.50/hr). All chapters must bring 2 judges. Trip entered 12/1/2025.'},
-
-  {id:12, name:'DLC Testing Window', type:'deca', date:'2025-11-17',
-   endDate:'2025-11-25', loc:'Clover Hill HS (in-school)',
-   stu:0, adults:0, status:'complete',
-   notes:'Nov 17–21 primary window; Nov 24–25 make-up dates. No test = no compete. Students completed Job Interview application + resume in Google Form (NEW this year — no email to Kris required).'},
-
-  {id:17, name:'SLC Testing Window', type:'deca', date:'2026-02-09',
-   endDate:'2026-02-13', loc:'Clover Hill HS (in-school)',
-   stu:0, adults:0, status:'complete',
-   notes:'Feb 9–13. NO make-up days. Students must earn 70%+ on test to advance to ICDC. Score is required regardless of placement at SLC.'},
-
-  // ── JUST OCCURRED — results pending ────────────────────────────────────────
-  {id:13, name:'DECA State Leadership Conference (SLC)', type:'deca', date:'2026-02-27',
-   endDate:'2026-03-01', loc:'Virginia Beach Convention Center, 1000 19th St, Virginia Beach, VA 23451',
-   stu:15, adults:2, stuMF:'8F/7M', adultMF:'1M/1F', status:'active',
-   cost:'$350/student ($165 conference w/Friday dinner + $171/night hotel + ~$70 bus)',
-   transport:'Charter Bus — Winn Transportation (~$70/student)',
-   chaperones:'Adam Berneche · Amanda Berneche',
-   po:'26-0368-2559', account:'DECA 4280', contact:'Shannon Tual (703) 860-5000',
-   housing:'Hampton Inn North Oceanfront, 3107 Atlantic Ave, Virginia Beach VA 23451 — $171/night, 4 to a room',
-   notes:'In-state overnight. Depart Meadowbrook HS 9am (bus origin). 30 students invited, 15 attended. Top 8 finishers qualify for ICDC; Top 10 may receive bumps. Must have 70%+ SLC test score to attend ICDC. Annual Report registered at same time as SLC. Reg closed Jan 16; payment was due Feb 2. SLC fee options: Conference Only $135 · w/Friday Dinner $165 · Chaperone Judge $75. Saturday meal add-on $35. Team events: chapters with 1–150 members get 4 entries, 151–300 get 6, 301+ get 8; max 2 per category. AWAITING RESULTS.'},
-
-  // ── UPCOMING — ACTION REQUIRED ─────────────────────────────────────────────
-  {id:14, name:'ICDC Registration Window', type:'deca', date:'2026-03-02',
-   endDate:'2026-03-13', loc:'Online — Virginia DECA',
-   stu:0, adults:0, status:'urgent',
-   notes:'⚠️ Opens March 2, CLOSES MARCH 13. $155/student. Open to Top 8 SLC finishers + possible bumps to Top 10. MUST have 70%+ SLC test score. Prepare ICDC commitment letter packet for Top 8 qualifiers. Coordinate rooming + flights with other CCPS advisors. Housing: Atlanta Hilton, $260/night, 4 to a room (advisors, adults, AND students). FIELD TRIP FORM MUST BE SUBMITTED BEFORE THIS CLOSES.'},
-
-  {id:15, name:'ICDC Payment Due', type:'deca', date:'2026-04-01',
-   loc:'Online / Finance Office',
-   stu:0, adults:0, status:'upcoming',
-   notes:'$155/student registration payment due April 1. Coordinate flights with other CCPS advisors. Based on 24-25 Y@G pattern, student installments were ~$400 → $300 → $300. Total ICDC cost per student ~$1,000.'},
-
-  {id:16, name:'DECA ICDC — International Career Development Conference', type:'deca', date:'2026-04-25',
-   endDate:'2026-04-29', loc:'Atlanta, GA — Atlanta Hilton + Georgia World Congress Center',
-   stu:0, adults:2, status:'planned',
-   cost:'~$1,000/student', transport:'Airline (coordinate with CCPS advisors)',
-   housing:'Atlanta Hilton, $260/night, 4 to a room — advisors, adults, AND students all 4/room',
-   notes:'Out-of-state overnight. Field trip form needed NOW — 45-day lead required = submit by ~Mar 11. Registration Mar 2–13 ($155). Payment due Apr 1. Only SLC Top 8 qualifiers (+ bumps to Top 10) with 70%+ test score. ~20,000 competitors nationally and internationally. Coordinate flights + rooming with other CCPS advisors attending.'},
-
-  // ── CHAPTER MEETINGS & ADMIN (25-26 pattern from Y@G) ─────────────────────
-  {id:18, name:'ICDC Student Installment #1 Due', type:'deca', date:'2026-03-13',
-   loc:'Finance / Mr. Berneche',
-   stu:0, adults:0, status:'upcoming',
-   notes:'~$400/student (based on 24-25 Y@G schedule). Confirm exact amount for 25-26.'},
-
-  {id:19, name:'ICDC Student Installment #2 Due', type:'deca', date:'2026-03-27',
-   loc:'Finance / Mr. Berneche',
-   stu:0, adults:0, status:'upcoming',
-   notes:'~$300/student (based on 24-25 Y@G schedule).'},
-
-  {id:22, name:'ICDC Student Installment #3 + Forms Due', type:'deca', date:'2026-04-17',
-   loc:'Finance / Mr. Berneche',
-   stu:0, adults:0, status:'upcoming',
-   notes:'~$300/student + all field trip permission forms due (based on 24-25 Y@G schedule).'},
-
-  {id:23, name:'End of Year / Post-Mortem Meeting', type:'deca', date:'2026-05-15',
-   loc:'Rm 107 · 3pm–4pm',
-   stu:0, adults:0, status:'upcoming',
-   notes:'25-26 Post Mortem Meeting. Review season results, plan for 26-27.'},
-
-  // ── OTHER EVENTS ──────────────────────────────────────────────────────────
-  {id:20, name:'Spring Leadership Workshop', type:'leadership', date:'2026-04-02', loc:'Library Commons', stu:30, notes:'Guest speaker: local entrepreneur.'},
-  {id:21, name:'Community Service Drive', type:'community', date:'2026-04-10', loc:'Food Bank', stu:18, notes:'3 hrs service; reflect & debrief.'},
-];
+// No built-in events either (2026-11-07), for the same reason as trips
+// above: the 25-26 season list carried real people's names and dates that
+// read as urgent long after they passed. The DECA calendar's dates live in
+// DECA_DEADLINES_DEFAULT (10-command-engine), with no names.
+const _otherEventsDefault = [];
 let otherEvents = LS.get('lh_events', _otherEventsDefault);
 
 // ─── DECA CHAPTER REFERENCE DATA ─────────────────────────────────────────
@@ -1091,7 +889,9 @@ let otherEvents = LS.get('lh_events', _otherEventsDefault);
 // just extended to cover the fields that are actual reach-this-person
 // credentials rather than a display name/title. Names/titles are left
 // as illustrative defaults; they identify a role, not a way to contact
-// someone.
+// someone. (2026-11-07: colleagues' names are gone from these defaults
+// too; supervisor/admin/attendance default to a role or blank, so the
+// repo carries no colleague's name. Settings fills in the real ones.)
 const PROFILE_DEFAULTS = {
   name: 'Adam Berneche',
   courtesyName: 'Mr. Berneche',        // casual mid-email references ("see Mr. Berneche")
@@ -1102,11 +902,11 @@ const PROFILE_DEFAULTS = {
   email: '',                            // fill in via Settings → My Profile & School
   emailDomain: 'ccpsnet.net',           // AI-privacy ID substitution + placeholder examples
   chapterName: 'Clover Hill DECA',      // "payable to ___" dues lines
-  supervisorName: 'Ms. Green',          // Brag Board "green" tab recipient
+  supervisorName: 'Supervisor',         // Brag Board "green" tab recipient; a role, fill in the name via Settings
   supervisorEmail: '',                  // fill in via Settings → My Profile & School
-  adminName: 'Admin (Altizer / White)', // Brag Board "admin" tab recipient
+  adminName: 'Administration',          // Brag Board "admin" tab recipient; a role, fill in via Settings
   adminEmail: '',                       // fill in via Settings → My Profile & School
-  attendanceCoordFirstName: 'Nykia',    // sub-plan email greeting
+  attendanceCoordFirstName: '',         // sub-plan email greeting ("Hi there," while blank)
   attendanceCoordEmail: '',             // fill in via Settings → My Profile & School
 };
 function getProfile() { return Object.assign({}, PROFILE_DEFAULTS, LS.get('lh_profile', {})); }
@@ -1302,15 +1102,9 @@ let students = LS.get('lh_students', _studentsDefault);
 // activeOrgId universally instead of assuming every row is DECA.
 students.forEach(s => { if (!s.org) s.org = 'deca'; });
 
-let goals = [
-  {id:1,title:'Qualify students for ICDC',cat:'DECA Competition',date:'2026-03-02',progress:100,desc:'Top 8 SLC finishers (+ bumps to Top 10) with 70%+ test score qualify. SLC results pending — check for qualifiers and start ICDC registration Mar 2–13.'},
-  {id:2,title:'Submit ICDC Field Trip Form',cat:'Field Trip',date:'2026-03-11',progress:100,updatedAt:'2026-03-11T00:00:00.000Z',desc:'⚠️ URGENT — Out-of-state overnight requires 45-day lead. Deadline ~March 11 to submit for Apr 25 departure. Start now.'},
-  {id:3,title:'Complete ICDC Registration (Mar 2–13)',cat:'DECA Competition',date:'2026-03-13',progress:100,updatedAt:'2026-03-13T00:00:00.000Z',desc:'$155/student. Only qualifiers with 70%+ SLC test. Atlanta Hilton housing ($260/night, 4/room). Coordinate with other CCPS advisors on rooming + flights.'},
-  {id:4,title:'ICDC Payment Submitted',cat:'DECA Competition',date:'2026-04-01',progress:0,desc:'$155/student due April 1. Coordinate flights with other CCPS advisors attending.'},
-  {id:5,title:'Grow Chapter Membership to 60+',cat:'Membership Growth',date:'2026-11-01',progress:20,desc:'Per DLC agenda: membership was at 12, needed 60 more. Membership form due Dec 1, dues to Kristen W by Nov 1.'},
-  {id:6,title:'100 Hours Community Service',cat:'Community Service',date:'2026-05-30',progress:38,desc:'Coordinate with nonprofits. Shoe Drive: goal of 2,500 shoes — track progress.'},
-  {id:7,title:'Annual Report Submission at SLC',cat:'DECA Competition',date:'2026-02-27',progress:100,desc:'Must register for Annual Report when registering for SLC. Complete.'},
-];
+// No built-in goals (2026-11-07): last season's carried real dates and a
+// colleague's name. Goals come from the store (lh_goals) or the Goals view.
+let goals = [];
 
 function persistGoals() { LS.set('lh_goals', goals); }
 { const saved = LS.get('lh_goals', null); if (saved && Array.isArray(saved)) goals = saved; }
@@ -1322,7 +1116,7 @@ function persistGoals() { LS.set('lh_goals', goals); }
 // live (Horizon's own check-off flow writes completed items into it, and the
 // Brag Board reads them back out), so that key and its readers are untouched.
 
-const TRIPS_SEED = null; // seed already inline above
+const TRIPS_SEED = null; // no built-in trips (see `let trips` above)
 function persistEvents()       { LS.set('lh_events', otherEvents); }
 function persistStudents()     { LS.set('lh_students', students); }
 function persistTrips() { LS.set('lh_trips', trips); }

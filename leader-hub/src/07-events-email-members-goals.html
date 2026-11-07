@@ -649,8 +649,7 @@ function renderDECAHub() {
         <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">13 students traveled</div>
         ${row('Location','Renaissance Arlington Capital View')}
         ${row('Transport','Amtrak from Staples Mills + Rental')}
-        ${row('PO #','26-316-3418')}
-        ${row('Chaperones','Adam Berneche · Regina Warriner')}
+        ${row('Chaperones','Advisor + 1 co-chaperone')}
         ${row('Cost','~$250/student')}
         ${row('Account','DECA 4280')}
       </div>
@@ -660,7 +659,7 @@ function renderDECAHub() {
         ${row('Location','Chesterfield Towne Center')}
         ${row('Transport','Parent Transportation (1 vehicle)')}
         ${row('Students','9F / 6M · 23 invited')}
-        ${row('Chaperones','Adam Berneche · Kristen Hangey')}
+        ${row('Chaperones','Advisor + 1 co-chaperone')}
         ${row('Cost','$0 (included w/membership)')}
         ${row('Job interview topic','Ice Cream Innovator @ Sweet Scoops')}
       </div>
@@ -670,8 +669,7 @@ function renderDECAHub() {
         ${row('Location','Virginia Beach Convention Center')}
         ${row('Housing','Hampton Inn North Oceanfront, $171/night, 4/room')}
         ${row('Transport','Winn Charter · ~$70/student')}
-        ${row('PO #','26-0368-2559')}
-        ${row('Chaperones','Adam Berneche · Amanda Berneche')}
+        ${row('Chaperones','Advisor + 1 co-chaperone')}
         ${row('Students','8F / 7M · 30 invited')}
       </div>
     </div>`;
@@ -700,7 +698,7 @@ function renderDECAHub() {
       <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px">Fee Schedule (25–26)</div>
       ${[
         ['Membership','$20 — accepted all year'],
-        ['Dues to Kristen W.','$2 — due Nov 1'],
+        ['State dues','$2 to the district DECA contact — due Nov 1'],
         ['DLC','$0 (with paid membership)'],
         ['Ultimate Power Trip','~$250/student'],
         ['SLC','$350/student (w/Friday dinner option: $165 conf + housing + bus)'],
@@ -716,8 +714,8 @@ function renderDECAHub() {
     <div>
       <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px">Key Rules & Deadlines</div>
       ${[
-        ['Membership Form','Due Dec 1 — submit verified roster to Anne'],
-        ['Membership Dues','$2 to Kristen W. by Nov 1'],
+        ['Membership Form','Due Dec 1 — submit verified roster to the CTE coordinator'],
+        ['Membership Dues','$2 to the district DECA contact by Nov 1'],
         ['Team Event Limit','1–150 members: 4 teams · 151–300: 6 · 301+: 8 · max 2/category'],
         ['Annual Report','Register at same time as SLC — can\'t add later'],
         ['SLC Test Threshold','70%+ required for ICDC eligibility'],
@@ -728,8 +726,6 @@ function renderDECAHub() {
         ['ICDC Pay Due','April 1'],
         ['ICDC Rooming Rule','4 to a room — advisors, adults AND students'],
         ['Chapter Account','DECA — 4280'],
-        ['SLC PO','26-0368-2559 (Winn bus to Kristen at MHS)'],
-        ['Power Trip PO','26-316-3418'],
       ].map(([l,v]) => row(l,v)).join('')}
     </div>
   </div>`;
@@ -1127,7 +1123,7 @@ function renderDecaApprovalChecklist() {
     { key:'overnight_form', label:'Overnight/Out-of-State form submitted (if applicable)', critical:false },
     { key:'fundraiser_form', label:'Fundraiser Request form submitted (if trip fundraiser involved)', critical:false },
     { key:'medical_forms', label:'Student medical/emergency forms collected', critical:true },
-    { key:'money_deposited', label:'All student payments deposited to Ms. Evans by 2:00 PM', critical:true },
+    { key:'money_deposited', label:'All student payments deposited with the bookkeeper by 2:00 PM', critical:true },
     { key:'roster_final', label:'Final student roster submitted', critical:false },
     { key:'eligibility_confirmed', label:'Student eligibility confirmed (grades/attendance)', critical:false },
   ];
@@ -1642,7 +1638,7 @@ function renderRegistrationTab(content){
           {section:'Parent / Guardian', fields:['Parent/guardian full name','Parent email address','Parent cell phone','Emergency contact (if different)']},
           {section:'DECA Specifics', fields:['Competitive event selection (primary)','Competitive event selection (partner/backup)','Officer position (if running)','Team event partner name (if applicable)']},
           {section:'Logistics', fields:['Shirt size (XS–3XL)','Dietary restrictions / food allergies (note: detailed medical info collected via school forms, not here)']},
-          {section:'Membership Dues', fields:['$20 membership fee (cash or check to "Clover Hill DECA")','Due to Kristen Wettstein by November 1','State dues: $2 sent to Kristen W by Nov 1','Chapter membership form due December 1']},
+          {section:'Membership Dues', fields:['$20 membership fee (cash or check to "Clover Hill DECA")','Membership due to the district DECA contact by November 1','State dues: $2 sent to the district DECA contact by Nov 1','Chapter membership form due December 1']},
         ].map(sec=>`
           <div>
             <div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--navy);margin-bottom:.3rem">${sec.section}</div>
@@ -1658,7 +1654,7 @@ function renderRegistrationTab(content){
       <div class="card" style="border-left:4px solid var(--gold)">
         <div class="stitle" style="margin-bottom:.65rem">⏰ Registration Deadlines</div>
         ${[
-          {date:'Nov 1',  label:'Dues paid to Kristen Wettstein ($2 state dues)'},
+          {date:'Nov 1',  label:'State dues paid to the district DECA contact ($2)'},
           {date:'Dec 1',  label:'Chapter membership form submitted to advisor'},
           {date:'Nov–Dec',label:'DECA Connect registration window (advisor submits)'},
           {date:'Nov 17–25',label:'DLC Testing Window — must complete to compete'},
@@ -1977,7 +1973,7 @@ DECA-SPECIFIC:
 
 MEMBERSHIP DUES:
 □ $20 membership fee — cash or check payable to "${PROFILE.chapterName}"
-□ $2 state dues — due to Kristen Wettstein by November 1
+□ $2 state dues — due to the district DECA contact by November 1
 □ Signed membership agreement form${addl?'\n\nADDITIONAL NOTES:\n'+addl:''}
 
 Questions? Contact me directly or stop by Room [#].
@@ -2100,7 +2096,7 @@ WHAT I NEED FROM YOU:
 DUES:
 $20 membership fee is due by [DATE].
 Cash or check payable to "${PROFILE.chapterName}."
-$2 state dues due to Kristen Wettstein by November 1.
+$2 state dues due to the district DECA contact by November 1.
 
 Missing info = missing from event rosters and field trip forms.
 Please get this to me ASAP — don't miss your spot!

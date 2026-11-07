@@ -2346,9 +2346,9 @@ return false;
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
         <div><label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Observer</label>
           <select id="obslog-observer" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
-            <option value="green">Ms. Green (Associate Principal)</option>
-            <option value="white">C. White (Administrator)</option>
-            <option value="altizer">D. Altizer (Administrator)</option>
+            <option value="green">Supervisor (Associate Principal)</option>
+            <option value="white">Administrator B</option>
+            <option value="altizer">Administrator A</option>
             <option value="other">Other Administrator</option>
           </select></div>
         <div><label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Period / Course</label>
@@ -2622,7 +2622,7 @@ return false;
         <div><span style="color:#15803d;font-weight:700">✓ Pay:</span> Unpaid (SBE)</div>
         <div><span style="color:#15803d;font-weight:700">✓ 3E Readiness:</span> Eligible</div>
         <div><span style="color:#15803d;font-weight:700">✓ Grad Requirement:</span> Qualifies</div>
-        <div><span style="color:#15803d;font-weight:700">✓ CEC Contact:</span> Mrs. Tisa Fagan</div>
+        <div><span style="color:#15803d;font-weight:700">✓ CEC Contact:</span> WBL coordinator</div>
         <div><span style="color:#15803d;font-weight:700">✓ Mentor:</span> Required</div>
         <div><span style="color:#15803d;font-weight:700">✓ Classroom Link:</span> Required</div>
       </div>
@@ -4682,7 +4682,7 @@ document.getElementById('approver-det').innerHTML=[
 {r:'🏫 Principal',t:'Approves based on calendar, educational value, form completeness, budget code, blackout dates.'},
 {r:'⚖️ Risk Management',t:'May reject if lead time insufficient. Verifies occupancy limits, chaperones, DMV checks, parent waivers.'},
 {r:'📊 Central Administration',t:'Reviews per policy. Forms available to Central Leadership, Principals, Security Office (Glenn Pike).'},
-{r:'🚌 Transportation',t:'Assigns drivers by rotation. Interstate CDL required for out-of-state. Director approval for all out-of-state school bus trips. Contact: Frederick Hughes, Frederick_hughes@ccpsnet.net, (804) 955-7622.'},
+{r:'🚌 Transportation',t:'Assigns drivers by rotation. Interstate CDL required for out-of-state. Director approval for all out-of-state school bus trips. Contact: the district transportation office.'},
 ].map(x=>`<div style="display:flex;gap:.6rem;padding:.48rem 0;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:.79rem;min-width:160px;color:var(--navy)">${x.r}</div><div style="font-size:.77rem;color:#555;line-height:1.5">${x.t}</div></div>`).join('');
 calcCost();
 }
@@ -5857,8 +5857,7 @@ const seasonCards = `
         <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">13 students traveled</div>
         ${row('Location','Renaissance Arlington Capital View')}
         ${row('Transport','Amtrak from Staples Mills + Rental')}
-        ${row('PO #','26-316-3418')}
-        ${row('Chaperones','Adam Berneche · Regina Warriner')}
+        ${row('Chaperones','Advisor + 1 co-chaperone')}
         ${row('Cost','~$250/student')}
         ${row('Account','DECA 4280')}
       </div>
@@ -5868,7 +5867,7 @@ const seasonCards = `
         ${row('Location','Chesterfield Towne Center')}
         ${row('Transport','Parent Transportation (1 vehicle)')}
         ${row('Students','9F / 6M · 23 invited')}
-        ${row('Chaperones','Adam Berneche · Kristen Hangey')}
+        ${row('Chaperones','Advisor + 1 co-chaperone')}
         ${row('Cost','$0 (included w/membership)')}
         ${row('Job interview topic','Ice Cream Innovator @ Sweet Scoops')}
       </div>
@@ -5878,8 +5877,7 @@ const seasonCards = `
         ${row('Location','Virginia Beach Convention Center')}
         ${row('Housing','Hampton Inn North Oceanfront, $171/night, 4/room')}
         ${row('Transport','Winn Charter · ~$70/student')}
-        ${row('PO #','26-0368-2559')}
-        ${row('Chaperones','Adam Berneche · Amanda Berneche')}
+        ${row('Chaperones','Advisor + 1 co-chaperone')}
         ${row('Students','8F / 7M · 30 invited')}
       </div>
     </div>`;
@@ -5899,7 +5897,7 @@ const refInfo = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75r
       <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px">Fee Schedule (25–26)</div>
       ${[
         ['Membership','$20 — accepted all year'],
-        ['Dues to Kristen W.','$2 — due Nov 1'],
+        ['State dues','$2 to the district DECA contact — due Nov 1'],
         ['DLC','$0 (with paid membership)'],
         ['Ultimate Power Trip','~$250/student'],
         ['SLC','$350/student (w/Friday dinner option: $165 conf + housing + bus)'],
@@ -5915,8 +5913,8 @@ const refInfo = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75r
     <div>
       <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px">Key Rules & Deadlines</div>
       ${[
-        ['Membership Form','Due Dec 1 — submit verified roster to Anne'],
-        ['Membership Dues','$2 to Kristen W. by Nov 1'],
+        ['Membership Form','Due Dec 1 — submit verified roster to the CTE coordinator'],
+        ['Membership Dues','$2 to the district DECA contact by Nov 1'],
         ['Team Event Limit','1–150 members: 4 teams · 151–300: 6 · 301+: 8 · max 2/category'],
         ['Annual Report','Register at same time as SLC — can\'t add later'],
         ['SLC Test Threshold','70%+ required for ICDC eligibility'],
@@ -5927,8 +5925,6 @@ const refInfo = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75r
         ['ICDC Pay Due','April 1'],
         ['ICDC Rooming Rule','4 to a room — advisors, adults AND students'],
         ['Chapter Account','DECA — 4280'],
-        ['SLC PO','26-0368-2559 (Winn bus to Kristen at MHS)'],
-        ['Power Trip PO','26-316-3418'],
       ].map(([l,v]) => row(l,v)).join('')}
     </div>
   </div>`;
@@ -6223,7 +6219,7 @@ const APPROVAL_STEPS = [
 { key:'overnight_form', label:'Overnight/Out-of-State form submitted (if applicable)', critical:false },
 { key:'fundraiser_form', label:'Fundraiser Request form submitted (if trip fundraiser involved)', critical:false },
 { key:'medical_forms', label:'Student medical/emergency forms collected', critical:true },
-{ key:'money_deposited', label:'All student payments deposited to Ms. Evans by 2:00 PM', critical:true },
+{ key:'money_deposited', label:'All student payments deposited with the bookkeeper by 2:00 PM', critical:true },
 { key:'roster_final', label:'Final student roster submitted', critical:false },
 { key:'eligibility_confirmed', label:'Student eligibility confirmed (grades/attendance)', critical:false },
 ];
@@ -6604,7 +6600,7 @@ content.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:
           {section:'Parent / Guardian', fields:['Parent/guardian full name','Parent email address','Parent cell phone','Emergency contact (if different)']},
           {section:'DECA Specifics', fields:['Competitive event selection (primary)','Competitive event selection (partner/backup)','Officer position (if running)','Team event partner name (if applicable)']},
           {section:'Logistics', fields:['Shirt size (XS–3XL)','Dietary restrictions / food allergies (note: detailed medical info collected via school forms, not here)']},
-          {section:'Membership Dues', fields:['$20 membership fee (cash or check to "Clover Hill DECA")','Due to Kristen Wettstein by November 1','State dues: $2 sent to Kristen W by Nov 1','Chapter membership form due December 1']},
+          {section:'Membership Dues', fields:['$20 membership fee (cash or check to "Clover Hill DECA")','Membership due to the district DECA contact by November 1','State dues: $2 sent to the district DECA contact by Nov 1','Chapter membership form due December 1']},
         ].map(sec=>`
           <div>
             <div style="font-size:.75rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--navy);margin-bottom:.3rem">${sec.section}</div>
@@ -6620,7 +6616,7 @@ content.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:
       <div class="card" style="border-left:4px solid var(--gold)">
         <div class="stitle" style="margin-bottom:.65rem">⏰ Registration Deadlines</div>
         ${[
-          {date:'Nov 1',  label:'Dues paid to Kristen Wettstein ($2 state dues)'},
+          {date:'Nov 1',  label:'State dues paid to the district DECA contact ($2)'},
           {date:'Dec 1',  label:'Chapter membership form submitted to advisor'},
           {date:'Nov–Dec',label:'DECA Connect registration window (advisor submits)'},
           {date:'Nov 17–25',label:'DLC Testing Window — must complete to compete'},
@@ -6885,7 +6881,7 @@ DECA-SPECIFIC:
 
 MEMBERSHIP DUES:
 □ $20 membership fee — cash or check payable to "${PROFILE.chapterName}"
-□ $2 state dues — due to Kristen Wettstein by November 1
+□ $2 state dues — due to the district DECA contact by November 1
 □ Signed membership agreement form${addl?'\n\nADDITIONAL NOTES:\n'+addl:''}
 
 Questions? Contact me directly or stop by Room [#].
@@ -11293,7 +11289,7 @@ const end = new Date(_rNow); end.setHours(h, m, 0, 0);
 return _rNow >= end;
 };
 if (isSchoolDay(_rNow) && _rPastToday(14, 0) && LS.get('lh_deposit_done_date','') !== _rToday) {
-q.push({priority:80, icon:'🏦', text:`Missed at 1:45 — deposit was due to Ms. Evans by 2 PM. Still outstanding?`,
+q.push({priority:80, icon:'🏦', text:`Missed at 1:45 — deposit was due to the bookkeeper by 2 PM. Still outstanding?`,
 role:'store', nav:'wbl', days:0});
 }
 if (_rNow.getDay() === 5 && isSchoolDay(_rNow) && _rPastToday(12, 15) && LS.get('lh_workday_done_date','') !== _rToday) {
@@ -12046,7 +12042,7 @@ const hasTodaySale = invTransactions.some(t => new Date(t.date||t.ts).toDateStri
 if (!isSchoolDay(now)) return;
 LS.set('lh_deposit_reminder_date', today);
 showDepositReminderBanner();
-_fireNotification('🏦 1:45 PM — Deposit Reminder', 'CCPS Policy 7060: no money overnight. Deposit with Ms. Evans by 2:00 PM.');
+_fireNotification('🏦 1:45 PM — Deposit Reminder', 'CCPS Policy 7060: no money overnight. Deposit with the bookkeeper by 2:00 PM.');
 }
 function lhShowBanner(banner) {
 const stack = document.getElementById('lh-banners');
@@ -12072,7 +12068,7 @@ banner.innerHTML = `
     <span style="font-size:1.3rem">🏦</span>
     <div style="flex:1">
       <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">⏰ 1:45 PM — DEPOSIT REMINDER</div>
-      <div style="font-size:.76rem">Per CCPS Policy 7060: <strong>no money overnight.</strong> All school store funds must be deposited with <strong>Ms. Evans by 2:00 PM</strong> today. Count cash, complete deposit slip, and deliver to bookkeeper before end of period.</div>
+      <div style="font-size:.76rem">Per CCPS Policy 7060: <strong>no money overnight.</strong> All school store funds must be deposited with <strong>the bookkeeper by 2:00 PM</strong> today. Count cash, complete deposit slip, and deliver to bookkeeper before end of period.</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="markDepositDone()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Deposit Done</button>
@@ -12087,7 +12083,7 @@ const today = new Date().toDateString();
 LS.set('lh_deposit_done_date', today);
 const toast = document.createElement('div');
 toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#15803d;color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.82rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
-toast.textContent = '✅ Deposit logged — funds delivered to Ms. Evans';
+toast.textContent = '✅ Deposit logged — funds delivered to the bookkeeper';
 document.body.appendChild(toast);
 setTimeout(()=>toast.remove(), 4000);
 refreshNextAction();
@@ -14047,7 +14043,7 @@ const st = outcomeStyle[o.outcome] || outcomeStyle.pending;
 return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:#f9fafb;border:1px solid var(--border);border-radius:7px;font-size:.75rem">
       <span style="flex-shrink:0;color:var(--muted)">${o.date}</span>
       <span style="font-weight:700;color:var(--navy)">${typeLabel[o.type]||o.type}</span>
-      <span style="font-size:.75rem;color:#555">${o.observer==='green'?'Ms. Green':o.observer==='white'?'C. White':o.observer==='altizer'?'D. Altizer':'Other'}</span>
+      <span style="font-size:.75rem;color:#555">${o.observer==='green'?'Supervisor':o.observer==='white'?'Administrator B':o.observer==='altizer'?'Administrator A':'Other'}</span>
       <span style="font-size:.75rem;padding:1px 7px;border-radius:20px;font-weight:700;margin-left:auto;${st}">${o.outcome==='pending'?'⏳ Pending':o.outcome==='positive'?'✅ Positive':o.outcome==='concern'?'⚠️ Concern':'🔴 Action'}</span>
       ${o.followup?`<span style="font-size:.75rem;color:#b91c1c;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.followup}">↳ ${o.followup}</span>`:''}
       ${(o.outcome==='action'||o.outcome==='concern')?`<button onclick="resolveObsAction('${o.id}')" style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:5px;padding:1px 6px;font-size:.75rem;font-weight:700;cursor:pointer;flex-shrink:0" title="Mark follow-up complete — removes from priority queue">✅ Resolve</button>`:''}
@@ -15270,7 +15266,7 @@ el.textContent = '⚠ Could not copy — select and copy the text manually';
 setTimeout(() => { el.textContent = ''; }, 3500);
 });
 }
-function emailSubPlanToNykia() {
+function emailSubPlanToAttendance() {
 const dateStr = document.getElementById('sp-date').value;
 const dateLabel = dateStr
 ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
@@ -15279,7 +15275,7 @@ const reason = document.getElementById('sp-reason').value;
 const reasonLabels = { sick:'Sick Day', deca:`${(ORGANIZATIONS.deca||{}).name || 'DECA'} Trip`, conference:'Conference/PD Day', personal:'Personal Day' };
 const body = document.getElementById('sp-preview-output').textContent;
 const subject = encodeURIComponent(`Sub Plan — ${reasonLabels[reason] || reason} — ${dateLabel}`);
-const bodyEnc = encodeURIComponent(`Hi ${PROFILE.attendanceCoordFirstName},\n\nPlease find my sub plan attached below for my absence on ${dateLabel}.\n\n---\n\n${body}\n\n---\n\nThank you,\n${PROFILE.name}`);
+const bodyEnc = encodeURIComponent(`Hi ${PROFILE.attendanceCoordFirstName || 'there'},\n\nPlease find my sub plan attached below for my absence on ${dateLabel}.\n\n---\n\n${body}\n\n---\n\nThank you,\n${PROFILE.name}`);
 window.open(`mailto:${PROFILE.attendanceCoordEmail}?subject=${subject}&body=${bodyEnc}`);
 }
 function printSubPlan() {
@@ -15586,7 +15582,7 @@ const today = now.toDateString();
 if (LS.get('lh_brag_prompt_date', '') === today) return;
 LS.set('lh_brag_prompt_date', today);
 showBragBoardPromptBanner();
-_fireNotification('🏆 Friday — Brag About Your Week', 'You did a lot this week. Generate a quick wins email for Ms. Green, Admin, or DECA parents.');
+_fireNotification('🏆 Friday — Brag About Your Week', 'You did a lot this week. Generate a quick wins email for your supervisor, admin, or DECA parents.');
 }
 function showBragBoardPromptBanner() {
 if (document.getElementById('brag-prompt-banner')) return;
@@ -15597,7 +15593,7 @@ banner.innerHTML = `
     <span style="font-size:1.3rem">🏆</span>
     <div style="flex:1">
       <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">FRIDAY — BRAG ABOUT YOUR WEEK</div>
-      <div style="font-size:.76rem;opacity:.9">You did a lot this week. Generate a quick wins email for Ms. Green, Admin, or DECA parents.</div>
+      <div style="font-size:.76rem;opacity:.9">You did a lot this week. Generate a quick wins email for your supervisor, admin, or DECA parents.</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="document.getElementById('brag-prompt-banner').remove();openBragBoard(true)"
@@ -15865,195 +15861,8 @@ scr_session_log: arr => { _lhStore.setItem('lh_scr_session_log', JSON.stringify(
 var SCR_SYNC_DEBOUNCE_MS = 2000;
 var _scrSyncQueue = [];
 var _scrSyncTimer = null;
-var trips = [
-{id:1, name:'City Museum Field Trip', sub:'same-day', date:'2026-03-18',
-origin:'Chester Middle School', depTime:'09:45', retTime:'13:30', depDate:'2026-03-18', retDate:'2026-03-18',
-dest1:'The Children\'s Museum of Richmond, 2626 W Broad St, Richmond VA 23220', arr1:'10:15', dep1:'12:45', dest2:'', arr2:'', dep2:'',
-oneway:'NO', status:'active',
-ccpsBus:1, charter:0, rental:0, walk:'', parentTx:'', train:'', charterCo:'', rentalCo:'',
-grade:'9-10', classMem:'Economics Class', invited:28, stuAtt:24, adultAtt:3,
-stuMF:'12/12', adultMF:'1/2', costStu:0, costAdult:0, chap:'1/2', wc:0,
-afford:'No cost trip — transportation covered by school budget',
-nonatt:'Students with unresolved discipline issues',
-sped:'No special accommodations required',
-med:'YES', allergy:'YES',
-med1:'Jane Smith, (804) 555-1001', med2:'Bob Jones, (804) 555-1002',
-fund:'FT-2026-001', po:'TT-2026-0041', sponsor:'Ms. Rivera', cell:'(804) 555-2010', coord:'Mr. Hughes', acctNotes:'',
-why:'Connects to Unit 3: Consumer Economics — students analyze real-world marketplace decisions.',
-pre:'Pre-trip reading on economic systems; vocabulary preview worksheet.',
-post:'Reflection essay: 3 economic concepts observed during visit.',
-isOn:'', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-reason:'Academic enrichment — economics curriculum', acttype:'Museum Visit',
-notes:'Student-led Q&A session with museum educators.',
-ap:{coord:true,principal:true,bookkeeper:true,risk:false,transport:false}
-},
-{id:2, name:'Science Center Trip', sub:'same-day', date:'2026-05-06',
-origin:'Chester Middle School', depTime:'09:45', retTime:'13:30', depDate:'2026-05-06', retDate:'2026-05-06',
-dest1:'Science Museum of Virginia, 2500 W Broad St, Richmond VA 23220', arr1:'10:15', dep1:'12:30', dest2:'', arr2:'', dep2:'',
-oneway:'NO', status:'planned',
-ccpsBus:2, charter:0, rental:0, walk:'', parentTx:'', train:'', charterCo:'', rentalCo:'',
-grade:'9-12', classMem:'All enrolled students', invited:36, stuAtt:32, adultAtt:4,
-stuMF:'', adultMF:'', costStu:0, costAdult:0, chap:'', wc:0,
-afford:'', nonatt:'', sped:'',
-med:'', allergy:'',
-med1:'', med2:'',
-fund:'', po:'', sponsor:'Mr. Chen', cell:'', coord:'', acctNotes:'',
-why:'', pre:'', post:'',
-isOn:'', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-reason:'STEM enrichment', acttype:'Science Center Visit',
-notes:'Innovation exhibit + engineering challenge.',
-ap:{coord:false,principal:false,bookkeeper:false,risk:false,transport:false}
-},
-];
-trips.push(
-{id:3, name:'DECA Ultimate Power Trip', sub:'overnight', date:'2025-11-21',
-origin:'Clover Hill High School', depTime:'08:00', retTime:'17:00', depDate:'2025-11-21', retDate:'2025-11-23',
-dest1:'Renaissance Arlington Capital View, 2800 South Potomac Ave, Arlington, VA 22202', arr1:'13:00', dep1:'13:00',
-dest2:'Staples Mills Train Station, 7519 Staples Mill Rd, Richmond, VA 23228', arr2:'12:00', dep2:'16:00',
-oneway:'NO', status:'complete',
-ccpsBus:0, charter:0, rental:1, walk:'', parentTx:'', train:'AmTrak', charterCo:'', rentalCo:'',
-grade:'9-12', classMem:'DECA Members', invited:50, stuAtt:13, adultAtt:2,
-stuMF:'7/6', adultMF:'1/1', costStu:250, costAdult:250, chap:'1/1', wc:0,
-afford:'SAF Funds', nonatt:'Student Choice', sped:'',
-med:'Y', allergy:'Y',
-med1:'Adam Berneche', med2:'Regina Warriner',
-fund:'4280', po:'26-316-3418', sponsor:'Adam Berneche', cell:'', coord:'Adam Berneche', acctNotes:'DECA Account 4280',
-why:'This trip supports DECA which is the CTSO of the Marketing classes which is required by the DoE.',
-pre:'Students prepared for the DECA conference through practice sessions at chapter meetings and classroom experience.',
-post:'Conference attendees had the opportunity to qualify competing at further DECA Conferences.',
-isOn:'X', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-reason:'DECA CTSO — Student Competition Conference', acttype:'Student Conference',
-notes:'Amtrak from Staples Mills. Drivers: Adam Berneche & Regina Warriner.',
-ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
-},
-{id:4, name:'DECA District Leadership Conference', sub:'same-day', date:'2025-12-03',
-origin:'Clover Hill High School', depTime:'09:00', retTime:'14:00', depDate:'2025-12-03', retDate:'2025-12-03',
-dest1:'Chesterfield Towne Center, 11500 Midlothian Tpke, Richmond, VA 23235', arr1:'09:30', dep1:'13:30',
-dest2:'', arr2:'', dep2:'',
-oneway:'NO', status:'complete',
-ccpsBus:0, charter:0, rental:0, walk:'', parentTx:'1', train:'', charterCo:'', rentalCo:'',
-grade:'9-12', classMem:'DECA Members', invited:23, stuAtt:15, adultAtt:2,
-stuMF:'9/6', adultMF:'1/1', costStu:0, costAdult:0, chap:'1/1', wc:0,
-afford:'SAF Funds', nonatt:'Student Choice', sped:'',
-med:'Y', allergy:'Y',
-med1:'Adam Berneche', med2:'Kristen Hangey',
-fund:'4280', po:'', sponsor:'Adam Berneche', cell:'', coord:'Adam Berneche', acctNotes:'No Transportation Costs. Contact: Shannon Tual (703) 860-5000',
-why:'DECA Students participated in competitive events applying classroom knowledge in predetermined scenarios and networked with district peers.',
-pre:'Practice sessions at chapter meetings; knowledge from classroom.',
-post:'Conference attendees had the opportunity to qualify for SLC.',
-isOn:'', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-reason:'DECA competitive events — district qualifier', acttype:'Conference',
-notes:'Parent transportation (1 vehicle). 15 students attended.',
-ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
-},
-{id:5, name:'DECA State Leadership Conference', sub:'overnight-is', date:'2026-02-27',
-origin:'Meadowbrook High School (bus origin)', depTime:'09:00', retTime:'14:00', depDate:'2026-02-27', retDate:'2026-03-02',
-dest1:'Virginia Beach Convention Center, 1000 19th St, Virginia Beach, VA 23451', arr1:'12:00', dep1:'11:00',
-dest2:'Hampton Inn North Oceanfront, 3107 Atlantic Ave, Virginia Beach, VA 23451', arr2:'13:00', dep2:'07:00',
-oneway:'NO', status:'complete',
-ccpsBus:0, charter:1, rental:0, walk:'', parentTx:'', train:'', charterCo:'Winn Transportation', rentalCo:'',
-grade:'9-12', classMem:'DECA Members', invited:30, stuAtt:15, adultAtt:2,
-stuMF:'8/7', adultMF:'1/1', costStu:350, costAdult:350, chap:'1/1', wc:0,
-afford:'SAF Funds', nonatt:'Student Choice', sped:'',
-med:'Y', allergy:'Y',
-med1:'Adam Berneche', med2:'Amanda Berneche',
-fund:'4280', po:'26-0368-2559', sponsor:'Adam Berneche', cell:'', coord:'Adam Berneche', acctNotes:'Contact: Shannon Tual (703) 860-5000. Bus ~$70/student.',
-why:'This trip supports DECA which is the CTSO of the Marketing classes which is required by the DoE.',
-pre:'Practice sessions at chapter meetings and classroom experience.',
-post:'Top 8 finishers qualify for ICDC. Top 10 may receive bumps. Must have 70%+ SLC test score.',
-isOn:'X', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
-reason:'DECA CTSO — State Competition', acttype:'Conference',
-notes:'Housing: Hampton Inn North Oceanfront ($171/night, 4/room). Charter: Winn. Awaiting SLC results for ICDC qualifiers.',
-ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
-},
-{id:6, name:'DECA ICDC — International Career Development Conference', sub:'overnight-oos', date:'2026-04-25',
-origin:'Clover Hill High School', depTime:'', retTime:'', depDate:'2026-04-25', retDate:'2026-04-29',
-dest1:'Atlanta, GA — Atlanta Hilton + Convention Center', arr1:'', dep1:'',
-dest2:'', arr2:'', dep2:'',
-oneway:'NO', status:'planned',
-ccpsBus:0, charter:0, rental:0, walk:'', parentTx:'', train:'', charterCo:'', rentalCo:'',
-grade:'9-12', classMem:'SLC Qualifiers (Top 8 + bumps, 70%+ test)', invited:0, stuAtt:0, adultAtt:2,
-stuMF:'', adultMF:'1/1', costStu:1000, costAdult:0, chap:'1/1', wc:0,
-afford:'SAF Funds', nonatt:'Did not qualify at SLC or scored below 70% on SLC test', sped:'',
-med:'Y', allergy:'Y',
-med1:'Adam Berneche', med2:'TBD — need 2nd trained adult',
-fund:'4280', po:'', sponsor:'Adam Berneche', cell:'', coord:'Adam Berneche',
-acctNotes:'Registration: $155/student (opens Mar 2, closes Mar 13, payment due Apr 1). Housing: Atlanta Hilton $260/night, 4/room. Coordinate flights with other CCPS advisors.',
-why:'DECA students who qualified at the State level will compete at the National competition. Attended by 20,000 qualifiers from across the U.S. and internationally.',
-pre:'Use judges\' SLC comments to improve test scores and role play presentations. Practice with mentors.',
-post:'Review successes and areas of improvement. Thrive Academy participants begin planning next year.',
-isOn:'', oos:'X', oosOn:'X', intl:'', flight:'Airline — coordinate with CCPS advisors',
-waivers:'',
-reason:'DECA CTSO — National Competition (SLC qualifiers only)', acttype:'Conference',
-notes:'⚠️ Reg opens Mar 2–13 ($155/student). Payment due Apr 1. Field trip form needed NOW — 45-day lead required. Airline transport. Atlanta Hilton 4/room ($260/night).',
-ap:{coord:false,principal:false,bookkeeper:false,risk:false,transport:false,director:false,chief:false}
-}
-);
-var _otherEventsDefault = [
-{id:10, name:'DECA Ultimate Power Trip', type:'deca', date:'2025-11-21',
-endDate:'2025-11-23', loc:'Renaissance Arlington Capital View, 2800 South Potomac Ave, Arlington, VA 22202',
-stu:13, adults:2, stuMF:'7M/6F', adultMF:'1M/1F', status:'complete',
-cost:'~$250/student', transport:'Amtrak (from Staples Mills) + Rental Vehicle',
-chaperones:'Adam Berneche · Regina Warriner',
-po:'26-316-3418', account:'DECA 4280', contact:'Shannon Tual (703) 860-5000',
-notes:'In-state overnight. Amtrak from Staples Mill Station (7519 Staples Mill Rd, Richmond VA 23228). Students competed in written events and role-plays. Trip entered 10/9/2025.'},
-{id:11, name:'DECA District Leadership Conference (DLC)', type:'deca', date:'2025-12-03',
-loc:'Chesterfield Towne Center, 11500 Midlothian Tpke, Richmond, VA 23235',
-stu:15, adults:2, stuMF:'9F/6M', adultMF:'1M/1F', status:'complete',
-cost:'$0 (included with membership)', transport:'Parent Transportation (1 vehicle)',
-chaperones:'Adam Berneche · Kristen Hangey',
-po:'', account:'DECA 4280', contact:'Shannon Tual (703) 860-5000',
-notes:'Day trip. Depart CHHS 9am, arrive CTC 9:30am, depart 1:30pm, return ~2pm. 23 students invited, 15 attended. Job Interview topic: Ice Cream Innovator @ Sweet Scoops ($13.50/hr). All chapters must bring 2 judges. Trip entered 12/1/2025.'},
-{id:12, name:'DLC Testing Window', type:'deca', date:'2025-11-17',
-endDate:'2025-11-25', loc:'Clover Hill HS (in-school)',
-stu:0, adults:0, status:'complete',
-notes:'Nov 17–21 primary window; Nov 24–25 make-up dates. No test = no compete. Students completed Job Interview application + resume in Google Form (NEW this year — no email to Kris required).'},
-{id:17, name:'SLC Testing Window', type:'deca', date:'2026-02-09',
-endDate:'2026-02-13', loc:'Clover Hill HS (in-school)',
-stu:0, adults:0, status:'complete',
-notes:'Feb 9–13. NO make-up days. Students must earn 70%+ on test to advance to ICDC. Score is required regardless of placement at SLC.'},
-{id:13, name:'DECA State Leadership Conference (SLC)', type:'deca', date:'2026-02-27',
-endDate:'2026-03-01', loc:'Virginia Beach Convention Center, 1000 19th St, Virginia Beach, VA 23451',
-stu:15, adults:2, stuMF:'8F/7M', adultMF:'1M/1F', status:'active',
-cost:'$350/student ($165 conference w/Friday dinner + $171/night hotel + ~$70 bus)',
-transport:'Charter Bus — Winn Transportation (~$70/student)',
-chaperones:'Adam Berneche · Amanda Berneche',
-po:'26-0368-2559', account:'DECA 4280', contact:'Shannon Tual (703) 860-5000',
-housing:'Hampton Inn North Oceanfront, 3107 Atlantic Ave, Virginia Beach VA 23451 — $171/night, 4 to a room',
-notes:'In-state overnight. Depart Meadowbrook HS 9am (bus origin). 30 students invited, 15 attended. Top 8 finishers qualify for ICDC; Top 10 may receive bumps. Must have 70%+ SLC test score to attend ICDC. Annual Report registered at same time as SLC. Reg closed Jan 16; payment was due Feb 2. SLC fee options: Conference Only $135 · w/Friday Dinner $165 · Chaperone Judge $75. Saturday meal add-on $35. Team events: chapters with 1–150 members get 4 entries, 151–300 get 6, 301+ get 8; max 2 per category. AWAITING RESULTS.'},
-{id:14, name:'ICDC Registration Window', type:'deca', date:'2026-03-02',
-endDate:'2026-03-13', loc:'Online — Virginia DECA',
-stu:0, adults:0, status:'urgent',
-notes:'⚠️ Opens March 2, CLOSES MARCH 13. $155/student. Open to Top 8 SLC finishers + possible bumps to Top 10. MUST have 70%+ SLC test score. Prepare ICDC commitment letter packet for Top 8 qualifiers. Coordinate rooming + flights with other CCPS advisors. Housing: Atlanta Hilton, $260/night, 4 to a room (advisors, adults, AND students). FIELD TRIP FORM MUST BE SUBMITTED BEFORE THIS CLOSES.'},
-{id:15, name:'ICDC Payment Due', type:'deca', date:'2026-04-01',
-loc:'Online / Finance Office',
-stu:0, adults:0, status:'upcoming',
-notes:'$155/student registration payment due April 1. Coordinate flights with other CCPS advisors. Based on 24-25 Y@G pattern, student installments were ~$400 → $300 → $300. Total ICDC cost per student ~$1,000.'},
-{id:16, name:'DECA ICDC — International Career Development Conference', type:'deca', date:'2026-04-25',
-endDate:'2026-04-29', loc:'Atlanta, GA — Atlanta Hilton + Georgia World Congress Center',
-stu:0, adults:2, status:'planned',
-cost:'~$1,000/student', transport:'Airline (coordinate with CCPS advisors)',
-housing:'Atlanta Hilton, $260/night, 4 to a room — advisors, adults, AND students all 4/room',
-notes:'Out-of-state overnight. Field trip form needed NOW — 45-day lead required = submit by ~Mar 11. Registration Mar 2–13 ($155). Payment due Apr 1. Only SLC Top 8 qualifiers (+ bumps to Top 10) with 70%+ test score. ~20,000 competitors nationally and internationally. Coordinate flights + rooming with other CCPS advisors attending.'},
-{id:18, name:'ICDC Student Installment #1 Due', type:'deca', date:'2026-03-13',
-loc:'Finance / Mr. Berneche',
-stu:0, adults:0, status:'upcoming',
-notes:'~$400/student (based on 24-25 Y@G schedule). Confirm exact amount for 25-26.'},
-{id:19, name:'ICDC Student Installment #2 Due', type:'deca', date:'2026-03-27',
-loc:'Finance / Mr. Berneche',
-stu:0, adults:0, status:'upcoming',
-notes:'~$300/student (based on 24-25 Y@G schedule).'},
-{id:22, name:'ICDC Student Installment #3 + Forms Due', type:'deca', date:'2026-04-17',
-loc:'Finance / Mr. Berneche',
-stu:0, adults:0, status:'upcoming',
-notes:'~$300/student + all field trip permission forms due (based on 24-25 Y@G schedule).'},
-{id:23, name:'End of Year / Post-Mortem Meeting', type:'deca', date:'2026-05-15',
-loc:'Rm 107 · 3pm–4pm',
-stu:0, adults:0, status:'upcoming',
-notes:'25-26 Post Mortem Meeting. Review season results, plan for 26-27.'},
-{id:20, name:'Spring Leadership Workshop', type:'leadership', date:'2026-04-02', loc:'Library Commons', stu:30, notes:'Guest speaker: local entrepreneur.'},
-{id:21, name:'Community Service Drive', type:'community', date:'2026-04-10', loc:'Food Bank', stu:18, notes:'3 hrs service; reflect & debrief.'},
-];
+var trips = [];
+var _otherEventsDefault = [];
 var otherEvents = LS.get('lh_events', _otherEventsDefault);
 var PROFILE_DEFAULTS = {
 name: 'Adam Berneche',
@@ -16065,11 +15874,11 @@ phone: '',
 email: '',
 emailDomain: 'ccpsnet.net',
 chapterName: 'Clover Hill DECA',
-supervisorName: 'Ms. Green',
+supervisorName: 'Supervisor',
 supervisorEmail: '',
-adminName: 'Admin (Altizer / White)',
+adminName: 'Administration',
 adminEmail: '',
-attendanceCoordFirstName: 'Nykia',
+attendanceCoordFirstName: '',
 attendanceCoordEmail: '',
 };
 var PROFILE = getProfile();
@@ -16111,21 +15920,13 @@ var _studentsDefault = [
 ];
 var students = LS.get('lh_students', _studentsDefault);
 students.forEach(s => { if (!s.org) s.org = 'deca'; });
-var goals = [
-{id:1,title:'Qualify students for ICDC',cat:'DECA Competition',date:'2026-03-02',progress:100,desc:'Top 8 SLC finishers (+ bumps to Top 10) with 70%+ test score qualify. SLC results pending — check for qualifiers and start ICDC registration Mar 2–13.'},
-{id:2,title:'Submit ICDC Field Trip Form',cat:'Field Trip',date:'2026-03-11',progress:100,updatedAt:'2026-03-11T00:00:00.000Z',desc:'⚠️ URGENT — Out-of-state overnight requires 45-day lead. Deadline ~March 11 to submit for Apr 25 departure. Start now.'},
-{id:3,title:'Complete ICDC Registration (Mar 2–13)',cat:'DECA Competition',date:'2026-03-13',progress:100,updatedAt:'2026-03-13T00:00:00.000Z',desc:'$155/student. Only qualifiers with 70%+ SLC test. Atlanta Hilton housing ($260/night, 4/room). Coordinate with other CCPS advisors on rooming + flights.'},
-{id:4,title:'ICDC Payment Submitted',cat:'DECA Competition',date:'2026-04-01',progress:0,desc:'$155/student due April 1. Coordinate flights with other CCPS advisors attending.'},
-{id:5,title:'Grow Chapter Membership to 60+',cat:'Membership Growth',date:'2026-11-01',progress:20,desc:'Per DLC agenda: membership was at 12, needed 60 more. Membership form due Dec 1, dues to Kristen W by Nov 1.'},
-{id:6,title:'100 Hours Community Service',cat:'Community Service',date:'2026-05-30',progress:38,desc:'Coordinate with nonprofits. Shoe Drive: goal of 2,500 shoes — track progress.'},
-{id:7,title:'Annual Report Submission at SLC',cat:'DECA Competition',date:'2026-02-27',progress:100,desc:'Must register for Annual Report when registering for SLC. Complete.'},
-];
+var goals = [];
 { const saved = LS.get('lh_goals', null); if (saved && Array.isArray(saved)) goals = saved; }
 var TRIPS_SEED = null;
 { const saved = LS.get('lh_trips', null); if (saved && Array.isArray(saved)) trips = saved; }
 var nextId = LS.get('lh_next_id', {trip:24, ev:30, st:11, gl:14, tk:11});
 var currentTripId = null;
-var currentFilter = 'all';</script><script data-lh-block="leader-hub-block-2-part-12-of-17">
+var currentFilter = 'all';
 var REQUIRED_FIELDS = [
 {key:'name', label:'Trip Name', section:'Basic Info'},
 {key:'date', label:'Trip Date', section:'Basic Info'},
@@ -16281,7 +16082,7 @@ currentTripId = tid;
 openTripWizard(tid);
 };
 var emailTab = 'students';
-var emailContextTripId = null;
+var emailContextTripId = null;</script><script data-lh-block="leader-hub-block-2-part-12-of-17">
 var EMAIL_TEMPLATES = {
 students: [
 { id:'stu-trip-announcement', label:'📢 Trip Announcement',
@@ -16470,7 +16271,7 @@ WHAT I NEED FROM YOU:
 DUES:
 $20 membership fee is due by [DATE].
 Cash or check payable to "${PROFILE.chapterName}."
-$2 state dues due to Kristen Wettstein by November 1.
+$2 state dues due to the district DECA contact by November 1.
 
 Missing info = missing from event rosters and field trip forms.
 Please get this to me ASAP — don't miss your spot!
@@ -16524,17 +16325,7 @@ ${PROFILE.phone} | ${PROFILE.email}`
 }
 );
 }
-var slipRosters = {
-1: [
-{id:101, studentId:1, source:'deca', tx:'ccps', status:'returned', notes:''},
-{id:102, studentId:4, source:'deca', tx:'ccps', status:'returned', notes:''},
-{id:103, studentId:7, source:'deca', tx:'ccps', status:'pending', notes:'Remind Thursday'},
-{id:104, first:'Taylor', last:'Brooks', source:'manual', tx:'parent', status:'returned', phone:'(804) 555-1014', notes:'Parent driving'},
-{id:105, first:'Aisha', last:'Johnson', source:'manual', tx:'ccps', status:'missing', phone:'(804) 555-1015', notes:'2nd notice sent'},
-{id:106, studentId:3, source:'deca', tx:'ccps', status:'pending', notes:''},
-],
-2: [],
-};
+var slipRosters = {};
 { const ss = LS.get('lh_slip_rosters', null); if (ss && typeof ss === 'object') slipRosters = ss; }
 var nextSlipId = LS.get('lh_next_slip_id', 200);
 var currentSlipFilter = 'all';
@@ -16572,39 +16363,6 @@ countFormsDue();
 var tripArchive = LS.get('lh_trip_archive', []);
 var archiveFilter = 'all';
 var archivingTripId = null;
-(function seedArchive() {
-if (tripArchive.length > 0) return;
-const seed = [
-{ id: trips.find(t=>t.id===3), glows:[
-'Amtrak travel was a huge hit — students loved the train experience and it became a talking point throughout the trip.',
-'Renaissance Arlington Capital View was an excellent venue — students felt the professional environment elevated their performance and confidence.',
-'Regina Warriner was an outstanding co-chaperone — her rapport with students made overnight supervision smooth and low-stress.'
-], grow:'Permission slips and medical forms came in too close to the departure date — set a hard deadline 2 weeks before next year and send a follow-up email 5 days out.', rating:5, outcome:'exceeded', notes:'PO# 26-316-3418. Account 4280. Amtrak from Staples Mills Station — easy drop-off and pickup. Would absolutely use train transport again for Arlington route.'},
-{ id: trips.find(t=>t.id===4), glows:[
-'Parent transportation worked perfectly for a local day trip — zero cost and parents appreciated the involvement.',
-'Chesterfield Towne Center provided a realistic, professional competition environment that closely mirrors what students will face at SLC.',
-'Kristen Hangey was a wonderful chaperone — students responded well to having two familiar adult faces.'
-], grow:'Only 15 of 23 invited students attended — need to build more urgency and excitement in the weeks before DLC. Consider a pre-competition send-off.', rating:4, outcome:'met', notes:'Contact Shannon Tual (703) 860-5000 for future DLC logistics. Job Interview topic this year: Ice Cream Innovator @ Sweet Scoops. No cost when membership is current.'},
-{ id: trips.find(t=>t.id===5), glows:[
-'Winn Transportation was punctual and professional — bus was clean and the driver communicated well throughout the trip.',
-'Hampton Inn North Oceanfront was a great choice — 4 to a room was manageable, beach access kept students energized, and check-in was seamless.',
-'15 students represented Clover Hill with professionalism and competitive spirit — the chapter culture of preparation and confidence was visible throughout.'
-], grow:'Need to confirm SLC results faster and communicate ICDC eligibility to students and families within 48 hours of returning — the registration window opens quickly.', rating:4, outcome:'met', notes:'PO# 26-0368-2559. Bus ~$70/student (PO to Kristen at Meadowbrook). Hotel: Hampton Inn North Oceanfront, 3107 Atlantic Ave — $171/night, 4/room. Amanda Berneche was an excellent co-chaperone. AWAITING final placement results.'},
-].filter(e => e.id);
-seed.forEach((s, i) => {
-tripArchive.push({
-id: Date.now() + i,
-trip: {...s.id},
-glows: s.glows,
-grow: s.grow,
-rating: s.rating,
-outcome: s.outcome,
-notes: s.notes,
-archivedAt: new Date(2026, 2, 4 - (2-i)).toISOString()
-});
-});
-persistTripArchive();
-})();
 var archiveFilterCurrent = 'all';
 document.querySelector('[onclick="openModal(\'addStudent\')"]')?.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();openModal_addStudent();},{capture:true});</script><script data-lh-block="leader-hub-block-2-part-13-of-17">
 var SCR_COURSES = {"6115":{"code":"6115","name":"Principles of Business and Marketing","icon":"📘","competencies":[{"num":1,"req":"Required","text":"Demonstrate creativity and innovation.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":2,"req":"Required","text":"Demonstrate critical thinking and problem  solving.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":3,"req":"Required","text":"Demonstrate initiative and self-direction.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":4,"req":"Required","text":"Demonstrate integrity.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":5,"req":"Required","text":"Demonstrate work ethic.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":6,"req":"Required","text":"Demonstrate conflict-resolution skills.","duty":"Demonstrating Interpersonal Skills"},{"num":7,"req":"Required","text":"Demonstrate listening and speaking skills.","duty":"Demonstrating Interpersonal Skills"},{"num":8,"req":"Required","text":"Demonstrate respect for diversity.","duty":"Demonstrating Interpersonal Skills"},{"num":9,"req":"Required","text":"Demonstrate customer service skills.","duty":"Demonstrating Interpersonal Skills"},{"num":10,"req":"Required","text":"Collaborate with team members.","duty":"Demonstrating Interpersonal Skills"},{"num":11,"req":"Required","text":"Demonstrate big-picture thinking.","duty":"Demonstrating Professional Competencies"},{"num":12,"req":"Required","text":"Demonstrate career- and life-management skills.","duty":"Demonstrating Professional Competencies"},{"num":13,"req":"Required","text":"Demonstrate continuous learning and adaptability.","duty":"Demonstrating Professional Competencies"},{"num":14,"req":"Required","text":"Manage time and resources.","duty":"Demonstrating Professional Competencies"},{"num":15,"req":"Required","text":"Demonstrate information-literacy skills.","duty":"Demonstrating Professional Competencies"},{"num":16,"req":"Required","text":"Demonstrate an understanding of information security.","duty":"Demonstrating Professional Competencies"},{"num":17,"req":"Required","text":"Maintain working knowledge of current information-technology (IT) systems.","duty":"Demonstrating Professional Competencies"},{"num":18,"req":"Required","text":"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.","duty":"Demonstrating Professional Competencies"},{"num":19,"req":"Required","text":"Apply mathematical skills to job-specific tasks.","duty":"Demonstrating Professional Competencies"},{"num":20,"req":"Required","text":"Demonstrate professionalism.","duty":"Demonstrating Professional Competencies"},{"num":21,"req":"Required","text":"Demonstrate reading and writing skills.","duty":"Demonstrating Professional Competencies"},{"num":22,"req":"Required","text":"Demonstrate workplace safety.","duty":"Demonstrating Professional Competencies"},{"num":23,"req":"Required","text":"Examine aspects of planning within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":24,"req":"Required","text":"Examine aspects of management within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":25,"req":"Required","text":"Examine aspects of financial responsibility within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":26,"req":"Required","text":"Examine technical and production skills required of workers within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":27,"req":"Required","text":"Examine principles of technology that underlie an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":28,"req":"Required","text":"Examine labor issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":29,"req":"Required","text":"Examine community issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":30,"req":"Required","text":"Examine health, safety, and environmental issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":31,"req":"Required","text":"Identify the purposes and goals of the student organization.","duty":"Addressing Elements of Student Life"},{"num":32,"req":"Required","text":"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.","duty":"Addressing Elements of Student Life"},{"num":33,"req":"Required","text":"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.","duty":"Addressing Elements of Student Life"},{"num":34,"req":"Required","text":"Identify Internet safety issues and procedures for complying with acceptable use standards.","duty":"Addressing Elements of Student Life"},{"num":35,"req":"Required","text":"Identify the types of work-based learning (WBL) opportunities.","duty":"Exploring Work-Based Learning"},{"num":36,"req":"Optional","text":"Reflect on lessons learned during the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":37,"req":"Required","text":"Explore career opportunities related to the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":38,"req":"Optional","text":"Participate in a WBL experience, when appropriate.","duty":"Exploring Work-Based Learning"},{"num":39,"req":"Required","text":"Identify the difference between needs and wants.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":40,"req":"Required","text":"Distinguish among the factors of production.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":41,"req":"Required","text":"Explain the relevance of scarcity to economics.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":42,"req":"Required","text":"Identify the three basic economic questions answered by any economy.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":43,"req":"Required","text":"Describe a decision-making process.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":44,"req":"Required","text":"Distinguish between economic systems.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":45,"req":"Required","text":"Identify characteristics of free enterprise.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":46,"req":"Required","text":"Explain supply, law of supply, demand, law of demand, and economic equilibrium.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":47,"req":"Optional","text":"Describe the effect of supply and demand on a free enterprise system.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":48,"req":"Optional","text":"Explain the positive and negative effects of emerging economies on the global market.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":49,"req":"Required","text":"Illustrate the phases of the business cycle.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":50,"req":"Required","text":"Identify the measures or indicators of economic activity.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":51,"req":"Optional","text":"Describe possible outcomes and other important aspects of global trade.","duty":"Understanding the Role of Economics in a Global Economy"},{"num":52,"req":"Required","text":"Identify the four types of businesses.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":53,"req":"Required","text":"Compare major types of business structures.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":54,"req":"Optional","text":"Identify the functions of management.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":55,"req":"Optional","text":"Explore leadership styles.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":56,"req":"Required","text":"Explain the marketing concept.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":57,"req":"Required","text":"Describe the marketing functions.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":58,"req":"Required","text":"Define target market.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":59,"req":"Required","text":"Explain market segmentation and how it is used to identify a target market.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":60,"req":"Required","text":"Describe the elements of the marketing mix.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":61,"req":"Required","text":"Describe the selling process.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":62,"req":"Required","text":"Explain the market research process.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":63,"req":"Optional","text":"Create a business plan.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":64,"req":"Required","text":"Investigate technological trends in business and marketing.","duty":"Exploring the Core Concepts of Business and Marketing"},{"num":65,"req":"Required","text":"Determine the social responsibilities of a business to the community and of the community to a business.","duty":"Exploring Interrelated Social, Environmental, and Ethical Responsibilities"},{"num":66,"req":"Required","text":"Determine the environmental responsibilities of a business to the community and of the community to a business.","duty":"Exploring Interrelated Social, Environmental, and Ethical Responsibilities"},{"num":67,"req":"Required","text":"Identify ethical and unethical business practices.","duty":"Exploring Interrelated Social, Environmental, and Ethical Responsibilities"},{"num":68,"req":"Required","text":"Describe communication tools and ways they are used in the workplace.","duty":"Developing Communication and Interpersonal Skills"},{"num":69,"req":"Required","text":"Demonstrate professional communication.","duty":"Developing Communication and Interpersonal Skills"},{"num":70,"req":"Required","text":"Explain the importance of nonverbal communication in the workplace.","duty":"Developing Communication and Interpersonal Skills"},{"num":71,"req":"Optional","text":"Identify the rights and responsibilities of consumers.","duty":"Making Decisions as a Consumer"},{"num":72,"req":"Required","text":"Describe how purchasing motives affect consumer choices.","duty":"Making Decisions as a Consumer"},{"num":73,"req":"Required","text":"Demonstrate comparison shopping.","duty":"Making Decisions as a Consumer"},{"num":74,"req":"Optional","text":"Identify major consumer protection agencies and their purposes.","duty":"Making Decisions as a Consumer"},{"num":75,"req":"Required","text":"Identify the characteristics of a valid contract.","duty":"Making Decisions as a Consumer"},{"num":76,"req":"Required","text":"Examine product labels.","duty":"Making Decisions as a Consumer"},{"num":77,"req":"Required","text":"Label parts of a paycheck.","duty":"Exploring Financial Concepts"},{"num":78,"req":"Required","text":"Identify basic banking services for individuals and businesses.","duty":"Exploring Financial Concepts"},{"num":79,"req":"Required","text":"Explain taxation.","duty":"Exploring Financial Concepts"},{"num":80,"req":"Required","text":"Explain the purpose of insurance.","duty":"Exploring Financial Concepts"},{"num":81,"req":"Required","text":"Create financial statements.","duty":"Exploring Financial Concepts"},{"num":82,"req":"Required","text":"Explain potential financial resources for businesses.","duty":"Exploring Financial Concepts"},{"num":83,"req":"Required","text":"Describe the requirements for obtaining industry certifications related to the Principles of Business and Marketing course.","duty":"Preparing for Industry Certification"},{"num":84,"req":"Optional","text":"Identify testing skills and strategies for a certification examination.","duty":"Preparing for Industry Certification"},{"num":85,"req":"Optional","text":"Demonstrate the ability to complete selected practice examinations.","duty":"Preparing for Industry Certification"},{"num":86,"req":"Optional","text":"Complete an industry certification examination representative of skills learned in this course.","duty":"Preparing for Industry Certification"},{"num":87,"req":"Required","text":"Assess personal interests, aptitudes, and abilities.","duty":"Developing Employability Skills"},{"num":88,"req":"Required","text":"Identify sources of employment information.","duty":"Developing Employability Skills"},{"num":89,"req":"Required","text":"Research business and marketing career opportunities.","duty":"Developing Employability Skills"},{"num":90,"req":"Required","text":"Complete a job application.","duty":"Developing Employability Skills"},{"num":91,"req":"Required","text":"Develop or update a r\u00e9sum\u00e9.","duty":"Developing Employability Skills"},{"num":92,"req":"Required","text":"Write a cover letter.","duty":"Developing Employability Skills"},{"num":93,"req":"Optional","text":"Design an employment portfolio.","duty":"Developing Employability Skills"},{"num":94,"req":"Required","text":"Describe professional behavior appropriate for a job interview.","duty":"Developing Employability Skills"},{"num":95,"req":"Required","text":"Participate in a mock job interview.","duty":"Developing Employability Skills"},{"num":96,"req":"Required","text":"Complete interview follow-up.","duty":"Developing Employability Skills"}],"periods":{"4th Odd":[]}},"8175":{"code":"8175","name":"Sports, Entertainment, and Event Marketing","icon":"📗","competencies":[{"num":1,"req":"Required","text":"Demonstrate creativity and innovation.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":2,"req":"Required","text":"Demonstrate critical thinking and problem  solving.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":3,"req":"Required","text":"Demonstrate initiative and self-direction.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":4,"req":"Required","text":"Demonstrate integrity.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":5,"req":"Required","text":"Demonstrate work ethic.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":6,"req":"Required","text":"Demonstrate conflict-resolution skills.","duty":"Demonstrating Interpersonal Skills"},{"num":7,"req":"Required","text":"Demonstrate listening and speaking skills.","duty":"Demonstrating Interpersonal Skills"},{"num":8,"req":"Required","text":"Demonstrate respect for diversity.","duty":"Demonstrating Interpersonal Skills"},{"num":9,"req":"Required","text":"Demonstrate customer service skills.","duty":"Demonstrating Interpersonal Skills"},{"num":10,"req":"Required","text":"Collaborate with team members.","duty":"Demonstrating Interpersonal Skills"},{"num":11,"req":"Required","text":"Demonstrate big-picture thinking.","duty":"Demonstrating Professional Competencies"},{"num":12,"req":"Required","text":"Demonstrate career- and life-management skills.","duty":"Demonstrating Professional Competencies"},{"num":13,"req":"Required","text":"Demonstrate continuous learning and adaptability.","duty":"Demonstrating Professional Competencies"},{"num":14,"req":"Required","text":"Manage time and resources.","duty":"Demonstrating Professional Competencies"},{"num":15,"req":"Required","text":"Demonstrate information-literacy skills.","duty":"Demonstrating Professional Competencies"},{"num":16,"req":"Required","text":"Demonstrate an understanding of information security.","duty":"Demonstrating Professional Competencies"},{"num":17,"req":"Required","text":"Maintain working knowledge of current information-technology (IT) systems.","duty":"Demonstrating Professional Competencies"},{"num":18,"req":"Required","text":"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.","duty":"Demonstrating Professional Competencies"},{"num":19,"req":"Required","text":"Apply mathematical skills to job-specific tasks.","duty":"Demonstrating Professional Competencies"},{"num":20,"req":"Required","text":"Demonstrate professionalism.","duty":"Demonstrating Professional Competencies"},{"num":21,"req":"Required","text":"Demonstrate reading and writing skills.","duty":"Demonstrating Professional Competencies"},{"num":22,"req":"Required","text":"Demonstrate workplace safety.","duty":"Demonstrating Professional Competencies"},{"num":23,"req":"Required","text":"Examine aspects of planning within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":24,"req":"Required","text":"Examine aspects of management within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":25,"req":"Required","text":"Examine aspects of financial responsibility within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":26,"req":"Required","text":"Examine technical and production skills required of workers within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":27,"req":"Required","text":"Examine principles of technology that underlie an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":28,"req":"Required","text":"Examine labor issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":29,"req":"Required","text":"Examine community issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":30,"req":"Required","text":"Examine health, safety, and environmental issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":31,"req":"Required","text":"Identify the purposes and goals of the student organization.","duty":"Addressing Elements of Student Life"},{"num":32,"req":"Required","text":"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.","duty":"Addressing Elements of Student Life"},{"num":33,"req":"Required","text":"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.","duty":"Addressing Elements of Student Life"},{"num":34,"req":"Required","text":"Identify Internet safety issues and procedures for complying with acceptable use standards.","duty":"Addressing Elements of Student Life"},{"num":35,"req":"Required","text":"Identify the types of work-based learning (WBL) opportunities.","duty":"Exploring Work-Based Learning"},{"num":36,"req":"Optional","text":"Reflect on lessons learned during the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":37,"req":"Required","text":"Explore career opportunities related to the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":38,"req":"Optional","text":"Participate in a WBL experience, when appropriate.","duty":"Exploring Work-Based Learning"},{"num":39,"req":"Required","text":"Explain marketing as it relates to the sports, entertainment, and event industries.","duty":"Developing an Overview of Marketing"},{"num":40,"req":"Required","text":"Identify the components (the Ps) of the marketing mix as they relate to sports, entertainment, and event marketing.","duty":"Developing an Overview of Marketing"},{"num":41,"req":"Required","text":"Describe the marketing concept as related to the sports, entertainment, and event industries.","duty":"Developing an Overview of Marketing"},{"num":42,"req":"Required","text":"Explain the concept of target marketing.","duty":"Developing an Overview of Marketing"},{"num":43,"req":"Required","text":"Describe the marketing functions.","duty":"Developing an Overview of Marketing"},{"num":44,"req":"Required","text":"Explain the importance of the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":45,"req":"Required","text":"Describe the past, present, and future of the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":46,"req":"Required","text":"Explain hospitality as it relates to the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":47,"req":"Required","text":"Analyze trends and innovations in the sports, entertainment, and event industries.","duty":"Understanding the Importance of Sports, Entertainment, and Event Marketing"},{"num":48,"req":"Required","text":"Identify types of communication used in the sports, entertainment, and event industries.","duty":"Developing Interpersonal Skills"},{"num":49,"req":"Required","text":"Identify the role of communication in work relationships.","duty":"Developing Interpersonal Skills"},{"num":50,"req":"Required","text":"Develop presentation skills as a form of business communication.","duty":"Developing Interpersonal Skills"},{"num":51,"req":"Required","text":"Identify ethical and unethical business practices.","duty":"Developing Interpersonal Skills"},{"num":52,"req":"Required","text":"Explain the importance of customer service as it relates to the sports, entertainment, and event industries.","duty":"Developing Customer Service Skills"},{"num":53,"req":"Required","text":"Compare various types of customer interaction.","duty":"Developing Customer Service Skills"},{"num":54,"req":"Required","text":"Translate technical language into commonly understood language.","duty":"Developing Customer Service Skills"},{"num":55,"req":"Required","text":"Describe procedures for handling a customer complaint.","duty":"Developing Customer Service Skills"},{"num":56,"req":"Required","text":"Explain branding.","duty":"Exploring the Concept of Branding"},{"num":57,"req":"Required","text":"Explain the concept of branding as it relates to sports, entertainment, and event marketing.","duty":"Exploring the Concept of Branding"},{"num":58,"req":"Required","text":"Explain product licensing and brand protection.","duty":"Exploring the Concept of Branding"},{"num":59,"req":"Required","text":"Explain the concept of and reasons for rebranding.","duty":"Exploring the Concept of Branding"},{"num":60,"req":"Required","text":"Explain product and service planning in sports, entertainment, and events.","duty":"Describing Product Development"},{"num":61,"req":"Required","text":"Explain product life cycle.","duty":"Describing Product Development"},{"num":62,"req":"Required","text":"Describe the role of market research.","duty":"Describing Product Development"},{"num":63,"req":"Required","text":"Create a survey to conduct primary research.","duty":"Describing Product Development"},{"num":64,"req":"Required","text":"Explain the role of product positioning.","duty":"Describing Product Development"},{"num":65,"req":"Required","text":"Describe the impact of uncontrollable factors on sports, entertainment, and event product development.","duty":"Describing Product Development"},{"num":66,"req":"Required","text":"Explain pricing and the factors that affect pricing decisions.","duty":"Exploring Pricing Strategies"},{"num":67,"req":"Required","text":"Identify pricing strategies as they relate to the sports, entertainment, and event industries.","duty":"Exploring Pricing Strategies"},{"num":68,"req":"Required","text":"Explain business as it relates to the sports, entertainment, and event industries.","duty":"Understanding the Business Structure of Sports, Entertainment, and Event Marketing"},{"num":69,"req":"Required","text":"Compare the types of business ownership and their roles in the sports, entertainment, and event industries.","duty":"Understanding the Business Structure of Sports, Entertainment, and Event Marketing"},{"num":70,"req":"Required","text":"Explain distribution and how it relates to the sports, entertainment, and event industries.","duty":"Exploring Distribution Strategies"},{"num":71,"req":"Required","text":"Identify challenges for distributing sports, entertainment, and event services.","duty":"Exploring Distribution Strategies"},{"num":72,"req":"Required","text":"Explain promotion and promotional mix.","duty":"Developing a Promotional Mix"},{"num":73,"req":"Required","text":"Identify the roles of advertising, publicity, sales promotion, direct marketing, and personal selling in the sports, entertainment, and event industries.","duty":"Developing a Promotional Mix"},{"num":74,"req":"Required","text":"Identify methods of communication used in sports, entertainment, and event promotion.","duty":"Developing a Promotional Mix"},{"num":75,"req":"Required","text":"Describe the elements of an advertisement.","duty":"Exploring the Forms and Techniques of Advertising"},{"num":76,"req":"Required","text":"Explain advertising as related to the sports, entertainment, and event industries.","duty":"Exploring the Forms and Techniques of Advertising"},{"num":77,"req":"Required","text":"Identify the goals of advertising and the methods of evaluating an advertisement\u2019s success.","duty":"Exploring the Forms and Techniques of Advertising"},{"num":78,"req":"Required","text":"Define current electronic marketing tools and platforms.","duty":"Using Digital Media"},{"num":79,"req":"Required","text":"Identify methods for attracting customers and establishing and maintaining customer relationships.","duty":"Using Digital Media"},{"num":80,"req":"Required","text":"Identify target markets\u2019 preferred platforms for various electronic marketing tools.","duty":"Using Digital Media"},{"num":81,"req":"Required","text":"Compare traditional marketing and digital media marketing.","duty":"Using Digital Media"},{"num":82,"req":"Required","text":"Explain how digital media can be used to generate revenue.","duty":"Using Digital Media"},{"num":83,"req":"Required","text":"Explain public relations as related to the sports, entertainment, and event industries.","duty":"Exploring Public Relations and Media Relations"},{"num":84,"req":"Required","text":"Describe public relations (PR) tools.","duty":"Exploring Public Relations and Media Relations"},{"num":85,"req":"Optional","text":"(Optional) Explain the internal and external aspects of public relations.","duty":"Exploring Public Relations and Media Relations"},{"num":86,"req":"Required","text":"Analyze the effects of negative media.","duty":"Exploring Public Relations and Media Relations"},{"num":87,"req":"Required","text":"Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries.","duty":"Exploring Sponsorship and Endorsements"},{"num":88,"req":"Required","text":"Compare the reasons for using sponsorships vs. endorsements.","duty":"Exploring Sponsorship and Endorsements"},{"num":89,"req":"Required","text":"Identify legal restrictions placed on endorsements and sponsorships.","duty":"Exploring Sponsorship and Endorsements"},{"num":90,"req":"Required","text":"Identify current trends in sponsorship within the sports, entertainment, and event industries.","duty":"Exploring Sponsorship and Endorsements"},{"num":91,"req":"Required","text":"Describe the components and relationships between stakeholders.","duty":"Exploring Sponsorship and Endorsements"},{"num":92,"req":"Required","text":"Explain the advantages and disadvantages of using various forms of sales promotion in the sports, entertainment, and event industries.","duty":"Exploring Sales Promotion"},{"num":93,"req":"Required","text":"Describe the elements of sports, entertainment, and event promotional campaigns.","duty":"Exploring Sales Promotion"},{"num":94,"req":"Required","text":"Explain the types of selling and why they are important in the sports, entertainment, and event industries.","duty":"Describing the Sales Process"},{"num":95,"req":"Required","text":"Explain the concept of bundling products and/or services.","duty":"Describing the Sales Process"},{"num":96,"req":"Required","text":"Explain the steps of the selling process.","duty":"Describing the Sales Process"},{"num":97,"req":"Required","text":"Explain on-site merchandising and concessions as they relate to sports, entertainment, and event facilities.","duty":"Describing the Sales Process"},{"num":98,"req":"Required","text":"Explain economic concepts and their relationship to the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":99,"req":"Optional","text":"(Optional) Explain how the phases in the business cycle affect the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":100,"req":"Required","text":"Explain the concept of supply and demand.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":101,"req":"Required","text":"Explain competition as it relates to the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":102,"req":"Required","text":"Explain the components of the marketing plan.","duty":"Exploring the Marketing Plan"},{"num":103,"req":"Required","text":"Describe the importance of research in developing a marketing plan.","duty":"Exploring the Marketing Plan"},{"num":104,"req":"Required","text":"Describe the importance of analyzing the marketing plan to determine ROI of the spend.","duty":"Exploring the Marketing Plan"},{"num":105,"req":"Required","text":"Identify the components of a SWOT analysis.","duty":"Exploring the Marketing Plan"},{"num":106,"req":"Required","text":"Identify occupations within the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":107,"req":"Required","text":"Identify personal skills and interests applicable to the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":108,"req":"Required","text":"Identify resources for a job search in the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":109,"req":"Required","text":"Create a networking plan in the sports, entertainment, and event industries.","duty":"Developing Job Search Skills"},{"num":110,"req":"Required","text":"Develop a r\u00e9sum\u00e9 and cover letter.","duty":"Developing Job Search Skills"},{"num":111,"req":"Required","text":"Complete a job application.","duty":"Developing Job Search Skills"},{"num":112,"req":"Required","text":"Describe the job interview process.","duty":"Developing Job Search Skills"},{"num":113,"req":"Optional","text":"(Optional) Participate in a mock interview or an informational interview with a local employer.","duty":"Developing Job Search Skills"}],"periods":{"2nd Even":[],"3rd Even":[],"4th Even":[]}},"8177":{"code":"8177","name":"Sports, Entertainment, and Event Management","icon":"📙","competencies":[{"num":1,"req":"Required","text":"Demonstrate creativity and innovation.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":2,"req":"Required","text":"Demonstrate critical thinking and problem  solving.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":3,"req":"Required","text":"Demonstrate initiative and self-direction.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":4,"req":"Required","text":"Demonstrate integrity.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":5,"req":"Required","text":"Demonstrate work ethic.","duty":"Demonstrating Personal Qualities and Abilities"},{"num":6,"req":"Required","text":"Demonstrate conflict-resolution skills.","duty":"Demonstrating Interpersonal Skills"},{"num":7,"req":"Required","text":"Demonstrate listening and speaking skills.","duty":"Demonstrating Interpersonal Skills"},{"num":8,"req":"Required","text":"Demonstrate respect for diversity.","duty":"Demonstrating Interpersonal Skills"},{"num":9,"req":"Required","text":"Demonstrate customer service skills.","duty":"Demonstrating Interpersonal Skills"},{"num":10,"req":"Required","text":"Collaborate with team members.","duty":"Demonstrating Interpersonal Skills"},{"num":11,"req":"Required","text":"Demonstrate big-picture thinking.","duty":"Demonstrating Professional Competencies"},{"num":12,"req":"Required","text":"Demonstrate career- and life-management skills.","duty":"Demonstrating Professional Competencies"},{"num":13,"req":"Required","text":"Demonstrate continuous learning and adaptability.","duty":"Demonstrating Professional Competencies"},{"num":14,"req":"Required","text":"Manage time and resources.","duty":"Demonstrating Professional Competencies"},{"num":15,"req":"Required","text":"Demonstrate information-literacy skills.","duty":"Demonstrating Professional Competencies"},{"num":16,"req":"Required","text":"Demonstrate an understanding of information security.","duty":"Demonstrating Professional Competencies"},{"num":17,"req":"Required","text":"Maintain working knowledge of current information-technology (IT) systems.","duty":"Demonstrating Professional Competencies"},{"num":18,"req":"Required","text":"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.","duty":"Demonstrating Professional Competencies"},{"num":19,"req":"Required","text":"Apply mathematical skills to job-specific tasks.","duty":"Demonstrating Professional Competencies"},{"num":20,"req":"Required","text":"Demonstrate professionalism.","duty":"Demonstrating Professional Competencies"},{"num":21,"req":"Required","text":"Demonstrate reading and writing skills.","duty":"Demonstrating Professional Competencies"},{"num":22,"req":"Required","text":"Demonstrate workplace safety.","duty":"Demonstrating Professional Competencies"},{"num":23,"req":"Required","text":"Examine aspects of planning within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":24,"req":"Required","text":"Examine aspects of management within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":25,"req":"Required","text":"Examine aspects of financial responsibility within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":26,"req":"Required","text":"Examine technical and production skills required of workers within an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":27,"req":"Required","text":"Examine principles of technology that underlie an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":28,"req":"Required","text":"Examine labor issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":29,"req":"Required","text":"Examine community issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":30,"req":"Required","text":"Examine health, safety, and environmental issues related to an industry/organization.","duty":"Examining All Aspects of an Industry"},{"num":31,"req":"Required","text":"Identify the purposes and goals of the student organization.","duty":"Addressing Elements of Student Life"},{"num":32,"req":"Required","text":"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.","duty":"Addressing Elements of Student Life"},{"num":33,"req":"Required","text":"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.","duty":"Addressing Elements of Student Life"},{"num":34,"req":"Required","text":"Identify Internet safety issues and procedures for complying with acceptable use standards.","duty":"Addressing Elements of Student Life"},{"num":35,"req":"Required","text":"Identify the types of work-based learning (WBL) opportunities.","duty":"Exploring Work-Based Learning"},{"num":36,"req":"Optional","text":"Reflect on lessons learned during the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":37,"req":"Required","text":"Explore career opportunities related to the WBL experience.","duty":"Exploring Work-Based Learning"},{"num":38,"req":"Optional","text":"Participate in a WBL experience, when appropriate.","duty":"Exploring Work-Based Learning"},{"num":39,"req":"Required","text":"Define the role of the sports, entertainment, and event manager.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":40,"req":"Required","text":"Examine the traits and skills that successful sports, entertainment, and event managers possess.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":41,"req":"Required","text":"Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":42,"req":"Required","text":"Evaluate the sports, entertainment, and event manager\u2019s role in decision-making for campaigns, employees, and partners.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":43,"req":"Required","text":"Evaluate career opportunities in sports, entertainment, and event management.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":44,"req":"Required","text":"Document the different roles in sports, entertainment, and event management using an organizational chart.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":45,"req":"Required","text":"Explain facilities management as it relates to the sports, entertainment, and event industries.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":46,"req":"Required","text":"Explain on-site revenue streams as they relate to sports, entertainment, and event facilities.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":47,"req":"Required","text":"Identify how e-commerce and digital transactions affect sports, entertainment, and event businesses.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":48,"req":"Required","text":"Analyze the effect of niche or emerging events in the sports, entertainment, and event industries.","duty":"Exploring Sports, Entertainment, and Event Management"},{"num":49,"req":"Required","text":"Analyze key U.S. economic indicators and their effects on the sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":50,"req":"Required","text":"Examine how sports, entertainment, and events affect local, state, and national economies.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":51,"req":"Optional","text":"(Optional) Identify cultural and political environmental factors and their economic impact on the global sports, entertainment, and event industries.","duty":"Describing the Economics of the Sports, Entertainment, and Event Industries"},{"num":52,"req":"Required","text":"Explore the organizational structures within the sports, entertainment, and event industries.","duty":"Explaining the Structure of Sports, Entertainment, and Event Businesses"},{"num":53,"req":"Required","text":"Explain the advantages and disadvantages of operating as a for-profit or nonprofit organization.","duty":"Explaining the Structure of Sports, Entertainment, and Event Businesses"},{"num":54,"req":"Required","text":"Identify entrepreneurship opportunities related to sports, entertainment, and event management.","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":55,"req":"Required","text":"Describe the entrepreneurial mindset.","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":56,"req":"Required","text":"Identify the steps involved in starting a new business, using the Business Model Canvas (BMC).","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":57,"req":"Required","text":"Describe how small businesses drive job creation, income generation, and economic growth.","duty":"Exploring Entrepreneurship in Sports, Entertainment, and Event Management"},{"num":58,"req":"Required","text":"Demonstrate customer-service techniques.","duty":"Developing Customer Service Skills"},{"num":59,"req":"Required","text":"Describe methods used to encourage customer retention.","duty":"Developing Customer Service Skills"},{"num":60,"req":"Required","text":"Respond to inquiries and suggestions from customers, coworkers, and supervisors in a sports, entertainment, and event context.","duty":"Developing Customer Service Skills"},{"num":61,"req":"Required","text":"Explain company policy to a customer in a sports, entertainment, and event context.","duty":"Developing Customer Service Skills"},{"num":62,"req":"Required","text":"Explain the importance of constructive feedback in personal and professional growth.","duty":"Developing Customer Service Skills"},{"num":63,"req":"Required","text":"Identify ethical issues related to the sports, entertainment, and event industries.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":64,"req":"Required","text":"Investigate how social and environmental concerns affect decisions in the sports, entertainment, and event industries.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":65,"req":"Required","text":"Examine the effect of media bias on public perception and opinion.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":66,"req":"Required","text":"Describe the value of the sports, entertainment, and event industries to the community.","duty":"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries"},{"num":67,"req":"Required","text":"Examine the importance of risk assessment and management strategies in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":68,"req":"Required","text":"Examine the challenges posed by uncontrollable variables in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":69,"req":"Required","text":"Identify purposes, types, and terms of contracts.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":70,"req":"Required","text":"Examine the role of labor and antitrust law in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":71,"req":"Required","text":"Identify unions relevant to labor relations in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":72,"req":"Required","text":"Explain how the Americans with Disabilities Act (ADA) has influenced the planning of events and design of facilities.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":73,"req":"Required","text":"Explain how legal requirements influence operations in the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":74,"req":"Required","text":"Describe external factors affecting the sports, entertainment, and event marketing process.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":75,"req":"Required","text":"Describe the effects of national, state, and local laws and regulations on the sports, entertainment, and event industries.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":76,"req":"Required","text":"Identify the purposes of licensing.","duty":"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries"},{"num":77,"req":"Required","text":"Explain market research and its use in the sports, entertainment, and event industries.","duty":"Understanding Market Research"},{"num":78,"req":"Required","text":"Explain the need for market research for all functions of marketing.","duty":"Understanding Market Research"},{"num":79,"req":"Required","text":"Identify sources of data for market research in the sports, entertainment, and event industries.","duty":"Understanding Market Research"},{"num":80,"req":"Required","text":"Describe external factors affecting the sports, entertainment, and event marketing process.","duty":"Understanding Market Research"},{"num":81,"req":"Required","text":"Develop a market segmentation analysis.","duty":"Understanding Market Research"},{"num":82,"req":"Required","text":"Describe the steps in developing a market research project.","duty":"Understanding Market Research"},{"num":83,"req":"Required","text":"Develop a market research project.","duty":"Understanding Market Research"},{"num":84,"req":"Required","text":"Evaluate the results of a market research project.","duty":"Understanding Market Research"},{"num":85,"req":"Required","text":"Identify the components of a budget.","duty":"Exploring Revenues and Expenditures"},{"num":86,"req":"Required","text":"Identify revenue sources related to the sports, entertainment, and event industries.","duty":"Exploring Revenues and Expenditures"},{"num":87,"req":"Required","text":"Identify expenditures related to the sports, entertainment, and event industries.","duty":"Exploring Revenues and Expenditures"},{"num":88,"req":"Required","text":"Analyze financial statements.","duty":"Exploring Revenues and Expenditures"},{"num":89,"req":"Required","text":"Explain the importance and types of indoor and outdoor security (i.e., life and property safety).","duty":"Managing Safety and Security"},{"num":90,"req":"Required","text":"Explain the security needs of a venue and/or event.","duty":"Managing Safety and Security"},{"num":91,"req":"Required","text":"Explain the use of emergency preparedness plans to address threats to a venue and/or event.","duty":"Managing Safety and Security"},{"num":92,"req":"Required","text":"Explain the process for planning an event.","duty":"Understanding Event Management"},{"num":93,"req":"Required","text":"Describe factors that motivate consumers to attend sports, entertainment, and event occasions.","duty":"Understanding Event Management"},{"num":94,"req":"Required","text":"Explain how event popularity and competitive factors relate to attendance.","duty":"Understanding Event Management"},{"num":95,"req":"Required","text":"Analyze personnel needs for an event.","duty":"Understanding Event Management"},{"num":96,"req":"Required","text":"Analyze the financial resources required for each event activity.","duty":"Understanding Event Management"},{"num":97,"req":"Required","text":"Develop a marketing plan for an event.","duty":"Understanding Event Management"},{"num":98,"req":"Required","text":"Develop a budget for an event.","duty":"Understanding Event Management"},{"num":99,"req":"Required","text":"Develop follow-up activities to recognize and thank participants after an event.","duty":"Understanding Event Management"},{"num":100,"req":"Optional","text":"(Optional) Manage a sports, entertainment, and event occasion.","duty":"Understanding Event Management"},{"num":101,"req":"Optional","text":"(Optional) Evaluate the event\u2019s overall success.","duty":"Understanding Event Management"},{"num":102,"req":"Required","text":"Identify career and employment-related information sources.","duty":"Developing Career Goals"},{"num":103,"req":"Required","text":"Identify career opportunities at different levels in sports, entertainment, and event management.","duty":"Developing Career Goals"},{"num":104,"req":"Required","text":"Describe education and training needed for a sports, entertainment, and event management career.","duty":"Developing Career Goals"},{"num":105,"req":"Optional","text":"(Optional) Identify barriers to employment and strategies to overcome them.","duty":"Developing Career Goals"},{"num":106,"req":"Required","text":"Identify professional development opportunities in the sports, entertainment, and event industries.","duty":"Developing Career Goals"},{"num":107,"req":"Required","text":"Collect information about a prospective employer.","duty":"Developing Career Goals"},{"num":108,"req":"Required","text":"Develop a career plan.","duty":"Developing Career Goals"}],"periods":{"3rd Odd":[]}}};
@@ -17556,7 +17314,7 @@ wbl:[
 {icon:'📈',title:'Sales Trend Charts',desc:'Line and bar charts showing daily/weekly revenue trends and best-selling categories.'},
 {icon:'📦',title:'Auto-Reorder Trigger',desc:'When stock hits threshold, a "Ready to Order" card appears on your dashboard automatically.'},
 {icon:'🧾',title:'Daily Z-Out Wizard',desc:'Guided end-of-shift process that generates the daily financial summary pre-filled.'},
-{icon:'📄',title:'WBL Progress Report Generator',desc:'One click generates a formal WBL progress report per student ready to send to Mrs. Fagan.'},
+{icon:'📄',title:'WBL Progress Report Generator',desc:'One click generates a formal WBL progress report per student ready to send to the WBL coordinator.'},
 ],
 esports:[
 {icon:'🎯',title:'Match Strategy Board',desc:'Pre-match planner for Smash lineup order and Mario Kart grouping with scouting notes.'},
@@ -17616,7 +17374,7 @@ var OBS_PREP_ITEMS = [
 { key:'assess_exit', label:'Exit ticket or closing activity is prepared', group:'Instructional Readiness', critical:false },
 { key:'grades_synergy','label':'Gradebook (Synergy) grades are updated within the last 14 days', group:'Professionalism & Records', critical:true },
 { key:'grades_canvas', label:'Canvas assignments/materials are current and visible to students', group:'Professionalism & Records', critical:true },
-{ key:'deposit_clear', label:'No outstanding deposits — all collections deposited to Ms. Evans', group:'Professionalism & Records', critical:false },
+{ key:'deposit_clear', label:'No outstanding deposits — all collections deposited with the bookkeeper', group:'Professionalism & Records', critical:false },
 { key:'deadlines_ok', label:'No overdue CCPS forms or DECA deadlines', group:'Professionalism & Records', critical:false },
 { key:'room_ready', label:'Room is organized, materials are staged, agenda visible', group:'Instructional Readiness', critical:false },
 { key:'tech_working', label:'Technology tested — projector, computer, any tools needed', group:'Instructional Readiness', critical:false },
@@ -19252,7 +19010,7 @@ var LH_TERMS = [
 ['Organizations', 'Clubs and student groups you advise, such as DECA. CTSO means Career and Technical Student Organization.', 'Organizations, CTSO, MODULES.orgs'],
 ['Three Glows & a Grow', 'A trip debrief: three things that went well and one to improve, kept in the trip archive for next year.', 'Glows / Grows'],
 ['JSON file', 'A plain-text file format LeaderHub uses to import and export courses, organizations and backups.', 'JSON'],
-['Sample data', 'The example trips, members and roster the app starts with. Settings → Clear Sample Data removes them.', 'Seed data'],
+['Sample data', 'The example members and roster the app starts with. Settings → Clear Sample Data removes them.', 'Seed data'],
 ];
 document.addEventListener('DOMContentLoaded', () => {
 const dlg = document.getElementById('lh-terms');
@@ -19515,7 +19273,7 @@ if (dlg) dlg.addEventListener('close', () => { const b = document.getElementById
         </div>
         <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="copySubPlan()" style="flex:1">📋 Copy Text</button>
-          <button class="btn btn-gold btn-sm" onclick="emailSubPlanToNykia()" style="flex:1">📬 Email to Nykia</button>
+          <button class="btn btn-gold btn-sm" onclick="emailSubPlanToAttendance()" style="flex:1">📬 Email to Attendance</button>
           <button class="btn btn-outline btn-sm" onclick="printSubPlan()">🖨 Print</button>
           <button class="btn btn-outline btn-sm" onclick="saveSubPlanToLog()">💾 Save to Log</button>
         </div>
@@ -19552,7 +19310,7 @@ if (dlg) dlg.addEventListener('close', () => { const b = document.getElementById
     <!-- Audience tabs -->
     <div style="display:flex;gap:.3rem;padding:.65rem 1.1rem .45rem;background:#f8f7f4;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">
       <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-right:.25rem">Send to:</span>
-      <button class="email-tab active" id="brag-tab-green"   onclick="setBragTab('green',this)">👩‍💼 Ms. Green</button>
+      <button class="email-tab active" id="brag-tab-green"   onclick="setBragTab('green',this)">👩‍💼 Supervisor</button>
       <button class="email-tab"        id="brag-tab-admin"   onclick="setBragTab('admin',this)">🏫 Admin</button>
       <button class="email-tab"        id="brag-tab-parents" onclick="setBragTab('parents',this)">👨‍👩‍👧 DECA Parents</button>
       <button class="email-tab"        id="brag-tab-self"    onclick="setBragTab('self',this)">📓 My Log</button>
