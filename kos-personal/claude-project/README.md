@@ -150,3 +150,11 @@ Gem as it is on others. Note which gave a consistent brief and a useful
 conversation. Report the result; it decides whether the Gem retires early.
 Both now read mail and calendar (the Gem through its app chips), so compare
 the whole brief: state, decisions, today's calendar and mail.
+
+**2026-11-03: Claude Code's reply.** `PROJECT_INSTRUCTIONS.md` adds the
+`KOS_CODE_REPLY` doc link (read its counts at `start`; open Pushback and
+Needs you only) and `SESSION_LOG_FORMAT.md` adds a closeout `Code review:`
+block (answer each item once). Re-paste the instructions with
+`run.js --instructions` after adding `KOS_CODE_REPLY=<the doc's link>` to
+the links file, and re-upload `SESSION_LOG_FORMAT.md` to knowledge. The
+loop and the Monday review mail are described in the repo's `CLAUDE.md`.

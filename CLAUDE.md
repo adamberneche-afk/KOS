@@ -26,11 +26,19 @@ modified after the last log read. Never record a Drive file ID in the repo.
 session logs", says "Logs read through: <date>". Read every log dated
 after it, oldest first, then move the date forward in the same PR.
 
-**What counts as a build item.** A closeout "Next steps" line with owner
-Claude Code, and a deferred decision Claude Code is asked to verify. Read
-the exchanges behind it too: the reasoning is why the logs are the
-handoff. Operator-owned steps, personal items and anything about students
-or families are not build items.
+**What counts as a build item, and what may be built.** Closeout lines
+for Claude Code come in two kinds, and only the first is built:
+- `DECISION (Claude Code): …`: the operator approved it in the session.
+  It goes to Accepted.
+- `Proposed (Claude Code): …`: the RTP suggested it and the operator did
+  not approve it. It goes to Needs you, never to Accepted, however good it
+  looks, until the operator says build it (in a session log as a
+  DECISION, or to Claude Code directly). A log from before 2026-11-07
+  that has neither label: treat its items as Proposed unless the
+  exchanges show the operator approving them.
+Read the exchanges behind each item too: the reasoning is why the logs
+are the handoff. Operator-owned steps, personal items and anything about
+students or families are not build items.
 
 **What to write.** One row per item in that plan section: the item in
 your own words, where it came from (date and #), your take, and when.
@@ -43,6 +51,64 @@ why).
 students, family members or colleagues; family or conference details;
 Drive IDs or links; anything from the operator's private life. The logs
 are personal records and this repo may be public.
+
+## Answering the RTP: `KOS_CODE_REPLY`
+
+After reading new logs, rewrite the Google Doc `KOS_CODE_REPLY` in the
+operator's Drive (one doc, rewritten in place; find it by name, never
+record its ID). It is a view of the plan section, never edited by hand:
+
+    Generated at: <yyyy-MM-dd HH:mm> (America/New_York) by Claude Code
+    Claude Code's reply — logs read through <date>
+    Accepted <n> · Pushback <n> · Needs you <n>
+    PUSHBACK
+    - L3 (11-02 rollout count): <one sentence, citing the code>
+    NEEDS YOU
+    - L9 (#19): <the decision, as a question>
+    ACCEPTED
+    - L1 (11-03 #8 release checks): <what will be built; PR when there is one>
+
+The RTP reads the counts at `start`, opens Pushback and Needs you only,
+and answers each once in its closeout's `Code review:`. Read those answers
+with the next log. **One round per item:** if the RTP still disagrees,
+the item moves to Needs you with both positions, **each in its own
+author's words**: Claude Code's sentence, and the RTP's `Code review:`
+sentence quoted verbatim and marked as the RTP's. Never rephrase the
+other side's position; never argue a second round. Only a disputed item
+waits; the rest proceeds. (The verbatim quote lives in this Drive doc
+and the weekly review, not in the repo, which keeps no log text.)
+
+The `Generated at:` line is what the RTP checks: it can't read the repo,
+so it treats a missing stamp as `[UNCONFIRMED — KOS_CODE_REPLY]`, and
+compares "logs read through" with its own latest log to see whether a
+reply is still pending. Never write the doc without the stamp.
+
+## The weekly review (Sundays)
+
+A scheduled Claude Code run on Sunday evening rewrites the Google Doc
+`KOS_WEEKLY_REVIEW`; `sendWeeklyReview()` (kos-personal, 26) mails it on
+Monday at 06:00, or mails that it is missing. It exists so the loop is
+never silent: accepted items are listed too. One page, plain text:
+
+    KOS weekly review — week of <Monday's date>
+    THE LOOP: logs read <n> (<dates>); items Accepted <n>, Pushback <n>, Needs you <n>
+    NEEDS YOU (each as a question)
+    DECIDED WITHOUT YOU THIS WEEK (each accepted item, one line)
+    BUILT: PRs merged this week, one line each; what is merged but not pushed
+    PUSHBACK STILL OPEN, with both positions
+    RTP HARNESS NOTES added this week
+    NEXT WEEK: the plan's window for the coming week, from the plan
+
+Same rules as the plan: no log text, no names, no Drive IDs. If no log
+arrived this week, say so in THE LOOP line.
+
+**The Sunday run has no one watching, so its limits are fixed** (and
+written into the scheduled task's prompt, which the operator reads before
+saving it): the repo is read-only (no commits, branches, PRs or pushes);
+in Drive it writes only `KOS_WEEKLY_REVIEW`; it never opens CAS or
+LeaderHub files (the Central Ledger, the dashboards' sheets, student
+docs), the same boundary the RTP works under. Building stays in sessions
+the operator starts.
 
 ## The logs as data about the RTP itself
 

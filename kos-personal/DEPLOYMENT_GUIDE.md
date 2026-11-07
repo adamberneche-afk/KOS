@@ -10,7 +10,7 @@
 > Flow's Ask-a-Gem steps (the real cause of the persona-shaped output the
 > 2026-09-21 note below blames on a prompt binding), so the rebind in
 > `STUDIO_REBIND_HANDOFF.md` was never needed (that file is closed).
-> `setupAllTriggers()` installs 18 triggers (Phase 9). The operator pushes
+> `setupAllTriggers()` installs 19 triggers (Phase 9). The operator pushes
 > with `node run.js --latest` (`tools/clasp-sync/README.md`); a hand paste
 > (Phase 3) is only for an account without clasp. The two banners below are
 > history, kept as the record of how the Flows were built.
@@ -281,6 +281,7 @@ For each file, click **+** (Add a file) → **Script**, name it exactly as liste
                            half (D14): input tabs, REGISTRAR_RETURN harvest
 25_VectorDocs           ← the VECTOR_* docs, compiled daily from the
                            operator's record (Stage 2's standard)
+26_WeeklyReview         ← mails the Sunday build review on Monday
 ```
 
 `clasp push` (through `node run.js`, `tools/clasp-sync/README.md`) sends
@@ -416,7 +417,7 @@ The daily error digest sends to the email address stored as `KOS_ADMIN_EMAIL` in
 2. Run `setupAllTriggers()` (select it from the function dropdown → click Run)
 3. Authorize any new permission prompts
 4. Go to **Triggers** (clock icon in the left sidebar)
-5. Confirm you see 18 triggers installed
+5. Confirm you see 19 triggers installed
 
 Expected trigger list:
 - sensor1_scanInboundSessions (every 5 min)
@@ -443,9 +444,12 @@ Expected trigger list:
 - runVectorItemLabeler (hourly) — the Vector Item Labeler's batches and
   harvest, and the VECTOR_* docs recompiled when a label arrives
   (`25_VectorDocs.gs`)
+- sendWeeklyReview (Mondays 06:00) — mails the weekly build review a
+  scheduled Claude Code run writes on Sunday, or says it wasn't written
+  (`26_WeeklyReview.gs`)
 
 **Or skip the manual count:** run `runKosPersonalPreflight()` (`15_Preflight.gs`).
-It checks the exact same 18-handler list (one call per handler, not a copy an
+It checks the exact same 19-handler list (one call per handler, not a copy an
 operator has to keep matching this table) — plus the four Studio-adjacent
 tabs' widths (`STAGING_PIPELINE`, `STUDIO_RETURN`, `CuratorInput`,
 `VectorClassifyInput`) and three Script Properties (`KOS_OWNER_EMAIL`,
