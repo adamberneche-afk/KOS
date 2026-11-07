@@ -1819,9 +1819,11 @@ function primaryActionFor(a) {
 
 // The "Last checked" line, from the status: nothing while the work is
 // being checked (it used to say "Not checked yet" beside "Being checked
-// now…") or before it was ever started.
+// now…"), before it was ever started, or on a check that failed or timed
+// out (ISSUE): its own line already says what happened, and "Not checked
+// yet" beside "Couldn't be checked" read as a contradiction.
 function evalLine(a) {
-  if (a.statusPill === "Being checked" || a.statusClass === "NOT_STARTED") return "";
+  if (a.statusPill === "Being checked" || a.statusClass === "NOT_STARTED" || a.statusClass === "ISSUE") return "";
   return a.lastEval ? "Last checked: " + a.lastEval : "Not checked yet";
 }
 

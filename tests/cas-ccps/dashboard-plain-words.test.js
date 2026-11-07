@@ -284,6 +284,11 @@ test('Student Dashboard: no "Not checked yet" while the work is being checked', 
   assert.equal(ctx.evalLine(by.A4), '');
   assert.doesNotMatch(ctx.cardHtml(by.A4), /Not checked yet|eval-line/);
   assert.equal(ctx.evalLine(by.A2), '', 'nor before it was started');
+  const failed = Object.assign({}, by.A2, { status: 'ERROR_EVALUATION', statusClass: 'ISSUE', statusPill: 'Couldn’t be checked ⚠',
+    statusNote: 'Your teacher knows. You can submit again', lastEval: '' });
+  assert.equal(ctx.evalLine(failed), '', 'nor on a check that failed: its own line says what happened');
+  assert.doesNotMatch(ctx.cardHtml(failed), /Not checked yet|eval-line/);
+  assert.equal(ctx.evalLine(Object.assign({}, failed, { status: 'ERROR_TIMEOUT', statusPill: 'Taking longer ⚠' })), '');
   assert.match(ctx.evalLine(by.A3), /^Last checked: Oct 21, 2026/);
   assert.equal(ctx.evalLine({ statusClass: 'IN_PROGRESS', statusPill: 'Waiting for feedback', lastEval: '' }), 'Not checked yet');
 });
