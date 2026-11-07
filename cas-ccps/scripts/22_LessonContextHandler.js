@@ -556,46 +556,6 @@ function runAlignmentLogBackfill_() {
 }
 
 // ---------------------------------------------------------------------------
-// installModule2Triggers_
-// Run once manually from the Script Editor to install the backfill trigger.
-// Safe to re-run — checks for existing trigger before installing. In the
-// Central Ledger, use installAlignmentBackfillTrigger() (64) instead: it is
-// on the Run menu and puts the backfill in the Ledger cycle.
-// Also confirms required tabs exist and logs their status.
-// ---------------------------------------------------------------------------
-function installModule2Triggers_() {
-  // Check for existing backfill trigger
-  const existing = ScriptApp.getProjectTriggers()
-    .filter(t => t.getHandlerFunction() === "runAlignmentLogBackfill_");
-
-  if (existing.length === 0) {
-    ScriptApp.newTrigger("runAlignmentLogBackfill_")
-      .timeBased()
-      .everyMinutes(5)
-      .create();
-    Logger.log("[S22] Backfill trigger installed: runAlignmentLogBackfill_ every 5 min.");
-  } else {
-    Logger.log("[S22] Backfill trigger already installed — skipping.");
-  }
-
-  // Health check: verify required tabs exist
-  const cfg = getConfig_();
-  const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const requiredTabs = [
-    cfg.tabs.lessonContext,
-    cfg.tabs.competencyRegistry,
-    cfg.tabs.alignmentLog,
-    cfg.tabs.reportRegistry
-  ];
-  requiredTabs.forEach(tabName => {
-    const sheet = ss.getSheetByName(tabName);
-    Logger.log("[S22] Tab '" + tabName + "': " + (sheet ? "FOUND" : "MISSING — run setup wizard"));
-  });
-
-  Logger.log("[S22] Module 2 trigger install complete.");
-}
-
-// ---------------------------------------------------------------------------
 // createModule2Tabs_
 // Run once manually if Script 28 (setup wizard extension) doesn't yet exist.
 // Creates LessonContext, CompetencyRegistry, and AlignmentLog tabs with
@@ -612,8 +572,8 @@ function createModule2Tabs_() {
   // _normalizeLessonDateCell_ below — that fix handles rows written before
   // this format existed; this prevents new rows from needing it at all).
   // "warm_up_generated" (col 15) is included here for fresh installs so it
-  // never needs 24_WarmUpBridge.js's manual createLessonContextWarmUpColumn_()
-  // migration at all — and so the frame columns that follow it can never
+  // never needs a manual migration (24_WarmUpBridge.js's old
+  // createLessonContextWarmUpColumn_(), deleted 2026-11-07) at all — and so the frame columns that follow it can never
   // land in its slot. See LC_WARM_UP_GENERATED's own comment above for why
   // that matters.
   _createTabIfMissing_(ss, cfg.tabs.lessonContext, [

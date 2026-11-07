@@ -559,10 +559,10 @@ shadowMatrixDecayFactor:         0.85,</div></div>
       <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
       <div class="step-body">
         <div class="step-num">Step 10 of 14</div>
-        <div class="step-title">Run <code>installRegistrationTrigger_()</code> from Script 25</div>
-        <div class="step-desc">Installs the every-5-minute safety net trigger that registers delivered warm-ups and catches any that were delivered after the main evaluation window.</div>
+        <div class="step-title">Run <code>installRegistrationTrigger()</code> from Script 64 (Central Ledger)</div>
+        <div class="step-desc">Puts the every-5-minute safety net that registers delivered warm-ups, and catches any delivered after the main evaluation window, into the Ledger cycle, or gives it its own trigger when the cycle isn't installed. Safe to re-run. (Script 25's old <code>installRegistrationTrigger_()</code> was removed 2026-11-07.)</div>
         <div class="step-detail">
-          <div class="note">Function: <code>registerDeliveredWarmUps</code> · Every 5 minutes. Confirm in Triggers panel.</div>
+          <div class="note">Function: <code>registerDeliveredWarmUps</code> · Every 5 minutes. <code>installLedgerCycle()</code> always includes it; the log says which way it went.</div>
         </div>
       </div>
     </div>
@@ -583,8 +583,8 @@ shadowMatrixDecayFactor:         0.85,</div></div>
       <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
       <div class="step-body">
         <div class="step-num">Step 12 of 14</div>
-        <div class="step-title">Run <code>installModule2Triggers_()</code> from Script 22</div>
-        <div class="step-desc">Installs the alignment backfill safety trigger — runs every 5 minutes to catch any lesson context submissions that weren't aligned in real time.</div>
+        <div class="step-title">Run <code>installAlignmentBackfillTrigger()</code> from Script 64 (Central Ledger)</div>
+        <div class="step-desc">Installs the alignment backfill safety net — every 5 minutes, it catches any lesson context submissions that weren't aligned in real time — in the Ledger cycle, or as its own trigger when the cycle isn't installed. Safe to re-run. The Module 2 wizard (Script 28) names this step and checks the tabs. (Script 22's old <code>installModule2Triggers_()</code> was removed 2026-11-07.)</div>
         <div class="step-detail">
           <div class="note">Function: <code>runAlignmentLogBackfill_</code> · Every 5 minutes.</div>
         </div>

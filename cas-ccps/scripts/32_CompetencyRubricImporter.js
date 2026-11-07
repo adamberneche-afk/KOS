@@ -22,7 +22,6 @@
 // ENTRY POINTS:
 //   importCompetencyRubrics()          — run once manually from Script Editor
 //   validateRubricImport()             — run after import to verify data
-//   getRubricForCompetency_(compId)    — called by Script 24 per competency
 //   getRubricsForLesson_(compIds)      — called by Script 24 for full lesson,
 //                                        and by Script 27 for a Lesson Frame
 //
@@ -229,82 +228,6 @@ function validateRubricImport() {
   } else {
     Logger.log("[S32-VALIDATE] ⚠ Issues found — check CompetencyRubrics.json.");
   }
-}
-
-// ---------------------------------------------------------------------------
-// getRubricForCompetency_
-// Returns the rubric object for a single competency ID.
-// Used by Script 24 when building individual competency entries in the
-// lesson context snapshot, and by Flow 3 pre-processing when building
-// the archetype_question_map.
-//
-// Returns:
-//   {
-//     competency_id, course, task_number, duty_area,
-//     competency_text, demonstration_standard,
-//     demonstration_indicators: [],
-//     skill_questions: [],
-//     archetype_question_map: {
-//       BRIDGE: "...",
-//       CONCRETE_SCENARIO: "...",
-//       PARADOX: "...",
-//       PROVOCATION: "..."
-//     }
-//   }
-//   or null if not found
-// ---------------------------------------------------------------------------
-function getRubricForCompetency_(compId) {
-  if (!compId) return null;
-
-  // ── Try cache ──────────────────────────────────────────────────────────────
-  const cacheKey = RUBRIC_CACHE_PREFIX + compId.replace(/[^a-zA-Z0-9]/g, "_");
-  const cached   = PropertiesService.getScriptProperties().getProperty(cacheKey);
-  if (cached) {
-    try { return JSON.parse(cached); }
-    catch(e) { /* cache miss — fall through to sheet read */ }
-  }
-
-  // ── Read from sheet ────────────────────────────────────────────────────────
-  const cfg   = getConfig_();
-  const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName("CompetencyRubrics");
-  if (!sheet || sheet.getLastRow() < 2) return null;
-
-  const data = sheet.getDataRange().getValues();
-
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    if (competencyIdText_(row[CR_COMPETENCY_ID]) !== compId) continue;
-
-    let indicators = [], questions = [];
-    try { indicators = JSON.parse(row[CR_DEMONSTRATION_INDICATORS] || "[]"); } catch(e) {}
-    try { questions  = JSON.parse(row[CR_SKILL_QUESTIONS]          || "[]"); } catch(e) {}
-
-    const result = {
-      competency_id:             compId,
-      course:                    String(row[CR_COURSE]                 || "").trim(),
-      task_number:               row[CR_TASK_NUMBER] !== "" ? Number(row[CR_TASK_NUMBER]) : null,
-      duty_area:                 String(row[CR_DUTY_AREA]              || "").trim(),
-      competency_text:           String(row[CR_COMPETENCY_TEXT]        || "").trim(),
-      demonstration_standard:    String(row[CR_DEMONSTRATION_STANDARD] || "").trim(),
-      demonstration_indicators:  indicators,
-      skill_questions:           questions,
-      archetype_question_map:    _buildArchetypeQuestionMap_(questions)
-    };
-
-    // Cache the result
-    try {
-      PropertiesService.getScriptProperties()
-        .setProperty(cacheKey, JSON.stringify(result));
-    } catch(e) {
-      // Cache write failure is non-fatal
-    }
-
-    return result;
-  }
-
-  Logger.log("[S32] Rubric not found for competency_id: " + compId);
-  return null;
 }
 
 // ---------------------------------------------------------------------------

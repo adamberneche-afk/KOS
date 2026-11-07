@@ -666,7 +666,7 @@ function buildExistingQueueKeys_(wqData) {
 //
 // NOTE: LC24_WARM_UP_GENERATED (column index 14) is a new column appended
 // to LessonContext beyond the original 14 columns (indices 0–13).
-// createLessonContextWarmUpColumn_() adds it if missing.
+// createModule2Tabs_() (22) and the Module 2 wizard (28) write its header.
 // ---------------------------------------------------------------------------
 function markLessonQueued_(lcSheet, lcData, lessonId) {
   for (let i = 1; i < lcData.length; i++) {
@@ -755,53 +755,6 @@ function generateQueueId_() {
   // parses the suffix.
   const hex  = Utilities.getUuid().replace(/-/g, "").substring(0, 12).toUpperCase();
   return "WUQ-" + yyyy + mm + dd + "-" + hex;
-}
-
-// ---------------------------------------------------------------------------
-// createLessonContextWarmUpColumn_
-// Run once manually to add the warm_up_generated column to the
-// existing LessonContext tab. Safe to re-run — checks if column exists first.
-//
-// warm_up_generated values:
-//   ""        — not yet queued
-//   "QUEUED"  — Script 24 has written WarmUpQueue rows
-//   "DELIVERED" — Flow 3 has created all warm-up docs for this lesson
-//
-// FIXED: this used to append at sheet.getLastColumn() + 1 — whatever
-// column happened to be last at the moment someone ran this. That's fine
-// in isolation, but 22_LessonContextHandler.js's own self-healing
-// _ensureFrameColumns_() (added for Script 27) ALSO appends columns after
-// whatever it finds, and LC24_WARM_UP_GENERATED below is a hardcoded read/
-// write target (= 14) that every caller in this file and 25_WarmUpWriter.js
-// assumes without checking the sheet. Whichever of the two self-healers ran
-// second would land its columns wherever the sheet currently ended — not
-// necessarily column 15 (1-based) — silently breaking either warm-up
-// delivery tracking or lesson frame generation depending on order. Now
-// writes to the fixed position matching LC24_WARM_UP_GENERATED, same
-// idempotent-header-at-fixed-position pattern used everywhere else in this
-// codebase (_ensureFrameColumns_, _ensureTurnInReviewColumns_, etc.) —
-// order no longer matters. createModule2Tabs_() also now writes this header
-// directly for fresh installs, making this function a no-op there.
-// ---------------------------------------------------------------------------
-function createLessonContextWarmUpColumn_() {
-  const cfg    = getConfig_();
-  const ss     = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet  = ss.getSheetByName(cfg.tabs.lessonContext);
-
-  if (!sheet) {
-    Logger.log("[S24] LessonContext tab not found.");
-    return;
-  }
-
-  const targetCol = LC24_WARM_UP_GENERATED + 1; // 15, 1-based
-  const cell = sheet.getRange(1, targetCol);
-  if (String(cell.getValue()).trim() === "warm_up_generated") {
-    Logger.log("[S24] warm_up_generated column already exists — skipping.");
-    return;
-  }
-
-  cell.setValue("warm_up_generated").setFontWeight("bold");
-  Logger.log("[S24] Added warm_up_generated column at position " + targetCol);
 }
 
 // ---------------------------------------------------------------------------

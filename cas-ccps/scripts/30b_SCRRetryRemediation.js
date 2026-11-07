@@ -2,7 +2,8 @@
 // FILE: 30b_SCRRetryRemediation.js
 // BOUND TO: Central Ledger spreadsheet (same project as Script 30)
 // PURPOSE: The SCR retry from the central-ledger side: the bulk scan the CAS
-//          attention signal counts (34b), and an editor-run confirm. The
+//          attention signal counts (34b). The re-rating itself is the
+//          Teacher Dashboard's (07's teacherConfirmScrRetry). The
 //          rule itself, and the check both dashboards run, live in
 //          00_SharedConfig.js ("THE SCR RULE AND THE SCR RETRY") since
 //          2026-11-01 (D15), so the Teacher Dashboard's student page and the
@@ -38,11 +39,8 @@
 //   checkRetryEligibility_(studentEmail, competencyId, cache)
 //       -- read-only; the rating from SCRSuggestions. cache ({}) shares one
 //          read of the evidence and the matrices across many calls.
-//   getAllRetryEligibleStudents_()   -- bulk scan of every rating of 3 or 4
-//   attemptPrimaryRetry_(studentEmail, competencyId)
-//       -- what a re-rating would give; changes nothing
-//   confirmRetryImprovement_(studentEmail, competencyId, teacherEmail)
-//       -- the re-rating, for the signed-in teacher who owns the rating
+//   retryCandidates_(data)   -- every teacher-decided rating of 3 or 4
+//       (34b's daily scan runs checkRetryEligibility_ on each)
 //   previewScrRetryThresholds()   -- counts at the thresholds and their
 //          neighbours, from the editor; changes nothing
 // =============================================================================
@@ -107,27 +105,6 @@ function checkRetryEligibility_(studentEmail, competencyId, cache) {
 }
 
 // ---------------------------------------------------------------------------
-// getAllRetryEligibleStudents_ -- every pair rated 3 or 4 that is eligible
-// now. One read of the evidence and the matrices for the whole scan.
-// ---------------------------------------------------------------------------
-function getAllRetryEligibleStudents_() {
-  const cfg = getConfig_();
-  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
-  if (!suggestionsSheet) return { error: "SCRSuggestions tab not found." };
-  const cache = { suggestions: suggestionsSheet.getDataRange().getValues() };
-  const candidates = retryCandidates_(cache.suggestions);
-  const eligible = [];
-  for (const c of candidates) {
-    const result = checkRetryEligibility_(c.studentEmail, c.competencyId, cache);
-    if (result.eligible) eligible.push(Object.assign({}, c, result));
-  }
-  Logger.log("[S30b] Retry eligibility scan: " + candidates.length +
-    " candidate(s) at rating 3/4 checked, " + eligible.length + " eligible.");
-  return { eligible: eligible, generatedAt: new Date().toISOString() };
-}
-
-// ---------------------------------------------------------------------------
 // previewScrRetryThresholds -- run from the editor (2026-11-01). The two
 // thresholds are provisional; this shows how they play out on the real
 // ratings before anyone tunes them (SCR_RETRY_MIN_MET and
@@ -176,64 +153,4 @@ function previewScrRetryThresholds() {
       ", not yet " + r.notYet + ", no linked competency " + r.noLinked + ".");
   });
   return { candidates: candidates.length, rows: rows };
-}
-
-// ---------------------------------------------------------------------------
-// attemptPrimaryRetry_ -- what a re-rating would give. Changes nothing: the
-// rating changes only through confirmRetryImprovement_ (or the Teacher
-// Dashboard's teacherConfirmScrRetry), a teacher's action.
-// ---------------------------------------------------------------------------
-function attemptPrimaryRetry_(studentEmail, competencyId, cache) {
-  const eligibility = checkRetryEligibility_(studentEmail, competencyId, cache);
-  if (!eligibility.eligible) return { retryPossible: false, reason: eligibility.reason };
-  return {
-    retryPossible: true,
-    currentOfficialRating: eligibility.currentOfficialRating,
-    newSuggestedRating: eligibility.newRating,
-    improved: eligibility.improved,
-    status: eligibility,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// confirmRetryImprovement_ -- the re-rating. Rule 3 first (the signed-in
-// teacher, who owns the rating); then, under the script lock, the check is
-// run again and the SCRSuggestions row's current rating is updated and a
-// RETRY_IMPROVED row appended to SCRDecisionLog (the permanent record; the
-// original decision row stays).
-// ---------------------------------------------------------------------------
-function confirmRetryImprovement_(studentEmail, competencyId, teacherEmail) {
-  const refusal = _scrDecisionRefusal_(getConfig_(), teacherEmail, studentEmail, competencyId);
-  if (refusal) return { success: false, error: refusal };
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) return { success: false, error: "Another change is being saved. Try again in a moment." };
-  try {
-    const retry = attemptPrimaryRetry_(studentEmail, competencyId);
-    if (!retry.retryPossible) return { success: false, error: retry.reason };
-    if (!retry.improved) {
-      return { success: false, error: "The evidence does not give a better rating than the current one (" +
-        retry.currentOfficialRating + "). Nothing to confirm." };
-    }
-    const cfg = getConfig_();
-    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-    const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
-    const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
-    if (!decisionLogSheet) return { success: false, error: "SCRDecisionLog tab not found." };
-    const found = _retrySuggestionRow_(suggestionsSheet.getDataRange().getValues(), studentEmail, competencyId);
-    if (!found) return { success: false, error: "SCRSuggestions row not found -- cannot record the retry." };
-
-    const now = new Date();
-    // SCRSuggestions is the current view (exports, dashboards); the
-    // permanent record is the appended decision row.
-    suggestionsSheet.getRange(found.rowIndex, SCRS.CONFIRMED_RATING + 1).setValue(retry.newSuggestedRating);
-    suggestionsSheet.getRange(found.rowIndex, SCRS.CONFIRMED_AT + 1).setValue(now);
-    suggestionsSheet.getRange(found.rowIndex, SCRS.CONFIRMED_BY + 1).setValue(teacherEmail);
-    scrAppendRetryDecision_(decisionLogSheet, generateDecisionId_(), studentEmail, competencyId, retry.status, teacherEmail, now);
-
-    Logger.log("[S30b] Retry confirmed -- SCRDecisionLog row " + decisionLogSheet.getLastRow() +
-      " | " + competencyId + " | " + retry.currentOfficialRating + " -> " + retry.newSuggestedRating);
-    return { success: true, previousRating: retry.currentOfficialRating, newRating: retry.newSuggestedRating };
-  } finally {
-    lock.releaseLock();
-  }
 }

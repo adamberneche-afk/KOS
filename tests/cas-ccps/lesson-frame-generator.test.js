@@ -322,8 +322,8 @@ test('frame generation never clobbers 24_WarmUpBridge.js\'s pre-existing warm_up
   const { exported, sandbox } = load();
   const fx = setUpFixture(sandbox);
 
-  // Simulate a deployment where Script 24's createLessonContextWarmUpColumn_()
-  // already ran: header at column 15 (1-based), and this specific row
+  // Simulate a deployment where the warm_up_generated column already
+  // exists: header at column 15 (1-based), and this specific row
   // already carries "DELIVERED" from a completed warm-up flow.
   fx.lc.getRange(1, 15).setValue('warm_up_generated');
   fx.lc.appendRow([

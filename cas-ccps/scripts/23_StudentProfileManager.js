@@ -1230,8 +1230,8 @@ function installWarmUpTriggers_() {
 // Creates all four warm-up tabs with correct headers and frozen rows.
 // Safe to re-run — skips tabs that already exist.
 //
-// NOTE: Also adds warm_up_generated column to LessonContext if missing.
-// Run Script 24's createLessonContextWarmUpColumn_() separately for that.
+// NOTE: does NOT add LessonContext's warm_up_generated column:
+// createModule2Tabs_() (22) and the Module 2 wizard (28) write that.
 // ---------------------------------------------------------------------------
 function createWarmUpTabs_() {
   const cfg = getConfig_();

@@ -579,7 +579,6 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
       <div class="sc-fns">
         <span class="fn-tag entry">onLessonContextSubmit_(payload)</span>
         <span class="fn-tag manual">createModule2Tabs_()</span>
-        <span class="fn-tag manual">installModule2Triggers_()</span>
         <span class="fn-tag">runAlignmentLogBackfill_()</span>
       </div>
     </div>
@@ -629,7 +628,6 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
       <p class="sc-body">Stage 3 of the 3am cron. Computes tomorrow's day type from date parity. Reads ClassSchedule for matching periods. For each period with a LessonContext: reads enrolled students, calls Script 23's <code>getStudentProfileSnapshot_()</code> (computes competency gaps on the fly), builds all queue rows in memory, writes ONE batch <code>setValues()</code> per period. Lesson context snapshot embeds <code>admin_root_folder_id</code>, <code>teacher_name</code>, and <code>teacher_email</code> from Script Properties — no hardcoded IDs in Flow 3.</p>
       <div class="sc-fns">
         <span class="fn-tag entry">buildWarmUpQueues()</span>
-        <span class="fn-tag manual">createLessonContextWarmUpColumn_()</span>
         <span class="fn-tag manual">validateQueueBuild()</span>
       </div>
     </div>
@@ -642,7 +640,6 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
         <span class="fn-tag entry">registerDeliveredWarmUps()</span>
         <span class="fn-tag entry">runWarmUpEvaluation()</span>
         <span class="fn-tag manual">generateWarmUpReport()</span>
-        <span class="fn-tag manual">installRegistrationTrigger_()</span>
         <span class="fn-tag manual">validateWarmUpEvaluation()</span>
       </div>
     </div>
@@ -670,7 +667,6 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
       <div class="sc-fns">
         <span class="fn-tag manual">importCompetencyRubrics()</span>
         <span class="fn-tag manual">validateRubricImport()</span>
-        <span class="fn-tag export">getRubricForCompetency_(compId)</span>
         <span class="fn-tag export">getRubricsForLesson_(compIds)</span>
         <span class="fn-tag export">addRubricsToSnapshot_(obj, compIds)</span>
       </div>
@@ -686,7 +682,6 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
         <span class="fn-tag manual">addCompetencyIdsColumn_()</span>
         <span class="fn-tag manual">installArtifactSyncTrigger_()</span>
         <span class="fn-tag manual">validateArtifactSync()</span>
-        <span class="fn-tag export">getStudentCompetenciesFromArtifacts_(ss, cfg, email)</span>
       </div>
     </div>
 
@@ -813,8 +808,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
         <p>Upload <code>CompetencyRegistry.csv</code> to teacher Drive folder. Run importer. Then run <code>validateRegistryImport()</code> — expect 221 rows: 108 for course 8177, 113 for course 8175.</p>
       </div></div>
       <div class="step"><div class="step-n">6</div><div class="step-body">
-        <h4>Install lightweight trigger — run <code>installModule2Triggers_()</code> from Script 22</h4>
-        <p>Installs <code>runAlignmentLogBackfill_</code> every 5 minutes. Safe to re-run. Also logs status of all required tabs.</p>
+        <h4>Install lightweight trigger — run <code>installAlignmentBackfillTrigger()</code> from Script 64 (Central Ledger)</h4>
+        <p>Puts <code>runAlignmentLogBackfill_</code> (every 5 minutes) in the Ledger cycle, or gives it its own trigger when the cycle isn't installed. Safe to re-run. The Module 2 wizard (Script 28) checks the required tabs. (Script 22's old <code>installModule2Triggers_()</code> was removed 2026-11-07.)</p>
       </div></div>
       <div class="step"><div class="step-n">7</div><div class="step-body">
         <h4>Update and redeploy Script 07</h4>
@@ -847,8 +842,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
         <p>Same project. Three new files: <code>23_StudentProfileManager</code>, <code>24_WarmUpBridge</code>, <code>25_WarmUpWriter</code>.</p>
       </div></div>
       <div class="step"><div class="step-n">11</div><div class="step-body">
-        <h4>Extend LessonContext tab — run <code>createLessonContextWarmUpColumn_()</code> from Script 24</h4>
-        <p>Adds <code>warm_up_generated</code> as column 15 to the existing LessonContext tab. Safe to re-run — checks for column before adding.</p>
+        <h4>Extend LessonContext tab — nothing to run</h4>
+        <p><code>warm_up_generated</code> (column 15) is written by <code>createModule2Tabs_()</code> (Script 22) on a fresh install and added by the Module 2 wizard (Script 28) when missing. (Script 24's old <code>createLessonContextWarmUpColumn_()</code> was removed 2026-11-07.)</p>
       </div></div>
       <div class="step"><div class="step-n">12</div><div class="step-body">
         <h4>Create warm-up tabs — run <code>createWarmUpTabs_()</code> from Script 23</h4>
@@ -881,8 +876,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
         <p>Installs three nightly triggers: <code>updateAllStudentProfiles</code> at 3:00am · <code>runWarmUpEvaluation</code> at 3:15am · <code>buildWarmUpQueues</code> at 3:30am. Safe to re-run.</p>
       </div></div>
       <div class="step"><div class="step-n">15</div><div class="step-body">
-        <h4>Install registration trigger — run <code>installRegistrationTrigger_()</code> from Script 25</h4>
-        <p>Installs <code>registerDeliveredWarmUps</code> every 5 minutes. Registers Flow 3 DELIVERED docs in WarmUpRegistry and updates LessonContext when all students in a lesson are delivered.</p>
+        <h4>Install registration trigger — run <code>installRegistrationTrigger()</code> from Script 64 (Central Ledger)</h4>
+        <p>Puts <code>registerDeliveredWarmUps</code> (every 5 minutes) in the Ledger cycle, or gives it its own trigger when the cycle isn't installed; <code>installLedgerCycle()</code> always includes it. (Script 25's old <code>installRegistrationTrigger_()</code> was removed 2026-11-07.) Registers Flow 3 DELIVERED docs in WarmUpRegistry and updates LessonContext when all students in a lesson are delivered.</p>
       </div></div>
       <div class="step"><div class="step-n">16</div><div class="step-body">
         <h4>Configure Studio Flows 3 and 4</h4>

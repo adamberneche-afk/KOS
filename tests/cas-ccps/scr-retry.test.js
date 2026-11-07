@@ -154,7 +154,7 @@ test('only ratings of 3 or 4 apply; archived evidence is left out', () => {
 
 function central(evidence, opts) {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('30_SCRSuggestionEngine.js'), S('30b_SCRRetryRemediation.js')],
-    ['checkRetryEligibility_', 'getAllRetryEligibleStudents_', 'attemptPrimaryRetry_', 'previewScrRetryThresholds']);
+    ['checkRetryEligibility_', 'retryCandidates_', 'previewScrRetryThresholds']);
   return Object.assign(env, fixture(env.sandbox, evidence, opts));
 }
 
@@ -163,8 +163,10 @@ test('30b: a confirmed 3 with enough evidence is eligible, with no LessonPrimary
   const r = env.exported.checkRetryEligibility_(ME, 'P');
   assert.equal(r.eligible, true);
   assert.equal(r.currentOfficialRating, 3);
-  assert.equal(env.exported.getAllRetryEligibleStudents_().eligible.length, 1);
-  assert.equal(env.exported.attemptPrimaryRetry_(ME, 'P').newSuggestedRating, 2);
+  assert.equal(r.newRating, 2);
+  const rows = env.sandbox.SpreadsheetApp.openById(env.sandbox.PropertiesService.getScriptProperties()
+    .getProperty('CENTRAL_LEDGER_SS_ID')).getSheetByName('SCRSuggestions').getDataRange().getValues();
+  assert.equal(env.exported.retryCandidates_(rows).length, 1, 'the scan 34b counts finds the one 3');
 });
 
 test('30b: an undecided rating is not a retry', () => {
