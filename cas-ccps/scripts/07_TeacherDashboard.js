@@ -203,7 +203,7 @@ function _isAuthorizedTeacher_(cfg) {
 // focused page their own role actually needs.
 function doGet() {
   const cfg  = getConfig_();
-  const html = _isAuthorizedTeacher_(cfg) ? buildDashboardHtml_() : buildMyContextHtml_();
+  const html = _isAuthorizedTeacher_(cfg) ? buildDashboardHtml_(cfg) : buildMyContextHtml_();
   return HtmlService
     .createHtmlOutput(html)
     .setTitle("Assignment Dashboard")
@@ -2248,7 +2248,18 @@ function formatDate_(d) {
 // buildDashboardHtml_ — self-contained single-page UI
 // M2 additions: "New Lesson" button in header, modal markup, modal JS
 // ---------------------------------------------------------------------------
-function buildDashboardHtml_() {
+// The Student Dashboard in demo mode (13's "Demo mode", 2026-11-07): its
+// one deployment URL (STUDENT_DASHBOARD_URL, a _CONFIG row) with ?demo=1.
+// "" when the URL is unset or isn't an Apps Script web app's.
+function studentDemoUrl_(cfg) {
+  const url = String((cfg && cfg.studentDashboardUrl) || "").trim();
+  if (!/^https:\/\/script\.google\.com\/[A-Za-z0-9\/_.~-]+$/.test(url)) return "";
+  return url + "?demo=1";
+}
+
+function buildDashboardHtml_(cfg) {
+  let demoUrl = "";
+  try { demoUrl = studentDemoUrl_(cfg || getConfig_()); } catch (e) { demoUrl = ""; }
   return `<!DOCTYPE html>
 <html>
 <head>
@@ -2273,12 +2284,15 @@ header{background:#1967d2;color:white;padding:16px 24px;display:flex;align-items
 header h1{font-size:18px;font-weight:500;flex:1}
 #refresh-btn{background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.7);color:white;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;min-height:34px}
 /* The header's tool buttons (2026-10-22): they had no style at all, so they rendered as grey browser buttons 19px tall. */
-header button:not(#refresh-btn):not(#new-lesson-btn){background:white;color:#1557b0;border:1px solid white;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;min-height:34px;cursor:pointer;font-family:inherit}
-header button:not(#refresh-btn):not(#new-lesson-btn):hover{background:#e8f0fe}
+header button:not(#refresh-btn):not(#new-lesson-btn),header a#demo-student-btn{background:white;color:#1557b0;border:1px solid white;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;min-height:34px;cursor:pointer;font-family:inherit}
+header button:not(#refresh-btn):not(#new-lesson-btn):hover,header a#demo-student-btn:hover{background:#e8f0fe}
+header a#demo-student-btn{display:inline-flex;align-items:center;text-decoration:none}
+header a#demo-student-btn:focus-visible{outline:2px solid white;outline-offset:2px}
 header button:focus-visible,header select:focus-visible{outline:2px solid white;outline-offset:2px}
 /* Touch screens (2026-11-07): the header's buttons and menus at least 44px
    tall. !important because #refresh-btn and others set their own height. */
 @media (pointer: coarse){header button,header select{min-height:44px !important}}
+@media (pointer: coarse){header a#demo-student-btn{min-height:44px !important}}
 #term-filter option{color:#202124;background:#fff}
 #refresh-btn:hover{background:rgba(0,0,0,0.35)}
 #term-filter{padding:6px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:13px;margin-left:0}
@@ -2495,6 +2509,11 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
   <!-- Lesson schedule (LessonSchedule tab, 55): start dates by course, with
        what the last nightly rollout (58) did for each lesson. -->
   <button id="lesson-schedule-btn" onclick="openLessonScheduleModal()">📅 Lessons</button>
+  <!-- The Student Dashboard as a made-up student (13's demo mode): opens
+       in a new tab, and the URL can be bookmarked. -->
+  ${demoUrl
+    ? '<a id="demo-student-btn" href="' + demoUrl + '" target="_blank" rel="noopener" title="The Student Dashboard with a made-up student, on your lessons. Nothing is saved.">👁 View as a student</a>'
+    : '<button id="demo-student-btn" type="button" onclick="alert(\'The Student Dashboard URL is not set. Set STUDENT_DASHBOARD_URL (a _CONFIG row in the Central Ledger), then reload.\')">👁 View as a student</button>'}
   <button id="cas-terms-btn" onclick="casOpenTerms()" aria-haspopup="dialog">❓ Terms</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>

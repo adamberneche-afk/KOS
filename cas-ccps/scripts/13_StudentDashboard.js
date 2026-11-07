@@ -6,13 +6,330 @@
 //          [Block - Class - Teacher] folder label.
 // DEPLOY: Execute as: Me (the admin) · Access: anyone in the district domain.
 //         The page and doPost() identify the student by their signed-in account.
+// DEMO:   ?demo=1 shows a teacher the page with a made-up student (below,
+//         "Demo mode"); anyone else gets their own page.
 // =============================================================================
 
-function doGet() {
+function doGet(e) {
+  const demo = _dashWantsDemo_(e) && _dashDemoAllowed_();
   return HtmlService
-    .createHtmlOutput(buildStudentDashboardHtml_())
-    .setTitle("My Assignments")
+    .createHtmlOutput(buildStudentDashboardHtml_({ demo: demo }))
+    .setTitle(demo ? "My Assignments (demo)" : "My Assignments")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// ── Demo mode (operator's decisions, 2026-11-07) ──────────────────────────
+// A teacher reviewing the page, or showing colleagues how it works, sees it
+// as a made-up student: "Demo Student", ID 0000000 (no real ID is all
+// zeros), on the teacher's real lessons (13b, generated from 55b), with
+// made-up work and results in every card state. A staff account can't be a
+// student (rollouts would make docs for it, it would be counted, student
+// accounts need a 7-digit ID), and a real student's page can't be shown to
+// others (FERPA).
+//
+// Who: the account this web app runs as (requireScriptOwner_: the teacher
+// who deployed it, and under the per-teacher install each teacher reaches
+// only their own), or the TEACHER_EMAIL set on this project, never from the
+// shared _CONFIG tab (00's SHARED_CONFIG_KEYS leaves it out). Anyone else
+// asking for ?demo=1 gets their own page, and getDemoDashboardData refuses
+// them.
+//
+// Isolation: the demo page makes one server call, getDemoDashboardData,
+// which opens no spreadsheet, doc or file (the check reads the session and
+// one Script Property) and returns the whole fixture. Every other call the page would make (the record tabs,
+// Submit for Feedback, warm-up saves) goes to a local stub in the page
+// (DEMO_STUBS); a call with no stub fails in the page and never reaches the
+// server. Nothing is written anywhere.
+const DASH_DEMO_STUDENT = { name: "Demo Student", id: "0000000", account: "demo" };
+
+function _dashWantsDemo_(e) {
+  const v = e && e.parameter ? String(e.parameter.demo || "").trim().toLowerCase() : "";
+  return v === "1" || v === "true" || v === "yes";
+}
+
+// True only for the teacher this deployment recognizes; fails closed (no
+// signed-in address, no config, a different account: false).
+function _dashDemoAllowed_() {
+  let active = "";
+  try { active = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) { active = ""; }
+  if (!active) return false;
+  let teacher = "";
+  // getConfig_()'s teacherEmail, read straight from this project's
+  // properties so the check opens no spreadsheet.
+  try { teacher = String(PropertiesService.getScriptProperties().getProperty("TEACHER_EMAIL") || "").trim().toLowerCase(); } catch (e) { teacher = ""; }
+  if (teacher && active === teacher) return true;
+  try { requireScriptOwner_(); } catch (e) { return false; }
+  // requireScriptOwner_ lets a blank effective user through (some triggers);
+  // demo mode needs the two to be the same account.
+  let effective = "";
+  try { effective = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(); } catch (e) { effective = ""; }
+  return !!effective && active === effective;
+}
+
+// The demo page's one server call: the whole fixture, or a refusal.
+function getDemoDashboardData() {
+  if (!_dashDemoAllowed_()) {
+    return { error: "Demo mode is for teachers. Open the dashboard without ?demo=1 to see your own assignments." };
+  }
+  return dashDemoFixture_(new Date());
+}
+
+// Each course's lessons in order get these states (13b holds five each),
+// so the two courses together show every card state.
+const DASH_DEMO_PLAN = {
+  "8175": ["PASSED", "PASSED", "REVISE", "BEING_CHECKED", "NOT_STARTED"],
+  "8177": ["TURNED_IN", "PASSED", "COULDNT_CHECK", "REVISE", "NOT_STARTED"]
+};
+// A state as the Ledger and the staging pipeline would hold it. Days ago:
+// when it was last submitted and last checked.
+const DASH_DEMO_STATES = {
+  NOT_STARTED:   { status: "ACTIVE" },
+  BEING_CHECKED: { status: "ACTIVE", pipeline: "IN_PROCESS", submitted: 0 },
+  REVISE:        { status: "COMPLETE", lastResult: "NEEDS_REVISION", submitted: 2, checked: 2 },
+  COULDNT_CHECK: { status: "ERROR_EVALUATION", submitted: 3 },
+  PASSED:        { status: "COMPLETE", lastResult: "PASSED", submitted: 8, checked: 8 },
+  TURNED_IN:     { status: "PENDING_TEACHER_REVIEW", lastResult: "PASSED", submitted: 6, checked: 6 }
+};
+
+function _dashDemoDaysAgo_(now, n) {
+  return new Date(now.getTime() - n * 24 * 60 * 60 * 1000);
+}
+
+// A lesson's milestones that name a competency, as the reflection reads
+// them (00's reflectionCriteria_): [{ id, text }], primary first.
+function _dashDemoCriteria_(lesson) {
+  const out = [];
+  (lesson.milestones || []).forEach(function (m, i) {
+    const id = String((lesson.milestoneCompetencyIds || [])[i] || "").trim();
+    const text = reflectionCriterionText_(m);
+    if (id && text && out.length < 3) out.push({ id: id, text: text });
+  });
+  return out;
+}
+
+// One card, built with the same status functions as a real Ledger row.
+function _dashDemoCard_(course, lesson, state, block, period, now) {
+  const s = DASH_DEMO_STATES[state];
+  const pipeline = s.pipeline || "";
+  const lastResult = s.lastResult || "";
+  const inLine = pipeline === "IN_PROCESS" || pipeline === "QUEUED";
+  const configId = "DEMO-" + lesson.key;
+  const className = course.courseName;
+  const teacherName = "Your teacher";
+  const criteria = _dashDemoCriteria_(lesson);
+  const primary = criteria[0] || null;
+  const displayStatus = resolveStudentStatus_(s.status, pipeline, false, lastResult);
+  const revise = state === "REVISE";
+  // The questions Submit for Feedback would ask (00's chooser): a first
+  // submit, or a resubmit after the primary wasn't met.
+  const prior = revise ? [{ frameId: "", kind: "", submittedAt: "earlier" }] : [];
+  const questions = chooseReflectionQuestions_(criteria, prior, configId, revise ? primary : null)
+    .map(function (q) { return { frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, question: q.question }; });
+  return {
+    configId:      configId,
+    studentName:   DASH_DEMO_STUDENT.name,
+    studentId:     DASH_DEMO_STUDENT.id,
+    unitName:      lesson.unitName,
+    block:         block,
+    className:     className,
+    teacherName:   teacherName,
+    teacherEmail:  "",
+    period:        period,
+    subject:       lesson.subject || "",
+    term:          "",
+    status:        s.status,
+    displayStatus: displayStatus,
+    statusClass:   resolveStudentClass_(s.status, pipeline, lastResult),
+    statusPill:    resolveStudentPill_(s.status, pipeline, lastResult),
+    statusNote:    studentStatusNote_(displayStatus),
+    notYet:        revise && primary ? primary.text : "",
+    lastEval:      s.checked !== undefined ? formatDate_(_dashDemoDaysAgo_(now, s.checked)) : "",
+    submittedAt:   s.submitted !== undefined ? formatDate_(_dashDemoDaysAgo_(now, s.submitted)) : null,
+    docUrl:        null, // no document: the page shows a note instead
+    fileId:        "demo-" + lesson.key,
+    canSubmit:     !DASH_NO_SUBMIT_STATUSES[s.status] && !inLine,
+    part:          null,
+    folderLabel:   block + " - " + className + " - " + teacherName,
+    demoQuestions: questions,
+    // What the check "finds" after a demo Submit: the primary, not yet.
+    demoNotYet:    primary ? primary.text : ""
+  };
+}
+
+// A warm-up as _dashOwnWarmUps_ reads it: a WarmUpQueue row and its
+// WarmUpTextBox row, so the card goes through _dashWarmUpView_.
+function _dashDemoWarmUp_(id, lessonDate, status, course, f) {
+  f = f || {};
+  const row = new Array(DASH_WQ_WIDTH).fill("");
+  row[0] = id;
+  row[DASH_WQ_LESSON_DATE] = lessonDate;
+  row[DASH_WQ_LESSON_SNAP] = JSON.stringify({ course_name: course });
+  row[DASH_WQ_STATUS] = status;
+  if (status === "SCORED") {
+    row[DASH_WQ_LENGTH] = f.length; row[DASH_WQ_GRAMMAR] = 1; row[DASH_WQ_ENGAGEMENT] = f.engagement;
+    row[DASH_WQ_EXTRA_CREDIT] = f.credited ? 1 : 0;
+    row[DASH_WQ_TOTAL] = f.length + 1 + f.engagement + (f.credited ? 1 : 0);
+    row[DASH_WQ_FEEDBACK] = f.feedback || "";
+  }
+  const tb = new Array(8).fill("");
+  tb[WTB.QUEUE_ID] = id; tb[WTB.LESSON_DATE] = lessonDate;
+  tb[WTB.BRIDGE] = f.bridge || ""; tb[WTB.WARMUP] = f.warmup || "";
+  tb[WTB.RESPONSE] = f.answer || ""; tb[WTB.SUBMITTED_AT] = f.answer ? _dashDayNoon_(lessonDate) : "";
+  tb[WTB.REPLY] = f.reply || "";
+  return { queueId: id, row: row, tb: { row: tb }, docId: "", lessonDate: lessonDate };
+}
+
+// The whole demo: the Assignments page's data, the three record tabs, and
+// the card states a demo Submit walks through.
+function dashDemoFixture_(now) {
+  const tz = Session.getScriptTimeZone();
+  const iso = function (n) { return Utilities.formatDate(_dashDemoDaysAgo_(now, n), tz, "yyyy-MM-dd"); };
+  const today = iso(0);
+  const blocks = { "8175": ["1", "1"], "8177": ["3O", "3"] };
+  const assignments = [];
+  const ratings = [];
+  const evidence = {};
+  const assignmentOf = {};
+  DASH_DEMO_LESSONS.forEach(function (course) {
+    const plan = DASH_DEMO_PLAN[course.code] || [];
+    const where = blocks[course.code] || ["1", "1"];
+    course.lessons.forEach(function (lesson, i) {
+      const state = plan[i] || "NOT_STARTED";
+      const card = _dashDemoCard_(course, lesson, state, where[0], where[1], now);
+      assignments.push(card);
+      assignmentOf[card.configId] = lesson.unitName;
+      const criteria = _dashDemoCriteria_(lesson);
+      const checked = DASH_DEMO_STATES[state].checked;
+      if (checked === undefined) return;
+      // A check's evidence: everything shown on a pass; on a revise, the
+      // primary not shown yet and the rest partly shown.
+      criteria.forEach(function (c, k) {
+        const outcome = state === "REVISE" ? (k === 0 ? "NOT_MET" : "PARTIALLY_MET") : "MET";
+        (evidence[c.id] = evidence[c.id] || []).push({ configId: card.configId, milestone: c.text, outcome: outcome,
+          at: _dashDemoDaysAgo_(now, checked) });
+      });
+      if (state === "PASSED" && criteria[0]) {
+        ratings.push({ competencyId: criteria[0].id, rating: i === 0 ? 2 : 3, decidedAt: _dashDemoDaysAgo_(now, checked - 1) });
+      }
+    });
+  });
+  _dashSortCards_(assignments);
+
+  const codes = DASH_DEMO_LESSONS.map(function (c) { return c.code; }).sort();
+  const totals = {};
+  const names = {};
+  DASH_DEMO_LESSONS.forEach(function (c) { totals[c.code] = c.competencyTotal; names[c.code] = c.courseName; });
+  const done = {};
+  competencyCompletionFor_(ratings, totals, codes).forEach(function (c) { done[c.course] = c; });
+  const ratingOf = {};
+  ratings.forEach(function (r) { ratingOf[r.competencyId] = r; });
+
+  // Competencies tab: getMyCompetencies's shape, for the competencies the
+  // demo lessons name.
+  const compCourses = DASH_DEMO_LESSONS.map(function (course) {
+    const areas = [];
+    const areaOf = {};
+    course.competencies.forEach(function (c) {
+      const r = ratingOf[c.id];
+      const item = {
+        id: c.id, task: c.task, text: c.text,
+        rating: r ? r.rating : null,
+        ratedAt: r ? Utilities.formatDate(r.decidedAt, tz, "MMM d, yyyy") : "",
+        retry: null,
+        evidence: (evidence[c.id] || []).map(function (e) {
+          return { assignment: assignmentOf[e.configId] || "An assignment", milestone: e.milestone,
+            outcome: DASH_EVIDENCE_WORDS[e.outcome], outcomeKey: e.outcome,
+            date: Utilities.formatDate(e.at, tz, "MMM d"), counts: true };
+        })
+      };
+      const area = c.area || "Other";
+      if (!areaOf[area]) { areaOf[area] = { name: area, items: [] }; areas.push(areaOf[area]); }
+      areaOf[area].items.push(item);
+    });
+    const d = done[course.code] || { done: 0, total: course.competencyTotal };
+    return { code: course.code, className: course.courseName, done: d.done, total: d.total, areas: areas };
+  });
+
+  // Warm-ups: today's to answer, the last one scored with its extra-credit
+  // reply open, and two older ones for the Warm-ups tab.
+  const lessonOf = function (code, i) {
+    const c = DASH_DEMO_LESSONS.filter(function (x) { return x.code === code; })[0];
+    return c && c.lessons[i] ? c.lessons[i] : { warmupAnchor: "" };
+  };
+  const c8175 = names["8175"] || "8175";
+  const current = _dashDemoWarmUp_("DEMO-WU-4", today, "DELIVERED", c8175,
+    { warmup: lessonOf("8175", 3).warmupAnchor,
+      bridge: "Last time you explained how your brand stands out. Today, think about who helps you keep going." });
+  const previous = _dashDemoWarmUp_("DEMO-WU-3", iso(2), "SCORED", c8175,
+    { warmup: lessonOf("8175", 2).warmupAnchor, length: 6, engagement: 2,
+      answer: "My friends would say I am loyal, funny and organized. I think organized fits best because I plan our team's practice schedule every week and people count on it.",
+      feedback: "Good start: you picked one word and backed it up with something you actually do. Push further next time: how would a stranger see that quality in your first five minutes with them?" });
+  const older = [
+    _dashDemoWarmUp_("DEMO-WU-2", iso(5), "SCORED", c8175,
+      { warmup: lessonOf("8175", 1).warmupAnchor, length: 6, engagement: 3, credited: true,
+        answer: "I would coach younger kids at the rec center for free. I like seeing them get better at something they thought they could not do.",
+        feedback: "Clear and specific. You named the task and why it matters to you, which is exactly what intrinsic motivation means.",
+        reply: "Thanks. I think it matters to me because someone did the same thing for me when I started playing." }),
+    _dashDemoWarmUp_("DEMO-WU-1", iso(8), "SCORED", c8175,
+      { warmup: lessonOf("8175", 0).warmupAnchor, length: 4, engagement: 2,
+        answer: "My grandparents went to the store every week. We order food on an app.",
+        feedback: "You named the change. Add the why: was it the product or the process that changed, and what made it possible?" })
+  ];
+  const closesOn = iso(-1);
+  const warmUps = {
+    current: _dashWarmUpView_(current, tz, today, null),
+    previous: _dashWarmUpView_(previous, tz, today, closesOn)
+  };
+  const history = [previous].concat(older).map(function (w) { return _dashWarmUpView_(w, tz, today, null); });
+
+  // My Context: two weeks, in 29's headings.
+  const weekOf = function (n) { return "Week of " + Utilities.formatDate(_dashDemoDaysAgo_(now, n), tz, "MMMM d, yyyy"); };
+  const done1 = assignments.filter(function (a) { return a.lastEval; });
+  const contextWeeks = [
+    { label: weekOf(1), bookmark: "", items: [{ heading: true, text: "Completed Assignments" }]
+      .concat(done1.map(function (a) { return { heading: false, text: "• " + a.unitName + "  —  " + a.status + "  ·  evaluated " + a.lastEval }; }))
+      .concat([{ heading: true, text: "Warm-Up Reflections" },
+        { heading: false, text: "Asked: " + (previous.tb.row[WTB.WARMUP] || "") },
+        { heading: false, text: previous.tb.row[WTB.RESPONSE] }]) },
+    { label: weekOf(8), bookmark: "", items: [{ heading: true, text: "Warm-Up Reflections" },
+      { heading: false, text: "Asked: " + (older[1].tb.row[WTB.WARMUP] || "") },
+      { heading: false, text: older[1].tb.row[WTB.RESPONSE] }] }
+  ];
+
+  // The states a demo Submit walks the card through, from the same
+  // functions: being checked, then revise.
+  const step = function (status, pipeline, lastResult) {
+    const display = resolveStudentStatus_(status, pipeline, false, lastResult);
+    return { status: status, displayStatus: display, statusClass: resolveStudentClass_(status, pipeline, lastResult),
+      statusPill: resolveStudentPill_(status, pipeline, lastResult), statusNote: studentStatusNote_(display) };
+  };
+
+  return {
+    demo: true,
+    student: DASH_DEMO_STUDENT,
+    dashboard: {
+      googleId:         DASH_DEMO_STUDENT.account,
+      demo:             true,
+      assignments:      assignments,
+      lockedParts:      [],
+      warmUps:          warmUps,
+      competencies:     competencyCompletionFor_(ratings, totals, codes)
+        .map(function (c) { return Object.assign({ className: names[c.course] }, c); }),
+      newRegistrations: [],
+      activeTerm:       "ALL",
+      availableTerms:   [],
+      generatedAt:      formatDate_(now)
+    },
+    tabs: {
+      competencies: { success: true, courses: compCourses },
+      warmups:      { success: true, warmUps: history },
+      context:      { success: true, context: { docUrl: "", lastUpdatedAt: formatDate_(_dashDemoDaysAgo_(now, 1)), weeks: contextWeeks } }
+    },
+    walkthrough: {
+      beingChecked: step("ACTIVE", "IN_PROCESS", ""),
+      revise:       step("COMPLETE", "", "NEEDS_REVISION")
+    }
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -186,19 +503,7 @@ function getStudentDashboardData(termFilter) {
   // then by block order, then by class.
   // Block sort order — uses system default, gracefully handles unknown values
   // Admins can customize this via the BLOCK_ORDER Script Property
-  const blockOrder = ["1","2O","2E","3O","3E","4O","4E"];
-  const priority   = { "ISSUE": 0, "NEEDS_ACTION": 1, "IN_PROGRESS": 2,
-                        "NOT_STARTED": 3, "DONE": 4 };
-
-  assignments.sort((a, b) => {
-    const pa = priority[a.statusClass] ?? 5;
-    const pb = priority[b.statusClass] ?? 5;
-    if (pa !== pb) return pa - pb;
-    const ia = blockOrder.indexOf(a.block);
-    const ib = blockOrder.indexOf(b.block);
-    if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    return a.className.localeCompare(b.className);
-  });
+  _dashSortCards_(assignments);
 
   // The next-step line on a card to revise (F3): from CompetencyEvidence,
   // already in this Ledger, read once and only when a card needs it.
@@ -284,6 +589,24 @@ function getStudentDashboardData(termFilter) {
     availableTerms: [...availableTerms].sort().reverse(),
     generatedAt:    formatDate_(new Date())
   };
+}
+
+// The cards' order (the real page's and the demo's): ISSUE first, then
+// needs-action, then by block order, then by class.
+function _dashSortCards_(assignments) {
+  const blockOrder = ["1","2O","2E","3O","3E","4O","4E"];
+  const priority   = { "ISSUE": 0, "NEEDS_ACTION": 1, "IN_PROGRESS": 2,
+                        "NOT_STARTED": 3, "DONE": 4 };
+  assignments.sort((a, b) => {
+    const pa = priority[a.statusClass] ?? 5;
+    const pb = priority[b.statusClass] ?? 5;
+    if (pa !== pb) return pa - pb;
+    const ia = blockOrder.indexOf(a.block);
+    const ib = blockOrder.indexOf(b.block);
+    if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
+    return a.className.localeCompare(b.className);
+  });
+  return assignments;
 }
 
 // The next step on a card to revise: the first milestone the file's last
@@ -1354,7 +1677,10 @@ function formatDate_(d) {
 // ---------------------------------------------------------------------------
 // buildStudentDashboardHtml_
 // ---------------------------------------------------------------------------
-function buildStudentDashboardHtml_() {
+// opts.demo: the demo page (doGet decides who gets it): the banner, and
+// every call routed to the page's own stubs but getDemoDashboardData.
+function buildStudentDashboardHtml_(opts) {
+  const demo = !!(opts && opts.demo);
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1384,6 +1710,8 @@ function buildStudentDashboardHtml_() {
 .ctx-week p{margin:0 0 6px}
 .ctx-week .ctx-h{font-weight:600;margin-top:10px}
 
+.demo-banner{background:#fef7e0;color:#202124;border-bottom:1px solid #f2d27a;padding:10px 24px;font-size:14px;font-weight:600}
+.demo-note{font-size:13px;margin-top:8px;color:#3c4043;background:#f1f3f4;border-radius:6px;padding:6px 10px}
 .competency-strip{display:flex;flex-wrap:wrap;gap:8px 20px;background:#fff;border:1px solid #e8eaed;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:14px}
 
   /* FIXED (Say/Do Ledger cas-ccps finding #14): #80868b (used for
@@ -1561,6 +1889,7 @@ function buildStudentDashboardHtml_() {
     <div id="account-label">Loading…</div>
   </div>
 </header>
+${demo ? '<div class="demo-banner" id="demo-banner" role="note">Demo: a made-up student. Nothing here is saved.</div>' : ''}
 <!-- The student's record (2026-10-27): Assignments, then three tabs each
      loaded when first opened. Only the signed-in student's own data. -->
 <nav class="dash-tabs" role="tablist" aria-label="Your record">
@@ -1622,6 +1951,90 @@ let _reflect = {};
 const REFLECT_MIN_WORDS = ${REFLECTION_MIN_WORDS};
 const EC_MIN_WORDS = ${DASH_EC_MIN_WORDS};
 
+// ── Demo mode (13's "Demo mode"): set by the server, never by the page ──
+// The demo page asks the server for one thing, getDemoDashboardData (the
+// whole fixture). Every other call goes through scriptRun() to DEMO_STUBS,
+// in the page; a function with no stub fails here and never reaches the
+// server. A later step (say, the turn-in code) adds its own stub.
+const DEMO = ${demo ? "true" : "false"};
+const DEMO_DELAY_MS = 300;
+let _demoData = null;
+let _demoNotes = {}; // fileId -> a note under the card ("this opens the document")
+function _demoCard(fileId) {
+  return ((_demoData && _demoData.dashboard.assignments) || []).filter(function (a) { return a.fileId === fileId; })[0] || null;
+}
+const DEMO_STUBS = {
+  getStudentDashboardData: function () { return _demoData.dashboard; },
+  getMyCompetencies:  function () { return _demoData.tabs.competencies; },
+  getMyWarmUpHistory: function () { return _demoData.tabs.warmups; },
+  getMyContext:       function () { return _demoData.tabs.context; },
+  submitWarmUpAnswer: function () { return { ok: true, savedAt: "just now (demo: nothing was saved)" }; },
+  submitWarmUpReply:  function () { return { ok: true, savedAt: "just now (demo: nothing was saved)" }; },
+  getSubmitReflection: function (fileId) {
+    const a = _demoCard(fileId);
+    return { ok: true, questions: (a && a.demoQuestions) || [] };
+  },
+  submitMyWork: function (fileId, configId, answers) {
+    _demoWalkThrough(fileId);
+    return { ok: true, aiFlowsLive: true, feedbackInComments: false, reflected: !!(answers && answers.length) };
+  }
+};
+// A google.script.run look-alike that answers from DEMO_STUBS.
+function demoRunner() {
+  let ok = function () {}, fail = function () {};
+  const r = {
+    withSuccessHandler: function (f) { ok = f; return r; },
+    withFailureHandler: function (f) { fail = f; return r; }
+  };
+  Object.keys(DEMO_STUBS).forEach(function (name) {
+    r[name] = function () {
+      const args = Array.prototype.slice.call(arguments);
+      setTimeout(function () {
+        let res;
+        try { res = DEMO_STUBS[name].apply(null, args); } catch (e) { fail(e); return; }
+        ok(res);
+      }, DEMO_DELAY_MS);
+    };
+  });
+  return r;
+}
+function scriptRun() { return DEMO ? demoRunner() : google.script.run; }
+// The demo's one server call.
+function _loadDemo() {
+  google.script.run
+    .withSuccessHandler(function (d) {
+      if (!d || d.error || !d.dashboard) { render({ error: (d && d.error) || "The demo could not be loaded." }); return; }
+      _demoData = d;
+      loadData();
+    })
+    .withFailureHandler(function () { render({ error: "The demo could not be loaded. Try refreshing." }); })
+    .getDemoDashboardData();
+}
+// After a demo Submit: waiting (submitDone), then being checked, then the
+// check's result: revise, with its "Not yet:" line. Page memory only.
+function _demoWalkThrough(fileId) {
+  const steps = (_demoData && _demoData.walkthrough) || {};
+  const apply = function (st, extra) {
+    const a = _demoCard(fileId);
+    if (!a || !st) return;
+    Object.assign(a, st, extra || {});
+    if (_lastDashData) render(_lastDashData);
+  };
+  setTimeout(function () {
+    delete _submitMsgs[fileId];
+    apply(steps.beingChecked, { canSubmit: false });
+  }, 1500);
+  setTimeout(function () {
+    const a = _demoCard(fileId);
+    _submitMsgs[fileId] = { ok: true, text: "Demo: the check is done. In the real dashboard the feedback is now in the student's document." };
+    apply(steps.revise, { canSubmit: true, lastEval: "just now", notYet: (a && a.demoNotYet) || "" });
+  }, 4500);
+}
+function demoOpenDoc(btn) {
+  _demoNotes[btn.getAttribute("data-file")] = "In the real dashboard this opens the student's document.";
+  if (_lastDashData) render(_lastDashData);
+}
+
 // A round-trip that happens to finish in well under this many ms would
 // otherwise flash the spinner on and off almost instantly, which reads as
 // a glitch rather than "fast." Holding it up for a floor of MIN_SPINNER_MS
@@ -1635,6 +2048,7 @@ function _afterMinSpinnerDelay(shownAt, myGen, fn) {
 }
 
 function loadData() {
+  if (DEMO && !_demoData) { _loadDemo(); return; }
   const refreshBtn = document.getElementById("refresh-btn");
   // The generation counter already prevents a stale response from ever
   // rendering, so rapid re-clicks never glitch the UI — but they still fire
@@ -1671,7 +2085,7 @@ function loadData() {
     shownSpinnerAt = Date.now();
   }
 
-  google.script.run
+  scriptRun()
     .withSuccessHandler(function(data) {
       if (myGen !== _loadGen) return; // a newer request already superseded this one
       // The first automatic call sends term === "" so the server's
@@ -1863,7 +2277,10 @@ function cardHtml(a) {
   const primary = primaryActionFor(a);
   const cls = (p) => "act " + (p ? "act-primary" : "act-secondary");
   const doc = safeDocUrl(a.docUrl);
-  const docBtn = doc
+  // The demo has no document: its button shows a note instead.
+  const docBtn = DEMO
+    ? \`<button type="button" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${primary === "view" ? "View feedback" : "Open My Document"}</button>\`
+    : doc
     ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}">\${primary === "view" ? "View feedback" : "Open My Document"} ↗</a>\`
     : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>';
   const submitBtn = a.canSubmit && !_reflect[a.fileId]
@@ -1886,6 +2303,7 @@ function cardHtml(a) {
     <div class="card-actions">
     \${primary === "submit" ? submitBtn + docBtn : docBtn + submitBtn}
     </div>
+    \${DEMO && _demoNotes[a.fileId] ? \`<div class="demo-note" role="status">\${esc(_demoNotes[a.fileId])}</div>\` : ""}
     \${a.canSubmit && _reflect[a.fileId] ? reflectFormHtml(a) : ""}
     \${_submitMsgs[a.fileId]
       ? \`<div class="submit-msg \${_submitMsgs[a.fileId].ok ? "ok" : "err"}" role="status">\${esc(_submitMsgs[a.fileId].text)}</div>\`
@@ -1959,7 +2377,7 @@ function showTab(tab) {
 function _loadTab(tab) {
   const panel = document.getElementById("panel-" + tab);
   panel.innerHTML = '<div class="spinner"></div><p style="text-align:center;color:var(--text-secondary)">Loading…</p>';
-  google.script.run
+  scriptRun()
     .withSuccessHandler(function (d) { _tabData[tab] = d; renderTab(tab); })
     .withFailureHandler(function (e) {
       panel.innerHTML = '<p style="color:#b3261e;padding:16px 0">Could not load this. ' + esc((e && e.message) || "") + '</p>';
@@ -2222,7 +2640,7 @@ function saveWarmUp(btn) {
       msgEl.textContent = _wuMsgs[key].text;
     }
   };
-  google.script.run
+  scriptRun()
     .withSuccessHandler(finish)
     .withFailureHandler(function () { finish(null); })
     [kind === "answer" ? "submitWarmUpAnswer" : "submitWarmUpReply"](id, text);
@@ -2254,7 +2672,7 @@ function submitWork(btn) {
   // First ask whether this submit needs the reflection questions. The
   // server runs the same checks as a submit, so a doc with too little
   // writing says so before any question is asked.
-  google.script.run
+  scriptRun()
     .withSuccessHandler(function(res) {
       if (res && res.ok && res.questions && res.questions.length) {
         _reflect[fileId] = { configId: configId, questions: res.questions, answers: [], msg: "" };
@@ -2330,7 +2748,7 @@ function sendReflection(btn) {
 }
 
 function sendSubmit(fileId, configId, answers) {
-  google.script.run
+  scriptRun()
     .withSuccessHandler(function(res) { submitDone(fileId, configId, res); })
     .withFailureHandler(function() { submitDone(fileId, configId, null); })
     .submitMyWork(fileId, configId, answers);
@@ -2454,6 +2872,7 @@ function renderMyInfo(data) {
       );
       return \`<div class="info-card">
         <div class="info-row"><b>Name:</b> \${esc(a.studentName || "(not on file)")}</div>
+        \${a.studentId ? \`<div class="info-row"><b>Student ID:</b> \${esc(a.studentId)}</div>\` : ""}
         <div class="info-row"><b>Class:</b> \${esc(a.className)}</div>
         <div class="info-row"><b>Period:</b> \${esc(a.period || "(not on file)")}</div>
         <div class="info-row"><b>Teacher:</b> \${esc(a.teacherName || "(not on file)")}</div>

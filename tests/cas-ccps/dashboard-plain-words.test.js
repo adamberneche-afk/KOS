@@ -125,7 +125,8 @@ test('after a successful Submit, the card says it is waiting and Submit is gone'
     getSubmitReflection() { handler({ ok: true, questions: [] }); },
     submitMyWork() { handler({ ok: true, aiFlowsLive: true, feedbackInComments: true }); },
   };
-  const ctx = { google: { script: { run: runner } }, _submitMsgs: {}, _dashCache: {}, _reflect: {}, renders: 0,
+  // scriptRun() is the page's google.script.run (or, on the demo page, its stubs).
+  const ctx = { google: { script: { run: runner } }, scriptRun: () => runner, _submitMsgs: {}, _dashCache: {}, _reflect: {}, renders: 0,
     _lastDashData: { assignments: [card, other] } };
   ctx.render = () => { ctx.renders++; };
   vm.runInNewContext(student.slice(start, end), ctx);
