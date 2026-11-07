@@ -20,6 +20,11 @@
 // A finding that is a deliberate placeholder goes in allow.json by its hash,
 // after a person has looked at the line. Decision on 2026-10-19: the repo
 // stays public, after a scrub of the tree and its history and this check.
+//
+// Staff addresses (since 2026-11-07): a name-shaped address at the district
+// domain (first_last@, first.last@) is a staff-email finding unless
+// staff-allow.json lists it. That file names the addresses that may stay
+// (the operator's own, synthetic test ones) in plain text, with a reason.
 
 const fs = require('fs');
 const path = require('path');
@@ -42,16 +47,35 @@ const KINDS = [
   { kind: 'student-email', re: /[A-Za-z0-9._%+-]+@student\.ccpsnet\.net/gi },
   // An ID-shaped address (six or more digits before the @), any domain.
   { kind: 'id-shaped-email', re: /\b\d{6,}@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/g },
+  // A district staff account: a name-shaped local part (two runs of letters
+  // joined by _ or .) directly at the district domain, so a student address
+  // (@student.ccpsnet.net) and a role or test one (teacher@, admin@) do not
+  // match. Colleagues' names and addresses don't belong in this repo either.
+  { kind: 'staff-email', re: /\b[A-Za-z]{2,}(?:[._][A-Za-z]{2,})+@ccpsnet\.net\b/gi },
 ];
 
 const hash = (s) => crypto.createHash('sha256').update(String(s).toLowerCase()).digest('hex').slice(0, 12);
 
 function loadAllow() {
+  let set;
   try {
     const a = JSON.parse(fs.readFileSync(path.join(__dirname, 'allow.json'), 'utf8'));
-    return new Set((a.allow || []).map((x) => x.hash));
+    set = new Set((a.allow || []).map((x) => x.hash));
   } catch (e) {
-    return new Set();
+    set = new Set();
+  }
+  loadStaffAllow().forEach((h) => set.add(h));
+  return set;
+}
+
+// staff-allow.json: {addresses: [{address, why}]}. Each listed address is
+// allowed by its hash, the same way allow.json's entries are.
+function loadStaffAllow(file = path.join(__dirname, 'staff-allow.json')) {
+  try {
+    const a = JSON.parse(fs.readFileSync(file, 'utf8'));
+    return (a.addresses || []).filter((x) => x && x.address).map((x) => hash(x.address));
+  } catch (e) {
+    return [];
   }
 }
 
@@ -400,6 +424,6 @@ function main(argv) {
 
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 module.exports = {
-  scanText, hash, KINDS, loadRoster, scanLogCalls,
+  scanText, hash, KINDS, loadRoster, scanLogCalls, loadAllow, loadStaffAllow,
   scanContainer, zipEntries, stripTags, scanTree, formatNotRead, crc32, MEMBER_CAP,
 };

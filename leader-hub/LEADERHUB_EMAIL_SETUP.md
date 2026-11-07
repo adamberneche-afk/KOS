@@ -151,7 +151,7 @@ Create these filters (repeat for each):
 
 | From / Subject contains | Action |
 |------------------------|--------|
-| From: `ms.green@ccpsnet.net` (or your supervisor's address) | Apply label: LeaderHub |
+| From: your supervisor's address | Apply label: LeaderHub |
 | From: `@ccpsnet.net` + Subject: `deadline` | Apply label: LeaderHub |
 | From: `@ccpsnet.net` + Subject: `field trip` | Apply label: LeaderHub |
 | From: `@ccpsnet.net` + Subject: `DECA` | Apply label: LeaderHub |
@@ -176,7 +176,7 @@ Examples:
 - `LH: deca submit updated roster by Friday`
 - `LH: trips permission slips due March 20`
 - `LH: store reorder poster board`
-- `LH: ms green wants lesson plans by end of week`
+- `LH: supervisor wants lesson plans by end of week`
 
 The text after `LH:` becomes the task. If a date is mentioned, it becomes a deadline. The role (deca / trips / store / etc.) is inferred from keywords automatically.
 
@@ -203,7 +203,7 @@ The script uses pattern matching — no AI. When an email with the LeaderHub lab
 
 | Pattern | What it creates |
 |---------|----------------|
-| From Ms. Green | 👩‍💼 high-urgency task, always |
+| From your supervisor | 👩‍💼 high-urgency task, always |
 | From admin/principal | 🏫 admin task |
 | Subject: field trip / blackout / TripTracker | 🚌 trips role |
 | Subject: deadline / due by / action required | ⏰ with extracted date |

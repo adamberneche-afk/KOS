@@ -164,7 +164,7 @@ Verified genuinely personal, copied into the new Personal Media folder. Once you
 - Copy of IMG_1324-1327.HEIC (x4)
 - IMG_0189-0192.HEIC (x4)
 - IMG_7710.MOV, IMG_7711.MOV, IMG_7718.MOV, IMG_7725.MOV, IMG_7726.MOV
-- Calder Adverb.MOV, IMG_4031.PNG, IMG_1520.jpg, IMG_3479.JPG, IMG_3364.MOV
+- one .MOV titled with a first name (withheld), IMG_4031.PNG, IMG_1520.jpg, IMG_3479.JPG, IMG_3364.MOV
 - At least one more unpulled page of root-level results beyond what's been checked
 
 ---
@@ -190,7 +190,7 @@ Verified by actually downloading and viewing (HEIC files) or OCR-checking (PNG/J
 
 **Genuinely unverifiable (video files, 85-259MB each — too large to download/decode through available tools):**
 - IMG_7710.MOV, IMG_7711.MOV, IMG_7718.MOV, IMG_7725.MOV, IMG_7726.MOV (all same day, May 20 2023)
-- Calder Adverb.MOV (cryptic name, could be a student project or personal — genuinely unknown)
+- one .MOV titled with a first name, withheld here (cryptic name, could be a student project or personal — genuinely unknown)
 - IMG_3364.MOV (2018)
 
 This is the end of what's verifiable with available tools. The 7 videos above would need manual review — right-click and preview them directly in Drive.

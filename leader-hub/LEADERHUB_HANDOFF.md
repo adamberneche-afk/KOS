@@ -154,14 +154,14 @@ LP_C_COLORS / LP_C_LABELS — Course color palette and labels
 | P100 | OVERDUE deadlines (`_isActionable` filter) | role-based | — |
 | P95 | Obs follow-up (excludes `outcome='resolved'`) | lessons | — |
 | P90 | Due ≤3d deadlines (`_isActionable`) | role-based | — |
-| P88 | Green meeting TODAY | dashboard | `openDSP` |
+| P88 | supervisor meeting TODAY | dashboard | `openDSP` |
 | P87 | Trip incomplete + submit deadline ≤7d | trips | — |
 | P85 | Low stock inventory | wbl | — |
 | P84 | Slips not returned + trip ≤7d | slips | — |
 | P82 | PLC meeting TODAY | dashboard | `logPLC` |
 | P80 | Synergy grades overdue (>14d stale) | lessons | — |
 | P75 | WBL unsigned agreements | wbl | — |
-| P72 | Green meeting in 1–5d | dashboard | `openDSP` |
+| P72 | supervisor meeting in 1–5d | dashboard | `openDSP` |
 | P72 | Canvas staleness (>7d) | lessons | — |
 | P70 | Due ≤7d deadlines (`_isActionable`) | role-based | — |
 | P65 | Yesterday's avoided task (from journal cron) | dashboard | — |
@@ -170,7 +170,7 @@ LP_C_COLORS / LP_C_LABELS — Course color palette and labels
 | P55 | Journal not done (`isSchoolDay` gated) | dashboard | — |
 | P0 | All caught up | lessons | — |
 
-**`_isActionable`** filter: excludes `cal_*` (calendar info), `dl_green` (Green meetings), `dl_plc` (PLC meetings) from P100/P90/P70 signals. These are tracked separately and never fire as "overdue."
+**`_isActionable`** filter: excludes `cal_*` (calendar info), `dl_green` (supervisor meetings), `dl_plc` (PLC meetings) from P100/P90/P70 signals. These are tracked separately and never fire as "overdue."
 
 **Snooze:** `choiceSnooze(idx, encodedText)` — 4-hour snooze via `CHOICE_SNOOZED` array in LS.
 
@@ -301,15 +301,15 @@ When adding any new data-mutating function, **always add `refreshNextAction()` a
 
 | Days | ID | Title |
 |------|----|-------|
-| +2d | `dl_green3` | Meeting w/ Ms. Green (DSP check-in) |
+| +2d | `dl_green3` | Meeting w/ supervisor (DSP check-in) |
 | +6d | `dl4` | SBE Business Plan — Principal Sign-Off |
 | +7d | `dl_plc_apr` | CTE PLC — Monthly Meeting |
 | +9d | `dl_syn3` | Synergy Grades — 2-Week Update Due |
 | +13d | `dl5` | Field Trip Form Submission Deadline |
-| +16d | `dl_green4` | Meeting w/ Ms. Green (DSP check-in) |
+| +16d | `dl_green4` | Meeting w/ supervisor (DSP check-in) |
 | +16d | `dl6` | DECA ICDC Atlanta |
 | +23d | `dl_syn4` | Synergy Grades — 2-Week Update Due |
-| +30d | `dl_green5` | Meeting w/ Ms. Green (DSP check-in) |
+| +30d | `dl_green5` | Meeting w/ supervisor (DSP check-in) |
 | +36d | `dl_dsp_end` | **DSP End Date — All Standards Must Be Met** |
 
 ---

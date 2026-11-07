@@ -128,7 +128,7 @@ From any device, email yourself with subject `LH: [task text]`. Examples:
 ```
 LH: call Arlington hotel re deposit
 LH: deca send SLC roster by Friday
-LH: canvas msg Aydin Main re missing assignment
+LH: canvas msg Placeholder Student re missing assignment
 LH: esports match Midlothian Feb 14
 ```
 Role is inferred from keywords. Date is extracted if present.

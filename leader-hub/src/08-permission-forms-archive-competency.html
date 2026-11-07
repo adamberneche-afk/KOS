@@ -5,17 +5,9 @@
 // studentId — links to students[] (DECA members) or SCR_COURSES roster
 // source    — 'deca' | 'class' | 'manual'
 // first/last/phone — kept as fallback for manual entries or legacy data
-let slipRosters = {
-  1: [
-    {id:101, studentId:1,  source:'deca',   tx:'ccps',   status:'returned', notes:''},
-    {id:102, studentId:4,  source:'deca',   tx:'ccps',   status:'returned', notes:''},
-    {id:103, studentId:7,  source:'deca',   tx:'ccps',   status:'pending',  notes:'Remind Thursday'},
-    {id:104, first:'Taylor',  last:'Brooks',  source:'manual', tx:'parent', status:'returned', phone:'(804) 555-1014', notes:'Parent driving'},
-    {id:105, first:'Aisha',   last:'Johnson', source:'manual', tx:'ccps',   status:'missing',  phone:'(804) 555-1015', notes:'2nd notice sent'},
-    {id:106, studentId:3,  source:'deca',   tx:'ccps',   status:'pending',  notes:''},
-  ],
-  2: [],
-};
+// Empty by default (2026-11-07): the example rosters belonged to built-in
+// trips that no longer exist.
+let slipRosters = {};
 function persistSlips() { LS.set('lh_slip_rosters', slipRosters); }
 { const ss = LS.get('lh_slip_rosters', null); if (ss && typeof ss === 'object') slipRosters = ss; }
 
@@ -1119,43 +1111,9 @@ let tripArchive = LS.get('lh_trip_archive', []);   // {id, trip: {...full trip s
 let archiveFilter = 'all';
 let archivingTripId = null;
 
-// Pre-populate archive with the 3 completed DECA trips that have real data
-(function seedArchive() {
-  // Only seed if the archive has no entries yet (first boot only)
-  if (tripArchive.length > 0) return;
-
-  const seed = [
-    { id: trips.find(t=>t.id===3), glows:[
-        'Amtrak travel was a huge hit — students loved the train experience and it became a talking point throughout the trip.',
-        'Renaissance Arlington Capital View was an excellent venue — students felt the professional environment elevated their performance and confidence.',
-        'Regina Warriner was an outstanding co-chaperone — her rapport with students made overnight supervision smooth and low-stress.'
-      ], grow:'Permission slips and medical forms came in too close to the departure date — set a hard deadline 2 weeks before next year and send a follow-up email 5 days out.', rating:5, outcome:'exceeded', notes:'PO# 26-316-3418. Account 4280. Amtrak from Staples Mills Station — easy drop-off and pickup. Would absolutely use train transport again for Arlington route.'},
-    { id: trips.find(t=>t.id===4), glows:[
-        'Parent transportation worked perfectly for a local day trip — zero cost and parents appreciated the involvement.',
-        'Chesterfield Towne Center provided a realistic, professional competition environment that closely mirrors what students will face at SLC.',
-        'Kristen Hangey was a wonderful chaperone — students responded well to having two familiar adult faces.'
-      ], grow:'Only 15 of 23 invited students attended — need to build more urgency and excitement in the weeks before DLC. Consider a pre-competition send-off.', rating:4, outcome:'met', notes:'Contact Shannon Tual (703) 860-5000 for future DLC logistics. Job Interview topic this year: Ice Cream Innovator @ Sweet Scoops. No cost when membership is current.'},
-    { id: trips.find(t=>t.id===5), glows:[
-        'Winn Transportation was punctual and professional — bus was clean and the driver communicated well throughout the trip.',
-        'Hampton Inn North Oceanfront was a great choice — 4 to a room was manageable, beach access kept students energized, and check-in was seamless.',
-        '15 students represented Clover Hill with professionalism and competitive spirit — the chapter culture of preparation and confidence was visible throughout.'
-      ], grow:'Need to confirm SLC results faster and communicate ICDC eligibility to students and families within 48 hours of returning — the registration window opens quickly.', rating:4, outcome:'met', notes:'PO# 26-0368-2559. Bus ~$70/student (PO to Kristen at Meadowbrook). Hotel: Hampton Inn North Oceanfront, 3107 Atlantic Ave — $171/night, 4/room. Amanda Berneche was an excellent co-chaperone. AWAITING final placement results.'},
-  ].filter(e => e.id);
-
-  seed.forEach((s, i) => {
-    tripArchive.push({
-      id: Date.now() + i,
-      trip: {...s.id},
-      glows: s.glows,
-      grow: s.grow,
-      rating: s.rating,
-      outcome: s.outcome,
-      notes: s.notes,
-      archivedAt: new Date(2026, 2, 4 - (2-i)).toISOString()
-    });
-  });
-  persistTripArchive();
-})();
+// No built-in archive entries (2026-11-07). This used to seed three of
+// last season's trips on first boot, with chaperones' and contacts' names,
+// a phone number and PO numbers. The archive fills from Archive Trip only.
 
 function openArchiveModal(tripId) {
   const t = trips.find(x => x.id === tripId);

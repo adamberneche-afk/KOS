@@ -1966,7 +1966,7 @@ function buildActionQueue(){
 
     // Deposit — real CCPS Policy 7060 consequence, highest priority of the four.
     if (isSchoolDay(_rNow) && _rPastToday(14, 0) && LS.get('lh_deposit_done_date','') !== _rToday) {
-      q.push({priority:80, icon:'🏦', text:`Missed at 1:45 — deposit was due to Ms. Evans by 2 PM. Still outstanding?`,
+      q.push({priority:80, icon:'🏦', text:`Missed at 1:45 — deposit was due to the bookkeeper by 2 PM. Still outstanding?`,
         role:'store', nav:'wbl', days:0});
     }
 

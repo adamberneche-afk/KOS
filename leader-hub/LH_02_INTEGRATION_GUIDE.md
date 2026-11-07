@@ -216,10 +216,10 @@ unpaid → active → slc (DLC qualifier) → icdc (SLC Top 8) → alumni
   status:     'active',        // 'upcoming' | 'urgent' | 'active' | 'complete' | 'planned'
   cost:       '~$350/student',
   transport:  'Charter Bus...',
-  chaperones: 'Adam Berneche · Amanda Berneche',
-  po:         '26-0368-2559',
+  chaperones: 'Advisor · co-chaperone',
+  po:         '00-0000-0000',
   account:    'DECA 4280',
-  contact:    'Shannon Tual (703) 860-5000',
+  contact:    'State advisor (000) 000-0000',
   housing:    'Hampton Inn...',
   notes:      '',
 }

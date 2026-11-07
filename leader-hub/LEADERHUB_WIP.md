@@ -58,7 +58,7 @@
 **Confirmed clean (no action needed):**
 - All 12 `callAI` sites: `model` + `messages` + `system` + `max_tokens` + `data.content` parse + `catch` — verified with expanded context window
 - BELL_SCHEDULES has all 5 keys (A, B, ACT, DELAY2, EARLY3); sp-schedule dropdown matches ✓
-- `sp-reason` values match `reasonLabels` keys in both `generateSubPlan` and `emailSubPlanToNykia` ✓
+- `sp-reason` values match `reasonLabels` keys in both `generateSubPlan` and `emailSubPlanToAttendance` ✓
 - `_appBooting` set true before boot, false after — accordion guard works ✓
 - `comms-triage-banner` and `journal-locked-banner` both use safe dynamic createElement pattern ✓
 - Dashboard `overflow:auto` elements are modal overlays, not `#view-dashboard` children ✓
@@ -166,7 +166,7 @@
 
 ### Session 16 — Gmail Inbox Audit + EmailBridge Rule Expansion
 - Ran `auditInbox()` on 180-day window (~500 threads)
-- **Fixed Bug #5 (Critical):** C. White regex `cwhite` → `katherine_swhite` — had never fired
+- **Fixed Bug #5 (Critical):** the principal's rule matched an old short-form address — now the full one; had never fired
 - Added 9 new named-sender rules; 17-sender `BLAST_SENDERS` noise array; subject-pattern rules for Synergy attendance alerts, student health updates, duty swaps, athletic excusals
 - Rewrote `processInbox()` to use direct Gmail search query — no label/filter dependency
 - Normalized `deadlineDate` in `doGet` to `yyyy-MM-dd`
@@ -228,7 +228,7 @@
 | 1 | `lpFetchDoc()` used Anthropic tool use to fetch Google Drive (impossible) | Session 17 |
 | 2 | Brain Dump parse error showed misleading "check API key" message | Session 16 |
 | 4 | Forms Center slips don't auto-populate trip records | Confirmed working — was never broken |
-| 5 | EmailBridge C. White rule regex `cwhite` never matched real address | Session 16 |
+| 5 | EmailBridge principal rule regex never matched the real address | Session 16 |
 | — | CSP blocked all EmailBridge fetch calls to script.google.com | Session 17 |
 
 ---
@@ -340,7 +340,7 @@
 
 Items already built in prior sessions (7):
 - Teach/trips pulse tile percentages are dynamic (SCR coverage, trip readiness)
-- Green meeting + PLC meeting dismissal → `lh_daily_log` evidence entries
+- supervisor meeting + PLC meeting dismissal → `lh_daily_log` evidence entries
 - Workday mark-done → `lh_daily_log` entry
 - Journal not done today → priority engine signal
 - Soft confirms replaced with undo toasts (5 actions: delEv, delStu, delGoal, delSlipStudent, confirmArchive)
@@ -369,7 +369,7 @@ Built this session (9):
 ### Session 19c — Principles Audit Fixes (9 items)
 
 **Fix 1 — cal_* deadlines excluded from priority engine (P100/P90/P70)**
-Calendar reference entries (early release days, quarter ends, winter break) were firing as P100 OVERDUE every single day, burying actionable items like today's Green meeting (P88) and incomplete trip fields (P87). Introduced `_isActionable(d)` predicate that excludes `cal_*`, `dl_green`, and `dl_plc` IDs from all three deadline-driven priority tiers. These still appear in the deadline list for reference — they just don't compete for choice card real estate.
+Calendar reference entries (early release days, quarter ends, winter break) were firing as P100 OVERDUE every single day, burying actionable items like today's supervisor meeting (P88) and incomplete trip fields (P87). Introduced `_isActionable(d)` predicate that excludes `cal_*`, `dl_green`, and `dl_plc` IDs from all three deadline-driven priority tiers. These still appear in the deadline list for reference — they just don't compete for choice card real estate.
 
 **Fix 2 — generateBragEmail auto-writes to lh_brag_log**
 The DSP Report showed `Brag Emails Generated: 0` because nothing ever wrote to `lh_brag_log`. The function generated email text but never logged it. Now writes automatically on successful AI generation. `saveBragToLog()` (manual save button) still works as before; the auto-log on generation means the count is accurate even if Adam doesn't click Save.
@@ -383,7 +383,7 @@ Completing a task set `resolvedAt` correctly but wrote nothing to evidence. Now 
 **Fix 5 — saveMatch writes esports_match to lh_daily_log**
 E-sports match results were stored in `ES_MATCHES` but invisible to the DSP Report. Now writes `type:'esports_match'` with game type, opponent, and result to `lh_daily_log`.
 
-**Fix 6 — DSP Report Standard 2 shows Green meeting + PLC attendance + task completions**
+**Fix 6 — DSP Report Standard 2 shows supervisor meeting + PLC attendance + task completions**
 `lh_daily_log` was read in the gather block but `green_meeting` and `plc_meeting` entries were never surfaced in the rendered report. Added: `greenMeetings` (of 5 scheduled), `plcMeetings` (of 3 scheduled), `tasksDone`, `matchesLogged`, `tripsArchived` — all pulled from daily log by type. Standard 2 section now shows the full professional responsibility picture.
 
 **Fix 7 — _undoToast helper + 6 soft confirms replaced**
@@ -403,7 +403,7 @@ Already built in a prior session: `"✅ 4 tasks sorted → 2 This Week · 1 Mont
 Clicking "Do This →" on a choice card now writes `type:'choice_picked'` with the action text and role to `lh_daily_log`. This is the app's core daily interaction — every time Adam responds to a priority signal, it's now documented. DSP Report Standard 2 shows "Priority Actions Engaged: N" from this log.
 
 **Fix 2 — renderRecentWins reads full lh_daily_log this week**
-The Recent Wins strip was pulling only from `lh_tasks`. Rebuilt to read from `lh_daily_log` filtered to this week. Maps 9 event types to readable labels and icons: comms cleared, task completed, trip archived, Green meeting, PLC meeting, Workday submitted, obs prep complete, e-sports match, choice picked. Legacy task completions that predate the daily log are still shown as a fallback.
+The Recent Wins strip was pulling only from `lh_tasks`. Rebuilt to read from `lh_daily_log` filtered to this week. Maps 9 event types to readable labels and icons: comms cleared, task completed, trip archived, supervisor meeting, PLC meeting, Workday submitted, obs prep complete, e-sports match, choice picked. Legacy task completions that predate the daily log are still shown as a fallback.
 
 **Fix 3 — PLC banner extracted from checkGreenCheckinToday**
 The PLC day-of banner was nested inside `checkGreenCheckinToday()`. These are separate events on separate dates — the entanglement was semantic debt. Extracted into standalone `checkPLCToday()` with its own LS gate (`lh_plc_banner_date`). Both now live independently in `dbTick`. `checkGreenCheckinToday` no longer has any PLC logic.
@@ -477,10 +477,10 @@ The 3 functions that already had `refreshNextAction()` (`saveJournalEntry`, `qlL
 
 **File stats:** 15,182 lines | Syntax: ✅ PASS | 30 refreshNextAction() call sites
 
-### Session 19f — Audit fixes: Green meeting prep signal + goal coverage
+### Session 19f — Audit fixes: supervisor meeting prep signal + goal coverage
 
-**Fix 1 — P72 pre-Green-meeting prep signal (3–5 days before)**
-`dl_green*` IDs are excluded from `_isActionable`, which correctly prevents them from becoming OVERDUE in the choice cards. But the exclusion was total — no advance signal fired at all. The only Green meeting signal was P88 on the morning of the meeting ("TODAY — bring evidence report"), which is too late to actually prepare. Added a `greenSoon` filter that finds any `dl_green*` deadline 1–5 days away and pushes a P72 card: "Green check-in in Xd — review DSP Report & prep evidence" routing to the goals view. P72 slots between Synergy overdue (P80/P72) and standard 7-day deadlines (P70) — urgent but not alarm-level. With 4 Green meetings remaining (Mar 28, Apr 11, Apr 25, May 9), this fires from Mar 23 onward for the next meeting.
+**Fix 1 — P72 pre-supervisor-meeting prep signal (3–5 days before)**
+`dl_green*` IDs are excluded from `_isActionable`, which correctly prevents them from becoming OVERDUE in the choice cards. But the exclusion was total — no advance signal fired at all. The only supervisor meeting signal was P88 on the morning of the meeting ("TODAY — bring evidence report"), which is too late to actually prepare. Added a `greenSoon` filter that finds any `dl_green*` deadline 1–5 days away and pushes a P72 card: "Supervisor check-in in Xd — review DSP Report & prep evidence" routing to the goals view. P72 slots between Synergy overdue (P80/P72) and standard 7-day deadlines (P70) — urgent but not alarm-level. With 4 supervisor meetings remaining (Mar 28, Apr 11, Apr 25, May 9), this fires from Mar 23 onward for the next meeting.
 
 **Fix 2 — Goal stalled signal covers all 5 categories**
 The P62 goal signal was gated with `if (g.cat !== 'Leadership Development') return false`, meaning Membership Growth, Field Trip, Community Service, and DECA Competition goals were completely invisible to the priority engine regardless of their progress or staleness. Removed the category gate so all goals are scanned. Added a sort step so Leadership Development goals surface first (DSP core), then by lowest progress. The card text now includes a category tag when the goal isn't Leadership Development (e.g., `"Trip Safety Protocol [Field Trip] at 20%"`), so the category is visible in the card without navigating to the Goals view.
@@ -489,8 +489,8 @@ The P62 goal signal was gated with `if (g.cat !== 'Leadership Development') retu
 
 ### Session 19f — Audit-driven fixes (2 items)
 
-**Fix 1 — P72 pre-Green-meeting prep signal**
-`dl_green*` entries were filtered from `_isActionable`, meaning Green meetings with Ms. Green never surfaced in choice cards until the morning of (P88). With 4 meetings remaining at 56 days, Adam had no advance prep prompt. Added P72 signal that fires 1–5 days before any `dl_green*` deadline: "Green check-in in Xd — review DSP Report & prep evidence." Nav: `dashboard` + `action:'openDSP'` — clicking "Do This →" navigates to the dashboard and immediately opens the DSP Report modal so Adam can review his evidence before the meeting. Also added `action:'openDSP'` handler to `choicePick()` alongside the existing `action:'logPLC'` handler. Priority 72 sits between Synergy overdue (P80/P72) and standard 7-day deadlines (P70) — urgent but not panic.
+**Fix 1 — P72 pre-supervisor-meeting prep signal**
+`dl_green*` entries were filtered from `_isActionable`, meaning supervisor meetings never surfaced in choice cards until the morning of (P88). With 4 meetings remaining at 56 days, Adam had no advance prep prompt. Added P72 signal that fires 1–5 days before any `dl_green*` deadline: "Supervisor check-in in Xd — review DSP Report & prep evidence." Nav: `dashboard` + `action:'openDSP'` — clicking "Do This →" navigates to the dashboard and immediately opens the DSP Report modal so Adam can review his evidence before the meeting. Also added `action:'openDSP'` handler to `choicePick()` alongside the existing `action:'logPLC'` handler. Priority 72 sits between Synergy overdue (P80/P72) and standard 7-day deadlines (P70) — urgent but not panic.
 
 **Fix 2 — Goal stalled signal covers all 5 goal categories**
 Prior version filtered `g.cat !== 'Leadership Development'`, leaving Membership Growth, Field Trip, Community Service, and DECA Competition goals invisible to the priority engine. All 5 categories now covered. The two-trigger logic (progress below threshold OR stale ≥14 days) applies uniformly. With 56 days left, a DECA Competition goal at 30% or a Field Trip goal with no updates since February both surface correctly at P62.

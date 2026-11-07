@@ -1,0 +1,25 @@
+{
+  "_note": "District staff addresses (kind staff-email) that may stay in the repo, in plain text, each with a reason. Only the operator's own address and synthetic test addresses belong here; a colleague's address is replaced with a role label instead. Add {address, why}.",
+  "addresses": [
+    {
+      "address": "adam_berneche@ccpsnet.net",
+      "why": "The operator's own address: the RTP's calendar sharing (kos-personal/claude-project), the email-compose prompt's signature (leader-hub EMAIL_COMPOSE_FLOW_PROMPT.md and the generated AiPrompts.gs), a profile fixture in tests/leaderhub/config-sync.test.js, and one protocol note"
+    },
+    {
+      "address": "owner.teacher@ccpsnet.net",
+      "why": "Synthetic test address"
+    },
+    {
+      "address": "other.teacher@ccpsnet.net",
+      "why": "Synthetic test address"
+    },
+    {
+      "address": "real.teacher@ccpsnet.net",
+      "why": "Synthetic test address"
+    },
+    {
+      "address": "someone.else@ccpsnet.net",
+      "why": "Synthetic test address"
+    }
+  ]
+}

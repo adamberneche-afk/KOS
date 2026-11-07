@@ -11,6 +11,7 @@ stays public, after a scrub of the tree and its git history, and this check.
 |---|---|
 | `student-email` | any address at `student.ccpsnet.net` |
 | `id-shaped-email` | six or more digits before an `@`, any domain |
+| `staff-email` | a name-shaped district address (`first_last@` or `first.last@` at `ccpsnet.net`) not listed in `staff-allow.json` |
 | `roster-name` | with `--roster`, a full name from a Canvas export |
 
 ```
@@ -28,6 +29,20 @@ Agents never run it: a session must not receive a roster.
 data: a person has looked at the line, or the hash equals a known synthetic
 string (a run of digits at `ccpsnet.net`, say). Never put the matched text
 in it. Exit status is 1 while any finding is left.
+
+**Staff addresses (since 2026-11-07).** Colleagues' names and addresses
+don't belong in the repo either (it may be public). `staff-email` matches a
+local part of two or more letter runs joined by `_` or `.` directly at
+`ccpsnet.net`, which is the district's staff format; role and test
+addresses (`teacher@`, `admin@`, `noreply@`) and student addresses don't
+match. `staff-allow.json` lists, in plain text and each with a reason, the
+addresses that may stay: the operator's own (the RTP's calendar sharing and
+the email-compose prompt's signature need it) and a few synthetic test
+ones. A colleague's address is replaced by a role label ("the bookkeeper",
+"colleague A"), never allowlisted. The rule can't see a bare name: the
+names in the 2026-11-07 scrub were found by hand. Names removed that day
+remain in git history; `--history` reports their addresses as
+`staff-email` findings until the operator decides on a history rewrite.
 
 **CI gate (since 2026-10-20).** The `gas-lint` workflow runs the working-tree
 scan on every push and pull request, so a new student-shaped address fails

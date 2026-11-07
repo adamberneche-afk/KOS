@@ -3168,7 +3168,7 @@ function copySubPlan() {
   });
 }
 
-function emailSubPlanToNykia() {
+function emailSubPlanToAttendance() {
   const dateStr = document.getElementById('sp-date').value;
   const dateLabel = dateStr
     ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
@@ -3177,7 +3177,7 @@ function emailSubPlanToNykia() {
   const reasonLabels = { sick:'Sick Day', deca:`${(ORGANIZATIONS.deca||{}).name || 'DECA'} Trip`, conference:'Conference/PD Day', personal:'Personal Day' };
   const body = document.getElementById('sp-preview-output').textContent;
   const subject = encodeURIComponent(`Sub Plan — ${reasonLabels[reason] || reason} — ${dateLabel}`);
-  const bodyEnc = encodeURIComponent(`Hi ${PROFILE.attendanceCoordFirstName},\n\nPlease find my sub plan attached below for my absence on ${dateLabel}.\n\n---\n\n${body}\n\n---\n\nThank you,\n${PROFILE.name}`);
+  const bodyEnc = encodeURIComponent(`Hi ${PROFILE.attendanceCoordFirstName || 'there'},\n\nPlease find my sub plan attached below for my absence on ${dateLabel}.\n\n---\n\n${body}\n\n---\n\nThank you,\n${PROFILE.name}`);
   window.open(`mailto:${PROFILE.attendanceCoordEmail}?subject=${subject}&body=${bodyEnc}`);
 }
 
@@ -3201,7 +3201,7 @@ function saveSubPlanToLog() {
 
 
 // Sources: completed tasks, DECA results, trip archive, horizon email items,
-//          daily log. Four audience tones: Ms. Green, Admin, DECA Parents, Self.
+//          daily log. Four audience tones: Supervisor, Admin, DECA Parents, Self.
 // Auto-prompts Friday afternoons. Manual trigger via Tools → Weekly Wins.
 // ══════════════════════════════════════════════════════════════════════════════
 
@@ -3644,7 +3644,7 @@ function checkBragBoardPrompt() {
   if (LS.get('lh_brag_prompt_date', '') === today) return;
   LS.set('lh_brag_prompt_date', today);
   showBragBoardPromptBanner();
-  _fireNotification('🏆 Friday — Brag About Your Week', 'You did a lot this week. Generate a quick wins email for Ms. Green, Admin, or DECA parents.');
+  _fireNotification('🏆 Friday — Brag About Your Week', 'You did a lot this week. Generate a quick wins email for your supervisor, admin, or DECA parents.');
 }
 
 function showBragBoardPromptBanner() {
@@ -3656,7 +3656,7 @@ function showBragBoardPromptBanner() {
     <span style="font-size:1.3rem">🏆</span>
     <div style="flex:1">
       <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">FRIDAY — BRAG ABOUT YOUR WEEK</div>
-      <div style="font-size:.76rem;opacity:.9">You did a lot this week. Generate a quick wins email for Ms. Green, Admin, or DECA parents.</div>
+      <div style="font-size:.76rem;opacity:.9">You did a lot this week. Generate a quick wins email for your supervisor, admin, or DECA parents.</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="document.getElementById('brag-prompt-banner').remove();openBragBoard(true)"
@@ -3702,7 +3702,7 @@ const LH_TERMS = [
   ['Organizations', 'Clubs and student groups you advise, such as DECA. CTSO means Career and Technical Student Organization.', 'Organizations, CTSO, MODULES.orgs'],
   ['Three Glows & a Grow', 'A trip debrief: three things that went well and one to improve, kept in the trip archive for next year.', 'Glows / Grows'],
   ['JSON file', 'A plain-text file format LeaderHub uses to import and export courses, organizations and backups.', 'JSON'],
-  ['Sample data', 'The example trips, members and roster the app starts with. Settings → Clear Sample Data removes them.', 'Seed data'],
+  ['Sample data', 'The example members and roster the app starts with. Settings → Clear Sample Data removes them.', 'Seed data'],
 ];
 
 function _lhTermMeaning(t) {

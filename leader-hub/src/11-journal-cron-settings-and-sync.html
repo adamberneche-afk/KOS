@@ -395,7 +395,7 @@ function checkJournalAutoPrompt(){
   openJournalForced();
 }
 
-// ── 1:45 PM deposit reminder (CCPS Policy: no money overnight, deposit by 2 PM to Ms. Evans)
+// ── 1:45 PM deposit reminder (CCPS Policy: no money overnight, deposit by 2 PM to the bookkeeper)
 let _depositReminderShownDate = null;
 function checkDepositReminder(){
   const now = new Date();
@@ -430,7 +430,7 @@ function checkDepositReminder(){
 
   LS.set('lh_deposit_reminder_date', today);
   showDepositReminderBanner();
-  _fireNotification('🏦 1:45 PM — Deposit Reminder', 'CCPS Policy 7060: no money overnight. Deposit with Ms. Evans by 2:00 PM.');
+  _fireNotification('🏦 1:45 PM — Deposit Reminder', 'CCPS Policy 7060: no money overnight. Deposit with the bookkeeper by 2:00 PM.');
 }
 
 // ── Reminder banner stack ────────────────────────────────────────────────────
@@ -466,7 +466,7 @@ function showDepositReminderBanner(){
     <span style="font-size:1.3rem">🏦</span>
     <div style="flex:1">
       <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">⏰ 1:45 PM — DEPOSIT REMINDER</div>
-      <div style="font-size:.76rem">Per CCPS Policy 7060: <strong>no money overnight.</strong> All school store funds must be deposited with <strong>Ms. Evans by 2:00 PM</strong> today. Count cash, complete deposit slip, and deliver to bookkeeper before end of period.</div>
+      <div style="font-size:.76rem">Per CCPS Policy 7060: <strong>no money overnight.</strong> All school store funds must be deposited with <strong>the bookkeeper by 2:00 PM</strong> today. Count cash, complete deposit slip, and deliver to bookkeeper before end of period.</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="markDepositDone()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Deposit Done</button>
@@ -484,7 +484,7 @@ function markDepositDone(){
   // Show quick confirm toast
   const toast = document.createElement('div');
   toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#15803d;color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.82rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
-  toast.textContent = '✅ Deposit logged — funds delivered to Ms. Evans';
+  toast.textContent = '✅ Deposit logged — funds delivered to the bookkeeper';
   document.body.appendChild(toast);
   setTimeout(()=>toast.remove(), 4000);
   refreshNextAction();
@@ -994,7 +994,7 @@ const IMPROVEMENTS={
     {icon:'📈',title:'Sales Trend Charts',desc:'Line and bar charts showing daily/weekly revenue trends and best-selling categories.'},
     {icon:'📦',title:'Auto-Reorder Trigger',desc:'When stock hits threshold, a "Ready to Order" card appears on your dashboard automatically.'},
     {icon:'🧾',title:'Daily Z-Out Wizard',desc:'Guided end-of-shift process that generates the daily financial summary pre-filled.'},
-    {icon:'📄',title:'WBL Progress Report Generator',desc:'One click generates a formal WBL progress report per student ready to send to Mrs. Fagan.'},
+    {icon:'📄',title:'WBL Progress Report Generator',desc:'One click generates a formal WBL progress report per student ready to send to the WBL coordinator.'},
   ],
   esports:[
     {icon:'🎯',title:'Match Strategy Board',desc:'Pre-match planner for Smash lineup order and Mario Kart grouping with scouting notes.'},
@@ -2746,9 +2746,10 @@ function _showImportConfirmModal(count, onConfirm) {
 }
 
 // ── Clear Sample Data — Settings → Your Data ─────────────────────────────────
-// This file ships with real Adam-specific seed content in six collections
-// (trips, DECA roster, WBL roster, store inventory, DECA/leadership events,
-// goals) and — until this button existed — the only way for a new teacher
+// This file used to ship real seed content in six collections (trips,
+// DECA roster, WBL roster, store inventory, DECA/leadership events, goals);
+// since 2026-11-07 trips, events and goals start empty and the rest are
+// placeholders. Until this button existed, the only way for a new teacher
 // to start from a blank slate was deleting each record one at a time
 // through its own UI. Reloads afterward (same as lhImportBackup) so every
 // render path picks up the now-empty collections consistently instead of
@@ -3108,7 +3109,7 @@ const OBS_PREP_ITEMS = [
   // Professionalism & Records
   { key:'grades_synergy','label':'Gradebook (Synergy) grades are updated within the last 14 days',                  group:'Professionalism & Records', critical:true },
   { key:'grades_canvas', label:'Canvas assignments/materials are current and visible to students',      group:'Professionalism & Records', critical:true },
-  { key:'deposit_clear', label:'No outstanding deposits — all collections deposited to Ms. Evans',      group:'Professionalism & Records', critical:false },
+  { key:'deposit_clear', label:'No outstanding deposits — all collections deposited with the bookkeeper',      group:'Professionalism & Records', critical:false },
   { key:'deadlines_ok',  label:'No overdue CCPS forms or DECA deadlines',                               group:'Professionalism & Records', critical:false },
   // Physical environment
   { key:'room_ready',    label:'Room is organized, materials are staged, agenda visible',               group:'Instructional Readiness', critical:false },
@@ -3160,7 +3161,7 @@ function renderObsChecklist() {
     return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:#f9fafb;border:1px solid var(--border);border-radius:7px;font-size:.75rem">
       <span style="flex-shrink:0;color:var(--muted)">${o.date}</span>
       <span style="font-weight:700;color:var(--navy)">${typeLabel[o.type]||o.type}</span>
-      <span style="font-size:.75rem;color:#555">${o.observer==='green'?'Ms. Green':o.observer==='white'?'C. White':o.observer==='altizer'?'D. Altizer':'Other'}</span>
+      <span style="font-size:.75rem;color:#555">${o.observer==='green'?'Supervisor':o.observer==='white'?'Administrator B':o.observer==='altizer'?'Administrator A':'Other'}</span>
       <span style="font-size:.75rem;padding:1px 7px;border-radius:20px;font-weight:700;margin-left:auto;${st}">${o.outcome==='pending'?'⏳ Pending':o.outcome==='positive'?'✅ Positive':o.outcome==='concern'?'⚠️ Concern':'🔴 Action'}</span>
       ${o.followup?`<span style="font-size:.75rem;color:#b91c1c;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.followup}">↳ ${o.followup}</span>`:''}
       ${(o.outcome==='action'||o.outcome==='concern')?`<button onclick="resolveObsAction('${o.id}')" style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:5px;padding:1px 6px;font-size:.75rem;font-weight:700;cursor:pointer;flex-shrink:0" title="Mark follow-up complete — removes from priority queue">✅ Resolve</button>`:''}

@@ -508,10 +508,28 @@ hardcoded and not covered by any settings layer.
 
 ## Settings → Clear Sample Data
 
-Six collections ship with real Adam-specific seed content baked into the
+Six collections used to ship with real seed content baked into the
 file — Field Trips, DECA Members, DECA/Leadership Events, Goals, WBL
-Roster, and Store Inventory — and until now the only way for a new teacher
+Roster, and Store Inventory — and until this button the only way for a new teacher
 to start clean was deleting every record one at a time through its own UI.
+
+**No real people in the seed (2026-11-07).** Field Trips, Events, Goals,
+the Trip Archive and the permission-slip rosters now start empty: last
+season's built-in trips and events named colleagues and family members,
+carried a phone number and PO numbers, and on a fresh start read as
+OVERDUE. DECA Members, WBL Roster and Store Inventory keep their made-up
+placeholder rows. Profile defaults name roles, not people (Supervisor,
+Administration, a blank attendance contact, so the sub-plan email opens
+"Hi there,"); the observation and Brag Board labels read Supervisor /
+Administrator A / B, with the stored observer and tab keys
+unchanged so saved observations still match. The bookkeeper, WBL
+coordinator, transportation and district DECA contacts are named by role.
+The 2026-27 DECA and CCPS calendar deadlines are unchanged.
+The sub-plan email function is now `emailSubPlanToAttendance()`. A saved copy
+in the store (`lh_trips`, `lh_events`, `lh_goals`, `lh_trip_archive`)
+is untouched: what the operator saved stays. `LH_04_EMAIL_AUDIT.md` lists
+senders by role. `tools/student-data-scan` now fails on a name-shaped
+district staff address (see its README).
 
 Settings → Your Data has a "🧹 Clear Sample Data" button (behind the
 shared `_showConfirm()` danger dialog, matching every other destructive
@@ -601,7 +619,7 @@ import, a SOL-style course with explicit standard codes) and the
 Earlier versions of this app cited Adam's personal CCPS teacher-evaluation
 cycle ("Directed Support Plan," or "DSP") throughout — a hardcoded
 May 15, 2026 due date, "Standard 1"/"Standard 2" citations, a dedicated
-"DSP Evidence Report" export, a Green check-in countdown pill, and
+"DSP Evidence Report" export, a supervisor check-in countdown pill, and
 DSP-specific goals/deadlines/action-queue signals. None of that is
 portable to another teacher's evaluation framework (most districts don't
 use CCPS's DSP model at all, and the ones that do won't share Adam's dates
@@ -609,11 +627,11 @@ or supervisor), so it's been removed rather than made configurable:
 
 - **Deleted outright**: the DSP countdown pill and its `updateDSPCountdown()`
   function, the "DSP Evidence Report" modal and its `generateDSPReport()`/
-  `closeDSPReport()` functions (~300 lines), the Green check-in day-of
+  `closeDSPReport()` functions (~300 lines), the supervisor check-in day-of
   banner and its `checkGreenCheckinToday()`/`showGreenCheckinBanner()`/
   `logGreenMeetingAttended()` functions, the seeded DSP goals (`Leadership
   Development` category, ids 8–13) and DSP-specific deadlines (`dl_dsp_end`,
-  `dl_green2`–`dl_green5`), the action-queue "Green check-in" signals, and
+  `dl_green2`–`dl_green5`), the action-queue "supervisor check-in" signals, and
   the `green_meeting` entry in the Brag Board win-log and audience-type set.
 - **Generalized, kept the underlying feature**: the Observation Prep
   Checklist (now grouped by "Instructional Readiness" / "Professionalism &
@@ -1208,11 +1226,9 @@ four `sourceDocId` values got the same treatment — blanked/placeholder'd
 with a fill-in-locally comment, matching `TARGET_FOLDER_ID`'s existing
 convention in that same file.
 
-Deliberately NOT touched: real names/phone numbers embedded in free-text
-historical trip and event records (e.g. `row('Chaperones', 'Adam Berneche
-· Amanda Berneche')`, trip notes) — that's the app's actual archived
-content, not a hardcoded credential, and scrubbing it would mean altering
-real historical records rather than removing a secret.
+Deliberately not touched at the time: real names and phone numbers in the
+built-in trip and event records. Those records were removed on 2026-11-07
+(see Settings → Clear Sample Data above); they remain in git history.
 
 ---
 

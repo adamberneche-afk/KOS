@@ -254,7 +254,7 @@
         </div>
         <div style="display:flex;gap:.5rem;margin-top:.75rem;flex-wrap:wrap">
           <button class="btn btn-primary btn-sm" onclick="copySubPlan()" style="flex:1">📋 Copy Text</button>
-          <button class="btn btn-gold btn-sm" onclick="emailSubPlanToNykia()" style="flex:1">📬 Email to Nykia</button>
+          <button class="btn btn-gold btn-sm" onclick="emailSubPlanToAttendance()" style="flex:1">📬 Email to Attendance</button>
           <button class="btn btn-outline btn-sm" onclick="printSubPlan()">🖨 Print</button>
           <button class="btn btn-outline btn-sm" onclick="saveSubPlanToLog()">💾 Save to Log</button>
         </div>
@@ -291,7 +291,7 @@
     <!-- Audience tabs -->
     <div style="display:flex;gap:.3rem;padding:.65rem 1.1rem .45rem;background:#f8f7f4;border-bottom:1px solid var(--border);flex-wrap:wrap;align-items:center">
       <span style="font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-right:.25rem">Send to:</span>
-      <button class="email-tab active" id="brag-tab-green"   onclick="setBragTab('green',this)">👩‍💼 Ms. Green</button>
+      <button class="email-tab active" id="brag-tab-green"   onclick="setBragTab('green',this)">👩‍💼 Supervisor</button>
       <button class="email-tab"        id="brag-tab-admin"   onclick="setBragTab('admin',this)">🏫 Admin</button>
       <button class="email-tab"        id="brag-tab-parents" onclick="setBragTab('parents',this)">👨‍👩‍👧 DECA Parents</button>
       <button class="email-tab"        id="brag-tab-self"    onclick="setBragTab('self',this)">📓 My Log</button>
