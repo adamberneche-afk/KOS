@@ -41,6 +41,8 @@ Deferred decisions:
 - {question still open} (owner: {who}; blocking: {what it blocks})
 Next steps:
 - {action} (owner: {who}; by: {date or "unscheduled"})
+- DECISION (Claude Code): {build work the operator approved this session} (by: {date or "unscheduled"})
+- Proposed (Claude Code): {build work RTP suggests and the operator did not approve} (by: {date or "unscheduled"})
 Code review:
 - {item from KOS_CODE_REPLY}: {agree | disagree}: {one sentence, with the source checked} — or "none"
 Alignment:
@@ -62,6 +64,10 @@ Alignment:
   "Thresholds crossed". The pipeline counts the literal `PROCEED` there for
   the moral debt counter (SMP-019); don't write PROCEED anywhere else in
   that block.
+- **Build work for Claude Code is labelled by who decided it.** Write
+  `DECISION (Claude Code):` only for work the operator approved in this
+  session; anything RTP suggested is `Proposed (Claude Code):`. Claude
+  Code builds only the first; a Proposed item waits for the operator.
 - **Code review answers each Pushback or Needs-you item in Claude Code's
   reply once.** One round: anything still disputed goes to the operator,
   not to another round.
