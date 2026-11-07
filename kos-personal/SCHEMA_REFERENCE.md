@@ -452,6 +452,17 @@ The Vector Item Labeler flow (`25_VectorDocs.gs`, 2026-11-02).
 A label row is never rewritten by the code. The `VECTOR_*` docs list the
 items labelled PRINCIPLE or CONSTRAINT.
 
+### FIDELITY_AUDIT
+
+The randomized closeout-fidelity check (`27_FidelitySample.gs`, 2026-11-07).
+One row per session log drawn at ingestion (rate `FIDELITY_SAMPLE_RATE`,
+default 0.10): `Session_UID`, `Log_Title`, `Log_Date`, `Selected_At`,
+`Status` (REQUESTED → RECEIVED when the transcript Doc appears in
+`03.6_SESSION_TRANSCRIPTS` → COMPARED when Claude Code writes its result),
+`Transcript_Name` (`TRANSCRIPT — <Session_UID>`), `Received_At`,
+`Compared_At`, `Result` (`MATCHES` or `DIFFERS: <n>`). Claude Code writes
+only the last three cells of a RECEIVED row.
+
 ### DECISION_REGISTER
 
 Deferred decisions, one row each (`22_BriefingDocs.gs`). The intake records

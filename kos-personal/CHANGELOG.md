@@ -1,5 +1,21 @@
 # KOS Changelog
 
+### Closeout fidelity, randomized (2026-11-07)
+
+A session log is the RTP's own summary, and the raw copy ingestion keeps is
+the same text, so nothing checked a log against what was actually said. The
+operator decided two checks: Claude Code checks every closeout against its
+own exchanges (CLAUDE.md), and Apps Script draws a random 10% of logs at
+ingestion (`27_FidelitySample.gs`), after the RTP wrote them, and asks the
+operator for those sessions' full chats, which Claude Code compares. Apps
+Script keeps the audit (`FIDELITY_AUDIT`) and a daily primer line: drawn,
+compared, waiting on whom, overdue, and the observed rate against the
+configured one (`FIDELITY_SAMPLE_RATE`).
+
+Found while building it, not changed: a log submitted through the web app
+(`submitSessionLog`) never adds its PROCEED answers to the moral debt
+counter; only folder-scanned logs do.
+
 ### Where the record holds named people: listPersonalItems (2026-11-02)
 
 `listPersonalItems()` (25) lists every item the Vector Item Labeler marked

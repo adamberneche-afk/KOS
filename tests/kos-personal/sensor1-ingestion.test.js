@@ -24,6 +24,7 @@ const FILES = [
   path.join(KP, '20_VectorClassifySessions.gs'), // VECTOR_CLASSIFY session parts
   path.join(KP, '2_Ingestion_Sensors.gs'),
   path.join(KP, '23_MoralDebt.gs'),
+  path.join(KP, '27_FidelitySample.gs'), // the randomized fidelity draw at ingestion
 ];
 const EXPOSE = [
   'sensor1_scanInboundSessions', 'submitSessionLog', 'submitExternalData', 'archiveStagingPipeline',
