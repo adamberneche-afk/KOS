@@ -966,6 +966,11 @@ function generateDailyPrimer() {
     const blocks = _primerBlocks_(_onboardingStatusLine_(props), vision, vectorState, shadowState, quality);
     // SMP-019: the moral debt counter, under the onboarding line (23_MoralDebt.gs).
     blocks.splice(1, 0, { kind: 'p', text: moralDebtLine_(props, now) });
+    // The randomized fidelity check (27_FidelitySample.gs): what's waiting, on
+    // whom. A failure here is reported and never holds back the primer.
+    try { blocks.splice(2, 0, { kind: 'p', text: fidelityLine_(now) }); } catch (fsErr) {
+      _reportError('generateDailyPrimer:fidelity', fsErr, null);
+    }
     const title  = 'DAILY PRIMER — ' + dateStr;
     const stamp  = _briefingStamp_(now, 'generateDailyPrimer');
 

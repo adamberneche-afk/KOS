@@ -97,6 +97,7 @@ never silent: accepted items are listed too. One page, plain text:
     BUILT: PRs merged this week, one line each; what is merged but not pushed
     PUSHBACK STILL OPEN, with both positions
     RTP HARNESS NOTES added this week
+    FIDELITY: (a) findings this week; (b) drawn / compared / overdue, from the primer's Fidelity line
     NEXT WEEK: the plan's window for the coming week, from the plan
 
 Same rules as the plan: no log text, no names, no Drive IDs. If no log
@@ -109,6 +110,40 @@ in Drive it writes only `KOS_WEEKLY_REVIEW`; it never opens CAS or
 LeaderHub files (the Central Ledger, the dashboards' sheets, student
 docs), the same boundary the RTP works under. Building stays in sessions
 the operator starts.
+
+## Closeout fidelity (decided 2026-11-07)
+
+A log is the RTP's own distillation, so it can't be checked against
+itself; the chat the operator pastes ahead of it can. Two checks:
+
+- **(a) Every log.** Check the closeout against the log's own exchanges:
+  every `DECISION:` line appears under "Decisions made"; no
+  Claude Code item labelled `DECISION` lacks an exchange where the operator
+  approved it; thresholds and pauses in the exchanges appear under
+  Alignment; nothing in the closeout is stronger, softer or newer than
+  the exchanges behind it.
+- **(b) A random 10%, drawn by Apps Script** (`27_FidelitySample.gs`) when
+  the log is ingested, after the RTP wrote it. A drawn log is a
+  `FIDELITY_AUDIT` row in BRAIN_TRUST_INDEX. The operator pastes the whole
+  chat with the log at its end, so the transcript is the raw copy,
+  `[RAW]_<Session_UID>` in `03.4_RAW_EXHAUST` (the row's
+  `Transcript_Name`), and the row starts RECEIVED. Only a log pasted
+  without its chat asks for a Doc named `TRANSCRIPT — <Session_UID>` in
+  `03.6_SESSION_TRANSCRIPTS`, and turns RECEIVED when it arrives. For each
+  RECEIVED row, first list the log's exchanges with no chat behind them
+  (a paste can skip the middle of a chat), then compare the rest: what the
+  log omits, softens or gets wrong. Then, through the Sheets connector,
+  write only that row's `Compared_At`, `Result` (`MATCHES`,
+  `DIFFERS: <n>`, and `PARTIAL: <k> of <n> exchanges covered` when chat
+  is missing, e.g. `PARTIAL: 6 of 48 exchanges covered; MATCHES`) and
+  Status `COMPARED`. Never write any other cell, row or tab. A partial
+  copy is a finding too: the closeout for the uncovered exchanges went
+  unchecked.
+
+Findings from either go under "RTP harness notes" (no log or transcript
+text in the repo); a material one is also a Needs-you line. The daily
+primer reports what waits on whom and what's overdue; the weekly review
+carries the counts.
 
 ## The logs as data about the RTP itself
 

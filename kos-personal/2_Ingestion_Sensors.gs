@@ -172,6 +172,11 @@ function sensor1_scanInboundSessions() {
         try { recordMoralDebt_(rawText, new Date()); } catch (mdErr) {
           _reportError('sensor1:moralDebt:' + file.getName(), mdErr, null);
         }
+        // The randomized fidelity draw (27_FidelitySample.gs), after the RTP
+        // wrote the log, so it can't know which logs are checked.
+        try { sampleSessionLogForFidelity_(logUUID, rawText, new Date()); } catch (fsErr) {
+          _reportError('sensor1:fidelity:' + file.getName(), fsErr, null);
+        }
 
         // Move source to _PROCESSED — excluded from all future scans
         file.moveTo(processedFolder);
@@ -304,6 +309,9 @@ function submitSessionLog(text) {
     _archiveRawLog_(rawFolder, '[RAW]_' + logUUID, rawText);
 
     const chunksQueued = _chunkAndQueue(rawText, 'SESSION_LOG', logUUID, rawFolder, staging, ss);
+    try { sampleSessionLogForFidelity_(logUUID, rawText, new Date()); } catch (fsErr) {
+      _reportError('submitSessionLog:fidelity', fsErr, null);
+    }
     SpreadsheetApp.flush();
 
     return {
