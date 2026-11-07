@@ -261,10 +261,10 @@ test('Student Dashboard: one filled button per card, chosen by its status', () =
   const { ctx } = studentPage(exported);
   const filled = (a) => {
     const h = ctx.cardHtml(a);
-    const m = h.match(/<(a|button)[^>]*class="act act-primary[^"]*"[^>]*>([^<]*)</g) || [];
+    const m = [...h.matchAll(/<(?:a|button)[^>]*class="act act-primary[^"]*"[^>]*>([^<]*)</g)];
     assert.equal(m.length, 1, 'exactly one primary on ' + a.configId);
     assert.equal((h.match(/act-secondary/g) || []).length, (h.match(/class="act /g) || []).length - 1);
-    return m[0].replace(/<[^>]*>/, '').replace(/<$/, '').trim();
+    return m[0][1].trim();
   };
   assert.equal(filled(by.A2), 'Open My Document ↗', 'not started: open the doc');
   assert.equal(filled(by.A4), 'Open My Document ↗', 'being checked: open the doc');
