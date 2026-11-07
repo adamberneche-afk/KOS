@@ -24,7 +24,7 @@ const JOBS = ['bridgeQueue', 'runStagingTurnstile', 'buildFlowInputRows', 'harve
 function setup(installed) {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('64_LedgerCycle.js')],
     ['runLedgerCycle', 'installLedgerCycle', 'previewLedgerCycle', 'restoreLedgerTriggers', 'lcRecordedJobs_',
-      'installRegistrationTrigger', 'installAlignmentBackfillTrigger', 'lcFailingJobs_']);
+      'installRegistrationTrigger', 'installAlignmentBackfillTrigger', 'installPartUnlocks', 'lcFailingJobs_']);
   const calls = [];
   JOBS.forEach((fn) => { env.sandbox[fn] = () => calls.push(fn); });
   (installed || JOBS).forEach((fn) => env.sandbox.ScriptApp.newTrigger(fn).timeBased().everyMinutes(5).create());
@@ -130,6 +130,21 @@ test('the two installers add their job to an installed cycle, once, with no trig
     ['bridgeQueue', 'registerDeliveredWarmUps', 'runAlignmentLogBackfill_']);
   assert.deepEqual(env.handlers(), ['runLedgerCycle']);
   assert.ok(env.exported.runLedgerCycle().ran.includes('runAlignmentLogBackfill_'));
+});
+
+// installPartUnlocks moved here from 68 (2026-11-07): 68 is also in the
+// Teacher Dashboard project, which has no lcInstallJob_.
+test('installPartUnlocks adds unlockReadyParts to the cycle, or its own trigger without one', () => {
+  const env = setup(['bridgeQueue']);
+  env.sandbox.unlockReadyParts = () => {};
+  env.exported.installLedgerCycle();
+  env.exported.installPartUnlocks();
+  assert.deepEqual(JSON.parse(env.props.getProperty('LEDGER_CYCLE_JOBS')),
+    ['bridgeQueue', 'registerDeliveredWarmUps', 'unlockReadyParts']);
+  assert.deepEqual(env.handlers(), ['runLedgerCycle']);
+  const bare = setup([]);
+  bare.exported.installPartUnlocks();
+  assert.deepEqual(bare.handlers(), ['unlockReadyParts']);
 });
 
 test('without the cycle, an installer gives the job its own 5-minute trigger, once', () => {

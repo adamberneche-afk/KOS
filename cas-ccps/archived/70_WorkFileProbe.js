@@ -1,5 +1,6 @@
 // =============================================================================
 // FILE: 70_WorkFileProbe.js
+// ARCHIVED 2026-11-07: a one-shot probe, run 2026-11-01; its answers are in meta/STUDENT_WORK_PLAN_2026-10.md §5. Not deployed or linted.
 // BOUND TO: Central Ledger spreadsheet (cas-ccps:central-ledger)
 // TRIGGERS: none. Run probeWorkFileTypes() from the editor, once.
 //

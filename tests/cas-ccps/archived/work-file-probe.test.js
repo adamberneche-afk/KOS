@@ -1,4 +1,5 @@
 'use strict';
+// ARCHIVED 2026-11-07 with 70_WorkFileProbe.js (cas-ccps/archived/). Not in npm test; run by hand: node --test tests/cas-ccps/archived/work-file-probe.test.js
 // The Phase 4 design check (70_WorkFileProbe.js): what Apps Script reads back
 // from a Form, a Slides deck and a Sheet. Live answers come from the operator's
 // run; these tests pin what each reader captures and how an answer is
@@ -8,9 +9,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFiles } = require('../harness/gas-sandbox');
+const { loadGasFiles } = require('../../harness/gas-sandbox');
 
-const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
+const S = (f) => path.join(__dirname, '..', '..', '..', 'cas-ccps', f === '70_WorkFileProbe.js' ? 'archived' : 'scripts', f);
 const NAMES = ['_wfpReadForm_', '_wfpReadSlides_', '_wfpReadSheet_', '_wfpRevisions_', '_wfpCopy_', '_wfpRun_', '_wfpRow_'];
 const load = (extra) => loadGasFiles([S('00_SharedConfig.js'), S('70_WorkFileProbe.js')], NAMES, extra || {}).exported;
 

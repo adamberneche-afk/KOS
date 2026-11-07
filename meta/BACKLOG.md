@@ -153,7 +153,7 @@ the dead-ends audit's backlog fixes):
   monitoring covers policy; no students excluded. The revisionProbe ran on
   10-18 (`cas-ccps/HISTORY.md`): paste detection from revision history isn't
   possible, so this is the lean collector, D4 in `PLAN_2026-11.md`. The
-  Phase 4 probe (`70_WorkFileProbe.js`) adds whether Forms, Slides and
+  Phase 4 probe (`70_WorkFileProbe.js`, run 2026-11-01, archived 2026-11-07) adds whether Forms, Slides and
   Sheets list revisions.
   [`CAS_COGNITIVE_EXHAUST_2026-10-16.md`](./CAS_COGNITIVE_EXHAUST_2026-10-16.md).
 - **PRD research-pivot requirements past Phase 0.** Measurement, pedagogy

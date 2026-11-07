@@ -259,6 +259,14 @@ function installAlignmentBackfillTrigger() {
   return lcInstallJob_("runAlignmentLogBackfill_");
 }
 
+/** unlockReadyParts (68): in the cycle, or its own trigger without one.
+ *  Here, not in 68, since 2026-11-07: 68 is also in the Teacher Dashboard
+ *  project, which has no Ledger cycle (lcInstallJob_ isn't there). The
+ *  Ledger is no web app, so like its siblings it needs no owner guard. */
+function installPartUnlocks() {
+  return lcInstallJob_("unlockReadyParts");
+}
+
 // Adds one LC_JOBS job to the cycle's recorded jobs when the cycle is
 // installed (a trigger of its own would make the cycle leave it alone),
 // otherwise gives it its own trigger at its cadence. Safe to run again.

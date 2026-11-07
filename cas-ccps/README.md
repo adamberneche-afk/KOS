@@ -474,7 +474,7 @@ part when the lesson comes up: Part 1 is shared on its release night like
 any lesson, the rest are made unshared (`SCHEDULED`). A part unlocks for a
 student when their latest check of the part before found that part's
 primary MET (`CompetencyEvidence`): `unlockReadyParts()`, a Ledger cycle job
-every 5 minutes (`installPartUnlocks()` adds it), shares the next part and
+every 5 minutes (`installPartUnlocks()`, in `64`, adds it), shares the next part and
 sets it `ACTIVE`, the same as a release. The teacher can unlock a student's
 next part from the Teacher Dashboard (`unlockStudentPart`). Each unlock is a
 `PartUnlocks` row (the student's workspace ConfigID, the part, and
@@ -502,19 +502,14 @@ lesson, and the warm-up answer rate (`WarmUpQueue`'s `delivered_at` /
 overnight email (34c) runs it once a day and adds one line: this week's
 checks and failure rate against D8's bar of 1 in 20. Counts only.
 
-`70_WorkFileProbe.js` (Central Ledger, 2026-11-01) is Phase 4's design check
-(the student work plan, §5). `probeWorkFileTypes()`, run once from the
-editor, does three things:
-- It makes a scratch form, deck and sheet shaped like the lessons' tasks,
-  in a "CAS work file probe (delete me)" folder.
-- It reads each one back as a Form, Slides or Sheets reader would, and
-  records whether Drive lists its revisions and whether a Drive copy keeps
-  what the template set.
-- It writes one answer per question to the `WorkFileProbe` tab, then trashes
-  the scratch files. `{ keep: true }` leaves them.
-
-It never opens a student's file or a form's responses. The Ledger's manifest
-gained the Forms scope for it.
+`70_WorkFileProbe.js` (2026-11-01), Phase 4's one-shot design check
+(`probeWorkFileTypes()`: what Apps Script reads back from a form, a deck and
+a sheet), ran once on 2026-11-01; its answers are in the student work plan,
+§5. **Archived 2026-11-07** to `cas-ccps/archived/` (`archived/README.md`):
+no longer in the Central Ledger project, so the next push removes it there.
+Its test is `tests/cas-ccps/archived/work-file-probe.test.js`, run by hand.
+The Ledger keeps its Forms scope for the Phase 4 Form reader (Nov 9), so
+there is no second consent prompt; gas-lint warns it is unused until then.
 
 On the dashboards (Phase 3c, 2026-10-28) a lesson in parts is one lesson.
 The Teacher Dashboard shows one row per student on their furthest open

@@ -290,8 +290,8 @@ reads a doc now, so Studio's flow changes only in where it reads.
 - Images aren't described in the snapshot; a design judged on how it looks
   stays with the teacher unless Flow 2 can take images (not checked).
 
-**The design check (2026-11-01).** `probeWorkFileTypes()` (`70_WorkFileProbe.js`,
-run once from the Central Ledger's editor) makes a scratch form, deck and
+**The design check (2026-11-01).** `probeWorkFileTypes()` (`70_WorkFileProbe.js`, retired 2026-11-07 to
+`cas-ccps/archived/`, run once from the Central Ledger's editor) makes a scratch form, deck and
 sheet shaped like the lessons' tasks, reads each back as a reader would,
 and writes one answer per question to the Ledger's `WorkFileProbe` tab.
 

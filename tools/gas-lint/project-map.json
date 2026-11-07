@@ -89,8 +89,7 @@
       "cas-ccps/scripts/66_LessonDoc.js",
       "cas-ccps/scripts/67_AgendaDeck.js",
       "cas-ccps/scripts/68_LessonParts.js",
-      "cas-ccps/scripts/69_EvaluationHealth.js",
-      "cas-ccps/scripts/70_WorkFileProbe.js"
+      "cas-ccps/scripts/69_EvaluationHealth.js"
     ]
   },
   "cas-ccps:unified-manual": {
@@ -224,6 +223,7 @@
   ],
   "_note_on_15b": "15b_StudioFlowPrompts_Flow2_Revised.js moved OUT of the excluded list above and into cas-ccps:central-ledger's real files (external product review, Finding 3) \u2014 it's now loaded into that live GAS project so 15c_Flow2DirectEvaluationService.js can reference FLOW_2_SYSTEM_PROMPT directly. This does NOT mean Flow 2 itself is deployed in Studio \u2014 it still isn't (see cas-ccps/README.md). 15b's own header comment explains the distinction.",
   "_archived_not_linted": [
-    "kos-personal/archive/studio-steps/ \u2014 kos-personal's two custom Workspace Studio steps (WriteCuratorOutputStep, WriteClassificationOutputStep), archived 2026-09-29. The org-wide GCP block means custom steps can never be installed on this account, and 12_StudioReturnHarvest.gs replaced them. Kept for reference and still covered by tests/kos-personal/write-*-step.test.js; not a deployable project, so gas-lint, clasp-sync and deploy-drift ignore it."
+    "kos-personal/archive/studio-steps/ \u2014 kos-personal's two custom Workspace Studio steps (WriteCuratorOutputStep, WriteClassificationOutputStep), archived 2026-09-29. The org-wide GCP block means custom steps can never be installed on this account, and 12_StudioReturnHarvest.gs replaced them. Kept for reference and still covered by tests/kos-personal/write-*-step.test.js; not a deployable project, so gas-lint, clasp-sync and deploy-drift ignore it.",
+    "cas-ccps/archived/70_WorkFileProbe.js \u2014 the Phase 4 design check (probeWorkFileTypes), archived 2026-11-07 after its one run (2026-11-01; answers in meta/STUDENT_WORK_PLAN_2026-10.md \u00a75). Out of cas-ccps:central-ledger, so it is no longer pushed; its test moved to tests/cas-ccps/archived/ and is not part of npm test."
   ]
 }

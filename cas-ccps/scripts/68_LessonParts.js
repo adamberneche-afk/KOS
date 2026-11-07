@@ -14,7 +14,10 @@
 // with the student and the Ledger row set ACTIVE, the same as a release.
 //
 //   unlockReadyParts()       the Ledger cycle's job (every 5 minutes)
-//   installPartUnlocks()     puts it in the cycle (run once from the editor)
+//   installPartUnlocks()     puts it in the cycle: in 64_LedgerCycle.js
+//                            (Central Ledger only) since 2026-11-07, beside
+//                            the cycle's other installers, because this file
+//                            is in the Teacher Dashboard project too
 //   previewPartUnlocks()     what it would unlock now; changes nothing
 //   unlockNextPart_(...)     the teacher's unlock (07)
 //   foldPartRows_(students)  the Teacher Dashboard's one row per student (07)
@@ -30,7 +33,6 @@
 
 const LP_LOG_TAB = "PartUnlocks";
 const LP_LOG_HEADERS = ["UnlockedAt", "StudentConfigID", "PartConfigID", "By"];
-const LP_JOB = "unlockReadyParts";
 
 // A part is HELD BY A FAILED CHECK when the student's furthest open part's
 // last check ended in a failure that wasn't their work (the lane timed out,
@@ -214,13 +216,6 @@ function previewPartUnlocks() {
   const r = _lpReady_(SpreadsheetApp.openById(cfg.ledgerSsId), cfg);
   Logger.log("[S68] Would unlock " + r.ready.length + " part(s) now.");
   return { wouldUnlock: r.ready.length };
-}
-
-// Puts unlockReadyParts in the Ledger cycle (64), or gives it its own
-// 5-minute trigger when the cycle isn't installed. Safe to re-run.
-function installPartUnlocks() {
-  requireScriptOwner_();
-  return lcInstallJob_(LP_JOB);
 }
 
 // The Teacher Dashboard's rows (07) for lessons in parts, one per student
