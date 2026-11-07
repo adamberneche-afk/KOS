@@ -507,8 +507,8 @@ a sheet), ran once on 2026-11-01; its answers are in the student work plan,
 §5. **Archived 2026-11-07** to `cas-ccps/archived/` (`archived/README.md`):
 no longer in the Central Ledger project, so the next push removes it there.
 Its test is `tests/cas-ccps/archived/work-file-probe.test.js`, run by hand.
-The Ledger's Forms scope, which nothing else uses, went with it (gas-lint:
-unused-oauth-scope); the Phase 4 Form reader adds it back.
+The Ledger keeps its Forms scope for the Phase 4 Form reader (Nov 9), so
+there is no second consent prompt; gas-lint warns it is unused until then.
 
 On the dashboards (Phase 3c, 2026-10-28) a lesson in parts is one lesson.
 The Teacher Dashboard shows one row per student on their furthest open
