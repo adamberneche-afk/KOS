@@ -68,7 +68,7 @@ function openStudentDashboard() {
   DocumentApp.getUi().alert(
     "Your assignment dashboard",
     ids ? "Open this link and bookmark it:\n\n" + ids.serviceUrl
-        : "Your dashboard isn't set up yet. Tell your teacher.",
+        : missingDashboardText_("Your dashboard isn't set up yet. Tell your teacher."),
     DocumentApp.getUi().ButtonSet.OK
   );
 }
@@ -85,25 +85,80 @@ function openStudentDashboard() {
 // URL in the invisible system block 02 stamps, or failing that in the
 // "Your assignment dashboard:" line.
 function readSystemIds() {
+  _rejectedServiceUrl_ = false;
+  const candidates = [];
   const prop = PropertiesService.getScriptProperties().getProperty("STUDENT_DASHBOARD_URL");
-  if (prop) return { serviceUrl: prop };
+  if (prop) candidates.push(prop);
 
   try {
     const text = DocumentApp.getActiveDocument().getBody().getText();
     const sm   = text.match(SYS_SERVICE_MARKER_RE);
-    if (sm) return { serviceUrl: sm[1] };
+    if (sm) candidates.push(sm[1]);
     const dm   = text.match(/Your assignment dashboard: (https:\/\/\S+)/);
-    if (dm) return { serviceUrl: dm[1] };
+    if (dm) candidates.push(dm[1]);
   } catch (e) {
     Logger.log("readSystemIds fallback error: " + e.message);
   }
+
+  for (let i = 0; i < candidates.length; i++) {
+    const url = String(candidates[i]).trim();
+    if (isSchoolServiceUrl_(url)) return { serviceUrl: url };
+    _rejectedServiceUrl_ = true;
+    Logger.log("readSystemIds: rejected a dashboard link that isn't a school Apps Script link.");
+  }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// The dashboard link is pinned to the school's Apps Script web apps
+// ---------------------------------------------------------------------------
+// callStudentService_ sends the signed-in user's OAuth token with every
+// request, and this project's scopes include all of that user's Sheets and
+// Docs. The link it sends it to comes from the doc body, which a student can
+// edit: a changed link would hand the teacher's token to anyone the moment
+// the teacher used this menu. So a link is used only if it is one of the
+// school domain's web apps, https://script.google.com/a/macros/<domain>/s/<id>/exec
+// (the form data/deployment-urls.json records), and is checked again right
+// before each request.
+//
+// The domain is the school's account domain, STUDENT_EMAIL_DOMAIN (packaging
+// step 1, 00's SCHOOL_DEFAULTS), read straight from Script Properties like
+// the rest of this file: schoolProfile_() would try to open the Central
+// Ledger, which a student's copy can't and shouldn't.
+const SERVICE_URL_REJECTED_TEXT =
+  "This document's dashboard link isn't a school Apps Script link, so it wasn't used. Tell your teacher.";
+let _rejectedServiceUrl_ = false;
+
+function _schoolScriptDomain_() {
+  let d = "";
+  try {
+    d = PropertiesService.getScriptProperties().getProperty("STUDENT_EMAIL_DOMAIN") || "";
+  } catch (e) { d = ""; }
+  d = String(d).trim().replace(/^@/, "").toLowerCase();
+  return d || SCHOOL_DEFAULTS.STUDENT_EMAIL_DOMAIN;
+}
+
+function isSchoolServiceUrl_(url) {
+  if (typeof url !== "string") return false;
+  const domain = _schoolScriptDomain_().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp("^https://script\\.google\\.com/a/macros/" + domain + "/s/[A-Za-z0-9_-]+/exec$");
+  return re.test(url);
+}
+
+// What the menu says when there's no usable link: the rejection when a
+// link was there but refused, otherwise the doc's own "missing" line.
+function missingDashboardText_(fallback) {
+  return _rejectedServiceUrl_ ? SERVICE_URL_REJECTED_TEXT : fallback;
 }
 
 // POSTs one request to the Student Dashboard web app as the signed-in
 // student. The app identifies them from this token, never from the body.
 // Returns the app's JSON reply, or { ok: false, error } on any failure.
 function callStudentService_(ids, body) {
+  if (!ids || !isSchoolServiceUrl_(ids.serviceUrl)) {
+    Logger.log("callStudentService_: refused a dashboard link that isn't a school Apps Script link.");
+    return { ok: false, error: "BAD_SERVICE_URL" };
+  }
   try {
     const res = UrlFetchApp.fetch(ids.serviceUrl, {
       method: "post",
@@ -147,7 +202,7 @@ function runSystemCheck() {
   if (!ids) {
     ui.alert(
       "This doc isn't set up",
-      "This doc is missing the link to your assignment dashboard. Tell your teacher.",
+      missingDashboardText_("This doc is missing the link to your assignment dashboard. Tell your teacher."),
       ui.ButtonSet.OK
     );
     return;
@@ -316,7 +371,7 @@ function checkSubmissionStatus() {
   const ui       = DocumentApp.getUi();
   const ids      = readSystemIds();
   if (!ids) {
-    ui.alert("Can't check right now", "This doc is missing the link to your assignment dashboard. Tell your teacher.", ui.ButtonSet.OK);
+    ui.alert("Can't check right now", missingDashboardText_("This doc is missing the link to your assignment dashboard. Tell your teacher."), ui.ButtonSet.OK);
     return;
   }
 
