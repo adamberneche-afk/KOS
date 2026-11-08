@@ -51,7 +51,7 @@ test('a selected lesson takes a text entry and opens with the turn-in instructio
   assert.ok(body.startsWith('<p><strong>To turn this in:</strong> open your <a href="' + dashboardUrl +
     '">assignment dashboard</a>, answer the question about your feedback, then copy your turn-in code and paste it here.</p>\n'),
   body.slice(0, 300));
-  assert.equal(body.split('\n')[0].replace(/<[^>]+>/g, ''), B.TURN_IN_INSTRUCTION, 'the instruction, word for word');
+  assert.equal(body.split('\n')[0].split(/<[^>]+>/).join(''), B.TURN_IN_INSTRUCTION, 'the instruction, word for word');
   // The existing instructions stay below it; only "How to submit" asks for the code.
   const plain = html(asg(course(def, '8177'), title));
   ['This lesson is in 5 parts', 'Where to do this work', 'Get feedback', 'Submit for Feedback'].forEach((t) => {
