@@ -1,0 +1,9 @@
+#!/bin/sh
+# Release check on the files staged for this commit (plan item L1).
+# Install (once per clone, from the repo root):
+#   cp tools/release-check/pre-commit .git/hooks/pre-commit && chmod +x .git/hooks/pre-commit
+# Warn-only, like CI, until the operator turns the gate on; to make this
+# hook block a commit with a finding, set RELEASE_CHECK_GATE=1 in the shell
+# (or pass --gate below). See tools/release-check/README.md.
+root=$(git rev-parse --show-toplevel) || exit 0
+exec node "$root/tools/release-check/check.js" --staged

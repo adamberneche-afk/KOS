@@ -43,6 +43,12 @@ why this repo exists at all.
   hold), `HANDOFF_2026-10-22.md` (superseded for the queue; its system state,
   open items and agent notes still hold), `HANDOFF_2026-10-21.md`, `HANDOFF_2026-10-20.md` and `HANDOFF_2026-10-19.md` (their agent notes still hold), `HANDOFF_2026-10-18.md`, `HANDOFF_2026-10-17.md`, `HANDOFF_2026-10-12.md`, `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
   `HANDOFF_2026-10-06.md` and `HANDOFF_2026-10-05.md` are earlier days', superseded.
+- **`RELEASE_AUDIT_2026-11-08.md`** — the first full-repo run of
+  `tools/release-check` (plan item L1), before its CI gate turns on: counts
+  per rule and per folder, the file list with every value redacted, git
+  history in counts only, what each bucket needs, and the decisions the
+  operator must make (deployment URLs, which folders are public, LICENSE,
+  a history rewrite, turning the gate on).
 - **`AUDIT_DEAD_ENDS_2026-10-29.md`** — the first repo-wide audit of dead
   ends and half-built work: what runs and fails or runs for nothing, what
   to finish, what is built and parked (decide and mark), dead weight to
