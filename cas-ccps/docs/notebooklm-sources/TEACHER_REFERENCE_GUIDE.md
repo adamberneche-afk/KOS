@@ -70,6 +70,7 @@ Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** t
 | 🎓 Competency ratings | Confirm or set each student's SCR rating. See Grading and Competency Ratings |
 | ⚙ Settings | Each feature on or off per course, the marking period dates, and activity and delay days. See Settings |
 | 📅 Lessons | Start dates, rollout status, and lesson edits. See Lessons and Start Dates |
+| 👁 View as a student | Opens the Student Dashboard in a new tab as a made-up student, “Demo Student”, on your own lessons, in every card state. Press its buttons to see what a student sees; nothing is saved and no document opens. Bookmark that tab to come back to it. Only you can open it: anyone else gets their own page |
 | ❓ Terms | What each word and number on the dashboard means. Escape closes it |
 | ↻ Refresh | Loads the latest |
 | Whole school year | The year menu. Pick a marking period to see only that part of the year |

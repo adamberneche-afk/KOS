@@ -168,6 +168,7 @@
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/00b_ScriptOwnerGuard.js",
       "cas-ccps/scripts/13_StudentDashboard.js",
+      "cas-ccps/scripts/13b_StudentDashboardDemoLessons.js",
       "cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js",
       "cas-ccps/scripts/63_DocHeader.js"
     ]

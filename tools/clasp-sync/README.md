@@ -53,7 +53,7 @@ contents — every run).
 | `teacher-matrix-sheet` | Teacher Matrix Sheet — **cloned per teacher** | 4 |
 | `family-sentinel` | Family Mail Sentinel spreadsheet (the teacher's private sheet) | 4 |
 | `teacher-dashboard` | Standalone web app | 13 |
-| `student-dashboard` | Standalone web app | 4 |
+| `student-dashboard` | Standalone web app | 6 |
 | `studio-steps` | Standalone — not bound to a spreadsheet/doc (blocked, not deployed) | 9 |
 
 File counts (script files, not the manifest) as of 2026-10-23; `tools/gas-lint/project-map.json` is the authoritative list.

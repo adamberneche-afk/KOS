@@ -487,11 +487,14 @@ const RUN_CHAIN_SKIP = new Set([
   'withSuccessHandler', 'withFailureHandler', 'withUserObject', 'withLogger',
 ]);
 
+// `scriptRun()` is the Student Dashboard's own wrapper (13, demo mode,
+// 2026-11-07): google.script.run on the real page, the page's stubs on the
+// demo. Its chains are walked the same way, so those calls stay checked.
 function findGoogleScriptRunCalls(relPath, src) {
   const s = stripCommentsAndStrings(src, { keepStrings: true });
   const calls = [];
   const unresolved = [];
-  const anchor = /google\.script\.run/g;
+  const anchor = /google\.script\.run|\bscriptRun\(\)/g;
   let a;
   while ((a = anchor.exec(s))) {
     let i = a.index + a[0].length;
