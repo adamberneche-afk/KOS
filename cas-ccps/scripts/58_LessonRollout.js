@@ -26,6 +26,10 @@
 //      its Class status.
 //   3c. AGENDA. With the rollout on, the next school day's agenda deck for
 //      the course (67), made from the lesson doc's itinerary.
+//   5. COVERED SO FAR. Every run but a preview, whatever the mode: each
+//      course's Covered So Far doc (76, plan L6), rewritten when its text
+//      changed. Teacher-only, no student data; a failure is a PROBLEM row
+//      and never stops the run.
 //
 // HOLD. A lesson whose LessonSchedule release cell says HOLD (55) is left
 // out of steps 1 to 3: no student doc is made or shared for it, current or
@@ -36,8 +40,9 @@
 // tab; blank/"off", one course code, or "all", like the pivot flags) decides
 // per course whether the run acts or only logs what it would do. Off, it
 // changes nothing, except that a dry-run enrollment adds newly seen Canvas
-// sections to CanvasSectionMap, the same as previewRosterEnrollment(). It is
-// also the kill switch.
+// sections to CanvasSectionMap, the same as previewRosterEnrollment(), and
+// step 5's teacher-only Covered So Far docs are kept current. It is also the
+// kill switch.
 //
 // Every run writes counts to the RolloutLog tab, one row per course, lesson
 // and step, all stamped with the run's start time, and a PROBLEM row for
@@ -317,6 +322,11 @@ function lessonRollout_(opts) {
   if (!opts.catchUp) _lrCheckExports_(cfg, now, log);
 
   if (!rows.length) log("-", "-", "-", "IDLE", 0, "no lesson starts within " + ROLLOUT_LEAD_DAYS + " days and none is current");
+
+  // 5. Each course's Covered So Far doc (76, plan L6), for the course
+  // notebooks: rewritten when a lesson started or its text changed. Never a
+  // preview's, and it can never stop the rollout.
+  if (!opts.forceShadow) _lrCoveredSoFar_(now, deadline, log);
   _lrWriteLog_(ss, rows);
   const problems = rows.filter(function (r) { return r[4] === "PROBLEM"; }).length;
   // A dry run never needs a catch-up.
@@ -340,6 +350,30 @@ function _lrCheckExports_(cfg, now, log) {
     }
   } catch (e) {
     log("-", "-", "-", "PROBLEM", 0, "Canvas exports not checked: " + e.message);
+  }
+}
+
+// Step 5: the Covered So Far docs (76). A row per course whose doc was
+// written, a PROBLEM row per course that failed; nothing when unchanged.
+// Past the time budget it waits for the next run (a catch-up or tomorrow's).
+function _lrCoveredSoFar_(now, deadline, log) {
+  if (typeof writeCoveredSoFar_ !== "function") return;
+  if (Date.now() > deadline) {
+    log("-", "-", "-", ROLLOUT_CONTINUES, 0, "Covered So Far docs not reached: time budget used; the next run continues");
+    return;
+  }
+  try {
+    writeCoveredSoFar_({ today: now }).forEach(function (r) {
+      // The course's rollout mode, though the doc is written in either.
+      const mode = pivotFlagFor_("ROLLOUT_AUTO_APPLY", r.course) ? "APPLY" : "SHADOW";
+      if (r.error) log(mode, r.course, "-", "PROBLEM", 0, "Covered So Far doc not written: " + r.error);
+      else if (r.written) {
+        log(mode, r.course, "-", COVERED_STEP, r.taught, (r.created ? "doc made: " : "doc rewritten: ") +
+          r.taught + " lesson(s) taught so far");
+      }
+    });
+  } catch (e) {
+    log("-", "-", "-", "PROBLEM", 0, "Covered So Far docs failed: " + e.message);
   }
 }
 
@@ -533,11 +567,13 @@ function rolloutDayStatus_(rows, now, windowMs) {
 // The step a row is about, so a later run's row for the same step clears it.
 function _lrFamily_(step, detail) {
   if (["RELEASE", "SEED", "ENROLL", "LESSON_DOC", "AGENDA"].indexOf(step) >= 0) return step;
+  if (step === "COVERED_SO_FAR") return step;
   if (step !== "PROBLEM" && step !== ROLLOUT_CONTINUES) return "";
   if (/^release|could not be shared/.test(detail)) return "RELEASE";
   if (/^enrollment|CanvasSectionMap|^no LIVE assignment/.test(detail)) return "ENROLL";
   if (/^lesson doc/.test(detail)) return "LESSON_DOC";
   if (/^agenda/.test(detail)) return "AGENDA";
+  if (/^Covered So Far/.test(detail)) return "COVERED_SO_FAR";
   if (/^seeding/.test(detail)) return "SEED";
   if (/Canvas (gradebook )?export/.test(detail)) return "EXPORT";
   return "OTHER";
