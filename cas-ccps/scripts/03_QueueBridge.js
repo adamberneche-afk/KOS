@@ -218,7 +218,9 @@ function backPropagateCompletions() {
             } else {
               notifyFailedCheckToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet);
             }
-            setDocFeedbackStatus_(fileId, stagingStatus === "ERROR_TIMEOUT" ? "TIMED_OUT" : "NOT_CHECKED", {});
+            // A form part's header line is on its snapshot doc (Phase 4b, 00).
+            setDocFeedbackStatus_(workFeedbackDocId_(ledgerSs, fileId),
+              stagingStatus === "ERROR_TIMEOUT" ? "TIMED_OUT" : "NOT_CHECKED", {});
             Logger.log("[BACKPROP] " + stagingStatus + " closed — row " + rowNum +
                        " | Teacher: " + teacherEmail);
           }
@@ -249,7 +251,8 @@ function backPropagateCompletions() {
       // Post-processing: backup placeholder removal + next-steps block
       // Studio should have handled these already in Flow 2 Steps 4-5,
       // but this catches any cases where Studio's doc connector step failed
-      processCompletedEvaluation_(fileId, configId);
+      // A form part's feedback is in its snapshot doc (Phase 4b, 00).
+      processCompletedEvaluation_(workFeedbackDocId_(ledgerSs, fileId), configId);
 
       Logger.log("[BACKPROP] Processed row " + rowNum + (late ? " (arrived after its timeout)" : "") +
                  " | FileID: " + fileId);

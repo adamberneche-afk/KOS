@@ -129,7 +129,7 @@ see their own rows below):
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19`, `46` (deploy marker) |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19`, `47` (deploy marker) |
 | Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26`/`27` (lesson-context logging + alignment log + synchronous lesson frame generation, called by Script 07's `submitLessonContext()`), `32` (competency rubric lookup, called by Script 27's frame generation — dual-placed here and in Central Ledger since Script 27 runs in both), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`), `36` (weekly parent reports — the dashboard's panel to read and copy them; KOS never sends one, the teacher does (D1, 2026-10-23); it may only call functions present in both this project and Central Ledger, since Script 30 isn't in this project — see `36_WeeklyParentReport.js`'s own header), `55b` (the generated lesson data, since 2026-10-21, so the lesson editor starts from what students get), `65` (lesson drafts: the 📅 Lessons editor's server side), `71` (turn-in codes' core: the codes, the grant, the overrides; not its student functions, which are in `71b`), `73` and `74` (the 🎟 Turn-in codes panel's server half and the Canvas check, D17 stage 3) and `48` (deploy marker). Its header keeps the year menu, ↻ Refresh, Student Context, 🎟 Turn-in codes and (with warm-ups on) + Log today's lesson; the rest is under **More ▾** (since 2026-11-08, an accessible menu button in `07`: ✉ Parent Reports, 🎓 Competency ratings, 📅 Lessons, ⚙ Settings, 👁 View as a student, ❓ Terms), among them ⚙ Settings (each feature on or off per course, the marking period end dates, and the activity and delay days that change a day's bell schedule, `SCHEDULE_DAYS`; replaced 💬 Feedback on 2026-10-27) and ❓ Terms (`CAS_TEACHER_TERMS` in `00`) |
-| Student Dashboard | standalone web app | `00`, `00b` (the owner guard), `13`, `13b` (the demo mode's lessons, generated from `55b`), `63` (the assignment doc's header: "waiting for feedback" on submit), `71` and `71b` (turn-in codes: the feedback question, its screen and the code on the card; `71b` holds the student functions and the card), `49` (deploy marker) |
+| Student Dashboard | standalone web app | `00`, `00b` (the owner guard), `13`, `13b` (the demo mode's lessons, generated from `55b`), `63` (the assignment doc's header: "waiting for feedback" on submit), `71` and `71b` (turn-in codes: the feedback question, its screen and the code on the card; `71b` holds the student functions and the card), `75` (the Form reader at Submit, Phase 4b: a form part's structure, never its responses; the only cas-ccps file that calls `FormApp`, so this project has the forms scope), `49` (deploy marker) |
 | Studio Steps | standalone (not bound to a spreadsheet/doc) | **Blocked on this account** — needs a standard Cloud project; all five flows were ported to `37_FlowInputBuilder.js`/`41_WarmUpFlowBridge.js` instead. 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Pushed, but unreachable from Studio's step picker on this account (see Known gap 1). |
 | Family Sentinel | the teacher's private Family Mail Sentinel sheet | `00`, `60` (Family Mail Sentinel: labels student and parent mail, queues it for a Gemini flow redacted, and writes the name-free `KOS_FAMILY_SIGNAL` doc the KOS Claude Project reads), `61` (its generated prompt), `62` (deploy marker). The only cas-ccps project with a Gmail scope. Live since 2026-10-12. See [`docs/FAMILY_MAIL_SENTINEL.md`](./docs/FAMILY_MAIL_SENTINEL.md). |
 
@@ -535,24 +535,110 @@ part whose task still says to paste a link into this document.
   the Student Dashboard needs no lesson data. A form part with no template
   set fails as `NO_WORK_TEMPLATE` (a RolloutLog PROBLEM row; the run stops
   that lesson at the first). Nothing is stamped into a form.
-- **No FormApp in 4a.** Copying and sharing are Drive calls; the Central
-  Ledger keeps the Forms scope it has (decided 11-07) for Phase 4b's
-  reader. gas-lint still reports that scope as unused, as on main.
+- **No FormApp at intake.** Copying and sharing are Drive calls; the
+  Central Ledger keeps the Forms scope it has (decided 11-07), though the
+  reader (4b) runs in the Student Dashboard, so gas-lint still reports the
+  Ledger's as unused, as on main.
 - **The template is a blank form**: the title only (e.g. "Venue Market
   Research — your survey"), no questions and no description to fill in.
   Building the form is the student's work (8177-18, technologies and
-  tools), and 4b's reader checks the questions and that email collection
+  tools), and 4b's reader checks its questions and that email collection
   is off. The task itself stays in Canvas, where the cartridge lists the
   parts. Make the template with no linked response sheet.
 - **The Student Dashboard** shows a form part's card with **Open your
-  form** (the primary-button rules are unchanged) and **Submit for
-  Feedback** switched off, with the line "Checking forms comes next week."
-  The server refuses a form's Submit too (`FORM_NOT_CHECKED_YET`), so no
-  form reaches the ReviewQueue or Flow 2 before Phase 4b. Demo mode shows
-  the first lesson whose parts plan a form, Part 2 open as a form.
+  form** (the primary-button rules are unchanged), **Submit for Feedback**
+  (Phase 4b, below), a line saying what Submit reads, and a link to the
+  form's feedback page. Demo mode shows the first lesson whose parts plan
+  a form, Part 2 open as a form; its Submit answers with a sample "Not yet"
+  and reads nothing.
 - **The Teacher Dashboard** says "· Google Form" beside a form part's
   title, links to it ("Open form", "Part 2 (form)"), and unlocks it the same
-  way.
+  way. The teacher can comment on the feedback page, which is in the
+  student's admin folder beside the form.
+
+### The Form reader at Submit (Phase 4b, 2026-11-08)
+
+The plan's §5 design, built: Submit reads the form, checks it exactly, and
+Flow 2 reads a snapshot of it.
+
+- **The reader** (`75_FormReader.js`, Student Dashboard project; the web
+  app runs as the deploying account, an editor of every form copy since
+  4a) opens the student's form with `FormApp.openById` and reads its
+  **structure only**: title, description, each item's type, title and help
+  text, choices (multiple choice, checkboxes, dropdown) and whether "Other"
+  is on, a grid's rows and columns, a scale's ends and labels, the required
+  flags, and the settings: email collection (`collectsEmail` and the
+  newer email-collection setting), one response per person, quiz. It
+  **never reads responses**: no `getResponses`, no response sheet
+  (`getDestinationId`), no summary. A test holds every FormApp call to a
+  list of structure getters. A checkbox's "select up to two" can't be read
+  back (the 11-01 probe): the task asks for it in the question's wording,
+  which the snapshot carries.
+- **The exact checks**, before Flow 2: the part's `formChecks` in
+  `PARTS.json` (below). A failure answers "Not yet. Fix this in your form,
+  then submit again:" with one plain reason a line ("Your form has 2
+  questions. It needs at least 3.", "Your form collects email addresses.
+  Turn that off: …", "Your form needs a Linear scale question."), and goes
+  nowhere else: no ReviewQueue row, no Flow 2 run, not counted as a system
+  failure. System text in the form (`[SYSTEM:` and the rest) is refused as
+  in a doc. A form part has no doc-menu path: `doPost` answers
+  `USE_DASHBOARD`.
+- **The snapshot doc**, the form's feedback page: a Google Doc made at
+  intake beside the form (02's `_makeFormSnapshotDoc_`, "<lesson> — <student>
+  — your form, as checked"), owned by the system account, shared as a
+  **commenter** with the student (once the part opens: 58's release and
+  68's `_lpShare_` share it with the form) and the assigning teacher. The
+  student reads the form as checked and the feedback, and can't change
+  what was judged. It is laid out like a doc's lower half: the page header
+  (63), the feedback zone (unless feedback is a comment), the response
+  marker, the snapshot, the `[CONFIG_ID:` line. On a pass, Submit rewrites
+  the snapshot between the marker and that line (`writeFormSnapshot_`,
+  every Submit, never appended) with a plain-text account in a fixed
+  layout (`formSnapshotText_`): the title, description and settings, then
+  each item in order with its type, "required", help text, choices or
+  scale, every student string quoted on one line, system text
+  neutralized, and the prompt's marker characters (`<<<`, `>>>`, `{{`,
+  `}}`) and the doc markers taken out. Then it queues the form as usual.
+- **Flow 2 reads the snapshot.** `FormSnapshots`, a Central Ledger tab
+  (00: `MadeAt`, `StudentConfigID`, `FormFileID`, `SnapshotDocID`,
+  `PartConfigID`, `FormChecks`, `LastWrittenAt`; IDs only), links each form
+  copy to its snapshot doc. 37 points the FlowInput row's `StudentDocURL`
+  at the snapshot doc, so Studio's Extract step reads it exactly as it
+  reads a student doc and the snapshot sits inside `<<<STUDENT_SUBMISSION>>>`
+  as untrusted student text; the harvest writes the feedback, the
+  reflection comment and the header line there (the form's ID stays the
+  key for the Ledger, the evidence and the logs), and 03 sends a timeout
+  or a finished check's header there too. A later part's EARLIER PARTS
+  block reads an earlier form part from its snapshot (before 4b it read
+  as empty).
+- **`formChecks`** (`curriculum/lessons/PARTS.json`, on a form part only;
+  the builder refuses anything else):
+  `{"minQuestions": 3, "maxQuestions": 5, "collectsEmail": false, "questionTypes": ["checkboxes", "scale", "short_answer"]}`.
+  Every key is optional: `minQuestions` and `maxQuestions` whole numbers
+  1–100 (max at least min), `collectsEmail` true or false (must be on, or
+  off), `questionTypes` the types the form must each have at least one of
+  (`short_answer`, `paragraph`, `multiple_choice`, `checkboxes`,
+  `dropdown`, `scale`, `rating`, `grid`, `checkbox_grid`, `date`, `time`,
+  `date_time`, `duration`; 00's `FORM_QUESTION_TYPES`, which a test holds
+  equal to the builder's). A form part with no `formChecks` gets the
+  defaults: at least one question, email collection off. The generator
+  writes `formChecks` to 55b only when set, so the data is unchanged until
+  a part is marked. Intake records the part's checks in `FormSnapshots`
+  (the Student Dashboard has no lesson data); after changing a part's
+  `formChecks` once its copies exist, run `refreshFormSnapshots()` from the
+  Central Ledger's editor (it also makes a snapshot doc for any form copy
+  missing one; counts only).
+- **Recommended for 8177 Market Research, Part 2 "Build the Survey"**
+  (the lesson's own rules: three questions, a bias-free survey, the form
+  must not collect email addresses): `"formChecks": {"minQuestions": 3,
+  "collectsEmail": false}`. Not set in the shipped data: the operator marks
+  the part (`workType` and `formChecks` together) in a later small PR.
+- **Scope.** The Student Dashboard's manifest adds
+  `https://www.googleapis.com/auth/forms` (FormApp needs it; the Forms
+  API's read-only scopes don't cover FormApp). The deploying account
+  approves it once after the push (run any function from the editor, or
+  open the dashboard as that account); until then a form's Submit fails
+  as `FORM_UNREADABLE` ("Tell your teacher"), counted in `SubmitFailures`.
 
 **Marking a part as a form (the operator, or an agent at the operator's
 word):**
@@ -562,9 +648,11 @@ word):**
    Properties: add `WORK_TEMPLATE_` plus the part's key in capitals, `-`
    as `_` (for the first, `WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2`;
    55b's `workTemplateKey` after step 4 shows it) with that ID.
-3. In `curriculum/lessons/PARTS.json`, on the part: `"workType": "form"`.
-   Take the "paste the link into this document" sentence out of the
-   part's paragraph in its prompt file (`8177/prompts/<slug>.md`).
+3. In `curriculum/lessons/PARTS.json`, on the part: `"workType": "form"`,
+   and its exact checks, `"formChecks": {…}` (Phase 4b, above; for the
+   survey part, `{"minQuestions": 3, "collectsEmail": false}`). Take the
+   "paste the link into this document" sentence out of the part's
+   paragraph in its prompt file (`8177/prompts/<slug>.md`).
 4. `node tools/cas-ccps/build-lesson-assignments.js`, then
    `node tools/cas-ccps/build-canvas-cartridge.js`,
    `node tools/cas-ccps/build-dashboard-demo-lessons.js`, and each with

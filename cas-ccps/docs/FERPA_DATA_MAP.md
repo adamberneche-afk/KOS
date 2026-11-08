@@ -40,7 +40,7 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 
 | Tier | Period | Records | Script Property |
 |---|---|---|---|
-| Record: what a grade, a rating decision or a disclosure rests on, and the student's own work | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog`, `ReflectionLog`, `PartUnlocks`, `TurnInCodes`, `TurnInChecks`, `TurnInOverrides`, `TurnInCanvasRuns` | `LEDGER_RETENTION_YEARS` |
+| Record: what a grade, a rating decision or a disclosure rests on, and the student's own work | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog`, `ReflectionLog`, `PartUnlocks`, `FormSnapshots` (and the snapshot doc each row names), `TurnInCodes`, `TurnInChecks`, `TurnInOverrides`, `TurnInCanvasRuns` | `LEDGER_RETENTION_YEARS` |
 | | 5 years | `CompetencyEvidence` | `COMPETENCY_EVIDENCE_RETENTION_YEARS` |
 | | 5 years | `SCRDecisionLog` | `SCR_RETENTION_YEARS` |
 | | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
@@ -595,10 +595,36 @@ account, shared only with the student (editor, once the part is open) and
 the assigning teacher (editor: a form has no comment access). The Ledger
 row records it like a doc (`FileID`, and the form's link in
 `AdminFileURL`); no new tab or column. The form's **responses**, if the
-student shares it, are answers from other people: nothing in 4a reads a
-form at all (no FormApp call), and Phase 4b's reader reads questions and
+student shares it, are answers from other people: intake never reads a
+form (no FormApp call), and Phase 4b's reader (below) reads questions and
 settings, never responses. Retention: as the student docs, with the Ledger
 row.
+
+### Form snapshot docs and FormSnapshots (S02, S13/S75, Phase 4b)
+The Form reader at Submit (2026-11-08; `75_FormReader.js`, in the Student
+Dashboard, which runs as the system account) reads a form part's
+**structure**: title, description, questions, help text, choices, scale
+labels, required flags and three settings (email collection, one response
+per person, quiz). It **never reads responses** (no `getResponses`, no
+response sheet, no summary); a test holds every FormApp call to a list of
+structure getters. What it reads is the student's own work, like a doc's
+text: it is checked against the part's `formChecks` and, on a pass,
+written as plain text into the form's **snapshot doc**, a Google Doc made
+at intake (02) in the student's admin folder beside the form, owned by the
+system account, shared only with the student (commenter, once the part is
+open) and the assigning teacher (commenter). Flow 2 reads that doc as it
+reads a student doc, and its feedback goes there. The snapshot is
+rewritten on each Submit; nothing of the form's content is stored
+anywhere else (no Sheet, no log, no Ledger cell). A failed check's reasons
+go back to the student's page only and are not stored.
+**FormSnapshots** (Central Ledger tab) links each form copy to its
+snapshot doc: `MadeAt`, `StudentConfigID`, `FormFileID`, `SnapshotDocID`,
+`PartConfigID`, `FormChecks` (the part's checks as JSON),
+`LastWrittenAt`. IDs and the checks only: no name, email or student text.
+Retention: a record in the schedule (57), kept as long as the Ledger
+(`LEDGER_RETENTION_YEARS`, read by `MadeAt`), the same as the form and the
+student's other work files; a disposition of a row trashes its snapshot
+doc with it.
 
 ### PartUnlocks (S68)
 One row per part opened for a student (2026-10-27): when, the student's

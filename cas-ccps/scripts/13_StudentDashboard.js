@@ -182,6 +182,14 @@ function _dashDemoWarmUp_(id, lessonDate, status, course, f) {
 
 // The whole demo: the Assignments page's data, the three record tabs, and
 // the card states a demo Submit walks through.
+// The demo form part's Submit: what the reader says of a form with two
+// questions and email collection on (75's formCheckReasons_ wording).
+const DASH_DEMO_FORM_NOT_YET = [
+  "Your form has 2 questions. It needs at least 3.",
+  "Your form collects email addresses. Turn that off: in your form, open Settings, then Responses, " +
+    "and set Collect email addresses to Do not collect."
+];
+
 function dashDemoFixture_(now) {
   const tz = Session.getScriptTimeZone();
   const iso = function (n) { return Utilities.formatDate(_dashDemoDaysAgo_(now, n), tz, "yyyy-MM-dd"); };
@@ -215,8 +223,10 @@ function dashDemoFixture_(now) {
     });
   });
   // A lesson in parts with a form part (Phase 4a): Part 1 passed, the form
-  // part open and not started ("Open your form", Submit off until Phase 4b),
-  // the later parts locked. The demo shows each part as its planned work file.
+  // part open and not started ("Open your form"), the later parts locked.
+  // The demo shows each part as its planned work file. Its Submit (Phase 4b)
+  // answers with a sample of the form reader's exact checks: the demo has
+  // no form, so it reads nothing.
   const lockedParts = [];
   const pl = DASH_DEMO_PARTS_LESSON;
   const plCourse = pl ? DASH_DEMO_LESSONS.filter(function (c) { return c.code === pl.code; })[0] : null;
@@ -230,7 +240,7 @@ function dashDemoFixture_(now) {
       const card = _dashDemoCard_(plCourse, p, i < formAt ? "PASSED" : "NOT_STARTED", where[0], where[1], now);
       card.part = part;
       card.workType = p.workType;
-      if (p.workType === "form") card.canSubmit = false;
+      if (p.workType === "form") card.demoFormNotYet = DASH_DEMO_FORM_NOT_YET.slice();
       assignments.push(card);
       assignmentOf[card.configId] = p.unitName;
     });
@@ -414,6 +424,9 @@ function getStudentDashboardData(termFilter) {
   const year = _currentSchoolYear_();
   const feedbackAsComment = feedbackAsCommentChecker_();
   const partsOf = _dashPartsOf_(ss);
+  // A form copy's snapshot doc, its feedback page (Phase 4b, 00).
+  let snapshotDocs = {};
+  try { snapshotDocs = formSnapshotDocIds_(ss); } catch (e) { Logger.log("[Dashboard] FormSnapshots unreadable: " + e.message); }
   const locked = []; // parts made but not open yet (68)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -513,9 +526,11 @@ function getStudentDashboardData(termFilter) {
       // For the Submit for Feedback button (submitMyWork). The student's
       // own doc, which docUrl already carries.
       fileId:        fileId,
-      // A form can't be checked until Phase 4b's reader: Submit stays off
-      // for it (and _dashSubmitChecks_ refuses it), so no form reaches Flow 2.
-      canSubmit:     !!fileId && workType !== "form" && !DASH_NO_SUBMIT_STATUSES[status] && !inLine,
+      // A form part's Submit reads the form (Phase 4b, 75): on, as a doc's.
+      canSubmit:     !!fileId && !DASH_NO_SUBMIT_STATUSES[status] && !inLine,
+      // A form part's feedback page: its snapshot doc (00), where the check
+      // reads the form as submitted and the feedback goes. null for a doc.
+      feedbackUrl:   workType === "form" && snapshotDocs[fileId] ? workFileUrl_(snapshotDocs[fileId], "doc") : null,
       // A part of a lesson (68): { lesson, n, count, lessonName, title }.
       part:          part ? Object.assign(_dashPartNames_(row[LEDGER.COURSE_NAME]), part) : null,
       folderLabel:   String(row[LEDGER.BLOCK]).trim() + " - " +
@@ -1300,6 +1315,9 @@ function handleStudentDocRequest_(googleId, req) {
     };
   }
 
+  // A form part is checked only by the dashboard's Submit (Phase 4b, 75):
+  // a form has no doc menu, and this path doesn't read the work.
+  if (workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]) === "form") return { ok: false, error: "USE_DASHBOARD" };
   const hasText = (req && req.hasText === true) || !!String((req && req.text) || "").trim();
   if (!hasText) return { ok: false, error: "EMPTY" };
   // The doc menu can't ask the reflection questions, so with them on the
@@ -1324,14 +1342,16 @@ function findOwnLedgerRow_(cfg, googleId, fileId, configId) {
   return null;
 }
 
-function queueSubmission_(cfg, googleId, fileId, configId) {
+// feedbackDocId: where the header's "waiting for feedback" goes when it
+// isn't the work file itself (a form part's snapshot doc, Phase 4b).
+function queueSubmission_(cfg, googleId, fileId, configId, feedbackDocId) {
   const queue = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
   if (!queue) return { ok: false, error: "NO_QUEUE" };
   // Column 5 (StudentText) stays empty; see the header comment above.
   const now = new Date();
   queue.appendRow([now, googleId, fileId, configId, "", "PENDING", ""]);
   stampSubmissionTs_(cfg, googleId, fileId, configId, now);
-  setDocFeedbackStatus_(fileId, "CHECKING", { when: now }); // the doc's header (00)
+  setDocFeedbackStatus_(feedbackDocId || fileId, "CHECKING", { when: now }); // the doc's header (63)
   return { ok: true, at: now };
 }
 
@@ -1491,6 +1511,22 @@ function _dashSubmit_(fileId, configId, answers) {
   // The answers go in before the queue row, so 37 finds them when it builds
   // the Flow 2 input a minute later. Their time is the submission's.
   const now = new Date();
+  // A form part (Phase 4b): the snapshot of the form as checked goes into
+  // its snapshot doc before the reflection and the queue row, so Flow 2
+  // reads what passed the exact checks. If it can't be written, nothing is
+  // saved or queued.
+  const form = checked.form;
+  if (form) {
+    try {
+      writeFormSnapshot_(form.snapshotDocId, formSnapshotText_(form.structure));
+      _dashStampSnapshot_(cfg, form.snapshotRow, now);
+    } catch (e) {
+      Logger.log("submitMyWork: form snapshot not written for ConfigID " + configId + ": " + e.message);
+      dashRecordFailure_(cfg, "FORM_SNAPSHOT_UNWRITABLE");
+      return { ok: false, error: "FORM_SNAPSHOT_UNWRITABLE" };
+    }
+  }
+
   if (reflectionRows.length) {
     try {
       reflectionRows.forEach(function (r) { r[0] = now; });
@@ -1501,16 +1537,17 @@ function _dashSubmit_(fileId, configId, answers) {
     }
   }
 
-  const res = queueSubmission_(cfg, googleId, fileId, configId);
+  const res = queueSubmission_(cfg, googleId, fileId, configId, form ? form.snapshotDocId : "");
   if (!res.ok) return res;
-  Logger.log("Dashboard submission — ConfigID: " + configId +
+  Logger.log("Dashboard submission — ConfigID: " + configId + (form ? " | form" : "") +
              (reflectionRows.length ? " | reflection: " + reflectionRows.length + " answer(s)" : ""));
   return { ok: true, aiFlowsLive: !!cfg.aiFlowsLive, feedbackInComments: feedbackAsCommentFor_(configId),
-           reflected: reflectionRows.length > 0 };
+           reflected: reflectionRows.length > 0, workType: form ? "form" : "doc" };
 }
 
 // Everything Submit checks before anything is asked or written: the
-// student, their row, an open queue row, and enough writing in the doc.
+// student, their row, an open queue row, and enough writing in the doc, or
+// for a form part (Phase 4b) the form's exact checks (_dashFormChecks_).
 // { ok: true, cfg, googleId, row, fileId, configId } or { ok: false, error }.
 function _dashSubmitChecks_(fileId, configId) {
   const googleId = Session.getActiveUser().getEmail();
@@ -1522,9 +1559,6 @@ function _dashSubmitChecks_(fileId, configId) {
   const cfg = getConfig_();
   const row = findOwnLedgerRow_(cfg, googleId, fileId, configId);
   if (!row) return { ok: false, error: "NOT_REGISTERED" };
-  // A form part (Phase 4a): nothing reads a form at Submit until Phase 4b,
-  // so it never goes to the queue or Flow 2, whatever the page sent.
-  if (workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]) === "form") return { ok: false, error: "FORM_NOT_CHECKED_YET" };
   const blocked = DASH_NO_SUBMIT_STATUSES[String(row[LEDGER.STATUS]).trim()];
   if (blocked) return { ok: false, error: blocked };
 
@@ -1542,6 +1576,13 @@ function _dashSubmitChecks_(fileId, configId) {
   const pending = queue.getDataRange().getValues().slice(1).some(r =>
     String(r[2]).trim() === fileId && DASH_OPEN_QUEUE_STATUSES[String(r[5]).trim()]);
   if (pending) return { ok: false, error: "ALREADY_QUEUED" };
+
+  // A form part (Phase 4b): the form's structure, read and checked (75).
+  if (workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]) === "form") {
+    const form = _dashFormChecks_(cfg, fileId, configId);
+    if (!form.ok) return form;
+    return { ok: true, cfg: cfg, googleId: googleId, row: row, fileId: fileId, configId: configId, form: form };
+  }
 
   let fullText;
   try {
@@ -1567,6 +1608,52 @@ function _dashSubmitChecks_(fileId, configId) {
   if (systemText) return { ok: false, error: "SYSTEM_TEXT_IN_RESPONSE", found: systemText };
 
   return { ok: true, cfg: cfg, googleId: googleId, row: row, fileId: fileId, configId: configId };
+}
+
+// A form part's Submit checks (Phase 4b): its snapshot doc on record (00's
+// FormSnapshots), the form's structure read (75, never its responses), the
+// part's exact checks, and no system text. { ok: true, snapshotDocId,
+// snapshotRow, structure } or { ok: false, error, reasons? / found? }. The
+// exact checks' failure is the student's to fix ("Not yet", with reasons)
+// and is not a system failure; the others are counted as one.
+function _dashFormChecks_(cfg, fileId, configId) {
+  let snap;
+  try {
+    snap = formSnapshotFor_(SpreadsheetApp.openById(cfg.ledgerSsId), fileId);
+  } catch (e) {
+    snap = null;
+  }
+  if (!snap) {
+    Logger.log("submitMyWork: no FormSnapshots row for ConfigID " + configId);
+    dashRecordFailure_(cfg, "FORM_SNAPSHOT_MISSING");
+    return { ok: false, error: "FORM_SNAPSHOT_MISSING" };
+  }
+  let structure;
+  try {
+    structure = readFormStructure_(fileId);
+  } catch (e) {
+    // A permission message here means the deploying account hasn't approved
+    // the forms scope since 4b was pushed (cas-ccps/README.md, work types).
+    Logger.log("submitMyWork: couldn't open the form for ConfigID " + configId + ": " + e.message);
+    dashRecordFailure_(cfg, "FORM_UNREADABLE");
+    return { ok: false, error: "FORM_UNREADABLE" };
+  }
+  const reasons = formCheckReasons_(structure, snap.formChecks);
+  if (reasons.length) return { ok: false, error: "FORM_NOT_YET", reasons: reasons };
+  const found = formSystemText_(structure);
+  if (found) return { ok: false, error: "SYSTEM_TEXT_IN_RESPONSE", found: found };
+  return { ok: true, snapshotDocId: snap.snapshotDocId, snapshotRow: snap.rowNumber, structure: structure };
+}
+
+// FormSnapshots' LastWrittenAt: when the snapshot was last rewritten. Best
+// effort, like SubmissionTS.
+function _dashStampSnapshot_(cfg, rowNumber, when) {
+  try {
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(FORM_SNAPSHOTS_TAB);
+    if (sheet && rowNumber >= 2) sheet.getRange(rowNumber, FS.LAST_WRITTEN_AT + 1).setValue(when);
+  } catch (e) {
+    Logger.log("[S13] FormSnapshots LastWrittenAt not written: " + e.message);
+  }
 }
 
 // One row per system-side failure (a doc the admin account can't open, a
@@ -2011,6 +2098,8 @@ const DEMO_STUBS = {
   submitWarmUpReply:  function () { return { ok: true, savedAt: "just now (demo: nothing was saved)" }; },
   getSubmitReflection: function (fileId) {
     const a = _demoCard(fileId);
+    // A form part: the reader's exact checks say "not yet" (a sample).
+    if (a && a.demoFormNotYet) return { ok: false, error: "FORM_NOT_YET", reasons: a.demoFormNotYet };
     return { ok: true, questions: (a && a.demoQuestions) || [] };
   },
   submitMyWork: function (fileId, configId, answers) {
@@ -2317,8 +2406,10 @@ function goToCard(id) {
 function cardHtml(a) {
   const primary = primaryActionFor(a);
   const cls = (p) => "act " + (p ? "act-primary" : "act-secondary");
-  const doc = safeDocUrl(a.docUrl);
   const form = a.workType === "form";
+  // A form part's feedback is on its feedback page (its snapshot doc, 4b).
+  const feedbackPage = form ? safeDocUrl(a.feedbackUrl) : null;
+  const doc = primary === "view" && feedbackPage ? feedbackPage : safeDocUrl(a.docUrl);
   const openLabel = primary === "view" ? "View feedback" : form ? "Open your form" : "Open My Document";
   // The demo has no document: its button shows a note instead.
   const docBtn = DEMO
@@ -2326,12 +2417,8 @@ function cardHtml(a) {
     : doc
     ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}">\${openLabel} ↗</a>\`
     : \`<span style="color:var(--text-secondary);font-size:13px;">\${form ? "Form" : "Document"} not yet available</span>\`;
-  // A form part (Phase 4a): Submit shows where it will be, switched off,
-  // with a plain line why. Never pressable, so no form reaches Flow 2.
-  const formNoteId = "form-note-" + cardId(a);
-  const submitBtn = form
-    ? \`<button type="button" class="\${cls(false)}" disabled aria-describedby="\${esc(formNoteId)}">Submit for Feedback</button>\`
-    : a.canSubmit && !_reflect[a.fileId]
+  // A form part (Phase 4b): Submit as for a doc; the server reads the form.
+  const submitBtn = a.canSubmit && !_reflect[a.fileId]
     ? \`<button type="button" class="\${cls(primary === "submit")}" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
     : "";
   const ev = evalLine(a);
@@ -2351,7 +2438,7 @@ function cardHtml(a) {
     <div class="card-actions">
     \${primary === "submit" ? submitBtn + docBtn : docBtn + submitBtn}
     </div>
-    \${form ? \`<div class="form-note" id="\${esc(formNoteId)}">\${esc(FORM_SUBMIT_NOTE)}</div>\` : ""}
+    \${form ? \`<div class="form-note">\${esc(FORM_SUBMIT_NOTE)}\${feedbackPage && primary !== "view" ? \` <a href="\${esc(feedbackPage)}" target="_blank">Your form's feedback page ↗</a>\` : ""}</div>\` : ""}
     \${DEMO && _demoNotes[a.fileId] ? \`<div class="demo-note" role="status">\${esc(_demoNotes[a.fileId])}</div>\` : ""}
     \${a.canSubmit && _reflect[a.fileId] ? reflectFormHtml(a) : ""}
     \${_submitMsgs[a.fileId]
@@ -2699,9 +2786,9 @@ function saveWarmUp(btn) {
 // Submit for Feedback: the doc's own menu can't run for student accounts
 // (district setting), so the dashboard submits instead. The server reads
 // the doc and checks it; this only shows the answer under the card.
-// A form part's Submit (Phase 4a): shown, off, with this line under it,
-// until Phase 4b reads forms at Submit.
-const FORM_SUBMIT_NOTE = "Checking forms comes next week. Keep building your form; your teacher can open it.";
+// A form part's card (Phase 4b): what Submit does with a form.
+const FORM_SUBMIT_NOTE = "Submit for Feedback reads your form's questions and settings (never anyone's answers), " +
+  "checks them, and puts your feedback on your form's feedback page.";
 const SUBMIT_ERRORS = {
   TOO_SHORT: null, // worded below with the word count
   NO_RESPONSE_SECTION: "Your document is missing the line under “Your response” that marks where your writing starts, so there's nothing to check. Ask your teacher.",
@@ -2714,7 +2801,11 @@ const SUBMIT_ERRORS = {
   DOC_UNREADABLE: "The system can't open your document right now. Your work is safe. Tell your teacher.",
   NO_QUEUE: "The system can't take submissions right now. Your work is safe. Tell your teacher.",
   SERVER_ERROR: "Something went wrong on the system's side. Your work is safe. Tell your teacher.",
-  FORM_NOT_CHECKED_YET: FORM_SUBMIT_NOTE
+  // A form part (Phase 4b). FORM_NOT_YET is worded below with its reasons.
+  FORM_NOT_YET: null,
+  FORM_UNREADABLE: "The system can't open your form right now. Your work is safe. Tell your teacher.",
+  FORM_SNAPSHOT_MISSING: "Your form has no feedback page set up yet, so it can't be checked. Your work is safe. Tell your teacher.",
+  FORM_SNAPSHOT_UNWRITABLE: "The system can't write your form's feedback page right now. Your work is safe. Tell your teacher."
 };
 const SUBMIT_FALLBACK = "The assignment system didn't answer. Your work is safe in your document.\\nTry again in a minute. If it keeps happening, tell your teacher.";
 
@@ -2847,6 +2938,9 @@ function submitDone(fileId, configId, res) {
   if (res && res.ok) {
     done({ ok: true, text: (!res.aiFlowsLive
       ? "✅ Submitted. Your teacher can see your work and will review it directly."
+      : res.workType === "form"
+        ? "✅ Submitted. In a few minutes your feedback will be on your form's feedback page (the link on this card)" +
+          (res.feedbackInComments ? ", as a comment: open it and click Comments (top right)." : ".")
       : res.feedbackInComments
         ? "✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right)."
         : "✅ Submitted. In a few minutes your feedback will appear in your document, just above “Your response”. Refresh the document to see it.") +
@@ -2859,6 +2953,12 @@ function submitDone(fileId, configId, res) {
     done({ ok: false, text: "Write a little more first. " +
       (w > 0 ? "You've written about " + w + " word" + (w === 1 ? "" : "s") + "." : "You haven't written anything under “Your response” yet.") +
       "\\nAim for at least 25 words under “Your response” in your document." });
+    return;
+  }
+  // A form part's exact checks (Phase 4b): each reason on its own line.
+  if (code === "FORM_NOT_YET") {
+    done({ ok: false, text: "Not yet. Fix this in your form, then submit again:\\n" +
+      (res.reasons || []).map(function(r) { return "• " + r; }).join("\\n") });
     return;
   }
   if (code === "SYSTEM_TEXT_IN_RESPONSE") {

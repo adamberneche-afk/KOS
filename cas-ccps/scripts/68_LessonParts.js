@@ -95,6 +95,31 @@ function partWorkFile_(assignmentConfigId) {
   return { type: "doc" };
 }
 
+// A form part's exact checks at Submit (Phase 4b): its formChecks in
+// PARTS.json (55b), with the defaults filled in (00's normalizeFormChecks_:
+// at least one question, email collection off). Intake (02) records them in
+// FormSnapshots, which is where the Student Dashboard reads them.
+function partFormChecks_(assignmentConfigId) {
+  const info = partOfConfigId_(assignmentConfigId);
+  return normalizeFormChecks_(info && info.part.a.formChecks ? info.part.a.formChecks : {});
+}
+
+// Shares a form copy's snapshot doc (its feedback page, Phase 4b) with its
+// student as commenter: they read the form as checked and the feedback, and
+// can't change what was judged. Best effort: false when there is none or
+// sharing fails (the Ledger's own share has already happened).
+function shareFormSnapshot_(ledgerSs, formFileId, googleId) {
+  try {
+    const snap = formSnapshotFor_(ledgerSs, formFileId);
+    if (!snap || !String(googleId || "").trim()) return false;
+    DriveApp.getFileById(snap.snapshotDocId).addCommenter(String(googleId).trim());
+    return true;
+  } catch (e) {
+    Logger.log("[S68] Form snapshot not shared: " + e.message);
+    return false;
+  }
+}
+
 // Whether a lesson runs in parts: it has parts, and no student has the
 // whole lesson's own assignment (StudentAssignments), so a lesson already
 // started as one doc is never split under the students.
@@ -149,6 +174,10 @@ function _lpLatestOutcomes_(evidence) {
 // Returns true when done.
 function _lpShare_(ledger, rowIndex, row) {
   DriveApp.getFileById(String(row[LEDGER.FILE_ID]).trim()).addEditor(String(row[LEDGER.GOOGLE_ID]).trim());
+  // A form part's feedback page goes with it (Phase 4b).
+  if (workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]) === "form") {
+    shareFormSnapshot_(ledger.getParent(), String(row[LEDGER.FILE_ID]).trim(), String(row[LEDGER.GOOGLE_ID]).trim());
+  }
   ledger.getRange(rowIndex + 1, LEDGER.STATUS + 1).setValue("ACTIVE");
   return true;
 }

@@ -23,7 +23,7 @@ const { loadGasFiles, FakeDriveFolder } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '29_StudentContextAggregator.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
   '03_QueueBridge.js', '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '54_StudentAssignments.js',
-  '55b_LessonAssignmentData.js', '68_LessonParts.js'].map(S);
+  '55b_LessonAssignmentData.js', '68_LessonParts.js', '63_DocHeader.js'].map(S);
 const EXPOSE = ['previewRosterEnrollment', 'applyRosterEnrollment', 'prepareRosterSections', '_criParseGradebook_',
   'repairRosterDuplicates_', 'enrollCanvasRoster_'];
 const TEACHER = 'owner.teacher@ccpsnet.net';

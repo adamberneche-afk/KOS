@@ -355,6 +355,27 @@ Market Research, Part 2 "Build the Survey"); it is marked after the push
 at Submit, the snapshot doc Flow 2 reads, and the Student Dashboard's Forms
 scope) is next.
 
+**Phase 4b, built 2026-11-08 (PR #PRNUM), not yet pushed.** Submit on a
+form part runs the reader (`75_FormReader.js`, in the Student Dashboard,
+which gets the `forms` scope: one re-consent after the push). It reads the
+form's structure (questions, types, help text, choices, scale ends and
+labels, required flags, email collection, one response per person, quiz)
+and never its responses; a test holds every FormApp call to a list of
+getters. It runs the part's exact checks, `formChecks` in `PARTS.json`
+(`minQuestions`, `maxQuestions`, `collectsEmail`, `questionTypes`;
+default: at least one question, email collection off). A failure is a
+plain "Not yet" with one reason a line and never reaches the queue or Flow
+2. A pass rewrites the form's **snapshot doc**, made at intake beside the
+form and shared as a commenter with the student (once the part opens) and
+the teacher, with a plain-text account of the form, then queues. Flow 2
+reads that doc (37 points `StudentDocURL` at it), the feedback goes there,
+and a later part's EARLIER PARTS block reads an earlier form part from it.
+`FormSnapshots` (Central Ledger; IDs and the checks) links each form copy
+to its doc, in the retention schedule as a record. Nothing is marked: the
+recommended checks for 8177 Market Research Part 2 (`{"minQuestions": 3,
+"collectsEmail": false}`) are set with its `workType` in a later small PR,
+after the push.
+
 ## Where the costs land
 
 | Change | Student | Teacher | System |
@@ -392,7 +413,7 @@ Nov 2's measurement) and Studio's limit on runs per day is checked.
 | 1 | The process reflection on Submit: the question frames, the selection, `ReflectionLog`, Flow 2 reads it, Student Context shows it. Behind a setting, off until grades are in (Oct 30) | Week of Oct 26, on after Oct 30 |
 | 2 | The feedback reflection, from `CompetencyEvidence`; Flow 2 checks it was carried out | **Built 2026-10-27** (behind the same setting): a resubmission after the primary wasn't met asks F1 to F3; Flow 2 says whether the revision carries it out |
 | 3 | Parts in both courses: the builder splits tasks, a ConfigID and file per part, made with the lesson, unlocked on the primary, both dashboards group them, the teacher's unlock, cartridges list them | **Started 2026-10-27** at the operator's word, alongside the measurement: 3a the data (8177 Market Research, Appendix B), 3b made and unlocked (68); 3c (2026-10-28) both dashboards group parts, the teacher's unlock button, the lesson doc counts parts; Flow 2 given the earlier parts (2026-10-28, the EARLIER PARTS block); the other 34 lessons' parts drafted and approved together (2026-10-28, `meta/LESSON_PARTS_2026-10.md`), to be edited as they are taught |
-| 4 | Work files by type: Forms, then Slides, then Sheets; Canva parts to Slides | After Phase 3 |
+| 4 | Work files by type: Forms, then Slides, then Sheets; Canva parts to Slides | After Phase 3. **4a** (a part's `workType`, the form copies) PR #402; **4b** (the Form reader at Submit, `formChecks`, the snapshot doc Flow 2 reads) PR #PRNUM, 2026-11-08 |
 
 Phases 1 and 2 don't depend on 3: they work on today's one-doc lessons (a
 whole lesson is one part) and carry over unchanged. Phase 4 needs Phase 3's

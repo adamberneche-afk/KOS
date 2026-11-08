@@ -51,8 +51,9 @@ function readRegistry(csv) {
 
 // The lesson in parts the demo shows (Phase 4a, 2026-11-08): the first in
 // teaching order with a part whose work file is a form, so the demo has a
-// form part's card ("Open your form", Submit off until Phase 4b). Each part's
-// title and planned work file; the first two parts' milestones for their cards.
+// form part's card ("Open your form"; its Submit answers with a sample "Not
+// yet", Phase 4b). Each part's title and planned work file; the first two
+// parts' milestones for their cards.
 function formLesson(lessonSource) {
   const { assignments, order, parts } = readLessons(lessonSource);
   for (const code of COURSES) {

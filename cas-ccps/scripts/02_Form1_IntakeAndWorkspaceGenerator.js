@@ -306,13 +306,136 @@ function _intakeForm_(cfg, s, googleId, assignment, teacherEmail, templateId, me
     try { formFile.addEditor(teacherEmail); } catch (err) { Logger.log("Teacher access warning for " + teacherEmail + ": " + err.message); }
   }
   const url = workFileUrl_(formFile.getId(), "form");
+  // Its snapshot doc, the form's feedback page (Phase 4b): made and shared
+  // now, beside the form, so Submit (13, which has no Drive scope) only
+  // rewrites it.
+  const snapshotDoc = _makeFormSnapshotDoc_(cfg, s, studentConfigId, assignment.unitName, folder,
+    deferShare ? "" : googleId, teacherEmail);
   registerLedger_(cfg, googleId, s.studentName, studentConfigId, formFile.getId(),
                   s.block, s.className, s.teacherName, teacherEmail,
                   s.subject, s.courseName, s.period, url,
                   deferShare ? "SCHEDULED" : "ACTIVE");
   recordStudentAssignment_(_intakeLedgerSs_(cfg), studentConfigId, googleId, s.unitConfigId);
+  recordFormSnapshot_(_intakeLedgerSs_(cfg), studentConfigId, formFile.getId(), snapshotDoc.getId(), s.unitConfigId);
   Logger.log("Form workspace created — ConfigID: " + studentConfigId + " | Assignment: " + s.unitConfigId + " | Period: " + s.period);
   return { ok: true, studentConfigId: studentConfigId, fileId: formFile.getId(), docUrl: url, teacherEmail: teacherEmail, workType: "form" };
+}
+
+// A form copy's snapshot doc (Phase 4b, 2026-11-08): a Google Doc in the
+// student's admin folder beside the form, owned by the system account,
+// shared with the student (commenter, once the part is open: they read the
+// form as checked and the feedback, and can't change what was judged) and
+// the assigning teacher (commenter, as on a doc). It is laid out like a
+// student doc's lower half, so every reader of a doc reads it unchanged:
+// the page header (63, "Feedback: …"), the feedback zone (unless feedback
+// is a comment), then the response marker, the snapshot (13 rewrites it at
+// each Submit, from 75), and the "[CONFIG_ID:" line every reader stops at.
+// Returns the Document.
+function _makeFormSnapshotDoc_(cfg, s, studentConfigId, unitName, folder, studentAccount, teacherEmail) {
+  const doc = DocumentApp.create(unitName + " — " + s.studentName + " — your form, as checked");
+  const file = DriveApp.getFileById(doc.getId());
+  file.moveTo(folder);
+  writeDocHeader_(doc,
+    [s.studentName, s.className + " — " + s.teacherName,
+     s.block ? "Block " + s.block : "", s.period ? "Period " + s.period : ""]
+      .filter(function (x) { return String(x || "").trim() !== ""; })
+      .join("  ·  "),
+    cfg.studentDashboardUrl, unitName);
+  const body = doc.getBody();
+  const title = body.appendParagraph(unitName + " — your form, as checked");
+  title.setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  title.editAsText().setFontSize(14).setBold(true);
+  _docFontSize_(body.appendParagraph(
+    "The system writes this page. Each time you press Submit for Feedback, it copies your form's questions " +
+    "and settings here, and that copy is what the check reads. Change your form, not this page."), DOC_BODY_FONT_SIZE);
+  if (!feedbackAsCommentFor_(studentConfigId, s.className)) {
+    _docFontSize_(body.appendParagraph("── FEEDBACK ──"), DOC_BODY_FONT_SIZE);
+    _docFontSize_(body.appendParagraph(
+      "[No feedback yet. When your form is ready, open your assignment dashboard (link at the top) " +
+      "and click Submit for Feedback. Your feedback will appear here.]"), DOC_BODY_FONT_SIZE);
+    _docFontSize_(body.appendParagraph("── END FEEDBACK ──"), DOC_BODY_FONT_SIZE);
+  }
+  body.appendParagraph("── YOUR RESPONSE BEGINS HERE ──")
+    .editAsText().setFontSize(10).setForegroundColor(DOC_HEADER_GREY);
+  _docFontSize_(body.appendParagraph(FORM_SNAPSHOT_NOT_SUBMITTED), DOC_BODY_FONT_SIZE);
+  body.appendParagraph("[CONFIG_ID: " + studentConfigId + "]").editAsText().setFontSize(1).setForegroundColor("#ffffff");
+  body.appendParagraph("↑ The copy of your form ends above. Nothing below this is checked.")
+    .editAsText().setFontSize(DOC_BODY_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY);
+  doc.saveAndClose();
+  if (studentAccount) {
+    try { file.addCommenter(studentAccount); } catch (err) { Logger.log("Snapshot share warning for the student's account: " + err.message); }
+  }
+  if (teacherEmail) {
+    try { file.addCommenter(teacherEmail); } catch (err) { Logger.log("Snapshot access warning for " + teacherEmail + ": " + err.message); }
+  }
+  return doc;
+}
+
+// One FormSnapshots row (00): the form copy, its snapshot doc, the part,
+// and the part's exact checks as JSON (68's partFormChecks_). IDs only.
+function recordFormSnapshot_(ss, studentConfigId, formFileId, snapshotDocId, partConfigId) {
+  let sheet = ss.getSheetByName(FORM_SNAPSHOTS_TAB);
+  if (!sheet) {
+    sheet = ss.insertSheet(FORM_SNAPSHOTS_TAB);
+    sheet.appendRow(FORM_SNAPSHOTS_HEADERS);
+  }
+  const at = sheet.getLastRow() + 1;
+  sheet.getRange(at, FS.STUDENT_CONFIG_ID + 1, 1, 4).setNumberFormat("@"); // the IDs, as text
+  sheet.getRange(at, 1, 1, FORM_SNAPSHOTS_HEADERS.length).setValues([[new Date(), studentConfigId, formFileId,
+    snapshotDocId, partConfigId, JSON.stringify(partFormChecks_(partConfigId)), ""]]);
+}
+
+// refreshFormSnapshots — run by hand from the Central Ledger's editor
+// (Phase 4b): every form copy on the Ledger gets a snapshot doc if it has
+// none (made and shared as at intake; the student only once the row is
+// open), and every FormSnapshots row's FormChecks is rewritten from the
+// parts data now, so a part's formChecks changed after its copies were made
+// apply at the next Submit. Logs counts only.
+function refreshFormSnapshots() {
+  const cfg = getConfig_();
+  const ss = _intakeLedgerSs_(cfg);
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (!ledger || ledger.getLastRow() < 2) { Logger.log("refreshFormSnapshots: no Ledger rows."); return { made: 0, updated: 0, failed: 0 }; }
+  const byStudent = readStudentAssignments_(ss).byStudent;
+  const data = ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER_COL_COUNT).getValues();
+  const out = { made: 0, updated: 0, failed: 0 };
+  data.forEach(function (r) {
+    if (workFileTypeOfUrl_(r[LEDGER.ADMIN_FILE_URL]) !== "form") return;
+    const status = String(r[LEDGER.STATUS]).trim();
+    if (status === "ARCHIVED") return;
+    const formId = String(r[LEDGER.FILE_ID]).trim();
+    if (formSnapshotFor_(ss, formId)) return;
+    const sid = String(r[LEDGER.CONFIG_ID]).trim();
+    try {
+      const folder = DriveApp.getFileById(formId).getParents().next();
+      const s = { studentName: String(r[LEDGER.STUDENT_NAME]).trim(), className: String(r[LEDGER.CLASS_NAME]).trim(),
+        teacherName: String(r[LEDGER.TEACHER_NAME]).trim(), block: String(r[LEDGER.BLOCK]).trim(),
+        period: String(r[LEDGER.PERIOD]).trim() };
+      const unitName = String(r[LEDGER.COURSE_NAME]).trim();
+      const doc = _makeFormSnapshotDoc_(cfg, s, sid, unitName, folder,
+        status === "SCHEDULED" ? "" : String(r[LEDGER.GOOGLE_ID]).trim(), String(r[LEDGER.TEACHER_EMAIL]).trim());
+      recordFormSnapshot_(ss, sid, formId, doc.getId(), byStudent[sid] || "");
+      out.made++;
+    } catch (e) {
+      Logger.log("refreshFormSnapshots: no snapshot made for ConfigID " + sid + ": " + e.message);
+      out.failed++;
+    }
+  });
+  const sheet = ss.getSheetByName(FORM_SNAPSHOTS_TAB);
+  if (sheet && sheet.getLastRow() >= 2) {
+    const n = sheet.getLastRow() - 1;
+    const rows = sheet.getRange(2, 1, n, FORM_SNAPSHOTS_HEADERS.length).getValues();
+    const checks = rows.map(function (row) {
+      const part = String(row[FS.PART_CONFIG_ID]).trim() || byStudent[String(row[FS.STUDENT_CONFIG_ID]).trim()] || "";
+      const now = JSON.stringify(partFormChecks_(part));
+      if (now !== String(row[FS.FORM_CHECKS])) out.updated++;
+      return [now];
+    });
+    sheet.getRange(2, FS.FORM_CHECKS + 1, n, 1).setValues(checks);
+  }
+  Logger.log("refreshFormSnapshots: " + out.made + " snapshot doc(s) made, " + out.updated +
+    " row(s) with new checks, " + out.failed + " failed.");
+  return out;
 }
 
 // ---------------------------------------------------------------------------

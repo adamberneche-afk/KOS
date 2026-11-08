@@ -47,7 +47,7 @@ function ledgerRow(googleId, configId, fileId, status) {
 
 function loadService(signedInAs) {
   const loaded = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '71_TurnInCodes.js'), path.join(SCRIPTS, '71b_TurnInStudent.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '71_TurnInCodes.js'), path.join(SCRIPTS, '71b_TurnInStudent.js'), path.join(SCRIPTS, '75_FormReader.js')],
     ['doPost', 'handleStudentDocRequest_'],
     { ContentService: FakeContentService, Session: sessionAs(signedInAs) });
   const { sandbox } = loaded;
@@ -293,7 +293,7 @@ const ENOUGH = 'I would set up the stand near the gym entrance because that is w
 
 function loadSubmit(signedInAs, docBody, status) {
   const loaded = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '71_TurnInCodes.js'), path.join(SCRIPTS, '71b_TurnInStudent.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '71_TurnInCodes.js'), path.join(SCRIPTS, '71b_TurnInStudent.js'), path.join(SCRIPTS, '75_FormReader.js')],
     ['submitMyWork', 'getStudentDashboardData', 'dashExtractResponse_'],
     { ContentService: FakeContentService, Session: sessionAs(signedInAs) });
   const { sandbox } = loaded;

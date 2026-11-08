@@ -45,7 +45,7 @@ test('_retentionCutoff_: whole school years after the year ends, August start', 
 const TAB_NAMES = {
   Ledger: 'Ledger', StudentAssignments: 'StudentAssignments', StudentDocRegistry: 'StudentDocRegistry',
   CompetencyEvidence: 'CompetencyEvidence', SCRDecisionLog: 'SCRDecisionLog', EvaluationLog: 'EvaluationLog',
-  ParentReportLog: 'ParentReportLog', PartUnlocks: 'PartUnlocks', TurnInCodes: 'TurnInCodes', TurnInChecks: 'TurnInChecks', TurnInOverrides: 'TurnInOverrides',
+  ParentReportLog: 'ParentReportLog', PartUnlocks: 'PartUnlocks', FormSnapshots: 'FormSnapshots', TurnInCodes: 'TurnInCodes', TurnInChecks: 'TurnInChecks', TurnInOverrides: 'TurnInOverrides',
   TurnInCanvasRuns: 'TurnInCanvasRuns',
   WarmUpQueue: 'WarmUpQueue', ReflectionLog: 'ReflectionLog', StudentProfiles: 'StudentProfiles', WarmUpRegistry: 'WarmUpRegistry',
   WarmUpTextBox: 'WarmUpTextBox',
@@ -54,7 +54,7 @@ const TAB_NAMES = {
   ReviewQueue: 'ReviewQueue', STAGING_PIPELINE: 'STAGING_PIPELINE',
 };
 const RECORD = ['Ledger', 'StudentAssignments', 'StudentDocRegistry', 'CompetencyEvidence', 'SCRDecisionLog', 'EvaluationLog', 'ReflectionLog',
-  'ParentReportLog', 'PartUnlocks', 'TurnInCodes', 'TurnInChecks', 'TurnInOverrides', 'TurnInCanvasRuns'];
+  'ParentReportLog', 'PartUnlocks', 'FormSnapshots', 'TurnInCodes', 'TurnInChecks', 'TurnInOverrides', 'TurnInCanvasRuns'];
 
 function byLabel(results) {
   const r = {};

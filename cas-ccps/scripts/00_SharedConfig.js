@@ -1934,6 +1934,120 @@ function workFileUrl_(fileId, type) {
     : "https://docs.google.com/document/d/" + id + "/edit";
 }
 
+// ---------------------------------------------------------------------------
+// A form part's snapshot (Phase 4b, 2026-11-08; meta/STUDENT_WORK_PLAN_2026-10.md
+// §5). Each student's form copy gets a Google Doc beside it at intake (02's
+// _makeFormSnapshotDoc_): its "feedback page". At Submit the Student
+// Dashboard (75's reader, 13) reads the form's structure, runs the part's
+// exact checks, and on a pass rewrites the doc's response zone with a
+// plain-text account of the form. Flow 2 reads that doc the way it reads a
+// student doc (37 points StudentDocURL at it) and the feedback goes there.
+//
+// FormSnapshots, a Central Ledger tab, links the two: one row per form copy.
+// IDs only (no name, email or student text). FormChecks is the part's exact
+// checks as JSON, resolved from the parts data (55b) at intake, so the
+// Student Dashboard needs no lesson data; refreshFormSnapshots() (02)
+// rewrites it after a part's formChecks change.
+// ---------------------------------------------------------------------------
+const FORM_SNAPSHOTS_TAB = "FormSnapshots";
+const FORM_SNAPSHOTS_HEADERS = ["MadeAt", "StudentConfigID", "FormFileID", "SnapshotDocID",
+  "PartConfigID", "FormChecks", "LastWrittenAt"];
+const FS = { MADE_AT: 0, STUDENT_CONFIG_ID: 1, FORM_FILE_ID: 2, SNAPSHOT_DOC_ID: 3,
+  PART_CONFIG_ID: 4, FORM_CHECKS: 5, LAST_WRITTEN_AT: 6 };
+
+// The question types a part's formChecks.questionTypes may name, each with
+// FormApp's ItemType and the name Google Forms shows. Pinned equal to the
+// generator's list (tools/cas-ccps/build-lesson-assignments.js) by a test.
+const FORM_QUESTION_TYPES = {
+  short_answer:    { itemType: "TEXT",            label: "Short answer" },
+  paragraph:       { itemType: "PARAGRAPH_TEXT",  label: "Paragraph" },
+  multiple_choice: { itemType: "MULTIPLE_CHOICE", label: "Multiple choice" },
+  checkboxes:      { itemType: "CHECKBOX",        label: "Checkboxes" },
+  dropdown:        { itemType: "LIST",            label: "Dropdown" },
+  scale:           { itemType: "SCALE",           label: "Linear scale" },
+  rating:          { itemType: "RATING",          label: "Rating" },
+  grid:            { itemType: "GRID",            label: "Multiple choice grid" },
+  checkbox_grid:   { itemType: "CHECKBOX_GRID",   label: "Checkbox grid" },
+  date:            { itemType: "DATE",            label: "Date" },
+  time:            { itemType: "TIME",            label: "Time" },
+  date_time:       { itemType: "DATETIME",        label: "Date and time" },
+  duration:        { itemType: "DURATION",        label: "Duration" }
+};
+
+// A form part with no formChecks: at least one question, email collection off.
+const FORM_CHECK_DEFAULTS = { minQuestions: 1, collectsEmail: false };
+
+// A part's checks with the defaults filled in. Anything unreadable or out
+// of range falls back to the default (the generator refuses it first, so
+// this only meets a hand-edited cell).
+function normalizeFormChecks_(raw) {
+  let c = raw;
+  if (typeof c === "string") {
+    try { c = c.trim() ? JSON.parse(c) : {}; } catch (e) { c = {}; }
+  }
+  if (!c || typeof c !== "object" || Array.isArray(c)) c = {};
+  const isCount = function (n) { return typeof n === "number" && Math.floor(n) === n && n >= 1 && n <= 100; };
+  const out = {
+    minQuestions: isCount(c.minQuestions) ? c.minQuestions : FORM_CHECK_DEFAULTS.minQuestions,
+    collectsEmail: typeof c.collectsEmail === "boolean" ? c.collectsEmail : FORM_CHECK_DEFAULTS.collectsEmail
+  };
+  if (isCount(c.maxQuestions) && c.maxQuestions >= out.minQuestions) out.maxQuestions = c.maxQuestions;
+  if (Array.isArray(c.questionTypes)) {
+    const types = c.questionTypes.filter(function (t, i, a) {
+      return Object.prototype.hasOwnProperty.call(FORM_QUESTION_TYPES, t) && a.indexOf(t) === i;
+    });
+    if (types.length) out.questionTypes = types;
+  }
+  return out;
+}
+
+// The FormSnapshots row for a form copy: { rowNumber, studentConfigId,
+// formFileId, snapshotDocId, partConfigId, formChecks }, or null. The last
+// row wins if a repair ever made two.
+function formSnapshotFor_(ledgerSs, formFileId) {
+  const id = String(formFileId || "").trim();
+  if (!id || !ledgerSs) return null;
+  const sheet = ledgerSs.getSheetByName(FORM_SNAPSHOTS_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, FORM_SNAPSHOTS_HEADERS.length).getValues();
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][FS.FORM_FILE_ID]).trim() !== id) continue;
+    const docId = String(rows[i][FS.SNAPSHOT_DOC_ID]).trim();
+    if (!docId) continue;
+    return { rowNumber: i + 2, studentConfigId: String(rows[i][FS.STUDENT_CONFIG_ID]).trim(), formFileId: id,
+      snapshotDocId: docId, partConfigId: String(rows[i][FS.PART_CONFIG_ID]).trim(),
+      formChecks: normalizeFormChecks_(rows[i][FS.FORM_CHECKS]) };
+  }
+  return null;
+}
+
+// formFileId -> snapshotDocId for every row (the dashboards' one read).
+function formSnapshotDocIds_(ledgerSs) {
+  const out = {};
+  const sheet = ledgerSs ? ledgerSs.getSheetByName(FORM_SNAPSHOTS_TAB) : null;
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, FORM_SNAPSHOTS_HEADERS.length).getValues().forEach(function (r) {
+    const f = String(r[FS.FORM_FILE_ID]).trim(), d = String(r[FS.SNAPSHOT_DOC_ID]).trim();
+    if (f && d) out[f] = d;
+  });
+  return out;
+}
+
+// Where a work file's feedback and header line go: a form copy's snapshot
+// doc, or the file itself (a doc, or a form whose snapshot isn't recorded).
+function workFeedbackDocId_(ledgerSs, fileId) {
+  try {
+    const snap = formSnapshotFor_(ledgerSs, fileId);
+    return snap ? snap.snapshotDocId : String(fileId || "").trim();
+  } catch (e) {
+    return String(fileId || "").trim();
+  }
+}
+
+// The snapshot doc's fixed text (02 writes it, 13 rewrites between the
+// response marker and the "[CONFIG_ID:" line, which every reader stops at).
+const FORM_SNAPSHOT_NOT_SUBMITTED = "(Not submitted yet. Build your form, then press Submit for Feedback on your dashboard.)";
+
 // Headers for the columns after AcademicYear, which a Ledger only gets on
 // first use: the turn-in review's four (07/04's _ensureTurnInReviewColumns_)
 // and the evaluation result's four. Fills blank header cells only, and the

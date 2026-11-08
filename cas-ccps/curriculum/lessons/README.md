@@ -62,6 +62,15 @@ document" out of its paragraph in the prompt file (the builder refuses it otherw
 template's Script Property, and rebuild. None is marked yet; the first will be 8177 Market
 Research's Part 2.
 
+A form part may also carry `formChecks`, the exact checks the Student Dashboard's form reader
+runs at Submit before Flow 2 (Phase 4b, 2026-11-08; `cas-ccps/README.md`, "The Form reader at
+Submit"): `{"minQuestions": 3, "maxQuestions": 5, "collectsEmail": false, "questionTypes":
+["checkboxes", "scale", "short_answer"]}`, every key optional. Unset, a form part needs at least
+one question and email collection off. The builder refuses `formChecks` on a doc part, an
+unknown key or type, and a count out of range. Recommended for Market Research Part 2 (three
+questions; the form must not collect email addresses): `{"minQuestions": 3, "collectsEmail":
+false}`, set when the part is marked.
+
 The other 34 multi-part lessons (5 in 8175, 29 in 8177) were drafted in that pattern and approved
 together on 2026-10-28, to be edited as they are taught; each keeps its `why` and its open
 `concerns` beside its parts. `PARTS_DRAFTS.json` is where a new split waits for approval, in

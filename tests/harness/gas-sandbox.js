@@ -10,7 +10,8 @@
 // Started as only what EmailBridge.gs's AI-queue and Organization Sync
 // functions call (PropertiesService, SpreadsheetApp, Session) and has grown
 // one mock at a time as tests needed them. Now also: CacheService,
-// LockService, AddOnsResponseService, DriveApp, DocumentApp, Utilities
+// LockService, AddOnsResponseService, DriveApp, DocumentApp, FormApp
+// (reading a form's structure only; see makeFormAppMock), Utilities
 // (unzip only for fakeZipBlob(): see there), Logger, MailApp and ScriptApp.
 //
 // GmailApp and ContentService remain deliberately unmocked — loading a file
@@ -175,6 +176,10 @@ class FakeSheet {
   }
   getName() { return this.name; }
   setName(n) { this.name = n; return this; }
+  // Real Apps Script API — Sheet.getParent(), the spreadsheet holding it.
+  // First needed by cas-ccps 68's _lpShare_ (a form part's snapshot doc is
+  // found in the same spreadsheet's FormSnapshots tab, Phase 4b).
+  getParent() { return this._parent || null; }
   // Real Sheets appends after the last row with content, not after rows
   // that were cleared.
   appendRow(arr) {
@@ -273,6 +278,7 @@ class FakeSpreadsheet {
     this.name = name;
     this.id = 'fake-ss-' + (++FakeSpreadsheet._counter);
     this.sheets = [new FakeSheet('Sheet1')];
+    this.sheets[0]._parent = this;
   }
   getId() { return this.id; }
   getName() { return this.name; }
@@ -291,6 +297,7 @@ class FakeSpreadsheet {
       throw new Error('A sheet with the name "' + name + '" already exists. Please enter another name.');
     }
     const s = new FakeSheet(name);
+    s._parent = this;
     this.sheets.push(s);
     return s;
   }
@@ -1067,6 +1074,84 @@ function makeDocumentAppMock(driveAppMock) {
 }
 makeDocumentAppMock._counter = 0;
 
+// FormApp — reading a form's structure only. First needed by cas-ccps
+// 75_FormReader.js (Phase 4b, the Form reader at Submit). A test builds a
+// form from a plain spec with FormApp._add(id, spec):
+//   { title, description, collectsEmail, emailCollectionType, limitOne, quiz,
+//     items: [{ type, title, helpText, required, choices, other, rows,
+//               columns, low, high, lowLabel, highLabel, ratingLevel }] }
+// (type is an ItemType name: "CHECKBOX", "SCALE", "TEXT", "SECTION_HEADER"…).
+// Only the real API's getters exist. Setters, responses (getResponses,
+// getDestinationId, the summary) and everything else are deliberately
+// absent, so code that calls one throws a TypeError here. Every call on a
+// form or an item is recorded in FormApp._calls ("form.getItems",
+// "item.asCheckboxItem", "checkbox.getChoices"…), so a test can hold the
+// reader to a fixed list: it must never touch responses.
+function makeFormAppMock() {
+  const forms = new Map();
+  const calls = [];
+  const rec = (name, fn) => (...a) => { calls.push(name); return fn(...a); };
+  const ItemType = {};
+  ['CHECKBOX', 'CHECKBOX_GRID', 'DATE', 'DATETIME', 'DURATION', 'GRID', 'IMAGE', 'LIST', 'MULTIPLE_CHOICE',
+    'PAGE_BREAK', 'PARAGRAPH_TEXT', 'RATING', 'SCALE', 'SECTION_HEADER', 'TEXT', 'TIME', 'VIDEO']
+    .forEach((t) => { ItemType[t] = t; });
+  const CAST = { TEXT: 'asTextItem', PARAGRAPH_TEXT: 'asParagraphTextItem', MULTIPLE_CHOICE: 'asMultipleChoiceItem',
+    CHECKBOX: 'asCheckboxItem', LIST: 'asListItem', SCALE: 'asScaleItem', RATING: 'asRatingItem', GRID: 'asGridItem',
+    CHECKBOX_GRID: 'asCheckboxGridItem', DATE: 'asDateItem', TIME: 'asTimeItem', DATETIME: 'asDateTimeItem',
+    DURATION: 'asDurationItem' };
+  function typed(it) {
+    const k = it.type.toLowerCase();
+    const q = { isRequired: rec(k + '.isRequired', () => !!it.required) };
+    if (['MULTIPLE_CHOICE', 'CHECKBOX', 'LIST'].includes(it.type)) {
+      q.getChoices = rec(k + '.getChoices', () => (it.choices || []).map((v) => ({ getValue: rec('choice.getValue', () => v) })));
+      if (it.type !== 'LIST') q.hasOtherOption = rec(k + '.hasOtherOption', () => !!it.other);
+    }
+    if (['GRID', 'CHECKBOX_GRID'].includes(it.type)) {
+      q.getRows = rec(k + '.getRows', () => (it.rows || []).slice());
+      q.getColumns = rec(k + '.getColumns', () => (it.columns || []).slice());
+    }
+    if (it.type === 'SCALE') {
+      q.getLowerBound = rec(k + '.getLowerBound', () => (it.low === undefined ? 1 : it.low));
+      q.getUpperBound = rec(k + '.getUpperBound', () => (it.high === undefined ? 5 : it.high));
+      q.getLeftLabel = rec(k + '.getLeftLabel', () => it.lowLabel || '');
+      q.getRightLabel = rec(k + '.getRightLabel', () => it.highLabel || '');
+    }
+    if (it.type === 'RATING') q.getRatingScaleLevel = rec(k + '.getRatingScaleLevel', () => it.ratingLevel || 5);
+    return q;
+  }
+  function item(it) {
+    const o = {
+      getType: rec('item.getType', () => ItemType[it.type]),
+      getTitle: rec('item.getTitle', () => it.title || ''),
+      getHelpText: rec('item.getHelpText', () => it.helpText || ''),
+    };
+    if (CAST[it.type]) o[CAST[it.type]] = rec('item.' + CAST[it.type], () => typed(it));
+    return o;
+  }
+  function form(spec) {
+    return {
+      getTitle: rec('form.getTitle', () => spec.title || ''),
+      getDescription: rec('form.getDescription', () => spec.description || ''),
+      collectsEmail: rec('form.collectsEmail', () => !!spec.collectsEmail),
+      getEmailCollectionType: rec('form.getEmailCollectionType',
+        () => spec.emailCollectionType || (spec.collectsEmail ? 'VERIFIED' : 'DO_NOT_COLLECT')),
+      hasLimitOneResponsePerUser: rec('form.hasLimitOneResponsePerUser', () => !!spec.limitOne),
+      isQuiz: rec('form.isQuiz', () => !!spec.quiz),
+      getItems: rec('form.getItems', () => (spec.items || []).map(item)),
+    };
+  }
+  return {
+    ItemType,
+    openById: rec('FormApp.openById', (id) => {
+      if (!forms.has(id)) throw new Error('No item with the given ID could be found, or you do not have permission to access it.');
+      return form(forms.get(id));
+    }),
+    // Test setup, not a real API.
+    _add(id, spec) { forms.set(id, spec); return id; },
+    _calls: calls,
+  };
+}
+
 // Real Apps Script API — Utilities.formatDate(date, timeZone, format).
 // Implements the SimpleDateFormat tokens this repo actually uses (yyyy,
 // MMMM, MMM, MM, dd, d, EEEE, EEE, HH, h, mm, ss, a) — enough to exercise real
@@ -1228,6 +1313,7 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     AddOnsResponseService: makeAddOnsResponseServiceMock(),
     DriveApp: driveAppMock,
     DocumentApp: makeDocumentAppMock(driveAppMock),
+    FormApp: makeFormAppMock(),
     MailApp: makeMailAppMock(),
     ScriptApp: makeScriptAppMock(),
     Utilities: {

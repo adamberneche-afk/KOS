@@ -232,27 +232,39 @@ test('Open My Document opens nothing: it says what the real page does', () => {
   assert.match(els.main.innerHTML, /In the real dashboard this opens the student&#39;s document\.|In the real dashboard this opens the student's document\./);
 });
 
-// Phase 4a: the demo has a lesson in parts with a form part, so a teacher
-// sees what a student sees: "Open your form", Submit off with its note.
-test('the demo shows a form part: Open your form, Submit off with a plain note, the later parts locked', () => {
+// Phase 4a/4b: the demo has a lesson in parts with a form part, so a teacher
+// sees what a student sees: "Open your form", and a Submit that answers with
+// a sample of the form reader's exact checks (Phase 4b). The demo has no
+// form: nothing is read, and no server function is called.
+test('the demo shows a form part: Open your form, a working Submit with a sample "Not yet", the later parts locked', () => {
   const f = fixture();
   const form = f.dashboard.assignments.filter((a) => a.workType === 'form');
   assert.equal(form.length, 1, 'one form part');
-  assert.equal(form[0].canSubmit, false);
+  assert.equal(form[0].canSubmit, true, 'Submit is on for a form part (Phase 4b)');
   assert.equal(form[0].part.n, 2);
   assert.match(form[0].unitName, /Build the Survey/);
+  assert.ok(form[0].demoFormNotYet.length >= 2);
   assert.ok(f.dashboard.assignments.some((a) => a.part && a.part.n === 1 && a.workType === 'doc' && a.statusPill === 'Passed ✓'));
   assert.deepEqual(f.dashboard.lockedParts.map((l) => l.n), [3, 4, 5]);
-  const { ctx, els, advance } = demoPage(f);
+  const { ctx, els, calls, advance } = demoPage(f);
   advance(1000);
   const main = els.main.innerHTML;
   assert.match(main, />Open your form</);
-  assert.match(main, /<button type="button" class="act act-secondary" disabled aria-describedby="form-note-[^"]+">Submit for Feedback<\/button>/);
-  assert.match(main, /class="form-note"[^>]*>Checking forms comes next week\./);
+  assert.match(main, new RegExp('data-file="' + form[0].fileId + '"[^>]*onclick="submitWork\\(this\\)">Submit for Feedback'));
+  assert.match(main, /class="form-note">Submit for Feedback reads your form&#39;s questions and settings|class="form-note">Submit for Feedback reads your form's questions and settings/);
+  assert.doesNotMatch(main, /Checking forms comes next week/);
   assert.match(main, /2 of 5 parts open/);
   assert.match(main, /🔒 Part 3 of 5/);
   ctx.demoOpenDoc({ getAttribute: () => form[0].fileId });
   assert.match(els.main.innerHTML, /own copy of the form/);
+  const btn = { attrs: { 'data-file': form[0].fileId, 'data-config': form[0].configId }, getAttribute(k) { return this.attrs[k]; } };
+  ctx.submitWork(btn);
+  advance(500);
+  const h = els.main.innerHTML;
+  assert.match(h, /Not yet\. Fix this in your form, then submit again:/);
+  assert.match(h, /• Your form has 2 questions\. It needs at least 3\./);
+  assert.match(h, /• Your form collects email addresses\./);
+  assert.deepEqual(calls, ['getDemoDashboardData'], 'the demo reads no form');
 });
 
 test('the real page never asks for the demo fixture', () => {
