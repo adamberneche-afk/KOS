@@ -20,7 +20,8 @@ const SCRIPT = 'https://script.google' + '.com/';
 
 const rules = (line) => rc.scanLine(line).map((f) => f.rule);
 const shown = (line) => rc.scanLine(line).map((f) => f.shown).join(' | ');
-const valueRe = (v) => new RegExp(v.slice(0, 20).replace(/[-]/g, '\\-'));
+const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
+const valueRe = (v) => new RegExp(escapeRe(v.slice(0, 20)));
 
 test('Docs, Sheets, Slides and Forms links are docs-link findings', () => {
   ['document', 'spreadsheets', 'presentation', 'forms'].forEach((kind) => {
