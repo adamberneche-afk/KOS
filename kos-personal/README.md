@@ -169,7 +169,7 @@ Council cog verdict        COG_VERDICT  (submitCogVerdict(), skips PENDING_FLOW/
 | `generateDailyPrimer` | Daily 06:00 | Creates the session starter doc; rewrites `KOS_LATEST_PRIMER` and the three briefing docs |
 | `autoCouncilCheck` | Every 2 hours | Generates a Seven Bridges stimulus when the session threshold is met — the operator still fans it out |
 | `sensor3_externalTelemetry` | onChange | Watches BRAIN_TRUST_INDEX for external data |
-| `onGovernanceEdit` | onEdit | Watches Blackboard Deploy_Trigger checkbox; deploys only a row whose Status is APPROVED |
+| `onGovernanceEdit` | onEdit | Watches Blackboard Deploy_Trigger checkbox; deploys only a row whose Status is APPROVED, one tick at a time (a paste over several boxes deploys nothing, unticks them and toasts "Tick one row at a time; nothing was deployed") |
 | `runRegistrarIntake` | Daily 01:00 | Scans 09_Unclassified_Curriculum_Drafts for new files |
 | `runRegistrarMicrobatch` | Every 15 min | Registrar concurrency gate + stale-row reset |
 | `runRegistrarProcessor` | Every 10 min | Registrar validation, translation, and routing |
@@ -300,6 +300,22 @@ come from the new `DECISION_REGISTER` sheet: the intake records each
 deferred decision as OPEN, and `resolveDecision()` or a Status edit closes
 it. `previewDecisionRegisterBackfill()`/`applyDecisionRegisterBackfill()`
 read in the decisions already in CURRENT_STATE.
+
+**Decision echoes (2026-11-08, plan item L2):** a re-sent or back-filled
+session used to record its decisions again as new OPEN rows. The intake
+(`_recordDeferredDecisions_`, 22) now holds a new deferred decision back
+when it repeats a `DECISION_REGISTER` row of any status: its Blocking
+cites that row's Decision_ID, or its text, normalized (lowercase,
+punctuation and extra spaces gone, so a trailing period doesn't count),
+is the same, contains the other (the shorter at least 4 words), or has a
+word-set Dice similarity of at least 0.85 with the same numbers in both
+(one word changed in ten is 0.90; two is 0.80, recorded). A "#19"-style
+number in Blocking is not matched: nothing maps it to a Decision_ID. Held
+decisions go to a `DECISION_ECHOES` tab (held at, session, would-be ID,
+matched ID, reason, similarity, and the text), and the primer and
+`KOS_OPEN_DECISIONS` carry one line counting them. One that wasn't a
+repeat: copy it into the register by hand. CURRENT_STATE still gets every
+decision, as before.
 
 **Notebook persona editions (2026-10-05):** `rtp-core-router/notebook-sources/`
 holds each persona doc as a notebook source (Phase 2 step 1): a cited core

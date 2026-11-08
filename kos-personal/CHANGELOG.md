@@ -1,5 +1,18 @@
 # KOS Changelog
 
+### Decision echoes held back; Deploy_Trigger one row at a time (2026-11-08)
+
+Plan items L2 and L8 (`meta/PLAN_2026-11.md`). A re-sent or back-filled
+session used to record its deferred decisions again as new OPEN rows,
+often reworded or with a trailing period. `_recordDeferredDecisions_` (22)
+now holds back a decision that repeats a `DECISION_REGISTER` row of any
+status (its Blocking cites that row's ID, or its normalized text is the
+same, contains the other, or has word-set Dice ≥ 0.85 with the same
+numbers) and writes it to `DECISION_ECHOES`; the primer and
+`KOS_OPEN_DECISIONS` count those rows. And `onGovernanceEdit` (6) no
+longer acts on the top row of a paste over several Deploy_Trigger boxes:
+a multi-cell edit deploys nothing and unticks them, with a toast.
+
 ### Closeout fidelity, randomized (2026-11-07)
 
 A session log is the RTP's own summary, and the raw copy ingestion keeps is

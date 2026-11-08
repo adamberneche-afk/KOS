@@ -219,7 +219,7 @@ You can also generate a fresh primer on demand from the System tab: **Make today
 
 The same content is kept in `KOS_LATEST_PRIMER`, one doc overwritten in place, so its link never changes (the Claude Project opens it by that link). It opens with a `Generated at:` stamp and a **Data Quality** block: OK, or FLAGGED with the reasons (for example a `VECTOR_MATRIX` repair still to finish). Three more docs are rewritten with it each morning: `KOS_RECENT_SESSIONS`, `KOS_OPEN_DECISIONS` and `KOS_CORE_FACTS`. To refresh them now, run `generateBriefingDocs()` in the Apps Script editor.
 
-**Closing a deferred decision.** Each decision a session defers is recorded as OPEN in the `DECISION_REGISTER` sheet and listed in `KOS_OPEN_DECISIONS`. Set its Status to RESOLVED or DROPPED (or run `resolveDecision(id, note)`) and it leaves that doc on the next run.
+**Closing a deferred decision.** Each decision a session defers is recorded as OPEN in the `DECISION_REGISTER` sheet and listed in `KOS_OPEN_DECISIONS`. Set its Status to RESOLVED or DROPPED (or run `resolveDecision(id, note)`) and it leaves that doc on the next run. A decision that repeats one already in the register (same or reworded text, or a Blocking that cites its ID) is not recorded again: it goes to the `DECISION_ECHOES` tab, and the primer says how many are there. If one wasn't really a repeat, copy it into the register.
 
 ---
 
@@ -328,6 +328,7 @@ Your BRAIN_TRUST_INDEX spreadsheet contains all the system's structured outputs.
 | ERROR_LOG | All errors with timestamps and context |
 | STAGING_ARCHIVE | Completed queue rows (after archiving) |
 | DECISION_REGISTER | Deferred decisions and whether each is still open |
+| DECISION_ECHOES | Deferred decisions held back as repeats of one in DECISION_REGISTER |
 
 The session documents themselves (CURRENT_STATE, PIVOTS_AND_LESSONS, daily primers) live in the Drive folder hierarchy under your root KOS folder.
 

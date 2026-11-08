@@ -145,6 +145,13 @@ function installGovernanceTrigger() {
  * A row whose Status (col 11) is not APPROVED is refused: the
  * checkbox is reset and nothing is written.
  *
+ * One row at a time (plan item L8, 2026-11-08): an edit that covers more
+ * than one cell and includes Deploy_Trigger (a paste over several
+ * checkboxes, or across a row) deploys nothing. Every ticked
+ * Deploy_Trigger cell in it is unticked and a toast says so. Before this,
+ * such a paste acted on its top-left cell only and left the other ticks
+ * standing, undeployed.
+ *
  * When triggered:
  *   1. Reads the full Blackboard row for mutation parameters.
  *   2. Runs runHardeningAudit on the payload (PIVOT 008).
@@ -164,6 +171,8 @@ function installGovernanceTrigger() {
  * @param {GoogleAppsScript.Events.SheetsOnEdit} e  Edit event.
  */
 const GOV_APPROVED_STATUS = 'APPROVED';
+const GOV_DEPLOY_TRIGGER_COL = 12;  // col L
+const GOV_MULTI_CELL_NOTE = 'Tick one row at a time; nothing was deployed.';
 
 function onGovernanceEdit(e) {
   if (!e || !e.range) return;
@@ -176,7 +185,17 @@ function onGovernanceEdit(e) {
   // Only act on Deploy_Trigger (col 12) in Blackboard or CE-LOG sheets
   const isTarget = sheet.getName() === CFG.BLACKBOARD_SHEET ||
                    sheet.getName().indexOf('CE-LOG') !== -1;
-  if (!isTarget || col !== 12 || range.getValue() !== true || row <= 1) return;
+  if (!isTarget) return;
+
+  // L8: a multi-cell edit that touches Deploy_Trigger deploys nothing.
+  const numRows = range.getNumRows();
+  const numCols = range.getNumColumns();
+  if (numRows * numCols > 1) {
+    _govRefuseMultiCellTick_(e.source, sheet, row, col, numRows, numCols);
+    return;
+  }
+
+  if (col !== GOV_DEPLOY_TRIGGER_COL || range.getValue() !== true || row <= 1) return;
 
   // Read mutation parameters from the row (cols 1–11)
   const data       = sheet.getRange(row, 1, 1, 11).getValues()[0];
@@ -227,6 +246,32 @@ function onGovernanceEdit(e) {
     e.source.toast('Mutation failed — see Status column.', 'Governance Alert', 10);
     _reportError('onGovernanceEdit:row' + row, err, null);
   }
+}
+
+
+/**
+ * L8: unticks every ticked Deploy_Trigger cell (below the header) inside a
+ * multi-cell edit and says nothing was deployed. An edit that doesn't
+ * reach column 12, or ticked nothing there, is left alone and says nothing.
+ * @returns {number} cells unticked
+ */
+function _govRefuseMultiCellTick_(source, sheet, row, col, numRows, numCols) {
+  const T = GOV_DEPLOY_TRIGGER_COL;
+  if (col > T || col + numCols - 1 < T) return 0;
+  const first = Math.max(row, 2);
+  const last = row + numRows - 1;
+  if (last < first) return 0;
+  const cells = sheet.getRange(first, T, last - first + 1, 1);
+  const values = cells.getValues();
+  const ticked = values.filter(function (v) { return v[0] === true; }).length;
+  if (!ticked) return 0;
+  cells.setValues(values.map(function (v) { return [v[0] === true ? false : v[0]]; }));
+  source.toast(ticked + (ticked === 1 ? ' Deploy_Trigger box' : ' Deploy_Trigger boxes') +
+    ' ticked in a multi-cell edit. ' + GOV_MULTI_CELL_NOTE,
+    'Governance Engine', 8);
+  console.log('[onGovernanceEdit] Multi-cell edit, rows ' + first + '-' + last + ': ' +
+    ticked + ' ticks undone, nothing deployed.');
+  return ticked;
 }
 
 
@@ -968,8 +1013,17 @@ function generateDailyPrimer() {
     blocks.splice(1, 0, { kind: 'p', text: moralDebtLine_(props, now) });
     // The randomized fidelity check (27_FidelitySample.gs): what's waiting, on
     // whom. A failure here is reported and never holds back the primer.
-    try { blocks.splice(2, 0, { kind: 'p', text: fidelityLine_(now) }); } catch (fsErr) {
+    let at = 2;
+    try { blocks.splice(at, 0, { kind: 'p', text: fidelityLine_(now) }); at++; } catch (fsErr) {
       _reportError('generateDailyPrimer:fidelity', fsErr, null);
+    }
+    // L2: deferred decisions the intake held back as repeats (22_BriefingDocs.gs),
+    // one line, only when there are any. Never holds back the primer.
+    try {
+      const echoLine = decisionEchoLine_();
+      if (echoLine) blocks.splice(at, 0, { kind: 'p', text: echoLine });
+    } catch (deErr) {
+      _reportError('generateDailyPrimer:decisionEchoes', deErr, null);
     }
     const title  = 'DAILY PRIMER — ' + dateStr;
     const stamp  = _briefingStamp_(now, 'generateDailyPrimer');

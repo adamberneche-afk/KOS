@@ -484,6 +484,26 @@ lists the OPEN rows.
 `previewDecisionRegisterBackfill()` / `applyDecisionRegisterBackfill()`
 read in the decisions already in CURRENT_STATE, once.
 
+### DECISION_ECHOES
+
+Deferred decisions the intake held back as repeats of a `DECISION_REGISTER`
+row of any status (plan item L2; the rule is `_decisionEcho_` in
+`22_BriefingDocs.gs`). Created on first use. The primer and
+`KOS_OPEN_DECISIONS` count its rows; the operator copies one into the
+register by hand if it was not a repeat.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | Held_At | DateTime | When the intake held it back |
+| B | Session_UID | String | The payload uid it came in |
+| C | Would_Be_ID | String | The Decision_ID it would have had |
+| D | Matched_ID | String | The register row it repeats |
+| E | Reason | Enum | `blocking` (its Blocking cites Matched_ID), `text: exact`, `text: contains` or `text: close` |
+| F | Similarity | Number | Word-set Dice similarity, 0–1 (1 for exact) |
+| G | Owner | String | From the Curator output |
+| H | Decision | String | The decision text |
+| I | Blocking | String | From the Curator output |
+
 ### SMP_REGISTER
 
 The one list of System Modification Proposals (`meta/SMP_PROCESS.md`). The
