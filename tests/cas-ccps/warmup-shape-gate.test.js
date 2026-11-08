@@ -153,7 +153,7 @@ test('34c counts fallbacks; 33 stamps a stop with its reason', () => {
     '15b_StudioFlowPrompts_Flow2_Revised.js', '23_StudentProfileManager.js', '25_WarmUpWriter.js',
     '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js', '36_WeeklyParentReport.js',
     '37_FlowInputBuilder.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js', '41_WarmUpFlowBridge.js',
-    '54_StudentAssignments.js', '57_RetentionSchedule.js', '71_TurnInCodes.js', '72_TurnInCheckFlow.js'].map((f) => path.join(CC, f)), ['overnightHealth_']);
+    '54_StudentAssignments.js', '57_RetentionSchedule.js', '71_TurnInCodes.js', '71b_TurnInStudent.js', '72_TurnInCheckFlow.js'].map((f) => path.join(CC, f)), ['overnightHealth_']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   const props = env.sandbox.PropertiesService.getScriptProperties();

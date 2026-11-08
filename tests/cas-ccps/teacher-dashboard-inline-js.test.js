@@ -676,7 +676,7 @@ test('✉ Parent Reports stores nothing in the browser, and neither dashboard us
   done({ success: true, copiedAt: 'Oct 23, 9:00 AM' });
   assert.match(els['pr-msg-0'].textContent, /Recorded as copied Oct 23, 9:00 AM/);
   assert.deepEqual(touched, []);
-  const { exported } = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '71_TurnInCodes.js')], ['buildStudentDashboardHtml_']);
+  const { exported } = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '71_TurnInCodes.js'), path.join(SCRIPTS, '71b_TurnInStudent.js')], ['buildStudentDashboardHtml_']);
   for (const page of [html, exported.buildStudentDashboardHtml_()]) {
     assert.doesNotMatch(page, /localStorage|sessionStorage|indexedDB/);
   }

@@ -18,7 +18,7 @@
 //             5 years. Ledger, StudentAssignments, StudentDocRegistry,
 //             CompetencyEvidence, SCRDecisionLog, ParentReportLog,
 //             EvaluationLog, ReflectionLog, PartUnlocks, TurnInCodes,
-//             TurnInChecks, TurnInOverrides.
+//             TurnInChecks, TurnInOverrides, TurnInCanvasRuns.
 //   WORKING — queues, Flow inputs and profiles that feed the system but
 //             are not the record: 1 year. WarmUpQueue and the rest below.
 // A student's workspace Doc follows its Ledger row; a warm-up Doc follows
@@ -111,6 +111,12 @@ function _retentionSchedule_() {
     // The teacher's per-assignment openings: what a code past the term rests on.
     { label: "TurnInOverrides", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
       where: ledger(TURN_IN_OVERRIDES_TAB), dateCol: "OpenedAt" },
+    // Each Canvas check the teacher ran (74, from the Teacher Dashboard):
+    // who, when, which assignment, the counts. What an uploaded completion
+    // grade rests on; no student data. A literal name: 74 is in the Teacher
+    // Dashboard project, not this one.
+    { label: "TurnInCanvasRuns", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
+      where: ledger("TurnInCanvasRuns"), dateCol: "RunAt" },
     { label: "ParentReportLog", tier: RETENTION_TIER_RECORD, years: _parentReportRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.parentReportLog; }),
       dateCol: PRL.GENERATED_AT, archived: archivedIn(PRL.ARCHIVE_STATUS) },

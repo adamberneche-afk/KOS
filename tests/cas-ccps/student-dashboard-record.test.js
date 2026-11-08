@@ -12,7 +12,7 @@ const vm = require('vm');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 const { extractInlineScripts } = require('../../tools/html-lint/check.js');
 
-const SD = ['00_SharedConfig.js', '63_DocHeader.js', '13_StudentDashboard.js', '71_TurnInCodes.js']
+const SD = ['00_SharedConfig.js', '63_DocHeader.js', '13_StudentDashboard.js', '71_TurnInCodes.js', '71b_TurnInStudent.js']
   .map(f => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f));
 const ME = '1234567@ccpsnet.net';
 const OTHER = '7654321@ccpsnet.net';

@@ -91,6 +91,7 @@
       "cas-ccps/scripts/68_LessonParts.js",
       "cas-ccps/scripts/69_EvaluationHealth.js",
       "cas-ccps/scripts/71_TurnInCodes.js",
+      "cas-ccps/scripts/71b_TurnInStudent.js",
       "cas-ccps/scripts/72_TurnInCheckFlow.js"
     ]
   },
@@ -160,7 +161,10 @@
       "cas-ccps/scripts/65_LessonDrafts.js",
       "cas-ccps/scripts/66_LessonDoc.js",
       "cas-ccps/scripts/67_AgendaDeck.js",
-      "cas-ccps/scripts/68_LessonParts.js"
+      "cas-ccps/scripts/68_LessonParts.js",
+      "cas-ccps/scripts/71_TurnInCodes.js",
+      "cas-ccps/scripts/73_TurnInTeacherPanel.js",
+      "cas-ccps/scripts/74_TurnInCanvasCheck.js"
     ]
   },
   "cas-ccps:student-dashboard": {
@@ -173,7 +177,8 @@
       "cas-ccps/scripts/13b_StudentDashboardDemoLessons.js",
       "cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js",
       "cas-ccps/scripts/63_DocHeader.js",
-      "cas-ccps/scripts/71_TurnInCodes.js"
+      "cas-ccps/scripts/71_TurnInCodes.js",
+      "cas-ccps/scripts/71b_TurnInStudent.js"
     ]
   },
   "cas-ccps:studio-steps": {

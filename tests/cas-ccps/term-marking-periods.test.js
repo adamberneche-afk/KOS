@@ -138,7 +138,7 @@ test('getStudentDashboardData: a student registered in MP1 still sees the work i
     getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
     getScriptTimeZone() { return 'America/New_York'; },
   };
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js')],
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
     ['getStudentDashboardData', 'LEDGER'], { Session: session });
   ledgerWithTwoMarkingPeriods(sandbox, exported.LEDGER, 23);
   const data = exported.getStudentDashboardData('');

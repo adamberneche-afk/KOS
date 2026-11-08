@@ -123,13 +123,13 @@ see their own rows below):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `63` (the assignment doc's header: stamped by `02`, the result set by `37`), `02` (intake), `03` (queue bridge), `04` (shared helpers; the turn-in gate was retired 2026-10-10), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `34b` (CAS attention signal: the counts-only `KOS_CAS_SIGNAL` doc the KOS Claude Project reads, rewritten by the watchdog every 10 minutes), `34c` (the overnight check: the signal's LAST NIGHT section and the daily email), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section), `15b`/`15c`, `37`–`42` (flow plumbing), `43` (deploy marker), `50` (student data access), `51` (course year builder), `52` (Canvas roster import), `53`/`53b` (assignment seeder and its unit data), `54` (StudentAssignments and archiving an assignment), `55`/`55b` (LessonSchedule, WarmUpPlan, the generated lesson data), `57` (the retention schedule and its read-only check), `58` (the nightly lesson rollout), `64` (the Ledger cycle: one every-minute trigger running the frequent jobs in turn, `installLedgerCycle()`), `71` (turn-in codes: the verdict Flow 6's harvest applies, and the tabs the retention schedule counts), `72` (Flow 6, the turn-in check: the input and return tabs, the harvest and the retry, a Ledger cycle job) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `63` (the assignment doc's header: stamped by `02`, the result set by `37`), `02` (intake), `03` (queue bridge), `04` (shared helpers; the turn-in gate was retired 2026-10-10), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `34b` (CAS attention signal: the counts-only `KOS_CAS_SIGNAL` doc the KOS Claude Project reads, rewritten by the watchdog every 10 minutes), `34c` (the overnight check: the signal's LAST NIGHT section and the daily email), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section), `15b`/`15c`, `37`–`42` (flow plumbing), `43` (deploy marker), `50` (student data access), `51` (course year builder), `52` (Canvas roster import), `53`/`53b` (assignment seeder and its unit data), `54` (StudentAssignments and archiving an assignment), `55`/`55b` (LessonSchedule, WarmUpPlan, the generated lesson data), `57` (the retention schedule and its read-only check), `58` (the nightly lesson rollout), `64` (the Ledger cycle: one every-minute trigger running the frequent jobs in turn, `installLedgerCycle()`), `71` and `71b` (turn-in codes: the verdict Flow 6's harvest applies, and the tabs the retention schedule counts), `72` (Flow 6, the turn-in check: the input and return tabs, the harvest and the retry, a Ledger cycle job) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `00`, `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically) plus its two still-live `16_*_ADDENDUM` files (their own top-level code shares this project's scope, not a stale leftover), `19` (required by `16`'s `writeConfigTab_()`), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer from a Script Registry Sheet, see `REGISTRY_SHEET_SETUP.md`; its file lists predate most scripts, and the live projects are pushed with `tools/clasp-sync/run.js` instead), `28` (Module 2 setup), `44` (deploy marker) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — the doc's 📊 Feedback menu), `09` (M1Base), `17` (doc-only setup notes), `45` (deploy marker) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19`, `46` (deploy marker) |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19`, `47` (deploy marker) |
-| Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26`/`27` (lesson-context logging + alignment log + synchronous lesson frame generation, called by Script 07's `submitLessonContext()`), `32` (competency rubric lookup, called by Script 27's frame generation — dual-placed here and in Central Ledger since Script 27 runs in both), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`), `36` (weekly parent reports — the dashboard's panel to read and copy them; KOS never sends one, the teacher does (D1, 2026-10-23); it may only call functions present in both this project and Central Ledger, since Script 30 isn't in this project — see `36_WeeklyParentReport.js`'s own header), `55b` (the generated lesson data, since 2026-10-21, so the lesson editor starts from what students get), `65` (lesson drafts: the 📅 Lessons editor's server side) and `48` (deploy marker). Its header also has ⚙ Settings (each feature on or off per course, the marking period end dates, and the activity and delay days that change a day's bell schedule, `SCHEDULE_DAYS`; replaced 💬 Feedback on 2026-10-27) and ❓ Terms (`CAS_TEACHER_TERMS` in `00`) |
-| Student Dashboard | standalone web app | `00`, `00b` (the owner guard), `13`, `13b` (the demo mode's lessons, generated from `55b`), `63` (the assignment doc's header: "waiting for feedback" on submit), `71` (turn-in codes: the feedback question, its screen and the code on the card), `49` (deploy marker) |
+| Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26`/`27` (lesson-context logging + alignment log + synchronous lesson frame generation, called by Script 07's `submitLessonContext()`), `32` (competency rubric lookup, called by Script 27's frame generation — dual-placed here and in Central Ledger since Script 27 runs in both), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`), `36` (weekly parent reports — the dashboard's panel to read and copy them; KOS never sends one, the teacher does (D1, 2026-10-23); it may only call functions present in both this project and Central Ledger, since Script 30 isn't in this project — see `36_WeeklyParentReport.js`'s own header), `55b` (the generated lesson data, since 2026-10-21, so the lesson editor starts from what students get), `65` (lesson drafts: the 📅 Lessons editor's server side), `71` (turn-in codes' core: the codes, the grant, the overrides; not its student functions, which are in `71b`), `73` and `74` (the 🎟 Turn-in codes panel's server half and the Canvas check, D17 stage 3) and `48` (deploy marker). Its header also has ⚙ Settings (each feature on or off per course, the marking period end dates, and the activity and delay days that change a day's bell schedule, `SCHEDULE_DAYS`; replaced 💬 Feedback on 2026-10-27) and ❓ Terms (`CAS_TEACHER_TERMS` in `00`) |
+| Student Dashboard | standalone web app | `00`, `00b` (the owner guard), `13`, `13b` (the demo mode's lessons, generated from `55b`), `63` (the assignment doc's header: "waiting for feedback" on submit), `71` and `71b` (turn-in codes: the feedback question, its screen and the code on the card; `71b` holds the student functions and the card), `49` (deploy marker) |
 | Studio Steps | standalone (not bound to a spreadsheet/doc) | **Blocked on this account** — needs a standard Cloud project; all five flows were ported to `37_FlowInputBuilder.js`/`41_WarmUpFlowBridge.js` instead. 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Pushed, but unreachable from Studio's step picker on this account (see Known gap 1). |
 | Family Sentinel | the teacher's private Family Mail Sentinel sheet | `00`, `60` (Family Mail Sentinel: labels student and parent mail, queues it for a Gemini flow redacted, and writes the name-free `KOS_FAMILY_SIGNAL` doc the KOS Claude Project reads), `61` (its generated prompt), `62` (deploy marker). The only cas-ccps project with a Gmail scope. Live since 2026-10-12. See [`docs/FAMILY_MAIL_SENTINEL.md`](./docs/FAMILY_MAIL_SENTINEL.md). |
 
@@ -505,8 +505,11 @@ checks and failure rate against D8's bar of 1 in 20. Counts only.
 
 ## Turn-in codes (script 71)
 
-`71_TurnInCodes.js` (Student Dashboard and Central Ledger, 2026-11-07;
-stage 1 of [`meta/TURN_IN_CODE_PLAN_2026-11.md`](../meta/TURN_IN_CODE_PLAN_2026-11.md), D17).
+`71_TurnInCodes.js` (Student Dashboard, Central Ledger and, since stage 3,
+the Teacher Dashboard; 2026-11-07; the student side, `getMyTurnInState`,
+`submitTurnInAnswer`, the card and its client half, moved unchanged to
+`71b_TurnInStudent.js` on 2026-11-08, so the Teacher Dashboard loads 71
+without serving student functions; stage 1 of [`meta/TURN_IN_CODE_PLAN_2026-11.md`](../meta/TURN_IN_CODE_PLAN_2026-11.md), D17).
 Behind `TURN_IN_CODE_COURSES` (blank by default: off everywhere, and the
 dashboard is exactly as before; a course code, a list, or `all`). Once a
 card's feedback has arrived (Revise or Passed), it asks one question built
@@ -557,6 +560,49 @@ attention signal and the overnight email. The Studio steps, the fixture
 the binding and liveness checks are in that doc; the `FlowBuildSpec` tab
 has its "Flow 6" rows. Input rows lose their `PromptText` once the check is
 done, and both tabs drop finished rows after 14 days.
+
+**The teacher's side** (stage 3, 2026-11-08; `73_TurnInTeacherPanel.js` and
+`74_TurnInCanvasCheck.js`, Teacher Dashboard). T2 is decided (codes follow
+CAS's marking periods, extended per assignment by the override) and
+anonymous grading is off on these assignments, so D17 has no open
+question. The header's **🎟 Turn-in codes** panel, teacher only
+(`_isAuthorizedTeacher_()`; nothing added to `webapp-public-allow.json`),
+works whether or not `TURN_IN_CODE_COURSES` is on:
+- **Review answers**: each student's latest answer whose check failed
+  (`CHECK_FAILED`) and, on request, those it called `NOT_YET`, with no code
+  yet: the student, the assignment, the milestone, the answer and the
+  check's reason. **Issue code** grants it with a required reason (`How =
+  GRANT`); that is the teacher's overrule. **Leave it** changes nothing. No
+  bulk issue.
+- **Give a code**: one student, one assignment, a required reason
+  (`_turnInGrant_`, the same internals as `grantTurnInCode()`).
+- **Open an assignment**: the open overrides; open or close one with a
+  reason (`openTurnInForAssignment`'s internals).
+- **Check Canvas**: the newest submissions ZIP and gradebook export in the
+  folder 52 reads (`TEACHER_FOLDER_ID`, else the teacher's Drive); the
+  teacher picks the CAS assignment and the gradebook column (best title
+  match preselected). Each `<sortable name>_[LATE_]<SIS ID>_text.html` is
+  matched by its SIS ID only (`SIS User ID`, then Canvas's `ID`; the row's
+  `SIS Login ID` is the account, `canvasLoginAccount_()` in `00`, as 52
+  enrols), never by the name in the file name, which is never logged,
+  shown or stored. The code is read from the text box (spacing, case and
+  O/I/L tolerated; check character checked). Outcomes: `VALID`,
+  `NO_CODE`, `OTHER_STUDENTS_CODE`, `WRONG_ASSIGNMENT`, `INVALID_CODE`,
+  `NOT_ON_ROSTER`, `NOT_TEXT_ENTRY`, `UNREADABLE`. Out: a report (a Google
+  Sheet, students as the dashboard shows them) and an upload CSV for
+  Canvas's gradebook Import: the export's identity columns verbatim, its
+  Points Possible row, and the chosen column with full points for `VALID`
+  rows and a **blank** cell for every other (Canvas leaves a blank cell's
+  grade alone, so the file only adds completion). Both go in the folder;
+  the Ledger's `TurnInCanvasRuns` tab gets one counts-only row per run. At
+  most 400 files and 4 minutes a run. From the editor:
+  `runTurnInCanvasCheck()` with `TURN_IN_CANVAS_ASSIGNMENT` (and optionally
+  `TURN_IN_CANVAS_COLUMN`, `TURN_IN_CANVAS_POINTS`) as Script Properties.
+
+The weekly routine: in Canvas, Download Submissions and Export the
+gradebook; drop both in the folder; Check Canvas; read the report; upload
+the CSV on the gradebook's Import page; delete the ZIP (it holds students'
+work and names).
 
 `70_WorkFileProbe.js` (2026-11-01), Phase 4's one-shot design check
 (`probeWorkFileTypes()`: what Apps Script reads back from a form, a deck and
