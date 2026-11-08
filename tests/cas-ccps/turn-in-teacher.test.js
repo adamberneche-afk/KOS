@@ -528,7 +528,7 @@ test('every panel function refuses anyone but the teacher, and none is on the pu
 test('the dashboard has the Turn-in codes button and panel, and the panel calls only the guarded functions', () => {
   const env = load();
   const html = env.exported.buildDashboardHtml_();
-  assert.match(html, /<button id="turnin-btn" onclick="openTurnInPanel\(\)" aria-haspopup="dialog">🎟 Turn-in codes<\/button>/);
+  assert.match(html, /<button id="turnin-btn" onclick="openTurnInPanel\(\)" aria-haspopup="dialog"><span aria-hidden="true">🎟<\/span> Turn-in codes<\/button>/);
   assert.match(html, /id="turnin-modal-backdrop"[\s\S]*role="dialog" aria-modal="true" aria-labelledby="turnin-modal-title"/);
   assert.match(html, /<div id="tic-live" class="tic-sr" role="status" aria-live="polite">/);
   const start = html.indexOf('// ── Turn-in codes (73_TurnInTeacherPanel.js');

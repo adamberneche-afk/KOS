@@ -1785,6 +1785,7 @@ const CAS_TEACHER_TERMS = [
   ["Warm-up readiness", "How much the system knows about each student, from checks and warm-up answers. Click a number to see those students."],
   ["Personalized learning profile", "The system’s growing guess of what kind of warm-up works for a student; “ready for fully personalized feedback” means it’s confident."],
   ["Student Context", "One document per student that gathers their lessons, checks and warm-ups, updated weekly."],
+  ["More ▾", "The header’s menu of the tools used less often: ✉ Parent Reports, 🎓 Competency ratings, 📅 Lessons, ⚙ Settings, 👁 View as a student and ❓ Terms. Student Context, 🎟 Turn-in codes, ↻ Refresh and the year menu stay in the header."],
   ["Current lesson", "The lesson whose start date in 📅 Lessons is the latest on or before today, per course."],
   ["Rollout", "The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead)."],
   ["Feedback as a comment", "Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings."],

@@ -62,19 +62,27 @@ Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** t
 
 ### Header buttons
 
+The header keeps what you use every day. The other tools are under **More ▾**.
+
 | Button | What it does |
 | --- | --- |
 | + Log today's lesson | Opens “Log a lesson”: the day's objective, activity, vocabulary and the competencies taught, for one or more periods. Shown only when warm-ups (Module 2) are on. Not the same as 📅 Lessons' “+ New lesson” |
 | Student Context | One document per student that gathers their lessons, checks and warm-ups, updated weekly. Course and Student pickers narrow the list; each student shows their competencies done, **By week →** opens their page, and “← Back to dashboard” returns to the roster |
-| ✉ Parent Reports | This week's report for each student, to copy into an email you send yourself. Course and Student pickers show one course or one student. See Parent Reports |
-| 🎓 Competency ratings | Confirm or set each student's SCR rating. See Grading and Competency Ratings |
 | 🎟 Turn-in codes | Answers the turn-in check couldn't decide, giving a code yourself, opening an assignment after its marking period, and checking the codes students pasted in Canvas. See Turn-in Codes |
-| ⚙ Settings | Each feature on or off per course, the marking period dates, and activity and delay days. See Settings |
-| 📅 Lessons | Start dates, rollout status, and lesson edits. See Lessons and Start Dates |
-| 👁 View as a student | Opens the Student Dashboard in a new tab as a made-up student, “Demo Student”, on your own lessons, in every card state. Press its buttons to see what a student sees; nothing is saved and no document opens. Bookmark that tab to come back to it. Only you can open it: anyone else gets their own page |
-| ❓ Terms | What each word and number on the dashboard means. Escape closes it |
+| More ▾ | Opens the menu of the tools below. Arrow keys move through it, Enter opens one, Escape or a click elsewhere closes it |
 | ↻ Refresh | Loads the latest |
 | Whole school year | The year menu. Pick a marking period to see only that part of the year |
+
+### Under More ▾
+
+| Menu item | What it does |
+| --- | --- |
+| ✉ Parent Reports | This week's report for each student, to copy into an email you send yourself. Course and Student pickers show one course or one student. See Parent Reports |
+| 🎓 Competency ratings | Confirm or set each student's SCR rating. See Grading and Competency Ratings |
+| 📅 Lessons | Start dates, rollout status, and lesson edits. See Lessons and Start Dates |
+| ⚙ Settings | Each feature on or off per course, the marking period dates, and activity and delay days. See Settings |
+| 👁 View as a student | Opens the Student Dashboard in a new tab as a made-up student, “Demo Student”, on your own lessons, in every card state. Press its buttons to see what a student sees; nothing is saved and no document opens. Bookmark that tab to come back to it. Only you can open it: anyone else gets their own page |
+| ❓ Terms | What each word and number on the dashboard means. Escape closes it |
 
 🔍
 

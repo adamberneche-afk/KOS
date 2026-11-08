@@ -242,8 +242,9 @@ test('the Teacher Dashboard has "View as a student", opening the Student Dashboa
     ['buildDashboardHtml_', 'studentDemoUrl_']);
   const url = 'https://script.google.com/a/macros/example.net/s/AKfyDEMO_url-1/exec';
   const html = exported.buildDashboardHtml_({ studentDashboardUrl: url });
-  assert.ok(html.includes('<a id="demo-student-btn" href="' + url + '?demo=1" target="_blank" rel="noopener"'));
-  assert.match(html, /👁 View as a student<\/a>/);
+  // An item of the header's More ▾ menu since 2026-11-08; the same link.
+  assert.ok(html.includes('<a id="demo-student-btn" role="menuitem" tabindex="-1" href="' + url + '?demo=1" target="_blank" rel="noopener"'));
+  assert.match(html, /<span aria-hidden="true">👁<\/span> View as a student<\/a>/);
   const unset = exported.buildDashboardHtml_({ studentDashboardUrl: '' });
   assert.match(unset, /<button id="demo-student-btn"[^>]*STUDENT_DASHBOARD_URL/);
   assert.equal(exported.studentDemoUrl_({ studentDashboardUrl: 'javascript:alert(1)' }), '');

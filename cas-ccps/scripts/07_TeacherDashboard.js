@@ -2284,15 +2284,29 @@ header{background:#1967d2;color:white;padding:16px 24px;display:flex;align-items
 header h1{font-size:18px;font-weight:500;flex:1}
 #refresh-btn{background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.7);color:white;padding:7px 14px;border-radius:6px;cursor:pointer;font-size:13px;min-height:34px}
 /* The header's tool buttons (2026-10-22): they had no style at all, so they rendered as grey browser buttons 19px tall. */
-header button:not(#refresh-btn):not(#new-lesson-btn),header a#demo-student-btn{background:white;color:#1557b0;border:1px solid white;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;min-height:34px;cursor:pointer;font-family:inherit}
-header button:not(#refresh-btn):not(#new-lesson-btn):hover,header a#demo-student-btn:hover{background:#e8f0fe}
-header a#demo-student-btn{display:inline-flex;align-items:center;text-decoration:none}
-header a#demo-student-btn:focus-visible{outline:2px solid white;outline-offset:2px}
-header button:focus-visible,header select:focus-visible{outline:2px solid white;outline-offset:2px}
+header button:not(#refresh-btn):not(#new-lesson-btn):not([role="menuitem"]){background:white;color:#1557b0;border:1px solid white;border-radius:6px;padding:6px 12px;font-size:13px;font-weight:500;min-height:34px;cursor:pointer;font-family:inherit}
+header button:not(#refresh-btn):not(#new-lesson-btn):not([role="menuitem"]):hover{background:#e8f0fe}
+header button:not([role="menuitem"]):focus-visible,header select:focus-visible{outline:2px solid white;outline-offset:2px}
+/* More ▾ (2026-11-08): the menu of the header's less-used tools. */
+.hdr-more{position:relative}
+#more-btn[aria-expanded="true"]{background:#e8f0fe}
+#more-menu{position:absolute;top:calc(100% + 6px);right:0;z-index:150;min-width:230px;background:white;border:1px solid #dadce0;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.22);padding:6px 0;display:flex;flex-direction:column}
+#more-menu[hidden]{display:none}
+#more-menu.open-left{right:auto;left:0}
+#more-menu [role="menuitem"]{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:8px 16px;background:white;color:#202124;border:0;border-radius:0;font-size:14px;font-weight:400;font-family:inherit;text-align:left;text-decoration:none;cursor:pointer}
+#more-menu [role="menuitem"] span[aria-hidden]{width:20px;text-align:center}
+#more-menu [role="menuitem"]:hover,#more-menu [role="menuitem"]:focus{background:#e8f0fe;color:#1557b0;outline:none}
+#more-menu [role="menuitem"]:focus-visible{outline:2px solid #1557b0;outline-offset:-2px}
 /* Touch screens (2026-11-07): the header's buttons and menus at least 44px
-   tall. !important because #refresh-btn and others set their own height. */
-@media (pointer: coarse){header button,header select{min-height:44px !important}}
-@media (pointer: coarse){header a#demo-student-btn{min-height:44px !important}}
+   tall. !important because #refresh-btn and others set their own height.
+   It covers the More ▾ items too (#385). */
+@media (pointer: coarse){header button,header select,header [role="menuitem"]{min-height:44px !important}}
+/* Phones: the title on its own line, the tools tighter under it. */
+@media (max-width:600px){
+  header{padding:10px 12px;gap:8px}
+  header h1{flex:1 0 100%;font-size:17px}
+  header button:not([role="menuitem"]){padding-left:10px !important;padding-right:10px !important}
+}
 #term-filter option{color:#202124;background:#fff}
 #refresh-btn:hover{background:rgba(0,0,0,0.35)}
 #term-filter{padding:6px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:13px;margin-left:0}
@@ -2535,30 +2549,44 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
        roster via getStudentContextRoster(). A student caller gets an
        entirely separate, small buildMyContextHtml_() page instead. ── -->
   <button id="context-tab-btn" onclick="showStudentContext()">Student Context</button>
-  <!-- Weekly parent reports (36_WeeklyParentReport.js). Opens a review
-       list; nothing is sent until the teacher enters an address and
-       presses Send on one student. -->
-  <button id="parent-report-btn" onclick="openParentReportModal()">✉ Parent Reports</button>
-  <!-- SCR review (Open Items #4 — 30_SCRSuggestionEngine.js). Opens a
-       review queue of AI-suggested Module 5 competency ratings; nothing
-       is decided until the teacher confirms or overrides one. -->
-  <button id="scr-review-btn" onclick="openScrReviewModal()">🎓 Competency ratings</button>
   <!-- Turn-in codes (73, 74; D17 stage 3): the review queue, the grant, the
        per-assignment openings and the Canvas check. Works whether or not
        students see codes yet (TURN_IN_CODE_COURSES). -->
-  <button id="turnin-btn" onclick="openTurnInPanel()" aria-haspopup="dialog">🎟 Turn-in codes</button>
-  <!-- ⚙ Settings (sprint PR 3): the features turned on per course and the
-       marking period end dates, each a _CONFIG row (00). -->
-  <button id="settings-btn" onclick="openSettingsModal()">⚙ Settings</button>
-  <!-- Lesson schedule (LessonSchedule tab, 55): start dates by course, with
-       what the last nightly rollout (58) did for each lesson. -->
-  <button id="lesson-schedule-btn" onclick="openLessonScheduleModal()">📅 Lessons</button>
-  <!-- The Student Dashboard as a made-up student (13's demo mode): opens
-       in a new tab, and the URL can be bookmarked. -->
-  ${demoUrl
-    ? '<a id="demo-student-btn" href="' + demoUrl + '" target="_blank" rel="noopener" title="The Student Dashboard with a made-up student, on your lessons. Nothing is saved.">👁 View as a student</a>'
-    : '<button id="demo-student-btn" type="button" onclick="alert(\'The Student Dashboard URL is not set. Set STUDENT_DASHBOARD_URL (a _CONFIG row in the Central Ledger), then reload.\')">👁 View as a student</button>'}
-  <button id="cas-terms-btn" onclick="casOpenTerms()" aria-haspopup="dialog">❓ Terms</button>
+  <button id="turnin-btn" onclick="openTurnInPanel()" aria-haspopup="dialog"><span aria-hidden="true">🎟</span> Turn-in codes</button>
+  <!-- More ▾ (2026-11-08, UX audit Teacher row "Header"): the header kept
+       the term menu, Refresh and the buttons of the daily loop (who needs
+       me now: Student Context, Turn-in codes, and + Log today's lesson when
+       warm-ups are on); the rest moved into this menu. Each item keeps its
+       old id and handler. A menu button (WAI-ARIA APG): Enter, Space or
+       ArrowDown opens it on the first item, ArrowUp on the last; arrows,
+       Home and End move between items; Escape or a click outside closes it
+       and puts focus back on More; Tab closes it. Choosing an item puts
+       focus on More first, so a panel opened from it returns focus there. -->
+  <div class="hdr-more" id="hdr-more">
+    <button id="more-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="more-menu">More <span aria-hidden="true">▾</span></button>
+    <div id="more-menu" role="menu" aria-labelledby="more-btn" hidden>
+      <!-- Weekly parent reports (36_WeeklyParentReport.js). Opens a review
+           list; nothing is sent until the teacher enters an address and
+           presses Send on one student. -->
+      <button id="parent-report-btn" type="button" role="menuitem" tabindex="-1" onclick="openParentReportModal()"><span aria-hidden="true">✉</span> Parent Reports</button>
+      <!-- SCR review (Open Items #4 — 30_SCRSuggestionEngine.js). Opens a
+           review queue of AI-suggested Module 5 competency ratings; nothing
+           is decided until the teacher confirms or overrides one. -->
+      <button id="scr-review-btn" type="button" role="menuitem" tabindex="-1" onclick="openScrReviewModal()"><span aria-hidden="true">🎓</span> Competency ratings</button>
+      <!-- Lesson schedule (LessonSchedule tab, 55): start dates by course, with
+           what the last nightly rollout (58) did for each lesson. -->
+      <button id="lesson-schedule-btn" type="button" role="menuitem" tabindex="-1" onclick="openLessonScheduleModal()"><span aria-hidden="true">📅</span> Lessons</button>
+      <!-- ⚙ Settings (sprint PR 3): the features turned on per course and the
+           marking period end dates, each a _CONFIG row (00). -->
+      <button id="settings-btn" type="button" role="menuitem" tabindex="-1" onclick="openSettingsModal()"><span aria-hidden="true">⚙</span> Settings</button>
+      <!-- The Student Dashboard as a made-up student (13's demo mode): opens
+           in a new tab, and the URL can be bookmarked. -->
+      ${demoUrl
+        ? '<a id="demo-student-btn" role="menuitem" tabindex="-1" href="' + demoUrl + '" target="_blank" rel="noopener" title="The Student Dashboard with a made-up student, on your lessons. Nothing is saved."><span aria-hidden="true">👁</span> View as a student</a>'
+        : '<button id="demo-student-btn" type="button" role="menuitem" tabindex="-1" onclick="alert(\'The Student Dashboard URL is not set. Set STUDENT_DASHBOARD_URL (a _CONFIG row in the Central Ledger), then reload.\')"><span aria-hidden="true">👁</span> View as a student</button>'}
+      <button id="cas-terms-btn" type="button" role="menuitem" tabindex="-1" onclick="casOpenTerms()" aria-haspopup="dialog"><span aria-hidden="true">❓</span> Terms</button>
+    </div>
+  </div>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
@@ -6318,6 +6346,138 @@ document.addEventListener("keydown", function(e) {
     closeModal();
   }
 });
+
+// ── More ▾ (2026-11-08): the header's menu button ──────────────────────────
+// See the markup's note. The items keep their own onclick; a capture-phase
+// click listener on the menu closes it first and puts focus on More, so
+// _openPanel() (and the Terms dialog) remember More as the place to return
+// to, not an item that is about to be hidden.
+function _moreItems() {
+  const menu = document.getElementById("more-menu");
+  return menu ? Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"]')) : [];
+}
+
+function _moreIsOpen() {
+  const btn = document.getElementById("more-btn");
+  return !!btn && btn.getAttribute("aria-expanded") === "true";
+}
+
+function openMoreMenu(focusIndex) {
+  const btn = document.getElementById("more-btn");
+  const menu = document.getElementById("more-menu");
+  if (!btn || !menu) return;
+  menu.hidden = false;
+  btn.setAttribute("aria-expanded", "true");
+  // On a phone More can wrap to the left edge: open the menu rightwards then.
+  if (menu.classList) {
+    menu.classList.remove("open-left");
+    if (menu.getBoundingClientRect && menu.getBoundingClientRect().left < 8) menu.classList.add("open-left");
+  }
+  const items = _moreItems();
+  if (!items.length) return;
+  const i = focusIndex === -1 ? items.length - 1 : Math.max(0, Math.min(items.length - 1, focusIndex || 0));
+  _moreFocus(items, i);
+}
+
+function closeMoreMenu(returnFocus) {
+  const btn = document.getElementById("more-btn");
+  const menu = document.getElementById("more-menu");
+  if (!btn || !menu) return;
+  menu.hidden = true;
+  btn.setAttribute("aria-expanded", "false");
+  if (returnFocus) btn.focus();
+}
+
+// The header control before (-1) or after (1) More, for Tab in the menu.
+function _moreTabNeighbour(step) {
+  const btn = document.getElementById("more-btn");
+  const header = btn && btn.closest ? btn.closest("header") : null;
+  if (!header) return null;
+  const list = Array.prototype.slice.call(header.querySelectorAll("button, select, a[href]")).filter(function (el) {
+    return !el.disabled && !(el.closest && el.closest("#more-menu")) && el.offsetParent !== null;
+  });
+  return list[list.indexOf(btn) + step] || null;
+}
+
+// Roving focus: only the item in focus is in the Tab order.
+function _moreFocus(items, i) {
+  items.forEach(function (el, j) { el.setAttribute("tabindex", j === i ? "0" : "-1"); });
+  items[i].focus();
+}
+
+function _moreButtonKeydown(e) {
+  if (e.key === "Enter" || e.key === " ") {
+    // A <button> would also click on these; handled here alone, so it
+    // toggles once.
+    e.preventDefault();
+    if (_moreIsOpen()) closeMoreMenu(true); else openMoreMenu(0);
+  } else if (e.key === "ArrowDown") {
+    e.preventDefault();
+    openMoreMenu(0);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    openMoreMenu(-1);
+  } else if (e.key === "Escape" && _moreIsOpen()) {
+    e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+    closeMoreMenu(true);
+  }
+}
+
+function _moreMenuKeydown(e) {
+  const items = _moreItems();
+  if (!items.length) return;
+  let i = items.indexOf(document.activeElement);
+  if (e.key === "ArrowDown") i = (i + 1) % items.length;
+  else if (e.key === "ArrowUp") i = (i <= 0 ? items.length : i) - 1;
+  else if (e.key === "Home") i = 0;
+  else if (e.key === "End") i = items.length - 1;
+  else if (e.key === "Escape") {
+    e.preventDefault();
+    if (e.stopPropagation) e.stopPropagation();
+    closeMoreMenu(true);
+    return;
+  } else if (e.key === "Tab") {
+    // Closes the menu and moves on from More, as Tab from More would.
+    e.preventDefault();
+    closeMoreMenu(true);
+    const next = _moreTabNeighbour(e.shiftKey ? -1 : 1);
+    if (next) next.focus();
+    return;
+  } else if (e.key === " " && document.activeElement && document.activeElement.tagName === "A") {
+    // Space doesn't follow a link on its own (View as a student is one).
+    e.preventDefault();
+    document.activeElement.click();
+    return;
+  } else {
+    return;
+  }
+  e.preventDefault();
+  _moreFocus(items, i);
+}
+
+(function wireMoreMenu() {
+  const btn = document.getElementById("more-btn");
+  const menu = document.getElementById("more-menu");
+  const wrap = document.getElementById("hdr-more");
+  if (!btn || !menu || !wrap) return;
+  btn.addEventListener("click", function () {
+    if (_moreIsOpen()) closeMoreMenu(true); else openMoreMenu(0);
+  });
+  btn.addEventListener("keydown", _moreButtonKeydown);
+  menu.addEventListener("keydown", _moreMenuKeydown);
+  menu.addEventListener("click", function (e) {
+    const item = e.target && e.target.closest ? e.target.closest('[role="menuitem"]') : null;
+    if (item) closeMoreMenu(true);
+  }, true);
+  document.addEventListener("click", function (e) {
+    if (!_moreIsOpen() || (wrap.contains && wrap.contains(e.target))) return;
+    // Focus goes back to More only when it was in the menu: a click into a
+    // field elsewhere keeps its own focus.
+    const inMenu = wrap.contains && wrap.contains(document.activeElement);
+    closeMoreMenu(inMenu);
+  });
+})();
 
 loadData();
 </script>
