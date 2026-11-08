@@ -282,8 +282,10 @@ const SHARED_CONFIG_KEYS = [
   // Friday's parent report rows prepared ahead (36); read through
   // _pivotValueOn_, per course.
   "PARENT_REPORT_PREP",
-  // The courses with turn-in codes on (71, D17); off when blank. Read like
-  // a pivot flag: "8177", "8175,8177" or "all".
+  // The courses and lessons with turn-in codes on (71, D17); off when blank
+  // or "off". "all", or a list of course codes and lesson IDs, as the
+  // cartridge builder's --turn-in takes them: "8175, CAS-8177-THE-HYPE-MACHINE".
+  // Read only through 71's turnInSwitchCovers_, not _pivotValueOn_.
   "TURN_IN_CODE_COURSES"
 ];
 

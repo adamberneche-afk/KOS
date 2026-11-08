@@ -4342,6 +4342,11 @@ function renderTurnInPanel(focusTab) {
   let h = '<p class="tic-intro">Students get a turn-in code by answering the question about their feedback, and paste it into the Canvas assignment. Here you can give a code yourself, open an assignment after its marking period, and check the codes students pasted in Canvas.</p>';
   if (!_tic.studentsSeeCodes) {
     h += '<p class="tic-note">Students don’t see turn-in codes yet (the TURN_IN_CODE_COURSES setting is off). Everything here still works.</p>';
+  } else if (_tic.switchOn && _tic.switchOn.length) {
+    h += '<p class="tic-note">Students see turn-in codes on: ' + esc(_tic.switchOn.join(", ")) + ' (the TURN_IN_CODE_COURSES setting, courses and lessons).</p>';
+  }
+  if (_tic.switchIgnored && _tic.switchIgnored.length) {
+    h += '<p class="tic-note">Ignored in the TURN_IN_CODE_COURSES setting (not a course or a lesson CAS knows): ' + esc(_tic.switchIgnored.join(", ")) + '.</p>';
   }
   h += '<div class="tic-tabs" role="tablist" aria-label="Turn-in codes">';
   TIC_TABS.forEach(function (t) {

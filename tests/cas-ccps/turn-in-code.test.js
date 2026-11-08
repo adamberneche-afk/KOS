@@ -42,6 +42,7 @@ function terms() {
 function load(opts) {
   opts = opts || {};
   const state = { who: AMY };
+  const logs = [];
   const session = {
     getActiveUser: () => ({ getEmail: () => state.who }),
     getEffectiveUser: () => ({ getEmail: () => OWNER }),
@@ -53,8 +54,9 @@ function load(opts) {
     'turnInMakeCode_', 'turnInCodeValid_', 'turnInCheckChar_', 'turnInLessonOf_', 'turnInRowTerm_',
     'turnInInCurrentTerm_', 'TURN_IN_PASTE_MAX_SHARE', 'TURN_IN_ALPHABET', 'REFLECTION_MIN_WORDS',
     'TURN_IN_CODE_HEADERS', 'TURN_IN_CHECK_HEADERS', 'openTurnInForAssignment', 'closeTurnInForAssignment',
-    'turnInOverrideCovers_', 'TURN_IN_OVERRIDE_HEADERS',
-  ], { Session: session });
+    'turnInOverrideCovers_', 'TURN_IN_OVERRIDE_HEADERS', 'turnInSwitchParse_', 'turnInSwitchCovers_',
+    'turnInOffEverywhere_',
+  ], { Session: session, Logger: { log: (m) => logs.push(String(m)) } });
   const L = exported.LEDGER;
   const T = terms();
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -111,7 +113,7 @@ function load(opts) {
     const s = ss.getSheetByName(name);
     return s ? s.getDataRange().getValues() : null;
   };
-  return { exported, sandbox, ss, props, state, L, T, ledger, rows, dash, tab };
+  return { exported, sandbox, ss, props, state, L, T, ledger, rows, dash, tab, logs };
 }
 
 const GENUINE = 'I will add a survey of twenty fans to section two and a chart of what they said, ' +
@@ -146,6 +148,76 @@ test('the switch is per course: on for 8177, an 8175 card is untouched', () => {
   assert.ok(!('turnIn' in by['VDOE-AMY-5']), '8175 is off');
   const both = load({ switch: '8175,8177' }).dash().by;
   assert.ok(both['VDOE-AMY-5'].turnIn, 'a list turns each course on');
+});
+
+// ── The switch takes lessons too (2026-11-08) ──────────────────────────────
+
+test('the switch reads course codes and lesson IDs, mixed, as the cartridge builder\'s --turn-in does', () => {
+  const { exported } = load();
+  const p = (v) => plain(exported.turnInSwitchParse_(v));
+  assert.deepEqual(p('8177'), { all: false, courses: { 8177: true }, lessons: [], unknown: [], unlisted: [] });
+  assert.deepEqual(p('CAS-8177-THE-HYPE-MACHINE').lessons, ['CAS-8177-THE-HYPE-MACHINE']);
+  assert.deepEqual(p('cas-8177-the-hype-machine').lessons, ['CAS-8177-THE-HYPE-MACHINE'], 'case doesn\'t matter');
+  assert.deepEqual(p('8175-L05').lessons, ['CAS-8175-L05'], '"CAS-" is optional');
+  const mixed = p(' 8175, CAS-8177-THE-HYPE-MACHINE  CAS-8177-L05 ,,');
+  assert.deepEqual([Object.keys(mixed.courses), mixed.lessons, mixed.unknown],
+    [['8175'], ['CAS-8177-THE-HYPE-MACHINE', 'CAS-8177-L05'], []], 'commas or spaces');
+  assert.equal(p('all').all, true);
+  assert.equal(p('ALL').all, true);
+  for (const off of ['', '  ', 'off', 'OFF', undefined, null]) {
+    assert.equal(exported.turnInOffEverywhere_(off), true, String(off));
+    assert.equal(exported.turnInSwitchCovers_('8177', 'CAS-8177-L05', off), false, String(off));
+  }
+});
+
+test('the switch: a lesson covers its parts and nothing else; a course covers every lesson', () => {
+  const { exported } = load();
+  const on = (course, id, v) => exported.turnInSwitchCovers_(course, id, v);
+  const LESSON = 'CAS-8177-THE-HYPE-MACHINE';
+  assert.equal(on('8177', LESSON, LESSON), true);
+  assert.equal(on('8177', LESSON + '-P2', LESSON), true, 'a part of the lesson');
+  assert.equal(on('8177', 'CAS-8177-THE-HYPE-MACHINE-2', LESSON), false, 'a longer ID is another lesson');
+  assert.equal(on('8177', 'CAS-8177-L05', LESSON), false, 'another lesson in the same course');
+  assert.equal(on('8177', 'CAS-8177-L05', '8177'), true);
+  assert.equal(on('8175', 'CAS-8175-L05-P3', '8177, 8175-l05'), true);
+  assert.equal(on('8175', 'CAS-8175-L06', '8177, 8175-l05'), false);
+  // A part named on its own covers that part only.
+  assert.equal(on('8175', 'CAS-8175-L05-P2', 'CAS-8175-L05-P2'), true);
+  assert.equal(on('8175', 'CAS-8175-L05', 'CAS-8175-L05-P2'), false);
+  assert.equal(on('8175', 'CAS-8175-L05-P3', 'CAS-8175-L05-P2'), false);
+});
+
+test('the switch: an unknown entry is logged and ignored, and never turns codes on more widely', () => {
+  const env = load();
+  const { exported } = env;
+  const p = plain(exported.turnInSwitchParse_('8177x, CAS-S1-U1-8175, 8177:U2, all, off, CAS-8177-L05'));
+  assert.deepEqual(p.unknown, ['8177x', 'CAS-S1-U1-8175', '8177:U2', 'all', 'off']);
+  assert.deepEqual([p.all, Object.keys(p.courses), p.lessons], [false, [], ['CAS-8177-L05']]);
+  assert.ok(env.logs.some((m) => /TURN_IN_CODE_COURSES: ignored 8177x, CAS-S1-U1-8175, 8177:U2, all, off/.test(m)));
+  // "all" inside a list is not "all": only the named lesson is on.
+  assert.equal(exported.turnInSwitchCovers_('8177', 'CAS-8177-L06', 'all, CAS-8177-L05'), false);
+  assert.equal(exported.turnInSwitchCovers_('8175', 'CAS-8175-L01', 'all, CAS-8177-L05'), false);
+  // Nothing but unknown entries: off everywhere.
+  assert.equal(exported.turnInOffEverywhere_('8177x, everything'), true);
+  const env2 = load({ switch: 'yes please' });
+  env2.dash().data.assignments.forEach((a) => assert.ok(!('turnIn' in a), a.configId));
+  assert.equal(env2.exported.getMyTurnInState('VDOE-AMY-1').error, 'OFF');
+});
+
+test('a lesson-only switch shows the question only on that lesson\'s cards, and only those take an answer', () => {
+  const env = load({ switch: 'CAS-8177-L05' });
+  const { by } = env.dash();
+  assert.equal(by['VDOE-AMY-1'].turnIn.state, 'ANSWER', 'L05: the question');
+  assert.ok(!('turnIn' in by['VDOE-AMY-2']), 'L12, same course: no question');
+  assert.ok(!('turnIn' in by['VDOE-AMY-5']), '8175: no question');
+  assert.equal(env.exported.getMyTurnInState('VDOE-AMY-2').error, 'OFF');
+  assert.equal(env.exported.submitTurnInAnswer('VDOE-AMY-2', GENUINE).error, 'OFF');
+  assert.equal(env.ss.getSheetByName('TurnInChecks'), null, 'the refused answer is not stored');
+  assert.equal(plain(env.exported.submitTurnInAnswer('VDOE-AMY-1', GENUINE)).ok, true);
+  // The lesson covers its parts: AMY-2 is on CAS-8177-L12-P2.
+  const parts = load({ switch: 'cas-8177-l12' }).dash().by;
+  assert.equal(parts['VDOE-AMY-2'].turnIn.state, 'ANSWER');
+  assert.ok(!('turnIn' in parts['VDOE-AMY-1']));
 });
 
 // ── The question ───────────────────────────────────────────────────────────
@@ -352,12 +424,16 @@ test('the code\'s format, alphabet and check character', () => {
   assert.equal(exported.turnInCodeValid_('CAS-8177-L05-7Q4K'), '');
 });
 
-test('the lesson comes from the assignment\'s ConfigID', () => {
+test('the lesson comes from a numbered ConfigID; with no lesson data (this project) a slug falls back to L00', () => {
   const { exported } = load();
   assert.equal(exported.turnInLessonOf_('CAS-8177-L05'), '05');
   assert.equal(exported.turnInLessonOf_('CAS-8177-L5'), '05');
   assert.equal(exported.turnInLessonOf_('CAS-8177-L12-P2'), '12');
+  assert.equal(exported.turnInLessonOf_('CAS-8175-L123'), '123');
   assert.equal(exported.turnInLessonOf_('CAS-S1-U1-8175'), '00');
+  // The Student Dashboard has no 55b and issues no code in use (the Ledger
+  // and the Teacher Dashboard do; turn-in-check-flow and turn-in-teacher
+  // pin the real numbers there).
   assert.equal(exported.turnInLessonOf_('CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS'), '00');
 });
 
@@ -435,6 +511,7 @@ test('the grant needs the owner and a reason, works after the term, and is recor
   assert.equal(env.ss.getSheetByName('TurnInCodes'), null);
   const code = env.exported.grantTurnInCode(AMY, 'VDOE-AMY-4', 'Flow down on the last day of the term');
   assert.match(code, /^CAS-8177-L00-/, 'an assignment with no lesson number');
+  assert.ok(env.logs.some((m) => /No lesson number for VDOE-AMY-4 .*its code reads L00/.test(m)), 'the fallback is logged');
   const row = env.tab('TurnInCodes')[1];
   assert.equal(row[7], 'GRANT');
   assert.equal(row[8], 'Flow down on the last day of the term');

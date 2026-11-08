@@ -69,7 +69,9 @@
 //
 // THE SWITCH: nothing here reads or writes anything while
 // TURN_IN_CODE_COURSES is off everywhere (71's turnInOffEverywhere_), and an
-// answer from a course switched off is left waiting.
+// answer the switch doesn't cover (71's turnInSwitchCovers_, by its course
+// and its assignment: a lesson-only switch sends only that lesson's answers)
+// is left waiting.
 //
 // ENTRY POINTS (no trailing underscore, so they show in the Run menu):
 //   runTurnInCheckFlow()            harvest, retry, materialize: the cycle job
@@ -259,11 +261,15 @@ function _ticSynthetic_(id) {
 // ---------------------------------------------------------------------------
 
 function _ticMaterialize_(ss, now, raw) {
-  const result = { written: 0, retried: 0, failed: 0, waiting: 0, deferred: 0, courseOff: 0 };
+  const result = { written: 0, retried: 0, failed: 0, waiting: 0, deferred: 0, switchedOff: 0 };
   const checks = _ticChecks_(ss);
   const pending = checks.rows.filter(function (r) {
     if (String(r[TCHK.STATUS]).trim() !== TURN_IN_PENDING || !String(r[TCHK.CHECK_ID]).trim()) return false;
-    if (!turnInOnForCourse_(String(r[TCHK.COURSE]).trim(), raw)) { result.courseOff++; return false; }
+    // The switch, by the answer's course and assignment (71's one reading).
+    if (!turnInSwitchCovers_(String(r[TCHK.COURSE]).trim(), String(r[TCHK.ASSIGNMENT_ID]).trim(), raw)) {
+      result.switchedOff++;
+      return false;
+    }
     return true;
   });
   if (!pending.length) return result;

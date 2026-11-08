@@ -517,8 +517,8 @@ function getStudentDashboardData(termFilter) {
     }
   }
 
-  // The turn-in code (71): a.turnIn on cards in a course with
-  // TURN_IN_CODE_COURSES on. Off (the default), nothing is added.
+  // The turn-in code (71): a.turnIn on cards whose course or lesson
+  // TURN_IN_CODE_COURSES covers. Off (the default), nothing is added.
   try {
     turnInAttach_(ss, cfg, googleId, data, assignments);
   } catch (e) {

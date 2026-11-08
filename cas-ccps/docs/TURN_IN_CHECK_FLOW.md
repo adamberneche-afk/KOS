@@ -49,7 +49,9 @@ copy from there if this page and the tab ever differ.
 | Is the job running? | `installTurnInCheckFlow()` once (the Ledger cycle, or its own trigger), then `showSetupStatus()` |
 
 `removeTurnInCheckFixtures()` clears the fixture rows afterwards. Only then,
-when ready to pilot, set `TURN_IN_CODE_COURSES` to one course.
+when ready to pilot, set `TURN_IN_CODE_COURSES` to the pilot's lessons (the
+same list as `build-canvas-cartridge.js --turn-in … --print`; it takes
+course codes too). Flow 6 sends only the answers the switch covers.
 
 ## The prompt
 

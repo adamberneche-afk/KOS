@@ -31,9 +31,11 @@
 // overrule also checks that the Ledger row is this teacher's own student
 // this school year (_turnInLedgerRow_ and TEACHER_EMAIL).
 //
-// THE SWITCH: TURN_IN_CODE_COURSES decides what students see, not what the
-// teacher can do. The panel works with it off: the grant is the escape hatch
-// (decision 4), and the panel says when students don't see codes yet.
+// THE SWITCH: TURN_IN_CODE_COURSES (courses and lessons, 71's
+// turnInSwitchCovers_) decides what students see, not what the teacher can
+// do. The panel works with it off: the grant is the escape hatch (decision
+// 4). Its banner says when students don't see codes yet, and otherwise which
+// courses and lessons they see them on, and any entry the setting ignored.
 //
 // Logs counts and ConfigIDs only: no student name, email or answer.
 // =============================================================================
@@ -181,10 +183,14 @@ function _tipData_(cfg, now) {
     });
   });
 
+  // The banner: what the switch turns on, through 71's one reading of it.
   const raw = _turnInSwitchRaw_();
+  const sw = turnInSwitchParse_(raw);
   return {
     studentsSeeCodes: !turnInOffEverywhere_(raw),
     switchValue: raw,
+    switchOn: sw.all ? ["every course"] : Object.keys(sw.courses).sort().concat(sw.lessons),
+    switchIgnored: sw.unknown.concat(sw.unlisted),
     queue: queue,
     students: Object.keys(students).map(function (k) { return students[k]; })
       .sort(function (a, b) { return a.name.localeCompare(b.name); }),

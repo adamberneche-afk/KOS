@@ -47,6 +47,7 @@ function terms() {
 function load(opts) {
   opts = opts || {};
   const state = { who: ONE };
+  const logs = [];
   const session = {
     getActiveUser: () => ({ getEmail: () => state.who }),
     getEffectiveUser: () => ({ getEmail: () => OWNER }),
@@ -60,8 +61,8 @@ function load(opts) {
     'ticParseReturn_', 'ticAnswerInPrompt_', 'overnightHealth_', 'syncFlowBuildSpec',
     'TIC_INPUT_HEADERS', 'TIC_RETURN_HEADERS', 'TIC_RETRY_AFTER_MS', 'TIC_MAX_RETRIES', 'TIC_INPUTS_PER_RUN',
     'TIC_ANSWER_OPEN', 'TIC_ANSWER_CLOSE', 'TURN_IN_CHECK_HEADERS', 'FLOW_6_PROMPT', 'LC_JOBS',
-    'turnInCodeValid_',
-  ], { Session: session });
+    'turnInCodeValid_', 'applyTurnInVerdict_', 'turnInLessonOf_', 'turnInSwitchParse_', 'LESSON_ORDER', 'LESSON_PARTS',
+  ], { Session: session, Logger: { log: (m) => logs.push(String(m)) } });
   const L = exported.LEDGER;
   const T = terms();
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -125,7 +126,13 @@ function load(opts) {
     const checks = rowsOf('TurnInChecks');
     return checks[checks.length - 1].CheckID;
   };
-  return { exported, sandbox, ss, props, state, L, T, ledger, rows, tab, rowsOf, flowReturns, age, answer };
+  // Another workspace for a student, on an assignment (StudentAssignments).
+  const addRow = (email, id, cls, lastResult, assignmentId, milestone) => {
+    row(email, id, cls, lastResult);
+    if (assignmentId) sa.appendRow([id, email, assignmentId, new Date()]);
+    e(id, '8177-83', milestone || '8177-83 Develop a market research project.', 'NOT_MET');
+  };
+  return { exported, sandbox, ss, props, state, L, T, ledger, rows, tab, rowsOf, flowReturns, age, answer, addRow, logs };
 }
 
 function _sheet(ss, name) {
@@ -217,7 +224,7 @@ test('an answer from a course switched off waits; a decided answer is never sent
   env.props.setProperty('TURN_IN_CODE_COURSES', '8177');
   const res = plain(env.exported.runTurnInCheckFlow()).inputs;
   assert.equal(res.written, 1);
-  assert.equal(res.courseOff, 1);
+  assert.equal(res.switchedOff, 1);
   assert.deepEqual(env.rowsOf('TurnInCheckInput').map((r) => r.CheckID), [one]);
   assert.ok(other);
 
@@ -540,4 +547,91 @@ test('the build spec lists Flow 6\'s trigger, PromptText and return columns from
   assert.deepEqual(rows.filter((r) => r[1] === 'write').map((r) => [r[3], r[4]]),
     [[1, 'ReturnedAt'], [2, 'CheckID'], [3, 'RawOutput']]);
   assert.ok(rows.some((r) => r[4] === 'PromptText' && /no Drive or Sheets sources/.test(r[6])));
+});
+
+// ── The switch takes lessons; codes carry the lesson's number (2026-11-08) ──
+
+// An 8177 lesson with parts, from the lesson data, and its place in its course.
+function slugLesson(exported) {
+  const key = exported.LESSON_ORDER['8177'].find((k) => !/-L\d+$/i.test(k) && (exported.LESSON_PARTS[k] || []).length >= 2);
+  assert.ok(key, 'an 8177 slug lesson with parts in 55b');
+  return { key, id: 'CAS-' + key.toUpperCase(), n: String(exported.LESSON_ORDER['8177'].indexOf(key) + 1).padStart(2, '0') };
+}
+
+test('a lesson-only switch: the materializer sends only that lesson\'s answers', () => {
+  const env = load({ switch: '8175,8177' });
+  const { id } = slugLesson(env.exported);
+  env.addRow(TWO, 'VDOE-TWO-9', C8177, 'NEEDS_REVISION', id + '-P2');
+  const l05 = env.answer(ONE, 'VDOE-ONE-1', GENUINE);       // CAS-8177-L05
+  const c8175 = env.answer(ONE, 'VDOE-ONE-5', GENUINE_2);   // 8175, no StudentAssignments row
+  const part = env.answer(TWO, 'VDOE-TWO-9', GENUINE);      // a part of the slug lesson
+  env.props.setProperty('TURN_IN_CODE_COURSES', id.toLowerCase().replace(/^cas-/, ''));
+  const res = plain(env.exported.buildTurnInCheckInputs());
+  assert.equal(res.written, 1);
+  assert.equal(res.switchedOff, 2);
+  assert.deepEqual(env.rowsOf('TurnInCheckInput').map((r) => r.CheckID), [part]);
+  assert.ok(l05 && c8175);
+  // Turned to the other lesson, its answer goes; the part's (already sent)
+  // and the 8175 one wait, and nothing is sent twice.
+  env.props.setProperty('TURN_IN_CODE_COURSES', 'CAS-8177-L05');
+  const next = plain(env.exported.buildTurnInCheckInputs());
+  assert.deepEqual([next.written, next.switchedOff], [1, 2]);
+  assert.deepEqual(env.rowsOf('TurnInCheckInput').map((r) => r.CheckID), [part, l05]);
+});
+
+test('an 8177 slug lesson\'s code reads its number in the course, its parts share it, and the check character covers it', () => {
+  const env = load({ switch: '8177' });
+  const { exported } = env;
+  const { id, n } = slugLesson(exported);
+  assert.notEqual(n, '00');
+  assert.equal(exported.turnInLessonOf_(id), n);
+  assert.equal(exported.turnInLessonOf_(id + '-P2'), n, 'a part has its lesson\'s number');
+  assert.equal(exported.turnInLessonOf_(id.toLowerCase()), n);
+  assert.equal(exported.turnInLessonOf_('CAS-8177-THE-HYPE-MACHINE'),
+    String(exported.LESSON_ORDER['8177'].indexOf('8177-the-hype-machine') + 1).padStart(2, '0'));
+  assert.equal(exported.turnInLessonOf_('CAS-8175-L05-P2'), '05', 'a numbered ConfigID keeps its number');
+
+  env.addRow(TWO, 'VDOE-TWO-7', C8177, 'NEEDS_REVISION', id);
+  env.addRow(TWO, 'VDOE-TWO-8', C8177, 'NEEDS_REVISION', id + '-P3');
+  const codeOf = (ws) => {
+    const check = env.answer(TWO, ws, GENUINE);
+    return plain(exported.applyTurnInVerdict_(check, 'ADDRESSES', 'Names the section.')).code;
+  };
+  const whole = codeOf('VDOE-TWO-7');
+  const part = codeOf('VDOE-TWO-8');
+  assert.match(whole, new RegExp('^CAS-8177-L' + n + '-'));
+  assert.match(part, new RegExp('^CAS-8177-L' + n + '-'));
+  assert.notEqual(whole, part, 'one code per assignment');
+  assert.equal(exported.turnInCodeValid_(whole), whole);
+  assert.equal(exported.turnInCodeValid_(whole.replace('-L' + n + '-', '-L00-')), '', 'the check character covers the lesson');
+  assert.deepEqual(env.rowsOf('TurnInCodes').map((r) => r.Lesson), ['L' + n, 'L' + n]);
+  assert.ok(!env.logs.some((m) => /No lesson number/.test(m)));
+});
+
+test('L00 only when the lesson truly has no number, and it is logged; a lesson the data lacks matches nothing', () => {
+  const env = load({ switch: '8177' });
+  env.addRow(TWO, 'VDOE-TWO-6', C8177, 'NEEDS_REVISION', 'CAS-8177-NOT-A-LESSON');
+  const check = env.answer(TWO, 'VDOE-TWO-6', GENUINE);
+  const code = plain(env.exported.applyTurnInVerdict_(check, 'ADDRESSES', 'Names the section.')).code;
+  assert.match(code, /^CAS-8177-L00-/);
+  assert.equal(env.exported.turnInCodeValid_(code), code);
+  assert.ok(env.logs.some((m) => /No lesson number for CAS-8177-NOT-A-LESSON .*its code reads L00/.test(m)));
+  // In the switch, a well-formed lesson ID the lesson data lacks is logged.
+  const p = plain(env.exported.turnInSwitchParse_('CAS-8177-NOT-A-LESSON, CAS-8177-THE-HYPE-MACHINE'));
+  assert.deepEqual(p.unlisted, ['CAS-8177-NOT-A-LESSON']);
+  assert.ok(env.logs.some((m) => /no lesson CAS-8177-NOT-A-LESSON in the lesson data/.test(m)));
+});
+
+test('every project that issues a code loads the lesson data; the Student Dashboard\'s served code issues none', () => {
+  const fs2 = require('fs');
+  const issuers = /\b(applyTurnInVerdict_|_turnInGrant_|_turnInIssueCode_)\(/;
+  Object.keys(projectMap).forEach((name) => {
+    const files = (projectMap[name].files || []).filter((f) => !/71_TurnInCodes\.js$/.test(f) && f.endsWith('.js'));
+    const calls = files.filter((f) => issuers.test(fs2.readFileSync(path.join(ROOT, f), 'utf8')));
+    if (calls.length) {
+      assert.ok(projectMap[name].files.includes('cas-ccps/scripts/55b_LessonAssignmentData.js'),
+        name + ' issues codes (' + calls.join(', ') + ') without 55b');
+    }
+  });
+  assert.doesNotMatch(fs2.readFileSync(path.join(ROOT, 'cas-ccps/scripts/71b_TurnInStudent.js'), 'utf8'), issuers);
 });
