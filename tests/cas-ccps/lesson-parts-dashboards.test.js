@@ -110,7 +110,7 @@ function studentLoad(viewer) {
     getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
     getScriptTimeZone() { return 'America/New_York'; },
   };
-  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('63_DocHeader.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
+  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('63_DocHeader.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('75_FormReader.js')],
     ['getStudentDashboardData', 'buildStudentDashboardHtml_', 'submitMyWork', 'getSubmitReflection', 'LEDGER'], { Session: session });
 }
 
@@ -175,42 +175,35 @@ function studentPage(exported, data) {
   return els.main.innerHTML;
 }
 
-test('Student Dashboard: a form part says "Open your form", links to the form, and its Submit is off with a plain note', () => {
+test('Student Dashboard: a form part says "Open your form", links to the form, and its Submit is on (Phase 4b)', () => {
   const { exported, sandbox } = studentLoad('Amy@ccpsnet.net');
-  setUp(sandbox, exported.LEDGER, { Amy: 2 }, [2]);
+  const ss = setUp(sandbox, exported.LEDGER, { Amy: 2 }, [2]);
+  const fs = ss.insertSheet('FormSnapshots');
+  fs.appendRow(['MadeAt', 'StudentConfigID', 'FormFileID', 'SnapshotDocID', 'PartConfigID', 'FormChecks', 'LastWrittenAt']);
+  fs.appendRow([new Date(), 'VDOE-Amy-2', 'f-VDOE-Amy-2', 'snap-Amy-2', LESSON + '-P2', '{}', '']);
   const data = exported.getStudentDashboardData('');
   const p1 = data.assignments.find(a => a.part && a.part.n === 1);
   const p2 = data.assignments.find(a => a.part && a.part.n === 2);
   assert.equal(p1.workType, 'doc');
   assert.equal(p1.docUrl, 'https://docs.google.com/document/d/f-VDOE-Amy-1/edit');
   assert.equal(p1.canSubmit, true);
+  assert.equal(p1.feedbackUrl, null);
   assert.equal(p2.workType, 'form');
   assert.equal(p2.docUrl, 'https://docs.google.com/forms/d/f-VDOE-Amy-2/edit');
-  assert.equal(p2.canSubmit, false, 'nothing reads a form at Submit until Phase 4b');
+  assert.equal(p2.canSubmit, true, 'the reader checks a form at Submit');
+  assert.equal(p2.feedbackUrl, 'https://docs.google.com/document/d/snap-Amy-2/edit', 'its snapshot doc');
   const h = studentPage(exported, data);
   const card2 = h.slice(h.indexOf('Part 2 of 5: Build the Survey'), h.indexOf('🔒 Part 3'));
   assert.match(card2, /href="https:\/\/docs\.google\.com\/forms\/d\/f-VDOE-Amy-2\/edit"[^>]*class="act act-primary">Open your form ↗<\/a>/);
-  assert.match(card2, /<button type="button" class="act act-secondary" disabled aria-describedby="form-note-card-VDOE-Amy-2">Submit for Feedback<\/button>/);
-  assert.match(card2, /<div class="form-note" id="form-note-card-VDOE-Amy-2">Checking forms comes next week\./);
-  assert.doesNotMatch(card2, /onclick="submitWork/, 'no Submit that can be pressed');
+  assert.match(card2, /data-file="f-VDOE-Amy-2" data-config="VDOE-Amy-2" onclick="submitWork\(this\)">Submit for Feedback<\/button>/);
+  assert.match(card2, /<div class="form-note">Submit for Feedback reads your form(&#39;|')s questions and settings \(never anyone(&#39;|')s answers\)/);
+  assert.match(card2, /<a href="https:\/\/docs\.google\.com\/document\/d\/snap-Amy-2\/edit" target="_blank">Your form(&#39;|')s feedback page ↗<\/a>/);
+  assert.doesNotMatch(card2, /Checking forms comes next week|disabled/);
   assert.doesNotMatch(card2, /Open My Document/);
   const card1 = h.slice(h.indexOf('Part 1 of 5: The Target Market'), h.indexOf('Part 2 of 5: Build the Survey'));
   assert.match(card1, />Open My Document ↗</);
   assert.match(card1, /onclick="submitWork\(this\)">Submit for Feedback/);
-});
-
-test('Student Dashboard: submitting a form is refused before the queue or the file is touched', () => {
-  const { exported, sandbox } = studentLoad('Amy@ccpsnet.net');
-  const ss = setUp(sandbox, exported.LEDGER, { Amy: 2 }, [2]);
-  const q = ss.insertSheet('ReviewQueue');
-  q.appendRow(['h', 'h', 'h', 'h', 'h', 'h']);
-  const opened = [];
-  sandbox.DocumentApp.openById = (id) => { opened.push(id); throw new Error('not a doc'); };
-  assert.deepEqual(exported.submitMyWork('f-VDOE-Amy-2', 'VDOE-Amy-2', []), { ok: false, error: 'FORM_NOT_CHECKED_YET' });
-  assert.deepEqual(exported.getSubmitReflection('f-VDOE-Amy-2', 'VDOE-Amy-2'), { ok: false, error: 'FORM_NOT_CHECKED_YET' });
-  assert.deepEqual(opened, []);
-  assert.equal(q.getLastRow(), 1, 'no ReviewQueue row: no form reaches Flow 2');
-  assert.equal(ss.getSheetByName('SubmitFailures'), null, 'not counted as a system failure');
+  assert.doesNotMatch(card1, /feedback page/);
 });
 
 test('Teacher Dashboard: a form part says so on its row and links to the form', () => {

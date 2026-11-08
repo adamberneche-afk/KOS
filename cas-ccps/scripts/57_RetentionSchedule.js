@@ -17,12 +17,12 @@
 //   RECORD  — what a grade, a rating decision or a disclosure rests on:
 //             5 years. Ledger, StudentAssignments, StudentDocRegistry,
 //             CompetencyEvidence, SCRDecisionLog, ParentReportLog,
-//             EvaluationLog, ReflectionLog, PartUnlocks, TurnInCodes,
+//             EvaluationLog, ReflectionLog, PartUnlocks, FormSnapshots, TurnInCodes,
 //             TurnInChecks, TurnInOverrides, TurnInCanvasRuns.
 //   WORKING — queues, Flow inputs and profiles that feed the system but
 //             are not the record: 1 year. WarmUpQueue and the rest below.
-// A student's workspace Doc follows its Ledger row; a warm-up Doc follows
-// its WarmUpQueue row.
+// A student's workspace Doc (or form) follows its Ledger row; a form's
+// snapshot Doc its FormSnapshots row; a warm-up Doc its WarmUpQueue row.
 //
 // Past its period, a record is archived automatically where the tab has
 // an archive marker (the five _archiveExpired*_ passes, run by the health
@@ -102,6 +102,12 @@ function _retentionSchedule_() {
     // teacher (68), kept as long as the work it opened (2026-10-28).
     { label: "PartUnlocks", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
       where: ledger(LP_LOG_TAB), dateCol: "UnlockedAt" },
+    // A form part's snapshot doc (Phase 4b, 2026-11-08): what Flow 2 judged
+    // of the student's form, and its feedback. Student work, kept as long as
+    // the form it copies (whose Ledger row takes the form with it); the
+    // row's disposition takes its snapshot doc.
+    { label: "FormSnapshots", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
+      where: ledger(FORM_SNAPSHOTS_TAB), dateCol: "MadeAt", docCol: FS.SNAPSHOT_DOC_ID },
     // The turn-in code (71): who was issued which code and how (what a
     // completion grade rests on), and the answers to the feedback question
     // (the student's own words, kept like ReflectionLog).

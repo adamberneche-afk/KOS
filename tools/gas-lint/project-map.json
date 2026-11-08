@@ -179,7 +179,8 @@
       "cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js",
       "cas-ccps/scripts/63_DocHeader.js",
       "cas-ccps/scripts/71_TurnInCodes.js",
-      "cas-ccps/scripts/71b_TurnInStudent.js"
+      "cas-ccps/scripts/71b_TurnInStudent.js",
+      "cas-ccps/scripts/75_FormReader.js"
     ]
   },
   "cas-ccps:studio-steps": {

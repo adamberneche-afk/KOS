@@ -262,6 +262,21 @@ function buildFlowInputRows() {
         continue;
       }
 
+      // The doc Flow 2 reads and the feedback goes to: the student's doc, or
+      // for a form part (Phase 4b) its snapshot doc, which 13 rewrote from
+      // the form at Submit (00's FormSnapshots). A form with none recorded
+      // can't have passed Submit; it waits, logged.
+      let readDocId = studentFileId;
+      if (ledgerRow.workType === "form") {
+        const snap = formSnapshotFor_(ledgerSs, studentFileId);
+        if (!snap) {
+          Logger.log("[FlowInputBuilder] No FormSnapshots row for the form of ConfigID " + configId +
+                     " — will retry next cycle.");
+          continue;
+        }
+        readDocId = snap.snapshotDocId;
+      }
+
       // The student's process reflection for this submission, if one was
       // asked (13, REFLECTION_ON_SUBMIT): into the prompt, and back to the
       // student as a comment once the row is in.
@@ -281,7 +296,9 @@ function buildFlowInputRows() {
         // already treats it as authoritative for "the student's
         // submission doc" — no need to round-trip through Ledger's
         // AdminFileURL column for the same value.
-        "https://docs.google.com/document/d/" + studentFileId + "/edit",
+        // A form part's is its snapshot doc (Phase 4b): Studio's Extract step
+        // reads it like any student doc, and the harvest writes there.
+        "https://docs.google.com/document/d/" + readDocId + "/edit",
         matrixRow.unitName,
         matrixRow.tier,
         matrixRow.persona,
@@ -302,7 +319,7 @@ function buildFlowInputRows() {
           _fiEarlierPartsText_(ledgerSs, cfg, ledgerRow.googleId, assignments, assignments[configId])),
       ]);
       newRows.push(fiSheet.getLastRow());
-      if (reflection.length) _fiPostReflectionComment_(studentFileId, reflection);
+      if (reflection.length) _fiPostReflectionComment_(readDocId, reflection);
       existingKeys.add(key);
       built++;
     }
@@ -351,6 +368,8 @@ function _fiFindLedgerRow_(cfg, configId, studentFileId) {
       return {
         googleId: String(data[i][LEDGER.GOOGLE_ID]).trim(),
         teacherEmail: String(data[i][LEDGER.TEACHER_EMAIL]).trim(),
+        // "form" for a form part's copy (Phase 4b): Flow 2 reads its snapshot doc.
+        workType: workFileTypeOfUrl_(data[i][LEDGER.ADMIN_FILE_URL]),
       };
     }
   }
@@ -498,14 +517,24 @@ function _fiEarlierPartsText_(ledgerSs, cfg, googleId, byStudent, assignmentId) 
     if (status === "ARCHIVED" || status === "SCHEDULED") return;
     const p = partOfConfigId_(byStudent[String(r[LEDGER.CONFIG_ID]).trim()]);
     if (!p || p.lessonKey !== info.lessonKey || p.n >= info.n) return;
-    files[p.n] = { fileId: String(r[LEDGER.FILE_ID]).trim(), title: p.part.a.partTitle || "" };
+    files[p.n] = { fileId: String(r[LEDGER.FILE_ID]).trim(), title: p.part.a.partTitle || "",
+      form: workFileTypeOfUrl_(r[LEDGER.ADMIN_FILE_URL]) === "form" };
   });
   return Object.keys(files).map(Number).sort(function (a, b) { return a - b; }).map(function (n) {
     let text = "";
+    // An earlier form part (Phase 4b) is read from its snapshot doc: the
+    // form as last submitted. One never submitted has none written yet.
+    let docId = files[n].fileId;
+    if (files[n].form) {
+      const snap = formSnapshotFor_(ledgerSs, docId);
+      docId = snap ? snap.snapshotDocId : "";
+    }
     try {
-      const full = DocumentApp.openById(files[n].fileId).getBody().getText();
+      if (!docId) throw new Error("no snapshot doc for an earlier form part");
+      const full = DocumentApp.openById(docId).getBody().getText();
       const zone = responseZoneBounds_(full);
       text = zone ? full.substring(zone.from, zone.to).trim() : "";
+      if (text === FORM_SNAPSHOT_NOT_SUBMITTED) text = "";
     } catch (e) {
       Logger.log("[FlowInputBuilder] Earlier part " + n + " unreadable: " + e.message);
     }
@@ -768,6 +797,10 @@ function harvestFlowInputResults() {
       const configId = String(fiData[i][FI.CONFIG_ID]).trim();
       const studentEmail = String(fiData[i][FI.STUDENT_EMAIL]).trim();
       const stagingRowRef = Number(fiData[i][FI.STAGING_ROW_REF]);
+      // The doc Flow 2 read, where the feedback goes: the student's doc, or
+      // a form part's snapshot doc (Phase 4b). The work file's ID stays the
+      // key for the Ledger, the evidence and the logs.
+      const feedbackDocId = _fiDocIdFromUrl_(fiData[i][FI.STUDENT_DOC_URL]) || studentFileId;
 
       if (!geminiFullOutput.trim()) {
         Logger.log("[FlowInputBuilder] Row " + rowNum +
@@ -808,16 +841,16 @@ function harvestFlowInputResults() {
 
         const studentFacingReport = _fiStripMilestoneOutcomesLine_(geminiFullOutput);
         const asComment = feedbackAsCommentFor_(configId) &&
-          _fiPostEvaluationComment_(studentFileId,
+          _fiPostEvaluationComment_(feedbackDocId,
             _fiFormatFeedbackComment_(studentFacingReport, parsed.complianceStatus));
         if (!asComment) {
-          const doc = DocumentApp.openById(studentFileId);
+          const doc = DocumentApp.openById(feedbackDocId);
           _fiInsertEvaluation_(doc.getBody(),
             _fiFormatFeedbackBlock_(studentFacingReport, parsed.complianceStatus));
           doc.saveAndClose();
         }
         // The doc header's feedback line (00), color-coded by the result.
-        setDocFeedbackStatus_(studentFileId,
+        setDocFeedbackStatus_(feedbackDocId,
           parsed.complianceStatus === "APPROVED" ? "PASSED" : "REVISE", { inComments: !!asComment });
 
         const competencyIds = {
@@ -877,6 +910,13 @@ function harvestFlowInputResults() {
   } finally {
     lock.releaseLock();
   }
+}
+
+// The Doc ID in a FlowInput row's StudentDocURL, or "" (Phase 4b: a form
+// part's row names its snapshot doc there).
+function _fiDocIdFromUrl_(url) {
+  const m = /^https:\/\/docs\.google\.com\/document\/d\/([A-Za-z0-9_-]+)/.exec(String(url || "").trim());
+  return m ? m[1] : "";
 }
 
 // recordEvaluationResult_ — the evaluation's result on the student's Ledger

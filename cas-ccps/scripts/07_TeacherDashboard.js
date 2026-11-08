@@ -4997,10 +4997,10 @@ document.addEventListener("click", function (ev) {
 function partLine(s) {
   const earlier = (s.parts || []).filter(p => p.open && p.n !== s.part.n && safeDocUrl(p.docUrl))
     .map(p => '<a class="doc-link" href="' + esc(safeDocUrl(p.docUrl)) + '" target="_blank">Part ' + p.n + (p.workType === "form" ? ' (form)' : '') + ' ↗</a>');
-  // A form part (Phase 4a) says so beside its title; Submit waits for 4b.
+  // A form part (Phase 4a) says so beside its title; Submit reads it (4b).
   let html = '<div class="last-eval"><b>Part ' + s.part.n + ' of ' + s.part.count + '</b>' +
     (s.part.title ? ': ' + esc(s.part.title) : '') +
-    (s.workType === "form" ? ' <span class="part-type" title="A Google Form the student builds; checking forms at Submit comes with Phase 4b">· Google Form</span>' : '') +
+    (s.workType === "form" ? ' <span class="part-type" title="A Google Form the student builds; Submit checks its questions and settings, and the check reads a snapshot of it, kept beside the form as its feedback page">· Google Form</span>' : '') +
     (earlier.length ? ' · ' + earlier.join(' ') : '') + '</div>';
   if (s.heldByFailure) {
     html += '<div class="last-eval" style="color:#b3261e"><b>Held ' + escNum(s.heldByFailure.schoolDays) + ' school day' +

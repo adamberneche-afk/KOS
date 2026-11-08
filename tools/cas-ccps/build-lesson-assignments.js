@@ -399,6 +399,55 @@ function partWorkType(p, at, own) {
   return t;
 }
 
+// A form part's exact checks at Submit (Phase 4b, 2026-11-08): the Student
+// Dashboard's form reader (cas-ccps 75) checks them before Flow 2 runs, and
+// a failure is a plain "Not yet" that never reaches Flow 2. Optional; unset,
+// a form part gets the defaults (00's FORM_CHECK_DEFAULTS: at least one
+// question, email collection off). Only on a form part. Keys:
+//   minQuestions   whole number 1-100: at least this many questions
+//   maxQuestions   whole number, at least minQuestions: at most this many
+//   collectsEmail  true or false: email collection must be on, or off
+//   questionTypes  question types the form must each have at least one of
+// The type names are 00's FORM_QUESTION_TYPES keys (a test holds the lists equal).
+const FORM_QUESTION_TYPES = ['short_answer', 'paragraph', 'multiple_choice', 'checkboxes', 'dropdown', 'scale',
+  'rating', 'grid', 'checkbox_grid', 'date', 'time', 'date_time', 'duration'];
+const FORM_CHECK_KEYS = ['minQuestions', 'maxQuestions', 'collectsEmail', 'questionTypes'];
+function partFormChecks(p, at, workType) {
+  if (p.formChecks === undefined) return undefined;
+  const c = p.formChecks;
+  if (workType !== 'form') throw new Error(at + 'formChecks is only for a form part (workType "form")');
+  if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error(at + 'formChecks must be an object');
+  const unknown = Object.keys(c).filter((k) => FORM_CHECK_KEYS.indexOf(k) === -1);
+  if (unknown.length) throw new Error(at + 'formChecks has ' + unknown.join(', ') + '; the keys are ' + FORM_CHECK_KEYS.join(', '));
+  const count = (k) => {
+    if (c[k] === undefined) return undefined;
+    if (!Number.isInteger(c[k]) || c[k] < 1 || c[k] > 100) throw new Error(at + 'formChecks.' + k + ' must be a whole number from 1 to 100');
+    return c[k];
+  };
+  const out = {};
+  const min = count('minQuestions'), max = count('maxQuestions');
+  if (min !== undefined) out.minQuestions = min;
+  if (max !== undefined) {
+    if (max < (min || 1)) throw new Error(at + 'formChecks.maxQuestions is less than minQuestions');
+    out.maxQuestions = max;
+  }
+  if (c.collectsEmail !== undefined) {
+    if (typeof c.collectsEmail !== 'boolean') throw new Error(at + 'formChecks.collectsEmail must be true or false');
+    out.collectsEmail = c.collectsEmail;
+  }
+  if (c.questionTypes !== undefined) {
+    const t = c.questionTypes;
+    if (!Array.isArray(t) || !t.length) throw new Error(at + 'formChecks.questionTypes must be a list of question types');
+    t.forEach((x) => {
+      if (FORM_QUESTION_TYPES.indexOf(x) === -1) throw new Error(at + 'formChecks.questionTypes: "' + x + '" is not one of ' + FORM_QUESTION_TYPES.join(', '));
+    });
+    if (new Set(t).size !== t.length) throw new Error(at + 'formChecks.questionTypes names a type twice');
+    if (max !== undefined && t.length > max) throw new Error(at + 'formChecks.questionTypes needs ' + t.length + ' questions but maxQuestions is ' + max);
+    out.questionTypes = t.slice();
+  }
+  return out;
+}
+
 // "WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2" for that part.
 function workTemplateKey(partKey) {
   return 'WORK_TEMPLATE_' + String(partKey).toUpperCase().replace(/[^A-Z0-9]+/g, '_');
@@ -431,6 +480,7 @@ function buildParts(a, comps, promptMd, def) {
       .filter((x) => !/^Use these terms accurately/.test(x));
     const n = i + 1;
     const workType = partWorkType(p, where + 'part ' + n + ': ', own);
+    const formChecks = partFormChecks(p, where + 'part ' + n + ': ', workType);
     const vocab = (p.vocabulary || []).join(', ');
     const body = [title + ' — Part ' + n + ' of ' + def.parts.length + ': ' + p.title]
       .concat(opening)
@@ -455,6 +505,9 @@ function buildParts(a, comps, promptMd, def) {
     // A form part's template: the Script Property of this name holds the
     // template form's file ID (as MASTER_STUDENT_TEMPLATE_ID holds the doc's).
     if (workType === 'form') pa.workTemplateKey = workTemplateKey(pa.key);
+    // Its exact checks at Submit (Phase 4b), only when set: an unset part
+    // gets the defaults at run time, and the data stays as it was.
+    if (formChecks) pa.formChecks = formChecks;
     const partComps = ids.map((id) => byId[id]);
     pa.definitionOfDone = applyTiers(pa, partComps,
       { primary: p.primary, secondary: p.secondary || [], tertiary: p.tertiary || [] }, '', vocab);
@@ -677,4 +730,5 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE, modeOf, plan8175, plan8177, buildParts, workTemplateKey, WORK_TYPES };
+module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE, modeOf, plan8175, plan8177, buildParts, workTemplateKey, WORK_TYPES,
+  partFormChecks, FORM_QUESTION_TYPES, FORM_CHECK_KEYS };

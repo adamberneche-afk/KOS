@@ -131,7 +131,8 @@ function formSetup(opts) {
   opts = opts || {};
   const { FakeDriveFolder, FakeDriveFile } = require('../harness/gas-sandbox');
   const env = loadGasFiles(FILES,
-    ['intakeStudent_', 'getConfig_', 'unlockNextPart_', 'workFileTypeOfUrl_']);
+    ['intakeStudent_', 'getConfig_', 'unlockNextPart_', 'workFileTypeOfUrl_', 'formSnapshotFor_', 'FORM_SNAPSHOT_NOT_SUBMITTED',
+      'refreshFormSnapshots']);
   const { exported, sandbox } = env;
   // The survey part, marked as PARTS.json would after the operator's edit.
   require('vm').runInContext("LESSON_PARTS['8177-market-research-survey-design'][1].workFileNow = 'form';" +
@@ -202,7 +203,46 @@ test('intakeStudent_: a form part is a copy of its template form, recorded and S
   assert.equal(out.success, true, JSON.stringify(out));
   assert.equal(copy._access('1234567@ccpsnet.net'), 'editor', 'shared with the student on unlock');
   assert.equal(ledger.getSheetByName('Ledger').getDataRange().getValues()[1][12], 'ACTIVE');
-  assert.deepEqual(formAppCalls, [], 'no FormApp call in Phase 4a');
+  assert.deepEqual(formAppCalls, [], 'no FormApp call at intake');
+});
+
+// Phase 4b: intake also makes the form's snapshot doc, its feedback page,
+// beside the form, laid out like a doc's lower half, shared as a commenter
+// (the student once the part opens, the teacher now), and records it in
+// FormSnapshots with the part's exact checks (the defaults, nothing marked).
+test('intakeStudent_: a form part gets its snapshot doc beside it, recorded in FormSnapshots, shared with the form', () => {
+  const { exported, sandbox, ledger, copies } = formSetup();
+  const res = exported.intakeStudent_(exported.getConfig_(), formStudent(true));
+  assert.equal(res.ok, true, JSON.stringify(res));
+  const snap = exported.formSnapshotFor_(ledger, copies[0].getId());
+  assert.ok(snap, 'a FormSnapshots row');
+  assert.equal(snap.partConfigId, FORM_PART);
+  assert.deepEqual(snap.formChecks, { minQuestions: 1, collectsEmail: false }, 'the defaults: no formChecks marked');
+  const fsRow = ledger.getSheetByName('FormSnapshots').getDataRange().getValues();
+  assert.deepEqual(fsRow[0], ['MadeAt', 'StudentConfigID', 'FormFileID', 'SnapshotDocID', 'PartConfigID', 'FormChecks', 'LastWrittenAt']);
+  assert.equal(fsRow[1][1], ledger.getSheetByName('Ledger').getDataRange().getValues()[1][2], 'the student\'s workspace ConfigID');
+  assert.ok(!JSON.stringify(fsRow[1]).includes('Ana') && !JSON.stringify(fsRow[1]).includes('@'), 'IDs only: no name or email');
+  const file = sandbox.DriveApp.getFileById(snap.snapshotDocId);
+  assert.equal(file._parent.getName(), 'Ana', 'in the student\'s admin folder, beside the form');
+  assert.match(file.getName(), /Build the Survey — Ana — your form, as checked$/);
+  assert.equal(file._access('1234567@ccpsnet.net'), null, 'not shared with the student until the part opens');
+  assert.equal(file._access('owner@ccpsnet.net'), 'commenter');
+  const text = sandbox.DocumentApp.openById(snap.snapshotDocId).getBody().getText();
+  const at = (t) => text.indexOf(t);
+  assert.ok(at('── FEEDBACK ──') !== -1 && at('── FEEDBACK ──') < at('── YOUR RESPONSE BEGINS HERE ──'), 'the feedback zone above the response');
+  assert.ok(at('── YOUR RESPONSE BEGINS HERE ──') < at(exported.FORM_SNAPSHOT_NOT_SUBMITTED));
+  assert.ok(at(exported.FORM_SNAPSHOT_NOT_SUBMITTED) < at('[CONFIG_ID: ' + fsRow[1][1] + ']'));
+  assert.ok(sandbox.DocumentApp.openById(snap.snapshotDocId).getHeader().getText().includes('Feedback: not submitted yet'));
+
+  // The unlock shares the feedback page with the form.
+  exported.unlockNextPart_(exported.getConfig_(), fsRow[1][1], 'owner@ccpsnet.net');
+  assert.equal(file._access('1234567@ccpsnet.net'), 'commenter', 'the student reads it and can\'t change what was judged');
+
+  // Shared now: the student is a commenter at once.
+  const now = formSetup();
+  now.exported.intakeStudent_(now.exported.getConfig_(), formStudent(false));
+  const s2 = now.exported.formSnapshotFor_(now.ledger, now.copies[0].getId());
+  assert.equal(now.sandbox.DriveApp.getFileById(s2.snapshotDocId)._access('1234567@ccpsnet.net'), 'commenter');
 });
 
 test('intakeStudent_: a form part shared now is the student\'s to edit; with no template set it refuses, writing nothing', () => {
@@ -217,4 +257,31 @@ test('intakeStudent_: a form part shared now is the student\'s to edit; with no 
   assert.deepEqual(r2, { ok: false, code: 'NO_WORK_TEMPLATE' });
   assert.equal(none.copies.length, 0);
   assert.equal(none.ledger.getSheetByName('Ledger').getLastRow(), 1, 'no Ledger row');
+});
+
+// refreshFormSnapshots(), by hand from the editor: a part's formChecks
+// changed after its copies were made reach FormSnapshots, and a form copy
+// with no snapshot doc gets one (the student shares only once it is open).
+test('refreshFormSnapshots: new checks rewritten from the parts data; a missing snapshot doc made', () => {
+  const env = formSetup();
+  const { exported, sandbox, ledger, copies } = env;
+  exported.intakeStudent_(exported.getConfig_(), formStudent(false));
+  copies[0]._parent = copies[0].folder;
+  require('vm').runInContext("LESSON_PARTS['8177-market-research-survey-design'][1].formChecks = { minQuestions: 3, collectsEmail: false };", sandbox);
+  // A second form copy on the Ledger with no FormSnapshots row.
+  const L = ledger.getSheetByName('Ledger');
+  const r = L.getDataRange().getValues()[1].slice();
+  r[2] = 'VDOE-OTHER'; r[3] = copies[0].getId() + '-b'; r[16] = 'https://docs.google.com/forms/d/' + r[3] + '/edit';
+  const { FakeDriveFile } = require('../harness/gas-sandbox');
+  const other = new FakeDriveFile(r[3], 'copy b', 'application/vnd.google-apps.form');
+  other._parent = copies[0].folder;
+  sandbox.DriveApp._registerFile(other);
+  L.appendRow(r);
+  const out = exported.refreshFormSnapshots();
+  assert.deepEqual(out, { made: 1, updated: 1, failed: 0 });
+  assert.deepEqual(exported.formSnapshotFor_(ledger, copies[0].getId()).formChecks, { minQuestions: 3, collectsEmail: false });
+  const made = exported.formSnapshotFor_(ledger, r[3]);
+  assert.ok(made, 'a snapshot doc for the copy that had none');
+  assert.equal(sandbox.DriveApp.getFileById(made.snapshotDocId)._access('1234567@ccpsnet.net'), 'commenter', 'open: shared');
+  assert.deepEqual(exported.refreshFormSnapshots(), { made: 0, updated: 0, failed: 0 }, 'a second run changes nothing');
 });
