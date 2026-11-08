@@ -572,9 +572,9 @@ function getDashboardData(termFilter) {
       submittedAt: row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : "—",
       flagReason:  statusClass === "flagged" ? _tdFlagReason_(ledgerStatus) : "",
       suggestedScore: suggestedScore,
-      docUrl:      fileId
-        ? "https://docs.google.com/document/d/" + fileId + "/edit"
-        : null
+      // A form part's copy (Phase 4a) links to the form: its Ledger URL says so (00).
+      docUrl:      workFileUrl_(fileId, workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL])),
+      workType:    workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL])
     });
 
     if (!unitMap[unitCode]) unitMap[unitCode] = { total:0, compliant:0, pending:0, flagged:0 };
@@ -4996,9 +4996,12 @@ document.addEventListener("click", function (ev) {
 // before it, and the teacher's unlock for the next one.
 function partLine(s) {
   const earlier = (s.parts || []).filter(p => p.open && p.n !== s.part.n && safeDocUrl(p.docUrl))
-    .map(p => '<a class="doc-link" href="' + esc(safeDocUrl(p.docUrl)) + '" target="_blank">Part ' + p.n + ' ↗</a>');
+    .map(p => '<a class="doc-link" href="' + esc(safeDocUrl(p.docUrl)) + '" target="_blank">Part ' + p.n + (p.workType === "form" ? ' (form)' : '') + ' ↗</a>');
+  // A form part (Phase 4a) says so beside its title; Submit waits for 4b.
   let html = '<div class="last-eval"><b>Part ' + s.part.n + ' of ' + s.part.count + '</b>' +
-    (s.part.title ? ': ' + esc(s.part.title) : '') + (earlier.length ? ' · ' + earlier.join(' ') : '') + '</div>';
+    (s.part.title ? ': ' + esc(s.part.title) : '') +
+    (s.workType === "form" ? ' <span class="part-type" title="A Google Form the student builds; checking forms at Submit comes with Phase 4b">· Google Form</span>' : '') +
+    (earlier.length ? ' · ' + earlier.join(' ') : '') + '</div>';
   if (s.heldByFailure) {
     html += '<div class="last-eval" style="color:#b3261e"><b>Held ' + escNum(s.heldByFailure.schoolDays) + ' school day' +
       (s.heldByFailure.schoolDays === 1 ? '' : 's') + '</b>: the last check of Part ' + s.part.n +
@@ -5542,7 +5545,7 @@ If you expect to see students here:
           \${s.firstPassedAt ? \`<div class="last-eval">First passed \${esc(s.firstPassedAt)}</div>\` : ""}
           \${s.lastSuggestedScore != null ? \`<div class="last-eval">AI's suggested score, last check: <b>\${esc(scoreLabel(s.lastSuggestedScore))}</b> (2–4, higher is better)</div>\` : ""}
           \${safeDocUrl(s.docUrl)
-            ? \`<a class="doc-link" href="\${esc(safeDocUrl(s.docUrl))}" target="_blank">Open document ↗</a>\`
+            ? \`<a class="doc-link" href="\${esc(safeDocUrl(s.docUrl))}" target="_blank">\${s.workType === "form" ? "Open form" : "Open document"} ↗</a>\`
             : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
           }
           \${wrNextStep}

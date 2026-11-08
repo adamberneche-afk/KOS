@@ -84,6 +84,17 @@ function partOfConfigId_(configId) {
   return null;
 }
 
+// What intake (02) makes for an assignment ConfigID (Phase 4a, 2026-11-08):
+// { type: "form", templateKey } for a part marked workType "form" in
+// PARTS.json (55b's workFileNow), else { type: "doc" }. templateKey names the
+// Script Property holding the template form's file ID.
+function partWorkFile_(assignmentConfigId) {
+  const info = partOfConfigId_(assignmentConfigId);
+  const a = info ? info.part.a : null;
+  if (a && a.workFileNow === "form") return { type: "form", templateKey: String(a.workTemplateKey || "") };
+  return { type: "doc" };
+}
+
 // Whether a lesson runs in parts: it has parts, and no student has the
 // whole lesson's own assignment (StudentAssignments), so a lesson already
 // started as one doc is never split under the students.
@@ -133,8 +144,9 @@ function _lpLatestOutcomes_(evidence) {
   return byFile;
 }
 
-// Shares one Ledger row's doc with its student and sets it ACTIVE (a
-// release, 58). Returns true when done.
+// Shares one Ledger row's work file (a doc, or a part's form: Drive shares
+// both the same way) with its student and sets it ACTIVE (a release, 58).
+// Returns true when done.
 function _lpShare_(ledger, rowIndex, row) {
   DriveApp.getFileById(String(row[LEDGER.FILE_ID]).trim()).addEditor(String(row[LEDGER.GOOGLE_ID]).trim());
   ledger.getRange(rowIndex + 1, LEDGER.STATUS + 1).setValue("ACTIVE");
@@ -245,7 +257,8 @@ function foldPartRows_(students, now) {
       // Held a school day or more by a failed check (see LP_FAILED_CHECK_STATUSES).
       heldByFailure: heldDays >= 1 ? { schoolDays: heldDays } : null,
       parts: x.map(function (s) {
-        return { n: s.part.n, title: s.part.title, open: s.status !== "SCHEDULED", docUrl: s.status !== "SCHEDULED" ? s.docUrl : null };
+        return { n: s.part.n, title: s.part.title, open: s.status !== "SCHEDULED", docUrl: s.status !== "SCHEDULED" ? s.docUrl : null,
+          workType: s.workType || "doc" };
       }),
       nextPart: next ? { n: next.part.n, title: next.part.title } : null
     });

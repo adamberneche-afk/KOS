@@ -269,7 +269,8 @@ function enrollCanvasRoster_(opts) {
       enrolled[s.account] = true;
     } else {
       result.failed.push(Object.assign(row, { reason: res.code }));
-      if (res.code === "NO_MASTER_TEMPLATE" || res.code === "NO_LIVE_ASSIGNMENT") break;
+      // The same for every student: stop at the first.
+      if (res.code === "NO_MASTER_TEMPLATE" || res.code === "NO_WORK_TEMPLATE" || res.code === "NO_LIVE_ASSIGNMENT") break;
     }
   }
   result.unmappedSections = Object.keys(unmapped);

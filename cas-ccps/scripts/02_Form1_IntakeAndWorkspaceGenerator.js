@@ -85,6 +85,18 @@ function onFormSubmit_Intake(e) {
     return;
   }
 
+  if (res.code === "NO_WORK_TEMPLATE") {
+    Logger.log("Form 1 rejected — no template form set for the form part " + unitConfigId);
+    notifyIntakeRejected_(cfg, {
+      studentName: studentName, googleId: googleId,
+      teacherEmail: teacherEmail, unitConfigId: unitConfigId,
+      reason: "\"" + unitConfigId + "\" is a form part, and its template form isn't set.",
+      fix:    "Set the part's WORK_TEMPLATE_… Script Property on the Central Ledger to the template form's ID " +
+              "(cas-ccps/README.md, work types), then have the student resubmit."
+    });
+    return;
+  }
+
   if (res.code === "NO_MASTER_TEMPLATE") {
     const errMsg =
       "Student registration failed for " + studentName + ".\n\n" +
@@ -140,7 +152,8 @@ function onFormSubmit_Intake(e) {
 // s: { googleId, studentName, block, className, subject, courseName,
 //      period, teacherName, teacherEmail, unitConfigId }
 // Returns { ok: true, studentConfigId, fileId, docUrl } or
-//         { ok: false, code: INVALID_ACCOUNT | NO_LIVE_ASSIGNMENT | NO_MASTER_TEMPLATE }
+//         { ok: false, code: INVALID_ACCOUNT | NO_LIVE_ASSIGNMENT | NO_MASTER_TEMPLATE
+//           | NO_WORK_TEMPLATE (a form part whose template property is unset) }
 // Nothing is written on failure; the caller decides how to report it.
 // ---------------------------------------------------------------------------
 // What intakeStudent_ looks up that is the same for every student in a run
@@ -196,6 +209,15 @@ function intakeStudent_(cfg, s) {
   } else if (teacherEmail && assignment.teacherEmail !== teacherEmail.toLowerCase()) {
     Logger.log("Form 1 — the form says teacher " + teacherEmail + " but " + unitConfigId +
       " belongs to " + assignment.teacherEmail + "'s matrix; using the matrix owner.");
+  }
+
+  // A part marked workType "form" (68's partWorkFile_, Phase 4a) gets a copy
+  // of its own template form instead of the master doc.
+  const work = partWorkFile_(unitConfigId);
+  if (work.type === "form") {
+    const formTemplateId = work.templateKey ? String(_resolveConfigValues_().values[work.templateKey] || "").trim() : "";
+    if (!formTemplateId) return { ok: false, code: "NO_WORK_TEMPLATE" };
+    return _intakeForm_(cfg, s, googleId, assignment, assignedTeacherEmail, formTemplateId, memo);
   }
 
   // Copy MASTER STUDENT TEMPLATE (not teacher's prompt doc)
@@ -258,6 +280,39 @@ function intakeStudent_(cfg, s) {
   );
   return { ok: true, studentConfigId: studentConfigId, fileId: fileId, docUrl: docFile.getUrl(),
     teacherEmail: assignedTeacherEmail };
+}
+
+// A form part's copy (Phase 4a, meta/STUDENT_WORK_PLAN_2026-10.md §5): the
+// part's template form copied with DriveApp, as the doc is (no FormApp call,
+// so no Forms scope is used here), into the same admin folder, shared and
+// recorded the same way, SCHEDULED with deferShare until the part unlocks
+// (68) or its release night (58). Nothing is stamped: a form has no response
+// zone, and the template is a blank form (title only), because building the
+// form is the student's work. Forms have no comment access, so the assigning
+// teacher is added as an editor; nobody else. The Ledger row's ADMIN_FILE_URL
+// is the form's own URL, which is how every reader tells it from a doc (00's
+// workFileTypeOfUrl_).
+function _intakeForm_(cfg, s, googleId, assignment, teacherEmail, templateId, memo) {
+  const studentConfigId = generateConfigId_();
+  const folder = resolveAdminPath_(cfg.adminRootFolderId, [
+    s.subject, s.courseName, s.teacherName, "Period " + s.period, s.studentName
+  ], memo.folders);
+  const formFile = DriveApp.getFileById(templateId).makeCopy(assignment.unitName + " — " + s.studentName, folder);
+  const deferShare = s.deferShare === true;
+  if (!deferShare) {
+    try { formFile.addEditor(googleId); } catch (err) { Logger.log("Share warning for the student's account: " + err.message); }
+  }
+  if (teacherEmail) {
+    try { formFile.addEditor(teacherEmail); } catch (err) { Logger.log("Teacher access warning for " + teacherEmail + ": " + err.message); }
+  }
+  const url = workFileUrl_(formFile.getId(), "form");
+  registerLedger_(cfg, googleId, s.studentName, studentConfigId, formFile.getId(),
+                  s.block, s.className, s.teacherName, teacherEmail,
+                  s.subject, s.courseName, s.period, url,
+                  deferShare ? "SCHEDULED" : "ACTIVE");
+  recordStudentAssignment_(_intakeLedgerSs_(cfg), studentConfigId, googleId, s.unitConfigId);
+  Logger.log("Form workspace created — ConfigID: " + studentConfigId + " | Assignment: " + s.unitConfigId + " | Period: " + s.period);
+  return { ok: true, studentConfigId: studentConfigId, fileId: formFile.getId(), docUrl: url, teacherEmail: teacherEmail, workType: "form" };
 }
 
 // ---------------------------------------------------------------------------

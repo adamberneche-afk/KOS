@@ -509,6 +509,73 @@ its "Open Part n now" button, and the overnight email counts those students
 #6): still one assignment and grade per lesson, its page naming each part,
 saying each opens in turn, and asking for the last part's link.
 
+### Work types: a part as a Google Form (Phase 4a, 2026-11-08)
+
+A part's work file has a type (`meta/STUDENT_WORK_PLAN_2026-10.md` §5):
+`doc` (the default) or `form`. It is the part's `workType` in
+`curriculum/lessons/PARTS.json`; unset is `doc`, so a lesson nobody marks
+builds exactly as before (55b, the cartridges and the demo file are
+byte-identical, and a test holds it). The generator carries it to 55b as
+the part's `workFileNow` and, for a form, `workTemplateKey`
+(`WORK_TEMPLATE_<PART KEY>`, e.g.
+`WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2`): the name of the
+Central Ledger Script Property that holds the template form's file ID, as
+`MASTER_STUDENT_TEMPLATE_ID` holds the doc's. No Drive ID is in the repo.
+It refuses `form` on a part whose `workFile` isn't `form`, and a form
+part whose task still says to paste a link into this document.
+
+- **Made by the rollout like a doc.** Intake (02's `intakeStudent_`, via
+  68's `partWorkFile_`) copies the template with `DriveApp.makeCopy` into
+  the student's admin folder, shares it with the student as editor (or not
+  yet: `SCHEDULED` until the part unlocks or its release night), adds the
+  assigning teacher as editor (a form has no comment access), and writes
+  the Ledger row as for a doc: `FileID` is the form's ID, `AdminFileURL`
+  its `/forms/d/` link. That URL is how every reader tells a form from a
+  doc (`workFileTypeOfUrl_`, 00), so the Ledger keeps its fixed width and
+  the Student Dashboard needs no lesson data. A form part with no template
+  set fails as `NO_WORK_TEMPLATE` (a RolloutLog PROBLEM row; the run stops
+  that lesson at the first). Nothing is stamped into a form.
+- **No FormApp in 4a.** Copying and sharing are Drive calls; the Central
+  Ledger keeps the Forms scope it has (decided 11-07) for Phase 4b's
+  reader. gas-lint still reports that scope as unused, as on main.
+- **The template is a blank form**: the title only (e.g. "Venue Market
+  Research — your survey"), no questions and no description to fill in.
+  Building the form is the student's work (8177-18, technologies and
+  tools), and 4b's reader checks the questions and that email collection
+  is off. The task itself stays in Canvas, where the cartridge lists the
+  parts. Make the template with no linked response sheet.
+- **The Student Dashboard** shows a form part's card with **Open your
+  form** (the primary-button rules are unchanged) and **Submit for
+  Feedback** switched off, with the line "Checking forms comes next week."
+  The server refuses a form's Submit too (`FORM_NOT_CHECKED_YET`), so no
+  form reaches the ReviewQueue or Flow 2 before Phase 4b. Demo mode shows
+  the first lesson whose parts plan a form, Part 2 open as a form.
+- **The Teacher Dashboard** says "· Google Form" beside a form part's
+  title, links to it ("Open form", "Part 2 (form)"), and unlocks it the same
+  way.
+
+**Marking a part as a form (the operator, or an agent at the operator's
+word):**
+1. Make the template: a new blank Google Form in the admin account's Drive,
+   titled for the part, no questions. Copy its file ID from its URL.
+2. In the Central Ledger's Apps Script editor, Project Settings, Script
+   Properties: add `WORK_TEMPLATE_` plus the part's key in capitals, `-`
+   as `_` (for the first, `WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2`;
+   55b's `workTemplateKey` after step 4 shows it) with that ID.
+3. In `curriculum/lessons/PARTS.json`, on the part: `"workType": "form"`.
+   Take the "paste the link into this document" sentence out of the
+   part's paragraph in its prompt file (`8177/prompts/<slug>.md`).
+4. `node tools/cas-ccps/build-lesson-assignments.js`, then
+   `node tools/cas-ccps/build-canvas-cartridge.js`,
+   `node tools/cas-ccps/build-dashboard-demo-lessons.js`, and each with
+   `--check`; `npm test` (the tests that pin the unmarked state move with
+   it). Merge and push; re-import the cartridge.
+5. The next rollout makes the copies for that lesson. A student who already
+   has the part as a doc keeps it.
+
+The first: 8177 "Venue Market Research & Survey Design", Part 2 "Build the
+Survey" (named by the operator 2026-11-08), marked after the 4a push.
+
 `69_EvaluationHealth.js` (Central Ledger, 2026-11-01) is the first reader of
 `EvaluationLog`, and the numbers D8 waits on. `reportEvaluationHealth()`,
 from the editor, logs per course and per week (Monday to Sunday, the last

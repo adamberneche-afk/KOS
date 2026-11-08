@@ -37,7 +37,7 @@ function load(viewer, opts = {}) {
   for (const s of ['SpreadsheetApp', 'DocumentApp', 'DriveApp', 'MailApp', 'UrlFetchApp', 'LockService']) {
     globals[s] = tripwire(s, touched);
   }
-  const env = loadGasFiles(SD, ['getDemoDashboardData', 'doGet', 'buildStudentDashboardHtml_', 'DASH_DEMO_LESSONS'], globals);
+  const env = loadGasFiles(SD, ['getDemoDashboardData', 'doGet', 'buildStudentDashboardHtml_', 'DASH_DEMO_LESSONS', 'DASH_DEMO_PARTS_LESSON'], globals);
   if (opts.teacherEmail) env.sandbox.PropertiesService.getScriptProperties().setProperty('TEACHER_EMAIL', opts.teacherEmail);
   return Object.assign(env, { touched });
 }
@@ -63,7 +63,8 @@ test('the teacher gets the fixture: both courses, every card state, the real les
   const courses = new Set(d.dashboard.assignments.map((a) => a.className));
   assert.equal(courses.size, 2);
   // Each card is one of the teacher's lessons, by its real title.
-  const titles = new Set(lessons.flatMap((c) => c.lessons.map((l) => l.unitName)));
+  const titles = new Set(lessons.flatMap((c) => c.lessons.map((l) => l.unitName))
+    .concat(exported.DASH_DEMO_PARTS_LESSON.parts.map((p) => p.unitName)));
   d.dashboard.assignments.forEach((a) => assert.ok(titles.has(a.unitName), a.unitName));
   d.dashboard.assignments.filter((a) => a.statusPill === 'Revise')
     .forEach((a) => assert.ok(a.notYet.length > 10, 'a card to revise says what is not met yet'));
@@ -200,7 +201,7 @@ test('the demo page calls only getDemoDashboardData, whatever is pressed', () =>
 test('Submit for Feedback walks the card through the reflection, being checked, then revise', () => {
   const { ctx, els, calls, advance, page } = demoPage(fixture());
   advance(1000);
-  const card = page('_demoData').dashboard.assignments.find((a) => a.statusPill === 'Not started');
+  const card = page('_demoData').dashboard.assignments.find((a) => a.statusPill === 'Not started' && a.workType !== 'form');
   const btn = { attrs: { 'data-file': card.fileId, 'data-config': card.configId }, getAttribute(k) { return this.attrs[k]; } };
   ctx.submitWork(btn);
   advance(500);
@@ -229,6 +230,29 @@ test('Open My Document opens nothing: it says what the real page does', () => {
   assert.match(els.main.innerHTML, /onclick="demoOpenDoc\(this\)"/);
   ctx.demoOpenDoc({ getAttribute: () => card.fileId });
   assert.match(els.main.innerHTML, /In the real dashboard this opens the student&#39;s document\.|In the real dashboard this opens the student's document\./);
+});
+
+// Phase 4a: the demo has a lesson in parts with a form part, so a teacher
+// sees what a student sees: "Open your form", Submit off with its note.
+test('the demo shows a form part: Open your form, Submit off with a plain note, the later parts locked', () => {
+  const f = fixture();
+  const form = f.dashboard.assignments.filter((a) => a.workType === 'form');
+  assert.equal(form.length, 1, 'one form part');
+  assert.equal(form[0].canSubmit, false);
+  assert.equal(form[0].part.n, 2);
+  assert.match(form[0].unitName, /Build the Survey/);
+  assert.ok(f.dashboard.assignments.some((a) => a.part && a.part.n === 1 && a.workType === 'doc' && a.statusPill === 'Passed ✓'));
+  assert.deepEqual(f.dashboard.lockedParts.map((l) => l.n), [3, 4, 5]);
+  const { ctx, els, advance } = demoPage(f);
+  advance(1000);
+  const main = els.main.innerHTML;
+  assert.match(main, />Open your form</);
+  assert.match(main, /<button type="button" class="act act-secondary" disabled aria-describedby="form-note-[^"]+">Submit for Feedback<\/button>/);
+  assert.match(main, /class="form-note"[^>]*>Checking forms comes next week\./);
+  assert.match(main, /2 of 5 parts open/);
+  assert.match(main, /🔒 Part 3 of 5/);
+  ctx.demoOpenDoc({ getAttribute: () => form[0].fileId });
+  assert.match(els.main.innerHTML, /own copy of the form/);
 });
 
 test('the real page never asks for the demo fixture', () => {

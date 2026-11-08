@@ -31,8 +31,8 @@ const LESSONS_PER_COURSE = 5;
 function readLessons(source) {
   const ctx = {};
   vm.createContext(ctx);
-  vm.runInContext(source + '\nthis.A = LESSON_ASSIGNMENTS; this.O = LESSON_ORDER;', ctx);
-  return { assignments: ctx.A, order: ctx.O };
+  vm.runInContext(source + '\nthis.A = LESSON_ASSIGNMENTS; this.O = LESSON_ORDER; this.P = LESSON_PARTS;', ctx);
+  return { assignments: ctx.A, order: ctx.O, parts: ctx.P };
 }
 
 function readRegistry(csv) {
@@ -47,6 +47,29 @@ function readRegistry(csv) {
     out[id] = { text: String(r[col('competency_text')] || '').trim(), area: String(r[col('strand')] || '').trim() };
   });
   return out;
+}
+
+// The lesson in parts the demo shows (Phase 4a, 2026-11-08): the first in
+// teaching order with a part whose work file is a form, so the demo has a
+// form part's card ("Open your form", Submit off until Phase 4b). Each part's
+// title and planned work file; the first two parts' milestones for their cards.
+function formLesson(lessonSource) {
+  const { assignments, order, parts } = readLessons(lessonSource);
+  for (const code of COURSES) {
+    for (const k of order[code] || []) {
+      const list = parts[k];
+      if (!list || !list.some((p) => p.workFile === 'form')) continue;
+      return {
+        code, key: k, lessonName: assignments[k].unitName,
+        parts: list.map((p) => ({
+          n: p.part, title: p.partTitle, workType: p.workFile === 'form' ? 'form' : 'doc',
+          key: p.key, unitName: p.unitName, subject: p.subject,
+          milestones: p.milestones, milestoneCompetencyIds: p.milestoneCompetencyIds,
+        })),
+      };
+    }
+  }
+  return null;
 }
 
 function build(lessonSource, registryCsv) {
@@ -80,7 +103,7 @@ function build(lessonSource, registryCsv) {
   });
 }
 
-function render(courses) {
+function render(courses, partsLesson) {
   return [
     '// =============================================================================',
     '// FILE: 13b_StudentDashboardDemoLessons.js',
@@ -94,11 +117,15 @@ function render(courses) {
     '',
     'const DASH_DEMO_LESSONS = ' + JSON.stringify(courses, null, 2) + ';',
     '',
+    '// A lesson in parts with a form part, for the demo\'s form card (Phase 4a).',
+    'const DASH_DEMO_PARTS_LESSON = ' + JSON.stringify(partsLesson || null, null, 2) + ';',
+    '',
   ].join('\n');
 }
 
 function expected() {
-  return render(build(fs.readFileSync(LESSONS_PATH, 'utf8'), fs.readFileSync(REGISTRY_PATH, 'utf8')));
+  const lessons = fs.readFileSync(LESSONS_PATH, 'utf8');
+  return render(build(lessons, fs.readFileSync(REGISTRY_PATH, 'utf8')), formLesson(lessons));
 }
 
 function main() {
@@ -118,4 +145,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, render, expected, TARGET_PATH };
+module.exports = { build, render, expected, formLesson, TARGET_PATH };

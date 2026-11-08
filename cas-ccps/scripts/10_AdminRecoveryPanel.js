@@ -932,7 +932,8 @@ function resendStudentDocLink() {
     if (rowGid !== term && rowName !== term) continue;
 
     const fileId  = String(data[i][3]).trim();
-    const docUrl  = "https://docs.google.com/document/d/" + fileId + "/edit";
+    // A form part's copy (Phase 4a) is a form: its Ledger URL says so (00).
+    const docUrl  = workFileUrl_(fileId, workFileTypeOfUrl_(data[i][LEDGER.ADMIN_FILE_URL]));
 
     ui.alert(
       "✅ Student Document Found",
