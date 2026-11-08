@@ -530,8 +530,11 @@ owner and how it was issued; the card shows it with **Copy turn-in code**
 `grantTurnInCode(studentEmail, configId, reason)`, from the editor (owner
 only), issues one with its reason, also after the term. The student
 functions `getMyTurnInState` and `submitTurnInAnswer` act only on the
-caller's own Ledger row. The term rule, the screen and the code are
-documented in the file's header.
+caller's own Ledger row. Past the marking period, the teacher can open one
+assignment for every student on it (`openTurnInForAssignment("CAS-8177-L05",
+reason, until)`, closed with `closeTurnInForAssignment`, owner only, kept in
+`TurnInOverrides`); the check still decides each code. The term rule, the
+override, the screen and the code are documented in the file's header.
 
 `70_WorkFileProbe.js` (2026-11-01), Phase 4's one-shot design check
 (`probeWorkFileTypes()`: what Apps Script reads back from a form, a deck and

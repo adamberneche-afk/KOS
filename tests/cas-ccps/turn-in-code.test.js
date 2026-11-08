@@ -52,7 +52,8 @@ function load(opts) {
     'applyTurnInVerdict_', 'grantTurnInCode', 'turnInScreen_', 'turnInPastedShare_', 'turnInQuestion_',
     'turnInMakeCode_', 'turnInCodeValid_', 'turnInCheckChar_', 'turnInLessonOf_', 'turnInRowTerm_',
     'turnInInCurrentTerm_', 'TURN_IN_PASTE_MAX_SHARE', 'TURN_IN_ALPHABET', 'REFLECTION_MIN_WORDS',
-    'TURN_IN_CODE_HEADERS', 'TURN_IN_CHECK_HEADERS',
+    'TURN_IN_CODE_HEADERS', 'TURN_IN_CHECK_HEADERS', 'openTurnInForAssignment', 'closeTurnInForAssignment',
+    'turnInOverrideCovers_', 'TURN_IN_OVERRIDE_HEADERS',
   ], { Session: session });
   const L = exported.LEDGER;
   const T = terms();
@@ -538,4 +539,115 @@ test('sending from the card: a short answer is stopped on the page, a sent one s
   assert.match(els.main.innerHTML, /Checking your answer…/);
   ctx.turnInDone('VDOE-AMY-1', { ok: false, error: 'PASTED', reason: 'Say it in your own words.' });
   assert.match(els.main.innerHTML, /Say it in your own words\./);
+});
+
+// ── The teacher's override for one assignment (operator, 2026-11-08) ───────
+
+// Three past-period rows: Amy's and Ben's on lesson 7 (Ben's is its part 2),
+// and Ben's on lesson 8.
+function pastPeriod(env) {
+  const { L, T, ledger, ss } = env;
+  const add = (email, id, assignment) => {
+    const r = new Array(27).fill('');
+    r[L.TIMESTAMP] = T.inMp1; r[L.GOOGLE_ID] = email; r[L.CONFIG_ID] = id; r[L.FILE_ID] = 'f-' + id;
+    r[L.CLASS_NAME] = C8177; r[L.SUBJECT] = C8177; r[L.COURSE_NAME] = 'Lesson ' + id; r[L.STATUS] = 'COMPLETE';
+    r[L.LAST_RESULT] = 'NEEDS_REVISION'; r[L.ACADEMIC_YEAR] = T.mp1; r[L.BLOCK] = '1';
+    ledger.appendRow(r);
+    ss.getSheetByName('StudentAssignments').appendRow([id, email, assignment, new Date()]);
+    ss.getSheetByName('CompetencyEvidence').appendRow(['e', email, '8177-83', '8177-83 Develop a market research project.',
+      'NOT_MET', id, new Date('2026-09-21T10:00:00'), 'f-' + id, '']);
+  };
+  add(AMY, 'VDOE-AMY-7', 'CAS-8177-L07');
+  add(BEN, 'VDOE-BEN-7', 'CAS-8177-L07-P2');
+  add(BEN, 'VDOE-BEN-8', 'CAS-8177-L08');
+}
+const ymdIn = (days) => {
+  const d = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+};
+
+test('override: without one a past-period answer is refused; with one it goes through and ADDRESSES issues the code', () => {
+  const env = load({ switch: '8177' });
+  pastPeriod(env);
+  assert.equal(env.exported.submitTurnInAnswer('VDOE-AMY-7', GENUINE).error, 'TERM_CLOSED', 'no override: blocked');
+  env.state.who = OWNER;
+  assert.deepEqual(plain(env.exported.openTurnInForAssignment(' cas-8177-l07 ', 'Lesson ran across the MP1 boundary', '')),
+    { key: 'CAS-8177-L07', until: '' });
+  const ov = env.tab('TurnInOverrides');
+  assert.deepEqual(ov[0], env.exported.TURN_IN_OVERRIDE_HEADERS);
+  assert.deepEqual([ov[1][0], ov[1][1], ov[1][3], ov[1][4], ov[1][5]],
+    ['CAS-8177-L07', OWNER, 'Lesson ran across the MP1 boundary', '', '']);
+  assert.equal(env.ss.getSheetByName('TurnInCodes'), null, 'opening issues no code');
+  env.state.who = AMY;
+  assert.equal(env.dash().by['VDOE-AMY-7'].turnIn.state, 'ANSWER');
+  assert.equal(env.exported.submitTurnInAnswer('VDOE-AMY-7', 'too short').error, 'SHORT', 'the screen still applies');
+  assert.equal(env.exported.submitTurnInAnswer('VDOE-AMY-7', GENUINE).ok, true);
+  const id = checkIds(env)[0];
+  const res = plain(env.exported.applyTurnInVerdict_(id, 'ADDRESSES', 'ok'));
+  assert.equal(res.issued, true);
+  assert.match(res.code, /^CAS-8177-L07-/);
+});
+
+test('override: one covers every student on that assignment (its parts too), and no other assignment', () => {
+  const env = load({ switch: '8177' });
+  pastPeriod(env);
+  env.state.who = OWNER;
+  env.exported.openTurnInForAssignment('CAS-8177-L07', 'Lesson ran across the boundary');
+  env.state.who = AMY;
+  assert.equal(env.dash().by['VDOE-AMY-7'].turnIn.state, 'ANSWER');
+  env.state.who = BEN;
+  const ben = env.dash().by;
+  assert.equal(ben['VDOE-BEN-7'].turnIn.state, 'ANSWER', 'another student, the same lesson\'s part');
+  assert.deepEqual(ben['VDOE-BEN-8'].turnIn, { state: 'TERM_CLOSED' }, 'another assignment stays closed');
+  assert.equal(env.exported.submitTurnInAnswer('VDOE-BEN-8', GENUINE).error, 'TERM_CLOSED');
+  assert.equal(env.exported.submitTurnInAnswer('VDOE-BEN-7', GENUINE).ok, true);
+  assert.equal(env.exported.turnInOverrideCovers_('CAS-8177-L07', 'CAS-8177-L070'), false);
+  assert.equal(env.exported.turnInOverrideCovers_('CAS-8177-L07', 'CAS-8177-L07-P12'), true);
+});
+
+test('override: past its until date, or closed, it no longer opens the assignment; a failed check still issues nothing', () => {
+  const env = load({ switch: '8177' });
+  pastPeriod(env);
+  env.state.who = OWNER;
+  env.exported.openTurnInForAssignment('CAS-8177-L07', 'Open for a week', ymdIn(1));
+  env.state.who = AMY;
+  env.exported.submitTurnInAnswer('VDOE-AMY-7', GENUINE);
+  const id = checkIds(env)[0];
+  assert.equal(env.exported.applyTurnInVerdict_(id, 'ERROR', '').error, 'BAD_VERDICT');
+  assert.equal(env.ss.getSheetByName('TurnInCodes'), null);
+  const later = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+  assert.deepEqual(plain(env.exported.applyTurnInVerdict_(id, 'ADDRESSES', 'ok', later)),
+    { ok: true, status: 'ADDRESSES', issued: false, error: 'TERM_CLOSED' }, 'expired: blocked');
+
+  const closed = load({ switch: '8177' });
+  pastPeriod(closed);
+  closed.state.who = OWNER;
+  closed.exported.openTurnInForAssignment('CAS-8177-L07', 'Open for now');
+  closed.state.who = AMY;
+  closed.exported.submitTurnInAnswer('VDOE-AMY-7', GENUINE);
+  closed.state.who = OWNER;
+  assert.throws(() => closed.exported.closeTurnInForAssignment('CAS-8177-L07', ''), /needs a reason/);
+  assert.deepEqual(plain(closed.exported.closeTurnInForAssignment('CAS-8177-L07', 'Grades are in')), { key: 'CAS-8177-L07', closed: 1 });
+  const row = closed.tab('TurnInOverrides')[1];
+  assert.ok(row[5], 'ClosedAt');
+  assert.equal(row[6], 'Grades are in');
+  assert.equal(plain(closed.exported.applyTurnInVerdict_(checkIds(closed)[0], 'ADDRESSES', 'ok')).error, 'TERM_CLOSED',
+    'closed: blocked');
+  closed.state.who = AMY;
+  assert.deepEqual(closed.dash().by['VDOE-AMY-7'].turnIn, { state: 'TERM_CLOSED' });
+});
+
+test('override: owner only, a reason and an assignment required, and a sane until', () => {
+  const env = load({ switch: '8177' });
+  env.state.who = AMY;
+  assert.throws(() => env.exported.openTurnInForAssignment('CAS-8177-L07', 'please open it'), /Not authorized/);
+  assert.throws(() => env.exported.closeTurnInForAssignment('CAS-8177-L07', 'please close it'), /Not authorized/);
+  env.state.who = OWNER;
+  assert.throws(() => env.exported.openTurnInForAssignment('CAS-8177-L07', ''), /needs a reason/);
+  assert.throws(() => env.exported.openTurnInForAssignment('CAS-8177-L07', '  '), /needs a reason/);
+  assert.throws(() => env.exported.openTurnInForAssignment('', 'a reason'), /Name the assignment/);
+  assert.throws(() => env.exported.openTurnInForAssignment('CAS-8177-L07', 'a reason', 'next week'), /must be a date/);
+  assert.throws(() => env.exported.openTurnInForAssignment('CAS-8177-L07', 'a reason', ymdIn(-2)), /in the past/);
+  assert.equal(env.ss.getSheetByName('TurnInOverrides'), null, 'nothing written');
+  assert.equal(plain(env.exported.openTurnInForAssignment('CAS-8177-L07', 'a reason', ymdIn(3))).until, ymdIn(3));
 });

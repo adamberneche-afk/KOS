@@ -39,6 +39,11 @@ feedback cycle: submitting for feedback, then engaging with that feedback.
    design signal, never per student.** A lesson where students earn codes
    but rarely show the milestone probably needs rethinking. It doesn't
    show that those students failed.
+10. **The teacher can open one assignment past its marking period**
+    (operator, 2026-11-08), for every student on it, with a reason and an
+    optional end date, and close it again. The term rule then passes for
+    that assignment; the check still decides every code. The per-student
+    grant (decision 4) stays.
 
 ## Standing rules (so the grade doesn't poison the measure)
 
@@ -220,8 +225,19 @@ competency with no student text. It is not needed now.
      answer and again at the verdict. No marking period either way, or none
      current (summer), is outside the term: only the grant then. A row is
      labelled with the period it was made in, so a doc made in one marking
-     period and answered in the next needs the grant (rare: the
-     rollout makes docs the night before).
+     period and answered in the next fails it; the teacher's override
+     (below) opens that assignment, or the grant covers one student.
+   - *The per-assignment override* (decision 10):
+     `openTurnInForAssignment(assignmentKey, reason, until)` and
+     `closeTurnInForAssignment(assignmentKey, reason)`, editor only, owner
+     guard, reason required, each a `TurnInOverrides` row. The key is the
+     assignment's ConfigID as StudentAssignments records it
+     (`CAS-8177-L05`), the same in every section, so one call covers every
+     student's row; a lesson's key also covers its parts
+     (`CAS-8177-L05-P2`). `until` is a date, open through that day; blank
+     is open until closed. The term rule passes when the row's marking
+     period is current or an open, unexpired override covers its
+     assignment, at the answer and at the verdict.
    - *The code.* `CAS-<course>-L<lesson>-XXXX-XXXC`: lesson from the
      assignment's ConfigID (`L00` when it has none); seven random
      characters from Crockford's base32 alphabet (no I, L, O, U), from

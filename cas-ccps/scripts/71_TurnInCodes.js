@@ -31,7 +31,9 @@
 // The row is in the current term when that marking period equals
 // currentTerm_() today. A row with neither, or a currentTerm_() that is not
 // a marking period (summer, a CURRENT_TERM set to another year), is not in
-// the current term. Outside it, only the teacher's grant issues a code.
+// the current term. Outside it, a code comes only from the teacher: an
+// override that opens the whole assignment (openTurnInForAssignment, below),
+// then the usual check, or the per-student grant.
 //
 // THE CODE: CAS-<course>-L<lesson>-XXXX-XXXC. Course: the Ledger row's
 // course code (ledgerRowCourseCode_), else the one in the assignment's
@@ -283,6 +285,142 @@ function turnInInCurrentTerm_(row, now) {
 }
 
 // ---------------------------------------------------------------------------
+// The teacher's override for one assignment (the operator, 2026-11-08)
+// ---------------------------------------------------------------------------
+// A row made in one marking period and answered in the next (or a lesson
+// that ran across the boundary) fails the term rule. The teacher can open
+// one assignment for every student on it, from the editor:
+//   openTurnInForAssignment("CAS-8177-L05", "why", "2026-12-18")
+//   closeTurnInForAssignment("CAS-8177-L05", "why")
+// The key is the assignment's ConfigID as StudentAssignments records it
+// (54: "CAS-8177-L05"), the same for every section and every student, so
+// one call covers the whole lesson. A lesson's key also covers its parts
+// ("CAS-8177-L05-P2"). A row with no StudentAssignments entry is its own
+// assignment: its key is the student's workspace ConfigID. until is a date
+// (yyyy-MM-dd or a Date), open through that day in New York; blank is open
+// until closed. Each open or close is a TurnInOverrides row (a close fills
+// in every open row for the key). The override only widens the term rule:
+// the screen, the check and the verdict are unchanged, and no code is
+// issued by opening one. The per-student grant stays.
+
+const TURN_IN_OVERRIDES_TAB = "TurnInOverrides";
+const TURN_IN_OVERRIDE_HEADERS = ["AssignmentKey", "OpenedBy", "OpenedAt", "Reason", "Until", "ClosedAt",
+  "ClosedReason"];
+const TOVR = { KEY: 0, OPENED_BY: 1, OPENED_AT: 2, REASON: 3, UNTIL: 4, CLOSED_AT: 5, CLOSED_REASON: 6 };
+
+function _turnInOverrideKey_(key) {
+  return String(key === undefined || key === null ? "" : key).trim().toUpperCase();
+}
+
+// Whether an override for `key` covers this assignment ID.
+function turnInOverrideCovers_(key, assignmentId) {
+  const k = _turnInOverrideKey_(key);
+  const a = _turnInOverrideKey_(assignmentId);
+  if (!k || !a) return false;
+  return a === k || new RegExp("^" + k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "-P\\d+$").test(a);
+}
+
+function _turnInYmd_(d) {
+  return Utilities.formatDate(d, "America/New_York", "yyyy-MM-dd");
+}
+
+// An open override row covering the assignment, or null.
+function _turnInOpenOverride_(ss, assignmentId, now, cache) {
+  const today = _turnInYmd_(now ? new Date(now) : new Date());
+  return _turnInRows_(ss, TURN_IN_OVERRIDES_TAB, TURN_IN_OVERRIDE_HEADERS.length, cache).filter(function (r) {
+    if (String(r[TOVR.CLOSED_AT] || "").trim()) return false;
+    const until = String(r[TOVR.UNTIL] || "").trim();
+    if (until && today > until) return false;
+    return turnInOverrideCovers_(r[TOVR.KEY], assignmentId);
+  })[0] || null;
+}
+
+// The term rule with the teacher's override: the row's marking period is
+// current, or an open override covers its assignment.
+function turnInTermOpen_(ss, row, now, cache) {
+  if (turnInInCurrentTerm_(row, now)) return true;
+  const assignmentId = turnInAssignmentId_(ss, String(row[LEDGER.CONFIG_ID] || "").trim(), cache);
+  return !!_turnInOpenOverride_(ss, assignmentId, now, cache);
+}
+
+function _turnInOverrideUntil_(until) {
+  if (until === undefined || until === null || String(until).trim() === "") return "";
+  let ymd = "";
+  if (until instanceof Date || Object.prototype.toString.call(until) === "[object Date]") {
+    if (isNaN(until.getTime())) throw new Error("until isn't a date.");
+    ymd = _turnInYmd_(until);
+  } else {
+    ymd = String(until).trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd) || isNaN(new Date(ymd + "T12:00:00").getTime())) {
+      throw new Error("until must be a date like 2026-12-18, or blank.");
+    }
+  }
+  if (ymd < _turnInYmd_(new Date())) throw new Error("until is in the past.");
+  return ymd;
+}
+
+// From the editor. Opens one assignment for turn-in codes outside its
+// marking period, for every student on it. Returns { key, until }.
+function openTurnInForAssignment(assignmentKey, reason, until) {
+  requireScriptOwner_();
+  const key = _turnInOverrideKey_(assignmentKey);
+  if (!key) throw new Error("Name the assignment, e.g. CAS-8177-L05.");
+  const why = String(reason === undefined || reason === null ? "" : reason).trim();
+  if (why.length < TURN_IN_GRANT_REASON_MIN) throw new Error("Opening an assignment needs a reason.");
+  const ymd = _turnInOverrideUntil_(until);
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = _turnInSheet_(ss, TURN_IN_OVERRIDES_TAB, TURN_IN_OVERRIDE_HEADERS);
+    const out = new Array(TURN_IN_OVERRIDE_HEADERS.length).fill("");
+    out[TOVR.KEY] = key;
+    out[TOVR.OPENED_BY] = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase();
+    out[TOVR.OPENED_AT] = new Date().toISOString();
+    out[TOVR.REASON] = sheetSafeText_(why);
+    out[TOVR.UNTIL] = ymd;
+    const at = sheet.getLastRow() + 1;
+    sheet.getRange(at, 1, 1, TURN_IN_OVERRIDE_HEADERS.length).setNumberFormat("@");
+    sheet.getRange(at, 1, 1, TURN_IN_OVERRIDE_HEADERS.length).setValues([out]);
+  } finally {
+    lock.releaseLock();
+  }
+  Logger.log("[71] Turn-in codes opened for " + key + (ymd ? " until " + ymd : " until closed") +
+    " (reason recorded in " + TURN_IN_OVERRIDES_TAB + ")");
+  return { key: key, until: ymd };
+}
+
+// From the editor. Closes every open override for the key. Returns
+// { key, closed: n }.
+function closeTurnInForAssignment(assignmentKey, reason) {
+  requireScriptOwner_();
+  const key = _turnInOverrideKey_(assignmentKey);
+  if (!key) throw new Error("Name the assignment, e.g. CAS-8177-L05.");
+  const why = String(reason === undefined || reason === null ? "" : reason).trim();
+  if (why.length < TURN_IN_GRANT_REASON_MIN) throw new Error("Closing an assignment needs a reason.");
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  let closed = 0;
+  try {
+    const sheet = ss.getSheetByName(TURN_IN_OVERRIDES_TAB);
+    const rows = _turnInRows_(ss, TURN_IN_OVERRIDES_TAB, TURN_IN_OVERRIDE_HEADERS.length);
+    rows.forEach(function (r, i) {
+      if (_turnInOverrideKey_(r[TOVR.KEY]) !== key || String(r[TOVR.CLOSED_AT] || "").trim()) return;
+      sheet.getRange(i + 2, TOVR.CLOSED_AT + 1).setValue(new Date().toISOString());
+      sheet.getRange(i + 2, TOVR.CLOSED_REASON + 1).setNumberFormat("@").setValue(sheetSafeText_(why));
+      closed++;
+    });
+  } finally {
+    lock.releaseLock();
+  }
+  Logger.log("[71] Turn-in codes closed for " + key + ": " + closed + " override(s)");
+  return { key: key, closed: closed };
+}
+
+// ---------------------------------------------------------------------------
 // The code
 // ---------------------------------------------------------------------------
 
@@ -477,7 +615,7 @@ function applyTurnInVerdict_(checkId, verdict, reason, now) {
 
   const row = _turnInLedgerRow_(cfg, String(check[TCHK.GOOGLE_ID]), String(check[TCHK.STUDENT_CONFIG_ID]));
   if (!row) return { ok: true, status: v, issued: false, error: "NOT_REGISTERED" };
-  if (!turnInInCurrentTerm_(row, now)) return { ok: true, status: v, issued: false, error: "TERM_CLOSED" };
+  if (!turnInTermOpen_(ss, row, now)) return { ok: true, status: v, issued: false, error: "TERM_CLOSED" };
   return { ok: true, status: v, issued: true, code: _turnInIssueCode_(ss, row, "CHECK", "") };
 }
 
@@ -543,7 +681,7 @@ function turnInView_(ss, cfg, row, now, cache) {
   if (check && String(check[TCHK.STATUS]).trim() === TURN_IN_PENDING) return { state: TURN_IN_PENDING };
   const prompt = turnInPrompt_(ss, cfg, row, cache);
   if (!prompt) return null;
-  if (!turnInInCurrentTerm_(row, now)) return { state: "TERM_CLOSED" };
+  if (!turnInTermOpen_(ss, row, now, cache)) return { state: "TERM_CLOSED" };
   const view = { state: "ANSWER", kind: prompt.kind, question: prompt.question, minWords: REFLECTION_MIN_WORDS };
   if (check && String(check[TCHK.STATUS]).trim() === TURN_IN_NOT_YET) {
     view.state = TURN_IN_NOT_YET;
