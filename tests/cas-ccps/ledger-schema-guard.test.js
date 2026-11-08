@@ -20,6 +20,11 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
+// A made-up document URL, assembled at run time so no Drive ID sits in the
+// repo (2026-11-08, the L1 release audit: a real one was here). The guard
+// only reads the cell as a URL (/^https?:\/\//).
+const FAKE_DOC_URL = ['https://docs.google.com', 'document', 'd', 'test-doc-' + 'x'.repeat(35), 'edit'].join('/');
+
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 const GUARD_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '38_LedgerSchemaGuard.js');
 
@@ -58,7 +63,7 @@ function canonicalRow(sandbox, overrides = {}) {
   row[10] = 'Sports Marketing';
   row[11] = '1';
   row[12] = 'ACTIVE';
-  row[16] = 'https://docs.google.com/document/d/1QwbL4ci4bAEqQPT1MtLZfaHD11PoTe-GbX01cBnagCk/edit';
+  row[16] = FAKE_DOC_URL;
   row[18] = '2025-26 S1';
   return row;
 }
@@ -114,7 +119,7 @@ test('checkLedgerSchema: detects a single inserted column and names it', () => {
   sheet.appendRow(headers);
 
   const row = canonicalRow(sandbox);
-  row.splice(4, 0, 'https://docs.google.com/document/d/1QwbL4ci4bAEqQPT1MtLZfaHD11PoTe-GbX01cBnagCk/edit');
+  row.splice(4, 0, FAKE_DOC_URL);
   sheet.appendRow(row);
 
   const result = exported.checkLedgerSchema();
@@ -133,7 +138,7 @@ test('repairLedgerSchema: deletes the drifted column, restores canonical alignme
   headers.splice(4, 0, 'FileURL');
   sheet.appendRow(headers);
   const row = canonicalRow(sandbox);
-  row.splice(4, 0, 'https://docs.google.com/document/d/1QwbL4ci4bAEqQPT1MtLZfaHD11PoTe-GbX01cBnagCk/edit');
+  row.splice(4, 0, FAKE_DOC_URL);
   sheet.appendRow(row);
 
   const result = exported.repairLedgerSchema();
@@ -230,7 +235,7 @@ test('repairLedgerSchemaDryRun: reports a repairable drift without touching the 
   headers.splice(4, 0, 'FileURL');
   sheet.appendRow(headers);
   const row = canonicalRow(sandbox);
-  row.splice(4, 0, 'https://docs.google.com/document/d/1QwbL4ci4bAEqQPT1MtLZfaHD11PoTe-GbX01cBnagCk/edit');
+  row.splice(4, 0, FAKE_DOC_URL);
   sheet.appendRow(row);
 
   const before = sheet.getDataRange().getValues();
@@ -270,7 +275,7 @@ test('checkLedgerSchema: blank optional fields never read as corruption', () => 
   row[1] = 'student@example.com';
   row[2] = 'VDOE-ABC123-2026';
   row[3] = '1QwbL4ci4bAEqQPT1MtLZfaHD11PoTe-GbX01cBnagCk';
-  row[4] = 'https://docs.google.com/document/d/1QwbL4ci4bAEqQPT1MtLZfaHD11PoTe-GbX01cBnagCk/edit';
+  row[4] = FAKE_DOC_URL;
   row[9] = 'teacher@ccpsnet.net'; // TeacherEmail in its shifted slot
   sheet.appendRow(row);
 
