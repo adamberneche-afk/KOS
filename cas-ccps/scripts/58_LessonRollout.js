@@ -37,11 +37,14 @@
 // also the kill switch.
 //
 // Every run writes counts to the RolloutLog tab, one row per course, lesson
-// and step, and a PROBLEM row for anything that needs the operator (a
-// failed enrollment, a stalled run, a stale Canvas export). The CAS signal
-// (34b) reports PROBLEM rows from the last day. FERPA: counts and reason
-// codes only; no student name, account, file ID or student ConfigID is ever
-// written there or logged here.
+// and step, all stamped with the run's start time, and a PROBLEM row for
+// anything that needs the operator (a failed enrollment or share, a missing
+// template, unmapped sections, a stale Canvas export). A step the time budget
+// stopped is a CONTINUES row instead, its Count what is left: the next run
+// picks it up, so it is not a problem. The CAS signal (34b, 34c) reports only
+// what remains: rolloutDayStatus_ below. FERPA: counts and reason codes only;
+// no student name, account, file ID or student ConfigID is ever written there
+// or logged here.
 //
 // installLessonRolloutTrigger() runs it nightly at about 9 p.m.
 // previewLessonRollout() runs it once as a dry run from the editor.
@@ -77,8 +80,15 @@ const ROLLOUT_CATCHUP_PROP = "ROLLOUT_CATCHUP";
 const ROLLOUT_BUSY_PROP = "ROLLOUT_BUSY_UNTIL";
 const ROLLOUT_BUSY_MS = 6 * 60 * 1000;
 const ROLLOUT_DOCS_RESERVE_MS = 60 * 1000;
-// A PROBLEM row that means the run stopped short, so a catch-up run follows.
+// A step the time budget stopped (2026-11-08, plan L3): logged as CONTINUES,
+// never PROBLEM. Rows logged before then said so as PROBLEM rows whose Detail
+// matches ROLLOUT_UNFINISHED_RE; rolloutDayStatus_ reads those as CONTINUES.
+const ROLLOUT_CONTINUES = "CONTINUES";
 const ROLLOUT_UNFINISHED_RE = /time budget|not reached/;
+// Rows further apart than this belong to different runs. A run's rows share
+// its start time; catch-ups start at least ROLLOUT_CATCHUP_DELAY_MS after
+// the run before ends.
+const ROLLOUT_RUN_GAP_MS = 2 * 60 * 1000;
 
 // Nightly trigger handler; also the one to run from the editor to catch up.
 function runLessonRollout() {
@@ -148,8 +158,11 @@ function lessonRollout_(opts) {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const rows = [];
+  // Every row of a run carries the run's start time, so the run can be told
+  // apart from the next (rolloutDayStatus_).
+  const runAt = new Date(started);
   const log = function (mode, course, lesson, step, count, detail) {
-    rows.push([new Date(), mode, course, lesson, step, count, detail || ""]);
+    rows.push([runAt, mode, course, lesson, step, count, detail || ""]);
   };
 
   const plan = _lrPlan_(now);
@@ -176,7 +189,10 @@ function lessonRollout_(opts) {
       const r = release[lesson];
       log(r.mode, r.course, lesson, "RELEASE", r.count, r.mode === "APPLY" ? "shared and opened" : "would share and open");
       if (r.failed) log(r.mode, r.course, lesson, "PROBLEM", r.failed, "doc(s) could not be shared; still SCHEDULED");
-      if (r.stopped) log(r.mode, r.course, lesson, "PROBLEM", 0, "release stopped at the time budget; the next run continues");
+      if (r.left) {
+        log(r.mode, r.course, lesson, ROLLOUT_CONTINUES, r.left,
+          "release stopped at the time budget: " + r.left + " doc(s) left to share; the next run continues");
+      }
     });
   } catch (e) {
     log("-", "-", "-", "PROBLEM", 0, "release failed: " + e.message);
@@ -218,7 +234,7 @@ function lessonRollout_(opts) {
     const mode = modes[course];
     const lesson = lessonConfigId_(l.key);
     if (Date.now() > enrollDeadline) {
-      log(mode, course, lesson, "PROBLEM", 0, "enrollment not reached: time budget used; the next run continues");
+      log(mode, course, lesson, ROLLOUT_CONTINUES, 0, "enrollment not reached: time budget used; the next run continues");
       return;
     }
     const share = Date.now() + Math.floor((enrollDeadline - Date.now()) / (order.length - i));
@@ -236,7 +252,11 @@ function lessonRollout_(opts) {
       if (res.failed.length) {
         log(mode, course, lesson, "PROBLEM", res.failed.length, "enrollment failed: " + _lrReasonCounts_(res.failed));
       }
-      if (res.timedOut) log(mode, course, lesson, "PROBLEM", 0, "enrollment stopped at the time budget; the next run continues");
+      if (res.timedOut) {
+        const left = Number(res.left) || 0;
+        log(mode, course, lesson, ROLLOUT_CONTINUES, left,
+          "enrollment stopped at the time budget: " + left + " student doc(s) left to make; the next run continues");
+      }
       if (res.unmappedSections.length) {
         log(mode, course, lesson, "PROBLEM", res.unmappedSections.length,
           "Canvas section(s) with no period in CanvasSectionMap");
@@ -256,7 +276,7 @@ function lessonRollout_(opts) {
     plan[course].lessons.concat(plan[course].held).forEach(function (l) {
       const lesson = lessonConfigId_(l.key);
       if (Date.now() > deadline) {
-        log("APPLY", course, lesson, "PROBLEM", 0, "lesson doc not reached: time budget used; the next run continues");
+        log("APPLY", course, lesson, ROLLOUT_CONTINUES, 0, "lesson doc not reached: time budget used; the next run continues");
         return;
       }
       try {
@@ -273,7 +293,8 @@ function lessonRollout_(opts) {
   Object.keys(plan).forEach(function (course) {
     if (modes[course] !== "APPLY") return;
     if (Date.now() > deadline) {
-      log("APPLY", course, "-", "PROBLEM", 0, "agenda not reached: time budget used; make it from 📅 Lessons");
+      log("APPLY", course, "-", ROLLOUT_CONTINUES, 0,
+        "agenda not reached: time budget used; the next run continues, or make it from 📅 Lessons");
       return;
     }
     try {
@@ -288,6 +309,24 @@ function lessonRollout_(opts) {
   });
 
   // 4. A stale Canvas export misses late joiners and section changes.
+  // Checked by the nightly run only, not each catch-up: once a day is enough
+  // to say it (plan L3).
+  if (!opts.catchUp) _lrCheckExports_(cfg, now, log);
+
+  if (!rows.length) log("-", "-", "-", "IDLE", 0, "no lesson starts within " + ROLLOUT_LEAD_DAYS + " days and none is current");
+  _lrWriteLog_(ss, rows);
+  const problems = rows.filter(function (r) { return r[4] === "PROBLEM"; }).length;
+  // A dry run never needs a catch-up.
+  const unfinished = !opts.forceShadow && rows.some(function (r) {
+    return r[4] === ROLLOUT_CONTINUES && r[1] === "APPLY";
+  });
+  Logger.log("[S58] Lesson rollout: " + rows.length + " log row(s), " + problems + " problem(s)" +
+    (unfinished ? "; stopped short" : "") + ". See " + ROLLOUT_LOG_TAB + ".");
+  return { rows: rows, problems: problems, unfinished: unfinished };
+}
+
+// Step 4: the newest Canvas export's age, as a PROBLEM row when it is stale.
+function _lrCheckExports_(cfg, now, log) {
   try {
     const files = _criFindExports_(cfg);
     const newest = files.length ? files[0].getLastUpdated() : null;
@@ -299,17 +338,6 @@ function lessonRollout_(opts) {
   } catch (e) {
     log("-", "-", "-", "PROBLEM", 0, "Canvas exports not checked: " + e.message);
   }
-
-  if (!rows.length) log("-", "-", "-", "IDLE", 0, "no lesson starts within " + ROLLOUT_LEAD_DAYS + " days and none is current");
-  _lrWriteLog_(ss, rows);
-  const problems = rows.filter(function (r) { return r[4] === "PROBLEM"; }).length;
-  // A dry run never needs a catch-up.
-  const unfinished = !opts.forceShadow && rows.some(function (r) {
-    return r[4] === "PROBLEM" && r[1] === "APPLY" && ROLLOUT_UNFINISHED_RE.test(String(r[6]));
-  });
-  Logger.log("[S58] Lesson rollout: " + rows.length + " log row(s), " + problems + " problem(s)" +
-    (unfinished ? "; stopped short" : "") + ". See " + ROLLOUT_LOG_TAB + ".");
-  return { rows: rows, problems: problems, unfinished: unfinished };
 }
 
 // The lessons (or parts) to enroll, in order: those released tonight first
@@ -367,7 +395,8 @@ function _lrPlan_(now) {
 }
 
 // Shares SCHEDULED docs for the lessons being released tonight and sets their
-// Ledger rows ACTIVE. Returns { lessonConfigId: {course, mode, count, failed, stopped} }.
+// Ledger rows ACTIVE. Returns { lessonConfigId: {course, mode, count, failed, left} };
+// left: docs the time budget stopped it reaching.
 function _lrRelease_(ss, cfg, plan, modes, deadline) {
   const releasing = {};
   Object.keys(plan).forEach(function (course) {
@@ -387,9 +416,9 @@ function _lrRelease_(ss, cfg, plan, modes, deadline) {
     const course = releasing[lesson];
     if (!course) continue;
     const mode = modes[course];
-    const r = out[lesson] || (out[lesson] = { course: course, mode: mode, count: 0, failed: 0, stopped: false });
+    const r = out[lesson] || (out[lesson] = { course: course, mode: mode, count: 0, failed: 0, left: 0 });
     if (mode !== "APPLY") { r.count++; continue; }
-    if (Date.now() > deadline) { r.stopped = true; continue; }
+    if (Date.now() > deadline) { r.left++; continue; }
     try {
       DriveApp.getFileById(String(data[i][LEDGER.FILE_ID]).trim())
         .addEditor(String(data[i][LEDGER.GOOGLE_ID]).trim());
@@ -433,6 +462,104 @@ function _lrWriteLog_(ss, rows) {
     sheet.setFrozenRows(1);
   }
   if (rows.length) sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, ROLLOUT_LOG_HEADERS.length).setValues(rows);
+}
+
+// ── What the CAS signal reports (34b, 34c) ──────────────────────────────────
+// 2026-11-08, plan L3. The signal said "57 problems" for a day whose runs
+// mostly logged "the next run continues" and then finished. It now counts
+// what remains, by this rule:
+//   - Rows are grouped into runs (a gap over ROLLOUT_RUN_GAP_MS starts a new
+//     one) and keyed by course, lesson and step (release, enrollment, lesson
+//     doc, agenda, seeding).
+//   - A PROBLEM row counts only if it is in the latest run that touched its
+//     key: a later run that did the step without it clears it, and the same
+//     problem repeated each run counts once. A run-wide failure (course and
+//     lesson "-") counts only if it is in the day's latest run.
+//   - A CONTINUES row (or an older PROBLEM row whose Detail matches
+//     ROLLOUT_UNFINISHED_RE) follows the same rule, but is never a problem:
+//     still standing, it means the day didn't finish, with its Count left.
+//     A dry run's (SHADOW) never counts: it makes nothing.
+//   - The Canvas export rows are one note, the latest, never counted.
+// rows: RolloutLog rows (Timestamp, Mode, Course, Lesson, Step, Count,
+// Detail). Returns { runs, problems, left, notReached, unfinished,
+// exportNote }: left is docs still to make or share, notReached the steps
+// stopped with no count (a lesson's enrollment, lesson doc or agenda).
+function rolloutDayStatus_(rows, now, windowMs) {
+  const since = now.getTime() - windowMs;
+  const list = [];
+  rows.forEach(function (r) {
+    const t = new Date(r[0]).getTime();
+    if (isNaN(t) || t < since) return;
+    list.push({ t: t, mode: String(r[1]).trim(), course: String(r[2]).trim(), lesson: String(r[3]).trim(),
+      step: String(r[4]).trim(), count: Number(r[5]) || 0, detail: String(r[6] || "").trim() });
+  });
+  list.sort(function (a, b) { return a.t - b.t; });
+  let run = -1;
+  let prev = null;
+  list.forEach(function (x) {
+    if (prev === null || x.t - prev > ROLLOUT_RUN_GAP_MS) run++;
+    x.run = run;
+    prev = x.t;
+  });
+  const out = { runs: run + 1, problems: 0, left: 0, notReached: 0, unfinished: false, exportNote: "" };
+  const latest = {};
+  list.forEach(function (x) {
+    x.family = _lrFamily_(x.step, x.detail);
+    x.key = x.course + "|" + x.lesson + "|" + x.family;
+    x.continues = x.step === ROLLOUT_CONTINUES || (x.step === "PROBLEM" && ROLLOUT_UNFINISHED_RE.test(x.detail));
+    if (x.family) latest[x.key] = x.run;
+  });
+  list.forEach(function (x) {
+    if (x.step !== "PROBLEM" && x.step !== ROLLOUT_CONTINUES) return;
+    if (x.family === "EXPORT") { out.exportNote = x.detail; return; }
+    const runWide = x.course === "-" && x.lesson === "-";
+    if (x.run !== (runWide ? run : latest[x.key])) return;
+    if (!x.continues) { out.problems++; return; }
+    if (x.mode !== "APPLY") return;
+    out.unfinished = true;
+    if (x.count > 0) out.left += x.count;
+    else out.notReached++;
+  });
+  return out;
+}
+
+// The step a row is about, so a later run's row for the same step clears it.
+function _lrFamily_(step, detail) {
+  if (["RELEASE", "SEED", "ENROLL", "LESSON_DOC", "AGENDA"].indexOf(step) >= 0) return step;
+  if (step !== "PROBLEM" && step !== ROLLOUT_CONTINUES) return "";
+  if (/^release|could not be shared/.test(detail)) return "RELEASE";
+  if (/^enrollment|CanvasSectionMap|^no LIVE assignment/.test(detail)) return "ENROLL";
+  if (/^lesson doc/.test(detail)) return "LESSON_DOC";
+  if (/^agenda/.test(detail)) return "AGENDA";
+  if (/^seeding/.test(detail)) return "SEED";
+  if (/Canvas (gradebook )?export/.test(detail)) return "EXPORT";
+  return "OTHER";
+}
+
+// The signal's lines for a rolloutDayStatus_ result: problems that need the
+// operator, an unfinished day, and the export note once. [] when none.
+function rolloutSignalLines_(st) {
+  const lines = [];
+  if (st.problems > 0) {
+    lines.push("Lesson rollout: " + st.problems + (st.problems === 1 ? " problem needs" : " problems need") +
+      " you (see the RolloutLog tab)");
+  }
+  if (st.unfinished) {
+    const parts = [];
+    if (st.left) parts.push(st.left + (st.left === 1 ? " doc" : " docs") + " left");
+    if (st.notReached) parts.push(st.notReached + (st.notReached === 1 ? " step" : " steps") + " not reached");
+    lines.push("Lesson rollout didn't finish: " + parts.join(" and ") + "; the next run continues " +
+      "(runLessonRollout() from the editor does the same)");
+  }
+  if (st.exportNote) lines.push("Lesson rollout: " + st.exportNote);
+  return lines;
+}
+
+// "Lesson rollout: finished (3 runs)" when the day's runs left nothing to
+// report; "" otherwise.
+function rolloutFinishedLine_(st) {
+  if (!st.runs || rolloutSignalLines_(st).length) return "";
+  return "Lesson rollout: finished (" + st.runs + (st.runs === 1 ? " run)" : " runs)");
 }
 
 function installLessonRolloutTrigger() {

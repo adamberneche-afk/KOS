@@ -467,6 +467,7 @@ test('enrollCanvasRoster_: deferShare reaches intake, a past deadline stops befo
   const stopped = exported.enrollCanvasRoster_({ apply: true, assignmentConfigId: 'CFG-1', deadline: Date.now() - 1 });
   assert.equal(stopped.enrolled, 0);
   assert.equal(stopped.timedOut, true);
+  assert.equal(stopped.left, 2, 'the students not reached are counted, for the rollout\'s CONTINUES row');
   assert.equal(calls.length, 0);
   const r = exported.enrollCanvasRoster_({ apply: true, assignmentConfigId: 'CFG-1', deferShare: true, quiet: true });
   assert.equal(r.timedOut, false);

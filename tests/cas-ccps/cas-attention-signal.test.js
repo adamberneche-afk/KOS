@@ -16,7 +16,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = [
   '00_SharedConfig.js', '06_StagingPipeline_Turnstile.js', '10_AdminRecoveryPanel.js',
   '22_LessonContextHandler.js', '23_StudentProfileManager.js', '30_SCRSuggestionEngine.js', '30b_SCRRetryRemediation.js',
-  '34_QueueWatchdog.js', '34b_CasAttentionSignal.js', '34c_OvernightHealth.js', '36_WeeklyParentReport.js', '43_DeployVersionMarker_CentralLedger.js',
+  '34_QueueWatchdog.js', '34b_CasAttentionSignal.js', '34c_OvernightHealth.js', '58_LessonRollout.js', '36_WeeklyParentReport.js', '43_DeployVersionMarker_CentralLedger.js',
   '50_StudentDataAccess.js', '64_LedgerCycle.js',
   // What 34c's setup checks reach (38, 40, 41, 57 and their collaborators).
   '03_QueueBridge.js', '15b_StudioFlowPrompts_Flow2_Revised.js', '25_WarmUpWriter.js', '29_StudentContextAggregator.js',
@@ -198,6 +198,31 @@ test('writeCasSignal_: admin lines for dry run, timeouts, unknown statuses, no-t
   env.exported.writeCasSignal_({ dryRun: false, results: null, error: 'boom' });
   text = signalText(env);
   assert.match(text, /- Queue watchdog: the last run failed \(boom\)/);
+});
+
+// Plan L3 (2026-11-08): the rollout's lines say what remains, once. 34c
+// carries them under LAST NIGHT; ADMIN says them only when it doesn't.
+test('writeCasSignal_: the rollout\'s remaining problems and the export note appear once', () => {
+  for (const m2 of [false, true]) {
+    const env = load();
+    if (m2) env.props.setProperty('M2_ENABLED', 'true');
+    staging(env.ss, []);
+    suggestions(env.ss, []);
+    const log = env.ss.insertSheet('RolloutLog');
+    log.appendRow(['Timestamp', 'Mode', 'Course', 'Lesson', 'Step', 'Count', 'Detail']);
+    const t = new Date(Date.now() - 3600 * 1000);
+    log.appendRow([t, 'APPLY', '8175', 'CAS-8175-L06', 'CONTINUES', 12, 'enrollment stopped at the time budget: 12 student doc(s) left to make; the next run continues']);
+    log.appendRow([t, 'APPLY', '8175', 'CAS-8175-L07', 'PROBLEM', 1, 'enrollment failed: NO_MASTER_TEMPLATE 1']);
+    log.appendRow([t, '-', '-', '-', 'PROBLEM', 9, 'the newest Canvas export is 9 days old; export a fresh one']);
+    env.exported.writeCasSignal_(okWatchdog());
+    const text = signalText(env);
+    const once = (re) => assert.equal((text.match(new RegExp(re, 'g')) || []).length, 1, (m2 ? 'M2 on: ' : 'M2 off: ') + re + '\n' + text);
+    once('Lesson rollout: 1 problem needs you \\(see the RolloutLog tab\\)');
+    once('Lesson rollout didn\'t finish: 12 docs left; the next run continues');
+    once('Canvas export is 9 days old');
+    const admin = text.slice(text.indexOf('2. ADMIN'));
+    assert.equal(/Lesson rollout: 1 problem/.test(admin), !m2, 'in ADMIN only when LAST NIGHT lacks it');
+  }
 });
 
 test('writeCasSignal_: a failing FERPA check is an admin line', () => {
