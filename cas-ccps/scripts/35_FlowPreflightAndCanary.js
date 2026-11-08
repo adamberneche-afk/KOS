@@ -877,6 +877,9 @@ function _canaryCommentText_(fileId) {
 // row counts of the tabs the weekly runs fill. Built after 29's and 30's
 // weekly runs turned out never to have been installed: an installer hidden
 // from the Run dropdown, and nothing that listed what should be running.
+// Since 2026-11-08 (packaging step 2) it ends with the SETUP CHECKLIST:
+// cas-ccps/docs/SETUP_GUIDE.md's steps as far as this project can check
+// them, each line OK or MISSING with the guide's step number.
 // Logs names, values of non-secret switches, "set"/"not set" for keys and
 // URLs, and counts only: no student data, IDs or secrets.
 // =============================================================================
@@ -998,7 +1001,217 @@ function showSetupStatus() {
     lines.push("  unreadable: " + e.message);
   }
 
+  // The setup checklist (packaging step 2): the guide's steps, as far as
+  // this project can see them.
+  const checklist = setupChecklist_(all, resolved, handlers, cycleJobs);
+  lines.push("SETUP CHECKLIST (cas-ccps/docs/SETUP_GUIDE.md; [n] is the guide's step)");
+  checklist.forEach(function (c) {
+    lines.push("  " + (c.ok ? "OK     " : "MISSING") + " [" + c.step + "] " + c.item + (c.ok ? "" : ": " + c.fix));
+  });
+  const notChecked = SETUP_CHECKLIST_NOT_HERE.map(function (n) { return "[" + n.step + "] " + n.item; });
+  lines.push("  Not checked from this project: " + notChecked.join("; "));
+
   lines.push(missing.length ? "TO TURN ON: " + missing.join(", ") : "Every expected trigger is installed.");
   lines.forEach(function (l) { Logger.log(l); });
-  return { lines: lines, missing: missing };
+  return { lines: lines, missing: missing, checklist: checklist };
+}
+
+// =============================================================================
+// The setup checklist (packaging step 2, 2026-11-08). One line per thing
+// cas-ccps/docs/SETUP_GUIDE.md's steps leave behind in the Central Ledger,
+// OK or MISSING, with the step's number and what to run. Read-only, like the
+// rest of showSetupStatus(): tab names, row counts, set/not set, never a
+// value of an ID, address or URL. The guide's step numbers live here and in
+// the guide; tests/cas-ccps/setup-status.test.js checks the two agree.
+// =============================================================================
+
+// Tabs, in guide order. `rows`: the tab must also have rows below its header.
+// Names as the code that makes each tab spells them (getConfig_().tabs,
+// FLOW_PROMPT_TAB in 40, FBS_TAB in 42, LS_TAB in 55, CRI_SECTION_MAP_TAB in
+// 52, CONFIG_TAB_NAME in 00); the test pins them to those constants.
+const SETUP_CHECKLIST_TABS = [
+  { step: 2, tab: "Ledger",             fix: "run the Unified Manual's setup wizard (⚙️ Assignment System menu)" },
+  { step: 2, tab: "ReviewQueue",        fix: "run the Unified Manual's setup wizard" },
+  { step: 2, tab: "STAGING_PIPELINE",   fix: "run the Unified Manual's setup wizard" },
+  { step: 2, tab: "RubricQueue",        fix: "run the Unified Manual's setup wizard" },
+  { step: 2, tab: "MatrixRegistry",     fix: "run the Unified Manual's setup wizard" },
+  { step: 4, tab: "_CONFIG",            fix: "run seedLedgerConfigTab() in the Unified Manual's editor" },
+  { step: 6, tab: "LessonContext",      fix: "run runModule2Setup() in the Unified Manual's editor" },
+  { step: 6, tab: "CompetencyRegistry", fix: "run importCourseData() here", rows: true },
+  { step: 6, tab: "AlignmentLog",       fix: "run runModule2Setup() in the Unified Manual's editor" },
+  { step: 6, tab: "StudentProfiles",    fix: "run runModule2WarmUps() in the Unified Manual's editor" },
+  { step: 6, tab: "WarmUpQueue",        fix: "run runModule2WarmUps() in the Unified Manual's editor" },
+  { step: 6, tab: "ClassSchedule",      fix: "enter the block schedule in runModule2WarmUps()", rows: true },
+  { step: 6, tab: "PacingGuide",        fix: "run importCourseData() here", rows: true },
+  { step: 6, tab: "CompetencyRubrics",  fix: "run importCourseData() here", rows: true },
+  { step: 8, tab: "FlowPrompts",        fix: "run syncFlowPromptsToSheet()" },
+  { step: 8, tab: "FlowBuildSpec",      fix: "run syncFlowBuildSpec()" },
+  { step: 9, tab: "LessonSchedule",     fix: "run seedLessonSchedule() and type the start dates", rows: true },
+  { step: 9, tab: "CanvasSectionMap",   fix: "run prepareRosterSections() and put each section's period in it", rows: true },
+];
+
+// Settings, as this project resolves them (Script Property, then the
+// _CONFIG tab). `prop`: a Script Property here, since files read it directly.
+const SETUP_CHECKLIST_SETTINGS = [
+  { step: 4, key: "ADMIN_ROOT_FOLDER_ID",  fix: "set it on the _CONFIG tab (the wizard wrote it in the Unified Manual)" },
+  { step: 4, key: "ADMIN_NOTIFY_EMAIL",    fix: "set it on the _CONFIG tab" },
+  { step: 4, key: "TEACHER_EMAIL",         fix: "set the Script Property here, exactly the ClassSchedule teacher_email", prop: true },
+  { step: 4, key: "TEACHER_NAME",          fix: "set the Script Property here", prop: true },
+  { step: 4, key: "MARKING_PERIOD_ENDS",   fix: "set it on the _CONFIG tab (unset, the code's default calendar is used)" },
+  { step: 5, key: "TEACHER_DASHBOARD_URL", fix: "deploy the Teacher Dashboard, then set its /exec URL as a Script Property here", prop: true },
+  { step: 5, key: "STUDENT_DASHBOARD_URL", fix: "deploy the Student Dashboard, then set its /exec URL on the _CONFIG tab" },
+];
+
+// What a guide step needs that this project can't see.
+const SETUP_CHECKLIST_NOT_HERE = [
+  { step: 1, item: "clasp, Node and the checkout (tools/clasp-sync/sync.js)" },
+  { step: 3, item: "the other projects' pushes (node run.js --verify for the web apps)" },
+  { step: 4, item: "each other project's settings (showConfigSources() there)" },
+  { step: 8, item: "Flow 1 (writes the teacher's TeacherMatrix sheet) and the Family Mail flow (its own project)" },
+];
+
+// The guide's step for the triggers.
+const SETUP_CHECKLIST_TRIGGER_STEP = 7;
+// The three frequent jobs no installer function makes: the setup wizard's
+// summary says to add them in the Triggers panel, then installLedgerCycle().
+const SETUP_CHECKLIST_HAND_TRIGGERS = ["bridgeQueue", "runStagingTurnstile", "backPropagateCompletions"];
+// Cycle jobs the guide's step 7 needs, with their installer.
+const SETUP_CHECKLIST_CYCLE_JOBS = [
+  { fn: "buildFlowInputRows",       installer: "installFlowInputTriggers()" },
+  { fn: "harvestFlowInputResults",  installer: "installFlowInputTriggers()" },
+  { fn: "buildWarmUpFlowInputs",    installer: "installWarmUpFlowTriggers()" },
+  { fn: "harvestWarmUpFlowReturns", installer: "installWarmUpFlowTriggers()" },
+  { fn: "registerDeliveredWarmUps", installer: "installRegistrationTrigger()" },
+  { fn: "runQueueWatchdog",         installer: "installQueueWatchdogTrigger()" },
+];
+
+function setupChecklist_(all, resolved, handlers, cycleJobs) {
+  const out = [];
+  const add = function (step, ok, item, fix) { out.push({ step: step, ok: !!ok, item: item, fix: fix }); };
+  const values = (resolved && resolved.values) || {};
+  const has = function (fn) { return handlers.indexOf(fn) !== -1; };
+  const runs = function (fn) { return has(fn) || (has(LC_TRIGGER_FN) && cycleJobs.indexOf(fn) !== -1); };
+
+  let ss = null;
+  try { ss = SpreadsheetApp.openById(getConfig_().ledgerSsId); } catch (e) { ss = null; }
+  const rowsIn = function (name) {
+    const sh = ss ? ss.getSheetByName(name) : null;
+    return sh ? Math.max(0, sh.getLastRow() - 1) : -1; // -1: no tab
+  };
+
+  // Tabs from steps 2, 4, 6, 8 and 9 are interleaved with settings below in
+  // step order, so the list reads like the guide.
+  const tabLine = function (t) {
+    const n = rowsIn(t.tab);
+    if (n < 0) add(t.step, false, "Tab " + t.tab, ss ? t.fix : "the Ledger can't be opened (step 4: CENTRAL_LEDGER_SS_ID)");
+    else if (t.rows && n === 0) add(t.step, false, "Tab " + t.tab + " has rows", t.fix);
+    else add(t.step, true, "Tab " + t.tab + (t.rows ? " (" + n + " rows)" : ""), "");
+  };
+  const settingLine = function (s) {
+    const v = String((s.prop ? all[s.key] : values[s.key]) || "").trim();
+    add(s.step, v !== "", s.key + (v ? " set" : ""), s.fix);
+  };
+  const byStep = function (step) {
+    SETUP_CHECKLIST_TABS.filter(function (t) { return t.step === step; }).forEach(tabLine);
+    SETUP_CHECKLIST_SETTINGS.filter(function (s) { return s.step === step; }).forEach(settingLine);
+  };
+
+  byStep(2);
+
+  // Step 4: the Ledger ID resolves (getConfig_() throws without it).
+  add(4, !!values.CENTRAL_LEDGER_SS_ID, "CENTRAL_LEDGER_SS_ID resolves" + (values.CENTRAL_LEDGER_SS_ID ? " (" + (resolved.sources.CENTRAL_LEDGER_SS_ID || "?") + ")" : ""),
+    "set it as a Script Property here, or check this sheet's _CONFIG tab says SYSTEM_ROLE = CENTRAL_LEDGER");
+  byStep(4);
+  byStep(5);
+
+  byStep(6);
+  add(6, String(all.M2_ENABLED || "").trim().toLowerCase() === "true", "M2_ENABLED = true here",
+    "set the Script Property here (the Module 2 wizard sets it only in the Unified Manual)");
+
+  // Step 7: triggers.
+  const T = SETUP_CHECKLIST_TRIGGER_STEP;
+  add(T, has(LC_TRIGGER_FN), "Ledger cycle (" + LC_TRIGGER_FN + ")", "run installLedgerCycle() after the jobs below have triggers");
+  SETUP_CHECKLIST_HAND_TRIGGERS.forEach(function (fn) {
+    add(T, runs(fn), "Job " + fn, "add a time trigger for it in the Triggers panel (no installer function), then installLedgerCycle()");
+  });
+  SETUP_CHECKLIST_CYCLE_JOBS.forEach(function (j) {
+    add(T, runs(j.fn), "Job " + j.fn, "run " + j.installer + ", then installLedgerCycle()");
+  });
+  SETUP_STATUS_TRIGGERS.forEach(function (t) {
+    if (t.fn === "runLessonRollout") return; // step 9's, below
+    add(T, has(t.fn), "Trigger " + t.fn, "run " + t.installer);
+  });
+  const pre = ss ? ss.getSheetByName("Preflight") : null;
+  if (!pre || pre.getLastRow() < 3) {
+    add(T, false, "Preflight has run", "run runFlowPreflightCheck()");
+  } else {
+    const fails = pre.getRange(3, 2, pre.getLastRow() - 2, 1).getValues()
+      .filter(function (r) { return String(r[0]).trim() === "FAIL"; }).length;
+    add(T, fails === 0, "Preflight passed" + (fails ? "" : " (last run)"), fails + " FAIL line(s) in the Preflight tab; fix them and run runFlowPreflightCheck() again");
+  }
+
+  // Step 8: the flows' build tabs, then whether each has ever answered.
+  byStep(8);
+  const flow2 = setupFlow2Answers_(ss);
+  add(8, flow2.any > 0, "Flow 2 has answered (" + flow2.any + " rows)", "build Flow 2 from the FlowBuildSpec tab; installFlowFixtures() gives it a row; checkFlow2Liveness()");
+  const wu = setupWarmUpReturns_(ss);
+  [3, 4].forEach(function (f) {
+    add(8, wu[f] > 0, "Flow " + f + " returns in WarmUpFlowReturn (" + wu[f] + ")",
+      "build Flow " + f + " from the FlowBuildSpec tab; checkWarmUpFlowLiveness() (returns older than 14 days are deleted)");
+  });
+  const turnIn = String(values.TURN_IN_CODE_COURSES || "").trim();
+  if (turnIn && turnIn.toLowerCase() !== "off") {
+    add(8, runs("runTurnInCheckFlow"), "Job runTurnInCheckFlow (turn-in codes are on)", "run installTurnInCheckFlow()");
+    const n = rowsIn("TurnInCheckReturn");
+    add(8, n > 0, "Flow 6 returns in TurnInCheckReturn (" + Math.max(0, n) + ")", "build Flow 6; checkTurnInCheckFlowLiveness()");
+  }
+
+  // Step 9: lessons and rosters.
+  byStep(9);
+  add(9, has("runLessonRollout"), "Trigger runLessonRollout (the nightly rollout)", "run installLessonRolloutTrigger()");
+  const rollout = String(values.ROLLOUT_AUTO_APPLY || "").trim();
+  add(9, rollout !== "" && rollout.toLowerCase() !== "off", "ROLLOUT_AUTO_APPLY on" + (rollout ? " (" + rollout + ")" : ""),
+    "read the RolloutLog after previewLessonRollout(), then set it to one course, then all (or enroll by hand: seedAssignments(), applyRosterEnrollment())");
+
+  // Step 10: a student enrolled and a submission evaluated.
+  const ledgerRows = rowsIn("Ledger");
+  add(10, ledgerRows > 0, "Ledger has a student's row (" + Math.max(0, ledgerRows) + ")", "enroll a test student account (step 9's enrollment)");
+  add(10, flow2.real > 0, "A submission has had Flow 2 feedback (" + flow2.real + ")", "submit as the test student from the Student Dashboard");
+
+  return out;
+}
+
+// FlowInput rows with Flow 2's answer: all of them, and those that aren't
+// the fixture (StagingRowRef "FIXTURE", 39). Columns found by header.
+function setupFlow2Answers_(ss) {
+  const res = { any: 0, real: 0 };
+  const sh = ss ? ss.getSheetByName("FlowInput") : null;
+  if (!sh || sh.getLastRow() < 2) return res;
+  const width = sh.getLastColumn();
+  const head = sh.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim(); });
+  const out = head.indexOf("GeminiFullOutput");
+  const ref = head.indexOf("StagingRowRef");
+  if (out === -1) return res;
+  sh.getRange(2, 1, sh.getLastRow() - 1, width).getValues().forEach(function (r) {
+    if (String(r[out] || "").trim() === "") return;
+    res.any++;
+    if (ref === -1 || String(r[ref]).trim() !== "FIXTURE") res.real++;
+  });
+  return res;
+}
+
+// WarmUpFlowReturn rows per flow, by its Flow column. Read only: never
+// creates the tab (checkWarmUpFlowLiveness() does).
+function setupWarmUpReturns_(ss) {
+  const res = { 3: 0, 4: 0 };
+  const sh = ss ? ss.getSheetByName("WarmUpFlowReturn") : null;
+  if (!sh || sh.getLastRow() < 2) return res;
+  const width = sh.getLastColumn();
+  const flowCol = sh.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim(); }).indexOf("Flow");
+  if (flowCol === -1) return res;
+  sh.getRange(2, 1, sh.getLastRow() - 1, width).getValues().forEach(function (r) {
+    const f = Number(r[flowCol]);
+    if (res[f] !== undefined) res[f]++;
+  });
+  return res;
 }

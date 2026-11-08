@@ -253,6 +253,15 @@ gitignored `cas-ccps/clasp/local/` (or `clasp-registry`, for `run.js`). For
 target the *master template* — there's no single live script ID once
 teachers have their own copies.
 
+**Setting up a new install** (packaging step 2, 2026-11-08):
+[`docs/SETUP_GUIDE.md`](./docs/SETUP_GUIDE.md) is the steps in order, each
+with the check that says it worked, and its known gaps for step 3;
+[`docs/SETUP_GUIDE_REFERENCE.md`](./docs/SETUP_GUIDE_REFERENCE.md) is
+generated from the code by `tools/setup-guide/build.js` (projects,
+manifests, Script Properties, triggers, Studio Flows; CI fails when it is
+stale). `showSetupStatus()` (35) ends with a SETUP CHECKLIST that follows
+the guide's step numbers (`tests/cas-ccps/setup-status.test.js`).
+
 ## Where settings come from
 
 `getConfig_()` (`00_SharedConfig.js`) checks three places in order:

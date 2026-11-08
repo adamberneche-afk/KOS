@@ -36,6 +36,13 @@ jobs:
         # stripCommentsAndStrings(), so a gas-lint failure is the more
         # informative one to see first.
         run: node tools/doc-currency/check.js
+      - name: Check the CAS setup guide's reference is current
+        # Packaging step 2: cas-ccps/docs/SETUP_GUIDE_REFERENCE.md is
+        # generated from the code (projects, manifests, Script Properties,
+        # triggers, Studio Flows). A change to any of those without
+        # regenerating it fails here. Fix: node tools/setup-guide/build.js.
+        # See tools/setup-guide/README.md.
+        run: node tools/setup-guide/build.js --check
       - name: Scan for student data
         # Fails on any student-shaped address in the tree that allow.json
         # doesn't list (decision #3, 2026-10-19; the tree and history were
