@@ -336,7 +336,7 @@ Known before it ran, and still true:
 then Slides (11), then Sheets (3); Canva lessons move to Slides as their
 parts are written.
 
-**Phase 4a, built 2026-11-08 (PR #PRNUM), not yet pushed.** A part's
+**Phase 4a, built 2026-11-08 (PR #402), not yet pushed.** A part's
 `workType` in `PARTS.json` (`doc` by default, or `form`) reaches 55b as
 `workFileNow`, with a `workTemplateKey` naming the Script Property that
 holds the template form's ID. The rollout's intake copies that template per
