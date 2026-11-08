@@ -159,8 +159,9 @@ since yesterday), then admin
 (Ledger cycle jobs failing now or today, by function name, `64`; watchdog
 dry run or failure, timed-out and unknown-status queue rows, rows in flight
 with no timestamp, Submit for Feedback failures on the system side, the
-nightly rollout's PROBLEM rows and courses still in shadow, failing FERPA
-checks). A line shows only above
+nightly rollout's problems that remain after the day's runs, an unfinished
+day and a stale Canvas export once, when LAST NIGHT doesn't already say them,
+and courses still in shadow, failing FERPA checks). A line shows only above
 zero; a count that can't be read says "unavailable". No names, IDs, grades or
 student text. The first run creates the doc and stores its ID in
 `CAS_SIGNAL_DOC_ID` (optional `CAS_SIGNAL_FOLDER_ID` picks its folder); paste
@@ -402,11 +403,28 @@ are the criteria.
 It runs in **shadow** until `ROLLOUT_AUTO_APPLY` is set (Script Property or
 the Ledger's `_CONFIG` tab: `8175`, `8177` or `all`; `off` stops it again):
 in shadow it only writes what it would do. Every run writes counts and
-reason codes to the `RolloutLog` tab, never student details, with a
-`PROBLEM` row for anything that needs you (failed enrollments, a run that
-hit its time budget, unmapped Canvas sections, a Canvas export more than 7
-days old). The CAS signal reports PROBLEM rows from the last day, and says
-while a course is still in shadow. `previewLessonRollout()` runs it once as
+reason codes to the `RolloutLog` tab, never student details, all stamped
+with the run's start time, with a `PROBLEM` row for anything that needs you
+(failed enrollments or shares, a missing template, unmapped Canvas sections,
+a Canvas export more than 7 days old, checked by the nightly run only). A
+step the time budget stopped is a `CONTINUES` row, its Count what is left;
+it is not a problem, because the next run picks it up.
+
+**What the signal counts (2026-11-08, plan L3).** It used to count every
+PROBLEM row of the last day, so a night of catch-ups read as "57 problems".
+Now `rolloutDayStatus_` (58) counts what remains: rows are grouped into runs
+and keyed by course, lesson and step; a problem counts only if it is in the
+latest run that touched its step (a later run that did the step clears it;
+the same problem in every run counts once; a run-wide failure counts only if
+the day's latest run repeated it). A `CONTINUES` row still standing after the
+day's runs means the day didn't finish, with its docs left; a dry run's never
+does. The stale-export note is said once. Rows logged before `CONTINUES`
+("...the next run continues", "...not reached") are read as continuations.
+The lines read: `Lesson rollout: 4 problems need you (see the RolloutLog
+tab)`, `Lesson rollout didn't finish: 12 docs left; the next run continues`,
+`Lesson rollout: the newest Canvas export is 9 days old; export a fresh
+one`, and, in the overnight all-clear, `Lesson rollout: finished (3 runs)`.
+The CAS signal also says while a course is still in shadow. `previewLessonRollout()` runs it once as
 a dry run from the editor. The steps below still work by hand.
 
 **Catching up (2026-10-29).** A run makes about 20 student docs before its
@@ -416,8 +434,7 @@ few minutes later, which does the same, until a run finishes (at most
 first with the courses taking turns, each lesson getting an equal share of
 the time left, and keeps a minute for the lesson docs and agendas. Running
 `runLessonRollout()` from the editor starts the same chain. The overnight
-email reports the day's rollout problems and whether the latest run
-stopped short.
+email carries the same rollout lines as the signal.
 
 **Hold a lesson.** `LessonSchedule`'s `release` column (2026-10-28): `HOLD`
 keeps the rollout from seeding, enrolling or releasing that lesson, current
@@ -769,7 +786,8 @@ The Teacher Dashboard's **📅 Lessons** panel (07, since 2026-10-21) shows the
 tab by course: each lesson's status (current, upcoming, taught, no date),
 warnings (a date that can't be read, a lesson starting before one listed
 above it, two lessons on one date), and what the last nightly rollout (58)
-did for it, from `RolloutLog`. A start date changes there one at a time, is
+did for it, from `RolloutLog` (problems in red; a step the time budget
+stopped, `CONTINUES`, in grey: the next run picks it up). A start date changes there one at a time, is
 saved only as a whole date (on Enter or leaving the box; each row says
 "Saved ✓" or why not), and is written to the tab as text. A change the rollout acts on soon (within
 its 2-day lead, in the past, or on the current lesson) asks to be

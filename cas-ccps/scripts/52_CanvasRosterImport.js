@@ -123,7 +123,8 @@ function prepareRosterSections() {
  *   CRI_TIME_BUDGET_MS. quiet: log counts only, no student accounts.
  * @returns {{apply, files, students, planned: Object[], enrolled: number,
  *            skipped: Object[], failed: Object[], unmappedSections: string[],
- *            notInCanvas: string[], timedOut: boolean, message}}
+ *            notInCanvas: string[], timedOut: boolean, left: number, message}}
+ *   left: students still to enroll when the deadline stopped it (0 if not).
  */
 function enrollCanvasRoster_(opts) {
   opts = opts || {};
@@ -136,7 +137,7 @@ function enrollCanvasRoster_(opts) {
     String(PropertiesService.getScriptProperties().getProperty("ROSTER_CONFIG_ID") || "").trim();
   const cfg = getConfig_();
   const result = { apply: apply, files: 0, students: 0, planned: [], enrolled: 0, skipped: [], failed: [],
-    unmappedSections: [], notInCanvas: [], timedOut: false, message: "" };
+    unmappedSections: [], notInCanvas: [], timedOut: false, left: 0, message: "" };
   const deadline = typeof opts.deadline === "number" ? opts.deadline : started + CRI_TIME_BUDGET_MS;
 
   if (!configId) {
@@ -252,7 +253,9 @@ function enrollCanvasRoster_(opts) {
     row.period = period;
     result.planned.push(row);
     if (!apply) continue;
-    if (Date.now() > deadline) { timedOut = true; break; }
+    // Past the deadline the rest are still counted (no Drive calls), so the
+    // rollout (58) can say how many are left.
+    if (timedOut || Date.now() > deadline) { timedOut = true; result.left++; continue; }
 
     const courseName = course.name;
     const res = intakeStudent_(cfg, {
@@ -277,7 +280,7 @@ function enrollCanvasRoster_(opts) {
     : "DRY RUN: " + result.planned.length + " student(s) would be enrolled") +
     " in " + assignment.unitName + " (" + configId + ") from " + result.files + " export(s); " +
     result.skipped.length + " skipped" + (result.failed.length ? ", " + result.failed.length + " FAILED" : "") +
-    (timedOut ? ". Stopped at the time budget; run applyRosterEnrollment again to continue." : ".");
+    (timedOut ? ". Stopped at the time budget with " + result.left + " left; run applyRosterEnrollment again to continue." : ".");
   Logger.log("[S52] " + result.message);
   if (result.unmappedSections.length) {
     Logger.log("[S52] Put a class period next to each of these sections in the " + CRI_SECTION_MAP_TAB +

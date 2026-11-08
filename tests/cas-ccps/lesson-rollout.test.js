@@ -5,9 +5,11 @@
 // and only the current lesson and tomorrow's are released tonight; without
 // ROLLOUT_AUTO_APPLY nothing is created, shared or changed (shadow); with it,
 // docs for a lesson two days out are made unshared (SCHEDULED) and the
-// night-before run shares them and sets them ACTIVE; failures, a stalled
-// run and a stale Canvas export are PROBLEM rows; and RolloutLog holds
-// counts and reason codes, never a student account or file ID.
+// night-before run shares them and sets them ACTIVE; failures and a stale
+// Canvas export are PROBLEM rows, a step the time budget stopped is a
+// CONTINUES row with what is left; the signal counts only what remains
+// (rolloutDayStatus_, plan L3); and RolloutLog holds counts and reason
+// codes, never a student account or file ID.
 //
 // The seeder (53) and the roster import (52) have their own tests; here they
 // are replaced with recorders. The intake side of deferred sharing (02) and
@@ -27,7 +29,8 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
   '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js',
   '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js', '58_LessonRollout.js', '32_CompetencyRubricImporter.js', '66_LessonDoc.js', '67_AgendaDeck.js', '68_LessonParts.js'].map(S);
 const EXPOSE = ['lessonRollout_', '_lrPlan_', 'previewLessonRollout', 'runLessonRollout', 'runLessonRolloutCatchUp',
-  '_lrEnrollOrder_', 'ROLLOUT_CATCHUP_MAX', 'ROLLOUT_TIME_BUDGET_MS', 'ROLLOUT_DOCS_RESERVE_MS'];
+  '_lrEnrollOrder_', 'ROLLOUT_CATCHUP_MAX', 'ROLLOUT_TIME_BUDGET_MS', 'ROLLOUT_DOCS_RESERVE_MS',
+  'rolloutDayStatus_', 'rolloutSignalLines_', 'rolloutFinishedLine_'];
 
 const FRI = new Date(2026, 9, 16, 21, 0); // Friday 2026-10-16, 9 p.m.
 // 8175: L06 started Oct 14 (current), L07 starts tomorrow, L08 on Sunday
@@ -163,21 +166,65 @@ test('a doc that can\'t be shared stays SCHEDULED and is a PROBLEM', () => {
   assert.ok(log().some((r) => r[4] === 'PROBLEM' && /could not be shared/.test(r[6])));
 });
 
-test('failed enrollments, a stalled run, unmapped sections and a stale export are PROBLEM rows', () => {
+test('failed enrollments, unmapped sections and a stale export are PROBLEM rows; the time budget is not', () => {
   const { exported, log } = setup({
     autoApply: 'all', exportAgeDays: 9,
     enrollResult: (o) => o.assignmentConfigId === 'CAS-8175-L08'
-      ? { failed: [{ account: '1234567@ccpsnet.net', reason: 'NO_MASTER_TEMPLATE' }], timedOut: true,
+      ? { failed: [{ account: '1234567@ccpsnet.net', reason: 'NO_MASTER_TEMPLATE' }], timedOut: true, left: 5,
         unmappedSections: ['8175 - Block 9'] }
       : {},
   });
   const res = exported.lessonRollout_({ today: FRI });
   const problems = log().filter((r) => r[4] === 'PROBLEM').map((r) => r[6]);
   assert.ok(problems.some((p) => /enrollment failed: NO_MASTER_TEMPLATE 1/.test(p)));
-  assert.ok(problems.some((p) => /time budget/.test(p)));
+  assert.ok(!problems.some((p) => /time budget/.test(p)), 'a stop at the time budget is not a problem');
   assert.ok(problems.some((p) => /CanvasSectionMap/.test(p)));
   assert.ok(problems.some((p) => /9 days old/.test(p)));
   assert.equal(res.problems, problems.length);
+});
+
+// Plan L3 (2026-11-08): "57 problems" were mostly runs that hit the budget.
+test('a run that hits the time budget logs CONTINUES with what is left, never PROBLEM', () => {
+  const { exported, log } = setup({
+    autoApply: 'all',
+    enrollResult: (o) => o.assignmentConfigId === 'CAS-8175-L06' ? { timedOut: true, left: 12 } : {},
+  });
+  const res = exported.lessonRollout_({ today: FRI });
+  const cont = log().filter((r) => r[4] === 'CONTINUES');
+  assert.deepEqual(cont.map((r) => [r[3], r[5]]), [['CAS-8175-L06', 12]]);
+  assert.match(cont[0][6], /12 student doc\(s\) left to make; the next run continues/);
+  // (The sandbox's lesson-doc rows are PROBLEMs of their own; none is the budget.)
+  assert.ok(!log().some((r) => r[4] === 'PROBLEM' && /time budget|not reached|continues/.test(r[6])));
+  assert.equal(res.problems, log().filter((r) => r[4] === 'PROBLEM').length, 'CONTINUES isn\'t counted');
+  assert.equal(res.unfinished, true, 'a catch-up still follows');
+  const stamps = new Set(log().map((r) => new Date(r[0]).getTime()));
+  assert.equal(stamps.size, 1, 'every row of a run carries the run\'s start time');
+});
+
+test('a release stopped by the time budget counts the docs it didn\'t reach', () => {
+  const { exported, sandbox, log } = setup({
+    autoApply: 'all',
+    students: [['VDOE-A', '1234567@ccpsnet.net', 'SCHEDULED', 'CAS-8175-L07'],
+      ['VDOE-B', '2345678@ccpsnet.net', 'SCHEDULED', 'CAS-8175-L07']],
+  });
+  const realNow = Date.now;
+  const start = realNow();
+  // The clock passes the budget once the run has started (the release is its first step).
+  let calls = 0;
+  sandbox.Date.now = () => (calls++ < 1 ? start : start + exported.ROLLOUT_TIME_BUDGET_MS + 1000);
+  try { exported.lessonRollout_({ today: FRI }); } finally { sandbox.Date.now = realNow; }
+  const row = log().find((r) => r[4] === 'CONTINUES' && /^release/.test(r[6]));
+  assert.ok(row, JSON.stringify(log()));
+  assert.equal(row[5], 2);
+  assert.ok(!log().some((r) => r[4] === 'PROBLEM' && /time budget|not reached/.test(r[6])));
+});
+
+test('a catch-up run doesn\'t check the Canvas export again; the nightly run does', () => {
+  const env = setup({ autoApply: 'all', exportAgeDays: 9 });
+  env.exported.lessonRollout_({ today: FRI, catchUp: true });
+  assert.ok(!env.log().some((r) => /Canvas export/.test(r[6])));
+  env.exported.lessonRollout_({ today: FRI });
+  assert.equal(env.log().filter((r) => /Canvas export/.test(r[6])).length, 1);
 });
 
 test('RolloutLog never holds a student account or file ID', () => {
@@ -222,21 +269,110 @@ test('intake with deferShare adds only the teacher and writes the Ledger row SCH
 
 // ── The CAS signal (34b) ────────────────────────────────────────────────────
 
-test('_casSignalRollout_: counts the last day\'s PROBLEM rows and names the courses still in shadow', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('34b_CasAttentionSignal.js')],
+test('_casSignalRollout_: what remains of the last day, and the courses still in shadow', () => {
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('34b_CasAttentionSignal.js'), S('58_LessonRollout.js')],
     ['_casSignalRollout_']);
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   const now = new Date(2026, 9, 17, 7, 0);
-  assert.deepEqual(exported._casSignalRollout_(now), { problems: 0, shadow: '' }, 'no tab yet is quiet');
+  const quiet = exported._casSignalRollout_(now);
+  assert.deepEqual([quiet.status.runs, quiet.status.problems, quiet.shadow], [0, 0, ''], 'no tab yet is quiet');
   const tab = ss.insertSheet('RolloutLog');
   tab.appendRow(['Timestamp', 'Mode', 'Course', 'Lesson', 'Step', 'Count', 'Detail']);
-  tab.appendRow([new Date(2026, 9, 15, 21), 'APPLY', '8175', 'CAS-8175-L06', 'PROBLEM', 1, 'old']);
-  tab.appendRow([new Date(2026, 9, 16, 21), 'APPLY', '8175', 'CAS-8175-L07', 'PROBLEM', 1, 'x']);
+  tab.appendRow([new Date(2026, 9, 15, 21), 'APPLY', '8175', 'CAS-8175-L06', 'PROBLEM', 1, 'enrollment failed: OLD 1']);
+  tab.appendRow([new Date(2026, 9, 16, 21), 'APPLY', '8175', 'CAS-8175-L07', 'PROBLEM', 1, 'enrollment failed: NO_MASTER_TEMPLATE 1']);
   tab.appendRow([new Date(2026, 9, 16, 21), 'SHADOW', '8177', 'CAS-8177-X', 'ENROLL', 3, 'y']);
-  tab.appendRow([new Date(2026, 9, 16, 21), '-', '-', '-', 'PROBLEM', 9, 'stale export']);
-  assert.deepEqual(exported._casSignalRollout_(now), { problems: 2, shadow: '8177' });
+  tab.appendRow([new Date(2026, 9, 16, 21), '-', '-', '-', 'PROBLEM', 9, 'the newest Canvas export is 9 days old; export a fresh one']);
+  const ro = exported._casSignalRollout_(now);
+  assert.equal(ro.shadow, '8177');
+  assert.equal(ro.status.problems, 1, 'the day before is out of the window; the export is a note, not a problem');
+  assert.match(ro.status.exportNote, /9 days old/);
+});
+
+// ── What the signal counts (58's rolloutDayStatus_, plan L3) ────────────────
+
+const NOW = new Date(2026, 9, 17, 7, 0);
+const AT = (h, m) => new Date(2026, 9, 16, h, m || 0); // Friday evening's runs
+const STEP = (t, lesson, step, count, detail, mode) =>
+  [t, mode || 'APPLY', lesson === '-' ? '-' : lesson.split('-')[1], lesson, step, count, detail || ''];
+function status(rows) {
+  const { exported } = setup();
+  return exported.rolloutDayStatus_(rows, NOW, 24 * 3600 * 1000);
+}
+
+test('a continuation a later run finished counts zero, and the day reads "finished"', () => {
+  const { exported } = setup();
+  const st = status([
+    STEP(AT(21), 'CAS-8175-L06', 'ENROLL', 20, 'enrolled (shared now)'),
+    STEP(AT(21), 'CAS-8175-L06', 'CONTINUES', 12, 'enrollment stopped at the time budget: 12 student doc(s) left to make; the next run continues'),
+    STEP(AT(21), 'CAS-8175-L07', 'CONTINUES', 0, 'enrollment not reached: time budget used; the next run continues'),
+    STEP(AT(21, 8), 'CAS-8175-L06', 'ENROLL', 12, 'enrolled (shared now)'),
+    STEP(AT(21, 8), 'CAS-8175-L07', 'ENROLL', 30, 'enrolled (shared now)'),
+  ]);
+  assert.deepEqual([st.runs, st.problems, st.unfinished, st.left], [2, 0, false, 0]);
+  assert.deepEqual(exported.rolloutSignalLines_(st), []);
+  assert.equal(exported.rolloutFinishedLine_(st), 'Lesson rollout: finished (2 runs)');
+});
+
+test('a day that didn\'t finish reports what is left, not problems', () => {
+  const { exported } = setup();
+  const st = status([
+    STEP(AT(21), 'CAS-8175-L06', 'CONTINUES', 30, 'enrollment stopped at the time budget: 30 student doc(s) left to make; the next run continues'),
+    STEP(AT(21, 8), 'CAS-8175-L06', 'ENROLL', 18, 'enrolled (shared now)'),
+    STEP(AT(21, 8), 'CAS-8175-L06', 'CONTINUES', 12, 'enrollment stopped at the time budget: 12 student doc(s) left to make; the next run continues'),
+    STEP(AT(21, 8), 'CAS-8175-L08', 'CONTINUES', 0, 'enrollment not reached: time budget used; the next run continues'),
+  ]);
+  assert.deepEqual([st.problems, st.unfinished, st.left, st.notReached], [0, true, 12, 1]);
+  assert.deepEqual(exported.rolloutSignalLines_(st), ['Lesson rollout didn\'t finish: 12 docs left and 1 step not reached; ' +
+    'the next run continues (runLessonRollout() from the editor does the same)']);
+  assert.equal(exported.rolloutFinishedLine_(st), '');
+});
+
+test('a real problem counts until a later run clears it, and once however many runs repeat it', () => {
+  const { exported } = setup();
+  const failing = (t) => [STEP(t, 'CAS-8175-L06', 'ENROLL', 0, 'enrolled (shared now)'),
+    STEP(t, 'CAS-8175-L06', 'PROBLEM', 1, 'enrollment failed: NO_MASTER_TEMPLATE 1')];
+  let st = status(failing(AT(21)).concat(failing(AT(21, 8)), failing(AT(21, 16))));
+  assert.equal(st.problems, 1, 'the same problem in three runs is one problem');
+  assert.deepEqual(exported.rolloutSignalLines_(st), ['Lesson rollout: 1 problem needs you (see the RolloutLog tab)']);
+  st = status(failing(AT(21)).concat([STEP(AT(21, 8), 'CAS-8175-L06', 'ENROLL', 1, 'enrolled (shared now)')]));
+  assert.equal(st.problems, 0, 'cleared by a later run that did the step');
+  // A run-wide failure clears when the day's latest run doesn't repeat it.
+  st = status([STEP(AT(21), '-', 'PROBLEM', 0, 'release failed: Drive down'), STEP(AT(21, 8), 'CAS-8175-L06', 'ENROLL', 1, 'x')]);
+  assert.equal(st.problems, 0);
+  st = status([STEP(AT(21, 8), 'CAS-8175-L06', 'ENROLL', 1, 'x'), STEP(AT(21, 8), '-', 'PROBLEM', 0, 'release failed: Drive down')]);
+  assert.equal(st.problems, 1);
+});
+
+test('the stale-export note is said once, however many runs logged it, and never counted', () => {
+  const { exported } = setup();
+  const st = status([AT(21), AT(21, 8), AT(21, 16)].map((t) =>
+    STEP(t, '-', 'PROBLEM', 9, 'the newest Canvas export is 9 days old; export a fresh one')));
+  assert.equal(st.problems, 0);
+  const lines = exported.rolloutSignalLines_(st);
+  assert.deepEqual(lines, ['Lesson rollout: the newest Canvas export is 9 days old; export a fresh one']);
+});
+
+test('rows logged before CONTINUES (PROBLEM "...the next run continues") are read as continuations', () => {
+  const { exported } = setup();
+  // 11-02's shape: each run's budget stops as PROBLEM rows with per-row timestamps.
+  const t = (h, m, s) => new Date(2026, 9, 16, h, m, s);
+  let st = status([
+    STEP(t(21, 0, 5), 'CAS-8175-L06', 'RELEASE', 20, 'shared and opened'),
+    STEP(t(21, 0, 5), 'CAS-8175-L06', 'PROBLEM', 0, 'release stopped at the time budget; the next run continues'),
+    STEP(t(21, 3, 40), 'CAS-8175-L07', 'PROBLEM', 0, 'enrollment not reached: time budget used; the next run continues'),
+    [t(21, 4, 30), 'APPLY', '8175', '-', 'PROBLEM', 0, 'agenda not reached: time budget used; make it from 📅 Lessons'],
+    STEP(t(21, 10, 0), 'CAS-8175-L06', 'RELEASE', 30, 'shared and opened'),
+    STEP(t(21, 11, 0), 'CAS-8175-L07', 'ENROLL', 30, 'enrolled (shared now)'),
+  ]);
+  assert.deepEqual([st.problems, st.unfinished, st.notReached], [0, true, 1], 'only the agenda is still not reached');
+  assert.match(exported.rolloutSignalLines_(st)[0], /didn't finish: 1 step not reached/);
+});
+
+test('a dry run\'s (SHADOW) continuations never say the day didn\'t finish', () => {
+  const st = status([STEP(AT(21), 'CAS-8175-L08', 'CONTINUES', 0, 'enrollment not reached: time budget used; the next run continues', 'SHADOW')]);
+  assert.deepEqual([st.unfinished, st.problems], [false, 0]);
 });
 
 // UX audit fix-first 6: the docs say a _CONFIG row turns the rollout on;

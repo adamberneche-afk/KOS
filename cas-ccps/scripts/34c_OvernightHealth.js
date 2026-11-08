@@ -28,8 +28,10 @@
 //   - turn-in answers whose check failed (CHECK_FAILED) and wait for the
 //     teacher, and answers waiting on the check over an hour (72, Flow 6;
 //     only while TURN_IN_CODE_COURSES is on; reported with Module 2 off too)
-//   - the lesson rollout's (58) PROBLEM rows, and whether its latest run
-//     stopped short of making every student's doc
+//   - the lesson rollout (58): problems that remain after the day's runs,
+//     whether the day finished (docs left if not), and a stale Canvas export
+//     once; all from 58's rolloutDayStatus_ (plan L3, 2026-11-08). The
+//     all-clear line says "finished (n runs)"
 //   - in the email only, once a day: Flow 2's week so far (69's
 //     evaluationHealth_), which also rewrites the Measures tab, and a second
 //     line: the other flows' week and Studio's runs per day (69b, which
@@ -164,14 +166,13 @@ function overnightHealth_(now, tz) {
 
   // The lesson rollout (58), 2026-10-29: its PROBLEM rows reached only the
   // signal doc, so the email said nothing on the two nights it fell behind.
+  // 2026-11-08 (plan L3): only what remains after the day's runs; a run the
+  // time budget stopped is not a problem when a later one finished.
+  let rolloutDone = "";
   try {
     const ro = _onRollout_(ss, now);
-    if (ro.problems > 0) {
-      problems.push("Lesson rollout problems in the last 24 hours: " + ro.problems +
-        (ro.stoppedShort ? "; its latest run stopped short, so some student docs aren't made yet (" +
-          "a catch-up run follows; runLessonRollout() from the editor does the same)" : "") +
-        ". See the RolloutLog tab");
-    }
+    rolloutSignalLines_(ro).forEach(function (l) { problems.push(l); });
+    rolloutDone = rolloutFinishedLine_(ro);
   } catch (e) {
     unreadable = true;
     problems.push("Lesson rollout: unavailable (" + e.message + ")");
@@ -201,7 +202,7 @@ function overnightHealth_(now, tz) {
       (wu.today.total ? "Today's warm-ups: " + wu.today.delivered + " of " + wu.today.total + " delivered. "
         : "No warm-ups today. ") +
       (wu.tomorrow.total ? "Tomorrow's: " + wu.tomorrow.total + " built, " + wu.tomorrow.delivered + " delivered so far."
-        : "None built for tomorrow.");
+        : "None built for tomorrow.") + (rolloutDone ? " " + rolloutDone + "." : "");
   }
   return { problems: problems, allClear: allClear };
 }
@@ -386,28 +387,13 @@ function _onStudioCounts_(ss, now) {
 }
 
 // A row with no readable timestamp counts as old: it never ages otherwise.
-// RolloutLog's last 24 hours: PROBLEM rows, and whether the latest run (the
-// rows within ON_ROLLOUT_RUN_MS of the newest) stopped short. A dry run
-// (SHADOW) never counts as stopped short. No tab is a quiet zero.
-const ON_ROLLOUT_RUN_MS = 10 * 60 * 1000;
+// RolloutLog's last 24 hours, as 58's rolloutDayStatus_ reads it: problems
+// that remain, docs left if the day didn't finish, the export note. No tab
+// is a quiet zero.
 function _onRollout_(ss, now) {
-  const out = { problems: 0, stoppedShort: false };
   const sheet = ss.getSheetByName("RolloutLog");
-  if (!sheet || sheet.getLastRow() < 2) return out;
-  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues().filter(function (r) {
-    const t = new Date(r[0]).getTime();
-    return !isNaN(t) && now.getTime() - t <= ON_RETURN_WINDOW_MS;
-  });
-  out.problems = rows.filter(function (r) { return r[4] === "PROBLEM"; }).length;
-  const runs = rows.filter(function (r) { return r[1] === "APPLY"; });
-  if (runs.length) {
-    const newest = Math.max.apply(null, runs.map(function (r) { return new Date(r[0]).getTime(); }));
-    out.stoppedShort = runs.some(function (r) {
-      return newest - new Date(r[0]).getTime() <= ON_ROLLOUT_RUN_MS && r[4] === "PROBLEM" &&
-        /time budget|not reached/.test(String(r[6]));
-    });
-  }
-  return out;
+  const rows = sheet && sheet.getLastRow() >= 2 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues() : [];
+  return rolloutDayStatus_(rows, now, ON_RETURN_WINDOW_MS);
 }
 
 function _onOlderThan_(value, now, ms) {

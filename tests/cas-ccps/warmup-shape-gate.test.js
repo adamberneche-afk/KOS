@@ -148,7 +148,7 @@ test('repairWarmUpTextBox replaces unanswered junk with the anchor and leaves th
 
 test('34c counts fallbacks; 33 stamps a stop with its reason', () => {
   // 34c with what its setup checks reach (38, 40, 41, 57 and their collaborators).
-  const env = loadGasFiles(['00_SharedConfig.js', '34c_OvernightHealth.js', '64_LedgerCycle.js',
+  const env = loadGasFiles(['00_SharedConfig.js', '34c_OvernightHealth.js', '58_LessonRollout.js', '64_LedgerCycle.js',
     '43_DeployVersionMarker_CentralLedger.js', '03_QueueBridge.js', '10_AdminRecoveryPanel.js',
     '15b_StudioFlowPrompts_Flow2_Revised.js', '23_StudentProfileManager.js', '25_WarmUpWriter.js',
     '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js', '36_WeeklyParentReport.js',

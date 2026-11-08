@@ -44,8 +44,11 @@
 //   - Submit for Feedback failures on the system side in the last 24 hours
 //     (Student Dashboard's DOC_UNREADABLE, NO_QUEUE and SERVER_ERROR, counted from the
 //     SubmitFailures tab 13 writes), with the count per code
-//   - the nightly lesson rollout (58): PROBLEM rows in RolloutLog in the last
-//     day, and the courses it is still running in SHADOW for
+//   - the nightly lesson rollout (58): the courses it is still running in
+//     SHADOW for, and, when LAST NIGHT doesn't already carry them (Module 2
+//     off), its lines: problems that remain after the day's runs, an
+//     unfinished day, a stale Canvas export once (58's rolloutDayStatus_,
+//     plan L3, 2026-11-08)
 //   - FERPA checks failing (10's _ferpaHealthChecks_)
 // Apps Script trigger failures can't be seen from inside a script; those
 // still arrive as Google's failure-summary mail.
@@ -178,11 +181,13 @@ function writeCasSignal_(watchdog, now) {
     console.error("[CasSignal] Failed-submission count failed: " + e.message);
     admin.push("Failed-submission count: unavailable (the SubmitFailures tab couldn't be read)");
   }
+  // The rollout's own lines go in after LAST NIGHT is read: 34c carries them
+  // there, so they are said here only when it didn't (Module 2 off).
+  let rolloutLines = [];
+  const rolloutAt = admin.length;
   try {
     const ro = _casSignalRollout_(now);
-    if (ro.problems > 0) {
-      admin.push("Lesson rollout problems in the last day: " + ro.problems + " (see the RolloutLog tab)");
-    }
+    rolloutLines = rolloutSignalLines_(ro.status);
     if (ro.shadow) {
       admin.push("Lesson rollout: SHADOW for " + ro.shadow + " (it logs what it would do; set " +
         "ROLLOUT_AUTO_APPLY to act)");
@@ -206,6 +211,9 @@ function writeCasSignal_(watchdog, now) {
   } catch (e) {
     console.error("[CasSignal] Overnight check failed: " + e.message);
     lastNight = { problems: ["Overnight check: unavailable (Executions shows why)"], allClear: "" };
+  }
+  if (!lastNight.problems.some(function (l) { return /^Lesson rollout/.test(l); })) {
+    Array.prototype.splice.apply(admin, [rolloutAt, 0].concat(rolloutLines));
   }
   try {
     overnightMaybeMail_(lastNight, now, tz);
@@ -288,23 +296,24 @@ function _casSignalSubmitFailures_(now) {
   return out;
 }
 
-// The nightly lesson rollout's (58) last day: PROBLEM rows, and the courses
-// it ran in SHADOW. No rows (not installed yet) is a quiet zero.
+// The nightly lesson rollout's (58) last day: what remains (58's
+// rolloutDayStatus_), and the courses it ran in SHADOW. No rows (not
+// installed yet) is a quiet zero.
 function _casSignalRollout_(now) {
   const cfg = getConfig_();
   const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName("RolloutLog");
-  const out = { problems: 0, shadow: "" };
-  if (!sheet || sheet.getLastRow() < 2) return out;
+  const rows = sheet && sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues().slice(1) : [];
   const since = now.getTime() - CAS_SIGNAL_SUBMIT_FAILURE_WINDOW_MS;
   const shadow = {};
-  sheet.getDataRange().getValues().slice(1).forEach(function (r) {
+  rows.forEach(function (r) {
     const when = new Date(r[0]).getTime();
     if (!isNaN(when) && when < since) return;
-    if (r[4] === "PROBLEM") out.problems++;
     if (r[1] === "SHADOW" && /^\d{4}$/.test(String(r[2]))) shadow[String(r[2])] = true;
   });
-  out.shadow = Object.keys(shadow).sort().join(", ");
-  return out;
+  return {
+    status: rolloutDayStatus_(rows, now, CAS_SIGNAL_SUBMIT_FAILURE_WINDOW_MS),
+    shadow: Object.keys(shadow).sort().join(", "),
+  };
 }
 
 function _casSignalHasTime_(value) {

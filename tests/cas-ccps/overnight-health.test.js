@@ -14,7 +14,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // 34c's setup checks reach 38, 40, 41 and 57, and those reach the rest
 // (the retention schedule names every record's tab and columns).
-const FILES = ['00_SharedConfig.js', '34c_OvernightHealth.js', '43_DeployVersionMarker_CentralLedger.js', '64_LedgerCycle.js',
+const FILES = ['00_SharedConfig.js', '34c_OvernightHealth.js', '58_LessonRollout.js', '43_DeployVersionMarker_CentralLedger.js', '64_LedgerCycle.js',
   '03_QueueBridge.js', '10_AdminRecoveryPanel.js', '15b_StudioFlowPrompts_Flow2_Revised.js', '23_StudentProfileManager.js',
   '25_WarmUpWriter.js', '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js',
   '36_WeeklyParentReport.js', '37_FlowInputBuilder.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js',
@@ -66,6 +66,16 @@ test('all clear: every stage ran and today\'s warm-ups are delivered, so one goo
   assert.match(h.allClear, /all four 3 a\.m\. stages ran/);
   assert.match(h.allClear, /Today's warm-ups: 2 of 2 delivered/);
   assert.match(h.allClear, /Tomorrow's: 1 built, 0 delivered so far/);
+  assert.doesNotMatch(h.allClear, /Lesson rollout/, 'no RolloutLog: nothing said');
+
+  // A day the rollout's runs all finished says so in the all-clear (plan L3).
+  const log = env.ss.insertSheet('RolloutLog');
+  log.appendRow(['Timestamp', 'Mode', 'Course', 'Lesson', 'Step', 'Count', 'Detail']);
+  log.appendRow([HOURS(13), 'APPLY', '8175', 'CAS-8175-L10', 'CONTINUES', 9, 'enrollment stopped at the time budget: 9 student doc(s) left to make; the next run continues']);
+  log.appendRow([HOURS(12.8), 'APPLY', '8175', 'CAS-8175-L10', 'ENROLL', 9, 'enrolled (shared now)']);
+  const h2 = env.exported.overnightHealth_(NOW);
+  assert.deepEqual(h2.problems, []);
+  assert.match(h2.allClear, /Lesson rollout: finished \(2 runs\)\.$/);
 });
 
 test('each problem gets its own line, and there is no all-clear', () => {
@@ -279,21 +289,27 @@ test('a setup check that throws says unavailable and blocks the all-clear', () =
 });
 
 // 2026-10-29: the rollout fell behind on two nights and the email said
-// nothing; its PROBLEM rows reached only the signal doc.
-test('the lesson rollout: its problems in the last day, and a latest run that stopped short', () => {
+// nothing; its PROBLEM rows reached only the signal doc. 2026-11-08 (plan
+// L3): it reports what remains, not every run's stop at the time budget.
+test('the lesson rollout: what remains after the day\'s runs, the export note once', () => {
   const env = load();
   const log = env.ss.insertSheet('RolloutLog');
   log.appendRow(['Timestamp', 'Mode', 'Course', 'Lesson', 'Step', 'Count', 'Detail']);
-  log.appendRow([HOURS(40), 'APPLY', '8175', 'CAS-8175-L10', 'PROBLEM', 0, 'enrollment stopped at the time budget; the next run continues']);
+  log.appendRow([HOURS(40), 'APPLY', '8175', 'CAS-8175-L10', 'PROBLEM', 1, 'enrollment failed: NO_MASTER_TEMPLATE 1']);
   log.appendRow([HOURS(9), 'APPLY', '8175', 'CAS-8175-L10', 'ENROLL', 21, 'enrolled (shared now)']);
-  log.appendRow([HOURS(9), 'APPLY', '8177', 'CAS-8177-X-P1', 'PROBLEM', 0, 'enrollment not reached: time budget used; the next run continues']);
+  log.appendRow([HOURS(9), 'APPLY', '8177', 'CAS-8177-X-P1', 'CONTINUES', 0, 'enrollment not reached: time budget used; the next run continues']);
+  log.appendRow([HOURS(9), 'APPLY', '8175', 'CAS-8175-L10', 'PROBLEM', 0, 'enrollment stopped at the time budget; the next run continues']);
   log.appendRow([HOURS(9), '-', '-', '-', 'PROBLEM', 9, 'the newest Canvas export is 9 days old; export a fresh one']);
   let p = env.exported.overnightHealth_(NOW).problems.join('\n');
-  assert.match(p, /Lesson rollout problems in the last 24 hours: 2; its latest run stopped short/);
+  assert.doesNotMatch(p, /problems? needs? you/, 'a stop at the time budget is not a problem; 40 hours ago is outside the day');
+  assert.match(p, /Lesson rollout didn't finish: 2 steps not reached; the next run continues/);
+  assert.equal((p.match(/Canvas export/g) || []).length, 1);
 
-  // A later run that finished: still the day's problems, no longer short.
+  // A later run that finished: nothing left, and no problem.
   log.appendRow([HOURS(8), 'APPLY', '8177', 'CAS-8177-X-P1', 'ENROLL', 21, 'enrolled (shared now)']);
+  log.appendRow([HOURS(8), 'APPLY', '8175', 'CAS-8175-L10', 'ENROLL', 3, 'enrolled (shared now)']);
   p = env.exported.overnightHealth_(NOW).problems.join('\n');
-  assert.match(p, /Lesson rollout problems in the last 24 hours: 2\. See the RolloutLog tab/);
+  assert.doesNotMatch(p, /didn't finish|problems? needs? you/);
+  assert.match(p, /Lesson rollout: the newest Canvas export is 9 days old/);
 });
 

@@ -1826,8 +1826,10 @@ function _tdLastRollout_(ss) {
     const step = String(r[4]).trim();
     if (course && course !== "-" && (mode === "APPLY" || mode === "SHADOW")) out.modeByCourse[course] = mode;
     if (!lesson || lesson === "-") return;
-    const entry = out.byLesson[lesson] || (out.byLesson[lesson] = { mode: mode, steps: [], problems: [] });
+    const entry = out.byLesson[lesson] || (out.byLesson[lesson] = { mode: mode, steps: [], problems: [], continues: [] });
     if (step === "PROBLEM") entry.problems.push(String(r[6] || "").trim());
+    // 58's CONTINUES (2026-11-08): the time budget stopped a step; not a problem.
+    else if (step === "CONTINUES") entry.continues.push(String(r[6] || "").trim());
     else entry.steps.push({ step: step, count: Number(r[5]) || 0, detail: String(r[6] || "").trim() });
   });
   return out;
@@ -3751,6 +3753,9 @@ function _lsRolloutText(l) {
   if (l.rollout.mode === "SHADOW") t += ' <span style="color:var(--text-secondary)">(shadow)</span>';
   if (l.rollout.problems.length) {
     t += '<div style="color:#b3261e">⚠ ' + l.rollout.problems.map(esc).join('; ') + '</div>';
+  }
+  if ((l.rollout.continues || []).length) {
+    t += '<div style="color:var(--text-secondary)">' + l.rollout.continues.map(esc).join('; ') + '</div>';
   }
   return t;
 }
