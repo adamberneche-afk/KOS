@@ -978,6 +978,11 @@ function showSetupStatus() {
   const turnIn = String(resolved.values.TURN_IN_CODE_COURSES || "").trim();
   lines.push("  TURN_IN_CODE_COURSES = " + (turnIn || "(off: no turn-in codes, Flow 6 sends nothing)") +
     (turnIn ? "  <- " + (resolved.sources.TURN_IN_CODE_COURSES || "?") : ""));
+  // Studio's daily run quota (69b): reportEvaluationHealth() measures runs
+  // per day against it.
+  const runLimit = String(resolved.values.STUDIO_DAILY_RUN_LIMIT || "").trim();
+  lines.push("  STUDIO_DAILY_RUN_LIMIT = " + (runLimit || "(not set: copy it from Workspace Studio's quota page)") +
+    (runLimit ? "  <- " + (resolved.sources.STUDIO_DAILY_RUN_LIMIT || "?") : ""));
 
   // Tabs the weekly runs fill.
   lines.push("TABS (rows below the header)");

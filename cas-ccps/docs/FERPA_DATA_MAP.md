@@ -53,8 +53,9 @@ rows deleted after 14 days by `41`), `TurnInCheckInput` and
 `TurnInCheckReturn` (Flow 6, `72`: an input row's copy of the answer is
 removed once its check is done, and finished rows of both are deleted after
 14 days), the Family Mail Sentinel tabs (below),
-the CAS attention signal (overwritten every run), and the Canvas gradebook
-exports (deleted after enrolling).
+the CAS attention signal (overwritten every run), the `Measures` and
+`FlowMeasures` tabs (counts only, eight weeks, rewritten every run), and the
+Canvas gradebook exports (deleted after enrolling).
 
 **Disposition.** Past its period, a row in a tab with an archive marker
 (`Ledger`, `CompetencyEvidence`, `SCRDecisionLog`, `ParentReportLog`,
@@ -209,6 +210,18 @@ marks or removes those rows yet.
 | **Visible to** | Whoever can open the Central Ledger. |
 | **Retention** | Holds only the last eight weeks; each run replaces it. Aggregates, not student records. |
 
+### FlowMeasures
+*Central Ledger tab (2026-11-08)*
+
+| | |
+|---|---|
+| **Fields** | Per CAS Studio flow (1, 2, 3, 4, 6) and week: counts of jobs sent, Studio runs, retries, returned, applied, set aside, never returned and waiting; the failure rate; minutes from sent to returned (median, slowest tenth); Flow 3's warm-ups sent as the teacher's own question; Flow 6's ADDRESSES, NOT_YET, CHECK_FAILED and codes by check and by grant (labelled engagement). `—` where a flow doesn't record a number. No names, emails, file IDs, ConfigIDs, queue or check IDs, or student text. |
+| **Why collected** | Whether each flow is reliable, and whether Studio's daily run quota covers parts' extra runs (D8). |
+| **Written by** | `flowMeasures_()` (69b), rewritten whole by `reportEvaluationHealth()` and once a day by the overnight email (34c). |
+| **Read by** | The operator. |
+| **Visible to** | Whoever can open the Central Ledger. |
+| **Retention** | Holds only the last eight weeks; each run replaces it. Aggregates, not student records, so not in the retention schedule (57). |
+
 ### EvaluationLog
 *Central Ledger tab (2026-10-23)*
 
@@ -217,7 +230,7 @@ marks or removes those rows yet.
 | **Fields** | EvaluatedAt, ConfigID (the student's workspace ID), StudentFileID (their workspace Doc), Attempt, Result (`PASSED`, `NEEDS_REVISION`, or an `ERROR_` harvest failure), SubmittedAt, WaitMinutes, SuggestedScore. No names, no emails, no student writing, no feedback text. |
 | **Why collected** | The Ledger keeps only the latest result and a count, so each check's wait and a student's sequence of attempts were lost. Waiting on feedback is friction that teaches nothing; this is how it's measured. |
 | **Written by** | `harvestFlowInputResults()` (37), one row per Flow 2 result, appended only. |
-| **Read by** | `evaluationHealth_()` (69, since 2026-11-01), for counts, rates and minutes per course and week in the `Measures` tab and one line of the overnight email; no identifier leaves it. |
+| **Read by** | `evaluationHealth_()` (69, since 2026-11-01), for counts, rates and minutes per course and week in the `Measures` tab and one line of the overnight email; and `flowMeasures_()` (69b, since 2026-11-08), for Flow 2's minutes from sent to harvested in `FlowMeasures`. No identifier leaves it. |
 | **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
 | **Retention** | `LEDGER_RETENTION_YEARS`, with the Ledger (counted in `checkRetentionSchedule()`). No archive marker; deletion is the operator-approved disposition, as for every record. |
 

@@ -54,7 +54,8 @@
 // both after 14 days), the Family Mail Sentinel tabs (60's own rules, FERPA_DATA_MAP),
 // PeriodOverride (52: no date column; cleared when the school year ends),
 // and tabs with no student data (RubricQueue, LessonContext, AlignmentLog,
-// LessonDrafts).
+// LessonDrafts, and 69's Measures and 69b's FlowMeasures: counts only,
+// rewritten whole on every run).
 // =============================================================================
 
 const RETENTION_TIER_RECORD = "RECORD";

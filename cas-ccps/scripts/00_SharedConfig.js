@@ -286,7 +286,10 @@ const SHARED_CONFIG_KEYS = [
   // or "off". "all", or a list of course codes and lesson IDs, as the
   // cartridge builder's --turn-in takes them: "8175, CAS-8177-THE-HYPE-MACHINE".
   // Read only through 71's turnInSwitchCovers_, not _pivotValueOn_.
-  "TURN_IN_CODE_COURSES"
+  "TURN_IN_CODE_COURSES",
+  // Workspace Studio's runs-per-day quota, copied from Studio's quota page;
+  // blank = not known. Read through 69b's studioDailyRunLimit_().
+  "STUDIO_DAILY_RUN_LIMIT"
 ];
 
 // System text a student response must not contain (P0-03,

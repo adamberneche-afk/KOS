@@ -262,7 +262,8 @@ teachers have their own copies.
    leader-hub OAuth client ID, the master template IDs, and the switches
    and calendar every project shares: `PIVOT_ARCHETYPE_LOCK`,
    `MARKING_PERIOD_ENDS`, `FEEDBACK_AS_COMMENT`, `WARMUP_TEXT_BOX`,
-   `ROLLOUT_AUTO_APPLY`, `REFLECTION_ON_SUBMIT` and `TURN_IN_CODE_COURSES` (`SHARED_CONFIG_KEYS` in `00`).
+   `ROLLOUT_AUTO_APPLY`, `REFLECTION_ON_SUBMIT`, `TURN_IN_CODE_COURSES` and
+   `STUDIO_DAILY_RUN_LIMIT` (`SHARED_CONFIG_KEYS` in `00`).
 
 A project that is attached to the Ledger, or to a teacher's cloned sheet,
 therefore needs no properties for these at all. The dashboards need only
@@ -502,6 +503,29 @@ lesson, and the warm-up answer rate (`WarmUpQueue`'s `delivered_at` /
 `answered_at`). It rewrites the `Measures` tab with the same rows. The
 overnight email (34c) runs it once a day and adds one line: this week's
 checks and failure rate against D8's bar of 1 in 20. Counts only.
+
+`69b_FlowMeasures.js` (2026-11-08) does the same for every CAS Studio flow,
+called by `reportEvaluationHealth()`, which logs it and rewrites a second
+tab, `FlowMeasures` (the `Measures` tab keeps its layout). Per flow and
+week: jobs sent, Studio runs and retries, returned, applied, set aside,
+never returned past the flow's own timeout, still waiting, the failure
+rate, and minutes from sent to returned (median, slowest tenth), from each
+flow's own tabs: Flow 1 `RubricQueue`; Flow 2 `FlowInput` with
+`EvaluationLog`; Flows 3 and 4 `Flow3Input`/`Flow4Input` with
+`WarmUpFlowReturn` (Flow 3 also counts warm-ups sent as the teacher's own
+question); Flow 6 `TurnInChecks`, `TurnInCodes`, `TurnInCheckInput` and
+`TurnInCheckReturn` (ADDRESSES, NOT_YET, CHECK_FAILED, codes by check and by
+grant, labelled engagement, never learning evidence). What a flow doesn't
+record is `—`, not zero: Flow 1's applied and wait, Flow 2's return time (its
+wait runs to the harvest), Flows 3, 4 and 6's returns older than 14 days,
+Flow 6's screened answers. Studio's runs per day (every input row, the last
+14 days) are logged and compared with `STUDIO_DAILY_RUN_LIMIT`, a shared
+setting copied from Workspace Studio's quota page (blank: "limit not set").
+The overnight email's second line names any other flow failing more than 1
+in 20 or leaving a job unreturned this week, Flow 6's engagement counts, and
+the busiest day's runs, with a warning once a day reaches 80% of the limit.
+`showSetupStatus()` shows the setting. CAS flows only: kos-personal's and
+leader-hub's flows are other projects.
 
 ## Turn-in codes (script 71)
 

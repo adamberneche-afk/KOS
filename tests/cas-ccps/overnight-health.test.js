@@ -19,7 +19,7 @@ const FILES = ['00_SharedConfig.js', '34c_OvernightHealth.js', '43_DeployVersion
   '25_WarmUpWriter.js', '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js',
   '36_WeeklyParentReport.js', '37_FlowInputBuilder.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js',
   '41_WarmUpFlowBridge.js', '54_StudentAssignments.js', '57_RetentionSchedule.js', '71_TurnInCodes.js', '71b_TurnInStudent.js', '72_TurnInCheckFlow.js',
-  '69_EvaluationHealth.js'].map(S); // the email's Flow 2 line
+  '69_EvaluationHealth.js', '69b_FlowMeasures.js'].map(S); // the email's two measures lines
 
 // Monday 2026-10-19, 6:00 a.m. in the harness's America/New_York.
 const NOW = new Date('2026-10-19T10:00:00Z');
@@ -163,6 +163,9 @@ test('the email goes once a day, not before 5 a.m., with the deployment and the 
   assert.match(sent()[0].body, /version marker [0-9a-f]{7}, teacher teacher@ccpsnet\.net/);
   assert.match(sent()[0].body, /- Today's warm-ups not delivered yet: 3 of 81/);
   assert.match(sent()[0].body, /\nFlow 2 and warm-ups, week of 2026-10-19: nothing yet this week\.\n/, '69\'s line');
+  assert.match(sent()[0].body, new RegExp('week\\.\\nOther flows this week: no other flow over 1 in 20 failed or left a job ' +
+    'unreturned\\. Studio runs \\(CAS flows\\), last 14 days: none; limit not set — set STUDIO_DAILY_RUN_LIMIT from ' +
+    'Workspace Studio\'s quota\\.\\n\\n'), '69b\'s line: the second and last of the measures');
   env.exported.overnightMaybeMail_({ problems: [], allClear: 'All clear: ok.' }, new Date('2026-10-20T10:00:00Z'));
   assert.match(sent()[1].subject, /2026-10-20: all clear/);
   assert.match(sent()[1].body, /All clear: ok\./);
