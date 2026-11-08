@@ -93,7 +93,8 @@
       "cas-ccps/scripts/69b_FlowMeasures.js",
       "cas-ccps/scripts/71_TurnInCodes.js",
       "cas-ccps/scripts/71b_TurnInStudent.js",
-      "cas-ccps/scripts/72_TurnInCheckFlow.js"
+      "cas-ccps/scripts/72_TurnInCheckFlow.js",
+      "cas-ccps/scripts/76_CoveredSoFar.js"
     ]
   },
   "cas-ccps:unified-manual": {

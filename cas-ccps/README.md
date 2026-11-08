@@ -399,6 +399,8 @@ are the criteria.
    (script 66, below); later nights refresh its Class status.
 5. **Agenda.** The next school day's agenda deck for the course (script 67,
    below).
+6. **Covered So Far.** Each course's Covered So Far doc (script 76, below),
+   rewritten when it changed; every run but a preview, in shadow too.
 
 It runs in **shadow** until `ROLLOUT_AUTO_APPLY` is set (Script Property or
 the Ledger's `_CONFIG` tab: `8175`, `8177` or `all`; `off` stops it again):
@@ -482,6 +484,31 @@ school day (courses with it on) and by **Today's agenda** in 📅 Lessons;
 remaking a day's deck replaces its slides. The `AgendaDecks` tab records
 each by course and date. Needs the presentations scope in the Central
 Ledger and Teacher Dashboard (a one-time approval after the push).
+
+## The Covered So Far docs (script 76)
+
+`76_CoveredSoFar.js` (Central Ledger, 2026-11-08, plan L6) keeps one Google
+Doc per course, "Covered So Far — <course>", as a source for the teacher's
+course notebooks (Gemini, NotebookLM), so a notebook goes only as deep as
+what has been taught. It lists each lesson taught so far, oldest first (a
+`LessonSchedule` start date on or before today; a held lesson is still
+taught): its date, number in teaching order and title, objective, "I can"
+goals, the competencies it assesses and those it also touches, key concepts
+(vocabulary) and parts, all from the lesson files (55b); the lesson being
+taught now is marked; then **Next up**, the next dated lesson or the next
+undated one in teaching order. Earlier lessons with no start date are
+counted, not listed. The pacing is `LessonSchedule` (the generated pacing
+guide, 31, was replaced by the teacher's lessons on 2026-10-07); the
+`RolloutLog` isn't used, since it records docs made, not lessons taught.
+Nothing about students. The nightly rollout (58, step 6) rewrites a doc only
+when its text changed and logs a `COVERED_SO_FAR` row when it does (a
+failure is a `PROBLEM` row; the rollout goes on). The doc is made on the
+first run in the teacher folder (`TEACHER_FOLDER_ID`) and rewritten in place
+after that: its ID is the Script Property `COVERED_SO_FAR_DOC_ID_<course>`,
+and a trashed doc is made again (one that can't be opened is a `PROBLEM`,
+never replaced behind the notebook's back; delete the property to start
+over). `refreshCoveredSoFar()` from the editor
+rewrites both now.
 
 ## Lessons in parts (script 68)
 

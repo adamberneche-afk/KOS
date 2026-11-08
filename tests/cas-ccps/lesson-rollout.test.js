@@ -27,7 +27,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
   '29_StudentContextAggregator.js', '31_PacingGuideManager.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
   '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js',
-  '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js', '58_LessonRollout.js', '32_CompetencyRubricImporter.js', '66_LessonDoc.js', '67_AgendaDeck.js', '68_LessonParts.js', '63_DocHeader.js'].map(S);
+  '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js', '58_LessonRollout.js', '32_CompetencyRubricImporter.js', '66_LessonDoc.js', '67_AgendaDeck.js', '68_LessonParts.js', '63_DocHeader.js', '76_CoveredSoFar.js'].map(S);
 const EXPOSE = ['lessonRollout_', '_lrPlan_', 'previewLessonRollout', 'runLessonRollout', 'runLessonRolloutCatchUp',
   '_lrEnrollOrder_', 'ROLLOUT_CATCHUP_MAX', 'ROLLOUT_TIME_BUDGET_MS', 'ROLLOUT_DOCS_RESERVE_MS',
   'rolloutDayStatus_', 'rolloutSignalLines_', 'rolloutFinishedLine_'];
@@ -521,3 +521,34 @@ test('a run while another is going does nothing but schedule a catch-up; a previ
   assert.equal(catchUps(pv.sandbox).length, 0);
 });
 
+
+// ── Step 5: the Covered So Far docs (76, plan L6) ────────────────────────────
+
+test('each run but a preview keeps the Covered So Far docs current; a failure is a PROBLEM row, never a stopped run', () => {
+  const { exported, sandbox, log } = setup({ autoApply: '8175' });
+  const calls = [];
+  sandbox.writeCoveredSoFar_ = (o) => {
+    calls.push(o);
+    return [{ course: '8175', taught: 3, written: true, created: true, error: '' },
+      { course: '8177', taught: 1, written: false, created: false, error: '' }];
+  };
+  exported.lessonRollout_({ today: FRI });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].today.getTime(), FRI.getTime());
+  const covered = log().filter((r) => r[4] === 'COVERED_SO_FAR');
+  assert.deepEqual(covered.map((r) => [r[1], r[2], r[5], r[6]]),
+    [['APPLY', '8175', 3, 'doc made: 3 lesson(s) taught so far']], 'an unchanged doc logs nothing');
+
+  exported.previewLessonRollout();
+  assert.equal(calls.length, 1, 'a preview writes no doc');
+
+  sandbox.writeCoveredSoFar_ = () => [{ course: '8177', taught: 0, written: false, created: false, error: 'Docs down' }];
+  const res = exported.lessonRollout_({ today: FRI });
+  const problem = res.rows.find((r) => r[4] === 'PROBLEM' && /^Covered So Far/.test(r[6]));
+  assert.deepEqual([problem[1], problem[2], problem[6]], ['SHADOW', '8177', 'Covered So Far doc not written: Docs down']);
+  assert.ok(res.rows.some((r) => r[4] === 'RELEASE' || r[4] === 'ENROLL'), 'the rest of the run went ahead');
+
+  sandbox.writeCoveredSoFar_ = () => { throw new Error('boom'); };
+  const thrown = exported.lessonRollout_({ today: FRI });
+  assert.ok(thrown.rows.some((r) => r[4] === 'PROBLEM' && r[6] === 'Covered So Far docs failed: boom'));
+});
