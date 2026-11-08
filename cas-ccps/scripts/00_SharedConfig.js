@@ -1913,6 +1913,27 @@ const LEDGER = {
 // whole Ledger tab rather than a header-driven dynamic column set.
 const LEDGER_COL_COUNT = 27;
 
+// A student work file's type (Phase 4a, 2026-11-08): "form" for a Google
+// Form, "doc" for everything else. A part marked workType "form" (55b) gets a
+// copy of its template form instead of a doc (02's intakeStudent_). The
+// Ledger keeps its fixed width (FLOW_DOCTRINE): FILE_ID holds the form's ID
+// as it holds a doc's, and ADMIN_FILE_URL (Drive's own getUrl(), written at
+// intake) says which it is, so a Ledger row carries its type with no new
+// column, and the dashboards read it without 55b. A blank or older URL is a doc.
+const WORK_FILE_FORM_URL_RE = /^https:\/\/docs\.google\.com\/forms\/d\//;
+function workFileTypeOfUrl_(url) {
+  return WORK_FILE_FORM_URL_RE.test(String(url || "").trim()) ? "form" : "doc";
+}
+
+// The link a student or teacher opens for a work file of that type.
+function workFileUrl_(fileId, type) {
+  const id = String(fileId || "").trim();
+  if (!id) return null;
+  return type === "form"
+    ? "https://docs.google.com/forms/d/" + id + "/edit"
+    : "https://docs.google.com/document/d/" + id + "/edit";
+}
+
 // Headers for the columns after AcademicYear, which a Ledger only gets on
 // first use: the turn-in review's four (07/04's _ensureTurnInReviewColumns_)
 // and the evaluation result's four. Fills blank header cells only, and the

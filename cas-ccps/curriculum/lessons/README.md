@@ -54,6 +54,14 @@ background, key terms and example). It refuses a part with no primary, a tier th
 lesson's competencies, or a lesson competency no part covers. First lesson: 8177 Market Research
 (Appendix B, approved 2026-10-27).
 
+A part's `workFile` is the type it is planned as (doc, form, slides, sheet); its optional
+`workType` is what the rollout makes now: unset or `"doc"` a doc, `"form"` a copy of the part's
+template form (Phase 4a, 2026-11-08; `cas-ccps/README.md`, "Work types"). Marking one: set
+`"workType": "form"` on a part whose `workFile` is `form`, take "paste your form's link into this
+document" out of its paragraph in the prompt file (the builder refuses it otherwise), set the
+template's Script Property, and rebuild. None is marked yet; the first will be 8177 Market
+Research's Part 2.
+
 The other 34 multi-part lessons (5 in 8175, 29 in 8177) were drafted in that pattern and approved
 together on 2026-10-28, to be edited as they are taught; each keeps its `why` and its open
 `concerns` beside its parts. `PARTS_DRAFTS.json` is where a new split waits for approval, in

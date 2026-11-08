@@ -340,3 +340,112 @@ const DASH_DEMO_LESSONS = [
     ]
   }
 ];
+
+// A lesson in parts with a form part, for the demo's form card (Phase 4a).
+const DASH_DEMO_PARTS_LESSON = {
+  "code": "8177",
+  "key": "8177-market-research-survey-design",
+  "lessonName": "Venue Market Research & Survey Design",
+  "parts": [
+    {
+      "n": 1,
+      "title": "The Target Market",
+      "workType": "doc",
+      "key": "8177-market-research-survey-design-P1",
+      "unitName": "Venue Market Research & Survey Design — Part 1: The Target Market",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-81 Develop a market segmentation analysis.",
+        "8177-2 Demonstrate critical thinking and problem-solving.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-81",
+        "8177-2",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 2,
+      "title": "Build the Survey",
+      "workType": "form",
+      "key": "8177-market-research-survey-design-P2",
+      "unitName": "Venue Market Research & Survey Design — Part 2: Build the Survey",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-83 Develop a market research project.",
+        "8177-18 Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-83",
+        "8177-18",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 3,
+      "title": "Why These Questions Work",
+      "workType": "doc",
+      "key": "8177-market-research-survey-design-P3",
+      "unitName": "Venue Market Research & Survey Design — Part 3: Why These Questions Work",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-83 Develop a market research project.",
+        "Uses the lesson vocabulary accurately: quantitative data, qualitative data.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-83",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 4,
+      "title": "Spot the Bias",
+      "workType": "doc",
+      "key": "8177-market-research-survey-design-P4",
+      "unitName": "Venue Market Research & Survey Design — Part 4: Spot the Bias",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-2 Demonstrate critical thinking and problem-solving.",
+        "Uses the lesson vocabulary accurately: bias, leading question.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-2",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 5,
+      "title": "Beyond the Survey",
+      "workType": "doc",
+      "key": "8177-market-research-survey-design-P5",
+      "unitName": "Venue Market Research & Survey Design — Part 5: Beyond the Survey",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-79 Identify sources of data for market research in the sports, entertainment, and event industries.",
+        "8177-2 Demonstrate critical thinking and problem-solving.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-79",
+        "8177-2",
+        "",
+        ""
+      ]
+    }
+  ]
+};

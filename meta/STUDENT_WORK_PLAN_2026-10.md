@@ -8,8 +8,10 @@
   - lessons in parts in both courses, with Student Context showing the
     reflections (#353) and the Canvas cartridges listing the parts (#360).
 - Appendix A's frames and Appendix B's parts are approved.
-- **Phase 4** (work files by type) is next. Its design check
-  (`70_WorkFileProbe.js`, #364) runs after the 11-02 push.
+- **Phase 4** (work files by type) is under way: 4a (Forms as a part's
+  work file) built 2026-11-08, 4b (the reader at Submit) next; §5 says
+  what each does. Its design check (`70_WorkFileProbe.js`, #364) ran
+  11-01.
 - The order of work is [`PLAN_2026-11.md`](./PLAN_2026-11.md).
 
 ## Why
@@ -333,6 +335,25 @@ Known before it ran, and still true:
 **Order inside the phase:** Forms first (5 lessons, the clearest checks),
 then Slides (11), then Sheets (3); Canva lessons move to Slides as their
 parts are written.
+
+**Phase 4a, built 2026-11-08 (PR #402), not yet pushed.** A part's
+`workType` in `PARTS.json` (`doc` by default, or `form`) reaches 55b as
+`workFileNow`, with a `workTemplateKey` naming the Script Property that
+holds the template form's ID. The rollout's intake copies that template per
+student with Drive (no FormApp call, so 4a needs no Forms scope; the Ledger
+keeps the one it has for 4b), shares and records it as it does a doc
+(`FileID` the form, `AdminFileURL` its `/forms/d/` link, which is how the
+dashboards tell its type, so the Ledger stays its fixed width), `SCHEDULED`
+until the part unlocks. The Student Dashboard says "Open your form" and
+shows Submit switched off ("Checking forms comes next week."), and the
+server refuses a form's Submit, so nothing reaches Flow 2 before 4b. The
+template is a **blank form** (title only): building it is the student's
+work (8177-18), and 4b checks its questions and that email collection is
+off. No part is marked yet: the operator named the first on 11-08 (8177
+Market Research, Part 2 "Build the Survey"); it is marked after the push
+(`cas-ccps/README.md`, "Work types", has the steps). Phase 4b (the reader
+at Submit, the snapshot doc Flow 2 reads, and the Student Dashboard's Forms
+scope) is next.
 
 ## Where the costs land
 

@@ -22,7 +22,9 @@ const PROJECT_FILES = require('../../tools/gas-lint/project-map.json')['cas-ccps
 // Two students in the Market Research lesson: Amy has Parts 1 and 2 open,
 // Bo has none yet (the lesson isn't released). Cy has a whole lesson.
 // open: { name: number of parts open }.
-function setUp(sandbox, L, open) {
+// forms: the part numbers made as form copies (Phase 4a): the Ledger row's
+// AdminFileURL is the form's /forms/d/ link, as intake (02) writes it.
+function setUp(sandbox, L, open, forms) {
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   const props = sandbox.PropertiesService.getScriptProperties();
   props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
@@ -43,8 +45,11 @@ function setUp(sandbox, L, open) {
   Object.keys(open).forEach(name => {
     TITLES.forEach((t, i) => {
       const sid = 'VDOE-' + name + '-' + (i + 1);
-      ledger.appendRow(row(name, sid, 'Venue Market Research & Survey Design — Part ' + (i + 1) + ': ' + t,
-        i < open[name] ? 'ACTIVE' : 'SCHEDULED'));
+      const r = row(name, sid, 'Venue Market Research & Survey Design — Part ' + (i + 1) + ': ' + t,
+        i < open[name] ? 'ACTIVE' : 'SCHEDULED');
+      r[L.ADMIN_FILE_URL] = (forms || []).includes(i + 1)
+        ? 'https://docs.google.com/forms/d/f-' + sid + '/edit' : 'https://docs.google.com/document/d/f-' + sid + '/edit';
+      ledger.appendRow(r);
       sa.appendRow([sid, '', LESSON + '-P' + (i + 1), '']);
     });
   });
@@ -105,8 +110,8 @@ function studentLoad(viewer) {
     getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
     getScriptTimeZone() { return 'America/New_York'; },
   };
-  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
-    ['getStudentDashboardData', 'buildStudentDashboardHtml_', 'LEDGER'], { Session: session });
+  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('63_DocHeader.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
+    ['getStudentDashboardData', 'buildStudentDashboardHtml_', 'submitMyWork', 'getSubmitReflection', 'LEDGER'], { Session: session });
 }
 
 test('Student Dashboard: open parts carry "Part n of 5"; locked parts are listed, not shown as cards', () => {
@@ -151,4 +156,79 @@ test('Student Dashboard: the parts render together, in order, with what opens ea
   assert.ok(i1 !== -1 && i1 < i2 && i2 < i3, 'Part 1, Part 2, then the locked Part 3');
   assert.ok(h.includes('Why These Questions Work<div>Opens when the check finds Part 2 meets its main goal, or when your teacher opens it.'));
   assert.equal((h.match(/class="part-locked"/g) || []).length, 3);
+});
+
+// ── Phase 4a: a form part on both dashboards ────────────────────────────────
+
+function studentPage(exported, data) {
+  const els = {};
+  const el = () => ({ style: {}, innerHTML: '', options: [], setAttribute() {}, appendChild() {}, classList: { add() {}, remove() {} } });
+  const ctx = {
+    document: { getElementById: (id) => els[id] || (els[id] = el()), addEventListener() {}, querySelectorAll: () => [] },
+    google: { script: { run: new Proxy({}, { get: () => function () { return this; } }) } },
+    console, setTimeout() {}, setInterval() {}, navigator: {},
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  extractInlineScripts(exported.buildStudentDashboardHtml_()).forEach(code => vm.runInContext(code, ctx));
+  ctx.render(JSON.parse(JSON.stringify(data)));
+  return els.main.innerHTML;
+}
+
+test('Student Dashboard: a form part says "Open your form", links to the form, and its Submit is off with a plain note', () => {
+  const { exported, sandbox } = studentLoad('Amy@ccpsnet.net');
+  setUp(sandbox, exported.LEDGER, { Amy: 2 }, [2]);
+  const data = exported.getStudentDashboardData('');
+  const p1 = data.assignments.find(a => a.part && a.part.n === 1);
+  const p2 = data.assignments.find(a => a.part && a.part.n === 2);
+  assert.equal(p1.workType, 'doc');
+  assert.equal(p1.docUrl, 'https://docs.google.com/document/d/f-VDOE-Amy-1/edit');
+  assert.equal(p1.canSubmit, true);
+  assert.equal(p2.workType, 'form');
+  assert.equal(p2.docUrl, 'https://docs.google.com/forms/d/f-VDOE-Amy-2/edit');
+  assert.equal(p2.canSubmit, false, 'nothing reads a form at Submit until Phase 4b');
+  const h = studentPage(exported, data);
+  const card2 = h.slice(h.indexOf('Part 2 of 5: Build the Survey'), h.indexOf('🔒 Part 3'));
+  assert.match(card2, /href="https:\/\/docs\.google\.com\/forms\/d\/f-VDOE-Amy-2\/edit"[^>]*class="act act-primary">Open your form ↗<\/a>/);
+  assert.match(card2, /<button type="button" class="act act-secondary" disabled aria-describedby="form-note-card-VDOE-Amy-2">Submit for Feedback<\/button>/);
+  assert.match(card2, /<div class="form-note" id="form-note-card-VDOE-Amy-2">Checking forms comes next week\./);
+  assert.doesNotMatch(card2, /onclick="submitWork/, 'no Submit that can be pressed');
+  assert.doesNotMatch(card2, /Open My Document/);
+  const card1 = h.slice(h.indexOf('Part 1 of 5: The Target Market'), h.indexOf('Part 2 of 5: Build the Survey'));
+  assert.match(card1, />Open My Document ↗</);
+  assert.match(card1, /onclick="submitWork\(this\)">Submit for Feedback/);
+});
+
+test('Student Dashboard: submitting a form is refused before the queue or the file is touched', () => {
+  const { exported, sandbox } = studentLoad('Amy@ccpsnet.net');
+  const ss = setUp(sandbox, exported.LEDGER, { Amy: 2 }, [2]);
+  const q = ss.insertSheet('ReviewQueue');
+  q.appendRow(['h', 'h', 'h', 'h', 'h', 'h']);
+  const opened = [];
+  sandbox.DocumentApp.openById = (id) => { opened.push(id); throw new Error('not a doc'); };
+  assert.deepEqual(exported.submitMyWork('f-VDOE-Amy-2', 'VDOE-Amy-2', []), { ok: false, error: 'FORM_NOT_CHECKED_YET' });
+  assert.deepEqual(exported.getSubmitReflection('f-VDOE-Amy-2', 'VDOE-Amy-2'), { ok: false, error: 'FORM_NOT_CHECKED_YET' });
+  assert.deepEqual(opened, []);
+  assert.equal(q.getLastRow(), 1, 'no ReviewQueue row: no form reaches Flow 2');
+  assert.equal(ss.getSheetByName('SubmitFailures'), null, 'not counted as a system failure');
+});
+
+test('Teacher Dashboard: a form part says so on its row and links to the form', () => {
+  const { exported, sandbox } = loadGasFiles(PROJECT_FILES, ['getDashboardData', 'buildDashboardHtml_', 'LEDGER']);
+  setUp(sandbox, exported.LEDGER, { Amy: 3 }, [2]);
+  const amy = exported.getDashboardData('ALL').students.find(s => s.name === 'Amy');
+  assert.equal(amy.parts[1].workType, 'form');
+  assert.equal(amy.parts[1].docUrl, 'https://docs.google.com/forms/d/f-VDOE-Amy-2/edit');
+  const ctx = {
+    document: { getElementById: () => ({ style: {}, classList: { add() {}, remove() {} } }), addEventListener() {}, querySelectorAll: () => [] },
+    google: { script: { run: new Proxy({}, { get: () => function () { return this; } }) } },
+    console, setTimeout() {}, setInterval() {}, navigator: {}, location: {}, localStorage: { getItem() { return null; }, setItem() {} },
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  extractInlineScripts(exported.buildDashboardHtml_()).forEach(code => { try { vm.runInContext(code, ctx); } catch (e) { /* page wiring needs a real DOM */ } });
+  assert.match(ctx.partLine(amy), /forms\/d\/f-VDOE-Amy-2\/edit"[^>]*>Part 2 \(form\) ↗/);
+  const onForm = Object.assign({}, amy, { part: { n: 2, count: 5, title: 'Build the Survey' }, workType: 'form' });
+  assert.match(ctx.partLine(onForm), /<b>Part 2 of 5<\/b>: Build the Survey <span class="part-type"[^>]*>· Google Form<\/span>/);
+  assert.doesNotMatch(ctx.partLine(amy), /Google Form<\/span>/, 'a doc part says nothing new');
 });

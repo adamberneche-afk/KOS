@@ -146,6 +146,7 @@ function _dashDemoCard_(course, lesson, state, block, period, now) {
     lastEval:      s.checked !== undefined ? formatDate_(_dashDemoDaysAgo_(now, s.checked)) : "",
     submittedAt:   s.submitted !== undefined ? formatDate_(_dashDemoDaysAgo_(now, s.submitted)) : null,
     docUrl:        null, // no document: the page shows a note instead
+    workType:      "doc",
     fileId:        "demo-" + lesson.key,
     canSubmit:     !DASH_NO_SUBMIT_STATUSES[s.status] && !inLine,
     part:          null,
@@ -213,6 +214,27 @@ function dashDemoFixture_(now) {
       }
     });
   });
+  // A lesson in parts with a form part (Phase 4a): Part 1 passed, the form
+  // part open and not started ("Open your form", Submit off until Phase 4b),
+  // the later parts locked. The demo shows each part as its planned work file.
+  const lockedParts = [];
+  const pl = DASH_DEMO_PARTS_LESSON;
+  const plCourse = pl ? DASH_DEMO_LESSONS.filter(function (c) { return c.code === pl.code; })[0] : null;
+  if (pl && plCourse) {
+    const where = blocks[pl.code] || ["1", "1"];
+    const lessonId = "DEMO-" + String(pl.key).toUpperCase();
+    const formAt = pl.parts.findIndex(function (p) { return p.workType === "form"; });
+    pl.parts.forEach(function (p, i) {
+      const part = { lesson: lessonId, n: p.n, count: pl.parts.length, lessonName: pl.lessonName, title: p.title };
+      if (i > formAt) { lockedParts.push({ lesson: lessonId, n: p.n, title: p.title }); return; }
+      const card = _dashDemoCard_(plCourse, p, i < formAt ? "PASSED" : "NOT_STARTED", where[0], where[1], now);
+      card.part = part;
+      card.workType = p.workType;
+      if (p.workType === "form") card.canSubmit = false;
+      assignments.push(card);
+      assignmentOf[card.configId] = p.unitName;
+    });
+  }
   _dashSortCards_(assignments);
 
   const codes = DASH_DEMO_LESSONS.map(function (c) { return c.code; }).sort();
@@ -311,7 +333,7 @@ function dashDemoFixture_(now) {
       googleId:         DASH_DEMO_STUDENT.account,
       demo:             true,
       assignments:      assignments,
-      lockedParts:      [],
+      lockedParts:      lockedParts,
       warmUps:          warmUps,
       competencies:     competencyCompletionFor_(ratings, totals, codes)
         .map(function (c) { return Object.assign({ className: names[c.course] }, c); }),
@@ -436,6 +458,8 @@ function getStudentDashboardData(termFilter) {
     if (activeTerm !== "ALL" && rowTerm && rowTerm !== activeTerm) continue;
 
     const fileId      = String(row[LEDGER.FILE_ID]).trim();
+    // A form part's copy (Phase 4a): its Ledger URL says so (00).
+    const workType    = workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]);
     const status      = String(row[LEDGER.STATUS]).trim();
     const lastEval    = row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : null;
     const submittedAt = row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : null;
@@ -483,13 +507,15 @@ function getStudentDashboardData(termFilter) {
       notYet:        "",
       lastEval:      lastEval     || "",
       submittedAt:   submittedAt  || null,
-      docUrl:        fileId
-        ? "https://docs.google.com/document/d/" + fileId + "/edit"
-        : null,
+      docUrl:        workFileUrl_(fileId, workType),
+      // "doc" or "form": the card's "Open My Document" or "Open your form".
+      workType:      workType,
       // For the Submit for Feedback button (submitMyWork). The student's
       // own doc, which docUrl already carries.
       fileId:        fileId,
-      canSubmit:     !!fileId && !DASH_NO_SUBMIT_STATUSES[status] && !inLine,
+      // A form can't be checked until Phase 4b's reader: Submit stays off
+      // for it (and _dashSubmitChecks_ refuses it), so no form reaches Flow 2.
+      canSubmit:     !!fileId && workType !== "form" && !DASH_NO_SUBMIT_STATUSES[status] && !inLine,
       // A part of a lesson (68): { lesson, n, count, lessonName, title }.
       part:          part ? Object.assign(_dashPartNames_(row[LEDGER.COURSE_NAME]), part) : null,
       folderLabel:   String(row[LEDGER.BLOCK]).trim() + " - " +
@@ -1496,6 +1522,9 @@ function _dashSubmitChecks_(fileId, configId) {
   const cfg = getConfig_();
   const row = findOwnLedgerRow_(cfg, googleId, fileId, configId);
   if (!row) return { ok: false, error: "NOT_REGISTERED" };
+  // A form part (Phase 4a): nothing reads a form at Submit until Phase 4b,
+  // so it never goes to the queue or Flow 2, whatever the page sent.
+  if (workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]) === "form") return { ok: false, error: "FORM_NOT_CHECKED_YET" };
   const blocked = DASH_NO_SUBMIT_STATUSES[String(row[LEDGER.STATUS]).trim()];
   if (blocked) return { ok: false, error: blocked };
 
@@ -1798,6 +1827,7 @@ function buildStudentDashboardHtml_(opts) {
      line beside the title; the rest of the status is .status-note. */
   .card-top .pill{white-space:nowrap;flex-shrink:0}
   .status-note{font-size:13.5px;color:#3c4043;margin:-4px 0 8px;line-height:1.45}
+  .form-note{font-size:13px;color:var(--text-secondary);margin-top:6px;line-height:1.45}
   .next-step{font-size:14px;margin:0 0 8px;line-height:1.45}
   .next-step b{color:#7627bb}
   .pill-NOT_STARTED{background:#f1f3f4;color:var(--text-secondary)}
@@ -2040,7 +2070,9 @@ function _demoWalkThrough(fileId) {
   }, 4500);
 }
 function demoOpenDoc(btn) {
-  _demoNotes[btn.getAttribute("data-file")] = "In the real dashboard this opens the student's document.";
+  const a = _demoCard(btn.getAttribute("data-file"));
+  _demoNotes[btn.getAttribute("data-file")] = "In the real dashboard this opens the student's " +
+    (a && a.workType === "form" ? "own copy of the form, to build in Google Forms." : "document.");
   if (_lastDashData) render(_lastDashData);
 }
 
@@ -2286,13 +2318,20 @@ function cardHtml(a) {
   const primary = primaryActionFor(a);
   const cls = (p) => "act " + (p ? "act-primary" : "act-secondary");
   const doc = safeDocUrl(a.docUrl);
+  const form = a.workType === "form";
+  const openLabel = primary === "view" ? "View feedback" : form ? "Open your form" : "Open My Document";
   // The demo has no document: its button shows a note instead.
   const docBtn = DEMO
-    ? \`<button type="button" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${primary === "view" ? "View feedback" : "Open My Document"}</button>\`
+    ? \`<button type="button" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${openLabel}</button>\`
     : doc
-    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}">\${primary === "view" ? "View feedback" : "Open My Document"} ↗</a>\`
-    : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>';
-  const submitBtn = a.canSubmit && !_reflect[a.fileId]
+    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}">\${openLabel} ↗</a>\`
+    : \`<span style="color:var(--text-secondary);font-size:13px;">\${form ? "Form" : "Document"} not yet available</span>\`;
+  // A form part (Phase 4a): Submit shows where it will be, switched off,
+  // with a plain line why. Never pressable, so no form reaches Flow 2.
+  const formNoteId = "form-note-" + cardId(a);
+  const submitBtn = form
+    ? \`<button type="button" class="\${cls(false)}" disabled aria-describedby="\${esc(formNoteId)}">Submit for Feedback</button>\`
+    : a.canSubmit && !_reflect[a.fileId]
     ? \`<button type="button" class="\${cls(primary === "submit")}" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
     : "";
   const ev = evalLine(a);
@@ -2312,6 +2351,7 @@ function cardHtml(a) {
     <div class="card-actions">
     \${primary === "submit" ? submitBtn + docBtn : docBtn + submitBtn}
     </div>
+    \${form ? \`<div class="form-note" id="\${esc(formNoteId)}">\${esc(FORM_SUBMIT_NOTE)}</div>\` : ""}
     \${DEMO && _demoNotes[a.fileId] ? \`<div class="demo-note" role="status">\${esc(_demoNotes[a.fileId])}</div>\` : ""}
     \${a.canSubmit && _reflect[a.fileId] ? reflectFormHtml(a) : ""}
     \${_submitMsgs[a.fileId]
@@ -2659,6 +2699,9 @@ function saveWarmUp(btn) {
 // Submit for Feedback: the doc's own menu can't run for student accounts
 // (district setting), so the dashboard submits instead. The server reads
 // the doc and checks it; this only shows the answer under the card.
+// A form part's Submit (Phase 4a): shown, off, with this line under it,
+// until Phase 4b reads forms at Submit.
+const FORM_SUBMIT_NOTE = "Checking forms comes next week. Keep building your form; your teacher can open it.";
 const SUBMIT_ERRORS = {
   TOO_SHORT: null, // worded below with the word count
   NO_RESPONSE_SECTION: "Your document is missing the line under “Your response” that marks where your writing starts, so there's nothing to check. Ask your teacher.",
@@ -2670,7 +2713,8 @@ const SUBMIT_ERRORS = {
   // System-side problems only the teacher can fix: retrying won't help.
   DOC_UNREADABLE: "The system can't open your document right now. Your work is safe. Tell your teacher.",
   NO_QUEUE: "The system can't take submissions right now. Your work is safe. Tell your teacher.",
-  SERVER_ERROR: "Something went wrong on the system's side. Your work is safe. Tell your teacher."
+  SERVER_ERROR: "Something went wrong on the system's side. Your work is safe. Tell your teacher.",
+  FORM_NOT_CHECKED_YET: FORM_SUBMIT_NOTE
 };
 const SUBMIT_FALLBACK = "The assignment system didn't answer. Your work is safe in your document.\\nTry again in a minute. If it keeps happening, tell your teacher.";
 

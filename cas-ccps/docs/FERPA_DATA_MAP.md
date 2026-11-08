@@ -586,6 +586,20 @@ deck, in the teacher's *Agendas* folder and shared with no one until the
 teacher projects or shares it, holds curriculum only (the lesson, its
 goals, the itinerary, the periods meeting): no student data.
 
+### Student work forms (S02, Phase 4a)
+A part marked `workType: "form"` (2026-11-08) gets each student a copy of
+its template form instead of a doc: student work, like the student doc,
+and kept in Google. Made by `intakeStudent_()` (02) with `DriveApp.makeCopy`
+into the same admin folder as the student's docs, owned by the system
+account, shared only with the student (editor, once the part is open) and
+the assigning teacher (editor: a form has no comment access). The Ledger
+row records it like a doc (`FileID`, and the form's link in
+`AdminFileURL`); no new tab or column. The form's **responses**, if the
+student shares it, are answers from other people: nothing in 4a reads a
+form at all (no FormApp call), and Phase 4b's reader reads questions and
+settings, never responses. Retention: as the student docs, with the Ledger
+row.
+
 ### PartUnlocks (S68)
 One row per part opened for a student (2026-10-27): when, the student's
 workspace ConfigID (as StudentAssignments holds it), the part's ConfigID,

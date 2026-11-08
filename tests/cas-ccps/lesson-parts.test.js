@@ -74,3 +74,74 @@ test('the builder refuses a part with no primary, a tier outside the lesson, or 
   assert.throws(() => gen.buildParts(a, comps, md, { parts: [part({ secondary: ['X-2'] }), part({ marker: 'Part 9:' })] }), /no paragraph starts with "Part 9:"/);
   assert.equal(gen.buildParts(a, comps, md, { parts: [part({}), part({ marker: 'Part 2:', primary: 'X-2' })] }).length, 2);
 });
+
+// ── Phase 4a: a part's workType (doc by default, or form) ────────────────────
+const fs = require('fs');
+const LESSONS_DIR = path.join(__dirname, '..', '..', 'cas-ccps', 'curriculum', 'lessons');
+const PARTS_PATH = path.join(LESSONS_DIR, 'PARTS.json');
+const SURVEY_PROMPT = path.join(LESSONS_DIR, '8177', 'prompts', 'market-research-survey-design.md');
+
+// The builder's output with PARTS.json (and, optionally, a prompt file) read
+// as `edit` changes them; nothing on disk is touched.
+function buildWithEdits(editParts, editPrompt) {
+  const real = fs.readFileSync;
+  fs.readFileSync = function (f, ...rest) {
+    const at = path.resolve(String(f));
+    if (at === PARTS_PATH) {
+      const parts = JSON.parse(real.call(fs, f, 'utf8'));
+      editParts(parts);
+      return JSON.stringify(parts);
+    }
+    if (editPrompt && at === SURVEY_PROMPT) return editPrompt(real.call(fs, f, 'utf8'));
+    return real.call(fs, f, ...rest);
+  };
+  try {
+    return gen.dataFile(gen.build());
+  } finally {
+    fs.readFileSync = real;
+  }
+}
+const LIVE_55B = () => fs.readFileSync(S('55b_LessonAssignmentData.js'), 'utf8');
+const PASTE_LINE = / Paste your form's link into this document\./;
+
+test('workType: unset everywhere today, so every part is a doc and 55b carries no template key', () => {
+  const { LESSON_PARTS } = data();
+  Object.values(LESSON_PARTS).flat().forEach((p) => {
+    assert.equal(p.workFileNow, 'doc', p.key);
+    assert.equal(p.workTemplateKey, undefined, p.key);
+  });
+  const parts = JSON.parse(fs.readFileSync(PARTS_PATH, 'utf8'));
+  Object.keys(parts).filter((k) => !k.startsWith('_')).forEach((k) =>
+    parts[k].parts.forEach((p) => assert.equal(p.workType, undefined, k + ' ' + p.title + ' is marked; this PR ships none marked')));
+});
+
+test('workType "doc" written out is the same as unset: the generated 55b is byte-identical', () => {
+  const out = buildWithEdits((all) => Object.keys(all).filter((k) => !k.startsWith('_'))
+    .forEach((k) => all[k].parts.forEach((p) => { p.workType = 'doc'; })));
+  assert.equal(out, LIVE_55B());
+});
+
+test('marking the survey part a form changes only that part: workFileNow "form" and its template key', () => {
+  const out = buildWithEdits((all) => { all[KEY].parts[1].workType = 'form'; },
+    (md) => md.replace(PASTE_LINE, ''));
+  const vm = require('vm');
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(out + '\nthis.P = LESSON_PARTS;', ctx);
+  const parts = ctx.P[KEY];
+  assert.equal(parts[1].workFileNow, 'form');
+  assert.equal(parts[1].workTemplateKey, 'WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2');
+  assert.doesNotMatch(parts[1].promptText, PASTE_LINE);
+  [0, 2, 3, 4].forEach((i) => { assert.equal(parts[i].workFileNow, 'doc'); assert.equal(parts[i].workTemplateKey, undefined); });
+  Object.keys(ctx.P).filter((k) => k !== KEY).forEach((k) => ctx.P[k].forEach((p) => assert.equal(p.workFileNow, 'doc', p.key)));
+});
+
+test('the builder refuses a form part whose task still says to paste a link, a workType not doc or form, or one unlike its workFile', () => {
+  assert.throws(() => buildWithEdits((all) => { all[KEY].parts[1].workType = 'form'; }),
+    /part 2: a form part's task still says to paste a link into this document/);
+  assert.throws(() => buildWithEdits((all) => { all[KEY].parts[1].workType = 'slides'; }),
+    /workType "slides" is not one of doc, form/);
+  assert.throws(() => buildWithEdits((all) => { all[KEY].parts[0].workType = 'form'; }),
+    /part 1: workType "form" but its workFile is "doc"/);
+  assert.equal(gen.workTemplateKey('8175-L24-P3'), 'WORK_TEMPLATE_8175_L24_P3');
+});

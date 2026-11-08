@@ -383,6 +383,27 @@ function plan8177(text, warm) {
 const PARTS_FILE = path.join(LESSONS, 'PARTS.json');
 const lessonParts = () => (fs.existsSync(PARTS_FILE) ? JSON.parse(fs.readFileSync(PARTS_FILE, 'utf8')) : {});
 
+// A part's workType (Phase 4a, meta/STUDENT_WORK_PLAN_2026-10.md §5): what
+// the rollout makes for each student. "doc" (the default, also when unset)
+// or "form", a copy of the part's template form. A part becomes a form only
+// when its workFile is "form" too, and its task no longer tells the student
+// to paste a link into a document (Appendix B: the form is the work file).
+const WORK_TYPES = ['doc', 'form'];
+function partWorkType(p, at, own) {
+  const t = p.workType === undefined ? 'doc' : p.workType;
+  if (WORK_TYPES.indexOf(t) === -1) throw new Error(at + 'workType "' + t + '" is not one of ' + WORK_TYPES.join(', '));
+  if (t !== 'doc' && (p.workFile || 'doc') !== t) throw new Error(at + 'workType "' + t + '" but its workFile is "' + (p.workFile || 'doc') + '"');
+  if (t === 'form' && own.some((x) => /paste[^.]*link[^.]*into this document/i.test(x))) {
+    throw new Error(at + 'a form part\'s task still says to paste a link into this document; take that sentence out of the prompt');
+  }
+  return t;
+}
+
+// "WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2" for that part.
+function workTemplateKey(partKey) {
+  return 'WORK_TEMPLATE_' + String(partKey).toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+}
+
 function buildParts(a, comps, promptMd, def) {
   const where = 'PARTS.json ' + a.key + ': ';
   const task = section(promptMd, /^## Prompt/).trim();
@@ -409,6 +430,7 @@ function buildParts(a, comps, promptMd, def) {
     const own = paras.slice(starts[i], end === -1 ? paras.length : end)
       .filter((x) => !/^Use these terms accurately/.test(x));
     const n = i + 1;
+    const workType = partWorkType(p, where + 'part ' + n + ': ', own);
     const vocab = (p.vocabulary || []).join(', ');
     const body = [title + ' — Part ' + n + ' of ' + def.parts.length + ': ' + p.title]
       .concat(opening)
@@ -423,12 +445,16 @@ function buildParts(a, comps, promptMd, def) {
       competencyIds: ids.slice(), approved: true, source: a.source,
       partOf: a.key, part: n, partCount: def.parts.length, partTitle: p.title,
       workFile: p.workFile || 'doc',
-      // Phase 4 makes Forms the work file; until then a Form part is a doc
-      // with the form's link pasted in, as the task says.
-      workFileNow: 'doc',
+      // What the rollout makes now: the part's workType (Phase 4a, 2026-11-08).
+      // Unset, a part is a doc, and a Form part is a doc with the form's link
+      // pasted in, as its task says.
+      workFileNow: workType,
       promptText: body.join('\n\n'),
       criteriaOverride: p.criteria,
     };
+    // A form part's template: the Script Property of this name holds the
+    // template form's file ID (as MASTER_STUDENT_TEMPLATE_ID holds the doc's).
+    if (workType === 'form') pa.workTemplateKey = workTemplateKey(pa.key);
     const partComps = ids.map((id) => byId[id]);
     pa.definitionOfDone = applyTiers(pa, partComps,
       { primary: p.primary, secondary: p.secondary || [], tertiary: p.tertiary || [] }, '', vocab);
@@ -651,4 +677,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE, modeOf, plan8175, plan8177, buildParts };
+module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE, modeOf, plan8175, plan8177, buildParts, workTemplateKey, WORK_TYPES };

@@ -18,6 +18,8 @@
 //      (52's enrollCanvasRoster_). A lesson that hasn't reached its release
 //      night gets docs that aren't shared yet (SCHEDULED); the current lesson
 //      and tomorrow's get shared ones, so a late joiner can start at once.
+//      A part marked workType "form" (Phase 4a) gets a copy of its template
+//      form instead of a doc (02), made, shared and SCHEDULED the same way.
 //   3b. LESSON DOC. With the rollout on for the course, each of those
 //      lessons gets the teacher's lesson doc (66) once; later nights refresh
 //      its Class status.
