@@ -278,6 +278,17 @@ a pre-commit hook (`tools/release-check/pre-commit`, installed by hand)
 checks staged files. Tested in `tests/tools/release-check.test.js`. See
 [`tools/release-check/README.md`](./tools/release-check/README.md).
 
+## [`tools/setup-guide/`](./tools/setup-guide/) — the CAS setup guide's reference, from the code
+
+Packaging step 2. `node tools/setup-guide/build.js` writes
+`cas-ccps/docs/SETUP_GUIDE_REFERENCE.md`: each cas-ccps project, its
+manifest, the Script Properties it reads, the triggers it installs and the
+Studio Flows with their checks, extracted from the code, with what it can't
+resolve listed as such. CI runs `--check` and fails when it is stale. The
+steps in order are `cas-ccps/docs/SETUP_GUIDE.md`. Tested in
+`tests/tools/setup-guide.test.js`; see
+[`tools/setup-guide/README.md`](./tools/setup-guide/README.md).
+
 ## [`tools/watchdog/`](./tools/watchdog/check.js) — scheduled-job watchdog
 
 Catches the failure mode a red X can't: an invalid `.github/workflows/*.yml`
