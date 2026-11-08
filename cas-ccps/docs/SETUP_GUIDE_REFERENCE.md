@@ -21,7 +21,7 @@ what the project is bound to (`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md` §3.2b).
 
 | Project | Bound to | clasp create --type | Script files | run.js | .clasp.json template |
 |---|---|---|---|---|---|
-| `central-ledger` | Central Ledger spreadsheet | sheets | 55 | push (HEAD is what runs) | yes |
+| `central-ledger` | Central Ledger spreadsheet | sheets | 56 | push (HEAD is what runs) | yes |
 | `family-sentinel` | Family Mail Sentinel spreadsheet, a private sheet the teacher owns (container-bound). Reads the teacher's Gmail through the advanced Gmail service; the only cas-ccps project with a Gmail scope, on purpose. | sheets | 4 | push (HEAD is what runs) | yes |
 | `master-student-template` | Master Student Template Google Doc (container-bound) | docs | 5 | push (HEAD is what runs) | yes |
 | `rubric-response-sheet` | Rubric Response Sheet (cloned per teacher) | sheets | 4 | push (HEAD is what runs) | yes |
@@ -33,7 +33,7 @@ what the project is bound to (`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md` §3.2b).
 
 Files per project (a file listed under more than one project is pasted into each):
 
-- `central-ledger`: `00_SharedConfig.js`, `00b_ScriptOwnerGuard.js`, `02_Form1_IntakeAndWorkspaceGenerator.js`, `03_QueueBridge.js`, `04_Form2_TurnInGate.js`, `06_StagingPipeline_Turnstile.js`, `10_AdminRecoveryPanel.js`, `15b_StudioFlowPrompts_Flow2_Revised.js`, `15c_Flow2DirectEvaluationService.js`, `18_FormSubmitDispatcher.js`, `22_LessonContextHandler.js`, `22b_CompetencyRegistryImporter.js`, `23_StudentProfileManager.js`, `24_WarmUpBridge.js`, `25_WarmUpWriter.js`, `26_CompetencyAlignmentLog.js`, `27_LessonFrameGenerator.js`, `29_StudentContextAggregator.js`, `30_SCRSuggestionEngine.js`, `30b_SCRRetryRemediation.js`, `31_PacingGuideManager.js`, `32_CompetencyRubricImporter.js`, `33_ArtifactCompetencyBridge.js`, `34_QueueWatchdog.js`, `34b_CasAttentionSignal.js`, `34c_OvernightHealth.js`, `35_FlowPreflightAndCanary.js`, `36_WeeklyParentReport.js`, `37_FlowInputBuilder.js`, `38_LedgerSchemaGuard.js`, `39_FlowFixtures.js`, `40_FlowPrompts.js`, `41_WarmUpFlowBridge.js`, `42_FlowBuildSpec.js`, `43_DeployVersionMarker_CentralLedger.js`, `50_StudentDataAccess.js`, `51_CourseYearBuilder.js`, `52_CanvasRosterImport.js`, `53_AssignmentSeeder.js`, `53b_UnitAssignmentData.js`, `54_StudentAssignments.js`, `55_LessonSchedule.js`, `55b_LessonAssignmentData.js`, `57_RetentionSchedule.js`, `58_LessonRollout.js`, `63_DocHeader.js`, `64_LedgerCycle.js`, `66_LessonDoc.js`, `67_AgendaDeck.js`, `68_LessonParts.js`, `69_EvaluationHealth.js`, `69b_FlowMeasures.js`, `71_TurnInCodes.js`, `71b_TurnInStudent.js`, `72_TurnInCheckFlow.js`
+- `central-ledger`: `00_SharedConfig.js`, `00b_ScriptOwnerGuard.js`, `02_Form1_IntakeAndWorkspaceGenerator.js`, `03_QueueBridge.js`, `04_Form2_TurnInGate.js`, `06_StagingPipeline_Turnstile.js`, `10_AdminRecoveryPanel.js`, `15b_StudioFlowPrompts_Flow2_Revised.js`, `15c_Flow2DirectEvaluationService.js`, `18_FormSubmitDispatcher.js`, `22_LessonContextHandler.js`, `22b_CompetencyRegistryImporter.js`, `23_StudentProfileManager.js`, `24_WarmUpBridge.js`, `25_WarmUpWriter.js`, `26_CompetencyAlignmentLog.js`, `27_LessonFrameGenerator.js`, `29_StudentContextAggregator.js`, `30_SCRSuggestionEngine.js`, `30b_SCRRetryRemediation.js`, `31_PacingGuideManager.js`, `32_CompetencyRubricImporter.js`, `33_ArtifactCompetencyBridge.js`, `34_QueueWatchdog.js`, `34b_CasAttentionSignal.js`, `34c_OvernightHealth.js`, `35_FlowPreflightAndCanary.js`, `36_WeeklyParentReport.js`, `37_FlowInputBuilder.js`, `38_LedgerSchemaGuard.js`, `39_FlowFixtures.js`, `40_FlowPrompts.js`, `41_WarmUpFlowBridge.js`, `42_FlowBuildSpec.js`, `43_DeployVersionMarker_CentralLedger.js`, `50_StudentDataAccess.js`, `51_CourseYearBuilder.js`, `52_CanvasRosterImport.js`, `53_AssignmentSeeder.js`, `53b_UnitAssignmentData.js`, `54_StudentAssignments.js`, `55_LessonSchedule.js`, `55b_LessonAssignmentData.js`, `57_RetentionSchedule.js`, `58_LessonRollout.js`, `63_DocHeader.js`, `64_LedgerCycle.js`, `66_LessonDoc.js`, `67_AgendaDeck.js`, `68_LessonParts.js`, `69_EvaluationHealth.js`, `69b_FlowMeasures.js`, `71_TurnInCodes.js`, `71b_TurnInStudent.js`, `72_TurnInCheckFlow.js`, `76_CoveredSoFar.js`
 - `family-sentinel`: `00_SharedConfig.js`, `60_FamilyMailSentinel.js`, `61_FamilyMailPrompt.js`, `62_DeployVersionMarker_FamilySentinel.js`
 - `master-student-template`: `00_SharedConfig.js`, `01_StudentDoc_ContainerScript.js`, `09_StudentRevisionGuidance_M1Base.js`, `17_MasterStudentTemplate.js`, `45_DeployVersionMarker_MasterStudentTemplate.js`
 - `rubric-response-sheet`: `00_SharedConfig.js`, `05_TeacherIntakePipeline.js`, `19_ClonedSheetConfig.js`, `46_DeployVersionMarker_RubricResponseSheet.js`
@@ -251,6 +251,8 @@ Not resolved (the key is built at run time or passed in; read the code):
 - `25_WarmUpWriter.js`, `_checkCronHealth_()`: `getProperty(alertKey)`
 - `25_WarmUpWriter.js`, `checkShadowMatrixInterrupts_()`: `getProperty(notifyKey)`
 - `34c_OvernightHealth.js`, `overnightHealth_()`: `getProperty(s.key.replace("LAST_RUN", "STATUS"))`
+- `76_CoveredSoFar.js`, `_covOpenDoc_()`: `getProperty(COVERED_DOC_PROP_PREFIX + code)`
+- `76_CoveredSoFar.js`, `writeCoveredSoFar_()`: `getProperty(hashKey)`
 
 ### 3.2 `family-sentinel`
 
