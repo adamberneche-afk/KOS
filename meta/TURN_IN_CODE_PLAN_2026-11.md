@@ -1,7 +1,7 @@
 # Turn-in code: proof of engagement in Canvas (2026-11-07)
 
-**Status:** design, from the operator's decisions of 2026-11-07. Nothing is
-built yet. The decisions below are the operator's; the open questions are
+**Status:** design, from the operator's decisions of 2026-11-07. Stage 1 is
+built (PR #391), behind a switch that is off; see "Build stages". The decisions below are the operator's; the open questions are
 marked. [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
 wins where the two disagree. No student names, emails, file IDs or
 ConfigIDs appear here, by design.
@@ -39,6 +39,11 @@ feedback cycle: submitting for feedback, then engaging with that feedback.
    design signal, never per student.** A lesson where students earn codes
    but rarely show the milestone probably needs rethinking. It doesn't
    show that those students failed.
+10. **The teacher can open one assignment past its marking period**
+    (operator, 2026-11-08), for every student on it, with a reason and an
+    optional end date, and close it again. The term rule then passes for
+    that assignment; the check still decides every code. The per-student
+    grant (decision 4) stays.
 
 ## Standing rules (so the grade doesn't poison the measure)
 
@@ -192,6 +197,60 @@ competency with no student text. It is not needed now.
    - `TurnInCodes`; the code and the copy button.
    - The per-course switch.
    - For testing only, a stub verdict in place of the flow.
+
+   **Stage 1 built (PR #391)**, `cas-ccps/scripts/71_TurnInCodes.js`,
+   `tests/cas-ccps/turn-in-code.test.js`. Details settled in the build
+   (the file's header has each in full):
+   - *The switch* is `TURN_IN_CODE_COURSES`, read like the other per-course
+     flags: blank or `off` is off everywhere and adds nothing to the
+     dashboard's data; `8177`, a list, or `all`.
+   - *The question's milestone.* Revise: the milestone the card's "Not
+     yet:" line names (the latest check's first not MET). Passed: the
+     latest check's first row, the primary. No milestone on file, no
+     question (the teacher can grant).
+   - *The screen.* At least `REFLECTION_MIN_WORDS` (10) words; no system
+     text (`findSystemText_`); at most 2,000 characters; and an answer is
+     "mostly pasted" when at least half (`TURN_IN_PASTE_MAX_SHARE`, 0.5) of
+     its own 4-word runs appear in the question or the milestone. Quoting
+     the milestone inside a real answer stays well under it.
+   - *Where the answer goes.* `TurnInChecks` (Ledger), not `ReflectionLog`:
+     a `ReflectionLog` row counts as a Submit when the next reflection
+     questions are chosen, and 37 and 29 read them. This settles "Not
+     doing"'s last line: the answer is the student's own words, kept with
+     the Ledger record like the reflections. `TurnInCodes` holds no text but
+     a grant's reason. Both are 5-year records in the retention schedule.
+   - *The term rule.* A row's marking period is its AcademicYear when that
+     is one ("2627_MP2"), else the one its Timestamp falls in by
+     `MARKING_PERIOD_ENDS`. It must equal `currentTerm_()` today, at the
+     answer and again at the verdict. No marking period either way, or none
+     current (summer), is outside the term: only the grant then. A row is
+     labelled with the period it was made in, so a doc made in one marking
+     period and answered in the next fails it; the teacher's override
+     (below) opens that assignment, or the grant covers one student.
+   - *The per-assignment override* (decision 10):
+     `openTurnInForAssignment(assignmentKey, reason, until)` and
+     `closeTurnInForAssignment(assignmentKey, reason)`, editor only, owner
+     guard, reason required, each a `TurnInOverrides` row. The key is the
+     assignment's ConfigID as StudentAssignments records it
+     (`CAS-8177-L05`), the same in every section, so one call covers every
+     student's row; a lesson's key also covers its parts
+     (`CAS-8177-L05-P2`). `until` is a date, open through that day; blank
+     is open until closed. The term rule passes when the row's marking
+     period is current or an open, unexpired override covers its
+     assignment, at the answer and at the verdict.
+   - *The code.* `CAS-<course>-L<lesson>-XXXX-XXXC`: lesson from the
+     assignment's ConfigID (`L00` when it has none); seven random
+     characters from Crockford's base32 alphabet (no I, L, O, U), from
+     `Utilities.getUuid()`; the last character is a Luhn mod 32 check over
+     the course digits, lesson digits and random part, which catches every
+     single mistyped character and most swapped neighbours. Typed O is read
+     as 0, I and L as 1. One code per student per assignment
+     (StudentAssignments' assignment ConfigID), unique in the tab.
+   - *A verdict past the term* marks the answer `ADDRESSES` and issues
+     nothing; the teacher's grant can.
+   - *The grant* is in stage 1 as an editor function,
+     `grantTurnInCode(studentEmail, configId, reason)`, owner only, reason
+     required. Stage 3 adds its dashboard button.
 2. **The flow.**
    - The input and return tabs.
    - The prompt, generated like the other flow prompts.

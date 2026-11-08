@@ -8,7 +8,9 @@
     "submitWarmUpAnswer": "writes only the caller's own open warm-up row, under a lock (_dashWarmUpSave_)",
     "submitWarmUpReply": "writes only the caller's own open warm-up row, under a lock (_dashWarmUpSave_)",
     "submitMyWork": "submits only a Ledger row whose student is the caller (_dashSubmit_)",
-    "getSubmitReflection": "the reflection questions for the caller's own row (_dashSubmitChecks_)"
+    "getSubmitReflection": "the reflection questions for the caller's own row (_dashSubmitChecks_)",
+    "getMyTurnInState": "the turn-in question, check state and code for the caller's own Ledger row only (_turnInLedgerRow_, 71)",
+    "submitTurnInAnswer": "screens and stores an answer for the caller's own Ledger row only; never issues a code (_turnInSubmit_, 71)"
   },
   "cas-ccps:teacher-dashboard": {
     "getMyStudentContext": "the My Context page the dashboard serves a non-teacher: the caller's own Student Context doc"

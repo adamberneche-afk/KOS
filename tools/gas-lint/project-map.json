@@ -89,7 +89,8 @@
       "cas-ccps/scripts/66_LessonDoc.js",
       "cas-ccps/scripts/67_AgendaDeck.js",
       "cas-ccps/scripts/68_LessonParts.js",
-      "cas-ccps/scripts/69_EvaluationHealth.js"
+      "cas-ccps/scripts/69_EvaluationHealth.js",
+      "cas-ccps/scripts/71_TurnInCodes.js"
     ]
   },
   "cas-ccps:unified-manual": {
@@ -170,7 +171,8 @@
       "cas-ccps/scripts/13_StudentDashboard.js",
       "cas-ccps/scripts/13b_StudentDashboardDemoLessons.js",
       "cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js",
-      "cas-ccps/scripts/63_DocHeader.js"
+      "cas-ccps/scripts/63_DocHeader.js",
+      "cas-ccps/scripts/71_TurnInCodes.js"
     ]
   },
   "cas-ccps:studio-steps": {

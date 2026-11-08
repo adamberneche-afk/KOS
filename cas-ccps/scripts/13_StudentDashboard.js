@@ -517,6 +517,14 @@ function getStudentDashboardData(termFilter) {
     }
   }
 
+  // The turn-in code (71): a.turnIn on cards in a course with
+  // TURN_IN_CODE_COURSES on. Off (the default), nothing is added.
+  try {
+    turnInAttach_(ss, cfg, googleId, data, assignments);
+  } catch (e) {
+    Logger.log("[S13] turn-in code not read: " + e.message);
+  }
+
   // Each lesson's part count (the student has every part, open or not),
   // and the locked parts of the lessons with a part open.
   const partCount = {};
@@ -1869,6 +1877,7 @@ function buildStudentDashboardHtml_(opts) {
   /* Touch screens (2026-11-07): every button, select and button-like link
      at least 44px tall; card buttons were about 37px. !important because
      the header's buttons and term menu set their own height. */
+${TURN_IN_CLIENT_CSS}
   @media (pointer: coarse){
     button,select,.act{min-height:44px !important}
     .do-next a{display:inline-flex;align-items:center;min-height:44px}
@@ -2309,6 +2318,7 @@ function cardHtml(a) {
       ? \`<div class="submit-msg \${_submitMsgs[a.fileId].ok ? "ok" : "err"}" role="status">\${esc(_submitMsgs[a.fileId].text)}</div>\`
       : ""
     }
+    \${turnInCardHtml(a)}
     \${a.submittedAt
       ? \`<div class="submitted-note">Last submitted \${esc(a.submittedAt)}</div>\`
       : ""
@@ -2905,6 +2915,7 @@ function _populateTermDropdown(data) {
 ${CLIENT_ESC_JS}
 ${CLIENT_SAFE_DOC_URL_JS}
 ${CLIENT_WORDS_JS}
+${turnInClientJs_()}
 
 loadData();
 </script>

@@ -281,7 +281,10 @@ const SHARED_CONFIG_KEYS = [
   "REFLECTION_ON_SUBMIT",
   // Friday's parent report rows prepared ahead (36); read through
   // _pivotValueOn_, per course.
-  "PARENT_REPORT_PREP"
+  "PARENT_REPORT_PREP",
+  // The courses with turn-in codes on (71, D17); off when blank. Read like
+  // a pivot flag: "8177", "8175,8177" or "all".
+  "TURN_IN_CODE_COURSES"
 ];
 
 // System text a student response must not contain (P0-03,
