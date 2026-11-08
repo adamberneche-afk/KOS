@@ -203,7 +203,8 @@ test('the warm-up readiness numbers are buttons, and a click filters the roster'
 // course and the marking period dates, kept in the panel until one Save.
 function settingsPanel() {
   const html = renderDashboard().buildDashboardHtml_();
-  assert.match(html, /id="settings-btn" onclick="openSettingsModal\(\)">⚙ Settings</);
+  // Under More ▾ since 2026-11-08 (teacher-dashboard-more-menu.test.js).
+  assert.match(html, /id="settings-btn" type="button" role="menuitem" tabindex="-1" onclick="openSettingsModal\(\)"><span aria-hidden="true">⚙<\/span> Settings</);
   assert.doesNotMatch(html, /💬 Feedback|openFeedbackPlacementModal/);
   const context = firstContextWith(html, ['renderSettings', 'setSettingDraft', 'saveSettingsChanges']);
   const body = { innerHTML: '' };

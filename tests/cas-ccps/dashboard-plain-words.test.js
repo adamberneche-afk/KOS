@@ -322,6 +322,7 @@ test('Student Dashboard: a card to revise says what the last check didn\'t find 
 test('touch screens get 44px targets; the teacher\'s student names are at least 24px', () => {
   const { student, teacher } = pages();
   assert.match(student, /@media \(pointer: coarse\)\{\s*button,select,\.act\{min-height:44px !important\}/);
-  assert.match(teacher, /@media \(pointer: coarse\)\{header button,header select\{min-height:44px !important\}\}/);
+  // The header's More ▾ items too (2026-11-08).
+  assert.match(teacher, /@media \(pointer: coarse\)\{header button,header select,header \[role="menuitem"\]\{min-height:44px !important\}\}/);
   assert.match(teacher, /\.name-link\{[^}]*padding:4px 2px;margin:-4px -2px;min-height:24px/);
 });

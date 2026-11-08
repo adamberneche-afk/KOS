@@ -173,7 +173,7 @@ test('every modal backdrop opens and closes with the "open" class the CSS uses',
     assert.match(html, new RegExp('_openPanel\\("' + id + '-modal-backdrop"'), id);
     assert.match(html, new RegExp('_closePanel\\("' + id + '-modal-backdrop"\\)'), id);
   }
-  assert.match(html, /id="lesson-schedule-btn" onclick="openLessonScheduleModal\(\)"/);
+  assert.match(html, /id="lesson-schedule-btn"[^>]*role="menuitem"[^>]*onclick="openLessonScheduleModal\(\)"/);
 });
 
 // ── The panel's client code, run against a small fake page (2026-10-22) ────
