@@ -9,11 +9,14 @@
 // question built from the student's own feedback. The answer is screened
 // here, in Apps Script, at once; an answer that passes waits as
 // PENDING_CHECK in the TurnInChecks tab for the Studio flow's verdict (stage
-// 2). applyTurnInVerdict_() applies that verdict: ADDRESSES issues the
+// 2, Flow 6: 72_TurnInCheckFlow.js materializes it, harvests the verdict and
+// retries). applyTurnInVerdict_() applies that verdict: ADDRESSES issues the
 // student's code for the assignment, NOT_YET stores the one-line reason the
-// student sees. A failed or missing verdict never issues a code, and the
-// screen alone never does. The teacher's grant (grantTurnInCode, editor
-// only) is the one way around the check, with its reason logged.
+// student sees. A check that never answers becomes CHECK_FAILED
+// (markTurnInCheckFailed_, from 72's retry): no code, and the student can
+// send the answer again. A failed or missing verdict never issues a code,
+// and the screen alone never does. The teacher's grant (grantTurnInCode,
+// editor only) is the one way around the check, with its reason logged.
 //
 // THE SWITCH: TURN_IN_CODE_COURSES (Script Property or the Ledger's _CONFIG
 // tab, SHARED_CONFIG_KEYS in 00), read like a pivot flag: blank or "off"
@@ -83,10 +86,14 @@ const TCHK = { CHECK_ID: 0, SUBMITTED_AT: 1, GOOGLE_ID: 2, STUDENT_CONFIG_ID: 3,
   ASSIGNMENT_ID: 5, COURSE: 6, KIND: 7, MILESTONE: 8, QUESTION: 9, ANSWER: 10, STATUS: 11, REASON: 12,
   DECIDED_AT: 13 };
 
-// A check's Status: waiting for the flow's verdict, then the verdict.
+// A check's Status: waiting for the flow's verdict, then the verdict, or
+// CHECK_FAILED when the flow never gave one (72's retries ran out). A failed
+// check issues nothing; it waits for the teacher (stage 3's review queue
+// reads these rows) and the student can send the answer again.
 const TURN_IN_PENDING = "PENDING_CHECK";
 const TURN_IN_ADDRESSES = "ADDRESSES";
 const TURN_IN_NOT_YET = "NOT_YET";
+const TURN_IN_CHECK_FAILED = "CHECK_FAILED";
 
 // The screen. An answer at least half of whose 4-word runs appear in the
 // feedback line or the question is mostly pasted back. Counted on the
@@ -619,6 +626,29 @@ function applyTurnInVerdict_(checkId, verdict, reason, now) {
   return { ok: true, status: v, issued: true, code: _turnInIssueCode_(ss, row, "CHECK", "") };
 }
 
+// A PENDING_CHECK row the flow never answered (72's retries ran out) becomes
+// CHECK_FAILED, with why in Reason (the system's words, not the student's).
+// It issues nothing, ever: the operator's rule that a broken check never
+// issues a code. Returns { ok } or { ok: false, error }.
+function markTurnInCheckFailed_(checkId, why) {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(TURN_IN_CHECKS_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return { ok: false, error: "NO_CHECK" };
+  const ids = sheet.getRange(2, TCHK.CHECK_ID + 1, sheet.getLastRow() - 1, 1).getValues();
+  const i = ids.findIndex(function (r) { return String(r[0]).trim() === String(checkId || "").trim(); });
+  if (i === -1) return { ok: false, error: "NO_CHECK" };
+  const sheetRow = i + 2;
+  if (String(sheet.getRange(sheetRow, TCHK.STATUS + 1).getValue()).trim() !== TURN_IN_PENDING) {
+    return { ok: false, error: "ALREADY_DECIDED" };
+  }
+  sheet.getRange(sheetRow, TCHK.STATUS + 1).setValue(TURN_IN_CHECK_FAILED);
+  sheet.getRange(sheetRow, TCHK.REASON + 1).setNumberFormat("@")
+    .setValue(sheetSafeText_(String(why || "").slice(0, TURN_IN_REASON_MAX)));
+  sheet.getRange(sheetRow, TCHK.DECIDED_AT + 1).setValue(new Date().toISOString());
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------------------
 // The teacher's grant (stage 3 adds the dashboard's button)
 // ---------------------------------------------------------------------------
@@ -668,6 +698,7 @@ function _turnInLedgerRow_(cfg, googleId, configId) {
 //   { state: "READY", code }               the code, with Copy
 //   { state: "PENDING_CHECK" }             "Checking your answer…"
 //   { state: "NOT_YET", reason, question } the reason, and the form again
+//   { state: "CHECK_FAILED", question }    the check couldn't run; the form again
 //   { state: "ANSWER", question }          the form
 //   { state: "TERM_CLOSED" }               ask the teacher
 // The question shows only once feedback has arrived; a code shows whenever
@@ -686,6 +717,9 @@ function turnInView_(ss, cfg, row, now, cache) {
   if (check && String(check[TCHK.STATUS]).trim() === TURN_IN_NOT_YET) {
     view.state = TURN_IN_NOT_YET;
     view.reason = String(check[TCHK.REASON] || "").trim();
+  } else if (check && String(check[TCHK.STATUS]).trim() === TURN_IN_CHECK_FAILED) {
+    // Reason holds the system's note for the teacher, never shown here.
+    view.state = TURN_IN_CHECK_FAILED;
   }
   return view;
 }
@@ -857,6 +891,8 @@ function turnInCardHtml(a) {
   } else {
     if (t.state === "NOT_YET") {
       h += '<p class="ti-notyet"><b>Not yet:</b> ' + esc(t.reason || "Your answer doesn\\u2019t answer the question yet.") + ' Rewrite it and send it again.</p>';
+    } else if (t.state === "CHECK_FAILED") {
+      h += '<p class="ti-notyet">We couldn\\u2019t check your answer. Your teacher can see it. You can also send it again.</p>';
     }
     var draft = _tiDrafts[a.configId] || "";
     var min = t.minWords || TI_MIN_WORDS;

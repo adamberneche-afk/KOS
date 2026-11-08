@@ -49,7 +49,10 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 | Student Docs | with their row | A student's workspace Doc follows its `Ledger` row; a warm-up Doc follows its `WarmUpQueue` row. Feedback posted as comments (`FEEDBACK_AS_COMMENT`) is part of the Doc and goes with it | — |
 
 Kept on their own rules, outside the schedule: `WarmUpFlowReturn` (harvested
-rows deleted after 14 days by `41`), the Family Mail Sentinel tabs (below),
+rows deleted after 14 days by `41`), `TurnInCheckInput` and
+`TurnInCheckReturn` (Flow 6, `72`: an input row's copy of the answer is
+removed once its check is done, and finished rows of both are deleted after
+14 days), the Family Mail Sentinel tabs (below),
 the CAS attention signal (overwritten every run), and the Canvas gradebook
 exports (deleted after enrolling).
 
@@ -236,10 +239,10 @@ marks or removes those rows yet.
 
 | | |
 |---|---|
-| **Fields** | `TurnInChecks`: CheckID, SubmittedAt, GoogleID (district email), StudentConfigID, StudentFileID, AssignmentID, Course, Kind (NOT_YET or PASSED), Milestone and Question (as asked), **Answer: the student's own words** (system text neutralized, stored as plain text), Status (`PENDING_CHECK`, `ADDRESSES`, `NOT_YET`), Reason (the check's one line), DecidedAt. `TurnInCodes`: Code, GoogleID, AssignmentID, StudentConfigID, Course, Lesson, IssuedAt, How (`CHECK` or `GRANT`), GrantReason (the teacher's). `TurnInOverrides`: AssignmentKey (an assignment ConfigID such as `CAS-8177-L05`, not a student's), OpenedBy (the script owner's address), OpenedAt, Reason, Until, ClosedAt, ClosedReason: no student data. No names. |
+| **Fields** | `TurnInChecks`: CheckID, SubmittedAt, GoogleID (district email), StudentConfigID, StudentFileID, AssignmentID, Course, Kind (NOT_YET or PASSED), Milestone and Question (as asked), **Answer: the student's own words** (system text neutralized, stored as plain text), Status (`PENDING_CHECK`, `ADDRESSES`, `NOT_YET`, `CHECK_FAILED`), Reason (the check's one line, or the system's note on a failed check), DecidedAt. `TurnInCodes`: Code, GoogleID, AssignmentID, StudentConfigID, Course, Lesson, IssuedAt, How (`CHECK` or `GRANT`), GrantReason (the teacher's). `TurnInOverrides`: AssignmentKey (an assignment ConfigID such as `CAS-8177-L05`, not a student's), OpenedBy (the script owner's address), OpenedAt, Reason, Until, ClosedAt, ClosedReason: no student data. No names. |
 | **Why collected** | The turn-in code (`meta/TURN_IN_CODE_PLAN_2026-11.md`, D17): completion credit in Canvas for answering one question about the feedback. The code is bound to one student and one assignment here, never by anything in the student's doc. The answer is kept apart from `ReflectionLog`, whose rows choose the next reflection questions and feed Flow 2 and the Student Context doc. |
-| **Written by** | `submitTurnInAnswer()` (an answer that passes the screen) and `applyTurnInVerdict_()` (the verdict; stage 2's harvest will call it), `grantTurnInCode()` (the teacher, from the editor), and `openTurnInForAssignment()` / `closeTurnInForAssignment()` (the teacher, from the editor: one assignment opened for every student on it past its marking period). |
-| **Read by** | The Student Dashboard (13/71): each student sees only their own question, state and code. From stage 2, the Studio flow will see one answer, its question and milestone, and return a verdict. |
+| **Written by** | `submitTurnInAnswer()` (an answer that passes the screen), `applyTurnInVerdict_()` (the verdict, from Flow 6's harvest in `72`) and `markTurnInCheckFailed_()` (no verdict after the retries), `grantTurnInCode()` (the teacher, from the editor), and `openTurnInForAssignment()` / `closeTurnInForAssignment()` (the teacher, from the editor: one assignment opened for every student on it past its marking period). |
+| **Read by** | The Student Dashboard (13/71): each student sees only their own question, state and code. Flow 6 (`72`, stage 2): Apps Script copies one answer, its question and milestone into a `TurnInCheckInput` row's `PromptText`; Studio's Gemini step reads that one cell and returns a verdict and one sentence to `TurnInCheckReturn`. The CAS attention signal and the overnight email count failed checks (counts only). |
 | **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
 | **Retention** | `LEDGER_RETENTION_YEARS`, with the Ledger (counted in `checkRetentionSchedule()`). The answers are the student's own writing, like `ReflectionLog`. Code and answer counts are never evidence of learning (the plan's standing rules). |
 

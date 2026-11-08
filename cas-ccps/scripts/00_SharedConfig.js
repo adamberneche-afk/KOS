@@ -301,6 +301,8 @@ const SYSTEM_TEXT_PATTERNS = [
   /\[\s*MILESTONE_OUTCOMES/i,
   /<<<\s*(END_)?PROCESS_REFLECTION\s*>>>/i,
   /<<<\s*(END_)?EARLIER_PARTS\s*>>>/i,
+  // The turn-in check's answer delimiter (72, Flow 6, 2026-11-08).
+  /<<<\s*(END_)?STUDENT_ANSWER\s*>>>/i,
   // The evaluator's tertiary-evidence line (#216); 37 parses the last one
   // it wrote, and a student's copy must never reach it (Docket IV).
   /\[\s*ALSO_SHOWN/i,

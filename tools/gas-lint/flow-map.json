@@ -196,6 +196,16 @@
       "binding": "checkFamilyMailFlowBinding",
       "liveness": "checkFamilyMailFlowLiveness",
       "fixture": "installFamilyMailFixture"
+    },
+    "cas-ccps:flow-6-turn-in-check": {
+      "project": "cas-ccps:central-ledger",
+      "materialize": "buildTurnInCheckInputs",
+      "harvest": "harvestTurnInCheckReturns",
+      "canary": "runTurnInCheckFlowCanary",
+      "binding": "checkTurnInCheckFlowBinding",
+      "liveness": "checkTurnInCheckFlowLiveness",
+      "fixture": "installTurnInCheckFixture",
+      "_note": "D17 stage 2, 2026-11-08: the turn-in check. 72_TurnInCheckFlow.js materializes one TurnInCheckInput row per PENDING_CHECK answer in TurnInChecks (71), the Flow adds a row to TurnInCheckReturn, and the harvest applies the verdict through 71's applyTurnInVerdict_. runTurnInCheckFlow (a Ledger cycle job) runs harvest, retry and materialize in one pass. Off while TURN_IN_CODE_COURSES is blank."
     }
   }
 }

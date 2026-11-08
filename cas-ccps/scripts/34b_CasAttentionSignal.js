@@ -30,6 +30,9 @@
 //   - students rated below satisfactory on the SCR (a current rating of 4
 //     or 5; the state scale counts 1-3 as satisfactory, 1 the highest),
 //     with the change since yesterday
+//   - turn-in answers whose check failed (CHECK_FAILED), waiting for the
+//     teacher (72, Flow 6; only while TURN_IN_CODE_COURSES is on). 34c's
+//     LAST NIGHT carries the same count, and the stalled one.
 // SECTION 2, ADMIN
 //   - Ledger cycle jobs (64) failing now or that failed today, by function
 //     name, with the run-in-a-row and today's counts
@@ -134,6 +137,20 @@ function writeCasSignal_(watchdog, now) {
     students.push("Students newly eligible for a retry: " + state.retryNew +
       (state.prevRetry ? "" : " (first scan, so every eligible student counts as new)") +
       ". The Teacher Dashboard's SCR Review lists them; confirm on each student's page");
+  }
+
+  // ── Turn-in checks that failed (72), waiting for the teacher ──
+  if (!turnInOffEverywhere_()) {
+    try {
+      const ti = turnInCheckCounts_(SpreadsheetApp.openById(getConfig_().ledgerSsId), now);
+      if (ti && ti.failed > 0) {
+        students.push("Turn-in answers the check couldn't decide, waiting for you: " + ti.failed +
+          " (no code issued; grantTurnInCode() from the editor until the Teacher Dashboard's review queue)");
+      }
+    } catch (e) {
+      console.error("[CasSignal] Turn-in check count failed: " + e.message);
+      students.push("Turn-in checks: unavailable (Executions shows why)");
+    }
   }
 
   // ── Admin ──

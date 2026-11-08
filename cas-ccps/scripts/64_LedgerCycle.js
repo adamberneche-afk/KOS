@@ -34,6 +34,8 @@
 // installRegistrationTrigger() and installAlignmentBackfillTrigger() are the
 // Run-menu entry points for those two jobs (2026-10-20): each adds its job to
 // the cycle, or gives it its own trigger when the cycle isn't installed.
+// installTurnInCheckFlow() (72, 2026-11-08) does the same for
+// runTurnInCheckFlow, Flow 6's harvest, retry and materialize.
 // =============================================================================
 
 const LC_TRIGGER_FN = "runLedgerCycle";
@@ -70,6 +72,7 @@ const LC_JOBS = [
   { fn: "runAlignmentLogBackfill_",  every: 5  }, // 22
   { fn: "runQueueWatchdog",          every: 10 }, // 34
   { fn: "unlockReadyParts",          every: 5  }, // 68
+  { fn: "runTurnInCheckFlow",        every: 2  }, // 72 (Flow 6; installTurnInCheckFlow())
 ];
 
 /** The cycle. Time trigger, every minute. */

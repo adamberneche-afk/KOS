@@ -1,7 +1,9 @@
 'use strict';
-// Regenerates cas-ccps/scripts/40_FlowPrompts.js's six prompt constants FROM
+// Regenerates cas-ccps/scripts/40_FlowPrompts.js's seven prompt constants FROM
 // their real sources — cas-ccps/docs/CAS_Flow3_Flow4_Specification.html
-// (Flows 3 A/B/C, 4, 5) and cas-ccps/scripts/15_StudioFlowPrompts.js (Flow 1) —
+// (Flows 3 A/B/C, 4, 5), cas-ccps/scripts/15_StudioFlowPrompts.js (Flow 1) and
+// cas-ccps/docs/TURN_IN_CHECK_FLOW.md (Flow 6, the turn-in check: everything
+// below its first "---" line, as the family mail generator reads its .md) —
 // the same relationship tools/kos-personal/generate-flow-prompts.js has to
 // CURATOR_PROMPT.md/VECTOR_CLASSIFY_PROMPT.md there.
 //
@@ -39,8 +41,9 @@
 // tests/cas-ccps/flow-prompts.test.js remains the CI drift guard exactly as
 // before; this script is what actually closes a drift it reports.
 //
-// Usage: node tools/cas-ccps/generate-flow-prompts.js
+// Usage: node tools/cas-ccps/generate-flow-prompts.js [--check]
 //   (run from anywhere; paths below are repo-root-relative)
+//   --check: exit 1 if 40_FlowPrompts.js would change, without writing it.
 
 const fs = require('fs');
 const path = require('path');
@@ -50,6 +53,7 @@ const REPO_ROOT = path.join(__dirname, '..', '..');
 const SCRIPTS = path.join(REPO_ROOT, 'cas-ccps', 'scripts');
 const SPEC_HTML_PATH = path.join(REPO_ROOT, 'cas-ccps', 'docs', 'CAS_Flow3_Flow4_Specification.html');
 const FLOW1_REFERENCE_PATH = path.join(SCRIPTS, '15_StudioFlowPrompts.js');
+const FLOW6_SOURCE_PATH = path.join(REPO_ROOT, 'cas-ccps', 'docs', 'TURN_IN_CHECK_FLOW.md');
 const TARGET_PATH = path.join(SCRIPTS, '40_FlowPrompts.js');
 
 // Same extraction 40_FlowPrompts.js's own header documents, and the same one
@@ -81,6 +85,14 @@ function extractFlow1(src) {
   return m[1].trim();
 }
 
+// Flow 6: everything after the .md's first line that is exactly "---".
+function extractFromMarkdown(markdown, label) {
+  const lines = String(markdown).replace(/\r\n/g, '\n').split('\n');
+  const rule = lines.indexOf('---');
+  if (rule === -1) throw new Error(label + ' has no "---" line above the prompt.');
+  return lines.slice(rule + 1).join('\n').trim();
+}
+
 // Replaces exactly one `const NAME = \`...\`.trim();` block in `src`,
 // preserving the file's own established shape (leading/trailing newline
 // inside the backticks, `.trim()` at the call site strips them back off —
@@ -92,7 +104,7 @@ function replaceConstant(src, name, body) {
   return src.replace(re, replacement);
 }
 
-function main() {
+function regenerate() {
   const specHtml = fs.readFileSync(SPEC_HTML_PATH, 'utf8');
   const spec = extractFromSpec(specHtml);
   const REQUIRED_TITLES = [
@@ -114,6 +126,7 @@ function main() {
     FLOW_3_PROMPT_MODE_C: spec['System Prompt — Mode C (Baseline)'],
     FLOW_4_PROMPT: spec['System Prompt — Studio Flow 4'],
     FLOW_5_PROMPT: spec['System Prompt — Flow 5 Bridging'],
+    FLOW_6_PROMPT: extractFromMarkdown(fs.readFileSync(FLOW6_SOURCE_PATH, 'utf8'), FLOW6_SOURCE_PATH),
   };
 
   let target = fs.readFileSync(TARGET_PATH, 'utf8');
@@ -124,9 +137,24 @@ function main() {
     if (updated !== target) changed.push(name);
     target = updated;
   });
+  return { before: before, after: target, changed: changed };
+}
 
-  if (target === before) {
-    console.log('No change — all six constants in ' + TARGET_PATH + ' already match their sources.');
+function main() {
+  const r = regenerate();
+  const target = r.after;
+  const changed = r.changed;
+  if (process.argv.includes('--check')) {
+    if (target !== r.before) {
+      console.error('40_FlowPrompts.js is out of date (' + changed.join(', ') + '). Run: node tools/cas-ccps/generate-flow-prompts.js');
+      process.exit(1);
+    }
+    console.log('40_FlowPrompts.js matches its sources.');
+    return;
+  }
+
+  if (target === r.before) {
+    console.log('No change — all seven constants in ' + TARGET_PATH + ' already match their sources.');
     return;
   }
 
@@ -140,4 +168,6 @@ function main() {
     'checkFlowPrompts() (after a real push) to confirm.');
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { regenerate, extractFromMarkdown, FLOW6_SOURCE_PATH, TARGET_PATH };
