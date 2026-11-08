@@ -1,9 +1,9 @@
 # Turn-in code: proof of engagement in Canvas (2026-11-07)
 
 **Status:** design, from the operator's decisions of 2026-11-07 and
-2026-11-08. Stages 1 (PR #391), 2 (Flow 6, the turn-in check, PR #392) and
-3 (the teacher's side) are built, behind a switch that is off; see "Build
-stages". The decisions below are the operator's. **No question is open.** [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
+2026-11-08. Stages 1 (PR #391), 2 (Flow 6, the turn-in check, PR #392),
+3 (the teacher's side, PR #393) and 4 (the Canvas side) are built, behind a
+switch that is off; see "Build stages". The decisions below are the operator's. **No question is open.** [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
 wins where the two disagree. No student names, emails, file IDs or
 ConfigIDs appear here, by design.
 
@@ -312,7 +312,7 @@ competency with no student text. It is not needed now.
    - The review queue for flow failures and overrules.
    - The Canvas ZIP check and the grade file.
 
-   **Stage 3 built (this PR):** the Teacher Dashboard's **🎟 Turn-in codes**
+   **Stage 3 built (PR #393):** the Teacher Dashboard's **🎟 Turn-in codes**
    panel, `cas-ccps/scripts/73_TurnInTeacherPanel.js` (its server half; the
    markup and client are in `07`) and `74_TurnInCanvasCheck.js` (the Canvas
    check), `tests/cas-ccps/turn-in-teacher.test.js`. Details settled in the
@@ -381,14 +381,85 @@ competency with no student text. It is not needed now.
      before uploading anything.
 4. **Canvas.**
    - The cartridge's submission type changes from URL to text
-     (`build-canvas-cartridge.js` writes `<format type="url"/>` today).
+     (`build-canvas-cartridge.js` wrote `<format type="url"/>` for every
+     assignment).
    - Its instructions say "paste your turn-in code".
-   - The operator re-imports the cartridges.
+   - ~~The operator re-imports the cartridges.~~ For the pilot, the
+     assignments are switched by hand in Canvas instead (below).
+
+   **Stage 4 built (this PR):** `tools/cas-ccps/build-canvas-cartridge.js
+   --turn-in <selector>`, `tests/tools/canvas-cartridge-turn-in.test.js`.
+   Details settled in the build:
+   - *The selector.* Course codes and lesson ConfigIDs, comma-separated:
+     `--turn-in 8177` (every 8177 lesson) or `--turn-in
+     CAS-8177-THE-HYPE-MACHINE,CAS-8175-L05` (the `CAS-` prefix and case are
+     optional). The lesson data has no unit field (8177's pacing guide
+     groups lessons by quarter in prose only), so **there is no unit
+     selector**: the pilot unit is named as its lessons. A part
+     (`…-P2`) is refused, since Canvas keeps one assignment per lesson; so
+     are a unit (`8177:U3`) and an unknown name, each with a message.
+     8177's ConfigIDs are slugs (`CAS-8177-THE-HYPE-MACHINE`), not `L<nn>`.
+     (So every 8177 code reads `CAS-8177-L00-…`: stage 1 takes the lesson
+     digits from an `L<n>` the ConfigID doesn't have. Codes still work,
+     since ownership is looked up in `TurnInCodes`; the code just doesn't
+     say which lesson.)
+   - *Default: nothing changes.* Without `--turn-in` the committed
+     cartridges are byte for byte what they were (tested). A `--turn-in`
+     build goes to `canvas-cartridges/turn-in/<course>.imscc`, which is
+     git-ignored; `--check` refuses `--turn-in`.
+   - *The XML.* A selected assignment's `<format type="url"/>` becomes
+     `<format type="text"/>`, which Canvas's Common Cartridge importer turns
+     into `online_text_entry` (it reads `text` and `html` as text entry,
+     `url` as Website URL). Nothing else in the XML changes.
+   - *The page.* The description opens with "**To turn this in:** open your
+     assignment dashboard, answer the question about your feedback, then
+     copy your turn-in code and paste it here.", the dashboard words linked
+     to the URL the page's Get feedback section already links (no link when
+     there is none). The existing instructions follow unchanged, except
+     **How to submit**, which asks for the code by **Start Assignment** →
+     **Text Entry** instead of the document's link.
+   - *Points and group.* Points stay 100: completion credit comes from the
+     teacher's upload file (stage 3). The cartridge sets no assignment
+     group, so the teacher puts each turn-in assignment in the **formative
+     group** by hand (decision 2).
+   - *The hand switch.* `--turn-in <selector> --print` writes nothing; it
+     prints the selected assignments (course, ConfigID, Canvas title) and
+     the Canvas steps with the text to paste.
+
+   **Re-import: don't, for the pilot.** What the repo records: a re-import
+   into a course that already has the cartridge **duplicates its modules**
+   unless the earlier modules are deleted first (operator, 2026-10-12), and
+   a module that already has submissions has to stay (2026-10-22). Canvas's
+   importer does carry each cartridge identifier into the item, so a
+   re-import may instead update an assignment in place; either way it
+   touches every lesson in the course, and deleting an assignment that has
+   submissions loses them. So:
+   - **The pilot (recommended): switch the pilot assignments by hand, no
+     re-import.** Run `node tools/cas-ccps/build-canvas-cartridge.js
+     --turn-in <the pilot's lessons> --print`. In Canvas, for each listed
+     assignment: **Assignments** → the assignment → **Edit**; paste the
+     instruction (A) at the top of the description and replace the
+     Website URL paragraph under **How to submit** with (B), or (C) for a
+     lesson in parts; **Submission Type**: Online, **Text Entry** checked,
+     **Website URL** unchecked; **Assignment Group**: the formative group;
+     points unchanged; anonymous grading off; **Save**. Then set
+     `TURN_IN_CODE_COURSES` to `8177` in the Ledger's `_CONFIG` tab. The
+     switch is per course, so every 8177 card then offers a code; only the
+     switched assignments take one in Canvas, so tell the class which.
+   - **Later (the cartridge option):** a fresh import only: a new course
+     shell, the next term, or a new teacher's install. Build with
+     `--turn-in` and import `turn-in/<course>.imscc` instead of the
+     committed one; move the turn-in assignments to the formative group.
+   - **Any later re-import into the pilot course** (the carried "re-import
+     both cartridges" included) must be built with the same `--turn-in`
+     selection; a default build would put the pilot assignments back to
+     Website URL, or add Website URL copies beside them. Delete the earlier
+     modules first, keeping any with submissions.
 5. **The lesson report.**
 
 Stages 1–3 can be piloted before Canvas changes: students see and copy codes
 while Canvas still takes the URL (the Canvas check needs stage 4's text
-entries).
+entries, which the hand switch gives the pilot assignments).
 
 ## Not doing
 

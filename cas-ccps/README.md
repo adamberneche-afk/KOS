@@ -783,6 +783,32 @@ with `node tools/cas-ccps/build-canvas-cartridge.js` after changing a lesson
 or an approved prompt; the tests fail while a committed cartridge is out of
 date. (The pacing-guide unit builder, `buildCourse`, is kept and tested.)
 
+**Turn-in codes (stage 4 of [`meta/TURN_IN_CODE_PLAN_2026-11.md`](../meta/TURN_IN_CODE_PLAN_2026-11.md), D17).**
+`--turn-in <selector>` makes the selected lessons' assignments a text entry
+(`<format type="text"/>`, which Canvas imports as Text Entry) whose
+description opens with the turn-in instruction ("To turn this in: open your
+assignment dashboard, answer the question about your feedback, then copy
+your turn-in code and paste it here.") and whose **How to submit** asks for
+the code. The selector is course codes and lesson ConfigIDs, comma-separated
+(`8177`, or `CAS-8177-THE-HYPE-MACHINE,CAS-8175-L05`); there is no unit
+selector, because the lesson data has no unit field, and a part is refused
+(Canvas has one assignment per lesson). The build goes to
+`canvas-cartridges/turn-in/` (git-ignored); without `--turn-in` the
+committed cartridges don't change. Points stay 100; the cartridge sets no
+assignment group, so move turn-in assignments to the formative group.
+
+**Re-importing into a course that has the cartridge:** the earlier import's
+modules are duplicated unless deleted first (2026-10-12), and a module with
+submissions has to stay. So an assignment already in Canvas is switched **by
+hand**, not by a re-import: `node tools/cas-ccps/build-canvas-cartridge.js
+--turn-in <selector> --print` lists the assignments and the text to paste,
+and for each one: Edit, the instruction at the top and the new How to submit
+paragraph, Submission Type Online with only **Text Entry** checked, the
+formative group, Save. The `--turn-in` cartridge is for a fresh import (a
+new course shell, the next term, a new teacher's install). A later re-import
+into a course whose assignments were switched must be built with the same
+`--turn-in`, or it puts them back to Website URL.
+
 Flow 2's Apps Script half has a self-provisioning canary
 (`runFlow2Canary()` in `35_FlowPreflightAndCanary.js`) that stubs Studio out
 deliberately — it verifies the code path, not the flow.
