@@ -447,7 +447,7 @@ function overnightMaybeMail_(health, now, tz) {
     "",
   ].concat(n ? health.problems.map(function (p) { return "- " + p; }) : [health.allClear || "No problems found."])
     .join("\n");
-  MailApp.sendEmail(to, subject, body);
+  MailApp.sendEmail(casMail_(to, subject, body));
   props.setProperty(ON_MAIL_STATE_KEY, today);
   return true;
 }

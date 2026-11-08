@@ -823,11 +823,11 @@ function checkShadowMatrixInterrupts_(ss, cfg) {
     "— Classroom Agency System";
 
   try {
-    MailApp.sendEmail({
+    MailApp.sendEmail(casMail_({
       to:      teacherEmail,
       subject: subject,
       body:    body
-    });
+    }));
     Logger.log("[S25] Shadow matrix digest sent to " + teacherEmail);
   } catch (mailErr) {
     Logger.log("[S25] Could not send shadow matrix email: " + mailErr.message);
@@ -1295,7 +1295,7 @@ function _checkCronHealth_(stampKey, stageName, maxAgeMinutes, notifyEmail) {
              maxAgeMinutes + " min. Sending alert.");
 
   try {
-    MailApp.sendEmail({
+    MailApp.sendEmail(casMail_({
       to:      notifyEmail,
       subject: "[CAS] Cron health warning — " + stageName,
       body:    "The warm-up pipeline cron stage " + stageName + " last ran " +
@@ -1307,7 +1307,7 @@ function _checkCronHealth_(stampKey, stageName, maxAgeMinutes, notifyEmail) {
                "for details.\n\n" +
                "Last successful run: " + stampStr + "\n\n" +
                "— Classroom Agency System"
-    });
+    }));
     props.setProperty(alertKey, now.toISOString());
     Logger.log("[CRON-HEALTH] Alert sent to " + notifyEmail);
   } catch(mailErr) {

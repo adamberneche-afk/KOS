@@ -453,7 +453,7 @@ function notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId, ledgerShee
   const what = lessonName ? " on " + lessonName : "";
   const dashboardUrl = (cfg && cfg.teacherDashboardUrl) || "";
   try {
-    MailApp.sendEmail(
+    MailApp.sendEmail(casMail_(
       teacherEmail,
       "⚠️ Feedback didn't finish — " + who + (lessonName ? ", " + lessonName : ""),
       who + "'s work" + what + " was sent to be checked, but the check didn't " +
@@ -477,7 +477,7 @@ function notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId, ledgerShee
       "Don't use the Admin Recovery Panel reset for this: the feedback would arrive twice.\n" +
       "If this keeps happening, tell your system admin and give them this code: " + configId + "\n\n" +
       "— Classroom Agency System (automated alert)"
-    );
+    ));
   } catch (e) {
     Logger.log("[BACKPROP] notifyTimeoutToTeacher_ error: " + e.message);
   }
@@ -513,7 +513,7 @@ function notifyFailedCheckToTeacher_(cfg, teacherEmail, fileId, configId, ledger
   const who = c.studentName || "A student";
   const dashboardUrl = (cfg && cfg.teacherDashboardUrl) || "";
   try {
-    MailApp.sendEmail(
+    MailApp.sendEmail(casMail_(
       teacherEmail,
       "⚠️ Feedback couldn't be made — " + who + (c.lessonName ? ", " + c.lessonName : ""),
       who + "'s work" + (c.lessonName ? " on " + c.lessonName : "") + " was checked, but the " +
@@ -527,7 +527,7 @@ function notifyFailedCheckToTeacher_(cfg, teacherEmail, fileId, configId, ledger
       "If it happens again for the same work, tell your system admin and give them this code: " +
       configId + "\n\n" +
       "— Classroom Agency System (automated alert)"
-    );
+    ));
   } catch (e) {
     Logger.log("[BACKPROP] notifyFailedCheckToTeacher_ error: " + e.message);
   }

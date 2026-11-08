@@ -569,12 +569,12 @@ function autoHealthAlert() {
     "Open the Central Ledger Spreadsheet and use ⚙️ Admin Controls to resolve these.\n\n" +
     "— Assignment System (automated alert)";
 
-  MailApp.sendEmail(
+  MailApp.sendEmail(casMail_(
     cfg.adminNotifyEmail,
     "⚠️ Assignment System — " + issues.length +
       " Issue" + (issues.length === 1 ? "" : "s") + " Need Attention",
     body
-  );
+  ));
 
   Logger.log("[AUTO-HEALTH] Alert sent to " + cfg.adminNotifyEmail +
              " — " + issues.length + " issue(s) found.");

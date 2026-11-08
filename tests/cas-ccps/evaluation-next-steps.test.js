@@ -210,7 +210,8 @@ test('the timeout email says to restart Flow 2 or resubmit from the dashboard, n
 test('backPropagateCompletions: an ERROR_EVALUATION row is closed and the teacher told to have the student resubmit', () => {
   const { exported, sandbox } = load();
   const sent = [];
-  sandbox.MailApp.sendEmail = function (to, subject, body) { sent.push({ to, subject, body }); };
+  // CAS mail goes as one message object (casMail_, 00; plan L7).
+  sandbox.MailApp.sendEmail = function (m) { sent.push({ to: m.to, subject: m.subject, body: m.body }); };
   const { queue, ledger } = backpropFixture(sandbox, [
     { queue: 'STAGED', staging: 'ERROR_EVALUATION', ledger: 'STAGED' },
   ]);

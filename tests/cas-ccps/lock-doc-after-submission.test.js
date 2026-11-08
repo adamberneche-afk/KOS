@@ -20,7 +20,7 @@ function fileWith(sandbox, perms) {
 }
 
 test('_lockDocAfterSubmission_: every editor becomes a viewer, the assigning teacher a commenter', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('04_Form2_TurnInGate.js')], ['_lockDocAfterSubmission_']);
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('04_Form2_TurnInGate.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_lockDocAfterSubmission_']);
   const file = fileWith(sandbox, { editors: ['1234567@ccpsnet.net', 'Teacher@ccpsnet.net'] });
 
   const res = exported._lockDocAfterSubmission_(file.getId(), 'teacher@ccpsnet.net');
@@ -32,7 +32,7 @@ test('_lockDocAfterSubmission_: every editor becomes a viewer, the assigning tea
 });
 
 test('_lockDocAfterSubmission_: an unopenable file is reported, never thrown', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('04_Form2_TurnInGate.js')], ['_lockDocAfterSubmission_']);
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('04_Form2_TurnInGate.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_lockDocAfterSubmission_']);
   const res = exported._lockDocAfterSubmission_('no-such-file', 'teacher@ccpsnet.net');
   assert.equal(res.failed.length, 1);
 });

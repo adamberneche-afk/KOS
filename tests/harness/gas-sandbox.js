@@ -1233,7 +1233,7 @@ function makeMailAppMock() {
         const m = args[0];
         sent.push({
           to: m.to, subject: m.subject, body: m.body,
-          htmlBody: m.htmlBody, noReply: m.noReply,
+          htmlBody: m.htmlBody, noReply: m.noReply, name: m.name,
         });
       } else {
         sent.push({ to: args[0], subject: args[1], body: args[2] });
@@ -1244,6 +1244,33 @@ function makeMailAppMock() {
     getRemainingDailyQuota: () => 1500,
     getSentMessages: () => sent.slice(),
     __sent: sent,
+  };
+}
+
+// Drive — the advanced service (Drive API v3), only Permissions.create,
+// which cas-ccps uses to share without Drive's "shared with you" email
+// (02's shareWithoutEmail_, plan L7). Not in the sandbox by default, so a
+// test sees the advanced service turned off (Drive undefined) unless it
+// passes { Drive: makeDriveAdvancedMock() } as an extra global. It gives the
+// same file in the DriveApp mock the role (writer -> editor, commenter,
+// reader -> viewer) and records each call in __calls, options included.
+// failWith: a message every create throws, to exercise a fallback.
+function makeDriveAdvancedMock(opts = {}) {
+  const calls = [];
+  let driveApp = null;
+  const roleOf = { writer: 'editor', commenter: 'commenter', reader: 'viewer' };
+  return {
+    _bind(d) { driveApp = d; },
+    Permissions: {
+      create(resource, fileId, optionalArgs) {
+        calls.push({ resource, fileId, optionalArgs });
+        if (opts.failWith) throw new Error(opts.failWith);
+        if (!roleOf[resource.role]) throw new Error('Drive mock: unsupported role ' + resource.role);
+        driveApp.getFileById(fileId)._setRole(resource.emailAddress, roleOf[resource.role]);
+        return { id: 'perm-' + calls.length, role: resource.role, type: resource.type };
+      },
+    },
+    __calls: calls,
   };
 }
 
@@ -1417,6 +1444,7 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     MimeType: { GOOGLE_DOCS: 'application/vnd.google-apps.document', CSV: 'text/csv' },
     ...extraGlobals,
   };
+  if (sandbox.Drive && typeof sandbox.Drive._bind === 'function') sandbox.Drive._bind(sandbox.DriveApp);
   const context = vm.createContext(sandbox);
   const footer = `\n;globalThis.__exported = { ${exposeNames.join(', ')} };`;
   // One script per file, each under its own filename, so V8 coverage (and
@@ -1471,4 +1499,5 @@ function makeStudioEvent(inputMap) {
 module.exports = {
   loadGasFile, loadGasFiles, FakeSheet, FakeSpreadsheet,
   FakeDriveFolder, FakeDriveFile, FakeDoc, makeStudioEvent, fakeZipBlob,
+  makeDriveAdvancedMock,
 };

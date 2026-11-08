@@ -433,7 +433,12 @@ instead of the Ledger (`student-doc-service.test.js`,
 `review-queue-text-scrub.test.js`); the Drive walks over class folders and
 SCR exports stopping at a cap or a time limit and saying so, in the access
 repair and in the FERPA health check (`student-data-access-repair.test.js`,
-`ferpa-export-scan-cap.test.js`);
+`ferpa-export-scan-cap.test.js`); Gmail noise (plan L7): the teacher's share
+of each student doc, form copy and snapshot doc, and at locking, made through
+the Drive advanced service with no "shared with you" email (DriveApp when the
+service is off or fails, the student's share unchanged), and every CAS mail
+sent with the `[CAS] ` subject prefix and the sender name CAS
+(`gmail-noise.test.js`);
 `tests/leaderhub/` covers escaping/XSS guards (including the School
 Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
 the pacing/calendar helpers (with the published CCPS 2026-27 calendar as an import fixture, `fixtures/ccps-2026-27-calendar.txt`, and the built-in calendar's own consistency, `school-calendar-defaults.test.js`), the page's sync code never overwriting an
