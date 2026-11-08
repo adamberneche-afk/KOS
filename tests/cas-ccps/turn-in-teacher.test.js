@@ -43,7 +43,8 @@ const EXPOSE = ['LEDGER', 'getTurnInPanelData', 'turnInPanelIssueForCheck', 'tur
   'turnInPanelCloseAssignment', 'getTurnInCanvasFiles', 'getTurnInCanvasColumns', 'runTurnInCanvasCheckFromPanel',
   'runTurnInCanvasCheck', 'grantTurnInCode', 'openTurnInForAssignment', 'closeTurnInForAssignment',
   'tccParseFileName_', 'tccIsSubmissionEntry_', 'tccHtmlText_', 'tccFindCodes_', 'tccParseExport_', 'tccMatchRoster_',
-  'tccUploadCsv_', 'tccBestColumn_', 'turnInMakeCode_', 'TCC_FILES_MAX', 'TCC_RUN_HEADERS', 'buildDashboardHtml_'];
+  'tccUploadCsv_', 'tccBestColumn_', 'turnInMakeCode_', 'TCC_FILES_MAX', 'TCC_RUN_HEADERS', 'buildDashboardHtml_',
+  'LESSON_ORDER', 'turnInCodeValid_'];
 
 const code = (exported, lesson, random) => exported.turnInMakeCode_('8177', lesson, random);
 // A code with its check character changed: well-formed, but it doesn't check out.
@@ -540,4 +541,50 @@ test('the dashboard has the Turn-in codes button and panel, and the panel calls 
   assert.ok(!/issue all|Issue all/.test(block), 'no bulk issue');
   assert.match(block, /delete the ZIP/);
   assert.match(block, /Canvas leaves a grade as it is when the cell is blank/);
+});
+
+// ── Codes carry the lesson's number (2026-11-08) ────────────────────────────
+
+test('an 8177 slug lesson: the grant\'s code reads the lesson\'s number, and the Canvas check accepts it', () => {
+  const env = load({ switch: 'CAS-8177-THE-HYPE-MACHINE' });
+  const HYPE = 'CAS-8177-THE-HYPE-MACHINE';
+  const n = String(env.exported.LESSON_ORDER['8177'].indexOf('8177-the-hype-machine') + 1).padStart(2, '0');
+  assert.notEqual(n, '00');
+  // Rick's L05 workspace becomes the slug lesson's; Max's a part of it.
+  const sa = env.ss.getSheetByName('StudentAssignments');
+  const data = sa.getDataRange().getValues();
+  data.forEach((r, i) => {
+    if (r[0] === 'W-RICK-5') sa.getRange(i + 1, 3).setValue(HYPE);
+    if (r[0] === 'W-MAX-5') sa.getRange(i + 1, 3).setValue(HYPE + '-P2');
+  });
+  const rick = plain(env.exported.turnInPanelGrant(acct('rick'), 'W-RICK-5', 'Pilot dry run.'));
+  const max = plain(env.exported.turnInPanelGrant(acct('max'), 'W-MAX-5', 'Pilot dry run.'));
+  assert.match(rick.code, new RegExp('^CAS-8177-L' + n + '-'));
+  assert.match(max.code, new RegExp('^CAS-8177-L' + n + '-'), 'a part has its lesson\'s number');
+  assert.equal(env.exported.turnInCodeValid_(rick.code), rick.code);
+  // The banner names the lesson the switch turns on.
+  const d = plain(env.exported.getTurnInPanelData());
+  assert.deepEqual([d.studentsSeeCodes, d.switchOn, d.switchIgnored], [true, [HYPE], []]);
+
+  withFiles(env, [
+    { name: 'roerick_' + ID.rick + '_text.html', text: page('my code: ' + rick.code.toLowerCase().replace(/-/g, ' ')) },
+    { name: 'moemax_' + ID.max + '_text.html', text: page(max.code) },
+    // A code issued before the change, with L00, is still Jane's and still valid by lookup.
+    { name: 'doejane_' + ID.jane + '_text.html', text: page(env.codes.jane) },
+  ]);
+  const res = run(env, { assignmentId: HYPE.toLowerCase() });
+  assert.equal(res.success, true, res.error);
+  assert.equal(res.counts.VALID, 2, 'the lesson and its part');
+  assert.equal(res.counts.WRONG_ASSIGNMENT, 1, 'Jane\'s code is for L05');
+});
+
+test('a code issued with L00 stays valid: the Canvas check looks it up, it doesn\'t compare the number', () => {
+  const env = load();
+  const old = env.exported.turnInMakeCode_('8177', '00', 'QRSTVWX');
+  env.ss.getSheetByName('TurnInCodes').appendRow([old, acct('rick'), L05, 'W-RICK-5', '8177', 'L00',
+    new Date().toISOString(), 'GRANT', 'Before the lesson number.']);
+  withFiles(env, [{ name: 'roerick_' + ID.rick + '_text.html', text: page(old) }]);
+  const res = run(env);
+  assert.equal(res.success, true, res.error);
+  assert.equal(res.counts.VALID, 1);
 });

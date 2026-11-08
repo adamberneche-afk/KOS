@@ -2,8 +2,9 @@
 
 **Status:** design, from the operator's decisions of 2026-11-07 and
 2026-11-08. Stages 1 (PR #391), 2 (Flow 6, the turn-in check, PR #392),
-3 (the teacher's side, PR #393) and 4 (the Canvas side) are built, behind a
-switch that is off; see "Build stages". The decisions below are the operator's. **No question is open.** [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
+3 (the teacher's side, PR #393) and 4 (the Canvas side, PR #394) are built,
+behind a switch that is off; see "Build stages". The switch takes lessons
+and codes carry the lesson's number since 2026-11-08 ("The pilot"). The decisions below are the operator's. **No question is open.** [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
 wins where the two disagree. No student names, emails, file IDs or
 ConfigIDs appear here, by design.
 
@@ -36,6 +37,9 @@ feedback cycle: submitting for feedback, then engaging with that feedback.
    or the feedback.** It is driven by Apps Script, with an inference flow
    where Apps Script can't judge (see the check below).
 8. **A per-course switch, off by default.** The pilot is one 8177 unit.
+   Since 2026-11-08 (operator-approved follow-up) the same switch also takes
+   lessons, so the pilot turns on only the lessons whose Canvas assignment
+   takes a code (see "The pilot" below).
 9. **The gap between engagement and competency is read per lesson, as a
    design signal, never per student.** A lesson where students earn codes
    but rarely show the milestone probably needs rethinking. It doesn't
@@ -127,8 +131,8 @@ Apps Script screens first, so obvious misses never spend a Studio run.
 
 - **One per student per assignment**, stable across resubmissions.
 - **Readable at a glance:** for example `CAS-8177-L05-7Q4K-M2XD`. That is the
-  course and lesson, a random part from an unambiguous alphabet, and a check
-  character that catches a typo.
+  course and the lesson's number in its course, a random part from an
+  unambiguous alphabet, and a check character that catches a typo.
 - **Bound to one student and one assignment** in a Ledger tab
   (`TurnInCodes`: code, student, assignment, issued at, how (check or
   grant), the grant reason). Nothing in the student's doc is trusted as
@@ -219,9 +223,9 @@ competency with no student text. It is not needed now.
    **Stage 1 built (PR #391)**, `cas-ccps/scripts/71_TurnInCodes.js`,
    `tests/cas-ccps/turn-in-code.test.js`. Details settled in the build
    (the file's header has each in full):
-   - *The switch* is `TURN_IN_CODE_COURSES`, read like the other per-course
-     flags: blank or `off` is off everywhere and adds nothing to the
-     dashboard's data; `8177`, a list, or `all`.
+   - *The switch* is `TURN_IN_CODE_COURSES`: blank or `off` is off
+     everywhere and adds nothing to the dashboard's data; `8177`, a list, or
+     `all`. Since 2026-11-08 it takes lessons too (see "The pilot" below).
    - *The question's milestone.* Revise: the milestone the card's "Not
      yet:" line names (the latest check's first not MET). Passed: the
      latest check's first row, the primary. No milestone on file, no
@@ -257,7 +261,8 @@ competency with no student text. It is not needed now.
      period is current or an open, unexpired override covers its
      assignment, at the answer and at the verdict.
    - *The code.* `CAS-<course>-L<lesson>-XXXX-XXXC`: lesson from the
-     assignment's ConfigID (`L00` when it has none); seven random
+     assignment's ConfigID (`L00` when it has none; since 2026-11-08 the
+     lesson's number in its course, below); seven random
      characters from Crockford's base32 alphabet (no I, L, O, U), from
      `Utilities.getUuid()`; the last character is a Luhn mod 32 check over
      the course digits, lesson digits and random part, which catches every
@@ -399,10 +404,9 @@ competency with no student text. It is not needed now.
      (`…-P2`) is refused, since Canvas keeps one assignment per lesson; so
      are a unit (`8177:U3`) and an unknown name, each with a message.
      8177's ConfigIDs are slugs (`CAS-8177-THE-HYPE-MACHINE`), not `L<nn>`.
-     (So every 8177 code reads `CAS-8177-L00-…`: stage 1 takes the lesson
-     digits from an `L<n>` the ConfigID doesn't have. Codes still work,
-     since ownership is looked up in `TurnInCodes`; the code just doesn't
-     say which lesson.)
+     (So every 8177 code read `CAS-8177-L00-…`: stage 1 took the lesson
+     digits from an `L<n>` the ConfigID doesn't have. Fixed 2026-11-08:
+     codes carry the lesson's number; see "The pilot" below.)
    - *Default: nothing changes.* Without `--turn-in` the committed
      cartridges are byte for byte what they were (tested). A `--turn-in`
      build goes to `canvas-cartridges/turn-in/<course>.imscc`, which is
@@ -442,10 +446,10 @@ competency with no student text. It is not needed now.
      Website URL paragraph under **How to submit** with (B), or (C) for a
      lesson in parts; **Submission Type**: Online, **Text Entry** checked,
      **Website URL** unchecked; **Assignment Group**: the formative group;
-     points unchanged; anonymous grading off; **Save**. Then set
-     `TURN_IN_CODE_COURSES` to `8177` in the Ledger's `_CONFIG` tab. The
-     switch is per course, so every 8177 card then offers a code; only the
-     switched assignments take one in Canvas, so tell the class which.
+     points unchanged; anonymous grading off; **Save**. Then put the
+     **same lesson list** in `TURN_IN_CODE_COURSES` in the Ledger's
+     `_CONFIG` tab (since 2026-11-08 the switch takes lessons, so only the
+     switched assignments' cards offer a code; see "The pilot" below).
    - **Later (the cartridge option):** a fresh import only: a new course
      shell, the next term, or a new teacher's install. Build with
      `--turn-in` and import `turn-in/<course>.imscc` instead of the
@@ -460,6 +464,52 @@ competency with no student text. It is not needed now.
 Stages 1–3 can be piloted before Canvas changes: students see and copy codes
 while Canvas still takes the URL (the Canvas check needs stage 4's text
 entries, which the hand switch gives the pilot assignments).
+
+## The pilot: lessons, not courses (2026-11-08)
+
+Found in stage 4: switching on `8177` showed the feedback question on every
+8177 card, while only the pilot's assignments in Canvas take a code; and
+8177's ConfigIDs are slugs, so its codes read `L00`. The operator approved
+the fix before the pilot:
+
+- **The switch takes lessons.** `TURN_IN_CODE_COURSES` keeps its name (one
+  switch, one `_CONFIG` row; a second key would leave two values to
+  reconcile) and now takes course codes and lesson IDs mixed, comma- or
+  space-separated, in the cartridge builder's `--turn-in` syntax: the
+  assignment ID StudentAssignments records (`CAS-8177-THE-HYPE-MACHINE`,
+  `CAS-8175-L05`), case-insensitive, `CAS-` optional; a lesson covers its
+  parts (`-P2`). Blank or `off` is off everywhere and `all` alone is every
+  course, as before. An entry that is neither (a typo, a unit, `all` inside
+  a list) is logged and ignored; a lesson the lesson data doesn't have is
+  logged and matches nothing. An unknown entry never turns codes on more
+  widely. 71's `turnInSwitchCovers_()` is the one reading of it: the card's
+  question, `getMyTurnInState` and `submitTurnInAnswer`, Flow 6's
+  materializer (an answer the switch doesn't cover waits) and the panel's
+  banner (which names the courses and lessons on, and any entry ignored).
+- **Codes carry the lesson's number.** The `L<n>` of a numbered ConfigID,
+  else the lesson's place in its course's `LESSON_ORDER` (`55b`, the
+  teaching order `LessonSchedule` is seeded in), so an 8177 slug lesson
+  reads its number, and a part its lesson's. `L00` only when neither gives
+  one (a unit assignment), and that is logged. The check character covers
+  the lesson digits as before. The projects that issue codes, the Central
+  Ledger (the verdict) and the Teacher Dashboard (the grant), both load
+  `55b`; the Student Dashboard issues none (a test pins both). A code is
+  checked by looking it up in `TurnInCodes`, never by matching its number
+  to the ConfigID, so codes already issued stay valid and nothing is
+  migrated (none are in production: the switch is off). If the teaching
+  order changes, new codes for a moved lesson carry its new number; old ones
+  stay valid. The Canvas check reads the lesson digits and decides by the
+  code's assignment; it now also takes an 8177 slug assignment ID, which it
+  turned down before.
+
+**The pilot steps** (operator, then the teacher):
+1. Pick the pilot's lessons.
+2. `node tools/cas-ccps/build-canvas-cartridge.js --turn-in <lessons> --print`
+   and switch those assignments in Canvas by hand, as it prints.
+3. Put the **same list** in `TURN_IN_CODE_COURSES` (the `_CONFIG` tab, or a
+   Script Property), e.g. `CAS-8177-THE-HYPE-MACHINE`.
+4. Open the 🎟 Turn-in codes panel: its banner names the lessons on and any
+   entry ignored.
 
 ## Not doing
 

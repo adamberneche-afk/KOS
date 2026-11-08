@@ -58,8 +58,9 @@ function getMyTurnInState(configId) {
     const cfg = getConfig_();
     const row = _turnInLedgerRow_(cfg, googleId, configId);
     if (!row) return _turnInRefuse_("NOT_REGISTERED");
-    if (!turnInOnForCourse_(ledgerRowCourseCode_(row))) return _turnInRefuse_("OFF");
-    return { ok: true, turnIn: turnInView_(SpreadsheetApp.openById(cfg.ledgerSsId), cfg, row) };
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    if (!turnInSwitchCoversRow_(ss, row)) return _turnInRefuse_("OFF");
+    return { ok: true, turnIn: turnInView_(ss, cfg, row) };
   } catch (e) {
     Logger.log("[71] getMyTurnInState failed for ConfigID " + String(configId || "").trim() + ": " + e.message);
     return _turnInRefuse_("SERVER_ERROR");
@@ -85,8 +86,8 @@ function _turnInSubmit_(configId, text, now) {
   const cfg = getConfig_();
   const row = _turnInLedgerRow_(cfg, googleId, configId);
   if (!row) return _turnInRefuse_("NOT_REGISTERED");
-  if (!turnInOnForCourse_(ledgerRowCourseCode_(row))) return _turnInRefuse_("OFF");
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  if (!turnInSwitchCoversRow_(ss, row)) return _turnInRefuse_("OFF");
   const before = turnInView_(ss, cfg, row, now);
   if (!before) return _turnInRefuse_("NO_FEEDBACK");
   if (before.state === "READY") return Object.assign(_turnInRefuse_("HAS_CODE"), { turnIn: before });
@@ -134,8 +135,8 @@ function _turnInSubmit_(configId, text, now) {
 // The dashboard's data (13's getStudentDashboardData calls this)
 // ---------------------------------------------------------------------------
 
-// Adds a.turnIn to each card in a switched-on course that has something to
-// show. With the switch off everywhere it returns at once and adds nothing,
+// Adds a.turnIn to each card the switch covers (its course, or its lesson:
+// 71's turnInSwitchCovers_) that has something to show. With the switch off everywhere it returns at once and adds nothing,
 // so the data is exactly as before. ledgerData: the Ledger's values, as 13
 // read them. A card still in line for its next check shows a code it has,
 // or a check under way, but not the question.
@@ -151,7 +152,7 @@ function turnInAttach_(ss, cfg, googleId, ledgerData, assignments) {
   }
   assignments.forEach(function (a) {
     const row = rows[a.configId];
-    if (!row || !turnInOnForCourse_(ledgerRowCourseCode_(row), raw)) return;
+    if (!row || !turnInSwitchCoversRow_(ss, row, raw, cache)) return;
     const view = turnInView_(ss, cfg, row, undefined, cache);
     if (!view) return;
     const feedbackShown = a.statusClass === "NEEDS_ACTION" || a.statusClass === "DONE";

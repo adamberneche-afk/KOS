@@ -28,11 +28,26 @@
 // student calls.
 //
 // THE SWITCH: TURN_IN_CODE_COURSES (Script Property or the Ledger's _CONFIG
-// tab, SHARED_CONFIG_KEYS in 00), read like a pivot flag: blank or "off"
-// (the default) is off everywhere, a course code ("8177") or a list
-// ("8175,8177") turns it on for those, "all" for every course. Off, the
-// dashboard is exactly as before: no field is added to its data, nothing is
-// read or written here, and the student functions answer OFF.
+// tab, SHARED_CONFIG_KEYS in 00). Blank or "off" (the default) is off
+// everywhere; "all" alone is every course. Otherwise a list, comma- or
+// space-separated, of course codes ("8177") and lessons, named the way the
+// cartridge builder's --turn-in selector names them: the assignment ID
+// StudentAssignments records ("CAS-8177-THE-HYPE-MACHINE", "CAS-8175-L05";
+// case doesn't matter, "CAS-" is optional). A lesson covers its parts
+// ("CAS-8175-L05-P2"). So "8175, CAS-8177-THE-HYPE-MACHINE" is every 8175
+// card and that one 8177 lesson. The pilot puts the same list here as in
+// `build-canvas-cartridge.js --turn-in <list> --print`, so the question
+// shows only on cards whose Canvas assignment takes a code. An entry that is
+// neither (a typo, "all" inside a list) is logged and ignored, and a lesson
+// the lesson data doesn't know is logged and matches nothing: an unknown
+// entry never turns codes on more widely. The key keeps its name (2026-11-08)
+// so the _CONFIG row, the preflight line and the docs stay one switch; a
+// second key would leave two values to reconcile. turnInSwitchCovers_() is
+// the one reading of it: the card's question and the student functions
+// (71b), the flow's materializer (72) and the panel's banner (73) all go
+// through it. Off, the dashboard is exactly as before: no field is added to
+// its data, nothing is read or written here, and the student functions
+// answer OFF.
 //
 // THE TERM RULE (decision 6): a code is issued only while the assignment is
 // in the current term. A Ledger row's term is its AcademicYear column when
@@ -49,8 +64,18 @@
 //
 // THE CODE: CAS-<course>-L<lesson>-XXXX-XXXC. Course: the Ledger row's
 // course code (ledgerRowCourseCode_), else the one in the assignment's
-// ConfigID, else 0000. Lesson: the "L<n>" in the assignment's ConfigID
-// ("CAS-8177-L05", "CAS-8177-L05-P2"), two digits, else L00. Then seven
+// ConfigID, else 0000. Lesson: the lesson's number in its course, two digits
+// (three past 99): the "L<n>" of a numbered ConfigID ("CAS-8175-L05",
+// "CAS-8175-L05-P2"), else the lesson's place in its course's LESSON_ORDER
+// (55b, the teaching order LessonSchedule is seeded in), so an 8177 slug
+// ("CAS-8177-THE-HYPE-MACHINE") reads L12, not L00. A part has its lesson's
+// number. L00 only when neither gives one (a unit assignment, or a project
+// without 55b), and that is logged. Every project that issues a code loads
+// 55b: the Central Ledger (the verdict) and the Teacher Dashboard (the
+// grant); the Student Dashboard issues none (tests pin both). The number is
+// a label: a code is checked by looking it up in TurnInCodes, never by
+// matching its number to the ConfigID, so a code issued before 2026-11-08
+// with L00 stays valid and nothing needs migrating. Then seven
 // random characters from Crockford's base32 alphabet (0-9 and A-Z without
 // I, L, O, U, so nothing reads as 1 or 0), from Utilities.getUuid(), and a
 // check character at the end. The check character is Luhn mod N with N = 32
@@ -163,14 +188,85 @@ function _turnInSwitchRaw_() {
   }
 }
 
-// Whether the switch is off for every course: then nothing here runs.
-function turnInOffEverywhere_(raw) {
-  const v = String(raw === undefined ? _turnInSwitchRaw_() : raw).trim().toLowerCase();
-  return v === "" || v === "off";
+// The last value parsed, so a dashboard load with many cards parses (and
+// logs) it once.
+let _turnInSwitchMemo_ = null;
+
+// The switch, read: { all, courses: { "8177": true }, lessons: ["CAS-…"],
+// unknown: [entries ignored], unlisted: [lessons the lesson data doesn't
+// have] }. See the header for the syntax.
+function turnInSwitchParse_(raw) {
+  const value = String(raw === undefined || raw === null ? "" : raw).trim();
+  if (_turnInSwitchMemo_ && _turnInSwitchMemo_.raw === value) return _turnInSwitchMemo_.parsed;
+  const out = { all: false, courses: {}, lessons: [], unknown: [], unlisted: [] };
+  const lower = value.toLowerCase();
+  if (lower === "all") {
+    out.all = true;
+  } else if (lower !== "" && lower !== "off") {
+    value.split(/[\s,]+/).filter(Boolean).forEach(function (t) {
+      const u = t.toUpperCase().replace(/^CAS-/, "");
+      if (/^\d{4}$/.test(u)) { out.courses[u] = true; return; }
+      if (/^\d{4}-[A-Z0-9]+(-[A-Z0-9]+)*$/.test(u)) {
+        const id = "CAS-" + u;
+        if (out.lessons.indexOf(id) === -1) out.lessons.push(id);
+        return;
+      }
+      out.unknown.push(t);
+    });
+  }
+  const known = _turnInKnownLessons_();
+  if (known) out.unlisted = out.lessons.filter(function (id) { return !known[id]; });
+  if (out.unknown.length) {
+    Logger.log("[71] " + TURN_IN_SWITCH_KEY + ": ignored " + out.unknown.join(", ") +
+      " (not a course code or a lesson ID; \"all\" and \"off\" work only alone)");
+  }
+  if (out.unlisted.length) {
+    Logger.log("[71] " + TURN_IN_SWITCH_KEY + ": no lesson " + out.unlisted.join(", ") +
+      " in the lesson data; it matches nothing");
+  }
+  _turnInSwitchMemo_ = { raw: value, parsed: out };
+  return out;
 }
 
-function turnInOnForCourse_(courseCode, raw) {
-  return _pivotValueOn_(raw === undefined ? _turnInSwitchRaw_() : raw, courseCode);
+// { "CAS-8175-L05": true, "CAS-8175-L05-P2": true, … } from 55b, or null in
+// a project without it (the Student Dashboard).
+function _turnInKnownLessons_() {
+  if (typeof LESSON_ASSIGNMENTS === "undefined") return null;
+  const out = {};
+  Object.keys(LESSON_ASSIGNMENTS).forEach(function (k) { out["CAS-" + k.toUpperCase()] = true; });
+  if (typeof LESSON_PARTS !== "undefined") {
+    Object.keys(LESSON_PARTS).forEach(function (k) {
+      (LESSON_PARTS[k] || []).forEach(function (p) { out["CAS-" + String(p.key).toUpperCase()] = true; });
+    });
+  }
+  return out;
+}
+
+// Whether the switch is off for every course and lesson: then nothing here
+// runs. A value whose every entry is ignored is off too.
+function turnInOffEverywhere_(raw) {
+  const p = turnInSwitchParse_(raw === undefined ? _turnInSwitchRaw_() : raw);
+  return !p.all && !Object.keys(p.courses).length && !p.lessons.length;
+}
+
+// THE reading of the switch: whether turn-in codes are on for an assignment
+// of this course (a course code, "8177") with this assignment ID (the one
+// StudentAssignments records, turnInAssignmentId_). On when the value is
+// "all", lists the course, or lists the lesson or the lesson this part
+// belongs to.
+function turnInSwitchCovers_(courseCode, assignmentId, raw) {
+  const p = turnInSwitchParse_(raw === undefined ? _turnInSwitchRaw_() : raw);
+  if (p.all) return true;
+  const course = String(courseCode === undefined || courseCode === null ? "" : courseCode).trim();
+  if (course && p.courses[course]) return true;
+  return p.lessons.some(function (id) { return turnInOverrideCovers_(id, assignmentId); });
+}
+
+// The switch for a Ledger row: its course, and the assignment its workspace
+// belongs to.
+function turnInSwitchCoversRow_(ss, row, raw, cache) {
+  const assignmentId = turnInAssignmentId_(ss, String(row[LEDGER.CONFIG_ID] || "").trim(), cache);
+  return turnInSwitchCovers_(ledgerRowCourseCode_(row), assignmentId, raw);
 }
 
 // ---------------------------------------------------------------------------
@@ -479,9 +575,25 @@ function _turnInCourseOf_(row, assignmentId) {
   return m ? m[1] : "0000";
 }
 
+// The lesson's number for the code, two digits (three past 99), or "00"
+// when it has none (see the header).
 function turnInLessonOf_(assignmentId) {
-  const m = /-L(\d{1,3})(?=-|$)/i.exec(String(assignmentId || "").trim());
-  return m ? String(Number(m[1])).padStart(2, "0") : "00";
+  const id = String(assignmentId || "").trim().toUpperCase();
+  const m = /^CAS-\d{4}-L(\d{1,3})(-P\d+)?$/.exec(id);
+  const n = m ? Number(m[1]) : _turnInLessonPosition_(id);
+  return n > 0 && n <= 999 ? String(n).padStart(2, "0") : "00";
+}
+
+// The lesson's place (1-based) in its course's LESSON_ORDER (55b), the
+// lesson itself or the one a part belongs to; 0 when it isn't there or the
+// project has no 55b.
+function _turnInLessonPosition_(id) {
+  if (typeof LESSON_ORDER === "undefined") return 0;
+  const m = /^CAS-(\d{4})-(.+)$/.exec(id);
+  if (!m) return 0;
+  const order = (LESSON_ORDER[m[1]] || []).map(function (k) { return String(k).toUpperCase(); });
+  const at = function (key) { return order.indexOf(key) + 1; };
+  return at(m[1] + "-" + m[2]) || at(m[1] + "-" + m[2].replace(/-P\d+$/, ""));
 }
 
 // Seven characters from 36 random bits of a UUID (its first nine hex digits
@@ -587,6 +699,10 @@ function _turnInIssueCode_(ss, row, how, grantReason) {
     if (have) return String(have[TCODE.CODE]);
     const course = _turnInCourseOf_(row, assignmentId);
     const lesson = turnInLessonOf_(assignmentId);
+    if (lesson === "00") {
+      Logger.log("[71] No lesson number for " + assignmentId + " (no L<n> in it, and not in LESSON_ORDER): " +
+        "its code reads L00");
+    }
     const taken = {};
     _turnInRows_(ss, TURN_IN_CODES_TAB, 1).forEach(function (r) { taken[String(r[0]).trim()] = true; });
     let code = "";

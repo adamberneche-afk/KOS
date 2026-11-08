@@ -31,7 +31,11 @@
 // 8 characters; O is read as 0 and I and L as 1 in the digits, and 71's
 // turnInCodeValid_() checks the check character (and does the same for the
 // random part). The first valid code is used; more than one code, or a valid
-// one beside one that doesn't check out, is noted.
+// one beside one that doesn't check out, is noted. The lesson digits are the
+// lesson's number in its course (71; an 8177 slug's place in LESSON_ORDER,
+// L00 for a code issued before 2026-11-08) and are only read, never compared
+// with the assignment's ID: the code is looked up in TurnInCodes, and the
+// assignment it was issued for decides VALID or WRONG_ASSIGNMENT.
 //
 // THE MATCH, by ID only (tccMatchRoster_): the file's SIS ID is looked up in
 // the export's "SIS User ID" column, then in Canvas's "ID" column if no row
@@ -100,7 +104,10 @@ const TCC_TIME_BUDGET_MS = 4 * 60 * 1000;
 const TCC_SCAN_MAX = 500;      // Drive files looked at when listing the folder
 const TCC_LIST_MAX = 8;        // ZIPs and exports offered in the panel
 const TCC_CODE_WINDOW = 60;    // characters read after each "CAS"
-const TCC_ASSIGNMENT_RE = /^CAS-\d{4}-L\d{1,3}(?:-P\d+)?$/;
+// A CAS assignment ID: "CAS-8175-L05", a part ("CAS-8175-L05-P2"), or an
+// 8177 slug ("CAS-8177-THE-HYPE-MACHINE"; 2026-11-08: this used to take only
+// L<n> IDs, which shut every 8177 lesson out of the check).
+const TCC_ASSIGNMENT_RE = /^CAS-\d{4}-[A-Z0-9]+(?:-[A-Z0-9]+)*$/;
 
 // ---------------------------------------------------------------------------
 // Reading one submission (pure)

@@ -510,8 +510,16 @@ the Teacher Dashboard; 2026-11-07; the student side, `getMyTurnInState`,
 `submitTurnInAnswer`, the card and its client half, moved unchanged to
 `71b_TurnInStudent.js` on 2026-11-08, so the Teacher Dashboard loads 71
 without serving student functions; stage 1 of [`meta/TURN_IN_CODE_PLAN_2026-11.md`](../meta/TURN_IN_CODE_PLAN_2026-11.md), D17).
-Behind `TURN_IN_CODE_COURSES` (blank by default: off everywhere, and the
-dashboard is exactly as before; a course code, a list, or `all`). Once a
+Behind `TURN_IN_CODE_COURSES` (blank or `off` by default: off everywhere,
+and the dashboard is exactly as before; `all`; or a list of course codes and
+lessons, comma- or space-separated, in the syntax of the cartridge builder's
+`--turn-in`: `8175, CAS-8177-THE-HYPE-MACHINE`, case-insensitive, `CAS-`
+optional, a lesson covering its parts. Since 2026-11-08 it takes lessons, so
+the pilot turns on only the lessons whose Canvas assignment takes a code: the
+same list as `build-canvas-cartridge.js --turn-in <list> --print`. An entry
+that is neither is logged and ignored. `turnInSwitchCovers_()` in `71` is
+the one reading of it, for the card, the student functions, Flow 6's
+materializer and the panel's banner). Once a
 card's feedback has arrived (Revise or Passed), it asks one question built
 from the student's own feedback in `CompetencyEvidence`: the milestone not
 met yet (the card's "Not yet:" line), or the primary milestone shown. The
@@ -524,8 +532,9 @@ issues the student's code for the assignment while it is in the current
 marking period, `NOT_YET` keeps the one-line reason the card shows over the
 form again, and a failed or unknown verdict changes nothing. Flow 6's
 harvest (stage 2, `72`, below) calls it. The code
-(`CAS-8177-L05-7Q4K-M2XF`: course, lesson, seven random characters from
-Crockford's base32 alphabet and a Luhn mod 32 check character) is one per
+(`CAS-8177-L05-7Q4K-M2XF`: course, the lesson's number, seven random
+characters from Crockford's base32 alphabet and a Luhn mod 32 check
+character over all three) is one per
 student per assignment, unique, and kept in the `TurnInCodes` tab with its
 owner and how it was issued; the card shows it with **Copy turn-in code**
 (the clipboard, then `execCommand`, then the code selected for Ctrl+C).
@@ -537,6 +546,13 @@ assignment for every student on it (`openTurnInForAssignment("CAS-8177-L05",
 reason, until)`, closed with `closeTurnInForAssignment`, owner only, kept in
 `TurnInOverrides`); the check still decides each code. The term rule, the
 override, the screen and the code are documented in the file's header.
+The lesson's number is the `L<n>` of a numbered ConfigID, else the
+lesson's place in its course's `LESSON_ORDER` (`55b`), so an 8177 slug
+lesson reads its real number (2026-11-08; it read `L00` before) and a part
+its lesson's; `L00` only when neither gives one, and that is logged. The
+Central Ledger and the Teacher Dashboard, the projects that issue codes,
+both load `55b`. Codes are checked by looking them up in `TurnInCodes`, so
+codes issued earlier stay valid and nothing is migrated.
 
 **Flow 6, the turn-in check** (`72_TurnInCheckFlow.js`, Central Ledger,
 2026-11-08; stage 2, T1 decided by the operator: the Apps Script screen plus
@@ -567,7 +583,9 @@ CAS's marking periods, extended per assignment by the override) and
 anonymous grading is off on these assignments, so D17 has no open
 question. The header's **🎟 Turn-in codes** panel, teacher only
 (`_isAuthorizedTeacher_()`; nothing added to `webapp-public-allow.json`),
-works whether or not `TURN_IN_CODE_COURSES` is on:
+works whether or not `TURN_IN_CODE_COURSES` is on (its banner says which
+courses and lessons students see codes on, and names any entry the setting
+ignored):
 - **Review answers**: each student's latest answer whose check failed
   (`CHECK_FAILED`) and, on request, those it called `NOT_YET`, with no code
   yet: the student, the assignment, the milestone, the answer and the
@@ -580,8 +598,8 @@ works whether or not `TURN_IN_CODE_COURSES` is on:
   reason (`openTurnInForAssignment`'s internals).
 - **Check Canvas**: the newest submissions ZIP and gradebook export in the
   folder 52 reads (`TEACHER_FOLDER_ID`, else the teacher's Drive); the
-  teacher picks the CAS assignment and the gradebook column (best title
-  match preselected). Each `<sortable name>_[LATE_]<SIS ID>_text.html` is
+  teacher picks the CAS assignment (an 8177 slug ID too, since
+  2026-11-08) and the gradebook column (best title match preselected). Each `<sortable name>_[LATE_]<SIS ID>_text.html` is
   matched by its SIS ID only (`SIS User ID`, then Canvas's `ID`; the row's
   `SIS Login ID` is the account, `canvasLoginAccount_()` in `00`, as 52
   enrols), never by the name in the file name, which is never logged,
@@ -804,7 +822,9 @@ hand**, not by a re-import: `node tools/cas-ccps/build-canvas-cartridge.js
 --turn-in <selector> --print` lists the assignments and the text to paste,
 and for each one: Edit, the instruction at the top and the new How to submit
 paragraph, Submission Type Online with only **Text Entry** checked, the
-formative group, Save. The `--turn-in` cartridge is for a fresh import (a
+formative group, Save. Then put the same list in `TURN_IN_CODE_COURSES`
+(it takes lessons since 2026-11-08), so only those assignments' cards offer
+a code. The `--turn-in` cartridge is for a fresh import (a
 new course shell, the next term, a new teacher's install). A later re-import
 into a course whose assignments were switched must be built with the same
 `--turn-in`, or it puts them back to Website URL.
