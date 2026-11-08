@@ -12,9 +12,10 @@
  * unless set) MUSE suggests alternatives before the operator answers.
  * The Claude Project starts each session blank, so the counter lives here.
  *
- * Counting. sensor1_scanInboundSessions() (2_Ingestion_Sensors.gs) calls
- * recordMoralDebt_() once per new session log (its duplicate guard keeps a
- * log from counting twice). Only the CLOSEOUT's Alignment block is read,
+ * Counting. _afterSessionLogQueued_() (2_Ingestion_Sensors.gs) calls
+ * recordMoralDebt_() once per new session log, from both entry points: the
+ * inbound folder scan and the web app's Ingest tab (the latter only since
+ * 2026-11-08). Their duplicate guard keeps a log from counting twice. Only the CLOSEOUT's Alignment block is read,
  * and only the literal word PROCEED counts (SESSION_LOG_FORMAT.md), so an
  * exchange that merely discusses proceeding doesn't.
  *

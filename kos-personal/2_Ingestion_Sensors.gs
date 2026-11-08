@@ -155,28 +155,13 @@ function sensor1_scanInboundSessions() {
           continue;
         }
 
-        // Hardening audit: non-fatal (a session log can quote a weight or
-        // threshold), but a hit is logged rather than silently discarded.
-        try { runHardeningAudit(rawText); } catch (e) {
-          console.log('[Sensor1] Hardening audit flagged ' + file.getName() + ': ' + e.message);
-        }
-
         // Archive full raw log as a single reference doc
         _archiveRawLog_(rawFolder, '[RAW]_' + logUUID, rawText);
 
         const n = _chunkAndQueue(rawText, 'SESSION_LOG', logUUID, rawFolder, staging, ss);
         queued += n;
 
-        // SMP-019: the log's PROCEED answers add to the moral debt counter
-        // (23_MoralDebt.gs). After the duplicate guard, so a log counts once.
-        try { recordMoralDebt_(rawText, new Date()); } catch (mdErr) {
-          _reportError('sensor1:moralDebt:' + file.getName(), mdErr, null);
-        }
-        // The randomized fidelity draw (27_FidelitySample.gs), after the RTP
-        // wrote the log, so it can't know which logs are checked.
-        try { sampleSessionLogForFidelity_(logUUID, rawText, new Date()); } catch (fsErr) {
-          _reportError('sensor1:fidelity:' + file.getName(), fsErr, null);
-        }
+        _afterSessionLogQueued_(logUUID, rawText, 'sensor1', file.getName());
 
         // Move source to _PROCESSED — excluded from all future scans
         file.moveTo(processedFolder);
@@ -246,6 +231,37 @@ function sensor1_scanInboundSessions() {
 }
 
 
+/**
+ * What every newly queued session log gets, from either entry point (the
+ * inbound folder scan or the web app's Ingest tab). Called after the
+ * duplicate guard, so a log counts once. Each step is non-fatal.
+ *
+ * Until 2026-11-08 this lived inline in sensor1_scanInboundSessions(), and
+ * submitSessionLog() had only the fidelity draw: a log pasted into the web
+ * app never reached the moral debt counter (SMP-019) or the hardening
+ * audit. One function keeps the two paths from drifting again.
+ */
+// source names the entry point in error reports; name is the log's file
+// name (or "the web app submission") in messages.
+function _afterSessionLogQueued_(logUUID, rawText, source, name) {
+  // Hardening audit: non-fatal (a session log can quote a weight or
+  // threshold), but a hit is logged rather than silently discarded.
+  try { runHardeningAudit(rawText); } catch (e) {
+    console.log('[Sensor1] Hardening audit flagged ' + name + ': ' + e.message);
+  }
+  // SMP-019: the log's PROCEED answers add to the moral debt counter
+  // (23_MoralDebt.gs).
+  try { recordMoralDebt_(rawText, new Date()); } catch (mdErr) {
+    _reportError(source + ':moralDebt:' + name, mdErr, null);
+  }
+  // The randomized fidelity draw (27_FidelitySample.gs), after the RTP
+  // wrote the log, so it can't know which logs are checked.
+  try { sampleSessionLogForFidelity_(logUUID, rawText, new Date()); } catch (fsErr) {
+    _reportError(source + ':fidelity:' + name, fsErr, null);
+  }
+}
+
+
 // ================================================================
 // SENSOR 1 — WEB APP ENTRY POINT
 // ================================================================
@@ -309,9 +325,7 @@ function submitSessionLog(text) {
     _archiveRawLog_(rawFolder, '[RAW]_' + logUUID, rawText);
 
     const chunksQueued = _chunkAndQueue(rawText, 'SESSION_LOG', logUUID, rawFolder, staging, ss);
-    try { sampleSessionLogForFidelity_(logUUID, rawText, new Date()); } catch (fsErr) {
-      _reportError('submitSessionLog:fidelity', fsErr, null);
-    }
+    _afterSessionLogQueued_(logUUID, rawText, 'submitSessionLog', 'the web app submission');
     SpreadsheetApp.flush();
 
     return {

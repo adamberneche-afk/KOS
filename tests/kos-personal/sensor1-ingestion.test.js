@@ -419,3 +419,38 @@ test('handleCogExhaust: the same payload twice queues once; a different verdict 
   assert.equal(stagingRows(ss).length, 2);
 });
 
+
+// ── Both entry points feed the moral debt counter (SMP-019) ─────────────────
+// Until 2026-11-08 a log pasted into the web app's Ingest tab
+// (submitSessionLog) never reached recordMoralDebt_; only the inbound
+// folder scan counted its PROCEED answers. _afterSessionLogQueued_ is now
+// shared by both.
+
+const PROCEED_LOG = [
+  'KOS SESSION LOG — 2026-11-08 — test session', '',
+  '[🧠 RTP — EXCHANGE 1]', 'OPERATOR: an evening build?', 'RTP: A) PROCEED B) REDESIGN', 'DECISION: none', '',
+  '[🧠 RTP — CLOSEOUT]', 'Decisions made:', '- none',
+  'Alignment:', '- Status at close: YELLOW', '- Thresholds crossed:', '  - A: PROCEED — evening build',
+  '- Relational check-in this session: no',
+].join('\n');
+
+const moralDebt = (sandbox) =>
+  Number(sandbox.PropertiesService.getScriptProperties().getProperty('MORAL_DEBT_VALUE') || 0);
+
+test('submitSessionLog: a PROCEED in the closeout adds to the moral debt counter, once', () => {
+  const { exported, sandbox } = load();
+  setUpSensor1(sandbox);
+  assert.equal(exported.submitSessionLog(PROCEED_LOG).success, true);
+  assert.equal(moralDebt(sandbox), 1);
+  assert.equal(exported.submitSessionLog(PROCEED_LOG).duplicate, true);
+  assert.equal(moralDebt(sandbox), 1, 'a duplicate submission does not count again');
+});
+
+test('sensor1_scanInboundSessions: a PROCEED in the closeout adds to the moral debt counter', () => {
+  const { exported, sandbox } = load();
+  const { inbound } = setUpSensor1(sandbox);
+  sandbox.__exported.CFG.SENSOR1_PACING_MS = 0;
+  addInboundDoc(sandbox, inbound, 'proceed-log', PROCEED_LOG);
+  exported.sensor1_scanInboundSessions();
+  assert.equal(moralDebt(sandbox), 1);
+});

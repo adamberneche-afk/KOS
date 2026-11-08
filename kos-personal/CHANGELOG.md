@@ -1,5 +1,15 @@
 # KOS Changelog
 
+### Web-app logs count toward moral debt (2026-11-08)
+
+A session log pasted into the web app's Ingest tab (`submitSessionLog`)
+was queued and drawn for the fidelity sample, but never reached
+`recordMoralDebt_`, so its PROCEED answers went uncounted (SMP-019), and
+it skipped the hardening audit. Both entry points now call one function
+after the duplicate guard, `_afterSessionLogQueued_` (2): the hardening
+audit, the moral debt counter and the fidelity draw. Logs already
+submitted through the web app are not recounted.
+
 ### Decision echoes held back; Deploy_Trigger one row at a time (2026-11-08)
 
 Plan items L2 and L8 (`meta/PLAN_2026-11.md`). A re-sent or back-filled
