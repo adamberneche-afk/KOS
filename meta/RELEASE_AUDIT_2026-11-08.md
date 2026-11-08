@@ -56,7 +56,9 @@ holds whatever the tree holds now; a clean tree is not a clean history.
   links become `<your sheet's URL>`-style descriptions.
 - `tests/` (5): one document link repeated in
   `tests/cas-ccps/ledger-schema-guard.test.js`. Fixtures are where the #7
-  leak was: replace it with a synthetic ID assembled at run time.
+  leak was: replace it with a synthetic ID assembled at run time. **Fixed
+  2026-11-08:** a made-up URL assembled at run time (`FAKE_DOC_URL`). The
+  old ID is still in git history; rewriting history is decision 4 below.
 
 **Apps Script web-app URLs (70).** All are the Student Dashboard's
 `/a/macros/<domain>/s/…/exec` URL: `cas-ccps/data/deployment-urls.json`,
