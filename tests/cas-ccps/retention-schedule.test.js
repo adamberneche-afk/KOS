@@ -46,6 +46,7 @@ const TAB_NAMES = {
   Ledger: 'Ledger', StudentAssignments: 'StudentAssignments', StudentDocRegistry: 'StudentDocRegistry',
   CompetencyEvidence: 'CompetencyEvidence', SCRDecisionLog: 'SCRDecisionLog', EvaluationLog: 'EvaluationLog',
   ParentReportLog: 'ParentReportLog', PartUnlocks: 'PartUnlocks', TurnInCodes: 'TurnInCodes', TurnInChecks: 'TurnInChecks', TurnInOverrides: 'TurnInOverrides',
+  TurnInCanvasRuns: 'TurnInCanvasRuns',
   WarmUpQueue: 'WarmUpQueue', ReflectionLog: 'ReflectionLog', StudentProfiles: 'StudentProfiles', WarmUpRegistry: 'WarmUpRegistry',
   WarmUpTextBox: 'WarmUpTextBox',
   WarmUpResponses: 'WarmUpResponses', SCRSuggestions: 'SCRSuggestions', FlowInput: 'FlowInput',
@@ -53,7 +54,7 @@ const TAB_NAMES = {
   ReviewQueue: 'ReviewQueue', STAGING_PIPELINE: 'STAGING_PIPELINE',
 };
 const RECORD = ['Ledger', 'StudentAssignments', 'StudentDocRegistry', 'CompetencyEvidence', 'SCRDecisionLog', 'EvaluationLog', 'ReflectionLog',
-  'ParentReportLog', 'PartUnlocks', 'TurnInCodes', 'TurnInChecks', 'TurnInOverrides'];
+  'ParentReportLog', 'PartUnlocks', 'TurnInCodes', 'TurnInChecks', 'TurnInOverrides', 'TurnInCanvasRuns'];
 
 function byLabel(results) {
   const r = {};

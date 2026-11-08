@@ -1,9 +1,9 @@
 # Turn-in code: proof of engagement in Canvas (2026-11-07)
 
-**Status:** design, from the operator's decisions of 2026-11-07. Stages 1
-(PR #391) and 2 (Flow 6, the turn-in check: this PR) are built, behind a
-switch that is off; see "Build stages". The decisions below are the operator's; the open questions are
-marked. [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
+**Status:** design, from the operator's decisions of 2026-11-07 and
+2026-11-08. Stages 1 (PR #391), 2 (Flow 6, the turn-in check, PR #392) and
+3 (the teacher's side) are built, behind a switch that is off; see "Build
+stages". The decisions below are the operator's. **No question is open.** [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
 wins where the two disagree. No student names, emails, file IDs or
 ConfigIDs appear here, by design.
 
@@ -45,6 +45,13 @@ feedback cycle: submitting for feedback, then engaging with that feedback.
     optional end date, and close it again. The term rule then passes for
     that assignment; the check still decides every code. The per-student
     grant (decision 4) stays.
+11. **Codes follow CAS's marking periods** (operator, 2026-11-08; T2):
+    `currentTerm_()` from `MARKING_PERIOD_ENDS`, extended for one
+    assignment by the teacher's override (decision 10). Canvas's grading
+    periods are not read.
+12. **Anonymous grading is off on these assignments** (operator,
+    2026-11-08), so the submissions ZIP's file names carry the SIS ID the
+    Canvas check matches on.
 
 ## Standing rules (so the grade doesn't poison the measure)
 
@@ -139,7 +146,7 @@ The teacher downloads the assignment's submissions ZIP from Canvas and drops
 it in a Drive folder. A Teacher Dashboard check, behind the owner guard,
 reads each text entry and matches the code to its owner.
 
-- **Outcomes:**
+- **Outcomes** (stage 3 has the full list):
   - *valid*;
   - *no code*;
   - *someone else's code*: the code's owner doesn't match the Canvas
@@ -160,8 +167,8 @@ only, with no real names or IDs:
 3. **The gradebook export CSV** (the one `52_CanvasRosterImport.js` reads)
    has `SIS User ID` and `SIS Login ID` columns.
 4. **Gradebook CSV upload is enabled** for teachers.
-5. Whether anonymous grading is off on these assignments was not part of
-   the check; stage 3 confirms it before the grade file is used.
+5. **Anonymous grading is off** on these assignments (operator,
+   2026-11-08; decision 12), so the file names carry the SIS ID.
 
 **Matching** (stage 3): a file's SIS ID is looked up in the export's
 `SIS User ID` column, and that row's `SIS Login ID` is the account the code
@@ -176,7 +183,7 @@ for the assignment.
 | # | Question | Leaning |
 |---|---|---|
 | T1 | The check: the Apps Script screen plus the Studio flow? | **Decided (operator, 2026-11-08): the Apps Script screen plus a Studio flow.** Built in stage 2 (Flow 6) |
-| T2 | "Current term": CAS's marking periods (`currentTerm_`, from `MARKING_PERIOD_ENDS`), or Canvas's grading periods? | CAS's marking periods, if they match the district's; one source of dates |
+| T2 | "Current term": CAS's marking periods (`currentTerm_`, from `MARKING_PERIOD_ENDS`), or Canvas's grading periods? | **Decided (operator, 2026-11-08): CAS's marking periods**, extended per assignment by the teacher's override (decisions 10 and 11) |
 | T3 | The Canvas facts above | **Resolved (operator, 2026-11-08):** see "What Canvas gives" |
 
 ## The lesson report (the gap, per lesson)
@@ -261,14 +268,14 @@ competency with no student text. It is not needed now.
      nothing; the teacher's grant can.
    - *The grant* is in stage 1 as an editor function,
      `grantTurnInCode(studentEmail, configId, reason)`, owner only, reason
-     required. Stage 3 adds its dashboard button.
+     required. Stage 3 added its dashboard button (the Turn-in codes panel).
 2. **The flow.**
    - The input and return tabs.
    - The prompt, generated like the other flow prompts.
    - The harvest, the retry and the review-queue entry.
    - A FlowBuildSpec row and the operator's Studio build steps.
 
-   **Stage 2 built (this PR):** Flow 6, the turn-in check,
+   **Stage 2 built (PR #392):** Flow 6, the turn-in check,
    `cas-ccps/scripts/72_TurnInCheckFlow.js`, the prompt and Studio steps in
    `cas-ccps/docs/TURN_IN_CHECK_FLOW.md`, `tests/cas-ccps/turn-in-check-flow.test.js`.
    Details settled in the build (the file's header has each in full):
@@ -293,8 +300,8 @@ competency with no student text. It is not needed now.
      couldn't check your answer. Your teacher can see it." and the student
      can send it again; the CAS attention signal and the overnight email
      count the failed checks still waiting, and an answer waiting over an
-     hour. The rows wait for stage 3's review queue; until then the teacher
-     uses `grantTurnInCode()`.
+     hour. The rows wait in stage 3's review queue (the Turn-in codes
+     panel), where the teacher can grant the code.
    - *Run budget (D8).* Only `PENDING_CHECK` answers are sent; at most
      `TIC_INPUTS_PER_RUN` (10) rows a run, retries included.
    - *The job.* `runTurnInCheckFlow`, a Ledger cycle job every 2 minutes
@@ -304,6 +311,74 @@ competency with no student text. It is not needed now.
    - The grant, with its reason.
    - The review queue for flow failures and overrules.
    - The Canvas ZIP check and the grade file.
+
+   **Stage 3 built (this PR):** the Teacher Dashboard's **🎟 Turn-in codes**
+   panel, `cas-ccps/scripts/73_TurnInTeacherPanel.js` (its server half; the
+   markup and client are in `07`) and `74_TurnInCanvasCheck.js` (the Canvas
+   check), `tests/cas-ccps/turn-in-teacher.test.js`. Details settled in the
+   build (each file's header has them in full):
+   - *Who can use it.* Every panel function checks `_isAuthorizedTeacher_()`
+     and none is on `webapp-public-allow.json`; a grant also checks the
+     student is the teacher's own this school year. The panel works with
+     `TURN_IN_CODE_COURSES` off (the grant is the escape hatch) and says
+     when students don't see codes yet. To keep the Teacher Dashboard's
+     public functions teacher-only, 71's student side (the card's view,
+     `getMyTurnInState`, `submitTurnInAnswer`, the client half) moved
+     unchanged to `71b_TurnInStudent.js`, which the Teacher Dashboard does
+     not load.
+   - *Review answers.* Each student's latest answer whose check failed
+     (`CHECK_FAILED`) and, on request, those the check called `NOT_YET`,
+     when they have no code for the assignment: the student as the
+     dashboard shows them, the assignment, the milestone, the question, the
+     answer and the check's reason. **Issue code** is the grant, with a
+     required reason (`How = GRANT`, the reason in `TurnInCodes`); that is
+     how the teacher overrules a verdict. **Leave it** changes nothing.
+     There is no "issue all".
+   - *Give a code.* One student, one of their assignments, a required
+     reason; the same internals as `grantTurnInCode()` (`_turnInGrant_`).
+   - *Open an assignment.* The open overrides; open one of the teacher's
+     assignments (reason required, optional end date) or close one (reason
+     required), through `openTurnInForAssignment`'s internals.
+   - *Check Canvas.* The ZIP and the export are picked from the folder 52
+     reads exports from (`TEACHER_FOLDER_ID`, else the teacher's Drive),
+     newest first. The teacher picks the CAS assignment and the gradebook
+     column (`<Title> (<number>)`, the best title match preselected). Each
+     file's SIS ID (from `<sortable name>_[LATE_]<SIS ID>_text.html`; the
+     `LATE_` marker is ignored) is looked up in `SIS User ID`, then
+     Canvas's `ID`; the row's `SIS Login ID` is the account, built as 52
+     builds it. **The name in a file name is never read, matched, logged,
+     shown or stored.** The code is read from the box (the heading is only
+     compared with the column's title, a warning when it differs), tolerant
+     of spacing, case and O/I/L, and its check character is checked.
+     Outcomes: `VALID` (this student's code, for this assignment or a part
+     of it), `NO_CODE`, `OTHER_STUDENTS_CODE`, `WRONG_ASSIGNMENT` (their
+     code, another assignment), `INVALID_CODE` (bad check character, or no
+     such code issued), `NOT_ON_ROSTER` (no row, or rows that disagree:
+     never a guess), `NOT_TEXT_ENTRY`, `UNREADABLE`. More than one code in
+     an entry: the first valid one, noted.
+   - *The upload file* (the grade file). The export's identity columns
+     exactly as the export has them (Student, ID, SIS User ID, SIS Login
+     ID, Section), its Points Possible row, and one column, the chosen
+     gradebook column's header verbatim: full points for a `VALID` row and
+     a **blank** cell for every other row. Canvas leaves a grade unchanged
+     for a blank cell, so the file only adds completion for valid codes.
+     Full points come from the Points Possible row, or the teacher's number
+     when it has none.
+   - *What is kept.* The report (a Google Sheet: counts, then each
+     submission's student from the Ledger) and the upload file go in the
+     teacher's folder; the Ledger's `TurnInCanvasRuns` tab gets one row per
+     run (who, when, assignment, column, counts), a 5-year record with no
+     student data. Nothing from the ZIP is stored. The panel asks the
+     teacher to delete the ZIP when done.
+   - *Limits.* At most 400 files and 4 minutes a run; past either it stops
+     and says so.
+   - *The weekly routine* (teacher): in Canvas, Download Submissions (the
+     ZIP) and Export the gradebook (fresh, so it has today's roster); drop
+     both in the folder; 🎟 Turn-in codes → Check Canvas → Find files, pick
+     the assignment and the column, Run the check; read the report; upload
+     the CSV on Canvas's gradebook Import page; delete the ZIP. The first
+     time, do a dry run on one assignment and read the report and the CSV
+     before uploading anything.
 4. **Canvas.**
    - The cartridge's submission type changes from URL to text
      (`build-canvas-cartridge.js` writes `<format type="url"/>` today).
@@ -311,8 +386,9 @@ competency with no student text. It is not needed now.
    - The operator re-imports the cartridges.
 5. **The lesson report.**
 
-Stages 1–2 can be piloted before Canvas changes: students see and copy codes
-while Canvas still takes the URL.
+Stages 1–3 can be piloted before Canvas changes: students see and copy codes
+while Canvas still takes the URL (the Canvas check needs stage 4's text
+entries).
 
 ## Not doing
 

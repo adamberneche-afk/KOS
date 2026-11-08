@@ -40,7 +40,7 @@ earlier is past; a 1-year record from 2024-25 or earlier is past.
 
 | Tier | Period | Records | Script Property |
 |---|---|---|---|
-| Record: what a grade, a rating decision or a disclosure rests on, and the student's own work | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog`, `ReflectionLog`, `PartUnlocks`, `TurnInCodes`, `TurnInChecks`, `TurnInOverrides` | `LEDGER_RETENTION_YEARS` |
+| Record: what a grade, a rating decision or a disclosure rests on, and the student's own work | 5 years | `Ledger`, `StudentAssignments`, `StudentDocRegistry`, `EvaluationLog`, `ReflectionLog`, `PartUnlocks`, `TurnInCodes`, `TurnInChecks`, `TurnInOverrides`, `TurnInCanvasRuns` | `LEDGER_RETENTION_YEARS` |
 | | 5 years | `CompetencyEvidence` | `COMPETENCY_EVIDENCE_RETENTION_YEARS` |
 | | 5 years | `SCRDecisionLog` | `SCR_RETENTION_YEARS` |
 | | 5 years | `ParentReportLog` | `PARENT_REPORT_RETENTION_YEARS` |
@@ -241,10 +241,21 @@ marks or removes those rows yet.
 |---|---|
 | **Fields** | `TurnInChecks`: CheckID, SubmittedAt, GoogleID (district email), StudentConfigID, StudentFileID, AssignmentID, Course, Kind (NOT_YET or PASSED), Milestone and Question (as asked), **Answer: the student's own words** (system text neutralized, stored as plain text), Status (`PENDING_CHECK`, `ADDRESSES`, `NOT_YET`, `CHECK_FAILED`), Reason (the check's one line, or the system's note on a failed check), DecidedAt. `TurnInCodes`: Code, GoogleID, AssignmentID, StudentConfigID, Course, Lesson, IssuedAt, How (`CHECK` or `GRANT`), GrantReason (the teacher's). `TurnInOverrides`: AssignmentKey (an assignment ConfigID such as `CAS-8177-L05`, not a student's), OpenedBy (the script owner's address), OpenedAt, Reason, Until, ClosedAt, ClosedReason: no student data. No names. |
 | **Why collected** | The turn-in code (`meta/TURN_IN_CODE_PLAN_2026-11.md`, D17): completion credit in Canvas for answering one question about the feedback. The code is bound to one student and one assignment here, never by anything in the student's doc. The answer is kept apart from `ReflectionLog`, whose rows choose the next reflection questions and feed Flow 2 and the Student Context doc. |
-| **Written by** | `submitTurnInAnswer()` (an answer that passes the screen), `applyTurnInVerdict_()` (the verdict, from Flow 6's harvest in `72`) and `markTurnInCheckFailed_()` (no verdict after the retries), `grantTurnInCode()` (the teacher, from the editor), and `openTurnInForAssignment()` / `closeTurnInForAssignment()` (the teacher, from the editor: one assignment opened for every student on it past its marking period). |
-| **Read by** | The Student Dashboard (13/71): each student sees only their own question, state and code. Flow 6 (`72`, stage 2): Apps Script copies one answer, its question and milestone into a `TurnInCheckInput` row's `PromptText`; Studio's Gemini step reads that one cell and returns a verdict and one sentence to `TurnInCheckReturn`. The CAS attention signal and the overnight email count failed checks (counts only). |
+| **Written by** | `submitTurnInAnswer()` (an answer that passes the screen), `applyTurnInVerdict_()` (the verdict, from Flow 6's harvest in `72`) and `markTurnInCheckFailed_()` (no verdict after the retries), `grantTurnInCode()` (the teacher, from the editor), and `openTurnInForAssignment()` / `closeTurnInForAssignment()` (the teacher, from the editor: one assignment opened for every student on it past its marking period). Since stage 3 (2026-11-08) the same grant, open and close also from the Teacher Dashboard's 🎟 Turn-in codes panel (`73`, teacher only), each with a required reason. |
+| **Read by** | The Student Dashboard (13/71): each student sees only their own question, state and code. Flow 6 (`72`, stage 2): Apps Script copies one answer, its question and milestone into a `TurnInCheckInput` row's `PromptText`; Studio's Gemini step reads that one cell and returns a verdict and one sentence to `TurnInCheckReturn`. The CAS attention signal and the overnight email count failed checks (counts only). The Teacher Dashboard's Turn-in codes panel (`73`, teacher only): the teacher's own students' failed and not-yet answers (with the answer text, the question, the milestone and the check's reason), their codes, and the open overrides. The Canvas check (`74`) reads `TurnInCodes` to match a pasted code to its owner. |
 | **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
 | **Retention** | `LEDGER_RETENTION_YEARS`, with the Ledger (counted in `checkRetentionSchedule()`). The answers are the student's own writing, like `ReflectionLog`. Code and answer counts are never evidence of learning (the plan's standing rules). |
+
+### Canvas submissions ZIP, the Canvas check's outputs, and TurnInCanvasRuns (S74)
+*Teacher's own Drive folder; Central Ledger tab (2026-11-08), D17 stage 3*
+
+| | |
+|---|---|
+| **Fields** | The **submissions ZIP** is Canvas's own download: one file per submission, named `<sortable name>_[LATE_]<SIS ID>_text.html`, each holding the assignment title, the student's name and their typed text. `74_TurnInCanvasCheck.js` reads the SIS ID from the file name and the turn-in code from the text; **the name in the file name and the heading's name are never matched on, logged, shown or stored**, and no student text is kept. The **report** (a Google Sheet) lists each submission's student as the Teacher Dashboard shows them (the Ledger's name and period; an unmatched file by its SIS ID), its result and a note. The **upload CSV** copies the gradebook export's identity columns (Student, ID, SIS User ID, SIS Login ID, Section) and one assignment column: full points for a valid code, blank otherwise. `TurnInCanvasRuns`: RunAt, RunBy (the teacher), AssignmentID, CanvasColumn (the gradebook column's header), Files and one count per result, Stopped: no student data. |
+| **Why collected** | Completion credit in Canvas for a valid turn-in code (`meta/TURN_IN_CODE_PLAN_2026-11.md`, D17). The run row records what an uploaded grade rests on. |
+| **Written by** | The teacher downloads the ZIP and the export into their folder. `74` writes the report and the upload CSV into that folder (`TEACHER_FOLDER_ID`, else beside the export) and one `TurnInCanvasRuns` row, from the Teacher Dashboard's panel or `runTurnInCanvasCheck()` in the editor. |
+| **Visible to** | The ZIP, the report and the upload CSV: the teacher, in their own Drive. `TurnInCanvasRuns`: whoever can open the Central Ledger. Nothing goes to Canvas until the teacher uploads the CSV. |
+| **Retention** | The ZIP holds students' work and names: the panel asks the teacher to delete it after the run. The report and the upload CSV are the teacher's files. `TurnInCanvasRuns`: `LEDGER_RETENTION_YEARS` (counted in `checkRetentionSchedule()`). |
 
 ### Canvas gradebook exports and CanvasSectionMap (S52)
 *Teacher's own Drive folder; Central Ledger tab*
@@ -255,7 +266,7 @@ marks or removes those rows yet.
 | **Why collected** | Enrolling a class roster without each student submitting the intake form. |
 | **Written by** | The teacher uploads the exports; S52 adds section names to `CanvasSectionMap`. |
 | **Visible to** | The exports: the teacher, in their own Drive. They are read by `52_CanvasRosterImport.js` in the Central Ledger project, which runs as the teacher (from the `TEACHER_FOLDER_ID` folder if set, otherwise any matching CSV the teacher owns). Since 2026-10-22 the execution log counts invalid accounts and failures by section and prints no SIS login or name. |
-| **Retention** | The exports are the teacher's files; delete them after enrolling. Nothing else is kept. |
+| **Retention** | The exports are the teacher's files; delete them after enrolling, or after the Canvas check (S74, above), which reads the same exports' identity columns and Points Possible row. Nothing else is kept. |
 
 ### PeriodOverride (S52)
 *Central Ledger tab*

@@ -133,6 +133,7 @@ footer{background:var(--slate);color:rgba(255,255,255,0.72);text-align:center;pa
     <a class="sb-link" href="#settings">Settings</a>
     <a class="sb-link" href="#module2">Warm-ups and Lesson Logs</a>
     <a class="sb-link" href="#parent-reports">Parent Reports</a>
+    <a class="sb-link" href="#turnin-codes">Turn-in Codes</a>
   </div>
   <div class="sb-section">
     <span class="sb-section-label">Student Support</span>
@@ -252,6 +253,7 @@ footer{background:var(--slate);color:rgba(255,255,255,0.72);text-align:center;pa
       <tr><td class="td-label">Student Context</td><td>One document per student that gathers their lessons, checks and warm-ups, updated weekly. Course and Student pickers narrow the list; each student shows their competencies done, <strong>By week →</strong> opens their page, and “← Back to dashboard” returns to the roster</td></tr>
       <tr><td class="td-label">✉ Parent Reports</td><td>This week's report for each student, to copy into an email you send yourself. Course and Student pickers show one course or one student. See <a href="#parent-reports">Parent Reports</a></td></tr>
       <tr><td class="td-label">🎓 Competency ratings</td><td>Confirm or set each student's SCR rating. See <a href="#turnin">Grading and Competency Ratings</a></td></tr>
+      <tr><td class="td-label">🎟 Turn-in codes</td><td>Answers the turn-in check couldn't decide, giving a code yourself, opening an assignment after its marking period, and checking the codes students pasted in Canvas. See <a href="#turnin-codes">Turn-in Codes</a></td></tr>
       <tr><td class="td-label">⚙ Settings</td><td>Each feature on or off per course, the marking period dates, and activity and delay days. See <a href="#settings">Settings</a></td></tr>
       <tr><td class="td-label">📅 Lessons</td><td>Start dates, rollout status, and lesson edits. See <a href="#create">Lessons and Start Dates</a></td></tr>
       <tr><td class="td-label">👁 View as a student</td><td>Opens the Student Dashboard in a new tab as a made-up student, “Demo Student”, on your own lessons, in every card state. Press its buttons to see what a student sees; nothing is saved and no document opens. Bookmark that tab to come back to it. Only you can open it: anyone else gets their own page</td></tr>
@@ -480,6 +482,44 @@ footer{background:var(--slate);color:rgba(255,255,255,0.72);text-align:center;pa
   </div>
 
   <p style="color:var(--mid);margin-bottom:20px">Copying a report records the time and your account, so the panel shows “Copied” next to it. It doesn't record who you sent it to, or whether you did.</p>
+</div>
+
+<!-- TURN-IN CODES -->
+<div class="topic" id="turnin-codes">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-teal" aria-hidden="true">🎟</div>
+    <h2>Turn-in Codes</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:12px">A turn-in code is what a student pastes into the Canvas assignment for completion credit. The Student Dashboard gives it once they answer one question about their feedback and the check says the answer addresses it. Codes follow the marking periods in ⚙ Settings. Press <strong>🎟 Turn-in codes</strong> for the four parts below; they work even before students see codes.</p>
+
+  <table class="ref-table">
+    <thead><tr><th style="width:28%">Tab</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td class="td-label">Review answers</td><td>Answers the check couldn't run on, and, if you tick the box, answers it said don't address the feedback yet. You see the student, the assignment, the milestone, the question, their answer and the check's reason. <strong>Issue code</strong> gives the code with your reason (that is how you overrule the check). <strong>Leave it</strong> changes nothing; the student can answer again</td></tr>
+      <tr><td class="td-label">Give a code</td><td>One student, one assignment, with your reason: for an exception or an outage. If they already have a code, you see that one. Copy it if you need to</td></tr>
+      <tr><td class="td-label">Open an assignment</td><td>After its marking period, an assignment gives no codes. Open one for every student on it, with a reason and an optional end date, and close it when you're done. Students still answer the question; opening gives no code by itself</td></tr>
+      <tr><td class="td-label">Check Canvas</td><td>Reads the codes students pasted in Canvas and makes a file that gives completion for each valid one (below)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">Each week: checking the codes in Canvas</h3>
+  <ol style="color:var(--mid);margin:0 0 16px 20px;line-height:1.7">
+    <li>In Canvas, open the assignment and choose <strong>Download Submissions</strong> (a ZIP). In Grades, <strong>Export</strong> the entire gradebook (a CSV), fresh, so it lists everyone on the roster today.</li>
+    <li>Put both files in your teacher folder in Drive (the one the roster import reads).</li>
+    <li>In <strong>🎟 Turn-in codes</strong>, open <strong>Check Canvas</strong>, press <strong>Find files</strong>, pick the CAS assignment and the gradebook column to fill (the closest name is picked for you), and press <strong>Run the check</strong>.</li>
+    <li>Read the result and the report. Each submission is one of: valid code, no code, someone else's code, their code for another assignment, a code that doesn't check out (likely a typo), not on the gradebook export, not a text entry, or a file that couldn't be read.</li>
+    <li>In Canvas Grades, choose <strong>Import</strong> and upload the upload file.</li>
+    <li><strong>Delete the ZIP</strong> from Drive. It holds students' work and names.</li>
+  </ol>
+
+  <div class="callout callout-gold">
+    <span class="callout-icon" aria-hidden="true">⚠️</span>
+    <div class="callout-body"><strong>The upload file only adds.</strong> It fills one column: full points for each valid code, and a blank cell for everyone else. Canvas leaves a grade as it is when the cell is blank, so nothing you entered by hand is changed. The first time, run it on one assignment and read the report and the file before you upload anything.</div>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">Students are matched by their SIS ID, never by the name in a file name. The report shows them the way your dashboard does. Nothing from the ZIP is kept; each run adds one line with the counts to the TurnInCanvasRuns tab.</p>
 </div>
 
 <!-- STUDENT PROBLEMS -->

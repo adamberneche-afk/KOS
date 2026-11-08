@@ -2473,6 +2473,46 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
 /* ── M2: FORM ERROR ── */
 .form-error{background:#fce8e6;color:#c5221f;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px;display:none}
 
+/* ── Turn-in codes panel (73, 74; D17 stage 3) ── */
+.tic-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap}
+#turnin-modal-body{max-height:calc(100vh - 170px);overflow-y:auto}
+.tic-intro{font-size:13px;color:#3c4043;line-height:1.5;margin-bottom:10px}
+.tic-note{font-size:13px;background:#fef7e0;border:1px solid #f9dc8f;border-radius:6px;padding:8px 12px;margin-bottom:12px;line-height:1.45}
+.tic-muted{font-size:13px;color:var(--text-secondary);line-height:1.45}
+.tic-tabs{display:flex;flex-wrap:wrap;gap:6px;border-bottom:1px solid #dadce0;margin:4px 0 14px}
+.tic-tabs button{background:none;border:none;border-bottom:3px solid transparent;padding:8px 10px;font:inherit;font-size:14px;color:#3c4043;cursor:pointer;min-height:40px}
+.tic-tabs button[aria-selected="true"]{border-bottom-color:#1967d2;color:#1557b0;font-weight:600}
+.tic-tabs button:focus-visible,.tic-btn:focus-visible,.tic-input:focus-visible,#turnin-modal-body select:focus-visible,#turnin-modal-body textarea:focus-visible{outline:2px solid #1967d2;outline-offset:2px}
+.tic-item{border:1px solid #e8eaed;border-radius:8px;padding:14px;margin:12px 0}
+.tic-item-h{font-size:14px;font-weight:600;margin-bottom:2px}
+.tic-meta{font-size:12.5px;color:var(--text-secondary);margin-bottom:8px}
+.tic-why{font-size:13px;line-height:1.45;margin-bottom:8px;padding:6px 10px;border-radius:6px}
+.tic-failed{background:#fce8e6}
+.tic-notyet{background:#f3e8fd}
+.tic-field{font-size:13px;line-height:1.45;margin-bottom:6px}
+.tic-label{display:block;font-size:12.5px;font-weight:600;color:#3c4043;margin:10px 0 3px}
+.tic-field .tic-label{display:inline;margin:0 4px 0 0}
+.tic-answer{margin:4px 0 0;padding:8px 10px;border-left:3px solid #dadce0;background:#f8f9fa;white-space:pre-wrap;font-size:13px}
+.tic-input,#turnin-modal-body select,#turnin-modal-body textarea{width:100%;box-sizing:border-box;font:inherit;font-size:14px;padding:7px 9px;border:1px solid #9aa0a6;border-radius:6px;background:#fff;min-height:36px}
+.tic-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tic-btn{background:#fff;color:#1557b0;border:1px solid #1557b0;border-radius:6px;padding:7px 14px;font:inherit;font-size:13px;font-weight:500;cursor:pointer;min-height:36px}
+.tic-btn.tic-primary{background:#1967d2;color:#fff;border-color:#1967d2}
+.tic-btn:disabled{background:#f1f3f4;color:var(--text-secondary);border-color:#dadce0;cursor:not-allowed}
+.tic-msg{font-size:13px;margin-top:6px;line-height:1.45}
+.tic-err{color:#b3261e;font-size:13px;line-height:1.45}
+.tic-ok{color:#137333;font-size:13px;line-height:1.45}
+.tic-empty{font-size:13px;color:var(--text-secondary);padding:10px 0}
+.tic-check{display:flex;gap:8px;align-items:center;font-size:13px;margin:8px 0}
+.tic-code{font-family:"Roboto Mono",Consolas,monospace;font-size:15px;letter-spacing:.5px}
+.tic-steps{font-size:13px;line-height:1.5;margin:0 0 10px 20px}
+.tic-table{width:100%;border-collapse:collapse;font-size:13px;margin:8px 0 12px}
+.tic-table th,.tic-table td{text-align:left;padding:5px 8px;border-bottom:1px solid #e8eaed;vertical-align:top}
+.tic-table th{font-weight:600;color:#3c4043}
+.tic-links{display:flex;flex-wrap:wrap;gap:14px;margin:8px 0;font-size:14px}
+.tic-links a{color:#1557b0}
+.tic-h3{font-size:14px;font-weight:600;margin:16px 0 6px}
+@media(max-width:600px){.tic-tabs button{flex:1 1 45%}}
+
 @media(max-width:600px){
   .field-row{grid-template-columns:1fr}
   .modal{border-radius:0}
@@ -2503,6 +2543,10 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
        review queue of AI-suggested Module 5 competency ratings; nothing
        is decided until the teacher confirms or overrides one. -->
   <button id="scr-review-btn" onclick="openScrReviewModal()">🎓 Competency ratings</button>
+  <!-- Turn-in codes (73, 74; D17 stage 3): the review queue, the grant, the
+       per-assignment openings and the Canvas check. Works whether or not
+       students see codes yet (TURN_IN_CODE_COURSES). -->
+  <button id="turnin-btn" onclick="openTurnInPanel()" aria-haspopup="dialog">🎟 Turn-in codes</button>
   <!-- ⚙ Settings (sprint PR 3): the features turned on per course and the
        marking period end dates, each a _CONFIG row (00). -->
   <button id="settings-btn" onclick="openSettingsModal()">⚙ Settings</button>
@@ -2750,6 +2794,20 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
     <div class="modal-body" id="scr-review-modal-body">
       <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
     </div>
+  </div>
+</div>
+
+<!-- Turn-in codes panel (73_TurnInTeacherPanel.js, 74_TurnInCanvasCheck.js). -->
+<div class="modal-backdrop" id="turnin-modal-backdrop" onclick="if(event.target===this)closeTurnInPanel()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="turnin-modal-title" style="max-width:820px">
+    <div class="modal-header">
+      <h2 id="turnin-modal-title">Turn-in codes</h2>
+      <button class="modal-close" onclick="closeTurnInPanel()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="turnin-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
+    </div>
+    <div id="tic-live" class="tic-sr" role="status" aria-live="polite"></div>
   </div>
 </div>
 
@@ -4191,6 +4249,548 @@ document.addEventListener("click", function(e) {
 document.addEventListener("change", function(e) {
   const el = e.target.closest && e.target.closest("#lesson-schedule-modal-body select[data-ld]");
   if (el) _ldChange(el);
+});
+
+// ── Turn-in codes (73_TurnInTeacherPanel.js, 74_TurnInCanvasCheck.js) ──────
+// D17 stage 3: the answers the check couldn't decide (or said not yet), the
+// teacher's grant, the per-assignment openings and the Canvas check. Four
+// tabs over one data load. Every write needs a reason; nothing is issued in
+// bulk. Messages go to #tic-live, outside the re-rendered body, so a screen
+// reader hears them.
+let _tic = null;
+let _ticTab = "review";
+let _ticShowNotYet = false;
+const _ticLeft = {};   // checkId -> true: "Leave it", this visit only
+const _ticDone = {};   // checkId -> the code issued, this visit
+let _ticG = { student: "", item: "", reason: "", code: "", msg: null };
+let _ticO = { key: "", reason: "", until: "", msg: null, closing: {} };
+let _ticC = { files: null, zipId: "", exportId: "", assignmentId: "", columns: null, column: "", points: "",
+  hasPointsRow: true, busy: "", msg: null, result: null };
+const TIC_TABS = [["review", "Review answers"], ["grant", "Give a code"], ["open", "Open an assignment"], ["canvas", "Check Canvas"]];
+
+function openTurnInPanel() {
+  _openPanel("turnin-modal-backdrop", closeTurnInPanel);
+  _ticLoad();
+}
+
+function closeTurnInPanel() {
+  _closePanel("turnin-modal-backdrop");
+}
+
+function _ticSay(text) {
+  const live = document.getElementById("tic-live");
+  if (live) { live.textContent = ""; live.textContent = text; }
+}
+
+function _ticSafe(s) {
+  return String(s == null ? "" : s).replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+function _ticWhere(x) {
+  return [x.period ? "Period " + x.period : "", x.course || ""].filter(Boolean).join(" · ");
+}
+
+function _ticLoad() {
+  document.getElementById("turnin-modal-body").innerHTML = '<p class="tic-muted">Loading…</p>';
+  google.script.run
+    .withSuccessHandler(function (d) { _tic = d; renderTurnInPanel(); })
+    .withFailureHandler(function (e) { _tic = { success: false, error: "Could not load: " + (e && e.message ? e.message : "unknown error") }; renderTurnInPanel(); })
+    .getTurnInPanelData();
+}
+
+function _ticQueue() {
+  return ((_tic && _tic.queue) || []).filter(function (q) {
+    return !_ticLeft[q.checkId] && (q.status === "CHECK_FAILED" || _ticShowNotYet || _ticDone[q.checkId]);
+  });
+}
+
+function renderTurnInPanel(focusTab) {
+  const body = document.getElementById("turnin-modal-body");
+  if (!body) return;
+  if (!_tic || !_tic.success) {
+    body.innerHTML = '<p class="tic-err" role="alert">' + esc((_tic && _tic.error) || "Could not load.") + '</p>';
+    return;
+  }
+  let h = '<p class="tic-intro">Students get a turn-in code by answering the question about their feedback, and paste it into the Canvas assignment. Here you can give a code yourself, open an assignment after its marking period, and check the codes students pasted in Canvas.</p>';
+  if (!_tic.studentsSeeCodes) {
+    h += '<p class="tic-note">Students don’t see turn-in codes yet (the TURN_IN_CODE_COURSES setting is off). Everything here still works.</p>';
+  }
+  h += '<div class="tic-tabs" role="tablist" aria-label="Turn-in codes">';
+  TIC_TABS.forEach(function (t) {
+    const on = _ticTab === t[0];
+    const n = t[0] === "review" ? ((_tic.queue || []).filter(function (q) { return q.status === "CHECK_FAILED" && !_ticDone[q.checkId]; }).length) : 0;
+    h += '<button type="button" role="tab" id="tic-tab-' + t[0] + '" aria-controls="tic-pane" aria-selected="' + on + '" tabindex="' + (on ? "0" : "-1") +
+      '" data-tic="tab" data-tab="' + t[0] + '">' + esc(t[1]) + (n ? ' (' + n + ')' : '') + '</button>';
+  });
+  h += '</div><div id="tic-pane" role="tabpanel" aria-labelledby="tic-tab-' + _ticTab + '">';
+  if (_ticTab === "grant") h += _ticGrantPane();
+  else if (_ticTab === "open") h += _ticOpenPane();
+  else if (_ticTab === "canvas") h += _ticCanvasPane();
+  else h += _ticReviewPane();
+  body.innerHTML = h + '</div>';
+  if (focusTab) {
+    const tab = document.getElementById("tic-tab-" + _ticTab);
+    if (tab) tab.focus();
+  }
+}
+
+// ── Review answers ──
+function _ticReviewPane() {
+  const all = _tic.queue || [];
+  const notYet = all.filter(function (q) { return q.status === "NOT_YET"; }).length;
+  let h = '<p class="tic-muted">Answers the check couldn’t decide, and, if you ask, answers the check said don’t address the feedback yet. Read the answer. To overrule the check, give the code with your reason; otherwise leave it, and the student can answer again. Nothing changes until you press Issue code.</p>' +
+    '<label class="tic-check"><input type="checkbox" data-tic="notyet"' + (_ticShowNotYet ? ' checked' : '') + '> Also show “Not yet” answers (' + notYet + ')</label>';
+  const list = _ticQueue();
+  if (!list.length) return h + '<p class="tic-empty">Nothing to review.</p>';
+  list.forEach(function (q) { h += _ticItem(q); });
+  return h;
+}
+
+function _ticItem(q) {
+  const id = "tic-q-" + _ticSafe(q.checkId);
+  const failed = q.status === "CHECK_FAILED";
+  let h = '<section class="tic-item" aria-labelledby="' + id + '-h">' +
+    '<h3 class="tic-item-h" id="' + id + '-h">' + esc(q.name) + (_ticWhere(q) ? ' <span class="tic-muted">· ' + esc(_ticWhere(q)) + '</span>' : '') + '</h3>' +
+    '<div class="tic-meta">' + esc(q.assignmentName) + ' (' + esc(q.assignmentId) + ')' + (q.submittedAt ? ' · answered ' + esc(q.submittedAt) : '') + '</div>' +
+    '<div class="tic-why ' + (failed ? 'tic-failed' : 'tic-notyet') + '"><b>' + (failed ? 'The check couldn’t run.' : 'The check said not yet.') + '</b> ' + esc(q.reason || "") + '</div>' +
+    (q.milestone ? '<div class="tic-field"><span class="tic-label">Milestone</span>' + esc(q.milestone) + '</div>' : '') +
+    '<div class="tic-field"><span class="tic-label">Question</span>' + esc(q.question) + '</div>' +
+    '<div class="tic-field"><span class="tic-label">Their answer</span><blockquote class="tic-answer">' + esc(q.answer) + '</blockquote></div>';
+  if (_ticDone[q.checkId]) {
+    return h + '<p class="tic-ok">Code issued: <span class="tic-code">' + esc(_ticDone[q.checkId]) + '</span>. It’s kept as your grant, with your reason.</p></section>';
+  }
+  return h + '<label class="tic-label" for="' + id + '-r">Why you’re giving the code (required)</label>' +
+    '<input type="text" class="tic-input" id="' + id + '-r" maxlength="300" autocomplete="off">' +
+    '<div class="tic-actions"><button type="button" class="tic-btn tic-primary" data-tic="issue" data-check="' + esc(q.checkId) + '">Issue code</button>' +
+    '<button type="button" class="tic-btn" data-tic="leave" data-check="' + esc(q.checkId) + '">Leave it</button></div>' +
+    '<div class="tic-msg" id="' + id + '-msg"></div></section>';
+}
+
+function _ticIssue(btn) {
+  const checkId = btn.getAttribute("data-check");
+  const id = "tic-q-" + _ticSafe(checkId);
+  const box = document.getElementById(id + "-r");
+  const msg = document.getElementById(id + "-msg");
+  const reason = box ? box.value.trim() : "";
+  if (reason.length < 3) {
+    msg.className = "tic-msg tic-err";
+    msg.textContent = "Write a reason first. It’s kept with the code.";
+    _ticSay(msg.textContent);
+    if (box) box.focus();
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Issuing…";
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (res && res.success) {
+        _ticDone[checkId] = res.code;
+        renderTurnInPanel();
+        _ticSay((res.already ? "They already had a code: " : "Code issued: ") + res.code);
+      } else {
+        btn.disabled = false;
+        btn.textContent = "Issue code";
+        msg.className = "tic-msg tic-err";
+        msg.textContent = (res && res.error) || "The code wasn’t issued.";
+        _ticSay(msg.textContent);
+      }
+    })
+    .withFailureHandler(function (e) {
+      btn.disabled = false;
+      btn.textContent = "Issue code";
+      msg.className = "tic-msg tic-err";
+      msg.textContent = "The page didn’t answer: " + (e && e.message ? e.message : "try again");
+      _ticSay(msg.textContent);
+    })
+    .turnInPanelIssueForCheck(checkId, reason);
+}
+
+// ── Give a code ──
+function _ticGrantPane() {
+  const people = _tic.students || [];
+  let h = '<p class="tic-muted">For an exception or an outage: one student, one assignment, with your reason. The code and the reason are kept in the TurnInCodes tab. If the student already has a code for it, you’ll see that one.</p>';
+  if (!people.length) return h + '<p class="tic-empty">No students on your roster this school year.</p>';
+  const person = people.filter(function (p) { return p.key === _ticG.student; })[0];
+  h += '<label class="tic-label" for="tic-g-student">Student</label><select id="tic-g-student" data-tic="g-student"><option value="">Choose a student</option>' +
+    people.map(function (p) {
+      return '<option value="' + esc(p.key) + '"' + (p.key === _ticG.student ? ' selected' : '') + '>' + esc(p.name + (_ticWhere(p) ? " · " + _ticWhere(p) : "")) + '</option>';
+    }).join('') + '</select>';
+  h += '<label class="tic-label" for="tic-g-item">Assignment</label><select id="tic-g-item" data-tic="g-item"' + (person ? '' : ' disabled') + '><option value="">Choose an assignment</option>' +
+    (person ? person.items.map(function (it) {
+      return '<option value="' + esc(it.configId) + '"' + (it.configId === _ticG.item ? ' selected' : '') + '>' + esc(it.assignmentName + (it.code ? " (has a code)" : "")) + '</option>';
+    }).join('') : '') + '</select>';
+  h += '<label class="tic-label" for="tic-g-reason">Why you’re giving the code (required)</label>' +
+    '<textarea id="tic-g-reason" rows="2" maxlength="300" data-tic="g-reason">' + esc(_ticG.reason) + '</textarea>' +
+    '<div class="tic-actions"><button type="button" class="tic-btn tic-primary" data-tic="grant">Issue code</button></div>';
+  if (_ticG.msg) h += '<div class="tic-msg ' + (_ticG.msg.ok ? 'tic-ok' : 'tic-err') + '">' + esc(_ticG.msg.text) + '</div>';
+  if (_ticG.code) {
+    h += '<label class="tic-label" for="tic-g-code">The code (the student also sees it on their dashboard when turn-in codes are on)</label>' +
+      '<div class="tic-actions" style="margin-top:0"><input id="tic-g-code" class="tic-input tic-code" readonly value="' + esc(_ticG.code) + '" style="max-width:300px">' +
+      '<button type="button" class="tic-btn" data-tic="copy">Copy code</button></div><div class="tic-msg" id="tic-g-copied"></div>';
+  }
+  return h;
+}
+
+function _ticGrant(btn) {
+  const reason = String(_ticG.reason || "").trim();
+  let problem = "";
+  if (!_ticG.student) problem = "Choose a student.";
+  else if (!_ticG.item) problem = "Choose an assignment.";
+  else if (reason.length < 3) problem = "Write a reason first. It’s kept with the code.";
+  if (problem) {
+    _ticG.msg = { ok: false, text: problem };
+    renderTurnInPanel();
+    _ticSay(problem);
+    return;
+  }
+  btn.disabled = true;
+  btn.textContent = "Issuing…";
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (res && res.success) {
+        _ticG.code = res.code;
+        _ticG.reason = "";
+        _ticG.msg = { ok: true, text: res.already ? "They already had a code for this assignment; here it is." : "Code issued and kept with your reason." };
+        (_tic.students || []).forEach(function (p) {
+          if (p.key !== _ticG.student) return;
+          p.items.forEach(function (it) { if (it.configId === _ticG.item) it.code = res.code; });
+        });
+      } else {
+        _ticG.msg = { ok: false, text: (res && res.error) || "The code wasn’t issued." };
+      }
+      renderTurnInPanel();
+      _ticSay(_ticG.msg.text + (res && res.success ? " " + res.code : ""));
+    })
+    .withFailureHandler(function (e) {
+      _ticG.msg = { ok: false, text: "The page didn’t answer: " + (e && e.message ? e.message : "try again") };
+      renderTurnInPanel();
+      _ticSay(_ticG.msg.text);
+    })
+    .turnInPanelGrant(_ticG.student, _ticG.item, reason);
+}
+
+// ── Open an assignment ──
+function _ticOpenPane() {
+  let h = '<p class="tic-muted">A code is issued only while the assignment is in the current marking period. Open one assignment to let every student on it earn a code after that, until a date or until you close it. Students still answer the feedback question; opening issues no code.</p>';
+  const open = _tic.overrides || [];
+  h += '<h3 class="tic-h3">Open now</h3>';
+  if (!open.length) h += '<p class="tic-empty">No assignment is open past its marking period.</p>';
+  open.forEach(function (o) {
+    const id = "tic-o-" + _ticSafe(o.key);
+    h += '<section class="tic-item" aria-labelledby="' + id + '-h"><h4 class="tic-item-h" id="' + id + '-h">' + esc(o.name) + ' <span class="tic-muted">(' + esc(o.key) + ')</span></h4>' +
+      '<div class="tic-meta">Opened ' + esc(o.openedAt) + ' · ' + (o.until ? 'through ' + esc(o.until) : 'until you close it') + '</div>' +
+      '<div class="tic-field"><span class="tic-label">Reason</span>' + esc(o.reason) + '</div>' +
+      '<label class="tic-label" for="' + id + '-r">Why you’re closing it (required)</label>' +
+      '<input type="text" class="tic-input" id="' + id + '-r" maxlength="300" autocomplete="off">' +
+      '<div class="tic-actions"><button type="button" class="tic-btn" data-tic="close" data-key="' + esc(o.key) + '">Close it</button></div>' +
+      '<div class="tic-msg" id="' + id + '-msg"></div></section>';
+  });
+  const list = _tic.assignments || [];
+  h += '<h3 class="tic-h3">Open an assignment</h3>';
+  if (!list.length) return h + '<p class="tic-empty">None of your students is on a CAS assignment yet.</p>';
+  h += '<label class="tic-label" for="tic-o-key">Assignment</label><select id="tic-o-key" data-tic="o-key"><option value="">Choose an assignment</option>' +
+    list.map(function (a) {
+      return '<option value="' + esc(a.id) + '"' + (a.id === _ticO.key ? ' selected' : '') + '>' + esc(a.name + " (" + a.id + ")") + '</option>';
+    }).join('') + '</select>' +
+    '<label class="tic-label" for="tic-o-reason">Why (required)</label><input type="text" class="tic-input" id="tic-o-reason" data-tic="o-reason" maxlength="300" autocomplete="off" value="' + esc(_ticO.reason) + '">' +
+    '<label class="tic-label" for="tic-o-until">Open through (optional; blank keeps it open until you close it)</label><input type="date" class="tic-input" id="tic-o-until" data-tic="o-until" value="' + esc(_ticO.until) + '" style="max-width:220px">' +
+    '<div class="tic-actions"><button type="button" class="tic-btn tic-primary" data-tic="open">Open it</button></div>';
+  if (_ticO.msg) h += '<div class="tic-msg ' + (_ticO.msg.ok ? 'tic-ok' : 'tic-err') + '">' + esc(_ticO.msg.text) + '</div>';
+  return h;
+}
+
+function _ticOpen(btn) {
+  const reason = String(_ticO.reason || "").trim();
+  const problem = !_ticO.key ? "Choose an assignment." : reason.length < 3 ? "Write a reason first." : "";
+  if (problem) { _ticO.msg = { ok: false, text: problem }; renderTurnInPanel(); _ticSay(problem); return; }
+  btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (res && res.success) {
+        _ticO = { key: "", reason: "", until: "", closing: {}, msg: { ok: true, text: res.key + " is open" + (res.until ? " through " + res.until : " until you close it") + "." } };
+        _ticReloadKeep();
+      } else {
+        _ticO.msg = { ok: false, text: (res && res.error) || "It wasn’t opened." };
+        renderTurnInPanel();
+      }
+      _ticSay(_ticO.msg.text);
+    })
+    .withFailureHandler(function (e) {
+      _ticO.msg = { ok: false, text: "The page didn’t answer: " + (e && e.message ? e.message : "try again") };
+      renderTurnInPanel();
+      _ticSay(_ticO.msg.text);
+    })
+    .turnInPanelOpenAssignment(_ticO.key, reason, _ticO.until);
+}
+
+function _ticClose(btn) {
+  const key = btn.getAttribute("data-key");
+  const id = "tic-o-" + _ticSafe(key);
+  const box = document.getElementById(id + "-r");
+  const msg = document.getElementById(id + "-msg");
+  const reason = box ? box.value.trim() : "";
+  if (reason.length < 3) {
+    msg.className = "tic-msg tic-err";
+    msg.textContent = "Write a reason first.";
+    _ticSay(msg.textContent);
+    if (box) box.focus();
+    return;
+  }
+  btn.disabled = true;
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (res && res.success) {
+        _ticO.msg = { ok: true, text: key + " is closed." };
+        _ticReloadKeep();
+        _ticSay(_ticO.msg.text);
+      } else {
+        btn.disabled = false;
+        msg.className = "tic-msg tic-err";
+        msg.textContent = (res && res.error) || "It wasn’t closed.";
+        _ticSay(msg.textContent);
+      }
+    })
+    .withFailureHandler(function (e) {
+      btn.disabled = false;
+      msg.className = "tic-msg tic-err";
+      msg.textContent = "The page didn’t answer: " + (e && e.message ? e.message : "try again");
+      _ticSay(msg.textContent);
+    })
+    .turnInPanelCloseAssignment(key, reason);
+}
+
+// Reloads the data without losing this visit's messages.
+function _ticReloadKeep() {
+  google.script.run
+    .withSuccessHandler(function (d) { if (d && d.success) _tic = d; renderTurnInPanel(); })
+    .withFailureHandler(function () { renderTurnInPanel(); })
+    .getTurnInPanelData();
+}
+
+// ── Check Canvas ──
+function _ticCanvasPane() {
+  const c = _ticC;
+  let h = '<ol class="tic-steps">' +
+    '<li>In Canvas, open the assignment and choose <b>Download Submissions</b> (a ZIP). Then, in Grades, <b>Export</b> the entire gradebook (a CSV), so it lists everyone on the roster today.</li>' +
+    '<li>Put both files in ' + (c.files ? '<b>' + esc(c.files.folderName) + '</b>' : 'your teacher folder in Drive') + ', then press <b>Find files</b>.</li>' +
+    '<li>Pick the CAS assignment and the gradebook column to fill, and press <b>Run the check</b>.</li>' +
+    '<li>Read the report. Then, in Canvas Grades, choose <b>Import</b> and upload the upload file.</li>' +
+    '<li>Delete the ZIP from Drive: it holds students’ work and names.</li></ol>' +
+    '<div class="tic-actions"><button type="button" class="tic-btn" data-tic="c-find"' + (c.busy ? ' disabled' : '') + '>' + (c.busy === "find" ? 'Looking…' : 'Find files') + '</button></div>';
+  if (c.files) {
+    const opt = function (list, chosen) {
+      return list.map(function (f) {
+        return '<option value="' + esc(f.id) + '"' + (f.id === chosen ? ' selected' : '') + '>' + esc(f.name + (f.updated ? " · " + f.updated : "")) + '</option>';
+      }).join('');
+    };
+    if (!c.files.zips.length || !c.files.exports.length) {
+      h += '<p class="tic-err">' + (!c.files.zips.length ? 'No ZIP in ' : 'No gradebook export (a .csv with “Grades” in its name) in ') + esc(c.files.folderName) + ' yet.</p>';
+    }
+    h += '<label class="tic-label" for="tic-c-zip">Submissions ZIP</label><select id="tic-c-zip" data-tic="c-zip"><option value="">Choose the ZIP</option>' + opt(c.files.zips, c.zipId) + '</select>' +
+      '<label class="tic-label" for="tic-c-export">Gradebook export</label><select id="tic-c-export" data-tic="c-export"><option value="">Choose the export</option>' + opt(c.files.exports, c.exportId) + '</select>' +
+      '<label class="tic-label" for="tic-c-assignment">CAS assignment</label><select id="tic-c-assignment" data-tic="c-assignment"><option value="">Choose the assignment</option>' +
+      (c.files.assignments || []).map(function (a) {
+        return '<option value="' + esc(a.id) + '"' + (a.id === c.assignmentId ? ' selected' : '') + '>' + esc(a.name + " (" + a.id + ")") + '</option>';
+      }).join('') + '</select>';
+    const cols = c.columns || [];
+    h += '<label class="tic-label" for="tic-c-column">Gradebook column to fill</label><select id="tic-c-column" data-tic="c-column"' + (cols.length ? '' : ' disabled') + '>' +
+      '<option value="">' + (c.busy === "columns" ? 'Reading the export…' : cols.length ? 'Choose the column' : 'Choose the export and the assignment first') + '</option>' +
+      cols.map(function (col) {
+        return '<option value="' + esc(col.header) + '"' + (col.header === c.column ? ' selected' : '') + '>' + esc(col.header + (col.points ? " · " + col.points + " points" : "")) + '</option>';
+      }).join('') + '</select>';
+    const chosen = cols.filter(function (col) { return col.header === c.column; })[0];
+    if (chosen && !chosen.points) {
+      h += '<label class="tic-label" for="tic-c-points">Full points for this column (the export doesn’t say)</label>' +
+        '<input type="number" min="0" step="any" class="tic-input" id="tic-c-points" data-tic="c-points" value="' + esc(c.points) + '" style="max-width:160px">';
+    } else if (chosen) {
+      h += '<p class="tic-muted" style="margin-top:6px">A valid code gets ' + esc(chosen.points) + ' points (from the export’s Points Possible row).</p>';
+    }
+    const ready = c.zipId && c.exportId && c.assignmentId && chosen && (chosen.points || Number(c.points) > 0);
+    h += '<div class="tic-actions"><button type="button" class="tic-btn tic-primary" data-tic="c-run"' + (ready && !c.busy ? '' : ' disabled') + '>' + (c.busy === "run" ? 'Checking…' : 'Run the check') + '</button></div>';
+  }
+  if (c.msg) h += '<div class="tic-msg ' + (c.msg.ok ? 'tic-ok' : 'tic-err') + '">' + esc(c.msg.text) + '</div>';
+  if (c.result) h += _ticCanvasResult(c.result);
+  return h;
+}
+
+function _ticCanvasResult(r) {
+  const LABELS = { VALID: "Valid code", NO_CODE: "No code", OTHER_STUDENTS_CODE: "Someone else’s code", WRONG_ASSIGNMENT: "Their code, for another assignment",
+    INVALID_CODE: "Code doesn’t check out", NOT_ON_ROSTER: "Not on the gradebook export", NOT_TEXT_ENTRY: "Not a text entry", UNREADABLE: "Couldn’t read the file" };
+  let h = '<h3 class="tic-h3">Result: ' + esc(r.assignmentId) + ', ' + escNum(r.files) + ' file' + (r.files === 1 ? '' : 's') + '</h3>' +
+    '<table class="tic-table"><caption class="tic-sr">Submissions by result</caption><thead><tr><th scope="col">Result</th><th scope="col">Submissions</th></tr></thead><tbody>' +
+    Object.keys(LABELS).map(function (k) { return '<tr><td>' + LABELS[k] + '</td><td>' + escNum(r.counts[k]) + '</td></tr>'; }).join('') + '</tbody></table>';
+  (r.warnings || []).forEach(function (w) { h += '<p class="tic-note">' + esc(w) + '</p>'; });
+  h += '<div class="tic-links"><a href="' + esc(r.reportUrl) + '" target="_blank" rel="noopener">Open the report ↗</a>' +
+    '<a href="' + esc(r.uploadUrl) + '" target="_blank" rel="noopener">Open the upload file ↗</a></div>' +
+    '<p class="tic-muted">The upload file (' + esc(r.uploadName) + ', in ' + esc(r.folderName) + ') fills only “' + esc(r.column) + '”: ' + escNum(r.points) + ' points for each valid code, and a blank cell for everyone else. Canvas leaves a grade as it is when the cell is blank, so the file only adds completion for valid codes. Upload it in Canvas Grades with Import.</p>' +
+    '<p class="tic-note">When you’re done, delete the ZIP from Drive: it holds students’ work and names.</p>';
+  const rows = r.rows || [];
+  if (rows.length) {
+    h += '<table class="tic-table"><caption class="tic-sr">Each submission</caption><thead><tr><th scope="col">Student</th><th scope="col">Period</th><th scope="col">Result</th><th scope="col">Note</th></tr></thead><tbody>' +
+      rows.map(function (x) { return '<tr><td>' + esc(x.student) + '</td><td>' + esc(x.period) + '</td><td>' + esc(LABELS[x.outcome] || x.outcome) + '</td><td>' + esc(x.note) + '</td></tr>'; }).join('') +
+      '</tbody></table>';
+  }
+  return h;
+}
+
+function _ticCanvasFind() {
+  _ticC.busy = "find";
+  _ticC.msg = null;
+  renderTurnInPanel();
+  google.script.run
+    .withSuccessHandler(function (res) {
+      _ticC.busy = "";
+      if (res && res.success) {
+        _ticC.files = res;
+        _ticC.zipId = res.zips.length ? res.zips[0].id : "";
+        _ticC.exportId = res.exports.length ? res.exports[0].id : "";
+        _ticC.columns = null;
+        _ticC.column = "";
+        _ticSay("Found " + res.zips.length + " ZIP" + (res.zips.length === 1 ? "" : "s") + " and " + res.exports.length + " gradebook export" + (res.exports.length === 1 ? "" : "s") + ".");
+      } else {
+        _ticC.msg = { ok: false, text: (res && res.error) || "Couldn’t list the files." };
+        _ticSay(_ticC.msg.text);
+      }
+      _ticCanvasColumns();
+    })
+    .withFailureHandler(function (e) {
+      _ticC.busy = "";
+      _ticC.msg = { ok: false, text: "The page didn’t answer: " + (e && e.message ? e.message : "try again") };
+      renderTurnInPanel();
+      _ticSay(_ticC.msg.text);
+    })
+    .getTurnInCanvasFiles();
+}
+
+function _ticCanvasColumns() {
+  if (!_ticC.exportId || !_ticC.assignmentId) { renderTurnInPanel(); return; }
+  _ticC.busy = "columns";
+  renderTurnInPanel();
+  google.script.run
+    .withSuccessHandler(function (res) {
+      _ticC.busy = "";
+      if (res && res.success) {
+        _ticC.columns = res.columns;
+        _ticC.hasPointsRow = res.hasPointsRow;
+        _ticC.column = res.preselect || "";
+        if (!res.columns.length) _ticC.msg = { ok: false, text: "That export has no assignment columns." };
+      } else {
+        _ticC.columns = null;
+        _ticC.msg = { ok: false, text: (res && res.error) || "Couldn’t read that export." };
+        _ticSay(_ticC.msg.text);
+      }
+      renderTurnInPanel();
+    })
+    .withFailureHandler(function (e) {
+      _ticC.busy = "";
+      _ticC.msg = { ok: false, text: "The page didn’t answer: " + (e && e.message ? e.message : "try again") };
+      renderTurnInPanel();
+    })
+    .getTurnInCanvasColumns(_ticC.exportId, _ticC.assignmentId);
+}
+
+function _ticCanvasRun() {
+  _ticC.busy = "run";
+  _ticC.msg = null;
+  _ticC.result = null;
+  renderTurnInPanel();
+  _ticSay("Checking the submissions…");
+  google.script.run
+    .withSuccessHandler(function (res) {
+      _ticC.busy = "";
+      if (res && res.success) {
+        _ticC.result = res;
+        _ticSay("Done: " + res.counts.VALID + " valid code" + (res.counts.VALID === 1 ? "" : "s") + " in " + res.files + " file" + (res.files === 1 ? "" : "s") + ".");
+      } else {
+        _ticC.msg = { ok: false, text: (res && res.error) || "The check didn’t finish." };
+        _ticSay(_ticC.msg.text);
+      }
+      renderTurnInPanel();
+    })
+    .withFailureHandler(function (e) {
+      _ticC.busy = "";
+      _ticC.msg = { ok: false, text: "The check didn’t finish: " + (e && e.message ? e.message : "try again") };
+      renderTurnInPanel();
+      _ticSay(_ticC.msg.text);
+    })
+    .runTurnInCanvasCheckFromPanel({ assignmentId: _ticC.assignmentId, column: _ticC.column, zipId: _ticC.zipId,
+      exportId: _ticC.exportId, points: _ticC.points });
+}
+
+// One set of listeners for the whole panel (its body is re-rendered).
+document.addEventListener("click", function (e) {
+  const el = e.target.closest && e.target.closest("#turnin-modal-body [data-tic]");
+  if (!el || el.tagName === "SELECT" || el.tagName === "INPUT" || el.tagName === "TEXTAREA") return;
+  const what = el.getAttribute("data-tic");
+  if (what === "tab") { _ticTab = el.getAttribute("data-tab"); renderTurnInPanel(true); }
+  else if (what === "issue") _ticIssue(el);
+  else if (what === "leave") { _ticLeft[el.getAttribute("data-check")] = true; renderTurnInPanel(); _ticSay("Left as it is."); }
+  else if (what === "grant") _ticGrant(el);
+  else if (what === "open") _ticOpen(el);
+  else if (what === "close") _ticClose(el);
+  else if (what === "c-find") _ticCanvasFind();
+  else if (what === "c-run") _ticCanvasRun();
+  else if (what === "copy") {
+    const box = document.getElementById("tic-g-code");
+    const out = document.getElementById("tic-g-copied");
+    _prCopy(box, function (ok) {
+      const text = ok ? "Copied." : "Couldn’t copy here. The code is selected: press Ctrl+C (⌘C on a Mac).";
+      if (out) { out.className = "tic-msg " + (ok ? "tic-ok" : "tic-err"); out.textContent = text; }
+      _ticSay(text);
+    });
+  }
+});
+document.addEventListener("change", function (e) {
+  const el = e.target.closest && e.target.closest("#turnin-modal-body [data-tic]");
+  if (!el) return;
+  const what = el.getAttribute("data-tic");
+  if (what === "notyet") { _ticShowNotYet = el.checked; renderTurnInPanel(); _ticSay(el.checked ? "Showing not yet answers too." : "Showing answers the check couldn’t decide."); const cb = document.querySelector('#turnin-modal-body [data-tic="notyet"]'); if (cb) cb.focus(); }
+  else if (what === "g-student") { _ticG.student = el.value; _ticG.item = ""; _ticG.code = ""; _ticG.msg = null; renderTurnInPanel(); document.getElementById("tic-g-student").focus(); }
+  else if (what === "g-item") { _ticG.item = el.value; _ticG.code = ""; _ticG.msg = null; }
+  else if (what === "o-key") _ticO.key = el.value;
+  else if (what === "o-until") _ticO.until = el.value;
+  else if (what === "c-zip") _ticC.zipId = el.value;
+  else if (what === "c-export" || what === "c-assignment") {
+    if (what === "c-export") _ticC.exportId = el.value; else _ticC.assignmentId = el.value;
+    _ticC.columns = null; _ticC.column = ""; _ticC.msg = null;
+    _ticCanvasColumns();
+    const again = document.getElementById(el.id);
+    if (again) again.focus();
+    return;
+  }
+  else if (what === "c-column") _ticC.column = el.value;
+  else return;
+  if (what.indexOf("c-") === 0) {
+    renderTurnInPanel();
+    const again = document.getElementById(el.id);
+    if (again) again.focus();
+  }
+});
+document.addEventListener("input", function (e) {
+  const el = e.target.closest && e.target.closest("#turnin-modal-body [data-tic]");
+  if (!el) return;
+  const what = el.getAttribute("data-tic");
+  if (what === "g-reason") _ticG.reason = el.value;
+  else if (what === "o-reason") _ticO.reason = el.value;
+  else if (what === "c-points") {
+    _ticC.points = el.value;
+    const run = document.querySelector('#turnin-modal-body [data-tic="c-run"]');
+    if (run) run.disabled = !(Number(el.value) > 0 && _ticC.zipId && _ticC.exportId && _ticC.assignmentId && _ticC.column);
+  }
+});
+// The tabs: Left and Right move between them (the ARIA tabs pattern).
+document.addEventListener("keydown", function (e) {
+  const el = e.target.closest && e.target.closest('#turnin-modal-body [data-tic="tab"]');
+  if (!el || (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "Home" && e.key !== "End")) return;
+  e.preventDefault();
+  const keys = TIC_TABS.map(function (t) { return t[0]; });
+  let i = keys.indexOf(_ticTab);
+  if (e.key === "ArrowLeft") i = (i + keys.length - 1) % keys.length;
+  else if (e.key === "ArrowRight") i = (i + 1) % keys.length;
+  else if (e.key === "Home") i = 0;
+  else i = keys.length - 1;
+  _ticTab = keys[i];
+  renderTurnInPanel(true);
 });
 
 function openParentReportModal() {

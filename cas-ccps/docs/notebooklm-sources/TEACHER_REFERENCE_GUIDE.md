@@ -68,6 +68,7 @@ Open it, read the summary cards, act on Needs attention. Press **↻ Refresh** t
 | Student Context | One document per student that gathers their lessons, checks and warm-ups, updated weekly. Course and Student pickers narrow the list; each student shows their competencies done, **By week →** opens their page, and “← Back to dashboard” returns to the roster |
 | ✉ Parent Reports | This week's report for each student, to copy into an email you send yourself. Course and Student pickers show one course or one student. See Parent Reports |
 | 🎓 Competency ratings | Confirm or set each student's SCR rating. See Grading and Competency Ratings |
+| 🎟 Turn-in codes | Answers the turn-in check couldn't decide, giving a code yourself, opening an assignment after its marking period, and checking the codes students pasted in Canvas. See Turn-in Codes |
 | ⚙ Settings | Each feature on or off per course, the marking period dates, and activity and delay days. See Settings |
 | 📅 Lessons | Start dates, rollout status, and lesson edits. See Lessons and Start Dates |
 | 👁 View as a student | Opens the Student Dashboard in a new tab as a made-up student, “Demo Student”, on your own lessons, in every card state. Press its buttons to see what a student sees; nothing is saved and no document opens. Bookmark that tab to come back to it. Only you can open it: anyone else gets their own page |
@@ -175,6 +176,32 @@ KOS writes a weekly report for each student on your roster. It never sends one: 
 > **Who it goes to is your call.** KOS has no guardian list. Send only to the student's parents or guardians on file with the school, and not to the family of a student who is 18 or older, or whose family asked not to get these, unless the school says otherwise.
 
 Copying a report records the time and your account, so the panel shows “Copied” next to it. It doesn't record who you sent it to, or whether you did.
+
+🎟
+
+## Turn-in Codes
+
+A turn-in code is what a student pastes into the Canvas assignment for completion credit. The Student Dashboard gives it once they answer one question about their feedback and the check says the answer addresses it. Codes follow the marking periods in ⚙ Settings. Press **🎟 Turn-in codes** for the four parts below; they work even before students see codes.
+
+| Tab | What it does |
+| --- | --- |
+| Review answers | Answers the check couldn't run on, and, if you tick the box, answers it said don't address the feedback yet. You see the student, the assignment, the milestone, the question, their answer and the check's reason. **Issue code** gives the code with your reason (that is how you overrule the check). **Leave it** changes nothing; the student can answer again |
+| Give a code | One student, one assignment, with your reason: for an exception or an outage. If they already have a code, you see that one. Copy it if you need to |
+| Open an assignment | After its marking period, an assignment gives no codes. Open one for every student on it, with a reason and an optional end date, and close it when you're done. Students still answer the question; opening gives no code by itself |
+| Check Canvas | Reads the codes students pasted in Canvas and makes a file that gives completion for each valid one (below) |
+
+### Each week: checking the codes in Canvas
+
+1. In Canvas, open the assignment and choose **Download Submissions** (a ZIP). In Grades, **Export** the entire gradebook (a CSV), fresh, so it lists everyone on the roster today.
+2. Put both files in your teacher folder in Drive (the one the roster import reads).
+3. In **🎟 Turn-in codes**, open **Check Canvas**, press **Find files**, pick the CAS assignment and the gradebook column to fill (the closest name is picked for you), and press **Run the check**.
+4. Read the result and the report. Each submission is one of: valid code, no code, someone else's code, their code for another assignment, a code that doesn't check out (likely a typo), not on the gradebook export, not a text entry, or a file that couldn't be read.
+5. In Canvas Grades, choose **Import** and upload the upload file.
+6. **Delete the ZIP** from Drive. It holds students' work and names.
+
+> **The upload file only adds.** It fills one column: full points for each valid code, and a blank cell for everyone else. Canvas leaves a grade as it is when the cell is blank, so nothing you entered by hand is changed. The first time, run it on one assignment and read the report and the file before you upload anything.
+
+Students are matched by their SIS ID, never by the name in a file name. The report shows them the way your dashboard does. Nothing from the ZIP is kept; each run adds one line with the counts to the TurnInCanvasRuns tab.
 
 🙋
 

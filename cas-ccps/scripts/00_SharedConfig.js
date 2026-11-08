@@ -671,6 +671,23 @@ function studentIdRegex_() {
   return new RegExp("^(?:" + schoolProfile_().studentIdPattern + ")$");
 }
 
+// A Canvas gradebook export (CSV) as rows, with a leading byte-order mark
+// removed. One reader for the two files that read these exports: 52's
+// roster import and 74's turn-in check.
+function canvasCsvRows_(text) {
+  return Utilities.parseCsv(String(text || "").replace(/^\uFEFF/, ""));
+}
+
+// An export's SIS Login ID as the student's account, the way 52 enrols
+// them: lower case, and a bare student ID gets "@" and the student email
+// domain. Anything else (a full address, a non-student login) is kept as it
+// is, lower case.
+function canvasLoginAccount_(sisLogin) {
+  let account = String(sisLogin || "").trim().toLowerCase();
+  if (account && studentIdRegex_().test(account)) account += "@" + schoolProfile_().studentEmailDomain;
+  return account;
+}
+
 // How messages describe a student account's ID: "7 digits" for the default
 // pattern, otherwise "the school's student ID".
 function studentIdDescription_() {
@@ -1773,7 +1790,8 @@ const CAS_TEACHER_TERMS = [
   ["Feedback as a comment", "Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings."],
   ["⚙ Settings", "Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock, parent reports ready on Fridays) and sets the marking period end dates. Changes wait for Save changes, closing with unsaved changes asks first, and each saved change is kept in the SettingsLog tab."],
   ["3-Odd / 3-Even", "The two halves of period 3, which meet on alternate (odd or even) calendar dates."],
-  ["Marking period", "A term code like 2627_MP1 is marking period 1 of 2026–27."]
+  ["Marking period", "A term code like 2627_MP1 is marking period 1 of 2026–27."],
+  ["Turn-in code", "The code a student pastes into the Canvas assignment for completion credit. The Student Dashboard gives it once they answer one question about their feedback and the check says the answer addresses it. In 🎟 Turn-in codes you can give one yourself (with a reason), open an assignment after its marking period, and check the codes in a Canvas submissions download."]
 ];
 
 function _casHtml_(s) {

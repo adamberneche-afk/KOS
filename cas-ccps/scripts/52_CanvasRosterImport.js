@@ -336,7 +336,7 @@ function _criFindExports_(cfg) {
  * Skips the "Points Possible" row and Canvas's Test Student.
  */
 function _criParseGradebook_(text) {
-  const rows = Utilities.parseCsv(String(text || "").replace(/^﻿/, ""));
+  const rows = canvasCsvRows_(text);
   if (!rows.length) return [];
   const header = rows[0].map(h => String(h).trim().toLowerCase());
   const col = name => header.indexOf(name);
@@ -345,14 +345,12 @@ function _criParseGradebook_(text) {
     Logger.log("[S52] Not a Canvas gradebook export (no Student / SIS Login ID columns); skipped.");
     return [];
   }
-  const domain = _studentEmailDomain_();
   const out = [];
   rows.slice(1).forEach(r => {
     const rawName = String(r[iName] || "").trim();
     if (!rawName || /points possible/i.test(rawName) || /^student,\s*test$|^test student$/i.test(rawName)) return;
     const sisLogin = String(r[iLogin] || "").trim();
-    let account = sisLogin.toLowerCase();
-    if (studentIdRegex_().test(account)) account += "@" + domain;
+    const account = canvasLoginAccount_(sisLogin);
     const parts = rawName.split(",");
     const name = parts.length === 2 ? (parts[1].trim() + " " + parts[0].trim()) : rawName;
     out.push({ name: name, sisLogin: sisLogin, account: account,

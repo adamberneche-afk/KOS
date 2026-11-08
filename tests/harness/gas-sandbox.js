@@ -10,8 +10,8 @@
 // Started as only what EmailBridge.gs's AI-queue and Organization Sync
 // functions call (PropertiesService, SpreadsheetApp, Session) and has grown
 // one mock at a time as tests needed them. Now also: CacheService,
-// LockService, AddOnsResponseService, DriveApp, DocumentApp, Utilities,
-// Logger, MailApp and ScriptApp.
+// LockService, AddOnsResponseService, DriveApp, DocumentApp, Utilities
+// (unzip only for fakeZipBlob(): see there), Logger, MailApp and ScriptApp.
 //
 // GmailApp and ContentService remain deliberately unmocked — loading a file
 // that references them still works (those globals are only named inside
@@ -545,6 +545,18 @@ class FakeDriveFolder {
     return f;
   }
   addFile(file) { if (!this.files.includes(file)) this.files.push(file); return this; }
+  // Real Apps Script API — Folder.createFile(name, content, mimeType): a new
+  // file in this folder holding the text. First needed by cas-ccps
+  // 74_TurnInCanvasCheck.js, which saves the Canvas upload CSV beside the
+  // gradebook export. Not registered with DriveApp.getFileById (a folder
+  // here doesn't know its DriveApp); read it back through this folder.
+  createFile(name, content, mimeType) {
+    const f = new FakeDriveFile('fake-file-' + (++FakeDriveFolder._counter), name, mimeType || 'text/plain');
+    f._content = String(content === undefined || content === null ? '' : content);
+    f._parent = this;
+    this.files.push(f);
+    return f;
+  }
   // Real Apps Script API — Folder.getFolders(), direct sub-folders only.
   getFolders() {
     const snapshot = this.children.slice();
@@ -602,6 +614,9 @@ class FakeDriveFile {
   getId() { return this.id; }
   getName() { return this.name; }
   getMimeType() { return this.mimeType; }
+  // Real Apps Script API — File.getBlob(). The text a test or createFile()
+  // put in _content, or the blob a test set as _blob (a fakeZipBlob(), say).
+  getBlob() { return this._blob || makeFakeBlob(this._content || '', this.mimeType, this.name); }
   getUrl() { return 'https://fake-drive.example/file/' + this.id; }
   addCommenter(email) { if (this._roleOf(email) !== 'editor') this._setRole(email, 'commenter'); return this; }
   removeCommenter(user) {
@@ -652,6 +667,26 @@ class FakeDriveFile {
 Object.keys(FakeSharingMixin).forEach((k) => {
   if (!Object.prototype.hasOwnProperty.call(FakeDriveFile.prototype, k)) FakeDriveFile.prototype[k] = FakeSharingMixin[k];
 });
+
+// A Blob holding text: getDataAsString(), getName()/setName() and
+// getContentType(), the parts of the real Blob that code here reads.
+function makeFakeBlob(text, contentType, name) {
+  let n = name === undefined ? null : name;
+  return {
+    getDataAsString: () => String(text),
+    getName: () => n,
+    setName(v) { n = v; return this; },
+    getContentType: () => contentType || null,
+  };
+}
+
+// A stand-in for a zip file's Blob, for Utilities.unzip() above. entries:
+// [{ name, text }] (or { name, unreadable: true } for an entry that can't be
+// read as text). Test setup, not a real API.
+function fakeZipBlob(entries) {
+  return { _zipEntries: entries.slice(), getName: () => 'submissions.zip', getContentType: () => 'application/zip',
+    getDataAsString: () => { throw new Error('A zip is not text.'); } };
+}
 
 function makeDriveAppMock() {
   const folders = new Map();
@@ -1258,9 +1293,22 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
       base64DecodeWebSafe(data) {
         return Array.from(Buffer.from(String(data), 'base64url'), b => (b > 127 ? b - 256 : b));
       },
-      newBlob(bytes) {
+      newBlob(bytes, contentType, name) {
+        if (typeof bytes === 'string') return makeFakeBlob(bytes, contentType, name);
         const buf = Buffer.from(Array.from(bytes, b => (b < 0 ? b + 256 : b)));
         return { getDataAsString: () => buf.toString('utf8') };
+      },
+      // Real Apps Script API — Utilities.unzip(blob): one blob per file in
+      // the archive. First needed by cas-ccps 74_TurnInCanvasCheck.js (the
+      // Canvas submissions ZIP). The mock reads only a fakeZipBlob() (below):
+      // a test lists the archive's entries as { name, text } instead of
+      // building real zip bytes. Anything else throws, as a real call on a
+      // blob that isn't a zip does.
+      unzip(blob) {
+        if (!blob || !Array.isArray(blob._zipEntries)) throw new Error('Could not unzip: not a zip archive.');
+        return blob._zipEntries.map((e) => (e.unreadable
+          ? { getName: () => e.name, getContentType: () => null, getDataAsString: () => { throw new Error('Unreadable'); } }
+          : makeFakeBlob(e.text, null, e.name)));
       },
       DigestAlgorithm: { MD5: 'MD5', SHA_1: 'SHA_1', SHA_256: 'SHA_256', SHA_512: 'SHA_512' },
       computeDigest(algorithm, value) {
@@ -1280,7 +1328,7 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     // DriveApp.Access/Permission, which are namespaced under DriveApp).
     // Only GOOGLE_DOCS is real so far — the one value
     // sensor1_scanInboundSessions() checks against.
-    MimeType: { GOOGLE_DOCS: 'application/vnd.google-apps.document' },
+    MimeType: { GOOGLE_DOCS: 'application/vnd.google-apps.document', CSV: 'text/csv' },
     ...extraGlobals,
   };
   const context = vm.createContext(sandbox);
@@ -1336,5 +1384,5 @@ function makeStudioEvent(inputMap) {
 
 module.exports = {
   loadGasFile, loadGasFiles, FakeSheet, FakeSpreadsheet,
-  FakeDriveFolder, FakeDriveFile, FakeDoc, makeStudioEvent,
+  FakeDriveFolder, FakeDriveFile, FakeDoc, makeStudioEvent, fakeZipBlob,
 };
