@@ -134,7 +134,9 @@ function _lockDocAfterSubmission_(fileId, teacherEmail) {
     if (!email || email === owner) return;
     try {
       file.removeEditor(email);
-      if (email === teacher) file.addCommenter(email);
+      // The teacher's new share sends no email (plan L7, shareWithoutEmail_
+      // in 02); a student's stays as it was.
+      if (email === teacher) shareWithoutEmail_(file, email, "commenter");
       else file.addViewer(email);
       out.locked.push(email);
     } catch (e) {
@@ -142,7 +144,7 @@ function _lockDocAfterSubmission_(fileId, teacherEmail) {
     }
   });
   if (teacher && teacher !== owner) {
-    try { file.addCommenter(teacher); } catch (e) { out.failed.push({ email: teacher, error: e.message }); }
+    try { shareWithoutEmail_(file, teacher, "commenter"); } catch (e) { out.failed.push({ email: teacher, error: e.message }); }
   }
   return out;
 }

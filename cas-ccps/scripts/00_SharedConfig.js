@@ -2622,3 +2622,28 @@ function itineraryFor_(blocks, minutes) {
   }
   return out;
 }
+
+// ── CAS system mail: one sender name, one subject prefix (plan L7) ─────────
+// 2026-11-08. CAS mail came from the script's account under a dozen
+// different subjects, so it could not be filtered as one stream. Every
+// MailApp.sendEmail in cas-ccps/scripts now sends casMail_(...): the same
+// recipient, subject and body, with the subject starting CAS_MAIL_PREFIX
+// (once: a subject that already starts with it keeps it) and the sender
+// shown as CAS_MAIL_NAME. A Gmail filter on subject:"[CAS]" catches all of
+// it. No service is called here (00 is in projects without the mail
+// scope): each caller still calls MailApp itself, so who gets mail, and
+// when, is unchanged.
+const CAS_MAIL_PREFIX = "[CAS] ";
+const CAS_MAIL_NAME = "CAS";
+
+// casMail_(to, subject, body[, options]) or casMail_({ to, subject, body, ... }):
+// the message object for MailApp.sendEmail(message).
+function casMail_(toOrMessage, subject, body, options) {
+  const m = toOrMessage && typeof toOrMessage === "object"
+    ? Object.assign({}, toOrMessage)
+    : Object.assign({}, options || {}, { to: toOrMessage, subject: subject, body: body });
+  const s = String(m.subject || "");
+  m.subject = s.indexOf(CAS_MAIL_PREFIX.trim()) === 0 ? s : CAS_MAIL_PREFIX + s;
+  if (!m.name) m.name = CAS_MAIL_NAME;
+  return m;
+}

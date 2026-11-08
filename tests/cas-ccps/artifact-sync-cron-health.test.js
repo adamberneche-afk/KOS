@@ -33,6 +33,7 @@ function loadCentralLedger() {
   return loadGasFiles([
     path.join(SCRIPTS, '00_SharedConfig.js'),
     path.join(SCRIPTS, '04_Form2_TurnInGate.js'),
+    path.join(SCRIPTS, '02_Form1_IntakeAndWorkspaceGenerator.js'), // shareWithoutEmail_
     path.join(SCRIPTS, '22_LessonContextHandler.js'),
     path.join(SCRIPTS, '23_StudentProfileManager.js'),
     path.join(SCRIPTS, '25_WarmUpWriter.js'),

@@ -177,7 +177,7 @@ function onTeacherRubricSubmit(e) {
   }
 
   // Notify teacher their submission is being processed
-  MailApp.sendEmail(
+  MailApp.sendEmail(casMail_(
     instructorEmail,
     "📋 Assignment Rubric Received — Processing Now",
     "Hello " + instructorName + ",\n\n" +
@@ -187,7 +187,7 @@ function onTeacherRubricSubmit(e) {
     "Course: " + courseName + "\n" +
     "Subject: " + subject + "\n\n" +
     "— Assignment System"
-  );
+  ));
 
   Logger.log(
     "[INTAKE] RubricQueue row written — " + instructorEmail +
@@ -208,12 +208,12 @@ function extractFileId_(url) {
 
 function notifyError_(email, name, detail) {
   if (!email) return;
-  MailApp.sendEmail(
+  MailApp.sendEmail(casMail_(
     email,
     "⚠️ Assignment Submission Failed — Action Required",
     "Hello " + name + ",\n\n" +
     "Your assignment submission could not be processed.\n\n" +
     "Reason:\n" + detail + "\n\n" +
     "Please correct the issue and resubmit.\n\n— Assignment System"
-  );
+  ));
 }

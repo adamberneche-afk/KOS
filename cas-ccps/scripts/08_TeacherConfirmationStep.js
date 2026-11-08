@@ -530,7 +530,7 @@ function buildPrefilledUrl_(formId, draftId, config) {
 // structural change to the function — same MailApp.sendEmail call shape.
 // ---------------------------------------------------------------------------
 function sendReviewEmail_(email, name, configId, config, reviewUrl) {
-  MailApp.sendEmail(
+  MailApp.sendEmail(casMail_(
     email,
     "Please Review Your Assignment Setup — " + config.unitName,
     "Hello " + name + ",\n\n" +
@@ -558,14 +558,14 @@ function sendReviewEmail_(email, name, configId, config, reviewUrl) {
     "REVIEW AND CONFIRM:\n" + reviewUrl + "\n\n" +
     "Assignment ID: " + configId + "\n\n" +
     "— Assignment System"
-  );
+  ));
 }
 
 // ---------------------------------------------------------------------------
 // sendActivationEmail_ — plain words (2026-10-22)
 // ---------------------------------------------------------------------------
 function sendActivationEmail_(email, name, configId, unitName) {
-  MailApp.sendEmail(
+  MailApp.sendEmail(casMail_(
     email,
     "Ready for students — " + unitName,
     "Hello " + name + ",\n\n" +
@@ -574,7 +574,7 @@ function sendActivationEmail_(email, name, configId, unitName) {
     "the Student Intake Form. You can follow their work on your Teacher Dashboard.\n\n" +
     "If you need help with this assignment, give your system admin this code: " + configId + "\n\n" +
     "— Classroom Agency System"
-  );
+  ));
 }
 
 // ---------------------------------------------------------------------------

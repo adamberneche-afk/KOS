@@ -169,7 +169,7 @@ test('the email goes once a day, not before 5 a.m., with the deployment and the 
   assert.equal(env.exported.overnightMaybeMail_(h, new Date(NOW.getTime() + 600000)), false, 'once a day');
   assert.equal(sent().length, 1);
   assert.equal(sent()[0].to, 'admin@ccpsnet.net');
-  assert.equal(sent()[0].subject, 'CAS overnight 2026-10-19: 1 problem (teacher@ccpsnet.net)');
+  assert.equal(sent()[0].subject, '[CAS] CAS overnight 2026-10-19: 1 problem (teacher@ccpsnet.net)');
   assert.match(sent()[0].body, /version marker [0-9a-f]{7}, teacher teacher@ccpsnet\.net/);
   assert.match(sent()[0].body, /- Today's warm-ups not delivered yet: 3 of 81/);
   assert.match(sent()[0].body, /\nFlow 2 and warm-ups, week of 2026-10-19: nothing yet this week\.\n/, '69\'s line');

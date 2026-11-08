@@ -122,19 +122,19 @@ function onFormSubmit_Intake(e) {
 
     // Alert teacher by email
     if (teacherEmail) {
-      MailApp.sendEmail(
+      MailApp.sendEmail(casMail_(
         teacherEmail,
         "⚠️ Student Registration Failed — " + studentName,
         errMsg
-      );
+      ));
     }
 
     // Alert admin
     if (cfg.adminNotifyEmail && cfg.adminNotifyEmail !== teacherEmail) {
-      MailApp.sendEmail(cfg.adminNotifyEmail,
+      MailApp.sendEmail(casMail_(cfg.adminNotifyEmail,
         "⚠️ MASTER_STUDENT_TEMPLATE_ID Not Configured — Registration Failed",
         errMsg
-      );
+      ));
     }
 
     Logger.log("Form 1 error — MASTER_STUDENT_TEMPLATE_ID not set.");
@@ -303,7 +303,7 @@ function _intakeForm_(cfg, s, googleId, assignment, teacherEmail, templateId, me
     try { formFile.addEditor(googleId); } catch (err) { Logger.log("Share warning for the student's account: " + err.message); }
   }
   if (teacherEmail) {
-    try { formFile.addEditor(teacherEmail); } catch (err) { Logger.log("Teacher access warning for " + teacherEmail + ": " + err.message); }
+    try { shareWithoutEmail_(formFile, teacherEmail, "writer"); } catch (err) { Logger.log("Teacher access warning for " + teacherEmail + ": " + err.message); }
   }
   const url = workFileUrl_(formFile.getId(), "form");
   // Its snapshot doc, the form's feedback page (Phase 4b): made and shared
@@ -366,7 +366,7 @@ function _makeFormSnapshotDoc_(cfg, s, studentConfigId, unitName, folder, studen
     try { file.addCommenter(studentAccount); } catch (err) { Logger.log("Snapshot share warning for the student's account: " + err.message); }
   }
   if (teacherEmail) {
-    try { file.addCommenter(teacherEmail); } catch (err) { Logger.log("Snapshot access warning for " + teacherEmail + ": " + err.message); }
+    try { shareWithoutEmail_(file, teacherEmail, "commenter"); } catch (err) { Logger.log("Snapshot access warning for " + teacherEmail + ": " + err.message); }
   }
   return doc;
 }
@@ -472,7 +472,7 @@ function notifyIntakeRejected_(cfg, d) {
     Logger.log("Form 1 rejection not emailed — no Teacher Email on the form and no ADMIN_NOTIFY_EMAIL set.");
   }
   recipients.forEach(function (to) {
-    try { MailApp.sendEmail(to, subject, body); }
+    try { MailApp.sendEmail(casMail_(to, subject, body)); }
     catch (e) { Logger.log("Form 1 rejection email to " + to + " failed: " + e.message); }
   });
 }
@@ -840,13 +840,49 @@ function shareToStudentDrive_(cfg, docFile, googleId, teacherEmail) {
       Logger.log("Share warning for the student's account: " + err.message);
     }
   }
+  // The teacher's share sends no email (plan L7, below); the student's
+  // keeps Drive's usual one.
   if (teacherEmail) {
     try {
-      docFile.addCommenter(teacherEmail);
+      shareWithoutEmail_(docFile, teacherEmail, "commenter");
     } catch (err) {
       Logger.log("Teacher comment access warning for " + teacherEmail + ": " + err.message);
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// shareWithoutEmail_ — a share that sends no "shared with you" email (plan L7)
+// ---------------------------------------------------------------------------
+// 2026-11-08. Every student doc is made by the script's account and shared
+// with the assigning teacher (shareToStudentDrive_ above; a form copy and
+// its snapshot doc the same way), and DriveApp's addEditor/addCommenter/
+// addViewer always email the person added: one notice in the teacher's
+// inbox per doc, about 110 the day a lesson rolled out (11-02). The Drive
+// advanced service (Drive API v3, already in the Central Ledger's manifest)
+// can share without the email. Without it (Drive undefined) or if the call
+// fails, this shares through DriveApp, so access never depends on it.
+// role: "writer", "commenter" or "reader". A new direct share only: on a
+// file where the person already edits, a lower role here could replace it
+// (DriveApp's addCommenter never downgrades); no caller does that. Returns
+// "quiet" (no email) or "email" (DriveApp). Throws as DriveApp does when
+// the account can't be shared with.
+function shareWithoutEmail_(file, email, role) {
+  const who = String(email || "").trim();
+  if (!who) return "";
+  if (typeof Drive !== "undefined" && Drive && Drive.Permissions) {
+    try {
+      Drive.Permissions.create({ type: "user", role: role, emailAddress: who }, file.getId(),
+        { sendNotificationEmail: false, supportsAllDrives: true });
+      return "quiet";
+    } catch (e) {
+      Logger.log("[S02] Share without email failed (" + e.message + "); sharing through DriveApp, which emails.");
+    }
+  }
+  if (role === "writer") file.addEditor(who);
+  else if (role === "commenter") file.addCommenter(who);
+  else file.addViewer(who);
+  return "email";
 }
 
 // ---------------------------------------------------------------------------
