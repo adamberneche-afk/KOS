@@ -578,7 +578,10 @@ function publicCallers(project, name) {
 // ---------------------------------------------------------------------------
 
 function cell(s) {
-  return String(s === undefined || s === null ? '' : s).replace(/\|/g, '\\|').replace(/\n/g, ' ');
+  // Backslashes first, so an escape this adds is never itself re-escaped
+  // (Markdown would otherwise read `\|` in the text as an escaped pipe).
+  return String(s === undefined || s === null ? '' : s)
+    .replace(/\\/g, '\\\\').replace(/\|/g, '\\|').replace(/\n/g, ' ');
 }
 
 function table(headers, rows) {

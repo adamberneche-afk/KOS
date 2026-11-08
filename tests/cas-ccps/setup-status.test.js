@@ -177,6 +177,7 @@ test('the checklist\'s step numbers are the guide\'s: each has a "## Step n" hea
 
 test('the checklist\'s tab names are the ones the code that makes each tab uses', () => {
   const src = (f) => fs.readFileSync(S(f), 'utf8');
+  const esc = (v) => v.replace(/[.*+?^${}()|[\]\\-]/g, '\\$&');
   const pins = [
     ['40_FlowPrompts.js', 'FLOW_PROMPT_TAB', 'FlowPrompts'],
     ['42_FlowBuildSpec.js', 'FBS_TAB', 'FlowBuildSpec'],
@@ -187,7 +188,7 @@ test('the checklist\'s tab names are the ones the code that makes each tab uses'
     ['72_TurnInCheckFlow.js', 'TIC_RETURN_TAB', 'TurnInCheckReturn'],
   ];
   pins.forEach(([f, name, value]) => {
-    assert.match(src(f), new RegExp('const ' + name + '\\s*=\\s*"' + value + '"'), f + ' ' + name);
+    assert.match(src(f), new RegExp('const ' + esc(name) + '\\s*=\\s*"' + esc(value) + '"'), f + ' ' + name);
   });
   // FlowInput's two headers the checklist reads.
   assert.match(src('37_FlowInputBuilder.js'), /"StagingRowRef"/);
@@ -196,5 +197,5 @@ test('the checklist\'s tab names are the ones the code that makes each tab uses'
   const shared = src('00_SharedConfig.js');
   ['Ledger', 'ReviewQueue', 'STAGING_PIPELINE', 'RubricQueue', 'MatrixRegistry', 'LessonContext', 'CompetencyRegistry',
     'AlignmentLog', 'StudentProfiles', 'WarmUpQueue', 'ClassSchedule', 'PacingGuide', 'CompetencyRubrics']
-    .forEach((t) => assert.match(shared, new RegExp(':\\s*"' + t + '"'), t));
+    .forEach((t) => assert.match(shared, new RegExp(':\\s*"' + esc(t) + '"'), t));
 });

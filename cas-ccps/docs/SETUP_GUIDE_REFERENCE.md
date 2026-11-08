@@ -184,7 +184,7 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `STAFF_MAIL_DOMAIN` | schoolProfile_() | SCHOOL_DEFAULTS: "ccpsnet.net" | yes |
 | `STUDENT_DASHBOARD_URL` | getConfig_() | — | yes |
 | `STUDENT_EMAIL_DOMAIN` | getConfig_(), schoolProfile_() | SCHOOL_DEFAULTS.STUDENT_EMAIL_DOMAIN; SCHOOL_DEFAULTS: "ccpsnet.net" | yes |
-| `STUDENT_ID_PATTERN` | schoolProfile_() | SCHOOL_DEFAULTS: "\\d{7}" | yes |
+| `STUDENT_ID_PATTERN` | schoolProfile_() | SCHOOL_DEFAULTS: "\\\\d{7}" | yes |
 | `STUDENT_MAIL_DOMAIN` | schoolProfile_() | SCHOOL_DEFAULTS: "student.ccpsnet.net" | yes |
 | `STUDIO_DAILY_RUN_LIMIT` | resolved settings | — | yes |
 | `TEACHER_DASHBOARD_URL` | getConfig_() | — | no |
