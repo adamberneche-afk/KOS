@@ -59,6 +59,7 @@ FOR YOUR EYES: 2, oldest 9 h.
 #4 · 8175 P3 · other · The student shares a link to the finished poster · waiting 4 h · open
 
 ANSWERED IN THE LAST 7 DAYS: 9, median reply 6 h.
+FILED WITHOUT A REPLY IN THE LAST 7 DAYS: 3 (archived in Gmail: counted as handled, in neither list).
 ```
 
 Each "open" links to the Gmail thread. Numbers are reassigned every run, so
@@ -79,7 +80,12 @@ unreadable answer counts as true, and it is forced true by any of:
 A thread is WAITING when any message since the teacher's last reply needs
 one, so a needs-reply message in a FOR YOUR EYES thread moves it up.
 **Archived means handled:** a thread with no message left in the inbox is
-in neither list (it still counts toward the reply times).
+in neither list, whether it was WAITING or FOR YOUR EYES (it still counts
+toward the reply times). This is the "handled elsewhere" state for a
+thread answered by phone or at a conference: archive it, and leave the
+KOS/Family label on (it keeps the thread out of the KOS Project's mail
+searches). The FILED WITHOUT A REPLY line counts those threads, so an
+archive shows up at the next run, within 15 minutes (2026-11-08, L4).
 
 ## What reaches whom
 
