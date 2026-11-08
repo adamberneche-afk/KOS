@@ -909,6 +909,7 @@ function _getOrCreateSheet(ss, name) {
       'Owner','Protected_Time_Risk','Status',
     ],
     [CFG.DECISION_REGISTER_SHEET]: CFG.DECISION_REGISTER_HEADERS,
+    [CFG.DECISION_ECHOES_SHEET]: CFG.DECISION_ECHOES_HEADERS,
     [CFG.SMP_REGISTER_SHEET]: CFG.SMP_REGISTER_HEADERS,
     [CFG.SESSION_LOG_SHEET]: [
       'Session_UID','Timestamp','Session_Type',

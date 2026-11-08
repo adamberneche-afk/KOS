@@ -72,6 +72,16 @@ const CFG = {
     'Decision_ID', 'Session_UID', 'Recorded_At', 'Owner', 'Decision',
     'Blocking', 'Status', 'Resolved_At', 'Resolution_Note',
   ],
+  // Deferred decisions the intake held back as repeats of one already in
+  // DECISION_REGISTER (plan item L2, 22_BriefingDocs.gs). Created on first
+  // use. Would_Be_ID is the ID the decision would have had; Matched_ID the
+  // register row it repeats; Reason is 'text: exact|close|contains' or
+  // 'blocking'. The operator records one by hand if it was not a repeat.
+  DECISION_ECHOES_SHEET:    'DECISION_ECHOES',
+  DECISION_ECHOES_HEADERS: [
+    'Held_At', 'Session_UID', 'Would_Be_ID', 'Matched_ID', 'Reason',
+    'Similarity', 'Owner', 'Decision', 'Blocking',
+  ],
   // The one list of System Modification Proposals (meta/SMP_PROCESS.md).
   // The operator writes it; 22_BriefingDocs.gs renders KOS_SMP_REGISTER
   // from it. SMP numbers are assigned here and nowhere else.

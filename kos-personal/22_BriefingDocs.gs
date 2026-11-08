@@ -30,6 +30,13 @@
  * the sheet, or with resolveDecision(). backfillDecisionRegister() reads
  * the decisions already in CURRENT_STATE into the register, once.
  *
+ * Echoes (plan item L2, 2026-11-08). A re-sent or back-filled session
+ * repeats decisions already recorded, often reworded. The intake holds a
+ * new decision back, unrecorded, when it repeats a register row of any
+ * status (_decisionEcho_ below has the rule), and writes it to
+ * DECISION_ECHOES instead, never dropping it silently. The primer and
+ * KOS_OPEN_DECISIONS count those rows.
+ *
  * SMP_REGISTER (meta/SMP_PROCESS.md). The one list of SMPs, written by
  * the operator. A session's proposal reaches Blackboard unnumbered
  * (3_Queue_Processor.gs); on approval the operator gives it the next
@@ -60,6 +67,137 @@ function _bdRows_(sheet) {
 }
 
 // ================================================================
+// DECISION ECHOES — THE MATCHING RULE (plan item L2)
+// ================================================================
+
+// A reworded repeat counts when the Dice coefficient of the two texts'
+// normalized word sets, 2·|A∩B| / (|A| + |B|), is at least this. One word
+// changed in ten scores 0.90; two changed in ten, 0.80 (recorded).
+const BD_ECHO_MIN_SIMILARITY = 0.85;
+// "One contains the other" counts only when the shorter text has at least
+// this many words, so a one- or two-word decision never swallows others.
+const BD_ECHO_MIN_CONTAINED_WORDS = 4;
+
+/**
+ * Lowercase; every character that isn't a letter, digit or space becomes a
+ * space (so a trailing period, "never-touch" and "(#19)" all normalize);
+ * runs of whitespace become one space; trimmed.
+ */
+function _decisionNorm_(text) {
+  return String(text || '').toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function _decisionWordSet_(norm) {
+  const set = {};
+  norm.split(' ').forEach(function (w) { if (w) set[w] = true; });
+  return set;
+}
+
+/** Dice coefficient of two word sets (objects used as sets). */
+function _decisionDice_(a, b) {
+  const ka = Object.keys(a), kb = Object.keys(b);
+  if (!ka.length || !kb.length) return 0;
+  const shared = ka.filter(function (w) { return b[w]; }).length;
+  return (2 * shared) / (ka.length + kb.length);
+}
+
+/** The words with a digit in them ("6", "19", "2026"), sorted, joined. */
+function _decisionNumbers_(set) {
+  return Object.keys(set).filter(function (w) { return /\d/.test(w); }).sort().join(' ');
+}
+
+/**
+ * Whether a new deferred decision repeats one already recorded. Checked
+ * in this order, against every candidate (register rows, any status):
+ *   blocking         its Blocking text cites a candidate's Decision_ID
+ *                    (case-insensitive, not followed by another digit, so
+ *                    "…#1" never matches "…#12"). Only Decision_IDs: the
+ *                    "#19"-style numbers a session uses are the RTP's own
+ *                    list positions, which nothing in the register records.
+ *   text: exact      the normalized texts are equal.
+ *   text: contains   one normalized text contains the other on word
+ *                    boundaries, the shorter having at least
+ *                    BD_ECHO_MIN_CONTAINED_WORDS words.
+ *   text: close      Dice ≥ BD_ECHO_MIN_SIMILARITY and both texts carry the
+ *                    same numbers ("period 3" never echoes "period 4").
+ * Among text matches the most similar candidate wins.
+ *
+ * @param {{decision: string, blocking: string}} d
+ * @param {{id: string, norm: string, words: Object}[]} candidates
+ * @returns {{matchedId: string, reason: string, similarity: number}|null}
+ */
+function _decisionEcho_(d, candidates) {
+  const blocking = String((d && d.blocking) || '').toLowerCase();
+  for (let i = 0; blocking && i < candidates.length; i++) {
+    const id = candidates[i].id.toLowerCase();
+    if (!id) continue;
+    let at = blocking.indexOf(id);
+    while (at !== -1) {
+      if (!/\d/.test(blocking.charAt(at + id.length))) {
+        return { matchedId: candidates[i].id, reason: 'blocking',
+          similarity: _decisionDice_(_decisionWordSet_(_decisionNorm_(d.decision)), candidates[i].words) };
+      }
+      at = blocking.indexOf(id, at + 1);
+    }
+  }
+
+  const norm = _decisionNorm_(d && d.decision);
+  if (!norm) return null;
+  const words = _decisionWordSet_(norm);
+  const nums = _decisionNumbers_(words);
+  let best = null;
+  candidates.forEach(function (c) {
+    if (!c.norm) return;
+    const sim = _decisionDice_(words, c.words);
+    let reason = '';
+    if (c.norm === norm) {
+      reason = 'text: exact';
+    } else {
+      const shorter = c.norm.length < norm.length ? c.norm : norm;
+      const longer = shorter === norm ? c.norm : norm;
+      if (shorter.split(' ').length >= BD_ECHO_MIN_CONTAINED_WORDS &&
+          (' ' + longer + ' ').indexOf(' ' + shorter + ' ') !== -1) {
+        reason = 'text: contains';
+      } else if (sim >= BD_ECHO_MIN_SIMILARITY && _decisionNumbers_(c.words) === nums) {
+        reason = 'text: close';
+      }
+    }
+    if (!reason) return;
+    const s = reason === 'text: exact' ? 1 : sim;
+    if (!best || s > best.similarity) best = { matchedId: c.id, reason: reason, similarity: s };
+  });
+  return best;
+}
+
+function _bdEchoSheet_(ss) {
+  return _getOrCreateSheet(ss, CFG.DECISION_ECHOES_SHEET);
+}
+
+/** How many decisions DECISION_ECHOES holds back (0 when the tab is absent). */
+function _bdEchoCount_(ss) {
+  const sheet = ss.getSheetByName(CFG.DECISION_ECHOES_SHEET);
+  if (!sheet || sheet.getLastRow() <= 1) return 0;
+  const W = CFG.DECISION_ECHOES_HEADERS.indexOf('Would_Be_ID');
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, CFG.DECISION_ECHOES_HEADERS.length).getValues()
+    .filter(function (r) { return String(r[W]).trim(); }).length;
+}
+
+/** The one line the primer and KOS_OPEN_DECISIONS carry; '' when none are held. */
+function _bdEchoLine_(n) {
+  if (!n) return '';
+  return n + (n === 1 ? ' new decision' : ' new decisions') +
+    ' held back as repeats of open or settled ones; see ' + CFG.DECISION_ECHOES_SHEET + '.';
+}
+
+/** The primer's line (6_Governance.gs): _bdEchoLine_ for the live index. */
+function decisionEchoLine_() {
+  return _bdEchoLine_(_bdEchoCount_(_getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false)));
+}
+
+// ================================================================
 // DECISION_REGISTER — WRITES
 // ================================================================
 
@@ -70,35 +208,96 @@ function _bdRows_(sheet) {
  * an ID already in the register is skipped, so reprocessing a chunk
  * doesn't add its decisions twice.
  *
+ * A decision that repeats one already in the register, any status
+ * (_decisionEcho_), is held back: written to DECISION_ECHOES, not the
+ * register. Decisions recorded earlier in the same call count as already
+ * in the register. A would-be ID already in DECISION_ECHOES is not
+ * written again, so a reprocessed chunk holds nothing back twice.
+ *
  * @param {Spreadsheet} ss
  * @param {string} uid       the payload's Session_UID (a chunk uid)
  * @param {string} ts        the intake's timestamp string
  * @param {Object[]} decisions  [{decision, owner, blocking}]
- * @returns {number} rows added
+ * @returns {number} rows added to the register
  */
 function _recordDeferredDecisions_(ss, uid, ts, decisions) {
   if (!decisions || !decisions.length) return 0;
   const sheet = _bdRegister_(ss);
   const C = _bdCols_();
   const have = {};
-  _bdRows_(sheet).forEach(function (r) { have[String(r[C.Decision_ID]).trim()] = true; });
+  const candidates = [];
+  const addCandidate = function (id, text) {
+    const norm = _decisionNorm_(text);
+    candidates.push({ id: id, norm: norm, words: _decisionWordSet_(norm) });
+  };
+  _bdRows_(sheet).forEach(function (r) {
+    const id = String(r[C.Decision_ID]).trim();
+    if (!id) return;
+    have[id] = true;
+    addCandidate(id, r[C.Decision]);
+  });
+
+  let echoSheet = null;
+  const held = {};
+  const echoSheetNow = function () {
+    if (echoSheet) return echoSheet;
+    echoSheet = _bdEchoSheet_(ss);
+    if (echoSheet.getLastRow() > 1) {
+      const W = CFG.DECISION_ECHOES_HEADERS.indexOf('Would_Be_ID');
+      echoSheet.getRange(2, 1, echoSheet.getLastRow() - 1, CFG.DECISION_ECHOES_HEADERS.length).getValues()
+        .forEach(function (r) { held[String(r[W]).trim()] = true; });
+    }
+    return echoSheet;
+  };
 
   const rows = [];
+  const echoes = [];
   decisions.forEach(function (d, i) {
     const id = uid + '#' + (i + 1);
     if (have[id]) return;
+    const owner    = String((d && d.owner) || 'unassigned');
+    const decision = String((d && d.decision) || (typeof d === 'string' ? d : ''));
+    const blocking = String((d && d.blocking) || 'unknown');
+
+    const echo = _decisionEcho_({ decision: decision, blocking: blocking }, candidates);
+    if (echo) {
+      echoSheetNow();
+      if (held[id]) return;
+      held[id] = true;
+      const H = CFG.DECISION_ECHOES_HEADERS;
+      const e = H.map(function () { return ''; });
+      e[H.indexOf('Held_At')]     = ts;
+      e[H.indexOf('Session_UID')] = uid;
+      e[H.indexOf('Would_Be_ID')] = id;
+      e[H.indexOf('Matched_ID')]  = echo.matchedId;
+      e[H.indexOf('Reason')]      = echo.reason;
+      e[H.indexOf('Similarity')]  = Math.round(echo.similarity * 100) / 100;
+      e[H.indexOf('Owner')]       = owner;
+      e[H.indexOf('Decision')]    = decision;
+      e[H.indexOf('Blocking')]    = blocking;
+      echoes.push(e);
+      console.log('[DECISION_REGISTER] Held back ' + id + ' as a repeat of ' + echo.matchedId +
+        ' (' + echo.reason + ', ' + e[H.indexOf('Similarity')] + ').');
+      return;
+    }
+
     const row = CFG.DECISION_REGISTER_HEADERS.map(function () { return ''; });
     row[C.Decision_ID] = id;
     row[C.Session_UID] = uid;
     row[C.Recorded_At] = ts;
-    row[C.Owner]       = String((d && d.owner) || 'unassigned');
-    row[C.Decision]    = String((d && d.decision) || (typeof d === 'string' ? d : ''));
-    row[C.Blocking]    = String((d && d.blocking) || 'unknown');
+    row[C.Owner]       = owner;
+    row[C.Decision]    = decision;
+    row[C.Blocking]    = blocking;
     row[C.Status]      = BD_OPEN_STATUS;
     rows.push(row);
+    have[id] = true;
+    addCandidate(id, decision);
   });
   if (rows.length) {
     sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows);
+  }
+  if (echoes.length) {
+    echoSheet.getRange(echoSheet.getLastRow() + 1, 1, echoes.length, echoes[0].length).setValues(echoes);
   }
   return rows.length;
 }
@@ -347,6 +546,8 @@ function _openDecisionsBlocks_(ss) {
   out.push({ kind: 'p', text: 'Every deferred decision still OPEN in ' + CFG.DECISION_REGISTER_SHEET +
     ', oldest first. A decision leaves this list when the operator marks it RESOLVED or DROPPED.' });
   out.push({ kind: 'p', text: 'Open decisions: ' + open.length });
+  const echoLine = _bdEchoLine_(_bdEchoCount_(ss));
+  if (echoLine) out.push({ kind: 'p', text: echoLine });
   if (!open.length) {
     out.push({ kind: 'p', text: 'None open.' });
     return out;
