@@ -24,7 +24,8 @@ const JOBS = ['bridgeQueue', 'runStagingTurnstile', 'buildFlowInputRows', 'harve
 function setup(installed) {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('64_LedgerCycle.js')],
     ['runLedgerCycle', 'installLedgerCycle', 'previewLedgerCycle', 'restoreLedgerTriggers', 'lcRecordedJobs_',
-      'installRegistrationTrigger', 'installAlignmentBackfillTrigger', 'installPartUnlocks', 'lcFailingJobs_']);
+      'installRegistrationTrigger', 'installAlignmentBackfillTrigger', 'installPartUnlocks', 'lcFailingJobs_',
+      'installIntakeTriggers']);
   const calls = [];
   JOBS.forEach((fn) => { env.sandbox[fn] = () => calls.push(fn); });
   (installed || JOBS).forEach((fn) => env.sandbox.ScriptApp.newTrigger(fn).timeBased().everyMinutes(5).create());
@@ -145,6 +146,30 @@ test('installPartUnlocks adds unlockReadyParts to the cycle, or its own trigger 
   const bare = setup([]);
   bare.exported.installPartUnlocks();
   assert.deepEqual(bare.handlers(), ['unlockReadyParts']);
+});
+
+// The three intake jobs had no installer before 2026-11-08 (added by hand
+// in the Triggers panel; the setup guide's gap 3).
+test('installIntakeTriggers adds the three intake jobs to the cycle, or each its own trigger without one, once', () => {
+  const env = setup(['buildFlowInputRows']);
+  env.exported.installLedgerCycle();
+  env.exported.installIntakeTriggers();
+  env.exported.installIntakeTriggers();
+  assert.deepEqual(JSON.parse(env.props.getProperty('LEDGER_CYCLE_JOBS')),
+    ['buildFlowInputRows', 'registerDeliveredWarmUps', 'bridgeQueue', 'runStagingTurnstile', 'backPropagateCompletions']);
+  assert.deepEqual(env.handlers(), ['runLedgerCycle']);
+  const ran = env.exported.runLedgerCycle().ran.sort();
+  assert.deepEqual(ran, ['backPropagateCompletions', 'bridgeQueue', 'buildFlowInputRows', 'registerDeliveredWarmUps',
+    'runStagingTurnstile']);
+
+  const bare = setup([]);
+  bare.exported.installIntakeTriggers();
+  bare.exported.installIntakeTriggers();
+  assert.deepEqual(bare.handlers(), ['bridgeQueue', 'runStagingTurnstile', 'backPropagateCompletions']);
+  // everyMinutes takes 1, 5, 10, 15 or 30: backPropagateCompletions' 2 rounds down to 1.
+  bare.sandbox.ScriptApp.getProjectTriggers().forEach((t) =>
+    assert.deepEqual(t.__calls.find((c) => c.method === 'everyMinutes').args, [1]));
+  assert.equal(bare.props.getProperty('LEDGER_CYCLE_JOBS'), null);
 });
 
 test('without the cycle, an installer gives the job its own 5-minute trigger, once', () => {

@@ -36,6 +36,10 @@
 // the cycle, or gives it its own trigger when the cycle isn't installed.
 // installTurnInCheckFlow() (72, 2026-11-08) does the same for
 // runTurnInCheckFlow, Flow 6's harvest, retry and materialize.
+// installIntakeTriggers() (2026-11-08) does it for the three intake jobs
+// (bridgeQueue, runStagingTurnstile, backPropagateCompletions), which had
+// no installer: a new install added them in the Triggers panel by hand
+// (the setup guide's gap 3).
 // =============================================================================
 
 const LC_TRIGGER_FN = "runLedgerCycle";
@@ -250,6 +254,17 @@ function restoreLedgerTriggers() {
 // everyMinutes takes only 1, 5, 10, 15 or 30.
 function lcEveryMinutes_(every) {
   return [1, 5, 10, 15, 30].filter(function (m) { return m <= every; }).pop() || 1;
+}
+
+const LC_INTAKE_JOBS = ["bridgeQueue", "runStagingTurnstile", "backPropagateCompletions"];
+
+/**
+ * The three intake jobs (03, 06): in the cycle, or each its own trigger
+ * without one. Safe to run again. Before 2026-11-08 they had no installer
+ * and were added by hand in the Triggers panel.
+ */
+function installIntakeTriggers() {
+  return LC_INTAKE_JOBS.map(function (fn) { return lcInstallJob_(fn); });
 }
 
 /** registerDeliveredWarmUps (25): in the cycle, or its own trigger without one. */
