@@ -425,5 +425,5 @@ function main(argv) {
 if (require.main === module) process.exitCode = main(process.argv.slice(2));
 module.exports = {
   scanText, hash, KINDS, loadRoster, scanLogCalls, loadAllow, loadStaffAllow,
-  scanContainer, zipEntries, stripTags, scanTree, formatNotRead, crc32, MEMBER_CAP,
+  scanContainer, zipEntries, zipRead, ZipError, stripTags, scanTree, formatNotRead, crc32, MEMBER_CAP, TEXT_EXT, ZIP_EXT, MEMBER_TEXT_EXT,
 };

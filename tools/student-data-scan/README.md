@@ -95,3 +95,8 @@ file's bytes, and fails the run. A member over 20 MB uncompressed is
 skipped with a warning. Every other file is counted in a closing line,
 `not read: .png 12, .pdf 3`, so a clean result says what it didn't open;
 those don't fail the run.
+
+**Used by `tools/release-check` (since 2026-11-08).** The release check
+runs these kinds, with these allowlists, over every tracked file, and
+reuses this tool's zip reader (`zipEntries`, `zipRead`, exported for it).
+This scan's own CI step is unchanged and still fails on a finding.
