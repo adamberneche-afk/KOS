@@ -49,7 +49,9 @@
 //      the list. Each run is a DispositionLog row, counts only.
 //
 // Not in the schedule: WarmUpFlowReturn (41 deletes harvested rows after
-// 14 days), the Family Mail Sentinel tabs (60's own rules, FERPA_DATA_MAP),
+// 14 days), TurnInCheckInput and TurnInCheckReturn (72 removes the answer
+// from an input row once its check is done, and deletes finished rows of
+// both after 14 days), the Family Mail Sentinel tabs (60's own rules, FERPA_DATA_MAP),
 // PeriodOverride (52: no date column; cleared when the school year ends),
 // and tabs with no student data (RubricQueue, LessonContext, AlignmentLog,
 // LessonDrafts).

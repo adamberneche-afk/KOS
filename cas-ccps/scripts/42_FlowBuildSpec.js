@@ -60,6 +60,7 @@ function syncFlowBuildSpec() {
   _fbsAppendFlow2_(rows);
   _fbsAppendWarmUpFlows_(rows);
   _fbsAppendReturnSurface_(rows);
+  _fbsAppendFlow6_(rows);
 
   let sheet = ss.getSheetByName(FBS_TAB);
   if (!sheet) sheet = ss.insertSheet(FBS_TAB);
@@ -274,6 +275,43 @@ function _fbsAppendReturnSurface_(rows) {
     "came back\"."]);
 }
 
+// Flow 6 — the turn-in check (72_TurnInCheckFlow.js, D17 stage 2). One flat
+// input tab, one return tab the Flow adds a row to. The narrative (the steps
+// in order, the checks) is cas-ccps/docs/TURN_IN_CHECK_FLOW.md.
+function _fbsAppendFlow6_(rows) {
+  rows.push(["Flow 6", "trigger", TIC_INPUT_TAB, TCI.STATUS + 1, "Status", "72_TurnInCheckFlow.js",
+    "Starter: a row added or changed in " + TIC_INPUT_TAB + " with Status = " + TIC_READY + ". One " +
+    "condition only. Rows are materialized from TurnInChecks answers at " + TURN_IN_PENDING + ", only " +
+    "while TURN_IN_CODE_COURSES is on; installTurnInCheckFixture() writes a synthetic one."]);
+  TIC_INPUT_HEADERS.forEach(function (h, i) {
+    let note = "Read it as a chip if needed. Do not write to it: the materializer and the harvest own it.";
+    if (i === TCI.PROMPT_TEXT) {
+      note = "The whole prompt, already filled in (FLOW_6, the student's answer between its delimiters). " +
+        "Ask Gemini's instructions = this chip and nothing else, with no Drive or Sheets sources.";
+    } else if (i === TCI.CHECK_ID) {
+      note = "Copied into the return row's CheckID. The harvest matches on it.";
+    }
+    rows.push(["Flow 6", "read", TIC_INPUT_TAB, i + 1, h, "the materializer", note]);
+  });
+  TIC_RETURN_HEADERS.forEach(function (h, i) {
+    const flowWrites = i <= TCR.RAW_OUTPUT;
+    let note = "LEAVE EMPTY. The harvest writes it; a value here makes the harvest skip the row.";
+    if (i === TCR.RETURNED_AT) note = "Now.";
+    else if (i === TCR.CHECK_ID) note = "@trigger.CheckID. Never a row number.";
+    else if (i === TCR.RAW_OUTPUT) note = "The Ask Gemini step's output, unchanged: two lines, VERDICT and REASON.";
+    rows.push(["Flow 6", flowWrites ? "write" : "leave empty", TIC_RETURN_TAB, i + 1, h,
+      flowWrites ? "the Flow" : "the harvest", note]);
+  });
+  rows.push(["Flow 6", "prompt", FLOW_PROMPT_TAB, "", "FLOW_6", "40_FlowPrompts.js",
+    "Already in the PromptText chip above; the FlowPrompts row is for reading it."]);
+  rows.push(["Flow 6", "verify", TIC_RETURN_TAB, "", "", "72_TurnInCheckFlow.js",
+    "runTurnInCheckFlowCanary(), then installTurnInCheckFixture(); once the Flow has answered it, " +
+    "checkTurnInCheckFlowBinding() and checkTurnInCheckFlowLiveness()."]);
+  rows.push(["Flow 6", "narrative", "", "", "", "cas-ccps/docs/TURN_IN_CHECK_FLOW.md",
+    "The Studio steps in order, the checks, and the prompt's canonical source. Every step is native: " +
+    "custom Studio steps are BLOCKED on this account, and Flow 6 needs none."]);
+}
+
 /**
  * Reports whether the tab exists and whether it still matches what the code
  * would generate now. Read-only.
@@ -299,6 +337,7 @@ function checkFlowBuildSpec() {
   _fbsAppendFlow2_(expected);
   _fbsAppendWarmUpFlows_(expected);
   _fbsAppendReturnSurface_(expected);
+  _fbsAppendFlow6_(expected);
 
   const actual = sheet.getDataRange().getValues();
   const sameShape = actual.length === expected.length;

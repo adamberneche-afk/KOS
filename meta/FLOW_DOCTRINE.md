@@ -475,6 +475,9 @@ by hand:**
   standing exception — `15b_StudioFlowPrompts_Flow2_Revised.js` is itself
   the deployed file, one level removed from the html/`15_` split the other
   four went through).
+- `cas-ccps/docs/TURN_IN_CHECK_FLOW.md` (below its `---`) →
+  `tools/cas-ccps/generate-flow-prompts.js` → `40_FlowPrompts.js`'s
+  `FLOW_6_PROMPT` (the turn-in check, 2026-11-08).
 - `leader-hub/*_FLOW_PROMPT.md` → `tools/leader-hub/generate-ai-prompts.js`
   → `AiPrompts.gs`'s six `AI_PROMPT_*` constants.
 - `cas-ccps/docs/FAMILY_MAIL_TRIAGE_PROMPT.md` →

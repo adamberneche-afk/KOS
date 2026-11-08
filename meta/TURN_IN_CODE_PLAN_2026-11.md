@@ -1,7 +1,8 @@
 # Turn-in code: proof of engagement in Canvas (2026-11-07)
 
-**Status:** design, from the operator's decisions of 2026-11-07. Stage 1 is
-built (PR #391), behind a switch that is off; see "Build stages". The decisions below are the operator's; the open questions are
+**Status:** design, from the operator's decisions of 2026-11-07. Stages 1
+(PR #391) and 2 (Flow 6, the turn-in check: this PR) are built, behind a
+switch that is off; see "Build stages". The decisions below are the operator's; the open questions are
 marked. [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
 wins where the two disagree. No student names, emails, file IDs or
 ConfigIDs appear here, by design.
@@ -148,25 +149,35 @@ reads each text entry and matches the code to its owner.
   completion for valid codes, nothing for the rest.
 - **Sharing a code fails** because each code belongs to one student.
 
-**To verify in Canvas** (operator, after dinner on 11-07). Describe the
-patterns with names replaced; don't paste real file names here.
-1. Inside the ZIP: one file per submission? What is the file name pattern
-   (name, Canvas user ID, submission ID, attempt)?
-2. How does a text-entry submission arrive (an `.html` file?), and what
-   wraps the text?
-3. Does the roster export (`52_CanvasRosterImport.js` reads the gradebook
-   CSV) carry a Canvas user ID or SIS ID? The verifier needs one to match
-   submitters without names. 52 ignores that column today.
-4. Is the gradebook's CSV import enabled for teachers?
-5. Is anonymous grading off on these assignments?
+**What Canvas gives** (verified by the operator, 2026-11-08; T3). Patterns
+only, with no real names or IDs:
+1. **The submissions ZIP** holds one HTML file per submission, named
+   `<sortable name>_[LATE_]<SIS ID>_text.html`: the student's sortable
+   name, `LATE_` when it was late, their SIS ID, then `_text.html`.
+2. **Each file** holds a heading with the assignment title and the
+   student's name, and the typed text in a box. The code is read from the
+   box.
+3. **The gradebook export CSV** (the one `52_CanvasRosterImport.js` reads)
+   has `SIS User ID` and `SIS Login ID` columns.
+4. **Gradebook CSV upload is enabled** for teachers.
+5. Whether anonymous grading is off on these assignments was not part of
+   the check; stage 3 confirms it before the grade file is used.
+
+**Matching** (stage 3): a file's SIS ID is looked up in the export's
+`SIS User ID` column, and that row's `SIS Login ID` is the account the code
+must belong to (`TurnInCodes`' GoogleID). The file's ID is checked against
+Canvas's ID column too; a file that matches no row, or matches
+inconsistently, is reported as a non-match, never guessed. **The grade
+file** copies the export's identity columns as they are, plus one column
+for the assignment.
 
 ## Open questions
 
 | # | Question | Leaning |
 |---|---|---|
-| T1 | The check: the Apps Script screen plus the Studio flow? | Yes. The flow judges the answer, never the work, and the teacher overrules it |
+| T1 | The check: the Apps Script screen plus the Studio flow? | **Decided (operator, 2026-11-08): the Apps Script screen plus a Studio flow.** Built in stage 2 (Flow 6) |
 | T2 | "Current term": CAS's marking periods (`currentTerm_`, from `MARKING_PERIOD_ENDS`), or Canvas's grading periods? | CAS's marking periods, if they match the district's; one source of dates |
-| T3 | The Canvas facts above | Operator, 11-07 |
+| T3 | The Canvas facts above | **Resolved (operator, 2026-11-08):** see "What Canvas gives" |
 
 ## The lesson report (the gap, per lesson)
 
@@ -256,6 +267,39 @@ competency with no student text. It is not needed now.
    - The prompt, generated like the other flow prompts.
    - The harvest, the retry and the review-queue entry.
    - A FlowBuildSpec row and the operator's Studio build steps.
+
+   **Stage 2 built (this PR):** Flow 6, the turn-in check,
+   `cas-ccps/scripts/72_TurnInCheckFlow.js`, the prompt and Studio steps in
+   `cas-ccps/docs/TURN_IN_CHECK_FLOW.md`, `tests/cas-ccps/turn-in-check-flow.test.js`.
+   Details settled in the build (the file's header has each in full):
+   - *The tabs.* `TurnInCheckInput` (Timestamp, CheckID, Status, Try,
+     PromptText; the flow starts on Status = `READY`) and
+     `TurnInCheckReturn` (the flow writes ReturnedAt, CheckID, RawOutput).
+   - *The feedback context.* CAS keeps no feedback text but the milestone,
+     so the prompt has the milestone, what the feedback said about it (not
+     met yet, or shown) and the question. The answer goes between
+     `<<<STUDENT_ANSWER>>>` delimiters, neutralized, with braces and
+     `<<<`/`>>>` removed; the delimiters are system text the screen turns
+     down.
+   - *The verdict.* Two lines, `VERDICT: ADDRESSES` or `VERDICT: NOT_YET`,
+     and `REASON:` one sentence to the student, at most 300 characters. A
+     return that is garbled, says it couldn't read the answer, carries
+     system text or grade words, or names an unknown check is set aside and
+     never applied; one for an answer since replaced, or already decided, is
+     ignored.
+   - *Retry and failure.* No return after `TIC_RETRY_AFTER_MS` (10 minutes):
+     sent again, at most `TIC_MAX_RETRIES` (2) times; then `CHECK_FAILED`
+     (about 30 minutes after the first send). No code; the card says "We
+     couldn't check your answer. Your teacher can see it." and the student
+     can send it again; the CAS attention signal and the overnight email
+     count the failed checks still waiting, and an answer waiting over an
+     hour. The rows wait for stage 3's review queue; until then the teacher
+     uses `grantTurnInCode()`.
+   - *Run budget (D8).* Only `PENDING_CHECK` answers are sent; at most
+     `TIC_INPUTS_PER_RUN` (10) rows a run, retries included.
+   - *The job.* `runTurnInCheckFlow`, a Ledger cycle job every 2 minutes
+     (`installTurnInCheckFlow()`); nothing is read or written while the
+     switch is off.
 3. **The teacher's side.**
    - The grant, with its reason.
    - The review queue for flow failures and overrules.

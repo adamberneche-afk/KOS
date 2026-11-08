@@ -123,7 +123,7 @@ see their own rows below):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `63` (the assignment doc's header: stamped by `02`, the result set by `37`), `02` (intake), `03` (queue bridge), `04` (shared helpers; the turn-in gate was retired 2026-10-10), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `34b` (CAS attention signal: the counts-only `KOS_CAS_SIGNAL` doc the KOS Claude Project reads, rewritten by the watchdog every 10 minutes), `34c` (the overnight check: the signal's LAST NIGHT section and the daily email), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section), `15b`/`15c`, `37`–`42` (flow plumbing), `43` (deploy marker), `50` (student data access), `51` (course year builder), `52` (Canvas roster import), `53`/`53b` (assignment seeder and its unit data), `54` (StudentAssignments and archiving an assignment), `55`/`55b` (LessonSchedule, WarmUpPlan, the generated lesson data), `57` (the retention schedule and its read-only check), `58` (the nightly lesson rollout), `64` (the Ledger cycle: one every-minute trigger running the frequent jobs in turn, `installLedgerCycle()`), `71` (turn-in codes: the verdict stage 2's harvest will apply, and the tabs the retention schedule counts) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `63` (the assignment doc's header: stamped by `02`, the result set by `37`), `02` (intake), `03` (queue bridge), `04` (shared helpers; the turn-in gate was retired 2026-10-10), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `34b` (CAS attention signal: the counts-only `KOS_CAS_SIGNAL` doc the KOS Claude Project reads, rewritten by the watchdog every 10 minutes), `34c` (the overnight check: the signal's LAST NIGHT section and the daily email), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section), `15b`/`15c`, `37`–`42` (flow plumbing), `43` (deploy marker), `50` (student data access), `51` (course year builder), `52` (Canvas roster import), `53`/`53b` (assignment seeder and its unit data), `54` (StudentAssignments and archiving an assignment), `55`/`55b` (LessonSchedule, WarmUpPlan, the generated lesson data), `57` (the retention schedule and its read-only check), `58` (the nightly lesson rollout), `64` (the Ledger cycle: one every-minute trigger running the frequent jobs in turn, `installLedgerCycle()`), `71` (turn-in codes: the verdict Flow 6's harvest applies, and the tabs the retention schedule counts), `72` (Flow 6, the turn-in check: the input and return tabs, the harvest and the retry, a Ledger cycle job) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `00`, `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically) plus its two still-live `16_*_ADDENDUM` files (their own top-level code shares this project's scope, not a stale leftover), `19` (required by `16`'s `writeConfigTab_()`), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer from a Script Registry Sheet, see `REGISTRY_SHEET_SETUP.md`; its file lists predate most scripts, and the live projects are pushed with `tools/clasp-sync/run.js` instead), `28` (Module 2 setup), `44` (deploy marker) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — the doc's 📊 Feedback menu), `09` (M1Base), `17` (doc-only setup notes), `45` (deploy marker) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19`, `46` (deploy marker) |
@@ -519,9 +519,8 @@ kept in the `TurnInChecks` tab as `PENDING_CHECK`; the screen never issues a
 code. `applyTurnInVerdict_()` applies the check's verdict: `ADDRESSES`
 issues the student's code for the assignment while it is in the current
 marking period, `NOT_YET` keeps the one-line reason the card shows over the
-form again, and a failed or unknown verdict changes nothing. Stage 2's
-Studio flow will call it from its harvest; until then nothing calls it, so
-**no code is issued yet except by the grant**. The code
+form again, and a failed or unknown verdict changes nothing. Flow 6's
+harvest (stage 2, `72`, below) calls it. The code
 (`CAS-8177-L05-7Q4K-M2XF`: course, lesson, seven random characters from
 Crockford's base32 alphabet and a Luhn mod 32 check character) is one per
 student per assignment, unique, and kept in the `TurnInCodes` tab with its
@@ -535,6 +534,29 @@ assignment for every student on it (`openTurnInForAssignment("CAS-8177-L05",
 reason, until)`, closed with `closeTurnInForAssignment`, owner only, kept in
 `TurnInOverrides`); the check still decides each code. The term rule, the
 override, the screen and the code are documented in the file's header.
+
+**Flow 6, the turn-in check** (`72_TurnInCheckFlow.js`, Central Ledger,
+2026-11-08; stage 2, T1 decided by the operator: the Apps Script screen plus
+a Studio flow). `runTurnInCheckFlow()`, a Ledger cycle job every 2 minutes
+(`installTurnInCheckFlow()`; its own trigger without the cycle), harvests,
+retries and materializes in one pass, and does nothing while
+`TURN_IN_CODE_COURSES` is blank. Each `PENDING_CHECK` answer becomes one
+`TurnInCheckInput` row whose `PromptText` is `FLOW_6_PROMPT` (generated from
+[`docs/TURN_IN_CHECK_FLOW.md`](./docs/TURN_IN_CHECK_FLOW.md)) with the
+milestone, what the feedback said, the question and the answer between
+`<<<STUDENT_ANSWER>>>` delimiters (neutralized, no braces, no `<<<`/`>>>`).
+The flow makes one Gemini call and adds `VERDICT:` and `REASON:` lines to
+`TurnInCheckReturn`. The harvest sets aside an unknown or garbled return,
+ignores one for an answer since replaced or already decided, and otherwise
+calls `applyTurnInVerdict_()`. No return after `TIC_RETRY_AFTER_MS` (10
+minutes): sent again, at most `TIC_MAX_RETRIES` (2) times, then
+`CHECK_FAILED`: no code, the card says "We couldn't check your answer. Your
+teacher can see it." and takes the answer again, and the count is in the CAS
+attention signal and the overnight email. The Studio steps, the fixture
+(`installTurnInCheckFixture()`), the canary (`runTurnInCheckFlowCanary()`),
+the binding and liveness checks are in that doc; the `FlowBuildSpec` tab
+has its "Flow 6" rows. Input rows lose their `PromptText` once the check is
+done, and both tabs drop finished rows after 14 days.
 
 `70_WorkFileProbe.js` (2026-11-01), Phase 4's one-shot design check
 (`probeWorkFileTypes()`: what Apps Script reads back from a form, a deck and

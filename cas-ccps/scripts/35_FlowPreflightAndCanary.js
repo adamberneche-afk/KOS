@@ -973,6 +973,11 @@ function showSetupStatus() {
     const v = String(resolved.values[k] || "").trim();
     lines.push("  " + k + " = " + (v || "(off)") + (v ? "  <- " + (resolved.sources[k] || "?") : ""));
   });
+  // The turn-in code's switch (71/72, D17): read like the settings above,
+  // set in the Script Properties or the _CONFIG tab, not in ⚙ Settings.
+  const turnIn = String(resolved.values.TURN_IN_CODE_COURSES || "").trim();
+  lines.push("  TURN_IN_CODE_COURSES = " + (turnIn || "(off: no turn-in codes, Flow 6 sends nothing)") +
+    (turnIn ? "  <- " + (resolved.sources.TURN_IN_CODE_COURSES || "?") : ""));
 
   // Tabs the weekly runs fill.
   lines.push("TABS (rows below the header)");

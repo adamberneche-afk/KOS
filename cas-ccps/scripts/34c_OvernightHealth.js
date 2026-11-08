@@ -25,6 +25,9 @@
 //   - warm-up returns that FAILED or need attention in the last 24 hours
 //   - warm-ups delivered as the teacher's anchor (41: junk output, or no return)
 //   - students held at a part a school day or more by a failed check (68)
+//   - turn-in answers whose check failed (CHECK_FAILED) and wait for the
+//     teacher, and answers waiting on the check over an hour (72, Flow 6;
+//     only while TURN_IN_CODE_COURSES is on; reported with Module 2 off too)
 //   - the lesson rollout's (58) PROBLEM rows, and whether its latest run
 //     stopped short of making every student's doc
 //   - in the email only, once a day: Flow 2's week so far (69's
@@ -68,7 +71,8 @@ function overnightHealth_(now, tz) {
   let unreadable = false;
 
   if (props.getProperty("M2_ENABLED") !== "true") {
-    return { problems: ["Module 2 is off (M2_ENABLED), so the 3 a.m. runs and warm-ups don't run"], allClear: "" };
+    return { problems: ["Module 2 is off (M2_ENABLED), so the 3 a.m. runs and warm-ups don't run"]
+      .concat(_onTurnInChecks_(null, now).problems), allClear: "" };
   }
 
   ON_STAGES.forEach(function (s) {
@@ -184,6 +188,11 @@ function overnightHealth_(now, tz) {
     problems.push("Parts held by a failed check: unavailable (" + e.message + ")");
   }
 
+  // The turn-in check (72, Flow 6, 2026-11-08). Counts only.
+  const ti = _onTurnInChecks_(ss, now);
+  ti.problems.forEach(function (p) { problems.push(p); });
+  if (ti.unreadable) unreadable = true;
+
   let allClear = "";
   if (!problems.length && !unreadable) {
     allClear = "All clear: all four 3 a.m. stages ran. " +
@@ -193,6 +202,28 @@ function overnightHealth_(now, tz) {
         : "None built for tomorrow.");
   }
   return { problems: problems, allClear: allClear };
+}
+
+// Turn-in answers the check couldn't decide, waiting for the teacher, and
+// answers the check hasn't reached in an hour (72's turnInCheckCounts_).
+// Nothing while the switch is off. { problems, unreadable }.
+function _onTurnInChecks_(ss, now) {
+  if (turnInOffEverywhere_()) return { problems: [], unreadable: false };
+  try {
+    const c = turnInCheckCounts_(ss || SpreadsheetApp.openById(getConfig_().ledgerSsId), now);
+    const problems = [];
+    if (c && c.failed > 0) {
+      problems.push("Turn-in answers the check couldn't decide, waiting for you: " + c.failed + ". No code " +
+        "was issued; the student can send the answer again, or grantTurnInCode() gives one with a reason");
+    }
+    if (c && c.stalled > 0) {
+      problems.push("Turn-in answers waiting on the check for over an hour: " + c.stalled + " (is " +
+        "runTurnInCheckFlow running? showSetupStatus() says; checkTurnInCheckFlowLiveness() says whether Flow 6 answers)");
+    }
+    return { problems: problems, unreadable: false };
+  } catch (e) {
+    return { problems: ["Turn-in checks: unavailable (" + e.message + ")"], unreadable: true };
+  }
 }
 
 // The read-only setup checks, which were editor-only: the Ledger's column
