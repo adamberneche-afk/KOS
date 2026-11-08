@@ -34,8 +34,31 @@
  * Stage<N>_Lesson_Cards.docx, data/CompetencyRubrics.json (through
  * build-unit-rubrics.js) and data/deployment-urls.json. The output is byte-for-byte reproducible.
  *
+ * Turn-in codes (meta/TURN_IN_CODE_PLAN_2026-11.md, stage 4; D17). With
+ * --turn-in, the selected lessons' assignments take a text entry instead of
+ * a Website URL, and their description opens with the turn-in instruction:
+ * the student pastes the turn-in code the assignment dashboard issues. The
+ * selector is a comma-separated list of course codes (8177: every lesson the
+ * course has) and lesson ConfigIDs as StudentAssignments records them
+ * (CAS-8175-L05, CAS-8177-THE-HYPE-MACHINE; the CAS- prefix and case are
+ * optional). The lesson data has no unit field, so there is no unit
+ * selector, and a lesson in parts is named by its lesson, never a part:
+ * Canvas keeps one assignment per lesson. Without --turn-in nothing changes:
+ * the committed cartridges stay byte for byte as they were. A --turn-in
+ * cartridge is written to canvas-cartridges/turn-in/ (git-ignored), never
+ * over the committed ones. Points stay 100 (completion credit comes from the
+ * teacher's upload file, stage 3); the cartridge sets no assignment group, so
+ * the teacher moves a turn-in assignment into the formative group by hand.
+ *
+ * For an assignment already in a Canvas course, a re-import is not the way to
+ * switch it (cas-ccps/README.md, "Canvas course cartridges"): --print lists
+ * the selected assignments and the text to paste, for switching each one by
+ * hand in Canvas.
+ *
  *   node tools/cas-ccps/build-canvas-cartridge.js          write the cartridges
  *   node tools/cas-ccps/build-canvas-cartridge.js --check  exit 1 if either is out of date
+ *   node tools/cas-ccps/build-canvas-cartridge.js --turn-in <selector>          write turn-in/<course>.imscc
+ *   node tools/cas-ccps/build-canvas-cartridge.js --turn-in <selector> --print  print the hand-switch steps; write nothing
  */
 
 const fs = require('fs');
@@ -47,6 +70,7 @@ const rubrics = require('./build-unit-rubrics.js');
 
 const ROOT = path.join(__dirname, '..', '..');
 const OUT_DIR = path.join(ROOT, 'cas-ccps', 'curriculum', 'canvas-cartridges');
+const TURN_IN_OUT_DIR = path.join(OUT_DIR, 'turn-in');
 const DEPLOYMENT_URLS = path.join(ROOT, 'cas-ccps', 'data', 'deployment-urls.json');
 // A web app's /exec URL, with or without the domain (/a/macros/<domain>/) segment.
 const WEB_APP_URL_RE = /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[A-Za-z0-9_-]+\/exec$/;
@@ -61,6 +85,51 @@ function studentDashboardUrl(file = DEPLOYMENT_URLS) {
   return url;
 }
 const POINTS = 100;
+
+// The turn-in instruction (stage 4), word for word. In the cartridge the
+// "assignment dashboard" words link the dashboard, as the Get feedback
+// section does; --print gives it as plain text.
+const TURN_IN_INSTRUCTION = 'To turn this in: open your assignment dashboard, answer the question about your feedback, ' +
+  'then copy your turn-in code and paste it here.';
+const turnInHowToSubmit = (inParts) => (inParts
+  ? 'When you have finished every part and have your turn-in code, choose Start Assignment → Text Entry here, ' +
+    'paste the code and submit. Paste only the code: your teacher can see every part in your assignment docs.'
+  : 'When you have your turn-in code, choose Start Assignment → Text Entry here, paste the code and submit. ' +
+    'Paste only the code: your teacher reads your work in your assignment doc.');
+
+/**
+ * The lesson keys (8175-L05, 8177-the-hype-machine) a --turn-in selector names.
+ * Throws with a message for the operator on anything it can't place.
+ */
+function parseTurnIn(spec, lessons) {
+  const tokens = String(spec == null ? '' : spec).split(/[\s,]+/).filter(Boolean);
+  const usage = 'Name course codes (' + Object.keys(rubrics.COURSES).join(', ') + ') or lesson ConfigIDs ' +
+    '(CAS-8175-L05, CAS-8177-THE-HYPE-MACHINE), comma-separated.';
+  if (!tokens.length) throw new Error('--turn-in needs a selector. ' + usage);
+  const byUpper = {};
+  Object.keys(lessons.order).forEach((code) => lessons.order[code].forEach((k) => { byUpper[k.toUpperCase()] = k; }));
+  const partOf = {};
+  Object.keys(lessons.parts || {}).forEach((k) => (lessons.parts[k] || []).forEach((p) => { partOf[String(p.key).toUpperCase()] = k; }));
+  const keys = new Set();
+  tokens.forEach((t) => {
+    const u = t.toUpperCase().replace(/^CAS-/, '');
+    if (/^\d{4}$/.test(u)) {
+      if (!rubrics.COURSES[u]) throw new Error('--turn-in: no course ' + t + '. ' + usage);
+      (lessons.order[u] || []).forEach((k) => keys.add(k));
+      return;
+    }
+    if (/^\d{4}:/.test(u)) {
+      throw new Error('--turn-in: ' + t + ' names a unit, and the lesson data has no unit field. ' + usage);
+    }
+    if (byUpper[u]) { keys.add(byUpper[u]); return; }
+    if (partOf[u]) {
+      throw new Error('--turn-in: ' + t + ' is a part of CAS-' + partOf[u].toUpperCase() + '; Canvas has one ' +
+        'assignment per lesson, so name the lesson.');
+    }
+    throw new Error('--turn-in: no lesson ' + t + ' (a lesson needs an approved prompt to be in a cartridge). ' + usage);
+  });
+  return keys;
+}
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // A lesson's *emphasis* as <em>, not literal asterisks (2026-10-22).
@@ -164,8 +233,11 @@ const fmtDate = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { 
 // lesson (meta/STUDENT_WORK_PLAN_2026-10.md, "Where the costs land"); the
 // page lists the parts, says each has its own doc that opens in turn, and
 // asks for the last part's link.
-function assignmentXml(id, title, promptText, unit, dashboardUrl, parts) {
+// opts.turnIn (stage 4): a text entry for the turn-in code, not a Website URL;
+// the turn-in instruction opens the page and "How to submit" asks for the code.
+function assignmentXml(id, title, promptText, unit, dashboardUrl, parts, opts) {
   const inParts = Array.isArray(parts) && parts.length > 1;
+  const turnIn = !!(opts && opts.turnIn);
   let paras = promptText.split(/\n{2,}/);
   if (unit) {
     paras.shift(); // the unit title line; Canvas shows the assignment title
@@ -192,7 +264,11 @@ function assignmentXml(id, title, promptText, unit, dashboardUrl, parts) {
       'assignment dashboard once the part before it is checked and shows what that part asks for, or when your ' +
       'teacher opens it.</p>',
   ] : [];
+  const dashboard = dashboardUrl ? '<a href="' + esc(dashboardUrl) + '">assignment dashboard</a>' : 'assignment dashboard';
   const html = [
+    // TURN_IN_INSTRUCTION, with its label bold and the dashboard linked.
+    ...(turnIn ? ['<p><strong>To turn this in:</strong> open your ' + dashboard + ', answer the question about your ' +
+      'feedback, then copy your turn-in code and paste it here.</p>'] : []),
     ...promptHtml,
     ...partsHtml,
     '<h3>Where to do this work</h3>',
@@ -210,7 +286,9 @@ function assignmentXml(id, title, promptText, unit, dashboardUrl, parts) {
         'A passing check before you turn it in is a good idea, but it isn\'t required.</p>',
     ] : []),
     '<h3>How to submit</h3>',
-    inParts
+    turnIn ? '<p>' + esc(turnInHowToSubmit(inParts)).replace('Start Assignment → Text Entry',
+      '<strong>Start Assignment</strong> → <strong>Text Entry</strong>') + '</p>'
+    : inParts
       ? '<p>When you have finished every part, copy the link to your Part ' + parts.length + ' document, then choose ' +
         '<strong>Start Assignment</strong> → <strong>Website URL</strong> here and paste it. Your teacher can see ' +
         'every part.</p>'
@@ -227,7 +305,9 @@ function assignmentXml(id, title, promptText, unit, dashboardUrl, parts) {
     '  <title>' + esc(title) + '</title>\n' +
     '  <text texttype="text/html">' + esc(html) + '</text>\n' +
     '  <gradable points_possible="' + POINTS + '">true</gradable>\n' +
-    '  <submission_formats>\n    <format type="url"/>\n  </submission_formats>\n' +
+    // Canvas's Common Cartridge importer reads type="text" (or "html") as
+    // online_text_entry and "url" as online_url.
+    '  <submission_formats>\n    <format type="' + (turnIn ? 'text' : 'url') + '"/>\n  </submission_formats>\n' +
     '</assignment>\n';
 }
 
@@ -287,7 +367,7 @@ function buildCourse(code, decks, data, dashboardUrl) {
  * ringer, hook, grading tip) are not student pages, so there is no lesson
  * page; dates live in the LessonSchedule tab, so none are printed.
  */
-function buildLessonCourse(code, lessons, dashboardUrl) {
+function buildLessonCourse(code, lessons, dashboardUrl, turnIn) {
   const courseTitle = code + ' ' + rubrics.COURSES[code];
   const files = [];
   const resources = [];
@@ -296,7 +376,10 @@ function buildLessonCourse(code, lessons, dashboardUrl) {
     const a = lessons.assignments[key];
     const asgId = ident(code, 'lesson-assignment', key);
     const asgHref = asgId + '/assignment.xml';
-    files.push([asgHref, assignmentXml(asgId, a.unitName, a.promptText, null, dashboardUrl, (lessons.parts || {})[key])]);
+    const parts = (lessons.parts || {})[key];
+    files.push([asgHref, turnIn && turnIn.has(key)
+      ? assignmentXml(asgId, a.unitName, a.promptText, null, dashboardUrl, parts, { turnIn: true })
+      : assignmentXml(asgId, a.unitName, a.promptText, null, dashboardUrl, parts)]);
     resources.push({ id: asgId, type: 'assignment_xmlv1p0', href: asgHref });
     modules.push({ id: ident(code, 'lesson-module', key), title: a.unitName,
       items: [{ id: ident(code, 'lesson-item', key), ref: asgId, title: a.unitName }] });
@@ -346,14 +429,51 @@ function manifestXml(code, courseTitle, modules, resources) {
 // Since 2026-10-07 the courses run on the teacher's own lessons
 // (cas-ccps/curriculum/lessons/), so the cartridges carry those. buildCourse
 // (the pacing-guide units) is kept for reference and its tests.
-function build() {
+// opts.turnIn: a --turn-in selector (parseTurnIn); none builds today's cartridges.
+function build(opts) {
   const lessons = require('./build-lesson-assignments.js').build();
   const dashboardUrl = studentDashboardUrl();
-  return Object.keys(rubrics.COURSES).map((code) => buildLessonCourse(code, lessons, dashboardUrl));
+  const turnIn = opts && opts.turnIn != null ? parseTurnIn(opts.turnIn, lessons) : null;
+  return Object.keys(rubrics.COURSES).map((code) => buildLessonCourse(code, lessons, dashboardUrl, turnIn));
+}
+
+/** The selected assignments, in teaching order: [{ code, configId, title, parts }]. */
+function turnInAssignments(spec, lessons) {
+  const keys = parseTurnIn(spec, lessons);
+  return Object.keys(rubrics.COURSES).flatMap((code) => (lessons.order[code] || []).filter((k) => keys.has(k))
+    .map((k) => ({ code, configId: 'CAS-' + k.toUpperCase(), title: lessons.assignments[k].unitName,
+      parts: ((lessons.parts || {})[k] || []).length > 1 ? lessons.parts[k].length : 0 })));
+}
+
+/** --print: the hand switch in Canvas for each selected assignment, and the text to paste. Plain text. */
+function turnInSteps(spec, lessons) {
+  const list = turnInAssignments(spec, lessons);
+  const anyParts = list.some((a) => a.parts);
+  return [
+    'Turn-in code, the Canvas side: ' + list.length + ' assignment(s) to switch by hand (no re-import).',
+    '',
+    'Assignments (course, CAS ConfigID, Canvas assignment title):',
+    ...list.map((a) => '  ' + a.code + '  ' + a.configId + '  ' + a.title + (a.parts ? '  [' + a.parts + ' parts]' : '')),
+    '',
+    'In Canvas, for each one: Assignments, open it, Edit.',
+    '  1. Description: put the turn-in instruction (A) at the very top. Under "How to submit", replace the',
+    '     Website URL paragraph with (B)' + (anyParts ? ' (or (C), for a lesson in parts)' : '') + '. Leave the rest as it is.',
+    '  2. Submission Type: Online, with Text Entry checked and Website URL unchecked.',
+    '  3. Assignment Group: the formative group. Points: leave them (completion comes from the upload file).',
+    '  4. Anonymous grading stays off. Save.',
+    '',
+    '(A) ' + TURN_IN_INSTRUCTION,
+    '(B) ' + turnInHowToSubmit(false),
+    ...(anyParts ? ['(C) ' + turnInHowToSubmit(true)] : []),
+    '',
+  ].join('\n');
 }
 
 function main() {
-  const check = process.argv.includes('--check');
+  const argv = process.argv.slice(2);
+  const at = argv.indexOf('--turn-in');
+  if (at !== -1) return mainTurnIn(argv[at + 1], argv.includes('--print'), argv.includes('--check'));
+  const check = argv.includes('--check');
   const stale = [];
   if (!check) fs.mkdirSync(OUT_DIR, { recursive: true });
   build().forEach((c) => {
@@ -373,5 +493,26 @@ function main() {
   }
 }
 
+// --turn-in: the selected courses' cartridges into turn-in/ (git-ignored), or with --print the hand-switch steps.
+function mainTurnIn(spec, print, check) {
+  try {
+    if (check) throw new Error('--check reads the committed cartridges; it does not take --turn-in.');
+    if (spec == null || /^--/.test(spec)) throw new Error('--turn-in needs a selector, e.g. --turn-in CAS-8177-THE-HYPE-MACHINE');
+    const lessons = require('./build-lesson-assignments.js').build();
+    if (print) { process.stdout.write(turnInSteps(spec, lessons)); return; }
+    const codes = new Set(turnInAssignments(spec, lessons).map((a) => a.code));
+    fs.mkdirSync(TURN_IN_OUT_DIR, { recursive: true });
+    build({ turnIn: spec }).filter((c) => codes.has(c.name.replace('.imscc', ''))).forEach((c) => {
+      const p = path.join(TURN_IN_OUT_DIR, c.name);
+      fs.writeFileSync(p, writeZip(c.entries));
+      console.log('Wrote ' + path.relative(ROOT, p) + ' (turn-in: ' + spec + '; not committed).');
+    });
+  } catch (e) {
+    console.error(e.message);
+    process.exit(2);
+  }
+}
+
 if (require.main === module) main();
-module.exports = { build, buildCourse, buildLessonCourse, filterForCourse, blocksHtml, studentDashboardUrl, assignmentXml };
+module.exports = { build, buildCourse, buildLessonCourse, filterForCourse, blocksHtml, studentDashboardUrl, assignmentXml,
+  parseTurnIn, turnInAssignments, turnInSteps, TURN_IN_INSTRUCTION };
