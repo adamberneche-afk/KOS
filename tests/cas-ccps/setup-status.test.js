@@ -103,7 +103,7 @@ test('a fresh Ledger: every checklist line is MISSING with its step and fix, and
   assert.ok(lines.length > 20);
   assert.ok(lines.some((l) => /^\s+MISSING \[2\] Tab Ledger: run the Unified Manual's setup wizard/.test(l)));
   assert.ok(lines.some((l) => /^\s+MISSING \[6\] M2_ENABLED = true here: /.test(l)));
-  assert.ok(lines.some((l) => /^\s+MISSING \[7\] Job bridgeQueue: add a time trigger .*Triggers panel/.test(l)));
+  assert.ok(lines.some((l) => /^\s+MISSING \[7\] Job bridgeQueue: run installIntakeTriggers\(\), then installLedgerCycle\(\)/.test(l)));
   assert.ok(lines.some((l) => /^\s+MISSING \[8\] Flow 2 has answered \(0 rows\)/.test(l)));
   assert.ok(lines.some((l) => /^\s+MISSING \[10\] Ledger has a student's row/.test(l)));
   // The Ledger ID resolves (the test sets it), so that one line is OK.

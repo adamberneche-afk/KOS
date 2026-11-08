@@ -1293,6 +1293,7 @@ function makeScriptAppMock() {
     for (const name of [
       'timeBased', 'everyDays', 'everyHours', 'everyMinutes', 'everyWeeks',
       'atHour', 'nearMinute', 'onWeekDay', 'onMonthDay', 'inTimezone', 'after',
+      'forSpreadsheet', 'onFormSubmit', 'onEdit', 'onOpen', 'onChange',
     ]) {
       builder[name] = (...args) => { calls.push({ method: name, args }); return builder; };
     }
@@ -1301,7 +1302,11 @@ function makeScriptAppMock() {
       const trigger = {
         getHandlerFunction: () => handlerFunction,
         getUniqueId: () => id,
-        getEventType: () => 'CLOCK',
+        getEventType: () => {
+          const ev = { onFormSubmit: 'ON_FORM_SUBMIT', onEdit: 'ON_EDIT', onOpen: 'ON_OPEN', onChange: 'ON_CHANGE' };
+          const hit = calls.find((c) => ev[c.method]);
+          return hit ? ev[hit.method] : 'CLOCK';
+        },
         __calls: calls,
       };
       triggers.push(trigger);
@@ -1319,6 +1324,10 @@ function makeScriptAppMock() {
     },
     // Real enum values are opaque objects; string values are enough here and
     // make an assertion failure readable.
+    EventType: {
+      CLOCK: 'CLOCK', ON_FORM_SUBMIT: 'ON_FORM_SUBMIT', ON_EDIT: 'ON_EDIT',
+      ON_OPEN: 'ON_OPEN', ON_CHANGE: 'ON_CHANGE',
+    },
     WeekDay: {
       SUNDAY: 'SUNDAY', MONDAY: 'MONDAY', TUESDAY: 'TUESDAY',
       WEDNESDAY: 'WEDNESDAY', THURSDAY: 'THURSDAY', FRIDAY: 'FRIDAY',

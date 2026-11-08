@@ -29,19 +29,22 @@ const FILES = [
 
 const EXPOSE = ['setupAllTriggers', 'teardownAllTriggers', 'KOS_TRIGGER_HANDLERS', 'CFG'];
 
+// The two BRAIN_TRUST_INDEX triggers need INDEX_ID (deployFullSystem sets
+// it live), so each load gets an index spreadsheet.
 function load() {
-  return loadGasFiles(FILES, EXPOSE);
+  const env = loadGasFiles(FILES, EXPOSE);
+  const index = env.sandbox.SpreadsheetApp.create('BRAIN_TRUST_INDEX');
+  env.sandbox.PropertiesService.getScriptProperties().setProperty('INDEX_ID', index.getId());
+  return env;
 }
 
 // sensor3_externalTelemetry and onGovernanceEdit call
-// ScriptApp.newTrigger(...).forSpreadsheet(...).onChange()/.onEdit() —
-// methods the sandbox's trigger-builder mock doesn't implement (it's
-// built for the time-based installers). setupAllTriggers()'s own
-// tryInstall() catches that and reports them as failed rather than
-// throwing, so every OTHER trigger this function manages is still
-// exercised faithfully; these two just never appear in the sandbox's
-// installed set.
-const SANDBOX_UNSUPPORTED = ['sensor3_externalTelemetry', 'onGovernanceEdit'];
+// ScriptApp.newTrigger(...).forSpreadsheet(...).onChange()/.onEdit().
+// Until 2026-11-08 the sandbox's trigger builder lacked those methods, so
+// these two were left out here; it has them now (added with 18's
+// installFormSubmitTrigger), and load() sets INDEX_ID, so every handler is
+// exercised.
+const SANDBOX_UNSUPPORTED = [];
 
 function installableHandlers(exported) {
   return exported.KOS_TRIGGER_HANDLERS.filter((h) => SANDBOX_UNSUPPORTED.indexOf(h) === -1);

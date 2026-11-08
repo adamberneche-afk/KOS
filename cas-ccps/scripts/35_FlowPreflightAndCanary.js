@@ -1072,11 +1072,12 @@ const SETUP_CHECKLIST_NOT_HERE = [
 
 // The guide's step for the triggers.
 const SETUP_CHECKLIST_TRIGGER_STEP = 7;
-// The three frequent jobs no installer function makes: the setup wizard's
-// summary says to add them in the Triggers panel, then installLedgerCycle().
-const SETUP_CHECKLIST_HAND_TRIGGERS = ["bridgeQueue", "runStagingTurnstile", "backPropagateCompletions"];
-// Cycle jobs the guide's step 7 needs, with their installer.
+// Cycle jobs the guide's step 7 needs, with their installer. The three
+// intake jobs had none before 2026-11-08 (added in the Triggers panel).
 const SETUP_CHECKLIST_CYCLE_JOBS = [
+  { fn: "bridgeQueue",              installer: "installIntakeTriggers()" },
+  { fn: "runStagingTurnstile",      installer: "installIntakeTriggers()" },
+  { fn: "backPropagateCompletions", installer: "installIntakeTriggers()" },
   { fn: "buildFlowInputRows",       installer: "installFlowInputTriggers()" },
   { fn: "harvestFlowInputResults",  installer: "installFlowInputTriggers()" },
   { fn: "buildWarmUpFlowInputs",    installer: "installWarmUpFlowTriggers()" },
@@ -1131,9 +1132,6 @@ function setupChecklist_(all, resolved, handlers, cycleJobs) {
   // Step 7: triggers.
   const T = SETUP_CHECKLIST_TRIGGER_STEP;
   add(T, has(LC_TRIGGER_FN), "Ledger cycle (" + LC_TRIGGER_FN + ")", "run installLedgerCycle() after the jobs below have triggers");
-  SETUP_CHECKLIST_HAND_TRIGGERS.forEach(function (fn) {
-    add(T, runs(fn), "Job " + fn, "add a time trigger for it in the Triggers panel (no installer function), then installLedgerCycle()");
-  });
   SETUP_CHECKLIST_CYCLE_JOBS.forEach(function (j) {
     add(T, runs(j.fn), "Job " + j.fn, "run " + j.installer + ", then installLedgerCycle()");
   });

@@ -256,11 +256,10 @@ counts and readable dates. `showSetupStatus()`: the `[6]` lines are OK.
 All in the Central Ledger's editor (reference §4 lists every trigger and
 the function that installs it):
 
-1. The three intake jobs have no installer function: in the **Triggers**
-   panel add time triggers for `bridgeQueue`, `runStagingTurnstile` and
-   `backPropagateCompletions` (every minute). The wizard's summary says the
-   same. If students will use the intake form, also add `dispatchFormSubmit`
-   on form submit.
+1. `installIntakeTriggers()`: the three intake jobs (`bridgeQueue`,
+   `runStagingTurnstile`, `backPropagateCompletions`). If students will use
+   the intake form, also `installFormSubmitTrigger()` (`dispatchFormSubmit`
+   on form submit). Both are safe to run again.
 2. `installFlowInputTriggers()`, `installWarmUpFlowTriggers()`,
    `installQueueWatchdogTrigger()`, `installRegistrationTrigger()`.
 3. `previewLedgerCycle()`, then `installLedgerCycle()`: one
@@ -381,9 +380,8 @@ answered row; `showSetupStatus()`: the `[10]` lines are OK.
    `clasp create` everything first (the runbook, what the operator did):
    only the second has been run, and its Ledger-tab workaround was a
    throwaway function.
-3. **Three intake jobs without an installer** (`bridgeQueue`,
-   `runStagingTurnstile`, `backPropagateCompletions`, plus
-   `dispatchFormSubmit`): added by hand in the Triggers panel (step 7).
+3. ~~**Three intake jobs without an installer**~~ **Closed 2026-11-08:**
+   `installIntakeTriggers()` and `installFormSubmitTrigger()` (step 7).
 4. **The Canvas cartridges** carry the operator's Student Dashboard URL
    (`cas-ccps/data/deployment-urls.json`, step 5).
 5. **The courses** (registry, pacing guide, rubrics, lessons, cartridges)

@@ -32,13 +32,11 @@ function load() {
   return loadGasFiles(FILES, EXPOSE);
 }
 
-// Same sandbox limitation trigger-management.test.js documents: the
-// trigger-builder mock doesn't implement .forSpreadsheet()/.onChange()/
-// .onEdit(), so these two never actually install here even after
-// setupAllTriggers() runs. Excluded from the "everything installed"
-// assertions for that reason, not because the preflight check is wrong to
-// flag them.
-const SANDBOX_UNSUPPORTED = ['sensor3_externalTelemetry', 'onGovernanceEdit'];
+// Until 2026-11-08 the sandbox's trigger builder lacked .forSpreadsheet()/
+// .onChange()/.onEdit(), so sensor3_externalTelemetry and onGovernanceEdit
+// never installed here and were excluded. It has them now
+// (trigger-management.test.js), so nothing is excluded.
+const SANDBOX_UNSUPPORTED = [];
 
 function installableHandlers(exported) {
   return exported.KOS_TRIGGER_HANDLERS.filter((h) => SANDBOX_UNSUPPORTED.indexOf(h) === -1);
@@ -89,7 +87,7 @@ test('runKosPersonalPreflight: a freshly-deployed, fully-populated system passes
   const failedLabels = result.results.filter((r) => !r.ok).map((r) => r.label);
   const expectedFailures = SANDBOX_UNSUPPORTED.map((h) => 'Trigger: ' + h);
   assert.deepEqual(failedLabels.sort(), expectedFailures.sort(),
-    'only the two sandbox-unsupported triggers should fail: ' + JSON.stringify(failedLabels));
+    'every installable check should pass: ' + JSON.stringify(failedLabels));
 });
 
 test('runKosPersonalPreflight: an unbuilt tab is not created yet, and is not a failure', () => {
