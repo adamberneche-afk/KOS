@@ -892,7 +892,9 @@ function turnInSend(btn) {
   }
   btn.disabled = true;
   btn.textContent = "Sending\\u2026";
-  google.script.run
+  // scriptRun (13): google.script.run on the real page, the demo's stubs in
+  // demo mode, so a demo never reaches the server.
+  scriptRun()
     .withSuccessHandler(function (res) { turnInDone(configId, res); })
     .withFailureHandler(function () { turnInDone(configId, null); })
     .submitTurnInAnswer(configId, text);
