@@ -978,10 +978,31 @@ test('an archived thread (no message in INBOX) is in neither list', () => {
     : { is_family: true, category: 'grade_question', urgency: 4, safety: false, ask: 'The parent asks to explain the rubric score.', due: '' });
   waitingToo.exported.harvestFamilyMailReturns();
   const out = waitingToo.exported.writeFamilySignal();
-  assert.deepEqual([out.open, out.waiting, out.eyes], [0, 0, 0]);
+  assert.deepEqual([out.open, out.waiting, out.eyes, out.filed], [0, 0, 0, 2]);
   const text = signalText(waitingToo.sandbox, waitingToo.props);
   assert.match(text, /WAITING ON YOU: none\.\n\nFOR YOUR EYES: none\./);
+  assert.match(text, /FILED WITHOUT A REPLY IN THE LAST 7 DAYS: 2 \(archived in Gmail/);
   assert.equal(oneMessage(NO_REPLY).result.eyes, 1, 'the same message left in INBOX is listed');
+});
+
+test('archiving a WAITING thread clears it at the next run and counts it as filed (L4)', () => {
+  // The 2026-11-02 test case: a thread handled outside Gmail, then archived.
+  const msg = Object.assign({}, MAIL.student);
+  const fx = setUp([msg]);
+  fx.exported.scanFamilyMail();
+  playFlow(fx.ss, () => ({ is_family: true, category: 'grade_question', urgency: 4, safety: false,
+    ask: 'The student asks to explain the rubric score.', due: '', needs_reply: true }));
+  fx.exported.harvestFamilyMailReturns();
+  const before = fx.exported.writeFamilySignal();
+  assert.deepEqual([before.waiting, before.eyes, before.filed], [1, 0, 0]);
+  assert.match(signalText(fx.sandbox, fx.props), /FILED WITHOUT A REPLY IN THE LAST 7 DAYS: 0 /);
+
+  msg.labelIds = ['Label_1']; // archived in Gmail; the KOS/Family label stays
+  const after = fx.exported.writeFamilySignal();
+  assert.deepEqual([after.open, after.waiting, after.eyes, after.filed], [0, 0, 0, 1]);
+  const text = signalText(fx.sandbox, fx.props);
+  assert.match(text, /WAITING ON YOU: none\./);
+  assert.match(text, /FILED WITHOUT A REPLY IN THE LAST 7 DAYS: 1 \(archived in Gmail: counted as handled, in neither list\)\./);
 });
 
 test('an existing 17-column FamilyMailLog gets the Needs_Reply header', () => {

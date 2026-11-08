@@ -33,7 +33,11 @@
 // contact this week, or no classification (Flow down or a bad answer), and
 // a missing answer counts as true. A needs-reply message in an "eyes"
 // thread moves the thread to WAITING. A thread with no message left in
-// INBOX (archived) counts as handled and is in neither list.
+// INBOX (archived) counts as handled and is in neither list, whichever it
+// was in: archiving is the "handled elsewhere" signal (a phone call, a
+// conference), and the KOS/Family label stays on. The doc counts those
+// threads on a FILED WITHOUT A REPLY line, so archiving shows up at the
+// next run (2026-11-08, L4).
 //
 // WHAT COUNTS AS FAMILY MAIL (_fmsDetectFamily_):
 //   student   — from the student mail domain (STUDENT_MAIL_DOMAIN; @student.ccpsnet.net).
@@ -1056,6 +1060,7 @@ function writeFamilySignal(now) {
 
   const open = [];
   const replyHours = [];
+  let filed = 0;
   Object.keys(byThread).forEach(function (threadId) {
     const msgs = byThread[threadId].slice().sort(function (a, b) {
       return new Date(a[FMS_LOG.RECEIVED_AT]) - new Date(b[FMS_LOG.RECEIVED_AT]);
@@ -1063,6 +1068,7 @@ function writeFamilySignal(now) {
     const state = _fmsThreadState_(threadId, msgs);
     if (!state) return;
     if (state.replyHours !== null) replyHours.push(state.replyHours);
+    if (state.waitingSince && state.archived) filed++;
     if (!state.waitingSince || state.archived) return;
     const latest = msgs[msgs.length - 1];
     const unanswered = msgs.filter(function (r) { return new Date(r[FMS_LOG.RECEIVED_AT]).getTime() >= state.waitingSince; });
@@ -1085,7 +1091,7 @@ function writeFamilySignal(now) {
     return b.waitingHours - a.waitingHours;
   });
 
-  const lines = _fmsSignalLines_(open, replyHours, now);
+  const lines = _fmsSignalLines_(open, replyHours, now, filed);
   const doc = _fmsSignalDoc_();
   const body = doc.getBody();
   // A cleared body keeps one empty paragraph: the title goes into it, so the
@@ -1105,6 +1111,7 @@ function writeFamilySignal(now) {
     safety: open.filter(function (o) { return o.safety; }).length,
     waiting: open.filter(function (o) { return o.needsReply; }).length,
     eyes: open.filter(function (o) { return !o.needsReply; }).length,
+    filed: filed,
   };
 }
 
@@ -1148,7 +1155,9 @@ function _fmsThreadState_(threadId, msgs) {
   return { waitingSince: waiting.length ? waiting[0] : null, replyHours: replyHours, archived: !inInbox };
 }
 
-function _fmsSignalLines_(open, replyHours, now) {
+// filed: threads archived with family mail after the teacher's last reply
+// (handled outside Gmail). Counted, never listed.
+function _fmsSignalLines_(open, replyHours, now, filed) {
   const tz = Session.getScriptTimeZone();
   const lines = [
     { text: FMS_SIGNAL_TITLE },
@@ -1199,6 +1208,8 @@ function _fmsSignalLines_(open, replyHours, now) {
   } else {
     lines.push({ text: "ANSWERED IN THE LAST " + FMS_SIGNAL_DAYS + " DAYS: none recorded." });
   }
+  lines.push({ text: "FILED WITHOUT A REPLY IN THE LAST " + FMS_SIGNAL_DAYS + " DAYS: " + (filed || 0) +
+    " (archived in Gmail: counted as handled, in neither list)." });
   return lines;
 }
 
