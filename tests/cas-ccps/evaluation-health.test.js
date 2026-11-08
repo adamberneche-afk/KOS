@@ -9,7 +9,9 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '03_QueueBridge.js', '37_FlowInputBuilder.js', '69_EvaluationHealth.js'].map(S);
+// 69 calls 69b's flowMeasures_ (every flow's tabs: 34, 37, 41, 71, 72).
+const FILES = ['00_SharedConfig.js', '03_QueueBridge.js', '34_QueueWatchdog.js', '37_FlowInputBuilder.js',
+  '41_WarmUpFlowBridge.js', '71_TurnInCodes.js', '72_TurnInCheckFlow.js', '69_EvaluationHealth.js', '69b_FlowMeasures.js'].map(S);
 
 // Wednesday 2026-10-28, noon local; the week of Monday 2026-10-26.
 const NOW = new Date(2026, 9, 28, 12, 0, 0);

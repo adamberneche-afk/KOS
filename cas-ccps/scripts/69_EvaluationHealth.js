@@ -22,6 +22,10 @@
 //     student-and-assignment, mean and most
 //   - warm-up answer rate: warm-ups delivered that week, and how many the
 //     student answered (WarmUpQueue's delivered_at / answered_at)
+// And, through 69b's flowMeasures_() (2026-11-08), every CAS Studio flow per
+// week (sent, returned, applied, set aside, never returned, retries, wait)
+// in the FlowMeasures tab, and Studio's runs per day against
+// STUDIO_DAILY_RUN_LIMIT: the email's second line.
 //
 // DATA BOUNDARY: counts, rates and minutes only; no names, emails, file IDs,
 // ConfigIDs or student text, in the log, the Measures tab or the email.
@@ -43,18 +47,29 @@ const EH_WQ_SNAPSHOT = 6;
 // D8's bar: split more lessons if fewer than about 1 in 20 checks fail.
 const EH_D8_FAILURE_BAR = 0.05;
 
-// Editor entry point: logs the weeks by course and rewrites the Measures tab.
+// Editor entry point: logs the weeks by course and by flow, Studio's runs
+// per day, and rewrites the Measures and FlowMeasures tabs.
 function reportEvaluationHealth() {
   const out = evaluationHealth_({ write: true });
   out.rows.forEach(function (r) {
     Logger.log("[S69] " + EH_HEADERS.slice(0, -1).map(function (h, i) { return h + "=" + r[i]; }).join(" "));
   });
   Logger.log("[S69] " + out.line);
+  out.flowRows.forEach(function (r) {
+    Logger.log("[S69] " + FM_HEADERS.slice(0, -1).map(function (h, i) { return h + "=" + r[i]; }).join(" "));
+  });
+  if (out.runs) {
+    Logger.log("[S69] Studio runs per day (CAS flows): " +
+      out.runs.days.map(function (d) { return d.day + "=" + d.runs; }).join(" "));
+  }
+  Logger.log("[S69] " + out.flowLine);
   return out;
 }
 
-// { rows: [Measures rows, newest week first], line: the email's one line }.
-// opts.now for tests; opts.write rewrites the Measures tab.
+// { rows: [Measures rows, newest week first], line: the email's Flow 2 line,
+//   flowRows: [FlowMeasures rows], runs: Studio's runs per day (69b),
+//   flowLine: the email's second line }.
+// opts.now for tests; opts.write rewrites the Measures and FlowMeasures tabs.
 function evaluationHealth_(opts) {
   const o = opts || {};
   const now = o.now ? new Date(o.now) : new Date();
@@ -126,7 +141,17 @@ function evaluationHealth_(opts) {
   const line = _ehLine_(Object.keys(cells).map(function (k) { return cells[k]; })
     .filter(function (c) { return c.week === _ehWeekKey_(now.getTime()); }), _ehWeekKey_(now.getTime()));
   if (o.write) _ehWriteMeasures_(ss, rows);
-  return { rows: rows, line: line };
+
+  // Every flow (69b). Its failure never holds back Flow 2's line; the reason
+  // goes to the log only, since an error message can carry an ID.
+  let flows = { rows: [], runs: null, line: "Other flows and Studio runs: unavailable (see the editor log)." };
+  try {
+    flows = flowMeasures_(ss, cfg, now, firstWeek);
+    if (o.write) _fmWriteTab_(ss, flows.rows);
+  } catch (e) {
+    Logger.log("[S69] Flow measures failed: " + e.message);
+  }
+  return { rows: rows, line: line, flowRows: flows.rows, runs: flows.runs, flowLine: flows.line };
 }
 
 function _ehRow_(c, stamp) {

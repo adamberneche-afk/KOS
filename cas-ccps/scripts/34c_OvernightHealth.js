@@ -31,7 +31,9 @@
 //   - the lesson rollout's (58) PROBLEM rows, and whether its latest run
 //     stopped short of making every student's doc
 //   - in the email only, once a day: Flow 2's week so far (69's
-//     evaluationHealth_), which also rewrites the Measures tab
+//     evaluationHealth_), which also rewrites the Measures tab, and a second
+//     line: the other flows' week and Studio's runs per day (69b, which
+//     rewrites the FlowMeasures tab)
 //   - at most every 6 hours, the setup checks once run by hand: the Ledger's
 //     column order (38), FlowPrompts against the code (40), the last 24
 //     hours' Studio returns in the right columns (41), and each retention
@@ -437,9 +439,12 @@ function overnightMaybeMail_(health, now, tz) {
   const n = health.problems.length;
   // Flow 2's week (69, 2026-11-01): one line, and the Measures tab rewritten
   // once a day. Its failure doesn't hold the email back.
+  // Since 2026-11-08 a second line (69b): the other flows' week and
+  // Studio's runs per day against STUDIO_DAILY_RUN_LIMIT.
   let measures = "";
   try {
-    measures = evaluationHealth_({ now: now, write: true }).line;
+    const eh = evaluationHealth_({ now: now, write: true });
+    measures = [eh.line, eh.flowLine].filter(Boolean).join("\n");
   } catch (e) {
     measures = "Flow 2's week: unavailable (" + e.message + ")";
   }
