@@ -13,14 +13,19 @@ through those logs rather than through a hand-kept queue (decided in the
 
 **Where they are.** Google Drive, through the Drive connector, in the
 operator's KOS folder tree:
-- `03.5_INBOUND_SESSIONS/_PROCESSED`: each session log after ingestion,
-  as the operator saved it. Read these.
-- `03.4_RAW_EXHAUST`: the raw copy, `[RAW]_LOG-<hash>`. Only if the
-  processed copy is missing.
+- `03.4_RAW_EXHAUST`: the raw copy ingestion keeps of each paste,
+  `[RAW]_LOG-<hash>`, untouched. **Read these.** Each is the whole paste:
+  the chat, then the RTP's log, which starts at the paste's last line
+  beginning `KOS SESSION LOG —` (a chat can quote an earlier draft).
+  Ignore the `[CHUNK_` and `[VC_` docs beside them.
+- `03.5_INBOUND_SESSIONS/_PROCESSED`: the inbound copy, as the operator
+  saved it. It is usually titled "Untitled document", so it can't be
+  found by title.
 - A log the operator pastes into the conversation counts the same.
 
-Find them by searching Drive for documents titled `KOS SESSION LOG` and
-modified after the last log read. Never record a Drive file ID in the repo.
+Find them by searching Drive for documents titled `[RAW]_LOG-` created
+after the last log read (a title search for `KOS SESSION LOG` finds
+nothing: checked 2026-11-08). Never record a Drive file ID in the repo.
 
 **Which ones are read.** `meta/PLAN_<month>.md`, section "From the RTP
 session logs", says "Logs read through: <date>". Read every log dated
