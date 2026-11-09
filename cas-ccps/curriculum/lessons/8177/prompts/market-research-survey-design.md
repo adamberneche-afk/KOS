@@ -19,7 +19,7 @@ Part 2: Build the Survey. In Google Forms, build a survey with these three quest
 - Question 2 (linear scale, 1 = Not at all important, 5 = Extremely important): On a scale of 1 to 5, how important is it to you that the profits from your merchandise purchases directly fund CHHS student activities?
 - Question 3 (short answer): What is one specific type of product or service you would like to see offered at The Cavalier Shop that is currently unavailable?
 
-Turn off email collection in the form's settings. Paste your form's link into this document.
+Turn off email collection in the form's settings.
 
 Part 3: Why These Questions Work. For each question, say whether it collects quantitative or qualitative data, and explain what the store will learn from it.
 

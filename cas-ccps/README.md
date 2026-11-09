@@ -699,7 +699,14 @@ word):**
    has the part as a doc keeps it.
 
 The first: 8177 "Venue Market Research & Survey Design", Part 2 "Build the
-Survey" (named by the operator 2026-11-08), marked after the 4a push.
+Survey" (named by the operator 2026-11-08). **Marked 2026-11-09**, with
+`formChecks` `{"minQuestions": 3, "collectsEmail": false, "questionTypes":
+["checkboxes", "scale", "short_answer"]}` (the part's three question types,
+as its criterion asks); its blank template, "Market Research — your
+survey", is in the operator's Drive, its ID in
+`WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2`. The pilot changes
+the Canvas assignment's text by hand rather than re-importing the
+cartridge (a re-import duplicates modules).
 
 `69_EvaluationHealth.js` (Central Ledger, 2026-11-01) is the first reader of
 `EvaluationLog`, and the numbers D8 waits on. `reportEvaluationHealth()`,

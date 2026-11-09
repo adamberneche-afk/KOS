@@ -27,7 +27,7 @@ test('the market research lesson is five parts, each its own assignment, in orde
     assert.ok(!LESSON_ASSIGNMENTS[p.key], 'a part is not a lesson');
   });
   assert.equal(parts[1].workFile, 'form');
-  assert.equal(parts[1].workFileNow, 'doc', 'a doc with the form link until Phase 4');
+  assert.equal(parts[1].workFileNow, 'form', 'a Google Form since 2026-11-09 (Phase 4a)');
   // Every lesson with parts lists them; the others have none (35 with parts since 2026-10-28).
   Object.keys(LESSON_ASSIGNMENTS).forEach((k) => assert.deepEqual(LESSON_ASSIGNMENTS[k].partKeys,
     LESSON_PARTS[k] ? LESSON_PARTS[k].map((p) => p.key) : undefined, k));
@@ -56,7 +56,8 @@ test('each part\'s task: the opening, its own paragraphs and vocabulary; Part 1 
   assert.doesNotMatch(p1.promptText, /Part 2: Build the Survey/);
   assert.match(p2.promptText, /Part 1 has the background, the key terms and an example: look back at it\./);
   assert.doesNotMatch(p2.promptText, /\nBackground:\n/);
-  assert.match(p2.promptText, /Paste your form's link into this document\./, 'kept until Forms are work files (Phase 4)');
+  assert.doesNotMatch(p2.promptText, /Paste your form's link into this document\./, 'removed when the part became a form (2026-11-09)');
+  assert.match(p2.promptText, /Turn off email collection in the form's settings\./);
   assert.doesNotMatch(p2.promptText, /Part 3:/);
   assert.match(p3.promptText, /What your work needs to show:\n\n- For each of the three questions, you say whether it collects quantitative or qualitative data/);
   assert.match(p3.definitionOfDone, /^ASSIGNMENT: Venue Market Research & Survey Design — Part 3: Why These Questions Work/);
@@ -104,20 +105,31 @@ function buildWithEdits(editParts, editPrompt) {
 const LIVE_55B = () => fs.readFileSync(S('55b_LessonAssignmentData.js'), 'utf8');
 const PASTE_LINE = / Paste your form's link into this document\./;
 
-test('workType: unset everywhere today, so every part is a doc and 55b carries no template key', () => {
+// Marked 2026-11-09: the survey part (8177 Market Research, Part 2) is the
+// one form; every other part is still unset, so a doc.
+const SURVEY_PART = KEY + '-P2';
+test('workType: only the survey part is a form; every other part is a doc and 55b carries no template key for it', () => {
   const { LESSON_PARTS } = data();
   Object.values(LESSON_PARTS).flat().forEach((p) => {
+    if (p.key === SURVEY_PART) {
+      assert.equal(p.workFileNow, 'form');
+      assert.equal(p.workTemplateKey, 'WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2');
+      return;
+    }
     assert.equal(p.workFileNow, 'doc', p.key);
     assert.equal(p.workTemplateKey, undefined, p.key);
   });
   const parts = JSON.parse(fs.readFileSync(PARTS_PATH, 'utf8'));
   Object.keys(parts).filter((k) => !k.startsWith('_')).forEach((k) =>
-    parts[k].parts.forEach((p) => assert.equal(p.workType, undefined, k + ' ' + p.title + ' is marked; this PR ships none marked')));
+    parts[k].parts.forEach((p, i) => {
+      if (k === KEY && i === 1) return;
+      assert.equal(p.workType, undefined, k + ' ' + p.title + ' is marked; only the survey part is');
+    }));
 });
 
 test('workType "doc" written out is the same as unset: the generated 55b is byte-identical', () => {
   const out = buildWithEdits((all) => Object.keys(all).filter((k) => !k.startsWith('_'))
-    .forEach((k) => all[k].parts.forEach((p) => { p.workType = 'doc'; })));
+    .forEach((k) => all[k].parts.forEach((p) => { if (p.workType === undefined) p.workType = 'doc'; })));
   assert.equal(out, LIVE_55B());
 });
 
@@ -137,9 +149,12 @@ test('marking the survey part a form changes only that part: workFileNow "form" 
 });
 
 test('the builder refuses a form part whose task still says to paste a link, a workType not doc or form, or one unlike its workFile', () => {
-  assert.throws(() => buildWithEdits((all) => { all[KEY].parts[1].workType = 'form'; }),
+  // The live prompt lost the paste line when the part was marked; put it back.
+  assert.throws(() => buildWithEdits(() => {},
+    (md) => md.replace("Turn off email collection in the form's settings.",
+      "Turn off email collection in the form's settings. Paste your form's link into this document.")),
     /part 2: a form part's task still says to paste a link into this document/);
-  assert.throws(() => buildWithEdits((all) => { all[KEY].parts[1].workType = 'slides'; }),
+  assert.throws(() => buildWithEdits((all) => { all[KEY].parts[1].workType = 'slides'; delete all[KEY].parts[1].formChecks; }),
     /workType "slides" is not one of doc, form/);
   assert.throws(() => buildWithEdits((all) => { all[KEY].parts[0].workType = 'form'; }),
     /part 1: workType "form" but its workFile is "doc"/);

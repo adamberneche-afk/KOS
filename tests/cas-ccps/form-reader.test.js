@@ -495,13 +495,19 @@ test('the builder\'s question types are 00\'s FORM_QUESTION_TYPES', () => {
   assert.deepEqual(builder.FORM_QUESTION_TYPES.slice().sort(), Object.keys(exported.FORM_QUESTION_TYPES).sort());
 });
 
-test('nothing is marked: no part has formChecks or is a form, and the generated data is what the builder makes', () => {
+// The first form part, marked 2026-11-09 (the operator named it 11-08):
+// 8177 Market Research, Part 2. Nothing else is marked.
+test('only the survey part is marked: a form with its exact checks, and the generated data carries just that one', () => {
   const fsx = require('fs');
   const parts = JSON.parse(fsx.readFileSync(path.join(ROOT, 'cas-ccps', 'curriculum', 'lessons', 'PARTS.json'), 'utf8'));
   const all = Object.values(parts).flatMap((d) => (d && d.parts) || []);
   assert.ok(all.length > 50);
-  assert.ok(all.every((p) => p.formChecks === undefined && p.workType === undefined));
+  const marked = all.filter((p) => p.formChecks !== undefined || p.workType !== undefined);
+  assert.equal(marked.length, 1);
+  assert.equal(marked[0].title, 'Build the Survey');
+  assert.equal(marked[0].workType, 'form');
+  assert.deepEqual(marked[0].formChecks, { minQuestions: 3, collectsEmail: false, questionTypes: ['checkboxes', 'scale', 'short_answer'] });
   const data = fsx.readFileSync(S('55b_LessonAssignmentData.js'), 'utf8');
-  assert.doesNotMatch(data, /formChecks/);
-  assert.doesNotMatch(data, /"workFileNow": "form"/);
+  assert.equal((data.match(/"workFileNow": "form"/g) || []).length, 1);
+  assert.equal((data.match(/"formChecks"/g) || []).length, 1);
 });

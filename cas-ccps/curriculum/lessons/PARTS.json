@@ -28,6 +28,8 @@
     "title": "Build the Survey",
     "marker": "Part 2:",
     "workFile": "form",
+    "workType": "form",
+    "formChecks": {"minQuestions": 3, "collectsEmail": false, "questionTypes": ["checkboxes", "scale", "short_answer"]},
     "primary": "8177-83",
     "secondary": [
      "8177-18"

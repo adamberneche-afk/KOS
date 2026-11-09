@@ -209,7 +209,7 @@ test('intakeStudent_: a form part is a copy of its template form, recorded and S
 // Phase 4b: intake also makes the form's snapshot doc, its feedback page,
 // beside the form, laid out like a doc's lower half, shared as a commenter
 // (the student once the part opens, the teacher now), and records it in
-// FormSnapshots with the part's exact checks (the defaults, nothing marked).
+// FormSnapshots with the part's exact checks (marked 2026-11-09).
 test('intakeStudent_: a form part gets its snapshot doc beside it, recorded in FormSnapshots, shared with the form', () => {
   const { exported, sandbox, ledger, copies } = formSetup();
   const res = exported.intakeStudent_(exported.getConfig_(), formStudent(true));
@@ -217,7 +217,8 @@ test('intakeStudent_: a form part gets its snapshot doc beside it, recorded in F
   const snap = exported.formSnapshotFor_(ledger, copies[0].getId());
   assert.ok(snap, 'a FormSnapshots row');
   assert.equal(snap.partConfigId, FORM_PART);
-  assert.deepEqual(snap.formChecks, { minQuestions: 1, collectsEmail: false }, 'the defaults: no formChecks marked');
+  assert.deepEqual(snap.formChecks, { minQuestions: 3, collectsEmail: false, questionTypes: ['checkboxes', 'scale', 'short_answer'] },
+    'the survey part\'s formChecks (PARTS.json, marked 2026-11-09)');
   const fsRow = ledger.getSheetByName('FormSnapshots').getDataRange().getValues();
   assert.deepEqual(fsRow[0], ['MadeAt', 'StudentConfigID', 'FormFileID', 'SnapshotDocID', 'PartConfigID', 'FormChecks', 'LastWrittenAt']);
   assert.equal(fsRow[1][1], ledger.getSheetByName('Ledger').getDataRange().getValues()[1][2], 'the student\'s workspace ConfigID');
