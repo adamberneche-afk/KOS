@@ -2082,9 +2082,11 @@ function checkFlowBinding() {
 
   const width = WFB_RETURN_HEADERS.length;
   const data = returns.getRange(2, 1, returns.getLastRow() - 1, width).getValues();
+  report.canaryLeftovers = 0;
   for (let i = 0; i < data.length; i++) {
-    report.returnRows++;
     const row = data[i];
+    if (_wfbIsCanaryLeftover_(row, knownIds)) { report.canaryLeftovers++; continue; }
+    report.returnRows++;
     const issues = _wfbDiagnoseReturnRow_(row, knownIds);
     if (!issues.length) { report.ok++; continue; }
     report.problems.push({ row: i + 2, issues: issues });
@@ -2092,6 +2094,10 @@ function checkFlowBinding() {
 
   Logger.log('[WFB] checkFlowBinding: ' + report.ok + '/' + report.returnRows +
     ' return row(s) correctly bound');
+  if (report.canaryLeftovers) {
+    Logger.log('[WFB]   ' + report.canaryLeftovers + ' canary return row(s) skipped: their queue row was ' +
+      'already removed, so they are a test\'s leftovers, not a binding. removeWarmUpFlowFixtures() clears them.');
+  }
   report.problems.forEach(function (p) {
     Logger.log('[WFB]   row ' + p.row + ':');
     p.issues.forEach(function (msg) { Logger.log('[WFB]     - ' + msg); });
@@ -2120,10 +2126,25 @@ function wfbRecentBindingCounts_(ss, now, windowMs) {
   returns.getRange(2, 1, returns.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues().forEach(function (r) {
     const at = sheetTimestampMs_(r[WFB_RET.TIMESTAMP]);
     if (isNaN(at) || now.getTime() - at > windowMs) return;
+    if (_wfbIsCanaryLeftover_(r, knownIds)) return; // a test's leftover, not a binding
     out.recent++;
     if (_wfbDiagnoseReturnRow_(r, knownIds).length) out.bad++;
   });
   return out;
+}
+
+/**
+ * A canary's return row whose queue row is gone (the canary removed its own
+ * fixture, or removeWarmUpFlowFixtures() ran before the return arrived): a
+ * test's leftover, not evidence about the binding. Skipped by
+ * checkFlowBinding() and the overnight count. Plan L5, 2026-11-09: the
+ * 11-02 signal's "1 of 1 returns in the wrong columns" was the 11-01
+ * canary's leftover; every live row was bound correctly (461 of 461).
+ * A canary row whose queue row still exists is diagnosed like any other.
+ */
+function _wfbIsCanaryLeftover_(row, knownIds) {
+  const id = String(row[WFB_RET.QUEUE_ID] === undefined ? '' : row[WFB_RET.QUEUE_ID]).trim();
+  return id.indexOf(WFB_CANARY_PREFIX) === 0 && !knownIds[id];
 }
 
 /**

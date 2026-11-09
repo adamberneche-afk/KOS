@@ -44,7 +44,7 @@ const EXPOSE = [
   'wfbUnionIndicatorTags_', 'wfbHasPersistentGap_', 'wfbFormatCompetencyTexts_',
   'wfbFormatList_', 'wfbFormatEvaluationSignals_', 'wfbStripFence_',
   'wfbNormalizeDateIso_', 'wfbFormatReadableDate_', 'pivotFlagFor_', 'checkShadowMatrixInterrupts_',
-  '_wfbDiagnoseReturnRow_', 'checkFlowBinding', 'checkFlow2Binding',
+  '_wfbDiagnoseReturnRow_', 'checkFlowBinding', 'checkFlow2Binding', '_wfbIsCanaryLeftover_', 'wfbRecentBindingCounts_',
   'WFB_ARCHETYPES', 'WFB_TRIGGER_STATUS', 'WFB_PROFILE_SNAP', 'WFB_RET',
   'WFB_RETURN_HEADERS', 'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS',
   'WFB_INPUT_TABS', 'WFB_RETURN_TAB',
@@ -985,6 +985,42 @@ test('_wfbDiagnoseReturnRow_: the harvest\'s own anchor-fallback row is not a bi
   row[R.HARVEST_STATUS] = 'HARVESTED'; row[R.ATTEMPTS] = 0;
   row[R.ERROR] = 'ANCHOR_FALLBACK: no return from Studio after 2 retries';
   assert.deepEqual(exported._wfbDiagnoseReturnRow_(row, { 'WUQ-1': true }), []);
+});
+
+// Plan L5 (2026-11-09): the 11-02 signal's one "wrong columns" return was
+// the 11-01 canary's leftover, its queue row already removed. A canary row
+// with no queue row is skipped, not counted; one whose queue row still
+// exists is diagnosed like any row.
+test('a canary\'s leftover return row is not a binding problem; a live canary row is still checked', () => {
+  const { exported, sandbox } = load();
+  const R = exported.WFB_RET;
+  const mk = (id, ts) => {
+    const row = new Array(exported.WFB_RETURN_HEADERS.length).fill('');
+    row[R.TIMESTAMP] = ts; row[R.FLOW] = 3; row[R.QUEUE_ID] = id;
+    row[R.RAW_OUTPUT] = 'A warm-up question long enough to be model output, about the lesson.';
+    return row;
+  };
+  const now = new Date('2026-11-02T13:46:00Z');
+  const leftover = mk('WUQ-CANARY-20261101-145926', new Date('2026-11-01T19:59:26Z'));
+  assert.equal(exported._wfbIsCanaryLeftover_(leftover, {}), true);
+  assert.equal(exported._wfbIsCanaryLeftover_(leftover, { 'WUQ-CANARY-20261101-145926': true }), false, 'a live canary is checked');
+  assert.equal(exported._wfbIsCanaryLeftover_(mk('WUQ-9', now), {}), false, 'a real row with an unknown id is still a problem');
+
+  const ss = sandbox.SpreadsheetApp.create('Ledger');
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  const wq = ss.insertSheet(exported.getConfig_().tabs.warmUpQueue);
+  const qrow = new Array(exported.WQ25_COL_COUNT).fill('');
+  qrow[exported.WQ25_QUEUE_ID] = 'WUQ-1';
+  wq.appendRow(new Array(exported.WQ25_COL_COUNT).fill('h'));
+  wq.appendRow(qrow);
+  const ret = ss.insertSheet(exported.WFB_RETURN_TAB);
+  ret.appendRow(exported.WFB_RETURN_HEADERS);
+  ret.appendRow(leftover);
+  ret.appendRow(mk('WUQ-1', new Date('2026-11-02T10:00:00Z')));
+  assert.deepEqual(JSON.parse(JSON.stringify(exported.wfbRecentBindingCounts_(ss, now, 24 * 3600 * 1000))), { recent: 1, bad: 0 });
+  // A real misbinding still counts.
+  ret.appendRow(mk('WUQ-404', new Date('2026-11-02T11:00:00Z')));
+  assert.deepEqual(JSON.parse(JSON.stringify(exported.wfbRecentBindingCounts_(ss, now, 24 * 3600 * 1000))), { recent: 2, bad: 1 });
 });
 
 // ── D6 (2026-10-24): Mode C and the blank lines ──────────────────────────────
