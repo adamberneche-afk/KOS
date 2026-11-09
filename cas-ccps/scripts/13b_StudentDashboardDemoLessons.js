@@ -453,44 +453,44 @@ const DASH_DEMO_PARTS_LESSON = {
 // A lesson in parts with a Slides part, for the demo's slides card (Phase 4c).
 const DASH_DEMO_SLIDES_LESSON = {
   "code": "8177",
-  "key": "8177-promotional-flyer-design",
-  "lessonName": "Venue Promotion & Flyer Design",
+  "key": "8177-product-pitch-financial-analysis",
+  "lessonName": "The Venue Buyer's Product Pitch",
   "parts": [
     {
       "n": 1,
-      "title": "Design It",
-      "workType": "slides",
-      "key": "8177-promotional-flyer-design-P1",
-      "unitName": "Venue Promotion & Flyer Design — Part 1: Design It",
+      "title": "The Product",
+      "workType": "doc",
+      "key": "8177-product-pitch-financial-analysis-P1",
+      "unitName": "The Venue Buyer's Product Pitch — Part 1: The Product",
       "subject": "Marketing (CTE)",
       "milestones": [
-        "8177-1 Demonstrate creativity and innovation.",
-        "8177-18 Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.",
+        "8177-7 Demonstrate listening and speaking skills.",
+        "Explains the reasoning behind each part, in the student's own words.",
         "Uses specific examples from the student's own work, not general statements.",
         "Completes every part of the task the assignment asks for."
       ],
       "milestoneCompetencyIds": [
-        "8177-1",
-        "8177-18",
+        "8177-7",
+        "",
         "",
         ""
       ]
     },
     {
       "n": 2,
-      "title": "Explain It",
+      "title": "The Why",
       "workType": "doc",
-      "key": "8177-promotional-flyer-design-P2",
-      "unitName": "Venue Promotion & Flyer Design — Part 2: Explain It",
+      "key": "8177-product-pitch-financial-analysis-P2",
+      "unitName": "The Venue Buyer's Product Pitch — Part 2: The Why",
       "subject": "Marketing (CTE)",
       "milestones": [
-        "8177-21 Demonstrate reading and writing skills.",
-        "Uses the lesson vocabulary accurately: contrast, visual hierarchy, negative space, headline.",
+        "8177-93 Describe factors that motivate consumers to attend sports, entertainment, and event occasions.",
+        "Explains the reasoning behind each part, in the student's own words.",
         "Uses specific examples from the student's own work, not general statements.",
         "Completes every part of the task the assignment asks for."
       ],
       "milestoneCompetencyIds": [
-        "8177-21",
+        "8177-93",
         "",
         "",
         ""
@@ -498,20 +498,80 @@ const DASH_DEMO_SLIDES_LESSON = {
     },
     {
       "n": 3,
-      "title": "The 10-Foot Test",
+      "title": "The Materials",
       "workType": "doc",
-      "key": "8177-promotional-flyer-design-P3",
-      "unitName": "Venue Promotion & Flyer Design — Part 3: The 10-Foot Test",
+      "key": "8177-product-pitch-financial-analysis-P3",
+      "unitName": "The Venue Buyer's Product Pitch — Part 3: The Materials",
       "subject": "Marketing (CTE)",
       "milestones": [
-        "8177-1 Demonstrate creativity and innovation.",
-        "8177-14 Manage time and resources.",
+        "8177-96 Analyze the financial resources required for each event activity.",
+        "8177-19 Apply mathematical skills to job-specific tasks.",
         "Uses specific examples from the student's own work, not general statements.",
         "Completes every part of the task the assignment asks for."
       ],
       "milestoneCompetencyIds": [
-        "8177-1",
-        "8177-14",
+        "8177-96",
+        "8177-19",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 4,
+      "title": "The Price",
+      "workType": "doc",
+      "key": "8177-product-pitch-financial-analysis-P4",
+      "unitName": "The Venue Buyer's Product Pitch — Part 4: The Price",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-2 Demonstrate critical thinking and problem-solving.",
+        "Uses the lesson vocabulary accurately: retail price.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-2",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 5,
+      "title": "The Math",
+      "workType": "doc",
+      "key": "8177-product-pitch-financial-analysis-P5",
+      "unitName": "The Venue Buyer's Product Pitch — Part 5: The Math",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-19 Apply mathematical skills to job-specific tasks.",
+        "Uses the lesson vocabulary accurately: cost, retail price, margin, break-even point, turnover.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-19",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 6,
+      "title": "The Pitch",
+      "workType": "slides",
+      "key": "8177-product-pitch-financial-analysis-P6",
+      "unitName": "The Venue Buyer's Product Pitch — Part 6: The Pitch",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-7 Demonstrate listening and speaking skills.",
+        "8177-19 Apply mathematical skills to job-specific tasks.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-7",
+        "8177-19",
         "",
         ""
       ]

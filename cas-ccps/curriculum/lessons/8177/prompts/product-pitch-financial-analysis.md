@@ -25,6 +25,8 @@ Part 5: The Math. Show every calculation: cost per finished item, profit per ite
 
 Use real numbers from a real supplier. Your product must be something our equipment can make, and it must follow the CHHS Student Handbook.
 
+Part 6: The Pitch. Pitch your product to the General Manager in a short Google Slides deck of 3 to 5 slides, using what you worked out in Parts 1–5: what the product is, who will buy it and when, what it costs to make, your price, and the bottom line. Follow the Rule of Six: no more than six lines of text on a slide (the title doesn't count) and six words on a line, and no more than two images on a slide. Use colors with strong contrast so every word is easy to read: dark text on a light background, or light text on a dark background. Put what you'd say to the General Manager in each slide's speaker notes. Include at least one picture of the product or a mock-up.
+
 Use these terms accurately: SKU, supplier, cost, retail price, margin, break-even point, turnover.
 
 ## Background

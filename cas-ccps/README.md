@@ -749,8 +749,17 @@ The same pattern as a form (4a and 4b above), for Google Slides. A part's
 `workType` may be `slides` where its planned `workFile` in `PARTS.json` is
 `slides` (the Canva and Drawings parts were planned as Slides, §5); the
 generator refuses it elsewhere, and refuses a Slides part whose task still
-says to add the work, or its link, to this document. **Nothing is marked**:
-55b, the cartridges and the data are unchanged, and a test holds that.
+says to add the work, or its link, to this document. **The first Slides
+part (2026-11-09):** a new Part 6, "The Pitch", on 8177 "The Venue Buyer's
+Product Pitch", held to the operator's Rule of Six lesson (8175 L08):
+`{"minSlides": 3, "maxSlides": 5, "notesOnEverySlide": true, "minImages":
+1, "maxImagesPerSlide": 2, "maxLinesPerSlide": 6, "maxWordsPerLine": 6,
+"minContrast": 4.5}`. Its blank template, "Product Pitch — your deck", is
+in the operator's Drive, its ID in
+`WORK_TEMPLATE_8177_PRODUCT_PITCH_FINANCIAL_ANALYSIS_P6`. Students already
+in Parts 1–5 get it from the next rollout while the lesson is current; the
+Canvas assignment gets the Part 6 paragraph by hand (no re-import). No
+other Slides part is marked, and a test holds that.
 
 - **Made by the rollout like a form.** Intake copies the part's template
   deck with Drive (02's `_intakeWorkFile_`, which now makes form and deck

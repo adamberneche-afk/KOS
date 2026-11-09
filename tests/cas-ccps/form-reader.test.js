@@ -514,13 +514,14 @@ test('the builder\'s question types are 00\'s FORM_QUESTION_TYPES', () => {
 });
 
 // The first form part, marked 2026-11-09 (the operator named it 11-08):
-// 8177 Market Research, Part 2. Nothing else is marked.
-test('only the survey part is marked: a form with its exact checks, and the generated data carries just that one', () => {
+// 8177 Market Research, Part 2. No other part is a form (the pitch's Part 6
+// is a Slides part: slides-reader.test.js).
+test('only the survey part is a form: its exact checks, and the generated data carries just that one', () => {
   const fsx = require('fs');
   const parts = JSON.parse(fsx.readFileSync(path.join(ROOT, 'cas-ccps', 'curriculum', 'lessons', 'PARTS.json'), 'utf8'));
   const all = Object.values(parts).flatMap((d) => (d && d.parts) || []);
   assert.ok(all.length > 50);
-  const marked = all.filter((p) => p.formChecks !== undefined || p.workType !== undefined);
+  const marked = all.filter((p) => p.formChecks !== undefined || p.workType === 'form');
   assert.equal(marked.length, 1);
   assert.equal(marked[0].title, 'Build the Survey');
   assert.equal(marked[0].workType, 'form');

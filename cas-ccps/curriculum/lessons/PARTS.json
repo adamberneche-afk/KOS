@@ -829,6 +829,27 @@
      "break-even point",
      "turnover"
     ]
+   },
+   {
+    "title": "The Pitch",
+    "marker": "Part 6:",
+    "workFile": "slides",
+    "workType": "slides",
+    "slideChecks": {"minSlides": 3, "maxSlides": 5, "notesOnEverySlide": true, "minImages": 1, "maxImagesPerSlide": 2, "maxLinesPerSlide": 6, "maxWordsPerLine": 6, "minContrast": 4.5},
+    "primary": "8177-7",
+    "secondary": [
+     "8177-19"
+    ],
+    "tertiary": [],
+    "criteria": {
+     "8177-7": "Your deck pitches the product in 3 to 5 slides: the product, who buys it and when, the cost and price, and the bottom line. Every slide follows the Rule of Six, has good contrast and is easy to read, and the speaker notes say what you'd tell the General Manager.",
+     "8177-19": "Your numbers slide matches your Part 5 math: cost per finished item, retail price, margin and break-even point."
+    },
+    "vocabulary": [
+     "retail price",
+     "margin",
+     "break-even point"
+    ]
    }
   ]
  },

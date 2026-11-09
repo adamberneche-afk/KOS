@@ -32,7 +32,7 @@ The "Still open" lines are questions the drafts raised, left for when each lesso
 - [Venue Operations & The Employee Handbook](#8177-employee-handbook-operations) (4 parts)
 - [Game Day Takeover (Running an Event & Thanking the Team)](#8177-game-day-takeover) (5 parts)
 - [Venue Market Research & Survey Design](#8177-market-research-survey-design) (5 parts)
-- [The Venue Buyer's Product Pitch](#8177-product-pitch-financial-analysis) (5 parts)
+- [The Venue Buyer's Product Pitch](#8177-product-pitch-financial-analysis) (6 parts)
 - [Venue Promotion & Flyer Design](#8177-promotional-flyer-design) (3 parts)
 - [Venue Layout & The Cavalier Shop Planogram](#8177-school-store-planogram-customer-experience) (4 parts)
 - [Secure the Perimeter (Venue Security & Emergency Preparedness)](#8177-secure-the-perimeter) (5 parts)
@@ -393,6 +393,7 @@ The "Still open" lines are questions the drafts raised, left for when each lesso
 | 3. The Materials | Doc | 8177-96 Analyze the financial resources required for each event activity | 8177-19 Apply mathematical skills to job-specific tasks | — |
 | 4. The Price | Doc | 8177-2 Demonstrate critical thinking and problem-solving | — | — |
 | 5. The Math | Doc | 8177-19 Apply mathematical skills to job-specific tasks | — | — |
+| 6. The Pitch | **Slides** | 8177-7 Demonstrate listening and speaking skills | 8177-19 Apply mathematical skills to job-specific tasks | — |
 
 **Why:** Each part has one job, so each has its own primary: describing the product clearly (7), who buys it and when (93), costing the materials from a real supplier (96), the pricing strategy (2) and the math (19). Part 3 also adds the costs into a cost per finished item, so math (19) is its secondary.
 
@@ -409,6 +410,9 @@ The "Still open" lines are questions the drafts raised, left for when each lesso
   - *(required)* You give a retail price and explain the strategy behind it: how it covers your cost, leaves a profit and is still a price students will pay. (8177-2)
 - **Part 5** (terms: cost, retail price, margin, break-even point, turnover)
   - *(required)* You show each calculation correctly: cost per item, profit per item, margin, total batch cost, break-even point, expected profit if the batch sells, and how long it takes to sell out. (8177-19)
+- **Part 6** (terms: retail price, margin, break-even point)
+  - *(required)* Your deck pitches the product in 3 to 5 slides: the product, who buys it and when, the cost and price, and the bottom line. Every slide follows the Rule of Six, has good contrast and is easy to read, and the speaker notes say what you'd tell the General Manager. (8177-7)
+  - Your numbers slide matches your Part 5 math: cost per finished item, retail price, margin and break-even point. (8177-19)
 
 **Still open:**
 

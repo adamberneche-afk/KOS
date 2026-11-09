@@ -525,11 +525,17 @@ test('marking a Slides part: its template key and checks reach 55b; its task may
     /workType "slides" but its workFile is "doc"/);
 });
 
-test('nothing is marked "slides": PARTS.json has no slides workType or slideChecks, and 55b none', () => {
+// The first Slides part, marked 2026-11-09 (the operator's choice): the
+// Buyer's Product Pitch's new Part 6, held to the Rule of Six (8175 L08).
+test('only the pitch\'s Part 6 is marked "slides", with the Rule of Six checks; 55b carries just that one', () => {
   const parts = JSON.parse(fs.readFileSync(PARTS_PATH, 'utf8'));
   const all = Object.values(parts).flatMap((d) => (d && d.parts) || []);
-  assert.ok(all.some((p) => p.workFile === 'slides'), 'Slides parts are planned');
-  assert.deepEqual(all.filter((p) => p.workType === 'slides' || p.slideChecks !== undefined), []);
+  assert.ok(all.some((p) => p.workFile === 'slides' && p.workType === undefined), 'other Slides parts are planned, not marked');
+  const marked = all.filter((p) => p.workType === 'slides' || p.slideChecks !== undefined);
+  assert.equal(marked.length, 1);
+  assert.equal(marked[0].title, 'The Pitch');
+  assert.deepEqual(marked[0].slideChecks, { minSlides: 3, maxSlides: 5, notesOnEverySlide: true, minImages: 1, maxImagesPerSlide: 2, maxLinesPerSlide: 6, maxWordsPerLine: 6, minContrast: 4.5 });
   const src = fs.readFileSync(S('55b_LessonAssignmentData.js'), 'utf8');
-  assert.doesNotMatch(src, /"workFileNow": "slides"|"slideChecks"/);
+  assert.equal((src.match(/"workFileNow": "slides"/g) || []).length, 1);
+  assert.equal((src.match(/"slideChecks"/g) || []).length, 1);
 });

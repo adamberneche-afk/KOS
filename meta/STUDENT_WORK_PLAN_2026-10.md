@@ -371,10 +371,10 @@ the teacher, with a plain-text account of the form, then queues. Flow 2
 reads that doc (37 points `StudentDocURL` at it), the feedback goes there,
 and a later part's EARLIER PARTS block reads an earlier form part from it.
 `FormSnapshots` (Central Ledger; IDs and the checks) links each form copy
-to its doc, in the retention schedule as a record. Nothing is marked: the
-recommended checks for 8177 Market Research Part 2 (`{"minQuestions": 3,
-"collectsEmail": false}`) are set with its `workType` in a later small PR,
-after the push.
+to its doc, in the retention schedule as a record. **Marked 2026-11-09
+(#413):** 8177 Market Research Part 2, with `{"minQuestions": 3,
+"collectsEmail": false, "questionTypes": ["checkboxes", "scale",
+"short_answer"]}`.
 
 **Phase 4c, built 2026-11-09 (PR #415), not yet pushed.** A part's
 `workType` may be `slides` where its planned `workFile` is (the Canva and
@@ -392,9 +392,9 @@ holds it to SlidesApp getters. `slideChecks`: `minSlides`, `maxSlides`,
 `requireChart`, `titleSlide`, `minContrast` (WCAG ratio; picture
 backgrounds and text over pictures skipped). Default: one slide with
 something on it. A failure is a "Not yet" naming the slide; a pass rewrites
-the snapshot doc Flow 2 reads. Nothing is marked: the first planned use is
-a new Part 6 "The Pitch" for 8177 "The Buyer's Product Pitch" (3–5 slides,
-notes on every slide, the Rule of Six, contrast 4.5), in a follow-up PR.
+the snapshot doc Flow 2 reads. **Marked 2026-11-09 (#417):** a new Part 6
+"The Pitch" for 8177 "The Buyer's Product Pitch" (3–5 slides, notes on
+every slide, the Rule of Six, contrast 4.5).
 
 **Phase 4d, built 2026-11-09 (PR #416), not yet pushed.** The same for
 Google Sheets: `workType: "sheet"` where the planned `workFile` is; a blank
@@ -407,8 +407,9 @@ only the student's copy and reads tab names, each tab's filled range
 `formulasRequired`, `formulasIn` (a column or range), `requireChart`;
 default one filled cell. The snapshot is a plain-text table, 50 filled rows
 × 12 columns a tab at most, saying what it left out. Nothing is marked: the
-first planned use is 8177 "The Back Room" Part 2 (its `workFile` becomes
-`sheet` when it is marked, with a formula required for the usable count).
+first use, approved 2026-11-09, is 8177 "The Back Room" Part 2 (its
+`workFile` becomes `sheet`, with a formula required for the usable count),
+marked when the operator schedules that lesson.
 
 ## Where the costs land
 
