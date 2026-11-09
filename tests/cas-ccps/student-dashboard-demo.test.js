@@ -276,9 +276,11 @@ test('the demo shows a Slides part: Open your slides, a sample "Not yet" naming 
   const deck = f.dashboard.assignments.filter((a) => a.workType === 'slides');
   assert.equal(deck.length, 1, 'one Slides part');
   assert.equal(deck[0].canSubmit, true);
-  assert.match(deck[0].unitName, /Design It/);
+  // The first Slides part in teaching order: the pitch's Part 6 since
+  // 2026-11-09, its last part, so nothing after it is locked.
+  assert.match(deck[0].unitName, /The Pitch/);
   const locked = f.dashboard.lockedParts.filter((l) => l.lesson === deck[0].part.lesson);
-  assert.ok(locked.length >= 1 && locked.every((l) => l.n > deck[0].part.n), 'the later parts locked');
+  assert.ok(locked.every((l) => l.n > deck[0].part.n), 'only later parts are locked');
   const { ctx, els, calls, advance } = demoPage(f);
   advance(1000);
   assert.match(els.main.innerHTML, />Open your slides</);
