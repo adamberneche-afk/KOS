@@ -1289,6 +1289,46 @@ function makeSlidesAppMock() {
   };
 }
 
+// A student's Google Sheet for cas-ccps 78_SheetReader.js (Phase 4d), read
+// only. Register it where SpreadsheetApp.openById finds it:
+//   sandbox.SpreadsheetApp._registry.set(id, makeWorkSheetMock(spec, calls))
+// spec: { tabs: [{ name, rows: [[cell]], charts: [{ type, title, ranges }],
+//         lastRow, lastColumn }] }, a cell a shown value (string or
+// number) or { v, f } (shown value and formula). Only the getters the reader
+// may use exist (no setters, no getName on the file), and each call is
+// pushed to `calls` ("ss.getSheets", "range.getFormulas"…), so a test can
+// hold the reader to a fixed list.
+function makeWorkSheetMock(spec, calls) {
+  const rec = (name, fn) => (...a) => { calls.push(name); return fn(...a); };
+  const tab = (t) => {
+    const rows = t.rows || [];
+    const width = rows.reduce((w, r) => Math.max(w, r.length), 0);
+    const cell = (r, c) => { const x = (rows[r] || [])[c]; return x === undefined || x === null ? '' : x; };
+    const sheet = {
+      getName: rec('sheet.getName', () => t.name),
+      getLastRow: rec('sheet.getLastRow', () => (t.lastRow !== undefined ? t.lastRow : rows.length)),
+      getLastColumn: rec('sheet.getLastColumn', () => (t.lastColumn !== undefined ? t.lastColumn : width)),
+      getRange: rec('sheet.getRange', (r0, c0, nr, nc) => {
+        const grid = (pick) => Array.from({ length: nr }, (_, i) => Array.from({ length: nc }, (_, j) => pick(cell(r0 - 1 + i, c0 - 1 + j))));
+        return {
+          getDisplayValues: rec('range.getDisplayValues', () => grid((x) => (typeof x === 'object' ? String(x.v === undefined ? '' : x.v) : String(x)))),
+          getFormulas: rec('range.getFormulas', () => grid((x) => (typeof x === 'object' && x.f ? x.f : ''))),
+        };
+      }),
+      getCharts: rec('sheet.getCharts', () => (t.charts || []).map((ch) => ({
+        modify: rec('chart.modify', () => ({ getChartType: rec('builder.getChartType', () => ch.type || 'COLUMN') })),
+        getOptions: rec('chart.getOptions', () => ({ get: rec('options.get', (k) => (k === 'title' ? ch.title || null : null)) })),
+        getRanges: rec('chart.getRanges', () => (ch.ranges || []).map((r) => ({
+          getSheet: rec('range.getSheet', () => ({ getName: rec('sheet.getName', () => r.split('!')[0]) })),
+          getA1Notation: rec('range.getA1Notation', () => r.split('!')[1]),
+        }))),
+      }))),
+    };
+    return sheet;
+  };
+  return { getSheets: rec('ss.getSheets', () => (spec.tabs || []).map(tab)) };
+}
+
 // Real Apps Script API — Utilities.formatDate(date, timeZone, format).
 // Implements the SimpleDateFormat tokens this repo actually uses (yyyy,
 // MMMM, MMM, MM, dd, d, EEEE, EEE, HH, h, mm, ss, a) — enough to exercise real
@@ -1646,5 +1686,5 @@ function makeStudioEvent(inputMap) {
 module.exports = {
   loadGasFile, loadGasFiles, FakeSheet, FakeSpreadsheet,
   FakeDriveFolder, FakeDriveFile, FakeDoc, makeStudioEvent, fakeZipBlob,
-  makeDriveAdvancedMock,
+  makeDriveAdvancedMock, makeWorkSheetMock,
 };

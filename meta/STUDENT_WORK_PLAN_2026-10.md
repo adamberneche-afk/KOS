@@ -396,6 +396,20 @@ the snapshot doc Flow 2 reads. Nothing is marked: the first planned use is
 a new Part 6 "The Pitch" for 8177 "The Buyer's Product Pitch" (3–5 slides,
 notes on every slide, the Rule of Six, contrast 4.5), in a follow-up PR.
 
+**Phase 4d, built 2026-11-09 (PR #416), not yet pushed.** The same for
+Google Sheets: `workType: "sheet"` where the planned `workFile` is; a blank
+template sheet copied per student (teacher a commenter, `/spreadsheets/d/`
+URL, snapshot doc in `FormSnapshots`). The Sheet reader
+(`78_SheetReader.js`; no new scope, the dashboard has `spreadsheets`) opens
+only the student's copy and reads tab names, each tab's filled range
+(values and formulas, at most 1000 × 52) and charts (type, title, ranges).
+`sheetChecks`: `requiredTabs`, `tab`, `minFilledRows`, `minFilledCells`,
+`formulasRequired`, `formulasIn` (a column or range), `requireChart`;
+default one filled cell. The snapshot is a plain-text table, 50 filled rows
+× 12 columns a tab at most, saying what it left out. Nothing is marked: the
+first planned use is 8177 "The Back Room" Part 2 (its `workFile` becomes
+`sheet` when it is marked, with a formula required for the usable count).
+
 ## Where the costs land
 
 | Change | Student | Teacher | System |
@@ -433,7 +447,7 @@ Nov 2's measurement) and Studio's limit on runs per day is checked.
 | 1 | The process reflection on Submit: the question frames, the selection, `ReflectionLog`, Flow 2 reads it, Student Context shows it. Behind a setting, off until grades are in (Oct 30) | Week of Oct 26, on after Oct 30 |
 | 2 | The feedback reflection, from `CompetencyEvidence`; Flow 2 checks it was carried out | **Built 2026-10-27** (behind the same setting): a resubmission after the primary wasn't met asks F1 to F3; Flow 2 says whether the revision carries it out |
 | 3 | Parts in both courses: the builder splits tasks, a ConfigID and file per part, made with the lesson, unlocked on the primary, both dashboards group them, the teacher's unlock, cartridges list them | **Started 2026-10-27** at the operator's word, alongside the measurement: 3a the data (8177 Market Research, Appendix B), 3b made and unlocked (68); 3c (2026-10-28) both dashboards group parts, the teacher's unlock button, the lesson doc counts parts; Flow 2 given the earlier parts (2026-10-28, the EARLIER PARTS block); the other 34 lessons' parts drafted and approved together (2026-10-28, `meta/LESSON_PARTS_2026-10.md`), to be edited as they are taught |
-| 4 | Work files by type: Forms, then Slides, then Sheets; Canva parts to Slides | After Phase 3. **4a** (a part's `workType`, the form copies) PR #402; **4b** (the Form reader at Submit, `formChecks`, the snapshot doc Flow 2 reads) PR #404, 2026-11-08; **4c** (Slides: the deck copies, the Slides reader, `slideChecks`) PR #415, 2026-11-09 |
+| 4 | Work files by type: Forms, then Slides, then Sheets; Canva parts to Slides | After Phase 3. **4a** (a part's `workType`, the form copies) PR #402; **4b** (the Form reader at Submit, `formChecks`, the snapshot doc Flow 2 reads) PR #404, 2026-11-08; **4c** (Slides: the deck copies, the Slides reader, `slideChecks`) PR #415, 2026-11-09; **4d** (Sheets: the sheet copies, the Sheet reader, `sheetChecks`) PR #416, 2026-11-09 |
 
 Phases 1 and 2 don't depend on 3: they work on today's one-doc lessons (a
 whole lesson is one part) and carry over unchanged. Phase 4 needs Phase 3's

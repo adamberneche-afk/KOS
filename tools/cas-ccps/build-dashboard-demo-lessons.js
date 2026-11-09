@@ -49,14 +49,14 @@ function readRegistry(csv) {
   return out;
 }
 
-// The lessons in parts the demo shows (Phase 4a, 2026-11-08; Slides, Phase
-// 4c, 2026-11-09): for each work file type with a reader, the first lesson in
+// The lessons in parts the demo shows (Phase 4a, 2026-11-08; Slides and
+// Sheets, Phases 4c and 4d, 2026-11-09): for each work file type with a reader, the first lesson in
 // teaching order with a part whose planned work file is that type, so the
 // demo has that part's card ("Open your form", "Open your slides"; its Submit
 // answers with a sample "Not yet"). Each part's title and planned work file
 // (a type the demo doesn't show yet is a doc); the parts' milestones for
 // their cards.
-const DEMO_WORK_TYPES = ['form', 'slides'];
+const DEMO_WORK_TYPES = ['form', 'slides', 'sheet'];
 function workLesson(lessonSource, type) {
   const { assignments, order, parts } = readLessons(lessonSource);
   for (const code of COURSES) {
@@ -77,6 +77,7 @@ function workLesson(lessonSource, type) {
 }
 const formLesson = (lessonSource) => workLesson(lessonSource, 'form');
 const slidesLesson = (lessonSource) => workLesson(lessonSource, 'slides');
+const sheetLesson = (lessonSource) => workLesson(lessonSource, 'sheet');
 
 function build(lessonSource, registryCsv) {
   const { assignments, order } = readLessons(lessonSource);
@@ -109,7 +110,7 @@ function build(lessonSource, registryCsv) {
   });
 }
 
-function render(courses, partsLesson, slidesPartsLesson) {
+function render(courses, partsLesson, slidesPartsLesson, sheetPartsLesson) {
   return [
     '// =============================================================================',
     '// FILE: 13b_StudentDashboardDemoLessons.js',
@@ -129,12 +130,15 @@ function render(courses, partsLesson, slidesPartsLesson) {
     '// A lesson in parts with a Slides part, for the demo\'s slides card (Phase 4c).',
     'const DASH_DEMO_SLIDES_LESSON = ' + JSON.stringify(slidesPartsLesson || null, null, 2) + ';',
     '',
+    '// A lesson in parts with a Sheets part, for the demo\'s sheet card (Phase 4d).',
+    'const DASH_DEMO_SHEET_LESSON = ' + JSON.stringify(sheetPartsLesson || null, null, 2) + ';',
+    '',
   ].join('\n');
 }
 
 function expected() {
   const lessons = fs.readFileSync(LESSONS_PATH, 'utf8');
-  return render(build(lessons, fs.readFileSync(REGISTRY_PATH, 'utf8')), formLesson(lessons), slidesLesson(lessons));
+  return render(build(lessons, fs.readFileSync(REGISTRY_PATH, 'utf8')), formLesson(lessons), slidesLesson(lessons), sheetLesson(lessons));
 }
 
 function main() {
@@ -154,4 +158,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, render, expected, formLesson, slidesLesson, workLesson, TARGET_PATH };
+module.exports = { build, render, expected, formLesson, slidesLesson, sheetLesson, workLesson, TARGET_PATH };

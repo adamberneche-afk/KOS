@@ -37,7 +37,7 @@ function load(viewer, opts = {}) {
   for (const s of ['SpreadsheetApp', 'DocumentApp', 'DriveApp', 'MailApp', 'UrlFetchApp', 'LockService']) {
     globals[s] = tripwire(s, touched);
   }
-  const env = loadGasFiles(SD, ['getDemoDashboardData', 'doGet', 'buildStudentDashboardHtml_', 'DASH_DEMO_LESSONS', 'DASH_DEMO_PARTS_LESSON', 'DASH_DEMO_SLIDES_LESSON'], globals);
+  const env = loadGasFiles(SD, ['getDemoDashboardData', 'doGet', 'buildStudentDashboardHtml_', 'DASH_DEMO_LESSONS', 'DASH_DEMO_PARTS_LESSON', 'DASH_DEMO_SLIDES_LESSON', 'DASH_DEMO_SHEET_LESSON'], globals);
   if (opts.teacherEmail) env.sandbox.PropertiesService.getScriptProperties().setProperty('TEACHER_EMAIL', opts.teacherEmail);
   return Object.assign(env, { touched });
 }
@@ -65,7 +65,8 @@ test('the teacher gets the fixture: both courses, every card state, the real les
   // Each card is one of the teacher's lessons, by its real title.
   const titles = new Set(lessons.flatMap((c) => c.lessons.map((l) => l.unitName))
     .concat(exported.DASH_DEMO_PARTS_LESSON.parts.map((p) => p.unitName))
-    .concat(exported.DASH_DEMO_SLIDES_LESSON.parts.map((p) => p.unitName)));
+    .concat(exported.DASH_DEMO_SLIDES_LESSON.parts.map((p) => p.unitName))
+    .concat(exported.DASH_DEMO_SHEET_LESSON.parts.map((p) => p.unitName)));
   d.dashboard.assignments.forEach((a) => assert.ok(titles.has(a.unitName), a.unitName));
   d.dashboard.assignments.filter((a) => a.statusPill === 'Revise')
     .forEach((a) => assert.ok(a.notYet.length > 10, 'a card to revise says what is not met yet'));
@@ -291,6 +292,26 @@ test('the demo shows a Slides part: Open your slides, a sample "Not yet" naming 
   assert.match(h, /Not yet\. Fix this in your slides, then submit again:/);
   assert.match(h, /• Slide 2 has 8 lines of text, not counting its title; this part allows 6\. Cut 2\./);
   assert.deepEqual(calls, ['getDemoDashboardData'], 'the demo reads no deck');
+});
+
+// Phase 4d: a lesson in parts with a Sheets part, its card "Open your sheet".
+test('the demo shows a Sheets part: Open your sheet, a sample "Not yet", nothing read', () => {
+  const f = fixture();
+  const sheet = f.dashboard.assignments.filter((a) => a.workType === 'sheet');
+  assert.equal(sheet.length, 1, 'one Sheets part');
+  assert.ok(f.dashboard.assignments.some((a) => a.part && a.part.lesson === sheet[0].part.lesson && a.part.n < sheet[0].part.n &&
+    a.statusPill === 'Passed ✓'), 'the parts before it passed');
+  const { ctx, els, calls, advance } = demoPage(f);
+  advance(1000);
+  assert.match(els.main.innerHTML, />Open your sheet</);
+  ctx.demoOpenDoc({ getAttribute: () => sheet[0].fileId });
+  assert.match(els.main.innerHTML, /own copy of the sheet/);
+  const btn = { attrs: { 'data-file': sheet[0].fileId, 'data-config': sheet[0].configId }, getAttribute(k) { return this.attrs[k]; } };
+  ctx.submitWork(btn);
+  advance(500);
+  assert.match(els.main.innerHTML, /Not yet\. Fix this in your sheet, then submit again:/);
+  assert.match(els.main.innerHTML, /• Your sheet has 4 rows filled in\. It needs at least 5\./);
+  assert.deepEqual(calls, ['getDemoDashboardData'], 'the demo reads no sheet');
 });
 
 test('the real page never asks for the demo fixture', () => {

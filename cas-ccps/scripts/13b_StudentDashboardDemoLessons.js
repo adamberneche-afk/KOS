@@ -518,3 +518,92 @@ const DASH_DEMO_SLIDES_LESSON = {
     }
   ]
 };
+
+// A lesson in parts with a Sheets part, for the demo's sheet card (Phase 4d).
+const DASH_DEMO_SHEET_LESSON = {
+  "code": "8177",
+  "key": "8177-the-bottom-line",
+  "lessonName": "The Bottom Line (Event Budgeting & Finance)",
+  "parts": [
+    {
+      "n": 1,
+      "title": "Projected Revenue",
+      "workType": "doc",
+      "key": "8177-the-bottom-line-P1",
+      "unitName": "The Bottom Line (Event Budgeting & Finance) — Part 1: Projected Revenue",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-98 Develop a budget for an event.",
+        "8177-85 Identify the components of a budget.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-98",
+        "8177-85",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 2,
+      "title": "Projected Expenses",
+      "workType": "doc",
+      "key": "8177-the-bottom-line-P2",
+      "unitName": "The Bottom Line (Event Budgeting & Finance) — Part 2: Projected Expenses",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-87 Identify expenditures related to the sports, entertainment, and event industries.",
+        "8177-85 Identify the components of a budget.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-87",
+        "8177-85",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 3,
+      "title": "The Bottom Line",
+      "workType": "sheet",
+      "key": "8177-the-bottom-line-P3",
+      "unitName": "The Bottom Line (Event Budgeting & Finance) — Part 3: The Bottom Line",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-98 Develop a budget for an event.",
+        "8177-88 Analyze financial statements.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-98",
+        "8177-88",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 4,
+      "title": "The CFO Memo",
+      "workType": "doc",
+      "key": "8177-the-bottom-line-P4",
+      "unitName": "The Bottom Line (Event Budgeting & Finance) — Part 4: The CFO Memo",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-88 Analyze financial statements.",
+        "Uses the lesson vocabulary accurately: revenue, expenses, net profit, profit margin.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-88",
+        "",
+        "",
+        ""
+      ]
+    }
+  ]
+};

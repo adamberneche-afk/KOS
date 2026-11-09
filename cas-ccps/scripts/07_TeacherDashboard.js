@@ -572,7 +572,7 @@ function getDashboardData(termFilter) {
       submittedAt: row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : "—",
       flagReason:  statusClass === "flagged" ? _tdFlagReason_(ledgerStatus) : "",
       suggestedScore: suggestedScore,
-      // A form or Slides part's copy (Phase 4a/4c) links to the file: its Ledger URL says so (00).
+      // A form, Slides or Sheets part's copy (Phase 4a/4c/4d) links to the file: its Ledger URL says so (00).
       docUrl:      workFileUrl_(fileId, workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL])),
       workType:    workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL])
     });
@@ -4992,11 +4992,12 @@ document.addEventListener("click", function (ev) {
     openStudent(st.getAttribute("data-student"));
   }
 });
-// A part's work file type (Phase 4a/4c), as the roster names it: "" for a doc.
-function workTypeShort(t) { return t === "form" ? "form" : t === "slides" ? "slides" : ""; }
+// A part's work file type (Phase 4a/4c/4d), as the roster names it: "" for a doc.
+function workTypeShort(t) { return t === "form" ? "form" : t === "slides" ? "slides" : t === "sheet" ? "sheet" : ""; }
 function workTypeLabel(t) {
   return t === "form" ? { name: "Google Form", title: "A Google Form the student builds; Submit checks its questions and settings, and the check reads a snapshot of it, kept beside the form as its feedback page" }
     : t === "slides" ? { name: "Google Slides", title: "A Google Slides deck the student makes; Submit checks its slides, text, notes and pictures, and the check reads a snapshot of its text, kept beside the deck as its feedback page" }
+    : t === "sheet" ? { name: "Google Sheets", title: "A Google Sheet the student builds; Submit checks its tabs, filled cells, formulas and charts, and the check reads a snapshot of it as a table, kept beside the sheet as its feedback page" }
     : null;
 }
 // A lesson in parts (68): the part the student is on, links to the parts
@@ -5004,7 +5005,7 @@ function workTypeLabel(t) {
 function partLine(s) {
   const earlier = (s.parts || []).filter(p => p.open && p.n !== s.part.n && safeDocUrl(p.docUrl))
     .map(p => '<a class="doc-link" href="' + esc(safeDocUrl(p.docUrl)) + '" target="_blank">Part ' + p.n + (workTypeShort(p.workType) ? ' (' + workTypeShort(p.workType) + ')' : '') + ' ↗</a>');
-  // A form or Slides part (Phase 4a/4c) says so beside its title; Submit reads it (4b/4c).
+  // A form, Slides or Sheets part (Phase 4a/4c/4d) says so beside its title; Submit reads it (4b/4c).
   let html = '<div class="last-eval"><b>Part ' + s.part.n + ' of ' + s.part.count + '</b>' +
     (s.part.title ? ': ' + esc(s.part.title) : '') +
     (workTypeLabel(s.workType) ? ' <span class="part-type" title="' + workTypeLabel(s.workType).title + '">· ' + workTypeLabel(s.workType).name + '</span>' : '') +

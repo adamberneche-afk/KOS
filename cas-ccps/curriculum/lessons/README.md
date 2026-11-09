@@ -80,6 +80,13 @@ included), whole numbers 1–100; `notesOnEverySlide`, `requireChart`, `titleSli
 `minContrast`, a WCAG contrast ratio above 1 (4.5 is AA). Unset, at least one slide with something
 on it. None is marked.
 
+Since Phase 4d `workType` may also be `"sheet"`, a copy of the part's template sheet, on a part
+whose `workFile` is `sheet` (the same refusal of "this document" in its task). Such a part may
+carry `sheetChecks`: `requiredTabs` (tab names), `tab` (the tab the counts look at; unset, every
+tab), `minFilledRows` (1–1000), `minFilledCells` (1–10000), `formulasRequired` (1–1000),
+`formulasIn` (a column `"D"` or range `"D2:D20"`), `requireChart` (true). Unset, one filled cell.
+None is marked.
+
 The other 34 multi-part lessons (5 in 8175, 29 in 8177) were drafted in that pattern and approved
 together on 2026-10-28, to be edited as they are taught; each keeps its `why` and its open
 `concerns` beside its parts. `PARTS_DRAFTS.json` is where a new split waits for approval, in

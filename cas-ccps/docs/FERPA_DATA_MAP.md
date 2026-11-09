@@ -646,6 +646,22 @@ the student's own work, like a doc's; a deck can hold pictures of other
 people, which are counted, never copied or described. Retention: as the
 form copies and their snapshot docs.
 
+### Student work sheets and their snapshot docs (S02, S13/S78, Phase 4d)
+A part marked `workType: "sheet"` (built 2026-11-09; none marked yet) gets
+each student a copy of its template sheet, made, owned, shared (the teacher
+a commenter) and retained as a deck copy (above). The Sheet reader at
+Submit (`78_SheetReader.js`, Student Dashboard, the system account) opens
+only the student's own copy, by the `FileID` on their own Ledger row, and
+reads its tab names, the shown values and formulas of each tab's filled
+range (at most 1000 rows by 52 columns), and its charts' types, titles and
+ranges; never the file's name, never a write. On a pass it writes a
+plain-text table (at most 50 filled rows by 12 columns a tab) into the
+sheet's snapshot doc, listed in **FormSnapshots** like a form's or deck's.
+A sheet is the student's own work; a task that asks for names of real
+businesses or people (a CRM, say) puts them in the snapshot as typed, as a
+doc would. Nothing from the sheet is stored anywhere else. Retention: as the
+form and deck copies.
+
 ### PartUnlocks (S68)
 One row per part opened for a student (2026-10-27): when, the student's
 workspace ConfigID (as StudentAssignments holds it), the part's ConfigID,

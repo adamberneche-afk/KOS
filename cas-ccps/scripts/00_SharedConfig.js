@@ -1913,9 +1913,10 @@ const LEDGER = {
 // whole Ledger tab rather than a header-driven dynamic column set.
 const LEDGER_COL_COUNT = 27;
 
-// A student work file's type (Phase 4a, 2026-11-08; Slides, Phase 4c,
-// 2026-11-09): "form" for a Google Form, "slides" for a Google Slides deck,
-// "doc" for everything else. A part marked workType "form" or "slides" (55b)
+// A student work file's type (Phase 4a, 2026-11-08; Slides, Phase 4c, and
+// Sheets, Phase 4d, 2026-11-09): "form" for a Google Form, "slides" for a
+// Google Slides deck, "sheet" for a Google Sheet, "doc" for everything else.
+// A part marked workType "form", "slides" or "sheet" (55b)
 // gets a copy of its template file instead of a doc (02's intakeStudent_).
 // The Ledger keeps its fixed width (FLOW_DOCTRINE): FILE_ID holds the copy's
 // ID as it holds a doc's, and ADMIN_FILE_URL (written at intake) says which
@@ -1923,15 +1924,17 @@ const LEDGER_COL_COUNT = 27;
 // dashboards read it without 55b. A blank or older URL is a doc.
 const WORK_FILE_FORM_URL_RE = /^https:\/\/docs\.google\.com\/forms\/d\//;
 const WORK_FILE_SLIDES_URL_RE = /^https:\/\/docs\.google\.com\/presentation\/d\//;
+const WORK_FILE_SHEET_URL_RE = /^https:\/\/docs\.google\.com\/spreadsheets\/d\//;
 function workFileTypeOfUrl_(url) {
   const u = String(url || "").trim();
   if (WORK_FILE_FORM_URL_RE.test(u)) return "form";
   if (WORK_FILE_SLIDES_URL_RE.test(u)) return "slides";
+  if (WORK_FILE_SHEET_URL_RE.test(u)) return "sheet";
   return "doc";
 }
 
 // The link a student or teacher opens for a work file of that type.
-const WORK_FILE_URL_PATHS = { form: "forms", slides: "presentation", doc: "document" };
+const WORK_FILE_URL_PATHS = { form: "forms", slides: "presentation", sheet: "spreadsheets", doc: "document" };
 function workFileUrl_(fileId, type) {
   const id = String(fileId || "").trim();
   if (!id) return null;
@@ -1941,7 +1944,7 @@ function workFileUrl_(fileId, type) {
 // Whether a work file of this type has a snapshot doc (its feedback page,
 // below): every type but a doc. A doc is its own feedback page.
 function workFileHasSnapshot_(type) {
-  return type === "form" || type === "slides";
+  return type === "form" || type === "slides" || type === "sheet";
 }
 
 // ---------------------------------------------------------------------------
@@ -1961,9 +1964,10 @@ function workFileHasSnapshot_(type) {
 //
 // Since Phase 4c (Slides, 2026-11-09) the same tab serves every work file
 // with a snapshot, its columns unchanged (4b's tab, headers and readers stay
-// as they are): FormFileID is the student's copy, whatever its type (a form
-// or a deck; the Ledger's ADMIN_FILE_URL says which), and FormChecks is the
-// part's exact checks for that type (formChecks or slideChecks). One tab
+// as they are): FormFileID is the student's copy, whatever its type (a form,
+// a deck or, since 4d, a sheet; the Ledger's ADMIN_FILE_URL says which), and
+// FormChecks is the part's exact checks for that type (formChecks,
+// slideChecks or sheetChecks). One tab
 // means one lookup for every reader (37, 03, the dashboards, retention) and
 // nothing to migrate.
 // ---------------------------------------------------------------------------
@@ -2052,7 +2056,7 @@ function formSnapshotDocIds_(ledgerSs) {
   return out;
 }
 
-// Where a work file's feedback and header line go: a form or deck copy's
+// Where a work file's feedback and header line go: a form, deck or sheet copy's
 // snapshot doc, or the file itself (a doc, or a copy whose snapshot isn't
 // recorded).
 function workFeedbackDocId_(ledgerSs, fileId) {
@@ -2068,13 +2072,15 @@ function workFeedbackDocId_(ledgerSs, fileId) {
 // response marker and the "[CONFIG_ID:" line, which every reader stops at).
 const FORM_SNAPSHOT_NOT_SUBMITTED = "(Not submitted yet. Build your form, then press Submit for Feedback on your dashboard.)";
 const SLIDES_SNAPSHOT_NOT_SUBMITTED = "(Not submitted yet. Make your slides, then press Submit for Feedback on your dashboard.)";
+const SHEET_SNAPSHOT_NOT_SUBMITTED = "(Not submitted yet. Build your sheet, then press Submit for Feedback on your dashboard.)";
 function workSnapshotNotSubmitted_(type) {
-  return type === "slides" ? SLIDES_SNAPSHOT_NOT_SUBMITTED : FORM_SNAPSHOT_NOT_SUBMITTED;
+  return type === "slides" ? SLIDES_SNAPSHOT_NOT_SUBMITTED : type === "sheet" ? SHEET_SNAPSHOT_NOT_SUBMITTED
+    : FORM_SNAPSHOT_NOT_SUBMITTED;
 }
 // Whether a snapshot zone's text is still the "not submitted" line, of any type.
 function isWorkSnapshotNotSubmitted_(text) {
   const t = String(text || "").trim();
-  return t === FORM_SNAPSHOT_NOT_SUBMITTED || t === SLIDES_SNAPSHOT_NOT_SUBMITTED;
+  return t === FORM_SNAPSHOT_NOT_SUBMITTED || t === SLIDES_SNAPSHOT_NOT_SUBMITTED || t === SHEET_SNAPSHOT_NOT_SUBMITTED;
 }
 
 // ---------------------------------------------------------------------------
@@ -2132,6 +2138,55 @@ function normalizeSlideChecks_(raw) {
   SLIDE_CHECK_RATIO_KEYS.forEach(function (k) {
     if (typeof c[k] === "number" && isFinite(c[k]) && c[k] > 1 && c[k] <= 21) out[k] = c[k];
   });
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// A Sheets part's exact checks (Phase 4d, 2026-11-09; 78's sheetCheckReasons_).
+// sheetChecks in PARTS.json, resolved at intake into FormSnapshots' checks
+// cell. Keys (the generator refuses anything else; a test holds the lists
+// equal):
+//   requiredTabs      tab names the sheet must have (case and spaces at the
+//                     ends ignored)
+//   tab               the tab the counts below look at; unset, every tab
+//                     (minFilledRows: some one tab has that many)
+//   minFilledRows     whole number 1-1000: rows with at least one filled cell
+//   minFilledCells    whole number 1-10000: cells with a value or a formula
+//   formulasRequired  whole number 1-1000: cells holding a formula (not a
+//                     typed number)
+//   formulasIn        where those formulas must be: a column ("D"), or a
+//                     range ("D2:D20", "B2:E"), on `tab` or any tab
+//   requireChart      true: a chart on some tab
+// Defaults, with none set: something in the sheet (one filled cell). The
+// template is a blank sheet with one empty tab.
+// ---------------------------------------------------------------------------
+const SHEET_CHECK_COUNT_LIMITS = { minFilledRows: 1000, minFilledCells: 10000, formulasRequired: 1000 };
+const SHEET_CHECK_KEYS = ["requiredTabs", "tab", "minFilledRows", "minFilledCells", "formulasRequired", "formulasIn", "requireChart"];
+const SHEET_CHECK_DEFAULTS = { minFilledCells: 1 };
+// "D", "D2:D20", "B2:E", "B:D": a column or a range, A1 style, no sheet name.
+const SHEET_RANGE_RE = /^([A-Z]{1,3})(\d{1,7})?(?::([A-Z]{1,3})(\d{1,7})?)?$/;
+
+function normalizeSheetChecks_(raw) {
+  let c = raw;
+  if (typeof c === "string") {
+    try { c = c.trim() ? JSON.parse(c) : {}; } catch (e) { c = {}; }
+  }
+  if (!c || typeof c !== "object" || Array.isArray(c)) c = {};
+  const out = {};
+  Object.keys(SHEET_CHECK_COUNT_LIMITS).forEach(function (k) {
+    const n = c[k];
+    if (typeof n === "number" && Math.floor(n) === n && n >= 1 && n <= SHEET_CHECK_COUNT_LIMITS[k]) out[k] = n;
+  });
+  if (!out.minFilledCells) out.minFilledCells = SHEET_CHECK_DEFAULTS.minFilledCells;
+  if (Array.isArray(c.requiredTabs)) {
+    const tabs = c.requiredTabs.map(function (t) { return String(t || "").trim(); }).filter(Boolean);
+    if (tabs.length) out.requiredTabs = tabs;
+  }
+  if (typeof c.tab === "string" && c.tab.trim()) out.tab = c.tab.trim();
+  if (typeof c.formulasIn === "string" && SHEET_RANGE_RE.test(c.formulasIn.trim().toUpperCase())) {
+    out.formulasIn = c.formulasIn.trim().toUpperCase();
+  }
+  if (c.requireChart === true) out.requireChart = true;
   return out;
 }
 
