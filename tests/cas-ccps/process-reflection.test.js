@@ -105,7 +105,7 @@ function sessionAs(email) {
 }
 
 function loadDashboard(flag, docBody, objectives) {
-  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('75_FormReader.js'), S('77_SlidesReader.js')],
+  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('75_FormReader.js'), S('77_SlidesReader.js'), S('78_SheetReader.js')],
     ['submitMyWork', 'getSubmitReflection', 'LEDGER', 'handleStudentDocRequest_'],
     { Session: sessionAs('ben@ccpsnet.net') });
   const { sandbox, exported } = loaded;

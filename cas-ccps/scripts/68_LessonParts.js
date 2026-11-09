@@ -103,17 +103,19 @@ function partFormChecks_(assignmentConfigId) {
   return normalizeFormChecks_(info && info.part.a.formChecks ? info.part.a.formChecks : {});
 }
 
-// A part's exact checks for its type (Phase 4c): a Slides part's
-// slideChecks (00's normalizeSlideChecks_), else a form's (above). Intake
+// A part's exact checks for its type (Phase 4c/4d): a Slides part's
+// slideChecks (00's normalizeSlideChecks_), a Sheets part's sheetChecks
+// (normalizeSheetChecks_), else a form's (above). Intake
 // (02) records them in FormSnapshots, which is where the Student Dashboard
 // reads them.
 function partWorkChecks_(assignmentConfigId) {
   const info = partOfConfigId_(assignmentConfigId);
   if (info && info.part.a.workFileNow === "slides") return normalizeSlideChecks_(info.part.a.slideChecks || {});
+  if (info && info.part.a.workFileNow === "sheet") return normalizeSheetChecks_(info.part.a.sheetChecks || {});
   return partFormChecks_(assignmentConfigId);
 }
 
-// Shares a form or deck copy's snapshot doc (its feedback page, Phase
+// Shares a form, deck or sheet copy's snapshot doc (its feedback page, Phase
 // 4b/4c) with its student as commenter: they read the file as checked and
 // the feedback, and can't change what was judged. Best effort: false when
 // there is none or sharing fails (the Ledger's own share has already happened).
@@ -178,12 +180,12 @@ function _lpLatestOutcomes_(evidence) {
   return byFile;
 }
 
-// Shares one Ledger row's work file (a doc, or a part's form or deck: Drive
+// Shares one Ledger row's work file (a doc, or a part's form, deck or sheet: Drive
 // shares them the same way) with its student and sets it ACTIVE (a release, 58).
 // Returns true when done.
 function _lpShare_(ledger, rowIndex, row) {
   DriveApp.getFileById(String(row[LEDGER.FILE_ID]).trim()).addEditor(String(row[LEDGER.GOOGLE_ID]).trim());
-  // A form or Slides part's feedback page goes with it (Phase 4b/4c).
+  // A form, Slides or Sheets part's feedback page goes with it (Phase 4b/4c/4d).
   if (workFileHasSnapshot_(workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]))) {
     shareFormSnapshot_(ledger.getParent(), String(row[LEDGER.FILE_ID]).trim(), String(row[LEDGER.GOOGLE_ID]).trim());
   }

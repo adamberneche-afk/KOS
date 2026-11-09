@@ -196,6 +196,14 @@ const DASH_DEMO_SLIDES_NOT_YET = [
   "Slides 1 and 3 have no speaker notes. Every slide needs its notes (the box under the slide, \"Click to add speaker notes\").",
   "Slide 2 has 8 lines of text, not counting its title; this part allows 6. Cut 2."
 ];
+// The demo Sheets part's Submit (Phase 4d): a table one row short, with
+// typed numbers where a formula is asked for (78's sheetCheckReasons_
+// wording; a test holds it to the reader's own).
+const DASH_DEMO_SHEET_NOT_YET = [
+  "Your sheet has 4 rows filled in. It needs at least 5.",
+  "Your sheet has 0 formulas in column C. It needs at least 3: a cell that calculates starts with =, like =B2-C2. " +
+    "A number typed in is not a formula."
+];
 
 function dashDemoFixture_(now) {
   const tz = Session.getScriptTimeZone();
@@ -230,13 +238,13 @@ function dashDemoFixture_(now) {
     });
   });
   // A lesson in parts with a form part (Phase 4a), and one with a Slides
-  // part (4c): the parts before it passed, the form or Slides part open and
+  // part (4c): the parts before it passed, the form, Slides or Sheets part open and
   // not started ("Open your form", "Open your slides"), the later parts
   // locked. The demo shows each part as its planned work file. Its Submit
-  // (Phase 4b/4c) answers with a sample of the reader's exact checks: the
+  // (Phase 4b/4c/4d) answers with a sample of the reader's exact checks: the
   // demo has no form or deck, so it reads nothing.
   const lockedParts = [];
-  [DASH_DEMO_PARTS_LESSON, DASH_DEMO_SLIDES_LESSON]
+  [DASH_DEMO_PARTS_LESSON, DASH_DEMO_SLIDES_LESSON, DASH_DEMO_SHEET_LESSON]
     .forEach(function (pl) {
       const plCourse = pl ? DASH_DEMO_LESSONS.filter(function (c) { return c.code === pl.code; })[0] : null;
       if (!pl || !plCourse) return;
@@ -251,6 +259,7 @@ function dashDemoFixture_(now) {
         card.workType = p.workType;
         if (p.workType === "form") card.demoFormNotYet = DASH_DEMO_FORM_NOT_YET.slice();
         if (p.workType === "slides") card.demoSlidesNotYet = DASH_DEMO_SLIDES_NOT_YET.slice();
+        if (p.workType === "sheet") card.demoSheetNotYet = DASH_DEMO_SHEET_NOT_YET.slice();
         assignments.push(card);
         assignmentOf[card.configId] = p.unitName;
       });
@@ -434,7 +443,7 @@ function getStudentDashboardData(termFilter) {
   const year = _currentSchoolYear_();
   const feedbackAsComment = feedbackAsCommentChecker_();
   const partsOf = _dashPartsOf_(ss);
-  // A form or deck copy's snapshot doc, its feedback page (Phase 4b/4c, 00).
+  // A form, deck or sheet copy's snapshot doc, its feedback page (Phase 4b/4c, 00).
   let snapshotDocs = {};
   try { snapshotDocs = formSnapshotDocIds_(ss); } catch (e) { Logger.log("[Dashboard] FormSnapshots unreadable: " + e.message); }
   const locked = []; // parts made but not open yet (68)
@@ -481,7 +490,7 @@ function getStudentDashboardData(termFilter) {
     if (activeTerm !== "ALL" && rowTerm && rowTerm !== activeTerm) continue;
 
     const fileId      = String(row[LEDGER.FILE_ID]).trim();
-    // A form or Slides part's copy (Phase 4a/4c): its Ledger URL says so (00).
+    // A form, Slides or Sheets part's copy (Phase 4a/4c/4d): its Ledger URL says so (00).
     const workType    = workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]);
     const status      = String(row[LEDGER.STATUS]).trim();
     const lastEval    = row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : null;
@@ -537,9 +546,9 @@ function getStudentDashboardData(termFilter) {
       // For the Submit for Feedback button (submitMyWork). The student's
       // own doc, which docUrl already carries.
       fileId:        fileId,
-      // A form or Slides part's Submit reads the file (Phase 4b/4c, 75/77): on, as a doc's.
+      // A form, Slides or Sheets part's Submit reads the file (Phase 4b/4c, 75/77): on, as a doc's.
       canSubmit:     !!fileId && !DASH_NO_SUBMIT_STATUSES[status] && !inLine,
-      // A form or Slides part's feedback page: its snapshot doc (00), where
+      // A form, Slides or Sheets part's feedback page: its snapshot doc (00), where
       // the check reads the file as submitted and the feedback goes. null
       // for a doc.
       feedbackUrl:   workFileHasSnapshot_(workType) && snapshotDocs[fileId] ? workFileUrl_(snapshotDocs[fileId], "doc") : null,
@@ -1327,7 +1336,7 @@ function handleStudentDocRequest_(googleId, req) {
     };
   }
 
-  // A form or Slides part is checked only by the dashboard's Submit (Phase
+  // A form, Slides or Sheets part is checked only by the dashboard's Submit (Phase
   // 4b/4c, 75/77): it has no doc menu, and this path doesn't read the work.
   if (workFileHasSnapshot_(workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]))) return { ok: false, error: "USE_DASHBOARD" };
   const hasText = (req && req.hasText === true) || !!String((req && req.text) || "").trim();
@@ -1355,7 +1364,7 @@ function findOwnLedgerRow_(cfg, googleId, fileId, configId) {
 }
 
 // feedbackDocId: where the header's "waiting for feedback" goes when it
-// isn't the work file itself (a form or deck's snapshot doc, Phase 4b/4c).
+// isn't the work file itself (a form, deck or sheet's snapshot doc, Phase 4b/4c).
 function queueSubmission_(cfg, googleId, fileId, configId, feedbackDocId) {
   const queue = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
   if (!queue) return { ok: false, error: "NO_QUEUE" };
@@ -1523,7 +1532,7 @@ function _dashSubmit_(fileId, configId, answers) {
   // The answers go in before the queue row, so 37 finds them when it builds
   // the Flow 2 input a minute later. Their time is the submission's.
   const now = new Date();
-  // A form or Slides part (Phase 4b/4c): the snapshot of the file as
+  // A form, Slides or Sheets part (Phase 4b/4c/4d): the snapshot of the file as
   // checked goes into its snapshot doc before the reflection and the queue
   // row, so Flow 2 reads what passed the exact checks. If it can't be
   // written, nothing is saved or queued.
@@ -1559,7 +1568,7 @@ function _dashSubmit_(fileId, configId, answers) {
 
 // Everything Submit checks before anything is asked or written: the
 // student, their row, an open queue row, and enough writing in the doc, or
-// for a form or Slides part (Phase 4b/4c) its exact checks (_dashWorkChecks_).
+// for a form, Slides or Sheets part (Phase 4b/4c/4d) its exact checks (_dashWorkChecks_).
 // { ok: true, cfg, googleId, row, fileId, configId } or { ok: false, error }.
 function _dashSubmitChecks_(fileId, configId) {
   const googleId = Session.getActiveUser().getEmail();
@@ -1589,7 +1598,7 @@ function _dashSubmitChecks_(fileId, configId) {
     String(r[2]).trim() === fileId && DASH_OPEN_QUEUE_STATUSES[String(r[5]).trim()]);
   if (pending) return { ok: false, error: "ALREADY_QUEUED" };
 
-  // A form or Slides part (Phase 4b/4c): the file's structure, read and
+  // A form, Slides or Sheets part (Phase 4b/4c/4d): the file's structure, read and
   // checked (75, 77).
   const workType = workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]);
   if (workFileHasSnapshot_(workType)) {
@@ -1626,7 +1635,8 @@ function _dashSubmitChecks_(fileId, configId) {
 
 // The reader for each work file type with a snapshot: its error-code prefix
 // and its four steps (read the structure, the exact checks' reasons, system
-// text, the snapshot text). A form's in 75 (Phase 4b), a deck's in 77 (4c).
+// text, the snapshot text). A form's in 75 (Phase 4b), a deck's in 77 (4c),
+// a sheet's in 78 (4d).
 function _dashWorkReader_(type) {
   if (type === "form") {
     return { code: "FORM", read: readFormStructure_, reasons: formCheckReasons_,
@@ -1636,10 +1646,14 @@ function _dashWorkReader_(type) {
     return { code: "SLIDES", read: readSlidesStructure_, reasons: slidesCheckReasons_,
       systemText: slidesSystemText_, text: slidesSnapshotText_ };
   }
+  if (type === "sheet") {
+    return { code: "SHEET", read: readSheetStructure_, reasons: sheetCheckReasons_,
+      systemText: sheetSystemText_, text: sheetSnapshotText_ };
+  }
   return null;
 }
 
-// A form or Slides part's Submit checks (Phase 4b/4c): its snapshot doc on
+// A form, Slides or Sheets part's Submit checks (Phase 4b/4c/4d): its snapshot doc on
 // record (00's FormSnapshots), the file's structure read (75/77; a form's
 // never its responses), the part's exact checks, and no system text.
 // { ok: true, type, reader, snapshotDocId, snapshotRow, structure } or
@@ -2132,9 +2146,10 @@ const DEMO_STUBS = {
   submitWarmUpReply:  function () { return { ok: true, savedAt: "just now (demo: nothing was saved)" }; },
   getSubmitReflection: function (fileId) {
     const a = _demoCard(fileId);
-    // A form or Slides part: the reader's exact checks say "not yet" (a sample).
+    // A form, Slides or Sheets part: the reader's exact checks say "not yet" (a sample).
     if (a && a.demoFormNotYet) return { ok: false, error: "FORM_NOT_YET", reasons: a.demoFormNotYet };
     if (a && a.demoSlidesNotYet) return { ok: false, error: "SLIDES_NOT_YET", reasons: a.demoSlidesNotYet };
+    if (a && a.demoSheetNotYet) return { ok: false, error: "SHEET_NOT_YET", reasons: a.demoSheetNotYet };
     return { ok: true, questions: (a && a.demoQuestions) || [] };
   },
   submitMyWork: function (fileId, configId, answers) {
@@ -2197,7 +2212,8 @@ function demoOpenDoc(btn) {
   const a = _demoCard(btn.getAttribute("data-file"));
   _demoNotes[btn.getAttribute("data-file")] = "In the real dashboard this opens the student's " +
     (a && a.workType === "form" ? "own copy of the form, to build in Google Forms."
-      : a && a.workType === "slides" ? "own copy of the slides, to make in Google Slides." : "document.");
+      : a && a.workType === "slides" ? "own copy of the slides, to make in Google Slides."
+      : a && a.workType === "sheet" ? "own copy of the sheet, to build in Google Sheets." : "document.");
   if (_lastDashData) render(_lastDashData);
 }
 
@@ -2442,7 +2458,7 @@ function goToCard(id) {
 function cardHtml(a) {
   const primary = primaryActionFor(a);
   const cls = (p) => "act " + (p ? "act-primary" : "act-secondary");
-  // A form or Slides part (4b/4c): its feedback is on its feedback page
+  // A form, Slides or Sheets part (4b/4c): its feedback is on its feedback page
   // (its snapshot doc).
   const noun = WORK_NOUN[a.workType] || "";
   const feedbackPage = noun ? safeDocUrl(a.feedbackUrl) : null;
@@ -2453,8 +2469,8 @@ function cardHtml(a) {
     ? \`<button type="button" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${openLabel}</button>\`
     : doc
     ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}">\${openLabel} ↗</a>\`
-    : \`<span style="color:var(--text-secondary);font-size:13px;">\${a.workType === "form" ? "Form" : a.workType === "slides" ? "Slides" : "Document"} not yet available</span>\`;
-  // A form or Slides part (Phase 4b/4c): Submit as for a doc; the server reads the file.
+    : \`<span style="color:var(--text-secondary);font-size:13px;">\${a.workType === "form" ? "Form" : a.workType === "slides" ? "Slides" : a.workType === "sheet" ? "Sheet" : "Document"} not yet available</span>\`;
+  // A form, Slides or Sheets part (Phase 4b/4c/4d): Submit as for a doc; the server reads the file.
   const submitBtn = a.canSubmit && !_reflect[a.fileId]
     ? \`<button type="button" class="\${cls(primary === "submit")}" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
     : "";
@@ -2829,9 +2845,12 @@ const FORM_SUBMIT_NOTE = "Submit for Feedback reads your form's questions and se
 // A Slides part (Phase 4c).
 const SLIDES_SUBMIT_NOTE = "Submit for Feedback reads the words on your slides and your speaker notes, counts your " +
   "pictures, checks them, and puts your feedback on your deck's feedback page.";
-const WORK_SUBMIT_NOTE = { form: FORM_SUBMIT_NOTE, slides: SLIDES_SUBMIT_NOTE };
+// A Sheets part (Phase 4d).
+const SHEET_SUBMIT_NOTE = "Submit for Feedback reads your sheet's tabs, what you filled in, your formulas and " +
+  "charts, checks them, and puts your feedback on your sheet's feedback page.";
+const WORK_SUBMIT_NOTE = { form: FORM_SUBMIT_NOTE, slides: SLIDES_SUBMIT_NOTE, sheet: SHEET_SUBMIT_NOTE };
 // What a work file with a feedback page is called on the card.
-const WORK_NOUN = { form: "form", slides: "deck" };
+const WORK_NOUN = { form: "form", slides: "deck", sheet: "sheet" };
 const SUBMIT_ERRORS = {
   TOO_SHORT: null, // worded below with the word count
   NO_RESPONSE_SECTION: "Your document is missing the line under “Your response” that marks where your writing starts, so there's nothing to check. Ask your teacher.",
@@ -2853,7 +2872,12 @@ const SUBMIT_ERRORS = {
   SLIDES_NOT_YET: null,
   SLIDES_UNREADABLE: "The system can't open your slides right now. Your work is safe. Tell your teacher.",
   SLIDES_SNAPSHOT_MISSING: "Your slides have no feedback page set up yet, so they can't be checked. Your work is safe. Tell your teacher.",
-  SLIDES_SNAPSHOT_UNWRITABLE: "The system can't write your deck's feedback page right now. Your work is safe. Tell your teacher."
+  SLIDES_SNAPSHOT_UNWRITABLE: "The system can't write your deck's feedback page right now. Your work is safe. Tell your teacher.",
+  // A Sheets part (Phase 4d). SHEET_NOT_YET is worded below with its reasons.
+  SHEET_NOT_YET: null,
+  SHEET_UNREADABLE: "The system can't open your sheet right now. Your work is safe. Tell your teacher.",
+  SHEET_SNAPSHOT_MISSING: "Your sheet has no feedback page set up yet, so it can't be checked. Your work is safe. Tell your teacher.",
+  SHEET_SNAPSHOT_UNWRITABLE: "The system can't write your sheet's feedback page right now. Your work is safe. Tell your teacher."
 };
 const SUBMIT_FALLBACK = "The assignment system didn't answer. Your work is safe in your document.\\nTry again in a minute. If it keeps happening, tell your teacher.";
 
@@ -2986,8 +3010,8 @@ function submitDone(fileId, configId, res) {
   if (res && res.ok) {
     done({ ok: true, text: (!res.aiFlowsLive
       ? "✅ Submitted. Your teacher can see your work and will review it directly."
-      : res.workType === "form" || res.workType === "slides"
-        ? "✅ Submitted. In a few minutes your feedback will be on your " + (res.workType === "form" ? "form" : "deck") + "'s feedback page (the link on this card)" +
+      : res.workType === "form" || res.workType === "slides" || res.workType === "sheet"
+        ? "✅ Submitted. In a few minutes your feedback will be on your " + (res.workType === "slides" ? "deck" : res.workType) + "'s feedback page (the link on this card)" +
           (res.feedbackInComments ? ", as a comment: open it and click Comments (top right)." : ".")
       : res.feedbackInComments
         ? "✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right)."
@@ -3003,9 +3027,9 @@ function submitDone(fileId, configId, res) {
       "\\nAim for at least 25 words under “Your response” in your document." });
     return;
   }
-  // A form or Slides part's exact checks (Phase 4b/4c): each reason on its own line.
-  if (code === "FORM_NOT_YET" || code === "SLIDES_NOT_YET") {
-    done({ ok: false, text: "Not yet. Fix this in your " + (code === "FORM_NOT_YET" ? "form" : "slides") + ", then submit again:\\n" +
+  // A form, Slides or Sheets part's exact checks (Phase 4b/4c/4d): each reason on its own line.
+  if (code === "FORM_NOT_YET" || code === "SLIDES_NOT_YET" || code === "SHEET_NOT_YET") {
+    done({ ok: false, text: "Not yet. Fix this in your " + (code === "FORM_NOT_YET" ? "form" : code === "SHEET_NOT_YET" ? "sheet" : "slides") + ", then submit again:\\n" +
       (res.reasons || []).map(function(r) { return "• " + r; }).join("\\n") });
     return;
   }

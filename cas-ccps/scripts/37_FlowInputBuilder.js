@@ -263,7 +263,7 @@ function buildFlowInputRows() {
       }
 
       // The doc Flow 2 reads and the feedback goes to: the student's doc, or
-      // for a form or Slides part (Phase 4b/4c) its snapshot doc, which 13
+      // for a form, Slides or Sheets part (Phase 4b/4c/4d) its snapshot doc, which 13
       // rewrote from the file at Submit (00's FormSnapshots). A copy with
       // none recorded can't have passed Submit; it waits, logged.
       let readDocId = studentFileId;
@@ -368,7 +368,7 @@ function _fiFindLedgerRow_(cfg, configId, studentFileId) {
       return {
         googleId: String(data[i][LEDGER.GOOGLE_ID]).trim(),
         teacherEmail: String(data[i][LEDGER.TEACHER_EMAIL]).trim(),
-        // "form" or "slides" for a part's copy (Phase 4b/4c): Flow 2 reads its snapshot doc.
+        // "form" or "slides" for a part's copy (Phase 4b/4c/4d): Flow 2 reads its snapshot doc.
         workType: workFileTypeOfUrl_(data[i][LEDGER.ADMIN_FILE_URL]),
       };
     }
@@ -522,7 +522,7 @@ function _fiEarlierPartsText_(ledgerSs, cfg, googleId, byStudent, assignmentId) 
   });
   return Object.keys(files).map(Number).sort(function (a, b) { return a - b; }).map(function (n) {
     let text = "";
-    // An earlier form or Slides part (Phase 4b/4c) is read from its snapshot
+    // An earlier form, Slides or Sheets part (Phase 4b/4c/4d) is read from its snapshot
     // doc: the file as last submitted. One never submitted has none written yet.
     let docId = files[n].fileId;
     if (files[n].snapshot) {
@@ -530,7 +530,7 @@ function _fiEarlierPartsText_(ledgerSs, cfg, googleId, byStudent, assignmentId) 
       docId = snap ? snap.snapshotDocId : "";
     }
     try {
-      if (!docId) throw new Error("no snapshot doc for an earlier form or Slides part");
+      if (!docId) throw new Error("no snapshot doc for an earlier form, Slides or Sheets part");
       const full = DocumentApp.openById(docId).getBody().getText();
       const zone = responseZoneBounds_(full);
       text = zone ? full.substring(zone.from, zone.to).trim() : "";

@@ -857,6 +857,75 @@ unlock job opens it at once for anyone whose latest check of the part
 before already found its primary met. Set the template property before
 that rollout, or every copy fails as `NO_WORK_TEMPLATE`.
 
+### Work types: a part as a Google Sheet (Phase 4d, 2026-11-09)
+
+The same pattern again, for Google Sheets. `workType: "sheet"` is allowed
+where the part's planned `workFile` is `sheet`; the generator refuses it
+elsewhere and refuses a Sheets part whose task still sends the work or its
+link to this document. **Nothing is marked.**
+
+- **Made by the rollout like a deck**: a Drive copy of the part's template
+  (`WORK_TEMPLATE_<PART KEY>`), the student an editor (or `SCHEDULED`), the
+  teacher a **commenter**, `AdminFileURL` a `/spreadsheets/d/` link (type
+  `"sheet"`), a snapshot doc beside it ("your sheet, as checked") listed in
+  `FormSnapshots`. Intake never opens the copy.
+- **The template is a blank sheet**: one empty tab. A part whose checks
+  name a tab (`requiredTabs`, `tab`) may get a template with that tab
+  already named, or leave naming it to the student; the checks say which
+  is missing either way.
+- **The reader** (`78_SheetReader.js`, Student Dashboard) opens only the
+  student's own copy (`SpreadsheetApp.openById` with the `FileID` of the
+  student's own Ledger row; a test holds it to one open and a list of
+  getters). For each tab: its name, the shown values and formulas of the
+  range up to the last filled row and column (at most **1000 rows × 52
+  columns** are read; past that the snapshot says the tab was cut), and each
+  chart's type, title and source ranges. A cell is **filled** when it shows
+  a value or holds a formula; a **formula** is a cell whose formula isn't
+  blank, so a typed number never counts as one. Never the file's name, never
+  a write.
+- **`sheetChecks`** (`PARTS.json`, on a Sheets part only; every key
+  optional):
+  - `requiredTabs`: tab names the sheet must have (case and spaces at the
+    ends ignored).
+  - `tab`: the tab the counts below look at. Unset, they look at every
+    tab: `minFilledRows` is met when some one tab has that many,
+    `minFilledCells` and the formulas are counted over all tabs.
+  - `minFilledRows` (1–1000): rows with at least one filled cell.
+  - `minFilledCells` (1–10000).
+  - `formulasRequired` (1–1000): cells holding a formula.
+  - `formulasIn`: where those formulas must be, a column (`"D"`) or a
+    range (`"D2:D20"`, `"B2:E"`), capitals, no tab name (it's `tab`, or any
+    tab). Set alone, it asks for one formula there.
+  - `requireChart`: true: a chart on some tab.
+
+  Default, with no `sheetChecks`: one filled cell. A failure is "Not yet.
+  Fix this in your sheet, then submit again:" with one reason a line ("Your
+  sheet has 4 rows filled in on “Inventory”. It needs at least 5.", "Your
+  sheet has 0 formulas in column D on “Inventory”. It needs at least 4: a
+  cell that calculates starts with =, like =B2-C2. A number typed in is not
+  a formula."). Codes start `SHEET_`.
+- **The snapshot** (`sheetSnapshotText_`): each tab as a table, row by
+  row, each filled cell with its column letter and its shown value quoted,
+  a formula after its value in `[ ]`, empty cells left out, then the tab's
+  charts ("column chart “Usable items” from “Inventory!A1:A5”"). **Capped**
+  at the first **50 filled rows and 12 columns (A–L)** of each tab, 200
+  characters a cell; what is left out is said ("10 more filled rows not
+  shown", "more past column L"). Text explanations typed in cells are in
+  it, so Flow 2 reads them.
+- **Scope: none added.** The Student Dashboard already has `spreadsheets`
+  (it reads the Ledger), which covers the reader; no re-consent.
+- **Dashboards and demo**: "Open your sheet", "Your sheet's feedback page";
+  the teacher's "· Google Sheets", "Open sheet", "Part n (sheet)". The demo
+  adds the first lesson in teaching order with a planned Sheets part (8177
+  "The Bottom Line", Part 3).
+
+**Marking a part as a Sheet:** as for a deck, with a blank sheet as the
+template, `"workType": "sheet"` and `"sheetChecks": {…}`. The first planned
+use, 8177 "The Back Room" Part 2 "The Inventory Update", is a `doc` part
+today: its `workFile` changes to `sheet` in the same follow-up PR that
+marks it (e.g. `{"tab": "Inventory", "minFilledRows": 5, "formulasRequired":
+4, "formulasIn": "D"}` for a header, four items and a computed usable count).
+
 ## Turn-in codes (script 71)
 
 `71_TurnInCodes.js` (Student Dashboard, Central Ledger and, since stage 3,

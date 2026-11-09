@@ -131,10 +131,13 @@ const FORM_KEY = 'WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2';
 // Part 1, marked in the sandbox only (nothing is marked in PARTS.json).
 const SLIDES_PART = 'CAS-8177-PROMOTIONAL-FLYER-DESIGN-P1';
 const SLIDES_KEY = 'WORK_TEMPLATE_8177_PROMOTIONAL_FLYER_DESIGN_P1';
+// Phase 4d: a Sheets part (opts.sheet): the budget lesson's Part 3.
+const SHEET_PART = 'CAS-8177-THE-BOTTOM-LINE-P3';
+const SHEET_KEY = 'WORK_TEMPLATE_8177_THE_BOTTOM_LINE_P3';
 function formSetup(opts) {
   opts = opts || {};
-  const part = opts.slides ? SLIDES_PART : FORM_PART;
-  const key = opts.slides ? SLIDES_KEY : FORM_KEY;
+  const part = opts.slides ? SLIDES_PART : opts.sheet ? SHEET_PART : FORM_PART;
+  const key = opts.slides ? SLIDES_KEY : opts.sheet ? SHEET_KEY : FORM_KEY;
   const { FakeDriveFolder, FakeDriveFile } = require('../harness/gas-sandbox');
   const env = loadGasFiles(FILES,
     ['intakeStudent_', 'getConfig_', 'unlockNextPart_', 'workFileTypeOfUrl_', 'formSnapshotFor_', 'FORM_SNAPSHOT_NOT_SUBMITTED',
@@ -146,6 +149,11 @@ function formSetup(opts) {
   if (opts.slides) {
     require('vm').runInContext("LESSON_PARTS['8177-promotional-flyer-design'][0].workFileNow = 'slides';" +
       "LESSON_PARTS['8177-promotional-flyer-design'][0].workTemplateKey = '" + SLIDES_KEY + "';", sandbox);
+  }
+  if (opts.sheet) {
+    require('vm').runInContext("LESSON_PARTS['8177-the-bottom-line'][2].workFileNow = 'sheet';" +
+      "LESSON_PARTS['8177-the-bottom-line'][2].workTemplateKey = '" + SHEET_KEY + "';" +
+      "LESSON_PARTS['8177-the-bottom-line'][2].sheetChecks = { formulasRequired: 3 };", sandbox);
   }
   const formAppCalls = [];
   sandbox.FormApp = new Proxy({}, { get: (_, k) => { formAppCalls.push(String(k)); return () => { throw new Error('no FormApp in 4a'); }; } });
@@ -163,6 +171,7 @@ function formSetup(opts) {
   tm.appendRow(new Array(15).fill('h'));
   const row = new Array(15).fill('');
   row[0] = part; row[1] = opts.slides ? 'Venue Promotion & Flyer Design — Part 1: Design It'
+    : opts.sheet ? 'The Bottom Line — Part 3: The Bottom Line'
     : 'Venue Market Research & Survey Design — Part 2: Build the Survey'; row[11] = 'LIVE';
   tm.appendRow(row);
   ledger.insertSheet('Ledger').appendRow(new Array(19).fill('h'));
@@ -170,7 +179,8 @@ function formSetup(opts) {
   sandbox.DriveApp._registerFolder(root);
   props.setProperty('ADMIN_ROOT_FOLDER_ID', root.getId());
   props.setProperty('MASTER_STUDENT_TEMPLATE_ID', 'master-doc');
-  const template = opts.slides ? new FakeDriveFile('deck-template', 'Blank deck', 'application/vnd.google-apps.presentation')
+  const template = opts.sheet ? new FakeDriveFile('sheet-template', 'Blank sheet', 'application/vnd.google-apps.spreadsheet')
+    : opts.slides ? new FakeDriveFile('deck-template', 'Blank deck', 'application/vnd.google-apps.presentation')
     : new FakeDriveFile('form-template', 'Your survey', 'application/vnd.google-apps.form');
   const copies = [];
   template.makeCopy = (name, folder) => {
@@ -338,4 +348,28 @@ test('intakeStudent_: a Slides part is a copy of its template deck, the teacher 
   assert.deepEqual(none.exported.intakeStudent_(none.exported.getConfig_(), formStudent(true, SLIDES_PART)),
     { ok: false, code: 'NO_WORK_TEMPLATE', workType: 'slides' });
   assert.equal(none.copies.length, 0);
+});
+
+// Phase 4d: a Sheets part, the same way; its sheetChecks recorded.
+test('intakeStudent_: a Sheets part is a copy of its template sheet, the teacher a commenter, its checks recorded', () => {
+  const { exported, sandbox, ledger, copies } = formSetup({ sheet: true });
+  const opened = [];
+  const realSs = sandbox.SpreadsheetApp.openById.bind(sandbox.SpreadsheetApp);
+  sandbox.SpreadsheetApp.openById = (id) => { opened.push(id); return realSs(id); };
+  const res = exported.intakeStudent_(exported.getConfig_(), formStudent(false, SHEET_PART));
+  assert.equal(res.ok, true, JSON.stringify(res));
+  assert.equal(res.workType, 'sheet');
+  const copy = copies[0];
+  assert.equal(copy.getMimeType(), 'application/vnd.google-apps.spreadsheet');
+  assert.equal(copy._access('1234567@ccpsnet.net'), 'editor');
+  assert.equal(copy._access('owner@ccpsnet.net'), 'commenter');
+  assert.ok(!opened.includes(copy.getId()), 'intake never opens the student\'s sheet');
+  const r = ledger.getSheetByName('Ledger').getDataRange().getValues()[1];
+  assert.equal(r[16], 'https://docs.google.com/spreadsheets/d/' + copy.getId() + '/edit');
+  assert.equal(exported.workFileTypeOfUrl_(r[16]), 'sheet');
+  const snap = exported.formSnapshotFor_(ledger, copy.getId());
+  assert.deepEqual(JSON.parse(String(snap.checksRaw)), { formulasRequired: 3, minFilledCells: 1 });
+  const text = sandbox.DocumentApp.openById(snap.snapshotDocId).getBody().getText();
+  assert.match(text, /Not submitted yet\. Build your sheet/);
+  assert.equal(sandbox.DriveApp.getFileById(snap.snapshotDocId)._access('1234567@ccpsnet.net'), 'commenter');
 });

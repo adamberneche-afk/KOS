@@ -153,7 +153,7 @@ function onFormSubmit_Intake(e) {
 //      period, teacherName, teacherEmail, unitConfigId }
 // Returns { ok: true, studentConfigId, fileId, docUrl } or
 //         { ok: false, code: INVALID_ACCOUNT | NO_LIVE_ASSIGNMENT | NO_MASTER_TEMPLATE
-//           | NO_WORK_TEMPLATE (a form or Slides part whose template property
+//           | NO_WORK_TEMPLATE (a form, Slides or Sheets part whose template property
 //             is unset; workType says which) }
 // Nothing is written on failure; the caller decides how to report it.
 // ---------------------------------------------------------------------------
@@ -283,19 +283,20 @@ function intakeStudent_(cfg, s) {
     teacherEmail: assignedTeacherEmail };
 }
 
-// A form or Slides part's copy (Phase 4a/4c, meta/STUDENT_WORK_PLAN_2026-10.md
+// A form, Slides or Sheets part's copy (Phase 4a/4c/4d, meta/STUDENT_WORK_PLAN_2026-10.md
 // §5): the part's template file copied with DriveApp, as the doc is (no
 // FormApp or SlidesApp call, so no Forms or Slides scope is used here), into
 // the same admin folder, shared and recorded the same way, SCHEDULED with
 // deferShare until the part unlocks (68) or its release night (58). Nothing
-// is stamped: a form or deck has no response zone, and the template is blank
-// (a form with a title only; a deck with one empty title slide), because
+// is stamped: a form, deck or sheet has no response zone, and the template
+// is blank (a form with a title only; a deck with one empty title slide; a
+// sheet with one empty tab), because
 // making it is the student's work. The assigning teacher is added as an
 // editor of a form (Forms have no comment access) and as a commenter on a
-// deck, as on a doc; nobody else. The Ledger row's ADMIN_FILE_URL is the
+// deck or sheet, as on a doc; nobody else. The Ledger row's ADMIN_FILE_URL is the
 // copy's own URL, which is how every reader tells its type (00's
 // workFileTypeOfUrl_).
-const WORK_FILE_TEACHER_ROLE = { form: "writer", slides: "commenter" };
+const WORK_FILE_TEACHER_ROLE = { form: "writer", slides: "commenter", sheet: "commenter" };
 function _intakeWorkFile_(cfg, s, googleId, assignment, teacherEmail, templateId, memo, type) {
   const studentConfigId = generateConfigId_();
   const folder = resolveAdminPath_(cfg.adminRootFolderId, [
@@ -310,7 +311,7 @@ function _intakeWorkFile_(cfg, s, googleId, assignment, teacherEmail, templateId
     try { shareWithoutEmail_(file, teacherEmail, WORK_FILE_TEACHER_ROLE[type] || "commenter"); } catch (err) { Logger.log("Teacher access warning for " + teacherEmail + ": " + err.message); }
   }
   const url = workFileUrl_(file.getId(), type);
-  // Its snapshot doc, the copy's feedback page (Phase 4b/4c): made and
+  // Its snapshot doc, the copy's feedback page (Phase 4b/4c/4d): made and
   // shared now, beside it, so Submit (13, which has no Drive scope) only
   // rewrites it.
   const snapshotDoc = _makeFormSnapshotDoc_(cfg, s, studentConfigId, assignment.unitName, folder,
@@ -321,7 +322,7 @@ function _intakeWorkFile_(cfg, s, googleId, assignment, teacherEmail, templateId
                   deferShare ? "SCHEDULED" : "ACTIVE");
   recordStudentAssignment_(_intakeLedgerSs_(cfg), studentConfigId, googleId, s.unitConfigId);
   recordFormSnapshot_(_intakeLedgerSs_(cfg), studentConfigId, file.getId(), snapshotDoc.getId(), s.unitConfigId);
-  Logger.log((type === "form" ? "Form" : "Slides") + " workspace created — ConfigID: " + studentConfigId +
+  Logger.log((type === "form" ? "Form" : type === "sheet" ? "Sheet" : "Slides") + " workspace created — ConfigID: " + studentConfigId +
     " | Assignment: " + s.unitConfigId + " | Period: " + s.period);
   return { ok: true, studentConfigId: studentConfigId, fileId: file.getId(), docUrl: url, teacherEmail: teacherEmail, workType: type };
 }
@@ -331,10 +332,12 @@ const WORK_SNAPSHOT_WORDS = {
   form:   { noun: "your form", what: "your form's questions and settings", change: "Change your form, not this page.",
             ready: "When your form is ready" },
   slides: { noun: "your slides", what: "the words on your slides, your speaker notes, and how many pictures and charts each slide has",
-            change: "Change your slides, not this page.", ready: "When your slides are ready" }
+            change: "Change your slides, not this page.", ready: "When your slides are ready" },
+  sheet:  { noun: "your sheet", what: "your sheet's tabs, what you filled in, your formulas and your charts",
+            change: "Change your sheet, not this page.", ready: "When your sheet is ready" }
 };
 
-// A form or deck copy's snapshot doc (Phase 4b, 2026-11-08; decks, 4c): a
+// A form, deck or sheet copy's snapshot doc (Phase 4b, 2026-11-08; decks, 4c): a
 // Google Doc in the student's admin folder beside the copy, owned by the
 // system account, shared with the student (commenter, once the part is open:
 // they read the file as checked and the feedback, and can't change what was
@@ -386,7 +389,7 @@ function _makeFormSnapshotDoc_(cfg, s, studentConfigId, unitName, folder, studen
   return doc;
 }
 
-// One FormSnapshots row (00): the form or deck copy, its snapshot doc, the
+// One FormSnapshots row (00): the form, deck or sheet copy, its snapshot doc, the
 // part, and the part's exact checks for its type as JSON (68's
 // partWorkChecks_). IDs only.
 function recordFormSnapshot_(ss, studentConfigId, formFileId, snapshotDocId, partConfigId) {
@@ -402,7 +405,7 @@ function recordFormSnapshot_(ss, studentConfigId, formFileId, snapshotDocId, par
 }
 
 // refreshFormSnapshots — run by hand from the Central Ledger's editor
-// (Phase 4b; decks too since 4c): every form or deck copy on the Ledger gets
+// (Phase 4b; decks too since 4c): every form, deck or sheet copy on the Ledger gets
 // a snapshot doc if it has none (made and shared as at intake; the student
 // only once the row is open), and every FormSnapshots row's FormChecks is
 // rewritten from the parts data now, so a part's formChecks or slideChecks

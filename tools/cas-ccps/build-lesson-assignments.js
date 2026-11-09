@@ -383,19 +383,21 @@ function plan8177(text, warm) {
 const PARTS_FILE = path.join(LESSONS, 'PARTS.json');
 const lessonParts = () => (fs.existsSync(PARTS_FILE) ? JSON.parse(fs.readFileSync(PARTS_FILE, 'utf8')) : {});
 
-// A part's workType (Phase 4a, meta/STUDENT_WORK_PLAN_2026-10.md §5; Slides,
-// Phase 4c): what the rollout makes for each student. "doc" (the default,
-// also when unset), "form", a copy of the part's template form, or "slides",
-// a copy of its template deck. A part becomes a form or a deck only when its
-// planned workFile is the same ("form", "slides"; the Canva and Drawings
+// A part's workType (Phase 4a, meta/STUDENT_WORK_PLAN_2026-10.md §5; Slides
+// and Sheets, Phases 4c and 4d): what the rollout makes for each student.
+// "doc" (the default, also when unset), "form", a copy of the part's
+// template form, "slides", a copy of its template deck, or "sheet", a copy
+// of its template sheet. A part becomes one only when its planned workFile
+// is the same ("form", "slides", "sheet"; the Canva and Drawings
 // parts were planned as "slides", §5), and its task no longer tells the
 // student to put the work, or its link, into a document (the copy is the
 // work file).
-const WORK_TYPES = ['doc', 'form', 'slides'];
+const WORK_TYPES = ['doc', 'form', 'slides', 'sheet'];
 const INTO_THIS_DOCUMENT = {
   form: /paste[^.]*link[^.]*into this document/i,
   slides: /\b(paste|add|put|copy|insert)\b[^.]*\b(in|into|to) this document/i,
 };
+INTO_THIS_DOCUMENT.sheet = INTO_THIS_DOCUMENT.slides;
 function partWorkType(p, at, own) {
   const t = p.workType === undefined ? 'doc' : p.workType;
   if (WORK_TYPES.indexOf(t) === -1) throw new Error(at + 'workType "' + t + '" is not one of ' + WORK_TYPES.join(', '));
@@ -405,6 +407,9 @@ function partWorkType(p, at, own) {
   }
   if (t === 'slides' && own.some((x) => INTO_THIS_DOCUMENT.slides.test(x))) {
     throw new Error(at + 'a Slides part\'s task still says to add the work or its link to this document; take that sentence out of the prompt');
+  }
+  if (t === 'sheet' && own.some((x) => INTO_THIS_DOCUMENT.sheet.test(x))) {
+    throw new Error(at + 'a Sheets part\'s task still says to add the work or its link to this document; take that sentence out of the prompt');
   }
   return t;
 }
@@ -500,6 +505,48 @@ function partSlideChecks(p, at, workType) {
   return out;
 }
 
+// A Sheets part's exact checks at Submit (Phase 4d, 2026-11-09): the Student
+// Dashboard's Sheet reader (cas-ccps 78). Optional; unset, a Sheets part
+// needs one filled cell (00's SHEET_CHECK_DEFAULTS). Only on a Sheets part.
+// Keys (00's SHEET_CHECK_KEYS; a test holds the lists equal):
+//   requiredTabs      a list of tab names
+//   tab               the tab the counts look at (unset: every tab)
+//   minFilledRows     whole number 1-1000
+//   minFilledCells    whole number 1-10000
+//   formulasRequired  whole number 1-1000: cells with a formula
+//   formulasIn        a column ("D") or range ("D2:D20", "B2:E") the formulas must be in
+//   requireChart      true
+const SHEET_CHECK_KEYS = ['requiredTabs', 'tab', 'minFilledRows', 'minFilledCells', 'formulasRequired', 'formulasIn', 'requireChart'];
+const SHEET_CHECK_LIMITS = { minFilledRows: 1000, minFilledCells: 10000, formulasRequired: 1000 };
+const SHEET_RANGE = /^([A-Z]{1,3})(\d{1,7})?(?::([A-Z]{1,3})(\d{1,7})?)?$/;
+function partSheetChecks(p, at, workType) {
+  if (p.sheetChecks === undefined) return undefined;
+  const c = p.sheetChecks;
+  if (workType !== 'sheet') throw new Error(at + 'sheetChecks is only for a Sheets part (workType "sheet")');
+  if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error(at + 'sheetChecks must be an object');
+  const unknown = Object.keys(c).filter((k) => SHEET_CHECK_KEYS.indexOf(k) === -1);
+  if (unknown.length) throw new Error(at + 'sheetChecks has ' + unknown.join(', ') + '; the keys are ' + SHEET_CHECK_KEYS.join(', '));
+  const out = {};
+  SHEET_CHECK_KEYS.forEach((k) => {
+    if (c[k] === undefined) return;
+    const v = c[k];
+    if (SHEET_CHECK_LIMITS[k]) {
+      if (!Number.isInteger(v) || v < 1 || v > SHEET_CHECK_LIMITS[k]) throw new Error(at + 'sheetChecks.' + k + ' must be a whole number from 1 to ' + SHEET_CHECK_LIMITS[k]);
+    } else if (k === 'requiredTabs') {
+      if (!Array.isArray(v) || !v.length || v.some((t) => typeof t !== 'string' || !t.trim())) throw new Error(at + 'sheetChecks.requiredTabs must be a list of tab names');
+      if (new Set(v.map((t) => t.trim().toLowerCase())).size !== v.length) throw new Error(at + 'sheetChecks.requiredTabs names a tab twice');
+    } else if (k === 'tab') {
+      if (typeof v !== 'string' || !v.trim()) throw new Error(at + 'sheetChecks.tab must be a tab name');
+    } else if (k === 'formulasIn') {
+      if (typeof v !== 'string' || !SHEET_RANGE.test(v)) throw new Error(at + 'sheetChecks.formulasIn must be a column ("D") or a range ("D2:D20"), in capitals, with no tab name');
+    } else if (typeof v !== 'boolean') {
+      throw new Error(at + 'sheetChecks.' + k + ' must be true or false');
+    }
+    out[k] = Array.isArray(v) ? v.slice() : v;
+  });
+  return out;
+}
+
 // "WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2" for that part.
 function workTemplateKey(partKey) {
   return 'WORK_TEMPLATE_' + String(partKey).toUpperCase().replace(/[^A-Z0-9]+/g, '_');
@@ -534,6 +581,7 @@ function buildParts(a, comps, promptMd, def) {
     const workType = partWorkType(p, where + 'part ' + n + ': ', own);
     const formChecks = partFormChecks(p, where + 'part ' + n + ': ', workType);
     const slideChecks = partSlideChecks(p, where + 'part ' + n + ': ', workType);
+    const sheetChecks = partSheetChecks(p, where + 'part ' + n + ': ', workType);
     const vocab = (p.vocabulary || []).join(', ');
     const body = [title + ' — Part ' + n + ' of ' + def.parts.length + ': ' + p.title]
       .concat(opening)
@@ -562,6 +610,7 @@ function buildParts(a, comps, promptMd, def) {
     // gets the defaults at run time, and the data stays as it was.
     if (formChecks) pa.formChecks = formChecks;
     if (slideChecks) pa.slideChecks = slideChecks;
+    if (sheetChecks) pa.sheetChecks = sheetChecks;
     const partComps = ids.map((id) => byId[id]);
     pa.definitionOfDone = applyTiers(pa, partComps,
       { primary: p.primary, secondary: p.secondary || [], tertiary: p.tertiary || [] }, '', vocab);
@@ -785,4 +834,5 @@ function main() {
 
 if (require.main === module) main();
 module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE, modeOf, plan8175, plan8177, buildParts, workTemplateKey, WORK_TYPES,
-  partFormChecks, FORM_QUESTION_TYPES, FORM_CHECK_KEYS, partSlideChecks, SLIDE_CHECK_COUNT_KEYS, SLIDE_CHECK_FLAG_KEYS, SLIDE_CHECK_RATIO_KEYS };
+  partFormChecks, FORM_QUESTION_TYPES, FORM_CHECK_KEYS, partSlideChecks, SLIDE_CHECK_COUNT_KEYS, SLIDE_CHECK_FLAG_KEYS, SLIDE_CHECK_RATIO_KEYS,
+  partSheetChecks, SHEET_CHECK_KEYS };
