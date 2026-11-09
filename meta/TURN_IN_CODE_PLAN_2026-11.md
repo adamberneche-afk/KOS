@@ -4,7 +4,11 @@
 2026-11-08. Stages 1 (PR #391), 2 (Flow 6, the turn-in check, PR #392),
 3 (the teacher's side, PR #393) and 4 (the Canvas side, PR #394) are built,
 behind a switch that is off; see "Build stages". The switch takes lessons
-and codes carry the lesson's number since 2026-11-08 ("The pilot"). The decisions below are the operator's. **No question is open.** [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
+and codes carry the lesson's number since 2026-11-08 ("The pilot").
+**Live 2026-11-09:** Flow 6 built in Studio and running, and the operator
+turned the code on for **every lesson in both courses**
+(`TURN_IN_CODE_COURSES` = `all`) instead of a few-lesson pilot; the Canvas
+assignments are switched by hand as each lesson comes up. The decisions below are the operator's. **No question is open.** [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and
 wins where the two disagree. No student names, emails, file IDs or
 ConfigIDs appear here, by design.
 
