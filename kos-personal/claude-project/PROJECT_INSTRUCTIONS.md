@@ -2,7 +2,7 @@
 
 Paste everything below the line into the Claude Project's **Instructions**.
 Replace the six `<link>` placeholders first (README, "Setting it up").
-Last pasted into the live Project on 2026-10-21 (`meta/HANDOFF_2026-10-22.md`), after the moral debt counter (SMP-019) and the family signal's two tiers; `node run.js --latest --instructions` produces the paste.
+Last pasted into the live Project on 2026-11-09, with `KOS_CODE_REPLY`'s link and `SESSION_LOG_FORMAT.md` re-uploaded beside it (the reply loop, SMP-020; checked against this file that day: the same text, links filled in). The paste before was 2026-10-21 (`meta/HANDOFF_2026-10-22.md`). `node run.js --latest --instructions` produces the paste.
 
 ---
 
