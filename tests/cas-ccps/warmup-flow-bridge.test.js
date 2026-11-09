@@ -44,7 +44,7 @@ const EXPOSE = [
   'wfbUnionIndicatorTags_', 'wfbHasPersistentGap_', 'wfbFormatCompetencyTexts_',
   'wfbFormatList_', 'wfbFormatEvaluationSignals_', 'wfbStripFence_',
   'wfbNormalizeDateIso_', 'wfbFormatReadableDate_', 'pivotFlagFor_', 'checkShadowMatrixInterrupts_',
-  '_wfbDiagnoseReturnRow_', 'checkFlowBinding', 'checkFlow2Binding', '_wfbIsCanaryLeftover_', 'wfbRecentBindingCounts_',
+  '_wfbDiagnoseReturnRow_', 'checkFlowBinding', 'checkFlow2Binding', '_wfbIsCanaryLeftover_', 'wfbRecentBindingCounts_', 'removeWarmUpFlowFixtures',
   'WFB_ARCHETYPES', 'WFB_TRIGGER_STATUS', 'WFB_PROFILE_SNAP', 'WFB_RET',
   'WFB_RETURN_HEADERS', 'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS',
   'WFB_INPUT_TABS', 'WFB_RETURN_TAB',
@@ -1021,6 +1021,23 @@ test('a canary\'s leftover return row is not a binding problem; a live canary ro
   // A real misbinding still counts.
   ret.appendRow(mk('WUQ-404', new Date('2026-11-02T11:00:00Z')));
   assert.deepEqual(JSON.parse(JSON.stringify(exported.wfbRecentBindingCounts_(ss, now, 24 * 3600 * 1000))), { recent: 2, bad: 1 });
+});
+
+// 2026-11-09: removeWarmUpFlowFixtures() skipped the 11-01 canary's return
+// row that checkFlowBinding() had found by its trimmed QueueID.
+test('removeWarmUpFlowFixtures removes a canary row whose ID carries stray spaces, and nothing else', () => {
+  const { exported, sandbox } = load();
+  const R = exported.WFB_RET;
+  const ss = sandbox.SpreadsheetApp.create('Ledger');
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  const ret = ss.insertSheet(exported.WFB_RETURN_TAB);
+  ret.appendRow(exported.WFB_RETURN_HEADERS);
+  const mk = (id) => { const r = new Array(exported.WFB_RETURN_HEADERS.length).fill(''); r[R.FLOW] = 3; r[R.QUEUE_ID] = id; return r; };
+  ret.appendRow(mk(' WUQ-CANARY-20261101-145926 '));
+  ret.appendRow(mk('WUQ-1'));
+  assert.equal(exported.removeWarmUpFlowFixtures().returns, 1);
+  const left = ret.getRange(2, 1, ret.getLastRow() - 1, exported.WFB_RETURN_HEADERS.length).getValues();
+  assert.deepEqual(left.map((r) => r[R.QUEUE_ID]), ['WUQ-1']);
 });
 
 // ── D6 (2026-10-24): Mode C and the blank lines ──────────────────────────────

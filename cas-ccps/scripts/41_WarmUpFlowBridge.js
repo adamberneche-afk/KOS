@@ -2449,7 +2449,7 @@ function removeWarmUpFlowFixtures() {
   if (wqSheet && wqSheet.getLastRow() > 1) {
     const data = wqSheet.getRange(2, 1, wqSheet.getLastRow() - 1, WQ25_COL_COUNT).getValues();
     for (let i = data.length - 1; i >= 0; i--) {
-      if (String(data[i][WQ25_QUEUE_ID] || "").indexOf(WFB_CANARY_PREFIX) !== 0) continue;
+      if (String(data[i][WQ25_QUEUE_ID] || "").trim().indexOf(WFB_CANARY_PREFIX) !== 0) continue;
       wqSheet.deleteRow(i + 2);
       removed.queue++;
     }
@@ -2460,7 +2460,7 @@ function removeWarmUpFlowFixtures() {
     if (!sheet || sheet.getLastRow() <= 1) return;
     const ids = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues();
     for (let i = ids.length - 1; i >= 0; i--) {
-      if (String(ids[i][0] || "").indexOf(WFB_CANARY_PREFIX) !== 0) continue;
+      if (String(ids[i][0] || "").trim().indexOf(WFB_CANARY_PREFIX) !== 0) continue;
       sheet.deleteRow(i + 2);
       removed.inputs++;
     }
@@ -2470,7 +2470,9 @@ function removeWarmUpFlowFixtures() {
   if (returns && returns.getLastRow() > 1) {
     const data = returns.getRange(2, 1, returns.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues();
     for (let i = data.length - 1; i >= 0; i--) {
-      if (String(data[i][WFB_RET.QUEUE_ID] || "").indexOf(WFB_CANARY_PREFIX) !== 0) continue;
+      // Trimmed (2026-11-09): checkFlowBinding() found the 11-01 canary's
+      // row by its trimmed QueueID while this skipped it.
+      if (String(data[i][WFB_RET.QUEUE_ID] || "").trim().indexOf(WFB_CANARY_PREFIX) !== 0) continue;
       returns.deleteRow(i + 2);
       removed.returns++;
     }
