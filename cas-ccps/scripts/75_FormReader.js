@@ -2,7 +2,7 @@
 // FILE: 75_FormReader.js
 // BOUND TO: Student Dashboard web app (cas-ccps:student-dashboard), where
 //   Submit runs, as the deploying account (USER_DEPLOYING), an editor of
-//   every student form copy since Phase 4a (02's _intakeForm_). The only
+//   every student form copy since Phase 4a (02's _intakeWorkFile_). The only
 //   cas-ccps file that calls FormApp; the project's manifest has the forms
 //   scope for it.
 //

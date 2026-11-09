@@ -148,14 +148,16 @@ test('marking the survey part a form changes only that part: workFileNow "form" 
   Object.keys(ctx.P).filter((k) => k !== KEY).forEach((k) => ctx.P[k].forEach((p) => assert.equal(p.workFileNow, 'doc', p.key)));
 });
 
-test('the builder refuses a form part whose task still says to paste a link, a workType not doc or form, or one unlike its workFile', () => {
+test('the builder refuses a form part whose task still says to paste a link, a workType not doc, form or slides, or one unlike its workFile', () => {
   // The live prompt lost the paste line when the part was marked; put it back.
   assert.throws(() => buildWithEdits(() => {},
     (md) => md.replace("Turn off email collection in the form's settings.",
       "Turn off email collection in the form's settings. Paste your form's link into this document.")),
     /part 2: a form part's task still says to paste a link into this document/);
+  assert.throws(() => buildWithEdits((all) => { all[KEY].parts[1].workType = 'sheet'; delete all[KEY].parts[1].formChecks; }),
+    /workType "sheet" is not one of doc, form, slides/);
   assert.throws(() => buildWithEdits((all) => { all[KEY].parts[1].workType = 'slides'; delete all[KEY].parts[1].formChecks; }),
-    /workType "slides" is not one of doc, form/);
+    /part 2: workType "slides" but its workFile is "form"/);
   assert.throws(() => buildWithEdits((all) => { all[KEY].parts[0].workType = 'form'; }),
     /part 1: workType "form" but its workFile is "doc"/);
   assert.equal(gen.workTemplateKey('8175-L24-P3'), 'WORK_TEMPLATE_8175_L24_P3');

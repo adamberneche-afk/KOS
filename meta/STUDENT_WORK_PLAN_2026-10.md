@@ -376,6 +376,26 @@ recommended checks for 8177 Market Research Part 2 (`{"minQuestions": 3,
 "collectsEmail": false}`) are set with its `workType` in a later small PR,
 after the push.
 
+**Phase 4c, built 2026-11-09 (PR #415), not yet pushed.** A part's
+`workType` may be `slides` where its planned `workFile` is (the Canva and
+Drawings parts were planned so). Intake copies the part's blank template
+deck (one empty title slide) per student with Drive, the teacher a
+commenter, the Ledger URL a `/presentation/d/` link, and a snapshot doc
+beside it, listed in `FormSnapshots` (its columns unchanged, now holding a
+form or deck copy). Submit runs the Slides reader (`77_SlidesReader.js`,
+Student Dashboard, which gets the `presentations` scope: one re-consent):
+each slide's title, text lines, notes, images, linked charts and videos,
+and, for a `minContrast` check only, text and background colors; a test
+holds it to SlidesApp getters. `slideChecks`: `minSlides`, `maxSlides`,
+`notesOnEverySlide`, `minImages`, `maxImagesPerSlide`, `maxLinesPerSlide`
+(the title not a line), `maxWordsPerLine` (the title included),
+`requireChart`, `titleSlide`, `minContrast` (WCAG ratio; picture
+backgrounds and text over pictures skipped). Default: one slide with
+something on it. A failure is a "Not yet" naming the slide; a pass rewrites
+the snapshot doc Flow 2 reads. Nothing is marked: the first planned use is
+a new Part 6 "The Pitch" for 8177 "The Buyer's Product Pitch" (3–5 slides,
+notes on every slide, the Rule of Six, contrast 4.5), in a follow-up PR.
+
 ## Where the costs land
 
 | Change | Student | Teacher | System |
@@ -413,7 +433,7 @@ Nov 2's measurement) and Studio's limit on runs per day is checked.
 | 1 | The process reflection on Submit: the question frames, the selection, `ReflectionLog`, Flow 2 reads it, Student Context shows it. Behind a setting, off until grades are in (Oct 30) | Week of Oct 26, on after Oct 30 |
 | 2 | The feedback reflection, from `CompetencyEvidence`; Flow 2 checks it was carried out | **Built 2026-10-27** (behind the same setting): a resubmission after the primary wasn't met asks F1 to F3; Flow 2 says whether the revision carries it out |
 | 3 | Parts in both courses: the builder splits tasks, a ConfigID and file per part, made with the lesson, unlocked on the primary, both dashboards group them, the teacher's unlock, cartridges list them | **Started 2026-10-27** at the operator's word, alongside the measurement: 3a the data (8177 Market Research, Appendix B), 3b made and unlocked (68); 3c (2026-10-28) both dashboards group parts, the teacher's unlock button, the lesson doc counts parts; Flow 2 given the earlier parts (2026-10-28, the EARLIER PARTS block); the other 34 lessons' parts drafted and approved together (2026-10-28, `meta/LESSON_PARTS_2026-10.md`), to be edited as they are taught |
-| 4 | Work files by type: Forms, then Slides, then Sheets; Canva parts to Slides | After Phase 3. **4a** (a part's `workType`, the form copies) PR #402; **4b** (the Form reader at Submit, `formChecks`, the snapshot doc Flow 2 reads) PR #404, 2026-11-08 |
+| 4 | Work files by type: Forms, then Slides, then Sheets; Canva parts to Slides | After Phase 3. **4a** (a part's `workType`, the form copies) PR #402; **4b** (the Form reader at Submit, `formChecks`, the snapshot doc Flow 2 reads) PR #404, 2026-11-08; **4c** (Slides: the deck copies, the Slides reader, `slideChecks`) PR #415, 2026-11-09 |
 
 Phases 1 and 2 don't depend on 3: they work on today's one-doc lessons (a
 whole lesson is one part) and carry over unchanged. Phase 4 needs Phase 3's

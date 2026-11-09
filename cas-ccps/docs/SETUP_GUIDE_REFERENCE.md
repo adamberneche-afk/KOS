@@ -25,7 +25,7 @@ what the project is bound to (`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md` §3.2b).
 | `family-sentinel` | Family Mail Sentinel spreadsheet, a private sheet the teacher owns (container-bound). Reads the teacher's Gmail through the advanced Gmail service; the only cas-ccps project with a Gmail scope, on purpose. | sheets | 4 | push (HEAD is what runs) | yes |
 | `master-student-template` | Master Student Template Google Doc (container-bound) | docs | 5 | push (HEAD is what runs) | yes |
 | `rubric-response-sheet` | Rubric Response Sheet (cloned per teacher) | sheets | 4 | push (HEAD is what runs) | yes |
-| `student-dashboard` | Standalone web app | standalone | 9 | promote (web app: push, version, move each listed deployment) | yes |
+| `student-dashboard` | Standalone web app | standalone | 10 | promote (web app: push, version, move each listed deployment) | yes |
 | `studio-steps` | Standalone Workspace Studio add-on project (not bound to any spreadsheet, so it's installable across every flow rather than tied to one document) — the custom steps behind Flows 1-5 | standalone | 9 | not pushed by run.js | yes |
 | `teacher-dashboard` | Standalone web app | standalone | 20 | promote (web app: push, version, move each listed deployment) | yes |
 | `teacher-matrix-sheet` | Teacher Matrix Sheet (cloned per teacher) | sheets | 4 | push (HEAD is what runs) | yes |
@@ -37,7 +37,7 @@ Files per project (a file listed under more than one project is pasted into each
 - `family-sentinel`: `00_SharedConfig.js`, `60_FamilyMailSentinel.js`, `61_FamilyMailPrompt.js`, `62_DeployVersionMarker_FamilySentinel.js`
 - `master-student-template`: `00_SharedConfig.js`, `01_StudentDoc_ContainerScript.js`, `09_StudentRevisionGuidance_M1Base.js`, `17_MasterStudentTemplate.js`, `45_DeployVersionMarker_MasterStudentTemplate.js`
 - `rubric-response-sheet`: `00_SharedConfig.js`, `05_TeacherIntakePipeline.js`, `19_ClonedSheetConfig.js`, `46_DeployVersionMarker_RubricResponseSheet.js`
-- `student-dashboard`: `00_SharedConfig.js`, `00b_ScriptOwnerGuard.js`, `13_StudentDashboard.js`, `13b_StudentDashboardDemoLessons.js`, `49_DeployVersionMarker_StudentDashboard.js`, `63_DocHeader.js`, `71_TurnInCodes.js`, `71b_TurnInStudent.js`, `75_FormReader.js`
+- `student-dashboard`: `00_SharedConfig.js`, `00b_ScriptOwnerGuard.js`, `13_StudentDashboard.js`, `13b_StudentDashboardDemoLessons.js`, `49_DeployVersionMarker_StudentDashboard.js`, `63_DocHeader.js`, `71_TurnInCodes.js`, `71b_TurnInStudent.js`, `75_FormReader.js`, `77_SlidesReader.js`
 - `studio-steps`: `StepsShared.gs`, `CommitRubricDraftStep.gs`, `ReadInstructorConfigStep.gs`, `CommitStudentEvaluationStep.gs`, `SelectWarmUpArchetypeStep.gs`, `CreateWarmUpDocStep.gs`, `ExtractWarmUpPromptTextStep.gs`, `FinalizeWarmUpScoreStep.gs`, `ExtractBridgeInputsStep.gs`
 - `teacher-dashboard`: `00_SharedConfig.js`, `00b_ScriptOwnerGuard.js`, `07_TeacherDashboard.js`, `22_LessonContextHandler.js`, `23_StudentProfileManager.js`, `26_CompetencyAlignmentLog.js`, `27_LessonFrameGenerator.js`, `29_StudentContextAggregator.js`, `31_PacingGuideManager.js`, `32_CompetencyRubricImporter.js`, `36_WeeklyParentReport.js`, `48_DeployVersionMarker_TeacherDashboard.js`, `55b_LessonAssignmentData.js`, `65_LessonDrafts.js`, `66_LessonDoc.js`, `67_AgendaDeck.js`, `68_LessonParts.js`, `71_TurnInCodes.js`, `73_TurnInTeacherPanel.js`, `74_TurnInCanvasCheck.js`
 - `teacher-matrix-sheet`: `00_SharedConfig.js`, `08_TeacherConfirmationStep.js`, `19_ClonedSheetConfig.js`, `47_DeployVersionMarker_TeacherMatrixSheet.js`
@@ -83,7 +83,7 @@ push folder. A new scope means every user of that project approves again after t
 ### `student-dashboard`
 
 - Time zone: America/New_York; runtime: V8
-- OAuth scopes: `spreadsheets`, `documents`, `forms`, `userinfo.email`, `script.external_request`, `script.scriptapp`
+- OAuth scopes: `spreadsheets`, `documents`, `forms`, `presentations`, `userinfo.email`, `script.external_request`, `script.scriptapp`
 - Advanced services: none
 - Libraries: none
 - Web app: executes as `USER_DEPLOYING`, access `DOMAIN`

@@ -383,18 +383,28 @@ function plan8177(text, warm) {
 const PARTS_FILE = path.join(LESSONS, 'PARTS.json');
 const lessonParts = () => (fs.existsSync(PARTS_FILE) ? JSON.parse(fs.readFileSync(PARTS_FILE, 'utf8')) : {});
 
-// A part's workType (Phase 4a, meta/STUDENT_WORK_PLAN_2026-10.md §5): what
-// the rollout makes for each student. "doc" (the default, also when unset)
-// or "form", a copy of the part's template form. A part becomes a form only
-// when its workFile is "form" too, and its task no longer tells the student
-// to paste a link into a document (Appendix B: the form is the work file).
-const WORK_TYPES = ['doc', 'form'];
+// A part's workType (Phase 4a, meta/STUDENT_WORK_PLAN_2026-10.md §5; Slides,
+// Phase 4c): what the rollout makes for each student. "doc" (the default,
+// also when unset), "form", a copy of the part's template form, or "slides",
+// a copy of its template deck. A part becomes a form or a deck only when its
+// planned workFile is the same ("form", "slides"; the Canva and Drawings
+// parts were planned as "slides", §5), and its task no longer tells the
+// student to put the work, or its link, into a document (the copy is the
+// work file).
+const WORK_TYPES = ['doc', 'form', 'slides'];
+const INTO_THIS_DOCUMENT = {
+  form: /paste[^.]*link[^.]*into this document/i,
+  slides: /\b(paste|add|put|copy|insert)\b[^.]*\b(in|into|to) this document/i,
+};
 function partWorkType(p, at, own) {
   const t = p.workType === undefined ? 'doc' : p.workType;
   if (WORK_TYPES.indexOf(t) === -1) throw new Error(at + 'workType "' + t + '" is not one of ' + WORK_TYPES.join(', '));
   if (t !== 'doc' && (p.workFile || 'doc') !== t) throw new Error(at + 'workType "' + t + '" but its workFile is "' + (p.workFile || 'doc') + '"');
-  if (t === 'form' && own.some((x) => /paste[^.]*link[^.]*into this document/i.test(x))) {
+  if (t === 'form' && own.some((x) => INTO_THIS_DOCUMENT.form.test(x))) {
     throw new Error(at + 'a form part\'s task still says to paste a link into this document; take that sentence out of the prompt');
+  }
+  if (t === 'slides' && own.some((x) => INTO_THIS_DOCUMENT.slides.test(x))) {
+    throw new Error(at + 'a Slides part\'s task still says to add the work or its link to this document; take that sentence out of the prompt');
   }
   return t;
 }
@@ -448,6 +458,48 @@ function partFormChecks(p, at, workType) {
   return out;
 }
 
+// A Slides part's exact checks at Submit (Phase 4c, 2026-11-09): the Student
+// Dashboard's Slides reader (cas-ccps 77) checks them before Flow 2 runs; a
+// failure is a plain "Not yet" naming the slide. Optional; unset, a Slides
+// part gets the defaults (00's SLIDE_CHECK_DEFAULTS: at least one slide, and
+// something on it). Only on a Slides part. Keys (00's SLIDE_CHECK_COUNT_KEYS
+// and SLIDE_CHECK_FLAG_KEYS; a test holds the lists equal):
+//   minSlides, maxSlides             whole numbers 1-100 (max at least min)
+//   minImages                        whole number 1-100, the whole deck
+//   maxImagesPerSlide                whole number 1-100
+//   maxLinesPerSlide                 whole number 1-100: lines of body text,
+//                                    the title not counted
+//   maxWordsPerLine                  whole number 1-100, the title's lines too
+//   notesOnEverySlide, requireChart, titleSlide   true (false is the same as unset)
+//   minContrast                      a number above 1, up to 21: the WCAG
+//                                    contrast ratio of text to its background
+const SLIDE_CHECK_COUNT_KEYS = ['minSlides', 'maxSlides', 'minImages', 'maxImagesPerSlide', 'maxLinesPerSlide', 'maxWordsPerLine'];
+const SLIDE_CHECK_FLAG_KEYS = ['notesOnEverySlide', 'requireChart', 'titleSlide'];
+const SLIDE_CHECK_RATIO_KEYS = ['minContrast'];
+const SLIDE_CHECK_KEYS = SLIDE_CHECK_COUNT_KEYS.concat(SLIDE_CHECK_FLAG_KEYS, SLIDE_CHECK_RATIO_KEYS);
+function partSlideChecks(p, at, workType) {
+  if (p.slideChecks === undefined) return undefined;
+  const c = p.slideChecks;
+  if (workType !== 'slides') throw new Error(at + 'slideChecks is only for a Slides part (workType "slides")');
+  if (!c || typeof c !== 'object' || Array.isArray(c)) throw new Error(at + 'slideChecks must be an object');
+  const unknown = Object.keys(c).filter((k) => SLIDE_CHECK_KEYS.indexOf(k) === -1);
+  if (unknown.length) throw new Error(at + 'slideChecks has ' + unknown.join(', ') + '; the keys are ' + SLIDE_CHECK_KEYS.join(', '));
+  const out = {};
+  SLIDE_CHECK_KEYS.forEach((k) => {
+    if (c[k] === undefined) return;
+    if (SLIDE_CHECK_COUNT_KEYS.includes(k)) {
+      if (!Number.isInteger(c[k]) || c[k] < 1 || c[k] > 100) throw new Error(at + 'slideChecks.' + k + ' must be a whole number from 1 to 100');
+    } else if (SLIDE_CHECK_RATIO_KEYS.includes(k)) {
+      if (typeof c[k] !== 'number' || !Number.isFinite(c[k]) || c[k] <= 1 || c[k] > 21) throw new Error(at + 'slideChecks.' + k + ' must be a contrast ratio above 1, up to 21 (4.5 is WCAG AA)');
+    } else if (typeof c[k] !== 'boolean') {
+      throw new Error(at + 'slideChecks.' + k + ' must be true or false');
+    }
+    out[k] = c[k];
+  });
+  if (out.maxSlides !== undefined && out.maxSlides < (out.minSlides || 1)) throw new Error(at + 'slideChecks.maxSlides is less than minSlides');
+  return out;
+}
+
 // "WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2" for that part.
 function workTemplateKey(partKey) {
   return 'WORK_TEMPLATE_' + String(partKey).toUpperCase().replace(/[^A-Z0-9]+/g, '_');
@@ -481,6 +533,7 @@ function buildParts(a, comps, promptMd, def) {
     const n = i + 1;
     const workType = partWorkType(p, where + 'part ' + n + ': ', own);
     const formChecks = partFormChecks(p, where + 'part ' + n + ': ', workType);
+    const slideChecks = partSlideChecks(p, where + 'part ' + n + ': ', workType);
     const vocab = (p.vocabulary || []).join(', ');
     const body = [title + ' — Part ' + n + ' of ' + def.parts.length + ': ' + p.title]
       .concat(opening)
@@ -496,18 +549,19 @@ function buildParts(a, comps, promptMd, def) {
       partOf: a.key, part: n, partCount: def.parts.length, partTitle: p.title,
       workFile: p.workFile || 'doc',
       // What the rollout makes now: the part's workType (Phase 4a, 2026-11-08).
-      // Unset, a part is a doc, and a Form part is a doc with the form's link
-      // pasted in, as its task says.
+      // Unset, a part is a doc, and a Form or Slides part is a doc with the
+      // file's link pasted in, as its task says.
       workFileNow: workType,
       promptText: body.join('\n\n'),
       criteriaOverride: p.criteria,
     };
-    // A form part's template: the Script Property of this name holds the
-    // template form's file ID (as MASTER_STUDENT_TEMPLATE_ID holds the doc's).
-    if (workType === 'form') pa.workTemplateKey = workTemplateKey(pa.key);
+    // A form or Slides part's template: the Script Property of this name
+    // holds the template file's ID (as MASTER_STUDENT_TEMPLATE_ID holds the doc's).
+    if (workType !== 'doc') pa.workTemplateKey = workTemplateKey(pa.key);
     // Its exact checks at Submit (Phase 4b), only when set: an unset part
     // gets the defaults at run time, and the data stays as it was.
     if (formChecks) pa.formChecks = formChecks;
+    if (slideChecks) pa.slideChecks = slideChecks;
     const partComps = ids.map((id) => byId[id]);
     pa.definitionOfDone = applyTiers(pa, partComps,
       { primary: p.primary, secondary: p.secondary || [], tertiary: p.tertiary || [] }, '', vocab);
@@ -731,4 +785,4 @@ function main() {
 
 if (require.main === module) main();
 module.exports = { build, dataFile, slug, studentPrompt, videoLinks, withVideos, addVideos, VIDEO_FILE, modeOf, plan8175, plan8177, buildParts, workTemplateKey, WORK_TYPES,
-  partFormChecks, FORM_QUESTION_TYPES, FORM_CHECK_KEYS };
+  partFormChecks, FORM_QUESTION_TYPES, FORM_CHECK_KEYS, partSlideChecks, SLIDE_CHECK_COUNT_KEYS, SLIDE_CHECK_FLAG_KEYS, SLIDE_CHECK_RATIO_KEYS };

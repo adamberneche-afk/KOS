@@ -1,7 +1,7 @@
 'use strict';
 // Plan L7 (2026-11-08), Gmail noise. Two parts:
 //   1. The teacher's share of each student doc, form copy and snapshot doc
-//      (02's shareToStudentDrive_, _intakeForm_, _makeFormSnapshotDoc_) and
+//      (02's shareToStudentDrive_, _intakeWorkFile_, _makeFormSnapshotDoc_) and
 //      the teacher's commenter share when a doc locks (04) go through
 //      shareWithoutEmail_ (02): the Drive advanced service with
 //      sendNotificationEmail false, DriveApp only when the service is off

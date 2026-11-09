@@ -449,3 +449,72 @@ const DASH_DEMO_PARTS_LESSON = {
     }
   ]
 };
+
+// A lesson in parts with a Slides part, for the demo's slides card (Phase 4c).
+const DASH_DEMO_SLIDES_LESSON = {
+  "code": "8177",
+  "key": "8177-promotional-flyer-design",
+  "lessonName": "Venue Promotion & Flyer Design",
+  "parts": [
+    {
+      "n": 1,
+      "title": "Design It",
+      "workType": "slides",
+      "key": "8177-promotional-flyer-design-P1",
+      "unitName": "Venue Promotion & Flyer Design — Part 1: Design It",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-1 Demonstrate creativity and innovation.",
+        "8177-18 Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-1",
+        "8177-18",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 2,
+      "title": "Explain It",
+      "workType": "doc",
+      "key": "8177-promotional-flyer-design-P2",
+      "unitName": "Venue Promotion & Flyer Design — Part 2: Explain It",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-21 Demonstrate reading and writing skills.",
+        "Uses the lesson vocabulary accurately: contrast, visual hierarchy, negative space, headline.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-21",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "n": 3,
+      "title": "The 10-Foot Test",
+      "workType": "doc",
+      "key": "8177-promotional-flyer-design-P3",
+      "unitName": "Venue Promotion & Flyer Design — Part 3: The 10-Foot Test",
+      "subject": "Marketing (CTE)",
+      "milestones": [
+        "8177-1 Demonstrate creativity and innovation.",
+        "8177-14 Manage time and resources.",
+        "Uses specific examples from the student's own work, not general statements.",
+        "Completes every part of the task the assignment asks for."
+      ],
+      "milestoneCompetencyIds": [
+        "8177-1",
+        "8177-14",
+        "",
+        ""
+      ]
+    }
+  ]
+};

@@ -626,6 +626,26 @@ Retention: a record in the schedule (57), kept as long as the Ledger
 student's other work files; a disposition of a row trashes its snapshot
 doc with it.
 
+### Student work decks and their snapshot docs (S02, S13/S77, Phase 4c)
+A part marked `workType: "slides"` (built 2026-11-09; none marked yet)
+gets each student a copy of its template deck, made, owned, kept and
+retained exactly as a form copy (above), except that the assigning teacher
+is a **commenter** on it (as on a doc), not an editor. Intake never opens
+it (Drive only). The Slides reader at Submit (`77_SlidesReader.js`, Student
+Dashboard, the system account) reads the student's own deck: each slide's
+title, text and speaker notes, how many images, linked charts and videos
+it has, and, only for a part with a `minContrast` check, the text and
+background colors. It never reads the deck's name (the copy is named after
+the student) or an image's content, and writes nothing to the deck; a test
+holds every SlidesApp call to a list of getters. On a pass it writes a
+plain-text account into the deck's snapshot doc, made and shared at intake
+as a form's is, and listed in the same **FormSnapshots** tab (since Phase
+4c its `FormFileID` column holds a form or deck copy's ID, `FormChecks` the
+part's checks for its type; still IDs and checks only). A deck's text is
+the student's own work, like a doc's; a deck can hold pictures of other
+people, which are counted, never copied or described. Retention: as the
+form copies and their snapshot docs.
+
 ### PartUnlocks (S68)
 One row per part opened for a student (2026-10-27): when, the student's
 workspace ConfigID (as StudentAssignments holds it), the part's ConfigID,

@@ -11,7 +11,8 @@
 // functions call (PropertiesService, SpreadsheetApp, Session) and has grown
 // one mock at a time as tests needed them. Now also: CacheService,
 // LockService, AddOnsResponseService, DriveApp, DocumentApp, FormApp
-// (reading a form's structure only; see makeFormAppMock), Utilities
+// (reading a form's structure only; see makeFormAppMock), SlidesApp (a
+// deck's structure only; makeSlidesAppMock), Utilities
 // (unzip only for fakeZipBlob(): see there), Logger, MailApp and ScriptApp.
 //
 // GmailApp and ContentService remain deliberately unmocked — loading a file
@@ -1152,6 +1153,142 @@ function makeFormAppMock() {
   };
 }
 
+// SlidesApp — reading a deck's structure only. First needed by cas-ccps
+// 77_SlidesReader.js (Phase 4c, the Slides reader at Submit). A test builds
+// a deck from a plain spec with SlidesApp._add(id, spec):
+//   { slides: [{ title, titleType ("TITLE" default, or "CENTERED_TITLE"),
+//                titleColor, texts: [string | { text, color, runs: [{ text,
+//                color }], fill, fillAlpha, fillType, box }], subtitle,
+//                notes, images, charts, videos (counts), imageBoxes: [box],
+//                tables: [[[cell]]], groups: [{ texts, images }],
+//                wordArt: [string], lines,
+//                background, layoutBackground, masterBackground, theme }] }
+// A color is "#rrggbb", "theme:DARK1" (resolved through theme, default
+// DARK1 #000000 / LIGHT1 #ffffff), or "none" (a getter that returns null);
+// unset text is theme:DARK1. A background is a color, "picture", or unset
+// (inherits). A box is { left, top, width, height }. Elements are listed
+// title, subtitle, images with a box, texts, tables, word art, groups, the
+// other images, charts, videos, lines (z-order: later is on top). Only the
+// real API's getters exist; setters, the deck's name and everything else
+// are absent, so code that calls one throws a TypeError here. Every call is
+// recorded in SlidesApp._calls ("deck.getSlides", "element.asShape",
+// "text.asString"…), so a test can hold the reader to a fixed list.
+function makeSlidesAppMock() {
+  const decks = new Map();
+  const calls = [];
+  const rec = (name, fn) => (...a) => { calls.push(name); return fn(...a); };
+  const enumOf = (names) => { const e = {}; names.forEach((t) => { e[t] = t; }); return e; };
+  const PageElementType = enumOf(['GROUP', 'IMAGE', 'LINE', 'SHAPE', 'SHEETS_CHART', 'SPEAKER_SPOTLIGHT', 'TABLE',
+    'UNSUPPORTED', 'VIDEO', 'WORD_ART']);
+  const PlaceholderType = enumOf(['BODY', 'CENTERED_TITLE', 'CHART', 'DATE_AND_TIME', 'FOOTER', 'HEADER', 'NONE', 'OBJECT',
+    'PICTURE', 'SLIDE_IMAGE', 'SLIDE_NUMBER', 'SUBTITLE', 'TABLE', 'TITLE', 'UNSUPPORTED']);
+  const ColorType = enumOf(['RGB', 'THEME', 'UNSUPPORTED']);
+  const PageBackgroundType = enumOf(['NONE', 'PICTURE', 'SOLID', 'UNSUPPORTED']);
+  const FillType = enumOf(['NONE', 'SOLID', 'UNSUPPORTED']);
+  const THEME = { DARK1: '#000000', LIGHT1: '#ffffff', DARK2: '#333333', LIGHT2: '#eeeeee', ACCENT1: '#4285f4' };
+  function color(c) {
+    if (c === 'none' || c === null) return null;
+    const v = c === undefined ? 'theme:DARK1' : c;
+    if (v.startsWith('theme:')) {
+      return { getColorType: rec('color.getColorType', () => 'THEME'),
+        asThemeColor: rec('color.asThemeColor', () => ({ getThemeColorType: rec('theme.getThemeColorType', () => v.slice(6)) })) };
+    }
+    return { getColorType: rec('color.getColorType', () => 'RGB'),
+      asRgbColor: rec('color.asRgbColor', () => ({ asHexString: rec('rgb.asHexString', () => v.toUpperCase()) })) };
+  }
+  const textRange = (t, runs) => ({
+    // Real Slides text always ends with a newline.
+    asString: rec('text.asString', () => (t === undefined || t === null ? '' : String(t)) + '\n'),
+    getRuns: rec('text.getRuns', () => (runs || [{ text: t }]).map((r) => ({
+      asString: rec('run.asString', () => String(r.text === undefined ? '' : r.text)),
+      getTextStyle: rec('run.getTextStyle', () => ({ getForegroundColor: rec('style.getForegroundColor', () => color(r.color)) })),
+    }))),
+  });
+  const geometry = (box) => {
+    const b = box || {};
+    return { getLeft: rec('element.getLeft', () => b.left || 0), getTop: rec('element.getTop', () => b.top || 0),
+      getWidth: rec('element.getWidth', () => (box ? b.width : 0)), getHeight: rec('element.getHeight', () => (box ? b.height : 0)) };
+  };
+  function shape(t, ph) {
+    const o = typeof t === 'object' && t !== null ? t : { text: t };
+    const runs = o.runs || [{ text: o.text, color: o.color }];
+    const text = o.runs ? o.runs.map((r) => r.text).join('') : o.text;
+    return {
+      getText: rec('shape.getText', () => textRange(text, runs)),
+      getPlaceholderType: rec('shape.getPlaceholderType', () => ph),
+      getFill: rec('shape.getFill', () => ({
+        getType: rec('fill.getType', () => o.fillType || (o.fill ? 'SOLID' : 'NONE')),
+        getSolidFill: rec('fill.getSolidFill', () => ({ getColor: rec('solidFill.getColor', () => color(o.fill)),
+          getAlpha: rec('solidFill.getAlpha', () => (o.fillAlpha === undefined ? 1 : o.fillAlpha)) })),
+      })),
+      _box: o.box || { left: 0, top: 0, width: 100, height: 50 },
+    };
+  }
+  function element(type, inner, box) {
+    const o = Object.assign({ getPageElementType: rec('element.getPageElementType', () => type) }, geometry(box || (inner && inner._box)));
+    if (type === 'SHAPE') o.asShape = rec('element.asShape', () => inner);
+    if (type === 'GROUP') o.asGroup = rec('element.asGroup', () => inner);
+    if (type === 'TABLE') o.asTable = rec('element.asTable', () => inner);
+    if (type === 'WORD_ART') o.asWordArt = rec('element.asWordArt', () => inner);
+    return o;
+  }
+  const n = (k) => Array.from({ length: k || 0 });
+  function elements(sp) {
+    const out = [];
+    if (sp.title !== undefined) out.push(element('SHAPE', shape({ text: sp.title, color: sp.titleColor }, sp.titleType || 'TITLE')));
+    if (sp.subtitle !== undefined) out.push(element('SHAPE', shape(sp.subtitle, 'SUBTITLE')));
+    (sp.imageBoxes || []).forEach((box) => out.push(element('IMAGE', null, box)));
+    (sp.texts || []).forEach((t) => out.push(element('SHAPE', shape(t, 'NONE'))));
+    (sp.tables || []).forEach((rows) => out.push(element('TABLE', {
+      getNumRows: rec('table.getNumRows', () => rows.length),
+      getNumColumns: rec('table.getNumColumns', () => (rows[0] || []).length),
+      getCell: rec('table.getCell', (r, c) => ({ getText: rec('cell.getText', () => textRange(rows[r][c])) })),
+    })));
+    (sp.wordArt || []).forEach((t) => out.push(element('WORD_ART', { getRenderedText: rec('wordArt.getRenderedText', () => t) })));
+    (sp.groups || []).forEach((g) => out.push(element('GROUP', { getChildren: rec('group.getChildren', () => elements(g)) })));
+    n(sp.images).forEach(() => out.push(element('IMAGE')));
+    n(sp.charts).forEach(() => out.push(element('SHEETS_CHART')));
+    n(sp.videos).forEach(() => out.push(element('VIDEO')));
+    n(sp.lines).forEach(() => out.push(element('LINE')));
+    return out;
+  }
+  function background(bg) {
+    return {
+      getType: rec('background.getType', () => (bg === undefined ? 'NONE' : bg === 'picture' ? 'PICTURE' : 'SOLID')),
+      getSolidFill: rec('background.getSolidFill', () => ({ getColor: rec('solidFill.getColor', () => color(bg)),
+        getAlpha: rec('solidFill.getAlpha', () => 1) })),
+    };
+  }
+  function slide(sp) {
+    const theme = Object.assign({}, THEME, sp.theme || {});
+    return {
+      getPageElements: rec('slide.getPageElements', () => elements(sp)),
+      getNotesPage: rec('slide.getNotesPage', () => ({
+        getSpeakerNotesShape: rec('notes.getSpeakerNotesShape', () => ({ getText: rec('shape.getText', () => textRange(sp.notes || '')) })),
+      })),
+      getBackground: rec('slide.getBackground', () => background(sp.background)),
+      getColorScheme: rec('slide.getColorScheme', () => ({
+        getConcreteColor: rec('scheme.getConcreteColor', (t) => color(theme[t] || '#000000')),
+      })),
+      getLayout: rec('slide.getLayout', () => ({
+        getBackground: rec('layout.getBackground', () => background(sp.layoutBackground)),
+        getMaster: rec('layout.getMaster', () => ({ getBackground: rec('master.getBackground', () => background(sp.masterBackground)) })),
+      })),
+    };
+  }
+  return {
+    PageElementType, PlaceholderType, ColorType, PageBackgroundType, FillType,
+    openById: rec('SlidesApp.openById', (id) => {
+      if (!decks.has(id)) throw new Error('Requested entity was not found.');
+      const spec = decks.get(id);
+      return { getSlides: rec('deck.getSlides', () => (spec.slides || []).map(slide)) };
+    }),
+    // Test setup, not a real API.
+    _add(id, spec) { decks.set(id, spec); return id; },
+    _calls: calls,
+  };
+}
+
 // Real Apps Script API — Utilities.formatDate(date, timeZone, format).
 // Implements the SimpleDateFormat tokens this repo actually uses (yyyy,
 // MMMM, MMM, MM, dd, d, EEEE, EEE, HH, h, mm, ss, a) — enough to exercise real
@@ -1350,6 +1487,7 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     DriveApp: driveAppMock,
     DocumentApp: makeDocumentAppMock(driveAppMock),
     FormApp: makeFormAppMock(),
+    SlidesApp: makeSlidesAppMock(),
     MailApp: makeMailAppMock(),
     ScriptApp: makeScriptAppMock(),
     Utilities: {

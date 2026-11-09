@@ -743,6 +743,120 @@ the busiest day's runs, with a warning once a day reaches 80% of the limit.
 `showSetupStatus()` shows the setting. CAS flows only: kos-personal's and
 leader-hub's flows are other projects.
 
+### Work types: a part as a Google Slides deck (Phase 4c, 2026-11-09)
+
+The same pattern as a form (4a and 4b above), for Google Slides. A part's
+`workType` may be `slides` where its planned `workFile` in `PARTS.json` is
+`slides` (the Canva and Drawings parts were planned as Slides, §5); the
+generator refuses it elsewhere, and refuses a Slides part whose task still
+says to add the work, or its link, to this document. **Nothing is marked**:
+55b, the cartridges and the data are unchanged, and a test holds that.
+
+- **Made by the rollout like a form.** Intake copies the part's template
+  deck with Drive (02's `_intakeWorkFile_`, which now makes form and deck
+  copies alike; no SlidesApp call), shares it with the student as editor
+  (or `SCHEDULED` until the part unlocks), adds the assigning teacher as a
+  **commenter** (a deck takes comments, as a doc does; a form's teacher
+  stays an editor because a form has no comment access), and writes the
+  Ledger row with `AdminFileURL` the deck's `/presentation/d/` link, which
+  is how every reader tells a deck (`workFileTypeOfUrl_`, 00). Its template
+  key is `WORK_TEMPLATE_<PART KEY>`, as for a form; unset, the part fails
+  as `NO_WORK_TEMPLATE`.
+- **The template is a blank deck**: one title slide, its placeholders
+  empty (Slides' own "Title slide" layout), nothing else. Making the
+  slides is the student's work; the task stays in Canvas.
+- **The snapshot doc** is made beside the deck at intake ("<lesson> —
+  <student> — your slides, as checked"), shared as for a form, and listed
+  in the same `FormSnapshots` tab (00): since 4c its `FormFileID` column is
+  the student's copy of either type and `FormChecks` the part's checks for
+  its type. The tab, its headers and every reader stay as 4b left them; a
+  second tab would have meant a second lookup in 37, 03, both dashboards
+  and retention. `refreshFormSnapshots()` covers decks too.
+- **The reader** (`77_SlidesReader.js`, Student Dashboard) opens the deck
+  with `SlidesApp.openById` and reads, for each slide in order: its title
+  (the Title or Centered title placeholder), the lines of every other text
+  (text boxes, shapes, the subtitle, table cells, word art, text inside a
+  group), its speaker notes, and how many images, charts linked from
+  Google Sheets and videos it has. Never the deck's name (the copy is named
+  after the student) and never an image's content; a test holds every
+  SlidesApp call to a list of getters. Probe (11-01): a chart pasted as a
+  picture is an image.
+- **`slideChecks`** (`PARTS.json`, on a Slides part only; the builder
+  refuses anything else; every key optional):
+  - `minSlides`, `maxSlides`: whole numbers 1–100 (max at least min).
+  - `notesOnEverySlide`: true: every slide, the first included, has
+    speaker notes.
+  - `minImages`: whole number, images in the whole deck.
+  - `maxImagesPerSlide`: whole number, images on any one slide.
+  - `maxLinesPerSlide`: whole number. A slide's **lines** are its body
+    text: each non-empty paragraph or line break in every text box, shape,
+    table cell or word art. **The title is not a line.** A paragraph that
+    wraps on screen is still one line (the reader can't see wrapping);
+    `maxWordsPerLine` catches a long one.
+  - `maxWordsPerLine`: whole number. Applies to every line **and to the
+    title's** lines. A word is a run of characters with a letter or digit
+    in it (a lone dash is not a word).
+  - `requireChart`: true: a chart linked from Google Sheets on some slide.
+  - `titleSlide`: true: the first slide has a title.
+  - `minContrast`: a number above 1, up to 21, the WCAG 2.x contrast ratio
+    (4.5 is AA for body text) between each piece of text and what is
+    behind it. Only when set does the reader read colors: each text run's
+    color (an RGB color, or a theme color resolved through the slide's
+    color scheme) against the slide's background (its own solid
+    background, else its layout's, else its master's; none at all shows
+    white; a part-clear fill is blended over white) or the text box's own
+    solid fill (blended over the page). **Skipped, never failed:** a slide
+    whose background is a picture or anything not one color (unless the
+    box has its own solid fill), a text box with no fill placed over a
+    picture that sits below it, and text whose color can't be resolved.
+    Highlighted text is measured against the box or page, not its
+    highlight. Dark on light and light on dark both pass. It is a floor:
+    Flow 2 still judges whether the slides are easy to read.
+
+  Defaults, with no `slideChecks`: at least one slide, and something on it
+  (a title, text, a picture, a chart or a video). A second slide is not
+  assumed: several planned Slides parts are a one-slide flyer or mockup.
+  A failure is "Not yet. Fix this in your slides, then submit again:" with
+  one reason a line, naming the slide and what to change ("Slide 2 has 8
+  lines of text, not counting its title; this part allows 6. Cut 2.",
+  "Slides 1 and 3 have no speaker notes. …", "Slide 2: some text is hard
+  to read against the background (contrast 1.9 to 1; this part asks for at
+  least 4.5 to 1). Pick colors with more contrast: …"). Not queued, not a
+  system failure. Error codes start `SLIDES_` (`SLIDES_NOT_YET`,
+  `SLIDES_UNREADABLE`, `SLIDES_SNAPSHOT_MISSING`,
+  `SLIDES_SNAPSHOT_UNWRITABLE`).
+- **The snapshot** (`slidesSnapshotText_`): the slide, image and chart
+  counts, then each slide with its title, each line of text quoted, what
+  else is on it ("1 image", "1 chart from Google Sheets"), its speaker
+  notes, and with `minContrast` the lowest contrast measured. Student text
+  is quoted and made safe as a form's is. Images are counted, not
+  described; how the slides look is not in it. Flow 2 reads it through
+  `StudentDocURL`, and a later part's EARLIER PARTS block reads it.
+- **The dashboards.** Student: **Open your slides**, Submit, a line saying
+  what Submit reads, a link to "Your deck's feedback page". Teacher:
+  "· Google Slides" beside the part, "Open slides" and "Part n (slides)"
+  links. Demo mode adds the first lesson in teaching order with a planned
+  Slides part (8177 "Venue Promotion & Flyer Design", Part 1 open as a
+  deck); its Submit answers with a sample "Not yet" and reads nothing.
+- **Scope.** The Student Dashboard's manifest adds
+  `https://www.googleapis.com/auth/presentations`. Apps Script's SlidesApp
+  lists only that scope (and `presentations.currentonly`, for a bound
+  script) for `openById`; there is no read-only scope it accepts. The
+  reader calls getters only (the test above). One re-consent after the
+  push, as for Forms; until then a deck's Submit fails as
+  `SLIDES_UNREADABLE` ("Tell your teacher"), counted in `SubmitFailures`.
+
+**Marking a part as Slides:** as for a form (above), with a blank deck as
+the template, `"workType": "slides"` and `"slideChecks": {…}` on the part,
+and the "add it (or its link) to this document" sentence out of its prompt.
+A part added to a lesson students are already in (a new Part 6 after Parts
+1–5) is seeded and made by the rollout only while that lesson is the
+current one or within the lead days in `LessonSchedule`, and the course is
+in `APPLY` mode; each enrolled student then gets it `SCHEDULED`, and the
+unlock job opens it at once for anyone whose latest check of the part
+before already found its primary met. Set the template property before
+that rollout, or every copy fails as `NO_WORK_TEMPLATE`.
+
 ## Turn-in codes (script 71)
 
 `71_TurnInCodes.js` (Student Dashboard, Central Ledger and, since stage 3,

@@ -71,6 +71,15 @@ unknown key or type, and a count out of range. Recommended for Market Research P
 questions; the form must not collect email addresses): `{"minQuestions": 3, "collectsEmail":
 false}`, set when the part is marked.
 
+Since Phase 4c (2026-11-09) `workType` may also be `"slides"`, a copy of the part's template deck,
+on a part whose `workFile` is `slides`; the builder refuses a Slides part whose task still says to
+add the work, or its link, to this document. Such a part may carry `slideChecks` (`cas-ccps/README.md`,
+"Work types: a part as a Google Slides deck"): `minSlides`, `maxSlides`, `minImages`,
+`maxImagesPerSlide`, `maxLinesPerSlide` (the title not a line), `maxWordsPerLine` (the title
+included), whole numbers 1–100; `notesOnEverySlide`, `requireChart`, `titleSlide`, true; and
+`minContrast`, a WCAG contrast ratio above 1 (4.5 is AA). Unset, at least one slide with something
+on it. None is marked.
+
 The other 34 multi-part lessons (5 in 8175, 29 in 8177) were drafted in that pattern and approved
 together on 2026-10-28, to be edited as they are taught; each keeps its `why` and its open
 `concerns` beside its parts. `PARTS_DRAFTS.json` is where a new split waits for approval, in

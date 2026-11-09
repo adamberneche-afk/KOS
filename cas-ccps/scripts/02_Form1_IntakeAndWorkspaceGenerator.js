@@ -86,12 +86,12 @@ function onFormSubmit_Intake(e) {
   }
 
   if (res.code === "NO_WORK_TEMPLATE") {
-    Logger.log("Form 1 rejected — no template form set for the form part " + unitConfigId);
+    Logger.log("Form 1 rejected — no template file set for the " + res.workType + " part " + unitConfigId);
     notifyIntakeRejected_(cfg, {
       studentName: studentName, googleId: googleId,
       teacherEmail: teacherEmail, unitConfigId: unitConfigId,
-      reason: "\"" + unitConfigId + "\" is a form part, and its template form isn't set.",
-      fix:    "Set the part's WORK_TEMPLATE_… Script Property on the Central Ledger to the template form's ID " +
+      reason: "\"" + unitConfigId + "\" is a " + res.workType + " part, and its template " + res.workType + " isn't set.",
+      fix:    "Set the part's WORK_TEMPLATE_… Script Property on the Central Ledger to the template " + res.workType + "'s ID " +
               "(cas-ccps/README.md, work types), then have the student resubmit."
     });
     return;
@@ -153,7 +153,8 @@ function onFormSubmit_Intake(e) {
 //      period, teacherName, teacherEmail, unitConfigId }
 // Returns { ok: true, studentConfigId, fileId, docUrl } or
 //         { ok: false, code: INVALID_ACCOUNT | NO_LIVE_ASSIGNMENT | NO_MASTER_TEMPLATE
-//           | NO_WORK_TEMPLATE (a form part whose template property is unset) }
+//           | NO_WORK_TEMPLATE (a form or Slides part whose template property
+//             is unset; workType says which) }
 // Nothing is written on failure; the caller decides how to report it.
 // ---------------------------------------------------------------------------
 // What intakeStudent_ looks up that is the same for every student in a run
@@ -211,13 +212,13 @@ function intakeStudent_(cfg, s) {
       " belongs to " + assignment.teacherEmail + "'s matrix; using the matrix owner.");
   }
 
-  // A part marked workType "form" (68's partWorkFile_, Phase 4a) gets a copy
-  // of its own template form instead of the master doc.
+  // A part marked workType "form" or "slides" (68's partWorkFile_, Phase
+  // 4a/4c) gets a copy of its own template file instead of the master doc.
   const work = partWorkFile_(unitConfigId);
-  if (work.type === "form") {
-    const formTemplateId = work.templateKey ? String(_resolveConfigValues_().values[work.templateKey] || "").trim() : "";
-    if (!formTemplateId) return { ok: false, code: "NO_WORK_TEMPLATE" };
-    return _intakeForm_(cfg, s, googleId, assignment, assignedTeacherEmail, formTemplateId, memo);
+  if (work.type !== "doc") {
+    const templateId = work.templateKey ? String(_resolveConfigValues_().values[work.templateKey] || "").trim() : "";
+    if (!templateId) return { ok: false, code: "NO_WORK_TEMPLATE", workType: work.type };
+    return _intakeWorkFile_(cfg, s, googleId, assignment, assignedTeacherEmail, templateId, memo, work.type);
   }
 
   // Copy MASTER STUDENT TEMPLATE (not teacher's prompt doc)
@@ -282,57 +283,71 @@ function intakeStudent_(cfg, s) {
     teacherEmail: assignedTeacherEmail };
 }
 
-// A form part's copy (Phase 4a, meta/STUDENT_WORK_PLAN_2026-10.md §5): the
-// part's template form copied with DriveApp, as the doc is (no FormApp call,
-// so no Forms scope is used here), into the same admin folder, shared and
-// recorded the same way, SCHEDULED with deferShare until the part unlocks
-// (68) or its release night (58). Nothing is stamped: a form has no response
-// zone, and the template is a blank form (title only), because building the
-// form is the student's work. Forms have no comment access, so the assigning
-// teacher is added as an editor; nobody else. The Ledger row's ADMIN_FILE_URL
-// is the form's own URL, which is how every reader tells it from a doc (00's
+// A form or Slides part's copy (Phase 4a/4c, meta/STUDENT_WORK_PLAN_2026-10.md
+// §5): the part's template file copied with DriveApp, as the doc is (no
+// FormApp or SlidesApp call, so no Forms or Slides scope is used here), into
+// the same admin folder, shared and recorded the same way, SCHEDULED with
+// deferShare until the part unlocks (68) or its release night (58). Nothing
+// is stamped: a form or deck has no response zone, and the template is blank
+// (a form with a title only; a deck with one empty title slide), because
+// making it is the student's work. The assigning teacher is added as an
+// editor of a form (Forms have no comment access) and as a commenter on a
+// deck, as on a doc; nobody else. The Ledger row's ADMIN_FILE_URL is the
+// copy's own URL, which is how every reader tells its type (00's
 // workFileTypeOfUrl_).
-function _intakeForm_(cfg, s, googleId, assignment, teacherEmail, templateId, memo) {
+const WORK_FILE_TEACHER_ROLE = { form: "writer", slides: "commenter" };
+function _intakeWorkFile_(cfg, s, googleId, assignment, teacherEmail, templateId, memo, type) {
   const studentConfigId = generateConfigId_();
   const folder = resolveAdminPath_(cfg.adminRootFolderId, [
     s.subject, s.courseName, s.teacherName, "Period " + s.period, s.studentName
   ], memo.folders);
-  const formFile = DriveApp.getFileById(templateId).makeCopy(assignment.unitName + " — " + s.studentName, folder);
+  const file = DriveApp.getFileById(templateId).makeCopy(assignment.unitName + " — " + s.studentName, folder);
   const deferShare = s.deferShare === true;
   if (!deferShare) {
-    try { formFile.addEditor(googleId); } catch (err) { Logger.log("Share warning for the student's account: " + err.message); }
+    try { file.addEditor(googleId); } catch (err) { Logger.log("Share warning for the student's account: " + err.message); }
   }
   if (teacherEmail) {
-    try { shareWithoutEmail_(formFile, teacherEmail, "writer"); } catch (err) { Logger.log("Teacher access warning for " + teacherEmail + ": " + err.message); }
+    try { shareWithoutEmail_(file, teacherEmail, WORK_FILE_TEACHER_ROLE[type] || "commenter"); } catch (err) { Logger.log("Teacher access warning for " + teacherEmail + ": " + err.message); }
   }
-  const url = workFileUrl_(formFile.getId(), "form");
-  // Its snapshot doc, the form's feedback page (Phase 4b): made and shared
-  // now, beside the form, so Submit (13, which has no Drive scope) only
+  const url = workFileUrl_(file.getId(), type);
+  // Its snapshot doc, the copy's feedback page (Phase 4b/4c): made and
+  // shared now, beside it, so Submit (13, which has no Drive scope) only
   // rewrites it.
   const snapshotDoc = _makeFormSnapshotDoc_(cfg, s, studentConfigId, assignment.unitName, folder,
-    deferShare ? "" : googleId, teacherEmail);
-  registerLedger_(cfg, googleId, s.studentName, studentConfigId, formFile.getId(),
+    deferShare ? "" : googleId, teacherEmail, type);
+  registerLedger_(cfg, googleId, s.studentName, studentConfigId, file.getId(),
                   s.block, s.className, s.teacherName, teacherEmail,
                   s.subject, s.courseName, s.period, url,
                   deferShare ? "SCHEDULED" : "ACTIVE");
   recordStudentAssignment_(_intakeLedgerSs_(cfg), studentConfigId, googleId, s.unitConfigId);
-  recordFormSnapshot_(_intakeLedgerSs_(cfg), studentConfigId, formFile.getId(), snapshotDoc.getId(), s.unitConfigId);
-  Logger.log("Form workspace created — ConfigID: " + studentConfigId + " | Assignment: " + s.unitConfigId + " | Period: " + s.period);
-  return { ok: true, studentConfigId: studentConfigId, fileId: formFile.getId(), docUrl: url, teacherEmail: teacherEmail, workType: "form" };
+  recordFormSnapshot_(_intakeLedgerSs_(cfg), studentConfigId, file.getId(), snapshotDoc.getId(), s.unitConfigId);
+  Logger.log((type === "form" ? "Form" : "Slides") + " workspace created — ConfigID: " + studentConfigId +
+    " | Assignment: " + s.unitConfigId + " | Period: " + s.period);
+  return { ok: true, studentConfigId: studentConfigId, fileId: file.getId(), docUrl: url, teacherEmail: teacherEmail, workType: type };
 }
 
-// A form copy's snapshot doc (Phase 4b, 2026-11-08): a Google Doc in the
-// student's admin folder beside the form, owned by the system account,
-// shared with the student (commenter, once the part is open: they read the
-// form as checked and the feedback, and can't change what was judged) and
+// What a snapshot doc calls the work it copies, by type.
+const WORK_SNAPSHOT_WORDS = {
+  form:   { noun: "your form", what: "your form's questions and settings", change: "Change your form, not this page.",
+            ready: "When your form is ready" },
+  slides: { noun: "your slides", what: "the words on your slides, your speaker notes, and how many pictures and charts each slide has",
+            change: "Change your slides, not this page.", ready: "When your slides are ready" }
+};
+
+// A form or deck copy's snapshot doc (Phase 4b, 2026-11-08; decks, 4c): a
+// Google Doc in the student's admin folder beside the copy, owned by the
+// system account, shared with the student (commenter, once the part is open:
+// they read the file as checked and the feedback, and can't change what was
+// judged) and
 // the assigning teacher (commenter, as on a doc). It is laid out like a
 // student doc's lower half, so every reader of a doc reads it unchanged:
 // the page header (63, "Feedback: …"), the feedback zone (unless feedback
 // is a comment), then the response marker, the snapshot (13 rewrites it at
 // each Submit, from 75), and the "[CONFIG_ID:" line every reader stops at.
 // Returns the Document.
-function _makeFormSnapshotDoc_(cfg, s, studentConfigId, unitName, folder, studentAccount, teacherEmail) {
-  const doc = DocumentApp.create(unitName + " — " + s.studentName + " — your form, as checked");
+function _makeFormSnapshotDoc_(cfg, s, studentConfigId, unitName, folder, studentAccount, teacherEmail, type) {
+  const w = WORK_SNAPSHOT_WORDS[type] || WORK_SNAPSHOT_WORDS.form;
+  const doc = DocumentApp.create(unitName + " — " + s.studentName + " — " + w.noun + ", as checked");
   const file = DriveApp.getFileById(doc.getId());
   file.moveTo(folder);
   writeDocHeader_(doc,
@@ -342,24 +357,24 @@ function _makeFormSnapshotDoc_(cfg, s, studentConfigId, unitName, folder, studen
       .join("  ·  "),
     cfg.studentDashboardUrl, unitName);
   const body = doc.getBody();
-  const title = body.appendParagraph(unitName + " — your form, as checked");
+  const title = body.appendParagraph(unitName + " — " + w.noun + ", as checked");
   title.setHeading(DocumentApp.ParagraphHeading.HEADING1);
   title.editAsText().setFontSize(14).setBold(true);
   _docFontSize_(body.appendParagraph(
-    "The system writes this page. Each time you press Submit for Feedback, it copies your form's questions " +
-    "and settings here, and that copy is what the check reads. Change your form, not this page."), DOC_BODY_FONT_SIZE);
+    "The system writes this page. Each time you press Submit for Feedback, it copies " + w.what +
+    " here, and that copy is what the check reads. " + w.change), DOC_BODY_FONT_SIZE);
   if (!feedbackAsCommentFor_(studentConfigId, s.className)) {
     _docFontSize_(body.appendParagraph("── FEEDBACK ──"), DOC_BODY_FONT_SIZE);
     _docFontSize_(body.appendParagraph(
-      "[No feedback yet. When your form is ready, open your assignment dashboard (link at the top) " +
+      "[No feedback yet. " + w.ready + ", open your assignment dashboard (link at the top) " +
       "and click Submit for Feedback. Your feedback will appear here.]"), DOC_BODY_FONT_SIZE);
     _docFontSize_(body.appendParagraph("── END FEEDBACK ──"), DOC_BODY_FONT_SIZE);
   }
   body.appendParagraph("── YOUR RESPONSE BEGINS HERE ──")
     .editAsText().setFontSize(10).setForegroundColor(DOC_HEADER_GREY);
-  _docFontSize_(body.appendParagraph(FORM_SNAPSHOT_NOT_SUBMITTED), DOC_BODY_FONT_SIZE);
+  _docFontSize_(body.appendParagraph(workSnapshotNotSubmitted_(type)), DOC_BODY_FONT_SIZE);
   body.appendParagraph("[CONFIG_ID: " + studentConfigId + "]").editAsText().setFontSize(1).setForegroundColor("#ffffff");
-  body.appendParagraph("↑ The copy of your form ends above. Nothing below this is checked.")
+  body.appendParagraph("↑ The copy of " + w.noun + " ends above. Nothing below this is checked.")
     .editAsText().setFontSize(DOC_BODY_FONT_SIZE).setForegroundColor(DOC_HEADER_GREY);
   doc.saveAndClose();
   if (studentAccount) {
@@ -371,8 +386,9 @@ function _makeFormSnapshotDoc_(cfg, s, studentConfigId, unitName, folder, studen
   return doc;
 }
 
-// One FormSnapshots row (00): the form copy, its snapshot doc, the part,
-// and the part's exact checks as JSON (68's partFormChecks_). IDs only.
+// One FormSnapshots row (00): the form or deck copy, its snapshot doc, the
+// part, and the part's exact checks for its type as JSON (68's
+// partWorkChecks_). IDs only.
 function recordFormSnapshot_(ss, studentConfigId, formFileId, snapshotDocId, partConfigId) {
   let sheet = ss.getSheetByName(FORM_SNAPSHOTS_TAB);
   if (!sheet) {
@@ -382,15 +398,16 @@ function recordFormSnapshot_(ss, studentConfigId, formFileId, snapshotDocId, par
   const at = sheet.getLastRow() + 1;
   sheet.getRange(at, FS.STUDENT_CONFIG_ID + 1, 1, 4).setNumberFormat("@"); // the IDs, as text
   sheet.getRange(at, 1, 1, FORM_SNAPSHOTS_HEADERS.length).setValues([[new Date(), studentConfigId, formFileId,
-    snapshotDocId, partConfigId, JSON.stringify(partFormChecks_(partConfigId)), ""]]);
+    snapshotDocId, partConfigId, JSON.stringify(partWorkChecks_(partConfigId)), ""]]);
 }
 
 // refreshFormSnapshots — run by hand from the Central Ledger's editor
-// (Phase 4b): every form copy on the Ledger gets a snapshot doc if it has
-// none (made and shared as at intake; the student only once the row is
-// open), and every FormSnapshots row's FormChecks is rewritten from the
-// parts data now, so a part's formChecks changed after its copies were made
-// apply at the next Submit. Logs counts only.
+// (Phase 4b; decks too since 4c): every form or deck copy on the Ledger gets
+// a snapshot doc if it has none (made and shared as at intake; the student
+// only once the row is open), and every FormSnapshots row's FormChecks is
+// rewritten from the parts data now, so a part's formChecks or slideChecks
+// changed after its copies were made apply at the next Submit. Logs counts
+// only.
 function refreshFormSnapshots() {
   const cfg = getConfig_();
   const ss = _intakeLedgerSs_(cfg);
@@ -400,7 +417,8 @@ function refreshFormSnapshots() {
   const data = ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER_COL_COUNT).getValues();
   const out = { made: 0, updated: 0, failed: 0 };
   data.forEach(function (r) {
-    if (workFileTypeOfUrl_(r[LEDGER.ADMIN_FILE_URL]) !== "form") return;
+    const type = workFileTypeOfUrl_(r[LEDGER.ADMIN_FILE_URL]);
+    if (!workFileHasSnapshot_(type)) return;
     const status = String(r[LEDGER.STATUS]).trim();
     if (status === "ARCHIVED") return;
     const formId = String(r[LEDGER.FILE_ID]).trim();
@@ -413,7 +431,7 @@ function refreshFormSnapshots() {
         period: String(r[LEDGER.PERIOD]).trim() };
       const unitName = String(r[LEDGER.COURSE_NAME]).trim();
       const doc = _makeFormSnapshotDoc_(cfg, s, sid, unitName, folder,
-        status === "SCHEDULED" ? "" : String(r[LEDGER.GOOGLE_ID]).trim(), String(r[LEDGER.TEACHER_EMAIL]).trim());
+        status === "SCHEDULED" ? "" : String(r[LEDGER.GOOGLE_ID]).trim(), String(r[LEDGER.TEACHER_EMAIL]).trim(), type);
       recordFormSnapshot_(ss, sid, formId, doc.getId(), byStudent[sid] || "");
       out.made++;
     } catch (e) {
@@ -427,7 +445,7 @@ function refreshFormSnapshots() {
     const rows = sheet.getRange(2, 1, n, FORM_SNAPSHOTS_HEADERS.length).getValues();
     const checks = rows.map(function (row) {
       const part = String(row[FS.PART_CONFIG_ID]).trim() || byStudent[String(row[FS.STUDENT_CONFIG_ID]).trim()] || "";
-      const now = JSON.stringify(partFormChecks_(part));
+      const now = JSON.stringify(partWorkChecks_(part));
       if (now !== String(row[FS.FORM_CHECKS])) out.updated++;
       return [now];
     });
