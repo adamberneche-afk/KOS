@@ -342,7 +342,7 @@ function flowLoad() {
 
 // Amy: Part 1 a doc, Part 2 a form with its snapshot written, Part 3 a doc
 // being checked; a staging row for whichever part `staged` names.
-function flowSetUp(env, staged, snapshotText) {
+function flowSetUp(env, staged, snapshotText, deck) {
   const { exported, sandbox } = env;
   const L = exported.LEDGER;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -392,7 +392,8 @@ function flowSetUp(env, staged, snapshotText) {
     const r = new Array(27).fill('');
     r[L.TIMESTAMP] = new Date(); r[L.GOOGLE_ID] = AMY; r[L.CONFIG_ID] = sid; r[L.FILE_ID] = fileId; r[L.STATUS] = 'ACTIVE';
     r[L.TEACHER_EMAIL] = 'teacher@ccpsnet.net';
-    r[L.ADMIN_FILE_URL] = form ? 'https://docs.google.com/forms/d/' + fileId + '/edit' : 'https://docs.google.com/document/d/' + fileId + '/edit';
+    r[L.ADMIN_FILE_URL] = form ? 'https://docs.google.com/' + (deck ? 'presentation' : 'forms') + '/d/' + fileId + '/edit'
+      : 'https://docs.google.com/document/d/' + fileId + '/edit';
     ledger.appendRow(r);
     sa.appendRow([sid, AMY, LESSON + '-P' + n, new Date()]);
     const m = new Array(20).fill('');
@@ -450,6 +451,23 @@ test('a later part\'s EARLIER PARTS block reads an earlier form part from its sn
   const two = flowSetUp(env2, 3, '');
   const t2 = env2.exported._fiEarlierPartsText_(two.ss, { tabs: { ledger: 'Ledger' } }, AMY, sa, LESSON + '-P3');
   assert.match(t2, /Part 2: Build the Survey\n\(nothing written\)$/);
+});
+
+// Phase 4c: a Slides part's copy is read the same way, through its snapshot doc.
+test('Flow 2 reads a Slides part from its snapshot doc too, for its own check and as an earlier part', () => {
+  const env = flowLoad();
+  const { ss, docs } = flowSetUp(env, 2, 'GOOGLE SLIDES, as the deck was when the student pressed Submit\nSlides: 3', true);
+  env.exported.buildFlowInputRows();
+  const fi = ss.getSheetByName('FlowInput').getDataRange().getValues();
+  assert.equal(fi[1][env.exported.FI.STUDENT_DOC_URL], 'https://docs.google.com/document/d/' + docs.snapshot.getId() + '/edit');
+  const sa = { 'VDOE-AMY-1': LESSON + '-P1', 'VDOE-AMY-2': LESSON + '-P2', 'VDOE-AMY-3': LESSON + '-P3' };
+  const t = env.exported._fiEarlierPartsText_(ss, { tabs: { ledger: 'Ledger' } }, AMY, sa, LESSON + '-P3');
+  assert.match(t, /Part 2: Build the Survey\nGOOGLE SLIDES, as the deck was/);
+  const env2 = flowLoad();
+  const two = flowSetUp(env2, 3, '', true);
+  two.docs.snapshot.getBody().getChild(5).setText('(Not submitted yet. Make your slides, then press Submit for Feedback on your dashboard.)');
+  assert.match(env2.exported._fiEarlierPartsText_(two.ss, { tabs: { ledger: 'Ledger' } }, AMY, sa, LESSON + '-P3'),
+    /Part 2: Build the Survey\n\(nothing written\)$/, 'a deck never submitted');
 });
 
 test('a timed-out or finished form check reaches its snapshot doc, never the form (03)', () => {

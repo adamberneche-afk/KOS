@@ -24,7 +24,7 @@ const PROJECT_FILES = require('../../tools/gas-lint/project-map.json')['cas-ccps
 // open: { name: number of parts open }.
 // forms: the part numbers made as form copies (Phase 4a): the Ledger row's
 // AdminFileURL is the form's /forms/d/ link, as intake (02) writes it.
-function setUp(sandbox, L, open, forms) {
+function setUp(sandbox, L, open, forms, decks) {
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   const props = sandbox.PropertiesService.getScriptProperties();
   props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
@@ -48,7 +48,9 @@ function setUp(sandbox, L, open, forms) {
       const r = row(name, sid, 'Venue Market Research & Survey Design — Part ' + (i + 1) + ': ' + t,
         i < open[name] ? 'ACTIVE' : 'SCHEDULED');
       r[L.ADMIN_FILE_URL] = (forms || []).includes(i + 1)
-        ? 'https://docs.google.com/forms/d/f-' + sid + '/edit' : 'https://docs.google.com/document/d/f-' + sid + '/edit';
+        ? 'https://docs.google.com/forms/d/f-' + sid + '/edit'
+        : (decks || []).includes(i + 1) ? 'https://docs.google.com/presentation/d/f-' + sid + '/edit'
+        : 'https://docs.google.com/document/d/f-' + sid + '/edit';
       ledger.appendRow(r);
       sa.appendRow([sid, '', LESSON + '-P' + (i + 1), '']);
     });
@@ -110,7 +112,7 @@ function studentLoad(viewer) {
     getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
     getScriptTimeZone() { return 'America/New_York'; },
   };
-  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('63_DocHeader.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('75_FormReader.js')],
+  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('63_DocHeader.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('75_FormReader.js'), S('77_SlidesReader.js')],
     ['getStudentDashboardData', 'buildStudentDashboardHtml_', 'submitMyWork', 'getSubmitReflection', 'LEDGER'], { Session: session });
 }
 
@@ -224,4 +226,24 @@ test('Teacher Dashboard: a form part says so on its row and links to the form', 
   const onForm = Object.assign({}, amy, { part: { n: 2, count: 5, title: 'Build the Survey' }, workType: 'form' });
   assert.match(ctx.partLine(onForm), /<b>Part 2 of 5<\/b>: Build the Survey <span class="part-type"[^>]*>· Google Form<\/span>/);
   assert.doesNotMatch(ctx.partLine(amy), /Google Form<\/span>/, 'a doc part says nothing new');
+});
+
+// Phase 4c: a Slides part, the same way.
+test('Teacher Dashboard: a Slides part says so on its row and links to the deck', () => {
+  const { exported, sandbox } = loadGasFiles(PROJECT_FILES, ['getDashboardData', 'buildDashboardHtml_', 'LEDGER']);
+  setUp(sandbox, exported.LEDGER, { Amy: 3 }, [], [2]);
+  const amy = exported.getDashboardData('ALL').students.find(s => s.name === 'Amy');
+  assert.equal(amy.parts[1].workType, 'slides');
+  assert.equal(amy.parts[1].docUrl, 'https://docs.google.com/presentation/d/f-VDOE-Amy-2/edit');
+  const ctx = {
+    document: { getElementById: () => ({ style: {}, classList: { add() {}, remove() {} } }), addEventListener() {}, querySelectorAll: () => [] },
+    google: { script: { run: new Proxy({}, { get: () => function () { return this; } }) } },
+    console, setTimeout() {}, setInterval() {}, navigator: {}, location: {}, localStorage: { getItem() { return null; }, setItem() {} },
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  extractInlineScripts(exported.buildDashboardHtml_()).forEach(code => { try { vm.runInContext(code, ctx); } catch (e) { /* page wiring needs a real DOM */ } });
+  assert.match(ctx.partLine(amy), /presentation\/d\/f-VDOE-Amy-2\/edit"[^>]*>Part 2 \(slides\) ↗/);
+  const onDeck = Object.assign({}, amy, { part: { n: 2, count: 5, title: 'The Pitch' }, workType: 'slides' });
+  assert.match(ctx.partLine(onDeck), /<b>Part 2 of 5<\/b>: The Pitch <span class="part-type"[^>]*>· Google Slides<\/span>/);
 });

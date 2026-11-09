@@ -37,7 +37,7 @@ function load(viewer, opts = {}) {
   for (const s of ['SpreadsheetApp', 'DocumentApp', 'DriveApp', 'MailApp', 'UrlFetchApp', 'LockService']) {
     globals[s] = tripwire(s, touched);
   }
-  const env = loadGasFiles(SD, ['getDemoDashboardData', 'doGet', 'buildStudentDashboardHtml_', 'DASH_DEMO_LESSONS', 'DASH_DEMO_PARTS_LESSON'], globals);
+  const env = loadGasFiles(SD, ['getDemoDashboardData', 'doGet', 'buildStudentDashboardHtml_', 'DASH_DEMO_LESSONS', 'DASH_DEMO_PARTS_LESSON', 'DASH_DEMO_SLIDES_LESSON'], globals);
   if (opts.teacherEmail) env.sandbox.PropertiesService.getScriptProperties().setProperty('TEACHER_EMAIL', opts.teacherEmail);
   return Object.assign(env, { touched });
 }
@@ -64,7 +64,8 @@ test('the teacher gets the fixture: both courses, every card state, the real les
   assert.equal(courses.size, 2);
   // Each card is one of the teacher's lessons, by its real title.
   const titles = new Set(lessons.flatMap((c) => c.lessons.map((l) => l.unitName))
-    .concat(exported.DASH_DEMO_PARTS_LESSON.parts.map((p) => p.unitName)));
+    .concat(exported.DASH_DEMO_PARTS_LESSON.parts.map((p) => p.unitName))
+    .concat(exported.DASH_DEMO_SLIDES_LESSON.parts.map((p) => p.unitName)));
   d.dashboard.assignments.forEach((a) => assert.ok(titles.has(a.unitName), a.unitName));
   d.dashboard.assignments.filter((a) => a.statusPill === 'Revise')
     .forEach((a) => assert.ok(a.notYet.length > 10, 'a card to revise says what is not met yet'));
@@ -245,7 +246,7 @@ test('the demo shows a form part: Open your form, a working Submit with a sample
   assert.match(form[0].unitName, /Build the Survey/);
   assert.ok(form[0].demoFormNotYet.length >= 2);
   assert.ok(f.dashboard.assignments.some((a) => a.part && a.part.n === 1 && a.workType === 'doc' && a.statusPill === 'Passed ✓'));
-  assert.deepEqual(f.dashboard.lockedParts.map((l) => l.n), [3, 4, 5]);
+  assert.deepEqual(f.dashboard.lockedParts.filter((l) => l.lesson === form[0].part.lesson).map((l) => l.n), [3, 4, 5]);
   const { ctx, els, calls, advance } = demoPage(f);
   advance(1000);
   const main = els.main.innerHTML;
@@ -265,6 +266,31 @@ test('the demo shows a form part: Open your form, a working Submit with a sample
   assert.match(h, /• Your form has 2 questions\. It needs at least 3\./);
   assert.match(h, /• Your form collects email addresses\./);
   assert.deepEqual(calls, ['getDemoDashboardData'], 'the demo reads no form');
+});
+
+// Phase 4c: a lesson in parts with a Slides part (the first planned one in
+// teaching order), its card "Open your slides", its Submit a sample "Not yet".
+test('the demo shows a Slides part: Open your slides, a sample "Not yet" naming the slide, nothing read', () => {
+  const f = fixture();
+  const deck = f.dashboard.assignments.filter((a) => a.workType === 'slides');
+  assert.equal(deck.length, 1, 'one Slides part');
+  assert.equal(deck[0].canSubmit, true);
+  assert.match(deck[0].unitName, /Design It/);
+  const locked = f.dashboard.lockedParts.filter((l) => l.lesson === deck[0].part.lesson);
+  assert.ok(locked.length >= 1 && locked.every((l) => l.n > deck[0].part.n), 'the later parts locked');
+  const { ctx, els, calls, advance } = demoPage(f);
+  advance(1000);
+  assert.match(els.main.innerHTML, />Open your slides</);
+  assert.match(els.main.innerHTML, /reads the words on your slides and your speaker notes/);
+  ctx.demoOpenDoc({ getAttribute: () => deck[0].fileId });
+  assert.match(els.main.innerHTML, /own copy of the slides/);
+  const btn = { attrs: { 'data-file': deck[0].fileId, 'data-config': deck[0].configId }, getAttribute(k) { return this.attrs[k]; } };
+  ctx.submitWork(btn);
+  advance(500);
+  const h = els.main.innerHTML;
+  assert.match(h, /Not yet\. Fix this in your slides, then submit again:/);
+  assert.match(h, /• Slide 2 has 8 lines of text, not counting its title; this part allows 6\. Cut 2\./);
+  assert.deepEqual(calls, ['getDemoDashboardData'], 'the demo reads no deck');
 });
 
 test('the real page never asks for the demo fixture', () => {

@@ -1913,25 +1913,35 @@ const LEDGER = {
 // whole Ledger tab rather than a header-driven dynamic column set.
 const LEDGER_COL_COUNT = 27;
 
-// A student work file's type (Phase 4a, 2026-11-08): "form" for a Google
-// Form, "doc" for everything else. A part marked workType "form" (55b) gets a
-// copy of its template form instead of a doc (02's intakeStudent_). The
-// Ledger keeps its fixed width (FLOW_DOCTRINE): FILE_ID holds the form's ID
-// as it holds a doc's, and ADMIN_FILE_URL (Drive's own getUrl(), written at
-// intake) says which it is, so a Ledger row carries its type with no new
-// column, and the dashboards read it without 55b. A blank or older URL is a doc.
+// A student work file's type (Phase 4a, 2026-11-08; Slides, Phase 4c,
+// 2026-11-09): "form" for a Google Form, "slides" for a Google Slides deck,
+// "doc" for everything else. A part marked workType "form" or "slides" (55b)
+// gets a copy of its template file instead of a doc (02's intakeStudent_).
+// The Ledger keeps its fixed width (FLOW_DOCTRINE): FILE_ID holds the copy's
+// ID as it holds a doc's, and ADMIN_FILE_URL (written at intake) says which
+// it is, so a Ledger row carries its type with no new column, and the
+// dashboards read it without 55b. A blank or older URL is a doc.
 const WORK_FILE_FORM_URL_RE = /^https:\/\/docs\.google\.com\/forms\/d\//;
+const WORK_FILE_SLIDES_URL_RE = /^https:\/\/docs\.google\.com\/presentation\/d\//;
 function workFileTypeOfUrl_(url) {
-  return WORK_FILE_FORM_URL_RE.test(String(url || "").trim()) ? "form" : "doc";
+  const u = String(url || "").trim();
+  if (WORK_FILE_FORM_URL_RE.test(u)) return "form";
+  if (WORK_FILE_SLIDES_URL_RE.test(u)) return "slides";
+  return "doc";
 }
 
 // The link a student or teacher opens for a work file of that type.
+const WORK_FILE_URL_PATHS = { form: "forms", slides: "presentation", doc: "document" };
 function workFileUrl_(fileId, type) {
   const id = String(fileId || "").trim();
   if (!id) return null;
-  return type === "form"
-    ? "https://docs.google.com/forms/d/" + id + "/edit"
-    : "https://docs.google.com/document/d/" + id + "/edit";
+  return "https://docs.google.com/" + (WORK_FILE_URL_PATHS[type] || "document") + "/d/" + id + "/edit";
+}
+
+// Whether a work file of this type has a snapshot doc (its feedback page,
+// below): every type but a doc. A doc is its own feedback page.
+function workFileHasSnapshot_(type) {
+  return type === "form" || type === "slides";
 }
 
 // ---------------------------------------------------------------------------
@@ -1948,6 +1958,14 @@ function workFileUrl_(fileId, type) {
 // checks as JSON, resolved from the parts data (55b) at intake, so the
 // Student Dashboard needs no lesson data; refreshFormSnapshots() (02)
 // rewrites it after a part's formChecks change.
+//
+// Since Phase 4c (Slides, 2026-11-09) the same tab serves every work file
+// with a snapshot, its columns unchanged (4b's tab, headers and readers stay
+// as they are): FormFileID is the student's copy, whatever its type (a form
+// or a deck; the Ledger's ADMIN_FILE_URL says which), and FormChecks is the
+// part's exact checks for that type (formChecks or slideChecks). One tab
+// means one lookup for every reader (37, 03, the dashboards, retention) and
+// nothing to migrate.
 // ---------------------------------------------------------------------------
 const FORM_SNAPSHOTS_TAB = "FormSnapshots";
 const FORM_SNAPSHOTS_HEADERS = ["MadeAt", "StudentConfigID", "FormFileID", "SnapshotDocID",
@@ -2001,9 +2019,10 @@ function normalizeFormChecks_(raw) {
   return out;
 }
 
-// The FormSnapshots row for a form copy: { rowNumber, studentConfigId,
-// formFileId, snapshotDocId, partConfigId, formChecks }, or null. The last
-// row wins if a repair ever made two.
+// The FormSnapshots row for a work file copy (a form or a deck): {
+// rowNumber, studentConfigId, formFileId, snapshotDocId, partConfigId,
+// formChecks (read as a form's), checksRaw (the cell, for any type) }, or
+// null. The last row wins if a repair ever made two.
 function formSnapshotFor_(ledgerSs, formFileId) {
   const id = String(formFileId || "").trim();
   if (!id || !ledgerSs) return null;
@@ -2016,7 +2035,7 @@ function formSnapshotFor_(ledgerSs, formFileId) {
     if (!docId) continue;
     return { rowNumber: i + 2, studentConfigId: String(rows[i][FS.STUDENT_CONFIG_ID]).trim(), formFileId: id,
       snapshotDocId: docId, partConfigId: String(rows[i][FS.PART_CONFIG_ID]).trim(),
-      formChecks: normalizeFormChecks_(rows[i][FS.FORM_CHECKS]) };
+      formChecks: normalizeFormChecks_(rows[i][FS.FORM_CHECKS]), checksRaw: rows[i][FS.FORM_CHECKS] };
   }
   return null;
 }
@@ -2033,8 +2052,9 @@ function formSnapshotDocIds_(ledgerSs) {
   return out;
 }
 
-// Where a work file's feedback and header line go: a form copy's snapshot
-// doc, or the file itself (a doc, or a form whose snapshot isn't recorded).
+// Where a work file's feedback and header line go: a form or deck copy's
+// snapshot doc, or the file itself (a doc, or a copy whose snapshot isn't
+// recorded).
 function workFeedbackDocId_(ledgerSs, fileId) {
   try {
     const snap = formSnapshotFor_(ledgerSs, fileId);
@@ -2047,6 +2067,73 @@ function workFeedbackDocId_(ledgerSs, fileId) {
 // The snapshot doc's fixed text (02 writes it, 13 rewrites between the
 // response marker and the "[CONFIG_ID:" line, which every reader stops at).
 const FORM_SNAPSHOT_NOT_SUBMITTED = "(Not submitted yet. Build your form, then press Submit for Feedback on your dashboard.)";
+const SLIDES_SNAPSHOT_NOT_SUBMITTED = "(Not submitted yet. Make your slides, then press Submit for Feedback on your dashboard.)";
+function workSnapshotNotSubmitted_(type) {
+  return type === "slides" ? SLIDES_SNAPSHOT_NOT_SUBMITTED : FORM_SNAPSHOT_NOT_SUBMITTED;
+}
+// Whether a snapshot zone's text is still the "not submitted" line, of any type.
+function isWorkSnapshotNotSubmitted_(text) {
+  const t = String(text || "").trim();
+  return t === FORM_SNAPSHOT_NOT_SUBMITTED || t === SLIDES_SNAPSHOT_NOT_SUBMITTED;
+}
+
+// ---------------------------------------------------------------------------
+// A Slides part's exact checks (Phase 4c, 2026-11-09; 77's slidesCheckReasons_).
+// slideChecks in PARTS.json, resolved at intake into FormSnapshots' checks
+// cell like a form's. Keys (the generator, tools/cas-ccps/build-lesson-
+// assignments.js, refuses anything else; a test holds the two lists equal):
+//   minSlides          whole number 1-100: at least this many slides
+//   maxSlides          whole number, at least minSlides: at most this many
+//   notesOnEverySlide  true: every slide has speaker notes
+//   minImages          whole number 1-100: at least this many images in the deck
+//   maxImagesPerSlide  whole number 1-100: no slide has more images than this
+//   maxLinesPerSlide   whole number 1-100: no slide has more lines of body
+//                      text than this (the title is not a line; each
+//                      non-empty paragraph or line break in any other text
+//                      box, shape or table cell is one)
+//   maxWordsPerLine    whole number 1-100: no line has more words than this,
+//                      the title's lines included
+//   requireChart       true: at least one chart linked from Google Sheets
+//                      (a chart pasted as a picture is an image)
+//   titleSlide         true: the first slide has a title
+//   minContrast        a number above 1, up to 21 (the WCAG 2.x contrast
+//                      ratio; 4.5 is WCAG AA for body text): the text on
+//                      each slide against what is behind it. Only where the
+//                      reader can tell both colors: a solid page background
+//                      (the slide's own, else its layout's, else its
+//                      master's; none at all is white), or a text box's own
+//                      solid fill. A slide with a picture or gradient
+//                      background, a text box over a picture, and text whose
+//                      color can't be resolved are skipped, not failed. A
+//                      floor only: Flow 2 still judges whether it is easy to read.
+// Defaults, with none set: at least one slide, and something on it (the
+// template is one empty title slide). A one-slide mockup is a whole task in
+// several lessons, so a second slide is not assumed.
+// ---------------------------------------------------------------------------
+const SLIDE_CHECK_COUNT_KEYS = ["minSlides", "maxSlides", "minImages", "maxImagesPerSlide", "maxLinesPerSlide", "maxWordsPerLine"];
+const SLIDE_CHECK_FLAG_KEYS = ["notesOnEverySlide", "requireChart", "titleSlide"];
+const SLIDE_CHECK_RATIO_KEYS = ["minContrast"];
+const SLIDE_CHECK_DEFAULTS = { minSlides: 1 };
+
+function normalizeSlideChecks_(raw) {
+  let c = raw;
+  if (typeof c === "string") {
+    try { c = c.trim() ? JSON.parse(c) : {}; } catch (e) { c = {}; }
+  }
+  if (!c || typeof c !== "object" || Array.isArray(c)) c = {};
+  const isCount = function (n) { return typeof n === "number" && Math.floor(n) === n && n >= 1 && n <= 100; };
+  const out = { minSlides: isCount(c.minSlides) ? c.minSlides : SLIDE_CHECK_DEFAULTS.minSlides };
+  SLIDE_CHECK_COUNT_KEYS.forEach(function (k) {
+    if (k === "minSlides" || !isCount(c[k])) return;
+    if (k === "maxSlides" && c[k] < out.minSlides) return;
+    out[k] = c[k];
+  });
+  SLIDE_CHECK_FLAG_KEYS.forEach(function (k) { if (c[k] === true) out[k] = true; });
+  SLIDE_CHECK_RATIO_KEYS.forEach(function (k) {
+    if (typeof c[k] === "number" && isFinite(c[k]) && c[k] > 1 && c[k] <= 21) out[k] = c[k];
+  });
+  return out;
+}
 
 // Headers for the columns after AcademicYear, which a Ledger only gets on
 // first use: the turn-in review's four (07/04's _ensureTurnInReviewColumns_)

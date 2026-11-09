@@ -572,7 +572,7 @@ function getDashboardData(termFilter) {
       submittedAt: row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : "—",
       flagReason:  statusClass === "flagged" ? _tdFlagReason_(ledgerStatus) : "",
       suggestedScore: suggestedScore,
-      // A form part's copy (Phase 4a) links to the form: its Ledger URL says so (00).
+      // A form or Slides part's copy (Phase 4a/4c) links to the file: its Ledger URL says so (00).
       docUrl:      workFileUrl_(fileId, workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL])),
       workType:    workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL])
     });
@@ -4992,15 +4992,22 @@ document.addEventListener("click", function (ev) {
     openStudent(st.getAttribute("data-student"));
   }
 });
+// A part's work file type (Phase 4a/4c), as the roster names it: "" for a doc.
+function workTypeShort(t) { return t === "form" ? "form" : t === "slides" ? "slides" : ""; }
+function workTypeLabel(t) {
+  return t === "form" ? { name: "Google Form", title: "A Google Form the student builds; Submit checks its questions and settings, and the check reads a snapshot of it, kept beside the form as its feedback page" }
+    : t === "slides" ? { name: "Google Slides", title: "A Google Slides deck the student makes; Submit checks its slides, text, notes and pictures, and the check reads a snapshot of its text, kept beside the deck as its feedback page" }
+    : null;
+}
 // A lesson in parts (68): the part the student is on, links to the parts
 // before it, and the teacher's unlock for the next one.
 function partLine(s) {
   const earlier = (s.parts || []).filter(p => p.open && p.n !== s.part.n && safeDocUrl(p.docUrl))
-    .map(p => '<a class="doc-link" href="' + esc(safeDocUrl(p.docUrl)) + '" target="_blank">Part ' + p.n + (p.workType === "form" ? ' (form)' : '') + ' ↗</a>');
-  // A form part (Phase 4a) says so beside its title; Submit reads it (4b).
+    .map(p => '<a class="doc-link" href="' + esc(safeDocUrl(p.docUrl)) + '" target="_blank">Part ' + p.n + (workTypeShort(p.workType) ? ' (' + workTypeShort(p.workType) + ')' : '') + ' ↗</a>');
+  // A form or Slides part (Phase 4a/4c) says so beside its title; Submit reads it (4b/4c).
   let html = '<div class="last-eval"><b>Part ' + s.part.n + ' of ' + s.part.count + '</b>' +
     (s.part.title ? ': ' + esc(s.part.title) : '') +
-    (s.workType === "form" ? ' <span class="part-type" title="A Google Form the student builds; Submit checks its questions and settings, and the check reads a snapshot of it, kept beside the form as its feedback page">· Google Form</span>' : '') +
+    (workTypeLabel(s.workType) ? ' <span class="part-type" title="' + workTypeLabel(s.workType).title + '">· ' + workTypeLabel(s.workType).name + '</span>' : '') +
     (earlier.length ? ' · ' + earlier.join(' ') : '') + '</div>';
   if (s.heldByFailure) {
     html += '<div class="last-eval" style="color:#b3261e"><b>Held ' + escNum(s.heldByFailure.schoolDays) + ' school day' +
@@ -5545,7 +5552,7 @@ If you expect to see students here:
           \${s.firstPassedAt ? \`<div class="last-eval">First passed \${esc(s.firstPassedAt)}</div>\` : ""}
           \${s.lastSuggestedScore != null ? \`<div class="last-eval">AI's suggested score, last check: <b>\${esc(scoreLabel(s.lastSuggestedScore))}</b> (2–4, higher is better)</div>\` : ""}
           \${safeDocUrl(s.docUrl)
-            ? \`<a class="doc-link" href="\${esc(safeDocUrl(s.docUrl))}" target="_blank">\${s.workType === "form" ? "Open form" : "Open document"} ↗</a>\`
+            ? \`<a class="doc-link" href="\${esc(safeDocUrl(s.docUrl))}" target="_blank">\${workTypeShort(s.workType) ? "Open " + workTypeShort(s.workType) : "Open document"} ↗</a>\`
             : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
           }
           \${wrNextStep}

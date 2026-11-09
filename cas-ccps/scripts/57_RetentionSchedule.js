@@ -21,8 +21,8 @@
 //             TurnInChecks, TurnInOverrides, TurnInCanvasRuns.
 //   WORKING — queues, Flow inputs and profiles that feed the system but
 //             are not the record: 1 year. WarmUpQueue and the rest below.
-// A student's workspace Doc (or form) follows its Ledger row; a form's
-// snapshot Doc its FormSnapshots row; a warm-up Doc its WarmUpQueue row.
+// A student's workspace Doc (or form, or deck) follows its Ledger row; a
+// form or deck's snapshot Doc its FormSnapshots row; a warm-up Doc its WarmUpQueue row.
 //
 // Past its period, a record is archived automatically where the tab has
 // an archive marker (the five _archiveExpired*_ passes, run by the health

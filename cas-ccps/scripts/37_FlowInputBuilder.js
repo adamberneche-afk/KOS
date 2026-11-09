@@ -263,14 +263,14 @@ function buildFlowInputRows() {
       }
 
       // The doc Flow 2 reads and the feedback goes to: the student's doc, or
-      // for a form part (Phase 4b) its snapshot doc, which 13 rewrote from
-      // the form at Submit (00's FormSnapshots). A form with none recorded
-      // can't have passed Submit; it waits, logged.
+      // for a form or Slides part (Phase 4b/4c) its snapshot doc, which 13
+      // rewrote from the file at Submit (00's FormSnapshots). A copy with
+      // none recorded can't have passed Submit; it waits, logged.
       let readDocId = studentFileId;
-      if (ledgerRow.workType === "form") {
+      if (workFileHasSnapshot_(ledgerRow.workType)) {
         const snap = formSnapshotFor_(ledgerSs, studentFileId);
         if (!snap) {
-          Logger.log("[FlowInputBuilder] No FormSnapshots row for the form of ConfigID " + configId +
+          Logger.log("[FlowInputBuilder] No FormSnapshots row for the " + ledgerRow.workType + " of ConfigID " + configId +
                      " — will retry next cycle.");
           continue;
         }
@@ -368,7 +368,7 @@ function _fiFindLedgerRow_(cfg, configId, studentFileId) {
       return {
         googleId: String(data[i][LEDGER.GOOGLE_ID]).trim(),
         teacherEmail: String(data[i][LEDGER.TEACHER_EMAIL]).trim(),
-        // "form" for a form part's copy (Phase 4b): Flow 2 reads its snapshot doc.
+        // "form" or "slides" for a part's copy (Phase 4b/4c): Flow 2 reads its snapshot doc.
         workType: workFileTypeOfUrl_(data[i][LEDGER.ADMIN_FILE_URL]),
       };
     }
@@ -518,23 +518,23 @@ function _fiEarlierPartsText_(ledgerSs, cfg, googleId, byStudent, assignmentId) 
     const p = partOfConfigId_(byStudent[String(r[LEDGER.CONFIG_ID]).trim()]);
     if (!p || p.lessonKey !== info.lessonKey || p.n >= info.n) return;
     files[p.n] = { fileId: String(r[LEDGER.FILE_ID]).trim(), title: p.part.a.partTitle || "",
-      form: workFileTypeOfUrl_(r[LEDGER.ADMIN_FILE_URL]) === "form" };
+      snapshot: workFileHasSnapshot_(workFileTypeOfUrl_(r[LEDGER.ADMIN_FILE_URL])) };
   });
   return Object.keys(files).map(Number).sort(function (a, b) { return a - b; }).map(function (n) {
     let text = "";
-    // An earlier form part (Phase 4b) is read from its snapshot doc: the
-    // form as last submitted. One never submitted has none written yet.
+    // An earlier form or Slides part (Phase 4b/4c) is read from its snapshot
+    // doc: the file as last submitted. One never submitted has none written yet.
     let docId = files[n].fileId;
-    if (files[n].form) {
+    if (files[n].snapshot) {
       const snap = formSnapshotFor_(ledgerSs, docId);
       docId = snap ? snap.snapshotDocId : "";
     }
     try {
-      if (!docId) throw new Error("no snapshot doc for an earlier form part");
+      if (!docId) throw new Error("no snapshot doc for an earlier form or Slides part");
       const full = DocumentApp.openById(docId).getBody().getText();
       const zone = responseZoneBounds_(full);
       text = zone ? full.substring(zone.from, zone.to).trim() : "";
-      if (text === FORM_SNAPSHOT_NOT_SUBMITTED) text = "";
+      if (isWorkSnapshotNotSubmitted_(text)) text = "";
     } catch (e) {
       Logger.log("[FlowInputBuilder] Earlier part " + n + " unreadable: " + e.message);
     }

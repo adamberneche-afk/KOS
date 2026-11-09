@@ -84,30 +84,39 @@ function partOfConfigId_(configId) {
   return null;
 }
 
-// What intake (02) makes for an assignment ConfigID (Phase 4a, 2026-11-08):
-// { type: "form", templateKey } for a part marked workType "form" in
-// PARTS.json (55b's workFileNow), else { type: "doc" }. templateKey names the
-// Script Property holding the template form's file ID.
+// What intake (02) makes for an assignment ConfigID (Phase 4a, 2026-11-08;
+// Slides, 4c): { type: "form" | "slides", templateKey } for a part marked
+// that workType in PARTS.json (55b's workFileNow), else { type: "doc" }.
+// templateKey names the Script Property holding the template file's ID.
 function partWorkFile_(assignmentConfigId) {
   const info = partOfConfigId_(assignmentConfigId);
   const a = info ? info.part.a : null;
-  if (a && a.workFileNow === "form") return { type: "form", templateKey: String(a.workTemplateKey || "") };
+  if (a && workFileHasSnapshot_(a.workFileNow)) return { type: a.workFileNow, templateKey: String(a.workTemplateKey || "") };
   return { type: "doc" };
 }
 
 // A form part's exact checks at Submit (Phase 4b): its formChecks in
 // PARTS.json (55b), with the defaults filled in (00's normalizeFormChecks_:
-// at least one question, email collection off). Intake (02) records them in
-// FormSnapshots, which is where the Student Dashboard reads them.
+// at least one question, email collection off).
 function partFormChecks_(assignmentConfigId) {
   const info = partOfConfigId_(assignmentConfigId);
   return normalizeFormChecks_(info && info.part.a.formChecks ? info.part.a.formChecks : {});
 }
 
-// Shares a form copy's snapshot doc (its feedback page, Phase 4b) with its
-// student as commenter: they read the form as checked and the feedback, and
-// can't change what was judged. Best effort: false when there is none or
-// sharing fails (the Ledger's own share has already happened).
+// A part's exact checks for its type (Phase 4c): a Slides part's
+// slideChecks (00's normalizeSlideChecks_), else a form's (above). Intake
+// (02) records them in FormSnapshots, which is where the Student Dashboard
+// reads them.
+function partWorkChecks_(assignmentConfigId) {
+  const info = partOfConfigId_(assignmentConfigId);
+  if (info && info.part.a.workFileNow === "slides") return normalizeSlideChecks_(info.part.a.slideChecks || {});
+  return partFormChecks_(assignmentConfigId);
+}
+
+// Shares a form or deck copy's snapshot doc (its feedback page, Phase
+// 4b/4c) with its student as commenter: they read the file as checked and
+// the feedback, and can't change what was judged. Best effort: false when
+// there is none or sharing fails (the Ledger's own share has already happened).
 function shareFormSnapshot_(ledgerSs, formFileId, googleId) {
   try {
     const snap = formSnapshotFor_(ledgerSs, formFileId);
@@ -169,13 +178,13 @@ function _lpLatestOutcomes_(evidence) {
   return byFile;
 }
 
-// Shares one Ledger row's work file (a doc, or a part's form: Drive shares
-// both the same way) with its student and sets it ACTIVE (a release, 58).
+// Shares one Ledger row's work file (a doc, or a part's form or deck: Drive
+// shares them the same way) with its student and sets it ACTIVE (a release, 58).
 // Returns true when done.
 function _lpShare_(ledger, rowIndex, row) {
   DriveApp.getFileById(String(row[LEDGER.FILE_ID]).trim()).addEditor(String(row[LEDGER.GOOGLE_ID]).trim());
-  // A form part's feedback page goes with it (Phase 4b).
-  if (workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]) === "form") {
+  // A form or Slides part's feedback page goes with it (Phase 4b/4c).
+  if (workFileHasSnapshot_(workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]))) {
     shareFormSnapshot_(ledger.getParent(), String(row[LEDGER.FILE_ID]).trim(), String(row[LEDGER.GOOGLE_ID]).trim());
   }
   ledger.getRange(rowIndex + 1, LEDGER.STATUS + 1).setValue("ACTIVE");

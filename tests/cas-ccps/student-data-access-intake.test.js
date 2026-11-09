@@ -127,18 +127,29 @@ test('intakeStudent_: a run of one lesson looks up the matrix, the prompt doc an
 // until its part unlocks (68), and never a FormApp call.
 const FORM_PART = 'CAS-8177-MARKET-RESEARCH-SURVEY-DESIGN-P2';
 const FORM_KEY = 'WORK_TEMPLATE_8177_MARKET_RESEARCH_SURVEY_DESIGN_P2';
+// Phase 4c: a Slides part, the same way (opts.slides): the flyer lesson's
+// Part 1, marked in the sandbox only (nothing is marked in PARTS.json).
+const SLIDES_PART = 'CAS-8177-PROMOTIONAL-FLYER-DESIGN-P1';
+const SLIDES_KEY = 'WORK_TEMPLATE_8177_PROMOTIONAL_FLYER_DESIGN_P1';
 function formSetup(opts) {
   opts = opts || {};
+  const part = opts.slides ? SLIDES_PART : FORM_PART;
+  const key = opts.slides ? SLIDES_KEY : FORM_KEY;
   const { FakeDriveFolder, FakeDriveFile } = require('../harness/gas-sandbox');
   const env = loadGasFiles(FILES,
     ['intakeStudent_', 'getConfig_', 'unlockNextPart_', 'workFileTypeOfUrl_', 'formSnapshotFor_', 'FORM_SNAPSHOT_NOT_SUBMITTED',
-      'refreshFormSnapshots']);
+      'SLIDES_SNAPSHOT_NOT_SUBMITTED', 'refreshFormSnapshots']);
   const { exported, sandbox } = env;
   // The survey part, marked as PARTS.json would after the operator's edit.
   require('vm').runInContext("LESSON_PARTS['8177-market-research-survey-design'][1].workFileNow = 'form';" +
     "LESSON_PARTS['8177-market-research-survey-design'][1].workTemplateKey = '" + FORM_KEY + "';", sandbox);
+  if (opts.slides) {
+    require('vm').runInContext("LESSON_PARTS['8177-promotional-flyer-design'][0].workFileNow = 'slides';" +
+      "LESSON_PARTS['8177-promotional-flyer-design'][0].workTemplateKey = '" + SLIDES_KEY + "';", sandbox);
+  }
   const formAppCalls = [];
   sandbox.FormApp = new Proxy({}, { get: (_, k) => { formAppCalls.push(String(k)); return () => { throw new Error('no FormApp in 4a'); }; } });
+  sandbox.SlidesApp = new Proxy({}, { get: (_, k) => { formAppCalls.push('SlidesApp.' + String(k)); return () => { throw new Error('no SlidesApp at intake'); }; } });
   const props = sandbox.PropertiesService.getScriptProperties();
   const ledger = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ledger.getId(), ledger);
@@ -151,14 +162,16 @@ function formSetup(opts) {
   const tm = matrix.insertSheet('TeacherMatrix');
   tm.appendRow(new Array(15).fill('h'));
   const row = new Array(15).fill('');
-  row[0] = FORM_PART; row[1] = 'Venue Market Research & Survey Design — Part 2: Build the Survey'; row[11] = 'LIVE';
+  row[0] = part; row[1] = opts.slides ? 'Venue Promotion & Flyer Design — Part 1: Design It'
+    : 'Venue Market Research & Survey Design — Part 2: Build the Survey'; row[11] = 'LIVE';
   tm.appendRow(row);
   ledger.insertSheet('Ledger').appendRow(new Array(19).fill('h'));
   const root = new FakeDriveFolder('Admin', 'admin-root');
   sandbox.DriveApp._registerFolder(root);
   props.setProperty('ADMIN_ROOT_FOLDER_ID', root.getId());
   props.setProperty('MASTER_STUDENT_TEMPLATE_ID', 'master-doc');
-  const template = new FakeDriveFile('form-template', 'Your survey', 'application/vnd.google-apps.form');
+  const template = opts.slides ? new FakeDriveFile('deck-template', 'Blank deck', 'application/vnd.google-apps.presentation')
+    : new FakeDriveFile('form-template', 'Your survey', 'application/vnd.google-apps.form');
   const copies = [];
   template.makeCopy = (name, folder) => {
     const f = new FakeDriveFile('form-copy-' + (copies.length + 1), name, template.getMimeType());
@@ -168,12 +181,12 @@ function formSetup(opts) {
     return f;
   };
   sandbox.DriveApp._registerFile(template);
-  if (opts.template !== false) props.setProperty(FORM_KEY, template.getId());
+  if (opts.template !== false) props.setProperty(key, template.getId());
   return { exported, sandbox, ledger, copies, formAppCalls };
 }
-const formStudent = (deferShare) => ({ googleId: '1234567@ccpsnet.net', studentName: 'Ana', block: '3O',
+const formStudent = (deferShare, unitConfigId) => ({ googleId: '1234567@ccpsnet.net', studentName: 'Ana', block: '3O',
   className: '8177', subject: '8177', courseName: '8177', period: '3', teacherName: 'Ms. Owner',
-  teacherEmail: 'owner@ccpsnet.net', unitConfigId: FORM_PART, deferShare });
+  teacherEmail: 'owner@ccpsnet.net', unitConfigId: unitConfigId || FORM_PART, deferShare });
 
 test('intakeStudent_: a form part is a copy of its template form, recorded and SCHEDULED until it unlocks', () => {
   const { exported, sandbox, ledger, copies, formAppCalls } = formSetup();
@@ -255,7 +268,7 @@ test('intakeStudent_: a form part shared now is the student\'s to edit; with no 
 
   const none = formSetup({ template: false });
   const r2 = none.exported.intakeStudent_(none.exported.getConfig_(), formStudent(true));
-  assert.deepEqual(r2, { ok: false, code: 'NO_WORK_TEMPLATE' });
+  assert.deepEqual(r2, { ok: false, code: 'NO_WORK_TEMPLATE', workType: 'form' });
   assert.equal(none.copies.length, 0);
   assert.equal(none.ledger.getSheetByName('Ledger').getLastRow(), 1, 'no Ledger row');
 });
@@ -285,4 +298,44 @@ test('refreshFormSnapshots: new checks rewritten from the parts data; a missing 
   assert.ok(made, 'a snapshot doc for the copy that had none');
   assert.equal(sandbox.DriveApp.getFileById(made.snapshotDocId)._access('1234567@ccpsnet.net'), 'commenter', 'open: shared');
   assert.deepEqual(exported.refreshFormSnapshots(), { made: 0, updated: 0, failed: 0 }, 'a second run changes nothing');
+});
+
+// Phase 4c: a Slides part is a copy of its template deck, made with Drive
+// (no SlidesApp call), the teacher a commenter as on a doc, the Ledger URL a
+// /presentation/d/ link, a snapshot doc beside it with the default checks,
+// both shared with the student when the part unlocks.
+test('intakeStudent_: a Slides part is a copy of its template deck, the teacher a commenter, its snapshot doc beside it', () => {
+  const { exported, sandbox, ledger, copies, formAppCalls } = formSetup({ slides: true });
+  const res = exported.intakeStudent_(exported.getConfig_(), formStudent(true, SLIDES_PART));
+  assert.equal(res.ok, true, JSON.stringify(res));
+  assert.equal(res.workType, 'slides');
+  assert.equal(copies.length, 1);
+  const copy = copies[0];
+  assert.equal(copy.getMimeType(), 'application/vnd.google-apps.presentation');
+  assert.equal(copy._access('1234567@ccpsnet.net'), null, 'not shared with the student yet');
+  assert.equal(copy._access('owner@ccpsnet.net'), 'commenter', 'the teacher comments on a deck, as on a doc');
+  const r = ledger.getSheetByName('Ledger').getDataRange().getValues()[1];
+  assert.equal(r[16], 'https://docs.google.com/presentation/d/' + copy.getId() + '/edit');
+  assert.equal(exported.workFileTypeOfUrl_(r[16]), 'slides');
+  assert.equal(r[12], 'SCHEDULED');
+  const snap = exported.formSnapshotFor_(ledger, copy.getId());
+  assert.ok(snap, 'a FormSnapshots row for the deck');
+  assert.equal(snap.partConfigId, SLIDES_PART);
+  assert.deepEqual(JSON.parse(String(snap.checksRaw)), { minSlides: 1 }, 'an unmarked part: the defaults');
+  const file = sandbox.DriveApp.getFileById(snap.snapshotDocId);
+  assert.match(file.getName(), /Design It — Ana — your slides, as checked$/);
+  assert.equal(file._access('owner@ccpsnet.net'), 'commenter');
+  const text = sandbox.DocumentApp.openById(snap.snapshotDocId).getBody().getText();
+  assert.ok(text.includes(exported.SLIDES_SNAPSHOT_NOT_SUBMITTED));
+  assert.match(text, /copies the words on your slides, your speaker notes/);
+  assert.match(text, /The copy of your slides ends above/);
+  exported.unlockNextPart_(exported.getConfig_(), r[2], 'owner@ccpsnet.net');
+  assert.equal(copy._access('1234567@ccpsnet.net'), 'editor', 'the deck is shared on unlock');
+  assert.equal(file._access('1234567@ccpsnet.net'), 'commenter', 'and its feedback page with it');
+  assert.deepEqual(formAppCalls, [], 'no FormApp or SlidesApp call at intake');
+
+  const none = formSetup({ slides: true, template: false });
+  assert.deepEqual(none.exported.intakeStudent_(none.exported.getConfig_(), formStudent(true, SLIDES_PART)),
+    { ok: false, code: 'NO_WORK_TEMPLATE', workType: 'slides' });
+  assert.equal(none.copies.length, 0);
 });

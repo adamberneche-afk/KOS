@@ -18,9 +18,10 @@
 //      (52's enrollCanvasRoster_). A lesson that hasn't reached its release
 //      night gets docs that aren't shared yet (SCHEDULED); the current lesson
 //      and tomorrow's get shared ones, so a late joiner can start at once.
-//      A part marked workType "form" (Phase 4a) gets a copy of its template
-//      form instead of a doc (02), made, shared and SCHEDULED the same way,
-//      with its snapshot doc (its feedback page, Phase 4b) shared beside it.
+//      A part marked workType "form" or "slides" (Phase 4a/4c) gets a copy of
+//      its template file instead of a doc (02), made, shared and SCHEDULED
+//      the same way, with its snapshot doc (its feedback page, Phase 4b)
+//      shared beside it.
 //   3b. LESSON DOC. With the rollout on for the course, each of those
 //      lessons gets the teacher's lesson doc (66) once; later nights refresh
 //      its Class status.
@@ -459,8 +460,8 @@ function _lrRelease_(ss, cfg, plan, modes, deadline) {
     try {
       DriveApp.getFileById(String(data[i][LEDGER.FILE_ID]).trim())
         .addEditor(String(data[i][LEDGER.GOOGLE_ID]).trim());
-      // A form part's feedback page goes with it (Phase 4b, 68).
-      if (workFileTypeOfUrl_(data[i][LEDGER.ADMIN_FILE_URL]) === "form") {
+      // A form or Slides part's feedback page goes with it (Phase 4b/4c, 68).
+      if (workFileHasSnapshot_(workFileTypeOfUrl_(data[i][LEDGER.ADMIN_FILE_URL]))) {
         shareFormSnapshot_(ss, String(data[i][LEDGER.FILE_ID]).trim(), String(data[i][LEDGER.GOOGLE_ID]).trim());
       }
       ledger.getRange(i + 1, LEDGER.STATUS + 1).setValue("ACTIVE");
