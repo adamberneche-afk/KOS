@@ -144,6 +144,7 @@ function _dashDemoCard_(course, lesson, state, block, period, now) {
     statusNote:    studentStatusNote_(displayStatus),
     notYet:        revise && primary ? primary.text : "",
     lastEval:      s.checked !== undefined ? formatDate_(_dashDemoDaysAgo_(now, s.checked)) : "",
+    lastEvalAt:    s.checked !== undefined ? _dashDemoDaysAgo_(now, s.checked).getTime() : 0,
     submittedAt:   s.submitted !== undefined ? formatDate_(_dashDemoDaysAgo_(now, s.submitted)) : null,
     docUrl:        null, // no document: the page shows a note instead
     workType:      "doc",
@@ -631,6 +632,8 @@ function getStudentDashboardData(termFilter) {
       // card that needs revising (_dashNotYet_).
       notYet:        "",
       lastEval:      lastEval     || "",
+      // For the page's "Recently checked" sort (F16 item 3).
+      lastEvalAt:    sheetTimestampMs_(row[LEDGER.LAST_EVAL]) || 0,
       submittedAt:   submittedAt  || null,
       docUrl:        workFileUrl_(fileId, workType),
       // "doc", "form" or "slides": the card's "Open My Document", "Open
@@ -2278,6 +2281,14 @@ function buildStudentDashboardHtml_(opts) {
   .parts-toggle{margin-top:10px;background:white;border:1px solid #5f6368;color:#3c4043;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
   .parts-toggle:focus-visible{outline:2px solid #1557b0;outline-offset:2px}
   .parts-list{margin-top:10px}
+  /* F16 item 3: the sort control and the filter chips, above the classes. */
+  .list-controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin:6px 0 4px;font-size:14px}
+  .list-controls select{font:inherit;font-size:14px;padding:6px 8px;border:1px solid #5f6368;border-radius:6px;background:white;color:#202124}
+  .chips{display:flex;flex-wrap:wrap;gap:6px}
+  .chip{font:inherit;font-size:13px;border:1px solid #5f6368;background:white;color:#3c4043;border-radius:16px;padding:5px 12px;cursor:pointer}
+  .chip[aria-pressed="true"]{background:#e8f0fe;border-color:#1557b0;color:#1557b0;font-weight:600}
+  .chip:focus-visible,.list-controls select:focus-visible{outline:2px solid #1557b0;outline-offset:2px}
+  .filter-empty{font-size:14px;color:var(--text-secondary);padding:16px 0}
   .parts-list .card{box-shadow:none;border:1px solid #e8eaed;border-left-width:5px}
   /* The header's menu (F16 item 7): Refresh in view, the rest in More ▾. */
   .hdr-more{position:relative}
@@ -2675,8 +2686,11 @@ function render(data) {
   // Block sort order — uses system default, gracefully handles unknown values
   // Admins can customize this via the BLOCK_ORDER Script Property
   const blockOrder = ["1","2O","2E","3O","3E","4O","4E"];
+  // The sort and the filters (F16 item 3) change only the classes' lists;
+  // Do next always lists everything that needs the student.
+  const listed = sortCards(filterCards(data.assignments, _listView.filters), _listView.sort);
   const groups = {};
-  data.assignments.forEach(a => {
+  listed.forEach(a => {
     if (!groups[a.folderLabel]) groups[a.folderLabel] = [];
     groups[a.folderLabel].push(a);
   });
@@ -2690,7 +2704,10 @@ function render(data) {
 
   // This week's work first (F16 item 7): Do next, the warm-ups, the
   // classes; the competency counts after them.
-  let html = termLineHtml(data) + doNextHtml(data.assignments) + renderWarmUps(data);
+  let html = termLineHtml(data) + doNextHtml(data.assignments) + renderWarmUps(data) + listControlsHtml();
+  if (!listed.length) {
+    html += '<p class="filter-empty" role="status">Nothing here with these filters. <button type="button" class="chip" onclick="clearFilters()">Show all</button></p>';
+  }
   sortedGroups.forEach(gk => {
     html += \`<div class="group-header">Block \${esc(gk)}</div>\`;
     // A lesson in parts (68) is one card (F16 item 4), where its first part
@@ -2795,6 +2812,79 @@ function chipHtml(a) {
 
 function cardId(a) {
   return "card-" + String(a.configId || a.fileId || "").replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+// ── Sort and filters (F16 item 3) ─────────────────────────────────────────
+// Sort: Assigned order (the server's order, the default), Needs attention
+// first (the order before F16: couldn't be checked, revise, in progress,
+// not started, done), Recently checked, Not yet shown first (by the
+// primary milestone's mark). Filters: chips, any number on; none on shows
+// everything. A lesson in parts goes by the part on its card. Kept in page
+// memory for the visit: Refresh, the tabs and every re-render keep it, and
+// a new visit starts at Assigned order with no filter. Not the browser's session storage,
+// as F16 proposed: the operator's standing rule (2026-10-22) is that no
+// cas-ccps page stores anything in the browser
+// (tests/tools/no-browser-storage.test.js); that choice is the operator's.
+const SORTS = [["assigned", "Assigned order"], ["attention", "Needs attention first"],
+  ["recent", "Recently checked"], ["notshown", "Not yet shown first"]];
+const FILTERS = [["NEEDS_ACTION", "Needs action"], ["IN_PROGRESS", "In progress"], ["NOT_STARTED", "Not started"], ["DONE", "Done"]];
+let _listView = { sort: "assigned", filters: [] };
+function setSort(v) {
+  if (!SORTS.some(s => s[0] === v)) return;
+  _listView.sort = v;
+  if (_lastDashData) render(_lastDashData);
+}
+function toggleFilter(btn) {
+  const f = btn.getAttribute("data-filter");
+  const on = _listView.filters.indexOf(f) !== -1;
+  _listView.filters = on ? _listView.filters.filter(x => x !== f) : _listView.filters.concat([f]);
+  if (_lastDashData) render(_lastDashData);
+}
+function clearFilters() {
+  _listView.filters = [];
+  if (_lastDashData) render(_lastDashData);
+}
+function listControlsHtml() {
+  return '<div class="list-controls"><label for="sort-sel">Sort</label><select id="sort-sel" onchange="setSort(this.value)">' +
+    SORTS.map(s => '<option value="' + s[0] + '"' + (s[0] === _listView.sort ? " selected" : "") + '>' + esc(s[1]) + '</option>').join("") +
+    '</select><div class="chips" role="group" aria-label="Show only">' +
+    FILTERS.map(f => '<button type="button" class="chip" id="chip-' + f[0] + '" data-filter="' + f[0] + '" aria-pressed="' +
+      (_listView.filters.indexOf(f[0]) !== -1) + '" onclick="toggleFilter(this)">' + esc(f[1]) + '</button>').join("") +
+    '</div></div>';
+}
+// The card a lesson in parts shows (lessonCardHtml's rule): its parts here.
+function _shownPart(parts) {
+  const open = parts.slice().sort((x, y) => x.part.n - y.part.n);
+  return open.filter(a => a.statusClass !== "DONE")[0] || open[open.length - 1];
+}
+function _byLesson(list) {
+  const out = {};
+  list.forEach(a => { if (a.part) (out[a.part.lesson] = out[a.part.lesson] || []).push(a); });
+  return out;
+}
+// The status a filter reads: a lesson in parts by the part on its card;
+// "Needs action" includes a check that couldn't be done.
+function filterCards(list, filters) {
+  if (!filters || !filters.length) return list.slice();
+  const lessons = _byLesson(list);
+  const want = {};
+  filters.forEach(f => { want[f] = true; if (f === "NEEDS_ACTION") want.ISSUE = true; });
+  return list.filter(a => want[(a.part ? _shownPart(lessons[a.part.lesson]) : a).statusClass]);
+}
+const ATTENTION = { ISSUE: 0, NEEDS_ACTION: 1, IN_PROGRESS: 2, NOT_STARTED: 3, DONE: 4 };
+const NOT_SHOWN_RANK = { NOT_MET: 0, PARTIALLY_MET: 1, UNCHECKED: 2, MET: 3 };
+function sortCards(list, mode) {
+  const out = list.slice();
+  if (!mode || mode === "assigned") return out;
+  const lessons = _byLesson(out);
+  const rep = (a) => (a.part ? _shownPart(lessons[a.part.lesson]) : a);
+  const at = new Map(out.map((a, i) => [a, i]));
+  const key = mode === "attention" ? (a => ATTENTION[rep(a).statusClass] ?? 5)
+    : mode === "recent" ? (a => -Math.max.apply(null, (a.part ? lessons[a.part.lesson] : [a]).map(x => x.lastEvalAt || 0)) || 0)
+    : (a => { const m = (rep(a).milestones || [])[0]; return m ? NOT_SHOWN_RANK[m.markKey] ?? 4 : 4; });
+  // Stable: ties keep the assigned order.
+  out.sort((a, b) => (key(a) - key(b)) || (at.get(a) - at.get(b)));
+  return out;
 }
 
 // The marking period the page shows (F16): the term selector is gone.

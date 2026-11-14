@@ -5613,3 +5613,15 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   scroll position survive a re-render.
 - **Tests:** `student-dashboard-navigation.test.js`; the parts assertions
   in `lesson-parts-dashboards.test.js` and `student-dashboard-demo.test.js`.
+
+## Student Dashboard: sort and filters, 2026-11-14
+
+- **Now (F16 item 3):** a Sort menu (Assigned order by default, Needs
+  attention first, Recently checked, Not yet shown first) and filter chips
+  (Needs action, In progress, Not started, Done) above the classes; Do next
+  is unchanged.
+- **Not as proposed:** the choice is kept in page memory, not the
+  browser's session storage, because of the 2026-10-22 rule that no
+  cas-ccps page stores anything in the browser. A reload starts at
+  Assigned order. The operator decides whether to make an exception.
+- **Tests:** `student-dashboard-navigation.test.js`.
