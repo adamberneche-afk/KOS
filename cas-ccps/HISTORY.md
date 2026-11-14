@@ -5680,6 +5680,19 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
 - **Tests:** `student-dashboard-news.test.js`, `student-dashboard-demo.test.js`,
   `turn-in-code.test.js`.
 
+## Student Dashboard: where the work is, and Try again, 2026-11-14
+
+- **Found:** a waiting card said only "Waiting for feedback"; a timed-out
+  one said "Taking longer than usual… your teacher knows", with nothing for
+  the student to do but wait for the teacher's re-queue.
+- **Now (the operator's "Build 1-4", item 3):** a stage line from the times
+  the Ledger and staging rows already hold, "usually about N min" only from
+  FlowMeasures' measured median, Check again (a status check) after 8
+  minutes, and on a timeout "Check stopped ⚠" with Try again: the admin's
+  re-queue for the student's own row, once per 10 minutes, server-enforced,
+  no new queue or staging row.
+- **Tests:** `student-dashboard-stages.test.js`, `dashboard-plain-words.test.js`.
+
 ## Teacher Dashboard: who is waiting, and is the checker answering, 2026-11-14
 
 - **Found:** on 11-13 Flow 2 stopped answering for a day; the teacher saw

@@ -146,7 +146,8 @@ test('after a successful Submit, the card says it is waiting and Submit is gone'
 test('a failed or timed-out check reads as the system\'s problem, with a next step for the teacher', () => {
   const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('07_TeacherDashboard.js')],
     ['resolveStudentStatus_', '_tdFlagReason_']);
-  assert.match(exported.resolveStudentStatus_('ERROR_TIMEOUT'), /Taking longer than usual.*your teacher knows/);
+  // Plain words and a next step since 2026-11-14: the card's Try again.
+  assert.match(exported.resolveStudentStatus_('ERROR_TIMEOUT'), /^Check stopped ⚠ — it took too long\. Your work is saved\. Press Try again/);
   assert.match(exported.resolveStudentStatus_('ERROR_EVALUATION'), /your teacher knows\. You can submit again/);
   assert.match(exported.resolveStudentStatus_('ERROR_OTHER'), /tell your teacher/);
   assert.match(exported._tdFlagReason_('ERROR_TIMEOUT'), /didn't finish in time\. Next:/);
@@ -251,7 +252,7 @@ test('Student Dashboard: a short pill, with the rest of the status on its own li
   assert.match(by.A3.displayStatus, /^Feedback ready — revise/, 'displayStatus is unchanged for the doc menu');
   const { exported } = studentData();
   const words = exported.buildStudentDashboardHtml_();
-  for (const pill of ['Not started', 'Being checked', 'Revise', 'Turned in', 'Done ✓', 'Taking longer', 'Not yet', 'Do next']) {
+  for (const pill of ['Not started', 'Being checked', 'Revise', 'Turned in', 'Done ✓', 'Check stopped', 'Not yet', 'Do next']) {
     assert.ok(words.includes('<dt>' + pill + '</dt>'), 'the Terms panel explains ' + pill);
   }
   assert.doesNotMatch(words, /max-width:55%/, 'no right-aligned pill squeezing the title');
@@ -289,7 +290,7 @@ test('Student Dashboard: no "Not checked yet" while the work is being checked', 
     statusNote: 'Your teacher knows. You can submit again', lastEval: '' });
   assert.equal(ctx.evalLine(failed), '', 'nor on a check that failed: its own line says what happened');
   assert.doesNotMatch(ctx.cardHtml(failed), /Not checked yet|eval-line/);
-  assert.equal(ctx.evalLine(Object.assign({}, failed, { status: 'ERROR_TIMEOUT', statusPill: 'Taking longer ⚠' })), '');
+  assert.equal(ctx.evalLine(Object.assign({}, failed, { status: 'ERROR_TIMEOUT', statusPill: 'Check stopped ⚠' })), '');
   assert.match(ctx.evalLine(by.A3), /^Last checked: Oct 21, 2026/);
   assert.equal(ctx.evalLine({ statusClass: 'IN_PROGRESS', statusPill: 'Waiting for feedback', lastEval: '' }), 'Not checked yet');
 });

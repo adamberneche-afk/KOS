@@ -304,6 +304,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 | Key | Read | Default at the read | Written by code | Read in |
 |---|---|---|---|---|
 | `CURRENT_TERM` | direct | — | no | 00_SharedConfig.js |
+| `DASH_RETRY_AT` | via the constant DASH_RETRY_PROP | "{}" | 13_StudentDashboard.js | 13_StudentDashboard.js |
 | `DEPLOY_DRIFT_GITHUB_TOKEN` | direct | — | no | 00_SharedConfig.js |
 | `MARKING_PERIOD_ENDS` | direct | — | no | 00_SharedConfig.js, 13_StudentDashboard.js |
 | `TEACHER_EMAIL` | direct | — | no | 13_StudentDashboard.js |
