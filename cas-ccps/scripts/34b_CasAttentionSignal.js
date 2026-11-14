@@ -41,6 +41,9 @@
 //     residue lands here)
 //   - STAGING_PIPELINE rows in flight with no timestamp (they never age, so
 //     nothing else ever times them out)
+//   - Flow 2 not answering: lane timeouts in a row with no answer from
+//     Studio in between (03's FLOW2_ALERT_STATE, which also emails the admin
+//     once), with when it started and the last answer
 //   - Submit for Feedback failures on the system side in the last 24 hours
 //     (Student Dashboard's DOC_UNREADABLE, NO_QUEUE and SERVER_ERROR, counted from the
 //     SubmitFailures tab 13 writes), with the count per code
@@ -115,6 +118,16 @@ function writeCasSignal_(watchdog, now) {
     if (queue.waiting > 0) students.push("Submissions waiting on feedback: " + queue.waiting);
     if (queue.failed > 0) students.push("Submissions whose evaluation failed or timed out: " + queue.failed);
     if (queue.noTimestamp > 0) admin.push("Queue rows in flight with no timestamp (they never time out): " + queue.noTimestamp);
+  }
+  // Flow 2 not answering (03's alert, 2026-11-14): timeouts in a row with no
+  // answer from Studio.
+  const f2 = flow2AlertState_();
+  if (f2.streak >= FLOW2_ALERT_AFTER_TIMEOUTS) {
+    admin.push("Flow 2 isn't answering: " + f2.streak + " submission checks timed out in a row since " +
+      _flow2AlertTime_(f2.since) + ", last answer " +
+      (f2.lastAnswerAt ? _flow2AlertTime_(f2.lastAnswerAt) : "not recorded") +
+      (f2.alertedAt ? " (the admin was emailed)" : " (no ADMIN_NOTIFY_EMAIL, so no email)") +
+      ". Check Flow 2's activity in Studio.");
   }
 
   // ── SCR counts (hourly) and retry scan (daily) ──

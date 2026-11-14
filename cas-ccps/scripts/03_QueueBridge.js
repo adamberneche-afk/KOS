@@ -215,6 +215,7 @@ function backPropagateCompletions() {
             updateLedgerStatus_(ledgerSheet, fileId, configId, stagingStatus);
             if (stagingStatus === "ERROR_TIMEOUT") {
               notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet);
+              flow2NoteTimeout_(cfg);
             } else {
               notifyFailedCheckToTeacher_(cfg, teacherEmail, fileId, configId, ledgerSheet);
             }
@@ -528,6 +529,104 @@ function notifyFailedCheckToTeacher_(cfg, teacherEmail, fileId, configId, ledger
   } catch (e) {
     Logger.log("[BACKPROP] notifyFailedCheckToTeacher_ error: " + e.message);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Flow 2 not answering: one email to the admin (2026-11-14). On 11-13
+// Studio's Flow 2 stopped answering for a day, and the only sign was one
+// timeout email per submission, to teachers.
+//
+// Precisely: each submission the lane times out (06's ERROR_TIMEOUT, counted
+// here once, when backprop closes its queue row) adds one to a streak. Any
+// Flow 2 answer the harvest sees (37: a row EVALUATED with output, whatever
+// its result; fixture and canary rows aside) sets the streak back to 0.
+// When the streak reaches FLOW2_ALERT_AFTER_TIMEOUTS, ADMIN_NOTIFY_EMAIL gets
+// one email; the latch (alertedAt) stops any more until Flow 2 has answered
+// again. One isolated timeout sends nothing. State in the Script Property
+// FLOW2_ALERT_STATE: counts and times only. The CAS attention signal (34b)
+// shows the streak too.
+// ---------------------------------------------------------------------------
+const FLOW2_ALERT_KEY = "FLOW2_ALERT_STATE";
+const FLOW2_ALERT_AFTER_TIMEOUTS = 2;
+const FLOW2_ALERT_SYNTHETIC_RE = /(^|-)(FIXTURE|CANARY)(-|$)/i;
+
+// { streak, since, lastAnswerAt, alertedAt }: times as ms, 0 when none.
+function flow2AlertState_() {
+  let st = {};
+  try {
+    st = JSON.parse(PropertiesService.getScriptProperties().getProperty(FLOW2_ALERT_KEY) || "{}") || {};
+  } catch (e) {
+    st = {};
+  }
+  return {
+    streak: Number(st.streak) || 0,
+    since: Number(st.since) || 0,
+    lastAnswerAt: Number(st.lastAnswerAt) || 0,
+    alertedAt: Number(st.alertedAt) || 0,
+  };
+}
+
+function _flow2SaveAlertState_(st) {
+  PropertiesService.getScriptProperties().setProperty(FLOW2_ALERT_KEY, JSON.stringify(st));
+}
+
+// A lane timeout. Never throws: backprop's own work comes first.
+function flow2NoteTimeout_(cfg, now) {
+  try {
+    now = now ? new Date(now) : new Date();
+    const st = flow2AlertState_();
+    if (!st.streak) st.since = now.getTime();
+    st.streak++;
+    if (st.streak >= FLOW2_ALERT_AFTER_TIMEOUTS && !st.alertedAt) {
+      const to = cfg && cfg.adminNotifyEmail;
+      if (to) {
+        MailApp.sendEmail(casMail_(to, "Flow 2 isn't answering — Studio may be down", _flow2AlertBody_(st)));
+        st.alertedAt = now.getTime();
+        Logger.log("[BACKPROP] Flow 2 not answering: " + st.streak + " timeouts in a row; the admin was emailed.");
+      } else {
+        Logger.log("[BACKPROP] Flow 2 not answering: " + st.streak + " timeouts in a row; " +
+                   "no ADMIN_NOTIFY_EMAIL, so no email.");
+      }
+    }
+    _flow2SaveAlertState_(st);
+  } catch (e) {
+    Logger.log("[BACKPROP] Flow 2 alert error: " + e.message);
+  }
+}
+
+// Flow 2 answered: the streak and the latch are cleared. Never throws.
+function flow2NoteAnswered_(now) {
+  try {
+    now = now ? new Date(now) : new Date();
+    const st = flow2AlertState_();
+    if (st.alertedAt) Logger.log("[FlowInputBuilder] Flow 2 is answering again; its alert is cleared.");
+    _flow2SaveAlertState_({ streak: 0, since: 0, lastAnswerAt: now.getTime(), alertedAt: 0 });
+  } catch (e) {
+    Logger.log("[FlowInputBuilder] Flow 2 alert error: " + e.message);
+  }
+}
+
+function _flow2AlertTime_(ms) {
+  return ms ? Utilities.formatDate(new Date(ms), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm") : "";
+}
+
+function _flow2AlertBody_(st) {
+  return "Flow 2 (student feedback) has stopped answering: " + st.streak + " submission checks " +
+    "in a row timed out since " + _flow2AlertTime_(st.since) + ", with no answer from Studio in between.\n" +
+    "Last time Flow 2 answered: " +
+    (st.lastAnswerAt ? _flow2AlertTime_(st.lastAnswerAt) : "none recorded since this alert was added (2026-11-14)") + ".\n\n" +
+    "What to check:\n" +
+    "  1. In Workspace Studio, open Flow 2 (CAS - Student Response Extraction) and look at its\n" +
+    "     recent activity. Failed runs, or none at all, mean Studio or its Ask Gemini step\n" +
+    "     isn't working; a changed step may need re-saving or re-binding.\n" +
+    "  2. Once Flow 2 answers again: a check it left unanswered is restarted by itself, up to\n" +
+    "     twice, 12 minutes apart (the FlowInput tab's ReArms column). A submission past that\n" +
+    "     (ReadyStatus ERROR_NO_ANSWER) needs a re-queue: in the Central Ledger, Admin Controls\n" +
+    "     -> Reset Stuck Pipeline Row (the Admin Recovery Panel), or the student presses Submit\n" +
+    "     for Feedback again. A late answer still lands.\n\n" +
+    "Teachers got the usual timeout email for each submission. This email is sent once; the next\n" +
+    "comes only after Flow 2 has answered again and then stops again.\n\n" +
+    "— Classroom Agency System (automated alert)";
 }
 
 // ---------------------------------------------------------------------------

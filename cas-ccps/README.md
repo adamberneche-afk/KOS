@@ -213,7 +213,11 @@ doc's feedback zone), records the result on the Ledger row and in
 unanswered for 12 minutes is restarted, at most twice. Script 03's
 `backPropagateCompletions` (every 2 minutes) closes out the queue/ledger
 rows, appends the "what to do next" block, and for a timeout or an
-`ERROR_EVALUATION` emails the teacher and sets the doc header.
+`ERROR_EVALUATION` emails the teacher and sets the doc header. Two
+timeouts in a row with no Flow 2 answer between them email
+`ADMIN_NOTIFY_EMAIL` once ("Flow 2 isn't answering"), and the CAS
+attention signal shows the streak; the next answer the harvest sees clears
+it (`FLOW2_ALERT_STATE`, 2026-11-14).
 With `REFLECTION_ON_SUBMIT` on (off by default; `all` or one course code),
 Submit first asks one or two questions about how the student worked
 (fixed frames chosen in `00`, at least 10 words each), writes the answers

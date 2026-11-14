@@ -5538,3 +5538,16 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   asks for a hand edit of the FlowInput tab.
 - **Tests:** `flow-input-builder.test.js` ("re-arm"),
   `evaluation-next-steps.test.js`.
+
+## An email when Flow 2 stops answering, 2026-11-14
+
+- **Found (11-13):** Studio's Flow 2 stopped answering for a day; the only
+  sign was one timeout email per submission, to teachers.
+- **Now:** each lane timeout backprop (03) closes adds one to a streak, and
+  any Flow 2 answer the harvest (37) sees (fixture and canary aside) sets
+  it back to 0. At two in a row `ADMIN_NOTIFY_EMAIL` gets one email, "Flow
+  2 isn't answering — Studio may be down" (counts and times only, what to
+  check); a latch in the Script Property `FLOW2_ALERT_STATE` holds further
+  mail until Flow 2 answers again. The CAS attention signal (34b) shows the
+  streak under ADMIN.
+- **Tests:** `flow2-not-answering.test.js`, `cas-attention-signal.test.js`.

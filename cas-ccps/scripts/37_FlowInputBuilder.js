@@ -901,6 +901,7 @@ function harvestFlowInputResults() {
     const fiData = fiSheet.getDataRange().getValues();
     let harvested = 0;
     let evalLog = null; // EvaluationLog rows, read once if a re-armed row needs them
+    let answered = false; // Studio answered a real row: clears 03's not-answering alert
 
     for (let i = 1; i < fiData.length; i++) {
       if (String(fiData[i][FI.READY_STATUS]).trim() !== "EVALUATED") continue;
@@ -915,6 +916,7 @@ function harvestFlowInputResults() {
       // a form part's snapshot doc (Phase 4b). The work file's ID stays the
       // key for the Ledger, the evidence and the logs.
       const feedbackDocId = _fiDocIdFromUrl_(fiData[i][FI.STUDENT_DOC_URL]) || studentFileId;
+      if (geminiFullOutput.trim() && !FLOW2_ALERT_SYNTHETIC_RE.test(configId)) answered = true;
 
       // A re-armed row's second answer (the first run was only slow): the
       // first is already applied, so this one is set aside untouched.
@@ -1031,6 +1033,7 @@ function harvestFlowInputResults() {
       SpreadsheetApp.flush();
       Logger.log("[FlowInputBuilder] Harvested " + harvested + " row(s).");
     }
+    if (answered) flow2NoteAnswered_();
   } catch (err) {
     Logger.log("[FlowInputBuilder] Critical harvest failure: " + err.message);
   } finally {
