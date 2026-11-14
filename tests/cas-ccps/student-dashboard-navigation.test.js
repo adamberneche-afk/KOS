@@ -40,7 +40,7 @@ function setUp(opts = {}) {
     getScriptTimeZone: () => 'America/New_York',
   };
   const env = loadGasFiles(SD_FILES, ['getStudentDashboardData', 'buildStudentDashboardHtml_', 'LEDGER', 'getDemoDashboardData',
-    'openTurnInForAssignment', 'grantTurnInCode'], { Session: session });
+    'openTurnInForAssignment', 'grantTurnInCode', 'DASH_LESSON_INFO'], { Session: session });
   const { exported, sandbox } = env;
   const L = exported.LEDGER;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -253,4 +253,116 @@ test('the header: Refresh in view, My Info and the terms in an accessible More m
   key('more-menu', 'Escape');
   assert.equal(els['more-menu'].hidden, true);
   assert.equal(focus.el.id, 'more-btn');
+});
+
+// ── One card per lesson, and its milestone marks (F16 items 4 and 5) ───────
+
+function evidenceTab(ss, rows) {
+  const ev = ss.insertSheet('CompetencyEvidence');
+  ev.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text', 'outcome', 'config_id',
+    'evaluated_at', 'student_file_id', 'archive_status']);
+  rows.forEach(([file, comp, outcome, at, archived]) => ev.appendRow(['e', ME, comp, comp + ' text', outcome, file,
+    new Date(at), 'f-' + file, archived || '']));
+}
+
+test('milestone marks: up to three, primary first, in the student\'s words; the best check counts; Not checked yet before one', () => {
+  const env = setUp();
+  // L07's measured milestones, primary first, from 13c.
+  const [c1, c2, c3] = env.exported.DASH_LESSON_INFO['8175-L07'].iCan.map((m) => m.id);
+  const l03 = env.exported.DASH_LESSON_INFO['8175-L03'].iCan[0].id;
+  evidenceTab(env.ss, [
+    ['W-L07', c1, 'NOT_MET', '2026-11-02T10:00:00'],
+    ['W-L07', c1, 'MET', '2026-11-05T10:00:00'],
+    ['W-L07', c2, 'PARTIALLY_MET', '2026-11-05T10:00:00'],
+    ['W-L07', c3, 'MET', '2026-11-05T10:00:00', 'ARCHIVED'],
+    ['W-L03', l03, 'NOT_MET', '2026-11-05T10:00:00'],
+  ]);
+  const by = Object.fromEntries(env.data().assignments.map((a) => [a.configId, a]));
+  const ms = by['W-L07'].milestones;
+  assert.ok(ms.length >= 1 && ms.length <= 3);
+  assert.ok(ms.every((m) => /^I can /.test(m.text)), 'the student\'s own words');
+  const mark = Object.fromEntries(ms.map((m) => [m.id, m.mark]));
+  assert.equal(ms[0].id, c1, 'the primary first');
+  assert.equal(mark[c1], 'Shown', 'the best check counts');
+  assert.equal(mark[c2], 'Partly shown');
+  assert.equal(mark[c3], 'Not checked yet', 'archived evidence does not count');
+  assert.equal(by['W-L03'].milestones[0].mark, 'Not shown yet');
+  assert.ok(by['W-L05'].milestones.every((m) => m.mark === 'Not checked yet'), 'nothing checked yet');
+  assert.deepEqual(by['W-CUSTOM-A'].milestones, [], 'a teacher\'s own task has none');
+  const { ctx } = page(env.exported);
+  const h = ctx.marksHtml(by['W-L07']);
+  assert.match(h, /<ul class="marks" aria-label="What this lesson checks"><li><span class="mark mark-MET">Shown<\/span>I can /);
+  assert.doesNotMatch(h, /\d+ of \d+|%|score|total|target/i, 'no totals, scores or targets');
+  assert.match(ctx.marksHtml(Object.assign({}, by['W-L05'], { statusPill: 'Being checked' })), />Being checked</);
+});
+
+function partsSetUp() {
+  const env = setUp();
+  const L = env.L;
+  const ledger = env.ss.getSheetByName('Ledger');
+  const sa = env.ss.getSheetByName('StudentAssignments');
+  const statuses = [['COMPLETE', 'PASSED'], ['COMPLETE', 'NEEDS_REVISION'], ['ACTIVE', ''], ['SCHEDULED', '']];
+  statuses.forEach(([st, res], i) => {
+    const r = new Array(27).fill('');
+    const id = 'W-HYPE-P' + (i + 1);
+    r[L.TIMESTAMP] = new Date(); r[L.GOOGLE_ID] = ME; r[L.CONFIG_ID] = id; r[L.FILE_ID] = 'f-' + id; r[L.STUDENT_NAME] = 'Amy';
+    r[L.TEACHER_EMAIL] = TEACHER; r[L.TEACHER_NAME] = 'Teacher'; r[L.COURSE_NAME] = 'The Hype Machine — Part ' + (i + 1) + ': Step ' + (i + 1);
+    r[L.CLASS_NAME] = C8177; r[L.BLOCK] = '3'; r[L.PERIOD] = '3'; r[L.STATUS] = st; r[L.LAST_RESULT] = res; r[L.ACADEMIC_YEAR] = '2627_MP2';
+    ledger.appendRow(r);
+    sa.appendRow([id, ME, 'CAS-8177-THE-HYPE-MACHINE-P' + (i + 1), new Date()]);
+  });
+  return env;
+}
+
+test('one card per lesson: the part to work on now, a stepper, one next action, the other parts on a button', () => {
+  const env = partsSetUp();
+  const data = env.data();
+  const p = page(env.exported, data);
+  const h = p.html;
+  assert.equal((h.match(/class="card [A-Z_]+ lesson-card"/g) || []).length, 1, 'one lesson card for the lesson in parts');
+  const lesson = h.slice(h.indexOf('lesson-card'), h.indexOf('class="parts-list"'));
+  assert.match(lesson, /<div class="part-sub">Part 2 of 4: Step 2<\/div>/, 'Part 2 needs revising: it is the one to work on');
+  assert.match(lesson, /aria-label="1 of 4 parts done">●◉○○<\/span>1 of 4 parts done/);
+  assert.equal((lesson.match(/act-primary/g) || []).length, 1, 'one next action');
+  assert.match(lesson, /🔒 Part 4 opens when the check finds Part 3 meets its main goal, or when your teacher opens it\./);
+  assert.match(h, /<div class="parts-list" id="parts-CAS-8177-THE-HYPE-MACHINE" role="region"[^>]*hidden>/);
+  // Tap: the other parts show, the button says so, and focus stays on it.
+  const btn = { getAttribute: () => 'CAS-8177-THE-HYPE-MACHINE' };
+  p.ctx.toggleParts(btn);
+  assert.match(p.els.main.innerHTML, /aria-expanded="true"[^>]*>Hide the other parts<\/button><div class="parts-list"[^>]*>(?!.*hidden)/);
+  p.ctx.toggleParts(btn);
+  assert.match(p.els.main.innerHTML, /parts-list"[^>]*hidden>/);
+  // Do next to a part under "All parts" opens them first.
+  p.ctx.goToCard('card-W-HYPE-P1');
+  assert.match(p.els.main.innerHTML, /aria-expanded="true"/);
+});
+
+test('after a re-render (a submit, a refresh) focus stays where it was, or on its card', () => {
+  const env = setUp();
+  const data = env.data();
+  const p = page(env.exported);
+  const focused = [];
+  const elFor = (id) => ({ id, getAttribute: () => null, focus() { focused.push(id); } });
+  const doc = p.ctx.document;
+  const getById = doc.getElementById;
+  let active = { id: 'sub-card-W-L07', getAttribute: (k) => (k === 'data-file' ? 'f-W-L07' : null) };
+  Object.defineProperty(doc, 'activeElement', { get: () => active, configurable: true });
+  doc.getElementById = (id) => (id === 'sub-card-W-L07' || id === 'card-W-L07' ? elFor(id) : getById(id));
+  p.ctx.render(data);
+  assert.deepEqual(focused, ['sub-card-W-L07'], 'the same button');
+  // The reflection form's button is gone after the submit: its card.
+  active = { id: '', getAttribute: (k) => (k === 'data-file' ? 'f-W-L07' : null) };
+  focused.length = 0;
+  p.ctx.render(data);
+  assert.deepEqual(focused, ['card-W-L07']);
+});
+
+test('demo mode: the lesson cards have their marks and the lesson in parts its stepper', () => {
+  const env = setUp({ viewer: TEACHER });
+  const d = plain(env.exported.getDemoDashboardData());
+  const marks = d.dashboard.assignments.flatMap((a) => (a.milestones || []).map((m) => m.mark));
+  for (const w of ['Shown', 'Not shown yet', 'Not checked yet']) assert.ok(marks.includes(w), 'a mark: ' + w);
+  const { html } = page(env.exported, d.dashboard);
+  assert.match(html, /class="stepper"/);
+  assert.match(html, /class="marks"/);
 });
