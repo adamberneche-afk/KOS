@@ -25,7 +25,9 @@
 // And, through 69b's flowMeasures_() (2026-11-08), every CAS Studio flow per
 // week (sent, returned, applied, set aside, never returned, retries, wait)
 // in the FlowMeasures tab, and Studio's runs per day against
-// STUDIO_DAILY_RUN_LIMIT: the email's second line.
+// STUDIO_DAILY_RUN_LIMIT: the email's second line. Since 2026-11-14 the
+// editor log also has the Ledger cycle's run time (64's lcTimingReport_):
+// today's trigger time, each job's, and the schedule's share of the wait.
 //
 // DATA BOUNDARY: counts, rates and minutes only; no names, emails, file IDs,
 // ConfigIDs or student text, in the log, the Measures tab or the email.
@@ -63,6 +65,16 @@ function reportEvaluationHealth() {
       out.runs.days.map(function (d) { return d.day + "=" + d.runs; }).join(" "));
   }
   Logger.log("[S69] " + out.flowLine);
+  // Whether the schedule or Studio holds feedback up (2026-11-14): the
+  // Ledger cycle's run time today and each job's (64), beside Flow 2's wait
+  // above. Names and numbers only.
+  try {
+    const t = lcTimingReport_();
+    out.cycleLines = [t.cycle, t.schedule].concat(LC_JOBS.map(function (j) { return j.fn + ": " + t.jobs[j.fn]; }));
+    out.cycleLines.forEach(function (l) { Logger.log("[S69] " + l); });
+  } catch (e) {
+    Logger.log("[S69] Ledger cycle timing unavailable: " + e.message);
+  }
   return out;
 }
 

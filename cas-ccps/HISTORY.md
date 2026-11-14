@@ -5648,6 +5648,23 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   ID on the Student Dashboard project too. No practice question.
 - **Tests:** `student-dashboard-competencies.test.js`.
 
+## Every minute on the way to feedback, 2026-11-14
+
+- **Found:** the Ledger cycle ran every minute, but the harvest and part
+  unlocks ran every 5 and the backprop and Flow 6 every 2, so the schedule
+  alone could add about 9 minutes to a check Studio answered in one; and
+  nothing recorded how long each job took, so whether Studio or the
+  schedule held feedback up couldn't be told.
+- **Now (the operator's "Build 1-4", item 1):** those four run every
+  minute. Each job's run time (last, usual, today's runs and total, times
+  put off by the budget) and the cycle's own (today's trigger time against
+  the 6 hours Google allows a Workspace account a day) are kept in
+  `LEDGER_CYCLE_TIMING` and shown by `showSetupStatus()` and
+  `reportEvaluationHealth()`, with the schedule's share of the wait.
+  `LEDGER_CYCLE_EVERY` slows a job again without a push.
+- **Tests:** `ledger-cycle.test.js`, `setup-status.test.js`,
+  `evaluation-health.test.js`.
+
 ## Student Dashboard: news while the page is open, 2026-11-14
 
 - **Found:** the page had no way to learn that feedback had arrived; the

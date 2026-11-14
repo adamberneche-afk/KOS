@@ -200,7 +200,12 @@ stamps. The student clicks **Submit for Feedback** on their dashboard
 (Script 13; Script 01's doc menu, **📊 Feedback → Submit for Feedback**,
 does the same where student accounts may run Apps Script), which appends a
 row to `ReviewQueue`. The Ledger's frequent jobs run from one every-minute
-trigger, `runLedgerCycle` (`64`), each at its own cadence. Script 03's
+trigger, `runLedgerCycle` (`64`), each at its own cadence; every job between
+Submit and feedback runs every minute (since 2026-11-14), and each job's run
+time, the cycle's trigger time today against the daily quota, and the
+schedule's share of the wait are in `showSetupStatus()` and
+`reportEvaluationHealth()` (`LEDGER_CYCLE_TIMING`; `LEDGER_CYCLE_EVERY`
+slows a job without a push). Script 03's
 `bridgeQueue` (every minute) moves `PENDING` rows to `STAGING_PIPELINE`,
 deduplicating against in-flight evaluations. Script 06's turnstile (every
 minute) releases `PENDING_INFERENCE` rows to `IN_PROCESS` **per teacher**,
@@ -210,13 +215,13 @@ global lane used elsewhere in this codebase — and times out each row stuck
 `IN_PROCESS` for &gt;12 minutes. Script 37 resolves the teacher's milestones (seeded from the
 repo by `53`, or set up via Script 05 → Flow 1 → Script 08's confirmation
 step) into one `FlowInput` row; Studio's Flow 2 reads the doc and makes the
-Gemini call; 37's harvest (every 5 minutes) checks the output, writes the
+Gemini call; 37's harvest (every minute since 2026-11-14; every 5 before) checks the output, writes the
 feedback (a comment on the doc with `FEEDBACK_AS_COMMENT` on, otherwise the
 doc's feedback zone), records the result on the Ledger row and in
 `EvaluationLog`, and flips the staging row to `COMPLETE`, or to
 `ERROR_EVALUATION` when the result can't be used; a row Studio leaves
 unanswered for 12 minutes is restarted, at most twice. Script 03's
-`backPropagateCompletions` (every 2 minutes) closes out the queue/ledger
+`backPropagateCompletions` (every minute since 2026-11-14; every 2 before) closes out the queue/ledger
 rows, appends the "what to do next" block, and for a timeout or an
 `ERROR_EVALUATION` emails the teacher and sets the doc header. Two
 timeouts in a row with no Flow 2 answer between them email
@@ -360,7 +365,7 @@ down twice.)
 | Script | What it does | Run it via |
 |---|---|---|
 | `35_FlowPreflightAndCanary.js` | Structural preflight plus the two canaries. `runFlowPreflightCheck()` verifies what has to exist before a Flow can match anything — the tabs, the four time triggers (a duplicate counts as a failure, not a pass), the required Script Properties, the self-healing tabs — and says which of the four questions each finding answers. The canaries verify the Apps Script half with the Flow deliberately stubbed, and say so in their own log. `runFlowPreflightCheckNow()` and `runFlow2CanaryNow()` run the same from the Ledger's editor and show the result in a dialog (the canary's names its first failed stage and the clean-up call). | `runFlowPreflightCheck()`, `runFlow2Canary()` |
-| `37_FlowInputBuilder.js` | **The Flow 2 redesign.** Resolves Ledger → MatrixRegistry → TeacherMatrix in Apps Script and materializes one flat literal `FlowInput` row, so the Flow reads a single row and needs no custom step and no variable spreadsheet target. `harvestFlowInputResults()` applies Studio's result back: the feedback, the Ledger's result columns, one `EvaluationLog` row per result (since 2026-10-23; no student text), and `ERROR_EVALUATION` on the staging row when the result can't be used. A `READY` row Studio leaves unanswered for 12 minutes (the lane timeout) is restarted: `ReadyStatus` cleared, then set `READY` on the next run, at most twice, then `ERROR_NO_ANSWER`, which blocks only that submission; a re-queued or resubmitted submission whose row still waits restarts it at once. The count and time are in `ReArms`/`ArmedAt`, appended at the end (2026-11-14). Two time jobs (1-min build, 5-min harvest), run by the Ledger cycle (`64`) once `installLedgerCycle()` has taken them over. | `installFlowInputTriggers()` once (or the Ledger cycle); then automatic |
+| `37_FlowInputBuilder.js` | **The Flow 2 redesign.** Resolves Ledger → MatrixRegistry → TeacherMatrix in Apps Script and materializes one flat literal `FlowInput` row, so the Flow reads a single row and needs no custom step and no variable spreadsheet target. `harvestFlowInputResults()` applies Studio's result back: the feedback, the Ledger's result columns, one `EvaluationLog` row per result (since 2026-10-23; no student text), and `ERROR_EVALUATION` on the staging row when the result can't be used. A `READY` row Studio leaves unanswered for 12 minutes (the lane timeout) is restarted: `ReadyStatus` cleared, then set `READY` on the next run, at most twice, then `ERROR_NO_ANSWER`, which blocks only that submission; a re-queued or resubmitted submission whose row still waits restarts it at once. The count and time are in `ReArms`/`ArmedAt`, appended at the end (2026-11-14). Two time jobs (both every minute; the harvest was every 5 before 2026-11-14), run by the Ledger cycle (`64`) once `installLedgerCycle()` has taken them over. | `installFlowInputTriggers()` once (or the Ledger cycle); then automatic |
 | `38_LedgerSchemaGuard.js` | Detects and safely repairs Ledger column drift — the live Ledger had shifted so `LEDGER.TEACHER_EMAIL` read a person's *name*, silently breaking the MatrixRegistry hop with no error. Backs the tab up before mutating, and refuses when it can't verify the repair is safe. | `checkLedgerSchema()`, then `repairLedgerSchema()` if it reports drift |
 | `39_FlowFixtures.js` | Persistent dummy rows at all five flows' trigger conditions, so a flow has something to match instead of reporting a green "Run Completed" over zero rows. Namespaced `VDOE-FIXTURE-*` / `WUQ-FIXTURE-*` / `fixture-*@example.invalid`, deliberately separate from the canaries' namespace. | `installFlowFixtures()`, `checkFlowFixtures()`, `removeFlowFixtures()` |
 | `40_FlowPrompts.js` | Every reusable flow prompt as a constant plus a `FlowPrompts` tab, so a prompt change is a `clasp push` and one function run instead of a hand-paste into each Flow. Flow 2 resolves through `15b`'s existing constant rather than carrying a second copy. `substituteFlowPrompt_()` leaves unmatched placeholders standing — `{{STUDENT_TEXT}}` stays unfilled on purpose, since student response text must not enter the central Ledger (FERPA). | `syncFlowPromptsToSheet()`, `checkFlowPrompts()` |
@@ -541,7 +546,7 @@ part when the lesson comes up: Part 1 is shared on its release night like
 any lesson, the rest are made unshared (`SCHEDULED`). A part unlocks for a
 student when their latest check of the part before found that part's
 primary MET (`CompetencyEvidence`): `unlockReadyParts()`, a Ledger cycle job
-every 5 minutes (`installPartUnlocks()`, in `64`, adds it), shares the next part and
+every minute (every 5 before 2026-11-14) (`installPartUnlocks()`, in `64`, adds it), shares the next part and
 sets it `ACTIVE`, the same as a release. The teacher can unlock a student's
 next part from the Teacher Dashboard (`unlockStudentPart`). Each unlock is a
 `PartUnlocks` row (the student's workspace ConfigID, the part, and
@@ -999,7 +1004,7 @@ codes issued earlier stay valid and nothing is migrated.
 
 **Flow 6, the turn-in check** (`72_TurnInCheckFlow.js`, Central Ledger,
 2026-11-08; stage 2, T1 decided by the operator: the Apps Script screen plus
-a Studio flow). `runTurnInCheckFlow()`, a Ledger cycle job every 2 minutes
+a Studio flow). `runTurnInCheckFlow()`, a Ledger cycle job every minute (every 2 before 2026-11-14)
 (`installTurnInCheckFlow()`; its own trigger without the cycle), harvests,
 retries and materializes in one pass, and does nothing while
 `TURN_IN_CODE_COURSES` is blank. Each `PENDING_CHECK` answer becomes one

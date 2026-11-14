@@ -221,8 +221,10 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `GEMINI_API_KEY` | direct | — | no | 10_AdminRecoveryPanel.js |
 | `LEDGER_CYCLE_BUSY_UNTIL` | via claimRunSlot_() | — | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_ERRORS` | via the constant LC_PROP_ERRORS | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_EVERY` | via the constant LC_PROP_EVERY | "{}" | no | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_JOBS` | via the constant LC_PROP_JOBS | "[]" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_LAST_RUN` | via the constant LC_PROP_LAST | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_TIMING` | via the constant LC_PROP_TIMING | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_RETENTION_YEARS` | direct | — | no | 10_AdminRecoveryPanel.js |
 | `M2_ENABLED` | direct | — | no | 22_LessonContextHandler.js, 23_StudentProfileManager.js, 24_WarmUpBridge.js, 25_WarmUpWriter.js, 33_ArtifactCompetencyBridge.js, 34c_OvernightHealth.js, 51_CourseYearBuilder.js |
 | `M2_LAST_REPORT_DATE` | direct | — | 26_CompetencyAlignmentLog.js | 26_CompetencyAlignmentLog.js |
@@ -402,7 +404,7 @@ project `SETUP_GUIDE.md` names, which for the nightly jobs is the Central Ledger
 | `buildWarmUpFlowInputs` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `buildWarmUpQueues` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:30 | 23_StudentProfileManager.js |
 | `dispatchFormSubmit` | `installFormSubmitTrigger()` | on form submit, (spreadsheet) | 18_FormSubmitDispatcher.js |
-| `harvestFlowInputResults` | `installFlowInputTriggers()` | every 5 min | 37_FlowInputBuilder.js |
+| `harvestFlowInputResults` | `installFlowInputTriggers()` | every 1 min | 37_FlowInputBuilder.js |
 | `harvestFlowInputResults` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `harvestWarmUpFlowReturns` | `installWarmUpFlowTriggers()` | every 5 min | 41_WarmUpFlowBridge.js |
 | `harvestWarmUpFlowReturns` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
@@ -436,15 +438,15 @@ Not resolved (the handler is a parameter or computed; read the code):
 | `bridgeQueue` | 1 |
 | `runStagingTurnstile` | 1 |
 | `buildFlowInputRows` | 1 |
-| `harvestFlowInputResults` | 5 |
-| `backPropagateCompletions` | 2 |
+| `harvestFlowInputResults` | 1 |
+| `backPropagateCompletions` | 1 |
 | `buildWarmUpFlowInputs` | 5 |
 | `harvestWarmUpFlowReturns` | 5 |
 | `registerDeliveredWarmUps` | 5 |
 | `runAlignmentLogBackfill_` | 5 |
 | `runQueueWatchdog` | 10 |
-| `unlockReadyParts` | 5 |
-| `runTurnInCheckFlow` | 2 |
+| `unlockReadyParts` | 1 |
+| `runTurnInCheckFlow` | 1 |
 
 ### `family-sentinel`
 
