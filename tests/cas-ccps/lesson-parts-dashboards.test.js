@@ -279,10 +279,15 @@ test('Student Dashboard: a part card and its "Do next" line name the assignment'
   assert.ok(part, 'the fixture has a part card');
   part.statusClass = 'NEEDS_ACTION';
   const html = studentPage(exported, data);
-  const name = 'Venue Market Research &amp; Survey Design \u2014 Part ';
-  assert.ok(html.includes(name), 'the card says which assignment the part belongs to');
-  const doNext = html.slice(html.indexOf('class="do-next"'));
-  assert.ok(doNext.includes(name), 'the "Do next" strip says it too');
+  // F16 item 6: the name, then the part under it; "Do next" says the name,
+  // the part and the class.
+  const name = 'Venue Market Research &amp; Survey Design';
+  const card = html.slice(html.indexOf('id="' + 'card-' + part.configId + '"'));
+  assert.match(card, new RegExp('<div class="unit-name"><span class="lesson-chip">L08</span>' + name + '</div><div class="part-sub">Part ' + part.part.n + ' of 5: '),
+    'the card says which assignment the part belongs to');
+  const doNext = html.slice(html.indexOf('class="do-next"'), html.indexOf('</section>'));
+  assert.ok(doNext.includes('<span class="lesson-chip">L08</span><a ') && doNext.includes('>' + name + '</a><span class="dn-meta">Part ' + part.part.n + ' of 5 · 8177 Sports Entertainment</span>'),
+    'the "Do next" strip says it too, with the class');
 });
 
 // 2026-11-14 (live): the roster import (52) writes the Canvas course name to

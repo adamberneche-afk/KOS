@@ -299,7 +299,7 @@ test('Student Dashboard: "Do next" lists the cards that need the student, only w
   const { ctx, els } = studentPage(exported);
   ctx.render(data);
   const h = els.main.innerHTML;
-  assert.match(h, /<section class="do-next" aria-labelledby="do-next-h"><h2 id="do-next-h">Do next<\/h2><ul><li><a href="#card-A3"[^>]*>Lesson 03 SWOT<\/a><span class="pill pill-NEEDS_ACTION">Revise<\/span><\/li><\/ul><\/section>/);
+  assert.match(h, /<section class="do-next" aria-labelledby="do-next-h"><h2 id="do-next-h">Do next<\/h2><ul><li><a href="#card-A3"[^>]*>Lesson 03 SWOT<\/a><span class="dn-meta">8175 Sports Marketing<\/span><span class="pill pill-NEEDS_ACTION">Revise<\/span><\/li><\/ul><\/section>/);
   assert.ok(h.indexOf('class="do-next"') < h.indexOf('class="group-header"'), 'above the classes');
   assert.ok(h.includes('id="card-A3" tabindex="-1"'), 'the link\'s target');
   assert.equal((h.match(/class="group-header"/g) || []).length, 2, 'grouping stays below');

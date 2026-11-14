@@ -312,6 +312,7 @@ function dashDemoFixture_(now) {
     a.seq = _dashLessonSeq_(a.lessonKey);
     a.assignedAt = 0;
   });
+  _dashAddLessonInfo_(assignments);
   _dashSortCards_(assignments);
 
   const codes = DASH_DEMO_LESSONS.map(function (c) { return c.code; }).sort();
@@ -646,6 +647,7 @@ function getStudentDashboardData(termFilter) {
 
   // Assigned order within each class (F16); "Do next" on the page still
   // lists what needs the student first.
+  _dashAddLessonInfo_(assignments);
   _dashSortCards_(assignments);
 
   // The next-step line on a card to revise (F3): from CompetencyEvidence,
@@ -791,6 +793,22 @@ function _dashLessonKeyOf_(assignmentId) {
   }
   const m = /^CAS-(.+?)(-P\d+)?$/i.exec(String(assignmentId || "").trim());
   return m ? (_dashLessonIndex_[m[1].toUpperCase()] || "") : "";
+}
+
+// Each card's lesson number chip ("L05": its place in its course's teaching
+// order, which 8175's names carry and 8177's don't) and one line on what the
+// student will do: a part's task (its objective in 13c), or the
+// assignment's short title. "" when 13c doesn't know the lesson.
+function _dashAddLessonInfo_(assignments) {
+  assignments.forEach(function (a) {
+    const info = a.lessonKey && typeof DASH_LESSON_INFO !== "undefined" ? DASH_LESSON_INFO[a.lessonKey] : null;
+    a.lessonNo = info ? "L" + String(info.n).padStart(2, "0") : "";
+    let line = "";
+    if (info && a.part && info.parts) line = info.parts[a.part.n - 1] || "";
+    else if (info) line = info.task || "";
+    a.taskLine = line;
+  });
+  return assignments;
 }
 
 // The lesson's place (1-based) in its course's teaching order, or null.
@@ -2166,6 +2184,19 @@ function buildStudentDashboardHtml_(opts) {
   .card.ISSUE{border-left-color:#d93025}
   .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
   .unit-name{font-size:16px;font-weight:600}
+  /* F16: the lesson number chip, the part under the name, the task line. */
+  .lesson-chip{display:inline-block;font-size:12px;font-weight:600;color:#3c4043;background:#f1f3f4;border-radius:6px;padding:1px 7px;margin-right:6px;vertical-align:2px}
+  .part-sub{font-size:13.5px;color:#3c4043;margin-top:2px}
+  .task-line{font-size:13.5px;color:#3c4043;margin:-4px 0 8px;line-height:1.45}
+  .do-next .dn-meta{font-size:13px;color:var(--text-secondary)}
+  /* The header's menu (F16 item 7): Refresh in view, the rest in More ▾. */
+  .hdr-more{position:relative}
+  #more-menu{position:absolute;top:calc(100% + 6px);right:0;z-index:150;min-width:230px;background:white;border:1px solid #dadce0;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.22);padding:6px 0;display:flex;flex-direction:column}
+  #more-menu[hidden]{display:none}
+  #more-menu [role="menuitem"]{display:flex;align-items:center;gap:10px;width:100%;min-height:40px;padding:8px 16px;background:white;color:#202124;border:0;font-size:14px;font-family:inherit;text-align:left;cursor:pointer}
+  #more-menu [role="menuitem"]:hover,#more-menu [role="menuitem"]:focus{background:#e8f0fe;color:#1557b0;outline:none}
+  #more-menu [role="menuitem"]:focus-visible{outline:2px solid #1557b0;outline-offset:-2px}
+  #more-menu .menu-account{font-size:12px;color:var(--text-secondary);padding:4px 16px 8px;border-bottom:1px solid #e8eaed;margin-bottom:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:280px}
   /* FIXED: matches 07_TeacherDashboard.js's .status-badge geometry exactly
      (font-size/padding/border-radius) — this renders the identical
      "current status" chip concept, but used to be a fully-rounded pill at
@@ -2183,7 +2214,6 @@ function buildStudentDashboardHtml_(opts) {
   .pill-NEEDS_ACTION{background:#f3e8fd;color:#7627bb}
   .pill-DONE{background:#e6f4ea;color:#137333}
   .pill-ISSUE{background:#fce8e6;color:#b3261e}
-  .card-meta{font-size:13px;color:var(--text-secondary);margin-bottom:10px}
   .eval-line{font-size:13px;color:var(--text-secondary);margin-bottom:12px}
   /* A card's actions (2026-11-07): one filled primary, chosen by the
      card's status (primaryActionFor), the others outlined. */
@@ -2266,10 +2296,21 @@ ${TURN_IN_CLIENT_CSS}
 <header>
   <h1>📚 My Assignments</h1>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <button id="my-info-btn" class="refresh-btn" onclick="toggleMyInfo()" aria-expanded="false" aria-controls="my-info-panel">ℹ️ My Info</button>
     <button id="refresh-btn" class="refresh-btn" onclick="refreshAll()" aria-label="Refresh">↻ Refresh</button>
-    <button id="cas-terms-btn" class="refresh-btn" onclick="casOpenTerms()" aria-haspopup="dialog">❓ What do these mean?</button>
-    <div id="account-label">Loading…</div>
+    <!-- F16 item 7 (2026-11-14): with the term selector gone, the other
+         controls are in a menu button, as on the Teacher Dashboard: Enter,
+         Space or ArrowDown opens it on the first item, ArrowUp on the last;
+         arrows, Home and End move; Escape or a click outside closes it and
+         puts focus back on More; Tab closes it. Each item keeps its id and
+         handler. -->
+    <div class="hdr-more" id="hdr-more">
+      <button id="more-btn" class="refresh-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="more-menu">More <span aria-hidden="true">▾</span></button>
+      <div id="more-menu" role="menu" aria-labelledby="more-btn" hidden>
+        <div class="menu-account" role="presentation">Signed in as <span id="account-label">Loading…</span></div>
+        <button id="my-info-btn" type="button" role="menuitem" tabindex="-1" onclick="toggleMyInfo()" aria-expanded="false" aria-controls="my-info-panel"><span aria-hidden="true">ℹ️</span> My Info</button>
+        <button id="cas-terms-btn" type="button" role="menuitem" tabindex="-1" onclick="casOpenTerms()" aria-haspopup="dialog"><span aria-hidden="true">❓</span> What do these mean?</button>
+      </div>
+    </div>
   </div>
 </header>
 ${demo ? '<div class="demo-banner" id="demo-banner" role="note">Demo: a made-up student. Nothing here is saved.</div>' : ''}
@@ -2529,10 +2570,10 @@ function render(data) {
   if (_myInfoOpen) renderMyInfo(data);
 
   if (!data.assignments || data.assignments.length === 0) {
-    main.innerHTML = termLineHtml(data) + renderCompetencies(data) + renderWarmUps(data) + \`<div class="empty-state">
+    main.innerHTML = termLineHtml(data) + renderWarmUps(data) + \`<div class="empty-state">
       <div class="icon">📋</div>
       <p>\${esc(data.emptyReason || "No assignments found.")}</p>
-    </div>\`;
+    </div>\` + renderCompetencies(data);
     loading.style.display = "none";
     main.style.display    = "block";
     _setFooter(data); // walk-through finding 17: it stayed blank here
@@ -2555,7 +2596,9 @@ function render(data) {
     return a.localeCompare(b);
   });
 
-  let html = termLineHtml(data) + renderCompetencies(data) + renderWarmUps(data) + doNextHtml(data.assignments);
+  // This week's work first (F16 item 7): Do next, the warm-ups, the
+  // classes; the competency counts after them.
+  let html = termLineHtml(data) + doNextHtml(data.assignments) + renderWarmUps(data);
   sortedGroups.forEach(gk => {
     html += \`<div class="group-header">Block \${esc(gk)}</div>\`;
     // A lesson in parts (68) shows as one block: its open parts in order,
@@ -2569,6 +2612,7 @@ function render(data) {
     });
   });
 
+  html += renderCompetencies(data);
   main.innerHTML = html;
   loading.style.display = "none";
   main.style.display    = "block";
@@ -2607,12 +2651,35 @@ function evalLine(a) {
   return a.lastEval ? "Last checked: " + a.lastEval : "Not checked yet";
 }
 
+// The assignment's name as the card shows it (F16 item 6): the name
+// students see in Canvas, without a leading "L05 " the chip already shows,
+// and in sentence case when it is all capitals (8175's names): display only,
+// the source data is unchanged. A few words keep their own capitals.
+const NAME_CASE = { tiktok: "TikTok", usp: "USP", chhs: "CHHS", swot: "SWOT", bhm: "BHM", ai: "AI", i: "I",
+  powerpoint: "PowerPoint", google: "Google", olympic: "Olympic", olymponomics: "Olymponomics", nil: "NIL",
+  deca: "DECA", ceo: "CEO", pr: "PR", nfl: "NFL", nba: "NBA" };
+function sentenceCase(text) {
+  const t = String(text || "").trim();
+  if (!t || /[a-z]/.test(t) || !/[A-Z]/.test(t)) return t;
+  let out = t.toLowerCase().replace(/[a-z]+/g, function (w) { return NAME_CASE[w] || w; });
+  out = out.replace(/my cause my cleats/g, "My Cause My Cleats");
+  return out.charAt(0).toUpperCase() + out.slice(1);
+}
+function cardName(a) {
+  let name = String((a.part && a.part.lessonName) || a.unitName || "").trim();
+  if (a.lessonNo) name = name.replace(/^L\\d{1,3}\\s+/, "");
+  return sentenceCase(name);
+}
+function partLabel(a) {
+  return a.part ? "Part " + a.part.n + " of " + a.part.count + (a.part.title ? ": " + a.part.title : "") : "";
+}
+// The name, then the part ("Do next", the Email link): says which
+// assignment a part belongs to.
 function cardTitle(a) {
-  // A part's card names its assignment first: the "Do next" strip and the card
-  // both read this, and "Part 2 of 3: Step 2" alone doesn't say which assignment.
-  return a.part
-    ? (a.part.lessonName ? a.part.lessonName + " \u2014 " : "") + "Part " + a.part.n + " of " + a.part.count + (a.part.title ? ": " + a.part.title : "")
-    : a.unitName;
+  return cardName(a) + (a.part ? " \u2014 " + partLabel(a) : "");
+}
+function chipHtml(a) {
+  return a.lessonNo ? '<span class="lesson-chip">' + esc(a.lessonNo) + '</span>' : "";
 }
 
 function cardId(a) {
@@ -2633,8 +2700,9 @@ function doNextHtml(list) {
     .concat((list || []).filter(a => a.statusClass === "NEEDS_ACTION"));
   if (!items.length) return "";
   return '<section class="do-next" aria-labelledby="do-next-h"><h2 id="do-next-h">Do next</h2><ul>' +
-    items.map(a => '<li><a href="#' + esc(cardId(a)) + '" onclick="return goToCard(\\'' + esc(cardId(a)) + '\\')">' +
-      esc(cardTitle(a)) + '</a><span class="pill pill-' + esc(a.statusClass) + '">' + esc(a.statusPill || a.displayStatus) + '</span></li>').join("") +
+    items.map(a => '<li>' + chipHtml(a) + '<a href="#' + esc(cardId(a)) + '" onclick="return goToCard(\\'' + esc(cardId(a)) + '\\')">' +
+      esc(cardName(a)) + '</a><span class="dn-meta">' + [a.part ? "Part " + a.part.n + " of " + a.part.count : "", a.className]
+        .filter(Boolean).map(esc).join(" · ") + '</span><span class="pill pill-' + esc(a.statusClass) + '">' + esc(a.statusPill || a.displayStatus) + '</span></li>').join("") +
     '</ul></section>';
 }
 
@@ -2671,17 +2739,15 @@ function cardHtml(a) {
   const ev = evalLine(a);
   return \`<div class="card \${a.statusClass}" id="\${esc(cardId(a))}" tabindex="-1">
     <div class="card-top">
-      <div class="unit-name">\${esc(cardTitle(a))}</div>
+      <div><div class="unit-name">\${chipHtml(a)}\${esc(cardName(a))}</div>\${a.part ? \`<div class="part-sub">\${esc(partLabel(a))}</div>\` : ""}</div>
       <div class="pill pill-\${a.statusClass}">\${esc(a.statusPill || a.displayStatus)}</div>
     </div>
+    \${a.taskLine ? \`<div class="task-line">\${esc(a.taskLine)}</div>\` : ""}
     \${a.statusNote ? \`<div class="status-note">\${esc(a.statusNote)}</div>\` : ""}
     \${a.openPastTerm ? \`<div class="past-term-note">Your teacher kept this open after its marking period ended.</div>\` : ""}
     \${a.statusClass === "NEEDS_ACTION" && a.notYet ? \`<div class="next-step"><b>Not yet:</b> \${esc(a.notYet)}</div>\` : ""}
-    <!-- FIXED: was a fixed "Period X · Subject" template — a blank
-         period rendered as a dangling "Period  ·" (empty label, double
-         space). Mirrors the teacher dashboard's conditional-join
-         pattern (07_TeacherDashboard.js's student-meta line). -->
-    <div class="card-meta">\${[a.period && "Period "+esc(a.period), esc(a.subject)].filter(Boolean).join(" &nbsp;·&nbsp; ") || "No class info on file"}</div>
+    <!-- F16 item 6: no "Period · Subject" line; the block header above
+         the class says it. -->
     \${ev ? \`<div class="eval-line">\${esc(ev)}</div>\` : ""}
     <div class="card-actions">
     \${primary === "submit" ? submitBtn + docBtn : docBtn + submitBtn}
@@ -3309,6 +3375,86 @@ ${CLIENT_ESC_JS}
 ${CLIENT_SAFE_DOC_URL_JS}
 ${CLIENT_WORDS_JS}
 ${turnInClientJs_()}
+
+// ── More ▾ (F16 item 7): the header's menu button, the Teacher Dashboard's
+// pattern (07). A capture-phase click on an item closes the menu and puts
+// focus on More first, so the Terms dialog and My Info return focus there.
+function _moreItems() {
+  const menu = document.getElementById("more-menu");
+  return menu && menu.querySelectorAll ? Array.prototype.slice.call(menu.querySelectorAll('[role="menuitem"]')) : [];
+}
+function _moreIsOpen() {
+  const btn = document.getElementById("more-btn");
+  return !!btn && btn.getAttribute("aria-expanded") === "true";
+}
+function _moreFocus(items, i) {
+  items.forEach(function (el, j) { el.setAttribute("tabindex", j === i ? "0" : "-1"); });
+  if (items[i] && items[i].focus) items[i].focus();
+}
+function openMoreMenu(focusIndex) {
+  const btn = document.getElementById("more-btn");
+  const menu = document.getElementById("more-menu");
+  if (!btn || !menu) return;
+  menu.hidden = false;
+  btn.setAttribute("aria-expanded", "true");
+  const items = _moreItems();
+  if (!items.length) return;
+  _moreFocus(items, focusIndex === -1 ? items.length - 1 : Math.max(0, Math.min(items.length - 1, focusIndex || 0)));
+}
+function closeMoreMenu(returnFocus) {
+  const btn = document.getElementById("more-btn");
+  const menu = document.getElementById("more-menu");
+  if (!btn || !menu) return;
+  menu.hidden = true;
+  btn.setAttribute("aria-expanded", "false");
+  if (returnFocus && btn.focus) btn.focus();
+}
+function _moreButtonKeydown(e) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    if (_moreIsOpen()) closeMoreMenu(true); else openMoreMenu(0);
+  } else if (e.key === "ArrowDown") { e.preventDefault(); openMoreMenu(0); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); openMoreMenu(-1); }
+  else if (e.key === "Escape" && _moreIsOpen()) { e.preventDefault(); closeMoreMenu(true); }
+}
+function _moreMenuKeydown(e) {
+  const items = _moreItems();
+  if (!items.length) return;
+  let i = items.indexOf(document.activeElement);
+  if (e.key === "ArrowDown") i = (i + 1) % items.length;
+  else if (e.key === "ArrowUp") i = (i <= 0 ? items.length : i) - 1;
+  else if (e.key === "Home") i = 0;
+  else if (e.key === "End") i = items.length - 1;
+  else if (e.key === "Escape" || e.key === "Tab") {
+    if (e.key === "Escape") e.preventDefault();
+    closeMoreMenu(e.key === "Escape");
+    return;
+  } else return;
+  e.preventDefault();
+  _moreFocus(items, i);
+}
+(function wireMoreMenu() {
+  const btn = document.getElementById("more-btn");
+  const menu = document.getElementById("more-menu");
+  const wrap = document.getElementById("hdr-more");
+  if (!btn || !menu || !wrap || !btn.addEventListener) return;
+  btn.addEventListener("click", function () { if (_moreIsOpen()) closeMoreMenu(true); else openMoreMenu(0); });
+  btn.addEventListener("keydown", _moreButtonKeydown);
+  menu.addEventListener("keydown", _moreMenuKeydown);
+  menu.addEventListener("click", function (e) {
+    const item = e.target && e.target.closest ? e.target.closest('[role="menuitem"]') : null;
+    if (item) closeMoreMenu(true);
+  }, true);
+  document.addEventListener("click", function (e) {
+    if (!_moreIsOpen() || (wrap.contains && wrap.contains(e.target))) return;
+    closeMoreMenu(wrap.contains && wrap.contains(document.activeElement));
+  });
+  // The Terms dialog puts focus back on its button, now inside the closed
+  // menu: send it to More instead.
+  document.addEventListener("close", function (e) {
+    if (e.target && e.target.id === "cas-terms" && btn.focus) btn.focus();
+  }, true);
+})();
 
 loadData();
 </script>

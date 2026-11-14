@@ -174,3 +174,83 @@ test('demo mode: a card from a closed term never shows; the reopened one does, a
   const { html } = page(env.exported, d.dashboard);
   assert.match(html, /Your teacher kept this open after its marking period ended\./);
 });
+
+// ── Card information and the header (F16 items 6 and 7) ────────────────────
+
+test('every card: the name in sentence case, its lesson number chip, the part under it, one line on the task; no period line', () => {
+  const env = setUp();
+  const data = env.data();
+  const byId = Object.fromEntries(data.assignments.map((a) => [a.configId, a]));
+  assert.equal(byId['W-L07'].lessonNo, 'L07');
+  assert.equal(byId['W-BIZ'].lessonNo, 'L01', '8177 by its place in the teaching order');
+  assert.equal(byId['W-BIZ'].taskLine, 'The Corporate Scouting Report');
+  assert.equal(byId['W-CUSTOM-A'].lessonNo, '', 'a teacher\'s own task has no chip');
+  const { ctx } = page(env.exported);
+  assert.equal(ctx.sentenceCase('L01 EVOLUTION OF MARKETING (FROM TRADE TO TIKTOK)'), 'L01 evolution of marketing (from trade to TikTok)');
+  assert.equal(ctx.sentenceCase('CHHS BRAND AUDIT (INTERNAL ANALYSIS)'), 'CHHS brand audit (internal analysis)');
+  assert.equal(ctx.sentenceCase('The Business of the Game'), 'The Business of the Game', 'mixed case is left alone');
+  const named = Object.assign({}, byId['W-L07'], { unitName: 'L07 ETHICAL DILEMMAS DISCUSSION' });
+  const h = ctx.cardHtml(named);
+  assert.match(h, /<div class="unit-name"><span class="lesson-chip">L07<\/span>Ethical dilemmas discussion<\/div>/);
+  assert.match(h, /<div class="task-line">Ethical Dilemmas in the Workplace<\/div>/);
+  assert.doesNotMatch(h, /card-meta|Period 1/, 'the block header already says the period');
+  const part = Object.assign({}, named, { part: { lesson: 'X', n: 2, count: 3, lessonName: 'L07 ETHICAL DILEMMAS DISCUSSION', title: 'The Debate' } });
+  assert.match(ctx.cardHtml(part), /Ethical dilemmas discussion<\/div><div class="part-sub">Part 2 of 3: The Debate<\/div>/);
+  const dn = ctx.doNextHtml([Object.assign({}, part, { statusClass: 'NEEDS_ACTION' })]);
+  assert.match(dn, /<span class="lesson-chip">L07<\/span><a [^>]*>Ethical dilemmas discussion<\/a><span class="dn-meta">Part 2 of 3 · 8175 Sports Entertainment and Event Marketing<\/span>/);
+});
+
+test('the first screen is the work: Do next first, the competency counts after the classes', () => {
+  const env = setUp();
+  const data = env.data();
+  data.competencies = [{ course: '8175', className: C8175, done: 3, total: 113 }];
+  const { html } = page(env.exported, data);
+  assert.ok(html.indexOf('class="do-next"') < html.indexOf('class="group-header"'));
+  assert.ok(html.indexOf('class="competency-strip"') > html.lastIndexOf('class="card '), 'the strip is below the cards');
+  assert.ok(html.indexOf('class="do-next"') < 600, 'the next action is at the top of the page');
+});
+
+test('the header: Refresh in view, My Info and the terms in an accessible More menu', () => {
+  const env = setUp();
+  const html = env.exported.buildStudentDashboardHtml_();
+  const header = html.slice(html.indexOf('<header>'), html.indexOf('</header>'));
+  assert.match(header, /<button id="more-btn"[^>]*aria-haspopup="menu" aria-expanded="false" aria-controls="more-menu">/);
+  assert.match(header, /<div id="more-menu" role="menu" aria-labelledby="more-btn" hidden>/);
+  assert.match(header, /<button id="my-info-btn" type="button" role="menuitem" tabindex="-1" onclick="toggleMyInfo\(\)"/);
+  assert.match(header, /<button id="cas-terms-btn" type="button" role="menuitem" tabindex="-1" onclick="casOpenTerms\(\)"/);
+  assert.match(header, /id="account-label"/);
+  assert.doesNotMatch(header, /<select/);
+
+  // Keyboard: ArrowDown opens on the first item, arrows move, Escape closes
+  // and puts focus back on More.
+  const listeners = {};
+  const focus = { el: null };
+  const mk = (id, extra) => Object.assign({ id, style: {}, innerHTML: '', textContent: '', hidden: id === 'more-menu', attrs: {},
+    setAttribute(k, v) { this.attrs[k] = String(v); }, getAttribute(k) { return this.attrs[k] === undefined ? null : this.attrs[k]; },
+    addEventListener(t, f) { (listeners[id + ':' + t] = listeners[id + ':' + t] || []).push(f); },
+    focus() { focus.el = this; }, contains: () => false, classList: { add() {}, remove() {} } }, extra);
+  const els = {};
+  const items = [mk('my-info-btn'), mk('cas-terms-btn')];
+  items.forEach((i) => { els[i.id] = i; });
+  els['more-btn'] = mk('more-btn', { attrs: { 'aria-expanded': 'false' } });
+  els['more-menu'] = mk('more-menu', { querySelectorAll: () => items });
+  els['hdr-more'] = mk('hdr-more');
+  const doc = { getElementById: (id) => els[id] || (els[id] = mk(id)), addEventListener() {}, querySelectorAll: () => [] };
+  Object.defineProperty(doc, 'activeElement', { get: () => focus.el });
+  const ctx = { document: doc, google: { script: { run: new Proxy({}, { get: () => function () { return this; } }) } },
+    console, setTimeout() {}, setInterval() {}, navigator: {} };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  extractInlineScripts(html).forEach((code) => vm.runInContext(code, ctx));
+  const key = (id, k) => listeners[id + ':keydown'].forEach((f) => f({ key: k, preventDefault() {} }));
+  key('more-btn', 'ArrowDown');
+  assert.equal(els['more-menu'].hidden, false);
+  assert.equal(els['more-btn'].attrs['aria-expanded'], 'true');
+  assert.equal(focus.el.id, 'my-info-btn');
+  key('more-menu', 'ArrowDown');
+  assert.equal(focus.el.id, 'cas-terms-btn');
+  assert.equal(items[1].attrs.tabindex, '0');
+  key('more-menu', 'Escape');
+  assert.equal(els['more-menu'].hidden, true);
+  assert.equal(focus.el.id, 'more-btn');
+});
