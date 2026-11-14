@@ -11,7 +11,8 @@
     "getSubmitReflection": "the reflection questions for the caller's own row (_dashSubmitChecks_)",
     "getMyTurnInState": "the turn-in question, check state and code for the caller's own Ledger row only (_turnInLedgerRow_, 71; the function is in 71b)",
     "submitTurnInAnswer": "screens and stores an answer for the caller's own Ledger row only; never issues a code (_turnInSubmit_, 71b)",
-    "getMyWaitingStatus": "status only, for the caller's own waiting cards: a card counts only when its Ledger row has the caller's account, ConfigID and file (as findOwnLedgerRow_); writes nothing (_dashWaitingStatus_)"
+    "getMyWaitingStatus": "status only, for the caller's own waiting cards: a card counts only when its Ledger row has the caller's account, ConfigID and file (as findOwnLedgerRow_); writes nothing (_dashWaitingStatus_)",
+    "retryMyCheck": "re-queues only the caller's own row (account, ConfigID and file, as findOwnLedgerRow_), only after a timeout (Ledger and staging at ERROR_TIMEOUT, nothing in flight), at most once per 10 minutes per card, server-enforced; changes one staging status cell, the admin re-queue's own write (_dashRetry_)"
   },
   "cas-ccps:teacher-dashboard": {
     "getMyStudentContext": "the My Context page the dashboard serves a non-teacher: the caller's own Student Context doc"

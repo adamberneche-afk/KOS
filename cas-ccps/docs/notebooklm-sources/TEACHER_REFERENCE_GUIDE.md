@@ -104,7 +104,7 @@ A second badge shows while a check is on its way, or when it failed:
 
 - **Being checked now**: The check is running. The student sees the same words.
 
-- **Couldn't be checked ⚠**: The check failed or timed out. This isn't the student's work. A check still running after 12 minutes is stopped and lands here (the student’s card then says “Taking longer than usual ⚠”). These rows are counted under Needs attention. See When Students Have Problems.
+- **Couldn't be checked ⚠**: The check failed or timed out. This isn't the student's work. A check still running after 12 minutes is stopped and lands here (the student’s card then says “Check stopped ⚠”, with a Try again button that puts it back in line). These rows are counted under Needs attention. See When Students Have Problems.
 
 > Passing isn't required before a student turns in on Canvas. A Canvas submission from a student who is ⚪ or ✏️ here hasn't passed a check yet.
 
@@ -217,7 +217,7 @@ Students are matched by their SIS ID, never by the name in a file name. The repo
 
 | Student says… | What's happening | What to do |
 | --- | --- | --- |
-| “My card says Taking longer than usual ⚠” or “Couldn't be checked ⚠” | The check timed out, or its result could not be used. Not their fault; their work is safe | Follow the email you got. A timeout (“Feedback didn’t finish”) gives the steps to restart the check; the student does not need to do anything yet. A result that could not be used (“Feedback couldn’t be made”) asks you to have the student press Submit for Feedback again. The row on your dashboard says which. Contact your admin if it keeps happening |
+| “My card says Check stopped ⚠” or “Couldn't be checked ⚠” | The check timed out, or its result could not be used. Not their fault; their work is safe | Follow the email you got. A timeout (“Feedback didn’t finish”) gives the steps to restart the check; the student can also press Try again on the card (once every 10 minutes), which puts it back in line. A result that could not be used (“Feedback couldn’t be made”) asks you to have the student press Submit for Feedback again. The row on your dashboard says which. Contact your admin if it keeps happening |
 | “I submitted but there's no feedback” | The check may still be in line or running | Feedback is a comment: have them open the document and click Comments. Their card says “Waiting for feedback…” or “Being checked now…” while it's on its way |
 | “It says Write a little more first” | Fewer than 25 words below the grey line | Ask them to write more under “── YOUR RESPONSE BEGINS HERE ──”, above the last line of the page |
 | “My assignment isn't on my dashboard” | Wrong Google account, the lesson hasn't been released, or they're not enrolled | Have them sign into their school account. Check the lesson has a start date in 📅 Lessons. If they're not on your roster either, see How Students Get Their Documents |

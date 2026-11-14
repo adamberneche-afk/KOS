@@ -312,7 +312,7 @@ footer{background:var(--slate);color:rgba(255,255,255,0.72);text-align:center;pa
     </div>
     <div class="status-row">
       <div><span class="status-badge" style="background:#fce8e6;color:#b3261e;">Couldn't be checked ⚠</span></div>
-      <div class="status-desc">The check failed or timed out. This isn't the student's work. A check still running after 12 minutes is stopped and lands here (the student&rsquo;s card then says “Taking longer than usual ⚠”). These rows are counted under Needs attention. See <a href="#problems">When Students Have Problems</a>.</div>
+      <div class="status-desc">The check failed or timed out. This isn't the student's work. A check still running after 12 minutes is stopped and lands here (the student&rsquo;s card then says “Check stopped ⚠”, with a Try again button that puts it back in line). These rows are counted under Needs attention. See <a href="#problems">When Students Have Problems</a>.</div>
     </div>
   </div>
   <div class="callout callout-teal">
@@ -543,9 +543,9 @@ footer{background:var(--slate);color:rgba(255,255,255,0.72);text-align:center;pa
     <thead><tr><th style="width:30%">Student says…</th><th>What's happening</th><th>What to do</th></tr></thead>
     <tbody>
       <tr>
-        <td class="td-label">“My card says Taking longer than usual ⚠” or “Couldn't be checked ⚠”</td>
+        <td class="td-label">“My card says Check stopped ⚠” or “Couldn't be checked ⚠”</td>
         <td>The check timed out, or its result could not be used. Not their fault; their work is safe</td>
-        <td>Follow the email you got. A timeout (“Feedback didn&rsquo;t finish”) gives the steps to restart the check; the student does not need to do anything yet. A result that could not be used (“Feedback couldn&rsquo;t be made”) asks you to have the student press Submit for Feedback again. The row on your dashboard says which. Contact your admin if it keeps happening</td>
+        <td>Follow the email you got. A timeout (“Feedback didn&rsquo;t finish”) gives the steps to restart the check; the student can also press Try again on the card (once every 10 minutes), which puts it back in line. A result that could not be used (“Feedback couldn&rsquo;t be made”) asks you to have the student press Submit for Feedback again. The row on your dashboard says which. Contact your admin if it keeps happening</td>
       </tr>
       <tr>
         <td class="td-label">“I submitted but there's no feedback”</td>
