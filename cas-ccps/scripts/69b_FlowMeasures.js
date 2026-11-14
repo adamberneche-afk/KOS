@@ -189,6 +189,8 @@ function _fmFlow2_(ctx) {
       else c.waiting++;
       return;
     }
+    // Restarted and still unanswered (37's re-arm): Studio never returned it.
+    if (status === FI_NO_ANSWER_STATUS) { c.never++; return; }
     c.returned++;
     if (status === "EVALUATED") { c.waiting++; return; }
     if (status === "HARVESTED") c.applied++;

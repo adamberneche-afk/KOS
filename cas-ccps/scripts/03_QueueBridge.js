@@ -463,18 +463,15 @@ function notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId, ledgerShee
       (dashboardUrl ? "Teacher Dashboard: " + dashboardUrl + "\n" : "") +
       "\n" +
       // The doc's own menu doesn't run for student accounts (2026-10-19).
-      // A late result still lands (backprop finishes an ERROR_TIMEOUT row),
-      // and while the doc's FlowInput row is READY a resubmission builds no
-      // new one, so restarting the check comes first.
-      "What to do (the student doesn't need to do anything yet):\n" +
-      "  1. In the Central Ledger, open the FlowInput tab and find this doc's row\n" +
-      "     (search for its Document ID: " + fileId + ").\n" +
-      "  2. If its ReadyStatus cell says READY, type READY into that cell again. That\n" +
-      "     restarts the check; the feedback lands and the student's status updates by\n" +
-      "     itself, even late.\n" +
-      "  3. If the cell is blank, starts with ERROR_, or the row isn't there, ask the student\n" +
-      "     to press Submit for Feedback again on the Student Dashboard.\n\n" +
-      "Don't use the Admin Recovery Panel reset for this: the feedback would arrive twice.\n" +
+      // A late result still lands (backprop finishes an ERROR_TIMEOUT row).
+      // Since 2026-11-14 the builder (37) restarts an unanswered check by
+      // itself, and a resubmission restarts it too, so the old step of
+      // retyping READY in the FlowInput tab is gone.
+      "What to do: nothing yet (the student doesn't need to do anything either). The\n" +
+      "check is restarted by itself, up to twice, about 12 minutes apart. If it comes back,\n" +
+      "the feedback lands and the student's status updates by itself, even late.\n" +
+      "If there is still no feedback in an hour, ask the student to press Submit for\n" +
+      "Feedback again on the Student Dashboard. That starts the check again.\n\n" +
       "If this keeps happening, tell your system admin and give them this code: " + configId + "\n\n" +
       "— Classroom Agency System (automated alert)"
     ));

@@ -5520,6 +5520,25 @@ work, then the recorded one, then the earliest; only empty duplicates are
 archived and trashed, and any other one with work gets a Notes line for the
 teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
 
+## Flow 2 restarts an unanswered row, 2026-11-14
+
+- **Found (11-13):** Studio's Flow 2 stopped answering for a day. Each
+  submission's FlowInput row sat `READY` with no output and held its key,
+  so the lane timed submissions out one after another, and an Admin
+  Recovery Panel re-queue built nothing new and timed out again. Clearing
+  `ReadyStatus` by hand restarted a row (the builder sets a blank row
+  `READY`).
+- **Now:** the builder (37) does that itself: a `READY` row unanswered 12
+  minutes after it was last set `READY` is cleared, and set `READY` on the
+  next run, at most twice; then it is `ERROR_NO_ANSWER`, which blocks only
+  its own submission. A re-queue or resubmission whose row still waits
+  restarts it at once. New columns `ReArms` and `ArmedAt`, appended. A late
+  answer completes its staging row even after `ERROR_TIMEOUT`; a restarted
+  row answered twice is applied once. The teacher's timeout email no longer
+  asks for a hand edit of the FlowInput tab.
+- **Tests:** `flow-input-builder.test.js` ("re-arm"),
+  `evaluation-next-steps.test.js`.
+
 ## Parallel lanes in the staging turnstile, 2026-11-14
 
 - **Found (11-13):** with Studio's Flow 2 not answering, the turnstile (06)
