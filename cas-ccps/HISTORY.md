@@ -5585,3 +5585,17 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   teacher" (`TERM_CLOSED`); the turn-in rule itself is unchanged.
 - **Tests:** `student-dashboard-navigation.test.js`; `turn-in-code.test.js`
   and `term-marking-periods.test.js` updated for the closed-term cards.
+
+## Student Dashboard: names on every card, a header menu, 2026-11-14
+
+- **Found:** a part's card and Do next line said "Part 2 of 3: Step 2"
+  without the class; 8175's names were all capitals; each card repeated the
+  block's period and subject; the competency strip and the header's five
+  controls came before the work.
+- **Now (F16 items 6 and 7):** every card has the name in sentence case
+  (display only), a lesson number chip, the part under it and one line on
+  the task; Do next names the assignment, part and class. My Info and the
+  terms panel are in a More ▾ menu; the competency counts follow the cards.
+- **Tests:** `student-dashboard-navigation.test.js`; the Do next and part
+  card assertions in `dashboard-plain-words.test.js` and
+  `lesson-parts-dashboards.test.js`.

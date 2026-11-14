@@ -138,11 +138,11 @@ You turn in on Canvas. That's where your teacher grades it. Passing a check firs
 
 Your dashboard is called **📚 My Assignments**. Open it from the **Your dashboard** link at the top of any of your documents.
 
-1. **This marking period**: Assignments shows this marking period's work, named at the top, in the order your teacher assigned it in each class. **Do next** above it lists what needs you. Work from earlier marking periods leaves the page; what it showed stays in **🎓 Competencies**.
+1. **This marking period**: Assignments shows this marking period's work, named at the top, in the order your teacher assigned it in each class. Each card has the assignment's name, its lesson number (like L05), the part if it is one, and one line on what you do. **Do next** above it lists what needs you. Work from earlier marking periods leaves the page; what it showed stays in **🎓 Competencies**.
 2. **The tabs**: **📋 Assignments** is your work and today's warm-up. Some lessons come in parts, each with its own document: a locked part (🔒) opens when the check finds the part before meets its main goal, or when your teacher opens it. In Canvas, turn in the link to your last part. **🎓 Competencies** lists every competency in your course by area, with your teacher's rating (or “Not rated yet”) and each piece of evidence your checked work gave: the assignment, the date, and Shown, Partly shown or Not shown yet. A rating of 3 or 4 also says what more work would let your teacher re-rate it, or that it is ready for a re-rating; your teacher decides. **✏️ Warm-ups** has every past warm-up with its score, feedback, the question and your answer. **🗂️ My Context** shows what the system has gathered about your work, one week at a time, with a link straight to that week in the document.
 3. **🎓 Competencies done**: At the top, one line per course: how many of the course's competencies your teacher has rated you able to do with limited supervision or better, out of all of them (for example “12 of 113”). It goes up as your teacher rates your work.
-4. **ℹ️ My Info**: What the system has on file for you: your name, class, period and teacher. If something is wrong, press **✉ Request a correction** or tell your teacher.
-5. **❓ What do these mean?**: Opens a list of the words on the page and what they mean. Press Escape or Close to shut it.
+4. **ℹ️ My Info**: In the **More ▾** menu at the top. What the system has on file for you: your name, class, period and teacher. If something is wrong, press **✉ Request a correction** or tell your teacher.
+5. **❓ What do these mean?**: Also in **More ▾**. Opens a list of the words on the page and what they mean. Press Escape or Close to shut it.
 6. **↻ Refresh**: The page doesn't update by itself. Press Refresh to see the latest.
 
 ## Common Questions
@@ -189,7 +189,7 @@ Try **File → Version history → See version history** and restore an earlier 
 
 ### Something in My Info is wrong.
 
-Open **ℹ️ My Info** and press **✉ Request a correction**, or tell your teacher.
+Open **More ▾**, then **ℹ️ My Info**, and press **✉ Request a correction**, or tell your teacher.
 
 ## Words You'll See
 
