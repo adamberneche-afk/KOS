@@ -443,6 +443,11 @@ function getStudentDashboardData(termFilter) {
   const year = _currentSchoolYear_();
   const feedbackAsComment = feedbackAsCommentChecker_();
   const partsOf = _dashPartsOf_(ss);
+  // Each row's assignment name, from its teacher's TeacherMatrix (2026-11-14):
+  // the Ledger's CourseName column holds the Canvas course name for every row
+  // the roster import (52) made, so cards read "Sports Entertainment and
+  // Event Management" instead of the assignment.
+  const unitNames = _dashUnitNames_(ss, cfg, data, googleId);
   // A form, deck or sheet copy's snapshot doc, its feedback page (Phase 4b/4c, 00).
   let snapshotDocs = {};
   try { snapshotDocs = formSnapshotDocIds_(ss); } catch (e) { Logger.log("[Dashboard] FormSnapshots unreadable: " + e.message); }
@@ -519,7 +524,7 @@ function getStudentDashboardData(termFilter) {
       // Same fallback wording as the teacher dashboard's identical gap
       // (blank column 10) — a teacher and student comparing notes about a
       // "missing unit" record should recognize it as the same thing.
-      unitName:      String(row[LEDGER.COURSE_NAME]).trim() || "Unassigned unit",
+      unitName:      unitNames[configId] || String(row[LEDGER.COURSE_NAME]).trim() || "Unassigned unit",
       block:         String(row[LEDGER.BLOCK]).trim(),
       className:     String(row[LEDGER.CLASS_NAME]).trim(),
       teacherName:   String(row[LEDGER.TEACHER_NAME]).trim(),
@@ -553,7 +558,7 @@ function getStudentDashboardData(termFilter) {
       // for a doc.
       feedbackUrl:   workFileHasSnapshot_(workType) && snapshotDocs[fileId] ? workFileUrl_(snapshotDocs[fileId], "doc") : null,
       // A part of a lesson (68): { lesson, n, count, lessonName, title }.
-      part:          part ? Object.assign(_dashPartNames_(row[LEDGER.COURSE_NAME]), part) : null,
+      part:          part ? Object.assign(_dashPartNames_(unitNames[configId] || row[LEDGER.COURSE_NAME]), part) : null,
       folderLabel:   String(row[LEDGER.BLOCK]).trim() + " - " +
                      String(row[LEDGER.CLASS_NAME]).trim() + " - " +
                      String(row[LEDGER.TEACHER_NAME]).trim()
@@ -735,6 +740,77 @@ function _dashPartsOf_(ss) {
     if (sid && m) out[sid] = { lesson: m[1].toUpperCase(), n: Number(m[2]) };
   });
   return out;
+}
+
+// The assignment name for each of this student's workspaces, from the
+// TeacherMatrix of each teacher on their rows: { studentConfigId: UnitName }.
+// The Ledger's CourseName column can't be trusted for it (the roster import
+// writes the Canvas course name there; 60 and 29 read that column as the
+// course, so it stays as it is). StudentAssignments maps a workspace to its
+// assignment; MatrixRegistry finds the teacher's TeacherMatrix, whose rows are
+// ConfigID (col 0) and UnitName (col 1), "<lesson> — Part 2: <title>" for a
+// part (53). Each teacher's names are cached ten minutes (lesson names, no
+// student data). Anything unreadable gives {}: the card keeps the Ledger's
+// name rather than fail the page.
+const DASH_UNIT_NAMES_CACHE_SECONDS = 10 * 60;
+function _dashUnitNames_(ss, cfg, data, googleId) {
+  const out = {};
+  try {
+    const me = String(googleId || "").toLowerCase();
+    const mine = {};      // studentConfigId -> teacher email
+    for (let i = 1; i < data.length; i++) {
+      const r = data[i];
+      if (String(r[LEDGER.GOOGLE_ID]).toLowerCase() !== me) continue;
+      const sid = String(r[LEDGER.CONFIG_ID] || "").trim();
+      if (sid) mine[sid] = String(r[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
+    }
+    if (!Object.keys(mine).length) return out;
+    const assignmentOf = {};
+    const sa = ss.getSheetByName("StudentAssignments"); // 54's tab
+    if (sa && sa.getLastRow() > 1) {
+      sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
+        const sid = String(r[0] || "").trim();
+        if (mine[sid] !== undefined && String(r[2] || "").trim()) assignmentOf[sid] = String(r[2]).trim();
+      });
+    }
+    const namesByTeacher = {};
+    Object.keys(assignmentOf).forEach(function (sid) {
+      const t = mine[sid];
+      if (!(t in namesByTeacher)) namesByTeacher[t] = _dashMatrixUnitNames_(ss, cfg, t);
+      const name = namesByTeacher[t][assignmentOf[sid]];
+      if (name) out[sid] = name;
+    });
+  } catch (e) {
+    Logger.log("[Dashboard] assignment names unavailable: " + e.message);
+  }
+  return out;
+}
+
+// { assignmentConfigId: UnitName } from one teacher's TeacherMatrix.
+function _dashMatrixUnitNames_(ss, cfg, teacherEmail) {
+  if (!teacherEmail) return {};
+  const key = "dash_unit_names_v1:" + teacherEmail;
+  try {
+    const hit = CacheService.getScriptCache().get(key);
+    if (hit) return JSON.parse(hit);
+  } catch (e) { /* no cache: read the sheet */ }
+  const names = {};
+  const reg = ss.getSheetByName(cfg.tabs.matrixRegistry || "MatrixRegistry");
+  if (!reg || reg.getLastRow() < 2) return names;
+  const regRow = reg.getDataRange().getValues().slice(1).filter(function (r) {
+    return String(r[1] || "").trim().toLowerCase() === teacherEmail && String(r[2] || "").trim();
+  })[0];
+  if (!regRow) return names;
+  const tm = SpreadsheetApp.openById(String(regRow[2]).trim()).getSheetByName(cfg.tabs.teacherMatrix || "TeacherMatrix");
+  if (!tm || tm.getLastRow() < 2) return names;
+  tm.getRange(2, 1, tm.getLastRow() - 1, 2).getValues().forEach(function (r) {
+    const id = String(r[0] || "").trim(), name = String(r[1] || "").trim();
+    if (id && name) names[id] = name;
+  });
+  try {
+    CacheService.getScriptCache().put(key, JSON.stringify(names), DASH_UNIT_NAMES_CACHE_SECONDS);
+  } catch (e) { /* too large or no cache: uncached is only slower */ }
+  return names;
 }
 
 // A part's Ledger name, "<lesson> — Part 2: <title>", in its two halves.
