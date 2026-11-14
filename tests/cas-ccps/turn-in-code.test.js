@@ -127,7 +127,8 @@ test('switch off (blank or "off"): the dashboard data and cards are exactly as b
   for (const value of [undefined, '', 'off', 'OFF']) {
     const env = load({ switch: value });
     const { data, by } = env.dash();
-    assert.equal(data.assignments.length, 5);
+    // AMY-4 is from the last marking period: the page shows this one only (F16).
+    assert.equal(data.assignments.length, 4);
     data.assignments.forEach((a) => assert.ok(!('turnIn' in a), 'no turnIn on ' + a.configId + ' with ' + value));
     assert.equal(env.ss.getSheetByName('TurnInCodes'), null);
     assert.equal(env.ss.getSheetByName('TurnInChecks'), null);
@@ -490,8 +491,10 @@ test('the term rule: the row\'s marking period, else the one its Timestamp falls
   assert.equal(exported.turnInInCurrentTerm_(r('2026-27', T.inMp1)), false, 'a school-year value reads its date');
   assert.equal(exported.turnInRowTerm_(r('', T.inMp1)), T.mp1);
   assert.equal(exported.turnInInCurrentTerm_(r('', '')), false, 'neither: not in the term');
-  // The past-term card says to ask the teacher, and a submit is refused.
-  assert.deepEqual(env.dash().by['VDOE-AMY-4'].turnIn, { state: 'TERM_CLOSED' });
+  // The past-term card is off the page (F16, the current marking period
+  // only), and a submit is refused. (turnIn TERM_CLOSED stays for a card a
+  // page from before F16 still shows.)
+  assert.equal(env.dash().by['VDOE-AMY-4'], undefined);
   assert.equal(exported.submitTurnInAnswer('VDOE-AMY-4', GENUINE).error, 'TERM_CLOSED');
   // Summer, or a CURRENT_TERM set to another year: no marking period is current.
   env.props.setProperty('CURRENT_TERM', '2019-20');
@@ -675,7 +678,7 @@ test('override: one covers every student on that assignment (its parts too), and
   env.state.who = BEN;
   const ben = env.dash().by;
   assert.equal(ben['VDOE-BEN-7'].turnIn.state, 'ANSWER', 'another student, the same lesson\'s part');
-  assert.deepEqual(ben['VDOE-BEN-8'].turnIn, { state: 'TERM_CLOSED' }, 'another assignment stays closed');
+  assert.equal(ben['VDOE-BEN-8'], undefined, 'another assignment stays closed: off the page (F16)');
   assert.equal(env.exported.submitTurnInAnswer('VDOE-BEN-8', GENUINE).error, 'TERM_CLOSED');
   assert.equal(env.exported.submitTurnInAnswer('VDOE-BEN-7', GENUINE).ok, true);
   assert.equal(env.exported.turnInOverrideCovers_('CAS-8177-L07', 'CAS-8177-L070'), false);
@@ -711,7 +714,7 @@ test('override: past its until date, or closed, it no longer opens the assignmen
   assert.equal(plain(closed.exported.applyTurnInVerdict_(checkIds(closed)[0], 'ADDRESSES', 'ok')).error, 'TERM_CLOSED',
     'closed: blocked');
   closed.state.who = AMY;
-  assert.deepEqual(closed.dash().by['VDOE-AMY-7'].turnIn, { state: 'TERM_CLOSED' });
+  assert.equal(closed.dash().by['VDOE-AMY-7'], undefined, 'closed again: off the page (F16)');
 });
 
 test('override: owner only, a reason and an assignment required, and a sane until', () => {

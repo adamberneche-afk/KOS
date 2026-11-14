@@ -132,16 +132,26 @@ test('getDashboardData: in MP2, a student registered in MP1 still shows by defau
   assert.deepEqual(mp1.students.map(s => s.name), ['Amy']);
 });
 
-test('getStudentDashboardData: a student registered in MP1 still sees the work in MP2', () => {
+// The Student Dashboard shows the current marking period only (F16,
+// approved 2026-11-14); the Teacher Dashboard above keeps the whole year.
+test('getStudentDashboardData: in MP2, MP1 work is off the page and the start of a term says so plainly', () => {
   const session = {
     getActiveUser() { return { getEmail() { return 'Amy@ccpsnet.net'; } }; },
     getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
     getScriptTimeZone() { return 'America/New_York'; },
   };
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
     ['getStudentDashboardData', 'LEDGER'], { Session: session });
-  ledgerWithTwoMarkingPeriods(sandbox, exported.LEDGER, 23);
-  const data = exported.getStudentDashboardData('');
-  assert.equal(data.activeTerm, 'ALL');
-  assert.equal(data.assignments.length, 1, JSON.stringify(data.emptyReason || ''));
+  const ss = ledgerWithTwoMarkingPeriods(sandbox, exported.LEDGER, 23);
+  sandbox.PropertiesService.getScriptProperties().setProperty('MARKING_PERIOD_ENDS', '2627_MP1=2020-01-01,2627_MP2=2099-12-31');
+  const data = exported.getStudentDashboardData('2627_MP1');
+  assert.equal(data.term, '2627_MP2', 'the term asked for is ignored');
+  assert.equal(data.assignments.length, 0);
+  assert.equal(data.closedTermRows, 1);
+  assert.match(data.emptyReason, /^Nothing is assigned yet in Marking period 2, 2026–27\./);
+  assert.doesNotMatch(data.emptyReason, /signed in/, 'not the account troubleshooting');
+  assert.equal(data.availableTerms, undefined, 'no term list: the selector is gone');
+  // A row with no marking period still shows.
+  ss.getSheetByName('Ledger').getRange(2, exported.LEDGER.ACADEMIC_YEAR + 1).setValue('');
+  assert.equal(exported.getStudentDashboardData().assignments.length, 1);
 });
