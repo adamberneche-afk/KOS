@@ -268,3 +268,19 @@ test('Teacher Dashboard: a Sheets part says so on its row and links to the sheet
   const onSheet = Object.assign({}, amy, { part: { n: 2, count: 5, title: 'The Inventory Update' }, workType: 'sheet' });
   assert.match(ctx.partLine(onSheet), /<span class="part-type"[^>]*>· Google Sheets<\/span>/);
 });
+
+// ── A part's card and its "Do next" line name the assignment ────────────────
+
+test('Student Dashboard: a part card and its "Do next" line name the assignment', () => {
+  const { exported, sandbox } = studentLoad('Amy@ccpsnet.net');
+  setUp(sandbox, exported.LEDGER, { Amy: 2 });
+  const data = exported.getStudentDashboardData('');
+  const part = data.assignments.find(a => a.part);
+  assert.ok(part, 'the fixture has a part card');
+  part.statusClass = 'NEEDS_ACTION';
+  const html = studentPage(exported, data);
+  const name = 'Venue Market Research &amp; Survey Design \u2014 Part ';
+  assert.ok(html.includes(name), 'the card says which assignment the part belongs to');
+  const doNext = html.slice(html.indexOf('class="do-next"'));
+  assert.ok(doNext.includes(name), 'the "Do next" strip says it too');
+});
