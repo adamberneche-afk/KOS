@@ -861,14 +861,30 @@ function _dashCompetencyLessons_(competencyId) {
       DASH_LESSON_ORDER[code].forEach(function (key) {
         const info = DASH_LESSON_INFO[key];
         if (!info) return;
+        // The Review panel (F17, SDV-N8; 13d): the lesson plan's one-line
+        // recap of this competency there, the lesson's key terms and its
+        // linked videos, where they exist.
+        const review = typeof DASH_REVIEW !== "undefined" ? DASH_REVIEW[key] || {} : {};
         info.iCan.forEach(function (m) {
-          (_dashCompLessons_[m.id] = _dashCompLessons_[m.id] || []).push({ key: key, no: "L" + String(info.n).padStart(2, "0"),
-            task: info.task, text: m.text });
+          const l = { key: key, no: "L" + String(info.n).padStart(2, "0"), task: info.task, text: m.text };
+          if (review.recap && review.recap[m.id]) l.recap = review.recap[m.id];
+          if (review.terms) l.terms = review.terms;
+          if (review.watch) l.watch = review.watch;
+          (_dashCompLessons_[m.id] = _dashCompLessons_[m.id] || []).push(l);
         });
       });
     });
   }
   return (_dashCompLessons_[competencyId] || []).map(function (l) { return Object.assign({}, l); });
+}
+
+// The course's Covered So Far doc (76), only when the operator has set its
+// ID on this project too (COVERED_SO_FAR_DOC_ID_<course>, as on the Central
+// Ledger; never in the repo) and shared it with students: "" otherwise.
+function _dashCoveredUrl_(code) {
+  let id = "";
+  try { id = String(PropertiesService.getScriptProperties().getProperty("COVERED_SO_FAR_DOC_ID_" + code) || "").trim(); } catch (e) { id = ""; }
+  return /^[A-Za-z0-9_-]{20,}$/.test(id) ? workFileUrl_(id, "doc") : "";
 }
 
 // When the current marking period began (ms), for "this term" on the
@@ -1375,7 +1391,8 @@ function getMyCompetencies() {
         areaOf[area].items.push(item);
       });
       const d = done[code] || { done: 0, total: totals[code] || 0 };
-      return { code: code, className: own.courses[code], done: d.done, total: d.total, areas: areas };
+      return { code: code, className: own.courses[code], done: d.done, total: d.total, areas: areas,
+        coveredUrl: _dashCoveredUrl_(code) };
     });
     const term = _dashTermScope_(new Date());
     return { success: true, courses: courses, term: term, termLabel: term ? termLabel_(term) : "",
@@ -2248,6 +2265,9 @@ function buildStudentDashboardHtml_(opts) {
 .rec-lists h3{font-size:13.5px;margin:4px 0}
 .rec-lists ul{margin:0 0 4px;padding-left:18px}
 .rec-flat{padding:4px 12px}
+.rv{margin-top:6px;padding:8px 10px;background:#f8f9fa;border-radius:6px}
+.rv-lesson{margin:0 0 8px;line-height:1.5}
+.rv-lesson:last-child{margin-bottom:0}
 .ctx-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:14px}
 .ctx-nav button{background:#fff;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:4px 10px;font-size:13px;cursor:pointer}
 .ctx-nav button[disabled]{opacity:.45;cursor:not-allowed}
@@ -3221,7 +3241,35 @@ function jumpToCard(id) {
   showTab("assignments");
   return goToCard(id);
 }
-function _compItemHtml(it) {
+// The Review panel (F17, SDV-N8): per lesson that practices it, the
+// lesson plan's one-line recap, the key terms and any linked video; the
+// course's Covered So Far doc when it is set up. A button with
+// aria-expanded; open or shut in page memory. No practice question.
+let _reviewOpen = {};
+function toggleReview(btn) {
+  const id = btn.getAttribute("data-comp");
+  _reviewOpen[id] = !_reviewOpen[id];
+  renderTab("competencies");
+}
+function _reviewHtml(it, course) {
+  const lessons = (it.lessons || []).filter(l => l.recap || l.terms || (l.watch && l.watch.length));
+  const covered = course && safeDocUrl(course.coveredUrl);
+  if (!lessons.length && !covered) return "";
+  const id = "rv-" + String(it.id).replace(/[^A-Za-z0-9_-]/g, "_");
+  const open = !!_reviewOpen[it.id];
+  let body = lessons.map(l => '<div class="rv-lesson"><div><span class="lesson-chip">' + esc(l.no) + '</span><strong>' + esc(l.task) + '</strong></div>' +
+    (l.recap ? '<div>' + esc(l.recap) + '</div>' : '') +
+    (l.terms ? '<div><strong>Key terms:</strong> ' + esc(l.terms) + '</div>' : '') +
+    (l.watch || []).map(v => {
+      const u = /^https:\\/\\//.test(String(v.url || "")) ? v.url : "";
+      return u ? '<div><a href="' + esc(u) + '" target="_blank" rel="noopener">Watch: ' + esc(v.title) + ' ↗</a></div>' : '';
+    }).join("") + '</div>').join("");
+  if (covered) body += '<div class="rv-lesson"><a href="' + esc(covered) + '" target="_blank" rel="noopener">What your class has covered so far ↗</a></div>';
+  return '<div class="rec-ev"><button type="button" class="parts-toggle" id="' + esc(id) + '-b" data-comp="' + esc(it.id) +
+    '" aria-expanded="' + open + '" aria-controls="' + esc(id) + '" onclick="toggleReview(this)">Review</button>' +
+    '<div class="rv" id="' + esc(id) + '" role="region" aria-label="Review"' + (open ? '' : ' hidden') + '>' + body + '</div></div>';
+}
+function _compItemHtml(it, course) {
   const done = it.rating && it.rating <= 3;
   const latest = _compLatest(it);
   let h = '<details class="rec-comp"><summary><span>' + esc(String(it.task)) + '. ' + esc(it.text) + '</span>' +
@@ -3246,6 +3294,7 @@ function _compItemHtml(it) {
       return '<li>' + name + ' · ' + (had ? 'an earlier marking period' : 'not assigned to you this marking period') + '</li>';
     }).join("") + '</ul></div>';
   }
+  h += _reviewHtml(it, course);
   if (it.rating && it.ratedAt) h += '<div class="rec-ev">Rated ' + esc(it.ratedAt) + '.</div>';
   if (it.retry) h += '<div class="rec-ev"><strong>' + (it.retry.ready ? 'Ready for a re-rating' : 'Re-rating') + ':</strong> ' + esc(it.retry.text) + '</div>';
   h += it.evidence.length ? it.evidence.map(function (e) {
@@ -3309,7 +3358,7 @@ function renderCompetencyTab(d) {
         h += '<details class="rec-area"' + (_compOnlyEvidence ? ' open' : '') + '><summary>' + esc(a.name) +
           ' <span class="rec-chip">' + esc(String(rated)) + ' of ' + esc(String(a.items.length)) + ' rated</span>' +
           '<span class="rec-progress">Shown' + (from ? ' this marking period ' + esc(String(termN)) + ' ·' : '') + ' this year ' + esc(String(yearN)) + '</span></summary>';
-        items.forEach(it => { h += _compItemHtml(it); });
+        items.forEach(it => { h += _compItemHtml(it, c); });
         h += '</details>';
       });
     } else {
@@ -3317,7 +3366,7 @@ function renderCompetencyTab(d) {
         ? (a, b) => (a.rating || 9) - (b.rating || 9) || a.task - b.task
         : (a, b) => ((_compLatest(b) || {}).atMs || 0) - ((_compLatest(a) || {}).atMs || 0) || a.task - b.task);
       shown = items.length;
-      h += '<div class="rec-area rec-flat">' + items.map(_compItemHtml).join("") + '</div>';
+      h += '<div class="rec-area rec-flat">' + items.map(it => _compItemHtml(it, c)).join("") + '</div>';
     }
     if (!shown) h += '<p class="rec-empty">No evidence or ratings yet.</p>';
     h += '</section>';
