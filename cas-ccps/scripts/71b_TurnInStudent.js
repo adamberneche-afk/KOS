@@ -176,7 +176,9 @@ const TURN_IN_CLIENT_CSS = `
   .ti-a{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;padding:8px;border:1px solid #9aa0a6;border-radius:6px;resize:vertical}
   .ti-count{font-size:12px;color:var(--text-secondary);margin:2px 0 8px}
   .ti-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-  .ti-code{font-family:"Roboto Mono",Consolas,monospace;font-size:16px;letter-spacing:.5px;padding:8px 10px;border:1px solid #9aa0a6;border-radius:6px;background:#fff;min-width:16ch}
+  /* Large, so it reads at a glance and copies cleanly (2026-11-14). */
+  .ti-code{font-family:"Roboto Mono",Consolas,monospace;font-size:24px;font-weight:600;letter-spacing:1px;padding:10px 12px;border:2px solid #1a73e8;border-radius:8px;background:#fff;min-width:19ch;max-width:100%}
+  .ti-copy{font-size:15px;min-height:44px}
   .ti-msg{font-size:13px;margin-top:8px;line-height:1.45}
   .ti-msg.err{color:#c5221f}
   .ti-msg.ok{color:#137333}
@@ -208,9 +210,9 @@ function turnInCardHtml(a) {
     h += '<p class="ti-p">Paste this code into the assignment in Canvas. You can copy it again any time.</p>' +
       '<div class="ti-row"><label class="wu-sr" for="' + id + '-code">Your turn-in code</label>' +
       '<input id="' + id + '-code" class="ti-code" type="text" readonly value="' + esc(t.code) + '" onfocus="this.select()">' +
-      '<button type="button" class="act act-secondary" data-ti="' + id + '" data-code="' + esc(t.code) + '" onclick="turnInCopy(this)">Copy turn-in code</button></div>';
+      '<button type="button" class="act act-secondary ti-copy" data-ti="' + id + '" data-code="' + esc(t.code) + '" onclick="turnInCopy(this)">Copy</button></div>';
   } else if (t.state === "PENDING_CHECK") {
-    h += '<p class="ti-p">Checking your answer\\u2026 This takes a few minutes. Press Refresh to see your code.</p>';
+    h += '<p class="ti-p">Checking your answer\\u2026 This takes a few minutes. This page checks for you and shows your code here when it\\u2019s ready.</p>';
   } else if (t.state === "TERM_CLOSED") {
     h += '<p class="ti-p">This marking period has ended, so this page can\\u2019t give a code for it. Ask your teacher.</p>';
   } else {
@@ -288,6 +290,9 @@ function turnInCopy(btn) {
   var box = document.getElementById(id + "-code");
   var msg = document.getElementById(id + "-msg");
   var say = function (ok) {
+    // The button itself confirms (2026-11-14), then reads Copy again.
+    btn.textContent = ok ? "Copied \\u2713" : "Copy";
+    if (ok && typeof setTimeout === "function") setTimeout(function () { btn.textContent = "Copy"; }, 3000);
     if (!msg) return;
     msg.className = "ti-msg " + (ok ? "ok" : "err");
     msg.textContent = ok ? "Copied. Paste it into the assignment in Canvas."

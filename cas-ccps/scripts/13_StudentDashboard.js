@@ -150,6 +150,7 @@ function _dashDemoCard_(course, lesson, state, block, period, now) {
     workType:      "doc",
     fileId:        "demo-" + lesson.key,
     canSubmit:     !DASH_NO_SUBMIT_STATUSES[s.status] && !inLine,
+    waiting:       dashWaiting_(s.status, pipeline),
     part:          null,
     folderLabel:   block + " - " + className + " - " + teacherName,
     demoQuestions: questions,
@@ -420,7 +421,8 @@ function dashDemoFixture_(now) {
   const step = function (status, pipeline, lastResult) {
     const display = resolveStudentStatus_(status, pipeline, false, lastResult);
     return { status: status, displayStatus: display, statusClass: resolveStudentClass_(status, pipeline, lastResult),
-      statusPill: resolveStudentPill_(status, pipeline, lastResult), statusNote: studentStatusNote_(display) };
+      statusPill: resolveStudentPill_(status, pipeline, lastResult), statusNote: studentStatusNote_(display),
+      waiting: dashWaiting_(status, pipeline) };
   };
 
   return {
@@ -649,6 +651,9 @@ function getStudentDashboardData(termFilter) {
       fileId:        fileId,
       // A form, Slides or Sheets part's Submit reads the file (Phase 4b/4c, 75/77): on, as a doc's.
       canSubmit:     !!fileId && !DASH_NO_SUBMIT_STATUSES[status] && !inLine,
+      // In line or being checked: the page checks for news while any card
+      // is (getMyWaitingStatus, 2026-11-14).
+      waiting:       dashWaiting_(status, pipeline),
       // A form, Slides or Sheets part's feedback page: its snapshot doc (00), where
       // the check reads the file as submitted and the feedback goes. null
       // for a doc.
@@ -2228,6 +2233,153 @@ function formatDate_(d) {
   } catch (e) { return String(d); }
 }
 
+
+// ---------------------------------------------------------------------------
+// getMyWaitingStatus — the page checks for news (2026-11-14, the operator's
+// "Build 1-4", item 2)
+//
+// While at least one card waits (in line, being checked, or a turn-in
+// answer being checked), the page asks this every 20 to 40 seconds, only
+// while it is in view, and stops when nothing waits (the client half is
+// below, "Checking for news"). It answers only for the caller's own cards:
+// a card counts only when its Ledger row has the caller's account, its
+// ConfigID and its file, the three findOwnLedgerRow_ (the submit path)
+// matches; anything else is left out of the answer, never reported on.
+//
+// Much cheaper than getStudentDashboardData: one read of the Ledger, the
+// staging and queue states every caller shares (one read of each, kept in
+// the script cache DASH_WAIT_CACHE_SECONDS, so a class polling together
+// reads them once), and the two turn-in tabs only when a turn-in answer
+// waits. No TeacherMatrix, evidence, warm-ups or other spreadsheet, and
+// nothing per card. When a card is done the page loads the dashboard once
+// to show its feedback.
+//
+// [{ fileId, configId, turnIn }] (at most DASH_POLL_MAX_CARDS) ->
+// { ok: true, cards: [{ fileId, configId, waiting, status, statusPill,
+//   statusClass, displayStatus, statusNote, canSubmit, lastEval,
+//   turnIn? }] } or { ok: false, error }. turnIn: { state: "READY", code },
+// { state: "PENDING_CHECK" }, or { state: "CHANGED" } (load the card).
+// ---------------------------------------------------------------------------
+const DASH_POLL_MAX_CARDS = 20;
+const DASH_WAIT_CACHE_KEY = "dashWaitSnapshot";
+const DASH_WAIT_CACHE_SECONDS = 15;
+// The script cache takes up to 100 KB a value; a bigger snapshot isn't kept.
+const DASH_WAIT_CACHE_MAX_CHARS = 90000;
+
+// In line or being checked: what the page waits on.
+function dashWaiting_(status, pipeline) {
+  return pipeline === "IN_PROCESS" || pipeline === "QUEUED" || pipeline === "PENDING_INFERENCE" ||
+    status === "PENDING" || status === "STAGED";
+}
+
+function getMyWaitingStatus(cards) {
+  try {
+    return _dashWaitingStatus_(cards);
+  } catch (e) {
+    Logger.log("getMyWaitingStatus: unexpected error: " + e.message);
+    return { ok: false, error: "SERVER_ERROR" };
+  }
+}
+
+function _dashWaitingStatus_(cards) {
+  const googleId = String(Session.getActiveUser().getEmail() || "").trim();
+  if (!googleId) return { ok: false, error: "NO_USER" };
+  const asked = (Array.isArray(cards) ? cards : []).slice(0, DASH_POLL_MAX_CARDS).map(function (c) {
+    return { fileId: String((c && c.fileId) || "").trim(), configId: String((c && c.configId) || "").trim(),
+      turnIn: !!(c && c.turnIn) };
+  }).filter(function (c) { return c.fileId && c.configId; });
+  if (!asked.length) return { ok: true, cards: [] };
+
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const data = ss.getSheetByName(cfg.tabs.ledger).getDataRange().getValues();
+  const who = googleId.toLowerCase();
+  const own = {};
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    if (String(r[LEDGER.GOOGLE_ID]).toLowerCase() !== who) continue;
+    own[String(r[LEDGER.FILE_ID]) + "|" + String(r[LEDGER.CONFIG_ID])] = r;
+  }
+  const snap = _dashWaitSnapshot_(ss, cfg);
+  const tiCache = {};
+  let inComments = null; // the feedback-as-comment flag, read only for a finished card
+  const out = [];
+  asked.forEach(function (c) {
+    const row = own[c.fileId + "|" + c.configId];
+    if (!row) return; // not the caller's: nothing about it
+    const status = String(row[LEDGER.STATUS]).trim();
+    const lastResult = String(row[LEDGER.LAST_RESULT] || "").trim();
+    const pipeline = snap.pipeline[c.fileId] === "IN_PROCESS" ? "IN_PROCESS"
+      : snap.queued[c.fileId] ? "QUEUED" : snap.pipeline[c.fileId];
+    if (!inComments && status === "COMPLETE") inComments = feedbackAsCommentChecker_();
+    const display = resolveStudentStatus_(status, pipeline,
+      status === "COMPLETE" ? inComments(c.configId, ledgerRowCourseCode_(row)) : false, lastResult);
+    const card = {
+      fileId: c.fileId, configId: c.configId, waiting: dashWaiting_(status, pipeline), status: status,
+      statusPill: resolveStudentPill_(status, pipeline, lastResult),
+      statusClass: resolveStudentClass_(status, pipeline, lastResult),
+      displayStatus: display, statusNote: studentStatusNote_(display),
+      canSubmit: !DASH_NO_SUBMIT_STATUSES[status] && !(pipeline === "IN_PROCESS" || pipeline === "QUEUED"),
+      lastEval: row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : ""
+    };
+    if (c.turnIn) card.turnIn = _dashTurnInNews_(ss, googleId, c.configId, tiCache);
+    out.push(card);
+  });
+  return { ok: true, cards: out };
+}
+
+// A turn-in answer being checked (71): its code once issued, still being
+// checked, or CHANGED (a verdict without a code: the page loads the card).
+function _dashTurnInNews_(ss, googleId, configId, cache) {
+  try {
+    if (turnInOffEverywhere_()) return { state: "CHANGED" };
+    const have = _turnInCodeFor_(ss, googleId, turnInAssignmentId_(ss, configId, cache), cache);
+    if (have) return { state: "READY", code: String(have[TCODE.CODE]) };
+    const check = _turnInLatestCheck_(ss, googleId, configId, cache);
+    if (check && String(check[TCHK.STATUS]).trim() === TURN_IN_PENDING) return { state: TURN_IN_PENDING };
+  } catch (e) {
+    Logger.log("[S13] turn-in news not read: " + e.message);
+    return { state: TURN_IN_PENDING };
+  }
+  return { state: "CHANGED" };
+}
+
+// What every caller's poll shares: { pipeline: { fileId: "IN_PROCESS" |
+// "PENDING_INFERENCE" }, queued: { fileId: true } }, read as
+// getStudentDashboardData reads them (the staging row last listed for a
+// file wins; an open ReviewQueue row is in line), kept in the script cache
+// for DASH_WAIT_CACHE_SECONDS.
+function _dashWaitSnapshot_(ss, cfg) {
+  let cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) { cache = null; }
+  if (cache) {
+    try {
+      const hit = cache.get(DASH_WAIT_CACHE_KEY);
+      if (hit) return JSON.parse(hit);
+    } catch (e) { /* read it fresh */ }
+  }
+  const snap = { pipeline: {}, queued: dashQueuedFileIds_(cfg) };
+  const staging = ss.getSheetByName(cfg.tabs.stagingPipeline);
+  const rows = staging ? staging.getDataRange().getValues() : [];
+  const h = rows[0] ? rows[0].map(function (x) { return String(x).trim(); }) : [];
+  const fi = h.indexOf("StudentFileID"), si = h.indexOf("Status");
+  const last = {};
+  for (let i = 1; i < rows.length && fi !== -1 && si !== -1; i++) {
+    const fid = String(rows[i][fi]).trim();
+    if (fid) last[fid] = String(rows[i][si]).trim();
+  }
+  Object.keys(last).forEach(function (fid) {
+    if (last[fid] === "IN_PROCESS" || last[fid] === "PENDING_INFERENCE") snap.pipeline[fid] = last[fid];
+  });
+  if (cache) {
+    try {
+      const json = JSON.stringify(snap);
+      if (json.length <= DASH_WAIT_CACHE_MAX_CHARS) cache.put(DASH_WAIT_CACHE_KEY, json, DASH_WAIT_CACHE_SECONDS);
+    } catch (e) { /* the next poll reads it fresh */ }
+  }
+  return snap;
+}
+
 // ---------------------------------------------------------------------------
 // buildStudentDashboardHtml_
 // ---------------------------------------------------------------------------
@@ -2457,6 +2609,8 @@ function buildStudentDashboardHtml_(opts) {
   .wu-answer{font-size:14px;line-height:1.5;white-space:pre-line;color:#3c4043}
   .wu-recall{margin-bottom:10px;font-size:14px}
   .refresh-note{color:#b3261e;font-size:13px;padding-bottom:0}
+  /* News while the page is open (2026-11-14): a card's feedback or code is ready. */
+  .news-banner{background:#e6f4ea;color:#0d652d;font-size:14px;font-weight:500;padding-top:10px;padding-bottom:10px;border-bottom:1px solid #ceead6}
   .wu-recall summary{cursor:pointer;color:#1557b0;font-weight:500;padding:4px 0}
   .wu-recall .wu-prompt{margin:6px 0}
   .wu-ec{font-size:13px;color:#7627bb;font-weight:500;margin-bottom:6px}
@@ -2536,6 +2690,7 @@ ${demo ? '<div class="demo-banner" id="demo-banner" role="note">Demo: a made-up 
      user action) and had none. -->
 <div id="new-registration-banner" class="main" role="status" aria-live="polite" style="display:none;padding-bottom:0"></div>
 <div id="refresh-note" class="main refresh-note" role="status" aria-live="polite" style="display:none"></div>
+<div id="news-banner" class="main news-banner" role="status" aria-live="polite" style="display:none"></div>
 <div id="main" class="main" style="display:none"></div>
 </div>
 <footer id="footer"></footer>
@@ -2589,8 +2744,21 @@ const DEMO_STUBS = {
   submitMyWork: function (fileId, configId, answers) {
     _demoWalkThrough(fileId);
     return { ok: true, aiFlowsLive: true, feedbackInComments: false, reflected: !!(answers && answers.length) };
+  },
+  // The page's check for news: a card's state as the "server" now holds it
+  // (_demoNext: the walk-through's next state, once it is due).
+  getMyWaitingStatus: function (cards) {
+    return { ok: true, cards: (cards || []).map(function (c) {
+      const a = _demoCard(c.fileId);
+      if (!a) return null;
+      if (_demoNext[c.fileId]) { Object.assign(a, _demoNext[c.fileId]); delete _demoNext[c.fileId]; }
+      return { fileId: a.fileId, configId: a.configId, waiting: !!a.waiting, status: a.status, statusPill: a.statusPill,
+        statusClass: a.statusClass, displayStatus: a.displayStatus, statusNote: a.statusNote, canSubmit: a.canSubmit,
+        lastEval: a.lastEval };
+    }).filter(Boolean) };
   }
 };
+let _demoNext = {}; // fileId -> the state the next check for news finds
 // A google.script.run look-alike that answers from DEMO_STUBS.
 function demoRunner() {
   let ok = function () {}, fail = function () {};
@@ -2611,6 +2779,188 @@ function demoRunner() {
   return r;
 }
 function scriptRun() { return DEMO ? demoRunner() : google.script.run; }
+// ── Checking for news (2026-11-14, the operator's "Build 1-4", item 2) ──
+// While a card waits (in line, being checked, or a turn-in answer being
+// checked), the page asks getMyWaitingStatus about those cards only, every
+// 20 to 40 seconds (with jitter, so a class doesn't ask at once), only
+// while the page is in view, longer apart after a failed call, and at most
+// POLL_MAX_PER_VISIT times a visit. It stops when nothing waits. When a card
+// is done: that card is loaded again and re-rendered (focus and scroll kept),
+// a polite banner says so, the tab's title says so until the page is
+// used again, and the card is scrolled into view unless the student is
+// typing. Page memory only; nothing is stored in the browser.
+const POLL_MIN_MS = DEMO ? 1000 : 20000;
+const POLL_JITTER_MS = DEMO ? 0 : 20000;
+const POLL_MAX_PER_VISIT = 60;
+const POLL_BACKOFF_MAX_MS = 5 * 60 * 1000;
+let _poll = { timer: null, busy: false, count: 0, errors: 0, stopped: "" };
+let _newsTitle = null; // the title before the news changed it
+
+function _cardKey(a) { return a.fileId + "|" + a.configId; }
+function _turnInWaiting(a) { return !!(a && a.turnIn && a.turnIn.state === "PENDING_CHECK"); }
+function waitingCards(data) {
+  return ((data && data.assignments) || []).filter(a => a.fileId && a.configId && (a.waiting || _turnInWaiting(a)));
+}
+function _pageVisible() {
+  return typeof document === "undefined" || !document.visibilityState || document.visibilityState === "visible";
+}
+function _pollDelay() {
+  const base = POLL_MIN_MS + Math.floor(Math.random() * POLL_JITTER_MS);
+  return Math.min(POLL_BACKOFF_MAX_MS, base * Math.pow(2, _poll.errors));
+}
+function _cancelPoll() {
+  if (_poll.timer && typeof clearTimeout === "function") clearTimeout(_poll.timer);
+  _poll.timer = null;
+}
+function schedulePoll() {
+  if (_poll.timer || _poll.busy) return;
+  if (!waitingCards(_lastDashData).length) { _poll.stopped = "nothing waits"; return; }
+  if (_poll.count >= POLL_MAX_PER_VISIT) {
+    if (_poll.stopped !== "cap") _newsSay("This page has stopped checking for news. Press Refresh to see what’s ready.");
+    _poll.stopped = "cap";
+    return;
+  }
+  if (!_pageVisible()) { _poll.stopped = "hidden"; return; }
+  _poll.stopped = "";
+  _poll.timer = setTimeout(pollNow, _pollDelay());
+}
+function pollNow() {
+  _poll.timer = null;
+  if (!_pageVisible()) { _poll.stopped = "hidden"; return; }
+  const list = waitingCards(_lastDashData);
+  if (!list.length) { _poll.stopped = "nothing waits"; return; }
+  _poll.count++;
+  _poll.busy = true;
+  const sent = list.map(a => ({ fileId: a.fileId, configId: a.configId, turnIn: _turnInWaiting(a), waiting: !!a.waiting }));
+  scriptRun()
+    .withSuccessHandler(function (res) { _poll.busy = false; onPollResult(sent, res); })
+    .withFailureHandler(function () { _poll.busy = false; _poll.errors++; schedulePoll(); })
+    .getMyWaitingStatus(sent.map(c => ({ fileId: c.fileId, configId: c.configId, turnIn: c.turnIn })));
+}
+function _findCard(fileId, configId) {
+  return ((_lastDashData && _lastDashData.assignments) || []).filter(a => a.fileId === fileId && a.configId === configId)[0] || null;
+}
+const NEWS_FIELDS = ["status", "statusPill", "statusClass", "displayStatus", "statusNote", "canSubmit"];
+function onPollResult(sent, res) {
+  if (!res || !res.ok || !Array.isArray(res.cards)) { _poll.errors++; schedulePoll(); return; }
+  _poll.errors = 0;
+  const byKey = {};
+  res.cards.forEach(c => { byKey[c.fileId + "|" + c.configId] = c; });
+  const finished = [];
+  let reload = false, changed = false;
+  sent.forEach(s => {
+    const c = byKey[s.fileId + "|" + s.configId];
+    const a = _findCard(s.fileId, s.configId);
+    if (!c || !a) return;
+    if (s.waiting && !c.waiting) {
+      finished.push({ a: a, c: c, kind: "feedback" });
+      reload = true;
+    } else if (s.waiting && c.statusPill !== a.statusPill) {
+      // In line, then being checked: the pill moves on.
+      NEWS_FIELDS.forEach(k => { a[k] = c[k]; });
+      changed = true;
+    }
+    if (s.turnIn && c.turnIn && c.turnIn.state === "READY") {
+      a.turnIn = { state: "READY", code: c.turnIn.code };
+      finished.push({ a: a, c: c, kind: "code" });
+      changed = true;
+    } else if (s.turnIn && c.turnIn && c.turnIn.state !== "PENDING_CHECK") {
+      finished.push({ a: a, c: c, kind: "answer" });
+      reload = true;
+    }
+  });
+  if (reload) { _reloadFinished(finished); return; }
+  if (changed && _lastDashData) render(_lastDashData);
+  _announce(finished);
+  schedulePoll();
+}
+// A card is done: the dashboard once, and only the finished cards taken
+// from it, so the rest of the page stays as the student left it.
+function _reloadFinished(finished) {
+  _poll.busy = true;
+  const applyLight = function () {
+    finished.forEach(f => {
+      if (f.kind !== "feedback") return;
+      NEWS_FIELDS.forEach(k => { f.a[k] = f.c[k]; });
+      f.a.waiting = false;
+      if (f.c.lastEval) f.a.lastEval = f.c.lastEval;
+    });
+  };
+  scriptRun()
+    .withSuccessHandler(function (data) {
+      _poll.busy = false;
+      if (data && !data.error && _lastDashData) {
+        const fresh = {};
+        (data.assignments || []).forEach(x => { fresh[_cardKey(x)] = x; });
+        finished.forEach(f => {
+          const list = _lastDashData.assignments || [];
+          const i = list.indexOf(f.a);
+          const k = _cardKey(f.a);
+          if (fresh[k] && i !== -1) { list[i] = fresh[k]; f.a = fresh[k]; }
+        });
+        applyLight(); // a card the load left out still stops waiting
+        _dashCache = _lastDashData;
+      } else {
+        applyLight();
+      }
+      if (_lastDashData) render(_lastDashData);
+      _announce(finished);
+      schedulePoll();
+    })
+    .withFailureHandler(function () {
+      _poll.busy = false;
+      applyLight();
+      if (_lastDashData) render(_lastDashData);
+      _announce(finished);
+      schedulePoll();
+    })
+    .getStudentDashboardData();
+}
+function _newsSay(text) {
+  const el = document.getElementById("news-banner");
+  if (!el) return;
+  el.textContent = text;
+  el.style.display = text ? "block" : "none";
+}
+// Typing in a box (a reflection, a warm-up, a turn-in answer): the page
+// doesn't move under the student.
+function _studentTyping() {
+  const el = typeof document !== "undefined" ? document.activeElement : null;
+  if (!el) return false;
+  const t = String(el.tagName || "").toUpperCase();
+  return t === "TEXTAREA" || (t === "INPUT" && !el.readOnly) || !!el.isContentEditable;
+}
+function _announce(finished) {
+  if (!finished || !finished.length) return;
+  const said = finished.map(f => (f.kind === "code" ? "Your turn-in code is ready: "
+    : f.kind === "answer" ? "Your answer was checked: " : "Feedback is ready: ") + cardName(f.a) + ".");
+  _newsSay(said.join(" "));
+  if (typeof document !== "undefined") {
+    if (_newsTitle === null) _newsTitle = document.title;
+    const feedback = finished.some(f => f.kind === "feedback");
+    document.title = "(" + finished.length + ") " + (feedback ? "Feedback ready" : "Ready") + " · " + _newsTitle;
+  }
+  if (!_studentTyping()) {
+    const el = document.getElementById(cardId(finished[0].a));
+    if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+}
+// The title goes back once the student is on the page again.
+function _clearNewsTitle() {
+  if (_newsTitle === null || typeof document === "undefined") return;
+  document.title = _newsTitle;
+  _newsTitle = null;
+}
+if (typeof document !== "undefined" && document.addEventListener) {
+  document.addEventListener("visibilitychange", function () {
+    if (_pageVisible()) schedulePoll();
+    else { _cancelPoll(); _poll.stopped = "hidden"; }
+  });
+  document.addEventListener("keydown", _clearNewsTitle);
+  document.addEventListener("pointerdown", _clearNewsTitle);
+}
+if (typeof window !== "undefined" && window.addEventListener) window.addEventListener("focus", _clearNewsTitle);
+
 // The demo's one server call.
 function _loadDemo() {
   google.script.run
@@ -2636,10 +2986,12 @@ function _demoWalkThrough(fileId) {
     delete _submitMsgs[fileId];
     apply(steps.beingChecked, { canSubmit: false });
   }, 1500);
+  // The result reaches the card the way a real one does: the page's next
+  // check for news finds it (getMyWaitingStatus's stub, above).
   setTimeout(function () {
     const a = _demoCard(fileId);
     _submitMsgs[fileId] = { ok: true, text: "Demo: the check is done. In the real dashboard the feedback is now in the student's document." };
-    apply(steps.revise, { canSubmit: true, lastEval: "just now", notYet: (a && a.demoNotYet) || "" });
+    _demoNext[fileId] = Object.assign({}, steps.revise, { canSubmit: true, lastEval: "just now", notYet: (a && a.demoNotYet) || "" });
   }, 4500);
 }
 function demoOpenDoc(btn) {
@@ -2817,6 +3169,7 @@ function render(data) {
   if (_winY !== null && window.scrollTo) window.scrollTo(0, _winY);
   _restoreFocus(_focus);
   _setFooter(data);
+  schedulePoll(); // a card waits: check for news (no-op when one is pending)
 }
 
 function _focusKey() {
@@ -3747,6 +4100,9 @@ function submitDone(fileId, configId, res) {
         a.statusClass = "IN_PROGRESS";
         a.canSubmit = false;
         a.submittedAt = "just now";
+        // The check runs by itself only with the flows on; the page then
+        // checks for news (schedulePoll, from render).
+        a.waiting = !!(res && res.aiFlowsLive);
       });
     }
     if (_lastDashData) render(_lastDashData);

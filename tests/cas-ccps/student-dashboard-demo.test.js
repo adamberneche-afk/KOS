@@ -222,6 +222,11 @@ test('Submit for Feedback walks the card through the reflection, being checked, 
   assert.equal(card.statusClass, 'NEEDS_ACTION');
   assert.ok(card.notYet.length > 10);
   assert.match(els.main.innerHTML, /<b>Not yet:<\/b>/);
+  // The result came the real page's way (2026-11-14): its check for news,
+  // answered by the demo's stub, then the polite banner.
+  advance(1000);
+  assert.match(els['news-banner'].textContent, /^Feedback is ready: /);
+  assert.equal(card.waiting, false);
   assert.deepEqual(calls, ['getDemoDashboardData']);
 });
 

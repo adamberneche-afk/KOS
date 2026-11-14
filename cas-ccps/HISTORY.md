@@ -5647,3 +5647,18 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   `--check`); and the course's Covered So Far doc when the operator sets its
   ID on the Student Dashboard project too. No practice question.
 - **Tests:** `student-dashboard-competencies.test.js`.
+
+## Student Dashboard: news while the page is open, 2026-11-14
+
+- **Found:** the page had no way to learn that feedback had arrived; the
+  student pressed Refresh, or the turn-in card said to.
+- **Now (the operator's "Build 1-4", item 2):** while a card waits, the
+  page polls a light `getMyWaitingStatus` (the caller's own cards only;
+  the Ledger plus a shared, 15-second cached queue snapshot), 20 to 40
+  seconds apart, only while visible, backing off on errors, capped at 60 a
+  visit, stopping when nothing waits. A finished card is loaded and
+  re-rendered alone, with a polite banner, a title change until the page is
+  used, and a scroll unless the student is typing. The turn-in code is
+  large with Copy. No Canvas link: none is configured.
+- **Tests:** `student-dashboard-news.test.js`, `student-dashboard-demo.test.js`,
+  `turn-in-code.test.js`.

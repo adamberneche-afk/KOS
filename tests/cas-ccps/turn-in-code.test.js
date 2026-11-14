@@ -574,7 +574,8 @@ test('the copy button: the code in a visible box, a polite live region, and the 
   const { ctx, els, calls } = page(env.exported);
   const h = ctx.turnInCardHtml(ready);
   assert.match(h, /<input id="ti-VDOE-AMY-1-code" class="ti-code" type="text" readonly value="CAS-8177-L05-7Q4K-M2X." onfocus="this.select\(\)">/);
-  assert.match(h, /<button type="button" class="act act-secondary" data-ti="ti-VDOE-AMY-1" data-code="CAS-[^"]+" onclick="turnInCopy\(this\)">Copy turn-in code<\/button>/);
+  // Large, with a Copy button that says "Copied ✓" (2026-11-14).
+  assert.match(h, /<button type="button" class="act act-secondary ti-copy" data-ti="ti-VDOE-AMY-1" data-code="CAS-[^"]+" onclick="turnInCopy\(this\)">Copy<\/button>/);
   assert.match(h, /id="ti-VDOE-AMY-1-msg" role="status" aria-live="polite"/);
 
   // No clipboard API, and execCommand refused: the code is selected, with Ctrl+C.
@@ -586,8 +587,10 @@ test('the copy button: the code in a visible box, a polite live region, and the 
   // execCommand works.
   const ok = page(env.exported, {});
   ok.ctx.document.execCommand = () => true;
-  ok.ctx.turnInCopy(btn(ok.ctx));
+  const okBtn = btn(ok.ctx);
+  ok.ctx.turnInCopy(okBtn);
   assert.match(ok.els['ti-VDOE-AMY-1-msg'].textContent, /^Copied\./);
+  assert.equal(okBtn.textContent, 'Copied \u2713', 'the button confirms too');
 
   // The clipboard API first; refused, then execCommand.
   const written = [];
