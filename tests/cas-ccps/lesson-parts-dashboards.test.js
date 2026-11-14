@@ -113,7 +113,7 @@ function studentLoad(viewer) {
     getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
     getScriptTimeZone() { return 'America/New_York'; },
   };
-  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('63_DocHeader.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('75_FormReader.js'), S('77_SlidesReader.js'), S('78_SheetReader.js')],
+  return loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('63_DocHeader.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('75_FormReader.js'), S('77_SlidesReader.js'), S('78_SheetReader.js')],
     ['getStudentDashboardData', 'buildStudentDashboardHtml_', 'submitMyWork', 'getSubmitReflection', 'LEDGER'], { Session: session });
 }
 

@@ -205,6 +205,25 @@ const DASH_DEMO_SHEET_NOT_YET = [
     "A number typed in is not a formula."
 ];
 
+// The demo's marking period, from the dates alone: MARKING_PERIOD_ENDS on
+// this project or the district calendar, never the Ledger's _CONFIG (the demo
+// opens no spreadsheet). Outside the table, its last marking period.
+function _dashDemoTerm_(now) {
+  let table = [];
+  try { table = _markingPeriodEnds_(PropertiesService.getScriptProperties().getProperty("MARKING_PERIOD_ENDS")); } catch (e) { table = []; }
+  if (!table.length) table = _markingPeriodEnds_(DEFAULT_MARKING_PERIOD_ENDS);
+  return _termForDate_(table, Utilities.formatDate(now, "America/New_York", "yyyy-MM-dd")) || table[table.length - 1].term;
+}
+
+// The marking period before one: "2627_MP2" -> "2627_MP1", "2627_MP1" -> "2526_MP4".
+function _dashPrevTerm_(term) {
+  const m = MP_TERM_RE_.exec(term);
+  if (!m) return "";
+  if (Number(m[3]) > 1) return m[1] + m[2] + "_MP" + (Number(m[3]) - 1);
+  const pad = function (n) { return String((n + 100) % 100).padStart(2, "0"); };
+  return pad(Number(m[1]) - 1) + pad(Number(m[2]) - 1) + "_MP4";
+}
+
 function dashDemoFixture_(now) {
   const tz = Session.getScriptTimeZone();
   const iso = function (n) { return Utilities.formatDate(_dashDemoDaysAgo_(now, n), tz, "yyyy-MM-dd"); };
@@ -264,6 +283,35 @@ function dashDemoFixture_(now) {
         assignmentOf[card.configId] = p.unitName;
       });
     });
+  // The term boundary (F16): every card is this marking period's but two
+  // from the one before. 8175's second lesson (a passed one; the first is
+  // passed too) is closed and goes through the real page's rule, so it never
+  // shows; the teacher reopened 8177's revise card's assignment, so that one
+  // stays and says so.
+  const term = _dashDemoTerm_(now);
+  const before = _dashPrevTerm_(term);
+  const lessonOfCourse = function (code, i) {
+    const c = DASH_DEMO_LESSONS.filter(function (x) { return x.code === code; })[0];
+    return c && c.lessons[i] ? "DEMO-" + c.lessons[i].key : "";
+  };
+  const closedId = lessonOfCourse("8175", 1), reopenedId = lessonOfCourse("8177", 3);
+  assignments.forEach(function (a) {
+    a.term = a.configId === closedId || a.configId === reopenedId ? before : term;
+    if (a.configId === reopenedId) a.demoReopened = true;
+  });
+  const shown = assignments.filter(function (a) {
+    const d = _dashTermDecision_(a.term, term, function () { return !!a.demoReopened; });
+    a.openPastTerm = d === "reopened";
+    return d !== "closed";
+  });
+  assignments.length = 0;
+  Array.prototype.push.apply(assignments, shown);
+  // Assigned order: each demo lesson's place in its course (13c).
+  assignments.forEach(function (a) {
+    a.lessonKey = _dashLessonKeyOf_(a.configId.replace(/^DEMO-/, "CAS-"));
+    a.seq = _dashLessonSeq_(a.lessonKey);
+    a.assignedAt = 0;
+  });
   _dashSortCards_(assignments);
 
   const codes = DASH_DEMO_LESSONS.map(function (c) { return c.code; }).sort();
@@ -367,8 +415,8 @@ function dashDemoFixture_(now) {
       competencies:     competencyCompletionFor_(ratings, totals, codes)
         .map(function (c) { return Object.assign({ className: names[c.course] }, c); }),
       newRegistrations: [],
-      activeTerm:       "ALL",
-      availableTerms:   [],
+      term:             term,
+      termLabel:        termLabel_(term),
       generatedAt:      formatDate_(now)
     },
     tabs: {
@@ -386,6 +434,16 @@ function dashDemoFixture_(now) {
 // ---------------------------------------------------------------------------
 // getStudentDashboardData — called client-side via google.script.run
 // ---------------------------------------------------------------------------
+// The page shows the current marking period only (F16, approved
+// 2026-11-14): a row whose term (the Ledger's AcademicYear, "2627_MP2")
+// is another marking period is left out, so the term selector is gone and
+// termFilter is ignored (kept so an old page's call still works). A row with
+// no marking period there (blank, or an older "2026-27") still shows, and
+// so does a closed-term row whose assignment the teacher opened past its
+// marking period (71's TurnInOverrides, openTurnInForAssignment) or whose
+// turn-in code the teacher granted this student (grantTurnInCode). Outside a
+// marking period (summer, a CURRENT_TERM set to another year) nothing is
+// left out. Closed-term work keeps its evidence in the Competencies tab.
 function getStudentDashboardData(termFilter) {
   const googleId = Session.getActiveUser().getEmail();
 
@@ -396,10 +454,9 @@ function getStudentDashboardData(termFilter) {
     };
   }
 
-  const cfg        = getConfig_();
-  // No filter means the whole current school year (see 07's
-  // getDashboardData): a term is one marking period of a year-long course.
-  const activeTerm = termFilter || "ALL";
+  const cfg   = getConfig_();
+  const now   = new Date();
+  const scope = _dashTermScope_(now);
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
   const data  = sheet.getDataRange().getValues();
@@ -432,7 +489,8 @@ function getStudentDashboardData(termFilter) {
   });
 
   const assignments    = [];
-  const availableTerms = new Set();
+  let closedTermRows   = 0; // left out: another marking period, not reopened
+  let ownRows          = 0; // this school year, any status: "nothing yet" vs "not registered"
   // Walk-through finding 11: every lesson's doc is a new Ledger row with a
   // fresh Timestamp, so "just registered" fired for each new assignment.
   // A class counts as new only when its earliest row is (any term, any
@@ -442,7 +500,23 @@ function getStudentDashboardData(termFilter) {
 
   const year = _currentSchoolYear_();
   const feedbackAsComment = feedbackAsCommentChecker_();
-  const partsOf = _dashPartsOf_(ss);
+  const assignmentOf = _dashStudentAssignments_(ss);
+  const partsOf = _dashPartsOf_(ss, assignmentOf);
+  const overrideCache = {};
+  // Reopened: the teacher opened the assignment past its marking period
+  // (an open TurnInOverrides row), or granted this student its turn-in code
+  // (grantTurnInCode, "GRANT" in TurnInCodes), which the card must still show.
+  const reopened = function (configId) {
+    const aid = assignmentOf[configId] || configId;
+    try {
+      if (_turnInOpenOverride_(ss, aid, now, overrideCache)) return true;
+      const code = _turnInCodeFor_(ss, googleId, aid, overrideCache);
+      return !!code && String(code[TCODE.HOW] || "").trim().toUpperCase() === "GRANT";
+    } catch (e) {
+      Logger.log("[S13] turn-in overrides not read: " + e.message);
+      return false;
+    }
+  };
   // Each row's assignment name, from its teacher's TeacherMatrix (2026-11-14):
   // the Ledger's CourseName column holds the Canvas course name for every row
   // the roster import (52) made, so cards read "Sports Entertainment and
@@ -458,6 +532,7 @@ function getStudentDashboardData(termFilter) {
     // Access policy: only this school year's work is visible, whatever term
     // the page asks for.
     if (!_isCurrentSchoolYearRow_(row, year)) continue;
+    ownRows++;
 
     const regAt = row[LEDGER.TIMESTAMP] ? new Date(row[LEDGER.TIMESTAMP]) : null;
     if (regAt && !isNaN(regAt.getTime())) {
@@ -472,9 +547,7 @@ function getStudentDashboardData(termFilter) {
     const courseCode = ledgerRowCourseCode_(row);
     if (courseCode && !courseNames[courseCode]) courseNames[courseCode] = String(row[LEDGER.CLASS_NAME]).trim();
 
-    // Collect all terms for this student regardless of filter
     const rowTerm = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
-    if (rowTerm) availableTerms.add(rowTerm);
 
     // Skip ARCHIVED rows, and SCHEDULED ones: a doc made ahead of its lesson
     // (58's nightly rollout) isn't shared with the student until the night
@@ -486,13 +559,11 @@ function getStudentDashboardData(termFilter) {
       if (part) locked.push(Object.assign({ title: _dashPartNames_(row[LEDGER.COURSE_NAME]).title }, part));
       continue;
     }
-    if (rowStatus === "ARCHIVED") {
-      // Still count the term for dropdown, just don't show in assignments
-      continue;
-    }
+    if (rowStatus === "ARCHIVED") continue;
 
-    // Apply term filter
-    if (activeTerm !== "ALL" && rowTerm && rowTerm !== activeTerm) continue;
+    // The current marking period only (see above).
+    const inTerm = _dashTermDecision_(rowTerm, scope, function () { return reopened(String(row[LEDGER.CONFIG_ID]).trim()); });
+    if (inTerm === "closed") { closedTermRows++; continue; }
 
     const fileId      = String(row[LEDGER.FILE_ID]).trim();
     // A form, Slides or Sheets part's copy (Phase 4a/4c/4d): its Ledger URL says so (00).
@@ -559,17 +630,22 @@ function getStudentDashboardData(termFilter) {
       feedbackUrl:   workFileHasSnapshot_(workType) && snapshotDocs[fileId] ? workFileUrl_(snapshotDocs[fileId], "doc") : null,
       // A part of a lesson (68): { lesson, n, count, lessonName, title }.
       part:          part ? Object.assign(_dashPartNames_(unitNames[configId] || row[LEDGER.COURSE_NAME]), part) : null,
+      // Assigned order (F16): the lesson's key and its place in the course's
+      // teaching order (13c), or null for a lesson not in it (a teacher's own
+      // task), which goes after the listed ones in the order assigned.
+      lessonKey:     _dashLessonKeyOf_(assignmentOf[configId]),
+      seq:           _dashLessonSeq_(_dashLessonKeyOf_(assignmentOf[configId])),
+      assignedAt:    sheetTimestampMs_(row[LEDGER.TIMESTAMP]) || 0,
+      // A closed-term row the teacher reopened: it stays, and says so.
+      openPastTerm:  inTerm === "reopened",
       folderLabel:   String(row[LEDGER.BLOCK]).trim() + " - " +
                      String(row[LEDGER.CLASS_NAME]).trim() + " - " +
                      String(row[LEDGER.TEACHER_NAME]).trim()
     });
   }
 
-  // Sort: ISSUE first (a student needs to see "talk to your teacher" before
-  // anything else, including already-finished work), then needs-action,
-  // then by block order, then by class.
-  // Block sort order — uses system default, gracefully handles unknown values
-  // Admins can customize this via the BLOCK_ORDER Script Property
+  // Assigned order within each class (F16); "Do next" on the page still
+  // lists what needs the student first.
   _dashSortCards_(assignments);
 
   // The next-step line on a card to revise (F3): from CompetencyEvidence,
@@ -612,7 +688,7 @@ function getStudentDashboardData(termFilter) {
 
   // Warm-ups aren't Ledger rows, and they don't follow the term filter: the
   // card shows the last warm-up and the current one.
-  const warmUps = getStudentWarmUps_(ss, cfg, googleId, new Date());
+  const warmUps = getStudentWarmUps_(ss, cfg, googleId, now);
 
   // Competencies done per course (00, 2026-10-27): every teacher's
   // confirmed ratings for this student, 1–3 counting.
@@ -626,13 +702,10 @@ function getStudentDashboardData(termFilter) {
     Logger.log("[S13] competency counts failed: " + e.message);
   }
 
-  // Empty state with helpful context. "No results" from picking a term
-  // with nothing in it is a completely different situation from "not
-  // registered at all" — the account-troubleshooting copy below used to
-  // show for both, actively misleading the moment term filtering is used
-  // for anything other than "All Terms."
+  // Empty: the start of a marking period (the student has rows this year,
+  // none in this term yet) is a plain message, not the account
+  // troubleshooting meant for a student with no rows at all.
   if (assignments.length === 0) {
-    const filteredByTerm = activeTerm !== "ALL" && availableTerms.size > 0;
     return {
       googleId:    googleId,
       assignments: [],
@@ -640,16 +713,17 @@ function getStudentDashboardData(termFilter) {
       warmUps:     warmUps,
       competencies: competencies,
       newRegistrations: newRegistrations,
-      emptyReason: filteredByTerm
-        ? "No assignments for " + activeTerm + ".\n\nChoose \"Whole school year\" at the top to see the rest of the year."
+      emptyReason: ownRows > 0 && scope
+        ? _dashEmptyTermText_(scope)
         : "No assignments found for " + googleId + ".\n\n" +
           "If you expect to see assignments here:\n" +
           "• Make sure you are signed in with the correct Google account\n" +
           "• Check with your teacher that they have registered you\n" +
           "• Wait a few minutes if you were just registered",
-      activeTerm:     activeTerm,
-      availableTerms: [...availableTerms].sort().reverse(),
-      generatedAt: formatDate_(new Date())
+      term:        scope,
+      termLabel:   scope ? termLabel_(scope) : "",
+      closedTermRows: closedTermRows,
+      generatedAt: formatDate_(now)
     };
   }
 
@@ -660,26 +734,90 @@ function getStudentDashboardData(termFilter) {
     warmUps:        warmUps,
     competencies:   competencies,
     newRegistrations: newRegistrations,
-    activeTerm:     activeTerm,
-    availableTerms: [...availableTerms].sort().reverse(),
-    generatedAt:    formatDate_(new Date())
+    term:           scope,
+    termLabel:      scope ? termLabel_(scope) : "",
+    closedTermRows: closedTermRows,
+    generatedAt:    formatDate_(now)
   };
 }
 
-// The cards' order (the real page's and the demo's): ISSUE first, then
-// needs-action, then by block order, then by class.
+// ── The current marking period (F16) ──────────────────────────────────────
+// The marking period the page shows ("2627_MP2"), or "" outside one (then
+// nothing is left out).
+function _dashTermScope_(now) {
+  const t = String(currentTerm_(now) || "").trim().toUpperCase();
+  return MP_TERM_RE_.test(t) ? t : "";
+}
+
+// "show" (this term, or no marking period on the row), "reopened" (another
+// term, but the teacher opened its assignment past its marking period) or
+// "closed". reopened() is asked only for a row from another term.
+function _dashTermDecision_(rowTerm, scope, reopened) {
+  if (!scope) return "show";
+  const t = String(rowTerm || "").trim().toUpperCase();
+  if (!MP_TERM_RE_.test(t) || t === scope) return "show";
+  return reopened && reopened() ? "reopened" : "closed";
+}
+
+function _dashEmptyTermText_(scope) {
+  return "Nothing is assigned yet in " + termLabel_(scope) + ".\n\n" +
+    "Your work from earlier marking periods isn't listed here any more. What it showed is still in the Competencies tab.";
+}
+
+// ── Assigned order (F16) ──────────────────────────────────────────────────
+// StudentAssignments (54): { studentConfigId: assignmentConfigId }, read once.
+function _dashStudentAssignments_(ss) {
+  const out = {};
+  const sa = ss.getSheetByName("StudentAssignments");
+  if (!sa || sa.getLastRow() < 2) return out;
+  sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
+    const sid = String(r[0] || "").trim();
+    const aid = String(r[2] || "").trim();
+    if (sid && aid) out[sid] = aid;
+  });
+  return out;
+}
+
+// "CAS-8175-L05-P2" -> "8175-L05", the lesson's key in 13c, or "" when 13c
+// doesn't know it (a teacher's own task, a unit assignment).
+let _dashLessonIndex_ = null;
+function _dashLessonKeyOf_(assignmentId) {
+  // 13c is in the Student Dashboard project; a project or test without it
+  // gets no assigned order, never an error.
+  if (typeof DASH_LESSON_INFO === "undefined") return "";
+  if (!_dashLessonIndex_) {
+    _dashLessonIndex_ = {};
+    Object.keys(DASH_LESSON_INFO).forEach(function (k) { _dashLessonIndex_[k.toUpperCase()] = k; });
+  }
+  const m = /^CAS-(.+?)(-P\d+)?$/i.exec(String(assignmentId || "").trim());
+  return m ? (_dashLessonIndex_[m[1].toUpperCase()] || "") : "";
+}
+
+// The lesson's place (1-based) in its course's teaching order, or null.
+function _dashLessonSeq_(lessonKey) {
+  const info = lessonKey && typeof DASH_LESSON_INFO !== "undefined" ? DASH_LESSON_INFO[lessonKey] : null;
+  return info ? info.n : null;
+}
+
+// The cards' order (the real page's and the demo's), F16: by block, then
+// class, then within each class the order the lessons were assigned: a
+// lesson in the course's teaching order (seq) by its place there, then the
+// lessons not in it (a teacher's own task) in the order they were assigned
+// (the Ledger's Timestamp), a lesson's parts in order. The old order (what
+// needs the student first) is the page's "Needs attention first" sort.
 function _dashSortCards_(assignments) {
   const blockOrder = ["1","2O","2E","3O","3E","4O","4E"];
-  const priority   = { "ISSUE": 0, "NEEDS_ACTION": 1, "IN_PROGRESS": 2,
-                        "NOT_STARTED": 3, "DONE": 4 };
+  const big = Number.MAX_SAFE_INTEGER;
   assignments.sort((a, b) => {
-    const pa = priority[a.statusClass] ?? 5;
-    const pb = priority[b.statusClass] ?? 5;
-    if (pa !== pb) return pa - pb;
     const ia = blockOrder.indexOf(a.block);
     const ib = blockOrder.indexOf(b.block);
     if (ia !== ib) return (ia === -1 ? 99 : ia) - (ib === -1 ? 99 : ib);
-    return a.className.localeCompare(b.className);
+    const c = String(a.className || "").localeCompare(String(b.className || ""));
+    if (c) return c;
+    const sa = a.seq == null ? big : a.seq, sb = b.seq == null ? big : b.seq;
+    if (sa !== sb) return sa - sb;
+    if (a.seq == null && (a.assignedAt || 0) !== (b.assignedAt || 0)) return (a.assignedAt || 0) - (b.assignedAt || 0);
+    return (a.part ? a.part.n : 0) - (b.part ? b.part.n : 0);
   });
   return assignments;
 }
@@ -730,14 +868,12 @@ function _dashNotYet_(ss, cfg, fileIds) {
 // Lessons in parts (68): each part row's lesson and place, from
 // StudentAssignments (a part's assignment ConfigID ends "-P<n>"; 68 and 55b
 // aren't in this project). { studentConfigId: { lesson, n } }.
-function _dashPartsOf_(ss) {
+function _dashPartsOf_(ss, assignmentOf) {
   const out = {};
-  const sa = ss.getSheetByName("StudentAssignments");
-  if (!sa || sa.getLastRow() < 2) return out;
-  sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
-    const sid = String(r[0] || "").trim();
-    const m = /^(.+)-P(\d+)$/i.exec(String(r[2] || "").trim());
-    if (sid && m) out[sid] = { lesson: m[1].toUpperCase(), n: Number(m[2]) };
+  const map = assignmentOf || _dashStudentAssignments_(ss);
+  Object.keys(map).forEach(function (sid) {
+    const m = /^(.+)-P(\d+)$/i.exec(map[sid]);
+    if (m) out[sid] = { lesson: m[1].toUpperCase(), n: Number(m[2]) };
   });
   return out;
 }
@@ -1976,8 +2112,9 @@ function buildStudentDashboardHtml_(opts) {
   #account-label{font-size:13px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .refresh-btn{background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.7);color:white;border-radius:6px;padding:7px 12px;font-size:13px;min-height:36px;cursor:pointer;font-family:inherit}
   .refresh-btn:hover{background:rgba(0,0,0,0.35)}
-  .refresh-btn:focus-visible,#term-filter:focus-visible{outline:2px solid white;outline-offset:2px}
-  #term-filter option{color:#202124;background:#fff}
+  .refresh-btn:focus-visible{outline:2px solid white;outline-offset:2px}
+  .term-line{font-size:13px;color:var(--text-secondary);margin:0 0 12px}
+  .past-term-note{font-size:13px;color:#3c4043;margin:0 0 8px}
   @media (max-width:480px){
     header{padding:14px 16px}
     .refresh-btn{min-height:44px}
@@ -2129,10 +2266,6 @@ ${TURN_IN_CLIENT_CSS}
 <header>
   <h1>📚 My Assignments</h1>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-    <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
-    <select id="term-filter" onchange="loadData()" aria-label="Filter by term" style="padding:7px 10px;min-height:36px;border-radius:6px;border:1px solid rgba(255,255,255,0.7);background:rgba(0,0,0,0.22);color:white;font-size:13px;">
-      <option value="ALL">Whole school year</option>
-    </select>
     <button id="my-info-btn" class="refresh-btn" onclick="toggleMyInfo()" aria-expanded="false" aria-controls="my-info-panel">ℹ️ My Info</button>
     <button id="refresh-btn" class="refresh-btn" onclick="refreshAll()" aria-label="Refresh">↻ Refresh</button>
     <button id="cas-terms-btn" class="refresh-btn" onclick="casOpenTerms()" aria-haspopup="dialog">❓ What do these mean?</button>
@@ -2179,17 +2312,14 @@ ${demo ? '<div class="demo-banner" id="demo-banner" role="note">Demo: a made-up 
 </div>
 <footer id="footer"></footer>
 <script>
-// Per-term client cache — switching the term filter back and forth used to
-// refetch and rebuild the whole assignment list from scratch every time,
-// even though the previous term's data was still sitting in memory. A cache
-// hit renders instantly and still revalidates in the background, so stale
-// data never lingers past the next successful fetch.
-let _dashCache = {};
+// The last good load: a refresh renders it at once and revalidates in the
+// background, so stale data never lingers past the next successful fetch.
+// One page, the current marking period (F16): no term key any more.
+let _dashCache = null;
 let _loadGen = 0;
-let _isFirstLoad = true;
 // NEW (finding #7): cached from the last successful render() so
 // toggleMyInfo() can rebuild the panel without a fresh round-trip, and so
-// a term-filter change doesn't need to re-derive "what's on file."
+// a refresh doesn't need to re-derive "what's on file."
 let _lastDashData = null;
 let _myInfoOpen = false;
 // fileId -> { ok, text } from this visit's Submit clicks, so a refresh or
@@ -2314,22 +2444,10 @@ function loadData() {
   // thrown away. Disabling for the duration of this call's own round-trip
   // avoids that waste.
   if (refreshBtn) refreshBtn.disabled = true;
-  const sel     = document.getElementById("term-filter");
-  const rawTerm = sel ? sel.value : "ALL";
-  // The dropdown only ever has the hardcoded "Whole school year" option until this
-  // very first response fills in the real list, so the very first call
-  // would otherwise send the literal string "ALL" — which is truthy, so
-  // the server's termFilter-or-CURRENT_TERM-or-"ALL" fallback never
-  // actually consulted the admin-configured CURRENT_TERM. Sending "" only
-  // on this one automatic first call lets that fallback do its job; any
-  // later call (refresh, or the student genuinely picking "Whole school year")
-  // still sends the real selected value.
-  const term    = (_isFirstLoad && rawTerm === "ALL") ? "" : (rawTerm || "ALL");
-  _isFirstLoad  = false;
   const loading = document.getElementById("loading");
   const main    = document.getElementById("main");
   const myGen   = ++_loadGen;
-  const cached  = _dashCache[term];
+  const cached  = _dashCache;
   let shownSpinnerAt = 0;
 
   if (cached) {
@@ -2346,14 +2464,7 @@ function loadData() {
   scriptRun()
     .withSuccessHandler(function(data) {
       if (myGen !== _loadGen) return; // a newer request already superseded this one
-      // The first automatic call sends term === "" so the server's
-      // CURRENT_TERM fallback resolves it, but render() below then syncs the
-      // dropdown to that resolved data.activeTerm — so a manual Refresh right
-      // after page load sends that resolved term, not "", and always missed
-      // the cache stored under the "" key. Cache under the resolved
-      // activeTerm instead so that first response is actually reusable.
-      const cacheKey = (data && data.activeTerm) ? data.activeTerm : term;
-      if (!data || !data.error) _dashCache[cacheKey] = data;
+      if (data && !data.error) _dashCache = data;
       _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() { render(data); if (refreshBtn) refreshBtn.disabled = false; });
     })
     .withFailureHandler(function(e) {
@@ -2375,7 +2486,7 @@ function loadData() {
         if (refreshBtn) refreshBtn.disabled = false;
       });
     })
-    .getStudentDashboardData(term);
+    .getStudentDashboardData();
 }
 
 function _showRefreshNote(data) {
@@ -2418,14 +2529,13 @@ function render(data) {
   if (_myInfoOpen) renderMyInfo(data);
 
   if (!data.assignments || data.assignments.length === 0) {
-    main.innerHTML = renderCompetencies(data) + renderWarmUps(data) + \`<div class="empty-state">
+    main.innerHTML = termLineHtml(data) + renderCompetencies(data) + renderWarmUps(data) + \`<div class="empty-state">
       <div class="icon">📋</div>
       <p>\${esc(data.emptyReason || "No assignments found.")}</p>
     </div>\`;
     loading.style.display = "none";
     main.style.display    = "block";
     _setFooter(data); // walk-through finding 17: it stayed blank here
-    _populateTermDropdown(data);
     return;
   }
 
@@ -2445,7 +2555,7 @@ function render(data) {
     return a.localeCompare(b);
   });
 
-  let html = renderCompetencies(data) + renderWarmUps(data) + doNextHtml(data.assignments);
+  let html = termLineHtml(data) + renderCompetencies(data) + renderWarmUps(data) + doNextHtml(data.assignments);
   sortedGroups.forEach(gk => {
     html += \`<div class="group-header">Block \${esc(gk)}</div>\`;
     // A lesson in parts (68) shows as one block: its open parts in order,
@@ -2464,8 +2574,6 @@ function render(data) {
   main.style.display    = "block";
   main.scrollTop = _scrollTop;
   _setFooter(data);
-
-  _populateTermDropdown(data);
 }
 
 // What a card's filled (primary) button is, by its status. The other
@@ -2511,12 +2619,18 @@ function cardId(a) {
   return "card-" + String(a.configId || a.fileId || "").replace(/[^A-Za-z0-9_-]/g, "_");
 }
 
-// "Do next", above the classes: every card that needs the student, in the
-// server's order (ISSUE, then NEEDS_ACTION). A timeout is left out: the
-// student has nothing to do ("your teacher knows"). Nothing when empty.
+// The marking period the page shows (F16): the term selector is gone.
+function termLineHtml(data) {
+  return data && data.termLabel ? '<p class="term-line">' + esc(data.termLabel) + '</p>' : "";
+}
+
+// "Do next", above the classes: every card that needs the student, a
+// couldn't-be-checked one first, then the ones to revise, each in the
+// cards' order. A timeout is left out: the student has nothing to do
+// ("your teacher knows"). Nothing when empty.
 function doNextHtml(list) {
-  const items = (list || []).filter(a => a.statusClass === "NEEDS_ACTION" ||
-    (a.statusClass === "ISSUE" && a.status !== "ERROR_TIMEOUT"));
+  const items = (list || []).filter(a => a.statusClass === "ISSUE" && a.status !== "ERROR_TIMEOUT")
+    .concat((list || []).filter(a => a.statusClass === "NEEDS_ACTION"));
   if (!items.length) return "";
   return '<section class="do-next" aria-labelledby="do-next-h"><h2 id="do-next-h">Do next</h2><ul>' +
     items.map(a => '<li><a href="#' + esc(cardId(a)) + '" onclick="return goToCard(\\'' + esc(cardId(a)) + '\\')">' +
@@ -2561,6 +2675,7 @@ function cardHtml(a) {
       <div class="pill pill-\${a.statusClass}">\${esc(a.statusPill || a.displayStatus)}</div>
     </div>
     \${a.statusNote ? \`<div class="status-note">\${esc(a.statusNote)}</div>\` : ""}
+    \${a.openPastTerm ? \`<div class="past-term-note">Your teacher kept this open after its marking period ended.</div>\` : ""}
     \${a.statusClass === "NEEDS_ACTION" && a.notYet ? \`<div class="next-step"><b>Not yet:</b> \${esc(a.notYet)}</div>\` : ""}
     <!-- FIXED: was a fixed "Period X · Subject" template — a blank
          period rendered as a dangling "Period  ·" (empty label, double
@@ -3188,24 +3303,6 @@ function renderMyInfo(data) {
         }
       </div>\`;
     }).join("");
-}
-
-// Was only ever called from the end of the full-render path, so the term
-// dropdown never got populated with real options when a filtered view came
-// back empty — factored out so both branches can call it.
-function _populateTermDropdown(data) {
-  const sel = document.getElementById("term-filter");
-  if (sel && data.availableTerms) {
-    const existing = [...sel.options].map(o => o.value);
-    data.availableTerms.forEach(t => {
-      if (!existing.includes(t)) {
-        const opt = document.createElement("option");
-        opt.value = t; opt.textContent = termLabel(t);
-        sel.appendChild(opt);
-      }
-    });
-    if (data.activeTerm && data.activeTerm !== "ALL") sel.value = data.activeTerm;
-  }
 }
 
 ${CLIENT_ESC_JS}

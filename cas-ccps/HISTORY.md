@@ -5567,3 +5567,21 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   mail until Flow 2 answers again. The CAS attention signal (34b) shows the
   streak under ADMIN.
 - **Tests:** `flow2-not-answering.test.js`, `cas-attention-signal.test.js`.
+
+## Student Dashboard: this marking period, in assigned order, 2026-11-14
+
+- **Found:** the page covered the whole school year (a term selector,
+  "Whole school year" by default) and sorted every class by status, so done
+  work and parts piled up across the year and lessons that build on each
+  other were out of order.
+- **Now (F16, approved 2026-11-14):** only the current marking period
+  (`currentTerm_()`); a row with no marking period, or a closed-term
+  assignment the teacher reopened (`TurnInOverrides`) or whose code the
+  teacher granted, still shows. Within each class, the order the lessons
+  were assigned: teaching order from `13c` (generated from `55b` and
+  `STUDENT_CRITERIA.json`, so the 2 MB `55b` stays out of the project),
+  then a teacher's own tasks by Timestamp. Do next is unchanged in purpose.
+  A closed-term card leaves the page where it used to show "Ask your
+  teacher" (`TERM_CLOSED`); the turn-in rule itself is unchanged.
+- **Tests:** `student-dashboard-navigation.test.js`; `turn-in-code.test.js`
+  and `term-marking-periods.test.js` updated for the closed-term cards.
