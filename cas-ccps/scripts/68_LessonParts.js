@@ -13,7 +13,7 @@
 // (CompetencyEvidence), or when the teacher unlocks it: the doc is shared
 // with the student and the Ledger row set ACTIVE, the same as a release.
 //
-//   unlockReadyParts()       the Ledger cycle's job (every 5 minutes)
+//   unlockReadyParts()       the Ledger cycle's job (every minute; 5 before 2026-11-14)
 //   installPartUnlocks()     puts it in the cycle: in 64_LedgerCycle.js
 //                            (Central Ledger only) since 2026-11-07, beside
 //                            the cycle's other installers, because this file

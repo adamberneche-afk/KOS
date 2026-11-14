@@ -20,12 +20,14 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const JOBS = ['bridgeQueue', 'runStagingTurnstile', 'buildFlowInputRows', 'harvestFlowInputResults',
   'backPropagateCompletions', 'buildWarmUpFlowInputs', 'harvestWarmUpFlowReturns', 'registerDeliveredWarmUps',
   'runAlignmentLogBackfill_', 'runQueueWatchdog'];
+// The jobs every minute since 2026-11-14 (harvestFlowInputResults was 5,
+// backPropagateCompletions 2): restore gives each a 1-minute trigger.
 
 function setup(installed) {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('64_LedgerCycle.js')],
     ['runLedgerCycle', 'installLedgerCycle', 'previewLedgerCycle', 'restoreLedgerTriggers', 'lcRecordedJobs_',
       'installRegistrationTrigger', 'installAlignmentBackfillTrigger', 'installPartUnlocks', 'lcFailingJobs_',
-      'installIntakeTriggers']);
+      'installIntakeTriggers', 'LC_JOBS', 'lcTimingReport_', 'lcJobEvery_']);
   const calls = [];
   JOBS.forEach((fn) => { env.sandbox[fn] = () => calls.push(fn); });
   (installed || JOBS).forEach((fn) => env.sandbox.ScriptApp.newTrigger(fn).timeBased().everyMinutes(5).create());
@@ -203,4 +205,89 @@ test('the cycle counts each job\'s failures, and fails loudly after ten in a row
   assert.equal(failing[0].streak, 0, 'a success ends the streak');
   assert.equal(failing[0].today, 10, 'today\'s count is kept');
   assert.doesNotMatch(env.props.getProperty('LEDGER_CYCLE_ERRORS'), /server error/, 'names and counts only');
+});
+
+// Every minute on the way to feedback (2026-11-14, the operator's "Build
+// 1-4"): the jobs a student waits on run every minute, each job's run time
+// is recorded (names and numbers only), and LEDGER_CYCLE_EVERY slows one
+// again without a push.
+test('the jobs between Submit and feedback, a code or the next part run every minute', () => {
+  const env = setup();
+  const every = Object.fromEntries(env.exported.LC_JOBS.map((j) => [j.fn, j.every]));
+  for (const fn of ['bridgeQueue', 'runStagingTurnstile', 'buildFlowInputRows', 'harvestFlowInputResults',
+    'backPropagateCompletions', 'unlockReadyParts', 'runTurnInCheckFlow']) assert.equal(every[fn], 1, fn);
+  assert.equal(every.runQueueWatchdog, 10, 'the watchdog keeps its cadence');
+  assert.equal(every.buildWarmUpFlowInputs, 5, 'the warm-up jobs keep theirs');
+  // A minute after a cycle, the harvest is due again (it used to wait 5).
+  env.exported.installLedgerCycle();
+  env.exported.runLedgerCycle();
+  const last = JSON.parse(env.props.getProperty('LEDGER_CYCLE_LAST_RUN'));
+  Object.keys(last).forEach((k) => { last[k] -= 61 * 1000; });
+  env.props.setProperty('LEDGER_CYCLE_LAST_RUN', JSON.stringify(last));
+  assert.ok(env.exported.runLedgerCycle().ran.includes('harvestFlowInputResults'));
+});
+
+test('each job\'s run time and the cycle\'s are recorded, and shown with the share of the daily quota', () => {
+  const env = setup(['bridgeQueue', 'harvestFlowInputResults']);
+  env.exported.installLedgerCycle();
+  const realNow = Date.now;
+  let t = realNow();
+  env.sandbox.Date.now = () => t;
+  env.sandbox.bridgeQueue = () => { t += 1200; };
+  env.sandbox.harvestFlowInputResults = () => { t += 3400; };
+  env.sandbox.registerDeliveredWarmUps = () => { t += 100; };
+  env.exported.runLedgerCycle();
+  t += 61 * 1000;
+  env.sandbox.harvestFlowInputResults = () => { t += 2400; };
+  env.exported.runLedgerCycle();
+  env.sandbox.Date.now = realNow;
+  const timing = JSON.parse(env.props.getProperty('LEDGER_CYCLE_TIMING'));
+  assert.equal(timing.harvestFlowInputResults.last, 2400);
+  assert.equal(timing.harvestFlowInputResults.runs, 2);
+  assert.equal(timing.harvestFlowInputResults.total, 5800);
+  assert.equal(timing.harvestFlowInputResults.max, 3400);
+  assert.equal(timing.harvestFlowInputResults.avg, 3200, 'a running average: 3400 + 0.2 × (2400 − 3400)');
+  assert.equal(timing._cycle.runs, 2);
+  assert.equal(timing._cycle.total, 4700 + 3600);
+  assert.doesNotMatch(env.props.getProperty('LEDGER_CYCLE_TIMING'), /@|https?:/, 'names and numbers only');
+  const report = env.exported.lcTimingReport_(env.props);
+  assert.match(report.jobs.harvestFlowInputResults, /^last 2\.4 s, usually 3\.2 s; today 2 run\(s\), 5\.8 s in all, slowest 3\.4 s$/);
+  assert.match(report.cycle, /^Ledger cycle today: 2 run\(s\), 0\.1 min of trigger time \(0% of the 6 h a day/);
+  assert.match(report.cycle, /0 cycle\(s\) ran out of time/);
+  assert.match(report.schedule, /^Schedule: up to 5 min of waiting between jobs on the way to feedback/);
+  assert.equal(report.jobs.runQueueWatchdog, 'no run timed yet');
+});
+
+test('a job the budget puts off is counted, and so is a minute skipped while a cycle runs', () => {
+  const env = setup(['bridgeQueue', 'runStagingTurnstile']);
+  env.exported.installLedgerCycle();
+  const realNow = Date.now;
+  let t = realNow();
+  env.sandbox.Date.now = () => t;
+  env.sandbox.bridgeQueue = () => { t += 5 * 60 * 1000; };
+  env.exported.runLedgerCycle();
+  env.sandbox.Date.now = realNow;
+  env.props.setProperty('LEDGER_CYCLE_BUSY_UNTIL', String(Date.now() + 60000));
+  env.exported.runLedgerCycle();
+  const timing = JSON.parse(env.props.getProperty('LEDGER_CYCLE_TIMING'));
+  assert.equal(timing.runStagingTurnstile.deferred, 1);
+  assert.equal(timing._cycle.deferredCycles, 1);
+  assert.equal(timing._cycle.busy, 1);
+  assert.match(env.exported.lcTimingReport_(env.props).jobs.runStagingTurnstile, /no run timed yet/);
+});
+
+test('LEDGER_CYCLE_EVERY slows a job without a push; a bad value is ignored', () => {
+  const env = setup(['bridgeQueue', 'harvestFlowInputResults']);
+  env.exported.installLedgerCycle();
+  env.props.setProperty('LEDGER_CYCLE_EVERY', JSON.stringify({ harvestFlowInputResults: 5, bridgeQueue: 0.5, notAJob: 3 }));
+  assert.equal(env.exported.lcJobEvery_('harvestFlowInputResults', env.props), 5);
+  assert.equal(env.exported.lcJobEvery_('bridgeQueue', env.props), 1, 'not a whole minute: ignored');
+  env.exported.runLedgerCycle();
+  const last = JSON.parse(env.props.getProperty('LEDGER_CYCLE_LAST_RUN'));
+  Object.keys(last).forEach((k) => { last[k] -= 61 * 1000; });
+  env.props.setProperty('LEDGER_CYCLE_LAST_RUN', JSON.stringify(last));
+  assert.deepEqual(env.exported.runLedgerCycle().ran, ['bridgeQueue'], 'the harvest waits its 5 minutes');
+  assert.match(env.exported.lcTimingReport_(env.props).schedule, /harvestFlowInputResults every 5/);
+  env.props.setProperty('LEDGER_CYCLE_EVERY', 'not json');
+  assert.equal(env.exported.lcJobEvery_('harvestFlowInputResults', env.props), 1);
 });

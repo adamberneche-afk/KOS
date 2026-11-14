@@ -492,12 +492,12 @@ function createAdminAssets_(adminEmail, orgName) {
       "   ID_ADMIN_SPREADSHEET = " + ledgerSs.getId() + "\n\n" +
       "4. Set these triggers:\n" +
       "   bridgeQueue              → Time-driven, every 1 minute\n" +
-      "   backPropagateCompletions → Time-driven, every 1 minute (Apps Script has no 2-minute setting)\n" +
+      "   backPropagateCompletions → Time-driven, every 1 minute\n" +
       "   runStagingTurnstile      → Time-driven, every 1 minute\n" +
       "   dispatchFormSubmit       → From spreadsheet, On form submit (handler lives in 18_FormSubmitDispatcher.js)\n" +
       "   Then, with 64_LedgerCycle.js in the project, run installLedgerCycle(): it replaces\n" +
       "   the three timed triggers with one cycle that runs each at its own pace\n" +
-      "   (backPropagateCompletions every 2 minutes).\n\n" +
+      "   (all three every minute).\n\n" +
       "NOTE: The Ledger tab includes an AcademicYear column (column S, index 18).\n" +
       "Script 02 populates this automatically from the CURRENT_TERM property.\n" +
       "Set CURRENT_TERM in Script Properties (school year and marking period, e.g. '2627_MP1') before registering students.\n\n" +
@@ -703,7 +703,7 @@ function writeAdminSummaryPage_(result, adminEmail, orgName) {
     "Scripts to bind: 00_SharedConfig.js, 02, 03, 04, 06, 10, 18.\n" +
     "Triggers to set: bridgeQueue, backPropagateCompletions and runStagingTurnstile\n" +
     "(each every 1 minute), onFormSubmit (Form 1 responses). Then run installLedgerCycle()\n" +
-    "(64): one cycle takes over the three timed triggers and runs backprop every 2 minutes."
+    "(64): one cycle takes over the three timed triggers and runs each every minute."
   );
 
   body.appendParagraph("");

@@ -46,7 +46,8 @@
 //   - Flow 1: Studio writes the TeacherMatrix itself, so nothing marks a
 //     result applied or set aside, and no return time is kept.
 //   - Flow 2: Studio's return isn't stamped. The wait is from sent to the
-//     harvest's EvaluationLog row (the harvest runs every 5 minutes), and
+//     harvest's EvaluationLog row (the harvest runs every minute since
+//     2026-11-14, every 5 before), and
 //     WaitFrom says so.
 //   - Flows 3, 4, 6: harvested return rows (and Flow 6's closed input rows)
 //     are deleted after 14 days (41, 72), so a week that began before then
@@ -339,7 +340,7 @@ function _fmRow_(c, keptFrom, stamp) {
       rate: c.sent ? _ehRound_(c.never / c.sent, 3) : "", med: U, slow: U, from: U };
     notes.push("failure rate is never-returned only");
   } else if (c.flow === 2) {
-    notes.push("Studio's return isn't stamped: the wait runs to the harvest (every 5 min); no retry path");
+    notes.push("Studio's return isn't stamped: the wait runs to the harvest (every minute; 5 before 2026-11-14); no retry path");
     r = { runs: c.runs, retries: "", returned: c.returned, applied: c.applied, setAside: c.setAside, never: c.never,
       waiting: c.waiting, rate: rate, med: pct(0.5), slow: pct(0.9), from: "sent to harvested" };
   } else if (old) {
