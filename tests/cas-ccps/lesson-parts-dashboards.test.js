@@ -284,3 +284,38 @@ test('Student Dashboard: a part card and its "Do next" line name the assignment'
   const doNext = html.slice(html.indexOf('class="do-next"'));
   assert.ok(doNext.includes(name), 'the "Do next" strip says it too');
 });
+
+// 2026-11-14 (live): the roster import (52) writes the Canvas course name to
+// the Ledger's CourseName column, so every card read "Sports Entertainment
+// and Event Management". The name now comes from the teacher's TeacherMatrix,
+// through StudentAssignments; the Ledger's column is only the fallback.
+test('Student Dashboard: cards take the assignment name from the TeacherMatrix, not the Ledger\'s course name', () => {
+  const { exported, sandbox } = studentLoad('Amy@ccpsnet.net');
+  const L = exported.LEDGER;
+  const ss = setUp(sandbox, L, { Amy: 2 });
+  // As the roster import writes it: the course name in CourseName.
+  const ledger = ss.getSheetByName('Ledger');
+  const rows = ledger.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) ledger.getRange(i + 1, L.COURSE_NAME + 1).setValue('Sports Entertainment and Event Management');
+  const tmSs = sandbox.SpreadsheetApp.create('Teacher Matrix');
+  const tm = tmSs.insertSheet('TeacherMatrix');
+  tm.appendRow(['ConfigID', 'UnitName']);
+  TITLES.forEach((t, i) => tm.appendRow([LESSON + '-P' + (i + 1), 'Venue Market Research & Survey Design — Part ' + (i + 1) + ': ' + t]));
+  const reg = ss.insertSheet('MatrixRegistry');
+  reg.appendRow(['Timestamp', 'TeacherEmail', 'TeacherMatrixSsId']);
+  reg.appendRow([new Date(), TEACHER, tmSs.getId()]);
+
+  const data = exported.getStudentDashboardData('');
+  const parts = data.assignments.filter(a => a.part);
+  assert.equal(parts.length, 2);
+  parts.forEach((a) => {
+    assert.equal(a.part.lessonName, 'Venue Market Research & Survey Design');
+    assert.match(a.unitName, /^Venue Market Research & Survey Design — Part \d: /);
+  });
+  assert.deepEqual(parts.map(a => a.part.title).sort(), ['Build the Survey', 'The Target Market']);
+
+  // No TeacherMatrix row for an assignment: the Ledger's name, as before.
+  const bare = studentLoad('Amy@ccpsnet.net');
+  setUp(bare.sandbox, bare.exported.LEDGER, { Amy: 1 });
+  assert.match(bare.exported.getStudentDashboardData('').assignments.find(a => a.part).unitName, /^Venue Market Research/);
+});
