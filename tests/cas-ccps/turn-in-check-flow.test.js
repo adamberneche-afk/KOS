@@ -459,7 +459,7 @@ test('a failed check reaches the overnight check as a count, with no student dat
 test('runTurnInCheckFlow is a Ledger cycle job; the installer adds it, or its own trigger without the cycle', () => {
   const env = load({ switch: '8177' });
   const job = env.exported.LC_JOBS.filter((j) => j.fn === 'runTurnInCheckFlow')[0];
-  assert.deepEqual(job, { fn: 'runTurnInCheckFlow', every: 2 });
+  assert.deepEqual(job, { fn: 'runTurnInCheckFlow', every: 1 }); // 2 before 2026-11-14
   const handlers = () => env.sandbox.ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction());
   env.exported.installTurnInCheckFlow();
   assert.deepEqual(handlers(), ['runTurnInCheckFlow'], 'no cycle: its own trigger');

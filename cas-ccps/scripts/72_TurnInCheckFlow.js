@@ -1,7 +1,8 @@
 // =============================================================================
 // FILE: 72_TurnInCheckFlow.js
 // BOUND TO: Central Ledger spreadsheet (cas-ccps:central-ledger)
-// TRIGGERS: runTurnInCheckFlow, a Ledger cycle job (64) every 2 minutes.
+// TRIGGERS: runTurnInCheckFlow, a Ledger cycle job (64) every minute (every 2
+//           before 2026-11-14).
 //           installTurnInCheckFlow() adds it to the cycle, or gives it its
 //           own trigger when the cycle isn't installed.
 //

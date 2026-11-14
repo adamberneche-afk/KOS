@@ -40,6 +40,20 @@
 // (bridgeQueue, runStagingTurnstile, backPropagateCompletions), which had
 // no installer: a new install added them in the Triggers panel by hand
 // (the setup guide's gap 3).
+//
+// Every minute on the way to feedback (2026-11-14, the operator's "Build
+// 1-4"): the jobs between a student's Submit and the feedback all run every
+// minute now. harvestFlowInputResults and unlockReadyParts were every 5,
+// backPropagateCompletions and runTurnInCheckFlow every 2, so the schedule
+// alone could add up to about 9 minutes to a check Studio answered in one.
+// The cycle already ran every minute, so this adds no executions, only run
+// time inside them. Each job's run time is now recorded
+// (LEDGER_CYCLE_TIMING: last, usual, today's runs and total, and how often
+// the budget pushed it to the next cycle), and the cycle's own total today
+// against the daily trigger run-time quota; showSetupStatus() (35) and
+// reportEvaluationHealth() (69) show them. If a job turns out to cost more
+// than it saves, LEDGER_CYCLE_EVERY ({"harvestFlowInputResults": 5}, a
+// Script Property) slows it again without a push.
 // =============================================================================
 
 const LC_TRIGGER_FN = "runLedgerCycle";
@@ -58,26 +72,48 @@ const LC_PROP_BUSY = "LEDGER_CYCLE_BUSY_UNTIL";
 // so Google's trigger-failure email arrives too.
 const LC_PROP_ERRORS = "LEDGER_CYCLE_ERRORS";
 const LC_ALERT_STREAK = 10;
+// Each job's run time (2026-11-14): { fn: { last, avg, max, day, runs,
+// total, deferred } } in ms, and the same for the whole cycle under
+// LC_TIMING_CYCLE, with busy (minutes skipped because a cycle still ran).
+// avg is a running average (each run counts LC_TIMING_WEIGHT); the rest are
+// today's. Function names and numbers only.
+const LC_PROP_TIMING = "LEDGER_CYCLE_TIMING";
+const LC_TIMING_CYCLE = "_cycle";
+const LC_TIMING_WEIGHT = 0.2;
+// A job's cadence set by hand, without a push: {"fn": minutes}, whole
+// minutes from 1 to 60. Anything else is ignored (and the log says so).
+const LC_PROP_EVERY = "LEDGER_CYCLE_EVERY";
+// Google's published daily trigger run-time quota for a Google Workspace
+// account: 6 hours (a consumer account has 90 minutes). The cycle's share of
+// it is shown, so a cadence that costs too much shows before it hits.
+const LC_DAILY_TRIGGER_MINUTES = 360;
 
 // The Ledger's frequent jobs and their cadence in minutes, in pipeline order
-// (used to break ties). Cadences are the ones each installer set; 03's
-// backPropagateCompletions was specced at 2.
+// (used to break ties). The jobs a student waits on between Submit and
+// feedback (or a turn-in code, or the next part) run every minute since
+// 2026-11-14; the warm-up jobs and the watchdog keep the installers'
+// cadences.
 const LC_ALWAYS = ["registerDeliveredWarmUps"];
 
 const LC_JOBS = [
   { fn: "bridgeQueue",               every: 1  }, // 03
   { fn: "runStagingTurnstile",       every: 1  }, // 06
   { fn: "buildFlowInputRows",        every: 1  }, // 37
-  { fn: "harvestFlowInputResults",   every: 5  }, // 37
-  { fn: "backPropagateCompletions",  every: 2  }, // 03
+  { fn: "harvestFlowInputResults",   every: 1  }, // 37 (5 before 2026-11-14)
+  { fn: "backPropagateCompletions",  every: 1  }, // 03 (2 before 2026-11-14)
   { fn: "buildWarmUpFlowInputs",     every: 5  }, // 41
   { fn: "harvestWarmUpFlowReturns",  every: 5  }, // 41
   { fn: "registerDeliveredWarmUps",  every: 5  }, // 25
   { fn: "runAlignmentLogBackfill_",  every: 5  }, // 22
   { fn: "runQueueWatchdog",          every: 10 }, // 34
-  { fn: "unlockReadyParts",          every: 5  }, // 68
-  { fn: "runTurnInCheckFlow",        every: 2  }, // 72 (Flow 6; installTurnInCheckFlow())
+  { fn: "unlockReadyParts",          every: 1  }, // 68 (5 before 2026-11-14)
+  { fn: "runTurnInCheckFlow",        every: 1  }, // 72 (Flow 6; installTurnInCheckFlow(); 2 before 2026-11-14)
 ];
+
+// The jobs between a student's Submit and the feedback on their card, in
+// order: the schedule can add up to one cadence at each.
+const LC_FEEDBACK_PATH = ["bridgeQueue", "runStagingTurnstile", "buildFlowInputRows", "harvestFlowInputResults",
+  "backPropagateCompletions"];
 
 /** The cycle. Time trigger, every minute. */
 function runLedgerCycle() {
@@ -85,6 +121,11 @@ function runLedgerCycle() {
   const started = Date.now();
   if (!claimRunSlot_(LC_PROP_BUSY, LC_BUSY_MS)) {
     Logger.log("[LC] A cycle is still running; skipping this minute.");
+    try {
+      const busy = lcTimingState_(props);
+      lcNoteBusy_(busy, started);
+      props.setProperty(LC_PROP_TIMING, JSON.stringify(busy));
+    } catch (e) { /* the count is a nicety; the skip is what matters */ }
     return { ran: [], errors: [], skipped: "busy" };
   }
   const result = { ran: [], errors: [], deferred: [] };
@@ -96,17 +137,26 @@ function runLedgerCycle() {
     let last = {};
     try { last = JSON.parse(props.getProperty(LC_PROP_LAST) || "{}"); } catch (e) { last = {}; }
     var errs = lcErrorState_(props);
+    const timing = lcTimingState_(props);
+    const everyOf = lcEveryOverrides_(props);
     const due = LC_JOBS
-      .map(function (j, order) { return { fn: j.fn, every: j.every, order: order,
-        overdue: started - Number(last[j.fn] || 0) - j.every * 60000 }; })
+      .map(function (j, order) {
+        const every = everyOf[j.fn] || j.every;
+        return { fn: j.fn, every: every, order: order, overdue: started - Number(last[j.fn] || 0) - every * 60000 };
+      })
       .filter(function (j) { return names.indexOf(j.fn) !== -1 && j.overdue >= -LC_DUE_TOLERANCE_MS; })
       .sort(function (a, b) { return (b.overdue - a.overdue) || (a.order - b.order); });
 
     for (const j of due) {
-      if (Date.now() - started > LC_BUDGET_MS) { result.deferred.push(j.fn); continue; }
+      if (Date.now() - started > LC_BUDGET_MS) {
+        result.deferred.push(j.fn);
+        lcNoteTiming_(timing, j.fn, null, started);
+        continue;
+      }
       const fn = globalThis[j.fn];
       if (typeof fn !== "function") { result.errors.push(j.fn + ": not in this project"); continue; }
-      last[j.fn] = Date.now();
+      const t0 = Date.now();
+      last[j.fn] = t0;
       try {
         fn();
         result.ran.push(j.fn);
@@ -116,9 +166,12 @@ function runLedgerCycle() {
         result.errors.push(j.fn + ": " + String(e && e.message || e).slice(0, 200));
         lcNoteResult_(errs, j.fn, false, started);
       }
+      lcNoteTiming_(timing, j.fn, Date.now() - t0, started);
     }
+    lcNoteTiming_(timing, LC_TIMING_CYCLE, Date.now() - started, started, result.deferred.length > 0);
     props.setProperty(LC_PROP_LAST, JSON.stringify(last));
     props.setProperty(LC_PROP_ERRORS, JSON.stringify(errs));
+    props.setProperty(LC_PROP_TIMING, JSON.stringify(timing));
   } finally {
     props.deleteProperty(LC_PROP_BUSY);
   }
@@ -171,6 +224,123 @@ function lcFailingJobs_(props, now) {
       today: e.day === day ? Number(e.dayCount) || 0 : 0 };
   }).filter(function (f) { return f.streak > 0 || f.today > 0; })
     .sort(function (a, b) { return (b.streak - a.streak) || (b.today - a.today); });
+}
+
+// ── Run time (2026-11-14) ────────────────────────────────────────────────
+
+function lcTimingState_(props) {
+  try {
+    const v = JSON.parse(props.getProperty(LC_PROP_TIMING) || "{}");
+    return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function lcDayKey_(now) {
+  return Utilities.formatDate(new Date(now), Session.getScriptTimeZone(), "yyyy-MM-dd");
+}
+
+function lcTimingEntry_(timing, key, now) {
+  const day = lcDayKey_(now);
+  const t = timing[key] && typeof timing[key] === "object" ? timing[key] : {};
+  if (t.day !== day) {
+    t.day = day; t.runs = 0; t.total = 0; t.max = 0; t.deferred = 0;
+    if (key === LC_TIMING_CYCLE) { t.deferredCycles = 0; t.busy = 0; }
+  }
+  timing[key] = t;
+  return t;
+}
+
+// One run of a job (or of the whole cycle, key LC_TIMING_CYCLE) that took
+// ms; ms null: the job was due but the budget pushed it to the next cycle.
+function lcNoteTiming_(timing, key, ms, now, deferredAny) {
+  const t = lcTimingEntry_(timing, key, now);
+  if (ms === null || ms === undefined) { t.deferred = (Number(t.deferred) || 0) + 1; return; }
+  ms = Math.max(0, Math.round(ms));
+  t.last = ms;
+  t.avg = Number(t.avg) > 0 ? Math.round(t.avg + LC_TIMING_WEIGHT * (ms - t.avg)) : ms;
+  t.max = Math.max(Number(t.max) || 0, ms);
+  t.runs = (Number(t.runs) || 0) + 1;
+  t.total = (Number(t.total) || 0) + ms;
+  if (deferredAny) t.deferredCycles = (Number(t.deferredCycles) || 0) + 1;
+}
+
+function lcNoteBusy_(timing, now) {
+  const t = lcTimingEntry_(timing, LC_TIMING_CYCLE, now);
+  t.busy = (Number(t.busy) || 0) + 1;
+}
+
+// {"fn": minutes} from LEDGER_CYCLE_EVERY, for jobs in LC_JOBS only, whole
+// minutes 1 to 60; anything else is left out.
+function lcEveryOverrides_(props) {
+  let raw = {};
+  try { raw = JSON.parse((props || PropertiesService.getScriptProperties()).getProperty(LC_PROP_EVERY) || "{}"); } catch (e) {
+    Logger.log("[LC] " + LC_PROP_EVERY + " isn't JSON; the cadences in LC_JOBS are used.");
+    return {};
+  }
+  const out = {};
+  if (!raw || typeof raw !== "object") return out;
+  LC_JOBS.forEach(function (j) {
+    const n = Number(raw[j.fn]);
+    if (raw[j.fn] !== undefined && Math.floor(n) === n && n >= 1 && n <= 60) out[j.fn] = n;
+  });
+  return out;
+}
+
+/** A job's cadence in minutes: LEDGER_CYCLE_EVERY's, else LC_JOBS'. */
+function lcJobEvery_(fn, props) {
+  const over = lcEveryOverrides_(props)[fn];
+  const job = LC_JOBS.filter(function (j) { return j.fn === fn; })[0];
+  return over || (job ? job.every : 0);
+}
+
+function lcSeconds_(ms) {
+  return (Math.round((Number(ms) || 0) / 100) / 10) + " s";
+}
+
+/**
+ * The run-time picture, for showSetupStatus() (35) and
+ * reportEvaluationHealth() (69): { jobs: { fn: line }, cycle: line,
+ * schedule: line, timing }. Today's numbers only count today's runs.
+ * Names and numbers only.
+ */
+function lcTimingReport_(props, now) {
+  props = props || PropertiesService.getScriptProperties();
+  const day = lcDayKey_(now || Date.now());
+  const timing = lcTimingState_(props);
+  const jobs = {};
+  LC_JOBS.forEach(function (j) {
+    const t = timing[j.fn];
+    if (!t || !t.runs && !t.last) { jobs[j.fn] = "no run timed yet"; return; }
+    const today = t.day === day;
+    jobs[j.fn] = "last " + lcSeconds_(t.last) + ", usually " + lcSeconds_(t.avg) +
+      (today ? "; today " + t.runs + " run(s), " + lcSeconds_(t.total) + " in all, slowest " + lcSeconds_(t.max) +
+        (t.deferred ? ", put off " + t.deferred + " time(s) by the budget" : "") : "; no run today");
+  });
+  const c = timing[LC_TIMING_CYCLE];
+  let cycle;
+  if (!c || c.day !== day) {
+    cycle = "Ledger cycle today: no run timed yet.";
+  } else {
+    const mins = (Number(c.total) || 0) / 60000;
+    cycle = "Ledger cycle today: " + c.runs + " run(s), " + (Math.round(mins * 10) / 10) + " min of trigger time (" +
+      Math.round(mins / LC_DAILY_TRIGGER_MINUTES * 1000) / 10 + "% of the " + (LC_DAILY_TRIGGER_MINUTES / 60) +
+      " h a day Google allows a Workspace account), usually " + lcSeconds_(c.avg) + " a run, slowest " + lcSeconds_(c.max) +
+      "; " + (Number(c.deferredCycles) || 0) + " cycle(s) ran out of time and put jobs off" +
+      "; " + (Number(c.busy) || 0) + " minute(s) skipped because a cycle was still running.";
+  }
+  // The schedule's share of the wait: up to one cadence at each job on the
+  // way to feedback, while none is put off.
+  const everyOf = lcEveryOverrides_(props);
+  const hops = LC_FEEDBACK_PATH.map(function (fn) {
+    return everyOf[fn] || LC_JOBS.filter(function (j) { return j.fn === fn; })[0].every;
+  });
+  const schedule = "Schedule: up to " + hops.reduce(function (a, b) { return a + b; }, 0) +
+    " min of waiting between jobs on the way to feedback (" + LC_FEEDBACK_PATH.map(function (fn, i) {
+      return fn + " every " + hops[i];
+    }).join(", ") + "), plus Studio's own time (FlowMeasures' Flow 2 wait).";
+  return { jobs: jobs, cycle: cycle, schedule: schedule, timing: timing };
 }
 
 /** The jobs installLedgerCycle() found triggers for. */
@@ -298,7 +468,7 @@ function lcInstallJob_(fn) {
     if (jobs.indexOf(fn) === -1) {
       jobs.push(fn);
       props.setProperty(LC_PROP_JOBS, JSON.stringify(jobs));
-      message = fn + " added to the Ledger cycle (every " + job.every + " min).";
+      message = fn + " added to the Ledger cycle (every " + lcJobEvery_(fn, props) + " min).";
     } else {
       message = fn + " already runs in the Ledger cycle.";
     }

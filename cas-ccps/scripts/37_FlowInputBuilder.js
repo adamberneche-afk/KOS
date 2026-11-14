@@ -4,14 +4,13 @@
 // TRIGGERS:
 //   buildFlowInputRows      — Time-driven, every 1 minute  (mirrors
 //                              03_QueueBridge.js's bridgeQueue cadence)
-//   harvestFlowInputResults — Time-driven, every 5 minutes. Originally
-//                              specced to mirror 03_QueueBridge.js's
-//                              backPropagateCompletions cadence (documented
-//                              there as "every 2 minutes," never actually
-//                              achievable — see the fix note on
-//                              installFlowInputTriggers() below), so this
-//                              uses the nearest interval ScriptApp's
-//                              time-based trigger API actually accepts.
+//   harvestFlowInputResults — Time-driven, every 1 minute since 2026-11-14
+//                              (the Ledger cycle, 64, runs both; a 5-minute
+//                              harvest could add 5 minutes to every check
+//                              Studio answered in one). It was every 5,
+//                              the nearest interval ScriptApp accepts to
+//                              the 2 minutes first specced (see the fix
+//                              note on installFlowInputTriggers() below).
 //
 // PURPOSE: Flow 2 (Student Evaluation) redesign, landed after a live
 // Studio build session hit three walls documented in this session's
@@ -1449,7 +1448,8 @@ function installFlowInputTriggers() {
     Logger.log("[FlowInputBuilder] Installed buildFlowInputRows — every 1 minute.");
   }
   if (existing.indexOf("harvestFlowInputResults") === -1) {
-    ScriptApp.newTrigger("harvestFlowInputResults").timeBased().everyMinutes(5).create();
-    Logger.log("[FlowInputBuilder] Installed harvestFlowInputResults — every 5 minutes.");
+    // Every minute since 2026-11-14, as in the Ledger cycle (64's LC_JOBS).
+    ScriptApp.newTrigger("harvestFlowInputResults").timeBased().everyMinutes(1).create();
+    Logger.log("[FlowInputBuilder] Installed harvestFlowInputResults — every 1 minute.");
   }
 }
