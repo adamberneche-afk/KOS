@@ -316,6 +316,22 @@ test('runQueueWatchdog: a fully blank row is not an unknown status', () => {
   assert.ok(!signalText(env).includes('unknown status'));
 });
 
+// ── 03: Flow 2 not answering (2026-11-14) ──
+
+test('writeCasSignal_: Flow 2 timeouts in a row show under ADMIN, with when and the last answer; gone at zero', () => {
+  const env = load();
+  staging(env.ss, []);
+  suggestions(env.ss, []);
+  const since = new Date(2026, 10, 13, 9, 5).getTime();
+  env.props.setProperty('FLOW2_ALERT_STATE', JSON.stringify({ streak: 14, since, lastAnswerAt: 0, alertedAt: since + 1 }));
+  env.exported.writeCasSignal_(okWatchdog());
+  assert.match(signalText(env), /- Flow 2 isn't answering: 14 submission checks timed out in a row since 2026-11-13 09:05, last answer not recorded \(the admin was emailed\)\. Check Flow 2's activity in Studio\./);
+
+  env.props.setProperty('FLOW2_ALERT_STATE', JSON.stringify({ streak: 1, since, lastAnswerAt: since, alertedAt: 0 }));
+  env.exported.writeCasSignal_(okWatchdog());
+  assert.ok(!signalText(env).includes('Flow 2 isn'), 'one timeout is not a line');
+});
+
 // ── 06: a no-timestamp IN_PROCESS row no longer holds the lane ──
 
 test('runStagingTurnstile: an IN_PROCESS row with no timestamp does not hold the teacher lane', () => {
