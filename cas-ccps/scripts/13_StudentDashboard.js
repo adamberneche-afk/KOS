@@ -2424,7 +2424,11 @@ function evalLine(a) {
 }
 
 function cardTitle(a) {
-  return a.part ? "Part " + a.part.n + " of " + a.part.count + (a.part.title ? ": " + a.part.title : "") : a.unitName;
+  // A part's card names its assignment first: the "Do next" strip and the card
+  // both read this, and "Part 2 of 3: Step 2" alone doesn't say which assignment.
+  return a.part
+    ? (a.part.lessonName ? a.part.lessonName + " \u2014 " : "") + "Part " + a.part.n + " of " + a.part.count + (a.part.title ? ": " + a.part.title : "")
+    : a.unitName;
 }
 
 function cardId(a) {
