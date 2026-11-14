@@ -46,6 +46,23 @@ test('a job run by the Ledger cycle reads "in the cycle"; an unknown trigger is 
   assert.ok(r.lines.some((l) => /Other triggers: someOldHandler/.test(l)));
 });
 
+// 2026-11-14: each cycle job's run time, and the cycle's share of the day.
+test('a cycle job\'s line has its cadence and run time; the cycle\'s day and the schedule follow', () => {
+  const env = load();
+  env.sandbox.ScriptApp.newTrigger('runLedgerCycle').timeBased().create();
+  env.props.setProperty('LEDGER_CYCLE_JOBS', JSON.stringify(['harvestFlowInputResults']));
+  const day = env.sandbox.Utilities.formatDate(new Date(), 'America/New_York', 'yyyy-MM-dd');
+  env.props.setProperty('LEDGER_CYCLE_TIMING', JSON.stringify({
+    harvestFlowInputResults: { last: 1500, avg: 1800, max: 4000, day, runs: 30, total: 54000, deferred: 2 },
+    _cycle: { last: 6000, avg: 5000, max: 9000, day, runs: 30, total: 180000, deferred: 0, deferredCycles: 2, busy: 1 },
+  }));
+  const r = env.exported.showSetupStatus();
+  assert.ok(r.lines.some((l) => /on\s+harvestFlowInputResults: in the cycle, every 1 min \(last 1\.5 s, usually 1\.8 s; today 30 run\(s\), 54 s in all, slowest 4 s, put off 2 time\(s\) by the budget\)/.test(l)));
+  assert.ok(r.lines.some((l) => /Ledger cycle today: 30 run\(s\), 3 min of trigger time \(0\.8% of the 6 h/.test(l)));
+  assert.ok(r.lines.some((l) => /2 cycle\(s\) ran out of time and put jobs off; 1 minute\(s\) skipped/.test(l)));
+  assert.ok(r.lines.some((l) => /^\s+Schedule: up to 5 min/.test(l)));
+});
+
 // 10-29 handoff: a pending catch-up showed under "Other triggers".
 test('the rollout catch-up is named: pending with today\'s count, or none, and never "missing"', () => {
   const env = load();

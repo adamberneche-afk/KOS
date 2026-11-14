@@ -927,16 +927,27 @@ function showSetupStatus() {
   lines.push("  " + (cycleOn ? "on " : "OFF") + "  Ledger cycle (" + LC_TRIGGER_FN + "), every minute" +
     (cycleOn ? "" : ": run installLedgerCycle()") + (count(LC_TRIGGER_FN) > 1 ? " [installed " + count(LC_TRIGGER_FN) + " times]" : ""));
   if (!cycleOn) missing.push("installLedgerCycle()");
+  // Each job's run time (64's LEDGER_CYCLE_TIMING, 2026-11-14): whether the
+  // cycle is putting jobs off, and which job costs the time.
+  let timing = null;
+  try { timing = lcTimingReport_(props); } catch (e) { timing = null; }
   LC_JOBS.forEach(function (j) {
     const own = count(j.fn);
     const inCycle = cycleJobs.indexOf(j.fn) !== -1;
     let state;
     if (inCycle && own) state = "on   " + j.fn + ": in the cycle AND its own trigger, so it runs twice";
-    else if (inCycle) state = "on   " + j.fn + ": in the cycle, every " + j.every + " min";
+    else if (inCycle) {
+      state = "on   " + j.fn + ": in the cycle, every " + lcJobEvery_(j.fn, props) + " min" +
+        (timing ? " (" + timing.jobs[j.fn] + ")" : "");
+    }
     else if (own) state = "on   " + j.fn + ": its own trigger";
     else state = "OFF  " + j.fn + ": not in the cycle and no trigger";
     lines.push("  " + state);
   });
+  if (cycleOn && timing) {
+    lines.push("  " + timing.cycle);
+    lines.push("  " + timing.schedule);
+  }
   const expected = { };
   expected[LC_TRIGGER_FN] = true;
   LC_JOBS.forEach(function (j) { expected[j.fn] = true; });

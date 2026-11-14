@@ -3,8 +3,8 @@
 // BOUND TO: Central Ledger spreadsheet
 // TRIGGERS: both run inside the Ledger cycle (64, installLedgerCycle()):
 //   bridgeQueue              — every 1 minute
-//   backPropagateCompletions — every 2 minutes (a cadence only the cycle can
-//                              give; a plain trigger takes 1, 5, 10, 15 or 30)
+//   backPropagateCompletions — every 1 minute (every 2 before 2026-11-14,
+//                              a cadence only the cycle could give)
 // =============================================================================
 
 // Ledger column indices (0-based)

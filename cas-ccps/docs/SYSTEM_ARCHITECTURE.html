@@ -376,7 +376,7 @@ Where this page describes the doc menu, feedback at the top or end of the doc, S
     <div class="flow-row"><div class="flow-node gas">Script 06 Turnstile — flips ONE row: PENDING_INFERENCE → IN_PROCESS</div></div>
     <div class="flow-row"><div class="flow-arrow">↓</div><div class="flow-label">Studio Flow 2 trigger fires on IN_PROCESS condition</div></div>
     <div class="flow-row"><div class="flow-node studio">Studio Flow 2 — reads student doc → fetches config → Gemini → writes feedback → removes placeholder → marks COMPLETE</div></div>
-    <div class="flow-row"><div class="flow-arrow">↓</div><div class="flow-label">backPropagateCompletions fires every 2 minutes</div></div>
+    <div class="flow-row"><div class="flow-arrow">↓</div><div class="flow-label">backPropagateCompletions fires every minute (the Ledger cycle)</div></div>
     <div class="flow-row"><div class="flow-node gas">Script 03 backprop — closes ReviewQueue row → updates LastEval in Ledger → runs post-processing (next-steps block)</div></div>
     <div class="flow-row"><div class="flow-arrow">↓</div></div>
     <div class="flow-row"><div class="flow-node trigger">👤 Student sees feedback as a comment on the document</div></div>

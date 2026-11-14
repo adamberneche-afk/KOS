@@ -11,7 +11,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // 69 calls 69b's flowMeasures_ (every flow's tabs: 34, 37, 41, 71, 72).
 const FILES = ['00_SharedConfig.js', '03_QueueBridge.js', '34_QueueWatchdog.js', '37_FlowInputBuilder.js',
-  '41_WarmUpFlowBridge.js', '71_TurnInCodes.js', '72_TurnInCheckFlow.js', '69_EvaluationHealth.js', '69b_FlowMeasures.js'].map(S);
+  '41_WarmUpFlowBridge.js', '71_TurnInCodes.js', '72_TurnInCheckFlow.js', '64_LedgerCycle.js', '69_EvaluationHealth.js', '69b_FlowMeasures.js'].map(S);
 
 // Wednesday 2026-10-28, noon local; the week of Monday 2026-10-26.
 const NOW = new Date(2026, 9, 28, 12, 0, 0);
@@ -119,4 +119,15 @@ test('reportEvaluationHealth rewrites the Measures tab, headers and all', () => 
   assert.deepEqual(tab[0], env.exported.EH_HEADERS);
   env.exported.reportEvaluationHealth();
   assert.equal(env.ss.getSheetByName('Measures').getDataRange().getValues().length, tab.length, 'rewritten, not appended');
+});
+
+// 2026-11-14: beside Flow 2's wait, the editor log has the Ledger cycle's
+// run time (64), so the operator can see whether the schedule or Studio
+// holds feedback up. Names and numbers only.
+test('reportEvaluationHealth also gives the Ledger cycle\'s run time and the schedule\'s share of the wait', () => {
+  const env = load();
+  const out = env.exported.reportEvaluationHealth();
+  assert.match(out.cycleLines[0], /^Ledger cycle today: no run timed yet\.$/);
+  assert.match(out.cycleLines[1], /^Schedule: up to 5 min of waiting between jobs on the way to feedback/);
+  assert.ok(out.cycleLines.some((l) => /^harvestFlowInputResults: no run timed yet$/.test(l)));
 });
