@@ -922,3 +922,186 @@ test('tiers: an APPROVED the outcomes do not support is recorded as needing revi
   assert.equal(r.lastResult, 'NEEDS_REVISION', 'the primary must be MET');
   assert.deepEqual(r.evidence, [['COMP-1', 'PARTIALLY_MET'], ['COMP-2', 'MET']]);
 });
+
+// ── The stale-input re-arm (2026-11-14) ──────────────────────────────────
+// On 11-13 Studio's Flow 2 stopped answering for a day. A FlowInput row left
+// READY with no output held its key for good, so an admin re-queue built
+// nothing and timed out again. The builder now restarts such a row (a clear,
+// then READY on the next run), at most twice, then gives up on it with
+// ERROR_NO_ANSWER, which blocks only its own submission.
+
+const MIN = 60 * 1000;
+
+// One submission whose FlowInput row is already there. staging: the staging
+// row's status and stamp; fi: the FlowInput row's status, build time and
+// re-arm cells.
+function setUpWaitingScenario(sandbox, exported, { stagingStatus = 'ERROR_TIMEOUT', stagedAt, builtAt,
+  readyStatus = 'READY', rearms = '', armedAt = '', stagingRowRef = 2, headers } = {}) {
+  const ledgerSs = setUpCentralLedger(sandbox);
+  setUpConfig(sandbox, ledgerSs);
+  const studentFileId = sandbox.DocumentApp.create('Student Doc').getId();
+  const staging = stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com',
+    status: stagingStatus });
+  staging[0] = stagedAt || new Date(Date.now() - 20 * MIN);
+  ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(staging);
+  ledgerSs.getSheetByName('Ledger').appendRow(
+    ledgerRow({ googleId: 'student@example.com', configId: 'VDOE-ABC-2026', fileId: studentFileId, teacherEmail: 'teacher@example.com' }, exported));
+  ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
+  setUpTeacherMatrix(sandbox, 'matrix-ss-1').getSheetByName('TeacherMatrix')
+    .appendRow(teacherMatrixRow({ configId: 'VDOE-ABC-2026' }));
+  const fiSheet = ledgerSs.insertSheet('FlowInput');
+  fiSheet.appendRow(headers || exported.FI_HEADERS);
+  const row = flowInputRow(exported, { studentFileId, configId: 'VDOE-ABC-2026', readyStatus, stagingRowRef });
+  row[exported.FI.TIMESTAMP] = builtAt || new Date(Date.now() - 13 * MIN);
+  row[exported.FI.PROMPT_TEXT] = 'prompt';
+  row.push(rearms, armedAt);
+  fiSheet.appendRow(row);
+  return { ledgerSs, fiSheet, studentFileId };
+}
+
+const fiCell = (fiSheet, exported, col) => fiSheet.getRange(2, exported.FI[col] + 1).getValue();
+
+test('re-arm: a READY row unanswered past the lane timeout is cleared, then set READY on the next run', () => {
+  const { exported, sandbox } = load();
+  const { fiSheet } = setUpWaitingScenario(sandbox, exported);
+
+  exported.buildFlowInputRows();
+  assert.equal(fiSheet.getLastRow(), 2, 'no new row');
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), '', 'cleared: the first of the two edits');
+  assert.equal(fiCell(fiSheet, exported, 'REARMS'), 1);
+  const armedAt = fiCell(fiSheet, exported, 'ARMED_AT');
+  assert.ok(Date.now() - new Date(armedAt).getTime() < MIN, 'ArmedAt is now');
+
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'READY', 'set READY again: the edit that starts Studio');
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'READY', 'not restarted again until another 12 minutes pass');
+  assert.equal(fiCell(fiSheet, exported, 'REARMS'), 1);
+});
+
+test('re-arm: a READY row younger than the lane timeout, or one with output, is left alone', () => {
+  const { exported, sandbox } = load();
+  const young = setUpWaitingScenario(sandbox, exported, { stagingStatus: 'IN_PROCESS', builtAt: new Date(Date.now() - 5 * MIN) });
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(young.fiSheet, exported, 'READY_STATUS'), 'READY');
+  assert.equal(fiCell(young.fiSheet, exported, 'REARMS'), '');
+
+  const loaded = load();
+  const answered = setUpWaitingScenario(loaded.sandbox, loaded.exported);
+  answered.fiSheet.getRange(2, loaded.exported.FI.GEMINI_FULL_OUTPUT + 1).setValue('an answer, status not yet written');
+  loaded.exported.buildFlowInputRows();
+  assert.equal(fiCell(answered.fiSheet, loaded.exported, 'READY_STATUS'), 'READY');
+});
+
+test('re-arm: the fixture row (StagingRowRef FIXTURE) stays READY however old', () => {
+  const { exported, sandbox } = load();
+  const { fiSheet } = setUpWaitingScenario(sandbox, exported, { stagingRowRef: 'FIXTURE', builtAt: new Date(Date.now() - 600 * MIN) });
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'READY');
+});
+
+test('re-arm: the second restart is counted, and after two the row is ERROR_NO_ANSWER', () => {
+  const { exported, sandbox } = load();
+  const once = setUpWaitingScenario(sandbox, exported, { rearms: 1, armedAt: new Date(Date.now() - 13 * MIN) });
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(once.fiSheet, exported, 'REARMS'), 2);
+  assert.equal(fiCell(once.fiSheet, exported, 'READY_STATUS'), '');
+
+  const loaded = load();
+  const twice = setUpWaitingScenario(loaded.sandbox, loaded.exported,
+    { rearms: 2, armedAt: new Date(Date.now() - 13 * MIN) });
+  loaded.exported.buildFlowInputRows();
+  assert.equal(fiCell(twice.fiSheet, loaded.exported, 'READY_STATUS'), 'ERROR_NO_ANSWER');
+  assert.equal(fiCell(twice.fiSheet, loaded.exported, 'REARMS'), 2, 'not counted again');
+  assert.equal(twice.fiSheet.getLastRow(), 2, 'its own submission is not rebuilt');
+});
+
+test('re-arm: after ERROR_NO_ANSWER an admin re-queue builds a fresh row, which gets a run', () => {
+  const { exported, sandbox } = load();
+  const { fiSheet, ledgerSs } = setUpWaitingScenario(sandbox, exported,
+    { rearms: 2, armedAt: new Date(Date.now() - 13 * MIN), builtAt: new Date(Date.now() - 40 * MIN) });
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'ERROR_NO_ANSWER');
+
+  // 10's reset puts the staging row back in line; the turnstile (06) releases
+  // it and stamps it now.
+  const staging = ledgerSs.getSheetByName('STAGING_PIPELINE');
+  staging.getRange(2, exported.STG_STATUS + 1).setValue('IN_PROCESS');
+  staging.getRange(2, 1).setValue(new Date());
+  exported.buildFlowInputRows();
+
+  assert.equal(fiSheet.getLastRow(), 3, 'a fresh FlowInput row');
+  assert.equal(fiSheet.getRange(3, exported.FI.READY_STATUS + 1).getValue(), 'READY');
+});
+
+test('re-arm: an admin re-queue while the row is still READY restarts that row at once, its count from zero', () => {
+  const { exported, sandbox } = load();
+  // Not yet stale (5 minutes since its last restart), but its submission is
+  // back in the lane: an IN_PROCESS staging row stamped after that, at row 3.
+  const { fiSheet, ledgerSs, studentFileId } = setUpWaitingScenario(sandbox, exported,
+    { rearms: 1, armedAt: new Date(Date.now() - 5 * MIN), builtAt: new Date(Date.now() - 30 * MIN) });
+  const requeued = stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' });
+  requeued[0] = new Date(Date.now() - MIN);
+  ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(requeued);
+
+  exported.buildFlowInputRows();
+  assert.equal(fiSheet.getLastRow(), 2, 'the same row, not a second one');
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), '');
+  assert.equal(fiCell(fiSheet, exported, 'REARMS'), 0);
+  assert.equal(fiCell(fiSheet, exported, 'STAGING_ROW_REF'), 3, 'the harvest completes the re-queued staging row');
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'READY');
+  assert.equal(fiCell(fiSheet, exported, 'REARMS'), 0, 'not restarted twice for one re-queue');
+});
+
+test('re-arm: an IN_PROCESS staging row older than the FlowInput row is its own release, not a re-queue', () => {
+  const { exported, sandbox } = load();
+  const { fiSheet } = setUpWaitingScenario(sandbox, exported, { stagingStatus: 'IN_PROCESS',
+    stagedAt: new Date(Date.now() - 6 * MIN), builtAt: new Date(Date.now() - 5 * MIN) });
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'READY');
+  assert.equal(fiCell(fiSheet, exported, 'REARMS'), '');
+});
+
+test('re-arm: a FlowInput tab from before the new columns gets their headers', () => {
+  const { exported, sandbox } = load();
+  const old = exported.FI_HEADERS.slice(0, exported.FI.PROMPT_TEXT + 1);
+  const { fiSheet } = setUpWaitingScenario(sandbox, exported, { headers: old });
+  exported.buildFlowInputRows();
+  const header = fiSheet.getRange(1, 1, 1, fiSheet.getLastColumn()).getValues()[0];
+  assert.deepEqual(header.slice(-2), ['ReArms', 'ArmedAt']);
+  assert.equal(header.length, exported.FI_HEADERS.length);
+});
+
+test('re-arm: a late answer still completes its staging row after the lane timed it out, even renumbered', () => {
+  const { exported, sandbox } = load();
+  // StagingRowRef 9 no longer points at it (an admin clear renumbered the tab).
+  const { fiSheet, ledgerSs } = setUpWaitingScenario(sandbox, exported, { stagingRowRef: 9, readyStatus: 'EVALUATED' });
+  fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(APPROVED_OUTPUT);
+  exported.harvestFlowInputResults();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'HARVESTED');
+  assert.equal(ledgerSs.getSheetByName('STAGING_PIPELINE').getRange(2, exported.STG_STATUS + 1).getValue(), 'COMPLETE',
+    '03 then finishes the queue and Ledger rows');
+});
+
+test('re-arm: a restarted row answered twice is applied once', () => {
+  const { exported, sandbox } = load();
+  const { fiSheet, ledgerSs, studentFileId } = setUpWaitingScenario(sandbox, exported,
+    { readyStatus: 'EVALUATED', rearms: 1, armedAt: new Date(Date.now() - 2 * MIN) });
+  fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(APPROVED_OUTPUT);
+  exported.harvestFlowInputResults();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'HARVESTED');
+  const doc = sandbox.DocumentApp.openById(studentFileId);
+  const once = doc.getBody().getText();
+  assert.match(once, /Great work overall/);
+  const logRows = () => ledgerSs.getSheetByName('EvaluationLog').getLastRow();
+  const logged = logRows();
+
+  // The restarted run answers too: Studio writes EVALUATED over HARVESTED.
+  fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(REVISION_OUTPUT);
+  fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
+  exported.harvestFlowInputResults();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'HARVESTED');
+  assert.equal(doc.getBody().getText(), once, 'no second feedback block');
+  assert.equal(logRows(), logged, 'no second EvaluationLog row');
+});

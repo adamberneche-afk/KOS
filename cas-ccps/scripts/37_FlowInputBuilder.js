@@ -126,6 +126,11 @@ const FI = {
   // 38_LedgerSchemaGuard.js for what that costs); appending is safe, and a
   // row written before this column existed simply reads undefined here.
   PROMPT_TEXT:                 21, // the Flow 2 prompt, pre-substituted
+  // Appended 2026-11-14, same rule: the stale-input re-arm's own record
+  // (_fiStaleInputs_ below). Studio reads neither; a row built before they
+  // existed reads blank here, which means "never re-armed".
+  REARMS:                      22, // how many times the re-arm has restarted it
+  ARMED_AT:                    23, // when it was last restarted (blank: never)
 };
 
 const FI_TAB_NAME = "FlowInput";
@@ -136,18 +141,58 @@ const FI_HEADERS = [
   "Milestone1", "Milestone2", "Milestone3", "Milestone4", "DefinitionOfDone",
   "Milestone1CompetencyId", "Milestone2CompetencyId",
   "Milestone3CompetencyId", "Milestone4CompetencyId",
-  "ReadyStatus", "GeminiFullOutput", "PromptText",
+  "ReadyStatus", "GeminiFullOutput", "PromptText", "ReArms", "ArmedAt",
 ];
 
+// A tab made before the last columns were appended gets their headers, so
+// a person reading the sheet sees what the cells are.
 function _fiEnsureTab_(ledgerSs, cfg) {
   const tabName = (cfg && cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME;
   let sheet = ledgerSs.getSheetByName(tabName);
   if (!sheet) {
     sheet = ledgerSs.insertSheet(tabName);
     sheet.appendRow(FI_HEADERS);
+    return sheet;
+  }
+  const width = sheet.getLastColumn();
+  if (width > 0 && width < FI_HEADERS.length) {
+    sheet.getRange(1, width + 1, 1, FI_HEADERS.length - width).setValues([FI_HEADERS.slice(width)]);
   }
   return sheet;
 }
+
+// ---------------------------------------------------------------------------
+// The stale-input re-arm (2026-11-14). On 11-13 Studio's Flow 2 stopped
+// answering for a day: every READY row sat with no GeminiFullOutput, its
+// key held here for good, so even an admin re-queue of the timed-out
+// submission built nothing and timed out again. The fix by hand was to
+// clear ReadyStatus, which the "left blank" path below sets READY again on
+// the next run, a fresh edit that starts Studio. The builder now does that
+// itself, on the warm-up retry's pattern (41's wfbRetryStaleInputs_):
+//   - A READY row with no output FI_REARM_AFTER_MS after it was set READY
+//     (ArmedAt, or its Timestamp if never re-armed) is cleared, and set
+//     READY on the next run: at most FI_MAX_REARMS times.
+//   - After that it is ERROR_NO_ANSWER: like any ERROR_ row it blocks only
+//     its own submission, so a resubmission, or an admin re-queue (whose
+//     staging row the turnstile stamps when it releases it), builds a fresh
+//     row. The staging row timed out long before (06), and the teacher has
+//     had that email; nothing more is sent.
+//   - A READY row whose submission is back in the lane (an admin re-queue
+//     or a resubmission: an IN_PROCESS staging row stamped after the row
+//     was last set READY) is re-armed at once, its count starts again, and
+//     its StagingRowRef moves to that staging row so the harvest completes
+//     the right one.
+// The threshold is the turnstile's lane timeout (06's 12 minutes): by then
+// the lane has given up on the row. A late answer still lands: the harvest
+// completes the staging row even after ERROR_TIMEOUT, and 03 finishes it.
+// A re-armed row can be answered twice (the first run was only slow); the
+// harvest applies only the first (_fiAlreadyHarvested_).
+// The fixture's row (39, StagingRowRef "FIXTURE") is left alone: it stays
+// READY on purpose while the Flow is being built.
+// ---------------------------------------------------------------------------
+const FI_REARM_AFTER_MS = 12 * 60 * 1000;
+const FI_MAX_REARMS = 2;
+const FI_NO_ANSWER_STATUS = "ERROR_NO_ANSWER";
 
 // ---------------------------------------------------------------------------
 // buildFlowInputRows — for every STAGING_PIPELINE row at Status =
@@ -200,6 +245,7 @@ function buildFlowInputRows() {
     const lastErrorAt = {};
     const newRows = [];
     const unstarted = [];
+    const waiting = {}; // key -> a READY row with no output yet (the re-arm)
     for (let i = 1; i < fiData.length; i++) {
       const fiStatus = String(fiData[i][FI.READY_STATUS]).trim();
       if (fiStatus === "HARVESTED") continue;
@@ -211,7 +257,12 @@ function buildFlowInputRows() {
         continue;
       }
       existingKeys.add(fiKey);
+      if (fiStatus === "READY" && !String(fiData[i][FI.GEMINI_FULL_OUTPUT] || "").trim()) {
+        waiting[fiKey] = i;
+      }
     }
+    const now = new Date();
+    const rearm = {}; // FlowInput row number -> { count, stagingRef }
 
     // The student's workspace ID → its assignment's TeacherMatrix ConfigID
     // (StudentAssignments, 02). A row with none (the canary, which uses one
@@ -227,7 +278,15 @@ function buildFlowInputRows() {
       if (!studentFileId || !configId) continue;
 
       const key = studentFileId + "|" + configId;
-      if (existingKeys.has(key)) continue;
+      if (existingKeys.has(key)) {
+        // Back in the lane while its row still waits: restart that row.
+        const w = waiting[key];
+        if (w !== undefined && _fiRearmable_(fiData[w]) &&
+            sheetTimestampMs_(stagingData[i][STG_TIMESTAMP]) > _fiArmedAtMs_(fiData[w])) {
+          rearm[w + 1] = { count: 0, stagingRef: i + 1 };
+        }
+        continue;
+      }
       if (lastErrorAt[key] !== undefined) {
         const stagedAt = new Date(stagingData[i][STG_TIMESTAMP]).getTime();
         if (!(stagedAt > lastErrorAt[key])) continue;
@@ -324,6 +383,28 @@ function buildFlowInputRows() {
       built++;
     }
 
+    // Rows still unanswered past the lane timeout: restarted, or given up.
+    const stale = _fiStaleInputs_(fiData, waiting, rearm, now);
+    stale.noAnswer.forEach(function (r) {
+      fiSheet.getRange(r, FI.READY_STATUS + 1).setValue(FI_NO_ANSWER_STATUS);
+      _fiScrubEarlierParts_(fiSheet, r, fiData[r - 1][FI.PROMPT_TEXT]);
+    });
+    // A restart is a clear now and READY on the next run (the "left blank"
+    // path just below): the same two edits as the fix by hand, which started
+    // Studio on 11-13. Both in one run could reach Studio as no change at all.
+    const rearmRows = Object.keys(rearm);
+    rearmRows.forEach(function (r) {
+      const n = Number(r);
+      fiSheet.getRange(n, FI.READY_STATUS + 1).setValue("");
+      fiSheet.getRange(n, FI.REARMS + 1, 1, 2).setValues([[rearm[r].count, now]]);
+      if (rearm[r].stagingRef) fiSheet.getRange(n, FI.STAGING_ROW_REF + 1).setValue(rearm[r].stagingRef);
+    });
+    if (rearmRows.length || stale.noAnswer.length) {
+      SpreadsheetApp.flush();
+      Logger.log("[FlowInputBuilder] Studio had not answered: restarted " + rearmRows.length +
+                 " row(s), gave up on " + stale.noAnswer.length + " (" + FI_NO_ANSWER_STATUS + ").");
+    }
+
     // READY goes in as an edit of a row already there, not with the
     // appended row. Flow 2's Studio starter ("When a sheet changes",
     // ReadyStatus -> READY) never fired on an appended row in 40 days of
@@ -346,6 +427,38 @@ function buildFlowInputRows() {
   } finally {
     lock.releaseLock();
   }
+}
+
+// When a FlowInput row was last set READY, in ms: its ArmedAt, or its
+// Timestamp if it was never re-armed. NaN when neither reads.
+function _fiArmedAtMs_(row) {
+  const armed = sheetTimestampMs_(row[FI.ARMED_AT]);
+  return isNaN(armed) ? sheetTimestampMs_(row[FI.TIMESTAMP]) : armed;
+}
+
+// Only a real submission's row is re-armed: its StagingRowRef is a row
+// number. The fixture's is "FIXTURE".
+function _fiRearmable_(row) {
+  const ref = Number(row[FI.STAGING_ROW_REF]);
+  return String(row[FI.STAGING_ROW_REF]).trim() !== "" && !isNaN(ref) && ref >= 2;
+}
+
+// The waiting rows past FI_REARM_AFTER_MS: each is added to `rearm` (row
+// number -> { count }) while it has re-arms left, else listed in noAnswer.
+// A row already in `rearm` (back in the lane) is skipped. Reads only.
+function _fiStaleInputs_(fiData, waiting, rearm, now) {
+  const out = { noAnswer: [] };
+  Object.keys(waiting).forEach(function (key) {
+    const i = waiting[key];
+    const row = fiData[i];
+    if (rearm[i + 1] || !_fiRearmable_(row)) return;
+    const at = _fiArmedAtMs_(row);
+    if (isNaN(at) || now.getTime() - at < FI_REARM_AFTER_MS) return;
+    const count = Number(row[FI.REARMS]) || 0;
+    if (count < FI_MAX_REARMS) rearm[i + 1] = { count: count + 1 };
+    else out.noAnswer.push(i + 1);
+  });
+  return out;
 }
 
 // Hop 1: Ledger, matched on ConfigID + FileID together — same fix
@@ -787,6 +900,7 @@ function harvestFlowInputResults() {
 
     const fiData = fiSheet.getDataRange().getValues();
     let harvested = 0;
+    let evalLog = null; // EvaluationLog rows, read once if a re-armed row needs them
 
     for (let i = 1; i < fiData.length; i++) {
       if (String(fiData[i][FI.READY_STATUS]).trim() !== "EVALUATED") continue;
@@ -801,6 +915,18 @@ function harvestFlowInputResults() {
       // a form part's snapshot doc (Phase 4b). The work file's ID stays the
       // key for the Ledger, the evidence and the logs.
       const feedbackDocId = _fiDocIdFromUrl_(fiData[i][FI.STUDENT_DOC_URL]) || studentFileId;
+
+      // A re-armed row's second answer (the first run was only slow): the
+      // first is already applied, so this one is set aside untouched.
+      if (String(fiData[i][FI.ARMED_AT] || "").trim() !== "") {
+        if (evalLog === null) evalLog = _fiEvaluationLogRows_(ledgerSs, cfg);
+        if (_fiAlreadyHarvested_(evalLog, fiData[i])) {
+          Logger.log("[FlowInputBuilder] Row " + rowNum + " was answered again after a restart; " +
+                     "the first answer is already applied, so this one is left out.");
+          fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("HARVESTED");
+          continue;
+        }
+      }
 
       if (!geminiFullOutput.trim()) {
         Logger.log("[FlowInputBuilder] Row " + rowNum +
@@ -993,6 +1119,28 @@ function _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, record
     isNaN(sentMs) || !submittedAt ? "" : new Date(sentMs), wait, suggestedScore == null ? "" : suggestedScore]);
 }
 
+// EvaluationLog's rows (no header), or [] when there is no tab.
+function _fiEvaluationLogRows_(ledgerSs, cfg) {
+  const sheet = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.evaluationLog) || "EvaluationLog");
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, EVAL_LOG_HEADERS.length).getValues();
+}
+
+// Has this FlowInput row's submission already had a result applied? An
+// EvaluationLog PASSED or NEEDS_REVISION row for the same doc and ConfigID
+// at or after the FlowInput row was built.
+function _fiAlreadyHarvested_(logRows, fiRow) {
+  const fileId = String(fiRow[FI.STUDENT_FILE_ID]).trim();
+  const configId = String(fiRow[FI.CONFIG_ID]).trim();
+  const builtAt = sheetTimestampMs_(fiRow[FI.TIMESTAMP]);
+  if (isNaN(builtAt)) return false;
+  return logRows.some(function (r) {
+    const result = String(r[4]).trim();
+    return String(r[2]).trim() === fileId && String(r[1]).trim() === configId &&
+      (result === "PASSED" || result === "NEEDS_REVISION") && sheetTimestampMs_(r[0]) >= builtAt;
+  });
+}
+
 // Tries the cheap path first (StagingRowRef as a direct row number,
 // re-verified against live FileID/ConfigID before trusting it — see
 // this file's own header on why a manual clearStagingPipeline() means
@@ -1007,14 +1155,23 @@ function _fiMarkStagingComplete_(stagingSheet, stagingRowRef, studentFileId, con
     }
   }
 
+  // The row still in flight; else (a late answer, after the lane timed it
+  // out, 06) the latest ERROR_TIMEOUT one, which 03 then finishes.
   const data = stagingSheet.getDataRange().getValues();
+  let timedOut = -1;
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][STG_STUDENT_FILE_ID]).trim() === studentFileId &&
-        String(data[i][STG_CONFIG_ID]).trim() === configId &&
-        String(data[i][STG_STATUS]).trim() === "IN_PROCESS") {
+    if (String(data[i][STG_STUDENT_FILE_ID]).trim() !== studentFileId ||
+        String(data[i][STG_CONFIG_ID]).trim() !== configId) continue;
+    const status = String(data[i][STG_STATUS]).trim();
+    if (status === "IN_PROCESS") {
       stagingSheet.getRange(i + 1, STG_STATUS + 1).setValue("COMPLETE");
       return;
     }
+    if (status === "ERROR_TIMEOUT") timedOut = i;
+  }
+  if (timedOut !== -1) {
+    stagingSheet.getRange(timedOut + 1, STG_STATUS + 1).setValue("COMPLETE");
+    return;
   }
   Logger.log("[FlowInputBuilder] Could not find matching STAGING_PIPELINE row for FileID " +
              studentFileId + " ConfigID " + configId + " to mark COMPLETE.");
