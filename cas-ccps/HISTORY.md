@@ -5638,3 +5638,12 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   competency a lesson names (about 90 KB). Q26 (the 13 competencies no
   lesson measures) is on hold: shown like any other unrated one.
 - **Tests:** `student-dashboard-competencies.test.js`.
+
+## Student Dashboard: a Review panel per competency, 2026-11-14
+
+- **Now (F17, SDV-N8):** a Review button on each competency shows, for each
+  lesson that practices it, the plan's own one-line recap of it there, the
+  key terms and any linked video, from a small generated file (`13d`, with
+  `--check`); and the course's Covered So Far doc when the operator sets its
+  ID on the Student Dashboard project too. No practice question.
+- **Tests:** `student-dashboard-competencies.test.js`.

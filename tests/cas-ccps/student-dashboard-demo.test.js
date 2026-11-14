@@ -16,7 +16,7 @@ const demoLessons = require('../../tools/cas-ccps/build-dashboard-demo-lessons.j
 const ALLOW = require('../../tools/gas-lint/webapp-public-allow.json');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-const SD = ['00_SharedConfig.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboard.js', '13b_StudentDashboardDemoLessons.js', '13c_StudentDashboardLessons.js',
+const SD = ['00_SharedConfig.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboard.js', '13b_StudentDashboardDemoLessons.js', '13c_StudentDashboardLessons.js', '13d_StudentDashboardReview.js',
   '63_DocHeader.js', '71_TurnInCodes.js', '71b_TurnInStudent.js'].map((f) => path.join(SCRIPTS, f));
 const OWNER = 'teacher@ccpsnet.net';
 const KID = 'kid@ccpsnet.net';

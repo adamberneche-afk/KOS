@@ -158,3 +158,52 @@ test('demo: the tab has the lessons and the term start, opening nothing', () => 
   const items = c.courses.flatMap((x) => x.areas.flatMap((a) => a.items));
   assert.ok(items.some((it) => it.lessons.length && it.evidence.some((e) => e.lessonKey)));
 });
+
+// ── The Review panel (F17, SDV-N8) ─────────────────────────────────────────
+
+const review = require('../../tools/cas-ccps/build-dashboard-review.js');
+const fs = require('fs');
+
+test('the review lookup (13d) is current, small, and reads both plan formats', () => {
+  assert.equal(fs.readFileSync(review.TARGET_PATH, 'utf8'), review.expected(), 'run: node tools/cas-ccps/build-dashboard-review.js');
+  assert.ok(fs.statSync(review.TARGET_PATH).size < 64 * 1024);
+  assert.doesNotMatch(fs.readFileSync(review.TARGET_PATH, 'utf8'), /source: Google Doc|docs\.google\.com/, 'no Drive source lines');
+  assert.deepEqual(review.recapsFromPlan([
+    '  - **039:** Explain marketing as it relates to the industries (How marketing changed from the Trade Era to the Collaboration Era).',
+    '  - **Competency 11:** Demonstrate big-picture thinking (Understanding how a font (or color) choice matters).',
+    '  - **012:** Demonstrate career- and life-management skills.',
+    '  - **Eras:** Did they list the 7 eras correctly?',
+  ].join('\n'), '8175'), {
+    '8175-39': 'How marketing changed from the Trade Era to the Collaboration Era',
+    '8175-11': 'Understanding how a font (or color) choice matters',
+  });
+});
+
+test('Review: a button with aria-expanded; the recap, key terms and linked videos per lesson; Covered So Far only when set up', () => {
+  const env = setUp();
+  const comp = plain(env.exported.getMyCompetencies());
+  const it = itemOf(comp, env.l01);
+  assert.ok(it.lessons.some((l) => l.recap), 'a recap from the lesson plan');
+  assert.equal(comp.courses[0].coveredUrl, '', 'not set up on this project: no link');
+  const { ctx } = page(env.exported);
+  // A video link and a key-term list, as 13d carries them when the lesson has them.
+  it.lessons[0].terms = 'era, marketing concept';
+  it.lessons[0].watch = [{ title: 'The eras', url: 'https://www.youtube.com/watch?v=x' }, { title: 'Bad', url: 'javascript:alert(1)' }];
+  let h = ctx.renderCompetencyTab(comp);
+  const btn = new RegExp('<button type="button" class="parts-toggle" id="rv-' + env.l01 + '-b" data-comp="' + env.l01 + '" aria-expanded="false" aria-controls="rv-' + env.l01 + '" onclick="toggleReview\\(this\\)">Review</button>');
+  assert.match(h, btn);
+  assert.match(h, new RegExp('<div class="rv" id="rv-' + env.l01 + '" role="region" aria-label="Review" hidden>'));
+  assert.match(h, /<strong>Key terms:<\/strong> era, marketing concept/);
+  assert.match(h, /<a href="https:\/\/www\.youtube\.com\/watch\?v=x" target="_blank" rel="noopener">Watch: The eras ↗<\/a>/);
+  assert.doesNotMatch(h, /javascript:|Watch: Bad/, 'only https links');
+  assert.doesNotMatch(h, /covered so far/i);
+  assert.doesNotMatch(h, /practice question|Quiz/i, 'no practice question');
+  vm.runInContext('_reviewOpen[' + JSON.stringify(env.l01) + '] = true', ctx);
+  h = ctx.renderCompetencyTab(comp);
+  assert.match(h, new RegExp('data-comp="' + env.l01 + '" aria-expanded="true"'));
+  // Set up and shared by the operator: the course's doc.
+  env.sandbox.PropertiesService.getScriptProperties().setProperty('COVERED_SO_FAR_DOC_ID_8175', 'fake_covered_doc_id_for_test');
+  const set = plain(env.exported.getMyCompetencies());
+  assert.equal(set.courses[0].coveredUrl, 'https://docs.google.com/document/d/' + 'fake_covered_doc_id_for_test' + '/edit');
+  assert.match(ctx.renderCompetencyTab(set), /What your class has covered so far ↗/);
+});
