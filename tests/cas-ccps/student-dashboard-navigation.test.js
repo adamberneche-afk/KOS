@@ -366,3 +366,59 @@ test('demo mode: the lesson cards have their marks and the lesson in parts its s
   assert.match(html, /class="stepper"/);
   assert.match(html, /class="marks"/);
 });
+
+// ── Sort and filters (F16 item 3) ──────────────────────────────────────────
+
+test('sort: Assigned order by default; Needs attention first, Recently checked and Not yet shown first on request', () => {
+  const env = setUp();
+  evidenceTab(env.ss, [['W-L03', env.exported.DASH_LESSON_INFO['8175-L03'].iCan[0].id, 'NOT_MET', '2026-11-05T10:00:00']]);
+  const data = env.data();
+  data.assignments.find((a) => a.configId === 'W-L05').lastEvalAt = Date.parse('2026-11-10T10:00:00');
+  data.assignments.find((a) => a.configId === 'W-CUSTOM-B').lastEvalAt = Date.parse('2026-11-08T10:00:00');
+  const p = page(env.exported, data);
+  const order = () => {
+    const h = p.els.main.innerHTML;
+    const cards = h.slice(h.indexOf('class="group-header"'));
+    return ['W-L03', 'W-L05', 'W-L07', 'W-CUSTOM-B', 'W-CUSTOM-A'].sort((x, y) => cards.indexOf('id="card-' + x + '"') - cards.indexOf('id="card-' + y + '"'));
+  };
+  assert.match(p.els.main.innerHTML, /<select id="sort-sel" onchange="setSort\(this.value\)"><option value="assigned" selected>Assigned order<\/option>/);
+  assert.deepEqual(order(), ['W-L03', 'W-L05', 'W-L07', 'W-CUSTOM-B', 'W-CUSTOM-A'], 'assigned order');
+  p.ctx.setSort('attention');
+  assert.equal(order()[0], 'W-L07', 'the card to revise first');
+  assert.match(p.els.main.innerHTML, /<option value="attention" selected>/);
+  p.ctx.setSort('recent');
+  assert.deepEqual(order().slice(0, 2), ['W-L05', 'W-CUSTOM-B'], 'the latest check first');
+  p.ctx.setSort('notshown');
+  assert.equal(order()[0], 'W-L03', 'the primary milestone not shown yet first');
+  // Kept for the visit: a refresh's render keeps it.
+  p.ctx.render(data);
+  assert.match(p.els.main.innerHTML, /<option value="notshown" selected>/);
+  p.ctx.setSort('nonsense');
+  assert.match(p.els.main.innerHTML, /<option value="notshown" selected>/, 'an unknown sort changes nothing');
+  // A new visit (a new page) starts at Assigned order.
+  assert.match(page(env.exported, data).html, /<option value="assigned" selected>/);
+});
+
+test('filter chips: toggle buttons; any number on; a lesson in parts by the part on its card; Do next unchanged', () => {
+  const env = partsSetUp();
+  const data = env.data();
+  const p = page(env.exported, data);
+  const html = () => p.els.main.innerHTML;
+  const cardsPart = () => html().slice(html().indexOf('class="list-controls"'));
+  assert.match(html(), /<div class="chips" role="group" aria-label="Show only"><button type="button" class="chip" id="chip-NEEDS_ACTION" data-filter="NEEDS_ACTION" aria-pressed="false"/);
+  const chip = (f) => ({ getAttribute: () => f });
+  p.ctx.toggleFilter(chip('DONE'));
+  assert.match(html(), /id="chip-DONE" data-filter="DONE" aria-pressed="true"/);
+  assert.ok(cardsPart().includes('id="card-W-L03"'), 'the passed lesson');
+  assert.ok(!cardsPart().includes('id="card-W-L05"'), 'not started: hidden');
+  assert.ok(!cardsPart().includes('lesson-card'), 'the lesson in parts is on Part 2, to revise');
+  p.ctx.toggleFilter(chip('NEEDS_ACTION'));
+  assert.ok(cardsPart().includes('lesson-card') && cardsPart().includes('id="card-W-L07"'));
+  assert.match(html(), /class="do-next"/, 'Do next still lists everything that needs the student');
+  p.ctx.toggleFilter(chip('DONE'));
+  p.ctx.toggleFilter(chip('NEEDS_ACTION'));
+  p.ctx.toggleFilter(chip('IN_PROGRESS'));
+  assert.match(html(), /Nothing here with these filters\. <button type="button" class="chip" onclick="clearFilters\(\)">Show all<\/button>/);
+  p.ctx.clearFilters();
+  assert.ok(cardsPart().includes('id="card-W-L05"'));
+});
