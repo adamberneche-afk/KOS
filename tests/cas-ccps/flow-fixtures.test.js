@@ -510,9 +510,11 @@ test('the Flow 2 fixture fills every FlowInput column', () => {
 
   const row = ss.getSheetByName('FlowInput').getDataRange().getValues()[1];
   const FI = exported.FI;
-  // GEMINI_FULL_OUTPUT is the one deliberate blank — it is where the Flow
-  // writes its answer. Everything else empty means a chip resolves to nothing.
-  const expectedBlank = ['GEMINI_FULL_OUTPUT'];
+  // GEMINI_FULL_OUTPUT is the deliberate blank — it is where the Flow
+  // writes its answer. REARMS/ARMED_AT are the builder's own record of
+  // restarts (37), never a chip, and blank means "never restarted".
+  // Everything else empty means a chip resolves to nothing.
+  const expectedBlank = ['GEMINI_FULL_OUTPUT', 'REARMS', 'ARMED_AT'];
   Object.keys(FI).forEach((key) => {
     const value = String(row[FI[key]] === undefined ? '' : row[FI[key]]).trim();
     if (expectedBlank.indexOf(key) !== -1) {

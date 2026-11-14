@@ -146,7 +146,7 @@ function _fbsAppendFlow2_(rows) {
 
   const names = {};
   Object.keys(FI).forEach(function (k) { names[FI[k]] = k; });
-  for (let i = 0; i <= FI.PROMPT_TEXT; i++) {
+  for (let i = 0; i <= FI.ARMED_AT; i++) {
     const key = names[i] || "(unnamed)";
     let who = "the materializer";
     let note = "Read it as a chip. Do not write to it.";
@@ -179,6 +179,10 @@ function _fbsAppendFlow2_(rows) {
         "student's response never enters this spreadsheet (FERPA).";
     } else if (i === FI.STAGING_ROW_REF) {
       note = "Read-only. The harvest uses it to complete the STAGING_PIPELINE row.";
+    } else if (i === FI.REARMS || i === FI.ARMED_AT) {
+      who = "the builder";
+      note = "Not for the Flow: the builder's record of restarting a row Studio left " +
+        "unanswered (2026-11-14). Bind nothing to it and never write it.";
     }
     rows.push(["Flow 2", (i === FI.GEMINI_FULL_OUTPUT || i === FI.READY_STATUS) ? "write" : "read",
       "FlowInput", i + 1, key, who, note]);

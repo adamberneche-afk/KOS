@@ -165,6 +165,20 @@ test('Flow 2: per FlowInput row, with the wait to the harvest; fixtures and unse
   assert.match(m.Note, /return isn't stamped/);
 });
 
+test('Flow 2: a row the re-arm gave up on (ERROR_NO_ANSWER, 37) never returned; it is not set aside', () => {
+  const env = load();
+  const { ss, exported: x } = env;
+  const r = new Array(x.FI.PROMPT_TEXT + 1).fill('');
+  r[x.FI.TIMESTAMP] = AT(27, 14); r[x.FI.STUDENT_FILE_ID] = 'file-h'; r[x.FI.CONFIG_ID] = 'CFG-A';
+  r[x.FI.READY_STATUS] = 'ERROR_NO_ANSWER';
+  ss.getSheetByName('FlowInput').appendRow(r);
+  const m = rowsBy(env, x.evaluationHealth_({ now: NOW }).flowRows)['2026-10-26 Flow 2'];
+  assert.equal(m.Sent, 6);
+  assert.equal(m.Returned, 3);
+  assert.equal(m.NeverReturned, 2);
+  assert.equal(m.SetAside, 1, 'still only ERROR_EMPTY_OUTPUT');
+});
+
 test('Flow 3: retries, the teacher\'s-question fallback, set aside, never returned, the wait', () => {
   const env = load();
   const rows = rowsBy(env, env.exported.evaluationHealth_({ now: NOW }).flowRows);
