@@ -281,6 +281,15 @@ test('a quiet week: one short line', () => {
 
 test('reportEvaluationHealth rewrites FlowMeasures, and nothing identifying leaves the tabs or the lines', () => {
   const env = load();
+  // reportEvaluationHealth() reads the clock itself (no "now" argument), so
+  // pin the sandbox's clock to the fixture's NOW: otherwise the fixture's
+  // October days fall out of the 14-day window once real time passes them
+  // (this failed from 2026-11-10 on).
+  const RealDate = Date;
+  env.sandbox.Date = class extends RealDate {
+    constructor(...a) { if (a.length) super(...a); else super(NOW.getTime()); }
+    static now() { return NOW.getTime(); }
+  };
   const logged = [];
   env.sandbox.Logger.log = (m) => { logged.push(String(m)); };
   const out = env.exported.reportEvaluationHealth();
