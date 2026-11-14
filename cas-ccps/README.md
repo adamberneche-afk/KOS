@@ -199,10 +199,11 @@ row to `ReviewQueue`. The Ledger's frequent jobs run from one every-minute
 trigger, `runLedgerCycle` (`64`), each at its own cadence. Script 03's
 `bridgeQueue` (every minute) moves `PENDING` rows to `STAGING_PIPELINE`,
 deduplicating against in-flight evaluations. Script 06's turnstile (every
-minute) releases one `PENDING_INFERENCE` row **per teacher lane** to
-`IN_PROCESS` — a per-teacher-lane design, not the single global lane used
-elsewhere in this codebase — and times out rows stuck `IN_PROCESS` for
-&gt;12 minutes. Script 37 resolves the teacher's milestones (seeded from the
+minute) releases `PENDING_INFERENCE` rows to `IN_PROCESS` **per teacher**,
+oldest first, up to `FLOW2_PARALLEL_LANES` at once (default 3, at most 10;
+1 is the old one at a time; 2026-11-14) — per-teacher lanes, not the single
+global lane used elsewhere in this codebase — and times out each row stuck
+`IN_PROCESS` for &gt;12 minutes. Script 37 resolves the teacher's milestones (seeded from the
 repo by `53`, or set up via Script 05 → Flow 1 → Script 08's confirmation
 step) into one `FlowInput` row; Studio's Flow 2 reads the doc and makes the
 Gemini call; 37's harvest (every 5 minutes) checks the output, writes the
@@ -278,8 +279,9 @@ the guide's step numbers (`tests/cas-ccps/setup-status.test.js`).
    leader-hub OAuth client ID, the master template IDs, and the switches
    and calendar every project shares: `PIVOT_ARCHETYPE_LOCK`,
    `MARKING_PERIOD_ENDS`, `FEEDBACK_AS_COMMENT`, `WARMUP_TEXT_BOX`,
-   `ROLLOUT_AUTO_APPLY`, `REFLECTION_ON_SUBMIT`, `TURN_IN_CODE_COURSES` and
-   `STUDIO_DAILY_RUN_LIMIT` (`SHARED_CONFIG_KEYS` in `00`).
+   `ROLLOUT_AUTO_APPLY`, `REFLECTION_ON_SUBMIT`, `TURN_IN_CODE_COURSES`,
+   `STUDIO_DAILY_RUN_LIMIT` and `FLOW2_PARALLEL_LANES`
+   (`SHARED_CONFIG_KEYS` in `00`).
 
 A project that is attached to the Ledger, or to a teacher's cloned sheet,
 therefore needs no properties for these at all. The dashboards need only

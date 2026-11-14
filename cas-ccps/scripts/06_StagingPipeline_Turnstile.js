@@ -5,6 +5,15 @@
 //          independent — one teacher's in-flight evaluation does not block
 //          other teachers' students.
 //
+//          Parallel lanes (2026-11-14): up to FLOW2_PARALLEL_LANES rows per
+//          teacher are IN_PROCESS at once (default 3; 1 is the old one at a
+//          time). On 11-13, with Studio's Flow 2 not answering, one lane
+//          timed 14 submissions out one after another, about 12.5 minutes
+//          apart; and on a normal day a class submitting together waited in
+//          single file. Each row still times out on its own, oldest first.
+//          The ceiling (TURNSTILE_MAX_LANES) is there because Studio drops
+//          runs when many rows change at once (41, 2026-10-18).
+//
 //          Stale detection: rows stuck IN_PROCESS for more than 12 minutes
 //          are auto-demoted to ERROR_TIMEOUT, freeing that teacher's lane
 //          without admin intervention.
@@ -22,6 +31,31 @@
 //
 // TRIGGER: Time-driven — every 1 minute → runStagingTurnstile
 // =============================================================================
+
+const TURNSTILE_LANES_KEY = "FLOW2_PARALLEL_LANES";
+const TURNSTILE_DEFAULT_LANES = 3;
+const TURNSTILE_MAX_LANES = 10;
+
+// How many rows each teacher may have IN_PROCESS at once: the
+// FLOW2_PARALLEL_LANES setting (a Script Property, or the Central Ledger's
+// _CONFIG tab), a whole number from 1 to TURNSTILE_MAX_LANES. Unset,
+// unreadable or not a whole number: the default, and the log says why.
+function turnstileLanes_() {
+  let raw = "";
+  try {
+    raw = String(_resolveConfigValues_().values[TURNSTILE_LANES_KEY] || "").trim();
+  } catch (e) {
+    raw = "";
+  }
+  if (!raw) return TURNSTILE_DEFAULT_LANES;
+  const n = Number(raw);
+  if (!(n >= 1) || Math.floor(n) !== n) {
+    Logger.log("[TURNSTILE] " + TURNSTILE_LANES_KEY + " = \"" + raw.slice(0, 20) +
+               "\" is not a whole number of 1 or more — using " + TURNSTILE_DEFAULT_LANES + ".");
+    return TURNSTILE_DEFAULT_LANES;
+  }
+  return Math.min(n, TURNSTILE_MAX_LANES);
+}
 
 function runStagingTurnstile() {
   const lock = LockService.getDocumentLock();
@@ -65,9 +99,10 @@ function runStagingTurnstile() {
     }
 
     const now                = Date.now();
-    const STALE_THRESHOLD_MS = 12 * 60 * 1000; // 12 minutes
+    const STALE_THRESHOLD_MS = 12 * 60 * 1000; // 12 minutes, per row
+    const lanes              = turnstileLanes_();
 
-    const busyLanes           = new Set();
+    const busyByTeacher       = {}; // teacher -> rows legitimately in flight
     const pendingByTeacher    = {};
 
     // ── PASS 1: evaluate lane health, auto-clear timed-out lanes ─────────────
@@ -90,9 +125,9 @@ function runStagingTurnstile() {
           Logger.log("[TURNSTILE] Stale lane cleared — Row " + (i + 1) +
                      " | Teacher: " + teacher +
                      " | Elapsed: " + Math.round(elapsed / 60000) + " min");
-          // Do NOT add to busyLanes — lane is now free
+          // Not counted as busy — its lane is now free
         } else {
-          busyLanes.add(teacher); // Legitimately in-flight
+          busyByTeacher[teacher] = (busyByTeacher[teacher] || 0) + 1; // Legitimately in-flight
         }
       }
 
@@ -102,22 +137,26 @@ function runStagingTurnstile() {
       }
     }
 
-    // ── PASS 2: release one FIFO row per open teacher lane ───────────────────
+    // ── PASS 2: fill each teacher's free lanes, FIFO ─────────────────────────
     let released = 0;
     for (const teacher in pendingByTeacher) {
-      if (busyLanes.has(teacher)) continue; // Legitimately busy — skip
+      const free = lanes - (busyByTeacher[teacher] || 0);
+      if (free <= 0) continue; // Every lane legitimately busy — skip
 
-      const targetRow = pendingByTeacher[teacher][0]; // FIFO — oldest first
-      sheet.getRange(targetRow, statusIdx + 1).setValue("IN_PROCESS");
-      sheet.getRange(targetRow, timestampIdx + 1).setValue(new Date()); // Arm stale timer
-      Logger.log("[TURNSTILE] Released → Row " + targetRow +
-                 " | Teacher: " + teacher);
-      released++;
+      // FIFO — oldest first
+      pendingByTeacher[teacher].slice(0, free).forEach(function (targetRow) {
+        sheet.getRange(targetRow, statusIdx + 1).setValue("IN_PROCESS");
+        sheet.getRange(targetRow, timestampIdx + 1).setValue(new Date()); // Arm its stale timer
+        Logger.log("[TURNSTILE] Released → Row " + targetRow +
+                   " | Teacher: " + teacher);
+        released++;
+      });
     }
 
     if (released > 0) {
       SpreadsheetApp.flush();
-      Logger.log("[TURNSTILE] " + released + " lane(s) released this cycle.");
+      Logger.log("[TURNSTILE] " + released + " row(s) released this cycle (up to " + lanes +
+                 " per teacher).");
     } else {
       Logger.log("[TURNSTILE] No open lanes with pending rows.");
     }
@@ -131,7 +170,8 @@ function runStagingTurnstile() {
 
 // ---------------------------------------------------------------------------
 // runSingleLaneTurnstile_ — fallback for pre-migration schema
-// Preserves original behavior if TeacherEmail column not yet added
+// Preserves original behavior if TeacherEmail column not yet added: one row
+// in flight across every teacher, whatever FLOW2_PARALLEL_LANES says.
 // ---------------------------------------------------------------------------
 function runSingleLaneTurnstile_(sheet, data, statusIdx) {
   const busy = data.some(

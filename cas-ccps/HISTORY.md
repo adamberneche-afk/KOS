@@ -5539,6 +5539,22 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
 - **Tests:** `flow-input-builder.test.js` ("re-arm"),
   `evaluation-next-steps.test.js`.
 
+## Parallel lanes in the staging turnstile, 2026-11-14
+
+- **Found (11-13):** with Studio's Flow 2 not answering, the turnstile (06)
+  held one row per teacher in flight, so 14 submissions timed out one after
+  another, about 12.5 minutes apart; on a normal day a class submitting
+  together also waits in single file.
+- **Now:** up to `FLOW2_PARALLEL_LANES` rows per teacher are `IN_PROCESS`
+  at once (a shared setting: Script Property or the Ledger's `_CONFIG`;
+  default 3, at most 10 because Studio drops runs when many rows change at
+  once; 1 is the old behavior). Oldest first; each row still times out on
+  its own after 12 minutes; the single-lane fallback for a tab without
+  `TeacherEmail` is unchanged. No reader assumed one row per teacher: the
+  builder (37) works per row, and 07, 10, 13, 34, 34b and 34c count or show
+  rows per doc.
+- **Tests:** `staging-turnstile.test.js`.
+
 ## An email when Flow 2 stops answering, 2026-11-14
 
 - **Found (11-13):** Studio's Flow 2 stopped answering for a day; the only

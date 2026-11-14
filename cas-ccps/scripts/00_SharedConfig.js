@@ -289,7 +289,11 @@ const SHARED_CONFIG_KEYS = [
   "TURN_IN_CODE_COURSES",
   // Workspace Studio's runs-per-day quota, copied from Studio's quota page;
   // blank = not known. Read through 69b's studioDailyRunLimit_().
-  "STUDIO_DAILY_RUN_LIMIT"
+  "STUDIO_DAILY_RUN_LIMIT",
+  // How many submissions per teacher Flow 2 checks at once (06's turnstile,
+  // 2026-11-14): a whole number, 1 to 10; blank = 3, and 1 is the old one at
+  // a time. Read through 06's turnstileLanes_().
+  "FLOW2_PARALLEL_LANES"
 ];
 
 // System text a student response must not contain (P0-03,
