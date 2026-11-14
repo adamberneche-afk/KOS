@@ -627,6 +627,180 @@ function getDashboardData(termFilter) {
   };
 }
 
+// ── WHO IS WAITING, AND IS THE CHECKER ANSWERING (2026-11-14) ──────────────
+// The operator's "Build 1-4", item 4. A strip at the top of the dashboard:
+// "n students waiting over TD_WAIT_OVER_MIN minutes", each listed (this
+// teacher's own students only, as the dashboard already lists them) with a
+// "Give a code" link to the Turn-in codes panel's existing grant; and a
+// light per checker that turns red when it has work but no verdict has come
+// back for TD_SILENT_MIN minutes:
+//   Flow 2 (feedback)   work: STAGING_PIPELINE rows IN_PROCESS (06 stamps
+//                       each when it releases it); verdict: the newest
+//                       EvaluationLog row (37's harvest writes one per
+//                       answer it sees, whatever its result: the same
+//                       signal 03's FLOW2_ALERT_STATE resets on, #427)
+//   Flow 6 (turn-in)    work: TurnInChecks rows PENDING_CHECK; verdict: the
+//                       newest DecidedAt of an ADDRESSES or NOT_YET row
+// Red needs both: the oldest work is TD_SILENT_MIN old and nothing came
+// back in that time, so a quiet hour followed by one new submission isn't
+// red. Fixture and canary rows (39, 35, 72) are left out of both.
+// Why sheet reads and not 03's FLOW2_ALERT_STATE or 72's
+// checkTurnInCheckFlowLiveness(): those live in the Central Ledger's
+// project, whose Script Properties and functions this project can't
+// reach; these are the same facts they are built from. One read each of
+// the Ledger, STAGING_PIPELINE, ReviewQueue, TurnInChecks and the last
+// TD_EVAL_TAIL rows of EvaluationLog; the page asks once a minute while it
+// is in view. Owner-guarded (_isAuthorizedTeacher_); logs nothing about
+// students.
+const TD_WAIT_OVER_MIN = 10;
+const TD_SILENT_MIN = 10;
+const TD_EVAL_TAIL = 200;
+const TD_WAIT_TIMED_OUT_HOURS = 24; // a stopped check still waiting, if submitted this recently
+const TD_SYNTHETIC_RE = /(^|-)(FIXTURE|CANARY)(-|$)/i;
+
+function getWaitingStrip() {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  try {
+    return Object.assign({ success: true }, _tdWaitingStrip_(cfg, new Date()));
+  } catch (e) {
+    Logger.log("[S07] getWaitingStrip failed: " + e.message);
+    return { success: false, error: "Couldn't read the queue." };
+  }
+}
+
+function _tdWaitingStrip_(cfg, now) {
+  const t = now.getTime();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const teacher = String(cfg.teacherEmail || "").trim().toLowerCase();
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  const rows = ledger && ledger.getLastRow() > 1 ? ledger.getDataRange().getValues() : [];
+  const mine = {};   // fileId -> the Ledger row
+  const byConfig = {}; // student ConfigID -> the Ledger row
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if (String(r[LEDGER.TEACHER_EMAIL]).trim().toLowerCase() !== teacher || !r[LEDGER.GOOGLE_ID]) continue;
+    const st = String(r[LEDGER.STATUS]).trim();
+    if (st === "ARCHIVED" || st === "SCHEDULED") continue;
+    mine[String(r[LEDGER.FILE_ID]).trim()] = r;
+    byConfig[String(r[LEDGER.CONFIG_ID]).trim()] = r;
+  }
+
+  // STAGING_PIPELINE: each file's latest row, and Flow 2's work.
+  const lastStage = {};
+  const flow2 = { work: 0, oldestAt: 0, lastVerdictAt: 0 };
+  const stg = ss.getSheetByName(cfg.tabs.stagingPipeline);
+  const stgAll = stg && stg.getLastRow() > 1 ? stg.getDataRange().getValues() : [];
+  const sh = stgAll.length ? stgAll[0].map(function (x) { return String(x).trim(); }) : [];
+  const col = { at: sh.indexOf("Timestamp"), config: sh.indexOf("ConfigID"), file: sh.indexOf("StudentFileID"),
+    status: sh.indexOf("Status") };
+  stgAll.slice(1).forEach(function (r) {
+    if (col.file === -1 || col.status === -1) return;
+    const fid = String(r[col.file] || "").trim();
+    const st = String(r[col.status] || "").trim();
+    const at = col.at !== -1 ? sheetTimestampMs_(r[col.at]) || 0 : 0;
+    if (fid) lastStage[fid] = { st: st, at: at };
+    if (st === "IN_PROCESS" && !TD_SYNTHETIC_RE.test(String(col.config !== -1 ? r[col.config] : ""))) {
+      flow2.work++;
+      if (at && (!flow2.oldestAt || at < flow2.oldestAt)) flow2.oldestAt = at;
+    }
+  });
+  // ReviewQueue: submitted, not yet taken by the bridge.
+  const queued = {};
+  let queue = [];
+  try {
+    const adminSs = cfg.adminSsId && cfg.adminSsId !== cfg.ledgerSsId ? SpreadsheetApp.openById(cfg.adminSsId) : ss;
+    queue = _tdTabRows_(adminSs, cfg.tabs.reviewQueue);
+  } catch (e) { queue = []; }
+  queue.forEach(function (r) {
+    const st = String(r[5] || "").trim();
+    if (st === "PENDING" || st === "STAGED") queued[String(r[2] || "").trim()] = true;
+  });
+  // EvaluationLog: the newest answers.
+  const log = ss.getSheetByName((cfg.tabs && cfg.tabs.evaluationLog) || "EvaluationLog");
+  if (log && log.getLastRow() > 1) {
+    const n = Math.min(TD_EVAL_TAIL, log.getLastRow() - 1);
+    log.getRange(log.getLastRow() - n + 1, 1, n, 2).getValues().forEach(function (r) {
+      if (TD_SYNTHETIC_RE.test(String(r[1] || ""))) return;
+      const at = sheetTimestampMs_(r[0]) || 0;
+      if (at > flow2.lastVerdictAt) flow2.lastVerdictAt = at;
+    });
+  }
+
+  const waiting = [];
+  Object.keys(mine).forEach(function (fid) {
+    const r = mine[fid];
+    const stage = lastStage[fid];
+    const inFlight = stage && (stage.st === "IN_PROCESS" || stage.st === "PENDING_INFERENCE");
+    const sub = sheetTimestampMs_(r[LEDGER.SUBMISSION_TS]) || 0;
+    const stopped = String(r[LEDGER.STATUS]).trim() === "ERROR_TIMEOUT" && !inFlight && !queued[fid] &&
+      sub && t - sub < TD_WAIT_TIMED_OUT_HOURS * 3600000;
+    if (!inFlight && !queued[fid] && !stopped) return;
+    const since = sub || (stage && stage.at) || 0;
+    if (!since) return;
+    waiting.push(_tdWaitEntry_(r, "feedback", since, t, stopped));
+  });
+
+  // TurnInChecks: answers waiting for Flow 6, and its newest verdict.
+  const flow6 = { work: 0, oldestAt: 0, lastVerdictAt: 0 };
+  _tdTabRows_(ss, TURN_IN_CHECKS_TAB, TURN_IN_CHECK_HEADERS.length).forEach(function (r) {
+    if (TD_SYNTHETIC_RE.test(String(r[TCHK.CHECK_ID] || "") + " " + String(r[TCHK.STUDENT_CONFIG_ID] || ""))) return;
+    const st = String(r[TCHK.STATUS] || "").trim();
+    const at = sheetTimestampMs_(r[TCHK.SUBMITTED_AT]) || 0;
+    if (st === TURN_IN_PENDING) {
+      flow6.work++;
+      if (at && (!flow6.oldestAt || at < flow6.oldestAt)) flow6.oldestAt = at;
+      const row = byConfig[String(r[TCHK.STUDENT_CONFIG_ID] || "").trim()];
+      if (row && at) waiting.push(_tdWaitEntry_(row, "turnIn", at, t, false));
+    } else if (st === TURN_IN_ADDRESSES || st === TURN_IN_NOT_YET) {
+      const d = sheetTimestampMs_(r[TCHK.DECIDED_AT]) || 0;
+      if (d > flow6.lastVerdictAt) flow6.lastVerdictAt = d;
+    }
+  });
+
+  const over = waiting.filter(function (w) { return w.minutes >= TD_WAIT_OVER_MIN; })
+    .sort(function (a, b) { return b.minutes - a.minutes; });
+  return {
+    overMin: TD_WAIT_OVER_MIN,
+    silentMin: TD_SILENT_MIN,
+    waitingCount: waiting.length,
+    over: over,
+    health: { flow2: _tdHealthLight_(flow2, t), flow6: _tdHealthLight_(flow6, t) },
+    checkedAt: formatDate_(now)
+  };
+}
+
+function _tdTabRows_(ss, name, width) {
+  const sheet = name ? ss.getSheetByName(name) : null;
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return width ? sheet.getRange(2, 1, sheet.getLastRow() - 1, width).getValues()
+    : sheet.getDataRange().getValues().slice(1);
+}
+
+function _tdWaitEntry_(row, kind, since, t, stopped) {
+  return {
+    name: String(row[LEDGER.STUDENT_NAME] || "").trim() || "—",
+    googleId: String(row[LEDGER.GOOGLE_ID] || "").trim().toLowerCase(),
+    configId: String(row[LEDGER.CONFIG_ID] || "").trim(),
+    assignment: String(row[LEDGER.COURSE_NAME] || "").trim(),
+    period: String(row[LEDGER.PERIOD] || "").trim(),
+    kind: kind,
+    stopped: !!stopped,
+    minutes: Math.max(0, Math.floor((t - since) / 60000))
+  };
+}
+
+// { state: "idle" | "ok" | "red", work, oldestMin, lastVerdictMin }.
+function _tdHealthLight_(f, t) {
+  const oldestMin = f.oldestAt ? Math.floor((t - f.oldestAt) / 60000) : null;
+  const lastVerdictMin = f.lastVerdictAt ? Math.floor((t - f.lastVerdictAt) / 60000) : null;
+  let state = "ok";
+  if (!f.work) state = "idle";
+  else if (oldestMin !== null && oldestMin >= TD_SILENT_MIN &&
+    (lastVerdictMin === null || lastVerdictMin >= TD_SILENT_MIN)) state = "red";
+  return { state: state, work: f.work, oldestMin: oldestMin, lastVerdictMin: lastVerdictMin };
+}
+
 // ── TURN-IN REVIEW (Say/Do Ledger cas-ccps finding #1) ──────────────────────
 // The teacher's own confirm/override decision on a PENDING_TEACHER_REVIEW
 // submission — this is what finally makes the auto-approval terminal,
@@ -2325,6 +2499,17 @@ header button:not([role="menuitem"]):focus-visible,header select:focus-visible{o
 
 /* ── MAIN ── */
 .main{padding:20px 24px}
+/* Who is waiting, and is the checker answering (2026-11-14) */
+.wait-strip{background:#fff;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:13.5px;display:flex;flex-wrap:wrap;gap:6px 24px;align-items:flex-start}
+.ws-lights{display:flex;gap:16px;flex-wrap:wrap}
+.ws-light{display:inline-flex;align-items:center;gap:6px}
+.ws-dot{width:12px;height:12px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.25)}
+.ws-ok .ws-dot{background:#1e8e3e}.ws-idle .ws-dot{background:#9aa0a6}.ws-red .ws-dot{background:#d93025}
+.ws-red{color:#b3261e;font-weight:600}
+.ws-wait{flex:1 1 320px}
+.ws-wait ul{margin:6px 0 0;padding-left:18px}
+.ws-wait li{margin:2px 0}
+.ws-wait button{font:inherit;font-size:12.5px;margin-left:8px;padding:2px 8px;border:1px solid #1a73e8;color:#1557b0;background:#fff;border-radius:4px;cursor:pointer;min-height:24px}
 .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
 .not-submitted-row{margin:-14px 0 20px;font-size:13px}
 .summary-card{background:white;border-radius:8px;padding:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
@@ -2604,6 +2789,8 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
   <button type="button" class="wr-stat" id="wr-confidence"></button>
   <button type="button" class="wr-stat" id="wr-locked"></button>
 </div>
+<div id="wait-strip" class="wait-strip" hidden></div>
+<div id="wait-strip-live" class="tic-sr" role="status" aria-live="polite"></div>
 <div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading class data…</p></div>
 <div id="main" class="main" style="display:none"></div>
 <!-- ── M4: Student Context view — shown instead of #main while active ── -->
@@ -6499,6 +6686,95 @@ function _moreMenuKeydown(e) {
     closeMoreMenu(inMenu);
   });
 })();
+
+// ── Who is waiting, and is the checker answering (2026-11-14) ──
+// getWaitingStrip (owner-guarded): this teacher's students waiting more than
+// 10 minutes, each with "Give a code" (the Turn-in codes panel's grant, the
+// student and assignment chosen), and a light per checker: red when it has
+// work but no verdict came back for 10 minutes. Asked once a minute while
+// the page is in view, longer apart after a failed call.
+const WS_EVERY_MS = 60 * 1000;
+const WS_BACKOFF_MAX_MS = 10 * 60 * 1000;
+let _ws = { timer: null, errors: 0, data: null, open: false, lastRed: "" };
+function _wsVisible() { return typeof document === "undefined" || !document.visibilityState || document.visibilityState === "visible"; }
+function loadWaitStrip() {
+  _ws.timer = null;
+  if (!_wsVisible()) return;
+  google.script.run
+    .withSuccessHandler(function (d) {
+      if (d && d.success) { _ws.errors = 0; _ws.data = d; renderWaitStrip(); } else { _ws.errors++; }
+      _wsSchedule();
+    })
+    .withFailureHandler(function () { _ws.errors++; _wsSchedule(); })
+    .getWaitingStrip();
+}
+function _wsSchedule() {
+  if (_ws.timer || !_wsVisible()) return;
+  _ws.timer = setTimeout(loadWaitStrip, Math.min(WS_BACKOFF_MAX_MS, WS_EVERY_MS * Math.pow(2, _ws.errors)));
+}
+function _wsLight(label, h) {
+  const words = h.state === "red"
+    ? h.work + " waiting, no answer for " + (h.lastVerdictMin === null ? "a long time" : h.lastVerdictMin + " min")
+    : h.state === "ok" ? h.work + " being checked" : "nothing waiting";
+  return '<span class="ws-light ws-' + esc(h.state) + '"><span class="ws-dot" aria-hidden="true"></span>' +
+    esc(label + ": " + words) + '</span>';
+}
+function waitStripHtml(d) {
+  let h = '<div class="ws-lights" aria-label="Checkers">' + _wsLight("Feedback (Flow 2)", d.health.flow2) +
+    _wsLight("Turn-in check (Flow 6)", d.health.flow6) + '</div>';
+  const n = d.over.length;
+  h += '<div class="ws-wait">';
+  if (!n) {
+    h += esc(d.waitingCount ? d.waitingCount + " waiting, none over " + d.overMin + " minutes" : "No one waiting for a check");
+  } else {
+    h += '<b>' + esc(n + (n === 1 ? " student" : " students") + " waiting over " + d.overMin + " minutes") + '</b>' +
+      '<button type="button" id="ws-toggle" aria-expanded="' + _ws.open + '" aria-controls="ws-list" onclick="toggleWaitList()">' +
+      (_ws.open ? "Hide" : "Show") + '</button>' +
+      '<ul id="ws-list"' + (_ws.open ? '' : ' hidden') + '>' + d.over.map(function (w, i) {
+        return '<li>' + esc(w.name) + (w.period ? " · Period " + esc(w.period) : "") + " · " + esc(w.assignment || "") +
+          " · " + esc(w.minutes + " min") + " (" + esc(w.kind === "turnIn" ? "turn-in answer" : w.stopped ? "check stopped" : "feedback") + ")" +
+          '<button type="button" data-ws="' + i + '" onclick="waitGrant(this)">Give a code</button></li>';
+      }).join("") + '</ul>';
+  }
+  return h + '</div>';
+}
+function renderWaitStrip() {
+  const el = document.getElementById("wait-strip");
+  const d = _ws.data;
+  if (!el || !d) return;
+  el.innerHTML = waitStripHtml(d);
+  el.hidden = false;
+  // A light turning red is said once, politely.
+  const red = ["flow2", "flow6"].filter(function (k) { return d.health[k].state === "red"; }).join(",");
+  if (red && red !== _ws.lastRed) {
+    const live = document.getElementById("wait-strip-live");
+    if (live) live.textContent = (red.indexOf("flow2") !== -1 ? "Feedback checks " : "Turn-in checks ") +
+      "have work but no answer for " + d.silentMin + " minutes. Check the flow in Studio.";
+  }
+  _ws.lastRed = red;
+}
+function toggleWaitList() {
+  _ws.open = !_ws.open;
+  renderWaitStrip();
+  const b = document.getElementById("ws-toggle");
+  if (b && b.focus) b.focus();
+}
+// "Give a code": the Turn-in codes panel's grant (73), this student and
+// assignment chosen; the reason is still the teacher's to write.
+function waitGrant(btn) {
+  const w = _ws.data && _ws.data.over[Number(btn.getAttribute("data-ws"))];
+  if (!w) return;
+  _ticTab = "grant";
+  _ticG = { student: w.googleId, item: w.configId, reason: "", code: "", msg: null };
+  openTurnInPanel();
+}
+if (typeof document !== "undefined" && document.addEventListener) {
+  document.addEventListener("visibilitychange", function () {
+    if (_wsVisible()) { if (!_ws.timer) loadWaitStrip(); }
+    else if (_ws.timer && typeof clearTimeout === "function") { clearTimeout(_ws.timer); _ws.timer = null; }
+  });
+}
+loadWaitStrip();
 
 loadData();
 </script>

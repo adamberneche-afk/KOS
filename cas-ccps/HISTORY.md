@@ -5679,3 +5679,15 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   large with Copy. No Canvas link: none is configured.
 - **Tests:** `student-dashboard-news.test.js`, `student-dashboard-demo.test.js`,
   `turn-in-code.test.js`.
+
+## Teacher Dashboard: who is waiting, and is the checker answering, 2026-11-14
+
+- **Found:** on 11-13 Flow 2 stopped answering for a day; the teacher saw
+  timeout emails one by one, and nothing on the dashboard said students
+  were waiting or that the checker had gone quiet.
+- **Now (the operator's "Build 1-4", item 4):** a strip with "n students
+  waiting over 10 minutes" (listed, with Give a code into the existing
+  grant) and a light per checker, Flow 2 and Flow 6, red when it has work
+  but no verdict for 10 minutes. Read from the sheets the Ledger's own
+  alerts use; owner-guarded; once a minute while the page is in view.
+- **Tests:** `teacher-dashboard-waiting-strip.test.js`.
