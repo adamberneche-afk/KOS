@@ -71,7 +71,7 @@ Cards that need you are listed first, under **Do next**, at the top of the page.
 
 The card also shows **Last submitted** (when you last pressed Submit for Feedback) and **Last checked** (when you last got feedback), or “Not checked yet”.
 
-> ⏱️ **Most checks take a few minutes.** While you wait, the card shows where your work is (Submitted, In line, Being checked) and this page shows your feedback when it's ready. If a check takes longer than 12 minutes, the system stops it, your card says “Check stopped ⚠”, and your teacher is told by email. Press Try again on the card; you do not need to submit again.
+> ⏱️ **Most checks take a few minutes.** While you wait, the card shows where your work is (Submitted, In line, Being checked) and this page shows your feedback when it’s ready. If a check takes longer than 12 minutes, the system stops it, your card says “Check stopped ⚠”, and your teacher is told by email. Press Try again on the card; you do not need to submit again.
 
 ## Read Your Feedback
 
