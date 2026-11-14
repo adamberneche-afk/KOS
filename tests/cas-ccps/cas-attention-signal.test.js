@@ -329,8 +329,11 @@ test('runStagingTurnstile: an IN_PROCESS row with no timestamp does not hold the
   assert.equal(sh.getRange(2, 6).getValue(), 'IN_PROCESS', 'the no-timestamp row is left as it is');
 });
 
-test('runStagingTurnstile: a timed IN_PROCESS row still holds the lane', () => {
+test('runStagingTurnstile: a timed IN_PROCESS row still holds the lane (one lane per teacher)', () => {
   const env = load();
+  // FLOW2_PARALLEL_LANES (06, 2026-11-14): with the default 3 the second row
+  // would go too; staging-turnstile.test.js covers more lanes.
+  env.props.setProperty('FLOW2_PARALLEL_LANES', '1');
   const sh = staging(env.ss, [
     stRow(new Date(), 'FILE-A', 'IN_PROCESS', 't@x.net'),
     stRow(new Date(), 'FILE-B', 'PENDING_INFERENCE', 't@x.net'),

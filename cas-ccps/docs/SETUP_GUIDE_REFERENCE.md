@@ -163,6 +163,7 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `EARLY_RELEASE_DAYS` | schoolProfile_() | SCHOOL_DEFAULTS: "2026-10-30,2026-11-13,2027-01-22,2027-02-05,202…" | yes |
 | `EVALUATION_MODE` | getConfig_() | "STUDIO" | no |
 | `FEEDBACK_AS_COMMENT` | resolved settings | — | yes |
+| `FLOW2_PARALLEL_LANES` | resolved settings | — | yes |
 | `INTAKE_FORM_URL` | getConfig_() | — | no |
 | `LEADER_HUB_OAUTH_CLIENT_ID` | getConfig_() | — | yes |
 | `M2_ENABLED` | getConfig_() | "false" | no |
