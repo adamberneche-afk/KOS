@@ -5599,3 +5599,17 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
 - **Tests:** `student-dashboard-navigation.test.js`; the Do next and part
   card assertions in `dashboard-plain-words.test.js` and
   `lesson-parts-dashboards.test.js`.
+
+## Student Dashboard: one card per lesson, with its milestones, 2026-11-14
+
+- **Found:** a lesson in parts showed every open part as its own card plus
+  a line per locked part, and no card said what the lesson measures or how
+  far the student had got.
+- **Now (F16 items 4 and 5):** one card per lesson on the part to work on
+  now, a part stepper, the next locked part's line, and the other parts on
+  an "All parts" button. Each card lists up to three measured milestones in
+  the student's "I can" words with Shown, Partly shown, Not shown yet or Not
+  checked yet, from `CompetencyEvidence` (read once per load). Focus and
+  scroll position survive a re-render.
+- **Tests:** `student-dashboard-navigation.test.js`; the parts assertions
+  in `lesson-parts-dashboards.test.js` and `student-dashboard-demo.test.js`.

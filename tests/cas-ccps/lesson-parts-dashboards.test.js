@@ -153,7 +153,12 @@ test('Student Dashboard: the parts render together, in order, with what opens ea
   extractInlineScripts(exported.buildStudentDashboardHtml_()).forEach(code => vm.runInContext(code, ctx));
   ctx.render(JSON.parse(JSON.stringify(data)));
   const h = els.main.innerHTML;
-  assert.match(h, /Venue Market Research &amp; Survey Design <span>2 of 5 parts open<\/span>/);
+  // One card for the lesson (F16 item 4): Part 1 to work on, a stepper,
+  // and every other part under "All 5 parts".
+  assert.match(h, /Venue Market Research &amp; Survey Design<\/div><div class="stepper"><span class="dots" role="img" aria-label="0 of 5 parts done">◉○○○○<\/span>/);
+  assert.equal((h.match(/class="card /g) || []).length, 2, 'the lesson card, with Part 2 inside it');
+  assert.match(h, /<button type="button" class="parts-toggle"[^>]*aria-expanded="false" aria-controls="parts-CAS-8177-MARKET-RESEARCH-SURVEY-DESIGN"[^>]*>All 5 parts<\/button>/);
+  assert.match(h, /🔒 Part 3 opens when the check finds Part 2 meets its main goal, or when your teacher opens it\./);
   const i1 = h.indexOf('Part 1 of 5: The Target Market'), i2 = h.indexOf('Part 2 of 5: Build the Survey'),
     i3 = h.indexOf('🔒 Part 3 of 5: Why These Questions Work');
   assert.ok(i1 !== -1 && i1 < i2 && i2 < i3, 'Part 1, Part 2, then the locked Part 3');
@@ -196,7 +201,7 @@ test('Student Dashboard: a form part says "Open your form", links to the form, a
   assert.equal(p2.canSubmit, true, 'the reader checks a form at Submit');
   assert.equal(p2.feedbackUrl, 'https://docs.google.com/document/d/snap-Amy-2/edit', 'its snapshot doc');
   const h = studentPage(exported, data);
-  const card2 = h.slice(h.indexOf('Part 2 of 5: Build the Survey'), h.indexOf('🔒 Part 3'));
+  const card2 = h.slice(h.indexOf('Part 2 of 5: Build the Survey'), h.indexOf('🔒 Part 3 of 5'));
   assert.match(card2, /href="https:\/\/docs\.google\.com\/forms\/d\/f-VDOE-Amy-2\/edit"[^>]*class="act act-primary">Open your form ↗<\/a>/);
   assert.match(card2, /data-file="f-VDOE-Amy-2" data-config="VDOE-Amy-2" onclick="submitWork\(this\)">Submit for Feedback<\/button>/);
   assert.match(card2, /<div class="form-note">Submit for Feedback reads your form(&#39;|')s questions and settings \(never anyone(&#39;|')s answers\)/);
@@ -283,7 +288,7 @@ test('Student Dashboard: a part card and its "Do next" line name the assignment'
   // the part and the class.
   const name = 'Venue Market Research &amp; Survey Design';
   const card = html.slice(html.indexOf('id="' + 'card-' + part.configId + '"'));
-  assert.match(card, new RegExp('<div class="unit-name"><span class="lesson-chip">L08</span>' + name + '</div><div class="part-sub">Part ' + part.part.n + ' of 5: '),
+  assert.match(card, new RegExp('<div class="unit-name"><span class="lesson-chip">L08</span>' + name + '</div>(<div class="stepper">.*?</div>)?<div class="part-sub">Part ' + part.part.n + ' of 5: '),
     'the card says which assignment the part belongs to');
   const doNext = html.slice(html.indexOf('class="do-next"'), html.indexOf('</section>'));
   assert.ok(doNext.includes('<span class="lesson-chip">L08</span><a ') && doNext.includes('>' + name + '</a><span class="dn-meta">Part ' + part.part.n + ' of 5 · 8177 Sports Entertainment</span>'),

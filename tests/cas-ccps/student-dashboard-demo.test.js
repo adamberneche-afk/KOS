@@ -255,7 +255,7 @@ test('the demo shows a form part: Open your form, a working Submit with a sample
   assert.match(main, new RegExp('data-file="' + form[0].fileId + '"[^>]*onclick="submitWork\\(this\\)">Submit for Feedback'));
   assert.match(main, /class="form-note">Submit for Feedback reads your form&#39;s questions and settings|class="form-note">Submit for Feedback reads your form's questions and settings/);
   assert.doesNotMatch(main, /Checking forms comes next week/);
-  assert.match(main, /2 of 5 parts open/);
+  assert.match(main, /1 of 5 parts done/);
   assert.match(main, /🔒 Part 3 of 5/);
   ctx.demoOpenDoc({ getAttribute: () => form[0].fileId });
   assert.match(els.main.innerHTML, /own copy of the form/);

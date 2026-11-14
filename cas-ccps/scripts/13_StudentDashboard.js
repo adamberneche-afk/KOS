@@ -281,6 +281,13 @@ function dashDemoFixture_(now) {
         if (p.workType === "sheet") card.demoSheetNotYet = DASH_DEMO_SHEET_NOT_YET.slice();
         assignments.push(card);
         assignmentOf[card.configId] = p.unitName;
+        // A part that passed: its milestones shown.
+        if (i < workAt) {
+          _dashDemoCriteria_(p).forEach(function (c) {
+            (evidence[c.id] = evidence[c.id] || []).push({ configId: card.configId, milestone: c.text, outcome: "MET",
+              at: _dashDemoDaysAgo_(now, DASH_DEMO_STATES.PASSED.checked) });
+          });
+        }
       });
     });
   // The term boundary (F16): every card is this marking period's but two
@@ -314,6 +321,15 @@ function dashDemoFixture_(now) {
   });
   _dashAddLessonInfo_(assignments);
   _dashSortCards_(assignments);
+  // Milestone marks: the demo's evidence as CompetencyEvidence rows, through
+  // the same functions as the real page.
+  const evRows = [["student_file_id", "competency_id", "outcome", "archive_status"]];
+  const fileOf = {};
+  assignments.forEach(function (a) { fileOf[a.configId] = a.fileId; });
+  Object.keys(evidence).forEach(function (comp) {
+    evidence[comp].forEach(function (e) { evRows.push([fileOf[e.configId] || "", comp, e.outcome, ""]); });
+  });
+  _dashAddMilestoneMarks_(assignments, _dashBestOutcomes_(evRows, assignments));
 
   const codes = DASH_DEMO_LESSONS.map(function (c) { return c.code; }).sort();
   const totals = {};
@@ -650,17 +666,25 @@ function getStudentDashboardData(termFilter) {
   _dashAddLessonInfo_(assignments);
   _dashSortCards_(assignments);
 
-  // The next-step line on a card to revise (F3): from CompetencyEvidence,
-  // already in this Ledger, read once and only when a card needs it.
+  // CompetencyEvidence, already in this Ledger, read once (no other
+  // spreadsheet): the next-step line on a card to revise (F3) and every
+  // card's milestone marks (F16 item 5).
+  let evidenceRows = null;
+  try {
+    evidenceRows = _dashEvidenceRows_(ss, cfg);
+  } catch (e) {
+    Logger.log("[S13] CompetencyEvidence not read: " + e.message);
+  }
   const toRevise = assignments.filter(function (a) { return a.statusClass === "NEEDS_ACTION" && a.fileId; });
-  if (toRevise.length) {
+  if (toRevise.length && evidenceRows) {
     try {
-      const notYet = _dashNotYet_(ss, cfg, toRevise.map(function (a) { return a.fileId; }));
+      const notYet = _dashNotYet_(ss, cfg, toRevise.map(function (a) { return a.fileId; }), evidenceRows);
       toRevise.forEach(function (a) { a.notYet = notYet[a.fileId] || ""; });
     } catch (e) {
       Logger.log("[S13] next-step line not read: " + e.message);
     }
   }
+  _dashAddMilestoneMarks_(assignments, _dashBestOutcomes_(evidenceRows, assignments));
 
   // The turn-in code (71): a.turnIn on cards whose course or lesson
   // TURN_IN_CODE_COURSES covers. Off (the default), nothing is added.
@@ -811,6 +835,50 @@ function _dashAddLessonInfo_(assignments) {
   return assignments;
 }
 
+// ── Milestone marks (F16 item 5) ─────────────────────────────────────────
+// Each lesson's best outcome per competency across all its files (a lesson
+// in parts: every part's): { lessonKey: { competencyId: "MET" | ... } }. An
+// assignment counts once, at its best result (30's aggregateEvidence_),
+// archived rows don't count. rows: CompetencyEvidence with its header.
+function _dashBestOutcomes_(rows, assignments) {
+  const out = {};
+  if (!rows || rows.length < 2) return out;
+  const lessonOfFile = {};
+  assignments.forEach(function (a) { if (a.fileId && a.lessonKey) lessonOfFile[a.fileId] = a.lessonKey; });
+  const h = rows[0].map(function (x) { return String(x).trim(); });
+  const iFile = h.indexOf("student_file_id"), iComp = h.indexOf("competency_id"), iOut = h.indexOf("outcome"),
+    iArch = h.indexOf("archive_status");
+  if (iFile === -1 || iComp === -1 || iOut === -1) return out;
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    const lesson = lessonOfFile[String(r[iFile]).trim()];
+    if (!lesson || (iArch !== -1 && String(r[iArch]).trim())) continue;
+    const comp = String(r[iComp]).trim();
+    const o = String(r[iOut]).trim().toUpperCase();
+    if (!comp || !DASH_EVIDENCE_RANK[o]) continue;
+    const mine = out[lesson] = out[lesson] || {};
+    if (!mine[comp] || DASH_EVIDENCE_RANK[o] > DASH_EVIDENCE_RANK[mine[comp]]) mine[comp] = o;
+  }
+  return out;
+}
+
+// a.milestones: the lesson's measured milestones (up to three, primary
+// first, 13c), each in the student's "I can" words with its mark: Shown,
+// Partly shown or Not shown yet (the Competencies tab's words), or "Not
+// checked yet" before a check found anything for it. No totals or targets
+// (D17). [] for a lesson 13c doesn't know.
+function _dashAddMilestoneMarks_(assignments, best) {
+  assignments.forEach(function (a) {
+    const info = a.lessonKey && typeof DASH_LESSON_INFO !== "undefined" ? DASH_LESSON_INFO[a.lessonKey] : null;
+    const got = (best && best[a.lessonKey]) || {};
+    a.milestones = info ? info.iCan.filter(function (m) { return m.text; }).map(function (m) {
+      const o = got[m.id] || "";
+      return { id: m.id, text: m.text, markKey: o || "UNCHECKED", mark: o ? DASH_EVIDENCE_WORDS[o] : "Not checked yet" };
+    }) : [];
+  });
+  return assignments;
+}
+
 // The lesson's place (1-based) in its course's teaching order, or null.
 function _dashLessonSeq_(lessonKey) {
   const info = lessonKey && typeof DASH_LESSON_INFO !== "undefined" ? DASH_LESSON_INFO[lessonKey] : null;
@@ -847,13 +915,19 @@ function _dashSortCards_(assignments) {
 // next one that wasn't. The text is the milestone as the student reads it
 // (00's reflectionCriterionText_), or the competency's title. Read by
 // header, like reflectionShortfall_ (00); no new column (FLOW_DOCTRINE 6).
-function _dashNotYet_(ss, cfg, fileIds) {
+// CompetencyEvidence's rows (header first), or null when there are none.
+function _dashEvidenceRows_(ss, cfg) {
+  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+  if (!sheet || sheet.getLastRow() < 2) return null;
+  return sheet.getDataRange().getValues();
+}
+
+function _dashNotYet_(ss, cfg, fileIds, preread) {
   const out = {};
   const want = {};
   fileIds.forEach(function (f) { want[f] = true; });
-  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
-  if (!sheet || sheet.getLastRow() < 2) return out;
-  const rows = sheet.getDataRange().getValues();
+  const rows = preread || _dashEvidenceRows_(ss, cfg);
+  if (!rows) return out;
   const h = rows[0].map(function (x) { return String(x).trim(); });
   const iFile = h.indexOf("student_file_id"), iComp = h.indexOf("competency_id"), iText = h.indexOf("milestone_text"),
     iOut = h.indexOf("outcome"), iAt = h.indexOf("evaluated_at"), iArch = h.indexOf("archive_status");
@@ -2189,6 +2263,22 @@ function buildStudentDashboardHtml_(opts) {
   .part-sub{font-size:13.5px;color:#3c4043;margin-top:2px}
   .task-line{font-size:13.5px;color:#3c4043;margin:-4px 0 8px;line-height:1.45}
   .do-next .dn-meta{font-size:13px;color:var(--text-secondary)}
+  /* F16 items 4 and 5: one card per lesson, its part stepper, the
+     milestone marks. */
+  .stepper{font-size:13.5px;color:#3c4043;margin-top:2px}
+  .stepper .dots{letter-spacing:3px;color:#137333;margin-right:6px}
+  .marks{list-style:none;margin:0 0 10px;padding:0;font-size:13.5px;line-height:1.45}
+  .marks li{margin:3px 0}
+  .mark{display:inline-block;font-size:12px;font-weight:600;border-radius:10px;padding:1px 8px;margin-right:6px;white-space:nowrap}
+  .mark-MET{background:#e6f4ea;color:#137333}
+  .mark-PARTIALLY_MET{background:#fef3e2;color:#9c5000}
+  .mark-NOT_MET{background:#f3e8fd;color:#7627bb}
+  .mark-UNCHECKED{background:#f1f3f4;color:#3c4043}
+  .lock-line{font-size:13px;color:var(--text-secondary);margin-top:8px}
+  .parts-toggle{margin-top:10px;background:white;border:1px solid #5f6368;color:#3c4043;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
+  .parts-toggle:focus-visible{outline:2px solid #1557b0;outline-offset:2px}
+  .parts-list{margin-top:10px}
+  .parts-list .card{box-shadow:none;border:1px solid #e8eaed;border-left-width:5px}
   /* The header's menu (F16 item 7): Refresh in view, the rest in More ▾. */
   .hdr-more{position:relative}
   #more-menu{position:absolute;top:calc(100% + 6px);right:0;z-index:150;min-width:230px;background:white;border:1px solid #dadce0;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,0.22);padding:6px 0;display:flex;flex-direction:column}
@@ -2547,6 +2637,8 @@ function render(data) {
   // whole card list via innerHTML — preserve scroll position instead of
   // dumping the student back to the top of the list.
   const _scrollTop = main.scrollTop;
+  const _winY = typeof window !== "undefined" && typeof window.scrollY === "number" ? window.scrollY : null;
+  const _focus = _focusKey();
 
   if (data.error) {
     // This is an application-level error (e.g. identity not found) — a
@@ -2601,14 +2693,14 @@ function render(data) {
   let html = termLineHtml(data) + doNextHtml(data.assignments) + renderWarmUps(data);
   sortedGroups.forEach(gk => {
     html += \`<div class="group-header">Block \${esc(gk)}</div>\`;
-    // A lesson in parts (68) shows as one block: its open parts in order,
-    // then the ones still locked, where its first card would be.
+    // A lesson in parts (68) is one card (F16 item 4), where its first part
+    // would be: the part to work on now, a stepper, and the rest on tap.
     const shownLessons = {};
     groups[gk].forEach(a => {
       if (!a.part) { html += cardHtml(a); return; }
       if (shownLessons[a.part.lesson]) return;
       shownLessons[a.part.lesson] = true;
-      html += partsHtml(a.part, groups[gk], data.lockedParts || []);
+      html += lessonCardHtml(a.part, groups[gk], data.lockedParts || []);
     });
   });
 
@@ -2617,7 +2709,26 @@ function render(data) {
   loading.style.display = "none";
   main.style.display    = "block";
   main.scrollTop = _scrollTop;
+  // A refresh or a submit keeps the page where it was and the focus where
+  // the student left it (or on its card, when that button is gone).
+  if (_winY !== null && window.scrollTo) window.scrollTo(0, _winY);
+  _restoreFocus(_focus);
   _setFooter(data);
+}
+
+function _focusKey() {
+  const el = typeof document !== "undefined" ? document.activeElement : null;
+  if (!el || !el.getAttribute) return null;
+  return { id: el.id || "", file: el.getAttribute("data-file") || "" };
+}
+function _restoreFocus(k) {
+  if (!k || (!k.id && !k.file)) return;
+  let el = k.id ? document.getElementById(k.id) : null;
+  if ((!el || el.hidden) && k.file) {
+    const a = ((_lastDashData && _lastDashData.assignments) || []).filter(x => x.fileId === k.file)[0];
+    el = a ? document.getElementById(cardId(a)) : null;
+  }
+  if (el && el.focus) el.focus({ preventScroll: true });
 }
 
 // What a card's filled (primary) button is, by its status. The other
@@ -2708,6 +2819,9 @@ function doNextHtml(list) {
 
 // Scrolls to a card and moves focus there (the card has tabindex="-1").
 function goToCard(id) {
+  // A part shown under its lesson's "All parts" opens it first.
+  const lesson = _partInList[id];
+  if (lesson && !_partsOpen[lesson] && _lastDashData) { _partsOpen[lesson] = true; render(_lastDashData); }
   const el = document.getElementById(id);
   if (el) {
     if (el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2717,7 +2831,12 @@ function goToCard(id) {
 }
 
 // One assignment's card.
-function cardHtml(a) {
+// opts.lesson: the lesson card of a lesson in parts (lessonCardHtml): its
+// stepper under the name, and its other parts after the actions.
+// opts.inList: a part under its lesson's "All parts" (no marks; the lesson
+// card has them).
+function cardHtml(a, opts) {
+  opts = opts || {};
   const primary = primaryActionFor(a);
   const cls = (p) => "act " + (p ? "act-primary" : "act-secondary");
   // A form, Slides or Sheets part (4b/4c): its feedback is on its feedback page
@@ -2734,15 +2853,16 @@ function cardHtml(a) {
     : \`<span style="color:var(--text-secondary);font-size:13px;">\${a.workType === "form" ? "Form" : a.workType === "slides" ? "Slides" : a.workType === "sheet" ? "Sheet" : "Document"} not yet available</span>\`;
   // A form, Slides or Sheets part (Phase 4b/4c/4d): Submit as for a doc; the server reads the file.
   const submitBtn = a.canSubmit && !_reflect[a.fileId]
-    ? \`<button type="button" class="\${cls(primary === "submit")}" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
+    ? \`<button type="button" id="sub-\${esc(cardId(a))}" class="\${cls(primary === "submit")}" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
     : "";
   const ev = evalLine(a);
-  return \`<div class="card \${a.statusClass}" id="\${esc(cardId(a))}" tabindex="-1">
+  return \`<div class="card \${a.statusClass}\${opts.lesson ? " lesson-card" : ""}" id="\${esc(cardId(a))}" tabindex="-1">
     <div class="card-top">
-      <div><div class="unit-name">\${chipHtml(a)}\${esc(cardName(a))}</div>\${a.part ? \`<div class="part-sub">\${esc(partLabel(a))}</div>\` : ""}</div>
+      <div><div class="unit-name">\${chipHtml(a)}\${esc(cardName(a))}</div>\${opts.lesson ? opts.lesson.stepper : ""}\${a.part ? \`<div class="part-sub">\${esc(partLabel(a))}</div>\` : ""}</div>
       <div class="pill pill-\${a.statusClass}">\${esc(a.statusPill || a.displayStatus)}</div>
     </div>
     \${a.taskLine ? \`<div class="task-line">\${esc(a.taskLine)}</div>\` : ""}
+    \${opts.inList ? "" : marksHtml(a)}
     \${a.statusNote ? \`<div class="status-note">\${esc(a.statusNote)}</div>\` : ""}
     \${a.openPastTerm ? \`<div class="past-term-note">Your teacher kept this open after its marking period ended.</div>\` : ""}
     \${a.statusClass === "NEEDS_ACTION" && a.notYet ? \`<div class="next-step"><b>Not yet:</b> \${esc(a.notYet)}</div>\` : ""}
@@ -2768,20 +2888,75 @@ function cardHtml(a) {
       ? \`<div style="margin-top:8px"><a href="mailto:\${esc(a.teacherEmail)}?subject=\${encodeURIComponent("Question about: " + a.unitName)}" style="font-size:13px;color:#1557b0;text-decoration:none;font-weight:500">✉ Email \${esc(a.teacherName || "your teacher")}</a></div>\`
       : ""
     }
+    \${opts.lesson ? opts.lesson.after : ""}
   </div>\`;
 }
 
-// A lesson in parts: "Part 2 of 5 open", the open parts' cards, and a line
-// for each locked part saying what opens it.
-function partsHtml(part, list, locked) {
+// The lesson's measured milestones (up to three, primary first) in the
+// student's "I can" words, each with what the checks found so far: Shown,
+// Partly shown, Not shown yet, or Not checked yet. Evidence, not a rating:
+// no totals, scores or targets (D17).
+function marksHtml(a) {
+  const list = a.milestones || [];
+  if (!list.length) return "";
+  // While the first check runs, "Not checked yet" beside "Being checked"
+  // would read as a contradiction (evalLine's rule): it says Being checked.
+  const checking = a.statusPill === "Being checked";
+  return '<ul class="marks" aria-label="What this lesson checks">' + list.map(m =>
+    '<li><span class="mark mark-' + esc(m.markKey) + '">' + esc(m.markKey === "UNCHECKED" && checking ? "Being checked" : m.mark) +
+    '</span>' + esc(m.text) + '</li>').join("") + '</ul>';
+}
+
+// A lesson in parts, one card (F16 item 4): the part to work on now (the
+// first open part not done, else the last open one) with its one next
+// action, a stepper (● done, ◉ now, ○ to do or locked), the line saying
+// what opens the next locked part, and a button that shows every part:
+// the other open parts' cards and each locked part's line.
+let _partsOpen = {};   // lesson -> true while its parts are shown (page memory)
+let _partInList = {};  // a part card's id -> its lesson, when it is under "All parts"
+function lessonDomId(lesson) { return String(lesson || "").replace(/[^A-Za-z0-9_-]/g, "_"); }
+function lessonCardHtml(part, list, locked) {
   const open = list.filter(a => a.part && a.part.lesson === part.lesson).sort((x, y) => x.part.n - y.part.n);
   const shut = locked.filter(l => l.lesson === part.lesson).sort((x, y) => x.n - y.n);
-  let html = \`<div class="parts-head">\${esc(part.lessonName)} <span>\${open.length} of \${part.count} parts open</span></div>\`;
-  open.forEach(a => { html += cardHtml(a); });
-  shut.forEach(l => {
-    html += \`<div class="part-locked">🔒 Part \${l.n} of \${part.count}\${l.title ? ": " + esc(l.title) : ""}<div>Opens when the check finds Part \${l.n - 1} meets its main goal, or when your teacher opens it.</div></div>\`;
-  });
-  return html;
+  const count = Math.max(part.count || 0, open.length + shut.length);
+  const current = open.filter(a => a.statusClass !== "DONE")[0] || open[open.length - 1];
+  const doneN = open.filter(a => a.statusClass === "DONE").length;
+  let dots = "";
+  for (let n = 1; n <= count; n++) {
+    const a = open.filter(x => x.part.n === n)[0];
+    dots += a && a === current && a.statusClass !== "DONE" ? "◉" : a && a.statusClass === "DONE" ? "●" : "○";
+  }
+  const stepper = '<div class="stepper"><span class="dots" role="img" aria-label="' + esc(doneN + " of " + count + " parts done") +
+    '">' + dots + '</span>' + esc(doneN + " of " + count + " parts done") + '</div>';
+  const id = lessonDomId(part.lesson);
+  const isOpen = !!_partsOpen[part.lesson];
+  let after = shut.length
+    ? '<div class="lock-line">🔒 Part ' + shut[0].n + ' opens when the check finds Part ' + (shut[0].n - 1) +
+      ' meets its main goal, or when your teacher opens it.</div>' : "";
+  if (count > 1) {
+    let rest = "";
+    open.forEach(a => {
+      if (a === current) return;
+      _partInList[cardId(a)] = part.lesson;
+      rest += cardHtml(a, { inList: true });
+    });
+    shut.forEach(l => {
+      rest += '<div class="part-locked">🔒 Part ' + l.n + ' of ' + count + (l.title ? ": " + esc(l.title) : "") +
+        '<div>Opens when the check finds Part ' + (l.n - 1) + ' meets its main goal, or when your teacher opens it.</div></div>';
+    });
+    after += '<button type="button" class="parts-toggle" id="pt-' + esc(id) + '" data-lesson="' + esc(part.lesson) +
+      '" aria-expanded="' + isOpen + '" aria-controls="parts-' + esc(id) + '" onclick="toggleParts(this)">' +
+      (isOpen ? "Hide the other parts" : "All " + count + " parts") + '</button>' +
+      '<div class="parts-list" id="parts-' + esc(id) + '" role="region" aria-label="' + esc("All parts of " + cardName(current)) + '"' +
+      (isOpen ? "" : " hidden") + '>' + rest + '</div>';
+  }
+  return cardHtml(current, { lesson: { stepper: stepper, after: after } });
+}
+// The "All parts" button: shows or hides them; focus stays on it.
+function toggleParts(btn) {
+  const lesson = btn.getAttribute("data-lesson");
+  _partsOpen[lesson] = !_partsOpen[lesson];
+  if (_lastDashData) render(_lastDashData);
 }
 
 function _setFooter(data) {
