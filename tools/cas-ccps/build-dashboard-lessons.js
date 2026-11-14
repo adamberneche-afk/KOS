@@ -8,11 +8,15 @@
 //                      its lesson number chip (L05; 8177's names have none).
 //   DASH_LESSON_INFO   per lesson key: its number in the course, the
 //                      assignment's short title (the first line of its
-//                      task, "Assignment: ..." without the label), up to
-//                      three measured milestones primary first, each with
-//                      the student's "I can" words from STUDENT_CRITERIA.json,
-//                      and for a lesson in parts each part's one line on what
-//                      the student does (its objective).
+//                      task, "Assignment: ..." without the label), every
+//                      competency it names with the student's "I can" words
+//                      from STUDENT_CRITERIA.json (iCan: the measured
+//                      milestones first, primary first, m of them, at most
+//                      three, then the rest), and for a lesson in parts each
+//                      part's one line on what the student does (its
+//                      objective). The cards show the first m; the
+//                      Competencies tab reads them all (F17: the student's
+//                      words and where each competency is practiced).
 // Lesson definitions only, never student data.
 //
 // Usage: node tools/cas-ccps/build-dashboard-lessons.js [--check]
@@ -60,7 +64,11 @@ function build(lessonSource, criteriaJson) {
         if (!id || iCan.length >= MAX_MILESTONES || iCan.some((m) => m.id === id)) return;
         iCan.push({ id, text: String(words[id] || '').trim() });
       });
-      const entry = { n: i + 1, task: taskTitle(a.promptText), iCan };
+      const m = iCan.length;
+      Object.keys(words).forEach((id) => {
+        if (!iCan.some((x) => x.id === id)) iCan.push({ id, text: String(words[id] || '').trim() });
+      });
+      const entry = { n: i + 1, task: taskTitle(a.promptText), m, iCan };
       const list = parts[key];
       if (list && list.length) {
         entry.parts = list.map((p) => String(p.objective || '').trim());
@@ -80,8 +88,9 @@ function render(data) {
     '// 55b_LessonAssignmentData.js and curriculum/lessons/STUDENT_CRITERIA.json.',
     '// Never hand-edit: rebuild after the lessons change.',
     '// Each course\'s teaching order and, per lesson, its number, short title,',
-    '// measured milestones in the student\'s words and its parts\' one-line',
-    '// tasks (13\'s cards, F16): lesson definitions only, no student data.',
+    '// its competencies in the student\'s words (the first m are the measured',
+    '// milestones) and its parts\' one-line tasks (13\'s cards, F16, and the',
+    '// Competencies tab, F17): lesson definitions only, no student data.',
     '// =============================================================================',
     '',
     'const DASH_LESSON_ORDER = ' + JSON.stringify(data.order) + ';',

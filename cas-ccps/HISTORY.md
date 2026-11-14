@@ -5625,3 +5625,16 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   cas-ccps page stores anything in the browser. A reload starts at
   Assigned order. The operator decides whether to make an exception.
 - **Tests:** `student-dashboard-navigation.test.js`.
+
+## Student Dashboard: the Competencies tab at a glance, 2026-11-14
+
+- **Found:** the tab listed every competency and its evidence, but not what
+  it means in the student's words, where it is practiced, or progress.
+- **Now (F17, approved 2026-11-14):** the rating as number and words, the
+  latest evidence beside it, the student's "I can" words per lesson, where
+  it is practiced (a jump to this term's card), sorts by area, rating or
+  recent evidence, per-area "shown this marking period / this year", and
+  Recently shown and Next to practice lists. `13c` now holds every
+  competency a lesson names (about 90 KB). Q26 (the 13 competencies no
+  lesson measures) is on hold: shown like any other unrated one.
+- **Tests:** `student-dashboard-competencies.test.js`.
