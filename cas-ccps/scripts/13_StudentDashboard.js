@@ -151,6 +151,13 @@ function _dashDemoCard_(course, lesson, state, block, period, now) {
     fileId:        "demo-" + lesson.key,
     canSubmit:     !DASH_NO_SUBMIT_STATUSES[s.status] && !inLine,
     waiting:       dashWaiting_(s.status, pipeline),
+    // A made-up stage line: submitted 3 minutes ago, being checked since 1.
+    stages:        dashWaiting_(s.status, pipeline) ? { current: pipeline === "IN_PROCESS" ? "CHECKING" : "IN_LINE",
+      submitted: Utilities.formatDate(new Date(now.getTime() - 3 * 60000), Session.getScriptTimeZone(), "h:mm a"),
+      inLine: "", checking: pipeline === "IN_PROCESS"
+        ? Utilities.formatDate(new Date(now.getTime() - 60000), Session.getScriptTimeZone(), "h:mm a") : "",
+      since: now.getTime() - 60000, usualMin: null } : null,
+    canRetry:      false,
     part:          null,
     folderLabel:   block + " - " + className + " - " + teacherName,
     demoQuestions: questions,
@@ -450,7 +457,10 @@ function dashDemoFixture_(now) {
       context:      { success: true, context: { docUrl: "", lastUpdatedAt: formatDate_(_dashDemoDaysAgo_(now, 1)), weeks: contextWeeks } }
     },
     walkthrough: {
-      beingChecked: step("ACTIVE", "IN_PROCESS", ""),
+      inLine:       Object.assign(step("ACTIVE", "QUEUED", ""), { stages: { current: "IN_LINE", submitted: "just now",
+        inLine: "", checking: "", since: now.getTime(), usualMin: null } }),
+      beingChecked: Object.assign(step("ACTIVE", "IN_PROCESS", ""), { stages: { current: "CHECKING", submitted: "just now",
+        inLine: "", checking: "just now", since: now.getTime(), usualMin: null } }),
       revise:       step("COMPLETE", "", "NEEDS_REVISION")
     }
   };
@@ -497,10 +507,18 @@ function getStudentDashboardData(termFilter) {
   const stagingHeaders = stagingData[0] ? stagingData[0].map(h => String(h).trim()) : [];
   const spFileIdx      = stagingHeaders.indexOf("StudentFileID");
   const spStatusIdx    = stagingHeaders.indexOf("Status");
+  // When the staging row was last stamped: by the bridge when it went in
+  // line, by the turnstile when its check started (06). The card's stage
+  // line shows it (2026-11-14).
+  const spTsIdx        = stagingHeaders.indexOf("Timestamp");
+  const pipelineAt     = {};
   for (let i = 1; i < stagingData.length; i++) {
     const fid = spFileIdx   !== -1 ? String(stagingData[i][spFileIdx]).trim()   : "";
     const st  = spStatusIdx !== -1 ? String(stagingData[i][spStatusIdx]).trim() : "";
-    if (fid) pipelineStatus[fid] = st;
+    if (fid) {
+      pipelineStatus[fid] = st;
+      pipelineAt[fid] = spTsIdx !== -1 ? sheetTimestampMs_(stagingData[i][spTsIdx]) || 0 : 0;
+    }
   }
 
   // Work waiting for its evaluation (walk-through finding 2, 2026-10-22).
@@ -551,6 +569,8 @@ function getStudentDashboardData(termFilter) {
   let snapshotDocs = {};
   try { snapshotDocs = formSnapshotDocIds_(ss); } catch (e) { Logger.log("[Dashboard] FormSnapshots unreadable: " + e.message); }
   const locked = []; // parts made but not open yet (68)
+  let usualCheck; // FlowMeasures' Flow 2 median, read only when a card is being checked
+  const retryAt = _dashRetryState_();
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (String(row[LEDGER.GOOGLE_ID]).toLowerCase() !== googleId.toLowerCase()) continue;
@@ -654,6 +674,16 @@ function getStudentDashboardData(termFilter) {
       // In line or being checked: the page checks for news while any card
       // is (getMyWaitingStatus, 2026-11-14).
       waiting:       dashWaiting_(status, pipeline),
+      // Where the work is (2026-11-14): Submitted, In line, Being checked,
+      // with the times the sheets hold.
+      stages:        dashWaiting_(status, pipeline)
+        ? dashStages_(row, pipeline, pipelineStatus[fileId], pipelineAt[fileId], function () {
+            if (usualCheck === undefined) usualCheck = dashUsualCheckMinutes_(ss);
+            return usualCheck;
+          }, now) : null,
+      // A timed-out check the student can put back in line (retryMyCheck).
+      canRetry:      status === "ERROR_TIMEOUT" && !inLine,
+      retryWaitMin:  status === "ERROR_TIMEOUT" ? _dashRetryWaitMin_(retryAt, googleId, fileId, now) : 0,
       // A form, Slides or Sheets part's feedback page: its snapshot doc (00), where
       // the check reads the file as submitted and the feedback goes. null
       // for a doc.
@@ -2159,7 +2189,9 @@ function resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult)
     // 03 emails the teacher for both (2026-10-22, UX audit fix-first 4), so
     // the student isn't told to report what the teacher already knows, and
     // a timeout isn't worded as the student's fault.
-    case "ERROR_TIMEOUT":       return "Taking longer than usual ⚠ — your work is saved, and your teacher knows";
+    // Plain words and a next step (2026-11-14): the card's Try again puts
+    // it back in line (retryMyCheck).
+    case "ERROR_TIMEOUT":       return "Check stopped ⚠ — it took too long. Your work is saved. Press Try again to put it back in line";
     case "ERROR_EVALUATION":    return "Couldn't be checked this time ⚠ — your teacher knows. You can submit again";
     default:
       // Never show a raw Ledger status string to a student — a blank cell
@@ -2191,7 +2223,7 @@ function resolveStudentPill_(status, pipeline, lastResult) {
       return "Feedback ready";
     case "PENDING_TEACHER_REVIEW": return "Turned in";
     case "COMPLIANT":           return "Done ✓";
-    case "ERROR_TIMEOUT":       return "Taking longer ⚠";
+    case "ERROR_TIMEOUT":       return "Check stopped ⚠";
     default:
       return String(status || "").startsWith("ERROR") ? "Couldn’t be checked ⚠" : "Ask your teacher";
   }
@@ -2303,6 +2335,7 @@ function _dashWaitingStatus_(cards) {
   const snap = _dashWaitSnapshot_(ss, cfg);
   const tiCache = {};
   let inComments = null; // the feedback-as-comment flag, read only for a finished card
+  let usualCheck;
   const out = [];
   asked.forEach(function (c) {
     const row = own[c.fileId + "|" + c.configId];
@@ -2320,8 +2353,13 @@ function _dashWaitingStatus_(cards) {
       statusClass: resolveStudentClass_(status, pipeline, lastResult),
       displayStatus: display, statusNote: studentStatusNote_(display),
       canSubmit: !DASH_NO_SUBMIT_STATUSES[status] && !(pipeline === "IN_PROCESS" || pipeline === "QUEUED"),
-      lastEval: row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : ""
+      lastEval: row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : "",
+      canRetry: status === "ERROR_TIMEOUT" && !dashWaiting_(status, pipeline)
     };
+    card.stages = card.waiting ? dashStages_(row, pipeline, snap.pipeline[c.fileId], (snap.at || {})[c.fileId], function () {
+      if (usualCheck === undefined) usualCheck = dashUsualCheckMinutes_(ss);
+      return usualCheck;
+    }, new Date()) : null;
     if (c.turnIn) card.turnIn = _dashTurnInNews_(ss, googleId, c.configId, tiCache);
     out.push(card);
   });
@@ -2345,7 +2383,8 @@ function _dashTurnInNews_(ss, googleId, configId, cache) {
 }
 
 // What every caller's poll shares: { pipeline: { fileId: "IN_PROCESS" |
-// "PENDING_INFERENCE" }, queued: { fileId: true } }, read as
+// "PENDING_INFERENCE" }, at: { fileId: ms the staging row was stamped },
+// queued: { fileId: true } }, read as
 // getStudentDashboardData reads them (the staging row last listed for a
 // file wins; an open ReviewQueue row is in line), kept in the script cache
 // for DASH_WAIT_CACHE_SECONDS.
@@ -2362,14 +2401,21 @@ function _dashWaitSnapshot_(ss, cfg) {
   const staging = ss.getSheetByName(cfg.tabs.stagingPipeline);
   const rows = staging ? staging.getDataRange().getValues() : [];
   const h = rows[0] ? rows[0].map(function (x) { return String(x).trim(); }) : [];
-  const fi = h.indexOf("StudentFileID"), si = h.indexOf("Status");
-  const last = {};
+  const fi = h.indexOf("StudentFileID"), si = h.indexOf("Status"), ti = h.indexOf("Timestamp");
+  const last = {}, lastAt = {};
+  snap.at = {};
   for (let i = 1; i < rows.length && fi !== -1 && si !== -1; i++) {
     const fid = String(rows[i][fi]).trim();
-    if (fid) last[fid] = String(rows[i][si]).trim();
+    if (fid) {
+      last[fid] = String(rows[i][si]).trim();
+      lastAt[fid] = ti !== -1 ? sheetTimestampMs_(rows[i][ti]) || 0 : 0;
+    }
   }
   Object.keys(last).forEach(function (fid) {
-    if (last[fid] === "IN_PROCESS" || last[fid] === "PENDING_INFERENCE") snap.pipeline[fid] = last[fid];
+    if (last[fid] === "IN_PROCESS" || last[fid] === "PENDING_INFERENCE") {
+      snap.pipeline[fid] = last[fid];
+      if (lastAt[fid]) snap.at[fid] = lastAt[fid];
+    }
   });
   if (cache) {
     try {
@@ -2378,6 +2424,192 @@ function _dashWaitSnapshot_(ss, cfg) {
     } catch (e) { /* the next poll reads it fresh */ }
   }
   return snap;
+}
+
+
+// ---------------------------------------------------------------------------
+// Where the work is (2026-11-14, the operator's "Build 1-4", item 3)
+//
+// A waiting card's stage line: Submitted → In line → Being checked →
+// Feedback ready, with only the times the sheets already hold:
+//   Submitted      the Ledger's SubmissionTS (13 stamps it at Submit)
+//   In line        the staging row's Timestamp while it is
+//                  PENDING_INFERENCE (03's bridge stamps it); a ReviewQueue
+//                  row the bridge hasn't taken yet is in line with no time
+//   Being checked  the staging row's Timestamp once IN_PROCESS (06's
+//                  turnstile stamps it when it releases the row)
+// No ETA is made up. "Usually about N min" goes on Being checked only when
+// FlowMeasures (69b) has a measured Flow 2 median (sent to harvested) for
+// a recent week with at least DASH_USUAL_MIN_SENT checks; it is read once an
+// hour (script cache). In line has no measure, so it has no estimate.
+// ---------------------------------------------------------------------------
+const DASH_USUAL_MIN_SENT = 5;
+const DASH_USUAL_CACHE_KEY = "dashUsualCheckMinutes";
+const DASH_USUAL_CACHE_SECONDS = 60 * 60;
+const DASH_FM_FLOW2_LABEL = "Flow 2 evaluation"; // 69b's FM_FLOWS label (69b isn't in this project)
+
+// { current: "IN_LINE" | "CHECKING", submitted, inLine, checking (time
+// labels, "" when not recorded), since (ms the current stage began, 0 when
+// not recorded), usualMin (number or null) }.
+function dashStages_(row, pipeline, stagingStatus, stagingAt, usual, now) {
+  const tz = Session.getScriptTimeZone();
+  const label = function (ms) {
+    if (!ms) return "";
+    const d = new Date(ms);
+    const sameDay = Utilities.formatDate(d, tz, "yyyy-MM-dd") === Utilities.formatDate(now, tz, "yyyy-MM-dd");
+    return Utilities.formatDate(d, tz, sameDay ? "h:mm a" : "MMM d, h:mm a");
+  };
+  const sub = sheetTimestampMs_(row[LEDGER.SUBMISSION_TS]) || 0;
+  const checking = pipeline === "IN_PROCESS";
+  const inLineAt = stagingStatus === "PENDING_INFERENCE" ? stagingAt || 0 : 0;
+  const checkingAt = checking ? stagingAt || 0 : 0;
+  return {
+    current: checking ? "CHECKING" : "IN_LINE",
+    submitted: label(sub),
+    inLine: label(inLineAt),
+    checking: label(checkingAt),
+    since: checking ? checkingAt : (inLineAt || sub),
+    usualMin: checking ? usual() : null
+  };
+}
+
+// FlowMeasures' latest Flow 2 median (minutes, sent to harvested) for a
+// week with at least DASH_USUAL_MIN_SENT checks, or null.
+function dashUsualCheckMinutes_(ss) {
+  let cache = null;
+  try { cache = CacheService.getScriptCache(); } catch (e) { cache = null; }
+  try {
+    const hit = cache ? cache.get(DASH_USUAL_CACHE_KEY) : null;
+    if (hit !== null && hit !== undefined) return hit === "" ? null : Number(hit);
+  } catch (e) { /* read it */ }
+  let out = null;
+  try {
+    const sheet = ss.getSheetByName("FlowMeasures");
+    const rows = sheet && sheet.getLastRow() > 1 ? sheet.getDataRange().getValues() : [];
+    const h = rows.length ? rows[0].map(function (x) { return String(x).trim(); }) : [];
+    const iWeek = h.indexOf("WeekOf"), iFlow = h.indexOf("Flow"), iSent = h.indexOf("Sent"), iMed = h.indexOf("WaitMedianMin");
+    if (iWeek !== -1 && iFlow !== -1 && iSent !== -1 && iMed !== -1) {
+      const flow2 = rows.slice(1).filter(function (r) {
+        return String(r[iFlow]).trim() === DASH_FM_FLOW2_LABEL && Number(r[iSent]) >= DASH_USUAL_MIN_SENT &&
+          r[iMed] !== "" && !isNaN(Number(r[iMed]));
+      }).sort(function (a, b) { return String(b[iWeek]) < String(a[iWeek]) ? -1 : String(b[iWeek]) > String(a[iWeek]) ? 1 : 0; });
+      if (flow2.length) out = Math.max(1, Math.round(Number(flow2[0][iMed])));
+    }
+  } catch (e) {
+    Logger.log("[S13] FlowMeasures not read: " + e.message);
+  }
+  try { if (cache) cache.put(DASH_USUAL_CACHE_KEY, out === null ? "" : String(out), DASH_USUAL_CACHE_SECONDS); } catch (e) { /* fine */ }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// retryMyCheck — "Try again" on a check that timed out (2026-11-14)
+//
+// The re-queue the admin's Reset Stuck Pipeline Row (10's resetStuckRow)
+// already does for an ERROR_TIMEOUT row, for one row: the student's own
+// staging row goes from ERROR_TIMEOUT back to PENDING_INFERENCE, so the
+// turnstile releases it and stamps it, and 37's builder re-arms the
+// submission's FlowInput row (or builds a fresh one after ERROR_NO_ANSWER)
+// exactly as for an admin re-queue: no new ReviewQueue row, no new staging
+// row, so no duplicate FlowInput row (37's existingKeys) and the re-arm
+// counter starts again only as it does for an admin re-queue or a resubmit.
+// A late answer still lands as before (03's backprop finishes a queue row
+// at ERROR_TIMEOUT). The teacher is not emailed again (03 emails only when it
+// closes a STAGED queue row).
+// Safe only when:
+//   - the row is the caller's (account, ConfigID and file: findOwnLedgerRow_)
+//   - its Ledger status is ERROR_TIMEOUT (03 sets it after the lane gave up)
+//   - its latest staging row is ERROR_TIMEOUT and none for the file is in
+//     line or in process
+//   - this card wasn't retried in the last DASH_RETRY_EVERY_MIN minutes
+//     (server-side, in a Script Property holding a hash of account and
+//     file, never either, pruned as it goes)
+// { ok: true, card } or { ok: false, error, waitMin? }.
+// ---------------------------------------------------------------------------
+const DASH_RETRY_EVERY_MIN = 10;
+const DASH_RETRY_PROP = "DASH_RETRY_AT";
+
+function retryMyCheck(fileId, configId) {
+  try {
+    return _dashRetry_(fileId, configId, new Date());
+  } catch (e) {
+    Logger.log("retryMyCheck: unexpected error for ConfigID " + String(configId || "").trim() + ": " + e.message);
+    return { ok: false, error: "SERVER_ERROR" };
+  }
+}
+
+function _dashRetryKey_(googleId, fileId) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,
+    String(googleId).toLowerCase() + "|" + String(fileId));
+  return bytes.slice(0, 12).map(function (b) { return ((b + 256) % 256).toString(16).padStart(2, "0"); }).join("");
+}
+
+function _dashRetryState_() {
+  try {
+    const v = JSON.parse(PropertiesService.getScriptProperties().getProperty(DASH_RETRY_PROP) || "{}");
+    return v && typeof v === "object" ? v : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+// Minutes until this card may be retried again; 0 when it may now.
+function _dashRetryWaitMin_(state, googleId, fileId, now) {
+  const at = Number(state[_dashRetryKey_(googleId, fileId)]) || 0;
+  const left = at + DASH_RETRY_EVERY_MIN * 60000 - now.getTime();
+  return left > 0 ? Math.ceil(left / 60000) : 0;
+}
+
+function _dashRetry_(fileId, configId, now) {
+  const googleId = String(Session.getActiveUser().getEmail() || "").trim();
+  if (!googleId) return { ok: false, error: "NO_USER" };
+  fileId = String(fileId || "").trim();
+  configId = String(configId || "").trim();
+  if (!fileId || !configId) return { ok: false, error: "BAD_REQUEST" };
+  const cfg = getConfig_();
+  const row = findOwnLedgerRow_(cfg, googleId, fileId, configId);
+  if (!row) return { ok: false, error: "NOT_REGISTERED" };
+  if (String(row[LEDGER.STATUS]).trim() !== "ERROR_TIMEOUT") return { ok: false, error: "NOT_TIMED_OUT" };
+
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    const sheet = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.stagingPipeline);
+    const rows = sheet ? sheet.getDataRange().getValues() : [];
+    const h = rows.length ? rows[0].map(function (x) { return String(x).trim(); }) : [];
+    const fi = h.indexOf("StudentFileID"), si = h.indexOf("Status");
+    if (fi === -1 || si === -1) return { ok: false, error: "NO_QUEUE" };
+    let latest = -1;
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][fi]).trim() !== fileId) continue;
+      const st = String(rows[i][si]).trim();
+      if (st === "IN_PROCESS" || st === "PENDING_INFERENCE") return { ok: false, error: "ALREADY_QUEUED" };
+      latest = i;
+    }
+    if (latest === -1 || String(rows[latest][si]).trim() !== "ERROR_TIMEOUT") return { ok: false, error: "NOT_TIMED_OUT" };
+    const state = _dashRetryState_();
+    const wait = _dashRetryWaitMin_(state, googleId, fileId, now);
+    if (wait) return { ok: false, error: "TOO_SOON", waitMin: wait };
+    sheet.getRange(latest + 1, si + 1).setValue("PENDING_INFERENCE");
+
+    // The rate limit: this card now; entries past the window dropped.
+    const keep = {};
+    Object.keys(state).forEach(function (k) {
+      if (now.getTime() - Number(state[k]) < DASH_RETRY_EVERY_MIN * 60000) keep[k] = state[k];
+    });
+    keep[_dashRetryKey_(googleId, fileId)] = now.getTime();
+    PropertiesService.getScriptProperties().setProperty(DASH_RETRY_PROP, JSON.stringify(keep));
+  } finally {
+    lock.releaseLock();
+  }
+  try { CacheService.getScriptCache().remove(DASH_WAIT_CACHE_KEY); } catch (e) { /* the next read is 15 s away at most */ }
+  Logger.log("retryMyCheck: a timed-out check was put back in line — ConfigID " + configId);
+  const display = resolveStudentStatus_("ERROR_TIMEOUT", "QUEUED", false, "");
+  return { ok: true, card: { fileId: fileId, configId: configId, waiting: true, status: "ERROR_TIMEOUT",
+    statusPill: resolveStudentPill_("ERROR_TIMEOUT", "QUEUED", ""), statusClass: resolveStudentClass_("ERROR_TIMEOUT", "QUEUED", ""),
+    displayStatus: display, statusNote: studentStatusNote_(display), canSubmit: false, canRetry: false,
+    stages: { current: "IN_LINE", submitted: "", inLine: Utilities.formatDate(now, Session.getScriptTimeZone(), "h:mm a"),
+      checking: "", since: now.getTime(), usualMin: null } } };
 }
 
 // ---------------------------------------------------------------------------
@@ -2609,6 +2841,13 @@ function buildStudentDashboardHtml_(opts) {
   .wu-answer{font-size:14px;line-height:1.5;white-space:pre-line;color:#3c4043}
   .wu-recall{margin-bottom:10px;font-size:14px}
   .refresh-note{color:#b3261e;font-size:13px;padding-bottom:0}
+  /* Where the work is (2026-11-14): a waiting card's stages, with the times the sheets hold. */
+  .stages{list-style:none;display:flex;flex-wrap:wrap;gap:4px 14px;margin:8px 0 2px;padding:0;font-size:13px;color:var(--text-secondary)}
+  .stages li{white-space:nowrap}
+  .stages li.done{color:#137333}
+  .stages li.now{color:#202124;font-weight:600}
+  .stages .st-time{font-weight:400;color:var(--text-secondary);margin-left:4px}
+  .slow-note{font-size:13px;color:#3c4043;margin-top:6px}
   /* News while the page is open (2026-11-14): a card's feedback or code is ready. */
   .news-banner{background:#e6f4ea;color:#0d652d;font-size:14px;font-weight:500;padding-top:10px;padding-bottom:10px;border-bottom:1px solid #ceead6}
   .wu-recall summary{cursor:pointer;color:#1557b0;font-weight:500;padding:4px 0}
@@ -2745,6 +2984,13 @@ const DEMO_STUBS = {
     _demoWalkThrough(fileId);
     return { ok: true, aiFlowsLive: true, feedbackInComments: false, reflected: !!(answers && answers.length) };
   },
+  retryMyCheck: function (fileId) {
+    const a = _demoCard(fileId);
+    if (!a) return { ok: false, error: "NOT_REGISTERED" };
+    _demoWalkThrough(fileId);
+    return { ok: true, card: Object.assign({}, (_demoData.walkthrough || {}).inLine || {}, { fileId: a.fileId, configId: a.configId,
+      waiting: true, canRetry: false, canSubmit: false }) };
+  },
   // The page's check for news: a card's state as the "server" now holds it
   // (_demoNext: the walk-through's next state, once it is due).
   getMyWaitingStatus: function (cards) {
@@ -2840,7 +3086,7 @@ function pollNow() {
 function _findCard(fileId, configId) {
   return ((_lastDashData && _lastDashData.assignments) || []).filter(a => a.fileId === fileId && a.configId === configId)[0] || null;
 }
-const NEWS_FIELDS = ["status", "statusPill", "statusClass", "displayStatus", "statusNote", "canSubmit"];
+const NEWS_FIELDS = ["status", "statusPill", "statusClass", "displayStatus", "statusNote", "canSubmit", "canRetry", "stages"];
 function onPollResult(sent, res) {
   if (!res || !res.ok || !Array.isArray(res.cards)) { _poll.errors++; schedulePoll(); return; }
   _poll.errors = 0;
@@ -2855,7 +3101,7 @@ function onPollResult(sent, res) {
     if (s.waiting && !c.waiting) {
       finished.push({ a: a, c: c, kind: "feedback" });
       reload = true;
-    } else if (s.waiting && c.statusPill !== a.statusPill) {
+    } else if (s.waiting && (c.statusPill !== a.statusPill || JSON.stringify(c.stages) !== JSON.stringify(a.stages))) {
       // In line, then being checked: the pill moves on.
       NEWS_FIELDS.forEach(k => { a[k] = c[k]; });
       changed = true;
@@ -2945,6 +3191,77 @@ function _announce(finished) {
     if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
   }
 }
+// ── Where the work is (2026-11-14, "Build 1-4", item 3) ──
+// A waiting card's stages, with only the times the server found (the
+// Ledger's SubmissionTS, the staging row's stamps); "usually about N min" on
+// Being checked only from FlowMeasures' measured median. After SLOW_MS in
+// one stage the card offers "Check again": a status check now (the same
+// getMyWaitingStatus), at most once a minute; it changes nothing.
+const SLOW_MS = 8 * 60 * 1000;
+const CHECK_AGAIN_EVERY_MS = 60 * 1000;
+let _lastCheckAgain = 0;
+const STAGE_ORDER = [["SUBMITTED", "Submitted", "submitted"], ["IN_LINE", "In line", "inLine"],
+  ["CHECKING", "Being checked", "checking"], ["READY", "Feedback ready", ""]];
+function stageLineHtml(a) {
+  const st = a && a.waiting && a.stages;
+  if (!st) return "";
+  const at = STAGE_ORDER.map(x => x[0]).indexOf(st.current);
+  let h = '<ol class="stages" aria-label="Where your work is">';
+  STAGE_ORDER.forEach((x, i) => {
+    if (x[0] === "SUBMITTED" && !st.submitted) return; // no stamp: not shown
+    const cls = i < at ? "done" : i === at ? "now" : "";
+    const time = x[2] && st[x[2]] ? st[x[2]] : "";
+    const usual = x[0] === "CHECKING" && st.usualMin ? "usually about " + st.usualMin + " min" : "";
+    h += '<li' + (cls ? ' class="' + cls + '"' : '') + (i === at ? ' aria-current="step"' : '') + '>' +
+      (i < at ? "✓ " : "") + esc(x[1]) +
+      (time ? '<span class="st-time">' + esc(time) + '</span>' : usual ? '<span class="st-time">' + esc(usual) + '</span>' : '') +
+      '</li>';
+  });
+  h += '</ol>';
+  if (st.since && Date.now() - st.since > SLOW_MS) {
+    h += '<div class="slow-note">Taking a while. Your work is saved. ' +
+      '<button type="button" class="chip" data-file="' + esc(a.fileId) + '" onclick="checkAgain(this)">Check again</button></div>';
+  }
+  return h;
+}
+function checkAgain(btn) {
+  if (Date.now() - _lastCheckAgain < CHECK_AGAIN_EVERY_MS || _poll.busy) {
+    _newsSay("Checked a moment ago. This page keeps checking for you.");
+    return;
+  }
+  _lastCheckAgain = Date.now();
+  _cancelPoll();
+  pollNow();
+}
+// Try again on a check that timed out: the server puts the student's own
+// row back in line (retryMyCheck: its own row only, only after a timeout,
+// once per 10 minutes per card).
+let _retryMsgs = {};
+function retryCheck(btn) {
+  const fileId = btn.getAttribute("data-file"), configId = btn.getAttribute("data-config");
+  btn.disabled = true;
+  btn.textContent = "Putting it back in line…";
+  scriptRun()
+    .withSuccessHandler(function (res) { retryDone(fileId, configId, res); })
+    .withFailureHandler(function () { retryDone(fileId, configId, null); })
+    .retryMyCheck(fileId, configId);
+}
+function retryDone(fileId, configId, res) {
+  const a = _findCard(fileId, configId);
+  if (res && res.ok && res.card && a) {
+    Object.assign(a, res.card);
+    _submitMsgs[fileId] = { ok: true, text: "Back in line. This page shows your feedback when it’s ready." };
+  } else {
+    _submitMsgs[fileId] = { ok: false, text: res && res.error === "TOO_SOON"
+      ? "You tried a moment ago. You can try again in " + res.waitMin + " min."
+      : res && res.error === "ALREADY_QUEUED" ? "It’s already back in line."
+      : res && res.error === "NOT_TIMED_OUT" ? "This check isn’t stopped any more. Press Refresh to see where it is."
+      : "The page didn’t answer. Try again in a minute." };
+  }
+  _dashCache = null;
+  if (_lastDashData) render(_lastDashData);
+}
+
 // The title goes back once the student is on the page again.
 function _clearNewsTitle() {
   if (_newsTitle === null || typeof document === "undefined") return;
@@ -3197,11 +3514,13 @@ function _restoreFocus(k) {
 //                 Turned in
 //   NEEDS_ACTION  Revise / Feedback ready                 Submit for Feedback
 //   DONE          Passed ✓ / Done ✓                       View feedback (the doc)
-//   ISSUE         Taking longer / Couldn't be checked     Open My Document
+//   ISSUE         Check stopped                           Try again (retryMyCheck)
+//   ISSUE         Couldn't be checked                     Open My Document
 //
 // Submit is primary only when it can be pressed (canSubmit, and the
 // reflection questions aren't open); otherwise the document is.
 function primaryActionFor(a) {
+  if (a.canRetry && !a.waiting) return "retry";
   const canSubmit = a.canSubmit && !_reflect[a.fileId];
   if (a.statusClass === "NEEDS_ACTION" && canSubmit) return "submit";
   if (a.statusClass === "DONE") return "view";
@@ -3376,13 +3695,17 @@ function cardHtml(a, opts) {
   const openLabel = primary === "view" ? "View feedback" : noun ? "Open your " + (a.workType === "slides" ? "slides" : noun) : "Open My Document";
   // The demo has no document: its button shows a note instead.
   const docBtn = DEMO
-    ? \`<button type="button" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${openLabel}</button>\`
+    ? \`<button type="button" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${openLabel}</button>\`
     : doc
-    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit")}\${primary === "view" ? " act-done" : ""}">\${openLabel} ↗</a>\`
+    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}">\${openLabel} ↗</a>\`
     : \`<span style="color:var(--text-secondary);font-size:13px;">\${a.workType === "form" ? "Form" : a.workType === "slides" ? "Slides" : a.workType === "sheet" ? "Sheet" : "Document"} not yet available</span>\`;
   // A form, Slides or Sheets part (Phase 4b/4c/4d): Submit as for a doc; the server reads the file.
   const submitBtn = a.canSubmit && !_reflect[a.fileId]
     ? \`<button type="button" id="sub-\${esc(cardId(a))}" class="\${cls(primary === "submit")}" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
+    : "";
+  // A check that timed out (2026-11-14): Try again puts it back in line.
+  const retryBtn = a.canRetry && !a.waiting
+    ? \`<button type="button" id="retry-\${esc(cardId(a))}" class="act act-primary" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="retryCheck(this)">Try again</button>\`
     : "";
   const ev = evalLine(a);
   return \`<div class="card \${a.statusClass}\${opts.lesson ? " lesson-card" : ""}" id="\${esc(cardId(a))}" tabindex="-1">
@@ -3398,8 +3721,9 @@ function cardHtml(a, opts) {
     <!-- F16 item 6: no "Period · Subject" line; the block header above
          the class says it. -->
     \${ev ? \`<div class="eval-line">\${esc(ev)}</div>\` : ""}
+    \${stageLineHtml(a)}
     <div class="card-actions">
-    \${primary === "submit" ? submitBtn + docBtn : docBtn + submitBtn}
+    \${retryBtn}\${primary === "submit" ? submitBtn + docBtn : docBtn + submitBtn}
     </div>
     \${noun ? \`<div class="form-note">\${esc(WORK_SUBMIT_NOTE[a.workType])}\${feedbackPage && primary !== "view" ? \` <a href="\${esc(feedbackPage)}" target="_blank">Your \${esc(noun)}'s feedback page ↗</a>\` : ""}</div>\` : ""}
     \${DEMO && _demoNotes[a.fileId] ? \`<div class="demo-note" role="status">\${esc(_demoNotes[a.fileId])}</div>\` : ""}
@@ -4103,6 +4427,10 @@ function submitDone(fileId, configId, res) {
         // The check runs by itself only with the flows on; the page then
         // checks for news (schedulePoll, from render).
         a.waiting = !!(res && res.aiFlowsLive);
+        // Where it is: submitted just now, in line (the next check for news
+        // brings the sheets' own times).
+        a.stages = a.waiting ? { current: "IN_LINE", submitted: "just now", inLine: "", checking: "",
+          since: Date.now(), usualMin: null } : null;
       });
     }
     if (_lastDashData) render(_lastDashData);

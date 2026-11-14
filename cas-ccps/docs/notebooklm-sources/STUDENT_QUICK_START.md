@@ -65,13 +65,13 @@ Cards that need you are listed first, under **Do next**, at the top of the page.
 
 - **Done ✓**: Your teacher confirmed this assignment.
 
-- **Taking longer ⚠**: The check took more than 12 minutes and was stopped. Your work is saved and your teacher has been told. If the feedback arrives late, the card changes to show it.
+- **Check stopped ⚠**: The check took more than 12 minutes and was stopped. Your work is saved and your teacher has been told. Press **Try again** on the card to put it back in line (once every 10 minutes). If the feedback arrives late, the card changes to show it.
 
 - **Couldn’t be checked ⚠**: Something went wrong on our side, not with your work. The line under the title says whether you can submit again or should tell your teacher; the card has a link to email them.
 
 The card also shows **Last submitted** (when you last pressed Submit for Feedback) and **Last checked** (when you last got feedback), or “Not checked yet”.
 
-> ⏱️ **Most checks take a few minutes.** If a check takes longer than 12 minutes, the system stops it, your card says “Taking longer ⚠”, and your teacher is told by email. You do not need to submit again unless they ask you to.
+> ⏱️ **Most checks take a few minutes.** While you wait, the card shows where your work is (Submitted, In line, Being checked) and this page shows your feedback when it's ready. If a check takes longer than 12 minutes, the system stops it, your card says “Check stopped ⚠”, and your teacher is told by email. Press Try again on the card; you do not need to submit again.
 
 ## Read Your Feedback
 
@@ -209,7 +209,7 @@ The same list as **❓ What do these mean?** on your dashboard.
 - **Not yet**: The part of the assignment your last check didn’t find in your work yet. Start your revision there.
 - **Turned in**: Your teacher is reviewing your work. Nothing to do yet.
 - **Done ✓**: Your teacher confirmed this assignment.
-- **Taking longer**: The check is taking longer than usual. Your work is saved and your teacher knows; nothing to do.
+- **Check stopped**: The check took too long and was stopped. Your work is saved. Press Try again on the card to put it back in line.
 - **Couldn’t be checked**: Something went wrong on our side, not with your work. Tell your teacher.
 - **Comments**: Your feedback appears as a comment on your document. Open the document and click the Comments button (top right). Resolving a comment doesn’t delete it.
 - **Last submitted**: When you last pressed Submit for Feedback on this assignment.
