@@ -356,8 +356,10 @@ function dashDemoFixture_(now) {
         evidence: (evidence[c.id] || []).map(function (e) {
           return { assignment: assignmentOf[e.configId] || "An assignment", milestone: e.milestone,
             outcome: DASH_EVIDENCE_WORDS[e.outcome], outcomeKey: e.outcome,
-            date: Utilities.formatDate(e.at, tz, "MMM d"), counts: true };
-        })
+            date: Utilities.formatDate(e.at, tz, "MMM d"), counts: true,
+            atMs: e.at.getTime(), lessonKey: _dashLessonKeyOf_(String(e.configId).replace(/^DEMO-/, "CAS-")) };
+        }),
+        lessons: _dashCompetencyLessons_(c.id)
       };
       const area = c.area || "Other";
       if (!areaOf[area]) { areaOf[area] = { name: area, items: [] }; areas.push(areaOf[area]); }
@@ -438,7 +440,10 @@ function dashDemoFixture_(now) {
       generatedAt:      formatDate_(now)
     },
     tabs: {
-      competencies: { success: true, courses: compCourses },
+      competencies: { success: true, courses: compCourses, term: term, termLabel: termLabel_(term),
+        termStart: _dashTermStartMs_(term, (function () {
+          try { return PropertiesService.getScriptProperties().getProperty("MARKING_PERIOD_ENDS") || ""; } catch (e) { return ""; }
+        })()) },
       warmups:      { success: true, warmUps: history },
       context:      { success: true, context: { docUrl: "", lastUpdatedAt: formatDate_(_dashDemoDaysAgo_(now, 1)), weeks: contextWeeks } }
     },
@@ -838,6 +843,52 @@ function _dashAddLessonInfo_(assignments) {
   return assignments;
 }
 
+// ── The Competencies tab's lesson facts (F17) ───────────────────────────
+// Every lesson that names a competency (13c, STUDENT_CRITERIA.json), in
+// teaching order, with the student's "I can" words there:
+// [{ key, no: "L05", task, text }]. [] for a competency no lesson names:
+// student organization and work-based learning (8175: 31-33, 35-38; 8177:
+// 31, 33, 35-38). How those are shown is waiting on the operator (Q26, on
+// hold): they appear like any other unrated competency, with no special
+// wording and no way for the teacher to rate them here, and nothing for
+// them goes into "Next to practice".
+let _dashCompLessons_ = null;
+function _dashCompetencyLessons_(competencyId) {
+  if (typeof DASH_LESSON_INFO === "undefined" || typeof DASH_LESSON_ORDER === "undefined") return [];
+  if (!_dashCompLessons_) {
+    _dashCompLessons_ = {};
+    Object.keys(DASH_LESSON_ORDER).forEach(function (code) {
+      DASH_LESSON_ORDER[code].forEach(function (key) {
+        const info = DASH_LESSON_INFO[key];
+        if (!info) return;
+        info.iCan.forEach(function (m) {
+          (_dashCompLessons_[m.id] = _dashCompLessons_[m.id] || []).push({ key: key, no: "L" + String(info.n).padStart(2, "0"),
+            task: info.task, text: m.text });
+        });
+      });
+    });
+  }
+  return (_dashCompLessons_[competencyId] || []).map(function (l) { return Object.assign({}, l); });
+}
+
+// When the current marking period began (ms), for "this term" on the
+// Competencies tab: the day after the one before it ends, by the same
+// MARKING_PERIOD_ENDS table currentTerm_ reads (00); 0 when unknown.
+function _dashTermStartMs_(term, raw) {
+  let table = _markingPeriodEnds_(raw);
+  if (!table.length) table = _markingPeriodEnds_(DEFAULT_MARKING_PERIOD_ENDS);
+  const i = table.map(function (t) { return t.term; }).indexOf(String(term || "").toUpperCase());
+  if (i <= 0) return 0;
+  const p = table[i - 1].end.split("-").map(Number);
+  return new Date(p[0], p[1] - 1, p[2] + 1).getTime();
+}
+function _dashMarkingPeriodRaw_() {
+  let raw = "";
+  try { raw = PropertiesService.getScriptProperties().getProperty("MARKING_PERIOD_ENDS") || ""; } catch (e) { raw = ""; }
+  if (!raw) { try { raw = _resolveConfigValues_().values.MARKING_PERIOD_ENDS || ""; } catch (e) { raw = ""; } }
+  return raw;
+}
+
 // ── Milestone marks (F16 item 5) ─────────────────────────────────────────
 // Each lesson's best outcome per competency across all its files (a lesson
 // in parts: every part's): { lessonKey: { competencyId: "MET" | ... } }. An
@@ -874,7 +925,7 @@ function _dashAddMilestoneMarks_(assignments, best) {
   assignments.forEach(function (a) {
     const info = a.lessonKey && typeof DASH_LESSON_INFO !== "undefined" ? DASH_LESSON_INFO[a.lessonKey] : null;
     const got = (best && best[a.lessonKey]) || {};
-    a.milestones = info ? info.iCan.filter(function (m) { return m.text; }).map(function (m) {
+    a.milestones = info ? info.iCan.slice(0, info.m).filter(function (m) { return m.text; }).map(function (m) {
       const o = got[m.id] || "";
       return { id: m.id, text: m.text, markKey: o || "UNCHECKED", mark: o ? DASH_EVIDENCE_WORDS[o] : "Not checked yet" };
     }) : [];
@@ -1234,6 +1285,8 @@ function getMyCompetencies() {
     const tz = Session.getScriptTimeZone();
     const own = _dashOwnCourses_(ss, cfg, email);
     const codes = Object.keys(own.courses).sort();
+    // Each workspace's lesson (F17: evidence on the lesson it came from).
+    const assignmentOf = _dashStudentAssignments_(ss);
     const ratingList = readLatestScrRatings_(ss, cfg, "").get(email) || [];
     const ratings = {};
     ratingList.forEach(function (r) { ratings[r.competencyId] = r; });
@@ -1311,8 +1364,11 @@ function getMyCompetencies() {
           evidence: list.map(function (e) {
             return { assignment: own.assignmentOf[e.configId] || "An assignment", milestone: e.milestone,
               outcome: DASH_EVIDENCE_WORDS[e.outcome], outcomeKey: e.outcome,
-              date: e.at ? Utilities.formatDate(e.at, tz, "MMM d") : "", counts: best[e.configId || "?"] === e };
+              date: e.at ? Utilities.formatDate(e.at, tz, "MMM d") : "", counts: best[e.configId || "?"] === e,
+              atMs: e.at ? e.at.getTime() : 0, lessonKey: _dashLessonKeyOf_(assignmentOf[e.configId]) };
           }),
+          // F17: the lessons that practice it, with the student's words there.
+          lessons: _dashCompetencyLessons_(c.id),
         };
         const area = c.area || "Other";
         if (!areaOf[area]) { areaOf[area] = { name: area, items: [] }; areas.push(areaOf[area]); }
@@ -1321,7 +1377,9 @@ function getMyCompetencies() {
       const d = done[code] || { done: 0, total: totals[code] || 0 };
       return { code: code, className: own.courses[code], done: d.done, total: d.total, areas: areas };
     });
-    return { success: true, courses: courses };
+    const term = _dashTermScope_(new Date());
+    return { success: true, courses: courses, term: term, termLabel: term ? termLabel_(term) : "",
+      termStart: term ? _dashTermStartMs_(term, _dashMarkingPeriodRaw_()) : 0 };
   } catch (e) {
     Logger.log("[S13] getMyCompetencies failed: " + e.message);
     return { success: false, error: "Your competencies could not be loaded. Try again in a minute." };
@@ -2182,6 +2240,14 @@ function buildStudentDashboardHtml_(opts) {
 .rec-ev{font-size:13px;margin:6px 0 6px 18px;line-height:1.5}
 .rec-ev .rec-milestone{color:var(--text-secondary)}
 .rec-empty{font-size:13px;color:var(--text-secondary)}
+.rec-latest{font-size:12px;color:var(--text-secondary);white-space:nowrap}
+.rec-progress{font-size:12px;font-weight:400;color:var(--text-secondary);margin-left:8px}
+.rec-ican,.rec-where{list-style:none;margin:4px 0 0;padding:0}
+.rec-ican li,.rec-where li{margin:3px 0}
+.rec-lists{display:flex;flex-wrap:wrap;gap:8px 28px;background:#fff;border:1px solid #e8eaed;border-radius:8px;padding:8px 14px;margin:0 0 10px;font-size:13.5px}
+.rec-lists h3{font-size:13.5px;margin:4px 0}
+.rec-lists ul{margin:0 0 4px;padding-left:18px}
+.rec-flat{padding:4px 12px}
 .ctx-nav{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px;font-size:14px}
 .ctx-nav button{background:#fff;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:4px 10px;font-size:13px;cursor:pointer}
 .ctx-nav button[disabled]{opacity:.45;cursor:not-allowed}
@@ -3115,41 +3181,144 @@ function renderTab(tab) {
     : tab === "warmups" ? renderWarmUpHistory(d) : renderContextTab(d);
 }
 
-// Every competency in each course, by duty area: the teacher's rating (in
-// words, 1 is the highest) and each piece of evidence.
+// Every competency in each course (F17): the teacher's latest confirmed
+// rating as its number and words ("2 — Without supervision"; 1 is the
+// highest), or "Not rated yet"; beside it, in a lighter style, the latest
+// evidence in the cards' words (Shown, Partly shown, Not shown yet). Open
+// one: the student's own "I can" words for it in each lesson, where it is
+// practiced (this term's lessons with their status and a jump to the card;
+// any other lesson a plain reference), the re-rating line, and every piece
+// of evidence. Sorted by area (the default, by duty area), by rating, or by
+// the most recent evidence. Per area: how many are rated, and how many were
+// shown this marking period and this year. Per course: "Recently shown" and
+// "Next to practice" (the measured milestones not shown yet of the lessons
+// on the Assignments tab still to finish, in assigned order). Only the
+// student's own: no class comparison, no ranking. "Done" stays a rating of
+// 1 to 3. The whole year by default: ratings don't reset each term (Q20).
+// A competency no lesson names (student organization, work-based
+// learning) shows like any other unrated one; how it is shown is waiting
+// on the operator (Q26, on hold).
+let _compSort = "area";
+const COMP_SORTS = [["area", "By area"], ["rating", "By rating"], ["recent", "Most recent evidence"]];
+function setCompSort(v) {
+  if (!COMP_SORTS.some(x => x[0] === v)) return;
+  _compSort = v;
+  renderTab("competencies");
+}
+function _compLatest(it) {
+  return (it.evidence || []).slice().sort((a, b) => (b.atMs || 0) - (a.atMs || 0))[0] || null;
+}
+function _compShownIn(it, from) {
+  return (it.evidence || []).some(e => e.outcomeKey === "MET" && (!from || (e.atMs || 0) >= from));
+}
+// This term's card for a lesson, if the Assignments tab has one.
+function _lessonCard(key) {
+  const list = ((_lastDashData && _lastDashData.assignments) || []).filter(a => a.lessonKey === key);
+  if (!list.length) return null;
+  return list[0].part ? _shownPart(list.filter(a => a.part)) : list[0];
+}
+function jumpToCard(id) {
+  showTab("assignments");
+  return goToCard(id);
+}
+function _compItemHtml(it) {
+  const done = it.rating && it.rating <= 3;
+  const latest = _compLatest(it);
+  let h = '<details class="rec-comp"><summary><span>' + esc(String(it.task)) + '. ' + esc(it.text) + '</span>' +
+    '<span class="rec-chip' + (done ? ' done' : '') + '">' + (it.rating ? esc(scrLabel(it.rating)) : 'Not rated yet') + '</span>' +
+    (latest ? '<span class="rec-latest">Latest: ' + esc(latest.outcome) + '</span>' : '') +
+    '<span class="rec-chip">' + (it.evidence.length ? esc(String(it.evidence.length)) + ' piece' + (it.evidence.length === 1 ? '' : 's') + ' of evidence' : 'No evidence yet') + '</span></summary>';
+  const lessons = it.lessons || [];
+  const words = lessons.filter(l => l.text);
+  if (words.length) {
+    h += '<div class="rec-ev"><strong>In your words:</strong><ul class="rec-ican">' +
+      words.map(l => '<li><span class="lesson-chip">' + esc(l.no) + '</span>' + esc(l.text) + '</li>').join("") + '</ul></div>';
+  }
+  if (lessons.length) {
+    h += '<div class="rec-ev"><strong>Where it is practiced:</strong><ul class="rec-where">' + lessons.map(l => {
+      const card = _lessonCard(l.key);
+      const name = '<span class="lesson-chip">' + esc(l.no) + '</span>' + esc(l.task);
+      if (card) {
+        return '<li><a href="#' + esc(cardId(card)) + '" onclick="return jumpToCard(\\'' + esc(cardId(card)) + '\\')">' + name +
+          '</a> · ' + esc(card.statusPill || card.displayStatus || "") + '</li>';
+      }
+      const had = (it.evidence || []).some(e => e.lessonKey === l.key);
+      return '<li>' + name + ' · ' + (had ? 'an earlier marking period' : 'not assigned to you this marking period') + '</li>';
+    }).join("") + '</ul></div>';
+  }
+  if (it.rating && it.ratedAt) h += '<div class="rec-ev">Rated ' + esc(it.ratedAt) + '.</div>';
+  if (it.retry) h += '<div class="rec-ev"><strong>' + (it.retry.ready ? 'Ready for a re-rating' : 'Re-rating') + ':</strong> ' + esc(it.retry.text) + '</div>';
+  h += it.evidence.length ? it.evidence.map(function (e) {
+    return '<div class="rec-ev">' + (e.date ? esc(e.date) + ' · ' : '') + esc(e.assignment) + ': <strong>' + esc(e.outcome) + '</strong>' +
+      (e.counts ? ' (counts)' : ' (an earlier check; your best one counts)') +
+      (e.milestone ? '<br><span class="rec-milestone">' + esc(e.milestone) + '</span>' : '') + '</div>';
+  }).join("") : '<div class="rec-ev rec-empty">No evidence yet.</div>';
+  return h + '</details>';
+}
+// "Next to practice": the course's lessons still to finish on the
+// Assignments tab, in assigned order, and their measured milestones not
+// shown yet (a competency no lesson names never appears here).
+function _compNext(code) {
+  const out = [];
+  const seen = {};
+  ((_lastDashData && _lastDashData.assignments) || []).forEach(a => {
+    if (!a.lessonKey || a.lessonKey.split("-")[0] !== code || seen[a.lessonKey]) return;
+    seen[a.lessonKey] = true;
+    const card = _lessonCard(a.lessonKey);
+    if (!card || card.statusClass === "DONE") return;
+    (card.milestones || []).forEach(m => {
+      if (m.markKey !== "MET" && out.length < 5) out.push({ no: card.lessonNo, text: m.text, id: cardId(card) });
+    });
+  });
+  return out;
+}
 function renderCompetencyTab(d) {
   if (!d.courses.length) return '<p class="rec-empty">No courses on file yet.</p>';
+  const from = d.termStart || 0;
   let h = '<p class="rec-sub">Every competency in your course. Your teacher rates each one on the state\\'s 1 to 5 scale, where 1 is the highest; ' +
     '1 to 3 count as done. Evidence is what your checked work showed. An assignment counts once, at its best result.</p>' +
-    '<label class="rec-sub" style="display:block"><input type="checkbox" onchange="toggleCompEvidence(this.checked)"' +
-    (_compOnlyEvidence ? ' checked' : '') + '> Show only competencies with evidence or a rating</label>';
+    '<div class="list-controls"><label for="comp-sort">Sort</label><select id="comp-sort" onchange="setCompSort(this.value)">' +
+    COMP_SORTS.map(x => '<option value="' + x[0] + '"' + (x[0] === _compSort ? ' selected' : '') + '>' + esc(x[1]) + '</option>').join("") +
+    '</select><label class="rec-sub" style="margin:0"><input type="checkbox" onchange="toggleCompEvidence(this.checked)"' +
+    (_compOnlyEvidence ? ' checked' : '') + '> Show only competencies with evidence or a rating</label></div>';
   d.courses.forEach(function (c) {
     h += '<section class="rec-course"><h2>' + esc(c.className || c.code) + '</h2>' +
       '<div class="rec-sub">🎓 <strong>' + esc(String(c.done)) + '</strong>' + (c.total ? ' of ' + esc(String(c.total)) : '') + ' competencies done</div>';
+    const all = [];
+    c.areas.forEach(a => a.items.forEach(it => all.push(it)));
+    const recent = all.filter(it => _compShownIn(it, 0))
+      .sort((a, b) => (_compLatest(b).atMs || 0) - (_compLatest(a).atMs || 0)).slice(0, 5);
+    const next = _compNext(c.code);
+    if (recent.length || next.length) {
+      h += '<div class="rec-lists">';
+      if (recent.length) h += '<div><h3>Recently shown</h3><ul>' + recent.map(it => '<li>' + esc(String(it.task)) + '. ' + esc(it.text) + '</li>').join("") + '</ul></div>';
+      if (next.length) h += '<div><h3>Next to practice</h3><ul>' + next.map(n => '<li><a href="#' + esc(n.id) + '" onclick="return jumpToCard(\\'' + esc(n.id) + '\\')"><span class="lesson-chip">' +
+        esc(n.no) + '</span></a>' + esc(n.text) + '</li>').join("") + '</ul></div>';
+      h += '</div>';
+    }
+    const keep = it => !_compOnlyEvidence || it.rating || it.evidence.length;
     let shown = 0;
-    c.areas.forEach(function (a) {
-      const items = a.items.filter(function (it) { return !_compOnlyEvidence || it.rating || it.evidence.length; });
-      if (!items.length) return;
-      shown += items.length;
-      const rated = a.items.filter(function (it) { return it.rating; }).length;
-      h += '<details class="rec-area"' + (_compOnlyEvidence ? ' open' : '') + '><summary>' + esc(a.name) +
-        ' <span class="rec-chip">' + esc(String(rated)) + ' of ' + esc(String(a.items.length)) + ' rated</span></summary>';
-      items.forEach(function (it) {
-        const done = it.rating && it.rating <= 3;
-        h += '<details class="rec-comp"><summary><span>' + esc(String(it.task)) + '. ' + esc(it.text) + '</span>' +
-          '<span class="rec-chip' + (done ? ' done' : '') + '">' + (it.rating ? esc(scrLabel(it.rating)) : 'Not rated yet') + '</span>' +
-          '<span class="rec-chip">' + (it.evidence.length ? esc(String(it.evidence.length)) + ' piece' + (it.evidence.length === 1 ? '' : 's') + ' of evidence' : 'No evidence yet') + '</span></summary>';
-        if (it.rating && it.ratedAt) h += '<div class="rec-ev">Rated ' + esc(it.ratedAt) + '.</div>';
-        if (it.retry) h += '<div class="rec-ev"><strong>' + (it.retry.ready ? 'Ready for a re-rating' : 'Re-rating') + ':</strong> ' + esc(it.retry.text) + '</div>';
-        h += it.evidence.length ? it.evidence.map(function (e) {
-          return '<div class="rec-ev">' + (e.date ? esc(e.date) + ' · ' : '') + esc(e.assignment) + ': <strong>' + esc(e.outcome) + '</strong>' +
-            (e.counts ? ' (counts)' : ' (an earlier check; your best one counts)') +
-            (e.milestone ? '<br><span class="rec-milestone">' + esc(e.milestone) + '</span>' : '') + '</div>';
-        }).join("") : '<div class="rec-ev rec-empty">No evidence yet.</div>';
+    if (_compSort === "area") {
+      c.areas.forEach(function (a) {
+        const items = a.items.filter(keep);
+        if (!items.length) return;
+        shown += items.length;
+        const rated = a.items.filter(function (it) { return it.rating; }).length;
+        const termN = a.items.filter(it => from && _compShownIn(it, from)).length;
+        const yearN = a.items.filter(it => _compShownIn(it, 0)).length;
+        h += '<details class="rec-area"' + (_compOnlyEvidence ? ' open' : '') + '><summary>' + esc(a.name) +
+          ' <span class="rec-chip">' + esc(String(rated)) + ' of ' + esc(String(a.items.length)) + ' rated</span>' +
+          '<span class="rec-progress">Shown' + (from ? ' this marking period ' + esc(String(termN)) + ' ·' : '') + ' this year ' + esc(String(yearN)) + '</span></summary>';
+        items.forEach(it => { h += _compItemHtml(it); });
         h += '</details>';
       });
-      h += '</details>';
-    });
+    } else {
+      const items = all.filter(keep).sort(_compSort === "rating"
+        ? (a, b) => (a.rating || 9) - (b.rating || 9) || a.task - b.task
+        : (a, b) => ((_compLatest(b) || {}).atMs || 0) - ((_compLatest(a) || {}).atMs || 0) || a.task - b.task);
+      shown = items.length;
+      h += '<div class="rec-area rec-flat">' + items.map(_compItemHtml).join("") + '</div>';
+    }
     if (!shown) h += '<p class="rec-empty">No evidence or ratings yet.</p>';
     h += '</section>';
   });
