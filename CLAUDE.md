@@ -108,6 +108,16 @@ never silent: accepted items are listed too. One page, plain text:
 Same rules as the plan: no log text, no names, no Drive IDs. If no log
 arrived this week, say so in THE LOOP line.
 
+- **A pushback stays open until the RTP answers it** in a closeout's
+  `Code review:`. Building a smaller change does not close it. List every
+  item `KOS_CODE_REPLY` shows under PUSHBACK with Claude Code's sentence,
+  and "the RTP has not answered yet" until a log carries its answer.
+- **What is live** comes from the newest handoff's "What is live"
+  section (the operator reports pushes there), not from older plan text.
+- **Items on hold are not questions.** A decision the plan marks paused or
+  with no date (packaging, D10, D11, L1's gate) goes on one "On hold:"
+  line under NEEDS YOU, not as a question for the week.
+
 **The Sunday run has no one watching, so its limits are fixed** (and
 written into the scheduled task's prompt, which the operator reads before
 saving it): the repo is read-only (no commits, branches, PRs or pushes);
