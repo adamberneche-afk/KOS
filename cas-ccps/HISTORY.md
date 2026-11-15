@@ -5968,3 +5968,22 @@ StudentFileID + ConfigID + StagingRowRef. Each side goes through
 (before the Studio fixes) is counted as malformed where it shows, and
 `cleanFrom` sets apart the originals built after a fix. Counts and unit
 names only; it writes nothing. Tests: `tests/cas-ccps/regrade-consistency.test.js`.
+
+## Feedback the cleanup took away, and copied originals, 2026-11-15
+
+Comparing FlowInput before and after the re-grade showed two problems with
+what was done that afternoon. First, 11 rows had never been answered, so
+the re-grade was their first feedback and the cleanup deleted it. Three of
+them had a newer row on the same doc that got feedback on 11-14, but 8 docs
+were left with none. `repostMissingFeedback(doPost, skipRefs)` (37) takes
+each doc's newest row. When that row is HARVESTED and has no "Feedback, "
+comment from this account since it was built, it lists the row, and with
+`doPost` true posts the row's result as the harvest would. Superseded rows,
+skipped refs, malformed results, unharvested rows, fixtures and assignments
+that keep feedback in the doc are never posted. A posted row has its
+comment, so a second run posts nothing. Second, about 8 original gradings
+were a newer submission's answer (the duplicate-write bug), so their pairs
+compared different drafts. `regradeConsistency_` (69) now counts an original
+that holds the same text as a newer row of the same doc apart, not compared.
+Tests: `tests/cas-ccps/feedback-repost.test.js`,
+`tests/cas-ccps/regrade-consistency.test.js`.

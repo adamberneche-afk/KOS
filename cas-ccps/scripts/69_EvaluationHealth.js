@@ -273,7 +273,9 @@ function _ehRound_(x, places) {
 // after it are also counted on their own, so originals graded before a
 // Studio fix (which could answer for another lesson) can be set apart.
 // Rows pair on StudentFileID + ConfigID + StagingRowRef; fixture rows are
-// skipped. Each side is read by _fiCheckResultShape_ (37), so a grading that
+// skipped. An original that is a newer submission's answer (the same text in
+// more than one row of a doc: the duplicate-write bug) is counted apart, not
+// compared. Each side is read by _fiCheckResultShape_ (37), so a grading that
 // is malformed is counted as such, not compared. For each well-formed pair:
 // the stamp (same, APPROVED → REVISION_REQUIRED, or the reverse), and each
 // milestone both graded: the 3×3 table of original against re-grade, how
@@ -316,6 +318,11 @@ function regradeConsistency_(beforeRows, nowRows, cleanFromMs) {
     if (_fxIsFlow2FixtureRow_(r) || !String(r[FI.STUDENT_FILE_ID]).trim()) return;
     before[key(r)] = r;
   });
+  // An original that is another submission's answer (the duplicate-write
+  // bug, 37's _fiDuplicateWrites_): the same text in more than one row of a
+  // doc. The newest row holding it keeps it; the older rows' pairs would
+  // compare two different drafts, so they are counted apart, not compared.
+  const copied = _rcCopiedOriginals_(beforeRows, key);
   const out = { all: _rcEmpty_(), clean: isNaN(cleanFromMs) ? null : _rcEmpty_(), byUnit: {} };
   nowRows.forEach(function (now) {
     if (_fxIsFlow2FixtureRow_(now) || !String(now[FI.STUDENT_FILE_ID]).trim()) return;
@@ -326,6 +333,7 @@ function regradeConsistency_(beforeRows, nowRows, cleanFromMs) {
     if (out.clean && was && sheetTimestampMs_(was[FI.TIMESTAMP]) >= cleanFromMs) buckets.push(out.clean);
     const add = function (fn) { buckets.forEach(fn); };
     if (!was || !a || !b) { add(function (s) { s.unpaired++; }); return; }
+    if (copied[key(now)]) { add(function (s) { s.copiedOriginal++; }); return; }
     if (a === b) { add(function (s) { s.unchanged++; }); return; }
     const sa = _fiCheckResultShape_(a, was), sb = _fiCheckResultShape_(b, now);
     if (!sa.ok || !sb.ok) {
@@ -360,10 +368,34 @@ function regradeConsistency_(beforeRows, nowRows, cleanFromMs) {
   return out;
 }
 
+// { key: true } for each original row holding the same text as a newer row
+// of the same doc (by Timestamp, then row order).
+function _rcCopiedOriginals_(beforeRows, key) {
+  const byDocText = {};
+  beforeRows.forEach(function (r, i) {
+    if (_fxIsFlow2FixtureRow_(r)) return;
+    const doc = String(r[FI.STUDENT_FILE_ID] || "").trim();
+    const text = String(r[FI.GEMINI_FULL_OUTPUT] || "").trim();
+    if (!doc || !text) return;
+    const k = doc + "\u0000" + text;
+    (byDocText[k] = byDocText[k] || []).push({ r: r, i: i, at: sheetTimestampMs_(r[FI.TIMESTAMP]) });
+  });
+  const out = {};
+  Object.keys(byDocText).forEach(function (k) {
+    const held = byDocText[k];
+    if (held.length < 2) return;
+    held.sort(function (a, b) {
+      return ((isNaN(a.at) ? 0 : a.at) - (isNaN(b.at) ? 0 : b.at)) || a.i - b.i;
+    });
+    held.slice(0, -1).forEach(function (h) { out[key(h.r)] = true; });
+  });
+  return out;
+}
+
 function _rcEmpty_() {
   const matrix = {};
   RC_LEVELS.forEach(function (x) { matrix[x] = {}; RC_LEVELS.forEach(function (y) { matrix[x][y] = 0; }); });
-  return { pairs: 0, unpaired: 0, unchanged: 0, malformedBefore: {}, malformedNow: {},
+  return { pairs: 0, unpaired: 0, unchanged: 0, copiedOriginal: 0, malformedBefore: {}, malformedNow: {},
     stampSame: 0, passToRevise: 0, reviseToPass: 0, allMilestonesSame: 0,
     milestones: 0, agree: 0, offByOne: 0, offByTwo: 0, matrix: matrix };
 }
@@ -375,7 +407,8 @@ function _rcLog_(title, s) {
     return k.length ? k.map(function (r) { return r + " " + o[r]; }).join(", ") : "none";
   };
   Logger.log("[Regrade] " + title);
-  Logger.log("  Pairs compared: " + s.pairs + " (not paired " + s.unpaired + ", same text both times " + s.unchanged + ")");
+  Logger.log("  Pairs compared: " + s.pairs + " (not paired " + s.unpaired + ", same text both times " + s.unchanged +
+             ", original was another submission's answer " + s.copiedOriginal + ")");
   Logger.log("  Malformed, original: " + list(s.malformedBefore) + "; re-grade: " + list(s.malformedNow));
   Logger.log("  Stamp: same " + s.stampSame + " (" + pct(s.stampSame, s.pairs) + "), APPROVED → REVISION_REQUIRED " +
              s.passToRevise + ", REVISION_REQUIRED → APPROVED " + s.reviseToPass);
