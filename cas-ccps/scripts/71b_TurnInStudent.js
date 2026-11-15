@@ -210,7 +210,8 @@ function turnInCardHtml(a) {
     h += '<p class="ti-p">Paste this code into the assignment in Canvas. You can copy it again any time.</p>' +
       '<div class="ti-row"><label class="wu-sr" for="' + id + '-code">Your turn-in code</label>' +
       '<input id="' + id + '-code" class="ti-code" type="text" readonly value="' + esc(t.code) + '" onfocus="this.select()">' +
-      '<button type="button" class="act act-secondary ti-copy" data-ti="' + id + '" data-code="' + esc(t.code) + '" onclick="turnInCopy(this)">Copy</button></div>';
+      '<button type="button" class="act act-secondary ti-copy" data-ti="' + id + '" data-code="' + esc(t.code) + '" onclick="turnInCopy(this)">Copy</button>' +
+      (typeof CANVAS_URL === "string" && CANVAS_URL ? '<a class="act act-secondary ti-canvas" href="' + esc(CANVAS_URL) + '" target="_blank" rel="noopener">Open Canvas \\u2197<span class="wu-sr"> (opens in a new tab)</span></a>' : '') + '</div>';
   } else if (t.state === "PENDING_CHECK") {
     h += '<p class="ti-p">Checking your answer\\u2026 This takes a few minutes. This page checks for you and shows your code here when it\\u2019s ready.</p>';
   } else if (t.state === "TERM_CLOSED") {
