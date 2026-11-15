@@ -5736,3 +5736,25 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   Canvas instructions instead; changing the comment is a code change of its
   own.
 - **Tests:** `student-guide-turn-in.test.js`.
+
+## The lesson's name, not the course's, 2026-11-15
+
+- **Asked:** note on `LEDGER.COURSE_NAME` that roster-import rows hold the
+  Canvas course name there, and check what else prints that column as the
+  lesson's name to a student or family.
+- **Found:** the parent report (36) already names an item by its lesson
+  (StudentAssignments, then the lesson data's title) and falls back to the
+  column; now pinned by a test. Three student-facing places still read the
+  column as the lesson: a locked part's line on the Student Dashboard (blank
+  title), the Competencies tab's evidence (every piece read as the course),
+  and the snapshot doc `refreshFormSnapshots()` makes for a form, deck or
+  sheet copy (named after the course).
+- **Now:** all three take the lesson's name from the TeacherMatrix through
+  StudentAssignments (13's `_dashUnitNames_`, 02's `fetchAssignment_`), with
+  the column as the fallback. The column itself is unchanged: 60 and 29
+  read it as the course. A comment on `LEDGER.COURSE_NAME` says all this.
+- **Left:** two teacher-facing reads (03's timeout and failure emails name
+  the "lesson" from the column) and the doc menu's status line (01, through
+  13's `handleStudentDocRequest_`; the menu doesn't run for student accounts).
+- **Tests:** `lesson-parts-dashboards.test.js`, `student-dashboard-record.test.js`,
+  `student-data-access-intake.test.js`, `weekly-parent-report.test.js`.
