@@ -74,6 +74,11 @@ const CONFIG = {
 
 // ── Entry points ──────────────────────────────────────────────────────────────
 //
+// NOTE (2026-11-15): the `?api=horizon` GET route and its handler,
+// emailBridgeGetHorizonItems_(), are gone: it ran before doGet()'s owner
+// check, and nothing called it. _horizonItemsResult_() stays for
+// lhGetHorizonItems() (Code.gs, owner-gated).
+//
 // NOTE (server-migration Phase 1): this file used to own doGet() itself,
 // returning horizon-items JSON unconditionally. Now that Code.gs's doGet()
 // serves the hub UI (GAS allows exactly one doGet per project — a second
@@ -96,10 +101,6 @@ function _horizonItemsResult_() {
   } catch (err) {
     return { ok: false, error: err.message };
   }
-}
-
-function emailBridgeGetHorizonItems_(e) {
-  return jsonResponse_(_horizonItemsResult_());
 }
 
 function _lhDispatchAction_(action, body) {
@@ -156,6 +157,9 @@ function _lhDispatchAction_(action, body) {
 // guess a common one. Closing that fully needs a real per-org share token —
 // a larger design change, deliberately not folded into this pass; this is
 // the "at the very least" floor, not the ceiling.
+// 2026-11-15: the ceiling is the co-advisor allowlist above doPost()
+// (ORG_SYNC_CO_ADVISORS): the owner plus named co-advisors, warn-only until
+// the owner sets it.
 const LH_OWNER_ONLY_ACTIONS = [
   'subPlan', 'bragEmail', 'markConsumed', 'aiDraft', 'checkAiJob',
   'flowHealth', 'listOrgSyncs',
@@ -196,6 +200,61 @@ function _isSameDomainAsOwner_(cfg) {
   return !!ownerDomain && !!callerDomain && ownerDomain === callerDomain;
 }
 
+// ── Who may push and pull an organization (2026-11-15) ──────────────────────
+// The domain lock above lets ANY account in the owner's domain push or pull
+// any org whose id it can guess ("deca", "fbla"), and student accounts share
+// that domain: a student could read a roster (members' and parents' contact
+// details) or overwrite it. The legitimate callers are exactly two:
+//   - the owner, from their own page (lhOrgSyncCall(), owner-gated in
+//     Code.gs, which runs the action here without coming through doPost);
+//   - a co-advisor, from their OWN LeaderHub deployment: its server relays
+//     the call here with the co-advisor's token (lhOrgSyncCall_() below),
+//     so doPost sees the co-advisor's account.
+// No student-facing page calls these. So the fix is an allowlist: the owner
+// plus the co-advisors named in the Script Property ORG_SYNC_CO_ADVISORS
+// (emails, comma- or space-separated; "none" for the owner alone).
+//
+// Setting that property is the one step that turns enforcement on. Until it
+// is set, an account in the domain that isn't the owner is still let
+// through, as before, but counted: Logger gets one line (never the
+// account), and ORG_SYNC_UNLISTED_CALLS holds {count, last} so the owner can
+// see whether anyone unlisted calls before switching it on. Turning it on
+// without a step would lock out a co-advisor already syncing.
+const ORG_SYNC_CO_ADVISORS_PROP = 'ORG_SYNC_CO_ADVISORS';
+const ORG_SYNC_UNLISTED_PROP = 'ORG_SYNC_UNLISTED_CALLS';
+
+// The configured co-advisors, lowercased, or null when the property is unset
+// (warn-only). "none" (or a value with no email in it) is an empty list:
+// the owner alone.
+function _orgSyncCoAdvisors_() {
+  const raw = PropertiesService.getScriptProperties().getProperty(ORG_SYNC_CO_ADVISORS_PROP);
+  if (raw === null || raw === undefined || String(raw).trim() === '') return null;
+  return String(raw).split(/[\s,;]+/).map(function (s) { return s.trim().toLowerCase(); })
+    .filter(function (s) { return s.indexOf('@') > 0; });
+}
+
+// { allowed, enforced } for the account calling doPost now. The owner is
+// always allowed. Enforced only once ORG_SYNC_CO_ADVISORS is set.
+function _orgSyncCallerAllowed_(cfg) {
+  const who = String(Session.getActiveUser().getEmail() || '').trim().toLowerCase();
+  const owner = String((cfg && cfg.ownerEmail) || '').trim().toLowerCase();
+  const list = _orgSyncCoAdvisors_();
+  if (who && owner && who === owner) return { allowed: true, enforced: list !== null };
+  if (list === null) return { allowed: false, enforced: false };
+  return { allowed: !!who && list.indexOf(who) !== -1, enforced: true };
+}
+
+// Warn-only: counts an unlisted caller. Never records who.
+function _orgSyncNoteUnlisted_(action) {
+  const props = PropertiesService.getScriptProperties();
+  let seen = { count: 0, last: '' };
+  try { seen = JSON.parse(props.getProperty(ORG_SYNC_UNLISTED_PROP) || '{}'); } catch (e) { seen = {}; }
+  const next = { count: (Number(seen.count) || 0) + 1, last: new Date().toISOString() };
+  props.setProperty(ORG_SYNC_UNLISTED_PROP, JSON.stringify(next));
+  Logger.log('[OrgSync] ' + action + ' by an account that is not the owner and ORG_SYNC_CO_ADVISORS is not set: ' +
+    'allowed (warn-only). Set ORG_SYNC_CO_ADVISORS to the co-advisors\' emails, or "none", to enforce. Unlisted calls so far: ' + next.count + '.');
+}
+
 function doPost(e) {
   try {
     const body   = JSON.parse(e.postData.contents || '{}');
@@ -207,6 +266,13 @@ function doPost(e) {
     }
     if (_isDomainLockedAction_(action) && !_isSameDomainAsOwner_(cfg)) {
       return jsonResponse_({ ok: false, error: 'Not authorized.' });
+    }
+    if (_isDomainLockedAction_(action)) {
+      const gate = _orgSyncCallerAllowed_(cfg);
+      if (!gate.allowed && gate.enforced) {
+        return jsonResponse_({ ok: false, error: 'Not authorized: ask the advisor who shared this organization to add you as a co-advisor.' });
+      }
+      if (!gate.allowed) _orgSyncNoteUnlisted_(action);
     }
 
     return jsonResponse_(_lhDispatchAction_(action, body));

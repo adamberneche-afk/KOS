@@ -1376,3 +1376,31 @@ now reads "10 KB". Test: a multi-byte setting in `config-sync.test.js`.
   was. The app's own lesson-plan table (`LESSON_PLANS` docIds, src/09) and
   the blackout-dates link (src/06) are code and stay, for the operator's
   release decision. doc-currency Check 6 now fails on a Drive ID in a doc.
+
+## Two security items: the horizon GET route and Organization Sync, 2026-11-15
+
+- **`?api=horizon`.** `doGet()` answered it before the owner check, so any
+  account in the domain got JSON (from `scanHorizonLabel_()`, a stub
+  returning `[]`). Nothing called it: the page uses `lhGetHorizonItems()`,
+  owner-gated. The route and `emailBridgeGetHorizonItems_()` are removed;
+  the request now meets the owner check.
+- **Organization Sync.** Push and pull checked only the caller's domain, the
+  org id is a guessable slug, and students share the domain: a student
+  could read a roster (members' and parents' contact details) or overwrite
+  it. Callers traced: the owner's own page (local, never through
+  `doPost()`) and co-advisors relaying from their own deployments
+  (`lhOrgSyncCall_`); no student-facing page. Fix: an allowlist, the owner
+  plus `ORG_SYNC_CO_ADVISORS`. It is warn-and-count until the operator sets
+  that property, because enforcing at once would lock out a co-advisor
+  already syncing. A per-org secret was the alternative; it would have
+  needed every co-advisor to re-join with a new share code.
+- **Escaping.** Traced every place org-sync or mail-derived values reach
+  the page. Most were already escaped or written as text. Four were not, and
+  now are: a horizon item's id (attribute and three handlers) and its
+  aria-label, a deadline's role in `onclick` (a mail item sets the role),
+  a deadline's id in an `id`, and an org id in the org tabs and the
+  Add-result button.
+- **Tests:** `org-sync-relay.test.js` (warn-only and enforced, the owner
+  always allowed, a student refused with nothing read or written, `none`),
+  `horizon-route-and-sync-escaping.test.js`; `plain-words.test.js`'s
+  pattern follows the escaped call.

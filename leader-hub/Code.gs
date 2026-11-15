@@ -45,16 +45,12 @@
  * including the person who deployed it — by design, same as
  * TEACHER_EMAIL's fail-closed behavior in cas-ccps/00_SharedConfig.js.
  *
- * doGet() also carries one exception to "serve HTML, always": a
- * `?api=horizon` request routes to EmailBridge.gs's
- * emailBridgeGetHorizonItems_() instead. It was the fetch() endpoint for
- * the standalone file, which had no google.script.run; that file is
- * retired (2026-10-22) and nothing in the app calls this branch now:
- * EMAIL_BRIDGE.poll() (leader-hub/src/12-...-brag.html) calls
- * lhGetHorizonItems_() below through google.script.run. The branch stays
- * for any external GET caller. Only GAS allows one doGet() per project,
- * which is why merging EmailBridge.gs's project into this one needed this
- * explicit routing.
+ * doGet() used to answer `?api=horizon` before the owner check, for the
+ * retired standalone file's fetch(). Nothing called it (EMAIL_BRIDGE.poll()
+ * reaches lhGetHorizonItems() through google.script.run, owner-gated), and
+ * it was the one GET any account in the domain could reach without the
+ * check, so it was removed on 2026-11-15. A `?api=horizon` request now gets
+ * the same owner check as every other GET.
  *
  * NOTE for implementation follow-up: once this is actually deployed and
  * opened, check the browser console for CSP violations — the assembled
@@ -78,9 +74,6 @@ function _isAuthorizedOwner_(cfg) {
 }
 
 function doGet(e) {
-  if (e && e.parameter && e.parameter.api === 'horizon') {
-    return emailBridgeGetHorizonItems_(e);
-  }
   // ?diag=1 / ?diag=probe[&parts=N] — Diagnostics.gs. Owner-gated there.
   if (e && e.parameter && e.parameter.diag) {
     return lhDiagnosticResponse_(e);
