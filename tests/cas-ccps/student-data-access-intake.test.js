@@ -373,3 +373,35 @@ test('intakeStudent_: a Sheets part is a copy of its template sheet, the teacher
   assert.match(text, /Not submitted yet\. Build your sheet/);
   assert.equal(sandbox.DriveApp.getFileById(snap.snapshotDocId)._access('1234567@ccpsnet.net'), 'commenter');
 });
+
+// 2026-11-15: a snapshot doc made by refreshFormSnapshots() is named by the
+// lesson, as at intake, not by the Ledger's CourseName column (the roster
+// import writes the Canvas course name there). A row StudentAssignments
+// doesn't have keeps the column.
+test('refreshFormSnapshots: a new snapshot doc takes the lesson name, not the Ledger\'s course name', () => {
+  const COURSE = 'Sports Entertainment and Event Management';
+  for (const recorded of [true, false]) {
+    const { exported, sandbox, ledger, copies } = formSetup();
+    exported.intakeStudent_(exported.getConfig_(), formStudent(false));
+    copies[0]._parent = copies[0].folder;
+    const L = ledger.getSheetByName('Ledger');
+    const r = L.getDataRange().getValues()[1].slice();
+    r[2] = 'VDOE-ROLL'; r[3] = copies[0].getId() + '-r'; r[16] = 'https://docs.google.com/forms/d/' + r[3] + '/edit';
+    r[10] = COURSE; // LEDGER.COURSE_NAME
+    const { FakeDriveFile } = require('../harness/gas-sandbox');
+    const copy = new FakeDriveFile(r[3], 'copy r', 'application/vnd.google-apps.form');
+    copy._parent = copies[0].folder;
+    sandbox.DriveApp._registerFile(copy);
+    L.appendRow(r);
+    if (recorded) {
+      const sa = ledger.getSheetByName('StudentAssignments') || ledger.insertSheet('StudentAssignments');
+      if (sa.getLastRow() < 1) sa.appendRow(['StudentConfigID', 'GoogleID', 'AssignmentConfigID', 'RecordedAt']);
+      sa.appendRow(['VDOE-ROLL', '1234567@ccpsnet.net', FORM_PART, new Date()]);
+    }
+    exported.refreshFormSnapshots();
+    const made = exported.formSnapshotFor_(ledger, r[3]);
+    const name = sandbox.DriveApp.getFileById(made.snapshotDocId).getName();
+    if (recorded) assert.match(name, /^Venue Market Research & Survey Design — Part 2: Build the Survey — /, 'the lesson name');
+    else assert.ok(name.startsWith(COURSE + ' — '), 'not recorded: the column, as before');
+  }
+});

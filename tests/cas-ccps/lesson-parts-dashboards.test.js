@@ -323,6 +323,10 @@ test('Student Dashboard: cards take the assignment name from the TeacherMatrix, 
     assert.match(a.unitName, /^Venue Market Research & Survey Design — Part \d: /);
   });
   assert.deepEqual(parts.map(a => a.part.title).sort(), ['Build the Survey', 'The Target Market']);
+  // A locked part's line takes its title from the TeacherMatrix too: the
+  // course name has no part title, so it read blank (2026-11-15).
+  assert.deepEqual(data.lockedParts.map(l => [l.n, l.title]),
+    [[3, 'Why These Questions Work'], [4, 'Spot the Bias'], [5, 'Beyond the Survey']]);
 
   // No TeacherMatrix row for an assignment: the Ledger's name, as before.
   const bare = studentLoad('Amy@ccpsnet.net');

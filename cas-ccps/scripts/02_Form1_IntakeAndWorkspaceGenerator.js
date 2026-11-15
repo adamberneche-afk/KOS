@@ -419,6 +419,19 @@ function refreshFormSnapshots() {
   const byStudent = readStudentAssignments_(ss).byStudent;
   const data = ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER_COL_COUNT).getValues();
   const out = { made: 0, updated: 0, failed: 0 };
+  // The doc's name is the lesson's, as at intake (the TeacherMatrix's
+  // UnitName for the workspace's assignment, through StudentAssignments). The
+  // Ledger's CourseName column is only the fallback: the roster import writes
+  // the Canvas course name there (00's LEDGER.COURSE_NAME note, 2026-11-15).
+  const nameOf = {};
+  const lessonNameFor = function (sid, column) {
+    const aid = byStudent[sid];
+    if (aid && !(aid in nameOf)) {
+      const a = fetchAssignment_(cfg, aid);
+      nameOf[aid] = a && a.unitName ? a.unitName : "";
+    }
+    return (aid && nameOf[aid]) || String(column || "").trim();
+  };
   data.forEach(function (r) {
     const type = workFileTypeOfUrl_(r[LEDGER.ADMIN_FILE_URL]);
     if (!workFileHasSnapshot_(type)) return;
@@ -432,7 +445,7 @@ function refreshFormSnapshots() {
       const s = { studentName: String(r[LEDGER.STUDENT_NAME]).trim(), className: String(r[LEDGER.CLASS_NAME]).trim(),
         teacherName: String(r[LEDGER.TEACHER_NAME]).trim(), block: String(r[LEDGER.BLOCK]).trim(),
         period: String(r[LEDGER.PERIOD]).trim() };
-      const unitName = String(r[LEDGER.COURSE_NAME]).trim();
+      const unitName = lessonNameFor(sid, r[LEDGER.COURSE_NAME]);
       const doc = _makeFormSnapshotDoc_(cfg, s, sid, unitName, folder,
         status === "SCHEDULED" ? "" : String(r[LEDGER.GOOGLE_ID]).trim(), String(r[LEDGER.TEACHER_EMAIL]).trim(), type);
       recordFormSnapshot_(ss, sid, formId, doc.getId(), byStudent[sid] || "");

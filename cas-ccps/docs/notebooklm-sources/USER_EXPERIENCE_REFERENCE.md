@@ -2,7 +2,7 @@
 
 **Note, 2026-10-23: the Admin, Teacher and Student Experience sections, Document Anatomy and Folder Structure below describe the original Module 1 design.** The Full Pipeline at the end is current. What students and teachers do now:
 
-- **Students** open their document from the Student Dashboard (📚 My Assignments), write under the grey line, press *Submit for Feedback* on the dashboard (the district turns Apps Script off for student accounts, so the doc’s 📊 Feedback menu never appears for them), read the feedback as a comment on the document, answer warm-ups in the dashboard’s text box, and turn in on Canvas with the document’s link. There is no Turn-In Form (retired 2026-10-10) and no one-time authorization. See `STUDENT_QUICK_START.html`.
+- **Students** open their document from the Student Dashboard (📚 My Assignments), write under the grey line, press *Submit for Feedback* on the dashboard (the district turns Apps Script off for student accounts, so the doc’s 📊 Feedback menu never appears for them), read the feedback as a comment on the document, answer warm-ups in the dashboard’s text box, and turn in on Canvas. Since 2026-11-09 the Canvas assignment takes a turn-in code for every lesson in both courses: once feedback is ready, the card asks one question built from that feedback, the answer is checked, and the card shows a code to copy and paste into the Canvas assignment’s text entry (the Canvas instructions say whether to paste a code or the document’s link). There is no Turn-In Form (retired 2026-10-10) and no one-time authorization. See `STUDENT_QUICK_START.html`.
 - **Teachers** work from the Teacher Dashboard: course, period and student filters and one student’s page (their parent report, Student Context by week and competencies done), lesson start dates and lesson drafts in 📅 Lessons, each feature on or off per course in ⚙ Settings, competency ratings in 🎓 Competency ratings, the ❓ Terms list. They do not upload rubrics or register students one at a time: the nightly lesson rollout (`58_LessonRollout.js`, about 9 p.m.) enrolls students from the Canvas roster and makes and shares each lesson’s documents. Grading is in Canvas. See `TEACHER_REFERENCE_GUIDE.html`.
 - **The student document** now has its who-and-what, the “Your dashboard” link and a “Feedback:” status line in the page header; then the title, the assignment in small text, a page break, a “Your response” heading at the top of the next page, the grey response line, the writing space and the CONFIG_ID line (`stampDocument_` in `02_Form1_IntakeAndWorkspaceGenerator.js`). With feedback as comments it has no feedback zone.
 - **Admins** deploy with `tools/clasp-sync/run.js` and follow `cas-ccps/DEPLOYMENT_HANDOFF.md`; `ADMIN_DEPLOYMENT_WALKTHROUGH.html` is retired. The morning check is the CAS signal’s LAST NIGHT section and the daily email (`34c_OvernightHealth.js`).
@@ -275,16 +275,42 @@ Answers in the dashboard’s text box
 
 Scores it overnight, through Flow4Input (Script 41)
 
-Turning In
+Turning In (the turn-in code, live 2026-11-09)
+
+💬
+
+**Student**
+
+Answers the one question built from their feedback, on the dashboard card (a Revise card too)
+
+🧹
+
+**Script 71**
+
+Screens it at once: too short, or mostly the feedback pasted back, comes straight back
+
+⚡
+
+**Flow 6**
+
+Does the answer address the feedback? ADDRESSES or NOT_YET, one line of reason (Script 72)
+
+🎟
+
+**Script 71**
+
+Issues the student’s one code for the assignment, the same on every resubmission
 
 📬
 
 **Student**
 
-Submits the document’s link in Canvas
+Copies the code and pastes it into the Canvas assignment’s text entry
 
 ✅
 
 **Teacher**
 
-Grades in Canvas (no CAS step; the Turn-In Form is retired)
+Checks the codes from a Canvas submissions download in 🎟 Turn-in codes (Script 74) and grades in Canvas; can grant a code by hand, with a reason
+
+The code shows the student used the feedback, never that the work is good: it earns completion credit only. Revising after the code is in is for learning and the final grade. Where a Canvas assignment still asks for a link, the student pastes the document’s link as before.
