@@ -123,7 +123,7 @@ test('the tab: rating as number and words, latest evidence lighter, words, where
   assert.match(h, /<a href="#card-W-L03" onclick="return jumpToCard\('card-W-L03'\)"><span class="lesson-chip">L03<\/span>[^<]*<\/a> · Revise/);
   assert.match(h, /<li><span class="lesson-chip">L01<\/span>[^<]*· an earlier marking period<\/li>/);
   assert.doesNotMatch(h, /jumpToCard\('card-W-L01'\)/);
-  assert.match(h, /Shown this marking period 0 · this year 1/, 'L01 was shown in MP1');
+  assert.match(h, /Shown <span class="nw">this marking period 0<\/span> · <span class="nw">this year 1<\/span>/, 'L01 was shown in MP1; each count kept on one line');
   assert.match(h, /<h3>Recently shown<\/h3><ul><li>/);
   assert.match(h, /<h3>Next to practice<\/h3><ul><li><a href="#card-W-L03"/, 'from the lessons still to finish, in assigned order');
   const next = h.slice(h.indexOf('<h3>Next to practice</h3>'), h.indexOf('</ul>', h.indexOf('<h3>Next to practice</h3>')));

@@ -293,7 +293,12 @@ test('milestone marks: up to three, primary first, in the student\'s words; the 
   const h = ctx.marksHtml(by['W-L07']);
   assert.match(h, /<ul class="marks" aria-label="What this lesson checks"><li><span class="mark mark-MET">Shown<\/span>I can /);
   assert.doesNotMatch(h, /\d+ of \d+|%|score|total|target/i, 'no totals, scores or targets');
-  assert.match(ctx.marksHtml(Object.assign({}, by['W-L05'], { statusPill: 'Being checked' })), />Being checked</);
+  // While the check runs (2026-11-15): one caption, no tag on each line.
+  const checking = ctx.marksHtml(Object.assign({}, by['W-L05'], { statusPill: 'Being checked' }));
+  assert.match(checking, /^<div class="marks-cap">Checking these now<\/div>/);
+  assert.doesNotMatch(checking, /class="mark |Being checked|Not checked yet/);
+  // A lesson in parts: the caption says the marks cover every part so far.
+  assert.match(ctx.marksHtml(by['W-L05'], true), /<div class="marks-cap">What this lesson checks, across its parts so far<\/div>/);
 });
 
 function partsSetUp() {
@@ -323,6 +328,8 @@ test('one card per lesson: the part to work on now, a stepper, one next action, 
   const lesson = h.slice(h.indexOf('lesson-card'), h.indexOf('class="parts-list"'));
   assert.match(lesson, /<div class="part-sub">Part 2 of 4: Step 2<\/div>/, 'Part 2 needs revising: it is the one to work on');
   assert.match(lesson, /aria-label="1 of 4 parts done">●◉○○<\/span>1 of 4 parts done/);
+  // The label names the part it describes (2026-11-15): the marks cover every part so far.
+  assert.match(lesson, /<div class="pill pill-[A-Z_]+">Part 2: [^<]+<\/div>/);
   assert.equal((lesson.match(/act-primary/g) || []).length, 1, 'one next action');
   assert.match(lesson, /🔒 Part 4 opens when the check finds Part 3 meets its main goal, or when your teacher opens it\./);
   assert.match(h, /<div class="parts-list" id="parts-CAS-8177-THE-HYPE-MACHINE" role="region"[^>]*hidden>/);

@@ -2674,6 +2674,7 @@ function buildStudentDashboardHtml_(opts) {
 .rec-empty{font-size:13px;color:var(--text-secondary)}
 .rec-latest{font-size:12px;color:var(--text-secondary);white-space:nowrap}
 .rec-progress{font-size:12px;font-weight:400;color:var(--text-secondary);margin-left:8px}
+.rec-progress .nw{white-space:nowrap}
 .rec-ican,.rec-where{list-style:none;margin:4px 0 0;padding:0}
 .rec-ican li,.rec-where li{margin:3px 0}
 .rec-lists{display:flex;flex-wrap:wrap;gap:8px 28px;background:#fff;border:1px solid #e8eaed;border-radius:8px;padding:8px 14px;margin:0 0 10px;font-size:13.5px}
@@ -2774,6 +2775,7 @@ function buildStudentDashboardHtml_(opts) {
   .stepper .dots{letter-spacing:3px;color:#137333;margin-right:6px}
   .marks{list-style:none;margin:0 0 10px;padding:0;font-size:13.5px;line-height:1.45}
   .marks li{margin:3px 0}
+  .marks-cap{font-size:12px;color:var(--text-secondary);margin:2px 0 2px}
   .mark{display:inline-block;font-size:12px;font-weight:600;border-radius:10px;padding:1px 8px;margin-right:6px;white-space:nowrap}
   .mark-MET{background:#e6f4ea;color:#137333}
   .mark-PARTIALLY_MET{background:#fef3e2;color:#9c5000}
@@ -3745,10 +3747,10 @@ function cardHtml(a, opts) {
   return \`<div class="card \${a.statusClass}\${opts.lesson ? " lesson-card" : ""}" id="\${esc(cardId(a))}" tabindex="-1">
     <div class="card-top">
       <div><div class="unit-name">\${chipHtml(a)}\${esc(cardName(a))}</div>\${opts.lesson ? opts.lesson.stepper : ""}\${a.part ? \`<div class="part-sub">\${esc(partLabel(a))}</div>\` : ""}</div>
-      <div class="pill pill-\${a.statusClass}">\${esc(a.statusPill || a.displayStatus)}</div>
+      <div class="pill pill-\${a.statusClass}">\${esc((opts.lesson && a.part ? "Part " + a.part.n + ": " : "") + (a.statusPill || a.displayStatus))}</div>
     </div>
     \${a.taskLine ? \`<div class="task-line">\${esc(a.taskLine)}</div>\` : ""}
-    \${opts.inList ? "" : marksHtml(a)}
+    \${opts.inList ? "" : marksHtml(a, !!opts.lesson)}
     \${a.statusNote ? \`<div class="status-note">\${esc(a.statusNote)}</div>\` : ""}
     \${a.openPastTerm ? \`<div class="past-term-note">Your teacher kept this open after its marking period ended.</div>\` : ""}
     \${a.statusClass === "NEEDS_ACTION" && a.notYet ? \`<div class="next-step"><b>Not yet:</b> \${esc(a.notYet)}</div>\` : ""}
@@ -3783,15 +3785,21 @@ function cardHtml(a, opts) {
 // student's "I can" words, each with what the checks found so far: Shown,
 // Partly shown, Not shown yet, or Not checked yet. Evidence, not a rating:
 // no totals, scores or targets (D17).
-function marksHtml(a) {
+function marksHtml(a, acrossParts) {
   const list = a.milestones || [];
   if (!list.length) return "";
-  // While the first check runs, "Not checked yet" beside "Being checked"
-  // would read as a contradiction (evalLine's rule): it says Being checked.
+  // While a check runs, a milestone it hasn't found yet shows no tag (2026-11-15):
+  // "Being checked" on each line repeated the card's label, and "Not checked
+  // yet" beside it read as a contradiction. A caption says it instead.
   const checking = a.statusPill === "Being checked";
-  return '<ul class="marks" aria-label="What this lesson checks">' + list.map(m =>
-    '<li><span class="mark mark-' + esc(m.markKey) + '">' + esc(m.markKey === "UNCHECKED" && checking ? "Being checked" : m.mark) +
-    '</span>' + esc(m.text) + '</li>').join("") + '</ul>';
+  // A lesson in parts (2026-11-15): the marks are the lesson's best results
+  // across every part so far, so a card on a part not started yet can show
+  // Shown from earlier parts. The caption says so.
+  const cap = checking ? "Checking these now" : acrossParts ? "What this lesson checks, across its parts so far" : "";
+  return (cap ? '<div class="marks-cap">' + esc(cap) + '</div>' : '') +
+    '<ul class="marks" aria-label="' + esc(cap || "What this lesson checks") + '">' + list.map(m =>
+    '<li>' + (m.markKey === "UNCHECKED" && checking ? '' : '<span class="mark mark-' + esc(m.markKey) + '">' + esc(m.mark) + '</span>') +
+    esc(m.text) + '</li>').join("") + '</ul>';
 }
 
 // A lesson in parts, one card (F16 item 4): the part to work on now (the
@@ -4068,7 +4076,7 @@ function renderCompetencyTab(d) {
         const yearN = a.items.filter(it => _compShownIn(it, 0)).length;
         h += '<details class="rec-area"' + (_compOnlyEvidence ? ' open' : '') + '><summary>' + esc(a.name) +
           ' <span class="rec-chip">' + esc(String(rated)) + ' of ' + esc(String(a.items.length)) + ' rated</span>' +
-          '<span class="rec-progress">Shown' + (from ? ' this marking period ' + esc(String(termN)) + ' ·' : '') + ' this year ' + esc(String(yearN)) + '</span></summary>';
+          '<span class="rec-progress">Shown' + (from ? ' <span class="nw">this marking period ' + esc(String(termN)) + '</span> ·' : '') + ' <span class="nw">this year ' + esc(String(yearN)) + '</span></span></summary>';
         items.forEach(it => { h += _compItemHtml(it, c); });
         h += '</details>';
       });
