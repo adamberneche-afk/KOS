@@ -33,7 +33,7 @@
 > of earlier pushes; what is live now, and the operator's queue, are in
 > [`meta/HANDOFF_2026-10-29.md`](../meta/HANDOFF_2026-10-29.md).
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-11-01.md`](../meta/HANDOFF_2026-11-01.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-11-15.md`](../meta/HANDOFF_2026-11-15.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >

@@ -2,7 +2,7 @@
 
 **Status:** started 2026-10-17. Nothing here is committed work.
 [`PLAN_2026-11.md`](./PLAN_2026-11.md) is the plan of record and wins
-whenever the two disagree. [`HANDOFF_2026-11-01.md`](./HANDOFF_2026-11-01.md)
+whenever the two disagree. [`HANDOFF_2026-11-15.md`](./HANDOFF_2026-11-15.md)
 holds the operator's current queue. This file holds what comes after them.
 
 **Reviewed 2026-11-01** (the first sprint-boundary review, due 10-30, with
