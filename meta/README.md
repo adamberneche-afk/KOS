@@ -16,7 +16,7 @@ why this repo exists at all.
   thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
   pipeline kept and repaired, and the RTP Gem frozen.
 - **`HANDOFF_2026-11-15.md`** — the repo-wide session handoff: what merged
-  11-09 to 11-15 (#418–#438: Flow 2 resilience after Studio stopped
+  11-09 to 11-15 (#418–#443: Flow 2 resilience after Studio stopped
   answering, the Ledger cycle every minute with each job's run time, the
   Student Dashboard's navigation and Competencies tab, news, stages and Try
   again, the Teacher Dashboard's waiting strip, the Canvas button), what is
