@@ -460,6 +460,88 @@ function _fiStaleInputs_(fiData, waiting, rearm, now) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// The Ledger cycle's checks (64's LC_GATES, 2026-11-15): does the job have
+// work? Each reads only the columns its job decides on, through the
+// cycle's shared reads, and says false only when the job would do nothing.
+// Keep each in step with its job.
+// ---------------------------------------------------------------------------
+
+// buildFlowInputRows has work when: a FlowInput row was left blank by an
+// earlier run; a READY row is due for its re-arm (a minute early); or an
+// IN_PROCESS submission has no live FlowInput row (and isn't the one its
+// last ERROR_ row was built for), or has a READY one it was released after
+// (the re-arm "back in the lane"). Reads STAGING_PIPELINE (six columns,
+// shared) and four narrow FlowInput reads: Timestamp to ConfigID, ReadyStatus
+// and ArmedAt. It doesn't read GeminiFullOutput, so a READY row that has an
+// answer counts as waiting: that can only run the job when it has nothing
+// to do, never skip it when it has.
+function flowInputBuildHasWork_(ctx) {
+  const tabs = ctx.cfg().tabs;
+  const fiTab = tabs.flowInput || FI_TAB_NAME;
+  const staging = ctx.rows("admin", tabs.stagingPipeline, 1, 0);
+  if (staging === null) return true;
+  const ids = ctx.rows("ledger", fiTab, 1, FI.CONFIG_ID + 1);
+  if (ids === null) return true; // the job makes the tab
+  if (!staging.length) return false; // the job stops there
+  const status = ctx.rows("ledger", fiTab, FI.READY_STATUS + 1, 1);
+  const now = Date.now();
+  const existing = {};
+  const lastErrorAt = {};
+  const waiting = {}; // key -> [FlowInput rows (as the re-arm reads them)]
+  let armed = null;
+  const rowOf = function (i) {
+    if (armed === null) armed = ctx.rows("ledger", fiTab, FI.ARMED_AT + 1, 1);
+    const row = [];
+    row[FI.TIMESTAMP] = ids[i][FI.TIMESTAMP];
+    row[FI.STAGING_ROW_REF] = ids[i][FI.STAGING_ROW_REF];
+    row[FI.ARMED_AT] = armed[i] ? armed[i][0] : "";
+    return row;
+  };
+  for (let i = 0; i < ids.length; i++) {
+    const st = String(status[i] ? status[i][0] : "").trim();
+    if (st === "HARVESTED") continue;
+    if (st === "" && ids[i][FI.STUDENT_FILE_ID]) return true; // left blank: set READY
+    const key = ids[i][FI.STUDENT_FILE_ID] + "|" + ids[i][FI.CONFIG_ID];
+    if (st.indexOf("ERROR_") === 0) {
+      const at = new Date(ids[i][FI.TIMESTAMP]).getTime() || 0;
+      lastErrorAt[key] = Math.max(lastErrorAt[key] || 0, at);
+      continue;
+    }
+    existing[key] = true;
+    if (st === "READY") {
+      const row = rowOf(i);
+      if (_fiRearmable_(row)) {
+        const at = _fiArmedAtMs_(row);
+        if (!isNaN(at) && now - at >= FI_REARM_AFTER_MS - 60 * 1000) return true; // due for its re-arm
+        (waiting[key] = waiting[key] || []).push(row);
+      }
+    }
+  }
+  return staging.some(function (r) {
+    if (String(r[STG_STATUS]).trim() !== "IN_PROCESS") return false;
+    const fileId = String(r[STG_STUDENT_FILE_ID]).trim();
+    const configId = String(r[STG_CONFIG_ID]).trim();
+    if (!fileId || !configId) return false;
+    const key = fileId + "|" + configId;
+    if (existing[key]) {
+      return (waiting[key] || []).some(function (row) {
+        return sheetTimestampMs_(r[STG_TIMESTAMP]) > _fiArmedAtMs_(row);
+      });
+    }
+    if (lastErrorAt[key] !== undefined && !(new Date(r[STG_TIMESTAMP]).getTime() > lastErrorAt[key])) return false;
+    return true;
+  });
+}
+
+// harvestFlowInputResults has work when a FlowInput row is EVALUATED. Reads
+// FlowInput's ReadyStatus column. No FlowInput tab: the job returns at once.
+function flowInputHarvestHasWork_(ctx) {
+  const status = ctx.rows("ledger", ctx.cfg().tabs.flowInput || FI_TAB_NAME, FI.READY_STATUS + 1, 1);
+  if (status === null) return false;
+  return status.some(function (r) { return String(r[0]).trim() === "EVALUATED"; });
+}
+
 // Hop 1: Ledger, matched on ConfigID + FileID together — same fix
 // cas-ccps/studio-steps/ReadInstructorConfigStep.gs's own header
 // documents (a ConfigID-only match returns the FIRST student sharing

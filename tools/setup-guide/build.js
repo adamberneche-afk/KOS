@@ -826,7 +826,29 @@ function buildReference(opts) {
       L.push('**The Ledger cycle** (`LC_JOBS`): `installLedgerCycle()` replaces these jobs\' own triggers with one');
       L.push('`runLedgerCycle` trigger every minute, which runs each job at its cadence. `showSetupStatus()` shows which run there.');
       L.push('');
-      L.push(table(['Job', 'Every (min)'], lcEls.objects.map((o) => ['`' + o.fn + '`', o.every])));
+      // The checks before work (2026-11-15): LC_GATES maps a job to the
+      // function beside it that says whether it has work.
+      const gates = {};
+      const gRaw = p.consts.LC_GATES && p.consts.LC_GATES.raw;
+      if (gRaw) {
+        const re = /"([A-Za-z_$][\w$]*)"\s*:\s*"([A-Za-z_$][\w$]*)"/g;
+        let m;
+        while ((m = re.exec(gRaw))) gates[m[1]] = m[2];
+      }
+      const withGates = Object.keys(gates).length > 0;
+      if (withGates) {
+        L.push('A job with a check runs only when its check finds work, and the steps after a job that ran are');
+        L.push('checked again in the same run (`LC_CHAINS`). Every `LEDGER_CYCLE_BACKSTOP` minutes (default 15) the');
+        L.push('cycle runs every due job without checks. In quiet hours (`LEDGER_CYCLE_QUIET`; default 10 p.m. to');
+        L.push('6 a.m. New York time, weekends and days off) the jobs without a check wait for that backstop.');
+        L.push('`LEDGER_CYCLE_GATES` = `off` turns the checks, chains and quiet hours off.');
+        L.push('');
+      }
+      L.push(table(withGates ? ['Job', 'Every (min)', 'Check'] : ['Job', 'Every (min)'], lcEls.objects.map((o) => {
+        const row = ['`' + o.fn + '`', o.every];
+        if (withGates) row.push(gates[o.fn] ? '`' + gates[o.fn] + '()`' : '(none: quiet hours hold it)');
+        return row;
+      })));
       L.push('');
     }
   });

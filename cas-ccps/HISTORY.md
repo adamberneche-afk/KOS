@@ -5822,3 +5822,42 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   now", and no tag on the lines not found yet; each count in an area header
   stays on one line.
 - **Tests:** `student-dashboard-navigation.test.js`, `student-dashboard-competencies.test.js`.
+
+## The Ledger cycle: checks before work, 2026-11-15
+
+- **Found (the operator's `showSetupStatus()` just after the 11-15 push):**
+  an idle cycle (midnight, nothing waiting) took about 14.5 s. Usual times
+  per job: `bridgeQueue` 1.4 s, `runStagingTurnstile` 1.3,
+  `buildFlowInputRows` 1.9, `harvestFlowInputResults` 1.3,
+  `backPropagateCompletions` 2.3 (slowest 20.5), `unlockReadyParts` 2.2,
+  `runTurnInCheckFlow` 2.9; the 5-minute warm-up jobs about 13 in all;
+  `runQueueWatchdog` about 22 every 10 minutes. Since #434 every job on the
+  way to feedback ran every minute, so 1,440 cycles × 14.5 s came to about
+  5.8 h a day against the 6 h daily trigger run time Google gives a
+  Workspace account, which the nightly rollout and every other trigger in
+  the project share. The cost was mostly fixed: each job opened the
+  spreadsheet and read whole tabs (FlowInput with its prompts) with nothing
+  to do.
+- **Now (approved by the operator 11-15):**
+  - each of those seven jobs has a check beside it (`03`, `06`, `37`, `68`,
+    `72`) that reads one or two columns through one open of the
+    spreadsheet per cycle, and the job runs only when the check finds work.
+    A check skips only when sure; one that can't read runs the job. The
+    part unlock remembers a run that unlocked nothing until the Ledger's
+    Status column or the evidence or assignment row counts change;
+  - a job that ran makes the cycle check the steps after it at once:
+    bridge → turnstile → FlowInput row, harvest → backprop → part unlock,
+    each in one cycle instead of up to three;
+  - quiet hours (default 10 p.m.–6 a.m., weekends, days off) hold the jobs
+    without a check; the checks still run, so a submission at night is
+    processed;
+  - every 15 minutes the cycle runs every due job without checks (the
+    backstop);
+  - `showSetupStatus()` and `reportEvaluationHealth()` project the day's
+    trigger time at this rate, WARN over 50% of the quota, ALERT over 80%;
+  - `installLedgerChangeProbe()` logs whether Studio's writes fire an
+    onChange trigger, for a later change to move the harvest onto it.
+- **Settings:** `LEDGER_CYCLE_GATES` (`off`: as before), `LEDGER_CYCLE_QUIET`,
+  `LEDGER_CYCLE_BACKSTOP`.
+- **Tests:** `ledger-cycle-gates.test.js`; `ledger-cycle.test.js` now pins
+  its clock to a school-day morning.

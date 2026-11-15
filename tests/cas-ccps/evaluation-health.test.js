@@ -129,5 +129,7 @@ test('reportEvaluationHealth also gives the Ledger cycle\'s run time and the sch
   const out = env.exported.reportEvaluationHealth();
   assert.match(out.cycleLines[0], /^Ledger cycle today: no run timed yet\.$/);
   assert.match(out.cycleLines[1], /^Schedule: up to 5 min of waiting between jobs on the way to feedback/);
+  assert.match(out.cycleLines[2], /At this rate: about \d+(\.\d)? h a day/, 'the projection (2026-11-15)');
+  assert.match(out.cycleLines[3], /^Checks: on\./);
   assert.ok(out.cycleLines.some((l) => /^harvestFlowInputResults: no run timed yet$/.test(l)));
 });

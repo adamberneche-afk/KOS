@@ -946,10 +946,19 @@ function showSetupStatus() {
   });
   if (cycleOn && timing) {
     lines.push("  " + timing.cycle);
+    // The day at this rate, flagged over half (WARN) or 80% (ALERT) of the
+    // daily trigger time (2026-11-15), and how the checks decide.
+    lines.push("  " + timing.projection);
     lines.push("  " + timing.schedule);
+    lines.push("  " + timing.gates);
   }
+  // The onChange probe (64, 2026-11-15): optional, never "missing".
+  const probes = count(LC_PROBE_FN);
+  lines.push("  " + (probes ? "on " : "off") + "  onChange probe (" + LC_PROBE_FN + "), optional" +
+    (probes ? ": reportLedgerChangeProbe() prints its log" : ": installLedgerChangeProbe() logs whether Studio's writes fire onChange"));
   const expected = { };
   expected[LC_TRIGGER_FN] = true;
+  expected[LC_PROBE_FN] = true;
   LC_JOBS.forEach(function (j) { expected[j.fn] = true; });
   SETUP_STATUS_TRIGGERS.forEach(function (t) {
     expected[t.fn] = true;
@@ -1017,7 +1026,7 @@ function showSetupStatus() {
   const checklist = setupChecklist_(all, resolved, handlers, cycleJobs);
   lines.push("SETUP CHECKLIST (cas-ccps/docs/SETUP_GUIDE.md; [n] is the guide's step)");
   checklist.forEach(function (c) {
-    lines.push("  " + (c.ok ? "OK     " : "MISSING") + " [" + c.step + "] " + c.item + (c.ok ? "" : ": " + c.fix));
+    lines.push("  " + (c.ok ? "OK     " : c.optional ? "OPTIONAL" : "MISSING") + " [" + c.step + "] " + c.item + (c.ok ? "" : ": " + c.fix));
   });
   const notChecked = SETUP_CHECKLIST_NOT_HERE.map(function (n) { return "[" + n.step + "] " + n.item; });
   lines.push("  Not checked from this project: " + notChecked.join("; "));
@@ -1099,7 +1108,9 @@ const SETUP_CHECKLIST_CYCLE_JOBS = [
 
 function setupChecklist_(all, resolved, handlers, cycleJobs) {
   const out = [];
-  const add = function (step, ok, item, fix) { out.push({ step: step, ok: !!ok, item: item, fix: fix }); };
+  const add = function (step, ok, item, fix, optional) {
+    out.push({ step: step, ok: !!ok, item: item, fix: fix, optional: !!optional });
+  };
   const values = (resolved && resolved.values) || {};
   const has = function (fn) { return handlers.indexOf(fn) !== -1; };
   const runs = function (fn) { return has(fn) || (has(LC_TRIGGER_FN) && cycleJobs.indexOf(fn) !== -1); };
@@ -1150,6 +1161,9 @@ function setupChecklist_(all, resolved, handlers, cycleJobs) {
     if (t.fn === "runLessonRollout") return; // step 9's, below
     add(T, has(t.fn), "Trigger " + t.fn, "run " + t.installer);
   });
+  // Optional (2026-11-15): whether Studio's writes fire onChange (64).
+  add(T, has(LC_PROBE_FN), "onChange probe (" + LC_PROBE_FN + ")",
+    "optional: run installLedgerChangeProbe(), submit a test assignment, then reportLedgerChangeProbe()", true);
   const pre = ss ? ss.getSheetByName("Preflight") : null;
   if (!pre || pre.getLastRow() < 3) {
     add(T, false, "Preflight has run", "run runFlowPreflightCheck()");

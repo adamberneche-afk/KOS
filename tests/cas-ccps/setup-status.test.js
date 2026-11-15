@@ -61,6 +61,14 @@ test('a cycle job\'s line has its cadence and run time; the cycle\'s day and the
   assert.ok(r.lines.some((l) => /Ledger cycle today: 30 run\(s\), 3 min of trigger time \(0\.8% of the 6 h/.test(l)));
   assert.ok(r.lines.some((l) => /2 cycle\(s\) ran out of time and put jobs off; 1 minute\(s\) skipped/.test(l)));
   assert.ok(r.lines.some((l) => /^\s+Schedule: up to 5 min/.test(l)));
+  // 2026-11-15: the day at this rate (before a cycle with checks, the
+  // cycle's usual 5 s × 1,440 = 2 h, 33%), how the checks decide, and the
+  // optional onChange probe, which is never "missing".
+  assert.ok(r.lines.some((l) => /^\s+At this rate: about 2 h a day \(33% of the 6 h\) on a school day/.test(l)));
+  assert.ok(r.lines.some((l) => /^\s+Checks: on\. .*Every 15 min the cycle runs every due job without checks/.test(l)));
+  assert.ok(r.lines.some((l) => /^\s+off\s+onChange probe \(onLedgerChangeProbe\), optional/.test(l)));
+  assert.ok(!r.missing.some((m) => /Probe/.test(m)));
+  assert.ok(checklistLines(r).some((l) => /^\s+OPTIONAL \[7\] onChange probe/.test(l)));
 });
 
 // 10-29 handoff: a pending catch-up showed under "Other triggers".

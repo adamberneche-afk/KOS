@@ -35,6 +35,8 @@
 const TURNSTILE_LANES_KEY = "FLOW2_PARALLEL_LANES";
 const TURNSTILE_DEFAULT_LANES = 3;
 const TURNSTILE_MAX_LANES = 10;
+// A row IN_PROCESS longer than this is timed out (PASS 1 below).
+const TURNSTILE_STALE_MS = 12 * 60 * 1000;
 
 // How many rows each teacher may have IN_PROCESS at once: the
 // FLOW2_PARALLEL_LANES setting (a Script Property, or the Central Ledger's
@@ -99,7 +101,7 @@ function runStagingTurnstile() {
     }
 
     const now                = Date.now();
-    const STALE_THRESHOLD_MS = 12 * 60 * 1000; // 12 minutes, per row
+    const STALE_THRESHOLD_MS = TURNSTILE_STALE_MS; // 12 minutes, per row
     const lanes              = turnstileLanes_();
 
     const busyByTeacher       = {}; // teacher -> rows legitimately in flight
@@ -166,6 +168,35 @@ function runStagingTurnstile() {
   } finally {
     lock.releaseLock();
   }
+}
+
+// ---------------------------------------------------------------------------
+// The Ledger cycle's check (64's LC_GATES, 2026-11-15): the turnstile has
+// work when a row is PENDING_INFERENCE, or IN_PROCESS long enough to time
+// out (a minute early, so a check never comes late). An IN_PROCESS row with
+// no readable timestamp is only logged by the job, so it isn't work. Reads
+// STAGING_PIPELINE's header and rows (six columns, shared with the other
+// checks). Keep in step with runStagingTurnstile above.
+// ---------------------------------------------------------------------------
+function turnstileHasWork_(ctx) {
+  const tab = ctx.cfg().tabs.stagingPipeline;
+  const rows = ctx.rows("admin", tab, 1, 0);
+  if (rows === null) return true; // no tab: the job throws and logs it
+  if (!rows.length) return false;  // "Pipeline empty."
+  const head = ctx.header("admin", tab);
+  const statusIdx = head.indexOf("Status");
+  const teacherIdx = head.indexOf("TeacherEmail");
+  const timestampIdx = head.indexOf("Timestamp");
+  if (statusIdx === -1) return true;
+  const multiLane = teacherIdx !== -1 && timestampIdx !== -1;
+  const now = Date.now();
+  return rows.some(function (r) {
+    const st = String(r[statusIdx]).trim();
+    if (st === "PENDING_INFERENCE") return true;
+    if (st !== "IN_PROCESS" || !multiLane) return false;
+    const at = new Date(r[timestampIdx]).getTime();
+    return !isNaN(at) && now - at > TURNSTILE_STALE_MS - 60 * 1000;
+  });
 }
 
 // ---------------------------------------------------------------------------

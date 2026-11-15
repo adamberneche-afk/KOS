@@ -266,6 +266,44 @@ function backPropagateCompletions() {
 }
 
 // ---------------------------------------------------------------------------
+// The Ledger cycle's checks (64's LC_GATES, 2026-11-15): does the job have
+// work? Each reads only the columns its job decides on, through the
+// cycle's shared reads (ctx: one open per cycle, each read kept until a job
+// runs), and says false only when the job would do nothing. Keep each in
+// step with its job above.
+// ---------------------------------------------------------------------------
+
+// bridgeQueue has work when a ReviewQueue row is PENDING or still holds
+// student text. Reads ReviewQueue's StudentText and Status columns.
+function bridgeQueueHasWork_(ctx) {
+  const queue = ctx.rows("admin", ctx.cfg().tabs.reviewQueue, RQ_STUDENT_TEXT + 1, 2);
+  if (queue === null) return true; // no tab: the job logs it
+  return queue.some(function (r) {
+    return String(r[1]).trim() === "PENDING" || String(r[0]).trim() !== "";
+  });
+}
+
+// backPropagateCompletions has work when a STAGING_PIPELINE row is COMPLETE,
+// ERROR_TIMEOUT or ERROR_EVALUATION and its ReviewQueue row is still STAGED
+// (or ERROR_TIMEOUT, for a late COMPLETE). Reads STAGING_PIPELINE (six
+// columns) and ReviewQueue's Status column, which the checks share.
+function backPropagateHasWork_(ctx) {
+  const tabs = ctx.cfg().tabs;
+  const staging = ctx.rows("admin", tabs.stagingPipeline, 1, 0);
+  const queue = ctx.rows("admin", tabs.reviewQueue, RQ_STUDENT_TEXT + 1, 2);
+  if (staging === null || queue === null) return true;
+  return staging.some(function (r) {
+    const st = String(r[STG_STATUS]).trim();
+    if (st !== "COMPLETE" && st !== "ERROR_TIMEOUT" && st !== "ERROR_EVALUATION") return false;
+    const rowNum = parseInt(String(r[STG_QUEUE_ROW_REF]), 10);
+    if (isNaN(rowNum) || rowNum < 2) return false;
+    const q = queue[rowNum - 2];
+    const qs = q ? String(q[1]).trim() : "";
+    return qs === "STAGED" || (st === "COMPLETE" && qs === "ERROR_TIMEOUT");
+  });
+}
+
+// ---------------------------------------------------------------------------
 // processCompletedEvaluation_
 // ---------------------------------------------------------------------------
 function processCompletedEvaluation_(fileId, configId) {
