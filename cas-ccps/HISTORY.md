@@ -5936,3 +5936,20 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   copy). `removeFlow2Fixture()` clears both. `installFlow2Fixture()` with no
   argument is unchanged.
 - **Tests:** `flow-fixtures.test.js`.
+
+## Undoing a burst of feedback comments, 2026-11-15
+
+A Studio Test run of Flow 2, with its starter's condition set to "any",
+looped over every FlowInput row, not only READY ones, and wrote a new
+evaluation into each. The harvest delivers any EVALUATED row, so the new
+feedback went onto students' docs as comments, and onto the Ledger. The
+Ledger comes back from version history; the comments don't, so
+`removeFeedbackCommentsPosted(from, to, doDelete)` (37) removes them. It
+checks each doc FlowInput names once (the snapshot doc for a form part;
+fixture rows skipped), takes only comments this account posted inside the
+window whose text starts "Feedback, " (only `_fiFormatFeedbackComment_`
+writes that), and is a dry run unless the third argument is true. The window
+must be under a day. It logs row numbers and counts, never a file ID, stops
+at 4.5 minutes and can be run again. Feedback that went into a doc's body
+(when a comment failed to post) isn't found; doc version history covers
+that. Tests: `tests/cas-ccps/feedback-comment-cleanup.test.js`.
