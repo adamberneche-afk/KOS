@@ -1776,3 +1776,100 @@ function installFlowInputTriggers() {
     Logger.log("[FlowInputBuilder] Installed harvestFlowInputResults — every 1 minute.");
   }
 }
+
+// ---------------------------------------------------------------------------
+// removeFeedbackCommentsPosted — undo a burst of feedback comments (added
+// 2026-11-15, after a Studio Test run re-graded every FlowInput row and the
+// harvest posted the new feedback on students' docs). For each doc FlowInput
+// names (fixture rows left out), it finds the comments this script's account
+// posted between `from` and `to` whose text starts "Feedback, " (only
+// _fiFormatFeedbackComment_ writes that), and lists them. Nothing is deleted
+// unless `doDelete` is true. Run it from the editor, e.g.
+//   removeFeedbackCommentsPosted("2026-11-15T14:34:00-05:00", "2026-11-15T15:05:00-05:00")
+//   removeFeedbackCommentsPosted("2026-11-15T14:34:00-05:00", "2026-11-15T15:05:00-05:00", true)
+// It logs counts by FlowInput row, never a name, email or file ID. A run that
+// reaches its time budget says so; run it again to finish (deleted comments
+// are gone, so it picks up where it stopped).
+// ---------------------------------------------------------------------------
+function removeFeedbackCommentsPosted(from, to, doDelete) {
+  const fromMs = Date.parse(from), toMs = Date.parse(to);
+  if (isNaN(fromMs) || isNaN(toMs) || toMs <= fromMs) {
+    throw new Error("removeFeedbackCommentsPosted: give a start and end time, e.g. " +
+                    "\"2026-11-15T14:34:00-05:00\", \"2026-11-15T15:05:00-05:00\".");
+  }
+  if (toMs - fromMs > 24 * 3600 * 1000) {
+    throw new Error("removeFeedbackCommentsPosted: the window is over a day long; narrow it.");
+  }
+  const started = Date.now();
+  const budgetMs = 4.5 * 60 * 1000;
+  const cfg = getConfig_();
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId)
+    .getSheetByName((cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME);
+  const out = { docs: 0, found: 0, deleted: 0, failed: 0, unreadable: 0, finished: true, rows: [] };
+  if (!sheet || sheet.getLastRow() < 2) { Logger.log("[FeedbackCleanup] FlowInput is empty."); return out; }
+
+  const data = sheet.getDataRange().getValues();
+  const seen = {};
+  const docs = [];
+  for (let i = 1; i < data.length; i++) {
+    if (_fxIsFlow2FixtureRow_(data[i])) continue;
+    const docId = _fiDocIdFromUrl_(data[i][FI.STUDENT_DOC_URL]) || String(data[i][FI.STUDENT_FILE_ID] || "").trim();
+    if (!docId || seen[docId]) continue;
+    seen[docId] = true;
+    docs.push({ docId: docId, row: i + 1 });
+  }
+
+  for (let d = 0; d < docs.length; d++) {
+    if (Date.now() - started > budgetMs) { out.finished = false; break; }
+    out.docs++;
+    let matches;
+    try {
+      matches = _fiFeedbackCommentsIn_(docs[d].docId, fromMs, toMs);
+    } catch (e) {
+      out.unreadable++;
+      Logger.log("[FeedbackCleanup] Row " + docs[d].row + ": couldn't read its comments (" + e.message + ").");
+      continue;
+    }
+    if (!matches.length) continue;
+    out.found += matches.length;
+    let removed = 0;
+    if (doDelete === true) {
+      matches.forEach(function (c) {
+        try { Drive.Comments.remove(docs[d].docId, c.id); removed++; }
+        catch (e) { out.failed++; Logger.log("[FeedbackCleanup] Row " + docs[d].row + ": couldn't delete a comment (" + e.message + ")."); }
+      });
+      out.deleted += removed;
+    }
+    out.rows.push({ row: docs[d].row, found: matches.length, deleted: removed });
+    Logger.log("[FeedbackCleanup] Row " + docs[d].row + ": " + matches.length + " feedback comment(s) in the window" +
+               (doDelete === true ? ", deleted " + removed + "." : "."));
+  }
+
+  Logger.log("[FeedbackCleanup] " + (doDelete === true ? "DELETE" : "DRY RUN (nothing deleted)") + ": " +
+             out.docs + " of " + docs.length + " doc(s) checked, " + out.found + " feedback comment(s) in the window" +
+             (doDelete === true ? ", " + out.deleted + " deleted, " + out.failed + " failed" : "") +
+             (out.unreadable ? ", " + out.unreadable + " doc(s) unreadable" : "") + "." +
+             (out.finished ? "" : " Stopped at the time budget; run it again to finish.") +
+             (doDelete === true ? "" : " To delete them, run it again with true as the third argument."));
+  return out;
+}
+
+// The feedback comments this account posted on one doc inside [fromMs, toMs].
+function _fiFeedbackCommentsIn_(docId, fromMs, toMs) {
+  const found = [];
+  let pageToken;
+  do {
+    const opts = { fields: "comments(id,createdTime,author(me),content),nextPageToken", pageSize: 100 };
+    if (pageToken) opts.pageToken = pageToken;
+    const res = Drive.Comments.list(docId, opts) || {};
+    (res.comments || []).forEach(function (c) {
+      const t = Date.parse(c.createdTime);
+      if (c.author && c.author.me === true && t >= fromMs && t <= toMs &&
+          String(c.content || "").indexOf("Feedback, ") === 0) {
+        found.push({ id: c.id, createdTime: c.createdTime });
+      }
+    });
+    pageToken = res.nextPageToken;
+  } while (pageToken);
+  return found;
+}
