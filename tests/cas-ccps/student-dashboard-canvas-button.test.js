@@ -18,7 +18,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboard.js', '13b_StudentDashboardDemoLessons.js',
   '13c_StudentDashboardLessons.js', '13d_StudentDashboardReview.js', '63_DocHeader.js', '71_TurnInCodes.js',
   '71b_TurnInStudent.js', '75_FormReader.js', '77_SlidesReader.js', '78_SheetReader.js'].map(S);
-const DEFAULT = 'https://ccps.instructure.com';
+const DEFAULT = 'https://mychesterfieldschools.instructure.com';
 
 function html(prop, opts = {}) {
   const { exported, sandbox } = loadGasFiles(FILES, ['buildStudentDashboardHtml_', 'dashCanvasUrl_']);
@@ -45,7 +45,7 @@ test('the header links to the district Canvas in a new tab, beside Refresh', () 
 
 test('CANVAS_URL changes it; anything but a plain https URL falls back', () => {
   assert.equal(html('https://example.instructure.com/courses/12').url, 'https://example.instructure.com/courses/12');
-  for (const bad of ['http://ccps.instructure.com', 'javascript:alert(1)', 'https://x.com/"onmouseover="a', 'https://a b', '<https://x>', '']) {
+  for (const bad of ['http://mychesterfieldschools.instructure.com', 'javascript:alert(1)', 'https://x.com/"onmouseover="a', 'https://a b', '<https://x>', '']) {
     assert.equal(html(bad).url, DEFAULT, bad);
   }
 });

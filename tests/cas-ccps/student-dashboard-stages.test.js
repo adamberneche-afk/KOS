@@ -23,6 +23,19 @@ const SD = ['00_SharedConfig.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboar
 const AMY = 'amy@ccpsnet.net';
 const BO = 'bo@ccpsnet.net';
 const MIN = 60 * 1000;
+// Every clock here is pinned to a weekday noon in New York: the stage line
+// shows only the time for a stamp from today, and a fixture stamped "6
+// minutes ago" fell on yesterday in the first minutes after midnight, so
+// this file failed there (found 2026-11-15, 00:04 New York).
+const NOW_MS = Date.UTC(2026, 10, 12, 17, 0, 0);
+function pinClock(global) {
+  const RealDate = global.Date || Date;
+  global.Date = class extends RealDate {
+    constructor(...a) { if (a.length) super(...a); else super(NOW_MS); }
+    static now() { return NOW_MS; }
+    static [Symbol.hasInstance](x) { return x instanceof RealDate || (x && typeof x.getTime === 'function'); }
+  };
+}
 
 function session(viewer) {
   return {
@@ -38,6 +51,7 @@ function dash(viewer, opts = {}) {
   const env = loadGasFiles(SD, ['getStudentDashboardData', 'getMyWaitingStatus', 'retryMyCheck', 'LEDGER',
     'buildStudentDashboardHtml_'], { Session: session(viewer) });
   const { sandbox, exported: x } = env;
+  pinClock(sandbox);
   let ss = opts.ss;
   if (ss) sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   else ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -53,12 +67,12 @@ function fixture(env) {
   ledger.appendRow(new Array(27).fill('h'));
   const row = (who, configId, status, submitted) => {
     const r = new Array(27).fill('');
-    r[x.LEDGER.TIMESTAMP] = new Date(); r[x.LEDGER.GOOGLE_ID] = who; r[x.LEDGER.CONFIG_ID] = configId;
+    r[x.LEDGER.TIMESTAMP] = new Date(NOW_MS); r[x.LEDGER.GOOGLE_ID] = who; r[x.LEDGER.CONFIG_ID] = configId;
     r[x.LEDGER.FILE_ID] = 'f-' + configId; r[x.LEDGER.STATUS] = status;
     r[x.LEDGER.SUBMISSION_TS] = submitted || '';
     ledger.appendRow(r);
   };
-  const now = Date.now();
+  const now = NOW_MS;
   row(AMY, 'A1', 'ACTIVE', new Date(now - 6 * MIN));   // in line, staged
   row(AMY, 'A2', 'ACTIVE', new Date(now - 9 * MIN));   // being checked
   row(AMY, 'A3', 'ACTIVE', new Date(now - 1 * MIN));   // in ReviewQueue, not yet bridged
@@ -72,11 +86,11 @@ function fixture(env) {
   staging.appendRow([new Date(now - 18 * MIN), '6', 'f-B4', 'B4', 't@x', 'ERROR_TIMEOUT']);
   const queue = ss.insertSheet('ReviewQueue');
   queue.appendRow(['Timestamp', 'GoogleID', 'FileID', 'ConfigID', 'Text', 'Status', 'x']);
-  queue.appendRow([new Date(), AMY, 'f-A1', 'A1', '', 'STAGED', '']);
-  queue.appendRow([new Date(), AMY, 'f-A2', 'A2', '', 'STAGED', '']);
-  queue.appendRow([new Date(), AMY, 'f-A3', 'A3', '', 'PENDING', '']);
-  queue.appendRow([new Date(), AMY, 'f-A4', 'A4', '', 'ERROR_TIMEOUT', '']);
-  queue.appendRow([new Date(), BO, 'f-B4', 'B4', '', 'ERROR_TIMEOUT', '']);
+  queue.appendRow([new Date(NOW_MS), AMY, 'f-A1', 'A1', '', 'STAGED', '']);
+  queue.appendRow([new Date(NOW_MS), AMY, 'f-A2', 'A2', '', 'STAGED', '']);
+  queue.appendRow([new Date(NOW_MS), AMY, 'f-A3', 'A3', '', 'PENDING', '']);
+  queue.appendRow([new Date(NOW_MS), AMY, 'f-A4', 'A4', '', 'ERROR_TIMEOUT', '']);
+  queue.appendRow([new Date(NOW_MS), BO, 'f-B4', 'B4', '', 'ERROR_TIMEOUT', '']);
   return { staging, queue, ledger };
 }
 
@@ -98,7 +112,7 @@ test('the stage line: Submitted, then In line or Being checked, with the times t
   assert.equal(a1.checking, '');
   assert.equal(a2.current, 'CHECKING');
   assert.match(a2.checking, /^\d{1,2}:\d\d [AP]M$/, 'the turnstile\'s stamp');
-  assert.ok(Date.now() - a2.since >= 4 * MIN - 1000 && Date.now() - a2.since < 5 * MIN);
+  assert.ok(NOW_MS - a2.since >= 4 * MIN - 1000 && NOW_MS - a2.since < 5 * MIN);
   assert.equal(a3.current, 'IN_LINE');
   assert.equal(a3.inLine, '', 'in ReviewQueue, not yet bridged: in line, with no time to show');
   assert.equal(a2.usualMin, null, 'no FlowMeasures: no estimate');
@@ -189,6 +203,7 @@ const LEDGER_FILES = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.j
 
 test('after Try again the turnstile releases the row and 37 restarts the same FlowInput row, never a second', () => {
   const led = loadGasFiles(LEDGER_FILES, ['buildFlowInputRows', 'runStagingTurnstile', 'FI', 'FI_HEADERS', 'LEDGER']);
+  pinClock(led.sandbox);
   const ss = led.sandbox.SpreadsheetApp.create('Central Ledger');
   led.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   const lp = led.sandbox.PropertiesService.getScriptProperties();
@@ -201,14 +216,14 @@ test('after Try again the turnstile releases the row and 37 restarts the same Fl
   const fi = ss.insertSheet('FlowInput');
   fi.appendRow(led.exported.FI_HEADERS);
   const row = new Array(led.exported.FI_HEADERS.length).fill('');
-  row[led.exported.FI.TIMESTAMP] = new Date(Date.now() - 17 * MIN);
+  row[led.exported.FI.TIMESTAMP] = new Date(NOW_MS - 17 * MIN);
   row[led.exported.FI.STUDENT_FILE_ID] = 'f-A4';
   row[led.exported.FI.CONFIG_ID] = 'A4';
   row[led.exported.FI.STAGING_ROW_REF] = 4;
   row[led.exported.FI.PROMPT_TEXT] = 'prompt';
   row[led.exported.FI.READY_STATUS] = 'READY';
   row[led.exported.FI.REARMS] = 1;
-  row[led.exported.FI.ARMED_AT] = new Date(Date.now() - 5 * MIN);
+  row[led.exported.FI.ARMED_AT] = new Date(NOW_MS - 5 * MIN);
   fi.appendRow(row);
 
   assert.equal(env.x.retryMyCheck('f-A4', 'A4').ok, true);
@@ -245,6 +260,7 @@ function page(env) {
   };
   ctx.window = ctx;
   vm.createContext(ctx);
+  pinClock(ctx);
   extractInlineScripts(env.x.buildStudentDashboardHtml_({ demo: false })).forEach((code) => vm.runInContext(code, ctx));
   return { ctx, els, calls };
 }
@@ -267,7 +283,7 @@ test('the page: the stage line on a waiting card, Try again as the one filled bu
   const noStamp = Object.assign({}, by.A2, { stages: Object.assign({}, by.A2.stages, { checking: '' }) });
   assert.match(ctx.cardHtml(noStamp), /Being checked<span class="st-time">usually about 4 min<\/span>/);
   // Slow: Check again, a status check only.
-  const slow = Object.assign({}, by.A2, { stages: Object.assign({}, by.A2.stages, { since: Date.now() - 9 * MIN }) });
+  const slow = Object.assign({}, by.A2, { stages: Object.assign({}, by.A2.stages, { since: NOW_MS - 9 * MIN }) });
   assert.match(ctx.cardHtml(slow), /Taking a while\. Your work is saved\. <button[^>]*onclick="checkAgain\(this\)">Check again/);
 
   const a4 = ctx.cardHtml(by.A4);

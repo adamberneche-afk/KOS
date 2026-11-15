@@ -5793,3 +5793,17 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   so neither 03 nor 37 needs 71 loaded. The student guide's example
   comment matches.
 - **Tests:** `evaluation-next-steps.test.js`, `flow-input-builder.test.js`.
+
+## The Canvas button's address, 2026-11-15
+
+- **Found:** the operator gave the district's Canvas address after the
+  push; #438's default named a different host.
+- **Now:** the Student Dashboard's Canvas button and Open Canvas link
+  default to the district's Canvas (`DASH_CANVAS_URL_DEFAULT`); LeaderHub's
+  sub-plan Canvas field shows the same host as its placeholder.
+  `CANVAS_URL` still overrides it without a push.
+- **Tests:** `student-dashboard-canvas-button.test.js`.
+- **Also:** `student-dashboard-stages.test.js` failed in the first minutes
+  after midnight New York (a fixture stamped "6 minutes ago" fell on
+  yesterday, so the stage line showed a date). Every clock in it is now
+  pinned to a weekday noon, as `flow-measures` was in #422. No code change.
