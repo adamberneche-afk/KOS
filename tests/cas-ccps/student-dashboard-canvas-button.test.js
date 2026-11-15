@@ -36,7 +36,7 @@ test('the header links to the district Canvas in a new tab, beside Refresh', () 
   const { page, url } = html();
   assert.equal(url, DEFAULT);
   const a = headerLink(page);
-  assert.match(a, new RegExp('href="' + DEFAULT.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&') + '"'));
+  assert.equal(a.match(/href="([^"]*)"/)[1], DEFAULT);
   assert.match(a, /target="_blank"/);
   assert.match(a, /rel="noopener"/);
   assert.ok(page.indexOf('id="refresh-btn"') < page.indexOf('id="canvas-btn"'), 'it sits after Refresh');
@@ -70,7 +70,8 @@ test('a ready turn-in code has Open Canvas beside Copy; other states do not', ()
   const ready = ctx.turnInCardHtml({ configId: 'A1', turnIn: { state: 'READY', code: 'CAS-8177-L05-7Q4K-M2XD' } });
   const m = ready.match(/<a class="act act-secondary ti-canvas"[^>]*>Open Canvas ↗<span class="wu-sr"> \(opens in a new tab\)<\/span><\/a>/);
   assert.ok(m, 'Open Canvas is on the ready card');
-  assert.match(m[0], /href="https:\/\/ccps\.instructure\.com" target="_blank" rel="noopener"/);
+  assert.equal(m[0].match(/href="([^"]*)"/)[1], DEFAULT);
+  assert.match(m[0], /" target="_blank" rel="noopener"/);
   assert.ok(ready.indexOf('ti-copy') < ready.indexOf('ti-canvas'), 'after Copy');
   const pending = ctx.turnInCardHtml({ configId: 'A1', turnIn: { state: 'PENDING_CHECK' } });
   assert.doesNotMatch(pending, /ti-canvas/);
