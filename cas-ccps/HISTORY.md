@@ -5715,6 +5715,28 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   changes it without a push, and anything but a plain https URL falls back.
 - **Tests:** `student-dashboard-canvas-button.test.js`.
 
+## Student guide: the turn-in code, 2026-11-15
+
+- **Asked:** the student guide and the UX reference still taught the old
+  turn-in ("turn in on Canvas" with the document's link, "the link to your
+  last part") after the turn-in code went live for every lesson on
+  2026-11-09 (D17).
+- **Now:** `docs/STUDENT_QUICK_START.html` section 06 is the five-step path
+  (open, write, submit, answer the one question, paste the code), what the
+  code means (engagement, not quality; earnable on a Revise card; one per
+  student and assignment, stable; revising after it is for learning and the
+  final grade; the Canvas instructions say code or link), what a good answer
+  does (names the part, says where, says why), and the stage line, Check
+  again, Try again, the page's own check for news and the Canvas buttons.
+  `USER_EXPERIENCE_REFERENCE.html`'s summary and Turning In pipeline name
+  the code. Notebook copies regenerated.
+- **Still says the old way:** the passed-check comment (37's
+  `_fiCommentNextSteps_`) and 03's backup next-steps block tell the student
+  to paste the document's link as a Website URL. The guide points to the
+  Canvas instructions instead; changing the comment is a code change of its
+  own.
+- **Tests:** `student-guide-turn-in.test.js`.
+
 ## The lesson's name, not the course's, 2026-11-15
 
 - **Asked:** note on `LEDGER.COURSE_NAME` that roster-import rows hold the
