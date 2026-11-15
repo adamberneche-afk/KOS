@@ -5861,3 +5861,64 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   `LEDGER_CYCLE_BACKSTOP`.
 - **Tests:** `ledger-cycle-gates.test.js`; `ledger-cycle.test.js` now pins
   its clock to a school-day morning.
+
+## Flow 2: malformed results, duplicate writes, the fixture row, cycle settings, 2026-11-15
+
+- **Found (the operator's live FlowInput rows, 11-15; described, not copied):**
+  - one answer in two rows of the same doc, a submission and its
+    resubmission about an hour apart, and it answered the later one's
+    process reflection: Studio Flow 2's Update rows step matched on a
+    column that isn't unique to a submission;
+  - on 11-13 one answer evaluated another lesson's work, asked for that
+    lesson's revisions, and carried an outcome the prompt never allows
+    (`PARTI_MET`). The student got it. Flow 2's Ask Gemini step had the
+    Central Ledger as a Drive source, so the model saw every row on it;
+  - a Flow 2 fixture row still in FlowInput after `cleanUpFlow2Canary()`,
+    which clears canary rows only (`VDOE-CANARY-`); the fixture's came
+    from `installFlow2Fixture()` (39), `StagingRowRef` `FIXTURE`;
+  - `LEDGER_CYCLE_EVERY` typed on the Ledger's `_CONFIG` tab did nothing:
+    64 read its four settings from Script Properties only.
+- **Now (approved by the operator 11-15):**
+  - the harvest (37) checks each result before anything reaches the
+    student (`_fiCheckResultShape_`): a parseable outcomes line (the last
+    one), only `MET` / `PARTIALLY_MET` / `NOT_MET`, the row's milestones
+    (four keys always accepted), one compliance stamp, and a stamp the
+    passing rule agrees with (a tiered rule both ways; untiered, `APPROVED`
+    needs every milestone `MET`). Before, the stamp decided, except a
+    tiered `APPROVED` the outcomes didn't support, which was delivered as
+    revise; now neither wins. A malformed result is never delivered: it is
+    re-armed once on #425's counters (`ReArms` set to the budget,
+    `ArmedAt` now, output cleared), then `ERROR_MALFORMED_OUTPUT`, which
+    closes like the other errors ("Couldn't be checked" on the card) and
+    has its own column in the Measures tab (69); FlowMeasures counts it
+    as set aside (69b);
+  - an answer found in an earlier row of the same doc (SHA-256 of the
+    output, never the text) is a duplicate write: a dates-only row in the
+    new `Flow2Duplicates` tab; the newer row is delivered, an unharvested
+    older copy re-armed. For 7 days `showSetupStatus()` has a WARN naming
+    the fix (match on `StagingRowRef`), the overnight check (34c) a line
+    (so the CAS signal's LAST NIGHT too), and the Teacher Dashboard's
+    Flow 2 light says so (07 reads the tab's tail);
+  - `checkFlow2Binding()` (41) counts rows holding a copied answer and
+    names the Studio setting; it and the build spec (42: Flow 2 `match`
+    and `gemini` rows), the setup guide and the Studio reference now say:
+    Update rows matches on `StagingRowRef`; Ask Gemini has no Drive file
+    sources, evaluates one row per run, and its prompt holds only the two
+    variables;
+  - `removeFlow2Fixture()` (39) clears Flow 2's fixture alone (any marker:
+    `FIXTURE`, a `VDOE-FIXTURE-` ConfigID, a fixture address);
+    `removeFlowFixtures()` uses the same match; `cleanUpFlow2Canary()`
+    and `showSetupStatus()` say when a fixture row is left;
+  - `LEDGER_CYCLE_EVERY`, `_GATES`, `_QUIET` and `_BACKSTOP` are read like
+    the other shared settings (`lcSetting_`: the Script Property, else the
+    `_CONFIG` tab through 00's 10-minute cache, kept for the cycle), and
+    are `SHARED_CONFIG_KEYS`; `showSetupStatus()` says where each came
+    from. A cycle opens no more spreadsheets than before.
+- **Not fixed here:** `StagingRowRef` is unique per submission until an
+  admin's `clearStagingPipeline()` renumbers the staging tab; an old
+  harvested row can then share a number with a new one. The duplicate
+  check would flag a copy that came of it.
+- **Tests:** `flow2-malformed-results.test.js` (new); `flow-input-builder`,
+  `flow-fixtures`, `flow2-canary` (the canned answers agree with their
+  stamps now), `ledger-cycle-gates`, `setup-status`, `evaluation-health`,
+  `overnight-health`, `teacher-dashboard-waiting-strip`.

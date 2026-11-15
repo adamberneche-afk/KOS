@@ -636,9 +636,11 @@ function removeFlowFixtures() {
   // The return tab keys Queue_ID in column 3 (0-based 2), after Flow.
   clearWhere(ledgerSs.getSheetByName("WarmUpFlowReturn"), 2, { prefix: FX_QUEUE_PREFIX });
 
-  // FlowInput — also collect the scratch student doc.
-  clearWhere(ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput"),
-    FI.STUDENT_EMAIL, fixtureEmails, [FI.STUDENT_FILE_ID]);
+  // FlowInput — also collect the scratch student doc (removeFlow2Fixture's
+  // match: any fixture marker, not only the student address).
+  const f2 = _fxClearFlow2FixtureRows_(ledgerSs, cfg);
+  cleared += f2.cleared;
+  f2.trashIds.forEach(function (id) { trashIds.push(id); });
 
   // WarmUpQueue — Flow 3 may have created a doc of its own; collect it too.
   clearWhere(ledgerSs.getSheetByName(cfg.tabs.warmUpQueue || "WarmUpQueue"),
@@ -660,6 +662,70 @@ function removeFlowFixtures() {
   Logger.log("[Fixtures] Cleared " + cleared + " fixture row(s), trashed " +
              trashIds.length + " scratch file(s).");
   return { cleared: cleared, trashed: trashIds.length };
+}
+
+// ---------------------------------------------------------------------------
+// removeFlow2Fixture — only Flow 2's fixture: its FlowInput row(s), any
+// CompetencyEvidence a harvest wrote from one, and the scratch student doc.
+// For after Flow 2 is built, when the warm-up fixtures may still be in use.
+// (2026-11-15: a fixture row outlived cleanUpFlow2Canary() (35), which
+// clears canary rows only, VDOE-CANARY-; the fixture's are VDOE-FIXTURE-.)
+// A row counts as the fixture when any of its markers does: StagingRowRef
+// "FIXTURE", a VDOE-FIXTURE- ConfigID, or the fixture teacher or student
+// address. Contents cleared in place, as removeFlowFixtures() does.
+// ---------------------------------------------------------------------------
+function removeFlow2Fixture() {
+  const cfg = getConfig_();
+  const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const res = _fxClearFlow2FixtureRows_(ledgerSs, cfg);
+  const evidence = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+  if (evidence && evidence.getLastRow() >= 2) {
+    evidence.getDataRange().getValues().forEach(function (r, i) {
+      if (i === 0 || String(r[5]).trim().indexOf(FX_CONFIG_PREFIX) !== 0) return;
+      evidence.getRange(i + 1, 1, 1, evidence.getLastColumn()).clearContent();
+      res.cleared++;
+    });
+  }
+  res.trashIds.forEach(function (id) {
+    try {
+      DriveApp.getFileById(id).setTrashed(true);
+    } catch (e) {
+      Logger.log("[Fixtures] Could not trash a scratch doc (may already be gone): " + e.message);
+    }
+  });
+  Logger.log("[Fixtures] Flow 2: cleared " + res.cleared + " fixture row(s), trashed " + res.trashIds.length +
+             " scratch doc(s).");
+  return { cleared: res.cleared, trashed: res.trashIds.length };
+}
+
+function _fxIsFlow2FixtureRow_(row) {
+  return String(row[FI.STAGING_ROW_REF]).trim() === "FIXTURE" ||
+    String(row[FI.CONFIG_ID]).trim().indexOf(FX_CONFIG_PREFIX) === 0 ||
+    [FX_TEACHER_EMAIL, FX_STUDENT_EMAIL].indexOf(String(row[FI.TEACHER_EMAIL]).trim()) !== -1 ||
+    [FX_TEACHER_EMAIL, FX_STUDENT_EMAIL].indexOf(String(row[FI.STUDENT_EMAIL]).trim()) !== -1;
+}
+
+// Clears the fixture's FlowInput rows: { cleared, trashIds (scratch docs) }.
+function _fxClearFlow2FixtureRows_(ledgerSs, cfg) {
+  const out = { cleared: 0, trashIds: [] };
+  const sheet = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput");
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (!_fxIsFlow2FixtureRow_(data[i])) continue;
+    const id = String(data[i][FI.STUDENT_FILE_ID] || "").trim();
+    if (id) out.trashIds.push(id);
+    sheet.getRange(i + 1, 1, 1, sheet.getLastColumn()).clearContent();
+    out.cleared++;
+  }
+  return out;
+}
+
+// How many Flow 2 fixture rows FlowInput holds (showSetupStatus, 35).
+function flow2FixtureRows_(ss) {
+  const sheet = ss.getSheetByName("FlowInput");
+  if (!sheet || sheet.getLastRow() < 2) return 0;
+  return sheet.getDataRange().getValues().slice(1).filter(function (r) { return _fxIsFlow2FixtureRow_(r); }).length;
 }
 
 // ---------------------------------------------------------------------------

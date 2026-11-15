@@ -30,7 +30,9 @@
 //   Returned       jobs Studio answered at least once
 //   Applied        jobs whose answer was used
 //   SetAside       jobs that were answered but whose answer was not used
-//                  (garbled, suspect, a harvest that failed) and are done
+//                  (garbled, suspect, a harvest that failed) and are done;
+//                  Flow 2's ERROR_MALFORMED_OUTPUT too (2026-11-15), while
+//                  a malformed answer re-armed for one more run is Waiting
 //   NeverReturned  jobs with no answer past the flow's own timeout
 //   Waiting        jobs still under way
 //   FailureRate    (SetAside + NeverReturned) / Sent

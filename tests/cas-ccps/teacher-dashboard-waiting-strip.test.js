@@ -220,3 +220,18 @@ test('the page: asks at once, then once a minute while in view; the strip lists 
   pg.fire('visibilitychange');
   assert.equal(pg.strips().length, 4);
 });
+
+// 2026-11-15: an answer the Ledger's harvest (37) found copied into another
+// submission's row this week shows on the Flow 2 light, read from the
+// Flow2Duplicates tab (dates only), since this project can't call 37.
+test('the Flow 2 light says when an answer was copied into another submission this week', () => {
+  const env = load();
+  assert.equal(plain(env.exported.getWaitingStrip()).health.flow2.duplicates, 0, 'no tab: nothing to say');
+  const tab = env.ss.insertSheet('Flow2Duplicates');
+  tab.appendRow(['DetectedAt', 'EarlierBuiltAt', 'NewerBuiltAt', 'EarlierStatus']);
+  tab.appendRow([new Date(env.now - 9 * 24 * 60 * MIN), '', '', 'HARVESTED']); // older than a week
+  tab.appendRow([new Date(env.now - 60 * MIN), new Date(env.now - 120 * MIN), new Date(env.now - 61 * MIN), 'EVALUATED']);
+  assert.equal(plain(env.exported.getWaitingStrip()).health.flow2.duplicates, 1);
+  const html = env.exported.buildDashboardHtml_();
+  assert.match(html, /match on StagingRowRef/);
+});

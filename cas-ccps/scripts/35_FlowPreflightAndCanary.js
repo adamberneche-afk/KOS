@@ -638,7 +638,9 @@ function runFlow2Canary() {
       'CANARY EVALUATION. This text stands in for a real Gemini response.\n' +
       '[SYSTEM: APPROVED]\n' +
       '[SUGGESTED_SCORE: 3]\n' +
-      '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"PARTIALLY_MET","4":"NOT_MET"}]';
+      // Every milestone MET: an untiered APPROVED needs that (37's
+      // _fiCheckResultShape_), or the harvest sets the result aside.
+      '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"MET","4":"MET"}]';
     fiSheet.getRange(fiRowNum, FI.GEMINI_FULL_OUTPUT + 1).setValue(cannedOutput);
     fiSheet.getRange(fiRowNum, FI.READY_STATUS + 1).setValue('EVALUATED');
     SpreadsheetApp.flush();
@@ -691,7 +693,7 @@ function runFlow2Canary() {
         'and a valid outcome, so all four should have been written.');
     }
     const outcomes = canaryEvidence.map(function (r) { return String(r[4]).trim(); }).sort();
-    if (outcomes.join(',') !== 'MET,MET,NOT_MET,PARTIALLY_MET') {
+    if (outcomes.join(',') !== 'MET,MET,MET,MET') {
       return fail('Milestone outcomes parsed correctly onto the evidence rows',
         'Got: ' + outcomes.join(','));
     }
@@ -819,10 +821,18 @@ function cleanUpFlow2Canary(configId) {
   });
 
   console.log('[Canary:Flow2] Cleared ' + cleared + ' synthetic row(s).');
+  // The fixture's row (39's installFlow2Fixture: StagingRowRef FIXTURE) is
+  // not a canary row, so it stays; say so, and how to clear it (2026-11-15).
+  const fixtures = flow2FixtureRows_(ss);
+  if (fixtures) {
+    console.log('[Canary:Flow2] FlowInput still has ' + fixtures + ' Flow 2 fixture row(s) from ' +
+                'installFlow2Fixture(). Not a canary row, so left alone: run removeFlow2Fixture() ' +
+                'once Flow 2 is built.');
+  }
   console.log('[Canary:Flow2] The scratch student doc is named "[CANARY] Flow 2 Student Doc …" ' +
               'in your Drive — trash it by hand, or pass its ID to ' +
               'DriveApp.getFileById(id).setTrashed(true).');
-  return { cleared: cleared, trashed: scratchIds };
+  return { cleared: cleared, trashed: scratchIds, fixtureRowsLeft: fixtures };
 }
 
 // =============================================================================
@@ -1006,6 +1016,9 @@ function showSetupStatus() {
   const runLimit = String(resolved.values.STUDIO_DAILY_RUN_LIMIT || "").trim();
   lines.push("  STUDIO_DAILY_RUN_LIMIT = " + (runLimit || "(not set: copy it from Workspace Studio's quota page)") +
     (runLimit ? "  <- " + (resolved.sources.STUDIO_DAILY_RUN_LIMIT || "?") : ""));
+  // The Ledger cycle's settings (64): a Script Property here or a _CONFIG
+  // row (2026-11-15), the property first.
+  lcSettingLines_(props).forEach(function (l) { lines.push("  " + l); });
 
   // Tabs the weekly runs fill.
   lines.push("TABS (rows below the header)");
@@ -1017,6 +1030,15 @@ function showSetupStatus() {
       const sh = name ? ss.getSheetByName(name) : null;
       lines.push("  " + name + ": " + (sh ? Math.max(0, sh.getLastRow() - 1) : "MISSING"));
     });
+    // Flow 2 writing one answer into several rows (37, 2026-11-15).
+    const dup = flow2DuplicateWriteLine_(ss);
+    if (dup) lines.push("  WARN " + dup);
+    // The Flow 2 fixture row (39), still in FlowInput once Flow 2 answers.
+    const fixtures = flow2FixtureRows_(ss);
+    if (fixtures) {
+      lines.push("  NOTE FlowInput still has " + fixtures + " Flow 2 fixture row(s) (installFlow2Fixture): " +
+        "removeFlow2Fixture() clears them once Flow 2 is built (cleanUpFlow2Canary() clears canary rows only).");
+    }
   } catch (e) {
     lines.push("  unreadable: " + e.message);
   }

@@ -51,7 +51,7 @@ const STG_HEADERS = ['Timestamp', 'QueueRowRef', 'StudentFileID', 'ConfigID', 'T
 function setup(opts = {}) {
   const env = loadGasFiles(FILES, ['runLedgerCycle', 'lcTimingReport_', 'lcProjection_', 'FI', 'FI_HEADERS',
     'LEDGER', 'TCHK', 'TURN_IN_CHECK_HEADERS', 'TIC_RETURN_HEADERS', 'installLedgerChangeProbe',
-    'removeLedgerChangeProbe', 'reportLedgerChangeProbe', 'onLedgerChangeProbe']);
+    'removeLedgerChangeProbe', 'reportLedgerChangeProbe', 'onLedgerChangeProbe', 'lcSettingLines_']);
   const sb = env.sandbox;
   const clock = pinClock(sb, opts.now || WED_10AM);
   const ss = sb.SpreadsheetApp.create('Central Ledger');
@@ -426,4 +426,65 @@ test('the projection before a cycle with checks: the cycle\'s usual time × 1,44
   assert.equal(p.pct, 97);
   assert.equal(p.level, 'ALERT');
   assert.match(p.line, /from the cycle's usual time × 1,440/);
+});
+
+// ── The cycle's settings from the _CONFIG tab too (2026-11-15) ─────────────
+// The operator put LEDGER_CYCLE_EVERY on the Central Ledger's _CONFIG tab,
+// and 64 read it only from Script Properties. Now either works, the property
+// first, read through 00's shared-config cache: no spreadsheet open added.
+
+function configTab(env, rows) {
+  const sh = env.ss.insertSheet('_CONFIG');
+  sh.appendRow(['Key', 'Value']);
+  rows.forEach((r) => sh.appendRow(r));
+}
+
+const EVERY_5 = JSON.stringify({ harvestFlowInputResults: 5 });
+
+test('LEDGER_CYCLE_EVERY and LEDGER_CYCLE_GATES on the _CONFIG tab take effect', () => {
+  const env = setup({ jobs: ['bridgeQueue', 'harvestFlowInputResults'] });
+  configTab(env, [['LEDGER_CYCLE_EVERY', EVERY_5], ['LEDGER_CYCLE_GATES', 'off']]);
+  const r = env.run();
+  assert.deepEqual(r.ran, ['bridgeQueue'], 'the harvest waits for its 5 minutes; no checks (gates off)');
+  assert.deepEqual(r.idle, []);
+  const lines = env.x.lcSettingLines_();
+  assert.ok(lines.includes('LEDGER_CYCLE_EVERY = ' + EVERY_5 + '  <- Central Ledger _CONFIG tab'));
+  assert.ok(lines.includes('LEDGER_CYCLE_QUIET = (unset: the default)'));
+});
+
+test('a Script Property wins over the _CONFIG tab', () => {
+  const env = setup({ jobs: ['bridgeQueue', 'harvestFlowInputResults'],
+    props: { LEDGER_CYCLE_EVERY: JSON.stringify({ harvestFlowInputResults: 1 }) } });
+  configTab(env, [['LEDGER_CYCLE_EVERY', EVERY_5], ['LEDGER_CYCLE_GATES', 'off']]);
+  assert.deepEqual(env.run().ran, ['bridgeQueue', 'harvestFlowInputResults']);
+  assert.ok(env.x.lcSettingLines_().some((l) => /^LEDGER_CYCLE_EVERY = .*<- Script Property$/.test(l)));
+});
+
+test('LEDGER_CYCLE_QUIET from the _CONFIG tab: off at 11 p.m. is not quiet; the property still wins', () => {
+  const at11pm = Date.UTC(2026, 10, 19, 4, 0, 0);
+  const fromTab = quietCase(at11pm, {});
+  configTab(fromTab, [['LEDGER_CYCLE_QUIET', 'off']]);
+  assert.equal(fromTab.run().quiet, '');
+  const both = quietCase(at11pm, { LEDGER_CYCLE_QUIET: '{"from":22,"to":6}' });
+  configTab(both, [['LEDGER_CYCLE_QUIET', 'off']]);
+  assert.equal(both.run().quiet, 'night');
+});
+
+test('no extra spreadsheet open per cycle for a setting on the _CONFIG tab', () => {
+  const opens = (env) => {
+    const real = env.sandbox.SpreadsheetApp.openById;
+    let n = 0;
+    env.sandbox.SpreadsheetApp.openById = (id) => { n++; return real.call(env.sandbox.SpreadsheetApp, id); };
+    const counts = [];
+    for (let i = 0; i < 3; i++) { n = 0; env.cycle(1); counts.push(n); }
+    return counts;
+  };
+  const asProperty = setup({ jobs: GATED, props: { LEDGER_CYCLE_EVERY: EVERY_5, LEDGER_CYCLE_BACKSTOP: '30' } });
+  configTab(asProperty, []);
+  const onTab = setup({ jobs: GATED });
+  configTab(onTab, [['LEDGER_CYCLE_EVERY', EVERY_5], ['LEDGER_CYCLE_BACKSTOP', '30']]);
+  const a = opens(asProperty);
+  const b = opens(onTab);
+  assert.deepEqual(b, a, 'the same opens, cycle by cycle');
+  assert.ok(b[1] <= 1 && b[2] <= 1, 'after the first, at most the one the checks share: ' + b.join(','));
 });

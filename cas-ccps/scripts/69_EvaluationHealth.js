@@ -9,8 +9,10 @@
 // reader of EvaluationLog (dead-ends audit #7). Per course and per week
 // (Monday to Sunday), from EvaluationLog, STAGING_PIPELINE, the Ledger and
 // WarmUpQueue:
-//   - Flow 2 results by kind: PASSED, NEEDS_REVISION, and the three errors
+//   - Flow 2 results by kind: PASSED, NEEDS_REVISION, and the four errors
 //     37 logs (ERROR_EMPTY_OUTPUT, ERROR_SUSPECT_FABRICATION,
+//     ERROR_MALFORMED_OUTPUT (2026-11-15: a result set aside twice, or with
+//     no re-arm left; a re-armed one is not a result, so not counted),
 //     ERROR_HARVEST_FAILED; any other ERROR_ counted as other)
 //   - submissions that never got a result: STAGING_PIPELINE rows still at
 //     ERROR_TIMEOUT (a late result moves its row to COMPLETE, so it isn't
@@ -38,9 +40,11 @@
 const EH_MEASURES_TAB = "Measures";
 const EH_WEEKS = 8;
 const EH_RESULT_KINDS = ["PASSED", "NEEDS_REVISION", "ERROR_EMPTY_OUTPUT", "ERROR_SUSPECT_FABRICATION",
-  "ERROR_HARVEST_FAILED"];
+  "ERROR_HARVEST_FAILED", "ERROR_MALFORMED_OUTPUT"];
+// The Measures tab is rewritten whole each time, so a column can go in the
+// middle (ErrorMalformedOutput, 2026-11-15); _ehLine_ reads by name.
 const EH_HEADERS = ["WeekOf", "Course", "Checks", "Passed", "NeedsRevision", "ErrorEmptyOutput",
-  "ErrorSuspectFabrication", "ErrorHarvestFailed", "ErrorOther", "NeverReturned", "FailureRate",
+  "ErrorSuspectFabrication", "ErrorHarvestFailed", "ErrorMalformedOutput", "ErrorOther", "NeverReturned", "FailureRate",
   "WaitMedianMin", "WaitSlowestTenthMin", "StudentLessons", "DraftsPerStudentLesson", "MostDrafts",
   "WarmUpsDelivered", "WarmUpsAnswered", "WarmUpAnswerRate", "UpdatedAt"];
 // WarmUpQueue's lesson_context_snapshot column (25's WQ25_LESSON_CTX_SNAP):
@@ -170,11 +174,12 @@ function evaluationHealth_(opts) {
 
 function _ehRow_(c, stamp) {
   const k = function (name) { return c.kinds[name] || 0; };
-  const errors = k("ERROR_EMPTY_OUTPUT") + k("ERROR_SUSPECT_FABRICATION") + k("ERROR_HARVEST_FAILED") + c.other;
+  const errors = k("ERROR_EMPTY_OUTPUT") + k("ERROR_SUSPECT_FABRICATION") + k("ERROR_HARVEST_FAILED") +
+    k("ERROR_MALFORMED_OUTPUT") + c.other;
   const checks = k("PASSED") + k("NEEDS_REVISION") + errors + c.never;
   const drafts = Object.keys(c.drafts).map(function (x) { return c.drafts[x]; });
   return [c.week, c.course, checks, k("PASSED"), k("NEEDS_REVISION"), k("ERROR_EMPTY_OUTPUT"),
-    k("ERROR_SUSPECT_FABRICATION"), k("ERROR_HARVEST_FAILED"), c.other, c.never,
+    k("ERROR_SUSPECT_FABRICATION"), k("ERROR_HARVEST_FAILED"), k("ERROR_MALFORMED_OUTPUT"), c.other, c.never,
     checks ? _ehRound_((errors + c.never) / checks, 3) : "",
     _ehPercentile_(c.waits, 0.5), _ehPercentile_(c.waits, 0.9),
     drafts.length, drafts.length ? _ehRound_(drafts.reduce(function (a, b) { return a + b; }, 0) / drafts.length, 2) : "",
@@ -185,11 +190,13 @@ function _ehRow_(c, stamp) {
 // The email's line, for this week across courses.
 function _ehLine_(cellsThisWeek, week) {
   let checks = 0, failed = 0, never = 0, delivered = 0, answered = 0, waits = [], drafts = [];
+  const col = function (h) { return EH_HEADERS.indexOf(h); };
   cellsThisWeek.forEach(function (c) {
     const r = _ehRow_(c, "");
-    checks += r[2];
-    failed += r[5] + r[6] + r[7] + r[8];
-    never += r[9];
+    checks += r[col("Checks")];
+    ["ErrorEmptyOutput", "ErrorSuspectFabrication", "ErrorHarvestFailed", "ErrorMalformedOutput", "ErrorOther"]
+      .forEach(function (h) { failed += r[col(h)]; });
+    never += r[col("NeverReturned")];
     delivered += c.delivered;
     answered += c.answered;
     waits = waits.concat(c.waits);

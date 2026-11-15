@@ -809,8 +809,9 @@ const FIXTURE_FLOW2_OUTPUT = [
   'first two milestones is clear, and the promotional channels milestone needs one more',
   'concrete example.',
   '',
-  '[SYSTEM: APPROVED]',
-  '[SUGGESTED_SCORE: 3]',
+  // REVISION_REQUIRED: a milestone NOT_MET can't be APPROVED on an untiered
+  // Definition of Done; the harvest sets such a result aside (2026-11-15).
+  '[SYSTEM: REVISION_REQUIRED]',
   '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"NOT_MET","4":"MET"}]',
 ].join('\n');
 

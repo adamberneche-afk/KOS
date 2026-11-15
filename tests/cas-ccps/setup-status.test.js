@@ -12,7 +12,8 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 
 function load() {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('35_FlowPreflightAndCanary.js'), S('58_LessonRollout.js'), S('23_StudentProfileManager.js'), S('64_LedgerCycle.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('35_FlowPreflightAndCanary.js'), S('58_LessonRollout.js'), S('23_StudentProfileManager.js'), S('64_LedgerCycle.js'),
+    S('37_FlowInputBuilder.js'), S('39_FlowFixtures.js')],
     ['showSetupStatus']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -223,4 +224,37 @@ test('the checklist\'s tab names are the ones the code that makes each tab uses'
   ['Ledger', 'ReviewQueue', 'STAGING_PIPELINE', 'RubricQueue', 'MatrixRegistry', 'LessonContext', 'CompetencyRegistry',
     'AlignmentLog', 'StudentProfiles', 'WarmUpQueue', 'ClassSchedule', 'PacingGuide', 'CompetencyRubrics']
     .forEach((t) => assert.match(shared, new RegExp(':\\s*"' + esc(t) + '"'), t));
+});
+
+// 2026-11-15: the Ledger cycle's settings say where each came from; a Flow 2
+// answer copied into another row this week is a WARN naming the Studio fix;
+// a Flow 2 fixture row left in FlowInput names removeFlow2Fixture().
+test('cycle settings with their source, the duplicate-write WARN and the leftover fixture row', () => {
+  const env = load();
+  // The clock pinned: Monday 2026-11-16, 10:00 in New York.
+  const NOW = Date.UTC(2026, 10, 16, 15, 0, 0);
+  const RealDate = env.sandbox.Date;
+  env.sandbox.Date = class extends RealDate {
+    constructor(...a) { if (a.length) super(...a); else super(NOW); }
+    static now() { return NOW; }
+    static [Symbol.hasInstance](x) { return x instanceof RealDate || (x && typeof x.getTime === 'function'); }
+  };
+  env.props.setProperty('LEDGER_CYCLE_GATES', 'off');
+  const cfg = env.ss.insertSheet('_CONFIG');
+  cfg.appendRow(['Key', 'Value']);
+  cfg.appendRow(['LEDGER_CYCLE_EVERY', '{"harvestFlowInputResults": 5}']);
+  const dup = env.ss.insertSheet('Flow2Duplicates');
+  dup.appendRow(['DetectedAt', 'EarlierBuiltAt', 'NewerBuiltAt', 'EarlierStatus']);
+  dup.appendRow([new Date(NOW - 60 * 60 * 1000), '', '', 'EVALUATED']);
+  const fi = env.ss.insertSheet('FlowInput');
+  fi.appendRow(['Timestamp', 'StagingRowRef']);
+  fi.appendRow([new Date(NOW), 'FIXTURE']);
+  const lines = env.exported.showSetupStatus().lines;
+  assert.ok(lines.includes('  LEDGER_CYCLE_EVERY = {"harvestFlowInputResults": 5}  <- Central Ledger _CONFIG tab'));
+  assert.ok(lines.includes('  LEDGER_CYCLE_GATES = off  <- Script Property'));
+  assert.ok(lines.includes('  LEDGER_CYCLE_QUIET = (unset: the default)'));
+  const warn = lines.filter((l) => /^ {2}WARN Flow 2 wrote one answer/.test(l));
+  assert.equal(warn.length, 1);
+  assert.match(warn[0], /Update row step .* StagingRowRef \(column B\)/);
+  assert.ok(lines.some((l) => /NOTE FlowInput still has 1 Flow 2 fixture row\(s\).*removeFlow2Fixture\(\)/.test(l)));
 });
