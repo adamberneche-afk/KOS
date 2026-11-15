@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1WXLq-KtiORTk6w0s5kOFJAfTatXENnoo1DQONTf-79U -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: CHHS School Store Company Description -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

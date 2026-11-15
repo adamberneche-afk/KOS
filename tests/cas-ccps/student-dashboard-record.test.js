@@ -80,6 +80,37 @@ function load(viewer) {
   return Object.assign(env, { ss });
 }
 
+// 2026-11-15: the roster import writes the Canvas course name to CourseName,
+// so every piece of evidence read as the course. The assignment name now
+// comes from the TeacherMatrix through StudentAssignments, as the cards' does
+// (#424); a row StudentAssignments doesn't have keeps the Ledger's column.
+test('Competencies: evidence names its assignment from the TeacherMatrix, not the Ledger\'s course name', () => {
+  const { exported, sandbox, ss } = load(ME);
+  const L = exported.LEDGER;
+  const ledger = ss.getSheetByName('Ledger');
+  const rows = ledger.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) ledger.getRange(i + 1, L.COURSE_NAME + 1).setValue('Sports and Entertainment Marketing');
+  const sa = ss.insertSheet('StudentAssignments');
+  sa.appendRow(['StudentConfigID', 'GoogleID', 'AssignmentConfigID', 'RecordedAt']);
+  sa.appendRow(['VDOE-A1', ME, 'CAS-8175-L05', new Date()]); // VDOE-A2: not recorded (a legacy row)
+  const tmSs = sandbox.SpreadsheetApp.create('Teacher Matrix');
+  const tm = tmSs.insertSheet('TeacherMatrix');
+  tm.appendRow(['ConfigID', 'UnitName']);
+  tm.appendRow(['CAS-8175-L05', 'Sponsorship Revenue']);
+  const reg = ss.insertSheet('MatrixRegistry');
+  reg.appendRow(['Timestamp', 'TeacherEmail', 'TeacherMatrixSsId']);
+  reg.appendRow([new Date(), TEACHER, tmSs.getId()]);
+
+  const d = exported.getMyCompetencies();
+  assert.equal(d.success, true, JSON.stringify(d));
+  const item = d.courses[0].areas.flatMap(a => a.items).find(i => i.id === '8175-30');
+  assert.deepEqual(item.evidence.map(e => [e.date, e.assignment]), [
+    ['Oct 21', 'Sports and Entertainment Marketing'],
+    ['Oct 19', 'Sponsorship Revenue'],
+    ['Oct 15', 'Sponsorship Revenue'],
+  ], 'the lesson name where StudentAssignments has the row; the column as the fallback');
+});
+
 test('Competencies: every competency in my course, by duty area in task order, with my rating and evidence', () => {
   const { exported } = load(ME);
   const d = exported.getMyCompetencies();

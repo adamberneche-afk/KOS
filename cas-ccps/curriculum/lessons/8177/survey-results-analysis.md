@@ -1,4 +1,4 @@
-<!-- source: Google Doc 14lw-M4ckGVhkDC4X2nbsKhr4XTsglHLynx8VcC09YNE -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: Survey Results Analysis -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

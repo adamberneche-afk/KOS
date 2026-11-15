@@ -601,7 +601,11 @@ function getStudentDashboardData(termFilter) {
     const part = partsOf[String(row[LEDGER.CONFIG_ID]).trim()];
     if (rowStatus === "SCHEDULED") {
       // A locked part still shows, as a line under the parts already open.
-      if (part) locked.push(Object.assign({ title: _dashPartNames_(row[LEDGER.COURSE_NAME]).title }, part));
+      // Its title from the TeacherMatrix name, as an open part's card (the
+      // roster import's rows hold the course name in CourseName, which has
+      // no part title, so a locked part read blank; 2026-11-15).
+      const lockedName = unitNames[String(row[LEDGER.CONFIG_ID]).trim()] || row[LEDGER.COURSE_NAME];
+      if (part) locked.push(Object.assign({ title: _dashPartNames_(lockedName).title }, part));
       continue;
     }
     if (rowStatus === "ARCHIVED") continue;
@@ -1267,19 +1271,28 @@ function getStudentWarmUps_(ss, cfg, googleId, now) {
 // teacher-only (decided 2026-10-27).
 
 // The student's courses this school year, and each workspace's assignment
-// name, from their own Ledger rows.
+// name, from their own Ledger rows. The name is the TeacherMatrix's, as on
+// the cards (_dashUnitNames_, #424), with the Ledger's CourseName column only
+// as the fallback: the roster import writes the Canvas course name there, so
+// every piece of evidence on the Competencies tab read as the course
+// (2026-11-15).
 function _dashOwnCourses_(ss, cfg, email) {
   const out = { courses: {}, assignmentOf: {} };
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
   if (!sheet || sheet.getLastRow() < 2) return out;
   const year = _currentSchoolYear_();
+  const mine = [null]; // _dashUnitNames_ skips a header row
   sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER_COL_COUNT).getValues().forEach(function (row) {
     if (String(row[LEDGER.GOOGLE_ID] || "").trim().toLowerCase() !== email) return;
     if (!_isCurrentSchoolYearRow_(row, year)) return;
+    mine.push(row);
+  });
+  const names = mine.length > 1 ? _dashUnitNames_(ss, cfg, mine, email) : {};
+  mine.slice(1).forEach(function (row) {
     const code = ledgerRowCourseCode_(row);
     if (code && !out.courses[code]) out.courses[code] = String(row[LEDGER.CLASS_NAME] || "").trim();
     const id = String(row[LEDGER.CONFIG_ID] || "").trim();
-    if (id) out.assignmentOf[id] = String(row[LEDGER.COURSE_NAME] || "").trim();
+    if (id) out.assignmentOf[id] = names[id] || String(row[LEDGER.COURSE_NAME] || "").trim();
   });
   return out;
 }

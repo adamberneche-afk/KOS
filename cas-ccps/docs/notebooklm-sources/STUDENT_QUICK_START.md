@@ -4,9 +4,9 @@
 
 Notebook source: STUDENT_QUICK_START.
 
-Write in your document. Press Submit for Feedback. Read the comment. Turn it in on Canvas. Here's how each step works.
+Write in your document. Press Submit for Feedback. Answer one question about your feedback. Paste your turn-in code into Canvas. Here's how each step works.
 
-📄 Open your document ✍️ Write under the grey line 📊 Submit for Feedback 💬 Read the comment ✅ Turn it in on Canvas
+📄 Open the assignment ✍️ Write under the grey line 📊 Submit for Feedback 💬 Answer the question about your feedback ✅ Paste your turn-in code into Canvas
 
 ## Open Your Document
 
@@ -42,7 +42,7 @@ Submit as many times as you like. Revising is the point, and there's no penalty.
 
 1. **Write at least 25 words**: Write under the grey line. With fewer than 25 words, the dashboard says “Write a little more first.” and tells you about how many words it found.
 2. **Press Submit for Feedback on your dashboard**: Open your dashboard (the **Your dashboard** link at the top of your document). Find the assignment and press **Submit for Feedback**. You'll see: “✅ Submitted. In a few minutes your feedback will be a comment on your document: open it and click Comments (top right).” Your card may first ask one or two short questions about how you worked, such as where your work shows a skill, or the hardest choice you made. Answer each in at least 10 words, then press **Submit for Feedback** again. Your answers are not part of your work: they come back to you as a comment on your document, so you can look at them while you revise.
-3. **Wait a few minutes**: Press **↻ Refresh** on your dashboard. The card says **Waiting for feedback…**, then **Being checked now…**.
+3. **Wait a few minutes**: Keep your dashboard open. While your work waits, the card shows a line of where it is: **Submitted → In line → Being checked → Feedback ready**, with the time of each step it knows. Being checked may say how long a check usually takes. The page checks for news by itself, and when your feedback is ready it tells you at the top of the page and moves to that card. If a step takes more than about 8 minutes, the card says “Taking a while. Your work is saved.” with a **Check again** button. Check again only asks for the latest news; it doesn't send your work again, so you don't need to submit again.
 4. **Open your document and click Comments**: Your feedback is a comment. Each time you submit, you get a new one. The newest is the one to read.
 
 ## What your card says
@@ -57,21 +57,23 @@ Cards that need you are listed first, under **Do next**, at the top of the page.
 
 - **Being checked**: Your work is being read right now.
 
-- **Passed ✓**: Your work meets the standard. The line under the title says where your feedback is. Turn it in on Canvas, or keep improving it and submit again.
+- **Passed ✓**: Your work meets the standard. The line under the title says where your feedback is. The card asks one question about your feedback: answer it to get your turn-in code (section 06). You can also keep improving your work and submit again.
 
-- **Revise**: Read the feedback, change your work, then press Submit for Feedback again. A **Not yet:** line names the part of the assignment your last check didn't find yet: start there.
+- **Revise**: Read the feedback, change your work, then press Submit for Feedback again. A **Not yet:** line names the part of the assignment your last check didn't find yet: start there. The card also asks one question about that feedback. You can answer it and get your turn-in code now, before you pass (section 06).
 
 - **Turned in**: Your teacher is reviewing your work. Nothing to do yet.
 
 - **Done ✓**: Your teacher confirmed this assignment.
 
-- **Check stopped ⚠**: The check took more than 12 minutes and was stopped. Your work is saved and your teacher has been told. Press **Try again** on the card to put it back in line (once every 10 minutes). If the feedback arrives late, the card changes to show it.
+- **Check stopped ⚠**: The check took more than 12 minutes and was stopped. Your work is saved and your teacher has been told. Press **Try again** on the card to put the same work back in line; you don't need to submit again. You can press it once every 10 minutes: if you press it sooner, the card says how many minutes to wait. If the feedback arrives late, the card changes to show it.
 
 - **Couldn’t be checked ⚠**: Something went wrong on our side, not with your work. The line under the title says whether you can submit again or should tell your teacher; the card has a link to email them.
 
 The card also shows **Last submitted** (when you last pressed Submit for Feedback) and **Last checked** (when you last got feedback), or “Not checked yet”.
 
 > ⏱️ **Most checks take a few minutes.** While you wait, the card shows where your work is (Submitted, In line, Being checked) and this page shows your feedback when it’s ready. If a check takes longer than 12 minutes, the system stops it, your card says “Check stopped ⚠”, and your teacher is told by email. Press Try again on the card; you do not need to submit again.
+
+> 🔔 **The page checks for news while you wait.** It pauses while you're on another tab and starts again when you come back. After many checks on one visit it stops and says so: then press **↻ Refresh** to see what’s ready.
 
 ## Read Your Feedback
 
@@ -93,7 +95,7 @@ Open your document and click **Comments** (top right). Each comment starts with 
 >
 > **What to do next**
 >
-> Done with it? Turn it in on Canvas. Want to make it stronger? Keep revising, then press Submit for Feedback again.
+> Done with it? Turn it in on Canvas. Want to make it stronger? Keep revising, then press Submit for Feedback again. (The comment may tell you to paste your document's link into Canvas. Do what your Canvas assignment's instructions say: most now ask for your turn-in code. See section 06.)
 
 If your work needs more, the result line is different, and there's a list of what to fix:
 
@@ -124,32 +126,57 @@ A warm-up is a short question at the start of class. You answer it on your dashb
 
 > 📄 **Some classes use a warm-up document instead.** If the card shows **Open warm-up ↗**, answer in that document, and reply under the feedback there for extra credit.
 
-## Turn It In on Canvas
+## Turn It In: Your Turn-in Code
 
-You turn in on Canvas. That's where your teacher grades it. Passing a check first is a good idea, but it isn't required.
+You turn in on Canvas. That's where your teacher grades it. For most assignments, what you paste into Canvas is a **turn-in code** from your dashboard. You earn the code by using your feedback. Here's the whole path.
 
-1. **Copy your document's link**: With your document open, copy the address from the browser's address bar.
-2. **Open the same assignment in Canvas**: Choose **Start Assignment** → **Website URL**.
-3. **Paste the link and submit**: Paste the link and press **Submit Assignment**.
+1. **Open the assignment**: Open your document from your dashboard with **Open My Document ↗** (sections 01 and 02).
+2. **Write under the grey line**: At least 25 words, under “── YOUR RESPONSE BEGINS HERE ──”.
+3. **Submit for feedback**: Press **Submit for Feedback** on your dashboard and wait for your feedback (section 03).
+4. **Answer the one question built from your feedback**: When your feedback is ready, the card has a **Turn-in code** box with one question. It is made from your own feedback. If your feedback says **Not yet**, it asks what you will change and where in your document. If you passed, it asks you to point to the part of your work that shows the skill and say why it does. Write at least 10 words in your own words, then press **Send answer**. The card says “Checking your answer…”. This takes a few minutes, and the page shows your code when it's ready. If the card says **Not yet:**, it tells you why in one line: rewrite your answer and send it again, as many times as you need.
+5. **Copy your turn-in code and paste it into the Canvas assignment**: Press **Copy** beside the code. Press **Open Canvas ↗** beside it (or **Canvas ↗** at the top of your dashboard) to open Canvas in a new tab. Open the same assignment, choose **Start Assignment** → **Text Entry**, paste the code and press **Submit Assignment**. Paste only the code: your teacher reads your work in your document.
 
-> 💡 **Your teacher opens your document from Canvas.** They see it as it is when they open it, with your feedback comments.
+> 📌 **Read the Canvas instructions first.** Each Canvas assignment says whether to paste a turn-in code or a link to your document. If it asks for a link, copy your document's address from the browser's address bar and choose **Start Assignment** → **Website URL** instead. For a lesson in parts, finish every part; the Canvas instructions say what to paste.
+
+## What the code means
+
+- **Used your feedback**: The code shows you read your feedback and did something with it. It does not say your work is good or finished. Your teacher still reads your work.
+
+- **Revise is fine**: You can earn the code on a **Revise** card. You don't have to pass first.
+
+- **Yours alone**: The code belongs to you and this one assignment. Someone else's code won't work for you, and yours won't work for them, so don't share it. It stays the same if you submit again, and you can copy it again any time.
+
+- **After it's in**: Once your code is in Canvas, you can keep revising and submitting for feedback. That revising is for your learning and your final grade; you don't need a new code.
+
+## What a good answer does
+
+There is no answer to copy: the question comes from your own feedback. A good answer:
+
+1. **Names the specific part**: Says which sentence, paragraph, example or choice in your work it means, not just “my work”.
+2. **Says where**: Says where that part is in your document, or where the change will go.
+3. **Says why**: Explains why that part shows the skill, or why the change will fix what the feedback found.
+
+An answer that is too short, or that mostly copies the feedback or the question, is sent back straight away with the reason. Use your own words.
+
+> 💡 **If the card says “We couldn’t check your answer.”** That's a problem on our side, not with your answer. Your teacher can see it, and you can send it again. **If it says this marking period has ended,** the dashboard can't give a code for it any more: ask your teacher.
 
 ## Your Dashboard
 
 Your dashboard is called **📚 My Assignments**. Open it from the **Your dashboard** link at the top of any of your documents.
 
 1. **This marking period**: Assignments shows this marking period's work, named at the top, in the order your teacher assigned it in each class. Each card has the assignment's name, its lesson number (like L05), one line on what you do, and what the lesson checks in your own words (“I can …”) with what your checked work showed: Shown, Partly shown, Not shown yet, or Not checked yet. A lesson in parts is one card on the part to work on now, with dots for its parts (● done); **All parts** shows the rest. **Sort** changes the order (Assigned order, Needs attention first, Recently checked, Not yet shown first), and the buttons beside it show only the work that needs action, is in progress, is not started or is done. **Do next** above it lists what needs you. Work from earlier marking periods leaves the page; what it showed stays in **🎓 Competencies**.
-2. **The tabs**: **📋 Assignments** is your work and today's warm-up. Some lessons come in parts, each with its own document: a locked part (🔒) opens when the check finds the part before meets its main goal, or when your teacher opens it. In Canvas, turn in the link to your last part. **🎓 Competencies** lists every competency in your course by area (or by rating, or by your most recent evidence), with your teacher's rating as its number and words (or “Not rated yet”), what your latest checked work showed, what it means in your own words, the lessons where you practice it, what you showed this marking period and this year, and what to practice next; **Review** on a competency shows a short recap from each lesson, its key terms and any video and each piece of evidence your checked work gave: the assignment, the date, and Shown, Partly shown or Not shown yet. A rating of 3 or 4 also says what more work would let your teacher re-rate it, or that it is ready for a re-rating; your teacher decides. **✏️ Warm-ups** has every past warm-up with its score, feedback, the question and your answer. **🗂️ My Context** shows what the system has gathered about your work, one week at a time, with a link straight to that week in the document.
+2. **The tabs**: **📋 Assignments** is your work and today's warm-up. Some lessons come in parts, each with its own document: a locked part (🔒) opens when the check finds the part before meets its main goal, or when your teacher opens it. For a lesson in parts, the Canvas instructions say what to turn in. **🎓 Competencies** lists every competency in your course by area (or by rating, or by your most recent evidence), with your teacher's rating as its number and words (or “Not rated yet”), what your latest checked work showed, what it means in your own words, the lessons where you practice it, what you showed this marking period and this year, and what to practice next; **Review** on a competency shows a short recap from each lesson, its key terms and any video and each piece of evidence your checked work gave: the assignment, the date, and Shown, Partly shown or Not shown yet. A rating of 3 or 4 also says what more work would let your teacher re-rate it, or that it is ready for a re-rating; your teacher decides. **✏️ Warm-ups** has every past warm-up with its score, feedback, the question and your answer. **🗂️ My Context** shows what the system has gathered about your work, one week at a time, with a link straight to that week in the document.
 3. **🎓 Competencies done**: At the top, one line per course: how many of the course's competencies your teacher has rated you able to do with limited supervision or better, out of all of them (for example “12 of 113”). It goes up as your teacher rates your work.
 4. **ℹ️ My Info**: In the **More ▾** menu at the top. What the system has on file for you: your name, class, period and teacher. If something is wrong, press **✉ Request a correction** or tell your teacher.
 5. **❓ What do these mean?**: Also in **More ▾**. Opens a list of the words on the page and what they mean. Press Escape or Close to shut it.
-6. **↻ Refresh**: The page doesn't update by itself. Press Refresh to see the latest.
+6. **↻ Refresh**: While a card is waiting for feedback or a turn-in code, the page checks for news by itself. Everything else updates when you press Refresh.
+7. **Canvas ↗**: Beside Refresh at the top. Opens Canvas in a new tab, so your dashboard stays open.
 
 ## Common Questions
 
 ### I pressed Submit for Feedback. Where's my feedback?
 
-Press ↻ Refresh on your dashboard. If the card says “Waiting for feedback…” or “Being checked now…”, it's on its way: give it a few minutes. When it's ready, open your document and click **Comments** (top right). If the card says “Couldn't be checked ⚠”, tell your teacher.
+Keep your dashboard open: the card shows where your work is (Submitted, In line, Being checked) and the page checks for news by itself. If it's taking a while, press **Check again** on the card, or ↻ Refresh. When it's ready, open your document and click **Comments** (top right). If the card says “Couldn't be checked ⚠”, tell your teacher.
 
 ### It says “Write a little more first.”
 
@@ -163,9 +190,17 @@ You already submitted, and it's in line. You don't need to press it again. Check
 
 Your writing has a line the system uses itself, like one starting with `[SYSTEM:`. The message shows which. Delete that line and submit again. Your own words are fine.
 
-### Do I have to pass before I turn it in on Canvas?
+### Do I have to pass before I get my turn-in code?
 
-No. Passing first is a good idea, because it means your work meets the standard. But you can turn it in on Canvas whenever you're done.
+No. You can earn your code on a Revise card: answer the question about your feedback. The code shows you used your feedback, not that your work is done. Keep revising after that if you want your work to meet the standard.
+
+### My answer says “Not yet”.
+
+Read the one-line reason, then rewrite your answer and send it again. There is no limit. Name the specific part of your work, say where it is, and say why. Use your own words: an answer that mostly copies the feedback or the question comes back right away.
+
+### Copy didn't work.
+
+The card selects the code for you: press Ctrl+C (⌘C on a Mac), then paste it into Canvas. You can also type it: it doesn't matter if you get capitals or dashes wrong.
 
 ### Can I submit more than once? Will it hurt my grade?
 
@@ -173,7 +208,7 @@ Submit as often as you need. There's no penalty. Write, get feedback, improve, r
 
 ### I changed my work after I turned it in on Canvas. What now?
 
-Canvas has your document's link, not a copy. Your teacher sees the document as it is when they open it. You can still press Submit for Feedback to get your changes checked. If you're not sure, ask your teacher.
+Nothing to turn in again. Your code stays the same, and your teacher reads your work in your document as it is when they open it. Keep pressing Submit for Feedback to get your changes checked: that revising is for your learning and your final grade. If you're not sure, ask your teacher.
 
 ### My assignment isn't on my dashboard.
 

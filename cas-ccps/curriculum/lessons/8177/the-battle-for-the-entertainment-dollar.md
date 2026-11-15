@@ -1,4 +1,4 @@
-<!-- source: Google Doc 19mwLqn9Bk7-WAMmvWkM20lxvilvfL7wC4E9zDdJC1_Q -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Battle for the Entertainment Dollar -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

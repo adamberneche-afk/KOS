@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1C-Y8dbLkeJyGdSl_DZcGXaWEyd-16hJWcsZkUQM-c88 -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: 8177 Competency Coverage Tracker -->
 <!-- rebuilt: 2026-10-12 from the lesson plans' Competency Alignment sections, against the 2025 VDOE framework (12163-II) in data/CompetencyRubrics.json. The Drive doc matches. -->
 

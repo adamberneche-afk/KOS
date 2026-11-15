@@ -18,12 +18,12 @@ to match on 2026-10-12. Two 8177 lessons were written in the repo first:
 the 2025 task list on 2026-10-12 in the repo, and the Drive docs were updated to match the
 same day.
 
-| Folder | Course | Drive folder ID | Contents |
+| Folder | Course | Drive folder | Contents |
 |---|---|---|---|
-| `8175/` | 8175 Sports & Entertainment Marketing | `1BksIMpLiRAt4RdEam3mKIYExT8NZGusa` | `L01.md`–`L36.md`, one per "8175 \| Qn \| … \| Lesson NN: …" doc (teacher instructions + Canvas student-view assignment text), `prompts/L01.md`–`L36.md` (the student side, written in the repo 2026-10-28), and `COMPETENCY_TRACKER.md` (written in the repo; no Drive copy) |
-| `8177/` | 8177 Sports, Entertainment, and Event Management | `1O5T04ktNN5GWi3fDnpKTbNWjW0Abn73U` | `PACING_GUIDE.md`, `COMPETENCY_TRACKER.md`, and one `<slug>.md` per "Lesson Plan: <Name>" doc |
+| `8175/` | 8175 Sports & Entertainment Marketing | the folder holding its lesson docs (find it from any lesson's title; no ID here) | `L01.md`–`L36.md`, one per "8175 \| Qn \| … \| Lesson NN: …" doc (teacher instructions + Canvas student-view assignment text), `prompts/L01.md`–`L36.md` (the student side, written in the repo 2026-10-28), and `COMPETENCY_TRACKER.md` (written in the repo; no Drive copy) |
+| `8177/` | 8177 Sports, Entertainment, and Event Management | the folder holding its lesson docs (find it from any lesson's title; no ID here) | `PACING_GUIDE.md`, `COMPETENCY_TRACKER.md`, and one `<slug>.md` per "Lesson Plan: <Name>" doc |
 
-Each file starts with an HTML-comment header giving the source Google Doc ID, the exact
+Each file starts with an HTML-comment header naming its source Google Doc (by the title on the next line: since 2026-11-15 the repo keeps no Drive IDs, so the doc is found by that title), the exact
 doc title, and the copy date (a lesson written in the repo says so instead). The body below the header is the Drive export text as
 returned (escape characters such as `\!`, `\#`, `\[` kept as-is).
 

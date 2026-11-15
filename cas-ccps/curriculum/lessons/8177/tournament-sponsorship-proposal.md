@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1aXIsO8d05gcKSi4dztDh5co9gXW6evQgvOggf7039Y0 -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: Tournament Sponsorship Proposal -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

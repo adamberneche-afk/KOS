@@ -1,4 +1,4 @@
-<!-- source: Google Doc 152qf4exhgXR_0T94lmlj73ZEsW0zZ5O4ze5Vcdrv018 -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Global Expansion -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

@@ -1366,6 +1366,17 @@ now reads "10 KB". Test: a multi-byte setting in `config-sync.test.js`.
   lunches, A or B by date); fixed line ranges in it and in
   `pacing-and-calendar.test.js` moved with the source.
 
+## Drive IDs out of the LeaderHub docs, 2026-11-15
+
+- **Now:** `LEADERHUB_EMAIL_SETUP.md`, `LEADERHUB_GEM_PROMPT.md`,
+  `LEADERHUB_README.md`, `LEADERHUB_WIP.md`, `LEADERHUB_HANDOFF.md`,
+  `LH_02_INTEGRATION_GUIDE.md`, `LH_04_EMAIL_AUDIT.md` and
+  `drive-tools/LH_Drive_README.md` show `<sheet ID>`, `<deployment ID>`,
+  `<folder ID>` or "(ID removed)" where a real Sheet, doc or web app ID
+  was. The app's own lesson-plan table (`LESSON_PLANS` docIds, src/09) and
+  the blackout-dates link (src/06) are code and stay, for the operator's
+  release decision. doc-currency Check 6 now fails on a Drive ID in a doc.
+
 ## Two security items: the horizon GET route and Organization Sync, 2026-11-15
 
 - **`?api=horizon`.** `doGet()` answered it before the owner check, so any
