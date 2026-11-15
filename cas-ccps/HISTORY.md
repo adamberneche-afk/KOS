@@ -5807,3 +5807,18 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   after midnight New York (a fixture stamped "6 minutes ago" fell on
   yesterday, so the stage line showed a date). Every clock in it is now
   pinned to a weekday noon, as `flow-measures` was in #422. No code change.
+
+## Student Dashboard: three fixes from the demo check, 2026-11-15
+
+- **Found (the operator's demo check after the push):** a lesson in parts
+  read "Not started" beside milestones marked Shown (the marks are the
+  lesson's best results across its parts; the label was the current
+  part's); every mark said "Being checked" while a check ran, repeating the
+  card's label; an area header on the Competencies tab wrapped its count
+  onto a line of its own.
+- **Now:** a lesson card's label names its part ("Part 3: Not started") and
+  its marks carry a caption ("What this lesson checks, across its parts so
+  far"); while a check runs the marks show one caption, "Checking these
+  now", and no tag on the lines not found yet; each count in an area header
+  stays on one line.
+- **Tests:** `student-dashboard-navigation.test.js`, `student-dashboard-competencies.test.js`.
