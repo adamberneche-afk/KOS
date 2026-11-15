@@ -12,11 +12,18 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 
-function load() {
-  return loadGasFiles(
+function load(turnIn) {
+  const env = loadGasFiles(
     [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '03_QueueBridge.js'), path.join(SCRIPTS, '63_DocHeader.js')],
     ['markLedgerEvaluated_', 'buildNextStepsText_', 'processCompletedEvaluation_',
-     'backPropagateCompletions', 'notifyTimeoutToTeacher_', 'notifyFailedCheckToTeacher_']);
+     'backPropagateCompletions', 'notifyTimeoutToTeacher_', 'notifyFailedCheckToTeacher_', 'nextStepsTurnInMode_']);
+  // TURN_IN_CODE_COURSES (71's switch, read by 03 from the shared config): off when unset.
+  if (turnIn !== undefined) {
+    const props = env.sandbox.PropertiesService.getScriptProperties();
+    props.setProperty('CENTRAL_LEDGER_SS_ID', env.sandbox.SpreadsheetApp.create('Central Ledger').getId());
+    props.setProperty('TURN_IN_CODE_COURSES', turnIn);
+  }
+  return env;
 }
 
 function ledgerWith(sandbox, statuses) {
@@ -47,16 +54,52 @@ test('markLedgerEvaluated_: turned-in and archived rows keep their status; other
     ['PENDING_TEACHER_REVIEW', 'COMPLIANT', 'ARCHIVED', 'ACTIVE']);
 });
 
-test('buildNextStepsText_: passing suggests Canvas and another check; revising points at the dashboard', () => {
+test('buildNextStepsText_: with turn-in codes off, passing suggests the doc link in Canvas and another check', () => {
   const { exported } = load();
+  assert.equal(exported.nextStepsTurnInMode_(), 'LINK');
   const pass = exported.buildNextStepsText_('APPROVED');
   assert.match(pass, /Turn it in on Canvas/);
   assert.match(pass, /Start Assignment → Website URL/);
-  assert.match(pass, /Submit for Feedback again/);
+  assert.match(pass, /press Submit for Feedback\n\s+again on your dashboard/);
+  assert.doesNotMatch(pass, /turn-in code/);
   const revise = exported.buildNextStepsText_('REVISION_REQUIRED');
   assert.match(revise, /click Submit for Feedback/);
+  assert.doesNotMatch(revise, /turn-in code/);
   for (const text of [pass, revise]) {
     assert.doesNotMatch(text, /Turn-In Form|AI Evaluation Panel|Run Assignment Check/);
+  }
+});
+
+// 2026-11-15: since 11-09 Canvas takes the turn-in code, not the doc's link.
+test('buildNextStepsText_: with turn-in codes on everywhere, the steps are the code, never the link', () => {
+  const { exported } = load('all');
+  assert.equal(exported.nextStepsTurnInMode_(), 'CODE');
+  const pass = exported.buildNextStepsText_('APPROVED');
+  assert.match(pass, /1\. Get your turn-in code: open your dashboard and answer the one\n\s+question on this assignment's card/);
+  assert.match(pass, /2\. Copy the code and paste it into the Canvas assignment/);
+  assert.match(pass, /Your turn-in code stays the same\./);
+  assert.doesNotMatch(pass, /Website URL|this document's link/);
+  const revise = exported.buildNextStepsText_('REVISION_REQUIRED');
+  assert.match(revise, /Answer it to get your code now; you don't have\n\s+to pass first\./);
+  assert.doesNotMatch(revise, /Website URL/);
+});
+
+test('buildNextStepsText_: with codes on for some courses, the steps say to follow the Canvas instructions', () => {
+  const { exported } = load('8177');
+  assert.equal(exported.nextStepsTurnInMode_(), 'EITHER');
+  const pass = exported.buildNextStepsText_('APPROVED');
+  assert.match(pass, /Follow the Canvas assignment's instructions/);
+  assert.match(pass, /If it asks for a\n\s+turn-in code/);
+  assert.match(pass, /If it asks for a link/);
+  assert.match(exported.buildNextStepsText_('REVISION_REQUIRED'), /If this Canvas assignment takes a turn-in code/);
+});
+
+test('buildNextStepsText_: each boxed line fits the doc block (under 80 characters)', () => {
+  for (const sw of [undefined, 'all', '8177']) {
+    const { exported } = load(sw);
+    for (const kind of ['APPROVED', 'REVISION_REQUIRED']) {
+      exported.buildNextStepsText_(kind).split('\n').forEach((line) => assert.ok(line.length < 80, sw + ' ' + kind + ': ' + line));
+    }
   }
 });
 

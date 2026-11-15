@@ -5776,3 +5776,20 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
 - **Check:** doc-currency Check 6 (`drive-id-in-doc`) fails on a Drive link
   or ID, or a web app link, in any Markdown doc.
 - **Tests:** `doc-currency-check.test.js`.
+
+## Feedback next steps: the turn-in code, 2026-11-15
+
+- **Found (#439):** a passed check's next steps, in the feedback comment
+  and the doc block, still said to copy the document's link into Canvas as
+  a Website URL. Since 11-09 every Canvas assignment takes a turn-in code.
+- **Now (the operator's "update this for clarity of the next steps"):** the
+  next steps follow `TURN_IN_CODE_COURSES`. `all`: 1. answer the one
+  question on the card to get the code; 2. copy it into the Canvas
+  assignment (the Canvas button opens Canvas); improving is optional and
+  the code stays the same. A Revise result adds that the code can be earned
+  now, before passing. Off: the old link steps. A list of courses or
+  lessons: follow the Canvas assignment's instructions (code or link). 03
+  reads the switch from the shared config itself (`nextStepsTurnInMode_`),
+  so neither 03 nor 37 needs 71 loaded. The student guide's example
+  comment matches.
+- **Tests:** `evaluation-next-steps.test.js`, `flow-input-builder.test.js`.

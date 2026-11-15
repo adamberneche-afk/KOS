@@ -116,8 +116,11 @@ function buildNextStepsText_(complianceResult) {
       "Your work meets the standard. Here's what to do:\n\n" +
       "  1. Read the feedback above to understand your strengths.\n" +
       "  2. Make any final polish edits you feel are needed.\n" +
-      "  3. When you're done, turn it in on Canvas: copy this document's link,\n" +
-      "     open the Canvas assignment, choose Start Assignment → Website URL.\n\n" +
+      "  3. When you're done, follow the Canvas assignment's instructions. If\n" +
+      "     it asks for a turn-in code, answer the question on this\n" +
+      "     assignment's card on your dashboard and paste the code it gives\n" +
+      "     you. If it asks for a link, copy this document's link and paste it\n" +
+      "     as a Website URL.\n\n" +
       "⚠️  Do not delete or edit any evaluation report in this document.\n" +
       "    It is part of your verified submission record.\n"
     );

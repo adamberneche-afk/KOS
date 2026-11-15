@@ -368,7 +368,7 @@ test('harvestFlowInputResults: writes feedback to the doc, CompetencyEvidence ro
   // turning in on Canvas and still offers another check.
   assert.ok(docText.indexOf('WHAT TO DO NEXT') !== -1, 'the block carries its next steps');
   assert.ok(docText.indexOf('Turn it in on Canvas') !== -1);
-  assert.ok(docText.indexOf('Submit for Feedback again') !== -1);
+  assert.ok(/Submit for Feedback\s+again/.test(docText));
   assert.ok(docText.indexOf('Turn-In Form') === -1 && docText.indexOf('AI Evaluation Panel') === -1,
     'no pointer to the form students never got or the menu that does not run for them');
   assert.ok(docText.indexOf('WHAT TO DO NEXT') < docText.indexOf('── END EVALUATION ──'),
