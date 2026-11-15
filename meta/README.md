@@ -15,14 +15,23 @@ why this repo exists at all.
   does what (Gemini runs the Google-side flows; a Claude Project is the
   thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
   pipeline kept and repaired, and the RTP Gem frozen.
+- **`HANDOFF_2026-11-15.md`** — the repo-wide session handoff: what merged
+  11-09 to 11-15 (#418–#443: Flow 2 resilience after Studio stopped
+  answering, the Ledger cycle every minute with each job's run time, the
+  Student Dashboard's navigation and Competencies tab, news, stages and Try
+  again, the Teacher Dashboard's waiting strip, the Canvas button), what is
+  live (KOS through #417, pushed 11-09; #418 on merged but not pushed), the
+  operator's queue in order, the decisions of 11-14/15, what is on hold,
+  and the agent notes added. Start here.
 - **`HANDOFF_2026-11-08.md`** — the repo-wide session handoff: what merged
-  11-02 to 11-08 (#375–#398 and Mothership #85/#86: the RTP feedback loop
+  11-02 to 11-09 (#375–#417 and Mothership #85/#86: the RTP feedback loop
   and closeout fidelity, the outside review's do-now fixes, the dashboards'
-  UX batch, demo mode and More menu, the turn-in code stages 1–4 with its
-  switch off, flow measurements), what is live (KOS through #376), the
-  operator's queue in order, what is still open, and the agent notes added.
-  Start here. `HANDOFF_2026-11-01.md` (superseded for the queue; its 11-02
-  record and agent notes still hold) is below.
+  UX batch, demo mode and More menu, the turn-in code stages 1–4, flow
+  measurements, Phase 4a–4d), what was live (KOS through #417, pushed
+  11-09), the operator's queue, what was open, and the agent notes added.
+  Superseded for the queue by 11-15; its record and agent notes still hold.
+  `HANDOFF_2026-11-01.md` (superseded for the queue; its 11-02 record and
+  agent notes still hold) is below.
 - **`HANDOFF_2026-11-01.md`** — the repo-wide session handoff: what merged
   #352–#361 (the plan's week of Nov 2 built a day early: both clean-up PRs,
   the SCR retry, the Registrar's flows, `reportEvaluationHealth`, Flow 5
