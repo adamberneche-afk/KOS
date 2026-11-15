@@ -376,27 +376,26 @@ function appendNextSteps_(body, complianceResult) {
 // and 01/13's extractors and responseZoneBounds_() take the first match, so
 // a quote here would pull the whole assignment into the "response".
 function buildNextStepsText_(complianceResult) {
+  const mode = nextStepsTurnInMode_();
+  const rule = "──────────────────────────────────────────────────\n";
   if (complianceResult === "APPROVED") {
     return (
-      "\n" +
-      "──────────────────────────────────────────────────\n" +
-      "✅  WHAT TO DO NEXT\n" +
-      "──────────────────────────────────────────────────\n\n" +
-      "Your work meets the standard. You have two choices:\n\n" +
-      "  • Done with it? Turn it in on Canvas: copy this document's link, open\n" +
-      "    the Canvas assignment, choose Start Assignment → Website URL and paste it.\n" +
-      "  • Want to make it stronger? Keep revising, then open your assignment\n" +
-      "    dashboard (the link is near the top of this document) and click\n" +
-      "    Submit for Feedback again.\n\n" +
+      "\n" + rule + "✅  WHAT TO DO NEXT\n" + rule + "\n" +
+      "Your work meets the standard.\n\n" +
+      NEXT_STEPS_TURN_IN_[mode].doc +
+      (mode === "CODE"
+        ? "\n  Want to make it stronger? (optional) Revise it, then press Submit for\n" +
+          "  Feedback again on your dashboard (the link is near the top of this\n" +
+          "  document). Your turn-in code stays the same.\n\n"
+        : "  • Want to make it stronger? Revise it, then press Submit for Feedback\n" +
+          "    again on your dashboard (the link is near the top of this document)." +
+          (mode === "LINK" ? "" : "\n    Your turn-in code stays the same.") + "\n\n") +
       "⚠️  Do not delete or edit the feedback in this document.\n" +
       "    It is part of your record.\n"
     );
   }
   return (
-    "\n" +
-    "──────────────────────────────────────────────────\n" +
-    "✏️   WHAT TO DO NEXT\n" +
-    "──────────────────────────────────────────────────\n\n" +
+    "\n" + rule + "✏️   WHAT TO DO NEXT\n" + rule + "\n" +
     "Your work needs revision. Here's what to do:\n\n" +
     "  1. Read the REQUIRED REVISIONS list above carefully.\n" +
     "  2. Update your response below the\n" +
@@ -404,9 +403,73 @@ function buildNextStepsText_(complianceResult) {
     "  3. Open your assignment dashboard (the link is near the top of this\n" +
     "     document) and click Submit for Feedback.\n" +
     "  4. Repeat until you see a ✅ passing result.\n\n" +
+    (mode === "LINK" ? "" : NEXT_STEPS_TURN_IN_[mode].reviseDoc) +
     "💡  You can check as many times as you need — no penalty for revising.\n"
   );
 }
+
+// How a student turns work in, for the next steps (2026-11-15, the
+// operator's "update this for clarity of the next steps"). Since 11-09 the
+// Canvas assignment takes a turn-in code (71, D17), not the doc's link, and
+// the old "Start Assignment → Website URL" step sent students the wrong way.
+// TURN_IN_CODE_COURSES decides: "all" → CODE (the steps for the code); off
+// everywhere → LINK (the old steps, still right then); a list of courses or
+// lessons → EITHER (follow the Canvas assignment's instructions, which say
+// which). Read straight from the shared config (00), not through 71's
+// parser, so 03 and 37 need nothing else loaded; a value 71 would ignore
+// entirely reads as EITHER here, which is never wrong. A config that can't
+// be read counts as off, as 71's _turnInSwitchRaw_ treats it (the dashboard
+// then shows no code either).
+function nextStepsTurnInMode_() {
+  let raw;
+  try { raw = _resolveConfigValues_().values.TURN_IN_CODE_COURSES; } catch (e) { raw = ""; }
+  const v = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase();
+  if (v === "" || v === "off") return "LINK";
+  return v === "all" ? "CODE" : "EITHER";
+}
+
+// The turn-in lines for each mode: doc (03's boxed block, hard-wrapped) and
+// comment (37's comment, one line each, read in a narrow panel).
+const NEXT_STEPS_TURN_IN_ = {
+  CODE: {
+    doc:
+      "  1. Get your turn-in code: open your dashboard and answer the one\n" +
+      "     question on this assignment's card. The code appears on the card.\n" +
+      "  2. Copy the code and paste it into the Canvas assignment. (The Canvas\n" +
+      "     button on your dashboard opens Canvas.)\n",
+    comment:
+      "1. Get your turn-in code: on your dashboard, answer the one question on this assignment's card. The code appears on the card.\n" +
+      "2. Copy the code and paste it into the Canvas assignment. The Canvas button on your dashboard opens Canvas.\n",
+    reviseDoc:
+      "🎟️  Your turn-in code: the card on your dashboard also asks one question\n" +
+      "    about this feedback. Answer it to get your code now; you don't have\n" +
+      "    to pass first.\n",
+    reviseComment:
+      "Your turn-in code: the card on your dashboard also asks one question about this feedback. Answer it to get your code now; you don't have to pass first.\n",
+  },
+  EITHER: {
+    doc:
+      "  • Done? Follow the Canvas assignment's instructions. If it asks for a\n" +
+      "    turn-in code, answer the question on this assignment's card on your\n" +
+      "    dashboard and paste the code it gives you. If it asks for a link,\n" +
+      "    copy this document's link and paste it as a Website URL.\n",
+    comment:
+      "• Done? Follow the Canvas assignment's instructions. If it asks for a turn-in code, answer the question on this assignment's card on your dashboard and paste the code it gives you. If it asks for a link, copy this document's link and paste it as a Website URL.\n",
+    reviseDoc:
+      "🎟️  If this Canvas assignment takes a turn-in code, the card on your\n" +
+      "    dashboard asks one question about this feedback. Answer it to get\n" +
+      "    your code now; you don't have to pass first.\n",
+    reviseComment:
+      "If this Canvas assignment takes a turn-in code, the card on your dashboard asks one question about this feedback. Answer it to get your code now; you don't have to pass first.\n",
+  },
+  LINK: {
+    doc:
+      "  • Done with it? Turn it in on Canvas: copy this document's link, open\n" +
+      "    the Canvas assignment, choose Start Assignment → Website URL and paste it.\n",
+    comment:
+      "• Done? Turn it in on Canvas: copy this document's link, open the Canvas assignment, choose Start Assignment, then Website URL, and paste the link.\n",
+  },
+};
 
 // ---------------------------------------------------------------------------
 // lookupTeacherEmail_ — finds teacher email for a given configId in the Ledger

@@ -95,7 +95,7 @@ Open your document and click **Comments** (top right). Each comment starts with 
 >
 > **What to do next**
 >
-> Done with it? Turn it in on Canvas. Want to make it stronger? Keep revising, then press Submit for Feedback again. (The comment may tell you to paste your document's link into Canvas. Do what your Canvas assignment's instructions say: most now ask for your turn-in code. See section 06.)
+> 1. Get your turn-in code: on your dashboard, answer the one question on this assignment's card. 2. Copy the code and paste it into the Canvas assignment. Want to make it stronger? (optional) Revise it, then press Submit for Feedback again. Your turn-in code stays the same. (If a Canvas assignment asks for your document's link instead, the comment says so: follow the Canvas instructions.)
 
 If your work needs more, the result line is different, and there's a list of what to fix:
 

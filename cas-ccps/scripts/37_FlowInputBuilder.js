@@ -1335,17 +1335,24 @@ const FI_RESULT_REVISE = "Result: ✏️ Revise, then submit again.";
 
 function _fiCommentNextSteps_(complianceStatus) {
   const keep = "Resolving this comment only hides it. You can find it again with the Comments button.";
+  // How to turn work in depends on the turn-in code switch (03's
+  // nextStepsTurnInMode_, same project; 2026-11-15).
+  const mode = nextStepsTurnInMode_();
+  const steps = NEXT_STEPS_TURN_IN_[mode];
   if (complianceStatus === "APPROVED") {
-    return "What to do next\n" +
-      "• Done? Turn it in on Canvas: copy this document's link, open the Canvas assignment, choose Start Assignment, then Website URL, and paste the link.\n" +
-      "• Want to make it stronger? Revise it, then press Submit for Feedback on your dashboard again (the link is at the top of this document).\n\n" +
+    return "What to do next\n" + steps.comment +
+      (mode === "CODE"
+        ? "\nWant to make it stronger? (optional) Revise it, then press Submit for Feedback on your dashboard again (the link is at the top of this document). Your turn-in code stays the same."
+        : "• Want to make it stronger? Revise it, then press Submit for Feedback on your dashboard again (the link is at the top of this document)." +
+          (mode === "LINK" ? "" : " Your turn-in code stays the same.")) + "\n\n" +
       keep;
   }
   return "What to do next\n" +
     "1. Read the revisions listed above.\n" +
     "2. Change your work under the \u201cYour response\u201d heading.\n" +
     "3. Press Submit for Feedback on your dashboard (the link is at the top of this document).\n" +
-    "You can check as many times as you need. There's no penalty for revising.\n\n" +
+    "You can check as many times as you need. There's no penalty for revising.\n" +
+    (mode === "LINK" ? "" : "\n" + steps.reviseComment) + "\n" +
     keep;
 }
 
