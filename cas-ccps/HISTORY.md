@@ -5953,3 +5953,18 @@ must be under a day. It logs row numbers and counts, never a file ID, stops
 at 4.5 minutes and can be run again. Feedback that went into a doc's body
 (when a comment failed to post) isn't found; doc version history covers
 that. Tests: `tests/cas-ccps/feedback-comment-cleanup.test.js`.
+
+## Grading consistency from the re-grade, 2026-11-15
+
+The operator chose to keep the Ledger as the Test run left it rather than
+restore it: about 90 submissions now have two gradings of unchanged work,
+a sample of Flow 2's consistency no one would set up on purpose.
+EvaluationLog keeps only pass or revise, and can't tell a student's
+submissions of one lesson apart, so `reportRegradeConsistency` (69) reads
+FlowInput instead: the original gradings from a copy of the Ledger's
+version before the re-grade, the re-grades from the live tab, paired on
+StudentFileID + ConfigID + StagingRowRef. Each side goes through
+`_fiCheckResultShape_`, so an original that answered for another lesson
+(before the Studio fixes) is counted as malformed where it shows, and
+`cleanFrom` sets apart the originals built after a fix. Counts and unit
+names only; it writes nothing. Tests: `tests/cas-ccps/regrade-consistency.test.js`.
