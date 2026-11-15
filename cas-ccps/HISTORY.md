@@ -5704,3 +5704,13 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   but no verdict for 10 minutes. Read from the sheets the Ledger's own
   alerts use; owner-guarded; once a minute while the page is in view.
 - **Tests:** `teacher-dashboard-waiting-strip.test.js`.
+
+## Student Dashboard: a Canvas button, 2026-11-15
+
+- **Asked:** a button on the Student Dashboard that opens Canvas in a new
+  tab, so a student can paste the turn-in code without hunting for the tab.
+- **Now:** "Canvas ↗" beside Refresh in the header, and "Open Canvas ↗"
+  beside Copy on a ready turn-in code. Both open the district's Canvas in a
+  new tab; `CANVAS_URL` (a Script Property on the Student Dashboard project)
+  changes it without a push, and anything but a plain https URL falls back.
+- **Tests:** `student-dashboard-canvas-button.test.js`.

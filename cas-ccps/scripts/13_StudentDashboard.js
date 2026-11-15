@@ -2613,12 +2613,30 @@ function _dashRetry_(fileId, configId, now) {
 }
 
 // ---------------------------------------------------------------------------
+// Canvas button (2026-11-15, the operator's ask): the header's "Canvas ↗"
+// and the turn-in card's "Open Canvas ↗" open Canvas in a new tab, so a
+// student can paste the code without hunting for the tab. The district's
+// Canvas by default; CANVAS_URL (Script Property on this project) changes
+// it without a push. Only an https URL with no quotes, spaces or angle
+// brackets is used; anything else falls back to the default.
+// ---------------------------------------------------------------------------
+const DASH_CANVAS_URL_DEFAULT = "https://ccps.instructure.com";
+const DASH_CANVAS_URL_PROP = "CANVAS_URL";
+
+function dashCanvasUrl_() {
+  let v = "";
+  try { v = String(PropertiesService.getScriptProperties().getProperty(DASH_CANVAS_URL_PROP) || "").trim(); } catch (e) { v = ""; }
+  return /^https:\/\/[^\s"'<>`\\]+$/.test(v) ? v : DASH_CANVAS_URL_DEFAULT;
+}
+
+// ---------------------------------------------------------------------------
 // buildStudentDashboardHtml_
 // ---------------------------------------------------------------------------
 // opts.demo: the demo page (doGet decides who gets it): the banner, and
 // every call routed to the page's own stubs but getDemoDashboardData.
 function buildStudentDashboardHtml_(opts) {
   const demo = !!(opts && opts.demo);
+  const canvasUrl = dashCanvasUrl_();
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2678,6 +2696,7 @@ function buildStudentDashboardHtml_(opts) {
   .refresh-btn{background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.7);color:white;border-radius:6px;padding:7px 12px;font-size:13px;min-height:36px;cursor:pointer;font-family:inherit}
   .refresh-btn:hover{background:rgba(0,0,0,0.35)}
   .refresh-btn:focus-visible{outline:2px solid white;outline-offset:2px}
+  a.canvas-btn{display:inline-flex;align-items:center;gap:4px;text-decoration:none;box-sizing:border-box}
   .term-line{font-size:13px;color:var(--text-secondary);margin:0 0 12px}
   .past-term-note{font-size:13px;color:#3c4043;margin:0 0 8px}
   @media (max-width:480px){
@@ -2877,6 +2896,7 @@ ${TURN_IN_CLIENT_CSS}
   <h1>📚 My Assignments</h1>
   <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
     <button id="refresh-btn" class="refresh-btn" onclick="refreshAll()" aria-label="Refresh">↻ Refresh</button>
+    <a id="canvas-btn" class="refresh-btn canvas-btn" href="${canvasUrl}" target="_blank" rel="noopener">Canvas <span aria-hidden="true">↗</span><span class="wu-sr"> (opens in a new tab)</span></a>
     <!-- F16 item 7 (2026-11-14): with the term selector gone, the other
          controls are in a menu button, as on the Teacher Dashboard: Enter,
          Space or ArrowDown opens it on the first item, ArrowUp on the last;
@@ -2959,6 +2979,7 @@ const EC_MIN_WORDS = ${DASH_EC_MIN_WORDS};
 // in the page; a function with no stub fails here and never reaches the
 // server. A later step (say, the turn-in code) adds its own stub.
 const DEMO = ${demo ? "true" : "false"};
+const CANVAS_URL = ${JSON.stringify(canvasUrl)};
 const DEMO_DELAY_MS = 300;
 let _demoData = null;
 let _demoNotes = {}; // fileId -> a note under the card ("this opens the document")
