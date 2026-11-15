@@ -36,6 +36,8 @@ const FILES = [
   // omission that let installFlow2Fixture() seed an empty PromptText while
   // its tests stayed green; gas-lint Check K now refuses the narrower scope.
   S('40_FlowPrompts.js'),
+  // 39: cleanUpFlow2Canary() counts the fixture rows it leaves (2026-11-15).
+  S('39_FlowFixtures.js'),
 ];
 
 function load() {
@@ -118,7 +120,9 @@ test('runFlow2Canary: writes exactly four CompetencyEvidence rows with the parse
   assert.equal(evidence.length, 4);
   assert.deepEqual(
     evidence.map((r) => String(r[4]).trim()).sort(),
-    ['MET', 'MET', 'NOT_MET', 'PARTIALLY_MET'],
+    // Every milestone MET: the canary's APPROVED must agree with its
+    // outcomes, or the harvest sets it aside (37, 2026-11-15).
+    ['MET', 'MET', 'MET', 'MET'],
   );
 });
 

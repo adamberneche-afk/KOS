@@ -53,6 +53,8 @@
 //     unfinished day, a stale Canvas export once (58's rolloutDayStatus_,
 //     plan L3, 2026-11-08)
 //   - FERPA checks failing (10's _ferpaHealthChecks_)
+// Flow 2 answers written into more than one row of a doc (37, 2026-11-15)
+// reach the doc through LAST NIGHT (34c), with Module 2 on or off.
 // Apps Script trigger failures can't be seen from inside a script; those
 // still arrive as Google's failure-summary mail.
 //

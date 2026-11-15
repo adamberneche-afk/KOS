@@ -2283,7 +2283,7 @@ function checkFlow2Binding() {
   const ctx = wfbLedger_();
   const tabName = (ctx.cfg.tabs && ctx.cfg.tabs.flowInput) || 'FlowInput';
   const sheet = ctx.ss.getSheetByName(tabName);
-  const report = { rows: 0, awaitingOutput: 0, stuckAtReady: 0, suspected: [] };
+  const report = { rows: 0, awaitingOutput: 0, stuckAtReady: 0, suspected: [], duplicateOutputs: 0 };
   if (!sheet || sheet.getLastRow() <= 1) {
     Logger.log('[WFB] checkFlow2Binding: no ' + tabName + ' rows to diagnose.');
     return report;
@@ -2292,9 +2292,33 @@ function checkFlow2Binding() {
   Logger.log('[WFB] Flow 2 writes its result INTO the trigger row, not a new one. Bind the ' +
     'output step to column ' + (FI.GEMINI_FULL_OUTPUT + 1) + ' (GeminiFullOutput), AND set ' +
     'column ' + (FI.READY_STATUS + 1) + ' (ReadyStatus) to the literal "EVALUATED" — both in ' +
-    'the same update-row step. Change nothing else on the row.');
+    'the same update-row step. Change nothing else on the row. The step must find its row by ' +
+    'StagingRowRef (column ' + (FI.STAGING_ROW_REF + 1) + ') = the trigger row\'s StagingRowRef, the one ' +
+    'column unique to a submission.');
+  // The rest of Flow 2's setup a wrong row can come from (2026-11-15).
+  Logger.log('[WFB] Flow 2\'s Ask Gemini step: (1) no Drive file sources. A source such as the ' +
+    'Central Ledger hands Gemini every row on it, other students\' prompts and answers included, ' +
+    'and can turn one evaluation into another lesson\'s. The PromptText chip carries everything. ' +
+    '(2) One row per run: use the triggering row\'s single PromptText value, or a Repeat for each ' +
+    'over the changed rows, never a full list of PromptText values (Studio can group several changed ' +
+    'rows into one run). (3) The prompt box holds only the PromptText and student-text variables: ' +
+    'no notes, since anything there is sent to the model on every run. Studio\'s own names for these ' +
+    'settings are not verified here: check them in the editor.');
 
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, FI.PROMPT_TEXT + 1).getValues();
+  // One answer in two or more rows of the same doc (2026-11-15): the update
+  // step found its rows by a column that isn't unique. By hash, not text.
+  const outputsByDoc = {};
+  data.forEach(function (row) {
+    const out = String(row[FI.GEMINI_FULL_OUTPUT] || '').trim();
+    const doc = String(row[FI.STUDENT_FILE_ID] || '').trim();
+    if (!out || !doc) return;
+    const key = doc + '|' + _fiOutputHash_(out);
+    outputsByDoc[key] = (outputsByDoc[key] || 0) + 1;
+  });
+  Object.keys(outputsByDoc).forEach(function (k) {
+    if (outputsByDoc[k] > 1) report.duplicateOutputs += outputsByDoc[k] - 1;
+  });
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
     report.rows++;
@@ -2329,6 +2353,14 @@ function checkFlow2Binding() {
       'these — they will sit forever with real, unharvested output. Fix the Flow\'s update-row ' +
       'step: it must write the literal "EVALUATED" into ReadyStatus in the SAME step that ' +
       'writes GeminiFullOutput, not leave that column untouched.');
+  }
+  if (report.duplicateOutputs) {
+    Logger.log('[WFB]   ' + report.duplicateOutputs + ' row(s) hold the same GeminiFullOutput as an earlier ' +
+      'row of the same student doc. Flow 2\'s Update rows step is matching on a column that is not unique ' +
+      'to a submission (StudentFileID or ConfigID), so one answer lands in every row of that doc. In Studio, ' +
+      'open Flow 2\'s Update rows step and set the column it matches on to StagingRowRef (column ' +
+      (FI.STAGING_ROW_REF + 1) + '), with the value the trigger row\'s StagingRowRef. The harvest holds ' +
+      'such copies back (they are never delivered) and showSetupStatus() warns while they keep appearing.');
   }
   report.suspected.forEach(function (sus) {
     Logger.log('[WFB]   row ' + sus.row + ': column ' + sus.column + ' holds long JSON-shaped ' +

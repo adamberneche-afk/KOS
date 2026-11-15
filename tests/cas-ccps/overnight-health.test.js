@@ -313,3 +313,20 @@ test('the lesson rollout: what remains after the day\'s runs, the export note on
   assert.match(p, /Lesson rollout: the newest Canvas export is 9 days old/);
 });
 
+
+// 2026-11-15: Flow 2 writing one answer into several rows of a doc (37's
+// Flow2Duplicates tab) is a line, with Module 2 on or off.
+test('a Flow 2 answer copied into another row this week is one line, naming StagingRowRef', () => {
+  const env = load();
+  const tab = env.ss.insertSheet('Flow2Duplicates');
+  tab.appendRow(['DetectedAt', 'EarlierBuiltAt', 'NewerBuiltAt', 'EarlierStatus']);
+  tab.appendRow([HOURS(5), HOURS(7), HOURS(6), 'EVALUATED']);
+  const h = env.exported.overnightHealth_(NOW);
+  const line = h.problems.filter((p) => /^Flow 2 wrote one answer/.test(p));
+  assert.equal(line.length, 1);
+  assert.match(line[0], /1 time\(s\) in the last 7 days/);
+  assert.match(line[0], /StagingRowRef \(column B\)/);
+  assert.equal(h.allClear, '');
+  env.props.setProperty('M2_ENABLED', 'false');
+  assert.ok(env.exported.overnightHealth_(NOW).problems.some((p) => /^Flow 2 wrote one answer/.test(p)));
+});

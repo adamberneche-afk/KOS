@@ -166,6 +166,10 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `FLOW2_PARALLEL_LANES` | resolved settings | — | yes |
 | `INTAKE_FORM_URL` | getConfig_() | — | no |
 | `LEADER_HUB_OAUTH_CLIENT_ID` | getConfig_() | — | yes |
+| `LEDGER_CYCLE_BACKSTOP` | resolved settings | — | yes |
+| `LEDGER_CYCLE_EVERY` | resolved settings | — | yes |
+| `LEDGER_CYCLE_GATES` | resolved settings | — | yes |
+| `LEDGER_CYCLE_QUIET` | resolved settings | — | yes |
 | `M2_ENABLED` | getConfig_() | "false" | no |
 | `MARKING_PERIOD_ENDS` | resolved settings | — | yes |
 | `MASTER_RUBRIC_RESPONSE_SS_ID` | getConfig_() | — | yes |
@@ -220,16 +224,16 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `FLOW2_ALERT_STATE` | via the constant FLOW2_ALERT_KEY | "{}" | 03_QueueBridge.js | 03_QueueBridge.js |
 | `GEMINI_API_KEY` | direct | — | no | 10_AdminRecoveryPanel.js |
 | `LEDGER_CHANGE_PROBE_ROWS` | via the constant LC_PROP_PROBE_ROWS | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
-| `LEDGER_CYCLE_BACKSTOP` | via the constant LC_PROP_BACKSTOP | — | no | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_BACKSTOP` | via lcSetting_() | — | no | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_BUSY_UNTIL` | via claimRunSlot_() | — | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_DAY` | via the constant LC_PROP_DAY | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_ERRORS` | via the constant LC_PROP_ERRORS | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
-| `LEDGER_CYCLE_EVERY` | via the constant LC_PROP_EVERY | "{}" | no | 64_LedgerCycle.js |
-| `LEDGER_CYCLE_GATES` | via the constant LC_PROP_GATES | — | no | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_EVERY` | via lcSetting_() | — | no | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_GATES` | via lcSetting_() | — | no | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_GATE_MEMO` | via the constant LC_PROP_GATE_MEMO | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_JOBS` | via the constant LC_PROP_JOBS | "[]" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_LAST_RUN` | via the constant LC_PROP_LAST | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
-| `LEDGER_CYCLE_QUIET` | via the constant LC_PROP_QUIET | — | no | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_QUIET` | via lcSetting_() | — | no | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_TIMING` | via the constant LC_PROP_TIMING | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_RETENTION_YEARS` | direct | — | no | 10_AdminRecoveryPanel.js |
 | `M2_ENABLED` | direct | — | no | 22_LessonContextHandler.js, 23_StudentProfileManager.js, 24_WarmUpBridge.js, 25_WarmUpWriter.js, 33_ArtifactCompetencyBridge.js, 34c_OvernightHealth.js, 51_CourseYearBuilder.js |
@@ -261,6 +265,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 - `25_WarmUpWriter.js`, `_checkCronHealth_()`: `getProperty(alertKey)`
 - `25_WarmUpWriter.js`, `checkShadowMatrixInterrupts_()`: `getProperty(notifyKey)`
 - `34c_OvernightHealth.js`, `overnightHealth_()`: `getProperty(s.key.replace("LAST_RUN", "STATUS"))`
+- `64_LedgerCycle.js`, `lcSettingLines_()`: `lcSetting_(key)`
 - `76_CoveredSoFar.js`, `_covOpenDoc_()`: `getProperty(COVERED_DOC_PROP_PREFIX + code)`
 - `76_CoveredSoFar.js`, `writeCoveredSoFar_()`: `getProperty(hashKey)`
 

@@ -639,6 +639,9 @@ function getDashboardData(termFilter) {
 //                       EvaluationLog row (37's harvest writes one per
 //                       answer it sees, whatever its result: the same
 //                       signal 03's FLOW2_ALERT_STATE resets on, #427)
+//                       Also (2026-11-15) the answers 37 found copied
+//                       into another submission's row this week
+//                       (Flow2Duplicates), which turn the light red.
 //   Flow 6 (turn-in)    work: TurnInChecks rows PENDING_CHECK; verdict: the
 //                       newest DecidedAt of an ADDRESSES or NOT_YET row
 // Red needs both: the oldest work is TD_SILENT_MIN old and nothing came
@@ -649,7 +652,8 @@ function getDashboardData(termFilter) {
 // project, whose Script Properties and functions this project can't
 // reach; these are the same facts they are built from. One read each of
 // the Ledger, STAGING_PIPELINE, ReviewQueue, TurnInChecks and the last
-// TD_EVAL_TAIL rows of EvaluationLog; the page asks once a minute while it
+// TD_EVAL_TAIL rows of EvaluationLog (and Flow2Duplicates' last TD_DUP_TAIL
+// rows, when the tab exists); the page asks once a minute while it
 // is in view. Owner-guarded (_isAuthorizedTeacher_); logs nothing about
 // students.
 const TD_WAIT_OVER_MIN = 10;
@@ -657,6 +661,13 @@ const TD_SILENT_MIN = 10;
 const TD_EVAL_TAIL = 200;
 const TD_WAIT_TIMED_OUT_HOURS = 24; // a stopped check still waiting, if submitted this recently
 const TD_SYNTHETIC_RE = /(^|-)(FIXTURE|CANARY)(-|$)/i;
+// Flow 2 writing one answer into several rows of a doc (2026-11-15): the
+// Ledger's harvest (37) adds a row (dates only) to this tab each time it
+// finds one; the Flow 2 light says so for TD_DUP_DAYS. 37's FI_DUP_TAB and
+// FI_DUP_WINDOW_DAYS; this project can't read those, so the same values.
+const TD_DUP_TAB = "Flow2Duplicates";
+const TD_DUP_DAYS = 7;
+const TD_DUP_TAIL = 50;
 
 function getWaitingStrip() {
   const cfg = getConfig_();
@@ -725,6 +736,16 @@ function _tdWaitingStrip_(cfg, now) {
       const at = sheetTimestampMs_(r[0]) || 0;
       if (at > flow2.lastVerdictAt) flow2.lastVerdictAt = at;
     });
+  }
+
+  // Flow2Duplicates: copies found this week (one small read of its tail).
+  const dupTab = ss.getSheetByName(TD_DUP_TAB);
+  if (dupTab && dupTab.getLastRow() > 1) {
+    const n = Math.min(TD_DUP_TAIL, dupTab.getLastRow() - 1);
+    flow2.duplicates = dupTab.getRange(dupTab.getLastRow() - n + 1, 1, n, 1).getValues().filter(function (r) {
+      const at = sheetTimestampMs_(r[0]);
+      return !isNaN(at) && t - at <= TD_DUP_DAYS * 86400000;
+    }).length;
   }
 
   const waiting = [];
@@ -798,7 +819,8 @@ function _tdHealthLight_(f, t) {
   if (!f.work) state = "idle";
   else if (oldestMin !== null && oldestMin >= TD_SILENT_MIN &&
     (lastVerdictMin === null || lastVerdictMin >= TD_SILENT_MIN)) state = "red";
-  return { state: state, work: f.work, oldestMin: oldestMin, lastVerdictMin: lastVerdictMin };
+  return { state: state, work: f.work, oldestMin: oldestMin, lastVerdictMin: lastVerdictMin,
+    duplicates: f.duplicates || 0 };
 }
 
 // ── TURN-IN REVIEW (Say/Do Ledger cas-ccps finding #1) ──────────────────────
@@ -6716,8 +6738,12 @@ function _wsLight(label, h) {
   const words = h.state === "red"
     ? h.work + " waiting, no answer for " + (h.lastVerdictMin === null ? "a long time" : h.lastVerdictMin + " min")
     : h.state === "ok" ? h.work + " being checked" : "nothing waiting";
-  return '<span class="ws-light ws-' + esc(h.state) + '"><span class="ws-dot" aria-hidden="true"></span>' +
-    esc(label + ": " + words) + '</span>';
+  // One answer written into several rows this week: Studio's Update row
+  // step needs StagingRowRef (the copies were held back, not sent).
+  const dup = h.duplicates ? "; " + h.duplicates + " answer(s) copied into another submission this week, held back. " +
+    "Ask your admin to set Flow 2's Update rows step to match on StagingRowRef" : "";
+  return '<span class="ws-light ws-' + esc(h.duplicates ? "red" : h.state) + '"><span class="ws-dot" aria-hidden="true"></span>' +
+    esc(label + ": " + words + dup) + '</span>';
 }
 function waitStripHtml(d) {
   let h = '<div class="ws-lights" aria-label="Checkers">' + _wsLight("Feedback (Flow 2)", d.health.flow2) +

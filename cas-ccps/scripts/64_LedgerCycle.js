@@ -53,7 +53,8 @@
 // against the daily trigger run-time quota; showSetupStatus() (35) and
 // reportEvaluationHealth() (69) show them. If a job turns out to cost more
 // than it saves, LEDGER_CYCLE_EVERY ({"harvestFlowInputResults": 5}, a
-// Script Property) slows it again without a push.
+// Script Property or, since 2026-11-15, a row of the Ledger's _CONFIG tab:
+// lcSetting_) slows it again without a push.
 //
 // Checks before work (2026-11-15, approved by the operator that day): an
 // idle cycle took about 14.5 s, so 1,440 a day came to about 5.8 h of the
@@ -197,6 +198,7 @@ const LC_TIMING_BASE = "_base";   // the cycle's own time: the run minus its che
 /** The cycle. Time trigger, every minute. */
 function runLedgerCycle() {
   const props = PropertiesService.getScriptProperties();
+  _lcResolvedMemo_ = null; // the settings as they are now (lcSetting_)
   const started = Date.now();
   if (!claimRunSlot_(LC_PROP_BUSY, LC_BUSY_MS)) {
     Logger.log("[LC] A cycle is still running; skipping this minute.");
@@ -447,12 +449,43 @@ function lcDidNothing_(ret) {
 }
 
 function lcGatesOn_(props) {
-  return String(props.getProperty(LC_PROP_GATES) || "").trim().toLowerCase() !== "off";
+  return lcSetting_(props, LC_PROP_GATES).value.toLowerCase() !== "off";
+}
+
+// The cycle's four settings (LEDGER_CYCLE_EVERY, _GATES, _QUIET, _BACKSTOP),
+// 2026-11-15: a Script Property here first, else the Central Ledger's _CONFIG
+// tab, like the other shared settings (00's SHARED_CONFIG_KEYS). They were
+// read only from Script Properties, so a value typed on the tab did nothing.
+// { value, source } ("" and "" when neither has it). The tab comes through
+// 00's cache (10 minutes, and once per execution), and the resolution is
+// kept for the cycle (runLedgerCycle resets it): a cycle adds no
+// spreadsheet read for it, only on the cache's miss, which getConfig_()
+// would make anyway.
+const LC_SETTING_KEYS = [LC_PROP_EVERY, LC_PROP_GATES, LC_PROP_QUIET, LC_PROP_BACKSTOP];
+let _lcResolvedMemo_ = null;
+
+function lcSetting_(props, key) {
+  const own = String((props || PropertiesService.getScriptProperties()).getProperty(key) || "").trim();
+  if (own) return { value: own, source: "Script Property" };
+  try {
+    const r = _lcResolvedMemo_ || (_lcResolvedMemo_ = _resolveConfigValues_());
+    const v = String(r.values[key] || "").trim();
+    if (v) return { value: v, source: r.sources[key] || "Central Ledger _CONFIG tab" };
+  } catch (e) { /* unconfigured: the defaults */ }
+  return { value: "", source: "" };
+}
+
+// For showSetupStatus() (35): each setting, its value and where it came from.
+function lcSettingLines_(props) {
+  return LC_SETTING_KEYS.map(function (key) {
+    const v = lcSetting_(props, key);
+    return key + " = " + (v.value || "(unset: the default)") + (v.value ? "  <- " + v.source : "");
+  });
 }
 
 // LEDGER_CYCLE_BACKSTOP: whole minutes 1 to 60, else 15.
 function lcBackstopMinutes_(props) {
-  const raw = String(props.getProperty(LC_PROP_BACKSTOP) || "").trim();
+  const raw = lcSetting_(props, LC_PROP_BACKSTOP).value;
   const n = Number(raw);
   if (raw && Math.floor(n) === n && n >= 1 && n <= 60) return n;
   if (raw) Logger.log("[LC] " + LC_PROP_BACKSTOP + " isn't a whole number of minutes from 1 to 60; using " + LC_BACKSTOP_DEFAULT + ".");
@@ -466,7 +499,7 @@ function lcBackstopMinutes_(props) {
  */
 function lcQuietSettings_(props) {
   const out = Object.assign({ on: true }, LC_QUIET_DEFAULT);
-  const raw = String(props.getProperty(LC_PROP_QUIET) || "").trim();
+  const raw = lcSetting_(props, LC_PROP_QUIET).value;
   if (!raw) return out;
   if (raw.toLowerCase() === "off") { out.on = false; return out; }
   let o;
@@ -631,7 +664,7 @@ function lcNoteBusy_(timing, now) {
 // minutes 1 to 60; anything else is left out.
 function lcEveryOverrides_(props) {
   let raw = {};
-  try { raw = JSON.parse((props || PropertiesService.getScriptProperties()).getProperty(LC_PROP_EVERY) || "{}"); } catch (e) {
+  try { raw = JSON.parse(lcSetting_(props, LC_PROP_EVERY).value || "{}"); } catch (e) {
     Logger.log("[LC] " + LC_PROP_EVERY + " isn't JSON; the cadences in LC_JOBS are used.");
     return {};
   }

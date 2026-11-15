@@ -133,3 +133,16 @@ test('reportEvaluationHealth also gives the Ledger cycle\'s run time and the sch
   assert.match(out.cycleLines[3], /^Checks: on\./);
   assert.ok(out.cycleLines.some((l) => /^harvestFlowInputResults: no run timed yet$/.test(l)));
 });
+
+// 2026-11-15: a Flow 2 result set aside as malformed (37) has its own column
+// and counts as a failure; a re-armed one logs nothing, so isn't a check.
+test('ERROR_MALFORMED_OUTPUT is its own column and a failure', () => {
+  const env = load();
+  env.ss.getSheetByName('EvaluationLog').appendRow([DAY(27), 'M2', 'f2', '', 'ERROR_MALFORMED_OUTPUT', '', '', '']);
+  const out = env.exported.evaluationHealth_({ now: NOW });
+  const mk = byKey(env, out.rows)['2026-10-26 8175'];
+  assert.equal(mk.ErrorMalformedOutput, 1);
+  assert.equal(mk.ErrorOther, 1, 'not counted as other');
+  assert.equal(mk.Checks, 8);
+  assert.match(out.line, /9 checks, 3 failed and 1 never returned/);
+});

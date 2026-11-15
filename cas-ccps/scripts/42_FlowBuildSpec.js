@@ -174,11 +174,18 @@ function _fbsAppendFlow2_(rows) {
         "failure mode: the row gets real output and is never harvested. checkFlow2Binding() " +
         "flags this specific case as \"stuck at READY.\"";
     } else if (i === FI.PROMPT_TEXT) {
-      note = "The pre-substituted system prompt. Bind the Gemini step to this chip. " +
-        "{{STUDENT_TEXT}} is deliberately left standing — the Extract step fills it, so the " +
+      note = "The pre-substituted system prompt. Bind the Gemini step to this chip: the " +
+        "triggering row's ONE value, never a full list of the column (see the \"gemini\" rows " +
+        "below). {{STUDENT_TEXT}} is deliberately left standing — the Extract step fills it, so the " +
         "student's response never enters this spreadsheet (FERPA).";
     } else if (i === FI.STAGING_ROW_REF) {
-      note = "Read-only. The harvest uses it to complete the STAGING_PIPELINE row.";
+      who = "the materializer (the Flow matches on it)";
+      note = "The Update rows step MUST find its row by this column: match StagingRowRef = the " +
+        "trigger row's StagingRowRef. It is the one column unique to a submission. Matched on " +
+        "StudentFileID or ConfigID, one answer is written into every row of that doc, a " +
+        "resubmission's answer into the first submission's row (seen 2026-11-15; the harvest " +
+        "holds such copies back and showSetupStatus() warns). Never write to it. The harvest also " +
+        "uses it to complete the STAGING_PIPELINE row.";
     } else if (i === FI.REARMS || i === FI.ARMED_AT) {
       who = "the builder";
       note = "Not for the Flow: the builder's record of restarting a row Studio left " +
@@ -187,6 +194,31 @@ function _fbsAppendFlow2_(rows) {
     rows.push(["Flow 2", (i === FI.GEMINI_FULL_OUTPUT || i === FI.READY_STATUS) ? "write" : "read",
       "FlowInput", i + 1, key, who, note]);
   }
+
+  // The Update rows step's match and the Ask Gemini step's setup
+  // (2026-11-15, from the live Flow's settings). Studio's own labels for
+  // these settings are not verified from here: check them in the editor.
+  rows.push(["Flow 2", "match", "FlowInput", FI.STAGING_ROW_REF + 1, "StagingRowRef", "the Flow",
+    "Update rows: the column to match on is StagingRowRef (column " + (FI.STAGING_ROW_REF + 1) +
+    "), value = the trigger row's StagingRowRef. Not StudentFileID, not ConfigID: neither is unique " +
+    "to a submission. checkFlow2Binding() reports rows that already hold a copied answer."]);
+  rows.push(["Flow 2", "gemini", "", "", "sources",
+    "the Flow", "Ask Gemini: NO Drive file sources (no \"specific sources\", no Central Ledger). A " +
+    "source hands Gemini the whole spreadsheet, other students' prompts and answers included: the " +
+    "likely way an evaluation picks up another lesson, and a FERPA exposure. The prompt carries " +
+    "everything the evaluation needs."]);
+  rows.push(["Flow 2", "gemini", "", "", "one row per run",
+    "the Flow", "Each run evaluates exactly one FlowInput row. Studio's sheet starter can group " +
+    "several changed rows into one run; a \"full list\" of PromptText then holds more than one " +
+    "row's prompt, and Update rows can write one answer into several rows. Use the triggering " +
+    "row's single PromptText value, or a Repeat for each over the rows with Ask Gemini and " +
+    "Update rows inside it. Check this in Studio: the variable names its menus show are not " +
+    "verified from here."]);
+  rows.push(["Flow 2", "gemini", "", "", "prompt",
+    "the Flow", "The prompt box holds only the two variables: PromptText, and the student text " +
+    "from the Extract step. No notes or settings reminders (temperature, token limits): " +
+    "anything typed there is sent to the model on every run. Settings go in the step's own " +
+    "options."]);
 
   rows.push(["Flow 2", "read", "student Doc", "", "",
     "02_Form1_IntakeAndWorkspaceGenerator.js",

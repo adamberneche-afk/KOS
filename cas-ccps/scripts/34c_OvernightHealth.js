@@ -28,6 +28,8 @@
 //   - turn-in answers whose check failed (CHECK_FAILED) and wait for the
 //     teacher, and answers waiting on the check over an hour (72, Flow 6;
 //     only while TURN_IN_CODE_COURSES is on; reported with Module 2 off too)
+//   - Flow 2 answers written into more than one row of a doc in the last
+//     7 days (37's duplicate-write check, 2026-11-15; also with Module 2 off)
 //   - the lesson rollout (58): problems that remain after the day's runs,
 //     whether the day finished (docs left if not), and a stale Canvas export
 //     once; all from 58's rolloutDayStatus_ (plan L3, 2026-11-08). The
@@ -76,7 +78,7 @@ function overnightHealth_(now, tz) {
 
   if (props.getProperty("M2_ENABLED") !== "true") {
     return { problems: ["Module 2 is off (M2_ENABLED), so the 3 a.m. runs and warm-ups don't run"]
-      .concat(_onTurnInChecks_(null, now).problems), allClear: "" };
+      .concat(_onTurnInChecks_(null, now).problems).concat(_onFlow2Duplicates_(null, now).problems), allClear: "" };
   }
 
   ON_STAGES.forEach(function (s) {
@@ -196,6 +198,11 @@ function overnightHealth_(now, tz) {
   ti.problems.forEach(function (p) { problems.push(p); });
   if (ti.unreadable) unreadable = true;
 
+  // Flow 2 writing one answer into several rows of a doc (37, 2026-11-15).
+  const dup = _onFlow2Duplicates_(ss, now);
+  dup.problems.forEach(function (p) { problems.push(p); });
+  if (dup.unreadable) unreadable = true;
+
   let allClear = "";
   if (!problems.length && !unreadable) {
     allClear = "All clear: all four 3 a.m. stages ran. " +
@@ -205,6 +212,17 @@ function overnightHealth_(now, tz) {
         : "None built for tomorrow.") + (rolloutDone ? " " + rolloutDone + "." : "");
   }
   return { problems: problems, allClear: allClear };
+}
+
+// The duplicate-write warning (37's flow2DuplicateWriteLine_): one line in
+// the week after Flow 2 put one answer into several rows. { problems, unreadable }.
+function _onFlow2Duplicates_(ss, now) {
+  try {
+    const line = flow2DuplicateWriteLine_(ss || SpreadsheetApp.openById(getConfig_().ledgerSsId), now);
+    return { problems: line ? [line] : [], unreadable: false };
+  } catch (e) {
+    return { problems: ["Flow 2 duplicate writes: unavailable (" + e.message + ")"], unreadable: true };
+  }
 }
 
 // Turn-in answers the check couldn't decide, waiting for the teacher, and

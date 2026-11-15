@@ -352,7 +352,8 @@ test('harvestFlowInputResults: writes feedback to the doc, CompetencyEvidence ro
     'Great work overall. Here is your detailed feedback.\n' +
     '[SYSTEM: APPROVED]\n' +
     '[SUGGESTED_SCORE: 4]\n' +
-    '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"PARTIALLY_MET","4":"NOT_MET"}]';
+    // Every milestone MET: an untiered APPROVED needs that (2026-11-15).
+    '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"MET","4":"MET"}]';
   const fiSheet = ledgerSs.getSheetByName('FlowInput');
   fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(geminiOutput);
   fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
@@ -893,7 +894,8 @@ function harvestTiered(geminiOutput) {
   fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(geminiOutput);
   fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
   exported.harvestFlowInputResults();
-  const evidence = ledgerSs.getSheetByName('CompetencyEvidence').getDataRange().getValues().slice(1)
+  const evSheet = ledgerSs.getSheetByName('CompetencyEvidence');
+  const evidence = (evSheet.getLastRow() ? evSheet.getDataRange().getValues().slice(1) : [])
     .map((r) => [r[2], r[4]]);
   const ledger = ledgerSs.getSheetByName('Ledger').getRange(2, 1, 1, 27).getValues()[0];
   return { exported, docText: doc.getBody().getText(), evidence, lastResult: ledger[exported.LEDGER.LAST_RESULT] };
@@ -916,11 +918,14 @@ test('tiers: an ALSO_SHOWN line the student echoed earlier in the output is igno
   assert.deepEqual(r.evidence, [['COMP-1', 'MET'], ['COMP-2', 'MET']], 'no MET evidence from the echoed line');
 });
 
-test('tiers: an APPROVED the outcomes do not support is recorded as needing revision', () => {
+// Until 2026-11-15 this was recorded and delivered as needing revision; a
+// stamp the outcomes contradict is now malformed, and nothing is delivered.
+test('tiers: an APPROVED the outcomes do not support is set aside, not delivered', () => {
   const r = harvestTiered('Mostly there.\n[SYSTEM: APPROVED]\n[SUGGESTED_SCORE: 2]\n[ALSO_SHOWN: []]\n' +
     '[MILESTONE_OUTCOMES: {"1":"PARTIALLY_MET","2":"MET","3":"MET","4":"MET"}]');
-  assert.equal(r.lastResult, 'NEEDS_REVISION', 'the primary must be MET');
-  assert.deepEqual(r.evidence, [['COMP-1', 'PARTIALLY_MET'], ['COMP-2', 'MET']]);
+  assert.equal(r.lastResult, '', 'no result recorded');
+  assert.deepEqual(r.evidence, []);
+  assert.equal(r.docText, '[No feedback yet. Use the panel to run a check.]');
 });
 
 // ── The stale-input re-arm (2026-11-14) ──────────────────────────────────

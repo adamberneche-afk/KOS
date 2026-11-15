@@ -293,7 +293,14 @@ const SHARED_CONFIG_KEYS = [
   // How many submissions per teacher Flow 2 checks at once (06's turnstile,
   // 2026-11-14): a whole number, 1 to 10; blank = 3, and 1 is the old one at
   // a time. Read through 06's turnstileLanes_().
-  "FLOW2_PARALLEL_LANES"
+  "FLOW2_PARALLEL_LANES",
+  // The Ledger cycle's settings (64, 2026-11-15): its cadences, checks, quiet
+  // hours and backstop. Read through 64's lcSetting_, a Script Property in
+  // the Central Ledger first; until then only the property was read.
+  "LEDGER_CYCLE_EVERY",
+  "LEDGER_CYCLE_GATES",
+  "LEDGER_CYCLE_QUIET",
+  "LEDGER_CYCLE_BACKSTOP"
 ];
 
 // System text a student response must not contain (P0-03,

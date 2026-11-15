@@ -312,14 +312,30 @@ canary, binding and liveness checks.
    temperature, token limits) is in the Module 2 wizard's dialogs and
    `15_StudioFlowPrompts.js`. Keep `checkFlow2Binding()` /
    `checkFlowBinding()` open while wiring each Flow's last step.
+   Flow 2 needs four settings right (the `FlowBuildSpec` tab's `match`
+   and `gemini` rows; added 2026-11-15):
+   - **Update rows** finds its row by `StagingRowRef` (column B) = the
+     trigger row's StagingRowRef. Matched on StudentFileID or ConfigID, one
+     answer lands in every row of that doc.
+   - **Ask Gemini** has no Drive file sources (no "specific sources", no
+     Central Ledger). A source gives the model the whole spreadsheet, other
+     students' rows included. The prompt carries everything.
+   - **One row per run.** Use the triggering row's single PromptText value,
+     or a Repeat for each over the rows, never a full list of PromptText:
+     Studio can group several changed rows into one run. Check this in
+     Studio; the exact variable names in its menus aren't verified here.
+   - **The prompt box holds only the two variables** (PromptText and the
+     extracted student text), no notes: anything there reaches the model on
+     every run.
 5. Flow 6 (the turn-in check) only if turn-in codes will be on:
    `cas-ccps/docs/TURN_IN_CHECK_FLOW.md`, `installTurnInCheckFlow()`.
    Flow 1 (rubric extraction) is optional: assignments now come from the
    repo (`seedAssignments()`), not from rubric uploads.
 6. `checkFlow2Liveness()` and `checkWarmUpFlowLiveness()`: a green "Run
    Completed" in Studio proves nothing; these say whether a Flow has ever
-   written back. Then `removeFlowFixtures()`, and set `AI_FLOWS_LIVE` =
-   `true` (step 4.5).
+   written back. Then `removeFlowFixtures()` (or `removeFlow2Fixture()`
+   for Flow 2's alone; `cleanUpFlow2Canary()` clears canary rows only),
+   and set `AI_FLOWS_LIVE` = `true` (step 4.5).
 
 **Check:** `showSetupStatus()`: the `[8]` lines are OK (Flow 2 has
 answered; Flows 3 and 4 have returns; Flow 6's if turn-in codes are on).

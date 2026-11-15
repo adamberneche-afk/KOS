@@ -54,6 +54,11 @@
 //                  every native step can already target directly.
 //   4. Update row: write the raw Gemini output into THIS row's
 //                  GeminiFullOutput column, set ReadyStatus = "EVALUATED".
+//                  The step MUST find its row by StagingRowRef (column B),
+//                  the one column unique to a submission. Matched on
+//                  StudentFileID or ConfigID it writes one answer into every
+//                  row of that doc (seen live 2026-11-15; the harvest now
+//                  flags that, _fiDuplicateWrites_ below).
 //
 // harvestFlowInputResults() below then does everything Flow 2's original
 // design asked Studio's native Docs/Sheets steps (plus the
@@ -118,7 +123,8 @@ const FI = {
   MILESTONE_4_COMPETENCY_ID:  18,
   READY_STATUS:               19, // READY -> EVALUATED -> HARVESTED
                                    // (or ERROR_EMPTY_OUTPUT / ERROR_SUSPECT_FABRICATION /
-                                   // ERROR_HARVEST_FAILED — see _fiCheckPlausibility_)
+                                   // ERROR_MALFORMED_OUTPUT / ERROR_HARVEST_FAILED —
+                                   // see _fiCheckPlausibility_ and _fiCheckResultShape_)
   GEMINI_FULL_OUTPUT:          20, // written by Studio Flow 2's own Step 4
   // Appended at the END of the schema on purpose. Every positional reader in
   // this system breaks on a column INSERTED before the end (see
@@ -942,9 +948,12 @@ function _fiCheckPlausibility_(geminiFullOutput, fiRow) {
 // the rest of the loop on its own next cycle.
 //
 // EVALUATED -> HARVESTED (or ERROR_EMPTY_OUTPUT / ERROR_SUSPECT_FABRICATION /
-// ERROR_HARVEST_FAILED). ERROR_SUSPECT_FABRICATION is _fiCheckPlausibility_'s
-// gate, checked before any write to the student's doc — same "touch nothing
-// on a suspect row" rule as the other two error paths.
+// ERROR_MALFORMED_OUTPUT / ERROR_HARVEST_FAILED). ERROR_SUSPECT_FABRICATION is
+// _fiCheckPlausibility_'s gate, checked before any write to the student's doc
+// — same "touch nothing on a suspect row" rule as the other error paths.
+// Then (2026-11-15) a copy of a later row's answer (_fiDuplicateWrites_) and
+// a result whose machine lines don't hold together (_fiCheckResultShape_)
+// are set aside undelivered: re-armed once, then ERROR_MALFORMED_OUTPUT.
 // ---------------------------------------------------------------------------
 function harvestFlowInputResults() {
   const lock = LockService.getDocumentLock();
@@ -983,6 +992,12 @@ function harvestFlowInputResults() {
     let harvested = 0;
     let evalLog = null; // EvaluationLog rows, read once if a re-armed row needs them
     let answered = false; // Studio answered a real row: clears 03's not-answering alert
+    const now = new Date();
+    // One answer in several rows of a doc (Studio's Update row matched on a
+    // column that isn't unique): flagged, and the earlier row's copy held back.
+    const dupes = _fiDuplicateWrites_(fiData);
+    if (dupes.events.length) _fiRecordDuplicateWrites_(ledgerSs, dupes.events, now);
+    const setAside = { rearmed: 0, malformed: 0, reasons: {} };
 
     for (let i = 1; i < fiData.length; i++) {
       if (String(fiData[i][FI.READY_STATUS]).trim() !== "EVALUATED") continue;
@@ -1032,20 +1047,39 @@ function harvestFlowInputResults() {
         continue;
       }
 
+      // Never delivered: a copy of a later submission's answer, or a result
+      // whose machine lines don't hold together (2026-11-15). Each is run
+      // again once (the re-arm), then ERROR_MALFORMED_OUTPUT.
+      const shape = dupes.copies[rowNum]
+        ? { ok: false, reason: "a later submission's answer, copied into this row" }
+        : _fiCheckResultShape_(geminiFullOutput, fiData[i]);
+      if (!shape.ok) {
+        const outcome = _fiSetAsideMalformed_(fiSheet, rowNum, fiData[i], now);
+        setAside.reasons[shape.reason] = (setAside.reasons[shape.reason] || 0) + 1;
+        if (outcome === "REARMED") {
+          setAside.rearmed++;
+        } else {
+          setAside.malformed++;
+          if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
+          _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, FI_MALFORMED_STATUS, null);
+        }
+        continue;
+      }
+
       try {
         // _parseFlow2Response_ — 15c_Flow2DirectEvaluationService.js,
         // same project, already tested. Returns { complianceStatus,
         // suggestedScore, milestoneOutcomes, rawResponse }.
         const parsed = _parseFlow2Response_(geminiFullOutput);
-        // Tiered assignments (COMPETENCY_TIERS, 2026-10-20): the pass rule
-        // is checked here too, so an APPROVED the outcomes don't support
-        // is never recorded; and the tertiary competencies the work showed
-        // are read from the ALSO_SHOWN line.
-        const dodText = String(fiData[i][FI.DEFINITION_OF_DONE] || "");
-        const tiers = _fiTiersFromDod_(dodText);
-        if (tiers && parsed.complianceStatus === "APPROVED" && !_fiTierRulePasses_(parsed.milestoneOutcomes)) {
-          parsed.complianceStatus = "REVISION_REQUIRED";
-        }
+        // The outcomes and the stamp _fiCheckResultShape_ checked: the last
+        // outcomes line, and a stamp the outcomes agree with. Before
+        // 2026-11-15 a tiered APPROVED the outcomes didn't support was
+        // turned into REVISION_REQUIRED and delivered; now it is malformed.
+        parsed.milestoneOutcomes = shape.outcomes;
+        parsed.complianceStatus = shape.compliance;
+        // Tiered assignments (COMPETENCY_TIERS, 2026-10-20): the tertiary
+        // competencies the work showed are read from the ALSO_SHOWN line.
+        const tiers = _fiTiersFromDod_(String(fiData[i][FI.DEFINITION_OF_DONE] || ""));
         const alsoShown = tiers ? _fiAlsoShown_(geminiFullOutput, tiers.tertiary) : [];
 
         const studentFacingReport = _fiStripMilestoneOutcomesLine_(geminiFullOutput);
@@ -1113,6 +1147,17 @@ function harvestFlowInputResults() {
     if (harvested > 0) {
       SpreadsheetApp.flush();
       Logger.log("[FlowInputBuilder] Harvested " + harvested + " row(s).");
+    }
+    if (setAside.rearmed || setAside.malformed) {
+      SpreadsheetApp.flush();
+      Logger.log("[FlowInputBuilder] Results not delivered: re-armed " + setAside.rearmed + ", gave up on " +
+        setAside.malformed + " (" + FI_MALFORMED_STATUS + "). Why: " + Object.keys(setAside.reasons).map(function (r) {
+          return r + " " + setAside.reasons[r];
+        }).join("; ") + ".");
+    }
+    if (dupes.events.length) {
+      Logger.log("[FlowInputBuilder] " + dupes.events.length + " answer(s) found in more than one row of a doc. " +
+        "Flow 2's Update row step must find its row by StagingRowRef (column B); see showSetupStatus().");
     }
     if (answered) flow2NoteAnswered_();
   } catch (err) {
@@ -1327,6 +1372,195 @@ function _fiTierRulePasses_(outcomes) {
   const o = outcomes || {};
   const atLeastPartial = v => v === "MET" || v === "PARTIALLY_MET";
   return o["1"] === "MET" && atLeastPartial(o["2"]) && atLeastPartial(o["3"]) && atLeastPartial(o["4"]);
+}
+
+// ---------------------------------------------------------------------------
+// Malformed results (2026-11-15). On 11-13 one answer evaluated another
+// lesson's work, asked for revisions from that lesson, and carried an
+// outcome the prompt never allows ("PARTI_MET"); the student got it. A
+// result is now checked before anything reaches the student, and is
+// malformed when:
+//   - it has no parseable [MILESTONE_OUTCOMES: {...}] line (the last one
+//     counts: the evaluator writes it at the end, Docket IV);
+//   - a value is not MET, PARTIALLY_MET or NOT_MET;
+//   - the line names a milestone the row doesn't have, or leaves out one it
+//     has (the row's non-blank Milestone1-4; four keys are always accepted,
+//     since the prompt asks for four);
+//   - it has no compliance stamp, or both stamps;
+//   - the stamp contradicts the passing rule computed from the outcomes:
+//     a tiered Definition of Done's PASSING RULE (_fiTierRulePasses_), both
+//     ways, since the prompt says APPROVED "exactly when that rule is met";
+//     otherwise APPROVED needs every milestone MET, while a
+//     REVISION_REQUIRED with every milestone MET stands (the prompt also
+//     asks the whole Definition of Done be met, which the outcomes can't show).
+// Until then the stamp decided, except that a tiered APPROVED the outcomes
+// didn't support was recorded and delivered as REVISION_REQUIRED. Now
+// neither wins: the result is not used.
+// A malformed result is never delivered (no comment, doc write, evidence,
+// Ledger result or log row). The row is re-armed once, on #425's pattern
+// (_fiStaleInputs_): output and ReadyStatus cleared, the builder sets READY
+// on its next run, ReArms set to FI_MAX_REARMS (so the stale re-arm won't
+// restart it again) and ArmedAt to now. Malformed again, or no re-arms
+// left, or not a submission's row (the fixture): ERROR_MALFORMED_OUTPUT,
+// which closes like the other errors (the staging row ERROR_EVALUATION, so
+// 03 tells the teacher and the student's card reads "Couldn't be checked").
+// ---------------------------------------------------------------------------
+const FI_MALFORMED_STATUS = "ERROR_MALFORMED_OUTPUT";
+const FI_OUTCOME_VALUES = ["MET", "PARTIALLY_MET", "NOT_MET"];
+const FI_OUTCOMES_RE = /\[MILESTONE_OUTCOMES:\s*(\{[\s\S]*?\})\]/;
+
+// { ok: true, outcomes: {"1".."4": value|null}, compliance } or
+// { ok: false, reason } (a short phrase, no row content).
+function _fiCheckResultShape_(fullText, fiRow) {
+  const text = String(fullText || "");
+  const bad = function (reason) { return { ok: false, reason: reason }; };
+  const all = text.match(new RegExp(FI_OUTCOMES_RE.source, "g"));
+  if (!all) return bad("no outcomes line");
+  let parsed;
+  try { parsed = JSON.parse(FI_OUTCOMES_RE.exec(all[all.length - 1])[1]); } catch (e) { return bad("outcomes line not JSON"); }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return bad("outcomes line not JSON");
+  const keys = Object.keys(parsed);
+  const named = ["1", "2", "3", "4"].filter(function (n) {
+    return String(fiRow[FI["MILESTONE_" + n]] === undefined ? "" : fiRow[FI["MILESTONE_" + n]]).trim() !== "";
+  });
+  if (keys.some(function (k) { return ["1", "2", "3", "4"].indexOf(k) === -1; }) ||
+      named.some(function (n) { return keys.indexOf(n) === -1; }) ||
+      (keys.length !== named.length && keys.length !== 4)) {
+    return bad("milestone count does not match the row");
+  }
+  if (keys.some(function (k) { return FI_OUTCOME_VALUES.indexOf(parsed[k]) === -1; })) return bad("outcome value not allowed");
+  const approved = text.indexOf("[SYSTEM: APPROVED]") !== -1;
+  const revise = text.indexOf("[SYSTEM: REVISION_REQUIRED]") !== -1;
+  if (!approved && !revise) return bad("no compliance stamp");
+  if (approved && revise) return bad("both compliance stamps");
+  const outcomes = { "1": null, "2": null, "3": null, "4": null };
+  keys.forEach(function (k) { outcomes[k] = parsed[k]; });
+  const tiered = !!_fiTiersFromDod_(String(fiRow[FI.DEFINITION_OF_DONE] || ""));
+  const scored = named.length ? named : keys;
+  const passes = tiered ? _fiTierRulePasses_(outcomes)
+    : scored.every(function (k) { return outcomes[k] === "MET"; });
+  if (tiered ? approved !== passes : approved && !passes) return bad("stamp contradicts the passing rule");
+  return { ok: true, outcomes: outcomes, compliance: approved ? "APPROVED" : "REVISION_REQUIRED" };
+}
+
+// Sets a result aside without delivering it: re-armed ("REARMED") while the
+// row has its one re-arm, else FI_MALFORMED_STATUS ("MALFORMED"). The
+// caller closes the staging row and logs a terminal one.
+function _fiSetAsideMalformed_(fiSheet, rowNum, row, now) {
+  if (_fiRearmable_(row) && (Number(row[FI.REARMS]) || 0) < FI_MAX_REARMS) {
+    fiSheet.getRange(rowNum, FI.READY_STATUS + 1, 1, 2).setValues([["", ""]]);
+    fiSheet.getRange(rowNum, FI.REARMS + 1, 1, 2).setValues([[FI_MAX_REARMS, now]]);
+    return "REARMED";
+  }
+  fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue(FI_MALFORMED_STATUS);
+  _fiScrubEarlierParts_(fiSheet, rowNum, row[FI.PROMPT_TEXT]);
+  return "MALFORMED";
+}
+
+// ---------------------------------------------------------------------------
+// Duplicate writes (2026-11-15). Two FlowInput rows of one doc, a submission
+// and its resubmission an hour later, held the same answer, and it answered
+// the later one's reflection: Studio's Update row step had found its row by
+// a column that isn't unique to a submission (StudentFileID or ConfigID),
+// so one answer went into every row of the doc. Its row must be found by
+// StagingRowRef (column B).
+// Rows of one StudentFileID whose outputs hash the same (SHA-256; the text
+// is never kept) are a pair, earlier and newer by Timestamp, then row order.
+// Each pair with an EVALUATED row is one event, kept in FI_DUP_TAB as
+// dates only (when found, when each row was built, the earlier row's
+// status). The newer row is delivered: the answer is its own. The earlier
+// row, if not yet harvested, is set aside like a malformed result (re-armed
+// once), never delivered.
+// ---------------------------------------------------------------------------
+const FI_DUP_TAB = "Flow2Duplicates";
+const FI_DUP_HEADERS = ["DetectedAt", "EarlierBuiltAt", "NewerBuiltAt", "EarlierStatus"];
+const FI_DUP_WINDOW_DAYS = 7; // how long a found duplicate keeps the warning up
+
+// { copies: { rowNum: true } (EVALUATED rows holding a later row's answer),
+//   events: [{ earlierAt, newerAt, earlierStatus }] }. Reads only.
+function _fiDuplicateWrites_(fiData) {
+  const out = { copies: {}, events: [] };
+  const byDoc = {};
+  const live = {}; // docs with a row to harvest: only those are hashed
+  for (let i = 1; i < fiData.length; i++) {
+    const text = String(fiData[i][FI.GEMINI_FULL_OUTPUT] || "").trim();
+    const doc = String(fiData[i][FI.STUDENT_FILE_ID] || "").trim();
+    if (!text || !doc) continue;
+    (byDoc[doc] = byDoc[doc] || []).push(i);
+    if (String(fiData[i][FI.READY_STATUS]).trim() === "EVALUATED") live[doc] = true;
+  }
+  Object.keys(byDoc).forEach(function (doc) {
+    const rows = byDoc[doc];
+    if (rows.length < 2 || !live[doc]) return;
+    const byHash = {}; // hash -> the rows holding it, oldest first
+    rows.map(function (i) {
+      return { i: i, at: sheetTimestampMs_(fiData[i][FI.TIMESTAMP]),
+        hash: _fiOutputHash_(String(fiData[i][FI.GEMINI_FULL_OUTPUT]).trim()) };
+    }).sort(function (a, b) {
+      const at = (isNaN(a.at) ? 0 : a.at) - (isNaN(b.at) ? 0 : b.at);
+      return at || a.i - b.i;
+    }).forEach(function (r) { (byHash[r.hash] = byHash[r.hash] || []).push(r.i); });
+    Object.keys(byHash).forEach(function (h) {
+      const held = byHash[h];
+      const newest = held[held.length - 1];
+      const newerStatus = String(fiData[newest][FI.READY_STATUS]).trim();
+      held.slice(0, -1).forEach(function (i) {
+        const earlierStatus = String(fiData[i][FI.READY_STATUS]).trim();
+        if (earlierStatus !== "EVALUATED" && newerStatus !== "EVALUATED") return; // found before
+        if (earlierStatus === "EVALUATED") out.copies[i + 1] = true;
+        out.events.push({ earlierAt: fiData[i][FI.TIMESTAMP], newerAt: fiData[newest][FI.TIMESTAMP],
+          earlierStatus: earlierStatus });
+      });
+    });
+  });
+  return out;
+}
+
+function _fiOutputHash_(text) {
+  return Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text)
+    .map(function (b) { return ((b + 256) % 256).toString(16).padStart(2, "0"); }).join("");
+}
+
+// Appends the events to FI_DUP_TAB (made on the first). Never throws: the
+// harvest goes on either way.
+function _fiRecordDuplicateWrites_(ledgerSs, events, now) {
+  try {
+    let sheet = ledgerSs.getSheetByName(FI_DUP_TAB);
+    if (!sheet) {
+      sheet = ledgerSs.insertSheet(FI_DUP_TAB);
+      sheet.appendRow(FI_DUP_HEADERS);
+    }
+    events.forEach(function (e) { sheet.appendRow([now, e.earlierAt, e.newerAt, e.earlierStatus]); });
+  } catch (e) {
+    Logger.log("[FlowInputBuilder] Could not record a duplicate write: " + e.message);
+  }
+}
+
+// What FI_DUP_TAB holds: { total, recent (within FI_DUP_WINDOW_DAYS),
+// lastAt (ms, or NaN) }. Counts and dates only.
+function flow2DuplicateWrites_(ss, now) {
+  const out = { total: 0, recent: 0, lastAt: NaN };
+  const sheet = ss.getSheetByName(FI_DUP_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const t = (now ? new Date(now) : new Date()).getTime();
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) {
+    const at = sheetTimestampMs_(r[0]);
+    out.total++;
+    if (!isNaN(at) && t - at <= FI_DUP_WINDOW_DAYS * 86400000) out.recent++;
+    if (!isNaN(at) && !(out.lastAt >= at)) out.lastAt = at;
+  });
+  return out;
+}
+
+// The warning line for showSetupStatus (35), the overnight check (34c) and
+// the CAS signal (34b), or "" when none was found in FI_DUP_WINDOW_DAYS.
+function flow2DuplicateWriteLine_(ss, now) {
+  const d = flow2DuplicateWrites_(ss, now);
+  if (!d.recent) return "";
+  return "Flow 2 wrote one answer into more than one row of a doc " + d.recent + " time(s) in the last " +
+    FI_DUP_WINDOW_DAYS + " days (last " + Utilities.formatDate(new Date(d.lastAt), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm") +
+    "). Likely cause: Flow 2's Update row step finds its row by a column that isn't unique (StudentFileID or " +
+    "ConfigID). In Studio, set it to match on StagingRowRef (column B). The copies were held back; checkFlow2Binding() says more.";
 }
 
 // The tertiary competencies Flow 2 says the work showed: its ALSO_SHOWN line,
