@@ -437,15 +437,16 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
   <span class="cover-tag">Student Guide</span>
   <h1>Your Assignment,<br><em>Step by Step</em></h1>
   <p class="cover-sub">
-    Write in your document. Press Submit for Feedback. Read the comment.
-    Turn it in on Canvas. Here's how each step works.
+    Write in your document. Press Submit for Feedback. Answer one question
+    about your feedback. Paste your turn-in code into Canvas. Here's how each
+    step works.
   </p>
   <div class="cover-steps">
-    <span class="cover-step">📄 Open your document</span>
+    <span class="cover-step">📄 Open the assignment</span>
     <span class="cover-step">✍️ Write under the grey line</span>
     <span class="cover-step">📊 Submit for Feedback</span>
-    <span class="cover-step">💬 Read the comment</span>
-    <span class="cover-step">✅ Turn it in on Canvas</span>
+    <span class="cover-step">💬 Answer the question about your feedback</span>
+    <span class="cover-step">✅ Paste your turn-in code into Canvas</span>
   </div>
 </div>
 
@@ -573,7 +574,8 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
       <div class="step-n">3</div>
       <div class="step-body">
         <strong>Wait a few minutes</strong>
-        <p>Press <strong>↻ Refresh</strong> on your dashboard. The card says <strong>Waiting for feedback…</strong>, then <strong>Being checked now…</strong>.</p>
+        <p>Keep your dashboard open. While your work waits, the card shows a line of where it is: <strong>Submitted → In line → Being checked → Feedback ready</strong>, with the time of each step it knows. Being checked may say how long a check usually takes. The page checks for news by itself, and when your feedback is ready it tells you at the top of the page and moves to that card.</p>
+        <p>If a step takes more than about 8 minutes, the card says “Taking a while. Your work is saved.” with a <strong>Check again</strong> button. Check again only asks for the latest news; it doesn't send your work again, so you don't need to submit again.</p>
       </div>
     </div>
     <div class="step">
@@ -604,11 +606,11 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
     </div>
     <div class="status-item">
       <span class="status-pill pill-green">Passed ✓</span>
-      <p>Your work meets the standard. The line under the title says where your feedback is. Turn it in on Canvas, or keep improving it and submit again.</p>
+      <p>Your work meets the standard. The line under the title says where your feedback is. The card asks one question about your feedback: answer it to get your turn-in code (section 06). You can also keep improving your work and submit again.</p>
     </div>
     <div class="status-item">
       <span class="status-pill pill-purple">Revise</span>
-      <p>Read the feedback, change your work, then press Submit for Feedback again. A <strong>Not yet:</strong> line names the part of the assignment your last check didn't find yet: start there.</p>
+      <p>Read the feedback, change your work, then press Submit for Feedback again. A <strong>Not yet:</strong> line names the part of the assignment your last check didn't find yet: start there. The card also asks one question about that feedback. You can answer it and get your turn-in code now, before you pass (section 06).</p>
     </div>
     <div class="status-item">
       <span class="status-pill pill-amber">Turned in</span>
@@ -620,7 +622,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
     </div>
     <div class="status-item">
       <span class="status-pill pill-red">Check stopped ⚠</span>
-      <p>The check took more than 12 minutes and was stopped. Your work is saved and your teacher has been told. Press <strong>Try again</strong> on the card to put it back in line (once every 10 minutes). If the feedback arrives late, the card changes to show it.</p>
+      <p>The check took more than 12 minutes and was stopped. Your work is saved and your teacher has been told. Press <strong>Try again</strong> on the card to put the same work back in line; you don't need to submit again. You can press it once every 10 minutes: if you press it sooner, the card says how many minutes to wait. If the feedback arrives late, the card changes to show it.</p>
     </div>
     <div class="status-item">
       <span class="status-pill pill-red">Couldn&rsquo;t be checked ⚠</span>
@@ -633,6 +635,11 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
   <div class="callout callout-info">
     <span class="callout-icon">⏱️</span>
     <div class="callout-body"><strong>Most checks take a few minutes.</strong> While you wait, the card shows where your work is (Submitted, In line, Being checked) and this page shows your feedback when it’s ready. If a check takes longer than 12 minutes, the system stops it, your card says “Check stopped ⚠”, and your teacher is told by email. Press Try again on the card; you do not need to submit again.</div>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">🔔</span>
+    <div class="callout-body"><strong>The page checks for news while you wait.</strong> It pauses while you're on another tab and starts again when you come back. After many checks on one visit it stops and says so: then press <strong>↻ Refresh</strong> to see what’s ready.</div>
   </div>
 </div>
 
@@ -658,7 +665,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
     </div>
     <div class="eval-section">
       <div class="eval-section-label">What to do next</div>
-      <p>Done with it? Turn it in on Canvas. Want to make it stronger? Keep revising, then press Submit for Feedback again.</p>
+      <p>Done with it? Turn it in on Canvas. Want to make it stronger? Keep revising, then press Submit for Feedback again. (The comment may tell you to paste your document's link into Canvas. Do what your Canvas assignment's instructions say: most now ask for your turn-in code. See section 06.)</p>
     </div>
   </div>
 
@@ -734,38 +741,105 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
 </div>
 
 <!-- SECTION 6: TURNING IN -->
-<div class="section">
+<div class="section" id="turn-in">
   <span class="section-num" aria-hidden="true">06</span>
-  <h2>Turn It In on Canvas</h2>
-  <p>You turn in on Canvas. That's where your teacher grades it. Passing a check first is a good idea, but it isn't required.</p>
+  <h2>Turn It In: Your Turn-in Code</h2>
+  <p>You turn in on Canvas. That's where your teacher grades it. For most assignments, what you paste into Canvas is a <strong>turn-in code</strong> from your dashboard. You earn the code by using your feedback. Here's the whole path.</p>
 
   <div class="steps">
     <div class="step">
       <div class="step-n">1</div>
       <div class="step-body">
-        <strong>Copy your document's link</strong>
-        <p>With your document open, copy the address from the browser's address bar.</p>
+        <strong>Open the assignment</strong>
+        <p>Open your document from your dashboard with <strong>Open My Document ↗</strong> (sections 01 and 02).</p>
       </div>
     </div>
     <div class="step">
       <div class="step-n">2</div>
       <div class="step-body">
-        <strong>Open the same assignment in Canvas</strong>
-        <p>Choose <strong>Start Assignment</strong> → <strong>Website URL</strong>.</p>
+        <strong>Write under the grey line</strong>
+        <p>At least 25 words, under “── YOUR RESPONSE BEGINS HERE ──”.</p>
       </div>
     </div>
     <div class="step">
       <div class="step-n">3</div>
       <div class="step-body">
-        <strong>Paste the link and submit</strong>
-        <p>Paste the link and press <strong>Submit Assignment</strong>.</p>
+        <strong>Submit for feedback</strong>
+        <p>Press <strong>Submit for Feedback</strong> on your dashboard and wait for your feedback (section 03).</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-body">
+        <strong>Answer the one question built from your feedback</strong>
+        <p>When your feedback is ready, the card has a <strong>Turn-in code</strong> box with one question. It is made from your own feedback. If your feedback says <strong>Not yet</strong>, it asks what you will change and where in your document. If you passed, it asks you to point to the part of your work that shows the skill and say why it does. Write at least 10 words in your own words, then press <strong>Send answer</strong>.</p>
+        <p>The card says “Checking your answer…”. This takes a few minutes, and the page shows your code when it's ready. If the card says <strong>Not yet:</strong>, it tells you why in one line: rewrite your answer and send it again, as many times as you need.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">5</div>
+      <div class="step-body">
+        <strong>Copy your turn-in code and paste it into the Canvas assignment</strong>
+        <p>Press <strong>Copy</strong> beside the code. Press <strong>Open Canvas ↗</strong> beside it (or <strong>Canvas ↗</strong> at the top of your dashboard) to open Canvas in a new tab. Open the same assignment, choose <strong>Start Assignment</strong> → <strong>Text Entry</strong>, paste the code and press <strong>Submit Assignment</strong>. Paste only the code: your teacher reads your work in your document.</p>
       </div>
     </div>
   </div>
 
-  <div class="callout callout-tip">
+  <div class="callout callout-warn">
+    <span class="callout-icon">📌</span>
+    <div class="callout-body"><strong>Read the Canvas instructions first.</strong> Each Canvas assignment says whether to paste a turn-in code or a link to your document. If it asks for a link, copy your document's address from the browser's address bar and choose <strong>Start Assignment</strong> → <strong>Website URL</strong> instead. For a lesson in parts, finish every part; the Canvas instructions say what to paste.</div>
+  </div>
+
+  <h2 style="font-size:24px;margin-top:32px">What the code means</h2>
+  <div class="status-list">
+    <div class="status-item">
+      <span class="status-pill pill-green">Used your feedback</span>
+      <p>The code shows you read your feedback and did something with it. It does not say your work is good or finished. Your teacher still reads your work.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-purple">Revise is fine</span>
+      <p>You can earn the code on a <strong>Revise</strong> card. You don't have to pass first.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-amber">Yours alone</span>
+      <p>The code belongs to you and this one assignment. Someone else's code won't work for you, and yours won't work for them, so don't share it. It stays the same if you submit again, and you can copy it again any time.</p>
+    </div>
+    <div class="status-item">
+      <span class="status-pill pill-grey">After it's in</span>
+      <p>Once your code is in Canvas, you can keep revising and submitting for feedback. That revising is for your learning and your final grade; you don't need a new code.</p>
+    </div>
+  </div>
+
+  <h2 style="font-size:24px;margin-top:32px">What a good answer does</h2>
+  <p>There is no answer to copy: the question comes from your own feedback. A good answer:</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">→</div>
+      <div class="step-body">
+        <strong>Names the specific part</strong>
+        <p>Says which sentence, paragraph, example or choice in your work it means, not just “my work”.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">→</div>
+      <div class="step-body">
+        <strong>Says where</strong>
+        <p>Says where that part is in your document, or where the change will go.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">→</div>
+      <div class="step-body">
+        <strong>Says why</strong>
+        <p>Explains why that part shows the skill, or why the change will fix what the feedback found.</p>
+      </div>
+    </div>
+  </div>
+  <p>An answer that is too short, or that mostly copies the feedback or the question, is sent back straight away with the reason. Use your own words.</p>
+
+  <div class="callout callout-info">
     <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>Your teacher opens your document from Canvas.</strong> They see it as it is when they open it, with your feedback comments.</div>
+    <div class="callout-body"><strong>If the card says “We couldn’t check your answer.”</strong> That's a problem on our side, not with your answer. Your teacher can see it, and you can send it again. <strong>If it says this marking period has ended,</strong> the dashboard can't give a code for it any more: ask your teacher.</div>
   </div>
 </div>
 
@@ -787,7 +861,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
       <div class="step-n">→</div>
       <div class="step-body">
         <strong>The tabs</strong>
-        <p><strong>📋 Assignments</strong> is your work and today's warm-up. Some lessons come in parts, each with its own document: a locked part (🔒) opens when the check finds the part before meets its main goal, or when your teacher opens it. In Canvas, turn in the link to your last part. <strong>🎓 Competencies</strong> lists every competency in your course by area (or by rating, or by your most recent evidence), with your teacher's rating as its number and words (or “Not rated yet”), what your latest checked work showed, what it means in your own words, the lessons where you practice it, what you showed this marking period and this year, and what to practice next; <strong>Review</strong> on a competency shows a short recap from each lesson, its key terms and any video and each piece of evidence your checked work gave: the assignment, the date, and Shown, Partly shown or Not shown yet. A rating of 3 or 4 also says what more work would let your teacher re-rate it, or that it is ready for a re-rating; your teacher decides. <strong>✏️ Warm-ups</strong> has every past warm-up with its score, feedback, the question and your answer. <strong>🗂️ My Context</strong> shows what the system has gathered about your work, one week at a time, with a link straight to that week in the document.</p>
+        <p><strong>📋 Assignments</strong> is your work and today's warm-up. Some lessons come in parts, each with its own document: a locked part (🔒) opens when the check finds the part before meets its main goal, or when your teacher opens it. For a lesson in parts, the Canvas instructions say what to turn in. <strong>🎓 Competencies</strong> lists every competency in your course by area (or by rating, or by your most recent evidence), with your teacher's rating as its number and words (or “Not rated yet”), what your latest checked work showed, what it means in your own words, the lessons where you practice it, what you showed this marking period and this year, and what to practice next; <strong>Review</strong> on a competency shows a short recap from each lesson, its key terms and any video and each piece of evidence your checked work gave: the assignment, the date, and Shown, Partly shown or Not shown yet. A rating of 3 or 4 also says what more work would let your teacher re-rate it, or that it is ready for a re-rating; your teacher decides. <strong>✏️ Warm-ups</strong> has every past warm-up with its score, feedback, the question and your answer. <strong>🗂️ My Context</strong> shows what the system has gathered about your work, one week at a time, with a link straight to that week in the document.</p>
       </div>
     </div>
     <div class="step">
@@ -815,7 +889,14 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
       <div class="step-n">→</div>
       <div class="step-body">
         <strong>↻ Refresh</strong>
-        <p>The page doesn't update by itself. Press Refresh to see the latest.</p>
+        <p>While a card is waiting for feedback or a turn-in code, the page checks for news by itself. Everything else updates when you press Refresh.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">→</div>
+      <div class="step-body">
+        <strong>Canvas ↗</strong>
+        <p>Beside Refresh at the top. Opens Canvas in a new tab, so your dashboard stays open.</p>
       </div>
     </div>
   </div>
@@ -831,7 +912,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
     <details class="faq-item">
       <summary class="faq-q">I pressed Submit for Feedback. Where's my feedback?<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        Press ↻ Refresh on your dashboard. If the card says “Waiting for feedback…” or “Being checked now…”, it's on its way: give it a few minutes. When it's ready, open your document and click <strong>Comments</strong> (top right). If the card says “Couldn't be checked ⚠”, tell your teacher.
+        Keep your dashboard open: the card shows where your work is (Submitted, In line, Being checked) and the page checks for news by itself. If it's taking a while, press <strong>Check again</strong> on the card, or ↻ Refresh. When it's ready, open your document and click <strong>Comments</strong> (top right). If the card says “Couldn't be checked ⚠”, tell your teacher.
       </div>
     </details>
 
@@ -857,9 +938,23 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
     </details>
 
     <details class="faq-item">
-      <summary class="faq-q">Do I have to pass before I turn it in on Canvas?<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
+      <summary class="faq-q">Do I have to pass before I get my turn-in code?<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        No. Passing first is a good idea, because it means your work meets the standard. But you can turn it in on Canvas whenever you're done.
+        No. You can earn your code on a Revise card: answer the question about your feedback. The code shows you used your feedback, not that your work is done. Keep revising after that if you want your work to meet the standard.
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">My answer says “Not yet”.<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
+      <div class="faq-a">
+        Read the one-line reason, then rewrite your answer and send it again. There is no limit. Name the specific part of your work, say where it is, and say why. Use your own words: an answer that mostly copies the feedback or the question comes back right away.
+      </div>
+    </details>
+
+    <details class="faq-item">
+      <summary class="faq-q">Copy didn't work.<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
+      <div class="faq-a">
+        The card selects the code for you: press Ctrl+C (⌘C on a Mac), then paste it into Canvas. You can also type it: it doesn't matter if you get capitals or dashes wrong.
       </div>
     </details>
 
@@ -873,7 +968,7 @@ code { font-family: ui-monospace, Menlo, monospace; font-size: 13px; background:
     <details class="faq-item">
       <summary class="faq-q">I changed my work after I turned it in on Canvas. What now?<span class="faq-arrow" aria-hidden="true">⌄</span></summary>
       <div class="faq-a">
-        Canvas has your document's link, not a copy. Your teacher sees the document as it is when they open it. You can still press Submit for Feedback to get your changes checked. If you're not sure, ask your teacher.
+        Nothing to turn in again. Your code stays the same, and your teacher reads your work in your document as it is when they open it. Keep pressing Submit for Feedback to get your changes checked: that revising is for your learning and your final grade. If you're not sure, ask your teacher.
       </div>
     </details>
 
