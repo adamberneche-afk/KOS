@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1vw12XjsDR26-NwMNDHq7kbG6NwD1sjoZAmHWgOiw4AM -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: Product Pitch & Financial Analysis -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

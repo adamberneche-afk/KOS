@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1G6IDHAy2wX4Pq01F1oqz_ba06u6d0fRgP5HH-qZjXuE -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Final Whistle -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

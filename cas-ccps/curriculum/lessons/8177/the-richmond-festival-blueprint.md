@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1AiMQZbGX9KTijjpPczQQEieNJtEDjWM07JMMr-Po6oQ -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Richmond Festival Blueprint -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

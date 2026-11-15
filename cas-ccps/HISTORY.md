@@ -5714,3 +5714,21 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   new tab; `CANVAS_URL` (a Script Property on the Student Dashboard project)
   changes it without a push, and anything but a plain https URL falls back.
 - **Tests:** `student-dashboard-canvas-button.test.js`.
+
+## Drive links out of the docs, 2026-11-15
+
+- **Asked:** `drive-curation/DELETION_MANIFEST.md` held 62 Drive and Docs
+  links, against the rule that the repo keeps no Drive file IDs or links.
+- **Now:** every Markdown doc is clean. The manifest, the Gemini handoff list
+  and the unit cross-reference list keep their names, reasons and
+  decisions; the lesson files' first line names the source doc by the title
+  under it instead of its ID (69 files; `curriculum/lessons/README.md` and
+  `docs/LESSON_IMPORT_PROCEDURE.md` say so, and the procedure no longer
+  asks for the ID); LeaderHub's setup docs show placeholders. Code and data
+  that use an ID or link (`data/deployment-urls.json` and the cartridges
+  built from it, LeaderHub's lesson-plan table and blackout-dates link, two
+  `.xlsx` catalogs, one test fixture) are unchanged and listed in the PR
+  for the operator's L1 decision. Git history still holds the old links.
+- **Check:** doc-currency Check 6 (`drive-id-in-doc`) fails on a Drive link
+  or ID, or a web app link, in any Markdown doc.
+- **Tests:** `doc-currency-check.test.js`.

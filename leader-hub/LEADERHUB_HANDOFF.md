@@ -265,13 +265,13 @@ When adding any new data-mutating function, **always add `refreshNextAction()` a
 
 | Status | Course/Quarter | Doc ID | Count |
 |--------|---------------|--------|-------|
-| **PLACEHOLDER** | 6115 Q1 | `1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA` | 10 lessons, no real file |
-| **COMPILATION** | 6115 Q2 | `1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4` | 16 lessons in 1 doc |
-| **COMPILATION** | 6115 Q3 | `1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4` | 15 lessons in 1 doc |
-| **COMPILATION** | 6115 Q4 | `1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE` | 12 lessons in 1 doc |
-| **COMPILATION** | 8175 all | `1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE` | 36 lessons in 1 doc |
+| **PLACEHOLDER** | 6115 Q1 | `(ID removed)` | 10 lessons, no real file |
+| **COMPILATION** | 6115 Q2 | `(ID removed)` | 16 lessons in 1 doc |
+| **COMPILATION** | 6115 Q3 | `(ID removed)` | 15 lessons in 1 doc |
+| **COMPILATION** | 6115 Q4 | `(ID removed)` | 12 lessons in 1 doc |
+| **COMPILATION** | 8175 all | `(ID removed)` | 36 lessons in 1 doc |
 | **individual** | 8177 all | (28 unique doc IDs) | 1 doc per lesson ✅ |
-| **individual** | 8175 Q1 bonus | `1c8hvDwgCzintcdtjKAe1ULYuijbnk21SfSDXoGgm2m8` | lp_8175_00 only |
+| **individual** | 8175 Q1 bonus | `(ID removed)` | lp_8175_00 only |
 
 **Pending work (Drive):** Adam asked about splitting compilation docs into individual files. The recommended approach is an Apps Script splitter — it reads the compilation doc, splits on lesson heading patterns, creates individual docs with naming convention titles, and returns new doc IDs for updating `LESSON_PLANS` in the app. This has NOT been built yet. It is the next major task.
 
@@ -398,7 +398,7 @@ print(f"\n{passed}/{len(checks)}")
 
 2. **8177 individual doc renames** — 28 docs exist individually but have old title formats. Need renaming to `8177 | Q[N] | TEACH | [Title]` via Apps Script. Simple once compilation split is done.
 
-3. **6115 Q1 placeholder** — 10 lessons point to doc ID `1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA` which is not a real individual file. These need new docs created.
+3. **6115 Q1 placeholder** — 10 lessons point to one doc ID (removed here) that is not a real individual file. These need new docs created.
 
 ### Medium priority
 4. **DSP Report grading section** — `GRADING_STRUCTURE` constant exists but `generateDSPReport()` doesn't yet read it. A "Grading Compliance" section in the DSP report would show the 12-quarter summative counts and confirm the 25% rule is met. Good evidence for Standard 1.

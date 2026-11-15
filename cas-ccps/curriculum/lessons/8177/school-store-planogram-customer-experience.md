@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1jkUEDcEoj1uh5oMqwuOTNYJEo3dF6FCg78m_4yKW3_Y -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: School Store Planogram & Customer Experience -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

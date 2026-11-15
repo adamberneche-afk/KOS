@@ -108,9 +108,9 @@ The Email Bridge connects Gmail → Google Apps Script → Google Sheet → Lead
 
 | Field | Value |
 |-------|-------|
-| Web App URL | `https://script.google.com/a/macros/ccpsnet.net/s/AKfycbz6Hx2vJbZJXv82WrvvXUBu-oXhGifcboQi_Il3jfu3HHov4WA5j6MJ8IZvZkb8dGyG/exec` |
+| Web App URL | `https://script.google.com/a/macros/ccpsnet.net/s/<deployment ID>/exec` |
 | Apps Script | `EmailBridge.gs` |
-| Sheet | `https://docs.google.com/spreadsheets/d/1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0/edit` |
+| Sheet | `https://docs.google.com/spreadsheets/d/<sheet ID>/edit` |
 | Trigger | `runAll` every 10 minutes |
 | LeaderHub key | `lh_email_bridge_url` in localStorage |
 | Setup guide | `LEADERHUB_EMAIL_SETUP.md` |

@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1s8tcXzub_I9DsjESTAT18lJN36uiJu70MLGfSGKOdgo -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Business of the Game -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1W76FPone_EiodzhTspZ6UL6SLoGoNEdTkiIbDceGIvc -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: Game Day Takeover -->
 <!-- written in the repo 2026-10-12 (competencies 99 and 100, with 10, 58, 95, 101); the Drive doc was created from this file the same day -->
 

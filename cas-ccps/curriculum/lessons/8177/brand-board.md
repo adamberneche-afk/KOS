@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1gHqibALOtZTfn5maqRmlOKLhPJbIoEPae6jB2iGdhzw -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: Brand Board -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

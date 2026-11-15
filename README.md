@@ -196,7 +196,7 @@ anything that would have flagged it in advance). Run
 The other half of the same idea. `gas-lint` reads the source; this reads the
 prose and asks whether it is still true: a doc naming a function that exists
 nowhere, a cited test count that has drifted, a key registry listing a key no
-code mentions, a `file:line` citation past the end of that file, and — the
+code mentions, a `file:line` citation past the end of that file, a Drive file ID or link written into any Markdown doc (Check 6, 2026-11-15; `doc-currency-check.test.js`), and — the
 one no other check could see — **a document describing a path that cannot
 run on the account this repo deploys to.** Every function in those
 instructions existed; the instructions were still impossible to follow,

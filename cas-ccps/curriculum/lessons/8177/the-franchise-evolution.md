@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1n0069b8XGD9dqVBy1W8vlaK-66AnSqCXV0kHzUPfBFY -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Franchise Evolution -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 
