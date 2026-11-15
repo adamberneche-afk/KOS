@@ -5922,3 +5922,17 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   `flow-fixtures`, `flow2-canary` (the canned answers agree with their
   stamps now), `ledger-cycle-gates`, `setup-status`, `evaluation-health`,
   `overnight-health`, `teacher-dashboard-waiting-strip`.
+
+## Flow 2 fixture: two rows at once, 2026-11-15
+
+- **Why:** Flow 2 now loops over the rows a Studio run groups together
+  (Repeat for each). Without a test student account, nothing could make two
+  rows change together to test that.
+- **Now:** `installFlow2Fixture(2)` seeds two fixture rows READY in one
+  write: the campaign pitch and a second, different assignment (a stadium
+  concessions plan), each with its own StagingRowRef ("FIXTURE",
+  "FIXTURE-2"), scratch doc and prompt. `checkFlow2Fixture()` says whether
+  each got its own feedback (not empty, not the other assignment's, not a
+  copy). `removeFlow2Fixture()` clears both. `installFlow2Fixture()` with no
+  argument is unchanged.
+- **Tests:** `flow-fixtures.test.js`.
