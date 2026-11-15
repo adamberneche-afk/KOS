@@ -187,25 +187,44 @@ function installFlow1Fixture() {
 // it. That's deliberate: this file's job is what Studio latches onto, and
 // runFlow2Canary() already exercises the builder's 3-hop resolution properly.
 // ---------------------------------------------------------------------------
-function installFlow2Fixture() {
-  const cfg = getConfig_();
-  const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const tabName = (cfg.tabs && cfg.tabs.flowInput) || "FlowInput";
-  let sheet = ledgerSs.getSheetByName(tabName);
-  if (!sheet) {
-    // _fiEnsureTab_ (37_FlowInputBuilder.js) owns this tab's creation; reuse
-    // it rather than writing a second, divergent header list.
-    sheet = _fiEnsureTab_(ledgerSs, cfg);
-  }
+// The two Flow 2 fixtures (2026-11-15). The first is the original; the second
+// is a different assignment and a different response, so feedback that mixes
+// the two (a grouped Studio run reading both prompts, the 11-13 symptom)
+// shows at a glance: each output must talk about its own unit only.
+const FX_FLOW2_SPECS = [
+  { ref: "FIXTURE", configSuffix: "F2", docTitle: "[FIXTURE] Flow 2 Student Submission",
+    unitName: "Fixture Unit 3 — Campaign Pitch",
+    persona: "A demanding but encouraging marketing director reviewing a junior pitch.",
+    milestones: ["Identify the target demographic with supporting reasoning.",
+      "Select at least two promotional channels and justify each.",
+      "Propose a measurable success metric with a stated target.",
+      "Deliver the pitch in professional business language."],
+    dod: "All four elements present, reasoning specific rather than generic, and " +
+      "writing free of errors that would undermine client credibility.",
+    compPrefix: "FIXTURE-COMP-", response: FX_STUDENT_RESPONSE },
+  { ref: "FIXTURE-2", configSuffix: "F2B", docTitle: "[FIXTURE] Flow 2 Student Submission (second)",
+    unitName: "Fixture Unit 7 — Stadium Concessions Plan",
+    persona: "A practical venue operations manager reviewing a new hire's plan.",
+    milestones: ["Name two concession items and the price of each with a reason.",
+      "Estimate how many of each will sell at one game and show the math.",
+      "Identify one risk to concession sales and a plan for it.",
+      "Write the plan in clear, complete sentences."],
+    dod: "All four elements present, numbers shown with their math, and a risk " +
+      "that fits the venue rather than a generic one.",
+    compPrefix: "FIXTURE-COMP-B", response:
+      "FIXTURE RESPONSE (second) — This is seeded test data, not a real student submission.\n\n" +
+      "For the home opener I would sell soft pretzels at $4, because they cost about $1 " +
+      "to make and fans buy them as a quick snack, and bottled water at $3, because the " +
+      "early season games are hot. With 2,000 fans and about one in five buying a " +
+      "pretzel, I expect 400 pretzels; with one in four buying water, 500 bottles. " +
+      "The biggest risk is rain lowering attendance, so I would order water in two " +
+      "deliveries instead of all at once." },
+];
 
-  if (_fxFindRow_(sheet, FI.STUDENT_EMAIL, FX_STUDENT_EMAIL) !== -1) {
-    Logger.log("[Fixtures] Flow 2: already seeded — leaving it alone.");
-    return { flow: 2, seeded: 0, skipped: 1 };
-  }
-
-  const configId = FX_CONFIG_PREFIX + "F2";
-
-  const doc = DocumentApp.create("[FIXTURE] Flow 2 Student Submission");
+// One fixture's scratch doc and FlowInput row (unwritten), from a spec.
+function _fxFlow2FixtureRow_(spec) {
+  const configId = FX_CONFIG_PREFIX + spec.configSuffix;
+  const doc = DocumentApp.create(spec.docTitle);
   const body = doc.getBody();
   // Mirrors the zone structure stampDocument_()
   // (02_Form1_IntakeAndWorkspaceGenerator.js) writes into a real student doc,
@@ -231,7 +250,7 @@ function installFlow2Fixture() {
     "──────────────────────────────────────────────────\n" +
     "── YOUR RESPONSE BEGINS HERE ──\n" +
     "──────────────────────────────────────────────────");
-  body.appendParagraph(FX_STUDENT_RESPONSE);
+  body.appendParagraph(spec.response);
   body.appendParagraph(
     "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
     "[CONFIG_ID: " + configId + "]\n" +
@@ -240,27 +259,24 @@ function installFlow2Fixture() {
   doc.saveAndClose();
   const row = new Array(22).fill("");
   row[FI.TIMESTAMP] = new Date();
-  row[FI.STAGING_ROW_REF] = "FIXTURE"; // non-numeric on purpose — see below
+  row[FI.STAGING_ROW_REF] = spec.ref; // non-numeric on purpose: see installFlow2Fixture
   row[FI.STUDENT_FILE_ID] = doc.getId();
   row[FI.CONFIG_ID] = configId;
   row[FI.TEACHER_EMAIL] = FX_TEACHER_EMAIL;
   row[FI.STUDENT_EMAIL] = FX_STUDENT_EMAIL;
   row[FI.STUDENT_DOC_URL] = "https://docs.google.com/document/d/" + doc.getId() + "/edit";
-  row[FI.UNIT_NAME] = "Fixture Unit 3 — Campaign Pitch";
+  row[FI.UNIT_NAME] = spec.unitName;
   row[FI.TIER] = "Tier 1 Core";
-  row[FI.PERSONA] =
-    "A demanding but encouraging marketing director reviewing a junior pitch.";
-  row[FI.MILESTONE_1] = "Identify the target demographic with supporting reasoning.";
-  row[FI.MILESTONE_2] = "Select at least two promotional channels and justify each.";
-  row[FI.MILESTONE_3] = "Propose a measurable success metric with a stated target.";
-  row[FI.MILESTONE_4] = "Deliver the pitch in professional business language.";
-  row[FI.DEFINITION_OF_DONE] =
-    "All four elements present, reasoning specific rather than generic, and " +
-    "writing free of errors that would undermine client credibility.";
-  row[FI.MILESTONE_1_COMPETENCY_ID] = "FIXTURE-COMP-1";
-  row[FI.MILESTONE_2_COMPETENCY_ID] = "FIXTURE-COMP-2";
-  row[FI.MILESTONE_3_COMPETENCY_ID] = "FIXTURE-COMP-3";
-  row[FI.MILESTONE_4_COMPETENCY_ID] = "FIXTURE-COMP-4";
+  row[FI.PERSONA] = spec.persona;
+  row[FI.MILESTONE_1] = spec.milestones[0];
+  row[FI.MILESTONE_2] = spec.milestones[1];
+  row[FI.MILESTONE_3] = spec.milestones[2];
+  row[FI.MILESTONE_4] = spec.milestones[3];
+  row[FI.DEFINITION_OF_DONE] = spec.dod;
+  row[FI.MILESTONE_1_COMPETENCY_ID] = spec.compPrefix + "1";
+  row[FI.MILESTONE_2_COMPETENCY_ID] = spec.compPrefix + "2";
+  row[FI.MILESTONE_3_COMPETENCY_ID] = spec.compPrefix + "3";
+  row[FI.MILESTONE_4_COMPETENCY_ID] = spec.compPrefix + "4";
   row[FI.READY_STATUS] = "READY";
   row[FI.GEMINI_FULL_OUTPUT] = "";
   // Same pre-substituted prompt a real row gets, so the @trigger.PromptText
@@ -272,8 +288,47 @@ function installFlow2Fixture() {
     milestone3: row[FI.MILESTONE_3], milestone4: row[FI.MILESTONE_4],
     dod: row[FI.DEFINITION_OF_DONE],
   });
-  sheet.appendRow(row);
+  return { row: row, configId: configId, docId: doc.getId() };
+}
+
+function installFlow2Fixture(count) {
+  // count 2 (2026-11-15): two fixture rows, written READY in ONE write, so
+  // Studio's sheet starter sees them change together and groups them into
+  // one run: the case Flow 2's Repeat-for-each loop must handle (each row
+  // its own Gemini call, its own update, matched on StagingRowRef). Each row
+  // has its own StagingRowRef ("FIXTURE", "FIXTURE-2"), doc and assignment.
+  // checkFlow2Fixture() then says whether each got its own feedback.
+  const n = Math.max(1, Math.min(FX_FLOW2_SPECS.length, Math.floor(Number(count) || 1)));
+  const cfg = getConfig_();
+  const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const tabName = (cfg.tabs && cfg.tabs.flowInput) || "FlowInput";
+  let sheet = ledgerSs.getSheetByName(tabName);
+  if (!sheet) {
+    // _fiEnsureTab_ (37_FlowInputBuilder.js) owns this tab's creation; reuse
+    // it rather than writing a second, divergent header list.
+    sheet = _fiEnsureTab_(ledgerSs, cfg);
+  }
+
+  if (_fxFindRow_(sheet, FI.STUDENT_EMAIL, FX_STUDENT_EMAIL) !== -1) {
+    Logger.log("[Fixtures] Flow 2: already seeded — leaving it alone." +
+      (n > 1 ? " Run removeFlow2Fixture() first, then installFlow2Fixture(" + n + ")." : ""));
+    return { flow: 2, seeded: 0, skipped: 1 };
+  }
+
+  const made = FX_FLOW2_SPECS.slice(0, n).map(_fxFlow2FixtureRow_);
+  const width = Math.max(sheet.getLastColumn(), made[0].row.length);
+  const rows = made.map(function (m) {
+    const r = m.row.slice();
+    while (r.length < width) r.push("");
+    return r;
+  });
+  // One write for all of them, so they change at the same moment.
+  const first = sheet.getLastRow() + 1;
+  sheet.getRange(first, 1, rows.length, width).setValues(rows);
   SpreadsheetApp.flush();
+  const row = made[0].row;
+  const configId = made[0].configId;
+  const doc = { getId: function () { return made[0].docId; } };
 
   // _fiBuildPromptText_ returns "" rather than throwing when
   // FLOW_2_SYSTEM_PROMPT (15b) or substituteFlowPrompt_ (40) is out of scope.
@@ -290,14 +345,60 @@ function installFlow2Fixture() {
                "Ask Gemini step by hand.");
   }
 
-  Logger.log("[Fixtures] Flow 2: seeded FlowInput row " + sheet.getLastRow() +
-             " at READY (ConfigID " + configId + ").");
-  Logger.log("[Fixtures]   student doc: " + doc.getId());
-  Logger.log("[Fixtures]   StagingRowRef is the literal 'FIXTURE', not a row number — " +
+  made.forEach(function (m, i) {
+    Logger.log("[Fixtures] Flow 2: seeded FlowInput row " + (first + i) + " at READY (ConfigID " + m.configId +
+      ", StagingRowRef " + FX_FLOW2_SPECS[i].ref + ").");
+    Logger.log("[Fixtures]   student doc: " + m.docId);
+  });
+  Logger.log("[Fixtures]   StagingRowRef is non-numeric on purpose (\"FIXTURE\"…), not a row number — " +
              "so if you let the real harvest run against this row, its " +
              "_fiMarkStagingComplete_ finds no matching STAGING_PIPELINE row and " +
              "says so, rather than completing an unrelated real row.");
-  return { flow: 2, seeded: 1, skipped: 0, configId: configId, studentFileId: doc.getId() };
+  if (n > 1) Logger.log("[Fixtures]   Wait for Studio (2–5 min), then run checkFlow2Fixture().");
+  return { flow: 2, seeded: n, skipped: 0, configId: configId, studentFileId: doc.getId(),
+    rows: made.map(function (m, i) { return { configId: m.configId, ref: FX_FLOW2_SPECS[i].ref, studentFileId: m.docId }; }) };
+}
+
+/**
+ * After installFlow2Fixture(2) (or 1): did each fixture row get its own
+ * feedback? Per row: its status, whether it has output, whether the output
+ * names its own unit's subject and not the other's, and whether two rows
+ * hold the same output. Read-only; logs names of fixture units only.
+ */
+function checkFlow2Fixture() {
+  const cfg = getConfig_();
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput");
+  const data = sheet && sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues().slice(1) : [];
+  const keys = { "F2": /campaign|demographic|promotional/i, "F2B": /concession|pretzel|stadium/i };
+  const rows = data.filter(function (r) { return String(r[FI.CONFIG_ID]).trim().indexOf(FX_CONFIG_PREFIX) === 0; });
+  if (!rows.length) {
+    Logger.log("[Fixtures] checkFlow2Fixture: no fixture rows. Run installFlow2Fixture(2) first.");
+    return { rows: 0, ok: false };
+  }
+  const outs = {};
+  let ok = true;
+  rows.forEach(function (r) {
+    const id = String(r[FI.CONFIG_ID]).trim();
+    const suffix = id.slice(FX_CONFIG_PREFIX.length);
+    const out = String(r[FI.GEMINI_FULL_OUTPUT] || "");
+    const status = String(r[FI.READY_STATUS] || "").trim();
+    let verdict;
+    if (!out.trim()) { verdict = "no output yet (status " + (status || "blank") + ")"; ok = false; }
+    else {
+      const own = keys[suffix] ? keys[suffix].test(out) : true;
+      const other = Object.keys(keys).some(function (k) { return k !== suffix && keys[k].test(out); });
+      verdict = own && !other ? "its own feedback" : other ? "MIXED: mentions the other fixture's assignment" : "doesn't mention its own assignment";
+      if (!(own && !other)) ok = false;
+      if (outs[out]) { verdict += "; SAME OUTPUT as " + outs[out]; ok = false; }
+      outs[out] = id;
+    }
+    Logger.log("[Fixtures] " + id + " (StagingRowRef " + String(r[FI.STAGING_ROW_REF]).trim() + "): " + status + " — " + verdict);
+  });
+  Logger.log("[Fixtures] checkFlow2Fixture: " + (ok ? "PASS — each row got its own feedback." :
+    "NOT YET — see above. If a row is still READY, wait and run this again; if outputs are mixed or the same, " +
+    "check Flow 2's Repeat for each (every chip should be Step 2's each item) and Update rows (match on StagingRowRef)."));
+  Logger.log("[Fixtures] When done: removeFlow2Fixture().");
+  return { rows: rows.length, ok: ok };
 }
 
 // ---------------------------------------------------------------------------
@@ -699,7 +800,7 @@ function removeFlow2Fixture() {
 }
 
 function _fxIsFlow2FixtureRow_(row) {
-  return String(row[FI.STAGING_ROW_REF]).trim() === "FIXTURE" ||
+  return /^FIXTURE(-\d+)?$/.test(String(row[FI.STAGING_ROW_REF]).trim()) ||
     String(row[FI.CONFIG_ID]).trim().indexOf(FX_CONFIG_PREFIX) === 0 ||
     [FX_TEACHER_EMAIL, FX_STUDENT_EMAIL].indexOf(String(row[FI.TEACHER_EMAIL]).trim()) !== -1 ||
     [FX_TEACHER_EMAIL, FX_STUDENT_EMAIL].indexOf(String(row[FI.STUDENT_EMAIL]).trim()) !== -1;

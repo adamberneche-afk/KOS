@@ -51,7 +51,7 @@ const FILES = [
 
 function load() {
   return loadGasFiles(FILES, [
-    'installFlowFixtures', 'installFlow1Fixture', 'installFlow2Fixture',
+    'installFlowFixtures', 'installFlow1Fixture', 'installFlow2Fixture', 'checkFlow2Fixture', 'removeFlow2Fixture',
     '_fiFindTeacherMatrixRow_',
     'installWarmUpFixtures', 'checkFlowFixtures', 'removeFlowFixtures',
     'FI', 'WQ24_QUEUE_ID', 'WQ24_STATUS', 'WQ24_LESSON_CTX_SNAP',
@@ -163,6 +163,76 @@ test('installFlow2Fixture: the FlowInput row is fully populated, so every Studio
   // Non-numeric on purpose: _fiMarkStagingComplete_ then finds no matching
   // STAGING_PIPELINE row and says so, rather than completing a real one.
   assert.ok(Number.isNaN(parseInt(row[FI.STAGING_ROW_REF], 10)));
+});
+
+// installFlow2Fixture(2) (2026-11-15): two rows, READY in one write, so
+// Studio's starter groups them into one run, as when two students submit
+// together. Each has its own StagingRowRef, doc and assignment, and
+// checkFlow2Fixture() says whether each got its own feedback.
+test('installFlow2Fixture(2): two READY rows in one write, each its own ref, doc and assignment', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  const sheet = () => ss.getSheetByName('FlowInput');
+  const res = exported.installFlow2Fixture(2);
+  assert.equal(res.seeded, 2);
+  const FI = exported.FI;
+  const rows = sheet().getDataRange().getValues().slice(1).filter((r) => String(r[FI.CONFIG_ID]).startsWith('VDOE-FIXTURE-'));
+  assert.equal(rows.length, 2);
+  assert.deepEqual(rows.map((r) => r[FI.STAGING_ROW_REF]), ['FIXTURE', 'FIXTURE-2']);
+  assert.deepEqual(rows.map((r) => r[FI.READY_STATUS]), ['READY', 'READY']);
+  assert.notEqual(rows[0][FI.STUDENT_FILE_ID], rows[1][FI.STUDENT_FILE_ID], 'two docs');
+  assert.notEqual(rows[0][FI.UNIT_NAME], rows[1][FI.UNIT_NAME], 'two assignments');
+  rows.forEach((r) => assert.ok(String(r[FI.PROMPT_TEXT]).includes(r[FI.UNIT_NAME]), 'each prompt is its own'));
+  // A second install is refused until removeFlow2Fixture().
+  assert.equal(exported.installFlow2Fixture(2).skipped, 1);
+});
+
+test('installFlow2Fixture(2): both rows are written by one range write, not two appends', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture(1); // creates the tab the way the single install does
+  exported.removeFlow2Fixture();
+  const sheet = ss.getSheetByName('FlowInput');
+  let appends = 0, ranges = 0;
+  const realAppend = sheet.appendRow.bind(sheet);
+  sheet.appendRow = (r) => { appends++; return realAppend(r); };
+  const realGetRange = sheet.getRange.bind(sheet);
+  sheet.getRange = (...a) => { if (a.length === 4 && a[2] === 2) ranges++; return realGetRange(...a); };
+  exported.installFlow2Fixture(2);
+  assert.equal(appends, 0);
+  assert.equal(ranges, 1, 'one setValues covering both rows');
+});
+
+test('checkFlow2Fixture: its own feedback passes; mixed, copied or missing feedback does not', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture(2);
+  const FI = exported.FI;
+  const sheet = ss.getSheetByName('FlowInput');
+  const rowOf = (ref) => sheet.getDataRange().getValues().findIndex((r) => r[FI.STAGING_ROW_REF] === ref) + 1;
+  const put = (ref, out) => sheet.getRange(rowOf(ref), FI.GEMINI_FULL_OUTPUT + 1).setValue(out);
+  assert.equal(exported.checkFlow2Fixture().ok, false, 'no output yet');
+  put('FIXTURE', 'The campaign targets the right demographic.');
+  put('FIXTURE-2', 'Your pretzel pricing and stadium risk plan are clear.');
+  assert.equal(exported.checkFlow2Fixture().ok, true);
+  put('FIXTURE-2', 'The campaign targets the right demographic.');
+  assert.equal(exported.checkFlow2Fixture().ok, false, 'the same output in both rows');
+  put('FIXTURE-2', 'Your concession plan is fine, and so is the promotional campaign.');
+  assert.equal(exported.checkFlow2Fixture().ok, false, 'mentions the other assignment');
+});
+
+test('removeFlow2Fixture clears both fixture rows and trashes both docs', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  const res = exported.installFlow2Fixture(2);
+  const trashed = [];
+  sandbox.DriveApp.getFileById = (id) => ({ setTrashed() { trashed.push(id); } });
+  const r = exported.removeFlow2Fixture();
+  assert.equal(r.cleared, 2);
+  assert.deepEqual(trashed.sort(), res.rows.map((x) => x.studentFileId).sort());
+  const FI = exported.FI;
+  assert.equal(ss.getSheetByName('FlowInput').getDataRange().getValues().slice(1)
+    .filter((x) => String(x[FI.CONFIG_ID]).startsWith('VDOE-FIXTURE-')).length, 0);
 });
 
 test('installWarmUpFixtures: snapshots are valid JSON carrying the keys the flows read', () => {
