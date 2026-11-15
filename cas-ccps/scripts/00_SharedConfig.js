@@ -1875,6 +1875,19 @@ const LEDGER = {
   TEACHER_NAME:           7,
   TEACHER_EMAIL:          8,
   SUBJECT:                9,
+  // COURSE_NAME is not the lesson's name on most rows. The roster import
+  // (52, through 58's rollout) writes the Canvas course name here ("Sports
+  // Entertainment and Event Management"); only rows made by the old intake
+  // form hold the unit or lesson name. 60 and 29 read it as the course, so
+  // it stays as written. Anything that shows a student, a family or a teacher
+  // the lesson's name resolves it instead: StudentAssignments (54) maps the
+  // workspace to its assignment ConfigID, and the name comes from the
+  // teacher's TeacherMatrix (13's _dashUnitNames_, #424; 02's fetchAssignment_
+  // in refreshFormSnapshots) or the lesson data
+  // (36's _prLessonTitles_, from 55b), with this column as the fallback for a
+  // row StudentAssignments doesn't have. The Teacher Dashboard does its own
+  // lookup (07's _tdLessonContext_). Apps Script projects can't share code, so
+  // each project keeps its own copy (2026-11-15).
   COURSE_NAME:            10,
   PERIOD:                 11,
   STATUS:                 12,
