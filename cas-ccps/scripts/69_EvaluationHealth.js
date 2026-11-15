@@ -260,3 +260,130 @@ function _ehRound_(x, places) {
   const f = Math.pow(10, places);
   return Math.round(x * f) / f;
 }
+
+// =============================================================================
+// reportRegradeConsistency — how consistently Flow 2 grades the same work
+// (added 2026-11-15). That afternoon a Studio Test run re-graded every
+// FlowInput row, so most submissions now have two gradings of unchanged
+// work: the original, in the Ledger's version history, and the re-grade, in
+// FlowInput now. Make a copy of the version from before the re-grade (File →
+// Version history → that version → ⋮ → Make a copy) and pass the copy's ID:
+//   reportRegradeConsistency({ beforeSsId: "<the copy's ID>" })
+// Optional: cleanFrom (an ISO time): pairs whose original row was built at or
+// after it are also counted on their own, so originals graded before a
+// Studio fix (which could answer for another lesson) can be set apart.
+// Rows pair on StudentFileID + ConfigID + StagingRowRef; fixture rows are
+// skipped. Each side is read by _fiCheckResultShape_ (37), so a grading that
+// is malformed is counted as such, not compared. For each well-formed pair:
+// the stamp (same, APPROVED → REVISION_REQUIRED, or the reverse), and each
+// milestone both graded: the 3×3 table of original against re-grade, how
+// many agree, differ by one level (MET / PARTIALLY_MET / NOT_MET) or by two;
+// and per UnitName, pairs and stamp changes. Reads only: writes no cell,
+// tab or property. Same DATA BOUNDARY as above: counts and unit names only.
+// =============================================================================
+const RC_LEVELS = ["MET", "PARTIALLY_MET", "NOT_MET"];
+
+function reportRegradeConsistency(opts) {
+  opts = opts || {};
+  if (!opts.beforeSsId) {
+    throw new Error("reportRegradeConsistency: pass { beforeSsId: <ID of a copy of the Ledger from before the re-grade> }.");
+  }
+  const cleanFromMs = opts.cleanFrom ? Date.parse(opts.cleanFrom) : NaN;
+  if (opts.cleanFrom && isNaN(cleanFromMs)) throw new Error("reportRegradeConsistency: cleanFrom is not a time.");
+  const cfg = getConfig_();
+  const tab = (cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME;
+  const nowSheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(tab);
+  const beforeSheet = SpreadsheetApp.openById(opts.beforeSsId).getSheetByName(tab);
+  if (!nowSheet || !beforeSheet) throw new Error("reportRegradeConsistency: a FlowInput tab is missing.");
+  const res = regradeConsistency_(beforeSheet.getDataRange().getValues().slice(1),
+    nowSheet.getDataRange().getValues().slice(1), cleanFromMs);
+  _rcLog_("ALL PAIRS", res.all);
+  if (res.clean) _rcLog_("ORIGINAL BUILT AT OR AFTER " + opts.cleanFrom, res.clean);
+  Logger.log("[Regrade] By unit (pairs compared; stamp changed):");
+  Object.keys(res.byUnit).sort().forEach(function (u) {
+    Logger.log("  " + u + ": " + res.byUnit[u].pairs + "; " + res.byUnit[u].flipped);
+  });
+  return res;
+}
+
+// The comparison itself, on FlowInput rows (no header): before and now.
+function regradeConsistency_(beforeRows, nowRows, cleanFromMs) {
+  const key = function (r) {
+    return [r[FI.STUDENT_FILE_ID], r[FI.CONFIG_ID], r[FI.STAGING_ROW_REF]].map(function (v) { return String(v).trim(); }).join("|");
+  };
+  const before = {};
+  beforeRows.forEach(function (r) {
+    if (_fxIsFlow2FixtureRow_(r) || !String(r[FI.STUDENT_FILE_ID]).trim()) return;
+    before[key(r)] = r;
+  });
+  const out = { all: _rcEmpty_(), clean: isNaN(cleanFromMs) ? null : _rcEmpty_(), byUnit: {} };
+  nowRows.forEach(function (now) {
+    if (_fxIsFlow2FixtureRow_(now) || !String(now[FI.STUDENT_FILE_ID]).trim()) return;
+    const was = before[key(now)];
+    const a = was ? String(was[FI.GEMINI_FULL_OUTPUT] || "").trim() : "";
+    const b = String(now[FI.GEMINI_FULL_OUTPUT] || "").trim();
+    const buckets = [out.all];
+    if (out.clean && was && sheetTimestampMs_(was[FI.TIMESTAMP]) >= cleanFromMs) buckets.push(out.clean);
+    const add = function (fn) { buckets.forEach(fn); };
+    if (!was || !a || !b) { add(function (s) { s.unpaired++; }); return; }
+    if (a === b) { add(function (s) { s.unchanged++; }); return; }
+    const sa = _fiCheckResultShape_(a, was), sb = _fiCheckResultShape_(b, now);
+    if (!sa.ok || !sb.ok) {
+      add(function (s) {
+        if (!sa.ok) s.malformedBefore[sa.reason] = (s.malformedBefore[sa.reason] || 0) + 1;
+        if (!sb.ok) s.malformedNow[sb.reason] = (s.malformedNow[sb.reason] || 0) + 1;
+      });
+      return;
+    }
+    const unit = String(now[FI.UNIT_NAME] || "").trim() || "(no unit name)";
+    const u = out.byUnit[unit] || (out.byUnit[unit] = { pairs: 0, flipped: 0 });
+    u.pairs++;
+    if (sa.compliance !== sb.compliance) u.flipped++;
+    add(function (s) {
+      s.pairs++;
+      if (sa.compliance === sb.compliance) s.stampSame++;
+      else if (sa.compliance === "APPROVED") s.passToRevise++;
+      else s.reviseToPass++;
+      let allSame = true;
+      ["1", "2", "3", "4"].forEach(function (k) {
+        const x = sa.outcomes[k], y = sb.outcomes[k];
+        if (!x || !y) return;
+        s.matrix[x][y]++;
+        s.milestones++;
+        const gap = Math.abs(RC_LEVELS.indexOf(x) - RC_LEVELS.indexOf(y));
+        if (gap === 0) s.agree++; else if (gap === 1) s.offByOne++; else s.offByTwo++;
+        if (gap) allSame = false;
+      });
+      if (allSame) s.allMilestonesSame++;
+    });
+  });
+  return out;
+}
+
+function _rcEmpty_() {
+  const matrix = {};
+  RC_LEVELS.forEach(function (x) { matrix[x] = {}; RC_LEVELS.forEach(function (y) { matrix[x][y] = 0; }); });
+  return { pairs: 0, unpaired: 0, unchanged: 0, malformedBefore: {}, malformedNow: {},
+    stampSame: 0, passToRevise: 0, reviseToPass: 0, allMilestonesSame: 0,
+    milestones: 0, agree: 0, offByOne: 0, offByTwo: 0, matrix: matrix };
+}
+
+function _rcLog_(title, s) {
+  const pct = function (n, d) { return d ? Math.round(1000 * n / d) / 10 + "%" : "n/a"; };
+  const list = function (o) {
+    const k = Object.keys(o);
+    return k.length ? k.map(function (r) { return r + " " + o[r]; }).join(", ") : "none";
+  };
+  Logger.log("[Regrade] " + title);
+  Logger.log("  Pairs compared: " + s.pairs + " (not paired " + s.unpaired + ", same text both times " + s.unchanged + ")");
+  Logger.log("  Malformed, original: " + list(s.malformedBefore) + "; re-grade: " + list(s.malformedNow));
+  Logger.log("  Stamp: same " + s.stampSame + " (" + pct(s.stampSame, s.pairs) + "), APPROVED → REVISION_REQUIRED " +
+             s.passToRevise + ", REVISION_REQUIRED → APPROVED " + s.reviseToPass);
+  Logger.log("  Every milestone the same: " + s.allMilestonesSame + " of " + s.pairs + " (" + pct(s.allMilestonesSame, s.pairs) + ")");
+  Logger.log("  Milestones: " + s.milestones + " graded twice; agree " + s.agree + " (" + pct(s.agree, s.milestones) +
+             "), one level apart " + s.offByOne + ", MET ↔ NOT_MET " + s.offByTwo);
+  Logger.log("  Original (rows) against re-grade (columns): MET / PARTIALLY_MET / NOT_MET");
+  RC_LEVELS.forEach(function (x) {
+    Logger.log("    " + x + ": " + RC_LEVELS.map(function (y) { return s.matrix[x][y]; }).join(" / "));
+  });
+}

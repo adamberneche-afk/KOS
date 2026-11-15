@@ -754,6 +754,18 @@ lesson, and the warm-up answer rate (`WarmUpQueue`'s `delivered_at` /
 overnight email (34c) runs it once a day and adds one line: this week's
 checks and failure rate against D8's bar of 1 in 20. Counts only.
 
+`reportRegradeConsistency({ beforeSsId })` (2026-11-15) measures how
+consistently Flow 2 grades the same work. When FlowInput's rows have been
+graded twice (a Studio Test run re-graded every row that day), pass the ID
+of a copy of the Ledger from before the re-grade (Version history → Make a
+copy). It pairs each row with its earlier self and logs, for pairs whose two
+gradings are both well formed: the stamp (same, or which way it changed),
+each milestone's original against its re-grade (the 3×3 table, one level
+apart, `MET` ↔ `NOT_MET`), and per unit the pairs and stamp changes; a
+malformed grading is counted by reason, not compared. `cleanFrom` (an ISO
+time) also counts on their own the pairs whose original row was built after
+a fix. Reads only. Counts and unit names only.
+
 `69b_FlowMeasures.js` (2026-11-08) does the same for every CAS Studio flow,
 called by `reportEvaluationHealth()`, which logs it and rewrites a second
 tab, `FlowMeasures` (the `Measures` tab keeps its layout). Per flow and
