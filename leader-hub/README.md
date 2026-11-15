@@ -35,7 +35,7 @@ key at all).
 |---|---|
 | `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project). `clasp` pushes it and `Code.gs`'s `doGet()` serves it; opened from disk it only shows "LeaderHub now runs as a web app" (see "Where the data lives"). **Generated** (external product review, Finding 4 / "this quarter" maintainability fix) from `src/*.html` via `tools/leaderhub-build/build.js` — stays committed at this path so a push needs no build step, but **never hand-edit it directly**; edit the relevant fragment under `src/` and rebuild. See `tools/leaderhub-build/README.md`. |
 | `src/` | The 14 fragments `student-leader-hub.html` is generated from, in file order — `00-shell-head.html` through `13-markup-modals-tail.html`. This is where you actually make edits. |
-| `EmailBridge.gs` | Apps Script bridge — sub-plan Docs, brag emails (sent via `MailApp`), horizon-item polling, Organization Sync, and the AI-drafting job queue (see below). Its Gmail-label horizon scan is currently **disabled**, along with every Gmail scope. They were removed while chasing the consent-dialog crash, which turned out to be unrelated (see the Fixed section below), so restoring them is now a separate decision. `LEADERHUB_AI_FLOW_SETUP.md` covers the queue; `LEADERHUB_EMAIL_SETUP.md` is superseded/historical. |
+| `EmailBridge.gs` | Apps Script bridge — sub-plan Docs, brag emails (sent via `MailApp`), horizon-item polling (through `google.script.run` only: the `?api=horizon` GET route, which ran before the owner check, was removed 2026-11-15), Organization Sync (owner plus `ORG_SYNC_CO_ADVISORS`), and the AI-drafting job queue (see below). Its Gmail-label horizon scan is currently **disabled**, along with every Gmail scope. They were removed while chasing the consent-dialog crash, which turned out to be unrelated (see the Fixed section below), so restoring them is now a separate decision. `LEADERHUB_AI_FLOW_SETUP.md` covers the queue; `LEADERHUB_EMAIL_SETUP.md` is superseded/historical. |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup) |
 | `BRAG_EMAIL_FLOW_PROMPT.md`, `ARCHIVE_INSIGHTS_FLOW_PROMPT.md`, `WBL_INSIGHTS_FLOW_PROMPT.md`, `LP_ASSIST_FLOW_PROMPT.md`, `EMAIL_COMPOSE_FLOW_PROMPT.md` | Exact Gemini system prompts for each AI job type — see `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LH_0*.md` | Numbered reference docs — naming conventions, integration guide, Canvas ideas, email audit, and 3 grading/pacing structure iterations (`LH_04_GRADING_STRUCTURE.md`, `LH_05_GRADING_STRUCTURE.md`, `LH_05_PACING_AND_GRADING.md` — successive dated drafts of the same working document, not conflicting versions to reconcile; kept as-is per this tool's own iterative working style) |
@@ -777,6 +777,22 @@ only) could never show the other advisor's orgs. Now:
   bridge's `doPost()` sees a same-domain user, which push/pull already allow;
   `listOrgSyncs` stays owner-only. Only Apps Script `/exec` URLs are relayed
   to.
+
+**Who may push and pull (2026-11-15).** The domain lock let any account in
+the domain pull or overwrite an org whose id it guessed (`deca`, `fbla`),
+and student accounts share the domain. The only legitimate callers are the
+owner (from their own page, which never goes through `doPost()`) and
+co-advisors relaying from their own deployments; no student-facing page
+calls push or pull. So `doPost()` now checks an allowlist: the owner plus
+the emails in the Script Property **`ORG_SYNC_CO_ADVISORS`** (comma- or
+space-separated; `none` for the owner alone). **Setting it is the one step
+that turns enforcement on.** Until it is set, a same-domain account that
+isn't the owner is still let through, as before, but counted:
+`ORG_SYNC_UNLISTED_CALLS` holds `{count, last}` and the log gets a line
+(never the account), so the owner can see whether anyone unlisted calls
+before switching it on. A co-advisor who isn't listed sees "Not authorized:
+ask the advisor who shared this organization to add you as a co-advisor."
+Tests: `org-sync-relay.test.js`.
 
 **Layout on the Sheet side.** A `_org_meta` tab (one row per shared org:
 `OrgId, OrgName, ConfigJSON, UpdatedAt, UpdatedBy`) plus per-org
