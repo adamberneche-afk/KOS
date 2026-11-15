@@ -262,6 +262,27 @@ function unlockReadyParts() {
   return { unlocked: log.length, failed: failed };
 }
 
+// The Ledger cycle's check (64's LC_GATES, 2026-11-15): unlockReadyParts
+// has work only while a Ledger row is SCHEDULED (a locked part), and then
+// only if something it reads changed since a run that unlocked nothing: the
+// Ledger's Status column (a hash), and the row counts of CompetencyEvidence
+// (where a MET arrives) and StudentAssignments. The cycle keeps that
+// signature only after a run that unlocked and failed nothing. An edit by
+// hand inside an evidence or assignment row changes no count; the cycle's
+// backstop (every 15 minutes, without checks) catches it.
+function partUnlocksHaveWork_(ctx) {
+  const cfg = ctx.cfg();
+  const status = ctx.rows("ledger", cfg.tabs.ledger, LEDGER.STATUS + 1, 1);
+  if (status === null) return false; // no Ledger tab: the job finds nothing
+  if (!status.some(function (r) { return String(r[0]).trim() === "SCHEDULED"; })) return false;
+  const sig = [status.length, ctx.digest(status),
+    ctx.lastRow("ledger", cfg.tabs.competencyEvidence || "CompetencyEvidence"),
+    ctx.lastRow("ledger", "StudentAssignments")].join(":");
+  if (ctx.remembered("unlockReadyParts") === sig) return false;
+  ctx.offer("unlockReadyParts", sig);
+  return true;
+}
+
 function previewPartUnlocks() {
   requireScriptOwner_();
   const cfg = getConfig_();

@@ -207,7 +207,19 @@ Submit and feedback runs every minute (since 2026-11-14), and each job's run
 time, the cycle's trigger time today against the daily quota, and the
 schedule's share of the wait are in `showSetupStatus()` and
 `reportEvaluationHealth()` (`LEDGER_CYCLE_TIMING`; `LEDGER_CYCLE_EVERY`
-slows a job without a push). Script 03's
+slows a job without a push). Since 2026-11-15 each of those jobs has a
+cheap check beside it (`64`'s `LC_GATES`: one or two columns read through
+one open of the spreadsheet per cycle) and runs only when the check finds
+work; a job that ran makes the cycle check the steps after it at once
+(bridge → turnstile → FlowInput row; harvest → backprop → part unlock), so
+each stretch takes one cycle. In quiet hours (`LEDGER_CYCLE_QUIET`,
+default 10 p.m.–6 a.m. New York time, weekends and days off) the jobs
+without a check wait; every `LEDGER_CYCLE_BACKSTOP` minutes (default 15)
+the cycle runs every due job without checks; `LEDGER_CYCLE_GATES` = `off`
+goes back to every job on its cadence. `showSetupStatus()` projects the
+day's trigger time at this rate (WARN over half the 6 h quota, ALERT over
+80%). `installLedgerChangeProbe()` logs whether Studio's writes fire an
+onChange trigger (`reportLedgerChangeProbe()`; it acts on nothing). Script 03's
 `bridgeQueue` (every minute) moves `PENDING` rows to `STAGING_PIPELINE`,
 deduplicating against in-flight evaluations. Script 06's turnstile (every
 minute) releases `PENDING_INFERENCE` rows to `IN_PROCESS` **per teacher**,

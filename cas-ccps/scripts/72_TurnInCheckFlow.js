@@ -458,6 +458,19 @@ function runTurnInCheckFlow() {
   });
 }
 
+// The Ledger cycle's check (64's LC_GATES, 2026-11-15): runTurnInCheckFlow
+// has work when the switch is on somewhere and either a TurnInCheckReturn
+// row has no HarvestStatus yet (the harvest) or a TurnInChecks answer is
+// PENDING_CHECK (to send, retry or fail). Reads one column of each. The
+// harvest's prune of rows over 14 days old waits for the cycle's backstop.
+function turnInCheckHasWork_(ctx) {
+  if (turnInOffEverywhere_()) return false; // the job does nothing then
+  const returns = ctx.rows("ledger", TIC_RETURN_TAB, TCR.HARVEST_STATUS + 1, 1);
+  if (returns && returns.some(function (r) { return !String(r[0]).trim(); })) return true;
+  const checks = ctx.rows("ledger", TURN_IN_CHECKS_TAB, TCHK.STATUS + 1, 1);
+  return !!checks && checks.some(function (r) { return String(r[0]).trim() === TURN_IN_PENDING; });
+}
+
 /** Retries, failures and new input rows only. */
 function buildTurnInCheckInputs() {
   return _ticRun_("buildTurnInCheckInputs", function (ss, raw) { return _ticMaterialize_(ss, new Date(), raw); });

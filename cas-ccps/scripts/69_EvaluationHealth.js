@@ -27,7 +27,9 @@
 // in the FlowMeasures tab, and Studio's runs per day against
 // STUDIO_DAILY_RUN_LIMIT: the email's second line. Since 2026-11-14 the
 // editor log also has the Ledger cycle's run time (64's lcTimingReport_):
-// today's trigger time, each job's, and the schedule's share of the wait.
+// today's trigger time, each job's, and the schedule's share of the wait;
+// since 2026-11-15 also the day's trigger time at this rate (WARN over half
+// the quota, ALERT over 80%) and how the cycle's checks decide.
 //
 // DATA BOUNDARY: counts, rates and minutes only; no names, emails, file IDs,
 // ConfigIDs or student text, in the log, the Measures tab or the email.
@@ -70,7 +72,7 @@ function reportEvaluationHealth() {
   // above. Names and numbers only.
   try {
     const t = lcTimingReport_();
-    out.cycleLines = [t.cycle, t.schedule].concat(LC_JOBS.map(function (j) { return j.fn + ": " + t.jobs[j.fn]; }));
+    out.cycleLines = [t.cycle, t.schedule, t.projection, t.gates].concat(LC_JOBS.map(function (j) { return j.fn + ": " + t.jobs[j.fn]; }));
     out.cycleLines.forEach(function (l) { Logger.log("[S69] " + l); });
   } catch (e) {
     Logger.log("[S69] Ledger cycle timing unavailable: " + e.message);

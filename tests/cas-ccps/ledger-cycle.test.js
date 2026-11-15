@@ -23,11 +23,18 @@ const JOBS = ['bridgeQueue', 'runStagingTurnstile', 'buildFlowInputRows', 'harve
 // The jobs every minute since 2026-11-14 (harvestFlowInputResults was 5,
 // backPropagateCompletions 2): restore gives each a 1-minute trigger.
 
+// The clock is pinned to a school day in school hours (Wednesday
+// 2026-11-18, 10:00 New York): since 2026-11-15 the cycle holds some jobs
+// in quiet hours, so the real clock would change what runs.
+// (ledger-cycle-gates.test.js covers the checks, quiet hours and the backstop.)
+const WED_10AM = Date.UTC(2026, 10, 18, 15, 0, 0);
+
 function setup(installed) {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('64_LedgerCycle.js')],
     ['runLedgerCycle', 'installLedgerCycle', 'previewLedgerCycle', 'restoreLedgerTriggers', 'lcRecordedJobs_',
       'installRegistrationTrigger', 'installAlignmentBackfillTrigger', 'installPartUnlocks', 'lcFailingJobs_',
       'installIntakeTriggers', 'LC_JOBS', 'lcTimingReport_', 'lcJobEvery_']);
+  env.sandbox.Date.now = () => WED_10AM;
   const calls = [];
   JOBS.forEach((fn) => { env.sandbox[fn] = () => calls.push(fn); });
   (installed || JOBS).forEach((fn) => env.sandbox.ScriptApp.newTrigger(fn).timeBased().everyMinutes(5).create());
@@ -72,7 +79,7 @@ test('the cycle runs only recorded jobs, at their cadence, and keeps going past 
 test('the most overdue job runs first; a running cycle blocks the next; an own trigger wins', () => {
   const env = setup();
   env.exported.installLedgerCycle();
-  const now = Date.now();
+  const now = env.sandbox.Date.now();
   const last = {};
   JOBS.forEach((fn) => { last[fn] = now; });
   last.runQueueWatchdog = now - 60 * 60 * 1000;
@@ -80,7 +87,7 @@ test('the most overdue job runs first; a running cycle blocks the next; an own t
   env.props.setProperty('LEDGER_CYCLE_LAST_RUN', JSON.stringify(last));
   assert.deepEqual(env.exported.runLedgerCycle().ran, ['runQueueWatchdog', 'bridgeQueue']);
 
-  env.props.setProperty('LEDGER_CYCLE_BUSY_UNTIL', String(Date.now() + 60000));
+  env.props.setProperty('LEDGER_CYCLE_BUSY_UNTIL', String(env.sandbox.Date.now() + 60000));
   assert.equal(env.exported.runLedgerCycle().skipped, 'busy');
   env.props.deleteProperty('LEDGER_CYCLE_BUSY_UNTIL');
 
@@ -92,7 +99,7 @@ test('the most overdue job runs first; a running cycle blocks the next; an own t
 test('no job starts after the time budget; the rest wait for the next cycle', () => {
   const env = setup(['bridgeQueue', 'runStagingTurnstile']);
   env.exported.installLedgerCycle();
-  const realNow = Date.now;
+  const realNow = env.sandbox.Date.now;
   let t = realNow();
   env.sandbox.Date.now = () => t;
   env.sandbox.bridgeQueue = () => { t += 5 * 60 * 1000; };
@@ -230,7 +237,7 @@ test('the jobs between Submit and feedback, a code or the next part run every mi
 test('each job\'s run time and the cycle\'s are recorded, and shown with the share of the daily quota', () => {
   const env = setup(['bridgeQueue', 'harvestFlowInputResults']);
   env.exported.installLedgerCycle();
-  const realNow = Date.now;
+  const realNow = env.sandbox.Date.now;
   let t = realNow();
   env.sandbox.Date.now = () => t;
   env.sandbox.bridgeQueue = () => { t += 1200; };
@@ -261,13 +268,13 @@ test('each job\'s run time and the cycle\'s are recorded, and shown with the sha
 test('a job the budget puts off is counted, and so is a minute skipped while a cycle runs', () => {
   const env = setup(['bridgeQueue', 'runStagingTurnstile']);
   env.exported.installLedgerCycle();
-  const realNow = Date.now;
+  const realNow = env.sandbox.Date.now;
   let t = realNow();
   env.sandbox.Date.now = () => t;
   env.sandbox.bridgeQueue = () => { t += 5 * 60 * 1000; };
   env.exported.runLedgerCycle();
   env.sandbox.Date.now = realNow;
-  env.props.setProperty('LEDGER_CYCLE_BUSY_UNTIL', String(Date.now() + 60000));
+  env.props.setProperty('LEDGER_CYCLE_BUSY_UNTIL', String(env.sandbox.Date.now() + 60000));
   env.exported.runLedgerCycle();
   const timing = JSON.parse(env.props.getProperty('LEDGER_CYCLE_TIMING'));
   assert.equal(timing.runStagingTurnstile.deferred, 1);

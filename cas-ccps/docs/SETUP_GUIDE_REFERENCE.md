@@ -219,11 +219,17 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `FERPA_FLOW3_FULL_NAME_OVERRIDE` | direct | — | no | 10_AdminRecoveryPanel.js, 23_StudentProfileManager.js |
 | `FLOW2_ALERT_STATE` | via the constant FLOW2_ALERT_KEY | "{}" | 03_QueueBridge.js | 03_QueueBridge.js |
 | `GEMINI_API_KEY` | direct | — | no | 10_AdminRecoveryPanel.js |
+| `LEDGER_CHANGE_PROBE_ROWS` | via the constant LC_PROP_PROBE_ROWS | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_BACKSTOP` | via the constant LC_PROP_BACKSTOP | — | no | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_BUSY_UNTIL` | via claimRunSlot_() | — | 64_LedgerCycle.js | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_DAY` | via the constant LC_PROP_DAY | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_ERRORS` | via the constant LC_PROP_ERRORS | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_EVERY` | via the constant LC_PROP_EVERY | "{}" | no | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_GATES` | via the constant LC_PROP_GATES | — | no | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_GATE_MEMO` | via the constant LC_PROP_GATE_MEMO | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_JOBS` | via the constant LC_PROP_JOBS | "[]" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_LAST_RUN` | via the constant LC_PROP_LAST | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_QUIET` | via the constant LC_PROP_QUIET | — | no | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_TIMING` | via the constant LC_PROP_TIMING | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_RETENTION_YEARS` | direct | — | no | 10_AdminRecoveryPanel.js |
 | `M2_ENABLED` | direct | — | no | 22_LessonContextHandler.js, 23_StudentProfileManager.js, 24_WarmUpBridge.js, 25_WarmUpWriter.js, 33_ArtifactCompetencyBridge.js, 34c_OvernightHealth.js, 51_CourseYearBuilder.js |
@@ -410,6 +416,7 @@ project `SETUP_GUIDE.md` names, which for the nightly jobs is the Central Ledger
 | `harvestFlowInputResults` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `harvestWarmUpFlowReturns` | `installWarmUpFlowTriggers()` | every 5 min | 41_WarmUpFlowBridge.js |
 | `harvestWarmUpFlowReturns` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
+| `onLedgerChangeProbe` | `installLedgerChangeProbe()` | on change, (spreadsheet) | 64_LedgerCycle.js |
 | `registerDeliveredWarmUps` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 43_DeployVersionMarker_CentralLedger.js |
 | `runAlignmentLogBackfill_` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
@@ -435,20 +442,26 @@ Not resolved (the handler is a parameter or computed; read the code):
 **The Ledger cycle** (`LC_JOBS`): `installLedgerCycle()` replaces these jobs' own triggers with one
 `runLedgerCycle` trigger every minute, which runs each job at its cadence. `showSetupStatus()` shows which run there.
 
-| Job | Every (min) |
-|---|---|
-| `bridgeQueue` | 1 |
-| `runStagingTurnstile` | 1 |
-| `buildFlowInputRows` | 1 |
-| `harvestFlowInputResults` | 1 |
-| `backPropagateCompletions` | 1 |
-| `buildWarmUpFlowInputs` | 5 |
-| `harvestWarmUpFlowReturns` | 5 |
-| `registerDeliveredWarmUps` | 5 |
-| `runAlignmentLogBackfill_` | 5 |
-| `runQueueWatchdog` | 10 |
-| `unlockReadyParts` | 1 |
-| `runTurnInCheckFlow` | 1 |
+A job with a check runs only when its check finds work, and the steps after a job that ran are
+checked again in the same run (`LC_CHAINS`). Every `LEDGER_CYCLE_BACKSTOP` minutes (default 15) the
+cycle runs every due job without checks. In quiet hours (`LEDGER_CYCLE_QUIET`; default 10 p.m. to
+6 a.m. New York time, weekends and days off) the jobs without a check wait for that backstop.
+`LEDGER_CYCLE_GATES` = `off` turns the checks, chains and quiet hours off.
+
+| Job | Every (min) | Check |
+|---|---|---|
+| `bridgeQueue` | 1 | `bridgeQueueHasWork_()` |
+| `runStagingTurnstile` | 1 | `turnstileHasWork_()` |
+| `buildFlowInputRows` | 1 | `flowInputBuildHasWork_()` |
+| `harvestFlowInputResults` | 1 | `flowInputHarvestHasWork_()` |
+| `backPropagateCompletions` | 1 | `backPropagateHasWork_()` |
+| `buildWarmUpFlowInputs` | 5 | (none: quiet hours hold it) |
+| `harvestWarmUpFlowReturns` | 5 | (none: quiet hours hold it) |
+| `registerDeliveredWarmUps` | 5 | (none: quiet hours hold it) |
+| `runAlignmentLogBackfill_` | 5 | (none: quiet hours hold it) |
+| `runQueueWatchdog` | 10 | (none: quiet hours hold it) |
+| `unlockReadyParts` | 1 | `partUnlocksHaveWork_()` |
+| `runTurnInCheckFlow` | 1 | `turnInCheckHasWork_()` |
 
 ### `family-sentinel`
 
