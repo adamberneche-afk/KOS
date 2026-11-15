@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1M_3PGt3SswpwegGfIfwIlQcKqPZ2fFr9XdzGTeto9Pk -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Economics of the Arena -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

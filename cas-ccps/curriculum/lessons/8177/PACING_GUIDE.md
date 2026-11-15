@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1S4nnqQZoP8W0su-fW-Nu-rPVSO-PCjMv7uihZWcQO70 -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: 8177 Course Pacing Guide -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

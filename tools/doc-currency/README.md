@@ -41,6 +41,7 @@ above passed it.**
 | 3 | `documented-key-not-in-code` — a doc claiming to be a complete key registry lists a key no source file mentions | warning |
 | 4 | `citation-past-eof` — a doc cites `file:line` beyond the end of that file | warning |
 | 5 | `blocked-surface-presented-as-live` — a declared behavior doc names a `live-blocked` GCP surface without acknowledging the status or naming the fallback | error |
+| 6 | `drive-id-in-doc` — any Markdown doc (`HISTORY.md` and the WIP file included) holds a Docs or Drive link, a `forms.gle` link, an ID-shaped literal in an `openById` call or on a `*_ID`/`*Id` name, or an Apps Script web app or project link. release-check's own rules (`scanLine`), so the two never disagree on what an ID is; the finding names the rule and line, never the value. Code and data stay release-check's, for the operator's L1 gate (2026-11-15) | error |
 | — | `documented-function-unverifiable` — as (1), but in a doc that describes an Apps Script project never committed here | warning |
 | — | `blocked-surface-fallback-unnamed` — as (5), but the doc does say it is blocked and never says what replaced it | warning |
 | — | `blocked-surface-undeclared-tokens` — a `live-blocked` surface in `gcp-map.json` has no `doc_tokens`, so no doc is checked against it | warning |
@@ -164,7 +165,7 @@ should keep failing loudly on that alone.
 
 ## Tests
 
-`tests/tools/doc-currency-check.test.js` and
+`tests/tools/doc-currency-check.test.js` (Check 6's `driveFindingsInText()` too) and
 `tests/tools/doc-currency-blocked-surfaces.test.js` (Check 5), run by
 `npm test`. They pin the
 pure functions rather than the checks themselves — the checks read the whole

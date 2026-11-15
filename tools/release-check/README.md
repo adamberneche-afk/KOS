@@ -11,6 +11,8 @@ The first run is the full-repo audit,
 [`meta/RELEASE_AUDIT_2026-11-08.md`](../../meta/RELEASE_AUDIT_2026-11-08.md).
 **The gate is off** until the operator has read it and says to turn it on.
 
+One slice is gated already: `tools/doc-currency` Check 6 (2026-11-15) fails on a Drive link or ID, or an Apps Script web app link, in any Markdown doc, using this tool's `scanLine` rules. Prose never needs one; code and data wait for this gate.
+
 ```
 node tools/release-check/check.js                  # tracked tree, warn-only (exit 0)
 node tools/release-check/check.js --gate           # exit 1 on any failing finding

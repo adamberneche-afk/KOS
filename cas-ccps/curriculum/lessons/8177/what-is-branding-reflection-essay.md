@@ -1,4 +1,4 @@
-<!-- source: Google Doc 12mQOmPBP2Rtpm5xWaxV7lANCTHY6wN7SL5PF1hDyaEs -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: "What is Branding?" Reflection Essay -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

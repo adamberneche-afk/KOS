@@ -81,7 +81,7 @@ test('the shades that failed the audit are gone from the page', () => {
 
 test('delete ✕ icons are red, and a deadline row\'s icons use the row\'s own text colour', () => {
   const src = SRC('10-command-engine-ai-and-widgets.html');
-  assert.match(src, /horizonDelete\([^)]*\)" aria-label="Delete this item" style="background:none;border:none;color:#b91c1c;/);
+  assert.match(src, /horizonDelete\('\$\{h\}','\$\{escJsAttr\(item\.id\)\}'\)" aria-label="Delete this item" style="background:none;border:none;color:#b91c1c;/);
   assert.match(src, /deleteDeadline\('\$\{escJsAttr\(dl\.id\)\}'\)" style="background:none;border:none;color:\$\{u\.text\};/);
   // Each urgency's text colour on its row colour.
   for (const m of src.matchAll(/return\s+\{bg:'(#\w+)',text:'(#\w+)'/g)) aa(m[2], m[1], `deadline row ${m[2]} on ${m[1]}`);

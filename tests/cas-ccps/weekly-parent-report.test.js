@@ -648,3 +648,39 @@ test('the subject and greeting use the first name, never the account; the teache
   assert.doesNotMatch(body, /2345678/);
   assert.match(exported.renderWeeklyParentReportText_(alice), /Ms\. Rivera, teacher@ccpsnet\.net$/);
 });
+
+// 2026-11-15: the roster import writes the Canvas course name to the Ledger's
+// CourseName column, and 29 hands that column to 36 as courseName. 36 names
+// an item by its lesson already (StudentAssignments → the lesson data's
+// title, _prLessonTitles_), and falls back to the column only for a row
+// StudentAssignments doesn't have. These pin both, so the family never reads
+// the course name where the lesson belongs.
+test('an item is named by its lesson, not the Ledger\'s course name; a legacy row keeps the column', () => {
+  const { exported, sandbox } = load();
+  const D = sandbox.Date;
+  const COURSE = 'Sports Entertainment and Event Management';
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice', configId: 'VDOE-ROLL-1', courseName: COURSE }),
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice', configId: 'VDOE-OLD-1', courseName: 'Unit 3 Pricing Project' }),
+    ],
+    scrRows: [],
+  });
+  const sa = fx.ss.insertSheet('StudentAssignments');
+  sa.appendRow(['StudentConfigID', 'GoogleID', 'AssignmentConfigID', 'RecordedAt']);
+  sa.appendRow(['VDOE-ROLL-1', '1234567@ccpsnet.net', 'CAS-8177-THE-TICKET-OFFICE-P2', new D()]);
+  const report = exported.generateWeeklyParentReports(fx.now).reports[0];
+  const body = exported.renderWeeklyParentReportText_(report);
+  assert.match(body, /The Sales Management Playbook — Part 2 of 4: The Sales Contest/, 'the rollout row: its lesson');
+  assert.doesNotMatch(body, new RegExp('• ' + COURSE), 'never the course name as an item');
+  assert.match(body, /• Unit 3 Pricing Project/, 'a row StudentAssignments lacks: the column, as before');
+
+  // The same rule in the pure builder: a title for the workspace's assignment
+  // wins; with none, the column; with neither, "Coursework".
+  const built = exported.buildWeeklyParentReport_('s@ccpsnet.net', 'S', [
+    { configId: 'W1', courseName: COURSE },
+    { configId: 'W2', courseName: 'Legacy unit' },
+    { configId: 'W3', courseName: '' },
+  ], [], { start: new D(), end: new D() }, { titles: { 'CAS-8175-L05': 'Sponsorship Revenue' }, assignmentOf: { W1: 'CAS-8175-L05' } });
+  assert.deepEqual(built.thisWeek.map((i) => i.label), ['Sponsorship Revenue', 'Legacy unit', 'Coursework']);
+});

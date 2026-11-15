@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1f0QcMeSP6_o91TVu6t_PeqQA-RaWkk6NSdy2Z6I1tLk -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: Promotional Flyer Design -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

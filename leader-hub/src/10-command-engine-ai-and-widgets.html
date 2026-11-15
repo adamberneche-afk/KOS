@@ -1679,13 +1679,13 @@ function renderDeadlines() {
     const navigates = !(dl.role==='teach'||dl.role==='meeting');
     const target = dl.role==='store'?'wbl':dl.role;
     const navAttrs = navigates
-      ? `onclick="showView('${target}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showView('${target}')}" role="button" tabindex="0" style="display:flex;align-items:center;gap:.6rem;padding:.55rem .65rem;border-radius:9px;background:${u.bg};margin-bottom:.32rem;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"`
+      ? `onclick="showView('${escJsAttr(target)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showView('${escJsAttr(target)}')}" role="button" tabindex="0" style="display:flex;align-items:center;gap:.6rem;padding:.55rem .65rem;border-radius:9px;background:${u.bg};margin-bottom:.32rem;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"`
       : `style="display:flex;align-items:center;gap:.6rem;padding:.55rem .65rem;border-radius:9px;background:${u.bg};margin-bottom:.32rem"`;
     return `<div ${navAttrs}>
       <span style="font-size:1.05rem;flex-shrink:0">${u.dot}</span>
       <span style="font-size:1.05rem;flex-shrink:0">${r.icon}</span>
       <span style="flex:1;font-size:.9rem;font-weight:600;color:${u.text};line-height:1.3">${escH(dl.title)}</span>
-      <span id="dltimer-${dl.id}" style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.1rem;color:${u.text};white-space:nowrap">${u.label}</span>
+      <span id="dltimer-${escH(dl.id)}" style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1.1rem;color:${u.text};white-space:nowrap">${u.label}</span>
       <button onclick="event.stopPropagation();editDeadline('${escJsAttr(dl.id)}')" style="background:none;border:none;color:${u.text};cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Edit" aria-label="Edit deadline">✏️</button>
       <button onclick="event.stopPropagation();deleteDeadline('${escJsAttr(dl.id)}')" style="background:none;border:none;color:${u.text};cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Delete" aria-label="Delete deadline">✕</button>
     </div>`;
@@ -2433,10 +2433,10 @@ function renderHorizons(){
       return;
     }
     el.innerHTML=HORIZON[h].map(item=>`
-      <div data-hid="${item.id}" style="display:flex;align-items:flex-start;gap:.42rem;margin-bottom:.3rem;transition:opacity .7s ease,transform .7s ease;${item.pinned?'background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 4px;margin-left:-4px;':''}">
-        <div onclick="horizonToggle('${h}','${item.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();horizonToggle('${h}','${item.id}')}" role="checkbox" aria-checked="${item.done}" aria-label="${item.done?'Done — ':''}${(item.text||'').replace(/"/g,'&quot;')}" tabindex="0" style="width:17px;height:17px;border-radius:3px;border:2px solid ${m.border};background:${item.done?m.tick:'#fff'};flex-shrink:0;cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#fff">${item.done?'✓':''}</div>
-        <span style="font-size:.88rem;${item.done?'text-decoration:line-through;color:var(--muted)':item.pinned?'color:#92400e;font-weight:600':'color:#374151'};line-height:1.4;cursor:pointer;flex:1" onclick="horizonToggle('${h}','${item.id}')">${item.pinned?'📌 ':''}${escH(item.text)}</span>
-        <button onclick="horizonDelete('${h}','${item.id}')" aria-label="Delete this item" style="background:none;border:none;color:#b91c1c;font-size:.75rem;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px">✕</button>
+      <div data-hid="${escH(item.id)}" style="display:flex;align-items:flex-start;gap:.42rem;margin-bottom:.3rem;transition:opacity .7s ease,transform .7s ease;${item.pinned?'background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 4px;margin-left:-4px;':''}">
+        <div onclick="horizonToggle('${h}','${escJsAttr(item.id)}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();horizonToggle('${h}','${escJsAttr(item.id)}')}" role="checkbox" aria-checked="${item.done}" aria-label="${item.done?'Done — ':''}${escH(item.text||'')}" tabindex="0" style="width:17px;height:17px;border-radius:3px;border:2px solid ${m.border};background:${item.done?m.tick:'#fff'};flex-shrink:0;cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#fff">${item.done?'✓':''}</div>
+        <span style="font-size:.88rem;${item.done?'text-decoration:line-through;color:var(--muted)':item.pinned?'color:#92400e;font-weight:600':'color:#374151'};line-height:1.4;cursor:pointer;flex:1" onclick="horizonToggle('${h}','${escJsAttr(item.id)}')">${item.pinned?'📌 ':''}${escH(item.text)}</span>
+        <button onclick="horizonDelete('${h}','${escJsAttr(item.id)}')" aria-label="Delete this item" style="background:none;border:none;color:#b91c1c;font-size:.75rem;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px">✕</button>
       </div>`).join('');
   });
 }

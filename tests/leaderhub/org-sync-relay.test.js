@@ -129,3 +129,74 @@ test('the relay entry point is owner-gated on the calling deployment', () => {
   const stranger = deployment('coadv@ccpsnet.net', { email: 'someone@ccpsnet.net' }, COADV_URL);
   assert.throws(() => stranger.exported.lhOrgSyncCall(OWNER_URL, 'pullOrgSync', {}), /Not authorized/);
 });
+
+// ── Who may push and pull (2026-11-15) ─────────────────────────────────────
+// The domain lock let any account in the domain, students included, pull or
+// overwrite an org whose id it guessed. ORG_SYNC_CO_ADVISORS names the
+// co-advisors; setting it turns enforcement on. Unset, an unlisted caller is
+// let through as before but counted, never named.
+
+function postAs(owner, viewer, email, payload) {
+  viewer.email = email;
+  const out = owner.exported.doPost({ postData: { contents: JSON.stringify(payload) } });
+  viewer.email = 'owner@ccpsnet.net';
+  return JSON.parse(out.text);
+}
+
+function ownerWithOrg() {
+  const viewer = { email: 'owner@ccpsnet.net' };
+  const owner = deployment('owner@ccpsnet.net', viewer, OWNER_URL);
+  const logs = [];
+  owner.sandbox.Logger = { log: (m) => logs.push(String(m)) };
+  owner.exported.lhOrgSyncCall_('', 'pushOrgSync', ORG);
+  return { owner, viewer, logs, props: owner.sandbox.PropertiesService.getScriptProperties() };
+}
+
+test('unset: a same-domain account that is not the owner still pulls, and is counted but never named', () => {
+  const { owner, viewer, logs, props } = ownerWithOrg();
+  const res = postAs(owner, viewer, 'student1@ccpsnet.net', { action: 'pullOrgSync', orgId: 'fbla' });
+  assert.equal(res.ok, true, 'warn-only until the owner sets ORG_SYNC_CO_ADVISORS');
+  const seen = JSON.parse(props.getProperty('ORG_SYNC_UNLISTED_CALLS'));
+  assert.equal(seen.count, 1);
+  assert.match(logs.join('\n'), /pullOrgSync by an account that is not the owner/);
+  assert.doesNotMatch(logs.join('\n') + JSON.stringify(seen), /student1/, 'the account is never recorded');
+  postAs(owner, viewer, 'owner@ccpsnet.net', { action: 'pullOrgSync', orgId: 'fbla' });
+  assert.equal(JSON.parse(props.getProperty('ORG_SYNC_UNLISTED_CALLS')).count, 1, 'the owner is never counted');
+});
+
+test('set: a listed co-advisor pulls and pushes through the relay; anyone else in the domain is refused', () => {
+  const { owner, coadv } = pair();
+  owner.sandbox.PropertiesService.getScriptProperties().setProperty('ORG_SYNC_CO_ADVISORS', 'CoAdv@ccpsnet.net, other@ccpsnet.net');
+  const first = owner.exported.lhOrgSyncCall_('', 'pushOrgSync', ORG);
+  const pulled = coadv.exported.lhOrgSyncCall(OWNER_URL, 'pullOrgSync', { orgId: 'fbla' });
+  assert.equal(pulled.ok, true, JSON.stringify(pulled));
+  const pushed = coadv.exported.lhOrgSyncCall(OWNER_URL, 'pushOrgSync',
+    Object.assign({}, ORG, { rosterRows: [['Bob'], ['Cara']], expectedUpdatedAt: first.updatedAt }));
+  assert.equal(pushed.ok, true, JSON.stringify(pushed));
+  assert.equal(owner.sandbox.PropertiesService.getScriptProperties().getProperty('ORG_SYNC_UNLISTED_CALLS'), null);
+});
+
+test('set: a student in the domain can neither read nor overwrite an org', () => {
+  const { owner, viewer, props } = ownerWithOrg();
+  props.setProperty('ORG_SYNC_CO_ADVISORS', 'coadv@ccpsnet.net');
+  const read = postAs(owner, viewer, 'student1@ccpsnet.net', { action: 'pullOrgSync', orgId: 'fbla' });
+  assert.equal(read.ok, false);
+  assert.match(read.error, /^Not authorized/);
+  assert.equal(read.rosterRows, undefined, 'no roster in the refusal');
+  const before = owner.exported.pullOrgSync_({ orgId: 'fbla' });
+  const write = postAs(owner, viewer, 'student1@ccpsnet.net',
+    Object.assign({}, ORG, { action: 'pushOrgSync', rosterRows: [['Mallory']], expectedUpdatedAt: before.updatedAt }));
+  assert.equal(write.ok, false);
+  assert.deepEqual(owner.exported.pullOrgSync_({ orgId: 'fbla' }).rosterRows, [['Bob']], 'nothing written');
+  assert.equal(postAs(owner, viewer, 'owner@ccpsnet.net', { action: 'pullOrgSync', orgId: 'fbla' }).ok, true,
+    'the owner is always allowed');
+});
+
+test('"none": the owner alone; a co-advisor\'s relay is refused, the owner\'s own page still syncs', () => {
+  const { owner, coadv } = pair();
+  owner.sandbox.PropertiesService.getScriptProperties().setProperty('ORG_SYNC_CO_ADVISORS', 'none');
+  assert.equal(owner.exported.lhOrgSyncCall_('', 'pushOrgSync', ORG).ok, true, 'local: never through doPost');
+  const pulled = coadv.exported.lhOrgSyncCall(OWNER_URL, 'pullOrgSync', { orgId: 'fbla' });
+  assert.equal(pulled.ok, false);
+  assert.match(pulled.error, /add you as a co-advisor/);
+});

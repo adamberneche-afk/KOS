@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1ukY1mNO0nGMvCqLxhr3p5aFgNIkl3EtDNx3VmAi2WMA -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Front Lines -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

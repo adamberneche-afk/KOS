@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1Nk1MHsWMVDOGhJaZ01_nTC1HcdWXnOyegwtEVZDD6O0 -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Millionaire's Strike -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

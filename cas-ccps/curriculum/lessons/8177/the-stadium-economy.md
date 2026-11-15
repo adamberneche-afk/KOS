@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1ZnZbRj9b8cIVqsq0zqNNvnfZYlInKXEexOIED-af-vI -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Stadium Economy -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

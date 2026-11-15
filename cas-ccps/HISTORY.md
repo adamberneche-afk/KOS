@@ -5714,3 +5714,65 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
   new tab; `CANVAS_URL` (a Script Property on the Student Dashboard project)
   changes it without a push, and anything but a plain https URL falls back.
 - **Tests:** `student-dashboard-canvas-button.test.js`.
+
+## Student guide: the turn-in code, 2026-11-15
+
+- **Asked:** the student guide and the UX reference still taught the old
+  turn-in ("turn in on Canvas" with the document's link, "the link to your
+  last part") after the turn-in code went live for every lesson on
+  2026-11-09 (D17).
+- **Now:** `docs/STUDENT_QUICK_START.html` section 06 is the five-step path
+  (open, write, submit, answer the one question, paste the code), what the
+  code means (engagement, not quality; earnable on a Revise card; one per
+  student and assignment, stable; revising after it is for learning and the
+  final grade; the Canvas instructions say code or link), what a good answer
+  does (names the part, says where, says why), and the stage line, Check
+  again, Try again, the page's own check for news and the Canvas buttons.
+  `USER_EXPERIENCE_REFERENCE.html`'s summary and Turning In pipeline name
+  the code. Notebook copies regenerated.
+- **Still says the old way:** the passed-check comment (37's
+  `_fiCommentNextSteps_`) and 03's backup next-steps block tell the student
+  to paste the document's link as a Website URL. The guide points to the
+  Canvas instructions instead; changing the comment is a code change of its
+  own.
+- **Tests:** `student-guide-turn-in.test.js`.
+
+## The lesson's name, not the course's, 2026-11-15
+
+- **Asked:** note on `LEDGER.COURSE_NAME` that roster-import rows hold the
+  Canvas course name there, and check what else prints that column as the
+  lesson's name to a student or family.
+- **Found:** the parent report (36) already names an item by its lesson
+  (StudentAssignments, then the lesson data's title) and falls back to the
+  column; now pinned by a test. Three student-facing places still read the
+  column as the lesson: a locked part's line on the Student Dashboard (blank
+  title), the Competencies tab's evidence (every piece read as the course),
+  and the snapshot doc `refreshFormSnapshots()` makes for a form, deck or
+  sheet copy (named after the course).
+- **Now:** all three take the lesson's name from the TeacherMatrix through
+  StudentAssignments (13's `_dashUnitNames_`, 02's `fetchAssignment_`), with
+  the column as the fallback. The column itself is unchanged: 60 and 29
+  read it as the course. A comment on `LEDGER.COURSE_NAME` says all this.
+- **Left:** two teacher-facing reads (03's timeout and failure emails name
+  the "lesson" from the column) and the doc menu's status line (01, through
+  13's `handleStudentDocRequest_`; the menu doesn't run for student accounts).
+- **Tests:** `lesson-parts-dashboards.test.js`, `student-dashboard-record.test.js`,
+  `student-data-access-intake.test.js`, `weekly-parent-report.test.js`.
+
+## Drive links out of the docs, 2026-11-15
+
+- **Asked:** `drive-curation/DELETION_MANIFEST.md` held 62 Drive and Docs
+  links, against the rule that the repo keeps no Drive file IDs or links.
+- **Now:** every Markdown doc is clean. The manifest, the Gemini handoff list
+  and the unit cross-reference list keep their names, reasons and
+  decisions; the lesson files' first line names the source doc by the title
+  under it instead of its ID (69 files; `curriculum/lessons/README.md` and
+  `docs/LESSON_IMPORT_PROCEDURE.md` say so, and the procedure no longer
+  asks for the ID); LeaderHub's setup docs show placeholders. Code and data
+  that use an ID or link (`data/deployment-urls.json` and the cartridges
+  built from it, LeaderHub's lesson-plan table and blackout-dates link, two
+  `.xlsx` catalogs, one test fixture) are unchanged and listed in the PR
+  for the operator's L1 decision. Git history still holds the old links.
+- **Check:** doc-currency Check 6 (`drive-id-in-doc`) fails on a Drive link
+  or ID, or a web app link, in any Markdown doc.
+- **Tests:** `doc-currency-check.test.js`.

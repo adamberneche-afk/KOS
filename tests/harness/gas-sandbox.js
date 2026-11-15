@@ -18,7 +18,7 @@
 // GmailApp and ContentService remain deliberately unmocked — loading a file
 // that references them still works (those globals are only named inside
 // function bodies, and JS doesn't resolve a body's free variables until it
-// runs), but calling scanHorizonLabel_/emailBridgeGetHorizonItems_/doPost
+// runs), but calling scanHorizonLabel_/doPost
 // from a test using this sandbox throws ReferenceError by design.
 //
 // GmailApp's absence is worth keeping. No cas-ccps code calls it, and

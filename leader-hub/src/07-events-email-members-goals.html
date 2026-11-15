@@ -1049,7 +1049,7 @@ function renderOrgResults(orgId) {
             ${placeOptions.map(p=>`<option${p===_lastOrgResultPlace[orgId]?' selected':''}>${escH(p)}</option>`).join('')}
           </select>
         </div>
-        <button onclick="addOrgResult('${orgId}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">Add ＋</button>
+        <button onclick="addOrgResult('${escJsAttr(orgId)}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">Add ＋</button>
       </div>
       <div style="margin-top:.35rem">
         <div style="font-size:.75rem;color:var(--muted);margin-bottom:.15rem">Notes (optional)</div>
@@ -1423,7 +1423,7 @@ function renderOrgTabs() {
   const wrap = document.getElementById('org-tabs');
   if (!wrap) return;
   wrap.innerHTML = Object.entries(ORGANIZATIONS).map(([id, o]) =>
-    `<button class="scr-tab${id===activeOrgId?' active':''}" id="orgtab-${id}" onclick="setOrgTab('${escJsAttr(id)}',this)">${escH(o.icon||'🧩')} ${escH(o.name)}</button>`
+    `<button class="scr-tab${id===activeOrgId?' active':''}" id="orgtab-${escH(id)}" onclick="setOrgTab('${escJsAttr(id)}',this)">${escH(o.icon||'🧩')} ${escH(o.name)}</button>`
   ).join('');
 }
 
