@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1r5NOu0wy8oTicILis_Ycvc3z20hVzw_dzM6mWbaDm7c -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: Market Research & Survey Design -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

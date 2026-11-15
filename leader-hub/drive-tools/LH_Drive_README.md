@@ -40,7 +40,7 @@ The app's `LESSON_PLANS` array has a `docId` field for each lesson. That `docId`
 ### Before you start
 
 1. Decide where your individual lesson plan docs will live in Drive. Create a folder if you don't have one (e.g., "LeaderHub Lesson Plans").
-2. Get the folder ID: open the folder in Drive, copy the ID from the URL. The URL looks like `drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrSt` — the ID is `1AbCdEfGhIjKlMnOpQrSt`.
+2. Get the folder ID: open the folder in Drive, copy the ID from the URL. The URL looks like `drive.google.com/drive/folders/<folder ID>` — the ID is the part after `folders/`. Keep it in the Script Properties, not in the repo.
 
 ### Steps
 

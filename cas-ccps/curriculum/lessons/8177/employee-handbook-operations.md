@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1Z0RIXh3CCNfhxsnxLGe77JaG-0lLaG16ISlIC2zSaj0 -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: Employee Handbook & Operations -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

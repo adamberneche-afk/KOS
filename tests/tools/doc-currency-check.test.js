@@ -268,3 +268,37 @@ test('isExcludedDir does not false-positive on a name that only contains an excl
 test('isExcludedDir does not match an ordinary tracked path', () => {
   assert.ok(!isExcludedDir('cas-ccps/scripts/29_StudentContextAggregator.js'));
 });
+
+// Check 6 (2026-11-15): a Markdown doc records no Drive file ID or link.
+// The fake ID is built at run time so this file holds no ID-shaped literal.
+const { driveFindingsInText, DRIVE_DOC_RULES } = require('../../tools/doc-currency/check.js');
+const FAKE_ID = 'xQ7'.repeat(11); // not hex, both cases: what release-check takes for an ID
+
+test('Check 6 finds a Drive or Docs link, a labelled ID and a web app link in a doc', () => {
+  const doc = [
+    '# A doc',
+    '- V5.26 folder — https://drive.google.com/drive/folders/' + FAKE_ID,
+    'Sheet: https://docs.google.com/spreadsheets/d/' + FAKE_ID + '/edit',
+    "const ss = SpreadsheetApp.openById('" + FAKE_ID + "');",
+    "  docId: '" + FAKE_ID + "',",
+    'Web app: https://script.google.com/a/macros/example.org/s/' + FAKE_ID + 'xyz/exec',
+  ].join('\n');
+  const found = driveFindingsInText(doc);
+  assert.deepEqual(found.map((f) => f.line), [2, 3, 4, 5, 6]);
+  assert.deepEqual(found.map((f) => f.rule),
+    ['drive-link', 'docs-link', 'drive-id-call', 'drive-id-labelled', 'script-url-domain']);
+  found.forEach((f) => assert.ok(DRIVE_DOC_RULES.has(f.rule)));
+  assert.ok(!JSON.stringify(found).includes(FAKE_ID), 'a finding never carries the value');
+});
+
+test('Check 6 leaves names, placeholders and plain Drive mentions alone', () => {
+  const doc = [
+    '- V5.26 folder (Assignment System codebase duplicate)',
+    'Go to drive.google.com and click Shared with me.',
+    '`https://docs.google.com/spreadsheets/d/<sheet ID>/edit`',
+    '`drive.google.com/drive/folders/<folder ID>`: the ID is the part after `folders/`.',
+    '<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->',
+    'A 44-character token on its own is not a finding: ' + FAKE_ID,
+  ].join('\n');
+  assert.deepEqual(driveFindingsInText(doc), []);
+});

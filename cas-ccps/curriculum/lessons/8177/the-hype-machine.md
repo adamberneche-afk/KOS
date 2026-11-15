@@ -1,4 +1,4 @@
-<!-- source: Google Doc 1JZtdD-0P98SHO3FIDRZv3eRVkudiwZshU6cGbntFP7g -->
+<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->
 <!-- title: Lesson Plan: The Hype Machine -->
 <!-- copied: 2026-10-07 by tools; edit the Drive doc or this file deliberately -->
 

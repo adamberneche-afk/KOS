@@ -50,8 +50,8 @@ Everything runs in Google's cloud. Nothing needs to be open on your school PC.
 
 Your **LeaderHub Inbox** sheet is ready:
 
-**URL:** https://docs.google.com/spreadsheets/d/1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0/edit  
-**Sheet ID:** `1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0`
+**URL:** https://docs.google.com/spreadsheets/d/<sheet ID>/edit  
+**Sheet ID:** `<sheet ID>`
 
 ---
 
@@ -73,7 +73,7 @@ Your **LeaderHub Inbox** sheet is ready:
 
 | Property Name | Value |
 |---------------|-------|
-| `SHEET_URL` | `https://docs.google.com/spreadsheets/d/1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0/edit` |
+| `SHEET_URL` | `https://docs.google.com/spreadsheets/d/<sheet ID>/edit` |
 
 4. Click **Save script properties**
 

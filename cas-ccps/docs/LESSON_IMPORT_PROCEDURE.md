@@ -116,10 +116,12 @@ Steps 1 and 2 hold, with these differences:
   Sequence, an 8175 lesson's Hook and grading tip) from the draft's
   activity, in the course's usual shape, and name them in the proposal note.
 - After the teacher **accepts**, before the merge: create the lesson's Drive
-  doc in the course's Drive folder (`lessons/README.md` has both folder IDs)
-  from the lesson file, with the Google Drive connector, and change the
-  file's first line to `<!-- source: Google Doc <id> -->` with its title on
-  the next, as the other lessons have. Push that to the PR.
+  doc in the course's Drive folder (the folder that holds the course's other
+  lesson docs: find one by the title in any lesson file's header) from the
+  lesson file, with the Google Drive connector, and change the file's first
+  line to `<!-- source: the Google Doc titled below (the repo keeps no Drive IDs) -->`
+  with its title on the next, as the other lessons have. Never write the
+  doc's ID or link into the file. Push that to the PR.
 - After the merge and push: the operator runs `seedLessonSchedule()` in the
   Central Ledger (it adds the new lesson's `LessonSchedule` row), then gives
   it a date in 📅 Lessons, and re-imports that course's Canvas cartridge.

@@ -23,10 +23,10 @@
 Your **LeaderHub Inbox** sheet is already set up:
 
 ```
-https://docs.google.com/spreadsheets/d/1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0/edit
+https://docs.google.com/spreadsheets/d/<sheet ID>/edit
 ```
 
-**Sheet ID:** `1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0`
+**Sheet ID:** `<sheet ID>`
 
 This is the real, already-correct ID used throughout the prompt below — nothing to replace it with unless you set up a different Sheet.
 
@@ -66,7 +66,7 @@ When Adam says anything like "check my emails," "process my inbox," "what came i
 
 1. Search Gmail for: `label:LeaderHub is:unread`
 2. For each unread email, extract ALL actionable to-do items
-3. Write each item as a new row to the **"Inbox" tab** of the LeaderHub Inbox Google Sheet (ID: 1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0)
+3. Write each item as a new row to the **"Inbox" tab** of the LeaderHub Inbox Google Sheet (ID: <sheet ID>)
 4. Mark each processed email as read
 5. Report back with a clean summary of what you found and added
 

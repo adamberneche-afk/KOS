@@ -263,13 +263,13 @@
 **Google Sheet (Email Bridge)**
 | Field | Value |
 |-------|-------|
-| Sheet URL | `https://docs.google.com/spreadsheets/d/1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0/edit` |
-| Sheet ID | `1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0` |
+| Sheet URL | `https://docs.google.com/spreadsheets/d/<sheet ID>/edit` |
+| Sheet ID | `<sheet ID>` |
 
 **EmailBridge Web App**
 | Field | Value |
 |-------|-------|
-| URL | `https://script.google.com/a/macros/ccpsnet.net/s/AKfycbz6Hx2vJbZJXv82WrvvXUBu-oXhGifcboQi_Il3jfu3HHov4WA5j6MJ8IZvZkb8dGyG/exec` |
+| URL | `https://script.google.com/a/macros/ccpsnet.net/s/<deployment ID>/exec` |
 | Trigger | `runAll` → every 10 minutes |
 | localStorage key | `lh_email_bridge_url` |
 

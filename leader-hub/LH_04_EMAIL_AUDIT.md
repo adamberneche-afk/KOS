@@ -56,7 +56,7 @@ function auditInbox() {
     });
   });
 
-  const ss = SpreadsheetApp.openById('1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0');
+  const ss = SpreadsheetApp.openById('<sheet ID>');
 
   let sheet = ss.getSheetByName('Audit_Senders') || ss.insertSheet('Audit_Senders');
   sheet.clearContents();

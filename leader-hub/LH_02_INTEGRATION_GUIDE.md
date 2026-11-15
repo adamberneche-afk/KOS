@@ -257,7 +257,7 @@ unpaid → active → slc (DLC qualifier) → icdc (SLC Top 8) → alumni
   title:    'Market Research & Survey Design',
   subtitle: 'Target Market, Bias & Google Forms',
   comps:    [2, 18, 42, 46, 93], // competency numbers — see SCR_COURSES
-  docId:    '1r5NOu0wy8oTicILis_Ycvc3z20hVzw_dzM6mWbaDm7c', // Google Doc ID
+  docId:    '<Google Doc ID>', // Google Doc ID
 }
 ```
 
@@ -289,7 +289,7 @@ unpaid → active → slc (DLC qualifier) → icdc (SLC Top 8) → alumni
 
 ## Google Sheet Relay — Schema
 
-**Sheet ID:** `1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0`  
+**Sheet ID:** `<sheet ID>`  
 **Tab:** `Inbox`
 
 | Col | Field | Type | Notes |
