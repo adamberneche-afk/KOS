@@ -2633,7 +2633,7 @@ function _dashRetry_(fileId, configId, now) {
 // it without a push. Only an https URL with no quotes, spaces or angle
 // brackets is used; anything else falls back to the default.
 // ---------------------------------------------------------------------------
-const DASH_CANVAS_URL_DEFAULT = "https://ccps.instructure.com";
+const DASH_CANVAS_URL_DEFAULT = "https://mychesterfieldschools.instructure.com";
 const DASH_CANVAS_URL_PROP = "CANVAS_URL";
 
 function dashCanvasUrl_() {
