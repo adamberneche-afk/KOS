@@ -20,10 +20,20 @@ last re-pasted on 2026-10-21, after the moral debt counter and the family
 signal's two tiers (`meta/HANDOFF_2026-10-22.md`). No SMP goes into
 knowledge.
 
+**Changed 2026-11-15: re-paste the instructions and upload
+`FLOWS_BRIEFING.md`.** From the RTP harness notes in
+`meta/PLAN_2026-11.md`: directed writes name the Google Sheets connector
+(Drive is read-only) and a failed write is reported as its connector and
+error; SMP numbers are read from the register, never recalled; a claim
+about how code behaves is `[UNCONFIRMED — repo]` unless a doc states it;
+and `FLOWS_BRIEFING.md` is new knowledge. Until the operator re-pastes,
+the live Project runs the 2026-11-09 paste.
+
 | File | What it is |
 |---|---|
 | `PROJECT_INSTRUCTIONS.md` | Paste into the Project's Instructions, after filling in the doc links |
 | `SESSION_LOG_FORMAT.md` | Upload as Project knowledge. The shape `log this` produces, matched to what the pipeline's intake reads |
+| `FLOWS_BRIEFING.md` | Upload as Project knowledge. What each pipeline behind the RTP's signals is for, what starts it, what it writes that the RTP reads, and what a stuck one looks like; hand-written from the code, and `tests/kos-personal/flows-briefing.test.js` fails when a file or function it names is renamed or removed. Re-upload after any change |
 
 ## What changed from the Gem, and why
 
@@ -88,6 +98,7 @@ knowledge.
    same after any change to the instructions; a push run reminds you.
 4. Add to the Project's knowledge:
    - `SESSION_LOG_FORMAT.md`;
+   - `FLOWS_BRIEFING.md`;
    - the six `rtp-core-router/notebook-sources/PERSONA_*_V5_1.md` (the
      notebook editions, each opening with a core block);
    - `rtp-core-router/notebook-sources/TURN_LOOP_REFERENCE.md`;
@@ -98,7 +109,10 @@ knowledge.
      from `KOS_SMP_REGISTER` (`meta/SMP_PROCESS.md`).
 5. Connect the **Google Drive**, **Gmail** and **Google Calendar**
    connectors on the school account, and allow them in the Project. In
-   Gmail's connector settings, turn off sending (done 2026-10-11).
+   Gmail's connector settings, turn off sending (done 2026-10-11). The
+   **Google Sheets** connector carries the directed writes (SMP-018:
+   `DECISION_REGISTER` and `SMP_REGISTER` rows); the instructions treat
+   Drive as read-only.
    Optional, for personal events: see "Personal calendar" below.
 6. Test it: start a chat and say `start`. Pass means:
    - the primer's date is today's;

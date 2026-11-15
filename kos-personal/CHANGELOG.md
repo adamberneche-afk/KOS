@@ -1,5 +1,22 @@
 # KOS Changelog
 
+### The RTP's harness notes, in its instructions (2026-11-15)
+
+The "RTP harness notes" in `meta/PLAN_2026-11.md`, turned into changes to
+`claude-project/` (approved by the operator 2026-11-15). The instructions
+now say that directed writes (SMP-018) are `DECISION_REGISTER` and
+`SMP_REGISTER` rows made with the Google Sheets connector, that the Drive
+connector is read-only, and that a failed write is reported as its
+connector and error; that an SMP number is read from the register doc
+each time, never recalled (`[UNCONFIRMED — KOS_SMP_REGISTER]` when it
+can't be opened); and that a claim about how code or a pipeline behaves
+is `[UNCONFIRMED — repo]` unless a doc states it. New knowledge file
+`claude-project/FLOWS_BRIEFING.md`: what each pipeline behind the RTP's
+signals is for, hand-written from the code, with
+`tests/kos-personal/flows-briefing.test.js` failing when a file or
+function it names goes away. The operator re-pastes the instructions and
+uploads the file.
+
 ### Web-app logs count toward moral debt (2026-11-08)
 
 A session log pasted into the web app's Ingest tab (`submitSessionLog`)
