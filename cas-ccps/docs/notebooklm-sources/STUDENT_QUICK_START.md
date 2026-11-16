@@ -142,7 +142,9 @@ You turn in on Canvas. That's where your teacher grades it. For most assignments
 
 - **Used your feedback**: The code shows you read your feedback and did something with it. It does not say your work is good or finished. Your teacher still reads your work.
 
-- **Revise is fine**: You can earn the code on a **Revise** card. You don't have to pass first.
+- **Revise is fine**: You can earn the code on a **Revise** card: the question asks what you will change. The code turns in this round; it isn't a pass. Revise and submit for feedback as many times as you need. In a lesson in parts, the next part opens when this part meets its goal.
+
+- **Passed**: On a **Passed** card, the question asks how what you showed connects to another goal, like the next part's.
 
 - **Yours alone**: The code belongs to you and this one assignment. Someone else's code won't work for you, and yours won't work for them, so don't share it. It stays the same if you submit again, and you can copy it again any time.
 

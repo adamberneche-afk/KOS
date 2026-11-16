@@ -1010,7 +1010,15 @@ the one reading of it, for the card, the student functions, Flow 6's
 materializer and the panel's banner). Once a
 card's feedback has arrived (Revise or Passed), it asks one question built
 from the student's own feedback in `CompetencyEvidence`: the milestone not
-met yet (the card's "Not yet:" line), or the primary milestone shown. The
+met yet (the card's "Not yet:" line), or the primary milestone shown. Since
+2026-11-16 (the operator) a Revise asks what will change, where, and how
+that shows it; a pass asks how what was shown connects to another goal: the
+next part's one-line task when the assignment is a part (`turnInNextPartGoal_`,
+from 13c or 55b), else another competency the same check measured. Once the
+code shows, the card says it turns in this round, not a pass: on a Revise,
+the next part opens when this part meets its goal, and the student can
+submit for feedback as many times as they need; on a pass of a part, that
+the next part is open. The code card names its Canvas assignment. The
 answer is screened at once, with no AI: at least `REFLECTION_MIN_WORDS`
 words, no system text, and less than half of its 4-word runs found in the
 question or the milestone (`TURN_IN_PASTE_MAX_SHARE`). One that passes is

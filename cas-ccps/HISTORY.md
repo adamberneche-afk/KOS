@@ -6038,3 +6038,42 @@ SHA-256, catches a prompt Studio didn't take from the row.
 - Studio needs no change: its Ask Gemini step reads each row's PromptText.
 - Tests: `tests/cas-ccps/flow2-run-info.test.js`.
 
+## The turn-in question, and the assignments loop's clarity, 2026-11-16
+
+From a quick UI/UX audit of the loop (dashboard, doc, Submit, wait,
+feedback, turn-in code, revise or next part), and the operator's direction
+on the turn-in question:
+
+- **The question (71, the operator).** On a Revise, what will change, where
+  in the document, and how that will show the milestone. On a pass, how what
+  was shown connects to another goal. That goal is the next part's one-line
+  task when the assignment is a part (`turnInNextPartGoal_`, from 13c's
+  `DASH_LESSON_INFO` in the Student Dashboard or 55b's `LESSON_PARTS`
+  elsewhere), else another competency the same check measured; with
+  neither, the old question stays. The screen also counts that goal's text
+  as text not to copy. Flow 6 is told what a good answer does: on a pass,
+  it names a real link and points to the work; on a Revise, it says what,
+  where and how.
+- **What the code means (71b, 03, the student guide).** The code card names
+  its Canvas assignment (with the part), and says the code turns in this
+  round. On a Revise, Part n+1 opens when Part n meets its goal (its task
+  line), and the student can submit for feedback as many times as they
+  need. On a pass of a part, the card says the next part is open. The
+  feedback's "you don't have to pass first" is now "get your code for this
+  round, then revise and submit as many times as you need". The `READY`
+  view carries the feedback's kind for this.
+- **The comment (37, audit item 1).** No `[SYSTEM: …]` or
+  `[SUGGESTED_SCORE: …]` line (the result line says Passed or Revise, the
+  Ledger keeps both, and the prompt says a student is never told a score),
+  no machine-section headings, no section numbers. Doc-mode feedback is
+  unchanged: 04 reads the score line there.
+- **The card (13, audit items 3 and 5).** A Revise card's filled button is
+  Open My Document, with Submit beside it outlined: the first step is
+  reading the feedback. The locked-part line names the goal: "Part 2 opens
+  when Part 1 meets its goal: '<its task line>', or when your teacher
+  opens it."
+- Tests: `turn-in-code.test.js`, `turn-in-check-flow.test.js`,
+  `evaluation-next-steps.test.js`, `flow2-run-info.test.js`,
+  `dashboard-plain-words.test.js`, `lesson-parts-dashboards.test.js`,
+  `student-dashboard-navigation.test.js`.
+

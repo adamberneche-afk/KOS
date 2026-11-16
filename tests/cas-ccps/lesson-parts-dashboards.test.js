@@ -158,11 +158,13 @@ test('Student Dashboard: the parts render together, in order, with what opens ea
   assert.match(h, /Venue Market Research &amp; Survey Design<\/div><div class="stepper"><span class="dots" role="img" aria-label="0 of 5 parts done">◉○○○○<\/span>/);
   assert.equal((h.match(/class="card /g) || []).length, 2, 'the lesson card, with Part 2 inside it');
   assert.match(h, /<button type="button" class="parts-toggle"[^>]*aria-expanded="false" aria-controls="parts-CAS-8177-MARKET-RESEARCH-SURVEY-DESIGN"[^>]*>All 5 parts<\/button>/);
-  assert.match(h, /🔒 Part 3 opens when the check finds Part 2 meets its main goal, or when your teacher opens it\./);
+  // The goal named (2026-11-16): Part 2's own task line.
+  assert.match(h, /🔒 Part 3 opens when Part 2 meets its goal: \u201c[^\u201d]+\u201d, or when your teacher opens it\./);
   const i1 = h.indexOf('Part 1 of 5: The Target Market'), i2 = h.indexOf('Part 2 of 5: Build the Survey'),
     i3 = h.indexOf('🔒 Part 3 of 5: Why These Questions Work');
   assert.ok(i1 !== -1 && i1 < i2 && i2 < i3, 'Part 1, Part 2, then the locked Part 3');
-  assert.ok(h.includes('Why These Questions Work<div>Opens when the check finds Part 2 meets its main goal, or when your teacher opens it.'));
+  assert.match(h, /Why These Questions Work<div>Opens when Part 2 meets its goal: \u201c[^\u201d]+\u201d, or when your teacher opens it\./);
+  assert.match(h, /Part 4 of 5[^<]*<div>Opens when Part 3 meets its goal, or when your teacher opens it\./, 'the part before is locked too: no task line to name');
   assert.equal((h.match(/class="part-locked"/g) || []).length, 3);
 });
 

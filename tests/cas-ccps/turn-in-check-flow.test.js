@@ -183,9 +183,9 @@ test('one input row per PENDING_CHECK answer, the answer between its delimiters;
   const p = inputs[0].PromptText;
   assert.equal(env.exported.ticAnswerInPrompt_(p), GENUINE);
   assert.match(p, /Milestone: Develop a market research project/);
-  assert.match(p, /The feedback says this milestone is not met yet\./);
-  assert.match(p, /What will you change, and where in your document\?/);
-  assert.match(inputs[1].PromptText, /showed this milestone/, 'a pass is described as shown');
+  assert.match(p, /The feedback says this milestone is not met yet\. An answer addresses it when it says what the student will change/);
+  assert.match(p, /What will you change, where in your document, and how will that show it\?/);
+  assert.match(inputs[1].PromptText, /showed this milestone\. The question asks the student to connect it/, 'a pass is described as shown, and asks for a connection');
   assert.doesNotMatch(p, /\{\{[A-Z_]+\}\}/, 'every placeholder filled');
   assert.doesNotMatch(p, /student1@|VDOE-ONE/, 'no email or ConfigID in the prompt');
 
@@ -257,7 +257,7 @@ test('ADDRESSES issues the code through applyTurnInVerdict_; the input row close
   const input = env.rowsOf('TurnInCheckInput')[0];
   assert.equal(input.Status, 'CONSUMED');
   assert.equal(input.PromptText, '(removed after the check)');
-  assert.deepEqual(plain(env.exported.getMyTurnInState('VDOE-ONE-1')).turnIn, { state: 'READY', code: codes[0].Code });
+  assert.deepEqual(plain(env.exported.getMyTurnInState('VDOE-ONE-1')).turnIn, { state: 'READY', code: codes[0].Code, kind: 'NOT_YET' });
 });
 
 test('NOT_YET stores the reason for the student, and issues nothing', () => {

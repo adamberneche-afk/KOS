@@ -80,7 +80,9 @@ test('buildNextStepsText_: with turn-in codes on everywhere, the steps are the c
   assert.match(pass, /Your turn-in code stays the same\./);
   assert.doesNotMatch(pass, /Website URL|this document's link/);
   const revise = exported.buildNextStepsText_('REVISION_REQUIRED');
-  assert.match(revise, /Answer it to get your code now; you don't have\n\s+to pass first\./);
+  // A code turns in this round, not a pass (2026-11-16).
+  assert.match(revise, /asks what you will\n\s+change\. Answer it to get your code for this round, then revise and\n\s+submit for feedback as many times as you need\./);
+  assert.doesNotMatch(revise, /pass first/);
   assert.doesNotMatch(revise, /Website URL/);
 });
 

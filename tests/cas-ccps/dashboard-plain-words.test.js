@@ -270,10 +270,12 @@ test('Student Dashboard: one filled button per card, chosen by its status', () =
   };
   assert.equal(filled(by.A2), 'Open My Document ↗', 'not started: open the doc');
   assert.equal(filled(by.A4), 'Open My Document ↗', 'being checked: open the doc');
-  assert.equal(filled(by.A3), 'Submit for Feedback', 'to revise: submit');
+  assert.equal(filled(by.A3), 'Open My Document ↗', 'to revise: read the feedback and revise first (2026-11-16)');
   assert.equal(filled(by.A1), 'View feedback ↗', 'passed: view the feedback');
-  assert.ok(ctx.cardHtml(by.A3).indexOf('Submit for Feedback') < ctx.cardHtml(by.A3).indexOf('Open My Document'),
+  assert.ok(ctx.cardHtml(by.A3).indexOf('Open My Document') < ctx.cardHtml(by.A3).indexOf('Submit for Feedback'),
     'the primary comes first');
+  assert.match(ctx.cardHtml(by.A3), /<button type="button"[^>]*class="act act-secondary"[^>]*>Submit for Feedback/,
+    'Submit is on the Revise card, outlined');
   assert.match(ctx.cardHtml(by.A2), /<button type="button"[^>]*class="act act-secondary"[^>]*>Submit for Feedback/,
     'Submit stays a real button');
   assert.equal(filled(Object.assign({}, by.A3, { canSubmit: false })), 'Open My Document ↗',
