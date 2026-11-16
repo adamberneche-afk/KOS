@@ -638,6 +638,8 @@ function runFlow2Canary() {
       'CANARY EVALUATION. This text stands in for a real Gemini response.\n' +
       '[SYSTEM: APPROVED]\n' +
       '[SUGGESTED_SCORE: 3]\n' +
+      // The run line (37, 2026-11-16): recorded, then stripped.
+      '[RUN_INFO: {"run":"canary","prompt":"canary","model":"canary"}]\n' +
       // Every milestone MET: an untiered APPROVED needs that (37's
       // _fiCheckResultShape_), or the harvest sets the result aside.
       '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"MET","4":"MET"}]';
@@ -672,6 +674,10 @@ function runFlow2Canary() {
     if (docText.indexOf('[MILESTONE_OUTCOMES:') !== -1) {
       return fail('Machine-readable outcomes line stripped before the student sees it',
         'The [MILESTONE_OUTCOMES: ...] line reached the document body.');
+    }
+    if (docText.indexOf('[RUN_INFO:') !== -1) {
+      return fail('Run line stripped before the student sees it',
+        'The [RUN_INFO: ...] line reached the student.');
     }
     if (docText.indexOf('[SUGGESTED_SCORE: 3]') === -1) {
       return fail('Suggested-score line preserved in the doc',

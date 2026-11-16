@@ -5991,3 +5991,35 @@ Tests: `tests/cas-ccps/feedback-repost.test.js`,
 The operator reports a new Gemini model around the same days, which likely
 affected inference; if Studio's step changed model between the originals and
 the re-grade, the consistency numbers compare two models.
+
+## What made each result: the run line and provenance, 2026-11-16
+
+Flow 2 changed under live use: the grader, students' behavior, and Studio
+and its model (a new model on 11-13 with no change of ours). Its results
+didn't say which version made them, so the versions had to be rebuilt from
+handoffs. Now each result records them. The operator's idea: put the
+model's identification in the prompt and the output. A model knows its
+name from its training, not from what runs it, so its own report is kept
+as a hint (`ModelReported`). The same line carries two values the model
+only copies, which are reliable. A random **run key** per FlowInput row
+catches an answer in the wrong row (the duplicate write, another lesson's
+answer). The **prompt version**, `f2-` plus 8 hex of the template's
+SHA-256, catches a prompt Studio didn't take from the row.
+
+- **15b:** section 5c asks for `[RUN_INFO: {"run":…,"prompt":…,"model":…}]`
+  after the stamp lines and before the outcomes line, which stays last.
+  The security note names it as system text; 00's `SYSTEM_TEXT_PATTERNS`
+  refuses it at Submit.
+- **37:** `_fiBuildPromptText_` fills `{{RUN_KEY}}` and
+  `{{PROMPT_VERSION}}`. `_fiProvenance_` compares the answer's line with
+  what the row's own PromptText sent. `EvaluationLog` gains CodeVersion
+  (43's deploy marker), PromptVersion, PromptHash, RunCheck and
+  ModelReported, and an older tab gets the headers on its next write. The
+  line is stripped with the outcomes line. A failed check is recorded and
+  logged, never held back, until a week of data says whether a
+  `RUN_KEY_MISMATCH` should be.
+- **35:** the canary's simulated answer has a run line, and the canary
+  fails if it reaches the student.
+- Studio needs no change: its Ask Gemini step reads each row's PromptText.
+- Tests: `tests/cas-ccps/flow2-run-info.test.js`.
+
