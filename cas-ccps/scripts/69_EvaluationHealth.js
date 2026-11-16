@@ -420,3 +420,190 @@ function _rcLog_(title, s) {
     Logger.log("    " + x + ": " + RC_LEVELS.map(function (y) { return s.matrix[x][y]; }).join(" / "));
   });
 }
+
+// =============================================================================
+// reportGradingByVersion — Flow 2's gradings grouped by the version that
+// made them (added 2026-11-16). Flow 2 changed under live use: competency
+// tiers and the passing rule (10-20), the process reflection (on 10-27),
+// earlier parts (10-29), injection guards (11-01), a new Gemini model (11-13
+// afternoon), Studio's rebuild (11-15). meta/FLOW2_VERSIONS_2026-11.md has
+// the timeline. Two things set a grading's version:
+//   - the prompt it was sent, read from the row's own PromptText (the
+//     passing rule, the reflection block answered / "(none)" / absent, the
+//     earlier-parts block, tertiary competencies, the injection guard line),
+//     so a row is never placed by guessing from its date;
+//   - the platform when it was graded (FLOW2_PLATFORM_EPOCHS: model and
+//     Studio pipeline), from the row's ArmedAt if it was restarted, else
+//     its Timestamp.
+// The 11-15 re-grade overwrote every older row's answer in FlowInput, so
+// the originals are read from a copy of the Ledger from before it
+// (opts.beforeSsId), and the live tab gives the re-grades of those rows and
+// the originals of rows built after the re-grade (opts.regradeTo). Per
+// group: rows, graded, malformed by reason, approved, every milestone's
+// MET / PARTIALLY_MET / NOT_MET and milestone 1's; per prompt version, the
+// re-grade of the same rows, so the platform's effect is read with the
+// prompt held fixed. An original that is a newer row's answer (the
+// duplicate-write bug) is counted apart. Reads only; counts only.
+//   reportGradingByVersion({ beforeSsId: "<the copy's ID>" })
+// =============================================================================
+const FLOW2_PLATFORM_EPOCHS = [
+  { from: "2026-11-13T13:00:00-05:00", label: "new model, Studio before the rebuild" },
+  // The rebuild was on 11-15, during the day (the 2:33 PM re-grade ran on
+  // it); rows graded overnight on 11-15 count as before it.
+  { from: "2026-11-15T12:00:00-05:00", label: "new model, rebuilt Studio" },
+];
+const FLOW2_FIRST_EPOCH_LABEL = "earlier model, Studio before the rebuild";
+const GV_REGRADE_FROM = "2026-11-15T14:30:00-05:00";
+const GV_REGRADE_TO = "2026-11-15T14:50:00-05:00";
+
+function reportGradingByVersion(opts) {
+  opts = opts || {};
+  if (!opts.beforeSsId) {
+    throw new Error("reportGradingByVersion: pass { beforeSsId: <ID of a copy of the Ledger from before the 11-15 re-grade> }.");
+  }
+  const cfg = getConfig_();
+  const tab = (cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME;
+  const nowSheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(tab);
+  const beforeSheet = SpreadsheetApp.openById(opts.beforeSsId).getSheetByName(tab);
+  if (!nowSheet || !beforeSheet) throw new Error("reportGradingByVersion: a FlowInput tab is missing.");
+  const res = gradingByVersion_(beforeSheet.getDataRange().getValues().slice(1),
+    nowSheet.getDataRange().getValues().slice(1), opts);
+  _gvLog_(res);
+  return res;
+}
+
+// The grouping itself, on FlowInput rows (no header): the copy and now.
+function gradingByVersion_(beforeRows, nowRows, opts) {
+  opts = opts || {};
+  const epochs = (opts.epochs || FLOW2_PLATFORM_EPOCHS).map(function (e) {
+    return { fromMs: Date.parse(e.from), label: e.label };
+  }).sort(function (a, b) { return a.fromMs - b.fromMs; });
+  const firstLabel = opts.firstEpochLabel || FLOW2_FIRST_EPOCH_LABEL;
+  const regradeFromMs = Date.parse(opts.regradeFrom || GV_REGRADE_FROM);
+  const regradeToMs = Date.parse(opts.regradeTo || GV_REGRADE_TO);
+  const key = function (r) {
+    return [r[FI.STUDENT_FILE_ID], r[FI.CONFIG_ID], r[FI.STAGING_ROW_REF]].map(function (v) { return String(v).trim(); }).join("|");
+  };
+  const real = function (r) { return !_fxIsFlow2FixtureRow_(r) && String(r[FI.STUDENT_FILE_ID] || "").trim() !== ""; };
+  const gradedAtMs = function (r) {
+    const armed = sheetTimestampMs_(r[FI.ARMED_AT]);
+    const built = sheetTimestampMs_(r[FI.TIMESTAMP]);
+    return isNaN(armed) ? built : Math.max(armed, isNaN(built) ? armed : built);
+  };
+  const epochOf = function (ms) {
+    let label = firstLabel;
+    epochs.forEach(function (e) { if (!isNaN(ms) && ms >= e.fromMs) label = e.label; });
+    return label;
+  };
+
+  const out = { byVersion: {}, byEpoch: {}, byWeek: {}, regradeByVersion: {},
+    copiedOriginal: 0, unanswered: 0, originals: 0, regrades: 0 };
+  const copied = _rcCopiedOriginals_(beforeRows, key);
+  const inCopy = {};
+  const add = function (bucket, name, row, text) {
+    const s = bucket[name] || (bucket[name] = _gvEmpty_());
+    s.rows++;
+    const shape = _fiCheckResultShape_(text, row);
+    if (!shape.ok) { s.malformed[shape.reason] = (s.malformed[shape.reason] || 0) + 1; return; }
+    s.graded++;
+    if (shape.compliance === "APPROVED") s.approved++;
+    Object.keys(shape.outcomes).forEach(function (k) {
+      const v = shape.outcomes[k];
+      if (s.levels[v] === undefined) return;
+      s.levels[v]++;
+      if (k === "1") s.m1[v]++;
+    });
+  };
+  const original = function (r) {
+    const text = String(r[FI.GEMINI_FULL_OUTPUT] || "").trim();
+    if (!text) { out.unanswered++; return; }
+    if (copied[key(r)]) { out.copiedOriginal++; return; }
+    out.originals++;
+    const at = gradedAtMs(r);
+    add(out.byVersion, _gvSignature_(r[FI.PROMPT_TEXT]), r, text);
+    add(out.byEpoch, epochOf(at), r, text);
+    add(out.byWeek, isNaN(at) ? "(no date)" : _gvWeekOf_(at), r, text);
+  };
+
+  beforeRows.forEach(function (r) {
+    if (!real(r)) return;
+    inCopy[key(r)] = r;
+    original(r);
+  });
+  nowRows.forEach(function (r) {
+    if (!real(r)) return;
+    const was = inCopy[key(r)];
+    const built = sheetTimestampMs_(r[FI.TIMESTAMP]);
+    if (!was) {
+      // Built after the copy: an original unless it was built before the
+      // re-grade ended (then its answer may be the re-grade's).
+      if (isNaN(built) || built >= regradeToMs) original(r);
+      return;
+    }
+    // In both: the live answer is the re-grade when the row was built before it.
+    if (!(built < regradeFromMs)) return;
+    const text = String(r[FI.GEMINI_FULL_OUTPUT] || "").trim();
+    if (!text || text === String(was[FI.GEMINI_FULL_OUTPUT] || "").trim()) return;
+    if (copied[key(r)]) return;
+    out.regrades++;
+    add(out.regradeByVersion, _gvSignature_(was[FI.PROMPT_TEXT]), r, text);
+  });
+  return out;
+}
+
+// The prompt's version, from the text it was sent with.
+function _gvSignature_(promptText) {
+  const p = String(promptText || "");
+  const block = function (name) {
+    const m = p.match(new RegExp("<<<" + name + ">>>([\\s\\S]*?)<<<END_" + name + ">>>"));
+    if (!m) return "absent";
+    const body = m[1].trim();
+    return /^\(none\)$/i.test(body) ? "none" : "present";
+  };
+  const tert = p.match(/TERTIARY COMPETENCIES[^\n]*\n([\s\S]*?)(\n\s*\n|\n[A-Z ]{6,}[(:])/);
+  const parts = [
+    /PASSING RULE:/.test(p) ? "passing rule" : "no passing rule",
+    "reflection " + block("PROCESS_REFLECTION"),
+    "earlier parts " + block("EARLIER_PARTS"),
+    tert && !/None for this assignment/i.test(tert[1]) ? "tertiaries" : "no tertiaries",
+    /looks like a system line/i.test(p) ? "guard" : "no guard",
+  ];
+  return p.trim() ? parts.join(", ") : "(no prompt text)";
+}
+
+// The Monday of a time's week, as yyyy-MM-dd in the script's zone.
+function _gvWeekOf_(ms) {
+  const d = new Date(ms);
+  const tz = Session.getScriptTimeZone();
+  const dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    .indexOf(Utilities.formatDate(d, tz, "EEE")) + 1; // 1 = Monday
+  return Utilities.formatDate(new Date(ms - (dow - 1) * 86400000), tz, "yyyy-MM-dd");
+}
+
+function _gvEmpty_() {
+  return { rows: 0, graded: 0, approved: 0, malformed: {},
+    levels: { MET: 0, PARTIALLY_MET: 0, NOT_MET: 0 }, m1: { MET: 0, PARTIALLY_MET: 0, NOT_MET: 0 } };
+}
+
+function _gvLog_(res) {
+  const pct = function (n, d) { return d ? Math.round(1000 * n / d) / 10 + "%" : "n/a"; };
+  const line = function (name, s) {
+    const all = s.levels.MET + s.levels.PARTIALLY_MET + s.levels.NOT_MET;
+    const bad = Object.keys(s.malformed);
+    return "  " + name + ": " + s.rows + " row(s), " + s.graded + " graded, approved " + s.approved +
+      " (" + pct(s.approved, s.graded) + "); milestones MET / PARTIALLY_MET / NOT_MET " +
+      [s.levels.MET, s.levels.PARTIALLY_MET, s.levels.NOT_MET].map(function (n) { return pct(n, all); }).join(" / ") +
+      "; milestone 1 MET " + pct(s.m1.MET, s.m1.MET + s.m1.PARTIALLY_MET + s.m1.NOT_MET) +
+      (bad.length ? "; malformed: " + bad.map(function (r) { return r + " " + s.malformed[r]; }).join(", ") : "");
+  };
+  const section = function (title, bucket) {
+    Logger.log("[Versions] " + title);
+    Object.keys(bucket).sort().forEach(function (k) { Logger.log(line(k, bucket[k])); });
+  };
+  Logger.log("[Versions] Originals " + res.originals + " (another submission's answer, set apart: " +
+             res.copiedOriginal + "; no answer: " + res.unanswered + "); re-grades " + res.regrades + ".");
+  section("ORIGINALS BY PLATFORM (model and Studio, when graded)", res.byEpoch);
+  section("ORIGINALS BY WEEK GRADED", res.byWeek);
+  section("ORIGINALS BY PROMPT VERSION (from each row's PromptText)", res.byVersion);
+  section("THE 11-15 RE-GRADE OF THE SAME ROWS, BY THEIR PROMPT VERSION", res.regradeByVersion);
+}

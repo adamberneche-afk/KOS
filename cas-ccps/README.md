@@ -762,7 +762,17 @@ copy). It pairs each row with its earlier self and logs, for pairs whose two
 gradings are both well formed: the stamp (same, or which way it changed),
 each milestone's original against its re-grade (the 3×3 table, one level
 apart, `MET` ↔ `NOT_MET`), and per unit the pairs and stamp changes; a
-malformed grading is counted by reason, not compared. An original that is a newer submission's answer (the same text in two rows of a doc) is counted apart, not compared. `cleanFrom` (an ISO
+malformed grading is counted by reason, not compared. An original that is a newer submission's answer (the same text in two rows of a doc) is counted apart, not compared.
+
+`reportGradingByVersion({ beforeSsId })` (2026-11-16) groups Flow 2's
+gradings by the version that made them: the prompt version, read from each
+row's own PromptText (the passing rule, the reflection block, earlier parts,
+tertiaries, the injection guard), and the platform it was graded on
+(`FLOW2_PLATFORM_EPOCHS`: model and Studio, by ArmedAt or Timestamp), and by
+week. The originals come from the copy (the re-grade overwrote them in
+FlowInput); the re-grade of the same rows is grouped by their prompt
+version, so the platform's effect shows with the prompt held fixed. The
+timeline is `meta/FLOW2_VERSIONS_2026-11.md`. Reads only; counts only. `cleanFrom` (an ISO
 time) also counts on their own the pairs whose original row was built after
 a fix. Reads only. Counts and unit names only.
 

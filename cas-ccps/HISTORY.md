@@ -5991,3 +5991,19 @@ Tests: `tests/cas-ccps/feedback-repost.test.js`,
 The operator reports a new Gemini model around the same days, which likely
 affected inference; if Studio's step changed model between the originals and
 the re-grade, the consistency numbers compare two models.
+
+## Flow 2's gradings by version, 2026-11-16
+
+Flow 2 changed several times under live use: the grader (tiers and the
+passing rule, objectives, the reflection, earlier parts, guards), students'
+behavior (parts, the turn-in code) and the platform (Studio's hydrogen 4.1
+release on 11-13, a new Gemini model that afternoon, the restart on 11-14,
+the rebuild on 11-15). `meta/FLOW2_VERSIONS_2026-11.md` lays them out.
+`reportGradingByVersion` (69) reads a grading's prompt version from the
+row's own PromptText, never its date, and its platform from when it was
+graded. It takes the originals from a copy of the Ledger from before the
+re-grade, since the re-grade overwrote them in FlowInput, and groups the
+re-grade of the same rows by their prompt version. It counts copied
+originals apart and writes nothing. Tests:
+`tests/cas-ccps/grading-by-version.test.js`.
+
