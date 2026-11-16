@@ -136,9 +136,14 @@ const TIC_GRADE_WORDS_RE = /\b(grade|graded|grades|score|scored|scores)\b/i;
 // ---------------------------------------------------------------------------
 
 function ticFeedbackKind_(kind) {
+  // What a good answer does (2026-11-16, the operator): on a pass the
+  // question asks for a connection; on a Revise, for a plan.
   return String(kind || "").trim() === "PASSED"
-    ? "The feedback says the student's work showed this milestone."
-    : "The feedback says this milestone is not met yet.";
+    ? "The feedback says the student's work showed this milestone. The question asks the student to connect it " +
+      "to another goal: an answer addresses it when it names a real link between the two and points to the " +
+      "student's own work; restating either one is not enough."
+    : "The feedback says this milestone is not met yet. An answer addresses it when it says what the student " +
+      "will change, where in the work, and how that change will show the milestone.";
 }
 
 // A value for the prompt: system text neutralized, no <<< >>> and no braces.

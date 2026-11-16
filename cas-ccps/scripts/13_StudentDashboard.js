@@ -3553,17 +3553,19 @@ function _restoreFocus(k) {
 //   NOT_STARTED   Not started                             Open My Document
 //   IN_PROGRESS   Waiting for feedback / Being checked /  Open My Document
 //                 Turned in
-//   NEEDS_ACTION  Revise / Feedback ready                 Submit for Feedback
+//   NEEDS_ACTION  Revise / Feedback ready                 Open My Document (read the
+//                                                         feedback, revise; Submit
+//                                                         beside it, outlined)
 //   DONE          Passed ✓ / Done ✓                       View feedback (the doc)
 //   ISSUE         Check stopped                           Try again (retryMyCheck)
 //   ISSUE         Couldn't be checked                     Open My Document
 //
-// Submit is primary only when it can be pressed (canSubmit, and the
-// reflection questions aren't open); otherwise the document is.
+// Since 2026-11-16 (UX audit item 3) a Revise card's filled button is the
+// document, not Submit: the first step after feedback is reading it and
+// revising, and a filled Submit invited sending the same work again. Submit
+// stays on the card, outlined.
 function primaryActionFor(a) {
   if (a.canRetry && !a.waiting) return "retry";
-  const canSubmit = a.canSubmit && !_reflect[a.fileId];
-  if (a.statusClass === "NEEDS_ACTION" && canSubmit) return "submit";
   if (a.statusClass === "DONE") return "view";
   return "open";
 }
@@ -3843,9 +3845,15 @@ function lessonCardHtml(part, list, locked) {
     '">' + dots + '</span>' + esc(doneN + " of " + count + " parts done") + '</div>';
   const id = lessonDomId(part.lesson);
   const isOpen = !!_partsOpen[part.lesson];
+  // The goal named (2026-11-16, UX audit item 5): the part before's own
+  // one-line task, as its card shows it.
+  const opensWhen = function (n) {
+    const prev = open.filter(x => x.part.n === n - 1)[0];
+    return 'opens when Part ' + (n - 1) + ' meets its goal' +
+      (prev && prev.taskLine ? ': \u201c' + esc(prev.taskLine) + '\u201d' : '') + ', or when your teacher opens it.';
+  };
   let after = shut.length
-    ? '<div class="lock-line">🔒 Part ' + shut[0].n + ' opens when the check finds Part ' + (shut[0].n - 1) +
-      ' meets its main goal, or when your teacher opens it.</div>' : "";
+    ? '<div class="lock-line">🔒 Part ' + shut[0].n + ' ' + opensWhen(shut[0].n) + '</div>' : "";
   if (count > 1) {
     let rest = "";
     open.forEach(a => {
@@ -3855,7 +3863,7 @@ function lessonCardHtml(part, list, locked) {
     });
     shut.forEach(l => {
       rest += '<div class="part-locked" id="locked-' + esc(id) + '-' + l.n + '" tabindex="-1">🔒 Part ' + l.n + ' of ' + count + (l.title ? ": " + esc(l.title) : "") +
-        '<div>Opens when the check finds Part ' + (l.n - 1) + ' meets its main goal, or when your teacher opens it.</div></div>';
+        '<div>' + (function (t) { return t.charAt(0).toUpperCase() + t.slice(1); })(opensWhen(l.n)) + '</div></div>';
     });
     after += '<button type="button" class="parts-toggle" id="pt-' + esc(id) + '" data-lesson="' + esc(part.lesson) +
       '" aria-expanded="' + isOpen + '" aria-controls="parts-' + esc(id) + '" onclick="toggleParts(this)">' +

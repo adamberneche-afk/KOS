@@ -1770,8 +1770,27 @@ function _fiFormatFeedbackComment_(studentFacingReport, complianceStatus) {
   const when = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMM d, h:mm a");
   const resultLine = complianceStatus === "APPROVED" ? FI_RESULT_PASSED : FI_RESULT_REVISE;
   return "Feedback, " + when + "\n" + resultLine + "\n\n" +
-    String(studentFacingReport || "").trim() + "\n\n" +
+    _fiCleanCommentReport_(studentFacingReport) + "\n\n" +
     _fiCommentNextSteps_(complianceStatus);
+}
+
+// The report as a student reads it in a comment (2026-11-16, UX audit item
+// 1): the result line above already says Passed or Revise, and the Ledger
+// keeps the stamp and the suggested score, so the comment drops the
+// [SYSTEM: …] and [SUGGESTED_SCORE: …] lines (the prompt says a student is
+// never told a score), the headings of the machine sections ("4. COMPLIANCE
+// STAMP", "5b. ALSO-SHOWN LINE"…), and the numbers on the section headings,
+// which the model often gets wrong ("1. REQUIRED REVISIONS" after "2.").
+// Feedback written into the doc keeps them: 04 reads the score line there.
+const FI_COMMENT_SECTIONS_RE = /^(\s*)\d+[a-z]?\.\s*(OVERALL ASSESSMENT|MILESTONE BREAKDOWN|REQUIRED REVISIONS|YOUR PROCESS|ALSO SHOWN)\b/i;
+const FI_MACHINE_HEADING_RE = /^\s*(\d+[a-z]?\.\s*)?(COMPLIANCE STAMP|SUGGESTED SCORE|ALSO-SHOWN LINE|RUN LINE|MACHINE-READABLE OUTCOME LINE)\s*:?\s*$/i;
+const FI_MACHINE_LINE_RE = /^\s*\[(SYSTEM|SUGGESTED_SCORE)\s*:[^\]]*\]\s*$/i;
+
+function _fiCleanCommentReport_(report) {
+  return String(report || "").split("\n")
+    .filter(function (l) { return !FI_MACHINE_LINE_RE.test(l) && !FI_MACHINE_HEADING_RE.test(l); })
+    .map(function (l) { return l.replace(FI_COMMENT_SECTIONS_RE, "$1$2"); })
+    .join("\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
 // The result line, in the doc and in the comment: the dashboards' words.

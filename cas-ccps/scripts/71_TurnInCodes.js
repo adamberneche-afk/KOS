@@ -279,9 +279,10 @@ function turnInSwitchCoversRow_(ss, row, raw, cache) {
 // row of the latest check (Flow 2 writes them in milestone order, primary
 // first); notYet is the first one not MET, the same text as the card's
 // "Not yet:" line. Each is the milestone as the student reads it, or the
-// competency's title. "" when there is no check on file.
+// competency's title. "" when there is no check on file. other: another
+// competency the same check measured, for the question's connection.
 function turnInMilestones_(ss, cfg, fileId, cache) {
-  const out = { primary: "", notYet: "" };
+  const out = { primary: "", notYet: "", other: "" };
   const rows = _turnInRead_(cache, "evidence", function () {
     const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
     return sheet && sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues() : [];
@@ -309,6 +310,18 @@ function turnInMilestones_(ss, cfg, fileId, cache) {
   };
   out.primary = textOf(last[0]);
   out.notYet = textOf(last.filter(function (r) { return String(r[iOut]).trim().toUpperCase() !== "MET"; })[0]);
+  // Another competency the same check measured (2026-11-16): the question's
+  // connection when the lesson has no next part. A tertiary's row ("Also
+  // shown") is named by its competency instead.
+  last.slice(1).some(function (r) {
+    let text = textOf(r);
+    if (/^also shown/i.test(text) && iComp !== -1) {
+      if (!names) names = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry"));
+      text = names[String(r[iComp]).split(",")[0].trim()] || "";
+    }
+    if (text && text !== out.primary) { out.other = text; return true; }
+    return false;
+  });
   return out;
 }
 
@@ -322,27 +335,74 @@ function turnInFeedbackKind_(row) {
 }
 
 // The one question (decision 5: one question, not a stack of them).
-function turnInQuestion_(kind, milestone) {
+// Since 2026-11-16 (the operator): on a pass, connect what was shown to
+// another competency (the next part's goal, else another one this check
+// measured); on a Revise, what will change, where, and how that shows it.
+// link: { text, part } (part: the next part's number, when it is one), or null.
+function turnInQuestion_(kind, milestone, link) {
   const m = String(milestone || "").trim();
   if (!m) return "";
   if (kind === "NOT_YET") {
-    return "Your feedback says Not yet: “" + m + "”. What will you change, and where in your document?";
+    return "Your feedback says Not yet: “" + m + "”. What will you change, where in your document, and how will that show it?";
   }
   if (kind === "PASSED") {
+    const y = link && String(link.text || "").trim();
+    if (y && link.part) {
+      return "Your feedback says you showed “" + m + "”. Part " + link.part + " asks: “" + y + "”. " +
+        "How will what you did here help you there? Point to the part of your work you will build on.";
+    }
+    if (y) {
+      return "Your feedback says you showed “" + m + "”. How does it connect to “" + y + "”? " +
+        "Point to the part of your work where they meet.";
+    }
     return "Your feedback says you showed “" + m + "”. Point to the part of your work that shows it, and say why it does.";
   }
   return "";
 }
 
-// { kind, milestone, question } for a Ledger row, or null when there is no
+// The next part's goal for an assignment that is a part, as the student
+// reads it on the card (its one-line task): { text, part } or null. Read
+// from 13c's DASH_LESSON_INFO in the Student Dashboard, or 55b's
+// LESSON_PARTS elsewhere (this file is in both kinds of project).
+function turnInNextPartGoal_(assignmentId) {
+  const m = /^CAS-(.+)-P(\d+)$/i.exec(String(assignmentId || "").trim());
+  if (!m) return null;
+  const want = m[1].toLowerCase(), n = Number(m[2]);
+  const find = function (obj) {
+    const k = obj ? Object.keys(obj).filter(function (x) { return x.toLowerCase() === want; })[0] : null;
+    return k ? obj[k] : null;
+  };
+  if (typeof DASH_LESSON_INFO !== "undefined") {
+    const info = find(DASH_LESSON_INFO);
+    const text = info && info.parts && info.parts[n];
+    if (text) return { text: String(text), part: n + 1 };
+  }
+  if (typeof LESSON_PARTS !== "undefined") {
+    const parts = find(LESSON_PARTS);
+    const next = parts && parts.filter(function (a) { return Number(a.part) === n + 1; })[0];
+    if (next) {
+      const id = (next.milestoneCompetencyIds || [])[0];
+      const text = (next.objectives && next.objectives[id]) || reflectionCriterionText_((next.milestones || [])[0]);
+      if (text) return { text: String(text), part: n + 1 };
+    }
+  }
+  return null;
+}
+
+// { kind, milestone, question, link } for a Ledger row, or null when there is no
 // feedback to ask about.
 function turnInPrompt_(ss, cfg, row, cache) {
   const kind = turnInFeedbackKind_(row);
   if (!kind) return null;
   const m = turnInMilestones_(ss, cfg, String(row[LEDGER.FILE_ID] || "").trim(), cache);
   const milestone = kind === "NOT_YET" ? (m.notYet || m.primary) : m.primary;
-  const question = turnInQuestion_(kind, milestone);
-  return question ? { kind: kind, milestone: milestone, question: question } : null;
+  let link = null;
+  if (kind === "PASSED") {
+    link = turnInNextPartGoal_(turnInAssignmentId_(ss, String(row[LEDGER.CONFIG_ID] || "").trim(), cache)) ||
+      (m.other ? { text: m.other, part: 0 } : null);
+  }
+  const question = turnInQuestion_(kind, milestone, link);
+  return question ? { kind: kind, milestone: milestone, question: question, link: link ? link.text : "" } : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -375,7 +435,7 @@ function turnInScreen_(text, prompt) {
   if (reflectionWordCount_(t) < REFLECTION_MIN_WORDS) return _turnInRefuse_("SHORT");
   const found = findSystemText_(t);
   if (found) return _turnInRefuse_("SYSTEM_TEXT", found);
-  const reference = [prompt && prompt.question, prompt && prompt.milestone, "Not yet"].join(" \n ");
+  const reference = [prompt && prompt.question, prompt && prompt.milestone, prompt && prompt.link, "Not yet"].join(" \n ");
   if (turnInPastedShare_(t, reference) >= TURN_IN_PASTE_MAX_SHARE) return _turnInRefuse_("PASTED");
   return { ok: true };
 }

@@ -93,6 +93,12 @@ The pressure moves to whatever carries the grade, which is the code. So:
      Point to the part of your work that shows it, and say why it does."
    The milestone comes from `CompetencyEvidence`, the same source as the
    card's "Not yet:" line (#385).
+   **Changed 2026-11-16 (the operator):** the Revise question asks what will
+   change, where, *and how that will show it*; the pass question asks how
+   what was shown connects to another goal (the next part's, else another
+   competency the check measured). Once the code shows, the card says the
+   code turns in this round, not a pass, and that the next part opens when
+   this part meets its goal.
 3. The answer is checked (below). "Addresses it" issues the code; "not yet"
    shows a one-line reason, and the student rewrites with no limit within
    the term.

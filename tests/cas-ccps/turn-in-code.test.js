@@ -55,7 +55,7 @@ function load(opts) {
     'turnInInCurrentTerm_', 'TURN_IN_PASTE_MAX_SHARE', 'TURN_IN_ALPHABET', 'REFLECTION_MIN_WORDS',
     'TURN_IN_CODE_HEADERS', 'TURN_IN_CHECK_HEADERS', 'openTurnInForAssignment', 'closeTurnInForAssignment',
     'turnInOverrideCovers_', 'TURN_IN_OVERRIDE_HEADERS', 'turnInSwitchParse_', 'turnInSwitchCovers_',
-    'turnInOffEverywhere_',
+    'turnInOffEverywhere_', 'turnInNextPartGoal_',
   ], { Session: session, Logger: { log: (m) => logs.push(String(m)) } });
   const L = exported.LEDGER;
   const T = terms();
@@ -230,21 +230,41 @@ test('the question comes from the student\'s own feedback: Not yet on a card to 
   assert.equal(rev.notYet, 'Develop a market research project');
   assert.deepEqual(rev.turnIn, {
     state: 'ANSWER', kind: 'NOT_YET', minWords: exported.REFLECTION_MIN_WORDS,
-    question: 'Your feedback says Not yet: “Develop a market research project”. What will you change, and where in your document?',
+    question: 'Your feedback says Not yet: “Develop a market research project”. What will you change, where in your document, and how will that show it?',
   });
   assert.match(rev.turnIn.question, new RegExp(rev.notYet), 'the same milestone as the card\'s "Not yet:" line');
   assert.equal(by['VDOE-AMY-2'].turnIn.question,
-    'Your feedback says you showed “Demonstrate critical thinking and problem-solving”. Point to the part of your work that shows it, and say why it does.');
+    'Your feedback says you showed “Demonstrate critical thinking and problem-solving”. How does it connect to “Identify sources of data for market research”? Point to the part of your work where they meet.',
+    'not a part: connected to another competency the same check measured');
   assert.ok(!('turnIn' in by['VDOE-AMY-3']), 'no feedback yet: no question');
   assert.equal(exported.turnInQuestion_('PASSED', ''), '', 'no milestone on file: no question');
   assert.equal((rev.turnIn.question.match(/\?/g) || []).length, 1, 'one question');
+});
+
+// 2026-11-16 (the operator): on a pass, connect what was shown to another
+// goal: the next part's (its one-line task) when the assignment is a part,
+// else another competency the check measured; on a Revise, what, where, how.
+test('the pass question connects to the next part, else another competency; the Revise question asks what, where and how', () => {
+  const { exported } = load();
+  const q = exported.turnInQuestion_;
+  assert.equal(q('PASSED', 'Shown thing', { text: 'You design the survey.', part: 2 }),
+    'Your feedback says you showed “Shown thing”. Part 2 asks: “You design the survey.”. How will what you did here help you there? Point to the part of your work you will build on.');
+  assert.equal(q('PASSED', 'Shown thing', { text: 'Explain the 4 Ps', part: 0 }),
+    'Your feedback says you showed “Shown thing”. How does it connect to “Explain the 4 Ps”? Point to the part of your work where they meet.');
+  assert.match(q('NOT_YET', 'Missed thing'), /What will you change, where in your document, and how will that show it\?$/);
+  // The next part's goal, from 13c in the Student Dashboard.
+  const g = exported.turnInNextPartGoal_('CAS-8177-MARKET-RESEARCH-SURVEY-DESIGN-P1');
+  assert.equal(g.part, 2);
+  assert.ok(g.text.length > 10);
+  assert.equal(exported.turnInNextPartGoal_('CAS-8177-MARKET-RESEARCH-SURVEY-DESIGN-P99'), null, 'the last part has none');
+  assert.equal(exported.turnInNextPartGoal_('CAS-8175-L06'), null, 'a whole lesson has none');
 });
 
 // ── The screen ─────────────────────────────────────────────────────────────
 
 const PROMPT = {
   milestone: 'Develop a market research project',
-  question: 'Your feedback says Not yet: “Develop a market research project”. What will you change, and where in your document?',
+  question: 'Your feedback says Not yet: “Develop a market research project”. What will you change, where in your document, and how will that show it?',
 };
 
 test('the screen turns down a short answer, with a plain reason', () => {
@@ -268,11 +288,11 @@ test('the paste threshold: half the answer\'s 4-word runs found is turned down, 
   const { exported } = load();
   assert.equal(exported.TURN_IN_PASTE_MAX_SHARE, 0.5);
   // 11 words, 8 runs. Seven words of the question in a row are 4 runs found: 0.5.
-  const half = 'What will you change, and where in section two this week';
+  const half = 'What will you change, where in your section two this week';
   assert.equal(exported.turnInPastedShare_(half, PROMPT.question), 0.5);
   assert.equal(exported.turnInScreen_(half, PROMPT).error, 'PASTED');
   // Six of them in a row: 3 of 8.
-  const under = 'What will you change, and where: section two, this week, today';
+  const under = 'What will you change, where in: section two, this week, today';
   assert.equal(exported.turnInPastedShare_(under, PROMPT.question), 3 / 8);
   assert.equal(exported.turnInScreen_(under, PROMPT).ok, true);
 });
@@ -361,7 +381,7 @@ test('ADDRESSES issues one code, stable across a resubmission and a second check
   const c = Object.fromEntries(codes[0].map((k, i) => [k, codes[1][i]]));
   assert.deepEqual([c.Code, c.GoogleID, c.AssignmentID, c.StudentConfigID, c.Course, c.Lesson, c.How, c.GrantReason],
     [res.code, AMY, 'CAS-8177-L05', 'VDOE-AMY-1', '8177', 'L05', 'CHECK', '']);
-  assert.deepEqual(plain(env.exported.getMyTurnInState('VDOE-AMY-1')), { ok: true, turnIn: { state: 'READY', code: res.code } });
+  assert.deepEqual(plain(env.exported.getMyTurnInState('VDOE-AMY-1')), { ok: true, turnIn: { state: 'READY', code: res.code, kind: 'NOT_YET' } });
   // The student revises and passes: the same code.
   env.ledger.getRange(env.rows['VDOE-AMY-1'], env.L.LAST_RESULT + 1).setValue('PASSED');
   assert.equal(env.dash().by['VDOE-AMY-1'].turnIn.code, res.code);
@@ -519,7 +539,7 @@ test('the grant needs the owner and a reason, works after the term, and is recor
   assert.equal(row[7], 'GRANT');
   assert.equal(row[8], 'Flow down on the last day of the term');
   env.state.who = AMY;
-  assert.deepEqual(env.dash().by['VDOE-AMY-4'].turnIn, { state: 'READY', code }, 'the student sees it');
+  assert.deepEqual(env.dash().by['VDOE-AMY-4'].turnIn, { state: 'READY', code, kind: 'NOT_YET' }, 'the student sees it');
 });
 
 // ── The card ───────────────────────────────────────────────────────────────
@@ -563,6 +583,23 @@ test('the card renders each state from its data alone, with no server call', () 
   assert.equal(ctx.turnInCardHtml({ configId: 'X1' }), '', 'no turnIn: nothing');
   assert.match(as({ state: 'ANSWER', question: '<b>x</b>' }), /&lt;b&gt;x&lt;\/b&gt;/, 'the question is escaped');
   assert.deepEqual(calls, [], 'rendering calls no server function');
+});
+
+// 2026-11-16 (the operator): a code turns in this round; it isn't a pass.
+test('the code card names its Canvas assignment and says what comes next', () => {
+  const env = load();
+  const { ctx } = page(env.exported);
+  const part = { lesson: 'L', n: 1, count: 3, lessonName: 'L08 Venue Market Research', title: 'The Target Market' };
+  const card = (kind, extra) => ctx.turnInCardHtml(Object.assign({ configId: 'P1', lessonNo: 'L08', part: part,
+    taskLine: 'You name your target market.', turnIn: { state: 'READY', code: 'C-1', kind: kind } }, extra || {}));
+  const rev = card('NOT_YET');
+  assert.match(rev, /Paste this code into \u201cL08 Venue Market Research, Part 1\u201d in Canvas\./);
+  assert.match(rev, /<p class="ti-next">This code turns in this round\. Part 2 opens when Part 1 meets its goal: \u201cYou name your target market\.\u201d\. Revise, then submit for feedback as many times as you need; there\u2019s no penalty for revising\.<\/p>/);
+  assert.match(card('PASSED'), /<p class="ti-next">Part 2 is open now, or will be within a minute\.<\/p>/);
+  assert.doesNotMatch(card('PASSED', { part: Object.assign({}, part, { n: 3 }) }), /ti-next/, 'the last part: nothing to open');
+  const whole = ctx.turnInCardHtml({ configId: 'W', lessonNo: 'L06', unitName: 'Skill Plan', turnIn: { state: 'READY', code: 'C', kind: 'NOT_YET' } });
+  assert.match(whole, /into \u201cL06 Skill Plan\u201d in Canvas/);
+  assert.match(whole, /This code turns in this round\. Revise, then submit/);
 });
 
 test('the copy button: the code in a visible box, a polite live region, and the fallbacks', async () => {

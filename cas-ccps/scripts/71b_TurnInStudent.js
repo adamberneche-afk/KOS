@@ -19,7 +19,7 @@
 // =============================================================================
 
 // What the card shows for one assignment, or null for nothing:
-//   { state: "READY", code }               the code, with Copy
+//   { state: "READY", code, kind }         the code, with Copy, and what's next
 //   { state: "PENDING_CHECK" }             "Checking your answer…"
 //   { state: "NOT_YET", reason, question } the reason, and the form again
 //   { state: "CHECK_FAILED", question }    the check couldn't run; the form again
@@ -31,7 +31,8 @@ function turnInView_(ss, cfg, row, now, cache) {
   const googleId = String(row[LEDGER.GOOGLE_ID] || "").trim();
   const studentConfigId = String(row[LEDGER.CONFIG_ID] || "").trim();
   const have = _turnInCodeFor_(ss, googleId, turnInAssignmentId_(ss, studentConfigId, cache), cache);
-  if (have) return { state: "READY", code: String(have[TCODE.CODE]) };
+  // kind: what the latest feedback says, so the card can say what's next.
+  if (have) return { state: "READY", code: String(have[TCODE.CODE]), kind: turnInFeedbackKind_(row) };
   const check = _turnInLatestCheck_(ss, googleId, studentConfigId, cache);
   if (check && String(check[TCHK.STATUS]).trim() === TURN_IN_PENDING) return { state: TURN_IN_PENDING };
   const prompt = turnInPrompt_(ss, cfg, row, cache);
@@ -170,6 +171,7 @@ const TURN_IN_CLIENT_CSS = `
   .ti{margin-top:12px;padding:12px;border:1px solid #c6dafc;border-radius:8px;background:#f8fbff}
   .ti-h{font-size:14px;font-weight:600;margin-bottom:6px}
   .ti-p{font-size:14px;line-height:1.45;margin:0 0 8px}
+  .ti-next{font-size:13.5px;line-height:1.45;margin:8px 0 0;color:#3c4043}
   .ti-notyet{font-size:14px;line-height:1.45;margin:0 0 8px}
   .ti-notyet b{color:#7627bb}
   .ti-q{display:block;font-size:14px;font-weight:500;margin:4px 0 6px;line-height:1.4}
@@ -200,6 +202,33 @@ function tiId(a) {
   return "ti-" + String(a.configId || "").replace(/[^A-Za-z0-9_-]/g, "_");
 }
 
+// The Canvas assignment the code goes in, as the card names it (2026-11-16):
+// a part's code is its own, so the part is named too.
+function tiCanvasName(a) {
+  var name = (a.part && a.part.lessonName) || a.unitName || "";
+  name = String(name).replace(/^L\\d{1,3}\\s+/, "");
+  var label = (a.lessonNo ? a.lessonNo + " " : "") + name + (a.part ? ", Part " + a.part.n : "");
+  return label ? "\\u201c" + esc(label) + "\\u201d" : "the assignment";
+}
+
+// What comes after the code (2026-11-16, the operator): a code turns in this
+// round; it isn't a pass. On a Revise: the next part opens when this part
+// meets its goal, and they can submit as many times as they need. On a pass
+// of a part with a next one: that it opens.
+function tiNextHtml(a, kind) {
+  var part = a.part, next = part && part.n < part.count ? part.n + 1 : 0;
+  var goal = a.taskLine ? " meets its goal: \\u201c" + esc(a.taskLine) + "\\u201d" : " meets its goal";
+  if (kind === "NOT_YET") {
+    return '<p class="ti-next">This code turns in this round. ' +
+      (next ? "Part " + next + " opens when Part " + part.n + goal + ". " : "") +
+      "Revise, then submit for feedback as many times as you need; there\\u2019s no penalty for revising.</p>";
+  }
+  if (kind === "PASSED" && next) {
+    return '<p class="ti-next">Part ' + next + ' is open now, or will be within a minute.</p>';
+  }
+  return "";
+}
+
 function turnInCardHtml(a) {
   var t = a && a.turnIn;
   if (!t || !t.state) return "";
@@ -207,11 +236,12 @@ function turnInCardHtml(a) {
   var msg = _tiMsgs[a.configId];
   var h = '<div class="ti" role="group" aria-labelledby="' + id + '-h"><div class="ti-h" id="' + id + '-h">Turn-in code</div>';
   if (t.state === "READY") {
-    h += '<p class="ti-p">Paste this code into the assignment in Canvas. You can copy it again any time.</p>' +
+    h += '<p class="ti-p">Paste this code into ' + tiCanvasName(a) + ' in Canvas. You can copy it again any time.</p>' +
       '<div class="ti-row"><label class="wu-sr" for="' + id + '-code">Your turn-in code</label>' +
       '<input id="' + id + '-code" class="ti-code" type="text" readonly value="' + esc(t.code) + '" onfocus="this.select()">' +
       '<button type="button" class="act act-secondary ti-copy" data-ti="' + id + '" data-code="' + esc(t.code) + '" onclick="turnInCopy(this)">Copy</button>' +
       (typeof CANVAS_URL === "string" && CANVAS_URL ? '<a class="act act-secondary ti-canvas" href="' + esc(CANVAS_URL) + '" target="_blank" rel="noopener">Open Canvas \\u2197<span class="wu-sr"> (opens in a new tab)</span></a>' : '') + '</div>';
+    h += tiNextHtml(a, t.kind);
   } else if (t.state === "PENDING_CHECK") {
     h += '<p class="ti-p">Checking your answer\\u2026 This takes a few minutes. This page checks for you and shows your code here when it\\u2019s ready.</p>';
   } else if (t.state === "TERM_CLOSED") {

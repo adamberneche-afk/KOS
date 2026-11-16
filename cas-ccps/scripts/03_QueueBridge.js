@@ -478,12 +478,13 @@ const NEXT_STEPS_TURN_IN_ = {
     comment:
       "1. Get your turn-in code: on your dashboard, answer the one question on this assignment's card. The code appears on the card.\n" +
       "2. Copy the code and paste it into the Canvas assignment. The Canvas button on your dashboard opens Canvas.\n",
+    // A code turns in this round; it isn't a pass (2026-11-16, the operator).
     reviseDoc:
-      "🎟️  Your turn-in code: the card on your dashboard also asks one question\n" +
-      "    about this feedback. Answer it to get your code now; you don't have\n" +
-      "    to pass first.\n",
+      "🎟️  Your turn-in code: the card on your dashboard asks what you will\n" +
+      "    change. Answer it to get your code for this round, then revise and\n" +
+      "    submit for feedback as many times as you need. There's no penalty.\n",
     reviseComment:
-      "Your turn-in code: the card on your dashboard also asks one question about this feedback. Answer it to get your code now; you don't have to pass first.\n",
+      "Your turn-in code: the card on your dashboard asks what you will change. Answer it to get your code for this round, then revise and submit for feedback as many times as you need. There's no penalty for revising.\n",
   },
   EITHER: {
     doc:
@@ -495,10 +496,10 @@ const NEXT_STEPS_TURN_IN_ = {
       "• Done? Follow the Canvas assignment's instructions. If it asks for a turn-in code, answer the question on this assignment's card on your dashboard and paste the code it gives you. If it asks for a link, copy this document's link and paste it as a Website URL.\n",
     reviseDoc:
       "🎟️  If this Canvas assignment takes a turn-in code, the card on your\n" +
-      "    dashboard asks one question about this feedback. Answer it to get\n" +
-      "    your code now; you don't have to pass first.\n",
+      "    dashboard asks what you will change. Answer it to get your code for\n" +
+      "    this round, then revise and submit again as many times as you need.\n",
     reviseComment:
-      "If this Canvas assignment takes a turn-in code, the card on your dashboard asks one question about this feedback. Answer it to get your code now; you don't have to pass first.\n",
+      "If this Canvas assignment takes a turn-in code, the card on your dashboard asks what you will change. Answer it to get your code for this round, then revise and submit for feedback as many times as you need.\n",
   },
   LINK: {
     doc:
