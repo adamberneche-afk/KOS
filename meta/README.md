@@ -97,6 +97,10 @@ why this repo exists at all.
   other 34 were drafted and approved together on 2026-10-28. Generated from
   `cas-ccps/curriculum/lessons/PARTS.json` (and any drafts in
   `PARTS_DRAFTS.json`) by `tools/cas-ccps/render-parts-drafts.js`; edit the JSON.
+- **`FLOW2_VERSIONS_2026-11.md`** — what changed in Flow 2 and when it was
+  live (the grader, students' behavior, Studio and its model), for reading a
+  grading against the version that made it; `reportGradingByVersion` (69)
+  groups the data the same way.
 - **`TURN_IN_CODE_PLAN_2026-11.md`** — the turn-in code's design, from the
   operator's decisions of 2026-11-07: a code in a Canvas text-entry box
   earns formative completion credit once the student has answered one
