@@ -322,6 +322,9 @@ const SYSTEM_TEXT_PATTERNS = [
   // The evaluator's tertiary-evidence line (#216); 37 parses the last one
   // it wrote, and a student's copy must never reach it (Docket IV).
   /\[\s*ALSO_SHOWN/i,
+  // The evaluator's run line (37, 2026-11-16): the run key and prompt
+  // version it echoes back, and the model it reports.
+  /\[\s*RUN_INFO/i,
 ];
 
 // The first system-text token in `text` (for example "[SYSTEM:"), or "".

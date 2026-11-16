@@ -671,7 +671,7 @@ function _fiFindTeacherMatrixRow_(matrixSsId, configId) {
 // substituted here: the student typed it on the dashboard, and 13 already
 // keeps it in ReflectionLog, so it is in the Ledger either way
 // (docs/FERPA_DATA_MAP.md, ReflectionLog). The response itself still never is.
-function _fiBuildPromptText_(matrixRow, processReflection, earlierParts) {
+function _fiBuildPromptText_(matrixRow, processReflection, earlierParts, runKey) {
   if (typeof substituteFlowPrompt_ !== "function" ||
       typeof FLOW_2_SYSTEM_PROMPT !== "string") {
     Logger.log("[FlowInputBuilder] 40_FlowPrompts.js or 15b's FLOW_2_SYSTEM_PROMPT " +
@@ -690,8 +690,75 @@ function _fiBuildPromptText_(matrixRow, processReflection, earlierParts) {
     DOD:         matrixRow.dod,
     PROCESS_REFLECTION: processReflection || "(none)",
     EARLIER_PARTS: earlierParts || "(none)",
+    // The run line (2026-11-16): echoed back in the answer's RUN_INFO line.
+    RUN_KEY: runKey || _fiNewRunKey_(),
+    PROMPT_VERSION: _fiPromptVersion_(),
     // STUDENT_TEXT deliberately omitted — keepUnmatched leaves it in place.
   }, true);
+}
+
+// ---------------------------------------------------------------------------
+// Provenance (2026-11-16): what made each result, recorded with it in
+// EvaluationLog, since Flow 2 changed under live use (the grader, students'
+// behavior, and Studio and its model; meta/FLOW2_VERSIONS_2026-11.md).
+//   - CodeVersion: this project's deploy marker (43's DEPLOY_VERSION_SHA,
+//     stamped by run.js with the pushed commit), first 7 characters.
+//   - PromptVersion: "f2-" + the first 8 hex of FLOW_2_SYSTEM_PROMPT's
+//     SHA-256, the template before anything is filled in. It changes only
+//     when the prompt does. Read from the row's own PromptText, so it is the
+//     version the row was sent, not today's.
+//   - PromptHash: the first 12 hex of the row's whole PromptText.
+//   - RunCheck: the answer's [RUN_INFO: {...}] line against what the row
+//     sent: OK, NO_RUN_INFO, RUN_INFO_NOT_JSON, RUN_KEY_MISMATCH (an answer
+//     in the wrong row: the duplicate write, another lesson's answer),
+//     PROMPT_MISMATCH (Studio sent another prompt), or OLDER_PROMPT (built
+//     before the run line). Recorded, never held back, for now.
+//   - ModelReported: the model the answer says wrote it. A model knows its
+//     name from its training, not from what runs it, so this is a hint: a
+//     change in it is a sign; no change proves nothing. Studio's own record
+//     of the model is the operator's (meta/FLOW2_VERSIONS_2026-11.md).
+// No student text, ever.
+// ---------------------------------------------------------------------------
+const FI_RUN_INFO_RE = /\[RUN_INFO:\s*(\{[^\n]*?\})\]/;
+const FI_SENT_RUN_RE = /"run":"([^"]*)","prompt":"([^"]*)"/;
+
+function _fiNewRunKey_() {
+  return "r-" + Utilities.getUuid().replace(/-/g, "").slice(0, 8).toLowerCase();
+}
+
+function _fiPromptVersion_() {
+  return "f2-" + _fiOutputHash_(FLOW_2_SYSTEM_PROMPT).slice(0, 8);
+}
+
+function _fiCodeVersion_() {
+  return String(DEPLOY_VERSION_SHA).slice(0, 7); // 43, same project
+}
+
+// { codeVersion, promptVersion, promptHash, runCheck, model } for one row
+// and its answer. Never throws.
+function _fiProvenance_(fiRow, output) {
+  const out = { codeVersion: "", promptVersion: "", promptHash: "", runCheck: "", model: "" };
+  try {
+    out.codeVersion = _fiCodeVersion_();
+    const prompt = String(fiRow[FI.PROMPT_TEXT] || "");
+    if (prompt.trim()) out.promptHash = _fiOutputHash_(prompt).slice(0, 12);
+    const sent = FI_SENT_RUN_RE.exec(prompt);
+    if (!sent) { out.runCheck = "OLDER_PROMPT"; return out; }
+    out.promptVersion = sent[2];
+    const text = String(output || "");
+    const all = text.match(new RegExp(FI_RUN_INFO_RE.source, "g"));
+    if (!all) { out.runCheck = text.trim() ? "NO_RUN_INFO" : ""; return out; }
+    let info;
+    try { info = JSON.parse(FI_RUN_INFO_RE.exec(all[all.length - 1])[1]); } catch (e) { info = null; }
+    if (!info || typeof info !== "object") { out.runCheck = "RUN_INFO_NOT_JSON"; return out; }
+    out.model = String(info.model === undefined ? "" : info.model).replace(/\s+/g, " ").trim().slice(0, 80);
+    if (String(info.run) !== sent[1]) out.runCheck = "RUN_KEY_MISMATCH";
+    else if (String(info.prompt) !== sent[2]) out.runCheck = "PROMPT_MISMATCH";
+    else out.runCheck = "OK";
+  } catch (e) {
+    out.runCheck = out.runCheck || "UNREADABLE";
+  }
+  return out;
 }
 
 // ---------------------------------------------------------------------------
@@ -1013,6 +1080,11 @@ function harvestFlowInputResults() {
       // key for the Ledger, the evidence and the logs.
       const feedbackDocId = _fiDocIdFromUrl_(fiData[i][FI.STUDENT_DOC_URL]) || studentFileId;
       if (geminiFullOutput.trim() && !FLOW2_ALERT_SYNTHETIC_RE.test(configId)) answered = true;
+      // What made this answer (2026-11-16): recorded with every log row below.
+      const prov = _fiProvenance_(fiData[i], geminiFullOutput);
+      if (prov.runCheck && prov.runCheck !== "OK" && prov.runCheck !== "OLDER_PROMPT") {
+        Logger.log("[FlowInputBuilder] Row " + rowNum + ": run check " + prov.runCheck + " (recorded; not held back).");
+      }
 
       // A re-armed row's second answer (the first run was only slow): the
       // first is already applied, so this one is set aside untouched.
@@ -1032,7 +1104,7 @@ function harvestFlowInputResults() {
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_EMPTY_OUTPUT");
         _fiScrubEarlierParts_(fiSheet, rowNum, fiData[i][FI.PROMPT_TEXT]);
         if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
-        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_EMPTY_OUTPUT", null);
+        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_EMPTY_OUTPUT", null, null, prov);
         continue;
       }
 
@@ -1043,7 +1115,7 @@ function harvestFlowInputResults() {
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_SUSPECT_FABRICATION");
         _fiScrubEarlierParts_(fiSheet, rowNum, fiData[i][FI.PROMPT_TEXT]);
         if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
-        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_SUSPECT_FABRICATION", null);
+        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_SUSPECT_FABRICATION", null, null, prov);
         continue;
       }
 
@@ -1061,7 +1133,7 @@ function harvestFlowInputResults() {
         } else {
           setAside.malformed++;
           if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
-          _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, FI_MALFORMED_STATUS, null);
+          _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, FI_MALFORMED_STATUS, null, null, prov);
         }
         continue;
       }
@@ -1126,7 +1198,7 @@ function harvestFlowInputResults() {
           parsed.complianceStatus, parsed.suggestedScore);
         _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId,
           parsed.complianceStatus === "APPROVED" ? "PASSED" : "NEEDS_REVISION", recorded,
-          parsed.suggestedScore);
+          parsed.suggestedScore, prov);
 
         if (stagingSheet) {
           _fiMarkStagingComplete_(stagingSheet, stagingRowRef, studentFileId, configId);
@@ -1140,7 +1212,7 @@ function harvestFlowInputResults() {
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_HARVEST_FAILED");
         _fiScrubEarlierParts_(fiSheet, rowNum, fiData[i][FI.PROMPT_TEXT]);
         if (stagingSheet) _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, configId);
-        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_HARVEST_FAILED", null);
+        _fiLogEvaluation_(ledgerSs, cfg, studentFileId, configId, "ERROR_HARVEST_FAILED", null, null, prov);
       }
     }
 
@@ -1212,24 +1284,31 @@ function recordEvaluationResult_(ledgerSheet, fileId, configId, complianceStatus
 // which case the submission time is read from the Ledger. Never throws: by
 // the time it runs the student's feedback is already written, and a failed
 // log write mustn't mark that harvest failed.
+// Since 2026-11-16 each row also says what made the result (_fiProvenance_):
+// CodeVersion, PromptVersion, PromptHash, RunCheck, ModelReported. An older
+// tab gets the new headers on its next write; its older rows stay blank there.
 const EVAL_LOG_HEADERS = ["EvaluatedAt", "ConfigID", "StudentFileID", "Attempt", "Result",
-  "SubmittedAt", "WaitMinutes", "SuggestedScore"];
+  "SubmittedAt", "WaitMinutes", "SuggestedScore",
+  "CodeVersion", "PromptVersion", "PromptHash", "RunCheck", "ModelReported"];
 
-function _fiLogEvaluation_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore) {
+function _fiLogEvaluation_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore, prov) {
   try {
-    _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore);
+    _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore, prov);
   } catch (e) {
     Logger.log("[FlowInputBuilder] EvaluationLog write failed (" + result + "): " + e.message);
   }
 }
 
-function _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore) {
+function _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore, prov) {
   const name = (cfg.tabs && cfg.tabs.evaluationLog) || "EvaluationLog";
   let sheet = ledgerSs.getSheetByName(name);
   if (!sheet) {
     sheet = ledgerSs.insertSheet(name);
     sheet.appendRow(EVAL_LOG_HEADERS);
+  } else if (sheet.getLastColumn() < EVAL_LOG_HEADERS.length) {
+    sheet.getRange(1, 1, 1, EVAL_LOG_HEADERS.length).setValues([EVAL_LOG_HEADERS]);
   }
+  const p = prov || {};
   let submittedAt = recorded ? recorded.submittedAt : "";
   if (!recorded) {
     const ledger = ledgerSs.getSheetByName(cfg.tabs.ledger);
@@ -1245,7 +1324,8 @@ function _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, record
   const sentMs = sheetTimestampMs_(submittedAt);
   const wait = !submittedAt || isNaN(sentMs) || sentMs > now.getTime() ? "" : Math.round((now.getTime() - sentMs) / 60000);
   sheet.appendRow([now, configId, fileId, recorded ? recorded.attempt : "", result,
-    isNaN(sentMs) || !submittedAt ? "" : new Date(sentMs), wait, suggestedScore == null ? "" : suggestedScore]);
+    isNaN(sentMs) || !submittedAt ? "" : new Date(sentMs), wait, suggestedScore == null ? "" : suggestedScore,
+    p.codeVersion || "", p.promptVersion || "", p.promptHash || "", p.runCheck || "", p.model || ""]);
 }
 
 // EvaluationLog's rows (no header), or [] when there is no tab.
@@ -1347,6 +1427,7 @@ function _fiStripMilestoneOutcomesLine_(fullText) {
   return String(fullText || "")
     .replace(/\[MILESTONE_OUTCOMES:\s*(\{[\s\S]*?\})\]\s*/, "")
     .replace(/\[ALSO_SHOWN:\s*\[[^\]]*\]\]\s*/, "")
+    .replace(/\[RUN_INFO:\s*\{[^\n]*?\}\]\s*/g, "")
     .replace(/\s+$/, "");
 }
 

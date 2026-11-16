@@ -227,7 +227,7 @@ marks or removes those rows yet.
 
 | | |
 |---|---|
-| **Fields** | EvaluatedAt, ConfigID (the student's workspace ID), StudentFileID (their workspace Doc), Attempt, Result (`PASSED`, `NEEDS_REVISION`, or an `ERROR_` harvest failure), SubmittedAt, WaitMinutes, SuggestedScore. No names, no emails, no student writing, no feedback text. |
+| **Fields** | EvaluatedAt, ConfigID (the student's workspace ID), StudentFileID (their workspace Doc), Attempt, Result (`PASSED`, `NEEDS_REVISION`, or an `ERROR_` harvest failure), SubmittedAt, WaitMinutes, SuggestedScore; since 2026-11-16 what made the result: CodeVersion (the deploy commit), PromptVersion and PromptHash (hashes, never the prompt), RunCheck, ModelReported (the model's own name for itself). No names, no emails, no student writing, no feedback text. |
 | **Why collected** | The Ledger keeps only the latest result and a count, so each check's wait and a student's sequence of attempts were lost. Waiting on feedback is friction that teaches nothing; this is how it's measured. |
 | **Written by** | `harvestFlowInputResults()` (37), one row per Flow 2 result, appended only. |
 | **Read by** | `evaluationHealth_()` (69, since 2026-11-01), for counts, rates and minutes per course and week in the `Measures` tab and one line of the overnight email; and `flowMeasures_()` (69b, since 2026-11-08), for Flow 2's minutes from sent to harvested in `FlowMeasures`. No identifier leaves it. |
