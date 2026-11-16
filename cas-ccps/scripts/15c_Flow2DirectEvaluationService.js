@@ -125,6 +125,8 @@ function _buildFlow2Prompt_(vars) {
     .replace(/\{\{MILESTONE_3\}\}/g, v.milestone3 || "")
     .replace(/\{\{MILESTONE_4\}\}/g, v.milestone4 || "")
     .replace(/\{\{DOD\}\}/g, v.dod || "")
+    .replace(/\{\{RUN_KEY\}\}/g, v.runKey || "direct")
+    .replace(/\{\{PROMPT_VERSION\}\}/g, v.promptVersion || "direct")
     .replace(/\{\{PROCESS_REFLECTION\}\}/g, _sanitizeFlow2StudentText_(v.processReflection) || "(none)")
     .replace(/\{\{EARLIER_PARTS\}\}/g, _sanitizeFlow2StudentText_(v.earlierParts) || "(none)")
     .replace(/\{\{STUDENT_TEXT\}\}/g, _sanitizeFlow2StudentText_(v.studentText));

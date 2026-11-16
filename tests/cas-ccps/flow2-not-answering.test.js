@@ -18,7 +18,7 @@ const S = (f) => path.join(SCRIPTS, f);
 function load(adminEmail = 'admin@school.test') {
   const env = loadGasFiles(
     ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
-      '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '37_FlowInputBuilder.js',
+      '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '37_FlowInputBuilder.js', '43_DeployVersionMarker_CentralLedger.js',
       '68_LessonParts.js', '40_FlowPrompts.js', '54_StudentAssignments.js'].map(S),
     ['backPropagateCompletions', 'harvestFlowInputResults', 'flow2NoteTimeout_', 'flow2NoteAnswered_',
       'flow2AlertState_', 'FI', 'FI_HEADERS'],
