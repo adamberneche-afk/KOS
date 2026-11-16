@@ -5,7 +5,8 @@
 // StagingRowRef; fixture rows, unpaired rows and unchanged text are counted
 // apart; a malformed side is counted by reason, not compared; the stamp and
 // each milestone are compared (the 3×3 table, one level apart, MET ↔
-// NOT_MET); cleanFrom splits out pairs whose original was built after a fix;
+// NOT_MET); an original that is a newer row's answer (one text in two rows
+// of a doc) is counted apart; cleanFrom splits out pairs whose original was built after a fix;
 // per unit: pairs and stamp changes; it writes nothing; the log has no file
 // ID, ConfigID or student text.
 
@@ -96,7 +97,7 @@ test('malformed, unpaired, unchanged and fixture rows are counted apart, not com
   t.nowTab.appendRow(t.row({ fileId: 'f4', output: good })); // built after the copy
   // Same doc and lesson, another submission: pairs on StagingRowRef.
   t.pair({ fileId: 'f5', ref: '8' }, good, out({ 1: 'PARTIALLY_MET', 2: 'MET' }, 'REVISION_REQUIRED'));
-  t.beforeTab.appendRow(t.row({ fileId: 'f5', ref: '9', output: good }));
+  t.beforeTab.appendRow(t.row({ fileId: 'f5', ref: '9', output: 'Second. ' + good }));
   t.nowTab.appendRow(t.row({ fileId: 'f5', ref: '9', output: 'Again. ' + good }));
   const a = t.x.reportRegradeConsistency({ beforeSsId: t.copyId }).all;
   assert.deepEqual(a.malformedBefore, { 'no outcomes line': 1 });
@@ -106,6 +107,24 @@ test('malformed, unpaired, unchanged and fixture rows are counted apart, not com
   assert.equal(a.pairs, 2);
   assert.equal(a.passToRevise, 1);
   assert.equal(a.stampSame, 1);
+});
+
+test('an original that is a newer submission\'s answer is counted apart, not compared', () => {
+  const t = load();
+  const met = out({ 1: 'MET', 2: 'MET' }, 'APPROVED');
+  const rev = out({ 1: 'MET', 2: 'NOT_MET' }, 'REVISION_REQUIRED');
+  // One answer in both rows of doc f1 (the duplicate-write bug): the newer
+  // row keeps it; the earlier row's pair is not compared.
+  t.pair({ fileId: 'f1', ref: '3', built: new Date('2026-11-12T15:00:00Z') }, met, rev);
+  t.pair({ fileId: 'f1', ref: '8', built: new Date('2026-11-13T15:00:00Z') }, met, 'Again. ' + met);
+  // The same text in another doc is not a copy.
+  t.pair({ fileId: 'f2' }, met, 'Again. ' + met);
+  const a = t.x.reportRegradeConsistency({ beforeSsId: t.copyId }).all;
+  assert.equal(a.copiedOriginal, 1);
+  assert.equal(a.pairs, 2);
+  assert.equal(a.stampSame, 2);
+  assert.equal(a.passToRevise, 0);
+  assert.ok(t.logs.some((l) => /another submission's answer 1/.test(l)), t.logs.join('\n'));
 });
 
 test('cleanFrom counts pairs whose original was built after a fix on their own', () => {

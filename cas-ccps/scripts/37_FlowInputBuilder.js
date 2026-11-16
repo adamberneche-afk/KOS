@@ -1854,6 +1854,104 @@ function removeFeedbackCommentsPosted(from, to, doDelete) {
   return out;
 }
 
+// ---------------------------------------------------------------------------
+// repostMissingFeedback — give back feedback the cleanup above took away
+// (added 2026-11-15). The re-grade answered some submissions Studio had
+// never answered (still READY for days), so the comment the cleanup deleted
+// was their only feedback. For each doc FlowInput names (fixture rows left
+// out), it takes the doc's newest row; when that row is HARVESTED and the
+// doc has no "Feedback, " comment from this account made after the row was
+// built, it lists the row, and with `doPost` true posts the row's result as
+// the harvest would (_fiFormatFeedbackComment_ on the student-facing text,
+// the stamp read by _fiCheckResultShape_). A doc whose newest row already
+// has feedback is left alone, so an older row superseded by a resubmission
+// is never posted. Rows whose assignment keeps feedback in the doc, and
+// malformed results, are counted, not posted. `skipRefs`: StagingRowRefs to
+// leave out (e.g. a result to check by hand first). Run it from the editor:
+//   repostMissingFeedback()                 // dry run: lists, posts nothing
+//   repostMissingFeedback(true, [67, 75])   // posts, leaving rows 67 and 75
+// It logs FlowInput row and StagingRowRef only. Posting is safe to repeat:
+// a posted row has its comment and is not posted again.
+// ---------------------------------------------------------------------------
+function repostMissingFeedback(doPost, skipRefs) {
+  const skip = {};
+  (skipRefs || []).forEach(function (r) { skip[String(r).trim()] = true; });
+  const started = Date.now();
+  const budgetMs = 4.5 * 60 * 1000;
+  const cfg = getConfig_();
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId)
+    .getSheetByName((cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME);
+  const out = { docs: 0, hasFeedback: 0, notHarvested: 0, inDoc: 0, skipped: 0, malformed: 0,
+    missing: 0, posted: 0, failed: 0, unreadable: 0, finished: true, rows: [] };
+  if (!sheet || sheet.getLastRow() < 2) { Logger.log("[FeedbackRepost] FlowInput is empty."); return out; }
+
+  // The newest row of each doc, by Timestamp, then row order.
+  const data = sheet.getDataRange().getValues();
+  const newest = {};
+  for (let i = 1; i < data.length; i++) {
+    if (_fxIsFlow2FixtureRow_(data[i])) continue;
+    const docId = _fiDocIdFromUrl_(data[i][FI.STUDENT_DOC_URL]) || String(data[i][FI.STUDENT_FILE_ID] || "").trim();
+    if (!docId) continue;
+    const at = sheetTimestampMs_(data[i][FI.TIMESTAMP]);
+    const cur = newest[docId];
+    if (!cur || (isNaN(at) ? 0 : at) >= (isNaN(cur.at) ? 0 : cur.at)) newest[docId] = { i: i, at: at };
+  }
+  const asComment = feedbackAsCommentChecker_();
+  const docIds = Object.keys(newest);
+
+  for (let d = 0; d < docIds.length; d++) {
+    if (Date.now() - started > budgetMs) { out.finished = false; break; }
+    out.docs++;
+    const docId = docIds[d];
+    const i = newest[docId].i, row = data[i], rowNum = i + 1;
+    const ref = String(row[FI.STAGING_ROW_REF] || "").trim();
+    const label = "Row " + rowNum + " (StagingRowRef " + ref + ")";
+    if (String(row[FI.READY_STATUS] || "").trim() !== "HARVESTED") { out.notHarvested++; continue; }
+    if (!asComment(row[FI.CONFIG_ID])) { out.inDoc++; continue; }
+    let since;
+    try {
+      const builtMs = isNaN(newest[docId].at) ? 0 : newest[docId].at;
+      since = _fiFeedbackCommentsIn_(docId, builtMs, Date.now() + 60000);
+    } catch (e) {
+      out.unreadable++;
+      Logger.log("[FeedbackRepost] " + label + ": couldn't read its comments (" + e.message + ").");
+      continue;
+    }
+    if (since.length) { out.hasFeedback++; continue; }
+    if (skip[ref]) { out.skipped++; Logger.log("[FeedbackRepost] " + label + ": no feedback, left out as asked."); continue; }
+    const output = String(row[FI.GEMINI_FULL_OUTPUT] || "").trim();
+    const shape = output ? _fiCheckResultShape_(output, row) : { ok: false, reason: "no output" };
+    if (!shape.ok) {
+      out.malformed++;
+      Logger.log("[FeedbackRepost] " + label + ": no feedback, but its result is malformed (" + shape.reason + "); not posted.");
+      continue;
+    }
+    out.missing++;
+    const result = shape.compliance === "APPROVED" ? "Passed" : "Revise";
+    let posted = false;
+    if (doPost === true) {
+      posted = _fiPostEvaluationComment_(docId,
+        _fiFormatFeedbackComment_(_fiStripMilestoneOutcomesLine_(output), shape.compliance));
+      if (posted) out.posted++; else out.failed++;
+    }
+    out.rows.push({ row: rowNum, ref: ref, result: result, posted: posted });
+    Logger.log("[FeedbackRepost] " + label + ": no feedback since it was built; result " + result +
+               (doPost === true ? (posted ? ", posted." : ", COULD NOT POST.") : "."));
+  }
+
+  Logger.log("[FeedbackRepost] " + (doPost === true ? "POST" : "DRY RUN (nothing posted)") + ": " +
+             out.docs + " of " + docIds.length + " doc(s) checked; " + out.hasFeedback + " have feedback, " +
+             out.missing + " missing" + (doPost === true ? " (" + out.posted + " posted, " + out.failed + " failed)" : "") +
+             (out.skipped ? ", " + out.skipped + " left out as asked" : "") +
+             (out.malformed ? ", " + out.malformed + " malformed" : "") +
+             (out.notHarvested ? ", " + out.notHarvested + " newest row not harvested" : "") +
+             (out.inDoc ? ", " + out.inDoc + " keep feedback in the doc" : "") +
+             (out.unreadable ? ", " + out.unreadable + " unreadable" : "") + "." +
+             (out.finished ? "" : " Stopped at the time budget; run it again to finish.") +
+             (doPost === true || !out.missing ? "" : " To post them, run it again with true as the first argument."));
+  return out;
+}
+
 // The feedback comments this account posted on one doc inside [fromMs, toMs].
 function _fiFeedbackCommentsIn_(docId, fromMs, toMs) {
   const found = [];
