@@ -44,6 +44,15 @@ three.
 | 11-15, 2:33–2:44 p.m. | — | The "any" re-grade of every FlowInput row (new model, rebuilt Studio) |
 | 11-15, 4:23 p.m. (push through #453) | Grader (delivery) | Malformed results and duplicate writes held back |
 
+## Recorded from 2026-11-16 on
+
+This timeline was rebuilt by hand. From the next push on, each result
+records its own versions (`EvaluationLog`: CodeVersion, PromptVersion,
+PromptHash, RunCheck, ModelReported, ModelConfigured), the operator records
+Studio changes in `StudioConfig`, and a daily probe (`Flow2Drift`) catches a
+platform change no one recorded. Add a row to the table above for each
+change all the same: it is the one place the three kinds are read together.
+
 ## Reading the data against it
 
 - **The live FlowInput tab holds the re-grade for every row built before

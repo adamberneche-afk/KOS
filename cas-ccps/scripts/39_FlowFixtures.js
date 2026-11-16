@@ -813,7 +813,8 @@ function _fxClearFlow2FixtureRows_(ledgerSs, cfg) {
   if (!sheet || sheet.getLastRow() < 2) return out;
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (!_fxIsFlow2FixtureRow_(data[i])) continue;
+    // The drift probe (39b) has its own remover, removeFlow2DriftProbe().
+    if (!_fxIsFlow2FixtureRow_(data[i]) || _fiIsDriftProbeRow_(data[i])) continue;
     const id = String(data[i][FI.STUDENT_FILE_ID] || "").trim();
     if (id) out.trashIds.push(id);
     sheet.getRange(i + 1, 1, 1, sheet.getLastColumn()).clearContent();
@@ -826,7 +827,10 @@ function _fxClearFlow2FixtureRows_(ledgerSs, cfg) {
 function flow2FixtureRows_(ss) {
   const sheet = ss.getSheetByName("FlowInput");
   if (!sheet || sheet.getLastRow() < 2) return 0;
-  return sheet.getDataRange().getValues().slice(1).filter(function (r) { return _fxIsFlow2FixtureRow_(r); }).length;
+  // The daily drift probe's row (39b) is meant to stay; it isn't a leftover.
+  return sheet.getDataRange().getValues().slice(1).filter(function (r) {
+    return _fxIsFlow2FixtureRow_(r) && !_fiIsDriftProbeRow_(r);
+  }).length;
 }
 
 // ---------------------------------------------------------------------------

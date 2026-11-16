@@ -78,7 +78,8 @@ function overnightHealth_(now, tz) {
 
   if (props.getProperty("M2_ENABLED") !== "true") {
     return { problems: ["Module 2 is off (M2_ENABLED), so the 3 a.m. runs and warm-ups don't run"]
-      .concat(_onTurnInChecks_(null, now).problems).concat(_onFlow2Duplicates_(null, now).problems), allClear: "" };
+      .concat(_onTurnInChecks_(null, now).problems).concat(_onFlow2Duplicates_(null, now).problems)
+      .concat(_onFlow2Drift_(null, now).problems), allClear: "" };
   }
 
   ON_STAGES.forEach(function (s) {
@@ -203,6 +204,11 @@ function overnightHealth_(now, tz) {
   dup.problems.forEach(function (p) { problems.push(p); });
   if (dup.unreadable) unreadable = true;
 
+  // Flow 2's daily drift probe (39b, 2026-11-16): no answer, or a platform change.
+  const drift = _onFlow2Drift_(ss, now);
+  drift.problems.forEach(function (p) { problems.push(p); });
+  if (drift.unreadable) unreadable = true;
+
   let allClear = "";
   if (!problems.length && !unreadable) {
     allClear = "All clear: all four 3 a.m. stages ran. " +
@@ -222,6 +228,16 @@ function _onFlow2Duplicates_(ss, now) {
     return { problems: line ? [line] : [], unreadable: false };
   } catch (e) {
     return { problems: ["Flow 2 duplicate writes: unavailable (" + e.message + ")"], unreadable: true };
+  }
+}
+
+// The drift probe's warning (39b's flow2DriftLine_). { problems, unreadable }.
+function _onFlow2Drift_(ss, now) {
+  try {
+    const line = flow2DriftLine_(ss || SpreadsheetApp.openById(getConfig_().ledgerSsId), now);
+    return { problems: line ? [line] : [], unreadable: false };
+  } catch (e) {
+    return { problems: ["Flow 2 drift probe: unavailable (" + e.message + ")"], unreadable: true };
   }
 }
 

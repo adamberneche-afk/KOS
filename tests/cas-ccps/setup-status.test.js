@@ -13,7 +13,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 
 function load() {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('35_FlowPreflightAndCanary.js'), S('58_LessonRollout.js'), S('23_StudentProfileManager.js'), S('64_LedgerCycle.js'),
-    S('37_FlowInputBuilder.js'), S('39_FlowFixtures.js')],
+    S('37_FlowInputBuilder.js'), S('39b_Flow2Provenance.js'), S('39_FlowFixtures.js')],
     ['showSetupStatus']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
