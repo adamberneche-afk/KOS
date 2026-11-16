@@ -2772,7 +2772,12 @@ function buildStudentDashboardHtml_(opts) {
   /* F16 items 4 and 5: one card per lesson, its part stepper, the
      milestone marks. */
   .stepper{font-size:13.5px;color:#3c4043;margin-top:2px}
-  .stepper .dots{letter-spacing:3px;color:#137333;margin-right:6px}
+  .stepper .dots{color:#137333;margin-right:6px;display:inline-flex;gap:2px;vertical-align:middle}
+  .stepper .dot{background:none;border:0;padding:2px 3px;margin:0;font:inherit;font-size:15px;line-height:1;color:#137333;cursor:pointer;border-radius:4px;min-width:24px;min-height:24px}
+  .stepper .dot:hover{background:#e6f4ea}
+  .stepper .dot:focus-visible{outline:2px solid #1a73e8;outline-offset:1px}
+  .stepper .dot-shown{text-decoration:underline;text-underline-offset:3px}
+  .stepper .dot-locked{color:#9aa0a6}
   .marks{list-style:none;margin:0 0 10px;padding:0;font-size:13.5px;line-height:1.45}
   .marks li{margin:3px 0}
   .marks-cap{font-size:12px;color:var(--text-secondary);margin:2px 0 2px}
@@ -3804,10 +3809,14 @@ function marksHtml(a, acrossParts) {
 
 // A lesson in parts, one card (F16 item 4): the part to work on now (the
 // first open part not done, else the last open one) with its one next
-// action, a stepper (● done, ◉ now, ○ to do or locked), the line saying
-// what opens the next locked part, and a button that shows every part:
-// the other open parts' cards and each locked part's line.
+// action, a stepper (● done, ◉ now, ○ to do, ○ dimmed when locked), the line
+// saying what opens the next locked part, and a button that shows every
+// part: the other open parts' cards and each locked part's line.
+// The stepper's dots are buttons (2026-11-16): an open part's dot shows that
+// part in the card (the one shown is underlined, aria-current); a locked
+// part's dot opens "All parts", where its line says what opens it.
 let _partsOpen = {};   // lesson -> true while its parts are shown (page memory)
+let _partShown = {};   // lesson -> the part number its dots chose (page memory)
 let _partInList = {};  // a part card's id -> its lesson, when it is under "All parts"
 function lessonDomId(lesson) { return String(lesson || "").replace(/[^A-Za-z0-9_-]/g, "_"); }
 function lessonCardHtml(part, list, locked) {
@@ -3815,13 +3824,22 @@ function lessonCardHtml(part, list, locked) {
   const shut = locked.filter(l => l.lesson === part.lesson).sort((x, y) => x.n - y.n);
   const count = Math.max(part.count || 0, open.length + shut.length);
   const current = open.filter(a => a.statusClass !== "DONE")[0] || open[open.length - 1];
+  const shown = open.filter(a => a.part.n === _partShown[part.lesson])[0] || current;
   const doneN = open.filter(a => a.statusClass === "DONE").length;
   let dots = "";
   for (let n = 1; n <= count; n++) {
     const a = open.filter(x => x.part.n === n)[0];
-    dots += a && a === current && a.statusClass !== "DONE" ? "◉" : a && a.statusClass === "DONE" ? "●" : "○";
+    const l = shut.filter(x => x.n === n)[0];
+    const sym = a && a.statusClass === "DONE" ? "●" : a && a === current ? "◉" : "○";
+    const state = a ? (a.statusClass === "DONE" ? "done" : a === current ? "to work on now" : "open") : l ? "locked" : "not open yet";
+    const title = a ? (a.part.title || "") : l ? (l.title || "") : "";
+    const label = "Part " + n + " of " + count + (title ? ": " + title : "") + ", " + state +
+      (a && a === shown ? ", shown" : "");
+    dots += '<button type="button" class="dot' + (a ? "" : " dot-locked") + (a && a === shown ? " dot-shown" : "") +
+      '" data-lesson="' + esc(part.lesson) + '" data-n="' + n + '" aria-label="' + esc(label) + '"' +
+      (a && a === shown ? ' aria-current="true"' : "") + ' onclick="showPart(this)">' + sym + '</button>';
   }
-  const stepper = '<div class="stepper"><span class="dots" role="img" aria-label="' + esc(doneN + " of " + count + " parts done") +
+  const stepper = '<div class="stepper"><span class="dots" role="group" aria-label="' + esc("Parts: " + doneN + " of " + count + " done") +
     '">' + dots + '</span>' + esc(doneN + " of " + count + " parts done") + '</div>';
   const id = lessonDomId(part.lesson);
   const isOpen = !!_partsOpen[part.lesson];
@@ -3831,27 +3849,46 @@ function lessonCardHtml(part, list, locked) {
   if (count > 1) {
     let rest = "";
     open.forEach(a => {
-      if (a === current) return;
+      if (a === shown) return;
       _partInList[cardId(a)] = part.lesson;
       rest += cardHtml(a, { inList: true });
     });
     shut.forEach(l => {
-      rest += '<div class="part-locked">🔒 Part ' + l.n + ' of ' + count + (l.title ? ": " + esc(l.title) : "") +
+      rest += '<div class="part-locked" id="locked-' + esc(id) + '-' + l.n + '" tabindex="-1">🔒 Part ' + l.n + ' of ' + count + (l.title ? ": " + esc(l.title) : "") +
         '<div>Opens when the check finds Part ' + (l.n - 1) + ' meets its main goal, or when your teacher opens it.</div></div>';
     });
     after += '<button type="button" class="parts-toggle" id="pt-' + esc(id) + '" data-lesson="' + esc(part.lesson) +
       '" aria-expanded="' + isOpen + '" aria-controls="parts-' + esc(id) + '" onclick="toggleParts(this)">' +
       (isOpen ? "Hide the other parts" : "All " + count + " parts") + '</button>' +
-      '<div class="parts-list" id="parts-' + esc(id) + '" role="region" aria-label="' + esc("All parts of " + cardName(current)) + '"' +
+      '<div class="parts-list" id="parts-' + esc(id) + '" role="region" aria-label="' + esc("All parts of " + cardName(shown)) + '"' +
       (isOpen ? "" : " hidden") + '>' + rest + '</div>';
   }
-  return cardHtml(current, { lesson: { stepper: stepper, after: after } });
+  return cardHtml(shown, { lesson: { stepper: stepper, after: after } });
 }
 // The "All parts" button: shows or hides them; focus stays on it.
 function toggleParts(btn) {
   const lesson = btn.getAttribute("data-lesson");
   _partsOpen[lesson] = !_partsOpen[lesson];
   if (_lastDashData) render(_lastDashData);
+}
+// A stepper dot: an open part is shown in the card; a locked one opens "All
+// parts" at its line. Focus goes to the same dot after the redraw.
+function showPart(btn) {
+  const lesson = btn.getAttribute("data-lesson");
+  const n = Number(btn.getAttribute("data-n"));
+  const locked = String(btn.className || "").indexOf("dot-locked") !== -1;
+  if (locked) _partsOpen[lesson] = true;
+  else _partShown[lesson] = n;
+  if (_lastDashData) render(_lastDashData);
+  const sel = 'button.dot[data-n="' + n + '"]';
+  const dots = document.querySelectorAll ? document.querySelectorAll(sel) : [];
+  for (let i = 0; i < dots.length; i++) {
+    if (dots[i].getAttribute("data-lesson") === lesson) { if (dots[i].focus) dots[i].focus(); break; }
+  }
+  if (locked) {
+    const line = document.getElementById("locked-" + lessonDomId(lesson) + "-" + n);
+    if (line && line.scrollIntoView) line.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
 }
 
 function _setFooter(data) {
