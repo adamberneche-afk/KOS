@@ -1039,6 +1039,12 @@ function showSetupStatus() {
     // Flow 2 writing one answer into several rows (37, 2026-11-15).
     const dup = flow2DuplicateWriteLine_(ss);
     if (dup) lines.push("  WARN " + dup);
+    // What runs Flow 2 (39b, 2026-11-16): the operator's StudioConfig record,
+    // and the daily drift probe.
+    const studio = studioConfigLine_(ss);
+    if (studio) lines.push("  WARN " + studio);
+    const drift = flow2DriftLine_(ss);
+    if (drift) lines.push("  WARN " + drift);
     // The Flow 2 fixture row (39), still in FlowInput once Flow 2 answers.
     const fixtures = flow2FixtureRows_(ss);
     if (fixtures) {

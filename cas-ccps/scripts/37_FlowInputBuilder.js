@@ -713,12 +713,52 @@ function _fiBuildPromptText_(matrixRow, processReflection, earlierParts, runKey)
 //     in the wrong row: the duplicate write, another lesson's answer),
 //     PROMPT_MISMATCH (Studio sent another prompt), or OLDER_PROMPT (built
 //     before the run line). Recorded, never held back, for now.
+//   - ModelConfigured: the model StudioConfig (39b, the operator's record)
+//     says Flow 2's Ask Gemini step ran at harvest time.
 //   - ModelReported: the model the answer says wrote it. A model knows its
 //     name from its training, not from what runs it, so this is a hint: a
 //     change in it is a sign; no change proves nothing. Studio's own record
 //     of the model is the operator's (meta/FLOW2_VERSIONS_2026-11.md).
 // No student text, ever.
 // ---------------------------------------------------------------------------
+// StudioConfig (39b, 2026-11-16): the operator's record of what Studio runs.
+// The harvest stamps the model in effect on each EvaluationLog row.
+const STUDIO_CONFIG_TAB = "StudioConfig";
+const STUDIO_CONFIG_HEADERS = ["From", "Flow", "Step", "Model", "Settings", "Note", "RecordedAt"];
+
+// StudioConfig's rows as { fromMs, flow, step, model }, oldest first; [] when
+// there is no tab.
+function studioConfigRows_(ss) {
+  const sheet = ss.getSheetByName(STUDIO_CONFIG_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return [];
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, STUDIO_CONFIG_HEADERS.length).getValues()
+    .map(function (r) {
+      return { fromMs: sheetTimestampMs_(r[0]), flow: String(r[1]).trim(), step: String(r[2]).trim(),
+        model: String(r[3]).trim(), recordedMs: sheetTimestampMs_(r[6]) };
+    })
+    .filter(function (r) { return !isNaN(r.fromMs); })
+    .sort(function (a, b) { return a.fromMs - b.fromMs; });
+}
+
+// The model StudioConfig says Flow 2's Ask Gemini step ran at `atMs`: the
+// latest such row with a model, from at or before then. "" when none.
+function studioModelAt_(rows, atMs) {
+  let model = "";
+  (rows || []).forEach(function (r) {
+    if (r.fromMs <= atMs && r.model && /^flow\s*2$/i.test(r.flow) && /ask gemini/i.test(r.step)) model = r.model;
+  });
+  return model;
+}
+
+// The daily drift probe's row (39b, 2026-11-16): a fixture row Flow 2
+// answers once a day on fixed text. The harvest leaves it EVALUATED for the
+// probe to read; nothing is delivered.
+const FI_DRIFT_PROBE_REF = "PROBE";
+
+function _fiIsDriftProbeRow_(row) {
+  return String(row[FI.STAGING_ROW_REF]).trim() === FI_DRIFT_PROBE_REF;
+}
+
 const FI_RUN_INFO_RE = /\[RUN_INFO:\s*(\{[^\n]*?\})\]/;
 const FI_SENT_RUN_RE = /"run":"([^"]*)","prompt":"([^"]*)"/;
 
@@ -1065,9 +1105,11 @@ function harvestFlowInputResults() {
     const dupes = _fiDuplicateWrites_(fiData);
     if (dupes.events.length) _fiRecordDuplicateWrites_(ledgerSs, dupes.events, now);
     const setAside = { rearmed: 0, malformed: 0, reasons: {} };
+    let studioRows = null; // StudioConfig (39b), read once if a row is harvested
 
     for (let i = 1; i < fiData.length; i++) {
       if (String(fiData[i][FI.READY_STATUS]).trim() !== "EVALUATED") continue;
+      if (_fiIsDriftProbeRow_(fiData[i])) continue; // 39b reads it
 
       const rowNum = i + 1;
       const geminiFullOutput = String(fiData[i][FI.GEMINI_FULL_OUTPUT] || "");
@@ -1080,8 +1122,13 @@ function harvestFlowInputResults() {
       // key for the Ledger, the evidence and the logs.
       const feedbackDocId = _fiDocIdFromUrl_(fiData[i][FI.STUDENT_DOC_URL]) || studentFileId;
       if (geminiFullOutput.trim() && !FLOW2_ALERT_SYNTHETIC_RE.test(configId)) answered = true;
-      // What made this answer (2026-11-16): recorded with every log row below.
+      // What made this answer (2026-11-16): recorded with every log row below,
+      // with the model StudioConfig (39b) says Ask Gemini ran.
       const prov = _fiProvenance_(fiData[i], geminiFullOutput);
+      if (studioRows === null) {
+        try { studioRows = studioConfigRows_(ledgerSs); } catch (e) { studioRows = []; }
+      }
+      prov.modelConfigured = studioModelAt_(studioRows, now.getTime());
       if (prov.runCheck && prov.runCheck !== "OK" && prov.runCheck !== "OLDER_PROMPT") {
         Logger.log("[FlowInputBuilder] Row " + rowNum + ": run check " + prov.runCheck + " (recorded; not held back).");
       }
@@ -1289,7 +1336,7 @@ function recordEvaluationResult_(ledgerSheet, fileId, configId, complianceStatus
 // tab gets the new headers on its next write; its older rows stay blank there.
 const EVAL_LOG_HEADERS = ["EvaluatedAt", "ConfigID", "StudentFileID", "Attempt", "Result",
   "SubmittedAt", "WaitMinutes", "SuggestedScore",
-  "CodeVersion", "PromptVersion", "PromptHash", "RunCheck", "ModelReported"];
+  "CodeVersion", "PromptVersion", "PromptHash", "RunCheck", "ModelReported", "ModelConfigured"];
 
 function _fiLogEvaluation_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore, prov) {
   try {
@@ -1325,7 +1372,8 @@ function _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, record
   const wait = !submittedAt || isNaN(sentMs) || sentMs > now.getTime() ? "" : Math.round((now.getTime() - sentMs) / 60000);
   sheet.appendRow([now, configId, fileId, recorded ? recorded.attempt : "", result,
     isNaN(sentMs) || !submittedAt ? "" : new Date(sentMs), wait, suggestedScore == null ? "" : suggestedScore,
-    p.codeVersion || "", p.promptVersion || "", p.promptHash || "", p.runCheck || "", p.model || ""]);
+    p.codeVersion || "", p.promptVersion || "", p.promptHash || "", p.runCheck || "", p.model || "",
+    p.modelConfigured || ""]);
 }
 
 // EvaluationLog's rows (no header), or [] when there is no tab.

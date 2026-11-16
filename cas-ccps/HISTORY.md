@@ -6066,3 +6066,35 @@ primary that was MET can now read PARTIALLY_MET.
 - Tests: `lesson-parts-unlock.test.js`, `lesson-parts-dashboards.test.js`,
   `student-dashboard-navigation.test.js`.
 
+## What runs Flow 2: StudioConfig and the daily drift probe, 2026-11-16
+
+The two pieces of provenance Apps Script can't read from Studio
+(`39b_Flow2Provenance.js`):
+
+- **StudioConfig, the operator's record.** It has one row per Studio change
+  (From, Flow, Step, Model, Settings, Note, RecordedAt), and rows are only
+  added. `installStudioConfig()` seeds the 11-13 to 11-15 history without
+  model names, since none were recorded at the time.
+  `recordStudioChange({...})` records a change, and `confirmStudioConfig()`
+  records a check that found none. The harvest (37) stamps the model in
+  effect for Flow 2's Ask Gemini step on each `EvaluationLog` row
+  (`ModelConfigured`). `showSetupStatus()` warns when the record is
+  missing, names no model, or is over 14 days old. The readers live in 37,
+  beside the harvest.
+- **The daily drift probe.** The 11-13 model change came with no change of
+  ours, so a record alone would have missed it. Once a day Flow 2 grades the
+  first fixture's text, as a FlowInput row with StagingRowRef `PROBE`. The
+  harvest leaves that row alone, and the fixture tools and reports treat it
+  as a fixture without counting it as a leftover. The next run records the
+  answer in `Flow2Drift`: the stamp, the outcomes, the shape (section
+  headings with their numbers, the milestone label style, the machine
+  lines), the length in steps of 250 characters, the run check, the
+  reported model, and our code and prompt versions. It then reseeds the
+  probe. A model, shape or large length change with the same code and prompt
+  is `PLATFORM`, and the overnight email and `showSetupStatus()` say so for
+  3 days. An unanswered probe is said at once. Changes in the stamp and
+  outcomes are noted but not flagged, since the same work can grade
+  differently from run to run.
+- Tests: `tests/cas-ccps/flow2-provenance.test.js`; ModelConfigured in
+  `tests/cas-ccps/flow2-run-info.test.js`.
+
