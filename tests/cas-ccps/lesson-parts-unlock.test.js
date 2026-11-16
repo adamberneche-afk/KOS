@@ -2,6 +2,8 @@
 // 68's unlocks (meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3): a student's next
 // part opens when their latest check of the part before found its primary
 // MET, or when their teacher unlocks it; PartUnlocks records each.
+// explainLockedParts (2026-11-16) says why each next locked part is locked,
+// with the turn-in code and the 11-15 re-grade beside it.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +18,7 @@ const TEACHER = 'teacher@ccpsnet.net';
 function setup() {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'), S('55b_LessonAssignmentData.js'), S('64_LedgerCycle.js'), S('68_LessonParts.js')],
     ['unlockReadyParts', 'previewPartUnlocks', 'unlockNextPart_', 'partOfConfigId_', 'lessonPartsOf_', 'getConfig_',
-      'partHeldSchoolDays_', 'partsHeldByFailure_', 'foldPartRows_']);
+      'partHeldSchoolDays_', 'partsHeldByFailure_', 'foldPartRows_', 'explainLockedParts']);
   const { sandbox } = env;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -143,4 +145,44 @@ test('foldPartRows_: the Teacher Dashboard row carries the held flag, only when 
   assert.equal(fine.heldByFailure, null);
   const last = exported.foldPartRows_([row(1, 'TIMED OUT', 'ERROR_TIMEOUT')], WED)[0];
   assert.equal(last.heldByFailure, null, 'no next part to hold');
+});
+
+test('explainLockedParts: one reason per next locked part, with the turn-in code and the re-grade', () => {
+  const { exported, ev, add, ss, sandbox } = setup();
+  const logs = [];
+  sandbox.Logger.log = (m) => logs.push(String(m));
+  // A: Part 1 met, then the re-grade said PARTIALLY_MET; holds a code for Part 1.
+  add('VDOE-A1', '1@ccpsnet.net', 1, 'ACTIVE'); add('VDOE-A2', '1@ccpsnet.net', 2, 'SCHEDULED');
+  add('VDOE-A3', '1@ccpsnet.net', 3, 'SCHEDULED');
+  ev.appendRow(['e1', 's', '8177-81', 'm', 'MET', 'C', '2026-11-12T15:00:00Z', 'file-VDOE-A1', '']);
+  ev.appendRow(['e2', 's', '8177-81', 'm', 'PARTIALLY_MET', 'C', '2026-11-15T19:40:00Z', 'file-VDOE-A1', '']);
+  const codes = ss.insertSheet('TurnInCodes');
+  codes.appendRow(['Code', 'GoogleID', 'AssignmentID', 'StudentConfigID']);
+  codes.appendRow(['X1', '1@ccpsnet.net', 'a', 'VDOE-A1']);
+  // B: checked, but under another competency's ID.
+  add('VDOE-B1', '2@ccpsnet.net', 1, 'ACTIVE'); add('VDOE-B2', '2@ccpsnet.net', 2, 'SCHEDULED');
+  ev.appendRow(['e3', 's', '8177-99', 'm', 'MET', 'C', '2026-11-12T15:00:00Z', 'file-VDOE-B1', '']);
+  // C: met: the job would open it.
+  add('VDOE-C1', '3@ccpsnet.net', 1, 'ACTIVE'); add('VDOE-C2', '3@ccpsnet.net', 2, 'SCHEDULED');
+  ev.appendRow(['e4', 's', '8177-81', 'm', 'MET', 'C', '2026-11-12T15:00:00Z', 'file-VDOE-C1', '']);
+  // D: the check failed; E: not checked.
+  add('VDOE-D1', '4@ccpsnet.net', 1, 'ERROR_TIMEOUT'); add('VDOE-D2', '4@ccpsnet.net', 2, 'SCHEDULED');
+  add('VDOE-E1', '5@ccpsnet.net', 1, 'ACTIVE'); add('VDOE-E2', '5@ccpsnet.net', 2, 'SCHEDULED');
+
+  const r = exported.explainLockedParts();
+  const by = Object.fromEntries(r.items.map((x) => [x.row, x]));
+  assert.equal(r.items.length, 5);
+  assert.equal(r.behind, 1, "A's Part 3 waits on Part 2");
+  assert.equal(by[3].reason, 'PRIMARY_NOT_MET');
+  assert.equal(by[3].latest, 'PARTIALLY_MET');
+  assert.equal(by[3].everMet, true);
+  assert.equal(by[3].latestInRegrade, true);
+  assert.equal(by[3].prevHasCode, true);
+  assert.equal(by[6].reason, 'PRIMARY_NOT_IN_EVIDENCE');
+  assert.deepEqual(by[6].seen, ['8177-99']);
+  assert.equal(by[8].reason, 'READY');
+  assert.equal(by[10].reason, 'PREVIOUS_CHECK_FAILED');
+  assert.equal(by[12].reason, 'PREVIOUS_NOT_CHECKED');
+  assert.ok(logs.some((l) => /Ledger row 3 .*PRIMARY_NOT_MET .*earlier check found it MET.*re-grade.*turn-in code/.test(l)), logs.join('\n'));
+  assert.ok(logs.every((l) => !/@ccpsnet|file-VDOE/.test(l)), 'no address or file ID');
 });

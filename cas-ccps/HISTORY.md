@@ -6038,6 +6038,34 @@ SHA-256, catches a prompt Studio didn't take from the row.
 - Studio needs no change: its Ask Gemini step reads each row's PromptText.
 - Tests: `tests/cas-ccps/flow2-run-info.test.js`.
 
+## Part 2 locked after a turn-in code on Part 1; the stepper's dots, 2026-11-16
+
+The operator saw a student earn a turn-in code on Part 1 while Part 2
+stayed locked. The two rules were each built as designed, but they read as
+one. A turn-in code is earned on any feedback, Revise included (71: the
+question asks what the student will change). A part opens only when the
+latest check of the part before it found that part's primary MET (68). So a
+code on Part 1 doesn't open Part 2. There was a second likely cause: the
+11-15 re-grade wrote new CompetencyEvidence for every row, and it was the
+harsher one (`NOT_MET` 50 → 74). The rule reads the latest check, so a
+primary that was MET can now read PARTIALLY_MET.
+
+- **68: `explainLockedParts()`** gives, for each student's next locked part,
+  one of `READY`, `PRIMARY_NOT_MET`, `PRIMARY_NOT_IN_EVIDENCE`,
+  `PREVIOUS_CHECK_FAILED` or `PREVIOUS_NOT_CHECKED`. It also says whether an
+  earlier check found the primary MET, whether the latest check is the
+  re-grade's, and whether the student holds a turn-in code for the part
+  before. It reads only, and logs row numbers and IDs, never a name or file.
+  The teacher opens a part by hand from the Teacher Dashboard.
+- **13: the stepper's dots are buttons.** They were a text label
+  (`role="img"`), so the only way to another part was **All n parts**. An
+  open part's dot now shows that part in the card: it is underlined and
+  carries `aria-current`, and focus returns to it after the redraw. A locked
+  part's dot is dimmed and opens **All n parts** at its line. Each dot's
+  label names the part and its state. The choice is page memory.
+- Tests: `lesson-parts-unlock.test.js`, `lesson-parts-dashboards.test.js`,
+  `student-dashboard-navigation.test.js`.
+
 ## What runs Flow 2: StudioConfig and the daily drift probe, 2026-11-16
 
 The two pieces of provenance Apps Script can't read from Studio
