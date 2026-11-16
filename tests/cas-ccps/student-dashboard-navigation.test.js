@@ -327,7 +327,8 @@ test('one card per lesson: the part to work on now, a stepper, one next action, 
   assert.equal((h.match(/class="card [A-Z_]+ lesson-card"/g) || []).length, 1, 'one lesson card for the lesson in parts');
   const lesson = h.slice(h.indexOf('lesson-card'), h.indexOf('class="parts-list"'));
   assert.match(lesson, /<div class="part-sub">Part 2 of 4: Step 2<\/div>/, 'Part 2 needs revising: it is the one to work on');
-  assert.match(lesson, /aria-label="1 of 4 parts done">●◉○○<\/span>1 of 4 parts done/);
+  assert.match(lesson, /aria-label="Parts: 1 of 4 done">(<button[^>]*>[●◉○]<\/button>){4}<\/span>1 of 4 parts done/);
+  assert.deepEqual((lesson.match(/>([●◉○])<\/button>/g) || []).map((x) => x[1]), ['●', '◉', '○', '○']);
   // The label names the part it describes (2026-11-15): the marks cover every part so far.
   assert.match(lesson, /<div class="pill pill-[A-Z_]+">Part 2: [^<]+<\/div>/);
   assert.equal((lesson.match(/act-primary/g) || []).length, 1, 'one next action');
@@ -339,6 +340,18 @@ test('one card per lesson: the part to work on now, a stepper, one next action, 
   assert.match(p.els.main.innerHTML, /aria-expanded="true"[^>]*>Hide the other parts<\/button><div class="parts-list"[^>]*>(?!.*hidden)/);
   p.ctx.toggleParts(btn);
   assert.match(p.els.main.innerHTML, /parts-list"[^>]*hidden>/);
+  // A dot shows that part in the card (2026-11-16): Part 1's, then back to Part 2.
+  p.ctx.showPart({ getAttribute: (k) => (k === 'data-lesson' ? 'CAS-8177-THE-HYPE-MACHINE' : '1'), className: 'dot' });
+  let main = p.els.main.innerHTML;
+  main = main.slice(main.indexOf('lesson-card'), main.indexOf('class="parts-list"'));
+  assert.match(main, /<div class="part-sub">Part 1 of 4: Step 1<\/div>/, 'Part 1 is shown');
+  assert.match(main, /data-n="1" aria-label="Part 1 of 4: Step 1, done, shown" aria-current="true"/);
+  // A locked dot opens "All parts" (where its line says what opens it); the shown part stays.
+  p.ctx.showPart({ getAttribute: (k) => (k === 'data-lesson' ? 'CAS-8177-THE-HYPE-MACHINE' : '4'), className: 'dot dot-locked' });
+  assert.match(p.els.main.innerHTML, /aria-expanded="true"/);
+  assert.match(p.els.main.innerHTML, /<div class="part-sub">Part 1 of 4: Step 1<\/div>/);
+  p.ctx.showPart({ getAttribute: (k) => (k === 'data-lesson' ? 'CAS-8177-THE-HYPE-MACHINE' : '2'), className: 'dot' });
+  p.ctx.toggleParts(btn);
   // Do next to a part under "All parts" opens them first.
   p.ctx.goToCard('card-W-HYPE-P1');
   assert.match(p.els.main.innerHTML, /aria-expanded="true"/);

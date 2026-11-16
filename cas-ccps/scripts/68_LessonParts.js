@@ -283,6 +283,143 @@ function partUnlocksHaveWork_(ctx) {
   return true;
 }
 
+// ---------------------------------------------------------------------------
+// explainLockedParts — why each locked part is still locked (2026-11-16,
+// after a student earned a turn-in code on Part 1 and Part 2 stayed shut).
+// A turn-in code is earned on any feedback, Revise included (71: the
+// question asks what the student will change), while a part opens only when
+// the latest check of the part before it found that part's primary
+// competency MET. So a code on Part 1 doesn't open Part 2. For each
+// student's next locked part (a SCHEDULED part whose previous part is open),
+// one reason:
+//   READY                    the primary is MET: unlockReadyParts() would open
+//                            it now (if it stays, the cycle's job isn't running)
+//   PRIMARY_NOT_MET          the latest check found it PARTIALLY_MET or NOT_MET
+//                            (and says when an earlier check found it MET, and
+//                            when the latest is the 11-15 re-grade's)
+//   PRIMARY_NOT_IN_EVIDENCE  checked, but no evidence row for the primary's ID
+//                            (an ID mismatch between the lesson and the matrix)
+//   PREVIOUS_CHECK_FAILED    the previous part's last check ended in an error
+//   PREVIOUS_NOT_CHECKED     no check of the previous part yet
+// and whether the student holds a turn-in code for the previous part. Reads
+// only. Logs Ledger row numbers, lesson keys, part numbers and competency
+// IDs: no name, email or file ID. The teacher opens a part by hand from the
+// Teacher Dashboard ("Open Part n now").
+// ---------------------------------------------------------------------------
+const LP_REGRADE_FROM = "2026-11-15T14:30:00-05:00";
+const LP_REGRADE_TO = "2026-11-15T14:50:00-05:00";
+
+function explainLockedParts() {
+  requireScriptOwner_();
+  const cfg = getConfig_();
+  const res = lockedPartReasons_(SpreadsheetApp.openById(cfg.ledgerSsId), cfg);
+  const counts = {};
+  res.items.forEach(function (x) { counts[x.reason] = (counts[x.reason] || 0) + 1; });
+  Logger.log("[S68] Locked parts next in line: " + res.items.length + " (" +
+    (Object.keys(counts).map(function (k) { return k + " " + counts[k]; }).join(", ") || "none") +
+    "); locked behind another locked part: " + res.behind + ".");
+  res.items.forEach(function (x) {
+    Logger.log("  Ledger row " + x.row + " (" + x.lessonKey + ", Part " + x.n + "): " + x.reason +
+      (x.latest ? " (latest: " + x.latest + ")" : "") +
+      (x.everMet ? "; an earlier check found it MET" : "") +
+      (x.latestInRegrade ? "; the latest check is the 11-15 re-grade's" : "") +
+      (x.reason === "PRIMARY_NOT_IN_EVIDENCE" ? "; expected " + x.primary + ", found " + (x.seen.join(", ") || "none") : "") +
+      (x.prevHasCode ? "; holds a turn-in code for Part " + (x.n - 1) : ""));
+  });
+  return res;
+}
+
+// { items: [{ row, lessonKey, n, reason, primary, latest, everMet,
+//   latestInRegrade, seen, prevHasCode }], behind }.
+function lockedPartReasons_(ss, cfg) {
+  _lpSaCache_ = null;
+  const out = { items: [], behind: 0 };
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (!ledger || ledger.getLastRow() < 2) return out;
+  const assignmentOf = _lpAssignmentOf_(ss);
+  const history = _lpEvidenceHistory_(ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence"));
+  const coded = _lpCodedStudentIds_(ss);
+  const fromMs = Date.parse(LP_REGRADE_FROM), toMs = Date.parse(LP_REGRADE_TO);
+  const data = ledger.getRange(1, 1, ledger.getLastRow(), LEDGER_COL_COUNT).getValues();
+  const byStudent = {};
+  for (let i = 1; i < data.length; i++) {
+    const sid = String(data[i][LEDGER.CONFIG_ID]).trim();
+    const info = partOfConfigId_(assignmentOf[sid]);
+    if (!info || String(data[i][LEDGER.STATUS]).trim() === "ARCHIVED") continue;
+    const k = String(data[i][LEDGER.GOOGLE_ID]).trim().toLowerCase() + "|" + info.lessonKey;
+    (byStudent[k] = byStudent[k] || {})[info.n] = { rowIndex: i, row: data[i], sid: sid, info: info };
+  }
+  Object.keys(byStudent).forEach(function (k) {
+    const parts = byStudent[k];
+    Object.keys(parts).forEach(function (n) {
+      const cur = parts[n];
+      if (String(cur.row[LEDGER.STATUS]).trim() !== "SCHEDULED") return;
+      const prev = parts[Number(n) - 1];
+      if (!prev) return; // Part 1 opens with the lesson's release
+      if (String(prev.row[LEDGER.STATUS]).trim() === "SCHEDULED") { out.behind++; return; }
+      const primary = prev.info.part.a.milestoneCompetencyIds[0];
+      const file = String(prev.row[LEDGER.FILE_ID]).trim();
+      const ev = history[file] || {};
+      const item = { row: cur.rowIndex + 1, lessonKey: cur.info.lessonKey, n: Number(n), reason: "", primary: primary,
+        latest: "", everMet: false, latestInRegrade: false, seen: Object.keys(ev).sort(), prevHasCode: !!coded[prev.sid] };
+      const checks = ev[primary];
+      if (checks && checks.length) {
+        const last = checks[checks.length - 1];
+        item.latest = last.outcome;
+        item.everMet = checks.slice(0, -1).some(function (c) { return c.outcome === "MET"; });
+        item.latestInRegrade = last.at >= fromMs && last.at <= toMs;
+        item.reason = last.outcome === "MET" ? "READY" : "PRIMARY_NOT_MET";
+      } else if (item.seen.length) {
+        item.reason = "PRIMARY_NOT_IN_EVIDENCE";
+      } else if (LP_FAILED_CHECK_STATUSES.indexOf(String(prev.row[LEDGER.STATUS]).trim()) !== -1) {
+        item.reason = "PREVIOUS_CHECK_FAILED";
+      } else {
+        item.reason = "PREVIOUS_NOT_CHECKED";
+      }
+      out.items.push(item);
+    });
+  });
+  out.items.sort(function (a, b) { return a.row - b.row; });
+  return out;
+}
+
+// Every unarchived check per file and competency, oldest first:
+// { file: { competencyId: [{ at, outcome }] } }.
+function _lpEvidenceHistory_(evidence) {
+  const out = {};
+  if (!evidence || evidence.getLastRow() < 2) return out;
+  const rows = evidence.getDataRange().getValues();
+  const h = rows[0].map(function (x) { return String(x).trim(); });
+  const iFile = h.indexOf("student_file_id"), iComp = h.indexOf("competency_id"),
+    iOut = h.indexOf("outcome"), iAt = h.indexOf("evaluated_at"), iArch = h.indexOf("archive_status");
+  if (iFile === -1 || iComp === -1 || iOut === -1 || iAt === -1) return out;
+  rows.slice(1).forEach(function (r) {
+    if (iArch !== -1 && String(r[iArch]).trim()) return;
+    const file = String(r[iFile]).trim(), comp = String(r[iComp]).trim();
+    if (!file || !comp) return;
+    const f = out[file] = out[file] || {};
+    (f[comp] = f[comp] || []).push({ at: sheetTimestampMs_(r[iAt]) || 0, outcome: String(r[iOut]).trim().toUpperCase() });
+  });
+  Object.keys(out).forEach(function (file) {
+    Object.keys(out[file]).forEach(function (c) { out[file][c].sort(function (a, b) { return a.at - b.at; }); });
+  });
+  return out;
+}
+
+// { studentConfigId: true } for each part a turn-in code was issued for
+// (71's TurnInCodes, read by header; this file is in the Teacher Dashboard
+// project too, which doesn't hold 71).
+function _lpCodedStudentIds_(ss) {
+  const out = {};
+  const sheet = ss.getSheetByName("TurnInCodes");
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const rows = sheet.getDataRange().getValues();
+  const i = rows[0].map(function (x) { return String(x).trim(); }).indexOf("StudentConfigID");
+  if (i === -1) return out;
+  rows.slice(1).forEach(function (r) { const id = String(r[i]).trim(); if (id) out[id] = true; });
+  return out;
+}
+
 function previewPartUnlocks() {
   requireScriptOwner_();
   const cfg = getConfig_();
