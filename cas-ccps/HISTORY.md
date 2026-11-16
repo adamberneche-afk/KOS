@@ -5971,11 +5971,12 @@ names only; it writes nothing. Tests: `tests/cas-ccps/regrade-consistency.test.j
 
 ## Feedback the cleanup took away, and copied originals, 2026-11-15
 
-Comparing FlowInput before and after the re-grade showed two problems with
-what was done that afternoon. First, 11 rows had never been answered, so
-the re-grade was their first feedback and the cleanup deleted it. Three of
-them had a newer row on the same doc that got feedback on 11-14, but 8 docs
-were left with none. `repostMissingFeedback(doPost, skipRefs)` (37) takes
+Comparing FlowInput before and after the re-grade raised two problems with
+what was done that afternoon. First, 11 rows show no answer in the copy of
+the earlier version. The operator remembers them going through before the
+test; if they didn't, the re-grade was their first feedback and the cleanup
+deleted it (3 had a newer row with 11-14 feedback, leaving up to 8 docs with
+none). The function below tells the two apart by the comments on each doc. `repostMissingFeedback(doPost, skipRefs)` (37) takes
 each doc's newest row. When that row is HARVESTED and has no "Feedback, "
 comment from this account since it was built, it lists the row, and with
 `doPost` true posts the row's result as the harvest would. Superseded rows,
@@ -5987,3 +5988,6 @@ compared different drafts. `regradeConsistency_` (69) now counts an original
 that holds the same text as a newer row of the same doc apart, not compared.
 Tests: `tests/cas-ccps/feedback-repost.test.js`,
 `tests/cas-ccps/regrade-consistency.test.js`.
+The operator reports a new Gemini model around the same days, which likely
+affected inference; if Studio's step changed model between the originals and
+the re-grade, the consistency numbers compare two models.
