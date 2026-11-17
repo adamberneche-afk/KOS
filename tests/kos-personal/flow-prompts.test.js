@@ -189,16 +189,6 @@ test('CURATOR_AUDITOR_SYSTEM_PROMPT\'s output schema matches what _isAuditFailur
   });
 });
 
-// The managed inference service classifies VECTOR_CLASSIFY jobs with the
-// same prompt, from its own generated copy (it's deployed without the .md
-// files). Same drift guard as the .gs constants above.
-test('inference-service/src/flow-prompts.js matches VECTOR_CLASSIFY_PROMPT.md', () => {
-  const { VECTOR_CLASSIFY_SYSTEM_PROMPT } = require(path.join(KP, 'inference-service', 'src', 'flow-prompts.js'));
-  const md = fs.readFileSync(path.join(KP, 'VECTOR_CLASSIFY_PROMPT.md'), 'utf8');
-  assert.equal(VECTOR_CLASSIFY_SYSTEM_PROMPT, extractPromptBody(md),
-    'stale — run node tools/kos-personal/generate-flow-prompts.js');
-});
-
 // Asked for "an owner" with an example value of "Name or role", the Curator
 // filled in "Developer" on every fixture run, a name the transcript never
 // gives. The prompt now says null when the transcript names no one.

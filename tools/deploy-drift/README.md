@@ -18,9 +18,9 @@ unauthenticated request never reaches `doGet()` at all, so polling them
 would need a production Google credential in CI — deliberately ruled out
 (see `tools/clasp-sync/SANDBOX_CI_SETUP.md`'s fence between sandbox and
 production credentials; Phase 3 isn't the thing that should erode it). The
-7 remaining projects (6 deployed, plus the blocked `cas-ccps:studio-steps`)
+6 remaining projects (`cas-ccps:studio-steps` was archived 2026-11-17)
 have no web app at all, so no inbound surface to poll regardless. None of
-the 11 is reachable by an anonymous external request (the Student
+the 10 is reachable by an anonymous external request (the Student
 Dashboard's committed manifest is `access: DOMAIN`).
 
 So the design pushes instead. Apps Script already runs as a fully trusted

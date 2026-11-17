@@ -229,8 +229,8 @@ test('the known-blocked cas-ccps surfaces are still declared blocked', () => {
   // Pinned deliberately. If someone flips either of these to live-ok, that
   // should be because a district admin enabled GCP on the account — a real
   // event worth a deliberate test change, not a quiet edit.
-  assert.equal(GCP_MAP.surfaces['cas-ccps/clasp/manifests/studio-steps.appsscript.json'].status,
-    'live-blocked');
+  // (cas-ccps's custom Studio steps were archived 2026-11-17, clean-up C1:
+  // like kos-personal's, no longer a surface. Pinned in the test below.)
   assert.equal(GCP_MAP.surfaces['cas-ccps/scripts/15c_Flow2DirectEvaluationService.js'].status,
     'live-blocked');
 });
@@ -248,11 +248,15 @@ test('kos-personal\'s custom steps, blocked on the same account, are archived ra
   // project or a surface this repo needs, so it is not declared at all.
   assert.equal(GCP_MAP.surfaces['kos-personal/studio-steps/appsscript.json'], undefined);
   assert.equal(PROJECT_MAP['kos-personal:studio-steps'], undefined);
+  // cas-ccps's, archived the same way 2026-11-17 (clean-up C1).
+  assert.equal(GCP_MAP.surfaces['cas-ccps/clasp/manifests/studio-steps.appsscript.json'], undefined);
+  assert.equal(PROJECT_MAP['cas-ccps:studio-steps'], undefined);
 });
 
 test('a declared surface marked scanned:false is not a GAS file', () => {
-  // The only legitimate use of the opt-out: kos-personal/inference-service/
-  // is a standalone Node service, not a file in any Apps Script project. If
+  // The only legitimate use of the opt-out: a standalone service, not a file
+  // in any Apps Script project (kos-personal/inference-service/ was one until
+  // it was archived 2026-11-17). If
   // a .gs file ever gets this flag it is exempting itself from the check.
   Object.entries(GCP_MAP.surfaces)
     .filter(([, def]) => def.scanned === false)

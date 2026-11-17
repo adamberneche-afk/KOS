@@ -1,5 +1,5 @@
 'use strict';
-// Regression tests for cas-ccps/studio-steps/StepsShared.gs — the safe
+// Regression tests for cas-ccps/archived/studio-steps/StepsShared.gs — the safe
 // input reader (inStr_) and fence-stripping helper (stripJsonFence_)
 // every step in this project relies on. These two functions are what
 // make the "fails closed" claim in every step's own header actually
@@ -10,9 +10,9 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFiles } = require('../harness/gas-sandbox');
+const { loadGasFiles } = require('../../harness/gas-sandbox');
 
-const SHARED_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'StepsShared.gs');
+const SHARED_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
 
 function load(exposeNames) {
   return loadGasFiles([SHARED_PATH], exposeNames);

@@ -6137,3 +6137,31 @@ The two pieces of provenance Apps Script can't read from Studio
 - Tests: `tests/cas-ccps/flow2-provenance.test.js`; ModelConfigured in
   `tests/cas-ccps/flow2-run-info.test.js`.
 
+## Clean-up C1 and C2: the custom Studio steps and the AutoInstaller archived, 2026-11-17
+
+Approved by the operator on 2026-11-17, after the 10-29 dead-ends audit
+found `cas-ccps/studio-steps/` was never archived, and the 11-08 handoff
+listed C1–C3 as needing a decision. The repo's pattern for this is
+`cas-ccps/archived/` (as with `70_WorkFileProbe.js`): out of every project,
+push, test run and lint, and kept for reference.
+
+- **C1, the custom Studio steps** → `cas-ccps/archived/studio-steps/`, with
+  their manifest and clasp template under `clasp/`. They were never
+  reachable: the district's GCP block keeps a custom step out of Studio's
+  picker, and 37 and 41 replaced every one. Changes: the
+  `cas-ccps:studio-steps` project is gone from `project-map.json`, as are
+  its GCP-map surface, its sandbox push in CI, gas-lint's deployable-folder
+  entry and doc-currency's surface-doc entry. Its nine tests moved to
+  `tests/cas-ccps/archived/` (they pass by hand, 72);
+  `competency-evidence-schema-compat.test.js` still reads
+  `CommitStudentEvaluationStep.gs` from the archive. deploy-drift's two
+  tests that used it as the one project with no marker now use projects
+  with a marker and leave it out.
+- **C2, `21_AutoInstaller.js`** → `cas-ccps/archived/`: the Apps Script
+  API installer, which needs a Cloud project. `run.js` installs every
+  project. It's out of the Unified Manual, along with its menu item
+  ("Install Scripts Automatically") and that project's `script.projects`
+  and `script.deployments` scopes. Dropping scopes asks for no new consent.
+  `docs/REGISTRY_SHEET_SETUP.md` is marked archived.
+- **C3** (kos-personal's inference service) is in `kos-personal/CHANGELOG.md`.
+

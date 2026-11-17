@@ -84,7 +84,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 25_VectorDocs.gs           Vector Item Labeler flow (Apps Script half) + VECTOR_* docs compiled from its labels (Stage 2's standard) ✅ in repo — see "Registrar / Cog Relay" below
 26_WeeklyReview.gs         Mails the Sunday build review on Monday (or says it is missing) ✅ in repo
 27_FidelitySample.gs       Randomized closeout-fidelity draw (10%), FIDELITY_AUDIT, the primer's Fidelity line ✅ in repo
-inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see CHANGELOG.md + its own README (its OAuth grant no longer requests Drive access at all — Open Items #6, CHANGELOG.md; and read a model response by block type, never content[0] — its README's "Reading the model's output" note; checkout now takes its price from the server: `/checkout/credits` accepts only a `credits` value from `/api/v1/pricing`'s bundles, and a subscription grants credits only for a configured price, `test/billing-pricing.test.js`; failed requests return `Internal server error` plus a logged `ref`, never the raw error text, except a 400's or a 402's own message, `src/http-errors.js` and `test/http-errors.test.js`; `VECTOR_CLASSIFY` jobs get the Studio classifier prompt from the generated `src/flow-prompts.js`, not the Curator one, `test/inference-classify.test.js`)
+archive/inference-service/ Optional Node.js managed-inference backend — ARCHIVED 2026-11-17 (dormant since D16; needs Google Cloud, off for the district)
 rtp-core-router/protocols/ governance/protocol docs                       ✅ filed in — see CHANGELOG.md. SMPs aren't kept here: `SMP_REGISTER` + `01.3_SMP_PROPOSALS` (meta/SMP_PROCESS.md)
 claude-project/            Claude Project instructions, session-log format, flows briefing ✅ in repo — replaces the RTP Gem (meta/PLAN_2026-10.md); FLOWS_BRIEFING.md (2026-11-15) tells the RTP what each pipeline behind its signals is for
 archive/studio-steps/      Archived custom Studio steps — SEPARATE Apps Script project, unpublishable without GCP; see its own README
@@ -146,7 +146,7 @@ Council cog verdict        COG_VERDICT  (submitCogVerdict(), skips PENDING_FLOW/
 | `TURNSTILE_STALE_MINS` | 30 | Minutes before stuck STUDIO_ACTIVE resets |
 | `SHADOW_VERIFY_THRESHOLD` | 0.75 | Confidence to mark a shadow question VERIFIED |
 | `COUNCIL_AUTO_TRIGGER_SESSIONS` | 5 | Sessions between auto-council checks |
-| `INFERENCE_MODE` | `'STUDIO'` | `'STUDIO'` (default, no vendor server) or `'MANAGED_SERVICE'` (opt-in — see CHANGELOG.md for how this was added, and `inference-service/README.md` for the service itself) |
+| `INFERENCE_MODE` | `'STUDIO'` | `'STUDIO'` (default, no vendor server) or `'MANAGED_SERVICE'` (opt-in — see CHANGELOG.md for how this was added, and `archive/inference-service/README.md` for the service, archived 2026-11-17: `MANAGED_SERVICE` has nothing to call) |
 | `DECISION_MULTIPLIER` / `EXPLORATORY_MULTIPLIER` | 1.5 / 1.0 | Exchange-type weight in sentence-level vector aggregation |
 | `INCUBATOR_PROMOTION_THRESHOLD` | 3.0 | Cumulative score needed to promote a theme out of the Incubator |
 | `INCUBATOR_HALF_LIFE_DAYS` | 14 | Days for an untouched Incubator theme's score to halve |
@@ -496,8 +496,8 @@ This directory's main flat folder is laid out the way
 [clasp](https://github.com/google/clasp) wants — a single flat folder,
 one Apps Script project, `appsscript.json` present. `.claspignore`
 allowlists only the real `.gs`/`.html`/`appsscript.json` files (everything
-else here, including `archive/` and the separate Node.js
-`inference-service/`, is excluded), and `.clasp.json.template` shows the
+else here, including `archive/` (the archived Node.js inference service
+among it), is excluded), and `.clasp.json.template` shows the
 shape of the real `.clasp.json`. The real `.clasp.json` and the list of
 live web app deployments are never committed: they live in the operator's
 `clasp-registry` folder outside the checkout. The operator pushes with

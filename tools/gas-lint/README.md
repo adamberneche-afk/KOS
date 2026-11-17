@@ -30,8 +30,8 @@ LeaderHub page, and an `actionlint` self-check on the workflow files
 e.g. `secrets.*` isn't allowed inside an `if:` conditional; this caught
 exactly that bug once), on every push and pull request. The same file's
 `docs-check` job (pull requests only) requires the matching README to be
-touched when a PR adds files, and `test-inference-service` tests
-`kos-personal/inference-service/`. That same workflow file has grown a second,
+touched when a PR adds files. (`test-inference-service` tested
+`kos-personal/inference-service/` until it was archived, 2026-11-17.) That same workflow file has grown a second,
 unrelated job pair (`sandbox-deploy`/`sandbox-deploy-not-configured`,
 gated on `main` only — see `tools/clasp-sync/SANDBOX_CI_SETUP.md`) that
 pushes HEAD to sandbox Apps Script copies once configured; unrelated to
@@ -57,7 +57,7 @@ it — that gap is closed now.
 
    A file `project-map.json` lists that isn't on disk is an **error**
    (`missing-file`), and so is the reverse (`unmapped-file`): a script in
-   `cas-ccps/scripts/`, `cas-ccps/studio-steps/`, `kos-personal/`
+   `cas-ccps/scripts/`, `kos-personal/`
    (`.gs` and `.html`) or `leader-hub/` (`.gs`, including `drive-tools/`)
    that is in no project and not in `_excluded_not_deployed_scripts`.
    `tools/clasp-sync` only pushes what the map lists, so an unmapped file

@@ -1,5 +1,11 @@
 # kos-personal inference service (optional)
 
+> **ARCHIVED 2026-11-17 (clean-up C3).** Moved here from `kos-personal/inference-service/`.
+> Dormant since D16 (2026-11-01): its Cloud Run deploy needs Google Cloud, off for
+> the district, and kos-personal's `INFERENCE_MODE` is `STUDIO`. Out of CI and
+> Dependabot; its own `npm test` still runs here by hand.
+
+
 > **DORMANT (D16, 2026-11-01).** Not deployed and not planned: `INFERENCE_MODE`
 > is hard-coded to Studio, and the Cloud Run deploy needs Google Cloud, which
 > is off for the district. CI still runs its tests; Dependabot's weekly bumps

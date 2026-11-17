@@ -8,15 +8,8 @@ updates:
     schedule:
       interval: "weekly"
 
-  # kos-personal/inference-service is DORMANT (D16, 2026-11-01): INFERENCE_MODE
-  # is hard-coded to Studio and its Cloud Run deploy needs Google Cloud, which
-  # is off for the district. Its weekly version bumps stopped here; GitHub's
-  # security alerts, where enabled, still cover it. Put the entry back if it
-  # is ever deployed:
-  #   - package-ecosystem: "npm"
-  #     directory: "/kos-personal/inference-service"
-  #     schedule:
-  #       interval: "weekly"
+  # kos-personal/inference-service was archived 2026-11-17 (clean-up C3;
+  # kos-personal/archive/inference-service/): no entry here.
 
   # GitHub Actions itself (actions/checkout, actions/setup-node, etc.) —
   # covers .github/workflows/*.yml.

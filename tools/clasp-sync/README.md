@@ -28,9 +28,8 @@ is the existing record of exactly which files belong to which project
 being accurate). There's no single folder to point `clasp push` at
 without either sending files to a project that doesn't want them, or
 missing files a project needs. A 9th project, `cas-ccps/studio-steps/`,
-is standalone and shares no files with the other 8, but is still handled
-by this same tool under its `cas-ccps:*` scope (it is not deployed:
-custom Studio steps are blocked on this account).
+was archived 2026-11-17 (`cas-ccps/archived/studio-steps/`; custom Studio
+steps are blocked on this account) and is no longer a project here.
 
 `sync.js` reads that same `project-map.json` and, for each of the 9
 `cas-ccps:*` projects, generates a throwaway push folder under
@@ -54,7 +53,6 @@ contents — every run).
 | `family-sentinel` | Family Mail Sentinel spreadsheet (the teacher's private sheet) | 4 |
 | `teacher-dashboard` | Standalone web app | 13 |
 | `student-dashboard` | Standalone web app | 6 |
-| `studio-steps` | Standalone — not bound to a spreadsheet/doc (blocked, not deployed) | 9 |
 
 File counts (script files, not the manifest) as of 2026-10-23; `tools/gas-lint/project-map.json` is the authoritative list.
 
@@ -81,8 +79,7 @@ clasp login
 clasp clone <scriptId>
 
 # Only if no live project exists yet for one of the spreadsheet/doc-bound
-# projects (the two web apps and studio-steps are --type standalone
-# instead — see cas-ccps/studio-steps/README.md):
+# projects (the two web apps are --type standalone instead):
 clasp create --type sheets --title "CAS — Central Ledger" --rootDir .
 ```
 
@@ -128,12 +125,9 @@ project's real manifest — `oauthScopes` derived from
 `tools/gas-lint/scope-map.json` against the actual GAS service calls in
 that project's files, plus `webapp` `executeAs`/`access` taken from each
 file's own header comment where one deploys as a web app.
-`unified-manual`'s two extra scopes
-(`script.projects`, `script.deployments`) come from
-`21_AutoInstaller.js`'s own documented requirements — it calls the Apps
-Script API directly via `UrlFetchApp`, which `scope-map.json`'s
-automatic derivation doesn't cover (it only maps GAS *global service*
-calls like `DriveApp.*`, not raw REST calls to another Google API).
+`unified-manual` had two extra scopes (`script.projects`,
+`script.deployments`) for `21_AutoInstaller.js`, which called the Apps
+Script API directly; both were removed when it was archived (2026-11-17).
 
 These manifests are now wired into `tools/gas-lint/project-map.json`'s
 `manifest` field for each project, so `gas-lint`'s existing OAuth scope

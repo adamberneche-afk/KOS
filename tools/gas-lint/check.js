@@ -232,7 +232,6 @@ function checkDuplicateDeclarations() {
 // _excluded_not_deployed_scripts on purpose.
 const DEPLOYABLE_SOURCE_DIRS = [
   { dir: 'cas-ccps/scripts',           exts: ['.js', '.gs'] },
-  { dir: 'cas-ccps/studio-steps',      exts: ['.gs', '.js'] },
   { dir: 'kos-personal',               exts: ['.gs', '.html'] },
   { dir: 'leader-hub',                 exts: ['.gs'] },
   { dir: 'leader-hub/drive-tools',     exts: ['.gs'] },
@@ -999,7 +998,7 @@ function checkGcpSurfaces() {
         `gcp-map.json declares ${relPath}, but no project in project-map.json lists that file, ` +
         `so Check G never scans it and the declaration is unenforced. Add it to the owning ` +
         `project's file set, or mark the entry "scanned": false the way ` +
-        `kos-personal/inference-service/ is.`,
+        `a standalone (non-GAS) service would be.`,
         'tools/gas-lint/gcp-map.json');
     } else {
       warn('gcp-stale-declaration',

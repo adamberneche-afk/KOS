@@ -60,13 +60,8 @@ function onOpen() {
         .addSeparator();
     }
 
-    // Show installer item only if scripts haven't been installed yet
-    const installed = props.getProperty("INSTALLER_COMPLETE");
-
-    if (!installed) {
-      menu.addItem("🔧 Install Scripts Automatically", "runAutoInstaller");
-      menu.addSeparator();
-    }
+    // The Apps Script API installer (21) was archived 2026-11-17 (clean-up
+    // C2): run.js pushes every project, so its menu item is gone.
 
     if (role === "ADMIN") {
       menu.addItem("📊 Open Admin Health Check", "openAdminHealthCheck");

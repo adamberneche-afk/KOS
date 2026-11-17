@@ -108,7 +108,6 @@
       "cas-ccps/scripts/16_UnifiedManualSetup_M6_ADDENDUM.js",
       "cas-ccps/scripts/19_ClonedSheetConfig.js",
       "cas-ccps/scripts/20_SetupCheckpoint.js",
-      "cas-ccps/scripts/21_AutoInstaller.js",
       "cas-ccps/scripts/28_Module2Setup.js",
       "cas-ccps/scripts/44_DeployVersionMarker_UnifiedManual.js"
     ]
@@ -189,21 +188,6 @@
       "cas-ccps/scripts/78_SheetReader.js"
     ]
   },
-  "cas-ccps:studio-steps": {
-    "_bound_to": "Standalone Workspace Studio add-on project (not bound to any spreadsheet, so it's installable across every flow rather than tied to one document) \u2014 the custom steps behind Flows 1-5",
-    "manifest": "cas-ccps/clasp/manifests/studio-steps.appsscript.json",
-    "files": [
-      "cas-ccps/studio-steps/StepsShared.gs",
-      "cas-ccps/studio-steps/CommitRubricDraftStep.gs",
-      "cas-ccps/studio-steps/ReadInstructorConfigStep.gs",
-      "cas-ccps/studio-steps/CommitStudentEvaluationStep.gs",
-      "cas-ccps/studio-steps/SelectWarmUpArchetypeStep.gs",
-      "cas-ccps/studio-steps/CreateWarmUpDocStep.gs",
-      "cas-ccps/studio-steps/ExtractWarmUpPromptTextStep.gs",
-      "cas-ccps/studio-steps/FinalizeWarmUpScoreStep.gs",
-      "cas-ccps/studio-steps/ExtractBridgeInputsStep.gs"
-    ]
-  },
   "cas-ccps:family-sentinel": {
     "_bound_to": "Family Mail Sentinel spreadsheet, a private sheet the teacher owns (container-bound). Reads the teacher's Gmail through the advanced Gmail service; the only cas-ccps project with a Gmail scope, on purpose.",
     "manifest": "cas-ccps/clasp/manifests/family-sentinel.appsscript.json",
@@ -241,6 +225,9 @@
   "_note_on_15b": "15b_StudioFlowPrompts_Flow2_Revised.js moved OUT of the excluded list above and into cas-ccps:central-ledger's real files (external product review, Finding 3) \u2014 it's now loaded into that live GAS project so 15c_Flow2DirectEvaluationService.js can reference FLOW_2_SYSTEM_PROMPT directly. This does NOT mean Flow 2 itself is deployed in Studio \u2014 it still isn't (see cas-ccps/README.md). 15b's own header comment explains the distinction.",
   "_archived_not_linted": [
     "kos-personal/archive/studio-steps/ \u2014 kos-personal's two custom Workspace Studio steps (WriteCuratorOutputStep, WriteClassificationOutputStep), archived 2026-09-29. The org-wide GCP block means custom steps can never be installed on this account, and 12_StudioReturnHarvest.gs replaced them. Kept for reference and still covered by tests/kos-personal/write-*-step.test.js; not a deployable project, so gas-lint, clasp-sync and deploy-drift ignore it.",
+    "cas-ccps/archived/studio-steps/ \u2014 the 8 custom Workspace Studio steps (and their manifest and clasp template under clasp/), archived 2026-11-17 (clean-up C1). The district's GCP block means a custom step never appears in Studio's picker; 37 and 41 replaced every one. No longer a project; its tests moved to tests/cas-ccps/archived/ and are not part of npm test (competency-evidence-schema-compat.test.js still reads CommitStudentEvaluationStep.gs as the writer of record).",
+    "cas-ccps/archived/21_AutoInstaller.js \u2014 the Apps Script API installer (runAutoInstaller), archived 2026-11-17 (clean-up C2). run.js pushes every project, and the API it needs is off for the district; out of cas-ccps:unified-manual, so a push removes it and its menu item.",
+    "kos-personal/archive/inference-service/ \u2014 the optional Node/Docker managed inference service, archived 2026-11-17 (clean-up C3; dormant since D16, 2026-11-01). Its Cloud Run deploy needs Google Cloud, off for the district; kos-personal's INFERENCE_MODE is STUDIO. Out of CI and Dependabot.",
     "cas-ccps/archived/70_WorkFileProbe.js \u2014 the Phase 4 design check (probeWorkFileTypes), archived 2026-11-07 after its one run (2026-11-01; answers in meta/STUDENT_WORK_PLAN_2026-10.md \u00a75). Out of cas-ccps:central-ledger, so it is no longer pushed; its test moved to tests/cas-ccps/archived/ and is not part of npm test."
   ]
 }
