@@ -265,6 +265,25 @@ function referenceStrip(source) {
   return out;
 }
 
+// The bodies of an HTML fragment's <script> blocks, found case-insensitively
+// with plain string search (tag attributes allowed).
+function scriptBodies(html) {
+  const lower = html.toLowerCase();
+  const out = [];
+  let i = 0;
+  for (;;) {
+    const open = lower.indexOf('<script', i);
+    if (open === -1) break;
+    const start = lower.indexOf('>', open);
+    if (start === -1) break;
+    const close = lower.indexOf('</script', start);
+    if (close === -1) break;
+    out.push(html.slice(start + 1, close));
+    i = close + 1;
+  }
+  return out;
+}
+
 test('stripCommentsAndWhitespace matches the reference byte for byte on the repo\'s own scripts', () => {
   const root = path.join(__dirname, '..', '..');
   const files = [
@@ -278,7 +297,7 @@ test('stripCommentsAndWhitespace matches the reference byte for byte on the repo
   for (const src of edgeCases) assert.equal(stripCommentsAndWhitespace(src), referenceStrip(src), JSON.stringify(src));
   for (const f of files) {
     let src = fs.readFileSync(path.join(root, f), 'utf8');
-    if (f.endsWith('.html')) src = (src.match(/<script>([\s\S]*?)<\/script>/g) || []).join('\n');
+    if (f.endsWith('.html')) src = scriptBodies(src).join('\n');
     assert.equal(stripCommentsAndWhitespace(src), referenceStrip(src), f);
   }
 });
