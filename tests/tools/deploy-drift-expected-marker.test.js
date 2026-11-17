@@ -16,6 +16,7 @@ const {
   expectedMarkerForProject,
   filesForProject,
   knownProjectNames,
+  MARKER_FILES,
 } = require('../../tools/deploy-drift/expected-marker.js');
 const { NEEDS_GIT } = require('../harness/git.js');
 
@@ -53,47 +54,29 @@ test('expectedMarkerForProject: returns a full 40-char SHA, not an abbreviated o
   assert.match(result.sha, FULL_SHA_RE);
 });
 
-test('expectedMarkerForProject: agrees with an independently-run git log over the same files', NEEDS_GIT, () => {
-  // Deliberately a project with NO entry in MARKER_FILES
-  // (cas-ccps:studio-steps, not kos-personal or leader-hub:app) — this
-  // test's whole point is confirming a plain, unmodified git log agrees
-  // with the function, which isn't true by design for a project whose own
-  // marker-stamp commit is the most recent one touching its files. See the
-  // dedicated "excludes the marker file itself" test below for that case.
-  //
-  // NOTE: this used to run against cas-ccps:teacher-dashboard, which was
-  // genuinely marker-free when this test was written — Phase 3b's rollout
-  // (stamp.js) later gave it a real marker+exclusion, so a plain git log
-  // stopped agreeing with the function for it specifically (its stamp
-  // commit is now its own most-recent touch). studio-steps is dead code
-  // deliberately left out of that rollout, so it's the one project that
-  // will keep genuinely having no exclusion entry.
-  const files = filesForProject('cas-ccps:studio-steps');
-  const expected = execFileSync(
-    'git',
-    ['log', '-1', '--format=%H', '--', ...files],
-    { cwd: REPO_ROOT, encoding: 'utf8' }
-  ).trim();
+// A plain git log over a project's files, less its own marker file (which
+// is stamped after the fact, so it is left out by design: see the test
+// below). Until 2026-11-17 these two tests used cas-ccps:studio-steps, the
+// one project with no marker; it was archived (clean-up C1), so they use a
+// project with several files and subtract its marker instead.
+function plainLogFor(project) {
+  const marker = MARKER_FILES[project] && MARKER_FILES[project].file;
+  const files = filesForProject(project).filter((f) => f !== marker);
+  return execFileSync('git', ['log', '-1', '--format=%H', '--', ...files], { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
+}
 
-  const result = expectedMarkerForProject('cas-ccps:studio-steps');
-  assert.equal(result.sha, expected);
+test('expectedMarkerForProject: agrees with an independently-run git log over the same files', NEEDS_GIT, () => {
+  const result = expectedMarkerForProject('cas-ccps:teacher-dashboard');
+  assert.equal(result.sha, plainLogFor('cas-ccps:teacher-dashboard'));
 });
 
 test('expectedMarkerForProject: picks the most recent commit across MULTIPLE files, not just the first one', NEEDS_GIT, () => {
-  // cas-ccps:studio-steps has 10 files (9 source + manifest) with
-  // different edit histories — if this only looked at files[0] it would
-  // report a stale SHA whenever a later file in the list was the one most
-  // recently touched. (Not central-ledger — see the comment on the test
-  // above for why that project no longer works for this.)
-  const files = filesForProject('cas-ccps:studio-steps');
-  const expected = execFileSync(
-    'git',
-    ['log', '-1', '--format=%H', '--', ...files],
-    { cwd: REPO_ROOT, encoding: 'utf8' }
-  ).trim();
-
-  const result = expectedMarkerForProject('cas-ccps:studio-steps');
-  assert.equal(result.sha, expected);
+  // central-ledger has dozens of files with different edit histories: if
+  // this only looked at files[0] it would report a stale SHA whenever a
+  // later file was the one most recently touched.
+  assert.ok(filesForProject('cas-ccps:central-ledger').length > 10);
+  const result = expectedMarkerForProject('cas-ccps:central-ledger');
+  assert.equal(result.sha, plainLogFor('cas-ccps:central-ledger'));
   assert.ok(result.committedAt, 'expected an ISO commit timestamp');
 });
 

@@ -113,11 +113,11 @@ that ID in the registry (`cas-ccps\<project>\.clasp.json`, as from
 | `teacher-dashboard`, `student-dashboard` | none: `clasp create --type standalone` |
 | `family-sentinel` (optional) | a new private sheet the teacher owns; `cas-ccps/docs/FAMILY_MAIL_SENTINEL.md` |
 
-`studio-steps` is not pushed: custom Studio steps need a Cloud project,
-which the operator's district blocks (`cas-ccps/studio-steps/README.md`);
-the flows were rebuilt without them. `21_AutoInstaller.js` is not this
-path either: it needs the Apps Script API through a Cloud project, and its
-file lists predate most of the code.
+The custom Studio steps and `21_AutoInstaller.js` were archived on
+2026-11-17 (`cas-ccps/archived/`): custom steps need a Cloud project, which
+the operator's district blocks, and the flows were rebuilt without them;
+the installer needed the Apps Script API through a Cloud project, and its
+file lists predated most of the code.
 
 Then push everything: `node run.js` from the folder holding your copy of
 `run.js` (`--only <names>` to limit it). `run.js` skips a web app until
@@ -413,5 +413,5 @@ answered row; `showSetupStatus()`: the `[10]` lines are OK.
 5. **The courses** (registry, pacing guide, rubrics, lessons, cartridges)
    and the no-school calendar are the operator's (step 6).
 6. **A test student account** (step 10).
-7. **`21_AutoInstaller.js`** describes an install path that needs a Cloud
-   project and lists files from before most of the code (step 3).
+7. **`21_AutoInstaller.js`** (archived 2026-11-17) described an install path
+   that needed a Cloud project; `run.js` is the install path (step 3).

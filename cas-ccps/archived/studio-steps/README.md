@@ -1,5 +1,10 @@
 # cas-ccps Studio Steps
 
+> **ARCHIVED 2026-11-17 (clean-up C1).** Moved here from `cas-ccps/studio-steps/`,
+> out of `tools/gas-lint/project-map.json`, CI and `run.js`. The deploy steps
+> below are kept as written and no longer work: there is no
+> `cas-ccps:studio-steps` project to sync.
+
 > ## ⚠️ STATUS: UNREACHABLE ON THE PRODUCTION ACCOUNT
 >
 > **All 8 steps in this project are dead code on `ccpsnet.net` today. Nothing

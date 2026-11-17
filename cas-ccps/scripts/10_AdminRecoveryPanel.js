@@ -450,7 +450,7 @@ function _ferpaHealthChecks_(opts) {
 //
 // TRIGGER: Set this up once in the Central Ledger spreadsheet's script project:
 //   Time-driven → Day timer → Between 6am-7am → autoHealthAlert
-// The AutoInstaller sets this trigger automatically.
+// Setup sets this trigger (the AutoInstaller did until it was archived, 2026-11-17).
 // ---------------------------------------------------------------------------
 function autoHealthAlert() {
   const STUCK_EXTRACTION_HOURS  = 2;   // Alert if PENDING_EXTRACTION row older than this
@@ -582,7 +582,7 @@ function autoHealthAlert() {
 
 // ---------------------------------------------------------------------------
 // setupAutoHealthTrigger — call once to install the daily health check trigger.
-// The AutoInstaller calls this during setup. Can also be run manually.
+// Run during setup, or by hand (the AutoInstaller called it until 2026-11-17).
 // ---------------------------------------------------------------------------
 function setupAutoHealthTrigger() {
   // Check if trigger already exists

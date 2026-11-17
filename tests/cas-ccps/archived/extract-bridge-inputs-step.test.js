@@ -1,14 +1,14 @@
 'use strict';
-// Regression tests for cas-ccps/studio-steps/ExtractBridgeInputsStep.gs —
+// Regression tests for cas-ccps/archived/studio-steps/ExtractBridgeInputsStep.gs —
 // Flow 5's input-preparation step.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFiles, makeStudioEvent } = require('../harness/gas-sandbox');
+const { loadGasFiles, makeStudioEvent } = require('../../harness/gas-sandbox');
 
-const SHARED_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'StepsShared.gs');
-const STEP_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'ExtractBridgeInputsStep.gs');
+const SHARED_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
+const STEP_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'ExtractBridgeInputsStep.gs');
 
 function load(exposeNames) {
   return loadGasFiles([SHARED_PATH, STEP_PATH], exposeNames);

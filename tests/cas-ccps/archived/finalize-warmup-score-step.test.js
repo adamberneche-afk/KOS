@@ -1,15 +1,15 @@
 'use strict';
-// Regression tests for cas-ccps/studio-steps/FinalizeWarmUpScoreStep.gs —
+// Regression tests for cas-ccps/archived/studio-steps/FinalizeWarmUpScoreStep.gs —
 // Flow 4's output step: total-score formula, WarmUpQueue/WarmUpRegistry
 // writes, doc feedback, and fence-stripped Gemini JSON parsing.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFiles, makeStudioEvent } = require('../harness/gas-sandbox');
+const { loadGasFiles, makeStudioEvent } = require('../../harness/gas-sandbox');
 
-const SHARED_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'StepsShared.gs');
-const STEP_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'FinalizeWarmUpScoreStep.gs');
+const SHARED_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
+const STEP_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'FinalizeWarmUpScoreStep.gs');
 
 function load(exposeNames) {
   return loadGasFiles([SHARED_PATH, STEP_PATH], exposeNames);

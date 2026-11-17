@@ -1,15 +1,15 @@
 'use strict';
-// Regression tests for cas-ccps/studio-steps/CreateWarmUpDocStep.gs —
+// Regression tests for cas-ccps/archived/studio-steps/CreateWarmUpDocStep.gs —
 // Flow 3's post-processing step: folder resolution, doc creation with
 // Zone 1/2 markers, sharing, and the WarmUpQueue write-back.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFiles, makeStudioEvent, FakeDriveFolder } = require('../harness/gas-sandbox');
+const { loadGasFiles, makeStudioEvent, FakeDriveFolder } = require('../../harness/gas-sandbox');
 
-const SHARED_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'StepsShared.gs');
-const STEP_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'CreateWarmUpDocStep.gs');
+const SHARED_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
+const STEP_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'CreateWarmUpDocStep.gs');
 
 function load(exposeNames) {
   return loadGasFiles([SHARED_PATH, STEP_PATH], exposeNames);

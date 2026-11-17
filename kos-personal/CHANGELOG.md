@@ -1,5 +1,16 @@
 # KOS Changelog
 
+### The managed inference service archived (2026-11-17)
+
+Clean-up C3, approved by the operator 2026-11-17. `inference-service/`
+moved to `archive/inference-service/`: dormant since D16 (2026-11-01), its
+Cloud Run deploy needs Google Cloud, off for the district, and
+`INFERENCE_MODE` stays `STUDIO`. Its CI job and Dependabot entry are gone,
+`tools/kos-personal/generate-flow-prompts.js` no longer writes its copy of
+the VECTOR_CLASSIFY prompt, and gas-lint's GCP map no longer declares it.
+No `.gs` file changed: the `MANAGED_SERVICE` switch is still there and now
+has nothing to call.
+
 ### The RTP's harness notes, in its instructions (2026-11-15)
 
 The "RTP harness notes" in `meta/PLAN_2026-11.md`, turned into changes to

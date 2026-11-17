@@ -1,5 +1,5 @@
 'use strict';
-// Regression tests for cas-ccps/studio-steps/ExtractWarmUpPromptTextStep.gs —
+// Regression tests for cas-ccps/archived/studio-steps/ExtractWarmUpPromptTextStep.gs —
 // Flow 4's input-preparation step. Its extraction markers must stay
 // byte-identical to CreateWarmUpDocStep.gs's own Zone 1 markers (both
 // use the real U+2500 box-drawing character, not an ASCII hyphen —
@@ -8,10 +8,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFiles, makeStudioEvent } = require('../harness/gas-sandbox');
+const { loadGasFiles, makeStudioEvent } = require('../../harness/gas-sandbox');
 
-const SHARED_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'StepsShared.gs');
-const STEP_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'ExtractWarmUpPromptTextStep.gs');
+const SHARED_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
+const STEP_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'ExtractWarmUpPromptTextStep.gs');
 
 function load(exposeNames) {
   return loadGasFiles([SHARED_PATH, STEP_PATH], exposeNames);
@@ -32,8 +32,8 @@ test('onExtractWarmUpPromptTextExecute: extracts exactly the text between the re
 });
 
 test('onExtractWarmUpPromptTextExecute: markers built by CreateWarmUpDocStep.gs round-trip through this step', () => {
-  const createStepPath = path.join(__dirname, '..', '..', 'cas-ccps', 'studio-steps', 'CreateWarmUpDocStep.gs');
-  const { loadGasFiles: load2, FakeDriveFolder } = require('../harness/gas-sandbox');
+  const createStepPath = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'CreateWarmUpDocStep.gs');
+  const { loadGasFiles: load2, FakeDriveFolder } = require('../../harness/gas-sandbox');
   const { exported: createExported, sandbox } = load2([SHARED_PATH, createStepPath], ['onCreateWarmUpDocExecute']);
 
   const ledgerSs = sandbox.SpreadsheetApp.create('Central Ledger');

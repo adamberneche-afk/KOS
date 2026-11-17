@@ -8,9 +8,9 @@
  * (or any shell) with nothing but Node and clasp installed: no PowerShell,
  * no execution-policy fights, no Expand-Archive. Node built-ins only.
  *
- * Out of scope: cas-ccps's studio-steps project (custom
- * Studio steps are blocked by the org-wide GCP restriction); kos-personal's
- * archived project.
+ * Out of scope: the archived custom Studio step projects (cas-ccps's,
+ * archived 2026-11-17, and kos-personal's, 2026-09-29), which the org-wide
+ * GCP restriction blocks.
  *
  * This script automates PROCESS, not JUDGMENT. Two decisions are made by a
  * human, once, and recorded in the registry directory; the script only ever
@@ -115,9 +115,9 @@ const MANIFEST = [
   { name: 'teacher-dashboard', type: 'cas-ccps', mode: 'promote' },
   { name: 'student-dashboard', type: 'cas-ccps', mode: 'promote' },
 ];
-// cas-ccps:studio-steps is deliberately absent (kos-personal's was archived
-// 2026-09-29) -- out of scope while the org-wide GCP block on custom Studio
-// steps holds.
+// No studio-steps project: cas-ccps's was archived 2026-11-17 (clean-up C1)
+// and kos-personal's 2026-09-29, while the org-wide GCP block on custom
+// Studio steps holds.
 
 const SYNC_REL = path.join('tools', 'clasp-sync', 'sync.js');
 

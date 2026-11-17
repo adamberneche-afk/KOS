@@ -20,7 +20,7 @@
     "",
     "If you are adding a feature and find yourself wanting a key: check whether a native Flow step can do it instead. That is how all five cas-ccps flows, both kos-personal flows, and all six leader-hub flows work. cas-ccps/scripts/37_FlowInputBuilder.js is the worked example of pushing everything except the model call into Apps Script so the Flow needs no capability beyond keyless Gemini."
   ],
-  "_scanned": "Check G scans the files, html and manifest of every entry in project-map.json. Non-GAS surfaces (kos-personal/inference-service/) can be declared here for completeness but are not scanned — see their own entries.",
+  "_scanned": "Check G scans the files, html and manifest of every entry in project-map.json. Non-GAS surfaces (a standalone service, as kos-personal/inference-service/ was until it was archived 2026-11-17) can be declared here for completeness but are not scanned — see their own entries.",
   "_patterns": {
     "studio-custom-step": "A `workflowElements` key in an appsscript.json manifest — a Workspace Add-on exposing custom Studio steps. Publishing/deploying one requires a standard Cloud project. Scoped to .json manifests so prose in a .gs header that merely mentions the key is not a finding.",
     "gemini-api-endpoint": "generativelanguage.googleapis.com — the Gemini API. Reaching it needs an API key, which needs a project.",
@@ -28,35 +28,6 @@
     "google-oauth-client": "oauth2.googleapis.com/tokeninfo or accounts.google.com/gsi/client — Google sign-in checked against this repo's own OAuth client ID. Both endpoints are keyless, but the client ID is created in Cloud Console and belongs to a standard Cloud project; an Apps Script default project can't hold one."
   },
   "surfaces": {
-    "cas-ccps/clasp/manifests/studio-steps.appsscript.json": {
-      "pattern": "studio-custom-step",
-      "status": "live-blocked",
-      "why": "The 8 custom Studio steps in cas-ccps/studio-steps/. Pushed successfully to the real account and never appeared in Studio's step picker, across repeated uninstall/reinstall cycles with no OAuth prompt ever shown. Root cause confirmed directly at console.cloud.google.com: GCP access is turned off for this account by the ccpsnet.net organization, and a Workspace Add-on needs a standard project.",
-      "if_unavailable": "ALL FIVE FLOWS ARE NOW PORTED, so this surface being blocked no longer gates anything. cas-ccps/scripts/37_FlowInputBuilder.js took Flow 2 off its custom step by materializing the whole lookup chain into one flat literal row; cas-ccps/scripts/41_WarmUpFlowBridge.js does the same for Flows 3, 4 and 5, which were the remaining exposure named here until now. In every case Apps Script materializes the inputs and harvests the output, and Studio makes only the keyless Gemini call. Three of the five steps 41 replaces turned out to be duplicating Apps Script that already existed in the same project (evaluateWarmUpDoc_, writeFinalScores_, writeFeedbackToDoc_, writeRegistryScores_ in 25_WarmUpWriter.js), so the port reuses them rather than carrying a second copy.",
-      "revisit": "A district Workspace admin enabling GCP for this account would make all 2,113 lines reachable again with no code change. Worth requesting; nothing is sequenced behind it.",
-      "doc_tokens": {
-        "_why": "Check 5 in tools/doc-currency/check.js reads these. `mentions` are the strings a document uses when it is talking about this surface; `fallback` are the strings that name what replaced it. A doc that names one of the former without either acknowledging the block or naming one of the latter is telling a reader the blocked path is how the system works.",
-        "mentions": [
-          "cas-ccps/studio-steps",
-          "CommitStudentEvaluationStep",
-          "CommitRubricDraftStep",
-          "CreateWarmUpDocStep",
-          "FinalizeWarmUpScoreStep",
-          "SelectWarmUpArchetypeStep",
-          "ExtractBridgeInputsStep",
-          "ExtractWarmUpPromptTextStep",
-          "ReadInstructorConfigStep"
-        ],
-        "fallback": [
-          "37_FlowInputBuilder",
-          "41_WarmUpFlowBridge",
-          "harvestFlowInputResults",
-          "harvestWarmUpFlowReturns",
-          "buildFlowInputRows",
-          "FlowInput"
-        ]
-      }
-    },
     "cas-ccps/scripts/15c_Flow2DirectEvaluationService.js": {
       "pattern": "gemini-api-endpoint",
       "status": "live-blocked",
@@ -74,14 +45,6 @@
           "harvestFlowInputResults"
         ]
       }
-    },
-    "kos-personal/inference-service/": {
-      "pattern": "gemini-api-endpoint",
-      "status": "live-unverified",
-      "scanned": false,
-      "why": "NOT a GAS surface, so Check G does not scan it — declared here for completeness. A standalone Node/Docker/Postgres service (CFG.INFERENCE_MODE = MANAGED_SERVICE) with its own billing and credit accounting. This is the only place in the monorepo where a real API key path is the intended design rather than an escape hatch.",
-      "if_unavailable": "kos-personal's default INFERENCE_MODE does not use it; the Studio path does.",
-      "revisit": "It carries its own deployment doc (INFERENCE_SERVICE_DEPLOYMENT.md) and its own tests. Out of scope for the GAS pipeline."
     },
     "cas-ccps/scripts/07_TeacherDashboard.js": {
       "pattern": "google-oauth-client",

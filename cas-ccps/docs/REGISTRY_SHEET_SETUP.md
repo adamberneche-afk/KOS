@@ -1,5 +1,9 @@
 # Script Registry Sheet — Setup Guide
 
+> **Archived 2026-11-17 with the AutoInstaller** (`cas-ccps/archived/21_AutoInstaller.js`,
+> clean-up C2). `node tools/clasp-sync/run.js` installs and updates every
+> project; nothing reads this sheet. Kept for reference.
+
 The Script Registry Sheet is the central repository for all script file contents.
 The AutoInstaller (Script 21) reads from this sheet to install scripts into each
 Apps Script project automatically.
