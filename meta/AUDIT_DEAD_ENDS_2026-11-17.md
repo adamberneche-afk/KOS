@@ -41,10 +41,14 @@ removed, and "the docs that say the wrong thing" fixed in one docs PR.
    same loop with the last character kept in a variable and the pieces
    joined once takes 0.2 s, **with byte-identical output** (checked on that
    file and on the LeaderHub page's largest script). It is why
-   `tools/coverage-gaps/check.js` takes 74 s (30 of 37 profiled seconds are
-   in this function) and why `leaderhub-build --check` runs long.
-   **Action:** the fix, with a test that the output is unchanged; no
-   operator step.
+   `leaderhub-build --check` ran for minutes. **Corrected:** it is not why
+   `tools/coverage-gaps/check.js` takes over a minute: that tool runs the
+   whole test suite under V8 coverage by design, so its time is the
+   suite's; this function was 30 s of it only because tests call it.
+   **Fixed (2026-11-17, the PR after this audit):** `leaderhub-build
+   --check` now takes about 1 s and coverage-gaps 64 s (was 74); a test
+   checks the output against the old loop byte for byte on the repo's own
+   scripts, and that the 2 MB file strips in under 3 s.
 
 ## Half-built: finish
 
