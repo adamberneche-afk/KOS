@@ -147,7 +147,7 @@ backed by data in the repo.
   sessions with no Vector State row are under investigation.
 - **leader-hub** now runs as a server-backed web app and stores nothing
   in the browser. It is the system that most fully meets its own North
-  Star (`meta/CODEBASE_REVIEW.md`).
+  Star (`archive/summer-2026/meta/CODEBASE_REVIEW.md`).
 - **The gap the review named:** where a system depends on an outside AI
   flow, the anticipatory feature is built but not always closed end to
   end. For cas-ccps that gap has mostly closed since: Apps Script now
@@ -157,7 +157,7 @@ backed by data in the repo.
 
 | Source file | Read it as |
 |---|---|
-| `meta/CODEBASE_REVIEW.md` (August 2026) | The clearest North Star and value review, with "⚠ Stale" notes inline. Its "no tests" finding is closed: over 2,000 tests run now |
+| `archive/summer-2026/meta/CODEBASE_REVIEW.md` (August 2026) | The clearest North Star and value review, with "⚠ Stale" notes inline. Its "no tests" finding is closed: over 2,000 tests run now |
 | `cas-ccps/docs/PLATFORM_DOCUMENTATION.html` | The original platform plan. Its opening note (2026-10-23) gives what is live now; module statuses and the build plan below it are as first written |
 | `cas-ccps/docs/IMPACT_DASHBOARD.html` | A template for recording outcomes. It holds no data; its "Why it matters" lines are claims to measure |
 | `cas-ccps/docs/SYSTEM_ARCHITECTURE.html` | Its design principles and security model still hold. The rest describes the original Module 1 system, as its own banner says; the cas-ccps README is the current map |
@@ -165,7 +165,7 @@ backed by data in the repo.
 | `kos-personal/KOS_WHITE_PAPER.md` | Positioning, not a spec: the README and schema docs say what is built |
 | Economics of Depth and its assumptions audit (April 2026) | A thought exercise written for colleague and administrator discussion, with its own open questions |
 | `meta/PRD_CAS_RESEARCH_PIVOT.md` (Oct 10) | The plan to make CAS implement the research it cites. Phase 0 is done; later phases wait on the first real weeks of use |
-| `meta/PRODUCT_EXPERIENCE_GAP_AUDIT.md`, `meta/UX_AUDIT_2026-10-22.md` | Where the experience falls short of the promise, by stakeholder. The UX audit's Status section says what was fixed (nearly all of it, by 2026-10-23) |
+| `archive/2026-27-Q1/meta/PRODUCT_EXPERIENCE_GAP_AUDIT.md`, `archive/2026-27-Q1/meta/UX_AUDIT_2026-10-22.md` | Where the experience falls short of the promise, by stakeholder. The UX audit's Status section says what was fixed (nearly all of it, by 2026-10-23) |
 | `meta/PLAN_2026-11.md`, `meta/HANDOFF_2026-11-17.md` | Current: the order of work and where each system stands |
 | `meta/PLAN_2026-10.md` | October's plan: its order of work is replaced; its design (which AI does what) and decision record still hold |
 | `meta/BACKLOG.md`, the design threads, the course builder and lesson authoring plans | Direction: ideas and plans, not built work, unless they say so |

@@ -31,7 +31,7 @@ the lesson data (`55b_LessonAssignmentData.js`, 67 lessons):
 - **Only the product is captured.** Nothing asks how the student worked,
   what they weighed or how sure they are. Process shows only in the doc's
   revision history, which nothing reads (the `revisionProbe` in
-  [`CAS_BUG_HANDOFF_2026-10-16.md`](./CAS_BUG_HANDOFF_2026-10-16.md)'s
+  [`CAS_BUG_HANDOFF_2026-10-16.md`](../archive/2026-27-Q1/meta/CAS_BUG_HANDOFF_2026-10-16.md)'s
   appendix ran once on 10-18: revisions are listed, but paste detection
   from them isn't possible; `cas-ccps/HISTORY.md`).
 - **Work outside the doc.** Lessons send the student to Forms (5), Slides

@@ -1,6 +1,6 @@
 'use strict';
 // leader-hub without browser storage, Phase 2 (2026-10-22,
-// meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md). The rest of the data
+// archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md). The rest of the data
 // goes to the server: small state as config keys, the member roster and the
 // id-less logs as data domains (each entry gets an id as it is saved), and
 // drafts and view state in page memory only. A key the server has never had

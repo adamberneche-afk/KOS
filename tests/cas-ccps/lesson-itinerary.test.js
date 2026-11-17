@@ -1,5 +1,5 @@
 'use strict';
-// The lesson doc's itinerary (meta/SPRINT_LESSON_DOCS_2026-11.md): the class
+// The lesson doc's itinerary (archive/2026-27-Q1/meta/SPRINT_LESSON_DOCS_2026-11.md): the class
 // plan the generator drafts from each lesson's own sections (55b's `plan`),
 // Clover Hill's bell schedule (00), and the plan fitted to a period's minutes.
 

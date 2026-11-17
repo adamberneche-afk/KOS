@@ -89,7 +89,7 @@ const LH_CONFIG_KEYS = [
   // composite `key` field (date+course), not `id`.
   'lh_unit_notes',
   // No browser storage, Phase 2 (2026-10-22,
-  // meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md): the small state that
+  // archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md): the small state that
   // was local-only. Reminder "shown today" / "done today" dates, the
   // journal's last entry and cron state, the id counters, Organization Sync
   // bookkeeping, snoozed cards and the notifications preference.

@@ -37,7 +37,7 @@
 >    `tools/gas-lint/gcp-map.json`). Start from `LEADERHUB_AI_FLOW_SETUP.md`.
 >
 > 3. **Nothing is persisted in `localStorage`** (since 2026-10-22,
->    `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`). `doGet()` writes
+>    `archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`). `doGet()` writes
 >    the server's data into the page (`window.__LH_BOOT__`, `lhBootData_` in
 >    `Data.gs`); `LS.get()`/`LS.set()` read and write page memory
 >    (`_lhStore`) and save every change to the server: config keys

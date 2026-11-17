@@ -22,7 +22,7 @@ the regenerated output together.
 ## Why the assembled file stays committed (not gitignored)
 
 The file used to be opened straight from a checkout, with no build step;
-that is retired (2026-10-22, `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`
+that is retired (2026-10-22, `archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`
 Phase 5: opened from disk, it now stops and points to the web app). It is
 still committed because `clasp push` sends it as it is: `Code.gs`'s
 `doGet()` serves it, and `leader-hub/.claspignore` allowlists it, so a

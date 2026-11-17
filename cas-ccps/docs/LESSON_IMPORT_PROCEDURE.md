@@ -2,7 +2,7 @@
 
 The steps an agent session follows to import the Teacher Dashboard's lesson
 drafts (`65_LessonDrafts.js`; phase 1 of
-[`meta/LESSON_AUTHORING_PLAN_2026-10.md`](../../meta/LESSON_AUTHORING_PLAN_2026-10.md)).
+[`archive/2026-27-Q1/meta/LESSON_AUTHORING_PLAN_2026-10.md`](../../archive/2026-27-Q1/meta/LESSON_AUTHORING_PLAN_2026-10.md)).
 It runs when the operator says "import the lesson drafts", and each
 evening at about 6 p.m. Eastern on the "Lesson draft import" Routine (a
 fresh session; with nothing to import, it ends without a message). It

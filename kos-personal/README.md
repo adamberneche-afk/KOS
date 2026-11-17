@@ -22,9 +22,9 @@ This README documents the system as it is today. The full history of what was fo
 > with Retry, the advisor panel review, an archive that keeps failed rows,
 > nothing stored in the browser) are merged and live. Ingestion D and E
 > (#336: Sensor 2's duplicate guard, at most 20 rows a queue run,
-> `logQueueMetrics()`) were pushed 10-29; `meta/HANDOFF_2026-10-29.md`
+> `logQueueMetrics()`) were pushed 10-29; `archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md`
 > is the current handoff. Still the operator's: the data
-> repairs in [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) (requeue
+> repairs in [`HANDOFF_2026-09-28.md`](../archive/2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md) (requeue
 > the terminal backlog with `19_StagingRequeue.gs` or Queue → Failed items
 > → Retry, and the `VECTOR_MATRIX` repair in `21_VectorMatrixRepair.gs`);
 > the primer's Data Quality block shows what is left.
@@ -32,7 +32,7 @@ This README documents the system as it is today. The full history of what was fo
 > History: on 2026-09-29 the Curator Flow's Ask-a-Gem steps became Ask
 > Gemini steps reading `FlowPrompts`, which fixed its persona-shaped output
 > (the 2026-09-20 export's 114 harvest failures), so the rebind
-> [`STUDIO_REBIND_HANDOFF.md`](./STUDIO_REBIND_HANDOFF.md) describes was
+> [`STUDIO_REBIND_HANDOFF.md`](../archive/2026-27-Q1/kos-personal/STUDIO_REBIND_HANDOFF.md) describes was
 > never needed (that file is closed).
 
 ---

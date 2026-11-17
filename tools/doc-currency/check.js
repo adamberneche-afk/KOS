@@ -576,7 +576,7 @@ function checkBlockedSurfacesNotPresentedAsLive() {
 // -----------------------------------------------------------------------
 // Check 4 — a doc cites file:line that is past the end of that file
 //
-// meta/CODEBASE_REVIEW.md carried 16 file:line citations; 4 pointed past
+// archive/summer-2026/meta/CODEBASE_REVIEW.md carried 16 file:line citations; 4 pointed past
 // EOF (one cited cas-ccps/README.md:616-617 against a 450-line file) and
 // several more had drifted onto unrelated lines. Only the past-EOF case is
 // mechanically decidable — "this line exists but no longer says what the

@@ -1,6 +1,6 @@
 'use strict';
 // Lesson editing from the Teacher Dashboard, phase 1 (65_LessonDrafts.js,
-// meta/LESSON_AUTHORING_PLAN_2026-10.md): the editor starts from the
+// archive/2026-27-Q1/meta/LESSON_AUTHORING_PLAN_2026-10.md): the editor starts from the
 // lesson's generated data (55b) with its tiers read back, cross-references
 // the course's VDOE tasks (the CompetencyRubrics tab), saves drafts to the
 // LessonDrafts tab, submits only a complete draft whose tiers pass the

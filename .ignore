@@ -1,0 +1,5 @@
+# Read by ripgrep (and so by Claude Code's Grep and Glob), not by git.
+# archive/ holds superseded docs kept as records; searches of the live
+# tree skip them. Search them by giving the path (rg <pattern> archive/)
+# or with rg --no-ignore. See archive/INDEX.md.
+/archive/

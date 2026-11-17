@@ -1,6 +1,6 @@
 <script>
 // ── Where the app's data lives (no browser storage, Phases 3 and 5,
-// 2026-10-22, meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md) ─────────
+// 2026-10-22, archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md) ─────────
 // doGet() writes the server's copy of every domain into the page
 // (window.__LH_BOOT__, Data.gs's lhBootData_). The app keeps it in page
 // memory (_lhStore) and saves every change to the server: nothing is read
@@ -32,7 +32,7 @@ const LH_RETIRED_SECRET_KEYS = ['lh_api_key'];
 let _lsWriteFailWarned = false;
 let _lsReadFailWarned = false;
 // No browser storage, Phase 2 (2026-10-22,
-// meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md). Drafts, view state and
+// archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md). Drafts, view state and
 // the cached CAS pacing units live in this page's memory only: a reload
 // opens on the dashboard with default filters and loses an unsaved draft
 // (the operator's decision). Copies an earlier version left in the browser

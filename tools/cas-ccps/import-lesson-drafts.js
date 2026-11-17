@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * The mechanical half of a lesson-draft import (meta/LESSON_AUTHORING_PLAN_2026-10.md,
+ * The mechanical half of a lesson-draft import (archive/2026-27-Q1/meta/LESSON_AUTHORING_PLAN_2026-10.md,
  * phase 1; the session's steps are in cas-ccps/docs/LESSON_IMPORT_PROCEDURE.md).
  * A draft comes from the Central Ledger's LessonDrafts tab (65_LessonDrafts.js),
  * exported to JSON by the session: the raw rows (header first) or an array of

@@ -29,74 +29,17 @@ why this repo exists at all.
   again, the Teacher Dashboard's waiting strip, the Canvas button), what is
   live (KOS through #417, pushed 11-09; #418 on merged but not pushed), the
   operator's queue in order, the decisions of 11-14/15, what is on hold,
-  and the agent notes added. Start here.
-- **`HANDOFF_2026-11-08.md`** — the repo-wide session handoff: what merged
-  11-02 to 11-09 (#375–#417 and Mothership #85/#86: the RTP feedback loop
-  and closeout fidelity, the outside review's do-now fixes, the dashboards'
-  UX batch, demo mode and More menu, the turn-in code stages 1–4, flow
-  measurements, Phase 4a–4d), what was live (KOS through #417, pushed
-  11-09), the operator's queue, what was open, and the agent notes added.
-  Superseded for the queue by 11-15; its record and agent notes still hold.
-  `HANDOFF_2026-11-01.md` (superseded for the queue; its 11-02 record and
-  agent notes still hold) is below.
-- **`HANDOFF_2026-11-01.md`** — the repo-wide session handoff: what merged
-  #352–#361 (the plan's week of Nov 2 built a day early: both clean-up PRs,
-  the SCR retry, the Registrar's flows, `reportEvaluationHealth`, Flow 5
-  merged into Flow 3, audit #5 and #6, D9 decided; then packaging step 1,
-  the Phase 4 probe, the backlog items and `call-hub.yml`'s retirement,
-  through #373), what is live (through #370, pushed 11-01, and the hub),
-  the operator's queue in order with what each run showed, what is still
-  open, and the rules for an agent session. Superseded for the queue by
-  11-08.
-  `HANDOFF_2026-10-31.md` (superseded for the queue; its record of the two
-  history rewrites and its agent notes still hold),
-  `HANDOFF_2026-10-29.md` (superseded for the queue; its build and agent
-  notes still hold),
-  `HANDOFF_2026-10-28.md` (superseded for the queue; its build notes and
-  agent notes still hold),
-  `HANDOFF_2026-10-27.md` (superseded for the queue; its agent notes still
-  hold), `HANDOFF_2026-10-24.md` (superseded for the queue; its agent notes still
-  hold), `HANDOFF_2026-10-22.md` (superseded for the queue; its system state,
-  open items and agent notes still hold), `HANDOFF_2026-10-21.md`, `HANDOFF_2026-10-20.md` and `HANDOFF_2026-10-19.md` (their agent notes still hold), `HANDOFF_2026-10-18.md`, `HANDOFF_2026-10-17.md`, `HANDOFF_2026-10-12.md`, `HANDOFF_2026-10-10.md`, `HANDOFF_2026-10-08.md`, `HANDOFF_2026-10-07.md`,
-  `HANDOFF_2026-10-06.md` and `HANDOFF_2026-10-05.md` are earlier days', superseded.
+  and the agent notes added.
 - **`RELEASE_AUDIT_2026-11-08.md`** — the first full-repo run of
   `tools/release-check` (plan item L1), before its CI gate turns on: counts
   per rule and per folder, the file list with every value redacted, git
   history in counts only, what each bucket needs, and the decisions the
   operator must make (deployment URLs, which folders are public, LICENSE,
   a history rewrite, turning the gate on).
-- **`AUDIT_DEAD_ENDS_2026-10-29.md`** — the first repo-wide audit of dead
-  ends and half-built work: what runs and fails or runs for nothing, what
-  to finish, what is built and parked (decide and mark), dead weight to
-  remove, docs that say the wrong thing, and operator items that fell off
-  the queue. Its actions are in `PLAN_2026-11.md`; repeated at each sprint
-  boundary.
 - **`BACKLOG.md`** — ideas for future sprints, by system: offered small
   PRs, the CAS design threads, the second-user and KOS Lite concepts
   (deferred until after Oct 30), and repo chores. Nothing in it is
   committed work; `PLAN_2026-11.md` wins. Reviewed at each sprint boundary.
-- **`DASHBOARD_WALKTHROUGH_2026-10-26.md`** — the week of Oct 26's
-  dashboard walk-through, prepared from the code on 2026-10-21: a checklist
-  for the Student and Teacher Dashboards by student situation, and the
-  findings read from the code, ranked.
-- **`LESSON_AUTHORING_PLAN_2026-10.md`** — the decided plan (2026-10-21) for
-  editing and writing lessons from the Teacher Dashboard: how a lesson
-  reaches students today, three options (drafts imported through the repo,
-  Drive edits imported, live overrides), phases and the decisions taken.
-  Phases 1 and 2 are built (#245, #246): the dashboard's lesson editor
-  (`65_LessonDrafts.js`) and the import tool
-  (`tools/cas-ccps/import-lesson-drafts.js`).
-- **`SPRINT_DASHBOARD_2026-11.md`** — the sprint decided 2026-10-27 for
-  the Teacher Dashboard: course, period and student filters on the home
-  page, one student's page (their parent report and Student Context by
-  week), and a ⚙ Settings panel for the features turned on per course,
-  with a change log. Four PRs, filters first.
-- **`SPRINT_LESSON_DOCS_2026-11.md`** — the sprint decided 2026-10-27 for
-  the week of Nov 2: one teacher doc per lesson (the plan, an itinerary
-  drafted from the lesson, look-fors, each day it runs, a class status
-  snapshot) in place of the per-period Lesson Frames, and a Google Slides
-  agenda per course per day; with Clover Hill's official 2026-27 bell
-  schedule and which days are A or B.
 - **`LESSON_PARTS_2026-10.md`** — every lesson split into parts (35), in
   the first lesson's pattern (the student work plan's Appendix B): each
   part's work file and tiers, why, the criteria in a student's words, and
@@ -122,18 +65,6 @@ why this repo exists at all.
   order (one Canvas assignment per lesson), short varied reflections on
   Submit tied to the lesson's competencies, Flow 2 reading them, and where
   each cost lands. Nothing built; open decisions at its end.
-- **`UX_AUDIT_2026-10-22.md`** — an end-to-end UX audit (2026-10-22) of
-  every surface in the three systems, by stakeholder (students, teacher,
-  families, operator and adopters, leader-hub, kos-personal): rendered and
-  read from the code, 16 fix-first items, per-stakeholder tables with file
-  and line, and a suggested order of work. Nothing changed by the audit.
-- **`LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`** — a plan (2026-10-22)
-  to move leader-hub off `localStorage` after the operator's "nothing stored
-  in the browser": what is already on the server from the earlier
-  migration, the ~50 local-only keys, five phases and the decisions
-  taken. All five phases are done (#259, #261 to #264): the server is the only
-  copy, and the standalone file is retired, with an export for any data
-  still in its browser.
 - **`COURSE_BUILDER_PLAN_2026-10.md`** — a decided plan (2026-10-22) for
   building a new course from the VDOE framework, with teachers submitting
   the course they want, built so adopting teachers can adapt it: how 8175
@@ -141,28 +72,11 @@ why this repo exists at all.
   the public library (lessons filed back) and the private option, seven
   phases (an onboarding and deployment Phase 0, then A to F) and its
   decisions. Nothing built; after Oct 30.
-- **`CAS_BUG_HANDOFF_2026-10-16.md`** — the first live student submissions
-  through the Student Dashboard and Flow 2: the four bugs (two fixed in
-  #175), the lesson-scheduling steps, the checklist for the next live
-  submission, and the one-off probes.
-- **`CAS_COGNITIVE_EXHAUST_2026-10-16.md`** and
-  **`CAS_DESIGN_THREADS_2026-10-16.md`** — suggestions: student process
-  traces and the authenticity-review plan; the cross-course mastery map, a
-  student-owned portfolio, and a nightly lesson rollout. Only the rollout is
-  built (`58_LessonRollout.js`).
 - **`PRD_CAS_RESEARCH_PIVOT.md`** — the cas-ccps research-alignment PRD
   (revised 2026-10-10, checked against the code): a Phase 0 of live defects
   to fix before the warm-up week, then measurement, pedagogy and
   student-experience requirements, each with its secondary effects. It runs
   alongside `PLAN_2026-10.md`, which stays the plan of record.
-- **`PSD_Version_Controlled_CAS_Workspace.md`** — a Product Specification
-  Document proposing exactly what this repo now is: moving both CAS
-  (Classroom Agency System) and KOS off dated-Drive-folder-copy versioning
-  onto `clasp` + git + GitHub. "CAS" here is Classroom Agency System, not
-  a version-control abbreviation — confirmed by content. This is the
-  origin document for this whole consolidation effort, filed here because
-  neither `kos-personal/` nor `cas-ccps/` alone is the right home for a
-  doc explaining the repo's reason for existing.
 - **`VERSION_CONTROL_CONCEPTS.md`** — supporting conceptual background for
   the PSD above.
 - **`CLASP_AND_APPS_SCRIPT.md`** — supporting technical background on
@@ -178,25 +92,6 @@ why this repo exists at all.
   invoked in a Gem. Listed in `FLOW_INVENTORY.md` below as well, since
   its classification step is a human-built Flow dependency like the
   other three systems'.
-- **`CODEBASE_REVIEW.md`** — the largest document here: an outside review of
-  all three systems against their own stated promises, plus a prioritized
-  recommendation list. Several of its findings have since been acted on; it
-  carries inline `⚠ Stale` / **Done** annotations rather than being rewritten,
-  matching this repo's convention of correcting a record in place instead of
-  silently editing it.
-- **`PRODUCT_EXPERIENCE_GAP_AUDIT.md`** — a different axis than
-  `CODEBASE_REVIEW.md` above: not the code, but what a real student,
-  operator, or teacher actually perceives across all three systems as one
-  product — what's missing, what hinders adoption, and which parts of
-  each system's "world building" are genuinely reactive to what a player
-  does versus decorative narrative that never changes regardless of their
-  actions. Its central finding: the parts of each product that are
-  genuinely reactive are the least visible, and the parts that look most
-  alive are the least reactive — the same shape independently in all
-  three systems. Explicitly guards against reading "more engaging" as
-  "add gamification" — all three systems have already tried and rejected
-  exactly that, on the record, and the audit's own recommendations are
-  checked against that guardrail.
 - **`FLOW_INVENTORY.md`** — a single reference listing every "Flow"
   dependency (a human-built Google Workspace Studio/Flow or Gemini Gem
   conversation this repo's own code hands off to and cannot see or
@@ -220,11 +115,6 @@ why this repo exists at all.
   needing another external review. Five phases, sequenced by dependency and
   risk; tracked with the same 🔲/🟡/✅ status convention as `README.md`'s
   own "Known gaps."
-- **`KOS_INGESTION_HARDENING_PLAN.md`** — test, diagnose and harden plan
-  for the kos-personal ingestion backlog: one Studio slot for every payload
-  type, an archive nobody schedules, a full-sheet scan per processor run and
-  one shared script lock. Diagnosis steps for the operator first, then
-  hardening items with acceptance tests. Not started.
 - **`FLOW_DOCTRINE.md`** — the seventeen rules this repo's Flow deployments
   produced, each with the incident behind it, a pointer to where the
   reasoning already lives, and an explicit statement of whether anything
@@ -248,6 +138,14 @@ why this repo exists at all.
   committed, edited here) and copies of the North Star, value proposition,
   system and direction documents. The README lists the sources and when to
   rebuild.
+
+- **`AGENT_NOTES.md`** — the notes for an agent session from every
+  archived handoff (10-05 to 11-08), word for word and oldest first. The
+  live handoffs keep their own.
+- **Archived** — superseded handoffs, finished plans, sprints and audits
+  are in [`archive/`](../archive/INDEX.md), filed by school quarter and
+  kept at their old paths inside it, out of everyday search;
+  `archive/INDEX.md` has a row per quarter and links each quarter's index.
 
 ## Why these are here and not under a system subtree
 

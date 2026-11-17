@@ -3,7 +3,7 @@
 // BOUND TO: Central Ledger (cas-ccps:central-ledger, the nightly rollout) AND
 //   the Teacher Dashboard (cas-ccps:teacher-dashboard, 📅 Lessons' button).
 //
-// The daily agenda (meta/SPRINT_LESSON_DOCS_2026-11.md): one Google Slides
+// The daily agenda (archive/2026-27-Q1/meta/SPRINT_LESSON_DOCS_2026-11.md): one Google Slides
 // deck per course per school day, "Agenda — 8175 — Wed Oct 28", in an
 // Agendas folder, to project in class:
 //

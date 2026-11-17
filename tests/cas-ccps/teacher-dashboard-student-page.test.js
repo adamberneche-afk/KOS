@@ -1,6 +1,6 @@
 'use strict';
 // One student's page on the Teacher Dashboard (2026-10-27,
-// meta/SPRINT_DASHBOARD_2026-11.md, PR 2): getStudentDetail (07) returns
+// archive/2026-27-Q1/meta/SPRINT_DASHBOARD_2026-11.md, PR 2): getStudentDetail (07) returns
 // that student's parent report for this week and their Student Context doc
 // (29) split into weeks, newest first, only for this teacher's students.
 

@@ -55,7 +55,7 @@ exploration draft, not the deployed artifact, referenced in HISTORY.md's
 
 ## Where the data lives
 
-Since 2026-10-22 (`meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`,
+Since 2026-10-22 (`archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`,
 all five phases done), the server is the only store:
 
 - **Load.** `doGet()` (`Code.gs`) reads every config key, data domain and
@@ -1401,7 +1401,7 @@ row-shaped once actually read, and were placed accordingly):
   `{conflict:true}` and writes nothing.
 
 **Not migrated, on purpose** (updated 2026-10-22, no browser storage
-Phase 2, `meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`):
+Phase 2, `archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`):
 - **Organization Sync stays opt-in.** The "Share with a co-advisor"
   spreadsheet is reachable by whoever holds its share code, so nothing is
   published there automatically. The member roster (`lh_students`) now

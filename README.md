@@ -13,7 +13,7 @@ Files arrive here piecemeal as they're uploaded across sessions — this
 README and the per-system READMEs below are the index of what's been
 consolidated so far and what's still missing. When new files show up, they
 get filed into the matching subtree, not left loose at the root. See
-`meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
+`archive/2026-27-Q1/meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
 rationale behind moving to this git-based structure in the first place.
 
 **Picking this up?** The order of work is [`meta/PLAN_2026-11.md`](./meta/PLAN_2026-11.md). Then read [`meta/HANDOFF_2026-11-17.md`](./meta/HANDOFF_2026-11-17.md):
@@ -45,7 +45,7 @@ two backported fixes, ten governance/protocol docs, and a real optional
 managed-inference-service alternative to native Studio (opt-in, gated
 behind `CFG.INFERENCE_MODE`, off by default). Since then, nine further
 rounds of dedicated UI/UX auditing (see
-[`kos-personal/CHANGELOG.md`](./kos-personal/CHANGELOG.md#uiux-hardening--rounds-19))
+[`kos-personal/CHANGELOG.md`](./archive/2026-27-Q1/kos-personal/CHANGELOG.md#uiux-hardening--rounds-19))
 have fixed real bugs including a race condition, an unguarded status-line
 race, and a data-loss bug where Escape could wipe an in-progress wizard.
 Since late September: a staging requeue, per-session vector classification,
@@ -77,7 +77,7 @@ missing data files, the `lesson_unit_id` column, and 6 of 7 missing Module
 2 scripts) and resolved a second, genuine numbering collision inside
 Module 2 itself. Since then, nine further rounds of dedicated UI/UX
 auditing (see
-[`cas-ccps/HISTORY.md`](./cas-ccps/HISTORY.md#uiux-hardening--rounds-19))
+[`cas-ccps/HISTORY.md`](./archive/2026-27-Q1/cas-ccps/HISTORY.md#uiux-hardening--rounds-19))
 have fixed real bugs including a CRITICAL silent date-type-coercion bug
 that stopped the nightly warm-up queue from ever matching a lesson, and a
 double-counting bug in the warm-up readiness dashboard. See
@@ -97,12 +97,12 @@ E-Sports, field trips). Now server-backed: a single Apps Script Web App
 holds its data in a Spreadsheet and Script Properties. Since 2026-10-22 the
 server is the only copy: nothing is stored in the browser, and the page no
 longer runs opened from disk (the standalone file is retired;
-[`meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`](./meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md)).
+[`archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`](archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md)).
 See [`leader-hub/README.md`](./leader-hub/README.md)'s "JJ1 — Server-deployed
 web app" section for the migration. It also went through the same nine
 rounds of UI/UX auditing as the two systems above —
 see
-[`leader-hub/HISTORY.md`](./leader-hub/HISTORY.md#uiux-hardening--rounds-19)
+[`leader-hub/HISTORY.md`](./archive/2026-27-Q1/leader-hub/HISTORY.md#uiux-hardening--rounds-19)
 for its record, including the most severe bug found in any round: 8
 places where raw JavaScript was rendering as visible garbage text because
 it sat outside any `<script>` tag, silently disabling a rating widget
@@ -135,6 +135,20 @@ clearly labeled to prevent future confusion. See
 Governance/design material that spans systems, including the actual
 Product Specification Document proposing this repo's git-based structure
 in the first place. See [`meta/README.md`](./meta/README.md).
+
+## [`archive/`](./archive/INDEX.md) — superseded docs, kept as records
+
+Old handoffs, finished plans, sprints and audits, replaced versions, and
+the history logs' older entries, filed by school quarter (2025-26, summer
+2026, then 2026-27's marking periods) and kept word for word at their old
+paths inside each quarter: `meta/HANDOFF_2026-10-22.md` is
+`archive/2026-27-Q1/meta/HANDOFF_2026-10-22.md`.
+[`archive/INDEX.md`](./archive/INDEX.md) has one row per quarter (dates,
+PRs, plans, what it was about) and links each quarter's own index. The
+root `.ignore` keeps the archive out of everyday searches (ripgrep, and so
+Claude Code's Grep); open a file by path, or search a quarter with
+`rg <pattern> archive/2026-27-Q1/`. Git, CI and the release and
+student-data scans still read them.
 
 ## [`tools/gas-lint/`](./tools/gas-lint/) — static checks for the GAS systems
 
@@ -486,10 +500,10 @@ cas-ccps flows are verified live with their own liveness checks
 (`checkFlow2Liveness()`, `checkWarmUpFlowLiveness()`; see
 `cas-ccps/DEPLOYMENT_HANDOFF.md`). kos-personal's Curator flow was fixed in
 Studio on 2026-09-29 and its classify flow is returning real parts
-(`kos-personal/HANDOFF_2026-09-28.md`). What is left is operator work, not
+(`archive/2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md`). What is left is operator work, not
 builds: pushes of current `main` (`node run.js --latest`, `tools/clasp-sync/run.js`) and the
 setup functions each new script needs, listed in
-`cas-ccps/DEPLOYMENT_HANDOFF.md` and `kos-personal/HANDOFF_2026-09-28.md`.
+`cas-ccps/DEPLOYMENT_HANDOFF.md` and `archive/2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md`.
 The `clasp`-side work is a human's, per SMP-004's air-gap.
 
 Clasp adoption is no longer scaffolding: all 9 cas-ccps projects build

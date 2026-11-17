@@ -1,5 +1,5 @@
 'use strict';
-// 67's agenda deck (meta/SPRINT_LESSON_DOCS_2026-11.md): one per course per
+// 67's agenda deck (archive/2026-27-Q1/meta/SPRINT_LESSON_DOCS_2026-11.md): one per course per
 // school day, a slide per itinerary block with each period's minutes, read
 // from the lesson doc so the teacher's edits carry in; the plan when no doc
 // exists; remade in place.

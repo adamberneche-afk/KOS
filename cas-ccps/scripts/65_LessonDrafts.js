@@ -3,7 +3,7 @@
 // BOUND TO: Teacher Dashboard standalone web app (cas-ccps:teacher-dashboard)
 //
 // PURPOSE: lesson editing from the Teacher Dashboard, phase 1 of
-// meta/LESSON_AUTHORING_PLAN_2026-10.md (decided 2026-10-21). The teacher
+// archive/2026-27-Q1/meta/LESSON_AUTHORING_PLAN_2026-10.md (decided 2026-10-21). The teacher
 // edits a lesson's fields in the 📅 Lessons panel; each edit is a draft row
 // in the Central Ledger's LessonDrafts tab. Nothing here changes a lesson:
 // an import (an agent session, by hand or on the evening Routine) turns a

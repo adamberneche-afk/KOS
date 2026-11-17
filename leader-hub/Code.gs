@@ -28,7 +28,7 @@
  * HISTORY: this began as Phases 1-2 of the server-migration plan
  * (transport and serving only). Since 2026-10-22 every data domain lives
  * on the server and the app runs only as this web app
- * (meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md): doGet() writes the
+ * (archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md): doGet() writes the
  * server's data into the page as window.__LH_BOOT__ (Data.gs
  * lhBootData_/lhInjectBootData_), and the page saves each change back
  * through google.script.run. lhApiCall_() below is the google.script.run entry point

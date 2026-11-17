@@ -175,7 +175,7 @@ pure functions, each verified by reverting its fix and confirming the test
 fails: the stripper desync; a historical-marker window loose enough that
 "only creates what doesn't exist" suppressed a real finding three lines
 away; and a test-count regex that couldn't cross a markdown blockquote
-line-wrap — `meta/CODEBASE_REVIEW.md` once carried a stale count split
+line-wrap — `archive/summer-2026/meta/CODEBASE_REVIEW.md` once carried a stale count split
 across a `>` continuation ("...gas-sandbox.js\` — 346\n> passing tests..."),
 which `\s+` could not bridge. `normalizeBlockquotes()` fixes this by
 replacing a leading `>` with a same-length blank before matching, so the
