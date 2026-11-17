@@ -14,8 +14,8 @@
 //
 // PURPOSE: Flow 2 (Student Evaluation) redesign, landed after a live
 // Studio build session hit three walls documented in this session's
-// own record (see cas-ccps/README.md and DEPLOYMENT_HANDOFF.md for the
-// fuller writeup):
+// own record (see cas-ccps/README.md and cas-ccps/docs/deployment/
+// second-account.md, "The real gap", for the fuller writeup):
 //   1. Google Workspace Studio's custom-step add-on path (the 8 steps in
 //      cas-ccps/studio-steps/) requires a standard GCP project, and this
 //      district's Google Workspace account has GCP access disabled

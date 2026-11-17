@@ -29,130 +29,19 @@
 > **2026-10-29: everything merged through #337 is pushed** to every
 > project with `run.js` and checked with `node run.js --verify` (every web
 > app on its last push). The nightly rollout runs in APPLY for both
-> courses and catches itself up (#333). The bullets below are the history
-> of earlier pushes; what is live now, and the operator's queue, are in
+> courses and catches itself up (#333). The history of earlier pushes is in
+> [`archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md`](../archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md); what is live now, and the operator's queue, are in
 > [`archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md`](../archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md).
 >
 > **The repo-wide handoff is [`meta/HANDOFF_2026-11-17.md`](../meta/HANDOFF_2026-11-17.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
-> - **Pushed 2026-10-12: #167 and #169.** Terms are marking periods
->   (`CURRENT_TERM` = `2627_MP1`), and the CAS attention signal
->   (`34b`, the counts-only `KOS_CAS_SIGNAL` doc) is live: the operator ran
->   `runQueueWatchdog` once to create it, and installed the watchdog's
->   10-minute trigger by hand (it had never been installed;
->   `installQueueWatchdogTrigger()` does it now, Phase 2 step 6a). The
->   Health tab no longer reads DRY RUN.
-> - **cas-ccps: everything else merged is pushed (2026-10-12).** The operator
->   pushed `main` to every project with `run.ps1` on 2026-10-12, so #115–#117,
->   #120–#126, #135–#157 and #160–#162 are live. run.ps1's promote step
->   versions and updates both web apps' existing deployments; if it was
->   skipped, do that by hand. Phase 6 (below) ran through
->   step 17a earlier: LIVE assignments `CAS-8175-L06` and
->   `CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS`, every rostered student enrolled
->   (71 in 8175, 21 in 8177). The curricula are complete: every state task is
->   covered in both courses, and every lesson doc in Drive matches the repo.
-> - **Done after the push (2026-10-12):** `syncFlowPromptsToSheet()`;
->   `seedLessonSchedule()` and the first new start dates (2026-10-14, as
->   `YYYY-MM-DD`); `AI_FLOWS_LIVE` = `true` in the **Student Dashboard**
->   project. Step 18: both Canvas cartridges imported (`8175.imscc`, 36
->   modules; `8177.imscc`, 31) and the next lessons scheduled.
-> - **2026-10-15/16: the first real student submissions.** Submit failed until the
->   deploying account approved the `documents` scope (rule below); feedback then
->   landed at the bottom of the doc, and Flow 2 needed a manual start. #175 fixes
->   the first two in code; see `archive/2026-27-Q1/meta/CAS_BUG_HANDOFF_2026-10-16.md`.
-> - **2026-10-17:** #173–#175 pushed with `run.js`, which replaces run.ps1.
->   Merged, not yet pushed: #179 (late results finish their rows), #180
->   (feedback as comments, off by default; "Feedback as comments" below) and
->   #181 (the nightly lesson rollout, shadow first; "Nightly lesson rollout"
->   below).
-> - **2026-10-18/19: everything merged through #206 is pushed**, #179–#181
->   included (the lesson rollout is in shadow). Steps 17c–17e ran live on
->   2026-10-19: period 3 split into `3-Odd`/`3-Even`, period 1 `DAILY_HALF`,
->   and the Ledger cycle installed (`installLedgerCycle()` took over 9
->   triggers; `registerDeliveredWarmUps` had never had a Ledger trigger).
-> - **2026-10-20: pushed** #209 (term rollover), #213–#218 (assignment
->   criteria and competency tiers; `refreshAssignments()` run), #214 (bug 4:
->   READY written as an edit), #220 and #222 (Flow 4 scoring and its own
->   plausibility check), #223 (the artifact sync's assignment hop).
-> - **2026-10-21: pushed** #228 (`PeriodOverride`, step 17f, seeded), #229
->   (the wizard's triggers belong in the Ledger, step 17g), #230 (assignment
->   evidence gaps; `refreshAssignments()` run; the Drive lesson docs match;
->   the cartridges not yet re-imported), #231 and #235 (the family signal's
->   two tiers; a dropped Flow run written again), #233 (the timeout email's
->   steps), #234 (the artifact sync finds the matrix through
->   `MatrixRegistry`).
-> - **Merged 2026-10-21, not yet pushed (Central Ledger):** #237 (Studio's
->   text timestamps read: the overnight email's 24 hours, the return tab's
->   prune), #238 (Flow 3's own plausibility check, the echoed prompt named,
->   a question required, the prompt's constraint 10), #241 (the retention
->   dry run, `previewRetentionDisposition()`). Flow 3's Ask Gemini step no
->   longer lists the Central Ledger as a source (removed by hand,
->   2026-10-21). Both Canvas cartridges re-imported 2026-10-21.
-> - **Merged 2026-10-21, not yet pushed (Teacher Dashboard):** #243 (📅
->   Lessons: the schedule panel; the Feedback and Parent Reports panels now
->   open), #245 and #246 (lesson editing and writing: the `LessonDrafts`
->   tab, made on the first save; 55b is now also in this project). After the
->   push, `run.js` promotes the web app (a hand-made version only if it warns a deployment isn't in `deployments.txt`). The import runs
->   by hand or on the "Lesson draft import" Routine
->   (`docs/LESSON_IMPORT_PROCEDURE.md`), which needs its connectors added in
->   claude.ai.
-> - **Merged 2026-10-22, not yet pushed:** #248 (00, 02, 07, 13: the 💬
->   Feedback panel finds its courses from the Ledger rows' names and shows
->   the live setting; a one-course `FEEDBACK_AS_COMMENT` value now reaches
->   that course's students; the readiness numbers filter the roster) and
->   #249 (07, 23: submitted times on roster rows, the warm-up count without
->   blank answers, the "Assignments" card, Student Context's back link).
->   #251 and #252 (02, 13) ride the same push.
-> - **Merged 2026-10-22/23, not yet pushed:** #253 and #254 (plain words and
->   WCAG contrast on both dashboards, ❓ Terms panels; the doc menu is
->   **📊 Feedback → Submit for Feedback**; feedback comment, doc header,
->   emails and setup alerts in plain words; both Canvas cartridges rebuilt,
->   so re-import them), #259 (the UX audit's fix-first items: the card
->   updates after Submit, the doc ends on a visible line with six writing
->   lines, a failed check marks `ERROR_EVALUATION` and tells the teacher,
->   Ledger cycle failures counted and shown, `ROLLOUT_AUTO_APPLY` read from
->   `_CONFIG`, Clear Staging Pipeline puts unfinished work back in line, the
->   admin walkthrough retired, student identifiers out of the logs, 📅
->   Lessons and lesson-editor fixes, nothing stored in the browser) and
->   #265 (the overnight check runs the setup checks; `EvaluationLog`;
->   WarmUpQueue `delivered_at` / `answered_at`) and #267 (cas-ccps comment
->   and doc fixes from the documentation scan).
-> - **2026-10-23: the Central Ledger was pushed** and runs at least #265
->   (the overnight setup checks show in `KOS_CAS_SIGNAL`); which commit, and
->   whether the other cas-ccps projects went with it, is for `run.js`'s
->   output to confirm.
-> - **The next push** carries #268 (parent reports written by KOS and sent
->   by the teacher, D1; bug 4's overnight line; rule 12's `typeof` guards
->   removed; the Teacher Dashboard's manifest drops `script.send_mail`) and
->   #271 (the watchdog knows `NOT_MEETING`), and #237 to #267 to any
->   project the 10-23 push missed: `node run.js --latest --only
->   central-ledger,teacher-dashboard,student-dashboard,master-student-template`
->   (plus the other systems' projects), which promotes both web apps. The
->   checks after it, and the rest of the operator's queue, are in
->   `archive/2026-27-Q1/meta/HANDOFF_2026-10-22.md`.
-> - **Bug 4 resolved (2026-10-23):** Flow 2 starts by itself on a submission.
 > - **After any manifest scope change** to a web app that runs as the deploying
 >   admin (both dashboards): run any function from that project's editor and
 >   approve every prompt, then test one submit, before a class depends on it.
 >   A prompt that never appears or can't be approved points to the district's
 >   Admin console API controls.
-> - **Retired 2026-10-12:** both Turn-In Form files are in Drive's trash.
->   The Ledger's `dispatchFormSubmit` trigger stays; it serves the intake
->   form.
-> - **Live 2026-10-12: the Family Mail Sentinel**
->   (`cas-ccps:family-sentinel`, scripts 60-62). A ninth project, on a
->   private sheet: it labels student and parent mail, has a Gemini flow
->   triage it with names redacted, and writes the name-free
->   `KOS_FAMILY_SIGNAL` doc the KOS Claude Project reads; a safety message
->   pushes to the teacher's phone (ntfy). Pushed with `run.ps1`
->   (`clasp-registry\cas-ccps\family-sentinel`), the Flow built, the
->   trigger installed, and the safety alert tested end to end by the
->   teacher. Setup and checks: `docs/FAMILY_MAIL_SENTINEL.md`.
-> - Done since: real students' submissions evaluated by Flow 2 (first on
->   2026-10-15/16) and nightly warm-ups answered and scored (since
->   2026-10-19).
 >
 > **All five cas-ccps flows are live and verified end to end.** All 9 cas-ccps
 > projects (the original eight plus the Family Mail Sentinel) are live in a
@@ -169,138 +58,10 @@
 > Sept 10 until a Sept 29 fix (`archive/2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md`). **Nothing needs deploying
 > from scratch**; the repo-wide handoff lists what is still pending. The
 > rest of this document — the already-live section, the
-> Script Properties reference, the from-scratch order of operations — is
+> [Script Properties reference](docs/deployment/script-properties.md), the [from-scratch order of operations](docs/deployment/second-account.md#order-of-operations) — is
 > kept as reference for standing up a *second* cas-ccps account, for
 > extending any of the three systems, or for onboarding a session that
 > needs the full history rather than just the current state.
->
-> ### Lessons learned closing out Flows 2-5 — read before building a flow
-> anywhere else in this repo
->
-> These came out of actually building Flows 2-5 in Studio this session, not
-> from reading the code. Full detail, with the exact logs and diagnosis, is in
-> `cas-ccps/HISTORY.md`'s deployment record.
->
-> 1. **A green "Run Completed" banner proves nothing.** It doesn't distinguish
->    "the Flow is not built," "its trigger matches nothing," "it wrote to the
->    wrong column," or "it's erroring" — all four look identical from Studio's
->    side. The only things that actually prove a flow is live are its own
->    liveness/binding checks (`checkFlow2Binding()`/`checkFlow2Liveness()`,
->    `checkFlowBinding()`/`checkWarmUpFlowLiveness()`). Run them after every
->    build, not just when something looks wrong.
-> 2. **`everyMinutes(n)` only accepts 1, 5, 10, 15, or 30.** Two install
->    functions (`installFlowInputTriggers()` in `37_FlowInputBuilder.js`,
->    `registerTriggersIfNeeded_()` in `08_TeacherConfirmationStep.js`) called
->    `everyMinutes(2)`, which throws immediately — confirmed directly against
->    a real account, not assumed. The second one runs from `onOpen()`, whose
->    exceptions are swallowed rather than surfaced, so it had likely been
->    failing silently on every Teacher Matrix sheet open since deployment.
->    Both fixed to `everyMinutes(5)`. If you ever see this exact error message
->    installing a trigger anywhere in this repo, this is the whole story —
->    don't re-diagnose it from scratch.
-> 3. **A Flow's own write-back step is not automatically the one thing
->    `harvestFlowInputResults()` is waiting for.** Flow 2's build spec and its
->    binding check both said the Flow should write *only* `GeminiFullOutput`.
->    Built exactly as instructed, the Flow ran successfully in Studio and
->    produced a correct evaluation — and was never harvested, because
->    `harvestFlowInputResults()` only processes rows already at
->    `ReadyStatus = EVALUATED`, a transition nothing else in the codebase
->    makes. `checkFlow2Binding()` used to call a row like that fully healthy.
->    Both the build spec (`42_FlowBuildSpec.js`) and the check
->    (`41_WarmUpFlowBridge.js`) are now fixed — the check flags this exact
->    case as "stuck at READY" — but the underlying lesson generalizes: when a
->    harvest function checks for a specific status value, confirm *what writes
->    that value* before assuming a "write the output column" instruction is
->    complete.
-> 4. **A `PromptText` chip (`FlowInput`/`Flow3Input`/`Flow4Input`, and `Flow5Input` until Flow 5 was retired on 2026-11-01,
->    always the last read-only column before the Flow's own writes) is already
->    fully substituted** — including, for Flow 3, already resolved between its
->    Mode A/B templates. Bind Gemini's system prompt directly to that chip.
->    Don't reconstruct the prompt by hand from `15_StudioFlowPrompts.js` /
->    `15b_StudioFlowPrompts_Flow2_Revised.js` (those describe the *pre-37/41*
->    design, now superseded — the lookup, split, and evidence-write steps they
->    describe all moved into Apps Script) and don't branch on `Mode` in
->    Studio. The `FlowPrompts`-tab prompt-key row in `FlowBuildSpec` is
->    explicitly the *alternative*, not the default.
-> 5. **Model-setting guidance (temperature, token limits) is not prompt
->    text.** It's easy to paste a sentence about settings directly into the
->    prompt field by mistake — Gemini will receive it as literal instruction
->    text, which reads as confusing rather than throwing an error. If Studio's
->    "Ask Gemini" action doesn't expose a settings control, that's fine; leave
->    it at default rather than fighting the UI for it.
-> 6. **A `checkWarmUpFlowLiveness()` reading of `returnsSeen: 1,
->    everReturned: true, consumed: 0` right after a harvest is very likely a
->    benign timing gap, not a bug** — the harvest marks the return row
->    `HARVESTED` and then separately consumes the matching input row; a check
->    that lands between those two writes sees the first without the second.
->    It resolved on its own within a couple of minutes both times it was seen
->    this session. Confirmed by directly inspecting the `WarmUpFlowReturn`
->    row's `HarvestStatus`/`Error` columns before concluding otherwise — do
->    that first if it doesn't resolve on a re-check.
-> 7. **A zip/archive transfer to an air-gapped machine can nest a folder.**
->    "Download ZIP"-style exports commonly wrap the repo in a top-level folder
->    named after the branch (e.g. `KOS-main`), so `C:\...\KOS\` and
->    `C:\...\KOS\KOS-main\` both exist and only the second is the real repo
->    root. Every path-not-found error this session traced back to standing one
->    level too high. Confirm with a plain directory listing before assuming
->    gitignored files (like `cas-ccps/clasp/local/*.clasp.json`, the real
->    script IDs) failed to survive the transfer.
-> 8. **A green "Run Completed" AND a schema-valid `GeminiFullOutput` still
->    prove nothing about whether Gemini read the document it was given.**
->    Found while porting kos-personal's own fix for this to cas-ccps: nothing
->    in `harvestFlowInputResults()` checked the *content* of Flow 2's output
->    before writing it into the student's own doc and generating
->    `CompetencyEvidence` rows — only that it was non-empty. Closed by
->    `_fiCheckPlausibility_` (`37_FlowInputBuilder.js`), which — because this
->    system must never let Apps Script read the student's own text (see
->    `docs/FERPA_DATA_MAP.md`'s `FlowInput` section) — checks the output for
->    a self-reported non-access phrase and for engagement with the row's own
->    rubric content instead of comparing against the student's Doc directly.
->    A hit sets `ReadyStatus` to a new terminal `ERROR_SUSPECT_FABRICATION`
->    before anything is written. Full writeup in `HISTORY.md`.
->    **Follow-up:** Flows 3/4/5 (`41_WarmUpFlowBridge.js`) had the identical
->    gap and now reuse this same check directly (`_wfbCheckPlausible_`,
->    same GAS project — no FERPA workaround needed there, since
->    `WQ25_RESPONSE_TEXT` is already a documented, retained field). See
->    `HISTORY.md`'s own entry for that follow-up.
->
-> ### What changed to get here
->
-> 1. **Every flow is ported off the custom Studio steps.** A custom step is a
->    Workspace Add-on and needs a standard, non-default Cloud project; GCP is
->    disabled org-wide for this account, so all 8 cas-ccps steps and both
->    kos-personal steps install without error and never appear in Studio's
->    picker. The shape now is: Apps Script materializes one flat literal row →
->    the Flow makes **one model call** with native steps → Apps Script
->    harvests on a time trigger. `37_FlowInputBuilder.js` (Flow 2),
->    `41_WarmUpFlowBridge.js` (Flows 3/4/5),
->    `kos-personal/12_StudioReturnHarvest.gs` (both KOS flows).
-> 2. **There is now a check for each of the four causes of "nothing
->    happened"** — never built, trigger matches nothing, wrong columns, model
->    call errored. Previously all four looked identical. The table in the
->    section below is ordered so each one gets answered before the next
->    question can confuse it.
-> 3. **The Studio values to type are generated, not transcribed.**
->    `syncFlowBuildSpec()` writes a `FlowBuildSpec` tab from the same
->    constants the harvest reads. Build each Flow from that tab, not from a
->    comment block — the comment blocks normalize em-dashes, which is how a
->    marker copied from a note silently matched nothing.
-> 4. **`meta/FLOW_DOCTRINE.md` exists**: seventeen rules (fifteen when this
->    was written) with the incident behind each and an explicit note on
->    whether anything enforces it. Read it before changing how a flow is
->    built. Nine of the first fifteen are enforced by `gas-lint` Checks G-K
->    and `doc-currency` Check 5; rule 16 partially, by drift tests, and rule
->    17 not at all. Rule 15 is item 8 above,
->    generalized: check groundedness at harvest, not just that the output
->    parses.
-> 5. **The docs were corrected** where they still described the blocked path
->    as live or as merely unpushed. `doc-currency` Check 5 now errors on that
->    class, so a document cannot regress to it quietly.
-> 6. **Flows 2-5 were built in Studio and verified live**, closing the gap
->    items 1-5 above only got partway to. Two real bugs surfaced doing it (the
->    `everyMinutes(2)` trigger bug and Flow 2's missing `ReadyStatus` write),
->    both fixed at the root cause rather than worked around — see "Lessons
->    learned" above.
 >
 > ### The two rules that govern this work
 >
@@ -340,9 +101,9 @@
 > The already-live-account section below is kept for its exact commands and
 > phase ordering — leader-hub's own guide follows the same shape, and a
 > *second* cas-ccps account would run this exact sequence from Phase 1. The
-> Script Properties reference, the runbook pointers, and the
-> order-of-operations further down are for anyone deploying to a *second*
-> account. Three things in the lower half are corrected inline where they
+> [Script Properties reference](docs/deployment/script-properties.md), the [runbook pointers](docs/deployment/second-account.md#the-one-document-that-actually-walks-through-this), and the
+> [order-of-operations](docs/deployment/second-account.md#order-of-operations) are for anyone deploying to a *second*
+> account. Three things in [`docs/deployment/second-account.md`](docs/deployment/second-account.md) are corrected inline where they
 > appear: the from-scratch gotchas (all three were hit and a fourth was
 > found), the "code-complete, not deployed" framing of Flows 2-5 (now stale —
 > see the status banner above), and the `clasp create` mechanics (this
@@ -359,7 +120,24 @@ code review, and fixed a real column-collision bug that work introduced.
 
 **Updated:** 2026-09-04, at the end of the session that built Flows 2-5 in
 Studio and verified all five live end to end — see the status banner and
-"Lessons learned" above.
+"Lessons learned" ([`docs/deployment/flow-lessons.md`](docs/deployment/flow-lessons.md)).
+
+## Topics
+
+Split out of this handoff on 2026-11-17, one doc per topic under
+[`docs/deployment/`](docs/deployment/README.md); the banner's history of earlier
+pushes is in
+[`archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md`](../archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md).
+
+- **[Lessons learned closing out Flows 2-5](docs/deployment/flow-lessons.md)**: "These came out of actually building Flows 2-5 in Studio this session, not from reading the code." Also [What changed to get here](docs/deployment/flow-lessons.md#what-changed-to-get-here): "**Every flow is ported off the custom Studio steps.**"
+- **[Feature switches, the overnight check and the nightly lesson rollout](docs/deployment/feature-switches.md)**: "With `WARMUP_TEXT_BOX` on, a warm-up is answered on the Student Dashboard instead of in a doc". Also the assignment doc header, feedback as comments (`FEEDBACK_AS_COMMENT`) and the nightly lesson rollout (`ROLLOUT_AUTO_APPLY`).
+- **[Deploying a second account from scratch](docs/deployment/second-account.md)**
+  - [The one document that actually walks through this](docs/deployment/second-account.md#the-one-document-that-actually-walks-through-this): "**`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md` is the real, step-by-step guide.**"
+  - [Order of operations](docs/deployment/second-account.md#order-of-operations): "**Module 1 must exist and be live first** — it's the prerequisite for everything else"
+  - [The real gap: Studio Flows 2-5](docs/deployment/second-account.md#the-real-gap-studio-flows-2-5--and-its-worse-than-not-deployed): "**CLOSED for this account as of 2026-09-04 — all five flows built and verified live.**"
+  - [Before going live, read](docs/deployment/second-account.md#before-going-live-read): "`cas-ccps/docs/FERPA_DATA_MAP.md` in full — the compliance reference paired with `cas-ccps/docs/SYSTEM_ARCHITECTURE.html`'s Security Model section."
+- **[Script Properties reference](docs/deployment/script-properties.md)**: "**Where `getConfig_()` looks, in order** (`00_SharedConfig.js`): 1. The project's own Script Properties. These always win, so anything set today keeps working unchanged."
+- **[The other two systems](docs/deployment/other-systems.md)**: "A fresh deployment session covers three, and each carries its own guide with its own sequence and its own status banner — **read each system's own guide for its current state; the summaries below are pointers, not the live record.**"
 
 ## Current repo state
 
@@ -382,75 +160,10 @@ Don't re-derive the bug-fix history — it's in `cas-ccps/HISTORY.md` if you
 need it. The deployment record and the follow-up sections after it are the
 relevant ones; everything before them is pre-deployment reconciliation work.
 
-## The one document that actually walks through this
-
-**`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md` is the real, step-by-step guide.**
-`tools/clasp-sync/README.md` hands off to it explicitly. Read it in full before
-doing anything — don't rely on this handoff's summary below for exact commands.
-Key parts (written for a from-scratch deployment; this account is now past
-this stage, but a second account would start here):
-
-- **Part 3.2b — building from scratch straight to production** (not 3.2's pilot-
-  sandbox path, which had no existing production project to sandbox-copy from
-  at the time; there is one now, so 3.2 is available for a second account): `clasp create --type sheets|docs|standalone --title "CAS - <Project
-  Name>" --rootDir .` in a scratch folder outside this repo, per project. This
-  creates both the real Drive file and its bound script, and prints two
-  different IDs (document ID ~44-45 chars, script ID ~57-58 chars — don't mix
-  them up in the `.clasp.json` files).
-- **Four from-scratch gotchas. The first three were documented here before
-  deployment and all three fired exactly as written; the fourth was found
-  during it.** Kept in full because they apply again to any second account:
-  1. `unified-manual` fails to push (`Invalid ID`) until `central-ledger` exists
-     and has a cut Library version — its manifest's library dependency names
-     this account's Central Ledger, so a second account replaces the ID and
-     version first (`cas-ccps/README.md`, Known Gap #15).
-  2. A from-scratch `central-ledger` spreadsheet has none of the 5 Module-1 tabs
-     (`Ledger`, `ReviewQueue`, `STAGING_PIPELINE`, `RubricQueue`,
-     `MatrixRegistry`) the admin wizard normally creates. Paste
-     `createAdminAssets_()`'s tab-creation block
-     (`16_UnifiedManualSetup.js:~331-373`) into a throwaway function and run it
-     once.
-  3. `teacher-dashboard`/`student-dashboard` both need `ADMIN_SS_ID` set (not
-     just `CENTRAL_LEDGER_SS_ID`), and `student-dashboard`'s manifest must have
-     `executeAs: "USER_DEPLOYING"` and `access: "DOMAIN"` (corrected
-     2026-09-28: it used to say `USER_ACCESSING` with `ANYONE`, which meant
-     every student needed read access to the whole Central Ledger, and any
-     Google account could reach the page. Running as the deploying admin,
-     the page filters rows to the signed-in student, who needs no Ledger
-     access at all).
-  4. **Found during the real deployment, not predicted:** the from-scratch path
-     also skipped the **Central Turn-In Form**. No longer needed: the form and
-     its handler were retired on 2026-10-10 (students turn in on Canvas), and
-     the admin wizard no longer creates one.
-
-  Two manifest bugs also surfaced on first push, both now fixed in the tracked
-  manifests (`bcc772c`, `83f6f76`) — neither was detectable by tests or lint,
-  only by a real push rejecting the file. If you are deploying from a tree
-  older than those commits, expect `studio-steps` to fail on an invalid
-  `workflowElements` `state` value and, once pushed, to never appear in
-  Studio's picker because of a placeholder `logoUrl`.
-- **Part 3.6 — production promotion**: the 5 trigger/menu-driven projects go
-  live on `clasp push` alone. The 2 web apps (`teacher-dashboard`,
-  `student-dashboard`) need an explicit `clasp version` + `clasp update-deployment
-  <id> --versionNumber <n>` after every push, or the live `/exec`
-  URL never updates. On this account `run.js` does both for every
-  deployment listed in the project's `deployments.txt`.
-- **Part 3.7 — studio-steps**: after `clasp push`/`clasp create-deployment`, there's one
-  manual, no-clasp-equivalent step in the Apps Script editor: Deploy → Test
-  deployments → Install. Skipping this is why "pushed" and "usable in Studio's
-  step picker" are different states.
-- **SMP-004 / air-gap framing**: only a human at their own already-authenticated
-  keyboard runs `clasp push`/`clasp deploy` against a real ccpsnet.net
-  production project. If you're doing this from an agent session without that
-  human's own Google auth in front of you, you cannot complete the real push —
-  you can prepare everything up to that point (builds, manifests, `.clasp.json`
-  files with real IDs once the human creates the projects) and hand off the
-  actual `clasp push`/`clasp deploy` invocations.
-
 ## Bringing an already-live account up to current HEAD
 
 **This is the operation that actually applies now**, and it is not the
-from-scratch sequence below. The 9 projects exist, Module 1 and Module 2
+from-scratch sequence in [`docs/deployment/second-account.md`](docs/deployment/second-account.md#order-of-operations). The 9 projects exist, Module 1 and Module 2
 (Phase A + B) are set up, and Flow 1 works against real data — but HEAD has
 moved a long way since that push. Scripts `35`, `37`, `39`–`42`, the Ledger
 schema guard (`38`), the student-data access repair (`50`), the course year
@@ -531,7 +244,7 @@ noted.
 | 17 | Upload each Canvas course's gradebook export (Grades → Export → Export Entire Gradebook) to Drive; `prepareRosterSections()` and put each section's period in `CanvasSectionMap` (this can be done before step 16); then **once per course**: set the Script Property `ROSTER_CONFIG_ID` to that course's LIVE assignment Config ID; `previewRosterEnrollment()`; put each section's period in `CanvasSectionMap`; preview again; `applyRosterEnrollment()` | Enrolls the roster through `intakeStudent_()` (02), exactly as the intake form would. Only students whose period is in the assignment's course (its TeacherMatrix CourseName) are enrolled; the others are skipped as `OTHER_COURSE`. Needs a LIVE assignment and ClassSchedule. |
 | 16a | After a change to assignment criteria in the repo: push, then `previewAssignmentRefresh()` and `refreshAssignments()` (Central Ledger, `53_AssignmentSeeder.js`) | Rewrites the milestones, Definition of Done and milestone competency IDs of the LIVE rows the repo generated; FlowInput rows already written keep their text. First run 2026-10-19 (L07: no peer-reply grading, real criteria for 8175-6 and 8175-49) |
 | 17a | **Switch to the teacher's lessons. Done live 2026-10-07** (`HISTORY.md`). In order: `seedLessonSchedule()`, then type start dates in the `LessonSchedule` tab (a lesson runs until the next starts); set `SEED_UNITS` to the lesson keys (`8175-L06,8177-employee-handbook-operations`) or delete it, then `previewAssignmentSeed()` / `seedAssignments()` and delete `SEED_UNITS`; set `ARCHIVE_CONFIG_ID` to **one** retired assignment at a time (`CAS-S1-U1-8175`, then `CAS-S1-U1-8177`) and run `previewArchiveAssignment()` / `archiveAssignment()` for each; `previewRemoveDraftedLessons()` / `removeDraftedLessons()` (after the last class of the day: it trashes today's frame docs too) then `buildUpcomingLessons()`, twice if it stops early; then step 17 with the new Config IDs (`CAS-8175-L06`, …) | The lesson builder, warm-ups and assignments then follow LessonSchedule; see the cas-ccps README, "The teacher's lessons and the LessonSchedule tab". A `SEED_UNITS` left at `S1-U1` makes the seeder plan nothing new, and a comma-separated `ARCHIVE_CONFIG_ID` archives nothing (both seen live). |
-| 17b | **Roll out the next lesson** (every new lesson, both courses; done by hand while the nightly lesson rollout, "Nightly lesson rollout" below, is still in shadow for a course; `archive/2026-27-Q1/meta/CAS_DESIGN_THREADS_2026-10-16.md` Thread C). A date in `LessonSchedule` makes no student docs by itself. In order: the lesson's `start_date` as `YYYY-MM-DD` (run `seedLessonSchedule()` first if it has no row); the date within 7 days; delete `SEED_UNITS`; `previewAssignmentSeed()` then `seedAssignments()` (the LIVE TeacherMatrix row); set `ROSTER_CONFIG_ID` to the lesson's Config ID (e.g. `CAS-8175-L07`, one per run); `previewRosterEnrollment()` then `applyRosterEnrollment()` (creates and shares each student's doc and Ledger row; students already enrolled are skipped, so a re-run after a timeout is safe); repeat for the other course | Usual reasons a date does nothing: no LIVE assignment yet, the date more than 7 days out, `SEED_UNITS` still set, an 8177 lesson with no approved prompt file, or a stale Canvas export missing new students. `SECTION_NOT_MAPPED` in the preview means a section has no period in `CanvasSectionMap`. The 2 a.m. `buildUpcomingLessons()` makes class-level lesson frames, not student docs. |
+| 17b | **Roll out the next lesson** (every new lesson, both courses; done by hand while the nightly lesson rollout, "Nightly lesson rollout" in [`docs/deployment/feature-switches.md`](docs/deployment/feature-switches.md), is still in shadow for a course; `archive/2026-27-Q1/meta/CAS_DESIGN_THREADS_2026-10-16.md` Thread C). A date in `LessonSchedule` makes no student docs by itself. In order: the lesson's `start_date` as `YYYY-MM-DD` (run `seedLessonSchedule()` first if it has no row); the date within 7 days; delete `SEED_UNITS`; `previewAssignmentSeed()` then `seedAssignments()` (the LIVE TeacherMatrix row); set `ROSTER_CONFIG_ID` to the lesson's Config ID (e.g. `CAS-8175-L07`, one per run); `previewRosterEnrollment()` then `applyRosterEnrollment()` (creates and shares each student's doc and Ledger row; students already enrolled are skipped, so a re-run after a timeout is safe); repeat for the other course | Usual reasons a date does nothing: no LIVE assignment yet, the date more than 7 days out, `SEED_UNITS` still set, an 8177 lesson with no approved prompt file, or a stale Canvas export missing new students. `SECTION_NOT_MAPPED` in the preview means a section has no period in `CanvasSectionMap`. The 2 a.m. `buildUpcomingLessons()` makes class-level lesson frames, not student docs. |
 | 17c | **Split a period whose groups meet on alternate days** (added 2026-10-19: period 3's odd-day and even-day groups are separate, cross-listed Canvas sections). In `CanvasSectionMap`, give each section its own period (`3-Odd`, `3-Even`); in `ClassSchedule`, replace the period's rows with one row per new period and course (`3-Odd` `ODD`, `3-Even` `EVEN`); `previewPeriodRelabel()` then `applyPeriodRelabel()` (`52`: moves students already enrolled to their section's period, counts only); `previewOffDayWarmUps()` then `retireOffDayWarmUps()` (`24`: warm-ups already queued for a day the student's period doesn't meet become `NOT_MEETING`, never scored or shown) | Day type is the calendar date's parity (odd date, odd day); A/B is the bell schedule and doesn't matter here. A period label is text, so `3-Odd` works everywhere a period appears; new docs go in a `3-Odd` folder, older ones stay. The 2 a.m. `buildUpcomingLessons()` makes lesson rows for the new periods from then on. |
 | 17d | **A period that meets daily for half the time** (added 2026-10-19: period 1, same pace as the ODD/EVEN periods). Push first, then set its `ClassSchedule` rows' day_type to `DAILY_HALF` (code from before this change treats `DAILY_HALF` as not meeting). Give every lesson already taught a `start_date` in `LessonSchedule` (the warm-ups review from those, below). `WarmUpPlan` is optional: one row per pair of class days, on the day the pair starts, for a specific seed | A `WarmUpPlan` row covers its date and the next weekday: the ODD and EVEN classes get the same warm-up, and a `DAILY_HALF` period gets it on the first day only; on the second the Student Dashboard shows the first day's feedback and extra-credit reply box. A day no row covers takes a random seed (fixed for the pair) from the lessons with a `LessonSchedule` start_date on or before it (since 2026-10-19), and a `DAILY_HALF` period then starts a pair on odd dates. A lesson with no start date is never picked. `DAILY` is unchanged (a new warm-up every day). |
 | 17e | **One trigger for the Ledger's frequent jobs** (added 2026-10-19). After the push, in the Central Ledger: `previewLedgerCycle()`, then `installLedgerCycle()` (`64`): it deletes the frequent jobs' own triggers (`bridgeQueue`, `runStagingTurnstile`, `backPropagateCompletions`, `buildFlowInputRows`, `harvestFlowInputResults`, `buildWarmUpFlowInputs`, `harvestWarmUpFlowReturns`, `registerDeliveredWarmUps`, `runAlignmentLogBackfill_`, `runQueueWatchdog`, whichever exist) and installs `runLedgerCycle` every minute, which runs those same jobs in turn at their cadence. Rollback: `restoreLedgerTriggers()` | Why: ~45 Google-side failures in a week from ten triggers racing one spreadsheet. The 3 a.m. jobs and the nightly ones keep their own triggers. A job whose installer is re-run gets its own trigger back and the cycle leaves it alone (preflight flags the double); run `installLedgerCycle()` again to fold it in. Errors show in the cycle's log as `[LC] Errors: <job>: <message>`; since 2026-10-22 each job's failures are also counted (`LEDGER_CYCLE_ERRORS`), named in the CAS signal and the overnight email, and a job failing 10 cycles in a row makes the trigger fail so Google's failure email arrives. |
@@ -577,98 +290,6 @@ answer.
 
 Only after Phases 1-3 are clean is there any point configuring Flow 2 in
 Studio, because before that there is no `FlowInput` row for it to read.
-
-**Warm-ups in a text box (switch, added 2026-10-17).** With
-`WARMUP_TEXT_BOX` on, a warm-up is answered on the Student Dashboard instead
-of in a doc: Flow 3 writes it to the Ledger's `WarmUpTextBox` tab, the
-student types the answer under it (until the end of the lesson day), the
-3:15am run scores it, and the next day the card shows the score (out of
-10, with its parts) and the feedback and, for
-7 days, an extra-credit reply box (10 words or more). The card shows only
-the last warm-up and the current one. To turn it on, add the row
-`WARMUP_TEXT_BOX` to the Central Ledger's `_CONFIG` tab: `off`, `8175`,
-`8177` or `all`. It must be on before Flow 3 delivers a warm-up: one already
-delivered as a doc stays a doc. Set it back to `off` and new warm-ups are
-docs again. Run `refreshSharedConfig()` in the Central Ledger and the
-Student Dashboard so neither waits 10 minutes.
-
-**The overnight check and flow pacing (added 2026-10-18).** The CAS
-signal (`KOS_CAS_SIGNAL`) opens with LAST NIGHT from `34c_OvernightHealth.js`:
-Ledger cycle jobs still failing, each 3 a.m. stage, today's and tomorrow's
-warm-ups, Studio jobs with no return, failed returns, warm-ups sent as the
-teacher's anchor, and (since 2026-10-23, at most every 6 hours) the setup
-checks: the Ledger's column order (38), FlowPrompts against the code (40),
-Studio returns in the right columns (41) and the retention date columns
-(57), each problem naming the function to run; or one all-clear line. The
-same lines are emailed to `ADMIN_NOTIFY_EMAIL` (or `TEACHER_EMAIL`) once a
-day after 5 a.m. Nothing to install: the queue watchdog runs it. Studio drops runs when many rows change at once, so the
-warm-up flows write at most 10 input rows per 5-minute run and append again
-a job with no return after 30 minutes (the old row `RETRIED`, at most
-twice).
-
-**Assignment doc header (added 2026-10-17).** A doc made after this push
-has a small grey page header: the student, class, block, period and
-assignment with a "Your dashboard" link, and a "Feedback:" line. The line says
-"not submitted yet", then "submitted …, waiting for feedback." on submit,
-then the result in color once feedback arrives: green "✅ Passed (…)", amber
-"✏️ Revise, then submit again (…)", each saying where the feedback is; a
-timeout or a check that couldn't be used says so and that the teacher has
-been told (since 2026-10-22). The body holds the assignment title and the
-prompt (8 pt), "↓ Go to your response" / "↑ Back to the assignment" links,
-the "Your response" heading, the response line, six writing lines (10 pt),
-a small `[CONFIG_ID: …]` line and a grey last note that nothing below it is
-checked (these from 2026-10-22, new docs only). Docs made earlier keep their
-layout, and docs from before 2026-10-17 get no header. **Feedback as comments is on for both courses from 2026-10-17**
-(operator's decision; `FEEDBACK_AS_COMMENT` = `all`); to roll back, set it
-to `off` and new docs get the feedback zone again.
-
-**Feedback as comments (optional switch, added 2026-10-17).** Flow 2
-feedback goes into the doc's feedback zone by default. To post it as a
-comment on the doc instead, so the doc holds only the assignment and the
-student's work:
-
-1. On a test doc you own, run the `commentTest` probe
-   (`archive/2026-27-Q1/meta/CAS_BUG_HANDOFF_2026-10-16.md`, appendix) and check how the
-   comment looks on the web and on a tablet, and that a long one fits.
-2. On the Teacher Dashboard, **⚙ Settings** (💬 Feedback until
-   2026-10-27), turn *Feedback as a comment* on for one course first. (It
-   writes the row `FEEDBACK_AS_COMMENT` in the Central Ledger's `_CONFIG`
-   tab: `off`, `all`, or the courses it is on for, such as `8175` or
-   `8175,8177`; editing the tab by hand does the same.)
-   It reaches the Central Ledger and the Student Dashboard within 10
-   minutes; `refreshSharedConfig()`, run in a project, makes it immediate there.
-3. Submit one test assignment and check: one comment on the doc with the
-   result, the report and the next steps; nothing added to the doc; the
-   dashboard says to open Comments.
-
-Docs created while it is on have no feedback zone. Docs created before keep
-theirs and their earlier feedback; only the "No feedback yet" line is
-removed. Set the row to `off` to go back. If a comment can't be posted, that
-one evaluation goes into the doc instead and the log says why.
-
-**Nightly lesson rollout (added 2026-10-17).** Student docs follow the
-`LessonSchedule` dates without running the seeder and roster import by hand
-(`cas-ccps/README.md`, "Nightly lesson rollout (script 58)"):
-
-1. After pushing, run `installLessonRolloutTrigger()` in the Central Ledger
-   project (about 9 p.m. nightly). It starts in shadow and changes nothing.
-2. Run `previewLessonRollout()` once and read the `RolloutLog` tab. Read it
-   again after a few nights: each lesson's would-seed, would-enroll and
-   would-release counts, and any PROBLEM rows (also in the CAS signal).
-3. Set `ROLLOUT_AUTO_APPLY` to one course first (`8175` or `8177`), then
-   `all`: a Central Ledger Script Property, or a row in the Ledger's
-   `_CONFIG` tab. `off` (or deleting it) stops it.
-
-Docs for a lesson two days out are made with the Ledger status `SCHEDULED`:
-not shared, no Student Dashboard card, shown as SCHEDULED on the Teacher
-Dashboard. The run the night before shares them and sets them `ACTIVE`.
-A run makes about 25–30 docs before its time budget; one that stops short
-schedules `runLessonRolloutCatchUp` a few minutes later until every doc is
-made (2026-10-29; at most 12 a day). `runLessonRollout()` from the editor
-starts the same chain. A lesson whose `release` cell in `LessonSchedule`
-says `HOLD` (📅 Lessons → **Hold**) is left out until it is released.
-Keep the Canvas exports fresh: an export older than 7 days is a PROBLEM row.
-`removeLessonRolloutTrigger()` takes it out.
 
 Two things that are **blocked** on this account, not merely unpushed, so
 don't spend time on either no matter what you run — see
@@ -716,315 +337,6 @@ extending one of the three systems, investigating something that
 looks wrong, or standing up a second account from this same codebase.]
 ```
 
-## The other two systems
-
-This file is cas-ccps's. A fresh deployment session covers three, and each
-carries its own guide with its own sequence and its own status banner —
-**read each system's own guide for its current state; the summaries below
-are pointers, not the live record.** All three are on the **same
-`ccpsnet.net` account** as cas-ccps — do not read a system boundary as an
-account boundary, which is a mistake this repo made twice
-(`FLOW_DOCTRINE.md` rule 3).
-
-**leader-hub** — `leader-hub/DEPLOYMENT_GUIDE.md`. **Deployed and live as of
-2026-09-05** — pushed, both Web App deployments made, all six AI Flows
-(`EMAIL_COMPOSE`, `ARCHIVE_INSIGHTS`, `WBL_INSIGHTS`, `LP_ASSIST`,
-`FIN_ANALYSIS`, `BRAG_EMAIL`) built and confirmed live via
-`checkAiFlowFixtures()`. Its own `HISTORY.md` has the deployment record.
-**Since then (2026-10-03): paused.** After the OAuth-consent-dialog crash
-fix it works on `/dev`. `/exec` was released 2026-10-05 (v20) and still
-needs its `?diag=probe` check; see `leader-hub/docs/oauth-crash-and-diagnostics.md`'s "Fixed — the
-OAuth-consent-dialog crash". **Since 2026-10-22** (merged, not yet pushed as
-of 2026-10-23) it keeps nothing in the browser and runs only as its web app;
-the standalone file is retired (`archive/2026-27-Q1/meta/HANDOFF_2026-10-22.md`).
-Its queue rows are deleted the moment their outcome is read, which is why
-liveness there is a durable counter rather than a row scan. Its D1 side —
-the browser calling cas-ccps's `doPost()` — is diagnosed from the cas-ccps
-end; see the paragraph above.
-
-**kos-personal** — `kos-personal/DEPLOYMENT_GUIDE.md`. **Both Studio flows
-were built and verified end to end on 2026-09-08 (the second attempt), but
-the pipeline failed in use:** Sept 10-17 about 71% of Curator rows failed
-on persona output (the steps called the RTP Gem; fixed in Studio Sept 29),
-and the Classify Flow has not yet classified a real session. `archive/2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md` is the current record; the
-history below is how the flows got built.
-The Curator flow's first Studio build attempt surfaced real problems (a
-trigger condition not actually filtering on `Status`, and Gemini
-fabricating output after a "Workspace sources is turned off" warning
-instead of reading the real source document) and was deliberately paused
-rather than patched around — see `kos-personal/CHANGELOG.md`'s Round 17
-for that incident. Everything through Round 20 was Apps-Script-side rework
-closing the gap it exposed: the live Docs-read step removed from both
-flows entirely (`13_StudioInputBuilder.gs` reads the source document
-itself, before Studio ever runs), a generated `FlowBuildSpec` tab
-supplying every value to build from (`14_StudioFlowBuildSpec.gs`), a
-preflight check (`15_Preflight.gs`) verifying structural soundness first,
-and prompts moved onto a generated `FlowPrompts` chip tab
-(`16_FlowPrompts.gs`) instead of hand-pasted blocks. Round 21 is the
-second attempt itself: Socratic Onboarding completed (a real front-end bug
-in the Arm Engine wizard fixed first — `8_WebApp_UI.html`'s
-`_armCaptureStep()` was silently clobbering earlier steps' answers), both
-flows built from `FlowBuildSpec`/`FlowPrompts`, and
-`checkStudioFlowBinding()`/`checkStudioFlowLiveness()`/`checkStudioReturns()`
-confirmed both genuinely wrote back — a real Auditor `PASSED` sign-off on
-the Curator side, real per-sentence scores on the Classification side.
-Round 22 is what verifying *past* the harvest — real data actually
-reaching `SESSION_LOG`/`VECTOR_MATRIX`, not just `STUDIO_RETURN` — found
-and fixed: a phantom-`VECTOR_MATRIX`-row bug (the Vector Router was called
-unconditionally for every payload type, including Curator sessions with no
-vector data of their own) and a shared-`File_ID` race
-(`processInferenceQueue()` used to re-read a row's source doc directly,
-which a *different* row sharing that same `File_ID` by design can
-silently overwrite between harvest and processing — now reads the row's
-own `STUDIO_RETURN` entry instead). Full account, with exact logs and
-diagnosis, in `kos-personal/CHANGELOG.md` Rounds 21-22. Its consent-screen
-phase configures the *default* project and does **not** create a standard
-one — that distinction is what cost 2,113 lines here.
-
-## Order of operations
-
-1. **Module 1 must exist and be live first** — it's the prerequisite for
-   everything else (`CENTRAL_LEDGER_SS_ID` has to resolve to something real
-   before Module 2's wizard will even run). If Module 1 isn't live yet either,
-   this is a from-scratch deployment of the whole system, not just Module 2.
-2. **Get all 9 projects connected via clasp** per the runbook above. Expect all
-   4 gotchas — the first three are confirmed to fire every time.
-3. **Upload the 3 data files to the teacher's Drive folder before running the
-   wizard** — the wizard only *searches* for these, it doesn't fetch or
-   generate them:
-   - `CompetencyRegistry.csv` (also in `cas-ccps/data/`)
-   - `PacingGuide_CAS_Context.json` (also in `cas-ccps/curriculum/`)
-   - `CompetencyRubrics.json` (also in `cas-ccps/data/`)
-4. **Wire the CentralLedger Apps Script Library dependency** — `cas-ccps/README.md`'s
-   Known Gap #15 has the exact 4 steps; the committed manifest names this
-   account's Library, so a second account replaces its ID and version. Several cross-project calls (competency
-   registry import, pacing guide import, rubric import) silently fall back to
-   "run this manually from Central Ledger instead" instructions if this isn't
-   wired — not a hard blocker, but degrades the wizard experience.
-5. **Run Module 2's setup wizard**, `28_Module2Setup.js` — two entry points, not
-   one:
-   - `runModule2Setup()` — Phase A (Lightweight): creates 4 tabs, imports the
-     competency registry, sets `M2_ENABLED=true`, and names the backfill's
-     installer: `installAlignmentBackfillTrigger()`, run in the **Central
-     Ledger** (`64`).
-   - `runModule2WarmUps()` — Phase B (Full/Warm-Ups): creates 6 more tabs,
-     imports pacing guide + rubrics, collects the block schedule, **names the
-     Central Ledger installers for its triggers** (`installWarmUpTriggers()`,
-     `installArtifactSyncTrigger()`, `installLedgerCycle()`), and walks through
-     Studio Flow 3/4/5 configuration via `ui.alert()` dialogs with the exact
-     settings to enter by hand.
-   Since 2026-10-20 the wizard installs no trigger itself: it runs in the
-   Unified Manual project and every one of these runs a Central Ledger
-   function, so a trigger it made could only fail. In an install where it ran
-   before, run `previewMisplacedTriggers()` then `removeMisplacedTriggers()`
-   from the Unified Manual project's editor (step 17g).
-   Both phases end with an inline (not doc-deferred) list of remaining manual
-   steps — read the completion alerts, don't skip past them.
-   Then, from Central Ledger, `importCourseData()` and
-   `installLessonPlanTrigger()` (a sixth nightly trigger,
-   `buildUpcomingLessons` at about 2am), and the rest of Phase 6 above.
-6. **Redeploy Script 07 (Teacher Dashboard) as a new web-app version** after
-   Phase A — the wizard tells you this in its completion alert; it can't do it
-   itself.
-7. **Build Studio Flows 2-5 by hand in Google Workspace Studio's UI.** — DONE
-   for this account as of 2026-09-04; see the status banner and lessons
-   learned at the top of this document. Kept here for a *second* account:
-   this was the single biggest real gap between "code is done" and "system is
-   live" — see the next section. Nothing in this repo can automate this step,
-   but run `syncFlowBuildSpec()` first and build from the `FlowBuildSpec` tab
-   it writes: every tab name, column number, header, trigger condition and
-   prompt key for all five flows, derived from the constants the code
-   actually reads. The wizard's Phase B dialogs and `15_StudioFlowPrompts.js`
-   still carry the judgement half — connector names, temperature, token
-   limits — which is deliberately not generated, because it needs judgement
-   and does not drift. Keep `checkFlowBinding()` open in a second tab while
-   wiring each Flow's last step (row 8 of the table above), and confirm with
-   the flow's own liveness check afterward — a green "Run Completed" banner
-   in Studio does not by itself prove the flow is wired correctly.
-
-## The real gap: Studio Flows 2-5 — and it's worse than "not deployed"
-
-**CLOSED for this account as of 2026-09-04 — all five flows built and
-verified live.** Kept below as the reasoning for a *second* account, since
-the same wall and the same port apply there identically.
-
-**Corrected after the first real deployment. The original framing below said
-the custom-step code was merely "not deployed." It is unreachable on this
-account.**
-
-Workspace Studio custom-step add-ons require a standard (non-default) GCP
-project linked through Project Settings. `ccpsnet.net` has GCP access disabled
-for this account entirely — confirmed directly at `console.cloud.google.com`.
-The `studio-steps` project pushes successfully and its steps never appear in
-Studio's picker, across repeated uninstall/reinstall cycles, with no OAuth
-prompt ever shown. All 8 steps (2,113 lines) are blocked, and so is
-`15c_Flow2DirectEvaluationService.js`'s `DIRECT_GEMINI` escape hatch, which
-needs an API key, which needs a project.
-
-Resolving that is a district IT / Workspace admin action. Worth requesting —
-it would resurrect all 2,113 lines at once — but don't sequence anything
-behind it.
-
-**What was done instead — all five flows are now ported.**
-
-`37_FlowInputBuilder.js` took Flow 2 off its custom step: it moves the whole
-lookup chain into Apps Script and materializes one flat `FlowInput` row,
-shrinking Flow 2's Studio side to four native, fixed-picker-safe steps.
-`41_WarmUpFlowBridge.js` does the same for Flows 3, 4 and 5 —
-`Flow3Input`/`Flow4Input`/`Flow5Input` in, a shared `WarmUpFlowReturn` tab
-out, Studio making only the Gemini call. Verify each half independently of
-Studio with `runFlow2Canary()` and `runWarmUpFlowCanary()`
-(`35_FlowPreflightAndCanary.js` and `41_WarmUpFlowBridge.js`).
-
-*Correction to what this section used to say:* it claimed Flows 3, 4 and 5
-"hit the same fixed-picker wall (Warm-Ups are per-teacher too)." They don't.
-`WarmUpQueue` lives in the Central Ledger — one spreadsheet a fixed picker
-can target perfectly well. The per-teacher problem was specific to Flow 2's
-`TeacherMatrix`. What actually blocked Flows 3/4/5 was the five custom steps
-alone, plus the Drive and Docs work (creating a warm-up doc, sharing it,
-stamping its zones) that no native step can do. Getting that distinction
-wrong made the job look bigger than it was.
-
-**All five flows (Rubric Extraction, Student Evaluation, Warm-Up Generation,
-Warm-Up Scoring, Bridging) have now been verified live end to end**, each
-confirmed with its own liveness check, not just a Studio "Run Completed"
-banner. `cas-ccps/docs/IMPACT_DASHBOARD.html`'s badges read `Flow 1-5 ✅ Live`
-and `Custom Studio steps ⛔ Blocked` — the custom-step badge stays as its own
-state, deliberately distinct from "live," because "Built, Not Deployed" used
-to read as "someone just needs to push it," which is the one thing that will
-never resolve it. "Live" in these badges means built, wired, and confirmed
-working against seeded fixture data — not yet exercised by a real student
-submission; that distinction stays explicit in the dashboard's metrics and
-narrative copy.
-
-`cas-ccps/studio-steps/README.md` has the per-step deployment instructions
-(mirrors Part 3.7 of the runbook) — still accurate for an account that *has*
-GCP access, which is no account this repo deploys to. That aside used to name
-kos-personal as such an account; it is on this same `ccpsnet.net` account, so
-its own two custom steps are blocked identically and were ported the same way
-(`kos-personal/12_StudioReturnHarvest.gs`). The wizard's Phase B dialogs
-(`28_Module2Setup.js`) give you the exact Studio Flow settings (trigger
-condition, temperature, token limits, input/output field names) to enter once
-you're in Studio's builder — don't guess these from the `.gs` files alone. For
-anything positional (tab, column, header, trigger condition), prefer the
-generated `FlowBuildSpec` tab over any document, this one included: it is
-derived from the constants the harvest reads, and `checkFlowBuildSpec()`
-reports when a column has moved since the last sync.
-
-## Script Properties reference
-
-**Where `getConfig_()` looks, in order** (`00_SharedConfig.js`):
-1. The project's own Script Properties. These always win, so anything set
-   today keeps working unchanged.
-2. For the Central Ledger ID only: the spreadsheet the project is attached
-   to. The Ledger's `_CONFIG` tab carries `SYSTEM_ROLE = CENTRAL_LEDGER`, so
-   central-ledger uses its own ID. A teacher's cloned Matrix or Rubric sheet
-   uses the `CENTRAL_LEDGER_SS_ID` row the setup wizard wrote into its own
-   `_CONFIG` tab.
-3. District-wide settings from the Central Ledger's `_CONFIG` tab:
-   `ADMIN_ROOT_FOLDER_ID`, `ADMIN_NOTIFY_EMAIL`, `STUDENT_DASHBOARD_URL`,
-   `STUDENT_EMAIL_DOMAIN`, `LEADER_HUB_OAUTH_CLIENT_ID`, the three
-   `MASTER_*` template IDs, `MARKING_PERIOD_ENDS`, and the per-course
-   switches `FEEDBACK_AS_COMMENT`, `WARMUP_TEXT_BOX`, `ROLLOUT_AUTO_APPLY`
-   and the research-pivot flag `PIVOT_ARCHETYPE_LOCK`
-   (`meta/PRD_CAS_RESEARCH_PIVOT.md`). Nothing else is read from that tab
-   (`SHARED_CONFIG_KEYS` in `00`). Each switch is off unless its row says
-   `all` or a course code (`8175` / `8177`); add the row by hand when a
-   feature is turned on. `PIVOT_ARCHETYPE_LOCK`: off, warm-up archetypes are recorded but
-   never locked and the lock digest email is not sent. Per-teacher
-   values and secrets stay in Script Properties: `TEACHER_EMAIL` is the
-   Teacher Dashboard's access gate, so a shared value would let that one
-   address into every dashboard that hadn't set its own.
-
-**Setting it up, once:**
-- Run `seedLedgerConfigTab()` from the Unified Manual's Apps Script editor.
-  The setup wizard wrote the district-wide values there. It creates the
-  Ledger's `_CONFIG` tab, adds the `SYSTEM_ROLE` row and copies in each
-  value the tab doesn't already have. It never overwrites a row; a
-  mismatch is logged for you to settle by hand. Running it again from
-  central-ledger fills any gaps.
-- In each project, run `showConfigSources()` to see where every setting now
-  comes from. Once a value shows as coming from the `_CONFIG` tab, you can
-  delete the duplicate Script Property from that project. Edits to the tab
-  reach every project within 10 minutes. To use an edit in a project now,
-  run `refreshSharedConfig()` there; it clears only that project's cache.
-- Keep the properties in three places: the Unified Manual, whose setup
-  wizard and installer read them directly; the master student template,
-  whose student-doc copies run as the student and can't open the Ledger;
-  and `M2_ENABLED` wherever it's set, since several files read it directly.
-
-**Hard-required:** only the Central Ledger ID, found by step 1 or 2 above.
-Without it `getConfig_()` throws. `ADMIN_SS_ID` defaults to the same
-spreadsheet (every installer sets the two equal). `teacher-dashboard` and
-`student-dashboard` aren't attached to a spreadsheet, so they still need
-`CENTRAL_LEDGER_SS_ID` as a Script Property.
-
-**Set by hand when you need it:** `ROSTER_CONFIG_ID` (central-ledger), the
-LIVE assignment the Canvas roster import enrolls into (script 52).
-
-**Written automatically, don't set by hand:**
-- `76_CoveredSoFar.js` writes `COVERED_SO_FAR_DOC_ID_<course>` (each course's
-  Covered So Far doc) and `COVERED_SO_FAR_HASH_<course>` (its last text, so
-  an unchanged doc isn't rewritten). Delete the doc ID to start a course's doc
-  over.
-- Script 16 (teacher setup wizard) writes `TEACHER_*`, `*_RESPONSE_SS_ID`,
-  `*_FORM_URL`, `CONFIRM_ENTRY_*`, `MASTER_*` — all default to `""` (degraded,
-  not broken) if somehow missed.
-- `28_Module2Setup.js` writes `M2_ENABLED`, `M2_COURSES`,
-  `M2_SETUP_PHASE_A_COMPLETE`, `M2_REGISTRY_IMPORTED`,
-  `M2_PACING_GUIDE_IMPORTED`, `M2_RUBRICS_IMPORTED`, `M2_SETUP_COMPLETE`,
-  `M2_SETUP_PHASE_B`.
-
-**Set manually before running the wizards:**
-- `MARKING_PERIOD_ENDS` — when each marking period ends (`2627_MP1=2026-10-30,2627_MP2=2027-01-22,...`); the 2026-27 district calendar is the code default. Add next year's four ends before August (a `_CONFIG` row reaches every project).
-- `CURRENT_TERM` — the school year plus marking period (`2627_MP1`). During a
-  school year `MARKING_PERIOD_ENDS` covers, `currentTerm_()` picks the
-  marking period by date; outside it (summer, or a year the table lacks)
-  `CURRENT_TERM` is used as set, and unset falls back to `""`/`"All Terms"`/
-  `"ALL"` per call site (degraded, not fatal, but set it). Set it from the
-  Central Ledger's **⚙️ Admin Controls → 📅 Set Current Term** menu
-  (`setCurrentTerm()`).
-- `ADMIN_ROOT_FOLDER_ID`, `ADMIN_NOTIFY_EMAIL` — admin-tier, no wizard sets these.
-  Set them once on the Ledger's `_CONFIG` tab (see above) rather than in
-  every project.
-
-**Optional, all default-safe:** the 6 retention properties
-(`SCR_RETENTION_YEARS`, `LEDGER_RETENTION_YEARS`,
-`COMPETENCY_EVIDENCE_RETENTION_YEARS`, `PARENT_REPORT_RETENTION_YEARS`, all
-default 5 years; `WARMUP_QUEUE_RETENTION_YEARS` and
-`WORKING_DATA_RETENTION_YEARS`, default 1 year). The operator adopted these
-periods as the retention schedule on 2026-10-13, **pending the district
-records officer's confirmation** against the Library of Virginia's GS-21
-(`cas-ccps/docs/FERPA_DATA_MAP.md`, `57_RetentionSchedule.js`); a confirmed
-period is set as a property, with no code change.
-
-**Must never be set:** `GEMINI_API_KEY`. It was read only by a commented-out
-direct-Gemini call in `25_WarmUpWriter.js` (removed 2026-09-29) that would have
-bypassed the "Walled Garden" Studio-Flow-only boundary. Nothing reads it now,
-and a deployment that sets it is misconfigured.
-`10_AdminRecoveryPanel.js`'s daily health check alerts loudly if it's ever set;
-don't set it during deployment troubleshooting even temporarily. Same caution
-for `FERPA_FLOW3_FULL_NAME_OVERRIDE` — must stay unset/false.
-
-## Before going live, read
-
-- `cas-ccps/docs/FERPA_DATA_MAP.md` in full — the compliance reference paired
-  with `cas-ccps/docs/SYSTEM_ARCHITECTURE.html`'s Security Model section. Do
-  **not** treat the old `KOS_Guide_IT__Admin_Security` PDF (removed from the
-  tree; on the `pre-archive-cleanup` branch) as current — it describes an
-  abandoned pre-v8 architecture; `README.md` explains why.
-- The "Disclosure to parents" section of `FERPA_DATA_MAP.md` specifically —
-  the weekly parent report (`36_WeeklyParentReport.js`) is the **only** surface
-  in this system that sends student data outside the school's Workspace
-  domain. Confirm this is genuinely wanted before enabling it, separately from
-  the rest of Module 2.
-- `cas-ccps/README.md`'s "Known gaps" section — several are deployment-relevant
-  beyond the Studio Flow one above (e.g. Gap #6: `30b_SCRRetryRemediation.js`'s
-  thresholds are provisional/unvalidated; Gap #11: on a new account nothing
-  has imported the in-repo registry, pacing guide and rubrics until step 5
-  above or `importCourseData()` (51) runs; it ran live on this account on
-  2026-10-06, and `checkCourseData()` reports what is live).
-
 ## Verification, before and after
 
 Before touching any real Google account, confirm the local build is still
@@ -1051,14 +363,6 @@ a menu item, run a smoke test) matter more than anything in this repo — a
 clean local build says nothing about whether a real Apps Script project
 actually authorized correctly, has the right OAuth scopes accepted, or has its
 triggers actually firing on Google's clock, not just installed.
-
-## One small, low-priority doc gap noticed along the way — CLOSED
-
-`cas-ccps/docs/FERPA_DATA_MAP.md`'s Health Checks section said
-`_ferpaHealthChecks_()` "now checks **seven** things" where the live code
-(`10_AdminRecoveryPanel.js`) has **eight**. Fixed in `37aa157` at the start of
-the deployment session, along with the "four retention checks" count in the
-same file (also five). Nothing to do here.
 
 ## What to read next
 

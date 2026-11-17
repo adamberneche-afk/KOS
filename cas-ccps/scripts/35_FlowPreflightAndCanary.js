@@ -143,8 +143,9 @@ function runFlowPreflightCheck() {
   results.push(_pfCheckTrigger_('harvestWarmUpFlowReturns', 'installWarmUpFlowTriggers()', 'Flows 3/4/5 harvest'));
 
   results.push(_pfCheckScriptProperty_('CAS_CHAT_WEBHOOK_URL', false));
-  // Required properties, previously documented in DEPLOYMENT_HANDOFF.md's
-  // reference table and checked nowhere. ADMIN_ROOT_FOLDER_ID is the one that
+  // Required properties, previously documented in the Script Properties
+  // reference (docs/deployment/script-properties.md) and checked nowhere.
+  // ADMIN_ROOT_FOLDER_ID is the one that
   // fails silently and late: Flow 3's harvest resolves the student's warm-up
   // folder from it, so an unset value means every warm-up doc has nowhere to
   // go — discovered only when a doc fails to appear.

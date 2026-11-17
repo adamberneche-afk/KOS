@@ -17,6 +17,7 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2026-27-Q1 · undated · [`cas-ccps/HISTORY.md`](2026-27-Q1/cas-ccps/HISTORY.md) (155 entries) — cas-ccps/HISTORY.md: the quarter's entries, moved out of the live log
 - 2026-27-Q2 · ~2026-11-17 · [`cas-ccps/archived/`](2026-27-Q2/cas-ccps/archived/) — cas-ccps's retired scripts: the 8 custom Studio steps and their shared file, the AutoInstaller, the Phase 4 work-file probe
 - 2026-27-Q2 · ~2026-11-17 · [`cas-ccps/README.md`](2026-27-Q2/cas-ccps/README.md) (5 entries) — CAS README: corrections, resolved Known-gaps write-ups and out-of-date passages, moved out of the live README
+- 2026-27-Q2 · ~2026-11-17 · [`cas-ccps/DEPLOYMENT_HANDOFF.md`](2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md) (2 entries) — CAS deployment handoff: the status banner's history of earlier pushes (2026-10-12 to 2026-10-23) and a closed doc-gap note, moved out of the live handoff
 
 ## drive-curation/
 
