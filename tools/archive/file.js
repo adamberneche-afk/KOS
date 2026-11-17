@@ -104,7 +104,9 @@ function plan(o, root, quarters) {
   const folder = fs.statSync(abs).isDirectory();
   let date = o.date || null;
   let filedBy = o.filedBy || null;
-  if (!date && !o.filedOn && !folder) {
+  // With --quarter and no date given, the caller has decided the quarter:
+  // a date near the top (often an edit note) would only contradict it.
+  if (!date && !o.filedOn && !folder && !o.quarter) {
     const inName = /\d{4}-\d{2}-\d{2}/.exec(path.basename(rel));
     if (inName) { date = inName[0]; filedBy = filedBy || 'the date in its name'; }
     else if (TEXT_EXT.test(rel)) {

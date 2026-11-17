@@ -20,6 +20,8 @@ How files are filed and searched: the [archive index](../INDEX.md).
 
 - ~2026-11-17 · [`cas-ccps/archived/`](cas-ccps/archived) — cas-ccps's retired scripts: the 8 custom Studio steps and their shared file, the AutoInstaller, the Phase 4 work-file probe *(Filed by: retired code; the Studio steps and the AutoInstaller archived 2026-11-17 (clean-up C1, C2), the work-file probe 2026-11-07.)*
 - ~2026-11-17 · [`kos-personal/archive/inference-service/`](kos-personal/archive/inference-service) — kos-personal's managed inference service (Cloud Run): its code, schema, deploy guide and tests *(Filed by: retired code; archived 2026-11-17 (clean-up C3), dormant since D16 on 2026-11-01.)*
+- ~2026-11-17 · [`kos-personal/EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md`](kos-personal/EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md) — External reference: Digital Homesteading (TAIS), not part of KOS; two ideas acted on *(Filed by: no date; archived 2026-11-17 at the operator's decision.)*
+- ~2026-11-17 · [`kos-personal/rtp-core-router/protocols/HEREDITARY_WATCHLIST.md`](kos-personal/rtp-core-router/protocols/HEREDITARY_WATCHLIST.md) — RTP hereditary documents watch list (its items adopted into the live protocols) *(Filed by: no date; archived 2026-11-17 at the operator's decision (its items marked adopted).)*
 
 ## History logs (older entries)
 

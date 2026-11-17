@@ -10,6 +10,10 @@ One line per file: its date, its old path (the link opens it here), what
 it is. `~` marks the date a file was filed by when it has none of its own.
 How files are filed and searched: the [archive index](../INDEX.md).
 
+## Handoffs
+
+- undated · [`drive-curation/GEMINI_HANDOFF_INSTRUCTIONS.md`](drive-curation/GEMINI_HANDOFF_INSTRUCTIONS.md) — Drive overhaul: GEMINI_HANDOFF_INSTRUCTIONS *(Filed by: no date of its own; part of the summer 2026 Drive overhaul (its assumptions deep dive is dated about July 2026); a judgment call.)*
+
 ## Audits and reviews
 
 - 2026-07 · [`drive-curation/Assumptions_Deep_Dive.md`](drive-curation/Assumptions_Deep_Dive.md) — Assumptions deep dive v1 (superseded by _v2) *(Filed by: its text: written about eleven months after August 2025.)* Replaced by `drive-curation/Assumptions_Deep_Dive_v2.md`.
@@ -21,4 +25,6 @@ How files are filed and searched: the [archive index](../INDEX.md).
 - 2026-06-29 · [`cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx`](cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx) — CAS Module 3 documentation v1.0 (superseded) *(Filed by: the file's own creation date.)*
 - 2026-07-07 · [`cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_alt_SUPERSEDED.docx`](cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_alt_SUPERSEDED.docx) — CAS Module 3 documentation v1.0, alternate draft (superseded) *(Filed by: the file's own creation date.)*
 - 2026-07-18 · [`kos-personal/rtp-core-router/protocols/CURRENT_STATE_DRAFT_v2.md`](kos-personal/rtp-core-router/protocols/CURRENT_STATE_DRAFT_v2.md) — Current-state draft v2, 07-18 (never promoted)
+- undated · [`drive-curation/00_MASTER_INDEX.md`](drive-curation/00_MASTER_INDEX.md) — Drive overhaul: 00_MASTER_INDEX *(Filed by: no date of its own; part of the summer 2026 Drive overhaul (its assumptions deep dive is dated about July 2026); a judgment call.)*
+- undated · [`drive-curation/DELETION_MANIFEST.md`](drive-curation/DELETION_MANIFEST.md) — Drive overhaul: DELETION_MANIFEST *(Filed by: no date of its own; part of the summer 2026 Drive overhaul (its assumptions deep dive is dated about July 2026); a judgment call.)*
 - undated · [`kos-personal/rtp-core-router/protocols/ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md`](kos-personal/rtp-core-router/protocols/ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md) — Zone specification (not a spec for anything built) *(Filed by: no date and no replacement; filed with its sibling protocol draft of 2026-07-18 (a judgment call).)*

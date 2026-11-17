@@ -619,7 +619,7 @@ function checkCitationsInRange() {
 // Drive file ID in the repo"), and this repo may go public. release-check
 // (tools/release-check, plan item L1) reports every one over the whole tree,
 // but warn-only until the operator turns its gate on, and 62 links sat in
-// drive-curation/DELETION_MANIFEST.md with nothing failing. This is the
+// archive/summer-2026/drive-curation/DELETION_MANIFEST.md with nothing failing. This is the
 // narrow gate for prose only: every tracked Markdown doc, HISTORY.md and
 // the WIP file included (they are excluded from the other checks as
 // narration, not from this rule). It uses release-check's own rules for the

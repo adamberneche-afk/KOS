@@ -22,6 +22,9 @@ entry with `node tools/archive/search.js --system <system>`.
 ## drive-curation/
 
 - summer-2026 · 2026-07 · [`drive-curation/Assumptions_Deep_Dive.md`](summer-2026/drive-curation/Assumptions_Deep_Dive.md) — Assumptions deep dive v1 (superseded by _v2)
+- summer-2026 · undated · [`drive-curation/00_MASTER_INDEX.md`](summer-2026/drive-curation/00_MASTER_INDEX.md) — Drive overhaul: 00_MASTER_INDEX
+- summer-2026 · undated · [`drive-curation/DELETION_MANIFEST.md`](summer-2026/drive-curation/DELETION_MANIFEST.md) — Drive overhaul: DELETION_MANIFEST
+- summer-2026 · undated · [`drive-curation/GEMINI_HANDOFF_INSTRUCTIONS.md`](summer-2026/drive-curation/GEMINI_HANDOFF_INSTRUCTIONS.md) — Drive overhaul: GEMINI_HANDOFF_INSTRUCTIONS
 
 ## kos-personal/
 
@@ -41,11 +44,16 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2026-27-Q1 · 2026-10-13 · [`kos-personal/ONBOARDING_CLOSEOUT_2026-10-13.md`](2026-27-Q1/kos-personal/ONBOARDING_CLOSEOUT_2026-10-13.md) — 21-day onboarding close-out review, 10-13
 - 2026-27-Q1 · undated · [`kos-personal/CHANGELOG.md`](2026-27-Q1/kos-personal/CHANGELOG.md) (69 entries) — kos-personal/CHANGELOG.md: the quarter's entries, moved out of the live log
 - 2026-27-Q2 · ~2026-11-17 · [`kos-personal/archive/inference-service/`](2026-27-Q2/kos-personal/archive/inference-service/) — kos-personal's managed inference service (Cloud Run): its code, schema, deploy guide and tests
+- 2026-27-Q2 · ~2026-11-17 · [`kos-personal/EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md`](2026-27-Q2/kos-personal/EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md) — External reference: Digital Homesteading (TAIS), not part of KOS; two ideas acted on
+- 2026-27-Q2 · ~2026-11-17 · [`kos-personal/rtp-core-router/protocols/HEREDITARY_WATCHLIST.md`](2026-27-Q2/kos-personal/rtp-core-router/protocols/HEREDITARY_WATCHLIST.md) — RTP hereditary documents watch list (its items adopted into the live protocols)
 
 ## leader-hub/
 
 - 2025-26 · 2026-03 · [`leader-hub/LH_04_GRADING_STRUCTURE.md`](2025-26/leader-hub/LH_04_GRADING_STRUCTURE.md) — Grading structure, dated snapshot (LH_05_GRADING_STRUCTURE.md is current)
 - 2025-26 · 2026-03 · [`leader-hub/LH_05_PACING_AND_GRADING.md`](2025-26/leader-hub/LH_05_PACING_AND_GRADING.md) — Pacing and grading, dated snapshot
+- 2025-26 · 2026-03 · [`leader-hub/LH_02_INTEGRATION_GUIDE.md`](2025-26/leader-hub/LH_02_INTEGRATION_GUIDE.md) — LeaderHub integration guide v2 (describes Apps Script never committed here)
+- 2025-26 · 2026-03 · [`leader-hub/LH_03_CANVAS_INTEGRATION_IDEAS.md`](2025-26/leader-hub/LH_03_CANVAS_INTEGRATION_IDEAS.md) — LeaderHub Canvas integration ideas and roadmap
+- 2025-26 · 2026-03 · [`leader-hub/LH_04_EMAIL_AUDIT.md`](2025-26/leader-hub/LH_04_EMAIL_AUDIT.md) — LeaderHub email audit (Gmail intake paused 10-23; how to re-run it)
 - 2025-26 · 2026-04-09 · [`leader-hub/LEADERHUB_HANDOFF.md`](2025-26/leader-hub/LEADERHUB_HANDOFF.md) — LeaderHub handoff, 04-09 (historical)
 - 2025-26 · undated · [`leader-hub/LEADERHUB_README.md`](2025-26/leader-hub/LEADERHUB_README.md) — Old LeaderHub README (superseded by README.md)
 - 2025-26 · undated · [`leader-hub/LEADERHUB_WIP.md`](2025-26/leader-hub/LEADERHUB_WIP.md) — LeaderHub WIP tracker, stopped at Session 20 (later work in HISTORY.md)
