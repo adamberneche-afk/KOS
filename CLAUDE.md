@@ -170,6 +170,16 @@ from the repo), note it under "RTP harness notes" in the same plan
 section, without log text, and propose the instruction or briefing-doc
 change that would have prevented it.
 
+## The archive
+
+Superseded docs and the history logs' older entries are in `archive/`,
+filed by school quarter, out of everyday search (the root `.ignore`).
+To find something there, use `node tools/archive/search.js` (filters by
+quarter, kind, system, dates, a `#N` cited, then a pattern; see
+`tools/archive/README.md`), not a grep of `archive/` whole. Archiving a
+file adds its record to `archive/catalog.jsonl` and reruns
+`node tools/archive/build.js` in the same PR; CI checks both.
+
 ## Working agreements (from the plan)
 
 One PR per change, CI green, merged on the operator's "merge". The

@@ -43,6 +43,14 @@ jobs:
         # regenerating it fails here. Fix: node tools/setup-guide/build.js.
         # See tools/setup-guide/README.md.
         run: node tools/setup-guide/build.js --check
+      - name: Check the archive's catalog and indexes
+        # archive/catalog.jsonl holds one record per archived file; the
+        # indexes, the by-system and by-#N views and entries.jsonl are
+        # generated from it. Fails on a file with no record, a record with
+        # no file, a record in the wrong school quarter for its date, or a
+        # stale generated file. Fix: node tools/archive/build.js. See
+        # tools/archive/README.md.
+        run: node tools/archive/build.js --check
       - name: Scan for student data
         # Fails on any student-shaped address in the tree that allow.json
         # doesn't list (decision #3, 2026-10-19; the tree and history were

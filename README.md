@@ -146,8 +146,8 @@ paths inside each quarter: `meta/HANDOFF_2026-10-22.md` is
 [`archive/INDEX.md`](./archive/INDEX.md) has one row per quarter (dates,
 PRs, plans, what it was about) and links each quarter's own index. The
 root `.ignore` keeps the archive out of everyday searches (ripgrep, and so
-Claude Code's Grep); open a file by path, or search a quarter with
-`rg <pattern> archive/2026-27-Q1/`. Git, CI and the release and
+Claude Code's Grep); find things with `node tools/archive/search.js`
+(below), or open a file by path. Git, CI and the release and
 student-data scans still read them.
 
 ## [`tools/gas-lint/`](./tools/gas-lint/) — static checks for the GAS systems
@@ -291,6 +291,16 @@ first audit, [`meta/RELEASE_AUDIT_2026-11-08.md`](./meta/RELEASE_AUDIT_2026-11-0
 a pre-commit hook (`tools/release-check/pre-commit`, installed by hand)
 checks staged files. Tested in `tests/tools/release-check.test.js`. See
 [`tools/release-check/README.md`](./tools/release-check/README.md).
+
+## [`tools/archive/`](./tools/archive/) — the archive's catalog, indexes and search
+
+`archive/catalog.jsonl` (one record per archived file) and
+`archive/quarters.json` are the source; `build.js` generates the
+indexes, a view by system and one by `#N`, and `archive/entries.jsonl`
+(one record per history-log entry), and its `--check` runs in CI.
+`search.js` filters by quarter, kind, system, dates and `#N`, then
+searches the text of only what matched. See
+[`tools/archive/README.md`](./tools/archive/README.md).
 
 ## [`tools/setup-guide/`](./tools/setup-guide/) — the CAS setup guide's reference, from the code
 
