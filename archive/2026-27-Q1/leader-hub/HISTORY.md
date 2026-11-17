@@ -1,9 +1,9 @@
-# leader-hub — process history: entries before 2026-10-29 (archived)
+# `leader-hub/HISTORY.md`: 2026-27, 1st quarter (archived)
 
-The older part of `leader-hub/HISTORY.md`, word for word: everything before the
-2026-10-29 start of `meta/PLAN_2026-11.md`, oldest first, undated entries
-where they stood. It continues in the live
-[`leader-hub/HISTORY.md`](../../../leader-hub/HISTORY.md). Links below are relative to the live file's folder.
+The entries of `leader-hub/HISTORY.md` from this school quarter, moved word for
+word out of the live log when a plan of record was replaced, oldest first; an
+undated entry stands where it stood. Links inside are relative to the
+live file's folder. The live log: [`leader-hub/HISTORY.md`](../../../leader-hub/HISTORY.md).
 
 ## Fixed: the Apps Script bridge was completely non-functional
 

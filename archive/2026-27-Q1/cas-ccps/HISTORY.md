@@ -1,9 +1,9 @@
-# CAS — Process History: entries before 2026-10-29 (archived)
+# `cas-ccps/HISTORY.md`: 2026-27, 1st quarter (archived)
 
-The older part of `cas-ccps/HISTORY.md`, word for word: everything before the
-2026-10-29 start of `meta/PLAN_2026-11.md`, oldest first, undated entries
-where they stood. It continues in the live
-[`cas-ccps/HISTORY.md`](../../../cas-ccps/HISTORY.md). Links below are relative to the live file's folder.
+The entries of `cas-ccps/HISTORY.md` from this school quarter, moved word for
+word out of the live log when a plan of record was replaced, oldest first; an
+undated entry stands where it stood. Links inside are relative to the
+live file's folder. The live log: [`cas-ccps/HISTORY.md`](../../../cas-ccps/HISTORY.md).
 
 ## ✅ Reconciled: all 7 flagged conflicts resolved
 

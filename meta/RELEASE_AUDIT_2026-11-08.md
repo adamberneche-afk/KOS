@@ -809,11 +809,11 @@ cas-ccps/curriculum/lesson-cards/Stage8_Lesson_Cards.docx  office-document
 cas-ccps/curriculum/lesson-cards/Stage9_Lesson_Cards.docx  office-document
 cas-ccps/data/sol-correlations/8177_Printable_Version_with_Standards_Correlations.docx  office-document
 cas-ccps/data/sol-correlations/8177_SOL_Transitive_Mapping.docx  office-document
-cas-ccps/docs/CAS_Module4_Documentation_v1.0.docx  office-document
+archive/summer-2026/cas-ccps/docs/CAS_Module4_Documentation_v1.0.docx  office-document
 cas-ccps/docs/CAS_Module4_Documentation_v1.1.docx  office-document
 cas-ccps/docs/CAS_Module5_Documentation_v1.1.docx  office-document
-cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx  office-document
-cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_alt_SUPERSEDED.docx  office-document
+archive/summer-2026/cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx  office-document
+archive/summer-2026/cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_alt_SUPERSEDED.docx  office-document
 ```
 
 #### Probably fine (not failing): Apps Script manifests (12)
@@ -829,6 +829,6 @@ cas-ccps/clasp/manifests/teacher-dashboard.appsscript.json  apps-script-manifest
 cas-ccps/clasp/manifests/teacher-matrix-sheet.appsscript.json  apps-script-manifest
 cas-ccps/clasp/manifests/unified-manual.appsscript.json  apps-script-manifest
 kos-personal/appsscript.json  apps-script-manifest
-kos-personal/archive/studio-steps/appsscript.json  apps-script-manifest
+archive/2026-27-Q1/kos-personal/archive/studio-steps/appsscript.json  apps-script-manifest
 leader-hub/appsscript.json  apps-script-manifest
 ```

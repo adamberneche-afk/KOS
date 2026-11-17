@@ -12,7 +12,7 @@ clasp's model is one local folder ↔ one script ID. `kos-personal/`'s main
 project and `leader-hub/` fit that model directly — each is a single Apps
 Script project already laid out as a flat folder, so clasp can push
 straight from the tracked source (see `.clasp.json.template` and
-`.claspignore` in each of those two directories). `kos-personal/archive/studio-steps/`
+`.claspignore` in each of those two directories). `archive/2026-27-Q1/kos-personal/archive/studio-steps/`
 was a second, separate flat-folder project alongside the main one; it is
 archived (2026-09-29) and not deployed. (SMP-004 describes that project as
 sitting on a personal Google account rather than the district domain; in
@@ -28,7 +28,7 @@ is the existing record of exactly which files belong to which project
 being accurate). There's no single folder to point `clasp push` at
 without either sending files to a project that doesn't want them, or
 missing files a project needs. A 9th project, `cas-ccps/studio-steps/`,
-was archived 2026-11-17 (`cas-ccps/archived/studio-steps/`; custom Studio
+was archived 2026-11-17 (`archive/2026-27-Q2/cas-ccps/archived/studio-steps/`; custom Studio
 steps are blocked on this account) and is no longer a project here.
 
 `sync.js` reads that same `project-map.json` and, for each of the 9

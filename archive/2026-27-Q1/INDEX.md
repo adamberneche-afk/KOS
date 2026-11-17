@@ -58,6 +58,8 @@ How files are filed and searched: the [archive index](../INDEX.md).
 
 ## Replaced versions and retired guides
 
+- ~2026-09-15 · [`leader-hub/archived/`](leader-hub/archived) — LeaderHub's archived bisect and prefix-test scripts (the 09-15 OAuth-consent debugging) *(Filed by: retired code; its README dates the bisect tools' last use to 2026-09-15.)*
+- ~2026-09-29 · [`kos-personal/archive/studio-steps/`](kos-personal/archive/studio-steps) — kos-personal's custom Workspace Studio steps, never reachable on the district account *(Filed by: retired code; moved out of kos-personal/studio-steps/ on 2026-09-29 (its README).)*
 - ~2026-10-05 · [`kos-personal/rtp-core-router/RTP_CORE_ROUTER_V5_8.md`](kos-personal/rtp-core-router/RTP_CORE_ROUTER_V5_8.md) — RTP Core Router V5.8, replaced by V6.0 *(Filed by: no date; replaced by V6.0, drafted 2026-10-05.)* Replaced by `kos-personal/rtp-core-router/RTP_CORE_ROUTER_V6_0.md`.
 - ~2026-10-22 · [`leader-hub/LEADERHUB_EMAIL_SETUP.md`](leader-hub/LEADERHUB_EMAIL_SETUP.md) — LeaderHub email setup (superseded) *(Filed by: no date; superseded 2026-10-22.)*
 - 2026-08-24 · [`kos-personal/rtp-core-router/protocols/Drive_Steward_Methodology_and_Prompt.md`](kos-personal/rtp-core-router/protocols/Drive_Steward_Methodology_and_Prompt.md) — Byte-identical copy of meta/Drive_Steward_Methodology_and_Prompt.md (the live one) Replaced by `meta/Drive_Steward_Methodology_and_Prompt.md`.
@@ -67,6 +69,6 @@ How files are filed and searched: the [archive index](../INDEX.md).
 
 ## History logs (older entries)
 
-- undated · [`cas-ccps/HISTORY.md`](cas-ccps/HISTORY.md) — CAS process history: entries before 2026-10-29 (155 entries; continues in the live `cas-ccps/HISTORY.md`)
-- undated · [`kos-personal/CHANGELOG.md`](kos-personal/CHANGELOG.md) — KOS changelog: entries before 2026-10-29, including the undated early rounds (69 entries; continues in the live `kos-personal/CHANGELOG.md`)
-- undated · [`leader-hub/HISTORY.md`](leader-hub/HISTORY.md) — LeaderHub process history: entries before 2026-10-29 (24 entries; continues in the live `leader-hub/HISTORY.md`)
+- undated · [`cas-ccps/HISTORY.md`](cas-ccps/HISTORY.md) — cas-ccps/HISTORY.md: the quarter's entries, moved out of the live log (155 entries; continues in the live `cas-ccps/HISTORY.md`)
+- undated · [`kos-personal/CHANGELOG.md`](kos-personal/CHANGELOG.md) — kos-personal/CHANGELOG.md: the quarter's entries, moved out of the live log (69 entries; continues in the live `kos-personal/CHANGELOG.md`)
+- undated · [`leader-hub/HISTORY.md`](leader-hub/HISTORY.md) — leader-hub/HISTORY.md: the quarter's entries, moved out of the live log (24 entries; continues in the live `leader-hub/HISTORY.md`)

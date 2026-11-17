@@ -42,6 +42,7 @@ function validate(catalog, quarters, root) {
     ids.add(r.id);
     if (!qids.includes(r.quarter)) errors.push(where + ': unknown quarter ' + r.quarter);
     if (r.id !== r.quarter + '/' + r.original_path) errors.push(where + ': id must be <quarter>/<original_path>');
+    if (lib.isFolder(r) !== r.original_path.endsWith('/')) errors.push(where + ': a folder record ends both id and original_path in /');
     if (!lib.KINDS.includes(r.kind)) errors.push(where + ': kind must be one of ' + lib.KINDS.join(', '));
     ['date', 'filed_on'].forEach((f) => {
       if (r[f] != null && !lib.DATE_RE.test(r[f])) errors.push(where + ': ' + f + ' must be YYYY-MM-DD or YYYY-MM');
@@ -53,7 +54,7 @@ function validate(catalog, quarters, root) {
     if (r.kind === 'history' && !r.continues_in) errors.push(where + ': a history record needs continues_in');
   });
   lib.archivedFiles(quarters, root).forEach((f) => {
-    if (!ids.has(f)) errors.push('archive/' + f + ': no catalog record (add one to archive/catalog.jsonl)');
+    if (!lib.coveringRecord(f, catalog)) errors.push('archive/' + f + ': no catalog record (add one to archive/catalog.jsonl)');
   });
   return errors;
 }
@@ -115,10 +116,12 @@ function topIndex(catalog, quarters, entries) {
     L.push('| [' + q.title + '](' + q.id + '/INDEX.md) | ' + dates + ' | ' + n + ' | ' + (e || '—') + ' | ' +
       (q.prs || '—') + ' | ' + planCell(q.plan) + ' | ' + q.summary + ' |');
   });
-  L.push('', '**Adding to it:** move the file with `git mv` to',
-    '`archive/<quarter>/<its path>`, add its record to `catalog.jsonl`, repoint',
-    'the live links and path mentions, and run `node tools/archive/build.js`',
-    'in the same PR. CI runs `--check`.', '');
+  L.push('', '**Adding to it:** `node tools/archive/file.js <path> --summary "…"` files a',
+    'doc or a folder (quarter from its date, `git mv`, links and path mentions',
+    'repointed, record added, indexes rebuilt); review the files it lists.',
+    'When a plan of record is replaced, `node tools/archive/file.js',
+    '--rollover-logs --before <the new plan\'s start>` moves the history logs\'',
+    'older entries to their quarters. CI runs `node tools/archive/build.js --check`.', '');
   return L.join('\n');
 }
 
@@ -176,7 +179,7 @@ function bySystem(catalog, quarters, entries) {
 function byPr(catalog, entries, root) {
   const refs = {};
   const add = (n, label) => { (refs[n] = refs[n] || []).push(label); };
-  catalog.filter((r) => r.kind !== 'history').forEach((r) => {
+  catalog.filter((r) => r.kind !== 'history' && !lib.isFolder(r) && /\.(md|txt|js|gs|html|json)$/.test(r.id)).forEach((r) => {
     lib.prRefs(lib.read(lib.filePath(r), root)).forEach((n) => add(n, '[`' + r.id + '`](' + r.id + ')'));
   });
   entries.forEach((e) => e.prs.forEach((n) => add(n, '[' + e.file.split('/').slice(1).join('/') + ' · ' +

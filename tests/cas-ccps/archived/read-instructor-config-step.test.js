@@ -1,5 +1,5 @@
 'use strict';
-// Regression tests for cas-ccps/archived/studio-steps/ReadInstructorConfigStep.gs —
+// Regression tests for archive/2026-27-Q2/cas-ccps/archived/studio-steps/ReadInstructorConfigStep.gs —
 // Flow 2's Step 2 (Ledger -> MatrixRegistry -> TeacherMatrix 3-hop
 // lookup). Loaded together with CommitRubricDraftStep.gs (same GAS
 // project/global scope) since this step reuses that file's TM_COLUMNS_
@@ -10,9 +10,9 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const { loadGasFiles, makeStudioEvent } = require('../../harness/gas-sandbox');
 
-const SHARED_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
-const COMMIT_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'CommitRubricDraftStep.gs');
-const STEP_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'ReadInstructorConfigStep.gs');
+const SHARED_PATH = path.join(__dirname, '..', '..', '..', 'archive', '2026-27-Q2', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
+const COMMIT_PATH = path.join(__dirname, '..', '..', '..', 'archive', '2026-27-Q2', 'cas-ccps', 'archived', 'studio-steps', 'CommitRubricDraftStep.gs');
+const STEP_PATH = path.join(__dirname, '..', '..', '..', 'archive', '2026-27-Q2', 'cas-ccps', 'archived', 'studio-steps', 'ReadInstructorConfigStep.gs');
 
 function load(exposeNames) {
   return loadGasFiles([SHARED_PATH, COMMIT_PATH, STEP_PATH], exposeNames);

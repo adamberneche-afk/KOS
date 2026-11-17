@@ -46,5 +46,5 @@ test('listDeployableSourceFiles covers the folders clasp-sync deploys from', () 
     assert.ok(files.includes(expected), expected + ' should be scanned');
   }
   assert.ok(!files.some((f) => f.startsWith('kos-personal/archive/')), 'archived code is not deployable');
-  assert.ok(!files.some((f) => f.startsWith('cas-ccps/archived/')), 'archived code is not deployable');
+  assert.ok(!files.some((f) => f.startsWith('archive/2026-27-Q2/cas-ccps/archived/')), 'archived code is not deployable');
 });

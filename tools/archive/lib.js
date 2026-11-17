@@ -10,6 +10,8 @@
  *
  * A record's `filed_on` decides its quarter: a full date must fall inside
  * the quarter, a month must overlap it, and null needs a `filed_by` note.
+ * A record whose id ends in `/` is a folder: it covers every file under
+ * it (retired code, kept together).
  * Node built-ins only.
  */
 
@@ -53,12 +55,31 @@ function loadCatalog(root) { return readJsonl(path.join(ARCHIVE, 'catalog.jsonl'
 
 // The quarter a full date or a month falls in, or the quarters a month
 // overlaps. Open ends (null) are unbounded.
+// A missing start or end is not open-ended: the quarters are in order, so
+// a missing start is bounded by the quarter before (its end, else its
+// start) and a missing end by the quarter after (its start, else its end).
+// Only the first quarter's start and the last one's end are unbounded.
 function quartersFor(date, quarters) {
   if (!date || !DATE_RE.test(date)) return [];
   const lo = date.length === 7 ? date + '-01' : date;
   const hi = date.length === 7 ? date + '-31' : date;
-  return quarters.filter((q) => (!q.start || hi >= q.start) && (!q.end || lo <= q.end)).map((q) => q.id);
+  const bounds = quarters.map((q, i) => {
+    const prev = quarters[i - 1];
+    const next = quarters[i + 1];
+    const start = q.start || (prev ? (prev.end ? nextDay(prev.end) : prev.start) : null);
+    const end = q.end || (next ? (next.start ? prevDay(next.start) : next.end) : null);
+    return { id: q.id, start, end };
+  });
+  return bounds.filter((q) => (!q.start || hi >= q.start) && (!q.end || lo <= q.end)).map((q) => q.id);
 }
+
+function shiftDay(d, n) {
+  const t = new Date(d + 'T00:00:00Z');
+  t.setUTCDate(t.getUTCDate() + n);
+  return t.toISOString().slice(0, 10);
+}
+const nextDay = (d) => shiftDay(d, 1);
+const prevDay = (d) => shiftDay(d, -1);
 
 // GitHub's heading anchors: lower case, punctuation dropped (letters,
 // digits, spaces, hyphens and underscores kept), spaces to hyphens, a
@@ -113,6 +134,20 @@ function prRefs(text) {
 }
 
 function filePath(rec) { return path.join(ARCHIVE, rec.id); }
+const isFolder = (rec) => rec.id.endsWith('/');
+
+// The record covering an archived file: its own, or a folder record above it.
+function coveringRecord(file, catalog) {
+  return catalog.find((r) => (isFolder(r) ? file.startsWith(r.id) : r.id === file));
+}
+
+// The history logs that roll over when a plan of record is replaced, and
+// the order their entries run in.
+const LIVE_LOGS = [
+  { path: 'cas-ccps/HISTORY.md', order: 'oldest-first' },
+  { path: 'kos-personal/CHANGELOG.md', order: 'newest-first' },
+  { path: 'leader-hub/HISTORY.md', order: 'oldest-first' },
+];
 
 // Every catalogued file under archive/<quarter>/, generated and data files
 // left out.
@@ -135,4 +170,5 @@ function archivedFiles(quarters, root) {
 module.exports = {
   REPO_ROOT, ARCHIVE, KINDS, KIND_TITLES, GENERATED, DATA, REQUIRED, DATE_RE,
   read, readJsonl, loadQuarters, loadCatalog, quartersFor, slugger, parseEntries, prRefs, filePath, archivedFiles,
+  isFolder, coveringRecord, LIVE_LOGS,
 };

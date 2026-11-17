@@ -1,4 +1,4 @@
-# Installed dependencies (kos-personal/archive/inference-service/package.json's,
+# Installed dependencies (archive/2026-27-Q2/kos-personal/archive/inference-service/package.json's,
 # and this repo's own new root package.json's, once either has any). Never
 # committed - CI's `npm ci`/`npm install` step regenerates it from the
 # lockfile every run.
@@ -18,7 +18,7 @@ cas-ccps/.clasp-build/
 .clasprc.json
 cas-ccps/clasp/local/
 
-# Real environment files, once created from kos-personal/archive/inference-service's
+# Real environment files, once created from archive/2026-27-Q2/kos-personal/archive/inference-service's
 # .env.example — these hold live OAuth client secrets, the Anthropic and
 # Stripe API keys, the database URL and TOKEN_ENCRYPTION_KEY. The service's
 # own deployment doc tells operators to `cp .env.example .env` in the repo

@@ -214,7 +214,7 @@ code mentions, a `file:line` citation past the end of that file, a Drive file ID
 one no other check could see — **a document describing a path that cannot
 run on the account this repo deploys to.** Every function in those
 instructions existed; the instructions were still impossible to follow,
-which is what made `cas-ccps/studio-steps/` (archived 2026-11-17 to `cas-ccps/archived/studio-steps/`) — blocked on this account, and
+which is what made `cas-ccps/studio-steps/` (archived 2026-11-17 to `archive/2026-27-Q2/cas-ccps/archived/studio-steps/`) — blocked on this account, and
 superseded by `37_FlowInputBuilder.js` — read as a deployment backlog for
 weeks rather than as a wall. The check caught this very paragraph on its
 first draft, which is the argument for it. Dated records (`CHANGELOG.md`, `HISTORY.md`)
@@ -226,7 +226,7 @@ is for. `node tools/doc-currency/check.js`; see
 
 `leader-hub/` and the main `kos-personal/` project are each already laid
 out the way [clasp](https://github.com/google/clasp) wants — a flat
-folder, one script ID; `kos-personal/archive/studio-steps/` (whose two custom steps
+folder, one script ID; `archive/2026-27-Q1/kos-personal/archive/studio-steps/` (whose two custom steps
 are blocked on this account — the write-back moved to
 `12_StudioReturnHarvest.gs`; archived 2026-09-29, not deployed) was a second, separate flat-folder project
 alongside it (a separate Apps Script project, not a
@@ -299,7 +299,9 @@ checks staged files. Tested in `tests/tools/release-check.test.js`. See
 indexes, a view by system and one by `#N`, and `archive/entries.jsonl`
 (one record per history-log entry), and its `--check` runs in CI.
 `search.js` filters by quarter, kind, system, dates and `#N`, then
-searches the text of only what matched. See
+searches the text of only what matched. `file.js` files a doc or a
+folder into its quarter in one step, and rolls the history logs over
+when a plan of record is replaced. See
 [`tools/archive/README.md`](./tools/archive/README.md).
 
 ## [`tools/setup-guide/`](./tools/setup-guide/) — the CAS setup guide's reference, from the code
@@ -469,7 +471,7 @@ Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
 the pacing/calendar helpers (with the published CCPS 2026-27 calendar as an import fixture, `fixtures/ccps-2026-27-calendar.txt`, and the built-in calendar's own consistency, `school-calendar-defaults.test.js`), the page's sync code never overwriting an
 edit the server hasn't accepted (`sync-pending.test.js`), the `?diag` modes (`diagnostics.test.js`,
 run against the real built page), the server-side sign-in check for the CAS connection (owner-only, the token never logged: `cas-server-signin.test.js`), the owner-only functions the page
-calls through `google.script.run` (`browser-entry-points.test.js`), Organization Sync's co-advisor allowlist (`ORG_SYNC_CO_ADVISORS`: warn-and-count until set, then the owner and listed co-advisors only, a student refused with nothing read or written: `org-sync-relay.test.js`), the `?api=horizon` route gone and mail- and sync-derived ids and roles escaped where the page writes them (`horizon-route-and-sync-escaping.test.js`), and the page's contrast and plain words (text colours at 4.5:1 or more, no on-screen text under 12px, the jargon the 2026-10-22 UX audit found replaced on screen, and a Terms panel entry for each renamed term: `plain-words.test.js`), and the rest of its 2026-10-22 audit fixes (email templates from the season, real Bcc recipients and a blanks check before sending, reminder banners in normal flow, the phone header, edit-modal guards, Brag Board's explicit send, honest pulse rings: `ux-audit-fixes.test.js`), and its move off browser storage (drafts and view state in page memory, ids on log entries, a key the server never had pushed once, the id counters merged by the larger value, every `lh_*` key accounted for, and served: the server's data read from the page, nothing written to the browser, the one-time move, the "not saved yet" bar, conflicts merged, no save when the data couldn't load, an import added to the server's copy, never replacing it, and the retired standalone file stopping with an export: `no-browser-storage.test.js`); `tests/kos-personal/` covers the archived `kos-personal/archive/studio-steps/`
+calls through `google.script.run` (`browser-entry-points.test.js`), Organization Sync's co-advisor allowlist (`ORG_SYNC_CO_ADVISORS`: warn-and-count until set, then the owner and listed co-advisors only, a student refused with nothing read or written: `org-sync-relay.test.js`), the `?api=horizon` route gone and mail- and sync-derived ids and roles escaped where the page writes them (`horizon-route-and-sync-escaping.test.js`), and the page's contrast and plain words (text colours at 4.5:1 or more, no on-screen text under 12px, the jargon the 2026-10-22 UX audit found replaced on screen, and a Terms panel entry for each renamed term: `plain-words.test.js`), and the rest of its 2026-10-22 audit fixes (email templates from the season, real Bcc recipients and a blanks check before sending, reminder banners in normal flow, the phone header, edit-modal guards, Brag Board's explicit send, honest pulse rings: `ux-audit-fixes.test.js`), and its move off browser storage (drafts and view state in page memory, ids on log entries, a key the server never had pushed once, the id counters merged by the larger value, every `lh_*` key accounted for, and served: the server's data read from the page, nothing written to the browser, the one-time move, the "not saved yet" bar, conflicts merged, no save when the data couldn't load, an import added to the server's copy, never replacing it, and the retired standalone file stopping with an export: `no-browser-storage.test.js`); `tests/kos-personal/` covers the archived `archive/2026-27-Q1/kos-personal/archive/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
 lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced), the
@@ -531,7 +533,7 @@ kos-personal) are both in the repo now.
 | doc-link-check | a relative link in a Markdown doc that points at a file that no longer exists (offline: external URLs are never fetched, so it cannot flake) | `docExcludePaths` |
 | doc-placeholder-check | unedited template text left in a shipped doc: an unfilled company-name field, filler Latin, an unreplaced URL placeholder. Not ordinary TODOs | `placeholderPatterns`, `docExcludePaths` |
 
-Both run on pull requests that touch Markdown or `.github/floor.json`. `archive` is excluded because archived docs are kept as written: one, `kos-personal/archive/studio-steps/README.md`, links to a gas-lint map that has since moved. A line that must quote placeholder text on purpose can carry `floor-allow-placeholder`.
+Both run on pull requests that touch Markdown or `.github/floor.json`. `archive` is excluded because archived docs are kept as written: one, `archive/2026-27-Q1/kos-personal/archive/studio-steps/README.md`, links to a gas-lint map that has since moved. A line that must quote placeholder text on purpose can carry `floor-allow-placeholder`.
 
 ## Floor check 10 — secrets-doctor
 

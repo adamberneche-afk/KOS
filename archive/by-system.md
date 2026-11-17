@@ -8,10 +8,14 @@ entry with `node tools/archive/search.js --system <system>`.
 
 ## cas-ccps/
 
+- summer-2026 · 2026-06-19 · [`cas-ccps/docs/CAS_Module4_Documentation_v1.0.docx`](summer-2026/cas-ccps/docs/CAS_Module4_Documentation_v1.0.docx) — CAS Module 4 documentation v1.0 (replaced by v1.1, 2026-07-07)
+- summer-2026 · 2026-06-29 · [`cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx`](summer-2026/cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx) — CAS Module 3 documentation v1.0 (superseded)
+- summer-2026 · 2026-07-07 · [`cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_alt_SUPERSEDED.docx`](summer-2026/cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_alt_SUPERSEDED.docx) — CAS Module 3 documentation v1.0, alternate draft (superseded)
 - 2026-27-Q1 · undated · [`cas-ccps/docs/PLATFORM_DEPLOYMENT_GUIDE_OUTDATED.md`](2026-27-Q1/cas-ccps/docs/PLATFORM_DEPLOYMENT_GUIDE_OUTDATED.md) — Old platform deployment guide (outdated; do not follow)
 - 2026-27-Q1 · undated · [`cas-ccps/docs/REGISTRY_SHEET_SETUP.md`](2026-27-Q1/cas-ccps/docs/REGISTRY_SHEET_SETUP.md) — Registry sheet setup, archived 11-17 with the AutoInstaller
 - 2026-27-Q1 · undated · [`cas-ccps/forms/WarmUpResponseForm_setup.md`](2026-27-Q1/cas-ccps/forms/WarmUpResponseForm_setup.md) — Warm-up response form setup, retired (D16, 11-01)
-- 2026-27-Q1 · undated · [`cas-ccps/HISTORY.md`](2026-27-Q1/cas-ccps/HISTORY.md) (155 entries) — CAS process history: entries before 2026-10-29
+- 2026-27-Q1 · undated · [`cas-ccps/HISTORY.md`](2026-27-Q1/cas-ccps/HISTORY.md) (155 entries) — cas-ccps/HISTORY.md: the quarter's entries, moved out of the live log
+- 2026-27-Q2 · ~2026-11-17 · [`cas-ccps/archived/`](2026-27-Q2/cas-ccps/archived/) — cas-ccps's retired scripts: the 8 custom Studio steps and their shared file, the AutoInstaller, the Phase 4 work-file probe
 
 ## drive-curation/
 
@@ -22,6 +26,7 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2025-26 · 2026-05 · [`kos-personal/rtp-core-router/protocols/COLD_START_ORIENTATION.md`](2025-26/kos-personal/rtp-core-router/protocols/COLD_START_ORIENTATION.md) — Cold-start orientation (dated snapshot)
 - summer-2026 · 2026-07-18 · [`kos-personal/rtp-core-router/protocols/CURRENT_STATE_DRAFT_v2.md`](summer-2026/kos-personal/rtp-core-router/protocols/CURRENT_STATE_DRAFT_v2.md) — Current-state draft v2, 07-18 (never promoted)
 - summer-2026 · undated · [`kos-personal/rtp-core-router/protocols/ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md`](summer-2026/kos-personal/rtp-core-router/protocols/ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md) — Zone specification (not a spec for anything built)
+- 2026-27-Q1 · ~2026-09-29 · [`kos-personal/archive/studio-steps/`](2026-27-Q1/kos-personal/archive/studio-steps/) — kos-personal's custom Workspace Studio steps, never reachable on the district account
 - 2026-27-Q1 · ~2026-10-05 · [`kos-personal/rtp-core-router/RTP_CORE_ROUTER_V5_8.md`](2026-27-Q1/kos-personal/rtp-core-router/RTP_CORE_ROUTER_V5_8.md) — RTP Core Router V5.8, replaced by V6.0
 - 2026-27-Q1 · 2026-08-24 · [`kos-personal/rtp-core-router/protocols/Drive_Steward_Methodology_and_Prompt.md`](2026-27-Q1/kos-personal/rtp-core-router/protocols/Drive_Steward_Methodology_and_Prompt.md) — Byte-identical copy of meta/Drive_Steward_Methodology_and_Prompt.md (the live one)
 - 2026-27-Q1 · 2026-09-28 · [`kos-personal/HANDOFF_2026-09-28.md`](2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md) — kos-personal handoff, 09-28 (point-in-time)
@@ -32,7 +37,8 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2026-27-Q1 · 2026-10-05 · [`kos-personal/rtp-core-router/notebook-plan/05_TEST_LOG.md`](2026-27-Q1/kos-personal/rtp-core-router/notebook-plan/05_TEST_LOG.md) — RTP notebook plan: test log (closed 10-06)
 - 2026-27-Q1 · 2026-10-06 · [`kos-personal/rtp-core-router/notebook-plan/04_MIGRATION_AND_TEST_PLAN.md`](2026-27-Q1/kos-personal/rtp-core-router/notebook-plan/04_MIGRATION_AND_TEST_PLAN.md) — RTP notebook plan: migration and test plan (frozen 10-06)
 - 2026-27-Q1 · 2026-10-13 · [`kos-personal/ONBOARDING_CLOSEOUT_2026-10-13.md`](2026-27-Q1/kos-personal/ONBOARDING_CLOSEOUT_2026-10-13.md) — 21-day onboarding close-out review, 10-13
-- 2026-27-Q1 · undated · [`kos-personal/CHANGELOG.md`](2026-27-Q1/kos-personal/CHANGELOG.md) (69 entries) — KOS changelog: entries before 2026-10-29, including the undated early rounds
+- 2026-27-Q1 · undated · [`kos-personal/CHANGELOG.md`](2026-27-Q1/kos-personal/CHANGELOG.md) (69 entries) — kos-personal/CHANGELOG.md: the quarter's entries, moved out of the live log
+- 2026-27-Q2 · ~2026-11-17 · [`kos-personal/archive/inference-service/`](2026-27-Q2/kos-personal/archive/inference-service/) — kos-personal's managed inference service (Cloud Run): its code, schema, deploy guide and tests
 
 ## leader-hub/
 
@@ -41,8 +47,9 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2025-26 · 2026-04-09 · [`leader-hub/LEADERHUB_HANDOFF.md`](2025-26/leader-hub/LEADERHUB_HANDOFF.md) — LeaderHub handoff, 04-09 (historical)
 - 2025-26 · undated · [`leader-hub/LEADERHUB_README.md`](2025-26/leader-hub/LEADERHUB_README.md) — Old LeaderHub README (superseded by README.md)
 - 2025-26 · undated · [`leader-hub/LEADERHUB_WIP.md`](2025-26/leader-hub/LEADERHUB_WIP.md) — LeaderHub WIP tracker, stopped at Session 20 (later work in HISTORY.md)
+- 2026-27-Q1 · ~2026-09-15 · [`leader-hub/archived/`](2026-27-Q1/leader-hub/archived/) — LeaderHub's archived bisect and prefix-test scripts (the 09-15 OAuth-consent debugging)
 - 2026-27-Q1 · ~2026-10-22 · [`leader-hub/LEADERHUB_EMAIL_SETUP.md`](2026-27-Q1/leader-hub/LEADERHUB_EMAIL_SETUP.md) — LeaderHub email setup (superseded)
-- 2026-27-Q1 · undated · [`leader-hub/HISTORY.md`](2026-27-Q1/leader-hub/HISTORY.md) (24 entries) — LeaderHub process history: entries before 2026-10-29
+- 2026-27-Q1 · undated · [`leader-hub/HISTORY.md`](2026-27-Q1/leader-hub/HISTORY.md) (24 entries) — leader-hub/HISTORY.md: the quarter's entries, moved out of the live log
 
 ## meta/
 

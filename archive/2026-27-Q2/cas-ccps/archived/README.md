@@ -23,4 +23,4 @@ a push removes them. Kept for reference.
   item and its two Apps Script API scopes removed.
 
 kos-personal's managed inference service was archived the same day
-(clean-up C3) to `kos-personal/archive/inference-service/`.
+(clean-up C3) to `archive/2026-27-Q2/kos-personal/archive/inference-service/`.

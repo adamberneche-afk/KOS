@@ -1,9 +1,10 @@
 # KOS Changelog
 
-**Entries before 2026-10-29** (the plan of record before `meta/PLAN_2026-11.md`) are archived word for word in
-[`archive/2026-27-Q1/kos-personal/CHANGELOG.md`](../archive/2026-27-Q1/kos-personal/CHANGELOG.md). This file holds the current plan's era; when the plan rolls over, the
-older entries move to their school quarter's folder (`archive/INDEX.md`).
-
+<!-- archive:pointer (tools/archive/file.js writes this) -->
+**Entries before 2026-10-29** are archived word for word by school quarter: [2026-27, 1st quarter](../archive/2026-27-Q1/kos-personal/CHANGELOG.md).
+This file holds the current plan of record's era; `node tools/archive/search.js --entries`
+searches the archived ones entry by entry.
+<!-- /archive:pointer -->
 
 ### The managed inference service archived (2026-11-17)
 

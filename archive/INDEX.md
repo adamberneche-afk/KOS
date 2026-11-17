@@ -37,11 +37,13 @@ from the archived handoffs are live in
 | Quarter | Dates | Files | Log entries | PRs | Plan of record | What it was |
 |---|---|---|---|---|---|---|
 | [2025-26 school year](2025-26/INDEX.md) | … to 2026-05-29 | 6 | — | before this repo | — | LeaderHub as a single HTML file (its handoff, WIP log, README and two grading snapshots), and the RTP's cold-start orientation. |
-| [Summer 2026](summer-2026/INDEX.md) | 2026-05-30 to 2026-08-23 | 4 | — | — | — | Planning before the school year: the RTP's current-state draft and zone spec, the Drive audit's first assumptions deep dive, and the August codebase review. |
-| [2026-27, 1st quarter](2026-27-Q1/INDEX.md) | 2026-08-24 to 2026-10-30 | 46 | 248 | through about #345 | `meta/PLAN_2026-10.md` (live) | The build and launch: kos-personal's pipeline repaired and the RTP moved to a Claude Project (10-06); CAS live with students (first submissions 10-16); the dashboards, lesson parts, the nightly rollout and the turn-in plan; LeaderHub to an Apps Script web app. Most of the archive is here. |
-| [2026-27, 2nd quarter](2026-27-Q2/INDEX.md) | 2026-10-31 to 2027-01-22 | 3 | — | from about #346 | `meta/PLAN_2026-11.md` (live) | In progress: the handoffs of 10-31, 11-01 and 11-08 so far; the history logs' entries from 10-29 are still live. |
+| [Summer 2026](summer-2026/INDEX.md) | 2026-05-30 to 2026-08-23 | 7 | — | — | — | Planning before the school year: the RTP's current-state draft and zone spec, the Drive audit's first assumptions deep dive, and the August codebase review. |
+| [2026-27, 1st quarter](2026-27-Q1/INDEX.md) | 2026-08-24 to 2026-10-30 | 48 | 248 | through about #345 | `meta/PLAN_2026-10.md` (live) | The build and launch: kos-personal's pipeline repaired and the RTP moved to a Claude Project (10-06); CAS live with students (first submissions 10-16); the dashboards, lesson parts, the nightly rollout and the turn-in plan; LeaderHub to an Apps Script web app. Most of the archive is here. |
+| [2026-27, 2nd quarter](2026-27-Q2/INDEX.md) | 2026-10-31 to 2027-01-22 | 5 | — | from about #346 | `meta/PLAN_2026-11.md` (live) | In progress: the handoffs of 10-31, 11-01 and 11-08 so far; the history logs' entries from 10-29 are still live. |
 
-**Adding to it:** move the file with `git mv` to
-`archive/<quarter>/<its path>`, add its record to `catalog.jsonl`, repoint
-the live links and path mentions, and run `node tools/archive/build.js`
-in the same PR. CI runs `--check`.
+**Adding to it:** `node tools/archive/file.js <path> --summary "…"` files a
+doc or a folder (quarter from its date, `git mv`, links and path mentions
+repointed, record added, indexes rebuilt); review the files it lists.
+When a plan of record is replaced, `node tools/archive/file.js
+--rollover-logs --before <the new plan's start>` moves the history logs'
+older entries to their quarters. CI runs `node tools/archive/build.js --check`.

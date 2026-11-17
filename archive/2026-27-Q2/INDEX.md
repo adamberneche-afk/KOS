@@ -15,3 +15,8 @@ How files are filed and searched: the [archive index](../INDEX.md).
 - 2026-10-31 · [`meta/HANDOFF_2026-10-31.md`](meta/HANDOFF_2026-10-31.md) — Session handoff, 10-31: the two history rewrites (superseded; agent notes in meta/AGENT_NOTES.md) Replaced by `meta/HANDOFF_2026-11-01.md`.
 - 2026-11-01 · [`meta/HANDOFF_2026-11-01.md`](meta/HANDOFF_2026-11-01.md) — Session handoff, 11-01: #352-#373 (superseded; agent notes in meta/AGENT_NOTES.md) Replaced by `meta/HANDOFF_2026-11-08.md`.
 - 2026-11-08 · [`meta/HANDOFF_2026-11-08.md`](meta/HANDOFF_2026-11-08.md) — Session handoff, 11-02 to 11-09: #375-#417 (superseded; agent notes in meta/AGENT_NOTES.md) Replaced by `meta/HANDOFF_2026-11-15.md`.
+
+## Replaced versions and retired guides
+
+- ~2026-11-17 · [`cas-ccps/archived/`](cas-ccps/archived) — cas-ccps's retired scripts: the 8 custom Studio steps and their shared file, the AutoInstaller, the Phase 4 work-file probe *(Filed by: retired code; the Studio steps and the AutoInstaller archived 2026-11-17 (clean-up C1, C2), the work-file probe 2026-11-07.)*
+- ~2026-11-17 · [`kos-personal/archive/inference-service/`](kos-personal/archive/inference-service) — kos-personal's managed inference service (Cloud Run): its code, schema, deploy guide and tests *(Filed by: retired code; archived 2026-11-17 (clean-up C3), dormant since D16 on 2026-11-01.)*
