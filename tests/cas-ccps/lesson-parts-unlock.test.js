@@ -186,3 +186,23 @@ test('explainLockedParts: one reason per next locked part, with the turn-in code
   assert.ok(logs.some((l) => /Ledger row 3 .*PRIMARY_NOT_MET .*earlier check found it MET.*re-grade.*turn-in code/.test(l)), logs.join('\n'));
   assert.ok(logs.every((l) => !/@ccpsnet|file-VDOE/.test(l)), 'no address or file ID');
 });
+
+test('explainLockedParts: an open part whose next part has no Ledger row says NO_ROW and names the catch-up', () => {
+  const { exported, ev, add, sandbox } = setup();
+  const logs = [];
+  sandbox.Logger.log = (m) => logs.push(String(m));
+  // Parts 1 to 4 made and open; Part 5 (the last) was never made.
+  [1, 2, 3, 4].forEach((n) => add('VDOE-F' + n, '6@ccpsnet.net', n, 'ACTIVE'));
+  ev.appendRow(['e5', 's', '8177-81', 'm', 'MET', 'C', '2026-11-12T15:00:00Z', 'file-VDOE-F4', '']);
+  // The whole lesson made: nothing to say about the last part.
+  [1, 2, 3, 4, 5].forEach((n) => add('VDOE-G' + n, '7@ccpsnet.net', n, 'ACTIVE'));
+  const r = exported.explainLockedParts();
+  assert.equal(r.items.length, 1, JSON.stringify(r.items));
+  const x = r.items[0];
+  assert.equal(x.reason, 'NO_ROW');
+  assert.equal(x.n, 5);
+  assert.equal(x.row, 5, "the open part's row");
+  assert.equal(x.lessonKey, KEY);
+  assert.ok(logs.some((l) => /Part 5\): NO_ROW.*no Ledger row for Part 5: run applyLessonPartsCatchUp\('8177-market-research-survey-design'\)/.test(l)), logs.join('\n'));
+  assert.ok(logs.every((l) => !/@ccpsnet|file-VDOE/.test(l)), 'no address or file ID');
+});

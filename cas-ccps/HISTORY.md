@@ -732,3 +732,22 @@ push, test run and lint, and kept for reference.
   and `script.deployments` scopes. Dropping scopes asks for no new consent.
   `docs/REGISTRY_SHEET_SETUP.md` is marked archived.
 - **C3** (kos-personal's inference service) is in `kos-personal/CHANGELOG.md`.
+
+## A lesson's missing later parts: the catch-up, 2026-11-17
+
+A student met Part 5 of the Buyer's Product Pitch and Part 6 never
+appeared. Part 6 (the Slides part) was added to `PARTS.json` on 11-09
+(#417), after the lesson went out; the nightly rollout makes a lesson's
+parts only while the lesson is current or within its lead days, so no
+student had a Part 6 Ledger row, and `unlockReadyParts()` skips a part with
+no row without a word. (From the code; the Central Ledger confirms it.)
+
+- `previewLessonPartsCatchUp(lessonKey)` / `applyLessonPartsCatchUp(lessonKey)`
+  (58): Parts 2 and up of one lesson, seeded if missing, then enrolled with
+  `deferShare` (locked, unshared) under one time budget, then
+  `unlockReadyParts()`. Refuses a lesson not in parts and one students have
+  whole. Part 1 is never made (an old lesson's Part 1 would stay locked).
+- `explainLockedParts()` (68) reports `NO_ROW` for a student whose last open
+  part has a next part with no row, naming the catch-up to run.
+- Tests: `tests/cas-ccps/lesson-rollout.test.js`,
+  `tests/cas-ccps/lesson-parts-unlock.test.js`.

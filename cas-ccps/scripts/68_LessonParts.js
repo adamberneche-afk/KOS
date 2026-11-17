@@ -301,6 +301,12 @@ function partUnlocksHaveWork_(ctx) {
 //                            (an ID mismatch between the lesson and the matrix)
 //   PREVIOUS_CHECK_FAILED    the previous part's last check ended in an error
 //   PREVIOUS_NOT_CHECKED     no check of the previous part yet
+//   NO_ROW                   the student's last open part has a next part in
+//                            PARTS.json but no Ledger row for it, so nothing
+//                            can unlock it (a part added after the lesson went
+//                            out, 2026-11-17): applyLessonPartsCatchUp (58)
+//                            makes it. Its row is the open part's; latest is
+//                            that part's primary outcome.
 // and whether the student holds a turn-in code for the previous part. Reads
 // only. Logs Ledger row numbers, lesson keys, part numbers and competency
 // IDs: no name, email or file ID. The teacher opens a part by hand from the
@@ -324,6 +330,7 @@ function explainLockedParts() {
       (x.everMet ? "; an earlier check found it MET" : "") +
       (x.latestInRegrade ? "; the latest check is the 11-15 re-grade's" : "") +
       (x.reason === "PRIMARY_NOT_IN_EVIDENCE" ? "; expected " + x.primary + ", found " + (x.seen.join(", ") || "none") : "") +
+      (x.reason === "NO_ROW" ? "; no Ledger row for Part " + x.n + ": run applyLessonPartsCatchUp('" + x.lessonKey + "')" : "") +
       (x.prevHasCode ? "; holds a turn-in code for Part " + (x.n - 1) : ""));
   });
   return res;
@@ -353,7 +360,17 @@ function lockedPartReasons_(ss, cfg) {
     const parts = byStudent[k];
     Object.keys(parts).forEach(function (n) {
       const cur = parts[n];
-      if (String(cur.row[LEDGER.STATUS]).trim() !== "SCHEDULED") return;
+      if (String(cur.row[LEDGER.STATUS]).trim() !== "SCHEDULED") {
+        // An open part whose next part was never made for this student.
+        if (cur.info.next && !parts[Number(n) + 1]) {
+          const p = cur.info.part.a.milestoneCompetencyIds[0];
+          const c = (history[String(cur.row[LEDGER.FILE_ID]).trim()] || {})[p];
+          out.items.push({ row: cur.rowIndex + 1, lessonKey: cur.info.lessonKey, n: Number(n) + 1, reason: "NO_ROW",
+            primary: p, latest: c && c.length ? c[c.length - 1].outcome : "", everMet: false, latestInRegrade: false,
+            seen: [], prevHasCode: !!coded[cur.sid] });
+        }
+        return;
+      }
       const prev = parts[Number(n) - 1];
       if (!prev) return; // Part 1 opens with the lesson's release
       if (String(prev.row[LEDGER.STATUS]).trim() === "SCHEDULED") { out.behind++; return; }

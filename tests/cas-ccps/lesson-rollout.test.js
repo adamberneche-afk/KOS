@@ -24,13 +24,14 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // The seeder (53) and roster import (52) are loaded so the sandbox matches
 // the Central Ledger project (gas-lint's sandbox-scope check), then replaced
 // with recorders in setup().
-const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
+const FILES = ['00_SharedConfig.js', '00b_ScriptOwnerGuard.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
   '29_StudentContextAggregator.js', '31_PacingGuideManager.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
   '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js',
   '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js', '58_LessonRollout.js', '32_CompetencyRubricImporter.js', '66_LessonDoc.js', '67_AgendaDeck.js', '68_LessonParts.js', '63_DocHeader.js', '76_CoveredSoFar.js'].map(S);
 const EXPOSE = ['lessonRollout_', '_lrPlan_', 'previewLessonRollout', 'runLessonRollout', 'runLessonRolloutCatchUp',
   '_lrEnrollOrder_', 'ROLLOUT_CATCHUP_MAX', 'ROLLOUT_TIME_BUDGET_MS', 'ROLLOUT_DOCS_RESERVE_MS',
-  'rolloutDayStatus_', 'rolloutSignalLines_', 'rolloutFinishedLine_'];
+  'rolloutDayStatus_', 'rolloutSignalLines_', 'rolloutFinishedLine_',
+  'previewLessonPartsCatchUp', 'applyLessonPartsCatchUp', 'lessonPartsCatchUp_'];
 
 const FRI = new Date(2026, 9, 16, 21, 0); // Friday 2026-10-16, 9 p.m.
 // 8175: L06 started Oct 14 (current), L07 starts tomorrow, L08 on Sunday
@@ -551,4 +552,49 @@ test('each run but a preview keeps the Covered So Far docs current; a failure is
   sandbox.writeCoveredSoFar_ = () => { throw new Error('boom'); };
   const thrown = exported.lessonRollout_({ today: FRI });
   assert.ok(thrown.rows.some((r) => r[4] === 'PROBLEM' && r[6] === 'Covered So Far docs failed: boom'));
+});
+
+// A lesson's missing later parts (2026-11-17): a part added after the lesson
+// went out was never made, so nothing could unlock it.
+test('parts catch-up: Parts 2 and up only, locked (deferShare), wherever the lesson sits; preview changes nothing', () => {
+  const env = setup({ schedule: { '8175': [], '8177': [] }, alreadySeeded: [2, 3, 4].map((n) => PARTS_LESSON + '-P' + n) });
+  let unlocks = 0;
+  env.sandbox.unlockReadyParts = () => { unlocks++; return { unlocked: 2, failed: 0 }; };
+  const pre = env.exported.previewLessonPartsCatchUp(PARTS_LESSON);
+  assert.deepEqual([...env.seedCalls[0].units], [2, 3, 4, 5].map((n) => PARTS_LESSON + '-P' + n));
+  assert.equal(env.seedCalls[0].apply, false);
+  assert.deepEqual([...pre.seeded], [PART(5)], 'only the part not yet in the TeacherMatrix');
+  assert.deepEqual(env.enrollCalls.map((c) => c.assignmentConfigId), [2, 3, 4, 5].map(PART));
+  assert.ok(env.enrollCalls.every((c) => c.apply === false && c.deferShare === true && c.quiet === true && typeof c.deadline === 'number'));
+  assert.equal(unlocks, 0, 'a preview unlocks nothing');
+  assert.match(pre.message, /^Would make 4 locked part/);
+
+  const res = env.exported.applyLessonPartsCatchUp(PARTS_LESSON);
+  assert.equal(env.seedCalls[1].apply, true);
+  assert.ok(env.enrollCalls.slice(4).every((c) => c.apply === true && c.deferShare === true));
+  assert.equal(unlocks, 1, 'the unlock job runs once at the end');
+  assert.equal(res.unlocked, 2);
+  assert.match(res.message, /Made 4 locked part.*seeded 1 part.*unlocked 2 now/);
+});
+
+test('parts catch-up: refuses a lesson not in parts, and one students have whole', () => {
+  const a = setup();
+  const r1 = a.exported.applyLessonPartsCatchUp('8175-L06');
+  assert.match(r1.message, /not a lesson in parts/);
+  assert.equal(a.seedCalls.length + a.enrollCalls.length, 0);
+  const b = setup({ students: [['VDOE-W', '1234567@ccpsnet.net', 'ACTIVE', 'CAS-' + PARTS_LESSON.toUpperCase()]] });
+  const r2 = b.exported.applyLessonPartsCatchUp(PARTS_LESSON);
+  assert.match(r2.message, /already have .* whole/);
+  assert.equal(b.seedCalls.length + b.enrollCalls.length, 0);
+});
+
+test('parts catch-up: a part the time budget stopped says run it again; nothing made, no unlock', () => {
+  const env = setup({ alreadySeeded: [2, 3, 4, 5].map((n) => PARTS_LESSON + '-P' + n),
+    enrollResult: () => ({ enrolled: 0, planned: [], timedOut: true, left: 3 }) });
+  let unlocks = 0;
+  env.sandbox.unlockReadyParts = () => { unlocks++; return { unlocked: 0, failed: 0 }; };
+  const res = env.exported.applyLessonPartsCatchUp(PARTS_LESSON);
+  assert.ok(res.parts.every((p) => p.left));
+  assert.equal(unlocks, 0);
+  assert.match(res.message, /not finished: run it again\.$/);
 });
