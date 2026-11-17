@@ -243,3 +243,68 @@ test('lexer-invariants: the real committed script has zero violations', () => {
     assert.deepEqual(checkLexerInvariants(tokenize(content)), []);
   }
 });
+
+// ── stripCommentsAndWhitespace: same output, linear time (2026-11-17) ───────
+// The 11-17 dead-ends audit found the old loop quadratic: it read the last
+// character of a string built with `+=`, which flattens the whole string on
+// every whitespace token (17 s on the 2 MB 55b file). This is that old loop,
+// kept as the reference the new one must match byte for byte.
+function referenceStrip(source) {
+  let out = '';
+  for (const tok of tokenize(source)) {
+    if (tok.type === 'comment-line' || tok.type === 'comment-block') continue;
+    if (tok.type === 'ws') {
+      const last = out[out.length - 1];
+      if (tok.text.includes('\n')) {
+        if (last !== undefined && last !== '\n') out += '\n';
+      } else if (last !== undefined && last !== '\n' && last !== ' ') out += ' ';
+      continue;
+    }
+    out += tok.text;
+  }
+  return out;
+}
+
+// The bodies of an HTML fragment's <script> blocks, found case-insensitively
+// with plain string search (tag attributes allowed).
+function scriptBodies(html) {
+  const lower = html.toLowerCase();
+  const out = [];
+  let i = 0;
+  for (;;) {
+    const open = lower.indexOf('<script', i);
+    if (open === -1) break;
+    const start = lower.indexOf('>', open);
+    if (start === -1) break;
+    const close = lower.indexOf('</script', start);
+    if (close === -1) break;
+    out.push(html.slice(start + 1, close));
+    i = close + 1;
+  }
+  return out;
+}
+
+test('stripCommentsAndWhitespace matches the reference byte for byte on the repo\'s own scripts', () => {
+  const root = path.join(__dirname, '..', '..');
+  const files = [
+    ...fs.readdirSync(path.join(root, 'leader-hub', 'src')).map((f) => path.join('leader-hub', 'src', f)),
+    'cas-ccps/scripts/07_TeacherDashboard.js',
+    'cas-ccps/scripts/13_StudentDashboard.js',
+    'cas-ccps/scripts/37_FlowInputBuilder.js',
+    'tools/leaderhub-build/js-lexer.js',
+  ];
+  const edgeCases = ['', '   ', '\n\n// c\n', 'a  /* x */  b', '`x\n\n  y`\n\n\nz', "'a'  \n  // c\n  'b'"];
+  for (const src of edgeCases) assert.equal(stripCommentsAndWhitespace(src), referenceStrip(src), JSON.stringify(src));
+  for (const f of files) {
+    let src = fs.readFileSync(path.join(root, f), 'utf8');
+    if (f.endsWith('.html')) src = scriptBodies(src).join('\n');
+    assert.equal(stripCommentsAndWhitespace(src), referenceStrip(src), f);
+  }
+});
+
+test('stripCommentsAndWhitespace is linear: the 2 MB 55b data file in under 3 s', () => {
+  const src = fs.readFileSync(path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '55b_LessonAssignmentData.js'), 'utf8');
+  const t = Date.now();
+  stripCommentsAndWhitespace(src);
+  assert.ok(Date.now() - t < 3000, 'took ' + (Date.now() - t) + ' ms (the quadratic version took about 17 s)');
+});
