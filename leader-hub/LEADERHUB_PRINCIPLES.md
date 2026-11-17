@@ -79,7 +79,7 @@ The FERPA boundary is non-negotiable: student names never leave the browser. Ano
 > is opt-in: upload a roster CSV under Settings → "Student ID Lookup — AI
 > Privacy" and matched names are swapped for a CCPS ID before the request
 > leaves the browser; names not on the roster still go through as-is. The
-> README's "Names by default, with an opt-in substitution path" section
+> `docs/ai-drafting.md`'s "Names by default, with an opt-in substitution path" section
 > and `LEADERHUB_AI_FLOW_SETUP.md` give the rationale (personal
 > professional communication, not education records). Student records
 > are no longer in the browser at all: since 2026-10-22 the Web App is the
@@ -102,7 +102,7 @@ Where irreversible actions exist, a single confirm is enough. Where data is crit
 > **⚠ Stale as a description of the shipped app** — the DSP-specific
 > features described in this principle (the countdown pill,
 > `generateDSPReport()`, DSP Standard 1/2 framing) were deliberately
-> removed; see `README.md`'s "DSP framework content — removed" section.
+> removed; see `docs/dsp-framework-content-removed.md`.
 > The underlying idea — that evidence generation should be a
 > first-class design concern, not an afterthought — still holds; only
 > the DSP-specific implementation described below is gone.
@@ -134,7 +134,7 @@ Two banners stack on Friday afternoon — Workday payroll at noon, Brag Board pr
 
 > **⚠ Removed from the shipped app** — the DSP Evidence Report modal and
 > its `generateDSPReport()`/`closeDSPReport()` functions were deleted;
-> see `README.md`'s "DSP framework content — removed" section. This
+> see `docs/dsp-framework-content-removed.md`. This
 > experience walkthrough is kept as a record of what the app used to
 > do, not what it does now.
 

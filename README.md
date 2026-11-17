@@ -98,7 +98,7 @@ holds its data in a Spreadsheet and Script Properties. Since 2026-10-22 the
 server is the only copy: nothing is stored in the browser, and the page no
 longer runs opened from disk (the standalone file is retired;
 [`archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`](archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md)).
-See [`leader-hub/README.md`](./leader-hub/README.md)'s "JJ1 — Server-deployed
+See [`leader-hub/docs/jj1-server-deployed-web-app.md`](./leader-hub/docs/jj1-server-deployed-web-app.md)'s "JJ1 — Server-deployed
 web app" section for the migration. It also went through the same nine
 rounds of UI/UX auditing as the two systems above —
 see
@@ -116,7 +116,7 @@ Script stripping the build's `//# sourceURL=` comments along with their
 closing tags. A second fault followed: the split script's load order. Separately,
 the page's server sync had never worked, because every browser call
 targeted a private `_` function. Read
-[`leader-hub/README.md`](./leader-hub/README.md)'s "Fixed — the
+[`leader-hub/docs/oauth-crash-and-diagnostics.md`](./leader-hub/docs/oauth-crash-and-diagnostics.md#fixed--the-oauth-consent-dialog-crash-2026-09-28)'s "Fixed — the
 OAuth-consent-dialog crash" section **before** touching
 `tools/leaderhub-build/` or how the page is served; the full
 investigation is in `leader-hub/HISTORY.md`.

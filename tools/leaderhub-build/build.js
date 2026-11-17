@@ -90,8 +90,9 @@
  * back: Apps Script's HtmlService strips some of them from the page it
  * holds, and when one sat directly against `</script>` it took `</script`
  * with it, leaving a stray `>` and running that block on into the next.
- * That was the page-load SyntaxError in leader-hub/README.md's "Fixed —
- * the OAuth-consent-dialog crash" section.
+ * That was the page-load SyntaxError in
+ * leader-hub/docs/oauth-crash-and-diagnostics.md's "Fixed — the
+ * OAuth-consent-dialog crash" section.
  *
  * THE ASSEMBLED FILE IS GENERATED. Never hand-edit
  * leader-hub/student-leader-hub.html directly — edit the fragment(s)

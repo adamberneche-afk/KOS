@@ -2,7 +2,8 @@
 // Regression tests for leader-hub/EmailBridge.gs's Organization Sync
 // (co-advisor sharing, "EE2") and AI job queue functions.
 //
-// leader-hub/README.md's EE2/AI-drafting sections describe a Node harness
+// leader-hub/docs/organizations.md's EE2 section and docs/ai-drafting.md
+// describe a Node harness
 // (verify_ee2.js, "21 checks, all passing") that exercised exactly this
 // logic against an in-memory Spreadsheet/PropertiesService mock — but that
 // harness was never committed to the repo, so none of what it verified was

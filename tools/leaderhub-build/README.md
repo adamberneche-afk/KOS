@@ -107,7 +107,8 @@ them back.** Apps Script's HtmlService strips some of those comments from
 the page it holds. When one sat directly against `</script>`, it took
 `</script` with it and left a stray `>`, so the block ran on into the
 next. That was the page-load `SyntaxError` behind the consent-dialog
-crash (see `leader-hub/README.md`'s "Fixed" section).
+crash (see `leader-hub/docs/oauth-crash-and-diagnostics.md`'s "Fixed"
+section).
 
 Run `node tools/leaderhub-build/build.js --stats` for a per-block report:
 original vs. minified size, the reduction percentage, and (for a split
