@@ -1,5 +1,5 @@
 'use strict';
-// 66's teacher doc, one per lesson (archive/meta/SPRINT_LESSON_DOCS_2026-11.md): made
+// 66's teacher doc, one per lesson (archive/2026-27-Q1/meta/SPRINT_LESSON_DOCS_2026-11.md): made
 // once with the plan, an itinerary per day with minutes for each of the
 // course's blocks on A and B, look-fors, each day it runs and a class status
 // snapshot; a second call refreshes only the status. The lesson builder's

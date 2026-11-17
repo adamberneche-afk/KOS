@@ -2,21 +2,22 @@
 
 Each session handoff ended with notes for the next agent session: the
 traps, conventions and "don't re-derive this" findings. The handoffs
-themselves are archived (`archive/meta/`, listed in
-[`archive/INDEX.md`](../archive/INDEX.md)); their notes are gathered here,
+themselves are archived by school quarter (`archive/<quarter>/meta/`,
+listed in [`archive/INDEX.md`](../archive/INDEX.md)); their notes are gathered here,
 word for word and oldest first, so they stay in everyday reach.
 
 **Point-in-time:** each block is as its handoff wrote it. Where a later
 note, a live handoff or the code disagrees, the later one wins. Links
 inside a block are relative to `meta/` as it was, so a link to a doc
-that has since been archived resolves under `archive/meta/`. The live
+that has since been archived is under `archive/<quarter>/` at the
+same path (the index says which quarter). The live
 handoffs (`HANDOFF_2026-11-15.md` onward) keep their own notes.
 
 Pruning the notes that no longer hold is a later pass of its own.
 
 ## From the 2026-10-05 handoff
 
-(`archive/meta/HANDOFF_2026-10-05.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-05.md`)
 
 - **Read first:** this file, then the per-system handoff for the system you're working on.
 - **Deploy markers:** any change to a GAS project's files needs `node tools/deploy-drift/stamp.js <project>`, committed on its own.
@@ -39,7 +40,7 @@ Pruning the notes that no longer hold is a later pass of its own.
 
 ## From the 2026-10-06 handoff
 
-(`archive/meta/HANDOFF_2026-10-06.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-06.md`)
 
 - **Read first:** this file, then the per-system handoff for your system.
 - **Deploy markers:** any change to a GAS project's files needs
@@ -71,7 +72,7 @@ Pruning the notes that no longer hold is a later pass of its own.
 
 ## From the 2026-10-07 handoff
 
-(`archive/meta/HANDOFF_2026-10-07.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-07.md`)
 
 - **Read first:** this file, then the per-system handoff for your system.
   For cas-ccps, the README's "The teacher's lessons and the LessonSchedule
@@ -101,7 +102,7 @@ Pruning the notes that no longer hold is a later pass of its own.
 
 ## From the 2026-10-08 handoff
 
-(`archive/meta/HANDOFF_2026-10-08.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-08.md`)
 
 - **Read first:** this file, then the per-system handoff for your system.
 - **Students can't run Apps Script.** Anything a student does goes through
@@ -138,7 +139,7 @@ Pruning the notes that no longer hold is a later pass of its own.
 
 ## From the 2026-10-10 handoff
 
-(`archive/meta/HANDOFF_2026-10-10.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-10.md`)
 
 - **Read first:** this file, then the PRD if the work is cas-ccps, then
   the per-system handoff.
@@ -188,7 +189,7 @@ Pruning the notes that no longer hold is a later pass of its own.
 
 ## From the 2026-10-12 handoff
 
-(`archive/meta/HANDOFF_2026-10-12.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-12.md`)
 
 - **Read first:** this file, then the PRD if the work is cas-ccps, then
   the per-system handoff.
@@ -283,7 +284,7 @@ Pruning the notes that no longer hold is a later pass of its own.
 
 ## From the 2026-10-17 handoff
 
-(`archive/meta/HANDOFF_2026-10-17.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-17.md`)
 
 The 10-12 handoff's "For an agent session" section still holds. Added since:
 
@@ -298,7 +299,7 @@ The 10-12 handoff's "For an agent session" section still holds. Added since:
 
 ## From the 2026-10-18 handoff
 
-(`archive/meta/HANDOFF_2026-10-18.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-18.md`)
 
 The 10-17 handoff's "For an agent session" section still holds. Added since:
 
@@ -330,7 +331,7 @@ The 10-17 handoff's "For an agent session" section still holds. Added since:
 
 ## From the 2026-10-19 handoff
 
-(`archive/meta/HANDOFF_2026-10-19.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-19.md`)
 
 The 10-17 handoff's "For an agent session" section still holds. Added since (10-18 and 10-19):
 
@@ -370,7 +371,7 @@ The 10-17 handoff's "For an agent session" section still holds. Added since (10-
 
 ## From the 2026-10-20 handoff
 
-(`archive/meta/HANDOFF_2026-10-20.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-20.md`)
 
 The 10-19 handoff's notes still hold. Added today:
 - **`setCurrentTerm()` is in the Central Ledger** and needs the sheet's menu
@@ -398,7 +399,7 @@ The 10-19 handoff's notes still hold. Added today:
 
 ## From the 2026-10-21 handoff
 
-(`archive/meta/HANDOFF_2026-10-21.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-21.md`)
 
 The 10-19 and 10-20 notes still hold. Added today:
 - **Flow 4 has its own plausibility check** (`wfbFlow4Plausible_`, 41).
@@ -450,7 +451,7 @@ The 10-19 and 10-20 notes still hold. Added today:
 
 ## From the 2026-10-22 handoff
 
-(`archive/meta/HANDOFF_2026-10-22.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-22.md`)
 
 The 10-19, 10-20 and 10-21 notes still hold. Added today:
 - **A Studio flow writes its own timestamps as text.** Read any timestamp
@@ -589,7 +590,7 @@ Added later on 2026-10-23 (the documentation scan):
 
 ## From the 2026-10-24 handoff
 
-(`archive/meta/HANDOFF_2026-10-24.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-24.md`)
 
 The 10-19 to 10-22 notes still hold. Added today:
 - **The response zone still ends at `[CONFIG_ID:`.** In new docs it is
@@ -658,7 +659,7 @@ The 10-19 to 10-22 notes still hold. Added today:
 
 ## From the 2026-10-27 handoff
 
-(`archive/meta/HANDOFF_2026-10-27.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-27.md`)
 
 The 10-19 to 10-24 notes still hold. Added:
 - **Settings live in one place.** 00's `DASHBOARD_SETTING_KEYS`; 07's
@@ -704,7 +705,7 @@ The 10-19 to 10-24 notes still hold. Added:
 
 ## From the 2026-10-28 handoff
 
-(`archive/meta/HANDOFF_2026-10-28.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-28.md`)
 
 The earlier notes still hold. Added:
 - **The student side of a lesson is its prompt file, in both courses:**
@@ -744,7 +745,7 @@ The earlier notes still hold. Added:
 
 ## From the 2026-10-29 handoff
 
-(`archive/meta/HANDOFF_2026-10-29.md`)
+(`archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md`)
 
 The earlier notes still hold. Added:
 - **The push is `run.js`.** From a GitHub zip it stamps each build's marker
@@ -770,7 +771,7 @@ The earlier notes still hold. Added:
 
 ## From the 2026-10-31 handoff
 
-(`archive/meta/HANDOFF_2026-10-31.md`)
+(`archive/2026-27-Q2/meta/HANDOFF_2026-10-31.md`)
 
 The earlier notes still hold. Added:
 - **History was rewritten (above).** Pre-10-31 commit IDs are gone; cite PRs.
@@ -796,7 +797,7 @@ The earlier notes still hold. Added:
 
 ## From the 2026-11-01 handoff
 
-(`archive/meta/HANDOFF_2026-11-01.md`)
+(`archive/2026-27-Q2/meta/HANDOFF_2026-11-01.md`)
 
 The earlier notes still hold. Added on 11-01:
 - **`run.js --latest` pushes without asking.** It extracts the newest
@@ -832,7 +833,7 @@ The earlier notes still hold. Added on 11-01:
 
 ## From the 2026-11-08 handoff
 
-(`archive/meta/HANDOFF_2026-11-08.md`)
+(`archive/2026-27-Q2/meta/HANDOFF_2026-11-08.md`)
 
 The earlier notes still hold. Added 11-02 to 11-08:
 - **Session logs** are read from `[RAW]_LOG-<hash>` in `03.4_RAW_EXHAUST`

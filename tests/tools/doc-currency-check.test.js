@@ -146,7 +146,7 @@ test('a file-level SUPERSEDED banner marks the whole document historical', () =>
   // code anymore". Without this the tool reports that finding back at the
   // document that already states it, twenty times over.
   const raw = '# LeaderHub README\n\n> **⚠ SUPERSEDED — kept for historical reference only.**\n\nUse `callAI()` to reach Gemini.\n';
-  assert.equal(docLevelStatus('archive/leader-hub/LEADERHUB_README.md', raw), 'superseded');
+  assert.equal(docLevelStatus('archive/2025-26/leader-hub/LEADERHUB_README.md', raw), 'superseded');
 });
 
 test('a banner appearing far below the top of the file does not exempt the document', () => {
@@ -190,7 +190,7 @@ test('unbackticked prose that happens to contain call syntax is ignored', () => 
 });
 
 // ── normalizeBlockquotes ─────────────────────────────────────────────────
-// The real bug this exists to fix: archive/meta/CODEBASE_REVIEW.md once carried
+// The real bug this exists to fix: archive/summer-2026/meta/CODEBASE_REVIEW.md once carried
 // "...gas-sandbox.js` — 346\n> passing tests..." — a blockquote line-wrap
 // splitting the count from the word "passing" — and checkCitedTestCounts'
 // plain \s+ regex could not cross the `>` sitting between the two newlines,

@@ -655,7 +655,7 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
  */
 /**
  * Editor: the Queue tab's counts in the execution log, plus what the
- * ingestion diagnosis (archive/meta/KOS_INGESTION_HARDENING_PLAN.md §4) asks for:
+ * ingestion diagnosis (archive/2026-27-Q1/meta/KOS_INGESTION_HARDENING_PLAN.md §4) asks for:
  * STAGING_PIPELINE's row count, how many are terminal, and the oldest
  * PENDING_FLOW row's age. getQueueMetrics() returns its counts to the web
  * app and logs nothing. Counts and ages only; no payload text.

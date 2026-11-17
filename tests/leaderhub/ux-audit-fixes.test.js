@@ -1,5 +1,5 @@
 'use strict';
-// leader-hub's share of the 2026-10-22 UX audit (archive/meta/UX_AUDIT_2026-10-22.md,
+// leader-hub's share of the 2026-10-22 UX audit (archive/2026-27-Q1/meta/UX_AUDIT_2026-10-22.md,
 // fix-first 12 and 15, order-of-work 15). Pins:
 //   - the family/student/admin email templates read the season (DECA_SEASON)
 //     instead of last season's typed-in ICDC Atlanta / March 13 facts;
@@ -173,7 +173,7 @@ test('pulse rings: an overdue DECA deadline and zero trips no longer read 100%',
   assert.ok(!/\)\)\)\):50,/.test(data), 'no made-up 50% for "no DECA deadline"');
 });
 
-// archive/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md Phase 1 (2026-10-22):
+// archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md Phase 1 (2026-10-22):
 // no secret is kept in the browser. The Gemini key a browser may still hold
 // from before AI moved to Workspace Flows is deleted with the rest of an
 // earlier version's leftovers (lhMigrateFromBrowser_, which deletes every

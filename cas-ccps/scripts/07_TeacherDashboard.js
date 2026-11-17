@@ -1292,7 +1292,7 @@ function _tdParentReportView_(r, copied) {
   };
 }
 
-// One student's page (2026-10-27, archive/meta/SPRINT_DASHBOARD_2026-11.md, PR 2):
+// One student's page (2026-10-27, archive/2026-27-Q1/meta/SPRINT_DASHBOARD_2026-11.md, PR 2):
 // this week's parent report and the student's context doc (29) by week,
 // newest first. The same teacher gate and roster scope as the panels it
 // narrows: the report comes only for this teacher's students (36), the doc
@@ -1454,7 +1454,7 @@ function teacherCopiedParentReport(studentEmail, subject, text) {
 //   For now scaffolding is always an empty array — zero UI cost.
 // ── M2 ──────────────────────────────────────────────────────────────────────
 // ---------------------------------------------------------------------------
-// ⚙ Settings (2026-10-27, archive/meta/SPRINT_DASHBOARD_2026-11.md, PR 3): the
+// ⚙ Settings (2026-10-27, archive/2026-27-Q1/meta/SPRINT_DASHBOARD_2026-11.md, PR 3): the
 // features turned on per course, and the marking period end dates. Each is
 // one row in the Central Ledger's _CONFIG tab (DASHBOARD_SETTING_KEYS, 00),
 // which reaches the Central Ledger and the Student Dashboard within the
@@ -3156,7 +3156,7 @@ const EVAL_FILTER_LABEL = {
 // Who hasn't submitted (2026-10-28, the walk-through's ask): no Submit on
 // record (the Ledger's SubmissionTS) for the work in view.
 const notSubmitted = s => !s.submittedAt || s.submittedAt === "—";
-// Course, period and student filters (2026-10-27, archive/meta/SPRINT_DASHBOARD_2026-11.md).
+// Course, period and student filters (2026-10-27, archive/2026-27-Q1/meta/SPRINT_DASHBOARD_2026-11.md).
 // Page memory only: a reload starts unfiltered. "" means all. A narrower
 // filter resets when a wider one changes, and the lesson picker goes back
 // to its default (all assignments once one student is chosen).

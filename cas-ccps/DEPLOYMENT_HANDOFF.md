@@ -7,7 +7,7 @@
 > Dashboard v36, Student Dashboard v26). Merged since, not yet pushed:
 > #373 (69 counts warm-ups under their course). The after-push steps and
 > what each run showed are in
-> [`archive/meta/HANDOFF_2026-11-01.md`](../archive/meta/HANDOFF_2026-11-01.md).
+> [`archive/2026-27-Q2/meta/HANDOFF_2026-11-01.md`](../archive/2026-27-Q2/meta/HANDOFF_2026-11-01.md).
 >
 > **What #338 to #370 brought, since 10-31:** the SCR
 > retry (D15), Flow 2's health numbers (`69`, a `Measures` tab), Flow 5
@@ -15,7 +15,7 @@
 > `syncFlowPromptsToSheet()` after the push), a part held by a failed check
 > flagged, and the Canvas cartridges listing parts (re-import both). The
 > after-push checks are in
-> [`archive/meta/HANDOFF_2026-11-01.md`](../archive/meta/HANDOFF_2026-11-01.md).
+> [`archive/2026-27-Q2/meta/HANDOFF_2026-11-01.md`](../archive/2026-27-Q2/meta/HANDOFF_2026-11-01.md).
 >
 > **2026-10-31: #338 to #351 were merged.** They fix every code
 > finding of KOS Audit Docket IV: a caller check on every public function
@@ -24,14 +24,14 @@
 > the Family Sentinel's label, scan and scope (no Drive: run any function
 > once after the push to approve). Git history was rewritten on 10-31:
 > re-clone or download a fresh ZIP before pushing. The checks after the
-> push are in [`archive/meta/HANDOFF_2026-10-31.md`](../archive/meta/HANDOFF_2026-10-31.md).
+> push are in [`archive/2026-27-Q2/meta/HANDOFF_2026-10-31.md`](../archive/2026-27-Q2/meta/HANDOFF_2026-10-31.md).
 >
 > **2026-10-29: everything merged through #337 is pushed** to every
 > project with `run.js` and checked with `node run.js --verify` (every web
 > app on its last push). The nightly rollout runs in APPLY for both
 > courses and catches itself up (#333). The bullets below are the history
 > of earlier pushes; what is live now, and the operator's queue, are in
-> [`archive/meta/HANDOFF_2026-10-29.md`](../archive/meta/HANDOFF_2026-10-29.md).
+> [`archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md`](../archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md).
 >
 > **The repo-wide handoff is [`meta/HANDOFF_2026-11-17.md`](../meta/HANDOFF_2026-11-17.md)**:
 > every system's state and the operator's queue in order. The other two
@@ -61,7 +61,7 @@
 > - **2026-10-15/16: the first real student submissions.** Submit failed until the
 >   deploying account approved the `documents` scope (rule below); feedback then
 >   landed at the bottom of the doc, and Flow 2 needed a manual start. #175 fixes
->   the first two in code; see `archive/meta/CAS_BUG_HANDOFF_2026-10-16.md`.
+>   the first two in code; see `archive/2026-27-Q1/meta/CAS_BUG_HANDOFF_2026-10-16.md`.
 > - **2026-10-17:** #173–#175 pushed with `run.js`, which replaces run.ps1.
 >   Merged, not yet pushed: #179 (late results finish their rows), #180
 >   (feedback as comments, off by default; "Feedback as comments" below) and
@@ -131,7 +131,7 @@
 >   central-ledger,teacher-dashboard,student-dashboard,master-student-template`
 >   (plus the other systems' projects), which promotes both web apps. The
 >   checks after it, and the rest of the operator's queue, are in
->   `archive/meta/HANDOFF_2026-10-22.md`.
+>   `archive/2026-27-Q1/meta/HANDOFF_2026-10-22.md`.
 > - **Bug 4 resolved (2026-10-23):** Flow 2 starts by itself on a submission.
 > - **After any manifest scope change** to a web app that runs as the deploying
 >   admin (both dashboards): run any function from that project's editor and
@@ -166,7 +166,7 @@
 >
 > **kos-personal's two Studio flows were built and verified on 2026-09-08**
 > (`kos-personal/CHANGELOG.md` Rounds 21-22), but failed in use from
-> Sept 10 until a Sept 29 fix (`archive/kos-personal/HANDOFF_2026-09-28.md`). **Nothing needs deploying
+> Sept 10 until a Sept 29 fix (`archive/2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md`). **Nothing needs deploying
 > from scratch**; the repo-wide handoff lists what is still pending. The
 > rest of this document — the already-live section, the
 > Script Properties reference, the from-scratch order of operations — is
@@ -531,7 +531,7 @@ noted.
 | 17 | Upload each Canvas course's gradebook export (Grades → Export → Export Entire Gradebook) to Drive; `prepareRosterSections()` and put each section's period in `CanvasSectionMap` (this can be done before step 16); then **once per course**: set the Script Property `ROSTER_CONFIG_ID` to that course's LIVE assignment Config ID; `previewRosterEnrollment()`; put each section's period in `CanvasSectionMap`; preview again; `applyRosterEnrollment()` | Enrolls the roster through `intakeStudent_()` (02), exactly as the intake form would. Only students whose period is in the assignment's course (its TeacherMatrix CourseName) are enrolled; the others are skipped as `OTHER_COURSE`. Needs a LIVE assignment and ClassSchedule. |
 | 16a | After a change to assignment criteria in the repo: push, then `previewAssignmentRefresh()` and `refreshAssignments()` (Central Ledger, `53_AssignmentSeeder.js`) | Rewrites the milestones, Definition of Done and milestone competency IDs of the LIVE rows the repo generated; FlowInput rows already written keep their text. First run 2026-10-19 (L07: no peer-reply grading, real criteria for 8175-6 and 8175-49) |
 | 17a | **Switch to the teacher's lessons. Done live 2026-10-07** (`HISTORY.md`). In order: `seedLessonSchedule()`, then type start dates in the `LessonSchedule` tab (a lesson runs until the next starts); set `SEED_UNITS` to the lesson keys (`8175-L06,8177-employee-handbook-operations`) or delete it, then `previewAssignmentSeed()` / `seedAssignments()` and delete `SEED_UNITS`; set `ARCHIVE_CONFIG_ID` to **one** retired assignment at a time (`CAS-S1-U1-8175`, then `CAS-S1-U1-8177`) and run `previewArchiveAssignment()` / `archiveAssignment()` for each; `previewRemoveDraftedLessons()` / `removeDraftedLessons()` (after the last class of the day: it trashes today's frame docs too) then `buildUpcomingLessons()`, twice if it stops early; then step 17 with the new Config IDs (`CAS-8175-L06`, …) | The lesson builder, warm-ups and assignments then follow LessonSchedule; see the cas-ccps README, "The teacher's lessons and the LessonSchedule tab". A `SEED_UNITS` left at `S1-U1` makes the seeder plan nothing new, and a comma-separated `ARCHIVE_CONFIG_ID` archives nothing (both seen live). |
-| 17b | **Roll out the next lesson** (every new lesson, both courses; done by hand while the nightly lesson rollout, "Nightly lesson rollout" below, is still in shadow for a course; `archive/meta/CAS_DESIGN_THREADS_2026-10-16.md` Thread C). A date in `LessonSchedule` makes no student docs by itself. In order: the lesson's `start_date` as `YYYY-MM-DD` (run `seedLessonSchedule()` first if it has no row); the date within 7 days; delete `SEED_UNITS`; `previewAssignmentSeed()` then `seedAssignments()` (the LIVE TeacherMatrix row); set `ROSTER_CONFIG_ID` to the lesson's Config ID (e.g. `CAS-8175-L07`, one per run); `previewRosterEnrollment()` then `applyRosterEnrollment()` (creates and shares each student's doc and Ledger row; students already enrolled are skipped, so a re-run after a timeout is safe); repeat for the other course | Usual reasons a date does nothing: no LIVE assignment yet, the date more than 7 days out, `SEED_UNITS` still set, an 8177 lesson with no approved prompt file, or a stale Canvas export missing new students. `SECTION_NOT_MAPPED` in the preview means a section has no period in `CanvasSectionMap`. The 2 a.m. `buildUpcomingLessons()` makes class-level lesson frames, not student docs. |
+| 17b | **Roll out the next lesson** (every new lesson, both courses; done by hand while the nightly lesson rollout, "Nightly lesson rollout" below, is still in shadow for a course; `archive/2026-27-Q1/meta/CAS_DESIGN_THREADS_2026-10-16.md` Thread C). A date in `LessonSchedule` makes no student docs by itself. In order: the lesson's `start_date` as `YYYY-MM-DD` (run `seedLessonSchedule()` first if it has no row); the date within 7 days; delete `SEED_UNITS`; `previewAssignmentSeed()` then `seedAssignments()` (the LIVE TeacherMatrix row); set `ROSTER_CONFIG_ID` to the lesson's Config ID (e.g. `CAS-8175-L07`, one per run); `previewRosterEnrollment()` then `applyRosterEnrollment()` (creates and shares each student's doc and Ledger row; students already enrolled are skipped, so a re-run after a timeout is safe); repeat for the other course | Usual reasons a date does nothing: no LIVE assignment yet, the date more than 7 days out, `SEED_UNITS` still set, an 8177 lesson with no approved prompt file, or a stale Canvas export missing new students. `SECTION_NOT_MAPPED` in the preview means a section has no period in `CanvasSectionMap`. The 2 a.m. `buildUpcomingLessons()` makes class-level lesson frames, not student docs. |
 | 17c | **Split a period whose groups meet on alternate days** (added 2026-10-19: period 3's odd-day and even-day groups are separate, cross-listed Canvas sections). In `CanvasSectionMap`, give each section its own period (`3-Odd`, `3-Even`); in `ClassSchedule`, replace the period's rows with one row per new period and course (`3-Odd` `ODD`, `3-Even` `EVEN`); `previewPeriodRelabel()` then `applyPeriodRelabel()` (`52`: moves students already enrolled to their section's period, counts only); `previewOffDayWarmUps()` then `retireOffDayWarmUps()` (`24`: warm-ups already queued for a day the student's period doesn't meet become `NOT_MEETING`, never scored or shown) | Day type is the calendar date's parity (odd date, odd day); A/B is the bell schedule and doesn't matter here. A period label is text, so `3-Odd` works everywhere a period appears; new docs go in a `3-Odd` folder, older ones stay. The 2 a.m. `buildUpcomingLessons()` makes lesson rows for the new periods from then on. |
 | 17d | **A period that meets daily for half the time** (added 2026-10-19: period 1, same pace as the ODD/EVEN periods). Push first, then set its `ClassSchedule` rows' day_type to `DAILY_HALF` (code from before this change treats `DAILY_HALF` as not meeting). Give every lesson already taught a `start_date` in `LessonSchedule` (the warm-ups review from those, below). `WarmUpPlan` is optional: one row per pair of class days, on the day the pair starts, for a specific seed | A `WarmUpPlan` row covers its date and the next weekday: the ODD and EVEN classes get the same warm-up, and a `DAILY_HALF` period gets it on the first day only; on the second the Student Dashboard shows the first day's feedback and extra-credit reply box. A day no row covers takes a random seed (fixed for the pair) from the lessons with a `LessonSchedule` start_date on or before it (since 2026-10-19), and a `DAILY_HALF` period then starts a pair on odd dates. A lesson with no start date is never picked. `DAILY` is unchanged (a new warm-up every day). |
 | 17e | **One trigger for the Ledger's frequent jobs** (added 2026-10-19). After the push, in the Central Ledger: `previewLedgerCycle()`, then `installLedgerCycle()` (`64`): it deletes the frequent jobs' own triggers (`bridgeQueue`, `runStagingTurnstile`, `backPropagateCompletions`, `buildFlowInputRows`, `harvestFlowInputResults`, `buildWarmUpFlowInputs`, `harvestWarmUpFlowReturns`, `registerDeliveredWarmUps`, `runAlignmentLogBackfill_`, `runQueueWatchdog`, whichever exist) and installs `runLedgerCycle` every minute, which runs those same jobs in turn at their cadence. Rollback: `restoreLedgerTriggers()` | Why: ~45 Google-side failures in a week from ten triggers racing one spreadsheet. The 3 a.m. jobs and the nightly ones keep their own triggers. A job whose installer is re-run gets its own trigger back and the cycle leaves it alone (preflight flags the double); run `installLedgerCycle()` again to fold it in. Errors show in the cycle's log as `[LC] Errors: <job>: <message>`; since 2026-10-22 each job's failures are also counted (`LEDGER_CYCLE_ERRORS`), named in the CAS signal and the overnight email, and a job failing 10 cycles in a row makes the trigger fail so Google's failure email arrives. |
@@ -628,7 +628,7 @@ comment on the doc instead, so the doc holds only the assignment and the
 student's work:
 
 1. On a test doc you own, run the `commentTest` probe
-   (`archive/meta/CAS_BUG_HANDOFF_2026-10-16.md`, appendix) and check how the
+   (`archive/2026-27-Q1/meta/CAS_BUG_HANDOFF_2026-10-16.md`, appendix) and check how the
    comment looks on the web and on a tablet, and that a long one fits.
 2. On the Teacher Dashboard, **⚙ Settings** (💬 Feedback until
    2026-10-27), turn *Feedback as a comment* on for one course first. (It
@@ -736,7 +736,7 @@ fix it works on `/dev`. `/exec` was released 2026-10-05 (v20) and still
 needs its `?diag=probe` check; see `leader-hub/README.md`'s "Fixed — the
 OAuth-consent-dialog crash". **Since 2026-10-22** (merged, not yet pushed as
 of 2026-10-23) it keeps nothing in the browser and runs only as its web app;
-the standalone file is retired (`archive/meta/HANDOFF_2026-10-22.md`).
+the standalone file is retired (`archive/2026-27-Q1/meta/HANDOFF_2026-10-22.md`).
 Its queue rows are deleted the moment their outcome is read, which is why
 liveness there is a durable counter rather than a row scan. Its D1 side —
 the browser calling cas-ccps's `doPost()` — is diagnosed from the cas-ccps
@@ -746,7 +746,7 @@ end; see the paragraph above.
 were built and verified end to end on 2026-09-08 (the second attempt), but
 the pipeline failed in use:** Sept 10-17 about 71% of Curator rows failed
 on persona output (the steps called the RTP Gem; fixed in Studio Sept 29),
-and the Classify Flow has not yet classified a real session. `archive/kos-personal/HANDOFF_2026-09-28.md` is the current record; the
+and the Classify Flow has not yet classified a real session. `archive/2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md` is the current record; the
 history below is how the flows got built.
 The Curator flow's first Studio build attempt surfaced real problems (a
 trigger condition not actually filtering on `Status`, and Gemini

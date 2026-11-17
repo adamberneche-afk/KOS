@@ -143,8 +143,9 @@ why this repo exists at all.
   archived handoff (10-05 to 11-08), word for word and oldest first. The
   live handoffs keep their own.
 - **Archived** — superseded handoffs, finished plans, sprints and audits
-  are in [`archive/`](../archive/INDEX.md) at their old paths, out of
-  everyday search; `archive/INDEX.md` lists each with a line on what it is.
+  are in [`archive/`](../archive/INDEX.md), filed by school quarter and
+  kept at their old paths inside it, out of everyday search;
+  `archive/INDEX.md` has a row per quarter and links each quarter's index.
 
 ## Why these are here and not under a system subtree
 

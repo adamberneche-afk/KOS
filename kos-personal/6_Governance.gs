@@ -1109,7 +1109,7 @@ function _appendBlocks_(body, blocks) {
  * for both the dated archival doc and KOS_LATEST_PRIMER, so the two can
  * never drift out of sync with each other (the exact bug class a prior
  * audit found and fixed elsewhere in this repo — see
- * archive/meta/CODEBASE_REVIEW.md — when the same content was hand-duplicated
+ * archive/summer-2026/meta/CODEBASE_REVIEW.md — when the same content was hand-duplicated
  * instead of shared).
  */
 function _primerBlocks_(onboardingLine, vision, vectorState, shadowState, quality) {

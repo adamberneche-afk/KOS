@@ -159,7 +159,7 @@ test('processCompletedEvaluation_: a real approval in the feedback block still c
   assert.ok(!logs.some((l) => l.includes('WARNING')));
 });
 
-// Bug 3 (archive/meta/CAS_BUG_HANDOFF_2026-10-16.md section 4): the turnstile timed a
+// Bug 3 (archive/2026-27-Q1/meta/CAS_BUG_HANDOFF_2026-10-16.md section 4): the turnstile timed a
 // staging row out, backprop closed the queue and Ledger rows as
 // ERROR_TIMEOUT, then the evaluation arrived and the harvest marked staging
 // COMPLETE. Backprop only finished queue rows still at STAGED, so these

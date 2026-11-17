@@ -1,0 +1,70 @@
+# Archive: 2026-27, 1st quarter
+
+2026-08-24 to 2026-10-30. PRs: through about #345. Plan of record: `meta/PLAN_2026-10.md` (live).
+
+The build and launch: kos-personal's pipeline repaired and the RTP moved to a Claude Project (10-06); CAS live with students (first submissions 10-16); the dashboards, lesson parts, the nightly rollout and the turn-in plan; LeaderHub to an Apps Script web app. Most of the archive is here.
+
+One line per file: its date, its path in this folder, what it is. Paths
+inside this folder are the files' old paths; the [archive index](../INDEX.md)
+says how files are filed and searched.
+
+## Handoffs
+
+- 2026-09-28 · [`kos-personal/HANDOFF_2026-09-28.md`](kos-personal/HANDOFF_2026-09-28.md) — kos-personal handoff, 09-28 (point-in-time)
+- 2026-09-28 · [`kos-personal/STUDIO_REBIND_HANDOFF.md`](kos-personal/STUDIO_REBIND_HANDOFF.md) — Studio rebind handoff, closed 09-29 (never needed)
+- 2026-10-05 · [`meta/HANDOFF_2026-10-05.md`](meta/HANDOFF_2026-10-05.md) — Session handoff, 10-05 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-06 · [`meta/HANDOFF_2026-10-06.md`](meta/HANDOFF_2026-10-06.md) — Session handoff, 10-06 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-07 · [`meta/HANDOFF_2026-10-07.md`](meta/HANDOFF_2026-10-07.md) — Session handoff, 10-07 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-08 · [`meta/HANDOFF_2026-10-08.md`](meta/HANDOFF_2026-10-08.md) — Session handoff, 10-08 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-10 · [`meta/HANDOFF_2026-10-10.md`](meta/HANDOFF_2026-10-10.md) — Session handoff, 10-10 to 10-12 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-12 · [`meta/HANDOFF_2026-10-12.md`](meta/HANDOFF_2026-10-12.md) — Session handoff, 10-12 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-13 · [`kos-personal/ONBOARDING_CLOSEOUT_2026-10-13.md`](kos-personal/ONBOARDING_CLOSEOUT_2026-10-13.md) — 21-day onboarding close-out review, 10-13
+- 2026-10-16 · [`meta/CAS_BUG_HANDOFF_2026-10-16.md`](meta/CAS_BUG_HANDOFF_2026-10-16.md) — CAS bug handoff, 10-16: queue, timeout and backprop bugs then (point-in-time)
+- 2026-10-17 · [`meta/HANDOFF_2026-10-17.md`](meta/HANDOFF_2026-10-17.md) — Session handoff, 10-17 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-18 · [`meta/HANDOFF_2026-10-18.md`](meta/HANDOFF_2026-10-18.md) — Session handoff, 10-18 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-19 · [`meta/HANDOFF_2026-10-19.md`](meta/HANDOFF_2026-10-19.md) — Session handoff, 10-19 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-20 · [`meta/HANDOFF_2026-10-20.md`](meta/HANDOFF_2026-10-20.md) — Session handoff, 10-20 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-21 · [`meta/HANDOFF_2026-10-21.md`](meta/HANDOFF_2026-10-21.md) — Session handoff, 10-21 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-22 · [`meta/HANDOFF_2026-10-22.md`](meta/HANDOFF_2026-10-22.md) — Session handoff, 10-22: system state and open items then (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-24 · [`meta/HANDOFF_2026-10-24.md`](meta/HANDOFF_2026-10-24.md) — Session handoff, 10-24 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-27 · [`meta/HANDOFF_2026-10-27.md`](meta/HANDOFF_2026-10-27.md) — Session handoff, 10-27 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-28 · [`meta/HANDOFF_2026-10-28.md`](meta/HANDOFF_2026-10-28.md) — Session handoff, 10-28 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-10-29 · [`meta/HANDOFF_2026-10-29.md`](meta/HANDOFF_2026-10-29.md) — Session handoff, 10-29 (superseded; agent notes in meta/AGENT_NOTES.md)
+
+## Plans, sprints and specs
+
+- 2026-10-05 · [`kos-personal/rtp-core-router/notebook-plan/01_USER_STORIES.md`](kos-personal/rtp-core-router/notebook-plan/01_USER_STORIES.md) — RTP notebook plan: user stories (frozen 10-06)
+- 2026-10-05 · [`kos-personal/rtp-core-router/notebook-plan/02_PRD.md`](kos-personal/rtp-core-router/notebook-plan/02_PRD.md) — RTP notebook plan: PRD (frozen 10-06)
+- 2026-10-05 · [`kos-personal/rtp-core-router/notebook-plan/03_ADRs.md`](kos-personal/rtp-core-router/notebook-plan/03_ADRs.md) — RTP notebook plan: ADRs (frozen 10-06)
+- 2026-10-05 · [`kos-personal/rtp-core-router/notebook-plan/05_TEST_LOG.md`](kos-personal/rtp-core-router/notebook-plan/05_TEST_LOG.md) — RTP notebook plan: test log (closed 10-06)
+- 2026-10-05 · [`meta/KOS_INGESTION_HARDENING_PLAN.md`](meta/KOS_INGESTION_HARDENING_PLAN.md) — kos-personal ingestion hardening plan, B/D/E built
+- 2026-10-06 · [`kos-personal/rtp-core-router/notebook-plan/04_MIGRATION_AND_TEST_PLAN.md`](kos-personal/rtp-core-router/notebook-plan/04_MIGRATION_AND_TEST_PLAN.md) — RTP notebook plan: migration and test plan (frozen 10-06)
+- 2026-10-21 · [`meta/LESSON_AUTHORING_PLAN_2026-10.md`](meta/LESSON_AUTHORING_PLAN_2026-10.md) — Lesson authoring plan, phases 1-2 built (#245, #246)
+- 2026-10-22 · [`meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`](meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md) — LeaderHub no-browser-storage plan, done 10-22
+- 2026-10-26 · [`meta/SPRINT_DASHBOARD_2026-11.md`](meta/SPRINT_DASHBOARD_2026-11.md) — Teacher Dashboard sprint decided 10-27, built
+- 2026-10-27 · [`meta/PSD_Version_Controlled_CAS_Workspace.md`](meta/PSD_Version_Controlled_CAS_Workspace.md) — Version-controlled workspace PSD, goals met (noted 11-01)
+- 2026-10-27 · [`meta/SPRINT_LESSON_DOCS_2026-11.md`](meta/SPRINT_LESSON_DOCS_2026-11.md) — Lesson doc and agenda deck sprint, built (#309-#311)
+
+## Audits and reviews
+
+- 2026-10-16 · [`meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md`](meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md) — Cognitive-exhaust suggestions, decided 10-17 and built
+- 2026-10-16 · [`meta/CAS_DESIGN_THREADS_2026-10-16.md`](meta/CAS_DESIGN_THREADS_2026-10-16.md) — CAS design threads, 10-16 (superseded by the plans)
+- 2026-10-22 · [`meta/PRODUCT_EXPERIENCE_GAP_AUDIT.md`](meta/PRODUCT_EXPERIENCE_GAP_AUDIT.md) — Product experience gap audit (point-in-time; still a notebook-context source)
+- 2026-10-22 · [`meta/UX_AUDIT_2026-10-22.md`](meta/UX_AUDIT_2026-10-22.md) — UX audit, 10-22 (point-in-time; still a notebook-context source)
+- 2026-10-26 · [`meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`](meta/DASHBOARD_WALKTHROUGH_2026-10-26.md) — Dashboard walk-through checklist and findings, week of 10-26
+- 2026-10-29 · [`meta/AUDIT_DEAD_ENDS_2026-10-29.md`](meta/AUDIT_DEAD_ENDS_2026-10-29.md) — Dead-ends audit, 10-29; its actions went into PLAN_2026-11
+
+## Replaced versions and retired guides
+
+- 2026-08-24 · [`kos-personal/rtp-core-router/protocols/Drive_Steward_Methodology_and_Prompt.md`](kos-personal/rtp-core-router/protocols/Drive_Steward_Methodology_and_Prompt.md) — Byte-identical copy of meta/Drive_Steward_Methodology_and_Prompt.md (the live one) *(Filed by: dated 2026-08-24.)*
+- 2026-10-05 · [`kos-personal/rtp-core-router/RTP_CORE_ROUTER_V5_8.md`](kos-personal/rtp-core-router/RTP_CORE_ROUTER_V5_8.md) — RTP Core Router V5.8, replaced by V6.0 *(Filed by: undated; replaced by V6.0 on 10-05.)*
+- 2026-10-15 · [`cas-ccps/docs/PLATFORM_DEPLOYMENT_GUIDE_OUTDATED.md`](cas-ccps/docs/PLATFORM_DEPLOYMENT_GUIDE_OUTDATED.md) — Old platform deployment guide (outdated; do not follow) *(Filed by: undated; replaced by the clasp-sync deploy path in Q1.)*
+- 2026-10-15 · [`cas-ccps/docs/REGISTRY_SHEET_SETUP.md`](cas-ccps/docs/REGISTRY_SHEET_SETUP.md) — Registry sheet setup, archived 11-17 with the AutoInstaller *(Filed by: undated; written in Q1 or before, archived 11-17 with the AutoInstaller.)*
+- 2026-10-15 · [`cas-ccps/forms/WarmUpResponseForm_setup.md`](cas-ccps/forms/WarmUpResponseForm_setup.md) — Warm-up response form setup, retired (D16, 11-01) *(Filed by: undated; written in Q1, retired 11-01 (D16).)*
+- 2026-10-22 · [`leader-hub/LEADERHUB_EMAIL_SETUP.md`](leader-hub/LEADERHUB_EMAIL_SETUP.md) — LeaderHub email setup (superseded) *(Filed by: undated; superseded 10-22.)*
+
+## History logs (older entries)
+
+- [`cas-ccps/HISTORY.md`](cas-ccps/HISTORY.md) — CAS process history, entries before 10-29 (live file: cas-ccps/HISTORY.md)
+- [`kos-personal/CHANGELOG.md`](kos-personal/CHANGELOG.md) — KOS changelog, entries before 10-29, including the undated early rounds (live file: kos-personal/CHANGELOG.md)
+- [`leader-hub/HISTORY.md`](leader-hub/HISTORY.md) — LeaderHub process history, entries before 10-29 (live file: leader-hub/HISTORY.md)

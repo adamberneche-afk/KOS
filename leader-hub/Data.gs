@@ -72,7 +72,7 @@ const LH_DATA_TABS = [
   'goals', 'events', 'tasks', 'deadlines', 'journal_entries',
   'observation_history', 'brag_manual_wins',
   // No browser storage, Phase 2 (2026-10-22,
-  // archive/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md): the member roster
+  // archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md): the member roster
   // (records already carry an id), and the id-less logs Phase 8 left local.
   // Each log entry now gets an id when it is saved (the client's LS.set,
   // _lhWithLogIds_): random, not derived from a timestamp, so two entries
@@ -241,7 +241,7 @@ function lhPullData_(body) {
 // Everything the page needs at load, read once: every config key, every data
 // domain and the SCR scores. doGet() (Code.gs) writes it into the page before
 // the app's scripts run, so the app starts from the server's copy and never
-// reads browser storage (archive/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md).
+// reads browser storage (archive/2026-27-Q1/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md).
 // One spreadsheet open and one meta read, not one per domain.
 function lhBootData_() {
   const ss = _getLhDataSpreadsheet_();
