@@ -751,3 +751,28 @@ no row without a word. (From the code; the Central Ledger confirms it.)
   part has a next part with no row, naming the catch-up to run.
 - Tests: `tests/cas-ccps/lesson-rollout.test.js`,
   `tests/cas-ccps/lesson-parts-unlock.test.js`.
+
+## Competency IDs stored as dates, 2026-11-17
+
+`explainLockedParts()`, run after the Part 6 catch-up, found locked parts
+whose primary was "not in evidence" with the evidence's ID read as
+"Tue Jul 01 8177": Sheets reads "8177-7" in a plain cell as July 8177. Every
+competency ID ending in 1 to 12 that Flow 2 wrote to `CompetencyEvidence`
+was stored as the first of that month, so every reader comparing IDs missed
+it: the part unlock (a part whose primary is one of them never opened on a
+MET), and the dashboards' and the SCR engine's counts for those
+competencies.
+
+- `competencyIdText_` (32), written 10-06 when the same thing happened to
+  the registry and rubric imports, reads such a cell back as its ID; it
+  hadn't reached the evidence readers.
+- Flow 2's evidence writer (15c) formats the competency_id cells as text
+  before writing.
+- `repairCompetencyIdDates()` / `repairCompetencyIdDates(true)` (15c)
+  rewrites the stored dates as their IDs, in text format: a dry run first,
+  counts and IDs only.
+- The part unlock and `explainLockedParts` (68) read IDs through
+  `competencyIdText_`, so they're right before the repair too.
+- Tests: `tests/cas-ccps/competency-id-dates.test.js`, and an unlock test in
+  `lesson-parts-unlock.test.js`.
+

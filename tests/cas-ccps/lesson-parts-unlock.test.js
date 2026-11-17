@@ -16,7 +16,7 @@ const PART = (n) => 'CAS-' + KEY.toUpperCase() + '-P' + n;
 const TEACHER = 'teacher@ccpsnet.net';
 
 function setup() {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'), S('55b_LessonAssignmentData.js'), S('64_LedgerCycle.js'), S('68_LessonParts.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'), S('32_CompetencyRubricImporter.js'), S('55b_LessonAssignmentData.js'), S('64_LedgerCycle.js'), S('68_LessonParts.js')],
     ['unlockReadyParts', 'previewPartUnlocks', 'unlockNextPart_', 'partOfConfigId_', 'lessonPartsOf_', 'getConfig_',
       'partHeldSchoolDays_', 'partsHeldByFailure_', 'foldPartRows_', 'explainLockedParts']);
   const { sandbox } = env;
@@ -205,4 +205,19 @@ test('explainLockedParts: an open part whose next part has no Ledger row says NO
   assert.equal(x.lessonKey, KEY);
   assert.ok(logs.some((l) => /Part 5\): NO_ROW.*no Ledger row for Part 5: run applyLessonPartsCatchUp\('8177-market-research-survey-design'\)/.test(l)), logs.join('\n'));
   assert.ok(logs.every((l) => !/@ccpsnet|file-VDOE/.test(l)), 'no address or file ID');
+});
+
+test('unlock: a primary whose ID Sheets stored as a date (8177-7 as July 8177) still counts as MET', () => {
+  const env = setup();
+  const PITCH = '8177-product-pitch-financial-analysis';
+  const P = (n) => 'CAS-' + PITCH.toUpperCase() + '-P' + n;
+  const add = (sid, n, status) => {
+    const r = new Array(27).fill('');
+    r[1] = '8@ccpsnet.net'; r[2] = sid; r[3] = 'file-' + sid; r[8] = TEACHER; r[12] = status;
+    env.ledger.appendRow(r);
+    env.ss.getSheetByName('StudentAssignments').appendRow([sid, '8@ccpsnet.net', P(n)]);
+  };
+  add('VDOE-H1', 1, 'ACTIVE'); add('VDOE-H2', 2, 'SCHEDULED');
+  env.ev.appendRow(['e1', 's', new Date(8177, 6, 1), 'm', 'MET', 'C', '2026-11-12T15:00:00Z', 'file-VDOE-H1', '']);
+  assert.equal(env.exported.unlockReadyParts().unlocked, 1);
 });

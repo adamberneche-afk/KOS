@@ -375,10 +375,62 @@ function writeCompetencyEvidenceFromFlow2_(studentEmail, configId, studentFileId
       ]]);
     }
     const startRow = evidenceSheet.getLastRow() + 1;
+    // Column C as text first: Sheets reads "8177-7" as a date (2026-11-17).
+    evidenceSheet.getRange(startRow, 3, rows.length, 1).setNumberFormat("@");
     evidenceSheet.getRange(startRow, 1, rows.length, 9).setValues(rows);
   }
 
   Logger.log("[S15c] CompetencyEvidence: wrote " + written + " row(s), skipped " + skipped +
     " milestone(s) (missing competency ID or outcome).");
   return { written: written, skipped: skipped };
+}
+
+// ---------------------------------------------------------------------------
+// repairCompetencyIdDates — CompetencyEvidence's competency IDs that Sheets
+// turned into dates (2026-11-17). Before the writer above formatted the
+// column as text, an ID ending in 1 to 12 ("8177-7", "8175-12") was stored as
+// the first of that month in that year, so every reader comparing IDs missed
+// it: a part's unlock, the dashboards' competency counts, the SCR engine.
+// Rewrites each such cell as its ID, as text, and formats the column as
+// text (competencyIdText_ is 32's, from the registry's same fix of 10-06).
+// Dry run by default; the log is counts and IDs only.
+//   repairCompetencyIdDates()       what it would change
+//   repairCompetencyIdDates(true)   change it
+// ---------------------------------------------------------------------------
+function repairCompetencyIdDates(apply) {
+  requireScriptOwner_();
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  return competencyIdDateRepair_(ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence"), apply === true);
+}
+
+function competencyIdDateRepair_(sheet, apply) {
+  const out = { apply: apply, rows: 0, fixed: 0, byId: {}, message: "" };
+  if (!sheet || sheet.getLastRow() < 2) { out.message = "No CompetencyEvidence rows."; Logger.log("[S15c] " + out.message); return out; }
+  const header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); });
+  const col = header.indexOf("competency_id") + 1;
+  if (!col) { out.message = "CompetencyEvidence has no competency_id column."; Logger.log("[S15c] " + out.message); return out; }
+  const n = sheet.getLastRow() - 1;
+  const range = sheet.getRange(2, col, n, 1);
+  const values = range.getValues();
+  out.rows = n;
+  const next = values.map(function (r) {
+    const v = r[0];
+    if (Object.prototype.toString.call(v) !== "[object Date]") return [v];
+    const id = competencyIdText_(v);
+    if (id === String(v).trim()) return [v];
+    out.fixed++;
+    out.byId[id] = (out.byId[id] || 0) + 1;
+    return [id];
+  });
+  if (apply && out.fixed) {
+    range.setNumberFormat("@");
+    range.setValues(next);
+  }
+  out.message = (apply ? "Rewrote " : "Would rewrite ") + out.fixed + " of " + n +
+    " competency ID cell(s) stored as dates" +
+    (out.fixed ? " (" + Object.keys(out.byId).sort().map(function (k) { return k + " " + out.byId[k]; }).join(", ") + ")" : "") +
+    (apply || !out.fixed ? "." : ". Run repairCompetencyIdDates(true) to rewrite them.");
+  Logger.log("[S15c] " + out.message);
+  return out;
 }
