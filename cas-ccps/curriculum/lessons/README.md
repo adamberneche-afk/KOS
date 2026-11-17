@@ -40,7 +40,7 @@ and a lesson whose task says to watch a video must be listed (`lesson-assignment
 
 Each lesson's **class plan** (`plan` in `55b_LessonAssignmentData.js`, 2026-10-27) is drafted by the
 generator from the lesson's own sections, for the teacher's lesson doc and the daily agenda
-(`meta/SPRINT_LESSON_DOCS_2026-11.md`): an 8175 lesson's warm-up (its prompt file's), Hook, task and
+(`archive/meta/SPRINT_LESSON_DOCS_2026-11.md`): an 8175 lesson's warm-up (its prompt file's), Hook, task and
 Checkout Slip; an 8177 lesson's timed Instructional Sequence steps ("B. The Bias Bootcamp (15
 Minutes)", or "- **Step:** (5 mins)"), split by "Day 1" / "Day 2" headings when it has them. Each
 block gets a mode (Chromebooks out, listening, discussion, writing) from its words. Write a step's

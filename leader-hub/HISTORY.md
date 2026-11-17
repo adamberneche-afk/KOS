@@ -1161,7 +1161,7 @@ previous quarter's end). See README.md.
 
 The operator: "there is a lot of system jargon and terms that the user
 doesn't know", and the page must be easy to read. Same pattern as
-kos-personal and the cas-ccps dashboards (`meta/UX_AUDIT_2026-10-22.md`,
+kos-personal and the cas-ccps dashboards (`archive/meta/UX_AUDIT_2026-10-22.md`,
 "Added by the operator").
 
 - **Plain words on screen**, with the system's name kept in the tooltip:
@@ -1192,7 +1192,7 @@ kos-personal and the cas-ccps dashboards (`meta/UX_AUDIT_2026-10-22.md`,
 
 ## Family emails from the season, a phone layout, and edit guards, 2026-10-22
 
-The rest of leader-hub's share of `meta/UX_AUDIT_2026-10-22.md`: fix-first
+The rest of leader-hub's share of `archive/meta/UX_AUDIT_2026-10-22.md`: fix-first
 12 and 15, and order-of-work 15.
 
 - **Email templates read the season.** The ICDC qualifier letters (student
@@ -1253,7 +1253,7 @@ The rest of leader-hub's share of `meta/UX_AUDIT_2026-10-22.md`: fix-first
 
 The operator's rule is that nothing is stored in the browser, and leader-hub
 keeps its data in `localStorage` by design, so
-`meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md` plans the move to the
+`archive/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md` plans the move to the
 server. Phase 1 is done: no code has read the Gemini key since AI moved to
 Workspace Flows, but a browser could still hold `lh_api_key`, so the app
 now deletes it at every load. Decided for later phases: the standalone

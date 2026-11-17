@@ -822,7 +822,7 @@ question a records request asks.
 ## `27_LessonFrameGenerator` — the one Full script closed
 
 The last remaining gap named repeatedly since resolution 9 above
-(`cas-ccps/README.md`'s module table, `meta/CODEBASE_REVIEW.md`,
+(`cas-ccps/README.md`'s module table, `archive/meta/CODEBASE_REVIEW.md`,
 `PLATFORM_DOCUMENTATION.html`'s script inventory) is built. Not an
 unassigned slot — a specific, named script two other files were already
 wired for: `22_LessonContextHandler.js`'s `onLessonContextSubmit_()` has
@@ -1882,7 +1882,7 @@ Eight errors and three warnings on the first run, across seven documents:
   as living in the blocked steps — it now runs inside this repo's own
   Script-Property and trigger boundary rather than Studio's, which is a
   boundary change worth stating in that document specifically.
-- `meta/CODEBASE_REVIEW.md`'s header still said the custom-step code was "not
+- `archive/meta/CODEBASE_REVIEW.md`'s header still said the custom-step code was "not
   yet pushed to a live Studio deployment."
 - Two documents said the port "has to" come back into Apps Script, in the
   future tense, after it was done: `meta/FLOW_INVENTORY.md`'s kos-personal
@@ -3273,7 +3273,7 @@ gap in `backPropagateCompletions()`).
 
 ## Late evaluations finish their rows, 2026-10-17
 
-Bug 3 from the first live submissions (`meta/CAS_BUG_HANDOFF_2026-10-16.md`
+Bug 3 from the first live submissions (`archive/meta/CAS_BUG_HANDOFF_2026-10-16.md`
 section 4). The turnstile (06) timed a staging row out after 12 minutes,
 `backPropagateCompletions()` closed the ReviewQueue and Ledger rows as
 ERROR_TIMEOUT and emailed the teacher, and then the evaluation arrived from
@@ -3565,7 +3565,7 @@ kind of failure every morning.
   doc: 6 revisions over 9 days, one sitting merged into one revision, system
   edits counted as revisions, HTTP 429 on rapid export fetches. Paste
   detection from revision history is not possible;
-  `meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md` records the lean option.
+  `archive/meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md` records the lean option.
 - **Tests:** `warmup-text-box.test.js` (a blank `teacher_name` delivers),
   `overnight-health.test.js`, `warmup-flow-pacing.test.js`.
 
@@ -3995,7 +3995,7 @@ kind of failure every morning.
 
 ## Lesson editing from the Teacher Dashboard, phase 1a, 2026-10-21
 
-- **Why:** phase 1 of `meta/LESSON_AUTHORING_PLAN_2026-10.md` (the
+- **Why:** phase 1 of `archive/meta/LESSON_AUTHORING_PLAN_2026-10.md` (the
   operator's decisions of 2026-10-21), due Wed Oct 28. This is its
   dashboard half; the import tool follows.
 - **65_LessonDrafts.js (Teacher Dashboard):** `getLessonEditor`,
@@ -4035,7 +4035,7 @@ kind of failure every morning.
 
 ## Lesson writing from the Teacher Dashboard, phase 2, 2026-10-21
 
-- **Why:** phase 2 of `meta/LESSON_AUTHORING_PLAN_2026-10.md`, due Oct 30:
+- **Why:** phase 2 of `archive/meta/LESSON_AUTHORING_PLAN_2026-10.md`, due Oct 30:
   new lessons, and the import on an evening Routine (6 p.m. Eastern, the
   operator's choice).
 - **65:** `getNewLessonEditor(course)`; `saveLessonDraft({ kind: "NEW", … })`
@@ -4060,7 +4060,7 @@ kind of failure every morning.
 
 ## The Feedback panel's courses, and the readiness numbers clickable, 2026-10-22
 
-- **Why:** walk-through findings 1 and 7 (`meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`),
+- **Why:** walk-through findings 1 and 7 (`archive/meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`),
   fixed before the Oct 26 walk.
 - **The cause of 1:** a student's ConfigID is a workspace ID
   (`VDOE-XXXXXX-2026`, 02's `generateConfigId_`), but the 💬 Feedback panel
@@ -4090,7 +4090,7 @@ kind of failure every morning.
 
 ## Teacher Dashboard: submitted times, counts and a way back, 2026-10-22
 
-- **Why:** walk-through findings 3b, 6, 16 and 18 (`meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`),
+- **Why:** walk-through findings 3b, 6, 16 and 18 (`archive/meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`),
   the Teacher Dashboard's remaining code findings before the Oct 26 walk.
 - **3b, 07:** a roster row's checks line ends "· submitted <time>" when the
   Ledger has a SubmissionTS; the server already sent it.
@@ -4239,7 +4239,7 @@ kind of failure every morning.
 
 ## Plain words everywhere else a student or teacher reads, 2026-10-22
 
-The rest of the audit's jargon list (`meta/UX_AUDIT_2026-10-22.md`), in
+The rest of the audit's jargon list (`archive/meta/UX_AUDIT_2026-10-22.md`), in
 the dashboards' words:
 
 - **Feedback comment (37).** Opens with the time and "Result: ✅ Passed."
@@ -4280,7 +4280,7 @@ audit's failure-states work.
 
 ## The admin walkthrough retired; student identifiers out of the logs, 2026-10-22
 
-Order-of-work items 10 and 11 in `meta/UX_AUDIT_2026-10-22.md`
+Order-of-work items 10 and 11 in `archive/meta/UX_AUDIT_2026-10-22.md`
 (fix-first 8 and the operator section's logs finding):
 
 - **Admin walkthrough retired.** `docs/ADMIN_DEPLOYMENT_WALKTHROUGH.html`
@@ -4317,7 +4317,7 @@ Order-of-work items 10 and 11 in `meta/UX_AUDIT_2026-10-22.md`
 
 ## Teacher Dashboard: 📅 Lessons dates, the lesson editor keeps its form, polish, 2026-10-22
 
-From `meta/UX_AUDIT_2026-10-22.md` (fix-first 9 and 10, order-of-work 6).
+From `archive/meta/UX_AUDIT_2026-10-22.md` (fix-first 9 and 10, order-of-work 6).
 All in `07_TeacherDashboard.js`'s client code.
 
 - **📅 Lessons dates save on Enter or leaving the box.** The box used to
@@ -4495,7 +4495,7 @@ minutes", and 03's header said the same. Apps Script takes only 1, 5, 10,
 inside the Ledger cycle (64's `LC_JOBS`). The text now says to set it every
 minute, then run `installLedgerCycle()`, which takes the three timed
 triggers over and runs backprop every 2 minutes. The bug handoff
-(`meta/CAS_BUG_HANDOFF_2026-10-16.md`) now reads bugs 1 to 4 as fixed and
+(`archive/meta/CAS_BUG_HANDOFF_2026-10-16.md`) now reads bugs 1 to 4 as fixed and
 live, each checked against the code.
 
 ## The process reflection on Submit, 2026-10-24
@@ -4542,7 +4542,7 @@ work at graduation for their own AI use. `ReflectionLog` moves from
 working data (1 school year) to the record tier (`LEDGER_RETENTION_YEARS`,
 as the student's Doc follows its Ledger row) in 57, and
 `FERPA_DATA_MAP.md` marks it portfolio material: a copy for the student
-through the export Thread B describes (`meta/CAS_DESIGN_THREADS_2026-10-16.md`),
+through the export Thread B describes (`archive/meta/CAS_DESIGN_THREADS_2026-10-16.md`),
 never removed from the school's records and never an evaluative record.
 
 ## The "I can" objectives in the doc and the reflection questions, 2026-10-24
@@ -4600,7 +4600,7 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
   answer the last warm-up can answer it late in the same window: it is
   scored, but they don't see its feedback and can't earn its extra credit.
   Older warm-ups are never open. This also settles walk-through findings 4,
-  5, 9 and 15 (`meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`).
+  5, 9 and 15 (`archive/meta/DASHBOARD_WALKTHROUGH_2026-10-26.md`).
 - **The window, 13:** the last warm-up closes at the end of the student's
   next class day: the next date they have a warm-up queued for (delivered
   or not; NOT_MEETING rows don't count), or lesson day + 6 if that is
@@ -4688,7 +4688,7 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
 
 ## Three UX audit rows: short replies, a failed refresh, the header's lesson button, 2026-10-24
 
-- **Why:** rows still open in `meta/UX_AUDIT_2026-10-22.md`'s Students and
+- **Why:** rows still open in `archive/meta/UX_AUDIT_2026-10-22.md`'s Students and
   Classroom teacher tables.
 - **Short extra-credit replies, 13:** a reply under 10 words was saved
   with "checked overnight" and never earned the +1, silently. The reply box
@@ -4856,7 +4856,7 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
 
 - **Why:** the operator's walk of the Teacher Dashboard (10-26): the home
   page filtered by lesson, term and status, but not by course, period or
-  student. Sprint PR 1 of `meta/SPRINT_DASHBOARD_2026-11.md`.
+  student. Sprint PR 1 of `archive/meta/SPRINT_DASHBOARD_2026-11.md`.
 - **Server, 07:** each roster row carries `courseCode`
   (`ledgerRowCourseCode_`, 00). Nothing else changes on the server.
 - **Page, 07:** a filter bar above the lesson picker: Course, then Period
@@ -4875,7 +4875,7 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
 
 - **Why:** the operator wanted the parent report and Student Context for
   one student, chosen by course and then student. Sprint PR 2 of
-  `meta/SPRINT_DASHBOARD_2026-11.md`.
+  `archive/meta/SPRINT_DASHBOARD_2026-11.md`.
 - **Server, 07:** `getStudentDetail(studentEmail)` (teacher-gated) returns
   that student's report for this week (`generateWeeklyParentReports`'s
   new `onlyEmail`, 36, so only their report is built) and their Student
@@ -4910,7 +4910,7 @@ The operator's layout, from a rendered mock-up (02, `stampDocument_`):
 
 - **Why:** the features turned on so far were set by editing the Ledger's
   `_CONFIG` tab; only feedback placement had a control (💬 Feedback).
-  Sprint PR 3 of `meta/SPRINT_DASHBOARD_2026-11.md`. Before building,
+  Sprint PR 3 of `archive/meta/SPRINT_DASHBOARD_2026-11.md`. Before building,
   `showConfigSources()` in the Central Ledger and Student Dashboard showed
   no Script Property overriding any of them (`ROLLOUT_AUTO_APPLY` unset:
   the rollout only logs).
@@ -5101,7 +5101,7 @@ approved 2026-10-24), behind the same `REFLECTION_ON_SUBMIT`:
   prompt, the dashboard end to end).
 ## The lesson doc sprint, PR 1: each lesson's class plan and the bell schedule, 2026-10-27
 
-The first of three PRs for `meta/SPRINT_LESSON_DOCS_2026-11.md` (one teacher
+The first of three PRs for `archive/meta/SPRINT_LESSON_DOCS_2026-11.md` (one teacher
 doc per lesson, and a daily agenda deck). This one is data and arithmetic;
 nothing is made yet.
 - **The generator** (`tools/cas-ccps/build-lesson-assignments.js`) adds a
@@ -5426,7 +5426,7 @@ Docs already made keep their layout; new docs get it.
 
 ## The Teacher Dashboard sprint's leftovers, 2026-10-28
 
-The two items `meta/SPRINT_DASHBOARD_2026-11.md` left out:
+The two items `archive/meta/SPRINT_DASHBOARD_2026-11.md` left out:
 - **A link to one week of a Student Context doc.** Docs gives a heading no
   stable link from Apps Script, so 29's `appendWeeklySection_` puts a
   bookmark at each "Week of …" heading. The week readers (07's

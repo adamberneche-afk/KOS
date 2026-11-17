@@ -1553,7 +1553,7 @@ function scrAppendRetryDecision_(decisionLogSheet, decisionId, studentEmail, com
 // the three copies (07_TeacherDashboard.js's buildDashboardHtml_() and
 // buildMyContextHtml_(), and 13_StudentDashboard.js's
 // buildStudentDashboardHtml_()) can never drift out of sync again — see
-// meta/CODEBASE_REVIEW.md's P2 finding #5 (the two functions once
+// archive/meta/CODEBASE_REVIEW.md's P2 finding #5 (the two functions once
 // disagreed on newline handling; a prior audit fixed the divergence, but
 // three independent hardcoded copies meant nothing stopped it recurring).
 // Interpolate as `${CLIENT_ESC_JS}` inside a template literal's own
@@ -2645,7 +2645,7 @@ function appendReflections_(ss, cfg, rows) {
 // =============================================================================
 // CLOVER HILL'S BELL SCHEDULE AND THE LESSON ITINERARY (2026-10-27)
 // =============================================================================
-// From the school's 2026-27 bell schedule page (meta/SPRINT_LESSON_DOCS_2026-11.md,
+// From the school's 2026-27 bell schedule page (archive/meta/SPRINT_LESSON_DOCS_2026-11.md,
 // checked against the operator's PDF; leader-hub holds the same in its own
 // copy). Class minutes per block, 1st to 4th; 3rd block is shown minus its
 // lunch wave. Here because the lesson doc and the agenda deck are made in

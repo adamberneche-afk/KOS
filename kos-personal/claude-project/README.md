@@ -17,7 +17,7 @@ family-signal link now opens the `KOS_FAMILY_SIGNAL` doc, the
 were updated, and `KILL_SWITCH_PROTOCOL.md` was re-synced in knowledge.
 The commute trial chose Claude (2026-10-17), and the instructions were
 last re-pasted on 2026-10-21, after the moral debt counter and the family
-signal's two tiers (`meta/HANDOFF_2026-10-22.md`). No SMP goes into
+signal's two tiers (`archive/meta/HANDOFF_2026-10-22.md`). No SMP goes into
 knowledge.
 
 **Changed 2026-11-15: re-paste the instructions and upload

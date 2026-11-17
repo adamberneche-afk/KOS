@@ -1251,7 +1251,7 @@ confirmed first, and a date changed in the sheet since the panel loaded is
 never overwritten. Typing in the tab still works.
 
 Each lesson there also has an **Edit** button (65, since 2026-10-21; phase 1
-of `meta/LESSON_AUTHORING_PLAN_2026-10.md`). The editor starts from the
+of `archive/meta/LESSON_AUTHORING_PLAN_2026-10.md`). The editor starts from the
 lesson as students get it (55b, now also in the Teacher Dashboard project):
 the student task, warm-up anchor, objective, vocabulary, competencies and
 their tiers, each competency shown with its VDOE task, standard, indicators
@@ -1357,7 +1357,7 @@ deliberately — it verifies the code path, not the flow.
    in 8177), the first real submissions were evaluated on 2026-10-15/16,
    and students have answered nightly warm-ups since 2026-10-19. Still not
    seen as of 2026-10-22: a real submission whose Flow 2 run started by
-   itself (`meta/HANDOFF_2026-10-22.md`). `docs/IMPACT_DASHBOARD.html`
+   itself (`archive/meta/HANDOFF_2026-10-22.md`). `docs/IMPACT_DASHBOARD.html`
    still shows zero recorded deployments; nothing has been entered in it.
    "Code exists," "reachable," "wired and
    live," and "used by a real student" are four different facts — this
@@ -1406,7 +1406,7 @@ deliberately — it verifies the code path, not the flow.
 11. ~~`data/CompetencyRegistry.csv` not yet imported into any Sheet~~ —
     **closed for the registry, the pacing guide and the rubrics:**
     `importCourseData()` (script 51) runs all three importers and ran live
-    on 2026-10-06 (`meta/HANDOFF_2026-10-06.md`); `checkCourseData()`
+    on 2026-10-06 (`archive/meta/HANDOFF_2026-10-06.md`); `checkCourseData()`
     reports what is live. Still open: `data/sol-correlations/` has no
     importer. `LessonPrimarySecondary_Seed.csv` is **superseded** (D15,
     2026-11-01): the SCR retry takes primary and secondary competencies

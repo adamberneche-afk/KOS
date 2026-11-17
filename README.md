@@ -13,7 +13,7 @@ Files arrive here piecemeal as they're uploaded across sessions — this
 README and the per-system READMEs below are the index of what's been
 consolidated so far and what's still missing. When new files show up, they
 get filed into the matching subtree, not left loose at the root. See
-`meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
+`archive/meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
 rationale behind moving to this git-based structure in the first place.
 
 **Picking this up?** The order of work is [`meta/PLAN_2026-11.md`](./meta/PLAN_2026-11.md). Then read [`meta/HANDOFF_2026-11-17.md`](./meta/HANDOFF_2026-11-17.md):
@@ -97,7 +97,7 @@ E-Sports, field trips). Now server-backed: a single Apps Script Web App
 holds its data in a Spreadsheet and Script Properties. Since 2026-10-22 the
 server is the only copy: nothing is stored in the browser, and the page no
 longer runs opened from disk (the standalone file is retired;
-[`meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`](./meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md)).
+[`archive/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md`](archive/meta/LEADERHUB_NO_BROWSER_STORAGE_PLAN_2026-10.md)).
 See [`leader-hub/README.md`](./leader-hub/README.md)'s "JJ1 — Server-deployed
 web app" section for the migration. It also went through the same nine
 rounds of UI/UX auditing as the two systems above —
@@ -135,6 +135,16 @@ clearly labeled to prevent future confusion. See
 Governance/design material that spans systems, including the actual
 Product Specification Document proposing this repo's git-based structure
 in the first place. See [`meta/README.md`](./meta/README.md).
+
+## [`archive/`](./archive/INDEX.md) — superseded docs, kept as records
+
+Old handoffs, finished plans, sprints and audits, and replaced versions,
+moved word for word to their old paths under `archive/` (2026-11-17).
+[`archive/INDEX.md`](./archive/INDEX.md) lists each with a line on what it
+is. The root `.ignore` keeps them out of everyday searches (ripgrep, and
+so Claude Code's Grep); open one by path, or search them with
+`rg <pattern> archive/`. Git, CI and the release and student-data scans
+still read them.
 
 ## [`tools/gas-lint/`](./tools/gas-lint/) — static checks for the GAS systems
 
@@ -486,10 +496,10 @@ cas-ccps flows are verified live with their own liveness checks
 (`checkFlow2Liveness()`, `checkWarmUpFlowLiveness()`; see
 `cas-ccps/DEPLOYMENT_HANDOFF.md`). kos-personal's Curator flow was fixed in
 Studio on 2026-09-29 and its classify flow is returning real parts
-(`kos-personal/HANDOFF_2026-09-28.md`). What is left is operator work, not
+(`archive/kos-personal/HANDOFF_2026-09-28.md`). What is left is operator work, not
 builds: pushes of current `main` (`node run.js --latest`, `tools/clasp-sync/run.js`) and the
 setup functions each new script needs, listed in
-`cas-ccps/DEPLOYMENT_HANDOFF.md` and `kos-personal/HANDOFF_2026-09-28.md`.
+`cas-ccps/DEPLOYMENT_HANDOFF.md` and `archive/kos-personal/HANDOFF_2026-09-28.md`.
 The `clasp`-side work is a human's, per SMP-004's air-gap.
 
 Clasp adoption is no longer scaffolding: all 9 cas-ccps projects build

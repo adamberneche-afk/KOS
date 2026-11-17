@@ -3,7 +3,7 @@
 Paste everything below the line into the Claude Project's **Instructions**.
 Replace the seven `<link>` placeholders first (README, "Setting it up").
 **Changed 2026-11-15, not yet pasted** (the RTP harness notes in `meta/PLAN_2026-11.md`): directed writes go through the Google Sheets connector, the Drive connector is read-only, and a failed write is reported as its connector and error (section 2, Writes); an SMP number is read from the register, never recalled (section 2, SMPs); a claim about how code or a pipeline behaves is `[UNCONFIRMED — repo]` unless a doc states it (the verification gate); and the new knowledge file `FLOWS_BRIEFING.md`, what each pipeline behind the signals is for (section 2, Project knowledge). Re-paste, and upload `FLOWS_BRIEFING.md` beside it.
-Last pasted into the live Project on 2026-11-09, with `KOS_CODE_REPLY`'s link and `SESSION_LOG_FORMAT.md` re-uploaded beside it (the reply loop, SMP-020; checked against this file that day: the same text, links filled in). The paste before was 2026-10-21 (`meta/HANDOFF_2026-10-22.md`). `node run.js --latest --instructions` produces the paste.
+Last pasted into the live Project on 2026-11-09, with `KOS_CODE_REPLY`'s link and `SESSION_LOG_FORMAT.md` re-uploaded beside it (the reply loop, SMP-020; checked against this file that day: the same text, links filled in). The paste before was 2026-10-21 (`archive/meta/HANDOFF_2026-10-22.md`). `node run.js --latest --instructions` produces the paste.
 
 ---
 

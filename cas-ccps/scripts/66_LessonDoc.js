@@ -3,7 +3,7 @@
 // BOUND TO: Central Ledger (cas-ccps:central-ledger, the nightly rollout) AND
 //   the Teacher Dashboard (cas-ccps:teacher-dashboard, 📅 Lessons' button).
 //
-// One teacher doc per lesson (meta/SPRINT_LESSON_DOCS_2026-11.md), in place of
+// One teacher doc per lesson (archive/meta/SPRINT_LESSON_DOCS_2026-11.md), in place of
 // the per-period Lesson Frames (27) the lesson builder (51) used to make for
 // every class meeting. "Lesson Plan — 8175 L06 …", in a Lesson Plans folder:
 //

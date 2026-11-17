@@ -180,7 +180,7 @@ its log lines the row number. Git history was rewritten on 2026-10-31
 
 ### Ingestion hardening D and E, and logQueueMetrics (2026-10-29)
 
-From `meta/KOS_INGESTION_HARDENING_PLAN.md` (#336, live 2026-10-29):
+From `archive/meta/KOS_INGESTION_HARDENING_PLAN.md` (#336, live 2026-10-29):
 
 - **D. Sensor 2's duplicate guard.** `handleCogExhaust()` (2) gives a
   COG_EXHAUST payload the UID `COG-<content hash>-<task>` (the cog name,
@@ -2224,11 +2224,11 @@ than asserting a number that will be wrong again next month.
 schema. That was true when written; `8d46121` made it 9. Rewriting the
 number would falsify the record, so the entry keeps its original figure
 and carries a note on what changed since — the same convention
-`meta/CODEBASE_REVIEW.md` already uses for its `⚠ Stale` passages, and
+`archive/meta/CODEBASE_REVIEW.md` already uses for its `⚠ Stale` passages, and
 the same reason `CHANGELOG.md` entries naming deleted functions are left
 alone.
 
-**Rotted citations converted to anchors.** `meta/CODEBASE_REVIEW.md`
+**Rotted citations converted to anchors.** `archive/meta/CODEBASE_REVIEW.md`
 carried 16 `file:line` citations; four pointed past the end of the file
 they named and several more had drifted onto unrelated lines. All are now
 `functionName()` or named-section anchors, which survive edits. Two ARIA

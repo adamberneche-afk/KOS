@@ -1,6 +1,6 @@
 'use strict';
 // tools/cas-ccps/import-lesson-drafts.js, the mechanical half of a lesson
-// draft's import (meta/LESSON_AUTHORING_PLAN_2026-10.md, phase 1). Each test
+// draft's import (archive/meta/LESSON_AUTHORING_PLAN_2026-10.md, phase 1). Each test
 // runs on a copy of cas-ccps/ and tools/cas-ccps/ in a temp folder, so the
 // repo's own lessons, 55b and cartridges are never touched.
 

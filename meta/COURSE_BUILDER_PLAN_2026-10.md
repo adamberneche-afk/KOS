@@ -100,7 +100,7 @@ lesson will be shared.
 
 ### Phase 0: onboarding and deployment (added 2026-10-22, before Phase A)
 
-The UX audit (`meta/UX_AUDIT_2026-10-22.md`, "Operator and future
+The UX audit (`archive/meta/UX_AUDIT_2026-10-22.md`, "Operator and future
 adopters") found adoption is blocked on setup, not on courses. A second
 school can't use a course library it can't install. So this comes first:
 

@@ -41,11 +41,11 @@ const SOURCES = [
     'drive-curation/Assumptions_Deep_Dive_v2.md',
   ] },
   { name: 'KOS_CONTEXT_VALUE', title: 'Value proposition, the case for change, and how the systems measure up', files: [
-    'meta/CODEBASE_REVIEW.md',
+    'archive/meta/CODEBASE_REVIEW.md',
     'cas-ccps/docs/IMPACT_DASHBOARD.html',
     'meta/PRD_CAS_RESEARCH_PIVOT.md',
-    'meta/PRODUCT_EXPERIENCE_GAP_AUDIT.md',
-    'meta/UX_AUDIT_2026-10-22.md',
+    'archive/meta/PRODUCT_EXPERIENCE_GAP_AUDIT.md',
+    'archive/meta/UX_AUDIT_2026-10-22.md',
   ] },
   { name: 'KOS_CONTEXT_SYSTEMS', title: 'How the three systems are built and fit together', files: [
     'README.md',
@@ -60,10 +60,10 @@ const SOURCES = [
     'meta/PLAN_2026-10.md',
     'meta/HANDOFF_2026-11-17.md',
     'meta/BACKLOG.md',
-    'meta/CAS_DESIGN_THREADS_2026-10-16.md',
-    'meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md',
+    'archive/meta/CAS_DESIGN_THREADS_2026-10-16.md',
+    'archive/meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md',
     'meta/COURSE_BUILDER_PLAN_2026-10.md',
-    'meta/LESSON_AUTHORING_PLAN_2026-10.md',
+    'archive/meta/LESSON_AUTHORING_PLAN_2026-10.md',
   ] },
 ];
 

@@ -26,7 +26,7 @@ the dead-ends audit's backlog fixes):
 - **No student data.** Keep out names, emails, file IDs and ConfigIDs, the
   same rule as in the handoffs.
 - leader-hub keeps its own ranked backlog in
-  [`../leader-hub/LEADERHUB_WIP.md`](../leader-hub/LEADERHUB_WIP.md)
+  [`../leader-hub/LEADERHUB_WIP.md`](../archive/leader-hub/LEADERHUB_WIP.md)
   (BACKLOG section). Put only items that cross systems here.
 
 ## cas-ccps
@@ -117,7 +117,7 @@ the dead-ends audit's backlog fixes):
 - **Lesson editing and writing from the Teacher Dashboard** (2026-10-21,
   the operator's ask). Rollout status (#243), editing (#245) and new
   lessons (#246) built 2026-10-21, with the evening import Routine; see
-  [`LESSON_AUTHORING_PLAN_2026-10.md`](./LESSON_AUTHORING_PLAN_2026-10.md).
+  [`LESSON_AUTHORING_PLAN_2026-10.md`](../archive/meta/LESSON_AUTHORING_PLAN_2026-10.md).
   Open: phase 3 (a draft-it-for-me button on the dashboard), if drafting
   turns out to be the slow part.
 
@@ -138,7 +138,7 @@ the dead-ends audit's backlog fixes):
 
 - **Thread A: cross-course mastery map, remediation and anchors.** Start
   with the competency graph file and a teacher-approval tool.
-  [`CAS_DESIGN_THREADS_2026-10-16.md`](./CAS_DESIGN_THREADS_2026-10-16.md) §1.
+  [`CAS_DESIGN_THREADS_2026-10-16.md`](../archive/meta/CAS_DESIGN_THREADS_2026-10-16.md) §1.
 - **Thread B: student-owned portfolio.** Start by hand-building the
   manifest for one or two volunteer students. Waits on district policy for
   exporting student work. Same doc, §2.
@@ -155,7 +155,7 @@ the dead-ends audit's backlog fixes):
   possible, so this is the lean collector, D4 in `PLAN_2026-11.md`. The
   Phase 4 probe (`70_WorkFileProbe.js`, run 2026-11-01, archived 2026-11-07) adds whether Forms, Slides and
   Sheets list revisions.
-  [`CAS_COGNITIVE_EXHAUST_2026-10-16.md`](./CAS_COGNITIVE_EXHAUST_2026-10-16.md).
+  [`CAS_COGNITIVE_EXHAUST_2026-10-16.md`](../archive/meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md).
 - **PRD research-pivot requirements past Phase 0.** Measurement, pedagogy
   and student experience. P1-02's checks block is `reportEvaluationHealth`
   (#357); the rest is parked (D16). [`PRD_CAS_RESEARCH_PIVOT.md`](./PRD_CAS_RESEARCH_PIVOT.md).
@@ -228,7 +228,7 @@ concept sets below, from outside the repo and not filed, are its inputs.
   `FlowPrompts` tab as this item asked. The operator builds the two flows
   in Studio after the push (the 11-01 handoff, item 5).
 - **Ingestion hardening, steps C and A.** These come after the §4
-  diagnosis. [`KOS_INGESTION_HARDENING_PLAN.md`](./KOS_INGESTION_HARDENING_PLAN.md).
+  diagnosis. [`KOS_INGESTION_HARDENING_PLAN.md`](../archive/meta/KOS_INGESTION_HARDENING_PLAN.md).
 
 ## leader-hub
 

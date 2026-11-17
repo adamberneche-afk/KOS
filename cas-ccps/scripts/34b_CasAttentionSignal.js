@@ -15,7 +15,7 @@
 // file writes to any CAS sheet. A line appears only when its count is above
 // zero; a count that couldn't be read says so ("unavailable"), because an
 // unreadable signal must never look like an all-clear. Widening what the doc
-// carries is the teacher's call (meta/HANDOFF_2026-10-12.md, FERPA).
+// carries is the teacher's call (archive/meta/HANDOFF_2026-10-12.md, FERPA).
 //
 // LAST NIGHT (first): 34c's overnight check of the 3 a.m. runs and the
 //   warm-ups, with an all-clear line when nothing is wrong; 34c also emails
