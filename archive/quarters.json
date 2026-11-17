@@ -1,0 +1,59 @@
+{
+  "_comment": "The archive's school quarters (operator, 2026-11-17): the 2025-26 year as one bucket, summer 2026, then 2026-27's marking periods from the CCPS calendar. A record is filed in the quarter whose [start, end] holds its filed_on date. 'end: null' means not yet known (add it from the district calendar before the quarter ends). Read by tools/archive/; the generated indexes take each quarter's title, plan and summary from here.",
+  "quarters": [
+    {
+      "id": "2025-26",
+      "title": "2025-26 school year",
+      "start": null,
+      "end": "2026-05-29",
+      "prs": "before this repo",
+      "plan": null,
+      "summary": "LeaderHub as a single HTML file (its handoff, WIP log, README and two grading snapshots), and the RTP's cold-start orientation."
+    },
+    {
+      "id": "summer-2026",
+      "title": "Summer 2026",
+      "start": "2026-05-30",
+      "end": "2026-08-23",
+      "prs": null,
+      "plan": null,
+      "summary": "Planning before the school year: the RTP's current-state draft and zone spec, the Drive audit's first assumptions deep dive, and the August codebase review."
+    },
+    {
+      "id": "2026-27-Q1",
+      "title": "2026-27, 1st quarter",
+      "start": "2026-08-24",
+      "end": "2026-10-30",
+      "prs": "through about #345",
+      "plan": "meta/PLAN_2026-10.md (live)",
+      "summary": "The build and launch: kos-personal's pipeline repaired and the RTP moved to a Claude Project (10-06); CAS live with students (first submissions 10-16); the dashboards, lesson parts, the nightly rollout and the turn-in plan; LeaderHub to an Apps Script web app. Most of the archive is here."
+    },
+    {
+      "id": "2026-27-Q2",
+      "title": "2026-27, 2nd quarter",
+      "start": "2026-10-31",
+      "end": "2027-01-22",
+      "prs": "from about #346",
+      "plan": "meta/PLAN_2026-11.md (live)",
+      "summary": "In progress: the handoffs of 10-31, 11-01 and 11-08 so far; the history logs' entries from 10-29 are still live."
+    },
+    {
+      "id": "2026-27-Q3",
+      "title": "2026-27, 3rd quarter",
+      "start": "2027-01-23",
+      "end": null,
+      "prs": null,
+      "plan": null,
+      "summary": "Not started."
+    },
+    {
+      "id": "2026-27-Q4",
+      "title": "2026-27, 4th quarter",
+      "start": null,
+      "end": "2027-06-04",
+      "prs": null,
+      "plan": null,
+      "summary": "Not started. Ends with the last day of school."
+    }
+  ]
+}
