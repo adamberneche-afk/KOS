@@ -1218,7 +1218,8 @@ function harvestFlowInputResults() {
         }
         // The doc header's feedback line (00), color-coded by the result.
         setDocFeedbackStatus_(feedbackDocId,
-          parsed.complianceStatus === "APPROVED" ? "PASSED" : "REVISE", { inComments: !!asComment });
+          parsed.complianceStatus === "APPROVED" ? "PASSED" : "REVISE",
+          { inComments: !!asComment, commentUrl: asComment && asComment !== "posted" ? feedbackCommentUrl_(feedbackDocId, asComment) : "" });
 
         const competencyIds = {
           "1": String(fiData[i][FI.MILESTONE_1_COMPETENCY_ID] || ""),
@@ -1827,16 +1828,17 @@ function _fiCommentNextSteps_(complianceStatus) {
 
 // Posts the feedback as an unanchored comment through the Drive advanced
 // service (v3, already in this project's manifest; the drive scope covers
-// it). True when it posted. On a failure the harvest falls back to the doc,
-// so the student still gets feedback, and the log says why.
+// it). The comment's ID when it posted (2026-11-17: the feedback line links
+// to it, 63), "" when it didn't. On a failure the harvest falls back to the
+// doc, so the student still gets feedback, and the log says why.
 function _fiPostEvaluationComment_(fileId, text) {
   try {
-    Drive.Comments.create({ content: text }, fileId, { fields: "id" });
-    return true;
+    const c = Drive.Comments.create({ content: text }, fileId, { fields: "id" });
+    return String((c && c.id) || "posted");
   } catch (e) {
     Logger.log("[FlowInputBuilder] Could not post the feedback comment (" + e.message +
                "); put it in the doc instead.");
-    return false;
+    return "";
   }
 }
 

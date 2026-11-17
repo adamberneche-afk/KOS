@@ -221,6 +221,36 @@ test('setDocFeedbackStatus_: checking stays grey; a result is color-coded and sa
   assert.equal(line().fontSize, 8);
 });
 
+test('the feedback line links to the comment; View feedback reads the link back, for the student\'s own doc only', () => {
+  const { sandbox, id } = stamp('all', 'CAS-8175-L06');
+  const { exported, sandbox: dash } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
+    ['setDocFeedbackStatus_', 'docFeedbackCommentUrl_', 'feedbackCommentUrl_', 'getMyFeedbackLink'],
+    { DocumentApp: sandbox.DocumentApp, Session: { getActiveUser: () => ({ getEmail: () => 'student@ccpsnet.net' }), getScriptTimeZone: () => 'America/New_York' } });
+  const url = exported.feedbackCommentUrl_(id, 'AAAAbc');
+  assert.equal(url, 'https://docs.google.com/document/d/' + id + '/edit?disco=AAAAbc');
+  assert.equal(exported.feedbackCommentUrl_(id, ''), '');
+  assert.equal(exported.docFeedbackCommentUrl_(id), '', 'no feedback yet');
+  exported.setDocFeedbackStatus_(id, 'REVISE', { inComments: true, commentUrl: url });
+  assert.equal(exported.docFeedbackCommentUrl_(id), url);
+  exported.setDocFeedbackStatus_(id, 'CHECKING', {});
+  assert.equal(exported.docFeedbackCommentUrl_(id), '', 'a resubmit clears the old link with the line');
+  exported.setDocFeedbackStatus_(id, 'PASSED', { inComments: true, commentUrl: url });
+  assert.equal(exported.docFeedbackCommentUrl_(id), url);
+  assert.equal(exported.docFeedbackCommentUrl_('missing-doc'), '');
+
+  // The dashboard's server call: only for a Ledger row of the signed-in student.
+  const asked = [];
+  dash.getConfig_ = () => ({});
+  dash.findOwnLedgerRow_ = (cfg, who, fileId, configId) => {
+    asked.push([who, fileId, configId]);
+    return fileId === id && configId === 'VDOE-OWN-2026' ? ['row'] : null;
+  };
+  assert.deepEqual(JSON.parse(JSON.stringify(exported.getMyFeedbackLink(id, 'VDOE-OWN-2026'))), { ok: true, url });
+  assert.deepEqual(asked[0], ['student@ccpsnet.net', id, 'VDOE-OWN-2026'], 'checked against the signed-in student');
+  assert.equal(exported.getMyFeedbackLink(id, 'VDOE-OTHER-2026').error, 'NOT_REGISTERED', 'not their row: no link');
+  assert.equal(exported.getMyFeedbackLink('', 'VDOE-OWN-2026').error, 'BAD_REQUEST');
+});
+
 test('setDocFeedbackStatus_: a doc made before the header is left alone', () => {
   const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js')], ['setDocFeedbackStatus_']);
   const doc = sandbox.DocumentApp.create('Older doc');

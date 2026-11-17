@@ -811,6 +811,15 @@ class FakeParagraph {
         (this.links = this.links || []).push({ text: this.text.slice(start, end + 1), url });
         return self;
       },
+      // Real Apps Script API — Text.getLinkUrl(offset): the link at that
+      // character, or null. Found by where each recorded link's text sits.
+      getLinkUrl: (offset) => {
+        const hit = (this.links || []).find((l) => {
+          const at = this.text.indexOf(l.text);
+          return at !== -1 && offset >= at && offset < at + l.text.length;
+        });
+        return hit ? hit.url : null;
+      },
     };
     return self;
   }
@@ -825,7 +834,8 @@ class FakeParagraph {
   asParagraph() { return this; }
   // Real Apps Script API — Paragraph.setSpacingBefore(points); recorded.
   setSpacingBefore(pt) { this.spacingBefore = pt; return this; }
-  setText(text) { this.text = text; return this; }
+  // Real Docs drops the old text's formatting, links included.
+  setText(text) { this.text = text; this.links = []; return this; }
   setGlyphType() { return this; }
   // Real Apps Script API — Element.asText(), the Text-typed view
   // findText()'s callers mutate through (deleteText/insertText), rather

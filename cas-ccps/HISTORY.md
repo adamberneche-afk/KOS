@@ -794,3 +794,21 @@ some quoted two and asked three things.
   Flow 2's prompt, the reflection comment, TurnInChecks and the check flow
   (72) still see which goal an answer is about.
 - Tests: `process-reflection`, `turn-in-code` and `turn-in-check-flow`.
+## View feedback opens the comment, 2026-11-17
+
+The operator: students have trouble getting to their feedback; it's closed
+when the doc opens and they have to find the button. Feedback posted as a
+comment (`FEEDBACK_AS_COMMENT`) isn't attached to any text, so Google Docs
+keeps it behind the Comments button.
+
+- 37 keeps the comment's ID when it posts the feedback, and the doc
+  header's feedback line (63) links its words "the comment on this doc" to
+  `…/edit?disco=<ID>`, the link Google's own comment emails use, which opens
+  the doc with that comment open.
+- The dashboard's View feedback (13) opens a tab on the click, asks
+  `getMyFeedbackLink` (the student's own Ledger row only) for that link and
+  goes there; with no link, a failure or pop-ups blocked it opens the doc
+  as before. No sheet keeps the ID: a resubmit resets the line and the link.
+- Tests: `feedback-as-comment`, `flow-input-builder`, `turn-in-code`.
+- **To verify live once:** that a `?disco=` link opens an unanchored
+  comment for a student (it does for anchored ones in Google's emails).

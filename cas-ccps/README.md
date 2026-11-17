@@ -222,7 +222,7 @@ repo by `53`, or set up via Script 05 → Flow 1 → Script 08's confirmation
 step) into one `FlowInput` row; Studio's Flow 2 reads the doc and makes the
 Gemini call; 37's harvest (every minute since 2026-11-14; every 5 before) checks the output, writes the
 feedback (a comment on the doc with `FEEDBACK_AS_COMMENT` on, otherwise the
-doc's feedback zone), records the result on the Ledger row and in
+doc's feedback zone; since 2026-11-17 the doc header's "the comment on this doc" links to the comment with Docs' `?disco=` link, and the dashboard's View feedback follows that link, `getMyFeedbackLink`, so the doc opens with the comment open instead of behind the Comments button), records the result on the Ledger row and in
 `EvaluationLog`, and flips the staging row to `COMPLETE`, or to
 `ERROR_EVALUATION` when the result can't be used; a row Studio leaves
 unanswered for 12 minutes is restarted, at most twice. Script 03's

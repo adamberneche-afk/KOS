@@ -788,3 +788,42 @@ test('override: owner only, a reason and an assignment required, and a sane unti
   assert.equal(env.ss.getSheetByName('TurnInOverrides'), null, 'nothing written');
   assert.equal(plain(env.exported.openTurnInForAssignment('CAS-8177-L07', 'a reason', ymdIn(3))).until, ymdIn(3));
 });
+
+// View feedback (2026-11-17): opens a tab on the click, then sends it to the
+// feedback comment's link, or to the doc when there is none.
+test('View feedback opens the doc with the feedback comment open', () => {
+  const env = load({ switch: '8177' });
+  const { by } = env.dash();
+  const passed = by['VDOE-AMY-2'];
+  let answer = null, asked = null;
+  const tab = { document: { body: {} }, location: { replace(u) { tab.went = u; } } };
+  const h = {};
+  const run = new Proxy({}, { get: (t, name) => {
+    if (name === 'withSuccessHandler') return (f) => { h.ok = f; return run; };
+    if (name === 'withFailureHandler') return (f) => { h.fail = f; return run; };
+    if (name === 'getMyFeedbackLink') return (fileId, configId) => { asked = [fileId, configId]; answer === 'fail' ? h.fail() : h.ok(answer); };
+    return () => run;
+  } });
+  const { ctx } = page(env.exported, { google: { script: { run } } });
+  ctx.open = () => tab;
+  const html = ctx.cardHtml(passed);
+  assert.match(html, /View feedback ↗/);
+  assert.match(html, /onclick="return openFeedback\(this\)"/);
+  const link = { href: passed.docUrl, getAttribute: (k) => ({ 'data-file': passed.fileId, 'data-config': passed.configId })[k] };
+  answer = { ok: true, url: 'https://docs.google.com/document/d/x/edit?disco=AAAA' };
+  assert.equal(ctx.openFeedback(link), false, 'the page opened the tab itself');
+  assert.deepEqual(asked, [passed.fileId, passed.configId]);
+  assert.equal(tab.went, 'https://docs.google.com/document/d/x/edit?disco=AAAA');
+  answer = { ok: true, url: '' };
+  ctx.openFeedback(link);
+  assert.equal(tab.went, passed.docUrl, 'no comment link: the doc, as before');
+  answer = { ok: true, url: 'https://evil.example/x' };
+  ctx.openFeedback(link);
+  assert.equal(tab.went, passed.docUrl, 'only a Google Docs link is followed');
+  answer = 'fail';
+  ctx.openFeedback(link);
+  assert.equal(tab.went, passed.docUrl);
+  ctx.open = () => null;
+  assert.equal(ctx.openFeedback(link), true, 'pop-ups blocked: the link opens the doc itself');
+  assert.doesNotMatch(ctx.cardHtml(by['VDOE-AMY-1']), /openFeedback/, 'a card to revise opens the doc to work in');
+});
