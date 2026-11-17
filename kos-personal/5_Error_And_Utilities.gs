@@ -1218,8 +1218,8 @@ function _seedCoreThesisDoc(a, deployType) {
 // SHADOW MATRIX (reconciliation decision 1)
 // ================================================================
 //
-// Implements the shadow matrix described in kos-personal/README.md's
-// "Architecture in Two Paragraphs" and fully specified in
+// Implements the shadow matrix described in kos-personal/docs/architecture.md
+// ("Architecture in Two Paragraphs") and fully specified in
 // SCHEMA_REFERENCE.md's "Shadow Matrix JSON Shape" — previously
 // documented in detail but absent from every delivered file.
 //

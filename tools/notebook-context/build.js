@@ -50,6 +50,11 @@ const SOURCES = [
   { name: 'KOS_CONTEXT_SYSTEMS', title: 'How the three systems are built and fit together', files: [
     'README.md',
     'kos-personal/README.md',
+    'kos-personal/docs/architecture.md',
+    'kos-personal/docs/runtime-reference.md',
+    'kos-personal/docs/vector-weight-calculation.md',
+    'kos-personal/docs/registrar-cog-relay.md',
+    'kos-personal/docs/license.md',
     'cas-ccps/README.md',
     'cas-ccps/docs/SYSTEM_ARCHITECTURE.html',
     'leader-hub/README.md',

@@ -958,7 +958,7 @@ function _findStimulusDocUrl_(councilId) {
 /**
  * Assembles the current vector state, shadow matrix status, and the
  * operator's 90-day vision into a session-ready context document,
- * per README.md's "Architecture in Two Paragraphs" — "The daily primer
+ * per kos-personal/docs/architecture.md ("Architecture in Two Paragraphs") — "The daily primer
  * assembles current vector state, shadow matrix status, and the
  * operator's 90-day vision into a session-ready context document every
  * morning at 06:00." Documented in SCHEMA_REFERENCE.md's Key Drive
