@@ -183,7 +183,7 @@ const CFG = {
   INFERENCE_MODE: 'STUDIO',
 
   // ── Chunking ──────────────────────────────────────────────────
-  // 25000 per README.md's "Key Configuration" table and
+  // 25000 per kos-personal/docs/runtime-reference.md's "Key Configuration" table and
   // STUDIO_INTEGRATION_SPEC.md's Error Handling section (reconciliation
   // decision 1 — was 8000 in the originally delivered file).
   MAX_CHUNK_SIZE:           25000,

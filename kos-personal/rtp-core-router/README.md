@@ -24,8 +24,9 @@ role-play every persona at once (`triggerCouncilSimulation()`) was **deleted**
 in Round 14 — see `kos-personal/CHANGELOG.md`. Note that sequestration is
 enforced by operator discipline, not by code: these persona prompts only
 work as a council if each one is run in its own conversation.
-Nothing in this directory is executable code — see `kos-personal/README.md`'s
-"Architecture in Two Paragraphs" section for how the built pipeline
+Nothing in this directory is executable code — see
+[`kos-personal/docs/architecture.md`](../docs/architecture.md)
+("Architecture in Two Paragraphs") for how the built pipeline
 actually works today.
 
 ## A note on "V5.1" before reading the table below

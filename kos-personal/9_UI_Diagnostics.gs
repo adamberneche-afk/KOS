@@ -98,7 +98,7 @@ function _getUi() {
  * STATUS (D16, 2026-11-01): EDITOR-ONLY. This deployment is a standalone
  * project (the web app), so this menu never shows. Every item below is a
  * top-level function: run it from the Apps Script editor's Run menu
- * instead (kos-personal/README.md, "Editor-only functions"). Kept so a
+ * instead (kos-personal/docs/runtime-reference.md, "Editor-only functions"). Kept so a
  * bound deployment still gets the menu; don't add items expecting them to
  * be seen.
  */
