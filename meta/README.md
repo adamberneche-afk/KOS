@@ -139,6 +139,12 @@ why this repo exists at all.
   system and direction documents. The README lists the sources and when to
   rebuild.
 
+- **`AUDIT_DEAD_ENDS_2026-11-17.md`** — the second dead-ends audit, at the
+  sprint boundary: the 10-29 audit all closed; what's live is behind main
+  (a push clears it); one quadratic function makes three tools slow;
+  coverage-gaps can't see 12 trigger registrations; three editor functions
+  undocumented; whether doc-currency should check file paths. Partial (the
+  function-level sweep is for the next one).
 - **`AGENT_NOTES.md`** — the notes for an agent session from every
   archived handoff (10-05 to 11-08), word for word and oldest first. The
   live handoffs keep their own.
