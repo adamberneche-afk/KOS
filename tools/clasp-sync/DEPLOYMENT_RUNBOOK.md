@@ -122,7 +122,7 @@ leader-hub is now server-backed: `leader-hub:app` — every `.gs` file in
 re-enumerated here — is a
 single Apps Script project deployed as a Web App, serving the HTML front
 end and holding its data in a Spreadsheet. See
-`leader-hub/README.md`'s "JJ1 — Server-deployed web app" section for the
+`leader-hub/docs/jj1-server-deployed-web-app.md`'s "JJ1 — Server-deployed web app" section for the
 full migration story; that section is now the authoritative description
 of how this system deploys.
 

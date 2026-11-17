@@ -11,7 +11,8 @@ for closed items.
 Everything that describes a still-live feature or an ongoing design
 decision (AI drafting, the Settings panels, the Organizations/EE1/EE2/
 FF1/GG1/HH1/II1 feature arc, the cas-ccps↔leader-hub integration, the
-credentials cleanup, the `src/` split, clasp) stays in `README.md`,
+credentials cleanup, the `src/` split, clasp) stays in `README.md` or,
+since 2026-11-17, the feature doc in `docs/` that it maps,
 even where it also narrates a bug found while building it — moving that
 here would break its own internal "see X below/above" pointers for no
 reason, and a new reader needs it to understand the current app, not just

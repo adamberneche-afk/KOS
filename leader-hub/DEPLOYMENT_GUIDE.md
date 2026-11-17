@@ -186,7 +186,7 @@ and complete the OAuth consent prompt. The manifest declares seven scopes
 explicitly — `script.send_mail`, Drive, Docs, Sheets, `userinfo.email`,
 `script.external_request` and `script.scriptapp` — and **no Gmail scope at
 all**. Gmail was removed while chasing the consent-dialog crash, which
-turned out to have other causes (see `README.md`'s "Fixed — the
+turned out to have other causes (see `docs/oauth-crash-and-diagnostics.md`'s "Fixed — the
 OAuth-consent-dialog crash"), so adding it back is a separate decision. Once a manifest lists `oauthScopes` explicitly, GAS stops
 auto-detecting: a scope that isn't listed fails at the call site, often
 silently inside a `try/catch`. gas-lint's Check E validates that list
@@ -195,7 +195,7 @@ pushing if you added any service call.
 
 > **Changing `oauthScopes` forces a re-authorization on next load.** That
 > was once suspected of causing the consent-dialog crash; it wasn't. The
-> crash is fixed (see `README.md`).
+> crash is fixed (see `docs/oauth-crash-and-diagnostics.md`).
 
 ## Phase 4 — One Script Property, then nothing else by hand
 
@@ -280,7 +280,7 @@ drafting, they are not a hard dependency.
 this app's own `window.onerror` handler showing an error; the URL it cites
 (`userCodeAppPanel?createOAuthDialog=true`) is just where Apps Script
 serves the page, not where the fault is. Don't guess. Open the same
-deployment with `?diag=1`, then `?diag=probe` (see `README.md`'s
+deployment with `?diag=1`, then `?diag=probe` (see `docs/oauth-crash-and-diagnostics.md`'s
 "Diagnosing a broken page without DevTools"):
 
 - `?diag=1` shows the page as Apps Script holds it. A healthy page has
@@ -290,7 +290,7 @@ deployment with `?diag=1`, then `?diag=probe` (see `README.md`'s
   line.
 
 The `Unexpected identifier 'style'` banner of September 2026 was fixed
-this way (`README.md`'s "Fixed" section).
+this way (`docs/oauth-crash-and-diagnostics.md`'s "Fixed" section).
 
 **Settings, data or SCR scores not reaching the server.** `?diag=1`'s
 "Settings sync call" should read OK. The browser can only call public,

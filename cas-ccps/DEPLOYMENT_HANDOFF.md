@@ -733,7 +733,7 @@ account boundary, which is a mistake this repo made twice
 `checkAiFlowFixtures()`. Its own `HISTORY.md` has the deployment record.
 **Since then (2026-10-03): paused.** After the OAuth-consent-dialog crash
 fix it works on `/dev`. `/exec` was released 2026-10-05 (v20) and still
-needs its `?diag=probe` check; see `leader-hub/README.md`'s "Fixed — the
+needs its `?diag=probe` check; see `leader-hub/docs/oauth-crash-and-diagnostics.md`'s "Fixed — the
 OAuth-consent-dialog crash". **Since 2026-10-22** (merged, not yet pushed as
 of 2026-10-23) it keeps nothing in the browser and runs only as its web app;
 the standalone file is retired (`archive/2026-27-Q1/meta/HANDOFF_2026-10-22.md`).

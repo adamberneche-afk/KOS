@@ -6,7 +6,7 @@
 > **⚠ Stale (external UX audit)** — the prompt below still cites a DSP
 > deadline of May 15, 2026 and instructs weighting Standard 1/2 evidence
 > highly. DSP was deliberately removed from the shipped app; see
-> `README.md`'s "DSP framework content — removed" section. That framing
+> `docs/dsp-framework-content-removed.md`. That framing
 > has been stripped from the prompt below so the AI layer stops
 > optimizing for a deadline this app no longer tracks — if you already
 > pasted an older copy into your Gem's Instructions field, re-paste the
