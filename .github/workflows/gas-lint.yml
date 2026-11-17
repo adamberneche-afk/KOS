@@ -184,8 +184,11 @@ jobs:
           done
 
           # A new top-level file (not inside any of the five systems above)
-          # is checked against the root README instead.
-          new_at_root=$(echo "$added_files" | grep -vE "^(cas-ccps|kos-personal|leader-hub|drive-curation|meta)/" | grep -v '^README\.md$' || true)
+          # is checked against the root README instead. archive/ is left out:
+          # an archived file is documented by its record in
+          # archive/catalog.jsonl and the generated indexes, which
+          # `node tools/archive/build.js --check` (gas-lint job) enforces.
+          new_at_root=$(echo "$added_files" | grep -vE "^(cas-ccps|kos-personal|leader-hub|drive-curation|meta|archive)/" | grep -v '^README\.md$' || true)
           if [ -n "$new_at_root" ]; then
             if echo "$changed_files" | grep -qx 'README.md'; then
               echo "New top-level file(s) and README.md was updated in the same PR:"
