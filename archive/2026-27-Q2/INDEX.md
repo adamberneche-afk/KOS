@@ -23,4 +23,5 @@ How files are filed and searched: the [archive index](../INDEX.md).
 
 ## History logs (older entries)
 
+- ~2026-11-17 · [`cas-ccps/DEPLOYMENT_HANDOFF.md`](cas-ccps/DEPLOYMENT_HANDOFF.md) — CAS deployment handoff: the status banner's history of earlier pushes (2026-10-12 to 2026-10-23) and a closed doc-gap note, moved out of the live handoff (2 entries; continues in the live `cas-ccps/DEPLOYMENT_HANDOFF.md`)
 - ~2026-11-17 · [`cas-ccps/README.md`](cas-ccps/README.md) — CAS README: corrections, resolved Known-gaps write-ups and out-of-date passages, moved out of the live README (5 entries; continues in the live `cas-ccps/README.md`)

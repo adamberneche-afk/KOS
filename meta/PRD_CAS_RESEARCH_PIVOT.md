@@ -616,7 +616,7 @@ To resolve a row's course, use the same lookup existing course-scoped code uses,
 
 ### P4-01 Model drift watch (rescoped)
 
-**Why.** Studio's Ask Gemini step is unpinned (`DEPLOYMENT_HANDOFF.md:91-96`). The existing canaries **simulate** Gemini's output (`35`, `runWarmUpFlowCanary()`), so they test plumbing and never the model.
+**Why.** Studio's Ask Gemini step is unpinned (`archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md:65-70`, moved out of `cas-ccps/DEPLOYMENT_HANDOFF.md` on 2026-11-17). The existing canaries **simulate** Gemini's output (`35`, `runWarmUpFlowCanary()`), so they test plumbing and never the model.
 
 **Change.**
 - A weekly trigger places synthetic rows through the **real** Studio Flows: Flow 2 via the existing `39` fixture install, and Flow 4 via an equivalent warm-up fixture. It reads the scores back into a `DriftWatch` tab and emails the teacher when the mean or pass rate leaves a set band.
