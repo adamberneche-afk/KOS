@@ -171,7 +171,7 @@ function _lpLatestOutcomes_(evidence) {
   if (iFile === -1 || iComp === -1 || iOut === -1 || iAt === -1) return byFile;
   rows.slice(1).forEach(function (r) {
     if (iArch !== -1 && String(r[iArch]).trim()) return;
-    const file = String(r[iFile]).trim(), comp = String(r[iComp]).trim();
+    const file = String(r[iFile]).trim(), comp = competencyIdText_(r[iComp]);
     if (!file || !comp) return;
     const at = sheetTimestampMs_(r[iAt]) || 0;
     const f = byFile[file] = byFile[file] || {};
@@ -412,7 +412,7 @@ function _lpEvidenceHistory_(evidence) {
   if (iFile === -1 || iComp === -1 || iOut === -1 || iAt === -1) return out;
   rows.slice(1).forEach(function (r) {
     if (iArch !== -1 && String(r[iArch]).trim()) return;
-    const file = String(r[iFile]).trim(), comp = String(r[iComp]).trim();
+    const file = String(r[iFile]).trim(), comp = competencyIdText_(r[iComp]);
     if (!file || !comp) return;
     const f = out[file] = out[file] || {};
     (f[comp] = f[comp] || []).push({ at: sheetTimestampMs_(r[iAt]) || 0, outcome: String(r[iOut]).trim().toUpperCase() });
