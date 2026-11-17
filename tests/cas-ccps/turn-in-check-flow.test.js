@@ -184,7 +184,7 @@ test('one input row per PENDING_CHECK answer, the answer between its delimiters;
   assert.equal(env.exported.ticAnswerInPrompt_(p), GENUINE);
   assert.match(p, /Milestone: Develop a market research project/);
   assert.match(p, /The feedback says this milestone is not met yet\. An answer addresses it when it says what the student will change/);
-  assert.match(p, /What will you change, where in your document, and how will that show it\?/);
+  assert.match(p, /Not yet: Develop a market research project\. What will you change to show this goal, and where in your work\?/);
   assert.match(inputs[1].PromptText, /showed this milestone\. The question asks the student to connect it/, 'a pass is described as shown, and asks for a connection');
   assert.doesNotMatch(p, /\{\{[A-Z_]+\}\}/, 'every placeholder filled');
   assert.doesNotMatch(p, /student1@|VDOE-ONE/, 'no email or ConfigID in the prompt');

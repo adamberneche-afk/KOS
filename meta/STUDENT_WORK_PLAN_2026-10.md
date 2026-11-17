@@ -505,6 +505,12 @@ Never a frame the student has already answered in this lesson. `{criterion}`
 is one of the part's criteria (Appendix B's student wording), primary first,
 then rotating. Each answer needs 10 words.
 
+> **Reworded 2026-11-17** (`meta/AUDIT_STUDENT_QUESTIONS_2026-11-17.md`):
+> the frames below no longer quote `{criterion}`; the dashboard shows it on
+> its own line ("Goal: …") above a short question. The current wording is
+> `REFLECTION_FRAMES` in `cas-ccps/scripts/00_SharedConfig.js`. The frames
+> below are the approved originals.
+
 **Evidence** (every Submit)
 - E1. "Where in your work do you show this: *{criterion}*? Point to the
   sentence or slide."

@@ -2433,22 +2433,35 @@ function _reportDeployVersion_(projectName, sha) {
 // ---------------------------------------------------------------------------
 const REFLECTION_MIN_WORDS = 10;
 
+// Plain words (2026-11-17): a frame no longer quotes its goal. The goal, a
+// whole "I can" objective of about 25 words, sat inside the question, so a
+// question ran 40 to 70 words and students stumbled on the wording, not the
+// idea. Now the dashboard shows the goal on its own line ({goalLabel}:
+// {goal}) and the question is one short ask. A frame with goal: true is
+// about the question's competency; the rest have no goal line.
 const REFLECTION_FRAMES = [
-  { id: "E1", kind: "EVIDENCE", text: "Where in your work do you show this: \u201c{criterion}\u201d? Point to the sentence or part." },
-  { id: "E2", kind: "EVIDENCE", text: "Look at this one: \u201c{criterion}\u201d. What in your work shows it, and what would make it stronger?" },
-  { id: "E3", kind: "EVIDENCE", text: "If your teacher read only one part of your work to check \u201c{criterion}\u201d, which part should it be? Why?" },
-  { id: "A1", kind: "APPROACH", text: "What did you do first in this assignment, and why start there?" },
-  { id: "A2", kind: "APPROACH", text: "What did you leave out or cut, and why?" },
-  { id: "A3", kind: "APPROACH", text: "What did you look back at in the lesson while you worked, and what did it help with?" },
-  { id: "C1", kind: "CHOICE",   text: "What was the hardest choice in this assignment, and what did you pick?" },
+  { id: "E1", kind: "EVIDENCE", goal: true, text: "Which sentence or part of your work best shows this goal?" },
+  { id: "E2", kind: "EVIDENCE", goal: true, text: "What in your work shows this goal? What would make it stronger?" },
+  { id: "E3", kind: "EVIDENCE", goal: true, text: "Which one part of your work should your teacher check for this goal? Why?" },
+  { id: "A1", kind: "APPROACH", text: "What did you do first in this assignment? Why start there?" },
+  { id: "A2", kind: "APPROACH", text: "What did you leave out or cut? Why?" },
+  { id: "A3", kind: "APPROACH", text: "What did you look back at in the lesson while you worked? How did it help?" },
+  { id: "C1", kind: "CHOICE",   text: "What was the hardest choice in this assignment? What did you pick?" },
   { id: "C2", kind: "CHOICE",   text: "What would someone who disagrees with your work say? What would you tell them?" },
-  { id: "C3", kind: "CHOICE",   text: "What other way could you have done this? Why didn't you?" },
+  { id: "C3", kind: "CHOICE",   text: "What is another way you could have done this? Why didn't you?" },
   // Phase 2 (meta/STUDENT_WORK_PLAN_2026-10.md, Appendix A, approved
   // 2026-10-24): a resubmission after the primary wasn't met.
-  { id: "F1", kind: "FEEDBACK", text: "The feedback says your work doesn't show this yet: \u201c{criterion}\u201d. What are you changing, and why will that fix it?" },
-  { id: "F2", kind: "FEEDBACK", text: "What part of the feedback do you agree with most, and what are you doing about it?" },
-  { id: "F3", kind: "FEEDBACK", text: "Is there anything in the feedback you disagree with? Say what, and what you're doing about the rest." }
+  { id: "F1", kind: "FEEDBACK", goal: true, goalLabel: "Not shown yet", text: "What will you change to show this goal?" },
+  { id: "F2", kind: "FEEDBACK", text: "What part of the feedback do you agree with most? What are you doing about it?" },
+  { id: "F3", kind: "FEEDBACK", text: "Is there anything in the feedback you disagree with? What are you doing about the rest?" }
 ];
+
+// A question as one line of text, its goal included, for where it is
+// stored or read without the dashboard's layout: ReflectionLog's Question,
+// Flow 2's prompt (37) and the reflection comment on the doc.
+function reflectionQuestionText_(q) {
+  return q && q.goal ? (q.goalLabel || "Goal") + ": " + q.goal + ". " + q.question : String((q && q.question) || "");
+}
 
 const REFLECTION_LOG_HEADERS = ["SubmittedAt", "GoogleID", "ConfigID", "StudentFileID", "Kind",
   "FrameID", "CompetencyID", "Question", "Answer"];
@@ -2495,7 +2508,8 @@ function _reflectionHash_(s) {
 // [{ frameId, kind, competencyId, submittedAt }]; key: the assignment's
 // ConfigID (seeds the variety); shortfall: reflectionShortfall_(), the
 // primary criterion when the last check found it not met yet, else null.
-// Returns [{ frameId, kind, competencyId, question }], one or two of them:
+// Returns [{ frameId, kind, competencyId, question, goal, goalLabel }], one
+// or two of them (goal "" when the frame has none):
 // an Evidence question every time, plus an Approach or Choice question on a
 // first Submit, or a Feedback question on a resubmission with a shortfall.
 function chooseReflectionQuestions_(criteria, prior, key, shortfall) {
@@ -2525,14 +2539,14 @@ function chooseReflectionQuestions_(criteria, prior, key, shortfall) {
   if (criteria.length) {
     const c = criteria[evidenceAsked % criteria.length];
     const f = pick("EVIDENCE", evidenceAsked);
-    out.push({ frameId: f.id, kind: f.kind, competencyId: c.id, question: f.text.replace("{criterion}", c.text) });
+    out.push({ frameId: f.id, kind: f.kind, competencyId: c.id, question: f.text, goal: c.text, goalLabel: f.goalLabel || "Goal" });
   }
   if (!firstSubmit && shortfall && criteria.length) {
     // F1 first (it names what fell short), then the least answered, in order.
     const f = REFLECTION_FRAMES.filter(function (x) { return x.kind === "FEEDBACK"; })
       .reduce(function (b, x) { return (used[x.id] || 0) < (used[b.id] || 0) ? x : b; });
-    out.push({ frameId: f.id, kind: f.kind, competencyId: shortfall.id,
-               question: f.text.replace("{criterion}", shortfall.text) });
+    out.push({ frameId: f.id, kind: f.kind, competencyId: shortfall.id, question: f.text,
+               goal: f.goal ? shortfall.text : "", goalLabel: f.goal ? (f.goalLabel || "Goal") : "" });
     return out;
   }
   if (firstSubmit || !criteria.length) {
@@ -2540,7 +2554,7 @@ function chooseReflectionQuestions_(criteria, prior, key, shortfall) {
     const wanted = criteria.length ? 1 : 2;
     for (let k = 0; k < wanted; k++) {
       const f = pick(kinds[k], 0);
-      out.push({ frameId: f.id, kind: f.kind, competencyId: "", question: f.text });
+      out.push({ frameId: f.id, kind: f.kind, competencyId: "", question: f.text, goal: "", goalLabel: "" });
     }
   }
   return out;

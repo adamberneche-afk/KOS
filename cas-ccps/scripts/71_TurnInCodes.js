@@ -342,22 +342,39 @@ function turnInFeedbackKind_(row) {
 function turnInQuestion_(kind, milestone, link) {
   const m = String(milestone || "").trim();
   if (!m) return "";
-  if (kind === "NOT_YET") {
-    return "Your feedback says Not yet: “" + m + "”. What will you change, where in your document, and how will that show it?";
-  }
+  // Plain words (2026-11-17): the goals are shown on their own lines
+  // (turnInGoals_), so the question is one short ask.
+  if (kind === "NOT_YET") return "What will you change to show this goal, and where in your work?";
   if (kind === "PASSED") {
     const y = link && String(link.text || "").trim();
-    if (y && link.part) {
-      return "Your feedback says you showed “" + m + "”. Part " + link.part + " asks: “" + y + "”. " +
-        "How will what you did here help you there? Point to the part of your work you will build on.";
-    }
-    if (y) {
-      return "Your feedback says you showed “" + m + "”. How does it connect to “" + y + "”? " +
-        "Point to the part of your work where they meet.";
-    }
-    return "Your feedback says you showed “" + m + "”. Point to the part of your work that shows it, and say why it does.";
+    if (y && link.part) return "What from this part will you use in Part " + link.part + "?";
+    if (y) return "Where in your work do these two goals meet?";
+    return "Which part of your work shows this goal best? Why?";
   }
   return "";
+}
+
+// The goal lines above the question: [{ label, text }]. A goal's closing
+// period is dropped (the dashboard adds none, and a quoted goal used to end
+// in ".”.").
+function turnInGoals_(kind, milestone, link) {
+  const clean = function (t) { return String(t || "").trim().replace(/\.\s*$/, ""); };
+  const m = clean(milestone);
+  if (!m) return [];
+  if (kind === "NOT_YET") return [{ label: "Not yet", text: m }];
+  if (kind !== "PASSED") return [];
+  const out = [{ label: "You showed", text: m }];
+  const y = link && clean(link.text);
+  if (y) out.push({ label: link.part ? "Part " + link.part + " asks" : "Also in this lesson", text: y });
+  return out;
+}
+
+// The question with its goals as one line of text, for TurnInChecks and the
+// check flow's prompt (72), which read it without the screen's layout.
+function turnInQuestionText_(prompt) {
+  if (!prompt) return "";
+  const goals = (prompt.goals || []).map(function (g) { return g.label + ": " + g.text + "."; });
+  return goals.concat([String(prompt.question || "")]).join(" ");
 }
 
 // The next part's goal for an assignment that is a part, as the student
@@ -389,7 +406,7 @@ function turnInNextPartGoal_(assignmentId) {
   return null;
 }
 
-// { kind, milestone, question, link } for a Ledger row, or null when there is no
+// { kind, milestone, question, goals, link } for a Ledger row, or null when there is no
 // feedback to ask about.
 function turnInPrompt_(ss, cfg, row, cache) {
   const kind = turnInFeedbackKind_(row);
@@ -402,7 +419,8 @@ function turnInPrompt_(ss, cfg, row, cache) {
       (m.other ? { text: m.other, part: 0 } : null);
   }
   const question = turnInQuestion_(kind, milestone, link);
-  return question ? { kind: kind, milestone: milestone, question: question, link: link ? link.text : "" } : null;
+  return question ? { kind: kind, milestone: milestone, question: question, goals: turnInGoals_(kind, milestone, link),
+    link: link ? link.text : "" } : null;
 }
 
 // ---------------------------------------------------------------------------

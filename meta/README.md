@@ -139,6 +139,11 @@ why this repo exists at all.
   system and direction documents. The README lists the sources and when to
   rebuild.
 
+- **`AUDIT_STUDENT_QUESTIONS_2026-11-17.md`** — every question a student
+  can be shown (the reflection on Submit, the turn-in question: 2,179 of
+  them) measured: a median of 44 words and up to 110, because each quoted a
+  whole goal. Reworded so the goal sits on its own line above a short
+  question (8 to 16 words); the goals themselves are still long.
 - **`AUDIT_DEAD_ENDS_2026-11-17.md`** — the second dead-ends audit, at the
   sprint boundary: the 10-29 audit all closed; what's live is behind main
   (a push clears it); one quadratic function makes three tools slow;

@@ -776,3 +776,21 @@ competencies.
 - Tests: `tests/cas-ccps/competency-id-dates.test.js`, and an unlock test in
   `lesson-parts-unlock.test.js`.
 
+
+## The students' questions in plain words, 2026-11-17
+
+The operator: the reflection questions read as confusing, from the wording,
+not the idea. The audit (`meta/AUDIT_STUDENT_QUESTIONS_2026-11-17.md`)
+measured all 2,179 questions a student can be shown: a median of 44 words
+and up to 110, because each quoted the competency's whole "I can" goal, and
+some quoted two and asked three things.
+
+- `REFLECTION_FRAMES` (00) and `turnInQuestion_` (71): one short ask each,
+  8 to 16 words. The goal is a separate field (`goal`, `goalLabel`; 71's
+  `turnInGoals_`), shown on its own line above the question on the
+  dashboard (13) and the turn-in form (71b).
+- Stored and sent as one line with the goals first
+  (`reflectionQuestionText_`, `turnInQuestionText_`): ReflectionLog,
+  Flow 2's prompt, the reflection comment, TurnInChecks and the check flow
+  (72) still see which goal an answer is about.
+- Tests: `process-reflection`, `turn-in-code` and `turn-in-check-flow`.

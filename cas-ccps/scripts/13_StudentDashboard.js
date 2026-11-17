@@ -124,7 +124,7 @@ function _dashDemoCard_(course, lesson, state, block, period, now) {
   // submit, or a resubmit after the primary wasn't met.
   const prior = revise ? [{ frameId: "", kind: "", submittedAt: "earlier" }] : [];
   const questions = chooseReflectionQuestions_(criteria, prior, configId, revise ? primary : null)
-    .map(function (q) { return { frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, question: q.question }; });
+    .map(function (q) { return { frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, question: q.question, goal: q.goal || "", goalLabel: q.goalLabel || "" }; });
   return {
     configId:      configId,
     studentName:   DASH_DEMO_STUDENT.name,
@@ -1928,7 +1928,7 @@ function _dashReflectionQuestions_(checked) {
     Logger.log("[Reflection] CompetencyEvidence not read for ConfigID " + checked.configId + ": " + e.message);
   }
   return chooseReflectionQuestions_(criteria, prior, checked.configId, shortfall).map(function (q) {
-    return { frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, question: q.question };
+    return { frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, question: q.question, goal: q.goal || "", goalLabel: q.goalLabel || "" };
   });
 }
 
@@ -1955,7 +1955,7 @@ function _dashSubmit_(fileId, configId, answers) {
     const found = texts.map(findSystemText_).filter(Boolean)[0];
     if (found) return { ok: false, error: "SYSTEM_TEXT_IN_REFLECTION", found: found };
     reflectionRows = questions.map(function (q, i) {
-      return [null, googleId, configId, fileId, q.kind, q.frameId, q.competencyId, q.question, texts[i]];
+      return [null, googleId, configId, fileId, q.kind, q.frameId, q.competencyId, reflectionQuestionText_(q), texts[i]];
     });
   }
 
@@ -2856,6 +2856,8 @@ function buildStudentDashboardHtml_(opts) {
   .reflect{margin-top:12px;padding:12px;border:1px solid #c6dafc;border-radius:8px;background:#f8fbff}
   .reflect-intro{font-size:13px;color:var(--text-secondary);margin-bottom:10px;line-height:1.45}
   .reflect-q{display:block;font-size:14px;font-weight:500;margin:10px 0 4px;line-height:1.4}
+  .reflect-goal{font-size:13px;color:var(--text-secondary);margin:10px 0 2px;line-height:1.4;padding-left:8px;border-left:3px solid #dadce0}
+  .reflect-goal + .reflect-q{margin-top:4px}
   .reflect-a{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;padding:8px;border:1px solid #9aa0a6;border-radius:6px;resize:vertical}
   .reflect-count{font-size:12px;color:var(--text-secondary);margin-top:2px}
   .reflect-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
@@ -4421,6 +4423,8 @@ function reflectFormHtml(a) {
   r.questions.forEach(function(q, i) {
     const id = "rf-" + i + "-" + a.fileId;
     const n = countWords(r.answers[i]);
+    // The goal on its own line, then the short question (2026-11-17).
+    if (q.goal) h += '<div class="reflect-goal"><b>' + esc(q.goalLabel || "Goal") + ':</b> ' + esc(q.goal) + "</div>";
     h += '<label class="reflect-q" for="' + esc(id) + '">' + esc(q.question) + "</label>" +
       '<textarea id="' + esc(id) + '" class="reflect-a" rows="3" data-file="' + esc(a.fileId) +
       '" data-i="' + i + '" oninput="reflectInput(this)">' + esc(r.answers[i] || "") + "</textarea>" +
