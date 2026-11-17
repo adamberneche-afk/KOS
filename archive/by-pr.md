@@ -10,7 +10,7 @@ matching lines.
 - **#10**: [`2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md`](2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md), [leader-hub/HISTORY.md · undated](2026-27-Q1/leader-hub/HISTORY.md#the-school-store-sales-logs-unescaped-innerhtml-sink-closed-open-items-10)
 - **#12**: [`2026-27-Q1/meta/HANDOFF_2026-10-19.md`](2026-27-Q1/meta/HANDOFF_2026-10-19.md), [kos-personal/CHANGELOG.md · 2026-10-19](2026-27-Q1/kos-personal/CHANGELOG.md#deploy_trigger-needs-an-approved-row-intervention-triage-is-anonymous-2026-10-19)
 - **#13**: [`2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md`](2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md), [`2026-27-Q2/meta/HANDOFF_2026-11-01.md`](2026-27-Q2/meta/HANDOFF_2026-11-01.md)
-- **#14**: [`2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md`](2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md)
+- **#14**: [`2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md`](2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md), [cas-ccps/README.md · undated](2026-27-Q2/cas-ccps/README.md#known-gaps-carried-forward-so-a-future-session-doesnt-re-derive-them)
 - **#15**: [`2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md`](2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md)
 - **#16**: [`2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md`](2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md), [`2026-27-Q2/meta/HANDOFF_2026-11-01.md`](2026-27-Q2/meta/HANDOFF_2026-11-01.md)
 - **#17**: [`2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md`](2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md), [kos-personal/CHANGELOG.md · undated](2026-27-Q1/kos-personal/CHANGELOG.md#round-23--deploy-drift-picked-back-up-two-of-its-own-bugs-found-closing-it-out)

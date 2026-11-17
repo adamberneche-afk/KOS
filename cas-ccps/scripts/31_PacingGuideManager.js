@@ -26,7 +26,7 @@
 //   chain_node | esports_connection | vocabulary_with_definitions
 //   studio_flow_hooks
 //   (last 4 columns added when PacingGuide_CAS_Context.json moved to its
-//   v2 schema — see cas-ccps/README.md item 8. vocabulary_with_definitions
+//   v2 schema — see archive/2026-27-Q2/cas-ccps/README.md, Known gaps item 9. vocabulary_with_definitions
 //   and studio_flow_hooks are structured data (array / object) stored in
 //   the sheet as a JSON string and parsed back out on read.)
 //
@@ -80,7 +80,7 @@ const PG_COMP_IDS_8177     = 12;
 const PG_KEY_VOCAB         = 13;
 const PG_PRIOR_CONNECTION  = 14;
 const PG_WARMUP_ANCHOR     = 15;
-// ── v2 pacing guide fields (appended — see cas-ccps/README.md item 8) ────────
+// ── v2 pacing guide fields (appended — see archive/2026-27-Q2/cas-ccps/README.md, Known gaps item 9) ────────
 const PG_CHAIN_NODE            = 16;
 const PG_ESPORTS_CONNECTION    = 17;
 const PG_VOCAB_WITH_DEFS       = 18;
@@ -333,7 +333,7 @@ function _pgUnitView_(result) {
     objective_8177:        result.objective_8177,
     competency_ids_8175:   result.competency_ids_8175,
     competency_ids_8177:   result.competency_ids_8177,
-    // v2 pacing guide fields — see cas-ccps/README.md item 8.
+    // v2 pacing guide fields — see archive/2026-27-Q2/cas-ccps/README.md, Known gaps item 9.
     chain_node:                  result.chain_node || "",
     esports_connection:          result.esports_connection || "",
     vocabulary_with_definitions: result.vocabulary_with_definitions || [],
@@ -470,7 +470,7 @@ function getWarmUpAnchor_(dateStr, courseName) {
     // bridge to competencies the pacing guide itself says are "in play"
     // today, not just whatever a teacher happened to check off.
     pacing_competency_ids: pacingCompetencyIds,
-    // v2 pacing guide fields — see cas-ccps/README.md item 8. Not yet
+    // v2 pacing guide fields — see archive/2026-27-Q2/cas-ccps/README.md, Known gaps item 9. Not yet
     // consumed by any Flow 3 prompt template; passed through so a future
     // prompt-template change can use them without another Script 31 edit.
     chain_node:                  unit.chain_node || "",
@@ -594,7 +594,7 @@ function _loadPacingGuide_() {
       key_vocabulary:        String(row[idx.key_vocabulary]         || "").trim(),
       prior_lesson_connection: String(row[idx.prior_lesson_connection] || "").trim(),
       warmup_anchor:         String(row[idx.warmup_anchor]          || "").trim(),
-      // v2 pacing guide fields — see cas-ccps/README.md item 8. idx.<name>
+      // v2 pacing guide fields — see archive/2026-27-Q2/cas-ccps/README.md, Known gaps item 9. idx.<name>
       // is -1 (falls through to "") for a PacingGuide tab that predates
       // the v2 import, so this is safe against not-yet-reimported sheets.
       chain_node:                  idx.chain_node !== -1 ? String(row[idx.chain_node] || "").trim() : "",

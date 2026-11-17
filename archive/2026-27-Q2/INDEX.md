@@ -20,3 +20,7 @@ How files are filed and searched: the [archive index](../INDEX.md).
 
 - ~2026-11-17 · [`cas-ccps/archived/`](cas-ccps/archived) — cas-ccps's retired scripts: the 8 custom Studio steps and their shared file, the AutoInstaller, the Phase 4 work-file probe *(Filed by: retired code; the Studio steps and the AutoInstaller archived 2026-11-17 (clean-up C1, C2), the work-file probe 2026-11-07.)*
 - ~2026-11-17 · [`kos-personal/archive/inference-service/`](kos-personal/archive/inference-service) — kos-personal's managed inference service (Cloud Run): its code, schema, deploy guide and tests *(Filed by: retired code; archived 2026-11-17 (clean-up C3), dormant since D16 on 2026-11-01.)*
+
+## History logs (older entries)
+
+- ~2026-11-17 · [`cas-ccps/README.md`](cas-ccps/README.md) — CAS README: corrections, resolved Known-gaps write-ups and out-of-date passages, moved out of the live README (5 entries; continues in the live `cas-ccps/README.md`)
