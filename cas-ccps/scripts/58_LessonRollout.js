@@ -104,6 +104,83 @@ function runLessonRollout() {
   return _lrRunAndCatchUp_({});
 }
 
+// ---------------------------------------------------------------------------
+// A lesson's missing later parts (2026-11-17). The nightly run makes a
+// lesson's parts only while the lesson is current or starting soon, so a part
+// added to PARTS.json after the lesson went out (the Buyer's Product Pitch's
+// Part 6, the Slides part, #417), or one whose template property wasn't set
+// that week, was never made for anyone, and nothing unlocks a part that has
+// no Ledger row. These make Parts 2 and up of one lesson, wherever it sits in
+// the schedule, the way the nightly run does: the part seeded into the
+// TeacherMatrix if missing, then each student in the course without a copy
+// gets one, SCHEDULED and unshared. Each opens when unlockReadyParts (68)
+// finds the part before it MET, run at the end of an apply. Part 1 is never
+// made here: an old lesson's Part 1 would stay SCHEDULED for good.
+//   previewLessonPartsCatchUp('8177-product-pitch-financial-analysis')
+//   applyLessonPartsCatchUp('8177-product-pitch-financial-analysis')
+// Logs counts and reason codes only (quiet enrollment): no account or name.
+// ---------------------------------------------------------------------------
+function previewLessonPartsCatchUp(lessonKey) {
+  return lessonPartsCatchUp_({ lessonKey: lessonKey, apply: false });
+}
+
+function applyLessonPartsCatchUp(lessonKey) {
+  return lessonPartsCatchUp_({ lessonKey: lessonKey, apply: true });
+}
+
+function lessonPartsCatchUp_(opts) {
+  const apply = opts.apply === true;
+  const key = String(opts.lessonKey || "").trim();
+  const out = { lessonKey: key, apply: apply, seeded: [], parts: [], unlocked: 0, message: "" };
+  const parts = lessonPartsOf_(key);
+  if (!parts) {
+    out.message = "\"" + key + "\" is not a lesson in parts (PARTS.json): nothing to make.";
+    Logger.log("[S58] " + out.message);
+    return out;
+  }
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  if (!lessonUsesParts_(ss, key)) {
+    out.message = "Students already have \"" + key + "\" whole: its parts are never made under them.";
+    Logger.log("[S58] " + out.message);
+    return out;
+  }
+  const later = parts.filter(function (p) { return p.n > 1; });
+  // One time budget for all the parts (an Apps Script run stops at 6 min);
+  // whatever it doesn't reach, the next run makes.
+  const deadline = Date.now() + CRI_TIME_BUDGET_MS;
+  const seed = seedAssignments_({ apply: apply, today: opts.today || new Date(), units: later.map(function (p) { return p.key; }) });
+  out.seeded = seed.planned.map(function (p) { return p.configId; });
+  later.forEach(function (p) {
+    if (Date.now() > deadline) {
+      out.parts.push({ n: p.n, configId: p.configId, made: 0, failed: 0, reasons: "", left: true,
+        message: "not reached: time budget used; run it again" });
+      Logger.log("[S58] Part " + p.n + " (" + p.configId + "): not reached (time budget used); run it again.");
+      return;
+    }
+    const res = enrollCanvasRoster_({ apply: apply, assignmentConfigId: p.configId, deferShare: true, quiet: true,
+      deadline: deadline });
+    const made = apply ? res.enrolled : res.planned.length;
+    const row = { n: p.n, configId: p.configId, made: made, failed: res.failed.length, left: !!res.timedOut,
+      reasons: res.failed.length ? _lrReasonCounts_(res.failed) : "", message: res.message };
+    out.parts.push(row);
+    Logger.log("[S58] Part " + p.n + " (" + p.configId + "): " + (apply ? "made " : "would make ") + made +
+      " locked cop" + (made === 1 ? "y" : "ies") + (row.failed ? "; failed " + row.failed + " (" + row.reasons + ")" : "") +
+      (!made && !row.failed && res.message ? "; " + res.message : "") +
+      (res.timedOut ? "; stopped at the time budget with " + (Number(res.left) || 0) + " left: run it again" : ""));
+  });
+  if (apply && out.parts.some(function (r) { return r.made > 0; })) {
+    out.unlocked = unlockReadyParts().unlocked;
+  }
+  out.message = (apply ? "Made " : "Would make ") +
+    out.parts.reduce(function (a, r) { return a + r.made; }, 0) + " locked part cop(ies) for " + key +
+    (out.seeded.length ? "; " + (apply ? "seeded " : "would seed ") + out.seeded.length + " part(s) into the TeacherMatrix" : "") +
+    (apply ? "; unlocked " + out.unlocked + " now (their part before is MET)" : "") +
+    (out.parts.some(function (r) { return r.left; }) ? "; not finished: run it again." : ".");
+  Logger.log("[S58] " + out.message);
+  return out;
+}
+
 // The catch-up a run that stopped short scheduled. Removes its own one-off
 // trigger, runs, and schedules the next if this one stops short too.
 function runLessonRolloutCatchUp() {
