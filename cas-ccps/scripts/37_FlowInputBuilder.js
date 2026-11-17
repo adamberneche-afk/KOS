@@ -416,9 +416,14 @@ function buildFlowInputRows() {
     // history, and fired at once when the cell was retyped (2026-10-19).
     // A row left blank by an earlier run that stopped in between is set
     // here too, so none waits forever.
+    // A blank row also gets ArmedAt = now: the re-arm's 12 minutes count
+    // from this READY, not from when the row was built. Without it a row
+    // cleared by hand days after it was built (11-15) was restarted again
+    // on the very next run, while Studio was still answering this edit.
     if (newRows.length || unstarted.length) {
       SpreadsheetApp.flush();
       newRows.concat(unstarted).forEach(r => fiSheet.getRange(r, FI.READY_STATUS + 1).setValue("READY"));
+      unstarted.forEach(r => fiSheet.getRange(r, FI.ARMED_AT + 1).setValue(now));
       SpreadsheetApp.flush();
     }
     if (built > 0) {
