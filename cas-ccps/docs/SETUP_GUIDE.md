@@ -114,7 +114,7 @@ that ID in the registry (`cas-ccps\<project>\.clasp.json`, as from
 | `family-sentinel` (optional) | a new private sheet the teacher owns; `cas-ccps/docs/FAMILY_MAIL_SENTINEL.md` |
 
 The custom Studio steps and `21_AutoInstaller.js` were archived on
-2026-11-17 (`cas-ccps/archived/`): custom steps need a Cloud project, which
+2026-11-17 (`archive/2026-27-Q2/cas-ccps/archived/`): custom steps need a Cloud project, which
 the operator's district blocks, and the flows were rebuilt without them;
 the installer needed the Apps Script API through a Cloud project, and its
 file lists predated most of the code.

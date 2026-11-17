@@ -1,5 +1,5 @@
 'use strict';
-// Regression tests for cas-ccps/archived/studio-steps/CommitRubricDraftStep.gs —
+// Regression tests for archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitRubricDraftStep.gs —
 // Flow 1's Step 3 (rubric-extraction JSON -> TeacherMatrix DRAFT row).
 
 const test = require('node:test');
@@ -7,8 +7,8 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const { loadGasFiles, makeStudioEvent } = require('../../harness/gas-sandbox');
 
-const SHARED_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
-const STEP_PATH = path.join(__dirname, '..', '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'CommitRubricDraftStep.gs');
+const SHARED_PATH = path.join(__dirname, '..', '..', '..', 'archive', '2026-27-Q2', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
+const STEP_PATH = path.join(__dirname, '..', '..', '..', 'archive', '2026-27-Q2', 'cas-ccps', 'archived', 'studio-steps', 'CommitRubricDraftStep.gs');
 
 function load(exposeNames) {
   return loadGasFiles([SHARED_PATH, STEP_PATH], exposeNames);

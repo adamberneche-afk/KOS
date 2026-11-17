@@ -9,7 +9,7 @@ updates:
       interval: "weekly"
 
   # kos-personal/inference-service was archived 2026-11-17 (clean-up C3;
-  # kos-personal/archive/inference-service/): no entry here.
+  # archive/2026-27-Q2/kos-personal/archive/inference-service/): no entry here.
 
   # GitHub Actions itself (actions/checkout, actions/setup-node, etc.) —
   # covers .github/workflows/*.yml.

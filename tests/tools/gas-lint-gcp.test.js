@@ -244,7 +244,7 @@ test('kos-personal\'s custom steps, blocked on the same account, are archived ra
   // since confirmed is also wrong: kos-personal is on the SAME ccpsnet.net
   // account and its flow is not live. Anything moving this off live-blocked
   // should be a deliberate change with new evidence, not an inference.
-  // Archived 2026-09-29 (kos-personal/archive/studio-steps/): no longer a
+  // Archived 2026-09-29 (archive/2026-27-Q1/kos-personal/archive/studio-steps/): no longer a
   // project or a surface this repo needs, so it is not declared at all.
   assert.equal(GCP_MAP.surfaces['kos-personal/studio-steps/appsscript.json'], undefined);
   assert.equal(PROJECT_MAP['kos-personal:studio-steps'], undefined);

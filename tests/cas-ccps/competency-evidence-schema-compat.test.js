@@ -1,7 +1,7 @@
 'use strict';
 // Regression test for the exact risk the Studio Steps review flagged:
 // CompetencyEvidence has two independent writers in two different GAS
-// projects — cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs (the
+// projects — archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs (the
 // real Studio Flow 2 write step) and
 // cas-ccps/scripts/15c_Flow2DirectEvaluationService.js's
 // writeCompetencyEvidenceFromFlow2_() (the manual/dev-testing
@@ -21,8 +21,8 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const { loadGasFiles, makeStudioEvent } = require('../harness/gas-sandbox');
 
-const STUDIO_SHARED_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
-const STUDIO_STEP_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'archived', 'studio-steps', 'CommitStudentEvaluationStep.gs');
+const STUDIO_SHARED_PATH = path.join(__dirname, '..', '..', 'archive', '2026-27-Q2', 'cas-ccps', 'archived', 'studio-steps', 'StepsShared.gs');
+const STUDIO_STEP_PATH = path.join(__dirname, '..', '..', 'archive', '2026-27-Q2', 'cas-ccps', 'archived', 'studio-steps', 'CommitStudentEvaluationStep.gs');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 const FLOW2_PROMPT_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15b_StudioFlowPrompts_Flow2_Revised.js');

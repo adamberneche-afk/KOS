@@ -1,10 +1,9 @@
-# KOS Changelog: entries before 2026-10-29 (archived)
+# `kos-personal/CHANGELOG.md`: 2026-27, 1st quarter (archived)
 
-The older part of `kos-personal/CHANGELOG.md`, word for word: everything
-before the 2026-10-29 start of `meta/PLAN_2026-11.md`, in the order the live
-file had it (newest first, then the undated early rounds). It continues in
-the live [`kos-personal/CHANGELOG.md`](../../../kos-personal/CHANGELOG.md).
-Links below are relative to the live file's folder.
+The entries of `kos-personal/CHANGELOG.md` from this school quarter, moved word for
+word out of the live log when a plan of record was replaced, newest first as the log runs; an
+undated entry stands where it stood. Links inside are relative to the
+live file's folder. The live log: [`kos-personal/CHANGELOG.md`](../../../kos-personal/CHANGELOG.md).
 
 ### The Drive sweeps stop before the time limit (2026-10-23)
 

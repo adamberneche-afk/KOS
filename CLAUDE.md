@@ -176,9 +176,12 @@ Superseded docs and the history logs' older entries are in `archive/`,
 filed by school quarter, out of everyday search (the root `.ignore`).
 To find something there, use `node tools/archive/search.js` (filters by
 quarter, kind, system, dates, a `#N` cited, then a pattern; see
-`tools/archive/README.md`), not a grep of `archive/` whole. Archiving a
-file adds its record to `archive/catalog.jsonl` and reruns
-`node tools/archive/build.js` in the same PR; CI checks both.
+`tools/archive/README.md`), not a grep of `archive/` whole. Archive a
+doc or a folder with `node tools/archive/file.js <path> --summary "…"`
+and review the references it rewrites; when a plan of record is
+replaced, roll the history logs over with `--rollover-logs --before
+<the new plan's start>` in the same PR. CI checks the catalog and
+indexes.
 
 ## Working agreements (from the plan)
 

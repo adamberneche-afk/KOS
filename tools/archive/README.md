@@ -10,7 +10,7 @@ it. Node built-ins only.
 | File | What it is | Edited by |
 |---|---|---|
 | `archive/quarters.json` | The school quarters: dates (CCPS calendar), title, PR range, plan of record, a line on what each was | hand |
-| `archive/catalog.jsonl` | One JSON record per archived file | hand (or the filing tool, next) |
+| `archive/catalog.jsonl` | One JSON record per archived file, or per archived folder | `file.js` (or by hand) |
 | `archive/entries.jsonl` | One record per entry of an archived history log: title, date, anchor, line, the `#N` it cites | `build.js` |
 | `archive/INDEX.md`, `archive/<quarter>/INDEX.md`, `archive/by-system.md`, `archive/by-pr.md` | The indexes and the two cross-quarter views | `build.js` |
 
@@ -31,6 +31,7 @@ A catalog record:
   month is known, or `null`). `filed_on` is the date the filing used: the
   written date, else the date it was replaced or retired, else `null`.
   `filed_by` says which, in words; for a judgment call it says so.
+- An id ending in `/` is a folder record: it covers every file under it.
 - A `history` record is the older part of a live log and names it in
   `continues_in`; its entries are indexed one by one in `entries.jsonl`.
 
@@ -73,11 +74,43 @@ The check fails on a file under `archive/<quarter>/` with no record, a
 record with no file, a missing or malformed field, a record in a quarter
 its `filed_on` doesn't fall in, or a stale generated file.
 
-## Archiving something
+## Archiving something: `file.js`
 
-Until the filing tool lands: `git mv <path> archive/<quarter>/<path>`, add
-its record to `archive/catalog.jsonl`, repoint the live links and path
-mentions, run `node tools/archive/build.js`, all in one PR. A new quarter
-needs its dates in `quarters.json` first (Q3's end is still to be added).
+```sh
+node tools/archive/file.js meta/HANDOFF_2026-11-15.md --summary "Session handoff, 11-09 to 11-15"
+node tools/archive/file.js cas-ccps/old-tool --summary "…" --filed-on 2026-12-01 --filed-by "retired 2026-12-01"
+node tools/archive/file.js <path> --summary "…" --dry-run      # print, change nothing
+```
 
-Tests: `tests/tools/archive.test.js`.
+It decides the quarter from the date (`--date` when written; without it,
+the date in the name, else the earliest date near the top; `--filed-on`
+with `--filed-by` for a replaced or retired thing; `--quarter` with
+`--filed-by` only when the date can't decide), runs `git mv` to
+`archive/<quarter>/<path>`, repoints the live references, adds the
+record and rebuilds the indexes. A folder gets one record covering every
+file under it (retired code stays together).
+
+**Review what it lists.** It rewrites every live mention of the path:
+Markdown links recomputed, full paths in code, config and docs prefixed.
+Most are pointers and should change; a sentence about the past ("X was
+deleted") should not, so put that line back. A path built from quoted
+segments (`path.join('cas-ccps', 'archived')`) is listed as a warning
+and repointed by hand. Then run the tests.
+
+**When a plan of record is replaced**, roll the history logs over:
+
+```sh
+node tools/archive/file.js --rollover-logs --before 2026-12-01 --dry-run
+node tools/archive/file.js --rollover-logs --before 2026-12-01
+```
+
+Every entry of `cas-ccps/HISTORY.md`, `kos-personal/CHANGELOG.md` and
+`leader-hub/HISTORY.md` dated before the new plan's start moves word for
+word to `archive/<its quarter>/<log path>`, in the log's own order. An
+undated entry goes by the nearest dated entry above it; at the top of an
+oldest-first log, by the first dated one below. A quarter's part gets a
+header and a catalog record the first time. The live log's pointer (the
+`archive:pointer` block) is rewritten. A date in a quarter whose dates
+aren't in `quarters.json` yet stops it: add them first.
+
+Tests: `tests/tools/archive.test.js`, `tests/tools/archive-file.test.js`.

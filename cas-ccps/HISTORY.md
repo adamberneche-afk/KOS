@@ -20,10 +20,11 @@ real benefit.
 
 ---
 
-**Entries before 2026-10-29** (the plan of record before `meta/PLAN_2026-11.md`) are archived word for word in
-[`archive/2026-27-Q1/cas-ccps/HISTORY.md`](../archive/2026-27-Q1/cas-ccps/HISTORY.md). This file holds the current plan's era; when the plan rolls over, the
-older entries move to their school quarter's folder (`archive/INDEX.md`).
-
+<!-- archive:pointer (tools/archive/file.js writes this) -->
+**Entries before 2026-10-29** are archived word for word by school quarter: [2026-27, 1st quarter](../archive/2026-27-Q1/cas-ccps/HISTORY.md).
+This file holds the current plan of record's era; `node tools/archive/search.js --entries`
+searches the archived ones entry by entry.
+<!-- /archive:pointer -->
 ## The nightly rollout catches up, 2026-10-29
 
 The first live nights (10-27, 10-28) showed the rollout's limit: a run made
@@ -709,10 +710,10 @@ The two pieces of provenance Apps Script can't read from Studio
 Approved by the operator on 2026-11-17, after the 10-29 dead-ends audit
 found `cas-ccps/studio-steps/` was never archived, and the 11-08 handoff
 listed C1–C3 as needing a decision. The repo's pattern for this is
-`cas-ccps/archived/` (as with `70_WorkFileProbe.js`): out of every project,
+`archive/2026-27-Q2/cas-ccps/archived/` (as with `70_WorkFileProbe.js`): out of every project,
 push, test run and lint, and kept for reference.
 
-- **C1, the custom Studio steps** → `cas-ccps/archived/studio-steps/`, with
+- **C1, the custom Studio steps** → `archive/2026-27-Q2/cas-ccps/archived/studio-steps/`, with
   their manifest and clasp template under `clasp/`. They were never
   reachable: the district's GCP block keeps a custom step out of Studio's
   picker, and 37 and 41 replaced every one. Changes: the
@@ -724,7 +725,7 @@ push, test run and lint, and kept for reference.
   `CommitStudentEvaluationStep.gs` from the archive. deploy-drift's two
   tests that used it as the one project with no marker now use projects
   with a marker and leave it out.
-- **C2, `21_AutoInstaller.js`** → `cas-ccps/archived/`: the Apps Script
+- **C2, `21_AutoInstaller.js`** → `archive/2026-27-Q2/cas-ccps/archived/`: the Apps Script
   API installer, which needs a Cloud project. `run.js` installs every
   project. It's out of the Unified Manual, along with its menu item
   ("Install Scripts Automatically") and that project's `script.projects`

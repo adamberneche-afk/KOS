@@ -387,7 +387,7 @@ outcome, ConfigID, evaluated-at timestamp, student file ID, archive status
 (added by roadmap 2.2 — see the retention note above). Written by two
 code paths that share this exact 9-column schema (confirmed the reader below
 resolves columns by header name, not position, so both writers must keep
-matching headers in matching order): `cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs`
+matching headers in matching order): `archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs`
 and `15c_Flow2DirectEvaluationService.js`'s
 `writeCompetencyEvidenceFromFlow2_()` — neither of which is reachable on this
 account, and the live writer is `harvestFlowInputResults()`; see immediately
@@ -436,7 +436,7 @@ in-flight student evaluation: StagingRowRef, student file ID, ConfigID,
 teacher email, **student email**, student doc URL, and the full rubric
 (unit name, tier, persona, four milestones + competency IDs, definition
 of done) resolved from Ledger → MatrixRegistry → TeacherMatrix ahead of
-time — the same 3-hop lookup `cas-ccps/archived/studio-steps/ReadInstructorConfigStep.gs`
+time — the same 3-hop lookup `archive/2026-27-Q2/cas-ccps/archived/studio-steps/ReadInstructorConfigStep.gs`
 already implements, reimplemented here in Apps Script since Studio can't
 run it natively for a dynamic-spreadsheet target. Studio Flow 2 reads
 this tab (fixed picker — safe, since FlowInput itself always lives on

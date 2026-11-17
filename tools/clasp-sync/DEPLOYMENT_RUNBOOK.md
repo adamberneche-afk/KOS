@@ -18,7 +18,7 @@ Three projects, three different shapes:
 
 | Project | Script projects involved | Who it's for | Stakes |
 |---|---|---|---|
-| kos-personal | 1 (the main flat-folder project; `kos-personal/archive/studio-steps/`, a second standalone project that could never be published on this account, is archived and not deployed) | You. SMP-004 describes a personal account here; in practice it is the same `ccpsnet.net` account as cas-ccps, which is why the org-wide GCP block reaches its Studio steps too | Low — no students touch this |
+| kos-personal | 1 (the main flat-folder project; `archive/2026-27-Q1/kos-personal/archive/studio-steps/`, a second standalone project that could never be published on this account, is archived and not deployed) | You. SMP-004 describes a personal account here; in practice it is the same `ccpsnet.net` account as cas-ccps, which is why the org-wide GCP block reaches its Studio steps too | Low — no students touch this |
 | leader-hub | 1 (`leader-hub:app` — every `.gs` file in `leader-hub/`, one real Web App deployment; authoritative list in `tools/gas-lint/project-map.json`) | You: the operator's own command center (its README); `run.js` promotes it with the others | Your own data, server-only since 2026-10-22; a push alone doesn't reach `/exec` — see Part 2 |
 | cas-ccps | 9 (`central-ledger`, `unified-manual`, `master-student-template`, `rubric-response-sheet`, `teacher-matrix-sheet`, `family-sentinel`, `teacher-dashboard`, `student-dashboard`, `studio-steps`; `studio-steps` is blocked by the org-wide GCP restriction and not deployed) | Students, district account | High — this is the one the whole air-gap policy (SMP-004) exists for |
 
@@ -526,7 +526,7 @@ Same human-at-keyboard model as everything else in this runbook applies
 here too — see `cas-ccps/studio-steps/README.md`'s own deployment section
 for the full command block and this project's specific file list.
 kos-personal's `studio-steps` project is archived
-(`kos-personal/archive/studio-steps/README.md`) and is not deployed.
+(`archive/2026-27-Q1/kos-personal/archive/studio-steps/README.md`) and is not deployed.
 
 ---
 

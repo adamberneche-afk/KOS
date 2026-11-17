@@ -112,8 +112,8 @@ function search(o, root) {
     catalog.filter((r) => r.kind !== 'history' && pass(r) && (!o.kind.length || o.kind.includes(r.kind)) &&
       inRange(r.date || r.filed_on, o)).forEach((r) => {
       if (!re && !prRe) { hits.push({ id: r.id, date: r.date || r.filed_on, summary: r.summary, lines: [] }); return; }
-      const text = lib.read(lib.filePath(r), root);
-      const lines = grep(text, 1);
+      const textual = !lib.isFolder(r) && /\.(md|txt|js|gs|html|json|csv)$/.test(r.id);
+      const lines = textual ? grep(lib.read(lib.filePath(r), root), 1) : [];
       const inMeta = re && re.test(r.summary + ' ' + r.original_path) && !prRe;
       if (lines.length || inMeta) hits.push({ id: r.id, date: r.date || r.filed_on, summary: r.summary, lines });
     });

@@ -17,5 +17,8 @@ How files are filed and searched: the [archive index](../INDEX.md).
 
 ## Replaced versions and retired guides
 
+- 2026-06-19 · [`cas-ccps/docs/CAS_Module4_Documentation_v1.0.docx`](cas-ccps/docs/CAS_Module4_Documentation_v1.0.docx) — CAS Module 4 documentation v1.0 (replaced by v1.1, 2026-07-07) *(Filed by: the file's own creation date.)* Replaced by `cas-ccps/docs/CAS_Module4_Documentation_v1.1.docx`.
+- 2026-06-29 · [`cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx`](cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx) — CAS Module 3 documentation v1.0 (superseded) *(Filed by: the file's own creation date.)*
+- 2026-07-07 · [`cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_alt_SUPERSEDED.docx`](cas-ccps/docs/archived/CAS_Module3_Documentation_v1.0_alt_SUPERSEDED.docx) — CAS Module 3 documentation v1.0, alternate draft (superseded) *(Filed by: the file's own creation date.)*
 - 2026-07-18 · [`kos-personal/rtp-core-router/protocols/CURRENT_STATE_DRAFT_v2.md`](kos-personal/rtp-core-router/protocols/CURRENT_STATE_DRAFT_v2.md) — Current-state draft v2, 07-18 (never promoted)
 - undated · [`kos-personal/rtp-core-router/protocols/ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md`](kos-personal/rtp-core-router/protocols/ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md) — Zone specification (not a spec for anything built) *(Filed by: no date and no replacement; filed with its sibling protocol draft of 2026-07-18 (a judgment call).)*
