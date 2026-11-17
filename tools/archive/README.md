@@ -54,8 +54,10 @@ node tools/archive/search.js --json "Studio"                       # one JSON ob
 Filters: `--quarter`, `--kind`, `--system` (each repeatable), `--from` and
 `--to` (a day or a month; an undated log entry takes the date of the
 nearest dated entry above it), `--pr N`, `--files` or `--entries`,
-`--max <lines per record>` (default 3). The pattern is a case-insensitive
-regular expression. Exit 0 with hits, 1 with none, 2 on a usage error.
+`--max <lines per record>` (default 3). The search text is plain and
+case-insensitive, with `|` between alternatives (`"12-minute|timeout"`);
+it is never compiled as a regular expression, so no input can hang the
+search. Exit 0 with hits, 1 with none, 2 on a usage error.
 
 Agents: search the archive with this, not by grepping `archive/` whole
 (`CLAUDE.md`). The root `.ignore` already keeps it out of ripgrep.

@@ -114,6 +114,19 @@ test('search: filters first, then the text; a log is searched entry by entry', (
   assert.throws(() => search.parseArgs(['--kind', 'nope']));
 });
 
+test('search: plain text with | alternatives, never a regular expression; #N stands alone', () => {
+  const m = search.textMatcher('12-MINUTE|time(out');
+  assert.ok(m.test('the 12-minute limit'));
+  assert.ok(m.test('a time(out) in parentheses'), 'regex characters are literal');
+  assert.ok(!m.test('timeout'));
+  const pr = search.prMatcher(179);
+  assert.ok(pr.test('bug 3 (#179) live'));
+  assert.ok(pr.test('#179'));
+  assert.ok(!pr.test('#1790 and &#179; and ##179'));
+  assert.throws(() => search.parseArgs(['--pr', '17.9']));
+  assert.equal(search.parseArgs(['--pr', '#179']).pr, 179);
+});
+
 test('the repo\'s own archive: catalog complete and indexes current', () => {
   const errors = build.validate(lib.loadCatalog(), lib.loadQuarters());
   assert.deepEqual(errors, []);

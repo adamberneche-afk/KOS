@@ -11,8 +11,10 @@
  * USAGE
  *   node tools/archive/search.js [filters] [pattern]
  *
- *   pattern            a case-insensitive regular expression; without one,
- *                      the matching records are listed
+ *   text               case-insensitive plain text; `a|b` matches either.
+ *                      Not a regular expression: what an agent or a person
+ *                      types is never compiled. Without it, the matching
+ *                      records are listed
  *   --quarter <id>     2025-26, summer-2026, 2026-27-Q1 ... (repeatable)
  *   --kind <kind>      handoff, plan, audit, replaced, history (repeatable)
  *   --system <name>    meta, cas-ccps, kos-personal, leader-hub, drive-curation
@@ -39,7 +41,11 @@ function parseArgs(argv) {
     else if (a === '--system') o.system.push(val());
     else if (a === '--from') o.from = val();
     else if (a === '--to') o.to = val();
-    else if (a === '--pr') o.pr = Number(String(val()).replace('#', ''));
+    else if (a === '--pr') {
+      const v = String(val()).replace(/^#/, '');
+      if (!/^\d{1,5}$/.test(v)) throw new Error('--pr takes a number, like 179 or #179');
+      o.pr = Number(v);
+    }
     else if (a === '--max') o.max = Number(val());
     else if (a === '--files') o.files = true;
     else if (a === '--entries') o.entries = true;
@@ -65,11 +71,31 @@ function inRange(date, o) {
   return true;
 }
 
+// Plain-text matching: case-insensitive substrings, `|` between
+// alternatives. Shaped like a RegExp (`.test`) so callers don't care.
+function textMatcher(text) {
+  const terms = String(text).toLowerCase().split('|').map((t) => t.trim()).filter(Boolean);
+  return { test: (s) => { const l = String(s).toLowerCase(); return terms.some((t) => l.includes(t)); } };
+}
+
+// `#N` as its own reference: not `#1790` for #179, not `&#179;`.
+function prMatcher(n) {
+  const tag = '#' + n;
+  return { test: (s) => {
+    for (let i = s.indexOf(tag); i !== -1; i = s.indexOf(tag, i + 1)) {
+      const before = i ? s[i - 1] : '';
+      const after = s[i + tag.length] || '';
+      if (!/[\w&#]/.test(before) && !/\w/.test(after)) return true;
+    }
+    return false;
+  } };
+}
+
 function search(o, root) {
   const catalog = lib.loadCatalog(root);
   const entries = lib.readJsonl('archive/entries.jsonl', root);
-  const re = o.pattern ? new RegExp(o.pattern, 'i') : null;
-  const prRe = o.pr ? new RegExp('(?<![\\w&#])#' + o.pr + '\\b') : null;
+  const re = o.pattern ? textMatcher(o.pattern) : null;
+  const prRe = o.pr ? prMatcher(o.pr) : null;
   const pass = (r) => (!o.quarter.length || o.quarter.includes(r.quarter)) &&
     (!o.system.length || o.system.includes(r.system));
   const hits = [];
@@ -121,4 +147,4 @@ function main(argv, root) {
 }
 
 if (require.main === module) process.exit(main(process.argv.slice(2)));
-module.exports = { main, search, parseArgs, inRange };
+module.exports = { main, search, parseArgs, inRange, textMatcher, prMatcher };
