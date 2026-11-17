@@ -157,7 +157,7 @@ test('a banner appearing far below the top of the file does not exempt the docum
 
 test('a doc listed as documenting an out-of-repo Apps Script project reports as external', () => {
   const raw = '# Integration guide\n\nCall `processInbox()` every 10 minutes.\n';
-  assert.equal(docLevelStatus('leader-hub/LH_02_INTEGRATION_GUIDE.md', raw), 'external');
+  assert.equal(docLevelStatus('archive/2025-26/leader-hub/LH_02_INTEGRATION_GUIDE.md', raw), 'external');
 });
 
 test('an ordinary doc with no banner reports as live', () => {

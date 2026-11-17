@@ -39,18 +39,18 @@
   "bannerScanLines": 20,
   "_comment_externalSurfaceDocs": "Docs describing Apps Script that lives in the operator's Script editor and was never committed here, mapped to the specific out-of-repo function names each one documents. PER-NAME ON PURPOSE: this was a flat array of paths, which marked a whole file unverifiable, and that is how LH_02_INTEGRATION_GUIDE.md's \"all AI calls go through callAI()\" hid as a soft warning -- callAI was deleted from leader-hub's own HTML (see its \"Removed: Gemini AI infrastructure\" line), so it was never external at all. A name NOT on its doc's list is checked normally and errors if missing. Do not add a name here to silence a finding; only add one that genuinely lives in the uncommitted project. Committing those scripts would let an entry graduate off this list entirely.",
   "externalSurfaceDocs": {
-    "leader-hub/LH_02_INTEGRATION_GUIDE.md": [
+    "archive/2025-26/leader-hub/LH_02_INTEGRATION_GUIDE.md": [
       "processInbox",
       "processLHShortcuts",
       "syncCalendar",
       "extractFromEmail_"
     ],
-    "leader-hub/LH_03_CANVAS_INTEGRATION_IDEAS.md": [
+    "archive/2025-26/leader-hub/LH_03_CANVAS_INTEGRATION_IDEAS.md": [
       "syncCalendar",
       "processLHShortcuts",
       "extractFromEmail_"
     ],
-    "leader-hub/LH_04_EMAIL_AUDIT.md": [
+    "archive/2025-26/leader-hub/LH_04_EMAIL_AUDIT.md": [
       "auditInbox",
       "processInbox",
       "extractFromEmail_"

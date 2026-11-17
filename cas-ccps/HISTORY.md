@@ -329,7 +329,7 @@ teacher. The 21 docs trashed on 2026-10-07 were already restored (#227).
 
 ## Drive links out of the docs, 2026-11-15
 
-- **Asked:** `drive-curation/DELETION_MANIFEST.md` held 62 Drive and Docs
+- **Asked:** `archive/summer-2026/drive-curation/DELETION_MANIFEST.md` held 62 Drive and Docs
   links, against the rule that the repo keeps no Drive file IDs or links.
 - **Now:** every Markdown doc is clean. The manifest, the Gemini handoff list
   and the unit cross-reference list keep their names, reasons and

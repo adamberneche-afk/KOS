@@ -48,6 +48,10 @@ test('plan: the date in the name decides the quarter; a month across two quarter
   assert.throws(() => file.plan(file.parseArgs(['meta/NOTES.md', '--summary', 'x', '--date', '2026-08']), r.root, quarters), /falls in summer-2026 and 2026-27-Q1/);
   const ok = file.plan(file.parseArgs(['meta/NOTES.md', '--summary', 'x', '--date', '2026-08', '--quarter', 'summer-2026', '--filed-by', 'before school started']), r.root, quarters);
   assert.equal(ok.rec.quarter, 'summer-2026');
+  const noted = repo({ 'drive/INDEX.md': '# Index\n*(2026-11-15: links removed.)*\n' });
+  const q = file.plan(file.parseArgs(['drive/INDEX.md', '--summary', 'x', '--quarter', 'summer-2026', '--filed-by', 'part of the summer overhaul']), noted.root, quarters);
+  assert.equal(q.rec.quarter, 'summer-2026', '--quarter wins over an edit note near the top');
+  assert.equal(q.rec.date, null);
   assert.throws(() => file.parseArgs(['x.md', '--summary', 'x', '--filed-on', '2026-10-01']), /--filed-on needs --filed-by/);
   assert.throws(() => file.parseArgs(['x.md']), /--summary is required/);
 });

@@ -48,7 +48,7 @@ remain in git history; `--history` reports their addresses as
 scan on every push and pull request, so a new student-shaped address fails
 the build. On 2026-10-20 the operator confirmed every remaining email
 finding, in the tree and in history, as a placeholder (allowlisted), and
-`--roster` found one real student name (`leader-hub/LH_04_EMAIL_AUDIT.md`),
+`--roster` found one real student name (`archive/2025-26/leader-hub/LH_04_EMAIL_AUDIT.md`),
 removed from the tree by the operator. The same day, at the operator's
 decision, `git filter-repo` replaced it in every past version (29 file
 versions) and all branches and tags were force-pushed; a fresh clone scans

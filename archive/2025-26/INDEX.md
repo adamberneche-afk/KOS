@@ -14,8 +14,14 @@ How files are filed and searched: the [archive index](../INDEX.md).
 
 - 2026-04-09 · [`leader-hub/LEADERHUB_HANDOFF.md`](leader-hub/LEADERHUB_HANDOFF.md) — LeaderHub handoff, 04-09 (historical) *(Filed by: its own date (April 9, 2026).)*
 
+## Audits and reviews
+
+- 2026-03 · [`leader-hub/LH_04_EMAIL_AUDIT.md`](leader-hub/LH_04_EMAIL_AUDIT.md) — LeaderHub email audit (Gmail intake paused 10-23; how to re-run it) *(Filed by: its own date (March 2026); status note 2026-10-23.)*
+
 ## Replaced versions and retired guides
 
+- 2026-03 · [`leader-hub/LH_02_INTEGRATION_GUIDE.md`](leader-hub/LH_02_INTEGRATION_GUIDE.md) — LeaderHub integration guide v2 (describes Apps Script never committed here) *(Filed by: its own dates (February-March 2026).)*
+- 2026-03 · [`leader-hub/LH_03_CANVAS_INTEGRATION_IDEAS.md`](leader-hub/LH_03_CANVAS_INTEGRATION_IDEAS.md) — LeaderHub Canvas integration ideas and roadmap *(Filed by: its own dates (March 2026).)*
 - 2026-03 · [`leader-hub/LH_04_GRADING_STRUCTURE.md`](leader-hub/LH_04_GRADING_STRUCTURE.md) — Grading structure, dated snapshot (LH_05_GRADING_STRUCTURE.md is current) *(Filed by: its own date (March 2026).)* Replaced by `leader-hub/LH_05_GRADING_STRUCTURE.md`.
 - 2026-03 · [`leader-hub/LH_05_PACING_AND_GRADING.md`](leader-hub/LH_05_PACING_AND_GRADING.md) — Pacing and grading, dated snapshot *(Filed by: its own date (March 2026).)*
 - 2026-05 · [`kos-personal/rtp-core-router/protocols/COLD_START_ORIENTATION.md`](kos-personal/rtp-core-router/protocols/COLD_START_ORIENTATION.md) — Cold-start orientation (dated snapshot) *(Filed by: its own dates (April and May 2026).)*
