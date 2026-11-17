@@ -984,6 +984,24 @@ test('re-arm: a READY row unanswered past the lane timeout is cleared, then set 
   assert.equal(fiCell(fiSheet, exported, 'REARMS'), 1);
 });
 
+test('re-arm: a row cleared by hand long after it was built is set READY once, not restarted on the next run', () => {
+  // 11-15: the operator cleared rows built 11-12/13. The left-blank path set
+  // them READY without an ArmedAt, so the next run read the old Timestamp
+  // and restarted them while Studio was still answering.
+  const { exported, sandbox } = load();
+  const { fiSheet } = setUpWaitingScenario(sandbox, exported, { builtAt: new Date(Date.now() - 2 * 24 * 60 * MIN) });
+  fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('');
+
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'READY');
+  assert.ok(Date.now() - new Date(fiCell(fiSheet, exported, 'ARMED_AT')).getTime() < MIN, 'ArmedAt is this READY');
+  assert.equal(fiCell(fiSheet, exported, 'REARMS'), '', 'not counted as a restart');
+
+  exported.buildFlowInputRows();
+  assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'READY', 'left alone until 12 minutes after this READY');
+  assert.equal(fiCell(fiSheet, exported, 'REARMS'), '');
+});
+
 test('re-arm: a READY row younger than the lane timeout, or one with output, is left alone', () => {
   const { exported, sandbox } = load();
   const young = setUpWaitingScenario(sandbox, exported, { stagingStatus: 'IN_PROCESS', builtAt: new Date(Date.now() - 5 * MIN) });
