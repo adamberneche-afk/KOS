@@ -106,7 +106,52 @@ function productionFiles() {
 // skipped.
 const TRIGGER_CALL_RE = /ScriptApp\.newTrigger\(\s*(?:(['"])([^'"]+)\1|([A-Za-z_$][\w$.]*))\s*\)/g;
 
-function findTriggerHandlers(absPath, relPath) {
+// A non-literal handler is resolved by two shapes the repo uses (2026-11-17,
+// the dead-ends audit's item 3, which found 12 registrations this tool
+// couldn't see):
+//   - a name bound to a literal: `const WD_TRIGGER_FN = 'runQueueWatchdog'`,
+//     or `const fn = "dispatchFormSubmit"` in the installing function: looked
+//     up in the same file, then in the project's other files;
+//   - a handler table: `ScriptApp.newTrigger(h.fn)` over a literal array of
+//     `{ fn: "name", … }` (and lcInstallJob_(fn), which installs only an
+//     LC_JOBS entry): every `fn: "<name>"` in the same file.
+// Anything else stays unresolved, a warning as before.
+// The name is escaped whole (every regex special, backslash included), as
+// definesFunction does; only an identifier ever reaches here anyway.
+const escapeRegExp = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const BOUND_NAME_RE = (name) => new RegExp('\\b(?:const|let|var)\\s+' + escapeRegExp(name) + "\\s*=\\s*(['\"])([A-Za-z_$][\\w$]*)\\1");
+const TABLE_ENTRY_RE = /\bfn\s*:\s*(['"])([A-Za-z_$][\w$]*)\1/g;
+
+function boundLiteral(src, name) {
+  const m = BOUND_NAME_RE(name).exec(src);
+  return m ? m[2] : null;
+}
+
+function tableNames(src) {
+  const out = [];
+  let m;
+  TABLE_ENTRY_RE.lastIndex = 0;
+  while ((m = TABLE_ENTRY_RE.exec(src)) !== null) if (out.indexOf(m[2]) === -1) out.push(m[2]);
+  return out;
+}
+
+// expr: the argument as written. srcs: { file: the registering file's source
+// (comments stripped, strings kept), project: [the project's other files'] }.
+// Returns [names] and how they were found, or null.
+function resolveHandlerExpr(expr, srcs) {
+  if (/^[A-Za-z_$][\w$]*$/.test(expr)) {
+    const bound = boundLiteral(srcs.file, expr) ||
+      srcs.project.map((p) => boundLiteral(p, expr)).filter(Boolean)[0];
+    if (bound) return { names: [bound], via: 'constant ' + expr };
+  }
+  if (/\.fn$/.test(expr) || expr === 'fn') {
+    const names = tableNames(srcs.file);
+    if (names.length) return { names, via: 'the handler table in its file' };
+  }
+  return null;
+}
+
+function findTriggerHandlers(absPath, relPath, projectSrcs) {
   const raw = fs.readFileSync(absPath, 'utf8');
   const stripped = stripCommentsAndStrings(raw, { keepStrings: true });
   const lines = stripped.split('\n');
@@ -116,7 +161,9 @@ function findTriggerHandlers(absPath, relPath) {
     let m;
     TRIGGER_CALL_RE.lastIndex = 0;
     while ((m = TRIGGER_CALL_RE.exec(line)) !== null) {
-      if (m[2]) resolved.push({ name: m[2], line: idx + 1 });
+      if (m[2]) { resolved.push({ name: m[2], line: idx + 1 }); continue; }
+      const r = resolveHandlerExpr(m[3], { file: stripped, project: projectSrcs || [] });
+      if (r) r.names.forEach((name) => resolved.push({ name, line: idx + 1, via: r.via }));
       else unresolved.push({ expr: m[3], line: idx + 1, file: relPath });
     }
   });
@@ -184,11 +231,25 @@ function main() {
   // silently passing).
   const resolvedHandlers = []; // { project, name, registeredIn }
   const unresolvedCalls = [];
+  // Each project's sources, comments stripped and strings kept, so a handler
+  // named by a constant in another file of the project resolves.
+  const projectSrcs = {};
+  for (const { project, relPath } of files) {
+    const absPath = path.join(REPO_ROOT, relPath);
+    if (!fs.existsSync(absPath) || relPath.endsWith('.html')) continue;
+    (projectSrcs[project] = projectSrcs[project] || []).push(stripCommentsAndStrings(fs.readFileSync(absPath, 'utf8'), { keepStrings: true }));
+  }
+  const seenHandler = new Set();
   for (const { project, relPath } of files) {
     const absPath = path.join(REPO_ROOT, relPath);
     if (!fs.existsSync(absPath)) continue; // gas-lint's own checks already report a missing file
-    const { resolved, unresolved } = findTriggerHandlers(absPath, relPath);
-    resolved.forEach((r) => resolvedHandlers.push({ project, name: r.name, registeredIn: relPath, line: r.line }));
+    const { resolved, unresolved } = findTriggerHandlers(absPath, relPath, projectSrcs[project]);
+    resolved.forEach((r) => {
+      const k = project + '::' + r.name;
+      if (seenHandler.has(k)) return; // a handler installed from two places is checked once
+      seenHandler.add(k);
+      resolvedHandlers.push({ project, name: r.name, registeredIn: relPath, line: r.line, via: r.via });
+    });
     unresolved.forEach((u) => unresolvedCalls.push({ project, ...u }));
   }
 
@@ -300,4 +361,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { findTriggerHandlers, mergeCoverage, productionFiles, loadAllowlist, definesFunction };
+module.exports = { findTriggerHandlers, resolveHandlerExpr, mergeCoverage, productionFiles, loadAllowlist, definesFunction };

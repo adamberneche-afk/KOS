@@ -81,6 +81,9 @@ items from the Apps Script editor's **Run** menu instead:
 | `generateLicenseReport` | The license report |
 | `deployFullSystem` | Re-runs the full deploy |
 | `nuclearWipeForRelease` | Irreversible wipe; read it before running |
+| `installStudioReturnTrigger` | Installs `harvestStudioReturns` every 5 minutes on an instance deployed before `12_StudioReturnHarvest.gs` existed (`setupAllTriggers` installs it on a fresh deploy); safe to run again. Not on the menu |
+| `runKosPersonalPreflightNow` | Runs `runKosPersonalPreflight()` and shows (or, standalone, logs) how many checks passed; the Preflight tab has the detail. Not on the menu |
+| `previewMoralDebt` / `resetMoralDebt` | SMP-019's moral debt counter (`23_MoralDebt.gs`): the primer's line, changing nothing; or set the counter to 0 from now. Not on the menu |
 | `getKOSCalibration` | Reads one calibration weight (a Script Property) by key; logs `[CALIBRATION_MISSING]` if it isn't set. Not on the menu, and nothing calls it: a check by hand after `setupCalibration` |
 
 Any of these that shows a dialog (`getUi()`) can't do so from a standalone

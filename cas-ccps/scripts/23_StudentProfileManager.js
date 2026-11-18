@@ -41,7 +41,7 @@
 //   At 2 seconds per doc × 50 docs = 100 seconds — well within the limit.
 //
 // TRIGGER:
-//   Time-based · every day at 3:00am · installed by installWarmUpTriggers_()
+//   Time-based · every day at 3:00am · installed by installWarmUpTriggers_() (24_WarmUpBridge.js)
 //   Must complete before Script 24 runs (Script 24 trigger: 3:30am)
 //   Must complete before Script 25 runs (Script 25 trigger: 3:15am)
 //   NOTE: Script 25's extra credit detection from TONIGHT runs at 3:15am.
@@ -1160,69 +1160,12 @@ function buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding) {
 }
 
 // ---------------------------------------------------------------------------
-// installWarmUpTriggers
-// Run once manually from Script Editor. The Run dropdown hides names ending
-// in "_", so this is the entry point; installWarmUpTriggers_ does the work.
+// installWarmUpTriggers() moved to 24_WarmUpBridge.js (2026-11-17): this file
+// is also in the Teacher Dashboard project, where two of the three handlers
+// it installs (runWarmUpEvaluation, buildWarmUpQueues) don't exist, so run
+// from that editor it set up two triggers that failed every night. 24 is in
+// the Central Ledger only.
 // ---------------------------------------------------------------------------
-function installWarmUpTriggers() {
-  requireScriptOwner_();
-  installWarmUpTriggers_();
-}
-
-// ---------------------------------------------------------------------------
-// installWarmUpTriggers_
-// Installs the triggers; run it through installWarmUpTriggers().
-// Installs all three nightly warm-up cron triggers.
-// Sequence: S23 at 3:00am → S25 eval at 3:15am → S24 at 3:30am
-// Safe to re-run — checks for existing triggers before installing.
-// ---------------------------------------------------------------------------
-function installWarmUpTriggers_() {
-  const handlers = [
-    { fn: "updateAllStudentProfiles", hour: 3, minute: 0,  label: "3:00am — Stage 1: Profile update"    },
-    { fn: "runWarmUpEvaluation",      hour: 3, minute: 15, label: "3:15am — Stage 2: Warm-up evaluation" },
-    { fn: "buildWarmUpQueues",        hour: 3, minute: 30, label: "3:30am — Stage 3: Queue builder"      }
-  ];
-
-  const existing = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
-
-  for (const h of handlers) {
-    if (existing.includes(h.fn)) {
-      Logger.log("[S23] Trigger already installed: " + h.fn + " — skipping.");
-      continue;
-    }
-    ScriptApp.newTrigger(h.fn)
-      .timeBased()
-      .atHour(h.hour)
-      .nearMinute(h.minute)
-      .everyDays(1)
-      .create();
-    Logger.log("[S23] Installed: " + h.fn + " (" + h.label + ")");
-  }
-
-  // Verify all warm-up tabs exist
-  const cfg = getConfig_();
-  const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const requiredTabs = [
-    cfg.tabs.studentProfiles,
-    cfg.tabs.warmUpQueue,
-    cfg.tabs.warmUpRegistry,
-    cfg.tabs.classSchedule
-  ];
-  requiredTabs.forEach(tabName => {
-    const sheet = ss.getSheetByName(tabName);
-    Logger.log("[S23] Tab '" + tabName + "': " +
-               (sheet ? "FOUND ✓" : "MISSING — run createWarmUpTabs_()"));
-  });
-
-  // ── Stage 1B trigger (Script 33) ─────────────────────────────────────────
-  // installArtifactSyncTrigger_() in Script 33 installs the 3:05am trigger.
-  // It is a separate entry point because Script 33 is bound to the same
-  // project and can install its own trigger.
-  // Run installArtifactSyncTrigger() from Script 33 after adding S33 to project.
-  Logger.log("[S23] Trigger installation complete.");
-  Logger.log("[S23] Also run installArtifactSyncTrigger() from Script 33 " +
-             "to install the 3:05am artifact sync trigger.");
-}
 
 // ---------------------------------------------------------------------------
 // createWarmUpTabs_

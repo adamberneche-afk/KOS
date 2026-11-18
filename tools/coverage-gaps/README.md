@@ -117,3 +117,14 @@ after the last file, so V8 credited all of it to that file. Handlers tested
 from a file that wasn't loaded last (`buildFlowInputRows`,
 `harvestFlowInputResults`) looked untested and were allowlisted. The harness
 now runs each file as its own script, and those entries are gone.
+
+## Handlers named by a constant or a table (2026-11-17)
+
+A `ScriptApp.newTrigger(...)` whose argument isn't a string literal is
+resolved when it is one of two shapes: a name bound to a literal
+(`const WD_TRIGGER_FN = 'runQueueWatchdog'`, in the same file or another
+file of the project), or a handler table (`newTrigger(h.fn)` over literal
+`{ fn: '<name>' }` entries in the same file; also a bare `fn` in a file
+with such a table, as 64's `lcInstallJob_`). Anything else is still an
+`unresolved-trigger-name` warning. A handler installed from two places is
+checked once per project.

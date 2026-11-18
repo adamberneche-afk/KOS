@@ -397,7 +397,7 @@ project `SETUP_GUIDE.md` names, which for the nightly jobs is the Central Ledger
 | `buildUpcomingLessons` | `installLessonPlanTrigger()` | daily, about 02:00 | 51_CourseYearBuilder.js |
 | `buildWarmUpFlowInputs` | `installWarmUpFlowTriggers()` | every 5 min | 41_WarmUpFlowBridge.js |
 | `buildWarmUpFlowInputs` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
-| `buildWarmUpQueues` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:30 | 23_StudentProfileManager.js |
+| `buildWarmUpQueues` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:30 | 24_WarmUpBridge.js |
 | `dispatchFormSubmit` | `installFormSubmitTrigger()` | on form submit, (spreadsheet) | 18_FormSubmitDispatcher.js |
 | `harvestFlowInputResults` | `installFlowInputTriggers()` | every 1 min | 37_FlowInputBuilder.js |
 | `harvestFlowInputResults` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
@@ -415,13 +415,13 @@ project `SETUP_GUIDE.md` names, which for the nightly jobs is the Central Ledger
 | `runQueueWatchdog` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `runStagingTurnstile` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `runTurnInCheckFlow` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
-| `runWarmUpEvaluation` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:15 | 23_StudentProfileManager.js |
+| `runWarmUpEvaluation` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:15 | 24_WarmUpBridge.js |
 | `runWeeklyParentReportPrep` | `installWeeklyParentReportTrigger()` | Fridays, about 05:00 | 36_WeeklyParentReport.js |
 | `runWeeklySCRSuggestionUpdate_` | `installSCRTrigger_()` (run via `setupCompetencySuggestions()`) | every 7 days, about 04:00 | 30_SCRSuggestionEngine.js |
 | `runWeeklyStudentAggregation_` | `installStudentAggregatorTrigger_()` (run via `setupStudentContextDocs()`) | every 7 days, about 03:00 | 29_StudentContextAggregator.js |
 | `syncArtifactCompetencies` | `installArtifactSyncTrigger_()` (run via `installArtifactSyncTrigger()`) | daily, about 03:05 | 33_ArtifactCompetencyBridge.js |
 | `unlockReadyParts` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
-| `updateAllStudentProfiles` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:00 | 23_StudentProfileManager.js |
+| `updateAllStudentProfiles` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:00 | 24_WarmUpBridge.js |
 
 Not resolved (the handler is a parameter or computed; read the code):
 
@@ -480,12 +480,9 @@ cycle runs every due job without checks. In quiet hours (`LEDGER_CYCLE_QUIET`; d
 
 | Handler | Installed by | Schedule | File |
 |---|---|---|---|
-| `buildWarmUpQueues` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:30 | 23_StudentProfileManager.js |
 | `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 48_DeployVersionMarker_TeacherDashboard.js |
-| `runWarmUpEvaluation` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:15 | 23_StudentProfileManager.js |
 | `runWeeklyParentReportPrep` | `installWeeklyParentReportTrigger()` | Fridays, about 05:00 | 36_WeeklyParentReport.js |
 | `runWeeklyStudentAggregation_` | `installStudentAggregatorTrigger_()` (run via `setupStudentContextDocs()`) | every 7 days, about 03:00 | 29_StudentContextAggregator.js |
-| `updateAllStudentProfiles` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:00 | 23_StudentProfileManager.js |
 
 ### `teacher-matrix-sheet`
 
