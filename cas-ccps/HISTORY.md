@@ -833,3 +833,7 @@ work. "We need to train the students or make it more obvious."
   two more steps: earn a code by answering the question on the card, then
   copy it into the same assignment's text box in Canvas and submit, drawn.
 - Tests: `student-dashboard-navigation.test.js`.
+- The code box (71b) was 19 characters wide for a 22-character code, so it
+  showed "CAS-8175-L01-7KQ3-M9" and a student reading it would type it
+  wrong; found in the tutorial's screenshot. It is now a whole code wide,
+  with smaller type on a phone.

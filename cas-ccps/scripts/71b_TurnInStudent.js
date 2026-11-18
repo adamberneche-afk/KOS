@@ -183,7 +183,11 @@ const TURN_IN_CLIENT_CSS = `
   .ti-count{font-size:12px;color:var(--text-secondary);margin:2px 0 8px}
   .ti-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
   /* Large, so it reads at a glance and copies cleanly (2026-11-14). */
-  .ti-code{font-family:"Roboto Mono",Consolas,monospace;font-size:24px;font-weight:600;letter-spacing:1px;padding:10px 12px;border:2px solid #1a73e8;border-radius:8px;background:#fff;min-width:19ch;max-width:100%}
+  /* The whole code shows (2026-11-17: 19ch cut a 22-character code off at
+     "…-M9", and a student reading it would type it wrong): 22 characters,
+     their 1px spacing, smaller type on a phone. */
+  .ti-code{font-family:"Roboto Mono",Consolas,monospace;font-size:24px;font-weight:600;letter-spacing:1px;padding:10px 12px;border:2px solid #1a73e8;border-radius:8px;background:#fff;box-sizing:content-box;width:calc(22ch + 24px);max-width:calc(100% - 28px)}
+  @media (max-width:480px){.ti-code{font-size:16px;letter-spacing:0}}
   .ti-copy{font-size:15px;min-height:44px}
   .ti-msg{font-size:13px;margin-top:8px;line-height:1.45}
   .ti-msg.err{color:#c5221f}

@@ -828,3 +828,13 @@ test('View feedback opens the doc with the feedback comment open', () => {
   assert.equal(ctx.openFeedback(link), true, 'pop-ups blocked: the link opens the doc itself');
   assert.doesNotMatch(ctx.cardHtml(by['VDOE-AMY-1']), /openFeedback/, 'a card to revise opens the doc to work in');
 });
+
+// 2026-11-17: the code box showed 19 of a code's 22 characters, so a
+// student reading it would type it wrong. It is as wide as a whole code.
+test('the code box is wide enough for a whole code', () => {
+  const env = load({ switch: '8177' });
+  const html = env.exported.buildStudentDashboardHtml_();
+  assert.equal(env.exported.turnInMakeCode_('8175', '03', '7KQ3M9T').length, 22, 'a code is 22 characters');
+  assert.match(html, /\.ti-code\{[^}]*width:calc\(22ch \+ 24px\)/);
+  assert.doesNotMatch(html, /\.ti-code\{[^}]*min-width:19ch/);
+});
