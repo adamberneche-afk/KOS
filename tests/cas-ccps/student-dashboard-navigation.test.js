@@ -332,7 +332,7 @@ test('one card per lesson: the part to work on now, a stepper, one next action, 
   // The label names the part it describes (2026-11-15): the marks cover every part so far.
   assert.match(lesson, /<div class="pill pill-[A-Z_]+">Part 2: [^<]+<\/div>/);
   assert.equal((lesson.match(/act-primary/g) || []).length, 1, 'one next action');
-  assert.match(lesson, /🔒 Part 4 opens when Part 3 meets its goal(: \u201c[^\u201d]+\u201d)?, or when your teacher opens it\./);
+  assert.match(lesson, /🔒 Part 4 (opens when Part 3 meets its goal(: \u201c[^\u201d]+\u201d)?, or when your teacher opens it|is waiting on Part 3, which hasn\u2019t been submitted)\./);
   assert.match(h, /<div class="parts-list" id="parts-CAS-8177-THE-HYPE-MACHINE" role="region"[^>]*hidden>/);
   // Tap: the other parts show, the button says so, and focus stays on it.
   const btn = { getAttribute: () => 'CAS-8177-THE-HYPE-MACHINE' };

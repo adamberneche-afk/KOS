@@ -871,3 +871,20 @@ EvaluationLog row. The day's count is kept (`FI_HELD_TWICE`) and the
 overnight email says so ("Flow 2 answered n submission(s) again …"). A
 resubmission is a new row built after the result and is delivered as
 before. Test: `flow-input-builder.test.js` (fails on the old guard).
+
+## D-P: prompt to submit the part before, 2026-11-17
+
+`explainLockedParts` on 11-17: 124 locked parts next in line, 114 of them
+because the part before was never checked (6 not met, 4 the date bug of
+#475). The rule that opens a part was not what held students back, so the
+operator chose a prompt to submit over changing it. On the Student
+Dashboard (13), a part that is open, not submitted, can be submitted and
+has its next part locked (`waitsOnSubmit`):
+- its lesson card's lock line reads "🔒 Part 3 is waiting on Part 2, which
+  hasn't been submitted. When it's ready, press Submit for Feedback. Part 3
+  opens once its check finds Part 2 meets its goal." (green, not grey);
+- Do next lists it after the cards to fix or revise, with "Submit to open
+  Part 3".
+The rule itself is unchanged: a part opens when the latest check of the
+part before finds its primary MET, or the teacher opens it. Tests:
+`lesson-parts-dashboards`, `student-dashboard-navigation`.

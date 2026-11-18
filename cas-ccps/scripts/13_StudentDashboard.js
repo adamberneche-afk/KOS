@@ -3091,6 +3091,8 @@ function buildStudentDashboardHtml_(opts) {
   .mark-NOT_MET{background:#f3e8fd;color:#7627bb}
   .mark-UNCHECKED{background:#f1f3f4;color:#3c4043}
   .lock-line{font-size:13px;color:var(--text-secondary);margin-top:8px}
+  .lock-line.lock-submit{color:#202124;background:#e6f4ea;border-left:3px solid #0b5f2e;padding:6px 10px;border-radius:4px}
+  .pill-submit{background:#e6f4ea;color:#0b5f2e}
   .parts-toggle{margin-top:10px;background:white;border:1px solid #5f6368;color:#3c4043;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer;font-family:inherit}
   .parts-toggle:focus-visible{outline:2px solid #1557b0;outline-offset:2px}
   .parts-list{margin-top:10px}
@@ -3826,7 +3828,7 @@ function render(data) {
 
   // This week's work first (F16 item 7): Do next, the warm-ups, the
   // classes; the competency counts after them.
-  let html = termLineHtml(data) + doNextHtml(data.assignments) + renderWarmUps(data) + listControlsHtml();
+  let html = termLineHtml(data) + doNextHtml(data.assignments, data.lockedParts) + renderWarmUps(data) + listControlsHtml();
   if (!listed.length) {
     html += '<p class="filter-empty" role="status">Nothing here with these filters. <button type="button" class="chip" onclick="clearFilters()">Show all</button></p>';
   }
@@ -4024,15 +4026,26 @@ function termLineHtml(data) {
 // couldn't-be-checked one first, then the ones to revise, each in the
 // cards' order. A timeout is left out: the student has nothing to do
 // ("your teacher knows"). Nothing when empty.
-function doNextHtml(list) {
+function doNextHtml(list, locked) {
   const items = (list || []).filter(a => a.statusClass === "ISSUE" && a.status !== "ERROR_TIMEOUT")
-    .concat((list || []).filter(a => a.statusClass === "NEEDS_ACTION"));
+    .concat((list || []).filter(a => a.statusClass === "NEEDS_ACTION"))
+    // Then a part never submitted whose next part waits on it (2026-11-17,
+    // D-P: 114 of 124 locked parts were waiting on a part never checked).
+    .concat((list || []).filter(a => waitsOnSubmit(a, locked)));
   if (!items.length) return "";
   return '<section class="do-next" aria-labelledby="do-next-h"><h2 id="do-next-h">Do next</h2><ul>' +
     items.map(a => '<li>' + chipHtml(a) + '<a href="#' + esc(cardId(a)) + '" onclick="return goToCard(\\'' + esc(cardId(a)) + '\\')">' +
       esc(cardName(a)) + '</a><span class="dn-meta">' + [a.part ? "Part " + a.part.n + " of " + a.part.count : "", a.className]
-        .filter(Boolean).map(esc).join(" · ") + '</span><span class="pill pill-' + esc(a.statusClass) + '">' + esc(a.statusPill || a.displayStatus) + '</span></li>').join("") +
+        .filter(Boolean).map(esc).join(" · ") + '</span>' + (waitsOnSubmit(a, locked)
+        ? '<span class="pill pill-submit">Submit to open Part ' + (a.part.n + 1) + '</span>'
+        : '<span class="pill pill-' + esc(a.statusClass) + '">' + esc(a.statusPill || a.displayStatus) + '</span>') + '</li>').join("") +
     '</ul></section>';
+}
+
+// An open part not submitted yet whose next part is locked waiting on it.
+function waitsOnSubmit(a, locked) {
+  return !!(a && a.part && a.statusClass === "NOT_STARTED" && a.canSubmit &&
+    (locked || []).some(l => l.lesson === a.part.lesson && l.n === a.part.n + 1));
 }
 
 // Scrolls to a card and moves focus there (the card has tabindex="-1").
@@ -4179,8 +4192,15 @@ function lessonCardHtml(part, list, locked) {
     return 'opens when Part ' + (n - 1) + ' meets its goal' +
       (prev && prev.taskLine ? ': \u201c' + esc(prev.taskLine) + '\u201d' : '') + ', or when your teacher opens it.';
   };
-  let after = shut.length
-    ? '<div class="lock-line">🔒 Part ' + shut[0].n + ' ' + opensWhen(shut[0].n) + '</div>' : "";
+  // When the part before was never submitted, the line says what to do
+  // (2026-11-17, D-P): nothing can open the next part until it is checked.
+  const before = shut.length ? open.filter(x => x.part.n === shut[0].n - 1)[0] : null;
+  let after = !shut.length ? ""
+    : before && waitsOnSubmit(before, locked)
+      ? '<div class="lock-line lock-submit">🔒 Part ' + shut[0].n + ' is waiting on Part ' + before.part.n +
+        ', which hasn\\u2019t been submitted. When it\\u2019s ready, press Submit for Feedback. Part ' + shut[0].n +
+        ' opens once its check finds Part ' + before.part.n + ' meets its goal.</div>'
+      : '<div class="lock-line">🔒 Part ' + shut[0].n + ' ' + opensWhen(shut[0].n) + '</div>';
   if (count > 1) {
     let rest = "";
     open.forEach(a => {
