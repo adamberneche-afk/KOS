@@ -4078,9 +4078,9 @@ function cardHtml(a, opts) {
   const openLabel = primary === "view" ? "View feedback" : noun ? "Open your " + (a.workType === "slides" ? "slides" : noun) : "Open My Document";
   // The demo has no document: its button shows a note instead.
   const docBtn = DEMO
-    ? \`<button type="button" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${openLabel}</button>\`
+    ? \`<button type="button" class="\${cls(primary !== "submit" && primary !== "retry" && !_reflect[a.fileId])}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${openLabel}</button>\`
     : doc
-    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}"\${primary === "view" ? \` data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="return openFeedback(this)"\` : ""}>\${openLabel} ↗</a>\`
+    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit" && primary !== "retry" && !_reflect[a.fileId])}\${primary === "view" ? " act-done" : ""}"\${primary === "view" ? \` data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="return openFeedback(this)"\` : ""}>\${openLabel} ↗</a>\`
     : \`<span style="color:var(--text-secondary);font-size:13px;">\${a.workType === "form" ? "Form" : a.workType === "slides" ? "Slides" : a.workType === "sheet" ? "Sheet" : "Document"} not yet available</span>\`;
   // A form, Slides or Sheets part (Phase 4b/4c/4d): Submit as for a doc; the server reads the file.
   const submitBtn = a.canSubmit && !_reflect[a.fileId]
@@ -4776,9 +4776,11 @@ function reflectFormHtml(a) {
       '<div class="reflect-count" id="' + esc(id) + '-n">' + n + " of " + REFLECT_MIN_WORDS + " words</div>";
   });
   h += '<div class="reflect-actions">' +
-    '<button class="submit-btn" data-file="' + esc(a.fileId) + '" data-config="' + esc(a.configId) +
+    // The card's own buttons (2026-11-17, UX audit item 7): while the
+    // questions are open, their Submit is the card's one filled button.
+    '<button type="button" class="act act-primary" data-file="' + esc(a.fileId) + '" data-config="' + esc(a.configId) +
     '" onclick="sendReflection(this)">Submit for Feedback</button>' +
-    '<button class="reflect-cancel" data-file="' + esc(a.fileId) + '" onclick="cancelReflection(this)">Cancel</button></div>';
+    '<button type="button" class="act act-secondary" data-file="' + esc(a.fileId) + '" onclick="cancelReflection(this)">Cancel</button></div>';
   if (r.msg) h += '<div class="submit-msg err" role="status">' + esc(r.msg) + "</div>";
   return h + "</div>";
 }

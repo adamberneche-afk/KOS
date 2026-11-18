@@ -838,3 +838,18 @@ test('the code box is wide enough for a whole code', () => {
   assert.match(html, /\.ti-code\{[^}]*width:calc\(22ch \+ 24px\)/);
   assert.doesNotMatch(html, /\.ti-code\{[^}]*min-width:19ch/);
 });
+
+// 2026-11-17 (UX audit item 7): the reflection step's buttons are the card's
+// own, and its Submit is the card's one filled button while it is open.
+test('the reflection step uses the card\'s buttons, one filled', () => {
+  const env = load({ switch: '8177' });
+  const { by } = env.dash();
+  const { ctx } = page(env.exported);
+  const a = by['VDOE-AMY-1'];
+  vm.runInContext('_reflect[' + JSON.stringify(a.fileId) + '] = { questions: [{ frameId: "E1", kind: "EVIDENCE", competencyId: "x", question: "Which part?", goal: "A goal", goalLabel: "Goal" }], answers: [""] };', ctx);
+  const html = ctx.cardHtml(a);
+  assert.match(html, /<button type="button" class="act act-primary"[^>]*onclick="sendReflection\(this\)">Submit for Feedback<\/button>/);
+  assert.match(html, /<button type="button" class="act act-secondary"[^>]*onclick="cancelReflection\(this\)">Cancel<\/button>/);
+  assert.doesNotMatch(html, /class="submit-btn"|class="reflect-cancel"/);
+  assert.equal((html.match(/act-primary/g) || []).length, 1, 'one filled button: the questions\' Submit');
+});

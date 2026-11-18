@@ -1169,3 +1169,19 @@ test('harvest: a submission already delivered is never delivered again; the over
   assert.equal(comments.length, 2, 'the new submission gets its feedback');
   assert.equal(fi.getRange(3, exported.FI.READY_STATUS + 1).getValue(), 'HARVESTED');
 });
+
+// 2026-11-17 (UX audit item 4): a Passed result's revisions are optional,
+// and its heading says so; a Revise result's stay required.
+test('harvest: on a pass the revisions read "To make it stronger (optional)", in the comment and in the doc', () => {
+  const body = (stamp, outcomes) => 'Overall, clear work.\n\n3. REQUIRED REVISIONS\n- Add one real example.\n' +
+    '[SYSTEM: ' + stamp + ']\n[MILESTONE_OUTCOMES: ' + outcomes + ']';
+  const passed = body('APPROVED', '{"1":"MET","2":"MET","3":"MET","4":"MET"}');
+  const revise = body('REVISION_REQUIRED', '{"1":"MET","2":"MET","3":"MET","4":"NOT_MET"}');
+  const c = harvestOneEvaluation(passed, { feedbackAsComment: 'all', configId: 'CAS-8175-L06' }).comments[0].resource.content;
+  assert.match(c, /\nTO MAKE IT STRONGER \(optional\)\n- Add one real example\./);
+  assert.doesNotMatch(c, /REQUIRED REVISIONS/);
+  const r = harvestOneEvaluation(revise, { feedbackAsComment: 'all', configId: 'CAS-8175-L06' }).comments[0].resource.content;
+  assert.match(r, /\nREQUIRED REVISIONS\n- Add one real example\./, 'a Revise keeps it');
+  const doc = harvestOneEvaluation(passed).text;
+  assert.match(doc, /3\. TO MAKE IT STRONGER \(optional\)\n- Add one real example\./, 'in the doc, its number kept');
+});
