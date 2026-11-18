@@ -306,6 +306,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 | `CANVAS_URL` | via the constant DASH_CANVAS_URL_PROP | — | no | 13_StudentDashboard.js |
 | `CURRENT_TERM` | direct | — | no | 00_SharedConfig.js |
 | `DASH_RETRY_AT` | via the constant DASH_RETRY_PROP | "{}" | 13_StudentDashboard.js | 13_StudentDashboard.js |
+| `DASH_TOUR_SEEN` | via the constant DASH_TOUR_PROP | — | 13_StudentDashboard.js | 13_StudentDashboard.js |
 | `DEPLOY_DRIFT_GITHUB_TOKEN` | direct | — | no | 00_SharedConfig.js |
 | `MARKING_PERIOD_ENDS` | direct | — | no | 00_SharedConfig.js, 13_StudentDashboard.js |
 | `TEACHER_EMAIL` | direct | — | no | 13_StudentDashboard.js |

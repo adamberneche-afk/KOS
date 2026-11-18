@@ -13,6 +13,7 @@
     "submitTurnInAnswer": "screens and stores an answer for the caller's own Ledger row only; never issues a code (_turnInSubmit_, 71b)",
     "getMyWaitingStatus": "status only, for the caller's own waiting cards: a card counts only when its Ledger row has the caller's account, ConfigID and file (as findOwnLedgerRow_); writes nothing (_dashWaitingStatus_)",
     "getMyFeedbackLink": "reads the feedback comment's link from the doc header of the caller's own row only (findOwnLedgerRow_ on the signed-in account, ConfigID and file); reads, never writes",
+    "markMyTourSeen": "records that the signed-in account has seen Show me around: one Script Property of short hashes, never the account (dashTourSeen_); writes nothing else",
     "retryMyCheck": "re-queues only the caller's own row (account, ConfigID and file, as findOwnLedgerRow_), only after a timeout (Ledger and staging at ERROR_TIMEOUT, nothing in flight), at most once per 10 minutes per card, server-enforced; changes one staging status cell, the admin re-queue's own write (_dashRetry_)"
   },
   "cas-ccps:teacher-dashboard": {

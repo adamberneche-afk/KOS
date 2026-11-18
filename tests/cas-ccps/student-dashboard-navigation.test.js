@@ -442,3 +442,81 @@ test('filter chips: toggle buttons; any number on; a lesson in parts by the part
   p.ctx.clearFilters();
   assert.ok(cardsPart().includes('id="card-W-L05"'));
 });
+
+// "Show me around" (2026-11-17): in More always; by itself on a student's
+// first visit only (the server keeps a hash of each account that has seen
+// it, never in the browser), never in the teacher's demo; a step whose part
+// isn't on the page is left out.
+function tourPage(demo) {
+  const env = setUp();
+  const html = env.exported.buildStudentDashboardHtml_({ demo });
+  const started = [], calls = [];
+  const els = {};
+  const ctx = {
+    document: { getElementById: (id) => els[id] || (els[id] = { id, style: {}, innerHTML: '', textContent: '', className: '', options: [],
+      setAttribute() {}, getAttribute() { return null; }, appendChild() {}, addEventListener() {}, classList: { add() {}, remove() {} }, focus() {} }),
+      addEventListener() {}, querySelectorAll: () => [], querySelector: (s) => (s === '.dash-tabs' ? {} : null),
+      createElement: () => ({}) },
+    google: { script: { run: new Proxy({}, { get: (t, name) => function () { calls.push(String(name)); return this; } }) } },
+    console, setTimeout: (f, ms) => { if (ms === 600) f(); }, setInterval() {}, navigator: {},
+  };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  extractInlineScripts(html).forEach((code) => vm.runInContext(code, ctx));
+  ctx.__started = started;
+  vm.runInContext('var __realStart = startTour; startTour = function () { __started.push(1); };', ctx);
+  calls.length = 0;
+  return { html, ctx, started, calls, env };
+}
+
+test('Show me around: in More; starts by itself on a student\'s first visit only, remembered on the server', () => {
+  const { html, ctx, started } = tourPage(false);
+  assert.match(html, /<button id="tour-btn" type="button" role="menuitem" tabindex="-1" aria-haspopup="dialog">.*Show me around<\/button>/);
+  ctx.tourMaybeStart({ assignments: [], tourSeen: false });
+  assert.equal(started.length, 0, 'no cards yet: wait');
+  ctx.tourMaybeStart({ assignments: [{}], tourSeen: false });
+  assert.equal(started.length, 1, 'first visit with cards: it starts');
+  ctx.tourMaybeStart({ assignments: [{}], tourSeen: false });
+  assert.equal(started.length, 1, 'once per page load');
+  const seen = tourPage(false);
+  seen.ctx.tourMaybeStart({ assignments: [{}], tourSeen: true });
+  assert.equal(seen.started.length, 0, 'seen: only from More');
+  const unknown = tourPage(false);
+  unknown.ctx.tourMaybeStart({ assignments: [{}] });
+  assert.equal(unknown.started.length, 0, 'no answer from the server: wait to be asked');
+  const demo = tourPage(true);
+  demo.ctx.tourMaybeStart({ assignments: [{}], tourSeen: false });
+  assert.equal(demo.started.length, 0, 'the teacher\'s demo waits to be asked');
+});
+
+test('Show me around: the server keeps a hash per account that has seen it, never the account', () => {
+  const env = setUp();
+  const { sandbox } = env;
+  const { exported } = loadGasFiles(SD_FILES, ['markMyTourSeen', 'dashTourSeen_'], {
+    Session: { getActiveUser: () => ({ getEmail: () => ME }), getEffectiveUser: () => ({ getEmail: () => TEACHER }), getScriptTimeZone: () => 'America/New_York' },
+    PropertiesService: sandbox.PropertiesService,
+  });
+  assert.equal(exported.dashTourSeen_(ME), false);
+  assert.equal(exported.markMyTourSeen().ok, true);
+  assert.equal(exported.dashTourSeen_(ME), true);
+  assert.equal(exported.dashTourSeen_('ME@ccpsnet.net'.replace('ME', 'amy')), true, 'case doesn\'t matter');
+  assert.equal(exported.dashTourSeen_('ben@ccpsnet.net'), false, 'another student hasn\'t');
+  exported.markMyTourSeen();
+  const stored = sandbox.PropertiesService.getScriptProperties().getProperty('DASH_TOUR_SEEN');
+  assert.equal(stored.split(',').length, 1, 'once per account');
+  assert.doesNotMatch(stored, /@|amy/, 'a hash, never the account');
+});
+
+test('Show me around: the steps, in plain words, skip a part that isn\'t on the page', () => {
+  const { ctx } = tourPage(false);
+  const steps = ctx._tourSteps();
+  assert.deepEqual(plain(steps.map((s) => s.title)), ['Welcome to your dashboard', 'Your record', 'Start here', 'Open your work',
+    'Send it for feedback', 'Read your feedback', 'Inside your document', 'Come back any time']);
+  const shown = steps.filter((s) => !s.el || s.el());
+  assert.deepEqual(plain(shown.map((s) => s.title)), ['Welcome to your dashboard', 'Your record', 'Inside your document'],
+    'only the tabs are on this stub page; the centered steps always show');
+  assert.match(steps[6].text, /click Comments at the top right/);
+  assert.match(steps[6].text, /outline on the left/);
+  assert.match(steps[6].art, /<svg[^>]*role="img"[^>]*aria-label="A Google Doc: Comments at the top right, the outline on the left"/);
+  steps.forEach((s) => assert.ok(s.text.split(/\s+/).length <= 45, 'short: ' + s.title));
+});

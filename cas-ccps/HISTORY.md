@@ -812,3 +812,20 @@ keeps it behind the Comments button.
 - Tests: `feedback-as-comment`, `flow-input-builder`, `turn-in-code`.
 - **To verify live once:** that a `?disco=` link opens an unanchored
   comment for a student (it does for anchored ones in Google's emails).
+
+## Show me around, 2026-11-17
+
+The operator: students don't find the feedback or the document's outline on
+the left; they love them once they do, but neither is part of their normal
+work. "We need to train the students or make it more obvious."
+
+- A walkthrough on the Student Dashboard (13): the dimmed page with each
+  part lit in turn and a card with Back and Next; a drawn Google Doc for
+  Comments and the outline; More ▾ → Show me around any time.
+- It starts by itself on a student's first visit. Whether they've seen it is
+  a Script Property of short account hashes (`DASH_TOUR_SEEN`), not the
+  browser (no cas-ccps page stores anything in the browser, 2026-10-22).
+- Docs has no way to open its Comments or outline panel from a link or a
+  script, so the outline is taught; the feedback comment is opened directly
+  by View feedback (the entry before this one).
+- Tests: `student-dashboard-navigation.test.js`.
