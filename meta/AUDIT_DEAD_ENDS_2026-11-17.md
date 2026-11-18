@@ -94,8 +94,13 @@ removed, and "the docs that say the wrong thing" fixed in one docs PR.
    outside code blocks): 1,021 resolve, 162 don't. Most of the 162 are
    relative to their system's folder, Drive folder names, gitignored
    folders, or history entries naming where a file used to be; the real
-   breaks are mostly files that moved into `archive/`. Still the
-   operator's decision.
+   breaks are mostly files that moved into `archive/`. **Decided: warn
+   only** (the operator, 2026-11-17); built the same day
+   (`tools/doc-currency/README.md`, "Path mentions resolve"). It leaves 30
+   warnings, all real: 13 name a folder since archived (each with its new
+   path), 11 the rtp-core-router README's superseded persona files that
+   aren't in the repo, 3 a path missing `scripts/`, and 3 files never
+   committed.
 
 ## Already queued (not dead ends)
 
