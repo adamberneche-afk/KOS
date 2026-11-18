@@ -888,3 +888,17 @@ has its next part locked (`waitsOnSubmit`):
 The rule itself is unchanged: a part opens when the latest check of the
 part before finds its primary MET, or the teacher opens it. Tests:
 `lesson-parts-dashboards`, `student-dashboard-navigation`.
+
+## UX audit items 4 and 7, 2026-11-17
+
+The operator's yes on the two items left from the 11-16 audit:
+- **Item 4 (37):** on a Passed result Flow 2's "REQUIRED REVISIONS" told a
+  student who passed that they had to change something. Delivered feedback
+  on a pass, in the comment and in the doc, now heads that section "TO MAKE
+  IT STRONGER (optional)" (`_fiPassedRevisionsHeading_`); a Revise keeps it.
+  Flow 2's stored output, and 39b's reading of it, are unchanged.
+- **Item 7 (13):** the reflection step's Submit and Cancel were a green
+  outline and a grey button beside the card's blue ones. They are the
+  card's own buttons now, and while the questions are open their Submit is
+  the card's one filled button (Open My Document goes to outlined).
+- Tests: `flow-input-builder`, `turn-in-code`.

@@ -1824,7 +1824,7 @@ function _fiFormatFeedbackBlock_(studentFacingReport, complianceStatus) {
   // used to stay put while new results arrived below them.
   return "\n── EVALUATION " + timestamp + " ──\n" +
     resultLine + "\n\n" +
-    studentFacingReport + "\n" +
+    _fiPassedRevisionsHeading_(studentFacingReport, complianceStatus) + "\n" +
     buildNextStepsText_(complianceStatus) +
     "\n── END EVALUATION ──\n";
 }
@@ -1839,7 +1839,7 @@ function _fiFormatFeedbackComment_(studentFacingReport, complianceStatus) {
   const when = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "MMM d, h:mm a");
   const resultLine = complianceStatus === "APPROVED" ? FI_RESULT_PASSED : FI_RESULT_REVISE;
   return "Feedback, " + when + "\n" + resultLine + "\n\n" +
-    _fiCleanCommentReport_(studentFacingReport) + "\n\n" +
+    _fiPassedRevisionsHeading_(_fiCleanCommentReport_(studentFacingReport), complianceStatus) + "\n\n" +
     _fiCommentNextSteps_(complianceStatus);
 }
 
@@ -1860,6 +1860,19 @@ function _fiCleanCommentReport_(report) {
     .filter(function (l) { return !FI_MACHINE_LINE_RE.test(l) && !FI_MACHINE_HEADING_RE.test(l); })
     .map(function (l) { return l.replace(FI_COMMENT_SECTIONS_RE, "$1$2"); })
     .join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// A Passed result's revisions are optional (2026-11-17, UX audit item 4, the
+// operator's yes): "REQUIRED REVISIONS" told a student who passed that they
+// had to change something. On a pass the heading reads "TO MAKE IT
+// STRONGER (optional)", with or without its section number, in the doc and
+// in the comment. A Revise result keeps its heading. Flow 2's stored
+// output (and 39b's reading of it) is unchanged: only what is delivered.
+const FI_REQUIRED_REVISIONS_RE = /^(\s*(?:\d+[a-z]?\.\s*)?)REQUIRED REVISIONS\b:?/gim;
+
+function _fiPassedRevisionsHeading_(report, complianceStatus) {
+  if (complianceStatus !== "APPROVED") return report;
+  return String(report || "").replace(FI_REQUIRED_REVISIONS_RE, "$1TO MAKE IT STRONGER (optional)");
 }
 
 // The result line, in the doc and in the comment: the dashboards' words.
