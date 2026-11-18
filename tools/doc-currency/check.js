@@ -664,6 +664,153 @@ function checkNoDriveIdsInDocs() {
 // line-wrap — all live in these functions, which is the argument for
 // testing exactly them.
 // -----------------------------------------------------------------------
+
+// -----------------------------------------------------------------------
+// Check: path mentions resolve (2026-11-17, the dead-ends audit's item 5,
+// the operator's "warn only")
+//
+// The function-name check above can't see a doc naming a file that moved or
+// was archived: 162 backticked repo paths in the live docs didn't resolve as
+// written. Most of those were fine, so a mention counts as resolved when any
+// of these finds it:
+//   - the path from the repo root, or from the doc's own folder;
+//   - the end of a real path (`lessons/PARTS.json` is
+//     cas-ccps/curriculum/lessons/PARTS.json): docs name files relative to
+//     their system;
+//   - a gitignored path (`cas-ccps/.clasp-build`, `.clasp.json`): real on a
+//     working copy, never committed;
+//   - a pattern in config.pathCheck.allow (Drive folder names and the like).
+// A path that was archived is reported with where it is now (the archive
+// catalog). Everything here is a WARNING, never an error: a doc can name a
+// path on purpose (an example, a file the reader will make), and the
+// operator chose warn-only. Skipped: the dated records the other checks skip
+// (excludeDocs, a superseded banner) and config.pathCheck.skipDocs.
+// -----------------------------------------------------------------------
+const PATH_MENTION_RE = /`([A-Za-z0-9_.\-]+(?:\/[A-Za-z0-9_.\-]+)+\/?)`/g;
+
+// The backticked path mentions in a doc's prose: [{ path, line }]. Fenced
+// code blocks are left out (a shell example, a tree), as are URLs, paths
+// with no dot in their last part and no trailing slash that don't look like
+// a file or folder, and anything outside the repo (`../x`).
+function pathMentionsIn(raw) {
+  const out = [];
+  let inFence = false;
+  raw.split('\n').forEach((line, i) => {
+    if (/^\s*(```|~~~)/.test(line)) { inFence = !inFence; return; }
+    if (inFence) return;
+    let m;
+    PATH_MENTION_RE.lastIndex = 0;
+    while ((m = PATH_MENTION_RE.exec(line)) !== null) {
+      const p = m[1];
+      if (/^(https?|www)\b/i.test(p) || p.startsWith('..') || p.startsWith('.')) continue;
+      out.push({ path: p.replace(/\/$/, ''), folder: /\/$/.test(p), line: i + 1 });
+    }
+  });
+  return out;
+}
+
+// How a mention resolves: 'not-a-path' | 'file' | 'folder' | 'suffix' |
+// 'ignored' | 'allowed' | { archived: '<archive path>' } | null (not found).
+// ctx: { files: Set, dirs: Set, suffixes: Set, top: Set (top-level names),
+// ignored(p), allow: [RegExp], archive: [{ from, to, folder }] }.
+// Whether a backticked a/b is meant as a repo path at all: it starts with
+// one of the repo's own top-level folders or files, or it ends in a file
+// extension and doesn't start with a domain. That leaves out `text/plain`,
+// `try/catch`, a Gmail label (`KOS/Family`), a date format (`M/D/YYYY`), a
+// GitHub owner/repo, a host and path, and short forms like `src/05`.
+function looksLikeRepoPath(p, ctx) {
+  const parts = p.split('/');
+  if (ctx.top.has(parts[0])) return true;
+  if (/\.(com|org|net|io|edu|gov|dev|app)$/i.test(parts[0])) return false;
+  return /\.[A-Za-z][A-Za-z0-9]{0,4}$/.test(parts[parts.length - 1]);
+}
+
+function resolvePathMention(mention, docRel, ctx) {
+  const p = mention.path;
+  if (!looksLikeRepoPath(p, ctx)) return 'not-a-path';
+  const here = path.posix.normalize(path.posix.join(path.posix.dirname(docRel), p));
+  for (const cand of [p, here]) {
+    if (ctx.files.has(cand)) return 'file';
+    if (ctx.dirs.has(cand)) return 'folder';
+  }
+  if (ctx.suffixes.has(p)) return 'suffix';
+  if (ctx.allow.some((re) => re.test(p))) return 'allowed';
+  for (const a of ctx.archive) {
+    if (p === a.from || (a.folder && p.startsWith(a.from + '/'))) return { archived: a.to + p.slice(a.from.length) };
+    if (here === a.from || (a.folder && here.startsWith(a.from + '/'))) return { archived: a.to + here.slice(a.from.length) };
+  }
+  if (ctx.ignored(p) || ctx.ignored(here)) return 'ignored';
+  return null;
+}
+
+function pathCheckContext() {
+  let tracked = [];
+  try { tracked = execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, encoding: 'utf8' }).split('\n').filter(Boolean); }
+  catch (e) { tracked = ALL_FILES; }
+  const files = new Set(tracked);
+  const dirs = new Set();
+  const suffixes = new Set();
+  tracked.forEach((f) => {
+    const parts = f.split('/');
+    for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join('/'));
+    // Every tail of two or more segments, of the file and its folders.
+    for (let i = 1; i < parts.length - 1; i++) {
+      suffixes.add(parts.slice(i).join('/'));
+      for (let j = i + 2; j < parts.length; j++) suffixes.add(parts.slice(i, j).join('/'));
+    }
+  });
+  const archive = [];
+  try {
+    fs.readFileSync(path.join(REPO_ROOT, 'archive', 'catalog.jsonl'), 'utf8').split('\n').filter(Boolean).forEach((l) => {
+      const r = JSON.parse(l);
+      const from = String(r.original_path || '').replace(/\/$/, '');
+      if (from) archive.push({ from, to: 'archive/' + String(r.id).replace(/\/$/, ''), folder: /\/$/.test(r.original_path) });
+    });
+  } catch (e) { /* no catalog: nothing archived to name */ }
+  const pc = CONFIG.pathCheck || {};
+  // A folder that moved before it was archived: the catalog knows only its
+  // last home (config.pathCheck.moved: { "old/path": "archive/…/path" }).
+  Object.keys(pc.moved || {}).forEach((from) => archive.push({ from, to: pc.moved[from], folder: true }));
+  const allow = (pc.allow || []).map((s) => new RegExp(s));
+  const ignoredCache = new Map();
+  const ignored = (p) => {
+    if (!ignoredCache.has(p)) {
+      let yes = false;
+      // As written, and as a folder (a pattern like `cas-ccps/clasp/local/`
+      // matches only a path that ends in a slash when it doesn't exist).
+      for (const q of [p, p + '/']) {
+        try { execFileSync('git', ['check-ignore', '-q', '--no-index', q], { cwd: REPO_ROOT, stdio: 'ignore' }); yes = true; break; }
+        catch (e) { /* not ignored as written */ }
+      }
+      ignoredCache.set(p, yes);
+    }
+    return ignoredCache.get(p);
+  };
+  const top = new Set(tracked.map((f) => f.split('/')[0]));
+  return { files, dirs, suffixes, ignored, allow, archive, top };
+}
+
+function checkPathMentionsResolve() {
+  const ctx = pathCheckContext();
+  const skip = ((CONFIG.pathCheck || {}).skipDocs || []);
+  for (const doc of DOC_FILES) {
+    if (skip.some((d) => doc === d || doc.endsWith('/' + d))) continue;
+    const raw = readFile(doc);
+    if (raw === null || docLevelStatus(doc, raw) === 'superseded') continue;
+    const seen = new Set();
+    for (const m of pathMentionsIn(raw)) {
+      if (seen.has(m.path)) continue;
+      seen.add(m.path);
+      const r = resolvePathMention(m, doc, ctx);
+      if (r && typeof r === 'object') {
+        warn('path-mention', doc + ':' + m.line + ' names `' + m.path + '`, which was archived; it is at `' + r.archived + '` now.', doc);
+      } else if (!r) {
+        warn('path-mention', doc + ':' + m.line + ' names `' + m.path + '`, which is not in the repo (from the root, from the doc\'s folder, as the end of a path, or gitignored).', doc);
+      }
+    }
+  }
+}
+
 module.exports = {
   declaredNamesFromSource,
   paragraphAround,
@@ -675,6 +822,8 @@ module.exports = {
   isExcludedDir,
   driveFindingsInText,
   DRIVE_DOC_RULES,
+  pathMentionsIn,
+  resolvePathMention,
   CONFIG,
 };
 
@@ -689,6 +838,7 @@ checkDocumentedKeysAreLive();
 checkCitationsInRange();
 checkBlockedSurfacesNotPresentedAsLive();
 checkNoDriveIdsInDocs();
+checkPathMentionsResolve();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

@@ -180,3 +180,25 @@ across a `>` continuation ("...gas-sandbox.js\` — 346\n> passing tests..."),
 which `\s+` could not bridge. `normalizeBlockquotes()` fixes this by
 replacing a leading `>` with a same-length blank before matching, so the
 paragraph reads as the one logical line it renders as.
+
+## Path mentions resolve (warn only, 2026-11-17)
+
+The dead-ends audit's item 5, decided by the operator as warn-only. Every
+backticked path in a live doc's prose (`a/b/c.md`, `tools/archive/`; not in
+code blocks) is looked up. It counts as fine when it is:
+
+- a file or folder from the repo root, or from the doc's own folder;
+- the end of a real path (`lessons/PARTS.json`): docs name files relative
+  to their system;
+- gitignored (`cas-ccps/.clasp-build`, `cas-ccps/clasp/local`);
+- matched by `config.pathCheck.allow` (Drive folder names);
+- not meant as a repo path at all: it neither starts with one of the
+  repo's top-level folders nor ends in a file extension (`text/plain`,
+  `try/catch`, `KOS/Family`, a date format, a host and path).
+
+A path that was archived is reported with where it is now (the archive
+catalog, plus `config.pathCheck.moved` for a folder that moved before it was
+archived). Anything else is a `path-mention` **warning**, never an error.
+Skipped: the dated records the other checks skip, any doc under a
+superseded banner, and `config.pathCheck.skipDocs` (the agent notes, which
+quote old handoffs; the research PRD, which names files still to be made).

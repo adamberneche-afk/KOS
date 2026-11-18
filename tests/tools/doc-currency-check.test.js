@@ -302,3 +302,39 @@ test('Check 6 leaves names, placeholders and plain Drive mentions alone', () => 
   ].join('\n');
   assert.deepEqual(driveFindingsInText(doc), []);
 });
+
+// ── Path mentions resolve (2026-11-17, the dead-ends audit's item 5; warn only)
+const { pathMentionsIn, resolvePathMention } = require('../../tools/doc-currency/check.js');
+
+test('pathMentionsIn: backticked paths in prose, not in code blocks; no URLs or paths outside the repo', () => {
+  const raw = ['See `cas-ccps/scripts/13_StudentDashboard.js` and `tools/archive/`.', '```', 'cat `meta/not-this.md`', '```',
+    'Not `../outside/file.md`, not `https/x.y`, not `./local.md`.'].join('\n');
+  assert.deepEqual(pathMentionsIn(raw).map((m) => [m.path, m.line, m.folder]),
+    [['cas-ccps/scripts/13_StudentDashboard.js', 1, false], ['tools/archive', 1, true]]);
+});
+
+test('resolvePathMention: from the root, the doc\'s folder, the end of a path; gitignored, allowed, archived, not a path, missing', () => {
+  const files = new Set(['cas-ccps/scripts/13_StudentDashboard.js', 'cas-ccps/curriculum/lessons/PARTS.json', 'meta/README.md']);
+  const ctx = {
+    files,
+    dirs: new Set(['cas-ccps', 'cas-ccps/scripts', 'cas-ccps/curriculum', 'cas-ccps/curriculum/lessons', 'meta']),
+    suffixes: new Set(['lessons/PARTS.json', 'curriculum/lessons/PARTS.json', 'scripts/13_StudentDashboard.js']),
+    top: new Set(['cas-ccps', 'meta', 'tools']),
+    ignored: (p) => p === 'cas-ccps/.clasp-build',
+    allow: [/^\d{2}\.\d+_/],
+    archive: [{ from: 'cas-ccps/studio-steps', to: 'archive/2026-27-Q2/cas-ccps/archived/studio-steps', folder: true }],
+  };
+  const r = (p, doc) => resolvePathMention({ path: p }, doc || 'meta/X.md', ctx);
+  assert.equal(r('cas-ccps/scripts/13_StudentDashboard.js'), 'file');
+  assert.equal(r('cas-ccps/scripts'), 'folder');
+  assert.equal(r('README.md', 'meta/X.md'), 'file', 'from the doc\'s own folder');
+  assert.equal(r('lessons/PARTS.json'), 'suffix', 'relative to its system');
+  assert.equal(r('cas-ccps/.clasp-build'), 'ignored');
+  assert.equal(r('03.5_INBOUND_SESSIONS/_PROCESSED'), 'not-a-path', 'a Drive folder name: no extension, not a repo folder');
+  assert.equal(r('03.5_INBOX/notes.md'), 'allowed');
+  assert.deepEqual(r('cas-ccps/studio-steps/README.md'), { archived: 'archive/2026-27-Q2/cas-ccps/archived/studio-steps/README.md' });
+  ['text/plain', 'try/catch', 'KOS/Family', 'M/D/YYYY', 'oauth2.googleapis.com/tokeninfo', 'src/05']
+    .forEach((p) => assert.equal(r(p), 'not-a-path', p));
+  assert.equal(r('cas-ccps/07_TeacherDashboard.js'), null, 'a wrong path is reported');
+  assert.equal(r('drive-curation/gone.xlsx'), null, 'a file with an extension under any first folder is checked');
+});
