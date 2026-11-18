@@ -240,6 +240,7 @@ test('the question comes from the student\'s own feedback: Not yet on a card to 
     { label: 'You showed', text: 'Demonstrate critical thinking and problem-solving' },
     { label: 'Also in this lesson', text: 'Identify sources of data for market research' }]);
   assert.ok(!('turnIn' in by['VDOE-AMY-3']), 'no feedback yet: no question');
+  assert.equal(by['VDOE-AMY-3'].turnInOn, true, 'but codes are on for it: Show me around teaches them (13)');
   assert.equal(exported.turnInQuestion_('PASSED', ''), '', 'no milestone on file: no question');
   assert.equal((rev.turnIn.question.match(/\?/g) || []).length, 1, 'one question');
 });
@@ -826,4 +827,14 @@ test('View feedback opens the doc with the feedback comment open', () => {
   ctx.open = () => null;
   assert.equal(ctx.openFeedback(link), true, 'pop-ups blocked: the link opens the doc itself');
   assert.doesNotMatch(ctx.cardHtml(by['VDOE-AMY-1']), /openFeedback/, 'a card to revise opens the doc to work in');
+});
+
+// 2026-11-17: the code box showed 19 of a code's 22 characters, so a
+// student reading it would type it wrong. It is as wide as a whole code.
+test('the code box is wide enough for a whole code', () => {
+  const env = load({ switch: '8177' });
+  const html = env.exported.buildStudentDashboardHtml_();
+  assert.equal(env.exported.turnInMakeCode_('8175', '03', '7KQ3M9T').length, 22, 'a code is 22 characters');
+  assert.match(html, /\.ti-code\{[^}]*width:calc\(22ch \+ 24px\)/);
+  assert.doesNotMatch(html, /\.ti-code\{[^}]*min-width:19ch/);
 });

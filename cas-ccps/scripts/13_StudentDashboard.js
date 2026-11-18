@@ -810,8 +810,54 @@ function getStudentDashboardData(termFilter) {
     term:           scope,
     termLabel:      scope ? termLabel_(scope) : "",
     closedTermRows: closedTermRows,
+    tourSeen:       dashTourSeen_(googleId),
     generatedAt:    formatDate_(now)
   };
+}
+
+// ---------------------------------------------------------------------------
+// Whether this student has finished or closed "Show me around" (2026-11-17),
+// so it starts by itself only on a first visit. Kept on the server, not in
+// the browser (the operator, 2026-10-22: nothing stored in the browser):
+// one Script Property holding a short hash of each account that has seen
+// it, never the account itself, as the retry limit does (_dashRetryKey_).
+// ---------------------------------------------------------------------------
+const DASH_TOUR_PROP = "DASH_TOUR_SEEN";
+
+function _dashTourKey_(googleId) {
+  return _dashRetryKey_(String(googleId || "").toLowerCase(), "tour");
+}
+
+function dashTourSeen_(googleId) {
+  try {
+    const seen = String(PropertiesService.getScriptProperties().getProperty(DASH_TOUR_PROP) || "");
+    return seen.split(",").indexOf(_dashTourKey_(googleId)) !== -1;
+  } catch (e) {
+    return true; // unreadable: don't start it by itself
+  }
+}
+
+// The page's call when the tour ends. Only the signed-in account.
+function markMyTourSeen() {
+  try {
+    const googleId = String(Session.getActiveUser().getEmail() || "").trim();
+    if (!googleId) return { ok: false, error: "NO_USER" };
+    if (dashTourSeen_(googleId)) return { ok: true };
+    const lock = LockService.getScriptLock();
+    lock.waitLock(5000);
+    try {
+      const props = PropertiesService.getScriptProperties();
+      const seen = String(props.getProperty(DASH_TOUR_PROP) || "").split(",").filter(Boolean);
+      seen.push(_dashTourKey_(googleId));
+      props.setProperty(DASH_TOUR_PROP, seen.join(","));
+    } finally {
+      lock.releaseLock();
+    }
+    return { ok: true };
+  } catch (e) {
+    Logger.log("markMyTourSeen: " + e.message);
+    return { ok: false, error: "SERVER_ERROR" };
+  }
 }
 
 // ── The current marking period (F16) ──────────────────────────────────────
@@ -2460,8 +2506,9 @@ function _dashWaitSnapshot_(ss, cfg) {
 // open (2026-11-17). Docs keeps a comment that isn't attached to text behind
 // its Comments button, and students didn't find it. 37 puts the comment's
 // link on the doc's feedback line (63); this reads it back for the signed-in
-// student's own doc. { ok: true, url } ("" when there is none: the page then
-// opens the doc as before) or { ok: false, error }.
+// student's own doc, or for a form, Slides or Sheets part its feedback page.
+// { ok: true, url } ("" when there is none: the page then opens the doc or
+// the feedback page as before) or { ok: false, error }.
 // ---------------------------------------------------------------------------
 function getMyFeedbackLink(fileId, configId) {
   try {
@@ -2470,8 +2517,19 @@ function getMyFeedbackLink(fileId, configId) {
     fileId = String(fileId || "").trim();
     configId = String(configId || "").trim();
     if (!fileId || !configId) return { ok: false, error: "BAD_REQUEST" };
-    if (!findOwnLedgerRow_(getConfig_(), googleId, fileId, configId)) return { ok: false, error: "NOT_REGISTERED" };
-    return { ok: true, url: docFeedbackCommentUrl_(fileId) };
+    const cfg = getConfig_();
+    const row = findOwnLedgerRow_(cfg, googleId, fileId, configId);
+    if (!row) return { ok: false, error: "NOT_REGISTERED" };
+    // A form, Slides or Sheets part (2026-11-17): its feedback is on its
+    // feedback page, the snapshot doc beside the file (02), whose header
+    // carries the link the same way.
+    let docId = fileId;
+    if (workFileHasSnapshot_(workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]))) {
+      const snap = formSnapshotFor_(SpreadsheetApp.openById(cfg.ledgerSsId), fileId);
+      if (!snap) return { ok: true, url: "" };
+      docId = snap.snapshotDocId;
+    }
+    return { ok: true, url: docFeedbackCommentUrl_(docId) };
   } catch (e) {
     Logger.log("getMyFeedbackLink: unexpected error for ConfigID " + String(configId || "").trim() + ": " + e.message);
     return { ok: false, error: "SERVER_ERROR" };
@@ -2664,6 +2722,229 @@ function dashCanvasUrl_() {
   try { v = String(PropertiesService.getScriptProperties().getProperty(DASH_CANVAS_URL_PROP) || "").trim(); } catch (e) { v = ""; }
   return /^https:\/\/[^\s"'<>`\\]+$/.test(v) ? v : DASH_CANVAS_URL_DEFAULT;
 }
+
+// ---------------------------------------------------------------------------
+// "Show me around" (2026-11-17): a short walkthrough of the page, the
+// operator's ask after students missed the feedback and the document's
+// left-hand outline: things they love once found but don't reach in their
+// normal work. It highlights each part of the page in turn (a dimmed page
+// with a lit box around the part, a card with Back and Next), then shows
+// the two places inside the document a student needs: Comments and the
+// outline, then, where turn-in codes are on, how to earn one and turn in
+// with it on Canvas. It starts by itself on a student's first visit (dashTourSeen_,
+// on the server) and is in More any time. Nothing is sent to the server. A step whose part
+// isn't on the page (no card to submit yet) is skipped.
+// ---------------------------------------------------------------------------
+const DASH_TOUR_CSS = `
+  #tour-spot{position:fixed;z-index:300;border-radius:10px;box-shadow:0 0 0 9999px rgba(32,33,36,0.62);pointer-events:none;transition:all .2s ease}
+  #tour-spot.center{width:0;height:0;left:50%;top:40%}
+  #tour-card{position:fixed;z-index:301;width:min(360px,calc(100vw - 32px));background:#fff;color:#202124;border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,0.3);padding:18px 18px 14px}
+  #tour-card h2{font-size:17px;margin:0 0 6px}
+  #tour-card p{font-size:14px;line-height:1.5;margin:0 0 10px}
+  #tour-card .tour-n{font-size:12px;color:var(--text-secondary)}
+  #tour-card .tour-actions{display:flex;align-items:center;gap:8px;margin-top:6px}
+  #tour-card .tour-actions .tour-gap{flex:1}
+  #tour-card button{min-height:36px;padding:6px 14px;border-radius:6px;font-size:14px;font-family:inherit;cursor:pointer}
+  #tour-card .tour-next{background:#0b5f2e;color:#fff;border:0}
+  #tour-card .tour-back,#tour-card .tour-skip{background:#fff;color:#1967d2;border:1px solid #dadce0}
+  #tour-card .tour-skip{border:0;padding:6px 4px}
+  #tour-card svg{display:block;width:100%;height:auto;margin:4px 0 10px}
+`;
+
+const DASH_TOUR_JS = `
+var _tour = null; // { i, steps, back }
+
+function _tourQ(sel) { return document.querySelector ? document.querySelector(sel) : null; }
+function _tourButton(words) {
+  var all = document.querySelectorAll ? document.querySelectorAll(".card .act") : [];
+  for (var i = 0; i < all.length; i++) {
+    var t = String(all[i].textContent || "");
+    if (t.indexOf(words) === 0) return all[i];
+  }
+  return null;
+}
+
+// The document, drawn: its top bar with Comments, the outline on the left.
+var TOUR_DOC_ART = '<svg viewBox="0 0 320 170" role="img" aria-label="A Google Doc: Comments at the top right, the outline on the left">' +
+  '<rect x="1" y="1" width="318" height="168" rx="8" fill="#f8f9fa" stroke="#dadce0"/>' +
+  '<rect x="1" y="1" width="318" height="30" rx="8" fill="#fff" stroke="#dadce0"/>' +
+  '<rect x="10" y="9" width="14" height="14" rx="2" fill="#4285f4"/>' +
+  '<text x="30" y="20" font-size="10" fill="#5f6368">Your assignment</text>' +
+  '<rect x="246" y="6" width="66" height="20" rx="10" fill="#fef7e0" stroke="#f9ab00" stroke-width="2"/>' +
+  '<text x="279" y="20" font-size="10" text-anchor="middle" fill="#202124">💬 Comments</text>' +
+  '<rect x="8" y="38" width="80" height="124" rx="4" fill="#e8f0fe" stroke="#1a73e8" stroke-width="2"/>' +
+  '<text x="14" y="52" font-size="9" font-weight="bold" fill="#1967d2">Outline</text>' +
+  '<text x="14" y="68" font-size="9" fill="#202124">The assignment</text>' +
+  '<text x="14" y="82" font-size="9" fill="#202124">Your response</text>' +
+  '<rect x="100" y="38" width="210" height="124" rx="4" fill="#fff" stroke="#dadce0"/>' +
+  '<rect x="114" y="52" width="150" height="6" rx="3" fill="#dadce0"/><rect x="114" y="66" width="180" height="6" rx="3" fill="#dadce0"/>' +
+  '<rect x="114" y="80" width="120" height="6" rx="3" fill="#dadce0"/><rect x="114" y="104" width="170" height="6" rx="3" fill="#dadce0"/>' +
+  '<rect x="114" y="118" width="140" height="6" rx="3" fill="#dadce0"/></svg>';
+
+// Turning in with a code (2026-11-17, the operator: the step most unlike
+// usual classroom habits): the code on the card, drawn going into Canvas.
+var TOUR_CANVAS_ART = '<svg viewBox="0 0 320 150" role="img" aria-label="The code on your dashboard, pasted into the assignment in Canvas">' +
+  '<rect x="1" y="1" width="140" height="148" rx="8" fill="#fff" stroke="#dadce0"/>' +
+  '<text x="10" y="20" font-size="10" font-weight="bold" fill="#202124">Turn-in code</text>' +
+  '<rect x="10" y="30" width="122" height="22" rx="4" fill="#f1f3f4" stroke="#dadce0"/>' +
+  '<text x="16" y="45" font-size="8.5" fill="#202124" font-family="monospace">CAS-8175-L03-7KQ3-M9TX</text>' +
+  '<rect x="10" y="60" width="44" height="20" rx="4" fill="#fff" stroke="#f9ab00" stroke-width="2"/>' +
+  '<text x="32" y="74" font-size="10" text-anchor="middle" fill="#1967d2">Copy</text>' +
+  '<text x="10" y="102" font-size="9" fill="#5f6368">On your dashboard,</text>' +
+  '<text x="10" y="114" font-size="9" fill="#5f6368">on the card</text>' +
+  '<path d="M146 75 L172 75" stroke="#f9ab00" stroke-width="4"/><path d="M170 66 L182 75 L170 84 Z" fill="#f9ab00"/>' +
+  '<rect x="186" y="1" width="133" height="148" rx="8" fill="#fff" stroke="#dadce0"/>' +
+  '<rect x="186" y="1" width="133" height="18" rx="8" fill="#e66000"/>' +
+  '<text x="194" y="14" font-size="9" fill="#fff" font-weight="bold">Canvas</text>' +
+  '<text x="194" y="34" font-size="9" fill="#202124" font-weight="bold">L03 Personal branding</text>' +
+  '<text x="194" y="50" font-size="8.5" fill="#5f6368">Text Entry</text>' +
+  '<rect x="194" y="56" width="117" height="40" rx="3" fill="#fff" stroke="#f9ab00" stroke-width="2"/>' +
+  '<text x="199" y="72" font-size="7.5" fill="#202124" font-family="monospace">CAS-8175-L03-7KQ3-M9TX</text>' +
+  '<rect x="252" y="106" width="58" height="20" rx="4" fill="#0b5f2e"/>' +
+  '<text x="281" y="120" font-size="9" text-anchor="middle" fill="#fff">Submit</text></svg>';
+
+// Whether any card's work is a Slides deck.
+function _tourHasSlides() {
+  var list = (_lastDashData && _lastDashData.assignments) || [];
+  for (var i = 0; i < list.length; i++) if (list[i].workType === "slides") return true;
+  return false;
+}
+
+// Whether turn-in codes are on for any card on the page (71b's turnInOn).
+function _tourTurnInOn() {
+  var list = (_lastDashData && _lastDashData.assignments) || [];
+  for (var i = 0; i < list.length; i++) if (list[i].turnInOn || list[i].turnIn) return true;
+  return false;
+}
+
+function _tourSteps() {
+  return [
+    { title: "Welcome to your dashboard", text: "This is where you find your work, send it for feedback, and read what comes back. This tour takes about a minute." },
+    { title: "Your record", text: "Assignments is your work. Competencies shows the skills you have shown so far. Warm-ups has your warm-up feedback. My Context is your week-by-week record.", el: function () { return _tourQ(".dash-tabs"); } },
+    { title: "Start here", text: "Do next lists the work that needs you now. Click a name to jump to its card.", el: function () { return _tourQ(".do-next"); } },
+    { title: "Open your work", text: "Each card opens your own work: a document, or for some parts a Slides deck. Work there. It saves as you type.", el: function () { return _tourButton("Open"); } },
+    { title: "A Slides part", when: _tourHasSlides, el: function () { return _tourButton("Open your slides"); }, center: true, text: "When the work is a deck, Submit checks it first: the number of slides, lines per slide, speaker notes. If something is off, the card says what to fix. Feedback goes on the feedback page for your deck." },
+    { title: "Send it for feedback", text: "When you are ready, press Submit for Feedback. Your feedback comes back in a few minutes.", el: function () { return _tourButton("Submit for Feedback"); } },
+    { title: "Read your feedback", text: "When feedback is ready, View feedback opens your document, or the feedback page for a deck, with the feedback already open.", el: function () { return _tourButton("View feedback"); } },
+    { title: "Inside your document", art: TOUR_DOC_ART, text: "Your feedback is a comment. If it is closed, click Comments at the top right. The outline on the left lists the parts of your document: click one to jump there. If you do not see it, click the outline icon at the top left." },
+    { title: "Earn your turn-in code", when: _tourTurnInOn, center: true, el: function () { var q = _tourQ(".ti .ti-a"); return (q && q.closest && q.closest(".ti")) || _tourQ(".ti"); }, text: "Once your feedback is back, answer one short question about it on the card. A check reads your answer. In a few minutes your turn-in code shows on the card." },
+    { title: "Turn it in on Canvas", when: _tourTurnInOn, art: TOUR_CANVAS_ART, text: "Copy the code. In Canvas, open the same assignment, paste the code in the text box, and submit. The code is how you turn in, not a file or a link. You can still revise after." },
+    { title: "Come back any time", text: "This tour is under More, in Show me around.", el: function () { return _tourQ("#more-btn"); } }
+  ];
+}
+
+function startTour() {
+  if (_tour) return;
+  // when: a step only for some pages; el: the part it lights, skipped when
+  // it isn't on the page unless center (then it shows in the middle).
+  var steps = _tourSteps().filter(function (s) { return (!s.when || s.when()) && (!s.el || s.center || s.el()); });
+  _tour = { i: 0, steps: steps, back: document.activeElement };
+  var spot = document.createElement("div");
+  spot.id = "tour-spot";
+  var card = document.createElement("div");
+  card.id = "tour-card";
+  card.setAttribute("role", "dialog");
+  card.setAttribute("aria-modal", "true");
+  card.setAttribute("aria-labelledby", "tour-h");
+  card.addEventListener("keydown", _tourKeydown);
+  document.body.appendChild(spot);
+  document.body.appendChild(card);
+  window.addEventListener("resize", _tourPlace);
+  window.addEventListener("scroll", _tourPlace, true);
+  _tourShow();
+}
+
+function _tourShow() {
+  var t = _tour, s = t.steps[t.i], last = t.i === t.steps.length - 1;
+  var card = document.getElementById("tour-card");
+  card.innerHTML = '<div class="tour-n">' + (t.i + 1) + ' of ' + t.steps.length + '</div>' +
+    '<h2 id="tour-h">' + esc(s.title) + '</h2>' + (s.art || '') + '<p>' + esc(s.text) + '</p>' +
+    '<div class="tour-actions">' +
+    (last ? '' : '<button type="button" class="tour-skip">Skip tour</button>') +
+    '<span class="tour-gap"></span>' +
+    (t.i ? '<button type="button" class="tour-back">Back</button>' : '') +
+    '<button type="button" class="tour-next">' + (last ? 'Done' : 'Next') + '</button></div>';
+  var on = function (cls, f) { var b = card.querySelector(cls); if (b) b.addEventListener("click", f); };
+  on(".tour-skip", endTour);
+  on(".tour-back", function () { tourGo(-1); });
+  on(".tour-next", last ? endTour : function () { tourGo(1); });
+  var el = s.el ? s.el() : null;
+  if (el && el.scrollIntoView) el.scrollIntoView({ block: "center" });
+  _tourPlace();
+  var next = card.querySelector(".tour-next");
+  if (next && next.focus) next.focus();
+}
+
+function _tourPlace() {
+  if (!_tour) return;
+  var s = _tour.steps[_tour.i];
+  var el = s.el ? s.el() : null;
+  var spot = document.getElementById("tour-spot"), card = document.getElementById("tour-card");
+  var vw = window.innerWidth, vh = window.innerHeight, cw = card.offsetWidth, ch = card.offsetHeight;
+  if (!el) {
+    spot.className = "center";
+    spot.style.left = "50%"; spot.style.top = "40%"; spot.style.width = "0"; spot.style.height = "0";
+    card.style.left = Math.max(16, (vw - cw) / 2) + "px";
+    card.style.top = Math.max(16, (vh - ch) / 2) + "px";
+    return;
+  }
+  var r = el.getBoundingClientRect(), pad = 6;
+  spot.className = "";
+  spot.style.left = (r.left - pad) + "px"; spot.style.top = (r.top - pad) + "px";
+  spot.style.width = (r.width + pad * 2) + "px"; spot.style.height = (r.height + pad * 2) + "px";
+  var below = r.bottom + pad + 12, above = r.top - pad - 12 - ch;
+  var top = below + ch <= vh - 8 ? below : above >= 8 ? above : Math.max(8, vh - ch - 8);
+  var left = Math.min(Math.max(16, r.left), vw - cw - 16);
+  card.style.left = left + "px"; card.style.top = top + "px";
+}
+
+function tourGo(d) {
+  if (!_tour) return;
+  _tour.i = Math.max(0, Math.min(_tour.steps.length - 1, _tour.i + d));
+  _tourShow();
+}
+
+function endTour() {
+  if (!_tour) return;
+  var back = _tour.back;
+  _tour = null;
+  ["tour-spot", "tour-card"].forEach(function (id) { var el = document.getElementById(id); if (el && el.parentNode) el.parentNode.removeChild(el); });
+  window.removeEventListener("resize", _tourPlace);
+  window.removeEventListener("scroll", _tourPlace, true);
+  if (!DEMO && _lastDashData && !_lastDashData.tourSeen) {
+    _lastDashData.tourSeen = true;
+    google.script.run.withFailureHandler(function () {}).markMyTourSeen();
+  }
+  if (back && back.focus) back.focus();
+}
+
+function _tourKeydown(e) {
+  if (e.key === "Escape") { e.preventDefault(); endTour(); return; }
+  if (e.key === "ArrowRight") { e.preventDefault(); tourGo(1); return; }
+  if (e.key === "ArrowLeft") { e.preventDefault(); tourGo(-1); return; }
+  if (e.key !== "Tab") return;
+  var b = Array.prototype.slice.call(document.getElementById("tour-card").querySelectorAll("button"));
+  if (!b.length) return;
+  var i = b.indexOf(document.activeElement);
+  e.preventDefault();
+  b[(i + (e.shiftKey ? b.length - 1 : 1)) % b.length].focus();
+}
+
+(function wireTourButton() {
+  var b = document.getElementById("tour-btn");
+  if (b && b.addEventListener) b.addEventListener("click", function () { startTour(); });
+})();
+
+// A student's first visit (the server says whether they've seen it): once
+// the page has their cards. A teacher's demo waits to be asked.
+var _tourChecked = false;
+function tourMaybeStart(data) {
+  if (_tourChecked || DEMO || !data || !data.assignments || !data.assignments.length) return;
+  _tourChecked = true;
+  // A moment after the page draws, so the cards it points at are there.
+  if (data.tourSeen === false) setTimeout(function () { startTour(); }, 600);
+}
+`;
 
 // ---------------------------------------------------------------------------
 // buildStudentDashboardHtml_
@@ -2930,6 +3211,7 @@ function buildStudentDashboardHtml_(opts) {
      at least 44px tall; card buttons were about 37px. !important because
      the header's buttons and term menu set their own height. */
 ${TURN_IN_CLIENT_CSS}
+${DASH_TOUR_CSS}
   @media (pointer: coarse){
     button,select,.act{min-height:44px !important}
     .do-next a{display:inline-flex;align-items:center;min-height:44px}
@@ -2953,6 +3235,7 @@ ${TURN_IN_CLIENT_CSS}
       <div id="more-menu" role="menu" aria-labelledby="more-btn" hidden>
         <div class="menu-account" role="presentation">Signed in as <span id="account-label">Loading…</span></div>
         <button id="my-info-btn" type="button" role="menuitem" tabindex="-1" onclick="toggleMyInfo()" aria-expanded="false" aria-controls="my-info-panel"><span aria-hidden="true">ℹ️</span> My Info</button>
+        <button id="tour-btn" type="button" role="menuitem" tabindex="-1" aria-haspopup="dialog"><span aria-hidden="true">🧭</span> Show me around</button>
         <button id="cas-terms-btn" type="button" role="menuitem" tabindex="-1" onclick="casOpenTerms()" aria-haspopup="dialog"><span aria-hidden="true">❓</span> What do these mean?</button>
       </div>
     </div>
@@ -3571,6 +3854,7 @@ function render(data) {
   _restoreFocus(_focus);
   _setFooter(data);
   schedulePoll(); // a card waits: check for news (no-op when one is pending)
+  tourMaybeStart(data);
 }
 
 function _focusKey() {
@@ -3783,7 +4067,7 @@ function cardHtml(a, opts) {
   const docBtn = DEMO
     ? \`<button type="button" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${openLabel}</button>\`
     : doc
-    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}"\${primary === "view" && !feedbackPage ? \` data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="return openFeedback(this)"\` : ""}>\${openLabel} ↗</a>\`
+    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}"\${primary === "view" ? \` data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="return openFeedback(this)"\` : ""}>\${openLabel} ↗</a>\`
     : \`<span style="color:var(--text-secondary);font-size:13px;">\${a.workType === "form" ? "Form" : a.workType === "slides" ? "Slides" : a.workType === "sheet" ? "Sheet" : "Document"} not yet available</span>\`;
   // A form, Slides or Sheets part (Phase 4b/4c/4d): Submit as for a doc; the server reads the file.
   const submitBtn = a.canSubmit && !_reflect[a.fileId]
@@ -4674,6 +4958,7 @@ ${CLIENT_ESC_JS}
 ${CLIENT_SAFE_DOC_URL_JS}
 ${CLIENT_WORDS_JS}
 ${turnInClientJs_()}
+${DASH_TOUR_JS}
 
 // ── More ▾ (F16 item 7): the header's menu button, the Teacher Dashboard's
 // pattern (07). A capture-phase click on an item closes the menu and puts

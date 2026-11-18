@@ -812,3 +812,35 @@ keeps it behind the Comments button.
 - Tests: `feedback-as-comment`, `flow-input-builder`, `turn-in-code`.
 - **To verify live once:** that a `?disco=` link opens an unanchored
   comment for a student (it does for anchored ones in Google's emails).
+
+## Show me around, 2026-11-17
+
+The operator: students don't find the feedback or the document's outline on
+the left; they love them once they do, but neither is part of their normal
+work. "We need to train the students or make it more obvious."
+
+- A walkthrough on the Student Dashboard (13): the dimmed page with each
+  part lit in turn and a card with Back and Next; a drawn Google Doc for
+  Comments and the outline; More ▾ → Show me around any time.
+- It starts by itself on a student's first visit. Whether they've seen it is
+  a Script Property of short account hashes (`DASH_TOUR_SEEN`), not the
+  browser (no cas-ccps page stores anything in the browser, 2026-10-22).
+- Docs has no way to open its Comments or outline panel from a link or a
+  script, so the outline is taught; the feedback comment is opened directly
+  by View feedback (the entry before this one).
+- The turn-in code (the operator, same day: the step most unlike usual
+  classroom habits): where codes are on for any card (`turnInOn`, 71b),
+  two more steps: earn a code by answering the question on the card, then
+  copy it into the same assignment's text box in Canvas and submit, drawn.
+- Tests: `student-dashboard-navigation.test.js`.
+- The code box (71b) was 19 characters wide for a 22-character code, so it
+  showed "CAS-8175-L01-7KQ3-M9" and a student reading it would type it
+  wrong; found in the tutorial's screenshot. It is now a whole code wide,
+  with smaller type on a phone.
+- Slides parts (the operator, same day: "the same thing for the slides
+  version"): View feedback on a form, Slides or Sheets part now opens its
+  feedback page with the comment open too (`getMyFeedbackLink` reads the
+  link from the snapshot doc, `formSnapshotFor_`, whose header 37 links the
+  same way), and Show me around adds "A Slides part" where a card's work is
+  a deck: Submit checks the deck first, says what to fix, and the feedback
+  goes on the deck's feedback page.
