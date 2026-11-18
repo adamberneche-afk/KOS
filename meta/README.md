@@ -15,7 +15,14 @@ why this repo exists at all.
   does what (Gemini runs the Google-side flows; a Claude Project is the
   thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
   pipeline kept and repaired, and the RTP Gem frozen.
-- **`HANDOFF_2026-11-17.md`** — the repo-wide session handoff: what merged
+- **`HANDOFF_2026-11-18.md`** — the repo-wide session handoff: what merged
+  11-17 to 11-18 (#462–#485: the archive, a lesson's missing parts made,
+  competency IDs Sheets stored as dates repaired, plain-worded questions,
+  View feedback opening the comment, Show me around, a Slides part's
+  feedback on the deck, the harvest delivering once, a prompt to submit),
+  what is live (KOS through #485, pushed 11-18, and the live repairs), the
+  operator's queue in order, the decisions, and notes for an agent.
+- **`HANDOFF_2026-11-17.md`** — the previous handoff, kept as the record: what merged
   11-15 to 11-16 (#444–#459: Flow 2's results checked before a student sees
   them, the Ledger cycle's checks before work, the 11-15 re-grade and what it
   showed, provenance on every result, StudioConfig and the daily drift

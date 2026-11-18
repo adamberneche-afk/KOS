@@ -16,7 +16,7 @@ get filed into the matching subtree, not left loose at the root. See
 `archive/2026-27-Q1/meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
 rationale behind moving to this git-based structure in the first place.
 
-**Picking this up?** The order of work is [`meta/PLAN_2026-11.md`](./meta/PLAN_2026-11.md). Then read [`meta/HANDOFF_2026-11-17.md`](./meta/HANDOFF_2026-11-17.md):
+**Picking this up?** The order of work is [`meta/PLAN_2026-11.md`](./meta/PLAN_2026-11.md). Then read [`meta/HANDOFF_2026-11-18.md`](./meta/HANDOFF_2026-11-18.md):
 where each system stands, what is merged but not yet live, and the
 operator's queue in order. Claude Code also reads [`CLAUDE.md`](./CLAUDE.md): how build work
 arrives through the RTP's session logs (read from Drive, written into the

@@ -75,7 +75,7 @@ const SOURCES = [
   { name: 'KOS_CONTEXT_DIRECTION', title: 'Where the work stands and where it is going', files: [
     'meta/PLAN_2026-11.md',
     'meta/PLAN_2026-10.md',
-    'meta/HANDOFF_2026-11-17.md',
+    'meta/HANDOFF_2026-11-18.md',
     'meta/BACKLOG.md',
     'archive/2026-27-Q1/meta/CAS_DESIGN_THREADS_2026-10-16.md',
     'archive/2026-27-Q1/meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md',
