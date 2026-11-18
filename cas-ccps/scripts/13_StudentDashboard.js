@@ -162,8 +162,50 @@ function _dashDemoCard_(course, lesson, state, block, period, now) {
     folderLabel:   block + " - " + className + " - " + teacherName,
     demoQuestions: questions,
     // What the check "finds" after a demo Submit: the primary, not yet.
-    demoNotYet:    primary ? primary.text : ""
+    demoNotYet:    primary ? primary.text : "",
+    // The goals the turn-in question names (_dashDemoTurnIns_): the
+    // primary, and another this check measured.
+    demoGoals:     criteria.map(function (c) { return c.text; }).slice(0, 2),
+    demoLastResult: lastResult
   };
+}
+
+// The turn-in code (71) in the demo (2026-11-18: a teacher's "View as a
+// student" showed no turn-in card, so the steps the tutorial teaches weren't
+// there to try). Codes are on for every card, as where a teacher turns them
+// on; a card whose feedback shows gets the card the real page would give it
+// (71b's turnInAttach_ rule), its goals and question made by 71's own
+// functions. The first passed card already has its code, so both halves
+// show; the rest ask the question. Send answer goes to the page's stub
+// (DEMO_STUBS), never the server; the code is a well-formed sample.
+const DASH_DEMO_TURN_IN_RANDOM = "DEM0K1T";
+function _dashDemoTurnIns_(assignments) {
+  let codeShown = false;
+  assignments.forEach(function (a) {
+    a.turnInOn = true;
+    const kind = a.demoLastResult === "NEEDS_REVISION" ? "NOT_YET" : a.demoLastResult === "PASSED" ? "PASSED" : "";
+    const feedbackShown = a.statusClass === "NEEDS_ACTION" || a.statusClass === "DONE";
+    const goals = a.demoGoals || [];
+    if (!kind || !feedbackShown || !goals.length) return;
+    // The code this card's answer "earns" (the stub hands it back).
+    const m = /^DEMO-(\d{4})-/.exec(a.configId);
+    const n = /^L(\d{2,3})$/.exec(a.lessonNo || "");
+    const code = m && n ? turnInMakeCode_(m[1], n[1], DASH_DEMO_TURN_IN_RANDOM) : "";
+    if (kind === "PASSED" && !codeShown && code) {
+      a.turnIn = { state: "READY", code: code, kind: kind };
+      codeShown = true;
+      return;
+    }
+    if (code) a.demoTurnInCode = code;
+    let link = null;
+    if (kind === "PASSED") {
+      link = turnInNextPartGoal_(a.configId.replace(/^DEMO-/, "CAS-")) || (goals[1] ? { text: goals[1], part: 0 } : null);
+    }
+    const question = turnInQuestion_(kind, goals[0], link);
+    if (!question) return;
+    a.turnIn = { state: "ANSWER", kind: kind, question: question, goals: turnInGoals_(kind, goals[0], link),
+      minWords: REFLECTION_MIN_WORDS };
+  });
 }
 
 // A warm-up as _dashOwnWarmUps_ reads it: a WarmUpQueue row and its
@@ -339,6 +381,7 @@ function dashDemoFixture_(now) {
     evidence[comp].forEach(function (e) { evRows.push([fileOf[e.configId] || "", comp, e.outcome, ""]); });
   });
   _dashAddMilestoneMarks_(assignments, _dashBestOutcomes_(evRows, assignments));
+  _dashDemoTurnIns_(assignments);
 
   const codes = DASH_DEMO_LESSONS.map(function (c) { return c.code; }).sort();
   const totals = {};
@@ -3307,9 +3350,11 @@ const EC_MIN_WORDS = ${DASH_EC_MIN_WORDS};
 // The demo page asks the server for one thing, getDemoDashboardData (the
 // whole fixture). Every other call goes through scriptRun() to DEMO_STUBS,
 // in the page; a function with no stub fails here and never reaches the
-// server. A later step (say, the turn-in code) adds its own stub.
+// server. The turn-in code has its own stub (2026-11-18).
 const DEMO = ${demo ? "true" : "false"};
-const CANVAS_URL = ${JSON.stringify(canvasUrl)};
+// The turn-in card Open Canvas button: none in the demo, whose cards
+// link nowhere real (the Canvas button in the header stays).
+const CANVAS_URL = ${JSON.stringify(demo ? "" : canvasUrl)};
 const DEMO_DELAY_MS = 300;
 let _demoData = null;
 let _demoNotes = {}; // fileId -> a note under the card ("this opens the document")
@@ -3342,6 +3387,14 @@ const DEMO_STUBS = {
     return { ok: true, card: Object.assign({}, (_demoData.walkthrough || {}).inLine || {}, { fileId: a.fileId, configId: a.configId,
       waiting: true, canRetry: false, canSubmit: false }) };
   },
+  // The turn-in answer (71b's submitTurnInAnswer): taken as written, then
+  // "checked"; the next check for news hands back the card's sample code.
+  // Nothing is saved or sent.
+  submitTurnInAnswer: function (configId) {
+    const a = ((_demoData && _demoData.dashboard.assignments) || []).filter(function (x) { return x.configId === configId; })[0];
+    if (!a || !a.turnIn) return { ok: false, reason: "Turn-in codes aren\u2019t on for this assignment." };
+    return { ok: true, turnIn: { state: "PENDING_CHECK" } };
+  },
   // The page's check for news: a card's state as the "server" now holds it
   // (_demoNext: the walk-through's next state, once it is due).
   getMyWaitingStatus: function (cards) {
@@ -3349,9 +3402,11 @@ const DEMO_STUBS = {
       const a = _demoCard(c.fileId);
       if (!a) return null;
       if (_demoNext[c.fileId]) { Object.assign(a, _demoNext[c.fileId]); delete _demoNext[c.fileId]; }
-      return { fileId: a.fileId, configId: a.configId, waiting: !!a.waiting, status: a.status, statusPill: a.statusPill,
+      const out = { fileId: a.fileId, configId: a.configId, waiting: !!a.waiting, status: a.status, statusPill: a.statusPill,
         statusClass: a.statusClass, displayStatus: a.displayStatus, statusNote: a.statusNote, canSubmit: a.canSubmit,
         lastEval: a.lastEval };
+      if (c.turnIn && a.demoTurnInCode) out.turnIn = { state: "READY", code: a.demoTurnInCode };
+      return out;
     }).filter(Boolean) };
   }
 };
