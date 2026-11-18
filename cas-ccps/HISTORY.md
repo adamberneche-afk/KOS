@@ -857,3 +857,17 @@ link. Fallbacks: the feedback page, then its feedback zone.
 `repostMissingFeedback` checks the deck and the page and posts on the
 deck. Tests: `form-reader`, `feedback-repost`. To verify live once: that a
 `?disco=` link opens an unanchored comment in Slides.
+
+## One submission, one delivery, 2026-11-17
+
+Proposed after the 11-15 re-grade (a Studio test run set every delivered
+FlowInput row back to EVALUATED, and every student got a second comment);
+the operator's yes 11-17. The harvest (37) already left out a re-armed
+row's second answer by asking EvaluationLog whether the submission's result
+was applied (`_fiAlreadyHarvested_`); that check now runs for every row.
+A row answered again after its result was delivered goes back to
+HARVESTED untouched: no comment, no Ledger change, no evidence, no second
+EvaluationLog row. The day's count is kept (`FI_HELD_TWICE`) and the
+overnight email says so ("Flow 2 answered n submission(s) again …"). A
+resubmission is a new row built after the result and is delivered as
+before. Test: `flow-input-builder.test.js` (fails on the old guard).

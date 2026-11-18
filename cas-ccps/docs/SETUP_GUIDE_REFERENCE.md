@@ -210,6 +210,7 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `DEPLOY_DRIFT_GITHUB_TOKEN` | direct | — | no | 00_SharedConfig.js |
 | `DIRECT_GEMINI_API_KEY` | direct | — | no | 15c_Flow2DirectEvaluationService.js |
 | `FERPA_FLOW3_FULL_NAME_OVERRIDE` | direct | — | no | 10_AdminRecoveryPanel.js, 23_StudentProfileManager.js |
+| `FI_HELD_TWICE` | via the constant FI_HELD_TWICE_PROP | "{}" | 37_FlowInputBuilder.js | 37_FlowInputBuilder.js |
 | `FLOW2_ALERT_STATE` | via the constant FLOW2_ALERT_KEY | "{}" | 03_QueueBridge.js | 03_QueueBridge.js |
 | `GEMINI_API_KEY` | direct | — | no | 10_AdminRecoveryPanel.js |
 | `LEDGER_CHANGE_PROBE_ROWS` | via the constant LC_PROP_PROBE_ROWS | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
