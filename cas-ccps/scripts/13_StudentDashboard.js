@@ -2506,8 +2506,9 @@ function _dashWaitSnapshot_(ss, cfg) {
 // open (2026-11-17). Docs keeps a comment that isn't attached to text behind
 // its Comments button, and students didn't find it. 37 puts the comment's
 // link on the doc's feedback line (63); this reads it back for the signed-in
-// student's own doc. { ok: true, url } ("" when there is none: the page then
-// opens the doc as before) or { ok: false, error }.
+// student's own doc, or for a form, Slides or Sheets part its feedback page.
+// { ok: true, url } ("" when there is none: the page then opens the doc or
+// the feedback page as before) or { ok: false, error }.
 // ---------------------------------------------------------------------------
 function getMyFeedbackLink(fileId, configId) {
   try {
@@ -2516,8 +2517,19 @@ function getMyFeedbackLink(fileId, configId) {
     fileId = String(fileId || "").trim();
     configId = String(configId || "").trim();
     if (!fileId || !configId) return { ok: false, error: "BAD_REQUEST" };
-    if (!findOwnLedgerRow_(getConfig_(), googleId, fileId, configId)) return { ok: false, error: "NOT_REGISTERED" };
-    return { ok: true, url: docFeedbackCommentUrl_(fileId) };
+    const cfg = getConfig_();
+    const row = findOwnLedgerRow_(cfg, googleId, fileId, configId);
+    if (!row) return { ok: false, error: "NOT_REGISTERED" };
+    // A form, Slides or Sheets part (2026-11-17): its feedback is on its
+    // feedback page, the snapshot doc beside the file (02), whose header
+    // carries the link the same way.
+    let docId = fileId;
+    if (workFileHasSnapshot_(workFileTypeOfUrl_(row[LEDGER.ADMIN_FILE_URL]))) {
+      const snap = formSnapshotFor_(SpreadsheetApp.openById(cfg.ledgerSsId), fileId);
+      if (!snap) return { ok: true, url: "" };
+      docId = snap.snapshotDocId;
+    }
+    return { ok: true, url: docFeedbackCommentUrl_(docId) };
   } catch (e) {
     Logger.log("getMyFeedbackLink: unexpected error for ConfigID " + String(configId || "").trim() + ": " + e.message);
     return { ok: false, error: "SERVER_ERROR" };
@@ -2791,6 +2803,13 @@ var TOUR_CANVAS_ART = '<svg viewBox="0 0 320 150" role="img" aria-label="The cod
   '<rect x="252" y="106" width="58" height="20" rx="4" fill="#0b5f2e"/>' +
   '<text x="281" y="120" font-size="9" text-anchor="middle" fill="#fff">Submit</text></svg>';
 
+// Whether any card's work is a Slides deck.
+function _tourHasSlides() {
+  var list = (_lastDashData && _lastDashData.assignments) || [];
+  for (var i = 0; i < list.length; i++) if (list[i].workType === "slides") return true;
+  return false;
+}
+
 // Whether turn-in codes are on for any card on the page (71b's turnInOn).
 function _tourTurnInOn() {
   var list = (_lastDashData && _lastDashData.assignments) || [];
@@ -2803,9 +2822,10 @@ function _tourSteps() {
     { title: "Welcome to your dashboard", text: "This is where you find your work, send it for feedback, and read what comes back. This tour takes about a minute." },
     { title: "Your record", text: "Assignments is your work. Competencies shows the skills you have shown so far. Warm-ups has your warm-up feedback. My Context is your week-by-week record.", el: function () { return _tourQ(".dash-tabs"); } },
     { title: "Start here", text: "Do next lists the work that needs you now. Click a name to jump to its card.", el: function () { return _tourQ(".do-next"); } },
-    { title: "Open your work", text: "Each card opens your own document. Write your work there. It saves as you type.", el: function () { return _tourButton("Open"); } },
+    { title: "Open your work", text: "Each card opens your own work: a document, or for some parts a Slides deck. Work there. It saves as you type.", el: function () { return _tourButton("Open"); } },
+    { title: "A Slides part", when: _tourHasSlides, el: function () { return _tourButton("Open your slides"); }, center: true, text: "When the work is a deck, Submit checks it first: the number of slides, lines per slide, speaker notes. If something is off, the card says what to fix. Feedback goes on the feedback page for your deck." },
     { title: "Send it for feedback", text: "When you are ready, press Submit for Feedback. Your feedback comes back in a few minutes.", el: function () { return _tourButton("Submit for Feedback"); } },
-    { title: "Read your feedback", text: "When feedback is ready, View feedback opens your document with the feedback already open.", el: function () { return _tourButton("View feedback"); } },
+    { title: "Read your feedback", text: "When feedback is ready, View feedback opens your document, or the feedback page for a deck, with the feedback already open.", el: function () { return _tourButton("View feedback"); } },
     { title: "Inside your document", art: TOUR_DOC_ART, text: "Your feedback is a comment. If it is closed, click Comments at the top right. The outline on the left lists the parts of your document: click one to jump there. If you do not see it, click the outline icon at the top left." },
     { title: "Earn your turn-in code", when: _tourTurnInOn, center: true, el: function () { var q = _tourQ(".ti .ti-a"); return (q && q.closest && q.closest(".ti")) || _tourQ(".ti"); }, text: "Once your feedback is back, answer one short question about it on the card. A check reads your answer. In a few minutes your turn-in code shows on the card." },
     { title: "Turn it in on Canvas", when: _tourTurnInOn, art: TOUR_CANVAS_ART, text: "Copy the code. In Canvas, open the same assignment, paste the code in the text box, and submit. The code is how you turn in, not a file or a link. You can still revise after." },
@@ -4047,7 +4067,7 @@ function cardHtml(a, opts) {
   const docBtn = DEMO
     ? \`<button type="button" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${openLabel}</button>\`
     : doc
-    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}"\${primary === "view" && !feedbackPage ? \` data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="return openFeedback(this)"\` : ""}>\${openLabel} ↗</a>\`
+    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}"\${primary === "view" ? \` data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="return openFeedback(this)"\` : ""}>\${openLabel} ↗</a>\`
     : \`<span style="color:var(--text-secondary);font-size:13px;">\${a.workType === "form" ? "Form" : a.workType === "slides" ? "Slides" : a.workType === "sheet" ? "Sheet" : "Document"} not yet available</span>\`;
   // A form, Slides or Sheets part (Phase 4b/4c/4d): Submit as for a doc; the server reads the file.
   const submitBtn = a.canSubmit && !_reflect[a.fileId]

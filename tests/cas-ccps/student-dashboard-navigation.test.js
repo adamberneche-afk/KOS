@@ -511,7 +511,7 @@ test('Show me around: the steps, in plain words, skip a part that isn\'t on the 
   const { ctx } = tourPage(false);
   const steps = ctx._tourSteps();
   assert.deepEqual(plain(steps.map((s) => s.title)), ['Welcome to your dashboard', 'Your record', 'Start here', 'Open your work',
-    'Send it for feedback', 'Read your feedback', 'Inside your document', 'Earn your turn-in code', 'Turn it in on Canvas',
+    'A Slides part', 'Send it for feedback', 'Read your feedback', 'Inside your document', 'Earn your turn-in code', 'Turn it in on Canvas',
     'Come back any time']);
   // The page's own filter (startTour): a step for some pages (when), and a
   // part not on the page (el) left out unless the step can stand centered.
@@ -525,11 +525,14 @@ test('Show me around: the steps, in plain words, skip a part that isn\'t on the 
   assert.deepEqual(shownWith({ assignments: [{}, { turnInOn: true }] }), ['Welcome to your dashboard', 'Your record',
     'Inside your document', 'Earn your turn-in code', 'Turn it in on Canvas'],
     'turn-in codes on for a card, before any question shows: both steps, centered');
+  assert.deepEqual(shownWith({ assignments: [{}, { workType: 'slides' }] }), ['Welcome to your dashboard', 'Your record',
+    'A Slides part', 'Inside your document'], 'a Slides part on the page: its step, centered when its button is not found');
+  assert.match(steps.find((s) => s.title === 'A Slides part').text, /Submit checks it first/);
   const canvas = steps.find((s) => s.title === 'Turn it in on Canvas');
   assert.match(canvas.text, /In Canvas, open the same assignment, paste the code in the text box, and submit/);
   assert.match(canvas.art, /aria-label="The code on your dashboard, pasted into the assignment in Canvas"/);
-  assert.match(steps[6].text, /click Comments at the top right/);
-  assert.match(steps[6].text, /outline on the left/);
-  assert.match(steps[6].art, /<svg[^>]*role="img"[^>]*aria-label="A Google Doc: Comments at the top right, the outline on the left"/);
+  assert.match(steps.find((s) => s.title === 'Inside your document').text, /click Comments at the top right/);
+  assert.match(steps.find((s) => s.title === 'Inside your document').text, /outline on the left/);
+  assert.match(steps.find((s) => s.title === 'Inside your document').art, /<svg[^>]*role="img"[^>]*aria-label="A Google Doc: Comments at the top right, the outline on the left"/);
   steps.forEach((s) => assert.ok(s.text.split(/\s+/).length <= 45, 'short: ' + s.title));
 });

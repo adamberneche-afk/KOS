@@ -249,6 +249,14 @@ test('the feedback line links to the comment; View feedback reads the link back,
   assert.deepEqual(asked[0], ['student@ccpsnet.net', id, 'VDOE-OWN-2026'], 'checked against the signed-in student');
   assert.equal(exported.getMyFeedbackLink(id, 'VDOE-OTHER-2026').error, 'NOT_REGISTERED', 'not their row: no link');
   assert.equal(exported.getMyFeedbackLink('', 'VDOE-OWN-2026').error, 'BAD_REQUEST');
+
+  // A Slides part (2026-11-17): the link is on its feedback page, the
+  // snapshot doc beside the deck.
+  dash.SpreadsheetApp = { openById: () => ({}) };
+  dash.findOwnLedgerRow_ = () => { const r = new Array(27).fill(''); r[16] = 'https://docs.google.com/presentation/d/deck-1/edit'; return r; };
+  dash.formSnapshotFor_ = (ss, fileId) => (fileId === 'deck-1' ? { snapshotDocId: id } : null);
+  assert.equal(exported.getMyFeedbackLink('deck-1', 'VDOE-OWN-2026').url, url, 'read from the feedback page, not the deck');
+  assert.equal(exported.getMyFeedbackLink('deck-2', 'VDOE-OWN-2026').url, '', 'no feedback page on file: the page opens it as before');
 });
 
 test('setDocFeedbackStatus_: a doc made before the header is left alone', () => {

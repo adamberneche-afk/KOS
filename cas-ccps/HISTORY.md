@@ -837,3 +837,10 @@ work. "We need to train the students or make it more obvious."
   showed "CAS-8175-L01-7KQ3-M9" and a student reading it would type it
   wrong; found in the tutorial's screenshot. It is now a whole code wide,
   with smaller type on a phone.
+- Slides parts (the operator, same day: "the same thing for the slides
+  version"): View feedback on a form, Slides or Sheets part now opens its
+  feedback page with the comment open too (`getMyFeedbackLink` reads the
+  link from the snapshot doc, `formSnapshotFor_`, whose header 37 links the
+  same way), and Show me around adds "A Slides part" where a card's work is
+  a deck: Submit checks the deck first, says what to fix, and the feedback
+  goes on the deck's feedback page.
