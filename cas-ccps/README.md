@@ -872,6 +872,15 @@ other Slides part is marked, and a test holds that.
   is quoted and made safe as a form's is. Images are counted, not
   described; how the slides look is not in it. Flow 2 reads it through
   `StudentDocURL`, and a later part's EARLIER PARTS block reads it.
+- **The feedback, as a comment (since 2026-11-17).** With
+  `FEEDBACK_AS_COMMENT` on, the harvest (37) posts the feedback on the
+  **deck itself**, where the student revises, not on the feedback page; the
+  page stays the record of what was checked, and its header line reads
+  "Read the comment on your slides", linked to the deck's `?disco=` link,
+  which View feedback opens. A deck that won't take the comment falls back
+  to the feedback page, then to its feedback zone. `repostMissingFeedback`
+  looks on the deck and the page, and posts on the deck. (Forms and Sheets
+  parts are unchanged: a form has no comments; no Sheets part is marked.)
 - **The dashboards.** Student: **Open your slides**, Submit, a line saying
   what Submit reads, a link to "Your deck's feedback page". Teacher:
   "· Google Slides" beside the part, "Open slides" and "Part n (slides)"

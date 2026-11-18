@@ -470,6 +470,46 @@ test('Flow 2 reads a Slides part from its snapshot doc too, for its own check an
     /Part 2: Build the Survey\n\(nothing written\)$/, 'a deck never submitted');
 });
 
+// 2026-11-17 (the operator): a Slides part's feedback is a comment on the
+// deck itself, where the student revises; the feedback page stays the record
+// of what was checked, and its line links to the comment on the deck.
+function harvestDeck(createFails) {
+  const env = flowLoad();
+  const { ss, docs } = flowSetUp(env, 2, 'GOOGLE SLIDES, as the deck was when the student pressed Submit\nSlides: 3', true);
+  env.sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', 'all');
+  const comments = [];
+  env.sandbox.Drive = { Comments: { create(resource, fileId) {
+    if (createFails && createFails(fileId)) throw new Error('no comments here');
+    comments.push({ fileId, content: resource.content });
+    return { id: 'c' + comments.length };
+  } } };
+  env.exported.buildFlowInputRows();
+  const F = env.exported.FI;
+  const fiSheet = ss.getSheetByName('FlowInput');
+  fiSheet.getRange(2, F.GEMINI_FULL_OUTPUT + 1).setValue('Clear numbers slide.\n[SYSTEM: REVISION_REQUIRED]\n[MILESTONE_OUTCOMES: {"1":"NOT_MET"}]');
+  fiSheet.getRange(2, F.READY_STATUS + 1).setValue('EVALUATED');
+  env.exported.harvestFlowInputResults();
+  const header = docs.snapshot.getHeader();
+  const line = Array.from({ length: header.getNumChildren() }, (_, i) => header.getChild(i)).find((p) => /^Feedback:/.test(p.getText()));
+  return { comments, line, docs, fiSheet, F };
+}
+
+test('a Slides part\'s feedback is a comment on the deck; its feedback page links to it', () => {
+  const { comments, line, fiSheet, F } = harvestDeck();
+  assert.equal(fiSheet.getRange(2, F.READY_STATUS + 1).getValue(), 'HARVESTED');
+  assert.deepEqual(comments.map((c) => c.fileId), ['form-amy'], 'one comment, on the deck');
+  assert.match(comments[0].content, /Clear numbers slide\./);
+  assert.match(line.getText(), /Revise, then submit again .*Read the comment on your slides first\./);
+  assert.deepEqual(line.links, [{ text: 'the comment on your slides', url: 'https://docs.google.com/presentation/d/form-amy/edit?disco=c1' }]);
+});
+
+test('a deck that won\'t take the comment: it goes on the feedback page, as before', () => {
+  const { comments, line, docs } = harvestDeck((fileId) => fileId === 'form-amy');
+  assert.deepEqual(comments.map((c) => c.fileId), [docs.snapshot.getId()]);
+  assert.match(line.getText(), /Read the comment on this doc first\./);
+  assert.equal(line.links[0].url, 'https://docs.google.com/document/d/' + docs.snapshot.getId() + '/edit?disco=c1');
+});
+
 test('a timed-out or finished form check reaches its snapshot doc, never the form (03)', () => {
   const env = flowLoad();
   const { ss, docs, staging } = flowSetUp(env, 2, 'GOOGLE FORM');

@@ -44,6 +44,12 @@ function setup(rows, comments, opts = {}) {
   const ss = sb.SpreadsheetApp.create('Central Ledger');
   sb.SpreadsheetApp._registry.set(ss.getId(), ss);
   sb.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  if (opts.decks) {
+    // The Ledger names each deck's file (FileID, column 4) and its link (AdminFileURL, column 17).
+    const ledger = ss.insertSheet('Ledger');
+    ledger.appendRow(new Array(27).fill('h'));
+    opts.decks.forEach((id) => { const r = new Array(27).fill(''); r[3] = id; r[16] = 'https://docs.google.com/presentation/d/' + id + '/edit'; ledger.appendRow(r); });
+  }
   const fi = ss.insertSheet('FlowInput');
   fi.appendRow(x.FI_HEADERS);
   rows.forEach((r) => {
@@ -51,6 +57,7 @@ function setup(rows, comments, opts = {}) {
     row[x.FI.TIMESTAMP] = new Date(r.built || '2026-11-12T17:00:00Z');
     row[x.FI.STAGING_ROW_REF] = r.ref;
     row[x.FI.STUDENT_FILE_ID] = r.fileId;
+    if (r.docUrl) row[x.FI.STUDENT_DOC_URL] = r.docUrl;
     row[x.FI.CONFIG_ID] = r.configId || 'CAS-TEST-L01';
     row[x.FI.MILESTONE_1] = 'First'; row[x.FI.MILESTONE_2] = 'Second';
     row[x.FI.READY_STATUS] = r.status || 'HARVESTED';
@@ -119,4 +126,19 @@ test('skipRefs, malformed, not harvested, fixtures, feedback in the doc and unre
   const o2 = off.x.repostMissingFeedback(true);
   assert.equal(o2.inDoc, 1);
   assert.equal(off.posted.length, 0);
+});
+
+// 2026-11-17: a Slides part's feedback is a comment on its deck, so the deck
+// is looked at too, and a missing one is posted there.
+test('a Slides part: feedback on the deck counts; a missing one is posted on the deck', () => {
+  const rows = [{ ref: '80', fileId: 'deck1', docUrl: 'https://docs.google.com/document/d/page1/edit' }];
+  const opts = { decks: ['deck1'] };
+  const has = setup(rows, { deck1: [fb('2026-11-14T18:50:00Z')] }, opts);
+  assert.equal(has.x.repostMissingFeedback(true).hasFeedback, 1, 'its feedback is on the deck: left alone');
+  assert.equal(has.posted.length, 0);
+  const missing = setup(rows, {}, opts);
+  assert.equal(missing.x.repostMissingFeedback(true).posted, 1);
+  assert.deepEqual(missing.posted.map((p) => p.docId), ['deck1'], 'posted on the deck, not its feedback page');
+  const older = setup(rows, { page1: [fb('2026-11-14T18:50:00Z')] }, opts);
+  assert.equal(older.x.repostMissingFeedback(true).hasFeedback, 1, 'feedback from before the change, on the page, still counts');
 });

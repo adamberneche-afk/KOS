@@ -844,3 +844,16 @@ work. "We need to train the students or make it more obvious."
   same way), and Show me around adds "A Slides part" where a card's work is
   a deck: Submit checks the deck first, says what to fix, and the feedback
   goes on the deck's feedback page.
+
+## A Slides part's feedback on the deck, 2026-11-17
+
+The operator asked whether Slides has its own comments; it does, and the
+feedback page made a student revising the deck read feedback somewhere
+else. With feedback as a comment, the harvest (37) now posts it on the deck
+itself; the feedback page stays the record of what was checked, its header
+line reads "Read the comment on your slides" and links there
+(`feedbackCommentUrl_(…, "slides")`, 63), and View feedback follows that
+link. Fallbacks: the feedback page, then its feedback zone.
+`repostMissingFeedback` checks the deck and the page and posts on the
+deck. Tests: `form-reader`, `feedback-repost`. To verify live once: that a
+`?disco=` link opens an unanchored comment in Slides.
