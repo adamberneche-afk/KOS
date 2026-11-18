@@ -16,7 +16,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '37_FlowInputBuilder.js', '39_FlowFixtures.js'].map(S);
+const FILES = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '39_FlowFixtures.js'].map(S);
 
 const pass = 'Strong work.\n[SYSTEM: APPROVED]\n[SUGGESTED_SCORE: 3]\n[MILESTONE_OUTCOMES: {"1":"MET","2":"MET"}]';
 const revise = 'Add examples.\n[SYSTEM: REVISION_REQUIRED]\n[MILESTONE_OUTCOMES: {"1":"MET","2":"NOT_MET"}]';

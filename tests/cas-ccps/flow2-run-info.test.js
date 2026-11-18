@@ -19,7 +19,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // The Central Ledger's files the harvest, the backprop, the binding check,
 // the canary cleanup and the fixtures reach.
 const FILES = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
-  '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '37_FlowInputBuilder.js', '43_DeployVersionMarker_CentralLedger.js',
+  '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '43_DeployVersionMarker_CentralLedger.js',
   '68_LessonParts.js', '40_FlowPrompts.js', '54_StudentAssignments.js', '55b_LessonAssignmentData.js',
   '25_WarmUpWriter.js', '41_WarmUpFlowBridge.js', '35_FlowPreflightAndCanary.js', '39_FlowFixtures.js',
   '64_LedgerCycle.js'].map(S);

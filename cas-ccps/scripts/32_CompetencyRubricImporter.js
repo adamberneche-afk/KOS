@@ -161,12 +161,23 @@ function importCompetencyRubrics() {
 // the Date cells, appended those 24 IDs again. Writers format the column as
 // text first (CR / registry imports); readers go through this.
 // ---------------------------------------------------------------------------
+// 2026-11-18: also such a Date already turned into text, "Tue Jul 01 8177
+// 00:00:00 GMT-0400 (Eastern Daylight Time)": a reader that took String() of
+// the Date cell (37's TeacherMatrix read did) wrote that into FlowInput, and
+// the harvest into CompetencyEvidence. Only the first of a month at
+// midnight, as Sheets stores these.
+const CID_MONTHS_ = { Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6, Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12 };
+const CID_DATE_TEXT_RE_ = /^[A-Z][a-z]{2} ([A-Z][a-z]{2}) 01 (\d{4}) 00:00:00 GMT/;
+
 function competencyIdText_(value) {
   // Not just `instanceof Date`: a Date from another realm fails that check.
   if (value instanceof Date || Object.prototype.toString.call(value) === "[object Date]") {
     return value.getFullYear() + "-" + (value.getMonth() + 1);
   }
-  return String(value === null || value === undefined ? "" : value).trim();
+  const text = String(value === null || value === undefined ? "" : value).trim();
+  const m = CID_DATE_TEXT_RE_.exec(text);
+  if (m && CID_MONTHS_[m[1]]) return m[2] + "-" + CID_MONTHS_[m[1]];
+  return text;
 }
 
 // ---------------------------------------------------------------------------

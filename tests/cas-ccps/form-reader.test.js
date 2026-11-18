@@ -334,7 +334,7 @@ test('the page words a form\'s "Not yet" and its submitted note', () => {
 
 function flowLoad() {
   return loadGasFiles(['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
-    '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '37_FlowInputBuilder.js', '43_DeployVersionMarker_CentralLedger.js',
+    '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '43_DeployVersionMarker_CentralLedger.js',
     '40_FlowPrompts.js', '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '68_LessonParts.js'].map(S),
   ['buildFlowInputRows', 'harvestFlowInputResults', 'backPropagateCompletions', '_fiEarlierPartsText_', 'FI', 'LEDGER',
     'STG_STATUS', 'FORM_SNAPSHOT_NOT_SUBMITTED']);

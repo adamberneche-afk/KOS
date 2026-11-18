@@ -12,7 +12,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js', '24_WarmUpBridge.js',
-  '25_WarmUpWriter.js', '37_FlowInputBuilder.js', '68_LessonParts.js', '03_QueueBridge.js', '40_FlowPrompts.js',
+  '25_WarmUpWriter.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '68_LessonParts.js', '03_QueueBridge.js', '40_FlowPrompts.js',
   '41_WarmUpFlowBridge.js'].map((f) => path.join(CC, f));
 
 test('the warm-up canary passes every step, Flow 3\'s lead-in included', () => {

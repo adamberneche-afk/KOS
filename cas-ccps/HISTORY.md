@@ -918,3 +918,23 @@ The operator's yes on the two items left from the 11-16 audit:
 - kos-personal's three undocumented editor functions (item 4) are in
   `kos-personal/docs/runtime-reference.md`, with a test for
   `resetMoralDebt`.
+
+## Competency IDs as a date's text, 2026-11-18
+
+The repair of 11-17 (`repairCompetencyIdDates`, #475) rewrote 55 date cells
+in CompetencyEvidence, yet `explainLockedParts` still read three primaries
+as "Tue Jul 01 8177 00:00:00 GMT-0400 …": text, not a date, so the repair
+had skipped them. The source: 37 read the TeacherMatrix's competency ID
+cells with `String(cell)`, and where the matrix held "8177-7" as a date
+(rows from before the seeder formatted them as text, or written by another
+path) that text went into FlowInput and from there into CompetencyEvidence.
+
+- `competencyIdText_` (32) also reads that text back as the ID (only the
+  first of a month at midnight, as Sheets stores these).
+- 37 reads TeacherMatrix and FlowInput competency IDs through it, so new
+  rows and new evidence come out right. Tests that load 37 now load 32 too.
+- `repairCompetencyIdDates` also rewrites a date's text, and does FlowInput
+  and every registered TeacherMatrix (columns 16–19) as well as
+  CompetencyEvidence, so the readers without 32 (the Student Dashboard)
+  read clean IDs too. A dry run first; one log line per tab.
+- Tests: `competency-id-dates`, `flow-input-builder`.

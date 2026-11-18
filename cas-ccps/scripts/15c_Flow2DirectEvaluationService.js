@@ -399,36 +399,67 @@ function writeCompetencyEvidenceFromFlow2_(studentEmail, configId, studentFileId
 // ---------------------------------------------------------------------------
 function repairCompetencyIdDates(apply) {
   requireScriptOwner_();
+  apply = apply === true;
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  return competencyIdDateRepair_(ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence"), apply === true);
+  const out = competencyIdDateRepair_(ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence"), apply);
+  // The sources (2026-11-18): FlowInput's and each teacher's TeacherMatrix's
+  // competency ID columns (16 to 19), where a date became the text the
+  // harvest wrote.
+  const more = [];
+  more.push(competencyIdDateRepair_(ss.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput"), apply,
+    { cols: [16, 17, 18, 19], label: "FlowInput" }));
+  const reg = ss.getSheetByName((cfg.tabs && cfg.tabs.matrixRegistry) || "MatrixRegistry");
+  const ids = reg && reg.getLastRow() > 1 ? reg.getRange(2, 3, reg.getLastRow() - 1, 1).getValues().map(function (r) { return String(r[0]).trim(); }) : [];
+  ids.filter(function (id, k, all) { return id && all.indexOf(id) === k; }).forEach(function (id, n) {
+    try {
+      more.push(competencyIdDateRepair_(SpreadsheetApp.openById(id).getSheetByName("TeacherMatrix"), apply,
+        { cols: [16, 17, 18, 19], label: "TeacherMatrix " + (n + 1) }));
+    } catch (e) {
+      Logger.log("[S15c] TeacherMatrix " + (n + 1) + " not opened: " + e.message);
+    }
+  });
+  out.sources = more;
+  return out;
 }
 
-function competencyIdDateRepair_(sheet, apply) {
+// One tab's competency ID cells stored as dates, or as a date's text: by
+// header (CompetencyEvidence's competency_id) or opts.cols (1-based).
+function competencyIdDateRepair_(sheet, apply, opts) {
+  opts = opts || {};
+  const label = opts.label || "CompetencyEvidence";
   const out = { apply: apply, rows: 0, fixed: 0, byId: {}, message: "" };
-  if (!sheet || sheet.getLastRow() < 2) { out.message = "No CompetencyEvidence rows."; Logger.log("[S15c] " + out.message); return out; }
-  const header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); });
-  const col = header.indexOf("competency_id") + 1;
-  if (!col) { out.message = "CompetencyEvidence has no competency_id column."; Logger.log("[S15c] " + out.message); return out; }
-  const n = sheet.getLastRow() - 1;
-  const range = sheet.getRange(2, col, n, 1);
-  const values = range.getValues();
-  out.rows = n;
-  const next = values.map(function (r) {
-    const v = r[0];
-    if (Object.prototype.toString.call(v) !== "[object Date]") return [v];
-    const id = competencyIdText_(v);
-    if (id === String(v).trim()) return [v];
-    out.fixed++;
-    out.byId[id] = (out.byId[id] || 0) + 1;
-    return [id];
-  });
-  if (apply && out.fixed) {
-    range.setNumberFormat("@");
-    range.setValues(next);
+  if (!sheet || sheet.getLastRow() < 2) { out.message = label + ": no rows."; Logger.log("[S15c] " + out.message); return out; }
+  let cols = opts.cols;
+  if (!cols) {
+    const header = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map(function (x) { return String(x).trim(); });
+    const col = header.indexOf("competency_id") + 1;
+    if (!col) { out.message = label + " has no competency_id column."; Logger.log("[S15c] " + out.message); return out; }
+    cols = [col];
   }
-  out.message = (apply ? "Rewrote " : "Would rewrite ") + out.fixed + " of " + n +
-    " competency ID cell(s) stored as dates" +
+  const n = sheet.getLastRow() - 1;
+  out.rows = n;
+  cols.forEach(function (col) {
+    if (col > sheet.getLastColumn()) return;
+    const range = sheet.getRange(2, col, n, 1);
+    let changed = false;
+    const next = range.getValues().map(function (r) {
+      const v = r[0];
+      const isDate = Object.prototype.toString.call(v) === "[object Date]";
+      if (!isDate && typeof v !== "string") return [v];
+      const id = competencyIdText_(v);
+      if (!isDate && id === v.trim()) return [v];
+      changed = true;
+      out.fixed++;
+      out.byId[id] = (out.byId[id] || 0) + 1;
+      return [id];
+    });
+    if (apply && changed) {
+      range.setNumberFormat("@");
+      range.setValues(next);
+    }
+  });
+  out.message = label + ": " + (apply ? "rewrote " : "would rewrite ") + out.fixed + " competency ID cell(s) stored as dates" +
     (out.fixed ? " (" + Object.keys(out.byId).sort().map(function (k) { return k + " " + out.byId[k]; }).join(", ") + ")" : "") +
     (apply || !out.fixed ? "." : ". Run repairCompetencyIdDates(true) to rewrite them.");
   Logger.log("[S15c] " + out.message);

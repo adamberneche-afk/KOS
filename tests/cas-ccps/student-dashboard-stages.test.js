@@ -197,7 +197,7 @@ test('Try again refuses anyone else\'s row, a row that didn\'t time out, and no 
 // ── 37 builds no duplicate FlowInput row after a Try again ────────────────
 
 const LEDGER_FILES = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
-  '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '37_FlowInputBuilder.js',
+  '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js',
   '68_LessonParts.js', '40_FlowPrompts.js', '54_StudentAssignments.js', '55b_LessonAssignmentData.js',
   '06_StagingPipeline_Turnstile.js'].map(S);
 
