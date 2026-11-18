@@ -164,7 +164,7 @@ which now says so itself).
 This is not hypothetical. On the `ccpsnet.net` account, GCP access is
 turned off org-wide — confirmed directly in the Cloud console, which is the
 *second* block on those custom steps rather than the first. All 8
-custom Studio steps in `cas-ccps/studio-steps/` (2,113 lines, written and
+custom Studio steps in `archive/2026-27-Q2/cas-ccps/archived/studio-steps/` (2,113 lines, written and
 unit-tested) pushed *successfully* and then never appeared in Studio's
 step picker, across repeated uninstall/reinstall cycles, with no OAuth
 prompt ever shown. There was no error to read. A missing Cloud project
@@ -241,7 +241,7 @@ The layout each system needs, which hasn't changed:
   that's reconciled: a small script generates a throwaway per-project
   push folder for each, from the same `project-map.json` gas-lint already
   uses, so `cas-ccps/scripts/` itself never gets reorganized or
-  duplicated in git. `cas-ccps/studio-steps/` — blocked on this account,
+  duplicated in git. `archive/2026-27-Q2/cas-ccps/archived/studio-steps/` — blocked on this account,
   kept because enabling GCP would make it reachable again — was added
   later for the Studio Steps adoption — standalone, sharing no files with
   the other 8, but handled by the same tool and the same `cas-ccps:*`

@@ -523,7 +523,7 @@ actually makes the steps available in Studio's step picker — nothing
 after the initial install needs repeating; a later `clasp push` updates
 the code for everyone who already installed it, no re-install needed.
 Same human-at-keyboard model as everything else in this runbook applies
-here too — see `cas-ccps/studio-steps/README.md`'s own deployment section
+here too — see `archive/2026-27-Q2/cas-ccps/archived/studio-steps/README.md`'s own deployment section
 for the full command block and this project's specific file list.
 kos-personal's `studio-steps` project is archived
 (`archive/2026-27-Q1/kos-personal/archive/studio-steps/README.md`) and is not deployed.

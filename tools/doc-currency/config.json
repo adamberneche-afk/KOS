@@ -206,14 +206,18 @@
     "does not work"
   ],
   "testTimeoutMs": 120000,
-  "_comment_pathCheck": "checkPathMentionsResolve (2026-11-17, warn only): backticked repo paths in the live docs. skipDocs: docs whose paths name files to be made, or quote other records. allow: regexes for names that look like paths but aren't repo paths (Drive folders). moved: folders that moved before they were archived, so the archive catalog knows only their last home; the old path maps to where the folder is now.",
+  "_comment_pathCheck": "checkPathMentionsResolve (2026-11-17, warn only): backticked repo paths in the live docs. skipDocs: docs whose paths name files to be made, or quote other records. allow: regexes for names that look like paths but aren't repo paths (Drive folders), and for files a doc names as gone on purpose, saying so beside the name: the rtp-core-router persona drafts deleted 2026-08-24 (kept on the pre-archive-cleanup branch), the abandoned IT/Admin security PDF, an external proposal never committed, and the catalog workbooks removed from history 2026-10-31. moved: folders that moved before they were archived, so the archive catalog knows only their last home; the old path maps to where the folder is now.",
   "pathCheck": {
     "skipDocs": [
       "AGENT_NOTES.md",
       "PRD_CAS_RESEARCH_PIVOT.md"
     ],
     "allow": [
-      "^\\d{2}\\.\\d+_"
+      "^\\d{2}\\.\\d+_",
+      "^archived/(PERSONA_|RTP_CORE_ROUTER_)",
+      "^docs/KOS_Guide_IT__Admin_Security\\.pdf$",
+      "^drive-curation/Flow_Harness_Extraction_Proposal_2026-09-10\\.md$",
+      "^drive-curation/Drive_Curriculum_Catalog_v\\d\\.xlsx$"
     ],
     "moved": {
       "cas-ccps/studio-steps": "archive/2026-27-Q2/cas-ccps/archived/studio-steps",

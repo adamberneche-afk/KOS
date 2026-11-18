@@ -177,9 +177,9 @@ body") turned out to be too coarse the moment all five real `doGet`/`doPost`
 files in the repo were actually read side by side — they use four
 *different*, all-legitimate shapes, not one:
 
-- `kos-personal/7_WebApp.gs`, `cas-ccps/07_TeacherDashboard.js`: a
+- `kos-personal/7_WebApp.gs`, `cas-ccps/scripts/07_TeacherDashboard.js`: a
   dedicated checker called directly in each handler's own body.
-- `cas-ccps/13_StudentDashboard.js`: `doGet()` serves a static shell with
+- `cas-ccps/scripts/13_StudentDashboard.js`: `doGet()` serves a static shell with
   **no check of its own** — the real gate is on the data call
   (`getStudentDashboardData()`'s `Session.getActiveUser()`), reached later
   via `google.script.run`. Documented, intentional, and would have been a
@@ -217,7 +217,7 @@ named call, or an elapsed-time budget check against `Date.now()`/
 `while (...hasNext())` loops with neither today
 (`kos-personal/1_Config_And_Deploy.gs`, `5_Error_And_Utilities.gs`,
 `6_Governance.gs` ×3, `11_Registrar_CogRelay.gs`,
-`cas-ccps/10_AdminRecoveryPanel.js`) — confirming this is a genuinely new
+`cas-ccps/scripts/10_AdminRecoveryPanel.js`) — confirming this is a genuinely new
 convention, not a retrofit, and why it's warning-level: erroring on all
 seven at once on introduction would make the check something to silence
 rather than act on. Those seven are now-visible, pre-existing findings,

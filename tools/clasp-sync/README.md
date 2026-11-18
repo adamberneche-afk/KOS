@@ -27,7 +27,7 @@ is the existing record of exactly which files belong to which project
 (gas-lint's duplicate-declaration check depends on this same mapping
 being accurate). There's no single folder to point `clasp push` at
 without either sending files to a project that doesn't want them, or
-missing files a project needs. A 9th project, `cas-ccps/studio-steps/`,
+missing files a project needs. A 9th project, `archive/2026-27-Q2/cas-ccps/archived/studio-steps/`,
 was archived 2026-11-17 (`archive/2026-27-Q2/cas-ccps/archived/studio-steps/`; custom Studio
 steps are blocked on this account) and is no longer a project here.
 

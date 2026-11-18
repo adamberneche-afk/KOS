@@ -183,7 +183,7 @@ working against seeded fixture data — not yet exercised by a real student
 submission; that distinction stays explicit in the dashboard's metrics and
 narrative copy.
 
-`cas-ccps/studio-steps/README.md` has the per-step deployment instructions
+`archive/2026-27-Q2/cas-ccps/archived/studio-steps/README.md` has the per-step deployment instructions
 (mirrors Part 3.7 of the runbook) — still accurate for an account that *has*
 GCP access, which is no account this repo deploys to. That aside used to name
 kos-personal as such an account; it is on this same `ccpsnet.net` account, so

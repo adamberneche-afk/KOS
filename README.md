@@ -214,7 +214,7 @@ code mentions, a `file:line` citation past the end of that file, a Drive file ID
 one no other check could see — **a document describing a path that cannot
 run on the account this repo deploys to.** Every function in those
 instructions existed; the instructions were still impossible to follow,
-which is what made `cas-ccps/studio-steps/` (archived 2026-11-17 to `archive/2026-27-Q2/cas-ccps/archived/studio-steps/`) — blocked on this account, and
+which is what made `archive/2026-27-Q2/cas-ccps/archived/studio-steps/` (archived 2026-11-17) — blocked on this account, and
 superseded by `37_FlowInputBuilder.js` — read as a deployment backlog for
 weeks rather than as a wall. The check caught this very paragraph on its
 first draft, which is the argument for it. Dated records (`CHANGELOG.md`, `HISTORY.md`)

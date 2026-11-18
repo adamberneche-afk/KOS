@@ -31,7 +31,8 @@ e.g. `secrets.*` isn't allowed inside an `if:` conditional; this caught
 exactly that bug once), on every push and pull request. The same file's
 `docs-check` job (pull requests only) requires the matching README to be
 touched when a PR adds files. (`test-inference-service` tested
-`kos-personal/inference-service/` until it was archived, 2026-11-17.) That same workflow file has grown a second,
+the inference service until it was archived, 2026-11-17, to
+`archive/2026-27-Q2/kos-personal/archive/inference-service/`.) That same workflow file has grown a second,
 unrelated job pair (`sandbox-deploy`/`sandbox-deploy-not-configured`,
 gated on `main` only — see `tools/clasp-sync/SANDBOX_CI_SETUP.md`) that
 pushes HEAD to sandbox Apps Script copies once configured; unrelated to
@@ -156,7 +157,7 @@ it — that gap is closed now.
    names). That default isn't a style preference. Whether an account can
    have a standard Cloud project is a Workspace-admin decision nobody
    here controls, and on the `ccpsnet.net` account it is switched off —
-   which is how all 2,113 lines of `cas-ccps/studio-steps/` ended up
+   which is how all 2,113 lines of `archive/2026-27-Q2/cas-ccps/archived/studio-steps/` ended up
    permanently unreachable *after* being written, unit-tested, and pushed
    successfully. That's the failure mode this check exists for: a custom
    step needing a project doesn't error, it just never appears in

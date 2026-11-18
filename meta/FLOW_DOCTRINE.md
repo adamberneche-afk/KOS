@@ -82,7 +82,7 @@ can have one is a Workspace-admin decision nobody here controls.
 
 A missing Cloud project does not fail a push. It makes the result do nothing:
 the add-on installs, the step never appears in Studio's picker, no OAuth
-prompt, no error. That is how all 8 steps in `cas-ccps/studio-steps/` (2,113
+prompt, no error. That is how all 8 steps in `archive/2026-27-Q2/cas-ccps/archived/studio-steps/` (2,113
 lines, written and unit-tested) turned out to be unreachable *after* being
 pushed successfully.
 

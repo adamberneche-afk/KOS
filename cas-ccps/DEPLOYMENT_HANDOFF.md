@@ -87,7 +87,7 @@
 >
 > ### What will not work, whatever you run
 >
-> Don't spend time on either — see `cas-ccps/studio-steps/README.md`'s status
+> Don't spend time on either — see `archive/2026-27-Q2/cas-ccps/archived/studio-steps/README.md`'s status
 > banner and `tools/gas-lint/gcp-map.json`:
 >
 > - **Any custom Studio step.** All 8 cas-ccps and both kos-personal steps are
@@ -293,7 +293,7 @@ Studio, because before that there is no `FlowInput` row for it to read.
 
 Two things that are **blocked** on this account, not merely unpushed, so
 don't spend time on either no matter what you run — see
-`cas-ccps/studio-steps/README.md`'s status banner and
+`archive/2026-27-Q2/cas-ccps/archived/studio-steps/README.md`'s status banner and
 `tools/gas-lint/gcp-map.json`:
 
 - Any custom Studio step. All 8 are unreachable on this account.
