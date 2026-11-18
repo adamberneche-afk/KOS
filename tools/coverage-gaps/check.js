@@ -116,7 +116,10 @@ const TRIGGER_CALL_RE = /ScriptApp\.newTrigger\(\s*(?:(['"])([^'"]+)\1|([A-Za-z_
 //     `{ fn: "name", … }` (and lcInstallJob_(fn), which installs only an
 //     LC_JOBS entry): every `fn: "<name>"` in the same file.
 // Anything else stays unresolved, a warning as before.
-const BOUND_NAME_RE = (name) => new RegExp('\\b(?:const|let|var)\\s+' + name.replace(/[$]/g, '\\$') + "\\s*=\\s*(['\"])([A-Za-z_$][\\w$]*)\\1");
+// The name is escaped whole (every regex special, backslash included), as
+// definesFunction does; only an identifier ever reaches here anyway.
+const escapeRegExp = (t) => String(t).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const BOUND_NAME_RE = (name) => new RegExp('\\b(?:const|let|var)\\s+' + escapeRegExp(name) + "\\s*=\\s*(['\"])([A-Za-z_$][\\w$]*)\\1");
 const TABLE_ENTRY_RE = /\bfn\s*:\s*(['"])([A-Za-z_$][\w$]*)\1/g;
 
 function boundLiteral(src, name) {
