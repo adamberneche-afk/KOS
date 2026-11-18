@@ -1111,6 +1111,7 @@ function harvestFlowInputResults() {
     if (dupes.events.length) _fiRecordDuplicateWrites_(ledgerSs, dupes.events, now);
     const setAside = { rearmed: 0, malformed: 0, reasons: {} };
     let studioRows = null; // StudioConfig (39b), read once if a row is harvested
+    const workTypes = {}; // fileId -> work type, from the Ledger, read once if needed
 
     for (let i = 1; i < fiData.length; i++) {
       if (String(fiData[i][FI.READY_STATUS]).trim() !== "EVALUATED") continue;
@@ -1207,9 +1208,23 @@ function harvestFlowInputResults() {
         const alsoShown = tiers ? _fiAlsoShown_(geminiFullOutput, tiers.tertiary) : [];
 
         const studentFacingReport = _fiStripMilestoneOutcomesLine_(geminiFullOutput);
-        const asComment = feedbackAsCommentFor_(configId) &&
-          _fiPostEvaluationComment_(feedbackDocId,
-            _fiFormatFeedbackComment_(studentFacingReport, parsed.complianceStatus));
+        // As a comment: on a Slides part's deck itself (2026-11-17, the
+        // operator: the student revises the deck, so the feedback belongs
+        // there; the feedback page stays the record of what was checked),
+        // else on the doc Flow 2 read. A deck that won't take it falls back
+        // to the feedback page, then to the doc's feedback zone.
+        let asComment = "", commentUrl = "", onSlides = false;
+        if (feedbackAsCommentFor_(configId)) {
+          const text = _fiFormatFeedbackComment_(studentFacingReport, parsed.complianceStatus);
+          if (feedbackDocId !== studentFileId && _fiWorkTypeOf_(ledgerSs, cfg, studentFileId, workTypes) === "slides") {
+            asComment = _fiPostEvaluationComment_(studentFileId, text);
+            onSlides = !!asComment;
+          }
+          if (!asComment) asComment = _fiPostEvaluationComment_(feedbackDocId, text);
+          if (asComment && asComment !== "posted") {
+            commentUrl = onSlides ? feedbackCommentUrl_(studentFileId, asComment, "slides") : feedbackCommentUrl_(feedbackDocId, asComment);
+          }
+        }
         if (!asComment) {
           const doc = DocumentApp.openById(feedbackDocId);
           _fiInsertEvaluation_(doc.getBody(),
@@ -1219,7 +1234,7 @@ function harvestFlowInputResults() {
         // The doc header's feedback line (00), color-coded by the result.
         setDocFeedbackStatus_(feedbackDocId,
           parsed.complianceStatus === "APPROVED" ? "PASSED" : "REVISE",
-          { inComments: !!asComment, commentUrl: asComment && asComment !== "posted" ? feedbackCommentUrl_(feedbackDocId, asComment) : "" });
+          { inComments: !!asComment, onSlides: onSlides, commentUrl: commentUrl });
 
         const competencyIds = {
           "1": String(fiData[i][FI.MILESTONE_1_COMPETENCY_ID] || ""),
@@ -1826,6 +1841,23 @@ function _fiCommentNextSteps_(complianceStatus) {
     keep;
 }
 
+// A work file's type ("doc", "form", "slides", "sheet") from its Ledger row's
+// AdminFileURL; "" when no row names it. The Ledger is read once per run,
+// into `cache`, and only when a part with a feedback page is harvested.
+function _fiWorkTypeOf_(ledgerSs, cfg, fileId, cache) {
+  if (!cache.__read) {
+    cache.__read = true;
+    const sheet = ledgerSs.getSheetByName(cfg.tabs.ledger);
+    const data = sheet && sheet.getLastRow() > 1
+      ? sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER_COL_COUNT).getValues() : [];
+    data.forEach(function (r) {
+      const id = String(r[LEDGER.FILE_ID] || "").trim();
+      if (id) cache[id] = workFileTypeOfUrl_(r[LEDGER.ADMIN_FILE_URL]);
+    });
+  }
+  return cache[String(fileId || "").trim()] || "";
+}
+
 // Posts the feedback as an unanchored comment through the Drive advanced
 // service (v3, already in this project's manifest; the drive scope covers
 // it). The comment's ID when it posted (2026-11-17: the feedback line links
@@ -2053,6 +2085,8 @@ function repostMissingFeedback(doPost, skipRefs) {
   }
   const asComment = feedbackAsCommentChecker_();
   const docIds = Object.keys(newest);
+  const workTypes = {};
+  const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
 
   for (let d = 0; d < docIds.length; d++) {
     if (Date.now() - started > budgetMs) { out.finished = false; break; }
@@ -2063,10 +2097,15 @@ function repostMissingFeedback(doPost, skipRefs) {
     const label = "Row " + rowNum + " (StagingRowRef " + ref + ")";
     if (String(row[FI.READY_STATUS] || "").trim() !== "HARVESTED") { out.notHarvested++; continue; }
     if (!asComment(row[FI.CONFIG_ID])) { out.inDoc++; continue; }
+    // A Slides part's feedback is on its deck (2026-11-17); older feedback
+    // may still be on its feedback page, so both are looked at.
+    const workId = String(row[FI.STUDENT_FILE_ID] || "").trim();
+    const deck = workId && workId !== docId && _fiWorkTypeOf_(ledgerSs, cfg, workId, workTypes) === "slides" ? workId : "";
     let since;
     try {
       const builtMs = isNaN(newest[docId].at) ? 0 : newest[docId].at;
       since = _fiFeedbackCommentsIn_(docId, builtMs, Date.now() + 60000);
+      if (deck && !since.length) since = _fiFeedbackCommentsIn_(deck, builtMs, Date.now() + 60000);
     } catch (e) {
       out.unreadable++;
       Logger.log("[FeedbackRepost] " + label + ": couldn't read its comments (" + e.message + ").");
@@ -2085,8 +2124,8 @@ function repostMissingFeedback(doPost, skipRefs) {
     const result = shape.compliance === "APPROVED" ? "Passed" : "Revise";
     let posted = false;
     if (doPost === true) {
-      posted = _fiPostEvaluationComment_(docId,
-        _fiFormatFeedbackComment_(_fiStripMilestoneOutcomesLine_(output), shape.compliance));
+      const text = _fiFormatFeedbackComment_(_fiStripMilestoneOutcomesLine_(output), shape.compliance);
+      posted = (deck && _fiPostEvaluationComment_(deck, text)) || _fiPostEvaluationComment_(docId, text);
       if (posted) out.posted++; else out.failed++;
     }
     out.rows.push({ row: rowNum, ref: ref, result: result, posted: posted });

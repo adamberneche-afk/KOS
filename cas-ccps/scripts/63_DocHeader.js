@@ -87,15 +87,16 @@ function setDocFeedbackStatus_(fileId, state, opts) {
 function _styleDocFeedbackLine_(paragraph, state, opts) {
   const st = DOC_FEEDBACK_STATES[state];
   const when = Utilities.formatDate(opts.when || new Date(), Session.getScriptTimeZone(), "MMM d, h:mm a");
-  const where = opts.inComments ? DOC_FEEDBACK_COMMENT_WORDS : "the Feedback section below";
+  const words = opts.onSlides ? DOC_FEEDBACK_SLIDES_WORDS : DOC_FEEDBACK_COMMENT_WORDS;
+  const where = opts.inComments ? words : "the Feedback section below";
   const text = DOC_FEEDBACK_PREFIX + st.text.replace("{when}", when).replace("{where}", where);
   paragraph.setText(text);
   const t = paragraph.editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(st.color).setBold(st.bold);
   // The comment's own link (2026-11-17): Docs keeps a comment that isn't
   // attached to text behind its Comments button, where students missed it.
   // The words "the comment on this doc" open it.
-  const at = opts.commentUrl && st.text.indexOf("{where}") !== -1 ? text.indexOf(DOC_FEEDBACK_COMMENT_WORDS) : -1;
-  if (at !== -1) t.setLinkUrl(at, at + DOC_FEEDBACK_COMMENT_WORDS.length - 1, opts.commentUrl);
+  const at = opts.commentUrl && opts.inComments && st.text.indexOf("{where}") !== -1 ? text.indexOf(words) : -1;
+  if (at !== -1) t.setLinkUrl(at, at + words.length - 1, opts.commentUrl);
 }
 
 // ---------------------------------------------------------------------------
@@ -106,10 +107,15 @@ function _styleDocFeedbackLine_(paragraph, state, opts) {
 // no sheet keeps it, and a resubmit (CHECKING) clears it with the line.
 // ---------------------------------------------------------------------------
 const DOC_FEEDBACK_COMMENT_WORDS = "the comment on this doc";
+// A Slides part's feedback is a comment on the deck itself (2026-11-17); its
+// feedback page's line says so and links there.
+const DOC_FEEDBACK_SLIDES_WORDS = "the comment on your slides";
 
-function feedbackCommentUrl_(fileId, commentId) {
+// type: "slides" for a deck, else a doc.
+function feedbackCommentUrl_(fileId, commentId, type) {
   const f = String(fileId || "").trim(), c = String(commentId || "").trim();
-  return f && c ? "https://docs.google.com/document/d/" + encodeURIComponent(f) + "/edit?disco=" + encodeURIComponent(c) : "";
+  const path = type === "slides" ? "presentation" : "document";
+  return f && c ? "https://docs.google.com/" + path + "/d/" + encodeURIComponent(f) + "/edit?disco=" + encodeURIComponent(c) : "";
 }
 
 // The link on the doc's feedback line, or "" (no header, no feedback
@@ -122,7 +128,8 @@ function docFeedbackCommentUrl_(fileId) {
       const p = header.getChild(i);
       const text = String(p.asText().getText());
       if (text.indexOf(DOC_FEEDBACK_PREFIX) !== 0) continue;
-      const at = text.indexOf(DOC_FEEDBACK_COMMENT_WORDS);
+      let at = text.indexOf(DOC_FEEDBACK_COMMENT_WORDS);
+      if (at === -1) at = text.indexOf(DOC_FEEDBACK_SLIDES_WORDS);
       const url = at === -1 ? null : p.editAsText().getLinkUrl(at);
       return url && /[?&]disco=/.test(url) ? String(url) : "";
     }
