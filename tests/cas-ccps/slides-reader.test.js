@@ -439,6 +439,9 @@ test('the page words a deck\'s "Not yet", its card and its submitted note', () =
   assert.equal(vm.runInContext('_submitMsgs', ctx)['deck-amy'].text, 'Not yet. Fix this in your slides, then submit again:\n• Slide 2 has no speaker notes.');
   ctx.submitDone('deck-amy', 'VDOE-AMY-1', { ok: true, aiFlowsLive: true, feedbackInComments: false, workType: 'slides' });
   assert.match(vm.runInContext('_submitMsgs', ctx)['deck-amy'].text, /your feedback will be on your deck's feedback page \(the link on this card\)\.$/);
+  // With feedback as a comment it is on the deck itself (2026-11-17).
+  ctx.submitDone('deck-amy', 'VDOE-AMY-1', { ok: true, aiFlowsLive: true, feedbackInComments: true, workType: 'slides' });
+  assert.match(vm.runInContext('_submitMsgs', ctx)['deck-amy'].text, /your feedback will be a comment on your slides: View feedback opens it/);
   ctx.submitDone('deck-amy', 'VDOE-AMY-1', { ok: false, error: 'SLIDES_UNREADABLE' });
   assert.match(vm.runInContext('_submitMsgs', ctx)['deck-amy'].text, /can't open your slides right now/);
   const card = vm.runInContext('cardHtml', ctx)({ fileId: 'deck-amy', configId: 'VDOE-AMY-1', workType: 'slides', canSubmit: true,

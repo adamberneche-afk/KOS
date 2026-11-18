@@ -4679,7 +4679,7 @@ const FORM_SUBMIT_NOTE = "Submit for Feedback reads your form's questions and se
   "checks them, and puts your feedback on your form's feedback page.";
 // A Slides part (Phase 4c).
 const SLIDES_SUBMIT_NOTE = "Submit for Feedback reads the words on your slides and your speaker notes, counts your " +
-  "pictures, checks them, and puts your feedback on your deck's feedback page.";
+  "pictures, checks them, and sends them for feedback.";
 // A Sheets part (Phase 4d).
 const SHEET_SUBMIT_NOTE = "Submit for Feedback reads your sheet's tabs, what you filled in, your formulas and " +
   "charts, checks them, and puts your feedback on your sheet's feedback page.";
@@ -4854,6 +4854,9 @@ function submitDone(fileId, configId, res) {
   if (res && res.ok) {
     done({ ok: true, text: (!res.aiFlowsLive
       ? "✅ Submitted. Your teacher can see your work and will review it directly."
+      // A Slides part's feedback as a comment is on the deck itself (2026-11-17, 37).
+      : res.workType === "slides" && res.feedbackInComments
+        ? "✅ Submitted. In a few minutes your feedback will be a comment on your slides: View feedback opens it, or click Comments (top right) in your deck."
       : res.workType === "form" || res.workType === "slides" || res.workType === "sheet"
         ? "✅ Submitted. In a few minutes your feedback will be on your " + (res.workType === "slides" ? "deck" : res.workType) + "'s feedback page (the link on this card)" +
           (res.feedbackInComments ? ", as a comment: open it and click Comments (top right)." : ".")
