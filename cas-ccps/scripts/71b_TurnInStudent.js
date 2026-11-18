@@ -154,6 +154,9 @@ function turnInAttach_(ss, cfg, googleId, ledgerData, assignments) {
   assignments.forEach(function (a) {
     const row = rows[a.configId];
     if (!row || !turnInSwitchCoversRow_(ss, row, raw, cache)) return;
+    // Turn-in codes are on for this card, with or without a question yet
+    // (2026-11-17: Show me around, 13, teaches them only where they're on).
+    a.turnInOn = true;
     const view = turnInView_(ss, cfg, row, undefined, cache);
     if (!view) return;
     const feedbackShown = a.statusClass === "NEEDS_ACTION" || a.statusClass === "DONE";

@@ -2718,7 +2718,8 @@ function dashCanvasUrl_() {
 // normal work. It highlights each part of the page in turn (a dimmed page
 // with a lit box around the part, a card with Back and Next), then shows
 // the two places inside the document a student needs: Comments and the
-// outline. It starts by itself on a student's first visit (dashTourSeen_,
+// outline, then, where turn-in codes are on, how to earn one and turn in
+// with it on Canvas. It starts by itself on a student's first visit (dashTourSeen_,
 // on the server) and is in More any time. Nothing is sent to the server. A step whose part
 // isn't on the page (no card to submit yet) is skipped.
 // ---------------------------------------------------------------------------
@@ -2768,6 +2769,35 @@ var TOUR_DOC_ART = '<svg viewBox="0 0 320 170" role="img" aria-label="A Google D
   '<rect x="114" y="80" width="120" height="6" rx="3" fill="#dadce0"/><rect x="114" y="104" width="170" height="6" rx="3" fill="#dadce0"/>' +
   '<rect x="114" y="118" width="140" height="6" rx="3" fill="#dadce0"/></svg>';
 
+// Turning in with a code (2026-11-17, the operator: the step most unlike
+// usual classroom habits): the code on the card, drawn going into Canvas.
+var TOUR_CANVAS_ART = '<svg viewBox="0 0 320 150" role="img" aria-label="The code on your dashboard, pasted into the assignment in Canvas">' +
+  '<rect x="1" y="1" width="140" height="148" rx="8" fill="#fff" stroke="#dadce0"/>' +
+  '<text x="10" y="20" font-size="10" font-weight="bold" fill="#202124">Turn-in code</text>' +
+  '<rect x="10" y="30" width="122" height="22" rx="4" fill="#f1f3f4" stroke="#dadce0"/>' +
+  '<text x="16" y="45" font-size="8.5" fill="#202124" font-family="monospace">CAS-8175-L03-7KQ3-M9TX</text>' +
+  '<rect x="10" y="60" width="44" height="20" rx="4" fill="#fff" stroke="#f9ab00" stroke-width="2"/>' +
+  '<text x="32" y="74" font-size="10" text-anchor="middle" fill="#1967d2">Copy</text>' +
+  '<text x="10" y="102" font-size="9" fill="#5f6368">On your dashboard,</text>' +
+  '<text x="10" y="114" font-size="9" fill="#5f6368">on the card</text>' +
+  '<path d="M146 75 L172 75" stroke="#f9ab00" stroke-width="4"/><path d="M170 66 L182 75 L170 84 Z" fill="#f9ab00"/>' +
+  '<rect x="186" y="1" width="133" height="148" rx="8" fill="#fff" stroke="#dadce0"/>' +
+  '<rect x="186" y="1" width="133" height="18" rx="8" fill="#e66000"/>' +
+  '<text x="194" y="14" font-size="9" fill="#fff" font-weight="bold">Canvas</text>' +
+  '<text x="194" y="34" font-size="9" fill="#202124" font-weight="bold">L03 Personal branding</text>' +
+  '<text x="194" y="50" font-size="8.5" fill="#5f6368">Text Entry</text>' +
+  '<rect x="194" y="56" width="117" height="40" rx="3" fill="#fff" stroke="#f9ab00" stroke-width="2"/>' +
+  '<text x="199" y="72" font-size="7.5" fill="#202124" font-family="monospace">CAS-8175-L03-7KQ3-M9TX</text>' +
+  '<rect x="252" y="106" width="58" height="20" rx="4" fill="#0b5f2e"/>' +
+  '<text x="281" y="120" font-size="9" text-anchor="middle" fill="#fff">Submit</text></svg>';
+
+// Whether turn-in codes are on for any card on the page (71b's turnInOn).
+function _tourTurnInOn() {
+  var list = (_lastDashData && _lastDashData.assignments) || [];
+  for (var i = 0; i < list.length; i++) if (list[i].turnInOn || list[i].turnIn) return true;
+  return false;
+}
+
 function _tourSteps() {
   return [
     { title: "Welcome to your dashboard", text: "This is where you find your work, send it for feedback, and read what comes back. This tour takes about a minute." },
@@ -2777,13 +2807,17 @@ function _tourSteps() {
     { title: "Send it for feedback", text: "When you are ready, press Submit for Feedback. Your feedback comes back in a few minutes.", el: function () { return _tourButton("Submit for Feedback"); } },
     { title: "Read your feedback", text: "When feedback is ready, View feedback opens your document with the feedback already open.", el: function () { return _tourButton("View feedback"); } },
     { title: "Inside your document", art: TOUR_DOC_ART, text: "Your feedback is a comment. If it is closed, click Comments at the top right. The outline on the left lists the parts of your document: click one to jump there. If you do not see it, click the outline icon at the top left." },
+    { title: "Earn your turn-in code", when: _tourTurnInOn, center: true, el: function () { var q = _tourQ(".ti .ti-a"); return (q && q.closest && q.closest(".ti")) || _tourQ(".ti"); }, text: "Once your feedback is back, answer one short question about it on the card. A check reads your answer. In a few minutes your turn-in code shows on the card." },
+    { title: "Turn it in on Canvas", when: _tourTurnInOn, art: TOUR_CANVAS_ART, text: "Copy the code. In Canvas, open the same assignment, paste the code in the text box, and submit. The code is how you turn in, not a file or a link. You can still revise after." },
     { title: "Come back any time", text: "This tour is under More, in Show me around.", el: function () { return _tourQ("#more-btn"); } }
   ];
 }
 
 function startTour() {
   if (_tour) return;
-  var steps = _tourSteps().filter(function (s) { return !s.el || s.el(); });
+  // when: a step only for some pages; el: the part it lights, skipped when
+  // it isn't on the page unless center (then it shows in the middle).
+  var steps = _tourSteps().filter(function (s) { return (!s.when || s.when()) && (!s.el || s.center || s.el()); });
   _tour = { i: 0, steps: steps, back: document.activeElement };
   var spot = document.createElement("div");
   spot.id = "tour-spot";

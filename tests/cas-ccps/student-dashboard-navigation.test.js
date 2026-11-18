@@ -511,10 +511,23 @@ test('Show me around: the steps, in plain words, skip a part that isn\'t on the 
   const { ctx } = tourPage(false);
   const steps = ctx._tourSteps();
   assert.deepEqual(plain(steps.map((s) => s.title)), ['Welcome to your dashboard', 'Your record', 'Start here', 'Open your work',
-    'Send it for feedback', 'Read your feedback', 'Inside your document', 'Come back any time']);
-  const shown = steps.filter((s) => !s.el || s.el());
-  assert.deepEqual(plain(shown.map((s) => s.title)), ['Welcome to your dashboard', 'Your record', 'Inside your document'],
-    'only the tabs are on this stub page; the centered steps always show');
+    'Send it for feedback', 'Read your feedback', 'Inside your document', 'Earn your turn-in code', 'Turn it in on Canvas',
+    'Come back any time']);
+  // The page's own filter (startTour): a step for some pages (when), and a
+  // part not on the page (el) left out unless the step can stand centered.
+  const shownWith = (data) => {
+    ctx._lastDashData = data;
+    vm.runInContext('_lastDashData = this._lastDashData;', ctx);
+    return plain(ctx._tourSteps().filter((s) => (!s.when || s.when()) && (!s.el || s.center || s.el())).map((s) => s.title));
+  };
+  assert.deepEqual(shownWith({ assignments: [{}] }), ['Welcome to your dashboard', 'Your record', 'Inside your document'],
+    'only the tabs are on this stub page; turn-in codes off: no turn-in steps');
+  assert.deepEqual(shownWith({ assignments: [{}, { turnInOn: true }] }), ['Welcome to your dashboard', 'Your record',
+    'Inside your document', 'Earn your turn-in code', 'Turn it in on Canvas'],
+    'turn-in codes on for a card, before any question shows: both steps, centered');
+  const canvas = steps.find((s) => s.title === 'Turn it in on Canvas');
+  assert.match(canvas.text, /In Canvas, open the same assignment, paste the code in the text box, and submit/);
+  assert.match(canvas.art, /aria-label="The code on your dashboard, pasted into the assignment in Canvas"/);
   assert.match(steps[6].text, /click Comments at the top right/);
   assert.match(steps[6].text, /outline on the left/);
   assert.match(steps[6].art, /<svg[^>]*role="img"[^>]*aria-label="A Google Doc: Comments at the top right, the outline on the left"/);

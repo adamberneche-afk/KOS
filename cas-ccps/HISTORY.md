@@ -828,4 +828,8 @@ work. "We need to train the students or make it more obvious."
 - Docs has no way to open its Comments or outline panel from a link or a
   script, so the outline is taught; the feedback comment is opened directly
   by View feedback (the entry before this one).
+- The turn-in code (the operator, same day: the step most unlike usual
+  classroom habits): where codes are on for any card (`turnInOn`, 71b),
+  two more steps: earn a code by answering the question on the card, then
+  copy it into the same assignment's text box in Canvas and submit, drawn.
 - Tests: `student-dashboard-navigation.test.js`.

@@ -240,6 +240,7 @@ test('the question comes from the student\'s own feedback: Not yet on a card to 
     { label: 'You showed', text: 'Demonstrate critical thinking and problem-solving' },
     { label: 'Also in this lesson', text: 'Identify sources of data for market research' }]);
   assert.ok(!('turnIn' in by['VDOE-AMY-3']), 'no feedback yet: no question');
+  assert.equal(by['VDOE-AMY-3'].turnInOn, true, 'but codes are on for it: Show me around teaches them (13)');
   assert.equal(exported.turnInQuestion_('PASSED', ''), '', 'no milestone on file: no question');
   assert.equal((rev.turnIn.question.match(/\?/g) || []).length, 1, 'one question');
 });
