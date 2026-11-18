@@ -15,7 +15,7 @@ const MARKER = '── YOUR RESPONSE BEGINS HERE ──';
 
 function load() {
   return loadGasFiles(['00_SharedConfig.js', '03_QueueBridge.js', '15b_StudioFlowPrompts_Flow2_Revised.js',
-    '15c_Flow2DirectEvaluationService.js', '37_FlowInputBuilder.js', '40_FlowPrompts.js', '54_StudentAssignments.js',
+    '15c_Flow2DirectEvaluationService.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '40_FlowPrompts.js', '54_StudentAssignments.js',
     '55b_LessonAssignmentData.js', '68_LessonParts.js'].map(S),
   ['_fiEarlierPartsText_', '_fiBuildPromptText_', '_buildFlow2Prompt_', 'findSystemText_', 'LEDGER', 'FI_EARLIER_PART_MAX', '_fiScrubEarlierParts_', 'FI']);
 }

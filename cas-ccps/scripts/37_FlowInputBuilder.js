@@ -638,10 +638,13 @@ function _fiFindTeacherMatrixRow_(matrixSsId, configId) {
         milestone3: at(FI_TM_COLUMNS_.MILESTONE_3),
         milestone4: at(FI_TM_COLUMNS_.MILESTONE_4),
         dod: at(FI_TM_COLUMNS_.DOD),
-        milestone1CompetencyId: at(FI_TM_COLUMNS_.MILESTONE_1_COMPETENCY_ID),
-        milestone2CompetencyId: at(FI_TM_COLUMNS_.MILESTONE_2_COMPETENCY_ID),
-        milestone3CompetencyId: at(FI_TM_COLUMNS_.MILESTONE_3_COMPETENCY_ID),
-        milestone4CompetencyId: at(FI_TM_COLUMNS_.MILESTONE_4_COMPETENCY_ID),
+        // Competency IDs through 32's competencyIdText_ (2026-11-18): String()
+        // of a cell Sheets stored as a date wrote "Tue Jul 01 8177 …" into
+        // FlowInput and then CompetencyEvidence.
+        milestone1CompetencyId: competencyIdText_(row[FI_TM_COLUMNS_.MILESTONE_1_COMPETENCY_ID]),
+        milestone2CompetencyId: competencyIdText_(row[FI_TM_COLUMNS_.MILESTONE_2_COMPETENCY_ID]),
+        milestone3CompetencyId: competencyIdText_(row[FI_TM_COLUMNS_.MILESTONE_3_COMPETENCY_ID]),
+        milestone4CompetencyId: competencyIdText_(row[FI_TM_COLUMNS_.MILESTONE_4_COMPETENCY_ID]),
       };
     }
   }
@@ -1247,10 +1250,10 @@ function harvestFlowInputResults() {
           { inComments: !!asComment, onSlides: onSlides, commentUrl: commentUrl });
 
         const competencyIds = {
-          "1": String(fiData[i][FI.MILESTONE_1_COMPETENCY_ID] || ""),
-          "2": String(fiData[i][FI.MILESTONE_2_COMPETENCY_ID] || ""),
-          "3": String(fiData[i][FI.MILESTONE_3_COMPETENCY_ID] || ""),
-          "4": String(fiData[i][FI.MILESTONE_4_COMPETENCY_ID] || ""),
+          "1": competencyIdText_(fiData[i][FI.MILESTONE_1_COMPETENCY_ID]),
+          "2": competencyIdText_(fiData[i][FI.MILESTONE_2_COMPETENCY_ID]),
+          "3": competencyIdText_(fiData[i][FI.MILESTONE_3_COMPETENCY_ID]),
+          "4": competencyIdText_(fiData[i][FI.MILESTONE_4_COMPETENCY_ID]),
         };
         const milestoneTexts = {
           "1": String(fiData[i][FI.MILESTONE_1] || ""),

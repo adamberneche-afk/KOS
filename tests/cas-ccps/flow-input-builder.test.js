@@ -37,7 +37,7 @@ const PROMPTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '40
 
 function load(extraGlobals) {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, DOC_HEADER_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PARTS_PATH, PROMPTS_PATH,
+    [SHARED_CONFIG_PATH, path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '32_CompetencyRubricImporter.js'), DOC_HEADER_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PARTS_PATH, PROMPTS_PATH,
       ASSIGNMENTS_PATH],
     [
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',
@@ -137,12 +137,15 @@ test('buildFlowInputRows: resolves the full 3-hop chain into one flat FlowInput 
   );
   ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
   const matrixSs = setUpTeacherMatrix(sandbox, 'matrix-ss-1');
-  matrixSs.getSheetByName('TeacherMatrix').appendRow(teacherMatrixRow({ configId: 'VDOE-ABC-2026', c1: 'COMP-1' }));
+  // c2: a competency ID Sheets stored as a date (2026-11-18): read back as its
+  // ID, never as String() of the Date ("Tue Jul 01 8177 …").
+  matrixSs.getSheetByName('TeacherMatrix').appendRow(teacherMatrixRow({ configId: 'VDOE-ABC-2026', c1: 'COMP-1', c2: new Date(8177, 6, 1) }));
 
   exported.buildFlowInputRows();
 
   const fi = ledgerSs.getSheetByName('FlowInput').getDataRange().getValues();
   assert.equal(fi.length, 2, 'header + one built row');
+  assert.equal(fi[1][exported.FI.MILESTONE_2_COMPETENCY_ID], '8177-7', 'a date cell in the TeacherMatrix comes out as its ID');
   const row = fi[1];
   assert.equal(row[exported.FI.STUDENT_FILE_ID], studentFileId);
   assert.equal(row[exported.FI.CONFIG_ID], 'VDOE-ABC-2026');

@@ -14,7 +14,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '37_FlowInputBuilder.js', '39_FlowFixtures.js'].map(S);
+const FILES = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '39_FlowFixtures.js'].map(S);
 const FROM = '2026-11-15T14:34:00-05:00';
 const TO = '2026-11-15T15:05:00-05:00';
 const IN = '2026-11-15T19:40:00.000Z';   // 2:40 PM in New York
