@@ -38,7 +38,7 @@ function turnInView_(ss, cfg, row, now, cache) {
   const prompt = turnInPrompt_(ss, cfg, row, cache);
   if (!prompt) return null;
   if (!turnInTermOpen_(ss, row, now, cache)) return { state: "TERM_CLOSED" };
-  const view = { state: "ANSWER", kind: prompt.kind, question: prompt.question, minWords: REFLECTION_MIN_WORDS };
+  const view = { state: "ANSWER", kind: prompt.kind, question: prompt.question, goals: prompt.goals || [], minWords: REFLECTION_MIN_WORDS };
   if (check && String(check[TCHK.STATUS]).trim() === TURN_IN_NOT_YET) {
     view.state = TURN_IN_NOT_YET;
     view.reason = String(check[TCHK.REASON] || "").trim();
@@ -118,7 +118,7 @@ function _turnInSubmit_(configId, text, now) {
     out[TCHK.COURSE] = ledgerRowCourseCode_(row);
     out[TCHK.KIND] = prompt.kind;
     out[TCHK.MILESTONE] = sheetSafeText_(prompt.milestone);
-    out[TCHK.QUESTION] = sheetSafeText_(prompt.question);
+    out[TCHK.QUESTION] = sheetSafeText_(turnInQuestionText_(prompt));
     // The student's words, made safe for the flow's prompt and the sheet.
     out[TCHK.ANSWER] = sheetSafeText_(neutralizeSystemText_(String(text).trim()));
     out[TCHK.STATUS] = TURN_IN_PENDING;
@@ -175,6 +175,7 @@ const TURN_IN_CLIENT_CSS = `
   .ti-notyet{font-size:14px;line-height:1.45;margin:0 0 8px}
   .ti-notyet b{color:#7627bb}
   .ti-q{display:block;font-size:14px;font-weight:500;margin:4px 0 6px;line-height:1.4}
+  .ti-goal{font-size:13px;color:var(--text-secondary);margin:4px 0 2px;line-height:1.4;padding-left:8px;border-left:3px solid #dadce0}
   .ti-a{width:100%;box-sizing:border-box;font-family:inherit;font-size:14px;padding:8px;border:1px solid #9aa0a6;border-radius:6px;resize:vertical}
   .ti-count{font-size:12px;color:var(--text-secondary);margin:2px 0 8px}
   .ti-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -254,6 +255,8 @@ function turnInCardHtml(a) {
     }
     var draft = _tiDrafts[a.configId] || "";
     var min = t.minWords || TI_MIN_WORDS;
+    // The goals on their own lines, then the short question (2026-11-17).
+    (t.goals || []).forEach(function (g) { h += '<div class="ti-goal"><b>' + esc(g.label) + ':</b> ' + esc(g.text) + '</div>'; });
     h += '<label class="ti-q" for="' + id + '-a">' + esc(t.question) + '</label>' +
       '<textarea id="' + id + '-a" class="ti-a" rows="3" data-config="' + esc(a.configId) + '" data-min="' + min + '" oninput="turnInInput(this)">' + esc(draft) + '</textarea>' +
       '<div class="ti-count" id="' + id + '-a-n">' + countWords(draft) + ' of ' + min + ' words</div>' +

@@ -50,7 +50,7 @@ function load(opts) {
   };
   const { exported, sandbox } = loadGasFiles(FILES, [
     'getStudentDashboardData', 'buildStudentDashboardHtml_', 'LEDGER', 'getMyTurnInState', 'submitTurnInAnswer',
-    'applyTurnInVerdict_', 'grantTurnInCode', 'turnInScreen_', 'turnInPastedShare_', 'turnInQuestion_',
+    'applyTurnInVerdict_', 'grantTurnInCode', 'turnInScreen_', 'turnInPastedShare_', 'turnInQuestion_', 'turnInGoals_', 'turnInQuestionText_',
     'turnInMakeCode_', 'turnInCodeValid_', 'turnInCheckChar_', 'turnInLessonOf_', 'turnInRowTerm_',
     'turnInInCurrentTerm_', 'TURN_IN_PASTE_MAX_SHARE', 'TURN_IN_ALPHABET', 'REFLECTION_MIN_WORDS',
     'TURN_IN_CODE_HEADERS', 'TURN_IN_CHECK_HEADERS', 'openTurnInForAssignment', 'closeTurnInForAssignment',
@@ -230,12 +230,15 @@ test('the question comes from the student\'s own feedback: Not yet on a card to 
   assert.equal(rev.notYet, 'Develop a market research project');
   assert.deepEqual(rev.turnIn, {
     state: 'ANSWER', kind: 'NOT_YET', minWords: exported.REFLECTION_MIN_WORDS,
-    question: 'Your feedback says Not yet: “Develop a market research project”. What will you change, where in your document, and how will that show it?',
+    question: 'What will you change to show this goal, and where in your work?',
+    goals: [{ label: 'Not yet', text: 'Develop a market research project' }],
   });
-  assert.match(rev.turnIn.question, new RegExp(rev.notYet), 'the same milestone as the card\'s "Not yet:" line');
-  assert.equal(by['VDOE-AMY-2'].turnIn.question,
-    'Your feedback says you showed “Demonstrate critical thinking and problem-solving”. How does it connect to “Identify sources of data for market research”? Point to the part of your work where they meet.',
+  assert.equal(rev.turnIn.goals[0].text, rev.notYet, 'the same milestone as the card\'s "Not yet:" line');
+  assert.equal(by['VDOE-AMY-2'].turnIn.question, 'Where in your work do these two goals meet?',
     'not a part: connected to another competency the same check measured');
+  assert.deepEqual(plain(by['VDOE-AMY-2'].turnIn.goals), [
+    { label: 'You showed', text: 'Demonstrate critical thinking and problem-solving' },
+    { label: 'Also in this lesson', text: 'Identify sources of data for market research' }]);
   assert.ok(!('turnIn' in by['VDOE-AMY-3']), 'no feedback yet: no question');
   assert.equal(exported.turnInQuestion_('PASSED', ''), '', 'no milestone on file: no question');
   assert.equal((rev.turnIn.question.match(/\?/g) || []).length, 1, 'one question');
@@ -247,11 +250,20 @@ test('the question comes from the student\'s own feedback: Not yet on a card to 
 test('the pass question connects to the next part, else another competency; the Revise question asks what, where and how', () => {
   const { exported } = load();
   const q = exported.turnInQuestion_;
-  assert.equal(q('PASSED', 'Shown thing', { text: 'You design the survey.', part: 2 }),
-    'Your feedback says you showed “Shown thing”. Part 2 asks: “You design the survey.”. How will what you did here help you there? Point to the part of your work you will build on.');
-  assert.equal(q('PASSED', 'Shown thing', { text: 'Explain the 4 Ps', part: 0 }),
-    'Your feedback says you showed “Shown thing”. How does it connect to “Explain the 4 Ps”? Point to the part of your work where they meet.');
-  assert.match(q('NOT_YET', 'Missed thing'), /What will you change, where in your document, and how will that show it\?$/);
+  assert.equal(q('PASSED', 'Shown thing', { text: 'You design the survey.', part: 2 }), 'What from this part will you use in Part 2?');
+  assert.equal(q('PASSED', 'Shown thing', { text: 'Explain the 4 Ps', part: 0 }), 'Where in your work do these two goals meet?');
+  assert.equal(q('PASSED', 'Shown thing'), 'Which part of your work shows this goal best? Why?');
+  assert.equal(q('NOT_YET', 'Missed thing'), 'What will you change to show this goal, and where in your work?');
+  // The goals sit on their own lines, without a closing period (it used to
+  // end a quoted goal in ".”.").
+  assert.deepEqual(plain(exported.turnInGoals_('PASSED', 'Shown thing', { text: 'You design the survey.', part: 2 })),
+    [{ label: 'You showed', text: 'Shown thing' }, { label: 'Part 2 asks', text: 'You design the survey' }]);
+  assert.equal(exported.turnInQuestionText_({ question: 'What from this part will you use in Part 2?',
+    goals: exported.turnInGoals_('PASSED', 'Shown thing', { text: 'You design the survey.', part: 2 }) }),
+    'You showed: Shown thing. Part 2 asks: You design the survey. What from this part will you use in Part 2?',
+    'stored and sent to the check as one line, goals first');
+  [['NOT_YET', null], ['PASSED', null], ['PASSED', { text: 'x', part: 2 }], ['PASSED', { text: 'x', part: 0 }]].forEach(([k, l]) =>
+    assert.ok(q(k, 'Shown thing', l).split(/\s+/).length <= 13, 'one short ask: ' + q(k, 'Shown thing', l)));
   // The next part's goal, from 13c in the Student Dashboard.
   const g = exported.turnInNextPartGoal_('CAS-8177-MARKET-RESEARCH-SURVEY-DESIGN-P1');
   assert.equal(g.part, 2);
@@ -266,6 +278,9 @@ const PROMPT = {
   milestone: 'Develop a market research project',
   question: 'Your feedback says Not yet: “Develop a market research project”. What will you change, where in your document, and how will that show it?',
 };
+// (The screen's paste check is pinned against the question as it was
+// written before 2026-11-17, a longer reference; the check itself is
+// unchanged.)
 
 test('the screen turns down a short answer, with a plain reason', () => {
   const { exported } = load();
@@ -344,7 +359,9 @@ test('an answer that passes is kept as PENDING_CHECK, and the screen issues no c
 test('a turned-down answer is not stored', () => {
   const env = load({ switch: '8177' });
   assert.equal(env.exported.submitTurnInAnswer('VDOE-AMY-1', 'too short').error, 'SHORT');
-  assert.equal(env.exported.submitTurnInAnswer('VDOE-AMY-1', PROMPT.question).error, 'PASTED');
+  assert.equal(env.exported.submitTurnInAnswer('VDOE-AMY-1',
+    'Not yet: Develop a market research project. What will you change to show this goal, and where in your work?').error, 'PASTED',
+    'the goal and the question pasted back');
   assert.equal(env.ss.getSheetByName('TurnInChecks'), null);
   assert.equal(env.exported.submitTurnInAnswer('VDOE-AMY-3', GENUINE).error, 'NO_FEEDBACK');
 });
@@ -363,7 +380,7 @@ test('NOT_YET stores the reason for the student, issues no code, and the form co
   const view = plain(env.exported.getMyTurnInState('VDOE-AMY-1')).turnIn;
   assert.equal(view.state, 'NOT_YET');
   assert.equal(view.reason, 'Say which section you will change.');
-  assert.match(view.question, /^Your feedback says Not yet/);
+  assert.equal(view.question, 'What will you change to show this goal, and where in your work?');
   assert.equal(env.exported.applyTurnInVerdict_(id, 'ADDRESSES', '').error, 'ALREADY_DECIDED', 'one verdict per answer');
   assert.equal(env.exported.submitTurnInAnswer('VDOE-AMY-1', GENUINE_2).ok, true, 'the student rewrites');
 });
@@ -570,7 +587,7 @@ test('the card renders each state from its data alone, with no server call', () 
   const a = by['VDOE-AMY-1'];
   const form = ctx.cardHtml(a);
   assert.match(form, /<div class="ti" role="group" aria-labelledby="ti-VDOE-AMY-1-h">/);
-  assert.match(form, /<label class="ti-q" for="ti-VDOE-AMY-1-a">Your feedback says Not yet: “Develop a market research project”\./);
+  assert.match(form, /<div class="ti-goal"><b>Not yet:<\/b> Develop a market research project<\/div><label class="ti-q" for="ti-VDOE-AMY-1-a">What will you change to show this goal, and where in your work\?<\/label>/);
   assert.match(form, /<textarea id="ti-VDOE-AMY-1-a" class="ti-a"/);
   assert.match(form, />Send answer<\/button>/);
   assert.equal((form.match(/act-primary/g) || []).length, 1, 'still one filled button on the card');

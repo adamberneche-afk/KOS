@@ -35,7 +35,9 @@ test('a first Submit gets an Evidence question on the primary competency, plus o
   assert.equal(qs.length, 2);
   assert.equal(qs[0].kind, 'EVIDENCE');
   assert.equal(qs[0].competencyId, '8177-83');
-  assert.match(qs[0].question, /“Develop a market research project”/);
+  assert.equal(qs[0].goal, 'Develop a market research project');
+  assert.equal(qs[0].goalLabel, 'Goal');
+  assert.ok(qs[0].question.split(/\s+/).length <= 20, 'the question itself is short: the goal is on its own line');
   assert.ok(['APPROACH', 'CHOICE'].includes(qs[1].kind));
   assert.equal(qs[1].competencyId, '');
   assert.deepEqual(plain(x.chooseReflectionQuestions_(CRITERIA, [], 'VDOE-AAA-2026')), qs, 'same inputs, same questions');
@@ -157,7 +159,7 @@ test('reflection on: the questions name the assignment\'s primary competency', (
   assert.equal(res.ok, true);
   assert.equal(res.questions.length, 2);
   assert.equal(res.questions[0].competencyId, '8177-83');
-  assert.match(res.questions[0].question, /Develop a market research project/);
+  assert.equal(res.questions[0].goal, 'Develop a market research project');
 });
 
 // 2026-10-24: with the row's StudentObjectives (53), a question quotes the
@@ -168,10 +170,10 @@ test('reflection on: a question quotes the student\'s "I can" objective when the
   });
   const qs = plain(exported.getSubmitReflection(fileId, 'VDOE-BEN-2026').questions);
   assert.equal(qs[0].competencyId, '8177-83');
-  assert.match(qs[0].question, /“I can build a market research survey by making the Google Form and explaining what each question tells the store”/);
-  assert.doesNotMatch(qs[0].question, /Develop a market research project/);
+  assert.equal(qs[0].goal, 'I can build a market research survey by making the Google Form and explaining what each question tells the store');
+  assert.doesNotMatch(qs[0].question, /Develop a market research project|I can/);
   const { exported: x2, fileId: f2 } = loadDashboard('all', undefined, { '8177-2': 'I can spot bias.' });
-  assert.match(plain(x2.getSubmitReflection(f2, 'VDOE-BEN-2026').questions)[0].question, /Develop a market research project/,
+  assert.match(plain(x2.getSubmitReflection(f2, 'VDOE-BEN-2026').questions)[0].goal, /Develop a market research project/,
     'a competency with no objective keeps its title');
 });
 
@@ -209,6 +211,8 @@ test('reflection on: good answers go to ReflectionLog as text with the submissio
   assert.equal(log[1][2], 'VDOE-BEN-2026');
   assert.equal(log[1][3], fileId);
   assert.equal(log[1][6], '8177-83');
+  assert.equal(log[1][7], 'Goal: Develop a market research project. ' + qs[0].question,
+    'stored as one line with its goal, for Flow 2 and the reflection comment');
   assert.equal(log[1][8], '=' + TEN);
   const queued = ss.getSheetByName('ReviewQueue').getDataRange().getValues()[1];
   assert.equal(String(log[1][0]), String(queued[0]), 'the answers carry the queued row\'s time');
@@ -330,7 +334,9 @@ test('a resubmission with a shortfall: Evidence plus one Feedback question, F1 n
   assert.equal(qs[1].kind, 'FEEDBACK');
   assert.equal(qs[1].competencyId, '8177-83');
   assert.equal(qs[1].frameId, 'F1');
-  assert.match(qs[1].question, /The feedback says your work doesn't show this yet: “Develop a market research project”\./);
+  assert.equal(qs[1].goal, 'Develop a market research project');
+  assert.equal(qs[1].goalLabel, 'Not shown yet');
+  assert.equal(qs[1].question, 'What will you change to show this goal?');
   // The next resubmission takes a Feedback frame not yet answered.
   const later = prior.concat(qs.map((q) => ({ frameId: q.frameId, kind: q.kind, competencyId: q.competencyId, submittedAt: 2000 })));
   assert.equal(plain(x.chooseReflectionQuestions_(CRITERIA, later, 'VDOE-AAA-2026', CRITERIA[0]))[1].frameId, 'F2');
@@ -383,5 +389,5 @@ test('reflection on: after a check found the primary not met, the dashboard asks
   ev.appendRow(['e1', 'ben@ccpsnet.net', '8177-83', 'm', 'PARTIALLY_MET', 'CAS-8177-SURVEY', new Date(), fileId, '']);
   const again = plain(exported.getSubmitReflection(fileId, 'VDOE-BEN-2026')).questions;
   assert.deepEqual(again.map((q) => q.kind), ['EVIDENCE', 'FEEDBACK']);
-  assert.match(again[1].question, /doesn't show this yet: “Develop a market research project”/);
+  assert.equal(again[1].goal, 'Develop a market research project');
 });

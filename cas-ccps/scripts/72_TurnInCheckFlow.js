@@ -529,7 +529,8 @@ function _ticSyntheticCheck_(id, answer) {
   r[TCHK.CHECK_ID] = id;
   r[TCHK.KIND] = "NOT_YET";
   r[TCHK.MILESTONE] = "Develop a market research project";
-  r[TCHK.QUESTION] = turnInQuestion_("NOT_YET", r[TCHK.MILESTONE]);
+  r[TCHK.QUESTION] = turnInQuestionText_({ question: turnInQuestion_("NOT_YET", r[TCHK.MILESTONE]),
+    goals: turnInGoals_("NOT_YET", r[TCHK.MILESTONE]) });
   r[TCHK.ANSWER] = answer;
   r[TCHK.STATUS] = TURN_IN_PENDING;
   return r;
