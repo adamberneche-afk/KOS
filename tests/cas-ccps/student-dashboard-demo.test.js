@@ -340,3 +340,54 @@ test('the Teacher Dashboard has "View as a student", opening the Student Dashboa
   assert.equal(exported.studentDemoUrl_({ studentDashboardUrl: 'javascript:alert(1)' }), '');
   assert.equal(exported.studentDemoUrl_({ studentDashboardUrl: 'https://script.google.com/x" onmouseover="y' }), '');
 });
+
+// 2026-11-18: the turn-in code in the demo. "View as a student" showed no
+// turn-in card, so a teacher couldn't try the steps the tutorial teaches.
+test('the demo shows turn-in cards: one code ready, the other shown feedback asking its question', () => {
+  const d = fixture();
+  const cards = d.dashboard.assignments;
+  const env = loadGasFiles(SD, ['turnInCodeValid_']);
+  assert.ok(cards.every((a) => a.turnInOn), 'codes are on for every card, as where a teacher turns them on');
+  const ready = cards.filter((a) => a.turnIn && a.turnIn.state === 'READY');
+  assert.equal(ready.length, 1, 'one card already has its code');
+  assert.equal(ready[0].statusClass, 'DONE');
+  assert.equal(env.exported.turnInCodeValid_(ready[0].turnIn.code), ready[0].turnIn.code, 'a well-formed code');
+  const asking = cards.filter((a) => a.turnIn && a.turnIn.state === 'ANSWER');
+  assert.ok(asking.some((a) => a.turnIn.kind === 'NOT_YET'), 'a Revise card asks what will change');
+  assert.ok(asking.some((a) => a.turnIn.kind === 'PASSED'), 'a passed card asks what it connects to');
+  asking.forEach((a) => {
+    assert.ok(a.statusClass === 'NEEDS_ACTION' || a.statusClass === 'DONE', 'only where feedback shows');
+    assert.ok(a.turnIn.question.length > 10 && a.turnIn.goals.length >= 1);
+    assert.ok(a.demoTurnInCode, 'the code it earns');
+  });
+  const revise = asking.find((a) => a.turnIn.kind === 'NOT_YET');
+  assert.equal(revise.turnIn.goals[0].label, 'Not yet');
+  assert.equal(revise.turnIn.goals[0].text, revise.notYet.replace(/\.\s*$/, ''));
+  cards.filter((a) => a.turnIn === undefined).forEach((a) => {
+    assert.ok(!(a.statusClass === 'DONE' && a.demoLastResult === 'PASSED' && a.demoGoals.length), 'a passed card without a turn-in card: ' + a.configId);
+  });
+});
+
+test('Send answer in the demo: being checked, then the code, with no server call', () => {
+  const { ctx, els, calls, advance, page } = demoPage(fixture());
+  advance(1000);
+  const main = els.main.innerHTML;
+  assert.match(main, /Turn-in code/);
+  assert.match(main, /class="ti-code"/);
+  assert.doesNotMatch(main, /Open Canvas/, 'no Open Canvas button: the demo links nowhere real');
+  const card = page('_demoData').dashboard.assignments.find((a) => a.turnIn && a.turnIn.state === 'ANSWER');
+  const want = card.demoTurnInCode;
+  ctx.turnInInput({ id: 'x', value: 'I will add two real ticket prices to my second paragraph and explain how each one changes what the fans pay.',
+    getAttribute: (k) => ({ 'data-config': card.configId, 'data-min': '10' })[k] });
+  const btn = { attrs: { 'data-config': card.configId, 'data-min': '10' }, getAttribute(k) { return this.attrs[k]; } };
+  ctx.turnInSend(btn);
+  advance(500);
+  const now = () => page('_lastDashData').assignments.find((a) => a.configId === card.configId);
+  assert.equal(now().turnIn.state, 'PENDING_CHECK');
+  assert.match(els.main.innerHTML, /Checking your answer/);
+  advance(3000);
+  assert.equal(now().turnIn.state, 'READY');
+  assert.equal(now().turnIn.code, want);
+  assert.ok(els.main.innerHTML.includes(want), 'the code shows on the card');
+  assert.deepEqual(calls, ['getDemoDashboardData'], 'no other server function was called');
+});

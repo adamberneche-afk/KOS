@@ -954,3 +954,20 @@ find it under Comments.
   Revise, "in the comment", linked to the new comment. A dry run and a
   comment that couldn't be posted leave the header alone.
 - Tests: `feedback-repost`.
+
+## The turn-in code in the teacher's demo, 2026-11-18
+
+"View as a student" showed no turn-in card (found making the tutorial), so a
+teacher couldn't try the steps the students are taught.
+
+- `_dashDemoTurnIns_` (13) turns codes on for every demo card, as where a
+  teacher turns them on, and gives each card whose feedback shows the card
+  the real page would (71b's rule): the goals and the question come from 71's
+  own `turnInGoals_` / `turnInQuestion_`. The first passed card already has
+  its code, so both halves show.
+- Send answer goes to the page's `submitTurnInAnswer` stub: "Checking your
+  answer…", then the next check for news hands back the card's sample code
+  (well-formed, made by `turnInMakeCode_`). Nothing reaches the server.
+- The demo's turn-in card has no Open Canvas button: demo cards link
+  nowhere real (the header's Canvas button stays).
+- Tests: `student-dashboard-demo`.
