@@ -1112,6 +1112,7 @@ function harvestFlowInputResults() {
     const setAside = { rearmed: 0, malformed: 0, reasons: {} };
     let studioRows = null; // StudioConfig (39b), read once if a row is harvested
     const workTypes = {}; // fileId -> work type, from the Ledger, read once if needed
+    let heldTwice = 0; // answers for submissions already delivered (not after a restart)
 
     for (let i = 1; i < fiData.length; i++) {
       if (String(fiData[i][FI.READY_STATUS]).trim() !== "EVALUATED") continue;
@@ -1139,16 +1140,25 @@ function harvestFlowInputResults() {
         Logger.log("[FlowInputBuilder] Row " + rowNum + ": run check " + prov.runCheck + " (recorded; not held back).");
       }
 
-      // A re-armed row's second answer (the first run was only slow): the
-      // first is already applied, so this one is set aside untouched.
-      if (String(fiData[i][FI.ARMED_AT] || "").trim() !== "") {
-        if (evalLog === null) evalLog = _fiEvaluationLogRows_(ledgerSs, cfg);
-        if (_fiAlreadyHarvested_(evalLog, fiData[i])) {
-          Logger.log("[FlowInputBuilder] Row " + rowNum + " was answered again after a restart; " +
-                     "the first answer is already applied, so this one is left out.");
-          fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("HARVESTED");
-          continue;
-        }
+      // One submission, one delivery (2026-11-17, proposed after the 11-15
+      // re-grade, the operator's yes): a row whose submission already had a
+      // result applied is never delivered again, whatever answered it
+      // again: a re-armed row's second answer (the first run was only
+      // slow), or a Studio test run that set rows already HARVESTED back to
+      // EVALUATED (the 11-15 re-grade did, and every student got a second
+      // comment). The answer is left out untouched and the row goes back
+      // to HARVESTED; nothing reaches the student, the Ledger or the
+      // evidence. Applied = an EvaluationLog PASSED or NEEDS_REVISION row
+      // for the same file and ConfigID at or after the row was built.
+      if (evalLog === null) evalLog = _fiEvaluationLogRows_(ledgerSs, cfg);
+      if (_fiAlreadyHarvested_(evalLog, fiData[i])) {
+        const restarted = String(fiData[i][FI.ARMED_AT] || "").trim() !== "";
+        Logger.log("[FlowInputBuilder] Row " + rowNum + (restarted
+          ? " was answered again after a restart; the first answer is already applied, so this one is left out."
+          : " was answered again after its result was delivered (a Studio test run?); left out, not delivered twice."));
+        fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("HARVESTED");
+        if (!restarted) heldTwice++;
+        continue;
       }
 
       if (!geminiFullOutput.trim()) {
@@ -1288,6 +1298,12 @@ function harvestFlowInputResults() {
       SpreadsheetApp.flush();
       Logger.log("[FlowInputBuilder] Harvested " + harvested + " row(s).");
     }
+    if (heldTwice) {
+      // Many at once means something re-ran Flow 2 over delivered rows:
+      // the overnight email says so (34c reads FI_HELD_TWICE_PROP).
+      Logger.log("[FlowInputBuilder] Not delivered twice: " + heldTwice + " answer(s) for submissions that already had their result.");
+      _fiNoteHeldTwice_(heldTwice, now);
+    }
     if (setAside.rearmed || setAside.malformed) {
       SpreadsheetApp.flush();
       Logger.log("[FlowInputBuilder] Results not delivered: re-armed " + setAside.rearmed + ", gave up on " +
@@ -1395,6 +1411,23 @@ function _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, record
     isNaN(sentMs) || !submittedAt ? "" : new Date(sentMs), wait, suggestedScore == null ? "" : suggestedScore,
     p.codeVersion || "", p.promptVersion || "", p.promptHash || "", p.runCheck || "", p.model || "",
     p.modelConfigured || ""]);
+}
+
+// The answers left out as second deliveries, for the overnight email:
+// { day: "yyyy-MM-dd", count } in a Script Property, the day's running count.
+const FI_HELD_TWICE_PROP = "FI_HELD_TWICE";
+
+function _fiNoteHeldTwice_(n, now) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const day = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    let cur = {};
+    try { cur = JSON.parse(props.getProperty(FI_HELD_TWICE_PROP) || "{}") || {}; } catch (e) { cur = {}; }
+    const count = (cur.day === day ? Number(cur.count) || 0 : 0) + n;
+    props.setProperty(FI_HELD_TWICE_PROP, JSON.stringify({ day: day, count: count }));
+  } catch (e) {
+    Logger.log("[FlowInputBuilder] Held-twice count not kept: " + e.message);
+  }
 }
 
 // EvaluationLog's rows (no header), or [] when there is no tab.
@@ -1711,6 +1744,21 @@ function flow2DuplicateWriteLine_(ss, now) {
     FI_DUP_WINDOW_DAYS + " days (last " + Utilities.formatDate(new Date(d.lastAt), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm") +
     "). Likely cause: Flow 2's Update row step finds its row by a column that isn't unique (StudentFileID or " +
     "ConfigID). In Studio, set it to match on StagingRowRef (column B). The copies were held back; checkFlow2Binding() says more.";
+}
+
+// The overnight email's line for answers left out as second deliveries
+// (2026-11-17): today's or yesterday's count, else "".
+function flow2HeldTwiceLine_(now) {
+  let cur = {};
+  try { cur = JSON.parse(PropertiesService.getScriptProperties().getProperty(FI_HELD_TWICE_PROP) || "{}") || {}; } catch (e) { cur = {}; }
+  const n = Number(cur.count) || 0;
+  if (!n || !cur.day) return "";
+  const tz = Session.getScriptTimeZone();
+  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  const yesterday = Utilities.formatDate(new Date(now.getTime() - 24 * 60 * 60 * 1000), tz, "yyyy-MM-dd");
+  if (cur.day !== today && cur.day !== yesterday) return "";
+  return "Flow 2 answered " + n + " submission(s) again on " + cur.day + " after their results were delivered. " +
+    "None was delivered twice. Many at once usually means a Studio test run re-ran Flow 2 over rows already done.";
 }
 
 // The tertiary competencies Flow 2 says the work showed: its ALSO_SHOWN line,

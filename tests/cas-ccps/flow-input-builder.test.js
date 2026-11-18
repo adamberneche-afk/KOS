@@ -43,7 +43,7 @@ function load(extraGlobals) {
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',
       'STG_STATUS', 'STG_STUDENT_FILE_ID', 'STG_CONFIG_ID', 'STG_TEACHER_EMAIL',
       'LEDGER', '_fiCheckPlausibility_', '_fiDistinguishingWords_', 'recordStudentAssignment_',
-      '_fiInsertEvaluation_', 'responseZoneBounds_',
+      '_fiInsertEvaluation_', 'responseZoneBounds_', 'flow2HeldTwiceLine_',
     ],
     extraGlobals,
   );
@@ -443,7 +443,7 @@ function harvestOneEvaluation(geminiOutput, opts = {}) {
   fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(geminiOutput);
   fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
   exported.harvestFlowInputResults();
-  return { exported, doc, body: doc.getBody(), text: doc.getBody().getText(), comments, ledgerSs };
+  return { exported, sandbox, doc, body: doc.getBody(), text: doc.getBody().getText(), comments, ledgerSs };
 }
 
 const APPROVED_OUTPUT =
@@ -1131,4 +1131,41 @@ test('re-arm: a restarted row answered twice is applied once', () => {
   assert.equal(fiCell(fiSheet, exported, 'READY_STATUS'), 'HARVESTED');
   assert.equal(doc.getBody().getText(), once, 'no second feedback block');
   assert.equal(logRows(), logged, 'no second EvaluationLog row');
+});
+
+// 2026-11-17 (proposed after the 11-15 re-grade, the operator's yes): one
+// submission, one delivery. A Studio test run that sets a delivered row back
+// to EVALUATED with a new answer must not post a second comment, change the
+// Ledger or the evidence; a real resubmission still gets its feedback.
+test('harvest: a submission already delivered is never delivered again; the overnight email counts it', () => {
+  const env = harvestOneEvaluation(REVISION_OUTPUT, { feedbackAsComment: 'all', configId: 'CAS-8175-L06' });
+  const { exported, sandbox, comments, ledgerSs } = env;
+  const fi = ledgerSs.getSheetByName('FlowInput');
+  const evLog = () => ledgerSs.getSheetByName('EvaluationLog').getLastRow();
+  const evidence = () => ledgerSs.getSheetByName('CompetencyEvidence').getLastRow();
+  assert.equal(comments.length, 1);
+  const logBefore = evLog(), evidenceBefore = evidence();
+
+  // A test run re-grades the delivered row.
+  fi.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(APPROVED_OUTPUT);
+  fi.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
+  exported.harvestFlowInputResults();
+  assert.equal(comments.length, 1, 'no second comment');
+  assert.equal(fi.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'HARVESTED');
+  assert.equal(evLog(), logBefore, 'no second result logged');
+  assert.equal(evidence(), evidenceBefore, 'no second evidence');
+  const held = JSON.parse(sandbox.PropertiesService.getScriptProperties().getProperty('FI_HELD_TWICE'));
+  assert.equal(held.count, 1);
+  assert.match(exported.flow2HeldTwiceLine_(new Date()), /^Flow 2 answered 1 submission\(s\) again on .* None was delivered twice/);
+  assert.equal(exported.flow2HeldTwiceLine_(new Date(Date.now() + 3 * 86400000)), '', 'an old count is not news');
+
+  // A resubmission is a new row, built after the delivered result: delivered.
+  const later = fi.getRange(2, 1, 1, exported.FI_HEADERS.length).getValues()[0].slice();
+  later[exported.FI.TIMESTAMP] = new Date(Date.now() + 60000);
+  later[exported.FI.READY_STATUS] = 'EVALUATED';
+  later[exported.FI.GEMINI_FULL_OUTPUT] = APPROVED_OUTPUT;
+  fi.appendRow(later);
+  exported.harvestFlowInputResults();
+  assert.equal(comments.length, 2, 'the new submission gets its feedback');
+  assert.equal(fi.getRange(3, exported.FI.READY_STATUS + 1).getValue(), 'HARVESTED');
 });

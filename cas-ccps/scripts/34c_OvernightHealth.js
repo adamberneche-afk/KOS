@@ -225,7 +225,9 @@ function overnightHealth_(now, tz) {
 function _onFlow2Duplicates_(ss, now) {
   try {
     const line = flow2DuplicateWriteLine_(ss || SpreadsheetApp.openById(getConfig_().ledgerSsId), now);
-    return { problems: line ? [line] : [], unreadable: false };
+    // And answers left out as second deliveries (37, 2026-11-17).
+    const held = flow2HeldTwiceLine_(now);
+    return { problems: [line, held].filter(Boolean), unreadable: false };
   } catch (e) {
     return { problems: ["Flow 2 duplicate writes: unavailable (" + e.message + ")"], unreadable: true };
   }
