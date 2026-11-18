@@ -902,3 +902,19 @@ The operator's yes on the two items left from the 11-16 audit:
   card's own buttons now, and while the questions are open their Submit is
   the card's one filled button (Open My Document goes to outlined).
 - Tests: `flow-input-builder`, `turn-in-code`.
+
+## The dead-ends audit's items 3 and 4, 2026-11-17
+
+- **coverage-gaps sees every trigger** (item 3): it resolves a handler
+  named by a constant or a handler table, so the 12 registrations it
+  couldn't see are checked (61 handlers, 0 unresolved). Three nightly jobs
+  no test calls are allowlisted with the reason
+  (`updateAllStudentProfiles`, `buildWarmUpQueues`, `buildUpcomingLessons`).
+- **`installWarmUpTriggers` moved from 23 to 24.** 23 is also in the Teacher
+  Dashboard project, which has neither `runWarmUpEvaluation` nor
+  `buildWarmUpQueues`: run from that editor, it set up two triggers that
+  would fail every night. Found by the change above. 24 is in the Central
+  Ledger only; the function and its name are unchanged.
+- kos-personal's three undocumented editor functions (item 4) are in
+  `kos-personal/docs/runtime-reference.md`, with a test for
+  `resetMoralDebt`.

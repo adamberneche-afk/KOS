@@ -12,7 +12,7 @@ const KP = path.join(__dirname, '..', '..', 'kos-personal');
 const FILES = ['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '23_MoralDebt.gs'].map((f) => path.join(KP, f));
 
 function load() {
-  const env = loadGasFiles(FILES, ['_countProceeds_', 'recordMoralDebt_', 'moralDebtValue_', 'moralDebtLine_']);
+  const env = loadGasFiles(FILES, ['_countProceeds_', 'recordMoralDebt_', 'moralDebtValue_', 'moralDebtLine_', 'resetMoralDebt', 'previewMoralDebt']);
   return Object.assign(env, { props: env.sandbox.PropertiesService.getScriptProperties() });
 }
 
@@ -50,4 +50,18 @@ test('at the threshold the primer says MUSE is due; the threshold is adjustable'
   assert.match(exported.moralDebtLine_(props, now), /^Moral debt: 3\.0 \(at or above 3\.0: MUSE suggests alternatives/);
   props.setProperty('MORAL_DEBT_MUSE_AT', '4');
   assert.match(exported.moralDebtLine_(props, now), /MUSE suggests alternatives at 4\.0\)/);
+});
+
+// 2026-11-17 (the dead-ends audit's item 4): the editor functions an
+// operator runs by hand. resetMoralDebt zeroes SMP-019's counter.
+test('resetMoralDebt sets the counter to 0 from now; previewMoralDebt changes nothing', () => {
+  const { exported, props } = load();
+  exported.recordMoralDebt_(log(['  - A: PROCEED — x', '  - B: PROCEED — y']), new Date());
+  assert.match(exported.previewMoralDebt(), /^Moral debt: 2\.0 /);
+  assert.equal(Number(props.getProperty('MORAL_DEBT_VALUE')), 2, 'a preview writes nothing');
+  assert.match(exported.resetMoralDebt(), /^Moral debt: 0\.0 /);
+  assert.equal(props.getProperty('MORAL_DEBT_VALUE'), '0');
+  assert.ok(Math.abs(Date.now() - Date.parse(props.getProperty('MORAL_DEBT_AS_OF'))) < 60000);
+  exported.recordMoralDebt_(log(['  - A: PROCEED — x']), new Date());
+  assert.match(exported.previewMoralDebt(), /^Moral debt: 1\.0 /, 'counting starts again from 0');
 });

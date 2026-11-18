@@ -13,7 +13,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const {
-  findTriggerHandlers, mergeCoverage, productionFiles, loadAllowlist, definesFunction,
+  findTriggerHandlers, resolveHandlerExpr, mergeCoverage, productionFiles, loadAllowlist, definesFunction,
 } = require('../../tools/coverage-gaps/check.js');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
@@ -52,6 +52,31 @@ test('findTriggerHandlers: a non-literal (variable) handler name is reported as 
     assert.equal(resolved.length, 0);
     assert.deepEqual(unresolved, [{ expr: 'h.fn', line: 2, file: 'scratch.gs' }]);
   });
+});
+
+// 2026-11-17 (the dead-ends audit's item 3): the two shapes the repo names a
+// handler by, resolved; anything else still unresolved.
+test('findTriggerHandlers: a constant bound to a literal resolves, in the file or elsewhere in the project', () => {
+  withTempFile('const WD_FN = "runWatchdog";\nfunction setup() {\n  ScriptApp.newTrigger(WD_FN).timeBased().create();\n}\n', (file) => {
+    const { resolved, unresolved } = findTriggerHandlers(file, 'scratch.gs');
+    assert.deepEqual(resolved.map((r) => [r.name, r.via]), [['runWatchdog', 'constant WD_FN']]);
+    assert.equal(unresolved.length, 0);
+  });
+  withTempFile('function setup() {\n  ScriptApp.newTrigger(OTHER_FN).timeBased().create();\n}\n', (file) => {
+    const { resolved } = findTriggerHandlers(file, 'scratch.gs', ["const OTHER_FN = 'fromAnotherFile';"]);
+    assert.deepEqual(resolved.map((r) => r.name), ['fromAnotherFile'], 'another file of the project');
+  });
+});
+
+test('findTriggerHandlers: a handler table resolves to every fn: entry in the file', () => {
+  withTempFile('function setup() {\n  const handlers = [{ fn: "a1", hour: 3 }, { fn: \'b2\' }];\n' +
+    '  for (const h of handlers) ScriptApp.newTrigger(h.fn).timeBased().create();\n}\n', (file) => {
+    const { resolved, unresolved } = findTriggerHandlers(file, 'scratch.gs');
+    assert.deepEqual(resolved.map((r) => r.name), ['a1', 'b2']);
+    assert.equal(unresolved.length, 0);
+  });
+  assert.equal(resolveHandlerExpr('handlerFor(x)', { file: '', project: [] }), null);
+  assert.equal(resolveHandlerExpr('NAME', { file: 'let NAME = someCall();', project: [] }), null, 'bound to something not a literal');
 });
 
 test('findTriggerHandlers: multiple calls in one file are all found', () => {

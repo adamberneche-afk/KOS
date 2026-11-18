@@ -63,12 +63,22 @@ removed, and "the docs that say the wrong thing" fixed in one docs PR.
    `const X_FN = '<name>'` and a literal array of `{ fn: '<name>' }` in the
    tool, which covers all twelve by shape; then see which handlers lack a
    test.
+   **Done (2026-11-17, the PR after #482):** the tool resolves both shapes;
+   0 unresolved, 61 handlers checked. It then found three nightly jobs no
+   test calls (`updateAllStudentProfiles`, `buildWarmUpQueues`,
+   `buildUpcomingLessons`), allowlisted as known gaps with the reason, and a
+   real bug: `installWarmUpTriggers` was in 23, which is also in the Teacher
+   Dashboard project, where two of the three handlers it installs don't
+   exist (run from that editor, they'd fail every night). It is in 24 now,
+   which is in the Central Ledger only.
 4. **Three editor functions are documented only in their own file:**
    `installStudioReturnTrigger` (12), `runKosPersonalPreflightNow` (15) and
    `resetMoralDebt` (23). No doc or test names them. `resetMoralDebt`
    zeroes SMP-019's counter, so an operator should be able to find it.
    **Action:** add them to `kos-personal/docs/runtime-reference.md`'s
    "Editor-only functions"; a test for `resetMoralDebt`.
+   **Done (2026-11-17, same PR):** all three in the table, with
+   `previewMoralDebt`; a test for `resetMoralDebt` and `previewMoralDebt`.
 
 ## Decide
 
@@ -80,6 +90,12 @@ removed, and "the docs that say the wrong thing" fixed in one docs PR.
    upper bound, not a list of errors. **Decide:** extend doc-currency with
    a path check (warn-only first, like release-check), or leave paths to
    the link check, which only sees Markdown links.
+   **Measured again 2026-11-17** (backticked repo paths in live Markdown,
+   outside code blocks): 1,021 resolve, 162 don't. Most of the 162 are
+   relative to their system's folder, Drive folder names, gitignored
+   folders, or history entries naming where a file used to be; the real
+   breaks are mostly files that moved into `archive/`. Still the
+   operator's decision.
 
 ## Already queued (not dead ends)
 
