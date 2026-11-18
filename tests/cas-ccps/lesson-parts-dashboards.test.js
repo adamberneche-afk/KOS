@@ -163,7 +163,10 @@ test('Student Dashboard: the parts render together, in order, with what opens ea
   assert.equal((h.match(/class="card /g) || []).length, 2, 'the lesson card, with Part 2 inside it');
   assert.match(h, /<button type="button" class="parts-toggle"[^>]*aria-expanded="false" aria-controls="parts-CAS-8177-MARKET-RESEARCH-SURVEY-DESIGN"[^>]*>All 5 parts<\/button>/);
   // The goal named (2026-11-16): Part 2's own task line.
-  assert.match(h, /🔒 Part 3 opens when Part 2 meets its goal: \u201c[^\u201d]+\u201d, or when your teacher opens it\./);
+  // Part 2 was never submitted (2026-11-17, D-P): the line says what to do,
+  // and Do next lists it.
+  assert.match(h, /🔒 Part 3 is waiting on Part 2, which hasn\u2019t been submitted\. When it\u2019s ready, press Submit for Feedback\. Part 3 opens once its check finds Part 2 meets its goal\./);
+  assert.match(h, /<section class="do-next"[\s\S]*Part 2 of 5[\s\S]*<span class="pill pill-submit">Submit to open Part 3<\/span>[\s\S]*<\/section>/);
   const i1 = h.indexOf('part-sub">Part 1 of 5: The Target Market'), i2 = h.indexOf('part-sub">Part 2 of 5: Build the Survey'),
     i3 = h.indexOf('🔒 Part 3 of 5: Why These Questions Work');
   assert.ok(i1 !== -1 && i1 < i2 && i2 < i3, 'Part 1, Part 2, then the locked Part 3');
@@ -338,4 +341,24 @@ test('Student Dashboard: cards take the assignment name from the TeacherMatrix, 
   const bare = studentLoad('Amy@ccpsnet.net');
   setUp(bare.sandbox, bare.exported.LEDGER, { Amy: 1 });
   assert.match(bare.exported.getStudentDashboardData('').assignments.find(a => a.part).unitName, /^Venue Market Research/);
+});
+
+// 2026-11-17 (D-P): most locked parts were waiting on a part never checked.
+// A part prompts "submit" only when it is open, not submitted, can be
+// submitted, and its next part is locked.
+test('Student Dashboard: only a part never submitted, with its next part locked, prompts a submit', () => {
+  const { exported } = studentLoad('Amy@ccpsnet.net');
+  const ctx = { document: { getElementById: () => ({ style: {}, setAttribute() {}, appendChild() {}, classList: { add() {}, remove() {} } }), addEventListener() {}, querySelectorAll: () => [] },
+    google: { script: { run: new Proxy({}, { get: () => function () { return this; } }) } }, console, setTimeout() {}, setInterval() {}, navigator: {} };
+  ctx.window = ctx;
+  vm.createContext(ctx);
+  extractInlineScripts(exported.buildStudentDashboardHtml_()).forEach(code => vm.runInContext(code, ctx));
+  const locked = [{ lesson: 'L', n: 3 }];
+  const part = (over) => Object.assign({ part: { lesson: 'L', n: 2, count: 4 }, statusClass: 'NOT_STARTED', canSubmit: true }, over);
+  assert.equal(ctx.waitsOnSubmit(part({}), locked), true);
+  assert.equal(ctx.waitsOnSubmit(part({ statusClass: 'IN_PROGRESS' }), locked), false, 'submitted: being checked');
+  assert.equal(ctx.waitsOnSubmit(part({ statusClass: 'NEEDS_ACTION' }), locked), false, 'checked: Revise says what to do');
+  assert.equal(ctx.waitsOnSubmit(part({ canSubmit: false }), locked), false);
+  assert.equal(ctx.waitsOnSubmit(part({ part: { lesson: 'L', n: 3, count: 4 } }), locked), false, 'its next part is not locked');
+  assert.equal(ctx.waitsOnSubmit({ statusClass: 'NOT_STARTED', canSubmit: true }, locked), false, 'not a part');
 });
