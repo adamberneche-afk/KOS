@@ -938,3 +938,19 @@ path) that text went into FlowInput and from there into CompetencyEvidence.
   CompetencyEvidence, so the readers without 32 (the Student Dashboard)
   read clean IDs too. A dry run first; one log line per tab.
 - Tests: `competency-id-dates`, `flow-input-builder`.
+
+## A reposted comment opens from View feedback, 2026-11-18
+
+`repostMissingFeedback` posted the comment but left the doc header's
+feedback line as it was, so the dashboard's View feedback (which reads its
+link from that line) couldn't open a reposted comment; the student had to
+find it under Comments.
+
+- `_fiPostFeedbackComment_` (37) posts where the harvest does (the deck for
+  a Slides part, else the feedback doc) and returns the comment's ID,
+  whether it went on the deck, and its link. The harvest and the repost
+  both use it.
+- After a repost, the header line is set as the harvest sets it: Passed or
+  Revise, "in the comment", linked to the new comment. A dry run and a
+  comment that couldn't be posted leave the header alone.
+- Tests: `feedback-repost`.
