@@ -971,3 +971,32 @@ teacher couldn't try the steps the students are taught.
 - The demo's turn-in card has no Open Canvas button: demo cards link
   nowhere real (the header's Canvas button stays).
 - Tests: `student-dashboard-demo`.
+
+## The three nightly jobs tested, 2026-11-18
+
+coverage-gaps found three Module 2 jobs no test called (the dead-ends
+audit, 2026-11-17): `updateAllStudentProfiles` (23, 3:00am),
+`buildWarmUpQueues` (24, 3:30am) and `buildUpcomingLessons` (51). Their
+only cheap test, the Module 2 off early return, would have passed the check
+without testing the job, so they were allowlisted until real tests were
+written.
+
+- `tests/cas-ccps/nightly-jobs.test.js` loads the whole Central Ledger
+  project (from `project-map.json`), makes the warm-up tabs with
+  `createWarmUpTabs_`, seeds a Ledger, schedule, lesson, registry, alignment
+  log and earlier warm-ups, and runs each job whole.
+- 24: one PENDING row per enrolled student for tomorrow's lesson (not an
+  archived student, another teacher's, or a period that doesn't meet), the
+  latest scored answer in the snapshot for the lead-in, no second row for a
+  student already queued, the lesson marked QUEUED, the stage stamp; a
+  second run adds nothing; a quiet night still stamped; Module 2 off builds
+  nothing.
+- 23: one profile per active student, updated in its own row or appended,
+  with the class's competencies (this teacher's only), the scored warm-ups,
+  extra credit and the engagement average; the stage stamp; a second run
+  appends no one; refused for anyone but the script's owner.
+- 51: the trigger's entry point writes the plan (not a preview) and leaves
+  a slot that has a lesson alone.
+- The sandbox's fake sheet gained `getMaxRows()` (1000 rows, like a new
+  sheet), which `createWarmUpTabs_` uses.
+- The three allowlist entries are removed; coverage-gaps is clean.

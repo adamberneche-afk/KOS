@@ -48,20 +48,5 @@
     "file": "cas-ccps/scripts/08_TeacherConfirmationStep.js",
     "function": "abandonStaleDrafts",
     "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
-  },
-  {
-    "file": "cas-ccps/scripts/23_StudentProfileManager.js",
-    "function": "updateAllStudentProfiles",
-    "reason": "Surfaced 2026-11-17 when coverage-gaps learned to resolve handlers named by a constant or a handler table (the dead-ends audit's item 3); genuinely untested before that too. A nightly job whose only cheap test would be its M2_ENABLED-off early return, which would satisfy this check without testing the job. Flagged for follow-up in meta/AUDIT_DEAD_ENDS_2026-11-17.md."
-  },
-  {
-    "file": "cas-ccps/scripts/24_WarmUpBridge.js",
-    "function": "buildWarmUpQueues",
-    "reason": "Surfaced 2026-11-17 when coverage-gaps learned to resolve handlers named by a constant or a handler table (the dead-ends audit's item 3); genuinely untested before that too. A nightly job whose only cheap test would be its M2_ENABLED-off early return, which would satisfy this check without testing the job. Flagged for follow-up in meta/AUDIT_DEAD_ENDS_2026-11-17.md."
-  },
-  {
-    "file": "cas-ccps/scripts/51_CourseYearBuilder.js",
-    "function": "buildUpcomingLessons",
-    "reason": "Surfaced 2026-11-17 when coverage-gaps learned to resolve handlers named by a constant or a handler table (the dead-ends audit's item 3); genuinely untested before that too. A nightly job whose only cheap test would be its M2_ENABLED-off early return, which would satisfy this check without testing the job. Flagged for follow-up in meta/AUDIT_DEAD_ENDS_2026-11-17.md."
   }
 ]
