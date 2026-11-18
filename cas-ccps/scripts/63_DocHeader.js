@@ -61,7 +61,8 @@ function writeDocHeader_(doc, identity, dashboardUrl, lesson) {
 }
 
 // Sets the feedback line on an existing doc. state is a DOC_FEEDBACK_STATES
-// key; opts.inComments says where the feedback is. Best effort: true when
+// key; opts.inComments says where the feedback is, opts.commentUrl links
+// to it (feedbackCommentUrl_). Best effort: true when
 // the line was found and set; a doc without a header (made before this) or
 // one that can't be opened is logged and left alone.
 function setDocFeedbackStatus_(fileId, state, opts) {
@@ -86,7 +87,47 @@ function setDocFeedbackStatus_(fileId, state, opts) {
 function _styleDocFeedbackLine_(paragraph, state, opts) {
   const st = DOC_FEEDBACK_STATES[state];
   const when = Utilities.formatDate(opts.when || new Date(), Session.getScriptTimeZone(), "MMM d, h:mm a");
-  const where = opts.inComments ? "the comment on this doc" : "the Feedback section below";
-  paragraph.setText(DOC_FEEDBACK_PREFIX + st.text.replace("{when}", when).replace("{where}", where));
-  paragraph.editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(st.color).setBold(st.bold);
+  const where = opts.inComments ? DOC_FEEDBACK_COMMENT_WORDS : "the Feedback section below";
+  const text = DOC_FEEDBACK_PREFIX + st.text.replace("{when}", when).replace("{where}", where);
+  paragraph.setText(text);
+  const t = paragraph.editAsText().setFontSize(DOC_HEADER_FONT_SIZE).setForegroundColor(st.color).setBold(st.bold);
+  // The comment's own link (2026-11-17): Docs keeps a comment that isn't
+  // attached to text behind its Comments button, where students missed it.
+  // The words "the comment on this doc" open it.
+  const at = opts.commentUrl && st.text.indexOf("{where}") !== -1 ? text.indexOf(DOC_FEEDBACK_COMMENT_WORDS) : -1;
+  if (at !== -1) t.setLinkUrl(at, at + DOC_FEEDBACK_COMMENT_WORDS.length - 1, opts.commentUrl);
+}
+
+// ---------------------------------------------------------------------------
+// The feedback comment's link (2026-11-17). A link to a doc with ?disco=
+// and a comment's ID opens the doc with that comment open: the link Google's
+// own comment emails use. 37 puts it on the feedback line when it posts the
+// feedback; the dashboard's View feedback (13) reads it back from there, so
+// no sheet keeps it, and a resubmit (CHECKING) clears it with the line.
+// ---------------------------------------------------------------------------
+const DOC_FEEDBACK_COMMENT_WORDS = "the comment on this doc";
+
+function feedbackCommentUrl_(fileId, commentId) {
+  const f = String(fileId || "").trim(), c = String(commentId || "").trim();
+  return f && c ? "https://docs.google.com/document/d/" + encodeURIComponent(f) + "/edit?disco=" + encodeURIComponent(c) : "";
+}
+
+// The link on the doc's feedback line, or "" (no header, no feedback
+// comment yet, or the doc can't be opened).
+function docFeedbackCommentUrl_(fileId) {
+  try {
+    const header = DocumentApp.openById(fileId).getHeader();
+    if (!header) return "";
+    for (let i = 0; i < header.getNumChildren(); i++) {
+      const p = header.getChild(i);
+      const text = String(p.asText().getText());
+      if (text.indexOf(DOC_FEEDBACK_PREFIX) !== 0) continue;
+      const at = text.indexOf(DOC_FEEDBACK_COMMENT_WORDS);
+      const url = at === -1 ? null : p.editAsText().getLinkUrl(at);
+      return url && /[?&]disco=/.test(url) ? String(url) : "";
+    }
+  } catch (e) {
+    Logger.log("[S63] Feedback link not read: " + e.message);
+  }
+  return "";
 }

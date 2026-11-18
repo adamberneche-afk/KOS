@@ -2456,6 +2456,29 @@ function _dashWaitSnapshot_(ss, cfg) {
 // a recent week with at least DASH_USUAL_MIN_SENT checks; it is read once an
 // hour (script cache). In line has no measure, so it has no estimate.
 // ---------------------------------------------------------------------------
+// getMyFeedbackLink — View feedback opens the doc with the feedback comment
+// open (2026-11-17). Docs keeps a comment that isn't attached to text behind
+// its Comments button, and students didn't find it. 37 puts the comment's
+// link on the doc's feedback line (63); this reads it back for the signed-in
+// student's own doc. { ok: true, url } ("" when there is none: the page then
+// opens the doc as before) or { ok: false, error }.
+// ---------------------------------------------------------------------------
+function getMyFeedbackLink(fileId, configId) {
+  try {
+    const googleId = Session.getActiveUser().getEmail();
+    if (!googleId) return { ok: false, error: "NO_USER" };
+    fileId = String(fileId || "").trim();
+    configId = String(configId || "").trim();
+    if (!fileId || !configId) return { ok: false, error: "BAD_REQUEST" };
+    if (!findOwnLedgerRow_(getConfig_(), googleId, fileId, configId)) return { ok: false, error: "NOT_REGISTERED" };
+    return { ok: true, url: docFeedbackCommentUrl_(fileId) };
+  } catch (e) {
+    Logger.log("getMyFeedbackLink: unexpected error for ConfigID " + String(configId || "").trim() + ": " + e.message);
+    return { ok: false, error: "SERVER_ERROR" };
+  }
+}
+
+// ---------------------------------------------------------------------------
 const DASH_USUAL_MIN_SENT = 5;
 const DASH_USUAL_CACHE_KEY = "dashUsualCheckMinutes";
 const DASH_USUAL_CACHE_SECONDS = 60 * 60;
@@ -3354,6 +3377,24 @@ function _demoWalkThrough(fileId) {
     _demoNext[fileId] = Object.assign({}, steps.revise, { canSubmit: true, lastEval: "just now", notYet: (a && a.demoNotYet) || "" });
   }, 4500);
 }
+// View feedback (2026-11-17): opens the doc with its feedback comment open.
+// The tab opens at once, on the click (a tab opened after the server answers
+// would be blocked as a pop-up), then goes to the comment's link, or to the
+// doc as before when there is none. With pop-ups blocked the link opens the
+// doc as it always did.
+function openFeedback(link) {
+  const w = window.open("", "_blank");
+  if (!w) return true;
+  const docUrl = link.href;
+  try { w.document.title = "Opening your feedback…"; w.document.body.textContent = "Opening your feedback…"; } catch (e) {}
+  const go = function(url) { try { w.location.replace(url || docUrl); } catch (e) { w.location = url || docUrl; } };
+  google.script.run
+    .withSuccessHandler(function(res) { go(res && res.ok && /^https:\\/\\/docs\\.google\\.com\\//.test(res.url || "") ? res.url : ""); })
+    .withFailureHandler(function() { go(""); })
+    .getMyFeedbackLink(link.getAttribute("data-file"), link.getAttribute("data-config"));
+  return false;
+}
+
 function demoOpenDoc(btn) {
   const a = _demoCard(btn.getAttribute("data-file"));
   _demoNotes[btn.getAttribute("data-file")] = "In the real dashboard this opens the student's " +
@@ -3742,7 +3783,7 @@ function cardHtml(a, opts) {
   const docBtn = DEMO
     ? \`<button type="button" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}" data-file="\${esc(a.fileId)}" onclick="demoOpenDoc(this)">\${openLabel}</button>\`
     : doc
-    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}">\${openLabel} ↗</a>\`
+    ? \`<a href="\${esc(doc)}" target="_blank" class="\${cls(primary !== "submit" && primary !== "retry")}\${primary === "view" ? " act-done" : ""}"\${primary === "view" && !feedbackPage ? \` data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="return openFeedback(this)"\` : ""}>\${openLabel} ↗</a>\`
     : \`<span style="color:var(--text-secondary);font-size:13px;">\${a.workType === "form" ? "Form" : a.workType === "slides" ? "Slides" : a.workType === "sheet" ? "Sheet" : "Document"} not yet available</span>\`;
   // A form, Slides or Sheets part (Phase 4b/4c/4d): Submit as for a doc; the server reads the file.
   const submitBtn = a.canSubmit && !_reflect[a.fileId]

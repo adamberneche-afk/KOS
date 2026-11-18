@@ -841,10 +841,14 @@ test('harvestFlowInputResults: the doc header\'s feedback line takes the result 
   let line = doc.getHeader().getChild(1);
   assert.match(line.getText(), /^Feedback: ✏️ Revise, then submit again .*Read the comment on this doc first/);
   assert.equal(line.color, '#b06000');
+  // 2026-11-17: the words open the comment itself (Docs hides an unanchored
+  // comment behind its Comments button).
+  assert.deepEqual(line.links, [{ text: 'the comment on this doc', url: 'https://docs.google.com/document/d/' + doc.getId() + '/edit?disco=c1' }]);
   ({ doc } = harvestOneEvaluation(APPROVED_OUTPUT, { configId: 'CAS-8175-L06', withHeader: true }));
   line = doc.getHeader().getChild(1);
   assert.match(line.getText(), /^Feedback: ✅ Passed .*See the Feedback section below/);
   assert.equal(line.color, '#137333');
+  assert.deepEqual(line.links, [], 'feedback in the doc: nothing to link');
 });
 
 test('harvestFlowInputResults: FEEDBACK_AS_COMMENT for one course leaves the other course in the doc', () => {
