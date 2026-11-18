@@ -184,7 +184,7 @@ paragraph reads as the one logical line it renders as.
 ## Path mentions resolve (warn only, 2026-11-17)
 
 The dead-ends audit's item 5, decided by the operator as warn-only. Every
-backticked path in a live doc's prose (`a/b/c.md`, `tools/archive/`; not in
+backticked path in a live doc's prose (`meta/README.md`, `tools/archive/`; not in
 code blocks) is looked up. It counts as fine when it is:
 
 - a file or folder from the repo root, or from the doc's own folder;
