@@ -8,7 +8,9 @@
 // formatted as the harvest does (outcomes line stripped, stamp from the
 // shape check); skipRefs, malformed results, rows not harvested, fixtures
 // and assignments that keep feedback in the doc are not posted; a second
-// run posts nothing new; the log names rows, never a file ID.
+// run posts nothing new; the log names rows, never a file ID. A posted
+// comment sets the header's feedback line and its link, as the harvest
+// does (2026-11-18).
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,6 +36,7 @@ function setup(rows, comments, opts = {}) {
       return { comments: comments[docId] || [] };
     },
     create(body, docId) {
+      if (opts.createFails) throw new Error('Insufficient permissions');
       posted.push({ docId, content: body.content });
       (comments[docId] = comments[docId] || []).push({ id: 'n' + posted.length,
         createdTime: new Date().toISOString(), content: body.content, author: { me: true } });
@@ -64,7 +67,11 @@ function setup(rows, comments, opts = {}) {
     row[x.FI.GEMINI_FULL_OUTPUT] = r.output === undefined ? pass : r.output;
     fi.appendRow(row);
   });
-  return { x, logs, posted };
+  // The header's feedback line (63): recorded, not drawn; 63's own tests
+  // pin how the line looks.
+  const headers = [];
+  sb.setDocFeedbackStatus_ = (fileId, state, o) => { headers.push({ fileId, state, opts: o }); return true; };
+  return { x, logs, posted, headers };
 }
 
 const fb = (createdTime) => ({ id: 'c', createdTime, content: 'Feedback, Nov 14\nResult: ...', author: { me: true } });
@@ -126,6 +133,40 @@ test('skipRefs, malformed, not harvested, fixtures, feedback in the doc and unre
   const o2 = off.x.repostMissingFeedback(true);
   assert.equal(o2.inDoc, 1);
   assert.equal(off.posted.length, 0);
+});
+
+// 2026-11-18: a reposted comment is linked from the header's feedback line,
+// as the harvest links it, so the dashboard's View feedback opens it.
+test('a posted comment sets the header line and its link; a dry run sets nothing', () => {
+  const dry = setup([{ ref: '65', fileId: 'docB', output: revise }], {});
+  dry.x.repostMissingFeedback();
+  assert.equal(dry.headers.length, 0, 'a dry run leaves the header alone');
+
+  const { x, headers } = setup([{ ref: '65', fileId: 'docB', output: revise }], {});
+  x.repostMissingFeedback(true);
+  assert.equal(headers.length, 1);
+  assert.equal(headers[0].fileId, 'docB');
+  assert.equal(headers[0].state, 'REVISE');
+  assert.equal(headers[0].opts.inComments, true);
+  assert.equal(headers[0].opts.onSlides, false);
+  assert.equal(headers[0].opts.commentUrl, 'https://docs.google.com/document/d/docB/edit?disco=n1');
+
+  const passed = setup([{ ref: '66', fileId: 'docC' }], {});
+  passed.x.repostMissingFeedback(true);
+  assert.equal(passed.headers[0].state, 'PASSED');
+
+  const deck = setup([{ ref: '80', fileId: 'deck1', docUrl: 'https://docs.google.com/document/d/page1/edit' }], {}, { decks: ['deck1'] });
+  deck.x.repostMissingFeedback(true);
+  assert.equal(deck.headers[0].fileId, 'page1', 'the line is on the feedback page, the doc that has the header');
+  assert.equal(deck.headers[0].opts.onSlides, true);
+  assert.equal(deck.headers[0].opts.commentUrl, 'https://docs.google.com/presentation/d/deck1/edit?disco=n1');
+});
+
+test('a comment that could not be posted leaves the header alone', () => {
+  const { x, headers } = setup([{ ref: '65', fileId: 'docB', output: revise }], {}, { createFails: true });
+  const out = x.repostMissingFeedback(true);
+  assert.equal(out.failed, 1);
+  assert.equal(headers.length, 0);
 });
 
 // 2026-11-17: a Slides part's feedback is a comment on its deck, so the deck

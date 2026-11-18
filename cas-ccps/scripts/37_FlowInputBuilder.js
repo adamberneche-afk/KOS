@@ -1228,15 +1228,9 @@ function harvestFlowInputResults() {
         // to the feedback page, then to the doc's feedback zone.
         let asComment = "", commentUrl = "", onSlides = false;
         if (feedbackAsCommentFor_(configId)) {
-          const text = _fiFormatFeedbackComment_(studentFacingReport, parsed.complianceStatus);
-          if (feedbackDocId !== studentFileId && _fiWorkTypeOf_(ledgerSs, cfg, studentFileId, workTypes) === "slides") {
-            asComment = _fiPostEvaluationComment_(studentFileId, text);
-            onSlides = !!asComment;
-          }
-          if (!asComment) asComment = _fiPostEvaluationComment_(feedbackDocId, text);
-          if (asComment && asComment !== "posted") {
-            commentUrl = onSlides ? feedbackCommentUrl_(studentFileId, asComment, "slides") : feedbackCommentUrl_(feedbackDocId, asComment);
-          }
+          const c = _fiPostFeedbackComment_(ledgerSs, cfg, feedbackDocId, studentFileId,
+            _fiFormatFeedbackComment_(studentFacingReport, parsed.complianceStatus), workTypes);
+          asComment = c.id; onSlides = c.onSlides; commentUrl = c.url;
         }
         if (!asComment) {
           const doc = DocumentApp.openById(feedbackDocId);
@@ -1927,6 +1921,25 @@ function _fiWorkTypeOf_(ledgerSs, cfg, fileId, cache) {
 // it). The comment's ID when it posted (2026-11-17: the feedback line links
 // to it, 63), "" when it didn't. On a failure the harvest falls back to the
 // doc, so the student still gets feedback, and the log says why.
+// Posts one feedback comment where the harvest puts it (2026-11-17): on a
+// Slides part's deck when the work is a deck, else (or if the deck won't
+// take it) on the feedback doc. Returns { id, onSlides, url }: id is the
+// comment's ID, "posted" when Drive returned none, "" when neither took it;
+// url is the link that opens it (63), "" without an ID. Shared by the
+// harvest and repostMissingFeedback, so both link the header the same way.
+function _fiPostFeedbackComment_(ledgerSs, cfg, feedbackDocId, workFileId, text, workTypes) {
+  let id = "", onSlides = false;
+  if (workFileId && workFileId !== feedbackDocId && _fiWorkTypeOf_(ledgerSs, cfg, workFileId, workTypes) === "slides") {
+    id = _fiPostEvaluationComment_(workFileId, text);
+    onSlides = !!id;
+  }
+  if (!id) id = _fiPostEvaluationComment_(feedbackDocId, text);
+  const url = id && id !== "posted"
+    ? (onSlides ? feedbackCommentUrl_(workFileId, id, "slides") : feedbackCommentUrl_(feedbackDocId, id))
+    : "";
+  return { id: id, onSlides: onSlides, url: url };
+}
+
 function _fiPostEvaluationComment_(fileId, text) {
   try {
     const c = Drive.Comments.create({ content: text }, fileId, { fields: "id" });
@@ -2189,8 +2202,16 @@ function repostMissingFeedback(doPost, skipRefs) {
     let posted = false;
     if (doPost === true) {
       const text = _fiFormatFeedbackComment_(_fiStripMilestoneOutcomesLine_(output), shape.compliance);
-      posted = (deck && _fiPostEvaluationComment_(deck, text)) || _fiPostEvaluationComment_(docId, text);
-      if (posted) out.posted++; else out.failed++;
+      const c = _fiPostFeedbackComment_(ledgerSs, cfg, docId, workId, text, workTypes);
+      posted = !!c.id;
+      if (posted) {
+        out.posted++;
+        // The header's line, as the harvest sets it (2026-11-18): its link
+        // opens the new comment, so View feedback finds a reposted comment
+        // too, not only the Comments button.
+        setDocFeedbackStatus_(docId, shape.compliance === "APPROVED" ? "PASSED" : "REVISE",
+          { inComments: true, onSlides: c.onSlides, commentUrl: c.url });
+      } else out.failed++;
     }
     out.rows.push({ row: rowNum, ref: ref, result: result, posted: posted });
     Logger.log("[FeedbackRepost] " + label + ": no feedback since it was built; result " + result +
