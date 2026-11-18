@@ -71,6 +71,9 @@ removed, and "the docs that say the wrong thing" fixed in one docs PR.
    Dashboard project, where two of the three handlers it installs don't
    exist (run from that editor, they'd fail every night). It is in 24 now,
    which is in the Central Ledger only.
+   **The three nightly jobs, done (2026-11-18, the PR after #489):**
+   `tests/cas-ccps/nightly-jobs.test.js` runs each whole against a seeded
+   Central Ledger, and their allowlist entries are gone.
 4. **Three editor functions are documented only in their own file:**
    `installStudioReturnTrigger` (12), `runKosPersonalPreflightNow` (15) and
    `resetMoralDebt` (23). No doc or test names them. `resetMoralDebt`

@@ -226,6 +226,11 @@ class FakeSheet {
     return new FakeRange(this, 1, 1, Math.max(1, this.getLastRow()), Math.max(1, this.getLastColumn()));
   }
   setFrozenRows(n) { this.frozenRows = n; return this; }
+  // Real Apps Script API — Sheet.getMaxRows(), every row the grid has, used
+  // or not: a new sheet has 1000. First needed by cas-ccps 23's
+  // createWarmUpTabs_ (it formats a column as text down the whole grid),
+  // which the nightly-jobs tests use to make the warm-up tabs.
+  getMaxRows() { return Math.max(1000, this.rows.length); }
   // Recorded rather than ignored, like setFrozenRows above: which columns an
   // export freezes is a real assertion a test may want to make (the SCR
   // export freezes both identifying columns, not just the name).
