@@ -76,7 +76,7 @@ Two declarations, in two places, each for a reason:
 - **`gcp-map.json`'s `doc_tokens`** per blocked surface: `mentions` (the
   strings a doc uses when it means this surface) and `fallback` (the strings
   that name what replaced it). Nothing can infer that `37_FlowInputBuilder`
-  answers `cas-ccps/studio-steps`, and the tokens belong beside the status
+  answers the retired custom Studio steps, and the tokens belong beside the status
   they describe rather than in this tool's config.
 - **`config.json`'s `blockedSurfaceDocs`**: which documents make behavioral
   claims. This follows `keyRegistryDocs` (Check 3's idiom) for a measured

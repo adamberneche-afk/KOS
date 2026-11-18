@@ -64,7 +64,7 @@ human-built and live — it is not; then, later, as never built at all,
 which is now also stale — see the update below.)** cas-ccps/README.md's
 "Known gaps" section originally stated plainly: "Flow 2 has never been
 built in Studio." That's no longer accurate: `CommitStudentEvaluationStep.gs`
-(`cas-ccps/studio-steps/`) is now Flow 2's real, tested writer code. What
+(`archive/2026-27-Q2/cas-ccps/archived/studio-steps/`) is now Flow 2's real, tested writer code. What
 remains true is that it isn't *live* — and the reason is not the one this
 paragraph used to give ("that project hasn't been pushed to a real Google
 account"). It was pushed, successfully; see the correction below. **Update
@@ -88,7 +88,7 @@ callable/testable (`runFlow2DirectGemini_()`) without a live Studio Flow
 file's own header comment for why.
 
 **Corrected again, after the first live deployment.** The line that used to
-close this paragraph — "deploying `cas-ccps/studio-steps/` and wiring Flow 2
+close this paragraph — "deploying [the custom steps, now `archive/2026-27-Q2/cas-ccps/archived/studio-steps/`] and wiring Flow 2
 for real in Studio is still the intended production path" — is no longer
 true, and cannot become true on this account. A custom Studio step is a
 Workspace Add-on and needs a standard, non-default Cloud project; GCP is

@@ -168,5 +168,5 @@ Each feature's detail is in its own doc under `docs/` ([index](docs/README.md)).
 - **[cas-ccps↔leader-hub integration (D1 + Addendum 26)](docs/cas-ccps-integration.md)**: "**Status (D16, 2026-11-01): parked until `checkCasServerSignIn()` passes.**"
 - **[Hardcoded-credentials cleanup](docs/hardcoded-credentials-cleanup.md)**: "Three real-PII surfaces in `student-leader-hub.html` got scrubbed to blank defaults."
 - **[`student-leader-hub.html` split into `src/`](docs/src-split.md)**: "The single ~22,000-line file is now generated from 14 fragments under `src/` via `tools/leaderhub-build/build.js`."
-- **[JJ1 — Server-deployed web app](docs/jj1-server-deployed-web-app.md)**: "This round makes leader-hub genuinely operate the way `cas-ccps/teacher-dashboard` does: a real Apps Script Web App reachable at a `/exec` URL, sign-in-gated to one owner."
+- **[JJ1 — Server-deployed web app](docs/jj1-server-deployed-web-app.md)**: makes leader-hub run the way the CAS Teacher Dashboard does: a real Apps Script Web App reachable at a `/exec` URL, sign-in-gated to one owner.
 - **[Deploy-drift self-report (process-hardening sprint Phase 3a)](docs/deploy-drift-self-report.md)**: "`DeployVersionReport.gs` + `DeployVersionMarker.gs` self-report this project's live version to the KOS repo."
