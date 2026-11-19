@@ -1100,14 +1100,21 @@ function _dashMarkingPeriodRaw_() {
 
 // ── Milestone marks (F16 item 5) ─────────────────────────────────────────
 // Each lesson's best outcome per competency across all its files (a lesson
-// in parts: every part's): { lessonKey: { competencyId: "MET" | ... } }. An
+// in parts: every part's), and the parts it came from (2026-11-19: a card
+// on Part 6 said "Shown" for what Parts 1-5 had shown, and read as if Part 6
+// had been checked): { lessonKey: { competencyId: { outcome: "MET" | ...,
+// parts: [n, ...] } } }, parts ascending, [] for a lesson not in parts. An
 // assignment counts once, at its best result (30's aggregateEvidence_),
 // archived rows don't count. rows: CompetencyEvidence with its header.
 function _dashBestOutcomes_(rows, assignments) {
   const out = {};
   if (!rows || rows.length < 2) return out;
-  const lessonOfFile = {};
-  assignments.forEach(function (a) { if (a.fileId && a.lessonKey) lessonOfFile[a.fileId] = a.lessonKey; });
+  const lessonOfFile = {}, partOfFile = {};
+  assignments.forEach(function (a) {
+    if (!a.fileId || !a.lessonKey) return;
+    lessonOfFile[a.fileId] = a.lessonKey;
+    if (a.part && a.part.n) partOfFile[a.fileId] = Number(a.part.n);
+  });
   const h = rows[0].map(function (x) { return String(x).trim(); });
   const iFile = h.indexOf("student_file_id"), iComp = h.indexOf("competency_id"), iOut = h.indexOf("outcome"),
     iArch = h.indexOf("archive_status");
@@ -1120,23 +1127,41 @@ function _dashBestOutcomes_(rows, assignments) {
     const o = String(r[iOut]).trim().toUpperCase();
     if (!comp || !DASH_EVIDENCE_RANK[o]) continue;
     const mine = out[lesson] = out[lesson] || {};
-    if (!mine[comp] || DASH_EVIDENCE_RANK[o] > DASH_EVIDENCE_RANK[mine[comp]]) mine[comp] = o;
+    const n = partOfFile[String(r[iFile]).trim()];
+    const had = mine[comp];
+    if (!had || DASH_EVIDENCE_RANK[o] > DASH_EVIDENCE_RANK[had.outcome]) mine[comp] = { outcome: o, parts: n ? [n] : [] };
+    else if (o === had.outcome && n && had.parts.indexOf(n) === -1) {
+      had.parts.push(n);
+      had.parts.sort(function (x, y) { return x - y; });
+    }
   }
   return out;
+}
+
+// Where a mark came from, for a lesson in parts: "in Part 2", "in Parts 2
+// and 4", "in Parts 1, 2 and 4"; "" with no part, or for "Not shown yet"
+// (the best across every part: not shown in any).
+function _dashMarkWhere_(outcome, parts) {
+  if (!parts || !parts.length || outcome === "NOT_MET") return "";
+  if (parts.length === 1) return "in Part " + parts[0];
+  return "in Parts " + parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
 // a.milestones: the lesson's measured milestones (up to three, primary
 // first, 13c), each in the student's "I can" words with its mark: Shown,
 // Partly shown or Not shown yet (the Competencies tab's words), or "Not
-// checked yet" before a check found anything for it. No totals or targets
-// (D17). [] for a lesson 13c doesn't know.
+// checked yet" before a check found anything for it; for a lesson in parts,
+// where: "in Part 2" (_dashMarkWhere_). No totals or targets (D17). [] for a
+// lesson 13c doesn't know.
 function _dashAddMilestoneMarks_(assignments, best) {
   assignments.forEach(function (a) {
     const info = a.lessonKey && typeof DASH_LESSON_INFO !== "undefined" ? DASH_LESSON_INFO[a.lessonKey] : null;
     const got = (best && best[a.lessonKey]) || {};
     a.milestones = info ? info.iCan.slice(0, info.m).filter(function (m) { return m.text; }).map(function (m) {
-      const o = got[m.id] || "";
-      return { id: m.id, text: m.text, markKey: o || "UNCHECKED", mark: o ? DASH_EVIDENCE_WORDS[o] : "Not checked yet" };
+      const b = got[m.id] || null;
+      const o = b ? b.outcome : "";
+      return { id: m.id, text: m.text, markKey: o || "UNCHECKED", mark: o ? DASH_EVIDENCE_WORDS[o] : "Not checked yet",
+        where: b ? _dashMarkWhere_(o, b.parts) : "" };
     }) : [];
   });
   return assignments;
@@ -4257,11 +4282,13 @@ function marksHtml(a, acrossParts) {
   const checking = a.statusPill === "Being checked";
   // A lesson in parts (2026-11-15): the marks are the lesson's best results
   // across every part so far, so a card on a part not started yet can show
-  // Shown from earlier parts. The caption says so.
+  // Shown from earlier parts. The caption says so, and since 2026-11-19 each
+  // mark says which part showed it ("Shown in Part 2").
   const cap = checking ? "Checking these now" : acrossParts ? "What this lesson checks, across its parts so far" : "";
   return (cap ? '<div class="marks-cap">' + esc(cap) + '</div>' : '') +
     '<ul class="marks" aria-label="' + esc(cap || "What this lesson checks") + '">' + list.map(m =>
-    '<li>' + (m.markKey === "UNCHECKED" && checking ? '' : '<span class="mark mark-' + esc(m.markKey) + '">' + esc(m.mark) + '</span>') +
+    '<li>' + (m.markKey === "UNCHECKED" && checking ? '' : '<span class="mark mark-' + esc(m.markKey) + '">' + esc(m.mark) +
+      (acrossParts && m.where ? ' ' + esc(m.where) : '') + '</span>') +
     esc(m.text) + '</li>').join("") + '</ul>';
 }
 
