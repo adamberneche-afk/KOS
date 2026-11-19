@@ -197,7 +197,7 @@ function _s29Run_(opts) {
     }
 
     try {
-      appendWeeklySection_(docInfo.docId, runTimestamp, assignments, warmUps, reflections);
+      appendWeeklySection_(docInfo.docId, runTimestamp, assignments, warmUps, reflections, windowStart);
       updateRegistryTimestamp_(registrySheet, email, runTimestamp, true);
       if (docInfo.isNew) summary.created++; else summary.updated++;
     } catch (err) {
@@ -603,82 +603,38 @@ function getOrCreateStudentDoc_(registrySheet, email, name, cfg) {
 // assignments, warm-up responses and process reflections. Never overwrites
 // prior content — always appends at the end of the body.
 // ---------------------------------------------------------------------------
-function appendWeeklySection_(docId, runTimestamp, assignments, warmUps, reflections) {
+// The week's section (2026-11-19: 00's contextWeekLines_, one layout for the
+// doc and the dashboards' demo): the heading "Week of <first day> – <last
+// day>" (windowStart, else the 7 days before runTimestamp, to the run), then
+// each section's heading (HEADING3), assignments as a bulleted list with a
+// lesson's parts nested under it, each linked to its doc, and warm-ups and
+// reflections as a label, the question and the student's answer in italics.
+// Weeks written before 2026-11-19 keep their old layout.
+function appendWeeklySection_(docId, runTimestamp, assignments, warmUps, reflections, windowStart) {
   const doc = DocumentApp.openById(docId);
   const body = doc.getBody();
+  const tz = Session.getScriptTimeZone();
+  const from = windowStart || new Date(runTimestamp.getTime() - 6 * 86400000);
 
-  const dateStr = Utilities.formatDate(
-    runTimestamp, Session.getScriptTimeZone(), "MMMM d, yyyy"
-  );
-
-  const heading = body.appendParagraph("Week of " + dateStr)
+  const heading = body.appendParagraph(contextWeekLabel_(from, runTimestamp, tz))
     .setHeading(DocumentApp.ParagraphHeading.HEADING2);
   _s29BookmarkWeek_(doc, heading);
 
-  if (assignments.length > 0) {
-    body.appendParagraph("Completed Assignments")
-      .setHeading(DocumentApp.ParagraphHeading.HEADING3);
-    assignments.forEach(a => {
-      const line = "• " + (a.courseName || a.configId || "Assignment") +
-        "  —  " + (a.status || "status unknown") +
-        (a.lastEval ? "  ·  evaluated " + formatDateShort_(a.lastEval) : "");
-      const p = body.appendParagraph(line);
-      if (a.studentFileURL) {
-        // Link the line to the student's file where available.
-        try {
-          p.editAsText().setLinkUrl(0, line.length - 1, a.studentFileURL);
-        } catch (e) { /* non-fatal — link is a nicety, not a requirement */ }
+  contextWeekLines_(assignments, warmUps, reflections, tz).forEach(function (l) {
+    if (l.kind === "h") { body.appendParagraph(l.text).setHeading(DocumentApp.ParagraphHeading.HEADING3); return; }
+    if (l.kind === "item" || l.kind === "part") {
+      const li = body.appendListItem(l.text).setGlyphType(DocumentApp.GlyphType.BULLET);
+      if (l.kind === "part") li.setNestingLevel(1);
+      if (l.url) {
+        // Linked to the student's file where available: a nicety, not a requirement.
+        try { li.editAsText().setLinkUrl(0, l.text.length - 1, l.url); } catch (e) { /* non-fatal */ }
       }
-    });
-  }
-
-  // Baseline warm-ups (D6) first, under their own heading: what the
-  // student says about how they work and what helps them, by skill.
-  const baseline = warmUps.filter(w => w.baseline);
-  const lessonWarmUps = warmUps.filter(w => !w.baseline);
-  if (baseline.length > 0) {
-    body.appendParagraph("How They Work (baseline warm-ups)")
-      .setHeading(DocumentApp.ParagraphHeading.HEADING3);
-    baseline.forEach(w => {
-      body.appendParagraph(w.baseline + "  ·  " + formatDateShort_(w.timestamp))
-        .setBold(true).setFontSize(10);
-      if (w.question) body.appendParagraph("Asked: " + w.question).setFontSize(9);
-      body.appendParagraph(w.response).setItalic(true);
-    });
-  }
-
-  if (lessonWarmUps.length > 0) {
-    body.appendParagraph("Warm-Up Reflections")
-      .setHeading(DocumentApp.ParagraphHeading.HEADING3);
-    lessonWarmUps.forEach(w => {
-      body.appendParagraph(w.lessonUnitId + "  ·  " + formatDateShort_(w.timestamp))
-        .setBold(true).setFontSize(10);
-      if (w.question) body.appendParagraph("Asked: " + w.question).setFontSize(9);
-      body.appendParagraph(w.response).setItalic(true);
-    });
-  }
-
-  // The process reflections (13), one block per Submit: the assignment and
-  // the day, then each question as asked and the student's answer.
-  const refl = reflections || [];
-  if (refl.length > 0) {
-    const courseFor = {};
-    assignments.forEach(a => { if (a.configId && a.courseName) courseFor[a.configId] = a.courseName; });
-    body.appendParagraph("Reflections on Submit")
-      .setHeading(DocumentApp.ParagraphHeading.HEADING3);
-    let lastKey = "";
-    refl.forEach(r => {
-      const key = r.configId + "|" + r.timestamp.getTime();
-      if (key !== lastKey) {
-        lastKey = key;
-        body.appendParagraph((courseFor[r.configId] || "Assignment") + "  ·  " + formatDateShort_(r.timestamp))
-          .setBold(true).setFontSize(10);
-      }
-      body.appendParagraph("Asked" + (r.kind === "FEEDBACK" ? " (about the feedback)" : "") + ": " + r.question)
-        .setFontSize(9);
-      body.appendParagraph(r.response).setItalic(true);
-    });
-  }
+      return;
+    }
+    if (l.kind === "label") { body.appendParagraph(l.text).setBold(true).setFontSize(10); return; }
+    if (l.kind === "asked") { body.appendParagraph(l.text).setFontSize(9); return; }
+    body.appendParagraph(l.text).setItalic(true);
+  });
 
   body.appendParagraph("");
   doc.saveAndClose();

@@ -1421,7 +1421,11 @@ function _tdContextWeeks_(docId) {
       continue;
     }
     if (!week || !text) continue;
-    week.items.push({ text: text, heading: heading === DocumentApp.ParagraphHeading.HEADING3 });
+    // A list item (weeks from 2026-11-19 on: an assignment, a part nested
+    // under its lesson) carries its level; a paragraph has none.
+    const item = { text: text, heading: heading === DocumentApp.ParagraphHeading.HEADING3 };
+    if (type === DocumentApp.ElementType.LIST_ITEM) item.level = p.getNestingLevel ? p.getNestingLevel() : 0;
+    week.items.push(item);
   }
   return weeks.reverse().slice(0, TD_CONTEXT_MAX_WEEKS);
 }
@@ -2566,6 +2570,11 @@ header button:not([role="menuitem"]):focus-visible,header select:focus-visible{o
 .ctx-week{font-size:13px;line-height:1.5;max-height:420px;overflow:auto}
 .ctx-week p{margin:0 0 6px}
 .ctx-week .ctx-h{font-weight:600;margin-top:10px}
+/* 2026-11-19: an assignment as a list item, a part nested under its lesson (29). */
+.ctx-week .ctx-li{margin:0 0 4px 18px;position:relative}
+.ctx-week .ctx-li::before{content:"\\2022";position:absolute;left:-14px}
+.ctx-week .ctx-li.l1{margin-left:38px}
+.ctx-week .ctx-li.l1::before{content:"\\25E6"}
 button[data-pr-copy]{background:#1557b0;color:#fff;border:none;border-radius:4px;padding:6px 12px;font-size:13px;cursor:pointer}
 button[data-pr-copy="subject"]{background:#fff;color:#1557b0;border:1px solid #1557b0}
 .setting-row{border:1px solid #e8eaed;border-radius:6px;margin:10px 0;padding:8px 12px}
@@ -3408,7 +3417,8 @@ function contextWeekHtml(c) {
     '<button type="button" onclick="stepContextWeek(-1)"' + (_ctxWeek === 0 ? ' disabled' : '') + ' aria-label="Newer week">Newer ›</button>' +
     '<span style="margin-left:auto">' + link + '</span></div>';
   h += '<div class="ctx-week">' + (w.items.length
-    ? w.items.map(it => '<p' + (it.heading ? ' class="ctx-h"' : '') + '>' + esc(it.text) + '</p>').join("")
+    ? w.items.map(it => '<p' + (it.heading ? ' class="ctx-h"' : typeof it.level === "number" ? ' class="ctx-li' + (it.level > 0 ? ' l1' : '') + '"' : '') +
+      '>' + esc(it.text) + '</p>').join("")
     : '<p style="color:var(--text-secondary)">Nothing recorded this week.</p>') + '</div>';
   return h;
 }

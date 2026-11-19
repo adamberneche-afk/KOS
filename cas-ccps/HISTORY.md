@@ -1109,3 +1109,31 @@ LessonSchedule tab, so the weekly cartridge is assembled in Apps Script.
 - Not yet tried in Canvas: the first import goes into a sandbox course.
 - The sandbox gained `Utilities.zip()` and `Folder.createFile(blob)`.
 - Tests: `canvas-weekly-cartridge`.
+
+## My Context readable, and due dates, 2026-11-19
+
+The operator: "tighten up the due dates and the readability of the my
+context section." My Context showed the weekly Student Context doc as 29
+wrote it: COMPLETE and PENDING_TEACHER_REVIEW, a time on every line, a
+lesson's parts as separate lines, all-capitals names, and "Week of" the day
+the job ran. CAS had no due dates at all.
+
+- One layout (00's `contextWeekLines_`, `contextWeekLabel_`): the week's
+  days ("Week of Nov 12 – 19, 2026"), "Your assignments" in the cards' words
+  (`resolveStudentPill_`, moved from 13 to 00) with the day checked, names
+  as the cards show them (`lessonNameReadable_`, `LESSON_NAME_CASE`, the word
+  list 13's page now reads from 00), a lesson's parts nested under it,
+  "Your warm-ups", "What you said when you submitted". 29 writes it as a
+  bulleted list (parts at nesting level 1); 13's and 07's week readers carry
+  the level (still the same code), and both pages draw the nesting. Weeks
+  written before keep their layout.
+- Due dates: `lessonDueDay_` (00) is the rule the weekly cartridge already
+  used (moved from 79), over `lessonScheduleRows_` (00, now also 55's
+  reader). Each card: "Due Fri, Nov 20", "Due today", "Was due …", nothing
+  once done or turned in. My Context opens with Coming up, the soonest
+  first, each linked to its card.
+- The demo shows all of it from a made-up schedule, counting weekdays, so it
+  still opens nothing.
+- 00 calls no Session (a project that loads it has no scope for it), so the
+  reader takes the time zone from its caller.
+- Tests: `due-dates`, `student-dashboard-demo`, `student-context-aggregator`.

@@ -391,3 +391,38 @@ test('Send answer in the demo: being checked, then the code, with no server call
   assert.ok(els.main.innerHTML.includes(want), 'the code shows on the card');
   assert.deepEqual(calls, ['getDemoDashboardData'], 'no other server function was called');
 });
+
+// 2026-11-19, the operator: due dates, and My Context readable. The demo
+// shows them as a student would see them, with no calendar opened.
+test('due dates and Coming up: on the cards, and soonest first on My Context; the weeks in student words', () => {
+  const d = fixture();
+  const cards = d.dashboard.assignments;
+  const due = cards.filter((a) => a.dueText);
+  assert.ok(due.length >= 3, 'cards with a due date');
+  due.forEach((a) => {
+    assert.match(a.dueText, /^(Due today|Due (Mon|Tue|Wed|Thu|Fri), [A-Z][a-z]{2} \d{1,2}|Was due .+)$/);
+    assert.match(a.dueOn, /^\d{4}-\d{2}-\d{2}$/);
+    assert.notEqual(new Date(a.dueOn + 'T12:00:00Z').getUTCDay() % 6, 0, 'a school day, not a weekend');
+  });
+  assert.ok(cards.filter((a) => a.statusClass === 'DONE').every((a) => !a.dueText), 'a done card says no due date');
+  const week = d.tabs.context.context.weeks[0];
+  assert.match(week.label, /^Week of [A-Z][a-z]{2} \d{1,2} – /);
+  const texts = week.items.map((it) => it.text);
+  assert.ok(texts.includes('Your assignments'));
+  assert.ok(texts.some((t) => / — Passed ✓ · checked [A-Z][a-z]{2} \d{1,2}$/.test(t)));
+  assert.ok(week.items.some((it) => it.level === 1 && /^Part \d+: /.test(it.text)), 'a part nested under its lesson');
+  assert.doesNotMatch(texts.join('\n'), /COMPLETE|PENDING_TEACHER_REVIEW|evaluated|\d:\d\d/);
+
+  const { ctx, els, calls, advance, page } = demoPage(d);
+  advance(1000);
+  assert.match(els.main.innerHTML, /<div class="due-line">Due /);
+  ctx.showTab('context'); advance(1000);
+  const html = els['panel-context'].innerHTML;
+  assert.match(html, /<h3 id="ctx-up-h">Coming up<\/h3>/);
+  const order = [...html.matchAll(/<li><b>Due ([^<]+)<\/b>/g)].map((m) => m[1]);
+  const dueOn = page('comingUp()').map((a) => a.dueOn);
+  assert.deepEqual(dueOn, dueOn.slice().sort(), 'soonest first');
+  assert.equal(order.length, dueOn.length);
+  assert.match(html, /<p class="ctx-li l1">Part \d+: /);
+  assert.deepEqual(calls, ['getDemoDashboardData']);
+});

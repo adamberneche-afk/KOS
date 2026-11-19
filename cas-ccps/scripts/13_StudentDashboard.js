@@ -107,6 +107,24 @@ function _dashDemoCriteria_(lesson) {
   return out;
 }
 
+// The demo's LessonSchedule, as 00's lessonScheduleRows_ gives it: each
+// course's demo lessons by teaching order, three days apart, so the second
+// one in each course started yesterday.
+function _dashDemoSchedule_(assignments, now, tz) {
+  const out = {};
+  const seen = {};
+  assignments.slice().sort(function (a, b) { return (a.seq || 0) - (b.seq || 0); }).forEach(function (a) {
+    const key = String(a.lessonKey || "");
+    if (!key || seen[key]) return;
+    seen[key] = true;
+    const course = key.split("-")[0];
+    const list = out[course] = out[course] || [];
+    const start = new Date(now.getTime() + (list.length - 1) * 3 * 86400000 - 86400000);
+    list.push({ key: key, start: Utilities.formatDate(start, tz, "yyyy-MM-dd"), hold: false });
+  });
+  return out;
+}
+
 // One card, built with the same status functions as a real Ledger row.
 function _dashDemoCard_(course, lesson, state, block, period, now) {
   const s = DASH_DEMO_STATES[state];
@@ -371,6 +389,13 @@ function dashDemoFixture_(now) {
     a.assignedAt = 0;
   });
   _dashAddLessonInfo_(assignments);
+  // Due dates (2026-11-19) from a made-up schedule: each course's demo
+  // lessons in teaching order, three days apart, the one being revised
+  // current, so the cards and Coming up show past, near and later ones.
+  _dashAddDueDates_(assignments, _dashDemoSchedule_(assignments, now, tz), now, function (ymd) {
+    const d = new Date(ymd + "T12:00:00Z").getUTCDay();
+    return d !== 0 && d !== 6; // weekdays: the demo opens no calendar
+  });
   _dashSortCards_(assignments);
   // Milestone marks: the demo's evidence as CompetencyEvidence rows, through
   // the same functions as the real page.
@@ -452,18 +477,29 @@ function dashDemoFixture_(now) {
   };
   const history = [previous].concat(older).map(function (w) { return _dashWarmUpView_(w, tz, today, null); });
 
-  // My Context: two weeks, in 29's headings.
-  const weekOf = function (n) { return "Week of " + Utilities.formatDate(_dashDemoDaysAgo_(now, n), tz, "MMMM d, yyyy"); };
-  const done1 = assignments.filter(function (a) { return a.lastEval; });
+  // My Context: two weeks, laid out as 29 writes them (00's
+  // contextWeekLines_ and contextWeekLabel_), read back as 13 reads the doc.
+  const asItems = function (lines) {
+    return lines.map(function (l) {
+      const it = { heading: l.kind === "h", text: l.text };
+      if (l.kind === "item" || l.kind === "part") it.level = l.kind === "part" ? 1 : 0;
+      return it;
+    });
+  };
+  const ledgerLike = function (a) {
+    const name = a.part ? a.part.lessonName + " \u2014 Part " + a.part.n + ": " + a.part.title : a.unitName;
+    return { courseName: name, configId: a.configId, status: a.status,
+      lastResult: DASH_DEMO_STATES[a.statusPill === "Revise" ? "REVISE" : "PASSED"].lastResult,
+      lastEval: a.lastEvalAt ? new Date(a.lastEvalAt) : null };
+  };
+  const done1 = assignments.filter(function (a) { return a.lastEvalAt; }).map(ledgerLike);
+  const warm = function (w) { return { lessonUnitId: "Warm-up", baseline: "", question: w.tb.row[WTB.WARMUP] || "",
+    response: w.tb.row[WTB.RESPONSE], timestamp: _dashDayNoon_(w.lessonDate) }; };
   const contextWeeks = [
-    { label: weekOf(1), bookmark: "", items: [{ heading: true, text: "Completed Assignments" }]
-      .concat(done1.map(function (a) { return { heading: false, text: "• " + a.unitName + "  —  " + a.status + "  ·  evaluated " + a.lastEval }; }))
-      .concat([{ heading: true, text: "Warm-Up Reflections" },
-        { heading: false, text: "Asked: " + (previous.tb.row[WTB.WARMUP] || "") },
-        { heading: false, text: previous.tb.row[WTB.RESPONSE] }]) },
-    { label: weekOf(8), bookmark: "", items: [{ heading: true, text: "Warm-Up Reflections" },
-      { heading: false, text: "Asked: " + (older[1].tb.row[WTB.WARMUP] || "") },
-      { heading: false, text: older[1].tb.row[WTB.RESPONSE] }] }
+    { label: contextWeekLabel_(_dashDemoDaysAgo_(now, 7), _dashDemoDaysAgo_(now, 1), tz), bookmark: "",
+      items: asItems(contextWeekLines_(done1, [warm(previous)], [], tz)) },
+    { label: contextWeekLabel_(_dashDemoDaysAgo_(now, 14), _dashDemoDaysAgo_(now, 8), tz), bookmark: "",
+      items: asItems(contextWeekLines_([], [warm(older[1])], [], tz)) }
   ];
 
   // The states a demo Submit walks the card through, from the same
@@ -754,6 +790,8 @@ function getStudentDashboardData(termFilter) {
   // Assigned order within each class (F16); "Do next" on the page still
   // lists what needs the student first.
   _dashAddLessonInfo_(assignments);
+  try { _dashAddDueDates_(assignments, lessonScheduleRows_(ss, Session.getScriptTimeZone()), now); }
+  catch (e) { Logger.log("[S13] Due dates not read: " + e.message); }
   _dashSortCards_(assignments);
 
   // CompetencyEvidence, already in this Ledger, read once (no other
@@ -959,6 +997,33 @@ function _dashLessonKeyOf_(assignmentId) {
 // order, which 8175's names carry and 8177's don't) and one line on what the
 // student will do: a part's task (its objective in 13c), or the
 // assignment's short title. "" when 13c doesn't know the lesson.
+// Each card's due day (2026-11-19, the operator: "tighten up the due dates"):
+// 00's lessonDueDay_, the school day before the course's next lesson starts
+// in LessonSchedule, the rule the weekly Canvas cartridge (79) gives Canvas.
+// a.dueOn "YYYY-MM-DD", or "" (a lesson not in the schedule, or its
+// course's last dated one); a.dueText what the card says, "" once the card
+// is done or turned in: "Due today", "Due Fri, Nov 20", "Was due Fri, Nov 13".
+// isDay: passed on to lessonDueDay_ (the demo's weekdays).
+function _dashAddDueDates_(assignments, schedule, now, isDay) {
+  const tz = Session.getScriptTimeZone();
+  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  assignments.forEach(function (a) {
+    a.dueOn = "";
+    a.dueText = "";
+    const key = String(a.lessonKey || "");
+    if (!key) return;
+    const rows = schedule[key.split("-")[0]] || [];
+    const lesson = rows.filter(function (r) { return r.key.toLowerCase() === key.toLowerCase(); })[0];
+    const due = lesson ? lessonDueDay_(rows, lesson, isDay) : "";
+    if (!due) return;
+    a.dueOn = due;
+    if (a.statusClass === "DONE" || a.statusPill === "Turned in") return;
+    const p = due.split("-").map(Number);
+    const label = Utilities.formatDate(new Date(Date.UTC(p[0], p[1] - 1, p[2], 17)), tz, "EEE, MMM d");
+    a.dueText = due === today ? "Due today" : due > today ? "Due " + label : "Was due " + label;
+  });
+}
+
 function _dashAddLessonInfo_(assignments) {
   assignments.forEach(function (a) {
     const info = a.lessonKey && typeof DASH_LESSON_INFO !== "undefined" ? DASH_LESSON_INFO[a.lessonKey] : null;
@@ -1596,7 +1661,11 @@ function _dashContextWeeks_(docId) {
       continue;
     }
     if (!week || !text) continue;
-    week.items.push({ text: text, heading: heading === DocumentApp.ParagraphHeading.HEADING3 });
+    // A list item (weeks from 2026-11-19 on: an assignment, a part nested
+    // under its lesson) carries its level; a paragraph has none.
+    const item = { text: text, heading: heading === DocumentApp.ParagraphHeading.HEADING3 };
+    if (type === DocumentApp.ElementType.LIST_ITEM) item.level = p.getNestingLevel ? p.getNestingLevel() : 0;
+    week.items.push(item);
   }
   return weeks.reverse().slice(0, DASH_CONTEXT_MAX_WEEKS);
 }
@@ -2309,28 +2378,6 @@ function resolveStudentStatus_(status, pipeline, feedbackInComments, lastResult)
   }
 }
 
-// The card's pill: one or two words from the same vocabulary as
-// resolveStudentStatus_ and the Terms panel (CAS_STUDENT_TERMS, 00). The
-// rest of the status goes on its own line (studentStatusNote_), so the pill
-// never wraps beside the title.
-function resolveStudentPill_(status, pipeline, lastResult) {
-  if (pipeline === "IN_PROCESS") return "Being checked";
-  if (pipeline === "QUEUED" || pipeline === "PENDING_INFERENCE") return "Waiting for feedback";
-  switch (status) {
-    case "ACTIVE":              return "Not started";
-    case "PENDING": case "STAGED": return "Waiting for feedback";
-    case "COMPLETE":
-      if (lastResult === "PASSED") return "Passed ✓";
-      if (lastResult === "NEEDS_REVISION") return "Revise";
-      return "Feedback ready";
-    case "PENDING_TEACHER_REVIEW": return "Turned in";
-    case "COMPLIANT":           return "Done ✓";
-    case "ERROR_TIMEOUT":       return "Check stopped ⚠";
-    default:
-      return String(status || "").startsWith("ERROR") ? "Couldn’t be checked ⚠" : "Ask your teacher";
-  }
-}
-
 // The line under the title: what displayStatus says after its " — ", or
 // the whole of a status that is an instruction ("Feedback is ready: …").
 // "" when the pill says it all ("Not started yet", "Being checked now…").
@@ -3037,6 +3084,19 @@ function buildStudentDashboardHtml_(opts) {
 .ctx-week{background:#fff;border:1px solid #e8eaed;border-radius:8px;padding:12px 16px;font-size:14px;line-height:1.55}
 .ctx-week p{margin:0 0 6px}
 .ctx-week .ctx-h{font-weight:600;margin-top:10px}
+/* 2026-11-19: an assignment as a list item, a part nested under its lesson,
+   a question in a smaller grey line; "Coming up" with due dates on top. */
+.ctx-week .ctx-li{margin:0 0 4px 18px;position:relative}
+.ctx-week .ctx-li::before{content:"\\2022";position:absolute;left:-14px}
+.ctx-week .ctx-li.l1{margin-left:38px}
+.ctx-week .ctx-li.l1::before{content:"\\25E6"}
+.ctx-week .ctx-asked{font-size:13px;color:var(--text-secondary);margin-bottom:2px}
+.ctx-up{background:#fff;border:1px solid #e8eaed;border-radius:8px;padding:10px 16px;margin-bottom:12px;font-size:14px}
+.ctx-up h3{font-size:15px;margin:0 0 6px}
+.ctx-up ul{margin:0;padding-left:18px}
+.ctx-up li{margin:0 0 4px}
+.due-line{font-size:13px;color:#3c4043;font-weight:500;margin-bottom:6px}
+.due-line.past{color:var(--text-secondary);font-weight:400}
 
 .demo-banner{background:#fef7e0;color:#202124;border-bottom:1px solid #f2d27a;padding:10px 24px;font-size:14px;font-weight:600}
 .demo-note{font-size:13px;margin-top:8px;color:#3c4043;background:#f1f3f4;border-radius:6px;padding:6px 10px}
@@ -3968,9 +4028,9 @@ function evalLine(a) {
 // students see in Canvas, without a leading "L05 " the chip already shows,
 // and in sentence case when it is all capitals (8175's names): display only,
 // the source data is unchanged. A few words keep their own capitals.
-const NAME_CASE = { tiktok: "TikTok", usp: "USP", chhs: "CHHS", swot: "SWOT", bhm: "BHM", ai: "AI", i: "I",
-  powerpoint: "PowerPoint", google: "Google", olympic: "Olympic", olymponomics: "Olymponomics", nil: "NIL",
-  deca: "DECA", ceo: "CEO", pr: "PR", nfl: "NFL", nba: "NBA" };
+// The word list is 00's LESSON_NAME_CASE (2026-11-19), which the Student
+// Context doc uses too (lessonNameReadable_).
+const NAME_CASE = ${JSON.stringify(LESSON_NAME_CASE)};
 function sentenceCase(text) {
   const t = String(text || "").trim();
   if (!t || /[a-z]/.test(t) || !/[A-Z]/.test(t)) return t;
@@ -4158,6 +4218,7 @@ function cardHtml(a, opts) {
     \${a.statusClass === "NEEDS_ACTION" && a.notYet ? \`<div class="next-step"><b>Not yet:</b> \${esc(a.notYet)}</div>\` : ""}
     <!-- F16 item 6: no "Period · Subject" line; the block header above
          the class says it. -->
+    \${a.dueText ? \`<div class="due-line\${/^Was due/.test(a.dueText) ? " past" : ""}">\${esc(a.dueText)}</div>\` : ""}
     \${ev ? \`<div class="eval-line">\${esc(ev)}</div>\` : ""}
     \${stageLineHtml(a)}
     <div class="card-actions">
@@ -4558,24 +4619,52 @@ function weekDocUrl(url, bookmark) {
   if (!url) return "";
   return /^[A-Za-z0-9._-]+$/.test(String(bookmark || "")) ? url.split("#")[0] + "#bookmark=" + bookmark : url;
 }
+// Coming up (2026-11-19): the student's assignments still to do with a due
+// date today or later, soonest first, from the cards already on the page.
+const COMING_UP_MAX = 8;
+function comingUp() {
+  return ((_lastDashData && _lastDashData.assignments) || [])
+    .filter(function (a) { return a.dueText && !/^Was due/.test(a.dueText); })
+    .sort(function (a, b) { return a.dueOn < b.dueOn ? -1 : a.dueOn > b.dueOn ? 1 : 0; })
+    .slice(0, COMING_UP_MAX);
+}
+function comingUpHtml() {
+  const up = comingUp();
+  if (!up.length) return "";
+  return '<section class="ctx-up" aria-labelledby="ctx-up-h"><h3 id="ctx-up-h">Coming up</h3><ul>' +
+    up.map(function (a) {
+      return '<li><b>' + esc(a.dueText) + '</b> · <a href="#' + esc(cardId(a)) + '" onclick="return goToCardFromContext(\\'' +
+        esc(cardId(a)) + '\\')">' + esc(cardTitle(a)) + '</a></li>';
+    }).join("") + '</ul></section>';
+}
+function goToCardFromContext(id) {
+  showTab("assignments");
+  return goToCard(id);
+}
+function contextItemHtml(it) {
+  if (it.heading) return '<p class="ctx-h">' + esc(it.text) + '</p>';
+  if (typeof it.level === "number") return '<p class="ctx-li' + (it.level > 0 ? " l1" : "") + '">' + esc(it.text) + '</p>';
+  if (/^Asked( \\(about the feedback\\))?:/.test(it.text)) return '<p class="ctx-asked">' + esc(it.text) + '</p>';
+  return '<p>' + esc(it.text) + '</p>';
+}
 function renderContextTab(d) {
   const c = d.context;
-  if (!c) return '<p class="rec-empty">No Student Context yet. It is made the first week you have a checked assignment or a warm-up answer, and updated each week.</p>';
+  const up = comingUpHtml();
+  if (!c) return up + '<p class="rec-empty">No Student Context yet. It is made the first week you have a checked assignment or a warm-up answer, and updated each week.</p>';
   const url = safeDocUrl(c.docUrl);
   let link = url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener">Open the doc ↗</a>' : '';
   const weeks = c.weeks || [];
-  if (!weeks.length) return '<p class="rec-empty">Your doc has no weeks yet. ' + link + '</p>';
+  if (!weeks.length) return up + '<p class="rec-empty">Your doc has no weeks yet. ' + link + '</p>';
   if (_ctxWeekI > weeks.length - 1) _ctxWeekI = weeks.length - 1;
   const w = weeks[_ctxWeekI];
   if (url && w.bookmark) link = '<a href="' + esc(weekDocUrl(url, w.bookmark)) + '" target="_blank" rel="noopener">Open this week ↗</a>';
-  return '<p class="rec-sub">What the system has gathered about your work, updated weekly' + (c.lastUpdatedAt ? ' (last ' + esc(c.lastUpdatedAt) + ')' : '') + '.</p>' +
+  return up + '<p class="rec-sub">Your work week by week, updated each week' + (c.lastUpdatedAt ? ' (last ' + esc(c.lastUpdatedAt) + ')' : '') + '.</p>' +
     '<div class="ctx-nav"><button type="button" onclick="stepMyContext(1)"' + (_ctxWeekI >= weeks.length - 1 ? ' disabled' : '') + ' aria-label="Older week">‹ Older</button>' +
     '<strong>' + esc(w.label) + '</strong> <span style="color:var(--text-secondary)">(' + esc(String(_ctxWeekI + 1)) + ' of ' + esc(String(weeks.length)) + ')</span>' +
     '<button type="button" onclick="stepMyContext(-1)"' + (_ctxWeekI === 0 ? ' disabled' : '') + ' aria-label="Newer week">Newer ›</button>' +
     '<span style="margin-left:auto">' + link + '</span></div>' +
-    '<div class="ctx-week">' + (w.items.length ? w.items.map(function (it) {
-      return '<p' + (it.heading ? ' class="ctx-h"' : '') + '>' + esc(it.text) + '</p>';
-    }).join("") : '<p class="rec-empty">Nothing recorded this week.</p>') + '</div>';
+    '<div class="ctx-week">' + (w.items.length ? w.items.map(contextItemHtml).join("") :
+      '<p class="rec-empty">Nothing recorded this week.</p>') + '</div>';
 }
 function stepMyContext(delta) {
   _ctxWeekI = Math.max(0, _ctxWeekI + delta);
