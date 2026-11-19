@@ -1,8 +1,10 @@
 'use strict';
-// 67's agenda deck (archive/2026-27-Q1/meta/SPRINT_LESSON_DOCS_2026-11.md): one per course per
-// school day, a slide per itinerary block with each period's minutes, read
-// from the lesson doc so the teacher's edits carry in; the plan when no doc
-// exists; remade in place.
+// 67's agenda (archive/2026-27-Q1/meta/SPRINT_LESSON_DOCS_2026-11.md; one
+// slide a day since 2026-11-19, the operator): one deck per course per school
+// year, a slide per day newest first, everything on it (the plan with each
+// period's minutes, read from the lesson doc so the teacher's edits carry in,
+// the bell schedule, what's due and the announcements, the learning
+// targets); remade in place, keeping the teacher's speaker notes.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -13,26 +15,45 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const TEACHER = 'teacher@ccpsnet.net';
 
 // SlidesApp, as far as 67 uses it. A deck is backed by a Drive file the Docs
-// mock registers, so moveTo() into the Agendas folder works.
+// mock registers, so moveTo() into the Agendas folder works. A slide keeps
+// its shapes' text and its speaker notes.
 function fakeSlides(sandbox) {
   const decks = {};
+  let n = 0;
+  const textOf = (initial) => {
+    const t = { s: initial || '' };
+    const style = { setFontFamily() { return style; }, setFontSize() { return style; }, setBold() { return style; },
+      setItalic() { return style; }, setForegroundColor() { return style; } };
+    return Object.assign(t, {
+      asString: () => t.s, setText: (x) => { t.s = String(x); },
+      getRange: () => ({ getTextStyle: () => style }),
+      getParagraphStyle: () => ({ setParagraphAlignment() {} }),
+    });
+  };
   const slideOf = (pres) => {
-    const s = { ph: {} };
+    const s = { id: 'slide-' + (++n), boxes: [], rects: 0, notes: textOf('') };
+    s.getObjectId = () => s.id;
     s.remove = () => pres.slides.splice(pres.slides.indexOf(s), 1);
-    s.getPlaceholder = (t) => {
-      const p = s.ph[t] = s.ph[t] || { text: '' };
-      return { asShape: () => ({ getText: () => ({ setText: (x) => { p.text = x; } }) }) };
+    s.insertShape = () => { s.rects++; return { getFill: () => ({ setSolidFill() {} }), getBorder: () => ({ setTransparent() {} }) }; };
+    s.insertTextBox = (text) => {
+      const t = textOf(text);
+      s.boxes.push(t);
+      return { getText: () => t, getAutofit: () => ({ disableAutofit() {} }), setContentAlignment() {} };
     };
+    s.getNotesPage = () => ({ getSpeakerNotesShape: () => ({ getText: () => s.notes }) });
+    s.text = () => s.boxes.map((b) => b.s).join('\n');
     return s;
   };
   const api = {
-    PredefinedLayout: { TITLE_AND_BODY: 'TITLE_AND_BODY' },
-    PlaceholderType: { TITLE: 'TITLE', BODY: 'BODY' },
+    PredefinedLayout: { BLANK: 'BLANK' },
+    ShapeType: { RECTANGLE: 'RECTANGLE' },
+    ContentAlignment: { MIDDLE: 'MIDDLE', TOP: 'TOP' },
+    ParagraphAlignment: { START: 'START', CENTER: 'CENTER', END: 'END' },
     create(title) {
       const id = sandbox.DocumentApp.create(title).getId();
       const pres = { title, slides: [], getId: () => id, saveAndClose() {} };
       pres.getSlides = () => pres.slides.slice();
-      pres.appendSlide = () => { const s = slideOf(pres); pres.slides.push(s); return s; };
+      pres.insertSlide = (i) => { const s = slideOf(pres); pres.slides.splice(i, 0, s); return s; };
       pres.slides.push(slideOf(pres)); // a new deck's own title slide
       decks[id] = pres;
       return pres;
@@ -41,12 +62,11 @@ function fakeSlides(sandbox) {
   };
   return { api, decks };
 }
-const slideText = (deck) => deck.slides.map((s) => [(s.ph.TITLE || {}).text || '', (s.ph.BODY || {}).text || '']);
 
 function load() {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'), S('26_CompetencyAlignmentLog.js'),
     S('23_StudentProfileManager.js'), S('27_LessonFrameGenerator.js'), S('32_CompetencyRubricImporter.js'), S('55b_LessonAssignmentData.js'), S('66_LessonDoc.js'), S('67_AgendaDeck.js'), S('68_LessonParts.js')],
-  ['makeOrRefreshLessonDoc_', 'makeAgendaDeck_', 'nextAgendaDay_'],
+  ['makeOrRefreshLessonDoc_', 'makeAgendaDeck_', 'nextAgendaDay_', 'agendaSlideSpec_'],
   { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => TEACHER }) } });
   const { sandbox } = env;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -89,53 +109,122 @@ function load() {
 }
 
 
-test('the deck: the day, a slide per block with each period\'s minutes from the lesson doc, and before you go', () => {
+
+const yearDeck = (decks) => Object.values(decks).find((d) => d.title === 'Agenda — 8175 — 2026–27');
+
+test('one deck a year, one slide a day: the plan with each period\'s minutes from the lesson doc, the bell, targets, notes', () => {
   const { exported, sandbox, ss, decks } = load();
   exported.makeOrRefreshLessonDoc_('8175-L06', { today: new sandbox.Date('2026-10-26T12:00:00Z') });
   const res = exported.makeAgendaDeck_('8175', '2026-10-28');
   assert.equal(res.success, true);
   assert.equal(res.created, true);
-  const deck = Object.values(decks).find((d) => d.title === 'Agenda — 8175 — Wed Oct 28');
-  const s = slideText(deck);
-  assert.equal(s.length, 6, 'the day, four blocks, before you go; the new deck\'s blank slide removed');
-  assert.equal(s[0][0], 'Wednesday, October 28 · Schedule B');
-  assert.match(s[0][1], /^L06 SKILL DEVELOPMENT PLAN/);
-  assert.match(s[0][1], /• I can plan to grow professionally/);
-  assert.match(s[0][1], /3rd block: Lunch \(your wave\)\./, 'period 3-Even meets on the 28th');
-  assert.equal(s[1][0], '✏️ Warm-up · Warm-up');
-  assert.equal(s[3][0], '💻 Chromebooks out · Skill Development Plan (The "Soft Skills" Gap)');
-  assert.match(s[3][1], /^Period 1: 25 min · Period 3-Even: 75 min/, 'the doc\'s 1st B and 3rd B columns');
-  assert.equal(s[5][0], 'Before you go');
-  assert.match(s[5][1], /Today is the last day for this lesson\./, 'L07 starts the 29th');
+  const deck = yearDeck(decks);
+  assert.ok(deck, 'the course\'s deck for the school year');
+  assert.equal(deck.slides.length, 1, 'the new deck\'s blank slide removed');
+  const t = deck.slides[0].text();
+  assert.match(t, /^L06 · SKILL DEVELOPMENT PLAN/m);
+  assert.match(t, /Wednesday, October 28/);
+  assert.match(t, /^Schedule B$/m);
+  assert.match(t, /^Day 2 of 2 · last day$/m, 'Oct 26 and 28 (27 is off); L07 starts the 29th');
+  assert.match(t, /^P1\nP3-Even$/m, 'a minutes column per period meeting');
+  assert.match(t, /Skill Development Plan \(The "Soft Skills" Gap\)/);
+  assert.match(t, /^25\n75$/m, 'the doc\'s 1st B and 3rd B columns for the task');
+  assert.match(t, /1st {2}8:30–9:15 {2}· P1/);
+  assert.match(t, /CM\/HR 9:20–9:45\n2nd/, 'in the day\'s order');
+  assert.match(t, /Lunch waves: A 11:30/, 'the 3rd block meets');
+  assert.match(t, /^Learning targets$/m);
+  assert.match(t, /I can plan to grow professionally/);
+  const notes = deck.slides[0].notes.asString();
+  assert.match(notes, /^Today's plan, in detail:\n• Warm-up/);
+  assert.match(notes, /YOUR NOTES \(kept when this slide is remade\):\nHow did today go\?/);
+  assert.match(res.deckUrl, /#slide=id\.slide-\d+$/, 'the link opens at the day');
   assert.equal(sandbox.DriveApp.getFileById(deck.getId()).getParents().next().getName(), 'Agendas');
   const reg = ss.getSheetByName('AgendaDecks').getDataRange().getValues();
-  assert.deepEqual(reg[1].slice(0, 2), ['8175', '2026-10-28']);
+  assert.equal(reg[0][5], 'slide_id');
+  assert.deepEqual([reg[1][0], reg[1][1], reg[1][5]], ['8175', '2026-10-28', deck.slides[0].id]);
 });
 
-test('the teacher\'s edit to the doc\'s itinerary carries into the deck; remaking keeps one deck and one row', () => {
+test('a new day goes on top of the same deck; remaking a day replaces its slide and keeps the teacher\'s notes', () => {
   const { exported, sandbox, ss, decks } = load();
   const doc = exported.makeOrRefreshLessonDoc_('8175-L06', { today: new sandbox.Date('2026-10-26T12:00:00Z') });
+  exported.makeAgendaDeck_('8175', '2026-10-26');
   exported.makeAgendaDeck_('8175', '2026-10-28');
+  const deck = yearDeck(decks);
+  assert.equal(Object.values(decks).length, 1, 'no new file a day');
+  assert.deepEqual(deck.slides.map((s) => /Monday|Wednesday/.exec(s.text())[0]), ['Wednesday', 'Monday'], 'newest first');
+  // The teacher writes how the 28th went, and edits the doc's itinerary.
+  deck.slides[0].notes.setText(deck.slides[0].notes.asString().replace(/How did today go\?.*$/s, 'The task ran 10 minutes long.'));
   const table = sandbox.DocumentApp.openById(doc.docId).getBody().paragraphs.find((p) => p.getNumRows && p.getNumRows() > 0);
   table.rows[3].cells[3].paragraphs[0].text = '20'; // the task, 1st block on B
   const again = exported.makeAgendaDeck_('8175', '2026-10-28');
   assert.equal(again.created, false);
-  const deck = Object.values(decks).find((d) => d.title === 'Agenda — 8175 — Wed Oct 28');
-  assert.match(slideText(deck)[3][1], /^Period 1: 20 min/);
-  assert.equal(slideText(deck).length, 6, 'the old slides are replaced, not added to');
-  assert.equal(ss.getSheetByName('AgendaDecks').getLastRow(), 2);
-  assert.equal(Object.values(decks).length, 1);
+  assert.equal(deck.slides.length, 2, 'replaced, not added');
+  assert.match(deck.slides[0].text(), /Wednesday/, 'in the same place');
+  assert.match(deck.slides[0].text(), /^20\n/m, 'the doc\'s edit carries in');
+  assert.match(deck.slides[0].notes.asString(), /YOUR NOTES \(kept when this slide is remade\):\nThe task ran 10 minutes long\.$/);
+  assert.equal(ss.getSheetByName('AgendaDecks').getLastRow(), 3, 'one row per day');
 });
 
-test('with no lesson doc the plan is fitted to each period; a day with no class is refused; the next class day', () => {
-  const { exported, decks } = load();
+test('announcements and what\'s due: by date range and course; the plan fitted with no doc; days refused; next class day', () => {
+  const { exported, ss, decks } = load();
+  const ann = ss.insertSheet('AgendaAnnouncements');
+  ann.appendRow(['from', 'to', 'course', 'text']);
+  ann.appendRow(['2026-10-26', '2026-10-30', 'all', 'Spirit week: wear green Friday.']);
+  ann.appendRow(['2026-10-26', '', '8175', 'Only on the 26th.']);
+  ann.appendRow(['2026-10-26', '2026-10-30', '8177', 'Not this course.']);
   const res = exported.makeAgendaDeck_('8175', '2026-10-26');
   assert.equal(res.success, true);
-  const s = slideText(Object.values(decks)[0]);
-  assert.equal(s[0][0], 'Monday, October 26 · Schedule A');
-  assert.match(s[3][1], /^Period 1: 30 min · Period 3-Even: 80 min/);
-  assert.doesNotMatch(s[5][1], /last day/);
+  const t = yearDeck(decks).slides[0].text();
+  assert.match(t, /Monday, October 26/);
+  assert.match(t, /^Schedule A$/m);
+  assert.match(t, /^30\n80$/m, 'the plan fitted to period 1 and 3-Even on A');
+  assert.match(t, /• L06 SKILL DEVELOPMENT PLAN.* is due Wed, Oct 28, 11:59 p\.m\./, 'the school day before L07 starts');
+  assert.match(t, /• Spirit week: wear green Friday\./);
+  assert.match(t, /• Only on the 26th\./);
+  assert.doesNotMatch(t, /Not this course/);
+  const due = exported.makeAgendaDeck_('8175', '2026-10-28');
+  assert.match(yearDeck(decks).slides[0].text(), /• Due tonight, 11:59 p\.m\.: L06 SKILL DEVELOPMENT PLAN/);
+  assert.doesNotMatch(yearDeck(decks).slides[0].text(), /Only on the 26th/);
+  assert.equal(due.success, true);
   assert.equal(exported.makeAgendaDeck_('8175', '2026-10-27').success, false, 'a day off');
   assert.match(exported.makeAgendaDeck_('8177', '2026-10-28').error, /No 8177 lesson/);
   assert.equal(exported.nextAgendaDay_('8175', '2026-10-26'), '2026-10-28');
+});
+
+test('the layout: every box inside the slide, text sized to fit, the long title on two lines', () => {
+  const { exported } = load();
+  const d = {
+    lessonNo: 'L11', unitName: 'CHHS BRAND AUDIT (INTERNAL ANALYSIS)', courseName: '8175 Sports Entertainment and Event Marketing',
+    dateLabel: 'Monday, November 23', scheduleLabel: 'Schedule A', day: { n: 2, of: 3 }, lastDay: false,
+    rows: [{ mode: 'warmup', title: 'Warm-up' }, { mode: 'discuss', title: 'The Hook' },
+      { mode: 'devices', title: 'CHHS Brand Audit (The Home Field Advantage)' }, { mode: 'write', title: 'Checkout Slip' }],
+    periods: [{ period: '1', minutes: [5, 10, 30, 5] }, { period: '3-Odd', minutes: [5, 10, 80, 5] }],
+    bell: [{ text: '1st  8:30–9:20  · P1', mine: true }, { text: '2nd  9:25–11:05', mine: false }],
+    announcements: ['A '.repeat(600)], due: [], goals: ['I can ' + 'do a thing '.repeat(20), 'I can b', 'I can c'],
+  };
+  const spec = exported.agendaSlideSpec_(d);
+  assert.equal(spec.width, 720);
+  assert.equal(spec.height, 405);
+  spec.elements.forEach((e) => {
+    assert.ok(e.x >= 0 && e.y >= 0 && e.x + e.w <= 720.5 && e.y + e.h <= 405.5, JSON.stringify(e).slice(0, 80));
+  });
+  const texts = spec.elements.filter((e) => e.kind === 'text');
+  const sizes = texts.flatMap((e) => e.paras.flat().map((r) => r.size));
+  assert.ok(Math.min(...sizes) >= 8.5, 'nothing smaller than 8.5 pt');
+  const ann = texts.find((e) => /^• A A/.test(e.paras[0][0].t));
+  assert.match(ann.paras[0][0].t, /…$/, 'a long announcement is cut, not spilled');
+  const long = texts.find((e) => /CHHS Brand Audit \(The Home Field Advantage\)/.test(e.paras[0][0].t));
+  assert.ok(long, 'the long title whole, on two lines');
+  assert.equal(long.paras.length, 1, 'no mode line under a two-line title');
+});
+
+test('the renderer draws the same spec: a box per element, in points', () => {
+  const { specHtml, sampleData, loadSpec } = require('../../tools/cas-ccps/render-agenda-slide.js');
+  const x = loadSpec();
+  const spec = x.agendaSlideSpec_(sampleData(x, '8177-product-pitch-financial-analysis', '2026-11-19', ['4'], ['Picture day Friday.']));
+  const html = specHtml(spec);
+  assert.equal((html.match(/class="[rt]"/g) || []).length, spec.elements.length);
+  assert.match(html, /width:720pt;height:405pt/);
+  assert.match(html, /Picture day Friday\./);
+  assert.match(html, /4th {2}1:30–3:00 {2}· P4/, 'Schedule B on a Thursday; period 4 marked');
 });

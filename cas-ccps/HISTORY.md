@@ -1240,3 +1240,26 @@ a `<details>` under their caption ("What this lesson checks", "… across its
 parts so far" on a lesson in parts, "Checking these now" while a check
 runs), closed until the student opens it; an opened one stays open for the
 page (`_marksOpen`, by card). No totals or counts in the caption (D17).
+
+## The agenda: one slide a day in a deck a year, 2026-11-19
+
+The operator: the agenda should be read from a single slide (itinerary,
+learning targets, announcements, bell schedule), with no new file in Drive
+each day, and a living document to shape future pacing guides. 67 made a
+deck per course per day, a slide per itinerary block.
+
+Now each course has one deck per school year ("Agenda — 8175 — 2026–27"),
+and each day is one slide in it, newest first; `AgendaDecks` gains
+`slide_id`, and a remade day replaces its slide in place. The slide is laid
+out as data (`agendaSlideSpec_`): the lesson, day and schedule in a green
+header; Today's plan (mode, title and minutes per meeting period); the bell
+schedule with the course's blocks marked (`BELL_SCHEDULE.times`, 00, from
+the school's bell schedule page); Announcements (what's due, by 00's
+`lessonDueDay_`, then the new `AgendaAnnouncements` tab); and the learning
+targets. Sizes are chosen to fit each box, and text that still doesn't is
+cut with "…". `_agDraw_` draws it with rectangles and text boxes, autofit
+off. The speaker notes carry each block's detail and a YOUR NOTES section
+the teacher writes in, kept across remakes: the record for pacing.
+`tools/cas-ccps/render-agenda-slide.js` draws the same spec as a PNG in
+Chromium and reports any box whose text would spill; it was used to set the
+layout. Decks made before, one a day, are left where they are.

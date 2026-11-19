@@ -425,8 +425,8 @@ are the criteria.
    get shared ones, so late joiners can start at once.
 4. **Lesson doc.** Each of those lessons gets the teacher's lesson doc once
    (script 66, below); later nights refresh its Class status.
-5. **Agenda.** The next school day's agenda deck for the course (script 67,
-   below).
+5. **Agenda.** The next school day's slide in the course's agenda deck
+   (script 67, below).
 6. **Covered So Far.** Each course's Covered So Far doc (script 76, below),
    rewritten when it changed; every run but a preview, in shadow too.
 
@@ -514,21 +514,36 @@ tab records each doc by lesson. From the editor: `previewLessonDocs()`,
 
 ## The daily agenda deck (script 67)
 
-`67_AgendaDeck.js` (Central Ledger and Teacher Dashboard, 2026-10-27) makes
-one Google Slides deck per course per school day, "Agenda — 8175 — Wed Oct
-28", in an *Agendas* folder: the day (date, schedule, lesson, today's "I can"
-goals, and "3rd block: Lunch (your wave)" when a 3rd-block period meets), a
-slide per itinerary block with its mode and each meeting period's minutes,
-and "Before you go" (submit on the Student Dashboard; whether the lesson ends
-today). The blocks come from the lesson doc's itinerary table, so the
-teacher's edits there carry into every deck, or from the lesson's plan when
-no doc exists; a multi-day lesson uses the plan's day for that meeting.
-Minutes are the doc's column for the block on Schedule A or B; any other day
-fits the A column to the period. Made by the nightly rollout for the next
-school day (courses with it on) and by **Today's agenda** in 📅 Lessons;
-remaking a day's deck replaces its slides. The `AgendaDecks` tab records
-each by course and date. Needs the presentations scope in the Central
-Ledger and Teacher Dashboard (a one-time approval after the push).
+`67_AgendaDeck.js` (Central Ledger and Teacher Dashboard, 2026-10-27; one
+slide a day since 2026-11-19) keeps one Google Slides deck per course per
+school year, "Agenda — 8175 — 2026–27", in an *Agendas* folder, and adds
+one slide per school day, newest first: no new file a day, and the deck
+becomes the record of what each day took, for later pacing guides. Each
+slide holds everything for the day on one screen: the lesson and the day
+("Day 2 of 3", "last day"), the schedule, **Today's plan** (each
+itinerary block with its mode and each meeting period's minutes, then
+"Before you go" when there is room), the **bell schedule** (the day's block
+times in order, the course's blocks marked, the lunch waves when the 3rd
+block meets: `BELL_SCHEDULE.times` in 00, Clover Hill's by default),
+**Announcements** (what is due, from the same rule as the Student
+Dashboard's cards, then the `AgendaAnnouncements` tab's rows: from, to,
+course or `all`, text) and the lesson's **learning targets** (up to three "I
+can" goals). Text is sized to fit its box and cut with "…" rather than
+spilled. The speaker notes hold each block's detail (the teacher's script)
+and a **YOUR NOTES** section for how the day went, kept when the slide is
+remade. The blocks come from the lesson doc's itinerary table, so the
+teacher's edits there carry in, or from the lesson's plan when no doc
+exists; a multi-day lesson uses the plan's day for that meeting. Minutes
+are the doc's column for the block on Schedule A or B; any other day fits
+the A column to the period. Made by the nightly rollout for the next school
+day (courses with it on) and by **Today's agenda** in 📅 Lessons, which
+opens the deck at that day's slide; remaking a day replaces its slide in
+place. The `AgendaDecks` tab records each day (course, date, deck, slide);
+decks made before 2026-11-19, one a day, are left where they are.
+`node tools/cas-ccps/render-agenda-slide.js <lesson key> <date> <periods>`
+draws the slide as a PNG without Google (the same layout data), and lists
+any box whose text would spill. Needs the presentations scope in the
+Central Ledger and Teacher Dashboard.
 
 ## The Covered So Far docs (script 76)
 

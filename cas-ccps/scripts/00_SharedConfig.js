@@ -518,8 +518,11 @@ function warmUpCourseCode_(courseName) {
 //   BELL_SCHEDULE        JSON: { "classMinutes": { name: [minutes per
 //                        block] }, "labels": { name: label }, "rotation":
 //                        [{ "until": "yyyy-MM-dd" or "", "byDay": [name for
-//                        Sunday ... Saturday] }] }. Each part left out keeps
-//                        its default (Clover Hill's 2026-27 schedule, below).
+//                        Sunday ... Saturday] }] }, "times": { name: {
+//                        "blocks": ["8:30–9:20", ...], "extra": "...",
+//                        "lunch": "..." } } (the agenda slide's bell
+//                        schedule, 67). Each part left out keeps its default
+//                        (Clover Hill's 2026-27 schedule, below).
 //
 // What stays course-specific on purpose: the lesson and unit data (53b, 55b,
 // generated per course), the pacing guide's objective_8175 / _8177 columns
@@ -642,7 +645,8 @@ function _schoolDates_(raw) {
 
 // BELL_SCHEDULE over the defaults, part by part.
 function _schoolBell_(raw) {
-  const bell = { classMinutes: BELL_DEFAULT_CLASS_MINUTES, labels: BELL_DEFAULT_LABELS, rotation: BELL_DEFAULT_ROTATION };
+  const bell = { classMinutes: BELL_DEFAULT_CLASS_MINUTES, labels: BELL_DEFAULT_LABELS, rotation: BELL_DEFAULT_ROTATION,
+    times: BELL_DEFAULT_TIMES };
   if (raw === undefined || raw === null || String(raw).trim() === "") return bell;
   let o;
   try { o = typeof raw === "string" ? JSON.parse(raw) : raw; } catch (e) {
@@ -662,6 +666,12 @@ function _schoolBell_(raw) {
   })) {
     bell.rotation = rot;
   } else if (rot) Logger.log("[SCHOOL] BELL_SCHEDULE.rotation is not [{ until, byDay: [7 schedule names] }]; using the default.");
+  const times = o && o.times;
+  if (times && typeof times === "object" && Object.keys(times).every(function (k) {
+    return times[k] && Array.isArray(times[k].blocks) && times[k].blocks.every(function (t) { return typeof t === "string"; });
+  })) {
+    bell.times = times;
+  } else if (times) Logger.log("[SCHOOL] BELL_SCHEDULE.times is not { name: { blocks: [\"8:30–9:20\", ...] } }; using the default.");
   return bell;
 }
 
@@ -3015,6 +3025,23 @@ const BELL_DEFAULT_ROTATION = [
   { until: "2026-11-20", byDay: ["B", "A", "A", "B", "B", "B", "B"] },
   { until: "", byDay: ["A", "A", "A", "B", "B", "A", "A"] },
 ];
+
+// Each schedule's clock times (2026-11-19, the agenda slide, 67): a block's
+// start and end, anything between blocks (CM/HR, the activity period) and
+// the lunch waves, from the same bell schedule page.
+const BELL_DEFAULT_TIMES = {
+  A:             { blocks: ["8:30–9:20", "9:25–11:05", "11:10–1:15", "1:20–3:00"],
+                   lunch: "Lunch waves: A 11:20, B 11:50, C 12:20, D 12:50 (25 min)" },
+  B:             { blocks: ["8:30–9:15", "9:50–11:20", "11:25–1:25", "1:30–3:00"], extra: "CM/HR 9:20–9:45",
+                   lunch: "Lunch waves: A 11:30, B 12:00, C 12:30, D 1:00 (25 min)" },
+  ACTIVITY:      { blocks: ["8:30–9:10", "9:15–10:35", "10:40–12:20", "12:25–1:55"], extra: "Activity 2:00–3:00",
+                   lunch: "Lunch waves: 21 min each from 10:44" },
+  DELAY:         { blocks: ["10:30–11:00", "11:05–12:10", "12:15–1:50", "1:55–3:00"],
+                   lunch: "Lunch waves: 20 min each from 12:18" },
+  EARLY_RELEASE: { blocks: ["8:30–9:00", "9:05–10:00", "10:05–11:00", "11:05–12:00"], lunch: "Grab-and-go lunch" },
+};
+// A schedule's times ({ blocks, extra, lunch }), or null when none is known.
+function bellTimes_(name) { return (schoolProfile_().bell.times || {})[name] || null; }
 
 // The school's bell schedules: { name: [class minutes per block] }.
 function bellClassMinutes_() { return schoolProfile_().bell.classMinutes; }
