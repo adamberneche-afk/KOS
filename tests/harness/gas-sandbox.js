@@ -884,6 +884,11 @@ class FakeListItem extends FakeParagraph {
   getType() { return 'LIST_ITEM'; }
   asParagraph() { throw new Error('Cannot cast a ListItem to a Paragraph.'); }
   asListItem() { return this; }
+  // Real Apps Script API — ListItem.setNestingLevel(n) / getNestingLevel()
+  // (0 at the top). First needed by cas-ccps 29: a lesson's parts nest
+  // under it in the Student Context doc, and 13 reads the level back.
+  setNestingLevel(n) { this.nestingLevel = n; return this; }
+  getNestingLevel() { return this.nestingLevel || 0; }
 }
 
 // Real Docs: a body always holds at least one paragraph. A new document's

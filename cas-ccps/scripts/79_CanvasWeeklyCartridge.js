@@ -32,9 +32,10 @@
 // assignment_converter.rb, read 2026-11-19): the due date, published, the
 // submission type and 100 points.
 //
-// THE DUE DATE. 11:59 p.m. on the school day (00's isSchoolDay_) before the
-// next lesson of the course starts: a lesson runs until the next one starts
-// (55). A course's last dated lesson has none. Canvas reads it as UTC.
+// THE DUE DATE. 11:59 p.m. on the school day before the next lesson of the
+// course starts (00's lessonDueDay_, which the Student Dashboard shows too):
+// a lesson runs until the next one starts (55). A course's last dated lesson
+// has none. Canvas reads it as UTC.
 //
 // Not yet confirmed: one import into a Canvas course (a sandbox course
 // first). Canvas's importer is read from its source, not tried here.
@@ -72,25 +73,6 @@ function removeWeeklyCanvasCartridge() {
   });
   Logger.log("[S79] Removed " + removed + " weekly Canvas cartridge trigger(s).");
   return removed;
-}
-
-// The school day before ymd ("" if none in the 14 days before it).
-function cwcSchoolDayBefore_(ymd) {
-  const p = String(ymd).split("-").map(Number);
-  for (let i = 1; i <= 14; i++) {
-    const d = new Date(Date.UTC(p[0], p[1] - 1, p[2] - i));
-    const day = d.toISOString().slice(0, 10);
-    if (isSchoolDay_(day)) return day;
-  }
-  return "";
-}
-
-// A lesson's due day: the school day before the course's next lesson starts,
-// or "" for its last dated lesson. rows: one course's dated LessonSchedule rows.
-function cwcDueDay_(rows, lesson) {
-  const next = (rows || []).filter(function (r) { return r.start > lesson.start; })
-    .sort(function (a, b) { return a.start < b.start ? -1 : a.start > b.start ? 1 : 0; })[0];
-  return next ? cwcSchoolDayBefore_(next.start) : "";
 }
 
 // "yyyy-MM-ddTHH:mm:ss" in UTC for a local day and time in tz (Canvas's
@@ -195,7 +177,7 @@ function weeklyCanvasCartridge_(opts) {
     const inCartridge = [];
     picked.forEach(function (r) {
       const data = CANVAS_CARTRIDGE_LESSONS[r.key];
-      const due = cwcDueDay_(rows, r);
+      const due = lessonDueDay_(rows, r);
       const l = { key: r.key, title: data ? data.title : r.key, start: r.start, due: due, status: "IN" };
       c.lessons.push(l);
       if (r.hold) { l.status = "HELD"; return; }

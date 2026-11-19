@@ -196,7 +196,7 @@ test('getWeeklyTextBoxWarmUps_: this week\'s answered text-box warm-ups, with th
   assert.equal(merged.get('1234567@ccpsnet.net').length, 2, 'matched to the roster\'s spelling');
 });
 
-test('appendWeeklySection_: baseline answers go under "How They Work", lesson ones under "Warm-Up Reflections"', () => {
+test('appendWeeklySection_: baseline answers go under "How you work", lesson ones under "Your warm-ups"', () => {
   const { exported, sandbox } = loadWithWarmUps();
   const doc = sandbox.DocumentApp.create('Student Context');
   const now = new Date();
@@ -205,8 +205,8 @@ test('appendWeeklySection_: baseline answers go under "How They Work", lesson on
     { lessonUnitId: 'Warm-up for 2026-10-22', response: 'Only water there.', timestamp: now, question: 'Why pay $5?', baseline: '' },
   ]);
   const text = sandbox.DocumentApp.openById(doc.getId()).getBody().getText();
-  const how = text.indexOf('How They Work (baseline warm-ups)');
-  const refl = text.indexOf('Warm-Up Reflections');
+  const how = text.indexOf('How you work (baseline warm-ups)');
+  const refl = text.indexOf('Your warm-ups');
   assert.ok(how !== -1 && refl > how);
   assert.ok(text.indexOf('Manage time and resources') > how && text.indexOf('Manage time and resources') < refl);
   assert.ok(text.indexOf('Asked: How do you keep track?') !== -1 && text.indexOf('I use a planner.') !== -1);
@@ -237,7 +237,7 @@ test('getWeeklyReflections_: this week\'s answers by student, oldest first; blan
     'no ReflectionLog tab yet: nothing, and no error');
 });
 
-test('appendWeeklySection_: reflections go under "Reflections on Submit", one block per Submit, named by course', () => {
+test('appendWeeklySection_: reflections go under "What you said when you submitted", one block per Submit, named by course', () => {
   const { exported, sandbox } = loadWithWarmUps();
   const doc = sandbox.DocumentApp.create('Student Context');
   const t1 = new Date(Date.now() - 86400000);
@@ -250,7 +250,7 @@ test('appendWeeklySection_: reflections go under "Reflections on Submit", one bl
       { timestamp: t2, configId: 'CFG9', kind: 'FEEDBACK', competencyId: '', question: 'What are you changing?', response: 'My conclusion.' },
     ]);
   const paras = sandbox.DocumentApp.openById(doc.getId()).getBody().getText().split('\n');
-  const at = paras.indexOf('Reflections on Submit');
+  const at = paras.indexOf('What you said when you submitted');
   assert.ok(at !== -1);
   const after = paras.slice(at + 1).filter(Boolean);
   assert.equal(after.filter((p) => p.startsWith('Marketing  ·  ')).length, 1, 'one header for the two answers of one Submit');
@@ -271,7 +271,7 @@ test('a run writes a week for a student whose only news is a reflection', () => 
   assert.equal(run.noContent, 1);
   const reg = ss.getSheetByName('StudentDocRegistry').getDataRange().getValues();
   const text = sandbox.DocumentApp.openById(reg[1][2]).getBody().getText();
-  assert.ok(text.includes('Reflections on Submit') && text.includes('I made an outline.'));
+  assert.ok(text.includes('What you said when you submitted') && text.includes('I made an outline.'));
   assert.equal(exported.buildStudentContextDocsNow().updated, 0, 'not written twice');
 });
 
@@ -283,7 +283,7 @@ test('appendWeeklySection_: the week heading is bookmarked', () => {
   exported.appendWeeklySection_(doc.getId(), new Date(2026, 9, 26), [], []);
   const marks = doc.getBookmarks();
   assert.equal(marks.length, 1);
-  assert.equal(marks[0].getPosition().element.getText(), 'Week of October 26, 2026');
+  assert.equal(marks[0].getPosition().element.getText(), 'Week of Oct 20 – 26, 2026', 'the seven days up to the run');
 });
 
 test('addContextWeekBookmarks: bookmarks each older week once; a re-run adds nothing', () => {
@@ -367,4 +367,40 @@ test('preview changes nothing; a run makes a doc only for a student with somethi
 
   wur.appendRow([new sandbox.Date(Date.now() + 1000), '1234567', 'L08', 'A newer answer.']);
   assert.equal(exported.buildStudentContextDocsNow().updated, 1, 'only what is new');
+});
+
+// 2026-11-19, the operator: My Context was hard to read. A week now says what
+// the card says (Passed ✓, Revise, Turned in), a day without a time, a
+// lesson's parts nested under it, and the days it covers.
+test('appendWeeklySection_: student words, days without times, parts nested under their lesson, the week\'s days', () => {
+  const { exported, sandbox } = loadWithWarmUps();
+  const doc = sandbox.DocumentApp.create('Student Context');
+  const t = (d, h) => new Date(2026, 10, d, h || 12, 10);
+  exported.appendWeeklySection_(doc.getId(), t(19), [
+    { courseName: 'L01 EVOLUTION OF MARKETING (FROM TRADE TO TIKTOK)', configId: 'A', status: 'COMPLETE', lastResult: 'PASSED',
+      lastEval: t(11), studentFileURL: 'https://docs.google.com/document/d/a/edit' },
+    { courseName: 'The Venue Buyer\u2019s Product Pitch — Part 2: The Why', configId: 'B2', status: 'COMPLETE',
+      lastResult: 'NEEDS_REVISION', lastEval: t(17), studentFileURL: 'https://docs.google.com/document/d/b2/edit' },
+    { courseName: 'Some Essay', configId: 'C', status: 'PENDING_TEACHER_REVIEW', lastResult: 'PASSED', lastEval: t(13) },
+    { courseName: 'The Venue Buyer\u2019s Product Pitch — Part 1: The Product', configId: 'B1', status: 'COMPLETE',
+      lastResult: 'PASSED', lastEval: t(12) },
+    { courseName: 'New Lesson', configId: 'D', status: 'ACTIVE', lastResult: '', lastEval: null },
+  ], [], [], t(12, 0));
+  const kids = sandbox.DocumentApp.openById(doc.getId()).getBody().paragraphs.filter((p) => p.text);
+  const texts = kids.map((p) => p.text);
+  assert.equal(texts[0], 'Week of Nov 12 – 19, 2026');
+  assert.equal(texts[1], 'Your assignments');
+  assert.deepEqual(texts.slice(2, 8), [
+    'L01 Evolution of marketing (from trade to TikTok) — Passed ✓ · checked Nov 11',
+    'The Venue Buyer\u2019s Product Pitch',
+    'Part 1: The Product — Passed ✓ · checked Nov 12',
+    'Part 2: The Why — Revise · checked Nov 17',
+    'Some Essay — Turned in · checked Nov 13',
+    'New Lesson — Not started',
+  ]);
+  const at = (text) => kids.find((p) => p.text === text);
+  assert.equal(at('The Venue Buyer\u2019s Product Pitch').getType(), 'LIST_ITEM');
+  assert.equal(at('Part 2: The Why — Revise · checked Nov 17').getNestingLevel(), 1, 'a part sits under its lesson');
+  assert.equal(at('Some Essay — Turned in · checked Nov 13').getNestingLevel(), 0);
+  assert.doesNotMatch(texts.join('\n'), /COMPLETE|PENDING_TEACHER_REVIEW|ACTIVE|\d:\d\d|PM|AM/, 'no system words, no times');
 });

@@ -23,7 +23,7 @@ const plain = (o) => JSON.parse(JSON.stringify(o));
 
 function load(opts = {}) {
   const env = loadGasFiles(FILES, ['weeklyCanvasCartridge_', 'previewWeeklyCanvasCartridge', 'buildWeeklyCanvasCartridge',
-    'installWeeklyCanvasCartridge', 'cwcDueDay_', 'cwcUtcStamp_', 'cwcAssignmentXml_', 'CANVAS_CARTRIDGE_LESSONS',
+    'installWeeklyCanvasCartridge', 'lessonDueDay_', 'cwcUtcStamp_', 'cwcAssignmentXml_', 'CANVAS_CARTRIDGE_LESSONS',
     'LESSON_ORDER']);
   const { sandbox } = env;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -66,9 +66,9 @@ test('the due date: 11:59 p.m. on the school day before the next lesson; none fo
   // Read once per run (00's schoolDaysOff_), so set before the first call.
   props.setProperty('SCHOOL_DAYS_OFF', '2026-11-30,2026-11-27,2026-11-26,2026-11-25');
   const rows = [{ key: 'a', start: '2026-11-16' }, { key: 'b', start: '2026-11-23' }, { key: 'c', start: '2026-12-01' }];
-  assert.equal(exported.cwcDueDay_(rows, rows[0]), '2026-11-20', 'Monday the 23rd: due the Friday before');
-  assert.equal(exported.cwcDueDay_(rows, rows[1]), '2026-11-24', 'days off skipped back to Tuesday');
-  assert.equal(exported.cwcDueDay_(rows, rows[2]), '', 'the course\'s last dated lesson');
+  assert.equal(exported.lessonDueDay_(rows, rows[0]), '2026-11-20', 'Monday the 23rd: due the Friday before');
+  assert.equal(exported.lessonDueDay_(rows, rows[1]), '2026-11-24', 'days off skipped back to Tuesday');
+  assert.equal(exported.lessonDueDay_(rows, rows[2]), '', 'the course\'s last dated lesson');
   assert.equal(exported.cwcUtcStamp_('2026-11-20', '23:59', 'America/New_York'), '2026-11-21T04:59:00', 'EST is UTC-5');
   assert.equal(exported.cwcUtcStamp_('2026-09-18', '23:59', 'America/New_York'), '2026-09-19T03:59:00', 'EDT is UTC-4');
 });

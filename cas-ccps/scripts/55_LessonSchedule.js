@@ -99,23 +99,12 @@ function _lsRows_() {
   const out = {};
   schoolCourseCodes_().forEach(code => { out[code] = []; });
   try {
-    const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
-    const sheet = ss.getSheetByName(LS_TAB);
-    if (sheet && sheet.getLastRow() > 1) {
-      const width = Math.max(4, Math.min(sheet.getLastColumn(), LS_RELEASE_COL));
-      const holdAt = width >= LS_RELEASE_COL &&
-        String(sheet.getRange(1, LS_RELEASE_COL).getValue()).trim().toLowerCase() === "release" ? LS_RELEASE_COL - 1 : -1;
-      sheet.getRange(2, 1, sheet.getLastRow() - 1, width).getValues().forEach(r => {
-        const code = String(r[0]).trim(), key = String(r[1]).trim();
-        const start = _normalizeLessonDateCell_(r[3]); // 22: Sheets stores a typed date as a Date
-        if (!out[code] || !key || !/^\d{4}-\d{2}-\d{2}$/.test(start) || !LESSON_ASSIGNMENTS[key]) return;
-        out[code].push({ key: key, start: start, hold: holdAt !== -1 && String(r[holdAt]).trim().toUpperCase() === LS_HOLD });
-      });
-    }
+    // 00's reader (2026-11-19), so the Student Dashboard reads the tab the same way.
+    const all = lessonScheduleRows_(SpreadsheetApp.openById(getConfig_().ledgerSsId), Session.getScriptTimeZone());
+    Object.keys(out).forEach(code => { out[code] = (all[code] || []).filter(r => LESSON_ASSIGNMENTS[r.key]); });
   } catch (e) {
     Logger.log("[S55] LessonSchedule not read: " + e.message);
   }
-  Object.keys(out).forEach(c => out[c].sort((a, b) => a.start < b.start ? -1 : a.start > b.start ? 1 : 0));
   _lsCache_ = out;
   return out;
 }

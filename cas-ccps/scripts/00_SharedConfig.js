@@ -759,6 +759,185 @@ function isSchoolDay_(ymd) {
   return dow !== 0 && dow !== 6 && schoolDaysOff_().indexOf(day) === -1;
 }
 
+// The card's pill (moved from 13, 2026-11-19, so the Student Context doc
+// (29) says the same words): one or two words from the same vocabulary as
+// resolveStudentStatus_ and the Terms panel (CAS_STUDENT_TERMS, 00). The
+// rest of the status goes on its own line (studentStatusNote_), so the pill
+// never wraps beside the title.
+function resolveStudentPill_(status, pipeline, lastResult) {
+  if (pipeline === "IN_PROCESS") return "Being checked";
+  if (pipeline === "QUEUED" || pipeline === "PENDING_INFERENCE") return "Waiting for feedback";
+  switch (status) {
+    case "ACTIVE":              return "Not started";
+    case "PENDING": case "STAGED": return "Waiting for feedback";
+    case "COMPLETE":
+      if (lastResult === "PASSED") return "Passed ✓";
+      if (lastResult === "NEEDS_REVISION") return "Revise";
+      return "Feedback ready";
+    case "PENDING_TEACHER_REVIEW": return "Turned in";
+    case "COMPLIANT":           return "Done ✓";
+    case "ERROR_TIMEOUT":       return "Check stopped ⚠";
+    default:
+      return String(status || "").startsWith("ERROR") ? "Couldn’t be checked ⚠" : "Ask your teacher";
+  }
+}
+
+// A lesson's name as students read it (2026-11-19, from 13's card): an
+// all-capitals name (8175's) in sentence case, a few words keeping their own
+// capitals (LESSON_NAME_CASE, which 13's page uses too), and a leading
+// "L05 " kept as it is. Any other name is unchanged.
+const LESSON_NAME_CASE = { tiktok: "TikTok", usp: "USP", chhs: "CHHS", swot: "SWOT", bhm: "BHM", ai: "AI", i: "I",
+  powerpoint: "PowerPoint", google: "Google", olympic: "Olympic", olymponomics: "Olymponomics", nil: "NIL",
+  deca: "DECA", ceo: "CEO", pr: "PR", nfl: "NFL", nba: "NBA" };
+function lessonNameReadable_(name) {
+  const m = /^(L\d{1,3}\s+)?([\s\S]*)$/.exec(String(name || "").trim());
+  const t = m[2].trim();
+  if (!t || /[a-z]/.test(t) || !/[A-Z]/.test(t)) return (m[1] || "") + t;
+  let out = t.toLowerCase().replace(/[a-z]+/g, function (w) { return LESSON_NAME_CASE[w] || w; });
+  out = out.replace(/my cause my cleats/g, "My Cause My Cleats");
+  return (m[1] || "") + out.charAt(0).toUpperCase() + out.slice(1);
+}
+
+// ---------------------------------------------------------------------------
+// Due dates (2026-11-19, the operator: "tighten up the due dates"). A lesson
+// runs until the course's next lesson starts (55), so it is due at 11:59 p.m.
+// on the school day before that. The weekly Canvas cartridge (79) sets
+// Canvas's due date by this rule and the Student Dashboard (13) shows it.
+// ---------------------------------------------------------------------------
+
+// The school day before ymd, "" if none in the 14 days before it. isDay:
+// what counts as a school day, isSchoolDay_ unless given (the Student
+// Dashboard's demo passes weekdays, so it reads no calendar).
+function schoolDayBefore_(ymd, isDay) {
+  const p = String(ymd).split("-").map(Number);
+  const ok = isDay || isSchoolDay_;
+  for (let i = 1; i <= 14; i++) {
+    const day = new Date(Date.UTC(p[0], p[1] - 1, p[2] - i)).toISOString().slice(0, 10);
+    if (ok(day)) return day;
+  }
+  return "";
+}
+
+// A lesson's due day ("YYYY-MM-DD"), "" for its course's last dated lesson.
+// rows: one course's dated LessonSchedule rows ({ key, start }).
+function lessonDueDay_(rows, lesson, isDay) {
+  const next = (rows || []).filter(function (r) { return r.start > lesson.start; })
+    .sort(function (a, b) { return a.start < b.start ? -1 : a.start > b.start ? 1 : 0; })[0];
+  return next ? schoolDayBefore_(next.start, isDay) : "";
+}
+
+// The LessonSchedule tab's dated rows, by course: { code: [{ key, start,
+// hold }] }, each course's by start. The columns are 55's LS_HEADERS (course,
+// lesson_key, lesson, start_date, ..., release); read here so a project
+// without 55 (the Student Dashboard) reads them the same way. {} without
+// the tab. tz: the script's time zone, passed in (00 calls no Session:
+// some projects that load it have no scope for it).
+function lessonScheduleRows_(ss, tz) {
+  const out = {};
+  const sheet = ss && ss.getSheetByName("LessonSchedule");
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  const width = Math.min(sheet.getLastColumn(), 7);
+  const header = sheet.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim().toLowerCase(); });
+  const holdAt = header.indexOf("release");
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, width).getValues().forEach(function (r) {
+    const code = String(r[0]).trim(), key = String(r[1]).trim();
+    const c = r[3];
+    const start = Object.prototype.toString.call(c) === "[object Date]"
+      ? Utilities.formatDate(c, tz, "yyyy-MM-dd") : String(c || "").trim().slice(0, 10);
+    if (!code || !key || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
+    (out[code] = out[code] || []).push({ key: key, start: start,
+      hold: holdAt !== -1 && String(r[holdAt]).trim().toUpperCase() === "HOLD" });
+  });
+  Object.keys(out).forEach(function (k) { out[k].sort(function (a, b) { return a.start < b.start ? -1 : a.start > b.start ? 1 : 0; }); });
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// The Student Context doc's week (29), as lines (2026-11-19, the operator:
+// "My Context" was hard to read: system statuses, a time on every line, a
+// lesson's parts as separate lines, "Week of" the day the job ran). One
+// layout for the doc and the Student Dashboard's demo (13).
+// ---------------------------------------------------------------------------
+
+// "Week of Nov 12 – 19, 2026" (or "Oct 29 – Nov 4", or across a year end
+// with both years): the days the week's section covers.
+function contextWeekLabel_(from, to, tz) {
+  const f = function (d, p) { return Utilities.formatDate(d, tz, p); };
+  const y1 = f(from, "yyyy"), y2 = f(to, "yyyy");
+  if (y1 !== y2) return "Week of " + f(from, "MMM d") + ", " + y1 + " – " + f(to, "MMM d") + ", " + y2;
+  if (f(from, "MMM") === f(to, "MMM")) return "Week of " + f(from, "MMM d") + " – " + f(to, "d") + ", " + y2;
+  return "Week of " + f(from, "MMM d") + " – " + f(to, "MMM d") + ", " + y2;
+}
+
+// [{ kind, text, url? }] for one week. kind: "h" (a section heading),
+// "item" (an assignment, or a lesson that has parts), "part" (a part, under
+// its lesson), "label" (a warm-up's or reflection's name and day), "asked"
+// (its question), "answer" (the student's words). assignments, warmUps and
+// reflections are 29's (getWeeklyAssignments_, the warm-up readers,
+// getWeeklyReflections_). tz: the script's time zone.
+function contextWeekLines_(assignments, warmUps, reflections, tz) {
+  const day = function (d) {
+    const t = Object.prototype.toString.call(d) === "[object Date]" ? d : new Date(d);
+    return isNaN(t.getTime()) ? "" : Utilities.formatDate(t, tz, "MMM d");
+  };
+  const lines = [];
+  const list = assignments || [];
+  if (list.length) {
+    lines.push({ kind: "h", text: "Your assignments" });
+    const byLesson = {};
+    list.forEach(function (a) {
+      const m = /^([\s\S]*?)\s+—\s+(Part \d+[\s\S]*)$/.exec(String(a.courseName || ""));
+      const lesson = lessonNameReadable_(m ? m[1] : (a.courseName || a.configId || "Assignment"));
+      const pill = resolveStudentPill_(String(a.status || ""), "", String(a.lastResult || ""));
+      const when = a.lastEval ? "checked " + day(a.lastEval) : a.submittedAt ? "submitted " + day(a.submittedAt) : "";
+      const said = pill + (when && day(a.lastEval || a.submittedAt) ? " · " + when : "");
+      if (!m) { lines.push({ kind: "item", text: lesson + " — " + said, url: a.studentFileURL || "" }); return; }
+      if (!byLesson[lesson]) { byLesson[lesson] = { kind: "item", text: lesson, parts: [] }; lines.push(byLesson[lesson]); }
+      byLesson[lesson].parts.push({ kind: "part", text: m[2].trim() + " — " + said, url: a.studentFileURL || "" });
+    });
+    // Each lesson's parts right under it, in their order.
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const l = lines[i];
+      if (!l.parts) continue;
+      const parts = l.parts.sort(function (a, b) {
+        return (Number((/^Part (\d+)/.exec(a.text) || [])[1]) || 0) - (Number((/^Part (\d+)/.exec(b.text) || [])[1]) || 0);
+      });
+      delete l.parts;
+      Array.prototype.splice.apply(lines, [i + 1, 0].concat(parts));
+    }
+  }
+  const baseline = (warmUps || []).filter(function (w) { return w.baseline; });
+  const lessonWarmUps = (warmUps || []).filter(function (w) { return !w.baseline; });
+  const block = function (heading, items, label) {
+    if (!items.length) return;
+    lines.push({ kind: "h", text: heading });
+    items.forEach(function (w) {
+      lines.push({ kind: "label", text: label(w) + "  ·  " + day(w.timestamp) });
+      if (w.question) lines.push({ kind: "asked", text: "Asked: " + w.question });
+      lines.push({ kind: "answer", text: String(w.response || "") });
+    });
+  };
+  block("How you work (baseline warm-ups)", baseline, function (w) { return w.baseline; });
+  block("Your warm-ups", lessonWarmUps, function (w) { return w.lessonUnitId || "Warm-up"; });
+  const refl = reflections || [];
+  if (refl.length) {
+    const courseFor = {};
+    list.forEach(function (a) { if (a.configId && a.courseName) courseFor[a.configId] = a.courseName; });
+    lines.push({ kind: "h", text: "What you said when you submitted" });
+    let lastKey = "";
+    refl.forEach(function (r) {
+      const key = r.configId + "|" + new Date(r.timestamp).getTime();
+      if (key !== lastKey) {
+        lastKey = key;
+        lines.push({ kind: "label", text: lessonNameReadable_(courseFor[r.configId] || "Assignment") + "  ·  " + day(r.timestamp) });
+      }
+      lines.push({ kind: "asked", text: "Asked" + (r.kind === "FEEDBACK" ? " (about the feedback)" : "") + ": " + r.question });
+      lines.push({ kind: "answer", text: String(r.response || "") });
+    });
+  }
+  return lines;
+}
+
 // WarmUpTextBox: one row per warm-up delivered to the dashboard, keyed by
 // WarmUpQueue's queue_id. WarmUpQueue itself stays 21 columns (see 41's
 // header). Student writing lives here and, once scored, in WarmUpQueue's
