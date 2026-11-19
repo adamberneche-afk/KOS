@@ -135,3 +135,61 @@ test('every marker file targets a distinct, real project-map.json key', () => {
     seen.add(project);
   }
 });
+
+// ── the permission check (2026-11-19) ────────────────────────────────────
+// The Student Dashboard's Slides scope was in its manifest but not granted;
+// running reportDeployVersion brought no prompt, and a student's Submit
+// failed SLIDES_UNREADABLE. reportDeployVersion now tries each scope and
+// fails, after reporting, naming any the account can't use.
+
+const SCOPE_PREFIX = 'https://www.googleapis.com/auth/';
+
+test('DEPLOY_PROJECT_SCOPES is each marker project\'s manifest oauthScopes', () => {
+  const projectMap = require('../../tools/gas-lint/project-map.json');
+  const { exported } = loadGasFiles([SHARED_CONFIG], ['DEPLOY_PROJECT_SCOPES', 'DEPLOY_SCOPE_PROBES']);
+  const table = JSON.parse(JSON.stringify(exported.DEPLOY_PROJECT_SCOPES));
+  assert.deepEqual(Object.keys(table).sort(), MARKER_FILES.map((m) => m.project).sort());
+  for (const { project } of MARKER_FILES) {
+    const manifest = require(path.join(__dirname, '..', '..', projectMap[project].manifest));
+    assert.deepEqual(table[project].map((s) => SCOPE_PREFIX + s).sort(), manifest.oauthScopes.slice().sort(),
+      project + ': update DEPLOY_PROJECT_SCOPES in 00 with its manifest');
+  }
+  // Every probed scope is one some project lists.
+  const listed = new Set([].concat(...Object.values(table)));
+  Object.keys(exported.DEPLOY_SCOPE_PROBES).forEach((s) => assert.ok(listed.has(s), s));
+});
+
+function loadStudentDashboardMarker(overrides) {
+  const sent = [];
+  const env = loadGasFiles(
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'),
+      path.join(SCRIPTS, '49_DeployVersionMarker_StudentDashboard.js')],
+    ['reportDeployVersion', '_deployPermissionGaps_'],
+    Object.assign({ UrlFetchApp: { fetch: (url, opts) => { sent.push(JSON.parse(opts.payload)); return { getResponseCode: () => 204 }; } } },
+      overrides || {})
+  );
+  env.sandbox.PropertiesService.getScriptProperties().setProperty('DEPLOY_DRIFT_GITHUB_TOKEN', 'tok');
+  return Object.assign(env, { sent });
+}
+
+test('a scope the account hasn\'t granted: the version is still reported, then the run fails naming it and the fix', () => {
+  const denied = (svc, fn) => () => {
+    throw new Error('You do not have permission to call ' + svc + '.' + fn + '. Required permissions: ' + SCOPE_PREFIX + 'presentations');
+  };
+  const env = loadStudentDashboardMarker({ SlidesApp: { openById: denied('SlidesApp', 'openById') } });
+  assert.deepEqual(JSON.parse(JSON.stringify(env.exported._deployPermissionGaps_('cas-ccps:student-dashboard'))),
+    ['presentations (SlidesApp)']);
+  assert.throws(() => env.exported.reportDeployVersion(),
+    /student-dashboard is missing a permission: presentations \(SlidesApp\)\..*Project OAuth Scopes.*myaccount\.google\.com\/connections/);
+  assert.equal(env.sent.length >= 1, true, 'reported before failing');
+  assert.equal(env.sent[env.sent.length - 1].client_payload.project, 'cas-ccps:student-dashboard');
+});
+
+test('a granted scope whose probe file doesn\'t exist ("not found", "permission to access the document") is not a gap', () => {
+  const env = loadStudentDashboardMarker({
+    SlidesApp: { openById: () => { throw new Error('Requested entity was not found.'); } },
+    SpreadsheetApp: { openById: () => { throw new Error('You do not have permission to access the requested document.'); } },
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(env.exported._deployPermissionGaps_('cas-ccps:student-dashboard'))), []);
+  assert.equal(env.exported.reportDeployVersion(), true);
+});

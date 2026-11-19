@@ -2607,7 +2607,93 @@ function getCompetencyTextMap_(registrySheet) {
 // dispatch event" API needs — never a broad classic repo-scope token,
 // never Contents/workflow-editing permission beyond that). Until it's
 // set, this logs and returns false — fails closed to a no-op, not open.
+//
+// Since 2026-11-19 it first checks the project's permissions
+// (_deployPermissionGaps_ below) and, after reporting, throws when one is
+// missing: a red run in the editor, and a failure email from the 6-hour
+// trigger.
 function _reportDeployVersion_(projectName, sha) {
+  const missing = _deployPermissionGaps_(projectName);
+  const reported = _sendDeployVersionReport_(projectName, sha);
+  if (missing.length) {
+    throw new Error('[DeployVersionReport] ' + projectName + ' is missing ' +
+      (missing.length === 1 ? 'a permission' : missing.length + ' permissions') + ': ' + missing.join(', ') + '. ' +
+      'Check the project\'s Overview, "Project OAuth Scopes": if one is not listed, push first (run.js). ' +
+      'If they are all listed, remove this project\'s access at myaccount.google.com/connections, ' +
+      'then run reportDeployVersion again and approve every permission Google asks for.');
+  }
+  return reported;
+}
+
+// Each cas-ccps project's oauthScopes, as its manifest lists them
+// (cas-ccps/clasp/manifests/<name>.appsscript.json, without the
+// "https://www.googleapis.com/auth/" prefix). A test holds the two equal.
+const DEPLOY_PROJECT_SCOPES = {
+  'cas-ccps:central-ledger': ['spreadsheets', 'drive', 'documents', 'presentations', 'forms', 'script.send_mail',
+    'userinfo.email', 'script.scriptapp', 'script.external_request'],
+  'cas-ccps:unified-manual': ['drive', 'spreadsheets', 'documents', 'forms', 'userinfo.email', 'script.external_request',
+    'script.scriptapp'],
+  'cas-ccps:master-student-template': ['spreadsheets', 'documents', 'userinfo.email', 'script.external_request',
+    'script.scriptapp', 'drive.readonly'],
+  'cas-ccps:rubric-response-sheet': ['spreadsheets', 'drive', 'documents', 'script.send_mail', 'script.external_request',
+    'script.scriptapp'],
+  'cas-ccps:teacher-matrix-sheet': ['spreadsheets', 'script.send_mail', 'script.scriptapp', 'script.external_request'],
+  'cas-ccps:teacher-dashboard': ['spreadsheets', 'drive', 'documents', 'presentations', 'script.scriptapp',
+    'userinfo.email', 'script.external_request'],
+  'cas-ccps:student-dashboard': ['spreadsheets', 'documents', 'forms', 'presentations', 'userinfo.email',
+    'script.external_request', 'script.scriptapp'],
+  'cas-ccps:family-sentinel': ['gmail.modify', 'spreadsheets', 'documents', 'userinfo.email', 'script.scriptapp',
+    'script.external_request'],
+};
+
+// One call per scope that throws "You do not have permission to call …"
+// when the account running it hasn't granted that scope, and does nothing
+// else: an open of an ID that doesn't exist fails "not found" once the scope
+// is granted. Found by name (globalThis), because 00 is in every project and
+// a project may only name the services its manifest lists (gas-lint); a
+// probe runs only for a scope the project lists. Not probed: userinfo.email
+// (Session gives "" rather than failing), script.external_request (the
+// report itself uses it), gmail.modify (no read-only call to make).
+// 2026-11-19: the Student Dashboard's Slides scope was in its manifest but
+// not granted, Google never asked, and a student's Submit failed
+// SLIDES_UNREADABLE.
+const DEPLOY_SCOPE_PROBES = {
+  'spreadsheets': ['SpreadsheetApp', 'openById', true],
+  'documents': ['DocumentApp', 'openById', true],
+  'forms': ['FormApp', 'openById', true],
+  'presentations': ['SlidesApp', 'openById', true],
+  'drive': ['DriveApp', 'getFileById', true],
+  'drive.readonly': ['DriveApp', 'getFileById', true],
+  'script.send_mail': ['MailApp', 'getRemainingDailyQuota', false],
+  'script.scriptapp': ['ScriptApp', 'getProjectTriggers', false],
+};
+const DEPLOY_PROBE_FILE_ID = 'kos-permission-probe-no-such-file';
+const DEPLOY_PERMISSION_DENIED = /You do not have permission to call |Required permissions: https:\/\//;
+
+// The scopes the project lists that the running account can't use, as
+// "presentations (SlidesApp)"; logs one line either way.
+function _deployPermissionGaps_(projectName) {
+  const scopes = DEPLOY_PROJECT_SCOPES[projectName] || [];
+  const missing = [], checked = [];
+  scopes.forEach(function (scope) {
+    const probe = DEPLOY_SCOPE_PROBES[scope];
+    if (!probe) return;
+    const service = globalThis[probe[0]];
+    if (!service || typeof service[probe[1]] !== 'function') return;
+    checked.push(scope);
+    try {
+      if (probe[2]) service[probe[1]](DEPLOY_PROBE_FILE_ID);
+      else service[probe[1]]();
+    } catch (e) {
+      if (DEPLOY_PERMISSION_DENIED.test(String(e && e.message))) missing.push(scope + ' (' + probe[0] + ')');
+    }
+  });
+  if (missing.length) console.error('[DeployVersionReport] Permissions MISSING for ' + projectName + ': ' + missing.join(', '));
+  else console.log('[DeployVersionReport] Permissions OK for ' + projectName + ': ' + checked.join(', '));
+  return missing;
+}
+
+function _sendDeployVersionReport_(projectName, sha) {
   try {
     const token = PropertiesService.getScriptProperties().getProperty('DEPLOY_DRIFT_GITHUB_TOKEN');
     if (!token) {
