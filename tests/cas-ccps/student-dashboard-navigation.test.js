@@ -295,10 +295,49 @@ test('milestone marks: up to three, primary first, in the student\'s words; the 
   assert.doesNotMatch(h, /\d+ of \d+|%|score|total|target/i, 'no totals, scores or targets');
   // While the check runs (2026-11-15): one caption, no tag on each line.
   const checking = ctx.marksHtml(Object.assign({}, by['W-L05'], { statusPill: 'Being checked' }));
-  assert.match(checking, /^<div class="marks-cap">Checking these now<\/div>/);
+  assert.match(checking, /^<details class="marks-box" data-key="card-W-L05" ontoggle="marksToggled\(this\)"><summary class="marks-cap">Checking these now<\/summary>/);
   assert.doesNotMatch(checking, /class="mark |Being checked|Not checked yet/);
   // A lesson in parts: the caption says the marks cover every part so far.
-  assert.match(ctx.marksHtml(by['W-L05'], true), /<div class="marks-cap">What this lesson checks, across its parts so far<\/div>/);
+  assert.match(ctx.marksHtml(by['W-L05'], true), /<summary class="marks-cap">What this lesson checks, across its parts so far<\/summary>/);
+  // Folded (2026-11-19): closed until opened, and kept open for the page.
+  assert.match(h, /^<details class="marks-box" data-key="card-W-L07" ontoggle="marksToggled\(this\)"><summary class="marks-cap">What this lesson checks<\/summary><ul class="marks"/);
+  assert.match(h, /<\/ul><\/details>$/);
+  ctx.marksToggled({ open: true, getAttribute: () => 'card-W-L07' });
+  assert.match(ctx.marksHtml(by['W-L07']), /^<details class="marks-box" data-key="card-W-L07" ontoggle="marksToggled\(this\)" open>/);
+  ctx.marksToggled({ open: false, getAttribute: () => 'card-W-L07' });
+  assert.doesNotMatch(ctx.marksHtml(by['W-L07']), /^<details[^>]* open>/);
+});
+
+// A lesson in parts (2026-11-19): a card on Part 6 said "Shown" for what
+// Parts 1-5 had shown, and read as if Part 6 had been checked. Each mark now
+// says which part showed it; "Not shown yet" and a lesson not in parts don't.
+test('a lesson in parts: each mark says which part showed it', () => {
+  const { exported } = loadGasFiles(SD_FILES, ['_dashBestOutcomes_', '_dashAddMilestoneMarks_', 'DASH_LESSON_INFO',
+    'buildStudentDashboardHtml_']);
+  const info = exported.DASH_LESSON_INFO['8175-L07'];
+  const [c1, c2, c3] = info.iCan.map((m) => m.id);
+  const part = (n, file) => ({ lessonKey: '8175-L07', fileId: file, part: { n, count: 6 } });
+  const cards = [part(1, 'f1'), part(2, 'f2'), part(4, 'f4'), part(6, 'f6')];
+  const rows = [['student_file_id', 'competency_id', 'outcome', 'archive_status'],
+    ['f1', c1, 'PARTIALLY_MET', ''], ['f2', c1, 'MET', ''], ['f4', c1, 'MET', ''],
+    ['f1', c2, 'PARTIALLY_MET', ''], ['f2', c2, 'NOT_MET', ''],
+    ['f4', c3, 'NOT_MET', ''], ['f2', c3, 'NOT_MET', '']];
+  const best = JSON.parse(JSON.stringify(exported._dashBestOutcomes_(rows, cards)));
+  assert.deepEqual(best['8175-L07'][c1], { outcome: 'MET', parts: [2, 4] }, 'the best, from each part that reached it');
+  assert.deepEqual(best['8175-L07'][c2], { outcome: 'PARTIALLY_MET', parts: [1] });
+  exported._dashAddMilestoneMarks_(cards, best);
+  const where = Object.fromEntries(cards[3].milestones.map((m) => [m.id, [m.mark, m.where]]));
+  assert.deepEqual(where[c1], ['Shown', 'in Parts 2 and 4']);
+  if (where[c2]) assert.deepEqual(where[c2], ['Partly shown', 'in Part 1']);
+  if (where[c3]) assert.deepEqual(where[c3], ['Not shown yet', ''], 'not shown in any part: no part named');
+  const { ctx } = page(exported);
+  const h = ctx.marksHtml(cards[3], true);
+  assert.match(h, /<span class="mark mark-MET">Shown in Parts 2 and 4<\/span>I can /);
+  assert.doesNotMatch(ctx.marksHtml(cards[3], false), /in Part/, 'only on a lesson-in-parts card');
+  // A lesson not in parts: no part to name.
+  const whole = [{ lessonKey: '8175-L07', fileId: 'w1' }];
+  exported._dashAddMilestoneMarks_(whole, exported._dashBestOutcomes_([rows[0], ['w1', c1, 'MET', '']], whole));
+  assert.equal(whole[0].milestones[0].where, '');
 });
 
 function partsSetUp() {

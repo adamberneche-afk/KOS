@@ -6,7 +6,8 @@
 // the prompt version and hash the row was sent, the run check (OK,
 // NO_RUN_INFO, RUN_INFO_NOT_JSON, RUN_KEY_MISMATCH, PROMPT_MISMATCH,
 // OLDER_PROMPT) and the model the answer reports; a failed check is
-// recorded and logged, never held back (for now); the RUN_INFO line never
+// recorded and logged; a RUN_KEY_MISMATCH (another row's answer) is held
+// back since 2026-11-19 (D19), the others delivered; the RUN_INFO line never
 // reaches the student; an older EvaluationLog tab gets the new headers;
 // a student's "[RUN_INFO:" is refused at Submit. Made-up fixtures only.
 
@@ -152,7 +153,6 @@ test('a matching run line: OK, with the versions and the reported model; the lin
 });
 
 const CASES = {
-  RUN_KEY_MISMATCH: (run, prompt) => withRun('r-00000000', prompt, 'm'),
   PROMPT_MISMATCH: (run) => withRun(run, 'f2-00000000', 'm'),
   NO_RUN_INFO: () => REPORT + '[SYSTEM: APPROVED]\n[SUGGESTED_SCORE: 3]\n' + TAIL,
   RUN_INFO_NOT_JSON: () => REPORT + '[SYSTEM: APPROVED]\n[SUGGESTED_SCORE: 3]\n[RUN_INFO: {run: oops}]\n' + TAIL,
@@ -170,6 +170,47 @@ for (const [check, make] of Object.entries(CASES)) {
     assert.ok(env.logs.some((l) => new RegExp('run check ' + check).test(l)), env.logs.join('\n'));
   });
 }
+
+// D19 (2026-11-19, the operator): an answer naming another row's run isn't
+// this submission's. Set aside like a malformed result: re-armed once, then
+// ERROR_MALFORMED_OUTPUT; nothing reaches the student.
+test('RUN_KEY_MISMATCH: held back, re-armed once; a matching second answer is delivered', () => {
+  const env = load();
+  const sub = submission(env);
+  const before = sub.doc.getBody().getText();
+  const [, run, prompt] = sent(env, 2);
+  answer(env, 2, withRun('r-00000000', prompt, 'm'));
+  env.x.harvestFlowInputResults();
+  assert.equal(cell(env, 2, 'READY_STATUS'), '', 're-armed: back for Studio');
+  assert.equal(sub.doc.getBody().getText(), before, 'nothing delivered');
+  assert.equal(env.comments.length, 0);
+  assert.ok(env.logs.some((l) => /run check RUN_KEY_MISMATCH \(another row's answer: held back\)/.test(l)), env.logs.join('\n'));
+  assert.equal(sent(env, 2)[1], run, 'the same run key: the second answer can match');
+  answer(env, 2, withRun(run, prompt, 'm'));
+  env.x.harvestFlowInputResults();
+  const rows = logRows(env);
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].Result, 'PASSED');
+  assert.equal(rows[0].RunCheck, 'OK');
+  assert.ok(/Campaign Pitch/.test(sub.doc.getBody().getText() + env.comments.map((c) => c.resource.content).join('\n')));
+});
+
+test('RUN_KEY_MISMATCH twice: ERROR_MALFORMED_OUTPUT, logged with its run check, never delivered', () => {
+  const env = load();
+  const sub = submission(env);
+  const before = sub.doc.getBody().getText();
+  const [, , prompt] = sent(env, 2);
+  answer(env, 2, withRun('r-00000000', prompt, 'm'));
+  env.x.harvestFlowInputResults();
+  answer(env, 2, withRun('r-11111111', prompt, 'm'));
+  env.x.harvestFlowInputResults();
+  assert.equal(cell(env, 2, 'READY_STATUS'), 'ERROR_MALFORMED_OUTPUT');
+  const [r] = logRows(env);
+  assert.equal(r.Result, 'ERROR_MALFORMED_OUTPUT');
+  assert.equal(r.RunCheck, 'RUN_KEY_MISMATCH');
+  assert.equal(sub.doc.getBody().getText(), before);
+  assert.equal(env.comments.length, 0);
+});
 
 test('a row built before the run line is OLDER_PROMPT; an older log tab gets the new headers', () => {
   const env = load();

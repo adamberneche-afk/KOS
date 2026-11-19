@@ -281,13 +281,15 @@ function _fxFlow2FixtureRow_(spec) {
   row[FI.GEMINI_FULL_OUTPUT] = "";
   // Same pre-substituted prompt a real row gets, so the @trigger.PromptText
   // chip resolves to real text while you're wiring Ask Gemini against the
-  // fixture — the whole point of the fixture being fully populated.
+  // fixture — the whole point of the fixture being fully populated. A
+  // reflection fixture's row carries its reflection the way a real one does
+  // (37's _fiReflectionPromptText_).
   row[FI.PROMPT_TEXT] = _fiBuildPromptText_({
     unitName: row[FI.UNIT_NAME], tier: row[FI.TIER], persona: row[FI.PERSONA],
     milestone1: row[FI.MILESTONE_1], milestone2: row[FI.MILESTONE_2],
     milestone3: row[FI.MILESTONE_3], milestone4: row[FI.MILESTONE_4],
     dod: row[FI.DEFINITION_OF_DONE],
-  });
+  }, spec.reflection ? _fiReflectionPromptText_(spec.reflection) : "");
   return { row: row, configId: configId, docId: doc.getId() };
 }
 
@@ -399,6 +401,145 @@ function checkFlow2Fixture() {
     "check Flow 2's Repeat for each (every chip should be Step 2's each item) and Update rows (match on StagingRowRef)."));
   Logger.log("[Fixtures] When done: removeFlow2Fixture().");
   return { rows: rows.length, ok: ok };
+}
+
+// ---------------------------------------------------------------------------
+// The reflection fixture (2026-11-19, D19's third safeguard, the operator's
+// go). The 11-15 re-grade graded the same doc twice, with and without its
+// reflection, and two of three such pairs came out differently. Flow 2's
+// prompt says a reflection answer never stands in for work that isn't
+// there. This tests it: pairs of rows identical but for the reflection,
+// on a made-up campaign pitch that leaves out its success metric
+// (milestone 3), with a reflection that claims one. Each pair should get
+// the same outcomes, and milestone 3 should never be MET.
+// installFlow2ReflectionFixture(pairs) writes them (each pair spends two
+// Studio runs; default 3 pairs, at most 5), checkFlow2ReflectionFixture()
+// compares them once Studio has answered, removeFlow2Fixture() clears them.
+// Made-up text only.
+// ---------------------------------------------------------------------------
+const FX_REFLECTION_PREFIX = "R"; // ConfigIDs VDOE-FIXTURE-R<pair>W / R<pair>N
+const FX_REFLECTION_REF_BASE = 100; // StagingRowRefs FIXTURE-101, FIXTURE-102, …
+const FX_REFLECTION_MAX_PAIRS = 5;
+const FX_REFLECTION_RESPONSE =
+  "FIXTURE RESPONSE (reflection test) — This is seeded test data, not a real student submission.\n\n" +
+  "For the campaign I chose the local minor league baseball team and targeted " +
+  "families with children under twelve, because attendance data shows weekend " +
+  "afternoon games draw that group most heavily. I selected two channels: " +
+  "school-newsletter inserts, which reach parents directly at low cost, and " +
+  "short-form social video, which reaches the same parents where they already " +
+  "spend attention. The pitch closes by asking the team to fund both channels " +
+  "for the spring season.";
+// Claims the metric the response leaves out.
+const FX_REFLECTION_ANSWERS = [
+  { kind: "EVIDENCE", competencyId: "FIXTURE-COMP-3",
+    question: "How does your work show a measurable goal for the campaign?",
+    answer: "I set a clear goal of a fifteen percent increase in weekend family ticket packages over last " +
+      "season, and I explained how the team would measure it every month." },
+];
+
+function _fxReflectionSpecs_(pairs) {
+  const base = FX_FLOW2_SPECS[0];
+  const out = [];
+  for (let p = 1; p <= pairs; p++) {
+    [["W", FX_REFLECTION_ANSWERS], ["N", null]].forEach(function (arm, j) {
+      out.push(Object.assign({}, base, {
+        ref: "FIXTURE-" + (FX_REFLECTION_REF_BASE + (p - 1) * 2 + j + 1),
+        configSuffix: FX_REFLECTION_PREFIX + p + arm[0],
+        docTitle: "[FIXTURE] Flow 2 reflection test, pair " + p + (arm[1] ? ", with" : ", without"),
+        response: FX_REFLECTION_RESPONSE, reflection: arm[1],
+      }));
+    });
+  }
+  return out;
+}
+
+function _fxIsReflectionFixtureConfig_(configId) {
+  return new RegExp("^" + FX_CONFIG_PREFIX + FX_REFLECTION_PREFIX + "\\d+[WN]$").test(String(configId).trim());
+}
+
+function installFlow2ReflectionFixture(pairs) {
+  const n = Math.max(1, Math.min(FX_REFLECTION_MAX_PAIRS, Math.floor(Number(pairs) || 3)));
+  const cfg = getConfig_();
+  const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput") || _fiEnsureTab_(ledgerSs, cfg);
+  const data = sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues().slice(1) : [];
+  if (data.some(function (r) { return _fxIsReflectionFixtureConfig_(r[FI.CONFIG_ID]); })) {
+    Logger.log("[Fixtures] Reflection fixture: already seeded. checkFlow2ReflectionFixture() reads it; " +
+      "removeFlow2Fixture() clears it before seeding again.");
+    return { seeded: 0, skipped: 1 };
+  }
+  const made = _fxReflectionSpecs_(n).map(_fxFlow2FixtureRow_);
+  const width = Math.max(sheet.getLastColumn(), made[0].row.length);
+  const rows = made.map(function (m) {
+    const r = m.row.slice();
+    while (r.length < width) r.push("");
+    return r;
+  });
+  const first = sheet.getLastRow() + 1;
+  sheet.getRange(first, 1, rows.length, width).setValues(rows);
+  SpreadsheetApp.flush();
+  Logger.log("[Fixtures] Reflection fixture: " + n + " pair(s), " + rows.length + " FlowInput rows from row " + first +
+    " (READY): the same response in each, with and without a reflection that claims the missing success metric. " +
+    "That's " + rows.length + " Studio runs. Wait for Studio (a few minutes), then checkFlow2ReflectionFixture().");
+  return { seeded: rows.length, pairs: n, first: first };
+}
+
+/**
+ * After installFlow2ReflectionFixture(): per pair, each row's outcomes and
+ * stamp, whether the two differ, and whether milestone 3 (not in the work,
+ * claimed in the reflection) was credited. Read-only.
+ */
+function checkFlow2ReflectionFixture() {
+  const cfg = getConfig_();
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput");
+  const data = sheet && sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues().slice(1) : [];
+  const byPair = {};
+  data.forEach(function (r) {
+    const id = String(r[FI.CONFIG_ID]).trim();
+    if (!_fxIsReflectionFixtureConfig_(id)) return;
+    const m = /R(\d+)([WN])$/.exec(id);
+    const out = String(r[FI.GEMINI_FULL_OUTPUT] || "");
+    (byPair[m[1]] = byPair[m[1]] || {})[m[2]] = out.trim()
+      ? { outcomes: _parseFlow2MilestoneOutcomes_(out), stamp: scanCompliance_(out) } : null;
+  });
+  const pairs = Object.keys(byPair).sort(function (a, b) { return a - b; });
+  if (!pairs.length) {
+    Logger.log("[Fixtures] checkFlow2ReflectionFixture: no reflection fixture rows. Run installFlow2ReflectionFixture() first.");
+    return { pairs: 0, done: false };
+  }
+  const fmt = function (o) {
+    return o.outcomes ? Object.keys(o.outcomes).sort().map(function (k) { return k + " " + o.outcomes[k]; }).join(", ") : "no outcomes line";
+  };
+  const res = { pairs: pairs.length, answered: 0, differ: 0, creditedWith: 0, creditedWithout: 0, done: true };
+  pairs.forEach(function (p) {
+    const w = byPair[p].W, n = byPair[p].N;
+    if (!w || !n) {
+      res.done = false;
+      Logger.log("[Fixtures] Pair " + p + ": waiting for Studio (" + (!w && !n ? "neither row" : !w ? "the row with the reflection" : "the row without") + " answered).");
+      return;
+    }
+    res.answered++;
+    const same = JSON.stringify(w.outcomes) === JSON.stringify(n.outcomes) && w.stamp === n.stamp;
+    if (!same) res.differ++;
+    const met3 = function (o) { return !!(o.outcomes && o.outcomes["3"] === "MET"); };
+    if (met3(w)) res.creditedWith++;
+    if (met3(n)) res.creditedWithout++;
+    Logger.log("[Fixtures] Pair " + p + ": " + (same ? "SAME" : "DIFFERENT") +
+      ". With the reflection: " + fmt(w) + " (" + w.stamp + "). Without: " + fmt(n) + " (" + n.stamp + ").");
+  });
+  if (res.answered) {
+    Logger.log("[Fixtures] checkFlow2ReflectionFixture: " + res.answered + " pair(s) answered; " + res.differ +
+      " graded differently with the reflection. Milestone 3 (the success metric the work leaves out, the reflection claims) " +
+      "was MET in " + res.creditedWith + " with the reflection and " + res.creditedWithout + " without. " +
+      (res.creditedWith > res.creditedWithout
+        ? "The reflection is standing in for missing work: the prompt's rule isn't holding."
+        : res.differ
+          ? "Pairs differ but the claim wasn't credited more often: the grader varies run to run on the same text."
+          : "The reflection didn't change a grade."));
+  }
+  if (!res.done) Logger.log("[Fixtures] Not every pair has answered; run this again in a few minutes.");
+  Logger.log("[Fixtures] When done: removeFlow2Fixture() (clears these rows and their scratch docs).");
+  return res;
 }
 
 // ---------------------------------------------------------------------------

@@ -1186,3 +1186,57 @@ at night waits up to 5 minutes more. School hours are unchanged. The
 projection counts full cycles: the 11-19 shape (5.6 s own, 7 s checks)
 comes to about 4.4 h on a school day and 1.3 h on a day off. The minutes
 that return at once aren't timed.
+
+## A lesson's marks name the part that showed them, 2026-11-19
+
+A student's card on Part 6 of a lesson (the first Slides part) said
+"Shown" for its learning targets before Part 6 had been checked, beside a
+"can't open your slides" message: the marks are the lesson's best across
+its parts (#459's caption says so), but the card read as if Part 6 had
+been checked. `_dashBestOutcomes_` (13) now keeps, with each competency's
+best outcome, the parts that reached it, and the card's mark on a lesson
+in parts reads "Shown in Part 2", "Partly shown in Parts 1 and 3".
+"Not shown yet" names no part (it is the best across every part), and a
+lesson not in parts is unchanged. The Student Dashboard, its demo and the
+teacher's "View as a student" all go through the same functions.
+
+## RUN_KEY_MISMATCH held back, 2026-11-19
+
+D19's second safeguard, decided by the operator on 11-19 (the plan had
+waited for a week of `RunCheck` data, about 11-23): an answer whose
+`[RUN_INFO]` run key isn't the one its FlowInput row sent is another row's
+answer (a duplicate write, another lesson's), so the harvest (37) sets it
+aside like a malformed result: re-armed once with the same prompt and run
+key, then `ERROR_MALFORMED_OUTPUT` with its `RunCheck` recorded. Nothing
+reaches the student. `PROMPT_MISMATCH`, `NO_RUN_INFO` and
+`RUN_INFO_NOT_JSON` are still recorded and delivered.
+
+## The reflection fixture, 2026-11-19
+
+D19's third safeguard, the operator's go on 11-19. The 11-15 re-grade
+graded the same doc twice, with and without its reflection, and two of
+three such pairs came out differently. `installFlow2ReflectionFixture(pairs)`
+(39) writes pairs of FlowInput rows, in one write, identical but for the
+reflection: a made-up campaign pitch that leaves out its success metric
+(milestone 3), and in one row of each pair a reflection answer that claims
+one. Flow 2's prompt says a reflection never stands in for work that isn't
+there, so each pair should get the same outcomes and milestone 3 should
+never be MET. `checkFlow2ReflectionFixture()` compares them: which pairs
+differ, and how often milestone 3 was MET with the reflection and without.
+More often with it means the reflection is standing in for missing work;
+differences without that mean the grader varies run to run on the same
+text. `removeFlow2Fixture()` clears the rows (StagingRowRef `FIXTURE-101`
+on, ConfigIDs `VDOE-FIXTURE-R<pair>W/N`). Each pair spends two Studio runs.
+
+The run-key hold-back in the same change set made `runFlow2Canary()`'s
+canned answer (run key "canary") a mismatch; the canary now echoes its
+row's run key and prompt version.
+
+## A card's marks fold under "What this lesson checks", 2026-11-19
+
+The operator wanted the learning targets (the lesson's measured "I can"
+lines and their marks) on each card without cluttering it. They now sit in
+a `<details>` under their caption ("What this lesson checks", "… across its
+parts so far" on a lesson in parts, "Checking these now" while a check
+runs), closed until the student opens it; an opened one stays open for the
+page (`_marksOpen`, by card). No totals or counts in the caption (D17).
