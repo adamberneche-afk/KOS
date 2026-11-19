@@ -295,10 +295,17 @@ test('milestone marks: up to three, primary first, in the student\'s words; the 
   assert.doesNotMatch(h, /\d+ of \d+|%|score|total|target/i, 'no totals, scores or targets');
   // While the check runs (2026-11-15): one caption, no tag on each line.
   const checking = ctx.marksHtml(Object.assign({}, by['W-L05'], { statusPill: 'Being checked' }));
-  assert.match(checking, /^<div class="marks-cap">Checking these now<\/div>/);
+  assert.match(checking, /^<details class="marks-box" data-key="card-W-L05" ontoggle="marksToggled\(this\)"><summary class="marks-cap">Checking these now<\/summary>/);
   assert.doesNotMatch(checking, /class="mark |Being checked|Not checked yet/);
   // A lesson in parts: the caption says the marks cover every part so far.
-  assert.match(ctx.marksHtml(by['W-L05'], true), /<div class="marks-cap">What this lesson checks, across its parts so far<\/div>/);
+  assert.match(ctx.marksHtml(by['W-L05'], true), /<summary class="marks-cap">What this lesson checks, across its parts so far<\/summary>/);
+  // Folded (2026-11-19): closed until opened, and kept open for the page.
+  assert.match(h, /^<details class="marks-box" data-key="card-W-L07" ontoggle="marksToggled\(this\)"><summary class="marks-cap">What this lesson checks<\/summary><ul class="marks"/);
+  assert.match(h, /<\/ul><\/details>$/);
+  ctx.marksToggled({ open: true, getAttribute: () => 'card-W-L07' });
+  assert.match(ctx.marksHtml(by['W-L07']), /^<details class="marks-box" data-key="card-W-L07" ontoggle="marksToggled\(this\)" open>/);
+  ctx.marksToggled({ open: false, getAttribute: () => 'card-W-L07' });
+  assert.doesNotMatch(ctx.marksHtml(by['W-L07']), /^<details[^>]* open>/);
 });
 
 // A lesson in parts (2026-11-19): a card on Part 6 said "Shown" for what

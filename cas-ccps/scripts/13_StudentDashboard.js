@@ -3213,6 +3213,9 @@ function buildStudentDashboardHtml_(opts) {
   .marks{list-style:none;margin:0 0 10px;padding:0;font-size:13.5px;line-height:1.45}
   .marks li{margin:3px 0}
   .marks-cap{font-size:12px;color:var(--text-secondary);margin:2px 0 2px}
+  .marks-box{margin:2px 0 10px}
+  .marks-box > summary{cursor:pointer;padding:2px 0;font-size:13px;font-weight:500;color:#1557b0}
+  .marks-box .marks{margin:4px 0 0}
   .mark{display:inline-block;font-size:12px;font-weight:600;border-radius:10px;padding:1px 8px;margin-right:6px;white-space:nowrap}
   .mark-MET{background:#e6f4ea;color:#137333}
   .mark-PARTIALLY_MET{background:#fef3e2;color:#9c5000}
@@ -4272,7 +4275,11 @@ function cardHtml(a, opts) {
 // The lesson's measured milestones (up to three, primary first) in the
 // student's "I can" words, each with what the checks found so far: Shown,
 // Partly shown, Not shown yet, or Not checked yet. Evidence, not a rating:
-// no totals, scores or targets (D17).
+// no totals, scores or targets (D17). Folded under their caption since
+// 2026-11-19 (the operator: show them without cluttering the card): a
+// <details> the student opens, its state kept for the page (_marksOpen).
+let _marksOpen = {}; // card id -> true while its marks are open (page memory)
+function marksToggled(el) { _marksOpen[el.getAttribute("data-key")] = el.open; }
 function marksHtml(a, acrossParts) {
   const list = a.milestones || [];
   if (!list.length) return "";
@@ -4284,12 +4291,14 @@ function marksHtml(a, acrossParts) {
   // across every part so far, so a card on a part not started yet can show
   // Shown from earlier parts. The caption says so, and since 2026-11-19 each
   // mark says which part showed it ("Shown in Part 2").
-  const cap = checking ? "Checking these now" : acrossParts ? "What this lesson checks, across its parts so far" : "";
-  return (cap ? '<div class="marks-cap">' + esc(cap) + '</div>' : '') +
-    '<ul class="marks" aria-label="' + esc(cap || "What this lesson checks") + '">' + list.map(m =>
+  const cap = checking ? "Checking these now" : acrossParts ? "What this lesson checks, across its parts so far" : "What this lesson checks";
+  const key = cardId(a);
+  return '<details class="marks-box" data-key="' + esc(key) + '" ontoggle="marksToggled(this)"' + (_marksOpen[key] ? ' open' : '') + '>' +
+    '<summary class="marks-cap">' + esc(cap) + '</summary>' +
+    '<ul class="marks" aria-label="' + esc(cap) + '">' + list.map(m =>
     '<li>' + (m.markKey === "UNCHECKED" && checking ? '' : '<span class="mark mark-' + esc(m.markKey) + '">' + esc(m.mark) +
       (acrossParts && m.where ? ' ' + esc(m.where) : '') + '</span>') +
-    esc(m.text) + '</li>').join("") + '</ul>';
+    esc(m.text) + '</li>').join("") + '</ul></details>';
 }
 
 // A lesson in parts, one card (F16 item 4): the part to work on now (the

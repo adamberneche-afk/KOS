@@ -1231,3 +1231,12 @@ on, ConfigIDs `VDOE-FIXTURE-R<pair>W/N`). Each pair spends two Studio runs.
 The run-key hold-back in the same change set made `runFlow2Canary()`'s
 canned answer (run key "canary") a mismatch; the canary now echoes its
 row's run key and prompt version.
+
+## A card's marks fold under "What this lesson checks", 2026-11-19
+
+The operator wanted the learning targets (the lesson's measured "I can"
+lines and their marks) on each card without cluttering it. They now sit in
+a `<details>` under their caption ("What this lesson checks", "… across its
+parts so far" on a lesson in parts, "Checking these now" while a check
+runs), closed until the student opens it; an opened one stays open for the
+page (`_marksOpen`, by card). No totals or counts in the caption (D17).
