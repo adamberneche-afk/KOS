@@ -1058,3 +1058,29 @@ side:
   and 6, naming the steps that go inside the loop; the setup guide and
   `TURN_IN_CHECK_FLOW.md` say the same.
 - Tests: `flow-full-list`.
+
+## Not on Canvas: the nightly check, 2026-11-19
+
+The operator: lessons were opening for students before their Canvas
+assignment was posted, so a student had no place to turn the work in. A
+Canvas API token, a test student account and API approval are not
+available (the operator, 11-19), so the check reads the gradebook exports
+the rollout already reads.
+
+- 58's step 4 (nightly, not each catch-up) groups the exports by course
+  (the file's name, else its students' sections; the newest per course) and
+  looks for each open or opening lesson among the export's assignment
+  columns ("<title> (<id>)", `canvasExportAssignmentTitles_`, 00).
+- A column holding at least 60% of the lesson name's words is the lesson's
+  (`canvasAssignmentFor_`, 00): a teacher's shortened or prefixed title
+  counts; 2 of 5 words does not.
+- A lesson with none: a PROBLEM row "not on Canvas: …" in the course's mode,
+  and a "Not on Canvas:" line (five at most, then "n more") in the CAS
+  signal and the overnight email; not counted as a rollout problem, and the
+  lesson still opens. A course with no export says it couldn't tell.
+- Found: a `CANVAS` row, so a later run's find clears an earlier warning.
+- Not yet confirmed: whether an unpublished Canvas assignment shows in an
+  export. If it does, a posted-but-unpublished assignment passes the check.
+- Tests: `lesson-rollout` (the warning and its clearing, a course with no
+  export, the matcher, the export's course); its fixture's exports now carry
+  each course's assignment columns.

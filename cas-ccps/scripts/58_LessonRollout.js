@@ -94,6 +94,8 @@ const ROLLOUT_DOCS_RESERVE_MS = 60 * 1000;
 // matches ROLLOUT_UNFINISHED_RE; rolloutDayStatus_ reads those as CONTINUES.
 const ROLLOUT_CONTINUES = "CONTINUES";
 const ROLLOUT_UNFINISHED_RE = /time budget|not reached/;
+// How many "Not on Canvas" lines the signal names before "n more" (2026-11-19).
+const ROLLOUT_NOT_ON_CANVAS_SHOWN = 5;
 // Rows further apart than this belong to different runs. A run's rows share
 // its start time; catch-ups start at least ROLLOUT_CATCHUP_DELAY_MS after
 // the run before ends.
@@ -397,7 +399,7 @@ function lessonRollout_(opts) {
   // 4. A stale Canvas export misses late joiners and section changes.
   // Checked by the nightly run only, not each catch-up: once a day is enough
   // to say it (plan L3).
-  if (!opts.catchUp) _lrCheckExports_(cfg, now, log);
+  if (!opts.catchUp) _lrCheckExports_(cfg, now, log, plan, modes);
 
   if (!rows.length) log("-", "-", "-", "IDLE", 0, "no lesson starts within " + ROLLOUT_LEAD_DAYS + " days and none is current");
 
@@ -417,9 +419,17 @@ function lessonRollout_(opts) {
 }
 
 // Step 4: the newest Canvas export's age, as a PROBLEM row when it is stale.
-function _lrCheckExports_(cfg, now, log) {
+// Then (2026-11-19, the operator: lessons opened before they were posted on
+// Canvas) each lesson that is open or opens within ROLLOUT_LEAD_DAYS is looked
+// for among its course's newest export's assignment columns: one without a
+// matching Canvas assignment is a PROBLEM row, "not on Canvas: ...", a
+// warning only (the lesson still opens). The export is the only view of
+// Canvas there is (no API), so the check is as fresh as the last export; a
+// lesson in parts is one Canvas assignment, named by the lesson.
+function _lrCheckExports_(cfg, now, log, plan, modes) {
+  let files = [];
   try {
-    const files = _criFindExports_(cfg);
+    files = _criFindExports_(cfg);
     const newest = files.length ? files[0].getLastUpdated() : null;
     const ageDays = newest ? Math.floor((now.getTime() - newest.getTime()) / 86400000) : null;
     if (ageDays === null) log("-", "-", "-", "PROBLEM", 0, "no Canvas gradebook export found");
@@ -428,7 +438,64 @@ function _lrCheckExports_(cfg, now, log) {
     }
   } catch (e) {
     log("-", "-", "-", "PROBLEM", 0, "Canvas exports not checked: " + e.message);
+    return;
   }
+  if (!plan || !files.length) return;
+  try {
+    const exports = _lrExportsByCourse_(files);
+    Object.keys(plan).forEach(function (course) {
+      const ex = exports[course];
+      const mode = (modes && modes[course]) || "SHADOW";
+      plan[course].lessons.forEach(function (l) {
+        const lesson = lessonConfigId_(l.key);
+        const a = LESSON_ASSIGNMENTS[l.key];
+        const name = a ? a.unitName : l.key;
+        const when = l.start <= formatDateYMD_(now) ? "is open now" :
+          "opens " + Utilities.formatDate(new Date(l.start + "T12:00:00"), Session.getScriptTimeZone(), "EEE MMM d");
+        if (!ex) {
+          log(mode, course, lesson, "PROBLEM", 0, "not on Canvas: can't tell: no Canvas export for course " + course +
+            " was found, so " + name + " (" + when + ") wasn't checked; export that course's gradebook");
+          return;
+        }
+        const found = canvasAssignmentFor_(ex.titles, name);
+        if (found) {
+          // Logged so a later run's find clears an earlier warning (rolloutDayStatus_).
+          log(mode, course, lesson, "CANVAS", 0, "on Canvas: " + found);
+          return;
+        }
+        log(mode, course, lesson, "PROBLEM", 0, "not on Canvas: " + name + " " + when + " and has no assignment in the " +
+          course + " Canvas export from " + Utilities.formatDate(ex.updated, Session.getScriptTimeZone(), "MMM d") +
+          "; post it in Canvas (or import the week's cartridge), then export again");
+      });
+    });
+  } catch (e) {
+    log("-", "-", "-", "PROBLEM", 0, "not on Canvas: check failed: " + e.message);
+  }
+}
+
+// { course: { titles, updated } } from the newest export of each course: the
+// course from the file's name ("..._Grades-8177...") or, failing that, from
+// its students' sections ("[74-C8177H-P01]"), the most common one.
+function _lrExportsByCourse_(files) {
+  const out = {};
+  files.forEach(function (f) {
+    let rows;
+    try { rows = canvasCsvRows_(f.getBlob().getDataAsString("UTF-8")); } catch (e) { return; }
+    if (!rows.length) return;
+    let course = _cybCourseCode_(f.getName());
+    if (!course) {
+      const iSection = rows[0].map(function (h) { return String(h).trim().toLowerCase(); }).indexOf("section");
+      const count = {};
+      rows.slice(1).forEach(function (r) {
+        const c = iSection === -1 ? "" : _cybCourseCode_(r[iSection]);
+        if (c) count[c] = (count[c] || 0) + 1;
+      });
+      course = Object.keys(count).sort(function (a, b) { return count[b] - count[a]; })[0] || "";
+    }
+    if (!course || out[course]) return; // files come newest first
+    out[course] = { titles: canvasExportAssignmentTitles_(rows), updated: f.getLastUpdated() };
+  });
+  return out;
 }
 
 // Step 5: the Covered So Far docs (76). A row per course whose doc was
@@ -620,7 +687,7 @@ function rolloutDayStatus_(rows, now, windowMs) {
     x.run = run;
     prev = x.t;
   });
-  const out = { runs: run + 1, problems: 0, left: 0, notReached: 0, unfinished: false, exportNote: "" };
+  const out = { runs: run + 1, problems: 0, left: 0, notReached: 0, unfinished: false, exportNote: "", notOnCanvas: [] };
   const latest = {};
   list.forEach(function (x) {
     x.family = _lrFamily_(x.step, x.detail);
@@ -631,6 +698,11 @@ function rolloutDayStatus_(rows, now, windowMs) {
   list.forEach(function (x) {
     if (x.step !== "PROBLEM" && x.step !== ROLLOUT_CONTINUES) return;
     if (x.family === "EXPORT") { out.exportNote = x.detail; return; }
+    // A lesson not on Canvas: named, not counted, while its latest row says so.
+    if (x.family === "CANVAS") {
+      if (x.run === latest[x.key]) out.notOnCanvas.push(x.detail.replace(/^not on Canvas:\s*/, ""));
+      return;
+    }
     const runWide = x.course === "-" && x.lesson === "-";
     if (x.run !== (runWide ? run : latest[x.key])) return;
     if (!x.continues) { out.problems++; return; }
@@ -645,7 +717,7 @@ function rolloutDayStatus_(rows, now, windowMs) {
 // The step a row is about, so a later run's row for the same step clears it.
 function _lrFamily_(step, detail) {
   if (["RELEASE", "SEED", "ENROLL", "LESSON_DOC", "AGENDA"].indexOf(step) >= 0) return step;
-  if (step === "COVERED_SO_FAR") return step;
+  if (step === "COVERED_SO_FAR" || step === "CANVAS") return step;
   if (step !== "PROBLEM" && step !== ROLLOUT_CONTINUES) return "";
   if (/^release|could not be shared/.test(detail)) return "RELEASE";
   if (/^enrollment|CanvasSectionMap|^no LIVE assignment/.test(detail)) return "ENROLL";
@@ -653,6 +725,7 @@ function _lrFamily_(step, detail) {
   if (/^agenda/.test(detail)) return "AGENDA";
   if (/^Covered So Far/.test(detail)) return "COVERED_SO_FAR";
   if (/^seeding/.test(detail)) return "SEED";
+  if (/^not on Canvas:/.test(detail)) return "CANVAS";
   if (/Canvas (gradebook )?export/.test(detail)) return "EXPORT";
   return "OTHER";
 }
@@ -673,6 +746,12 @@ function rolloutSignalLines_(st) {
       "(runLessonRollout() from the editor does the same)");
   }
   if (st.exportNote) lines.push("Lesson rollout: " + st.exportNote);
+  (st.notOnCanvas || []).slice(0, ROLLOUT_NOT_ON_CANVAS_SHOWN).forEach(function (d) {
+    lines.push("Not on Canvas: " + d);
+  });
+  if ((st.notOnCanvas || []).length > ROLLOUT_NOT_ON_CANVAS_SHOWN) {
+    lines.push("Not on Canvas: " + (st.notOnCanvas.length - ROLLOUT_NOT_ON_CANVAS_SHOWN) + " more (see the RolloutLog tab)");
+  }
   return lines;
 }
 

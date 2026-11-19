@@ -697,6 +697,44 @@ function canvasCsvRows_(text) {
   return Utilities.parseCsv(String(text || "").replace(/^\uFEFF/, ""));
 }
 
+// The assignment columns of a Canvas gradebook export, by title: every
+// header written "<title> (<Canvas ID>)", the title only (2026-11-19).
+function canvasExportAssignmentTitles_(rows) {
+  const header = (rows && rows[0]) || [];
+  const out = [];
+  header.forEach(function (h) {
+    const m = /^(.*\S)\s*\((\d+)\)$/.exec(String(h || "").trim());
+    if (m) out.push(m[1].trim());
+  });
+  return out;
+}
+
+// The words that identify a lesson's name: three letters or more, without
+// the filler every title shares.
+function _canvasTitleWords_(s) {
+  return String(s || "").toLowerCase().replace(/[’']/g, "").split(/[^a-z0-9]+/).filter(function (w) {
+    return w.length >= 3 && ["the", "and", "for", "with", "lesson", "part", "cas", "your", "from"].indexOf(w) === -1;
+  });
+}
+
+// The Canvas assignment title that is this lesson's, or "": a title that
+// holds at least CANVAS_TITLE_MATCH of the lesson name's words (a teacher
+// may shorten or prefix it: "L08 Market Research & Survey Design" for "Venue
+// Market Research & Survey Design"), the most words first. Used by the rollout's check that
+// a lesson is on Canvas before it opens (58).
+const CANVAS_TITLE_MATCH = 0.6;
+function canvasAssignmentFor_(titles, lessonName) {
+  const want = _canvasTitleWords_(lessonName);
+  if (!want.length) return "";
+  let best = "", bestShare = 0;
+  (titles || []).forEach(function (t) {
+    const have = _canvasTitleWords_(t);
+    const share = want.filter(function (w) { return have.indexOf(w) !== -1; }).length / want.length;
+    if (share > bestShare) { best = t; bestShare = share; }
+  });
+  return bestShare >= CANVAS_TITLE_MATCH ? best : "";
+}
+
 // An export's SIS Login ID as the student's account, the way 52 enrols
 // them: lower case, and a bare student ID gets "@" and the student email
 // domain. Anything else (a full address, a non-student login) is kept as it

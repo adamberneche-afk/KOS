@@ -453,6 +453,23 @@ one`, and, in the overnight all-clear, `Lesson rollout: finished (3 runs)`.
 The CAS signal also says while a course is still in shadow. `previewLessonRollout()` runs it once as
 a dry run from the editor. The steps below still work by hand.
 
+**Not on Canvas (2026-11-19).** Lessons were opening before their Canvas
+assignment was posted. Each nightly run (not a catch-up) looks for every
+lesson that is open or opens within `ROLLOUT_LEAD_DAYS` among the assignment
+columns of its course's newest gradebook export (the course from the file's
+name, else from its students' sections). A title holding at least 60% of the
+lesson name's words is the lesson's (`canvasAssignmentFor_`, 00), so a
+shortened or prefixed title still counts; a lesson in parts is one Canvas
+assignment, named by the lesson. A lesson with none is a PROBLEM row, `not
+on Canvas: …`, and a line in the CAS signal and the overnight email: `Not on
+Canvas: The Bottom Line opens Thu Nov 20 and has no assignment in the 8177
+Canvas export from Nov 18; post it in Canvas (or import the week's
+cartridge), then export again`. A warning only: the lesson still opens. A
+later run that finds it logs `CANVAS` ("on Canvas: <title>") and clears it.
+The export is the only view of Canvas there is (no Canvas API: the
+operator, 11-19), so the check is as fresh as the last export, and whether
+an unpublished assignment shows in an export is not yet confirmed.
+
 **Catching up (2026-10-29).** A run makes about 20 student docs before its
 time budget. A run that stops short schedules `runLessonRolloutCatchUp` a
 few minutes later, which does the same, until a run finishes (at most

@@ -31,7 +31,8 @@ const FILES = ['00_SharedConfig.js', '00b_ScriptOwnerGuard.js', '22_LessonContex
 const EXPOSE = ['lessonRollout_', '_lrPlan_', 'previewLessonRollout', 'runLessonRollout', 'runLessonRolloutCatchUp',
   '_lrEnrollOrder_', 'ROLLOUT_CATCHUP_MAX', 'ROLLOUT_TIME_BUDGET_MS', 'ROLLOUT_DOCS_RESERVE_MS',
   'rolloutDayStatus_', 'rolloutSignalLines_', 'rolloutFinishedLine_',
-  'previewLessonPartsCatchUp', 'applyLessonPartsCatchUp', 'lessonPartsCatchUp_'];
+  'previewLessonPartsCatchUp', 'applyLessonPartsCatchUp', 'lessonPartsCatchUp_', 'LESSON_ASSIGNMENTS',
+  'canvasAssignmentFor_', 'canvasExportAssignmentTitles_', '_lrExportsByCourse_'];
 
 const FRI = new Date(2026, 9, 16, 21, 0); // Friday 2026-10-16, 9 p.m.
 // 8175: L06 started Oct 14 (current), L07 starts tomorrow, L08 on Sunday
@@ -87,8 +88,21 @@ function setup(opts) {
       unmappedSections: [], timedOut: false, message: 'ok' }, r);
   };
   const exportAge = opts.exportAgeDays === undefined ? 1 : opts.exportAgeDays;
-  sandbox._criFindExports_ = () => exportAge === null ? [] :
-    [{ getLastUpdated: () => new Date(FRI.getTime() - exportAge * 86400000) }];
+  // One gradebook export per course (2026-11-19: the not-on-Canvas check
+  // reads its assignment columns). By default every scheduled lesson is on
+  // Canvas; opts.canvasTitles sets a course's assignment titles instead.
+  const schedule = opts.schedule || SCHEDULE;
+  const csvCell = (v) => '"' + String(v).replace(/"/g, '""') + '"';
+  const exportFile = (code) => {
+    const titles = (opts.canvasTitles || {})[code] !== undefined ? opts.canvasTitles[code]
+      : schedule[code].map((l) => (exported.LESSON_ASSIGNMENTS[l.key] || { unitName: l.key }).unitName);
+    const csv = ['Student', 'ID', 'SIS User ID', 'SIS Login ID', 'Section'].concat(titles.map((t, i) => t + ' (' + (900 + i) + ')'))
+      .map(csvCell).join(',') + '\n' + csvCell('Points Possible') + '\n';
+    return { getName: () => '2026-10-15T1200_Grades-' + code + '.csv',
+      getLastUpdated: () => new Date(FRI.getTime() - exportAge * 86400000),
+      getBlob: () => ({ getDataAsString: () => csv }) };
+  };
+  sandbox._criFindExports_ = () => exportAge === null ? [] : Object.keys(schedule).map(exportFile);
 
   const log = () => {
     const tab = ss.getSheetByName('RolloutLog');
@@ -597,4 +611,97 @@ test('parts catch-up: a part the time budget stopped says run it again; nothing 
   assert.ok(res.parts.every((p) => p.left));
   assert.equal(unlocks, 0);
   assert.match(res.message, /not finished: run it again\.$/);
+});
+
+// 2026-11-19, the operator: lessons opened before they were posted on Canvas.
+// The nightly run looks for each open or opening lesson among its course's
+// newest gradebook export's assignment columns; a missing one is a warning
+// ("Not on Canvas"), named in the signal, and the lesson still opens.
+test('not on Canvas: a lesson opening with no assignment in its course\'s export is named; the rest are found', () => {
+  // 8175's export has only L06 (its title with more words) and an unrelated
+  // assignment; 8177's has its lesson.
+  const names = setup().exported.LESSON_ASSIGNMENTS;
+  const name = (k) => names[k].unitName;
+  const env2 = setup({ canvasTitles: { '8175': [name('8175-L06') + ' (Ch. 2)', 'Unrelated Quiz'] } });
+  env2.exported.lessonRollout_({ today: FRI });
+  const rows = env2.log();
+  const missing = rows.filter((r) => r[4] === 'PROBLEM' && /^not on Canvas:/.test(r[6]));
+  assert.deepEqual(missing.map((r) => r[3]).sort(), ['CAS-8175-L07', 'CAS-8175-L08']);
+  const l07 = missing.find((r) => r[3] === 'CAS-8175-L07');
+  assert.equal(l07[6], 'not on Canvas: ' + name('8175-L07') + ' opens Sat Oct 17 and has no assignment in the 8175 ' +
+    'Canvas export from Oct 15; post it in Canvas (or import the week\'s cartridge), then export again');
+  assert.equal(l07[1], 'SHADOW', 'the course\'s mode, like every lesson row');
+  const found = rows.filter((r) => r[4] === 'CANVAS').map((r) => r[3]).sort();
+  assert.deepEqual(found, ['CAS-8175-L06', 'CAS-8177-HANDBOOK']);
+
+  // The signal names them, and doesn't count them as problems.
+  const st = env2.exported.rolloutDayStatus_(rows, new Date(FRI.getTime() + 60000), 24 * 3600 * 1000);
+  assert.equal(st.problems, 0);
+  const lines = env2.exported.rolloutSignalLines_(st).filter((l) => /^Not on Canvas:/.test(l));
+  assert.equal(lines.length, 2);
+  assert.match(lines[0], /^Not on Canvas: .* opens (Sat Oct 17|Sun Oct 18)/);
+});
+
+test('not on Canvas: a later run that finds it clears the warning; no export for a course says so', () => {
+  const name = (env, k) => env.exported.LESSON_ASSIGNMENTS[k].unitName;
+  const env = setup({ canvasTitles: { '8175': [] } });
+  env.exported.lessonRollout_({ today: FRI });
+  const first = env.log();
+  assert.equal(first.filter((r) => /^not on Canvas:/.test(r[6])).length, 3, 'the three 8175 lessons');
+  // Posted and exported again: the next night finds them.
+  env.sandbox._criFindExports_ = () => ['8175', '8177'].map((code) => ({
+    getName: () => '2026-10-17T0800_Grades-' + code + '.csv',
+    getLastUpdated: () => new Date(FRI.getTime() + 3600000),
+    getBlob: () => ({ getDataAsString: () => '"Student","ID","SIS User ID","SIS Login ID","Section",' +
+      (code === '8175' ? ['8175-L06', '8175-L07', '8175-L08'].map((k) => '"' + name(env, k).replace(/"/g, '""') + ' (1)"').join(',')
+        : '"8177-handbook (2)"') + '\n' }),
+  }));
+  const later = new Date(FRI.getTime() + 2 * 3600 * 1000);
+  // Rows are stamped with the real time: move the first run's an hour back, so
+  // the two runs read as two (a night apart in real use).
+  const tab = env.ss.getSheetByName('RolloutLog');
+  for (let r = 2; r <= tab.getLastRow(); r++) tab.getRange(r, 1).setValue(new Date(Date.now() - 3600 * 1000));
+  env.exported.lessonRollout_({ today: later });
+  const st = env.exported.rolloutDayStatus_(env.log(), new Date(), 24 * 3600 * 1000);
+  assert.deepEqual(st.notOnCanvas, [], 'a later find clears it');
+
+  // A course with no export at all: can't tell, said per lesson.
+  const env3 = setup();
+  env3.sandbox._criFindExports_ = () => [{ getName: () => '2026-10-15_Grades-8177.csv',
+    getLastUpdated: () => new Date(FRI.getTime() - 86400000),
+    getBlob: () => ({ getDataAsString: () => '"Student","ID","SIS User ID","SIS Login ID","Section","8177-handbook (5)"\n' }) }];
+  env3.exported.lessonRollout_({ today: FRI });
+  const cant = env3.log().filter((r) => /^not on Canvas: can't tell/.test(r[6]));
+  assert.deepEqual(cant.map((r) => r[3]).sort(), ['CAS-8175-L06', 'CAS-8175-L07', 'CAS-8175-L08']);
+  assert.match(cant[0][6], /no Canvas export for course 8175 was found/);
+});
+
+test('the matcher: a shortened or prefixed title matches; an unrelated or different lesson does not', () => {
+  const { exported } = setup();
+  const m = (titles, name) => exported.canvasAssignmentFor_(titles, name);
+  const lesson = 'Venue Market Research & Survey Design';
+  assert.equal(m(['L08 Venue Market Research Survey Design'], lesson), 'L08 Venue Market Research Survey Design');
+  assert.equal(m(['Market Research & Survey Design (Venue)'], lesson), 'Market Research & Survey Design (Venue)');
+  assert.equal(m(['Venue Market Research'], lesson), 'Venue Market Research', '3 of its 5 words: enough');
+  assert.equal(m(['Venue Survey'], lesson), '', '2 of 5 is not');
+  assert.equal(m(['The Business of the Game (Franchise Analysis)', 'Weekly Quiz'], lesson), '');
+  assert.equal(m([], lesson), '');
+  assert.equal(m(['Anything'], ''), '');
+  assert.equal(m(['L01 Evolution of Marketing (From Trade to TikTok)'], 'L01 EVOLUTION OF MARKETING (FROM TRADE TO TIKTOK)'),
+    'L01 Evolution of Marketing (From Trade to TikTok)', 'case doesn\'t matter');
+  assert.deepEqual(JSON.parse(JSON.stringify(exported.canvasExportAssignmentTitles_([
+    ['Student', 'ID', 'SIS User ID', 'SIS Login ID', 'Section', 'Pitch (Part 6) (12345)', 'Current Score', 'Unposted Final Grade']]))),
+    ['Pitch (Part 6)'], 'only "<title> (<id>)" columns are assignments');
+});
+
+test('an export\'s course comes from its file name, else from its sections', () => {
+  const { exported } = setup();
+  const file = (name, csv) => ({ getName: () => name, getLastUpdated: () => new Date(), getBlob: () => ({ getDataAsString: () => csv }) });
+  const byName = JSON.parse(JSON.stringify(exported._lrExportsByCourse_([
+    file('2026-11-19_Grades-8177_Sports.csv', '"Student","Section","A (1)"\n'),
+    file('2026-11-18_Grades-8177_Sports.csv', '"Student","Section","Old (2)"\n'),
+    file('2026-11-19_Grades-Marketing.csv', '"Student","Section","B (3)"\n"Amy","SPORTS MARKETING [74-C8175H-P01]",""\n'),
+  ])));
+  assert.deepEqual(byName['8177'].titles, ['A'], 'the newest file per course');
+  assert.deepEqual(byName['8175'].titles, ['B'], 'the course from the section when the name has none');
 });
