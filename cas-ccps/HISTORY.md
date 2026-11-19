@@ -1000,3 +1000,31 @@ written.
 - The sandbox's fake sheet gained `getMaxRows()` (1000 rows, like a new
   sheet), which `createWarmUpTabs_` uses.
 - The three allowlist entries are removed; coverage-gaps is clean.
+
+## A deck's image alt text in the snapshot, 2026-11-19
+
+Flow 2 grades a Slides part from the snapshot doc's text, which counted the
+deck's images but said nothing about them. A probe on 11-18 asked whether
+Studio could show Flow 2 the pictures: a scratch flow and a test deck whose
+answers were only in its pictures (words drawn in an image, shapes with no
+words, a chart pasted as a picture). Ask Gemini, with the deck as its Drive
+source, answered that it could not see the images; a deck link inside the
+prompt was dropped ("Workspace sources is turned off"); the control, with
+no deck, said the same. So Studio's Gemini reads a deck's text, not its
+pictures.
+
+Built instead, at the operator's word (informational, not mandatory):
+
+- The reader (77) reads each image's alt text, its title and description
+  as the student set them (`PageElement.getTitle()` / `getDescription()`),
+  into `imageAlts`.
+- The snapshot lists them under each slide with images, "(none)" for an
+  image without one, and counts them in the totals line; its note says the
+  alt text is the student's own description, for context, not checked, and
+  that an image without one is not a fault.
+- No `slideChecks` key reads it; Submit never stops for it. It is student
+  text: quoted and made safe like the rest, and system text in it is
+  refused at Submit.
+- The sandbox's fake SlidesApp gives every element `getTitle()` and
+  `getDescription()`, and `altImages` in a deck spec.
+- Tests: `slides-reader`.

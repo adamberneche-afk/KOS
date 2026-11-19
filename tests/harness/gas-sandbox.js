@@ -1176,6 +1176,7 @@ function makeFormAppMock() {
 //                color }], fill, fillAlpha, fillType, box }], subtitle,
 //                notes, images, charts, videos (counts), imageBoxes: [box],
 //                tables: [[[cell]]], groups: [{ texts, images }],
+//                altImages: [{ title, description }] (images with alt text),
 //                wordArt: [string], lines,
 //                background, layoutBackground, masterBackground, theme }] }
 // A color is "#rrggbb", "theme:DARK1" (resolved through theme, default
@@ -1185,7 +1186,9 @@ function makeFormAppMock() {
 // title, subtitle, images with a box, texts, tables, word art, groups, the
 // other images, charts, videos, lines (z-order: later is on top). Only the
 // real API's getters exist; setters, the deck's name and everything else
-// are absent, so code that calls one throws a TypeError here. Every call is
+// are absent, so code that calls one throws a TypeError here. Every element
+// has the real PageElement.getTitle() and getDescription() (its alt text,
+// "" unless altImages sets it). Every call is
 // recorded in SlidesApp._calls ("deck.getSlides", "element.asShape",
 // "text.asString"…), so a test can hold the reader to a fixed list.
 function makeSlidesAppMock() {
@@ -1239,8 +1242,12 @@ function makeSlidesAppMock() {
       _box: o.box || { left: 0, top: 0, width: 100, height: 50 },
     };
   }
-  function element(type, inner, box) {
-    const o = Object.assign({ getPageElementType: rec('element.getPageElementType', () => type) }, geometry(box || (inner && inner._box)));
+  function element(type, inner, box, alt) {
+    const a = alt || {};
+    const o = Object.assign({ getPageElementType: rec('element.getPageElementType', () => type),
+      getTitle: rec('element.getTitle', () => (a.title === undefined ? '' : a.title)),
+      getDescription: rec('element.getDescription', () => (a.description === undefined ? '' : a.description)) },
+    geometry(box || (inner && inner._box)));
     if (type === 'SHAPE') o.asShape = rec('element.asShape', () => inner);
     if (type === 'GROUP') o.asGroup = rec('element.asGroup', () => inner);
     if (type === 'TABLE') o.asTable = rec('element.asTable', () => inner);
@@ -1262,6 +1269,7 @@ function makeSlidesAppMock() {
     (sp.wordArt || []).forEach((t) => out.push(element('WORD_ART', { getRenderedText: rec('wordArt.getRenderedText', () => t) })));
     (sp.groups || []).forEach((g) => out.push(element('GROUP', { getChildren: rec('group.getChildren', () => elements(g)) })));
     n(sp.images).forEach(() => out.push(element('IMAGE')));
+    (sp.altImages || []).forEach((alt) => out.push(element('IMAGE', null, null, alt)));
     n(sp.charts).forEach(() => out.push(element('SHEETS_CHART')));
     n(sp.videos).forEach(() => out.push(element('VIDEO')));
     n(sp.lines).forEach(() => out.push(element('LINE')));
