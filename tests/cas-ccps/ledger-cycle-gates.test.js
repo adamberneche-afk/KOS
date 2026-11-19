@@ -326,6 +326,59 @@ test('a submission found at night is still processed', () => {
   assert.deepEqual(r.ran, ['bridgeQueue']);
 });
 
+// Quiet hours' checks every LEDGER_CYCLE_QUIET_EVERY minutes (2026-11-19, the
+// operator: the idle cycle alone projected 83% of the daily trigger quota on
+// a day off). Between full cycles a minute returns at once.
+test('in quiet hours a full cycle every 5 minutes; the minutes between return at once; school hours every minute', () => {
+  const env = quietCase(Date.UTC(2026, 10, 19, 4, 0, 0), {}); // a weekday, 11 p.m. Eastern
+  assert.equal(env.run().quiet, 'night');
+  env.t.queue.appendRow([new Date(env.clock.ms), 's@example.invalid', 'f-1', 'C-1', '', 'PENDING']);
+  for (let m = 1; m <= 4; m++) {
+    const r = env.cycle(1);
+    assert.equal(r.skipped, 'quiet', 'minute ' + m);
+    assert.deepEqual(r.ran, []);
+  }
+  const full = env.cycle(1);
+  assert.equal(full.skipped, undefined, 'the fifth minute is a full cycle');
+  assert.deepEqual(full.ran, ['bridgeQueue'], 'the night\'s submission, five minutes on');
+
+  // 5:58 a.m.: a full cycle; 6:00 is school hours, so a full cycle though 5 minutes haven't passed.
+  const dawn = quietCase(Date.UTC(2026, 10, 19, 10, 58, 0), {});
+  assert.equal(dawn.run().quiet, 'night');
+  assert.equal(dawn.cycle(1).skipped, 'quiet', '5:59');
+  const six = dawn.cycle(1);
+  assert.equal(six.skipped, undefined);
+  assert.equal(six.quiet, '');
+  assert.equal(dawn.cycle(1).skipped, undefined, 'school hours: every minute');
+
+  // A Saturday: the next day starts with a full cycle.
+  const sat = quietCase(Date.UTC(2026, 10, 22, 4, 58, 0), {}); // 11:58 p.m. Saturday
+  assert.equal(sat.run().quiet, 'weekend');
+  assert.equal(sat.cycle(1).skipped, 'quiet');
+  assert.equal(sat.cycle(1).skipped, undefined, 'midnight: a new day, a full cycle');
+
+  // LEDGER_CYCLE_QUIET_EVERY = 1: every minute, as before; 2: every other one; out of range: 5.
+  const one = quietCase(Date.UTC(2026, 10, 19, 4, 0, 0), { LEDGER_CYCLE_QUIET_EVERY: '1' });
+  one.run();
+  assert.equal(one.cycle(1).skipped, undefined);
+  assert.equal(one.props.getProperty('LEDGER_CYCLE_QUIET_NEXT'), null);
+  const two = quietCase(Date.UTC(2026, 10, 19, 4, 0, 0), { LEDGER_CYCLE_QUIET_EVERY: '2' });
+  two.run();
+  assert.equal(two.cycle(1).skipped, 'quiet');
+  assert.equal(two.cycle(1).skipped, undefined);
+  const bad = quietCase(Date.UTC(2026, 10, 19, 4, 0, 0), { LEDGER_CYCLE_QUIET_EVERY: '0' });
+  bad.run();
+  assert.equal(bad.cycle(4).skipped, 'quiet');
+  assert.equal(bad.cycle(1).skipped, undefined);
+
+  // School hours never skip, and a garbled note runs the full cycle.
+  const day = quietCase(WED_10AM, {});
+  day.run();
+  assert.equal(day.cycle(1).skipped, undefined);
+  day.props.setProperty('LEDGER_CYCLE_QUIET_NEXT', 'not json');
+  assert.equal(day.cycle(1).skipped, undefined);
+});
+
 test('LEDGER_CYCLE_QUIET and LEDGER_CYCLE_BACKSTOP change the hours and the interval; off turns quiet hours off', () => {
   const at11pm = Date.UTC(2026, 10, 19, 4, 0, 0);
   assert.equal(quietCase(at11pm, { LEDGER_CYCLE_QUIET: 'off' }).run().quiet, '');
@@ -394,23 +447,25 @@ const usual = (base) => {
 };
 
 test('the projection: each part\'s usual time × how often the schedule runs it, with WARN over 50% and ALERT over 80%', () => {
-  // A school day (480 quiet minutes, backstop every 15):
+  // Checks every minute in quiet hours too (LEDGER_CYCLE_QUIET_EVERY = 1, as
+  // before 2026-11-19). A school day (480 quiet minutes, backstop every 15):
   //   the cycle's own 1,440 × 1 s = 1,440 s; the checks (1,440 − 96) × 1.5 s = 2,016 s;
   //   seven checked jobs at the backstop, 96 × 2 s × 7 = 1,344 s;
   //   four warm-up jobs every 5 min by day, 15 at night: (192 + 32) × 3 s × 4 = 2,688 s;
   //   the watchdog every 10 by day, 15 at night: (96 + 32) × 22 s = 2,816 s;
   //   10,304 s = 2.9 h, 48% of 6 h. A day off: 1,440 + 2,016 + 1,344 + 96 × 3 × 4 + 96 × 22 = 8,064 s = 2.2 h.
-  const p = projected(usual(1000));
+  const every1 = { LEDGER_CYCLE_QUIET_EVERY: '1' };
+  const p = projected(usual(1000), every1);
   assert.equal(p.level, '');
   assert.equal(p.schoolHours, 2.9);
   assert.equal(p.offHours, 2.2);
   assert.match(p.line, /^At this rate: about 2\.9 h a day \(48% of the 6 h\) on a school day, 2\.2 h \(37%\) on a day off/);
   // 2 s more of the cycle's own time a minute: 13,184 s = 3.7 h, 61%.
-  const warn = projected(usual(3000));
+  const warn = projected(usual(3000), every1);
   assert.equal(warn.level, 'WARN');
   assert.match(warn.line, /^WARN: At this rate: about 3\.7 h a day \(61% of the 6 h\)/);
   // 5 s more: 17,504 s = 4.9 h, 81%.
-  const alert = projected(usual(6000));
+  const alert = projected(usual(6000), every1);
   assert.equal(alert.level, 'ALERT');
   assert.match(alert.line, /^ALERT: At this rate: about 4\.9 h a day \(81% of the 6 h\)/);
   assert.match(alert.line, /every trigger here stops until tomorrow/);
@@ -418,6 +473,22 @@ test('the projection: each part\'s usual time × how often the schedule runs it,
   const off = projected(usual(1000), { LEDGER_CYCLE_GATES: 'off' });
   assert.equal(off.schoolHours, 7.8);
   assert.equal(off.level, 'ALERT');
+});
+
+test('the projection with quiet hours\' checks every 5 minutes (the default since 2026-11-19)', () => {
+  // A school day: full cycles 960 + 480 / 5 = 1,056; the cycle's own 1,056 × 1 s;
+  // the checks (1,056 − 96) × 1.5 s = 1,440 s; the jobs as before (1,344 + 2,688 + 2,816):
+  // 9,344 s = 2.6 h. A day off: 288 full cycles: 288 + 192 × 1.5 + 1,344 + 1,152 + 2,112 = 5,184 s = 1.4 h.
+  const p = projected(usual(1000));
+  assert.equal(p.schoolHours, 2.6);
+  assert.equal(p.offHours, 1.4);
+  // The 11-19 numbers' shape: about 5.6 s of the cycle's own and 7 s of checks a minute.
+  const live = usual(5600);
+  live._gates = { avg: 7000 };
+  const before = projected(live, { LEDGER_CYCLE_QUIET_EVERY: '1' });
+  const after = projected(live);
+  assert.ok(after.offHours < before.offHours / 2, before.offHours + ' -> ' + after.offHours);
+  assert.ok(after.schoolHours < before.schoolHours, before.schoolHours + ' -> ' + after.schoolHours);
 });
 
 test('the projection before a cycle with checks: the cycle\'s usual time × 1,440 (11-15: 14.5 s, 5.8 h, ALERT)', () => {

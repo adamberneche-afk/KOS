@@ -224,6 +224,8 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `LEDGER_CYCLE_JOBS` | via the constant LC_PROP_JOBS | "[]" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_LAST_RUN` | via the constant LC_PROP_LAST | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_QUIET` | via lcSetting_() | — | no | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_QUIET_EVERY` | via lcSetting_() | — | no | 64_LedgerCycle.js |
+| `LEDGER_CYCLE_QUIET_NEXT` | via the constant LC_PROP_QUIET_NEXT | "null" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_CYCLE_TIMING` | via the constant LC_PROP_TIMING | "{}" | 64_LedgerCycle.js | 64_LedgerCycle.js |
 | `LEDGER_RETENTION_YEARS` | direct | — | no | 10_AdminRecoveryPanel.js |
 | `M2_ENABLED` | direct | — | no | 22_LessonContextHandler.js, 23_StudentProfileManager.js, 24_WarmUpBridge.js, 25_WarmUpWriter.js, 33_ArtifactCompetencyBridge.js, 34c_OvernightHealth.js, 51_CourseYearBuilder.js |
@@ -434,7 +436,8 @@ Not resolved (the handler is a parameter or computed; read the code):
 A job with a check runs only when its check finds work, and the steps after a job that ran are
 checked again in the same run (`LC_CHAINS`). Every `LEDGER_CYCLE_BACKSTOP` minutes (default 15) the
 cycle runs every due job without checks. In quiet hours (`LEDGER_CYCLE_QUIET`; default 10 p.m. to
-6 a.m. New York time, weekends and days off) the jobs without a check wait for that backstop.
+6 a.m. New York time, weekends and days off) the jobs without a check wait for that backstop, and the
+cycle checks only every `LEDGER_CYCLE_QUIET_EVERY` minutes (default 5; the minutes between return at once).
 `LEDGER_CYCLE_GATES` = `off` turns the checks, chains and quiet hours off.
 
 | Job | Every (min) | Check |

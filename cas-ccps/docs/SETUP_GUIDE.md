@@ -278,7 +278,8 @@ The queue watchdog starts in dry run (`CAS_WATCHDOG_DRY_RUN`, reference
 §3.1); set it to `false` when you want it to release stuck rows.
 
 The cycle checks each job on the way to feedback before running it, holds
-the jobs without a check in quiet hours, and runs everything every 15
+the jobs without a check in quiet hours (when it checks only every 5
+minutes, `LEDGER_CYCLE_QUIET_EVERY`), and runs everything every 15
 minutes (reference §4, "The Ledger cycle"; `LEDGER_CYCLE_QUIET`,
 `LEDGER_CYCLE_BACKSTOP`, `LEDGER_CYCLE_GATES` in §3.1). Optional:
 `installLedgerChangeProbe()` logs whether Studio's writes fire an onChange

@@ -203,9 +203,12 @@ work; a job that ran makes the cycle check the steps after it at once
 (bridge → turnstile → FlowInput row; harvest → backprop → part unlock), so
 each stretch takes one cycle. In quiet hours (`LEDGER_CYCLE_QUIET`,
 default 10 p.m.–6 a.m. New York time, weekends and days off) the jobs
-without a check wait; every `LEDGER_CYCLE_BACKSTOP` minutes (default 15)
+without a check wait, and since 2026-11-19 the cycle checks only every
+`LEDGER_CYCLE_QUIET_EVERY` minutes (default 5; `1` is every minute; the
+minutes between return at once), so a submission at night waits up to that
+much longer; every `LEDGER_CYCLE_BACKSTOP` minutes (default 15)
 the cycle runs every due job without checks; `LEDGER_CYCLE_GATES` = `off`
-goes back to every job on its cadence. Those four settings work as a
+goes back to every job on its cadence. Those five settings work as a
 Script Property in the Central Ledger or a row of its `_CONFIG` tab (the
 property first; since 2026-11-15, read through the shared-config cache, no
 extra spreadsheet open), and `showSetupStatus()` says where each came from.

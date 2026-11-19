@@ -1164,3 +1164,25 @@ file name only the services its project's manifest lists. Not probed:
 `script.external_request` (the report itself uses it), `gmail.modify`.
 kos-personal and leader-hub have their own reportDeployVersion and are
 unchanged.
+
+## Quiet hours check every 5 minutes, 2026-11-19
+
+`reportEvaluationHealth()` on 11-19 projected the Ledger cycle at 6.5 h a
+day, 109% of the 6 h trigger quota every trigger under the account shares,
+and one cycle had run out of time. The operator slowed the warm-up jobs and
+the watchdog and set the backstop to 30 on the `_CONFIG` tab
+(`LEDGER_CYCLE_EVERY`, `LEDGER_CYCLE_BACKSTOP`): 95%. The rest was the idle
+cycle itself, about 12.5 s a minute (7 of it the checks), every minute of
+the day; a day off with no student still projected 83%.
+
+Approved by the operator that day: in quiet hours (10 p.m.–6 a.m., weekends,
+days off) a full cycle runs every `LEDGER_CYCLE_QUIET_EVERY` minutes
+(default 5; `1` is the old every minute). A full quiet cycle leaves
+`LEDGER_CYCLE_QUIET_NEXT` (when the next is due, the reason, the day, the
+window); a cycle before then, on the same day and at night still inside the
+window, returns before reading anything else. So the first minute of school
+hours and the first minute of a new day are full cycles, and a submission
+at night waits up to 5 minutes more. School hours are unchanged. The
+projection counts full cycles: the 11-19 shape (5.6 s own, 7 s checks)
+comes to about 4.4 h on a school day and 1.3 h on a day off. The minutes
+that return at once aren't timed.

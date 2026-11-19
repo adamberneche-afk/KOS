@@ -840,7 +840,8 @@ function buildReference(opts) {
         L.push('A job with a check runs only when its check finds work, and the steps after a job that ran are');
         L.push('checked again in the same run (`LC_CHAINS`). Every `LEDGER_CYCLE_BACKSTOP` minutes (default 15) the');
         L.push('cycle runs every due job without checks. In quiet hours (`LEDGER_CYCLE_QUIET`; default 10 p.m. to');
-        L.push('6 a.m. New York time, weekends and days off) the jobs without a check wait for that backstop.');
+        L.push('6 a.m. New York time, weekends and days off) the jobs without a check wait for that backstop, and the');
+        L.push('cycle checks only every `LEDGER_CYCLE_QUIET_EVERY` minutes (default 5; the minutes between return at once).');
         L.push('`LEDGER_CYCLE_GATES` = `off` turns the checks, chains and quiet hours off.');
         L.push('');
       }

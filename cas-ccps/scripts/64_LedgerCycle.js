@@ -152,9 +152,18 @@ const LC_FEEDBACK_PATH = ["bridgeQueue", "runStagingTurnstile", "buildFlowInputR
 //
 // QUIET HOURS (LEDGER_CYCLE_QUIET; default 10 p.m.–6 a.m. America/New_York,
 // weekends, and the days off: the NoSchoolDays tab and SCHOOL_DAYS_OFF,
-// 00's isSchoolDay_). The checks still run every minute, so a submission at
-// night is still processed; the jobs without a check (the warm-up jobs, the
+// 00's isSchoolDay_). The jobs without a check (the warm-up jobs, the
 // registration, the alignment backfill, the watchdog) wait for the backstop.
+// Since 2026-11-19 (the operator approved it that day) the checks run every
+// LEDGER_CYCLE_QUIET_EVERY minutes (default 5; 1 = every minute) instead of
+// every minute: an idle cycle cost about 12.5 s (its checks about 7, the
+// rest opening and reading), so the cycle alone projected 83% of the daily
+// trigger quota on a day off with no student. A full cycle in quiet hours
+// leaves LEDGER_CYCLE_QUIET_NEXT ({ next, reason, ymd, tz, from, to }); a
+// cycle before `next`, on the same day and (at night) still inside the
+// window, returns at once, reading nothing else. So a submission at night
+// waits up to that many minutes more; school hours are unchanged, and the
+// first minute after quiet hours end is a full cycle.
 //
 // THE BACKSTOP (LEDGER_CYCLE_BACKSTOP, minutes, default 15): that often the
 // cycle runs every due job without its check, so a signal a check missed
@@ -187,6 +196,9 @@ const LC_BACKSTOP_DEFAULT = 15;
 const LC_BACKSTOP_KEY = "_backstop"; // in LEDGER_CYCLE_LAST_RUN: when the cycle last ran without checks
 const LC_PROP_QUIET = "LEDGER_CYCLE_QUIET";
 const LC_QUIET_DEFAULT = { from: 22, to: 6, weekends: true, daysOff: true, tz: "America/New_York" };
+const LC_PROP_QUIET_EVERY = "LEDGER_CYCLE_QUIET_EVERY";
+const LC_QUIET_EVERY_DEFAULT = 5;
+const LC_PROP_QUIET_NEXT = "LEDGER_CYCLE_QUIET_NEXT";
 // Today's answer to "a day off?", read once a day: { day, off }.
 const LC_PROP_DAY = "LEDGER_CYCLE_DAY";
 // What a check remembers between cycles (the part unlock's "nothing changed
@@ -200,6 +212,8 @@ function runLedgerCycle() {
   const props = PropertiesService.getScriptProperties();
   _lcResolvedMemo_ = null; // the settings as they are now (lcSetting_)
   const started = Date.now();
+  // Quiet hours, between full cycles: return before anything else.
+  if (lcQuietSkip_(props, started)) return { ran: [], errors: [], skipped: "quiet" };
   if (!claimRunSlot_(LC_PROP_BUSY, LC_BUSY_MS)) {
     Logger.log("[LC] A cycle is still running; skipping this minute.");
     try {
@@ -227,6 +241,7 @@ function runLedgerCycle() {
     const quiet = gatesOn ? lcQuietNow_(props, started) : "";
     result.backstop = gatesOn && backstop;
     result.quiet = quiet;
+    lcNoteQuietNext_(props, started, quiet);
     if (gatesOn && backstop) last[LC_BACKSTOP_KEY] = started;
     const due = LC_JOBS
       .map(function (j, order) {
@@ -452,7 +467,7 @@ function lcGatesOn_(props) {
   return lcSetting_(props, LC_PROP_GATES).value.toLowerCase() !== "off";
 }
 
-// The cycle's four settings (LEDGER_CYCLE_EVERY, _GATES, _QUIET, _BACKSTOP),
+// The cycle's settings (LEDGER_CYCLE_EVERY, _GATES, _QUIET, _BACKSTOP; _QUIET_EVERY 11-19),
 // 2026-11-15: a Script Property here first, else the Central Ledger's _CONFIG
 // tab, like the other shared settings (00's SHARED_CONFIG_KEYS). They were
 // read only from Script Properties, so a value typed on the tab did nothing.
@@ -461,7 +476,7 @@ function lcGatesOn_(props) {
 // kept for the cycle (runLedgerCycle resets it): a cycle adds no
 // spreadsheet read for it, only on the cache's miss, which getConfig_()
 // would make anyway.
-const LC_SETTING_KEYS = [LC_PROP_EVERY, LC_PROP_GATES, LC_PROP_QUIET, LC_PROP_BACKSTOP];
+const LC_SETTING_KEYS = [LC_PROP_EVERY, LC_PROP_GATES, LC_PROP_QUIET, LC_PROP_BACKSTOP, LC_PROP_QUIET_EVERY];
 let _lcResolvedMemo_ = null;
 
 function lcSetting_(props, key) {
@@ -490,6 +505,52 @@ function lcBackstopMinutes_(props) {
   if (raw && Math.floor(n) === n && n >= 1 && n <= 60) return n;
   if (raw) Logger.log("[LC] " + LC_PROP_BACKSTOP + " isn't a whole number of minutes from 1 to 60; using " + LC_BACKSTOP_DEFAULT + ".");
   return LC_BACKSTOP_DEFAULT;
+}
+
+// LEDGER_CYCLE_QUIET_EVERY: whole minutes 1 to 60, else 5.
+function lcQuietEveryMinutes_(props) {
+  const raw = lcSetting_(props, LC_PROP_QUIET_EVERY).value;
+  const n = Number(raw);
+  if (raw && Math.floor(n) === n && n >= 1 && n <= 60) return n;
+  if (raw) Logger.log("[LC] " + LC_PROP_QUIET_EVERY + " isn't a whole number of minutes from 1 to 60; using " + LC_QUIET_EVERY_DEFAULT + ".");
+  return LC_QUIET_EVERY_DEFAULT;
+}
+
+// A full cycle: in quiet hours, when the next full one is due, and what
+// still has to hold for a cycle before then to return at once; outside
+// quiet hours (or with them every minute), nothing.
+function lcNoteQuietNext_(props, started, quiet) {
+  const every = quiet ? lcQuietEveryMinutes_(props) : 1;
+  if (every <= 1) { props.deleteProperty(LC_PROP_QUIET_NEXT); return; }
+  const q = lcQuietSettings_(props);
+  try {
+    props.setProperty(LC_PROP_QUIET_NEXT, JSON.stringify({
+      next: started + every * 60000 - LC_DUE_TOLERANCE_MS, reason: quiet,
+      ymd: Utilities.formatDate(new Date(started), q.tz, "yyyy-MM-dd"), tz: q.tz, from: q.from, to: q.to,
+    }));
+  } catch (e) {
+    props.deleteProperty(LC_PROP_QUIET_NEXT); // every minute, as before
+  }
+}
+
+// True when this minute is between full quiet-hours cycles: before `next`,
+// the same day, and at night still inside the window. Anything unreadable
+// runs the full cycle.
+function lcQuietSkip_(props, now) {
+  let k;
+  try { k = JSON.parse(props.getProperty(LC_PROP_QUIET_NEXT) || "null"); } catch (e) { return false; }
+  if (!k || !(now < Number(k.next))) return false;
+  try {
+    const s = Utilities.formatDate(new Date(now), k.tz, "yyyy-MM-dd HH").split(" ");
+    if (s[0] !== k.ymd) return false;
+    if (k.reason === "night") {
+      const hour = Number(s[1]);
+      if (!(k.from > k.to ? hour >= k.from || hour < k.to : hour >= k.from && hour < k.to)) return false;
+    }
+    return true;
+  } catch (e) {
+    return false;
+  }
 }
 
 /**
@@ -757,8 +818,9 @@ function lcGatesLine_(props) {
  * The cycle's daily trigger time at this rate (2026-11-15): each part's
  * usual time × how often today's schedule runs it, for a school day and a
  * day off. { line, level ("", "WARN", "ALERT"), schoolHours, offHours, pct }.
- * Parts: the cycle's own time every minute; the checks every minute but the
- * backstop's; each job with a check at the backstop; each job without one
+ * Parts: the cycle's own time at each full cycle (every minute, or every
+ * LEDGER_CYCLE_QUIET_EVERY in quiet hours); the checks at each full cycle
+ * but the backstop's; each job with a check at the backstop; each job without one
  * at its cadence, or in quiet hours at the slower of its cadence and the
  * backstop. A submission's own runs come on top. Before the first timed
  * cycle with checks, the cycle's usual time × 1,440 stands in.
@@ -770,14 +832,17 @@ function lcProjection_(props, timing) {
   const gatesOn = lcGatesOn_(props);
   const backstop = lcBackstopMinutes_(props);
   const q = lcQuietSettings_(props);
+  const quietEvery = gatesOn ? lcQuietEveryMinutes_(props) : 1;
   const everyOf = lcEveryOverrides_(props);
   let jobs = lcRecordedJobs_(props);
   if (!jobs.length) jobs = LC_JOBS.map(function (j) { return j.fn; });
   const split = !!timing[LC_TIMING_BASE];
   const daySeconds = function (quietMin) {
     if (!split) return 1440 * avg(LC_TIMING_CYCLE) / 1000;
-    let ms = 1440 * avg(LC_TIMING_BASE);
-    if (gatesOn) ms += (1440 - Math.floor(1440 / backstop)) * avg(LC_TIMING_GATES);
+    // Full cycles: every minute outside quiet hours, every quietEvery inside.
+    const full = (1440 - quietMin) + quietMin / quietEvery;
+    let ms = full * avg(LC_TIMING_BASE);
+    if (gatesOn) ms += Math.max(0, full - Math.floor(1440 / backstop)) * avg(LC_TIMING_GATES);
     LC_JOBS.forEach(function (j) {
       if (jobs.indexOf(j.fn) === -1) return;
       const every = everyOf[j.fn] || j.every;
