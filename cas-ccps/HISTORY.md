@@ -1263,3 +1263,21 @@ the teacher writes in, kept across remakes: the record for pacing.
 `tools/cas-ccps/render-agenda-slide.js` draws the same spec as a PNG in
 Chromium and reports any box whose text would spill; it was used to set the
 layout. Decks made before, one a day, are left where they are.
+
+## The lesson doc, audited, 2026-11-19
+
+The operator asked for an audit of the teacher's lesson doc (66) against
+what a teacher needs to support students. `meta/AUDIT_LESSON_DOC_2026-11-19.md`
+has the twelve findings. Built: the due date and links to the Teacher
+Dashboard and the agenda deck; **Parts** for a lesson in parts (each part's
+task, work type, Submit's checks in words, what opens it, what else it
+needs to show); **What the feedback checks** (the definition of done's
+lists, the teacher's own grading notes, which reached only Flow 2 before,
+and the passing rule in plain words); Class status's Not started and To
+revise columns and **Not shown yet** (each goal's count of checked files
+that haven't shown it, by their best check, most first; counts only); "The
+goals" for "Today's goals". A doc made before gets the two new sections on
+its next refresh, before Class status. Not built: supports and extensions
+(the lesson files hold none; curriculum to write), one place for daily
+notes (the agenda's speaker notes or the doc's), the rubric-tab gap behind a
+bare competency ID in Look-fors.

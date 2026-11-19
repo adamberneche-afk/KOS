@@ -578,8 +578,9 @@ the other teacher-level tabs.
 One row per lesson's teacher doc (2026-10-27): lesson key, doc ID and URL,
 when made and when its status was refreshed. The doc, in the teacher's
 *Lesson Plans* folder and shared with no one, holds curriculum and, under
-Class status, counts per period (docs made, shared, submitted, waiting,
-passed): no student name, account or file. Teacher-level; out of the
+Class status, counts per period (docs made, shared, not started,
+submitted, waiting, to revise, passed) and, per goal, how many checked
+files haven't shown it yet: no student name, account or file. Teacher-level; out of the
 retention schedule, like the other teacher-level tabs.
 
 ### AgendaDecks (S67) and the agenda decks

@@ -154,6 +154,12 @@ why this repo exists at all.
   system and direction documents. The README lists the sources and when to
   rebuild.
 
+- **`AUDIT_LESSON_DOC_2026-11-19.md`** — the teacher's lesson doc (66)
+  against what a teacher needs to support students: twelve findings. Built:
+  the due date and links, Parts (each part's task, Submit's checks, what
+  opens it), What the feedback checks (with the teacher's grading notes),
+  and Class status's Not started, To revise and Not shown yet. Not built:
+  supports and extensions (curriculum to write).
 - **`AUDIT_STUDENT_QUESTIONS_2026-11-17.md`** — every question a student
   can be shown (the reflection on Submit, the turn-in question: 2,179 of
   them) measured: a median of 44 words and up to 110, because each quoted a
