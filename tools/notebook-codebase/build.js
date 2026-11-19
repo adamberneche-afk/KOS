@@ -49,6 +49,7 @@ const ALWAYS_EXCLUDE = [
   /package-lock\.json$/,
   /^leader-hub\/student-leader-hub\.html$/,   // built from leader-hub/src/
   /^cas-ccps\/\.clasp-build\//,
+  /^cas-ccps\/scripts\/79b_CanvasCartridgeData\.js$/, // generated: the cartridges' XML, the lessons' text again
   /^meta\/notebook-codebase\//,                // this tool's own output
   /^meta\/notebook-context\/KOS_CONTEXT_.*\.md$/, // notebook-context's output (its GUIDE.md stays)
   /^kos-personal\/rtp-core-router\/PERSONA_.*\.md$/,                 // in the RTP notebook
