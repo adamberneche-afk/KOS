@@ -13,8 +13,9 @@
 //      order, its title (either title placeholder), the lines of every other
 //      text (text boxes, shapes, word art, table cells), its speaker notes,
 //      and how many images, charts linked from Google Sheets and videos it
-//      has. Never the deck's name (the copy is named after the student),
-//      never an image's content, never a write. A test holds every SlidesApp
+//      has, with each image's alt text (see below). Never the deck's name
+//      (the copy is named after the student), never an image's content,
+//      never a write. A test holds every SlidesApp
 //      call here to a fixed list of getters.
 //   2. runs the part's exact checks (slidesCheckReasons_, slideChecks in
 //      PARTS.json, 00's normalizeSlideChecks_). A failure is a plain-words
@@ -30,6 +31,12 @@
 // skips). What the reader can't judge: layout, an image's content, text
 // over a picture. That stays with Flow 2's reading of the snapshot and with
 // the teacher, who opens the deck.
+// An image's alt text (2026-11-18, the operator: informational, never a
+// check): Flow 2 can't see a deck's pictures (a Studio probe on 11-18: Ask
+// Gemini with the deck as its source answered that it could not), so the
+// snapshot carries each image's alt text, its title and description as the
+// student set them (Format options, then Alt text). An image without one is
+// listed as "(none)". No check reads it and Submit never stops for it.
 // =============================================================================
 
 // A snapshot longer than this is cut (a deck's text has no business being longer).
@@ -127,8 +134,10 @@ function _slOverlaps_(a, b) {
 }
 
 // The deck's structure, as plain data. Throws if the deck can't be opened.
-// { slides: [{ title, titleLines, lines, notes, images, charts, videos,
-//   contrast? }] }
+// { slides: [{ title, titleLines, lines, notes, images, imageAlts, charts,
+//   videos, contrast? }] }
+// imageAlts: one string per image, in the slide's order: its alt text (the
+// title and the description, joined when both are set and differ), or "".
 // lines: the slide's body text, one string per line, in the order the slide
 // lists its elements (titles excluded); titleLines: the title's lines.
 // checks (a part's slideChecks, or its JSON): with minContrast set, each
@@ -144,7 +153,7 @@ function readSlidesStructure_(presentationId, checks) {
   const colors = !!normalizeSlideChecks_(checks).minContrast;
   const out = { slides: [] };
   deck.getSlides().forEach(function (slide) {
-    const s = { title: "", titleLines: [], lines: [], notes: "", images: 0, charts: 0, videos: 0 };
+    const s = { title: "", titleLines: [], lines: [], notes: "", images: 0, imageAlts: [], charts: 0, videos: 0 };
     let scheme = null, pageBg = "", imagesBelow = [];
     if (colors) {
       scheme = tryRead(function () { return slide.getColorScheme(); }, null);
@@ -183,6 +192,7 @@ function readSlidesStructure_(presentationId, checks) {
       if (type === String(T.GROUP)) { el.asGroup().getChildren().forEach(visit); return; }
       if (type === String(T.IMAGE)) {
         s.images++;
+        s.imageAlts.push(_slImageAlt_(el, tryRead));
         if (colors) imagesBelow.push(tryRead(function () { return _slRect_(el); }, { left: 0, top: 0, width: 0, height: 0 }));
         return;
       }
@@ -224,6 +234,14 @@ function readSlidesStructure_(presentationId, checks) {
     out.slides.push(s);
   });
   return out;
+}
+
+// An image's alt text, as one line: its title and its description (the one
+// box Slides' Alt text dialog now shows), both when both are set and differ.
+function _slImageAlt_(el, tryRead) {
+  const parts = [tryRead(function () { return el.getTitle(); }, ""), tryRead(function () { return el.getDescription(); }, "")]
+    .map(function (t) { return _slLines_(t).join(" "); }).filter(Boolean);
+  return parts.filter(function (t, i) { return parts.indexOf(t) === i; }).join(" — ");
 }
 
 function _slPlural_(n, one, many) { return n + " " + (n === 1 ? one : (many || one + "s")); }
@@ -306,7 +324,11 @@ function slidesCheckReasons_(structure, checks) {
 // Every string the student wrote into the deck.
 function _slStudentStrings_(st) {
   const out = [];
-  (st.slides || []).forEach(function (s) { out.push(s.title, s.notes); (s.lines || []).forEach(function (l) { out.push(l); }); });
+  (st.slides || []).forEach(function (s) {
+    out.push(s.title, s.notes);
+    (s.lines || []).forEach(function (l) { out.push(l); });
+    (s.imageAlts || []).forEach(function (a) { out.push(a); });
+  });
   return out;
 }
 
@@ -328,11 +350,14 @@ function slidesSystemText_(structure) {
 function slidesSnapshotText_(structure) {
   const slides = structure.slides || [];
   const sum = function (k) { return slides.reduce(function (t, s) { return t + (s[k] || 0); }, 0); };
+  const withAlt = slides.reduce(function (t, s) { return t + (s.imageAlts || []).filter(Boolean).length; }, 0);
   const lines = [
     "GOOGLE SLIDES, as the deck was when the student pressed Submit",
-    "Slides: " + slides.length + " · images: " + sum("images") + " · charts from Google Sheets: " + sum("charts") +
-      (sum("videos") ? " · videos: " + sum("videos") : ""),
-    "Images, charts and videos are counted, not described; how the slides look is not in this copy.",
+    "Slides: " + slides.length + " · images: " + sum("images") + (sum("images") ? " (" + withAlt + " with alt text)" : "") +
+      " · charts from Google Sheets: " + sum("charts") + (sum("videos") ? " · videos: " + sum("videos") : ""),
+    "Images, charts and videos are counted, not seen; how the slides look is not in this copy. An image's alt " +
+      "text is the student's own description of it, given for context: it is not checked, and an image without " +
+      "one is not a fault.",
     ""
   ];
   slides.forEach(function (s, i) {
@@ -349,6 +374,10 @@ function slidesSnapshotText_(structure) {
     if (s.charts) has.push(_slPlural_(s.charts, "chart") + " from Google Sheets");
     if (s.videos) has.push(_slPlural_(s.videos, "video"));
     if (has.length) lines.push("  Also on the slide: " + has.join(", "));
+    if (s.images) {
+      lines.push("  Image alt text (for context, not checked):");
+      (s.imageAlts || []).forEach(function (a, k) { lines.push("    Image " + (k + 1) + ": " + (a ? _frQuote_(a) : "(none)")); });
+    }
     if (s.contrast) {
       const pairs = s.contrast.pairs || [];
       const low = pairs.length ? pairs.reduce(function (a, b) { return b.ratio < a.ratio ? b : a; }) : null;

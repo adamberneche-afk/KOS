@@ -817,10 +817,18 @@ other Slides part is marked, and a test holds that.
   (the Title or Centered title placeholder), the lines of every other text
   (text boxes, shapes, the subtitle, table cells, word art, text inside a
   group), its speaker notes, and how many images, charts linked from
-  Google Sheets and videos it has. Never the deck's name (the copy is named
-  after the student) and never an image's content; a test holds every
-  SlidesApp call to a list of getters. Probe (11-01): a chart pasted as a
-  picture is an image.
+  Google Sheets and videos it has, with each image's alt text (its title
+  and description). Never the deck's name (the copy is named after the
+  student) and never an image's content; a test holds every SlidesApp call
+  to a list of getters. Probe (11-01): a chart pasted as a picture is an
+  image.
+- **Alt text, for context only** (2026-11-18): Flow 2 can't see a deck's
+  pictures (a Studio probe on 11-18: Ask Gemini, given the deck itself as
+  its source, said it could not see them), so the snapshot lists each
+  image's alt text, or "(none)", marked as the student's own description,
+  not checked. No `slideChecks` key reads it and Submit never stops for it;
+  it is student text, so system text in it is refused at Submit like text
+  anywhere else in the deck.
 - **`slideChecks`** (`PARTS.json`, on a Slides part only; the builder
   refuses anything else; every key optional):
   - `minSlides`, `maxSlides`: whole numbers 1–100 (max at least min).
