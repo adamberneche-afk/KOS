@@ -354,6 +354,16 @@ function _ticHarvest_(ss, opts) {
       returns.getRange(i + 2, TCR.NOTE + 1).setNumberFormat("@").setValue(String(note || ""));
       returns.getRange(i + 2, TCR.HARVESTED_AT + 1).setValue(new Date());
     };
+    // Several answers' CheckIDs in one return: the flow used a Full list (00,
+    // 2026-11-19). Set aside: the answers stay PENDING_CHECK and the retry
+    // asks Studio again once the flow is fixed.
+    const many = flowKeyList_(id);
+    if (many.length) {
+      mark(TIC_SET_ASIDE, flowFullListNote_(many, "turn-in answer"));
+      result.setAside++;
+      result.fullList = (result.fullList || 0) + 1;
+      return;
+    }
     const parsed = ticParseReturn_(row[TCR.RAW_OUTPUT]);
 
     if (id && _ticSynthetic_(id)) {

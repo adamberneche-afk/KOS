@@ -312,6 +312,14 @@ canary, binding and liveness checks.
    temperature, token limits) is in the Module 2 wizard's dialogs and
    `15_StudioFlowPrompts.js`. Keep `checkFlow2Binding()` /
    `checkFlowBinding()` open while wiring each Flow's last step.
+   **Every flow, one row per run** (2026-11-19): Studio's starter can hand
+   a run several changed rows and binds a chip as a "Full list" by
+   default, which gives one answer for several rows. After the starter add
+   a **Repeat for each** over its rows, put the per-row steps inside it
+   (Flow 2: Extract, Ask Gemini, Update rows; Flows 3, 4 and 6: Ask Gemini
+   and the add-row), and pick every chip from the loop's current row. The
+   harvests set aside a return whose key holds several rows' keys
+   (`FULL_LIST`) and the overnight email counts it.
    Flow 2 needs four settings right (the `FlowBuildSpec` tab's `match`
    and `gemini` rows; added 2026-11-15):
    - **Update rows** finds its row by `StagingRowRef` (column B) = the
@@ -320,10 +328,9 @@ canary, binding and liveness checks.
    - **Ask Gemini** has no Drive file sources (no "specific sources", no
      Central Ledger). A source gives the model the whole spreadsheet, other
      students' rows included. The prompt carries everything.
-   - **One row per run.** Use the triggering row's single PromptText value,
-     or a Repeat for each over the rows, never a full list of PromptText:
-     Studio can group several changed rows into one run. Check this in
-     Studio; the exact variable names in its menus aren't verified here.
+   - **One row per run:** the Repeat for each above, with Extract inside
+     it too (it reads each row's own doc). A Full list shows up in Flow 2
+     as one answer in several rows, which the harvest holds back.
    - **The prompt box holds only the two variables** (PromptText and the
      extracted student text), no notes: anything there reaches the model on
      every run.

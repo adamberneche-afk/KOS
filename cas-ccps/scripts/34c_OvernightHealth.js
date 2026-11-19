@@ -204,6 +204,11 @@ function overnightHealth_(now, tz) {
   dup.problems.forEach(function (p) { problems.push(p); });
   if (dup.unreadable) unreadable = true;
 
+  // A flow that bound a Full list (00's flowKeyList_, 2026-11-19).
+  const fl = _onFullListReturns_(ss, now);
+  fl.problems.forEach(function (p) { problems.push(p); });
+  if (fl.unreadable) unreadable = true;
+
   // Flow 2's daily drift probe (39b, 2026-11-16): no answer, or a platform change.
   const drift = _onFlow2Drift_(ss, now);
   drift.problems.forEach(function (p) { problems.push(p); });
@@ -218,6 +223,37 @@ function overnightHealth_(now, tz) {
         : "None built for tomorrow.") + (rolloutDone ? " " + rolloutDone + "." : "");
   }
   return { problems: problems, allClear: allClear };
+}
+
+// Returns set aside in the last 24 hours because the flow bound a Full list
+// (one answer for several rows): the warm-up flows' and Flow 6's. Read from
+// the harvests' notes. { problems, unreadable }.
+function _onFullListReturns_(ss, now) {
+  try {
+    const book = ss || SpreadsheetApp.openById(getConfig_().ledgerSsId);
+    const count = {};
+    const scan = function (tab, width, at, flowOf, noteCol) {
+      const sheet = book.getSheetByName(tab);
+      if (!sheet || sheet.getLastRow() < 2) return;
+      sheet.getRange(2, 1, sheet.getLastRow() - 1, width).getValues().forEach(function (r) {
+        if (String(r[noteCol] || "").indexOf(FLOW_FULL_LIST_NOTE) !== 0) return;
+        const when = sheetTimestampMs_(r[at]);
+        if (!isNaN(when) && now.getTime() - when > ON_RETURN_WINDOW_MS) return;
+        const f = flowOf(r);
+        count[f] = (count[f] || 0) + 1;
+      });
+    };
+    scan("WarmUpFlowReturn", 7, 0, function (r) { return "Flow " + Number(r[1]); }, 6);
+    scan("TurnInCheckReturn", 5, 0, function () { return "Flow 6"; }, 4);
+    const keys = Object.keys(count).sort();
+    if (!keys.length) return { problems: [], unreadable: false };
+    return { problems: ["Studio flows that answered several rows at once (a Full list, not a Repeat for each), " +
+      "last 24 hours: " + keys.map(function (k) { return k + " " + count[k]; }).join(", ") +
+      ". Those answers were set aside. In Studio, put Ask Gemini and its write step inside a Repeat for each " +
+      "(the FlowBuildSpec tab's \"one row per run\" rows)."], unreadable: false };
+  } catch (e) {
+    return { problems: ["Full-list returns: unavailable (" + e.message + ")"], unreadable: true };
+  }
 }
 
 // The duplicate-write warning (37's flow2DuplicateWriteLine_): one line in

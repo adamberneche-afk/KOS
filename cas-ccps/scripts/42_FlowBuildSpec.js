@@ -208,12 +208,10 @@ function _fbsAppendFlow2_(rows) {
     "likely way an evaluation picks up another lesson, and a FERPA exposure. The prompt carries " +
     "everything the evaluation needs."]);
   rows.push(["Flow 2", "gemini", "", "", "one row per run",
-    "the Flow", "Each run evaluates exactly one FlowInput row. Studio's sheet starter can group " +
-    "several changed rows into one run; a \"full list\" of PromptText then holds more than one " +
-    "row's prompt, and Update rows can write one answer into several rows. Use the triggering " +
-    "row's single PromptText value, or a Repeat for each over the rows with Ask Gemini and " +
-    "Update rows inside it. Check this in Studio: the variable names its menus show are not " +
-    "verified from here."]);
+    "the Flow", "Each run evaluates exactly one FlowInput row. " + FBS_ONE_ROW_PER_RUN +
+    " Inside the loop: Extract (it reads each row's own doc), Ask Gemini (PromptText and the " +
+    "extracted text) and Update rows (StagingRowRef). For Flow 2 a Full list shows up as one answer " +
+    "in several rows, which the harvest holds back (Flow2Duplicates)."]);
   rows.push(["Flow 2", "gemini", "", "", "prompt",
     "the Flow", "The prompt box holds only the two variables: PromptText, and the student text " +
     "from the Extract step. No notes or settings reminders (temperature, token limits): " +
@@ -238,6 +236,14 @@ function _fbsAppendFlow2_(rows) {
 
 // Flows 3, 4 and 5 — one materialized input tab each, all three returning
 // through one shared tab.
+// Every flow's Ask Gemini step: one row per run (2026-11-19, the operator:
+// Studio binds a chip as a "Full list" by default).
+const FBS_ONE_ROW_PER_RUN = "Studio's starter can hand one run several changed rows, and binds a chip as a " +
+  "\"Full list\" by default: one answer for several rows' prompts. After the starter, add a Repeat for " +
+  "each over its rows, put the per-row steps inside it, and pick every chip from the loop's current " +
+  "row, never \"Full list\". The harvest sets aside a return whose key holds several rows' keys " +
+  "(FULL_LIST) and the overnight email counts it.";
+
 function _fbsAppendWarmUpFlows_(rows) {
   // Flow 5 (the bridge) is RETIRED, merged into Flow 3 (2026-11-01): one row
   // says so, and nothing is listed to build.
@@ -274,6 +280,8 @@ function _fbsAppendWarmUpFlows_(rows) {
     });
     rows.push([label, "prompt", FLOW_PROMPT_TAB, "", spec.prompt, "40_FlowPrompts.js",
       "Alternative to the PromptText chip above."]);
+    rows.push([label, "gemini", "", "", "one row per run", "the Flow", FBS_ONE_ROW_PER_RUN +
+      " Inside the loop: Ask Gemini (PromptText) and the add-row to " + WFB_RETURN_TAB + " (QueueID)."]);
   });
 
   rows.push(["Flows 3/4", "narrative", "", "", "",
@@ -338,6 +346,8 @@ function _fbsAppendFlow6_(rows) {
     rows.push(["Flow 6", flowWrites ? "write" : "leave empty", TIC_RETURN_TAB, i + 1, h,
       flowWrites ? "the Flow" : "the harvest", note]);
   });
+  rows.push(["Flow 6", "gemini", "", "", "one row per run", "the Flow", FBS_ONE_ROW_PER_RUN +
+    " Inside the loop: Ask Gemini (PromptText) and the add-row to " + TIC_RETURN_TAB + " (CheckID)."]);
   rows.push(["Flow 6", "prompt", FLOW_PROMPT_TAB, "", "FLOW_6", "40_FlowPrompts.js",
     "Already in the PromptText chip above; the FlowPrompts row is for reading it."]);
   rows.push(["Flow 6", "verify", TIC_RETURN_TAB, "", "", "72_TurnInCheckFlow.js",
