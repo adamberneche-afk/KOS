@@ -33,7 +33,7 @@
 > [`archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md`](../archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md); what is live now, and the operator's queue, are in
 > [`archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md`](../archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md).
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-11-18.md`](../meta/HANDOFF_2026-11-18.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-11-19.md`](../meta/HANDOFF_2026-11-19.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
