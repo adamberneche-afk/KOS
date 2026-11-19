@@ -1137,3 +1137,30 @@ the job ran. CAS had no due dates at all.
 - 00 calls no Session (a project that loads it has no scope for it), so the
   reader takes the time zone from its caller.
 - Tests: `due-dates`, `student-dashboard-demo`, `student-context-aggregator`.
+
+## reportDeployVersion checks the permissions, 2026-11-19
+
+A student's Slides Submit said "The system can't open your slides right
+now" (`SLIDES_UNREADABLE`). The Student Dashboard's manifest had listed
+`presentations` since 11-14, but the deploying account had never granted
+it, and running `reportDeployVersion` in the editor brought no prompt, so
+the documented step ("run it once and approve") looked done. A temporary
+function calling the reader from the editor got "You do not have
+permission to call SlidesApp.openById"; removing the project's access at
+myaccount.google.com/connections and running it again brought the full
+prompt and fixed it.
+
+Now `_reportDeployVersion_` (00) first tries each scope the project's
+manifest lists (`DEPLOY_PROJECT_SCOPES`, a test holds it equal to the
+manifests) with a call that fails "You do not have permission to call …"
+only when that scope isn't granted: an open of an ID that doesn't exist,
+`MailApp.getRemainingDailyQuota()`, `ScriptApp.getProjectTriggers()`. It
+logs "Permissions OK" or what is missing; after reporting the version it
+throws naming the missing ones and the fix, so the editor run goes red
+and the 6-hour trigger's failure email says so. The services are found
+by name (`globalThis`) because 00 is in every project and gas-lint lets a
+file name only the services its project's manifest lists. Not probed:
+`userinfo.email` (Session gives "" instead of failing),
+`script.external_request` (the report itself uses it), `gmail.modify`.
+kos-personal and leader-hub have their own reportDeployVersion and are
+unchanged.

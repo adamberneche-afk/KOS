@@ -2268,7 +2268,7 @@ function _dashWorkChecks_(cfg, fileId, configId, type) {
   } catch (e) {
     // A permission message here means the deploying account hasn't approved
     // the forms or presentations scope since it was pushed (cas-ccps/README.md,
-    // work types).
+    // work types). reportDeployVersion (49) names a missing one (11-19).
     Logger.log("submitMyWork: couldn't open the " + type + " for ConfigID " + configId + ": " + e.message);
     dashRecordFailure_(cfg, reader.code + "_UNREADABLE");
     return { ok: false, error: reader.code + "_UNREADABLE" };
