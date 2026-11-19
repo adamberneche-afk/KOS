@@ -1166,6 +1166,20 @@ function wfbHarvestUnderLock_(result) {
     const raw = String(row[WFB_RET.RAW_OUTPUT] || "");
     const attempts = Number(row[WFB_RET.ATTEMPTS] || 0) + 1;
 
+    // Several jobs' QueueIDs in one return: the flow used a Full list (00,
+    // 2026-11-19). Set aside, never applied: one answer can't be split among
+    // several students. No return carries their own QueueID, so
+    // wfbRetryStaleInputs_ asks Studio again for each (at most
+    // WFB_MAX_INPUT_RETRIES times), one row each once the flow is fixed.
+    const many = flowKeyList_(queueId);
+    if (many.length) {
+      wfbMarkReturn_(returns, sheetRow, "NEEDS_ATTENTION", flowFullListNote_(many, "warm-up job"), WFB_MAX_ATTEMPTS);
+      result.attention++;
+      result.fullList = (result.fullList || 0) + 1;
+      Logger.log("[WFB] Flow " + flow + " return set aside: " + flowFullListNote_(many, "warm-up job"));
+      continue;
+    }
+
     if (!queueId || [3, 4, 5].indexOf(flow) === -1) {
       wfbMarkReturn_(returns, sheetRow, "FAILED", "Missing QueueID or unknown Flow " + flow, WFB_MAX_ATTEMPTS);
       result.failed++;

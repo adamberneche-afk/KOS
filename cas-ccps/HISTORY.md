@@ -1028,3 +1028,33 @@ Built instead, at the operator's word (informational, not mandatory):
 - The sandbox's fake SlidesApp gives every element `getTitle()` and
   `getDescription()`, and `altImages` in a deck spec.
 - Tests: `slides-reader`.
+
+## Every Studio flow, one row per run, 2026-11-19
+
+The operator found that Studio binds a flow's chips as a "Full list" by
+default: when the starter hands a run several changed rows, Ask Gemini gets
+all their prompts and gives one answer, written back for all of them. The
+11-18 vision probe showed it (one answer, "3 rows updated"). In Flow 2 the
+duplicate-write guard (`Flow2Duplicates`, 11-15) held such copies back; in
+the warm-up flows and Flow 6 the return came back under a key like
+"WUQ-a, WUQ-b", matched no row, and was retried as an unknown key until it
+failed, so those warm-ups and turn-in answers were silently never answered.
+
+The fix is in Studio: a Repeat for each after each flow's starter, the
+per-row steps inside it, every chip the looped row's own value. The code
+side:
+
+- `flowKeyList_` (00) tells a key cell holding several rows' keys (comma,
+  space, newline or bracketed list) from one key; `flowFullListNote_` is
+  the note.
+- The warm-up harvest (41) marks such a return NEEDS_ATTENTION with the
+  `FULL_LIST` note and applies nothing; no return carries each job's own
+  QueueID, so `wfbRetryStaleInputs_` sends each job again. The turn-in
+  harvest (72) marks it SET_ASIDE; the answers stay PENDING_CHECK and are
+  sent again. Both count it (`fullList`).
+- The overnight email (34c) names the flows that did it in the last 24
+  hours, with the fix.
+- The `FlowBuildSpec` tab has a "one row per run" row for Flows 2, 3, 4
+  and 6, naming the steps that go inside the loop; the setup guide and
+  `TURN_IN_CHECK_FLOW.md` say the same.
+- Tests: `flow-full-list`.

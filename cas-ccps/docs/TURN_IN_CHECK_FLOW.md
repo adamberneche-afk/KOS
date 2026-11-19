@@ -26,17 +26,21 @@ copy from there if this page and the tab ever differ.
 1. **Starter:** *When a row is added or changed* on the Central Ledger,
    sheet `TurnInCheckInput`, with the condition `Status` (column C) is
    `READY`. One condition only.
-2. **Ask Gemini:** instructions = the `@trigger.PromptText` chip, and
+2. **Repeat for each** over the starter's rows (2026-11-19): steps 3 and 4
+   go inside it, and every chip below is the loop's current row, never a
+   "Full list". With a Full list, one answer covers several students'
+   answers; the harvest sets it aside (`FULL_LIST`) and gives no code.
+3. **Ask Gemini:** instructions = the looped row's `PromptText` chip, and
    nothing else. Give the step **no** Drive or Sheets sources: the chip holds
    the whole prompt, and a source would let Gemini read the whole Central
    Ledger (the 2026-10-21 lesson from Flows 3/4).
-3. **Add a row** to the Central Ledger, sheet `TurnInCheckReturn`:
+4. **Add a row** to the Central Ledger, sheet `TurnInCheckReturn`:
    - `ReturnedAt` (A) = Now
-   - `CheckID` (B) = `@trigger.CheckID`
+   - `CheckID` (B) = the looped row's `CheckID`
    - `RawOutput` (C) = the Ask Gemini step's output, unchanged
    - `HarvestStatus`, `Note`, `HarvestedAt` (D–F): leave empty. The harvest
      writes them.
-4. Turn the flow on. Run `installTurnInCheckFixture()`: it writes one
+5. Turn the flow on. Run `installTurnInCheckFixture()`: it writes one
    synthetic `READY` row (no student) for the flow to answer.
 
 ## Checking it (in order)

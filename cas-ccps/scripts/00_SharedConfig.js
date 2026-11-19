@@ -1206,6 +1206,31 @@ function currentTerm_(now) {
 // year, so a student enrolled in MP1 is still enrolled in MP2: the marking
 // period only labels the row. Terms with no readable year compare exactly;
 // a blank on either side matches, as before.
+// ---------------------------------------------------------------------------
+// A Studio flow's key cell holding several rows' keys (2026-11-19). Studio's
+// sheet starter can hand a run several changed rows, and a chip bound as a
+// "Full list" then holds all of them: one Ask Gemini answer for several
+// prompts, written back under a key like "WUQ-a, WUQ-b". The fix is in Studio:
+// Ask Gemini and the write step inside a Repeat for each, each chip the
+// looped row's own value. The harvests (41, 72) set such a return aside with
+// FLOW_FULL_LIST_NOTE instead of retrying it as an unknown key, and 34c counts
+// it. A key here (QueueID, CheckID) never has spaces, commas or brackets.
+// Returns the keys found when there are two or more, else [].
+// ---------------------------------------------------------------------------
+const FLOW_FULL_LIST_NOTE = "FULL_LIST";
+function flowKeyList_(value) {
+  const t = String(value === null || value === undefined ? "" : value).trim();
+  if (!/[\s,;"'\[\]]/.test(t)) return [];
+  const keys = t.split(/[\s,;"'\[\]]+/).filter(Boolean);
+  return keys.length > 1 ? keys : [];
+}
+
+// The note a harvest writes on such a return.
+function flowFullListNote_(keys, what) {
+  return FLOW_FULL_LIST_NOTE + ": one answer for " + keys.length + " " + what + "s (the flow bound a Full list). " +
+    "In Studio, put Ask Gemini and its write step inside a Repeat for each, every chip the looped row's own value.";
+}
+
 function sameSchoolYearTerm_(rowTerm, currentTerm) {
   const a = String(rowTerm || "").trim();
   const b = String(currentTerm || "").trim();
