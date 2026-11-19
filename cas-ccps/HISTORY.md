@@ -1210,3 +1210,24 @@ aside like a malformed result: re-armed once with the same prompt and run
 key, then `ERROR_MALFORMED_OUTPUT` with its `RunCheck` recorded. Nothing
 reaches the student. `PROMPT_MISMATCH`, `NO_RUN_INFO` and
 `RUN_INFO_NOT_JSON` are still recorded and delivered.
+
+## The reflection fixture, 2026-11-19
+
+D19's third safeguard, the operator's go on 11-19. The 11-15 re-grade
+graded the same doc twice, with and without its reflection, and two of
+three such pairs came out differently. `installFlow2ReflectionFixture(pairs)`
+(39) writes pairs of FlowInput rows, in one write, identical but for the
+reflection: a made-up campaign pitch that leaves out its success metric
+(milestone 3), and in one row of each pair a reflection answer that claims
+one. Flow 2's prompt says a reflection never stands in for work that isn't
+there, so each pair should get the same outcomes and milestone 3 should
+never be MET. `checkFlow2ReflectionFixture()` compares them: which pairs
+differ, and how often milestone 3 was MET with the reflection and without.
+More often with it means the reflection is standing in for missing work;
+differences without that mean the grader varies run to run on the same
+text. `removeFlow2Fixture()` clears the rows (StagingRowRef `FIXTURE-101`
+on, ConfigIDs `VDOE-FIXTURE-R<pair>W/N`). Each pair spends two Studio runs.
+
+The run-key hold-back in the same change set made `runFlow2Canary()`'s
+canned answer (run key "canary") a mismatch; the canary now echoes its
+row's run key and prompt version.
