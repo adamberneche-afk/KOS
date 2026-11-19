@@ -1326,6 +1326,27 @@ new course shell, the next term, a new teacher's install). A later re-import
 into a course whose assignments were switched must be built with the same
 `--turn-in`, or it puts them back to Website URL.
 
+**The week's cartridge, with due dates (2026-11-19).** Lessons were
+opening before their Canvas assignment was posted, and there is no Canvas
+API to post them. `buildWeeklyCanvasCartridge()` (79, Central Ledger;
+`installWeeklyCanvasCartridge()` runs it Fridays about 2 p.m.,
+`previewWeeklyCanvasCartridge()` writes nothing) makes one cartridge per
+course, `Canvas <course> week of <date>.imscc` in the teacher folder, with
+each lesson starting in the next 7 days (LessonSchedule, not held). Import
+it as above. Each assignment is the full cartridge's, generated into
+`79b_CanvasCartridgeData.js` by the same builder (`--check` covers it), as
+a text entry when `TURN_IN_CODE_COURSES` covers the lesson, else Website
+URL, plus Canvas's own settings block inside it (`<extensions><assignment>`,
+which Canvas's Common Cartridge importer reads; from Canvas's source,
+2026-11-19): **published**, 100 points, the submission type and the **due
+date**, 11:59 p.m. on the school day before the course's next lesson starts
+(none for the last dated lesson), in UTC. A lesson already in its course's
+newest gradebook export is left out, since a re-import duplicates, and the
+log lists it with the due date to set by hand. Not yet tried: an import
+into a real Canvas course (do the first one in a sandbox course). The
+nightly rollout's "Not on Canvas" warning (above) names a lesson the
+cartridge would add.
+
 Flow 2's Apps Script half has a self-provisioning canary
 (`runFlow2Canary()` in `35_FlowPreflightAndCanary.js`) that stubs Studio out
 deliberately — it verifies the code path, not the flow.
