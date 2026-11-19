@@ -1281,3 +1281,16 @@ its next refresh, before Class status. Not built: supports and extensions
 (the lesson files hold none; curriculum to write), one place for daily
 notes (the agenda's speaker notes or the doc's), the rubric-tab gap behind a
 bare competency ID in Look-fors.
+
+Later the same day the operator asked for both courses on the same slide.
+The deck is now one per school year for the teacher ("Agenda — 2026–27";
+`AgendaDecks` rows say `all`), and a day's slide holds every course that
+meets: with two, a column each (its lesson and day, its plan with each
+period's minutes, its first two learning targets) under a date-and-schedule
+header, with the bell schedule (each course's periods marked) and the
+announcements on the right (`_agSpecMany_`). A day with one course keeps the
+one-course layout. Either course's Today's agenda makes the same slide, and
+the nightly rollout makes each day once. A course whose periods don't meet
+that day (an odd-day period on an even date) isn't on it. The renderer
+fixed its line height to follow each paragraph's own size, and the fitting
+estimate now weighs capitals, lower case and spaces separately.

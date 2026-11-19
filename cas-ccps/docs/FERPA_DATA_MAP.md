@@ -585,8 +585,8 @@ retention schedule, like the other teacher-level tabs.
 
 ### AgendaDecks (S67) and the agenda decks
 One row per course per day: course, date, deck ID and URL, when made, the
-day's slide ID. The deck (one per course per school year since 2026-11-19,
-a slide a day), in the teacher's *Agendas* folder and shared with no one
+day's slide ID. The deck (one per school year since 2026-11-19, a slide a
+day with every course that meets), in the teacher's *Agendas* folder and shared with no one
 until the teacher projects or shares it, holds curriculum and school
 information only (the lesson, its goals, the itinerary, the periods
 meeting, the bell schedule, due dates, the teacher's announcements and

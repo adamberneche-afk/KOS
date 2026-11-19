@@ -4,9 +4,9 @@
 // Google: the same layout data the Apps Script draws on the slide, as HTML
 // in points, then a PNG through the pre-installed Playwright Chromium.
 //
-//   node tools/cas-ccps/render-agenda-slide.js <lesson key> <yyyy-mm-dd> <periods> [out.png]
-//     e.g. 8177-product-pitch-financial-analysis 2026-11-19 4  /tmp/agenda.png
-//          8175-L11 2026-11-23 1,3-Odd
+//   node tools/cas-ccps/render-agenda-slide.js <yyyy-mm-dd> <lesson key>=<periods> [<lesson key>=<periods> ...] [out.png]
+//     e.g. 2026-11-19 8177-product-pitch-financial-analysis=4 /tmp/agenda.png
+//          2026-11-23 8175-L11=1,3-Odd 8177-product-pitch-financial-analysis=4   (both courses on one slide)
 //   --html     write the HTML only (no browser)
 //   --announce "text"   an announcement (repeatable)
 //
@@ -32,7 +32,8 @@ function specHtml(spec) {
   const els = spec.elements.map((e, i) => {
     const box = `left:${e.x}pt;top:${e.y}pt;width:${e.w}pt;height:${e.h}pt`;
     if (e.kind === 'rect') return `<div class="r" style="${box};background:${e.fill}"></div>`;
-    const paras = e.paras.map((p) => '<p>' + p.map((r) =>
+    // The line's height follows its largest run, as in Slides (not the page's default font size).
+    const paras = e.paras.map((p) => `<p style="font-size:${Math.max(...p.map((r) => r.size))}pt">` + p.map((r) =>
       `<span style="font-size:${r.size}pt;color:${r.color || '#202124'};font-weight:${r.bold ? 700 : 400};font-style:${r.italic ? 'italic' : 'normal'}">${esc(r.t)}</span>`
     ).join('') + '</p>').join('');
     return `<div class="t" data-i="${i}" style="${box};text-align:${e.align === 'right' ? 'right' : e.align === 'center' ? 'center' : 'left'};` +
@@ -47,6 +48,20 @@ body{margin:0;background:#888}
 </style></head><body><div class="slide">
 ${els}
 </div></body></html>`;
+}
+
+// The slide's data for a day: each course's lesson, as 67 builds it from the
+// plan; one course alone, or several on one slide. lessons: [{ key, periods }].
+function sampleDay(x, ymd, lessons, announcements) {
+  const one = lessons.map((l) => sampleData(x, l.key, ymd, l.periods, announcements));
+  if (one.length === 1) return one[0];
+  const schedule = x.bellScheduleFor_(ymd, {});
+  return {
+    dateLabel: one[0].dateLabel, scheduleLabel: one[0].scheduleLabel,
+    bell: x._agBellLines_(schedule, [].concat(...lessons.map((l) => l.periods.map((p) => ({ period: p, label: l.key.split('-')[0] + ' P' + p }))))),
+    announcements, due: one.map((d) => d.due[1]).concat(['Due tonight, 11:59 p.m.: L05 The Previous Lesson']).reverse(),
+    courses: one.map((d, i) => Object.assign({ code: lessons[i].key.split('-')[0] }, d)),
+  };
 }
 
 // The slide's data for a lesson on a day, as 67 builds it from the plan.
@@ -110,15 +125,17 @@ if (require.main === module) {
     else if (args[i] === '--announce') announce.push(args[++i]);
     else pos.push(args[i]);
   }
-  const [key, ymd, periods, outArg] = pos;
-  if (!key || !/^\d{4}-\d{2}-\d{2}$/.test(ymd || '') || !periods) {
-    console.error('usage: render-agenda-slide.js <lesson key> <yyyy-mm-dd> <periods, e.g. 1,3-Odd> [out.png] [--html] [--announce "text"]');
+  const ymd = pos[0];
+  const lessons = pos.slice(1).filter((a) => a.includes('=')).map((a) => ({ key: a.split('=')[0], periods: a.split('=')[1].split(',') }));
+  const outArg = pos.slice(1).find((a) => !a.includes('='));
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(ymd || '') || !lessons.length) {
+    console.error('usage: render-agenda-slide.js <yyyy-mm-dd> <lesson key>=<periods, e.g. 1,3-Odd> [more lessons] [out.png] [--html] [--announce "text"]');
     process.exit(2);
   }
   const x = loadSpec();
-  const spec = x.agendaSlideSpec_(sampleData(x, key, ymd, periods.split(','), announce));
+  const spec = x.agendaSlideSpec_(sampleDay(x, ymd, lessons, announce));
   const html = specHtml(spec);
-  const out = outArg || path.join(process.cwd(), 'agenda-' + key + '-' + ymd + (htmlOnly ? '.html' : '.png'));
+  const out = outArg || path.join(process.cwd(), 'agenda-' + ymd + (htmlOnly ? '.html' : '.png'));
   if (htmlOnly) {
     fs.writeFileSync(out, html);
     console.log('wrote ' + out);
@@ -131,4 +148,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { specHtml, sampleData, loadSpec };
+module.exports = { specHtml, sampleData, sampleDay, loadSpec };

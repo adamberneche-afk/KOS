@@ -1,7 +1,7 @@
 'use strict';
 // 67's agenda (archive/2026-27-Q1/meta/SPRINT_LESSON_DOCS_2026-11.md; one
-// slide a day since 2026-11-19, the operator): one deck per course per school
-// year, a slide per day newest first, everything on it (the plan with each
+// slide a day since 2026-11-19, the operator, with every course that meets
+// on it): one deck per school year, a slide per day newest first, everything on it (the plan with each
 // period's minutes, read from the lesson doc so the teacher's edits carry in,
 // the bell schedule, what's due and the announcements, the learning
 // targets); remade in place, keeping the teacher's speaker notes.
@@ -110,7 +110,7 @@ function load() {
 
 
 
-const yearDeck = (decks) => Object.values(decks).find((d) => d.title === 'Agenda — 8175 — 2026–27');
+const yearDeck = (decks) => Object.values(decks).find((d) => d.title === 'Agenda — 2026–27');
 
 test('one deck a year, one slide a day: the plan with each period\'s minutes from the lesson doc, the bell, targets, notes', () => {
   const { exported, sandbox, ss, decks } = load();
@@ -119,7 +119,7 @@ test('one deck a year, one slide a day: the plan with each period\'s minutes fro
   assert.equal(res.success, true);
   assert.equal(res.created, true);
   const deck = yearDeck(decks);
-  assert.ok(deck, 'the course\'s deck for the school year');
+  assert.ok(deck, 'the teacher\'s deck for the school year');
   assert.equal(deck.slides.length, 1, 'the new deck\'s blank slide removed');
   const t = deck.slides[0].text();
   assert.match(t, /^L06 · SKILL DEVELOPMENT PLAN/m);
@@ -135,13 +135,14 @@ test('one deck a year, one slide a day: the plan with each period\'s minutes fro
   assert.match(t, /^Learning targets$/m);
   assert.match(t, /I can plan to grow professionally/);
   const notes = deck.slides[0].notes.asString();
-  assert.match(notes, /^Today's plan, in detail:\n• Warm-up/);
+  assert.match(notes, /^L06 SKILL DEVELOPMENT PLAN.*: today's plan, in detail:\n• Warm-up/);
   assert.match(notes, /YOUR NOTES \(kept when this slide is remade\):\nHow did today go\?/);
   assert.match(res.deckUrl, /#slide=id\.slide-\d+$/, 'the link opens at the day');
   assert.equal(sandbox.DriveApp.getFileById(deck.getId()).getParents().next().getName(), 'Agendas');
   const reg = ss.getSheetByName('AgendaDecks').getDataRange().getValues();
   assert.equal(reg[0][5], 'slide_id');
-  assert.deepEqual([reg[1][0], reg[1][1], reg[1][5]], ['8175', '2026-10-28', deck.slides[0].id]);
+  assert.deepEqual([reg[1][0], reg[1][1], reg[1][5]], ['all', '2026-10-28', deck.slides[0].id]);
+  assert.deepEqual(res.courses, ['8175'], 'only 8175 is dated: its own layout');
 });
 
 test('a new day goes on top of the same deck; remaking a day replaces its slide and keeps the teacher\'s notes', () => {
@@ -227,4 +228,29 @@ test('the renderer draws the same spec: a box per element, in points', () => {
   assert.match(html, /width:720pt;height:405pt/);
   assert.match(html, /Picture day Friday\./);
   assert.match(html, /4th {2}1:30–3:00 {2}· P4/, 'Schedule B on a Thursday; period 4 marked');
+});
+
+
+test('both courses on the same slide: a column each, the bell marking each course\'s periods; either course\'s button makes the one slide', () => {
+  const { exported, ss, decks } = load();
+  ss.getSheetByName('LessonSchedule').appendRow(['8177', '8177-product-pitch-financial-analysis', 'L06', '2026-10-26', '', '']);
+  const res = exported.makeAgendaDeck_('8175', '2026-10-29'); // odd: 8175 P1 and P3-Odd, 8177 P4
+  assert.equal(res.success, true);
+  assert.deepEqual(res.courses, ['8175', '8177']);
+  const deck = yearDeck(decks);
+  assert.equal(deck.slides.length, 1);
+  const t = deck.slides[0].text();
+  assert.match(t, /^Thursday, October 29$/m);
+  assert.match(t, /^8175\s+Day 1/m);
+  assert.match(t, /^8177\s+Day \d+/m);
+  assert.match(t, /The Venue Buyer's Product Pitch/);
+  assert.match(t, /· 8175 P1/);
+  assert.match(t, /· 8175 P3-Odd/);
+  assert.match(t, /· 8177 P4/);
+  assert.equal((t.match(/^Learning targets$/gm) || []).length, 2, 'each course\'s own');
+  assert.match(deck.slides[0].notes.asString(), /^8175 · L07 .*: today's plan, in detail:[\s\S]*\n8177 · L06 The Venue Buyer's Product Pitch: today's plan/m);
+  const again = exported.makeAgendaDeck_('8177', '2026-10-29');
+  assert.equal(again.created, false, 'the same day\'s slide');
+  assert.equal(deck.slides.length, 1);
+  assert.match(exported.makeAgendaDeck_('8177', '2026-10-28').error, /No 8177 period meets on 2026-10-28/, 'period 4 meets odd days');
 });

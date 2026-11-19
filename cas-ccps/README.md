@@ -525,11 +525,16 @@ tab records each doc by lesson. From the editor: `previewLessonDocs()`,
 ## The daily agenda deck (script 67)
 
 `67_AgendaDeck.js` (Central Ledger and Teacher Dashboard, 2026-10-27; one
-slide a day since 2026-11-19) keeps one Google Slides deck per course per
-school year, "Agenda — 8175 — 2026–27", in an *Agendas* folder, and adds
-one slide per school day, newest first: no new file a day, and the deck
-becomes the record of what each day took, for later pacing guides. Each
-slide holds everything for the day on one screen: the lesson and the day
+slide a day since 2026-11-19) keeps one Google Slides deck per school year,
+"Agenda — 2026–27", in an *Agendas* folder, and adds one slide per school
+day, newest first: no new file a day, and the deck becomes the record of
+what each day took, for later pacing guides. Every course that meets that
+day is on the same slide (the operator, 2026-11-19): with two, the date and
+schedule run across the top, each course gets a column (its lesson and
+day, its plan with each period's minutes, its first two learning targets),
+and the bell schedule marks each course's periods ("8175 P1 · 8177 P4").
+With one course meeting, the slide is that course's alone, laid out as
+follows. Each slide holds everything for the day on one screen: the lesson and the day
 ("Day 2 of 3", "last day"), the schedule, **Today's plan** (each
 itinerary block with its mode and each meeting period's minutes, then
 "Before you go" when there is room), the **bell schedule** (the day's block
@@ -547,10 +552,11 @@ exists; a multi-day lesson uses the plan's day for that meeting. Minutes
 are the doc's column for the block on Schedule A or B; any other day fits
 the A column to the period. Made by the nightly rollout for the next school
 day (courses with it on) and by **Today's agenda** in 📅 Lessons, which
-opens the deck at that day's slide; remaking a day replaces its slide in
-place. The `AgendaDecks` tab records each day (course, date, deck, slide);
+opens the deck at that day's slide (either course's button makes the same
+day's slide); remaking a day replaces its slide in place. The `AgendaDecks`
+tab records each day (`all`, date, deck, slide);
 decks made before 2026-11-19, one a day, are left where they are.
-`node tools/cas-ccps/render-agenda-slide.js <lesson key> <date> <periods>`
+`node tools/cas-ccps/render-agenda-slide.js <date> <lesson key>=<periods> [<lesson key>=<periods>]`
 draws the slide as a PNG without Google (the same layout data), and lists
 any box whose text would spill. Needs the presentations scope in the
 Central Ledger and Teacher Dashboard.

@@ -48,6 +48,8 @@
 const AGENDA_TAB = "AgendaDecks";
 const AGENDA_HEADERS = ["course", "date", "deck_id", "deck_url", "made_at", "slide_id"];
 const AGENDA_FOLDER = "Agendas";
+// The course column of AgendaDecks for a day's slide, which holds every course.
+const AGENDA_ALL = "all";
 const AGENDA_ANNOUNCE_TAB = "AgendaAnnouncements";
 const AGENDA_ANNOUNCE_HEADERS = ["from", "to", "course", "text"];
 const AGENDA_NOTES_MARK = "YOUR NOTES (kept when this slide is remade):";
@@ -56,50 +58,93 @@ const AGENDA_NOTES_PROMPT = "How did today go? What took longer or shorter than 
 const AG_W = 720, AG_H = 405;
 const AG_GREEN = "#0d652d", AG_INK = "#202124", AG_MUTED = "#5f6368", AG_TINT = "#e6f4ea", AG_ROW = "#f4f8f5";
 
-// Makes the course's slide for a school day ("yyyy-MM-dd"), or remakes it.
-// Returns { success, created, deckUrl, date } or { success: false, error }.
-// created: a new slide for the day (false when the day's slide was remade).
-function makeAgendaDeck_(code, ymd) {
-  const cfg = getConfig_();
-  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+// A course's part of a day's slide, or { error } when it doesn't meet then.
+function _agCourseDay_(ss, cfg, code, ymd) {
   const lesson = _agLessonOn_(ss, code, ymd);
-  if (!lesson) return { success: false, error: "No " + code + " lesson is dated on or before " + ymd + " in LessonSchedule." };
+  if (!lesson) return { error: "No " + code + " lesson is dated on or before " + ymd + " in LessonSchedule." };
   const a = typeof LESSON_ASSIGNMENTS !== "undefined" ? LESSON_ASSIGNMENTS[lesson.key] : null;
-  if (!a) return { success: false, error: "No lesson " + lesson.key + "." };
+  if (!a) return { error: "No lesson " + lesson.key + "." };
   const meetings = _ldocMeetings_(ss, cfg, code, lesson.start, lesson.end);
   const at = meetings.map(function (m) { return m.date; }).indexOf(ymd);
-  if (at === -1) return { success: false, error: ymd + " is not a class day for " + code + " (a weekend, a day off, or after the lesson)." };
+  if (at === -1) return { error: ymd + " is not a class day for " + code + " (a weekend, a day off, or after the lesson)." };
   const meeting = meetings[at];
+  // ClassSchedule names a period for the course, and none meets this day
+  // (an odd-day period on an even date): not that course's day.
+  if (!meeting.periods.length && _ldocCoursePeriods_(ss, cfg, code).length) {
+    return { error: "No " + code + " period meets on " + ymd + "." };
+  }
   const days = (a.plan && a.plan.days) || [];
   const dayIndex = Math.min(at, Math.max(0, days.length - 1));
   const rows = _agItinerary_(ss, lesson.key, dayIndex, days[dayIndex] ? days[dayIndex].blocks : []);
   const periods = meeting.periods.map(function (p) {
     return { period: p, minutes: _agMinutesFor_(rows, ymd, meeting.schedule, p) };
   });
-  const lastDay = at === meetings.length - 1 && !!lesson.end;
   const label = _agLessonLabel_(a);
-  const data = {
-    lessonNo: label.no, unitName: label.name, courseName: a.courseName || code,
-    dateLabel: _ldocFmt_(ymd, "EEEE, MMMM d"), scheduleLabel: bellScheduleLabel_(meeting.schedule),
-    day: { n: at + 1, of: lesson.end ? meetings.length : 0 }, lastDay: lastDay,
-    rows: rows.map(function (r) { return { mode: r.mode, title: r.title }; }),
-    periods: periods,
-    bell: _agBellLines_(meeting.schedule, meeting.periods),
-    announcements: _agAnnouncements_(ss, code, ymd),
-    due: _agDueLines_(ss, code, ymd, lesson),
-    goals: _agGoals_(a),
+  return {
+    code: code, lessonNo: label.no, unitName: label.name, courseName: a.courseName || code,
+    schedule: meeting.schedule, meetingPeriods: meeting.periods,
+    day: { n: at + 1, of: lesson.end ? meetings.length : 0 }, lastDay: at === meetings.length - 1 && !!lesson.end,
+    rows: rows, periods: periods, due: _agDueLines_(ss, code, ymd, lesson), goals: _agGoals_(a),
   };
+}
+
+// The courses, in the school's order (00's schoolCourseCodes_), then any
+// other course LessonSchedule dates.
+function _agCourses_(ss) {
+  const dated = Object.keys(_ldocScheduleRows_(ss));
+  let order = [];
+  try { order = schoolCourseCodes_(); } catch (e) { order = []; }
+  return order.filter(function (c) { return dated.indexOf(c) !== -1; })
+    .concat(dated.filter(function (c) { return order.indexOf(c) === -1; }).sort());
+}
+
+// The day's slide: every course that meets that day on one slide (the
+// operator, 2026-11-19: both courses on the same slide), in one deck per
+// school year. Made or remade for any course that meets; a course that
+// doesn't meet that day gets its reason. Returns { success, created,
+// deckUrl, date, courses } or { success: false, error }. created: a new
+// slide for the day (false when the day's slide was remade).
+function makeAgendaDeck_(code, ymd) {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  if (code) {
+    const own = _agCourseDay_(ss, cfg, code, ymd);
+    if (own.error) return { success: false, error: own.error };
+  }
+  const courses = _agCourses_(ss).map(function (c) { return _agCourseDay_(ss, cfg, c, ymd); })
+    .filter(function (c) { return !c.error; });
+  if (!courses.length) return { success: false, error: ymd + " is not a class day for any course." };
+  const schedule = courses[0].schedule;
+  const many = courses.length > 1;
+  const meets = [];
+  courses.forEach(function (c) {
+    c.meetingPeriods.forEach(function (p) { meets.push({ period: p, label: many ? c.code + " P" + p : "P" + p }); });
+  });
+  let announcements = [];
+  courses.forEach(function (c) {
+    _agAnnouncements_(ss, c.code, ymd).forEach(function (t) { if (announcements.indexOf(t) === -1) announcements.push(t); });
+  });
+  const shared = {
+    dateLabel: _ldocFmt_(ymd, "EEEE, MMMM d"), scheduleLabel: bellScheduleLabel_(schedule),
+    bell: _agBellLines_(schedule, meets), announcements: announcements,
+    due: [].concat.apply([], courses.map(function (c) { return c.due; })),
+  };
+  const view = function (c) {
+    return { code: c.code, lessonNo: c.lessonNo, unitName: c.unitName, courseName: c.courseName, day: c.day, lastDay: c.lastDay,
+      rows: c.rows.map(function (r) { return { mode: r.mode, title: r.title }; }), periods: c.periods, goals: c.goals };
+  };
+  const data = many ? Object.assign({ courses: courses.map(view) }, shared) : Object.assign(view(courses[0]), shared);
   const spec = agendaSlideSpec_(data);
 
   const reg = _agRegistry_(ss);
   const year = _agSchoolYear_(ymd);
-  const deckRow = _agYearDeck_(reg, code, year);
-  const have = _agFind_(reg, code, ymd);
+  const deckRow = _agYearDeck_(reg, AGENDA_ALL, year);
+  const have = _agFind_(reg, AGENDA_ALL, ymd);
   let pres, fresh = false;
   if (deckRow) {
     pres = SlidesApp.openById(deckRow.deckId);
   } else {
-    pres = SlidesApp.create("Agenda — " + code + " — " + year);
+    pres = SlidesApp.create("Agenda — " + year);
     DriveApp.getFileById(pres.getId()).moveTo(_agFolder_(cfg));
     fresh = true;
   }
@@ -110,10 +155,10 @@ function makeAgendaDeck_(code, ymd) {
     const i = ids.indexOf(have.slideId);
     if (i !== -1) { old = before[i]; index = i; kept = _agOwnNotes_(old); }
   }
-  if (!old && !fresh) index = Math.min(before.length, _agNewerDays_(reg, code, deckRow ? deckRow.deckId : "", ymd));
+  if (!old && !fresh) index = Math.min(before.length, _agNewerDays_(reg, AGENDA_ALL, deckRow ? deckRow.deckId : "", ymd));
   const slide = pres.insertSlide(fresh ? 0 : index, SlidesApp.PredefinedLayout.BLANK);
   _agDraw_(slide, spec);
-  _agWriteNotes_(slide, rows, periods, kept);
+  _agWriteNotes_(slide, courses, kept);
   if (old) old.remove();
   if (fresh) before.forEach(function (s) { s.remove(); }); // a new deck's own blank slide
   pres.saveAndClose();
@@ -122,9 +167,10 @@ function makeAgendaDeck_(code, ymd) {
   const deckUrl = "https://docs.google.com/presentation/d/" + pres.getId() + "/edit#slide=id." + slideId;
   const now = new Date();
   if (have) reg.getRange(have.row, 3, 1, 4).setValues([[pres.getId(), deckUrl, now, slideId]]);
-  else reg.appendRow([code, ymd, pres.getId(), deckUrl, now, slideId]);
-  Logger.log("[S67] Agenda slide " + (have ? "remade" : "made") + " for " + code + " on " + ymd + ".");
-  return { success: true, created: !have, deckUrl: deckUrl, date: ymd };
+  else reg.appendRow([AGENDA_ALL, ymd, pres.getId(), deckUrl, now, slideId]);
+  Logger.log("[S67] Agenda slide " + (have ? "remade" : "made") + " for " + ymd + " (" +
+    courses.map(function (c) { return c.code; }).join(", ") + ").");
+  return { success: true, created: !have, deckUrl: deckUrl, date: ymd, courses: courses.map(function (c) { return c.code; }) };
 }
 
 // The next school day after ymd for a course: the first day with a meeting
@@ -298,14 +344,17 @@ function _agLessonLabel_(a) {
 function _agBellLines_(schedule, periods) {
   const t = bellTimes_(schedule);
   if (!t) return [];
+  // periods: "3-Odd", or { period, label } ("8175 P3-Odd" on a slide with
+  // more than one course).
   const mine = {};
   (periods || []).forEach(function (p) {
-    const b = bellBlockOf_(p);
-    if (b) (mine[b] = mine[b] || []).push(p);
+    const period = typeof p === "string" ? p : p.period;
+    const b = bellBlockOf_(period);
+    if (b) (mine[b] = mine[b] || []).push(typeof p === "string" ? "P" + p : p.label);
   });
   const out = t.blocks.map(function (time, i) {
     const b = i + 1;
-    return { text: (LDOC_BLOCK_NAMES[i] || "Block " + b) + "  " + time + (mine[b] ? "  · P" + mine[b].join(", P") : ""), mine: !!mine[b] };
+    return { text: (LDOC_BLOCK_NAMES[i] || "Block " + b) + "  " + time + (mine[b] ? "  · " + mine[b].join(", ") : ""), mine: !!mine[b] };
   });
   if (t.extra) out.push({ text: t.extra, mine: false });
   // In the day's order: CM/HR falls between the 1st and 2nd blocks.
@@ -368,22 +417,41 @@ function _agDueLines_(ss, code, ymd, lesson) {
 // in points. Text sizes are chosen to fit (_agFitSize_: an estimate from
 // Arial's average glyph width; the renderer flags any box that overflows).
 const AG_INSET = 7.2; // a Slides text box's own padding, each side
-const AG_CHAR_EM = 0.52; // Arial's average glyph width in mixed text, in ems
+// Arial's glyph widths, roughly, in ems: capitals and digits are wider than
+// lower case, spaces and punctuation narrower. A little over the true
+// widths, so an estimate errs toward fitting.
+function _agCharEm_(c) {
+  if (/[A-Z0-9@#%&MW]/.test(c)) return c === "I" ? 0.3 : /[MW]/.test(c) ? 0.86 : 0.68;
+  if (/[a-z]/.test(c)) return /[ijlft]/.test(c) ? 0.3 : /[mw]/.test(c) ? 0.8 : 0.53;
+  if (c === " ") return 0.28;
+  return 0.36;
+}
 const AG_LINE = 1.2;
 const AG_COL_BOTTOM = 290; // where the plan and the right column end; the learning targets below
 
-// Lines a paragraph takes at a size in a width.
+// Lines a paragraph takes at a size in a width, wrapping at spaces.
 function _agLines_(text, size, width) {
-  const per = Math.max(1, Math.floor((width - 2 * AG_INSET) / (size * AG_CHAR_EM)));
-  const words = String(text).split(/\s+/);
+  const room = Math.max(size, width - 2 * AG_INSET);
+  const wordW = function (w) { let n = 0; for (let i = 0; i < w.length; i++) n += _agCharEm_(w[i]); return n * size; };
+  const space = 0.28 * size;
   let lines = 1, col = 0;
-  words.forEach(function (w) {
-    const len = w.length;
-    if (col && col + 1 + len > per) { lines++; col = 0; }
-    col += (col ? 1 : 0) + len;
-    while (col > per) { lines++; col -= per; }
+  String(text).split(/\s+/).filter(Boolean).forEach(function (w) {
+    let ww = wordW(w);
+    if (col && col + space + ww > room) { lines++; col = 0; }
+    col += (col ? space : 0) + ww;
+    while (col > room) { lines++; col -= room; }
   });
   return lines;
+}
+
+// The largest size, from max down to min in steps of 0.5, at which a bold
+// line of text sits inside a middle-anchored box of that height (its own
+// padding included), on as many lines as it takes.
+function _agFitBold_(t, width, height, max, min) {
+  for (let s = max; s > min; s -= 0.5) {
+    if (_agLines_(t, s * 1.08, width) * s * 1.08 * AG_LINE <= height) return s;
+  }
+  return min;
 }
 function _agHeight_(paras, size, width) {
   return paras.reduce(function (h, t) { return h + _agLines_(t, size, width) * size * AG_LINE; }, 0) + 2 * AG_INSET;
@@ -412,6 +480,7 @@ function _agClip_(paras, size, width, height) {
 }
 
 function agendaSlideSpec_(d) {
+  if (d.courses && d.courses.length > 1) return _agSpecMany_(d);
   const el = [];
   const rect = function (x, y, w, h, fill) { el.push({ kind: "rect", x: x, y: y, w: w, h: h, fill: fill }); };
   const text = function (x, y, w, h, paras, o) {
@@ -460,7 +529,7 @@ function agendaSlideSpec_(d) {
     let titleSize = baseSize;
     while (titleSize > 13 && !oneLine(titleSize)) titleSize -= 0.5;
     const single = oneLine(titleSize);
-    if (!single) titleSize = Math.max(10, Math.min(baseSize, rowH / (2 * AG_LINE * 1.08) - 0.5));
+    if (!single) titleSize = _agFitBold_(r.title, tw, rowH, baseSize, 9);
     const showWord = word && rowH >= 26 && single;
     // A middle-anchored box shows text up to its own height, padding included.
     const room = rowH + 2 * AG_INSET - (showWord ? baseSize * 0.62 * AG_LINE : 0);
@@ -522,6 +591,110 @@ function agendaSlideSpec_(d) {
   return { width: AG_W, height: AG_H, background: "#ffffff", elements: el };
 }
 
+// More than one course meets (2026-11-19, the operator: both courses on
+// the same slide): the date and schedule across the top; a column per
+// course (its lesson and day, its plan with each period's minutes, its
+// learning targets); the bell schedule and the announcements on the right.
+function _agSpecMany_(d) {
+  const el = [];
+  const rect = function (x, y, w, h, fill) { el.push({ kind: "rect", x: x, y: y, w: w, h: h, fill: fill }); };
+  const text = function (x, y, w, h, paras, o) {
+    el.push(Object.assign({ kind: "text", x: x, y: y, w: w, h: h, align: "left", valign: "top", paras: paras }, o || {}));
+  };
+  const run = function (t, size, more) { return Object.assign({ t: t, size: size, color: AG_INK }, more || {}); };
+
+  rect(0, 0, AG_W, 50, AG_GREEN);
+  text(18, 4, 470, 42, [[run(d.dateLabel, 21, { bold: true, color: "#ffffff" })]], { valign: "middle" });
+  text(490, 4, 212, 42, [[run(d.scheduleLabel, 16, { bold: true, color: "#ffffff" })]], { align: "right", valign: "middle" });
+
+  const R = { x: 528, w: 174 };
+  const courses = d.courses;
+  const gap = 10, left = 18, colsW = R.x - 12 - left;
+  const cw = (colsW - gap * (courses.length - 1)) / courses.length;
+  const top = 58, targetsY = 300, bottom = AG_H - 8;
+
+  courses.forEach(function (c, ci) {
+    const x = left + ci * (cw + gap);
+    // The course's header: course and day, then the lesson.
+    rect(x, top, cw, 62, AG_TINT);
+    const dayOf = c.day && c.day.of ? "Day " + c.day.n + " of " + c.day.of : c.day ? "Day " + c.day.n : "";
+    text(x, top - 3, cw, 24, [[run(c.code, 10.5, { bold: true, color: AG_GREEN }),
+      run((dayOf ? "   " + dayOf : "") + (c.lastDay ? " · last day" : ""), 10.5, { bold: c.lastDay, color: c.lastDay ? "#9c5000" : AG_MUTED })]],
+      { valign: "middle" });
+    const title = (c.lessonNo ? c.lessonNo + " · " : "") + c.unitName;
+    const tSize = _agFitBold_(title, cw, 46, 14, 10);
+    text(x, top + 16, cw, 46, [[run(_agClip_([title], tSize * 1.08, cw, 46 + 2 * AG_INSET)[0] || title, tSize, { bold: true })]], { valign: "middle" });
+
+    // The plan: a row per block; a minutes column per period meeting.
+    const periods = (c.periods || []).filter(function (p) { return p.minutes && p.minutes.some(function (m) { return m; }); });
+    const colW = 42, cols = periods.length;
+    const headY = top + 64;
+    text(x, headY, cw - cols * colW, 22, [[run("Today's plan", 11, { bold: true, color: AG_GREEN })]], { valign: "middle" });
+    periods.forEach(function (p, pi) {
+      text(x + cw - (cols - pi) * colW - 14, headY, colW + 14, 22, [[run(cols === 1 ? "min" : "P" + p.period, 8, { bold: true, color: AG_MUTED })]],
+        { align: "right", valign: "middle" });
+    });
+    const rows = c.rows || [];
+    const rTop = headY + 22, rBottom = targetsY - 6;
+    const rowH = rows.length ? Math.min(36, (rBottom - rTop) / rows.length) : 0;
+    const base = Math.max(9.5, Math.min(12.5, rowH * 0.42));
+    rows.forEach(function (r, i) {
+      const y = rTop + i * rowH;
+      if (i % 2 === 0) rect(x, y, cw, rowH, AG_ROW);
+      const icon = (ITINERARY_MODES[r.mode] || "•").split(" ")[0];
+      text(x, y, 22, rowH, [[run(icon, base - 1, {})]], { align: "center", valign: "middle" });
+      const tw = cw - 22 - cols * colW;
+      let size = base;
+      while (size > 10 && _agLines_(r.title, size * 1.08, tw) > 1) size -= 0.5;
+      if (_agLines_(r.title, size * 1.08, tw) > 1) size = _agFitBold_(r.title, tw, rowH, base, 8.5);
+      const room = rowH + 2 * AG_INSET;
+      text(x + 22, y, tw, rowH, [[run(_agClip_([r.title], size * 1.08, tw, room)[0] || r.title, size, { bold: true })]], { valign: "middle" });
+      periods.forEach(function (p, pi) {
+        const m = p.minutes[i];
+        text(x + cw - (cols - pi) * colW, y, colW, rowH, [[run(m ? String(m) : "–", base, { bold: true, color: AG_GREEN })]],
+          { align: "right", valign: "middle" });
+      });
+    });
+
+    // Its learning targets: the first two "I can" goals.
+    const goals = (c.goals || []).slice(0, 2);
+    rect(x, targetsY, cw, bottom - targetsY, AG_TINT);
+    text(x, targetsY - 2, cw, 24, [[run("Learning targets", 10.5, { bold: true, color: AG_GREEN })]], { valign: "middle" });
+    if (goals.length) {
+      const gh = bottom - targetsY - 20;
+      const gSize = _agFitSize_(goals.map(function (g) { return "• " + g; }), cw, gh, 10.5, 8.5);
+      const shownGoals = _agClip_(goals.map(function (g) { return "• " + g; }), gSize, cw, gh);
+      text(x, targetsY + 18, cw, gh, shownGoals.map(function (g) { return [run(g, gSize, {})]; }));
+    }
+  });
+
+  // The right column: the bell schedule, then the announcements.
+  let y = top - 4;
+  const bell = d.bell || [];
+  if (bell.length) {
+    text(R.x, y, R.w, 26, [[run("Bell schedule", 12, { bold: true, color: AG_GREEN })]], { valign: "middle" });
+    y += 22;
+    const bSize = 9;
+    const h = _agHeight_(bell.map(function (b) { return b.text; }), bSize * 1.1, R.w);
+    text(R.x, y, R.w, h, bell.map(function (b) { return [run(b.text, bSize, { bold: b.mine, color: b.mine ? AG_GREEN : AG_INK })]; }));
+    y += h + 2;
+  }
+  text(R.x, y, R.w, 26, [[run("Announcements", 12, { bold: true, color: AG_GREEN })]], { valign: "middle" });
+  y += 24;
+  const notes = (d.due || []).concat(d.announcements || []);
+  const lines = (notes.length ? notes : ["None today."]).concat(["Before you go: submit on the Student Dashboard."]);
+  const room = bottom - y;
+  const aSize = _agFitSize_(lines, R.w, room, 10.5, 8.5);
+  const shown = _agClip_(lines, aSize, R.w, room);
+  rect(R.x, y, R.w, room, AG_TINT);
+  text(R.x, y, R.w, room, shown.map(function (t) {
+    const last = /^Before you go/.test(t);
+    return [run((notes.length && !last ? "• " : "") + t, aSize,
+      { bold: /^Due tonight/.test(t), italic: last, color: last || !notes.length ? AG_MUTED : AG_INK })];
+  }));
+  return { width: AG_W, height: AG_H, background: "#ffffff", elements: el };
+}
+
 // ── Writes ───────────────────────────────────────────────────────────────────
 
 function _agFolder_(cfg) {
@@ -575,13 +748,18 @@ function _agOwnNotes_(slide) {
 
 // Speaker notes: each block's detail (the teacher's script), then the
 // teacher's own notes on how the day went, kept across remakes.
-function _agWriteNotes_(slide, rows, periods, kept) {
-  const lines = ["Today's plan, in detail:"];
-  rows.forEach(function (r, i) {
-    const mins = periods.filter(function (p) { return p.minutes[i]; }).map(function (p) { return "P" + p.period + " " + p.minutes[i] + " min"; });
-    lines.push("• " + r.title + (ITINERARY_MODES[r.mode] ? " (" + ITINERARY_MODES[r.mode] + ")" : "") +
-      (mins.length ? " — " + mins.join(", ") : "") + (r.detail ? ": " + String(r.detail).replace(/\s+/g, " ").trim() : ""));
+function _agWriteNotes_(slide, courses, kept) {
+  const lines = [];
+  courses.forEach(function (c) {
+    lines.push((courses.length > 1 ? c.code + " · " : "") + (c.lessonNo ? c.lessonNo + " " : "") + c.unitName + ": today's plan, in detail:");
+    c.rows.forEach(function (r, i) {
+      const mins = c.periods.filter(function (p) { return p.minutes[i]; }).map(function (p) { return "P" + p.period + " " + p.minutes[i] + " min"; });
+      lines.push("• " + r.title + (ITINERARY_MODES[r.mode] ? " (" + ITINERARY_MODES[r.mode] + ")" : "") +
+        (mins.length ? " — " + mins.join(", ") : "") + (r.detail ? ": " + String(r.detail).replace(/\s+/g, " ").trim() : ""));
+    });
+    lines.push("");
   });
+  lines.pop();
   lines.push("", AGENDA_NOTES_MARK, kept || AGENDA_NOTES_PROMPT);
   try {
     slide.getNotesPage().getSpeakerNotesShape().getText().setText(lines.join("\n"));
