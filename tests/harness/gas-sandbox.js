@@ -563,7 +563,20 @@ class FakeDriveFolder {
   // 74_TurnInCanvasCheck.js, which saves the Canvas upload CSV beside the
   // gradebook export. Not registered with DriveApp.getFileById (a folder
   // here doesn't know its DriveApp); read it back through this folder.
+  // Also the blob form, Folder.createFile(blob) (cas-ccps 79's weekly Canvas
+  // cartridge, 2026-11-19): the file takes the blob's name and keeps the blob
+  // (a Utilities.zip() result keeps its entries, readable as _zipEntries).
   createFile(name, content, mimeType) {
+    if (name && typeof name === 'object' && typeof name.getName === 'function') {
+      const blob = name;
+      const fb = new FakeDriveFile('fake-file-' + (++FakeDriveFolder._counter), blob.getName(),
+        (blob.getContentType && blob.getContentType()) || 'application/octet-stream');
+      fb._blob = blob;
+      fb._zipEntries = blob._zipEntries;
+      fb._parent = this;
+      this.files.push(fb);
+      return fb;
+    }
     const f = new FakeDriveFile('fake-file-' + (++FakeDriveFolder._counter), name, mimeType || 'text/plain');
     f._content = String(content === undefined || content === null ? '' : content);
     f._parent = this;
@@ -1632,6 +1645,15 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
         return blob._zipEntries.map((e) => (e.unreadable
           ? { getName: () => e.name, getContentType: () => null, getDataAsString: () => { throw new Error('Unreadable'); } }
           : makeFakeBlob(e.text, null, e.name)));
+      },
+      // Real Apps Script API — Utilities.zip(blobs, name): one zip blob, each
+      // blob's name its path in the archive. First needed by cas-ccps 79 (the
+      // weekly Canvas cartridge). The mock keeps the entries as { name, text },
+      // the shape fakeZipBlob() uses, so Utilities.unzip() reads it back.
+      zip(blobs, name) {
+        const entries = (blobs || []).map((b) => ({ name: b.getName(), text: b.getDataAsString() }));
+        return { _zipEntries: entries, getName: () => name || 'archive.zip', getContentType: () => 'application/zip',
+          getDataAsString: () => { throw new Error('A zip is not text.'); } };
       },
       DigestAlgorithm: { MD5: 'MD5', SHA_1: 'SHA_1', SHA_256: 'SHA_256', SHA_512: 'SHA_512' },
       computeDigest(algorithm, value) {

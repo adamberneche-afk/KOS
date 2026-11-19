@@ -453,6 +453,23 @@ one`, and, in the overnight all-clear, `Lesson rollout: finished (3 runs)`.
 The CAS signal also says while a course is still in shadow. `previewLessonRollout()` runs it once as
 a dry run from the editor. The steps below still work by hand.
 
+**Not on Canvas (2026-11-19).** Lessons were opening before their Canvas
+assignment was posted. Each nightly run (not a catch-up) looks for every
+lesson that is open or opens within `ROLLOUT_LEAD_DAYS` among the assignment
+columns of its course's newest gradebook export (the course from the file's
+name, else from its students' sections). A title holding at least 60% of the
+lesson name's words is the lesson's (`canvasAssignmentFor_`, 00), so a
+shortened or prefixed title still counts; a lesson in parts is one Canvas
+assignment, named by the lesson. A lesson with none is a PROBLEM row, `not
+on Canvas: …`, and a line in the CAS signal and the overnight email: `Not on
+Canvas: The Bottom Line opens Thu Nov 20 and has no assignment in the 8177
+Canvas export from Nov 18; post it in Canvas (or import the week's
+cartridge), then export again`. A warning only: the lesson still opens. A
+later run that finds it logs `CANVAS` ("on Canvas: <title>") and clears it.
+The export is the only view of Canvas there is (no Canvas API: the
+operator, 11-19), so the check is as fresh as the last export, and whether
+an unpublished assignment shows in an export is not yet confirmed.
+
 **Catching up (2026-10-29).** A run makes about 20 student docs before its
 time budget. A run that stops short schedules `runLessonRolloutCatchUp` a
 few minutes later, which does the same, until a run finishes (at most
@@ -1308,6 +1325,27 @@ a code. The `--turn-in` cartridge is for a fresh import (a
 new course shell, the next term, a new teacher's install). A later re-import
 into a course whose assignments were switched must be built with the same
 `--turn-in`, or it puts them back to Website URL.
+
+**The week's cartridge, with due dates (2026-11-19).** Lessons were
+opening before their Canvas assignment was posted, and there is no Canvas
+API to post them. `buildWeeklyCanvasCartridge()` (79, Central Ledger;
+`installWeeklyCanvasCartridge()` runs it Fridays about 2 p.m.,
+`previewWeeklyCanvasCartridge()` writes nothing) makes one cartridge per
+course, `Canvas <course> week of <date>.imscc` in the teacher folder, with
+each lesson starting in the next 7 days (LessonSchedule, not held). Import
+it as above. Each assignment is the full cartridge's, generated into
+`79b_CanvasCartridgeData.js` by the same builder (`--check` covers it), as
+a text entry when `TURN_IN_CODE_COURSES` covers the lesson, else Website
+URL, plus Canvas's own settings block inside it (`<extensions><assignment>`,
+which Canvas's Common Cartridge importer reads; from Canvas's source,
+2026-11-19): **published**, 100 points, the submission type and the **due
+date**, 11:59 p.m. on the school day before the course's next lesson starts
+(none for the last dated lesson), in UTC. A lesson already in its course's
+newest gradebook export is left out, since a re-import duplicates, and the
+log lists it with the due date to set by hand. Not yet tried: an import
+into a real Canvas course (do the first one in a sandbox course). The
+nightly rollout's "Not on Canvas" warning (above) names a lesson the
+cartridge would add.
 
 Flow 2's Apps Script half has a self-provisioning canary
 (`runFlow2Canary()` in `35_FlowPreflightAndCanary.js`) that stubs Studio out

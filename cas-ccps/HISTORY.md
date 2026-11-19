@@ -1058,3 +1058,54 @@ side:
   and 6, naming the steps that go inside the loop; the setup guide and
   `TURN_IN_CHECK_FLOW.md` say the same.
 - Tests: `flow-full-list`.
+
+## Not on Canvas: the nightly check, 2026-11-19
+
+The operator: lessons were opening for students before their Canvas
+assignment was posted, so a student had no place to turn the work in. A
+Canvas API token, a test student account and API approval are not
+available (the operator, 11-19), so the check reads the gradebook exports
+the rollout already reads.
+
+- 58's step 4 (nightly, not each catch-up) groups the exports by course
+  (the file's name, else its students' sections; the newest per course) and
+  looks for each open or opening lesson among the export's assignment
+  columns ("<title> (<id>)", `canvasExportAssignmentTitles_`, 00).
+- A column holding at least 60% of the lesson name's words is the lesson's
+  (`canvasAssignmentFor_`, 00): a teacher's shortened or prefixed title
+  counts; 2 of 5 words does not.
+- A lesson with none: a PROBLEM row "not on Canvas: …" in the course's mode,
+  and a "Not on Canvas:" line (five at most, then "n more") in the CAS
+  signal and the overnight email; not counted as a rollout problem, and the
+  lesson still opens. A course with no export says it couldn't tell.
+- Found: a `CANVAS` row, so a later run's find clears an earlier warning.
+- Not yet confirmed: whether an unpublished Canvas assignment shows in an
+  export. If it does, a posted-but-unpublished assignment passes the check.
+- Tests: `lesson-rollout` (the warning and its clearing, a course with no
+  export, the matcher, the export's course); its fixture's exports now carry
+  each course's assignment columns.
+
+## The week's Canvas cartridge, with due dates, 2026-11-19
+
+With no Canvas API, CAS can't post an assignment itself; the operator asked
+for cartridges beside the nightly check. The lesson dates live only in the
+LessonSchedule tab, so the weekly cartridge is assembled in Apps Script.
+
+- `79_CanvasWeeklyCartridge.js` (Central Ledger): one cartridge per course
+  in the teacher folder with each lesson starting in the next 7 days, not
+  held and not already in the course's newest gradebook export (a re-import
+  duplicates, seen 10-12); `previewWeeklyCanvasCartridge()`,
+  `buildWeeklyCanvasCartridge()`, `installWeeklyCanvasCartridge()` (Fridays
+  about 2 p.m.).
+- The assignment text is generated, not rewritten: `build-canvas-cartridge.js`
+  also writes `79b_CanvasCartridgeData.js` (every lesson's assignment.xml,
+  Website URL and turn-in versions, with the full cartridges' identifiers);
+  `--check` and a test hold it to the builder.
+- Due dates: Canvas's Common Cartridge importer applies an
+  `<extensions><assignment>` block (Canvas's namespace) inside a standard
+  assignment.xml: `due_at` (UTC), `workflow_state`, `points_possible`,
+  `submission_types` (read from Canvas's source, 2026-11-19). The due date
+  is 11:59 p.m. on the school day before the course's next lesson starts.
+- Not yet tried in Canvas: the first import goes into a sandbox course.
+- The sandbox gained `Utilities.zip()` and `Folder.createFile(blob)`.
+- Tests: `canvas-weekly-cartridge`.
