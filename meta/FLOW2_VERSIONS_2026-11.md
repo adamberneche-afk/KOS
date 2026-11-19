@@ -43,6 +43,7 @@ three.
 | 11-15 (push through #445) | Grader (delivery) | Restarts of an unanswered row, parallel lanes, the not-answering email |
 | 11-15, 2:33–2:44 p.m. | — | The "any" re-grade of every FlowInput row (new model, rebuilt Studio) |
 | 11-15, 4:23 p.m. (push through #453) | Grader (delivery) | Malformed results and duplicate writes held back |
+| The push after 11-19 (D19) | Grader (delivery) | An answer whose run line names another row's run (`RUN_KEY_MISMATCH`) held back, re-armed once |
 
 ## Recorded from 2026-11-16 on
 

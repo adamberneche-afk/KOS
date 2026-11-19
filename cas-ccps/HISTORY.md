@@ -1199,3 +1199,14 @@ in parts reads "Shown in Part 2", "Partly shown in Parts 1 and 3".
 "Not shown yet" names no part (it is the best across every part), and a
 lesson not in parts is unchanged. The Student Dashboard, its demo and the
 teacher's "View as a student" all go through the same functions.
+
+## RUN_KEY_MISMATCH held back, 2026-11-19
+
+D19's second safeguard, decided by the operator on 11-19 (the plan had
+waited for a week of `RunCheck` data, about 11-23): an answer whose
+`[RUN_INFO]` run key isn't the one its FlowInput row sent is another row's
+answer (a duplicate write, another lesson's), so the harvest (37) sets it
+aside like a malformed result: re-armed once with the same prompt and run
+key, then `ERROR_MALFORMED_OUTPUT` with its `RunCheck` recorded. Nothing
+reaches the student. `PROMPT_MISMATCH`, `NO_RUN_INFO` and
+`RUN_INFO_NOT_JSON` are still recorded and delivered.

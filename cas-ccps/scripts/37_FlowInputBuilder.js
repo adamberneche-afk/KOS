@@ -720,7 +720,11 @@ function _fiBuildPromptText_(matrixRow, processReflection, earlierParts, runKey)
 //     sent: OK, NO_RUN_INFO, RUN_INFO_NOT_JSON, RUN_KEY_MISMATCH (an answer
 //     in the wrong row: the duplicate write, another lesson's answer),
 //     PROMPT_MISMATCH (Studio sent another prompt), or OLDER_PROMPT (built
-//     before the run line). Recorded, never held back, for now.
+//     before the run line). Recorded with every result; since 2026-11-19
+//     (the operator, D19) a RUN_KEY_MISMATCH is also held back: the answer
+//     names another row's run, so it isn't this submission's. It is set
+//     aside like a malformed result (re-armed once, then
+//     ERROR_MALFORMED_OUTPUT). The others are recorded and delivered.
 //   - ModelConfigured: the model StudioConfig (39b, the operator's record)
 //     says Flow 2's Ask Gemini step ran at harvest time.
 //   - ModelReported: the model the answer says wrote it. A model knows its
@@ -767,6 +771,7 @@ function _fiIsDriftProbeRow_(row) {
   return String(row[FI.STAGING_ROW_REF]).trim() === FI_DRIFT_PROBE_REF;
 }
 
+const FI_RUN_KEY_MISMATCH = "RUN_KEY_MISMATCH";
 const FI_RUN_INFO_RE = /\[RUN_INFO:\s*(\{[^\n]*?\})\]/;
 const FI_SENT_RUN_RE = /"run":"([^"]*)","prompt":"([^"]*)"/;
 
@@ -800,7 +805,7 @@ function _fiProvenance_(fiRow, output) {
     try { info = JSON.parse(FI_RUN_INFO_RE.exec(all[all.length - 1])[1]); } catch (e) { info = null; }
     if (!info || typeof info !== "object") { out.runCheck = "RUN_INFO_NOT_JSON"; return out; }
     out.model = String(info.model === undefined ? "" : info.model).replace(/\s+/g, " ").trim().slice(0, 80);
-    if (String(info.run) !== sent[1]) out.runCheck = "RUN_KEY_MISMATCH";
+    if (String(info.run) !== sent[1]) out.runCheck = FI_RUN_KEY_MISMATCH;
     else if (String(info.prompt) !== sent[2]) out.runCheck = "PROMPT_MISMATCH";
     else out.runCheck = "OK";
   } catch (e) {
@@ -1140,7 +1145,8 @@ function harvestFlowInputResults() {
       }
       prov.modelConfigured = studioModelAt_(studioRows, now.getTime());
       if (prov.runCheck && prov.runCheck !== "OK" && prov.runCheck !== "OLDER_PROMPT") {
-        Logger.log("[FlowInputBuilder] Row " + rowNum + ": run check " + prov.runCheck + " (recorded; not held back).");
+        Logger.log("[FlowInputBuilder] Row " + rowNum + ": run check " + prov.runCheck +
+          (prov.runCheck === FI_RUN_KEY_MISMATCH ? " (another row's answer: held back)." : " (recorded; not held back)."));
       }
 
       // One submission, one delivery (2026-11-17, proposed after the 11-15
@@ -1185,12 +1191,15 @@ function harvestFlowInputResults() {
         continue;
       }
 
-      // Never delivered: a copy of a later submission's answer, or a result
-      // whose machine lines don't hold together (2026-11-15). Each is run
-      // again once (the re-arm), then ERROR_MALFORMED_OUTPUT.
+      // Never delivered: a copy of a later submission's answer, an answer
+      // whose run line names another row's run (2026-11-19, D19), or a
+      // result whose machine lines don't hold together (2026-11-15). Each is
+      // run again once (the re-arm), then ERROR_MALFORMED_OUTPUT.
       const shape = dupes.copies[rowNum]
         ? { ok: false, reason: "a later submission's answer, copied into this row" }
-        : _fiCheckResultShape_(geminiFullOutput, fiData[i]);
+        : prov.runCheck === FI_RUN_KEY_MISMATCH
+          ? { ok: false, reason: "another row's answer (its run key isn't this row's)" }
+          : _fiCheckResultShape_(geminiFullOutput, fiData[i]);
       if (!shape.ok) {
         const outcome = _fiSetAsideMalformed_(fiSheet, rowNum, fiData[i], now);
         setAside.reasons[shape.reason] = (setAside.reasons[shape.reason] || 0) + 1;
