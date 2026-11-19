@@ -5,7 +5,10 @@ drafts (`65_LessonDrafts.js`; phase 1 of
 [`archive/2026-27-Q1/meta/LESSON_AUTHORING_PLAN_2026-10.md`](../../archive/2026-27-Q1/meta/LESSON_AUTHORING_PLAN_2026-10.md)).
 It runs when the operator says "import the lesson drafts", and each
 evening at about 6 p.m. Eastern on the "Lesson draft import" Routine (a
-fresh session; with nothing to import, it ends without a message). It
+fresh session; with nothing to import, it ends without a message; it needs
+the Google Drive and Google Sheets connectors attached to the scheduled task
+in claude.ai, which a session can't add: until 2026-11-19 it had none and
+stopped every evening). It
 imports **edits** to existing lessons (phase 1) and **new lessons**
 (phase 2, section 3).
 
