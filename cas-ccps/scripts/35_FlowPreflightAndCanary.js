@@ -635,12 +635,17 @@ function runFlow2Canary() {
     record('Builder resolved all 3 hops into a correct FlowInput row', true, 'row ' + fiRowNum);
 
     // ── Simulate Studio ───────────────────────────────────────────────────
+    // The run line echoes the row's own run key and prompt version, as
+    // Studio's answer does: since 2026-11-19 (D19) the harvest holds back an
+    // answer whose run key isn't its row's.
+    const sentRun = FI_SENT_RUN_RE.exec(String(fiRow[FI.PROMPT_TEXT] || ''));
+    const runInfo = JSON.stringify({ run: sentRun ? sentRun[1] : 'canary', prompt: sentRun ? sentRun[2] : 'canary', model: 'canary' });
     const cannedOutput =
       'CANARY EVALUATION. This text stands in for a real Gemini response.\n' +
       '[SYSTEM: APPROVED]\n' +
       '[SUGGESTED_SCORE: 3]\n' +
       // The run line (37, 2026-11-16): recorded, then stripped.
-      '[RUN_INFO: {"run":"canary","prompt":"canary","model":"canary"}]\n' +
+      '[RUN_INFO: ' + runInfo + ']\n' +
       // Every milestone MET: an untiered APPROVED needs that (37's
       // _fiCheckResultShape_), or the harvest sets the result aside.
       '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"MET","4":"MET"}]';
