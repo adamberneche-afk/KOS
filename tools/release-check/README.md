@@ -72,8 +72,8 @@ no values. A history rewrite is the operator's call.
 
 **The allow list** (`allow.json`, the operator's decisions of 2026-11-20).
 Two kinds, each entry with its reason:
-- `scriptUrls`: a web-app URL, named by `hash`, the first 12 hex of the
-  SHA-256 of `<domain>/s/<id>` (`valueHash` in check.js), never by the URL.
+- `scriptUrls`: a web-app URL, named by `hash`, a 12-hex scrypt fingerprint
+  of `<domain>/s/<id>` (`valueHash` in check.js), never by the URL.
   Today one: the Student Dashboard, which the Canvas assignments (79b and
   the cartridges) link students to, behind the school's sign-in. Every
   script finding prints its hash's rule; to allow another web app, compute

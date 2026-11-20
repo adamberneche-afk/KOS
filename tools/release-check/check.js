@@ -132,10 +132,14 @@ function scanLine(line) {
   return out;
 }
 
-// The first 12 hex of a value's SHA-256: how allow.json names an allowed
-// web-app URL without holding it.
+// A 12-hex fingerprint of a value: how allow.json names an allowed web-app
+// URL without holding it. scrypt, not a fast hash: CodeQL reads any value
+// this tool scans as possibly sensitive (js/insufficient-password-hash),
+// and a fingerprint of a secret-shaped value should be slow to reverse
+// anyway. A low cost keeps a full scan to about a second.
+const VALUE_HASH_SALT = 'kos-release-check-allow-v1';
 function valueHash(v) {
-  return crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 12);
+  return crypto.scryptSync(String(v), VALUE_HASH_SALT, 6, { N: 1024, r: 8, p: 1 }).toString('hex');
 }
 
 // ---- the allow list (the operator's decisions, 2026-11-20) ---------------------

@@ -1,8 +1,8 @@
 {
-  "_comment": "What the release gate lets through, each with why (the operator's decisions, 2026-11-20). Drive IDs and Docs links are never allowed. A web-app URL is named by the first 12 hex of the SHA-256 of '<domain>/s/<id>' (check.js's valueHash), never by the URL itself.",
+  "_comment": "What the release gate lets through, each with why (the operator's decisions, 2026-11-20). Drive IDs and Docs links are never allowed. A web-app URL is named by a 12-hex scrypt fingerprint of '<domain>/s/<id>' (check.js's valueHash), never by the URL itself.",
   "scriptUrls": [
     {
-      "hash": "f753b618b49d",
+      "hash": "1e54f99d17f9",
       "what": "The Student Dashboard web app (cas-ccps/data/deployment-urls.json's studentDashboardUrl). The Canvas assignments link students to it; it sits behind the school's sign-in."
     }
   ],
