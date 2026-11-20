@@ -511,7 +511,7 @@ function checkBlackout(){
   const el=document.getElementById('bo-result'); if(!val){el.innerHTML='<span style="color:var(--muted)">Enter a date to check.</span>';return;}
   const d=new Date(val+'T00:00:00'); const issues=[];
   if(d.getMonth()===4) issues.push('<strong>SOL Testing Window (May):</strong> 6–12 field trips NOT permitted. K–5, ASOL, and CTC (on attendance days) allowed.');
-  el.innerHTML=issues.length?`<div class="alert aw"><span class="aico">⚠️</span><div>${issues.join('<br>')}<br>Verify: <a href="https://docs.google.com/document/d/14TA9xtU3VunvFNU4vKn3FplDhbIAJx25ItB_T9mrbC4/edit" target="_blank" style="color:var(--blue)">Official CCPS Blackout Dates</a></div></div>`:`<div class="alert as"><span class="aico">✅</span>No known blackout for ${fd(val)}. Always verify: <a href="https://docs.google.com/document/d/14TA9xtU3VunvFNU4vKn3FplDhbIAJx25ItB_T9mrbC4/edit" target="_blank" style="color:var(--blue)">Official Blackout Dates</a></div>`;
+  el.innerHTML=issues.length?`<div class="alert aw"><span class="aico">⚠️</span><div>${issues.join('<br>')}<br>Verify: ${lhDocLink('blackout_dates','Official CCPS Blackout Dates')}</div></div>`:`<div class="alert as"><span class="aico">✅</span>No known blackout for ${fd(val)}. Always verify: ${lhDocLink('blackout_dates','Official Blackout Dates')}</div>`;
 }
 
 // ============================================================

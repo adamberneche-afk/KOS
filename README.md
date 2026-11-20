@@ -285,9 +285,12 @@ tracked exports (spreadsheets, CSVs, Canvas cartridges, Drive listings;
 `appsscript.json` manifests are listed as probably fine), a missing LICENSE
 in the root, `cas-ccps/`, `leader-hub/` or `kos-personal/`, secret shapes,
 and student-data-scan's kinds; a value is printed only as its length.
-`--history` counts matches in git history. **Warn-only** in CI
-(`gas-lint.yml`, `RELEASE_CHECK_GATE: '0'`) until the operator has read the
-first audit, [`meta/RELEASE_AUDIT_2026-11-08.md`](./meta/RELEASE_AUDIT_2026-11-08.md);
+`--history` counts matches in git history. **The gate is on** in CI
+(`gas-lint.yml`, `RELEASE_CHECK_GATE: '1'`, the operator, 2026-11-20): any
+failing finding fails the build. What it lets through (the Student
+Dashboard's web-app URL by hash, the curriculum CSVs and Canvas cartridges
+by path) is named with why in `tools/release-check/allow.json`; Drive IDs
+never. The first audit is [`meta/RELEASE_AUDIT_2026-11-08.md`](./meta/RELEASE_AUDIT_2026-11-08.md);
 a pre-commit hook (`tools/release-check/pre-commit`, installed by hand)
 checks staged files. Tested in `tests/tools/release-check.test.js`. See
 [`tools/release-check/README.md`](./tools/release-check/README.md).
@@ -468,7 +471,7 @@ the Drive advanced service with no "shared with you" email (DriveApp when the
 service is off or fails, the student's share unchanged), and every CAS mail
 sent with the `[CAS] ` subject prefix and the sender name CAS
 (`gmail-noise.test.js`);
-`tests/leaderhub/` covers escaping/XSS guards (including the School
+`tests/leaderhub/` covers the Google Doc IDs read from the data spreadsheet's `doc_ids` tab rather than the code (`doc-ids.test.js`), escaping/XSS guards (including the School
 Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
 the pacing/calendar helpers (with the published CCPS 2026-27 calendar as an import fixture, `fixtures/ccps-2026-27-calendar.txt`, and the built-in calendar's own consistency, `school-calendar-defaults.test.js`), the page's sync code never overwriting an
 edit the server hasn't accepted (`sync-pending.test.js`), the `?diag` modes (`diagnostics.test.js`,

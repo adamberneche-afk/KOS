@@ -25,6 +25,22 @@ its history.
 This file holds the current plan of record's era; `node tools/archive/search.js --entries`
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
+## Drive IDs out of the code: the release gate, 2026-11-20
+
+- **Now:** the lesson-plan table (`LESSON_PLANS`, src/09) holds no doc ID.
+  Each plan's Google Doc comes from the LeaderHub Data spreadsheet's new
+  `doc_ids` tab (key, docId), which `lhBootData_` (Data.gs, `lhDocIds_`)
+  sends with the page; the page fills `lp.docId` from it at load, so
+  `LP_EDITS` (keyed by doc ID) keeps every saved edit. A plan with no row
+  gets a key of its own (`missing_<id>`). The blackout-dates link (src/06)
+  is `lhDocLink('blackout_dates', …)` (src/05), the label alone without a
+  row. The 119 IDs and the blackout doc were written to the tab before the
+  code changed. A LICENSE (the cas-ccps license) is new here.
+- **Why:** the release gate (L1) went on at the operator's word; Drive IDs
+  are never allowed in the repo.
+- **Tests:** `finance-sales-log-escaping.test.js`'s line numbers moved with
+  src/09.
+
 ## Drive IDs out of the LeaderHub docs, 2026-11-15
 
 - **Now:** `LEADERHUB_EMAIL_SETUP.md`, `LEADERHUB_GEM_PROMPT.md`,

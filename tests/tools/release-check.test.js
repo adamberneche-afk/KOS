@@ -159,3 +159,33 @@ test('a missing LICENSE and a student-shaped address fail the gate', () => {
   assert.deepEqual(sd.map((f) => [f.rule, f.bucket]), [['id-shaped-email', 'student-data']]);
   assert.match(sd[0].shown, /^hash [0-9a-f]{12}$/);
 });
+
+// The allow list (2026-11-20, the operator's decisions): a web-app URL by
+// the hash of its value, an export by path, each with why; Drive IDs never.
+test('the allow list lets through a named web-app URL and named exports, nothing else', () => {
+  const url = SCRIPT + 'a/macros/example.org/s/' + SCRIPT_ID + '/exec';
+  const other = SCRIPT + 'a/macros/example.org/s/' + rnd(60) + '/exec';
+  const [f] = rc.scanLine(url);
+  assert.match(f.hash, /^[0-9a-f]{12}$/);
+  assert.equal(f.hash, rc.valueHash('example.org/s/' + SCRIPT_ID));
+  const allow = { scriptHashes: new Map([[f.hash, 'the dashboard']]), exportPaths: new Map([['cas-ccps/data/a.csv', 'curriculum']]) };
+  const files = { 'LICENSE': 'x', 'cas-ccps/LICENSE': 'x', 'kos-personal/LICENSE': 'x', 'leader-hub/LICENSE': 'x',
+    'cas-ccps/scripts/u.js': 'const U = "' + url + '";\n', 'cas-ccps/data/a.csv': 'id,text\n' };
+  const run = (extra) => {
+    const all = Object.assign({}, files, extra);
+    return rc.run({ argv: ['--gate'], env: {}, files: Object.keys(all), read: (p) => Buffer.from(all[p]), log: () => {}, allow });
+  };
+  const ok = run({});
+  assert.equal(ok.code, 0);
+  assert.deepEqual(ok.findings.filter((x) => x.bucket === 'allowed').map((x) => x.allowedFrom).sort(), ['export', 'script']);
+  assert.equal(run({ 'cas-ccps/scripts/v.js': 'const V = "' + other + '";\n' }).code, 1, 'another web app still fails');
+  assert.equal(run({ 'cas-ccps/data/b.csv': 'x\n' }).code, 1, 'an export not named still fails');
+  assert.equal(run({ 'cas-ccps/scripts/w.js': 'go(' + JSON.stringify(DOCS + 'document/d/' + DRIVE_ID) + ');\n' }).code, 1, 'a Docs link is never allowed');
+});
+
+test('allow.json names its entries by hash and path only, each with a reason', () => {
+  const j = JSON.parse(require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'tools', 'release-check', 'allow.json'), 'utf8'));
+  j.scriptUrls.forEach((x) => { assert.match(x.hash, /^[0-9a-f]{12}$/); assert.ok(x.what.length > 20); });
+  j.exports.forEach((x) => { assert.ok(require('fs').existsSync(require('path').join(__dirname, '..', '..', x.path)), x.path); assert.ok(x.why.length > 10); });
+  assert.doesNotMatch(JSON.stringify(j), /script\.google|docs\.google|drive\.google/);
+});

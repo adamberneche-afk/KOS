@@ -33,6 +33,7 @@ key at all).
 
 | Path | Contents |
 |---|---|
+| `LICENSE` | Polyform Noncommercial 1.0.0, the same as `cas-ccps/` (added 2026-11-20 with the release gate, L1). |
 | `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project). `clasp` pushes it and `Code.gs`'s `doGet()` serves it; opened from disk it only shows "LeaderHub now runs as a web app" (see "Where the data lives"). **Generated** (external product review, Finding 4 / "this quarter" maintainability fix) from `src/*.html` via `tools/leaderhub-build/build.js` — stays committed at this path so a push needs no build step, but **never hand-edit it directly**; edit the relevant fragment under `src/` and rebuild. See `tools/leaderhub-build/README.md`. |
 | `src/` | The 14 fragments `student-leader-hub.html` is generated from, in file order — `00-shell-head.html` through `13-markup-modals-tail.html`. This is where you actually make edits. |
 | `EmailBridge.gs` | Apps Script bridge — sub-plan Docs, brag emails (sent via `MailApp`), horizon-item polling (through `google.script.run` only: the `?api=horizon` GET route, which ran before the owner check, was removed 2026-11-15), Organization Sync (owner plus `ORG_SYNC_CO_ADVISORS`), and the AI-drafting job queue (see below). Its Gmail-label horizon scan is currently **disabled**, along with every Gmail scope. They were removed while chasing the consent-dialog crash, which turned out to be unrelated (see the Fixed section below), so restoring them is now a separate decision. `LEADERHUB_AI_FLOW_SETUP.md` covers the queue; `LEADERHUB_EMAIL_SETUP.md` is superseded/historical. |
@@ -65,6 +66,12 @@ all five phases done), the server is the only store:
   app's scripts run. The app keeps them in page memory (`_lhStore`,
   `src/05`); `LS.get`/`LS.set` kept their names but read and write that
   memory, not the browser.
+- **Google Doc IDs.** The page's code holds none (the release gate,
+  2026-11-20). The lesson plans' docs and the blackout-dates doc are rows of
+  the data spreadsheet's `doc_ids` tab (key, docId), sent with the boot data
+  (`lhDocIds_`, `Data.gs`); the page fills each plan's `docId` at load, and
+  `lhDocLink(key, label)` (`src/05`) links the others. A new plan's doc is a
+  new row there.
 - **Save.** Every `LS.set` goes to the server: settings-shaped keys
   (`LH_CONFIG_KEYS`, `Config.gs`) as Script Properties named
   `LH_CONFIG__<key>`; record lists (`LH_DATA_TABS`, `Data.gs`) as tabs in

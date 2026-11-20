@@ -14,6 +14,13 @@ const LH_SERVED = !!LH_BOOT;
 // The server's data couldn't be read: the page says so and refuses to
 // save, rather than starting empty and overwriting the server.
 const LH_BOOT_FAILED = LH_SERVED && LH_BOOT.ok === false;
+
+// A link to a Google Doc whose ID the server keeps (Data.gs's lhDocIds_),
+// or the label alone when it has none (release check, 2026-11-20).
+function lhDocLink(key, label){
+  const id=(typeof LH_BOOT!=='undefined'&&LH_BOOT&&LH_BOOT.docIds||{})[key];
+  return id?`<a href="https://docs.google.com/document/d/${id}/edit" target="_blank" style="color:var(--blue)">${label}</a>`:label;
+}
 const _lhMem = {};
 const _lhStore = {
   getItem: (k) => (Object.prototype.hasOwnProperty.call(_lhMem, k) ? _lhMem[k] : null),

@@ -9,7 +9,11 @@ printed only as its length, `docs.google.com/document/d/…(44)`.
 
 The first run is the full-repo audit,
 [`meta/RELEASE_AUDIT_2026-11-08.md`](../../meta/RELEASE_AUDIT_2026-11-08.md).
-**The gate is off** until the operator has read it and says to turn it on.
+**The gate is on** (the operator, 2026-11-20): CI fails on any finding in a
+failing bucket. It went on once the tree was clean: LeaderHub's lesson-plan
+doc IDs moved to its data spreadsheet, the two drive-curation workbooks
+moved to Drive, a LICENSE at the root and in `leader-hub/`, and the
+operator's allow list below.
 
 One slice is gated already: `tools/doc-currency` Check 6 (2026-11-15) fails on a Drive link or ID, or an Apps Script web app link, in any Markdown doc, using this tool's `scanLine` rules. Prose never needs one; code and data wait for this gate.
 
@@ -43,6 +47,7 @@ node tools/release-check/check.js --report <file>  # also write the counts and f
 | student-data | `student-email`, `id-shaped-email`, `staff-email` | `tools/student-data-scan`'s own kinds and allowlists, printed as its hash | yes |
 | review | `office-document`, `unreadable-container` | a tracked `.docx .pptx .pdf …` (its text is scanned; a person decides whether it ships) | no |
 | probably-fine | `apps-script-manifest` | `appsscript.json` and `*.appsscript.json` (source, not an export) | no |
+| allowed | (any script or export rule) | a web-app URL or a tracked export named in `allow.json` | no |
 
 **Look-alikes.** An ID is only a finding in a link or where it is labelled
 as one: a bare 44-character token is not. A labelled value with no
@@ -65,16 +70,29 @@ shapes only.
 *added* lines per rule and the commits they came in: counts only, no paths,
 no values. A history rewrite is the operator's call.
 
-**No allowlist.** The rule says so. Whether the gate should take one (for
-example for the deployment URL the student docs need) is a decision for
-the operator after the audit.
+**The allow list** (`allow.json`, the operator's decisions of 2026-11-20).
+Two kinds, each entry with its reason:
+- `scriptUrls`: a web-app URL, named by `hash`, a 12-hex scrypt fingerprint
+  of `<domain>/s/<id>` (`valueHash` in check.js), never by the URL.
+  Today one: the Student Dashboard, which the Canvas assignments (79b and
+  the cartridges) link students to, behind the school's sign-in. Every
+  script finding prints its hash's rule; to allow another web app, compute
+  its hash with `valueHash` and add an entry with why.
+- `exports`: tracked data files by path: the six curriculum and standards
+  CSVs the generators read, and the two generated Canvas cartridges.
 
-## Turning the gate on
+**Drive IDs and Docs links are never allowed:** a Google Doc, Sheet or
+folder the code needs goes in config read at run time (CAS's Script
+Properties and `_CONFIG` tab, LeaderHub's data spreadsheet's `doc_ids`
+tab), never the repo.
+
+## The gate in CI
 
 CI runs this in `.github/workflows/gas-lint.yml`, step "Release check",
-with `RELEASE_CHECK_GATE: '0'`. Changing that one line to `'1'` makes any
-finding in a failing bucket fail the build. Do it only on the operator's
-word, after the findings the operator wants gone are gone.
+with `RELEASE_CHECK_GATE: '1'` since 2026-11-20 (the operator's word):
+any finding in a failing bucket fails the build. `'0'` turns it back to
+warn-only. Git history still holds what the tree held before (counts with
+`--history`); rewriting it is the operator's call.
 
 ## Pre-commit hook
 

@@ -1,5 +1,13 @@
 # Release audit, 2026-11-08 (plan item L1)
 
+> **Outcome (2026-11-20): the gate is on.** The operator's decisions: the
+> Student Dashboard's web-app URL and the curriculum CSVs and Canvas
+> cartridges are allowed by name (`tools/release-check/allow.json`);
+> drive-curation's two workbooks moved to the operator's Drive; LeaderHub's
+> lesson-plan doc IDs moved to its data spreadsheet (`doc_ids` tab); a
+> LICENSE at the root and in `leader-hub/` (the cas-ccps license). History
+> still holds the old values; a rewrite stays the operator's call.
+
 The first full-repo run of [`tools/release-check`](../tools/release-check/README.md),
 reported before its CI gate turns on (the gate is off: CI prints the
 findings and passes). Approved by the operator 2026-11-08 (plan item L1,
@@ -110,7 +118,7 @@ they hold scopes and settings, no IDs (they produced no content finding).
    operator's call, as on 2026-10-20 and 2026-10-31.
 5. **Turn the gate on** once the tree is clean of what you want gone: one
    line, `RELEASE_CHECK_GATE: '1'` in `.github/workflows/gas-lint.yml`
-   ([README](../tools/release-check/README.md#turning-the-gate-on)). Whether the
+   ([README](../tools/release-check/README.md#the-gate-in-ci)). Whether the
    gate takes an allowlist at all (the rule says none) is part of 1 and 2.
 
 ## Generated detail
