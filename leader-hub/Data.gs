@@ -262,10 +262,30 @@ function lhBootData_() {
     config: lhGetAllConfig_(), // Config.gs
     data: data,
     scr: lhGetScrScores_(), // SCR.gs
+    // Google Doc IDs the page links to (the lesson plans', the blackout
+    // dates'), from the data spreadsheet's doc_ids tab, so no Drive ID is in
+    // the repo (release check, L1, 2026-11-20).
+    docIds: lhDocIds_(ss),
     // This web app's own URL: Organization Sync's share codes carry it, and
     // it used to be typed in as the "Email Bridge URL" (Phase 5).
     appUrl: (function () { try { return ScriptApp.getService().getUrl() || ''; } catch (e) { return ''; } })(),
   };
+}
+
+// The data spreadsheet's doc_ids tab (key, docId) as { key: docId }:
+// the lesson plans' Google Docs (keyed by the plan's id, lp_8177_01 …) and
+// any other doc the page links to (blackout_dates). {} when the tab is
+// missing. Added 2026-11-20 so the page's source holds no Drive ID.
+const LH_DOC_IDS_TAB = 'doc_ids';
+function lhDocIds_(ss) {
+  const out = {};
+  const sheet = ss.getSheetByName(LH_DOC_IDS_TAB);
+  if (!sheet || sheet.getLastRow() < 2) return out;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().forEach(function (r) {
+    const k = String(r[0] || '').trim(), id = String(r[1] || '').trim();
+    if (k && id) out[k] = id;
+  });
+  return out;
 }
 
 // The page with the boot data in a <script> at the top of <head>. "<" and

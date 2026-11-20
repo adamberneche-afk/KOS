@@ -245,8 +245,12 @@ test('buildUpcomingLessons, the trigger\'s entry point, writes the planned lesso
   const drafted = preview.planned.filter((s) => !(s.date === ymd(TOMORROW) && s.period === '2')).length;
   assert.equal(r.written, drafted, JSON.stringify(r.failed));
   assert.equal(rows(ss, 'LessonContext').length, before + r.written);
-  assert.ok(r.skipped.some((s) => s.date === ymd(TOMORROW) && s.period === '2' && s.reason === 'LESSON_EXISTS'),
-    'tomorrow\'s period 2 already has the teacher\'s lesson');
+  // Only on a weekday: run on a Friday or Saturday, tomorrow is a weekend
+  // and the plan has no day to skip (failed on Friday 2026-11-20).
+  if (TOMORROW.getDay() !== 0 && TOMORROW.getDay() !== 6) {
+    assert.ok(r.skipped.some((s) => s.date === ymd(TOMORROW) && s.period === '2' && s.reason === 'LESSON_EXISTS'),
+      'tomorrow\'s period 2 already has the teacher\'s lesson');
+  }
 
   props.setProperty('M2_ENABLED', 'false');
   assert.equal(exported.buildUpcomingLessons().written, 0, 'nothing when Module 2 is off');

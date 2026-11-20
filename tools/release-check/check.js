@@ -21,6 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 const sds = require('../student-data-scan/check.js');
+const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..', '..');
 
@@ -120,11 +121,49 @@ function scanLine(line) {
     let m;
     while ((m = r.re.exec(line)) !== null) {
       if (r.rule === 'drive-id-call' && lookAlike(m.groups.id)) continue;
-      push({ rule: r.rule, bucket: r.bucket, shown: redact(r, m.groups) });
+      const f = { rule: r.rule, bucket: r.bucket, shown: redact(r, m.groups) };
+      // A web-app URL carries its hash, so the allow list can name it
+      // without holding it (allow.json, 2026-11-20).
+      if (r.bucket === 'script') f.hash = valueHash((m.groups.dom ? m.groups.dom + '/s/' : '') + m.groups.id);
+      push(f);
     }
   });
   labelled(line, push);
   return out;
+}
+
+// The first 12 hex of a value's SHA-256: how allow.json names an allowed
+// web-app URL without holding it.
+function valueHash(v) {
+  return crypto.createHash('sha256').update(String(v)).digest('hex').slice(0, 12);
+}
+
+// ---- the allow list (the operator's decisions, 2026-11-20) ---------------------
+// allow.json names what the gate lets through, each with why: web-app URLs
+// by hash (the Student Dashboard's, which the Canvas assignments link to,
+// behind the school's sign-in) and tracked exports by path (curriculum and
+// standards data the generators read, and the generated Canvas
+// cartridges). Drive IDs and Docs links never: the rule holds no allow list.
+function loadAllowList(file) {
+  const f = file || path.join(__dirname, 'allow.json');
+  let j = {};
+  try { j = JSON.parse(fs.readFileSync(f, 'utf8')); } catch (e) { j = {}; }
+  return {
+    scriptHashes: new Map((j.scriptUrls || []).map((x) => [x.hash, x.what])),
+    exportPaths: new Map((j.exports || []).map((x) => [x.path, x.why])),
+  };
+}
+
+// A finding the allow list covers moves to the "allowed" bucket.
+function applyAllowList(findings, allow) {
+  findings.forEach((f) => {
+    if (f.bucket === 'script' && f.hash && allow.scriptHashes.has(f.hash)) {
+      f.allowedFrom = f.bucket; f.bucket = 'allowed';
+    } else if (f.bucket === 'export' && allow.exportPaths.has(f.where)) {
+      f.allowedFrom = f.bucket; f.bucket = 'allowed';
+    }
+  });
+  return findings;
 }
 
 // Student-data patterns: student-data-scan's own kinds and allowlist.
@@ -284,7 +323,7 @@ function scanHistory() {
 }
 
 const FAILING = new Set(['drive', 'script', 'export', 'secret', 'student-data', 'license']);
-const BUCKET_ORDER = ['drive', 'script', 'export', 'license', 'secret', 'student-data', 'review', 'probably-fine'];
+const BUCKET_ORDER = ['drive', 'script', 'export', 'license', 'secret', 'student-data', 'review', 'probably-fine', 'allowed'];
 const BUCKET_TITLE = {
   drive: 'Drive IDs and Docs links',
   script: 'Apps Script web-app URLs and script/deployment IDs (reported separately; the operator decides)',
@@ -294,6 +333,7 @@ const BUCKET_TITLE = {
   'student-data': 'Student-data patterns (student-data-scan)',
   review: 'For review (not failing): Office documents and PDFs, unreadable containers',
   'probably-fine': 'Probably fine (not failing): Apps Script manifests',
+  allowed: 'Allowed (not failing): named in tools/release-check/allow.json',
 };
 
 function summarize(findings) {
@@ -312,7 +352,7 @@ function gateOn(argv, env) {
   return argv.includes('--gate') || /^(1|on|true)$/i.test(String(env.RELEASE_CHECK_GATE || ''));
 }
 
-function run({ argv = [], env = process.env, files, read, log = console.log } = {}) {
+function run({ argv = [], env = process.env, files, read, log = console.log, allow } = {}) {
   const staged = argv.includes('--staged');
   const tracked = files || (staged ? stagedFiles() : trackedFiles());
   const reader = read || (staged
@@ -324,6 +364,7 @@ function run({ argv = [], env = process.env, files, read, log = console.log } = 
       if (!l.has) findings.push({ where: l.unit === '(root)' ? 'LICENSE' : l.unit + '/LICENSE', rule: 'license-missing', bucket: 'license', shown: '' });
     });
   }
+  applyAllowList(findings, allow || loadAllowList());
   const failing = findings.filter((f) => FAILING.has(f.bucket));
   BUCKET_ORDER.forEach((b) => findings.filter((f) => f.bucket === b)
     .forEach((f) => log(f.where + '  ' + f.rule + (f.shown ? '  ' + f.shown : ''))));
@@ -375,4 +416,4 @@ function renderReport(findings, history, licenses) {
 }
 
 if (require.main === module) process.exitCode = run({ argv: process.argv.slice(2) }).code;
-module.exports = { scanLine, scanText, classifyFile, licenseFindings, run, gateOn, renderReport, topFolder, CONTENT_RULES };
+module.exports = { scanLine, scanText, classifyFile, licenseFindings, run, gateOn, renderReport, topFolder, CONTENT_RULES, valueHash, loadAllowList, applyAllowList };
