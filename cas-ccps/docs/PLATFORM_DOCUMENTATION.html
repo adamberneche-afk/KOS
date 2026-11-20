@@ -352,7 +352,7 @@ For how the system works now, read <code>SYSTEM_ARCHITECTURE.html</code>&rsquo;s
     <div class="schema-row"><span class="col-n">07_TeacherDashboard</span><span class="col-t">Standalone</span><span class="col-d">Web app — teacher view, term filter, Execute as: Me</span></div>
     <div class="schema-row"><span class="col-n">08_ConfirmationStep</span><span class="col-t">Matrix Sheet</span><span class="col-d">Draft detection, pre-filled confirmation email, self-registering triggers</span></div>
     <div class="schema-row"><span class="col-n">09_RevisionGuidance</span><span class="col-t">Student Template</span><span class="col-d">Reference copy — operative code in Script 03</span></div>
-    <div class="schema-row"><span class="col-n">10_AdminPanel</span><span class="col-t">Central Ledger</span><span class="col-d">Admin controls, term management, health check, daily autoHealthAlert</span></div>
+    <div class="schema-row"><span class="col-n">10_AdminPanel</span><span class="col-t">Central Ledger</span><span class="col-d">Admin controls, term management, health check (the daily report is the overnight check, 34c)</span></div>
     <div class="schema-row"><span class="col-n">13_StudentDashboard</span><span class="col-t">Standalone</span><span class="col-d">Web app — student view, term filter, Execute as: Me, access: domain</span></div>
     <div class="schema-row"><span class="col-n">15_StudioPrompts</span><span class="col-t">Reference</span><span class="col-d">Flow 1 + Flow 2 prompts and Studio configuration reference</span></div>
     <div class="schema-row"><span class="col-n">16_UnifiedManualSetup</span><span class="col-t">Admin Manual</span><span class="col-d">Unified wizard — admin + teacher setup, role detection, menu management</span></div>
@@ -490,7 +490,7 @@ For how the system works now, read <code>SYSTEM_ARCHITECTURE.html</code>&rsquo;s
 <span class="k">Scripts</span>  02 · 03 · 04 · 05 · 06 · 07 · 08 · 10 · 13 · 15 · 17 · 18
 <span class="k">Studio</span>   Flow 1 (Rubric Extraction) · Flow 2 (Student Evaluation)
 <span class="k">Triggers</span> dispatchFormSubmit · bridgeQueue (1m) · backPropagateCompletions (2m)
-          runStagingTurnstile (1m) · autoHealthAlert (daily)
+          runStagingTurnstile (1m)
 
 <span class="c">// MODULE 2 — LESSON INTELLIGENCE (builds on M1)</span>
 <span class="k">New data tabs</span>

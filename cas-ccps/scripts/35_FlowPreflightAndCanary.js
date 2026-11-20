@@ -915,9 +915,10 @@ const SETUP_STATUS_TRIGGERS = [
   { fn: "runWeeklySCRSuggestionUpdate_", installer: "setupCompetencySuggestions()",       what: "Weekly: competency suggestions" },
   { fn: "syncArtifactCompetencies",      installer: "installArtifactSyncTrigger()",       what: "Daily: artifact competency sync" },
   { fn: "reportDeployVersion",           installer: "installDeployVersionReportTrigger()", what: "Every 6 hours: deployed version" },
-  { fn: "autoHealthAlert",               installer: "setupAutoHealthTrigger()",           what: "Daily, 6 a.m.: health alert" },
 ];
 
+// Not listed: autoHealthAlert (retired 2026-11-20; the overnight run in 34c
+// does its checks and archiving; a leftover trigger removes itself).
 // Not listed: runWeeklyParentReportPrep. ⚙ Settings' "Parent reports ready
 // on Fridays" installs it in the Teacher Dashboard's project (07); one here
 // shows under "Other triggers".

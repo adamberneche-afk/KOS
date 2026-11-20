@@ -32,7 +32,7 @@ function onOpen() {
 
 // ---------------------------------------------------------------------------
 // _stuckRowContext_ — shared identifying-context line for one stuck
-// STAGING_PIPELINE row. Consolidated so autoHealthAlert() (the daily
+// STAGING_PIPELINE row. Consolidated so the overnight check (34c; autoHealthAlert until 2026-11-20) (the daily
 // email), resetStuckRow() (the manual reset confirmation), and
 // runSystemHealthCheck() (the on-demand summary) all describe a stuck row
 // the same way — file ID + how long it's been stuck — instead of three
@@ -52,7 +52,7 @@ function _stuckRowContext_(rowNumber, fileId, elapsedMinutes) {
 // _stagingPipelineHealthChecks_ — Say/Do Ledger cross-portfolio Flow Health
 // &amp; Inventory extension. Scans STAGING_PIPELINE once and returns both the
 // existing IN_PROCESS-stuck-row check (moved here from being duplicated,
-// with two DIFFERENT thresholds, inline in autoHealthAlert() and
+// with two DIFFERENT thresholds, inline in the overnight check (34c; autoHealthAlert until 2026-11-20) and
 // runSystemHealthCheck()) and a new check this extension actually asked
 // for: PENDING_INFERENCE rows stuck past a threshold with no evaluation
 // ever having started.
@@ -151,7 +151,7 @@ function _stagingPipelineHealthChecks_(ss, cfg) {
 
 // ---------------------------------------------------------------------------
 // _ferpaHealthChecks_ — shared FERPA-adjacent health signals, consolidated
-// so autoHealthAlert() (daily email) and runSystemHealthCheck() (on-demand
+// so the overnight check (34c; autoHealthAlert until 2026-11-20) (daily email) and runSystemHealthCheck() (on-demand
 // dialog) check the same three things the same way instead of each growing
 // its own copy that could drift — same pattern _stuckRowContext_() already
 // established for finding #11. See Say/Do Ledger cas-ccps finding #5,
@@ -271,7 +271,7 @@ function _ferpaHealthChecks_(opts) {
   // (d) SCRDecisionLog rows past the configured retention window that
   // haven't moved to the restricted "Archived — pending disposition review"
   // state (Say/Do Ledger cas-ccps Extension 3). Both callers of this
-  // function (autoHealthAlert() and runSystemHealthCheck()) already run
+  // function (the overnight check (34c; autoHealthAlert until 2026-11-20) and runSystemHealthCheck()) already run
   // _archiveExpiredScrDecisions_() immediately before calling this, so a
   // nonzero count here means archival itself failed or didn't run — a
   // genuine signal, not a tautology.
@@ -290,7 +290,7 @@ function _ferpaHealthChecks_(opts) {
         "   not moved to the archived state — this should be automatic.\n" +
         "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
         "   (which re-triggers archival), and confirm the daily health-check\n" +
-        "   trigger (setupAutoHealthTrigger) is still installed."
+        "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: pastRetentionUnarchived
       ? "🚨  " + pastRetentionUnarchived + " SCRDecisionLog row(s) past retention, not archived — see admin alert"
@@ -318,7 +318,7 @@ function _ferpaHealthChecks_(opts) {
         "   not moved to ARCHIVED — this should be automatic.\n" +
         "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
         "   (which re-triggers archival), and confirm the daily health-check\n" +
-        "   trigger (setupAutoHealthTrigger) is still installed."
+        "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: ledgerPastRetentionUnarchived
       ? "🚨  " + ledgerPastRetentionUnarchived + " Ledger row(s) past retention, not archived — see admin alert"
@@ -347,7 +347,7 @@ function _ferpaHealthChecks_(opts) {
         "   have not moved to ARCHIVED — this should be automatic.\n" +
         "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
         "   (which re-triggers archival), and confirm the daily health-check\n" +
-        "   trigger (setupAutoHealthTrigger) is still installed."
+        "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: evidencePastRetentionUnarchived
       ? "🚨  " + evidencePastRetentionUnarchived + " CompetencyEvidence row(s) past retention, not archived — see admin alert"
@@ -379,7 +379,7 @@ function _ferpaHealthChecks_(opts) {
         "   schedule) and have not moved to ARCHIVED — this should be automatic.\n" +
         "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
         "   (which re-triggers archival), and confirm the daily health-check\n" +
-        "   trigger (setupAutoHealthTrigger) is still installed."
+        "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: parentReportsPastRetentionUnarchived
       ? "🚨  " + parentReportsPastRetentionUnarchived + " ParentReportLog row(s) past retention, not archived — see admin alert"
@@ -407,7 +407,7 @@ function _ferpaHealthChecks_(opts) {
         "   not moved to ARCHIVED — this should be automatic.\n" +
         "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
         "   (which re-triggers archival), and confirm the daily health-check\n" +
-        "   trigger (setupAutoHealthTrigger) is still installed."
+        "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: warmUpQueuePastRetentionUnarchived
       ? "🚨  " + warmUpQueuePastRetentionUnarchived + " WarmUpQueue row(s) past retention, not archived — see admin alert"
@@ -443,164 +443,27 @@ function _ferpaHealthChecks_(opts) {
 }
 
 // ---------------------------------------------------------------------------
-// autoHealthAlert — runs daily on a time-driven trigger.
-// Checks for stuck IN_PROCESS rows and RubricQueue PENDING_EXTRACTION rows
-// older than the alert thresholds. Emails the admin if issues are found.
-// Silently exits if everything is healthy — no noise when all is well.
-//
-// TRIGGER: Set this up once in the Central Ledger spreadsheet's script project:
-//   Time-driven → Day timer → Between 6am-7am → autoHealthAlert
-// Setup sets this trigger (the AutoInstaller did until it was archived, 2026-11-17).
+// autoHealthAlert — RETIRED 2026-11-20 (the operator: one health run). Its
+// checks (stuck STAGING_PIPELINE rows, stuck rubric extractions, each failing
+// FERPA check) and its retention archiving moved into the overnight run
+// (34c's _onAdminChecks_ and overnightArchiveDaily_), which emails once a
+// day at 5 a.m. and writes KOS_CAS_SIGNAL's LAST NIGHT, counts only. A
+// deployment that still has its 6 a.m. trigger runs this once: it removes
+// that trigger and logs it. runSystemHealthCheck (the menu) is unchanged.
 // ---------------------------------------------------------------------------
 function autoHealthAlert() {
-  const STUCK_EXTRACTION_HOURS  = 2;   // Alert if PENDING_EXTRACTION row older than this
-
-  const cfg = getConfig_();
-  if (!cfg.adminNotifyEmail) return; // No email configured — skip silently
-
-  const ss  = SpreadsheetApp.openById(cfg.adminSsId);
-  const now = new Date();
-  const issues = [];
-
-  // --- Check STAGING_PIPELINE for stuck IN_PROCESS / PENDING_INFERENCE rows ---
-  // (Say/Do Ledger cross-portfolio Flow Health extension: both checks now
-  // share one scan + one pair of thresholds with runSystemHealthCheck(),
-  // via _stagingPipelineHealthChecks_() — see its own doc comment above.)
-  const staging = _stagingPipelineHealthChecks_(ss, cfg);
-  staging.inProcessStuckRows.forEach(ctx => {
-    issues.push(
-      "⏱️ STUCK EVALUATION\n" +
-      "   " + ctx + "\n" +
-      "   Action: Use ⚙️ Admin Controls → Reset Stuck Pipeline Row"
-    );
-  });
-  staging.pendingStuckRows.forEach(ctx => {
-    issues.push(
-      "🕓 QUEUED SUBMISSION NEVER STARTED EVALUATION\n" +
-      "   " + ctx + "\n" +
-      "   Action: Confirm the Turnstile time-driven trigger (06_StagingPipeline_Turnstile.js) is installed and running — a queued row this old with no evaluation started usually means it isn't."
-    );
-  });
-  staging.unknownStatusRows.forEach(ctx => {
-    issues.push(
-      "❓ STAGING ROW WITH AN UNKNOWN STATUS\n" +
-      "   " + ctx + "\n" +
-      "   Action: Open STAGING_PIPELINE. Text like a step's variable names is Studio residue from a test run; delete the row."
-    );
-  });
-
-  // --- Check RubricQueue for stuck PENDING_EXTRACTION rows ---
-  const rubricSheet = ss.getSheetByName(cfg.tabs.rubricQueue);
-  if (rubricSheet) {
-    const rubricData    = rubricSheet.getDataRange().getValues();
-    const rHeaders      = rubricData[0] ? rubricData[0].map(h => String(h).trim()) : [];
-    const rStIdx        = rHeaders.indexOf("Status");
-    const rTsIdx        = rHeaders.indexOf("Timestamp");
-    const rTeacherIdx   = rHeaders.indexOf("TeacherEmail");
-    const rCourseIdx    = rHeaders.indexOf("CourseName");
-
-    for (let i = 1; i < rubricData.length; i++) {
-      const status = String(rubricData[i][rStIdx] || "").trim();
-      if (status !== "PENDING_EXTRACTION") continue;
-
-      const rowTs   = rTsIdx !== -1 ? new Date(rubricData[i][rTsIdx]) : null;
-      const elapsed = rowTs ? Math.round((now - rowTs) / 3600000) : null; // hours
-
-      if (elapsed !== null && elapsed >= STUCK_EXTRACTION_HOURS) {
-        const teacher = rTeacherIdx !== -1
-          ? String(rubricData[i][rTeacherIdx]).trim() : "unknown";
-        const course  = rCourseIdx !== -1
-          ? String(rubricData[i][rCourseIdx]).trim()  : "unknown";
-        issues.push(
-          "📋 STUCK RUBRIC EXTRACTION (row " + (i + 1) + ")\n" +
-          "   Teacher: " + teacher + "\n" +
-          "   Course:  " + course  + "\n" +
-          "   Stuck for: " + elapsed + " hour" + (elapsed === 1 ? "" : "s") + "\n" +
-          "   Action: Check Studio Flow 1 — it may have timed out or hit a quota limit\n" +
-          "   To re-queue: delete this row and ask the teacher to resubmit their rubric"
-        );
-      }
-    }
-  }
-
-  // The Drive Advanced Service check that stood here guarded 04's turn-in
-  // forensic check, its only user; both retired with the Turn-In Form
-  // (P0-04, 2026-10-10).
-
-  // --- SCRDecisionLog retention archival (Say/Do Ledger cas-ccps Extension 3) ---
-  // Runs before the FERPA checks below so the "past retention, not archived"
-  // check right after almost always reads zero — it's a genuine health
-  // signal (did archival actually run?) precisely because this call
-  // normally makes it true, not a tautology.
-  _archiveExpiredScrDecisions_();
-
-  // --- Ledger retention archival (external product review, Finding 6) ---
-  // Same rationale as the SCRDecisionLog call above, extended to the Ledger.
-  _archiveExpiredLedgerRows_();
-
-  // --- CompetencyEvidence retention archival (roadmap 2.2 — explicit
-  // archive/hibernate state). Same rationale as the two calls above,
-  // extended to the one FERPA-scoped tab that had no archival at all.
-  _archiveExpiredCompetencyEvidence_();
-  _archiveExpiredParentReports_();
-
-  // --- WarmUpQueue retention archival (third-party review — the one major
-  // operational tab with zero retention at all). Same rationale as the
-  // calls above, in 34_QueueWatchdog.js since that file already owns
-  // WarmUpQueue health monitoring.
-  _archiveExpiredWarmUpQueueRows_();
-
-  // --- FERPA-adjacent checks (Say/Do Ledger finding #5, Bonus 1) ---
-  _ferpaHealthChecks_().forEach(c => { if (!c.ok && c.alertText) issues.push(c.alertText); });
-
-  // --- Send alert only if issues exist ---
-  if (issues.length === 0) {
-    Logger.log("[AUTO-HEALTH] All systems healthy — no alert sent.");
-    return;
-  }
-
-  const body =
-    "The Assignment System automated health check found " +
-    issues.length + " issue" + (issues.length === 1 ? "" : "s") +
-    " that need your attention.\n\n" +
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
-    issues.join("\n\n") +
-    "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
-    "Open the Central Ledger Spreadsheet and use ⚙️ Admin Controls to resolve these.\n\n" +
-    "— Assignment System (automated alert)";
-
-  MailApp.sendEmail(casMail_(
-    cfg.adminNotifyEmail,
-    "⚠️ Assignment System — " + issues.length +
-      " Issue" + (issues.length === 1 ? "" : "s") + " Need Attention",
-    body
-  ));
-
-  Logger.log("[AUTO-HEALTH] Alert sent to " + cfg.adminNotifyEmail +
-             " — " + issues.length + " issue(s) found.");
+  const removed = removeAutoHealthTrigger();
+  Logger.log("[AUTO-HEALTH] Retired: the overnight run (34c) reports these checks and archives. " +
+    "Removed " + removed + " old trigger(s).");
 }
 
-// ---------------------------------------------------------------------------
-// setupAutoHealthTrigger — call once to install the daily health check trigger.
-// Run during setup, or by hand (the AutoInstaller called it until 2026-11-17).
-// ---------------------------------------------------------------------------
-function setupAutoHealthTrigger() {
-  // Check if trigger already exists
-  const existing = ScriptApp.getProjectTriggers();
-  const hasAlert = existing.some(t => t.getHandlerFunction() === "autoHealthAlert");
-
-  if (hasAlert) {
-    Logger.log("[AUTO-HEALTH] Daily trigger already registered.");
-    return;
-  }
-
-  ScriptApp.newTrigger("autoHealthAlert")
-    .timeBased()
-    .everyDays(1)
-    .atHour(6) // 6am in the script timezone
-    .create();
-
-  Logger.log("[AUTO-HEALTH] Daily health alert trigger registered.");
+// Removes the retired 6 a.m. trigger (autoHealthAlert); returns how many.
+function removeAutoHealthTrigger() {
+  let removed = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === "autoHealthAlert") { ScriptApp.deleteTrigger(t); removed++; }
+  });
+  return removed;
 }
 
 // ---------------------------------------------------------------------------
@@ -641,7 +504,7 @@ function resetStuckRow() {
 
   SpreadsheetApp.flush();
   // FIXED (finding #11): used to just report a count with no identifying
-  // context — brought up to the same standard autoHealthAlert() already
+  // context — brought up to the same standard the overnight check (34c; autoHealthAlert until 2026-11-20) already
   // uses, via the shared _stuckRowContext_() helper.
   ui.alert(reset.length > 0
     ? "✅ " + reset.length + " stuck row(s) reset to queue:\n\n" + reset.join("\n")
@@ -796,7 +659,7 @@ function runSystemHealthCheck() {
 
   // FIXED (Say/Do Ledger cross-portfolio Flow Health extension): this used
   // to hardcode a 10-minute IN_PROCESS threshold, drifting from
-  // autoHealthAlert()'s own 15-minute one for the exact same question — now
+  // the overnight check (34c; autoHealthAlert until 2026-11-20)'s own 15-minute one for the exact same question — now
   // both callers share one scan and one pair of thresholds via
   // _stagingPipelineHealthChecks_() (see its doc comment). Also adds the
   // PENDING_INFERENCE-stuck check that function was actually built for —
@@ -837,7 +700,7 @@ function runSystemHealthCheck() {
   }
   const currentTerm = currentTerm_() || "(not set)";
 
-  // Same reasoning as autoHealthAlert() above — archive first, so the
+  // Same reasoning as the overnight check (34c; autoHealthAlert until 2026-11-20) above — archive first, so the
   // retention health check below reflects current-after-archival reality
   // (Say/Do Ledger cas-ccps Extension 3).
   _archiveExpiredScrDecisions_();

@@ -14,7 +14,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // 34c's setup checks reach 38, 40, 41 and 57, and those reach the rest
 // (the retention schedule names every record's tab and columns).
-const FILES = ['00_SharedConfig.js', '34c_OvernightHealth.js', '58_LessonRollout.js', '43_DeployVersionMarker_CentralLedger.js', '64_LedgerCycle.js',
+const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '50_StudentDataAccess.js', '34c_OvernightHealth.js', '58_LessonRollout.js', '43_DeployVersionMarker_CentralLedger.js', '64_LedgerCycle.js',
   '03_QueueBridge.js', '10_AdminRecoveryPanel.js', '15b_StudioFlowPrompts_Flow2_Revised.js', '23_StudentProfileManager.js',
   '25_WarmUpWriter.js', '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js',
   '36_WeeklyParentReport.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '39b_Flow2Provenance.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js',
@@ -29,12 +29,13 @@ const WQ_HEADER = ['queue_id', 'lesson_id', 'student_email', 'student_name', 'go
   'lesson_context_snapshot', 'student_profile_snapshot', 'status'];
 
 function load(opts) {
-  const env = loadGasFiles(FILES, ['overnightHealth_', 'overnightMaybeMail_', 'syncFlowPromptsToSheet',
+  const env = loadGasFiles(FILES, ['overnightHealth_', 'overnightMaybeMail_', 'overnightArchiveDaily_', 'syncFlowPromptsToSheet',
     'LEDGER_CANONICAL_HEADERS']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   const props = env.sandbox.PropertiesService.getScriptProperties();
   props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  props.setProperty('ADMIN_SS_ID', ss.getId());
   props.setProperty('M2_ENABLED', 'true');
   props.setProperty('TEACHER_EMAIL', 'teacher@ccpsnet.net');
   props.setProperty('ADMIN_NOTIFY_EMAIL', 'admin@ccpsnet.net');
@@ -329,4 +330,78 @@ test('a Flow 2 answer copied into another row this week is one line, naming Stag
   assert.equal(h.allClear, '');
   env.props.setProperty('M2_ENABLED', 'false');
   assert.ok(env.exported.overnightHealth_(NOW).problems.some((p) => /^Flow 2 wrote one answer/.test(p)));
+});
+
+// One health run (2026-11-20, the operator): the retired 6 a.m. alert's
+// checks and its retention archiving, folded into this run. Counts only.
+test('the 6 a.m. alert\'s checks: stuck submissions, unknown rows, stuck rubrics and each FERPA check, counts only', () => {
+  const env = load();
+  const real = Date.now();
+  const st = env.ss.insertSheet('STAGING_PIPELINE');
+  st.appendRow(['Timestamp', 'Status', 'StudentFileID', 'TeacherEmail']);
+  st.appendRow([new Date(real - 60 * 60000), 'IN_PROCESS', 'file-secret-1', 'teacher@ccpsnet.net']);
+  st.appendRow([new Date(real - 90 * 60000), 'PENDING_INFERENCE', 'file-secret-2', 'teacher@ccpsnet.net']);
+  st.appendRow([new Date(real - 5 * 60000), 'IN_PROCESS', 'file-ok', 'teacher@ccpsnet.net']);
+  st.appendRow([new Date(real), '{{step.status}}', 'file-secret-3', '']);
+  const rq = env.ss.insertSheet('RubricQueue');
+  rq.appendRow(['Timestamp', 'Status', 'TeacherEmail', 'CourseName']);
+  rq.appendRow([HOURS(3), 'PENDING_EXTRACTION', 'teacher@ccpsnet.net', 'Sports Marketing']);
+  rq.appendRow([HOURS(1), 'PENDING_EXTRACTION', 'teacher@ccpsnet.net', 'Sports Marketing']);
+  env.props.setProperty('GEMINI_API_KEY', 'x');
+  const h = env.exported.overnightHealth_(NOW);
+  const all = h.problems.join('\n');
+  assert.match(all, /Submissions stuck evaluating \(15\+ minutes, or with no timestamp\): 1\. ⚙️ Admin Controls → Reset Stuck Pipeline Row/);
+  assert.match(all, /Submissions queued 20\+ minutes with no evaluation started: 1\./);
+  assert.match(all, /STAGING_PIPELINE rows with an unknown status: 1 /);
+  assert.match(all, /Rubric extractions stuck 2\+ hours \(Studio Flow 1\): 1\./);
+  assert.match(all, /FERPA: GEMINI_API_KEY is set — direct-API bypass risk \(⚙️ Admin Controls → System Health Check says what to do\)/);
+  assert.doesNotMatch(all, /file-secret|teacher@|Sports Marketing|see admin alert|🚨/, 'no file IDs, teachers, courses or alert markup');
+  assert.equal(h.allClear, '');
+  // With Module 2 off they still report.
+  env.props.setProperty('M2_ENABLED', 'false');
+  assert.match(env.exported.overnightHealth_(NOW).problems.join('\n'), /Rubric extractions stuck 2\+ hours/);
+});
+
+test('retention archiving: once a day from 5 a.m., failures reported, the all-clear says it ran', () => {
+  const env = loadArchive();
+  const at = (h) => new Date(Date.UTC(2026, 9, 19, h + 4)); // h o'clock in New York (EDT)
+  assert.equal(env.exported.overnightArchiveDaily_(at(4)), null, 'not before 5 a.m.');
+  assert.equal(env.calls.length, 0);
+  const s = env.exported.overnightArchiveDaily_(at(5));
+  assert.deepEqual([...s.failed], []);
+  assert.equal(env.calls.length, 5, 'all five tabs');
+  env.exported.overnightArchiveDaily_(at(9));
+  assert.equal(env.calls.length, 5, 'once a day');
+  const h = env.exported.overnightHealth_(NOW);
+  assert.match(h.allClear, / Retention archiving ran\.$/);
+  // A failing job: the rest still run, and the night's report says which.
+  env.props.deleteProperty('CAS_OVERNIGHT_ARCHIVED');
+  env.fail.add('_archiveExpiredLedgerRows_');
+  const s2 = env.exported.overnightArchiveDaily_(at(6));
+  assert.deepEqual([...s2.failed], ['Ledger']);
+  assert.equal(env.calls.length, 10);
+  assert.ok(env.exported.overnightHealth_(NOW).problems.includes(
+    'Retention archiving failed today for: Ledger (Executions shows why; it runs again tomorrow)'));
+});
+
+function loadArchive() {
+  const env = load();
+  env.calls = [];
+  env.fail = new Set();
+  ['_archiveExpiredScrDecisions_', '_archiveExpiredLedgerRows_', '_archiveExpiredCompetencyEvidence_',
+    '_archiveExpiredParentReports_', '_archiveExpiredWarmUpQueueRows_'].forEach((fn) => {
+    env.sandbox[fn] = () => { env.calls.push(fn); if (env.fail.has(fn)) throw new Error('boom'); };
+  });
+  return env;
+}
+
+test('the retired 6 a.m. alert removes its own trigger and sends nothing', () => {
+  const env = loadGasFiles(FILES, ['autoHealthAlert']);
+  const sent = [];
+  env.sandbox.MailApp.sendEmail = (m) => sent.push(m);
+  env.sandbox.ScriptApp.newTrigger('autoHealthAlert').timeBased().everyDays(1).create();
+  env.sandbox.ScriptApp.newTrigger('runQueueWatchdog').timeBased().everyMinutes(10).create();
+  env.exported.autoHealthAlert();
+  assert.deepEqual(env.sandbox.ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction()), ['runQueueWatchdog']);
+  assert.equal(sent.length, 0);
 });

@@ -105,9 +105,11 @@ against a primary source** — direct confirmation with VDOE/central-office
 records staff remains outstanding) drives an automated archival routine
 (`_archiveExpiredScrDecisions_()` in `30_SCRSuggestionEngine.js`) that flips
 a row's `archive_status` column to "ARCHIVED — pending disposition review"
-once it's older than the configured window — run automatically every time
-`autoHealthAlert()`'s daily trigger fires or an admin runs
-`runSystemHealthCheck()` on demand. This never deletes anything — actual
+once it's older than the configured window — run automatically once a day
+at or after 5 a.m. by the overnight check (`overnightArchiveDaily_()` in
+`34c_OvernightHealth.js`, since 2026-11-20; before then by the retired 6 a.m.
+`autoHealthAlert()`), or when an admin runs `runSystemHealthCheck()` on
+demand. This never deletes anything — actual
 permanent deletion still always requires a human to look at the archived
 rows and decide by hand; no script here automates that step. A new
 admin-triggered "📤 Export SCRDecisionLog for Audit" menu item
@@ -780,9 +782,10 @@ payload. Investigated options:
 
 ## Health checks (Bonus 1 — added; items 4-9 added later)
 
-`10_AdminRecoveryPanel.js`'s `_ferpaHealthChecks_()` (shared by both
-`autoHealthAlert()`'s daily email and `runSystemHealthCheck()`'s on-demand
-dialog) now checks nine things (its checks (a) to (i)) — one per retention
+`10_AdminRecoveryPanel.js`'s `_ferpaHealthChecks_()` (shared by the
+overnight check's daily email and KOS_CAS_SIGNAL, where each failing check
+is named with no identifiers, `34c_OvernightHealth.js` since 2026-11-20, and
+`runSystemHealthCheck()`'s on-demand dialog) now checks nine things (its checks (a) to (i)) — one per retention
 policy above, the three original safety-property checks, and ReviewQueue's
 empty text column:
 

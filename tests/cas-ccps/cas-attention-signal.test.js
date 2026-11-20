@@ -225,13 +225,18 @@ test('writeCasSignal_: the rollout\'s remaining problems and the export note app
   }
 });
 
-test('writeCasSignal_: a failing FERPA check is an admin line', () => {
+// Since 2026-11-20 (one health run) each failing FERPA check is named under
+// LAST NIGHT (34c), not counted again under ADMIN.
+test('writeCasSignal_: a failing FERPA check is named under LAST NIGHT, once', () => {
   const env = load();
   staging(env.ss, []);
   suggestions(env.ss, []);
   env.props.setProperty('GEMINI_API_KEY', 'x');
   env.exported.writeCasSignal_(okWatchdog());
-  assert.match(signalText(env), /- FERPA checks failing: 1/);
+  const text = signalText(env);
+  assert.match(text, /- FERPA: GEMINI_API_KEY is set — direct-API bypass risk/);
+  assert.doesNotMatch(text, /FERPA checks failing/);
+  assert.equal(text.split('FERPA:').length - 1, 1);
 });
 
 test('writeCasSignal_: "since yesterday" compares against the end of the previous day', () => {

@@ -20,11 +20,6 @@
     "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Notably the same file as Sensor 1, the incident that motivated this whole check; worth prioritizing over the others in this list precisely because of that."
   },
   {
-    "file": "cas-ccps/scripts/10_AdminRecoveryPanel.js",
-    "function": "autoHealthAlert",
-    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
-  },
-  {
     "file": "cas-ccps/scripts/25_WarmUpWriter.js",
     "function": "registerDeliveredWarmUps",
     "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."

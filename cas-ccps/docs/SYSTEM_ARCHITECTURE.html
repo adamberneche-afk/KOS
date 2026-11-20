@@ -257,7 +257,7 @@ Where this page describes the doc menu, feedback at the top or end of the doc, S
       </div>
       <div class="project-triggers">
         <strong>4 Triggers</strong>
-        dispatchFormSubmit<br>bridgeQueue (1 min)<br>backPropagateCompletions (2 min)<br>runStagingTurnstile (1 min)<br>autoHealthAlert (daily)
+        dispatchFormSubmit<br>bridgeQueue (1 min)<br>backPropagateCompletions (2 min)<br>runStagingTurnstile (1 min)
       </div>
     </div>
 
@@ -445,7 +445,7 @@ Where this page describes the doc menu, feedback at the top or end of the doc, S
       <div class="col-row"><span class="col-idx">07</span><span class="col-name">TeacherDashboard</span><span class="col-type">Standalone</span><span class="col-desc">doGet(), getDashboardData(term) — teacher web app, Execute as: Me</span></div>
       <div class="col-row"><span class="col-idx">08</span><span class="col-name">ConfirmationStep</span><span class="col-type">Matrix Sheet</span><span class="col-desc">pollForNewDrafts(), onTeacherConfirmSubmit() — draft detection, confirmation email</span></div>
       <div class="col-row"><span class="col-idx">09</span><span class="col-name">RevisionGuidance</span><span class="col-type">Student Template</span><span class="col-desc">Reference copy — operative code in Script 03</span></div>
-      <div class="col-row"><span class="col-idx">10</span><span class="col-name">AdminPanel</span><span class="col-type">Central Ledger</span><span class="col-desc">Admin Controls menu — recovery, term management, health check, autoHealthAlert()</span></div>
+      <div class="col-row"><span class="col-idx">10</span><span class="col-name">AdminPanel</span><span class="col-type">Central Ledger</span><span class="col-desc">Admin Controls menu — recovery, term management, health check (the daily report is the overnight check, 34c)</span></div>
       <div class="col-row"><span class="col-idx">13</span><span class="col-name">StudentDashboard</span><span class="col-type">Standalone</span><span class="col-desc">doGet(), getStudentDashboardData(term) — student web app, Execute as: Me, access: domain</span></div>
       <div class="col-row"><span class="col-idx">15</span><span class="col-name">StudioPrompts</span><span class="col-type">Reference</span><span class="col-desc">Prompts and Studio Flow config reference — not deployed</span></div>
       <div class="col-row"><span class="col-idx">16</span><span class="col-name">UnifiedManualSetup</span><span class="col-type">Admin Manual</span><span class="col-desc">Admin + teacher setup wizard, role detection, menu management</span></div>
@@ -532,13 +532,13 @@ Where this page describes the doc menu, feedback at the top or end of the doc, S
       <tr>
         <td><span class="status-chip chip-red">Studio timeout during evaluation</span></td>
         <td>STAGING_PIPELINE row stuck IN_PROCESS · blocks all future evaluations</td>
-        <td>autoHealthAlert fires after 15 min · admin email</td>
+        <td>the overnight check counts it after 15 min · the 5 a.m. email</td>
         <td>⚙️ Admin Controls → Reset Stuck Pipeline Row</td>
       </tr>
       <tr>
         <td><span class="status-chip chip-red">Studio timeout during extraction</span></td>
         <td>RubricQueue row stuck PENDING_EXTRACTION · teacher hears nothing</td>
-        <td>autoHealthAlert fires after 2 hours · admin email</td>
+        <td>the overnight check counts it after 2 hours · the 5 a.m. email</td>
         <td>Delete stuck RubricQueue row · teacher resubmits rubric</td>
       </tr>
       <tr>
