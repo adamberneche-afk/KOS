@@ -38,6 +38,17 @@
 //     evaluationHealth_), which also rewrites the Measures tab, and a second
 //     line: the other flows' week and Studio's runs per day (69b, which
 //     rewrites the FlowMeasures tab)
+//   - the checks the 6 a.m. health alert made, folded in here 2026-11-20 so
+//     one run reports everything (10's autoHealthAlert is retired): submissions
+//     stuck evaluating or queued and never started, STAGING_PIPELINE rows
+//     with an unknown status (10's _stagingPipelineHealthChecks_, its
+//     thresholds), rubric extractions stuck two hours or more (Flow 1), and
+//     each failing FERPA check by name (10's _ferpaHealthChecks_). Counts
+//     only; with Module 2 off too
+//   - retention archiving (SCRDecisionLog, Ledger, CompetencyEvidence,
+//     ParentReportLog, WarmUpQueue), which the 6 a.m. alert also ran: once a
+//     day at or after 5 a.m. (overnightArchiveDaily_, called by 34b before
+//     this), a failure as a problem and the all-clear saying it ran
 //   - at most every 6 hours, the setup checks once run by hand: the Ledger's
 //     column order (38), FlowPrompts against the code (40), the last 24
 //     hours' Studio returns in the right columns (41), and each retention
@@ -64,6 +75,106 @@ const ON_MAIL_STATE_KEY = "CAS_OVERNIGHT_MAILED";
 const ON_SETUP_CHECK_MS = 6 * 60 * 60 * 1000;
 const ON_SETUP_STATE_KEY = "CAS_OVERNIGHT_SETUP_CHECKS";
 const ON_DELIVERED = ["DELIVERED", "PENDING_EVAL", "SCORED", "INCOMPLETE", "EVAL_ERROR"];
+const ON_RUBRIC_STUCK_MS = 2 * 60 * 60 * 1000;
+const ON_ARCHIVE_STATE_KEY = "CAS_OVERNIGHT_ARCHIVED";
+
+// Retention archiving, once a day at or after ON_MAIL_HOUR (2026-11-20, from
+// the retired 6 a.m. alert): each job in turn, one failing not stopping the
+// rest. The day's result is kept in CAS_OVERNIGHT_ARCHIVED for
+// overnightHealth_ to report. Returns that state, or null before the hour.
+function overnightArchiveDaily_(now, tz) {
+  now = now ? new Date(now) : new Date();
+  tz = tz || Session.getScriptTimeZone();
+  const props = PropertiesService.getScriptProperties();
+  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  let state = null;
+  try { state = JSON.parse(props.getProperty(ON_ARCHIVE_STATE_KEY) || "null"); } catch (e) { state = null; }
+  if (state && state.day === today) return state;
+  if (Number(Utilities.formatDate(now, tz, "HH")) < ON_MAIL_HOUR) return null;
+  const jobs = [
+    ["SCRDecisionLog", _archiveExpiredScrDecisions_],
+    ["Ledger", _archiveExpiredLedgerRows_],
+    ["CompetencyEvidence", _archiveExpiredCompetencyEvidence_],
+    ["ParentReportLog", _archiveExpiredParentReports_],
+    ["WarmUpQueue", _archiveExpiredWarmUpQueueRows_],
+  ];
+  const failed = [];
+  jobs.forEach(function (j) {
+    try { j[1](); } catch (e) {
+      console.error("[Overnight] Archiving " + j[0] + " failed: " + e.message);
+      failed.push(j[0]);
+    }
+  });
+  state = { day: today, failed: failed };
+  props.setProperty(ON_ARCHIVE_STATE_KEY, JSON.stringify(state));
+  return state;
+}
+
+// The 6 a.m. alert's checks (2026-11-20): counts only, with what to do.
+// { problems, unreadable }.
+function _onAdminChecks_(now) {
+  const out = { problems: [], unreadable: false };
+  const cfg = getConfig_();
+  let adminSs = null;
+  try {
+    adminSs = SpreadsheetApp.openById(cfg.adminSsId);
+    const st = _stagingPipelineHealthChecks_(adminSs, cfg);
+    if (st.inProcessStuckRows.length) {
+      out.problems.push("Submissions stuck evaluating (" + STAGING_STUCK_IN_PROCESS_MINUTES + "+ minutes, or with no timestamp): " +
+        st.inProcessStuckRows.length + ". ⚙️ Admin Controls → Reset Stuck Pipeline Row");
+    }
+    if (st.pendingStuckRows.length) {
+      out.problems.push("Submissions queued " + STAGING_STUCK_PENDING_MINUTES + "+ minutes with no evaluation started: " +
+        st.pendingStuckRows.length + ". Check that the Turnstile trigger (06) is installed and running");
+    }
+    if (st.unknownStatusRows.length) {
+      out.problems.push("STAGING_PIPELINE rows with an unknown status: " + st.unknownStatusRows.length +
+        " (Studio residue from a test run; delete the row)");
+    }
+  } catch (e) {
+    out.unreadable = true;
+    out.problems.push("Stuck submissions: unavailable (" + e.message + ")");
+  }
+  try {
+    const sheet = adminSs && adminSs.getSheetByName(cfg.tabs.rubricQueue);
+    if (sheet && sheet.getLastRow() > 1) {
+      const data = sheet.getDataRange().getValues();
+      const h = data[0].map(function (x) { return String(x).trim(); });
+      const iSt = h.indexOf("Status"), iTs = h.indexOf("Timestamp");
+      const stuck = data.slice(1).filter(function (r) {
+        if (String(r[iSt] || "").trim() !== "PENDING_EXTRACTION" || iTs === -1) return false;
+        const t = new Date(r[iTs]).getTime();
+        return !isNaN(t) && now.getTime() - t >= ON_RUBRIC_STUCK_MS;
+      }).length;
+      if (stuck) {
+        out.problems.push("Rubric extractions stuck 2+ hours (Studio Flow 1): " + stuck +
+          ". Check Flow 1's run history; to re-queue, delete the row and ask the teacher to resubmit the rubric");
+      }
+    }
+  } catch (e) {
+    out.unreadable = true;
+    out.problems.push("Stuck rubric extractions: unavailable (" + e.message + ")");
+  }
+  try {
+    _ferpaHealthChecks_().filter(function (c) { return !c.ok; }).forEach(function (c) {
+      const line = String(c.displayLine || "").replace(/^\W+/, "").replace(/\s*[—,]\s*see admin alert\s*$/, "");
+      out.problems.push("FERPA: " + line + " (⚙️ Admin Controls → System Health Check says what to do)");
+    });
+  } catch (e) {
+    out.unreadable = true;
+    out.problems.push("FERPA checks: unavailable (" + e.message + ")");
+  }
+  return out;
+}
+
+// Today's retention archiving, as a problem line or "" (and whether it ran).
+function _onArchiveState_(props, today) {
+  let state = null;
+  try { state = JSON.parse(props.getProperty(ON_ARCHIVE_STATE_KEY) || "null"); } catch (e) { state = null; }
+  if (!state || state.day !== today) return { ran: false, problem: "" };
+  return { ran: true, problem: state.failed && state.failed.length
+    ? "Retention archiving failed today for: " + state.failed.join(", ") + " (Executions shows why; it runs again tomorrow)" : "" };
+}
 
 // Returns { problems: [], allClear: "" }. allClear is set only when every
 // check was read and none found a problem.
@@ -76,11 +187,18 @@ function overnightHealth_(now, tz) {
   const tomorrow = Utilities.formatDate(new Date(now.getTime() + 24 * 60 * 60 * 1000), tz, "yyyy-MM-dd");
   let unreadable = false;
 
+  // The 6 a.m. alert's checks and today's archiving (2026-11-20), Module 2 or not.
+  const admin = _onAdminChecks_(now);
+  const archive = _onArchiveState_(props, today);
   if (props.getProperty("M2_ENABLED") !== "true") {
     return { problems: ["Module 2 is off (M2_ENABLED), so the 3 a.m. runs and warm-ups don't run"]
+      .concat(admin.problems).concat(archive.problem ? [archive.problem] : [])
       .concat(_onTurnInChecks_(null, now).problems).concat(_onFlow2Duplicates_(null, now).problems)
       .concat(_onFlow2Drift_(null, now).problems), allClear: "" };
   }
+  admin.problems.forEach(function (p) { problems.push(p); });
+  if (admin.unreadable) unreadable = true;
+  if (archive.problem) problems.push(archive.problem);
 
   ON_STAGES.forEach(function (s) {
     const when = new Date(props.getProperty(s.key) || "").getTime();
@@ -220,7 +338,8 @@ function overnightHealth_(now, tz) {
       (wu.today.total ? "Today's warm-ups: " + wu.today.delivered + " of " + wu.today.total + " delivered. "
         : "No warm-ups today. ") +
       (wu.tomorrow.total ? "Tomorrow's: " + wu.tomorrow.total + " built, " + wu.tomorrow.delivered + " delivered so far."
-        : "None built for tomorrow.") + (rolloutDone ? " " + rolloutDone + "." : "");
+        : "None built for tomorrow.") + (rolloutDone ? " " + rolloutDone + "." : "") +
+      (archive.ran ? " Retention archiving ran." : "");
   }
   return { problems: problems, allClear: allClear };
 }

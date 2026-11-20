@@ -198,6 +198,7 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `ARCHIVE_CONFIG_ID` | direct | — | no | 54_StudentAssignments.js |
 | `CAS_CANARY_TEST_MATRIX_SS_ID` | direct | — | no | 35_FlowPreflightAndCanary.js |
 | `CAS_CHAT_WEBHOOK_URL` | direct, via _pfCheckScriptProperty_() | — | no | 34_QueueWatchdog.js, 35_FlowPreflightAndCanary.js |
+| `CAS_OVERNIGHT_ARCHIVED` | via the constant ON_ARCHIVE_STATE_KEY | "null" | 34c_OvernightHealth.js | 34c_OvernightHealth.js |
 | `CAS_OVERNIGHT_MAILED` | via the constant ON_MAIL_STATE_KEY | — | 34c_OvernightHealth.js | 34c_OvernightHealth.js |
 | `CAS_OVERNIGHT_SETUP_CHECKS` | via the constant ON_SETUP_STATE_KEY | "null" | 34c_OvernightHealth.js | 34c_OvernightHealth.js |
 | `CAS_SIGNAL_DOC_ID` | direct | — | 34b_CasAttentionSignal.js | 34b_CasAttentionSignal.js |
@@ -391,7 +392,6 @@ project `SETUP_GUIDE.md` names, which for the nightly jobs is the Central Ledger
 
 | Handler | Installed by | Schedule | File |
 |---|---|---|---|
-| `autoHealthAlert` | `setupAutoHealthTrigger()` | daily, about 06:00 | 10_AdminRecoveryPanel.js |
 | `backPropagateCompletions` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `bridgeQueue` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `buildFlowInputRows` | `installFlowInputTriggers()` | every 1 min | 37_FlowInputBuilder.js |

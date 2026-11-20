@@ -52,7 +52,7 @@
 //     off), its lines: problems that remain after the day's runs, an
 //     unfinished day, a stale Canvas export once (58's rolloutDayStatus_,
 //     plan L3, 2026-11-08)
-//   - FERPA checks failing (10's _ferpaHealthChecks_)
+//   - (FERPA checks: by name under LAST NIGHT since 2026-11-20, 34c)
 // Flow 2 answers written into more than one row of a doc (37, 2026-11-15)
 // reach the doc through LAST NIGHT (34c), with Module 2 on or off.
 // Apps Script trigger failures can't be seen from inside a script; those
@@ -211,12 +211,16 @@ function writeCasSignal_(watchdog, now) {
     console.error("[CasSignal] Rollout check failed: " + e.message);
     admin.push("Lesson rollout: unavailable (the RolloutLog tab couldn't be read)");
   }
+  // FERPA checks (10): by name under LAST NIGHT since 2026-11-20 (34c's
+  // _onAdminChecks_), not counted here as well.
+
+  // Retention archiving, once a day at or after 5 a.m. (34c, 2026-11-20;
+  // the retired 6 a.m. alert ran it). Before the checks, so the FERPA
+  // "past retention, not archived" checks read what's left after it.
   try {
-    const failing = _ferpaHealthChecks_().filter(function (c) { return !c.ok; }).length;
-    if (failing > 0) admin.push("FERPA checks failing: " + failing + " (run the System Health Check)");
+    overnightArchiveDaily_(now, tz);
   } catch (e) {
-    console.error("[CasSignal] FERPA checks failed: " + e.message);
-    admin.push("FERPA checks: unavailable (Executions shows why)");
+    console.error("[CasSignal] Retention archiving failed: " + e.message);
   }
 
   // ── Last night (34c): the 3 a.m. runs and warm-ups; emailed once a day ──

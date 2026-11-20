@@ -157,7 +157,7 @@ dry run or failure, timed-out and unknown-status queue rows, rows in flight
 with no timestamp, Submit for Feedback failures on the system side, the
 nightly rollout's problems that remain after the day's runs, an unfinished
 day and a stale Canvas export once, when LAST NIGHT doesn't already say them,
-and courses still in shadow, failing FERPA checks). A line shows only above
+and courses still in shadow; failing FERPA checks are named under LAST NIGHT). A line shows only above
 zero; a count that can't be read says "unavailable". No names, IDs, grades or
 student text. The first run creates the doc and stores its ID in
 `CAS_SIGNAL_DOC_ID` (optional `CAS_SIGNAL_FOLDER_ID` picks its folder); paste
@@ -175,7 +175,15 @@ the last day, and warm-ups delivered as the teacher's anchor. At most every
 2026-10-23): the Ledger's column order (`38`), the FlowPrompts tab against
 the code (`40`), the last day's Studio returns in the right columns (`41`)
 and each retention record's date column (`57`); each problem is one line
-naming the function to run. With nothing wrong it prints one all-clear line. The same
+naming the function to run. Since 2026-11-20 it is the one health run: it
+also reports what the retired 6 a.m. alert (`10`'s `autoHealthAlert`) did,
+as counts with what to do (submissions stuck evaluating or never started,
+STAGING_PIPELINE rows with an unknown status, rubric extractions stuck two
+hours or more, each failing FERPA check by name), with Module 2 off too, and
+runs the retention archiving once a day at or after 5 a.m.
+(`overnightArchiveDaily_`, before the checks; a failure is a line, the
+all-clear says it ran). A deployment that still has the 6 a.m. trigger
+removes it on its next firing. With nothing wrong it prints one all-clear line. The same
 lines are emailed to `ADMIN_NOTIFY_EMAIL` (or `TEACHER_EMAIL`) once a day on
 the first watchdog run after 5 a.m., with the deployment's version marker
 and teacher account in the body; `CAS_OVERNIGHT_MAILED` holds the last date

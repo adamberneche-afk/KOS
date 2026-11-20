@@ -472,7 +472,7 @@ function _ensureScrDecisionLogArchiveColumn_(sheet) {
 // _archiveExpiredScrDecisions_ — scans SCRDecisionLog for rows whose
 // DECIDED_AT is older than _scrRetentionYears_() and whose ARCHIVE_STATUS
 // is still blank, and marks them archived. Called from both
-// autoHealthAlert() and runSystemHealthCheck() (10_AdminRecoveryPanel.js,
+// the overnight check (34c; autoHealthAlert until 2026-11-20) and runSystemHealthCheck() (10_AdminRecoveryPanel.js,
 // same central-ledger project) immediately before they compute
 // _ferpaHealthChecks_(), so archival runs automatically on both the daily
 // trigger and any on-demand check — never something an admin has to

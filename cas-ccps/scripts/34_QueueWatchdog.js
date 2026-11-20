@@ -16,10 +16,10 @@
 // drop of this file claimed "cas-ccps has none of this for any of its
 // three queues — confirmed by grep." That grep missed real, already-
 // deployed coverage — confirmed directly, not assumed:
-//   - RubricQueue: 10_AdminRecoveryPanel.js's autoHealthAlert() already
+//   - RubricQueue: 34c's overnight check (10's autoHealthAlert until 2026-11-20) already
 //     flags a PENDING_EXTRACTION row stuck past 2 hours, admin-email,
 //     once daily.
-//   - STAGING_PIPELINE: the SAME autoHealthAlert() also flags stuck
+//   - STAGING_PIPELINE: the same overnight check also flags stuck
 //     IN_PROCESS/PENDING_INFERENCE rows daily, AND
 //     06_StagingPipeline_Turnstile.js's own runStagingTurnstile()
 //     already auto-demotes a row stuck IN_PROCESS past 12 minutes to

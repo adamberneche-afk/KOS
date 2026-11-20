@@ -1397,3 +1397,28 @@ chose the proposal: a label and a way to rate them.
   that course; the SCRSuggestions row created or set OVERRIDDEN (frozen
   from the weekly run) and a SCRDecisionLog row each time (snapshot
   `OUTSIDE_LESSONS: DECA|WBL`), so a re-rating's newest row counts.
+
+## One health run: the 6 a.m. alert folded into the overnight check, 2026-11-20
+
+The structural audit (meta/AUDIT_STRUCTURE_2026-11-20.md, 3.6) found two
+morning health emails. The operator gives both to the RTP harness and asked
+that they report the same things before either went, then to roll them into
+one run. Compared line by line: the 5 a.m. overnight check (34c) covered the
+night's runs and warm-ups; the 6 a.m. alert (10's `autoHealthAlert`) alone
+covered stuck STAGING_PIPELINE rows, stuck rubric extractions and each
+FERPA check, and it also ran the nightly retention archiving. Its lines
+carried student file IDs and a teacher's email and course, which the
+counts-only signal the RTP reads must not.
+
+- **34c:** `_onAdminChecks_` reports those checks as counts with what to do
+  (no file IDs, teachers or courses), with Module 2 off too;
+  `overnightArchiveDaily_` runs the five archiving jobs once a day at or
+  after 5 a.m., one failing not stopping the rest, the day's result in
+  `CAS_OVERNIGHT_ARCHIVED`: a failure is a LAST NIGHT line and the all-clear
+  says it ran.
+- **34b:** calls the archiving before the checks; FERPA is named under LAST
+  NIGHT, no longer counted again under ADMIN.
+- **10:** `autoHealthAlert` is a stub that removes its own trigger
+  (`removeAutoHealthTrigger`); `setupAutoHealthTrigger` is gone, and 35's
+  setup status no longer expects the trigger. `runSystemHealthCheck` is
+  unchanged.

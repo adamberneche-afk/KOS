@@ -268,7 +268,9 @@ the function that installs it):
 4. The nightly and weekly jobs: `installWarmUpTriggers()`,
    `installArtifactSyncTrigger()`, `installLessonPlanTrigger()`,
    `setupStudentContextDocs()`, `setupCompetencySuggestions()`,
-   `installDeployVersionReportTrigger()`, `setupAutoHealthTrigger()`. Step 9
+   `installDeployVersionReportTrigger()`. (The daily health email and the
+   retention archiving run in the overnight check, 34c, with the watchdog:
+   nothing to install.) Step 9
    adds `installLessonRolloutTrigger()`.
 5. In each other project, `installDeployVersionReportTrigger()`; in the
    family sentinel, `installFamilySentinelTrigger()`.
