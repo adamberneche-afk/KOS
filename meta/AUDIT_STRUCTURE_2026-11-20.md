@@ -1,6 +1,6 @@
 # Audit: structural debt (2026-11-20)
 
-**Status:** findings; section 1 (1.1-1.3) built 2026-11-20 in the PR after #514, the rest open.
+**Status:** findings; section 1 (1.1-1.3) built 2026-11-20 (#515); section 2's 2.1, 2.2, 2.5, 2.7 and part of 2.6 built 2026-11-20 in the PR after #515 (cas-ccps/HISTORY.md says what stayed and why); 2.3, 2.4 next; the rest open.
 Asked by the operator: "Our scripts are becoming disjointed and clumsy. What
 can we fold in together? What is redundant without purpose? Is our codebase
 navigable and intuitive?" Three read-only reviews (cas-ccps scripts; tools,
@@ -47,7 +47,7 @@ line numbers only; no student data.
 | 2.4 | **15_StudioFlowPrompts** (not deployed) | Its `FLOW_2_SYSTEM_PROMPT` (15:78) is a stale copy of 15b's; its Flow 1 prompt is the generator's source | Flow 1's prompt to a `.md` (as Flow 6's is); delete 15 | S, low |
 | 2.5 | **The 16 addenda** (M5_ADDENDUM_v2, M6_ADDENDUM) | 415 lines, ~90 of them code (4 functions); the rest is patch narrative | Fold the functions into 16 | S, low |
 | 2.6 | **Unread constants** | 43, 33 of them column constants (e.g. `TM_` 14 of 15 unread, `RQ05` never read, `SHEET_CHECK_KEYS`, `LS_HOLD`) | Delete with 3.1 | S, low |
-| 2.7 | **Tests nothing runs** | `tests/cas-ccps/archived/` (10 files) is reached by no `npm test` glob; the code they test moved to `archive/` on 11-17 | `node tools/archive/file.js` them beside that code | S, none |
+| 2.7 | **Tests nothing runs** | `archive/2026-27-Q2/tests/cas-ccps/archived/` (10 files) is reached by no `npm test` glob; the code they test moved to `archive/` on 11-17 | `node tools/archive/file.js` them beside that code | S, none |
 
 Not dead: 15c's `runFlow2DirectGemini_` is unreferenced but parked under D16.
 

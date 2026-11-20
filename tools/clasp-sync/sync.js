@@ -63,10 +63,9 @@ const requestedName = process.argv[2]; // optional single-project filter
 // documents. Pushing that folder ships the exact broken half-state
 // tools/gas-lint/check.js's cfg-key-pending-merge warning already flags,
 // with nothing here stopping it. This is a cheap, conservative guard
-// against that specific failure mode: a merged addendum (like
-// 16_UnifiedManualSetup_M5_ADDENDUM_v2.js, which legitimately still has
-// live functions shared into its project's scope) has real top-level
-// code and passes; a file that's still 100% comments does not.
+// against that specific failure mode: a merged addendum that
+// still has live functions shared into its project's scope has real
+// top-level code and passes; a file that's still 100% comments does not.
 function hasLiveTopLevelCode(absPath) {
   const raw = fs.readFileSync(absPath, 'utf8');
   const stripped = raw

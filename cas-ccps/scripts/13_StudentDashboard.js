@@ -3816,7 +3816,6 @@ function checkAgain(btn) {
 // Try again on a check that timed out: the server puts the student's own
 // row back in line (retryMyCheck: its own row only, only after a timeout,
 // once per 10 minutes per card).
-let _retryMsgs = {};
 function retryCheck(btn) {
   const fileId = btn.getAttribute("data-file"), configId = btn.getAttribute("data-config");
   btn.disabled = true;

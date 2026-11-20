@@ -24,10 +24,8 @@
 //   - 1 new TeacherMatrix column: LESSON_UNIT_ID
 //   - 1 new DraftUnits column: same
 //   - 1 new Confirmation Form field ("Lesson Unit" dropdown), added by
-//     16_UnifiedManualSetup_M6_ADDENDUM.js and 19_ClonedSheetConfig_M6_ADDENDUM.js
-//     — these two files remain unmerged patch addenda on top of their base
-//     files, same convention already used for M5 (see those files' own
-//     headers). This file (08) is the one file in the M5/M6 lineage where
+//     the M6 addenda to 16 and 19, both since folded into their base
+//     files (16's on 2026-11-20), as M5's were. This file (08) is the one file in the M5/M6 lineage where
 //     addenda ARE merged directly, matching how the M5 merge was already done here.
 //   - 1 new pre-fill entry in buildPrefilledUrl_(), also left BLANK —
 //     which unit a milestone belongs to is a teacher call, same reasoning
@@ -350,7 +348,7 @@ function onTeacherConfirmSubmit(e) {
   const milestone4CompetencyId = r["Competency — Milestone 4"]?.[0]?.trim() || "";
 
   // ── M6 ── the lesson-unit tagging field, added by
-  // 16_UnifiedManualSetup_M6_ADDENDUM.js. Same storage shape as the four
+  // 16_UnifiedManualSetup.js (addLessonUnitDropdownItem_). Same storage shape as the four
   // competency fields above — the raw "lesson_unit_id — lesson_unit_name"
   // dropdown label is stored as-is, not split into id/name, matching how
   // the M5 competency fields already do it.
