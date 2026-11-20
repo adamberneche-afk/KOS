@@ -403,14 +403,27 @@ test('marking a Sheets part: its template key and checks reach 55b; its task may
   assert.equal(p.workFileNow, 'sheet');
   assert.equal(p.workTemplateKey, 'WORK_TEMPLATE_8177_THE_BOTTOM_LINE_P3');
   assert.deepEqual(JSON.parse(JSON.stringify(p.sheetChecks)), { formulasRequired: 3, requireChart: true });
-  assert.throws(() => buildWithEdits((all) => { all['8177-the-back-room'].parts[1].workType = 'sheet'; }),
-    /workType "sheet" but its workFile is "doc"/, 'the back room\'s Part 2 is a doc until its workFile changes');
+  assert.throws(() => buildWithEdits((all) => { all['8177-the-back-room'].parts[1].workFile = 'doc'; }),
+    /workType "sheet" but its workFile is "doc"/, 'a part is a Sheet only where its workFile is sheet');
 });
 
-test('nothing is marked "sheet": PARTS.json has no sheet workType or sheetChecks, and 55b none', () => {
+// The first Sheets part (2026-11-19, the operator): 8177 The Back Room's
+// Part 2, The Inventory Update. Its task sends the work to the sheet, never
+// to a document; its checks ask for the Inventory tab, a header and four
+// rows, and a formula for each usable count in column D.
+test('the one Sheets part: the back room\'s Part 2, with its checks, its template key and a task that names the sheet', () => {
   const parts = JSON.parse(fs.readFileSync(PARTS_PATH, 'utf8'));
-  const all = Object.values(parts).flatMap((d) => (d && d.parts) || []);
-  assert.ok(all.some((p) => p.workFile === 'sheet'), 'Sheets parts are planned');
-  assert.deepEqual(all.filter((p) => p.workType === 'sheet' || p.sheetChecks !== undefined), []);
-  assert.doesNotMatch(fs.readFileSync(S('55b_LessonAssignmentData.js'), 'utf8'), /"workFileNow": "sheet"|"sheetChecks"/);
+  const marked = Object.entries(parts).flatMap(([k, d]) => ((d && d.parts) || []).map((p, i) => [k, i, p]))
+    .filter(([, , p]) => p.workType === 'sheet' || p.sheetChecks !== undefined);
+  assert.deepEqual(marked.map(([k, i]) => k + ' ' + (i + 1)), ['8177-the-back-room 2']);
+  assert.deepEqual(marked[0][2].sheetChecks, { requiredTabs: ['Inventory'], tab: 'Inventory', minFilledRows: 5, formulasRequired: 4, formulasIn: 'D' });
+  const ctx = {};
+  vm.createContext(ctx);
+  vm.runInContext(fs.readFileSync(S('55b_LessonAssignmentData.js'), 'utf8') + '\nthis.P = LESSON_PARTS;', ctx);
+  const p = ctx.P['8177-the-back-room'][1];
+  assert.equal(p.workFileNow, 'sheet');
+  assert.equal(p.workTemplateKey, 'WORK_TEMPLATE_8177_THE_BACK_ROOM_P2');
+  assert.match(p.promptText, /Open your Google Sheet for this part from your dashboard\. On the tab named Inventory/);
+  assert.match(p.promptText, /must be a formula that works it out, like =B2-C2/);
+  assert.doesNotMatch(p.promptText, /in this doc/);
 });

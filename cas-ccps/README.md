@@ -987,7 +987,8 @@ that rollout, or every copy fails as `NO_WORK_TEMPLATE`.
 The same pattern again, for Google Sheets. `workType: "sheet"` is allowed
 where the part's planned `workFile` is `sheet`; the generator refuses it
 elsewhere and refuses a Sheets part whose task still sends the work or its
-link to this document. **Nothing is marked.**
+link to this document. **One part is marked** (2026-11-19): 8177 "The Back
+Room" Part 2, below.
 
 - **Made by the rollout like a deck**: a Drive copy of the part's template
   (`WORK_TEMPLATE_<PART KEY>`), the student an editor (or `SCHEDULED`), the
@@ -1041,15 +1042,31 @@ link to this document. **Nothing is marked.**
   (it reads the Ledger), which covers the reader; no re-consent.
 - **Dashboards and demo**: "Open your sheet", "Your sheet's feedback page";
   the teacher's "· Google Sheets", "Open sheet", "Part n (sheet)". The demo
-  adds the first lesson in teaching order with a planned Sheets part (8177
-  "The Bottom Line", Part 3).
+  adds the first lesson in teaching order with a Sheets part (8177 "The
+  Back Room", Part 2, since 2026-11-19).
 
 **Marking a part as a Sheet:** as for a deck, with a blank sheet as the
-template, `"workType": "sheet"` and `"sheetChecks": {…}`. The first planned
-use, 8177 "The Back Room" Part 2 "The Inventory Update", is a `doc` part
-today: its `workFile` changes to `sheet` in the same follow-up PR that
-marks it (e.g. `{"tab": "Inventory", "minFilledRows": 5, "formulasRequired":
-4, "formulasIn": "D"}` for a header, four items and a computed usable count).
+template, `"workType": "sheet"` and `"sheetChecks": {…}`.
+
+**The first Sheets part** (the operator, 2026-11-19): 8177 "The Back Room"
+Part 2, "The Inventory Update" (lesson 23 of 31). Its `workFile` and
+`workType` are `sheet`, with `{"requiredTabs": ["Inventory"], "tab":
+"Inventory", "minFilledRows": 5, "formulasRequired": 4, "formulasIn": "D"}`:
+a header and the four items on the Inventory tab, and each usable count a
+formula. Its task now says so: column A the item, B how many were ordered,
+C how many are missing or can't be used, D the usable count as a formula
+(`=B2-C2`), E why. Before the lesson's rollout, make its template and set
+the property:
+
+1. A new Google Sheet in the teacher folder, named "The Back Room — Part 2
+   template", with its one tab renamed **Inventory** and nothing else in
+   it (the students write the header; a header in the template would count
+   as one of their five rows).
+2. In the Central Ledger, the Script Property (or `_CONFIG` row)
+   `WORK_TEMPLATE_8177_THE_BACK_ROOM_P2` = that sheet's ID.
+
+Without it each copy fails as `NO_WORK_TEMPLATE` (a PROBLEM row). After the
+rollout, `checkWorkFileReads()` in the Student Dashboard reads every copy.
 
 ## Turn-in codes (script 71)
 

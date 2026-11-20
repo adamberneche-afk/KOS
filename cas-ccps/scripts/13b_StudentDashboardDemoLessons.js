@@ -582,84 +582,64 @@ const DASH_DEMO_SLIDES_LESSON = {
 // A lesson in parts with a Sheets part, for the demo's sheet card (Phase 4d).
 const DASH_DEMO_SHEET_LESSON = {
   "code": "8177",
-  "key": "8177-the-bottom-line",
-  "lessonName": "The Bottom Line (Event Budgeting & Finance)",
+  "key": "8177-the-back-room",
+  "lessonName": "The Back Room (Distribution & Inventory Management)",
   "parts": [
     {
       "n": 1,
-      "title": "Projected Revenue",
+      "title": "The Discrepancy Log",
       "workType": "doc",
-      "key": "8177-the-bottom-line-P1",
-      "unitName": "The Bottom Line (Event Budgeting & Finance) — Part 1: Projected Revenue",
+      "key": "8177-the-back-room-P1",
+      "unitName": "The Back Room (Distribution & Inventory Management) — Part 1: The Discrepancy Log",
       "subject": "Marketing (CTE)",
       "milestones": [
-        "8177-98 Develop a budget for an event.",
-        "8177-85 Identify the components of a budget.",
+        "8177-41 Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees.",
+        "Uses the lesson vocabulary accurately: purchase order, packing slip, receiving.",
         "Uses specific examples from the student's own work, not general statements.",
         "Completes every part of the task the assignment asks for."
       ],
       "milestoneCompetencyIds": [
-        "8177-98",
-        "8177-85",
+        "8177-41",
+        "",
         "",
         ""
       ]
     },
     {
       "n": 2,
-      "title": "Projected Expenses",
-      "workType": "doc",
-      "key": "8177-the-bottom-line-P2",
-      "unitName": "The Bottom Line (Event Budgeting & Finance) — Part 2: Projected Expenses",
+      "title": "The Inventory Update",
+      "workType": "sheet",
+      "key": "8177-the-back-room-P2",
+      "unitName": "The Back Room (Distribution & Inventory Management) — Part 2: The Inventory Update",
       "subject": "Marketing (CTE)",
       "milestones": [
-        "8177-87 Identify expenditures related to the sports, entertainment, and event industries.",
-        "8177-85 Identify the components of a budget.",
+        "8177-14 Manage time and resources.",
+        "Uses the lesson vocabulary accurately: inventory control, shrink.",
         "Uses specific examples from the student's own work, not general statements.",
         "Completes every part of the task the assignment asks for."
       ],
       "milestoneCompetencyIds": [
-        "8177-87",
-        "8177-85",
+        "8177-14",
+        "",
         "",
         ""
       ]
     },
     {
       "n": 3,
-      "title": "The Bottom Line",
-      "workType": "sheet",
-      "key": "8177-the-bottom-line-P3",
-      "unitName": "The Bottom Line (Event Budgeting & Finance) — Part 3: The Bottom Line",
-      "subject": "Marketing (CTE)",
-      "milestones": [
-        "8177-98 Develop a budget for an event.",
-        "8177-88 Analyze financial statements.",
-        "Uses specific examples from the student's own work, not general statements.",
-        "Completes every part of the task the assignment asks for."
-      ],
-      "milestoneCompetencyIds": [
-        "8177-98",
-        "8177-88",
-        "",
-        ""
-      ]
-    },
-    {
-      "n": 4,
-      "title": "The CFO Memo",
+      "title": "The Supplier Email",
       "workType": "doc",
-      "key": "8177-the-bottom-line-P4",
-      "unitName": "The Bottom Line (Event Budgeting & Finance) — Part 4: The CFO Memo",
+      "key": "8177-the-back-room-P3",
+      "unitName": "The Back Room (Distribution & Inventory Management) — Part 3: The Supplier Email",
       "subject": "Marketing (CTE)",
       "milestones": [
-        "8177-88 Analyze financial statements.",
-        "Uses the lesson vocabulary accurately: revenue, expenses, net profit, profit margin.",
+        "8177-26 Examine technical and production skills required of workers within an industry/organization.",
+        "Uses the lesson vocabulary accurately: purchase order, channel of distribution.",
         "Uses specific examples from the student's own work, not general statements.",
         "Completes every part of the task the assignment asks for."
       ],
       "milestoneCompetencyIds": [
-        "8177-88",
+        "8177-26",
         "",
         "",
         ""

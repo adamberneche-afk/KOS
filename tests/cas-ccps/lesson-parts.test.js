@@ -111,7 +111,9 @@ const SURVEY_PART = KEY + '-P2';
 // Marked 2026-11-09 too: the Buyer's Product Pitch's new Part 6, a Slides deck.
 const PITCH = '8177-product-pitch-financial-analysis';
 const PITCH_PART = PITCH + '-P6';
-test('workType: the survey part is a form and the pitch\'s Part 6 a deck; every other part is a doc and 55b carries no template key for it', () => {
+const BACK_ROOM = '8177-the-back-room';
+const BACK_ROOM_PART = BACK_ROOM + '-P2'; // the first Sheets part, marked 2026-11-19
+test('workType: the survey part is a form, the pitch\'s Part 6 a deck, the back room\'s Part 2 a sheet; every other part is a doc and 55b carries no template key for it', () => {
   const { LESSON_PARTS } = data();
   Object.values(LESSON_PARTS).flat().forEach((p) => {
     if (p.key === SURVEY_PART) {
@@ -124,14 +126,19 @@ test('workType: the survey part is a form and the pitch\'s Part 6 a deck; every 
       assert.equal(p.workTemplateKey, 'WORK_TEMPLATE_8177_PRODUCT_PITCH_FINANCIAL_ANALYSIS_P6');
       return;
     }
+    if (p.key === BACK_ROOM_PART) {
+      assert.equal(p.workFileNow, 'sheet');
+      assert.equal(p.workTemplateKey, 'WORK_TEMPLATE_8177_THE_BACK_ROOM_P2');
+      return;
+    }
     assert.equal(p.workFileNow, 'doc', p.key);
     assert.equal(p.workTemplateKey, undefined, p.key);
   });
   const parts = JSON.parse(fs.readFileSync(PARTS_PATH, 'utf8'));
   Object.keys(parts).filter((k) => !k.startsWith('_')).forEach((k) =>
     parts[k].parts.forEach((p, i) => {
-      if ((k === KEY && i === 1) || (k === PITCH && i === 5)) return;
-      assert.equal(p.workType, undefined, k + ' ' + p.title + ' is marked; only the survey part and the pitch\'s Part 6 are');
+      if ((k === KEY && i === 1) || (k === PITCH && i === 5) || (k === BACK_ROOM && i === 1)) return;
+      assert.equal(p.workType, undefined, k + ' ' + p.title + ' is marked; only the survey part, the pitch\'s Part 6 and the back room\'s Part 2 are');
     }));
 });
 
@@ -154,7 +161,7 @@ test('marking the survey part a form changes only that part: workFileNow "form" 
   assert.doesNotMatch(parts[1].promptText, PASTE_LINE);
   [0, 2, 3, 4].forEach((i) => { assert.equal(parts[i].workFileNow, 'doc'); assert.equal(parts[i].workTemplateKey, undefined); });
   Object.keys(ctx.P).filter((k) => k !== KEY).forEach((k) => ctx.P[k].forEach((p) =>
-    assert.equal(p.workFileNow, p.key === PITCH_PART ? 'slides' : 'doc', p.key)));
+    assert.equal(p.workFileNow, p.key === PITCH_PART ? 'slides' : p.key === BACK_ROOM_PART ? 'sheet' : 'doc', p.key)));
 });
 
 test('the builder refuses a form part whose task still says to paste a link, a workType not doc, form, slides or sheet, or one unlike its workFile', () => {

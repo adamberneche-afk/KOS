@@ -2024,7 +2024,7 @@
   "approved": "2026-10-28 (draft 1 of 2026-10-28; all 34 approved together, to be edited as they are taught)",
   "why": "Part 1 is the controlling function (41): comparing the purchase order, packing slip and count for every item. Part 2 is managing resources (14): the usable stock and why the rest can't be used, with how missing supplies stop production (27) as a bonus. Part 3 is the professional supplier email with the PO number and credit (26). Every lesson competency is covered: 41 (Part 1), 14 and 27 (Part 2), 26 (Part 3).",
   "concerns": [
-   "Part 2 allows a table in the doc or in Google Sheets; drafted as a doc (the explanation is text). Decide whether it should be a Sheet.",
+   "Part 2 is a Google Sheet (marked 2026-11-19, the operator): the Inventory tab, a formula for each usable count, the reasons typed beside them.",
    "Part 3's email draws on Part 1's problem list, so it only makes sense after Part 1."
   ],
   "parts": [
@@ -2047,14 +2047,16 @@
    {
     "title": "The Inventory Update",
     "marker": "Part 2:",
-    "workFile": "doc",
+    "workFile": "sheet",
+    "workType": "sheet",
+    "sheetChecks": {"requiredTabs": ["Inventory"], "tab": "Inventory", "minFilledRows": 5, "formulasRequired": 4, "formulasIn": "D"},
     "primary": "8177-14",
     "secondary": [],
     "tertiary": [
      "8177-27"
     ],
     "criteria": {
-     "8177-14": "Your table shows how many usable items of each kind we received and can print on, and you explain why each item you didn't count can't be used.",
+     "8177-14": "Your Inventory tab has a row for each of the four items with what we ordered, how many are missing or can't be used, and a formula in column D that works out how many are usable, and column E says why each item you didn't count can't be used.",
      "8177-27": "You explain how the black t-shirts or the backordered transfer paper keep us from printing."
     },
     "vocabulary": [
