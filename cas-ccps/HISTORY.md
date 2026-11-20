@@ -1374,3 +1374,26 @@ made-up work through Flow 2. Built in that order at the operator's word:
 
 The first estimate of 55 Studio runs was wrong: 67 lessons as wholes (172
 counting parts singly); the test grades whole lessons.
+
+## The competencies no lesson measures (Q26), 2026-11-20
+
+On hold since 11-14: 13 competencies (student organization / DECA, 31-33;
+work-based learning, 35-38; 8177 has no 32 in this set) that no lesson
+names showed on the Competencies tab as "Not rated yet" with no evidence,
+read by students as falling behind, and the teacher had no way to rate
+them (a rating needed a suggestion, which needs evidence). The operator
+chose the proposal: a label and a way to rate them.
+
+- **00:** `COMPETENCIES_OUTSIDE_LESSONS` (id → "DECA" or "WBL"), its
+  labels and notes; a test holds it equal to the competencies no lesson
+  names (13c).
+- **Student Dashboard (13):** each such item carries `outside`; unrated,
+  its chip reads "Through DECA" or "Through work-based learning" and a
+  line inside says where it is shown and that the teacher rates it; no
+  "No evidence yet". Rated, it shows the rating like any other.
+- **Teacher Dashboard (07):** the student's page has a "DECA and
+  work-based learning" section, each with a 1-5 select and Save
+  (`teacherRateOutsideCompetency`): a student on the teacher's roster, in
+  that course; the SCRSuggestions row created or set OVERRIDDEN (frozen
+  from the weekly run) and a SCRDecisionLog row each time (snapshot
+  `OUTSIDE_LESSONS: DECA|WBL`), so a re-rating's newest row counts.

@@ -1552,6 +1552,31 @@ function _scrIsMine_(ownership, rosterEmails, email, competencyId) {
 // count in 34b) and on both dashboards (07's student page, 13's
 // Competencies tab).
 
+// ---------------------------------------------------------------------------
+// The competencies no lesson measures (Q26, the operator, 2026-11-20):
+// student organization (DECA) and work-based learning. No lesson names
+// them, so they get no evidence and no suggested rating. The Student
+// Dashboard labels them as shown through DECA or work-based learning, not
+// class lessons, instead of a bare "Not rated yet"; the Teacher Dashboard
+// rates them directly on the student's page (07's teacherRateOutsideCompetency).
+// A test holds this list equal to the competencies no lesson names.
+// ---------------------------------------------------------------------------
+const COMPETENCIES_OUTSIDE_LESSONS = {
+  "8175-31": "DECA", "8175-32": "DECA", "8175-33": "DECA",
+  "8175-35": "WBL", "8175-36": "WBL", "8175-37": "WBL", "8175-38": "WBL",
+  "8177-31": "DECA", "8177-33": "DECA",
+  "8177-35": "WBL", "8177-36": "WBL", "8177-37": "WBL", "8177-38": "WBL",
+};
+const OUTSIDE_LESSONS_LABEL = { DECA: "Through DECA", WBL: "Through work-based learning" };
+const OUTSIDE_LESSONS_NOTE = {
+  DECA: "You show this through DECA (meetings, events and competitions), not class lessons. Your teacher rates it.",
+  WBL: "You show this through work-based learning (a job, internship or job shadow), not class lessons. Your teacher rates it.",
+};
+// "DECA", "WBL", or "" for a competency lessons measure.
+function competencyOutsideLessons_(competencyId) {
+  return COMPETENCIES_OUTSIDE_LESSONS[String(competencyId || "").trim()] || "";
+}
+
 const VALID_OUTCOMES = ["MET", "PARTIALLY_MET", "NOT_MET"];
 const EVIDENCE_THRESHOLD = 3; // pieces needed for a suggestion, and how many are averaged
 // SCR rating each best outcome contributes to the average.

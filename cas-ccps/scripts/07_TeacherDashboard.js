@@ -1149,6 +1149,89 @@ function teacherOverrideScrRating(studentEmail, competencyId, rating) {
   return _recordScrDecision_(cfg, studentEmail, competencyId, rating, "OVERRIDDEN");
 }
 
+// ── Competencies no lesson measures (Q26, the operator, 2026-11-20) ──────────
+// Student organization (DECA) and work-based learning (00's
+// COMPETENCIES_OUTSIDE_LESSONS): no lesson names them, so there is no
+// evidence and no suggestion to confirm. The teacher rates them directly on
+// the student's page, 1 to 5, and may change the rating later: each rating
+// is a new SCRDecisionLog row (OVERRIDDEN, snapshot "OUTSIDE_LESSONS: DECA"
+// or "…: WBL"; the newest counts, readLatestScrRatings_), and the
+// SCRSuggestions row is created or updated as decided, so the weekly
+// suggestion run leaves it alone. Only a student on this teacher's roster,
+// in a course the competency belongs to.
+function teacherRateOutsideCompetency(studentEmail, competencyId, rating) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return _recordOutsideRating_(cfg, studentEmail, competencyId, rating);
+}
+
+function _recordOutsideRating_(cfg, studentEmail, competencyId, rating) {
+  const email = String(studentEmail || "").trim().toLowerCase();
+  const compId = String(competencyId || "").trim();
+  const r = Number(rating);
+  const kind = competencyOutsideLessons_(compId);
+  if (!kind) return { success: false, error: "Only a competency no lesson measures is rated here." };
+  if (!Number.isInteger(r) || r < 1 || r > 5) return { success: false, error: "Rating must be an integer from 1 to 5." };
+  const roster = _getRosterForEmail_(cfg, cfg.teacherEmail);
+  if (!roster.some(function (s) { return String(s.email || "").trim().toLowerCase() === email; })) {
+    return { success: false, error: "This student is not on your roster." };
+  }
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const courses = _tdStudentCourses_(ss, cfg)[email] || [];
+  if (courses.indexOf(compId.split("-")[0]) === -1) {
+    return { success: false, error: "This student isn't in your " + compId.split("-")[0] + " class this year." };
+  }
+  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+  if (!suggestionsSheet || !decisionLogSheet) {
+    return { success: false, error: "SCRSuggestions or SCRDecisionLog tab not found." };
+  }
+  const now = new Date();
+  const data = suggestionsSheet.getDataRange().getValues();
+  let rowIndex = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][DASHBOARD_SCRS.STUDENT_EMAIL]).trim().toLowerCase() === email &&
+        String(data[i][DASHBOARD_SCRS.COMPETENCY_ID]).trim() === compId) { rowIndex = i + 1; break; }
+  }
+  if (rowIndex === -1) {
+    const row = new Array(DASHBOARD_SCRS.CONFIRMED_BY + 1).fill("");
+    row[DASHBOARD_SCRS.STUDENT_EMAIL] = email;
+    row[DASHBOARD_SCRS.COMPETENCY_ID] = compId;
+    row[DASHBOARD_SCRS.MET_COUNT] = 0;
+    row[DASHBOARD_SCRS.NOT_MET_COUNT] = 0;
+    row[DASHBOARD_SCRS.PARTIAL_COUNT] = 0;
+    row[DASHBOARD_SCRS.STATUS] = "OVERRIDDEN";
+    row[DASHBOARD_SCRS.LAST_COMPUTED_AT] = now;
+    row[DASHBOARD_SCRS.CONFIRMED_RATING] = r;
+    row[DASHBOARD_SCRS.CONFIRMED_AT] = now;
+    row[DASHBOARD_SCRS.CONFIRMED_BY] = cfg.teacherEmail;
+    suggestionsSheet.appendRow(row);
+  } else {
+    suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.STATUS + 1).setValue("OVERRIDDEN");
+    suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.CONFIRMED_RATING + 1).setValue(r);
+    suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.CONFIRMED_AT + 1).setValue(now);
+    suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.CONFIRMED_BY + 1).setValue(cfg.teacherEmail);
+  }
+  decisionLogSheet.appendRow([_generateScrDecisionId_(), email, compId, "", r, "OVERRIDDEN", now,
+    cfg.teacherEmail, "OUTSIDE_LESSONS: " + kind, ""]);
+  SpreadsheetApp.flush();
+  return { success: true, rating: r };
+}
+
+// The student's competencies no lesson measures, in this teacher's courses
+// for them: [{ id, text, kind, label, rating }] (rating null until rated).
+function _tdOutsideCompetencies_(ss, cfg, email, courses) {
+  const texts = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry"));
+  const rated = {};
+  (readLatestScrRatings_(ss, cfg, cfg.teacherEmail).get(email) || []).forEach(function (x) { rated[x.competencyId] = Number(x.rating); });
+  return Object.keys(COMPETENCIES_OUTSIDE_LESSONS).filter(function (id) {
+    return courses.indexOf(id.split("-")[0]) !== -1;
+  }).map(function (id) {
+    const kind = COMPETENCIES_OUTSIDE_LESSONS[id];
+    return { id: id, text: texts[id] || "", kind: kind, label: OUTSIDE_LESSONS_LABEL[kind], rating: rated[id] || null };
+  });
+}
+
 // ── The SCR retry (D15, 2026-11-01) ──────────────────────────────────────────
 // A competency this teacher rated 3 or 4 can be re-rated once the student's
 // evidence since unlocks it (00's scrRetryStatus_, the rule 30b documents).
@@ -1309,6 +1392,7 @@ function getStudentDetail(studentEmail) {
     const courses = _tdStudentCourses_(ss, cfg)[email] || [];
     out.competencies = competencyCompletionFor_(
       readLatestScrRatings_(ss, cfg, cfg.teacherEmail).get(email), competencyCourseTotals_(ss, cfg), courses);
+    out.outside = _tdOutsideCompetencies_(ss, cfg, email, courses);
   } catch (e) {
     Logger.log("[S07] getStudentDetail competencies failed: " + e.message);
   }
@@ -3305,6 +3389,7 @@ function studentPanelInner(students) {
     h += '<div style="font-size:13px;margin-top:6px" title="Rated 1 to 3 (limited supervision or better) in Competency ratings">🎓 ' + competencyLine(data.competencies) + '</div>';
   }
   h += retryPanelHtml(data);
+  h += outsidePanelHtml(data);
   let report = '<div><h4>This week\\'s parent report</h4>';
   if (data.weekStart) report += '<p style="font-size:12.5px;color:var(--text-secondary);margin:0 0 8px">Week of ' + esc(data.weekStart) + ' – ' + esc(data.weekEnd) + '</p>';
   if (data.reportError) report += '<p style="font-size:13px;color:#b3261e">' + esc(data.reportError) + '</p>';
@@ -3318,6 +3403,46 @@ function studentPanelInner(students) {
   else ctx += contextWeekHtml(data.context);
   ctx += '</div>';
   return h + '<div class="student-panel-grid">' + report + ctx + '</div>';
+}
+// Q26: the competencies no lesson measures (DECA, work-based learning),
+// rated here directly, 1 to 5, and re-rated any time.
+function outsidePanelHtml(data) {
+  const list = data.outside || [];
+  if (!list.length) return '';
+  const unrated = list.filter(c => !c.rating).length;
+  let h = '<details class="retry-panel" style="margin-top:8px;font-size:13px">' +
+    '<summary>DECA and work-based learning: ' + escNum(list.length - unrated) + ' of ' + escNum(list.length) + ' rated</summary>' +
+    '<p style="font-size:12px;color:var(--text-secondary);margin:6px 0">No lesson measures these, so there is no evidence or suggestion: rate them from what you know of the student\\'s DECA and work-based learning. The student sees "Through DECA" or "Through work-based learning" until you do. You can change a rating; the newest counts.</p>';
+  list.forEach(function (c, i) {
+    h += '<div style="border-top:1px solid #e8eaed;padding:6px 0"><strong>' + esc(c.id) + '</strong> ' + esc(c.text) +
+      ' · ' + (c.rating ? 'rated ' + esc(scrLabel(c.rating)) : esc(c.label) + ', not rated yet') + '<br>' +
+      '<label style="font-size:12.5px">Rating <select id="outside-r-' + i + '">' +
+      [1, 2, 3, 4, 5].map(n => '<option value="' + n + '"' + (c.rating === n ? ' selected' : '') + '>' + esc(scrLabel(n)) + '</option>').join('') +
+      '</select></label> <button type="button" onclick="saveOutsideRating(' + i + ')" style="background:#7627bb;color:white;border:none;' +
+      'border-radius:4px;padding:4px 10px;font-size:12.5px;font-weight:600;cursor:pointer">Save</button>' +
+      '<div id="outside-msg-' + i + '" role="status" aria-live="polite" style="font-size:12.5px"></div></div>';
+  });
+  return h + '</details>';
+}
+function saveOutsideRating(i) {
+  const d = _studentDetail && _studentDetail.data;
+  const c = d && (d.outside || [])[i];
+  if (!c) return;
+  const sel = document.getElementById("outside-r-" + i);
+  const msg = document.getElementById("outside-msg-" + i);
+  msg.style.color = "var(--text-secondary)";
+  msg.textContent = "Saving…";
+  const key = _studentDetail.key;
+  google.script.run
+    .withSuccessHandler(function (r) {
+      if (!r || !r.success) { msg.style.color = "#b3261e"; msg.textContent = (r && r.error) || "Not saved."; return; }
+      c.rating = r.rating;
+      msg.style.color = "#137333";
+      msg.textContent = "Saved: " + scrLabel(r.rating) + ".";
+      if (_studentDetail && _studentDetail.key === key) _loadStudentDetail(key);
+    })
+    .withFailureHandler(function (e) { msg.style.color = "#b3261e"; msg.textContent = "Not saved: " + ((e && e.message) || "unknown error"); })
+    .teacherRateOutsideCompetency(d.studentEmail, c.id, Number(sel.value));
 }
 // The SCR retry (D15): this teacher's ratings of 3 or 4 for the student,
 // each with where it stands; a ready one has a Re-rate button.

@@ -1041,10 +1041,10 @@ function _dashAddLessonInfo_(assignments) {
 // teaching order, with the student's "I can" words there:
 // [{ key, no: "L05", task, text }]. [] for a competency no lesson names:
 // student organization and work-based learning (8175: 31-33, 35-38; 8177:
-// 31, 33, 35-38). How those are shown is waiting on the operator (Q26, on
-// hold): they appear like any other unrated competency, with no special
-// wording and no way for the teacher to rate them here, and nothing for
-// them goes into "Next to practice".
+// 31, 33, 35-38; 00's COMPETENCIES_OUTSIDE_LESSONS). Since Q26 (2026-11-20)
+// each carries `outside` ("DECA" or "WBL"): the tab labels it "Through
+// DECA" or "Through work-based learning" until rated, with a line saying
+// the teacher rates it; nothing for them goes into "Next to practice".
 let _dashCompLessons_ = null;
 function _dashCompetencyLessons_(competencyId) {
   if (typeof DASH_LESSON_INFO === "undefined" || typeof DASH_LESSON_ORDER === "undefined") return [];
@@ -1612,6 +1612,10 @@ function getMyCompetencies() {
           }),
           // F17: the lessons that practice it, with the student's words there.
           lessons: _dashCompetencyLessons_(c.id),
+          // Q26: shown through DECA or work-based learning, not lessons.
+          outside: competencyOutsideLessons_(c.id),
+          outsideLabel: OUTSIDE_LESSONS_LABEL[competencyOutsideLessons_(c.id)] || "",
+          outsideNote: OUTSIDE_LESSONS_NOTE[competencyOutsideLessons_(c.id)] || "",
         };
         const area = c.area || "Other";
         if (!areaOf[area]) { areaOf[area] = { name: area, items: [] }; areas.push(areaOf[area]); }
@@ -3172,6 +3176,7 @@ function buildStudentDashboardHtml_(opts) {
 .rec-ev{font-size:13px;margin:6px 0 6px 18px;line-height:1.5}
 .rec-ev .rec-milestone{color:var(--text-secondary)}
 .rec-empty{font-size:13px;color:var(--text-secondary)}
+.rec-outside{font-size:13px;color:var(--text-secondary);font-style:italic}
 .rec-latest{font-size:12px;color:var(--text-secondary);white-space:nowrap}
 .rec-progress{font-size:12px;font-weight:400;color:var(--text-secondary);margin-left:8px}
 .rec-progress .nw{white-space:nowrap}
@@ -4560,8 +4565,9 @@ function renderTab(tab) {
 // student's own: no class comparison, no ranking. "Done" stays a rating of
 // 1 to 3. The whole year by default: ratings don't reset each term (Q20).
 // A competency no lesson names (student organization, work-based
-// learning) shows like any other unrated one; how it is shown is waiting
-// on the operator (Q26, on hold).
+// learning; Q26, 2026-11-20) reads "Through DECA" or "Through work-based
+// learning" until the teacher rates it, never "Not rated yet", with a line
+// inside saying where it is shown and that the teacher rates it.
 let _compSort = "area";
 const COMP_SORTS = [["area", "By area"], ["rating", "By rating"], ["recent", "Most recent evidence"]];
 function setCompSort(v) {
@@ -4613,13 +4619,19 @@ function _reviewHtml(it, course) {
     '" aria-expanded="' + open + '" aria-controls="' + esc(id) + '" onclick="toggleReview(this)">Review</button>' +
     '<div class="rv" id="' + esc(id) + '" role="region" aria-label="Review"' + (open ? '' : ' hidden') + '>' + body + '</div></div>';
 }
+// Q26: "Through DECA" or "Through work-based learning" for a competency
+// no lesson measures, "" otherwise.
+function _outsideLabel(it) {
+  return (it && it.outsideLabel) || "";
+}
 function _compItemHtml(it, course) {
   const done = it.rating && it.rating <= 3;
   const latest = _compLatest(it);
   let h = '<details class="rec-comp"><summary><span>' + esc(String(it.task)) + '. ' + esc(it.text) + '</span>' +
-    '<span class="rec-chip' + (done ? ' done' : '') + '">' + (it.rating ? esc(scrLabel(it.rating)) : 'Not rated yet') + '</span>' +
+    '<span class="rec-chip' + (done ? ' done' : '') + '">' + (it.rating ? esc(scrLabel(it.rating)) : esc(_outsideLabel(it) || 'Not rated yet')) + '</span>' +
     (latest ? '<span class="rec-latest">Latest: ' + esc(latest.outcome) + '</span>' : '') +
-    '<span class="rec-chip">' + (it.evidence.length ? esc(String(it.evidence.length)) + ' piece' + (it.evidence.length === 1 ? '' : 's') + ' of evidence' : 'No evidence yet') + '</span></summary>';
+    (it.evidence.length || !it.outsideNote ? '<span class="rec-chip">' + (it.evidence.length ? esc(String(it.evidence.length)) + ' piece' + (it.evidence.length === 1 ? '' : 's') + ' of evidence' : 'No evidence yet') + '</span>' : '') + '</summary>';
+  if (it.outsideNote) h += '<div class="rec-ev rec-outside">' + esc(it.outsideNote) + '</div>';
   const lessons = it.lessons || [];
   const words = lessons.filter(l => l.text);
   if (words.length) {
@@ -4645,7 +4657,7 @@ function _compItemHtml(it, course) {
     return '<div class="rec-ev">' + (e.date ? esc(e.date) + ' · ' : '') + esc(e.assignment) + ': <strong>' + esc(e.outcome) + '</strong>' +
       (e.counts ? ' (counts)' : ' (an earlier check; your best one counts)') +
       (e.milestone ? '<br><span class="rec-milestone">' + esc(e.milestone) + '</span>' : '') + '</div>';
-  }).join("") : '<div class="rec-ev rec-empty">No evidence yet.</div>';
+  }).join("") : (it.outsideNote ? '' : '<div class="rec-ev rec-empty">No evidence yet.</div>');
   return h + '</details>';
 }
 // "Next to practice": the course's lessons still to finish on the
