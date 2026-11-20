@@ -87,6 +87,31 @@ test('with an anchor, a warm-up must ask a question unless it keeps the anchor w
   assert.equal(shape('Picture the crowd. ' + plain, '*' + plain + '*'), '', 'kept whole inside framing');
 });
 
+// 2026-11-20: of 56 "asks no question" set-asides in two weeks, 39 were good
+// warm-ups ending in a direction, and 17 were Gemini summarizing its own
+// instructions. Synthetic text in the shape of each.
+test('a warm-up may end in a direction that asks for an answer', () => {
+  const shape = setupShape();
+  const direction = 'Starting something on your own is a skill employers notice. Think about a time recently at ' +
+    'school, on a team, or at home when you started a task without being told, and describe what helped you get going.';
+  assert.equal(shape(direction, ANCHOR), '');
+  assert.equal(shape('Picture the arena an hour before doors open. Describe the first job you would take on.', ANCHOR), '');
+  assert.equal(shape('Think about the last game you watched.', ANCHOR), 'asks no question',
+    'a direction that asks for no answer');
+  assert.equal(shape('Think about pricing. The arena sets prices weekly.', ANCHOR), 'asks no question',
+    'only the last sentence counts');
+});
+
+test('a summary of the instructions is refused, question mark or not', () => {
+  const shape = setupShape();
+  const summary = 'The provided document outlines a baseline warm-up exercise for a student named Sam in a ' +
+    'sports marketing course. It focuses on taking initiative.';
+  assert.match(shape(summary), /^describes its instructions instead of following them \("the provided"\)/);
+  assert.match(shape('Furthermore, the guidelines prohibit lists. Describe a time you led a team.', ANCHOR),
+    /describes its instructions/);
+  assert.match(shape('The specifications require one question. What helps you plan?', ANCHOR), /describes its instructions/);
+});
+
 function setupShape() {
   return setup().exported.wfbWarmUpShapeProblem_;
 }

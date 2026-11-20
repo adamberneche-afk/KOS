@@ -1333,3 +1333,20 @@ deck's. Reading it showed that `_resolveConfigValues_` took template keys
 from Script Properties only: a `_CONFIG` row was ignored. It now reads any
 `WORK_TEMPLATE_…` row of the tab too (the property still wins), and
 intake's NO_WORK_TEMPLATE message says either works.
+
+## Flow 3's set-asides, sorted, 2026-11-20
+
+Flow 3 warm-ups were set aside 13–15% of the time (33 of 224 the week of
+11-09, 24 of 186 the week of 11-16), each student getting the lesson's own
+question instead. The operator asked for the set-asides to be read and
+sorted. Of the 56 in the return tab (11-08 to 11-19) refused as "asks no
+question", all baseline warm-ups: 39 were good warm-ups ending in a
+direction ("Think about a time … and describe what helped you …") rather
+than a question mark, and 17 were Gemini summarizing its instructions
+("The provided document outlines …"), several naming the student. The
+shape check (41) now takes a last sentence that starts with a direction
+verb and asks for an answer as the question (`wfbEndsInDirection_`), and
+refuses a summary by its wording (`WFB_WARMUP_SUMMARY_MARKERS`) whether or
+not it has a "?". Replayed over the tab's 466 Flow 3 returns: the 39 pass,
+the 17 are refused as summaries, and none of the 399 delivered changes.
+Counts only; no warm-up text was kept.
