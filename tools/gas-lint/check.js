@@ -146,7 +146,24 @@ function lineAt(src, index) {
 // -----------------------------------------------------------------------
 const DECL_RE = /^[ \t]*(?:function\s+([A-Za-z_$][\w$]*)\s*\(|(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=)/;
 
+// Cached per file (2026-11-20, audit 1.3): the sandbox-scope check asked
+// for the same 129 files' declarations once per sandbox, ~20-30k parses.
+// Keyed by path, size and modification time, so a test that rewrites a
+// fixture file gets a fresh parse.
+const TOP_DECL_CACHE = new Map();
 function findTopLevelDecls(relPath) {
+  let key = null;
+  try {
+    const st = fs.statSync(path.join(REPO_ROOT, relPath));
+    key = REPO_ROOT + '\u0000' + relPath + '\u0000' + st.size + '\u0000' + st.mtimeMs;
+  } catch (e) { key = null; }
+  if (key && TOP_DECL_CACHE.has(key)) return TOP_DECL_CACHE.get(key);
+  const decls = findTopLevelDeclsUncached(relPath);
+  if (key) TOP_DECL_CACHE.set(key, decls);
+  return decls;
+}
+
+function findTopLevelDeclsUncached(relPath) {
   const raw = readFile(relPath);
   const stripped = stripCommentsAndStrings(raw);
   const lines = stripped.split('\n');

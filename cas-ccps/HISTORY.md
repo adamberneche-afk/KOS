@@ -1422,3 +1422,20 @@ counts-only signal the RTP reads must not.
   (`removeAutoHealthTrigger`); `setupAutoHealthTrigger` is gone, and 35's
   setup status no longer expects the trigger. `runSystemHealthCheck` is
   unchanged.
+
+## Audit step 1: the cycle's installers, CI once, gas-lint fast, 2026-11-20
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, section 1:
+
+- **1.1** `installFlowInputTriggers` (37), `installWarmUpFlowTriggers` (41)
+  and `installQueueWatchdogTrigger` (34) go through 64's `lcInstallJob_`
+  (which now also returns `changed`): into the Ledger cycle when it is
+  installed, their own trigger only when it isn't. Before, a re-run made
+  the job its own every-minute trigger, which the cycle then left to it.
+- **1.2** CI: `gas-lint.yml` and `run-js-windows.yml` run on push to `main`
+  only (a PR's commits run once, under `pull_request`); the suite runs once
+  with `NODE_V8_COVERAGE` and coverage-gaps reads that run
+  (`--coverage-dir`) instead of running the suite again.
+- **1.3** gas-lint caches each file's top-level declarations (by path,
+  size and modification time): 58 s to about 8 s; the sandbox-scope test
+  47 s to 2 s.

@@ -28,7 +28,7 @@ unmerged addendum — see that tool's README), `npm test`,
 LeaderHub page, and an `actionlint` self-check on the workflow files
 (GitHub Actions' schema has real rules a generic YAML parser can't catch,
 e.g. `secrets.*` isn't allowed inside an `if:` conditional; this caught
-exactly that bug once), on every push and pull request. The same file's
+exactly that bug once), on every pull request and every push to main. The same file's
 `docs-check` job (pull requests only) requires the matching README to be
 touched when a PR adds files. (`test-inference-service` tested
 the inference service until it was archived, 2026-11-17, to

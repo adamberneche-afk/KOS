@@ -20,7 +20,7 @@ const WATCHDOG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '3
 
 function load(extraGlobals) {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, WATCHDOG_PATH],
+    [SHARED_CONFIG_PATH, WATCHDOG_PATH, path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '64_LedgerCycle.js')],
     ['runQueueWatchdog', 'runQueueWatchdogNow', 'installQueueWatchdogTrigger', 'removeQueueWatchdogTrigger'],
     extraGlobals,
   );

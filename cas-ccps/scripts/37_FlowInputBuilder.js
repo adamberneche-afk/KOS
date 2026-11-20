@@ -2036,18 +2036,15 @@ function checkFlow2Liveness() {
 // buildFlowInputRows could end up installed with harvestFlowInputResults
 // silently missing; the indexOf guards below make re-running this function
 // safe (it won't duplicate buildFlowInputRows) once the fix is pushed.
+//
+// Since 2026-11-20 (meta/AUDIT_STRUCTURE_2026-11-20.md, 1.1) through 64's
+// lcInstallJob_, like every other frequent job: into the Ledger cycle when
+// it is installed, its own trigger only when it isn't. Before, a re-run
+// created its own every-minute trigger, and the cycle leaves a job with its
+// own trigger to it: no gates, no quiet hours, its own share of the daily
+// trigger quota.
 function installFlowInputTriggers() {
-  const existing = ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction());
-
-  if (existing.indexOf("buildFlowInputRows") === -1) {
-    ScriptApp.newTrigger("buildFlowInputRows").timeBased().everyMinutes(1).create();
-    Logger.log("[FlowInputBuilder] Installed buildFlowInputRows — every 1 minute.");
-  }
-  if (existing.indexOf("harvestFlowInputResults") === -1) {
-    // Every minute since 2026-11-14, as in the Ledger cycle (64's LC_JOBS).
-    ScriptApp.newTrigger("harvestFlowInputResults").timeBased().everyMinutes(1).create();
-    Logger.log("[FlowInputBuilder] Installed harvestFlowInputResults — every 1 minute.");
-  }
+  return ["buildFlowInputRows", "harvestFlowInputResults"].map(function (fn) { return lcInstallJob_(fn); });
 }
 
 // ---------------------------------------------------------------------------

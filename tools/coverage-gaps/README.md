@@ -44,6 +44,8 @@ unattended job have any safety net at all" check.
 ```
 node tools/coverage-gaps/check.js            # human-readable
 node tools/coverage-gaps/check.js --json     # machine-readable
+NODE_V8_COVERAGE=/tmp/cov npm test && node tools/coverage-gaps/check.js --coverage-dir /tmp/cov
+                                             # read a run's coverage instead of running the suite again (CI does this)
 ```
 
 Exit code `1` if any non-allowlisted trigger handler has zero hits across

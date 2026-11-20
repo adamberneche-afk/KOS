@@ -992,11 +992,13 @@ function lcInstallJob_(fn) {
   const handlers = ScriptApp.getProjectTriggers().map(function (t) { return t.getHandlerFunction(); });
   const job = LC_JOBS.filter(function (j) { return j.fn === fn; })[0];
   let message;
+  let changed = false;
   if (handlers.indexOf(LC_TRIGGER_FN) !== -1) {
     const jobs = lcRecordedJobs_(props);
     if (jobs.indexOf(fn) === -1) {
       jobs.push(fn);
       props.setProperty(LC_PROP_JOBS, JSON.stringify(jobs));
+      changed = true;
       message = fn + " added to the Ledger cycle (every " + lcJobEvery_(fn, props) + " min).";
     } else {
       message = fn + " already runs in the Ledger cycle.";
@@ -1009,10 +1011,11 @@ function lcInstallJob_(fn) {
   } else {
     const mins = lcEveryMinutes_(job.every);
     ScriptApp.newTrigger(fn).timeBased().everyMinutes(mins).create();
+    changed = true;
     message = fn + " installed: its own trigger, every " + mins + " min (the Ledger cycle isn't installed).";
   }
   Logger.log("[LC] " + message);
-  return { fn: fn, message: message };
+  return { fn: fn, message: message, changed: changed };
 }
 
 // ── The onChange probe (2026-11-15) ──────────────────────────────────────

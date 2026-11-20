@@ -1,6 +1,6 @@
 # Audit: structural debt (2026-11-20)
 
-**Status:** findings only; nothing changed in the PR that added this file.
+**Status:** findings; section 1 (1.1-1.3) built 2026-11-20 in the PR after #514, the rest open.
 Asked by the operator: "Our scripts are becoming disjointed and clumsy. What
 can we fold in together? What is redundant without purpose? Is our codebase
 navigable and intuitive?" Three read-only reviews (cas-ccps scripts; tools,
