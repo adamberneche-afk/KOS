@@ -1450,6 +1450,19 @@ const WFB_WARMUP_PROMPT_MARKERS = [
   "warm-up prompt", "warmup prompt", "competency gap",
 ];
 const WFB_ANCHOR_FALLBACK = "ANCHOR_FALLBACK";
+// 2026-11-20: 17 of 56 set-asides in two weeks were Gemini summarizing its
+// baseline instructions ("The provided document outlines a baseline warm-up
+// exercise for a student named …"), caught only because they had no "?".
+const WFB_WARMUP_SUMMARY_MARKERS = [
+  "the document", "the provided", "the guidelines", "the specifications",
+  "the instructions", "student named",
+];
+// The other 39 were good warm-ups ending in a direction rather than a
+// question ("Think about a time … and describe what helped you …"). A last
+// sentence that starts with one of these verbs and asks for an answer with
+// one of the second list counts as the question.
+const WFB_WARMUP_DIRECTION_START = /^(?:now,?\s+)?(?:think|describe|share|tell|explain|picture|imagine|consider|reflect|recall|remember|name|write)\b/i;
+const WFB_WARMUP_DIRECTION_ASK = /\b(?:describe|share|tell|explain|name|write|say|give)\b/i;
 
 // 2026-10-21: 8 of a night's 17 shape failures were Flow 3's whole prompt
 // (3,400 characters, the Mode A text with its fields filled), so Studio
@@ -1474,10 +1487,23 @@ function wfbWarmUpShapeProblem_(text, anchor) {
   if (t.length > WFB_WARMUP_MAX_CHARS) return "longer than " + WFB_WARMUP_MAX_CHARS + " characters";
   const marker = WFB_WARMUP_PROMPT_MARKERS.find(function (m) { return lower.indexOf(m) !== -1; });
   if (marker) return "contains the prompt's own wording (\"" + marker + "\")";
+  const summary = WFB_WARMUP_SUMMARY_MARKERS.find(function (m) { return lower.indexOf(m) !== -1; });
+  if (summary) return "describes its instructions instead of following them (\"" + summary + "\")";
   if (/\b8\d{3}-\d{1,2}\b/.test(t)) return "names a competency code";
   if (/^\s*(?:[-*\u2022]|\d+[.)])\s+/m.test(t)) return "is a list";
-  if (anchor && t.indexOf("?") === -1 && !wfbKeepsAnchor_(t, anchor)) return "asks no question";
+  if (anchor && t.indexOf("?") === -1 && !wfbKeepsAnchor_(t, anchor) && !wfbEndsInDirection_(t)) {
+    return "asks no question";
+  }
   return "";
+}
+
+// True when the text's last sentence asks the student for an answer as a
+// direction ("Think about a time …, and describe what helped you."), which
+// a warm-up may do instead of a question mark (2026-11-20).
+function wfbEndsInDirection_(text) {
+  const sentences = String(text || "").trim().split(/[.!]\s+/);
+  const last = String(sentences[sentences.length - 1] || "").trim();
+  return WFB_WARMUP_DIRECTION_START.test(last) && WFB_WARMUP_DIRECTION_ASK.test(last);
 }
 
 // True when the text holds the whole anchor, ignoring case, punctuation and
