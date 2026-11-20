@@ -1,0 +1,97 @@
+The Data Center Decision
+
+Day 1
+
+Part 1: Follow the Game
+Experience: streaming a live NFL game on Amazon Prime Video (Thursday Night Football).
+1. Cameras at the stadium capture the game, and the video is sent over high-speed lines to a production center.
+2. The video is uploaded to Amazon's cloud, which means it's stored and processed on servers in data centers instead of on anyone's own device.
+3. Servers in the data center compress the video into different quality levels so it plays on phones, TVs and laptops.
+4. When I press play, my app connects to the data center closest to me (possibly in Northern Virginia), which checks my account and subscription.
+5. The data center streams the video to my device in small pieces, several seconds behind the live action.
+6. At the same time, data centers run the live stats, ads and highlight clips shown during the stream.
+Without data centers, there would be no stream, no login and no stats.
+
+Esports connection: An esports tournament depends on data centers even more. The game servers that run each match, the anti-cheat systems and the Twitch or YouTube streams watched by millions all run in data centers.
+
+Sorting the uses:
+Needs AI: automatic highlight clips; a chatbot on a team's website; prices that change by themselves as demand changes; computer-generated play-by-play commentary.
+Doesn't need AI: streaming a game live; scanning a mobile ticket; buying a hot dog with a card; storing photos from the game.
+
+Part 2: The Pros and Cons
+
+PROS
+- Economic: about $25 million a year in local tax revenue without adding students to schools.
+- Economic: about 1,500 construction jobs for three years.
+- Economic: about 50 permanent jobs averaging $90,000 a year.
+- Social: uses less than one-tenth of 1% of the county's land.
+- Social: supports services people use every day, like streaming, mobile tickets and online events.
+
+CONS
+- Environmental: uses as much electricity as about 200,000 homes, more than the county's 140,000 households.
+- Environmental: uses up to 500,000 gallons of water a day on hot days, as much as 1,700 homes.
+- Environmental/Social: 40 diesel backup generators tested every month, plus a constant hum from cooling fans.
+- Social: the site is next to a neighborhood and a county park, which affects nearby residents.
+- Economic: only about 50 permanent jobs after construction ends.
+
+If the county chooses the AI option, the cons get much bigger while the pros stay about the same. Electricity use would roughly double, to as much as about 400,000 homes, and water use for cooling would increase. Job numbers would stay about the same, so the county would take on more environmental cost without more jobs. The tax revenue might rise if the equipment is more valuable, but the fact sheet doesn't say so.
+
+Part 3: Fact-Check the News
+
+Story A fact-check:
+- $2 billion investment: true.
+- 1,500 construction jobs: true but missing context (they last only three years).
+- $25 million a year in taxes: true but missing context (about 2.5% of the county budget).
+- About 50 people employed: true.
+- Jobs averaging $90,000 a year: true.
+- Less than one-tenth of 1% of the county's land: true but missing context (the site is next to a neighborhood and park).
+- "A major boost": not on the fact sheet (opinion/loaded language).
+- "Pays for schools without raising anyone's taxes": not on the fact sheet.
+
+Story B fact-check:
+- Electricity of about 200,000 homes: true.
+- "More than all 140,000 households in the county combined": true.
+- Next to a neighborhood and county park: true.
+- Up to 500,000 gallons of water on hot days, about 1,700 homes: true.
+- 40 diesel backup generators tested every month: true.
+- About 50 employees after construction: true but missing context (leaves out the $90,000 average pay and 1,500 construction jobs).
+- Taxes cover about 2.5% of the budget: true but missing context (doesn't mention it's $25 million).
+- "Massive": not on the fact sheet (loaded language).
+
+Fact or opinion:
+Story A's quote ("This is the kind of investment that pays for schools without raising anyone's taxes") is an opinion from a company vice president who wants the project approved.
+Story B's quote ("We moved here for the quiet") is a neighbor's personal feeling, also an opinion, though it reflects a real concern about noise.
+
+Same facts, different story:
+1. Selection: Story A includes the investment, jobs, taxes and small land use but leaves out electricity, water and noise. Story B includes the electricity, water and generators but leaves out the construction jobs and $90,000 salaries.
+2. Framing: Story A says "$25 million a year," which sounds huge. Story B describes the same taxes as "about 2.5% of the county's budget," which sounds small. Story B compares the electricity to every home in the county, which makes it sound alarming.
+3. Headline: Story A's headline focuses on "$2 Billion," "1,500 Jobs" and "$25 Million," while Story B's headline focuses on "More Power Than Every Home." Readers who only see the headline get opposite impressions.
+4. Word choice and quotes: Story A uses "major boost" and quotes a company executive. Story B uses "massive" and quotes a worried neighbor. Neither story gives the other side a voice.
+
+My version:
+Headline: "Proposed Chesterfield Data Center Would Bring $25 Million a Year in Taxes and Use Electricity Equal to 200,000 Homes"
+Story: A technology company has proposed a $2 billion data center campus on 200 acres next to a Chesterfield neighborhood and county park. The project would create about 1,500 construction jobs for three years, about 50 permanent jobs averaging $90,000 a year, and about $25 million a year in taxes, roughly 2.5% of the county's budget. It would also use as much electricity as about 200,000 homes, up to 500,000 gallons of water a day on hot days, and 40 diesel backup generators tested monthly.
+
+Day 2
+
+Part 4: The Startup
+Business: HeatWave Hoops, an indoor sports and esports center heated by the data center's waste heat.
+
+The problem or need: The data center gives off huge amounts of heat that is usually wasted, and Chesterfield needs more indoor space for youth sports and gaming events, especially in winter. HeatWave Hoops would build next to the campus and pipe the waste heat in to warm its courts and gaming arena, cutting heating costs.
+
+Entrepreneurial mindset: It spots a problem (wasted heat) as an opportunity, takes a calculated risk by partnering with a big company, makes the most of resources that already exist, and would need to keep going through permits and partnership negotiations.
+
+Organizational chart at launch (7 people):
+- Owner / CEO (reports to no one)
+- Operations Manager (reports to the Owner)
+- Events and Esports Coordinator (reports to the Owner)
+- Marketing Manager (reports to the Owner)
+- Facilities Technician (reports to the Operations Manager)
+- Two Front Desk Associates (report to the Operations Manager)
+
+By year three (12 people): the company adds a Youth Leagues Director and two referees/coaches under the Events and Esports Coordinator, a Social Media Coordinator under the Marketing Manager, and a second Facilities Technician under the Operations Manager.
+
+Jobs and local growth: HeatWave Hoops would create 7 jobs at launch and about 12 by year three, plus part-time referees and event staff. It would help other local businesses by bringing families to the area for tournaments, which brings customers to nearby restaurants, hotels and sporting goods stores. It would also hire local HVAC companies, electricians and food vendors. This shows how a small business can create growth around a large project that only has a small permanent staff.
+
+Part 5: My Recommendation
+The county should support the data center with conditions, but should not allow the AI option. The project brings about $25 million a year in tax revenue and 1,500 construction jobs while using less than one-tenth of 1% of the county's land, which are real economic benefits. However, using as much electricity as 200,000 homes, more than the county's 140,000 households, and up to 500,000 gallons of water a day are serious environmental concerns, and the site is next to a neighborhood and park. My conditions: the company must pay for any new power lines and plants so residents' electric bills don't rise, use recycled water or closed-loop cooling, build a sound wall and tree buffer between the campus and the neighborhood, test generators only during daytime hours, and offer its waste heat to local businesses. The AI option would double electricity use and increase water use with about the same number of jobs, so the extra costs to the community would be much greater than the benefits.

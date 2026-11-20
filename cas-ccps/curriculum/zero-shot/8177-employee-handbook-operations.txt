@@ -1,0 +1,53 @@
+The Cavalier Shop Operations Brief
+
+Part 1: The Team
+
+General Manager (the teacher)
+Responsibility: does the final money count and the final security check at closing.
+If nobody does it: cash could go missing without anyone noticing, doors could be left unlocked overnight, and the shop would have no final check that the day's sales and the drawer actually match.
+
+Shift Manager (student leader)
+Responsibility: assigns tasks and fills out the Shift Summary Report.
+If nobody does it: employees would not know who is on the register and who is restocking, so some jobs get done twice and others not at all. Without the Shift Summary Report, the next shift would not know about low stock, customer problems or cash issues.
+
+Sales Associate (cashier and greeter)
+Responsibility: runs the register and greets every customer.
+If nobody does it: lines back up, customers feel ignored and leave without buying, and the drawer could be left open between sales, which risks lost cash.
+
+Inventory Specialist
+Responsibility: restocks shelves from the back room, faces the merchandise and reports low stock.
+If nobody does it: shelves look empty and messy, customers think we are sold out of items we actually have in the back, and we run out of popular items because nobody told the Shift Manager to reorder. Restocking also follows FIFO, so older stock sells first instead of getting damaged or outdated.
+
+Part 2: Open and Close
+
+Opening procedures, in order:
+1. Safety: unlock the doors and make sure the 36-inch walkways are completely clear of boxes, as required by the ADA and fire code. This keeps the path open for customers who use wheelchairs and makes sure everyone can get out quickly in an emergency.
+2. Count the float: the Shift Manager and General Manager count the starting cash in the drawer together and sign the daily log.
+3. Set the mood: turn on the store lights and the approved music.
+4. Get the shelves ready: face every product, make sure size tags are showing, and turn on the signs and register iPads.
+
+The Z-Out in my own words: at the end of the day, we count all the cash in the register drawer. Then we subtract the float, the starting cash that was put in that morning to make change, because that money was never a sale. What is left is the cash we actually took in that day. We check that number against the register's daily sales report. If they match, the drawer balances. If they don't, we tell the General Manager right away. For example, if the drawer has $310 and the float was $100, cash sales are $210, and the report should also say $210.
+
+Part 3: Integrity and Shrink
+
+The Two-Person Rule: two people always count cash and high-value stock together.
+Problem it prevents: if one person counts the drawer alone and it comes up $20 short, nobody can tell whether it was a mistake, a miscount or theft, and that person could be wrongly blamed. With two people, one checks the other, mistakes get caught, and it protects every employee from suspicion.
+
+The scan-everything rule: every item that leaves the store gets scanned, even a free giveaway.
+Problem it prevents: shrink. If a free t-shirt is handed out without being scanned, the inventory records still say it is on the shelf. At the end of the month the count is off, and we can't tell whether it was given away, stolen or lost. Scanning keeps the records accurate so we know what we actually have and can reorder on time.
+
+Both rules keep the shop honest with money that belongs to the school and build trust between the team and the General Manager.
+
+Part 4: The Rush
+
+As the Shift Manager, I follow our SOP mindset: stay calm, assign jobs and keep the line moving.
+
+1. I take over the jammed register myself. I open the printer, clear the paper and reload it. If it takes more than a minute or two, I switch to the backup register iPad and offer digital receipts.
+2. I ask the Sales Associate to keep greeting and to start a second line on the backup iPad if it is available, keeping the cash drawer closed between sales.
+3. I ask the Inventory Specialist to walk the line, answer questions about sizes and prices, and grab items from the back room so customers are ready to pay when they reach the front.
+4. If the register cannot be fixed quickly, I let the General Manager know.
+
+What I say to the waiting line:
+"Good afternoon, everyone, and welcome to the Cavalier Shop! Our receipt printer is having a quick issue, and we're fixing it right now. We have a second checkout opening in just a moment, and we can email or text your receipt so you don't have to wait. Thank you so much for your patience. We'll have you on your way to lunch as fast as we can."
+
+This keeps the line informed, uses professional language instead of slang, and shows customers we have a plan.

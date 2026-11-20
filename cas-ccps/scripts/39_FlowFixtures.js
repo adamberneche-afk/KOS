@@ -266,7 +266,7 @@ function _fxFlow2FixtureRow_(spec) {
   row[FI.STUDENT_EMAIL] = FX_STUDENT_EMAIL;
   row[FI.STUDENT_DOC_URL] = "https://docs.google.com/document/d/" + doc.getId() + "/edit";
   row[FI.UNIT_NAME] = spec.unitName;
-  row[FI.TIER] = "Tier 1 Core";
+  row[FI.TIER] = spec.tier || "Tier 1 Core";
   row[FI.PERSONA] = spec.persona;
   row[FI.MILESTONE_1] = spec.milestones[0];
   row[FI.MILESTONE_2] = spec.milestones[1];

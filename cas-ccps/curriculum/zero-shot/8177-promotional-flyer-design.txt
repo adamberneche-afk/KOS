@@ -1,0 +1,33 @@
+The Cavalier Shop Flyer
+
+Part 1: Design It
+Built in Canva, 8.5 x 11 inches, black and white only. PDF link: (the flyer link)
+
+Flyer text (exact words):
+Headline: GEAR UP. CAVS.
+Subheadline (white text in a black bar): THE CAVALIER SHOP IS OPEN
+Items and prices:
+- Custom Cavalier Tees ... $15
+- Rally Towels ... $8
+- Logo Stickers ... $2
+Tagline: Made by students. Worn by Cavaliers.
+Hours: Open Monday through Friday during all lunch blocks and before home games
+Location: Main hallway, next to the cafeteria
+Logo: Official Cavalier Shop logo in solid black at the bottom
+
+Layout, top to bottom:
+1. Headline "GEAR UP. CAVS." across the top in huge, bold, all-caps black sans-serif font (Anton), taking up about the top quarter of the page.
+2. A solid black bar across the page with "THE CAVALIER SHOP IS OPEN" in bold white letters.
+3. The three items listed in a bold list with large prices aligned on the right, with plenty of white space between each line.
+4. The tagline "Made by students. Worn by Cavaliers." in smaller bold text.
+5. Hours and location in a simple box with a thick black outline.
+6. The Cavalier Shop logo in solid black, centered at the bottom.
+7. A wide white border (about one inch) around the entire flyer so nothing gets cut off by the copier.
+
+Part 2: Explain It
+I made the headline the biggest element because people walking down the hall only read for about three seconds, so it has to stop them first. That creates a clear visual hierarchy: first the headline, then the store name, then the items and prices, and finally the details like hours and location. I used contrast by putting white text inside a solid black bar and using thick black text on a white background everywhere else, with no light grays that would turn muddy on the copier. I left negative space around the item list and around the logo on purpose so each part stands out and the flyer doesn't look crowded. I kept the copy short and used only two bold fonts so it's easy to read from a distance. I also checked the logo in grayscale in Canva and switched it to solid black because the original gold parts turned into a gray blob.
+
+Part 3: The 10-Foot Test
+I printed a test copy and taped it to the wall, then stepped back about 10 feet. From that distance I could clearly read the headline "GEAR UP. CAVS." and the black bar with the store name. The item names were readable, but the hours were too small. After testing, I made the headline even bigger, increased the prices to a bolder font size, and removed one extra line of copy so there was more negative space. I also made the hours box text larger so it's easy to read from about 2 feet away.
+
+How it brings customers in: The headline speaks directly to students' school pride, and showing low prices like $2 stickers and $8 rally towels tells students they can stop in and buy something on the way to lunch.

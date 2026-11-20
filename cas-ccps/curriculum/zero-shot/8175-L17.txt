@@ -1,0 +1,21 @@
+The Ticketmaster Problem: Distribution Channels
+
+1. The Chain of Command
+
+In a standard concert ticket sale, there are three main parties:
+
+The Producer: The producer is the artist and the event promoter, such as Taylor Swift and the promoter Live Nation, along with the venue. They create the product, which is the live concert experience, and decide the dates, the venues, and the starting ticket prices.
+
+The Intermediary: The intermediary is the ticketing company, such as Ticketmaster. It acts as the middleman between the producer and the fan by running the website and app, processing payments, delivering digital tickets, and controlling entry at the gate. In return, it adds service fees, facility fees, and processing fees to each ticket.
+
+The Consumer: The consumer is the fan who buys the ticket. The fan pays the ticket price plus all the fees and receives the ticket on their phone to get into the show.
+
+2. The Venue Impact
+
+The venue matters for distribution because its size and contracts change how tickets reach fans. A stadium holds 50,000 or more people, so tickets must be sold through a large ticketing system like Ticketmaster that can handle huge amounts of online traffic at once. Many large stadiums and arenas also have exclusive contracts with Ticketmaster, so the artist and fans have no choice about which company sells the tickets. Stadium shows also create more demand from all over the country, which brings in bots and resellers.
+
+A small club, on the other hand, might only hold a few hundred people. Clubs can sell tickets through smaller platforms like Eventbrite or Dice, on their own website, or even at the door. This means fewer intermediaries, lower fees, and a more direct connection between the artist and the fan.
+
+3. The Ethics of the Secondary Market: Opinion Piece
+
+Bot scalping is not smart business; it is unethical and should be illegal. Supporters say it is simply supply and demand. Tickets are limited, demand is high, so prices rise. However, a bot buying 100 tickets in one second does not compete fairly. It cuts in front of real fans who cannot possibly click that fast, then forces them to pay double. The scalper adds no value to the concert. They only take tickets away from fans and profit from the shortage they created. The BOTS Act already bans some of this, but laws need stronger enforcement so tickets go to real fans.

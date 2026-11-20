@@ -1,0 +1,90 @@
+The $10,000 Tip-Off Budget: Clover Hill Charity Basketball Tournament
+
+Part 1: Projected Revenue (Final Version)
+
+- Team registration: 16 teams x $150 = $2,400
+- Spectator tickets: 400 tickets x $5 = $2,000
+- Concessions: 400 spectators x 1.25 items = 500 items x $3.00 = $1,500
+- Total revenue: $5,900
+
+I kept the registration fee at $150 and the ticket price at $5 because those are the highest prices that still bring in all 16 teams and about 400 spectators. Raising them would bring in more per person but fewer people. The concession price of $3.00 gives a $1.75 markup on each item.
+
+Part 2: Projected Expenses
+
+- Referees: 2 x $50 x 12 hours = $1,200 (fixed)
+- Custodian: $30 x 14 hours = $420 (fixed)
+- Security officer: $40 x 12 hours = $480 (fixed)
+- Athletic trainer: $35 x 12 hours = $420 (fixed)
+- Gym facility fee: $300 x 2 days = $600 (fixed)
+- Event insurance: $200 (fixed)
+- Trophies: $150 (fixed)
+- Marketing (flyers and social media ads): $150 (fixed)
+- Player t-shirts: 16 teams x 6 players = 96 shirts x $8 = $768 (variable)
+- Concession stock: 500 items x $1.25 = $625 (variable)
+- Total expenses: $5,013
+
+Total fixed costs: $3,620. Total variable costs: $1,393.
+
+Part 3: The Bottom Line
+
+Version 1 (first try):
+- Registration fee $125, tickets $5, concessions $2.00
+- Revenue: $2,000 + $2,000 + $1,000 = $5,000
+- Expenses: $5,013
+- Net profit: $5,000 - $5,013 = -$13 (a loss, in the red)
+- Profit margin: -$13 / $5,000 x 100 = -0.3%. Did not reach 15%.
+
+What I changed: I raised the registration fee to $150, the most we can charge and still get all 16 teams, and raised the concession price to $3.00. Expenses stay the same.
+
+Version 2 (final):
+- Revenue: $2,400 + $2,000 + $1,500 = $5,900
+- Expenses: $5,013
+- Net profit: $5,900 - $5,013 = $887 (in the black)
+- Profit margin: $887 / $5,900 x 100 = 15.0%. Goal reached.
+
+Google Sheets setup (shared only with my teacher):
+- B2 =16*150 (registration), B3 =400*5 (tickets), B4 =400*1.25*3 (concessions), B5 =SUM(B2:B4) (total revenue)
+- B8 =2*50*12, B9 =30*14, B10 =40*12, B11 =35*12, B12 =300*2, B13 =200, B14 =150, B15 =150, B16 =96*8, B17 =400*1.25*1.25
+- B18 =SUM(B8:B17) (total expenses)
+- B20 =B5-B18 (net profit)
+- B21 =B20/B5*100 (profit margin)
+
+Final Budget Table
+
+Revenue
+Team registration (16 x $150) | $2,400
+Spectator tickets (400 x $5) | $2,000
+Concessions (500 x $3.00) | $1,500
+Total revenue | $5,900
+
+Expenses
+Referees | $1,200 | Fixed
+Custodian | $420 | Fixed
+Security officer | $480 | Fixed
+Athletic trainer | $420 | Fixed
+Gym facility fee | $600 | Fixed
+Event insurance | $200 | Fixed
+Trophies | $150 | Fixed
+Marketing | $150 | Fixed
+Player t-shirts (96 x $8) | $768 | Variable
+Concession stock (500 x $1.25) | $625 | Variable
+Total expenses | $5,013
+
+Net profit | $887
+Profit margin | 15.0%
+
+The $10,000 in seed money easily covers the $5,013 in up-front costs.
+
+Part 4: The CFO Memo
+
+To: Board of Directors, Clover Hill Charity Basketball Tournament
+From: Chief Financial Officer
+Re: Budget Risks and Plans
+
+Our budget projects $5,900 in revenue, $5,013 in expenses and a net profit of $887, a 15.0% profit margin. Because the margin barely clears our goal, I want the board to know the two biggest risks.
+
+Risk 1: Low ticket sales. Each spectator brings in about $7.19 ($5 ticket plus about $2.19 profit on concessions). Most of our costs are fixed, so they don't drop if fewer people come. If we sell fewer than about 280 tickets, we lose money, and even 20 fewer tickets would put us below 15%. Plan: start marketing three weeks early, ask each team to bring family and friends, and offer a family ticket deal or a student section promotion.
+
+Risk 2: Teams dropping out. Each team brings in $150 but costs $48 in t-shirts, so every team that drops out costs us about $102 in profit. Losing even one team pushes us below 15%. Plan: require the registration fee to be paid in full and non-refundable two weeks before the tournament, keep a waiting list of backup teams, and order t-shirts only after teams have paid.
+
+I also recommend we buy concession stock in smaller batches so we don't pay for items we can't sell. This budget is confidential and shared only with the board and our teacher.

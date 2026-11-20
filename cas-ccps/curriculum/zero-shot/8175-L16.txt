@@ -1,0 +1,43 @@
+The Pizza Break-Even Challenge
+
+PART 1: THE MATH (BREAK-EVEN ANALYSIS)
+
+Formula:
+Break-Even Point (units) = Fixed Costs / (Selling Price - Variable Cost per Unit)
+
+Scenario A: Selling price of 10 dollars
+Contribution margin per pizza = 10 - 5 = 5 dollars
+Break-even point = 500 / 5 = 100 pizzas
+I must sell 100 pizzas to cover my 500 dollar rent.
+Check: 100 pizzas x 10 dollars = 1,000 dollars in revenue. Costs = 500 + (100 x 5) = 1,000 dollars. Profit = 0.
+
+Scenario B: Selling price of 7 dollars
+Contribution margin per pizza = 7 - 5 = 2 dollars
+Break-even point = 500 / 2 = 250 pizzas
+I must sell 250 pizzas to cover my 500 dollar rent.
+Check: 250 pizzas x 7 dollars = 1,750 dollars in revenue. Costs = 500 + (250 x 5) = 1,750 dollars. Profit = 0.
+
+What this shows: Lowering the price by just 3 dollars means I have to sell 150 more pizzas (two and a half times as many) to break even, because I only keep 2 dollars from each pizza instead of 5.
+
+PART 2: THE STRATEGY
+
+Pricing Strategy: Market Penetration
+
+Justification: Because my pizza brand is new and fans at the stadium already have other food choices like hot dogs, nachos, and big-name chains, a lower introductory price will get people to try it and spread the word. Once fans like the pizza and come back each game, I can slowly raise the price closer to 10 dollars, where my break-even point is only 100 pizzas.
+
+Pricing Decision: I would start at 8 dollars per pizza for the first few games. At 8 dollars, my margin is 3 dollars, so my break-even point is 500 / 3 = about 167 pizzas. That is very reachable at a football stadium with thousands of hungry fans, and it is still cheaper than most stadium food.
+
+Bundle It: The "Touchdown Combo"
+Combo: 1 large slice of pepperoni pizza + 1 fountain drink + 1 bag of chips
+Price: 12 dollars (bought separately: pizza 8 + drink 4 + chips 3 = 15 dollars)
+Why a fan would buy it: The combo saves the fan 3 dollars, and it is faster and easier because they can order everything with one item and get back to their seat before the next play. Fans almost always want a drink with salty food, so the bundle gives them a complete meal for a better deal, and it helps my stand sell more total items per customer.
+
+Competition: Compared to the hot dog stand or nacho cart, my combo gives fans a full meal at a lower combined price, which helps my stand win customers who are trying to feed a family without overspending.
+
+THE REST OF THE MARKETING MIX
+
+Product: Fresh, hot, large slices of cheese and pepperoni pizza made with quality ingredients and served quickly in grab-and-go boxes.
+
+Place: My stand will be located near the main entrance and the busiest section of the concourse so fans see it as soon as they walk in and at halftime.
+
+Promotion: I will advertise on the stadium's video board during timeouts and offer a "Touchdown Deal" where combo prices drop by 1 dollar every time the home team scores a touchdown.

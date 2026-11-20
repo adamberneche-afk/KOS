@@ -1,0 +1,41 @@
+The Pricing Strategy Brief: River City Blades
+
+Part 1: The Math
+
+Opening Night (Saturday, first game of the season)
+$20 × 5,000 = $100,000
+$30 × 5,000 = $150,000
+$40 × 4,600 = $184,000
+$50 × 3,800 = $190,000 (highest ticket revenue)
+$60 × 3,000 = $180,000
+
+Snowy Tuesday (weeknight, snow in the forecast)
+$10 × 2,800 = $28,000
+$15 × 2,400 = $36,000
+$20 × 1,900 = $38,000 (highest ticket revenue)
+$25 × 1,400 = $35,000
+$30 × 1,000 = $30,000
+
+Playoff Game (championship round)
+$40 × 5,000 = $200,000
+$60 × 5,000 = $300,000
+$80 × 4,800 = $384,000
+$100 × 4,200 = $420,000 (highest ticket revenue)
+$120 × 3,300 = $396,000
+
+Part 2: Your Price
+
+Opening Night: $40
+The $50 price brings in the most ticket revenue ($190,000), but only $6,000 more than $40 ($184,000). At $40, 800 more fans come through the doors (4,600 vs. 3,800). If each fan spends about $12 on food, drinks and merchandise, those 800 fans add about $9,600 in concession sales, which is more than the $6,000 we give up in tickets. Total: $184,000 + (4,600 × $12) = $239,200 at $40, compared with $190,000 + (3,800 × $12) = $235,600 at $50. A nearly full arena on opening night also creates excitement and makes new fans want to come back.
+
+Snowy Tuesday: $15
+The $20 price brings the most ticket revenue ($38,000), but $15 brings 500 more fans ($36,000). With about $12 per fan in concessions, $15 earns $36,000 + $28,800 = $64,800, while $20 earns $38,000 + $22,800 = $60,800. On a slow, snowy weeknight, demand is low, so a lower price fills more seats, sells more hot dogs, and turns casual fans into regulars.
+
+Playoff Game: $100
+$100 brings in the most ticket revenue ($420,000). Even counting concessions, $100 still comes out ahead: $420,000 + (4,200 × $12) = $470,400, versus $384,000 + (4,800 × $12) = $441,600 at $80. Demand is so high that 4,200 fans will still pay $100, so the arena will look full and loud. Going to $120 would push 900 more fans out and lower revenue to $396,000.
+
+Part 3: Supply and Demand
+The supply of seats is the same for every game: 5,000. What changes is demand. On a snowy Tuesday, fewer people want to go, since they have work and school the next day and don't want to drive in the snow, so the team has to lower prices to fill seats. For the playoff game, thousands of fans want to see the championship, but there are still only 5,000 seats. That creates scarcity: more people want tickets than there are seats available. When demand is high and supply is fixed, the price goes up. That's why the team can charge $100 for the playoff game and only $15 for Tuesday, even though it's the same team in the same arena. This is why many teams use dynamic pricing, changing prices based on demand, instead of fixed pricing, where every game costs the same. If the team used fixed pricing, tickets would be too expensive for the Tuesday game and too cheap for the playoffs, and resellers on the secondary market would profit from the playoff game instead of the team.
+
+Part 4: Is It Fair?
+Yes, I think it is fair for a team to charge $100 on Saturday and $20 on Tuesday for the same seat. The fan isn't paying just for the seat; they're paying for the experience, and a championship game is a very different experience from a regular-season game on a snowy weeknight. Dynamic pricing works the same way as airline tickets and hotel rooms, which cost more during holidays because more people want them. It also helps fans on a budget, because cheaper Tuesday tickets let families attend games they otherwise couldn't afford. If the team charged one fixed price, the playoff tickets would sell out instantly and get resold on the secondary market for even more, so the extra money would go to resellers instead of the team. However, teams should be careful not to price loyal fans out completely, for example by giving season-ticket holders the first chance to buy playoff seats at a set price. As long as prices are clear up front, letting demand set the price is fair.

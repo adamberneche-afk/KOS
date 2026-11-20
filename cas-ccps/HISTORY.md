@@ -1350,3 +1350,27 @@ refuses a summary by its wording (`WFB_WARMUP_SUMMARY_MARKERS`) whether or
 not it has a "?". Replayed over the tab's 466 Flow 3 returns: the 39 pass,
 the 17 are refused as summaries, and none of the 399 delivered changes.
 Counts only; no warm-up text was kept.
+
+## The zero-shot test and the lesson report, 2026-11-20
+
+The operator asked to look at turn-in stage 5 and the zero-shot target,
+both on hold waiting for data. Turn-in codes so far (11-10 to 11-19) cover
+three lessons, none run twice, so stage 5's code patterns couldn't fire
+yet; but its "too easy" pattern reads Flow 2's checks and the reflections,
+which go back to October. And the zero-shot test, which the plan only named
+("Phase 0's zero-shot test", defined nowhere in the repo or the archive),
+didn't need stage 5 first: the reflection fixture (#498) already sends
+made-up work through Flow 2. Built in that order at the operator's word:
+
+- **The zero-shot test** (39c, 39d): for each of the 67 lessons, the answer
+  a chatbot gives from the student-facing prompt alone, written in the
+  session without the rubric, kept as text files and built into 39c; sent
+  through Flow 2 as fixture rows a batch at a time, graded on the whole
+  lesson's goals, with fixture competency IDs so no evidence is real;
+  recorded per lesson in `ZeroShotResults`.
+- **The lesson report** (69c): one row per lesson, counts only, the three
+  patterns per section, flagged in two sections of five or more students,
+  the zero-shot result beside each lesson.
+
+The first estimate of 55 Studio runs was wrong: 67 lessons as wholes (172
+counting parts singly); the test grades whole lessons.

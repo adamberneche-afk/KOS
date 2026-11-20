@@ -1,0 +1,57 @@
+The Cavalier Shop Survey
+
+Part 1: The Target Market
+The target market for this survey is CHHS students. Students are the store's main customers: they walk past the Cavalier Shop every day, buy spirit wear for spirit weeks and games, and decide what is "cool" to wear at school. Parents often pay, but students choose what they want and influence what their parents buy. Students also hear about events in different ways than parents or staff, so the store needs to know how to reach them specifically.
+
+Part 2: Build the Survey (Google Form)
+
+Form title: The Cavalier Shop Customer Survey
+Description: Help the Cavalier Shop decide what to sell and how to reach you. This survey takes about 1 minute and your answers are anonymous.
+
+Question 1 (Checkboxes, limit: select up to two; set with response validation "Select at most 2")
+How do you most frequently receive news and updates regarding Clover Hill High School events?
+- Canvas Announcements
+- CHHS Instagram
+- ParentSquare
+- Morning Announcements
+- Word of Mouth/Friends
+
+Question 2 (Linear scale, 1 to 5; 1 = Not at all important, 5 = Extremely important)
+On a scale of 1 to 5, how important is it to you that the profits from your merchandise purchases directly fund CHHS student activities?
+
+Question 3 (Short answer)
+What is one specific type of product or service you would like to see offered at The Cavalier Shop that is currently unavailable?
+
+Settings: Collect email addresses is set to "Do not collect," and "Limit to 1 response" is off so students do not have to sign in with their names.
+
+Form link: (the form link)
+
+Part 3: Why These Questions Work
+
+Question 1 collects quantitative data because answers are fixed choices that can be counted and turned into percentages. The store will learn which channels students actually use, so it can put its promotions where students will see them, for example posting on Instagram instead of relying on morning announcements.
+
+Question 2 collects quantitative data because it is a 1 to 5 rating scale that can be averaged and compared. The store will learn whether "your purchase supports student activities" is a strong reason for students to buy. If most students rate it a 4 or 5, the store should use that message in its signs and ads.
+
+Question 3 collects qualitative data because students answer in their own words. The store will learn new product ideas it may never have thought of, like phone cases, snacks or custom team gear, and can group the answers into themes to see which ideas come up most.
+
+Part 4: Spot the Bias
+
+1. "How much do you love our amazing new t-shirts?"
+What's wrong: "Love" and "amazing" are leading words that tell people how to feel, and the question assumes they like the shirts.
+Neutral version: "How would you rate the new Cavalier Shop t-shirts?" (1 = Very poor, 5 = Excellent)
+
+2. "Don't you agree the store should stay open after school?"
+What's wrong: This is a leading question. "Don't you agree" makes it awkward to say no and pushes people toward yes.
+Neutral version: "Would you shop at the Cavalier Shop if it were open after school?" (Yes / No / Not sure)
+
+3. "Would you rather buy a cheap hoodie online or a quality Cavalier hoodie that supports your school?"
+What's wrong: The choices are loaded. "Cheap" sounds bad and "quality … that supports your school" sounds good, so people pick the "right" answer instead of their real preference.
+Neutral version: "Where would you most likely buy a Clover Hill hoodie?" (The Cavalier Shop / An online store / A sporting goods or department store / I would not buy one)
+
+Part 5: Beyond the Survey
+
+Another primary source: Observation of customers in the store during lunch. Students could watch and count how many people stop at each display, how long the line gets, and which items people pick up but put back. This shows what customers actually do, not just what they say, which the survey can't measure.
+
+A secondary source: The store's point-of-sale (POS) sales records. These show which items have sold the most, at what prices, and at what times of year (for example, more hoodies in November and more shirts during spirit week). The survey only shows what people say they want, but POS data shows what they have actually paid for.
+
+Summary: This market research uses a survey to collect primary data from our target market, mixes quantitative data and qualitative data, avoids bias and leading questions, and can be combined with secondary data like sales records to help the Cavalier Shop make better decisions.
