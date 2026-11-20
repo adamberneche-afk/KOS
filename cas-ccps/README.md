@@ -612,6 +612,22 @@ its "Open Part n now" button, and the overnight email counts those students
 #6): still one assignment and grade per lesson, its page naming each part,
 saying each opens in turn, and asking for the last part's link.
 
+### Work types: checking Submit can read every form, deck and sheet (2026-11-19)
+
+`checkWorkFileReads()`, run in the **Student Dashboard's** editor (as the
+account the dashboard runs as), does for every student's form, deck and
+sheet that is shared and not archived what Submit does before any feedback:
+finds its feedback page (`FormSnapshots`) and reads it with its reader (75,
+77, 78). The log gives counts by type ("decks: 41 of 42 read"), then each
+failure grouped by kind with its fix and ConfigIDs: a permission the
+dashboard's account hasn't been granted (remove the project's access at
+myaccount.google.com/connections, run `reportDeployVersion`, approve); a
+file gone or not shared with that account; no feedback page on record; or
+anything else, with Google's message. It reads only and records nothing.
+Run it after each push and before a lesson with a form, deck or sheet part
+opens: on 2026-11-19 a student found the missing Slides permission by
+pressing Submit.
+
 ### Work types: a part as a Google Form (Phase 4a, 2026-11-08)
 
 A part's work file has a type (`meta/STUDENT_WORK_PLAN_2026-10.md` §5):
