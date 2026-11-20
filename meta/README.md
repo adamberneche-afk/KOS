@@ -160,6 +160,7 @@ why this repo exists at all.
   opens it), What the feedback checks (with the teacher's grading notes),
   and Class status's Not started, To revise and Not shown yet. Not built:
   supports and extensions (curriculum to write).
+- **`AUDIT_STRUCTURE_2026-11-20.md`** — structural debt across the repo: what to fold together, what is redundant, how navigable it is; ranked proposals with effort and risk (findings only)
 - **`AUDIT_STUDENT_QUESTIONS_2026-11-17.md`** — every question a student
   can be shown (the reflection on Submit, the turn-in question: 2,179 of
   them) measured: a median of 44 words and up to 110, because each quoted a
