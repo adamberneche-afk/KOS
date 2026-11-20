@@ -1325,3 +1325,11 @@ this one), the 8177 cartridge and 79b, and `meta/LESSON_PARTS_2026-10.md`
 were rebuilt. The template (a blank sheet, one tab named Inventory) and
 `WORK_TEMPLATE_8177_THE_BACK_ROOM_P2` are the operator's, before the
 lesson's rollout.
+
+At the operator's word the agent then made the template ("The Back Room —
+your sheet", one tab named Inventory) and saved its ID as a `_CONFIG` row,
+`WORK_TEMPLATE_8177_THE_BACK_ROOM_P2`, beside the Product Pitch Part 6
+deck's. Reading it showed that `_resolveConfigValues_` took template keys
+from Script Properties only: a `_CONFIG` row was ignored. It now reads any
+`WORK_TEMPLATE_…` row of the tab too (the property still wins), and
+intake's NO_WORK_TEMPLATE message says either works.

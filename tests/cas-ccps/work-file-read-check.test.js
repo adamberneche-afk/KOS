@@ -99,3 +99,22 @@ test('all readable: says so; past the time budget: says how many it didn\'t reac
   assert.equal(late.notReached, 5);
   assert.match(env.logs.join('\n'), /5 not reached \(time budget\): run it again/);
 });
+
+// A part's template from the Central Ledger's _CONFIG tab (2026-11-19): the
+// operator keeps WORK_TEMPLATE_… rows there; until then only a Script
+// Property counted, so a row there was silently ignored.
+test('a WORK_TEMPLATE_… row of the _CONFIG tab resolves like the Script Property; the property still wins', () => {
+  const env = load();
+  const cfg = env.ss.insertSheet('_CONFIG');
+  cfg.appendRow(['Key', 'Value']);
+  cfg.appendRow(['WORK_TEMPLATE_8177_THE_BACK_ROOM_P2', 'sheet-template-from-tab']);
+  cfg.appendRow(['WORK_TEMPLATE_8177_X_P1', 'tab-value']);
+  cfg.appendRow(['NOT_A_TEMPLATE', 'ignored']);
+  const props = env.sb.PropertiesService.getScriptProperties();
+  props.setProperty('WORK_TEMPLATE_8177_X_P1', 'property-value');
+  const r = env.sandbox._resolveConfigValues_();
+  assert.equal(r.values.WORK_TEMPLATE_8177_THE_BACK_ROOM_P2, 'sheet-template-from-tab');
+  assert.equal(r.sources.WORK_TEMPLATE_8177_THE_BACK_ROOM_P2, 'Central Ledger _CONFIG tab');
+  assert.equal(r.values.WORK_TEMPLATE_8177_X_P1, 'property-value', 'the property wins');
+  assert.equal(r.values.NOT_A_TEMPLATE, undefined);
+});

@@ -1055,18 +1055,18 @@ Part 2, "The Inventory Update" (lesson 23 of 31). Its `workFile` and
 a header and the four items on the Inventory tab, and each usable count a
 formula. Its task now says so: column A the item, B how many were ordered,
 C how many are missing or can't be used, D the usable count as a formula
-(`=B2-C2`), E why. Before the lesson's rollout, make its template and set
-the property:
+(`=B2-C2`), E why. Its template was made on 2026-11-19: "The Back Room —
+your sheet" in the operator's Drive, one tab named **Inventory** and
+nothing else (the students write the header; a header in the template
+would count as one of their five rows), its ID in the Central Ledger's
+`_CONFIG` tab as `WORK_TEMPLATE_8177_THE_BACK_ROOM_P2`. Without it each
+copy fails as `NO_WORK_TEMPLATE` (a PROBLEM row). After the rollout,
+`checkWorkFileReads()` in the Student Dashboard reads every copy.
 
-1. A new Google Sheet in the teacher folder, named "The Back Room — Part 2
-   template", with its one tab renamed **Inventory** and nothing else in
-   it (the students write the header; a header in the template would count
-   as one of their five rows).
-2. In the Central Ledger, the Script Property (or `_CONFIG` row)
-   `WORK_TEMPLATE_8177_THE_BACK_ROOM_P2` = that sheet's ID.
-
-Without it each copy fails as `NO_WORK_TEMPLATE` (a PROBLEM row). After the
-rollout, `checkWorkFileReads()` in the Student Dashboard reads every copy.
+**A part's template key** (`WORK_TEMPLATE_<PART KEY>`) is read from the
+Central Ledger's Script Properties or, since 2026-11-19, a row of its
+`_CONFIG` tab (00's `_resolveConfigValues_`; the property wins). Before
+that a `_CONFIG` row was ignored.
 
 ## Turn-in codes (script 71)
 
