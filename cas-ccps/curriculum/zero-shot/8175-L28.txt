@@ -1,0 +1,26 @@
+Form link: (the form link)
+
+New Service: After-School Study and Snack Lounge
+
+Question 1 (Quantitative – Multiple Choice)
+How many days per week would you use an after-school study space if one were available?
+- 0 days
+- 1 day
+- 2-3 days
+- 4-5 days
+
+Question 2 (Quantitative – Linear Scale)
+How important is each of these to you when choosing a place to study after school? (1 = Not important, 5 = Very important) – Rating: Quiet space
+1 - Not important
+2
+3
+4
+5 - Very important
+
+Question 3 (Qualitative – Paragraph)
+What would make an after-school study space useful for you?
+
+Bias Check
+I rewrote Question 3. It originally said, "Wouldn't a study lounge with free snacks and Wi-Fi be a great way to spend your afternoon?" which suggested the right answer was "yes" and assumed students wanted those features. I changed it to an open, neutral question that lets students describe what they actually want without being led.
+
+How these help us design the service: Question 1 tells us how much demand there is and how to staff the lounge, Question 2 tells us which features to prioritize, and Question 3 may reveal needs we have not thought of, like tutoring or a printer.

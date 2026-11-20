@@ -1,0 +1,46 @@
+The First E-Sports Olympic Games: Proposal for "Circuit Sprint"
+
+SECTION 1: THE NEW SPORT (PRODUCT DEVELOPMENT)
+
+Name and Concept
+Our new sport is called Circuit Sprint. It is a mixed-reality racing competition that combines physical fitness with video game skill. Athletes ride smart stationary bikes connected to a racing game, and the speed of their in-game vehicle is powered by how hard they pedal in real life. They steer and use power-ups with handlebar controls while racing through futuristic tracks inspired by each host city. The race is shown on giant screens in the arena, so fans can watch both the athletes and the digital race at the same time.
+
+How It Works and The Rules
+1. Each race has 8 athletes, one per country, competing on identical smart bikes and the same game settings so the equipment is fair.
+2. Races are 3 laps on a digital track and last about 6 to 8 minutes.
+3. Power-ups (like a speed boost or shield) appear on the track, but each athlete may only hold one at a time, so strategy matters.
+4. The competition has heats, semifinals, and a final. The top 2 finishers in each heat advance.
+5. Medals are awarded to the top 3 finishers in the final.
+6. All bikes are tested and calibrated by officials before every race, and athletes are subject to the same anti-doping rules as other Olympians.
+7. Any athlete caught using modified equipment or software is disqualified.
+8. There will be both men's and women's events, plus a mixed relay where each team member races one lap.
+
+The Appeal
+Circuit Sprint is a great Olympic event because it bridges traditional sports and e-sports. Critics often say e-sports are not "real" sports because players just sit, but Circuit Sprint requires real endurance and athleticism along with fast reactions and strategy. It is easy for new viewers to understand, since everyone knows what a race is, and the short, fast races are perfect for TV and social media clips. It also lets the host city show off its landmarks in the digital track designs.
+
+SECTION 2: THE FAN (TARGET MARKET)
+
+Demographics
+Our primary audience is males and females ages 13 to 34 who play video games or watch e-sports and streams. They live worldwide, especially in North America, Europe, South Korea, Japan, and China, where gaming is very popular. Many are students or young professionals with medium incomes who spend money on gaming, fitness gear, and streaming subscriptions. Our secondary audience is fitness enthusiasts ages 25 to 45 who use smart bikes like Peloton.
+
+Psychographics
+This audience values competition, excitement, and technology. They enjoy watching skilled players on Twitch and YouTube and like to interact with content through chat and social media. Many also care about health and fitness, so a sport that combines gaming with real exercise matches their lifestyle. They like fast-paced entertainment that fits short attention spans, and they want to feel part of a community, which Circuit Sprint offers through national team pride and online fan challenges where viewers can race the same tracks at home.
+
+SECTION 3: THE MONEY (SPONSORSHIPS)
+
+Selected Sponsors and Strategy
+1. Peloton: Peloton makes smart bikes and connected fitness products, so sponsoring a sport built on smart bikes would show its products in action and attract younger customers.
+2. Red Bull: Red Bull already sponsors extreme sports and many e-sports teams. Its brand is about energy and high performance, which perfectly fits a high-speed racing sport.
+3. Nike: Nike could design official athlete apparel and shoes, connecting its brand to the future of sports and reaching the young gaming audience.
+4. Samsung: Samsung is already an official Olympic partner and could provide the giant displays and screens, showing off its technology to a global audience.
+5. Twitch (Amazon): Twitch could be the official streaming partner, reaching millions of young viewers and making Circuit Sprint easy to watch live anywhere.
+
+Advertising
+Advertising will be built into the event both in the arena and in the game. Sponsor logos will appear on the bikes, athlete uniforms, and arena screens. Inside the digital track, there will be virtual billboards, and power-ups can be branded, such as a "Red Bull Boost." Livestreams will include short sponsor ads between heats, and sponsors can run fan contests where viewers race the official tracks at home for prizes. This gives sponsors many chances to reach fans in ways that feel like part of the experience instead of interrupting it.
+
+What Could Go Wrong
+1. Server outage or technical failure: If the game servers or bike connections crash during a race, it could ruin the competition. To plan for this, all races will run on local offline servers inside the arena, with backup bikes and backup computers ready, and a rule that any race interrupted by a technical problem is restarted from the beginning.
+2. Scandal: If an athlete is caught cheating with modified software or doping, it could damage the sport's reputation and scare away sponsors. To prepare, we will use independent officials to inspect all equipment, run anti-cheat software, follow Olympic drug testing, and have a public relations team ready to respond quickly and openly if a scandal happens.
+
+PARTNER ROLES
+Partner 1 created the sport concept, rules, and appeal sections. Partner 2 researched the target market and sponsors. We worked together on advertising and risk planning and edited the final proposal so it reads as one project.

@@ -471,6 +471,16 @@ competency with no student text. It is not needed now.
      modules first, keeping any with submissions.
 5. **The lesson report.**
 
+   **Stage 5 built (2026-11-20):** `cas-ccps/scripts/69c_LessonReport.js`,
+   `buildLessonReport()` writes the `LessonReport` tab (see the cas-ccps
+   README). Built before a few weeks of code data at the operator's word:
+   pattern B reads Flow 2's checks and the reflections, which go back to
+   October; A and C need codes and say "codes off" for a lesson whose
+   checks ran before the first code. Flagged only in two sections of 5+
+   students (two runs of a lesson needs a second year). The zero-shot test
+   it points to is `39d_ZeroShotFixture.js` (built first, the same day): each
+   lesson's cold chatbot answer through Flow 2, one column of the report.
+
 Stages 1–3 can be piloted before Canvas changes: students see and copy codes
 while Canvas still takes the URL (the Canvas check needs stage 4's text
 entries, which the hand switch gives the pilot assignments).

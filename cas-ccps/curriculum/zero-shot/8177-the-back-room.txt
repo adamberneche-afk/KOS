@@ -1,0 +1,63 @@
+The Receiving Report: Purchase Order #CS-1042
+
+Part 1: The Discrepancy Log
+
+White polyester hoodies
+- Purchase order: 24 | Packing slip: 24 | Our count: 22
+- Problem: MISSING. 2 hoodies are short. The supplier says it shipped 24, but only 22 arrived.
+
+White polyester t-shirts
+- Purchase order: 48 | Packing slip: 48 | Our count: 48
+- Problem: WRONG ITEM. 12 of the shirts are black instead of white. Sublimation only works on white or light-colored polyester, so the 12 black shirts can't be printed.
+
+Blank polyester rally towels
+- Purchase order: 50 | Packing slip: 50 | Our count: 50
+- Problem: DAMAGED. 3 towels are torn and can't be sold.
+
+Sublimation transfer paper
+- Purchase order: 4 packs | Packing slip: 2 shipped, 2 backordered | Our count: 2
+- Problem: BACKORDERED. 2 packs were not shipped yet. The 2 packs that came match the packing slip.
+
+Because I followed the golden rule of receiving and opened and counted everything before signing, we have a record of every problem.
+
+Part 2: The Inventory Update
+
+Google Sheet, tab named Inventory:
+
+Row 1 (header): A: Item | B: Ordered | C: Missing or Unusable | D: Usable | E: Why
+Row 2: White polyester hoodies | 24 | 2 | =B2-C2 (22) | 2 hoodies missing from the box even though the packing slip lists 24.
+Row 3: White polyester t-shirts | 48 | 12 | =B3-C3 (36) | 12 shirts arrived black instead of white; sublimation ink does not show on dark fabric.
+Row 4: Blank polyester rally towels | 50 | 3 | =B4-C4 (47) | 3 towels arrived torn and can't be printed or sold.
+Row 5: Sublimation transfer paper (packs) | 4 | 2 | =B5-C5 (2) | 2 packs are backordered and have not shipped yet.
+
+Column D uses formulas (=B2-C2 through =B5-C5), so the usable count updates automatically if the numbers change.
+
+Usable for printing right now: 22 hoodies, 36 t-shirts, 47 rally towels and 2 packs (200 sheets) of transfer paper.
+
+Part 3: The Supplier Email
+
+Subject: Receiving Discrepancies on Purchase Order #CS-1042
+
+Dear Blank Canvas Wholesale Customer Service Team,
+
+Thank you for the recent delivery for Purchase Order #CS-1042. During receiving, we counted every item and compared it with our purchase order and your packing slip, and we found the following problems:
+
+1. White polyester hoodies: we ordered 24 and the packing slip lists 24, but only 22 arrived. Please issue a credit of $28.00 for the 2 missing hoodies (2 x $14).
+
+2. White polyester t-shirts: we received all 48, but 12 are black instead of white. Because we use sublimation printing, black shirts cannot be used. Please send 12 white polyester t-shirts as replacements and let us know how you would like us to return the black shirts.
+
+3. Blank polyester rally towels: 3 of the 50 towels arrived torn. Please issue a credit of $4.80 for the 3 damaged towels (3 x $1.60).
+
+4. Sublimation transfer paper: your packing slip shows 2 packs shipped and 2 backordered. Please confirm a ship date for the remaining 2 packs and confirm that we will not be billed the $30.00 for them until they ship.
+
+Total credit requested: $32.80.
+
+We have a production deadline coming up, so we would appreciate the replacement t-shirts and the backordered transfer paper as soon as possible. Please reply to confirm the credit, the replacements and the ship date.
+
+Thank you for your help.
+
+Sincerely,
+Cavalier Shop Receiving Team
+Clover Hill High School Sports and Entertainment Marketing
+
+How this connects to the supply chain: our channel of distribution goes from the manufacturer to the wholesaler (Blank Canvas Wholesale), to our class, where we print the designs, to the Cavalier Shop as the retailer and finally to the fan. When one link in the supply chain breaks, production stops. Without white shirts we can only print 36 shirts instead of 48, and with only 2 packs of transfer paper (200 sheets) we may run out before finishing all our hoodies, shirts and towels. Careful receiving, comparing the purchase order and packing slip, and good inventory control prevent shrink and protect money that belongs to the school.

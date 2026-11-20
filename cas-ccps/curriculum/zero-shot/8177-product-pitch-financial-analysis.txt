@@ -1,0 +1,77 @@
+The Buyer's Product Pitch: The Cavalier Cinch Bag
+
+Part 1: The Product
+SKU: CS-BAG-CINCH-WHT
+The Cavalier Cinch Bag is a white polyester drawstring backpack (about 14 by 18 inches) with a full-color sublimated design: the Cavalier logo on the front, "CLOVER HILL" across the top, and a black-and-gold background. It's different from what the store already sells because it isn't clothing or a small accessory. It's something students can use every day for gym clothes, practice gear or game-day snacks, and the design can be customized for each sport (football, soccer, volleyball) using the same blank.
+
+Part 2: The Why
+The bag is for CHHS students, especially athletes and band members who carry gear to practice, plus parents who want a cheap gift. Students will want it at the start of each sports season, during spirit week, and around the holidays as a gift. It also works as a team order: a coach could order 30 for the whole team.
+
+Part 3: The Materials
+Supplier: Coastal Business Supplies, white polyester sublimation drawstring bag (https://www.coastalbusiness.com)
+- Blank bag: $2.75 each
+- Minimum order: 50 bags (we will order 100)
+- Shipping: $15.00 for the order
+- Sublimation ink and transfer paper: about $0.45 per bag (one 13 x 19 sheet per bag)
+- Packaging (paper hang tag with price and SKU): $0.10 per bag
+
+Cost per finished item = $2.75 + $0.45 + $0.10 = $3.30
+
+Production: each bag takes about 1 minute to print and 60 seconds on the heat press, plus loading and cooling. We can make about 20 bags in one class period.
+
+Part 4: The Price
+Retail price: $11.99
+Strategy: charm pricing. $11.99 feels like "about $11" instead of $12. It's priced below a hoodie or shirt but more than a sticker, so it's an easy add-on. Similar drawstring bags at sporting goods stores cost $12 to $18 without a school logo, so ours is a good deal. It covers our cost and leaves a big profit while staying under what students would pay at a mall store.
+
+Part 5: The Math
+Cost per finished item: $2.75 + $0.45 + $0.10 = $3.30
+Profit per item: $11.99 − $3.30 = $8.69
+Margin: $8.69 ÷ $11.99 = 0.725, about 72.5%
+Total batch cost: ($3.30 × 100) + $15.00 = $345.00
+Break-even point: $345.00 ÷ $8.69 = 39.7, so 40 bags. After the 40th bag sells, the rest is profit.
+Expected profit if the whole batch sells: ($11.99 × 100) − $345.00 = $1,199.00 − $345.00 = $854.00
+ROI: $854.00 ÷ $345.00 = 2.475, about 248%
+Production time: 100 bags ÷ 20 per class period = 5 class periods
+Turnover: if we sell about 15 bags a week during the fall sports season, the batch sells out in about 7 weeks.
+
+The design uses only school logos and contains no inappropriate content, so it follows the CHHS Student Handbook. Sublimation works on white polyester, so the blank fits our equipment.
+
+Part 6: The Pitch (Google Slides, 4 slides)
+
+Slide 1 - Title
+Text:
+The Cavalier Cinch Bag
+School pride you carry daily
+White poly bag, full-color logo
+SKU CS-BAG-CINCH-WHT
+Image: mock-up of the white bag with the gold-and-black Cavalier logo.
+Speaker notes: "Thanks for meeting with me. I'm pitching a product we don't sell yet: a sublimated drawstring bag students can use every single day."
+
+Slide 2 - Who Buys It and When
+Text:
+Athletes, band and club members
+Parents looking for gifts
+Sports season starts
+Spirit week and holidays
+Team orders from coaches
+Speaker notes: "This bag fits students who carry gear every day. Sales will peak at the start of each season and during spirit week, and coaches can order them for whole teams."
+
+Slide 3 - What It Costs
+Text:
+Blank bag: $2.75
+Ink and paper: $0.45
+Hang tag: $0.10
+Cost per bag: $3.30
+Batch of 100: $345
+Speaker notes: "Our supplier is Coastal Business Supplies. The minimum order is 50, but we'll order 100 with $15 shipping. We can make about 20 a class period, so the batch takes five periods."
+
+Slide 4 - The Bottom Line
+Text:
+Retail price: $11.99
+Profit per bag: $8.69
+Margin: 72.5%
+Break-even: 40 bags
+Profit if sold out: $854
+Speaker notes: "At $11.99 we keep almost 73 cents of every dollar. We get our money back after 40 bags, and if all 100 sell in about seven weeks, the store makes $854. I recommend we place the order this week."
+
+Design: dark navy background with white and gold text for strong contrast, no more than six lines per slide and six words per line, and one or two images per slide.

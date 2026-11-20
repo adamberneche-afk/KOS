@@ -1,0 +1,55 @@
+The Cavalier Shop Planogram
+
+Part 1: Your Map (top-down layout, described)
+
+The store is a rectangle about 24 feet wide and 18 feet deep. The front wall faces the main hallway.
+
+FRONT WALL (hallway side):
+- Entrance door: front wall, left side.
+- Exit door: front wall, right side (one-way out during lunch rush).
+- Register counter: just inside the exit door on the right, facing into the store.
+
+CENTER OF STORE:
+- Hot zone table: a 4-foot round table about 6 feet straight in from the entrance, with new arrivals and spirit-week shirts.
+- Center gondola shelf (low, 4 feet tall): runs front to back in the middle of the store, with stickers, pennants and car decals on one side and drinkware on the other.
+
+RIGHT WALL:
+- Accessories zone: hats, beanies, lanyards and rally towels on wall hooks.
+
+BACK WALL:
+- Apparel zone: two clothing racks of hoodies and crewnecks, and a wall shelf of folded tees by size.
+
+LEFT WALL:
+- Game Day zone: rally towels, foam fingers, face paint and game-day shirts on wall shelves, plus a mirror.
+
+Walkways: a 40-inch walkway runs from the entrance, around the hot zone table, along the back wall and up the right side to the register. All aisles are at least 36 inches wide, and no displays sit within 36 inches of either door.
+
+Part 2: Traffic Flow
+
+Arrows: Customers enter on the left, turn right around the hot zone table, walk along the back wall past the apparel racks, come up the right wall past accessories, and end at the register by the exit.
+
+The worst bottleneck would form at the register during the lunch rush, when the checkout line backs up into the entrance and blocks people coming in. My layout prevents this by putting the register by a separate exit on the opposite side from the entrance, so the line forms along the right wall instead of the doorway. The one-way loop also keeps people from walking against each other in the aisles.
+
+Part 3: Zones
+
+Merchandise zones:
+1. Apparel zone (back wall): hoodies, crewnecks and tees.
+2. Game Day zone (left wall): rally towels, foam fingers, face paint and game-day shirts.
+3. Accessories zone (right wall): hats, beanies and lanyards.
+
+Hot zone: the round table straight ahead of the entrance. It is the first thing customers see, so I put new arrivals and the current spirit-week shirt there. These are the items the store most wants to sell, and putting them up front catches students who only have a few minutes at lunch.
+
+Impulse buys: pins, stickers, keychains and small snacks go on the register counter. They are low-priced, and customers add them while they wait in line, which raises the average sale.
+
+Part 4: Safety and Staff
+
+Safety: Both doors are marked as exits and are kept completely clear. Every walkway is at least 36 inches wide (most are 40 inches), which meets ADA requirements so a customer using a wheelchair can move through the whole loop and reach the register. Boxes and extra stock stay in the back storage closet, never in the aisles. These rules decided where I put things: the racks went against the back wall instead of in the middle, and the center shelf is short and narrow so it doesn't squeeze the aisle.
+
+Staff positions:
+- Greeter / Sales Associate at the entrance: welcomes customers, points out the hot zone, and can see who is coming in, which helps prevent theft.
+- Cashier at the register: rings up sales and keeps the line moving. From the register they can see the exit, so nothing leaves unpaid.
+- Shift Manager floating near the back wall: helps with sizes in the apparel zone, restocks, and can see the whole store floor.
+
+Atmospherics: The store uses bright white lighting so colors on the shirts look true, the school's colors on the walls, a "Home of the Cavaliers" banner over the hot zone, and the school fight song or upbeat music at low volume on game days. This makes the store feel like part of the Cavalier brand.
+
+How it beats the current setup: Right now, customers enter and exit through the same door and the register sits right next to it, so the lunch line blocks the entrance. My planogram creates a one-way path, moves the register to the exit side, adds a real hot zone table, and pulls customers past every zone before they check out. That improves traffic flow, increases impulse buys and keeps the store safe during a rush.

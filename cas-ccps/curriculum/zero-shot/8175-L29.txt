@@ -1,0 +1,27 @@
+Survey Quality Control: SWOT Critique of the Class Survey
+
+Strengths
+The survey is short enough that most people can finish it in under three minutes, which helps response rates. Most of the questions use multiple choice or rating scales, which makes the results easy to count and graph. The demographic questions at the start (grade level and how often you attend school events) are clear and useful for sorting responses into segments. The question asking respondents to rate the concession stand from 1 to 5 is simple and neutral.
+
+Weaknesses
+Several questions are confusing or biased:
+- "Don't you agree that our games need better music?" is a leading question that pushes people to say yes.
+- "How satisfied are you with the price and quality of the food?" is a double-barreled question. Someone could like the food but think it costs too much, so they cannot answer honestly.
+- The question about "game day atmosphere" does not explain what atmosphere means, so people may interpret it differently.
+- Some answer choices overlap, like "1-2 times" and "2-4 times," which makes it unclear which to pick.
+- The tone switches between formal and casual (some questions say "Rate your experience" and others say "Was it lit?"), which looks unprofessional.
+
+Opportunities
+The survey does not ask how people find out about our events, such as Instagram, morning announcements, posters or word of mouth. Knowing that would show us where to spend our promotion effort. It also does not ask what time or day people prefer, what would make them bring a friend, or how much they would be willing to pay for a ticket or merchandise. Those answers would help us set prices, schedule events and target our marketing to the right segment.
+
+Threats
+If only our friends and classmates take the survey, the results will not represent the whole school or the families who attend. A small number of responses, like under 30, could make one or two strong opinions look like a trend. The order of the questions could also bias answers; asking about complaints first might put people in a negative mood for the rest of the survey. People may also rush through or give joke answers if the survey is too long or not taken seriously.
+
+The Fix
+1. Rewrite "Don't you agree that our games need better music?" to "How would you rate the music at our games?" (1-5 scale).
+2. Split the food question into two: "How would you rate the quality of the food?" and "How would you rate the prices of the food?"
+3. Fix overlapping choices to "0," "1-2," "3-4," and "5 or more."
+4. Add a question: "How do you usually hear about our events?" with checkbox options.
+5. Use one consistent, professional tone throughout and remove slang.
+6. Move demographic questions to the start and open-ended questions to the end.
+7. Share the survey with multiple grade levels, teachers and parents, and aim for at least 100 responses.

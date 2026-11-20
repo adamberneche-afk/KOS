@@ -1,0 +1,29 @@
+Survey Fieldwork
+
+Part 1: Why 323?
+The population we want to learn about is all CHHS students, about 2,000 people. We can't survey everyone, so we survey a sample, a smaller group that represents the whole school. If the sample size is about 323 students, we can be 95% confident that our results are within 5 percentage points of what the whole school thinks. That 5 points is the margin of error. If we only asked 5 or 10 friends, the margin of error would be huge, and our friends probably like the same things we do, so their answers wouldn't represent freshmen, seniors, athletes, band kids or students who never visit the store. If the store made decisions from too few answers, it could order 200 hoodies that nobody buys and lose hundreds of dollars. With 323 responses from across the school, the results have statistical significance, which means they're reliable enough to act on and aren't just chance.
+
+Part 2: My Pitch
+"Hi, I'm in the Sports Management class, and we're running a quick 1-minute survey to help the Cavalier Shop decide what to sell. Would you mind scanning this QR code and taking it? It's anonymous."
+
+Part 3: My Plan
+- When: Lunch blocks A and B on Tuesday and Thursday, and before school in the main lobby on Wednesday from 7:20 to 7:40.
+- Where: the cafeteria, the courtyard, and the main lobby by the front doors.
+- Who: I will ask students from every grade, not just juniors like me. I'll go to tables I don't usually sit at, ask people in the library at lunch, and ask students coming off the buses in the morning, which gets freshmen and sophomores I don't know. I'll also ask a couple of people from my after-school club, but no more than three, so my sample isn't just my friends.
+- Goal: 15 unique responses, including my own.
+
+Part 4: My Log
+Date | Where | Responses | Notes
+Monday, Nov. 3 | Me (counted myself) | 1 | Took the survey first to test the link
+Tuesday, Nov. 4 | Lunch block A, cafeteria | 4 | Asked 6 people, 2 said no
+Wednesday, Nov. 5 | Main lobby before school | 3 | Asked 7 people, most were in a hurry
+Thursday, Nov. 6 | Lunch block B, courtyard | 5 | Asked 6 people, 1 already took it
+Friday, Nov. 7 | Library during lunch | 2 | Asked 3 people
+Total: 15 unique responses (no names recorded, each person counted once)
+
+Part 5: Reflect
+What worked best: Lunch in the cafeteria worked best because students were sitting down and had time. Showing the QR code on my phone and saying it took only one minute made people say yes more often. Asking groups at a table also worked, because once one person agreed, the others usually did too.
+
+What I would do differently: Before school was hard because people were rushing to class, so next time I'd skip mornings and spend more time at lunch. I would also print a small card with the QR code so I didn't have to keep holding up my phone, and I'd make sure to reach more seniors, since I mostly got sophomores and juniors.
+
+Why every response must be real: Our class is combining everyone's responses to reach 323, so one fake or duplicate response doesn't just hurt my grade, it makes the whole class's data less accurate. If someone filled out the survey five times, their opinion would count five times, and the store could make a bad decision based on false results. The whole point of the sample is to honestly represent the population, and the margin of error only means something if every response is a real, unique response from a different student.
