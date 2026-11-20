@@ -100,10 +100,15 @@ test('the data: each competency\'s lessons with the student\'s words, its eviden
   assert.equal(it.evidence.length, 1, 'only the student\'s own evidence');
   assert.equal(it.evidence[0].lessonKey, '8175-L03');
   assert.ok(it.evidence[0].atMs > 0);
-  // Q26 (on hold): a competency no lesson names has no lessons, and nothing special.
+  // Q26 (2026-11-20): a competency no lesson names has no lessons and says
+  // where it is shown instead.
   const unmeasured = itemOf(d, '8175-31');
   assert.deepEqual(unmeasured.lessons, []);
   assert.equal(unmeasured.rating, null);
+  assert.equal(unmeasured.outside, 'DECA');
+  assert.equal(unmeasured.outsideLabel, 'Through DECA');
+  assert.match(unmeasured.outsideNote, /through DECA .*not class lessons\. Your teacher rates it\./);
+  assert.equal(itemOf(d, env.l03).outside, '', 'a measured competency has none');
 });
 
 test('the tab: rating as number and words, latest evidence lighter, words, where practiced, progress, recent and next', () => {
@@ -129,6 +134,13 @@ test('the tab: rating as number and words, latest evidence lighter, words, where
   const next = h.slice(h.indexOf('<h3>Next to practice</h3>'), h.indexOf('</ul>', h.indexOf('<h3>Next to practice</h3>')));
   assert.ok(next.length > 0 && !/8175-31|Student organization/.test(next), 'no unmeasured competency in Next to practice');
   assert.doesNotMatch(h, /rank|average|classmates|your class/i, 'no comparison or ranking');
+  // Q26: "Through DECA" instead of "Not rated yet", the note inside, no "No evidence yet".
+  const deca = h.slice(h.indexOf('31. Text of 8175-31'), h.indexOf('</details>', h.indexOf('31. Text of 8175-31')));
+  assert.match(deca, /<span class="rec-chip">Through DECA<\/span><\/summary>/);
+  assert.match(deca, /<div class="rec-ev rec-outside">You show this through DECA/);
+  assert.doesNotMatch(deca, /Not rated yet|No evidence yet/);
+  itemOf(comp, '8175-31').rating = 2;
+  assert.match(ctx.renderCompetencyTab(comp), /31\. Text of 8175-31<\/span><span class="rec-chip done">2 — Without supervision<\/span>/, 'rated: the rating, as any other');
 });
 
 test('sorts: by area (default), by rating, by most recent evidence; kept while the tab re-renders', () => {
