@@ -649,7 +649,7 @@ The "Still open" lines are questions the drafts raised, left for when each lesso
 | Part | Work file | Primary (unlocks the next part) | Secondary | Tertiary |
 |---|---|---|---|---|
 | 1. The Discrepancy Log | Doc | 8177-41 Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees | — | — |
-| 2. The Inventory Update | Doc | 8177-14 Manage time and resources | — | 8177-27 Examine principles of technology that underlie an industry/organization |
+| 2. The Inventory Update | **Sheet** | 8177-14 Manage time and resources | — | 8177-27 Examine principles of technology that underlie an industry/organization |
 | 3. The Supplier Email | Doc | 8177-26 Examine technical and production skills required of workers within an industry/organization | — | — |
 
 **Why:** Part 1 is the controlling function (41): comparing the purchase order, packing slip and count for every item. Part 2 is managing resources (14): the usable stock and why the rest can't be used, with how missing supplies stop production (27) as a bonus. Part 3 is the professional supplier email with the PO number and credit (26). Every lesson competency is covered: 41 (Part 1), 14 and 27 (Part 2), 26 (Part 3).
@@ -659,14 +659,14 @@ The "Still open" lines are questions the drafts raised, left for when each lesso
 - **Part 1** (terms: purchase order, packing slip, receiving)
   - *(required)* For all four items you compare the purchase order, packing slip and your count, and list every problem: missing hoodies, wrong-color t-shirts, torn towels, backordered paper. (8177-41)
 - **Part 2** (terms: inventory control, shrink)
-  - *(required)* Your table shows how many usable items of each kind we received and can print on, and you explain why each item you didn't count can't be used. (8177-14)
+  - *(required)* Your Inventory tab has a row for each of the four items with what we ordered, how many are missing or can't be used, and a formula in column D that works out how many are usable, and column E says why each item you didn't count can't be used. (8177-14)
   - *(not required)* You explain how the black t-shirts or the backordered transfer paper keep us from printing. (8177-27)
 - **Part 3** (terms: purchase order, channel of distribution)
   - *(required)* Your professional email to Blank Canvas Wholesale lists each problem, gives PO #CS-1042 and the credit amount, and asks for replacements and a ship date for the backorder. (8177-26)
 
 **Still open:**
 
-- Part 2 allows a table in the doc or in Google Sheets; drafted as a doc (the explanation is text). Decide whether it should be a Sheet.
+- Part 2 is a Google Sheet (marked 2026-11-19, the operator): the Inventory tab, a formula for each usable count, the reasons typed beside them.
 - Part 3's email draws on Part 1's problem list, so it only makes sense after Part 1.
 
 <a id="8177-the-battle-for-the-entertainment-dollar"></a>

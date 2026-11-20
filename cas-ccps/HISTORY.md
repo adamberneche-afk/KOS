@@ -1308,3 +1308,28 @@ shared, no feedback page, or other, each with its fix and the ConfigIDs. It
 writes nothing (no SubmitFailures row) and stops at a 4.5-minute budget,
 saying how many it didn't reach. Meant for after each push and before a
 lesson with a form, deck or sheet part opens.
+
+## The first Sheets part: The Back Room, Part 2, 2026-11-19
+
+The operator's go to move forward with The Back Room's Part 2, approved as
+the first Sheets part on 11-09 and waiting for its lesson to be scheduled
+(8177 lesson 23 of 31). In `PARTS.json` its `workFile` and `workType` are
+`sheet`, with `sheetChecks` `{"requiredTabs": ["Inventory"], "tab":
+"Inventory", "minFilledRows": 5, "formulasRequired": 4, "formulasIn": "D"}`.
+Its task in `prompts/the-back-room.md` no longer offers "this doc or Google
+Sheets": the student opens the sheet from the dashboard and, on the
+Inventory tab, writes a header and a row per item (A item, B ordered, C
+missing or unusable, D usable as a formula such as `=B2-C2`, E why). The
+primary criterion says the same. 55b, 13c, the demo (its sheet lesson is now
+this one), the 8177 cartridge and 79b, and `meta/LESSON_PARTS_2026-10.md`
+were rebuilt. The template (a blank sheet, one tab named Inventory) and
+`WORK_TEMPLATE_8177_THE_BACK_ROOM_P2` are the operator's, before the
+lesson's rollout.
+
+At the operator's word the agent then made the template ("The Back Room —
+your sheet", one tab named Inventory) and saved its ID as a `_CONFIG` row,
+`WORK_TEMPLATE_8177_THE_BACK_ROOM_P2`, beside the Product Pitch Part 6
+deck's. Reading it showed that `_resolveConfigValues_` took template keys
+from Script Properties only: a `_CONFIG` row was ignored. It now reads any
+`WORK_TEMPLATE_…` row of the tab too (the property still wins), and
+intake's NO_WORK_TEMPLATE message says either works.

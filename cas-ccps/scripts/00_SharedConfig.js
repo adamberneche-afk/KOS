@@ -1073,15 +1073,16 @@ function _resolveConfigValues_() {
     sources.ADMIN_SS_ID = "same as CENTRAL_LEDGER_SS_ID";
   }
 
-  if (SHARED_CONFIG_KEYS.some(function (k) { return !values[k]; })) {
-    const shared = _readSharedConfig_(values.CENTRAL_LEDGER_SS_ID);
-    SHARED_CONFIG_KEYS.forEach(function (k) {
+  // Read whenever a shared key is missing, or always since 2026-11-19: a
+  // part's template (WORK_TEMPLATE_…) may be a row of the tab. Cached.
+  const shared = _readSharedConfig_(values.CENTRAL_LEDGER_SS_ID);
+  SHARED_CONFIG_KEYS.concat(Object.keys(shared).filter(function (k) { return WORK_TEMPLATE_KEY_RE.test(k); }))
+    .forEach(function (k) {
       if (!values[k] && shared[k]) {
         values[k] = shared[k];
         sources[k] = "Central Ledger _CONFIG tab";
       }
     });
-  }
   return { values: values, sources: sources };
 }
 
@@ -1133,6 +1134,9 @@ function _ledgerIdFromAttachedSheet_() {
 // fully authorized run by the same person, and anyone who uses
 // getConfig_() can already open the Ledger (the Student Dashboard reads it
 // as the student).
+// A part's work template setting (68's workTemplateKey): a Script Property
+// or, since 2026-11-19, a row of the Central Ledger's _CONFIG tab.
+const WORK_TEMPLATE_KEY_RE = /^WORK_TEMPLATE_[A-Z0-9_]+$/;
 function _readSharedConfig_(ledgerId) {
   if (_sharedConfigMemo_ && _sharedConfigMemo_.id === ledgerId) return _sharedConfigMemo_.values;
   const cacheKey = SHARED_CONFIG_CACHE_PREFIX + ledgerId;
@@ -1148,6 +1152,9 @@ function _readSharedConfig_(ledgerId) {
       const tab = _readConfigTab_(SpreadsheetApp.openById(ledgerId));
       values = {};
       SHARED_CONFIG_KEYS.forEach(function (k) { if (tab[k]) values[k] = tab[k]; });
+      // A part's template (WORK_TEMPLATE_<PART KEY>, 2026-11-19): a row of
+      // the tab works as the Script Property does.
+      Object.keys(tab).forEach(function (k) { if (WORK_TEMPLATE_KEY_RE.test(k) && tab[k]) values[k] = tab[k]; });
       try {
         CacheService.getScriptCache().put(cacheKey, JSON.stringify(values), SHARED_CONFIG_CACHE_TTL_SECONDS);
       } catch (e) { /* uncached is only slower */ }

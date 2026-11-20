@@ -41,7 +41,7 @@ What you found when you opened the boxes and counted:
 
 Part 1: The Discrepancy Log. For each item, compare the purchase order, the packing slip and your count. List every problem: what's missing, what's wrong, what's damaged, and what's backordered.
 
-Part 2: The Inventory Update. Make a table (in this doc or in Google Sheets) showing, for each item, how many usable items we actually received and can print on. Explain why any item you didn't count can't be used.
+Part 2: The Inventory Update. Open your Google Sheet for this part from your dashboard. On the tab named Inventory, make a table with a header row and one row for each of the four items: column A the item, column B how many we ordered, column C how many are missing or can't be used, column D how many are usable, and column E why. Each usable count in column D must be a formula that works it out, like =B2-C2, not a number typed in. In column E, explain why any item you didn't count can't be used.
 
 Part 3: The Supplier Email. Write a professional email to Blank Canvas Wholesale that lists each problem and asks for what we need: a credit for missing or damaged items, replacements for wrong items, and a ship date for the backorder. Include the purchase order number and the dollar amount of any credit.
 
