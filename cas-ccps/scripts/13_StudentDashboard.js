@@ -2335,6 +2335,87 @@ function dashRecordFailure_(cfg, code) {
   }
 }
 
+// Editor: Submit's read of every live form, deck and sheet (2026-11-19, the
+// operator, after a student's Slides Submit failed: the dashboard's account
+// had never been granted the Slides permission, and nothing said so until a
+// student pressed Submit). Run it in the Student Dashboard's editor, as the
+// account the dashboard runs as. For each student's form, deck or sheet that
+// is shared and not archived, it does what Submit does before any feedback:
+// finds the file's feedback page (FormSnapshots) and reads the file with its
+// reader (75/77/78). Logs counts by type, then each failure's reason with
+// its ConfigID (this log is the teacher's own) and the fix. Reads only;
+// writes nothing, records no SubmitFailures row. Stops at a time budget and
+// says how many it didn't reach.
+const DASH_READ_CHECK_BUDGET_MS = 4.5 * 60 * 1000;
+function checkWorkFileReads() {
+  requireScriptOwner_();
+  return _dashCheckWorkFileReads_(Date.now());
+}
+
+function _dashCheckWorkFileReads_(started) {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  const rows = ledger && ledger.getLastRow() > 1 ? ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER_COL_COUNT).getValues() : [];
+  const res = { checked: 0, ok: 0, notReached: 0, byType: {}, failures: [] };
+  rows.forEach(function (r) {
+    const status = String(r[LEDGER.STATUS]).trim();
+    if (status === "ARCHIVED" || status === "SCHEDULED") return; // not shared with the student yet, or gone
+    const type = workFileTypeOfUrl_(r[LEDGER.ADMIN_FILE_URL]);
+    if (!workFileHasSnapshot_(type)) return;
+    if (Date.now() - started > DASH_READ_CHECK_BUDGET_MS) { res.notReached++; return; }
+    const fileId = String(r[LEDGER.FILE_ID]).trim();
+    const configId = String(r[LEDGER.CONFIG_ID]).trim();
+    const t = res.byType[type] = res.byType[type] || { checked: 0, ok: 0 };
+    t.checked++;
+    res.checked++;
+    let snap = null;
+    try { snap = formSnapshotFor_(ss, fileId); } catch (e) { snap = null; }
+    if (!snap) {
+      res.failures.push({ type: type, configId: configId, why: "NO_FEEDBACK_PAGE" });
+      return;
+    }
+    try {
+      _dashWorkReader_(type).read(fileId, snap.checksRaw);
+      t.ok++;
+      res.ok++;
+    } catch (e) {
+      res.failures.push({ type: type, configId: configId, why: _dashReadWhy_(e && e.message), message: String(e && e.message || e).slice(0, 160) });
+    }
+  });
+  const label = { form: "forms", slides: "decks", sheet: "sheets" };
+  Logger.log("[ReadCheck] " + (res.checked ? Object.keys(res.byType).map(function (k) {
+    return label[k] + ": " + res.byType[k].ok + " of " + res.byType[k].checked + " read";
+  }).join("; ") : "No shared form, deck or sheet to read.") + (res.notReached ? "; " + res.notReached + " not reached (time budget): run it again" : "") + ".");
+  const fix = {
+    PERMISSION: "The dashboard's account hasn't been granted this permission. Remove the project's access at " +
+      "myaccount.google.com/connections, then run reportDeployVersion here and approve every permission.",
+    NOT_FOUND: "The file is gone, or the dashboard's account can't open it: check it exists and is shared with that account.",
+    NO_FEEDBACK_PAGE: "No FormSnapshots row (the feedback page made at intake): Submit says the file isn't set up. Repair it from the Central Ledger.",
+    OTHER: "Something else: the message below says what.",
+  };
+  const groups = {};
+  res.failures.forEach(function (f) { (groups[f.why] = groups[f.why] || []).push(f); });
+  Object.keys(groups).forEach(function (why) {
+    const g = groups[why];
+    Logger.log("[ReadCheck] " + g.length + " can't be read: " + fix[why]);
+    g.slice(0, 20).forEach(function (f) {
+      Logger.log("[ReadCheck]   " + f.type + " for ConfigID " + f.configId + (f.message && why === "OTHER" ? ": " + f.message : ""));
+    });
+    if (g.length > 20) Logger.log("[ReadCheck]   … and " + (g.length - 20) + " more.");
+  });
+  if (res.checked && !res.failures.length) Logger.log("[ReadCheck] Every one read: Submit can check them.");
+  return res;
+}
+
+// Why a read failed, in the four kinds the log groups.
+function _dashReadWhy_(message) {
+  const m = String(message || "");
+  if (/do not have permission to call|Required permissions/i.test(m)) return "PERMISSION";
+  if (/not found|Requested entity|no item with the given id|does not exist|You do not have permission to access|access denied/i.test(m)) return "NOT_FOUND";
+  return "OTHER";
+}
+
 // Same span as 01's extractStudentResponse_(): from the line after the
 // response marker to the first system marker. 01 isn't in this project,
 // and a test holds the two to the same answers.

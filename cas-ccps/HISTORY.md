@@ -1294,3 +1294,17 @@ the nightly rollout makes each day once. A course whose periods don't meet
 that day (an odd-day period on an even date) isn't on it. The renderer
 fixed its line height to follow each paragraph's own size, and the fitting
 estimate now weighs capitals, lower case and spaces separately.
+
+## Submit's reads, checked from the editor, 2026-11-19
+
+After the day's Slides failure (a permission never granted, found by a
+student pressing Submit) the operator asked to move to the form and sheet
+Submit, and chose a check first. `checkWorkFileReads()` (13, the Student
+Dashboard's editor) goes through every student form, deck and sheet that is
+shared and not archived and does what Submit does before feedback: the
+`FormSnapshots` lookup and the type's reader (75/77/78). It logs counts by
+type and groups failures as a missing permission, a file gone or not
+shared, no feedback page, or other, each with its fix and the ConfigIDs. It
+writes nothing (no SubmitFailures row) and stops at a 4.5-minute budget,
+saying how many it didn't reach. Meant for after each push and before a
+lesson with a form, deck or sheet part opens.
