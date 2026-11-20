@@ -9,7 +9,7 @@ name: run.js on Windows
 # 2026-11-01.)
 on:
   push:
-    branches: ['**']
+    branches: [main]
     paths:
       - 'tools/clasp-sync/**'
       - 'tests/tools/clasp-run.test.js'

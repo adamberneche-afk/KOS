@@ -394,17 +394,13 @@ project `SETUP_GUIDE.md` names, which for the nightly jobs is the Central Ledger
 |---|---|---|---|
 | `backPropagateCompletions` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `bridgeQueue` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
-| `buildFlowInputRows` | `installFlowInputTriggers()` | every 1 min | 37_FlowInputBuilder.js |
 | `buildFlowInputRows` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `buildUpcomingLessons` | `installLessonPlanTrigger()` | daily, about 02:00 | 51_CourseYearBuilder.js |
-| `buildWarmUpFlowInputs` | `installWarmUpFlowTriggers()` | every 5 min | 41_WarmUpFlowBridge.js |
 | `buildWarmUpFlowInputs` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `buildWarmUpQueues` | `installWarmUpTriggers_()` (run via `installWarmUpTriggers()`) | daily, about 03:30 | 24_WarmUpBridge.js |
 | `buildWeeklyCanvasCartridge` | `installWeeklyCanvasCartridge()` | Fridays, about 14:00 | 79_CanvasWeeklyCartridge.js |
 | `dispatchFormSubmit` | `installFormSubmitTrigger()` | on form submit, (spreadsheet) | 18_FormSubmitDispatcher.js |
-| `harvestFlowInputResults` | `installFlowInputTriggers()` | every 1 min | 37_FlowInputBuilder.js |
 | `harvestFlowInputResults` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
-| `harvestWarmUpFlowReturns` | `installWarmUpFlowTriggers()` | every 5 min | 41_WarmUpFlowBridge.js |
 | `harvestWarmUpFlowReturns` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `onLedgerChangeProbe` | `installLedgerChangeProbe()` | on change, (spreadsheet) | 64_LedgerCycle.js |
 | `registerDeliveredWarmUps` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
@@ -414,7 +410,6 @@ project `SETUP_GUIDE.md` names, which for the nightly jobs is the Central Ledger
 | `runLedgerCycle` | `lcInstall_()` (run via `installLedgerCycle()`, `previewLedgerCycle()`) | every 1 min | 64_LedgerCycle.js |
 | `runLessonRollout` | `installLessonRolloutTrigger()` | daily, about 21:00 | 58_LessonRollout.js |
 | `runLessonRolloutCatchUp` | `_lrScheduleCatchUp_()` | once, after ROLLOUT_CATCHUP_DELAY_MS | 58_LessonRollout.js |
-| `runQueueWatchdog` | `installQueueWatchdogTrigger()` | every 10 min | 34_QueueWatchdog.js |
 | `runQueueWatchdog` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `runStagingTurnstile` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `runTurnInCheckFlow` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |

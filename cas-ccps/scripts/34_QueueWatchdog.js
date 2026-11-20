@@ -784,15 +784,11 @@ function _wdSendChatAlert_(message) {
 const WD_TRIGGER_FN = 'runQueueWatchdog';
 
 // Safe to re-run: a second copy would race the first over the release map.
+// Through 64's lcInstallJob_ (2026-11-20, audit 1.1): into the Ledger cycle
+// when it is installed, its own 10-minute trigger only when it isn't. True
+// when something was added.
 function installQueueWatchdogTrigger() {
-  const exists = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === WD_TRIGGER_FN; });
-  if (exists) {
-    Logger.log('[Watchdog] ' + WD_TRIGGER_FN + ' trigger already installed.');
-    return false;
-  }
-  ScriptApp.newTrigger(WD_TRIGGER_FN).timeBased().everyMinutes(10).create();
-  Logger.log('[Watchdog] Installed ' + WD_TRIGGER_FN + ' (every 10 minutes).');
-  return true;
+  return lcInstallJob_(WD_TRIGGER_FN).changed;
 }
 
 function removeQueueWatchdogTrigger() {

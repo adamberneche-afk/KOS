@@ -1960,28 +1960,13 @@ function wfbPruneHarvested_(sheet) {
 // ── Operations ───────────────────────────────────────────────────────────────
 
 /**
- * Installs both time triggers. Idempotent. Separate from the main setup
- * function so an already-live deployment can pick these up without re-running
- * anything else.
+ * Both jobs, through 64's lcInstallJob_ (2026-11-20, audit 1.1): into the
+ * Ledger cycle when it is installed, their own 5-minute triggers only when
+ * it isn't, so a re-run never takes them out of the cycle. Idempotent.
  */
 function installWarmUpFlowTriggers() {
-  const wanted = [
-    { fn: "buildWarmUpFlowInputs", mins: 5 },
-    { fn: "harvestWarmUpFlowReturns", mins: 5 },
-  ];
-  const existing = {};
-  ScriptApp.getProjectTriggers().forEach(function (t) {
-    existing[t.getHandlerFunction()] = true;
-  });
-  const installed = [];
-  wanted.forEach(function (w) {
-    if (existing[w.fn]) return;
-    ScriptApp.newTrigger(w.fn).timeBased().everyMinutes(w.mins).create();
-    installed.push(w.fn);
-  });
-  Logger.log("[WFB] installWarmUpFlowTriggers: installed " + JSON.stringify(installed) +
-    (installed.length ? "" : " (both already present)"));
-  return { installed: installed };
+  const results = ["buildWarmUpFlowInputs", "harvestWarmUpFlowReturns"].map(function (fn) { return lcInstallJob_(fn); });
+  return { installed: results.filter(function (r) { return r.changed; }).map(function (r) { return r.fn; }) };
 }
 
 /**

@@ -74,6 +74,13 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const PROJECT_MAP = require('../gas-lint/project-map.json');
 const { stripCommentsAndStrings } = require('../gas-lint/check.js');
 const AS_JSON = process.argv.includes('--json');
+// --coverage-dir <dir> (2026-11-20, audit 1.2): read the coverage a test run
+// already wrote (NODE_V8_COVERAGE=<dir> npm test) instead of running the
+// whole suite a second time. CI runs the suite once this way.
+const COVERAGE_DIR = (function () {
+  const i = process.argv.indexOf('--coverage-dir');
+  return i !== -1 ? process.argv[i + 1] : '';
+})();
 
 // Handlers this repo already knows the test suite doesn't call directly —
 // each entry documents why, same convention gas-lint's own ALLOWLIST uses.
@@ -253,9 +260,12 @@ function main() {
     unresolved.forEach((u) => unresolvedCalls.push({ project, ...u }));
   }
 
-  const covDir = runSuiteWithCoverage();
+  const covDir = COVERAGE_DIR || runSuiteWithCoverage();
+  if (COVERAGE_DIR && (!fs.existsSync(COVERAGE_DIR) || !fs.readdirSync(COVERAGE_DIR).length)) {
+    throw new Error('--coverage-dir ' + COVERAGE_DIR + ' holds no coverage: run the suite with NODE_V8_COVERAGE set to it first.');
+  }
   const hits = mergeCoverage(covDir);
-  fs.rmSync(covDir, { recursive: true, force: true });
+  if (!COVERAGE_DIR) fs.rmSync(covDir, { recursive: true, force: true });
 
   const findings = [];
   const staleAllowlist = [];

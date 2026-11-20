@@ -45,7 +45,7 @@ remain in git history; `--history` reports their addresses as
 `staff-email` findings until the operator decides on a history rewrite.
 
 **CI gate (since 2026-10-20).** The `gas-lint` workflow runs the working-tree
-scan on every push and pull request, so a new student-shaped address fails
+scan on every pull request and every push to main, so a new student-shaped address fails
 the build. On 2026-10-20 the operator confirmed every remaining email
 finding, in the tree and in history, as a placeholder (allowlisted), and
 `--roster` found one real student name (`archive/2025-26/leader-hub/LH_04_EMAIL_AUDIT.md`),

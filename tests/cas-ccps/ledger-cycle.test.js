@@ -298,3 +298,25 @@ test('LEDGER_CYCLE_EVERY slows a job without a push; a bad value is ignored', ()
   env.props.setProperty('LEDGER_CYCLE_EVERY', 'not json');
   assert.equal(env.exported.lcJobEvery_('harvestFlowInputResults', env.props), 1);
 });
+
+// Audit 1.1 (2026-11-20): the Flow 2, warm-up and watchdog installers go
+// through lcInstallJob_, so a re-run never takes a job out of the cycle.
+test('the old installers add their jobs to the installed cycle, never their own triggers', () => {
+  const env = loadGasFiles(['00_SharedConfig.js', '64_LedgerCycle.js', '34_QueueWatchdog.js', '37_FlowInputBuilder.js',
+    '41_WarmUpFlowBridge.js'].map(S).concat(require('../../tools/gas-lint/project-map.json')['cas-ccps:central-ledger'].files
+    .filter((f) => !/(00_SharedConfig|64_LedgerCycle|34_QueueWatchdog|37_FlowInputBuilder|41_WarmUpFlowBridge)\.js$/.test(f))
+    .map((f) => path.join(__dirname, '..', '..', f))),
+  ['installLedgerCycle', 'installFlowInputTriggers', 'installWarmUpFlowTriggers', 'installQueueWatchdogTrigger', 'lcRecordedJobs_']);
+  const sb = env.sandbox;
+  env.exported.installLedgerCycle();
+  const before = sb.ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction()).sort();
+  env.exported.installFlowInputTriggers();
+  env.exported.installWarmUpFlowTriggers();
+  assert.deepEqual([...env.exported.installWarmUpFlowTriggers().installed], [], 'a re-run adds nothing');
+  env.exported.installQueueWatchdogTrigger();
+  assert.equal(env.exported.installQueueWatchdogTrigger(), false, 'a re-run adds nothing');
+  assert.deepEqual(sb.ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction()).sort(), before, 'no trigger added');
+  const jobs = env.exported.lcRecordedJobs_(sb.PropertiesService.getScriptProperties());
+  ['buildFlowInputRows', 'harvestFlowInputResults', 'buildWarmUpFlowInputs', 'harvestWarmUpFlowReturns', 'runQueueWatchdog']
+    .forEach((fn) => assert.ok(jobs.includes(fn), fn + ' in the cycle'));
+});
