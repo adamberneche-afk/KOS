@@ -713,16 +713,6 @@ function updateRegistryTimestamp_(registrySheet, email, runTimestamp, hadContent
 }
 
 // ---------------------------------------------------------------------------
-// formatDateShort_
-// ---------------------------------------------------------------------------
-function formatDateShort_(d) {
-  try {
-    if (!(d instanceof Date)) d = new Date(d);
-    return Utilities.formatDate(d, Session.getScriptTimeZone(), "MMM d");
-  } catch (e) { return String(d); }
-}
-
-// ---------------------------------------------------------------------------
 // getStudentDocForViewer_
 // Called by Script 07's new Student Context tab. Given a viewer email,
 // returns their doc info if a match exists in the registry. Used to scope

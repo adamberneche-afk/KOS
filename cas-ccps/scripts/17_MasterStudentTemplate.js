@@ -25,11 +25,12 @@
 // ADMIN SETUP:
 //   1. Create one Google Doc — the Master Student Template
 //   2. Leave body empty
-//   3. Extensions → Apps Script → create four files:
+//   3. Extensions → Apps Script → create three files:
 //        00_SharedConfig.js
 //        01_StudentDoc_ContainerScript.js
-//        09_StudentRevisionGuidance.js  (reference copy — operative code in Script 03)
 //        17_MasterStudentTemplate.js    (this file)
+//      (09_StudentRevisionGuidance, a reference copy of 03's code, was
+//      deleted 2026-11-20.)
 //   4. In Project Settings → Script Properties, set:
 //        CENTRAL_LEDGER_SS_ID = [central ledger spreadsheet ID]
 //        ADMIN_SS_ID          = [same value]

@@ -1452,7 +1452,7 @@ deliberately — it verifies the code path, not the flow.
 
 Closed items 1–4 (Flows 2–5 not live, `lesson_unit_id`, the registry and seed uploads) are archived (`archive/2026-27-Q2/cas-ccps/README.md`, "Known gaps").
 
-5. **A v3/v4 of `16_UnifiedManualSetup_M5_ADDENDUM_v2.js`** exists
+5. **A v3/v4 of the 16 M5 addendum** (folded into `16_UnifiedManualSetup.js` 2026-11-20) exists
    (referenced by the merged Module 5 doc's Repair Note 4, a Rubric Upload
    Form fix) but hasn't been uploaded. Still open — the Round 3 batch did
    not contain it.
@@ -1536,8 +1536,8 @@ Closed items 17 (the Flow 2 escape hatch, external product review Finding 3) and
 
 Files prefixed `_ADDENDUM` (and `16_..._v2.js`) are patches — instructions for editing a base script, not
 standalone deployable files; `15b_...Revised.js` is a prompt spec, loaded
-into Central Ledger for its `FLOW_2_SYSTEM_PROMPT` constant. `scripts/09_StudentRevisionGuidance_M1Base.js`
-and `scripts/07_TeacherDashboard.js`/`08_TeacherConfirmationStep.js`'s
+into Central Ledger for its `FLOW_2_SYSTEM_PROMPT` constant. `09_StudentRevisionGuidance_M1Base.js`
+(a reference copy of 03's code, deleted 2026-11-20) and `scripts/07_TeacherDashboard.js`/`08_TeacherConfirmationStep.js`'s
 pre-M2/M3 counterparts were **not** added under their original filenames
 because this repo's existing `07`/`08` are strictly newer, additive
 supersets of them — keeping only the newer copies avoids two files

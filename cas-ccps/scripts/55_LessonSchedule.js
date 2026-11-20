@@ -48,7 +48,6 @@
 const LS_TAB = "LessonSchedule";
 const LS_HEADERS = ["course", "lesson_key", "lesson", "start_date", "config_id", "notes", "release"];
 const LS_RELEASE_COL = LS_HEADERS.indexOf("release") + 1;
-const LS_HOLD = "HOLD";
 const LS_FIRST_DATES = { "8175-L06": "2026-10-08", "8177-employee-handbook-operations": "2026-10-08" };
 
 /** "CAS-8175-L06", "CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS". */

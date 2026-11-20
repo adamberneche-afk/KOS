@@ -720,7 +720,7 @@ push, test run and lint, and kept for reference.
   `cas-ccps:studio-steps` project is gone from `project-map.json`, as are
   its GCP-map surface, its sandbox push in CI, gas-lint's deployable-folder
   entry and doc-currency's surface-doc entry. Its nine tests moved to
-  `tests/cas-ccps/archived/` (they pass by hand, 72);
+  `archive/2026-27-Q2/tests/cas-ccps/archived/` (they pass by hand, 72);
   `competency-evidence-schema-compat.test.js` still reads
   `CommitStudentEvaluationStep.gs` from the archive. deploy-drift's two
   tests that used it as the one project with no marker now use projects
@@ -1439,3 +1439,27 @@ From meta/AUDIT_STRUCTURE_2026-11-20.md, section 1:
 - **1.3** gas-lint caches each file's top-level declarations (by path,
   size and modification time): 58 s to about 8 s; the sandbox-scope test
   47 s to 2 s.
+
+## Audit step 2, first half: retired code out, 2026-11-20
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, section 2:
+
+- **2.1** 04 keeps its three helpers other files call (`scanCompliance_`,
+  `extractSuggestedScore_`, `_lockDocAfterSubmission_`); `findLedgerRow_`,
+  `_ensureTurnInReviewColumns_` and `extractFileId_`, with no callers in the
+  Central Ledger, are deleted. 04 stays a file: 21 tests and 13 source files
+  name it.
+- **2.2** `09_StudentRevisionGuidance_M1Base.js` is deleted (03 holds the
+  live `processCompletedEvaluation_`); the student template is now 00, 01
+  and 17, and 16's setup text says so. The next push removes it from the
+  template project (clasp push mirrors the folder).
+- **2.5** The two 16 addenda are folded into `16_UnifiedManualSetup.js`
+  (their four functions, unchanged) and deleted.
+- **2.6, in part** `LS_HOLD` (55), `_retryMsgs` (13) and `formatDateShort_`
+  (29) are deleted. `SHEET_CHECK_KEYS` and `RQ05` stay: a test holds the
+  first equal to the builder's list, and gas-lint's flow map pairs the
+  second. The column constants wait for the schema registry (3.1).
+- **2.7** `tests/cas-ccps/archived/` (10 files no test glob reached) is filed
+  in `archive/2026-27-Q2/`.
+
+Flow 5's residue (2.3) and 15's stale prompt (2.4) are the next PR.

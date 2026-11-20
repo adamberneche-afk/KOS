@@ -12,43 +12,13 @@
 // longer calls it, and the handler, its rejection/notification helpers and
 // runForensicCheck_() are gone (cas-ccps/HISTORY.md, P0-04).
 //
-// What stays here are helpers other files call, kept in place so no caller
-// changes: findLedgerRow_ (37), scanCompliance_ (07, 15c),
-// extractSuggestedScore_ (15b, 35, 37, 15c), _ensureTurnInReviewColumns_
-// (many), _lockDocAfterSubmission_ (25) and extractFileId_ (05, 07).
+// What stays here are three helpers other files call: scanCompliance_ (15c,
+// 39, 39d), extractSuggestedScore_ (15c, 35, 37) and _lockDocAfterSubmission_
+// (25). findLedgerRow_, _ensureTurnInReviewColumns_ and extractFileId_ were
+// deleted 2026-11-20 (meta/AUDIT_STRUCTURE_2026-11-20.md, 2.1): nothing in
+// this project called them (07 and 05 keep their own copies, in other
+// projects).
 // =============================================================================
-
-// ---------------------------------------------------------------------------
-// findLedgerRow_
-// ---------------------------------------------------------------------------
-function findLedgerRow_(cfg, googleId, fileId, configId) {
-  const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName(cfg.tabs.ledger);
-  const data  = sheet.getDataRange().getValues();
-
-  for (let i = 1; i < data.length; i++) {
-    if (
-      data[i][1].toString().toLowerCase() === googleId.toLowerCase() &&
-      data[i][2].toString()               === configId               &&
-      data[i][3].toString()               === fileId
-    ) {
-      return {
-        rowIndex:     i + 1,
-        googleId:     data[i][1],
-        configId:     data[i][2],
-        fileId:       data[i][3],
-        studentName:  data[i][4],
-        block:        data[i][5],
-        className:    data[i][6],
-        teacherName:  data[i][7],
-        teacherEmail: data[i][8],
-        period:       data[i][11],
-        courseName:   data[i][10]
-      };
-    }
-  }
-  return null;
-}
 
 // ---------------------------------------------------------------------------
 // scanCompliance_
@@ -82,23 +52,6 @@ function scanCompliance_(docText) {
 function extractSuggestedScore_(docText) {
   const m = docText.match(/\[SUGGESTED_SCORE:\s*([2-4])\]/);
   return m ? Number(m[1]) : null;
-}
-
-// ---------------------------------------------------------------------------
-// _ensureTurnInReviewColumns_ (Say/Do Ledger cas-ccps finding #1)
-//
-// Idempotently adds the 4 columns the turn-in review flow needs (columns
-// 20-23) if they aren't already there — self-heals an already-deployed
-// Ledger created before this feature existed, rather than requiring every
-// admin to manually re-run a migration step. Safe to call on every write;
-// a no-op once the header row already has them.
-// ---------------------------------------------------------------------------
-function _ensureTurnInReviewColumns_(sheet) {
-  const headerRange = sheet.getRange(1, 20, 1, 4);
-  const existing     = headerRange.getValues()[0];
-  if (existing[0] !== "SuggestedScore") {
-    headerRange.setValues([["SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt"]]);
-  }
 }
 
 // =============================================================================
@@ -149,12 +102,3 @@ function _lockDocAfterSubmission_(fileId, teacherEmail) {
   return out;
 }
 
-// ---------------------------------------------------------------------------
-// extractFileId_
-// ---------------------------------------------------------------------------
-function extractFileId_(url) {
-  let m = url.match(/\/d\/([a-zA-Z0-9_-]{25,})/);
-  if (m) return m[1];
-  m = url.match(/[?&]id=([a-zA-Z0-9_-]{25,})/);
-  return m ? m[1] : null;
-}

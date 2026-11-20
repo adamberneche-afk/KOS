@@ -160,8 +160,7 @@ the script refuses instead: it prints which addendum file(s) are still
 unmerged and exits non-zero for the whole run, leaving that project's
 `.clasp-build/` folder untouched (from a prior run, or absent).
 
-This doesn't fire on a file like
-`16_UnifiedManualSetup_M5_ADDENDUM_v2.js`, which legitimately keeps
+This doesn't fire on an addendum that legitimately keeps
 live functions shared into its project's global scope (multiple files
 can share one GAS project by design — see `project-map.json`'s own
 header comment) — only on a file that's genuinely still just notes.

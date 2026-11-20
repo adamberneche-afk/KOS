@@ -96,3 +96,7 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2026-27-Q2 · 2026-10-31 · [`meta/HANDOFF_2026-10-31.md`](2026-27-Q2/meta/HANDOFF_2026-10-31.md) — Session handoff, 10-31: the two history rewrites (superseded; agent notes in meta/AGENT_NOTES.md)
 - 2026-27-Q2 · 2026-11-01 · [`meta/HANDOFF_2026-11-01.md`](2026-27-Q2/meta/HANDOFF_2026-11-01.md) — Session handoff, 11-01: #352-#373 (superseded; agent notes in meta/AGENT_NOTES.md)
 - 2026-27-Q2 · 2026-11-08 · [`meta/HANDOFF_2026-11-08.md`](2026-27-Q2/meta/HANDOFF_2026-11-08.md) — Session handoff, 11-02 to 11-09: #375-#417 (superseded; agent notes in meta/AGENT_NOTES.md)
+
+## tests/
+
+- 2026-27-Q2 · 2026-11-17 · [`tests/cas-ccps/archived/`](2026-27-Q2/tests/cas-ccps/archived/) — Tests of the archived Studio steps and work-file probe; no npm test glob reached them (structure audit 2.7)

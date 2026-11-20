@@ -675,12 +675,12 @@ function writeAdminSummaryPage_(result, adminEmail, orgName) {
     // above. Also updates the Script 09 filename per reconciliation
     // decision 8 — the original 09_StudentRevisionGuidance.js (GAS writes
     // the report) is archived/superseded; 09_StudentRevisionGuidance_M1Base.js
-    // (Studio writes the report) is the live design.
+    // (Studio writes the report) is the live design. That reference copy was
+    // deleted 2026-11-20 (03 holds the live code), so the template has three.
     "1. Create a new blank Google Doc (this is the master student template).\n" +
     "2. Open Extensions → Apps Script on that doc.\n" +
-    "3. Create four script files and paste: 00_SharedConfig.js, " +
-    "01_StudentDoc_ContainerScript.js, 09_StudentRevisionGuidance_M1Base.js, " +
-    "17_MasterStudentTemplate.js\n" +
+    "3. Create three script files and paste: 00_SharedConfig.js, " +
+    "01_StudentDoc_ContainerScript.js, 17_MasterStudentTemplate.js\n" +
     "4. Set Script Properties on that doc:\n" +
     "     CENTRAL_LEDGER_SS_ID = " + result.ledgerSsId + "\n" +
     "     ADMIN_SS_ID          = " + result.ledgerSsId + "\n" +
@@ -1065,15 +1065,13 @@ function createTeacherAssets_(teacherName, teacherEmail, subject, props) {
 
     // -- M5 -- four competency dropdown items, added after the eight
     // pre-existing items above (matching a teacher's natural reading order:
-    // review each milestone's text, then tag it). Merged from
-    // 16_UnifiedManualSetup_M5_ADDENDUM_v2.js — addCompetencyDropdownItems_()
-    // itself already lived in this project (see that addendum file, still
-    // present alongside this one), only this call site was unmerged.
+    // review each milestone's text, then tag it). addCompetencyDropdownItems_()
+    // is at the end of this file.
     addCompetencyDropdownItems_(confirmForm, centralSsId);
     // -- M6 -- one more dropdown, placed after the four M5 competency
     // dropdowns so the reading order is: review milestones, tag
-    // competencies, then tag the lesson unit. Merged from
-    // 16_UnifiedManualSetup_M6_ADDENDUM.js — same story as M5 above.
+    // competencies, then tag the lesson unit. addLessonUnitDropdownItem_()
+    // is at the end of this file.
     addLessonUnitDropdownItem_(confirmForm, centralSsId);
 
     const matrixSs         = SpreadsheetApp.openById(matrixSsId);
@@ -1244,16 +1242,8 @@ function forceRebuildTeacherWorkspace() {
 // ---------------------------------------------------------------------------
 // extractFormEntryIds_
 // ---------------------------------------------------------------------------
-// M5/M6 note: this function used to also exist, nearly identically, as a
-// "paste this version over it" replacement in
-// 16_UnifiedManualSetup_M5_ADDENDUM_v2.js — that addendum's own header
-// said as much, but nobody had actually done the paste, so both files
-// declared extractFormEntryIds_ as literal top-level code while sharing
-// this project's global scope. Caught by tools/gas-lint/check.js. Merged
-// here now, per that addendum's own instruction, plus the one-line M6
-// extension (16_UnifiedManualSetup_M6_ADDENDUM.js) for the Lesson Unit
-// dropdown. The addendum files are left in place as the historical
-// record of what changed and why — see their own headers — not deleted.
+// Includes the M5 competency and M6 Lesson Unit entries (the addenda that
+// once carried them were folded into this file 2026-11-20).
 function extractFormEntryIds_(form) {
   const titleToKey = {
     "Draft ID":         "CONFIRM_ENTRY_DRAFT_ID",
@@ -1531,3 +1521,274 @@ function showLink_(message, url) {
     message + "\n\n" + (url || "Not configured — contact your admin."),
     DocumentApp.getUi().ButtonSet.OK);
 }
+
+// =============================================================================
+// Confirmation Form dropdowns (competency, M5; lesson unit, M6). Folded in
+// 2026-11-20 from 16_UnifiedManualSetup_M5_ADDENDUM_v2.js and
+// 16_UnifiedManualSetup_M6_ADDENDUM.js, whose paste instructions had all
+// been applied (meta/AUDIT_STRUCTURE_2026-11-20.md, 2.1). The code is unchanged.
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// -- M5 -- addCompetencyDropdownItems_
+// ---------------------------------------------------------------------------
+function addCompetencyDropdownItems_(confirmForm, centralSsId) {
+  const options = buildCompetencyDropdownOptions_(centralSsId);
+
+  // FIXED (confirmed live during a real from-scratch deployment):
+  // FormApp's ListItem.setChoiceValues() throws "Array is empty: values"
+  // outright when given an empty array -- it does NOT silently create an
+  // empty dropdown the way the warning below always assumed. That made
+  // this a hard failure at teacher-setup time whenever CompetencyRegistry
+  // hadn't been imported yet, not the soft "blocks future submissions"
+  // degradation the comment describes. A single placeholder choice keeps
+  // setChoiceValues() valid while preserving that same intent: it isn't a
+  // real competency ID, so a submission using it still needs the import
+  // run and setup re-run (Re-Run Setup is checkpoint-safe) before the
+  // field has real choices.
+  const placeholderOptions = ["(no competencies imported yet -- run Script 22b)"];
+  if (options.length === 0) {
+    Logger.log("[M5] WARNING -- CompetencyRegistry returned zero options. " +
+      "Competency dropdowns will be created with a placeholder choice only. " +
+      "Run importCompetencyRegistry() (Script 22b), then Re-Run Setup, " +
+      "before these four fields have real choices to select.");
+  }
+
+  [
+    { title: "Competency — Milestone 1" },
+    { title: "Competency — Milestone 2" },
+    { title: "Competency — Milestone 3" },
+    { title: "Competency — Milestone 4" },
+  ].forEach(f => {
+    confirmForm.addListItem()
+      .setTitle(f.title)
+      .setChoiceValues(options.length > 0 ? options : placeholderOptions)
+      .setRequired(true)
+      .setHelpText(
+        "Select the Student Competency Record (SCR) competency this " +
+        "milestone evidences. Every milestone must map to exactly one " +
+        "competency -- pick the closest match if a milestone touches " +
+        "more than one."
+      );
+  });
+}
+
+// ---------------------------------------------------------------------------
+// -- M5 -- buildCompetencyDropdownOptions_
+// Unchanged from v1.
+// ---------------------------------------------------------------------------
+function buildCompetencyDropdownOptions_(centralSsId) {
+  const ss = SpreadsheetApp.openById(centralSsId);
+  const sheet = ss.getSheetByName("CompetencyRegistry");
+  if (!sheet) {
+    Logger.log("[M5] CompetencyRegistry tab not found on Central Ledger -- " +
+      "cannot build dropdown options.");
+    return [];
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const iId = headers.indexOf("competency_id");
+  const iText = headers.indexOf("competency_text");
+  const iSubject = headers.indexOf("subject");
+  const iStrand = headers.indexOf("strand");
+  const iActive = headers.indexOf("active");
+
+  if (iId === -1 || iText === -1) {
+    Logger.log("[M5] CompetencyRegistry missing required columns " +
+      "(competency_id, competency_text).");
+    return [];
+  }
+
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const active = iActive === -1 ? true
+      : String(row[iActive]).trim().toUpperCase() !== "FALSE";
+    if (!active) continue;
+
+    const id = String(row[iId]).trim();
+    if (!id) continue;
+
+    const text = String(row[iText]).trim();
+    const subject = iSubject !== -1 ? String(row[iSubject]).trim() : "";
+    const strand = iStrand !== -1 ? String(row[iStrand]).trim() : "";
+
+    const dashIdx = id.lastIndexOf("-");
+    const taskNum = dashIdx !== -1
+      ? parseInt(id.substring(dashIdx + 1), 10) || 9999
+      : 9999;
+    const courseCode = dashIdx !== -1 ? id.substring(0, dashIdx) : id;
+
+    rows.push({ id, text, subject, strand, courseCode, taskNum });
+  }
+
+  rows.sort((a, b) => {
+    if (a.courseCode !== b.courseCode) return a.courseCode.localeCompare(b.courseCode);
+    if (a.strand !== b.strand) return a.strand.localeCompare(b.strand);
+    return a.taskNum - b.taskNum;
+  });
+
+  return rows.map(r => {
+    const label = r.text.length > 90 ? r.text.slice(0, 87) + "..." : r.text;
+    return r.id + " — " + label;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// -- M5 -- extractFormEntryIds_ -- EXTENDED. Unchanged from v1.
+//
+// APPLIED — this replacement has now actually been merged into
+// 16_UnifiedManualSetup.js (plus the M6 addendum's one-line Lesson Unit
+// extension on top). This block is kept as a comment for the historical
+// record only; it is NOT live code — as an uncommented top-level function
+// it collided with the real, merged version, since both files share this
+// project's global scope (caught by tools/gas-lint/check.js).
+//
+// function extractFormEntryIds_(form) {
+//   const titleToKey = {
+//     "Draft ID": "CONFIRM_ENTRY_DRAFT_ID",
+//     "Assignment Name": "CONFIRM_ENTRY_UNIT_NAME",
+//     "AI Coach Persona": "CONFIRM_ENTRY_PERSONA",
+//     "Milestone 1": "CONFIRM_ENTRY_MILESTONE_1",
+//     "Milestone 2": "CONFIRM_ENTRY_MILESTONE_2",
+//     "Milestone 3": "CONFIRM_ENTRY_MILESTONE_3",
+//     "Milestone 4": "CONFIRM_ENTRY_MILESTONE_4",
+//     "Passing Standard": "CONFIRM_ENTRY_DOD",
+//     // -- M5 --
+//     "Competency — Milestone 1": "CONFIRM_ENTRY_COMP_1",
+//     "Competency — Milestone 2": "CONFIRM_ENTRY_COMP_2",
+//     "Competency — Milestone 3": "CONFIRM_ENTRY_COMP_3",
+//     "Competency — Milestone 4": "CONFIRM_ENTRY_COMP_4",
+//   };
+//
+//   const map = {};
+//   for (const item of form.getItems()) {
+//     const key = titleToKey[item.getTitle()];
+//     if (!key) continue;
+//     try {
+//       const type = item.getType();
+//       const id = type === FormApp.ItemType.TEXT
+//         ? item.asTextItem().getId()
+//         : type === FormApp.ItemType.PARAGRAPH_TEXT
+//         ? item.asParagraphTextItem().getId()
+//         // -- M5 -- new branch for the competency dropdowns
+//         : type === FormApp.ItemType.LIST
+//         ? item.asListItem().getId()
+//         : null;
+//       if (id) map[key] = "entry." + id;
+//     } catch (e) { /* skip */ }
+//   }
+//   return map;
+// }
+// ---------------------------------------------------------------------------
+
+// =============================================================================
+// REMAINING OPEN ITEM -- unchanged from v1
+// =============================================================================
+//
+// Script 08's getConfig_08() reads these as cfg.confirmEntryComp1..4
+// (camelCase, per that file's existing naming convention -- e.g.
+// CONFIRM_ENTRY_MILESTONE_1 becomes cfg.confirmEntryM1). The exact
+// property-to-cfg-field transform lives inside getSheetConfig_()
+// (19_ClonedSheetConfig.js -- not yet seen). The CONFIRM_ENTRY_COMP_1..4
+// names above follow the existing pattern exactly, so whatever transform
+// applies to the other eight should apply identically to these four --
+// this is the one remaining unverified link in the chain.
+//
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// -- M6 -- addLessonUnitDropdownItem_
+// ---------------------------------------------------------------------------
+function addLessonUnitDropdownItem_(confirmForm, centralSsId) {
+  const options = buildLessonUnitDropdownOptions_(centralSsId);
+
+  // FIXED (same bug as addCompetencyDropdownItems_() above, confirmed live
+  // during a real from-scratch deployment): setChoiceValues() throws
+  // "Array is empty: values" on an empty array instead of silently
+  // creating an empty dropdown -- a hard setup-time failure, not the soft
+  // "blocks future submissions" degradation the warning always assumed.
+  // Same placeholder-choice fix.
+  const placeholderOptions = ["(no pacing guide imported yet -- run Script 31)"];
+  if (options.length === 0) {
+    Logger.log("[M6] WARNING — PacingGuide returned zero options. The " +
+      "Lesson Unit dropdown will be created with a placeholder choice only. " +
+      "Run importPacingGuide() (Script 31), then Re-Run Setup, before this " +
+      "field has real choices to select.");
+  }
+
+  confirmForm.addListItem()
+    .setTitle("Lesson Unit")
+    .setChoiceValues(options.length > 0 ? options : placeholderOptions)
+    .setRequired(true)
+    .setHelpText(
+      "Select the pacing-guide lesson unit this assignment belongs to. " +
+      "Never guessed by the system — always your call."
+    );
+}
+
+// ---------------------------------------------------------------------------
+// -- M6 -- buildLessonUnitDropdownOptions_
+// Mirrors buildCompetencyDropdownOptions_() (M5 addendum) exactly, reading
+// the "PacingGuide" tab instead of "CompetencyRegistry". See
+// 31_PacingGuideManager.js for that tab's schema (PG_HEADERS) and the
+// importPacingGuide() function that populates it.
+// ---------------------------------------------------------------------------
+function buildLessonUnitDropdownOptions_(centralSsId) {
+  const ss = SpreadsheetApp.openById(centralSsId);
+  const sheet = ss.getSheetByName("PacingGuide");
+  if (!sheet) {
+    Logger.log("[M6] PacingGuide tab not found on Central Ledger — cannot " +
+      "build dropdown options. Run importPacingGuide() (Script 31) first.");
+    return [];
+  }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const iId = headers.indexOf("lesson_unit_id");
+  const iName = headers.indexOf("lesson_unit_name");
+  const iStage = headers.indexOf("stage");
+
+  if (iId === -1 || iName === -1) {
+    Logger.log("[M6] PacingGuide missing required columns " +
+      "(lesson_unit_id, lesson_unit_name).");
+    return [];
+  }
+
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const id = String(row[iId]).trim();
+    if (!id) continue;
+
+    const name = String(row[iName]).trim();
+    const stage = iStage !== -1 ? row[iStage] : "";
+
+    rows.push({ id, name, stage: Number(stage) || 0, sheetOrder: i });
+  }
+
+  // PacingGuide is written in stage/unit order by importPacingGuide()
+  // already — sort defensively by stage then original sheet order rather
+  // than assuming that ordering is preserved forever.
+  rows.sort((a, b) => a.stage - b.stage || a.sheetOrder - b.sheetOrder);
+
+  return rows.map(r => r.id + " — " + r.name);
+}
+
+// ---------------------------------------------------------------------------
+// -- M6 -- extractFormEntryIds_ titleToKey extension.
+//
+// APPLIED — this one line, plus the M5 addendum's full replacement, are
+// both now merged directly into 16_UnifiedManualSetup.js's
+// extractFormEntryIds_(). Kept here as historical record only.
+// ---------------------------------------------------------------------------
+
+/*
+  const titleToKey = {
+    ...
+    "Competency — Milestone 4": "CONFIRM_ENTRY_COMP_4",
+    // -- M6 --
+    "Lesson Unit": "CONFIRM_ENTRY_LESSON_UNIT",
+  };
+*/
