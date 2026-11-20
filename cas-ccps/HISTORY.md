@@ -1240,3 +1240,57 @@ a `<details>` under their caption ("What this lesson checks", "… across its
 parts so far" on a lesson in parts, "Checking these now" while a check
 runs), closed until the student opens it; an opened one stays open for the
 page (`_marksOpen`, by card). No totals or counts in the caption (D17).
+
+## The agenda: one slide a day in a deck a year, 2026-11-19
+
+The operator: the agenda should be read from a single slide (itinerary,
+learning targets, announcements, bell schedule), with no new file in Drive
+each day, and a living document to shape future pacing guides. 67 made a
+deck per course per day, a slide per itinerary block.
+
+Now each course has one deck per school year ("Agenda — 8175 — 2026–27"),
+and each day is one slide in it, newest first; `AgendaDecks` gains
+`slide_id`, and a remade day replaces its slide in place. The slide is laid
+out as data (`agendaSlideSpec_`): the lesson, day and schedule in a green
+header; Today's plan (mode, title and minutes per meeting period); the bell
+schedule with the course's blocks marked (`BELL_SCHEDULE.times`, 00, from
+the school's bell schedule page); Announcements (what's due, by 00's
+`lessonDueDay_`, then the new `AgendaAnnouncements` tab); and the learning
+targets. Sizes are chosen to fit each box, and text that still doesn't is
+cut with "…". `_agDraw_` draws it with rectangles and text boxes, autofit
+off. The speaker notes carry each block's detail and a YOUR NOTES section
+the teacher writes in, kept across remakes: the record for pacing.
+`tools/cas-ccps/render-agenda-slide.js` draws the same spec as a PNG in
+Chromium and reports any box whose text would spill; it was used to set the
+layout. Decks made before, one a day, are left where they are.
+
+## The lesson doc, audited, 2026-11-19
+
+The operator asked for an audit of the teacher's lesson doc (66) against
+what a teacher needs to support students. `meta/AUDIT_LESSON_DOC_2026-11-19.md`
+has the twelve findings. Built: the due date and links to the Teacher
+Dashboard and the agenda deck; **Parts** for a lesson in parts (each part's
+task, work type, Submit's checks in words, what opens it, what else it
+needs to show); **What the feedback checks** (the definition of done's
+lists, the teacher's own grading notes, which reached only Flow 2 before,
+and the passing rule in plain words); Class status's Not started and To
+revise columns and **Not shown yet** (each goal's count of checked files
+that haven't shown it, by their best check, most first; counts only); "The
+goals" for "Today's goals". A doc made before gets the two new sections on
+its next refresh, before Class status. Not built: supports and extensions
+(the lesson files hold none; curriculum to write), one place for daily
+notes (the agenda's speaker notes or the doc's), the rubric-tab gap behind a
+bare competency ID in Look-fors.
+
+Later the same day the operator asked for both courses on the same slide.
+The deck is now one per school year for the teacher ("Agenda — 2026–27";
+`AgendaDecks` rows say `all`), and a day's slide holds every course that
+meets: with two, a column each (its lesson and day, its plan with each
+period's minutes, its first two learning targets) under a date-and-schedule
+header, with the bell schedule (each course's periods marked) and the
+announcements on the right (`_agSpecMany_`). A day with one course keeps the
+one-course layout. Either course's Today's agenda makes the same slide, and
+the nightly rollout makes each day once. A course whose periods don't meet
+that day (an odd-day period on an even date) isn't on it. The renderer
+fixed its line height to follow each paragraph's own size, and the fitting
+estimate now weighs capitals, lower case and spaces separately.

@@ -377,7 +377,10 @@ function lessonRollout_(opts) {
     });
   });
 
-  // 3c. The next school day's agenda deck (67), per course with it on.
+  // 3c. The next school day's agenda slide (67), per course with it on. One
+  // slide holds every course that meets that day (2026-11-19), so a day
+  // already made this run isn't made again for the next course.
+  const agendaDone = {};
   Object.keys(plan).forEach(function (course) {
     if (modes[course] !== "APPLY") return;
     if (Date.now() > deadline) {
@@ -388,7 +391,12 @@ function lessonRollout_(opts) {
     try {
       const day = nextAgendaDay_(course, formatDateYMD_(now));
       if (!day) return;
+      if (agendaDone[day]) {
+        log("APPLY", course, "-", "AGENDA", 1, "on the agenda for " + day + " with " + agendaDone[day]);
+        return;
+      }
       const res = makeAgendaDeck_(course, day);
+      if (res.success) agendaDone[day] = course;
       if (res.success) log("APPLY", course, "-", "AGENDA", 1, (res.created ? "agenda made for " : "agenda remade for ") + day);
       else log("APPLY", course, "-", "PROBLEM", 0, "agenda for " + day + ": " + res.error);
     } catch (e) {

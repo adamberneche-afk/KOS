@@ -7,8 +7,10 @@
 // the per-period Lesson Frames (27) the lesson builder (51) used to make for
 // every class meeting. "Lesson Plan — 8175 L06 …", in a Lesson Plans folder:
 //
-//   The plan        the objective, the "I can" goals, the competencies by
-//                   tier, vocabulary and the student task (55b).
+//   The plan        when it runs and when it is due, links (the Teacher
+//                   Dashboard, the agenda deck), the objective, the "I can"
+//                   goals, the competencies by tier, vocabulary and the
+//                   student task (55b).
 //   Itinerary       a table per day of the lesson, drafted from the lesson's
 //                   own sections (55b's plan) with minutes for each of the
 //                   course's blocks on Schedule A and B (00's itineraryFor_).
@@ -16,13 +18,24 @@
 //                   daily agenda deck reads this table.
 //   Look-fors       each competency's "I can" goal and the state's
 //                   demonstration indicators (CompetencyRubrics, 32).
+//   Parts           a lesson in parts (68): each part's task, its work type
+//                   and the checks Submit makes on it, what opens it, and
+//                   what its work needs to show (2026-11-19).
+//   What the feedback checks  what Flow 2 grades against (the lesson's
+//                   definition of done): what the work needs to show, the
+//                   teacher's grading notes and the passing rule
+//                   (2026-11-19).
 //   Each day it runs  a heading per class meeting (date, schedule, periods)
 //                   with room for notes.
-//   Class status    per period: docs made, shared, submitted, waiting for
-//                   feedback, passed. A snapshot; the button refreshes it.
+//   Class status    per period: docs made, shared, not started, submitted,
+//                   waiting for feedback, to revise, passed; then each goal's
+//                   count of students whose work hasn't shown it yet (their
+//                   best check so far), so the teacher sees what to reteach.
+//                   A snapshot; the button refreshes it.
 //
 // Made once; a second call only refreshes Class status, so the teacher's
-// edits stay. LessonDocs (Central Ledger) records each doc by lesson key.
+// edits stay. A doc made before 2026-11-19 gets Parts and What the feedback
+// checks on its next refresh (added before Class status). LessonDocs (Central Ledger) records each doc by lesson key.
 //
 //   makeOrRefreshLessonDoc_(key, opts)  the one entry point (rollout, button)
 //   previewLessonDocs() / makeLessonDocsNow()  editor: this week's lessons
@@ -35,6 +48,8 @@ const LDOC_TAB = "LessonDocs";
 const LDOC_HEADERS = ["lesson_key", "doc_id", "doc_url", "created_at", "status_refreshed_at"];
 const LDOC_FOLDER = "Lesson Plans";
 const LDOC_STATUS_HEADING = "Class status";
+const LDOC_PARTS_HEADING = "Parts";
+const LDOC_CHECKS_HEADING = "What the feedback checks";
 const LDOC_ITINERARY_HEADING = "Itinerary";
 // A lesson with no next lesson dated shows this many school days.
 const LDOC_OPEN_END_DAYS = 5;
@@ -55,7 +70,8 @@ function makeOrRefreshLessonDoc_(key, opts) {
   const now = o.today || new Date();
   if (have) {
     const doc = DocumentApp.openById(have.docId);
-    _ldocWriteStatus_(doc.getBody(), _ldocClassStatus_(ss, cfg, key), now);
+    _ldocAddGuideSections_(doc.getBody(), a, key);
+    _ldocWriteStatus_(doc.getBody(), _ldocClassStatus_(ss, cfg, key), now, _ldocNotShownYet_(ss, cfg, key, a));
     doc.saveAndClose();
     reg.getRange(have.row, 5).setValue(now);
     return { success: true, created: false, docId: have.docId, docUrl: have.docUrl };
@@ -68,11 +84,13 @@ function makeOrRefreshLessonDoc_(key, opts) {
   const docId = doc.getId();
   DriveApp.getFileById(docId).moveTo(_ldocFolder_(cfg));
   const body = doc.getBody();
-  _ldocWritePlan_(body, a, title, win);
+  _ldocWritePlan_(body, a, title, win, _ldocLinks_(ss, cfg, a.code), _ldocDueDay_(ss, a.code, win));
   _ldocWriteItinerary_(body, a, blocks);
   _ldocWriteLookFors_(body, a);
+  _ldocWriteParts_(body, key);
+  _ldocWriteChecks_(body, a, !!(lessonPartsOf_(key) || []).length);
   _ldocWriteMeetings_(body, meetings);
-  _ldocWriteStatus_(body, _ldocClassStatus_(ss, cfg, key), now);
+  _ldocWriteStatus_(body, _ldocClassStatus_(ss, cfg, key), now, _ldocNotShownYet_(ss, cfg, key, a));
   doc.saveAndClose();
   const docUrl = "https://docs.google.com/document/d/" + docId + "/edit";
   reg.appendRow([key, docId, docUrl, now, now]);
@@ -252,7 +270,7 @@ function _ldocClassStatus_(ss, cfg, key) {
     const status = String(row[LEDGER.STATUS] || "").trim();
     if (status === "ARCHIVED") return;
     const period = (String(row[LEDGER.PERIOD] || "").trim() || "—") + part;
-    const c = byPeriod[period] = byPeriod[period] || { docs: 0, shared: 0, submitted: 0, waiting: 0, passed: 0 };
+    const c = byPeriod[period] = byPeriod[period] || { docs: 0, shared: 0, notStarted: 0, submitted: 0, waiting: 0, revise: 0, passed: 0 };
     const result = String(row[LEDGER.LAST_RESULT] || "").trim();
     const passed = result === "PASSED" || isDate(row[LEDGER.FIRST_PASSED_AT]);
     c.docs++;
@@ -260,10 +278,63 @@ function _ldocClassStatus_(ss, cfg, key) {
     if (isDate(row[LEDGER.SUBMISSION_TS])) {
       c.submitted++;
       if (!result && !passed) c.waiting++;
+      else if (!passed && result === "NEEDS_REVISION") c.revise++;
+    } else if (status !== "SCHEDULED") {
+      c.notStarted++;
     }
     if (passed) c.passed++;
   });
   return byPeriod;
+}
+
+// Where the class is stuck (2026-11-19): for each of the lesson's goals,
+// how many of its checked student files haven't shown it yet, by their best
+// check so far (CompetencyEvidence, as the Student Dashboard's marks read
+// it). [{ id, text, notYet, checked }], the most not-yet first; counts only.
+function _ldocNotShownYet_(ss, cfg, key, a) {
+  const files = {};
+  const configs = {};
+  configs["CAS-" + String(key).toUpperCase()] = true;
+  (lessonPartsOf_(key) || []).forEach(function (p) { configs[p.configId] = true; });
+  const sa = ss.getSheetByName("StudentAssignments");
+  const mine = {};
+  if (sa && sa.getLastRow() > 1) {
+    sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
+      if (configs[String(r[2] || "").trim().toUpperCase()]) mine[String(r[0] || "").trim()] = true;
+    });
+  }
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (ledger && ledger.getLastRow() > 1) {
+    ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER_COL_COUNT).getValues().forEach(function (row) {
+      if (mine[String(row[LEDGER.CONFIG_ID] || "").trim()] && String(row[LEDGER.STATUS] || "").trim() !== "ARCHIVED") {
+        files[String(row[LEDGER.FILE_ID] || "").trim()] = true;
+      }
+    });
+  }
+  const ev = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+  if (!ev || ev.getLastRow() < 2) return [];
+  const rows = ev.getDataRange().getValues();
+  const h = rows[0].map(function (x) { return String(x).trim(); });
+  const iFile = h.indexOf("student_file_id"), iComp = h.indexOf("competency_id"), iOut = h.indexOf("outcome"), iArch = h.indexOf("archive_status");
+  if (iFile === -1 || iComp === -1 || iOut === -1) return [];
+  const best = {}; // comp -> file -> met
+  for (let i = 1; i < rows.length; i++) {
+    const f = String(rows[i][iFile]).trim();
+    if (!files[f] || (iArch !== -1 && String(rows[i][iArch]).trim())) continue;
+    const comp = String(rows[i][iComp]).trim();
+    const o = String(rows[i][iOut]).trim().toUpperCase();
+    if (!comp || ["MET", "PARTIALLY_MET", "NOT_MET"].indexOf(o) === -1) continue;
+    const m = best[comp] = best[comp] || {};
+    m[f] = m[f] === true || o === "MET";
+  }
+  const goals = a.objectives || {};
+  const tiers = _ldocTiers_(a);
+  return tiers.primary.concat(tiers.secondary).filter(function (id) { return best[id]; }).map(function (id) {
+    const per = best[id];
+    const checked = Object.keys(per).length;
+    return { id: id, text: goals[id] || _ldocCompetencyText_(a, id), checked: checked,
+      notYet: Object.keys(per).filter(function (f) { return !per[f]; }).length };
+  }).sort(function (x, y) { return y.notYet - x.notYet; });
 }
 
 // ── Writes ───────────────────────────────────────────────────────────────────
@@ -296,7 +367,7 @@ function _ldocCompetencyText_(a, id) {
   return m ? m.slice(id.length + 1) : "";
 }
 
-function _ldocWritePlan_(body, a, title, win) {
+function _ldocWritePlan_(body, a, title, win, links, due) {
   // A new doc starts with one empty paragraph: the title goes in it.
   const first = body.getNumChildren() ? body.getChild(0) : null;
   if (first && String(first.getType()) === "PARAGRAPH" && !first.getText()) {
@@ -307,14 +378,23 @@ function _ldocWritePlan_(body, a, title, win) {
   }
   const runs = win ? "Starts " + _ldocFmt_(win.start, "EEE MMM d") +
     (win.end ? "; the next lesson starts " + _ldocFmt_(win.end, "EEE MMM d") : "; no next lesson dated yet") : "Not dated in LessonSchedule yet";
-  body.appendParagraph(a.courseName + ". " + runs + "." + (a.plan && a.plan.duration ? " The lesson plans " + a.plan.duration.toLowerCase() + "." : ""));
+  body.appendParagraph(a.courseName + ". " + runs + "." + (a.plan && a.plan.duration ? " The lesson plans " + a.plan.duration.toLowerCase() + "." : "") +
+    (due ? " Due " + _ldocFmt_(due, "EEE MMM d") + ", 11:59 p.m. (the school day before the next lesson; the Student Dashboard's cards and the agenda say the same)." : ""));
+  if (links && links.length) {
+    const p = body.appendParagraph("Open: " + links.map(function (l) { return l.label; }).join(" · "));
+    let at = "Open: ".length;
+    links.forEach(function (l) {
+      try { p.editAsText().setLinkUrl(at, at + l.label.length - 1, l.url); } catch (e) { /* plain text */ }
+      at += l.label.length + 3;
+    });
+  }
   _ldocH_(body, "The plan", 2);
   if (a.objective) body.appendParagraph(a.objective);
   const goals = a.objectives || {};
   const tiers = _ldocTiers_(a);
   const order = tiers.primary.concat(tiers.secondary, tiers.tertiary);
   if (order.some(function (id) { return goals[id]; })) {
-    _ldocH_(body, "Today's goals (\"I can\")", 3);
+    _ldocH_(body, "The goals (\"I can\")", 3);
     order.forEach(function (id) { if (goals[id]) body.appendListItem(goals[id]); });
   }
   _ldocH_(body, "Competencies", 3);
@@ -401,8 +481,174 @@ function _ldocWriteMeetings_(body, meetings) {
   });
 }
 
+// The doc's links: the Teacher Dashboard and the course's agenda deck (67)
+// when one is recorded. [{ label, url }].
+function _ldocLinks_(ss, cfg, code) {
+  const out = [];
+  if (cfg.teacherDashboardUrl) out.push({ label: "Teacher Dashboard (who needs what)", url: cfg.teacherDashboardUrl });
+  try {
+    const reg = ss.getSheetByName("AgendaDecks");
+    if (reg && reg.getLastRow() > 1) {
+      const rows = reg.getRange(2, 1, reg.getLastRow() - 1, 4).getValues()
+        .filter(function (r) { return String(r[0]).trim() === code && String(r[2]).trim(); });
+      const last = rows[rows.length - 1];
+      if (last) out.push({ label: "the agenda deck", url: "https://docs.google.com/presentation/d/" + String(last[2]).trim() + "/edit" });
+    }
+  } catch (e) { /* no agenda yet */ }
+  return out;
+}
+
+// The lesson's due day (00's lessonDueDay_), or "" (no next lesson dated).
+function _ldocDueDay_(ss, code, win) {
+  if (!win) return "";
+  try {
+    const rows = (lessonScheduleRows_(ss, Session.getScriptTimeZone())[code] || []).filter(function (r) { return !r.hold; });
+    return lessonDueDay_(rows, { start: win.start });
+  } catch (e) {
+    return "";
+  }
+}
+
+// A part's Submit checks, in words: what the reader enforces before a form,
+// deck or sheet goes to Flow 2 (75/77/78). [] for a doc part.
+function _ldocChecksWords_(part) {
+  const out = [];
+  if (part.slideChecks) {
+    const c = normalizeSlideChecks_(part.slideChecks);
+    if (c.maxSlides) out.push(c.minSlides + " to " + c.maxSlides + " slides");
+    else out.push("at least " + c.minSlides + " slide" + (c.minSlides === 1 ? "" : "s"));
+    if (c.titleSlide) out.push("a title on slide 1");
+    if (c.minImages) out.push("at least " + c.minImages + " picture" + (c.minImages === 1 ? "" : "s"));
+    if (c.maxImagesPerSlide) out.push("no more than " + c.maxImagesPerSlide + " pictures on a slide");
+    if (c.maxLinesPerSlide || c.maxWordsPerLine) {
+      out.push("the Rule of Six (at most " + (c.maxLinesPerSlide || "any number of") + " lines a slide" +
+        (c.maxWordsPerLine ? ", " + c.maxWordsPerLine + " words a line" : "") + ")");
+    }
+    if (c.notesOnEverySlide) out.push("speaker notes on every slide");
+    if (c.requireChart) out.push("a chart from Google Sheets");
+    if (c.minContrast) out.push("text contrast of at least " + c.minContrast + ":1");
+  } else if (part.formChecks) {
+    const c = normalizeFormChecks_(part.formChecks);
+    out.push(c.maxQuestions ? c.minQuestions + " to " + c.maxQuestions + " questions" : "at least " + c.minQuestions + " question" + (c.minQuestions === 1 ? "" : "s"));
+    if (c.questionTypes) out.push("question types: " + c.questionTypes.map(function (t) { return (FORM_QUESTION_TYPES[t] || { label: t }).label; }).join(", "));
+    out.push(c.collectsEmail ? "email collection on" : "email collection off");
+  } else if (part.sheetChecks) {
+    const c = part.sheetChecks;
+    if (c.requiredTabs && c.requiredTabs.length) out.push("tabs named " + c.requiredTabs.join(", "));
+    if (c.minFilledRows) out.push("at least " + c.minFilledRows + " filled rows" + (c.tab ? " on " + c.tab : ""));
+    if (c.minFilledCells) out.push("at least " + c.minFilledCells + " filled cells" + (c.tab ? " on " + c.tab : ""));
+    if (c.formulasRequired) out.push("at least " + c.formulasRequired + " formulas" + (c.formulasIn ? " in " + c.formulasIn : ""));
+    if (c.requireChart) out.push("a chart");
+  }
+  return out;
+}
+
+// The definition of done's lists, as the teacher reads them: what the work
+// needs to show, what it can also show, the teacher's grading notes, the
+// passing rule. { needs, also, notes, rule }, each "" when absent.
+function _ldocDodParts_(dod) {
+  const t = String(dod || "");
+  const between = function (start, ends) {
+    const i = t.indexOf(start);
+    if (i === -1) return "";
+    let j = t.length;
+    ends.forEach(function (e) { const k = t.indexOf(e, i + start.length); if (k !== -1 && k < j) j = k; });
+    return t.slice(i + start.length, j).trim();
+  };
+  return {
+    needs: between("What your work needs to show:", ["You can also show:", "Submission:", "PRIMARY COMPETENCY"]),
+    also: between("You can also show:", ["Submission:", "PRIMARY COMPETENCY"]),
+    notes: between("TEACHER GRADING NOTES", ["PASSING RULE", "PASSING STANDARD"]),
+    rule: between("PASSING RULE:", ["\n\n", "PASSING STANDARD"]),
+  };
+}
+
+function _ldocListLines_(body, text) {
+  String(text || "").split("\n").map(function (l) { return l.replace(/^\s*[-*•]\s*/, "").trim(); })
+    .filter(Boolean).forEach(function (l) { body.appendListItem(l); });
+}
+
+// A lesson in parts: each part, what Submit checks, what opens it, and what
+// its work needs to show.
+function _ldocWriteParts_(body, key) {
+  const parts = lessonPartsOf_(key);
+  if (!parts || !parts.length) return;
+  _ldocH_(body, LDOC_PARTS_HEADING, 2);
+  body.appendParagraph("Students see one part at a time. A part opens when the check finds the part before it meets " +
+    "its main goal, or when you open it for a student on the Teacher Dashboard.");
+  parts.forEach(function (p) {
+    const a = p.a || {};
+    const type = a.workFile === "slides" ? "Google Slides deck" : a.workFile === "form" ? "Google Form" :
+      a.workFile === "sheet" ? "Google Sheet" : "their doc";
+    _ldocH_(body, "Part " + p.n + ": " + (a.partTitle || "") + " (" + type + ")", 3);
+    if (a.objective) body.appendParagraph(a.objective);
+    const checks = _ldocChecksWords_(a);
+    if (checks.length) body.appendParagraph("Submit checks first: " + checks.join("; ") + ". Work that misses one comes back to the student with what to fix, before any feedback.");
+    body.appendParagraph(p.n === 1 ? "Open from the start." : "Opens when Part " + (p.n - 1) + "'s main goal is met, or when you open it.");
+    // What its work needs to show, past the task line above it.
+    const same = function (x) { return String(x || "").replace(/\s*\(required\)\s*$/, "").replace(/[.\s]+$/, "").trim(); };
+    const more = String(_ldocDodParts_(a.definitionOfDone).needs).split("\n")
+      .map(function (l) { return l.replace(/^\s*[-*•]\s*/, "").trim(); })
+      .filter(function (l) { return l && same(l) !== same(a.objective); });
+    if (more.length) {
+      body.appendParagraph("Also needs to show:");
+      more.forEach(function (l) { body.appendListItem(l); });
+    }
+  });
+}
+
+// What Flow 2 grades against, from the lesson's definition of done.
+function _ldocWriteChecks_(body, a, inParts) {
+  const dod = _ldocDodParts_(a.definitionOfDone);
+  if (!dod.needs && !dod.notes && !dod.rule) return;
+  _ldocH_(body, LDOC_CHECKS_HEADING, 2);
+  if (inParts) {
+    body.appendParagraph("Each part is graded on its own list (Parts, above): the automatic feedback reads only " +
+      "that part's work, with the earlier parts for context.");
+  } else {
+    body.appendParagraph("What the automatic feedback grades against (the lesson's definition of done). " +
+      "Students see the same \"needs to show\" list in their task.");
+    if (dod.needs) { _ldocH_(body, "The work needs to show", 3); _ldocListLines_(body, dod.needs); }
+    if (dod.also) { _ldocH_(body, "It can also show", 3); _ldocListLines_(body, dod.also); }
+  }
+  if (dod.notes) { _ldocH_(body, "Your grading notes", 3); _ldocListLines_(body, dod.notes); }
+  if (dod.rule) {
+    body.appendParagraph("Passing: " + (/Milestone 1/.test(dod.rule)
+      ? "the first goal listed must be fully shown, and every other required goal at least partly shown. " +
+        "The goals it can also show never count against the student."
+      : dod.rule));
+  }
+}
+
+// A doc made before Parts and What the feedback checks existed: they go in
+// before Class status (which is removed here and rewritten after).
+function _ldocAddGuideSections_(body, a, key) {
+  const has = function (text) {
+    for (let i = 0; i < body.getNumChildren(); i++) {
+      const c = body.getChild(i);
+      if (String(c.getType()) === "PARAGRAPH" && c.getText() === text) return true;
+    }
+    return false;
+  };
+  const parts = lessonPartsOf_(key);
+  const needParts = !!(parts && parts.length) && !has(LDOC_PARTS_HEADING);
+  const needChecks = !has(LDOC_CHECKS_HEADING) && !!_ldocDodParts_(a.definitionOfDone).needs;
+  if (!needParts && !needChecks) return;
+  let at = -1;
+  for (let i = 0; i < body.getNumChildren(); i++) {
+    const c = body.getChild(i);
+    if (String(c.getType()) === "PARAGRAPH" && c.getText() === LDOC_STATUS_HEADING) at = i;
+  }
+  if (at !== -1) {
+    body.appendParagraph("");
+    for (let i = body.getNumChildren() - 2; i >= at; i--) body.removeChild(body.getChild(i));
+  }
+  if (needParts) _ldocWriteParts_(body, key);
+  if (needChecks) _ldocWriteChecks_(body, a, !!(parts && parts.length));
+}
+
 // Class status is the doc's last section: rewritten from its heading down.
-function _ldocWriteStatus_(body, byPeriod, now) {
+function _ldocWriteStatus_(body, byPeriod, now, goals) {
   let at = -1;
   for (let i = 0; i < body.getNumChildren(); i++) {
     const c = body.getChild(i);
@@ -425,10 +671,17 @@ function _ldocWriteStatus_(body, byPeriod, now) {
   }
   const table = body.appendTable();
   const head = table.appendTableRow();
-  ["Period", "Docs made", "Shared", "Submitted", "Waiting for feedback", "Passed"].forEach(function (h) { head.appendTableCell(h); });
+  ["Period", "Docs made", "Shared", "Not started", "Submitted", "Waiting for feedback", "To revise", "Passed"].forEach(function (h) { head.appendTableCell(h); });
   periods.forEach(function (p) {
     const c = byPeriod[p];
     const row = table.appendTableRow();
-    [p, c.docs, c.shared, c.submitted, c.waiting, c.passed].forEach(function (v) { row.appendTableCell(String(v)); });
+    [p, c.docs, c.shared, c.notStarted || 0, c.submitted, c.waiting, c.revise || 0, c.passed].forEach(function (v) { row.appendTableCell(String(v)); });
   });
+  const stuck = (goals || []).filter(function (g) { return g.notYet > 0; });
+  if (stuck.length) {
+    _ldocH_(body, "Not shown yet", 3);
+    body.appendParagraph("Each goal, with how many checked student files haven't shown it yet (their best check so far). " +
+      "The most first: where to reteach or confer. The Teacher Dashboard says who.");
+    stuck.forEach(function (g) { body.appendListItem(g.notYet + " of " + g.checked + ": " + g.text); });
+  }
 }

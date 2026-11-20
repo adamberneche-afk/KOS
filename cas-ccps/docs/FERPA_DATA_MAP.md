@@ -578,15 +578,20 @@ the other teacher-level tabs.
 One row per lesson's teacher doc (2026-10-27): lesson key, doc ID and URL,
 when made and when its status was refreshed. The doc, in the teacher's
 *Lesson Plans* folder and shared with no one, holds curriculum and, under
-Class status, counts per period (docs made, shared, submitted, waiting,
-passed): no student name, account or file. Teacher-level; out of the
+Class status, counts per period (docs made, shared, not started,
+submitted, waiting, to revise, passed) and, per goal, how many checked
+files haven't shown it yet: no student name, account or file. Teacher-level; out of the
 retention schedule, like the other teacher-level tabs.
 
 ### AgendaDecks (S67) and the agenda decks
-One row per course per day: course, date, deck ID and URL, when made. The
-deck, in the teacher's *Agendas* folder and shared with no one until the
-teacher projects or shares it, holds curriculum only (the lesson, its
-goals, the itinerary, the periods meeting): no student data.
+One row per course per day: course, date, deck ID and URL, when made, the
+day's slide ID. The deck (one per school year since 2026-11-19, a slide a
+day with every course that meets), in the teacher's *Agendas* folder and shared with no one
+until the teacher projects or shares it, holds curriculum and school
+information only (the lesson, its goals, the itinerary, the periods
+meeting, the bell schedule, due dates, the teacher's announcements and
+speaker notes): no student data. The `AgendaAnnouncements` tab holds the
+teacher's announcements (dates, course, text).
 
 ### Student work forms (S02, Phase 4a)
 A part marked `workType: "form"` (2026-11-08) gets each student a copy of

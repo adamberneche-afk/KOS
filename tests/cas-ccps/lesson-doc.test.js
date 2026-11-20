@@ -16,7 +16,7 @@ const TEACHER = 'teacher@ccpsnet.net';
 function load() {
   const env = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'), S('26_CompetencyAlignmentLog.js'),
     S('23_StudentProfileManager.js'), S('27_LessonFrameGenerator.js'), S('32_CompetencyRubricImporter.js'), S('55b_LessonAssignmentData.js'), S('66_LessonDoc.js'), S('68_LessonParts.js')],
-  ['makeOrRefreshLessonDoc_', 'onLessonContextSubmit_', '_ldocClassStatus_'],
+  ['makeOrRefreshLessonDoc_', 'onLessonContextSubmit_', '_ldocClassStatus_', 'LESSON_ASSIGNMENTS'],
   { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => TEACHER }) } });
   const { sandbox } = env;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -92,7 +92,7 @@ test('class status counts by period, for this lesson only; a second call refresh
   const first = exported.makeOrRefreshLessonDoc_('8175-L06', { today: new sandbox.Date('2026-10-27T12:00:00Z') });
   let text = docText(sandbox, first.docId);
   const status = text.slice(text.lastIndexOf('Class status'));
-  assert.match(status, /Period\nDocs made\nShared\nSubmitted\nWaiting for feedback\nPassed\n1\n2\n2\n1\n1\n0\n3-Odd\n2\n1\n1\n0\n1/);
+  assert.match(status, /Period\nDocs made\nShared\nNot started\nSubmitted\nWaiting for feedback\nTo revise\nPassed\n1\n2\n2\n1\n1\n1\n0\n0\n3-Odd\n2\n1\n0\n1\n0\n0\n1/);
   assert.doesNotMatch(text, /1234567|2345678/, 'counts only');
   // A third student in period 1 submits; the teacher wrote a note above.
   const body = sandbox.DocumentApp.openById(first.docId).getBody();
@@ -107,7 +107,7 @@ test('class status counts by period, for this lesson only; a second call refresh
   text = docText(sandbox, first.docId);
   assert.match(text, /My own note\./, 'the teacher\'s edits stay');
   assert.equal(text.split('Class status').length, 2, 'one status section');
-  assert.match(text.slice(text.lastIndexOf('Class status')), /\n1\n3\n3\n2\n2\n0\n/);
+  assert.match(text.slice(text.lastIndexOf('Class status')), /\n1\n3\n3\n1\n2\n2\n0\n0\n/);
   assert.equal(ss.getSheetByName('LessonDocs').getLastRow(), 2, 'still one registry row');
 });
 
@@ -148,4 +148,74 @@ test('the lesson builder\'s rows make no per-period Lesson Frame; a hand-logged 
   assert.match(src, /noFrame: true/);
   const handler = require('fs').readFileSync(S('22_LessonContextHandler.js'), 'utf8');
   assert.match(handler, /if \(alignResult\.success && payload\.noFrame\) return \{ success: true, lessonId: lessonId, frameDocUrl: null \};/);
+});
+
+
+// The audit (2026-11-19, the operator: support the teacher in supporting
+// students). The doc now says when the lesson is due and links to the
+// dashboard and agenda; a lesson in parts lists each part, the checks Submit
+// makes and what opens it; it says what the feedback grades against,
+// including the teacher's grading notes; and Class status counts who hasn't
+// started, who is revising, and which goals the class hasn't shown yet.
+test('the doc: due date and links; what the feedback checks, with the grading notes; the goals not shown yet', () => {
+  const { exported, sandbox, ss } = load();
+  sandbox.PropertiesService.getScriptProperties().setProperty('TEACHER_DASHBOARD_URL', 'https://example.invalid/td');
+  const ev = ss.insertSheet('CompetencyEvidence');
+  ev.appendRow(['evidence_id', 'student_id', 'competency_id', 'outcome', 'config_id', 'evaluated_at', 'student_file_id', 'archive_status']);
+  const L = ss.getSheetByName('Ledger').getDataRange().getValues();
+  // Files for W1-W3 (this lesson): W1's best shows 8175-20 not yet; W2 not yet, then met; W3 met. 8175-112 not yet for two.
+  const fileOf = {};
+  L.slice(1).forEach((r, i) => { fileOf[r[2]] = 'F' + (i + 1); ss.getSheetByName('Ledger').getRange(i + 2, 4).setValue('F' + (i + 1)); });
+  [['W1', '8175-20', 'NOT_MET'], ['W2', '8175-20', 'NOT_MET'], ['W2', '8175-20', 'MET'], ['W3', '8175-20', 'MET'],
+    ['W1', '8175-112', 'PARTIALLY_MET'], ['W2', '8175-112', 'NOT_MET'], ['W3', '8175-112', 'MET'],
+    ['OTHER', '8175-20', 'NOT_MET']].forEach(([w, c, o], i) => ev.appendRow(['e' + i, 's', c, o, 'x', '', fileOf[w], '']));
+  const d = exported.makeOrRefreshLessonDoc_('8175-L06', { today: new sandbox.Date('2026-10-27T12:00:00Z') });
+  const text = docText(sandbox, d.docId);
+  assert.match(text, /Due Wed Oct 28, 11:59 p\.m\. \(the school day before the next lesson/, 'L07 starts the 29th');
+  assert.match(text, /^Open: Teacher Dashboard \(who needs what\)$/m);
+  assert.match(text, /^The goals \("I can"\)$/m);
+  assert.match(text, /^What the feedback checks$/m);
+  assert.match(text, /^The work needs to show$/m);
+  assert.match(text, /^Your grading notes$/m, 'the lesson\'s Quick Grading Tip');
+  assert.match(text, /^Passing: the first goal listed must be fully shown/m);
+  const nsy = text.slice(text.indexOf('Not shown yet'));
+  const g = exported.LESSON_ASSIGNMENTS['8175-L06'].objectives;
+  assert.match(nsy, new RegExp('^2 of 3: ' + g['8175-112'].slice(0, 30).replace(/[()]/g, '.'), 'm'), 'the most not-yet first');
+  assert.match(nsy, new RegExp('^1 of 3: ' + g['8175-20'].slice(0, 30).replace(/[()]/g, '.'), 'm'), 'W2 met it later: best counts; OTHER is another lesson');
+  assert.doesNotMatch(text, /1234567|F1|W1/, 'counts only');
+});
+
+test('a lesson in parts: each part, its work, the checks Submit makes and what opens it', () => {
+  const { exported, sandbox, ss } = load();
+  ss.getSheetByName('LessonSchedule').appendRow(['8177', '8177-market-research-survey-design', 'L08', '2026-11-02', '', '']);
+  const d = exported.makeOrRefreshLessonDoc_('8177-market-research-survey-design', { today: new sandbox.Date('2026-11-02T12:00:00Z') });
+  const text = docText(sandbox, d.docId);
+  assert.match(text, /^Parts$/m);
+  assert.match(text, /^Part 1: .+ \(their doc\)$/m);
+  assert.match(text, /^Part 2: .+ \(Google Form\)$/m);
+  assert.match(text, /Submit checks first: at least 3 questions; question types: Checkboxes, Linear scale, Short answer; email collection off\./);
+  assert.match(text, /^Open from the start\.$/m);
+  assert.match(text, /^Opens when Part 1's main goal is met, or when you open it\.$/m);
+  assert.match(text, /^Also needs to show:$|Part 1: /m);
+});
+
+test('a doc made before the audit gets Parts and What the feedback checks on its next refresh, before Class status', () => {
+  const { exported, sandbox, ss } = load();
+  ss.getSheetByName('LessonSchedule').appendRow(['8177', '8177-market-research-survey-design', 'L08', '2026-11-02', '', '']);
+  const d = exported.makeOrRefreshLessonDoc_('8177-market-research-survey-design', { today: new sandbox.Date('2026-11-02T12:00:00Z') });
+  const body = sandbox.DocumentApp.openById(d.docId).getBody();
+  // Strip the new sections, as a doc from before 2026-11-19 has none.
+  const kids = () => body.paragraphs || [];
+  const titleAt = (t) => { for (let i = 0; i < body.getNumChildren(); i++) { const c = body.getChild(i); if (String(c.getType()) === 'PARAGRAPH' && c.getText() === t) return i; } return -1; };
+  const from = titleAt('Parts'), to = titleAt('Each day it runs');
+  for (let i = to - 1; i >= from; i--) body.removeChild(body.getChild(i));
+  assert.equal(titleAt('Parts'), -1);
+  assert.ok(kids());
+  exported.makeOrRefreshLessonDoc_('8177-market-research-survey-design', { today: new sandbox.Date('2026-11-03T12:00:00Z') });
+  const text = docText(sandbox, d.docId);
+  assert.ok(text.indexOf('\nParts\n') !== -1 && text.indexOf('\nParts\n') < text.indexOf('\nClass status'), 'added before Class status');
+  assert.equal(text.split('\nWhat the feedback checks\n').length, 2, 'once');
+  assert.equal(text.split('\nClass status\n').length, 2, 'one status section');
+  exported.makeOrRefreshLessonDoc_('8177-market-research-survey-design', { today: new sandbox.Date('2026-11-04T12:00:00Z') });
+  assert.equal(docText(sandbox, d.docId).split('\nParts\n').length, 2, 'not added twice');
 });
