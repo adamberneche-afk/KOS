@@ -2,6 +2,7 @@
  * ================================================================
  * 51_CourseYearBuilder.js — CAS-CCPS
  * BOUND TO: Central Ledger (cas-ccps:central-ledger)
+ * PURPOSE: Loads the course data into the Central Ledger and keeps the next week of lessons filled in from the pacing guide.
  * ================================================================
  *
  * Loads the 8175 / 8177 course data into the live Central Ledger and keeps

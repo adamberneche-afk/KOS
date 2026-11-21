@@ -2,6 +2,7 @@
  * =============================================================================
  * 41_WarmUpFlowBridge.js
  * BOUND TO: cas-ccps:central-ledger
+ * PURPOSE: Flows 3 and 4's Apps Script half: builds each flat input row for Studio and harvests the output.
  * =============================================================================
  *
  * Ports Flows 3, 4 and 5 off the five custom Workspace Studio steps they

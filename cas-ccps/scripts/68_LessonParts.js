@@ -3,6 +3,7 @@
 // BOUND TO: Central Ledger (cas-ccps:central-ledger: the rollout, the Ledger
 //   cycle's unlock job) AND the Teacher Dashboard (cas-ccps:teacher-dashboard:
 //   the teacher's unlock).
+// PURPOSE: A lesson in parts: each part its own assignment and work file, unlocked in order.
 //
 // A lesson in parts (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3; 55b's
 // LESSON_PARTS): each part its own assignment and work file, unlocked in

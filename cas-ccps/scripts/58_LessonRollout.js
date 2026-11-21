@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: 58_LessonRollout.js
 // BOUND TO: Central Ledger spreadsheet (cas-ccps:central-ledger)
+// PURPOSE: The nightly lesson rollout: releases, seeds and enrolls each lesson's student docs on schedule.
 //
 // The nightly lesson rollout (archive/2026-27-Q1/meta/CAS_DESIGN_THREADS_2026-10-16.md, Thread
 // C). A date in LessonSchedule used to do nothing by itself: the operator ran

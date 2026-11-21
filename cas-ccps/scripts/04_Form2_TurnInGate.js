@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: 04_Form2_TurnInGate.js
 // BOUND TO: Central Ledger spreadsheet (cas-ccps:central-ledger)
+// PURPOSE: Three helpers left from the retired turn-in gate: scanCompliance_, extractSuggestedScore_ and _lockDocAfterSubmission_.
 //
 // RETIRED TURN-IN GATE (P0-04, 2026-10-10, meta/PRD_CAS_RESEARCH_PIVOT.md).
 // This file used to hold onTurnInSubmit(), the Turn-In Form (Form 2)

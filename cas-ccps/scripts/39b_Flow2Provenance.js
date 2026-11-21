@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: 39b_Flow2Provenance.js
 // BOUND TO: Central Ledger spreadsheet
+// PURPOSE: Records what runs Flow 2 (the StudioConfig tab) and runs the daily drift probe.
 //
 // What runs Flow 2, recorded and watched (2026-11-16). Flow 2 changed under
 // live use with no change of ours: Studio's hydrogen 4.1 release paused it on

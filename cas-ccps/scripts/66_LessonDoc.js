@@ -2,6 +2,7 @@
 // FILE: 66_LessonDoc.js
 // BOUND TO: Central Ledger (cas-ccps:central-ledger, the nightly rollout) AND
 //   the Teacher Dashboard (cas-ccps:teacher-dashboard, 📅 Lessons' button).
+// PURPOSE: One teacher doc per lesson: the plan, the itinerary, look-fors and parts.
 //
 // One teacher doc per lesson (archive/2026-27-Q1/meta/SPRINT_LESSON_DOCS_2026-11.md), in place of
 // the per-period Lesson Frames (27) the lesson builder (51) used to make for

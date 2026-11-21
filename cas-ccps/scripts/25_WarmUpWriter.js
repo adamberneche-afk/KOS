@@ -1,7 +1,8 @@
 // =============================================================================
 // FILE: 25_WarmUpWriter.js
 // BOUND TO: Central Ledger spreadsheet
-// PURPOSE: Two jobs in one script.
+// PURPOSE: Registers each warm-up doc Flow 3 delivered, and scores the day's warm-up responses each night.
+//          Two jobs in one script.
 //
 //   JOB 1 — Post-generation registration (called by Studio Flow 3 backprop)
 //   -------------------------------------------------------------------------

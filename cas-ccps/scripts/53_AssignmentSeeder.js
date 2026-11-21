@@ -2,6 +2,7 @@
  * ================================================================
  * 53_AssignmentSeeder.js — CAS-CCPS
  * BOUND TO: Central Ledger (cas-ccps:central-ledger)
+ * PURPOSE: Writes LIVE TeacherMatrix assignments from the repo's unit and lesson data, without Studio Flow 1.
  * ================================================================
  *
  * Writes LIVE TeacherMatrix assignments straight from the repo's unit

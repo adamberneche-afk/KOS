@@ -1,4 +1,5 @@
 // =============================================================================
+// PURPOSE: Refuses a web-app call from anyone but the script's own account (requireScriptOwner_).
 // 00b_ScriptOwnerGuard.js — refuses web-app callers other than the script's
 // own account, for every public function that isn't meant for them.
 // In the projects that serve a web app beyond the owner, and the Central

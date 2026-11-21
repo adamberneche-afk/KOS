@@ -1,7 +1,8 @@
 // =============================================================================
 // FILE: 02_Form1_IntakeAndWorkspaceGenerator.js
 // BOUND TO: Central Ledger spreadsheet
-// PURPOSE: On Form 1 submission — copies master student template (not teacher
+// PURPOSE: Intake: makes each student's work file from the master template, stamps its IDs, shares it and adds its Ledger row.
+//          On Form 1 submission — copies master student template (not teacher
 //          prompt doc directly), injects teacher prompt content into Zone 2,
 //          stamps system IDs as embedded fallback, completes three-zone structure,
 //          shares into student Drive folder, registers ledger row.

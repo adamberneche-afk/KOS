@@ -5,6 +5,7 @@
 //   every student form copy since Phase 4a (02's _intakeWorkFile_). The only
 //   cas-ccps file that calls FormApp; the project's manifest has the forms
 //   scope for it.
+// PURPOSE: Reads a student form's structure at Submit (never its responses) and runs the part's checks.
 //
 // Phase 4b (2026-11-08; archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md §5): the Form
 // reader at Submit. For a form part, 13's Submit:

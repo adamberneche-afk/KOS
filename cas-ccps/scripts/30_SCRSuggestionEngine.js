@@ -12,7 +12,8 @@
 // the file name and script number (30) are unaffected; see
 // cas-ccps/README.md for the full module numbering table.
 //
-// PURPOSE: The Module 5 threshold script. Reads CompetencyEvidence (Flow 2's
+// PURPOSE: Suggests an SCR rating per student and competency from CompetencyEvidence, for the teacher to confirm or override.
+//          The Module 5 threshold script. Reads CompetencyEvidence (Flow 2's
 //          output — see 15b_StudioFlowPrompts_Flow2_Revised.js), computes a
 //          suggested SCR rating per student+competency using the rule
 //          below, and manages the suggest -> confirm/override

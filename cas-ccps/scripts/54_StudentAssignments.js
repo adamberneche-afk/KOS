@@ -2,6 +2,7 @@
  * ================================================================
  * 54_StudentAssignments.js — CAS-CCPS
  * BOUND TO: Central Ledger (cas-ccps:central-ledger)
+ * PURPOSE: The StudentAssignments tab: which assignment each student workspace belongs to.
  * ================================================================
  */
 

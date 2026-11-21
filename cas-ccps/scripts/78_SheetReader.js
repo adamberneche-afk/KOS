@@ -5,6 +5,7 @@
 //   every student sheet copy since Phase 4d (02's _intakeWorkFile_). The
 //   project already has the spreadsheets scope (the Ledger); this file opens
 //   only the student's own copy, by the ID on their own Ledger row.
+// PURPOSE: Reads a student sheet's structure at Submit and runs the part's checks.
 //
 // Phase 4d (2026-11-09; archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md §5): the Sheet
 // reader at Submit, built as 75 (forms) and 77 (decks) are. For a Sheets

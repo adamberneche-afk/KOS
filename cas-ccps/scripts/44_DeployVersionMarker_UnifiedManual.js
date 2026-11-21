@@ -1,4 +1,5 @@
 /**
+ * PURPOSE: The Unified Manual project's deploy-version marker: the commit it was last pushed from, reported by 00's _reportDeployVersion_.
  * cas-ccps:unified-manual's deploy-version marker + trigger (process-hardening sprint
  * Phase 3b — meta/PROCESS_HARDENING_SPRINT.md). See
  * 00_SharedConfig.js's _reportDeployVersion_() for the shared reporting

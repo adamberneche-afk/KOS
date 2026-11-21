@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: 39d_ZeroShotFixture.js
 // BOUND TO: Central Ledger spreadsheet (cas-ccps:central-ledger)
+// PURPOSE: The zero-shot test: sends each lesson's cold answer (39c) through Flow 2 and records the result.
 // TRIGGERS: none. Run from the editor:
 //
 //   installZeroShotFixture(count)   the next `count` lessons (default 10, at

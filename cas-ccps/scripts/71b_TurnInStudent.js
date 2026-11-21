@@ -4,7 +4,8 @@
 //           spreadsheet (cas-ccps:student-dashboard, cas-ccps:central-ledger)
 // TRIGGERS: none.
 //
-// PURPOSE: the turn-in code's student side (meta/TURN_IN_CODE_PLAN_2026-11.md,
+// PURPOSE: The turn-in code's student side: the card, the student's two calls, and the dashboard's data.
+//          the turn-in code's student side (meta/TURN_IN_CODE_PLAN_2026-11.md,
 // D17), split out of 71_TurnInCodes.js on 2026-11-08 (stage 3) without a
 // change: what the card shows (turnInView_), the two functions a student
 // calls through google.script.run (getMyTurnInState, submitTurnInAnswer,

@@ -1,9 +1,9 @@
 // =============================================================================
 // FILE: 00_SharedConfig.js
 // INCLUDE IN: Every Apps Script project in this system
-// PURPOSE: Single getConfig_() function that reads all IDs from Script Properties
-//          written by the Teacher Manual Setup Script (14).
-//          Replaces all PASTE_..._HERE hardcoded constants across the codebase.
+// PURPOSE: Loaded by every CAS project: getConfig_() (every ID, from the Script
+//          Properties the setup wizard writes), the tab names (TABS), each
+//          tab's columns, and the shared helpers.
 //
 // USAGE:
 //   const cfg = getConfig_();

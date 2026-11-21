@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: 79_CanvasWeeklyCartridge.js
 // BOUND TO: Central Ledger spreadsheet (cas-ccps:central-ledger)
+// PURPOSE: Builds each course's weekly Canvas cartridge: the coming lessons' assignments with due dates.
 //
 // The week's Canvas assignments, with due dates (2026-11-19, the operator:
 // lessons were opening before their Canvas assignment was posted; no Canvas

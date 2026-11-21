@@ -1,15 +1,15 @@
 // =============================================================================
 // FILE: 17_MasterStudentTemplate.js
 // BOUND TO: Master Student Template Google Doc (container-bound)
-//           Same project as Scripts 00 + 01 + 09
+//           Same project as Scripts 00 + 01
 //
 // PURPOSE: Architecture documentation and admin setup reference.
 //          No operational functions are defined here — all active code
-//          lives in Scripts 00, 01, and 09.
+//          lives in Scripts 00 and 01 (09 was deleted 2026-11-20).
 //
 // ARCHITECTURE:
 //   One master student template doc exists, owned by admin, with Scripts
-//   00 + 01 + 09 + 17 pre-bound. Script 02 copies this doc for every student
+//   00 + 01 + 17 pre-bound. Script 02 copies this doc for every student
 //   then injects the teacher's prompt content into Zone 2 of the copy.
 //   The teacher's prompt doc is read as source text only — never copied directly.
 //   This ensures Script 01 is pre-bound on every student doc automatically.

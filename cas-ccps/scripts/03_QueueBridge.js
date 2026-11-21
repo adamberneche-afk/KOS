@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: 03_QueueBridge.js
 // BOUND TO: Central Ledger spreadsheet
+// PURPOSE: Moves PENDING ReviewQueue rows into the staging pipeline, and closes out finished evaluations on the queue and the Ledger.
 // TRIGGERS: both run inside the Ledger cycle (64, installLedgerCycle()):
 //   bridgeQueue              — every 1 minute
 //   backPropagateCompletions — every 1 minute (every 2 before 2026-11-14,

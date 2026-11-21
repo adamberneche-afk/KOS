@@ -1,7 +1,8 @@
 // =============================================================================
 // FILE: 13_StudentDashboard.js
 // STANDALONE APPS SCRIPT PROJECT — deployed as Web App
-// PURPOSE: Student-facing dashboard. Authenticated by Google account (any domain).
+// PURPOSE: The Student Dashboard web app: the signed-in student's own assignments, Submit, and feedback.
+//          Student-facing dashboard. Authenticated by Google account (any domain).
 //          Shows only the active student's own assignments, grouped by
 //          [Block - Class - Teacher] folder label.
 // DEPLOY: Execute as: Me (the admin) · Access: anyone in the district domain.
