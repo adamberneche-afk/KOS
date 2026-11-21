@@ -21,8 +21,8 @@ is to run the same command without it, then commit what changed.
 | [`doc-currency/`](./doc-currency/) | checks the docs against the code | CI | `node tools/doc-currency/check.js` |
 | [`setup-guide/`](./setup-guide/) | the CAS setup guide's reference, from the code | CI (`--check`) | `node tools/setup-guide/build.js` |
 | [`archive/`](./archive/) | the archive's catalog, indexes and search | CI (`build.js --check`) | `node tools/archive/build.js`; file a doc with `file.js`, find one with `search.js` |
-| [`student-data-scan/`](./student-data-scan/) | finds student data, says where but not what | CI | `node tools/student-data-scan/check.js` (`--roster` locally) |
-| [`release-check/`](./release-check/) | what must not ship: Drive IDs, exports, LICENSE, secrets | CI | `node tools/release-check/check.js`; allow a finding in `release-check/allow.json` |
+| [`student-data-scan/`](./student-data-scan/) | finds student data, says where but not what | CI, inside the release check; locally for `--roster`, `--history` | `node tools/student-data-scan/check.js` (`--roster` locally) |
+| [`release-check/`](./release-check/) | what must not ship: Drive IDs, exports, LICENSE, secrets, student data | CI | `node tools/release-check/check.js`; allow a finding in `release-check/allow.json` |
 | [`clasp-sync/`](./clasp-sync/) | bridges cas-ccps to clasp | CI (`sync.js`), the operator (`run.js`) | `node tools/clasp-sync/sync.js` builds; `node run.js --latest` deploys |
 | [`coverage-gaps/`](./coverage-gaps/) | scheduled functions with zero test coverage | CI, after the tests | `node tools/coverage-gaps/check.js` (a test for the handler it names) |
 | [`html-lint/`](./html-lint/check.js) | inline `<script>` syntax check | CI | `node tools/html-lint/check.js leader-hub/student-leader-hub.html` |
@@ -124,7 +124,7 @@ anything that would have flagged it in advance). Run
 The other half of the same idea. `gas-lint` reads the source; this reads the
 prose and asks whether it is still true: a doc naming a function that exists
 nowhere, a cited test count that has drifted, a key registry listing a key no
-code mentions, a `file:line` citation past the end of that file, a Drive file ID or link written into any Markdown doc (Check 6, 2026-11-15; `doc-currency-check.test.js`), and — the
+code mentions, a `file:line` citation past the end of that file, and — the
 one no other check could see — **a document describing a path that cannot
 run on the account this repo deploys to.** Every function in those
 instructions existed; the instructions were still impossible to follow,

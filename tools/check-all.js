@@ -22,7 +22,6 @@ const STEPS = [
   ['doc-currency', ['node', 'tools/doc-currency/check.js']],
   ['setup guide reference', ['node', 'tools/setup-guide/build.js', '--check']],
   ['archive catalog and indexes', ['node', 'tools/archive/build.js', '--check']],
-  ['student data scan', ['node', 'tools/student-data-scan/check.js']],
   ['release check', ['node', 'tools/release-check/check.js']],
   ['clasp-sync build', ['node', 'tools/clasp-sync/sync.js']],
   ['tests', ['npm', 'test'], { NODE_V8_COVERAGE: coverageDir }, 'slow'],

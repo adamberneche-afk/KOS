@@ -53,18 +53,16 @@ jobs:
         # stale generated file. Fix: node tools/archive/build.js. See
         # tools/archive/README.md.
         run: node tools/archive/build.js --check
-      - name: Scan for student data
-        # Fails on any student-shaped address in the tree that allow.json
-        # doesn't list (decision #3, 2026-10-19; the tree and history were
-        # cleared 2026-10-20). Prints where, never what. Roster names need
-        # a Canvas export, which never comes near CI: the operator runs
-        # --roster locally. See tools/student-data-scan/README.md.
-        run: node tools/student-data-scan/check.js
-      - name: Release check (Drive IDs and links, exports, LICENSE, secrets)
+      - name: Release check (Drive IDs and links, exports, LICENSE, secrets, student data)
         # Plan item L1. Prints every finding, values redacted. The gate is
         # ON (the operator, 2026-11-20): any finding in a failing bucket
         # fails the build. What it lets through is named, with why, in
         # tools/release-check/allow.json. See tools/release-check/README.md.
+        # Its student-data bucket is student-data-scan's own rules and
+        # allowlist (decision #3, 2026-10-19), where never what; CI ran
+        # that scan as a separate step until 2026-11-21 (structure audit
+        # 3.10). Roster names need a Canvas export, which never comes near
+        # CI: the operator runs student-data-scan --roster locally.
         env:
           RELEASE_CHECK_GATE: '1'
         run: node tools/release-check/check.js

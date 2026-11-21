@@ -15,7 +15,7 @@ doc IDs moved to its data spreadsheet, the two drive-curation workbooks
 moved to Drive, a LICENSE at the root and in `leader-hub/`, and the
 operator's allow list below.
 
-One slice is gated already: `tools/doc-currency` Check 6 (2026-11-15) fails on a Drive link or ID, or an Apps Script web app link, in any Markdown doc, using this tool's `scanLine` rules. Prose never needs one; code and data wait for this gate.
+The gate has been on in CI since 2026-11-20. doc-currency's Check 6 (2026-11-15), which gated Markdown docs on these rules while this was warn-only, was removed 2026-11-21 as the same scan twice; CI's separate student-data-scan step was folded in the same day (structure audit 3.10), so its two warnings are here too, for review: a cas-ccps log call that prints a student identifier (`log-identifier`) and a zip member over the cap (`member-over-20MB`).
 
 ```
 node tools/release-check/check.js                  # tracked tree, warn-only (exit 0)
