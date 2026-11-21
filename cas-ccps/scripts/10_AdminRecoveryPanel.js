@@ -546,15 +546,13 @@ function clearStagingPipeline() {
   const last = sheet.getLastRow();
   if (last > 1) sheet.deleteRows(2, last - 1);
   plan.requeue.forEach(function (rowNum) {
-    queue.getRange(rowNum, CSP_RQ_STATUS + 1).setValue("PENDING");
+    queue.getRange(rowNum, RVQ.STATUS + 1).setValue("PENDING");
   });
   SpreadsheetApp.flush();
   ui.alert("✅ Staging pipeline cleared." +
     (plan.requeue.length ? " " + plan.requeue.length + " submission(s) put back in line." : ""));
 }
 
-// ReviewQueue's Status column (03's RQ_STATUS).
-const CSP_RQ_STATUS = 5;
 
 // What clearStagingPipeline() would do: { rows, byStatus, requeue }, where
 // requeue lists the ReviewQueue row numbers still STAGED behind a staging
@@ -575,7 +573,7 @@ function _clearStagingPlan_(sheet, queue) {
     if (st !== "COMPLETE" && !isNaN(ref) && ref >= 2) refs[ref] = true;
   }
   if (queue && queue.getLastRow() > 1) {
-    const q = queue.getRange(1, CSP_RQ_STATUS + 1, queue.getLastRow(), 1).getValues();
+    const q = queue.getRange(1, RVQ.STATUS + 1, queue.getLastRow(), 1).getValues();
     Object.keys(refs).forEach(function (r) {
       const n = Number(r);
       if (n <= q.length && String(q[n - 1][0]).trim() === "STAGED") plan.requeue.push(n);

@@ -989,19 +989,10 @@ function _fxFindRow_(sheet, keyIndex, needle) {
 
 // A TeacherMatrix-shaped tab with one LIVE fixture assignment already in it,
 // so Flow 1 has somewhere real to write its DRAFT row and Flow 2's own
-// lookups have something to resolve if you point them here. 20 columns,
-// matching FI_TM_COLUMNS_ (37_FlowInputBuilder.js) and CommitRubricDraftStep.gs's
-// TM_COLUMNS_.
+// lookups have something to resolve if you point them here. 00's TM_HEADERS.
 function _fxSeedTeacherMatrix_(matrixSs) {
   const sheet = matrixSs.getActiveSheet().setName("TeacherMatrix");
-  sheet.appendRow([
-    "ConfigID", "UnitName", "Tier", "Persona",
-    "Milestone1", "Milestone2", "Milestone3", "Milestone4",
-    "DefinitionOfDone", "InstructorEmail", "Created", "Status",
-    "PromptTemplateID", "Subject", "CourseName",
-    "Milestone1CompetencyId", "Milestone2CompetencyId",
-    "Milestone3CompetencyId", "Milestone4CompetencyId", "LessonUnitId",
-  ]);
+  sheet.appendRow(TM_HEADERS.slice()); // 00_SharedConfig.js
   sheet.appendRow([
     FX_CONFIG_PREFIX + "F1", "Fixture Unit 3 — Campaign Pitch", "Tier 1 Core",
     "A demanding but encouraging marketing director reviewing a junior pitch.",

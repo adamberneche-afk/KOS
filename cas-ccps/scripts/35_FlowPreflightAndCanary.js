@@ -101,7 +101,7 @@ function runFlowPreflightCheck() {
   const ss = SpreadsheetApp.openById(cfg.adminSsId);
   const results = [];
 
-  results.push(_pfCheckTab_(ss, 'RubricQueue', 10)); // Flow 1 — see WD_RUBRIC_QUEUE_COLUMNS
+  results.push(_pfCheckTab_(ss, 'RubricQueue', RBQ_HEADERS.length)); // Flow 1 — 00's RBQ
   results.push(_pfCheckTab_(ss, 'STAGING_PIPELINE', 6)); // Flow 2 — see WD_STAGING_PIPELINE_COLUMNS
   results.push(_pfCheckTab_(ss, 'WarmUpQueue', WQ_BASE_WIDTH)); // Flows 3/4 — 00's WQ
   results.push(_pfCheckTab_(ss, 'WarmUpRegistry', 12)); // Flow 4's finalizeWarmUpScore target
@@ -535,15 +535,7 @@ function runFlow2Canary() {
     const matrixSs = SpreadsheetApp.create('[CANARY] Flow 2 Teacher Matrix ' + stamp);
     scratchMatrixSsId = matrixSs.getId();
     const matrixSheet = matrixSs.getActiveSheet().setName('TeacherMatrix');
-    // 20 columns, matching FI_TM_COLUMNS_ / CommitRubricDraftStep.gs's TM_COLUMNS_.
-    matrixSheet.appendRow([
-      'ConfigID', 'UnitName', 'Tier', 'Persona',
-      'Milestone1', 'Milestone2', 'Milestone3', 'Milestone4',
-      'DefinitionOfDone', 'InstructorEmail', 'Created', 'Status',
-      'PromptTemplateID', 'Subject', 'CourseName',
-      'Milestone1CompetencyId', 'Milestone2CompetencyId',
-      'Milestone3CompetencyId', 'Milestone4CompetencyId', 'LessonUnitId',
-    ]);
+    matrixSheet.appendRow(TM_HEADERS.slice()); // 00_SharedConfig.js
     matrixSheet.appendRow([
       configId, 'Canary Unit', 'Tier 1 Core', 'Canary Coach',
       'Canary milestone one', 'Canary milestone two',

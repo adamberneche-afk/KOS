@@ -34,7 +34,7 @@ const FILES = [
 
 const EXPOSE = [
   'syncFlowBuildSpec', 'checkFlowBuildSpec', 'FBS_TAB', 'FBS_HEADERS',
-  'FI', 'FI_TM_COLUMNS_', 'FLOW_PROMPT_TAB',
+  'FI', 'TM', 'FI_TM_READS_', 'FLOW_PROMPT_TAB',
   'WFB_RETURN_HEADERS', 'WFB_RET', 'WFB_RETURN_TAB', 'WFB_INPUT_TABS',
   'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_TRIGGER_STATUS',
 ];
@@ -127,11 +127,11 @@ test('every TeacherMatrix column the Flow 2 builder reads says so, by constant n
   // 37_FlowInputBuilder.js reads it by position, so a shift silently feeds
   // Flow 2 the wrong field. The spec has to name which columns those are.
   const rows = specRows(exported, ss).filter((r) => r.tab === 'TeacherMatrix' && r.column);
-  Object.keys(exported.FI_TM_COLUMNS_).forEach((key) => {
-    const col = exported.FI_TM_COLUMNS_[key] + 1;
+  [...exported.FI_TM_READS_].forEach((key) => {
+    const col = exported.TM[key] + 1;
     const row = rows.find((r) => Number(r.column) === col);
     assert.ok(row, 'no spec row for TeacherMatrix column ' + col);
-    assert.match(String(row.notes), new RegExp('FI_TM_COLUMNS_\\.' + key),
+    assert.match(String(row.notes), new RegExp('TM\\.' + key),
       'column ' + col + ' should name the constant that reads it: ' + row.notes);
   });
 });

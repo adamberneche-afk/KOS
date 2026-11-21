@@ -155,17 +155,18 @@ test('every declared duplicate map agrees, on the real code', () => {
   });
 });
 
-test('the RubricQueue pair is the one that would have caught the RQ05 drift', () => {
-  // Pinned specifically. RQ05 shipped ending at STATUS: 8 against a 10-field
-  // row whose Status is at 9, with no TeacherMatrixSsId entry at all.
+test('RubricQueue, where RQ05 drifted, is declared once, with the two entries RQ05 got wrong', () => {
+  // RQ05 shipped ending at STATUS: 8 against a 10-field row whose Status is at
+  // 9, with no TeacherMatrixSsId entry at all. Since 2026-11-21 the one map is
+  // 00's RBQ; this pins the group and those two entries.
   const group = FLOW_MAP.columnMaps['cas-ccps:RubricQueue'];
   assert.ok(group, 'the group must stay declared');
-  assert.equal(group.maps.length, 2, 'two maps, or there is nothing to compare');
-  const rq05 = parseColumnMap(
-    fs.readFileSync(path.join(REPO_ROOT, 'cas-ccps/scripts/05_TeacherIntakePipeline.js'), 'utf8'),
-    { object: 'RQ05' });
-  assert.equal(rq05.TEACHER_MATRIX_SS_ID, 8, 'the entry that was missing entirely');
-  assert.equal(rq05.STATUS, 9, 'and the index that was wrong');
+  assert.deepEqual(group.maps.map((m) => m.object), ['RBQ']);
+  const rbq = parseColumnMap(
+    fs.readFileSync(path.join(REPO_ROOT, 'cas-ccps/scripts/00_SharedConfig.js'), 'utf8'),
+    { object: 'RBQ' });
+  assert.equal(rbq.TEACHER_MATRIX_SS_ID, 8, 'the entry that was missing entirely');
+  assert.equal(rbq.STATUS, 9, 'and the index that was wrong');
 });
 
 test('same-name sheets in different systems are declared as separate groups', () => {

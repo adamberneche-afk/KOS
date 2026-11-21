@@ -83,9 +83,7 @@ function syncFlowBuildSpec() {
 // only one whose trigger tab is written by a form handler rather than by a
 // materializer.
 function _fbsAppendFlow1_(rows) {
-  const headers = ["Timestamp", "TeacherEmail", "TeacherName", "Subject",
-                   "CourseName", "Tier", "RubricText", "PromptTemplateID",
-                   "TeacherMatrixSsId", "Status"];
+  const headers = RBQ_HEADERS; // 00_SharedConfig.js
   rows.push(["Flow 1", "trigger", "RubricQueue", "", "",
     "05_TeacherIntakePipeline.js",
     "Trigger on Status = PENDING_EXTRACTION. That literal is written by " +
@@ -97,9 +95,8 @@ function _fbsAppendFlow1_(rows) {
   });
   rows.push(["Flow 1", "write", "TeacherMatrix (per teacher)", "", "",
     "the Flow",
-    "Write a DRAFT row. Column order is TM08 in 08_TeacherConfirmationStep.js, which that " +
-    "file's own header calls the authoritative source — 37_FlowInputBuilder.js's " +
-    "FI_TM_COLUMNS_ mirrors it. See the TeacherMatrix rows below."]);
+    "Write a DRAFT row. Column order is TM_HEADERS in 00_SharedConfig.js, the one " +
+    "declaration every reader uses (08, 37, 53). See the TeacherMatrix rows below."]);
   _fbsAppendTeacherMatrix_(rows);
   rows.push(["Flow 1", "prompt", FLOW_PROMPT_TAB, "", "FLOW_1", "40_FlowPrompts.js",
     "Bind the Gemini step's system prompt to a Sheets lookup on " + FLOW_PROMPT_TAB +
@@ -113,21 +110,16 @@ function _fbsAppendFlow1_(rows) {
 }
 
 // The TeacherMatrix column order, emitted once and referenced by Flow 1's
-// write and Flow 2's read. Derived from FI_TM_COLUMNS_ where that names a
-// column, so the indices cannot drift from what the builder reads.
+// write and Flow 2's read. From 00's TM_HEADERS, with the columns 37 reads
+// (FI_TM_READS_) marked, so the indices cannot drift from what it reads.
 function _fbsAppendTeacherMatrix_(rows) {
-  const headers = ["ConfigID", "UnitName", "Tier", "Persona",
-                   "Milestone1", "Milestone2", "Milestone3", "Milestone4",
-                   "DefinitionOfDone", "InstructorEmail", "Created", "Status",
-                   "PromptTemplateID", "Subject", "CourseName",
-                   "Milestone1CompetencyId", "Milestone2CompetencyId",
-                   "Milestone3CompetencyId", "Milestone4CompetencyId", "LessonUnitId"];
+  const headers = TM_HEADERS;
   const readByBuilder = {};
-  Object.keys(FI_TM_COLUMNS_).forEach(function (k) { readByBuilder[FI_TM_COLUMNS_[k]] = k; });
+  FI_TM_READS_.forEach(function (k) { readByBuilder[TM[k]] = k; });
   headers.forEach(function (h, i) {
     rows.push(["Flow 1", "write", "TeacherMatrix", i + 1, h, "the Flow",
       readByBuilder[i]
-        ? "Read back by 37_FlowInputBuilder.js as FI_TM_COLUMNS_." + readByBuilder[i] +
+        ? "Read back by 37_FlowInputBuilder.js as TM." + readByBuilder[i] +
           " — a shift here silently feeds Flow 2 the wrong field."
         : "Not read by the Flow 2 builder; Status must be DRAFT for " +
           "08_TeacherConfirmationStep.js to pick it up for review."]);

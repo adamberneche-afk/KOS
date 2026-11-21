@@ -2227,6 +2227,60 @@ const LEDGER = {
   LAST_SUGGESTED_SCORE:   26,  // Flow 2's [SUGGESTED_SCORE: N] on the latest check, "" if none
 };
 
+// TeacherMatrix (each teacher's matrix spreadsheet), RubricQueue (Flow 1's
+// trigger) and ReviewQueue (a submission's first stop, on the Admin
+// spreadsheet): their columns (0-based) and header rows, declared once
+// (structure audit 3.1, 2026-11-21). 08, 33, 37, 53, 05, 34, 03, 10, 13 and
+// 50 each kept a copy until then. tests/cas-ccps/tab-columns.test.js holds
+// each map and its header row in step.
+//
+// TeacherMatrix: Flow 1 writes it (16's setup writes the first TM_BASE_WIDTH
+// headers); 08 confirms its drafts, 37 reads it for Flow 2, 53 seeds and
+// refreshes it. The M5 competency IDs (15-18), M6's lesson unit (19) and the
+// student objectives (20, 53) were appended, so no reader's column moved.
+const TM = {
+  CONFIG_ID: 0, UNIT_NAME: 1, TIER: 2, PERSONA: 3,
+  MILESTONE_1: 4, MILESTONE_2: 5, MILESTONE_3: 6, MILESTONE_4: 7,
+  DOD: 8, INSTRUCTOR_EMAIL: 9, CREATED: 10,
+  STATUS: 11,               // DRAFT | REVIEW_SENT | LIVE | ARCHIVED
+  PROMPT_TEMPLATE_ID: 12, SUBJECT: 13, COURSE_NAME: 14,
+  MILESTONE_1_COMPETENCY_ID: 15, MILESTONE_2_COMPETENCY_ID: 16,
+  MILESTONE_3_COMPETENCY_ID: 17, MILESTONE_4_COMPETENCY_ID: 18,
+  LESSON_UNIT_ID: 19,
+  STUDENT_OBJECTIVES: 20,   // JSON { competencyId: "I can …" } (2026-10-24)
+};
+const TM_HEADERS = [
+  "ConfigID", "UnitName", "Tier", "Persona",
+  "Milestone1", "Milestone2", "Milestone3", "Milestone4",
+  "DefinitionOfDone", "InstructorEmail", "Created", "Status",
+  "PromptTemplateID", "Subject", "CourseName",
+  "Milestone1CompetencyId", "Milestone2CompetencyId",
+  "Milestone3CompetencyId", "Milestone4CompetencyId", "LessonUnitId",
+  "StudentObjectives",
+];
+const TM_BASE_WIDTH = 15;
+
+// RubricQueue: 05's onTeacherRubricSubmit appends the row in this order.
+// (05's own RQ05 once ended at STATUS: 8, a column short; 34 kept its own
+// map derived from the writer. Both are folded in here.)
+const RBQ = {
+  TIMESTAMP: 0, TEACHER_EMAIL: 1, TEACHER_NAME: 2, SUBJECT: 3, COURSE_NAME: 4,
+  TIER: 5, RUBRIC_TEXT: 6, PROMPT_TEMPLATE_ID: 7, TEACHER_MATRIX_SS_ID: 8,
+  STATUS: 9,                // PENDING_EXTRACTION → IN_EXTRACTION (Studio) → COMPLETE
+};
+const RBQ_HEADERS = [
+  "Timestamp", "TeacherEmail", "TeacherName", "Subject", "CourseName",
+  "Tier", "RubricText", "PromptTemplateID", "TeacherMatrixSsId", "Status",
+];
+
+// ReviewQueue: a submission's row before 03's bridge stages it. StudentText
+// is always emptied (03's bridgeQueue, 50).
+const RVQ = {
+  TIMESTAMP: 0, GOOGLE_ID: 1, FILE_ID: 2, CONFIG_ID: 3, STUDENT_TEXT: 4,
+  STATUS: 5, RESULT_REF: 6,
+};
+const RVQ_HEADERS = ["Timestamp", "GoogleID", "FileID", "ConfigID", "StudentText", "Status", "ResultRef"];
+
 // The Ledger's header row, one name per LEDGER index above (a test holds the
 // two in step). The one declaration of the Ledger's columns (structure audit
 // 3.1, 2026-11-21): 16's setup writes it, 38's schema guard checks against
@@ -3010,17 +3064,18 @@ function reflectionMatrixRow_(cfg, studentConfigId, teacherEmail) {
   if (!regRow) return null;
   const tm = SpreadsheetApp.openById(String(regRow[2]).trim()).getSheetByName(cfg.tabs.teacherMatrix || "TeacherMatrix");
   if (!tm) return null;
-  // TeacherMatrix columns: 37's FI_TM_COLUMNS_ (milestones 4-7, IDs 15-18),
-  // and 53's StudentObjectives (20).
+  // TeacherMatrix columns: TM above.
   const row = tm.getDataRange().getValues().slice(1).filter(function (r) {
-    return String(r[0] || "").trim() === assignmentId;
+    return String(r[TM.CONFIG_ID] || "").trim() === assignmentId;
   })[0];
   if (!row) return null;
   const at = function (n) { return String(row[n] || "").trim(); };
   let objectives = {};
-  try { objectives = at(20) ? JSON.parse(at(20)) : {}; } catch (e) { objectives = {}; }
-  return { milestone1: at(4), milestone2: at(5), milestone3: at(6),
-           milestone1CompetencyId: at(15), milestone2CompetencyId: at(16), milestone3CompetencyId: at(17),
+  try { objectives = at(TM.STUDENT_OBJECTIVES) ? JSON.parse(at(TM.STUDENT_OBJECTIVES)) : {}; } catch (e) { objectives = {}; }
+  return { milestone1: at(TM.MILESTONE_1), milestone2: at(TM.MILESTONE_2), milestone3: at(TM.MILESTONE_3),
+           milestone1CompetencyId: at(TM.MILESTONE_1_COMPETENCY_ID),
+           milestone2CompetencyId: at(TM.MILESTONE_2_COMPETENCY_ID),
+           milestone3CompetencyId: at(TM.MILESTONE_3_COMPETENCY_ID),
            objectives: objectives };
 }
 

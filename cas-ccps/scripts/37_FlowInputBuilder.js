@@ -601,11 +601,8 @@ function _fiFindMatrixSsId_(cfg, teacherEmail) {
 
 // Hop 3: TeacherMatrix (a per-teacher spreadsheet — this is the hop
 // native Studio's "Get sheet contents" cannot do at all, its Spreadsheet
-// field being a fixed picker only). Column shape matches TM_COLUMNS_ in
-// cas-ccps/studio-steps/CommitRubricDraftStep.gs exactly (20 columns:
-// see that file's own header) but is redeclared here under a distinct
-// name (FI_TM_COLUMNS_) since that file lives in a different GAS
-// project (cas-ccps:studio-steps) with its own separate global scope.
+// field being a fixed picker only). The columns are 00_SharedConfig.js's
+// TM (this file's FI_TM_COLUMNS_ copy was folded in 2026-11-21).
 //
 // Reads defensively past the actual row width: a TeacherMatrix row
 // confirmed before Module 5 shipped is only 15 columns wide (no
@@ -613,12 +610,14 @@ function _fiFindMatrixSsId_(cfg, teacherEmail) {
 // an out-of-range index returns "", the same "carry the blank through,
 // never guess" rule 15b_StudioFlowPrompts_Flow2_Revised.js's own
 // DEPENDENCY note requires.
-var FI_TM_COLUMNS_ = {
-  CONFIG_ID: 0, UNIT_NAME: 1, TIER: 2, PERSONA: 3,
-  MILESTONE_1: 4, MILESTONE_2: 5, MILESTONE_3: 6, MILESTONE_4: 7, DOD: 8,
-  MILESTONE_1_COMPETENCY_ID: 15, MILESTONE_2_COMPETENCY_ID: 16,
-  MILESTONE_3_COMPETENCY_ID: 17, MILESTONE_4_COMPETENCY_ID: 18,
-};
+// The TeacherMatrix columns this builder reads (00's TM), named for 42's
+// build spec, which marks them as the ones a shift would feed Flow 2 wrong.
+var FI_TM_READS_ = [
+  "CONFIG_ID", "UNIT_NAME", "TIER", "PERSONA",
+  "MILESTONE_1", "MILESTONE_2", "MILESTONE_3", "MILESTONE_4", "DOD",
+  "MILESTONE_1_COMPETENCY_ID", "MILESTONE_2_COMPETENCY_ID",
+  "MILESTONE_3_COMPETENCY_ID", "MILESTONE_4_COMPETENCY_ID",
+];
 
 function _fiFindTeacherMatrixRow_(matrixSsId, configId) {
   const ss = SpreadsheetApp.openById(matrixSsId);
@@ -626,25 +625,25 @@ function _fiFindTeacherMatrixRow_(matrixSsId, configId) {
   if (!sheet) return null;
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][FI_TM_COLUMNS_.CONFIG_ID]).trim() === configId) {
+    if (String(data[i][TM.CONFIG_ID]).trim() === configId) {
       const row = data[i];
       const at = (n) => String(row[n] || "").trim();
       return {
-        unitName: at(FI_TM_COLUMNS_.UNIT_NAME),
-        tier: at(FI_TM_COLUMNS_.TIER),
-        persona: at(FI_TM_COLUMNS_.PERSONA),
-        milestone1: at(FI_TM_COLUMNS_.MILESTONE_1),
-        milestone2: at(FI_TM_COLUMNS_.MILESTONE_2),
-        milestone3: at(FI_TM_COLUMNS_.MILESTONE_3),
-        milestone4: at(FI_TM_COLUMNS_.MILESTONE_4),
-        dod: at(FI_TM_COLUMNS_.DOD),
+        unitName: at(TM.UNIT_NAME),
+        tier: at(TM.TIER),
+        persona: at(TM.PERSONA),
+        milestone1: at(TM.MILESTONE_1),
+        milestone2: at(TM.MILESTONE_2),
+        milestone3: at(TM.MILESTONE_3),
+        milestone4: at(TM.MILESTONE_4),
+        dod: at(TM.DOD),
         // Competency IDs through 32's competencyIdText_ (2026-11-18): String()
         // of a cell Sheets stored as a date wrote "Tue Jul 01 8177 …" into
         // FlowInput and then CompetencyEvidence.
-        milestone1CompetencyId: competencyIdText_(row[FI_TM_COLUMNS_.MILESTONE_1_COMPETENCY_ID]),
-        milestone2CompetencyId: competencyIdText_(row[FI_TM_COLUMNS_.MILESTONE_2_COMPETENCY_ID]),
-        milestone3CompetencyId: competencyIdText_(row[FI_TM_COLUMNS_.MILESTONE_3_COMPETENCY_ID]),
-        milestone4CompetencyId: competencyIdText_(row[FI_TM_COLUMNS_.MILESTONE_4_COMPETENCY_ID]),
+        milestone1CompetencyId: competencyIdText_(row[TM.MILESTONE_1_COMPETENCY_ID]),
+        milestone2CompetencyId: competencyIdText_(row[TM.MILESTONE_2_COMPETENCY_ID]),
+        milestone3CompetencyId: competencyIdText_(row[TM.MILESTONE_3_COMPETENCY_ID]),
+        milestone4CompetencyId: competencyIdText_(row[TM.MILESTONE_4_COMPETENCY_ID]),
       };
     }
   }

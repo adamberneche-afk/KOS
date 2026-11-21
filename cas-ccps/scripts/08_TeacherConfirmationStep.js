@@ -127,30 +127,8 @@ function registerTriggersIfNeeded_() {
 // avoids renumbering any existing column — no existing read/write in
 // this file or any other script needs to change its index references.
 // ---------------------------------------------------------------------------
-const TM08 = {
-  CONFIG_ID: 0,
-  UNIT_NAME: 1,
-  TIER: 2,
-  PERSONA: 3,
-  MILESTONE_1: 4,
-  MILESTONE_2: 5,
-  MILESTONE_3: 6,
-  MILESTONE_4: 7,
-  DOD: 8,
-  INSTRUCTOR_EMAIL: 9,
-  CREATED: 10,
-  STATUS: 11,               // DRAFT | REVIEW_SENT | LIVE | ARCHIVED
-  PROMPT_TEMPLATE_ID: 12,
-  SUBJECT: 13,
-  COURSE_NAME: 14,
-  // ── M5 ──
-  MILESTONE_1_COMPETENCY_ID: 15,
-  MILESTONE_2_COMPETENCY_ID: 16,
-  MILESTONE_3_COMPETENCY_ID: 17,
-  MILESTONE_4_COMPETENCY_ID: 18,
-  // ── M6 ── appended after the four M5 columns, same append-only pattern
-  LESSON_UNIT_ID: 19,
-};
+// The columns themselves are 00_SharedConfig.js's TM (this file's TM08 was
+// folded into it 2026-11-21, structure audit 3.1).
 
 // ---------------------------------------------------------------------------
 // DraftUnits column indices (0-based)
@@ -227,24 +205,24 @@ function pollForNewDrafts() {
 
   for (let i = 1; i < matrixData.length; i++) {
     const row = matrixData[i];
-    const status = String(row[TM08.STATUS]).trim();
+    const status = String(row[TM.STATUS]).trim();
     if (status !== "DRAFT") continue;
 
-    const configId = String(row[TM08.CONFIG_ID]).trim();
-    const instructorEmail = String(row[TM08.INSTRUCTOR_EMAIL]).trim();
+    const configId = String(row[TM.CONFIG_ID]).trim();
+    const instructorEmail = String(row[TM.INSTRUCTOR_EMAIL]).trim();
     const instructorName = cfg.teacherName || instructorEmail;
 
     const config = {
-      unitName: String(row[TM08.UNIT_NAME]).trim(),
-      tier: String(row[TM08.TIER]).trim(),
-      persona: String(row[TM08.PERSONA]).trim(),
-      milestone1: String(row[TM08.MILESTONE_1]).trim(),
-      milestone2: String(row[TM08.MILESTONE_2]).trim(),
-      milestone3: String(row[TM08.MILESTONE_3]).trim(),
-      milestone4: String(row[TM08.MILESTONE_4]).trim(),
-      definitionOfDone: String(row[TM08.DOD]).trim(),
-      subject: String(row[TM08.SUBJECT]).trim(),
-      courseName: String(row[TM08.COURSE_NAME]).trim(),
+      unitName: String(row[TM.UNIT_NAME]).trim(),
+      tier: String(row[TM.TIER]).trim(),
+      persona: String(row[TM.PERSONA]).trim(),
+      milestone1: String(row[TM.MILESTONE_1]).trim(),
+      milestone2: String(row[TM.MILESTONE_2]).trim(),
+      milestone3: String(row[TM.MILESTONE_3]).trim(),
+      milestone4: String(row[TM.MILESTONE_4]).trim(),
+      definitionOfDone: String(row[TM.DOD]).trim(),
+      subject: String(row[TM.SUBJECT]).trim(),
+      courseName: String(row[TM.COURSE_NAME]).trim(),
     };
 
     // Register in DraftUnits tab for confirmation tracking
@@ -283,7 +261,7 @@ function pollForNewDrafts() {
     sendReviewEmail_(instructorEmail, instructorName, configId, config, reviewUrl);
 
     // Mark TeacherMatrix row as REVIEW_SENT — prevents re-processing
-    matrix.getRange(i + 1, TM08.STATUS + 1).setValue("REVIEW_SENT");
+    matrix.getRange(i + 1, TM.STATUS + 1).setValue("REVIEW_SENT");
 
     Logger.log(
       "[DRAFT] Review email sent — " + instructorEmail +
@@ -417,23 +395,23 @@ function onTeacherConfirmSubmit(e) {
   // Find the matrix row by ConfigID
   const matrixData = matrix.getDataRange().getValues();
   for (let i = 1; i < matrixData.length; i++) {
-    if (String(matrixData[i][TM08.CONFIG_ID]).trim() === configId) {
+    if (String(matrixData[i][TM.CONFIG_ID]).trim() === configId) {
       const rowNum = i + 1;
-      matrix.getRange(rowNum, TM08.UNIT_NAME + 1).setValue(unitName);
-      matrix.getRange(rowNum, TM08.PERSONA + 1).setValue(persona);
-      matrix.getRange(rowNum, TM08.MILESTONE_1 + 1).setValue(milestone1);
-      matrix.getRange(rowNum, TM08.MILESTONE_2 + 1).setValue(milestone2);
-      matrix.getRange(rowNum, TM08.MILESTONE_3 + 1).setValue(milestone3);
-      matrix.getRange(rowNum, TM08.MILESTONE_4 + 1).setValue(milestone4);
-      matrix.getRange(rowNum, TM08.DOD + 1).setValue(dod);
-      matrix.getRange(rowNum, TM08.STATUS + 1).setValue("LIVE");
+      matrix.getRange(rowNum, TM.UNIT_NAME + 1).setValue(unitName);
+      matrix.getRange(rowNum, TM.PERSONA + 1).setValue(persona);
+      matrix.getRange(rowNum, TM.MILESTONE_1 + 1).setValue(milestone1);
+      matrix.getRange(rowNum, TM.MILESTONE_2 + 1).setValue(milestone2);
+      matrix.getRange(rowNum, TM.MILESTONE_3 + 1).setValue(milestone3);
+      matrix.getRange(rowNum, TM.MILESTONE_4 + 1).setValue(milestone4);
+      matrix.getRange(rowNum, TM.DOD + 1).setValue(dod);
+      matrix.getRange(rowNum, TM.STATUS + 1).setValue("LIVE");
       // ── M5 ──
-      matrix.getRange(rowNum, TM08.MILESTONE_1_COMPETENCY_ID + 1).setValue(milestone1CompetencyId);
-      matrix.getRange(rowNum, TM08.MILESTONE_2_COMPETENCY_ID + 1).setValue(milestone2CompetencyId);
-      matrix.getRange(rowNum, TM08.MILESTONE_3_COMPETENCY_ID + 1).setValue(milestone3CompetencyId);
-      matrix.getRange(rowNum, TM08.MILESTONE_4_COMPETENCY_ID + 1).setValue(milestone4CompetencyId);
+      matrix.getRange(rowNum, TM.MILESTONE_1_COMPETENCY_ID + 1).setValue(milestone1CompetencyId);
+      matrix.getRange(rowNum, TM.MILESTONE_2_COMPETENCY_ID + 1).setValue(milestone2CompetencyId);
+      matrix.getRange(rowNum, TM.MILESTONE_3_COMPETENCY_ID + 1).setValue(milestone3CompetencyId);
+      matrix.getRange(rowNum, TM.MILESTONE_4_COMPETENCY_ID + 1).setValue(milestone4CompetencyId);
       // ── M6 ──
-      matrix.getRange(rowNum, TM08.LESSON_UNIT_ID + 1).setValue(lessonUnitId);
+      matrix.getRange(rowNum, TM.LESSON_UNIT_ID + 1).setValue(lessonUnitId);
       break;
     }
   }

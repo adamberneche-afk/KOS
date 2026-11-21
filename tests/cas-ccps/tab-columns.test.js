@@ -1,7 +1,7 @@
 'use strict';
 // A tab's columns are declared once, in 00_SharedConfig.js (structure audit
-// 3.1, 2026-11-21): the Ledger (LEDGER, LEDGER_HEADERS) and WarmUpQueue (WQ,
-// WQ_HEADERS). Each index map must stay in step with its header row, and no
+// 3.1, 2026-11-21): the Ledger (LEDGER, LEDGER_HEADERS), WarmUpQueue (WQ,
+// WQ_HEADERS), TeacherMatrix (TM), RubricQueue (RBQ) and ReviewQueue (RVQ). Each index map must stay in step with its header row, and no
 // other file may keep its own copy.
 
 const test = require('node:test');
@@ -13,7 +13,8 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const x = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')],
   ['LEDGER', 'LEDGER_HEADERS', 'LEDGER_BASE_WIDTH', 'LEDGER_COL_COUNT', 'LEDGER_LATER_HEADERS',
-    'WQ', 'WQ_HEADERS', 'WQ_BASE_WIDTH']).exported;
+    'WQ', 'WQ_HEADERS', 'WQ_BASE_WIDTH', 'TM', 'TM_HEADERS', 'TM_BASE_WIDTH',
+    'RBQ', 'RBQ_HEADERS', 'RVQ', 'RVQ_HEADERS']).exported;
 
 // Each LEDGER key and the header it names.
 const NAMES = {
@@ -64,4 +65,36 @@ test('no script keeps its own copy of WarmUpQueue\'s column indexes or header ro
     if (/"lesson_context_snapshot"\s*,\s*"student_profile_snapshot"/.test(src)) copies.push(f + ': a header list');
   }
   assert.deepEqual(copies, [], 'use 00_SharedConfig.js\'s WQ and WQ_HEADERS');
+});
+
+// KEY_NAME -> HeaderName for the CamelCase tabs: each word capitalized, then
+// the few that don't follow that.
+const camel = (k, odd) => odd[k] || k.toLowerCase().split('_').map((w) => w[0].toUpperCase() + w.slice(1)).join('');
+const checkTab = (map, headers, odd) => {
+  assert.equal(Object.keys(map).length, headers.length);
+  for (const k of Object.keys(map)) assert.equal(headers[map[k]], camel(k, odd), k);
+};
+
+test('TeacherMatrix, RubricQueue and ReviewQueue: each index map names its header row', () => {
+  checkTab(x.TM, x.TM_HEADERS, {
+    CONFIG_ID: 'ConfigID', DOD: 'DefinitionOfDone', PROMPT_TEMPLATE_ID: 'PromptTemplateID',
+    MILESTONE_1: 'Milestone1', MILESTONE_2: 'Milestone2', MILESTONE_3: 'Milestone3', MILESTONE_4: 'Milestone4',
+    MILESTONE_1_COMPETENCY_ID: 'Milestone1CompetencyId', MILESTONE_2_COMPETENCY_ID: 'Milestone2CompetencyId',
+    MILESTONE_3_COMPETENCY_ID: 'Milestone3CompetencyId', MILESTONE_4_COMPETENCY_ID: 'Milestone4CompetencyId',
+  });
+  assert.equal(x.TM_HEADERS[x.TM_BASE_WIDTH - 1], 'CourseName', 'setup-era width ends at CourseName');
+  checkTab(x.RBQ, x.RBQ_HEADERS, { PROMPT_TEMPLATE_ID: 'PromptTemplateID', TEACHER_MATRIX_SS_ID: 'TeacherMatrixSsId' });
+  checkTab(x.RVQ, x.RVQ_HEADERS, { GOOGLE_ID: 'GoogleID', FILE_ID: 'FileID', CONFIG_ID: 'ConfigID' });
+});
+
+test('no script keeps its own copy of TeacherMatrix, RubricQueue or ReviewQueue columns', () => {
+  const copies = [];
+  for (const f of fs.readdirSync(SCRIPTS).filter((n) => n.endsWith('.js') && n !== '00_SharedConfig.js')) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    const m = src.match(/^(?:const|var) (TM\d+|FI_TM_COLUMNS_|RQ\d+|WD_RUBRIC_QUEUE_COLUMNS)\s*=|^const (?:TM|RQ)_(CONFIG_ID|STATUS|FILE_ID)\s*=\s*\d+/m);
+    if (m) copies.push(f + ': ' + m[0]);
+    if (/"DefinitionOfDone",\s*"InstructorEmail"/.test(src)) copies.push(f + ': a TeacherMatrix header list');
+    if (/"RubricText",\s*"PromptTemplateID",\s*"TeacherMatrixSsId"/.test(src)) copies.push(f + ': a RubricQueue header list');
+  }
+  assert.deepEqual(copies, [], 'use 00_SharedConfig.js\'s TM, RBQ and RVQ');
 });

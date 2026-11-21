@@ -10,12 +10,7 @@
 // Ledger columns: 00_SharedConfig.js's LEDGER (this file's copy was folded in
 // 2026-11-21, structure audit 3.1).
 
-// ReviewQueue column indices (0-based)
-const RQ_GOOGLE_ID = 1;
-const RQ_FILE_ID   = 2;
-const RQ_CONFIG_ID = 3;
-const RQ_STUDENT_TEXT = 4; // always emptied; see bridgeQueue()
-const RQ_STATUS    = 5;
+// ReviewQueue columns: 00_SharedConfig.js's RVQ (folded in 2026-11-21).
 
 // STAGING_PIPELINE column indices (0-based)
 // Schema: Timestamp | QueueRowRef | StudentFileID | ConfigID | TeacherEmail | Status
@@ -74,8 +69,8 @@ function bridgeQueue() {
     // reads the student's Doc). The Student Dashboard no longer stores it,
     // but docs made before the 01 change still append it here directly
     // from their own menu, so empty the column whenever any row has some.
-    if (queueData.slice(1).some(r => String(r[RQ_STUDENT_TEXT]).trim() !== "")) {
-      queueSheet.getRange(2, RQ_STUDENT_TEXT + 1, queueData.length - 1, 1)
+    if (queueData.slice(1).some(r => String(r[RVQ.STUDENT_TEXT]).trim() !== "")) {
+      queueSheet.getRange(2, RVQ.STUDENT_TEXT + 1, queueData.length - 1, 1)
         .setValues(queueData.slice(1).map(() => [""]));
       Logger.log("[BRIDGE] Emptied student text from ReviewQueue.");
     }
@@ -100,13 +95,13 @@ function bridgeQueue() {
 
     for (let i = 1; i < queueData.length; i++) {
       const row    = queueData[i];
-      const status = String(row[RQ_STATUS]).trim();
+      const status = String(row[RVQ.STATUS]).trim();
       if (status !== "PENDING") continue;
 
       const queueRowRef   = (i + 1).toString();
-      const studentFileId = String(row[RQ_FILE_ID]).trim();
-      const configId      = String(row[RQ_CONFIG_ID]).trim();
-      const googleId      = String(row[RQ_GOOGLE_ID]).trim();
+      const studentFileId = String(row[RVQ.FILE_ID]).trim();
+      const configId      = String(row[RVQ.CONFIG_ID]).trim();
+      const googleId      = String(row[RVQ.GOOGLE_ID]).trim();
 
       if (alreadyStaged.has(queueRowRef)) continue;
 
@@ -203,7 +198,7 @@ function backPropagateCompletions() {
         const rowNum = parseInt(queueRowRef, 10);
         if (!isNaN(rowNum) && rowNum >= 2) {
           const currentQStatus = String(
-            queueSheet.getRange(rowNum, RQ_STATUS + 1).getValue()
+            queueSheet.getRange(rowNum, RVQ.STATUS + 1).getValue()
           ).trim();
           if (currentQStatus === "STAGED") {
             markQueueRow_(queueSheet, rowNum, stagingStatus);
@@ -230,7 +225,7 @@ function backPropagateCompletions() {
       if (isNaN(rowNum) || rowNum < 2) continue;
 
       const currentStatus = String(
-        queueSheet.getRange(rowNum, RQ_STATUS + 1).getValue()
+        queueSheet.getRange(rowNum, RVQ.STATUS + 1).getValue()
       ).trim();
 
       // A result can land after the timeout branch above already closed the
@@ -271,7 +266,7 @@ function backPropagateCompletions() {
 // bridgeQueue has work when a ReviewQueue row is PENDING or still holds
 // student text. Reads ReviewQueue's StudentText and Status columns.
 function bridgeQueueHasWork_(ctx) {
-  const queue = ctx.rows("admin", ctx.cfg().tabs.reviewQueue, RQ_STUDENT_TEXT + 1, 2);
+  const queue = ctx.rows("admin", ctx.cfg().tabs.reviewQueue, RVQ.STUDENT_TEXT + 1, 2);
   if (queue === null) return true; // no tab: the job logs it
   return queue.some(function (r) {
     return String(r[1]).trim() === "PENDING" || String(r[0]).trim() !== "";
@@ -285,7 +280,7 @@ function bridgeQueueHasWork_(ctx) {
 function backPropagateHasWork_(ctx) {
   const tabs = ctx.cfg().tabs;
   const staging = ctx.rows("admin", tabs.stagingPipeline, 1, 0);
-  const queue = ctx.rows("admin", tabs.reviewQueue, RQ_STUDENT_TEXT + 1, 2);
+  const queue = ctx.rows("admin", tabs.reviewQueue, RVQ.STUDENT_TEXT + 1, 2);
   if (staging === null || queue === null) return true;
   return staging.some(function (r) {
     const st = String(r[STG_STATUS]).trim();
@@ -730,7 +725,7 @@ function _flow2AlertBody_(st) {
 // markQueueRow_
 // ---------------------------------------------------------------------------
 function markQueueRow_(sheet, rowNumber, status) {
-  sheet.getRange(rowNumber, RQ_STATUS + 1).setValue(status);
+  sheet.getRange(rowNumber, RVQ.STATUS + 1).setValue(status);
 }
 
 // ---------------------------------------------------------------------------
@@ -805,5 +800,5 @@ function markQueueRowComplete(queueRowRef) {
   const sheet      = ss.getSheetByName(cfg.tabs.reviewQueue);
   const rowNumber  = parseInt(queueRowRef, 10);
   if (isNaN(rowNumber) || rowNumber < 2) return;
-  sheet.getRange(rowNumber, RQ_STATUS + 1).setValue("COMPLETE");
+  sheet.getRange(rowNumber, RVQ.STATUS + 1).setValue("COMPLETE");
 }

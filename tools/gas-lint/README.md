@@ -197,13 +197,17 @@ it — that gap is closed now.
    `WD_RUBRIC_QUEUE_COLUMNS` in `34_QueueWatchdog.js` — is the case this
    check was written for, and the Central Ledger version of it (a shift that
    made `LEDGER.TEACHER_EMAIL` return a person's *name*) cost a live session.
+   Since 2026-11-21 (structure audit 3.1) cas-ccps declares most tabs once, in
+   `00_SharedConfig.js` (`LEDGER`, `WQ`, `TM`, `RBQ`, `RVQ`), so those groups
+   hold one map each: declared so a second copy is added to the group rather
+   than drifting beside it.
 
    `flow-map.json`'s `columnMaps` declares the groups; the check parses each
    declared map out of its file and compares every pair on the keys they
    **share**. Disagreement is an **error** naming the differing keys and the
    authoritative row order. Keys in only one map are deliberately not a
    finding — a reader may legitimately name fewer columns than the writer
-   (`FI_TM_COLUMNS_` names 13 of TeacherMatrix's 20 because it reads 13), and
+   (37's old `FI_TM_COLUMNS_` named 13 of TeacherMatrix's 20 because it read 13), and
    requiring parity would report a false conflict on every run, which is how
    a check gets muted. A map that can't be found (typically a rename) is a
    **warning**, because a rename otherwise un-checks the group in silence.
@@ -213,8 +217,8 @@ it — that gap is closed now.
    counts. Same name is not same sheet.
 
    Two shapes are parsed, because the repo uses both: an object literal
-   (`const TM08 = { CONFIG_ID: 0, … }`, read by brace depth) and a flat
-   prefix family (`const WQ25_QUEUE_ID = 0;`, keyed by suffix). `exclude`
+   (`const TM = { CONFIG_ID: 0, … }`, read by brace depth) and a flat
+   prefix family (`const STG_STATUS = 5;`, keyed by suffix). `exclude`
    drops non-column members like `COL_COUNT`.
 
 9. **Flow surface completeness** (`checkFlowSurfaces`). "Nothing came back"

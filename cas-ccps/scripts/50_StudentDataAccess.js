@@ -361,7 +361,7 @@ function _sdaLedgerStudentAccess_(cfg) {
 // 100,000 characters, into column 5 of ReviewQueue on the Admin spreadsheet.
 // Nothing ever read it (Flow 2 reads the student's own Doc), so emptying it
 // loses nothing. The rows themselves stay: the bridge tracks them by status.
-const SDA_RQ_TEXT_COL = 5; // 1-based
+const SDA_RQ_TEXT_COL = RVQ.STUDENT_TEXT + 1; // 1-based; 00's RVQ
 
 function previewReviewQueueTextScrub() {
   return scrubReviewQueueText_({ apply: false });

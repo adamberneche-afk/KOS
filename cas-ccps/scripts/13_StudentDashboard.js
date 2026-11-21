@@ -2193,11 +2193,11 @@ function _dashSubmitChecks_(fileId, configId) {
     dashRecordFailure_(cfg, "NO_QUEUE");
     return { ok: false, error: "NO_QUEUE" };
   }
-  // Columns 2 and 5 are 03's RQ_FILE_ID and RQ_STATUS. STAGED is still in
+  // ReviewQueue's columns: 00's RVQ. STAGED is still in
   // line: the bridge has taken it but no evaluation has landed. A second
   // submit then used to pass and stamp a new SubmissionTS.
   const pending = queue.getDataRange().getValues().slice(1).some(r =>
-    String(r[2]).trim() === fileId && DASH_OPEN_QUEUE_STATUSES[String(r[5]).trim()]);
+    String(r[RVQ.FILE_ID]).trim() === fileId && DASH_OPEN_QUEUE_STATUSES[String(r[RVQ.STATUS]).trim()]);
   if (pending) return { ok: false, error: "ALREADY_QUEUED" };
 
   // A form, Slides or Sheets part (Phase 4b/4c/4d): the file's structure, read and

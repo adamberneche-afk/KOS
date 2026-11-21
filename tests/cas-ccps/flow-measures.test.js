@@ -15,7 +15,7 @@ const FILES = ['00_SharedConfig.js', '03_QueueBridge.js', '34_QueueWatchdog.js',
   '69_EvaluationHealth.js', '69b_FlowMeasures.js'].map(S);
 const EXPOSE = ['reportEvaluationHealth', 'evaluationHealth_', 'FM_HEADERS', 'FI', 'EVAL_LOG_HEADERS', 'WFB_RETURN_HEADERS',
   'WFB_FLOW3_HEADERS', 'TIC_INPUT_HEADERS', 'TIC_RETURN_HEADERS', 'TURN_IN_CHECK_HEADERS', 'TCHK',
-  'TURN_IN_CODE_HEADERS', 'TCODE', 'EH_D8_FAILURE_BAR', 'WD_RUBRIC_QUEUE_COLUMNS'];
+  'TURN_IN_CODE_HEADERS', 'TCODE', 'EH_D8_FAILURE_BAR', 'RBQ'];
 
 // Wednesday 2026-10-28, noon local; the week of Monday 2026-10-26.
 const NOW = new Date(2026, 9, 28, 12, 0, 0);
