@@ -221,9 +221,10 @@ marked "check" is held by CI; the rest are how a session works.
   gas-lint `retired-in-project`, a project file whose header says it is
   retired or superseded.)
 - **Files grow where adding is easiest.** 63% of the Teacher Dashboard was
-  one string. (Check to come: gas-lint `size-budget`, a deployed file, a
-  string literal or a README over its line budget, exceptions named with
-  why.)
+  one string. gas-lint's `size-budget` check is a ratchet: a deployed file
+  over 1,500 lines, a string literal over 100 or a README over 250 fails
+  unless `tools/gas-lint/size-budgets.json` lists it with its size and why,
+  and a listed one may not grow.
 - **Comments describe the present.** Dates and "used to" belong in
   HISTORY.md; a header gives purpose, triggers and the data boundary.
 - **A check is accurate before it gates.** A new check runs over the repo
