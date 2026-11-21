@@ -1669,3 +1669,19 @@ and where settings come from. The README is 319 lines: "Known gaps" stays,
 as this file's own header says it should (its items point back at each
 other). References elsewhere (DEPLOYMENT_HANDOFF, 02's resubmit message,
 AGENT_NOTES, the cartridge builder, the UX reference) point at the new files.
+
+## Setup docs: the retired ones archived, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 4.3. Archived to
+`archive/2026-27-Q2/cas-ccps/docs/`: `ADMIN_DEPLOYMENT_WALKTHROUGH.html`
+(retired 2026-10-22, still linked from 07's header and `index.html`),
+`CAS_M2_DeploymentGuide.html`, `PLATFORM_DOCUMENTATION.html` (the original
+platform plan; its one design principle, "automate the prerequisite, never
+replace judgment", is now in `SYSTEM_ARCHITECTURE.html`), and the Module 4
+and 5 `.docx`, untouched since August. `docs/index.html`, which nothing
+linked to, is deleted; the README's directory map is the index.
+`docs/SETUP_GUIDE.md` is the install guide everything now points to.
+
+Not done here: turning `DEPLOYMENT_HANDOFF.md` into a status page only. It
+still holds the step list the operator's queue refers to by number (17k and
+the like), so that waits for a handoff that retires those numbers.

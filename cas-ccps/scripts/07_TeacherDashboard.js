@@ -41,7 +41,7 @@
 // ---------------------------------------------------------------------------
 // _isAuthorizedTeacher_ — true only if the active session belongs to the
 // teacher this dashboard is configured for (cfg.teacherEmail, a Script
-// Property set during deployment — see ADMIN_DEPLOYMENT_WALKTHROUGH.html
+// Property set during deployment — see cas-ccps/docs/SETUP_GUIDE.md
 // Step 10). Fails closed: an unset/blank teacherEmail can never match a
 // real signed-in caller, so a misconfigured deployment denies everyone
 // instead of silently granting access.

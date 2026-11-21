@@ -508,7 +508,7 @@ answered). A check named here but missing from its project is marked MISSING.
 | `family-mail` | `family-sentinel` | `installFamilyMailFixture()` | `runFamilyMailCanary()` | `checkFamilyMailFlowBinding()` | `checkFamilyMailFlowLiveness()` | `FAMILY_MAIL_SENTINEL.md` |
 | `flow-2` | `central-ledger` | `installFlow2Fixture()` | `runFlow2Canary()` | `checkFlow2Binding()` | `checkFlow2Liveness()` | `FERPA_DATA_MAP.md`, `IMPACT_DASHBOARD.html`, `SETUP_GUIDE.md`, `STUDIO_FLOW_REFERENCE.html`, `SYSTEM_ARCHITECTURE.html` |
 | `flow-6-turn-in-check` | `central-ledger` | `installTurnInCheckFixture()` | `runTurnInCheckFlowCanary()` | `checkTurnInCheckFlowBinding()` | `checkTurnInCheckFlowLiveness()` | `TURN_IN_CHECK_FLOW.md` |
-| `flows-3-4-5` | `central-ledger` | `installWarmUpFixtures()` | `runWarmUpFlowCanary()` | `checkFlowBinding()` | `checkWarmUpFlowLiveness()` | `CAS_Flow3_Flow4_Specification.html`, `CAS_M2_DeploymentGuide.html`, `CAS_M2_Schema.html`, `CAS_M2_WarmUp_Schema.html`, `CAS_Module2_Documentation_v2.0.html`, `IMPACT_DASHBOARD.html`, `SETUP_GUIDE.md`, `STUDIO_FLOW_REFERENCE.html` |
+| `flows-3-4-5` | `central-ledger` | `installWarmUpFixtures()` | `runWarmUpFlowCanary()` | `checkFlowBinding()` | `checkWarmUpFlowLiveness()` | `CAS_Flow3_Flow4_Specification.html`, `CAS_M2_Schema.html`, `CAS_M2_WarmUp_Schema.html`, `CAS_Module2_Documentation_v2.0.html`, `IMPACT_DASHBOARD.html`, `SETUP_GUIDE.md`, `STUDIO_FLOW_REFERENCE.html` |
 
 Build specs (write the tab you build a Flow from, and check it is current) and preflights (structure: tabs, triggers, settings), by project:
 

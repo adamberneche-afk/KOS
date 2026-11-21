@@ -36,7 +36,7 @@
 // placeholder section was removed then: it promised a value it never had.
 //
 // WHAT THIS DOES NOT INCLUDE: a real "suggested warm-up question."
-// PLATFORM_DOCUMENTATION.html describes one, but LessonContext and
+// The original platform plan (archived PLATFORM_DOCUMENTATION.html) describes one, but LessonContext and
 // WarmUpQueue are unrelated subsystems — 24_WarmUpBridge.js's findLesson_()
 // reads LessonContext only to feed Flow 3's *future* nightly generation,
 // never the reverse. At the moment a frame is generated (synchronously, at

@@ -204,6 +204,8 @@ Where this page describes the doc menu, feedback at the top or end of the doc, S
     <h2>Design Principles</h2>
   </div>
 
+  <p><strong style="color:var(--text-bright)">Automate the prerequisite; never replace judgment.</strong> The one idea every module is built on: define what &ldquo;ready for human attention&rdquo; means, build a gate that enforces it, and let the teacher&rsquo;s attention arrive only then. The system verifies, surfaces and scaffolds; the teacher decides, responds and knows the student. Automation flags; humans act. (From the original platform plan, <code>PLATFORM_DOCUMENTATION.html</code>, archived 2026-11-21.)</p>
+
   <p><strong style="color:var(--text-bright)">Decoupled inference.</strong> No API key ever touches a student-accessible surface. All Gemini inference runs through native Workspace Studio Flows — the system acts as a queue and data router. Studio owns the model call; GAS owns everything else.</p>
 
   <p><strong style="color:var(--text-bright)">Math-before-muse.</strong> GAS handles all quantitative operations — sorting, filtering, aggregation, column arithmetic. Studio handles only synthesis and evaluation. Neither system does the other's job.</p>

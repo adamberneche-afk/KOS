@@ -297,7 +297,7 @@ unchanged for every project.
 3. **`teacher-dashboard`/`student-dashboard` both need `ADMIN_SS_ID` set,
    not just `CENTRAL_LEDGER_SS_ID`.** `00_SharedConfig.js`'s
    `getConfig_()` hard-requires both, same value.
-   (`ADMIN_DEPLOYMENT_WALKTHROUGH.html` is retired, 2026-10-22.)
+   (`ADMIN_DEPLOYMENT_WALKTHROUGH.html` was retired 2026-10-22 and archived 2026-11-21; `cas-ccps/docs/SETUP_GUIDE.md` is the install guide.)
    While setting these, also confirm `student-dashboard`'s manifest has
    `executeAs: "USER_DEPLOYING"` and `access: "DOMAIN"` (changed
    2026-09-28 for the student-data access policy). It used to be

@@ -32,7 +32,7 @@ const WORD_TARGET = 200000;
 const SOURCES = [
   { name: 'KOS_CONTEXT_NORTH_STAR', title: 'What each system is for, in its own words', files: [
     'kos-personal/KOS_WHITE_PAPER.md',
-    'cas-ccps/docs/PLATFORM_DOCUMENTATION.html',
+    'archive/2026-27-Q2/cas-ccps/docs/PLATFORM_DOCUMENTATION.html',
     'cas-ccps/docs/CAS_ContextualGates_DesignPrinciples.html',
     'leader-hub/LEADERHUB_PRINCIPLES.md',
   ] },

@@ -3,9 +3,9 @@
 // BOUND TO: Central Ledger spreadsheet
 // NUMBERING NOTE (reconciliation decision 6, revised during implementation):
 // this file's own comments below call it "Module 3." That collides with
-// PLATFORM_DOCUMENTATION.html's Module 3 (Student Profile) and — more
+// The original platform plan's (archived PLATFORM_DOCUMENTATION.html) Module 3 (Student Profile) and — more
 // importantly — with the real, already-implemented Script 29's own
-// documentation (CAS_Module4_Documentation_v1.1.docx), which explicitly
+// documentation (CAS_Module4_Documentation_v1.1.docx, archived 2026-11-21), which explicitly
 // reserves "Module 5" for exactly this kind of student-competency work
 // ("If a future Module 5 builds a genuine student-competency junction...").
 // This script is Module 5, not Module 3. Renumbering the label only —
