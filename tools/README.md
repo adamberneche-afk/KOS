@@ -33,10 +33,32 @@ is to run the same command without it, then commit what changed.
 | [`cas-ccps/`](./cas-ccps/), [`kos-personal/`](./kos-personal/), [`leader-hub/`](./leader-hub/) | the lesson, rubric, prompt, cartridge and dashboard generators | by hand; tests check each output | the generator itself, e.g. `node tools/cas-ccps/build-lesson-assignments.js` (`--check`) |
 | [`notebook-codebase/`](./notebook-codebase/build.js) | the repo as Gemini notebook sources | by hand | `node tools/notebook-codebase/build.js` |
 | [`notebook-context/`](./notebook-context/build.js) | the "KOS Context" notebook | by hand | `node tools/notebook-context/build.js` |
-| [`lib/`](./lib/) | helpers the tools share | (library) | |
+| [`lib/`](./lib/) | helpers the tools share: `zip.js`, `js-source.js`, `repo.js`, `prompt-constants.js` | (library; `tests/tools/tools-lib.test.js`) | |
 | [`check-all.js`](./check-all.js) | `npm run check` | by hand | `npm run check` / `npm run check:fast` |
 
 What CI runs, in order, is `.github/workflows/gas-lint.yml`.
+
+## [`tools/lib/`](./lib/) — what the tools share
+
+Structure audit 3.9 (2026-11-21): the tools had re-solved the same jobs in
+their own files. A new tool takes these from here instead of writing its own.
+
+- `zip.js`: the one zip reader (zip64, bounds-checked, a size cap, `ZipError`
+  with a reason and never content) and the deterministic writer. Used by the
+  student-data scan, the Canvas cartridge builder and the lesson-card reader.
+  Not by `clasp-sync/run.js`, on purpose: the operator runs a copy of it
+  outside the checkout, and it unpacks the GitHub zip before any checkout
+  exists, so it keeps its own reader.
+- `js-source.js`: `stripCommentsAndStrings`, `lineAt` and the platform-globals
+  `ALLOWLIST`, moved out of gas-lint so doc-currency, coverage-gaps and the
+  setup guide no longer load the whole checker. gas-lint still exports them.
+- `repo.js`: `ROOT`, `trackedFiles()` (git) and `projectMap()`. The git and
+  project-map readers use it; the many `const ROOT = …` lines elsewhere were
+  left where nothing else changed.
+- `prompt-constants.js`: `escapeForTemplateLiteral` and
+  `replaceTemplateConstant`, for every prompt generator (cas-ccps's and
+  leader-hub's each had a copy). The replacement is passed as a function, so
+  a `$&` in a prompt is never read as a pattern.
 
 ## [`tools/gas-lint/`](./gas-lint/) — static checks for the GAS systems
 
@@ -281,7 +303,7 @@ dependencies, like the rest of `tools/`.
   - `build-zero-shot-answers.js` writes `cas-ccps/scripts/39c_ZeroShotAnswers.js` from `cas-ccps/curriculum/zero-shot/<lesson key>.txt` (each lesson's cold answer, what a chatbot writes from the student-facing prompt alone); `--check` fails if 39c is stale.
   - `render-agenda-slide.js` draws the daily agenda slide (67's `agendaSlideSpec_`) as a PNG through the pre-installed Playwright, without Google, and lists any text box that would spill: `node tools/cas-ccps/render-agenda-slide.js 2026-11-23 8175-L11=1,3-Odd 8177-product-pitch-financial-analysis=4 out.png --announce "…"` (one lesson, or both courses on one slide).
   - `import-lesson-drafts.js` is the mechanical half of importing a Teacher Dashboard lesson draft: it re-checks drafts with 65's rules, writes the fields that have one home in the repo, rebuilds, and reports field by field what still differs (`cas-ccps/docs/LESSON_IMPORT_PROCEDURE.md` has the session's steps).
-  - `build-canvas-cartridge.js` writes the 8175/8177 Canvas cartridges (from the teacher's lessons) in `cas-ccps/curriculum/canvas-cartridges/`, using `lesson-cards.js` (a `.docx` lesson-card reader) and `zip.js` (a zlib-only zip reader and writer).
+  - `build-canvas-cartridge.js` writes the 8175/8177 Canvas cartridges (from the teacher's lessons) in `cas-ccps/curriculum/canvas-cartridges/`, using `lesson-cards.js` (a `.docx` lesson-card reader) and `tools/lib/zip.js` (the shared zip reader and writer)
   - `sync-pacing-vocabulary.js` sets the pacing guide's vocabulary fields from the lesson cards.
   - `build-guide-notebook-sources.js` writes the Markdown copies of the four user guides (`cas-ccps/docs/notebooklm-sources/`) from the guides' HTML, for the user-guide notebook.
   - `generate-family-mail-prompt.js` regenerates `61_FamilyMailPrompt.js` from `cas-ccps/docs/FAMILY_MAIL_TRIAGE_PROMPT.md`.

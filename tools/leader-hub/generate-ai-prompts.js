@@ -58,20 +58,13 @@ function promptFromMarkdown(jobType) {
   return parts[1].trim();
 }
 
-// Escapes for safe insertion into a template literal. These prompts DO
-// contain fenced ```json example blocks (AiPrompts.gs's own header flags
-// this explicitly), so unlike cas-ccps's five prompts this is load-bearing,
-// not defensive — tests/leaderhub/ai-prompts.test.js's own "survived
-// escaping" test exists because of exactly this.
-function escapeForTemplateLiteral(text) {
-  return text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
-}
+// The escape is load-bearing here: these prompts contain fenced ```json
+// examples (tests/leaderhub/ai-prompts.test.js). Both helpers are shared:
+// tools/lib/prompt-constants.js.
+const { replaceTemplateConstant } = require('../lib/prompt-constants.js');
 
 function replaceConstant(src, name, body) {
-  const re = new RegExp('const ' + name + ' = `[\\s\\S]*?`\\.trim\\(\\);');
-  if (!re.test(src)) throw new Error(TARGET_PATH + ': could not find "const ' + name + ' = ..." to replace');
-  const replacement = 'const ' + name + ' = `\n' + escapeForTemplateLiteral(body) + '\n`.trim();';
-  return src.replace(re, replacement);
+  return replaceTemplateConstant(src, name, body, TARGET_PATH);
 }
 
 function main() {

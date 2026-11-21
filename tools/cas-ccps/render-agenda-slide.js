@@ -20,7 +20,7 @@ const path = require('path');
 const { loadGasFiles } = require('../../tests/harness/gas-sandbox');
 
 const ROOT = path.join(__dirname, '..', '..');
-const FILES = require('../gas-lint/project-map.json')['cas-ccps:central-ledger'].files.map((f) => path.join(ROOT, f));
+const FILES = require('../lib/repo.js').projectMap()['cas-ccps:central-ledger'].files.map((f) => path.join(ROOT, f));
 
 function esc(s) {
   return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

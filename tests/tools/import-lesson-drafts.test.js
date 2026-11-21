@@ -23,6 +23,7 @@ function copy() {
   made.push(dir);
   fs.cpSync(path.join(REPO, 'cas-ccps'), path.join(dir, 'cas-ccps'), { recursive: true });
   fs.cpSync(path.join(REPO, 'tools', 'cas-ccps'), path.join(dir, 'tools', 'cas-ccps'), { recursive: true });
+  fs.cpSync(path.join(REPO, 'tools', 'lib'), path.join(dir, 'tools', 'lib'), { recursive: true }); // zip.js, shared since 3.9
   return dir;
 }
 

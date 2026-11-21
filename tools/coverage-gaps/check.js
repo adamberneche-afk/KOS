@@ -71,8 +71,8 @@ const os = require('os');
 const { execFileSync } = require('child_process');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const PROJECT_MAP = require('../gas-lint/project-map.json');
-const { stripCommentsAndStrings } = require('../gas-lint/check.js');
+const PROJECT_MAP = require('../lib/repo.js').projectMap();
+const { stripCommentsAndStrings } = require('../lib/js-source.js');
 const AS_JSON = process.argv.includes('--json');
 // --coverage-dir <dir> (2026-11-20, audit 1.2): read the coverage a test run
 // already wrote (NODE_V8_COVERAGE=<dir> npm test) instead of running the

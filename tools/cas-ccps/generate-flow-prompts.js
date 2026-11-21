@@ -48,7 +48,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { escapeForTemplateLiteral } = require('../lib/escape-template-literal');
+const { replaceTemplateConstant } = require('../lib/prompt-constants.js');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const SCRIPTS = path.join(REPO_ROOT, 'cas-ccps', 'scripts');
@@ -91,10 +91,7 @@ function extractFromMarkdown(markdown, label) {
 // inside the backticks, `.trim()` at the call site strips them back off —
 // same convention the file already uses everywhere).
 function replaceConstant(src, name, body) {
-  const re = new RegExp('const ' + name + ' = `[\\s\\S]*?`\\.trim\\(\\);');
-  if (!re.test(src)) throw new Error(TARGET_PATH + ': could not find "const ' + name + ' = ..." to replace');
-  const replacement = 'const ' + name + ' = `\n' + escapeForTemplateLiteral(body) + '\n`.trim();';
-  return src.replace(re, replacement);
+  return replaceTemplateConstant(src, name, body, TARGET_PATH);
 }
 
 function regenerate() {

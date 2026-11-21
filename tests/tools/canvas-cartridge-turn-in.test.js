@@ -14,7 +14,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const B = require('../../tools/cas-ccps/build-canvas-cartridge.js');
-const { writeZip } = require('../../tools/cas-ccps/zip.js');
+const { writeZip } = require('../../tools/lib/zip.js');
 
 const ROOT = path.join(__dirname, '..', '..');
 const DIR = path.join(ROOT, 'cas-ccps', 'curriculum', 'canvas-cartridges');

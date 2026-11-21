@@ -264,7 +264,7 @@ function scanZip(buf, label, out, depth) {
 }
 
 function trackedFiles() {
-  return git(['ls-files', '-z']).toString().split('\0').filter(Boolean);
+  return require('../lib/repo.js').trackedFiles(ROOT);
 }
 
 function stagedFiles() {
