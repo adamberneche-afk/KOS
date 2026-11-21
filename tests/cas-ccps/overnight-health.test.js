@@ -30,7 +30,7 @@ const WQ_HEADER = ['queue_id', 'lesson_id', 'student_email', 'student_name', 'go
 
 function load(opts) {
   const env = loadGasFiles(FILES, ['overnightHealth_', 'overnightMaybeMail_', 'overnightArchiveDaily_', 'syncFlowPromptsToSheet',
-    'LEDGER_CANONICAL_HEADERS']);
+    'LEDGER_HEADERS']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   const props = env.sandbox.PropertiesService.getScriptProperties();
@@ -44,7 +44,7 @@ function load(opts) {
   if (wq) wq.appendRow(WQ_HEADER);
   // A healthy install for the setup checks: the Ledger's canonical header
   // row and the FlowPrompts tab in sync with the code.
-  ss.insertSheet('Ledger').appendRow(env.exported.LEDGER_CANONICAL_HEADERS.slice());
+  ss.insertSheet('Ledger').appendRow(env.exported.LEDGER_HEADERS.slice());
   env.exported.syncFlowPromptsToSheet();
   if (!(opts && opts.noContextTrigger)) {
     env.sandbox.ScriptApp.newTrigger('runWeeklyStudentAggregation_').timeBased().everyDays(7).create();
@@ -201,7 +201,7 @@ test('a Ledger cycle job still failing is named, and there is no all-clear', () 
 // day's Studio returns in the right columns, and retention date columns.
 
 function loadSetup(opts) {
-  const env = loadGasFiles(FILES, ['overnightHealth_', 'syncFlowPromptsToSheet', 'LEDGER_CANONICAL_HEADERS']);
+  const env = loadGasFiles(FILES, ['overnightHealth_', 'syncFlowPromptsToSheet', 'LEDGER_HEADERS']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   const props = env.sandbox.PropertiesService.getScriptProperties();
@@ -212,7 +212,7 @@ function loadSetup(opts) {
   const wq = ss.insertSheet('WarmUpQueue');
   wq.appendRow(WQ_HEADER);
   const ledger = opts && opts.noLedger ? null : ss.insertSheet('Ledger');
-  if (ledger) ledger.appendRow(env.exported.LEDGER_CANONICAL_HEADERS.slice());
+  if (ledger) ledger.appendRow(env.exported.LEDGER_HEADERS.slice());
   env.exported.syncFlowPromptsToSheet();
   return Object.assign(env, { ss, props, wq, ledger });
 }
@@ -230,7 +230,7 @@ test('setup checks: a healthy Ledger, prompts in sync and well-bound returns add
 
 test('setup checks: a shifted Ledger column, a drifted prompt and a shifted return are each one line', () => {
   const env = loadSetup();
-  const headers = env.exported.LEDGER_CANONICAL_HEADERS.slice();
+  const headers = env.exported.LEDGER_HEADERS.slice();
   headers.splice(4, 0, 'FileURL');
   env.ledger.getRange(1, 1, 1, headers.length).setValues([headers]);
   const fp = env.ss.getSheetByName('FlowPrompts');
@@ -273,7 +273,7 @@ test('setup checks: no weekly Student Context or competency trigger is a line ea
 
 test('setup checks run at most every 6 hours; in between, the last lines are reused', () => {
   const env = loadSetup();
-  const headers = env.exported.LEDGER_CANONICAL_HEADERS.slice();
+  const headers = env.exported.LEDGER_HEADERS.slice();
   headers.splice(4, 0, 'FileURL');
   env.ledger.getRange(1, 1, 1, headers.length).setValues([headers]);
   assert.equal(setupLines(env.exported.overnightHealth_(NOW)).length, 1);

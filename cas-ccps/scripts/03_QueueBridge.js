@@ -7,13 +7,8 @@
 //                              a cadence only the cycle could give)
 // =============================================================================
 
-// Ledger column indices (0-based)
-const L_GOOGLE_ID = 1;
-const L_CONFIG_ID = 2;
-const L_FILE_ID   = 3;
-const L_STATUS    = 12;
-const L_LAST_EVAL = 15;
-const L_TERM      = 18;  // AcademicYear/Term column added for term management
+// Ledger columns: 00_SharedConfig.js's LEDGER (this file's copy was folded in
+// 2026-11-21, structure audit 3.1).
 
 // ReviewQueue column indices (0-based)
 const RQ_GOOGLE_ID = 1;
@@ -520,7 +515,7 @@ function lookupTeacherEmail_(cfg, configId) {
     const sheet    = ledgerSs.getSheetByName(cfg.tabs.ledger);
     const data     = sheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][L_CONFIG_ID]).trim() === configId) {
+      if (String(data[i][LEDGER.CONFIG_ID]).trim() === configId) {
         return String(data[i][8] || "").trim(); // col 8 = TeacherEmail
       }
     }
@@ -745,10 +740,10 @@ function updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId) {
   const data = ledgerSheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (
-      String(data[i][L_FILE_ID]).trim()   === fileId &&
-      String(data[i][L_CONFIG_ID]).trim() === configId
+      String(data[i][LEDGER.FILE_ID]).trim()   === fileId &&
+      String(data[i][LEDGER.CONFIG_ID]).trim() === configId
     ) {
-      ledgerSheet.getRange(i + 1, L_LAST_EVAL + 1).setValue(new Date());
+      ledgerSheet.getRange(i + 1, LEDGER.LAST_EVAL + 1).setValue(new Date());
       return;
     }
   }
@@ -764,12 +759,12 @@ function updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId) {
 function markLedgerEvaluated_(ledgerSheet, fileId, configId) {
   const data = ledgerSheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][L_FILE_ID]).trim() === fileId &&
-        String(data[i][L_CONFIG_ID]).trim() === configId) {
-      const status = String(data[i][L_STATUS]).trim();
+    if (String(data[i][LEDGER.FILE_ID]).trim() === fileId &&
+        String(data[i][LEDGER.CONFIG_ID]).trim() === configId) {
+      const status = String(data[i][LEDGER.STATUS]).trim();
       if (status === "ACTIVE" || status === "PENDING" || status === "STAGED" ||
           status === "ERROR_TIMEOUT" || status === "") {
-        ledgerSheet.getRange(i + 1, L_STATUS + 1).setValue("COMPLETE");
+        ledgerSheet.getRange(i + 1, LEDGER.STATUS + 1).setValue("COMPLETE");
       }
       return;
     }
@@ -792,10 +787,10 @@ function updateLedgerStatus_(ledgerSheet, fileId, configId, status) {
   const data = ledgerSheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (
-      String(data[i][L_FILE_ID]).trim()   === fileId &&
-      String(data[i][L_CONFIG_ID]).trim() === configId
+      String(data[i][LEDGER.FILE_ID]).trim()   === fileId &&
+      String(data[i][LEDGER.CONFIG_ID]).trim() === configId
     ) {
-      ledgerSheet.getRange(i + 1, L_STATUS + 1).setValue(status);
+      ledgerSheet.getRange(i + 1, LEDGER.STATUS + 1).setValue(status);
       return;
     }
   }

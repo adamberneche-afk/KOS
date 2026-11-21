@@ -33,7 +33,7 @@ function load() {
     [SHARED_CONFIG_PATH, GUARD_PATH],
     [
       'checkLedgerSchema', 'repairLedgerSchema', 'repairLedgerSchemaDryRun',
-      'LEDGER_CANONICAL_HEADERS', 'LEDGER', 'LEDGER_MIN_CANONICAL_WIDTH', 'previewOddLedgerRows',
+      'LEDGER_HEADERS', 'LEDGER', 'LEDGER_BASE_WIDTH', 'previewOddLedgerRows',
     ],
   );
 }
@@ -74,7 +74,7 @@ test('checkLedgerSchema: a canonical 19-column Ledger reports ok', () => {
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  sheet.appendRow(exported.LEDGER_CANONICAL_HEADERS.slice(0, 19));
+  sheet.appendRow(exported.LEDGER_HEADERS.slice(0, 19));
   sheet.appendRow(canonicalRow(sandbox));
 
   const result = exported.checkLedgerSchema();
@@ -86,7 +86,7 @@ test('checkLedgerSchema: a canonical 23-column Ledger (turn-in columns self-heal
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  sheet.appendRow(exported.LEDGER_CANONICAL_HEADERS.slice(0, 23));
+  sheet.appendRow(exported.LEDGER_HEADERS.slice(0, 23));
   const row = canonicalRow(sandbox).concat(['', '', '', '']);
   sheet.appendRow(row);
 
@@ -99,7 +99,7 @@ test('checkLedgerSchema: a 27-column Ledger (evaluation result columns added) al
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  sheet.appendRow(exported.LEDGER_CANONICAL_HEADERS.slice());
+  sheet.appendRow(exported.LEDGER_HEADERS.slice());
   sheet.appendRow(canonicalRow(sandbox).concat(['', '', '', '', 2, 'PASSED', '', 3]));
 
   const result = exported.checkLedgerSchema();
@@ -114,7 +114,7 @@ test('checkLedgerSchema: detects a single inserted column and names it', () => {
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
   // "FileURL" spliced in at index 4 — the real incident.
-  const headers = exported.LEDGER_CANONICAL_HEADERS.slice(0, 19);
+  const headers = exported.LEDGER_HEADERS.slice(0, 19);
   headers.splice(4, 0, 'FileURL');
   sheet.appendRow(headers);
 
@@ -134,7 +134,7 @@ test('repairLedgerSchema: deletes the drifted column, restores canonical alignme
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  const headers = exported.LEDGER_CANONICAL_HEADERS.slice(0, 19);
+  const headers = exported.LEDGER_HEADERS.slice(0, 19);
   headers.splice(4, 0, 'FileURL');
   sheet.appendRow(headers);
   const row = canonicalRow(sandbox);
@@ -161,7 +161,7 @@ test('repairLedgerSchema: repairs a header-only drift on a Ledger with no data r
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  const headers = exported.LEDGER_CANONICAL_HEADERS.slice(0, 19);
+  const headers = exported.LEDGER_HEADERS.slice(0, 19);
   headers.splice(4, 0, 'FileURL');
   sheet.appendRow(headers);
 
@@ -176,7 +176,7 @@ test('repairLedgerSchema: REFUSES when rows were written positionally after the 
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  const headers = exported.LEDGER_CANONICAL_HEADERS.slice(0, 19);
+  const headers = exported.LEDGER_HEADERS.slice(0, 19);
   headers.splice(4, 0, 'FileURL');
   sheet.appendRow(headers);
 
@@ -202,7 +202,7 @@ test('checkLedgerSchema: two inserted columns are reported as needing a human, n
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  const headers = exported.LEDGER_CANONICAL_HEADERS.slice(0, 19);
+  const headers = exported.LEDGER_HEADERS.slice(0, 19);
   headers.splice(4, 0, 'FileURL');
   headers.splice(9, 0, 'ExtraNotes');
   sheet.appendRow(headers);
@@ -218,7 +218,7 @@ test('checkLedgerSchema: a renamed column is reported, not silently repaired', (
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  const headers = exported.LEDGER_CANONICAL_HEADERS.slice(0, 19);
+  const headers = exported.LEDGER_HEADERS.slice(0, 19);
   headers[8] = 'Teacher Email'; // space added
   sheet.appendRow(headers);
 
@@ -231,7 +231,7 @@ test('repairLedgerSchemaDryRun: reports a repairable drift without touching the 
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  const headers = exported.LEDGER_CANONICAL_HEADERS.slice(0, 19);
+  const headers = exported.LEDGER_HEADERS.slice(0, 19);
   headers.splice(4, 0, 'FileURL');
   sheet.appendRow(headers);
   const row = canonicalRow(sandbox);
@@ -254,7 +254,7 @@ test('checkLedgerSchema: a trailing stray value past the real headers does not r
   const sheet = ss.insertSheet('Ledger');
   // A blank 24th header cell, the shape a since-deleted far-right value
   // leaves behind — getLastColumn() stays inflated forever after.
-  sheet.appendRow(exported.LEDGER_CANONICAL_HEADERS.concat(['']));
+  sheet.appendRow(exported.LEDGER_HEADERS.concat(['']));
 
   const result = exported.checkLedgerSchema();
   assert.equal(result.ok, true, 'trailing blank headers are trimmed before comparison');
@@ -264,7 +264,7 @@ test('checkLedgerSchema: blank optional fields never read as corruption', () => 
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  const headers = exported.LEDGER_CANONICAL_HEADERS.slice(0, 19);
+  const headers = exported.LEDGER_HEADERS.slice(0, 19);
   headers.splice(4, 0, 'FileURL');
   sheet.appendRow(headers);
 
@@ -299,7 +299,7 @@ test('previewOddLedgerRows: lists rows that are not a registration by shape only
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  sheet.appendRow(exported.LEDGER_CANONICAL_HEADERS.slice(0, 19));
+  sheet.appendRow(exported.LEDGER_HEADERS.slice(0, 19));
   const odd = canonicalRow(sandbox, { timestamp: '' });
   odd[2] = 'CONFIG_ID_PLACEHOLDER';
   odd[3] = 'placeholder';

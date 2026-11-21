@@ -847,9 +847,8 @@ function _tdHealthLight_(f, t) {
 function _ensureTurnInReviewColumns_(sheet) {
   const headerRange = sheet.getRange(1, LEDGER.TURN_IN_SUGGESTED_SCORE + 1, 1, 4);
   const existing     = headerRange.getValues()[0];
-  if (existing[0] !== "SuggestedScore") {
-    headerRange.setValues([["SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt"]]);
-  }
+  const want = LEDGER_HEADERS.slice(LEDGER.TURN_IN_SUGGESTED_SCORE, LEDGER.TURN_IN_SCORE_DECIDED_AT + 1);
+  if (existing[0] !== want[0]) headerRange.setValues([want]);
 }
 
 function _recordTurnInDecision_(cfg, configId, teacherEmail, overrideScore, decisionType) {

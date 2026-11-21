@@ -56,22 +56,10 @@
 // refuses and names the rows.
 // =============================================================================
 
-// Canonical header row, byte-identical to what 16_UnifiedManualSetup.js's
-// setHeaders_() call writes when it creates this tab. Columns 20-23 are
-// added later, on first use, by 04_Form2_TurnInGate.js's
-// _ensureTurnInReviewColumns_() — so a Ledger that predates the turn-in
-// review flow is legitimately 19 wide, not broken, and both widths (and
-// anything between) count as canonical here.
-const LEDGER_CANONICAL_HEADERS = [
-  "Timestamp", "GoogleID", "ConfigID", "FileID", "StudentName",
-  "Block", "ClassName", "TeacherName", "TeacherEmail", "Subject",
-  "CourseName", "Period", "Status", "SubmissionTS", "Notes",
-  "LastEval", "AdminFileURL", "StudentFileURL", "AcademicYear",
-  "SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt",
-  "CheckCount", "LastResult", "FirstPassedAt", "LastSuggestedScore",
-];
-
-const LEDGER_MIN_CANONICAL_WIDTH = 19;
+// The canonical header row is 00_SharedConfig.js's LEDGER_HEADERS (same
+// project). A Ledger that predates the turn-in review is LEDGER_BASE_WIDTH
+// (19) wide, not broken, and every width from there to the full row counts
+// as canonical here. (This file kept its own copy until 2026-11-21.)
 
 // The shapes that make a post-repair row verifiable. Only fields with a
 // genuinely recognizable format are listed — Status, Notes, Block and the
@@ -127,9 +115,9 @@ function lsgHeaderProblem_(sheet) {
   while (headers.length && headers[headers.length - 1] === "") headers.pop();
   if (_lsgMatchesCanonical_(headers)) return "";
   let at = 0;
-  while (at < headers.length && headers[at] === LEDGER_CANONICAL_HEADERS[at]) at++;
+  while (at < headers.length && headers[at] === LEDGER_HEADERS[at]) at++;
   return "Ledger columns out of order: column " + (at + 1) + " is \"" + (headers[at] || "(blank)") +
-    "\", expected \"" + (LEDGER_CANONICAL_HEADERS[at] || "(nothing)") + "\". Every reader takes columns by " +
+    "\", expected \"" + (LEDGER_HEADERS[at] || "(nothing)") + "\". Every reader takes columns by " +
     "position, so run checkLedgerSchema() in the Central Ledger's Apps Script project";
 }
 
@@ -293,9 +281,9 @@ function _lsgAnalyze_(sheet) {
 }
 
 function _lsgMatchesCanonical_(arr) {
-  if (arr.length < LEDGER_MIN_CANONICAL_WIDTH) return false;
-  if (arr.length > LEDGER_CANONICAL_HEADERS.length) return false;
-  return arr.every(function (h, i) { return h === LEDGER_CANONICAL_HEADERS[i]; });
+  if (arr.length < LEDGER_BASE_WIDTH) return false;
+  if (arr.length > LEDGER_HEADERS.length) return false;
+  return arr.every(function (h, i) { return h === LEDGER_HEADERS[i]; });
 }
 
 // Blank values are always allowed: registerLedger_ itself writes "" into
@@ -377,8 +365,8 @@ function _lsgLogReport_(result) {
   if (!result.repairable && !result.extraHeader) {
     Logger.log("[LedgerGuard] ❌ " + result.detail);
     Logger.log("[LedgerGuard] Found headers: " + JSON.stringify(result.headers));
-    Logger.log("[LedgerGuard] Expected (first " + LEDGER_MIN_CANONICAL_WIDTH + "): " +
-               JSON.stringify(LEDGER_CANONICAL_HEADERS.slice(0, LEDGER_MIN_CANONICAL_WIDTH)));
+    Logger.log("[LedgerGuard] Expected (first " + LEDGER_BASE_WIDTH + "): " +
+               JSON.stringify(LEDGER_HEADERS.slice(0, LEDGER_BASE_WIDTH)));
     return;
   }
 
@@ -430,7 +418,7 @@ function previewOddLedgerRows() {
     Logger.log("[LedgerGuard] No Ledger rows to check.");
     return [];
   }
-  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER_MIN_CANONICAL_WIDTH).getValues();
+  const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, LEDGER_BASE_WIDTH).getValues();
   const referenced = _lsgReferencedFileIds_(ss, cfg);
   const odd = [];
   rows.forEach(function (row, i) {

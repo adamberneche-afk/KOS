@@ -2209,6 +2209,21 @@ const LEDGER = {
   LAST_SUGGESTED_SCORE:   26,  // Flow 2's [SUGGESTED_SCORE: N] on the latest check, "" if none
 };
 
+// The Ledger's header row, one name per LEDGER index above (a test holds the
+// two in step). The one declaration of the Ledger's columns (structure audit
+// 3.1, 2026-11-21): 16's setup writes it, 38's schema guard checks against
+// it, _ensureEvaluationResultColumns_() fills in the later ones. A Ledger made
+// before the turn-in review is LEDGER_BASE_WIDTH wide, and that is not broken.
+const LEDGER_HEADERS = [
+  "Timestamp", "GoogleID", "ConfigID", "FileID", "StudentName",
+  "Block", "ClassName", "TeacherName", "TeacherEmail", "Subject",
+  "CourseName", "Period", "Status", "SubmissionTS", "Notes",
+  "LastEval", "AdminFileURL", "StudentFileURL", "AcademicYear",
+  "SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt",
+  "CheckCount", "LastResult", "FirstPassedAt", "LastSuggestedScore",
+];
+const LEDGER_BASE_WIDTH = 19;
+
 // One past the highest LEDGER index above — the Ledger's real, schema-known
 // column count, TURN_IN_* columns included. External product review,
 // Finding 6 ("this quarter" scaling fix): every getDataRange() call reads
@@ -2222,7 +2237,7 @@ const LEDGER = {
 // no more, no less — used by the handful of call sites (10_AdminRecoveryPanel.js,
 // 29_StudentContextAggregator.js, 30_SCRSuggestionEngine.js) that read the
 // whole Ledger tab rather than a header-driven dynamic column set.
-const LEDGER_COL_COUNT = 27;
+const LEDGER_COL_COUNT = LEDGER_HEADERS.length;
 
 // A student work file's type (Phase 4a, 2026-11-08; Slides, Phase 4c, and
 // Sheets, Phase 4d, 2026-11-09): "form" for a Google Form, "slides" for a
@@ -2505,10 +2520,7 @@ function normalizeSheetChecks_(raw) {
 // first use: the turn-in review's four (07/04's _ensureTurnInReviewColumns_)
 // and the evaluation result's four. Fills blank header cells only, and the
 // turn-in ones too, so 38_LedgerSchemaGuard.js never sees a gap in the middle.
-const LEDGER_LATER_HEADERS = [
-  "SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt",
-  "CheckCount", "LastResult", "FirstPassedAt", "LastSuggestedScore",
-];
+const LEDGER_LATER_HEADERS = LEDGER_HEADERS.slice(LEDGER_BASE_WIDTH);
 
 function _ensureEvaluationResultColumns_(sheet) {
   const first = LEDGER.TURN_IN_SUGGESTED_SCORE + 1;
