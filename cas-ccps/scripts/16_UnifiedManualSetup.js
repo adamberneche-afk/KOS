@@ -653,7 +653,7 @@ function writeAdminSummaryPage_(result, adminEmail, orgName) {
     // FIX (found while verifying reconciliation decision 10): literal
     // unescaped newlines replaced with "\n", same as the resumeMsg fix
     // above. Also updates the Script 09 filename per reconciliation
-    // decision 8 — the original 09_StudentRevisionGuidance.js (GAS writes
+    // decision 8 — the retired original 09_StudentRevisionGuidance.js (GAS writes
     // the report) is archived/superseded; 09_StudentRevisionGuidance_M1Base.js
     // (Studio writes the report) is the live design. That reference copy was
     // deleted 2026-11-20 (03 holds the live code), so the template has three.
@@ -1501,7 +1501,7 @@ function showLink_(message, url) {
 // =============================================================================
 // Confirmation Form dropdowns (competency, M5; lesson unit, M6). Folded in
 // 2026-11-20 from 16_UnifiedManualSetup_M5_ADDENDUM_v2.js and
-// 16_UnifiedManualSetup_M6_ADDENDUM.js, whose paste instructions had all
+// 16_UnifiedManualSetup_M6_ADDENDUM.js (both deleted), whose paste instructions had all
 // been applied (meta/AUDIT_STRUCTURE_2026-11-20.md, 2.1). The code is unchanged.
 // =============================================================================
 

@@ -5,7 +5,7 @@
  * ================================================================
  *
  * Phase 1 of the RTP notebook plan
- * (rtp-core-router/notebook-plan/04_MIGRATION_AND_TEST_PLAN.md): the
+ * (archive/2026-27-Q1/kos-personal/rtp-core-router/notebook-plan/04_MIGRATION_AND_TEST_PLAN.md): the
  * Tier A notebook sources the pipeline writes, beside KOS_LATEST_PRIMER.
  * GAS is the only writer; the notebook syncs the docs and the RTP Gem
  * reads them (ADR-001).

@@ -1985,14 +1985,23 @@ function checkSameProjectTypeofGuards() {
 const STALE_REF_FILES_RE = /^(cas-ccps\/scripts\/[^/]+\.js|kos-personal\/[^/]+\.gs|leader-hub\/[^/]+\.gs|leader-hub\/src\/[^/]+\.js)$/;
 const STALE_REF_NAME_RE = /\b([A-Za-z0-9][\w.-]*\.(?:js|gs|html|md|json))\b/g;
 // Product names and the like that look like files.
-const STALE_REF_NOT_FILES = new Set(['Node.js']);
+const STALE_REF_NOT_FILES = new Set(['Node.js', 'smart_drop_zone.gs' /* an example file name in data, not a repo file */,
+  'Vector_Router.gs' /* quoted inside a status string the code writes */]);
+// A line that says the file is history (merged from it, replaced it, it was
+// deleted) is a record, not a pointer: it doesn't send a reader there for
+// anything current (structure audit 4.8).
+const STALE_REF_HISTORY_RE = /\b(?:from [\w.-]+\.(?:gs|js)\b|ported from|merged from|folded (?:in|into)|replaces|replaced|deleted|removed|archived|superseded|is gone|are gone|gone with|retired|formerly|used to|was the|were the)\b/i;
 
 // [{ file, line, name, archived }] for every file name a comment line names
 // that no live file has. liveNames/archivedNames: Sets of base names.
-function findStaleFileRefs(sources, liveNames, archivedNames) {
+// trackedPaths (optional): a comment that writes the file's path, such as
+// archive/2026-27-Q1/meta/X.md, and that path is tracked, points at the
+// right place and is not stale (structure audit 4.8).
+function findStaleFileRefs(sources, liveNames, archivedNames, trackedPaths) {
   const out = [];
   sources.forEach(({ file, text }) => {
-    text.split('\n').forEach((l, i) => {
+    const lines = text.split('\n');
+    lines.forEach((l, i) => {
       const c = l.indexOf('//');
       const comment = c >= 0 ? l.slice(c) : (/^\s*\*/.test(l) ? l : '');
       if (!comment) return;
@@ -2001,6 +2010,15 @@ function findStaleFileRefs(sources, liveNames, archivedNames) {
       while ((m = STALE_REF_NAME_RE.exec(comment)) !== null) {
         const name = m[1];
         if (liveNames.has(name) || STALE_REF_NOT_FILES.has(name)) continue;
+        // ...or one of the two lines above it opens that sentence ("Replaces: PART 12
+        // from\n//   KOS_MASTER_v3_1.gs").
+        if (STALE_REF_HISTORY_RE.test(comment) || STALE_REF_HISTORY_RE.test(lines.slice(Math.max(0, i - 2), i).join(' '))) continue;
+        // The tail of a name wrapped across lines or elided ("11-...html",
+        // "student-leader-\n// hub.html"): a hyphen right before it.
+        if (comment[m.index - 1] === '-' || name.includes('...')) continue;
+        if (comment.slice(0, m.index).replace(/^\s*(?:\/\/|\*)\s*/, '') === '' && i > 0 && /-\s*$/.test(lines[i - 1])) continue;
+        const written = (comment.slice(0, m.index).match(/[\w.\/-]*$/) || [''])[0] + name;
+        if (trackedPaths && written.includes('/') && trackedPaths.has(written.replace(/^\.?\//, ''))) continue;
         out.push({ file, line: i + 1, name, archived: archivedNames.has(name) });
       }
     });
@@ -2016,7 +2034,7 @@ function checkStaleFileRefs() {
   const liveNames = new Set(tracked.filter((f) => !f.startsWith('archive/')).map(base));
   const archivedNames = new Set(tracked.filter((f) => f.startsWith('archive/')).map(base));
   const sources = tracked.filter((f) => STALE_REF_FILES_RE.test(f)).map((f) => ({ file: f, text: readFile(f) }));
-  const refs = findStaleFileRefs(sources, liveNames, archivedNames);
+  const refs = findStaleFileRefs(sources, liveNames, archivedNames, new Set(tracked));
   if (process.argv.includes('--stale-refs')) {
     refs.forEach((r) => console.log(r.file + ':' + r.line + '  ' + r.name + (r.archived ? '  (archived)' : '  (gone)')));
     console.log(refs.length + ' comment reference(s) to ' + new Set(refs.map((r) => r.name)).size + ' file(s) no longer in the repo.');

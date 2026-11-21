@@ -9,7 +9,7 @@
  *
  * THE FRICTION THIS ADDRESSES. Every flow's Studio side is built by hand in a
  * UI, and the values to type were spread across six files in three formats:
- * JS comment blocks (15_StudioFlowPrompts.js, 15b), a GAS wizard dialog
+ * JS comment blocks (archive/2026-27-Q2/cas-ccps/scripts/15_StudioFlowPrompts.js, 15b), a GAS wizard dialog
  * (28_Module2Setup.js), and markdown (leader-hub, kos-personal) — about 3,350
  * lines, from which the operator reconstructs a step list. That scatter has
  * already produced one confirmed hazard: 15b's Step 1 note renders the doc

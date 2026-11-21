@@ -1034,8 +1034,8 @@ function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds, scrSta
     // question text it writes, entirely inside the external Studio Flow —
     // there's no "restore after Gemini" step this repo's own code could
     // perform. Flow 3's own prompt templates only ever use the student's
-    // first name ("Name: {first_name}" — docs/CAS_Flow3_Flow4_
-    // Specification.html), so redacting the full name down to first-name-
+    // first name ("Name: {first_name}" —
+    // docs/CAS_Flow3_Flow4_Specification.html), so redacting the full name down to first-name-
     // only here closes almost all of the real exposure (no last name ever
     // leaves this sheet cell) while preserving the personalization the
     // feature is actually for. FERPA_FLOW3_FULL_NAME_OVERRIDE (Script

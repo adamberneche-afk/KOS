@@ -54,7 +54,7 @@
 //                                 counter backing sensor1's quarantine
 //                                 escalation (incident diagnosis #4)
 //
-// DEPENDENCIES (defined in 5_Utilities.gs)
+// DEPENDENCIES (defined in 5_Error_And_Utilities.gs)
 //   _semanticChunker(text)
 //   _generateLogUUID(text)
 //   _getSystemAsset(name, propKey, isFolder)

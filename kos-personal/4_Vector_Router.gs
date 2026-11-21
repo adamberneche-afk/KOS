@@ -118,7 +118,7 @@ function _routeVectorWeightsInternal(pd, sessionUid, timestamp) {
     // _writeMatrixRow's own header describes ("Otherwise → apply
     // DECAY_FACTOR to the previous row's score"). The model's own
     // extraction-rule prompt defines 0.0 as meaning "not present" (see
-    // inference-service/src/inference.js's system prompt), and the
+    // archive/2026-27-Q2/kos-personal/archive/inference-service/src/inference.js's system prompt), and the
     // output schema requires every base theme present on every
     // response — so an explicit 0.0 for a known theme is the model's
     // *only* way to say "not present," never a genuine near-zero score

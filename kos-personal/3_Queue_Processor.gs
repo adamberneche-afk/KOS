@@ -811,7 +811,7 @@ function getQueueMetrics() {
  *
  * Calls GET {base}/api/v1/account on the standalone Node.js service at
  * kos-personal/inference-service/ (see that directory's
- * INFERENCE_SERVICE_DEPLOYMENT.md — a separate Cloud Run / Postgres /
+ * archive/2026-27-Q2/kos-personal/archive/inference-service/INFERENCE_SERVICE_DEPLOYMENT.md — a separate Cloud Run / Postgres /
  * Stripe deployment, not part of this Apps Script project). Any failure
  * (unset properties, network error, non-200 response) is non-fatal and
  * returns null — a managed-service outage should never break the rest of
@@ -868,7 +868,7 @@ function _getManagedServiceStatus_() {
  * The service does the rest itself once the job is queued: its worker
  * reads the session doc, runs inference, writes results back to Drive,
  * and calls back into this same spreadsheet to set FLOW_COMPLETE (see
- * inference-service/src/worker.js's setFlowComplete call) using its own
+ * archive/2026-27-Q2/kos-personal/archive/inference-service/src/worker.js's setFlowComplete call) using its own
  * stored OAuth connection for this user — this function's only job is
  * the initial hand-off, not polling for completion. Turnstile's existing
  * staleness reset (CFG.TURNSTILE_STALE_MINS) is the safety net if the
@@ -883,7 +883,7 @@ function _getManagedServiceStatus_() {
  *   ID. FIXED: this used to never be sent, so the service's
  *   users.index_spreadsheet_id stayed permanently empty and
  *   setFlowComplete()/readOperatorContext() always failed — see
- *   INFERENCE_SERVICE_DEPLOYMENT.md's integration-status note and the
+ *   archive/2026-27-Q2/kos-personal/archive/inference-service/INFERENCE_SERVICE_DEPLOYMENT.md's integration-status note and the
  *   commit that added this parameter for the full failure trace.
  * @returns {Object} { ok: true, job_id } or { ok: false, error }
  */
@@ -909,7 +909,7 @@ function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType, inde
 
   const headers = { 'X-KOS-API-Key': apiKey };
 
-  // The signature is REQUIRED by any production service — server.js
+  // The signature is REQUIRED by any production service — archive/2026-27-Q2/kos-personal/archive/inference-service/src/server.js
   // refuses to boot without WEBHOOK_SECRET and 401s an unsigned request.
   // (This comment used to call it "optional server-side"; that was true
   // before the fail-closed fix and is now only true against a dev
@@ -936,7 +936,7 @@ function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType, inde
 
     const code = resp.getResponseCode();
     // 201 = a fresh job was created. 200 = the service already had a job
-    // for this payload_uid (idempotency guard — see server.js's
+    // for this payload_uid (idempotency guard — see archive/2026-27-Q2/kos-personal/archive/inference-service/src/server.js's
     // POST /api/v1/jobs) and returned that existing job's status instead
     // of creating a duplicate; either code is a successful submission.
     if (code !== 201 && code !== 200) {

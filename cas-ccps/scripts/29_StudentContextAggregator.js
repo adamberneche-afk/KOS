@@ -144,7 +144,7 @@ function _s29Run_(opts) {
   mergeWarmUpMaps_(weeklyWarmUps, getWeeklyTextBoxWarmUps_(ss, cfg, windowStart));
   // The process reflections on Submit (13, REFLECTION_ON_SUBMIT): the
   // student's own account of how they did the work, which the teacher reads
-  // here (STUDENT_WORK_PLAN_2026-10.md, Phase 1; dead-ends audit #4).
+  // here (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, Phase 1; dead-ends audit #4).
   const weeklyReflections = getWeeklyReflections_(ss, cfg, windowStart);
   const lastUpdated = _s29LastUpdatedByEmail_(registrySheet);
 
@@ -407,7 +407,7 @@ function getWeeklyWarmUps_(warmUpSheet, windowStart) {
     let email = String(row[WUR_STUDENT_EMAIL] || "").trim();
 
     // The Warm-Up Response form collects only the 7-digit student ID
-    // (see WarmUpResponseForm_setup.md) to keep the form itself free of
+    // (see archive/2026-27-Q1/cas-ccps/forms/WarmUpResponseForm_setup.md) to keep the form itself free of
     // any Apps Script. Normalize to the full school address here, before
     // validation, rather than requiring the form to produce it.
     if (studentIdRegex_().test(email)) {

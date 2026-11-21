@@ -1011,7 +1011,7 @@ function exportScrDecisionLogForAudit() {
 // re-run — skips tabs that already exist.
 //
 // CompetencyEvidence's header matches
-// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own writer
+// archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs's own writer
 // exactly (evidence_id/student_email/competency_id/milestone_text/
 // outcome/config_id/evaluated_at/student_file_id) — that step and
 // 15c_Flow2DirectEvaluationService.js's writeCompetencyEvidenceFromFlow2_
@@ -1048,7 +1048,7 @@ function createSCRTabs_() {
   // or manually reactivated back to blank — see
   // _archiveExpiredCompetencyEvidence_()/reactivateCompetencyEvidence()
   // below. Both real writers (this function and
-  // cas-ccps/studio-steps/CommitStudentEvaluationStep.gs /
+  // archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs /
   // 15c_Flow2DirectEvaluationService.js) must stay byte-identical here —
   // see tests/cas-ccps/competency-evidence-schema-compat.test.js.
   ensureTab_(ss, TABS.competencyEvidence, [

@@ -5,7 +5,7 @@
 //
 // Replaces: PART 16 (Shared Utilities), PART 15 (Calibration &
 //           Diagnostics), PART 13 (generateIdentityKey,
-//           runHardeningAudit), and PART 17 (Admin) from
+//           runHardeningAudit), and PART 17 (Admin) from the retired
 //           KOS_MASTER_v3_1.gs.
 //
 // ── CANONICAL OWNERSHIP NOTICE ───────────────────────────────

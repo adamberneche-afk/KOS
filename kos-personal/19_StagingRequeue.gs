@@ -44,7 +44,7 @@
  * 235 rows at once.
  *
  * DO NOT RUN THIS until fresh returns harvest cleanly
- * (checkStudioFlowBinding(), see STUDIO_REBIND_HANDOFF.md). Requeuing into
+ * (checkStudioFlowBinding(), see archive/2026-27-Q1/kos-personal/STUDIO_REBIND_HANDOFF.md). Requeuing into
  * a Flow that still answers in persona prose reproduces the same failures
  * and spends each row's retries doing it.
  *

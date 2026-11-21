@@ -1753,3 +1753,34 @@ block's `_installDeployVersionReportTrigger_()` after their own guard. Not
 done: generating the marker files themselves; they are stamped by
 `tools/deploy-drift/stamp.js` and by run.js at push, so that belongs with
 the deploy path.
+
+## Comments that point at files no longer here, 2026-11-21
+
+Structure audit 4.8. gas-lint's stale-file-ref warning (#532) counted 107
+comment lines naming files that were archived or gone. Most weren't wrong:
+
+- 24 already wrote the archive path (`archive/2026-27-Q2/meta/...`); the
+  check matched the bare name and missed the path. It now accepts a written
+  path that is tracked.
+- Most of the rest were history ("merged from ... ADDENDUM.js", "Replaces:
+  PART 12 from KOS_MASTER_v3_1.gs") or a name wrapped across two lines. A line
+  that frames the file as history, or whose sentence starts on one of the two
+  lines above, isn't stale; neither is the tail of a wrapped or elided name.
+- 38 named an archived file by a path that no longer exists
+  (`cas-ccps/studio-steps/CommitStudentEvaluationStep.gs`): each now gives its
+  archive path, so the reader can open it.
+- 11 were hand-fixed. One was a real wrong pointer: kos-personal's
+  `2_Ingestion_Sensors.gs` said its helpers were in `5_Utilities.gs`; they are
+  in `5_Error_And_Utilities.gs`.
+
+15b's header said Flow 2 "has never been deployed as a Studio Flow" and was
+"still not a deployed Studio Flow", while 15c and 37 describe it running.
+Both lines dated from when 15b was first loaded into the Central Ledger
+(external product review, Finding 3) to give 15c one copy of the prompt.
+Flow 2 has run live since the 37 redesign; the header now says so, names 15b
+as the prompt's one source, and marks the step-by-step Studio design below it
+as the original build spec.
+
+Not done: moving every dated comment (591) into HISTORY.md. The warning now
+reports only references that send a reader somewhere missing (none today),
+which was the part that misled.
