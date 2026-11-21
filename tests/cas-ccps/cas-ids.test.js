@@ -45,3 +45,28 @@ test('no script builds a lesson ID by hand or parses one with its own pattern', 
   }
   assert.deepEqual(found, [], 'use 00_SharedConfig.js\'s casConfigId_ and parseCasId_');
 });
+
+// ── Dates (structure audit 3.5): ymd_, cellYmd_, localYmd_ in 00 ──
+test('the date helpers: a Date in a time zone, a sheet cell, a Date\'s own fields', () => {
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')], ['ymd_', 'cellYmd_', 'localYmd_']);
+  const D = env.sandbox.Date;
+  const late = new D(Date.UTC(2026, 10, 21, 3, 30)); // 10:30pm on the 20th in New York
+  assert.equal(env.exported.ymd_(late, 'America/New_York'), '2026-11-20');
+  assert.equal(env.exported.ymd_(late, 'UTC'), '2026-11-21');
+  assert.equal(env.exported.cellYmd_('2026-11-05T12:00:00Z', 'UTC'), '2026-11-05', 'a string\'s leading date');
+  assert.equal(env.exported.cellYmd_('Nov 5', 'UTC'), '');
+  assert.equal(env.exported.cellYmd_(new D('not a date'), 'UTC'), '', 'an invalid Date');
+  assert.equal(env.exported.cellYmd_(late, 'America/New_York'), '2026-11-20');
+  assert.equal(env.exported.localYmd_(new D(2026, 0, 5)), '2026-01-05');
+});
+
+test('no script keeps its own copy of a date helper', () => {
+  const found = [];
+  for (const f of fs.readdirSync(SCRIPTS).filter((n) => n.endsWith('.js') && n !== '00_SharedConfig.js')) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    const m = src.match(/^function (formatDateYMD_|dashIsoDate_|_onDateStr_|_schoolYmd_)\(/m);
+    if (m) found.push(f + ': ' + m[1]);
+    if (/Utilities\.formatDate\([^;]*"yyyy-MM-dd"\)/.test(src)) found.push(f + ': formatDate(…, "yyyy-MM-dd")');
+  }
+  assert.deepEqual(found, [], 'use 00_SharedConfig.js\'s ymd_, cellYmd_ and localYmd_');
+});

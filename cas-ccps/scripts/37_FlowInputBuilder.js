@@ -1413,7 +1413,7 @@ const FI_HELD_TWICE_PROP = "FI_HELD_TWICE";
 function _fiNoteHeldTwice_(n, now) {
   try {
     const props = PropertiesService.getScriptProperties();
-    const day = Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    const day = ymd_(now, Session.getScriptTimeZone());
     let cur = {};
     try { cur = JSON.parse(props.getProperty(FI_HELD_TWICE_PROP) || "{}") || {}; } catch (e) { cur = {}; }
     const count = (cur.day === day ? Number(cur.count) || 0 : 0) + n;
@@ -1746,8 +1746,8 @@ function flow2HeldTwiceLine_(now) {
   const n = Number(cur.count) || 0;
   if (!n || !cur.day) return "";
   const tz = Session.getScriptTimeZone();
-  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
-  const yesterday = Utilities.formatDate(new Date(now.getTime() - 24 * 60 * 60 * 1000), tz, "yyyy-MM-dd");
+  const today = ymd_(now, tz);
+  const yesterday = ymd_(new Date(now.getTime() - 24 * 60 * 60 * 1000), tz);
   if (cur.day !== today && cur.day !== yesterday) return "";
   return "Flow 2 answered " + n + " submission(s) again on " + cur.day + " after their results were delivered. " +
     "None was delivered twice. Many at once usually means a Studio test run re-ran Flow 2 over rows already done.";

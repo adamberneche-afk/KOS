@@ -345,7 +345,7 @@ function generateAlignmentReport() {
   const courseMap = buildCourseMap_(regSheet);
 
   // ── Build document ────────────────────────────────────────────────────────
-  const dateStr = Utilities.formatDate(generatedAt, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const dateStr = ymd_(generatedAt, Session.getScriptTimeZone());
   const timeStr = Utilities.formatDate(generatedAt, Session.getScriptTimeZone(), "MMM d, yyyy h:mm a");
   const title   = "Competency Alignment — " + currentTerm +
                   " — " + (cfg.teacherName || teacherEmail) +

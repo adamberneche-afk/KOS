@@ -113,8 +113,8 @@ function makeLessonDocsNow() {
 function _ldocThisWeek_(apply) {
   const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
   const reg = _ldocRegistry_(ss);
-  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
-  const lead = Utilities.formatDate(new Date(Date.now() + 2 * 86400000), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const today = ymd_(new Date(), Session.getScriptTimeZone());
+  const lead = ymd_(new Date(Date.now() + 2 * 86400000), Session.getScriptTimeZone());
   const out = [];
   const rows = _ldocScheduleRows_(ss);
   Object.keys(rows).forEach(function (code) {

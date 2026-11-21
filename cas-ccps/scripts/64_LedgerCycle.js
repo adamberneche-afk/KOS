@@ -526,7 +526,7 @@ function lcNoteQuietNext_(props, started, quiet) {
   try {
     props.setProperty(LC_PROP_QUIET_NEXT, JSON.stringify({
       next: started + every * 60000 - LC_DUE_TOLERANCE_MS, reason: quiet,
-      ymd: Utilities.formatDate(new Date(started), q.tz, "yyyy-MM-dd"), tz: q.tz, from: q.from, to: q.to,
+      ymd: ymd_(new Date(started), q.tz), tz: q.tz, from: q.from, to: q.to,
     }));
   } catch (e) {
     props.deleteProperty(LC_PROP_QUIET_NEXT); // every minute, as before
@@ -632,7 +632,7 @@ function lcErrorState_(props) {
 }
 
 function lcNoteResult_(errs, fn, ok, now) {
-  const day = Utilities.formatDate(new Date(now), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const day = ymd_(new Date(now), Session.getScriptTimeZone());
   const e = errs[fn] || { streak: 0, since: 0, day: day, dayCount: 0 };
   if (e.day !== day) { e.day = day; e.dayCount = 0; }
   if (ok) {
@@ -652,7 +652,7 @@ function lcNoteResult_(errs, fn, ok, now) {
  */
 function lcFailingJobs_(props, now) {
   props = props || PropertiesService.getScriptProperties();
-  const day = Utilities.formatDate(new Date(now || Date.now()), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const day = ymd_(new Date(now || Date.now()), Session.getScriptTimeZone());
   const errs = lcErrorState_(props);
   return Object.keys(errs).map(function (fn) {
     const e = errs[fn] || {};
@@ -674,7 +674,7 @@ function lcTimingState_(props) {
 }
 
 function lcDayKey_(now) {
-  return Utilities.formatDate(new Date(now), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  return ymd_(new Date(now), Session.getScriptTimeZone());
 }
 
 function lcTimingEntry_(timing, key, now) {

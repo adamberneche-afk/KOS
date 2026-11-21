@@ -12,10 +12,9 @@
 // pipeline" before this existed — this pins that fix down at its actual
 // source so it can never silently regress again.
 //
-// Loaded together with 23_StudentProfileManager.js because
-// _normalizeLessonDateCell_ calls formatDateYMD_(), which lives there —
-// both files are bound to the same GAS project (cas-ccps:central-ledger,
-// see tools/gas-lint/project-map.json), so this mirrors how the real
+// Loaded together with 00_SharedConfig.js because _normalizeLessonDateCell_
+// calls localYmd_(), which lives there (23's formatDateYMD_ until
+// 2026-11-21) — every project carries 00, so this mirrors how the real
 // project actually runs.
 
 const test = require('node:test');
@@ -24,11 +23,11 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const LESSON_CONTEXT_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '22_LessonContextHandler.js');
-const STUDENT_PROFILE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '23_StudentProfileManager.js');
+const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 
 function load() {
   return loadGasFiles(
-    [STUDENT_PROFILE_PATH, LESSON_CONTEXT_PATH],
+    [SHARED_CONFIG_PATH, LESSON_CONTEXT_PATH],
     ['_normalizeLessonDateCell_'],
   );
 }

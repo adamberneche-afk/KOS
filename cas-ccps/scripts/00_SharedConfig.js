@@ -641,12 +641,9 @@ function _schoolDaysOff_(fromConfig, ledgerId) {
 // A date cell as "yyyy-MM-dd": a Date (any realm), "yyyy-MM-dd", or "m/d/yyyy".
 // A Date's own fields: Apps Script runs in the script's time zone, so no
 // Session call (one project's manifest lacks the scope it needs).
-function _schoolYmd_(d) {
-  return d.getFullYear() + "-" + ("0" + (d.getMonth() + 1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
-}
 function _schoolDateCell_(value) {
   if (value instanceof Date || Object.prototype.toString.call(value) === "[object Date]") {
-    return isNaN(value.getTime()) ? "" : _schoolYmd_(value);
+    return isNaN(value.getTime()) ? "" : localYmd_(value);
   }
   const s = String(value || "").trim();
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
@@ -869,7 +866,7 @@ function lessonScheduleRows_(ss, tz) {
     const code = String(r[0]).trim(), key = String(r[1]).trim();
     const c = r[3];
     const start = Object.prototype.toString.call(c) === "[object Date]"
-      ? Utilities.formatDate(c, tz, "yyyy-MM-dd") : String(c || "").trim().slice(0, 10);
+      ? ymd_(c, tz) : String(c || "").trim().slice(0, 10);
     if (!code || !key || !/^\d{4}-\d{2}-\d{2}$/.test(start)) return;
     (out[code] = out[code] || []).push({ key: key, start: start,
       hold: holdAt !== -1 && String(r[holdAt]).trim().toUpperCase() === "HOLD" });
@@ -1132,7 +1129,7 @@ function _readConfigTab_(ss) {
     // 2026 ...", which nothing reads. Keep it as the yyyy-MM-dd it was typed as.
     const cell = rows[i][1];
     const val = (Object.prototype.toString.call(cell) === "[object Date]" && !isNaN(cell.getTime())
-      ? _schoolYmd_(cell)
+      ? localYmd_(cell)
       : String(cell === undefined ? "" : cell)).trim();
     if (key && key !== "Key" && val) map[key] = val;
   }
@@ -1463,7 +1460,7 @@ function currentTerm_(now) {
   const firstYear = _schoolYearOfTerm_(table[0].term);
   if (firstYear && _schoolYearForDate_(date) < firstYear) return set;
   // The district's time zone, fixed (Session needs a scope two projects lack).
-  const byDate = _termForDate_(table, Utilities.formatDate(date, "America/New_York", "yyyy-MM-dd"));
+  const byDate = _termForDate_(table, ymd_(date, "America/New_York"));
   // CURRENT_TERM names the school year; the dates pick the marking period in
   // it. A CURRENT_TERM in another school year was set on purpose and wins.
   if (!byDate || (set && _schoolYearOfTerm_(set) && _schoolYearOfTerm_(set) !== _schoolYearOfTerm_(byDate))) return set;
@@ -2242,6 +2239,35 @@ const LEDGER = {
   FIRST_PASSED_AT:        25,  // when an evaluation first passed; never cleared
   LAST_SUGGESTED_SCORE:   26,  // Flow 2's [SUGGESTED_SCORE: N] on the latest check, "" if none
 };
+
+// Dates, one set of helpers (structure audit 3.5, 2026-11-21; the files wrote
+// the same few lines out):
+//   ymd_(date, tz)      -> "2026-11-21" in tz. tz is required: 00 calls no
+//                          Session (Session.* needs a scope two projects lack),
+//                          so a caller passes Session.getScriptTimeZone().
+//   cellYmd_(value, tz) -> a sheet cell as "yyyy-MM-dd": a Date formatted, a
+//                          string's leading yyyy-MM-dd, else "" (an invalid
+//                          Date too)
+//   localYmd_(date)     -> from the Date's own fields, no time zone (what 00's
+//                          school calendar and 23's lesson dates always used)
+// 07's and 13's formatDate_ ("Nov 21, 2026 9:05 AM") stay in those files: it
+// reads Session.getScriptTimeZone(), which 00 doesn't call.
+function ymd_(d, tz) {
+  return Utilities.formatDate(d, tz, "yyyy-MM-dd");
+}
+
+function cellYmd_(value, tz) {
+  if (Object.prototype.toString.call(value) === "[object Date]") {
+    return isNaN(value.getTime()) ? "" : ymd_(value, tz);
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || "").trim());
+  return m ? m[1] + "-" + m[2] + "-" + m[3] : "";
+}
+
+function localYmd_(d) {
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+
 
 // A lesson's assignment ConfigID, built and read in one place (structure
 // audit 3.4, 2026-11-21; 15 hand-built or hand-parsed copies until then).

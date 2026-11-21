@@ -1632,3 +1632,26 @@ else), both in 00.
   `parseCasId_` reads with no course), 71's own lesson-number pattern
   (`L(\d{1,3})`, which the turn-in code needs) and the turn-in codes
   themselves (71, 74), which are not ConfigIDs.
+
+## One set of date helpers, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.5. In 00:
+
+- `ymd_(date, tz)` ("yyyy-MM-dd" in tz) replaces every
+  `Utilities.formatDate(…, tz, "yyyy-MM-dd")` (46 calls in 22 files) and is
+  what 71's `_turnInYmd_` calls.
+- `cellYmd_(value, tz)` (a sheet cell: a Date formatted, a string's leading
+  date, else "") replaces 13's `dashIsoDate_` and 34c's `_onDateStr_`.
+- `localYmd_(date)` (the Date's own fields) replaces 00's `_schoolYmd_` and
+  23's `formatDateYMD_`, which were the same code.
+- `ymd_` takes the time zone; it has no default, because 00 calls no
+  `Session` (two projects' manifests lack the scope gas-lint asks for), so
+  a caller passes `Session.getScriptTimeZone()` as before.
+- `formatDate_` ("Nov 21, 2026 9:05 AM") stays as the two identical copies in
+  07 and 13: it reads the script's time zone, and 00 can't.
+
+Left as they are: helpers that do something more (07's `_tdLsDate_` and 73's
+`_tipYmd_` return a non-date cell's text; 00's term lookup keeps its own
+fixed time zone) now format through `ymd_`. Other date formats (times, "MMM
+d") stay where they are used. `cas-ids.test.js` covers the helpers and fails
+on a new copy or a new hand-written "yyyy-MM-dd" format call.

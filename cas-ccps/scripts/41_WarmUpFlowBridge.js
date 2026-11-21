@@ -630,7 +630,7 @@ function wfbFallbackExhaustedInputs_(ss, flow3Tab, wqSheet, now) {
   rows.forEach(function (r) {
     if (String(r[2]).trim() === "RETRIED") tries[String(r[1]).trim()] = (tries[String(r[1]).trim()] || 0) + 1;
   });
-  const today = formatDateYMD_(now);
+  const today = localYmd_(now);
   let delivered = 0;
   rows.forEach(function (r) {
     const id = String(r[1]).trim();
@@ -1514,7 +1514,7 @@ function wfbRepairFailedWarmUps_(dryRun) {
     Logger.log("[WFB] repairFailedWarmUps: " + JSON.stringify(result));
     return result;
   }
-  const today = formatDateYMD_(new Date());
+  const today = localYmd_(new Date());
   const rows = ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues();
   rows.forEach(function (r, i) {
     const error = String(r[WFB_RET.ERROR] || "");
@@ -1836,7 +1836,7 @@ function wfbParseDate_(raw) {
 function wfbNormalizeDateIso_(raw) {
   const d = wfbParseDate_(raw);
   if (isNaN(d.getTime())) return String(raw);
-  return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  return ymd_(d, Session.getScriptTimeZone());
 }
 
 function wfbFormatReadableDate_(iso) {

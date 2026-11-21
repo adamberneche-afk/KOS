@@ -18,7 +18,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const LESSON_CONTEXT_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '22_LessonContextHandler.js');
 const WARMUP_BRIDGE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '24_WarmUpBridge.js');
-// formatDateYMD_, which _normalizeLessonDateCell_ calls for a Date cell. Same
+// localYmd_ (00), which _normalizeLessonDateCell_ calls for a Date cell. Same
 // Central Ledger project in production.
 const PROFILE_MANAGER_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '23_StudentProfileManager.js');
 // 00 is in every project; 23 reads the shadow matrix's two constants from it (2026-11-01).

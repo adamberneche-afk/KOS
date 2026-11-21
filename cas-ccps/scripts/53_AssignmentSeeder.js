@@ -289,8 +289,8 @@ function _asUnits_(opts) {
     return all;
   }
   const now = opts.today || new Date();
-  const today = formatDateYMD_(now);
-  const soon = formatDateYMD_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7));
+  const today = localYmd_(now);
+  const soon = localYmd_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7));
   const out = {};
   schoolCourseCodes_().forEach(code => {
     const unit = resolveUnitForCourseDate_(today, code); // 31

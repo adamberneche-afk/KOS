@@ -245,7 +245,7 @@ function checkRetentionSchedule() {
   const lines = ["Retention schedule (" + RETENTION_ADOPTED + "):"];
   results.forEach(function (r) {
     const head = "- " + r.label + " [" + r.tier + ", " + r.years + " yr after the school year ends; past = before " +
-      Utilities.formatDate(r.cutoff, tz, "yyyy-MM-dd") + "]: ";
+      ymd_(r.cutoff, tz) + "]: ";
     lines.push(head + (!r.found ? "tab not found" :
       r.missingDateColumn ? r.rows + " row(s); date column \"" + r.missingDateColumn + "\" not found, so none checked" :
       r.rows + " row(s), " + r.past + " past (" + r.pastArchived + " archived)" +
@@ -306,7 +306,7 @@ function previewRetentionDisposition() {
   const totals = { disposable: 0, linkedDocs: 0, awaitingArchive: 0, undecided: 0 };
   const lines = ["Retention disposition, dry run: nothing is deleted (" + RETENTION_ADOPTED + ")."];
   results.forEach(function (r) {
-    const head = "- " + r.label + " [before " + Utilities.formatDate(r.cutoff, tz, "yyyy-MM-dd") + "]: ";
+    const head = "- " + r.label + " [before " + ymd_(r.cutoff, tz) + "]: ";
     if (!r.found) { lines.push(head + "tab not found"); return; }
     if (r.missingDateColumn) {
       totals.undecided += r.rows;
@@ -327,9 +327,9 @@ function previewRetentionDisposition() {
   let code = "";
   if (totals.disposable) {
     const pending = {
-      at: Utilities.formatDate(now, tz, "yyyy-MM-dd"),
+      at: ymd_(now, tz),
       records: results.filter(function (r) { return r.found && r.disposable; }).map(function (r) {
-        return { label: r.label, cutoff: Utilities.formatDate(r.cutoff, tz, "yyyy-MM-dd"), rows: r.disposable, docs: r.linkedDocs };
+        return { label: r.label, cutoff: ymd_(r.cutoff, tz), rows: r.disposable, docs: r.linkedDocs };
       }),
       keys: _retentionKeysDigest_(keys),
     };
@@ -411,7 +411,7 @@ function _retentionApplyLocked_(cfg, now, tz, code, props, approved, allowed) {
     const r = _retentionCountsFor_(schedule[i], cfg, now, targets);
     if (!r.disposable) continue;
     const a = approved[r.label];
-    if (a && Utilities.formatDate(r.cutoff, tz, "yyyy-MM-dd") !== a.cutoff) return refuse(r.label + "'s period changed since the report.");
+    if (a && ymd_(r.cutoff, tz) !== a.cutoff) return refuse(r.label + "'s period changed since the report.");
     // Only rows named in the report; anything else waits for the next one.
     const named = targets.filter(function (t) {
       const k = r.label + ":" + t.key;
