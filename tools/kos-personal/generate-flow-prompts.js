@@ -80,7 +80,7 @@ function extractPromptBody(mdText, mdFile) {
 
 function main() {
   const constants = SOURCES.map(({ mdFile, constName, trailerKey }) => {
-    const mdText = fs.readFileSync(path.join(KP, mdFile), 'utf8');
+    const mdText = fs.readFileSync(path.join(KP, 'prompts', mdFile), 'utf8');
     const body = extractPromptBody(mdText, mdFile);
     return { constName, mdFile, trailerKey, body };
   });

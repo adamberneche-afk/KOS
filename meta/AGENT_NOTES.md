@@ -246,7 +246,7 @@ Pruning the notes that no longer hold is a later pass of its own.
 - **Family Mail Sentinel:** `60_FamilyMailSentinel.js`'s header is the
   design; `cas-ccps/docs/FAMILY_MAIL_SENTINEL.md` the setup and data
   boundary. The Gemini prompt's one source is
-  `cas-ccps/docs/FAMILY_MAIL_TRIAGE_PROMPT.md`; regenerate `61` with
+  `cas-ccps/prompts/FAMILY_MAIL_TRIAGE_PROMPT.md`; regenerate `61` with
   `node tools/cas-ccps/generate-family-mail-prompt.js`. `run.ps1` reads
   script IDs from the operator's `clasp-registry\` folder, not the repo.
 - **central-ledger is also a library.** `unified-manual` pins it at

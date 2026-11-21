@@ -844,7 +844,7 @@ test('61_FamilyMailPrompt.js is generated from FAMILY_MAIL_TRIAGE_PROMPT.md', ()
   const gen = require('../../tools/cas-ccps/generate-family-mail-prompt.js');
   const expected = gen.render(gen.extractPrompt(fs.readFileSync(gen.SOURCE_PATH, 'utf8')));
   assert.equal(fs.readFileSync(gen.TARGET_PATH, 'utf8'), expected,
-    'Edit cas-ccps/docs/FAMILY_MAIL_TRIAGE_PROMPT.md and run node tools/cas-ccps/generate-family-mail-prompt.js');
+    'Edit cas-ccps/prompts/FAMILY_MAIL_TRIAGE_PROMPT.md and run node tools/cas-ccps/generate-family-mail-prompt.js');
   assert.match(gen.extractPrompt(fs.readFileSync(gen.SOURCE_PATH, 'utf8')), /MESSAGE TO TRIAGE:$/);
 });
 

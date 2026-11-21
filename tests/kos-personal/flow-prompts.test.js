@@ -146,7 +146,7 @@ test('checkFlowPrompts: STALE after a hand-edit to a synced row', () => {
 
 test('DRIFT GUARD: CURATOR_SYSTEM_PROMPT still matches CURATOR_PROMPT.md', () => {
   const { exported } = load();
-  const mdText = fs.readFileSync(path.join(KP, 'CURATOR_PROMPT.md'), 'utf8');
+  const mdText = fs.readFileSync(path.join(KP, 'prompts', 'CURATOR_PROMPT.md'), 'utf8');
   const expected = extractPromptBody(mdText);
   assert.equal(exported.CURATOR_SYSTEM_PROMPT, expected,
     'CURATOR_PROMPT.md changed without re-running ' +
@@ -155,7 +155,7 @@ test('DRIFT GUARD: CURATOR_SYSTEM_PROMPT still matches CURATOR_PROMPT.md', () =>
 
 test('DRIFT GUARD: VECTOR_CLASSIFY_SYSTEM_PROMPT still matches VECTOR_CLASSIFY_PROMPT.md', () => {
   const { exported } = load();
-  const mdText = fs.readFileSync(path.join(KP, 'VECTOR_CLASSIFY_PROMPT.md'), 'utf8');
+  const mdText = fs.readFileSync(path.join(KP, 'prompts', 'VECTOR_CLASSIFY_PROMPT.md'), 'utf8');
   const expected = extractPromptBody(mdText);
   assert.equal(exported.VECTOR_CLASSIFY_SYSTEM_PROMPT, expected,
     'VECTOR_CLASSIFY_PROMPT.md changed without re-running ' +
@@ -164,7 +164,7 @@ test('DRIFT GUARD: VECTOR_CLASSIFY_SYSTEM_PROMPT still matches VECTOR_CLASSIFY_P
 
 test('DRIFT GUARD: CURATOR_AUDITOR_SYSTEM_PROMPT still matches CURATOR_AUDITOR_PROMPT.md', () => {
   const { exported } = load();
-  const mdText = fs.readFileSync(path.join(KP, 'CURATOR_AUDITOR_PROMPT.md'), 'utf8');
+  const mdText = fs.readFileSync(path.join(KP, 'prompts', 'CURATOR_AUDITOR_PROMPT.md'), 'utf8');
   const expected = extractPromptBody(mdText);
   assert.equal(exported.CURATOR_AUDITOR_SYSTEM_PROMPT, expected,
     'CURATOR_AUDITOR_PROMPT.md changed without re-running ' +

@@ -48,7 +48,7 @@ function load() {
 // standalone "---" line. What precedes it is the file's own "paste this
 // verbatim" preamble — instructions to a human, not part of the prompt.
 function promptFromMarkdown(jobType) {
-  const raw = fs.readFileSync(path.join(LH, jobType + '_FLOW_PROMPT.md'), 'utf8');
+  const raw = fs.readFileSync(path.join(LH, 'prompts', jobType + '_FLOW_PROMPT.md'), 'utf8');
   const parts = raw.split(/^---$/m);
   assert.equal(parts.length, 2, jobType + '_FLOW_PROMPT.md should have exactly one "---"');
   return parts[1].trim();
@@ -97,7 +97,7 @@ test('LEADERHUB_GEM_PROMPT.md is deliberately not in the registry', () => {
   const { exported } = load();
   // It's the interactive Gem persona, not a Flow system prompt — and
   // LEADERHUB_AI_FLOW_SETUP.md's job-type table doesn't list it.
-  assert.ok(fs.existsSync(path.join(LH, 'LEADERHUB_GEM_PROMPT.md')), 'the file still exists');
+  assert.ok(fs.existsSync(path.join(LH, 'prompts', 'LEADERHUB_GEM_PROMPT.md')), 'the file still exists');
   assert.equal(exported.AI_FLOW_TYPES.indexOf('LEADERHUB_GEM'), -1);
 });
 

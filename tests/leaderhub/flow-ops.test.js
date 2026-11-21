@@ -388,7 +388,7 @@ test('runLeaderHubPreflight: makes no writes, so it is safe against a live deplo
 // fixtures a version behind.
 
 function documentedPayload(jobType) {
-  const raw = fs.readFileSync(path.join(LH, jobType + '_FLOW_PROMPT.md'), 'utf8');
+  const raw = fs.readFileSync(path.join(LH, 'prompts', jobType + '_FLOW_PROMPT.md'), 'utf8');
   const blocks = raw.match(/```json\s*\n[\s\S]*?\n```/g) || [];
   for (const block of blocks) {
     const body = block.replace(/^```json\s*\n/, '').replace(/\n```$/, '');

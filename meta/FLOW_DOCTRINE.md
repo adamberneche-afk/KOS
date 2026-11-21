@@ -464,7 +464,7 @@ and let it flow through the normal path, not to leave the hotfix standing.
 the deployed constant is a generated mirror of it, produced by a script, not
 by hand:**
 
-- `kos-personal/CURATOR_PROMPT.md` / `VECTOR_CLASSIFY_PROMPT.md` /
+- `kos-personal/prompts/CURATOR_PROMPT.md` / `VECTOR_CLASSIFY_PROMPT.md` /
   `CURATOR_AUDITOR_PROMPT.md` → `tools/kos-personal/generate-flow-prompts.js`
   → `16_FlowPrompts.gs`'s `CURATOR_SYSTEM_PROMPT` /
   `VECTOR_CLASSIFY_SYSTEM_PROMPT` / `CURATOR_AUDITOR_SYSTEM_PROMPT`.
@@ -480,7 +480,7 @@ by hand:**
   `FLOW_6_PROMPT` (the turn-in check, 2026-11-08).
 - `leader-hub/*_FLOW_PROMPT.md` → `tools/leader-hub/generate-ai-prompts.js`
   → `AiPrompts.gs`'s six `AI_PROMPT_*` constants.
-- `cas-ccps/docs/FAMILY_MAIL_TRIAGE_PROMPT.md` →
+- `cas-ccps/prompts/FAMILY_MAIL_TRIAGE_PROMPT.md` →
   `tools/cas-ccps/generate-family-mail-prompt.js` →
   `61_FamilyMailPrompt.js`'s `FAMILY_MAIL_TRIAGE_PROMPT`.
 

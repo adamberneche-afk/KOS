@@ -62,7 +62,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 13_StudioInputBuilder.gs   CuratorInput / VectorClassifyInput rows         ✅ in repo
 14_StudioFlowBuildSpec.gs  FlowBuildSpec tab                               ✅ in repo
 15_Preflight.gs            runKosPersonalPreflight()                       ✅ in repo
-16_FlowPrompts.gs          FlowPrompts tab (generated from the prompt .md files) ✅ in repo
+16_FlowPrompts.gs          FlowPrompts tab (generated from prompts/*.md)    ✅ in repo
 17_DeployVersionReport.gs  reportDeployVersion() (deploy-drift)            ✅ in repo
 18_DeployVersionMarker.gs  Deploy SHA marker (stamped, never hand-edited)  ✅ in repo
 19_StagingRequeue.gs       previewStagingRequeue() / requeueStagingBatch(); getFailedQueueRows() / retryFailedRow() for the web app ✅ in repo
@@ -76,6 +76,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 27_FidelitySample.gs       Randomized closeout-fidelity draw (10%), FIDELITY_AUDIT, the primer's Fidelity line ✅ in repo
 archive/inference-service/ Optional Node.js managed-inference backend — ARCHIVED 2026-11-17 (dormant since D16; needs Google Cloud, off for the district)
 rtp-core-router/protocols/ governance/protocol docs                       ✅ filed in — see CHANGELOG.md. SMPs aren't kept here: `SMP_REGISTER` + `01.3_SMP_PROPOSALS` (meta/SMP_PROCESS.md)
+prompts/                   every Studio flow prompt, the .md the source    ✅ in repo — prompts/README.md lists each one's constant (2026-11-21)
 claude-project/            Claude Project instructions, session-log format, flows briefing ✅ in repo — replaces the RTP Gem (meta/PLAN_2026-10.md); FLOWS_BRIEFING.md (2026-11-15) tells the RTP what each pipeline behind its signals is for
 docs/                      One doc per feature, split out of this README on 2026-11-17 — see "Features" below and docs/README.md
 archive/studio-steps/      Archived custom Studio steps — SEPARATE Apps Script project, unpublishable without GCP; see its own README
