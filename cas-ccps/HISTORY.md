@@ -1736,3 +1736,20 @@ The README's naming note, which explained `_ADDENDUM` files deleted on
 pre-M2/M3 copies of 07 and 08 were never added under their own names
 because the repo's 07 and 08 were strict supersets; 09 was the exception,
 kept under both names until both were removed.
+
+## One deploy-version report for every system, 2026-11-21
+
+Structure audit 3.8. The report each project sends to deploy-drift lived in
+00 here and was copied by hand into kos-personal and LeaderHub, where it had
+drifted: only 00's checked the project's permissions. The block in 00 is
+now a copy of `shared/deploy-report/deploy-version-report.js`, written by
+`tools/flow-harness-sync/sync-deploy-report.js`, which fills
+`DEPLOY_PROJECT_SCOPES` from every project's manifest (it was typed here by
+hand, held to the manifests by a test). Edit the shared file and run the
+sync; a test fails when a copy differs.
+
+The eight marker files' trigger installers, identical bodies, now call the
+block's `_installDeployVersionReportTrigger_()` after their own guard. Not
+done: generating the marker files themselves; they are stamped by
+`tools/deploy-drift/stamp.js` and by run.js at push, so that belongs with
+the deploy path.

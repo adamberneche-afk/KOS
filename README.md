@@ -154,7 +154,7 @@ student-data scans still read them.
 One line each; [`tools/README.md`](./tools/README.md) has the detail.
 
 - `tools/gas-lint/`: static checks for the GAS systems
-- `tools/flow-harness-sync/`: cross-project constant sync
+- `tools/flow-harness-sync/`: cross-project sync, from the one copy in [`shared/`](./shared/) (the plausibility phrases; the deploy-version report every Apps Script project sends)
 - `tools/coverage-gaps/`: scheduled functions with zero test coverage
 - `tools/doc-currency/`: checks the docs against the code
 - `tools/clasp-sync/`: bridges cas-ccps to clasp

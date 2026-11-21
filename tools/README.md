@@ -28,7 +28,7 @@ is to run the same command without it, then commit what changed.
 | [`html-lint/`](./html-lint/check.js) | inline `<script>` syntax check | CI | `node tools/html-lint/check.js leader-hub/student-leader-hub.html` |
 | [`deploy-drift/`](./deploy-drift/) | is what's live actually what git expects? | its own workflow | `node tools/deploy-drift/check.js` |
 | [`watchdog/`](./watchdog/check.js) | scheduled-job watchdog | its own workflow | `node tools/watchdog/check.js` |
-| [`flow-harness-sync/`](./flow-harness-sync/) | cross-project constant sync | by hand; a test checks it | `node tools/flow-harness-sync/sync-plausibility-phrases.js` (`--check`) |
+| [`flow-harness-sync/`](./flow-harness-sync/) | cross-project sync of what must be identical | by hand; tests check it | `node tools/flow-harness-sync/sync-plausibility-phrases.js`, `sync-deploy-report.js` (`--check`) |
 | [`leaderhub-build/`](./leaderhub-build/) | assembles `student-leader-hub.html` | by hand; tests check it | `node tools/leaderhub-build/build.js` (`--check`) |
 | [`cas-ccps/`](./cas-ccps/), [`kos-personal/`](./kos-personal/), [`leader-hub/`](./leader-hub/) | the lesson, rubric, prompt, cartridge and dashboard generators | by hand; tests check each output | the generator itself, e.g. `node tools/cas-ccps/build-lesson-assignments.js` (`--check`) |
 | [`notebook-codebase/`](./notebook-codebase/build.js) | the repo as Gemini notebook sources | by hand | `node tools/notebook-codebase/build.js` |
@@ -76,7 +76,11 @@ L. See [`tools/flow-harness-sync/README.md`](./flow-harness-sync/README.md)
 for the general four-part recipe (canonical source, targeted-replacement
 generator, a gas-lint check, a drift-guard test) this is one instance of —
 and, as importantly, when this does *not* apply: logic that's merely
-similar per system, not genuinely identical, stays separate.
+similar per system, not genuinely identical, stays separate. Second
+instance (2026-11-21, structure audit 3.8): `sync-deploy-report.js` copies
+`shared/deploy-report/deploy-version-report.js`, the deploy-version report
+and its permission check, into cas-ccps's 00, kos-personal's 17 and
+leader-hub's `DeployVersionReport.gs`.
 
 ## [`tools/coverage-gaps/`](./coverage-gaps/) — scheduled functions with zero test coverage
 

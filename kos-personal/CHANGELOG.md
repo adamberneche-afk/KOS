@@ -6,6 +6,19 @@ This file holds the current plan of record's era; `node tools/archive/search.js 
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
 
+### The deploy-version report checks its permissions (2026-11-21)
+
+Structure audit 3.8. `17_DeployVersionReport.gs` now holds the one
+deploy-version report block that cas-ccps and LeaderHub also carry, copied
+from `shared/deploy-report/deploy-version-report.js` by
+`tools/flow-harness-sync/sync-deploy-report.js`; `reportDeployVersion()`
+calls `_reportDeployVersion_('kos-personal', KOS_DEPLOY_VERSION_SHA)`. What
+it sends is unchanged. New here: before reporting it tries each scope the
+manifest lists, and after reporting it throws when one isn't granted, so
+the 6-hour trigger's failure email names it (cas-ccps has done this since
+2026-11-19, when the Student Dashboard's Slides scope was listed but never
+granted). Takes effect at the next push.
+
 ### The guides' history banners moved here (2026-11-21)
 
 Structure audit 4.11: `DEPLOYMENT_GUIDE.md` started its first section at line

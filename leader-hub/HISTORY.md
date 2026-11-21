@@ -25,6 +25,22 @@ its history.
 This file holds the current plan of record's era; `node tools/archive/search.js --entries`
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
+## The deploy-version report checks its permissions, 2026-11-21
+
+- **Now:** `DeployVersionReport.gs` holds the one deploy-version report
+  block kos-personal and cas-ccps also carry, copied from
+  `shared/deploy-report/deploy-version-report.js` by
+  `tools/flow-harness-sync/sync-deploy-report.js` (structure audit 3.8).
+  `reportDeployVersion()` keeps its owner guard and calls
+  `_reportDeployVersion_('leader-hub:app', LH_DEPLOY_VERSION_SHA)`; the
+  installer keeps `_lhRequireOwner_` and calls the block's
+  `_installDeployVersionReportTrigger_`.
+- **New:** before reporting it tries each scope the manifest lists, and
+  after reporting it throws when one isn't granted, so the trigger's
+  failure email names it. Before this only cas-ccps checked.
+- **Why:** three hand copies had drifted; one block means a fix lands in
+  every system. Takes effect at the next push.
+
 ## Drive IDs out of the code: the release gate, 2026-11-20
 
 - **Now:** the lesson-plan table (`LESSON_PLANS`, src/09) holds no doc ID.

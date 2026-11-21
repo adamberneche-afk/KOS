@@ -42,9 +42,5 @@ function reportDeployVersion() {
  * this file's header).
  */
 function installDeployVersionReportTrigger() {
-  ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === 'reportDeployVersion') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('reportDeployVersion').timeBased().everyHours(6).create();
-  console.log('[DeployVersionReport] Trigger installed: reportDeployVersion, every 6 hours.');
+  _installDeployVersionReportTrigger_();
 }
