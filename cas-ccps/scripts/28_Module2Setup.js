@@ -1026,12 +1026,9 @@ function _createM2LightweightTabs_(ss) {
   // is written with and stores them as real Date values instead, which
   // broke supersedeDuplicates_()/findLesson_()'s string comparisons
   // (22_LessonContextHandler.js / 24_WarmUpBridge.js).
-  _createTabIfMissing28_(ss, "LessonContext", [
-    "lesson_id","teacher_email","submitted_at","lesson_date",
-    "period_or_class","activity_description","learning_objective",
-    "key_vocabulary","prior_lesson_connection","competency_ids",
-    "status","alignment_logged_at","error_notes","term"
-  ], [4]);
+  // All 18 headers (00's LCTX_HEADERS); this list stopped at "term" until
+  // 2026-11-21, leaving warm_up_generated's header blank on a tab made here.
+  _createTabIfMissing28_(ss, "LessonContext", LCTX_HEADERS.slice(), [4]);
   _createTabIfMissing28_(ss, "CompetencyRegistry", [
     "competency_id","competency_text","subject","grade_band",
     "strand","teacher_email","active"
@@ -1085,11 +1082,19 @@ function _createM2WarmUpTabs_(ss) {
 function _addWarmUpGeneratedColumn_(ss) {
   const sheet = ss.getSheetByName("LessonContext");
   if (!sheet) return;
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  if (headers.includes("warm_up_generated")) return;
-  const newCol = sheet.getLastColumn() + 1;
-  sheet.getRange(1, newCol)
-    .setValue("warm_up_generated")
+  // Its own column, 15 (00's LCTX.WARM_UP_GENERATED), which 24 and 25 write
+  // by index. This used to add the header past the last column, which on a
+  // tab that already had 27's frame columns put it at 19 (fixed 2026-11-21).
+  const name = LCTX_HEADERS[LCTX.WARM_UP_GENERATED];
+  const cell = sheet.getRange(1, LCTX.WARM_UP_GENERATED + 1);
+  if (String(cell.getValue()).trim() === name) return;
+  if (String(cell.getValue()).trim() !== "") {
+    Logger.log("[S28] LessonContext column " + (LCTX.WARM_UP_GENERATED + 1) + " is headed \"" +
+      cell.getValue() + "\", not " + name + "; left as it is.");
+    return;
+  }
+  cell
+    .setValue(name)
     .setFontWeight("bold")
     .setBackground("#f3f3f3");
   Logger.log("[S28] warm_up_generated column added.");

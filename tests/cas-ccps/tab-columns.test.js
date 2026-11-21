@@ -1,7 +1,8 @@
 'use strict';
 // A tab's columns are declared once, in 00_SharedConfig.js (structure audit
 // 3.1, 2026-11-21): the Ledger (LEDGER, LEDGER_HEADERS), WarmUpQueue (WQ,
-// WQ_HEADERS), TeacherMatrix (TM), RubricQueue (RBQ) and ReviewQueue (RVQ). Each index map must stay in step with its header row, and no
+// WQ_HEADERS), TeacherMatrix (TM), RubricQueue (RBQ), ReviewQueue (RVQ) and LessonContext
+// (LCTX). Each index map must stay in step with its header row, and no
 // other file may keep its own copy.
 
 const test = require('node:test');
@@ -14,7 +15,7 @@ const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const x = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')],
   ['LEDGER', 'LEDGER_HEADERS', 'LEDGER_BASE_WIDTH', 'LEDGER_COL_COUNT', 'LEDGER_LATER_HEADERS',
     'WQ', 'WQ_HEADERS', 'WQ_BASE_WIDTH', 'TM', 'TM_HEADERS', 'TM_BASE_WIDTH',
-    'RBQ', 'RBQ_HEADERS', 'RVQ', 'RVQ_HEADERS']).exported;
+    'RBQ', 'RBQ_HEADERS', 'RVQ', 'RVQ_HEADERS', 'LCTX', 'LCTX_HEADERS']).exported;
 
 // Each LEDGER key and the header it names.
 const NAMES = {
@@ -97,4 +98,35 @@ test('no script keeps its own copy of TeacherMatrix, RubricQueue or ReviewQueue 
     if (/"RubricText",\s*"PromptTemplateID",\s*"TeacherMatrixSsId"/.test(src)) copies.push(f + ': a RubricQueue header list');
   }
   assert.deepEqual(copies, [], 'use 00_SharedConfig.js\'s TM, RBQ and RVQ');
+});
+
+test('LessonContext: LCTX\'s indexes are LCTX_HEADERS\' positions', () => {
+  assert.equal(Object.keys(x.LCTX).length, x.LCTX_HEADERS.length);
+  for (const k of Object.keys(x.LCTX)) assert.equal(x.LCTX_HEADERS[x.LCTX[k]], k.toLowerCase(), k);
+});
+
+test('no script keeps its own copy of LessonContext\'s columns or header row', () => {
+  const copies = [];
+  for (const f of fs.readdirSync(SCRIPTS).filter((n) => n.endsWith('.js') && n !== '00_SharedConfig.js')) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    const m = src.match(/^const LC\d*_(LESSON_ID|STATUS|LESSON_DATE|FRAME_DOC_ID|WARM_UP_GENERATED)\s*=\s*\d+/m);
+    if (m) copies.push(f + ': ' + m[0]);
+    if (/"period_or_class",\s*"activity_description"/.test(src)) copies.push(f + ': a header list');
+  }
+  assert.deepEqual(copies, [], 'use 00_SharedConfig.js\'s LCTX and LCTX_HEADERS');
+});
+
+test('28 heads warm_up_generated in its own column, not past the frame columns', () => {
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '28_Module2Setup.js')],
+    ['_addWarmUpGeneratedColumn_', 'LCTX', 'LCTX_HEADERS']);
+  const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
+  const sheet = ss.insertSheet('LessonContext');
+  const headers = env.exported.LCTX_HEADERS.slice();
+  headers[env.exported.LCTX.WARM_UP_GENERATED] = ''; // a tab made by the old 14-header setup, frames added since
+  sheet.appendRow(headers);
+  env.exported._addWarmUpGeneratedColumn_(ss);
+  const after = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  assert.deepEqual(after.map(String), [...env.exported.LCTX_HEADERS]);
+  env.exported._addWarmUpGeneratedColumn_(ss);
+  assert.equal(sheet.getLastColumn(), env.exported.LCTX_HEADERS.length, 'a second run adds nothing');
 });

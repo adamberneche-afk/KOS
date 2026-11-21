@@ -54,18 +54,8 @@
 
 // Total column count for WarmUpQueue — update if schema changes
 
-// ── LessonContext column indices (0-based) — from Script 22 ──────────────────
-const LC24_LESSON_ID        = 0;
-const LC24_TEACHER_EMAIL    = 1;
-const LC24_LESSON_DATE      = 3;
-const LC24_PERIOD_OR_CLASS  = 4;
-const LC24_ACTIVITY_DESC    = 5;
-const LC24_LEARNING_OBJ     = 6;
-const LC24_KEY_VOCAB        = 7;
-const LC24_PRIOR_CONNECTION = 8;
-const LC24_COMPETENCY_IDS   = 9;
-const LC24_STATUS           = 10;
-const LC24_WARM_UP_GENERATED = 14; // new column added to LessonContext for warm-up status
+// LessonContext columns: 00_SharedConfig.js's LCTX (this file's LC24_* copy was
+// folded in 2026-11-21).
 
 // ── ClassSchedule column indices (0-based) ───────────────────────────────────
 const CS_TEACHER_EMAIL = 0;
@@ -508,16 +498,16 @@ function findLesson_(lcData, teacherEmail, period, dateStr) {
   // Scan in reverse — most recent submission wins if multiple exist
   for (let i = lcData.length - 1; i >= 1; i--) {
     const row = lcData[i];
-    const tEmail  = String(row[LC24_TEACHER_EMAIL]   || "").trim().toLowerCase();
+    const tEmail  = String(row[LCTX.TEACHER_EMAIL]   || "").trim().toLowerCase();
     // _normalizeLessonDateCell_ (22_LessonContextHandler.js) — the
     // lesson_date column can silently hold a real Date object (Sheets
     // auto-coerces ISO date strings on write) instead of the plain
     // "YYYY-MM-DD" string this was written as, which used to make this
     // comparison fail for every such row and silently stop the nightly
     // warm-up queue from ever finding tomorrow's lesson.
-    const lDate   = _normalizeLessonDateCell_(row[LC24_LESSON_DATE]);
-    const lPeriod = _lessonPeriodText_(row[LC24_PERIOD_OR_CLASS]); // 22: Sheets can store a Date
-    const status  = String(row[LC24_STATUS]          || "").trim();
+    const lDate   = _normalizeLessonDateCell_(row[LCTX.LESSON_DATE]);
+    const lPeriod = _lessonPeriodText_(row[LCTX.PERIOD_OR_CLASS]); // 22: Sheets can store a Date
+    const status  = String(row[LCTX.STATUS]          || "").trim();
 
     if (tEmail  !== teacherEmail.toLowerCase()) continue;
     if (lDate   !== dateStr)                    continue;
@@ -525,12 +515,12 @@ function findLesson_(lcData, teacherEmail, period, dateStr) {
     if (status  === "SUPERSEDED")               continue;
 
     return {
-      lessonId:        String(row[LC24_LESSON_ID]        || "").trim(),
-      objective:       String(row[LC24_LEARNING_OBJ]     || "").trim(),
-      activity:        String(row[LC24_ACTIVITY_DESC]    || "").trim(),
-      vocabulary:      String(row[LC24_KEY_VOCAB]        || "").trim(),
-      priorConnection: String(row[LC24_PRIOR_CONNECTION] || "").trim(),
-      competencyIds:   String(row[LC24_COMPETENCY_IDS]   || "").trim(),
+      lessonId:        String(row[LCTX.LESSON_ID]        || "").trim(),
+      objective:       String(row[LCTX.LEARNING_OBJECTIVE]     || "").trim(),
+      activity:        String(row[LCTX.ACTIVITY_DESCRIPTION]    || "").trim(),
+      vocabulary:      String(row[LCTX.KEY_VOCABULARY]        || "").trim(),
+      priorConnection: String(row[LCTX.PRIOR_LESSON_CONNECTION] || "").trim(),
+      competencyIds:   String(row[LCTX.COMPETENCY_IDS]   || "").trim(),
       rowIndex:        i + 1  // 1-based for range writes
     };
   }
@@ -636,16 +626,16 @@ function buildExistingQueueKeys_(wqData) {
 // Signals to Script 22 and the dashboard that warm-ups have been queued
 // for this lesson. Uses the row index stored in the lesson object.
 //
-// NOTE: LC24_WARM_UP_GENERATED (column index 14) is a new column appended
+// NOTE: LCTX.WARM_UP_GENERATED (column index 14) is a new column appended
 // to LessonContext beyond the original 14 columns (indices 0–13).
 // createModule2Tabs_() (22) and the Module 2 wizard (28) write its header.
 // ---------------------------------------------------------------------------
 function markLessonQueued_(lcSheet, lcData, lessonId) {
   for (let i = 1; i < lcData.length; i++) {
-    if (String(lcData[i][LC24_LESSON_ID]).trim() === lessonId) {
+    if (String(lcData[i][LCTX.LESSON_ID]).trim() === lessonId) {
       const sheetRow = i + 1;
       // Column 15 (1-based) = index 14 (0-based) = warm_up_generated
-      lcSheet.getRange(sheetRow, LC24_WARM_UP_GENERATED + 1).setValue("QUEUED");
+      lcSheet.getRange(sheetRow, LCTX.WARM_UP_GENERATED + 1).setValue("QUEUED");
       Logger.log("[S24] Marked LessonContext QUEUED: " + lessonId);
       return;
     }

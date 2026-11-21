@@ -88,11 +88,8 @@ const WR_TERM         = 12;
 const WR_EXTRA_CREDIT_CHECKED = 13;
 const WR_COL_COUNT    = 14;
 
-// ── LessonContext column indices (0-based) — from Script 22 + 24 ─────────────
-const LC25_LESSON_ID          = 0;
-const LC25_TEACHER_EMAIL      = 1;
-const LC25_LEARNING_OBJ       = 6;
-const LC25_WARM_UP_GENERATED  = 14; // written by createModule2Tabs_() (22) / the Module 2 wizard (28)
+// LessonContext columns: 00_SharedConfig.js's LCTX (this file's LC25_* copy was
+// folded in 2026-11-21).
 
 // ── ReportRegistry column indices (0-based) — from Script 26 ─────────────────
 const RR25_REPORT_ID     = 0;
@@ -283,10 +280,10 @@ function _registerDeliveredWarmUps_() {
 // ---------------------------------------------------------------------------
 function markLessonContextDelivered_(lcSheet, lcData, lessonId) {
   for (let i = 1; i < lcData.length; i++) {
-    if (String(lcData[i][LC25_LESSON_ID]).trim() !== lessonId) continue;
-    const currentVal = String(lcData[i][LC25_WARM_UP_GENERATED] || "").trim();
+    if (String(lcData[i][LCTX.LESSON_ID]).trim() !== lessonId) continue;
+    const currentVal = String(lcData[i][LCTX.WARM_UP_GENERATED] || "").trim();
     if (currentVal === "DELIVERED") return; // already marked
-    lcSheet.getRange(i + 1, LC25_WARM_UP_GENERATED + 1).setValue("DELIVERED");
+    lcSheet.getRange(i + 1, LCTX.WARM_UP_GENERATED + 1).setValue("DELIVERED");
     Logger.log("[S25-J1] LessonContext DELIVERED: " + lessonId);
     return;
   }

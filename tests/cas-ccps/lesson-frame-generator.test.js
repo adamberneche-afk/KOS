@@ -311,9 +311,9 @@ test('a row not yet ALIGNMENT_LOGGED is skipped, not treated as an error', () =>
 
 test('frame generation never clobbers 24_WarmUpBridge.js\'s pre-existing warm_up_generated column', () => {
   // Regression test for a real column-index collision this session
-  // introduced and then found: LC_FRAME_DOC_ID was originally also 14,
+  // introduced and then found: LCTX.FRAME_DOC_ID was originally also 14,
   // the same index 24_WarmUpBridge.js/25_WarmUpWriter.js hardcode for
-  // warm_up_generated (LC24_WARM_UP_GENERATED / LC25_WARM_UP_GENERATED).
+  // warm_up_generated (LCTX.WARM_UP_GENERATED / LCTX.WARM_UP_GENERATED).
   // On a deployment where Script 24's migration had already added that
   // column, _ensureFrameColumns_ would overwrite its header with
   // "frame_doc_id" and generateLessonFrame_ would overwrite its data with

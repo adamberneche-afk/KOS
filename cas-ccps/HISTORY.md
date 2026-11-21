@@ -1545,3 +1545,26 @@ From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.1, three more tabs:
 
 No column moved. LessonContext, whose header lists disagree (14 columns in
 28, 18 in 22), is next.
+
+## LessonContext: its columns in one place, and the drifted header list, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.1, the last of the five tabs it
+named:
+
+- 22's `LC_*`, 24's `LC24_*` and 25's `LC25_*` (which used shorter names for
+  four columns) now read `LCTX` in 00, beside `LCTX_HEADERS` (18). 26, 27
+  and 51, which read 22's constants, do too. 64's `LC_` constants are the
+  Ledger cycle's, not columns, and are untouched.
+- The drift the audit found: 28's setup created the tab with 14 headers and
+  22's with 18, whichever ran first. Both write `LCTX_HEADERS` now. On a tab
+  28 made, 27's frame columns already fill themselves in; warm_up_generated's
+  header stayed blank, and 28's `_addWarmUpGeneratedColumn_` would have put
+  it past the last column (column 19 on a tab with the frame columns). It
+  now heads column 15, the one 24 and 25 write, and only when that cell is
+  empty.
+- gas-lint's column-map registry lists `LCTX`; `tab-columns.test.js` holds
+  it to its header row, fails on a new copy, and covers 28's fix.
+
+No column moved. The audit's 3.1 is done for the tabs it listed; PacingGuide
+(16 columns in 28 and 23, 20 in 31) is the other drifted header list it
+named.

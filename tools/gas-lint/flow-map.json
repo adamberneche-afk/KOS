@@ -43,6 +43,16 @@
         }
       ]
     },
+    "cas-ccps:LessonContext": {
+      "why": "Module 2's lesson rows: 22 writes them, 24, 25, 26, 27 and 51 read them by position. 22's LC_*, 24's LC24_* and 25's LC25_* were three copies until 2026-11-21; now LCTX in 00, beside LCTX_HEADERS.",
+      "authoritative": "LCTX in 00_SharedConfig.js",
+      "maps": [
+        {
+          "file": "cas-ccps/scripts/00_SharedConfig.js",
+          "object": "LCTX"
+        }
+      ]
+    },
     "cas-ccps:WarmUpQueue": {
       "why": "24 writes the rows, 23, 25, 13, 34 and 41 read them by position. Until 2026-11-21 five files each kept a copy of the column numbers; now there is one, 00's WQ, beside WQ_HEADERS. One map, declared so a second copy is added here rather than beside it.",
       "authoritative": "WQ in 00_SharedConfig.js",

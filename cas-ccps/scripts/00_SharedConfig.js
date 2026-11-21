@@ -2227,6 +2227,28 @@ const LEDGER = {
   LAST_SUGGESTED_SCORE:   26,  // Flow 2's [SUGGESTED_SCORE: N] on the latest check, "" if none
 };
 
+// LessonContext (Module 2's lesson rows): 22 writes them, 24, 25, 26, 27 and
+// 51 read them. Declared once 2026-11-21 (structure audit 3.1); 22's LC_*,
+// 24's LC24_* and 25's LC25_* were copies, and 28's setup wrote only the first
+// 14 headers while 22's wrote all 18. warm_up_generated (14) is 24's; the
+// frame columns (15-17) are 27's and fill themselves in on first use.
+const LCTX = {
+  LESSON_ID: 0, TEACHER_EMAIL: 1, SUBMITTED_AT: 2, LESSON_DATE: 3,
+  PERIOD_OR_CLASS: 4, ACTIVITY_DESCRIPTION: 5, LEARNING_OBJECTIVE: 6,
+  KEY_VOCABULARY: 7, PRIOR_LESSON_CONNECTION: 8, COMPETENCY_IDS: 9,
+  STATUS: 10, ALIGNMENT_LOGGED_AT: 11, ERROR_NOTES: 12, TERM: 13,
+  WARM_UP_GENERATED: 14,
+  FRAME_DOC_ID: 15, FRAME_DOC_URL: 16, FRAME_GENERATED_AT: 17,
+};
+const LCTX_HEADERS = [
+  "lesson_id", "teacher_email", "submitted_at", "lesson_date",
+  "period_or_class", "activity_description", "learning_objective",
+  "key_vocabulary", "prior_lesson_connection", "competency_ids",
+  "status", "alignment_logged_at", "error_notes", "term",
+  "warm_up_generated",
+  "frame_doc_id", "frame_doc_url", "frame_generated_at",
+];
+
 // TeacherMatrix (each teacher's matrix spreadsheet), RubricQueue (Flow 1's
 // trigger) and ReviewQueue (a submission's first stop, on the Admin
 // spreadsheet): their columns (0-based) and header rows, declared once
