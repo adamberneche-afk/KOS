@@ -1183,10 +1183,68 @@ const FLOW_ROLE_QUESTIONS = {
   fixture: 'does the flow have something to match, so a green run means something',
 };
 
+// One naming scheme for the per-flow checks (structure audit 3.7): the role's
+// name matches flowCheckNames[role], unless flowCheckNames.exceptions lists it
+// (named before the rule). Returns a problem string, or null. Pure; tested.
+function flowCheckNameProblem(role, fn, names) {
+  const pattern = names && names[role];
+  if (!pattern || !fn) return null;
+  if ((names.exceptions || {})[fn]) return null;
+  if (new RegExp(pattern).test(fn)) return null;
+  return `${role} = ${fn}() does not match ${pattern}. Name it to the pattern, or, for a ` +
+    `name that predates the rule, list it in flowCheckNames.exceptions with why.`;
+}
+
+// The functions declared at top level in a project, as a Set.
+function projectDecls(project) {
+  const declared = new Set();
+  for (const relPath of (project.files || [])) {
+    if (!exists(relPath) || relPath.endsWith('.html')) continue;
+    for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
+  }
+  return declared;
+}
+
 function checkFlowSurfaces() {
   let flowMap;
   try { flowMap = JSON.parse(readFile(FLOW_MAP_PATH)); }
   catch (e) { return; } // Check H already reported it.
+  const names = flowMap.flowCheckNames || {};
+  const preflights = flowMap.preflights || {};
+
+  // Every project with a flow declares its preflight, and it exists there.
+  const flowProjects = new Set(Object.values(flowMap.flowSurfaces || {}).map((d) => d.project));
+  for (const projectName of flowProjects) {
+    if (!preflights[projectName] && PROJECT_MAP[projectName]) {
+      warn('flow-preflight-undeclared',
+        `${projectName} has a flow surface but no preflight in ${FLOW_MAP_PATH}'s "preflights": ` +
+        `nothing says which check to run before trusting its flows.`, FLOW_MAP_PATH);
+    }
+  }
+  for (const [projectName, fn] of Object.entries(preflights)) {
+    if (projectName.startsWith('_')) continue;
+    const project = PROJECT_MAP[projectName];
+    if (!project) {
+      err('flow-preflight-bad-project', `preflights: "${projectName}" is not in project-map.json.`, FLOW_MAP_PATH);
+      continue;
+    }
+    if (!projectDecls(project).has(fn)) {
+      err('flow-preflight-missing-function',
+        `preflights: ${projectName} declares ${fn}(), but no top-level function of that name exists in it.`,
+        FLOW_MAP_PATH);
+    }
+    const problem = flowCheckNameProblem('preflight', fn, names);
+    if (problem) err('flow-check-name', `preflights: ${projectName}: ${problem}`, FLOW_MAP_PATH);
+  }
+  for (const fn of Object.keys(names.exceptions || {})) {
+    const used = Object.values(flowMap.flowSurfaces || {}).some((d) => Object.values(d).includes(fn)) ||
+      Object.values(preflights).includes(fn);
+    if (!used) {
+      err('flow-check-name-stale-exception',
+        `flowCheckNames.exceptions lists ${fn}(), which no flow surface or preflight declares: remove it.`,
+        FLOW_MAP_PATH);
+    }
+  }
 
   for (const [surface, def] of Object.entries(flowMap.flowSurfaces || {})) {
     const projectName = def.project;
@@ -1198,11 +1256,7 @@ function checkFlowSurfaces() {
       continue;
     }
 
-    const declared = new Set();
-    for (const relPath of (project.files || [])) {
-      if (!exists(relPath) || relPath.endsWith('.html')) continue;
-      for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
-    }
+    const declared = projectDecls(project);
 
     const missingRoles = [];
     // A role a flow genuinely does not have is declared away in "_note" —
@@ -1217,6 +1271,8 @@ function checkFlowSurfaces() {
         if (!note.includes(role)) missingRoles.push(role);
         continue;
       }
+      const nameProblem = flowCheckNameProblem(role, fn, names);
+      if (nameProblem) err('flow-check-name', `${surface}: ${nameProblem}`, FLOW_MAP_PATH);
       if (!declared.has(fn)) {
         // A named-but-absent function is worse than an unnamed role: the
         // declaration claims the question is answered when it is not.
@@ -2077,6 +2133,7 @@ function checkStaleFileRefs() {
 
 module.exports = {
   stripCommentsAndStrings,
+  flowCheckNameProblem,
   parseColumnMap,
   columnMapLabel,
   FLOW_ROLE_QUESTIONS,

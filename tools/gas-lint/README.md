@@ -229,6 +229,18 @@ it — that gap is closed now.
    `flowSurfaces` declares which function plays each role
    (`materialize`, `harvest`, `canary`, `binding`, `liveness`, `fixture`).
 
+   **One naming scheme** (structure audit 3.7, 2026-11-21):
+   `flow-map.json`'s `flowCheckNames` gives each role's pattern
+   (`run…Canary`, `check…Binding`, `check…Liveness`, `install…Fixture(s)`,
+   `run…Preflight`; `materialize` and `harvest` are free), and a declared
+   name that doesn't match is an **error**. A name made before the rule is
+   excused in `flowCheckNames.exceptions` with why (two: leader-hub's
+   `checkAiFlowFixtures`, cas-ccps's `runFlowPreflightCheck`); an exception
+   nothing declares any more is an error too. `preflights` declares each
+   project's preflight, the check to run before trusting its flows: it must
+   exist in that project, and a project with a flow surface and no preflight
+   is a warning.
+
    A role named but **absent** from the project is an **error** — that is
    worse than an unnamed role, because the declaration claims a check exists
    when it does not, and a rename produces it. A **missing** role is a
@@ -470,7 +482,8 @@ false positives.
   order is authoritative. A one-map group is inert until a second appears,
   and then it is already correct.
 - A new flow, or a new check for an existing one → add or extend its
-  `flowSurfaces` entry in `flow-map.json`. Declare only functions that
+  `flowSurfaces` entry in `flow-map.json`, naming the check to
+  `flowCheckNames`' pattern for its role. Declare only functions that
   exist; a stale name is an error by design. If a role does not apply, name
   it in the entry's `_note` rather than leaving the warning standing — a
   warning nobody can clear is a warning everybody learns to skip.
