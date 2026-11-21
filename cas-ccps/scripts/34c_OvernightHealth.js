@@ -112,6 +112,14 @@ function overnightArchiveDaily_(now, tz) {
 
 // The 6 a.m. alert's checks (2026-11-20): counts only, with what to do.
 // { problems, unreadable }.
+// " (row 5 (42 min), row 9 (no timestamp))": where to look, with no file ID
+// or name; at most five, then "and N more".
+function _onWhere_(rows) {
+  if (!rows || !rows.length) return "";
+  const shown = rows.slice(0, 5).join(", ");
+  return " (" + shown + (rows.length > 5 ? ", and " + (rows.length - 5) + " more" : "") + ")";
+}
+
 function _onAdminChecks_(now) {
   const out = { problems: [], unreadable: false };
   const cfg = getConfig_();
@@ -121,15 +129,16 @@ function _onAdminChecks_(now) {
     const st = _stagingPipelineHealthChecks_(adminSs, cfg);
     if (st.inProcessStuckRows.length) {
       out.problems.push("Submissions stuck evaluating (" + STAGING_STUCK_IN_PROCESS_MINUTES + "+ minutes, or with no timestamp): " +
-        st.inProcessStuckRows.length + ". ⚙️ Admin Controls → Reset Stuck Pipeline Row");
+        st.inProcessStuckRows.length + _onWhere_(st.where && st.where.inProcess) + ". ⚙️ Admin Controls → Reset Stuck Pipeline Row");
     }
     if (st.pendingStuckRows.length) {
       out.problems.push("Submissions queued " + STAGING_STUCK_PENDING_MINUTES + "+ minutes with no evaluation started: " +
-        st.pendingStuckRows.length + ". Check that the Turnstile trigger (06) is installed and running");
+        st.pendingStuckRows.length + _onWhere_(st.where && st.where.pending) +
+        ". Check that the Turnstile trigger (06) is installed and running: a row this old usually means it isn't");
     }
     if (st.unknownStatusRows.length) {
       out.problems.push("STAGING_PIPELINE rows with an unknown status: " + st.unknownStatusRows.length +
-        " (Studio residue from a test run; delete the row)");
+        _onWhere_(st.where && st.where.unknown) + " (Studio residue from a test run, like a step's variable names; delete the row)");
     }
   } catch (e) {
     out.unreadable = true;
@@ -141,14 +150,16 @@ function _onAdminChecks_(now) {
       const data = sheet.getDataRange().getValues();
       const h = data[0].map(function (x) { return String(x).trim(); });
       const iSt = h.indexOf("Status"), iTs = h.indexOf("Timestamp");
-      const stuck = data.slice(1).filter(function (r) {
-        if (String(r[iSt] || "").trim() !== "PENDING_EXTRACTION" || iTs === -1) return false;
+      const where = [];
+      data.slice(1).forEach(function (r, i) {
+        if (String(r[iSt] || "").trim() !== "PENDING_EXTRACTION" || iTs === -1) return;
         const t = new Date(r[iTs]).getTime();
-        return !isNaN(t) && now.getTime() - t >= ON_RUBRIC_STUCK_MS;
-      }).length;
-      if (stuck) {
-        out.problems.push("Rubric extractions stuck 2+ hours (Studio Flow 1): " + stuck +
-          ". Check Flow 1's run history; to re-queue, delete the row and ask the teacher to resubmit the rubric");
+        if (isNaN(t) || now.getTime() - t < ON_RUBRIC_STUCK_MS) return;
+        where.push("row " + (i + 2) + " (" + Math.round((now.getTime() - t) / 3600000) + " h)");
+      });
+      if (where.length) {
+        out.problems.push("Rubric extractions stuck 2+ hours (Studio Flow 1): " + where.length + _onWhere_(where) +
+          ". Check Flow 1's run history: it may have timed out or hit a quota; to re-queue, delete the row and ask the teacher to resubmit the rubric");
       }
     }
   } catch (e) {
@@ -157,8 +168,13 @@ function _onAdminChecks_(now) {
   }
   try {
     _ferpaHealthChecks_().filter(function (c) { return !c.ok; }).forEach(function (c) {
-      const line = String(c.displayLine || "").replace(/^\W+/, "").replace(/\s*[—,]\s*see admin alert\s*$/, "");
-      out.problems.push("FERPA: " + line + " (⚙️ Admin Controls → System Health Check says what to do)");
+      const line = String(c.displayLine || "").replace(/^\W+/, "").replace(/\s*[—,]\s*see (?:admin alert|the overnight email)\s*$/, "");
+      // The check's own fix (the "Action:" part of its alertText, which the
+      // retired 6 a.m. email carried): the same words, without any file
+      // names listed above it.
+      const action = (/Action:\s*([\s\S]*)$/.exec(String(c.alertText || "")) || [])[1];
+      out.problems.push("FERPA: " + line + ". " +
+        (action ? action.replace(/\s+/g, " ").trim() : "⚙️ Admin Controls → System Health Check"));
     });
   } catch (e) {
     out.unreadable = true;

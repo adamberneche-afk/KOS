@@ -1685,3 +1685,26 @@ linked to, is deleted; the README's directory map is the index.
 Not done here: turning `DEPLOYMENT_HANDOFF.md` into a status page only. It
 still holds the step list the operator's queue refers to by number (17k and
 the like), so that waits for a handoff that retires those numbers.
+
+## The one health email keeps the 6 a.m. alert's detail, 2026-11-21
+
+The operator reads the overnight email through the RTP harness and asked
+that folding the 6 a.m. alert into it (#514) lose no data or perspective.
+Checking the old alert line by line found two losses, now restored, still
+without anything identifying:
+
+- Where to look. The old alert named each stuck row (with its student file
+  ID, and a stuck rubric's teacher and course). 10's
+  `_stagingPipelineHealthChecks_` now also returns `where` (row numbers and
+  ages only), and each overnight line lists up to five, e.g. "1 (row 2
+  (42 min))"; stuck rubrics the same, "row 2 (3 h)".
+- Each FERPA check's fix. The old alert gave its action ("Delete the
+  GEMINI_API_KEY Script Property ..."); the overnight line said only "System
+  Health Check says what to do", whose lines ended "see admin alert", the
+  retired email. The overnight line now carries the check's own "Action:"
+  text, and the health check's lines say "see the overnight email".
+- The fix wording for stuck rubrics ("it may have timed out or hit a
+  quota") and unknown rows ("like a step's variable names") is back.
+
+The RTP's `FLOWS_BRIEFING.md` describes the one email and asks it to quote
+a line's fix, not paraphrase it.
