@@ -265,14 +265,9 @@ test('the record tabs: shown in the header order, each loaded once', () => {
 // 00 can't hold the week reader (every project loads 00, and not all may
 // open Docs), so each dashboard has a copy. They must read a doc the same.
 test('the two week readers (07 for teachers, 13 for students) are the same code', () => {
-  const fs = require('fs');
+  const { cutDeclarations } = require('../harness/cut-declarations');
   const dir = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-  const body = (file, name) => {
-    const src = fs.readFileSync(path.join(dir, file), 'utf8');
-    const start = src.indexOf('function ' + name + '(docId) {');
-    assert.ok(start !== -1, name);
-    return src.slice(start, src.indexOf('\n}\n', start))
-      .replace(name, 'F').replace(/(TD|DASH)_CONTEXT_MAX_WEEKS/g, 'MAX');
-  };
+  const body = (file, name) => cutDeclarations(path.join(dir, file), [name])
+    .replace(name, 'F').replace(/(TD|DASH)_CONTEXT_MAX_WEEKS/g, 'MAX');
   assert.equal(body('07_TeacherDashboard.js', '_tdContextWeeks_'), body('13_StudentDashboard.js', '_dashContextWeeks_'));
 });

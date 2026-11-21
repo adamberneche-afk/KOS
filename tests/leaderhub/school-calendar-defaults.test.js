@@ -13,7 +13,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { extractLines } = require('../harness/extract-lines');
+const { cutDeclarations } = require('../harness/cut-declarations');
 const { runInSandbox } = require('../harness/vm-run');
 
 const SRC = path.join(__dirname, '..', '..', 'leader-hub', 'src');
@@ -22,12 +22,11 @@ const F12 = path.join(SRC, '12-integrations-pacing-subplan-brag.html');
 const F07 = path.join(SRC, '07-events-email-members-goals.html');
 
 function load() {
-  const cal = extractLines(F10, 199, 238, [
-    "const SCHOOL_CALENDAR_YEAR", 'const SCHEDULE_OVERRIDES_DEFAULT', 'const NO_SCHOOL_DEFAULT',
-  ]);
-  const deadlines = extractLines(F10, 1565, 1608, ['const DECA_DEADLINES_DEFAULT', 'const CCPS_CALENDAR_DEADLINES_DEFAULT']);
-  const season = extractLines(F07, 1218, 1245, ['const DECA_SEASON_YEAR', 'const DECA_SEASON_DEFAULT']);
-  const quarters = extractLines(F12, 523, 528, ['const QUARTERS_DEFAULT']);
+  const cal = cutDeclarations(F10, ['SCHOOL_CALENDAR_YEAR', 'SCHEDULE_OVERRIDES_DEFAULT', 'NO_SCHOOL_DEFAULT',
+    'DAY_SCHEDULE_RANGES_DEFAULT', 'DAY_SCHEDULE_MAP_DEFAULT']);
+  const deadlines = cutDeclarations(F10, ['DECA_DEADLINES_DEFAULT', 'CCPS_CALENDAR_DEADLINES_DEFAULT']);
+  const season = cutDeclarations(F07, ['DECA_SEASON_YEAR', 'DECA_SEASON_DEFAULT']);
+  const quarters = cutDeclarations(F12, ['QUARTERS_DEFAULT']);
   return runInSandbox([cal, deadlines, quarters, season].join('\n'), {}, [
     'DECA_SEASON_YEAR', 'DECA_SEASON_DEFAULT', 'DECA_DEADLINES_DEFAULT',
     'SCHOOL_CALENDAR_YEAR', 'SCHEDULE_OVERRIDES_DEFAULT', 'NO_SCHOOL_DEFAULT',
@@ -120,21 +119,11 @@ test('the built-in DECA season and deadlines are one school year, in date order'
 // Clover Hill's bell schedule page (2026-27, checked 2026-10-27): the A and
 // B lunch waves, and which days are A or B ("Regular Bell Schedule Dates").
 function loadBells() {
-  const fs = require('fs');
-  const lines = fs.readFileSync(F10, 'utf8').split('\n');
-  const at = (prefix, from) => lines.findIndex((l, i) => i >= (from || 0) && l.startsWith(prefix)) + 1;
-  const bellStart = at('const BELL_SCHEDULES_DEFAULT');
-  const bellEnd = at('};', bellStart);
-  const calStart = at('const SCHOOL_CALENDAR_YEAR');
-  const fnStart = at('function _defaultDayMapFor(');
-  const fnEnd = at('}', fnStart);
-  const typeStart = at('function getScheduleTypeFor(');
-  const typeEnd = at('}', typeStart);
   const src = [
-    extractLines(F10, bellStart, bellEnd, ['const BELL_SCHEDULES_DEFAULT']),
-    extractLines(F10, calStart, fnEnd, ['const DAY_SCHEDULE_RANGES_DEFAULT', 'function _defaultDayMapFor(']),
+    cutDeclarations(F10, ['BELL_SCHEDULES_DEFAULT', 'SCHOOL_CALENDAR_YEAR', 'SCHEDULE_OVERRIDES_DEFAULT',
+      'NO_SCHOOL_DEFAULT', 'DAY_SCHEDULE_RANGES_DEFAULT', 'DAY_SCHEDULE_MAP_DEFAULT', '_defaultDayMapFor']),
     'let CCPS_NO_SCHOOL = new Set(NO_SCHOOL_DEFAULT); let CCPS_SCHEDULE_OVERRIDES = SCHEDULE_OVERRIDES_DEFAULT; let DAY_SCHEDULE_MAP = null;',
-    extractLines(F10, typeStart, typeEnd, ['function getScheduleTypeFor(']),
+    cutDeclarations(F10, ['getScheduleTypeFor']),
   ].join('\n');
   return runInSandbox(src, {}, ['BELL_SCHEDULES_DEFAULT', 'getScheduleTypeFor']);
 }

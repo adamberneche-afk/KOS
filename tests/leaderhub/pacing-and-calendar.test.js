@@ -18,7 +18,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { extractLines } = require('../harness/extract-lines');
+const { cutSpan } = require('../harness/cut-declarations');
 const { runInSandbox } = require('../harness/vm-run');
 
 // Point at the fragment files (tools/leaderhub-build/ split, external
@@ -31,20 +31,12 @@ const CALENDAR_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src',
 const PACING_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '12-integrations-pacing-subplan-brag.html');
 
 function loadCalendarParser() {
-  const source = extractLines(CALENDAR_HTML_PATH, 1305, 1606, [
-    'function extractDateRangeBounds(',
-    'function extractDatesFromText(',
-    'function parseCountyCalendarText(',
-  ]);
+  const source = cutSpan(CALENDAR_HTML_PATH, 'MONTHS', 'parseCountyCalendarText');
   return runInSandbox(source, {}, ['extractDateRangeBounds', 'extractDatesFromText', 'parseCountyCalendarText']);
 }
 
 function loadPacing(globals) {
-  const source = extractLines(PACING_HTML_PATH, 2066, 2138, [
-    'CAS_PACING_COURSES',
-    'function getPacingUnitsForCourse(',
-    'function getQuarterForDate(',
-  ]);
+  const source = cutSpan(PACING_HTML_PATH, { text: '// If a live cas-ccps connection already fetched a pacing guide' }, 'getQuarterForDate');
   // This range's own `let CUSTOM_PACING_UNITS = LS.get('lh_custom_pacing_units', {})`
   // needs a real LS global to run at all - the real app's LS is a
   // localStorage wrapper (leader-hub/src/05-data-helpers-dashboard.html:7),
