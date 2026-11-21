@@ -21,7 +21,7 @@ Exit code is `1` if any error-level finding exists, `0` otherwise
 ## CI
 
 `.github/workflows/gas-lint.yml`'s `gas-lint` job runs this check first,
-then `tools/doc-currency/check.js`, `tools/student-data-scan/check.js`,
+then `tools/doc-currency/check.js`, `tools/release-check/check.js` (which runs the student-data scan's rules),
 `tools/clasp-sync/sync.js` (which also refuses to build a project with an
 unmerged addendum — see that tool's README), `npm test`,
 `tools/coverage-gaps/check.js`, `tools/html-lint/check.js` on the built

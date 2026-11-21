@@ -613,46 +613,12 @@ function checkCitationsInRange() {
 }
 
 // -----------------------------------------------------------------------
-// Check 6 — a doc records a Drive file ID or link (2026-11-15)
-//
-// The repo keeps no Drive file IDs or links (CLAUDE.md: "Never record a
-// Drive file ID in the repo"), and this repo may go public. release-check
-// (tools/release-check, plan item L1) reports every one over the whole tree,
-// but warn-only until the operator turns its gate on, and 62 links sat in
-// archive/summer-2026/drive-curation/DELETION_MANIFEST.md with nothing failing. This is the
-// narrow gate for prose only: every tracked Markdown doc, HISTORY.md and
-// the WIP file included (they are excluded from the other checks as
-// narration, not from this rule). It uses release-check's own rules for the
-// drive bucket (Docs and Drive links, forms.gle, an ID-shaped literal in an
-// openById call or on a *_ID / *Id name) and its three Apps Script link
-// rules, so the two tools never disagree on what an ID is. Code and data
-// (a web app's /exec URL the cartridges are built from, an app's lesson-plan
-// table) stay release-check's, for the operator's L1 decision. A finding
-// prints the rule and the line, never the value. Error: a link in a doc is
-// never needed, because a doc can name the file instead.
+// Check 6 (a doc records a Drive file ID or link, 2026-11-15) was removed
+// 2026-11-21 (structure audit 3.10). It applied release-check's Drive rules to
+// every Markdown doc because release-check was warn-only then; its gate has
+// been on in CI since 2026-11-20 and fails on the same rules over every
+// tracked file, docs included, so this was the same scan twice.
 // -----------------------------------------------------------------------
-const DRIVE_DOC_RULES = new Set(['docs-link', 'drive-link', 'forms-short-link', 'drive-id-call', 'drive-id-labelled',
-  'script-url', 'script-url-domain', 'script-project-link']);
-function driveFindingsInText(text) {
-  const rc = require('../release-check/check.js');
-  const out = [];
-  String(text).split(/\r?\n/).forEach((line, i) => {
-    rc.scanLine(line).forEach((f) => { if (DRIVE_DOC_RULES.has(f.rule)) out.push({ line: i + 1, rule: f.rule }); });
-  });
-  return out;
-}
-function checkNoDriveIdsInDocs() {
-  const docs = ALL_FILES.filter(f => f.endsWith('.md'));
-  for (const relPath of docs) {
-    let raw;
-    try { raw = readFile(relPath); } catch (e) { continue; }
-    driveFindingsInText(raw).forEach((f) => err(
-      'drive-id-in-doc',
-      `${relPath}:${f.line} records a Drive file ID or link (${f.rule}). The repo keeps none: name the file instead, and keep the ID in Drive or a Script Property.`,
-      relPath
-    ));
-  }
-}
 
 // -----------------------------------------------------------------------
 // Exported for tests/tools/doc-currency-check.test.js. Only the pure pieces
@@ -836,8 +802,6 @@ module.exports = {
   blockedSurfaces,
   auditBlockedMentions,
   isExcludedDir,
-  driveFindingsInText,
-  DRIVE_DOC_RULES,
   pathMentionsIn,
   resolvePathMention,
   CONFIG,
@@ -853,7 +817,6 @@ checkCitedTestCounts();
 checkDocumentedKeysAreLive();
 checkCitationsInRange();
 checkBlockedSurfacesNotPresentedAsLive();
-checkNoDriveIdsInDocs();
 checkPathMentionsResolve();
 
 if (AS_JSON) {

@@ -44,9 +44,11 @@ names in the 2026-11-07 scrub were found by hand. Names removed that day
 remain in git history; `--history` reports their addresses as
 `staff-email` findings until the operator decides on a history rewrite.
 
-**CI gate (since 2026-10-20).** The `gas-lint` workflow runs the working-tree
-scan on every pull request and every push to main, so a new student-shaped address fails
-the build. On 2026-10-20 the operator confirmed every remaining email
+**CI gate (since 2026-10-20).** A new student-shaped address fails the build
+on every pull request and every push to main. Since 2026-11-21 (structure
+audit 3.10) CI runs this tool's kinds and allowlists inside the release check,
+its student-data bucket, rather than as a second step over the same text; this
+command stays for `--roster` and `--history`, which CI can't run. On 2026-10-20 the operator confirmed every remaining email
 finding, in the tree and in history, as a placeholder (allowlisted), and
 `--roster` found one real student name (`archive/2025-26/leader-hub/LH_04_EMAIL_AUDIT.md`),
 removed from the tree by the operator. The same day, at the operator's
@@ -97,6 +99,9 @@ skipped with a warning. Every other file is counted in a closing line,
 those don't fail the run.
 
 **Used by `tools/release-check` (since 2026-11-08).** The release check
-runs these kinds, with these allowlists, over every tracked file, and
-reuses this tool's zip reader (`zipEntries`, `zipRead`, exported for it).
-This scan's own CI step is unchanged and still fails on a finding.
+runs these kinds, with these allowlists, over every tracked file. The zip
+reader both use is `tools/lib/zip.js` (since 2026-11-21). This scan's own CI
+step was folded into the release check on 2026-11-21 (structure audit 3.10):
+the release check also reports, for review and never failing, a log call
+that prints a student identifier and a zip member over the 20 MB cap, this
+tool's two warnings.

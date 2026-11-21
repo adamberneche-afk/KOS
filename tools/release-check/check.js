@@ -256,7 +256,12 @@ function scanZip(buf, label, out, depth) {
       out.push({ where: label + '!' + e.name, rule: 'unreadable-container', bucket: 'review', shown: '' });
       return;
     }
-    if (data === null) return;
+    if (data === null) {
+      // Over the member cap: not read, said so (student-data-scan's warning, kept when CI's
+      // separate scan was folded in here, structure audit 3.10).
+      out.push({ where: label + '!' + e.name, rule: 'member-over-20MB', bucket: 'review', shown: '' });
+      return;
+    }
     if (isZip) scanZip(data, label + '!' + e.name, out, depth + 1);
     else scanText(data.toString('utf8'), label + '!' + e.name, out);
   });
@@ -294,6 +299,12 @@ function scanFiles(files, read) {
     if (c) findings.push(Object.assign({ where: f, shown: '' }, c));
     const b = get();
     if (b.length) scanBuffer(b, f, findings);
+    // A cas-ccps log call that prints a student identifier: for review, not
+    // failing (student-data-scan's warning, folded in here, structure audit 3.10).
+    if (/^cas-ccps\/scripts\/[^/]+\.(js|gs)$/.test(f) && b.length && !isBinary(b)) {
+      sds.scanLogCalls(b.toString('utf8'), f, []).forEach((l) =>
+        findings.push({ where: l.where, rule: 'log-identifier', bucket: 'review', shown: '' }));
+    }
   });
   return findings;
 }
@@ -335,7 +346,7 @@ const BUCKET_TITLE = {
   license: 'LICENSE per published unit',
   secret: 'Secrets',
   'student-data': 'Student-data patterns (student-data-scan)',
-  review: 'For review (not failing): Office documents and PDFs, unreadable containers',
+  review: 'For review (not failing): Office documents and PDFs, unreadable or over-cap containers, log calls that print a student identifier',
   'probably-fine': 'Probably fine (not failing): Apps Script manifests',
   allowed: 'Allowed (not failing): named in tools/release-check/allow.json',
 };
