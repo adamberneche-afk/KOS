@@ -425,7 +425,7 @@ Studio must write the complete inference output as JSON to the document body, re
 
 **Empty sections** — If a section has no data, use an empty array `[]` or `null`. Do not omit keys entirely — the queue processor checks for key existence in some branches.
 
-**The paste-verbatim Curator prompt:** [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md) —
+**The paste-verbatim Curator prompt:** [`CURATOR_PROMPT.md`](./prompts/CURATOR_PROMPT.md) —
 same convention as `VECTOR_CLASSIFY_PROMPT.md` below, paste it exactly,
 don't paraphrase. It resolves both items an earlier review found by
 diffing 5 real processed-log outputs against this doc: `alignment_observations`
@@ -511,8 +511,8 @@ added at the end of this table.
 | # | Connector | Configuration | Notes |
 |---|---|---|---|
 | T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` (ID from `INDEX_ID` property) · Tab: `CuratorInput` · Condition: `Status = READY` | Single condition — `CuratorInput` only ever carries Curator-type rows (`13_StudioInputBuilder.gs` sorts SESSION_LOG/EXTERNAL_DATA/COG_STIMULUS/COG_EXHAUST here, VECTOR_CLASSIFY into its own separate tab), so there is nothing to combine this with the way the old `Status = STUDIO_ACTIVE AND Payload_Type in (...)` condition needed to. See the banner's `meta/FLOW_DOCTRINE.md` rule 14 note. |
-| 2 | Gemini — Generate content | System prompt: full text of [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md), pasted verbatim · Variable: `@trigger.SourceText` (column 5 of `CuratorInput` — the materialized document text, per Step 3 above) · Output format: JSON only, no preamble or markdown | Malformed output fails the same way as any other flow's malformed output — `NEEDS_CURATOR`, retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
-| 2a | *(optional)* Gemini — Generate content | System prompt: full text of [`CURATOR_AUDITOR_PROMPT.md`](./CURATOR_AUDITOR_PROMPT.md), pasted verbatim (or chip-built per the banner above) · Variables: `@trigger.SourceText` (the transcript) and `@step2.geminiOutput` (the Curator's own output) — TWO variables, not one · Output format: exactly `CURATOR_PROMPT.md` Section 4's `auditor_sign_off` object shape, nothing else | This is the accountability check described in `CURATOR_PROMPT.md` Rule 8. It verifies the Curator's output — it does not re-extract the session itself. Its raw output goes straight into step 5's `Auditor_JSON` column below — **no merge step follows this one.** Omit this step entirely if this deployment doesn't run one; everything downstream already handles a payload with no `auditor_sign_off` key at all. |
+| 2 | Gemini — Generate content | System prompt: full text of [`CURATOR_PROMPT.md`](./prompts/CURATOR_PROMPT.md), pasted verbatim · Variable: `@trigger.SourceText` (column 5 of `CuratorInput` — the materialized document text, per Step 3 above) · Output format: JSON only, no preamble or markdown | Malformed output fails the same way as any other flow's malformed output — `NEEDS_CURATOR`, retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
+| 2a | *(optional)* Gemini — Generate content | System prompt: full text of [`CURATOR_AUDITOR_PROMPT.md`](./prompts/CURATOR_AUDITOR_PROMPT.md), pasted verbatim (or chip-built per the banner above) · Variables: `@trigger.SourceText` (the transcript) and `@step2.geminiOutput` (the Curator's own output) — TWO variables, not one · Output format: exactly `CURATOR_PROMPT.md` Section 4's `auditor_sign_off` object shape, nothing else | This is the accountability check described in `CURATOR_PROMPT.md` Rule 8. It verifies the Curator's output — it does not re-extract the session itself. Its raw output goes straight into step 5's `Auditor_JSON` column below — **no merge step follows this one.** Omit this step entirely if this deployment doesn't run one; everything downstream already handles a payload with no `auditor_sign_off` key at all. |
 | ~~2b~~ | ~~Merge/transform step~~ | ~~Combine step 2's and step 2a's output into one object~~ | **Not a step to build, and never was — corrected here.** `_srPrepareDocText_` (`12_StudioReturnHarvest.gs`) takes the Curator's and Auditor's RAW outputs as two separate arguments and merges them itself (`curatorParsed.auditor_sign_off = auditorParsed`) when it writes the doc body. A Studio-side merge here was never part of the real contract; the two-separate-columns wiring in step 5 below is what to actually build. |
 | ~~3~~ | ~~Google Docs — Insert text~~ | ~~Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`~~ | **Not a step to build.** This is the write `harvestStudioReturns()` performs, in Apps Script, on its own 5-minute trigger — kept here only as the contract that function implements. |
 | ~~4~~ | ~~Google Sheets — Update row~~ | ~~Status column: `FLOW_COMPLETE`~~ | **Not a step to build.** Same as above — `harvestStudioReturns()` sets this, never the Flow. |
@@ -605,7 +605,7 @@ The output JSON for `COG_STIMULUS` should contain only the `cog_registry` sectio
 
 **Trigger:** `Status = READY` on `VectorClassifyInput` — a single condition, same reasoning as the Curator flow's own trigger above (see the banner). `13_StudioInputBuilder.gs` is what still polls `STAGING_PIPELINE` for `Status = STUDIO_ACTIVE` rows where `Payload_Type = VECTOR_CLASSIFY`, in Apps Script, on its own 1-minute trigger; Studio itself never touches `STAGING_PIPELINE` for either flow any more. Same Turnstile gating, same staleness guard underneath.
 
-**System prompt:** the full, paste-verbatim text lives in [`VECTOR_CLASSIFY_PROMPT.md`](./VECTOR_CLASSIFY_PROMPT.md) — same convention as cas-ccps's `docs/RUBRIC_EXTRACTION_FLOW.md`: paste it exactly, don't paraphrase.
+**System prompt:** the full, paste-verbatim text lives in [`VECTOR_CLASSIFY_PROMPT.md`](./prompts/VECTOR_CLASSIFY_PROMPT.md) — same convention as cas-ccps's `docs/RUBRIC_EXTRACTION_FLOW.md`: paste it exactly, don't paraphrase.
 
 **Known vectors to classify against** — hardcoded directly into the prompt rather than passed as a trigger-row variable, since `STAGING_PIPELINE`'s columns (unlike cas-ccps's per-teacher `RubricQueue` rows) carry no natural place to source a dynamic value from. This is a real, accepted tradeoff: the prompt's list must be updated by hand every time a theme promotes out of the Incubator, or that theme misclassifies as `unmapped_signals` until someone notices and fixes it (this is exactly the "known_vectors configuration array becomes a system dependency" risk the SMP itself flags). Current list, must match `VECTOR_MATRIX`'s live column headers:
 ```
@@ -713,7 +713,7 @@ layer underneath both.
 }
 ```
 
-`vector_weights` is `null` here deliberately, not a placeholder oversight — see [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md) Rule 1, which makes this the only correct value the Curator flow ever emits. Real weights only ever come from a completed `VECTOR_CLASSIFY` row, tested separately below.
+`vector_weights` is `null` here deliberately, not a placeholder oversight — see [`CURATOR_PROMPT.md`](./prompts/CURATOR_PROMPT.md) Rule 1, which makes this the only correct value the Curator flow ever emits. Real weights only ever come from a completed `VECTOR_CLASSIFY` row, tested separately below.
 
 ### Minimum viable test — `VECTOR_CLASSIFY`
 

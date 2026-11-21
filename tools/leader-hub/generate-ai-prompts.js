@@ -49,7 +49,7 @@ const SOURCES = [
 // after the first standalone "---" line. What precedes it is the file's own
 // "paste this verbatim" preamble — instructions to a human, not the prompt.
 function promptFromMarkdown(jobType) {
-  const mdPath = path.join(LH, jobType + '_FLOW_PROMPT.md');
+  const mdPath = path.join(LH, 'prompts', jobType + '_FLOW_PROMPT.md');
   const raw = fs.readFileSync(mdPath, 'utf8');
   const parts = raw.split(/^---$/m);
   if (parts.length !== 2) {

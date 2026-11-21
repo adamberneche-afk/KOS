@@ -6,7 +6,7 @@ kind Claude must not read. The sentinel lets the KOS Claude Project's
 
 - **Code:** `cas-ccps/scripts/60_FamilyMailSentinel.js` (Apps Script project
   `cas-ccps:family-sentinel`). Its file header is the full design.
-- **Prompt:** [`FAMILY_MAIL_TRIAGE_PROMPT.md`](./FAMILY_MAIL_TRIAGE_PROMPT.md),
+- **Prompt:** [`FAMILY_MAIL_TRIAGE_PROMPT.md`](../prompts/FAMILY_MAIL_TRIAGE_PROMPT.md),
   generated into `61_FamilyMailPrompt.js`.
 - **Tests:** `tests/cas-ccps/family-mail-sentinel.test.js`.
 - **Status:** live since 2026-10-12. The Flow answered its fixture on the

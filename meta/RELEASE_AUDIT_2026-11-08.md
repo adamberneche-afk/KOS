@@ -449,7 +449,7 @@ drive-curation/curriculum/Unit_Cross_Reference_Links.md:58  drive-link  drive.go
 drive-curation/curriculum/Unit_Cross_Reference_Links.md:59  drive-link  drive.google.com/drive/folders/…(73)
 archive/2026-27-Q1/leader-hub/LEADERHUB_EMAIL_SETUP.md:53  docs-link  docs.google.com/spreadsheets/d/…(44)
 archive/2026-27-Q1/leader-hub/LEADERHUB_EMAIL_SETUP.md:76  docs-link  docs.google.com/spreadsheets/d/…(44)
-leader-hub/LEADERHUB_GEM_PROMPT.md:26  docs-link  docs.google.com/spreadsheets/d/…(44)
+leader-hub/prompts/LEADERHUB_GEM_PROMPT.md:26  docs-link  docs.google.com/spreadsheets/d/…(44)
 archive/2025-26/leader-hub/LEADERHUB_README.md:113  docs-link  docs.google.com/spreadsheets/d/…(44)
 archive/2025-26/leader-hub/LEADERHUB_WIP.md:266  docs-link  docs.google.com/spreadsheets/d/…(44)
 archive/2025-26/leader-hub/LH_02_INTEGRATION_GUIDE.md:260  drive-id-labelled  docId = …(44)
