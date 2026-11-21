@@ -75,8 +75,8 @@ Pruning the notes that no longer hold is a later pass of its own.
 (`archive/2026-27-Q1/meta/HANDOFF_2026-10-07.md`)
 
 - **Read first:** this file, then the per-system handoff for your system.
-  For cas-ccps, the README's "The teacher's lessons and the LessonSchedule
-  tab" explains the current curriculum path.
+  For cas-ccps, `cas-ccps/docs/features/lesson-schedule.md` explains the
+  current curriculum path.
 - **Deploy markers:** any change to a GAS project's files needs
   `node tools/deploy-drift/stamp.js <project>` (`kos-personal`,
   `leader-hub:app`, `cas-ccps:<name>`), committed on its own.

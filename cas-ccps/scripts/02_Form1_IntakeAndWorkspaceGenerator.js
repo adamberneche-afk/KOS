@@ -92,7 +92,7 @@ function onFormSubmit_Intake(e) {
       teacherEmail: teacherEmail, unitConfigId: unitConfigId,
       reason: "\"" + unitConfigId + "\" is a " + res.workType + " part, and its template " + res.workType + " isn't set.",
       fix:    "Set the part's WORK_TEMPLATE_… Script Property (or a row of the Central Ledger's _CONFIG tab) to the template " + res.workType + "'s ID " +
-              "(cas-ccps/README.md, work types), then have the student resubmit."
+              "(cas-ccps/docs/features/lesson-parts.md, work types), then have the student resubmit."
     });
     return;
   }
