@@ -1849,3 +1849,13 @@ gas-lint's new second-copy check (CLAUDE.md, "Keeping debt down") found 71's
 `ensureTab_` now. The one visible difference: a turn-in tab made from now on
 has the bold, grey header every other tab has, and an existing one gains a
 header column added since it was made.
+
+## 17_MasterStudentTemplate.js removed, 2026-11-21
+
+gas-lint's new unused-file check (CLAUDE.md, "Keeping debt down": retiring
+is deleting) found one deployed file nothing used: 17, the Master Student
+Template project's "architecture documentation" file, comments only since
+its stampSystemIds() moved into 02. Its still-true part (how a student doc
+finds the system IDs) is in 01's header now; the setup wizard's admin
+summary (16) asks for two script files on the template, not three. A
+template made before this keeps its copy of 17, which does nothing.

@@ -122,7 +122,6 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/01_StudentDoc_ContainerScript.js",
-      "cas-ccps/scripts/17_MasterStudentTemplate.js",
       "cas-ccps/scripts/45_DeployVersionMarker_MasterStudentTemplate.js"
     ]
   },

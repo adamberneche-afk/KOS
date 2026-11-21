@@ -2174,6 +2174,53 @@ function checkSizeBudgets() {
     `${SIZE_BUDGETS_PATH} lists ${k}, which is now within budget (or gone): remove the entry.`, SIZE_BUDGETS_PATH));
 }
 
+// -----------------------------------------------------------------------
+// Unused file (2026-11-21, CLAUDE.md "Keeping debt down": retiring is
+// deleting). A deployed .js/.gs file nothing uses is an error: no top-level
+// declaration at all, or none that another file of its project (pages
+// included, strings counted, so a trigger's handler name is a use) names, and
+// no public function, which the operator can run from the editor. First run:
+// 17_MasterStudentTemplate.js, comments only, removed. Matching header words
+// ("retired", "superseded") was measured first and rejected: 18 files say
+// them, nearly all about history.
+// -----------------------------------------------------------------------
+
+// [{ file, reason }] for the unused .js/.gs files among `sources` ([{ file,
+// code }] of one project, .html pages' scripts included). Pure; tested.
+function findUnusedFiles(sources) {
+  const decls = require('../lib/declarations.js');
+  const out = [];
+  const stripped = sources.map((s) => stripCommentsAndStrings(s.code, { keepStrings: true }));
+  sources.forEach(({ file, code }, i) => {
+    if (file.endsWith('.html')) return;
+    let ds;
+    try { ds = decls.listDeclarations(code); } catch (e) { return; }
+    const top = ds.filter((d) => !ds.some((o) => o !== d && o.start < d.start && o.end >= d.end));
+    if (!top.length) { out.push({ file, reason: 'declares nothing' }); return; }
+    const others = stripped.filter((_, j) => j !== i).join('\n');
+    const used = top.some((d) => (d.kind === 'function' && !/_$/.test(d.name)) ||
+      new RegExp('\\b' + d.name.replace(/\$/g, '\\$') + '\\b').test(others));
+    if (!used) out.push({ file, reason: 'nothing in its project uses ' + top.map((d) => d.name).join(', ') });
+  });
+  return out;
+}
+
+function checkUnusedFiles() {
+  const decls = require('../lib/declarations.js');
+  for (const [name, def] of Object.entries(PROJECT_MAP)) {
+    if (name.startsWith('_')) continue;
+    const sources = (def.files || []).concat(def.html || []).filter(exists).map((f) => {
+      const raw = readFile(f);
+      return { file: f, code: f.endsWith('.html') ? decls.scriptText(raw, f) : raw };
+    });
+    for (const u of findUnusedFiles(sources)) {
+      err('unused-file', `${name}: ${u.file} ${u.reason}, and has no public function to run from the editor. ` +
+        `Retiring is deleting (CLAUDE.md, "Keeping debt down"): remove it from the project, keeping what is still true ` +
+        `in a live file's header or HISTORY.md.`, u.file);
+    }
+  }
+}
+
 function checkStaleFileRefs() {
   let tracked = [];
   try { tracked = require('../lib/repo.js').trackedFiles(); }
@@ -2181,7 +2228,7 @@ function checkStaleFileRefs() {
   const base = (f) => f.split('/').pop();
   const liveNames = new Set(tracked.filter((f) => !f.startsWith('archive/')).map(base));
   const archivedNames = new Set(tracked.filter((f) => f.startsWith('archive/')).map(base));
-  const sources = tracked.filter((f) => STALE_REF_FILES_RE.test(f)).map((f) => ({ file: f, text: readFile(f) }));
+  const sources = tracked.filter((f) => STALE_REF_FILES_RE.test(f) && exists(f)).map((f) => ({ file: f, text: readFile(f) }));
   const refs = findStaleFileRefs(sources, liveNames, archivedNames, new Set(tracked));
   if (process.argv.includes('--stale-refs')) {
     refs.forEach((r) => console.log(r.file + ':' + r.line + '  ' + r.name + (r.archived ? '  (archived)' : '  (gone)')));
@@ -2197,6 +2244,7 @@ function checkStaleFileRefs() {
 }
 
 module.exports = {
+  findUnusedFiles,
   sizeOverages,
   longestLiteralLines,
   findSecondCopies,
@@ -2257,6 +2305,7 @@ checkColumnMapAgreement();
 checkFlowSurfaces();
 checkSecondCopy();
 checkSizeBudgets();
+checkUnusedFiles();
 checkFixtureConsumers();
 checkSandboxScope();
 checkPlausibilityGateDrift();

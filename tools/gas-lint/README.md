@@ -443,15 +443,14 @@ it — that gap is closed now.
     something current, point it at the live file. Tests:
     `tests/tools/gas-lint-flow-map.test.js`.
 
-17. **Second copy** (`checkSecondCopy`, 2026-11-21). An identical function
-    body (5+ lines, comments and whitespace aside) in two files of one
-    system is an error; allowed pairs, with why, in `second-copy-allow.json`.
-    Tests: `tests/tools/gas-lint-second-copy.test.js`.
-18. **Size budgets** (`checkSizeBudgets`, 2026-11-21). A ratchet: a source
-    file over 1,500 lines, a literal over 100 or a README over 250 is an
-    error unless `size-budgets.json` lists it with its size and why, and a
-    listed one may not grow. Tests: `tests/tools/gas-lint-size-budget.test.js`.
-    Both checks: CLAUDE.md, "Keeping debt down".
+17. **Second copy** (`checkSecondCopy`): an identical 5+-line function body in two
+    files of one system; allowed pairs, with why, in `second-copy-allow.json`.
+18. **Size budgets** (`checkSizeBudgets`): a ratchet. A source file over 1,500
+    lines, a literal over 100 or a README over 250 fails unless `size-budgets.json`
+    lists it with its size and why; a listed one may not grow.
+19. **Unused file** (`checkUnusedFiles`): a deployed file nothing in its project
+    uses, with no public function. Errors, all three, 2026-11-21 (CLAUDE.md, "Keeping
+    debt down"); tests `tests/tools/gas-lint-{second-copy,size-budget,unused-file}.test.js`.
 
 ## What this is NOT
 

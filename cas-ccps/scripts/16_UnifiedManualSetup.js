@@ -439,7 +439,7 @@ function createAdminAssets_(adminEmail, orgName) {
   // left alone; submissions to it are ignored.
 
   // ── 6. MASTER STUDENT TEMPLATE DOC PLACEHOLDER ───────────────────────────
-  // The master student template is a Google Doc with Scripts 00+01+09+17 bound.
+  // The master student template is a Google Doc with Scripts 00 and 01 bound.
   // It cannot be created programmatically (Apps Script can't create Docs with
   // bound scripts). The admin must create it manually then set its ID.
   // Instructions are included in the admin summary page below.
@@ -656,11 +656,11 @@ function writeAdminSummaryPage_(result, adminEmail, orgName) {
     // decision 8 — the retired original 09_StudentRevisionGuidance.js (GAS writes
     // the report) is archived/superseded; 09_StudentRevisionGuidance_M1Base.js
     // (Studio writes the report) is the live design. That reference copy was
-    // deleted 2026-11-20 (03 holds the live code), so the template has three.
+    // deleted 2026-11-20 (03 holds the live code); 17 (comments only) 2026-11-21.
     "1. Create a new blank Google Doc (this is the master student template).\n" +
     "2. Open Extensions → Apps Script on that doc.\n" +
-    "3. Create three script files and paste: 00_SharedConfig.js, " +
-    "01_StudentDoc_ContainerScript.js, 17_MasterStudentTemplate.js\n" +
+    "3. Create two script files and paste: 00_SharedConfig.js, " +
+    "01_StudentDoc_ContainerScript.js\n" +
     "4. Set Script Properties on that doc:\n" +
     "     CENTRAL_LEDGER_SS_ID = " + result.ledgerSsId + "\n" +
     "     ADMIN_SS_ID          = " + result.ledgerSsId + "\n" +

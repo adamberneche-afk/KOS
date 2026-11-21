@@ -8,6 +8,16 @@
 // submit from the Student Dashboard (13). Kept because each student doc is a
 // copy of the template this is bound to, and its menu still works for the
 // teacher. Don't build student features here.
+//
+// THE TEMPLATE (from 17_MasterStudentTemplate.js, a comments-only file removed
+// 2026-11-21: gas-lint's unused-file check). One master doc, owned by the
+// admin, never shared, with 00 and 01 bound; 02 copies it for each student
+// and fills Zone 2 from the teacher's prompt doc (read as text, never copied),
+// so 01 is on every student doc. Script Properties don't survive makeCopy(),
+// so 02 stamps the system IDs into the doc as invisible text below the
+// CONFIG_ID footer, and 01's readSystemIds() tries Script Properties first,
+// then that block. Setup: the wizard's admin summary (16), and
+// cas-ccps/docs/SETUP_GUIDE.md.
 // =============================================================================
 
 // Document zone markers
