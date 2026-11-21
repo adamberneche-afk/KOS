@@ -39,7 +39,7 @@ the live Project runs the 2026-11-09 paste.
 
 - **State is read by link, not retrieved.** The Gem's notebook search
   returned passages, often missed the primer and dropped the Data Quality
-  block (`rtp-core-router/notebook-plan/05_TEST_LOG.md`). The Project opens
+  block (`archive/2026-27-Q1/kos-personal/rtp-core-router/notebook-plan/05_TEST_LOG.md`). The Project opens
   `KOS_LATEST_PRIMER`, `KOS_OPEN_DECISIONS` and `KOS_CORE_FACTS` whole,
   through Claude's Google Drive connector (school account, approved
   2026-10-06; none of the three holds student data).

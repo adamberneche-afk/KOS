@@ -210,7 +210,7 @@ could reveal.
 `kos-personal`'s main project and `leader-hub`'s one are live too, pushed
 the same way by `tools/clasp-sync/run.js` (which replaced `run.ps1` on
 2026-10-17). kos-personal's second project,
-`archive/studio-steps/`, was archived on 2026-09-29 (blocked on this
+`archive/2026-27-Q1/kos-personal/archive/studio-steps/`, was archived on 2026-09-29 (blocked on this
 account, like cas-ccps's).
 
 The layout each system needs, which hasn't changed:

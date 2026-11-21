@@ -37,7 +37,7 @@
 > non-default Cloud project; GCP is disabled org-wide for the
 > `ccpsnet.net` account this system is actually deployed on (SMP-004
 > describes a separate personal account — that is not what exists), so
-> `archive/studio-steps/`'s two steps install without error and never appear in
+> `archive/2026-27-Q1/kos-personal/archive/studio-steps/`'s two steps install without error and never appear in
 > Studio's picker. That was true when this banner last said so.
 >
 > **What changed since: the live Docs-read step is gone too, not just the

@@ -421,6 +421,16 @@ it — that gap is closed now.
     Guards inside string literals (21's generated installer) are ignored.
     Tests: `tests/tools/gas-lint-typeof-guard.test.js`.
 
+16. **Comments naming a file no longer in the repo** (`checkStaleFileRefs`,
+    structure audit 4.8, 2026-11-21). A comment in a CAS script, a
+    kos-personal `.gs` or a leader-hub source file that names a `.js`, `.gs`,
+    `.html`, `.md` or `.json` no live file has. Many are history on purpose
+    ("folded in from X"), so this is **one summary warning** with the count;
+    `node tools/gas-lint/check.js --stale-refs` lists each line, marked
+    archived or gone. Where a header sends a reader to such a file for
+    something current, point it at the live file. Tests:
+    `tests/tools/gas-lint-flow-map.test.js`.
+
 ## What this is NOT
 
 Not a JS parser. Comments and string literals are stripped with a small

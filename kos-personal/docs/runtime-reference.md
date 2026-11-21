@@ -29,7 +29,7 @@ Council cog verdict        COG_VERDICT  (submitCogVerdict(), skips PENDING_FLOW/
 | `TURNSTILE_STALE_MINS` | 30 | Minutes before stuck STUDIO_ACTIVE resets |
 | `SHADOW_VERIFY_THRESHOLD` | 0.75 | Confidence to mark a shadow question VERIFIED |
 | `COUNCIL_AUTO_TRIGGER_SESSIONS` | 5 | Sessions between auto-council checks |
-| `INFERENCE_MODE` | `'STUDIO'` | `'STUDIO'` (default, no vendor server) or `'MANAGED_SERVICE'` (opt-in — see CHANGELOG.md for how this was added, and `archive/inference-service/README.md` for the service, archived 2026-11-17: `MANAGED_SERVICE` has nothing to call) |
+| `INFERENCE_MODE` | `'STUDIO'` | `'STUDIO'` (default, no vendor server) or `'MANAGED_SERVICE'` (opt-in — see CHANGELOG.md for how this was added, and `archive/2026-27-Q2/kos-personal/archive/inference-service/README.md` for the service, archived 2026-11-17: `MANAGED_SERVICE` has nothing to call) |
 | `DECISION_MULTIPLIER` / `EXPLORATORY_MULTIPLIER` | 1.5 / 1.0 | Exchange-type weight in sentence-level vector aggregation |
 | `INCUBATOR_PROMOTION_THRESHOLD` | 3.0 | Cumulative score needed to promote a theme out of the Incubator |
 | `INCUBATOR_HALF_LIFE_DAYS` | 14 | Days for an untouched Incubator theme's score to halve |
