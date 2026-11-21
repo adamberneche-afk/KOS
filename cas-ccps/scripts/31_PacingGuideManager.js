@@ -63,39 +63,8 @@
 //   ever exceeds the per-property cap. Cache is invalidated on re-import.
 // =============================================================================
 
-// ── PacingGuide tab column indices (0-based) ─────────────────────────────────
-const PG_UNIT_ID           = 0;
-const PG_STAGE             = 1;
-const PG_STAGE_NAME        = 2;
-const PG_UNIT_NAME         = 3;
-const PG_APPROX_START      = 4;
-const PG_APPROX_END        = 5;
-const PG_WEEKS             = 6;
-const PG_OVERLAP_TYPE      = 7;
-const PG_DIVISION_CONTEXT  = 8;
-const PG_OBJ_8175          = 9;
-const PG_OBJ_8177          = 10;
-const PG_COMP_IDS_8175     = 11;
-const PG_COMP_IDS_8177     = 12;
-const PG_KEY_VOCAB         = 13;
-const PG_PRIOR_CONNECTION  = 14;
-const PG_WARMUP_ANCHOR     = 15;
-// ── v2 pacing guide fields (appended — see archive/2026-27-Q2/cas-ccps/README.md, Known gaps item 9) ────────
-const PG_CHAIN_NODE            = 16;
-const PG_ESPORTS_CONNECTION    = 17;
-const PG_VOCAB_WITH_DEFS       = 18;
-const PG_STUDIO_FLOW_HOOKS     = 19;
-const PG_COL_COUNT             = 20;
-
-const PG_HEADERS = [
-  "lesson_unit_id", "stage", "stage_name", "lesson_unit_name",
-  "approx_start", "approx_end", "weeks", "overlap_type",
-  "division_context", "objective_8175", "objective_8177",
-  "competency_ids_8175", "competency_ids_8177",
-  "key_vocabulary", "prior_lesson_connection", "warmup_anchor",
-  "chain_node", "esports_connection", "vocabulary_with_definitions",
-  "studio_flow_hooks"
-];
+// PacingGuide's columns and header row are 00_SharedConfig.js's PG and
+// PG_HEADERS (this file kept them until 2026-11-21, structure audit 3.1).
 
 // JSON-structured fields (arrays/objects), stored in the sheet as a JSON
 // string rather than a scalar — parsed back out on read, with a
@@ -162,7 +131,7 @@ function importPacingGuide() {
 
   // ── Write header row ──────────────────────────────────────────────────────
   pgSheet.clearContents();
-  pgSheet.getRange(1, 1, 1, PG_COL_COUNT)
+  pgSheet.getRange(1, 1, 1, PG_HEADERS.length)
     .setValues([PG_HEADERS])
     .setFontWeight("bold")
     .setBackground("#f3f3f3");
@@ -195,8 +164,8 @@ function importPacingGuide() {
   // ── Batch write ────────────────────────────────────────────────────────────
   // Keep the dates as text: a written "YYYY-MM-DD" otherwise becomes a Date
   // cell, which _loadPacingGuide_ used to read back as "Fri Sep 25 2026 ...".
-  pgSheet.getRange(2, PG_APPROX_START + 1, rows.length, 2).setNumberFormat("@");
-  pgSheet.getRange(2, 1, rows.length, PG_COL_COUNT).setValues(rows);
+  pgSheet.getRange(2, PG.APPROX_START + 1, rows.length, 2).setNumberFormat("@");
+  pgSheet.getRange(2, 1, rows.length, PG_HEADERS.length).setValues(rows);
 
   // ── Invalidate cache ──────────────────────────────────────────────────────
   _clearPacingGuideCache_();
@@ -229,20 +198,20 @@ function validatePacingGuide() {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (!row[PG_UNIT_ID]) continue;
+    if (!row[PG.UNIT_ID]) continue;
     total++;
 
-    if (!row[PG_WARMUP_ANCHOR]) noAnchor++;
-    if (!row[PG_APPROX_START])  noStart++;
-    if (!row[PG_APPROX_END])    noEnd++;
-    if (!row[PG_CHAIN_NODE])         noChainNode++;
-    if (!row[PG_ESPORTS_CONNECTION]) noEsports++;
-    if (!_parsePacingJsonField_(row[PG_VOCAB_WITH_DEFS], []).length) noVocabDefs++;
+    if (!row[PG.WARMUP_ANCHOR]) noAnchor++;
+    if (!row[PG.APPROX_START])  noStart++;
+    if (!row[PG.APPROX_END])    noEnd++;
+    if (!row[PG.CHAIN_NODE])         noChainNode++;
+    if (!row[PG.ESPORTS_CONNECTION]) noEsports++;
+    if (!_parsePacingJsonField_(row[PG.VOCAB_WITH_DEFS], []).length) noVocabDefs++;
 
-    const overlap = String(row[PG_OVERLAP_TYPE] || "").trim();
-    if (overlap === "8175 only")  units8175.push(row[PG_UNIT_ID]);
-    else if (overlap === "8177 only") units8177.push(row[PG_UNIT_ID]);
-    else                           unitsBoth.push(row[PG_UNIT_ID]);
+    const overlap = String(row[PG.OVERLAP_TYPE] || "").trim();
+    if (overlap === "8175 only")  units8175.push(row[PG.UNIT_ID]);
+    else if (overlap === "8177 only") units8177.push(row[PG.UNIT_ID]);
+    else                           unitsBoth.push(row[PG.UNIT_ID]);
   }
 
   Logger.log("[S31-VALIDATE] PacingGuide summary:");

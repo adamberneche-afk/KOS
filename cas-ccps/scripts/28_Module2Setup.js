@@ -1064,13 +1064,7 @@ function _createM2WarmUpTabs_(ss) {
   // ── Pacing guide + competency rubric tabs ─────────────────────────────────
   // Headers only — content populated by importPacingGuide() (S29)
   // and importCompetencyRubrics() (S30) after upload.
-  _createTabIfMissing28_(ss, "PacingGuide", [
-    "lesson_unit_id","stage","stage_name","lesson_unit_name",
-    "approx_start","approx_end","weeks","overlap_type",
-    "division_context","objective_8175","objective_8177",
-    "competency_ids_8175","competency_ids_8177",
-    "key_vocabulary","prior_lesson_connection","warmup_anchor"
-  ]);
+  _createTabIfMissing28_(ss, "PacingGuide", PG_HEADERS.slice());
 
   _createTabIfMissing28_(ss, "CompetencyRubrics", [
     "competency_id","course","task_number","duty_area",

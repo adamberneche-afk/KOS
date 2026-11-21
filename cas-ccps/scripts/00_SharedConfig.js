@@ -2227,6 +2227,42 @@ const LEDGER = {
   LAST_SUGGESTED_SCORE:   26,  // Flow 2's [SUGGESTED_SCORE: N] on the latest check, "" if none
 };
 
+// PacingGuide: 31's importPacingGuide() writes it from the repo's pacing guide
+// JSON; 31 reads it. 23 and 28 created the tab with the first 16 headers
+// until 2026-11-21 (31's import rewrote the header row); all three use
+// PG_HEADERS now. The v2 fields (16-19) were appended.
+const PG = {
+  UNIT_ID: 0,
+  STAGE: 1,
+  STAGE_NAME: 2,
+  UNIT_NAME: 3,
+  APPROX_START: 4,
+  APPROX_END: 5,
+  WEEKS: 6,
+  OVERLAP_TYPE: 7,
+  DIVISION_CONTEXT: 8,
+  OBJ_8175: 9,
+  OBJ_8177: 10,
+  COMP_IDS_8175: 11,
+  COMP_IDS_8177: 12,
+  KEY_VOCAB: 13,
+  PRIOR_CONNECTION: 14,
+  WARMUP_ANCHOR: 15,
+  CHAIN_NODE: 16,
+  ESPORTS_CONNECTION: 17,
+  VOCAB_WITH_DEFS: 18,
+  STUDIO_FLOW_HOOKS: 19,
+};
+const PG_HEADERS = [
+  "lesson_unit_id", "stage", "stage_name", "lesson_unit_name",
+  "approx_start", "approx_end", "weeks", "overlap_type",
+  "division_context", "objective_8175", "objective_8177",
+  "competency_ids_8175", "competency_ids_8177",
+  "key_vocabulary", "prior_lesson_connection", "warmup_anchor",
+  "chain_node", "esports_connection", "vocabulary_with_definitions",
+  "studio_flow_hooks",
+];
+
 // LessonContext (Module 2's lesson rows): 22 writes them, 24, 25, 26, 27 and
 // 51 read them. Declared once 2026-11-21 (structure audit 3.1); 22's LC_*,
 // 24's LC24_* and 25's LC25_* were copies, and 28's setup wrote only the first

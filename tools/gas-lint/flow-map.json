@@ -43,6 +43,16 @@
         }
       ]
     },
+    "cas-ccps:PacingGuide": {
+      "why": "31 writes it from the pacing guide JSON and reads it by position. 23 and 28 created it with only the first 16 of its 20 headers until 2026-11-21; now PG in 00, beside PG_HEADERS, which all three use.",
+      "authoritative": "PG in 00_SharedConfig.js",
+      "maps": [
+        {
+          "file": "cas-ccps/scripts/00_SharedConfig.js",
+          "object": "PG"
+        }
+      ]
+    },
     "cas-ccps:LessonContext": {
       "why": "Module 2's lesson rows: 22 writes them, 24, 25, 26, 27 and 51 read them by position. 22's LC_*, 24's LC24_* and 25's LC25_* were three copies until 2026-11-21; now LCTX in 00, beside LCTX_HEADERS.",
       "authoritative": "LCTX in 00_SharedConfig.js",
