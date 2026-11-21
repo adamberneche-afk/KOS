@@ -201,3 +201,48 @@ indexes.
 One PR per change, CI green, merged on the operator's "merge". The
 operator runs everything live and pastes the logs; don't assume a run
 happened. FERPA: student data stays in Google; counts only.
+
+## Keeping debt down (from the 2026-11-20 structure audit)
+
+What built the debt the audit found, and the rule each led to. A rule
+marked "check" is held by CI; the rest are how a session works.
+
+- **Copies drift.** Apps Script has no imports, so the smallest change was
+  always a local copy: one tab's columns in five files, three zip readers,
+  three deploy reports. The second time code is copied, it moves to one
+  place: 00 (cas-ccps), `tools/lib/`, or `shared/` with a sync script and a
+  test. (Check to come: gas-lint `second-copy`, an identical function body
+  in two files of one system.)
+- **Retiring is deleting.** A retired file stayed deployed "for reference",
+  and comments, tests and docs kept citing it. The PR that retires a
+  feature deletes its code, tests and mentions, and leaves one HISTORY.md
+  entry; `tools/archive/file.js` keeps a doc that matters. (Check to come:
+  gas-lint `retired-in-project`, a project file whose header says it is
+  retired or superseded.)
+- **Files grow where adding is easiest.** 63% of the Teacher Dashboard was
+  one string. (Check to come: gas-lint `size-budget`, a deployed file, a
+  string literal or a README over its line budget, exceptions named with
+  why.)
+- **Comments describe the present.** Dates and "used to" belong in
+  HISTORY.md; a header gives purpose, triggers and the data boundary.
+- **A check is accurate before it gates.** A new check runs over the repo
+  first and its false positives are fixed (the stale-ref warning reported
+  107 lines, none truly stale). It then fails CI, with a named exceptions
+  list for what predates it (`*Data.js`, `flowCheckNames.exceptions`),
+  rather than warning forever.
+- **Measure before building on a claim.** An audit, review or plan item is
+  checked against the code first, as a log item is; record the pushback.
+  (3.7 asked for a registry that existed; 4.6 estimated 943 lines, the
+  count was ~400.)
+- **Mechanical edits prove they changed nothing.** A refactor across many
+  files shows equivalence first: a byte-identical render, a generator's
+  `--check`, the same test count. A bulk edit matches narrowly and is read
+  line by line; never blanket-replace across tests.
+- **Status is generated or tabulated.** Counts and indexes come from the
+  repo (`SCRIPT_INDEX.md`, the setup guide reference). A status a person
+  keeps is a table, one row per item, never a growing sentence.
+- **One branch per PR.** After a squash merge, start the next PR's branch
+  from main. A merge approval names the PR or the series.
+- **Each quarter,** rerun the audit's measurements (file and literal sizes,
+  copies, stale references, checks that disagree) so the counts are a trend,
+  not a surprise.
