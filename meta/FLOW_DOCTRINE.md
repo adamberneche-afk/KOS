@@ -576,8 +576,11 @@ failure would ship exactly the same way the original bug did.
    fixture *through* the consumer (rules 4, 5) — Check J requires exactly
    that, and Check K requires the test's sandbox to load the scope the code
    runs in (rule 12).
-6. Add the four checks (rule 9), and register the surface in
-   `tools/gas-lint/flow-map.json` so Check I holds you to it. Register its
+6. Add the four checks (rule 9), named to the scheme in
+   `tools/gas-lint/flow-map.json`'s `flowCheckNames` (`run<Flow>Canary`,
+   `check<Flow>Binding`, `check<Flow>Liveness`, `install<Flow>Fixture`), and
+   register the surface there so Check I holds you to it; a new project's
+   preflight (`run<Project>Preflight`) goes in its `preflights`. Register its
    column map there too, if a second file declares one for the same sheet, so
    Check H holds you to that (rule 7).
 7. Re-run `syncFlowBuildSpec()` and build the Studio side from that tab, with

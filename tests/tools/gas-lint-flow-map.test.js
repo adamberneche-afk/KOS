@@ -262,3 +262,47 @@ test('findStaleFileRefs: a comment naming an archived or missing file, not a liv
     [[1, '16_X_ADDENDUM.js', false], [3, 'STUDENT_WORK_PLAN_2026-10.md', true]],
     'code outside a comment is not read; a live file and a product name are fine');
 });
+
+// ── One naming scheme for the flow checks (structure audit 3.7) ─────────────
+
+test('flowCheckNameProblem: each role to its pattern, exceptions excused, free roles free', () => {
+  const { flowCheckNameProblem } = require('../../tools/gas-lint/check.js');
+  const names = FLOW_MAP.flowCheckNames;
+  assert.equal(flowCheckNameProblem('canary', 'runFlow2Canary', names), null);
+  assert.match(flowCheckNameProblem('canary', 'flow2Canary', names), /does not match/);
+  assert.match(flowCheckNameProblem('liveness', 'checkFlow2Alive', names), /flowCheckNames\.exceptions/);
+  assert.equal(flowCheckNameProblem('liveness', 'checkAiFlowFixtures', names), null, 'a listed exception');
+  assert.equal(flowCheckNameProblem('fixture', 'installWarmUpFixtures', names), null);
+  assert.match(flowCheckNameProblem('preflight', 'preflightCas', names), /does not match/);
+  assert.equal(flowCheckNameProblem('harvest', 'anythingAtAll', names), null, 'harvest has no pattern');
+});
+
+test('every declared flow check and preflight follows the scheme, and every exception is in use', () => {
+  const { flowCheckNameProblem } = require('../../tools/gas-lint/check.js');
+  const names = FLOW_MAP.flowCheckNames;
+  const used = new Set();
+  Object.entries(FLOW_MAP.flowSurfaces).forEach(([surface, def]) => {
+    Object.keys(FLOW_ROLE_QUESTIONS).forEach((role) => {
+      if (!def[role]) return;
+      used.add(def[role]);
+      assert.equal(flowCheckNameProblem(role, def[role], names), null, surface + ' ' + role);
+    });
+  });
+  Object.entries(FLOW_MAP.preflights).filter(([k]) => !k.startsWith('_')).forEach(([project, fn]) => {
+    used.add(fn);
+    assert.equal(flowCheckNameProblem('preflight', fn, names), null, project);
+  });
+  Object.keys(names.exceptions).forEach((fn) => assert.ok(used.has(fn), fn + ' is excused but unused'));
+});
+
+test('every project with a flow declares a preflight that exists there', () => {
+  const projects = new Set(Object.values(FLOW_MAP.flowSurfaces).map((d) => d.project));
+  projects.forEach((p) => {
+    const fn = FLOW_MAP.preflights[p];
+    assert.ok(fn, p + ' has no preflight');
+    const declared = new Set();
+    PROJECT_MAP[p].files.filter((f) => !f.endsWith('.html') && fs.existsSync(path.join(REPO_ROOT, f)))
+      .forEach((f) => findTopLevelDecls(f).forEach((d) => declared.add(d.name)));
+    assert.ok(declared.has(fn), p + ': ' + fn + '() not found');
+  });
+});
