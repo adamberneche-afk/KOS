@@ -1050,19 +1050,19 @@ function createSCRTabs_() {
   // cas-ccps/studio-steps/CommitStudentEvaluationStep.gs /
   // 15c_Flow2DirectEvaluationService.js) must stay byte-identical here —
   // see tests/cas-ccps/competency-evidence-schema-compat.test.js.
-  _createTabIfMissingS30_(ss, cfg.tabs.competencyEvidence || "CompetencyEvidence", [
+  ensureTab_(ss, cfg.tabs.competencyEvidence || "CompetencyEvidence", [
     "evidence_id", "student_email", "competency_id", "milestone_text",
     "outcome", "config_id", "evaluated_at", "student_file_id", "archive_status"
   ]);
 
-  _createTabIfMissingS30_(ss, cfg.tabs.scrSuggestions || "SCRSuggestions", [
+  ensureTab_(ss, cfg.tabs.scrSuggestions || "SCRSuggestions", [
     "student_email", "competency_id", "suggested_rating",
     "met_count", "not_met_count", "partial_count",
     "status", "last_computed_at",
     "confirmed_rating", "confirmed_at", "confirmed_by"
   ]);
 
-  _createTabIfMissingS30_(ss, cfg.tabs.scrDecisionLog || "SCRDecisionLog", [
+  ensureTab_(ss, cfg.tabs.scrDecisionLog || "SCRDecisionLog", [
     "decision_id", "student_email", "competency_id", "suggested_rating",
     "final_rating", "decision_type", "decided_at", "decided_by",
     "evidence_snapshot", "archive_status"
@@ -1071,19 +1071,6 @@ function createSCRTabs_() {
   Logger.log("[S30] SCR tab creation complete.");
 }
 
-function _createTabIfMissingS30_(ss, tabName, headers) {
-  if (ss.getSheetByName(tabName)) {
-    Logger.log("[S30] Tab '" + tabName + "' already exists — skipping.");
-    return;
-  }
-  const sheet = ss.insertSheet(tabName);
-  sheet.getRange(1, 1, 1, headers.length)
-    .setValues([headers])
-    .setFontWeight("bold")
-    .setBackground("#f3f3f3");
-  sheet.setFrozenRows(1);
-  Logger.log("[S30] Created tab: " + tabName);
-}
 
 // ---------------------------------------------------------------------------
 // installSCRTrigger_ — MANUAL, one-time setup. Installs

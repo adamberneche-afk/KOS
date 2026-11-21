@@ -1577,3 +1577,22 @@ held the only column map (`PG_*`) and rewrote the header row on every
 import, so nothing broke. The map is now `PG` in 00 beside `PG_HEADERS`
 (`PG_COL_COUNT` is `PG_HEADERS.length`); 23 and 28 create the tab with all
 20. gas-lint's registry and `tab-columns.test.js` cover it. No column moved.
+
+## One ensureTab_ instead of seven, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.2: 22's `_createTabIfMissing_`,
+23's `_createTabIfAbsent_`, 28's `_createTabIfMissing28_`, 29's and 30's
+`_createTabIfMissingS29_`/`S30_`, 37's `_fiEnsureTab_` and 60's
+`_fmsEnsureTab_` were the same few lines. They are now `ensureTab_(ss, name,
+headers, { textColumns })` in 00 (37 keeps `_fiEnsureTab_` as a one-line
+call for its configurable tab name). Two behaviours join up:
+
+- Every new tab gets the bold, grey, frozen header row the Module 2 helpers
+  gave theirs (37's and 60's tabs used a plain row).
+- An existing tab whose headers are a prefix of the list gets the missing
+  trailing ones, as 37's and 60's did; one whose headers differ is left
+  alone. So a LessonContext made by 28's old 14-header setup gets its other
+  four headers the next time either setup runs.
+
+Tested in `tab-columns.test.js`, which also fails if a file defines its own
+create-the-tab helper again.

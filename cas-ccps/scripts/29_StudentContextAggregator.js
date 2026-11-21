@@ -809,31 +809,18 @@ function createStudentAggregatorTabs_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
 
-  _createTabIfMissingS29_(ss, cfg.tabs.studentDocRegistry, [
+  ensureTab_(ss, cfg.tabs.studentDocRegistry, [
     "student_email", "student_name", "doc_id", "doc_url",
     "created_at", "last_updated_at", "last_run_had_content"
   ]);
 
-  _createTabIfMissingS29_(ss, cfg.tabs.warmUpResponses, [
+  ensureTab_(ss, cfg.tabs.warmUpResponses, [
     "timestamp", "student_email", "lesson_unit_id", "response"
   ]);
 
   Logger.log("[S29] Student aggregator tab creation complete.");
 }
 
-function _createTabIfMissingS29_(ss, tabName, headers) {
-  if (ss.getSheetByName(tabName)) {
-    Logger.log("[S29] Tab '" + tabName + "' already exists — skipping.");
-    return;
-  }
-  const sheet = ss.insertSheet(tabName);
-  sheet.getRange(1, 1, 1, headers.length)
-    .setValues([headers])
-    .setFontWeight("bold")
-    .setBackground("#f3f3f3");
-  sheet.setFrozenRows(1);
-  Logger.log("[S29] Created tab: " + tabName);
-}
 
 // ---------------------------------------------------------------------------
 // installStudentAggregatorTrigger_
