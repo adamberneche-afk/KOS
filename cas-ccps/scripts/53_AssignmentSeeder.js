@@ -30,18 +30,8 @@
  * FERPA: teacher-level only. Nothing here reads or writes student data.
  */
 
-const AS_TAB_HEADERS = [
-  "ConfigID", "UnitName", "Tier", "Persona",
-  "Milestone1", "Milestone2", "Milestone3", "Milestone4",
-  "DefinitionOfDone", "InstructorEmail", "Created", "Status",
-  "PromptTemplateID", "Subject", "CourseName",
-  "Milestone1CompetencyId", "Milestone2CompetencyId",
-  "Milestone3CompetencyId", "Milestone4CompetencyId", "LessonUnitId",
-  // The assignment's learning objectives, as JSON { competencyId: "I can …" }
-  // (2026-10-24): the Student Dashboard's reflection questions quote them
-  // (00, reflectionMatrixRow_). Appended last, so no reader's column moves.
-  "StudentObjectives"
-];
+// The tab's header row is 00_SharedConfig.js's TM_HEADERS (StudentObjectives,
+// last, is what the Student Dashboard's reflection questions quote).
 
 function previewAssignmentSeed() {
   return seedAssignments_({ apply: false });
@@ -158,7 +148,8 @@ function seedAssignments_(opts) {
 //                               fields. Changes nothing.
 //   refreshAssignments()        writes them.
 // ---------------------------------------------------------------------------
-const AS_REFRESH_COLS_ = { MILESTONES: 4, DOD: 8, PROMPT_DOC: 12, COMP_IDS: 15, OBJECTIVES: 20 }; // 0-based, AS_TAB_HEADERS
+const AS_REFRESH_COLS_ = { MILESTONES: TM.MILESTONE_1, DOD: TM.DOD, PROMPT_DOC: TM.PROMPT_TEMPLATE_ID,
+  COMP_IDS: TM.MILESTONE_1_COMPETENCY_ID, OBJECTIVES: TM.STUDENT_OBJECTIVES }; // 0-based, 00's TM
 
 // The assignment's "I can" objectives as the TeacherMatrix keeps them: JSON,
 // keys in a fixed order so an unchanged set compares equal. "" with none.
@@ -208,7 +199,7 @@ function refreshAssignments_(opts) {
   const width = AS_REFRESH_COLS_.OBJECTIVES + 1;
   // The header for the objectives column on a sheet made before it existed.
   if (apply && String(sheet.getRange(1, AS_REFRESH_COLS_.OBJECTIVES + 1).getValue()).trim() === "") {
-    sheet.getRange(1, AS_REFRESH_COLS_.OBJECTIVES + 1).setValue(AS_TAB_HEADERS[AS_REFRESH_COLS_.OBJECTIVES]).setFontWeight("bold");
+    sheet.getRange(1, AS_REFRESH_COLS_.OBJECTIVES + 1).setValue(TM_HEADERS[AS_REFRESH_COLS_.OBJECTIVES]).setFontWeight("bold");
   }
   const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, Math.max(width, sheet.getLastColumn())).getValues();
   rows.forEach((r, i) => {
@@ -325,7 +316,7 @@ function _asTeacherMatrix_(ss, cfg) {
 
 function _asAddTab_(matrixSs) {
   const tab = matrixSs.insertSheet("TeacherMatrix");
-  tab.getRange(1, 1, 1, AS_TAB_HEADERS.length).setValues([AS_TAB_HEADERS]).setFontWeight("bold");
+  tab.getRange(1, 1, 1, TM_HEADERS.length).setValues([TM_HEADERS]).setFontWeight("bold");
   tab.setFrozenRows(1);
   return tab;
 }

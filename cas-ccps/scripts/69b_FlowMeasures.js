@@ -140,7 +140,7 @@ function _fmValues_(sheet, width) {
 
 // Flow 1: one RubricQueue row per rubric upload (05), on the admin sheet.
 function _fmFlow1_(ctx) {
-  const C = WD_RUBRIC_QUEUE_COLUMNS;
+  const C = RBQ;
   const timeoutMs = WD_STALE_MINS.RUBRIC_QUEUE * 60000;
   const admin = ctx.cfg.adminSsId && ctx.cfg.adminSsId !== ctx.cfg.ledgerSsId
     ? SpreadsheetApp.openById(ctx.cfg.adminSsId) : ctx.ss;

@@ -153,23 +153,9 @@
 // =============================================================================
 
 // -----------------------------------------------------------------------
-// Column indices — re-derived directly from each writer's actual row
-// construction, not from any pre-existing constant. Worth noting why:
-// RubricQueue's own RQ05 constant in 05_TeacherIntakePipeline.js had drifted
-// out of sync with the real queueRow array it describes — it ended at
-// STATUS: 8 with no TeacherMatrixSsId entry, against a 10-field row with
-// TeacherMatrixSsId at 8 and Status at 9. It was confirmed dead code
-// (declared once, used nowhere), so nothing was broken by the drift, and this
-// note recorded it rather than fixing it. **RQ05 has since been corrected**
-// and now matches. The indices below still come from the real appendRow()
-// call rather than from RQ05, which is the right habit whatever the constant
-// currently says: derive from the writer, verify against the constant.
-// -----------------------------------------------------------------------
-const WD_RUBRIC_QUEUE_COLUMNS = {
-  TIMESTAMP: 0, TEACHER_EMAIL: 1, TEACHER_NAME: 2, SUBJECT: 3,
-  COURSE_NAME: 4, TIER: 5, RUBRIC_TEXT: 6, PROMPT_TEMPLATE_ID: 7,
-  TEACHER_MATRIX_SS_ID: 8, STATUS: 9,
-};
+// RubricQueue's columns are 00_SharedConfig.js's RBQ (this file's own map,
+// derived from 05's appendRow() when 05's RQ05 had drifted, was folded in
+// 2026-11-21).
 // STAGING_PIPELINE (cas-ccps's own — Flow 2's trigger tab, not
 // kos-personal's identically-named sheet on a different account).
 // Confirmed from 03_QueueBridge.js's bridgeQueue().
@@ -330,7 +316,7 @@ function runQueueWatchdog() {
 function _wdCheckRubricQueue_(ss, releaseMap, touchedKeys, dryRun) {
   const sheet = ss.getSheetByName('RubricQueue');
   if (!sheet) return _wdReportMissingTab_('RubricQueue');
-  const C = WD_RUBRIC_QUEUE_COLUMNS;
+  const C = RBQ;
   return _wdCheckSheet_(sheet, 'RubricQueue', C.STATUS, ['PENDING_EXTRACTION'],
     WD_RUBRIC_QUEUE_KNOWN_STATUSES, WD_STALE_MINS.RUBRIC_QUEUE, WD_TIMEOUT_STATUS.RUBRIC_QUEUE,
     releaseMap, touchedKeys, function (row, rowNum) { return 'row:' + rowNum; }, true, dryRun);

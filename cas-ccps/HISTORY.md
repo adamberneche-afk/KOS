@@ -1522,3 +1522,26 @@ From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.1, the second tab:
   and `WQ_HEADERS` in step and fails on a new copy.
 
 No column moved; every number is the one the code read before.
+
+## TeacherMatrix, RubricQueue and ReviewQueue: their columns in one place, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.1, three more tabs:
+
+- **TeacherMatrix:** 08's `TM08`, 33's `TM_*` (14 of its 15 never read) and
+  37's `FI_TM_COLUMNS_` now read `TM` in 00, beside `TM_HEADERS` (21, with
+  53's StudentObjectives) and `TM_BASE_WIDTH` (15, what setup wrote). Six
+  hand-typed header lists (16, 35, 39, 42, 53's `AS_TAB_HEADERS`) and 00's
+  own reflection read (`at(20)` and the like) use them. 37 keeps
+  `FI_TM_READS_`, the columns it reads, which 42's build spec marks.
+- **RubricQueue:** 05's `RQ05` (the map that once drifted) and 34's
+  `WD_RUBRIC_QUEUE_COLUMNS` (also 69b's) are `RBQ` in 00, beside
+  `RBQ_HEADERS`, which 16's two tab creators, 35's preflight width and 42's
+  spec use.
+- **ReviewQueue:** 03's `RQ_*`, 10's `CSP_RQ_STATUS`, 13's `r[2]`/`r[5]` and
+  50's text column are `RVQ` in 00, beside `RVQ_HEADERS`.
+- A new TeacherMatrix made by setup gets all 21 headers. gas-lint's
+  column-map registry lists one map per tab, and `tab-columns.test.js` holds
+  each map to its header row and fails on a new copy.
+
+No column moved. LessonContext, whose header lists disagree (14 columns in
+28, 18 in 22), is next.

@@ -94,7 +94,7 @@ function ledgerRow({ googleId, configId, fileId, teacherEmail }, exported) {
   return row;
 }
 
-// TeacherMatrix columns per FI_TM_COLUMNS_ (37_FlowInputBuilder.js) —
+// TeacherMatrix columns per 00's TM —
 // same shape as CommitRubricDraftStep.gs's TM_COLUMNS_.
 function teacherMatrixRow({
   configId, unitName = 'Unit', tier = 'Tier 1', persona = 'Coach',

@@ -58,22 +58,8 @@
 //
 // =============================================================================
 
-// ── Teacher Matrix column indices (0-based) — from Script 16 ─────────────────
-const TM_CONFIG_ID         = 0;
-const TM_UNIT_NAME         = 1;
-const TM_TIER              = 2;
-const TM_PERSONA           = 3;
-const TM_MILESTONE_1       = 4;
-const TM_MILESTONE_2       = 5;
-const TM_MILESTONE_3       = 6;
-const TM_MILESTONE_4       = 7;
-const TM_DEFINITION_DONE   = 8;
-const TM_INSTRUCTOR_EMAIL  = 9;
-const TM_CREATED           = 10;
-const TM_STATUS            = 11;
-const TM_PROMPT_TEMPLATE   = 12;
-const TM_SUBJECT           = 13;
-const TM_COURSE_NAME       = 14;
+// TeacherMatrix columns: 00_SharedConfig.js's TM (this file's TM_* copy was
+// folded in 2026-11-21).
 // The competency IDs are found by header (s33CompetencyColumns_), not index.
 
 // Ledger columns: 00_SharedConfig.js's LEDGER (this file's copy was folded in
@@ -169,7 +155,7 @@ function syncArtifactCompetencies() {
   const tagCols = s33CompetencyColumns_(matrixData[0] || []);
   for (let i = 1; i < matrixData.length; i++) {
     const row      = matrixData[i];
-    const configId = String(row[TM_CONFIG_ID] || "").trim();
+    const configId = String(row[TM.CONFIG_ID] || "").trim();
     if (!configId) continue;
     const ids = [];
     tagCols.forEach(function (c) {

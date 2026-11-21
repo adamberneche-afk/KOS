@@ -14,30 +14,32 @@
   ],
   "columnMaps": {
     "cas-ccps:RubricQueue": {
-      "why": "The pair that would have caught the RQ05 drift. 05 writes the row; 34 deliberately derived its own indices from that writer's appendRow() call rather than trusting RQ05, and said so in a comment. Now the comparison is automatic.",
-      "authoritative": "the queueRow array in 05_TeacherIntakePipeline.js's onTeacherRubricSubmit",
+      "why": "The tab where RQ05 drifted: 05's own map ended at STATUS: 8 against a 10-field row, and 34 kept a map derived from the writer. Since 2026-11-21 there is one map, RBQ in 00, beside RBQ_HEADERS; 05's queueRow array writes in its order.",
+      "authoritative": "RBQ in 00_SharedConfig.js (the order of the queueRow array in 05's onTeacherRubricSubmit)",
       "maps": [
         {
-          "file": "cas-ccps/scripts/05_TeacherIntakePipeline.js",
-          "object": "RQ05"
-        },
+          "file": "cas-ccps/scripts/00_SharedConfig.js",
+          "object": "RBQ"
+        }
+      ]
+    },
+    "cas-ccps:ReviewQueue": {
+      "why": "A submission's first stop. 03, 10, 13 and 50 each kept a column number of their own until 2026-11-21; now RVQ in 00.",
+      "authoritative": "RVQ in 00_SharedConfig.js",
+      "maps": [
         {
-          "file": "cas-ccps/scripts/34_QueueWatchdog.js",
-          "object": "WD_RUBRIC_QUEUE_COLUMNS"
+          "file": "cas-ccps/scripts/00_SharedConfig.js",
+          "object": "RVQ"
         }
       ]
     },
     "cas-ccps:TeacherMatrix": {
-      "why": "Flow 1 writes this sheet and 37_FlowInputBuilder.js reads it by position, so a shift silently feeds Flow 2 the wrong field. 37's own header notes that FI_TM_COLUMNS_ is a redeclaration of TM08 under a different name, because the two live in different GAS projects with separate global scopes -- exactly the situation where drift is invisible.",
-      "authoritative": "TM08 in 08_TeacherConfirmationStep.js, which that file's header calls the authoritative source",
+      "why": "Flow 1 writes this sheet and 37_FlowInputBuilder.js reads it by position, so a shift silently feeds Flow 2 the wrong field. 08's TM08, 33's TM_* and 37's FI_TM_COLUMNS_ were three copies until 2026-11-21; now TM in 00, beside TM_HEADERS.",
+      "authoritative": "TM in 00_SharedConfig.js",
       "maps": [
         {
-          "file": "cas-ccps/scripts/08_TeacherConfirmationStep.js",
-          "object": "TM08"
-        },
-        {
-          "file": "cas-ccps/scripts/37_FlowInputBuilder.js",
-          "object": "FI_TM_COLUMNS_"
+          "file": "cas-ccps/scripts/00_SharedConfig.js",
+          "object": "TM"
         }
       ]
     },

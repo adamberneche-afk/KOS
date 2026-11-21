@@ -711,11 +711,11 @@ test('StagingRowRef is non-numeric, so the harvest cannot complete a real row', 
 // The scratch TeacherMatrix is the load-bearing part. It is indexed BY
 // POSITION by two separate readers with two separate constants — TM08 in
 // 08_TeacherConfirmationStep.js (which that step's own header calls the
-// authoritative source) and FI_TM_COLUMNS_ in 37_FlowInputBuilder.js — so a
+// authoritative source) and FI_TM_COLUMNS_ in 37_FlowInputBuilder.js (both 00's TM since 2026-11-21) — so a
 // header order that merely looks right silently feeds Flow 2 the wrong
 // fields.
 
-// TM08 / FI_TM_COLUMNS_, as a name→index map, for comparing against the
+// 00's TM (once TM08 and FI_TM_COLUMNS_), as a name→index map, for comparing against the
 // fixture's header row. Spelled out here rather than imported because the
 // point is to catch a change on either side.
 const TEACHER_MATRIX_ORDER = [
@@ -725,6 +725,7 @@ const TEACHER_MATRIX_ORDER = [
   'PromptTemplateID', 'Subject', 'CourseName',
   'Milestone1CompetencyId', 'Milestone2CompetencyId',
   'Milestone3CompetencyId', 'Milestone4CompetencyId', 'LessonUnitId',
+  'StudentObjectives',
 ];
 
 const RUBRIC_QUEUE_ORDER = [
@@ -763,7 +764,7 @@ test('PENDING_EXTRACTION is the status the real writer and the watchdog use', ()
   assert.equal(String(row[9]).trim(), 'PENDING_EXTRACTION');
 });
 
-test('the scratch TeacherMatrix header order matches TM08 and FI_TM_COLUMNS_', () => {
+test('the scratch TeacherMatrix header order matches 00\'s TM', () => {
   const { exported, sandbox } = load();
   setUp(sandbox);
   const result = exported.installFlow1Fixture();

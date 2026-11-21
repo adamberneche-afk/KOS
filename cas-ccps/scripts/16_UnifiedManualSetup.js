@@ -331,10 +331,7 @@ function createAdminAssets_(adminEmail, orgName) {
   }
 
   if (!ledgerSs.getSheetByName("ReviewQueue")) {
-    setHeaders_(ledgerSs.insertSheet("ReviewQueue"), [
-      "Timestamp","GoogleID","FileID","ConfigID",
-      "StudentText","Status","ResultRef"
-    ]);
+    setHeaders_(ledgerSs.insertSheet("ReviewQueue"), RVQ_HEADERS.slice());
   }
 
   if (!ledgerSs.getSheetByName("STAGING_PIPELINE")) {
@@ -344,11 +341,7 @@ function createAdminAssets_(adminEmail, orgName) {
   }
 
   if (!ledgerSs.getSheetByName("RubricQueue")) {
-    setHeaders_(ledgerSs.insertSheet("RubricQueue"), [
-      "Timestamp","TeacherEmail","TeacherName","Subject",
-      "CourseName","Tier","RubricText","PromptTemplateID",
-      "TeacherMatrixSsId","Status"
-    ]);
+    setHeaders_(ledgerSs.insertSheet("RubricQueue"), RBQ_HEADERS.slice());
   }
 
   if (!ledgerSs.getSheetByName("MatrixRegistry")) {
@@ -404,12 +397,7 @@ function createAdminAssets_(adminEmail, orgName) {
     DriveApp.getFileById(matrixMasterSs.getId()).moveTo(templatesFolder);
 
     const matrixSheet = matrixMasterSs.getActiveSheet().setName("TeacherMatrix");
-    setHeaders_(matrixSheet, [
-      "ConfigID","UnitName","Tier","Persona",
-      "Milestone1","Milestone2","Milestone3","Milestone4",
-      "DefinitionOfDone","InstructorEmail","Created","Status",
-      "PromptTemplateID","Subject","CourseName"
-    ]);
+    setHeaders_(matrixSheet, TM_HEADERS.slice()); // 00_SharedConfig.js
 
     const draftSheet = matrixMasterSs.insertSheet("DraftUnits");
     setHeaders_(draftSheet, [
@@ -975,11 +963,7 @@ function createTeacherAssets_(teacherName, teacherEmail, subject, props) {
   const adminSs = SpreadsheetApp.openById(adminSsId);
   if (!adminSs.getSheetByName(queueTabName)) {
     const qt = adminSs.insertSheet(queueTabName);
-    setHeaders_(qt, [
-      "Timestamp","TeacherEmail","TeacherName","Subject",
-      "CourseName","Tier","RubricText","PromptTemplateID",
-      "TeacherMatrixSsId","Status"
-    ]);
+    setHeaders_(qt, RBQ_HEADERS.slice()); // 00_SharedConfig.js
   }
 
   // ── REGISTER IN MATRIXREGISTRY ─────────────────────────────────────────────

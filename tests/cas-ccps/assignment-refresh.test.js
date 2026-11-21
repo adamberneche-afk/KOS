@@ -20,7 +20,7 @@ const TEACHER = 'owner.teacher@ccpsnet.net';
 
 function setup(opts) {
   const { exported, sandbox } = loadGasFiles(FILES,
-    ['previewAssignmentRefresh', 'refreshAssignments', 'LESSON_ASSIGNMENTS', 'UNIT_ASSIGNMENTS', 'AS_TAB_HEADERS']);
+    ['previewAssignmentRefresh', 'refreshAssignments', 'LESSON_ASSIGNMENTS', 'UNIT_ASSIGNMENTS', 'TM_HEADERS']);
   const props = sandbox.PropertiesService.getScriptProperties();
   const ledger = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ledger.getId(), ledger);
@@ -32,7 +32,7 @@ function setup(opts) {
   reg.appendRow(['TeacherName', 'TeacherEmail', 'MatrixSsId', 'Created']);
   reg.appendRow(['Mr. Owner', TEACHER, matrix.getId(), new Date()]);
   const tab = matrix.insertSheet('TeacherMatrix');
-  tab.appendRow(exported.AS_TAB_HEADERS);
+  tab.appendRow(exported.TM_HEADERS);
   // An L07 row as seeded before the fix, and a row the repo doesn't know.
   const old = ['CAS-8175-L07', 'L07 ETHICAL DILEMMAS DISCUSSION', 'Tier 1 Core', 'persona',
     'm1', 'm2', 'm3', 'm4', 'old definition with Peer Replies', TEACHER, new Date(), 'LIVE',
