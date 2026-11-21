@@ -7,7 +7,9 @@
 > persona-shaped Curator output `STUDIO_REBIND_HANDOFF.md` describes (that
 > file is closed). Their last step is a native add-row into `STUDIO_RETURN`;
 > `harvestStudioReturns()` (`12_StudioReturnHarvest.gs`) does the write-back.
-> The 2026-09-08 status below is history.
+> Three history paragraphs that stood here (the 2026-09-08 status, why the
+> Docs-read step went, Round 17's open questions) are in `CHANGELOG.md`, "The
+> guides' history banners moved here (2026-11-21)", word for word.
 >
 > **The Registrar's two flows (D14, 2026-11-01)** follow the same shape on
 > their own tabs: `RegistrarStage1Input` / `RegistrarStage2Input` →
@@ -24,12 +26,6 @@
 > `VECTOR_ITEM_RETURN`, harvested by `runVectorItemLabeler()`
 > (`25_VectorDocs.gs`). FlowBuildSpec's `Vector Item Labeler` rows have the
 > bindings.
-
-> **✅ STATUS (2026-09-08): both Flows built from this spec and verified
-> end to end** — real Studio returns, real `SESSION_LOG`/`VECTOR_MATRIX`
-> data, both confirmed against the same fixture. See `DEPLOYMENT_GUIDE.md`'s
-> status banner and `CHANGELOG.md` Rounds 21-22 for the full account,
-> including two real bugs the verification itself surfaced and fixed.
 
 > **⚠ STEPS 1, 6 AND 7 ARE ALL SUPERSEDED. Read this before building the
 > Flow — the shape below is simpler than everything after this banner.**
@@ -49,18 +45,6 @@
 > SESSION_LOG/EXTERNAL_DATA/COG_STIMULUS/COG_EXHAUST,
 > `VectorClassifyInput` for VECTOR_CLASSIFY. Both run on a 1-minute
 > trigger, filling in behind Turnstile's release.
->
-> **Why this changed.** CHANGELOG.md's Round 17 incident was Studio's own
-> Docs-read step silently failing ("Workspace sources is turned off...
-> sent without file references from variables") while Gemini still
-> returned well-formed, schema-valid output — nothing before that
-> incident could tell the difference from a real answer. The groundedness
-> gate (below) was built to catch that after the fact. This closes the
-> same gap a level earlier: with no live Docs-read step left in Studio at
-> all, for either flow, that specific failure mode cannot occur
-> structurally — the same reason it already can't for cas-ccps's Flows
-> 3/4/5 or any of leader-hub's six flows (none of them have a live
-> in-Studio document read either).
 >
 > **What each Flow does now, end to end:**
 >
@@ -167,17 +151,7 @@
 > `_wfbCheckPlausible_` and leader-hub's `_checkAiResultPlausible_` are
 > the same rule, each adapted to that system's own FERPA/architecture
 > constraints.
->
-> **What this means for Round 17's other two open questions.** Its
-> "verify `Status` alone before adding `Payload_Type`" lesson is now
-> structural, not a build-order caution to remember — there is nothing to
-> combine. Its "try an Ask a Gem step" hypothesis, to sidestep the
-> Workspace-sources issue, is now optional rather than the working
-> hypothesis for closing a still-open risk: a plain "Ask Gemini" step has
-> nothing left to lose live document access to, since `SourceText` is
-> already a plain string on the trigger row. Still worth trying if this
-> account's Studio offers it and quality improves, just not load-bearing
-> for correctness the way it looked in Round 17.
+
 
 This document defines the complete contract between KOS v8.0 and Workspace Studio (or any AI inference engine used as a drop-in replacement). It is written for the developer building the Studio side of the integration.
 

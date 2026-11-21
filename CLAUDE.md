@@ -11,9 +11,8 @@ or the code, the code wins.
   is in every CAS project: tab names (`TABS`), each tab's columns, shared helpers.
 - `tools/` ([README](./tools/README.md)): checks and generators; `tests/`
   ([README](./tests/README.md)); `meta/`: plans, handoffs, audits; `archive/`: old records.
-- Before a PR: `npm test`, `node tools/gas-lint/check.js`, `node tools/doc-currency/check.js`,
-  `node tools/setup-guide/build.js --check`, `node tools/archive/build.js --check`,
-  `node tools/release-check/check.js` (CI runs all of them: `.github/workflows/gas-lint.yml`).
+- Before a PR: `npm run check` (every check CI runs, in its order; `npm run check:fast`
+  skips the test suite). A stale `--check` is fixed by running the same command without it.
 - A new file needs its folder's README touched (docs-check): a system's,
   `tests/README.md`, `tools/README.md`, or the root's.
 - The traps earlier sessions hit: [`meta/AGENT_NOTES.md`](./meta/AGENT_NOTES.md).

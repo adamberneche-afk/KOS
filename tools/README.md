@@ -5,24 +5,36 @@ from the repo's sources, and the clasp bridge the operator deploys with. Each
 tool is plain Node (no dependencies); run it from the repo root. Moved here
 from the root README on 2026-11-21 (meta/AUDIT_STRUCTURE_2026-11-20.md, 4.1).
 
-| Tool | What it is |
-|---|---|
-| [`gas-lint/`](./gas-lint/) | static checks for the GAS systems |
-| [`flow-harness-sync/`](./flow-harness-sync/) | cross-project constant sync |
-| [`coverage-gaps/`](./coverage-gaps/) | scheduled functions with zero test coverage |
-| [`doc-currency/`](./doc-currency/) | checks the docs against the code |
-| [`clasp-sync/`](./clasp-sync/) | bridges cas-ccps to clasp |
-| [`student-data-scan/`](./student-data-scan/) | finds student data, says where but not what |
-| [`release-check/`](./release-check/) | what must not ship: Drive IDs, exports, LICENSE, secrets |
-| [`archive/`](./archive/) | the archive's catalog, indexes and search |
-| [`setup-guide/`](./setup-guide/) | the CAS setup guide's reference, from the code |
-| [`watchdog/`](./watchdog/check.js) | scheduled-job watchdog |
-| [`deploy-drift/`](./deploy-drift/) | is what's live actually what git expects? |
-| [`leaderhub-build/`](./leaderhub-build/) | assembles `student-leader-hub.html` |
-| [`tools/cas-ccps/`](./cas-ccps/), [`tools/kos-personal/`](./kos-personal/), [`tools/leader-hub/`](./leader-hub/) | the lesson, rubric and prompt generators |
-| [`notebook-codebase/`](./notebook-codebase/build.js) | the repo as Gemini notebook sources |
-| [`notebook-context/`](./notebook-context/build.js) | the "KOS Context" notebook |
-| [`html-lint/`](./html-lint/check.js) | inline `<script>` syntax check |
+**Every check CI runs, at once:** `npm run check` (`tools/check-all.js`;
+about 80 seconds), or `npm run check:fast` (no test suite; about 20). It
+runs CI's steps in CI's order, keeps going past a failure, and lists what
+passed and failed.
+
+**Names:** a `check.js` only reads and reports. A `build.js` (or `build-`,
+`generate-`, `render-`, `sync-`) writes its output, and with `--check`
+only says whether that output is current. So the fix for a stale `--check`
+is to run the same command without it, then commit what changed.
+
+| Tool | What it is | Runs | The command (and its fix) |
+|---|---|---|---|
+| [`gas-lint/`](./gas-lint/) | static checks for the GAS systems | CI | `node tools/gas-lint/check.js`; `--stale-refs` lists comments naming files no longer in the repo |
+| [`doc-currency/`](./doc-currency/) | checks the docs against the code | CI | `node tools/doc-currency/check.js` |
+| [`setup-guide/`](./setup-guide/) | the CAS setup guide's reference, from the code | CI (`--check`) | `node tools/setup-guide/build.js` |
+| [`archive/`](./archive/) | the archive's catalog, indexes and search | CI (`build.js --check`) | `node tools/archive/build.js`; file a doc with `file.js`, find one with `search.js` |
+| [`student-data-scan/`](./student-data-scan/) | finds student data, says where but not what | CI | `node tools/student-data-scan/check.js` (`--roster` locally) |
+| [`release-check/`](./release-check/) | what must not ship: Drive IDs, exports, LICENSE, secrets | CI | `node tools/release-check/check.js`; allow a finding in `release-check/allow.json` |
+| [`clasp-sync/`](./clasp-sync/) | bridges cas-ccps to clasp | CI (`sync.js`), the operator (`run.js`) | `node tools/clasp-sync/sync.js` builds; `node run.js --latest` deploys |
+| [`coverage-gaps/`](./coverage-gaps/) | scheduled functions with zero test coverage | CI, after the tests | `node tools/coverage-gaps/check.js` (a test for the handler it names) |
+| [`html-lint/`](./html-lint/check.js) | inline `<script>` syntax check | CI | `node tools/html-lint/check.js leader-hub/student-leader-hub.html` |
+| [`deploy-drift/`](./deploy-drift/) | is what's live actually what git expects? | its own workflow | `node tools/deploy-drift/check.js` |
+| [`watchdog/`](./watchdog/check.js) | scheduled-job watchdog | its own workflow | `node tools/watchdog/check.js` |
+| [`flow-harness-sync/`](./flow-harness-sync/) | cross-project constant sync | by hand; a test checks it | `node tools/flow-harness-sync/sync-plausibility-phrases.js` (`--check`) |
+| [`leaderhub-build/`](./leaderhub-build/) | assembles `student-leader-hub.html` | by hand; tests check it | `node tools/leaderhub-build/build.js` (`--check`) |
+| [`cas-ccps/`](./cas-ccps/), [`kos-personal/`](./kos-personal/), [`leader-hub/`](./leader-hub/) | the lesson, rubric, prompt, cartridge and dashboard generators | by hand; tests check each output | the generator itself, e.g. `node tools/cas-ccps/build-lesson-assignments.js` (`--check`) |
+| [`notebook-codebase/`](./notebook-codebase/build.js) | the repo as Gemini notebook sources | by hand | `node tools/notebook-codebase/build.js` |
+| [`notebook-context/`](./notebook-context/build.js) | the "KOS Context" notebook | by hand | `node tools/notebook-context/build.js` |
+| [`lib/`](./lib/) | helpers the tools share | (library) | |
+| [`check-all.js`](./check-all.js) | `npm run check` | by hand | `npm run check` / `npm run check:fast` |
 
 What CI runs, in order, is `.github/workflows/gas-lint.yml`.
 

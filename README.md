@@ -180,6 +180,7 @@ What each file covers: [`tests/README.md`](./tests/README.md).
 ## CI
 
 `.github/workflows/gas-lint.yml` runs the tests and every check above on each
-pull request. The checks copied from the Mothership hub's CI floor
+pull request; `npm run check` runs the same steps locally (`npm run check:fast`
+without the tests). The checks copied from the Mothership hub's CI floor
 (doc-link-check, doc-placeholder-check, secrets-doctor) and how the hub reads
 this repo: [`meta/CI_FLOOR.md`](./meta/CI_FLOOR.md).
