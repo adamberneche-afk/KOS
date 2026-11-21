@@ -51,7 +51,7 @@ const LS_FIRST_DATES = { "8175-L06": "2026-10-08", "8177-employee-handbook-opera
 
 /** "CAS-8175-L06", "CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS". */
 function lessonConfigId_(key) {
-  return "CAS-" + String(key).toUpperCase();
+  return casConfigId_(key);
 }
 
 function seedLessonSchedule() {

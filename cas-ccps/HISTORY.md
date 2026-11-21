@@ -1615,3 +1615,20 @@ From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.3:
   TurnInCheckReturn in 72 and the like) keeps its own constant beside its
   code. `tab-columns.test.js` fails on a fallback literal, on a constant that
   repeats a `TABS` name, and on any tab name declared in two files.
+
+## Lesson IDs built and read in one place, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.4: a lesson's assignment ConfigID
+("CAS-8175-L24", a part "CAS-8175-L24-P2") was built by hand in 36, 53, 55,
+66, 68 and 71 and parsed with its own pattern in 00, 13, 58, 69c, 71 and 73.
+Now `casConfigId_(lessonKey, part)` builds it and `parseCasId_(id)` reads it
+(`{ course, lessonKey, part }`, part 0 for a whole lesson, null for anything
+else), both in 00.
+
+- 13's and 69c's patterns (the audit's "regexes differ") read the same IDs
+  the same way; the student-facing ones (13's card order and parts, 71's
+  next-part goal and course) are pinned in `cas-ids.test.js`.
+- Left as they are: 53's unit seed IDs ("CAS-S1-U1-8175", another shape that
+  `parseCasId_` reads with no course), 71's own lesson-number pattern
+  (`L(\d{1,3})`, which the turn-in code needs) and the turn-in codes
+  themselves (71, 74), which are not ConfigIDs.

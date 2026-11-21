@@ -63,7 +63,7 @@ function partHeldSchoolDays_(failedAtMs, now) {
 function lessonPartsOf_(lessonKey) {
   const parts = typeof LESSON_PARTS !== "undefined" ? LESSON_PARTS[lessonKey] : null;
   if (!parts || !parts.length) return null;
-  return parts.map(function (a) { return { key: a.key, configId: "CAS-" + String(a.key).toUpperCase(), n: a.part, a: a }; });
+  return parts.map(function (a) { return { key: a.key, configId: casConfigId_(a.key), n: a.part, a: a }; });
 }
 
 // A part's place, from its assignment ConfigID: { lessonKey, lessonConfigId,
@@ -77,7 +77,7 @@ function partOfConfigId_(configId) {
     const parts = lessonPartsOf_(lessons[i]);
     for (let j = 0; j < parts.length; j++) {
       if (parts[j].configId === id) {
-        return { lessonKey: lessons[i], lessonConfigId: "CAS-" + lessons[i].toUpperCase(), n: parts[j].n, count: parts.length, part: parts[j], next: parts[j + 1] || null };
+        return { lessonKey: lessons[i], lessonConfigId: casConfigId_(lessons[i]), n: parts[j].n, count: parts.length, part: parts[j], next: parts[j + 1] || null };
       }
     }
   }
@@ -138,7 +138,7 @@ function lessonUsesParts_(ss, lessonKey) {
   if (!lessonPartsOf_(lessonKey)) return false;
   _lpSaCache_ = null;
   const of = _lpAssignmentOf_(ss);
-  const whole = "CAS-" + String(lessonKey).toUpperCase();
+  const whole = casConfigId_(lessonKey);
   return !Object.keys(of).some(function (sid) { return of[sid] === whole; });
 }
 

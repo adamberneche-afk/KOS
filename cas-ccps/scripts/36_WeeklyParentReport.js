@@ -236,7 +236,7 @@ function _prLessonTitles_() {
   const add = function (key, l) {
     const first = String(l.promptText || "").split("\n")[0];
     const m = /^(?:Title:\s*)?(?:Assignment:\s*)?(.+)$/.exec(first);
-    out["CAS-" + String(key).toUpperCase()] = (m ? m[1] : String(l.unitName || "")).trim();
+    out[casConfigId_(key)] = (m ? m[1] : String(l.unitName || "")).trim();
   };
   Object.keys(LESSON_ASSIGNMENTS).forEach(function (key) { add(key, LESSON_ASSIGNMENTS[key]); });
   Object.keys(LESSON_PARTS).forEach(function (key) {

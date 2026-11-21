@@ -51,11 +51,11 @@ const LR_HEADERS = ["Course", "LessonKey", "Lesson", "FirstCheck", "LastCheck", 
 // "CAS-8175-L24-P2" -> { key: "8175-L24", part: 2 }, or null.
 function lrLessonOf_(assignmentId) {
   if (typeof LESSON_ASSIGNMENTS !== "object") return null;
-  const m = /^CAS-(.+?)(?:-P(\d+))?$/i.exec(String(assignmentId || "").trim());
-  if (!m) return null;
-  const want = m[1].toLowerCase();
+  const id = parseCasId_(assignmentId);
+  if (!id) return null;
+  const want = id.lessonKey.toLowerCase();
   const key = Object.keys(LESSON_ASSIGNMENTS).filter(function (k) { return k.toLowerCase() === want; })[0];
-  return key ? { key: key, part: m[2] ? Number(m[2]) : 0 } : null;
+  return key ? { key: key, part: id.part } : null;
 }
 
 // The first goal's competency for a lesson or one of its parts.

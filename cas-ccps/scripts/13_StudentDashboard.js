@@ -989,8 +989,8 @@ function _dashLessonKeyOf_(assignmentId) {
     _dashLessonIndex_ = {};
     Object.keys(DASH_LESSON_INFO).forEach(function (k) { _dashLessonIndex_[k.toUpperCase()] = k; });
   }
-  const m = /^CAS-(.+?)(-P\d+)?$/i.exec(String(assignmentId || "").trim());
-  return m ? (_dashLessonIndex_[m[1].toUpperCase()] || "") : "";
+  const id = parseCasId_(assignmentId);
+  return id ? (_dashLessonIndex_[id.lessonKey] || "") : "";
 }
 
 // Each card's lesson number chip ("L05": its place in its course's teaching
@@ -1252,8 +1252,8 @@ function _dashPartsOf_(ss, assignmentOf) {
   const out = {};
   const map = assignmentOf || _dashStudentAssignments_(ss);
   Object.keys(map).forEach(function (sid) {
-    const m = /^(.+)-P(\d+)$/i.exec(map[sid]);
-    if (m) out[sid] = { lesson: m[1].toUpperCase(), n: Number(m[2]) };
+    const id = parseCasId_(map[sid]);
+    if (id && id.part) out[sid] = { lesson: casConfigId_(id.lessonKey), n: id.part };
   });
   return out;
 }

@@ -207,7 +207,7 @@ function turnInSwitchParse_(raw) {
       const u = t.toUpperCase().replace(/^CAS-/, "");
       if (/^\d{4}$/.test(u)) { out.courses[u] = true; return; }
       if (/^\d{4}-[A-Z0-9]+(-[A-Z0-9]+)*$/.test(u)) {
-        const id = "CAS-" + u;
+        const id = casConfigId_(u);
         if (out.lessons.indexOf(id) === -1) out.lessons.push(id);
         return;
       }
@@ -233,10 +233,10 @@ function turnInSwitchParse_(raw) {
 function _turnInKnownLessons_() {
   if (typeof LESSON_ASSIGNMENTS === "undefined") return null;
   const out = {};
-  Object.keys(LESSON_ASSIGNMENTS).forEach(function (k) { out["CAS-" + k.toUpperCase()] = true; });
+  Object.keys(LESSON_ASSIGNMENTS).forEach(function (k) { out[casConfigId_(k)] = true; });
   if (typeof LESSON_PARTS !== "undefined") {
     Object.keys(LESSON_PARTS).forEach(function (k) {
-      (LESSON_PARTS[k] || []).forEach(function (p) { out["CAS-" + String(p.key).toUpperCase()] = true; });
+      (LESSON_PARTS[k] || []).forEach(function (p) { out[casConfigId_(p.key)] = true; });
     });
   }
   return out;
@@ -382,9 +382,9 @@ function turnInQuestionText_(prompt) {
 // from 13c's DASH_LESSON_INFO in the Student Dashboard, or 55b's
 // LESSON_PARTS elsewhere (this file is in both kinds of project).
 function turnInNextPartGoal_(assignmentId) {
-  const m = /^CAS-(.+)-P(\d+)$/i.exec(String(assignmentId || "").trim());
-  if (!m) return null;
-  const want = m[1].toLowerCase(), n = Number(m[2]);
+  const id = parseCasId_(assignmentId);
+  if (!id || !id.part) return null;
+  const want = id.lessonKey.toLowerCase(), n = id.part;
   const find = function (obj) {
     const k = obj ? Object.keys(obj).filter(function (x) { return x.toLowerCase() === want; })[0] : null;
     return k ? obj[k] : null;
@@ -649,8 +649,8 @@ function turnInCheckChar_(payload) {
 function _turnInCourseOf_(row, assignmentId) {
   const fromRow = row ? ledgerRowCourseCode_(row) : "";
   if (/^\d{4}$/.test(fromRow)) return fromRow;
-  const m = /^CAS-(\d{4})-/i.exec(String(assignmentId || ""));
-  return m ? m[1] : "0000";
+  const id = parseCasId_(assignmentId);
+  return id && id.course ? id.course : "0000";
 }
 
 // The lesson's number for the code, two digits (three past 99), or "00"
