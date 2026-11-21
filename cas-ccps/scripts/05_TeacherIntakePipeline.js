@@ -110,7 +110,7 @@ function onTeacherRubricSubmit(e) {
   }
 
   const adminSs      = SpreadsheetApp.openById(cfg.adminSsId);
-  const centralQueue = adminSs.getSheetByName("RubricQueue"); // Central tab — always this name
+  const centralQueue = adminSs.getSheetByName(TABS.rubricQueue); // Central tab — always this name
   if (!centralQueue) {
     throw new Error(
       "RubricQueue tab not found in admin spreadsheet. " +

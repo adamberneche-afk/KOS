@@ -284,7 +284,7 @@ function turnInSwitchCoversRow_(ss, row, raw, cache) {
 function turnInMilestones_(ss, cfg, fileId, cache) {
   const out = { primary: "", notYet: "", other: "" };
   const rows = _turnInRead_(cache, "evidence", function () {
-    const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+    const sheet = ss.getSheetByName(TABS.competencyEvidence);
     return sheet && sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues() : [];
   });
   if (rows.length < 2) return out;
@@ -303,7 +303,7 @@ function turnInMilestones_(ss, cfg, fileId, cache) {
     if (!r) return "";
     let text = iText === -1 ? "" : reflectionCriterionText_(r[iText]);
     if (!text && iComp !== -1) {
-      if (!names) names = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry"));
+      if (!names) names = getCompetencyTextMap_(ss.getSheetByName(TABS.competencyRegistry));
       text = names[String(r[iComp]).trim()] || "";
     }
     return text;
@@ -316,7 +316,7 @@ function turnInMilestones_(ss, cfg, fileId, cache) {
   last.slice(1).some(function (r) {
     let text = textOf(r);
     if (/^also shown/i.test(text) && iComp !== -1) {
-      if (!names) names = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry"));
+      if (!names) names = getCompetencyTextMap_(ss.getSheetByName(TABS.competencyRegistry));
       text = names[String(r[iComp]).split(",")[0].trim()] || "";
     }
     if (text && text !== out.primary) { out.other = text; return true; }
@@ -757,7 +757,7 @@ function _turnInLatestCheck_(ss, googleId, studentConfigId, cache) {
 // or the workspace's own ConfigID when it isn't recorded.
 function turnInAssignmentId_(ss, studentConfigId, cache) {
   let out = studentConfigId;
-  _turnInRows_(ss, "StudentAssignments", 3, cache).forEach(function (r) {
+  _turnInRows_(ss, TABS.studentAssignments, 3, cache).forEach(function (r) {
     if (String(r[0] || "").trim() === studentConfigId && String(r[2] || "").trim()) out = String(r[2]).trim();
   });
   return out;

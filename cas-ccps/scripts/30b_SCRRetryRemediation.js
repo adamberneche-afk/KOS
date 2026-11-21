@@ -82,7 +82,7 @@ function _retrySuggestionRow_(data, studentEmail, competencyId) {
 function checkRetryEligibility_(studentEmail, competencyId, cache) {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  const suggestionsSheet = ss.getSheetByName(TABS.scrSuggestions);
   if (!suggestionsSheet) return { eligible: false, reason: "SCRSuggestions tab not found." };
   const c = cache || {};
   if (!c.suggestions) c.suggestions = suggestionsSheet.getDataRange().getValues();
@@ -117,7 +117,7 @@ function checkRetryEligibility_(studentEmail, competencyId, cache) {
 function previewScrRetryThresholds() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  const suggestionsSheet = ss.getSheetByName(TABS.scrSuggestions);
   if (!suggestionsSheet) { Logger.log("[S30b] SCRSuggestions tab not found."); return { error: "SCRSuggestions tab not found." }; }
   const data = suggestionsSheet.getDataRange().getValues();
   const candidates = retryCandidates_(data).map(function (c) {

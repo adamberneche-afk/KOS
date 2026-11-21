@@ -503,7 +503,7 @@ function _onSetupChecks_(props, ss, now) {
 // One read of WarmUpQueue's first columns (not the snapshot JSON). Columns
 // are found by header, with 24's positions as the fallback.
 function _onWarmUpCounts_(ss, today, tomorrow) {
-  const sheet = ss.getSheetByName(getConfig_().tabs.warmUpQueue || "WarmUpQueue");
+  const sheet = ss.getSheetByName(TABS.warmUpQueue);
   if (!sheet) throw new Error("WarmUpQueue tab missing");
   const out = {
     today:    { total: 0, delivered: 0, waiting: 0, error: 0 },
@@ -537,7 +537,7 @@ function _onWarmUpCounts_(ss, today, tomorrow) {
 function _onStudioCounts_(ss, now) {
   const out = { stalled: { 2: 0, 3: 0, 4: 0 }, failed: { 3: 0, 4: 0 }, fallback: 0 };
   const returned = { 3: {}, 4: {} };
-  const ret = ss.getSheetByName("WarmUpFlowReturn");
+  const ret = ss.getSheetByName(TABS.warmUpFlowReturn);
   if (ret && ret.getLastRow() > 1) {
     ret.getRange(2, 1, ret.getLastRow() - 1, 7).getValues().forEach(function (r) {
       const f = Number(r[1]);
@@ -561,7 +561,7 @@ function _onStudioCounts_(ss, now) {
       if (_onOlderThan_(r[0], now, ON_STUDIO_STALL_MS[f])) out.stalled[f]++;
     });
   });
-  const fi = ss.getSheetByName(getConfig_().tabs.flowInput || "FlowInput");
+  const fi = ss.getSheetByName(TABS.flowInput);
   if (fi && fi.getLastRow() > 1) {
     const header = fi.getRange(1, 1, 1, fi.getLastColumn()).getValues()[0]
       .map(function (h) { return String(h).trim(); });
@@ -582,7 +582,7 @@ function _onStudioCounts_(ss, now) {
 // that remain, docs left if the day didn't finish, the export note. No tab
 // is a quiet zero.
 function _onRollout_(ss, now) {
-  const sheet = ss.getSheetByName("RolloutLog");
+  const sheet = ss.getSheetByName(TABS.rolloutLog);
   const rows = sheet && sheet.getLastRow() >= 2 ? sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues() : [];
   return rolloutDayStatus_(rows, now, ON_RETURN_WINDOW_MS);
 }

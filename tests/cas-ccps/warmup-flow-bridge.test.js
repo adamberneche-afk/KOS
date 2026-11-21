@@ -47,7 +47,7 @@ const EXPOSE = [
   '_wfbDiagnoseReturnRow_', 'checkFlowBinding', 'checkFlow2Binding', '_wfbIsCanaryLeftover_', 'wfbRecentBindingCounts_', 'removeWarmUpFlowFixtures',
   'WFB_ARCHETYPES', 'WFB_TRIGGER_STATUS', 'WFB_RET',
   'WFB_RETURN_HEADERS', 'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS',
-  'WFB_INPUT_TABS', 'WFB_RETURN_TAB',
+  'WFB_INPUT_TABS', 'TABS',
   'RESPONSE_ZONE_MARKER', 'WQ_BASE_WIDTH', 'WQ', 'WQ',
   'WQ', 'WQ',
   // The plausibility gate and its harvest entry point
@@ -617,7 +617,7 @@ test('harvestWarmUpFlowReturns: a Flow 5 return fails as an unknown flow and the
   }));
   const returns = sandbox.SpreadsheetApp.openById(
     sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
-    .insertSheet(exported.WFB_RETURN_TAB);
+    .insertSheet(exported.TABS.warmUpFlowReturn);
   returns.appendRow(exported.WFB_RETURN_HEADERS);
   returns.appendRow([new Date(), 5, queueId, 'A bridge paragraph.', '', 0, '']);
 
@@ -646,7 +646,7 @@ test('harvestWarmUpFlowReturns (Flow 4): a grounded evaluation is applied and sc
 
   const returns = sandbox.SpreadsheetApp.openById(
     sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
-    .insertSheet(exported.WFB_RETURN_TAB);
+    .insertSheet(exported.TABS.warmUpFlowReturn);
   returns.appendRow(exported.WFB_RETURN_HEADERS);
   returns.appendRow([new Date(), 4, queueId,
     JSON.stringify({ grammar: 1, engagement: 2,
@@ -675,7 +675,7 @@ test('harvestWarmUpFlowReturns (Flow 4): a fabricated evaluation is caught befor
 
   const returns = sandbox.SpreadsheetApp.openById(
     sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
-    .insertSheet(exported.WFB_RETURN_TAB);
+    .insertSheet(exported.TABS.warmUpFlowReturn);
   returns.appendRow(exported.WFB_RETURN_HEADERS);
   returns.appendRow([new Date(), 4, queueId,
     JSON.stringify({ grammar: 1, engagement: 3, feedback: 'Great work overall, well done!' }),
@@ -703,7 +703,7 @@ test('harvestWarmUpFlowReturns (Flow 4): a score outside the rubric\'s range is 
   }));
   const returns = sandbox.SpreadsheetApp.openById(
     sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
-    .insertSheet(exported.WFB_RETURN_TAB);
+    .insertSheet(exported.TABS.warmUpFlowReturn);
   returns.appendRow(exported.WFB_RETURN_HEADERS);
   // Grammar is 0 or 1 and engagement 0-3 (40_FlowPrompts.js).
   returns.appendRow([new Date(), 4, queueId,
@@ -741,7 +741,7 @@ test('harvestWarmUpFlowReturns (Flow 3): a fabricated warm-up prompt is caught b
 
   const returns = sandbox.SpreadsheetApp.openById(
     sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
-    .insertSheet(exported.WFB_RETURN_TAB);
+    .insertSheet(exported.TABS.warmUpFlowReturn);
   returns.appendRow(exported.WFB_RETURN_HEADERS);
   returns.appendRow([new Date(), 3, queueId,
     'Write about your favorite hobby and why you enjoy it.', '', 0, '']);
@@ -973,7 +973,7 @@ test('a canary\'s leftover return row is not a binding problem; a live canary ro
   qrow[exported.WQ.QUEUE_ID] = 'WUQ-1';
   wq.appendRow(new Array(exported.WQ_BASE_WIDTH).fill('h'));
   wq.appendRow(qrow);
-  const ret = ss.insertSheet(exported.WFB_RETURN_TAB);
+  const ret = ss.insertSheet(exported.TABS.warmUpFlowReturn);
   ret.appendRow(exported.WFB_RETURN_HEADERS);
   ret.appendRow(leftover);
   ret.appendRow(mk('WUQ-1', new Date('2026-11-02T10:00:00Z')));
@@ -990,7 +990,7 @@ test('removeWarmUpFlowFixtures removes a canary row whose ID carries stray space
   const R = exported.WFB_RET;
   const ss = sandbox.SpreadsheetApp.create('Ledger');
   sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
-  const ret = ss.insertSheet(exported.WFB_RETURN_TAB);
+  const ret = ss.insertSheet(exported.TABS.warmUpFlowReturn);
   ret.appendRow(exported.WFB_RETURN_HEADERS);
   const mk = (id) => { const r = new Array(exported.WFB_RETURN_HEADERS.length).fill(''); r[R.FLOW] = 3; r[R.QUEUE_ID] = id; return r; };
   ret.appendRow(mk(' WUQ-CANARY-20261101-145926 '));

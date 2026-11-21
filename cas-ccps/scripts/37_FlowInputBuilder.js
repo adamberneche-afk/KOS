@@ -138,7 +138,6 @@ const FI = {
   ARMED_AT:                    23, // when it was last restarted (blank: never)
 };
 
-const FI_TAB_NAME = "FlowInput";
 
 const FI_HEADERS = [
   "Timestamp", "StagingRowRef", "StudentFileID", "ConfigID", "TeacherEmail",
@@ -152,7 +151,7 @@ const FI_HEADERS = [
 // A tab made before the last columns were appended gets their headers, so
 // a person reading the sheet sees what the cells are.
 function _fiEnsureTab_(ledgerSs, cfg) {
-  return ensureTab_(ledgerSs, (cfg && cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME, FI_HEADERS);
+  return ensureTab_(ledgerSs, (cfg && cfg.tabs && cfg.tabs.flowInput) || TABS.flowInput, FI_HEADERS);
 }
 
 // ---------------------------------------------------------------------------
@@ -478,7 +477,7 @@ function _fiStaleInputs_(fiData, waiting, rearm, now) {
 // to do, never skip it when it has.
 function flowInputBuildHasWork_(ctx) {
   const tabs = ctx.cfg().tabs;
-  const fiTab = tabs.flowInput || FI_TAB_NAME;
+  const fiTab = tabs.flowInput || TABS.flowInput;
   const staging = ctx.rows("admin", tabs.stagingPipeline, 1, 0);
   if (staging === null) return true;
   const ids = ctx.rows("ledger", fiTab, 1, FI.CONFIG_ID + 1);
@@ -537,7 +536,7 @@ function flowInputBuildHasWork_(ctx) {
 // harvestFlowInputResults has work when a FlowInput row is EVALUATED. Reads
 // FlowInput's ReadyStatus column. No FlowInput tab: the job returns at once.
 function flowInputHarvestHasWork_(ctx) {
-  const status = ctx.rows("ledger", ctx.cfg().tabs.flowInput || FI_TAB_NAME, FI.READY_STATUS + 1, 1);
+  const status = ctx.rows("ledger", ctx.cfg().tabs.flowInput || TABS.flowInput, FI.READY_STATUS + 1, 1);
   if (status === null) return false;
   return status.some(function (r) { return String(r[0]).trim() === "EVALUATED"; });
 }
@@ -610,7 +609,7 @@ var FI_TM_READS_ = [
 
 function _fiFindTeacherMatrixRow_(matrixSsId, configId) {
   const ss = SpreadsheetApp.openById(matrixSsId);
-  const sheet = ss.getSheetByName("TeacherMatrix");
+  const sheet = ss.getSheetByName(TABS.teacherMatrix);
   if (!sheet) return null;
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
@@ -1075,7 +1074,7 @@ function harvestFlowInputResults() {
   try {
     const cfg = getConfig_();
     const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
-    const fiSheet = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME);
+    const fiSheet = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || TABS.flowInput);
     if (!fiSheet) return;
 
     const adminSs = SpreadsheetApp.openById(cfg.adminSsId);
@@ -1091,7 +1090,7 @@ function harvestFlowInputResults() {
     // createSCRTabs_). The 9-column header is left to
     // writeCompetencyEvidenceFromFlow2_'s own first real write, which
     // already seeds it when the tab is empty.
-    const evidenceTabName = (cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence";
+    const evidenceTabName = TABS.competencyEvidence;
     if (!ledgerSs.getSheetByName(evidenceTabName)) {
       ledgerSs.insertSheet(evidenceTabName);
     }
@@ -1378,7 +1377,7 @@ function _fiLogEvaluation_(ledgerSs, cfg, fileId, configId, result, recorded, su
 }
 
 function _fiAppendEvaluationLog_(ledgerSs, cfg, fileId, configId, result, recorded, suggestedScore, prov) {
-  const name = (cfg.tabs && cfg.tabs.evaluationLog) || "EvaluationLog";
+  const name = TABS.evaluationLog;
   let sheet = ledgerSs.getSheetByName(name);
   if (!sheet) {
     sheet = ledgerSs.insertSheet(name);
@@ -1426,7 +1425,7 @@ function _fiNoteHeldTwice_(n, now) {
 
 // EvaluationLog's rows (no header), or [] when there is no tab.
 function _fiEvaluationLogRows_(ledgerSs, cfg) {
-  const sheet = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.evaluationLog) || "EvaluationLog");
+  const sheet = ledgerSs.getSheetByName(TABS.evaluationLog);
   if (!sheet || sheet.getLastRow() < 2) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, EVAL_LOG_HEADERS.length).getValues();
 }
@@ -1643,13 +1642,12 @@ function _fiSetAsideMalformed_(fiSheet, rowNum, row, now) {
 // StagingRowRef (column B).
 // Rows of one StudentFileID whose outputs hash the same (SHA-256; the text
 // is never kept) are a pair, earlier and newer by Timestamp, then row order.
-// Each pair with an EVALUATED row is one event, kept in FI_DUP_TAB as
+// Each pair with an EVALUATED row is one event, kept in TABS.flow2Duplicates as
 // dates only (when found, when each row was built, the earlier row's
 // status). The newer row is delivered: the answer is its own. The earlier
 // row, if not yet harvested, is set aside like a malformed result (re-armed
 // once), never delivered.
 // ---------------------------------------------------------------------------
-const FI_DUP_TAB = "Flow2Duplicates";
 const FI_DUP_HEADERS = ["DetectedAt", "EarlierBuiltAt", "NewerBuiltAt", "EarlierStatus"];
 const FI_DUP_WINDOW_DAYS = 7; // how long a found duplicate keeps the warning up
 
@@ -1698,13 +1696,13 @@ function _fiOutputHash_(text) {
     .map(function (b) { return ((b + 256) % 256).toString(16).padStart(2, "0"); }).join("");
 }
 
-// Appends the events to FI_DUP_TAB (made on the first). Never throws: the
+// Appends the events to TABS.flow2Duplicates (made on the first). Never throws: the
 // harvest goes on either way.
 function _fiRecordDuplicateWrites_(ledgerSs, events, now) {
   try {
-    let sheet = ledgerSs.getSheetByName(FI_DUP_TAB);
+    let sheet = ledgerSs.getSheetByName(TABS.flow2Duplicates);
     if (!sheet) {
-      sheet = ledgerSs.insertSheet(FI_DUP_TAB);
+      sheet = ledgerSs.insertSheet(TABS.flow2Duplicates);
       sheet.appendRow(FI_DUP_HEADERS);
     }
     events.forEach(function (e) { sheet.appendRow([now, e.earlierAt, e.newerAt, e.earlierStatus]); });
@@ -1713,11 +1711,11 @@ function _fiRecordDuplicateWrites_(ledgerSs, events, now) {
   }
 }
 
-// What FI_DUP_TAB holds: { total, recent (within FI_DUP_WINDOW_DAYS),
+// What TABS.flow2Duplicates holds: { total, recent (within FI_DUP_WINDOW_DAYS),
 // lastAt (ms, or NaN) }. Counts and dates only.
 function flow2DuplicateWrites_(ss, now) {
   const out = { total: 0, recent: 0, lastAt: NaN };
-  const sheet = ss.getSheetByName(FI_DUP_TAB);
+  const sheet = ss.getSheetByName(TABS.flow2Duplicates);
   if (!sheet || sheet.getLastRow() < 2) return out;
   const t = (now ? new Date(now) : new Date()).getTime();
   sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) {
@@ -1975,7 +1973,7 @@ function _fiPostEvaluationComment_(fileId, text) {
 function checkFlow2Liveness() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput");
+  const sheet = ss.getSheetByName(TABS.flowInput);
   const report = { ready: 0, answered: 0, everAnswered: false, oldestReadyMins: 0 };
 
   if (!sheet || sheet.getLastRow() <= 1) {
@@ -2062,7 +2060,7 @@ function removeFeedbackCommentsPosted(from, to, doDelete) {
   const budgetMs = 4.5 * 60 * 1000;
   const cfg = getConfig_();
   const sheet = SpreadsheetApp.openById(cfg.ledgerSsId)
-    .getSheetByName((cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME);
+    .getSheetByName((cfg.tabs && cfg.tabs.flowInput) || TABS.flowInput);
   const out = { docs: 0, found: 0, deleted: 0, failed: 0, unreadable: 0, finished: true, rows: [] };
   if (!sheet || sheet.getLastRow() < 2) { Logger.log("[FeedbackCleanup] FlowInput is empty."); return out; }
 
@@ -2138,7 +2136,7 @@ function repostMissingFeedback(doPost, skipRefs) {
   const budgetMs = 4.5 * 60 * 1000;
   const cfg = getConfig_();
   const sheet = SpreadsheetApp.openById(cfg.ledgerSsId)
-    .getSheetByName((cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME);
+    .getSheetByName((cfg.tabs && cfg.tabs.flowInput) || TABS.flowInput);
   const out = { docs: 0, hasFeedback: 0, notHarvested: 0, inDoc: 0, skipped: 0, malformed: 0,
     missing: 0, posted: 0, failed: 0, unreadable: 0, finished: true, rows: [] };
   if (!sheet || sheet.getLastRow() < 2) { Logger.log("[FeedbackRepost] FlowInput is empty."); return out; }

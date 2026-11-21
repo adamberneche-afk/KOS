@@ -148,7 +148,7 @@ function installFlow2DriftProbe() {
   if (!exists) ScriptApp.newTrigger(DRIFT_TRIGGER_FN).timeBased().everyDays(1).atHour(DRIFT_HOUR).create();
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME) || _fiEnsureTab_(ss, cfg);
+  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || TABS.flowInput) || _fiEnsureTab_(ss, cfg);
   const waiting = sheet.getLastRow() >= 2 && sheet.getDataRange().getValues().some(_drIsProbeRow_);
   if (!waiting) _drSeed_(sheet);
   Logger.log("[Drift] " + (exists ? "The daily probe was already installed" :
@@ -162,7 +162,7 @@ function removeFlow2DriftProbe() {
     if (t.getHandlerFunction() === DRIFT_TRIGGER_FN) ScriptApp.deleteTrigger(t);
   });
   const cfg = getConfig_();
-  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName((cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME);
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName((cfg.tabs && cfg.tabs.flowInput) || TABS.flowInput);
   const cleared = sheet ? _drClearProbes_(sheet).length : 0;
   Logger.log("[Drift] Removed the daily probe and " + cleared + " probe row(s).");
   return { cleared: cleared };
@@ -176,7 +176,7 @@ function _drIsProbeRow_(row) {
 function runFlow2DriftProbe() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  let sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME);
+  let sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || TABS.flowInput);
   if (!sheet) sheet = _fiEnsureTab_(ss, cfg);
   const now = new Date();
   const recorded = [];

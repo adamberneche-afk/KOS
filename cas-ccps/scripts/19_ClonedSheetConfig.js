@@ -42,7 +42,7 @@
 function getSheetConfig_() {
   try {
     const ss    = SpreadsheetApp.getActiveSpreadsheet();
-    const sheet = ss.getSheetByName("_CONFIG");
+    const sheet = ss.getSheetByName(TABS.config);
 
     if (!sheet) {
       Logger.log("[CONFIG] _CONFIG tab not found — falling back to Script Properties.");
@@ -123,10 +123,10 @@ function writeConfigTab_(ssId, entries) {
     const ss = SpreadsheetApp.openById(ssId);
 
     // Remove existing _CONFIG tab if present (re-run safety)
-    const existing = ss.getSheetByName("_CONFIG");
+    const existing = ss.getSheetByName(TABS.config);
     if (existing) ss.deleteSheet(existing);
 
-    const configSheet = ss.insertSheet("_CONFIG");
+    const configSheet = ss.insertSheet(TABS.config);
 
     // Write header row
     configSheet.getRange(1, 1, 1, 2)

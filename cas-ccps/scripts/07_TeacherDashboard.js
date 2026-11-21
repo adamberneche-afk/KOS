@@ -663,9 +663,8 @@ const TD_WAIT_TIMED_OUT_HOURS = 24; // a stopped check still waiting, if submitt
 const TD_SYNTHETIC_RE = /(^|-)(FIXTURE|CANARY)(-|$)/i;
 // Flow 2 writing one answer into several rows of a doc (2026-11-15): the
 // Ledger's harvest (37) adds a row (dates only) to this tab each time it
-// finds one; the Flow 2 light says so for TD_DUP_DAYS. 37's FI_DUP_TAB and
+// finds one; the Flow 2 light says so for TD_DUP_DAYS. 37's TABS.flow2Duplicates and
 // FI_DUP_WINDOW_DAYS; this project can't read those, so the same values.
-const TD_DUP_TAB = "Flow2Duplicates";
 const TD_DUP_DAYS = 7;
 const TD_DUP_TAIL = 50;
 
@@ -728,7 +727,7 @@ function _tdWaitingStrip_(cfg, now) {
     if (st === "PENDING" || st === "STAGED") queued[String(r[2] || "").trim()] = true;
   });
   // EvaluationLog: the newest answers.
-  const log = ss.getSheetByName((cfg.tabs && cfg.tabs.evaluationLog) || "EvaluationLog");
+  const log = ss.getSheetByName(TABS.evaluationLog);
   if (log && log.getLastRow() > 1) {
     const n = Math.min(TD_EVAL_TAIL, log.getLastRow() - 1);
     log.getRange(log.getLastRow() - n + 1, 1, n, 2).getValues().forEach(function (r) {
@@ -739,7 +738,7 @@ function _tdWaitingStrip_(cfg, now) {
   }
 
   // Flow2Duplicates: copies found this week (one small read of its tail).
-  const dupTab = ss.getSheetByName(TD_DUP_TAB);
+  const dupTab = ss.getSheetByName(TABS.flow2Duplicates);
   if (dupTab && dupTab.getLastRow() > 1) {
     const n = Math.min(TD_DUP_TAIL, dupTab.getLastRow() - 1);
     flow2.duplicates = dupTab.getRange(dupTab.getLastRow() - n + 1, 1, n, 1).getValues().filter(function (r) {
@@ -977,7 +976,7 @@ function getScrReviewQueue() {
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
 
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  const suggestionsSheet = ss.getSheetByName(TABS.scrSuggestions);
   if (!suggestionsSheet) return { success: true, suggestions: [] };
 
   const roster   = _getRosterForEmail_(cfg, cfg.teacherEmail);
@@ -1065,8 +1064,8 @@ function _recordScrDecision_(cfg, studentEmail, competencyId, overrideRating, de
   }
 
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
-  const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+  const suggestionsSheet = ss.getSheetByName(TABS.scrSuggestions);
+  const decisionLogSheet = ss.getSheetByName(TABS.scrDecisionLog);
   if (!suggestionsSheet || !decisionLogSheet) {
     return { success: false, error: "SCRSuggestions or SCRDecisionLog tab not found." };
   }
@@ -1180,8 +1179,8 @@ function _recordOutsideRating_(cfg, studentEmail, competencyId, rating) {
   if (courses.indexOf(compId.split("-")[0]) === -1) {
     return { success: false, error: "This student isn't in your " + compId.split("-")[0] + " class this year." };
   }
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
-  const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+  const suggestionsSheet = ss.getSheetByName(TABS.scrSuggestions);
+  const decisionLogSheet = ss.getSheetByName(TABS.scrDecisionLog);
   if (!suggestionsSheet || !decisionLogSheet) {
     return { success: false, error: "SCRSuggestions or SCRDecisionLog tab not found." };
   }
@@ -1220,7 +1219,7 @@ function _recordOutsideRating_(cfg, studentEmail, competencyId, rating) {
 // The student's competencies no lesson measures, in this teacher's courses
 // for them: [{ id, text, kind, label, rating }] (rating null until rated).
 function _tdOutsideCompetencies_(ss, cfg, email, courses) {
-  const texts = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry"));
+  const texts = getCompetencyTextMap_(ss.getSheetByName(TABS.competencyRegistry));
   const rated = {};
   (readLatestScrRatings_(ss, cfg, cfg.teacherEmail).get(email) || []).forEach(function (x) { rated[x.competencyId] = Number(x.rating); });
   return Object.keys(COMPETENCIES_OUTSIDE_LESSONS).filter(function (id) {
@@ -1243,7 +1242,7 @@ function _tdOutsideCompetencies_(ss, cfg, email, courses) {
 // needPrimaryMet, secondaryIds }] for this teacher's decided ratings of 3
 // or 4; onlyEmail narrows to one student.
 function _tdRetryRows_(cfg, ss, onlyEmail) {
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  const suggestionsSheet = ss.getSheetByName(TABS.scrSuggestions);
   if (!suggestionsSheet || suggestionsSheet.getLastRow() < 2) return [];
   const only = onlyEmail ? String(onlyEmail).trim().toLowerCase() : "";
   const roster = _getRosterForEmail_(cfg, cfg.teacherEmail);
@@ -1299,8 +1298,8 @@ function teacherConfirmScrRetry(studentEmail, competencyId) {
     if (!row) return { success: false, error: "No rating of 3 or 4 of yours for this student and competency." };
     if (!row.eligible) return { success: false, error: row.reason };
     if (!row.improved) return { success: false, error: "The evidence does not give a better rating than " + row.currentRating + " yet." };
-    const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
-    const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+    const suggestionsSheet = ss.getSheetByName(TABS.scrSuggestions);
+    const decisionLogSheet = ss.getSheetByName(TABS.scrDecisionLog);
     if (!decisionLogSheet) return { success: false, error: "SCRDecisionLog tab not found." };
     const data = suggestionsSheet.getDataRange().getValues();
     let rowIndex = -1;
@@ -1855,9 +1854,7 @@ function _tdSettings_(cfg) {
 // flag may be a Central Ledger Script Property this project can't see).
 // Teacher-level data only; RolloutLog rows are counts and reasons.
 // ---------------------------------------------------------------------------
-const TD_LS_TAB = "LessonSchedule";
 const TD_LS = { COURSE: 0, KEY: 1, LESSON: 2, START: 3, CONFIG_ID: 4, NOTES: 5, RELEASE: 6 };
-const TD_ROLLOUT_LOG_TAB = "RolloutLog";
 // 58's ROLLOUT_LEAD_DAYS, which lives in the Central Ledger project.
 const TD_ROLLOUT_LEAD_DAYS = 2;
 
@@ -1933,7 +1930,7 @@ function setLessonStartDate(lessonKey, dateStr, expected, confirmed) {
   }
   try {
     const now = new Date();
-    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TD_LS_TAB);
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TABS.lessonSchedule);
     if (!sheet || sheet.getLastRow() < 2) return { success: false, error: "No LessonSchedule tab on the Central Ledger." };
     const rows = sheet.getRange(2, 1, sheet.getLastRow() - 1, TD_LS.NOTES + 1).getValues();
     const i = rows.findIndex(function (r) { return String(r[TD_LS.KEY]).trim() === key; });
@@ -1983,7 +1980,7 @@ function setLessonHold(lessonKey, hold) {
     return { success: false, error: "Another change is being saved; try again." };
   }
   try {
-    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TD_LS_TAB);
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TABS.lessonSchedule);
     if (!sheet || sheet.getLastRow() < 2) return { success: false, error: "No LessonSchedule tab on the Central Ledger." };
     const keys = sheet.getRange(2, TD_LS.KEY + 1, sheet.getLastRow() - 1, 1).getValues();
     const i = keys.findIndex(function (r) { return String(r[0]).trim() === key; });
@@ -2026,7 +2023,7 @@ function _tdLessonSchedule_(cfg, now) {
   const tz = Session.getScriptTimeZone();
   const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName(TD_LS_TAB);
+  const sheet = ss.getSheetByName(TABS.lessonSchedule);
   if (!sheet) return { success: false, error: "No LessonSchedule tab on the Central Ledger (seedLessonSchedule, 55, makes it)." };
   const rows = sheet.getLastRow() > 1
     ? sheet.getRange(2, 1, sheet.getLastRow() - 1, TD_LS.RELEASE + 1).getValues() : [];
@@ -2091,7 +2088,7 @@ function _tdLessonSchedule_(cfg, now) {
 // minute), by lesson, and each course's mode in it.
 function _tdLastRollout_(ss) {
   const out = { at: null, byLesson: {}, modeByCourse: {} };
-  const sheet = ss.getSheetByName(TD_ROLLOUT_LOG_TAB);
+  const sheet = ss.getSheetByName(TABS.rolloutLog);
   if (!sheet || sheet.getLastRow() < 2) return out;
   const n = Math.min(sheet.getLastRow() - 1, 500);
   const rows = sheet.getRange(sheet.getLastRow() - n + 1, 1, n, 7).getValues();
@@ -2421,14 +2418,14 @@ function _tdEvalState_(lastResult, firstPassedAt) {
 function _tdLessonContext_(ss) {
   const out = { assignmentOf: {}, lessons: {}, current: new Set() };
   try {
-    const sa = ss.getSheetByName("StudentAssignments");
+    const sa = ss.getSheetByName(TABS.studentAssignments);
     if (sa && sa.getLastRow() > 1) {
       sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(r => {
         const sid = String(r[0] || "").trim(), aid = String(r[2] || "").trim();
         if (sid && aid) out.assignmentOf[sid] = aid;
       });
     }
-    const ls = ss.getSheetByName("LessonSchedule");
+    const ls = ss.getSheetByName(TABS.lessonSchedule);
     if (ls && ls.getLastRow() > 1) {
       const rows = ls.getDataRange().getValues();
       const h = rows[0].map(x => String(x).trim());

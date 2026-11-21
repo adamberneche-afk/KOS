@@ -45,7 +45,6 @@
  * FERPA: teacher-level only.
  */
 
-const LS_TAB = "LessonSchedule";
 const LS_HEADERS = ["course", "lesson_key", "lesson", "start_date", "config_id", "notes", "release"];
 const LS_RELEASE_COL = LS_HEADERS.indexOf("release") + 1;
 const LS_FIRST_DATES = { "8175-L06": "2026-10-08", "8177-employee-handbook-operations": "2026-10-08" };
@@ -57,9 +56,9 @@ function lessonConfigId_(key) {
 
 function seedLessonSchedule() {
   const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
-  let sheet = ss.getSheetByName(LS_TAB);
+  let sheet = ss.getSheetByName(TABS.lessonSchedule);
   if (!sheet) {
-    sheet = ss.insertSheet(LS_TAB);
+    sheet = ss.insertSheet(TABS.lessonSchedule);
     sheet.getRange(1, 1, 1, LS_HEADERS.length).setValues([LS_HEADERS]).setFontWeight("bold");
     sheet.setFrozenRows(1);
   } else if (String(sheet.getRange(1, LS_RELEASE_COL).getValue()).trim() !== "release") {
@@ -79,7 +78,7 @@ function seedLessonSchedule() {
     const at = sheet.getLastRow() + 1;
     sheet.getRange(at, 1, add.length, LS_HEADERS.length).setNumberFormat("@").setValues(add);
   }
-  Logger.log("[S55] Added " + add.length + " lesson(s) to " + LS_TAB + ". Put a start date (YYYY-MM-DD) next to " +
+  Logger.log("[S55] Added " + add.length + " lesson(s) to " + TABS.lessonSchedule + ". Put a start date (YYYY-MM-DD) next to " +
     "each lesson; a lesson runs until the next one starts.");
   _lsCache_ = null;
   return { added: add.length };

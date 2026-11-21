@@ -217,7 +217,7 @@ function _lrReadInputs_(ss, cfg) {
   }
   const assignments = readStudentAssignments_(ss).byStudent;
   const evidence = [];
-  const ev = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  const ev = ss.getSheetByName(TABS.competencyEvidence);
   if (ev && ev.getLastRow() > 1) {
     const data = ev.getDataRange().getValues();
     const h = data[0].map(function (x) { return String(x).trim(); });
@@ -232,7 +232,7 @@ function _lrReadInputs_(ss, cfg) {
     }
   }
   const reflections = [];
-  const rl = ss.getSheetByName((cfg.tabs && cfg.tabs.reflectionLog) || "ReflectionLog");
+  const rl = ss.getSheetByName(TABS.reflectionLog);
   if (rl && rl.getLastRow() > 1) {
     rl.getRange(2, 1, rl.getLastRow() - 1, REFLECTION_LOG_HEADERS.length).getValues().forEach(function (r) {
       reflections.push({ fileId: String(r[RL.FILE_ID]).trim(), words: lrWords_(r[RL.ANSWER]) });

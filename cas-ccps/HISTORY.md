@@ -1596,3 +1596,22 @@ call for its configurable tab name). Two behaviours join up:
 
 Tested in `tab-columns.test.js`, which also fails if a file defines its own
 create-the-tab helper again.
+
+## Tab names in one list, TABS, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.3:
+
+- `getConfig_()`'s `tabs` list is now `TABS`, a top-level constant in 00;
+  `cfg.tabs` is a copy of it, so code without a cfg reads `TABS` directly.
+- The 97 `cfg.tabs.x || "Literal"` fallbacks (the audit counted 70; the
+  `(cfg.tabs && cfg.tabs.x) || ...` form adds the rest) are `TABS.x`. Every
+  literal matched its listed name, so nothing reads a different tab.
+- Tab names declared in two files: StudentAssignments (54, 36, and literals
+  in 00, 07, 13, 66, 68, 71), NoSchoolDays (00, 51, 66), LessonSchedule (07,
+  55), RolloutLog (07, 58), Flow2Duplicates (07, 37), plus FlowInput (37),
+  WarmUpFlowReturn (41) and _CONFIG (00), are all in `TABS`; a
+  `getSheetByName("Name")` for a listed tab reads `TABS` too.
+- Kept on purpose: a tab only one file makes and reads (FlowPrompts in 40,
+  TurnInCheckReturn in 72 and the like) keeps its own constant beside its
+  code. `tab-columns.test.js` fails on a fallback literal, on a constant that
+  repeats a `TABS` name, and on any tab name declared in two files.

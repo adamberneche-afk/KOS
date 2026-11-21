@@ -173,8 +173,8 @@ function pollForNewDrafts() {
   const cfg = getConfig_08();
   // Use getActiveSpreadsheet() — Script 08 is bound to the Teacher Matrix sheet
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const matrix = ss.getSheetByName("TeacherMatrix");
-  const drafts = ss.getSheetByName("DraftUnits");
+  const matrix = ss.getSheetByName(TABS.teacherMatrix);
+  const drafts = ss.getSheetByName(TABS.draftUnits);
   if (!matrix || !drafts) throw new Error("TeacherMatrix or DraftUnits tab not found.");
 
   // LOCKED: this trigger fires every 5 minutes, but the STATUS flip to
@@ -363,8 +363,8 @@ function onTeacherConfirmSubmit(e) {
       "be attributable to a pacing-guide unit until corrected.");
   }
 
-  const drafts = ss.getSheetByName("DraftUnits");
-  const matrix = ss.getSheetByName("TeacherMatrix");
+  const drafts = ss.getSheetByName(TABS.draftUnits);
+  const matrix = ss.getSheetByName(TABS.teacherMatrix);
   const data = drafts.getDataRange().getValues();
 
   // Find the draft row
@@ -560,7 +560,7 @@ function sendActivationEmail_(email, name, configId, unitName) {
 function abandonStaleDrafts() {
   const cfg = getConfig_08();
   const ss = SpreadsheetApp.openById(cfg.teacherMatrixSsId);
-  const drafts = ss.getSheetByName("DraftUnits");
+  const drafts = ss.getSheetByName(TABS.draftUnits);
   const data = drafts.getDataRange().getValues();
   const cutoff = 7 * 24 * 60 * 60 * 1000;
   const now = new Date();

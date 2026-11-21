@@ -968,7 +968,7 @@ function _dashEmptyTermText_(scope) {
 // StudentAssignments (54): { studentConfigId: assignmentConfigId }, read once.
 function _dashStudentAssignments_(ss) {
   const out = {};
-  const sa = ss.getSheetByName("StudentAssignments");
+  const sa = ss.getSheetByName(TABS.studentAssignments);
   if (!sa || sa.getLastRow() < 2) return out;
   sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
     const sid = String(r[0] || "").trim();
@@ -1205,7 +1205,7 @@ function _dashSortCards_(assignments) {
 // header, like reflectionShortfall_ (00); no new column (FLOW_DOCTRINE 6).
 // CompetencyEvidence's rows (header first), or null when there are none.
 function _dashEvidenceRows_(ss, cfg) {
-  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+  const sheet = ss.getSheetByName(TABS.competencyEvidence);
   if (!sheet || sheet.getLastRow() < 2) return null;
   return sheet.getDataRange().getValues();
 }
@@ -1237,7 +1237,7 @@ function _dashNotYet_(ss, cfg, fileIds, preread) {
     if (!short) return;
     let text = iText === -1 ? "" : reflectionCriterionText_(short[iText]);
     if (!text && iComp !== -1) {
-      if (!names) names = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry"));
+      if (!names) names = getCompetencyTextMap_(ss.getSheetByName(TABS.competencyRegistry));
       text = names[String(short[iComp]).trim()] || "";
     }
     if (text) out[f] = text;
@@ -1282,7 +1282,7 @@ function _dashUnitNames_(ss, cfg, data, googleId) {
     }
     if (!Object.keys(mine).length) return out;
     const assignmentOf = {};
-    const sa = ss.getSheetByName("StudentAssignments"); // 54's tab
+    const sa = ss.getSheetByName(TABS.studentAssignments); // 54's tab
     if (sa && sa.getLastRow() > 1) {
       sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
         const sid = String(r[0] || "").trim();
@@ -1311,13 +1311,13 @@ function _dashMatrixUnitNames_(ss, cfg, teacherEmail) {
     if (hit) return JSON.parse(hit);
   } catch (e) { /* no cache: read the sheet */ }
   const names = {};
-  const reg = ss.getSheetByName(cfg.tabs.matrixRegistry || "MatrixRegistry");
+  const reg = ss.getSheetByName(TABS.matrixRegistry);
   if (!reg || reg.getLastRow() < 2) return names;
   const regRow = reg.getDataRange().getValues().slice(1).filter(function (r) {
     return String(r[1] || "").trim().toLowerCase() === teacherEmail && String(r[2] || "").trim();
   })[0];
   if (!regRow) return names;
-  const tm = SpreadsheetApp.openById(String(regRow[2]).trim()).getSheetByName(cfg.tabs.teacherMatrix || "TeacherMatrix");
+  const tm = SpreadsheetApp.openById(String(regRow[2]).trim()).getSheetByName(TABS.teacherMatrix);
   if (!tm || tm.getLastRow() < 2) return names;
   tm.getRange(2, 1, tm.getLastRow() - 1, 2).getValues().forEach(function (r) {
     const id = String(r[0] || "").trim(), name = String(r[1] || "").trim();
@@ -1474,7 +1474,7 @@ function _dashRetryFor_(ss, cfg, email, ratingList) {
   const candidates = (ratingList || []).filter(function (r) { return Number(r.rating) === 3 || Number(r.rating) === 4; });
   if (!candidates.length) return out;
   const ctx = scrRetryContext_(ss, cfg, email);
-  const texts = getCompetencyTextMap_(ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry"));
+  const texts = getCompetencyTextMap_(ss.getSheetByName(TABS.competencyRegistry));
   const name = function (id) { return texts[id] ? "“" + texts[id] + "”" : id; };
   candidates.forEach(function (r) {
     const st = scrRetryStatus_(ctx, email, r.competencyId, r.rating);
@@ -1526,7 +1526,7 @@ function getMyCompetencies() {
     }
 
     const evidence = {};
-    const ev = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+    const ev = ss.getSheetByName(TABS.competencyEvidence);
     if (ev && ev.getLastRow() > 1) {
       const data = ev.getDataRange().getValues();
       const h = data[0].map(function (x) { return String(x).trim().toLowerCase(); });
@@ -1547,7 +1547,7 @@ function getMyCompetencies() {
       }
     }
 
-    const reg = ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry");
+    const reg = ss.getSheetByName(TABS.competencyRegistry);
     const byCourse = {};
     codes.forEach(function (c) { byCourse[c] = []; });
     if (reg && reg.getLastRow() > 1) {
@@ -2315,7 +2315,7 @@ function _dashStampSnapshot_(cfg, rowNumber, when) {
 function dashRecordFailure_(cfg, code) {
   try {
     const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-    const name = cfg.tabs.submitFailures || "SubmitFailures";
+    const name = TABS.submitFailures;
     const sheet = ss.getSheetByName(name) || ss.insertSheet(name);
     if (sheet.getLastRow() === 0) sheet.appendRow(["Timestamp", "Code"]);
     sheet.appendRow([new Date(), code]);

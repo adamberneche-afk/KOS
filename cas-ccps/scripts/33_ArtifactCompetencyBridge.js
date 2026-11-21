@@ -133,7 +133,7 @@ function syncArtifactCompetencies() {
       Logger.log("[S33] No Teacher Matrix: MatrixRegistry has no row and TEACHER_MATRIX_SS_ID isn't set.");
       return s33Stopped_("NO_MATRIX_ID");
     }
-    const matrixSheet = matrixSs.getSheetByName("TeacherMatrix");
+    const matrixSheet = matrixSs.getSheetByName(TABS.teacherMatrix);
     if (!matrixSheet) {
       Logger.log("[S33] TeacherMatrix sheet not found in matrix spreadsheet.");
       return s33Stopped_("NO_MATRIX_TAB");
@@ -341,7 +341,7 @@ function addCompetencyIdsColumn_() {
   }
 
   const matrixSs    = SpreadsheetApp.openById(matrixSsId);
-  const matrixSheet = matrixSs.getSheetByName("TeacherMatrix");
+  const matrixSheet = matrixSs.getSheetByName(TABS.teacherMatrix);
 
   if (!matrixSheet) {
     Logger.log("[S33] TeacherMatrix sheet not found.");
@@ -358,7 +358,7 @@ function addCompetencyIdsColumn_() {
   }
 
   // Extend DraftUnits sheet too if it exists (same matrix spreadsheet)
-  const draftSheet = matrixSs.getSheetByName("DraftUnits");
+  const draftSheet = matrixSs.getSheetByName(TABS.draftUnits);
 
   const newCol = matrixSheet.getLastColumn() + 1;
   matrixSheet.getRange(1, newCol)

@@ -78,7 +78,7 @@ function _zsResultsSheet_(ss) {
 }
 
 function _zsFlowInput_(ss, cfg) {
-  return ss.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput") || _fiEnsureTab_(ss, cfg);
+  return ss.getSheetByName(TABS.flowInput) || _fiEnsureTab_(ss, cfg);
 }
 
 /** The lesson keys already in ZeroShotResults. */

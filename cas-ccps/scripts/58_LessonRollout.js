@@ -76,7 +76,6 @@
 // =============================================================================
 
 const ROLLOUT_LEAD_DAYS = 2;
-const ROLLOUT_LOG_TAB = "RolloutLog";
 const ROLLOUT_LOG_HEADERS = ["Timestamp", "Mode", "Course", "Lesson", "Step", "Count", "Detail"];
 const ROLLOUT_TRIGGER_FN = "runLessonRollout";
 // Under the 6-minute trigger limit, leaving time to write the log.
@@ -422,7 +421,7 @@ function lessonRollout_(opts) {
     return r[4] === ROLLOUT_CONTINUES && r[1] === "APPLY";
   });
   Logger.log("[S58] Lesson rollout: " + rows.length + " log row(s), " + problems + " problem(s)" +
-    (unfinished ? "; stopped short" : "") + ". See " + ROLLOUT_LOG_TAB + ".");
+    (unfinished ? "; stopped short" : "") + ". See " + TABS.rolloutLog + ".");
   return { rows: rows, problems: problems, unfinished: unfinished };
 }
 
@@ -649,9 +648,9 @@ function _lrCourseOfConfigId_(configId) {
 }
 
 function _lrWriteLog_(ss, rows) {
-  let sheet = ss.getSheetByName(ROLLOUT_LOG_TAB);
+  let sheet = ss.getSheetByName(TABS.rolloutLog);
   if (!sheet) {
-    sheet = ss.insertSheet(ROLLOUT_LOG_TAB);
+    sheet = ss.insertSheet(TABS.rolloutLog);
     sheet.appendRow(ROLLOUT_LOG_HEADERS);
     sheet.setFrozenRows(1);
   }

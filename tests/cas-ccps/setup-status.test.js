@@ -207,10 +207,7 @@ test('the checklist\'s tab names are the ones the code that makes each tab uses'
   const pins = [
     ['40_FlowPrompts.js', 'FLOW_PROMPT_TAB', 'FlowPrompts'],
     ['42_FlowBuildSpec.js', 'FBS_TAB', 'FlowBuildSpec'],
-    ['55_LessonSchedule.js', 'LS_TAB', 'LessonSchedule'],
     ['52_CanvasRosterImport.js', 'CRI_SECTION_MAP_TAB', 'CanvasSectionMap'],
-    ['00_SharedConfig.js', 'CONFIG_TAB_NAME', '_CONFIG'],
-    ['41_WarmUpFlowBridge.js', 'WFB_RETURN_TAB', 'WarmUpFlowReturn'],
     ['72_TurnInCheckFlow.js', 'TIC_RETURN_TAB', 'TurnInCheckReturn'],
   ];
   pins.forEach(([f, name, value]) => {
@@ -219,10 +216,12 @@ test('the checklist\'s tab names are the ones the code that makes each tab uses'
   // FlowInput's two headers the checklist reads.
   assert.match(src('37_FlowInputBuilder.js'), /"StagingRowRef"/);
   assert.match(src('37_FlowInputBuilder.js'), /"GeminiFullOutput"/);
-  // getConfig_().tabs names.
+  // 00's TABS (getConfig_().tabs), where LessonSchedule, WarmUpFlowReturn and
+  // _CONFIG moved from their own files' constants on 2026-11-21.
   const shared = src('00_SharedConfig.js');
   ['Ledger', 'ReviewQueue', 'STAGING_PIPELINE', 'RubricQueue', 'MatrixRegistry', 'LessonContext', 'CompetencyRegistry',
-    'AlignmentLog', 'StudentProfiles', 'WarmUpQueue', 'ClassSchedule', 'PacingGuide', 'CompetencyRubrics']
+    'AlignmentLog', 'StudentProfiles', 'WarmUpQueue', 'ClassSchedule', 'PacingGuide', 'CompetencyRubrics',
+    'LessonSchedule', 'WarmUpFlowReturn', '_CONFIG']
     .forEach((t) => assert.match(shared, new RegExp(':\\s*"' + esc(t) + '"'), t));
 });
 

@@ -319,10 +319,10 @@ function createAdminAssets_(adminEmail, orgName) {
   // turned out not fully true): ADMIN_LEDGER only checkpointed the
   // spreadsheet's ID, not the tabs inside it. A resume after any later
   // step failed would hit an already-populated ledger, and
-  // ledgerSs.insertSheet("ReviewQueue") throws "sheet already exists" on
+  // ledgerSs.insertSheet(TABS.reviewQueue) throws "sheet already exists" on
   // a name collision — no checkpoint needed for this, just the same
   // get-or-create guard createFolder_() already uses for folders.
-  let ledgerSheet = ledgerSs.getSheetByName("Ledger");
+  let ledgerSheet = ledgerSs.getSheetByName(TABS.ledger);
   if (!ledgerSheet) {
     ledgerSheet = ledgerSs.getActiveSheet().setName("Ledger");
     // The full header row from 00_SharedConfig.js (LEDGER_HEADERS); an older
@@ -330,22 +330,22 @@ function createAdminAssets_(adminEmail, orgName) {
     setHeaders_(ledgerSheet, LEDGER_HEADERS.slice());
   }
 
-  if (!ledgerSs.getSheetByName("ReviewQueue")) {
-    setHeaders_(ledgerSs.insertSheet("ReviewQueue"), RVQ_HEADERS.slice());
+  if (!ledgerSs.getSheetByName(TABS.reviewQueue)) {
+    setHeaders_(ledgerSs.insertSheet(TABS.reviewQueue), RVQ_HEADERS.slice());
   }
 
-  if (!ledgerSs.getSheetByName("STAGING_PIPELINE")) {
-    setHeaders_(ledgerSs.insertSheet("STAGING_PIPELINE"), [
+  if (!ledgerSs.getSheetByName(TABS.stagingPipeline)) {
+    setHeaders_(ledgerSs.insertSheet(TABS.stagingPipeline), [
       "Timestamp","QueueRowRef","StudentFileID","ConfigID","TeacherEmail","Status"
     ]);
   }
 
-  if (!ledgerSs.getSheetByName("RubricQueue")) {
-    setHeaders_(ledgerSs.insertSheet("RubricQueue"), RBQ_HEADERS.slice());
+  if (!ledgerSs.getSheetByName(TABS.rubricQueue)) {
+    setHeaders_(ledgerSs.insertSheet(TABS.rubricQueue), RBQ_HEADERS.slice());
   }
 
-  if (!ledgerSs.getSheetByName("MatrixRegistry")) {
-    setHeaders_(ledgerSs.insertSheet("MatrixRegistry"), [
+  if (!ledgerSs.getSheetByName(TABS.matrixRegistry)) {
+    setHeaders_(ledgerSs.insertSheet(TABS.matrixRegistry), [
       "TeacherName","TeacherEmail","MatrixSsId","Created"
     ]);
   }
@@ -399,7 +399,7 @@ function createAdminAssets_(adminEmail, orgName) {
     const matrixSheet = matrixMasterSs.getActiveSheet().setName("TeacherMatrix");
     setHeaders_(matrixSheet, TM_HEADERS.slice()); // 00_SharedConfig.js
 
-    const draftSheet = matrixMasterSs.insertSheet("DraftUnits");
+    const draftSheet = matrixMasterSs.insertSheet(TABS.draftUnits);
     setHeaders_(draftSheet, [
       "DraftID","ConfigID","InstructorEmail","InstructorName",
       "Tier","UnitName","Persona","Milestone1","Milestone2",
@@ -972,7 +972,7 @@ function createTeacherAssets_(teacherName, teacherEmail, subject, props) {
   resumeOrCreate_("TEACHER_REGISTRY", () => {
     try {
       const centralSs = SpreadsheetApp.openById(centralSsId);
-      const registry  = centralSs.getSheetByName("MatrixRegistry");
+      const registry  = centralSs.getSheetByName(TABS.matrixRegistry);
       if (registry) registry.appendRow([safeName, teacherEmail, matrixSsId, new Date()]);
     } catch (e) {
       Logger.log("[TEACHER SETUP] MatrixRegistry warning: " + e.message);
@@ -1149,7 +1149,7 @@ function _verifyTeacherAssets_(result, teacherEmail) {
 
   try {
     const rubricSs = SpreadsheetApp.openById(result.rubricSsId);
-    if (!rubricSs.getSheetByName("_CONFIG")) missing.push("Rubric Response Sheet's _CONFIG tab");
+    if (!rubricSs.getSheetByName(TABS.config)) missing.push("Rubric Response Sheet's _CONFIG tab");
   } catch (e) { missing.push("Rubric Response Sheet (" + result.rubricSsUrl + ")"); }
 
   try {
@@ -1174,7 +1174,7 @@ function _verifyTeacherAssets_(result, teacherEmail) {
     if (!adminSs.getSheetByName(result.queueTabName)) {
       missing.push("Rubric Queue tab on the Central Ledger (\"" + result.queueTabName + "\")");
     }
-    const registry   = adminSs.getSheetByName("MatrixRegistry");
+    const registry   = adminSs.getSheetByName(TABS.matrixRegistry);
     const registered = registry && registry.getDataRange().getValues()
       .some(row => String(row[1] || "").toLowerCase() === teacherEmail.toLowerCase());
     if (!registered) missing.push("MatrixRegistry row for " + teacherEmail);
@@ -1554,7 +1554,7 @@ function addCompetencyDropdownItems_(confirmForm, centralSsId) {
 // ---------------------------------------------------------------------------
 function buildCompetencyDropdownOptions_(centralSsId) {
   const ss = SpreadsheetApp.openById(centralSsId);
-  const sheet = ss.getSheetByName("CompetencyRegistry");
+  const sheet = ss.getSheetByName(TABS.competencyRegistry);
   if (!sheet) {
     Logger.log("[M5] CompetencyRegistry tab not found on Central Ledger -- " +
       "cannot build dropdown options.");
@@ -1712,7 +1712,7 @@ function addLessonUnitDropdownItem_(confirmForm, centralSsId) {
 // ---------------------------------------------------------------------------
 function buildLessonUnitDropdownOptions_(centralSsId) {
   const ss = SpreadsheetApp.openById(centralSsId);
-  const sheet = ss.getSheetByName("PacingGuide");
+  const sheet = ss.getSheetByName(TABS.pacingGuide);
   if (!sheet) {
     Logger.log("[M6] PacingGuide tab not found on Central Ledger — cannot " +
       "build dropdown options. Run importPacingGuide() (Script 31) first.");

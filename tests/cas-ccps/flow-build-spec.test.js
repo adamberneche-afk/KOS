@@ -35,7 +35,7 @@ const FILES = [
 const EXPOSE = [
   'syncFlowBuildSpec', 'checkFlowBuildSpec', 'FBS_TAB', 'FBS_HEADERS',
   'FI', 'TM', 'FI_TM_READS_', 'FLOW_PROMPT_TAB',
-  'WFB_RETURN_HEADERS', 'WFB_RET', 'WFB_RETURN_TAB', 'WFB_INPUT_TABS',
+  'WFB_RETURN_HEADERS', 'WFB_RET', 'TABS', 'WFB_INPUT_TABS',
   'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_TRIGGER_STATUS',
 ];
 
@@ -110,7 +110,7 @@ test('the return surface is derived from WFB_RETURN_HEADERS and WFB_RET', () => 
   const ss = setUp(sandbox);
   exported.syncFlowBuildSpec();
 
-  const rows = specRows(exported, ss).filter((r) => r.tab === exported.WFB_RETURN_TAB && r.column);
+  const rows = specRows(exported, ss).filter((r) => r.tab === exported.TABS.warmUpFlowReturn && r.column);
   assert.equal(rows.length, exported.WFB_RETURN_HEADERS.length);
   exported.WFB_RETURN_HEADERS.forEach((h, i) => {
     const row = rows.find((r) => Number(r.column) === i + 1);
@@ -204,7 +204,7 @@ test('the return tab marks the harvest-owned columns "leave empty"', () => {
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   exported.syncFlowBuildSpec();
-  const rows = specRows(exported, ss).filter((r) => r.tab === exported.WFB_RETURN_TAB && r.column);
+  const rows = specRows(exported, ss).filter((r) => r.tab === exported.TABS.warmUpFlowReturn && r.column);
 
   rows.forEach((r) => {
     const idx = Number(r.column) - 1;

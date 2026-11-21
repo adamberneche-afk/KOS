@@ -40,7 +40,6 @@
 
 const CYB_LOOKAHEAD_DAYS = 7;          // matches validateLessonPayload_'s 7-day limit (22)
 const CYB_TIME_BUDGET_MS = 5 * 60 * 1000;
-const CYB_NO_SCHOOL_TAB = "NoSchoolDays";
 const CYB_TRIGGER_FN = "buildUpcomingLessons";
 // Every drafted lesson's activity_description starts with this; removeDraftedLessons() finds them by it.
 const CYB_DRAFT_PREFIX = "Auto-drafted from the pacing guide: ";
@@ -151,8 +150,8 @@ function checkCourseData() {
 
 /** The NoSchoolDays tab's dates, seeding it from CYB_NO_SCHOOL_2026_27 when missing or empty. */
 function _cybNoSchoolDays_(ss) {
-  let sheet = ss.getSheetByName(CYB_NO_SCHOOL_TAB);
-  if (!sheet) sheet = ss.insertSheet(CYB_NO_SCHOOL_TAB);
+  let sheet = ss.getSheetByName(TABS.noSchoolDays);
+  if (!sheet) sheet = ss.insertSheet(TABS.noSchoolDays);
   if (sheet.getLastRow() < 2) {
     sheet.getRange(1, 1, 1, 2).setValues([["date", "note"]]);
     sheet.getRange(2, 1, CYB_NO_SCHOOL_2026_27.length, 1).setNumberFormat("@");
