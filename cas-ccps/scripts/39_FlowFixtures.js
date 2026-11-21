@@ -619,8 +619,8 @@ function installWarmUpFixtures() {
     return { flow: "3/4/5", seeded: 0, skipped: 0, error: "WarmUpQueue tab missing" };
   }
 
-  const lessonDate = Utilities.formatDate(
-    new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const lessonDate = ymd_(
+    new Date(), Session.getScriptTimeZone());
 
   // The lesson_context_snapshot shape buildWarmUpQueues() (24_WarmUpBridge.js)
   // actually writes. admin_root_folder_id is what Flow 3 resolves the student's

@@ -68,7 +68,7 @@ function refreshCoveredSoFar() {
  */
 function writeCoveredSoFar_(opts) {
   const o = opts || {};
-  const today = formatDateYMD_(o.today || new Date());
+  const today = localYmd_(o.today || new Date());
   const props = PropertiesService.getScriptProperties();
   return schoolCourseCodes_().map(function (code) {
     const out = { course: code, taught: 0, written: false, created: false, error: "" };

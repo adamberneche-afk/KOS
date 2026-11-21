@@ -344,7 +344,7 @@ function validateCompetencyIds_(ids, cfg, ss) {
 function _normalizeLessonDateCell_(value) {
   // Not just `instanceof Date`: a Date from another realm fails that check.
   if (value instanceof Date || Object.prototype.toString.call(value) === "[object Date]") {
-    return formatDateYMD_(value);
+    return localYmd_(value);
   }
   return String(value || "").trim();
 }

@@ -92,7 +92,7 @@ function buildWarmUpQueues() {
 
   // ── Determine tomorrow ────────────────────────────────────────────────────
   const tomorrow    = getTomorrow_();
-  const tomorrowStr = formatDateYMD_(tomorrow);
+  const tomorrowStr = localYmd_(tomorrow);
   const dayType     = getDayType_(tomorrow);
 
   Logger.log("[S24] Building warm-up queues for " + tomorrowStr +
@@ -400,7 +400,7 @@ function getDayType_(date) {
 // Returns "YYYY-MM-DD" string for a Date object.
 // Used for LessonContext lesson_date comparison.
 // ---------------------------------------------------------------------------
-// formatDateYMD_(date) is defined in 23_StudentProfileManager.js — both
+// localYmd_(date) is defined in 23_StudentProfileManager.js — both
 // files are bound to the Central Ledger project, so it's already in
 // scope here. A second copy used to live in this file (and a third in
 // 25_WarmUpWriter.js) — same behavior, just duplicated; removed as a
@@ -751,7 +751,7 @@ function validateQueueBuild() {
     const lessonDate   = _normalizeLessonDateCell_(row[WQ.LESSON_DATE]);
 
     // Check if this row's lesson_date is tomorrow
-    const tomorrow = formatDateYMD_(getTomorrow_());
+    const tomorrow = localYmd_(getTomorrow_());
     if (lessonDate !== tomorrow) continue;
     recent++;
     if (status === "PENDING") pending++;
@@ -765,7 +765,7 @@ function validateQueueBuild() {
     } catch (e) {}
   }
 
-  Logger.log("[VALIDATE] WarmUpQueue build summary for " + formatDateYMD_(getTomorrow_()) + ":");
+  Logger.log("[VALIDATE] WarmUpQueue build summary for " + localYmd_(getTomorrow_()) + ":");
   Logger.log("[VALIDATE]   Total rows queued: " + recent);
   Logger.log("[VALIDATE]   Status PENDING:        " + pending + " (Flow 3)");
   if (pendingBridge) Logger.log("[VALIDATE]   Status PENDING_BRIDGE: " + pendingBridge + " (made before Flow 5 was merged into Flow 3; Flow 3 takes them)");

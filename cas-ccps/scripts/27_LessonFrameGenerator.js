@@ -159,7 +159,7 @@ function generateLessonFrame_(lessonId) {
   // teacher's folder (or leave it in root if unset) immediately after.
   const generatedAt = new Date();
   const tz           = Session.getScriptTimeZone();
-  const dateStr       = Utilities.formatDate(generatedAt, tz, "yyyy-MM-dd");
+  const dateStr       = ymd_(generatedAt, tz);
   const teacherLabel  = cfg.teacherName || teacherEmail;
   const title = "Lesson Frame — " + lessonDate +
     (periodOrClass ? " (" + periodOrClass + ")" : "") +

@@ -233,7 +233,7 @@ function plannedWarmUpRow_(dateStr, code) {
   const d = new Date(+m[1], +m[2] - 1, +m[3]);
   d.setDate(d.getDate() - (d.getDay() === 1 ? 3 : 1)); // the weekday before
   if (d.getDay() === 0 || d.getDay() === 6) return null;
-  const prev = formatDateYMD_(d);
+  const prev = localYmd_(d);
   return rows[prev + "|" + code] ? { date: prev, key: rows[prev + "|" + code] } : null;
 }
 
@@ -269,7 +269,7 @@ function _wupPairStart_(dateStr) {
   if (!m || +m[3] % 2 === 1) return String(dateStr || "");
   const d = new Date(+m[1], +m[2] - 1, +m[3]);
   d.setDate(d.getDate() - (d.getDay() === 1 ? 3 : 1));
-  return formatDateYMD_(d);
+  return localYmd_(d);
 }
 
 /** FNV-1a: the same string always picks the same lesson. */

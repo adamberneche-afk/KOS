@@ -11,7 +11,7 @@
 // a bounded window to actually catch it.
 //
 // Loaded together with 22_LessonContextHandler.js (_normalizeLessonDateCell_)
-// and 23_StudentProfileManager.js (formatDateYMD_) — both bound to the same
+// and 23_StudentProfileManager.js (localYmd_ (00)) — both bound to the same
 // cas-ccps:central-ledger GAS project 25_WarmUpWriter.js is (see
 // tools/gas-lint/project-map.json), matching warmup-bridge.test.js's own
 // loading rationale.

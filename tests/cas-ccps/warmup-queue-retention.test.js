@@ -10,7 +10,7 @@
 // monitoring and reads 00's WQ map.
 //
 // Loaded together with 22_LessonContextHandler.js (_normalizeLessonDateCell_)
-// and 23_StudentProfileManager.js (formatDateYMD_) — all bound to the same
+// and 23_StudentProfileManager.js (localYmd_ (00)) — all bound to the same
 // cas-ccps:central-ledger GAS project (see tools/gas-lint/project-map.json).
 
 const test = require('node:test');

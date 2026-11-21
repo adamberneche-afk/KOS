@@ -87,7 +87,7 @@ function cwcUtcStamp_(ymd, hhmm, tz) {
     const shownAsUtc = Date.UTC(local[0], local[1] - 1, local[2], local[3], local[4]);
     guess = new Date(guess.getTime() + (wanted - shownAsUtc));
   }
-  return Utilities.formatDate(guess, "UTC", "yyyy-MM-dd") + "T" + Utilities.formatDate(guess, "UTC", "HH:mm:ss");
+  return ymd_(guess, "UTC") + "T" + Utilities.formatDate(guess, "UTC", "HH:mm:ss");
 }
 
 function _cwcEsc_(s) {
@@ -158,7 +158,7 @@ function weeklyCanvasCartridge_(opts) {
   const cfg = getConfig_();
   const tz = Session.getScriptTimeZone();
   const now = opts.now || new Date();
-  const ymd = function (d) { return Utilities.formatDate(d, tz, "yyyy-MM-dd"); };
+  const ymd = function (d) { return ymd_(d, tz); };
   const from = ymd(new Date(now.getTime() + 86400000));
   const to = ymd(new Date(now.getTime() + CWC_DAYS_AHEAD * 86400000));
   const out = { apply: opts.apply === true, from: from, to: to, courses: {}, message: "" };

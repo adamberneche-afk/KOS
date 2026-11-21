@@ -514,7 +514,7 @@ function turnInOverrideCovers_(key, assignmentId) {
 }
 
 function _turnInYmd_(d) {
-  return Utilities.formatDate(d, "America/New_York", "yyyy-MM-dd");
+  return ymd_(d, "America/New_York");
 }
 
 // An open override row covering the assignment, or null.

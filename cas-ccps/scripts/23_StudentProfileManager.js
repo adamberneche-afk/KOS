@@ -217,7 +217,7 @@ function updateAllStudentProfiles() {
       }
 
       // Resolve today's unit from pacing guide
-      const todayStr   = formatDateYMD_(new Date());
+      const todayStr   = localYmd_(new Date());
       const currentUnit = resolveUnitForDate_(todayStr); // Script 31
       const unitCurrent = currentUnit ? currentUnit.unit_id : "";
 
@@ -423,9 +423,7 @@ function buildEvalSignals_(stagingData, ledgerData, teacherEmail) {
       if (indicators) {
         signals[email].push({
           assignment_id: eval_.configId,
-          date:          Utilities.formatDate(
-            new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd"
-          ),
+          date:          ymd_(new Date(), Session.getScriptTimeZone()),
           indicators:    indicators.structured,
           note:          indicators.note
         });
@@ -790,7 +788,7 @@ function buildShadowMatrixSummary_(ss, cfg) {
 
   const data         = spSheet.getDataRange().getValues();
   const teacherEmail = cfg.teacherEmail.toLowerCase();
-  const todayStr     = formatDateYMD_(new Date());
+  const todayStr     = localYmd_(new Date());
   const currentUnit  = resolveUnitForDate_(todayStr); // Script 31
 
   let total = 0, withEval = 0, withWarmup = 0, withConf = 0, locked = 0;
@@ -949,11 +947,6 @@ function getStudentShadowProfile_(ss, cfg, studentEmail) {
 // formatDateYMD_ — helper: returns "YYYY-MM-DD" for a Date object
 // (Defined here so Script 23 can call it independently of Script 24)
 // ---------------------------------------------------------------------------
-function formatDateYMD_(date) {
-  return date.getFullYear() + "-" +
-    String(date.getMonth() + 1).padStart(2, "0") + "-" +
-    String(date.getDate()).padStart(2, "0");
-}
 
 // ---------------------------------------------------------------------------
 // Called by Script 24 (WarmUpBridge) when building WarmUpQueue rows.

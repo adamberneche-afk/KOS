@@ -577,7 +577,7 @@ function _gvWeekOf_(ms) {
   const tz = Session.getScriptTimeZone();
   const dow = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     .indexOf(Utilities.formatDate(d, tz, "EEE")) + 1; // 1 = Monday
-  return Utilities.formatDate(new Date(ms - (dow - 1) * 86400000), tz, "yyyy-MM-dd");
+  return ymd_(new Date(ms - (dow - 1) * 86400000), tz);
 }
 
 function _gvEmpty_() {

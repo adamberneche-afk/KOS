@@ -1878,7 +1878,7 @@ function openAgendaDeck(code) {
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
   try {
     const c = String(code || "").trim();
-    const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+    const today = ymd_(new Date(), Session.getScriptTimeZone());
     let res = makeAgendaDeck_(c, today);
     if (!res.success) {
       const next = nextAgendaDay_(c, today);
@@ -2021,7 +2021,7 @@ function _tdScheduleChangeWarning_(today, from, to, lesson, course) {
 
 function _tdLessonSchedule_(cfg, now) {
   const tz = Session.getScriptTimeZone();
-  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  const today = ymd_(now, tz);
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(TABS.lessonSchedule);
   if (!sheet) return { success: false, error: "No LessonSchedule tab on the Central Ledger (seedLessonSchedule, 55, makes it)." };
@@ -2119,7 +2119,7 @@ function _tdLastRollout_(ss) {
 // Sheets stores a date typed by hand as a Date (22's note).
 function _tdLsDate_(value, tz) {
   if (value instanceof Date || Object.prototype.toString.call(value) === "[object Date]") {
-    return isNaN(value.getTime()) ? "" : Utilities.formatDate(value, tz, "yyyy-MM-dd");
+    return isNaN(value.getTime()) ? "" : ymd_(value, tz);
   }
   return String(value === undefined || value === null ? "" : value).trim();
 }
@@ -2432,7 +2432,7 @@ function _tdLessonContext_(ss) {
       const iCourse = h.indexOf("course"), iLesson = h.indexOf("lesson"),
         iStart = h.indexOf("start_date"), iId = h.indexOf("config_id");
       if (iCourse !== -1 && iLesson !== -1 && iStart !== -1 && iId !== -1) {
-        const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+        const today = ymd_(new Date(), Session.getScriptTimeZone());
         const latestByCourse = {};
         rows.slice(1).forEach(r => {
           const id = String(r[iId] || "").trim();

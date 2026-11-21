@@ -33,7 +33,7 @@ const PATHS = [
   path.join(SCRIPTS, '26_CompetencyAlignmentLog.js'),
   path.join(SCRIPTS, '32_CompetencyRubricImporter.js'),
   path.join(SCRIPTS, '27_LessonFrameGenerator.js'),
-  // _normalizeLessonDateCell_ reaches formatDateYMD_ here. In production
+  // _normalizeLessonDateCell_ reaches localYmd_ (00) here. In production
   // GAS has it in scope; a sandbox without it is a different program
   // (gas-lint Check K).
   path.join(SCRIPTS, '23_StudentProfileManager.js'),

@@ -120,7 +120,7 @@ function _dashDemoSchedule_(assignments, now, tz) {
     const course = key.split("-")[0];
     const list = out[course] = out[course] || [];
     const start = new Date(now.getTime() + (list.length - 1) * 3 * 86400000 - 86400000);
-    list.push({ key: key, start: Utilities.formatDate(start, tz, "yyyy-MM-dd"), hold: false });
+    list.push({ key: key, start: ymd_(start, tz), hold: false });
   });
   return out;
 }
@@ -281,7 +281,7 @@ function _dashDemoTerm_(now) {
   let table = [];
   try { table = _markingPeriodEnds_(PropertiesService.getScriptProperties().getProperty("MARKING_PERIOD_ENDS")); } catch (e) { table = []; }
   if (!table.length) table = _markingPeriodEnds_(DEFAULT_MARKING_PERIOD_ENDS);
-  return _termForDate_(table, Utilities.formatDate(now, "America/New_York", "yyyy-MM-dd")) || table[table.length - 1].term;
+  return _termForDate_(table, ymd_(now, "America/New_York")) || table[table.length - 1].term;
 }
 
 // The marking period before one: "2627_MP2" -> "2627_MP1", "2627_MP1" -> "2526_MP4".
@@ -295,7 +295,7 @@ function _dashPrevTerm_(term) {
 
 function dashDemoFixture_(now) {
   const tz = Session.getScriptTimeZone();
-  const iso = function (n) { return Utilities.formatDate(_dashDemoDaysAgo_(now, n), tz, "yyyy-MM-dd"); };
+  const iso = function (n) { return ymd_(_dashDemoDaysAgo_(now, n), tz); };
   const today = iso(0);
   const blocks = { "8175": ["1", "1"], "8177": ["3O", "3"] };
   const assignments = [];
@@ -1006,7 +1006,7 @@ function _dashLessonKeyOf_(assignmentId) {
 // isDay: passed on to lessonDueDay_ (the demo's weekdays).
 function _dashAddDueDates_(assignments, schedule, now, isDay) {
   const tz = Session.getScriptTimeZone();
-  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  const today = ymd_(now, tz);
   assignments.forEach(function (a) {
     a.dueOn = "";
     a.dueText = "";
@@ -1374,7 +1374,7 @@ function _dashOwnWarmUps_(ss, cfg, googleId, tz) {
     if (String(row[WQ.GOOGLE_ID] || "").trim().toLowerCase() !== me) return;
     // NOT_MEETING (24): queued for a day the student's period doesn't meet.
     if (String(row[WQ.STATUS] || "").trim() === "NOT_MEETING") return;
-    const lessonDate = dashIsoDate_(row[WQ.LESSON_DATE], tz);
+    const lessonDate = cellYmd_(row[WQ.LESSON_DATE], tz);
     if (!lessonDate) return;
     out.classDates.push(lessonDate);
     const queueId = String(row[0] || "").trim();
@@ -1398,7 +1398,7 @@ function _dashDayNoon_(iso, n) {
 // sooner or no later warm-up is queued yet.
 function _dashWarmUpPair_(ss, cfg, googleId, now) {
   const tz    = Session.getScriptTimeZone();
-  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  const today = ymd_(now, tz);
   const own = _dashOwnWarmUps_(ss, cfg, googleId, tz);
   const upcoming = own.list.filter(function (w) { return w.lessonDate >= today; });
   const past = own.list.filter(function (w) { return w.lessonDate < today; });
@@ -1406,7 +1406,7 @@ function _dashWarmUpPair_(ss, cfg, googleId, now) {
   const prev = past.length ? past[past.length - 1] : null;
   let prevView = null;
   if (prev) {
-    const cap = Utilities.formatDate(_dashDayNoon_(prev.lessonDate, DASH_EC_DAYS), tz, "yyyy-MM-dd");
+    const cap = ymd_(_dashDayNoon_(prev.lessonDate, DASH_EC_DAYS), tz);
     const next = own.classDates.filter(function (d) { return d > prev.lessonDate; }).sort()[0];
     const closesOn = next && next < cap ? next : cap;
     prevView = _dashWarmUpView_(prev, tz, today, closesOn);
@@ -1629,7 +1629,7 @@ function getMyWarmUpHistory() {
     const cfg = getConfig_();
     const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
     const tz = Session.getScriptTimeZone();
-    const today = Utilities.formatDate(new Date(), tz, "yyyy-MM-dd");
+    const today = ymd_(new Date(), tz);
     const past = _dashOwnWarmUps_(ss, cfg, email, tz).list
       .filter(function (w) { return w.lessonDate < today; })
       .reverse().slice(0, DASH_WARMUP_HISTORY_MAX);
@@ -1716,7 +1716,7 @@ function _dashWarmUpView_(w, tz, today, closesOn) {
   // answered on its day and still open for a late answer. A late answer is
   // scored, but its feedback isn't shown and it earns no extra credit.
   const savedLate = !!tbRow && !!tbRow[WTB.SUBMITTED_AT] &&
-    dashIsoDate_(tbRow[WTB.SUBMITTED_AT], tz) > w.lessonDate;
+    cellYmd_(tbRow[WTB.SUBMITTED_AT], tz) > w.lessonDate;
   const missed = !!tbRow && w.lessonDate < today &&
     (status === "INCOMPLETE" || (status === "DELIVERED" && (!answered || savedLate)));
   const late = savedLate || missed;
@@ -1772,13 +1772,6 @@ function _dashWarmUpView_(w, tz, today, closesOn) {
 }
 
 // A lesson date read from the sheet is a Date or "YYYY-MM-DD" text.
-function dashIsoDate_(v, tz) {
-  if (Object.prototype.toString.call(v) === "[object Date]") {
-    return isNaN(v.getTime()) ? "" : Utilities.formatDate(v, tz, "yyyy-MM-dd");
-  }
-  const m = String(v || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
-  return m ? m[1] + "-" + m[2] + "-" + m[3] : "";
-}
 
 // Same statusClass names (and colors) as the assignment cards. `answered` is
 // true or false for a text-box warm-up and null for a doc one, whose text
@@ -2735,7 +2728,7 @@ function dashStages_(row, pipeline, stagingStatus, stagingAt, usual, now) {
   const label = function (ms) {
     if (!ms) return "";
     const d = new Date(ms);
-    const sameDay = Utilities.formatDate(d, tz, "yyyy-MM-dd") === Utilities.formatDate(now, tz, "yyyy-MM-dd");
+    const sameDay = ymd_(d, tz) === ymd_(now, tz);
     return Utilities.formatDate(d, tz, sameDay ? "h:mm a" : "MMM d, h:mm a");
   };
   const sub = sheetTimestampMs_(row[LEDGER.SUBMISSION_TS]) || 0;

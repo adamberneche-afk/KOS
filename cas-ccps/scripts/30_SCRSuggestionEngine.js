@@ -873,7 +873,7 @@ function exportToWorkbookGrid_() {
 
   // ── Build the export spreadsheet ──
   const exportSs = SpreadsheetApp.create(
-    "SCR Export — " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd")
+    "SCR Export — " + ymd_(new Date(), Session.getScriptTimeZone())
   );
   // Student-data access policy: this spreadsheet holds every student's name
   // and competency ratings. It stays private to its creator, shared only

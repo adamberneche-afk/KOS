@@ -86,7 +86,7 @@ function overnightArchiveDaily_(now, tz) {
   now = now ? new Date(now) : new Date();
   tz = tz || Session.getScriptTimeZone();
   const props = PropertiesService.getScriptProperties();
-  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  const today = ymd_(now, tz);
   let state = null;
   try { state = JSON.parse(props.getProperty(ON_ARCHIVE_STATE_KEY) || "null"); } catch (e) { state = null; }
   if (state && state.day === today) return state;
@@ -183,8 +183,8 @@ function overnightHealth_(now, tz) {
   tz = tz || Session.getScriptTimeZone();
   const props = PropertiesService.getScriptProperties();
   const problems = [];
-  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
-  const tomorrow = Utilities.formatDate(new Date(now.getTime() + 24 * 60 * 60 * 1000), tz, "yyyy-MM-dd");
+  const today = ymd_(now, tz);
+  const tomorrow = ymd_(new Date(now.getTime() + 24 * 60 * 60 * 1000), tz);
   let unreadable = false;
 
   // The 6 a.m. alert's checks and today's archiving (2026-11-20), Module 2 or not.
@@ -518,7 +518,7 @@ function _onWarmUpCounts_(ss, today, tomorrow) {
   const statusCol = header.indexOf("status") >= 0 ? header.indexOf("status") : 8;
   const width = Math.max(dateCol, statusCol) + 1;
   sheet.getRange(2, 1, lastRow - 1, width).getValues().forEach(function (r) {
-    const date = _onDateStr_(r[dateCol]);
+    const date = cellYmd_(r[dateCol], Session.getScriptTimeZone());
     const status = String(r[statusCol] || "").trim();
     const bucket = date === today ? out.today : (date === tomorrow ? out.tomorrow : null);
     // NOT_MEETING (24): queued for a day the period doesn't meet; not a warm-up.
@@ -592,13 +592,6 @@ function _onOlderThan_(value, now, ms) {
   return isNaN(t) || now.getTime() - t > ms;
 }
 
-function _onDateStr_(value) {
-  if (value instanceof Date) {
-    return Utilities.formatDate(value, Session.getScriptTimeZone(), "yyyy-MM-dd");
-  }
-  const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(value || "").trim());
-  return m ? m[1] : "";
-}
 
 // Once a day, on the first run at or after ON_MAIL_HOUR. Marked sent only
 // after MailApp succeeds, so a failed send is retried on the next run.
@@ -606,7 +599,7 @@ function overnightMaybeMail_(health, now, tz) {
   now = now ? new Date(now) : new Date();
   tz = tz || Session.getScriptTimeZone();
   const props = PropertiesService.getScriptProperties();
-  const today = Utilities.formatDate(now, tz, "yyyy-MM-dd");
+  const today = ymd_(now, tz);
   if (Number(Utilities.formatDate(now, tz, "HH")) < ON_MAIL_HOUR) return false;
   if (props.getProperty(ON_MAIL_STATE_KEY) === today) return false;
   const cfg = getConfig_();

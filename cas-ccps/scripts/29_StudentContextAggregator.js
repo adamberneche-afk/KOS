@@ -459,7 +459,7 @@ function getWeeklyTextBoxWarmUps_(ss, cfg, windowStart) {
     const email = String(row[4] || "").trim();
     if (!_studentIdPattern_().test(email.toLowerCase())) return;
     const parsed = typeof wfbParseBaseline_ === "function" ? wfbParseBaseline_(row[19]) : null;
-    const lessonDate = isDate(row[5]) ? Utilities.formatDate(row[5], tz, "yyyy-MM-dd") : String(row[5] || "").trim();
+    const lessonDate = isDate(row[5]) ? ymd_(row[5], tz) : String(row[5] || "").trim();
     const entry = {
       lessonUnitId: "Warm-up for " + lessonDate,
       response: response,

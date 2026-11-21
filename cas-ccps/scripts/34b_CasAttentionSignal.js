@@ -88,7 +88,7 @@ function writeCasSignal_(watchdog, now) {
   const props = PropertiesService.getScriptProperties();
   const state = _casSignalReadState_(props);
   const tz = Session.getScriptTimeZone();
-  _casSignalRollDay_(state, Utilities.formatDate(now, tz, "yyyy-MM-dd"));
+  _casSignalRollDay_(state, ymd_(now, tz));
 
   const students = [];
   const admin = [];

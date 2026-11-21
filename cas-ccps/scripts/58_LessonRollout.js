@@ -212,7 +212,7 @@ function _lrRunAndCatchUp_(opts) {
 
 // One catch-up a few minutes out, at most ROLLOUT_CATCHUP_MAX a day.
 function _lrScheduleCatchUp_(props, now) {
-  const day = formatDateYMD_(now);
+  const day = localYmd_(now);
   let state = {};
   try { state = JSON.parse(props.getProperty(ROLLOUT_CATCHUP_PROP) || "{}"); } catch (e) { state = {}; }
   const count = state.day === day ? Number(state.count) || 0 : 0;
@@ -388,7 +388,7 @@ function lessonRollout_(opts) {
       return;
     }
     try {
-      const day = nextAgendaDay_(course, formatDateYMD_(now));
+      const day = nextAgendaDay_(course, localYmd_(now));
       if (!day) return;
       if (agendaDone[day]) {
         log("APPLY", course, "-", "AGENDA", 1, "on the agenda for " + day + " with " + agendaDone[day]);
@@ -457,7 +457,7 @@ function _lrCheckExports_(cfg, now, log, plan, modes) {
         const lesson = lessonConfigId_(l.key);
         const a = LESSON_ASSIGNMENTS[l.key];
         const name = a ? a.unitName : l.key;
-        const when = l.start <= formatDateYMD_(now) ? "is open now" :
+        const when = l.start <= localYmd_(now) ? "is open now" :
           "opens " + Utilities.formatDate(new Date(l.start + "T12:00:00"), Session.getScriptTimeZone(), "EEE MMM d");
         if (!ex) {
           log(mode, course, lesson, "PROBLEM", 0, "not on Canvas: can't tell: no Canvas export for course " + course +
@@ -560,9 +560,9 @@ function _lrEnrollOrder_(plan) {
 // current lesson and one starting tomorrow: its docs are shared tonight.
 // A lesson held in LessonSchedule goes in `held` instead of `lessons`.
 function _lrPlan_(now) {
-  const today = formatDateYMD_(now);
-  const tomorrow = formatDateYMD_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
-  const lead = formatDateYMD_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + ROLLOUT_LEAD_DAYS));
+  const today = localYmd_(now);
+  const tomorrow = localYmd_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1));
+  const lead = localYmd_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + ROLLOUT_LEAD_DAYS));
   const all = _lsRows_();
   const plan = {};
   Object.keys(all).forEach(function (course) {

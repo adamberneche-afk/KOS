@@ -237,7 +237,7 @@ function buildUpcomingLessonPlan_(opts) {
   let timedOut = false;
   for (let i = 1; i <= CYB_LOOKAHEAD_DAYS && !timedOut; i++) {
     const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() + i);
-    const dateStr = formatDateYMD_(day);
+    const dateStr = localYmd_(day);
     const dow = day.getDay();
     if (dow === 0 || dow === 6) continue;
     if (noSchool.has(dateStr)) { result.skipped.push({ date: dateStr, reason: "NO_SCHOOL" }); continue; }
@@ -324,7 +324,7 @@ function removeDraftedLessons_(opts) {
     Logger.log("[S51] No LessonContext rows.");
     return result;
   }
-  const today = formatDateYMD_(opts.today || new Date());
+  const today = localYmd_(opts.today || new Date());
   const data = lcSheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     const r = data[i];

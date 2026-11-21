@@ -456,9 +456,9 @@ function runWarmUpEvaluation() {
 // teachers' rows are skipped, as before.
 function _selectWarmUpsToScore_(wrData, wqData, textBox, teacherEmail, now) {
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const todayStr = formatDateYMD_(today);
-  const yesterdayStr = formatDateYMD_(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1));
-  const fromStr = formatDateYMD_(new Date(today.getFullYear(), today.getMonth(), today.getDate() - WARMUP_CATCHUP_DAYS));
+  const todayStr = localYmd_(today);
+  const yesterdayStr = localYmd_(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1));
+  const fromStr = localYmd_(new Date(today.getFullYear(), today.getMonth(), today.getDate() - WARMUP_CATCHUP_DAYS));
 
   // queue_id → WarmUpQueue sheet row (1-based)
   const queueRowByQueueId = {};
@@ -1115,7 +1115,7 @@ function generateWarmUpReport() {
   }
 
   // ── Build report document ──────────────────────────────────────────────────
-  const dateStr = Utilities.formatDate(generatedAt, Session.getScriptTimeZone(), "yyyy-MM-dd");
+  const dateStr = ymd_(generatedAt, Session.getScriptTimeZone());
   const timeStr = Utilities.formatDate(generatedAt, Session.getScriptTimeZone(), "MMM d, yyyy h:mm a");
   const title   = "Warm-Up Grade Report — " + currentTerm +
                   " — " + (cfg.teacherName || teacherEmail) +
@@ -1295,7 +1295,7 @@ function _checkCronHealth_(stampKey, stageName, maxAgeMinutes, notifyEmail) {
 // HELPERS
 // =============================================================================
 
-// formatDateYMD_(date) is defined in 23_StudentProfileManager.js — both
+// localYmd_(date) is defined in 23_StudentProfileManager.js — both
 // files are bound to the Central Ledger project, so it's already in
 // scope here. A second copy used to live here (and a third in
 // 24_WarmUpBridge.js) — same behavior, just duplicated; removed as a
