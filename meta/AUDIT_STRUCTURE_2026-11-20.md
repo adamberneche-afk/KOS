@@ -1,6 +1,6 @@
 # Audit: structural debt (2026-11-20)
 
-**Status:** findings; section 1 (1.1-1.3) built 2026-11-20 (#515); section 2's 2.1, 2.2, 2.5, 2.7 and part of 2.6 built 2026-11-20 in the PR after #515 (cas-ccps/HISTORY.md says what stayed and why); 2.3 and 2.4 built 2026-11-20 (#517); 3.1 built 2026-11-21 for the Ledger (#518), WarmUpQueue (#519), TeacherMatrix, RubricQueue and ReviewQueue (#520), LessonContext (#521), PacingGuide (#522); 3.2 (one ensureTab_, #523); 3.3 (TABS, #524, keeping single-owner tab constants beside their code); 3.4 (casConfigId_, parseCasId_, #525); 3.5 (ymd_ and the date helpers, #526); 4.1 (the root README a map, its tool, test and CI-floor sections in tools/README.md, tests/README.md and meta/CI_FLOOR.md; CLAUDE.md's repo map, #527); 4.2 (cas-ccps/README a map of 319 lines, 13 feature files in cas-ccps/docs/features/; Known gaps kept, per HISTORY.md, #528); 4.3 (retired setup docs archived, index.html deleted; DEPLOYMENT_HANDOFF as status-only waits, its step numbers are in use, #529); 4.4 (three handoffs and three finished plans archived, TURN_IN_CODE_PLAN marked built, LESSON_PARTS moved to cas-ccps/curriculum/lessons/, #530); 3.6 answered (the operator reads the email through the RTP: one email, done in #514, its rows and FERPA fixes restored, #531); 4.8 (gas-lint's stale-file-ref summary warning, --stale-refs to list) and 4.10 (doc-currency reports a path found only in archive/; 9 docs repointed, #532); 4.9 (`npm run check`, the tools table with where each runs and its fix, the check/build naming rule) and 4.11 (the kos-personal guides' history banners to CHANGELOG, #533); 4.7 (`cas-ccps/docs/SCRIPT_INDEX.md`, generated from every script's `PURPOSE:` line; new generated files named `*Data.js`; no renumbering, #534); 3.8 (one deploy-version report in `shared/deploy-report/`, synced into all three systems, so kos-personal and LeaderHub check permissions too; marker generation left to the deploy path) #535); 3.7 (the registry already existed, gas-lint's `flowSurfaces`; it gains `flowCheckNames`, one pattern per role that Check I enforces, and `preflights`, each project's preflight; the two names that predate the rule are listed exceptions, not renamed, since the operator runs them from the editor) #536); 4.12 on hold, not archived (the operator, 2026-11-21: automated Drive maintenance will be needed; revisit when CAS and KOS are prepared for a second user's deployment, #537); 3.9 (`tools/lib/`: one zip reader and writer, the stripper out of gas-lint, `repo.js`, `prompt-constants.js`; clasp-sync's `run.js` keeps its own zip reader, since it runs outside the checkout, #538); 3.11 (`tests/harness/cut-declarations.js` on the LeaderHub lexer: tests cut by name, span or statement; `extract-lines.js` and its 15 ranges deleted, the three brace-counting helpers replaced; slices that pull text for wording checks stay, #539); 3.10 (CI's separate student-data scan folded into the release check, whose student-data bucket already ran its rules, with its two warnings kept for review; doc-currency's Check 6 removed, the gated release check's Drive rules over the same docs; `npm run check` 9 steps, #540); 3.12 (a `prompts/` folder in each system: kos-personal's six and LeaderHub's seven `.md` moved in, generators repointed; cas-ccps's holds the Family Mail prompt and a table of where each flow's prompt lives, since the flow prompts are sections of their design docs and Flow 2's is the deployed 15b, #541); 4.8's rest (the stale-ref check reads written archive paths, history lines and wrapped names; 38 references repointed to the archive, 11 fixed by hand, 0 left; 15b's header no longer says Flow 2 was never built; the 591 dated comments stay, #542); 4.5 (the dashboards' pages to `.html` templates, rendered byte for byte as before; the stripper's `return /re/` bug fixed; the shared include not built, since only ~31 lines match and the More menu has drifted, #543); 4.6 (~400 lines only one project uses moved to `00c_`, `00d_`, `00e_*Shared.js`, sorting right after 00; editor-run functions counted as every project's; the column registry kept in 00) in the PR after #543; 5 and 6 open.
+**Status (2026-11-21): done**, except 4.12, on hold by the operator's decision. Each item's outcome and PR is in the table at the end ("Status by item"). The lessons, and the rules they led to, are in CLAUDE.md, "Keeping debt down".
 Asked by the operator: "Our scripts are becoming disjointed and clumsy. What
 can we fold in together? What is redundant without purpose? Is our codebase
 navigable and intuitive?" Three read-only reviews (cas-ccps scripts; tools,
@@ -101,3 +101,39 @@ operator's repos by `.github/floor.json`); doc-currency vs docs-check
 
 Questions for the operator: which morning email you read (3.6); whether
 `drive-curation/` and the Drive Steward files can leave the repo (4.12).
+
+## Status by item
+
+One row per item, so a status can't hide in a paragraph (an earlier
+one-line status said "5 and 6 open" through a dozen PRs, for sections this
+audit doesn't have). Pushback, where the item's premise didn't hold, is in
+the row.
+
+| Item | Outcome | PR |
+|---|---|---|
+| 1.1-1.3 | Installers through the Ledger cycle, CI runs once, gas-lint cached | #515 |
+| 2.1, 2.2, 2.5, 2.7, part of 2.6 | Retired code deleted (cas-ccps/HISTORY.md says what stayed) | #516 |
+| 2.3, 2.4 | Flow 5's residue out, file 15 retired | #517 |
+| 3.1 | Each tab's columns declared once, in 00: Ledger, WarmUpQueue, TeacherMatrix, RubricQueue, ReviewQueue, LessonContext, PacingGuide | #518-#522 |
+| 3.2 | One `ensureTab_` | #523 |
+| 3.3 | Shared tab names in `TABS`; single-owner constants kept beside their code | #524 |
+| 3.4 | `casConfigId_`, `parseCasId_` | #525 |
+| 3.5 | `ymd_` and the date helpers | #526 |
+| 3.6 | One morning email (the operator reads it through the RTP); its rows and FERPA fixes restored | #514, #531 |
+| 3.7 | Pushback: the registry existed (`flowSurfaces`). Added one naming scheme and `preflights`, enforced; two older names excused, not renamed | #536 |
+| 3.8 | One deploy-version report in `shared/deploy-report/`; marker generation left to the deploy path | #535 |
+| 3.9 | `tools/lib/`; `run.js` keeps its own zip reader (runs outside the checkout) | #538 |
+| 3.10 | CI's student-data scan folded into the release check; doc-currency's Check 6 removed | #540 |
+| 3.11 | `tests/harness/cut-declarations.js`; `extract-lines.js` deleted | #539 |
+| 3.12 | A `prompts/` folder per system; cas-ccps's flow prompts stay in their design docs and 15b | #541 |
+| 4.1 | The root README a map | #527 |
+| 4.2 | cas-ccps/README a map; feature write-ups in `docs/features/` | #528 |
+| 4.3 | Retired setup docs archived; `DEPLOYMENT_HANDOFF` status-only waits (its step numbers are in use) | #529 |
+| 4.4 | `meta/` to its current plan | #530 |
+| 4.5 | The dashboards' pages are `.html` templates, byte for byte as before; the shared include not built (only ~31 lines match) | #543 |
+| 4.6 | ~400 one-project lines to `00c_`/`00d_`/`00e_*Shared.js` (the estimate was ~943) | #544 |
+| 4.7 | A generated script index; new generated files named `*Data.js`; no renumbering | #534 |
+| 4.8 | Stale-file-ref check, then made accurate (0 left); 15b's header fixed; the 591 dated comments stay | #532, #542 |
+| 4.9, 4.11 | `npm run check`, the tools map, the guides' banners to CHANGELOG | #533 |
+| 4.10 | doc-currency reports a path found only in `archive/` | #532 |
+| 4.12 | On hold, kept: automated Drive maintenance waits for the second-user deployment prep | #537 |
