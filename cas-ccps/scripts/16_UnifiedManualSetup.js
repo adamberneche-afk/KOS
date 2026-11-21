@@ -1707,7 +1707,7 @@ function addLessonUnitDropdownItem_(confirmForm, centralSsId) {
 // -- M6 -- buildLessonUnitDropdownOptions_
 // Mirrors buildCompetencyDropdownOptions_() (M5 addendum) exactly, reading
 // the "PacingGuide" tab instead of "CompetencyRegistry". See
-// 31_PacingGuideManager.js for that tab's schema (PG_HEADERS) and the
+// 00_SharedConfig.js for that tab's schema (PG_HEADERS) and 31 for the
 // importPacingGuide() function that populates it.
 // ---------------------------------------------------------------------------
 function buildLessonUnitDropdownOptions_(centralSsId) {

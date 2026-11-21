@@ -1568,3 +1568,12 @@ named:
 No column moved. The audit's 3.1 is done for the tabs it listed; PacingGuide
 (16 columns in 28 and 23, 20 in 31) is the other drifted header list it
 named.
+
+## PacingGuide: its columns in 00, and the 16-header setups, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.1's other drifted header list:
+PacingGuide was 20 columns in 31 and 16 in 23's and 28's tab creators. 31
+held the only column map (`PG_*`) and rewrote the header row on every
+import, so nothing broke. The map is now `PG` in 00 beside `PG_HEADERS`
+(`PG_COL_COUNT` is `PG_HEADERS.length`); 23 and 28 create the tab with all
+20. gas-lint's registry and `tab-columns.test.js` cover it. No column moved.

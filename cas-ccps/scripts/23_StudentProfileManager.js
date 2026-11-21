@@ -1192,13 +1192,7 @@ function createWarmUpTabs_() {
   // Created here so they exist before the import scripts run.
   // Content populated by importPacingGuide() (S29) and
   // importCompetencyRubrics() (S30) — read-only after import.
-  _createTabIfAbsent_(ss, "PacingGuide", [
-    "lesson_unit_id","stage","stage_name","lesson_unit_name",
-    "approx_start","approx_end","weeks","overlap_type",
-    "division_context","objective_8175","objective_8177",
-    "competency_ids_8175","competency_ids_8177",
-    "key_vocabulary","prior_lesson_connection","warmup_anchor"
-  ]);
+  _createTabIfAbsent_(ss, "PacingGuide", PG_HEADERS.slice());
 
   _createTabIfAbsent_(ss, "CompetencyRubrics", [
     "competency_id","course","task_number","duty_area",
