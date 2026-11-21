@@ -19,6 +19,11 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2026-27-Q2 · ~2026-11-17 · [`cas-ccps/README.md`](2026-27-Q2/cas-ccps/README.md) (5 entries) — CAS README: corrections, resolved Known-gaps write-ups and out-of-date passages, moved out of the live README
 - 2026-27-Q2 · ~2026-11-17 · [`cas-ccps/DEPLOYMENT_HANDOFF.md`](2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md) (2 entries) — CAS deployment handoff: the status banner's history of earlier pushes (2026-10-12 to 2026-10-23) and a closed doc-gap note, moved out of the live handoff
 - 2026-27-Q2 · ~2026-11-20 · [`cas-ccps/scripts/15_StudioFlowPrompts.js`](2026-27-Q2/cas-ccps/scripts/15_StudioFlowPrompts.js) — Never-deployed Studio prompt reference; Flow 1's prompt and steps moved to cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md, Flow 2's copy was stale (15b is live)
+- 2026-27-Q2 · ~2026-11-21 · [`cas-ccps/docs/ADMIN_DEPLOYMENT_WALKTHROUGH.html`](2026-27-Q2/cas-ccps/docs/ADMIN_DEPLOYMENT_WALKTHROUGH.html) — Admin deployment walkthrough, retired 2026-10-22; SETUP_GUIDE.md is the install guide
+- 2026-27-Q2 · ~2026-11-21 · [`cas-ccps/docs/CAS_M2_DeploymentGuide.html`](2026-27-Q2/cas-ccps/docs/CAS_M2_DeploymentGuide.html) — Module 2 deployment guide, superseded by SETUP_GUIDE.md and docs/deployment/
+- 2026-27-Q2 · ~2026-11-21 · [`cas-ccps/docs/PLATFORM_DOCUMENTATION.html`](2026-27-Q2/cas-ccps/docs/PLATFORM_DOCUMENTATION.html) — The original platform plan (2026-10 note); its design principle is in SYSTEM_ARCHITECTURE.html
+- 2026-27-Q2 · ~2026-11-21 · [`cas-ccps/docs/CAS_Module4_Documentation_v1.1.docx`](2026-27-Q2/cas-ccps/docs/CAS_Module4_Documentation_v1.1.docx) — Module 4 documentation as of August 2026, untouched since
+- 2026-27-Q2 · ~2026-11-21 · [`cas-ccps/docs/CAS_Module5_Documentation_v1.1.docx`](2026-27-Q2/cas-ccps/docs/CAS_Module5_Documentation_v1.1.docx) — Module 5 documentation as of August 2026, untouched since
 
 ## drive-curation/
 

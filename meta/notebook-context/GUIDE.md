@@ -45,7 +45,7 @@ replace human judgment.**
   in the messy, uncertain, genuinely human middle of the learning process".
   Its design rule for anything a teacher sets up: "The system should never
   require the user to type something it already has", and it should "fail
-  loudly, at the right moment". (`cas-ccps/docs/PLATFORM_DOCUMENTATION.html`,
+  loudly, at the right moment". (`archive/2026-27-Q2/cas-ccps/docs/PLATFORM_DOCUMENTATION.html`,
   `cas-ccps/docs/CAS_ContextualGates_DesignPrinciples.html`.)
 - **leader-hub:** "Out of sight, out of mind. This dashboard exists to keep
   everything in sight so that everything stays in mind." A teacher in five
@@ -158,7 +158,7 @@ backed by data in the repo.
 | Source file | Read it as |
 |---|---|
 | `archive/summer-2026/meta/CODEBASE_REVIEW.md` (August 2026) | The clearest North Star and value review, with "⚠ Stale" notes inline. Its "no tests" finding is closed: over 2,000 tests run now |
-| `cas-ccps/docs/PLATFORM_DOCUMENTATION.html` | The original platform plan. Its opening note (2026-10-23) gives what is live now; module statuses and the build plan below it are as first written |
+| `archive/2026-27-Q2/cas-ccps/docs/PLATFORM_DOCUMENTATION.html` | The original platform plan. Its opening note (2026-10-23) gives what is live now; module statuses and the build plan below it are as first written |
 | `cas-ccps/docs/IMPACT_DASHBOARD.html` | A template for recording outcomes. It holds no data; its "Why it matters" lines are claims to measure |
 | `cas-ccps/docs/SYSTEM_ARCHITECTURE.html` | Its design principles and security model still hold. The rest describes the original Module 1 system, as its own banner says; the cas-ccps README is the current map |
 | `leader-hub/LEADERHUB_PRINCIPLES.md` (March 2026) | The principles hold. The roles and dates describe spring 2026, and "single-page" now means the front end of a server-backed app |

@@ -16,6 +16,10 @@ How files are filed and searched: the [archive index](../INDEX.md).
 - 2026-11-01 · [`meta/HANDOFF_2026-11-01.md`](meta/HANDOFF_2026-11-01.md) — Session handoff, 11-01: #352-#373 (superseded; agent notes in meta/AGENT_NOTES.md) Replaced by `meta/HANDOFF_2026-11-08.md`.
 - 2026-11-08 · [`meta/HANDOFF_2026-11-08.md`](meta/HANDOFF_2026-11-08.md) — Session handoff, 11-02 to 11-09: #375-#417 (superseded; agent notes in meta/AGENT_NOTES.md) Replaced by `meta/HANDOFF_2026-11-15.md`.
 
+## Audits and reviews
+
+- ~2026-11-21 · [`cas-ccps/docs/ADMIN_DEPLOYMENT_WALKTHROUGH.html`](cas-ccps/docs/ADMIN_DEPLOYMENT_WALKTHROUGH.html) — Admin deployment walkthrough, retired 2026-10-22; SETUP_GUIDE.md is the install guide *(Filed by: Claude Code.)*
+
 ## Replaced versions and retired guides
 
 - ~2026-11-17 · [`cas-ccps/archived/`](cas-ccps/archived) — cas-ccps's retired scripts: the 8 custom Studio steps and their shared file, the AutoInstaller, the Phase 4 work-file probe *(Filed by: retired code; the Studio steps and the AutoInstaller archived 2026-11-17 (clean-up C1, C2), the work-file probe 2026-11-07.)*
@@ -23,6 +27,10 @@ How files are filed and searched: the [archive index](../INDEX.md).
 - ~2026-11-17 · [`kos-personal/EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md`](kos-personal/EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md) — External reference: Digital Homesteading (TAIS), not part of KOS; two ideas acted on *(Filed by: no date; archived 2026-11-17 at the operator's decision.)*
 - ~2026-11-17 · [`kos-personal/rtp-core-router/protocols/HEREDITARY_WATCHLIST.md`](kos-personal/rtp-core-router/protocols/HEREDITARY_WATCHLIST.md) — RTP hereditary documents watch list (its items adopted into the live protocols) *(Filed by: no date; archived 2026-11-17 at the operator's decision (its items marked adopted).)*
 - ~2026-11-20 · [`cas-ccps/scripts/15_StudioFlowPrompts.js`](cas-ccps/scripts/15_StudioFlowPrompts.js) — Never-deployed Studio prompt reference; Flow 1's prompt and steps moved to cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md, Flow 2's copy was stale (15b is live) *(Filed by: Claude Code.)*
+- ~2026-11-21 · [`cas-ccps/docs/CAS_M2_DeploymentGuide.html`](cas-ccps/docs/CAS_M2_DeploymentGuide.html) — Module 2 deployment guide, superseded by SETUP_GUIDE.md and docs/deployment/ *(Filed by: Claude Code.)*
+- ~2026-11-21 · [`cas-ccps/docs/CAS_Module4_Documentation_v1.1.docx`](cas-ccps/docs/CAS_Module4_Documentation_v1.1.docx) — Module 4 documentation as of August 2026, untouched since *(Filed by: Claude Code.)*
+- ~2026-11-21 · [`cas-ccps/docs/CAS_Module5_Documentation_v1.1.docx`](cas-ccps/docs/CAS_Module5_Documentation_v1.1.docx) — Module 5 documentation as of August 2026, untouched since *(Filed by: Claude Code.)*
+- ~2026-11-21 · [`cas-ccps/docs/PLATFORM_DOCUMENTATION.html`](cas-ccps/docs/PLATFORM_DOCUMENTATION.html) — The original platform plan (2026-10 note); its design principle is in SYSTEM_ARCHITECTURE.html *(Filed by: Claude Code.)*
 - 2026-11-17 · [`tests/cas-ccps/archived/`](tests/cas-ccps/archived) — Tests of the archived Studio steps and work-file probe; no npm test glob reached them (structure audit 2.7)
 
 ## History logs (older entries)
