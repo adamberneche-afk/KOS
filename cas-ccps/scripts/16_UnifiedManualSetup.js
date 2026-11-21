@@ -3,7 +3,8 @@
 // BOUND TO: Assignment System Manual Google Doc (container-bound)
 // REPLACES: 14_TeacherManualSetup.js
 //
-// PURPOSE: Single document, single script, role determined at runtime.
+// PURPOSE: The setup wizard, for the admin and for each teacher: one document and script, the role decided when it runs.
+//          Single document, single script, role determined at runtime.
 //
 //   ADMIN MODE — triggered when ADMIN_SS_ID is missing or unreachable.
 //     The first manual to run setup becomes the admin. It creates all

@@ -12,7 +12,8 @@
 //                              the 2 minutes first specced (see the fix
 //                              note on installFlowInputTriggers() below).
 //
-// PURPOSE: Flow 2 (Student Evaluation) redesign, landed after a live
+// PURPOSE: Flow 2's Apps Script half: builds each flat input row for Studio and harvests the result.
+//          Flow 2 (Student Evaluation) redesign, landed after a live
 // Studio build session hit three walls documented in this session's
 // own record (see cas-ccps/README.md and cas-ccps/docs/deployment/
 // second-account.md, "The real gap", for the fuller writeup):

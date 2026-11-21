@@ -1,7 +1,8 @@
 // =============================================================================
 // FILE: 35_FlowPreflightAndCanary.js
 // BOUND TO: Central Ledger spreadsheet
-// PURPOSE: Two diagnostic tools, deliberately different from
+// PURPOSE: Two flow diagnostics: a structural preflight check, and canaries that seed, verify and clean up a test row.
+//          Two diagnostic tools, deliberately different from
 //          34_QueueWatchdog.js's ongoing production monitoring:
 //
 //          1. runFlowPreflightCheck() — a structural check you run once,

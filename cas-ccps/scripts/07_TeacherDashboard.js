@@ -1,7 +1,8 @@
 // =============================================================================
 // FILE: 07_TeacherDashboard.js
 // STANDALONE APPS SCRIPT PROJECT — deployed as Web App
-// PURPOSE: Teacher-facing dashboard. Reads from the central Ledger,
+// PURPOSE: The Teacher Dashboard web app: the teacher's own students from the Ledger, and the teacher's lesson and review tools.
+//          Teacher-facing dashboard. Reads from the central Ledger,
 //          filtered to show only students assigned to the requesting teacher.
 //          Also provides the Lesson Context submission form (modal) and
 //          the submitLessonContext() handler called by it.

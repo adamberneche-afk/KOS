@@ -2,6 +2,7 @@
 // FILE: 63_DocHeader.js
 // PROJECTS: cas-ccps:central-ledger (02 stamps the header, 37 sets results)
 //           and cas-ccps:student-dashboard (13 sets CHECKING, "waiting for feedback")
+// PURPOSE: The assignment doc's page header: who and what, a dashboard link, and the feedback line.
 // Not in 00: it calls DocumentApp, and not every project that loads 00 has
 // the documents scope.
 // =============================================================================

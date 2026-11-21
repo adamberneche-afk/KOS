@@ -2,6 +2,7 @@
  * =============================================================================
  * 42_FlowBuildSpec.js
  * BOUND TO: cas-ccps:central-ledger
+ * PURPOSE: Generates the sheet an operator builds a Studio Flow from, from the constants the code reads.
  * =============================================================================
  *
  * Generates the sheet an operator builds a Studio Flow from.

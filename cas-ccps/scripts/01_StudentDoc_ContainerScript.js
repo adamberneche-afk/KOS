@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: 01_StudentDoc_ContainerScript.js
 // BOUND TO: Master Student Template Google Doc (container-bound)
+// PURPOSE: The student doc's own menu, kept for the teacher; students submit from the Student Dashboard (13).
 //
 // STATUS (D16, 2026-11-01): UNREACHABLE FOR STUDENTS. The district doesn't
 // let students run Apps Script, so this doc menu never works for them; they

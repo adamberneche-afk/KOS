@@ -1,6 +1,7 @@
 // =============================================================================
 // 50_StudentDataAccess.js — CAS (CCPS)
 // INCLUDE IN: cas-ccps:central-ledger
+// PURPOSE: Brings the Drive sharing of student files in line with the student-data access policy, and does the year-end revocation.
 // =============================================================================
 //
 // Brings existing Drive sharing in line with the student-data access policy,

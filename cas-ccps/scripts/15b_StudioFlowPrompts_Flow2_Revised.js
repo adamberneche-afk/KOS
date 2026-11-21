@@ -16,7 +16,8 @@
 // Flow actually gets built — nothing about this file's own content
 // changed, only which project loads it.
 //
-// PURPOSE: Complete specification for Flow 2 (Student Evaluation),
+// PURPOSE: Flow 2's (Student Evaluation) system prompt, FLOW_2_SYSTEM_PROMPT, and its build spec.
+//          Complete specification for Flow 2 (Student Evaluation),
 // revised to additionally produce structured, per-milestone competency
 // evidence — without changing what the student sees in their feedback.
 //

@@ -1,6 +1,7 @@
 // =============================================================================
 // FILE: 69c_LessonReport.js
 // BOUND TO: Central Ledger spreadsheet (cas-ccps:central-ledger)
+// PURPOSE: The lesson report: one row per lesson, counts only, flagging lessons that look unclear, too easy or hard to reach.
 // TRIGGERS: none. Run buildLessonReport() from the editor; it rewrites the
 //           LessonReport tab and logs the flags.
 //

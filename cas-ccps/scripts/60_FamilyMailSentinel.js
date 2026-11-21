@@ -7,7 +7,8 @@
 // TRIGGERS: runFamilySentinel() every 15 minutes
 //           (installFamilySentinelTrigger()).
 //
-// PURPOSE: student and parent mail is the most urgent mail the teacher gets,
+// PURPOSE: Finds family mail in the inbox, labels it so Claude doesn't read it, and reports only how urgent it is.
+//          student and parent mail is the most urgent mail the teacher gets,
 // and the one kind Claude must not read. This file lets the KOS Claude
 // Project's `start` brief say how urgent it is, without names or wording:
 //

@@ -2,6 +2,7 @@
  * ================================================================
  * 52_CanvasRosterImport.js — CAS-CCPS
  * BOUND TO: Central Ledger (cas-ccps:central-ledger)
+ * PURPOSE: Enrolls a class roster from Canvas gradebook exports.
  * ================================================================
  *
  * Enrolls a class roster from Canvas gradebook exports, so students don't

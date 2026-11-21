@@ -4,7 +4,8 @@
 // TRIGGERS: runQueueWatchdog — time-driven, every 10 minutes (see setup note
 //           at the bottom of this file)
 //
-// PURPOSE: kos-personal has had real staleness/timeout/unknown-status
+// PURPOSE: Watches the Studio-flow queues for stale, timed-out and unknown-status rows, and alerts and escalates.
+//          kos-personal has had real staleness/timeout/unknown-status
 // monitoring since an actual production incident (10_Turnstile.gs's own
 // comments: "Say/Do Ledger kos-personal finding #2, closed" — a row with
 // no Studio flow ever completing it used to cycle forever, Retry_Count

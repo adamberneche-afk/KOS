@@ -4,7 +4,8 @@
 // TRIGGERS: none of its own. Run reportEvaluationHealth() from the editor;
 //           the overnight email (34c) runs it once a day and adds one line.
 //
-// PURPOSE: the numbers D8 waits on (meta/PLAN_2026-11.md: split more lessons
+// PURPOSE: The Flow 2 health numbers D8 waits on, per course and week, from EvaluationLog and the queues.
+//          the numbers D8 waits on (meta/PLAN_2026-11.md: split more lessons
 // into parts if Flow 2 fails fewer than about 1 in 20 checks), and the first
 // reader of EvaluationLog (dead-ends audit #7). Per course and per week
 // (Monday to Sunday), from EvaluationLog, STAGING_PIPELINE, the Ledger and

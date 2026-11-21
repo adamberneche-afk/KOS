@@ -2,6 +2,7 @@
 // FILE: 67_AgendaDeck.js
 // BOUND TO: Central Ledger (cas-ccps:central-ledger, the nightly rollout) AND
 //   the Teacher Dashboard (cas-ccps:teacher-dashboard, 📅 Lessons' button).
+// PURPOSE: The daily agenda: one slide a day in each course's deck for the school year.
 //
 // The daily agenda, to project in class. Since 2026-11-19 (the operator: one
 // slide a day, everything readable on it; no new file a day; a living record

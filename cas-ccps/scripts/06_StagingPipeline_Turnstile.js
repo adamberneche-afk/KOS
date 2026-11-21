@@ -1,7 +1,8 @@
 // =============================================================================
 // FILE: 06_StagingPipeline_Turnstile.js
 // BOUND TO: Central Ledger spreadsheet (same project as Scripts 03 + 10)
-// PURPOSE: Per-teacher lane turnstile. Each teacher's evaluation queue is
+// PURPOSE: Releases staged submissions to Flow 2 in per-teacher lanes, up to FLOW2_PARALLEL_LANES at once per teacher.
+//          Per-teacher lane turnstile. Each teacher's evaluation queue is
 //          independent — one teacher's in-flight evaluation does not block
 //          other teachers' students.
 //

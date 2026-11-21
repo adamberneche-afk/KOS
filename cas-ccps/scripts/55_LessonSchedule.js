@@ -2,6 +2,7 @@
  * ================================================================
  * 55_LessonSchedule.js — CAS-CCPS
  * BOUND TO: Central Ledger (cas-ccps:central-ledger)
+ * PURPOSE: The teacher's lessons on the dates set in the LessonSchedule tab, and the lesson a course is on for a date.
  * ================================================================
  *
  * The teacher's own lessons (55b_LessonAssignmentData.js, generated from
