@@ -829,7 +829,8 @@ The earlier notes still hold. Added on 11-01:
 - **Canvas cartridges are generated.** Run
   `tools/cas-ccps/build-canvas-cartridge.js` after a change to lessons or
   parts (`--check` in CI), and tell the operator to re-import.
-- **A new test file is named in the root README**, or docs-check fails.
+- **A new test file is named in `tests/README.md`** (the root README until
+  2026-11-21), and a new tool in `tools/README.md`, or docs-check fails.
 
 ## From the 2026-11-08 handoff
 

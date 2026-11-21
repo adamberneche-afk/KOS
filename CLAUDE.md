@@ -4,6 +4,20 @@ Start with the newest handoff in `meta/` (`HANDOFF_<date>.md`) and the plan
 it points to (`meta/PLAN_<month>.md`). Where they disagree with a README
 or the code, the code wins.
 
+## Repo map and commands
+
+- `cas-ccps/` (the classroom system), `kos-personal/`, `leader-hub/`: each
+  system's README is its map, its `HISTORY.md` the why. `cas-ccps/scripts/00_SharedConfig.js`
+  is in every CAS project: tab names (`TABS`), each tab's columns, shared helpers.
+- `tools/` ([README](./tools/README.md)): checks and generators; `tests/`
+  ([README](./tests/README.md)); `meta/`: plans, handoffs, audits; `archive/`: old records.
+- Before a PR: `npm test`, `node tools/gas-lint/check.js`, `node tools/doc-currency/check.js`,
+  `node tools/setup-guide/build.js --check`, `node tools/archive/build.js --check`,
+  `node tools/release-check/check.js` (CI runs all of them: `.github/workflows/gas-lint.yml`).
+- A new file needs its folder's README touched (docs-check): a system's,
+  `tests/README.md`, `tools/README.md`, or the root's.
+- The traps earlier sessions hit: [`meta/AGENT_NOTES.md`](./meta/AGENT_NOTES.md).
+
 ## Reading the RTP's session logs (the build handoff)
 
 The operator's thinking partner (the RTP, a Claude Project) closes each

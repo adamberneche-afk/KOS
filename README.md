@@ -1,27 +1,26 @@
 # KOS
 
-This repository is a consolidation point for **three genuinely separate
-systems, plus reference/governance material that doesn't belong to any
-one of them**. `kos-personal/` and `cas-ccps/` were built independently,
-use the same underlying platform pattern (Google Apps Script + native
-Gemini inference, no external hosting or API keys by default), and are
-kept as **separate concerns** in this repo rather than merged.
-`leader-hub/` is a third, unrelated system, confirmed distinct during a
-later reconciliation pass — see below.
+Three separate systems built on the same platform pattern (Google Apps
+Script and native Gemini inference, no external hosting or API keys by
+default), plus the governance material that belongs to none of them. They
+share this repo and its tooling, not code: `kos-personal/` is the operator's
+own knowledge pipeline, `cas-ccps/` the classroom system students use, and
+`leader-hub/` a student leadership hub. New files are filed into the matching
+subtree, never left at the root. Why the repo exists:
+`archive/2026-27-Q1/meta/PSD_Version_Controlled_CAS_Workspace.md`.
 
-Files arrive here piecemeal as they're uploaded across sessions — this
-README and the per-system READMEs below are the index of what's been
-consolidated so far and what's still missing. When new files show up, they
-get filed into the matching subtree, not left loose at the root. See
-`archive/2026-27-Q1/meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
-rationale behind moving to this git-based structure in the first place.
+## Start here
 
-**Picking this up?** The order of work is [`meta/PLAN_2026-11.md`](./meta/PLAN_2026-11.md). Then read [`meta/HANDOFF_2026-11-19.md`](./meta/HANDOFF_2026-11-19.md):
-where each system stands, what is merged but not yet live, and the
-operator's queue in order. Claude Code also reads [`CLAUDE.md`](./CLAUDE.md): how build work
-arrives through the RTP's session logs (read from Drive, written into the
-plan's "From the RTP session logs" section with pushback, never copied into
-the repo).
+- **New to the repo:** this page, then the README of the system you're
+  working in. Each system's README is its map; its `HISTORY.md` says why
+  things are the way they are.
+- **The operator:** the newest `meta/HANDOFF_*.md` (where each system stands,
+  what is merged but not yet live, the queue in order) and the plan it points
+  to, `meta/PLAN_<month>.md`. Deploys: [`tools/clasp-sync/README.md`](./tools/clasp-sync/README.md).
+- **An agent (Claude Code):** [`CLAUDE.md`](./CLAUDE.md) first: the repo map,
+  the commands, and how build work arrives from the RTP's session logs. Then
+  the newest handoff and its plan, and [`meta/AGENT_NOTES.md`](./meta/AGENT_NOTES.md)
+  for the traps earlier sessions hit.
 
 ## [`kos-personal/`](./kos-personal/) — Knowledge Operating System v8.0
 
@@ -150,426 +149,37 @@ Claude Code's Grep); find things with `node tools/archive/search.js`
 (below), or open a file by path. Git, CI and the release and
 student-data scans still read them.
 
-## [`tools/gas-lint/`](./tools/gas-lint/) — static checks for the GAS systems
+## [`tools/`](./tools/README.md) — checks, generators, the clasp bridge
 
-Built after a full codebase review kept turning up the same failure
-pattern: bugs that only exist because nothing checks for them
-automatically. Fourteen checks now, each written for a bug that had already
-shipped — duplicate top-level declarations across files that share an Apps
-Script project (a parse-time crash, or worse, a silent wrong-function-wins
-if the duplicates actually differ), undefined config keys,
-`google.script.run` calls with no matching server function, OAuth scopes
-used but not declared, cross-project calls that can't resolve, undeclared
-Google Cloud dependencies (the class that made 2,113 lines of custom Studio
-steps permanently unreachable), two files that map the same sheet's columns
-and disagree, a flow missing one of the four checks it needs, a fixture no
-consumer ever reads, a test sandbox narrower than the scope its code runs
-in, three independent AI-plausibility-gate implementations silently
-drifting apart, a web app with no auth check, and (warning-level) an
-unbounded Drive-iterator loop. Five of the fourteen (Checks H–L) enforce
-`meta/FLOW_DOCTRINE.md`,
-and each found a live defect on its first run. Run
-`node tools/gas-lint/check.js` before trusting any change to
-`kos-personal/` or `cas-ccps/scripts/` is safe to deploy. See
-[`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
+One line each; [`tools/README.md`](./tools/README.md) has the detail.
 
-## [`tools/flow-harness-sync/`](./tools/flow-harness-sync/) — cross-project constant sync
+- `tools/gas-lint/`: static checks for the GAS systems
+- `tools/flow-harness-sync/`: cross-project constant sync
+- `tools/coverage-gaps/`: scheduled functions with zero test coverage
+- `tools/doc-currency/`: checks the docs against the code
+- `tools/clasp-sync/`: bridges cas-ccps to clasp
+- `tools/student-data-scan/`: finds student data, says where but not what
+- `tools/release-check/`: what must not ship: Drive IDs, exports, LICENSE, secrets
+- `tools/archive/`: the archive's catalog, indexes and search
+- `tools/setup-guide/`: the CAS setup guide's reference, from the code
+- `tools/watchdog/`: scheduled-job watchdog
+- `tools/deploy-drift/`: is what's live actually what git expects?
+- `tools/leaderhub-build/`: assembles `student-leader-hub.html`
+- `tools/cas-ccps/`, `tools/kos-personal/`, `tools/leader-hub/`: generators
+- `tools/notebook-codebase/`: the repo as Gemini notebook sources
+- `tools/notebook-context/`: the "KOS Context" notebook
+- `tools/html-lint/`: inline `<script>` syntax check
 
-The standard remedy, now named and repeatable, for one specific class of
-duplication GAS forces on this repo: the same constant or algorithm
-hand-copied across two or more of `kos-personal`/`cas-ccps`/`leader-hub`
-(no `import`, ever — each is its own execution scope), with nothing
-watching the copies for drift. First real instance:
-`shared/flow-harness/plausibility-phrases.json` is the one canonical
-source for the AI-groundedness/plausibility gate's phrase lists and
-thresholds, materialized into all three systems by
-`sync-plausibility-phrases.js` and checked for drift by `gas-lint`'s Check
-L. See [`tools/flow-harness-sync/README.md`](./tools/flow-harness-sync/README.md)
-for the general four-part recipe (canonical source, targeted-replacement
-generator, a gas-lint check, a drift-guard test) this is one instance of —
-and, as importantly, when this does *not* apply: logic that's merely
-similar per system, not genuinely identical, stays separate.
+## [`tests/`](./tests/README.md) — regression coverage
 
-## [`tools/coverage-gaps/`](./tools/coverage-gaps/) — scheduled functions with zero test coverage
+`npm test` runs every suite (`node --test` over `tests/leaderhub`, `tests/tools`,
+`tests/cas-ccps`, `tests/kos-personal`) against a sandbox of the Apps Script
+services ([`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js)).
+What each file covers: [`tests/README.md`](./tests/README.md).
 
-Process-hardening sprint, Phase 0a. `gas-lint` above is pure static
-analysis; this one actually re-runs the test suite under Node's built-in V8
-coverage instrumentation to answer a question static analysis can't:
-"does any test in this repo ever call this function at all." Scoped to
-`ScriptApp.newTrigger()`-registered handlers specifically, not every
-function — an unattended scheduled job is the one kind of function that
-fails silently, with nobody clicking a button that would notice, which is
-exactly what happened to `sensor1_scanInboundSessions()` (zero coverage for
-most of this repo's life, found by accident mid-incident-fix rather than by
-anything that would have flagged it in advance). Run
-`node tools/coverage-gaps/check.js`; see
-[`tools/coverage-gaps/README.md`](./tools/coverage-gaps/README.md).
+## CI
 
-## [`tools/doc-currency/`](./tools/doc-currency/) — checks the docs against the code
-
-The other half of the same idea. `gas-lint` reads the source; this reads the
-prose and asks whether it is still true: a doc naming a function that exists
-nowhere, a cited test count that has drifted, a key registry listing a key no
-code mentions, a `file:line` citation past the end of that file, a Drive file ID or link written into any Markdown doc (Check 6, 2026-11-15; `doc-currency-check.test.js`), and — the
-one no other check could see — **a document describing a path that cannot
-run on the account this repo deploys to.** Every function in those
-instructions existed; the instructions were still impossible to follow,
-which is what made `archive/2026-27-Q2/cas-ccps/archived/studio-steps/` (archived 2026-11-17) — blocked on this account, and
-superseded by `37_FlowInputBuilder.js` — read as a deployment backlog for
-weeks rather than as a wall. The check caught this very paragraph on its
-first draft, which is the argument for it. Dated records (`CHANGELOG.md`, `HISTORY.md`)
-are skipped wholesale, because naming a removed function is what a changelog
-is for. `node tools/doc-currency/check.js`; see
-[`tools/doc-currency/README.md`](./tools/doc-currency/README.md).
-
-## [`tools/clasp-sync/`](./tools/clasp-sync/) — bridges cas-ccps to clasp
-
-`leader-hub/` and the main `kos-personal/` project are each already laid
-out the way [clasp](https://github.com/google/clasp) wants — a flat
-folder, one script ID; `archive/2026-27-Q1/kos-personal/archive/studio-steps/` (whose two custom steps
-are blocked on this account — the write-back moved to
-`12_StudioReturnHarvest.gs`; archived 2026-09-29, not deployed) was a second, separate flat-folder project
-alongside it (a separate Apps Script project, not a
-shared global scope — SMP-004 describes a personal/district *account* split
-as well, but that is not what is deployed: both live on the same ccpsnet.net
-account, which is why the org-wide GCP block reaches the Studio steps in
-both systems). `cas-ccps/scripts/` isn't: it's actually 8 separate Apps Script
-projects sharing overlapping files (5 spreadsheet/doc-bound projects, the
-standalone Teacher and Student Dashboard web apps, and
-`family-sentinel`, bound to the teacher's private Family Mail Sentinel sheet;
-a 9th, `studio-steps`, was archived 2026-11-17). This tool generates a throwaway per-project push folder for
-each of the 8 from `tools/gas-lint/project-map.json`, so `cas-ccps/scripts/`
-itself never gets reorganized or duplicated in git. Every real project
-across the repo now has a committed `appsscript.json`. `clasp
-login` against a real Google account is now working — see
-[`meta/CLASP_AND_APPS_SCRIPT.md`](./meta/CLASP_AND_APPS_SCRIPT.md) for
-the conceptual workflow, [`tools/clasp-sync/README.md`](./tools/clasp-sync/README.md)
-for `sync.js`'s own mechanics, and
-[`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md`](./tools/clasp-sync/DEPLOYMENT_RUNBOOK.md)
-for the actual command-by-command runbook (all three systems, sandbox-first
-for cas-ccps, human-gated production promotion — folded in from an
-external review pass, Addendum 22 R9). [`tools/clasp-sync/run.js`](./tools/clasp-sync/run.js)
-(Node, from `cmd.exe`; it replaced `run.ps1` on 2026-10-17, removed 2026-10-29)
-automates that runbook's clasp steps from the operator's Windows machine.
-It reads a registry of real `.clasp.json` files and deployment IDs, and it
-promotes web apps in place with `clasp update-deployment`, so `/exec` URLs
-never change. See the
-[clasp-sync README](./tools/clasp-sync/README.md#runjs--the-whole-push-from-cmdexe).
-
-## [`tools/student-data-scan/`](./tools/student-data-scan/) — finds student data, says where but not what
-
-Reports student-shaped data (student-domain addresses, ID-shaped
-addresses, and with `--roster` the names in a Canvas export kept on the
-operator's machine) by path, line, kind and a hash, never the text, so its
-output is safe in a CI log or an agent session. `--history` scans every
-blob in git history. Office and zip files (`.xlsx`, `.docx`, `.pptx`,
-`.imscc`, ...) are unpacked in memory and their text scanned; one that
-can't be opened fails the run, and a closing `not read:` line counts the
-other files it didn't open. Matches confirmed not to be student data are
-allowlisted by hash in `allow.json`. It also warns (without failing) on a
-`Logger.log` / `console.*` call in `cas-ccps/scripts/` that prints a
-student identifier. Since 2026-11-07 it also fails on a name-shaped
-district staff address (`staff-email`) unless `staff-allow.json` lists it
-(the operator's own address and synthetic test ones); tested in
-`tests/tools/student-data-scan-staff.test.js`. Added 2026-10-19 so the repo can stay
-public after a scrub; a CI gate in `gas-lint.yml` (the working tree, without
-`--roster`) since the tree and history were cleared on 2026-10-20. See
-[`tools/student-data-scan/README.md`](./tools/student-data-scan/README.md).
-
-## [`tools/release-check/`](./tools/release-check/) — what must not ship: Drive IDs, exports, LICENSE, secrets
-
-Plan item L1 (approved 2026-11-08). Reports, over the tracked tree, Drive
-IDs and Docs/Drive links (in links, or labelled as IDs), Apps Script
-web-app URLs and script IDs (a separate bucket for the operator to decide),
-tracked exports (spreadsheets, CSVs, Canvas cartridges, Drive listings;
-`appsscript.json` manifests are listed as probably fine), a missing LICENSE
-in the root, `cas-ccps/`, `leader-hub/` or `kos-personal/`, secret shapes,
-and student-data-scan's kinds; a value is printed only as its length.
-`--history` counts matches in git history. **The gate is on** in CI
-(`gas-lint.yml`, `RELEASE_CHECK_GATE: '1'`, the operator, 2026-11-20): any
-failing finding fails the build. What it lets through (the Student
-Dashboard's web-app URL by hash, the curriculum CSVs and Canvas cartridges
-by path) is named with why in `tools/release-check/allow.json`; Drive IDs
-never. The first audit is [`meta/RELEASE_AUDIT_2026-11-08.md`](./meta/RELEASE_AUDIT_2026-11-08.md);
-a pre-commit hook (`tools/release-check/pre-commit`, installed by hand)
-checks staged files. Tested in `tests/tools/release-check.test.js`. See
-[`tools/release-check/README.md`](./tools/release-check/README.md).
-
-## [`tools/archive/`](./tools/archive/) — the archive's catalog, indexes and search
-
-`archive/catalog.jsonl` (one record per archived file) and
-`archive/quarters.json` are the source; `build.js` generates the
-indexes, a view by system and one by `#N`, and `archive/entries.jsonl`
-(one record per history-log entry), and its `--check` runs in CI.
-`search.js` filters by quarter, kind, system, dates and `#N`, then
-searches the text of only what matched. `file.js` files a doc or a
-folder into its quarter in one step, and rolls the history logs over
-when a plan of record is replaced. See
-[`tools/archive/README.md`](./tools/archive/README.md).
-
-## [`tools/setup-guide/`](./tools/setup-guide/) — the CAS setup guide's reference, from the code
-
-Packaging step 2. `node tools/setup-guide/build.js` writes
-`cas-ccps/docs/SETUP_GUIDE_REFERENCE.md`: each cas-ccps project, its
-manifest, the Script Properties it reads, the triggers it installs and the
-Studio Flows with their checks, extracted from the code, with what it can't
-resolve listed as such. CI runs `--check` and fails when it is stale. The
-steps in order are `cas-ccps/docs/SETUP_GUIDE.md`. Tested in
-`tests/tools/setup-guide.test.js`; see
-[`tools/setup-guide/README.md`](./tools/setup-guide/README.md).
-
-## [`tools/watchdog/`](./tools/watchdog/check.js) — scheduled-job watchdog
-
-Catches the failure mode a red X can't: an invalid `.github/workflows/*.yml`
-file produces no run at all, so nothing fails loudly. Runs actionlint
-against every workflow file and checks that every workflow with an
-`on.schedule` trigger (currently `codeql.yml` and
-`watchdog.yml` itself - there's no self-exclusion, so it watches its own run
-history too) had its most recent scheduled run actually conclude
-successfully, and lists open pull requests older than 14 days (reported,
-never a failure), publishing all three to one
-pinned "KOS Scheduled-Job Watchdog" issue updated in place rather than a
-fresh issue each run. Runs weekly via `.github/workflows/watchdog.yml`
-(the day after `codeql.yml`'s own schedule, so that run has landed);
-`node tools/watchdog/check.js` runs it locally. A failed actionlint run
-that names no file counts as a finding on every file, never as clean.
-actionlint is pinned to one version (1.7.7) in both `watchdog.yml` and
-`gas-lint.yml`, and every workflow defaults to read-only `permissions:`.
-`.github/dependabot.yml`
-(weekly npm + GitHub Actions updates) and `.github/workflows/codeql.yml`
-(CodeQL code scanning) round out the same "is the repo's own machinery
-healthy" floor. `.github/workflows/run-js-windows.yml` runs `run.js`'s
-tests on Windows, where the operator pushes from, whenever `run.js` or its
-test changes.
-
-## [`tools/deploy-drift/`](./tools/deploy-drift/) — is what's live actually what git expects?
-
-Catches the gap behind two real incidents: a live GAS project silently
-missing a function its own committed source already had, and separately,
-genuine uncertainty over whether a redeploy had actually taken effect.
-Most of the 10 deployed GAS projects (all 10 in `tools/gas-lint/project-map.json`; `cas-ccps:studio-steps` was archived 2026-11-17) sit behind Google's own sign-in wall or have no
-web app at all, so this repo can't poll them — instead, each project
-self-reports its own version marker outward via a `repository_dispatch`
-call, which `.github/workflows/deploy-drift.yml` compares against what
-`git log` says should be live, opening a tracking issue on mismatch. See
-that tool's own README for the full mechanism, the credential threat
-model, and why the marker has to live in its own file.
-
-## [`tools/leaderhub-build/`](./tools/leaderhub-build/) — assembles `student-leader-hub.html`
-
-`leader-hub/student-leader-hub.html` (~20,000 lines) is generated from 14
-ordered fragments under `leader-hub/src/` — edit the fragment, run `node
-tools/leaderhub-build/build.js`, never hand-edit the assembled file
-directly. `--check` mode builds in memory and diffs against the committed
-file for a CI drift gate (external product review, Finding 4 / "this
-quarter" maintainability fix); `--stats` prints a per-block size report.
-
-Beyond concatenation it now strips comments/dead whitespace, rewrites
-top-level `let`/`const` to `var`, and splits the giant script into
-several `<script>` tags at tokenizer-verified statement boundaries (each
-`node --check`ed, each named with a `data-lh-block` attribute), after
-moving top-level functions and var names ahead of other statements so the
-split can't change load order — all added chasing the OAuth-dialog crash
-above, all hand-rolled with zero npm
-dependencies on a small tokenizer with its own invariant checker and unit
-tests. See
-[`tools/leaderhub-build/README.md`](./tools/leaderhub-build/README.md).
-
-## Generators: [`tools/cas-ccps/`](./tools/cas-ccps/), [`tools/kos-personal/`](./tools/kos-personal/), [`tools/leader-hub/`](./tools/leader-hub/)
-
-Each writes committed files that are generated, never hand-edited; a test
-fails when a committed copy drifts from its generator. Zero npm
-dependencies, like the rest of `tools/`.
-
-- **cas-ccps:**
-  - `build-unit-rubrics.js` writes `cas-ccps/curriculum/unit-rubrics/` (a Flow 1 rubric and prompt per unit and course).
-  - `build-lesson-assignments.js` turns the teacher's lesson docs (`cas-ccps/curriculum/lessons/`) into `55b_LessonAssignmentData.js` and `lessons/COMPETENCY_REVIEW.md`.
-  - `check-parts-drafts.js` builds each lesson split (`lessons/PARTS.json`, or a draft in `lessons/PARTS_DRAFTS.json` before the teacher approves it) with the lesson builder and checks it, and `render-parts-drafts.js` writes the teacher's copy of every lesson in parts, `meta/LESSON_PARTS_2026-10.md`.
-  - `build-zero-shot-answers.js` writes `cas-ccps/scripts/39c_ZeroShotAnswers.js` from `cas-ccps/curriculum/zero-shot/<lesson key>.txt` (each lesson's cold answer, what a chatbot writes from the student-facing prompt alone); `--check` fails if 39c is stale.
-  - `render-agenda-slide.js` draws the daily agenda slide (67's `agendaSlideSpec_`) as a PNG through the pre-installed Playwright, without Google, and lists any text box that would spill: `node tools/cas-ccps/render-agenda-slide.js 2026-11-23 8175-L11=1,3-Odd 8177-product-pitch-financial-analysis=4 out.png --announce "…"` (one lesson, or both courses on one slide).
-  - `import-lesson-drafts.js` is the mechanical half of importing a Teacher Dashboard lesson draft: it re-checks drafts with 65's rules, writes the fields that have one home in the repo, rebuilds, and reports field by field what still differs (`cas-ccps/docs/LESSON_IMPORT_PROCEDURE.md` has the session's steps).
-  - `build-canvas-cartridge.js` writes the 8175/8177 Canvas cartridges (from the teacher's lessons) in `cas-ccps/curriculum/canvas-cartridges/`, using `lesson-cards.js` (a `.docx` lesson-card reader) and `zip.js` (a zlib-only zip reader and writer).
-  - `sync-pacing-vocabulary.js` sets the pacing guide's vocabulary fields from the lesson cards.
-  - `build-guide-notebook-sources.js` writes the Markdown copies of the four user guides (`cas-ccps/docs/notebooklm-sources/`) from the guides' HTML, for the user-guide notebook.
-  - `generate-family-mail-prompt.js` regenerates `61_FamilyMailPrompt.js` from `cas-ccps/docs/FAMILY_MAIL_TRIAGE_PROMPT.md`.
-  - `build-dashboard-demo-lessons.js` copies the first five lessons of each course (and the competencies they name) from `55b` and `data/CompetencyRegistry.csv` into `13b_StudentDashboardDemoLessons.js`, for the Student Dashboard's demo mode; `--check` exits 1 when it is out of date.
-  - `build-dashboard-lessons.js` writes `13c_StudentDashboardLessons.js` from `55b` and `curriculum/lessons/STUDENT_CRITERIA.json`: each course's teaching order and, per lesson, its number, short title, every competency it names in the student's "I can" words (the measured milestones first) and its parts' one-line tasks, for the Student Dashboard's cards and Competencies tab (about 90 KB; the 2 MB `55b` stays out of that project); `--check` exits 1 when it is out of date.
-  - `build-dashboard-review.js` writes `13d_StudentDashboardReview.js` for the Student Dashboard's Competencies tab Review panel: each lesson's one-line recap per competency (from its plan's competency alignment list), key terms (`55b`'s vocabulary) and linked videos (`VIDEO_LINKS.json`); `--check` exits 1 when it is out of date.
-  - `generate-flow-prompts.js` regenerates `40_FlowPrompts.js`.
-  - Every builder above takes `--check`, as does `generate-family-mail-prompt.js`; `generate-flow-prompts.js` doesn't, and `import-lesson-drafts.js` takes `check`, `apply` or `verify` and a drafts file instead.
-- **kos-personal:**
-  - `build-notebook-personas.js` writes the notebook persona editions in `kos-personal/rtp-core-router/notebook-sources/` (`--check`).
-  - `generate-flow-prompts.js` regenerates `16_FlowPrompts.gs`.
-- **leader-hub:** `generate-ai-prompts.js` regenerates `AiPrompts.gs`.
-
-## [`tools/notebook-codebase/`](./tools/notebook-codebase/build.js) — the repo as Gemini notebook sources
-
-Writes `meta/notebook-codebase/`: the whole repo (code, docs, tools, tests)
-as 14 Markdown sources plus an index, for a "KOS Codebase" notebook. Every
-section heading names its source and file, and every source carries its
-`Notebook source:` line. Unlike the generators above, its output is not
-committed (it is gitignored): run it in the unzipped copy of `main`, which
-needs no git, and upload what it writes. `--check` reports which sources
-changed since the last build. See `meta/notebook-codebase/README.md`.
-
-## [`tools/notebook-context/`](./tools/notebook-context/build.js) — the "KOS Context" notebook
-
-Writes `meta/notebook-context/`: six sources for a notebook about why KOS
-exists rather than how its code works. A guide written for it
-(`meta/notebook-context/GUIDE.md`: the three systems, their North Stars,
-the value proposition by audience, and which sources are dated), then
-copies of the North Star documents, the Economics of Depth paper and its
-assumptions audit, the value review and audits, the system READMEs and
-architecture, and the plan and handoff. The file list is chosen by hand in
-the generator, and a missing file stops the build. Output gitignored, as
-above; `--check` reports what changed. See `meta/notebook-context/README.md`.
-
-## [`tools/html-lint/`](./tools/html-lint/check.js) — inline `<script>` syntax check
-
-Runs `node --check` on every inline `<script>` block of
-`leader-hub/student-leader-hub.html`, in `gas-lint.yml`.
-
-## [`tests/`](./tests/) — regression coverage for the GAS systems
-
-`node --test tests/leaderhub/*.test.js tests/tools/*.test.js
-tests/cas-ccps/*.test.js tests/kos-personal/*.test.js` (`npm test`) runs
-real Node-`vm`-sandboxed coverage against the actual `.gs`/`.js` source
-via [`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js) —
-`tests/cas-ccps/` covers the course year builder (course data check, the CCPS calendar copy, course-aware pacing units, the rolling lesson drafts: `course-year-builder.test.js`), a Studio flow that answered several rows at once (a Full list): the key that holds several rows' keys, the warm-up and turn-in returns set aside with a FULL_LIST note and nothing applied, the overnight line with the fix, the build spec's "one row per run" rows (`flow-full-list.test.js`), the reflection fixture: pairs of Flow 2 rows identical but for a reflection claiming what the made-up work leaves out, seeded once in one write, each pair compared and the claim's credit counted, cleared with the other fixtures (`flow2-reflection-fixture.test.js`), the competencies no lesson measures (Q26): the list held equal to those no lesson names, rated directly by the teacher for a student on their roster in that course, re-ratable with the newest counting, refused for a measured competency, a bad rating or another teacher's student (`outside-competencies.test.js`), the zero-shot test: one cold answer per lesson, the builder's output with no placeholders or emails, sent a batch at a time as Flow 2 fixture rows with fixture competency IDs against the whole lesson's goals, recorded once per lesson in ZeroShotResults and never sent again (`zero-shot-fixture.test.js`), turn-in stage 5's lesson report: each lesson's assigned, submitted, first goal met on the first check and ever, reflection words and codes per section, a pattern flagged only in two sections of five or more students, codes counted only once codes were on, fixtures and unknown assignments left out (`lesson-report.test.js`), the three nightly Module 2 jobs run whole against a seeded Central Ledger: tomorrow's warm-ups queued once per enrolled student with the last answer for the lead-in, profiles updated in place or appended with the class's competencies and scored warm-ups, the lesson drafts written by the trigger's entry point, each stage stamped and nothing when Module 2 is off (`nightly-jobs.test.js`), the Canvas roster import (`canvas-roster-import.test.js`), each tab's columns declared once in 00: the Ledger's `LEDGER` and `LEDGER_HEADERS`, WarmUpQueue's `WQ` and `WQ_HEADERS`, each in step, no script keeping its own copy (`tab-columns.test.js`), a lesson's assignment ID built and read in one place: `casConfigId_` and `parseCasId_` round-trip a lesson, a part and a unit seed, and no script hand-builds or hand-parses one; and the date helpers (`ymd_`, `cellYmd_`, `localYmd_`), with no copy in another file (`cas-ids.test.js`), the Central Ledger's frequent jobs run by one every-minute cycle: install and rollback, cadence, most overdue first, errors contained and counted, the trigger failing after ten in a row, the time budget, the intake jobs' installer, every job between Submit and feedback every minute, each job's and the cycle's run time with the share of the daily quota, and `LEDGER_CYCLE_EVERY` (`ledger-cycle.test.js`), the cycle's checks before work: each job on the way to feedback skipped when nothing waits and run when something does, a check that can't read running its job, a submission carried to its FlowInput row and a result through backprop in one cycle each with no second FlowInput row, quiet hours (a weekday night, a Saturday, a `SCHOOL_DAYS_OFF` day) running only the checks except on the backstop minute, the backstop running everything, the onChange probe logging no address or cell value, the day's projected trigger time with WARN and ALERT, and quiet hours checked only every `LEDGER_CYCLE_QUIET_EVERY` minutes with the minutes between returning at once, the cycle's settings from the `_CONFIG` tab too, a Script Property winning, with no extra spreadsheet open (`ledger-cycle-gates.test.js`), Flow 2 results that must not reach a student: a malformed result (an outcome outside the three, no outcomes line, a count that doesn't fit the row, no stamp, a stamp the passing rule contradicts) not delivered, re-armed once, then `ERROR_MALFORMED_OUTPUT` and "Couldn't be checked" on the card; one answer in two rows of a doc flagged as dates only, the newer row delivered and an unharvested older copy re-armed; `checkFlow2Binding()` naming the `StagingRowRef` fix; the fixture row the canary cleanup leaves cleared by `removeFlow2Fixture()` (`flow2-malformed-results.test.js`), the run line: each prompt's own run key and the template version echoed back in `[RUN_INFO]`, EvaluationLog's CodeVersion, PromptVersion, PromptHash, RunCheck and ModelReported, a failed check recorded and still delivered, the line never shown to the student, an older log tab given the new headers, the model `StudioConfig` names (`flow2-run-info.test.js`), what runs Flow 2: `StudioConfig` seeded once, changes appended, the model in effect and the staleness line; the daily drift probe seeded READY, left alone by the harvest, recorded and compared, a platform change and an unanswered probe flagged, the fixture tools leaving it alone (`flow2-provenance.test.js`), the cleanup of a burst of feedback comments: a dry run unless told to delete, only this account's comments in the window that start "Feedback, ", each doc once, fixture rows skipped, an unreadable doc counted and passed over (`feedback-comment-cleanup.test.js`), the repost of feedback the cleanup took away: only each doc's newest row, a doc with feedback since that row was built left alone, a dry run unless told to post, the harvest's format, skipped and malformed rows not posted, a second run posting nothing (`feedback-repost.test.js`), the intake form's submit trigger installed once on the Ledger (`form-submit-trigger.test.js`), the admin panel's Clear Staging Pipeline: a preview by status, unfinished submissions put back in line (`clear-staging-pipeline.test.js`), one period split into groups that meet on alternate days: text period labels, the relabel of enrolled students, off-day warm-ups set NOT_MEETING (`period-split.test.js`), the teacher's lessons on LessonSchedule dates (`lesson-schedule.test.js`), the nightly lesson rollout: docs made two days ahead, shared the night before, shadow until switched on, counts-only log, and each open or opening lesson looked for in its course's Canvas export, a missing one named as "Not on Canvas" and cleared when a later run finds it, the title matcher and the export's course (`lesson-rollout.test.js`), terms as school year plus marking period (`term-marking-periods.test.js`), the term rolling over by marking-period date, with MP1 students still enrolled in MP2 (`term-rollover.test.js`), the staging turnstile's per-teacher lanes: up to `FLOW2_PARALLEL_LANES` submissions in flight at once, oldest first, each timed out on its own, 1 as the old one at a time (`staging-turnstile.test.js`), the CAS attention signal and the STAGING_PIPELINE no-timestamp and unknown-status gaps (`cas-attention-signal.test.js`), Flow 2 not answering: two lane timeouts in a row with no Flow 2 answer between email the admin once, an answer clears it, one isolated timeout sends nothing (`flow2-not-answering.test.js`), the signal's LAST NIGHT section and its daily email: 3 a.m. stage stamps, warm-up counts, Studio jobs with no return, the all-clear line, and the setup checks it runs at most every 6 hours (the Ledger's column order, FlowPrompts against the code, Studio returns in the right columns: `overnight-health.test.js`), the warm-up flows' pacing: at most ten input rows per run, and a job Studio dropped written again, at most twice (`warmup-flow-pacing.test.js`), Flow 3's lead-in since Flow 5 was merged into it: the student's last answer in Flow 3's prompt, the answer split into the lead-in and the warm-up, a lead-in that fails its check dropped while the warm-up still goes out, and the warm-up canary run end to end (`warmup-text-box.test.js`, `warmup-flow-canary.test.js`), Flow 3's shape gate: output that is the prompt, a description of it or a list is replaced by the teacher's anchor, the repair for rows already delivered, and 33's stamp when it stops early (`warmup-shape-gate.test.js`), the retention schedule, its school-year cutoff and its read-only check (`retention-schedule.test.js`), LIVE assignments seeded from the repo's unit rubrics (`assignment-seeder.test.js`), live assignments brought up to the repo's criteria, with a milestone's result counted for each competency it lists (`assignment-refresh.test.js`), the SCR suggestion engine's threshold/state
-machine, the student-context aggregator, `getCompetencyTextMap_`'s
-cache-with-fail-open behavior, Ledger retention, the opt-in Flow 2
-direct-evaluation escape hatch, the
-queue watchdog, the preflight and canaries, the Flow 2 and Flows 3/4/5
-ports and their harvests, the fixtures driven through the code that
-consumes them, the binding probes, the generated build spec, and the
-Teacher Dashboard's own SCR confirm/override review queue (a from-scratch
-reimplementation of the suggestion engine's confirm/override logic,
-native to that separate Apps Script project — see
-`cas-ccps/HISTORY.md`'s "SCR confirm/override is wired into the Teacher
-Dashboard for real"), the turn-in score review's teacher-ownership check
-(`teacher-dashboard-turn-in-review.test.js`), SCR evidence counted one
-piece per assignment at its best outcome, for suggestions and retries alike
-(`scr-suggestion-engine.test.js`, `scr-retry.test.js`), the SCR retry's thresholds as settings and `previewScrRetryThresholds` (`scr-retry.test.js`), the SCR retry (D15): primary and linked competencies from each assignment's milestones, 5 pieces met and 2 linked per primary miss, the new rating from all the competency's evidence, the teacher's re-rate on the student's page appending RETRY_IMPROVED, SCR Review listing the ready ones, and the student told what unlocks one, never the number (`scr-retry.test.js`), the Unified Manual's Admin Health Check link: written at setup, built from the Ledger's ID for a manual set up before that (`unified-manual-ledger-url.test.js`), list answers in warm-ups (option B): every list-style lesson anchor also asks for a reason, and Flow 3 keeps it or asks for one (`warmup-list-anchors.test.js`), the Phase 4 design check: what the probe records for a form (questions, choices, scale, email setting, "select up to two" readable only if a getter returns it), a deck (titles, text, notes, images, charts) and a sheet (tabs, formulas told from typed numbers, charts), revisions and copies, never a form's responses (`archived/work-file-probe.test.js`, archived with the probe 2026-11-07 and run by hand, not by `npm test`), the school from configuration (packaging step 1): today's courses, student-account pattern, mail domains and calendar as the defaults, and each overridable, the course-from-name rule shared by 00, 24 and 51, a held part skipping the days off, which are the Ledger's NoSchoolDays tab (date cells and all) plus SCHOOL_DAYS_OFF, and a date typed into _CONFIG read as typed (`school-profile.test.js`), each lesson's class plan and the bell schedule: the plan drafted from the lesson's own sections, Clover Hill's A/B days, and an itinerary fitted exactly to a period's minutes (`lesson-itinerary.test.js`), a lesson in parts: PARTS.json made into one assignment per part with its own tiers, criteria and task, every lesson competency in some part (`lesson-parts.test.js`), its parts made and unlocked: Part 1 released like a lesson, later parts made unshared, the next part opened when the last check found the part's primary met or by the teacher, and a lesson already started whole never split, and why each next locked part is still locked, with the turn-in code and the 11-15 re-grade beside it (`lesson-parts-unlock.test.js`, `lesson-rollout.test.js`), a lesson's missing later parts made locked by the catch-up and `NO_ROW` (`lesson-rollout.test.js`, `lesson-parts-unlock.test.js`), competency IDs Sheets stored as dates read back and repaired, and a part unlocking on one (`competency-id-dates.test.js`, `lesson-parts-unlock.test.js`), and on the dashboards: one Teacher Dashboard row per student on their furthest open part with an unlock for the next, the Student Dashboard's open parts together with each locked part's line, the stepper's dots as buttons (`lesson-parts-dashboards.test.js`, `student-dashboard-navigation.test.js`), Flow 2 given the student's earlier parts for context, removed from FlowInput once the check is done (`flow2-earlier-parts.test.js`), all 35 lessons' splits and any draft: each builds with the lesson builder and has a criterion per tier, no draft already approved, the teacher's copy current (`parts-drafts.test.js`), one teacher doc per lesson: the plan, the itinerary with A/B minutes for the course's blocks, look-fors, each day it runs and a class status snapshot that refreshes without touching the teacher's edits (`lesson-doc.test.js`), Submit's read of every live form, deck and sheet from the editor: only shared, unarchived ones, the same feedback-page lookup and reader, failures grouped by kind with the fix, counts by type, a time budget, nothing written (`work-file-read-check.test.js`), the daily agenda: one deck per school year and one slide a day, newest first, both courses on it when both meet (a column each, the bell marking each course's periods), with the plan's minutes per period (read from the lesson doc so edits carry in), the bell schedule, what's due and the announcements by date and course, and the learning targets; a day remade in place keeping the teacher's speaker notes; every box inside the slide and text sized to fit; the renderer drawing the same layout (`agenda-deck.test.js`), each course's Covered So Far doc for its notebooks: the lessons taught so far with their goals, competencies and key concepts, then next up, made once in the teacher folder and rewritten in place only when it changed, nothing about students, kept current by the rollout without ever stopping it (`covered-so-far.test.js`, `lesson-rollout.test.js`), the Central Ledger's setup status: each expected trigger on, in the Ledger cycle or missing with its installer, the switches, and secrets only as set or not set (`setup-status.test.js`), what an
-evaluation leaves behind: the Ledger moved to COMPLETE and next steps pointing at
-the dashboard and Canvas, by the turn-in code switch: the code's steps when it is on everywhere, the link's when off, the Canvas instructions for a list, each boxed line under 80 characters (`evaluation-next-steps.test.js`), each evaluation's result on
-the Ledger, and its EvaluationLog row (times, attempt, minutes waited; never text: `evaluation-result-record.test.js`), feedback posted as a comment on the doc
-instead of into it, behind `FEEDBACK_AS_COMMENT` (`feedback-as-comment.test.js`), each assignment's learning objectives as "I can" statements, one per tiered competency, first person, no system words (`student-criteria.test.js`), the process reflection on Submit behind `REFLECTION_ON_SUBMIT`: the questions chosen from fixed frames, answers checked and kept in `ReflectionLog`, the doc menu sent to the dashboard, and that submission's answers in Flow 2's prompt and back to the student as a comment (`process-reflection.test.js`), the turn-in code behind `TURN_IN_CODE_COURSES` (stage 1): nothing changes with the switch off, the feedback question from the student's own Not yet or primary milestone, the instant screen (too short, mostly pasted back, system text), answers kept as `PENDING_CHECK` with no code from the screen, the verdict (`ADDRESSES` issues one stable code, `NOT_YET` keeps the reason, anything else issues nothing), the code's format and Luhn mod 32 check character, uniqueness, the term rule and the teacher's per-assignment override (open, expired, closed, one assignment only), only the student's own row, the teacher's grant with its reason, and the copy button's fallbacks (`turn-in-code.test.js`), its stage 2, Flow 6 (the turn-in check): nothing read or written with the switch off, one input row per waiting answer with the answer wrapped as data (no closing its delimiter, filling a placeholder or passing as system text), no answer sent twice once decided, `ADDRESSES` issuing the code only through the verdict and within the term rule, `NOT_YET` keeping the reason, garbled and unknown returns set aside, a verdict for a replaced answer ignored, the retries then `CHECK_FAILED` with no code and the card's message, the run budget, the count in the overnight check, the Ledger cycle job, the fixture, the binding check, the canary and the generated prompt (`turn-in-check-flow.test.js`), its stage 3, the teacher's side: the Turn-in codes panel's review queue (failed checks and, on request, not-yet answers of the teacher's own students without a code), the grant and the overrule with a required reason recorded as `GRANT`, opening and closing an assignment with a reason, every panel function refusing anyone but the teacher and none on the public allowlist, the panel working with the switch off; and the Canvas check: SIS IDs from file names with or without `LATE_`, other files as not text entries, the code found in the HTML box despite spacing, case and O/I/L, a bad check character, two codes, each outcome, matching by SIS ID then Canvas's ID and never by the name in a file name (swapped names still match their IDs), names from file names in no output, the upload CSV (identity columns and the chosen header verbatim, the Points Possible row, full points for valid codes only, blank elsewhere), the points asked for when the export lacks them, the file cap, and the counts-only run log (`turn-in-teacher.test.js`), the Student Dashboard's Warm-ups card: the last warm-up's feedback with its extra-credit reply, the current warm-up and its answer box, saving only the student's own open warm-up (`student-dashboard-warmups.test.js`), warm-ups answered in a text box behind `WARMUP_TEXT_BOX`: delivered without a doc, scored from the saved answer, extra credit from the saved reply, and each warm-up's `delivered_at` and `answered_at` (`warmup-text-box.test.js`), a lesson's video links: a link in a new doc's task, and the refresh that adds it under "Watch" in docs already made, once, never in the student's writing (`video-links.test.js`), the Teacher Dashboard's four states
-(not checked, not passing yet, passed, passed before) and its lesson grouping
-(`teacher-dashboard-eval-states.test.js`), both dashboards' contrast and plain words (no failing text colour, no text under 12px, term codes, SCR ratings and suggested scores in words, the old jargon gone, a Terms panel on each: `dashboard-plain-words.test.js`), the Teacher Dashboard's lesson schedule panel: start dates by course with the last rollout run, a stale or impossible date refused, a change the rollout acts on soon confirmed first, a date saved on Enter or blur only once it is whole, the lesson editor keeping its form on a failed save and asking before discarding edits, Escape closing the top panel, and every modal opened with the class the CSS uses (`teacher-dashboard-lesson-schedule.test.js`), one student's page on the Teacher Dashboard: that student's parent report for this week and their Student Context doc by week, newest first, only for the teacher's own students (`teacher-dashboard-student-page.test.js`), the Student Dashboard's record tabs: every competency in the student's courses with the teacher's confirmed rating (never the AI's suggestion) and each piece of evidence marked whether it counts, every past warm-up read-only, the Student Context doc by week, only the signed-in student's own (`student-dashboard-record.test.js`), the Student Dashboard's demo mode: a teacher (the account the web app runs as, or its TEACHER_EMAIL) gets a made-up student on the real lessons in every card state, anyone else gets a refusal and their own page, the demo page calls only `getDemoDashboardData` and opens no sheet, doc or file, Submit for Feedback walks a card through the reflection, being checked and revise, Open My Document only shows a note, the generated lessons file is current, and the Teacher Dashboard's "View as a student" opens the Student Dashboard with `?demo=1`, and its due dates, Coming up and My Context weeks in student words (`student-dashboard-demo.test.js`), due dates: the LessonSchedule reader shared by the dashboards and the cartridge, and what a card says (due, due today, was due, nothing once done or turned in) (`due-dates.test.js`), the Student Dashboard's navigation (F16): the current marking period only (another marking period's rows off the page, a row with no marking period, an assignment the teacher reopened past its marking period or a code the teacher granted still shown, the start of a term a plain message, no term selector), the default order the order the lessons were assigned (teaching order from the generated `13c`, then a teacher's own tasks as assigned) with Do next above it, the demo's closed-term card never shown, `13c` current and small, every card's name (sentence case for all-capitals names), lesson chip, part and task line with no period line, Do next naming the assignment, part and class and coming first on the page, the header's More ▾ menu by keyboard, one card per lesson in parts (the part to work on, its stepper, one next action, the other parts on an `aria-expanded` button that Do next opens), milestone marks (up to three, primary first, in the student's words, the best check counting, archived evidence not, Not checked yet before a check, no totals or scores) focus kept after a re-render, and the Sort menu and filter chips (each sort's order, `aria-pressed` chips, a lesson in parts filtered by the part on its card, Do next unchanged, the choice kept for the visit in page memory) (`student-dashboard-navigation.test.js`), the Student Dashboard's check for news: `getMyWaitingStatus` answering only for the caller's own cards (account, ConfigID and file matched as the submit path does), reading the shared queue state once and briefly cached, and a turn-in answer's code; the page asking about its waiting cards only, 20 to 40 seconds apart, never while hidden, longer apart after a failure, stopping when nothing waits and at a cap, and on news re-rendering only the finished card with a polite banner, a changed title until the page is used and a scroll unless the student is typing; the turn-in code large with Copy (`student-dashboard-news.test.js`), the Student Dashboard's stage line and Try again: Submitted, In line and Being checked with only the times the Ledger and staging rows hold, "usually about N min" only from a measured FlowMeasures Flow 2 week with enough checks, Try again only on the caller's own timed-out row, refused within 10 minutes (server-side, a hash kept, never the account or file), putting the staging row back in line with no new queue or staging row, and 37 then restarting the same FlowInput row, never a second (`student-dashboard-stages.test.js`), the Student Dashboard's Canvas button: the header's Canvas link and a ready code's Open Canvas, a new tab with rel=noopener, the district's Canvas unless CANVAS_URL holds a plain https URL (`student-dashboard-canvas-button.test.js`), the student guide on the turn-in code: the five steps in order, the retired "link to your last part" and "doesn't update by itself" gone, what the code means in plain words, each button it names one the page renders and the stage names 13's own, and the UX reference's pipeline (`student-guide-turn-in.test.js`), the lesson's name wherever the Ledger's CourseName column holds the Canvas course name (2026-11-15): a locked part's title (`lesson-parts-dashboards.test.js`), the Competencies tab's evidence (`student-dashboard-record.test.js`), a snapshot doc made by `refreshFormSnapshots()` (`student-data-access-intake.test.js`) and the parent report's items (`weekly-parent-report.test.js`), each falling back to the column for a row StudentAssignments lacks, the Teacher Dashboard's waiting strip: only the configured teacher, only their own students, those waiting over 10 minutes longest first with Give a code opening the Turn-in codes panel's grant for that student and assignment, a light per checker (Flow 2, Flow 6) red only when the oldest work and the silence are both 10 minutes old, fixture and canary rows left out, asked once a minute only while the page is in view and longer apart after a failure (`teacher-dashboard-waiting-strip.test.js`), the Student Dashboard's Competencies tab (F17): each competency's lessons with the student's words, its evidence's lesson and date, the marking period's start, the rating as number and words with the latest evidence lighter, where it is practiced (a jump to this term's card, a plain reference otherwise), per-area progress this marking period and this year, Recently shown and Next to practice, the three sorts, only the student's own evidence, a competency no lesson names left plain, and the Review panel (the generated `13d` current with both plan formats read and no Drive source lines, an `aria-expanded` button, recaps, key terms, https video links only, Covered So Far only when set up, no practice question) (`student-dashboard-competencies.test.js`), the Form reader at Submit (Phase 4b): a form part's structure read and never its responses (every FormApp call held to a list of getters), the part's exact checks (`formChecks`) with a plain reason each and nothing queued on a failure, the snapshot doc rewritten on a pass and read by Flow 2 for this part and as an earlier part, the feedback and header going there, and the builder's `formChecks` validation with nothing marked (`form-reader.test.js`), the Slides reader at Submit (Phase 4c): a deck's slides read (titles, text lines, notes, images, linked charts, and colors only for a contrast check; every SlidesApp call held to a list of getters, never the deck's name), the part's `slideChecks` (slide counts, notes on every slide, images, the Rule of Six's lines and words, a linked chart, a title slide, WCAG contrast with picture backgrounds and text over pictures skipped) each failure naming the slide and nothing queued, the snapshot doc rewritten on a pass, the page's and the demo's wording, the builder's validation, and nothing marked (`slides-reader.test.js`), the Sheet reader at Submit (Phase 4d): only the student's own copy opened, its tabs, shown values, formulas told from typed numbers and charts read (every call held to a list of getters, a huge tab cut and said), the part's `sheetChecks` (required tabs, the named tab, filled rows and cells, formulas in a column or range, a chart) each with a plain reason and nothing queued, the snapshot table capped at 50 rows by 12 columns a tab and saying what it left out, the builder's validation, and nothing marked (`sheet-reader.test.js`), the Teacher Dashboard's header: the daily buttons in view and the rest under an accessible More ▾ menu (menu button, roving focus, Escape and outside click close it and return focus), each item keeping its old handler (`teacher-dashboard-more-menu.test.js`), the lesson editor's drafts: the lesson's current fields and tiers read from the generated data, the VDOE tasks and coverage, one open draft per lesson, Submit only with every required field and tiers the builder accepts, a proposal reviewed only by its submitter, new lessons keyed and checked (`lesson-drafts.test.js`), and the import tool on a copy of the curriculum: drafts re-checked, the warm-up, competency lines, tiers, 8177 vocabulary and objective written and rebuilt, the student task left for the session and named, a re-run changing nothing, a new lesson's files made in the builder's shape and built (`tests/tools/import-lesson-drafts.test.js`), and the student-data access
-policy: intake sharing, locking at submission, school-year scoping, the
-repair tool, and the student doc's menu calling the dashboard web app
-instead of the Ledger (`student-doc-service.test.js`,
-`student-data-access-intake.test.js`,
-`lock-doc-after-submission.test.js`, `school-year-scope.test.js`,
-`student-data-access-repair.test.js`, and no student writing in ReviewQueue:
-`review-queue-text-scrub.test.js`); the Drive walks over class folders and
-SCR exports stopping at a cap or a time limit and saying so, in the access
-repair and in the FERPA health check (`student-data-access-repair.test.js`,
-`ferpa-export-scan-cap.test.js`); Gmail noise (plan L7): the teacher's share
-of each student doc, form copy and snapshot doc, and at locking, made through
-the Drive advanced service with no "shared with you" email (DriveApp when the
-service is off or fails, the student's share unchanged), and every CAS mail
-sent with the `[CAS] ` subject prefix and the sender name CAS
-(`gmail-noise.test.js`);
-`tests/leaderhub/` covers the Google Doc IDs read from the data spreadsheet's `doc_ids` tab rather than the code (`doc-ids.test.js`), escaping/XSS guards (including the School
-Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
-the pacing/calendar helpers (with the published CCPS 2026-27 calendar as an import fixture, `fixtures/ccps-2026-27-calendar.txt`, and the built-in calendar's own consistency, `school-calendar-defaults.test.js`), the page's sync code never overwriting an
-edit the server hasn't accepted (`sync-pending.test.js`), the `?diag` modes (`diagnostics.test.js`,
-run against the real built page), the server-side sign-in check for the CAS connection (owner-only, the token never logged: `cas-server-signin.test.js`), the owner-only functions the page
-calls through `google.script.run` (`browser-entry-points.test.js`), Organization Sync's co-advisor allowlist (`ORG_SYNC_CO_ADVISORS`: warn-and-count until set, then the owner and listed co-advisors only, a student refused with nothing read or written: `org-sync-relay.test.js`), the `?api=horizon` route gone and mail- and sync-derived ids and roles escaped where the page writes them (`horizon-route-and-sync-escaping.test.js`), and the page's contrast and plain words (text colours at 4.5:1 or more, no on-screen text under 12px, the jargon the 2026-10-22 UX audit found replaced on screen, and a Terms panel entry for each renamed term: `plain-words.test.js`), and the rest of its 2026-10-22 audit fixes (email templates from the season, real Bcc recipients and a blanks check before sending, reminder banners in normal flow, the phone header, edit-modal guards, Brag Board's explicit send, honest pulse rings: `ux-audit-fixes.test.js`), and its move off browser storage (drafts and view state in page memory, ids on log entries, a key the server never had pushed once, the id counters merged by the larger value, every `lh_*` key accounted for, and served: the server's data read from the page, nothing written to the browser, the one-time move, the "not saved yet" bar, conflicts merged, no save when the data couldn't load, an import added to the server's copy, never replacing it, and the retired standalone file stopping with an export: `no-browser-storage.test.js`); `tests/kos-personal/` covers the archived `archive/2026-27-Q1/kos-personal/archive/studio-steps/`
-custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
-lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
-duplicates refused rather than guessed, working IDs never replaced), the
-batched requeue of terminal staging rows (`staging-requeue.test.js`), the nightly finished-rows-only staging archive, DUPLICATE rows included (`staging-archive.test.js`), the Queue counts with every staging status counted and DUPLICATE, PARTITIONED and CONSOLIDATED terminal (`queue-metrics.test.js`), Flow 2's health per course and week: results by kind, submissions never returned, the failure rate, Submit-to-feedback minutes, drafts per student per lesson and warm-up answers, in the Measures tab and one line of the overnight email (`evaluation-health.test.js`), two gradings of the same work compared from a copy of the Ledger's earlier version: the stamp, each milestone's 3×3 table, malformed and unpaired rows counted apart, an original that is another submission's answer counted apart, the after-a-fix subset, writing nothing (`regrade-consistency.test.js`), Flow 2's gradings by version: the prompt version read from each row's PromptText, the platform from when it was graded, originals from the copy and the re-grade of the same rows, writing nothing (`grading-by-version.test.js`), every CAS Studio flow per week (sent, returned, applied, set aside, never returned, retries, wait; Flow 3's teacher's-question fallbacks; Flow 6's verdicts and codes as engagement; what a flow doesn't record shown as unknown, not zero) and Studio's runs per day against `STUDIO_DAILY_RUN_LIMIT` with its 80% warning, in the FlowMeasures tab and the email's second line (`flow-measures.test.js`), the 21-day onboarding close-out and the primer's onboarding line (`onboarding-closeout.test.js`), the SMP-019 moral debt counter (PROCEED counted from a log's closeout, halving every 7 days, the primer's line and MUSE threshold: `moral-debt.test.js`), the audit gate rejecting a hollow `PASSED` with an empty `trace_log` (`audit-gate.test.js`), and
-per-session vector classification and its backfill
-(`vector-classify-sessions.test.js`), why a session has no Vector State row and the call that fixes it (`unclassified-sessions.test.js`), the matrix repair (one session per row, decay at read time, duplicate sessions, rederive: `vector-matrix-repair.test.js`), the notebook briefing docs and `DECISION_REGISTER` (stable doc IDs, stamps that never advance on a failed run, the primer's Data Quality block: `briefing-docs.test.js`), the notebook persona editions (core block first, the persona named in every heading, the canonical text otherwise unchanged: `notebook-personas.test.js`), the V6.0 router (under the 10,000-character instructions cap, every must-fire rule present, the V5.8 Morning Cache and BRAIN_TRUST_INDEX query gone, the Turn Loop Reference sections it points to: `rtp-router-v6.test.js`), incubator decay (`incubator-decay.test.js`), the web app's contrast and plain words (every text token at 4.5:1 or more on every surface, no text under 12px, zoom allowed, no system jargon on screen, a Terms entry for every renamed term: `web-app-legibility.test.js`), the web app's operator chores (archive keeps failed rows and confirms with a count, the failed-items list and its Retry, the advisor review panel and lookup, the Needs you strip and tab badges: `web-app-operator-chores.test.js`),
-the size-capped error digest (`error-digest.test.js`),
-the Registrar's stage validators (`registrar-validators.test.js`), its anonymous intervention triage (a role and a link; emails, IDs and percentages scrubbed: `registrar-anonymous-triage.test.js`), its two Studio flows' Apps Script half (D14): the draft's text materialized at release with no Drive read in the flow, a VECTOR_* primer within one cell, an old release's answer set aside, an ungrounded Stage 1 answer bounced, a non-Doc failed at once, the fixture driven through release, harvest and validation, and a stubbed canary that says so (`registrar-flows.test.js`), the `VECTOR_*` docs Stage 2 measures against and the Vector Item Labeler flow's Apps Script half (every recorded item batched by ID, fixtures and DROPPED decisions never; only IDs from the batch harvested, a label row never rewritten, an item given up on after three tries; only items labelled PRINCIPLE or CONSTRAINT compiled, word for word and most authoritative first, OPEN marked as no standard, a session decision matching a dropped one set aside, repeats listed once, every heading with its count when room runs out, the operator's text above the marker never touched, the primer cutting at a line: `vector-docs.test.js`), the Monday mail of the Sunday build review (a fresh review mailed as written, a stale or missing one never passed off as this week's: `weekly-review.test.js`), the randomized closeout-fidelity check (a drawn log compared against its own raw copy with nothing asked of the operator, its header and exchange count from the final log rather than a draft the chat quotes, a log pasted without its chat asking for a transcript doc, the rate a setting, an overdue request named, the observed rate reported: `fidelity-sample.test.js`), Deploy_Trigger deploying only an APPROVED Blackboard row, one tick at a time (a paste over several boxes deploys nothing and unticks them: `governance-deploy-guard.test.js`), the intake holding back a deferred decision that repeats one already recorded (exact, trailing period, reworded above the threshold, or citing its ID in Blocking; a different one or one differing by a number recorded; held rows written to DECISION_ECHOES and counted: `decision-echoes.test.js`), and the RTP's flows briefing kept true to the code (every file it cites exists, every function it names is declared, every entry cites its code, the family signal's archive rule as 60 has it, and the Project instructions pointing to it: `flows-briefing.test.js`);
-`tests/tools/` covers
-the deploy script `tools/clasp-sync/run.js` against a fake clasp (promote, head-only, rollback, the `--zip` extractor, the stale-copy check, and its manifest matching `project-map.json`: `clasp-run.test.js`), the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`, and check 15's no-`typeof`-guard-inside-one-project rule with the undefined-call check's parameter and guard skips, `gas-lint-typeof-guard.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the student-data scan reporting locations and hashes only, unpacking Office and zip files (an unreadable one is a finding), and its log-call warning (`student-data-scan.test.js`), its staff-address rule and allowlist (`student-data-scan-staff.test.js`), the release check's patterns, look-alikes, redaction (no value ever printed) and its warn-only default and gate flag (`release-check.test.js`), no cas-ccps or kos-personal page using browser storage (`no-browser-storage.test.js`), the generated cas-ccps unit rubrics, lesson assignments, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `lesson-assignments.test.js`, `canvas-cartridge.test.js`), the week's Canvas cartridge: 79b the builder's output with the full cartridges' XML and identifiers, the due date on the school day before the next lesson in UTC, upcoming lessons in with Canvas's settings block (published, due date, submission type, points), one already in the export or held left out, a preview writing nothing (`canvas-weekly-cartridge.test.js`), the cartridge builder's `--turn-in` option (selected lessons take a text entry with the turn-in instruction, the rest and the default build unchanged, the selector refusing units and parts, `--print` listing exactly the selection: `canvas-cartridge-turn-in.test.js`), LeaderHub's retired spring-2026 default deadlines (`retired-default-deadlines.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the notebook-context generator (its listed files exist, the guide names every source and every file its table cites: `notebook-context.test.js`), the Markdown copies of the four cas-ccps user guides matching their generator, with no page markup (`guide-notebook-sources.test.js`), the `leaderhub-build` drift gate, and the split script's
-load order (`leaderhub-build-load-order.test.js`, which runs the real
-built tags one after another).
-
-`npm test` also runs in an unzipped copy of `main`, which has no `.git`:
-the seven tests that read git history (deploy-drift's expected marker and
-stamp, the notebook-codebase walk check) skip there with a reason, via
-[`tests/harness/git.js`](./tests/harness/git.js). CI always has the
-history, so they always run there.
-
-## Still pending
-
-**Corrected after the first real deployment.** This section used to say
-Flows 2-5 needed the custom-step project "pushed to a live Studio
-deployment," with its scriptId "still a placeholder." That framing is
-wrong, and in the most expensive direction: the project *was* pushed
-successfully, and its steps still never appeared in Studio's picker. A
-custom Studio step is a Workspace Add-on and needs a standard,
-non-default Google Cloud project; GCP is disabled org-wide for the
-`ccpsnet.net` account all three systems deploy to. Nothing about pushing
-fixes that — it is a Workspace-admin decision nobody here controls.
-
-What is actually pending: **all five cas-ccps flows plus kos-personal's
-two have been ported** to native Studio steps with an Apps Script harvest
-(`37_FlowInputBuilder.js`, `41_WarmUpFlowBridge.js`,
-`kos-personal/12_StudioReturnHarvest.gs`), which is a keyless path that
-works on this account, and all of them are built in Studio. The five
-cas-ccps flows are verified live with their own liveness checks
-(`checkFlow2Liveness()`, `checkWarmUpFlowLiveness()`; see
-`cas-ccps/DEPLOYMENT_HANDOFF.md`). kos-personal's Curator flow was fixed in
-Studio on 2026-09-29 and its classify flow is returning real parts
-(`archive/2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md`). What is left is operator work, not
-builds: pushes of current `main` (`node run.js --latest`, `tools/clasp-sync/run.js`) and the
-setup functions each new script needs, listed in
-`cas-ccps/DEPLOYMENT_HANDOFF.md` and `archive/2026-27-Q1/kos-personal/HANDOFF_2026-09-28.md`.
-The `clasp`-side work is a human's, per SMP-004's air-gap.
-
-Clasp adoption is no longer scaffolding: all 9 cas-ccps projects build
-from `tools/clasp-sync/sync.js` and CI refuses a build with an unmerged
-addendum. The two named-but-not-uploaded files this section used to list
-(`27_LessonFrameGenerator` in cas-ccps, the `PERSONA_*` duplicates in
-kos-personal) are both in the repo now.
-
-## Floor checks 7 and 8 — doc-link-check and doc-placeholder-check
-
-`.github/workflows/doc-link-check.yml` and `.github/workflows/doc-placeholder-check.yml` are **byte-identical copies** of the canonical files in the Mothership hub (see that repo's `CICD_FLOOR.md`) and must not be edited here — a change belongs upstream. Everything that differs about this repo lives in `.github/floor.json`.
-
-| check | catches | configured by |
-|---|---|---|
-| doc-link-check | a relative link in a Markdown doc that points at a file that no longer exists (offline: external URLs are never fetched, so it cannot flake) | `docExcludePaths` |
-| doc-placeholder-check | unedited template text left in a shipped doc: an unfilled company-name field, filler Latin, an unreplaced URL placeholder. Not ordinary TODOs | `placeholderPatterns`, `docExcludePaths` |
-
-Both run on pull requests that touch Markdown or `.github/floor.json`. `archive` is excluded because archived docs are kept as written: one, `archive/2026-27-Q1/kos-personal/archive/studio-steps/README.md`, links to a gas-lint map that has since moved. A line that must quote placeholder text on purpose can carry `floor-allow-placeholder`.
-
-## Floor check 10 — secrets-doctor
-
-`scripts/secrets-doctor.mjs` confirms every secret this repo's workflows reference is actually configured and non-empty. It is a **byte-identical copy** of the canonical file in the Mothership hub (see that repo's `CICD_FLOOR.md`) and must not be edited here — a change belongs upstream.
-
-The expected list is **derived from the workflow files**, never hand-written. That is the whole design: the two doctors that predate it, in Mothership and TSO, name their secrets in source, and TSO's has already drifted — it checks three while its workflows reference five. A list someone has to remember to extend is the same shape as the bug.
-
-| command | does |
-|---|---|
-| `node scripts/secrets-doctor.mjs --sync` | regenerates the env block in `.github/workflows/secrets-doctor.yml` |
-| `node scripts/secrets-doctor.mjs --check` | fails if that block has fallen behind, in either direction |
-
-The workflow splits by what each half needs to see. Its `drift` job runs on **every pull request** with no access to the secrets context at all, so a workflow that starts needing a new secret turns a PR red until the block is regenerated. Its `probe` job runs on dispatch only and receives one boolean per secret — `${{ secrets.NAME != '' }}`, compared inside the expression — so a job is shipped only the secret it names and no value ever reaches the environment.
-
-Two secrets are in scope here (four until 2026-11-01, when `call-hub.yml` and its `APPS_SCRIPT_URL` and `TENANT_CALLER_KEY` were retired: see [the hub pulls](#the-hub-pulls--call-hubyml-is-retired) below). `CAS_SANDBOX_SCRIPT_IDS` and `CLASP_SANDBOX_CREDENTIALS` are declared optional in `.github/floor.json`, because `gas-lint.yml`'s `check-sandbox-secrets` job turns them into a `configured` output that every downstream job gates on — absent simply means the sandbox push lane is off, which is a supported state.
-
-Worth noting for anyone extending the scanner: `gas-lint.yml` explains itself with the phrase *"a bare `secrets.X` reference inside an `if:` conditional"*, and `needs.check-sandbox-secrets.outputs.configured` contains the substring `secrets.outputs`. A naive scan reports two credentials named `X` and `outputs` that nobody needs. Both were found against this repo while the extractor was being written, and both are pinned by tests upstream — comments are stripped and a left boundary is required.
-
-### The hub pulls — `call-hub.yml` is retired
-
-Since 2026-10-31 the Mothership hub reviews KOS **on its own timer** instead of waiting for KOS to call it. A time-driven trigger inside the hub polls every active spoke (debug every 6 hours, hunt Wednesdays at noon, refactor Sundays at midnight), reads KOS's latest commit with the hub's own GitHub credential, and reviews it through the same path a heartbeat request used to take. Nothing in KOS calls in, so KOS holds no hub secrets. Details are in Mothership's README, [The Pull Model](https://github.com/adamberneche-afk/Mothership#the-pull-model-gasspoke_pollerjs), and its `SESSION_HANDOFF.md` item 28.
-
-**Retired 2026-11-01 (D13).** The owner deployed the hub with `run.js` and installed its triggers, and the hub's first poll (`pollSpokesDebug`, then `showSpokePollStatus`) read KOS as `settled` at the pushed commit. So `call-hub.yml` was deleted: it never worked (its two secrets were never set to matching values, and all 233 runs from 2026-09-19 to 2026-10-31 failed). `secrets-doctor.yml` no longer lists `APPS_SCRIPT_URL` or `TENANT_CALLER_KEY`; the owner deletes those two repository secrets.
-
-**Deploying the hub** (from the folder that holds `run.js`; [`tools/clasp-sync/README.md`](./tools/clasp-sync/README.md), "--hub"):
-
-```
-node run.js --latest --hub latest                    # KOS and the hub
-node run.js --hub latest --only mothership-hub       # the hub alone
-```
-
-`--hub` needs `--latest`, `--zip` or `--only` beside it. The one-time registry folder `clasp-registry\mothership-hub\` holds `.clasp.json` (from `clasp clone <scriptId>`), `deployments.txt` (the live deployment ID alone on its line, without the ` @n` that `clasp list-deployments` prints after it) and `admin-token.txt` (the hub's `ADMIN_SETTINGS_TOKEN`; without it the triggers aren't installed). Check with `showSpokePollStatus` in the hub's editor.
-
-Not adopted here: floor checks 6 and 9. KOS's own `tools/doc-currency` and `tools/coverage-gaps` predate the floor and are the versions Mothership's were built **from**, so they keep their own configuration and are not driven from `.github/floor.json`.
+`.github/workflows/gas-lint.yml` runs the tests and every check above on each
+pull request. The checks copied from the Mothership hub's CI floor
+(doc-link-check, doc-placeholder-check, secrets-doctor) and how the hub reads
+this repo: [`meta/CI_FLOOR.md`](./meta/CI_FLOOR.md).
