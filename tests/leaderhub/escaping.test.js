@@ -11,7 +11,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { extractLines } = require('../harness/extract-lines');
+const { cutDeclarations } = require('../harness/cut-declarations');
 const { runInSandbox } = require('../harness/vm-run');
 
 // Points at the fragment file (tools/leaderhub-build/ split, external
@@ -22,7 +22,7 @@ const { runInSandbox } = require('../harness/vm-run');
 const HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '06-tasks-trips-and-modals-core.html');
 
 function loadEscapers() {
-  const source = extractLines(HTML_PATH, 1537, 1555, ['function escH(', 'function escJsAttr(']);
+  const source = cutDeclarations(HTML_PATH, ['escH', 'escJsAttr']);
   return runInSandbox(source, {}, ['escH', 'escJsAttr']);
 }
 
@@ -83,8 +83,7 @@ test('escJsAttr also applies escH\'s HTML-attribute escaping on top of the JS-st
 // JSON season editor, so everything is escaped and only <strong> comes back.
 test('_decaNoticeHtml keeps <strong> and escapes everything else', () => {
   const html07 = path.join(__dirname, '..', '..', 'leader-hub', 'src', '07-events-email-members-goals.html');
-  const source = extractLines(HTML_PATH, 1537, 1539, ['function escH(']) + '\n' +
-    extractLines(html07, 1251, 1253, ['function _decaNoticeHtml(']);
+  const source = cutDeclarations(HTML_PATH, ['escH']) + '\n' + cutDeclarations(html07, ['_decaNoticeHtml']);
   const { _decaNoticeHtml } = runInSandbox(source, {}, ['_decaNoticeHtml']);
   assert.equal(_decaNoticeHtml('<strong>Due NOW.</strong> 45 days'), '<strong>Due NOW.</strong> 45 days');
   assert.equal(_decaNoticeHtml('<img src=x onerror=alert(1)><strong>ok</strong>'),

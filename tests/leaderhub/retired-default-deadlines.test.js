@@ -12,17 +12,13 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { extractLines } = require('../harness/extract-lines');
+const { cutDeclarations } = require('../harness/cut-declarations');
 const { runInSandbox } = require('../harness/vm-run');
 
 const F10 = path.join(__dirname, '..', '..', 'leader-hub', 'src', '10-command-engine-ai-and-widgets.html');
 
 function load() {
-  const lines = fs.readFileSync(F10, 'utf8').split('\n');
-  const start = lines.findIndex((l) => l.startsWith('const RETIRED_DEFAULT_DEADLINES')) + 1;
-  // findIndex is 0-based, so it is the 1-based number of the line before `let DEADLINES`.
-  const end = lines.findIndex((l, i) => i >= start && l.startsWith('let DEADLINES'));
-  const src = extractLines(F10, start, end, ['const RETIRED_DEFAULT_DEADLINES', 'function dropRetiredDefaultDeadlines(']);
+  const src = cutDeclarations(F10, ['RETIRED_DEFAULT_DEADLINES', 'dropRetiredDefaultDeadlines']);
   return runInSandbox(src, {}, ['RETIRED_DEFAULT_DEADLINES', 'dropRetiredDefaultDeadlines']);
 }
 

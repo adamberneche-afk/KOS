@@ -1,5 +1,5 @@
 'use strict';
-// Runs a snippet of extracted source (see extract-lines.js) inside a fresh
+// Runs a snippet of extracted source (see cut-declarations.js) inside a fresh
 // Node vm context, seeded with whatever globals the caller supplies (e.g. a
 // fixture LP_QUARTERS object, a fake localStorage), and hands back a plain
 // object exposing the requested top-level names.

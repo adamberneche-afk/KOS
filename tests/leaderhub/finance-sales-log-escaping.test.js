@@ -15,10 +15,9 @@
 // tab. Fixed by wrapping both fields with escH(), same as this file's
 // other interpolated fields.
 //
-// This test exercises the real renderer function, not a re-description of
-// it — see extract-lines.js's own header for why a hardcoded line range
-// (with a mustContain safety net) is how this repo tests a named function
-// embedded in a large single-<script> file without mocking the whole DOM.
+// This test exercises the real renderer code, not a re-description of it,
+// cut from the page by name and statement (tests/harness/cut-declarations.js),
+// without mocking the whole DOM.
 // `s.date` is deliberately left unescaped in the source and untested for
 // escaping here — it comes from an `<input type="date">`, which the
 // browser constrains to a real date string or empty, unlike the free-text
@@ -27,22 +26,21 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { extractLines } = require('../harness/extract-lines');
+const { cutDeclarations, cutStatement } = require('../harness/cut-declarations');
 const { runInSandbox } = require('../harness/vm-run');
 
 const ESCH_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '06-tasks-trips-and-modals-core.html');
 const FINANCE_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '09-wbl-lessonplans-procurement-finance-esports.html');
 
 function renderSalesLog(salesLog) {
-  const escHSource = extractLines(ESCH_PATH, 1537, 1539, ['function escH(']);
+  const escHSource = cutDeclarations(ESCH_PATH, ['escH']);
   // The real sink: the else-branch of renderFinance()'s sales-log block,
   // which assigns the rendered rows straight into a DOM element's
   // innerHTML. Extracted as-is (not reimplemented) so this test fails if
   // the real source stops escaping, not just if a hand-written copy of
   // the logic would.
-  const sinkSource = extractLines(FINANCE_PATH, 1841, 1858, [
-    'logEl.innerHTML = [...SALES_LOG]', 'escH(s.staff)', 'escH(s.notes)', "}).join('');",
-  ]);
+  const sinkSource = cutStatement(FINANCE_PATH, 'logEl.innerHTML = [...SALES_LOG]');
+  for (const must of ['escH(s.staff)', 'escH(s.notes)']) assert.ok(sinkSource.includes(must), 'the sink no longer has ' + must);
 
   const logEl = { innerHTML: '' };
   const { logEl: result } = runInSandbox(

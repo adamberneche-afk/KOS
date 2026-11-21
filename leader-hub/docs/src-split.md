@@ -38,7 +38,8 @@ its fragments ever drift apart, same enforced-not-manual pattern
 `tools/html-lint/check.js` and `tools/gas-lint/check.js` already use.
 
 `tests/leaderhub/escaping.test.js` and `pacing-and-calendar.test.js`
-(which use `extractLines()` against specific line ranges) now point at
+(which then used `extractLines()`, since removed, against specific line ranges; since
+2026-11-21 they cut by name with `tests/harness/cut-declarations.js`) now point at
 the relevant fragment file instead of the monolith, with fresh,
 much-smaller re-grepped line numbers local to that fragment — a real
 robustness win: only an edit inside that one fragment can shift these

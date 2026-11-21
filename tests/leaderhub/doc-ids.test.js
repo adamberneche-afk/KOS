@@ -12,14 +12,8 @@ const path = require('path');
 const vm = require('vm');
 
 const LH = path.join(__dirname, '..', '..', 'leader-hub');
-const fnSource = (file, name) => {
-  const src = fs.readFileSync(file, 'utf8');
-  const at = src.indexOf('function ' + name + '(');
-  assert.ok(at !== -1, name + ' in ' + file);
-  let depth = 0, i = src.indexOf('{', at);
-  for (; i < src.length; i++) { if (src[i] === '{') depth++; else if (src[i] === '}' && --depth === 0) break; }
-  return src.slice(at, i + 1);
-};
+const { cutDeclarations } = require('../harness/cut-declarations');
+const fnSource = (file, name) => cutDeclarations(file, [name]);
 const FAKE = 'Fake' + 'DocIdForTests'.repeat(3);
 
 test('lhDocIds_ reads the doc_ids tab as { key: docId }, {} without it', () => {
