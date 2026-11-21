@@ -744,7 +744,8 @@ function _wdSendChatAlert_(message) {
 //    space. Without it, alerts still happen — they just go to the
 //    Apps Script execution log (console.error) instead of Chat.
 // 4. A REAL GAP THIS FILE MAKES VISIBLE BUT CAN'T FIX ITSELF: Flow 1, as
-//    configured per DEPLOYMENT_AND_FLOW_GUIDE.md, marks RubricQueue rows
+//    configured per its build spec (docs/RUBRIC_EXTRACTION_FLOW.md; the
+//    retired DEPLOYMENT_AND_FLOW_GUIDE.md before it), marks RubricQueue rows
 //    COMPLETE unconditionally in its Step 4 — even when
 //    CommitRubricDraftStep's own output was VALIDATION_FAILED and no
 //    TeacherMatrix draft row was ever written. A teacher would see

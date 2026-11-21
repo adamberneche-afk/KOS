@@ -374,7 +374,7 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
   const isCurator = SR_CURATOR_TYPES.indexOf(payloadType) !== -1;
 
   if (!isCurator) {
-    // CLASSIFICATION CONTRACT (WriteClassificationOutputStep.gs). Two rules:
+    // CLASSIFICATION CONTRACT (archive/2026-27-Q1/kos-personal/archive/studio-steps/WriteClassificationOutputStep.gs). Two rules:
     //   1. The ORIGINAL, unstripped text is what gets written — the fence is
     //      stripped only for the copy being validated. Re-serializing risks
     //      subtly reformatting floats or key order differently from what the
@@ -399,7 +399,7 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
     return { ok: true, text: recoveredFromNarrative ? JSON.stringify(parsed) : primary };
   }
 
-  // CURATOR CONTRACT (WriteCuratorOutputStep.gs). Here the output IS
+  // CURATOR CONTRACT (archive/2026-27-Q1/kos-personal/archive/studio-steps/WriteCuratorOutputStep.gs). Here the output IS
   // reconstructed, because the Auditor pass has to be merged in — so
   // whether curatorParsed came from a direct parse or the narrative-
   // recovery fallback, the final JSON.stringify() below already discards

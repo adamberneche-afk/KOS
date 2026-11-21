@@ -43,7 +43,7 @@ function scanCompliance_(docText) {
 // Returns the integer score, or null if the marker isn't present — which is
 // the expected, handled case for every submission evaluated before this
 // marker existed in the live Studio Flow (the prompt-text change in
-// 15_StudioFlowPrompts.js/15b_StudioFlowPrompts_Flow2_Revised.js only takes
+// archive/2026-27-Q2/cas-ccps/scripts/15_StudioFlowPrompts.js/15b_StudioFlowPrompts_Flow2_Revised.js only takes
 // effect once someone manually re-pastes it into the deployed Flow 2 — see
 // those files' own "NOT A DEPLOYED SCRIPT" banners). A submission with no
 // suggested score still lands in PENDING_TEACHER_REVIEW; the teacher just

@@ -263,6 +263,22 @@ test('findStaleFileRefs: a comment naming an archived or missing file, not a liv
     'code outside a comment is not read; a live file and a product name are fine');
 });
 
+test('findStaleFileRefs: a written archive path, a history line and a wrapped name are not stale', () => {
+  const { findStaleFileRefs } = require('../../tools/gas-lint/check.js');
+  const sources = [{ file: 'kos-personal/9_X.gs', text: [
+    '// see archive/2026-27-Q2/meta/PLAN.md for the design',
+    '// merged from 16_X_ADDENDUM.js on 11-20',
+    '// Replaces: PART 12 (the router) from',
+    '//           OLD_MASTER.gs, line for line.',
+    '// the page (student-leader-',
+    '// hub.html) and src/11-...html',
+    '// see GONE_GUIDE.md for the steps',
+  ].join('\n') }];
+  const refs = findStaleFileRefs(sources, new Set(), new Set(['PLAN.md']), new Set(['archive/2026-27-Q2/meta/PLAN.md']));
+  assert.deepEqual(refs.map((r) => [r.line, r.name]), [[7, 'GONE_GUIDE.md']],
+    'only the line that sends a reader to a missing file for something current');
+});
+
 // ── One naming scheme for the flow checks (structure audit 3.7) ─────────────
 
 test('flowCheckNameProblem: each role to its pattern, exceptions excused, free roles free', () => {

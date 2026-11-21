@@ -12,7 +12,7 @@
 // THE GAP THIS CLOSES: before this file, five of the six prompt texts had no
 // deployable home at all —
 //
-//   Flow 1        15_StudioFlowPrompts.js, never deployed (since 2026-11-20
+//   Flow 1        archive/2026-27-Q2/cas-ccps/scripts/15_StudioFlowPrompts.js, never deployed (since 2026-11-20
 //                 the source is cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md).
 //   Flow 2        15b_StudioFlowPrompts_Flow2_Revised.js — the one exception,
 //                 genuinely deployed with cas-ccps:central-ledger.

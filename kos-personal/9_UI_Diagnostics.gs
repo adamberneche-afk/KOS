@@ -4,8 +4,8 @@
 // ================================================================
 //
 // ── PURPOSE & SCOPE ──────────────────────────────────────────
-// This file preserves every Human-in-the-Loop function from
-// KOS_MASTER_v3_1.gs that uses ui.alert/prompt. These functions
+// This file preserves every Human-in-the-Loop function that the retired
+// KOS_MASTER_v3_1.gs had that uses ui.alert/prompt. These functions
 // are intentionally NOT headless — they exist for manual
 // operator tasks run from the Apps Script editor or from a
 // spreadsheet menu when the script is bound to BRAIN_TRUST_INDEX.

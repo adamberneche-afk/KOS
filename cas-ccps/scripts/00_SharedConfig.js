@@ -106,7 +106,7 @@ const TABS = {
   // scrDecisionLog above: every existing reference in THIS project
   // already falls back to this exact literal name via
   // `|| "CompetencyEvidence"`, so adding it is a no-op for current
-  // behavior. cas-ccps/studio-steps/CommitStudentEvaluationStep.gs
+  // behavior. archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs
   // is a separate GAS project with no access to this file or
   // getConfig_() — it hardcodes the same literal name directly, by
   // necessity, not via this config key.

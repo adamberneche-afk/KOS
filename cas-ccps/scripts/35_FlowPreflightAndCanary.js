@@ -58,7 +58,7 @@
 // "INTEGRATION WITH SCRIPT 16" note on making it discoverable the same
 // way 28_Module2Setup.js's own menu items already are) — or, for
 // CompetencyEvidence specifically, self-created the first time
-// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs actually writes
+// archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs actually writes
 // to it. Keep this check; it's exactly the gap
 // 30_SCRSuggestionEngine.js's own "[S30] Aborting run" log line
 // describes on a fresh deployment that hasn't run createSCRTabs_() yet.

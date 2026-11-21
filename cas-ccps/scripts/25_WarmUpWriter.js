@@ -586,7 +586,7 @@ function _ensureWarmUpRegistryExtraCreditColumn_(wrSheet) {
 // _recheckExtraCredit_
 // FIXES A REAL BUG: runWarmUpEvaluation()'s main loop only ever examines a
 // WarmUpRegistry row on the one night lesson_date === yesterday, and by the
-// time the async Studio Flow (studio-steps/FinalizeWarmUpScoreStep.gs)
+// time the async Studio Flow (archive/2026-27-Q2/cas-ccps/archived/studio-steps/FinalizeWarmUpScoreStep.gs)
 // finishes writing feedback into the doc and total_score into this row,
 // that window has already closed — the row is never looked at again, so
 // evaluateWarmUpDoc_()'s FEEDBACK_END_MARKER scan can never actually find
@@ -876,7 +876,7 @@ function evaluateWarmUpDoc_(fileId, queueId) {
   // On the night runWarmUpEvaluation()'s main loop calls this (the one
   // night lesson_date === yesterday), FEEDBACK_END_MARKER never exists yet:
   // feedback is written into the doc later, by the async Studio Flow
-  // (studio-steps/FinalizeWarmUpScoreStep.gs's appendWarmUpFeedbackToDoc_(),
+  // (archive/2026-27-Q2/cas-ccps/archived/studio-steps/FinalizeWarmUpScoreStep.gs's appendWarmUpFeedbackToDoc_(),
   // which mirrors this exact marker text), not by this run. This same
   // function is also called again later by _recheckExtraCredit_() — a
   // second sweep over already-scored rows — which is the pass that

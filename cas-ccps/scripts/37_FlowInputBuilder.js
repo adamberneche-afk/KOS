@@ -38,9 +38,9 @@
 // thing it's uniquely good for — calling Gemini with no API key, no GCP
 // project, no key management. buildFlowInputRows() below performs the
 // exact 3-hop Ledger -> MatrixRegistry -> TeacherMatrix lookup chain
-// cas-ccps/studio-steps/ReadInstructorConfigStep.gs already implements
+// archive/2026-27-Q2/cas-ccps/archived/studio-steps/ReadInstructorConfigStep.gs already implements
 // and already has full test coverage for (tests/cas-ccps/
-// read-instructor-config-step.test.js) — reimplemented here (not called
+// archive/2026-27-Q2/tests/cas-ccps/archived/read-instructor-config-step.test.js) — reimplemented here (not called
 // directly; GAS has no cross-project function calls, and that step lives
 // in the separate cas-ccps:studio-steps project) and materializes the
 // result as one flat, literal row on a single fixed spreadsheet (this
@@ -63,7 +63,7 @@
 //
 // harvestFlowInputResults() below then does everything Flow 2's original
 // design asked Studio's native Docs/Sheets steps (plus the
-// GCP-blocked CommitStudentEvaluationStep.gs custom step) to do:
+// GCP-blocked archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs custom step) to do:
 // splitting the response, posting it as a comment on the student's doc
 // (FEEDBACK_AS_COMMENT) or writing it into the doc, setting the doc
 // header's feedback line (63), writing CompetencyEvidence rows, the
@@ -194,7 +194,7 @@ const FI_NO_ANSWER_STATUS = "ERROR_NO_ANSWER";
 // lane logic, unchanged by this file) with no FlowInput row yet, resolves
 // the full 3-hop lookup chain and materializes one flat literal row.
 //
-// Dedup key is StudentFileID + ConfigID (the pair ReadInstructorConfigStep.gs's
+// Dedup key is StudentFileID + ConfigID (the pair archive/2026-27-Q2/cas-ccps/archived/studio-steps/ReadInstructorConfigStep.gs's
 // own header explains is required — ConfigID alone matches the FIRST
 // student sharing that rubric, not necessarily the right one), not the
 // STAGING_PIPELINE row number — a manual clearStagingPipeline() action
@@ -543,7 +543,7 @@ function flowInputHarvestHasWork_(ctx) {
 }
 
 // Hop 1: Ledger, matched on ConfigID + FileID together — same fix
-// cas-ccps/studio-steps/ReadInstructorConfigStep.gs's own header
+// archive/2026-27-Q2/cas-ccps/archived/studio-steps/ReadInstructorConfigStep.gs's own header
 // documents (a ConfigID-only match returns the FIRST student sharing
 // that rubric, not necessarily the right one, whenever more than one
 // student's evaluation is in flight for the same assignment — the
@@ -1511,7 +1511,7 @@ function _fiMarkStagingFailed_(stagingSheet, stagingRowRef, studentFileId, confi
 
 // Removes the [MILESTONE_OUTCOMES: {...}] machine-readable line before
 // this text ever reaches a student — same stripping regex as
-// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own
+// archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs's own
 // splitGeminiOutput_(), reimplemented here (not shared — GAS has no
 // cross-project function calls; see that file's own header on this
 // exact constraint, and 15c_Flow2DirectEvaluationService.js's parallel
@@ -1770,7 +1770,7 @@ function _fiAlsoShown_(fullText, tertiary) {
 }
 
 // Builds the same feedback block shape
-// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own
+// archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs's own
 // formatFeedbackBlock_() produces — real U+2500 box-drawing markers
 // (03_QueueBridge.js's appendNextSteps_() only matches this exact
 // character, confirmed by that file's own header comment), so the

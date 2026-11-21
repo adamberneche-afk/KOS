@@ -483,9 +483,9 @@ function buildPrefilledUrl_(formId, draftId, config) {
     [cfg.confirmEntryComp4, ""],
     // ── M6 — same reasoning: which pacing-guide unit a milestone belongs
     // to is the teacher's call, not inferred, so this is left blank too.
-    // Reads from cfg.confirmEntryLessonUnit, added by
-    // 19_ClonedSheetConfig_M6_ADDENDUM.js — degrades gracefully (omitted
-    // from the URL) until that addendum's key is configured, same as
+    // Reads from cfg.confirmEntryLessonUnit (19_ClonedSheetConfig.js, its
+    // M6 addendum folded in) — degrades gracefully (omitted
+    // from the URL) until that key is configured, same as
     // every other entry here.
     [cfg.confirmEntryLessonUnit, ""],
   ];

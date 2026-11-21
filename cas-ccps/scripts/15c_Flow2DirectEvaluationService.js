@@ -11,7 +11,7 @@
 // PURPOSE: Opt-in escape hatch for Flow 2 (Student Evaluation) — external
 // product review, Finding 3, "this quarter" tier. When this was written
 // Flow 2 had not been built in Studio (see cas-ccps/README.md); the operator
-// confirmed on 2026-10-10 that it is built now. 15_StudioFlowPrompts.js /
+// confirmed on 2026-10-10 that it is built now. archive/2026-27-Q2/cas-ccps/scripts/15_StudioFlowPrompts.js /
 // 15b_StudioFlowPrompts_Flow2_Revised.js are specs to paste into a Studio
 // Gemini step, not runnable code — meaning there was no way to actually
 // exercise Flow 2's evaluation logic (prompt construction, response
@@ -277,7 +277,7 @@ function runFlow2DirectGemini_(vars) {
 
 // ---------------------------------------------------------------------------
 // _generateEvidenceId_ — same "EVD-" + yyyyMMdd + "-" + 6-char token shape
-// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own writer uses
+// archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs's own writer uses
 // for this column, so both writers of CompetencyEvidence produce evidence
 // IDs in one recognizable format even though they're two independent GAS
 // projects that can't share a literal function. Not
@@ -300,7 +300,7 @@ function _generateEvidenceId_(now) {
 // commit evidence rows from it.
 //
 // Row shape and header are byte-identical, in the same column order, to
-// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own
+// archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs's own
 // writeCompetencyEvidence_() — confirmed the two are the tab's only
 // writers, and that its one reader (30_SCRSuggestionEngine.js's
 // aggregateEvidence_()) resolves columns by header NAME, not position;
@@ -352,7 +352,7 @@ function writeCompetencyEvidenceFromFlow2_(studentEmail, configId, studentFileId
         // archive_status starts blank — see 30_SCRSuggestionEngine.js's
         // _archiveExpiredCompetencyEvidence_()/reactivateCompetencyEvidence_
         // (roadmap 2.2). Must stay byte-identical with
-        // CommitStudentEvaluationStep.gs's writer — see
+        // archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs's writer — see
         // tests/cas-ccps/competency-evidence-schema-compat.test.js.
         outcome, configId || "", now, studentFileId || "", "",
       ]);

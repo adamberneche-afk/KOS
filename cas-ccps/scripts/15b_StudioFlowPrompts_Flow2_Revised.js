@@ -7,26 +7,18 @@
 // instead of that file needing its own separate copy that could drift out
 // of sync with what actually gets pasted into Studio).
 //
-// STILL NOT A DEPLOYED STUDIO FLOW. Being loaded into this GAS project
-// (so code here can reference FLOW_2_SYSTEM_PROMPT directly) is a
-// different thing from Flow 2 itself existing in Google Workspace Studio
-// — it still doesn't (see cas-ccps/README.md's "Flow 2 has never been
-// built in Studio"). This file's prompt text is still meant to ALSO be
-// pasted verbatim into a live Studio Flow's Gemini step whenever that
-// Flow actually gets built — nothing about this file's own content
-// changed, only which project loads it.
-//
 // PURPOSE: Flow 2's (Student Evaluation) system prompt, FLOW_2_SYSTEM_PROMPT, and its build spec.
-//          Complete specification for Flow 2 (Student Evaluation),
-// revised to additionally produce structured, per-milestone competency
-// evidence — without changing what the student sees in their feedback.
 //
-// STATUS: Flow 2 has never been deployed as a Studio Flow. This is not a
-// patch to a live system — it is the actual first build spec for Flow 2,
-// informed by Module 5's requirements. Treat this the same way you would
-// treat 15_StudioFlowPrompts.js's original FLOW_2_SYSTEM_PROMPT: paste
-// verbatim into the Gemini step whenever Flow 2 is actually built there,
-// do not abbreviate or paraphrase.
+// STATUS (2026-11-21): Flow 2 runs live. 37_FlowInputBuilder.js fills
+// FLOW_2_SYSTEM_PROMPT into each FlowInput row (substituteFlowPrompt_, 40),
+// Studio's Flow 2 makes only the model call, and 37 harvests the result;
+// 40's syncFlowPromptsToSheet() puts the same text on the FlowPrompts tab.
+// This constant is the one source of truth: edit it here, push, then run
+// syncFlowPromptsToSheet() (meta/FLOW_DOCTRINE.md rule 16). 15c's opt-in
+// direct-Gemini path reads it too. The step-by-step Studio design below
+// (relay step, CompetencyEvidence write step) is the original, pre-redesign
+// build spec: Apps Script does those halves now (37's header). How this file
+// came to be loaded and when Flow 2 went live: cas-ccps/HISTORY.md.
 //
 // WHAT CHANGED FROM THE ORIGINAL FLOW 2 DESIGN (per STUDIO_FLOW_REFERENCE.pdf):
 //   1. FLOW_2_SYSTEM_PROMPT gains one new instruction block asking Gemini
@@ -428,14 +420,13 @@ machine-readable outcome line, and nothing after it.
 //              + "\\n── END EVALUATION ──\\n"
 //              (real U+2500 box-drawing character, not an ASCII "--" --
 //              this comment used to carry the ASCII transliteration by
-//              mistake; 03_QueueBridge.js's and
-//              09_StudentRevisionGuidance_M1Base.js's own body.findText()
-//              calls only match the real U+2500 marker, and an external
+//              mistake; 03_QueueBridge.js's body.findText() calls (and
+//              those of 09's reference copy, deleted 2026-11-20) only match the real U+2500 marker, and an external
 //              Studio Steps drop built against this comment's stale
 //              ASCII form once shipped exactly that bug -- see
-//              cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own
+//              archive/2026-27-Q2/cas-ccps/archived/studio-steps/CommitStudentEvaluationStep.gs's own
 //              header for the fix. Canonical form confirmed at
-//              15_StudioFlowPrompts.js:261-265.)
+//              archive/2026-27-Q2/cas-ccps/scripts/15_StudioFlowPrompts.js:261-265.)
 //   Note:      Do NOT add compliance stamps in this step. Do NOT write
 //              the "What to do next" block -- Script 03 handles that.
 //              (both unchanged from original design)

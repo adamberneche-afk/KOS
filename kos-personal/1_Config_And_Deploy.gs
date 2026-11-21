@@ -173,7 +173,7 @@ const CFG = {
   //                     (Express + Postgres + Stripe, deployed separately
   //                     to Cloud Run or similar). A real, documented
   //                     alternative for multi-tenant or non-Studio
-  //                     deployments — see inference-service/INFERENCE_SERVICE_DEPLOYMENT.md.
+  //                     deployments — see archive/2026-27-Q2/kos-personal/archive/inference-service/INFERENCE_SERVICE_DEPLOYMENT.md.
   //                     Requires CFG.PROP.MANAGED_SERVICE_BASE_URL and
   //                     CFG.PROP.MANAGED_SERVICE_API_KEY to be set as
   //                     Script Properties (deployment-specific, not
@@ -319,11 +319,11 @@ const CFG = {
     MANAGED_SERVICE_API_KEY:  'KOS_MANAGED_SERVICE_API_KEY',
     // Shared HMAC secret matching inference-service's WEBHOOK_SECRET env
     // var — signs POST /api/v1/jobs submissions so the service can reject
-    // forged job-submission requests (see server.js's validateWebhookSignature).
+    // forged job-submission requests (see archive/2026-27-Q2/kos-personal/archive/inference-service/src/server.js's validateWebhookSignature).
     // REQUIRED in production, despite what this comment used to say.
     // It previously read "Optional: if unset, job submission still runs,
     // unsigned" — true when written, false since the fail-closed fix.
-    // server.js now process.exit(1)s at startup if WEBHOOK_SECRET is
+    // archive/2026-27-Q2/kos-personal/archive/inference-service/src/server.js now process.exit(1)s at startup if WEBHOOK_SECRET is
     // unset while NODE_ENV=production, and rejects an unsigned request
     // with 401. So leaving this property unset against a production
     // service means every job submission fails, not that it runs

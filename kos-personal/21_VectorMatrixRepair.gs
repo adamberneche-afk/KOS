@@ -5,7 +5,7 @@
  * ================================================================
  *
  * Phase 0 of the RTP notebook plan
- * (rtp-core-router/notebook-plan/04_MIGRATION_AND_TEST_PLAN.md): the
+ * (archive/2026-27-Q1/kos-personal/rtp-core-router/notebook-plan/04_MIGRATION_AND_TEST_PLAN.md): the
  * Gem's Vector State comes from VECTOR_MATRIX, so the matrix has to be
  * right before anything briefs from it. Three repairs, each a preview
  * first and an apply second, the same shape as the staging requeue:
