@@ -517,5 +517,5 @@ Build specs (write the tab you build a Flow from, and check it is current) and p
 | `central-ledger` | `checkFlowBuildSpec()`, `syncFlowBuildSpec()` | `runFlowPreflightCheck()` |
 | `family-sentinel` | `syncFamilyMailFlowBuildSpec()` | `runFamilySentinelPreflight()` |
 
-`syncFlowBuildSpec()` (`central-ledger`) writes the `FlowBuildSpec` tab for: Flow 1, Flow 2, Flow 5, Flows 3/4, Flows 3/4/5, Flow 6.
+`syncFlowBuildSpec()` (`central-ledger`) writes the `FlowBuildSpec` tab for: Flow 1, Flow 2, Flows 3/4, Flows 3/4/5, Flow 6.
 Flow 1 (rubric extraction) has no entry in `flow-map.json`, so no canary, binding or liveness check is declared for it.

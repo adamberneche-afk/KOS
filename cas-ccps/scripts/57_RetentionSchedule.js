@@ -148,8 +148,10 @@ function _retentionSchedule_() {
       where: ledger(WFB_INPUT_TABS[3]), dateCol: "Timestamp" },
     { label: "Flow4Input", tier: RETENTION_TIER_WORKING, years: working,
       where: ledger(WFB_INPUT_TABS[4]), dateCol: "Timestamp" },
+    // Flow 5 was retired 2026-11-01 (merged into Flow 3); its tab's old rows
+    // age out here, and this row goes when the tab is empty.
     { label: "Flow5Input", tier: RETENTION_TIER_WORKING, years: working,
-      where: ledger(WFB_INPUT_TABS[5]), dateCol: "Timestamp" },
+      where: ledger("Flow5Input"), dateCol: "Timestamp" },
     { label: "ReviewQueue", tier: RETENTION_TIER_WORKING, years: working,
       where: admin(function (cfg) { return cfg.tabs.reviewQueue; }), dateCol: "Timestamp" },
     { label: "STAGING_PIPELINE", tier: RETENTION_TIER_WORKING, years: working,

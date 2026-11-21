@@ -122,7 +122,7 @@ test('runFlowPreflightCheck: a deployment-ready state passes every check', () =>
     'Tab: RubricQueue', 'Tab: STAGING_PIPELINE', 'Tab: WarmUpQueue',
     'Tab: WarmUpRegistry', 'Tab: CompetencyEvidence', 'Tab: Ledger',
     'Tab: MatrixRegistry', 'Tab: FlowInput',
-    'Tab: Flow3Input', 'Tab: Flow4Input', 'Tab: Flow5Input', 'Tab: WarmUpFlowReturn',
+    'Tab: Flow3Input', 'Tab: Flow4Input', 'Tab: WarmUpFlowReturn',
     'Trigger: buildFlowInputRows', 'Trigger: harvestFlowInputResults',
     'Trigger: buildWarmUpFlowInputs', 'Trigger: harvestWarmUpFlowReturns',
     'Setting: ADMIN_ROOT_FOLDER_ID', 'Setting: CENTRAL_LEDGER_SS_ID',

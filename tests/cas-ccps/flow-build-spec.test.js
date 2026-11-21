@@ -36,7 +36,7 @@ const EXPOSE = [
   'syncFlowBuildSpec', 'checkFlowBuildSpec', 'FBS_TAB', 'FBS_HEADERS',
   'FI', 'FI_TM_COLUMNS_', 'FLOW_PROMPT_TAB',
   'WFB_RETURN_HEADERS', 'WFB_RET', 'WFB_RETURN_TAB', 'WFB_INPUT_TABS',
-  'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS', 'WFB_TRIGGER_STATUS',
+  'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_TRIGGER_STATUS',
 ];
 
 function load() {
@@ -64,14 +64,14 @@ function specRows(exported, ss) {
 
 // ── Generation ───────────────────────────────────────────────────────────────
 
-test('syncFlowBuildSpec: writes a tab covering all five flows', () => {
+test('syncFlowBuildSpec: writes a tab covering Flows 1-4', () => {
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const result = exported.syncFlowBuildSpec();
   assert.ok(result.rows > 50, 'rows: ' + result.rows);
 
   const rows = specRows(exported, ss);
-  ['Flow 1', 'Flow 2', 'Flow 3', 'Flow 4', 'Flow 5'].forEach((flow) => {
+  ['Flow 1', 'Flow 2', 'Flow 3', 'Flow 4'].forEach((flow) => {
     assert.ok(rows.some((r) => r.flow === flow), flow + ' has no rows');
   });
 });
@@ -170,9 +170,7 @@ test('each flow names its trigger condition, taken from the status constants', (
   });
   assert.match(String(triggers.find((r) => r.flow === 'Flow 1').notes), /PENDING_EXTRACTION/);
   assert.match(String(triggers.find((r) => r.flow === 'Flow 2').notes), /READY/);
-  const retired = specRows(exported, ss).find((r) => r.flow === 'Flow 5');
-  assert.equal(retired.surface, 'retired');
-  assert.match(String(retired.notes), /Turn Flow 5 off/);
+  assert.ok(!specRows(exported, ss).some((r) => r.flow === 'Flow 5'), 'Flow 5 is gone (retired 2026-11-01)');
 });
 
 // ── Ownership, the thing a mis-binding gets wrong ────────────────────────────

@@ -41,8 +41,8 @@ from reading the code. Full detail, with the exact logs and diagnosis, is in
    always the last read-only column before the Flow's own writes) is already
    fully substituted** — including, for Flow 3, already resolved between its
    Mode A/B templates. Bind Gemini's system prompt directly to that chip.
-   Don't reconstruct the prompt by hand from `15_StudioFlowPrompts.js` /
-   `15b_StudioFlowPrompts_Flow2_Revised.js` (those describe the *pre-37/41*
+   Don't reconstruct the prompt by hand from
+   `15b_StudioFlowPrompts_Flow2_Revised.js` or its archived predecessor 15 (those describe the *pre-37/41*
    design, now superseded — the lookup, split, and evidence-write steps they
    describe all moved into Apps Script) and don't branch on `Mode` in
    Studio. The `FlowPrompts`-tab prompt-key row in `FlowBuildSpec` is

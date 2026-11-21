@@ -1,9 +1,10 @@
 'use strict';
 // Regenerates cas-ccps/scripts/40_FlowPrompts.js's seven prompt constants FROM
 // their real sources — cas-ccps/docs/CAS_Flow3_Flow4_Specification.html
-// (Flows 3 A/B/C, 4, 5), cas-ccps/scripts/15_StudioFlowPrompts.js (Flow 1) and
-// cas-ccps/docs/TURN_IN_CHECK_FLOW.md (Flow 6, the turn-in check: everything
-// below its first "---" line, as the family mail generator reads its .md) —
+// (Flows 3 A/B/C, 4), cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md (Flow 1) and
+// cas-ccps/docs/TURN_IN_CHECK_FLOW.md (Flow 6, the turn-in check); each .md
+// gives everything below its first "---" line, as the family mail generator
+// reads its .md —
 // the same relationship tools/kos-personal/generate-flow-prompts.js has to
 // CURATOR_PROMPT.md/VECTOR_CLASSIFY_PROMPT.md there.
 //
@@ -19,7 +20,7 @@
 // that is NOT generated — substituteFlowPrompt_(), syncFlowPromptsToSheet(),
 // checkFlowPrompts(), the FLOW_PROMPT_KEYS/TAB/HEADERS registry, FLOW_2's
 // deliberate absence (resolved through 15b_StudioFlowPrompts_Flow2_Revised.js
-// instead). This script only replaces the five
+// instead). This script only replaces the generated
 // `const FLOW_*_PROMPT = \`...\`.trim();` blocks, byte-for-byte identical in
 // every other line, so a run against unchanged sources is a true no-op —
 // confirmed by diffing before writing, not assumed.
@@ -30,12 +31,12 @@
 // — rule 16 closes that off on purpose: a hotfix never passes through the
 // same test gate a normal change does, so its fidelity can't be verified
 // the way a reviewed change's can. This script always regenerates
-// 40_FlowPrompts.js FROM the HTML spec / file 15 — that is the one
+// 40_FlowPrompts.js FROM the HTML spec / the .md files — that is the one
 // correct direction, not a default that happens to usually be right. If
 // tests/cas-ccps/flow-prompts.test.js is failing because someone edited
 // 40_FlowPrompts.js directly instead of the canonical source: that edit
 // was the mistake, not this script — port the improvement into the HTML
-// spec (or file 15 for Flow 1) and run this script to deploy it properly,
+// spec (or the .md) and run this script to deploy it properly,
 // rather than treating the hotfix as something to preserve.
 //
 // tests/cas-ccps/flow-prompts.test.js remains the CI drift guard exactly as
@@ -52,7 +53,7 @@ const { escapeForTemplateLiteral } = require('../lib/escape-template-literal');
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const SCRIPTS = path.join(REPO_ROOT, 'cas-ccps', 'scripts');
 const SPEC_HTML_PATH = path.join(REPO_ROOT, 'cas-ccps', 'docs', 'CAS_Flow3_Flow4_Specification.html');
-const FLOW1_REFERENCE_PATH = path.join(SCRIPTS, '15_StudioFlowPrompts.js');
+const FLOW1_SOURCE_PATH = path.join(REPO_ROOT, 'cas-ccps', 'docs', 'RUBRIC_EXTRACTION_FLOW.md');
 const FLOW6_SOURCE_PATH = path.join(REPO_ROOT, 'cas-ccps', 'docs', 'TURN_IN_CHECK_FLOW.md');
 const TARGET_PATH = path.join(SCRIPTS, '40_FlowPrompts.js');
 
@@ -74,18 +75,10 @@ function extractFromSpec(html) {
   const re = /<h4>([^<]+)<\/h4>[\s\S]*?<div class="prompt-body">([\s\S]*?)<\/div>/g;
   let m;
   while ((m = re.exec(html)) !== null) out[m[1].trim()] = cleanPromptMarkup(m[2]);
-  const bridge = html.match(/<pre[^>]*>(You are writing a one-paragraph bridge[\s\S]*?)<\/pre>/);
-  if (bridge) out['System Prompt — Flow 5 Bridging'] = cleanPromptMarkup(bridge[1]);
   return out;
 }
 
-function extractFlow1(src) {
-  const m = src.match(/const FLOW_1_SYSTEM_PROMPT = `([\s\S]*?)`\.trim\(\);/);
-  if (!m) throw new Error('15_StudioFlowPrompts.js: could not find FLOW_1_SYSTEM_PROMPT');
-  return m[1].trim();
-}
-
-// Flow 6: everything after the .md's first line that is exactly "---".
+// Flows 1 and 6: everything after the .md's first line that is exactly "---".
 function extractFromMarkdown(markdown, label) {
   const lines = String(markdown).replace(/\r\n/g, '\n').split('\n');
   const rule = lines.indexOf('---');
@@ -112,20 +105,17 @@ function regenerate() {
     'System Prompt — Mode B (Generative)',
     'System Prompt — Mode C (Baseline)',
     'System Prompt — Studio Flow 4',
-    'System Prompt — Flow 5 Bridging',
   ];
   REQUIRED_TITLES.forEach((title) => {
     if (!spec[title]) throw new Error(SPEC_HTML_PATH + ': expected prompt titled "' + title + '" not found');
   });
 
-  const flow1Src = fs.readFileSync(FLOW1_REFERENCE_PATH, 'utf8');
   const extracted = {
-    FLOW_1_PROMPT: extractFlow1(flow1Src),
+    FLOW_1_PROMPT: extractFromMarkdown(fs.readFileSync(FLOW1_SOURCE_PATH, 'utf8'), FLOW1_SOURCE_PATH),
     FLOW_3_PROMPT_MODE_A: spec['System Prompt — Mode A (Anchor-Aware)'],
     FLOW_3_PROMPT_MODE_B: spec['System Prompt — Mode B (Generative)'],
     FLOW_3_PROMPT_MODE_C: spec['System Prompt — Mode C (Baseline)'],
     FLOW_4_PROMPT: spec['System Prompt — Studio Flow 4'],
-    FLOW_5_PROMPT: spec['System Prompt — Flow 5 Bridging'],
     FLOW_6_PROMPT: extractFromMarkdown(fs.readFileSync(FLOW6_SOURCE_PATH, 'utf8'), FLOW6_SOURCE_PATH),
   };
 
@@ -170,4 +160,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { regenerate, extractFromMarkdown, FLOW6_SOURCE_PATH, TARGET_PATH };
+module.exports = { regenerate, extractFromMarkdown, FLOW1_SOURCE_PATH, FLOW6_SOURCE_PATH, TARGET_PATH };

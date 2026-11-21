@@ -123,7 +123,7 @@ node tools/coverage-gaps/check.js
 **Code rules.**
 - Students cannot run Apps Script. Any student action goes through the Student Dashboard (`13`), which runs as the admin.
 - Generated files are never hand-edited.
-  - Flow 1 and Flows 3–5 prompts in `40_FlowPrompts.js` come from `cas-ccps/docs/CAS_Flow3_Flow4_Specification.html` and `15_StudioFlowPrompts.js`, via `tools/cas-ccps/generate-flow-prompts.js`. `tests/cas-ccps/flow-prompts.test.js` pins the placeholders.
+  - Flow 1 and Flows 3–5 prompts in `40_FlowPrompts.js` come from `cas-ccps/docs/CAS_Flow3_Flow4_Specification.html` and `cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md` (Flow 1), via `tools/cas-ccps/generate-flow-prompts.js`. `tests/cas-ccps/flow-prompts.test.js` pins the placeholders.
   - Flow 2's prompt is hand-written in `15b_StudioFlowPrompts_Flow2_Revised.js`.
   - `53b` comes from `build-unit-rubrics.js`, `55b` from `build-lesson-assignments.js`, and the Canvas cartridges from `build-canvas-cartridge.js`. All three generators have `--check`.
 - "What to do next" is code, not prompt text: `buildNextStepsText_()` in `03`, placed by `37`. `03`'s post-COMPLETE pass reads the doc body to check for that line (`03:258-276`).

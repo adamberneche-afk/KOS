@@ -151,7 +151,7 @@ header{background:var(--ink);color:white;padding:40px 48px 36px;display:grid;gri
         <td class="col-n"><span class="step-n n-gemini">2</span></td>
         <td><span class="connector-tag conn-gemini">Gemini</span><br><span class="field-name" style="display:block;margin-top:6px">Generate content</span></td>
         <td>
-          <div class="field-name">System prompt</div><div class="field-value value-prompt">FLOW_1_SYSTEM_PROMPT from 15_StudioFlowPrompts.js</div><br><br>
+          <div class="field-name">System prompt</div><div class="field-value value-prompt">FLOW_1 from docs/RUBRIC_EXTRACTION_FLOW.md (FlowPrompts tab)</div><br><br>
           <div class="field-name">Variable mappings</div><br>
           <div style="font-family:var(--mono);font-size:11.5px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px">
             <span style="color:var(--purple)">{{RUBRIC_TEXT}}</span><span>→ @trigger.RubricText</span>
@@ -262,7 +262,7 @@ header{background:var(--ink);color:white;padding:40px 48px 36px;display:grid;gri
         <td class="col-n"><span class="step-n n-gemini">3</span></td>
         <td><span class="connector-tag conn-gemini">Gemini</span><br><span class="field-name" style="display:block;margin-top:6px">Generate content</span></td>
         <td>
-          <div class="field-name">System prompt</div><div class="field-value value-prompt">FLOW_2_SYSTEM_PROMPT from 15_StudioFlowPrompts.js</div><br><br>
+          <div class="field-name">System prompt</div><div class="field-value value-prompt">FLOW_2_SYSTEM_PROMPT from 15b_StudioFlowPrompts_Flow2_Revised.js</div><br><br>
           <div class="field-name">Variable mappings</div>
           <div style="font-family:var(--mono);font-size:11.5px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin-top:6px">
             <span style="color:var(--purple)">{{STUDENT_TEXT}}</span><span>→ @step1.STUDENT_RESPONSE_TEXT</span>
@@ -336,7 +336,7 @@ Otherwise:<br>
   <div class="flow-block">
     <div class="flow-title">
       <div class="flow-badge badge-1">F1</div>
-      <div class="flow-title-text"><h2>Flow 1 System Prompt — Output Schema</h2><p>Source: FLOW_1_SYSTEM_PROMPT in 15_StudioFlowPrompts.js</p></div>
+      <div class="flow-title-text"><h2>Flow 1 System Prompt — Output Schema</h2><p>Source: docs/RUBRIC_EXTRACTION_FLOW.md</p></div>
     </div>
     <div class="prompt-block">
       <div class="prompt-header"><h3>Required JSON output (exact structure)</h3><span class="prompt-source">JSON only — no preamble, no markdown fences</span></div>
@@ -357,7 +357,7 @@ Otherwise:<br>
   <div class="flow-block">
     <div class="flow-title">
       <div class="flow-badge badge-2">F2</div>
-      <div class="flow-title-text"><h2>Flow 2 System Prompt — Output Structure</h2><p>Source: FLOW_2_SYSTEM_PROMPT in 15_StudioFlowPrompts.js</p></div>
+      <div class="flow-title-text"><h2>Flow 2 System Prompt — Output Structure</h2><p>Source: FLOW_2_SYSTEM_PROMPT in 15b_StudioFlowPrompts_Flow2_Revised.js</p></div>
     </div>
     <div class="prompt-block">
       <div class="prompt-header"><h3>Required output structure (4 sections)</h3><span class="prompt-source">Plain text — not JSON</span></div>

@@ -18,6 +18,7 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2026-27-Q2 · ~2026-11-17 · [`cas-ccps/archived/`](2026-27-Q2/cas-ccps/archived/) — cas-ccps's retired scripts: the 8 custom Studio steps and their shared file, the AutoInstaller, the Phase 4 work-file probe
 - 2026-27-Q2 · ~2026-11-17 · [`cas-ccps/README.md`](2026-27-Q2/cas-ccps/README.md) (5 entries) — CAS README: corrections, resolved Known-gaps write-ups and out-of-date passages, moved out of the live README
 - 2026-27-Q2 · ~2026-11-17 · [`cas-ccps/DEPLOYMENT_HANDOFF.md`](2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md) (2 entries) — CAS deployment handoff: the status banner's history of earlier pushes (2026-10-12 to 2026-10-23) and a closed doc-gap note, moved out of the live handoff
+- 2026-27-Q2 · ~2026-11-20 · [`cas-ccps/scripts/15_StudioFlowPrompts.js`](2026-27-Q2/cas-ccps/scripts/15_StudioFlowPrompts.js) — Never-deployed Studio prompt reference; Flow 1's prompt and steps moved to cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md, Flow 2's copy was stale (15b is live)
 
 ## drive-curation/
 

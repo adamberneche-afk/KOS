@@ -1463,3 +1463,26 @@ From meta/AUDIT_STRUCTURE_2026-11-20.md, section 2:
   in `archive/2026-27-Q2/`.
 
 Flow 5's residue (2.3) and 15's stale prompt (2.4) are the next PR.
+
+## Audit step 2, second half: Flow 5's residue and file 15, 2026-11-20
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 2.3 and 2.4:
+
+- **2.3** Flow 5 (merged into Flow 3 on 11-01) is gone from the code: its
+  prompt (40, and the generator's extraction of it), the input headers,
+  the harvest's apply step (a stray Flow 5 return now fails as an unknown
+  flow and leaves the queue row alone), its prompt variables, the preflight's
+  Flow5Input check, the fixtures' clean-up of it, the build spec's retired
+  row, and the `[3, 4, 5]` loops in 34c, 41 and 69b. 69b no longer counts
+  old Flow5Input rows as Studio runs (none fall in its 14-day window now).
+  57 keeps the tab's retention row until the tab is empty. The snapshot field
+  `flow5_prior_response` keeps its name: Flow 3's lead-in reads it, and
+  queued rows carry it.
+- **2.4** Flow 1's prompt and steps moved from `15_StudioFlowPrompts.js`
+  (never deployed) to `docs/RUBRIC_EXTRACTION_FLOW.md`, which the generator
+  reads below its `---` line, as it reads Flow 6's. 15 is archived
+  (`archive/2026-27-Q2/cas-ccps/scripts/`); its Flow 2 copy was stale (15b
+  is live). The docs that sent readers to 15 now point to the .md or 15b.
+
+After the next push, run `syncFlowPromptsToSheet()` once: the FlowPrompts
+tab is rewritten without its FLOW_5 row.
