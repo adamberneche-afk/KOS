@@ -6,6 +6,9 @@ why this repo exists at all.
 
 ## Contents
 
+- **`CI_FLOOR.md`** — the CI checks copied from the Mothership hub's floor
+  (doc-link-check, doc-placeholder-check, secrets-doctor) and how the hub
+  reads this repo; moved out of the root README 2026-11-21.
 - **`PLAN_2026-11.md`** — the plan of record from 2026-10-29 (proposed
   until confirmed the week of Nov 2): measure Flow 2 and warm-ups, Phase 4
   (Forms, Slides, Sheets as work files), and packaging CAS for more

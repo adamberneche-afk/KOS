@@ -176,7 +176,7 @@ jobs:
           changed_files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
 
           fail=0
-          for dir in cas-ccps kos-personal leader-hub drive-curation meta; do
+          for dir in cas-ccps kos-personal leader-hub drive-curation meta tests tools; do
             new_in_dir=$(echo "$added_files" | grep -E "^${dir}/" | grep -v "^${dir}/README\.md$" || true)
             if [ -z "$new_in_dir" ]; then continue; fi
             if echo "$changed_files" | grep -qx "${dir}/README.md"; then
@@ -189,12 +189,14 @@ jobs:
             fail=1
           done
 
-          # A new top-level file (not inside any of the five systems above)
+          # tests/ and tools/ have their own READMEs since 2026-11-21 (the
+          # root README's test and tool inventories moved there).
+          # A new top-level file (not inside any of the folders above)
           # is checked against the root README instead. archive/ is left out:
           # an archived file is documented by its record in
           # archive/catalog.jsonl and the generated indexes, which
           # `node tools/archive/build.js --check` (gas-lint job) enforces.
-          new_at_root=$(echo "$added_files" | grep -vE "^(cas-ccps|kos-personal|leader-hub|drive-curation|meta|archive)/" | grep -v '^README\.md$' || true)
+          new_at_root=$(echo "$added_files" | grep -vE "^(cas-ccps|kos-personal|leader-hub|drive-curation|meta|tests|tools|archive)/" | grep -v '^README\.md$' || true)
           if [ -n "$new_at_root" ]; then
             if echo "$changed_files" | grep -qx 'README.md'; then
               echo "New top-level file(s) and README.md was updated in the same PR:"
