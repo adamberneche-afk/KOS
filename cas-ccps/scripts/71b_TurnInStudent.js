@@ -123,7 +123,7 @@ function _turnInSubmit_(configId, text, now) {
     // The student's words, made safe for the flow's prompt and the sheet.
     out[TCHK.ANSWER] = sheetSafeText_(neutralizeSystemText_(String(text).trim()));
     out[TCHK.STATUS] = TURN_IN_PENDING;
-    const sheet = _turnInSheet_(ss, TURN_IN_CHECKS_TAB, TURN_IN_CHECK_HEADERS);
+    const sheet = ensureTab_(ss, TURN_IN_CHECKS_TAB, TURN_IN_CHECK_HEADERS);
     const at = sheet.getLastRow() + 1;
     sheet.getRange(at, 1, 1, TURN_IN_CHECK_HEADERS.length).setNumberFormat("@");
     sheet.getRange(at, 1, 1, TURN_IN_CHECK_HEADERS.length).setValues([out]);
