@@ -51,7 +51,7 @@
  * the teacher moves a turn-in assignment into the formative group by hand.
  *
  * For an assignment already in a Canvas course, a re-import is not the way to
- * switch it (cas-ccps/README.md, "Canvas course cartridges"): --print lists
+ * switch it (cas-ccps/docs/features/canvas-cartridges.md): --print lists
  * the selected assignments and the text to paste, for switching each one by
  * hand in Canvas.
  *

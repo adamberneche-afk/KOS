@@ -1655,3 +1655,17 @@ Left as they are: helpers that do something more (07's `_tdLsDate_` and 73's
 fixed time zone) now format through `ymd_`. Other date formats (times, "MMM
 d") stay where they are used. `cas-ids.test.js` covers the helpers and fails
 on a new copy or a new hand-written "yyyy-MM-dd" format call.
+
+## The README a map; features in docs/features/, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 4.2: `README.md` was 1,555 lines,
+most of it feature write-ups. Thirteen sections moved word for word to
+`docs/features/` (one file each, links adjusted), and the README's
+"Features" table links them: the attention signal, flow plumbing, the course
+year builder, the nightly rollout, the lesson doc, the agenda deck, Covered
+So Far, lessons in parts (with the four work types and the Form reader),
+turn-in codes, the Canvas roster import, LessonSchedule, Canvas cartridges
+and where settings come from. The README is 319 lines: "Known gaps" stays,
+as this file's own header says it should (its items point back at each
+other). References elsewhere (DEPLOYMENT_HANDOFF, 02's resubmit message,
+AGENT_NOTES, the cartridge builder, the UX reference) point at the new files.

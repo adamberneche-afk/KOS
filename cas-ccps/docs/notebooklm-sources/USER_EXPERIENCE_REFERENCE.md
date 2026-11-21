@@ -63,7 +63,7 @@ Teacher receives an email with what the system extracted. Clicks the link — a 
 
 #### Registering students Per student
 
-Uses the menu → "Register a Student" to open their Student Intake Form. Fills in student Google account, name, block, period, and the assignment Config ID. Script 02 creates the student's document and folder hierarchy automatically, shares the document into the student's Drive. Or, for a whole class at once, enroll from Canvas gradebook exports with `52_CanvasRosterImport.js` (see README, "Canvas roster import").
+Uses the menu → "Register a Student" to open their Student Intake Form. Fills in student Google account, name, block, period, and the assignment Config ID. Script 02 creates the student's document and folder hierarchy automatically, shares the document into the student's Drive. Or, for a whole class at once, enroll from Canvas gradebook exports with `52_CanvasRosterImport.js` (see `docs/features/canvas-roster-import.md`).
 
 #### Monitoring progress Live
 
