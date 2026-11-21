@@ -39,7 +39,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const OUT_REL = 'cas-ccps/docs/SETUP_GUIDE_REFERENCE.md';
 const PREFIX = 'cas-ccps:';
 
-const { stripCommentsAndStrings } = require('../gas-lint/check.js');
+const { stripCommentsAndStrings } = require('../lib/js-source.js');
 
 // ---------------------------------------------------------------------------
 // Source parsing

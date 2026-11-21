@@ -64,7 +64,7 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { writeZip } = require('./zip.js');
+const { writeZip } = require('../lib/zip.js');
 const { textOf, loadDecks, findCard } = require('./lesson-cards.js');
 const rubrics = require('./build-unit-rubrics.js');
 

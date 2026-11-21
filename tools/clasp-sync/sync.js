@@ -47,7 +47,7 @@ const fs   = require('fs');
 const path = require('path');
 
 const REPO_ROOT    = path.resolve(__dirname, '..', '..');
-const PROJECT_MAP  = require(path.join(REPO_ROOT, 'tools/gas-lint/project-map.json'));
+const PROJECT_MAP  = require('../lib/repo.js').projectMap();
 const MANIFEST_DIR = path.join(REPO_ROOT, 'cas-ccps/clasp/manifests');
 const TEMPLATE_DIR = path.join(REPO_ROOT, 'cas-ccps/clasp/templates');
 const LOCAL_DIR    = path.join(REPO_ROOT, 'cas-ccps/clasp/local'); // gitignored — real scriptIds

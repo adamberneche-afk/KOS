@@ -53,11 +53,11 @@ function readFile(relPath) {
 // but not regex literals, so the first `/IDENTITY_KEY\s*[:=]\s*['"].+['"]/`
 // in 5_Error_And_Utilities.gs read as an opening quote and desynced every
 // line after it — which made the tool report 82 missing functions, nearly
-// all of which exist. gas-lint already solved this properly. Requiring it
-// gives one implementation instead of two that drift apart.
+// all of which exist. gas-lint already solved this properly; its stripper is
+// in tools/lib/js-source.js since 2026-11-21 (structure audit 3.9), so this
+// shares the one implementation without loading the whole checker.
 // -----------------------------------------------------------------------
-const gasLint = require('../gas-lint/check.js');
-const { stripCommentsAndStrings, lineAt } = gasLint;
+const { stripCommentsAndStrings, lineAt, ALLOWLIST } = require('../lib/js-source.js');
 
 // gas-lint's own DECL_RE deliberately does not match `async function` —
 // its checks are about GAS's shared global scope, where async declarations
@@ -241,7 +241,7 @@ function checkDocumentedFunctionsExist() {
       const name = m[1];
       if (declared.has(name)) continue;
       if (CONFIG.allowlistedNames.includes(name)) continue;
-      if (gasLint.ALLOWLIST.has(name)) continue;
+      if (ALLOWLIST.has(name)) continue;
 
       const lineNo = lineAt(raw, m.index);
       // Historical framing is judged on the enclosing paragraph — the
@@ -750,7 +750,7 @@ function resolvePathMention(mention, docRel, ctx) {
 
 function pathCheckContext() {
   let tracked = [];
-  try { tracked = execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, encoding: 'utf8' }).split('\n').filter(Boolean); }
+  try { tracked = require('../lib/repo.js').trackedFiles(); }
   catch (e) { tracked = ALL_FILES; }
   const files = new Set(tracked);
   const dirs = new Set();

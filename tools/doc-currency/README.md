@@ -151,9 +151,9 @@ act is to report documentation that is doing its job correctly.
 
 ## Relationship to gas-lint
 
-`doc-currency` requires `tools/gas-lint/check.js` for
-`stripCommentsAndStrings()`, `lineAt()` and its platform-globals
-`ALLOWLIST`, rather than reimplementing them. That reuse is not incidental
+`doc-currency` uses gas-lint's `stripCommentsAndStrings()`, `lineAt()` and
+its platform-globals `ALLOWLIST`, rather than reimplementing them: since
+2026-11-21 they live in `tools/lib/js-source.js`, which gas-lint loads too. That reuse is not incidental
 tidiness — the first version of this tool hand-rolled its own stripper, and
 because that copy had no regex-literal handling, the first
 `/IDENTITY_KEY\s*[:=]\s*['"].+['"]/` it met desynced the parse for the rest

@@ -25,7 +25,7 @@ const END = '// ===== END deploy-version report =====';
 const SCOPE_PREFIX = 'https://www.googleapis.com/auth/';
 
 function projectScopes() {
-  const map = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'gas-lint', 'project-map.json'), 'utf8'));
+  const map = require('../lib/repo.js').projectMap();
   const out = {};
   for (const [name, entry] of Object.entries(map)) {
     if (name.startsWith('_') || !entry.manifest) continue;

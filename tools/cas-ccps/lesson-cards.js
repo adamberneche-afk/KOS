@@ -23,7 +23,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { readZip } = require('./zip.js');
+const { readZip } = require('../lib/zip.js');
 
 const CARDS_DIR = path.join(__dirname, '..', '..', 'cas-ccps', 'curriculum', 'lesson-cards');
 

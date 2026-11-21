@@ -29,7 +29,7 @@ const path = require('path');
 const { execFileSync } = require('child_process');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
-const PROJECT_MAP = require('../gas-lint/project-map.json');
+const PROJECT_MAP = require('../lib/repo.js').projectMap();
 
 // A project's self-reported marker constant necessarily lives in its own
 // dedicated file, excluded here — a commit can't embed its own SHA (the

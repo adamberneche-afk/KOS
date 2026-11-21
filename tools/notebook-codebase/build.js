@@ -123,7 +123,7 @@ function repoFiles() {
     const top = execFileSync('git', ['rev-parse', '--show-toplevel'],
       { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
     if (path.resolve(top) === path.resolve(ROOT)) {
-      return execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+      return require('../lib/repo.js').trackedFiles(ROOT);
     }
   } catch (e) { /* no git: fall through to the walk */ }
   return walk('', []);

@@ -28,7 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { escapeForTemplateLiteral } = require('../lib/escape-template-literal');
+const { escapeForTemplateLiteral } = require('../lib/prompt-constants.js');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const KP = path.join(REPO_ROOT, 'kos-personal');

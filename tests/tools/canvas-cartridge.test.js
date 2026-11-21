@@ -15,7 +15,7 @@ const path = require('path');
 const { build, buildCourse, studentDashboardUrl } = require('../../tools/cas-ccps/build-canvas-cartridge.js');
 const rubrics = require('../../tools/cas-ccps/build-unit-rubrics.js');
 const { loadDecks } = require('../../tools/cas-ccps/lesson-cards.js');
-const { readZip, writeZip } = require('../../tools/cas-ccps/zip.js');
+const { readZip, writeZip } = require('../../tools/lib/zip.js');
 const { parseDocumentXml, textOf } = require('../../tools/cas-ccps/lesson-cards.js');
 
 const DIR = path.join(__dirname, '..', '..', 'cas-ccps', 'curriculum', 'canvas-cartridges');

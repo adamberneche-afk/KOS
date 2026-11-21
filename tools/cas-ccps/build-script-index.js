@@ -60,7 +60,7 @@ function generatorOf(text) {
 }
 
 function projectsByFile() {
-  const map = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools', 'gas-lint', 'project-map.json'), 'utf8'));
+  const map = require('../lib/repo.js').projectMap();
   const out = {};
   for (const [name, entry] of Object.entries(map)) {
     if (name.startsWith('_') || !name.startsWith('cas-ccps:')) continue;
