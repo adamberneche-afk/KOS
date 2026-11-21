@@ -2199,7 +2199,7 @@ function findUnusedFiles(sources) {
     if (!top.length) { out.push({ file, reason: 'declares nothing' }); return; }
     const others = stripped.filter((_, j) => j !== i).join('\n');
     const used = top.some((d) => (d.kind === 'function' && !/_$/.test(d.name)) ||
-      new RegExp('\\b' + d.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b').test(others));
+      new RegExp('(?<![\\w$])' + d.name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![\\w$])').test(others));
     if (!used) out.push({ file, reason: 'nothing in its project uses ' + top.map((d) => d.name).join(', ') });
   });
   return out;
