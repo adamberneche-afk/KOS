@@ -144,15 +144,17 @@ test('every marker file targets a distinct, real project-map.json key', () => {
 
 const SCOPE_PREFIX = 'https://www.googleapis.com/auth/';
 
-test('DEPLOY_PROJECT_SCOPES is each marker project\'s manifest oauthScopes', () => {
+test('DEPLOY_PROJECT_SCOPES is every project\'s manifest oauthScopes, the marker projects included', () => {
   const projectMap = require('../../tools/gas-lint/project-map.json');
   const { exported } = loadGasFiles([SHARED_CONFIG], ['DEPLOY_PROJECT_SCOPES', 'DEPLOY_SCOPE_PROBES']);
   const table = JSON.parse(JSON.stringify(exported.DEPLOY_PROJECT_SCOPES));
-  assert.deepEqual(Object.keys(table).sort(), MARKER_FILES.map((m) => m.project).sort());
-  for (const { project } of MARKER_FILES) {
+  const withManifest = Object.keys(projectMap).filter((k) => !k.startsWith('_') && projectMap[k].manifest);
+  assert.deepEqual(Object.keys(table).sort(), withManifest.sort());
+  MARKER_FILES.forEach(({ project }) => assert.ok(table[project], project));
+  for (const project of withManifest) {
     const manifest = require(path.join(__dirname, '..', '..', projectMap[project].manifest));
-    assert.deepEqual(table[project].map((s) => SCOPE_PREFIX + s).sort(), manifest.oauthScopes.slice().sort(),
-      project + ': update DEPLOY_PROJECT_SCOPES in 00 with its manifest');
+    assert.deepEqual(table[project].slice().sort(), manifest.oauthScopes.map((s) => s.replace(SCOPE_PREFIX, '')).sort(),
+      project + ': run node tools/flow-harness-sync/sync-deploy-report.js');
   }
   // Every probed scope is one some project lists.
   const listed = new Set([].concat(...Object.values(table)));

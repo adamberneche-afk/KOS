@@ -404,7 +404,7 @@ project `SETUP_GUIDE.md` names, which for the nightly jobs is the Central Ledger
 | `harvestWarmUpFlowReturns` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `onLedgerChangeProbe` | `installLedgerChangeProbe()` | on change, (spreadsheet) | 64_LedgerCycle.js |
 | `registerDeliveredWarmUps` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
-| `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 43_DeployVersionMarker_CentralLedger.js |
+| `reportDeployVersion` | `_installDeployVersionReportTrigger_()` (run via `installDeployVersionReportTrigger()`) | every 6 h | 00_SharedConfig.js |
 | `runAlignmentLogBackfill_` | `restoreLedgerTriggers()` | every `mins` (computed) min | 64_LedgerCycle.js |
 | `runFlow2DriftProbe` | `installFlow2DriftProbe()` | daily, about 06:00 | 39b_Flow2Provenance.js |
 | `runLedgerCycle` | `lcInstall_()` (run via `installLedgerCycle()`, `previewLedgerCycle()`) | every 1 min | 64_LedgerCycle.js |
@@ -454,32 +454,32 @@ cycle checks only every `LEDGER_CYCLE_QUIET_EVERY` minutes (default 5; the minut
 
 | Handler | Installed by | Schedule | File |
 |---|---|---|---|
-| `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 62_DeployVersionMarker_FamilySentinel.js |
+| `reportDeployVersion` | `_installDeployVersionReportTrigger_()` (run via `installDeployVersionReportTrigger()`) | every 6 h | 00_SharedConfig.js |
 | `runFamilySentinel` | `installFamilySentinelTrigger()` | every 15 min | 60_FamilyMailSentinel.js |
 
 ### `master-student-template`
 
 | Handler | Installed by | Schedule | File |
 |---|---|---|---|
-| `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 45_DeployVersionMarker_MasterStudentTemplate.js |
+| `reportDeployVersion` | `_installDeployVersionReportTrigger_()` (run via `installDeployVersionReportTrigger()`) | every 6 h | 00_SharedConfig.js |
 
 ### `rubric-response-sheet`
 
 | Handler | Installed by | Schedule | File |
 |---|---|---|---|
-| `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 46_DeployVersionMarker_RubricResponseSheet.js |
+| `reportDeployVersion` | `_installDeployVersionReportTrigger_()` (run via `installDeployVersionReportTrigger()`) | every 6 h | 00_SharedConfig.js |
 
 ### `student-dashboard`
 
 | Handler | Installed by | Schedule | File |
 |---|---|---|---|
-| `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 49_DeployVersionMarker_StudentDashboard.js |
+| `reportDeployVersion` | `_installDeployVersionReportTrigger_()` (run via `installDeployVersionReportTrigger()`) | every 6 h | 00_SharedConfig.js |
 
 ### `teacher-dashboard`
 
 | Handler | Installed by | Schedule | File |
 |---|---|---|---|
-| `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 48_DeployVersionMarker_TeacherDashboard.js |
+| `reportDeployVersion` | `_installDeployVersionReportTrigger_()` (run via `installDeployVersionReportTrigger()`) | every 6 h | 00_SharedConfig.js |
 | `runWeeklyParentReportPrep` | `installWeeklyParentReportTrigger()` | Fridays, about 05:00 | 36_WeeklyParentReport.js |
 | `runWeeklyStudentAggregation_` | `installStudentAggregatorTrigger_()` (run via `setupStudentContextDocs()`) | every 7 days, about 03:00 | 29_StudentContextAggregator.js |
 
@@ -489,13 +489,13 @@ cycle checks only every `LEDGER_CYCLE_QUIET_EVERY` minutes (default 5; the minut
 |---|---|---|---|
 | `abandonStaleDrafts` | `registerTriggersIfNeeded_()` (run via `onOpen()`) | Mondays, about 07:00 | 08_TeacherConfirmationStep.js |
 | `pollForNewDrafts` | `registerTriggersIfNeeded_()` (run via `onOpen()`) | every 5 min | 08_TeacherConfirmationStep.js |
-| `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 47_DeployVersionMarker_TeacherMatrixSheet.js |
+| `reportDeployVersion` | `_installDeployVersionReportTrigger_()` (run via `installDeployVersionReportTrigger()`) | every 6 h | 00_SharedConfig.js |
 
 ### `unified-manual`
 
 | Handler | Installed by | Schedule | File |
 |---|---|---|---|
-| `reportDeployVersion` | `installDeployVersionReportTrigger()` | every 6 h | 44_DeployVersionMarker_UnifiedManual.js |
+| `reportDeployVersion` | `_installDeployVersionReportTrigger_()` (run via `installDeployVersionReportTrigger()`) | every 6 h | 00_SharedConfig.js |
 
 ## 5. Studio Flows
 

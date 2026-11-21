@@ -2870,30 +2870,33 @@ function getCompetencyTextMap_(registrySheet) {
   return compTextMap;
 }
 
-// =============================================================================
-// Deploy-drift self-report (process-hardening sprint Phase 3b —
-// meta/PROCESS_HARDENING_SPRINT.md). One shared implementation here since
-// 00_SharedConfig.js is already pasted into every cas-ccps project in
-// scope for this — each project's own small, project-specific marker
-// file (e.g. cas-ccps/scripts/CentralLedgerDeployVersion.js) supplies its
-// real tools/gas-lint/project-map.json key and its own stamped SHA, then
-// calls this. See kos-personal/17_DeployVersionReport.gs and
-// leader-hub/DeployVersionReport.gs — the two already-live reference
-// implementations this mirrors — and tools/deploy-drift/README.md for
-// the full mechanism, why this pushes instead of being polled, and the
-// threat model behind the GitHub token this reads.
+// ===== BEGIN deploy-version report: generated from shared/deploy-report/deploy-version-report.js by tools/flow-harness-sync/sync-deploy-report.js. Edit there, then run it. =====
+// The deploy-version report every Apps Script project sends (process-hardening
+// sprint Phase 3; structure audit 3.8, 2026-11-21: one copy instead of three).
+// THE CANONICAL SOURCE. tools/flow-harness-sync/sync-deploy-report.js copies
+// it, between its BEGIN and END lines, into cas-ccps/scripts/00_SharedConfig.js,
+// kos-personal/17_DeployVersionReport.gs and leader-hub/DeployVersionReport.gs,
+// filling DEPLOY_PROJECT_SCOPES from every project's manifest. Edit this file
+// and run the sync; never edit a copy (a test fails when one differs).
 //
-// ONE-TIME SETUP per project: Script Properties → add
-// DEPLOY_DRIFT_GITHUB_TOKEN (a fine-grained GitHub PAT scoped to only
-// adamberneche-afk/KOS, minimum permission the "Create a repository
-// dispatch event" API needs — never a broad classic repo-scope token,
-// never Contents/workflow-editing permission beyond that). Until it's
-// set, this logs and returns false — fails closed to a no-op, not open.
+// Each project's own marker file holds its stamped SHA and calls
+// _reportDeployVersion_('<project-map key>', sha) from its public
+// reportDeployVersion(); tools/deploy-drift/README.md has the mechanism, why
+// it pushes instead of being polled, and the threat model behind the token.
+//
+// ONE-TIME SETUP per project: Script Properties → DEPLOY_DRIFT_GITHUB_TOKEN (a
+// fine-grained GitHub PAT scoped to only adamberneche-afk/KOS, the minimum
+// permission "Create a repository dispatch event" needs — never a broad
+// classic repo-scope token, never Contents/workflow-editing permission).
+// Until it's set, the report logs and returns false: it fails closed to a
+// no-op, not open.
 //
 // Since 2026-11-19 it first checks the project's permissions
-// (_deployPermissionGaps_ below) and, after reporting, throws when one is
-// missing: a red run in the editor, and a failure email from the 6-hour
-// trigger.
+// (_deployPermissionGaps_) and, after reporting, throws when one is missing:
+// a red run in the editor, and a failure email from the 6-hour trigger. The
+// Student Dashboard's Slides scope was in its manifest but never granted, and
+// a student's Submit failed; since 2026-11-21 every project checks this, not
+// only cas-ccps.
 function _reportDeployVersion_(projectName, sha) {
   const missing = _deployPermissionGaps_(projectName);
   const reported = _sendDeployVersionReport_(projectName, sha);
@@ -2907,31 +2910,26 @@ function _reportDeployVersion_(projectName, sha) {
   return reported;
 }
 
-// Each cas-ccps project's oauthScopes, as its manifest lists them
-// (cas-ccps/clasp/manifests/<name>.appsscript.json, without the
-// "https://www.googleapis.com/auth/" prefix). A test holds the two equal.
+// Each project's oauthScopes, from its manifest (tools/gas-lint/project-map.json's
+// "manifest"), without the "https://www.googleapis.com/auth/" prefix. Written
+// by the sync from the manifests: edit a manifest and run it.
 const DEPLOY_PROJECT_SCOPES = {
-  'cas-ccps:central-ledger': ['spreadsheets', 'drive', 'documents', 'presentations', 'forms', 'script.send_mail',
-    'userinfo.email', 'script.scriptapp', 'script.external_request'],
-  'cas-ccps:unified-manual': ['drive', 'spreadsheets', 'documents', 'forms', 'userinfo.email', 'script.external_request',
-    'script.scriptapp'],
-  'cas-ccps:master-student-template': ['spreadsheets', 'documents', 'userinfo.email', 'script.external_request',
-    'script.scriptapp', 'drive.readonly'],
-  'cas-ccps:rubric-response-sheet': ['spreadsheets', 'drive', 'documents', 'script.send_mail', 'script.external_request',
-    'script.scriptapp'],
+  'kos-personal': ['drive', 'spreadsheets', 'documents', 'script.scriptapp', 'script.send_mail', 'userinfo.email', 'script.external_request'],
+  'cas-ccps:central-ledger': ['spreadsheets', 'drive', 'documents', 'presentations', 'forms', 'script.send_mail', 'userinfo.email', 'script.scriptapp', 'script.external_request'],
+  'cas-ccps:unified-manual': ['drive', 'spreadsheets', 'documents', 'forms', 'userinfo.email', 'script.external_request', 'script.scriptapp'],
+  'cas-ccps:master-student-template': ['spreadsheets', 'documents', 'userinfo.email', 'script.external_request', 'script.scriptapp', 'drive.readonly'],
+  'cas-ccps:rubric-response-sheet': ['spreadsheets', 'drive', 'documents', 'script.send_mail', 'script.external_request', 'script.scriptapp'],
   'cas-ccps:teacher-matrix-sheet': ['spreadsheets', 'script.send_mail', 'script.scriptapp', 'script.external_request'],
-  'cas-ccps:teacher-dashboard': ['spreadsheets', 'drive', 'documents', 'presentations', 'script.scriptapp',
-    'userinfo.email', 'script.external_request'],
-  'cas-ccps:student-dashboard': ['spreadsheets', 'documents', 'forms', 'presentations', 'userinfo.email',
-    'script.external_request', 'script.scriptapp'],
-  'cas-ccps:family-sentinel': ['gmail.modify', 'spreadsheets', 'documents', 'userinfo.email', 'script.scriptapp',
-    'script.external_request'],
+  'cas-ccps:teacher-dashboard': ['spreadsheets', 'drive', 'documents', 'presentations', 'script.scriptapp', 'userinfo.email', 'script.external_request'],
+  'cas-ccps:student-dashboard': ['spreadsheets', 'documents', 'forms', 'presentations', 'userinfo.email', 'script.external_request', 'script.scriptapp'],
+  'cas-ccps:family-sentinel': ['gmail.modify', 'spreadsheets', 'documents', 'userinfo.email', 'script.scriptapp', 'script.external_request'],
+  'leader-hub:app': ['script.send_mail', 'drive', 'documents', 'spreadsheets', 'userinfo.email', 'openid', 'script.external_request', 'script.scriptapp'],
 };
 
 // One call per scope that throws "You do not have permission to call …"
 // when the account running it hasn't granted that scope, and does nothing
 // else: an open of an ID that doesn't exist fails "not found" once the scope
-// is granted. Found by name (globalThis), because 00 is in every project and
+// is granted. Found by name (globalThis), because this block is in every project and
 // a project may only name the services its manifest lists (gas-lint); a
 // probe runs only for a scope the project lists. Not probed: userinfo.email
 // (Session gives "" rather than failing), script.external_request (the
@@ -3018,6 +3016,19 @@ function _sendDeployVersionReport_(projectName, sha) {
     return false;
   }
 }
+
+// The 6-hourly trigger for reportDeployVersion, installed idempotently. Each
+// project's public installDeployVersionReportTrigger() guards its caller as
+// that project does (a web app's, with requireScriptOwner_), then calls this;
+// kos-personal installs it in setupAllTriggers() instead.
+function _installDeployVersionReportTrigger_() {
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === 'reportDeployVersion') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('reportDeployVersion').timeBased().everyHours(6).create();
+  console.log('[DeployVersionReport] Trigger installed: reportDeployVersion, every 6 hours.');
+}
+// ===== END deploy-version report =====
 
 // ---------------------------------------------------------------------------
 // The process reflection on Submit (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md,

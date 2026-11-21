@@ -129,15 +129,18 @@ specifically:** `kos-personal`/`leader-hub`'s marker files hold *only*
 the SHA constant — every line of real reporting logic lives in a
 separate, fully-tracked file. `cas-ccps`'s 8 marker+wrapper files (e.g.
 `43_DeployVersionMarker_CentralLedger.js`) also carry the thin
-`reportDeployVersion()` wrapper and `installDeployVersionReportTrigger()`
+`reportDeployVersion()` wrapper and the one-line `installDeployVersionReportTrigger()`
 — both excluded from `expected-marker.js`'s computation along with the
 constant, since they're in the same file. A future edit to either
 wouldn't register as a "real" code change for that project's drift
 check. Accepted deliberately, not missed: the logic that actually matters
 (`_reportDeployVersion_()`'s `UrlFetchApp` call, error handling, payload
-shape) lives once in `00_SharedConfig.js`, fully tracked and drift-checked
-normally — only a one-time installer and a 3-line wrapper are exempted,
-and neither is expected to need a second edit once written.
+shape, the trigger installer) lives in the one deploy-version report block
+(`shared/deploy-report/deploy-version-report.js`, copied into cas-ccps's
+`00_SharedConfig.js`, kos-personal's 17 and leader-hub's
+`DeployVersionReport.gs` by `tools/flow-harness-sync/sync-deploy-report.js`
+since 2026-11-21), fully tracked and drift-checked normally. Only a
+one-line installer and a short wrapper are exempted.
 
 ## Wiring up a new project (one-time, per project — needs you, not this session)
 
@@ -156,12 +159,14 @@ generating a credential is inherently something only you can do.
 2. **kos-personal / leader-hub shape** (one project, one dedicated file
    pair): add a `MARKER_FILES` entry in `tools/deploy-drift/expected-marker.js`
    (stamp.js reads the same table), a marker file matching
-   `kos-personal/18_DeployVersionMarker.gs`'s shape, and a reporting
-   function matching `kos-personal/17_DeployVersionReport.gs`'s shape wired
-   to its own low-frequency trigger.
+   `kos-personal/18_DeployVersionMarker.gs`'s shape, and a
+   `reportDeployVersion()` calling `_reportDeployVersion_('<key>', sha)`,
+   wired to its own low-frequency trigger. The report itself is the shared
+   block: add the new file to `TARGETS` in
+   `tools/flow-harness-sync/sync-deploy-report.js` with an empty BEGIN/END
+   pair and run it.
    **cas-ccps shape** (many projects sharing `00_SharedConfig.js`): the
-   actual `UrlFetchApp`/token logic lives ONCE, in
-   `00_SharedConfig.js`'s `_reportDeployVersion_(projectName, sha)` — a
+   block is already in 00 — a
    new project just needs its own tiny marker+wrapper file (see
    `cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js` for the
    reference shape) calling into that shared function, plus the same

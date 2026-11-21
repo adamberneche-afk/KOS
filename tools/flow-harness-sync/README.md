@@ -95,6 +95,32 @@ not merely shaped the same.
 - Tests: `tests/tools/flow-harness-sync.test.js` (the drift guard plus unit
   tests for the rendering/diffing functions).
 
+## Second instance: the deploy-version report (code, not data)
+
+Structure audit 3.8 (2026-11-21). The report each Apps Script project sends
+to deploy-drift had three hand copies, and they had drifted: only cas-ccps's
+checked that the project's permissions were granted (#495), a gap any
+project can have.
+
+- Canonical source: `shared/deploy-report/deploy-version-report.js`, Apps
+  Script itself, since what is shared is code: `_reportDeployVersion_`, the
+  permission probes, the sender, and `_installDeployVersionReportTrigger_`.
+  `DEPLOY_PROJECT_SCOPES` is left empty there and filled from every
+  project's manifest, so the copies are byte-identical.
+- Generator: `sync-deploy-report.js` replaces everything between its BEGIN
+  and END lines in each target (cas-ccps `00_SharedConfig.js`, kos-personal
+  `17_DeployVersionReport.gs`, leader-hub `DeployVersionReport.gs`). A
+  block, not named constants, because the unit is a group of functions.
+- What stays per project: the marker file with its stamped SHA, and the
+  public `reportDeployVersion()` and installer, each with that project's
+  caller guard.
+- Tests: `tests/tools/deploy-report-sync.test.js` (the copies match; no
+  report or trigger outside the block; kos-personal and leader-hub fail on
+  a missing permission) and the three systems' own report tests.
+- Not done: generating the marker files at sync time. They are stamped by
+  `tools/deploy-drift/stamp.js` and by `run.js` at push, so that change
+  belongs with the deploy path, not here.
+
 ## Adding a new managed constant to an existing sync script
 
 Add the value to the canonical JSON, add a render call for it in the
