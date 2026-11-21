@@ -2018,6 +2018,63 @@ function checkSameProjectTypeofGuards() {
 // Guarded on require.main so that `require()`ing this file gives you the
 // helpers without running the checks or calling process.exit().
 // -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// Check: comments that name a file no longer in the repo (2026-11-21,
+// structure audit 4.8). A header that says "see 16_..._ADDENDUM.js" or
+// "the plan in STUDENT_WORK_PLAN_2026-10.md" sends a reader to a file that
+// was folded in, archived or never committed. Many such lines are history
+// on purpose ("folded in from X"), so this is ONE summary warning with the
+// count, not a warning per line; `--stale-refs` lists every one, each
+// marked archived (still in archive/) or gone.
+// -----------------------------------------------------------------------
+const STALE_REF_FILES_RE = /^(cas-ccps\/scripts\/[^/]+\.js|kos-personal\/[^/]+\.gs|leader-hub\/[^/]+\.gs|leader-hub\/src\/[^/]+\.js)$/;
+const STALE_REF_NAME_RE = /\b([A-Za-z0-9][\w.-]*\.(?:js|gs|html|md|json))\b/g;
+// Product names and the like that look like files.
+const STALE_REF_NOT_FILES = new Set(['Node.js']);
+
+// [{ file, line, name, archived }] for every file name a comment line names
+// that no live file has. liveNames/archivedNames: Sets of base names.
+function findStaleFileRefs(sources, liveNames, archivedNames) {
+  const out = [];
+  sources.forEach(({ file, text }) => {
+    text.split('\n').forEach((l, i) => {
+      const c = l.indexOf('//');
+      const comment = c >= 0 ? l.slice(c) : (/^\s*\*/.test(l) ? l : '');
+      if (!comment) return;
+      let m;
+      STALE_REF_NAME_RE.lastIndex = 0;
+      while ((m = STALE_REF_NAME_RE.exec(comment)) !== null) {
+        const name = m[1];
+        if (liveNames.has(name) || STALE_REF_NOT_FILES.has(name)) continue;
+        out.push({ file, line: i + 1, name, archived: archivedNames.has(name) });
+      }
+    });
+  });
+  return out;
+}
+
+function checkStaleFileRefs() {
+  let tracked = [];
+  try { tracked = require('child_process').execFileSync('git', ['ls-files'], { cwd: REPO_ROOT, encoding: 'utf8' }).split('\n').filter(Boolean); }
+  catch (e) { return; }
+  const base = (f) => f.split('/').pop();
+  const liveNames = new Set(tracked.filter((f) => !f.startsWith('archive/')).map(base));
+  const archivedNames = new Set(tracked.filter((f) => f.startsWith('archive/')).map(base));
+  const sources = tracked.filter((f) => STALE_REF_FILES_RE.test(f)).map((f) => ({ file: f, text: readFile(f) }));
+  const refs = findStaleFileRefs(sources, liveNames, archivedNames);
+  if (process.argv.includes('--stale-refs')) {
+    refs.forEach((r) => console.log(r.file + ':' + r.line + '  ' + r.name + (r.archived ? '  (archived)' : '  (gone)')));
+    console.log(refs.length + ' comment reference(s) to ' + new Set(refs.map((r) => r.name)).size + ' file(s) no longer in the repo.');
+    process.exit(0);
+  }
+  if (!refs.length) return;
+  const names = new Set(refs.map((r) => r.name));
+  warn('stale-file-ref', refs.length + ' comment line(s) name ' + names.size + ' file(s) no longer in the repo (' +
+    refs.filter((r) => r.archived).length + ' archived, the rest gone), e.g. ' + refs[0].name + ' at ' + refs[0].file + ':' + refs[0].line +
+    '. Where a header sends a reader there for something current, point it at the live file or drop it; history belongs in HISTORY.md. ' +
+    '`node tools/gas-lint/check.js --stale-refs` lists every one.');
+}
+
 module.exports = {
   stripCommentsAndStrings,
   parseColumnMap,
@@ -2055,6 +2112,7 @@ module.exports = {
   findSameProjectTypeofGuards,
   fileParamNames,
   typeofGuardedNames,
+  findStaleFileRefs,
 };
 
 if (require.main !== module) return;
@@ -2079,6 +2137,7 @@ checkWebAppAuthChecks();
 checkWebAppPublicFunctions();
 checkBoundedLoopConvention();
 checkSameProjectTypeofGuards();
+checkStaleFileRefs();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

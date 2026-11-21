@@ -114,7 +114,7 @@ version. `@Startup` read `KOS_LATEST_PRIMER` first and took all state from
 it. The rules it moved out are in a notebook source,
 `rtp-core-router/notebook-sources/TURN_LOOP_REFERENCE.md`, now also Claude
 Project knowledge. Test runs are logged in
-`rtp-core-router/notebook-plan/05_TEST_LOG.md` (CT-01, CT-05, CT-06 and
+`archive/2026-27-Q1/kos-personal/rtp-core-router/notebook-plan/05_TEST_LOG.md` (CT-01, CT-05, CT-06 and
 CT-08 passed). The KOS Claude Project (`claude-project/`) replaced the Gem
 as the thinking surface (`meta/PLAN_2026-10.md`); the commute trial chose
 Claude on 2026-10-17.

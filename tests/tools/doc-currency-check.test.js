@@ -338,3 +338,22 @@ test('resolvePathMention: from the root, the doc\'s folder, the end of a path; g
   assert.equal(r('cas-ccps/07_TeacherDashboard.js'), null, 'a wrong path is reported');
   assert.equal(r('drive-curation/gone.xlsx'), null, 'a file with an extension under any first folder is checked');
 });
+
+test('resolvePathMention: a path found only as the end of an archived file is reported with where it is (audit 4.10)', () => {
+  const ctx = {
+    files: new Set(['meta/README.md', 'archive/2026-27-Q2/meta/HANDOFF_2026-11-15.md']),
+    dirs: new Set(['meta', 'archive', 'archive/2026-27-Q2', 'archive/2026-27-Q2/meta']),
+    suffixes: new Set(),
+    archiveSuffixes: new Map([['meta/HANDOFF_2026-11-15.md', 'archive/2026-27-Q2/meta/HANDOFF_2026-11-15.md']]),
+    top: new Set(['meta', 'archive']),
+    ignored: () => false,
+    allow: [],
+    archive: [],
+  };
+  assert.deepEqual(resolvePathMention({ path: 'meta/HANDOFF_2026-11-15.md' }, 'README.md', ctx),
+    { archived: 'archive/2026-27-Q2/meta/HANDOFF_2026-11-15.md' });
+  assert.equal(resolvePathMention({ path: 'meta/HANDOFF_2026-11-15.md' }, 'archive/2026-27-Q2/meta/X.md', ctx), null,
+    'an archived doc naming its old neighbour is not sent to the archive');
+  assert.equal(resolvePathMention({ path: 'archive/2026-27-Q2/meta/HANDOFF_2026-11-15.md' }, 'README.md', ctx), 'file',
+    'the archive path itself is fine');
+});

@@ -248,3 +248,17 @@ test('the doctrine document exists and the map points at it', () => {
   assert.match(doctrine, /RULE 7/);
   assert.match(doctrine, /RULE 9/);
 });
+
+// ── Comments naming files no longer in the repo (structure audit 4.8) ────────
+test('findStaleFileRefs: a comment naming an archived or missing file, not a live one or live code', () => {
+  const { findStaleFileRefs } = require('../../tools/gas-lint/check.js');
+  const sources = [{ file: 'cas-ccps/scripts/16_X.js', text: [
+    '// see 16_X_ADDENDUM.js for the old block',
+    'const a = load("16_X_ADDENDUM.js"); // the live file is 00_SharedConfig.js',
+    ' * the plan, STUDENT_WORK_PLAN_2026-10.md, and Node.js',
+  ].join('\n') }];
+  const refs = findStaleFileRefs(sources, new Set(['00_SharedConfig.js']), new Set(['STUDENT_WORK_PLAN_2026-10.md']));
+  assert.deepEqual(refs.map((r) => [r.line, r.name, r.archived]),
+    [[1, '16_X_ADDENDUM.js', false], [3, 'STUDENT_WORK_PLAN_2026-10.md', true]],
+    'code outside a comment is not read; a live file and a product name are fine');
+});

@@ -198,7 +198,10 @@ code blocks) is looked up. It counts as fine when it is:
 
 A path that was archived is reported with where it is now (the archive
 catalog, plus `config.pathCheck.moved` for a folder that moved before it was
-archived). Anything else is a `path-mention` **warning**, never an error.
+archived). So is a path found only as the end of an archived file's path
+(since 2026-11-21, structure audit 4.10): an old handoff named by its old
+`meta/` path no longer counts as found just because its archive copy's path
+ends the same way. Anything else is a `path-mention` **warning**, never an error.
 Skipped: the dated records the other checks skip, any doc under a
 superseded banner, and `config.pathCheck.skipDocs` (the agent notes, which
 quote old handoffs; the research PRD, which names files still to be made).

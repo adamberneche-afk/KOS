@@ -740,6 +740,11 @@ function resolvePathMention(mention, docRel, ctx) {
     if (here === a.from || (a.folder && here.startsWith(a.from + '/'))) return { archived: a.to + here.slice(a.from.length) };
   }
   if (ctx.ignored(p) || ctx.ignored(here)) return 'ignored';
+  // Found only as the end of an archived path (a doc in archive/ itself
+  // names its neighbours as they were, and that's fine).
+  if (ctx.archiveSuffixes && ctx.archiveSuffixes.has(p) && !docRel.startsWith('archive/')) {
+    return { archived: ctx.archiveSuffixes.get(p) };
+  }
   return null;
 }
 
@@ -750,13 +755,24 @@ function pathCheckContext() {
   const files = new Set(tracked);
   const dirs = new Set();
   const suffixes = new Set();
+  // Tails of archived files are kept apart (2026-11-21, structure audit
+  // 4.10): `meta/HANDOFF_2026-11-15.md` is the tail of its archive copy, and
+  // counting that as found hid 70 mentions of files that exist only in
+  // archive/. archiveSuffixes maps such a tail to the archived path.
+  const archiveSuffixes = new Map();
   tracked.forEach((f) => {
     const parts = f.split('/');
     for (let i = 1; i < parts.length; i++) dirs.add(parts.slice(0, i).join('/'));
     // Every tail of two or more segments, of the file and its folders.
+    const tails = [];
     for (let i = 1; i < parts.length - 1; i++) {
-      suffixes.add(parts.slice(i).join('/'));
-      for (let j = i + 2; j < parts.length; j++) suffixes.add(parts.slice(i, j).join('/'));
+      tails.push([parts.slice(i).join('/'), f]);
+      for (let j = i + 2; j < parts.length; j++) tails.push([parts.slice(i, j).join('/'), parts.slice(0, j).join('/')]);
+    }
+    if (parts[0] === 'archive') {
+      tails.forEach(([t, full]) => { if (!archiveSuffixes.has(t)) archiveSuffixes.set(t, full); });
+    } else {
+      tails.forEach(([t]) => suffixes.add(t));
     }
   });
   const archive = [];
@@ -787,7 +803,7 @@ function pathCheckContext() {
     return ignoredCache.get(p);
   };
   const top = new Set(tracked.map((f) => f.split('/')[0]));
-  return { files, dirs, suffixes, ignored, allow, archive, top };
+  return { files, dirs, suffixes, archiveSuffixes, ignored, allow, archive, top };
 }
 
 function checkPathMentionsResolve() {

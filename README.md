@@ -140,7 +140,7 @@ in the first place. See [`meta/README.md`](./meta/README.md).
 Old handoffs, finished plans, sprints and audits, replaced versions, and
 the history logs' older entries, filed by school quarter (2025-26, summer
 2026, then 2026-27's marking periods) and kept word for word at their old
-paths inside each quarter: `meta/HANDOFF_2026-10-22.md` is
+paths inside each quarter: `archive/2026-27-Q1/meta/HANDOFF_2026-10-22.md` is
 `archive/2026-27-Q1/meta/HANDOFF_2026-10-22.md`.
 [`archive/INDEX.md`](./archive/INDEX.md) has one row per quarter (dates,
 PRs, plans, what it was about) and links each quarter's own index. The
