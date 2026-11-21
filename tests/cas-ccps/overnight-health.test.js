@@ -333,8 +333,10 @@ test('a Flow 2 answer copied into another row this week is one line, naming Stag
 });
 
 // One health run (2026-11-20, the operator): the retired 6 a.m. alert's
-// checks and its retention archiving, folded into this run. Counts only.
-test('the 6 a.m. alert\'s checks: stuck submissions, unknown rows, stuck rubrics and each FERPA check, counts only', () => {
+// checks and its retention archiving, folded into this run. Counts, where to
+// look (row numbers and ages) and each check's fix; no file IDs or names
+// (2026-11-21: the rows and the FERPA fixes the 6 a.m. email carried).
+test('the 6 a.m. alert\'s checks: stuck submissions, unknown rows, stuck rubrics and each FERPA check, with rows and fixes', () => {
   const env = load();
   const real = Date.now();
   const st = env.ss.insertSheet('STAGING_PIPELINE');
@@ -350,12 +352,13 @@ test('the 6 a.m. alert\'s checks: stuck submissions, unknown rows, stuck rubrics
   env.props.setProperty('GEMINI_API_KEY', 'x');
   const h = env.exported.overnightHealth_(NOW);
   const all = h.problems.join('\n');
-  assert.match(all, /Submissions stuck evaluating \(15\+ minutes, or with no timestamp\): 1\. ⚙️ Admin Controls → Reset Stuck Pipeline Row/);
-  assert.match(all, /Submissions queued 20\+ minutes with no evaluation started: 1\./);
-  assert.match(all, /STAGING_PIPELINE rows with an unknown status: 1 /);
-  assert.match(all, /Rubric extractions stuck 2\+ hours \(Studio Flow 1\): 1\./);
-  assert.match(all, /FERPA: GEMINI_API_KEY is set — direct-API bypass risk \(⚙️ Admin Controls → System Health Check says what to do\)/);
-  assert.doesNotMatch(all, /file-secret|teacher@|Sports Marketing|see admin alert|🚨/, 'no file IDs, teachers, courses or alert markup');
+  assert.match(all, /Submissions stuck evaluating \(15\+ minutes, or with no timestamp\): 1 \(row 2 \(\d+ min\)\)\. ⚙️ Admin Controls → Reset Stuck Pipeline Row/);
+  assert.match(all, /Submissions queued 20\+ minutes with no evaluation started: 1 \(row 3 \(\d+ min\)\)\. Check that the Turnstile/);
+  assert.match(all, /STAGING_PIPELINE rows with an unknown status: 1 \(row 5\) /);
+  assert.match(all, /Rubric extractions stuck 2\+ hours \(Studio Flow 1\): 1 \(row 2 \(3 h\)\)\. Check Flow 1's run history: it may have timed out or hit a quota/);
+  assert.match(all, /FERPA: GEMINI_API_KEY is set — direct-API bypass risk\. Delete the GEMINI_API_KEY Script Property \(Project Settings → Script Properties\) unless/,
+    'the check\'s own fix, as the 6 a.m. email gave it');
+  assert.doesNotMatch(all, /file-secret|teacher@|Sports Marketing|see admin alert|see the overnight email|🚨/, 'no file IDs, teachers, courses or alert markup');
   assert.equal(h.allClear, '');
   // With Module 2 off they still report.
   env.props.setProperty('M2_ENABLED', 'false');

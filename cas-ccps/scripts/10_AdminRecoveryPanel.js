@@ -90,6 +90,9 @@ function _stagingPipelineHealthChecks_(ss, cfg) {
     inProcessStuckRows: [],
     pendingStuckRows: [],
     unknownStatusRows: [],
+    // The same rows with no file ID or teacher: "row 5 (42 min)". 34c's
+    // overnight email (which the RTP reads) lists these, not the above.
+    where: { inProcess: [], pending: [], unknown: [] },
     counts: { inProcess: 0, pending: 0, complete: 0, timeouts: 0, otherErrors: 0 },
   };
 
@@ -112,13 +115,16 @@ function _stagingPipelineHealthChecks_(ss, cfg) {
     const noTs    = tsIdx !== -1 && (data[i][tsIdx] === "" || isNaN(rowTs.getTime()));
     const elapsed = rowTs && !noTs ? Math.round((now - rowTs) / 60000) : null;
     const fileId  = fileIdx !== -1 ? String(data[i][fileIdx]).trim() : "unknown";
+    const at      = "row " + (i + 1) + (noTs ? " (no timestamp)" : elapsed !== null ? " (" + elapsed + " min)" : "");
 
     if (status === "IN_PROCESS") {
       result.counts.inProcess++;
       if (noTs) {
         result.inProcessStuckRows.push(_stuckRowContext_(i + 1, fileId, null) + " (no timestamp, so it never times out)");
+        result.where.inProcess.push(at);
       } else if (elapsed !== null && elapsed >= STAGING_STUCK_IN_PROCESS_MINUTES) {
         result.inProcessStuckRows.push(_stuckRowContext_(i + 1, fileId, elapsed));
+        result.where.inProcess.push(at);
       }
     } else if (status === "PENDING_INFERENCE") {
       result.counts.pending++;
@@ -127,11 +133,13 @@ function _stagingPipelineHealthChecks_(ss, cfg) {
         result.pendingStuckRows.push(
           _stuckRowContext_(i + 1, fileId, null) + " (no timestamp) — Teacher: " + (teacher || "unknown")
         );
+        result.where.pending.push(at);
       } else if (elapsed !== null && elapsed >= STAGING_STUCK_PENDING_MINUTES) {
         const teacher = teachIdx !== -1 ? String(data[i][teachIdx]).trim() : "unknown";
         result.pendingStuckRows.push(
           _stuckRowContext_(i + 1, fileId, elapsed) + " — Teacher: " + (teacher || "unknown")
         );
+        result.where.pending.push(at);
       }
     } else if (status === "COMPLETE") {
       result.counts.complete++;
@@ -143,6 +151,7 @@ function _stagingPipelineHealthChecks_(ss, cfg) {
       result.unknownStatusRows.push(
         "Row " + (i + 1) + " — status \"" + (status || "(blank)").slice(0, 40) + "\""
       );
+      result.where.unknown.push("row " + (i + 1));
     }
   }
 
@@ -192,7 +201,7 @@ function _ferpaHealthChecks_(opts) {
       "   Action: Delete the GEMINI_API_KEY Script Property (Project Settings →\n" +
       "   Script Properties) unless you have a specific, reviewed reason to keep it.",
     displayLine: geminiKeySet
-      ? "🚨  GEMINI_API_KEY is set — direct-API bypass risk, see admin alert"
+      ? "🚨  GEMINI_API_KEY is set — direct-API bypass risk, see the overnight email"
       : "✅  No direct-Gemini-API key configured",
   });
 
@@ -211,7 +220,7 @@ function _ferpaHealthChecks_(opts) {
       "   Action: Remove this Script Property unless there's a specific,\n" +
       "   reviewed reason the override is needed.",
     displayLine: nameOverride
-      ? "🚨  Flow 3 full-name override is ON — sending full names, see admin alert"
+      ? "🚨  Flow 3 full-name override is ON — sending full names, see the overnight email"
       : "✅  Flow 3 sends first-name-only (safety default active)",
   });
 
@@ -262,9 +271,9 @@ function _ferpaHealthChecks_(opts) {
         "   Action: Open each file → Share → restrict access to your organization."
       : "") + (overShared.length && stopText ? "\n" : "") + stopText,
     displayLine: overShared.length
-      ? "🚨  " + overShared.length + " SCR export file(s) shared beyond the org — see admin alert"
+      ? "🚨  " + overShared.length + " SCR export file(s) shared beyond the org — see the overnight email"
       : scanStopped
-        ? "⚠️  SCR export sharing scan stopped early (" + scanStopped + ") — see admin alert"
+        ? "⚠️  SCR export sharing scan stopped early (" + scanStopped + ") — see the overnight email"
         : "✅  No SCR export files shared beyond the organization",
   });
 
@@ -293,7 +302,7 @@ function _ferpaHealthChecks_(opts) {
         "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: pastRetentionUnarchived
-      ? "🚨  " + pastRetentionUnarchived + " SCRDecisionLog row(s) past retention, not archived — see admin alert"
+      ? "🚨  " + pastRetentionUnarchived + " SCRDecisionLog row(s) past retention, not archived — see the overnight email"
       : "✅  No SCRDecisionLog rows past retention awaiting archival",
   });
 
@@ -321,7 +330,7 @@ function _ferpaHealthChecks_(opts) {
         "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: ledgerPastRetentionUnarchived
-      ? "🚨  " + ledgerPastRetentionUnarchived + " Ledger row(s) past retention, not archived — see admin alert"
+      ? "🚨  " + ledgerPastRetentionUnarchived + " Ledger row(s) past retention, not archived — see the overnight email"
       : "✅  No Ledger rows past retention awaiting archival",
   });
 
@@ -350,7 +359,7 @@ function _ferpaHealthChecks_(opts) {
         "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: evidencePastRetentionUnarchived
-      ? "🚨  " + evidencePastRetentionUnarchived + " CompetencyEvidence row(s) past retention, not archived — see admin alert"
+      ? "🚨  " + evidencePastRetentionUnarchived + " CompetencyEvidence row(s) past retention, not archived — see the overnight email"
       : "✅  No CompetencyEvidence rows past retention awaiting archival",
   });
 
@@ -382,7 +391,7 @@ function _ferpaHealthChecks_(opts) {
         "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: parentReportsPastRetentionUnarchived
-      ? "🚨  " + parentReportsPastRetentionUnarchived + " ParentReportLog row(s) past retention, not archived — see admin alert"
+      ? "🚨  " + parentReportsPastRetentionUnarchived + " ParentReportLog row(s) past retention, not archived — see the overnight email"
       : "✅  No ParentReportLog rows past retention awaiting archival",
   });
 
@@ -410,7 +419,7 @@ function _ferpaHealthChecks_(opts) {
         "   run (34c, KOS_CAS_SIGNAL) is still running."
       : "",
     displayLine: warmUpQueuePastRetentionUnarchived
-      ? "🚨  " + warmUpQueuePastRetentionUnarchived + " WarmUpQueue row(s) past retention, not archived — see admin alert"
+      ? "🚨  " + warmUpQueuePastRetentionUnarchived + " WarmUpQueue row(s) past retention, not archived — see the overnight email"
       : "✅  No WarmUpQueue rows past retention awaiting archival",
   });
 
@@ -435,7 +444,7 @@ function _ferpaHealthChecks_(opts) {
         "   keep appearing, redeploy the student-dashboard web app."
       : "",
     displayLine: reviewQueueRowsWithText
-      ? "🚨  " + reviewQueueRowsWithText + " ReviewQueue row(s) hold student writing — see admin alert"
+      ? "🚨  " + reviewQueueRowsWithText + " ReviewQueue row(s) hold student writing — see the overnight email"
       : "✅  ReviewQueue holds no student writing",
   });
 

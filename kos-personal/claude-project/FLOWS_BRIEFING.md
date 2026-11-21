@@ -158,11 +158,18 @@ NIGHT, then 1. STUDENTS & FAMILIES, then 2. ADMIN.
 **The overnight health line (LAST NIGHT).** `overnightHealth_()` checks
 the 3 a.m. runs (3:00 student profiles, 3:05 artifact sync, 3:15 warm-up
 scoring, 3:30 warm-up queue build), warm-up delivery, Studio jobs with no
-return, the lesson rollout and the turn-in checks; it emails the same
-lines once a day after 5 a.m.
+return, the lesson rollout and the turn-in checks, and, since 2026-11-20,
+what the retired 6 a.m. alert email checked: submissions stuck evaluating
+or never started, STAGING rows with an unknown status, rubric extractions
+stuck 2+ hours, each FERPA check, and the day's retention archiving. It
+emails the same lines once a day after 5 a.m.: the one health email.
 - *You read:* LAST NIGHT: each problem line, or one line starting "All
-  clear" that says what ran. No all-clear line means something is wrong
-  or unreadable.
+  clear" that says what ran (ending "Retention archiving ran."). No
+  all-clear line means something is wrong or unreadable. A problem line
+  gives the count, where to look (sheet row numbers and how long, never a
+  file ID, a teacher or a course) and the fix in its own words; a FERPA
+  line carries the check's action ("Delete the GEMINI_API_KEY Script
+  Property ..."). Quote the line; don't paraphrase the fix.
 - *Code:* `cas-ccps/scripts/34c_OvernightHealth.js`.
 
 **The Ledger cycle.** One trigger, every minute, that runs the Central
