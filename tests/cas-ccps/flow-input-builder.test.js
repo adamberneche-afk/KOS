@@ -25,6 +25,8 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 const DOC_HEADER_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '63_DocHeader.js');
 const QUEUE_BRIDGE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '03_QueueBridge.js');
 const TURNIN_GATE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '04_Form2_TurnInGate.js');
@@ -37,7 +39,7 @@ const PROMPTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '40
 
 function load(extraGlobals) {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '32_CompetencyRubricImporter.js'), DOC_HEADER_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PARTS_PATH, PROMPTS_PATH,
+    [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '32_CompetencyRubricImporter.js'), DOC_HEADER_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PARTS_PATH, PROMPTS_PATH,
       ASSIGNMENTS_PATH],
     [
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'TABS',

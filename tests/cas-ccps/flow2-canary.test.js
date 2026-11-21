@@ -28,7 +28,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = [
-  S('00_SharedConfig.js'), S('63_DocHeader.js'), S('03_QueueBridge.js'), S('04_Form2_TurnInGate.js'),
+  S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js'), S('03_QueueBridge.js'), S('04_Form2_TurnInGate.js'),
   S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('15c_Flow2DirectEvaluationService.js'),
   S('32_CompetencyRubricImporter.js'), S('37_FlowInputBuilder.js'), S('43_DeployVersionMarker_CentralLedger.js'), S('68_LessonParts.js'), S('55b_LessonAssignmentData.js'), S('54_StudentAssignments.js'), S('35_FlowPreflightAndCanary.js'),
   // 40 holds substituteFlowPrompt_, which _fiBuildPromptText_ needs and

@@ -23,9 +23,11 @@ const WARMUP_BRIDGE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts
 const PROFILE_MANAGER_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '23_StudentProfileManager.js');
 // 00 is in every project; 23 reads the shadow matrix's two constants from it (2026-11-01).
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 
 function load() {
-  return loadGasFiles([SHARED_CONFIG_PATH, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
+  return loadGasFiles([SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
     'getPriorWarmUpResponse_',
     'WQ', 'WQ', 'WQ', 'WQ',
     'WQ', 'WQ', 'WQ',
@@ -142,7 +144,7 @@ test('getPriorWarmUpResponse_: a Date-coerced lesson_date cell (Sheets auto-conv
 
 function loadShared() {
   const shared = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
-  return loadGasFiles([shared, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
+  return loadGasFiles([shared, ...['00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js'].map((f) => path.join(path.dirname(shared), f)), LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
     'findLesson_', 'getEnrolledStudents_', 'sharedPeriods_', 'lessonPeriodKey_', 'courseCodeFromName_',
   ]);
 }
@@ -198,7 +200,7 @@ test('getEnrolledStudents_: a course code keeps only that course\'s students in 
 // BRIDGE. resolveUnitForDate_ lives in 31; it is stubbed to one unit here.
 
 function loadProfile() {
-  return loadGasFiles([SHARED_CONFIG_PATH, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
+  return loadGasFiles([SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
     'buildWarmupData_', 'updateShadowMatrix_',
     'WQ', 'WQ', 'WQ', 'WQ',
     'WQ', 'WQ', 'WQ',
@@ -299,7 +301,7 @@ test('buildWarmupData_ records each score\'s status', () => {
 });
 
 test('buildShadowMatrixSummary_: a student whose warm-ups were all blank is not "with warm-up responses"', () => {
-  const { exported, sandbox } = loadGasFiles([SHARED_CONFIG_PATH, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH],
+  const { exported, sandbox } = loadGasFiles([SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH],
     ['buildShadowMatrixSummary_']);
   sandbox.resolveUnitForDate_ = () => null;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');

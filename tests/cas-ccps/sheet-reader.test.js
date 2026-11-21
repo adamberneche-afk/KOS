@@ -13,6 +13,8 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { loadGasFiles, makeWorkSheetMock } = require('../harness/gas-sandbox');
+// The intake's "not submitted yet" text (Central Ledger, 00c since structure audit 4.6).
+const SHEET_SNAPSHOT_NOT_SUBMITTED = loadGasFiles([path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js')], ['SHEET_SNAPSHOT_NOT_SUBMITTED']).exported.SHEET_SNAPSHOT_NOT_SUBMITTED;
 const projectMap = require('../../tools/gas-lint/project-map.json');
 const builder = require('../../tools/cas-ccps/build-lesson-assignments.js');
 
@@ -51,7 +53,7 @@ function studentLoad(viewer) {
   };
   return loadGasFiles(STUDENT_FILES, ['submitMyWork', 'getSubmitReflection', 'handleStudentDocRequest_',
     'readSheetStructure_', 'sheetCheckReasons_', 'sheetSnapshotText_', 'normalizeSheetChecks_', 'shRangeBounds_',
-    'shColumnName_', 'LEDGER', 'SHEET_SNAPSHOT_NOT_SUBMITTED', 'SHEET_CHECK_KEYS', 'DASH_DEMO_SHEET_NOT_YET',
+    'shColumnName_', 'LEDGER', 'SHEET_CHECK_KEYS', 'DASH_DEMO_SHEET_NOT_YET',
     'workFileTypeOfUrl_', 'workFileUrl_', 'buildStudentDashboardHtml_', 'getStudentDashboardData',
     'SH_SNAPSHOT_ROWS', 'SH_SNAPSHOT_COLS'], { Session: session });
 }
@@ -102,7 +104,7 @@ function studentSetUp(env, spec, checks, opts) {
   ledger.appendRow(r);
   const queue = ss.insertSheet('ReviewQueue');
   queue.appendRow(['Timestamp', 'GoogleID', 'FileID', 'ConfigID', 'StudentText', 'Status', 'Note']);
-  const doc = snapshotDoc(sandbox, 'VDOE-AMY-3', exported.SHEET_SNAPSHOT_NOT_SUBMITTED);
+  const doc = snapshotDoc(sandbox, 'VDOE-AMY-3', SHEET_SNAPSHOT_NOT_SUBMITTED);
   if (opts.snapshot !== false) {
     const t = ss.insertSheet('FormSnapshots');
     t.appendRow(['MadeAt', 'StudentConfigID', 'FormFileID', 'SnapshotDocID', 'PartConfigID', 'FormChecks', 'LastWrittenAt']);

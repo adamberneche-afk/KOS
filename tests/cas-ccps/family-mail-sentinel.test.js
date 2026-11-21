@@ -26,7 +26,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const REPO = path.join(__dirname, '..', '..');
 const SCRIPTS = path.join(REPO, 'cas-ccps', 'scripts');
 const PATHS = [
-  path.join(SCRIPTS, '00_SharedConfig.js'),
+  path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'),
   path.join(SCRIPTS, '60_FamilyMailSentinel.js'),
   path.join(SCRIPTS, '61_FamilyMailPrompt.js'),
   path.join(SCRIPTS, '62_DeployVersionMarker_FamilySentinel.js'),

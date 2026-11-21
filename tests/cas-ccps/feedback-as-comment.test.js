@@ -34,7 +34,7 @@ test('feedbackAsCommentFor_: off by default, "all" for every course, or one cour
     ['8175', 'VDOE-ABC123-2026', false],
   ];
   for (const [flag, configId, expected] of cases) {
-    const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js')], ['feedbackAsCommentFor_']);
+    const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['feedbackAsCommentFor_']);
     setFlag(sandbox, flag);
     assert.equal(exported.feedbackAsCommentFor_(configId), expected, flag + ' / ' + configId);
   }
@@ -51,7 +51,7 @@ function ledgerRow(configId, className) {
 }
 
 test('feedbackAsCommentFor_: a workspace ID takes its course from a course name or its Ledger row', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js')], ['feedbackAsCommentFor_', 'feedbackAsCommentChecker_']);
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['feedbackAsCommentFor_', 'feedbackAsCommentChecker_']);
   setFlag(sandbox, '8175');
   const ss = sandbox.SpreadsheetApp.openById(sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'));
   const ledger = ss.insertSheet('Ledger');
@@ -83,7 +83,7 @@ test('feedbackAsCommentFor_: a workspace ID takes its course from a course name 
 
 function stamp(flag, configId, prompt) {
   const { exported, sandbox } = loadGasFiles(
-    [S('00_SharedConfig.js'), S('63_DocHeader.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['stampDocument_']);
+    [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['stampDocument_']);
   setFlag(sandbox, flag);
   const doc = sandbox.DocumentApp.create('Lesson 06 — student');
   exported.stampDocument_(doc.getId(), configId, 'A Student', 'B2', 'Sports Marketing', 'Teacher',
@@ -187,7 +187,7 @@ test('stampDocument_: headings and two jump links move between the assignment an
 
 test('stampDocument_: the response a student writes is read the same with the new lines', () => {
   const { sandbox, id } = stamp('all', 'CAS-8175-L06');
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
     ['dashExtractResponse_']);
   const body = sandbox.DocumentApp.openById(id).getBody();
   const paras = Array.from({ length: body.getNumChildren() }, (_, i) => body.getChild(i));
@@ -207,7 +207,7 @@ test('stampDocument_: with the flag off, the feedback zone is built as before', 
 
 test('setDocFeedbackStatus_: checking stays grey; a result is color-coded and says where the feedback is', () => {
   const { sandbox, id } = stamp('all', 'CAS-8175-L06');
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js')], ['setDocFeedbackStatus_'], { DocumentApp: sandbox.DocumentApp });
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js')], ['setDocFeedbackStatus_'], { DocumentApp: sandbox.DocumentApp });
   const line = () => sandbox.DocumentApp.openById(id).getHeader().getChild(2); // the feedback line, under the two identity lines
   assert.equal(exported.setDocFeedbackStatus_(id, 'CHECKING', {}), true);
   assert.match(line().getText(), /^Feedback: submitted .*, waiting for feedback\.$/);
@@ -223,7 +223,7 @@ test('setDocFeedbackStatus_: checking stays grey; a result is color-coded and sa
 
 test('the feedback line links to the comment; View feedback reads the link back, for the student\'s own doc only', () => {
   const { sandbox, id } = stamp('all', 'CAS-8175-L06');
-  const { exported, sandbox: dash } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
+  const { exported, sandbox: dash } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
     ['setDocFeedbackStatus_', 'docFeedbackCommentUrl_', 'feedbackCommentUrl_', 'getMyFeedbackLink'],
     { DocumentApp: sandbox.DocumentApp, Session: { getActiveUser: () => ({ getEmail: () => 'student@ccpsnet.net' }), getScriptTimeZone: () => 'America/New_York' } });
   const url = exported.feedbackCommentUrl_(id, 'AAAAbc');
@@ -260,7 +260,7 @@ test('the feedback line links to the comment; View feedback reads the link back,
 });
 
 test('setDocFeedbackStatus_: a doc made before the header is left alone', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js')], ['setDocFeedbackStatus_']);
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js')], ['setDocFeedbackStatus_']);
   const doc = sandbox.DocumentApp.create('Older doc');
   doc.getBody().setText('Assignment\n── YOUR RESPONSE BEGINS HERE ──\nMy plan.');
   assert.equal(exported.setDocFeedbackStatus_(doc.getId(), 'PASSED', {}), false);
@@ -270,7 +270,7 @@ test('setDocFeedbackStatus_: a doc made before the header is left alone', () => 
 
 test('processCompletedEvaluation_: with the flag on, nothing is added to the doc', () => {
   const { exported, sandbox } = loadGasFiles(
-    [S('00_SharedConfig.js'), S('03_QueueBridge.js')], ['processCompletedEvaluation_']);
+    [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('03_QueueBridge.js')], ['processCompletedEvaluation_']);
   setFlag(sandbox, '8175');
   const doc = sandbox.DocumentApp.create('Student doc');
   doc.getBody().setText('Assignment\n── YOUR RESPONSE BEGINS HERE ──\nMy plan.\n[CONFIG_ID: CAS-8175-L06]');
@@ -281,7 +281,7 @@ test('processCompletedEvaluation_: with the flag on, nothing is added to the doc
 
 test('resolveStudentStatus_: an evaluated assignment points to Comments only when feedback is a comment', () => {
   const { exported } = loadGasFiles(
-    [S('00_SharedConfig.js'), S('13_StudentDashboard.js')], ['resolveStudentStatus_']);
+    [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('13_StudentDashboard.js')], ['resolveStudentStatus_']);
   assert.equal(exported.resolveStudentStatus_('COMPLETE', undefined, true),
     'Feedback is ready: open your document and click Comments');
   assert.equal(exported.resolveStudentStatus_('COMPLETE', undefined, false),
@@ -291,7 +291,7 @@ test('resolveStudentStatus_: an evaluated assignment points to Comments only whe
 // The Teacher Dashboard's ⚙ Settings (07, 2026-10-27; was 💬 Feedback)
 // writes one shared row per setting.
 function loadTeacher(viewer) {
-  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'), S('07_TeacherDashboard.js'), S('29_StudentContextAggregator.js'),
+  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('00b_ScriptOwnerGuard.js'), S('07_TeacherDashboard.js'), S('29_StudentContextAggregator.js'),
     S('36_WeeklyParentReport.js')],
     ['getSettings', 'setSettingForCourse', 'saveSettings', 'setMarkingPeriodEnds', 'pivotFlagFor_', 'feedbackAsCommentFor_'],
     { Session: { getActiveUser: () => ({ getEmail: () => viewer }), getScriptTimeZone: () => 'America/New_York' } });
@@ -500,7 +500,7 @@ test('stampDocument_: the code is in the footer; the end marker is hidden with t
   assert.equal(hidden.color, '#ffffff');
   assert.ok(!text.includes('Do not delete this line'), 'no visible code line');
   assert.equal(footer.getText().trim(), 'Assignment code: VDOE-ABC123-2026');
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
     ['dashExtractResponse_']);
   const written = text.replace('── YOUR RESPONSE BEGINS HERE ──\n', '── YOUR RESPONSE BEGINS HERE ──\nMy answer here.\n');
   assert.equal(exported.dashExtractResponse_(written).trim(), 'My answer here.', 'the response still ends at the hidden marker');

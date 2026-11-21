@@ -24,7 +24,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // The seeder (53) and roster import (52) are loaded so the sandbox matches
 // the Central Ledger project (gas-lint's sandbox-scope check), then replaced
 // with recorders in setup().
-const FILES = ['00_SharedConfig.js', '00b_ScriptOwnerGuard.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '00b_ScriptOwnerGuard.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
   '29_StudentContextAggregator.js', '31_PacingGuideManager.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
   '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js',
   '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js', '58_LessonRollout.js', '32_CompetencyRubricImporter.js', '66_LessonDoc.js', '67_AgendaDeck.js', '68_LessonParts.js', '63_DocHeader.js', '76_CoveredSoFar.js'].map(S);
@@ -265,7 +265,7 @@ test('previewLessonRollout is a dry run even with ROLLOUT_AUTO_APPLY on', () => 
 // ── Deferred sharing at intake (02) ──────────────────────────────────────────
 
 test('intake with deferShare adds only the teacher and writes the Ledger row SCHEDULED', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')],
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')],
     ['shareToStudentDrive_', 'registerLedger_']);
   const calls = [];
   const file = { addEditor: (w) => calls.push(['editor', w]), addCommenter: (w) => calls.push(['commenter', w]) };
@@ -285,7 +285,7 @@ test('intake with deferShare adds only the teacher and writes the Ledger row SCH
 // ── The CAS signal (34b) ────────────────────────────────────────────────────
 
 test('_casSignalRollout_: what remains of the last day, and the courses still in shadow', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('34b_CasAttentionSignal.js'), S('58_LessonRollout.js')],
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('34b_CasAttentionSignal.js'), S('58_LessonRollout.js')],
     ['_casSignalRollout_']);
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);

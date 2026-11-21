@@ -17,7 +17,7 @@ const { loadGasFiles, makeDriveAdvancedMock } = require('../harness/gas-sandbox'
 
 const ROOT = path.join(__dirname, '..', '..');
 const S = (f) => path.join(ROOT, 'cas-ccps', 'scripts', f);
-const FILES = [S('00_SharedConfig.js'), S('04_Form2_TurnInGate.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')];
+const FILES = [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('04_Form2_TurnInGate.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')];
 const NAMES = ['casMail_', 'shareWithoutEmail_', 'shareToStudentDrive_', '_lockDocAfterSubmission_'];
 
 function load(extra) {

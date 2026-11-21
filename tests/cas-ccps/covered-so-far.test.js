@@ -14,7 +14,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
   '55b_LessonAssignmentData.js', '55_LessonSchedule.js', '76_CoveredSoFar.js'].map(S);
 
 function load(schedule) {

@@ -33,7 +33,7 @@ function paragraphs(container) {
 
 test('a new doc makes an address in the task a link (the URL only, not its ")")', () => {
   const { exported, sandbox } = loadGasFiles(
-    [S('00_SharedConfig.js'), S('63_DocHeader.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['stampDocument_']);
+    [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['stampDocument_']);
   const doc = sandbox.DocumentApp.create('L06 — student');
   exported.stampDocument_(doc.getId(), 'CAS-8175-L06', 'A Student', 'B2', 'Sports Marketing', 'Teacher', '3',
     'L06 SKILL DEVELOPMENT PLAN', TASK.replace('modern workplace.\n', 'modern workplace.\n- Video: Soft skills (' + URL + ')\n'),
@@ -47,7 +47,7 @@ test('a new doc makes an address in the task a link (the URL only, not its ")")'
 // harness hands tests a copy of a constant, so a small script loaded after
 // 55b sets it inside the sandbox instead.
 function loadRefresh(videos) {
-  const files = ['00_SharedConfig.js', '63_DocHeader.js', '02_Form1_IntakeAndWorkspaceGenerator.js', '53b_UnitAssignmentData.js',
+  const files = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '63_DocHeader.js', '02_Form1_IntakeAndWorkspaceGenerator.js', '53b_UnitAssignmentData.js',
     '53_AssignmentSeeder.js', '54_StudentAssignments.js', '55_LessonSchedule.js', '55b_LessonAssignmentData.js'].map(S);
   if (videos) {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'video-links-'));

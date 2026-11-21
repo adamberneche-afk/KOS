@@ -26,11 +26,13 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const FAKE_DOC_URL = ['https://docs.google.com', 'document', 'd', 'test-doc-' + 'x'.repeat(35), 'edit'].join('/');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 const GUARD_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '38_LedgerSchemaGuard.js');
 
 function load() {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, GUARD_PATH],
+    [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, GUARD_PATH],
     [
       'checkLedgerSchema', 'repairLedgerSchema', 'repairLedgerSchemaDryRun',
       'LEDGER_HEADERS', 'LEDGER', 'LEDGER_BASE_WIDTH', 'previewOddLedgerRows',

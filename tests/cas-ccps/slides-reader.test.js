@@ -13,6 +13,8 @@ const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
 const { loadGasFiles } = require('../harness/gas-sandbox');
+// The intake's "not submitted yet" text (Central Ledger, 00c since structure audit 4.6).
+const SLIDES_SNAPSHOT_NOT_SUBMITTED = loadGasFiles([path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js')], ['SLIDES_SNAPSHOT_NOT_SUBMITTED']).exported.SLIDES_SNAPSHOT_NOT_SUBMITTED;
 const projectMap = require('../../tools/gas-lint/project-map.json');
 const builder = require('../../tools/cas-ccps/build-lesson-assignments.js');
 
@@ -58,8 +60,7 @@ function studentLoad(viewer) {
     getScriptTimeZone() { return 'America/New_York'; },
   };
   return loadGasFiles(STUDENT_FILES, ['submitMyWork', 'getSubmitReflection', 'handleStudentDocRequest_',
-    'readSlidesStructure_', 'slidesCheckReasons_', 'slidesSnapshotText_', 'normalizeSlideChecks_', 'LEDGER',
-    'SLIDES_SNAPSHOT_NOT_SUBMITTED', 'SLIDE_CHECK_COUNT_KEYS', 'SLIDE_CHECK_FLAG_KEYS', 'DASH_DEMO_SLIDES_NOT_YET',
+    'readSlidesStructure_', 'slidesCheckReasons_', 'slidesSnapshotText_', 'normalizeSlideChecks_', 'LEDGER', 'SLIDE_CHECK_COUNT_KEYS', 'SLIDE_CHECK_FLAG_KEYS', 'DASH_DEMO_SLIDES_NOT_YET',
     'workFileTypeOfUrl_', 'workFileUrl_', 'buildStudentDashboardHtml_', 'getStudentDashboardData', 'slContrastRatio_',
     'SLIDE_CHECK_RATIO_KEYS', 'slidesSystemText_'], { Session: session });
 }
@@ -100,7 +101,7 @@ function studentSetUp(env, spec, checks, opts) {
   ledger.appendRow(r);
   const queue = ss.insertSheet('ReviewQueue');
   queue.appendRow(['Timestamp', 'GoogleID', 'FileID', 'ConfigID', 'StudentText', 'Status', 'Note']);
-  const doc = snapshotDoc(sandbox, 'VDOE-AMY-1', exported.SLIDES_SNAPSHOT_NOT_SUBMITTED);
+  const doc = snapshotDoc(sandbox, 'VDOE-AMY-1', SLIDES_SNAPSHOT_NOT_SUBMITTED);
   if (opts.snapshot !== false) {
     const t = ss.insertSheet('FormSnapshots');
     t.appendRow(['MadeAt', 'StudentConfigID', 'FormFileID', 'SnapshotDocID', 'PartConfigID', 'FormChecks', 'LastWrittenAt']);
@@ -416,7 +417,7 @@ test('Submit: a passing deck writes its snapshot, then queues; the header says w
   const text = doc.getBody().getText();
   const zone = text.slice(text.indexOf(MARKER) + MARKER.length, text.indexOf('[CONFIG_ID:')).trim();
   assert.equal(zone, env.exported.slidesSnapshotText_(env.exported.readSlidesStructure_('deck-amy')));
-  assert.ok(!text.includes(env.exported.SLIDES_SNAPSHOT_NOT_SUBMITTED));
+  assert.ok(!text.includes(SLIDES_SNAPSHOT_NOT_SUBMITTED));
   assert.match(doc.getHeader().getText(), /Feedback: submitted .*, waiting for feedback\./);
   assert.equal(Object.prototype.toString.call(ss.getSheetByName('FormSnapshots').getDataRange().getValues()[1][6]), '[object Date]');
   queue.getRange(2, 6).setValue('COMPLETE');

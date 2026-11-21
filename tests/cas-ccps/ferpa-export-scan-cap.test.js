@@ -13,7 +13,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 
 function setup(exportCount) {
   // The files that declare what the other FERPA checks call (Check K).
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('10_AdminRecoveryPanel.js'), S('22_LessonContextHandler.js'),
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('10_AdminRecoveryPanel.js'), S('22_LessonContextHandler.js'),
     S('23_StudentProfileManager.js'), S('30_SCRSuggestionEngine.js'), S('34_QueueWatchdog.js'),
     S('36_WeeklyParentReport.js'), S('50_StudentDataAccess.js')], ['_ferpaHealthChecks_']);
   for (let i = 0; i < exportCount; i++) env.sandbox.DocumentApp.create('SCR Export — 2026-09-0' + (i + 1));

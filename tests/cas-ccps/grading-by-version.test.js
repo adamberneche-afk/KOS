@@ -15,7 +15,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '03_QueueBridge.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '39_FlowFixtures.js',
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '03_QueueBridge.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '39_FlowFixtures.js',
   '64_LedgerCycle.js', '69_EvaluationHealth.js', '69b_FlowMeasures.js'].map(S);
 
 const out = (o, stamp) => 'Feedback for the student.\n[SYSTEM: ' + stamp + ']\n[MILESTONE_OUTCOMES: ' + JSON.stringify(o) + ']';

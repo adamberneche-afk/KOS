@@ -31,7 +31,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const FILES = [
-  path.join(CC, '00_SharedConfig.js'),
+  path.join(CC, '00_SharedConfig.js'), path.join(CC, '00c_CentralLedgerShared.js'), path.join(CC, '00d_TeacherDashboardShared.js'), path.join(CC, '00e_StudentDashboardShared.js'),
   path.join(CC, '25_WarmUpWriter.js'),
   path.join(CC, '41_WarmUpFlowBridge.js'),
   // checkFlow2Binding reads FI, which lives in 37. Same GAS project, so it

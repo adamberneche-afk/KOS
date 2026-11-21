@@ -16,7 +16,7 @@ const MIN = 60 * 1000;
 
 function load(lanes, headers) {
   const env = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '06_StagingPipeline_Turnstile.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '06_StagingPipeline_Turnstile.js')],
     ['runStagingTurnstile', 'turnstileLanes_', 'TURNSTILE_DEFAULT_LANES', 'SHARED_CONFIG_KEYS'],
   );
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');

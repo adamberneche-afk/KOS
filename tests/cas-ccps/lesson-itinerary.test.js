@@ -10,7 +10,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const gen = require('../../tools/cas-ccps/build-lesson-assignments.js');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const load = () => loadGasFiles([S('00_SharedConfig.js'), S('55b_LessonAssignmentData.js')],
+const load = () => loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('55b_LessonAssignmentData.js')],
   ['bellScheduleFor_', 'classMinutesFor_', 'bellBlockOf_', 'itineraryFor_', 'bellScheduleDays_', 'LESSON_ASSIGNMENTS', 'ITINERARY_MODES']).exported;
 const sum = (blocks) => blocks.reduce((n, b) => n + b.minutes, 0);
 
@@ -87,7 +87,7 @@ test('an itinerary fits the period exactly: fixed blocks kept, the open block ta
 });
 
 test('the days set in ⚙ Settings (SCHEDULE_DAYS) change the schedule of those days; a passed list wins', () => {
-  const env = loadGasFiles([S('00_SharedConfig.js')], ['bellScheduleFor_', 'classMinutesFor_', 'bellScheduleDays_']);
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['bellScheduleFor_', 'classMinutesFor_', 'bellScheduleDays_']);
   const { exported, sandbox } = env;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);

@@ -15,7 +15,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const { extractInlineScripts } = require('../../tools/html-lint/check.js');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboard.js', '13b_StudentDashboardDemoLessons.js',
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboard.js', '13b_StudentDashboardDemoLessons.js',
   '13c_StudentDashboardLessons.js', '13d_StudentDashboardReview.js', '63_DocHeader.js', '71_TurnInCodes.js',
   '71b_TurnInStudent.js', '75_FormReader.js', '77_SlidesReader.js', '78_SheetReader.js'].map(S);
 const DEFAULT = 'https://mychesterfieldschools.instructure.com';

@@ -16,7 +16,7 @@ const TEACHER = 'teacher@example.com'; // the sandbox's default signed-in user
 // ── 00: reading a term ──
 
 test('_schoolYearOfTerm_: "2627_MP1" is 2026-27; old terms still read; bad ones fall back', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js')], ['_schoolYearOfTerm_']);
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['_schoolYearOfTerm_']);
   assert.equal(exported._schoolYearOfTerm_('2627_MP1'), '2026-27');
   assert.equal(exported._schoolYearOfTerm_('2627_MP4'), '2026-27');
   assert.equal(exported._schoolYearOfTerm_('9900_MP2'), '2099-00');
@@ -27,7 +27,7 @@ test('_schoolYearOfTerm_: "2627_MP1" is 2026-27; old terms still read; bad ones 
 });
 
 test('_currentSchoolYear_: a marking-period CURRENT_TERM gives its school year', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js')], ['_currentSchoolYear_']);
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['_currentSchoolYear_']);
   sandbox.PropertiesService.getScriptProperties().setProperty('CURRENT_TERM', '2526_MP3');
   assert.equal(exported._currentSchoolYear_(new Date(2026, 8, 28)), '2025-26');
 });
@@ -35,7 +35,7 @@ test('_currentSchoolYear_: a marking-period CURRENT_TERM gives its school year',
 // ── 10: setting a term, archiving a year ──
 
 function loadAdmin() {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('10_AdminRecoveryPanel.js')], [
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('10_AdminRecoveryPanel.js')], [
     '_validateTermInput_', '_parseSchoolYearInput_', '_archiveSchoolYearRows_',
     '_reactivateSchoolYearRows_', 'LEDGER',
   ]);
@@ -140,7 +140,7 @@ test('getStudentDashboardData: in MP2, MP1 work is off the page and the start of
     getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
     getScriptTimeZone() { return 'America/New_York'; },
   };
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
     ['getStudentDashboardData', 'LEDGER'], { Session: session });
   const ss = ledgerWithTwoMarkingPeriods(sandbox, exported.LEDGER, 23);
   sandbox.PropertiesService.getScriptProperties().setProperty('MARKING_PERIOD_ENDS', '2627_MP1=2020-01-01,2627_MP2=2099-12-31');

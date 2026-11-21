@@ -25,7 +25,7 @@ function load() {
   return loadGasFiles(
     // 29 holds SDR_DOC_URL, which exportToWorkbookGrid_ reads — in scope in
     // production, so it must be in scope here too (gas-lint Check K).
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '30_SCRSuggestionEngine.js'),
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '30_SCRSuggestionEngine.js'),
      path.join(SCRIPTS, '29_StudentContextAggregator.js')],
     ['exportToWorkbookGrid_'],
   );

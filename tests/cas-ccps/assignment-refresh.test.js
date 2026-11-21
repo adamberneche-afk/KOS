@@ -12,7 +12,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
   '31_PacingGuideManager.js', '32_CompetencyRubricImporter.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
   '29_StudentContextAggregator.js', '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js',
   '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js'].map(S);
@@ -93,7 +93,7 @@ test('preview names the stale row and changes nothing; refresh rewrites only its
 });
 
 test('a milestone listing two competencies writes evidence for each', () => {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('15c_Flow2DirectEvaluationService.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('15c_Flow2DirectEvaluationService.js')],
     ['writeCompetencyEvidenceFromFlow2_']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);

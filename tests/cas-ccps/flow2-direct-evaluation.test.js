@@ -17,13 +17,15 @@ const path = require('path');
 const { loadGasFiles, FakeSheet } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 const FLOW2_PROMPT_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15b_StudioFlowPrompts_Flow2_Revised.js');
 const TURNIN_GATE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '04_Form2_TurnInGate.js');
 const SERVICE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15c_Flow2DirectEvaluationService.js');
 
 function load(exposeNames, extraGlobals) {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, FLOW2_PROMPT_PATH, TURNIN_GATE_PATH, SERVICE_PATH],
+    [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, FLOW2_PROMPT_PATH, TURNIN_GATE_PATH, SERVICE_PATH],
     exposeNames,
     extraGlobals,
   );

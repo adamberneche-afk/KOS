@@ -47,7 +47,7 @@ function ledgerRow(googleId, configId, fileId, status) {
 
 function loadService(signedInAs) {
   const loaded = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '13c_StudentDashboardLessons.js'), path.join(SCRIPTS, '71_TurnInCodes.js'), path.join(SCRIPTS, '71b_TurnInStudent.js'), path.join(SCRIPTS, '75_FormReader.js'), path.join(SCRIPTS, '77_SlidesReader.js'), path.join(SCRIPTS, '78_SheetReader.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '13c_StudentDashboardLessons.js'), path.join(SCRIPTS, '71_TurnInCodes.js'), path.join(SCRIPTS, '71b_TurnInStudent.js'), path.join(SCRIPTS, '75_FormReader.js'), path.join(SCRIPTS, '77_SlidesReader.js'), path.join(SCRIPTS, '78_SheetReader.js')],
     ['doPost', 'handleStudentDocRequest_'],
     { ContentService: FakeContentService, Session: sessionAs(signedInAs) });
   const { sandbox } = loaded;
@@ -128,7 +128,7 @@ test('doPost: no signed-in user, an unknown action, or a malformed body is refus
 function loadDocScript(docText, reply) {
   const calls = [];
   const loaded = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '01_StudentDoc_ContainerScript.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '01_StudentDoc_ContainerScript.js')],
     ['readSystemIds', 'validateRoster_', 'submitToQueue_', 'isSchoolServiceUrl_',
       'runSystemCheck', 'checkSubmissionStatus', 'openStudentDashboard'],
     {
@@ -293,7 +293,7 @@ const ENOUGH = 'I would set up the stand near the gym entrance because that is w
 
 function loadSubmit(signedInAs, docBody, status) {
   const loaded = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '13c_StudentDashboardLessons.js'), path.join(SCRIPTS, '71_TurnInCodes.js'), path.join(SCRIPTS, '71b_TurnInStudent.js'), path.join(SCRIPTS, '75_FormReader.js'), path.join(SCRIPTS, '77_SlidesReader.js'), path.join(SCRIPTS, '78_SheetReader.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '63_DocHeader.js'), path.join(SCRIPTS, '13_StudentDashboard.js'), path.join(SCRIPTS, '13c_StudentDashboardLessons.js'), path.join(SCRIPTS, '71_TurnInCodes.js'), path.join(SCRIPTS, '71b_TurnInStudent.js'), path.join(SCRIPTS, '75_FormReader.js'), path.join(SCRIPTS, '77_SlidesReader.js'), path.join(SCRIPTS, '78_SheetReader.js')],
     ['submitMyWork', 'getStudentDashboardData', 'dashExtractResponse_'],
     { ContentService: FakeContentService, Session: sessionAs(signedInAs) });
   const { sandbox } = loaded;
@@ -460,7 +460,7 @@ test('getStudentDashboardData: offers Submit only where there is something to su
 test('dashExtractResponse_ reads the same span as the doc menu\'s extractStudentResponse_', () => {
   const dash = loadSubmit('ben@ccpsnet.net', '').exported;
   const { sandbox } = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '01_StudentDoc_ContainerScript.js')],
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '01_StudentDoc_ContainerScript.js')],
     ['extractStudentResponse_']);
   const samples = [
     docWith(ENOUGH),

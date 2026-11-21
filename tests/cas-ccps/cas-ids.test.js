@@ -10,7 +10,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-const x = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')], ['casConfigId_', 'parseCasId_']).exported;
+const x = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js')], ['casConfigId_', 'parseCasId_']).exported;
 const plain = (o) => (o ? { ...o } : o);
 
 test('casConfigId_ builds a lesson\'s and a part\'s ID, upper case', () => {
@@ -48,7 +48,7 @@ test('no script builds a lesson ID by hand or parses one with its own pattern', 
 
 // ── Dates (structure audit 3.5): ymd_, cellYmd_, localYmd_ in 00 ──
 test('the date helpers: a Date in a time zone, a sheet cell, a Date\'s own fields', () => {
-  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')], ['ymd_', 'cellYmd_', 'localYmd_']);
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js')], ['ymd_', 'cellYmd_', 'localYmd_']);
   const D = env.sandbox.Date;
   const late = new D(Date.UTC(2026, 10, 21, 3, 30)); // 10:30pm on the 20th in New York
   assert.equal(env.exported.ymd_(late, 'America/New_York'), '2026-11-20');

@@ -14,7 +14,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // The harness's DocumentApp has no getUi(); its SpreadsheetApp's UI mock
 // records alerts the same way, so the manual's alerts land there.
 function load() {
-  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('16_UnifiedManualSetup.js')],
+  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('16_UnifiedManualSetup.js')],
     ['persistAdminProperties_', 'openAdminHealthCheck', 'centralLedgerUrl_']);
   const ui = loaded.sandbox.SpreadsheetApp.getUi();
   loaded.sandbox.DocumentApp.getUi = () => ui;

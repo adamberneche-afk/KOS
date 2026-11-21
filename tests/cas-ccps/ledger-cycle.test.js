@@ -30,7 +30,7 @@ const JOBS = ['bridgeQueue', 'runStagingTurnstile', 'buildFlowInputRows', 'harve
 const WED_10AM = Date.UTC(2026, 10, 18, 15, 0, 0);
 
 function setup(installed) {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('64_LedgerCycle.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('64_LedgerCycle.js')],
     ['runLedgerCycle', 'installLedgerCycle', 'previewLedgerCycle', 'restoreLedgerTriggers', 'lcRecordedJobs_',
       'installRegistrationTrigger', 'installAlignmentBackfillTrigger', 'installPartUnlocks', 'lcFailingJobs_',
       'installIntakeTriggers', 'LC_JOBS', 'lcTimingReport_', 'lcJobEvery_']);
@@ -120,7 +120,7 @@ test('restore puts each job\'s own trigger back at an accepted cadence and remov
 });
 
 test('preflight: a job run by the cycle passes; one with its own trigger as well is flagged', () => {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('35_FlowPreflightAndCanary.js'), S('64_LedgerCycle.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('35_FlowPreflightAndCanary.js'), S('64_LedgerCycle.js')],
     ['_pfCheckTrigger_', 'installLedgerCycle']);
   env.sandbox.ScriptApp.newTrigger('buildWarmUpFlowInputs').timeBased().everyMinutes(5).create();
   env.exported.installLedgerCycle();
@@ -302,9 +302,9 @@ test('LEDGER_CYCLE_EVERY slows a job without a push; a bad value is ignored', ()
 // Audit 1.1 (2026-11-20): the Flow 2, warm-up and watchdog installers go
 // through lcInstallJob_, so a re-run never takes a job out of the cycle.
 test('the old installers add their jobs to the installed cycle, never their own triggers', () => {
-  const env = loadGasFiles(['00_SharedConfig.js', '64_LedgerCycle.js', '34_QueueWatchdog.js', '37_FlowInputBuilder.js',
+  const env = loadGasFiles(['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '64_LedgerCycle.js', '34_QueueWatchdog.js', '37_FlowInputBuilder.js',
     '41_WarmUpFlowBridge.js'].map(S).concat(require('../../tools/gas-lint/project-map.json')['cas-ccps:central-ledger'].files
-    .filter((f) => !/(00_SharedConfig|64_LedgerCycle|34_QueueWatchdog|37_FlowInputBuilder|41_WarmUpFlowBridge)\.js$/.test(f))
+    .filter((f) => !/(00_SharedConfig|00c_CentralLedgerShared|00d_TeacherDashboardShared|00e_StudentDashboardShared|64_LedgerCycle|34_QueueWatchdog|37_FlowInputBuilder|41_WarmUpFlowBridge)\.js$/.test(f))
     .map((f) => path.join(__dirname, '..', '..', f))),
   ['installLedgerCycle', 'installFlowInputTriggers', 'installWarmUpFlowTriggers', 'installQueueWatchdogTrigger', 'lcRecordedJobs_']);
   const sb = env.sandbox;

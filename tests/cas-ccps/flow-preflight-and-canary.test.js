@@ -10,10 +10,12 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 const SERVICE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '35_FlowPreflightAndCanary.js');
 
 function load(exposeNames) {
-  return loadGasFiles([SHARED_CONFIG_PATH, SERVICE_PATH], exposeNames);
+  return loadGasFiles([SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, SERVICE_PATH], exposeNames);
 }
 
 // A deployment-ready state, not merely a config-shaped one. The preflight now

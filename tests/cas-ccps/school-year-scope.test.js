@@ -11,7 +11,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 
 test('school years start in August and read like CURRENT_TERM\'s prefix', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js')], ['_schoolYearForDate_', '_schoolYearOfTerm_']);
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['_schoolYearForDate_', '_schoolYearOfTerm_']);
   assert.equal(exported._schoolYearForDate_(new Date(2026, 7, 1)), '2026-27');
   assert.equal(exported._schoolYearForDate_(new Date(2026, 6, 31)), '2025-26');
   assert.equal(exported._schoolYearForDate_(new Date(2099, 11, 1)), '2099-00');
@@ -20,14 +20,14 @@ test('school years start in August and read like CURRENT_TERM\'s prefix', () => 
 });
 
 test('the current year is CURRENT_TERM\'s when set, else today\'s', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js')], ['_currentSchoolYear_']);
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['_currentSchoolYear_']);
   assert.equal(exported._currentSchoolYear_(new Date(2026, 8, 28)), '2026-27');
   sandbox.PropertiesService.getScriptProperties().setProperty('CURRENT_TERM', '2025-26 S2');
   assert.equal(exported._currentSchoolYear_(new Date(2026, 8, 28)), '2025-26');
 });
 
 test('_getRosterForEmail_: last year\'s students are not on this year\'s roster', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('07_TeacherDashboard.js')],
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('07_TeacherDashboard.js')],
     ['_getRosterForEmail_', 'getConfig_']);
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);

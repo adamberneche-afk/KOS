@@ -14,7 +14,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const { extractInlineScripts } = require('../../tools/html-lint/check.js');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-const FILES = [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '07_TeacherDashboard.js')];
+const FILES = [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '07_TeacherDashboard.js')];
 const DEMO = 'https://script.google.com/macros/s/AKfyDEMO/exec';
 
 function html(cfg) {

@@ -64,7 +64,7 @@ function fakeSlides(sandbox) {
 }
 
 function load() {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'), S('26_CompetencyAlignmentLog.js'),
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('22_LessonContextHandler.js'), S('26_CompetencyAlignmentLog.js'),
     S('23_StudentProfileManager.js'), S('27_LessonFrameGenerator.js'), S('32_CompetencyRubricImporter.js'), S('55b_LessonAssignmentData.js'), S('66_LessonDoc.js'), S('67_AgendaDeck.js'), S('68_LessonParts.js')],
   ['makeOrRefreshLessonDoc_', 'makeAgendaDeck_', 'nextAgendaDay_', 'agendaSlideSpec_'],
   { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => TEACHER }) } });

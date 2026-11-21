@@ -16,12 +16,14 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 const GUARD_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00b_ScriptOwnerGuard.js');
 const AGGREGATOR_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '29_StudentContextAggregator.js');
 
 function load() {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, AGGREGATOR_PATH],
+    [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, AGGREGATOR_PATH],
     ['buildValidatedStudentRoster_', 'getAllStudentDocsForTeacher_', 'getStudentDocForViewer_', '_studentIdPattern_'],
   );
 }
@@ -153,7 +155,7 @@ test('getStudentDocForViewer_: a viewer with no registry row gets null, never so
 function loadWithWarmUps() {
   const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, path.join(CC, '24_WarmUpBridge.js'), path.join(CC, '41_WarmUpFlowBridge.js'), AGGREGATOR_PATH],
+    [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, path.join(CC, '24_WarmUpBridge.js'), path.join(CC, '41_WarmUpFlowBridge.js'), AGGREGATOR_PATH],
     ['getWeeklyTextBoxWarmUps_', 'mergeWarmUpMaps_', 'appendWeeklySection_', 'getWeeklyReflections_'],
     { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => 'teacher@ccpsnet.net' }) } },
   );
@@ -287,7 +289,7 @@ test('appendWeeklySection_: the week heading is bookmarked', () => {
 });
 
 test('addContextWeekBookmarks: bookmarks each older week once; a re-run adds nothing', () => {
-  const { exported, sandbox } = loadGasFiles([SHARED_CONFIG_PATH, GUARD_PATH, AGGREGATOR_PATH], ['addContextWeekBookmarks']);
+  const { exported, sandbox } = loadGasFiles([SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, GUARD_PATH, AGGREGATOR_PATH], ['addContextWeekBookmarks']);
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
@@ -314,7 +316,7 @@ test('addContextWeekBookmarks: bookmarks each older week once; a re-run adds not
 
 function loadRun() {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, GUARD_PATH, AGGREGATOR_PATH],
+    [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, GUARD_PATH, AGGREGATOR_PATH],
     ['setupStudentContextDocs', 'previewStudentContextDocs', 'buildStudentContextDocsNow', 'runWeeklyStudentAggregation_'],
     { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => 'teacher@ccpsnet.net' }) } },
   );
