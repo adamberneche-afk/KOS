@@ -14,12 +14,14 @@ const path = require('path');
 const { loadGasFiles, FakeSheet } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 
 // 00b: the seeders refuse a caller other than the script's own account.
 const GUARD_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00b_ScriptOwnerGuard.js');
 
 function load(exposeNames = ['getConfig_']) {
-  return loadGasFiles([SHARED_CONFIG_PATH, GUARD_PATH], exposeNames);
+  return loadGasFiles([SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, GUARD_PATH], exposeNames);
 }
 
 test('getConfig_: throws a clear, actionable error when the Ledger ID can\'t be found anywhere', () => {
@@ -458,7 +460,7 @@ test('claimRunSlot_: one run claims the slot; a second is refused until it expir
 });
 
 test('claimRunSlot_: no lock within 5 seconds counts as taken', () => {
-  const { exported } = loadGasFiles([SHARED_CONFIG_PATH, GUARD_PATH], ['claimRunSlot_'],
+  const { exported } = loadGasFiles([SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, GUARD_PATH], ['claimRunSlot_'],
     { LockService: { getScriptLock: () => ({ tryLock: () => false, releaseLock() {} }) } });
   assert.equal(exported.claimRunSlot_('X_BUSY_UNTIL', 60000), false);
 });

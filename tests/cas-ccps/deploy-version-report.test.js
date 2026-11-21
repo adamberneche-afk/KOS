@@ -19,6 +19,8 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const SHARED_CONFIG = path.join(SCRIPTS, '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PARTS = [path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js')];
 
 // One entry per marker file — must match tools/deploy-drift/stamp.js's
 // MARKER_FILES and tools/gas-lint/project-map.json exactly.
@@ -36,7 +38,7 @@ const MARKER_FILES = [
 // ── shared implementation, tested once ───────────────────────────────────
 
 function loadShared(overrides = {}) {
-  return loadGasFiles([SHARED_CONFIG], ['_reportDeployVersion_'], overrides);
+  return loadGasFiles([SHARED_CONFIG, ...SHARED_CONFIG_PARTS], ['_reportDeployVersion_'], overrides);
 }
 
 test('_reportDeployVersion_: no token configured — no-ops, returns false, never calls UrlFetchApp', () => {
@@ -102,7 +104,7 @@ for (const { file, project } of MARKER_FILES) {
   test(`${file}: reportDeployVersion() reports exactly "${project}" and its own DEPLOY_VERSION_SHA`, () => {
     let capturedPayload;
     const { exported, sandbox } = loadGasFiles(
-      [SHARED_CONFIG, path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'), path.join(SCRIPTS, file)],
+      [SHARED_CONFIG, ...SHARED_CONFIG_PARTS, path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'), path.join(SCRIPTS, file)],
       ['reportDeployVersion', 'installDeployVersionReportTrigger', 'DEPLOY_VERSION_SHA'],
       { UrlFetchApp: { fetch: (url, opts) => { capturedPayload = JSON.parse(opts.payload); return { getResponseCode: () => 204 }; } } }
     );
@@ -116,7 +118,7 @@ for (const { file, project } of MARKER_FILES) {
 
   test(`${file}: installDeployVersionReportTrigger() creates exactly one 6-hourly trigger, idempotently`, () => {
     const { exported, sandbox } = loadGasFiles(
-      [SHARED_CONFIG, path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'), path.join(SCRIPTS, file)],
+      [SHARED_CONFIG, ...SHARED_CONFIG_PARTS, path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'), path.join(SCRIPTS, file)],
       ['installDeployVersionReportTrigger']
     );
     exported.installDeployVersionReportTrigger();
@@ -146,7 +148,7 @@ const SCOPE_PREFIX = 'https://www.googleapis.com/auth/';
 
 test('DEPLOY_PROJECT_SCOPES is every project\'s manifest oauthScopes, the marker projects included', () => {
   const projectMap = require('../../tools/gas-lint/project-map.json');
-  const { exported } = loadGasFiles([SHARED_CONFIG], ['DEPLOY_PROJECT_SCOPES', 'DEPLOY_SCOPE_PROBES']);
+  const { exported } = loadGasFiles([SHARED_CONFIG, ...SHARED_CONFIG_PARTS], ['DEPLOY_PROJECT_SCOPES', 'DEPLOY_SCOPE_PROBES']);
   const table = JSON.parse(JSON.stringify(exported.DEPLOY_PROJECT_SCOPES));
   const withManifest = Object.keys(projectMap).filter((k) => !k.startsWith('_') && projectMap[k].manifest);
   assert.deepEqual(Object.keys(table).sort(), withManifest.sort());
@@ -164,7 +166,7 @@ test('DEPLOY_PROJECT_SCOPES is every project\'s manifest oauthScopes, the marker
 function loadStudentDashboardMarker(overrides) {
   const sent = [];
   const env = loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'),
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '00b_ScriptOwnerGuard.js'),
       path.join(SCRIPTS, '49_DeployVersionMarker_StudentDashboard.js')],
     ['reportDeployVersion', '_deployPermissionGaps_'],
     Object.assign({ UrlFetchApp: { fetch: (url, opts) => { sent.push(JSON.parse(opts.payload)); return { getResponseCode: () => 204 }; } } },

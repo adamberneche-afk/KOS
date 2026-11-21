@@ -17,7 +17,7 @@ const { extractInlineScripts } = require('../../tools/html-lint/check.js');
 const ALLOW = require('../../tools/gas-lint/webapp-public-allow.json');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const SD = ['00_SharedConfig.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboard.js', '13b_StudentDashboardDemoLessons.js',
+const SD = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboard.js', '13b_StudentDashboardDemoLessons.js',
   '13c_StudentDashboardLessons.js', '13d_StudentDashboardReview.js', '63_DocHeader.js', '71_TurnInCodes.js',
   '71b_TurnInStudent.js'].map(S);
 const AMY = 'amy@ccpsnet.net';
@@ -196,7 +196,7 @@ test('Try again refuses anyone else\'s row, a row that didn\'t time out, and no 
 
 // ── 37 builds no duplicate FlowInput row after a Try again ────────────────
 
-const LEDGER_FILES = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
+const LEDGER_FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
   '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js',
   '68_LessonParts.js', '40_FlowPrompts.js', '54_StudentAssignments.js', '55b_LessonAssignmentData.js',
   '06_StagingPipeline_Turnstile.js'].map(S);

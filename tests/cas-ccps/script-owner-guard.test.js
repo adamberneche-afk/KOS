@@ -25,7 +25,7 @@ function session(active, effective) {
 }
 
 function loadGuard(active, effective) {
-  return loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js')],
+  return loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('00b_ScriptOwnerGuard.js')],
     ['requireScriptOwner_', 'showConfigSources'], { Session: session(active, effective) }).exported;
 }
 
@@ -46,7 +46,7 @@ test('the comparison ignores case', () => {
 });
 
 test('a session without getEffectiveUser (an older test mock) does not throw', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js')], ['requireScriptOwner_'],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('00b_ScriptOwnerGuard.js')], ['requireScriptOwner_'],
     { Session: { getActiveUser: () => ({ getEmail: () => TEACHER }), getScriptTimeZone: () => 'America/New_York' } });
   assert.doesNotThrow(() => exported.requireScriptOwner_());
 });
@@ -56,7 +56,7 @@ test('00\'s editor functions refuse a student through the web app', () => {
 });
 
 test('00\'s editor functions still run in a project without 00b (no web app there)', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js')], ['showConfigSources'],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['showConfigSources'],
     { Session: session(STUDENT, TEACHER) });
   // Past the guard, it fails only for lack of a Ledger, not "Not authorized".
   assert.throws(() => exported.showConfigSources(), (e) => !/Not authorized/.test(e.message));
@@ -64,7 +64,7 @@ test('00\'s editor functions still run in a project without 00b (no web app ther
 
 test('Docket IV: a student can no longer write a parent-report record or read the roster\'s reports', () => {
   const { exported } = loadGasFiles(
-    [S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'), S('29_StudentContextAggregator.js'), S('36_WeeklyParentReport.js'),
+    [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('00b_ScriptOwnerGuard.js'), S('29_StudentContextAggregator.js'), S('36_WeeklyParentReport.js'),
       S('55b_LessonAssignmentData.js')],
     ['recordParentReportCopied', 'generateWeeklyParentReports'], { Session: session(STUDENT, TEACHER) });
   assert.throws(() => exported.recordParentReportCopied(STUDENT, new Date(), { subject: 'x', text: 'y' }), /Not authorized/);

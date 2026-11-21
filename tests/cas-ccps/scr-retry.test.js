@@ -90,7 +90,7 @@ const READY = [
 ];
 
 function shared(evidence, opts) {
-  const env = loadGasFiles([S('00_SharedConfig.js')], ['scrRetryContext_', 'scrRetryStatus_', 'scrRetryRoles_', 'getConfig_']);
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['scrRetryContext_', 'scrRetryStatus_', 'scrRetryRoles_', 'getConfig_']);
   const fx = fixture(env.sandbox, evidence, opts);
   const cfg = env.exported.getConfig_();
   return Object.assign(env, fx, { cfg, status: (rating) =>
@@ -153,7 +153,7 @@ test('only ratings of 3 or 4 apply; archived evidence is left out', () => {
 // ── 30b: the scan the attention signal counts ────────────────────────────────
 
 function central(evidence, opts) {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('30_SCRSuggestionEngine.js'), S('30b_SCRRetryRemediation.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('30_SCRSuggestionEngine.js'), S('30b_SCRRetryRemediation.js')],
     ['checkRetryEligibility_', 'retryCandidates_', 'previewScrRetryThresholds']);
   return Object.assign(env, fixture(env.sandbox, evidence, opts));
 }
@@ -177,7 +177,7 @@ test('30b: an undecided rating is not a retry', () => {
 // ── 07: the student page, SCR Review, and the re-rating ──────────────────────
 
 function dashboard(evidence, opts) {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('07_TeacherDashboard.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('07_TeacherDashboard.js')],
     ['teacherConfirmScrRetry', 'getScrReviewQueue', '_tdRetryRows_', 'getConfig_']);
   return Object.assign(env, fixture(env.sandbox, evidence, opts));
 }
@@ -231,7 +231,7 @@ test('07: another teacher\'s rating is not listed or re-rated', () => {
 // ── 13: what the student reads ───────────────────────────────────────────────
 
 function student(evidence) {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js')], ['_dashRetryFor_', 'getConfig_'],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js')], ['_dashRetryFor_', 'getConfig_'],
     { Session: { getActiveUser: () => ({ getEmail: () => ME }), getEffectiveUser: () => ({ getEmail: () => ME }),
       getScriptTimeZone: () => 'America/New_York' } });
   const fx = fixture(env.sandbox, evidence);
@@ -257,7 +257,7 @@ test('13: not yet names the linked skills in words and how much more', () => {
 // ── The thresholds as settings (2026-11-01) ─────────────────────────────────
 
 test('the thresholds come from config: defaults 5 and 2; a bad value keeps the default', () => {
-  const { scrRetryThresholds_ } = loadGasFiles([S('00_SharedConfig.js')], ['scrRetryThresholds_']).exported;
+  const { scrRetryThresholds_ } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['scrRetryThresholds_']).exported;
   assert.deepEqual({ ...scrRetryThresholds_({}) }, { minMet: 5, linkedPerMiss: 2 });
   assert.deepEqual({ ...scrRetryThresholds_({ SCR_RETRY_MIN_MET: '4', SCR_RETRY_LINKED_PER_MISS: '1' }) }, { minMet: 4, linkedPerMiss: 1 });
   for (const bad of ['0', '-1', '2.5', 'five', '21']) {

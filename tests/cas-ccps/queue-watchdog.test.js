@@ -16,11 +16,13 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 const WATCHDOG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '34_QueueWatchdog.js');
 
 function load(extraGlobals) {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, WATCHDOG_PATH, path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '64_LedgerCycle.js')],
+    [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, WATCHDOG_PATH, path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '64_LedgerCycle.js')],
     ['runQueueWatchdog', 'runQueueWatchdogNow', 'installQueueWatchdogTrigger', 'removeQueueWatchdogTrigger'],
     extraGlobals,
   );

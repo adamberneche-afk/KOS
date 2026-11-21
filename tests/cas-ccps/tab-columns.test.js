@@ -12,7 +12,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-const x = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')],
+const x = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js')],
   ['LEDGER', 'LEDGER_HEADERS', 'LEDGER_BASE_WIDTH', 'LEDGER_COL_COUNT', 'LEDGER_LATER_HEADERS',
     'WQ', 'WQ_HEADERS', 'WQ_BASE_WIDTH', 'TM', 'TM_HEADERS', 'TM_BASE_WIDTH',
     'RBQ', 'RBQ_HEADERS', 'RVQ', 'RVQ_HEADERS', 'LCTX', 'LCTX_HEADERS', 'PG', 'PG_HEADERS']).exported;
@@ -117,7 +117,7 @@ test('no script keeps its own copy of LessonContext\'s columns or header row', (
 });
 
 test('28 heads warm_up_generated in its own column, not past the frame columns', () => {
-  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '28_Module2Setup.js')],
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '28_Module2Setup.js')],
     ['_addWarmUpGeneratedColumn_', 'LCTX', 'LCTX_HEADERS', 'PG', 'PG_HEADERS']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   const sheet = ss.insertSheet('LessonContext');
@@ -153,7 +153,7 @@ test('no script keeps its own copy of PacingGuide\'s columns or header row', () 
 
 // ── ensureTab_ (structure audit 3.2): the one "make sure this tab exists" ──
 test('ensureTab_: creates a missing tab with its headers once, and returns it', () => {
-  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')], ['ensureTab_']);
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js')], ['ensureTab_']);
   const ss = env.sandbox.SpreadsheetApp.create('Ledger');
   const before = ss.getSheets().length;
   const sheet = env.exported.ensureTab_(ss, 'Things', ['a', 'b', 'c'], { textColumns: [2] });
@@ -165,7 +165,7 @@ test('ensureTab_: creates a missing tab with its headers once, and returns it', 
 });
 
 test('ensureTab_: fills in trailing headers on a tab whose headers match, leaves a different one alone', () => {
-  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')], ['ensureTab_']);
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js')], ['ensureTab_']);
   const ss = env.sandbox.SpreadsheetApp.create('Ledger');
   const older = ss.insertSheet('Older');
   older.appendRow(['a', 'b']);
@@ -189,7 +189,7 @@ test('no script keeps its own create-the-tab helper', () => {
 
 // ── Tab names (structure audit 3.3): one list, TABS in 00 ─────────────────
 test('tab names: no "tabs.x || literal" fallback, no file redeclaring a TABS name or another file\'s tab', () => {
-  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')], ['TABS']);
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js')], ['TABS']);
   const names = new Set(Object.values(env.exported.TABS));
   const found = [];
   const owners = {};

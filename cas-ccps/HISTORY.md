@@ -1815,3 +1815,28 @@ Not done: one shared include for the client code both pages carry. Only about
 31 lines are identical (the spinner timing); the More menu's seven functions
 have drifted apart, so sharing them is a decision about which behaviour is
 right, not a move.
+
+## 00's one-project code in each project's own file, 2026-11-21
+
+Structure audit 4.6. 00 is in all eight cas-ccps projects, so whatever it
+holds ships to all of them. Of its 3,484 lines, about 400 were used by one
+project only: counted by following every call, including from the dashboards'
+`.html` pages, and counting each public (editor-run) function in 00 as used
+by every project, since an operator can run it from any editor (otherwise
+`refreshSharedConfig`'s helpers would have looked single-project).
+
+Those moved, unchanged, into three new files that sort right after 00 and
+00b: `00c_CentralLedgerShared.js` (the run-slot claim, the warm-up text box,
+Canvas title matching, Studio full-list notes, a work file's "not submitted"
+text), `00d_TeacherDashboardShared.js` (shared-config writes, SCR suggestion
+ownership, the teacher's terms) and `00e_StudentDashboardShared.js` (the
+reflection questions, the student's terms, the Context doc and snapshot
+lookups). 00 is 2,938 lines. Every reference to a moved constant is inside a
+function body, so file load order can't matter.
+
+Stayed in 00 though one project uses them: the column registry (`RBQ`,
+`RVQ_HEADERS`, `LEDGER_BASE_WIDTH`, `LEDGER_LATER_HEADERS`, `TM_BASE_WIDTH`),
+which 3.1 put there on purpose, beside each tab's headers.
+
+The audit counted ~943 lines; following calls through 00's own helpers, and
+into the pages, most of those turned out to be shared.

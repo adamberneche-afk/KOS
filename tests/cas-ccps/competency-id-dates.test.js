@@ -12,7 +12,7 @@ const path = require('path');
 const { loadGasFiles, FakeSheet } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const load = (names) => loadGasFiles([S('00_SharedConfig.js'), S('00b_ScriptOwnerGuard.js'),
+const load = (names) => loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('00b_ScriptOwnerGuard.js'),
   S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('04_Form2_TurnInGate.js'), S('32_CompetencyRubricImporter.js'), S('15c_Flow2DirectEvaluationService.js')], names);
 
 test('competencyIdText_: a date is course-month; text is trimmed', () => {

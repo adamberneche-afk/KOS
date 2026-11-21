@@ -14,7 +14,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const TEACHER = 'teacher@ccpsnet.net';
 
 function load() {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'), S('26_CompetencyAlignmentLog.js'),
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('22_LessonContextHandler.js'), S('26_CompetencyAlignmentLog.js'),
     S('23_StudentProfileManager.js'), S('27_LessonFrameGenerator.js'), S('32_CompetencyRubricImporter.js'), S('55b_LessonAssignmentData.js'), S('66_LessonDoc.js'), S('68_LessonParts.js')],
   ['makeOrRefreshLessonDoc_', 'onLessonContextSubmit_', '_ldocClassStatus_', 'LESSON_ASSIGNMENTS'],
   { Session: { getScriptTimeZone: () => 'America/New_York', getActiveUser: () => ({ getEmail: () => TEACHER }) } });

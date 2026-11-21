@@ -21,7 +21,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = [S('00_SharedConfig.js'), S('07_TeacherDashboard.js')];
+const FILES = [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('07_TeacherDashboard.js')];
 const EXPOSE = [
   'getScrReviewQueue', 'teacherConfirmScrRating', 'teacherOverrideScrRating',
   'DASHBOARD_SCRS',
@@ -280,7 +280,7 @@ test('no matching SCRSuggestions row for the given student/competency pair retur
 
 test('DASHBOARD_SCRS column order is byte-identical to 30_SCRSuggestionEngine.js\'s SCRS', () => {
   const dashboard = loadGasFiles(FILES, ['DASHBOARD_SCRS']);
-  const engine = loadGasFiles([S('00_SharedConfig.js'), S('30_SCRSuggestionEngine.js')], ['SCRS']);
+  const engine = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('30_SCRSuggestionEngine.js')], ['SCRS']);
   assert.deepEqual(dashboard.exported.DASHBOARD_SCRS, engine.exported.SCRS);
 });
 

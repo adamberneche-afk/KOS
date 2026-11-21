@@ -13,7 +13,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 function pages() {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('07_TeacherDashboard.js')],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('07_TeacherDashboard.js')],
     ['buildStudentDashboardHtml_', 'buildDashboardHtml_', 'CLIENT_WORDS_JS', 'CAS_STUDENT_TERMS', 'CAS_TEACHER_TERMS']);
   return { student: exported.buildStudentDashboardHtml_(), teacher: exported.buildDashboardHtml_(), exported };
 }
@@ -80,7 +80,7 @@ test('each dashboard has a Terms panel that explains its words', () => {
 
 // The doc's own Feedback menu (01) uses the dashboard's words for each stage.
 test('the doc menu\'s status pop-up uses the dashboard\'s words, never a raw status code', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('01_StudentDoc_ContainerScript.js')],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('01_StudentDoc_ContainerScript.js')],
     ['buildStatusMessage_', 'termLabel_']);
   const base = { unitCode: 'Unit 1', teacherName: 'T', term: exported.termLabel_('2627_MP1'), lastEval: 'Oct 22, 2026 9:00 AM' };
   assert.equal(base.term, 'Marking period 1, 2026–27');
@@ -99,7 +99,7 @@ test('the doc menu\'s status pop-up uses the dashboard\'s words, never a raw sta
 
 // A lesson's *emphasis* reaches the student's doc as italics (02), not asterisks.
 test('the doc shows a lesson\'s *emphasis* in italics, without the asterisks', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_docItalicSpans_']);
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_docItalicSpans_']);
   const md = exported._docItalicSpans_('Explain *why* it worked and what comes *next*.');
   assert.equal(md.text, 'Explain why it worked and what comes next.');
   assert.deepEqual(JSON.parse(JSON.stringify(md.spans)), [[8, 10], [37, 40]]);
@@ -144,7 +144,7 @@ test('after a successful Submit, the card says it is waiting and Submit is gone'
 // the student isn't told to report what the teacher already knows, and the
 // teacher's row says why and what to do.
 test('a failed or timed-out check reads as the system\'s problem, with a next step for the teacher', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('07_TeacherDashboard.js')],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('07_TeacherDashboard.js')],
     ['resolveStudentStatus_', '_tdFlagReason_']);
   // Plain words and a next step since 2026-11-14: the card's Try again.
   assert.match(exported.resolveStudentStatus_('ERROR_TIMEOUT'), /^Check stopped ⚠ — it took too long\. Your work is saved\. Press Try again/);
@@ -158,7 +158,7 @@ test('a failed or timed-out check reads as the system\'s problem, with a next st
 // UX audit fix-first 11 (2026-10-22): the doc's task drops the Canvas text's
 // title line and its "Submission:" part, which contradicts CAS.
 test('the doc shows the task without the Canvas title line or the Submission part', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_docStudentTask_']);
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('02_Form1_IntakeAndWorkspaceGenerator.js')], ['_docStudentTask_']);
   const task = 'Title: Assignment: Brand Analysis\n\nDescription:\n\nDo it well.\n\nWhat your work needs to show:\n\n- A\n\nSubmission:\n\nSubmit your responses as a Text Entry.';
   assert.equal(exported._docStudentTask_(task), 'Description:\n\nDo it well.\n\nWhat your work needs to show:\n\n- A');
   assert.equal(exported._docStudentTask_('Just the task.'), 'Just the task.');
@@ -187,7 +187,7 @@ function studentData() {
     getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
     getScriptTimeZone() { return 'America/New_York'; },
   };
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js')],
     ['getStudentDashboardData', 'buildStudentDashboardHtml_', 'LEDGER'], { Session: session });
   const L = exported.LEDGER;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');

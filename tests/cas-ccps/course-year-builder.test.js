@@ -19,7 +19,7 @@ const { loadGasFiles, FakeDriveFolder } = require('../harness/gas-sandbox');
 
 const ROOT = path.join(__dirname, '..', '..');
 const S = (f) => path.join(ROOT, 'cas-ccps', 'scripts', f);
-const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '22b_CompetencyRegistryImporter.js',
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '22_LessonContextHandler.js', '22b_CompetencyRegistryImporter.js',
   '23_StudentProfileManager.js', '24_WarmUpBridge.js', '26_CompetencyAlignmentLog.js',
   '27_LessonFrameGenerator.js', '31_PacingGuideManager.js', '32_CompetencyRubricImporter.js',
   '51_CourseYearBuilder.js', '55b_LessonAssignmentData.js', '55_LessonSchedule.js'].map(S);

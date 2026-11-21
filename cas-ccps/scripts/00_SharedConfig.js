@@ -353,27 +353,6 @@ function findSystemText_(text) {
   return "";
 }
 
-// Claims a run slot: true, and the Script Property `key` set to now + ms,
-// when no other run holds it; false when one does. The read and the write
-// happen under the script lock, so two runs that start together can't both
-// see the slot free (KOS Audit Docket IV, Low: the rollout's and the Ledger
-// cycle's guards were a plain check-then-set). The lock is held only for
-// that, not for the run: the jobs a run calls take their own locks. A run
-// that can't get the lock in 5 seconds treats the slot as taken.
-function claimRunSlot_(key, ms) {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(5000)) return false;
-  try {
-    const props = PropertiesService.getScriptProperties();
-    const now = Date.now();
-    if (Number(props.getProperty(key) || 0) > now) return false;
-    props.setProperty(key, String(now + ms));
-    return true;
-  } finally {
-    lock.releaseLock();
-  }
-}
-
 // The same text with every system-text token replaced, for a student's
 // words that reach a model prompt after the submit-time check has run: a
 // warm-up answer (Flow 4), an earlier part re-read from a doc the student
@@ -413,13 +392,6 @@ function _pivotValueOn_(raw, courseCode) {
     .trim().toLowerCase();
   return course !== "" && value.split(",").some(function (c) { return c.trim() === course; });
 }
-
-// The settings the Teacher Dashboard's ⚙ Settings panel changes (07's
-// TD_SETTINGS, plus the marking period end dates). The Central Ledger's
-// nightly signal names any of them set as a Script Property there (34c),
-// since that would override the panel without it knowing.
-const DASHBOARD_SETTING_KEYS = ["FEEDBACK_AS_COMMENT", "WARMUP_TEXT_BOX", "ROLLOUT_AUTO_APPLY",
-  "REFLECTION_ON_SUBMIT", "PIVOT_ARCHETYPE_LOCK", "PARENT_REPORT_PREP", "MARKING_PERIOD_ENDS", "SCHEDULE_DAYS"];
 
 // Whether a submission's Flow 2 feedback goes on the student's doc as a
 // comment instead of into its feedback zone (FEEDBACK_AS_COMMENT, read like
@@ -492,16 +464,6 @@ function _ledgerCourseCodes_() {
     Logger.log("[FEEDBACK_AS_COMMENT] Ledger unreadable, feedback stays in the doc: " + e.message);
   }
   return out;
-}
-
-// Whether a course's warm-ups are answered in a text box on the Student
-// Dashboard instead of in a doc (WARMUP_TEXT_BOX, read like a pivot flag).
-// On, Flow 3's harvest (41) writes the warm-up to the WarmUpTextBox tab and
-// makes no doc; the dashboard (13) saves the answer and the extra-credit
-// reply there; the nightly scoring (25) reads them from it. A warm-up keeps
-// the form it was delivered in if the flag changes later.
-function warmUpTextBoxFor_(courseName) {
-  return pivotFlagFor_("WARMUP_TEXT_BOX", warmUpCourseCode_(courseName));
 }
 
 // A configured course's code, or "", from a course name (schoolCourseOf_;
@@ -720,44 +682,6 @@ function canvasCsvRows_(text) {
   return Utilities.parseCsv(String(text || "").replace(/^\uFEFF/, ""));
 }
 
-// The assignment columns of a Canvas gradebook export, by title: every
-// header written "<title> (<Canvas ID>)", the title only (2026-11-19).
-function canvasExportAssignmentTitles_(rows) {
-  const header = (rows && rows[0]) || [];
-  const out = [];
-  header.forEach(function (h) {
-    const m = /^(.*\S)\s*\((\d+)\)$/.exec(String(h || "").trim());
-    if (m) out.push(m[1].trim());
-  });
-  return out;
-}
-
-// The words that identify a lesson's name: three letters or more, without
-// the filler every title shares.
-function _canvasTitleWords_(s) {
-  return String(s || "").toLowerCase().replace(/[’']/g, "").split(/[^a-z0-9]+/).filter(function (w) {
-    return w.length >= 3 && ["the", "and", "for", "with", "lesson", "part", "cas", "your", "from"].indexOf(w) === -1;
-  });
-}
-
-// The Canvas assignment title that is this lesson's, or "": a title that
-// holds at least CANVAS_TITLE_MATCH of the lesson name's words (a teacher
-// may shorten or prefix it: "L08 Market Research & Survey Design" for "Venue
-// Market Research & Survey Design"), the most words first. Used by the rollout's check that
-// a lesson is on Canvas before it opens (58).
-const CANVAS_TITLE_MATCH = 0.6;
-function canvasAssignmentFor_(titles, lessonName) {
-  const want = _canvasTitleWords_(lessonName);
-  if (!want.length) return "";
-  let best = "", bestShare = 0;
-  (titles || []).forEach(function (t) {
-    const have = _canvasTitleWords_(t);
-    const share = want.filter(function (w) { return have.indexOf(w) !== -1; }).length / want.length;
-    if (share > bestShare) { best = t; bestShare = share; }
-  });
-  return bestShare >= CANVAS_TITLE_MATCH ? best : "";
-}
-
 // An export's SIS Login ID as the student's account, the way 52 enrols
 // them: lower case, and a bare student ID gets "@" and the student email
 // domain. Anything else (a full address, a non-student login) is kept as it
@@ -970,17 +894,6 @@ const WTB_HEADERS = ["queue_id", "lesson_date", "bridge_text", "warmup_text",
 const WTB = { QUEUE_ID: 0, LESSON_DATE: 1, BRIDGE: 2, WARMUP: 3,
   RESPONSE: 4, SUBMITTED_AT: 5, REPLY: 6, REPLIED_AT: 7 };
 
-function warmUpTextBoxSheet_(ss) {
-  let sheet = ss.getSheetByName(getConfig_().tabs.warmUpTextBox);
-  if (!sheet) {
-    sheet = ss.insertSheet(getConfig_().tabs.warmUpTextBox);
-    sheet.getRange(1, 1, 1, WTB_HEADERS.length).setValues([WTB_HEADERS]).setFontWeight("bold");
-    sheet.setFrozenRows(1);
-    sheet.getRange("B:B").setNumberFormat("@"); // lesson_date stays YYYY-MM-DD text
-  }
-  return sheet;
-}
-
 // queue_id -> { sheetRow, row } ({} when the tab doesn't exist yet).
 function readWarmUpTextBox_(ss) {
   const out = {};
@@ -1016,19 +929,6 @@ const WQ_HEADERS = [
   "archive_status", "delivered_at", "answered_at",
 ];
 const WQ_BASE_WIDTH = 21;
-
-// Headers fill themselves in on first use, archive_status's too if it's
-// still blank, so the header row has no gap.
-function stampWarmUpTiming_(wqSheet, sheetRow, col, when) {
-  const later = WQ_HEADERS.slice(WQ.ARCHIVE_STATUS);
-  const head = wqSheet.getRange(1, WQ.ARCHIVE_STATUS + 1, 1, later.length);
-  const have = head.getValues()[0];
-  if (have.some(function (h, i) { return String(h).trim() !== later[i]; })) {
-    head.setValues([later.map(function (h, i) { return String(have[i] || "").trim() || h; })]);
-  }
-  const cell = wqSheet.getRange(sheetRow, col + 1);
-  if (String(cell.getValue()).trim() === "" || col === WQ.ANSWERED_AT) cell.setValue(when);
-}
 
 // Text a student or a model wrote, made safe to setValue: a leading = + - @
 // would otherwise be read as a formula. The apostrophe isn't stored.
@@ -1263,45 +1163,6 @@ function seedLedgerConfigTab() {
   return { ledgerId: ledgerId, added: added, conflicts: conflicts };
 }
 
-// Sets one SHARED_CONFIG_KEYS value in the Ledger's _CONFIG tab, replacing
-// the row if there is one, and clears this project's cache so the change
-// shows here at once (other projects see it within the cache TTL). For
-// settings a dashboard control changes, such as FEEDBACK_AS_COMMENT; callers
-// check who may change it.
-function setSharedConfigValue_(key, value) {
-  if (SHARED_CONFIG_KEYS.indexOf(key) === -1) throw new Error(key + " is not a shared setting.");
-  const ledgerId = _resolveConfigValues_().values.CENTRAL_LEDGER_SS_ID;
-  const ss = SpreadsheetApp.openById(ledgerId);
-  let sheet = ss.getSheetByName(CONFIG_TAB_NAME);
-  if (!sheet) {
-    sheet = ss.insertSheet(CONFIG_TAB_NAME);
-    sheet.appendRow(["Key", "Value"]);
-  }
-  const rows = sheet.getDataRange().getValues();
-  let written = false;
-  for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]).trim() !== key) continue;
-    sheet.getRange(i + 1, 2).setValue(value);
-    written = true;
-    break;
-  }
-  if (!written) sheet.appendRow([key, value]);
-  try { CacheService.getScriptCache().remove(SHARED_CONFIG_CACHE_PREFIX + ledgerId); } catch (e) { /* ignore */ }
-  _sharedConfigMemo_ = null;
-}
-
-// The config as the Ledger's _CONFIG tab has it now, not this project's
-// cached copy (up to 10 minutes old): for a read-modify-write of a shared
-// setting, under the caller's lock (07's ⚙ Settings, Docket IV).
-function freshConfigValues_() {
-  const ledgerId = _resolveConfigValues_().values.CENTRAL_LEDGER_SS_ID;
-  if (ledgerId) {
-    try { CacheService.getScriptCache().remove(SHARED_CONFIG_CACHE_PREFIX + ledgerId); } catch (e) { /* ignore */ }
-  }
-  _sharedConfigMemo_ = null;
-  return _resolveConfigValues_().values;
-}
-
 // Run from the Apps Script editor after editing the Ledger's _CONFIG tab
 // to use the new values in this project now, instead of within 10 minutes.
 // Each project caches separately, so this clears only the project it runs
@@ -1471,31 +1332,6 @@ function currentTerm_(now) {
 // year, so a student enrolled in MP1 is still enrolled in MP2: the marking
 // period only labels the row. Terms with no readable year compare exactly;
 // a blank on either side matches, as before.
-// ---------------------------------------------------------------------------
-// A Studio flow's key cell holding several rows' keys (2026-11-19). Studio's
-// sheet starter can hand a run several changed rows, and a chip bound as a
-// "Full list" then holds all of them: one Ask Gemini answer for several
-// prompts, written back under a key like "WUQ-a, WUQ-b". The fix is in Studio:
-// Ask Gemini and the write step inside a Repeat for each, each chip the
-// looped row's own value. The harvests (41, 72) set such a return aside with
-// FLOW_FULL_LIST_NOTE instead of retrying it as an unknown key, and 34c counts
-// it. A key here (QueueID, CheckID) never has spaces, commas or brackets.
-// Returns the keys found when there are two or more, else [].
-// ---------------------------------------------------------------------------
-const FLOW_FULL_LIST_NOTE = "FULL_LIST";
-function flowKeyList_(value) {
-  const t = String(value === null || value === undefined ? "" : value).trim();
-  if (!/[\s,;"'\[\]]/.test(t)) return [];
-  const keys = t.split(/[\s,;"'\[\]]+/).filter(Boolean);
-  return keys.length > 1 ? keys : [];
-}
-
-// The note a harvest writes on such a return.
-function flowFullListNote_(keys, what) {
-  return FLOW_FULL_LIST_NOTE + ": one answer for " + keys.length + " " + what + "s (the flow bound a Full list). " +
-    "In Studio, put Ask Gemini and its write step inside a Repeat for each, every chip the looped row's own value.";
-}
-
 function sameSchoolYearTerm_(rowTerm, currentTerm) {
   const a = String(rowTerm || "").trim();
   const b = String(currentTerm || "").trim();
@@ -1512,66 +1348,6 @@ function _rowSchoolYear_(row) {
 function _isCurrentSchoolYearRow_(row, currentYear) {
   return _rowSchoolYear_(row) === (currentYear || _currentSchoolYear_());
 }
-
-// ---------------------------------------------------------------------------
-// _scrOwnership_ — student-data access policy, rule 3: only the teacher who
-// assigned the work rates it. A competency rating is built from
-// CompetencyEvidence rows, and each carries the config_id of the Ledger
-// row (the assignment) it came from, which names the assigning teacher. A
-// student+competency pair is this teacher's when any of its evidence comes
-// from their own assignment this school year.
-//
-// Evidence written before config_id existed can't be traced; for a pair
-// with no traceable evidence at all, the current-year roster decides, as it
-// did before this check.
-//
-// Returns { owned: Set<pairKey>, traced: Set<pairKey> }; pairKey is
-// lowercased student email + "|" + competency id.
-// ---------------------------------------------------------------------------
-function _scrPairKey_(email, competencyId) {
-  return String(email || "").trim().toLowerCase() + "|" + String(competencyId || "").trim();
-}
-
-function _scrOwnership_(cfg, teacherEmail) {
-  const out = { owned: new Set(), traced: new Set() };
-  const teacher = String(teacherEmail || "").trim().toLowerCase();
-  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-
-  const year = _currentSchoolYear_();
-  const teacherByConfig = {};
-  const ledger = ss.getSheetByName(cfg.tabs.ledger);
-  if (ledger && ledger.getLastRow() > 1) {
-    ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER.ACADEMIC_YEAR + 1).getValues().forEach(function (row) {
-      const configId = String(row[LEDGER.CONFIG_ID] || "").trim();
-      if (!configId || !_isCurrentSchoolYearRow_(row, year)) return;
-      teacherByConfig[configId] = String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
-    });
-  }
-
-  const evidence = ss.getSheetByName(TABS.competencyEvidence);
-  if (!evidence || evidence.getLastRow() < 2) return out;
-  const data = evidence.getDataRange().getValues();
-  const h = data[0].map(function (x) { return String(x).trim(); });
-  const iEmail = h.indexOf("student_email"), iComp = h.indexOf("competency_id");
-  const iConfig = h.indexOf("config_id"), iArchive = h.indexOf("archive_status");
-  if (iEmail === -1 || iComp === -1 || iConfig === -1) return out;
-  for (let i = 1; i < data.length; i++) {
-    if (iArchive !== -1 && String(data[i][iArchive] || "").trim() !== "") continue;
-    const configId = String(data[i][iConfig] || "").trim();
-    if (!configId) continue;
-    const key = _scrPairKey_(data[i][iEmail], data[i][iComp]);
-    out.traced.add(key);
-    if (teacher && teacherByConfig[configId] === teacher) out.owned.add(key);
-  }
-  return out;
-}
-
-function _scrIsMine_(ownership, rosterEmails, email, competencyId) {
-  const key = _scrPairKey_(email, competencyId);
-  if (ownership.traced.has(key)) return ownership.owned.has(key);
-  return rosterEmails.has(String(email || "").trim().toLowerCase());
-}
-
 
 // =============================================================================
 // THE SCR RULE AND THE SCR RETRY (moved here 2026-11-01, D15)
@@ -1599,10 +1375,6 @@ const COMPETENCIES_OUTSIDE_LESSONS = {
   "8177-35": "WBL", "8177-36": "WBL", "8177-37": "WBL", "8177-38": "WBL",
 };
 const OUTSIDE_LESSONS_LABEL = { DECA: "Through DECA", WBL: "Through work-based learning" };
-const OUTSIDE_LESSONS_NOTE = {
-  DECA: "You show this through DECA (meetings, events and competitions), not class lessons. Your teacher rates it.",
-  WBL: "You show this through work-based learning (a job, internship or job shadow), not class lessons. Your teacher rates it.",
-};
 // "DECA", "WBL", or "" for a competency lessons measure.
 function competencyOutsideLessons_(competencyId) {
   return COMPETENCIES_OUTSIDE_LESSONS[String(competencyId || "").trim()] || "";
@@ -1850,18 +1622,6 @@ function scrRetryStatus_(ctx, studentEmail, competencyId, currentRating) {
     needMet: needMet, needSecondary: needSecondary, needPrimaryMet: needPrimaryMet, reason: reason };
 }
 
-// The permanent record of a confirmed retry: one SCRDecisionLog row,
-// RETRY_IMPROVED, the old rating named in its snapshot. The caller has
-// checked the teacher and re-run scrRetryStatus_ under the script lock, and
-// updates SCRSuggestions with its own column map (SCRS stays in 30).
-function scrAppendRetryDecision_(decisionLogSheet, decisionId, studentEmail, competencyId, status, teacherEmail, now) {
-  const snapshot = "MET:" + status.all.metCount + " NOT_MET:" + status.all.notMetCount +
-    " PARTIALLY_MET:" + status.all.partialCount + " (retry -- previous official rating: " + status.currentRating +
-    "; secondary MET:" + status.secondary.metCount + ")";
-  decisionLogSheet.appendRow([decisionId, studentEmail, competencyId, status.newRating, status.newRating,
-    "RETRY_IMPROVED", now, teacherEmail, snapshot, ""]);
-}
-
 // =============================================================================
 // CLIENT_ESC_JS — exact source of the client-side esc() HTML-escaping
 // helper, shared verbatim by every dashboard's inline <script> block so
@@ -1929,21 +1689,6 @@ const SDR_DOC_URL = 3;
 const SDR_CREATED_AT = 4;
 const SDR_LAST_UPDATED_AT = 5;
 const SDR_LAST_RUN_HAD_CONTENT = 6;
-
-// A student's doc from StudentDocRegistry: { docId, docUrl, lastUpdatedAt }
-// or null.
-function studentContextDocFor_(ss, cfg, email) {
-  const sheet = ss.getSheetByName(TABS.studentDocRegistry);
-  if (!sheet || sheet.getLastRow() < 2) return null;
-  const want = String(email || "").trim().toLowerCase();
-  const data = sheet.getDataRange().getValues();
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][SDR_STUDENT_EMAIL]).trim().toLowerCase() !== want) continue;
-    return { docId: String(data[i][SDR_DOC_ID]).trim(), docUrl: String(data[i][SDR_DOC_URL]).trim(),
-      lastUpdatedAt: data[i][SDR_LAST_UPDATED_AT] || null };
-  }
-  return null;
-}
 
 // =============================================================================
 // COMPETENCY COMPLETION — n of the course's competencies, per student
@@ -2078,56 +1823,6 @@ const CLIENT_WORDS_JS =
   "}\n" +
   "function scrLabel(n) { return SCR_RATING_LABELS[n] ? n + ' \\u2014 ' + SCR_RATING_LABELS[n] : String(n); }\n" +
   "function scoreLabel(n) { return FLOW2_SCORE_LABELS[n] ? n + ' \\u2014 ' + FLOW2_SCORE_LABELS[n] : String(n); }\n";
-
-// What each dashboard's Terms panel explains: [word on screen, meaning].
-const CAS_STUDENT_TERMS = [
-  ["Competencies done", "Competencies in your course that your teacher has rated you able to do with limited supervision or better (1 to 3 on the state's 5-point scale), out of every competency in the course."],
-  ["Competency rating", "Your teacher's rating of a competency on Virginia's 1 to 5 scale, where 1 is the highest: 1 Can teach others, 2 Without supervision, 3 Limited supervision, 4 With supervision, 5 Cannot perform. “Not rated yet” until your teacher decides."],
-  ["Evidence", "What a checked piece of your work showed for a competency: Shown, Partly shown or Not shown yet. Each assignment counts once, at its best result, so an early draft doesn't count against you."],
-  ["My Context", "What the system has gathered about your work, week by week: your checked assignments and your warm-up answers. The same document your teacher sees."],
-  ["Submit for Feedback", "Sends what you wrote under “Your response” to be checked. Press it when you’re ready; you can submit again after you revise."],
-  ["Do next", "The list at the top of your assignments: the ones waiting on you. Click one to jump to it."],
-  ["Not started", "You haven’t submitted this one yet. Open your document, write under “Your response”, then press Submit for Feedback."],
-  ["Waiting for feedback", "Your work is in line to be checked. Nothing to do yet: the card shows where it is, and this page shows your feedback when it's ready."],
-  ["Being checked", "Your work is being read right now."],
-  ["Passed ✓", "Your work meets the standard for this assignment. You can still improve it and submit again."],
-  ["Revise", "Read the feedback, change your work, then press Submit for Feedback again."],
-  ["Not yet", "The part of the assignment your last check didn’t find in your work yet. Start your revision there."],
-  ["Turned in", "Your teacher is reviewing your work. Nothing to do yet."],
-  ["Done ✓", "Your teacher confirmed this assignment."],
-  ["Check stopped", "The check took too long and was stopped. Your work is saved. Press Try again on the card to put it back in line."],
-  ["Couldn’t be checked", "Something went wrong on our side, not with your work. Tell your teacher."],
-  ["Comments", "Your feedback appears as a comment on your document. Open the document and click the Comments button (top right). Resolving a comment doesn’t delete it."],
-  ["Last submitted", "When you last pressed Submit for Feedback on this assignment."],
-  ["Last checked", "When your work was last checked and given feedback."],
-  ["Warm-up", "A short question at the start of class. Type your answer here and save it before the end of the day. Missed one? You can answer it late until the end of your next class day, for points but no feedback or extra credit."],
-  ["Extra credit", "After a warm-up is checked, reply to its feedback in at least 10 words by the date shown (the end of your next class day) for an extra point."],
-  ["Marking period", "Part of the school year. Use the menu at the top to see one marking period or the whole year."],
-  ["Block and period", "When your class meets. 3-Odd and 3-Even are the two halves of period 3 that meet on alternate days."],
-  ["My Info", "What the system has on file for you: your name, class, period and teacher. Tell your teacher if something is wrong."]
-];
-const CAS_TEACHER_TERMS = [
-  ["Competencies done", "For each course, the competencies you have rated 1 to 3 (limited supervision or better) in Competency ratings, out of every competency in the course (the CompetencyRegistry tab). Only your own confirmed ratings count."],
-  ["Check", "One AI evaluation of a submission against the assignment’s criteria (Flow 2). A student can be checked many times."],
-  ["Passed / Not passing yet", "Whether the latest check met the assignment’s criteria. “Passed before” means an earlier check passed and the latest needs revision."],
-  ["Waiting to be checked", "Submitted and in line for its check."],
-  ["Being checked now", "The check is running."],
-  ["Couldn’t be checked", "The check failed or timed out, not the student’s work. The timeout email says what to do."],
-  ["AI’s suggested score", "On a passing check, the AI suggests 2 (Adequate), 3 (Solid) or 4 (Exceptional). Higher is better. It never suggests 1 or 5."],
-  ["Competency rating (SCR)", "The Virginia CTE Student Competency Record, 1 to 5, where 1 is the highest: 1 Can teach others, 2 Without supervision, 3 Limited supervision, 4 With supervision, 5 Cannot perform. The AI suggests 2 to 4 once there are 3 pieces of evidence; 1 and 5 are yours alone."],
-  ["Competency tiers", "Each assignment’s competencies are primary (must be shown to pass), secondary or tertiary (credited when shown)."],
-  ["Warm-up readiness", "How much the system knows about each student, from checks and warm-up answers. Click a number to see those students."],
-  ["Personalized learning profile", "The system’s growing guess of what kind of warm-up works for a student; “ready for fully personalized feedback” means it’s confident."],
-  ["Student Context", "One document per student that gathers their lessons, checks and warm-ups, updated weekly."],
-  ["More ▾", "The header’s menu of the tools used less often: ✉ Parent Reports, 🎓 Competency ratings, 📅 Lessons, ⚙ Settings, 👁 View as a student and ❓ Terms. Student Context, 🎟 Turn-in codes, ↻ Refresh and the year menu stay in the header."],
-  ["Current lesson", "The lesson whose start date in 📅 Lessons is the latest on or before today, per course."],
-  ["Rollout", "The nightly job that makes and shares each lesson’s student documents from its start date (2 days ahead)."],
-  ["Feedback as a comment", "Where a student’s feedback goes: a comment on the document, or written into it. Set per course in ⚙ Settings."],
-  ["⚙ Settings", "Turns each feature on or off per course (feedback as a comment, warm-ups on the Student Dashboard, the nightly lesson rollout, the reflection on Submit, the warm-up style lock, parent reports ready on Fridays) and sets the marking period end dates. Changes wait for Save changes, closing with unsaved changes asks first, and each saved change is kept in the SettingsLog tab."],
-  ["3-Odd / 3-Even", "The two halves of period 3, which meet on alternate (odd or even) calendar dates."],
-  ["Marking period", "A term code like 2627_MP1 is marking period 1 of 2026–27."],
-  ["Turn-in code", "The code a student pastes into the Canvas assignment for completion credit. The Student Dashboard gives it once they answer one question about their feedback and the check says the answer addresses it. In 🎟 Turn-in codes you can give one yourself (with a reason), open an assignment after its marking period, and check the codes in a Canvas submissions download."]
-];
 
 function _casHtml_(s) {
   return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;")
@@ -2598,45 +2293,6 @@ function formSnapshotFor_(ledgerSs, formFileId) {
   return null;
 }
 
-// formFileId -> snapshotDocId for every row (the dashboards' one read).
-function formSnapshotDocIds_(ledgerSs) {
-  const out = {};
-  const sheet = ledgerSs ? ledgerSs.getSheetByName(FORM_SNAPSHOTS_TAB) : null;
-  if (!sheet || sheet.getLastRow() < 2) return out;
-  sheet.getRange(2, 1, sheet.getLastRow() - 1, FORM_SNAPSHOTS_HEADERS.length).getValues().forEach(function (r) {
-    const f = String(r[FS.FORM_FILE_ID]).trim(), d = String(r[FS.SNAPSHOT_DOC_ID]).trim();
-    if (f && d) out[f] = d;
-  });
-  return out;
-}
-
-// Where a work file's feedback and header line go: a form, deck or sheet copy's
-// snapshot doc, or the file itself (a doc, or a copy whose snapshot isn't
-// recorded).
-function workFeedbackDocId_(ledgerSs, fileId) {
-  try {
-    const snap = formSnapshotFor_(ledgerSs, fileId);
-    return snap ? snap.snapshotDocId : String(fileId || "").trim();
-  } catch (e) {
-    return String(fileId || "").trim();
-  }
-}
-
-// The snapshot doc's fixed text (02 writes it, 13 rewrites between the
-// response marker and the "[CONFIG_ID:" line, which every reader stops at).
-const FORM_SNAPSHOT_NOT_SUBMITTED = "(Not submitted yet. Build your form, then press Submit for Feedback on your dashboard.)";
-const SLIDES_SNAPSHOT_NOT_SUBMITTED = "(Not submitted yet. Make your slides, then press Submit for Feedback on your dashboard.)";
-const SHEET_SNAPSHOT_NOT_SUBMITTED = "(Not submitted yet. Build your sheet, then press Submit for Feedback on your dashboard.)";
-function workSnapshotNotSubmitted_(type) {
-  return type === "slides" ? SLIDES_SNAPSHOT_NOT_SUBMITTED : type === "sheet" ? SHEET_SNAPSHOT_NOT_SUBMITTED
-    : FORM_SNAPSHOT_NOT_SUBMITTED;
-}
-// Whether a snapshot zone's text is still the "not submitted" line, of any type.
-function isWorkSnapshotNotSubmitted_(text) {
-  const t = String(text || "").trim();
-  return t === FORM_SNAPSHOT_NOT_SUBMITTED || t === SLIDES_SNAPSHOT_NOT_SUBMITTED || t === SHEET_SNAPSHOT_NOT_SUBMITTED;
-}
-
 // ---------------------------------------------------------------------------
 // A Slides part's exact checks (Phase 4c, 2026-11-09; 77's slidesCheckReasons_).
 // slideChecks in PARTS.json, resolved at intake into FormSnapshots' checks
@@ -2749,14 +2405,6 @@ function normalizeSheetChecks_(raw) {
 // and the evaluation result's four. Fills blank header cells only, and the
 // turn-in ones too, so 38_LedgerSchemaGuard.js never sees a gap in the middle.
 const LEDGER_LATER_HEADERS = LEDGER_HEADERS.slice(LEDGER_BASE_WIDTH);
-
-function _ensureEvaluationResultColumns_(sheet) {
-  const first = LEDGER.TURN_IN_SUGGESTED_SCORE + 1;
-  const range = sheet.getRange(1, first, 1, LEDGER_LATER_HEADERS.length);
-  const have = range.getValues()[0];
-  if (have.every((h, i) => String(h).trim() === LEDGER_LATER_HEADERS[i])) return;
-  range.setValues([LEDGER_LATER_HEADERS.map((h, i) => String(have[i] || "").trim() || h)]);
-}
 
 // =============================================================================
 // SCRDecisionLog column indices (0-based) — canonical order
@@ -3066,36 +2714,6 @@ function _installDeployVersionReportTrigger_() {
 // ---------------------------------------------------------------------------
 const REFLECTION_MIN_WORDS = 10;
 
-// Plain words (2026-11-17): a frame no longer quotes its goal. The goal, a
-// whole "I can" objective of about 25 words, sat inside the question, so a
-// question ran 40 to 70 words and students stumbled on the wording, not the
-// idea. Now the dashboard shows the goal on its own line ({goalLabel}:
-// {goal}) and the question is one short ask. A frame with goal: true is
-// about the question's competency; the rest have no goal line.
-const REFLECTION_FRAMES = [
-  { id: "E1", kind: "EVIDENCE", goal: true, text: "Which sentence or part of your work best shows this goal?" },
-  { id: "E2", kind: "EVIDENCE", goal: true, text: "What in your work shows this goal? What would make it stronger?" },
-  { id: "E3", kind: "EVIDENCE", goal: true, text: "Which one part of your work should your teacher check for this goal? Why?" },
-  { id: "A1", kind: "APPROACH", text: "What did you do first in this assignment? Why start there?" },
-  { id: "A2", kind: "APPROACH", text: "What did you leave out or cut? Why?" },
-  { id: "A3", kind: "APPROACH", text: "What did you look back at in the lesson while you worked? How did it help?" },
-  { id: "C1", kind: "CHOICE",   text: "What was the hardest choice in this assignment? What did you pick?" },
-  { id: "C2", kind: "CHOICE",   text: "What would someone who disagrees with your work say? What would you tell them?" },
-  { id: "C3", kind: "CHOICE",   text: "What is another way you could have done this? Why didn't you?" },
-  // Phase 2 (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, Appendix A, approved
-  // 2026-10-24): a resubmission after the primary wasn't met.
-  { id: "F1", kind: "FEEDBACK", goal: true, goalLabel: "Not shown yet", text: "What will you change to show this goal?" },
-  { id: "F2", kind: "FEEDBACK", text: "What part of the feedback do you agree with most? What are you doing about it?" },
-  { id: "F3", kind: "FEEDBACK", text: "Is there anything in the feedback you disagree with? What are you doing about the rest?" }
-];
-
-// A question as one line of text, its goal included, for where it is
-// stored or read without the dashboard's layout: ReflectionLog's Question,
-// Flow 2's prompt (37) and the reflection comment on the doc.
-function reflectionQuestionText_(q) {
-  return q && q.goal ? (q.goalLabel || "Goal") + ": " + q.goal + ". " + q.question : String((q && q.question) || "");
-}
-
 const REFLECTION_LOG_HEADERS = ["SubmittedAt", "GoogleID", "ConfigID", "StudentFileID", "Kind",
   "FrameID", "CompetencyID", "Question", "Answer"];
 const RL = { SUBMITTED_AT: 0, GOOGLE_ID: 1, CONFIG_ID: 2, FILE_ID: 3, KIND: 4,
@@ -3109,153 +2727,6 @@ function reflectionWordCount_(text) {
 // words a student reads: the competency ID and the closing period dropped.
 function reflectionCriterionText_(milestone) {
   return String(milestone || "").trim().replace(/^\d{4}-\d+[a-z]?\s+/i, "").replace(/\.\s*$/, "").trim();
-}
-
-// The assignment's competencies from its TeacherMatrix row, primary first:
-// [{ id, text }] for milestones 1 to 3 that carry a competency ID. The text
-// is the student's own "I can" objective for it (approved 2026-10-24, the
-// row's StudentObjectives), or the competency's title where there is none.
-function reflectionCriteria_(matrixRow) {
-  const out = [];
-  if (!matrixRow) return out;
-  const objectives = matrixRow.objectives || {};
-  [1, 2, 3].forEach(function (n) {
-    const id = String(matrixRow["milestone" + n + "CompetencyId"] || "").trim();
-    const text = reflectionCriterionText_(objectives[id] || matrixRow["milestone" + n]);
-    if (id && text) out.push({ id: id, text: text });
-  });
-  return out;
-}
-
-// A small, stable number from a string, so which Approach or Choice frame a
-// first Submit gets varies by assignment but never between two calls.
-function _reflectionHash_(s) {
-  let h = 0;
-  const str = String(s || "");
-  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 100003;
-  return h;
-}
-
-// The questions for this Submit. criteria: reflectionCriteria_(); prior:
-// this student's earlier ReflectionLog rows for this assignment, as
-// [{ frameId, kind, competencyId, submittedAt }]; key: the assignment's
-// ConfigID (seeds the variety); shortfall: reflectionShortfall_(), the
-// primary criterion when the last check found it not met yet, else null.
-// Returns [{ frameId, kind, competencyId, question, goal, goalLabel }], one
-// or two of them (goal "" when the frame has none):
-// an Evidence question every time, plus an Approach or Choice question on a
-// first Submit, or a Feedback question on a resubmission with a shortfall.
-function chooseReflectionQuestions_(criteria, prior, key, shortfall) {
-  criteria = criteria || [];
-  prior = prior || [];
-  const used = {};
-  const submits = {};
-  let evidenceAsked = 0;
-  prior.forEach(function (p) {
-    used[p.frameId] = (used[p.frameId] || 0) + 1;
-    submits[String(p.submittedAt)] = true;
-    if (p.kind === "EVIDENCE") evidenceAsked++;
-  });
-  const firstSubmit = Object.keys(submits).length === 0;
-  const seed = _reflectionHash_(key);
-  const pick = function (kind, offset) {
-    const frames = REFLECTION_FRAMES.filter(function (f) { return f.kind === kind; });
-    const start = (seed + offset) % frames.length;
-    let best = null;
-    for (let i = 0; i < frames.length; i++) {
-      const f = frames[(start + i) % frames.length];
-      if (!best || (used[f.id] || 0) < (used[best.id] || 0)) best = f;
-    }
-    return best;
-  };
-  const out = [];
-  if (criteria.length) {
-    const c = criteria[evidenceAsked % criteria.length];
-    const f = pick("EVIDENCE", evidenceAsked);
-    out.push({ frameId: f.id, kind: f.kind, competencyId: c.id, question: f.text, goal: c.text, goalLabel: f.goalLabel || "Goal" });
-  }
-  if (!firstSubmit && shortfall && criteria.length) {
-    // F1 first (it names what fell short), then the least answered, in order.
-    const f = REFLECTION_FRAMES.filter(function (x) { return x.kind === "FEEDBACK"; })
-      .reduce(function (b, x) { return (used[x.id] || 0) < (used[b.id] || 0) ? x : b; });
-    out.push({ frameId: f.id, kind: f.kind, competencyId: shortfall.id, question: f.text,
-               goal: f.goal ? shortfall.text : "", goalLabel: f.goal ? (f.goalLabel || "Goal") : "" });
-    return out;
-  }
-  if (firstSubmit || !criteria.length) {
-    const kinds = seed % 2 === 0 ? ["APPROACH", "CHOICE"] : ["CHOICE", "APPROACH"];
-    const wanted = criteria.length ? 1 : 2;
-    for (let k = 0; k < wanted; k++) {
-      const f = pick(kinds[k], 0);
-      out.push({ frameId: f.id, kind: f.kind, competencyId: "", question: f.text, goal: "", goalLabel: "" });
-    }
-  }
-  return out;
-}
-
-// The primary criterion ({ id, text }) when this student file's last check
-// found it not met yet (MET is the only outcome that isn't a shortfall), or
-// null: no check yet, the primary met, or the evidence unreadable. Read from
-// CompetencyEvidence by header; the latest evaluated_at is the last check.
-function reflectionShortfall_(ss, cfg, fileId, criteria) {
-  if (!criteria || !criteria.length) return null;
-  const sheet = ss.getSheetByName(TABS.competencyEvidence);
-  if (!sheet || sheet.getLastRow() < 2) return null;
-  const rows = sheet.getDataRange().getValues();
-  const h = rows[0].map(function (x) { return String(x).trim(); });
-  const iFile = h.indexOf("student_file_id"), iComp = h.indexOf("competency_id"),
-    iOut = h.indexOf("outcome"), iAt = h.indexOf("evaluated_at"), iArch = h.indexOf("archive_status");
-  if (iFile === -1 || iComp === -1 || iOut === -1 || iAt === -1) return null;
-  const mine = rows.slice(1).filter(function (r) {
-    return String(r[iFile]).trim() === fileId && (iArch === -1 || !String(r[iArch]).trim());
-  });
-  if (!mine.length) return null;
-  const latest = Math.max.apply(null, mine.map(function (r) { return sheetTimestampMs_(r[iAt]) || 0; }));
-  const primary = criteria[0];
-  const last = mine.filter(function (r) {
-    return (sheetTimestampMs_(r[iAt]) || 0) === latest && String(r[iComp]).trim() === primary.id;
-  })[0];
-  if (!last) return null;
-  return String(last[iOut]).trim().toUpperCase() === "MET" ? null : primary;
-}
-
-// The TeacherMatrix row a student's workspace belongs to, read the way 37
-// does (StudentAssignments, then MatrixRegistry by the teacher's email):
-// { milestone1..3, milestone1CompetencyId..3 } or null. Here, not in 37,
-// because the Student Dashboard project holds only 00, 13, 49 and 63.
-function reflectionMatrixRow_(cfg, studentConfigId, teacherEmail) {
-  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  let assignmentId = studentConfigId;
-  const sa = ss.getSheetByName(TABS.studentAssignments); // 54's tab
-  if (sa && sa.getLastRow() > 1) {
-    sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
-      if (String(r[0] || "").trim() === studentConfigId && String(r[2] || "").trim()) {
-        assignmentId = String(r[2]).trim();
-      }
-    });
-  }
-  const reg = ss.getSheetByName(cfg.tabs.matrixRegistry);
-  if (!reg) return null;
-  const lower = String(teacherEmail || "").trim().toLowerCase();
-  const regRow = reg.getDataRange().getValues().slice(1).filter(function (r) {
-    return String(r[1] || "").trim().toLowerCase() === lower && String(r[2] || "").trim();
-  })[0];
-  if (!regRow) return null;
-  const tm = SpreadsheetApp.openById(String(regRow[2]).trim()).getSheetByName(TABS.teacherMatrix);
-  if (!tm) return null;
-  // TeacherMatrix columns: TM above.
-  const row = tm.getDataRange().getValues().slice(1).filter(function (r) {
-    return String(r[TM.CONFIG_ID] || "").trim() === assignmentId;
-  })[0];
-  if (!row) return null;
-  const at = function (n) { return String(row[n] || "").trim(); };
-  let objectives = {};
-  try { objectives = at(TM.STUDENT_OBJECTIVES) ? JSON.parse(at(TM.STUDENT_OBJECTIVES)) : {}; } catch (e) { objectives = {}; }
-  return { milestone1: at(TM.MILESTONE_1), milestone2: at(TM.MILESTONE_2), milestone3: at(TM.MILESTONE_3),
-           milestone1CompetencyId: at(TM.MILESTONE_1_COMPETENCY_ID),
-           milestone2CompetencyId: at(TM.MILESTONE_2_COMPETENCY_ID),
-           milestone3CompetencyId: at(TM.MILESTONE_3_COMPETENCY_ID),
-           objectives: objectives };
 }
 
 // This student's earlier answers for one workspace (ConfigID + doc), as
@@ -3272,22 +2743,6 @@ function readReflections_(ss, cfg, configId, fileId) {
                frameId: String(r[RL.FRAME_ID]).trim(), competencyId: String(r[RL.COMPETENCY_ID]).trim(),
                question: String(r[RL.QUESTION]), answer: String(r[RL.ANSWER]) };
     });
-}
-
-// Appends one Submit's answers. Written as plain text, so an answer that
-// starts with "=" stays words and never becomes a formula.
-function appendReflections_(ss, cfg, rows) {
-  if (!rows.length) return;
-  const name = TABS.reflectionLog;
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.getRange(1, 1, 1, REFLECTION_LOG_HEADERS.length).setValues([REFLECTION_LOG_HEADERS]);
-    sheet.setFrozenRows(1);
-  }
-  const at = sheet.getLastRow() + 1;
-  sheet.getRange(at, 2, rows.length, REFLECTION_LOG_HEADERS.length - 1).setNumberFormat("@");
-  sheet.getRange(at, 1, rows.length, REFLECTION_LOG_HEADERS.length).setValues(rows);
 }
 
 // =============================================================================

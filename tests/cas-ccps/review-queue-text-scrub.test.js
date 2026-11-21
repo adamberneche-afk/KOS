@@ -12,7 +12,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = [S('00_SharedConfig.js'), S('29_StudentContextAggregator.js'), S('50_StudentDataAccess.js')];
+const FILES = [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('29_StudentContextAggregator.js'), S('50_StudentDataAccess.js')];
 
 function setup(rows) {
   const { exported, sandbox } = loadGasFiles(FILES,
@@ -78,7 +78,7 @@ test('an empty or missing ReviewQueue is nothing to do', () => {
 // A doc made before the 01 change appends its writing to ReviewQueue itself,
 // from its own menu, so the bridge empties the column on every run too.
 test('bridgeQueue: stages a PENDING row and empties any student text in the queue', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('03_QueueBridge.js')], ['bridgeQueue']);
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('03_QueueBridge.js')], ['bridgeQueue']);
   const ss = sandbox.SpreadsheetApp.create('Admin');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   const props = sandbox.PropertiesService.getScriptProperties();

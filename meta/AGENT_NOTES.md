@@ -901,3 +901,9 @@ The earlier notes still hold. Added 11-02 to 11-08:
   page would not load.
 - **A test that reads the page's text** reads the `.html` (and the `.js` for
   server code). The sandbox's `HtmlService` renders the templates.
+- **00 is split three more ways (structure audit 4.6).** What only one
+  project uses is in `00c_CentralLedgerShared.js`, `00d_TeacherDashboardShared.js`
+  or `00e_StudentDashboardShared.js`. A test sandbox that loads
+  `00_SharedConfig.js` loads all three after it (as 00 used to hold them);
+  one that takes a project's files from `project-map.json` gets its own
+  already, so don't add it twice (a duplicate `const` throws).

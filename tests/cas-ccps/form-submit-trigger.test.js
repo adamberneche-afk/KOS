@@ -12,7 +12,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 
 function load() {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('18_FormSubmitDispatcher.js')], ['installFormSubmitTrigger']);
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('18_FormSubmitDispatcher.js')], ['installFormSubmitTrigger']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   return env;

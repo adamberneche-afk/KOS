@@ -18,7 +18,7 @@ const NAMES = ['schoolProfile_', 'schoolCourseCodes_', 'schoolCourseOf_', 'warmU
 
 // A fresh sandbox, with these Script Properties set before anything reads them.
 function load(props) {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('29_StudentContextAggregator.js'),
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('29_StudentContextAggregator.js'),
     S('24_WarmUpBridge.js'), S('51_CourseYearBuilder.js'), S('55b_LessonAssignmentData.js'), S('68_LessonParts.js')], NAMES);
   const sp = sandbox.PropertiesService.getScriptProperties();
   // Every install has a Ledger ID; without one, config can't resolve and
@@ -139,7 +139,7 @@ test('school days: weekdays, less SCHOOL_DAYS_OFF; a held part skips them', () =
 });
 
 test('school days: the Ledger\'s NoSchoolDays tab counts too, date cells and all; SCHOOL_DAYS_OFF adds to it', () => {
-  const { exported: x, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('29_StudentContextAggregator.js'),
+  const { exported: x, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('29_StudentContextAggregator.js'),
     S('24_WarmUpBridge.js'), S('51_CourseYearBuilder.js'), S('55b_LessonAssignmentData.js'), S('68_LessonParts.js')], NAMES);
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -158,7 +158,7 @@ test('school days: the Ledger\'s NoSchoolDays tab counts too, date cells and all
 });
 
 test('a date typed into _CONFIG is read as the yyyy-MM-dd it was typed as', () => {
-  const { exported: x, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('29_StudentContextAggregator.js'),
+  const { exported: x, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('29_StudentContextAggregator.js'),
     S('24_WarmUpBridge.js'), S('51_CourseYearBuilder.js'), S('55b_LessonAssignmentData.js'), S('68_LessonParts.js')], NAMES);
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);

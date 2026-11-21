@@ -13,11 +13,13 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 const ADMIN_PANEL_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '10_AdminRecoveryPanel.js');
 
 function load() {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, ADMIN_PANEL_PATH],
+    [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, ADMIN_PANEL_PATH],
     ['_ledgerRetentionYears_', '_archiveExpiredLedgerRows_', '_countLedgerRowsPastRetentionUnarchived_', 'LEDGER'],
   );
 }

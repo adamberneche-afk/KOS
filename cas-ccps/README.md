@@ -176,7 +176,9 @@ See [`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
 the full rationale. The short version: `cas-ccps/scripts/` doesn't fit
 clasp's one-folder-one-project model, since it's 8 of the 9 projects above
 sharing overlapping files (`00_SharedConfig.js` alone is pasted into 8 of
-them). `studio-steps`, once the 9th in its own folder, was archived
+them; what only one project uses is in its own `00c_CentralLedgerShared.js`,
+`00d_TeacherDashboardShared.js` or `00e_StudentDashboardShared.js` since
+2026-11-21). `studio-steps`, once the 9th in its own folder, was archived
 2026-11-17 to `archive/2026-27-Q2/cas-ccps/archived/studio-steps/` (blocked on this account;
 the flows were ported to `37_FlowInputBuilder.js` and
 `41_WarmUpFlowBridge.js`).

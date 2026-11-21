@@ -29,13 +29,15 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
+// 00's per-project shares (structure audit 4.6): load with 00, as 00 held them.
+const SHARED_CONFIG_PATH_PARTS = [path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00d_TeacherDashboardShared.js'), path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00e_StudentDashboardShared.js')];
 const AGGREGATOR_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '29_StudentContextAggregator.js');
 const INTAKE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '02_Form1_IntakeAndWorkspaceGenerator.js');
 const ASSIGNMENTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '54_StudentAssignments.js');
 
 function load() {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, AGGREGATOR_PATH, INTAKE_PATH, ASSIGNMENTS_PATH],
+    [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, AGGREGATOR_PATH, INTAKE_PATH, ASSIGNMENTS_PATH],
     ['onFormSubmit_Intake', 'SHARED_CONFIG_CACHE_PREFIX'],
   );
 }

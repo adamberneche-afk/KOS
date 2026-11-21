@@ -9,7 +9,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-const FILES = ['00_SharedConfig.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '69c_LessonReport.js'].map((f) => path.join(CC, f));
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '69c_LessonReport.js'].map((f) => path.join(CC, f));
 const x = loadGasFiles(FILES, ['lessonReportRows_', 'lrLessonOf_', 'lrSheetRow_']).exported;
 
 const DAY = 24 * 3600 * 1000;

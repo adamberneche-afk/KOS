@@ -14,7 +14,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 
 function load(props) {
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'), S('24_WarmUpBridge.js')],
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('22_LessonContextHandler.js'), S('24_WarmUpBridge.js')],
     ['currentTerm_', 'sameSchoolYearTerm_', '_currentSchoolYear_', 'getEnrolledStudents_']);
   const p = env.sandbox.PropertiesService.getScriptProperties();
   Object.entries(props || {}).forEach(([k, v]) => p.setProperty(k, v));

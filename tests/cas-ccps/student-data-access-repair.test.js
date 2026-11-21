@@ -8,7 +8,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = [S('00_SharedConfig.js'), S('29_StudentContextAggregator.js'), S('50_StudentDataAccess.js')];
+const FILES = [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('29_StudentContextAggregator.js'), S('50_StudentDataAccess.js')];
 
 const ALICE = '1111111@ccpsnet.net';
 const BOB = '2222222@ccpsnet.net';

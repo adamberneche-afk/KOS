@@ -32,7 +32,7 @@ function ledgerRow(account, period, course, status) {
 }
 
 test('a text period label matches in the queue builder: meeting periods, enrolled students, the lesson key', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'),
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('22_LessonContextHandler.js'),
     S('23_StudentProfileManager.js'), S('24_WarmUpBridge.js')],
   ['getPeriodsForDay_', 'getEnrolledStudents_', 'lessonPeriodKey_', 'sharedPeriods_']);
   const schedule = [['teacher_email', 'period', 'day_type', 'course_name', 'active']].concat(SCHEDULE);
@@ -69,7 +69,7 @@ const PLAIN_GRADEBOOK = [
 
 function rosterSetup(opts) {
   opts = opts || {};
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('29_StudentContextAggregator.js'),
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('29_StudentContextAggregator.js'),
     S('02_Form1_IntakeAndWorkspaceGenerator.js'), S('51_CourseYearBuilder.js'), S('52_CanvasRosterImport.js'),
     S('54_StudentAssignments.js')], ['previewPeriodRelabel', 'applyPeriodRelabel', 'previewPeriodOverrideSeed',
     'seedPeriodOverrides']);
@@ -160,7 +160,7 @@ test('with PeriodOverride, a plain export no longer moves period 3 back to "3"',
 });
 
 function retireSetup() {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'),
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('22_LessonContextHandler.js'),
     S('23_StudentProfileManager.js'), S('24_WarmUpBridge.js')],
   ['previewOffDayWarmUps', 'retireOffDayWarmUps', 'WQ_BASE_WIDTH', 'WQ', 'WTB_HEADERS', 'WTB']);
   const props = sandbox.PropertiesService.getScriptProperties();
@@ -219,7 +219,7 @@ test('retireOffDayWarmUps sets off-day warm-ups NOT_MEETING, keeps answered and 
 
 test('34c leaves NOT_MEETING warm-ups out of today\'s count', () => {
   // 34c with what its setup checks reach (38, 40, 41, 57 and their collaborators).
-  const env = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'), S('50_StudentDataAccess.js'), S('34c_OvernightHealth.js'), S('58_LessonRollout.js'), S('64_LedgerCycle.js'),
+  const env = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('22_LessonContextHandler.js'), S('50_StudentDataAccess.js'), S('34c_OvernightHealth.js'), S('58_LessonRollout.js'), S('64_LedgerCycle.js'),
     S('43_DeployVersionMarker_CentralLedger.js'), S('03_QueueBridge.js'), S('10_AdminRecoveryPanel.js'),
     S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('23_StudentProfileManager.js'), S('25_WarmUpWriter.js'),
     S('29_StudentContextAggregator.js'), S('30_SCRSuggestionEngine.js'), S('34_QueueWatchdog.js'),

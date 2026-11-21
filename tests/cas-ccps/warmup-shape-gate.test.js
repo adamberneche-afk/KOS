@@ -12,7 +12,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
   '04_Form2_TurnInGate.js', '25_WarmUpWriter.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '39b_Flow2Provenance.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '41_WarmUpFlowBridge.js']
   .map((f) => path.join(CC, f));
 const EXPOSE = ['wfbApplyFlow3_', 'wfbFindQueueRow_', 'wfbWarmUpShapeProblem_', 'repairWarmUpTextBox',
@@ -173,7 +173,7 @@ test('repairWarmUpTextBox replaces unanswered junk with the anchor and leaves th
 
 test('34c counts fallbacks; 33 stamps a stop with its reason', () => {
   // 34c with what its setup checks reach (38, 40, 41, 57 and their collaborators).
-  const env = loadGasFiles(['00_SharedConfig.js', '22_LessonContextHandler.js', '50_StudentDataAccess.js', '34c_OvernightHealth.js', '58_LessonRollout.js', '64_LedgerCycle.js',
+  const env = loadGasFiles(['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '22_LessonContextHandler.js', '50_StudentDataAccess.js', '34c_OvernightHealth.js', '58_LessonRollout.js', '64_LedgerCycle.js',
     '43_DeployVersionMarker_CentralLedger.js', '03_QueueBridge.js', '10_AdminRecoveryPanel.js',
     '15b_StudioFlowPrompts_Flow2_Revised.js', '23_StudentProfileManager.js', '25_WarmUpWriter.js',
     '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js', '36_WeeklyParentReport.js',
@@ -198,7 +198,7 @@ test('34c counts fallbacks; 33 stamps a stop with its reason', () => {
   assert.match(p, /went out as the teacher's own question in the last 24 hours: 1/);
   assert.match(p, /3:05 artifact sync \(33\): ran with status NO_MATRIX_ID \(no MatrixRegistry row for the teacher, and no TEACHER_MATRIX_SS_ID/);
 
-  const s33 = loadGasFiles([path.join(CC, '00_SharedConfig.js'), path.join(CC, '33_ArtifactCompetencyBridge.js'),
+  const s33 = loadGasFiles([path.join(CC, '00_SharedConfig.js'), path.join(CC, '00c_CentralLedgerShared.js'), path.join(CC, '00d_TeacherDashboardShared.js'), path.join(CC, '00e_StudentDashboardShared.js'), path.join(CC, '33_ArtifactCompetencyBridge.js'),
     path.join(CC, '53_AssignmentSeeder.js'), path.join(CC, '54_StudentAssignments.js')],
     ['syncArtifactCompetencies']);
   const ledger = s33.sandbox.SpreadsheetApp.create('Central Ledger');

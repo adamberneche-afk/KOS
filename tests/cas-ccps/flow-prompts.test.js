@@ -37,7 +37,7 @@ const generator = require('../../tools/cas-ccps/generate-flow-prompts');
 
 function load() {
   return loadGasFiles(
-    [S('00_SharedConfig.js'), S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('40_FlowPrompts.js')],
+    [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('40_FlowPrompts.js')],
     [
       'getFlowPrompt', 'syncFlowPromptsToSheet', 'checkFlowPrompts',
       'substituteFlowPrompt_', 'flowPromptPlaceholders_', 'flowPromptText_',

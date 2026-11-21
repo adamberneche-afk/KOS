@@ -12,6 +12,8 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const vm = require('vm');
 const { loadGasFiles } = require('../harness/gas-sandbox');
+// The intake's "not submitted yet" text (Central Ledger, 00c since structure audit 4.6).
+const FORM_SNAPSHOT_NOT_SUBMITTED = loadGasFiles([path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00c_CentralLedgerShared.js')], ['FORM_SNAPSHOT_NOT_SUBMITTED']).exported.FORM_SNAPSHOT_NOT_SUBMITTED;
 const projectMap = require('../../tools/gas-lint/project-map.json');
 const builder = require('../../tools/cas-ccps/build-lesson-assignments.js');
 
@@ -53,7 +55,7 @@ function studentLoad(viewer) {
   };
   return loadGasFiles(STUDENT_FILES, ['submitMyWork', 'getSubmitReflection', 'handleStudentDocRequest_',
     'readFormStructure_', 'formCheckReasons_', 'formSnapshotText_', 'normalizeFormChecks_', 'LEDGER',
-    'FORM_QUESTION_TYPES', 'FORM_SNAPSHOT_NOT_SUBMITTED', 'buildStudentDashboardHtml_'], { Session: session });
+    'FORM_QUESTION_TYPES', 'buildStudentDashboardHtml_'], { Session: session });
 }
 
 // A snapshot doc as intake (02) lays it out.
@@ -93,7 +95,7 @@ function studentSetUp(env, spec, checks, opts) {
   ledger.appendRow(r);
   const queue = ss.insertSheet('ReviewQueue');
   queue.appendRow(['Timestamp', 'GoogleID', 'FileID', 'ConfigID', 'StudentText', 'Status', 'Note']);
-  const doc = snapshotDoc(sandbox, 'VDOE-AMY-2', exported.FORM_SNAPSHOT_NOT_SUBMITTED);
+  const doc = snapshotDoc(sandbox, 'VDOE-AMY-2', FORM_SNAPSHOT_NOT_SUBMITTED);
   if (opts.snapshot !== false) {
     const fs = ss.insertSheet('FormSnapshots');
     fs.appendRow(['MadeAt', 'StudentConfigID', 'FormFileID', 'SnapshotDocID', 'PartConfigID', 'FormChecks', 'LastWrittenAt']);
@@ -261,7 +263,7 @@ test('Submit: a passing form writes its snapshot, then queues; the header says w
   assert.equal(zone, env.exported.formSnapshotText_(env.exported.readFormStructure_('form-amy')));
   assert.ok(text.indexOf('── END FEEDBACK ──') < text.indexOf(MARKER), 'the feedback zone is kept');
   assert.ok(text.endsWith('Nothing below this is checked.'));
-  assert.ok(!text.includes(env.exported.FORM_SNAPSHOT_NOT_SUBMITTED));
+  assert.ok(!text.includes(FORM_SNAPSHOT_NOT_SUBMITTED));
   assert.match(doc.getHeader().getText(), /Feedback: submitted .*, waiting for feedback\./);
   const fsRow = ss.getSheetByName('FormSnapshots').getDataRange().getValues()[1];
   assert.equal(Object.prototype.toString.call(fsRow[6]), '[object Date]', 'LastWrittenAt');
@@ -333,11 +335,11 @@ test('the page words a form\'s "Not yet" and its submitted note', () => {
 // ── Flow 2 reads the snapshot (37) ──────────────────────────────────────────
 
 function flowLoad() {
-  return loadGasFiles(['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
+  return loadGasFiles(['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
     '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '43_DeployVersionMarker_CentralLedger.js',
     '40_FlowPrompts.js', '54_StudentAssignments.js', '55b_LessonAssignmentData.js', '68_LessonParts.js'].map(S),
   ['buildFlowInputRows', 'harvestFlowInputResults', 'backPropagateCompletions', '_fiEarlierPartsText_', 'FI', 'LEDGER',
-    'STG_STATUS', 'FORM_SNAPSHOT_NOT_SUBMITTED']);
+    'STG_STATUS']);
 }
 
 // Amy: Part 1 a doc, Part 2 a form with its snapshot written, Part 3 a doc
@@ -368,7 +370,7 @@ function flowSetUp(env, staged, snapshotText, deck) {
     let fileId;
     if (form) {
       fileId = 'form-amy';
-      docs.snapshot = snapshotDoc(sandbox, sid, exported.FORM_SNAPSHOT_NOT_SUBMITTED);
+      docs.snapshot = snapshotDoc(sandbox, sid, FORM_SNAPSHOT_NOT_SUBMITTED);
       if (text) {
         // Children: the new doc's empty paragraph, the title, the feedback
         // zone's two lines, the marker, then the snapshot.

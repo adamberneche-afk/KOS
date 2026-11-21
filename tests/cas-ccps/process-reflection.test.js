@@ -22,7 +22,7 @@ const CRITERIA = [
 ];
 
 function shared() {
-  return loadGasFiles([S('00_SharedConfig.js')],
+  return loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')],
     ['chooseReflectionQuestions_', 'reflectionCriteria_', 'reflectionCriterionText_', 'REFLECTION_FRAMES',
       'reflectionWordCount_', 'findSystemText_']).exported;
 }
@@ -107,7 +107,7 @@ function sessionAs(email) {
 }
 
 function loadDashboard(flag, docBody, objectives) {
-  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('75_FormReader.js'), S('77_SlidesReader.js'), S('78_SheetReader.js')],
+  const loaded = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('63_DocHeader.js'), S('13_StudentDashboard.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('75_FormReader.js'), S('77_SlidesReader.js'), S('78_SheetReader.js')],
     ['submitMyWork', 'getSubmitReflection', 'LEDGER', 'handleStudentDocRequest_'],
     { Session: sessionAs('ben@ccpsnet.net') });
   const { sandbox, exported } = loaded;
@@ -240,7 +240,7 @@ test('reflection on: the doc menu can\'t ask the questions, so it sends the stud
 // ── Flow 2's input (37) ────────────────────────────────────────────────────
 
 function loadBuilder(comments) {
-  const files = ['00_SharedConfig.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
+  const files = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '63_DocHeader.js', '03_QueueBridge.js', '04_Form2_TurnInGate.js',
     '15b_StudioFlowPrompts_Flow2_Revised.js', '15c_Flow2DirectEvaluationService.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '68_LessonParts.js', '55b_LessonAssignmentData.js',
     '40_FlowPrompts.js', '54_StudentAssignments.js'].map(S);
   const loaded = loadGasFiles(files, ['buildFlowInputRows', 'FI', 'LEDGER', '_buildFlow2Prompt_', 'REFLECTION_LOG_HEADERS'],
@@ -347,7 +347,7 @@ test('a resubmission with a shortfall: Evidence plus one Feedback question, F1 n
 });
 
 test('the shortfall is the primary when the last check found it not met; met, unchecked or archived is none', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js')], ['reflectionShortfall_']);
+  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['reflectionShortfall_']);
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   const ev = ss.insertSheet('CompetencyEvidence');
   ev.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text', 'outcome', 'config_id', 'evaluated_at', 'student_file_id', 'archive_status']);
