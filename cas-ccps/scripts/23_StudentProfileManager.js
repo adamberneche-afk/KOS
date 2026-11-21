@@ -86,17 +86,6 @@ const SP_COL_COUNT              = 14;
 // 2026-11-21, structure audit 3.1).
 
 // ── WarmUpQueue column indices (0-based) — must match Script 24 + 25 ─────────
-const WQ23_QUEUE_ID        = 0;
-const WQ23_LESSON_ID       = 1;
-const WQ23_STUDENT_EMAIL   = 2;
-const WQ23_LESSON_DATE     = 5;
-const WQ23_STATUS          = 8;
-const WQ23_ENGAGEMENT_SCORE = 14;
-const WQ23_EXTRA_CREDIT    = 15;  // set by Script 25 — Script 23 reads this
-const WQ23_TOTAL_SCORE     = 16;
-const WQ23_WORD_COUNT_SCORE = 12;
-const WQ23_GRAMMAR_SCORE   = 13;
-const WQ23_ARCHETYPE       = 19; // written by Flow 3 — read by shadow matrix update
 
 // ── AlignmentLog column indices (0-based) — from Script 26 ───────────────────
 const AL_TEACHER_EMAIL_23  = 4;
@@ -543,25 +532,25 @@ function buildWarmupData_(wqData) {
 
   for (let i = 1; i < wqData.length; i++) {
     const row    = wqData[i];
-    const status = String(row[WQ23_STATUS] || "").trim();
+    const status = String(row[WQ.STATUS] || "").trim();
 
     // Only include rows where scoring is complete
     if (status !== "SCORED" && status !== "INCOMPLETE") continue;
 
-    const email      = String(row[WQ23_STUDENT_EMAIL]  || "").trim().toLowerCase();
-    const queueId    = String(row[WQ23_QUEUE_ID]       || "").trim();
-    const lessonId   = String(row[WQ23_LESSON_ID]      || "").trim();
+    const email      = String(row[WQ.STUDENT_EMAIL]  || "").trim().toLowerCase();
+    const queueId    = String(row[WQ.QUEUE_ID]       || "").trim();
+    const lessonId   = String(row[WQ.LESSON_ID]      || "").trim();
     // _normalizeLessonDateCell_ (22_LessonContextHandler.js) — WarmUpQueue's
     // lesson_date column has the same Sheets auto-coercion risk as
     // LessonContext's; String() on a coerced Date value would produce a
     // non-"YYYY-MM-DD" string that breaks the .localeCompare() chronological
     // sort below and resolveUnitForDate_()'s lookup further down.
-    const date       = _normalizeLessonDateCell_(row[WQ23_LESSON_DATE]);
-    const wcScore    = Number(row[WQ23_WORD_COUNT_SCORE]  || 0);
-    const grammar    = Number(row[WQ23_GRAMMAR_SCORE]     || 0);
-    const engagement = Number(row[WQ23_ENGAGEMENT_SCORE]  || 0);
-    const ec         = Number(row[WQ23_EXTRA_CREDIT]      || 0);
-    const total      = Number(row[WQ23_TOTAL_SCORE]       || 0);
+    const date       = _normalizeLessonDateCell_(row[WQ.LESSON_DATE]);
+    const wcScore    = Number(row[WQ.WORD_COUNT_SCORE]  || 0);
+    const grammar    = Number(row[WQ.GRAMMAR_SCORE]     || 0);
+    const engagement = Number(row[WQ.ENGAGEMENT_SCORE]  || 0);
+    const ec         = Number(row[WQ.EXTRA_CREDIT]      || 0);
+    const total      = Number(row[WQ.TOTAL_SCORE]       || 0);
 
     if (!email || !lessonId) continue;
 
@@ -629,7 +618,7 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
   const matrix = existing || {};
 
   // Build a lookup of queue_id → archetype from WarmUpQueue column 19
-  // (WQ23_ARCHETYPE), which 41's buildWarmUpFlowInputs() writes when it
+  // (WQ.ARCHETYPE), which 41's buildWarmUpFlowInputs() writes when it
   // chooses the archetype for a warm-up.
   //
   // FIX (P0-02, meta/PRD_CAS_RESEARCH_PIVOT.md): this map is keyed by
@@ -642,10 +631,10 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
   const archetypeByWarmUpId = {};
   for (let i = 1; i < wqData.length; i++) {
     const row    = wqData[i];
-    const email  = String(row[WQ23_STUDENT_EMAIL] || "").trim().toLowerCase();
+    const email  = String(row[WQ.STUDENT_EMAIL] || "").trim().toLowerCase();
     if (email !== studentEmail) continue;
-    const queueId   = String(row[WQ23_QUEUE_ID]    || "").trim();
-    const archetype = String(row[WQ23_ARCHETYPE]   || "").trim(); // col 19
+    const queueId   = String(row[WQ.QUEUE_ID]    || "").trim();
+    const archetype = String(row[WQ.ARCHETYPE]   || "").trim(); // col 19
     // A baseline warm-up (41, D6: "BASELINE 8175-14") asks about the student,
     // not the lesson, so it says nothing about which lesson archetype works.
     if (queueId && archetype && archetype.indexOf("BASELINE") !== 0) archetypeByWarmUpId[queueId] = archetype;
@@ -1186,13 +1175,7 @@ function createWarmUpTabs_() {
   // path (run manually when Script 28's setup wizard hasn't run yet) that
   // otherwise reintroduces the exact Sheets-auto-coercion bug already fixed
   // for 22_LessonContextHandler.js's and 28_Module2Setup.js's tab creators.
-  _createTabIfAbsent_(ss, cfg.tabs.warmUpQueue, [
-    "queue_id", "lesson_id", "student_email", "student_name", "google_id",
-    "lesson_date", "lesson_context_snapshot", "student_profile_snapshot",
-    "status", "doc_id", "doc_url", "word_count", "word_count_score",
-    "grammar_score", "engagement_score", "extra_credit", "total_score",
-    "flow4_feedback", "response_text", "archetype", "bridge_output"
-  ], [6]);
+  _createTabIfAbsent_(ss, cfg.tabs.warmUpQueue, WQ_HEADERS.slice(0, WQ_BASE_WIDTH), [6]);
 
   // lesson_date (col 4) — same reasoning as above.
   _createTabIfAbsent_(ss, cfg.tabs.warmUpRegistry, [

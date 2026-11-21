@@ -980,23 +980,41 @@ function readWarmUpTextBox_(ss) {
   return out;
 }
 
-// WarmUpQueue's timing columns (2026-10-23), after 34's archive_status (21):
-// when the warm-up was delivered (41, on DELIVERED) and when the student
-// last answered it (25, at the nightly scoring: the text box's save time, or
-// the doc's last edit). So delivery-to-answer time is kept, not just the
-// score. Headers fill themselves in on first use, archive_status's too if
-// it's still blank, so the header row has no gap.
-const WQ_TIMING = { DELIVERED_AT: 22, ANSWERED_AT: 23 };
-const WQ_TIMING_HEADERS = ["archive_status", "delivered_at", "answered_at"];
+// WarmUpQueue's columns (0-based), the one declaration (structure audit 3.1,
+// 2026-11-21; 13, 23, 24, 25 and 34 each kept a copy until then). 24 writes
+// the first WQ_BASE_WIDTH; the rest fill in on first use: 34's archive_status
+// (21), then when the warm-up was delivered (41, on DELIVERED) and when the
+// student last answered it (25, at the nightly scoring: the text box's save
+// time, or the doc's last edit). A test holds WQ and WQ_HEADERS in step.
+const WQ = {
+  QUEUE_ID: 0, LESSON_ID: 1, STUDENT_EMAIL: 2, STUDENT_NAME: 3, GOOGLE_ID: 4,
+  LESSON_DATE: 5, LESSON_CTX_SNAP: 6, STUDENT_PROFILE_SNAP: 7, STATUS: 8,
+  DOC_ID: 9, DOC_URL: 10, WORD_COUNT: 11, WORD_COUNT_SCORE: 12, GRAMMAR_SCORE: 13,
+  ENGAGEMENT_SCORE: 14, EXTRA_CREDIT: 15, TOTAL_SCORE: 16, FLOW4_FEEDBACK: 17,
+  RESPONSE_TEXT: 18, ARCHETYPE: 19, BRIDGE_OUTPUT: 20,
+  ARCHIVE_STATUS: 21, DELIVERED_AT: 22, ANSWERED_AT: 23,
+};
+const WQ_HEADERS = [
+  "queue_id", "lesson_id", "student_email", "student_name", "google_id",
+  "lesson_date", "lesson_context_snapshot", "student_profile_snapshot",
+  "status", "doc_id", "doc_url", "word_count", "word_count_score",
+  "grammar_score", "engagement_score", "extra_credit", "total_score",
+  "flow4_feedback", "response_text", "archetype", "bridge_output",
+  "archive_status", "delivered_at", "answered_at",
+];
+const WQ_BASE_WIDTH = 21;
 
+// Headers fill themselves in on first use, archive_status's too if it's
+// still blank, so the header row has no gap.
 function stampWarmUpTiming_(wqSheet, sheetRow, col, when) {
-  const head = wqSheet.getRange(1, 22, 1, WQ_TIMING_HEADERS.length);
+  const later = WQ_HEADERS.slice(WQ.ARCHIVE_STATUS);
+  const head = wqSheet.getRange(1, WQ.ARCHIVE_STATUS + 1, 1, later.length);
   const have = head.getValues()[0];
-  if (have.some(function (h, i) { return String(h).trim() !== WQ_TIMING_HEADERS[i]; })) {
-    head.setValues([WQ_TIMING_HEADERS.map(function (h, i) { return String(have[i] || "").trim() || h; })]);
+  if (have.some(function (h, i) { return String(h).trim() !== later[i]; })) {
+    head.setValues([later.map(function (h, i) { return String(have[i] || "").trim() || h; })]);
   }
   const cell = wqSheet.getRange(sheetRow, col + 1);
-  if (String(cell.getValue()).trim() === "" || col === WQ_TIMING.ANSWERED_AT) cell.setValue(when);
+  if (String(cell.getValue()).trim() === "" || col === WQ.ANSWERED_AT) cell.setValue(when);
 }
 
 // Text a student or a model wrote, made safe to setValue: a leading = + - @

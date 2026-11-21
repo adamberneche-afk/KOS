@@ -230,16 +230,16 @@ function _dashDemoTurnIns_(assignments) {
 // WarmUpTextBox row, so the card goes through _dashWarmUpView_.
 function _dashDemoWarmUp_(id, lessonDate, status, course, f) {
   f = f || {};
-  const row = new Array(DASH_WQ_WIDTH).fill("");
+  const row = new Array((WQ.FLOW4_FEEDBACK + 1)).fill("");
   row[0] = id;
-  row[DASH_WQ_LESSON_DATE] = lessonDate;
-  row[DASH_WQ_LESSON_SNAP] = JSON.stringify({ course_name: course });
-  row[DASH_WQ_STATUS] = status;
+  row[WQ.LESSON_DATE] = lessonDate;
+  row[WQ.LESSON_CTX_SNAP] = JSON.stringify({ course_name: course });
+  row[WQ.STATUS] = status;
   if (status === "SCORED") {
-    row[DASH_WQ_LENGTH] = f.length; row[DASH_WQ_GRAMMAR] = 1; row[DASH_WQ_ENGAGEMENT] = f.engagement;
-    row[DASH_WQ_EXTRA_CREDIT] = f.credited ? 1 : 0;
-    row[DASH_WQ_TOTAL] = f.length + 1 + f.engagement + (f.credited ? 1 : 0);
-    row[DASH_WQ_FEEDBACK] = f.feedback || "";
+    row[WQ.WORD_COUNT_SCORE] = f.length; row[WQ.GRAMMAR_SCORE] = 1; row[WQ.ENGAGEMENT_SCORE] = f.engagement;
+    row[WQ.EXTRA_CREDIT] = f.credited ? 1 : 0;
+    row[WQ.TOTAL_SCORE] = f.length + 1 + f.engagement + (f.credited ? 1 : 0);
+    row[WQ.FLOW4_FEEDBACK] = f.feedback || "";
   }
   const tb = new Array(8).fill("");
   tb[WTB.QUEUE_ID] = id; tb[WTB.LESSON_DATE] = lessonDate;
@@ -1344,11 +1344,8 @@ function _dashPartNames_(unitName) {
 // feedback or extra credit (25 scores it the night after). Older warm-ups
 // stay in the Ledger; the card doesn't list them.
 //
-// WarmUpQueue (25_WarmUpWriter.js's WQ25_*; 25 isn't in this project, so
-// the columns are repeated here): google_id 4, lesson_date 5,
-// lesson_context_snapshot 6, status 8, doc_id 9, word_count_score 12,
-// grammar_score 13, engagement_score 14, extra_credit 15, total_score 16
-// (the total includes extra credit once it is earned), flow4_feedback 17. A warm-up answered here (WARMUP_TEXT_BOX) has a
+// WarmUpQueue's columns are 00's WQ (this file's DASH_WQ_* copy was folded
+// into it 2026-11-21); the total includes extra credit once it is earned. A warm-up answered here (WARMUP_TEXT_BOX) has a
 // WarmUpTextBox row (00's WTB) and no doc. The 3:15am run after the lesson
 // day (runWarmUpEvaluation) scores it, and replies are checked each night
 // for EXTRA_CREDIT_RECHECK_WINDOW_DAYS (7) with at least
@@ -1357,19 +1354,7 @@ function _dashPartNames_(unitName) {
 // before here), so the window never runs past day + 6 (walk-through finding
 // 4), even when the next class is further off or not queued yet.
 // ---------------------------------------------------------------------------
-const DASH_WQ_GOOGLE_ID    = 4;
-const DASH_WQ_LESSON_DATE  = 5;
-const DASH_WQ_LESSON_SNAP  = 6;
-const DASH_WQ_STATUS       = 8;
-const DASH_WQ_DOC_ID       = 9;
-const DASH_WQ_LENGTH       = 12;
-const DASH_WQ_GRAMMAR      = 13;
-const DASH_WQ_ENGAGEMENT   = 14;
-const DASH_WQ_EXTRA_CREDIT = 15;
-const DASH_WQ_TOTAL        = 16;
 const DASH_SCORE_MAX       = 10; // length 6 + grammar 1 + engagement 3 (25's thresholds, 41's ranges)
-const DASH_WQ_FEEDBACK     = 17;
-const DASH_WQ_WIDTH        = 18;
 const DASH_NEW_REG_MS      = 3 * 24 * 60 * 60 * 1000; // "just registered" for 3 days
 const DASH_EC_DAYS         = 6; // the latest day the last warm-up stays open; 25's window is 7 nights
 const DASH_EC_MIN_WORDS    = 10;
@@ -1385,15 +1370,15 @@ function _dashOwnWarmUps_(ss, cfg, googleId, tz) {
   if (!sheet || sheet.getLastRow() < 2) return out;
   const me = String(googleId).trim().toLowerCase();
   const textBox = readWarmUpTextBox_(ss);
-  sheet.getRange(2, 1, sheet.getLastRow() - 1, DASH_WQ_WIDTH).getValues().forEach(function (row, i) {
-    if (String(row[DASH_WQ_GOOGLE_ID] || "").trim().toLowerCase() !== me) return;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, (WQ.FLOW4_FEEDBACK + 1)).getValues().forEach(function (row, i) {
+    if (String(row[WQ.GOOGLE_ID] || "").trim().toLowerCase() !== me) return;
     // NOT_MEETING (24): queued for a day the student's period doesn't meet.
-    if (String(row[DASH_WQ_STATUS] || "").trim() === "NOT_MEETING") return;
-    const lessonDate = dashIsoDate_(row[DASH_WQ_LESSON_DATE], tz);
+    if (String(row[WQ.STATUS] || "").trim() === "NOT_MEETING") return;
+    const lessonDate = dashIsoDate_(row[WQ.LESSON_DATE], tz);
     if (!lessonDate) return;
     out.classDates.push(lessonDate);
     const queueId = String(row[0] || "").trim();
-    const docId = String(row[DASH_WQ_DOC_ID] || "").trim();
+    const docId = String(row[WQ.DOC_ID] || "").trim();
     const tb = textBox[queueId] || null;
     if (!queueId || (!docId && !tb)) return; // not delivered yet
     out.list.push({ queueId: queueId, sheetRow: i + 2, row: row, tb: tb, docId: docId, lessonDate: lessonDate });
@@ -1719,10 +1704,10 @@ function getMyContext() {
 // closesOn: "YYYY-MM-DD", the last day the student's last warm-up stays
 // open; null for any other warm-up.
 function _dashWarmUpView_(w, tz, today, closesOn) {
-  const status = String(w.row[DASH_WQ_STATUS] || "").trim();
+  const status = String(w.row[WQ.STATUS] || "").trim();
   const tbRow = w.tb ? w.tb.row : null;
   let course = "";
-  try { course = String(JSON.parse(String(w.row[DASH_WQ_LESSON_SNAP] || "{}")).course_name || ""); }
+  try { course = String(JSON.parse(String(w.row[WQ.LESSON_CTX_SNAP] || "{}")).course_name || ""); }
   catch (e) { /* a snapshot that doesn't parse just leaves the course off */ }
   const answer = tbRow ? String(tbRow[WTB.RESPONSE] || "") : "";
   const answered = answer.trim() !== "";
@@ -1738,7 +1723,7 @@ function _dashWarmUpView_(w, tz, today, closesOn) {
   const st = resolveWarmUpStatus_(status, w.lessonDate, today, !!tbRow, tbRow ? answered : null,
     Utilities.formatDate(_dashDayNoon_(w.lessonDate), tz, "EEE, MMM d"),
     { late: late, lateOpen: missed && open });
-  const credited = Number(w.row[DASH_WQ_EXTRA_CREDIT] || 0) === 1;
+  const credited = Number(w.row[WQ.EXTRA_CREDIT] || 0) === 1;
   const ecOpen = open && status === "SCORED" && !credited && !late;
   const closesLabel = closesOn ? Utilities.formatDate(_dashDayNoon_(closesOn), tz, "EEE, MMM d") : "";
   return {
@@ -1759,20 +1744,20 @@ function _dashWarmUpView_(w, tz, today, closesOn) {
     answer:        answer,
     savedAt:       tbRow && tbRow[WTB.SUBMITTED_AT] ? formatDate_(tbRow[WTB.SUBMITTED_AT]) : null,
     canAnswer:     !!tbRow && ((status === "DELIVERED" && w.lessonDate === today) || (missed && open)),
-    feedback:      status === "SCORED" && !late ? String(w.row[DASH_WQ_FEEDBACK] || "") : "",
+    feedback:      status === "SCORED" && !late ? String(w.row[WQ.FLOW4_FEEDBACK] || "") : "",
     // Shown with the feedback, by the operator's choice (2026-10-17): the
     // score out of 10 and its parts, extra credit added on top.
     score: status === "SCORED" ? {
-      points:     Number(w.row[DASH_WQ_TOTAL] || 0) - (credited ? 1 : 0),
+      points:     Number(w.row[WQ.TOTAL_SCORE] || 0) - (credited ? 1 : 0),
       max:        DASH_SCORE_MAX,
       // Each part's maximum (finding 13): 25's word-count thresholds (30+
       // words for 6) and 41's grammar and engagement ranges.
       lengthMax:     6,
       grammarMax:    1,
       engagementMax: 3,
-      length:     Number(w.row[DASH_WQ_LENGTH] || 0),
-      grammar:    Number(w.row[DASH_WQ_GRAMMAR] || 0),
-      engagement: Number(w.row[DASH_WQ_ENGAGEMENT] || 0),
+      length:     Number(w.row[WQ.WORD_COUNT_SCORE] || 0),
+      grammar:    Number(w.row[WQ.GRAMMAR_SCORE] || 0),
+      engagement: Number(w.row[WQ.ENGAGEMENT_SCORE] || 0),
       extra:      credited ? 1 : 0
     } : null,
     extraCredit: {

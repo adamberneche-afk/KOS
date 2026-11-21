@@ -177,19 +177,9 @@ const WD_STAGING_PIPELINE_COLUMNS = {
   TIMESTAMP: 0, QUEUE_ROW_REF: 1, STUDENT_FILE_ID: 2, CONFIG_ID: 3,
   TEACHER_EMAIL: 4, STATUS: 5,
 };
-// WarmUpQueue — confirmed from 25_WarmUpWriter.js's WQ25_* constants and
-// this project's own studio-steps code, both already cross-checked
-// against each other earlier in this project's history.
-// LESSON_DATE and ARCHIVE_STATUS added for _archiveExpiredWarmUpQueueRows_
-// below — WarmUpQueue was the one major operational tab with no retention
-// mechanism at all, a third-party review found. ARCHIVE_STATUS (21) is a
-// genuinely new column past WQ25_BRIDGE_OUTPUT (20), the last one
-// 25_WarmUpWriter.js itself writes — self-healing, see
-// _ensureWarmUpQueueArchiveColumn_ below.
-const WD_WARMUP_QUEUE_COLUMNS = {
-  QUEUE_ID: 0, LESSON_DATE: 5, STATUS: 8, ARCHETYPE: 19, BRIDGE_OUTPUT: 20,
-  ARCHIVE_STATUS: 21,
-};
+// WarmUpQueue's columns are 00_SharedConfig.js's WQ (this file's own map,
+// WD_WARMUP_QUEUE_COLUMNS, was folded into it 2026-11-21). ARCHIVE_STATUS (21)
+// is self-healing: _ensureWarmUpQueueArchiveColumn_ below.
 
 // -----------------------------------------------------------------------
 // Known statuses per queue. Anything NOT in a queue's known list is
@@ -373,7 +363,7 @@ function _wdCheckStagingPipeline_(ss, releaseMap, touchedKeys, dryRun) {
 function _wdCheckWarmUpQueue_(ss, releaseMap, touchedKeys, dryRun) {
   const sheet = ss.getSheetByName('WarmUpQueue');
   if (!sheet) return _wdReportMissingTab_('WarmUpQueue');
-  const C = WD_WARMUP_QUEUE_COLUMNS;
+  const C = WQ;
   const timeoutStatus = WD_TIMEOUT_STATUS.WARMUP_QUEUE;
 
   const pending = _wdCheckSheet_(sheet, 'WarmUpQueue', C.STATUS, ['PENDING'],
@@ -595,7 +585,7 @@ function runQueueWatchdogNow() {
 // _ferpaHealthChecks_() in 10_AdminRecoveryPanel.js. Lives here rather than
 // in 25_WarmUpWriter.js because this file is already this tab's dedicated
 // health/monitoring owner (see this file's own header) and already keeps
-// its own WD_WARMUP_QUEUE_COLUMNS map — WarmUpQueue is operational
+// 00's WQ map — WarmUpQueue is operational
 // instructional data like CompetencyEvidence/Ledger, not a legal
 // disposition/disclosure record like SCRDecisionLog/ParentReportLog, so it
 // gets the same plain, reversible "ARCHIVED" marker and a reactivate path,
@@ -613,9 +603,9 @@ function _warmUpQueueRetentionYears_() {
 // Idempotent header add for the archive_status column — same self-healing
 // pattern as _ensureCompetencyEvidenceArchiveColumn_/_ensureParentReportArchiveColumn_.
 function _ensureWarmUpQueueArchiveColumn_(sheet) {
-  const cell = sheet.getRange(1, WD_WARMUP_QUEUE_COLUMNS.ARCHIVE_STATUS + 1);
-  if (String(cell.getValue()).trim() !== 'archive_status') {
-    cell.setValue('archive_status');
+  const cell = sheet.getRange(1, WQ.ARCHIVE_STATUS + 1);
+  if (String(cell.getValue()).trim() !== WQ_HEADERS[WQ.ARCHIVE_STATUS]) {
+    cell.setValue(WQ_HEADERS[WQ.ARCHIVE_STATUS]);
   }
 }
 
@@ -630,7 +620,7 @@ function _archiveExpiredWarmUpQueueRows_() {
   if (!sheet || sheet.getLastRow() < 2) return { archived: 0, checked: 0 };
   _ensureWarmUpQueueArchiveColumn_(sheet);
 
-  const C = WD_WARMUP_QUEUE_COLUMNS;
+  const C = WQ;
   const cutoff = _retentionCutoff_(_warmUpQueueRetentionYears_());
 
   const data = sheet.getRange(1, 1, sheet.getLastRow(), C.ARCHIVE_STATUS + 1).getValues();
@@ -666,7 +656,7 @@ function _countWarmUpQueueRowsPastRetentionUnarchived_() {
   const sheet = ss.getSheetByName(cfg.tabs.warmUpQueue || 'WarmUpQueue');
   if (!sheet || sheet.getLastRow() < 2) return 0;
 
-  const C = WD_WARMUP_QUEUE_COLUMNS;
+  const C = WQ;
   const cutoff = _retentionCutoff_(_warmUpQueueRetentionYears_());
 
   const data = sheet.getRange(1, 1, sheet.getLastRow(), C.ARCHIVE_STATUS + 1).getValues();
@@ -712,11 +702,11 @@ function reactivateWarmUpQueueArchival() {
   const sheet = ss.getSheetByName(cfg.tabs.warmUpQueue || 'WarmUpQueue');
   if (!sheet) { ui.alert('⚠️ WarmUpQueue tab not found.'); return; }
 
-  const C = WD_WARMUP_QUEUE_COLUMNS;
+  const C = WQ;
   const data = sheet.getDataRange().getValues();
   let cleared = 0;
   for (let i = 1; i < data.length; i++) {
-    const rowEmail = String(data[i][2] || '').trim().toLowerCase(); // WQ25_STUDENT_EMAIL
+    const rowEmail = String(data[i][2] || '').trim().toLowerCase(); // WQ.STUDENT_EMAIL
     if (rowEmail !== email) continue;
     if (String(data[i][C.ARCHIVE_STATUS] || '').trim() === '') continue;
     sheet.getRange(i + 1, C.ARCHIVE_STATUS + 1).setValue('');

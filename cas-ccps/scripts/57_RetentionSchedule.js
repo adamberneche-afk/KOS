@@ -130,8 +130,8 @@ function _retentionSchedule_() {
 
     { label: "WarmUpQueue", tier: RETENTION_TIER_WORKING, years: _warmUpQueueRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.warmUpQueue || "WarmUpQueue"; }),
-      dateCol: WD_WARMUP_QUEUE_COLUMNS.LESSON_DATE, docCol: WQ25_DOC_ID,
-      archived: archivedIn(WD_WARMUP_QUEUE_COLUMNS.ARCHIVE_STATUS) },
+      dateCol: WQ.LESSON_DATE, docCol: WQ.DOC_ID,
+      archived: archivedIn(WQ.ARCHIVE_STATUS) },
     { label: "StudentProfiles", tier: RETENTION_TIER_WORKING, years: working,
       where: ledger(function (cfg) { return cfg.tabs.studentProfiles; }), dateCol: SP_LAST_UPDATED },
     { label: "WarmUpRegistry", tier: RETENTION_TIER_WORKING, years: working,

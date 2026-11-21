@@ -16,7 +16,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
   '40_FlowPrompts.js', '41_WarmUpFlowBridge.js']
   .map((f) => path.join(CC, f));
 const EXPOSE = ['buildWarmUpFlowInputs', 'wfbRetryStaleInputs_', 'wfbConsumeInputRow_',
-  'WFB_INPUTS_PER_RUN', 'WFB_FLOW3_HEADERS', 'WQ25_COL_COUNT', 'harvestWarmUpFlowReturns',
+  'WFB_INPUTS_PER_RUN', 'WFB_FLOW3_HEADERS', 'WQ_BASE_WIDTH', 'harvestWarmUpFlowReturns',
   'previewFailedWarmUpRepair', 'repairFailedWarmUps', 'previewFailedWarmUpScoring',
   'repairFailedWarmUpScoring', 'WFB_FLOW4_HEADERS', 'wfbFlow3Plausible_',
   'previewEvalErrorRescore', 'rescoreEvalErrorWarmUps', 'previewAcceptFailedWarmUpFeedback',
@@ -36,7 +36,7 @@ function setup() {
 
 function pending(fx, n) {
   for (let i = 0; i < n; i++) {
-    const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+    const row = new Array(fx.exported.WQ_BASE_WIDTH).fill('');
     row[0] = 'WQ-' + i;
     row[3] = 'Sam Student';
     row[5] = '2026-10-19';
@@ -110,7 +110,7 @@ test('a Flow 3 job with no return after every retry gets the teacher\'s anchor; 
   const fx = setup();
   fx.sandbox.PropertiesService.getScriptProperties().setProperty('WARMUP_TEXT_BOX', 'all');
   const add = (id, date, status) => {
-    const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+    const row = new Array(fx.exported.WQ_BASE_WIDTH).fill('');
     row[0] = id; row[3] = 'Sam Student'; row[5] = date; row[8] = status;
     row[6] = JSON.stringify({ course_name: 'Sports Entertainment and Event Marketing', warmup_anchor: 'How does a team make money?' });
     fx.wq.appendRow(row);
@@ -147,7 +147,7 @@ test('a Flow 3 job with no return after every retry gets the teacher\'s anchor; 
 test('a text-box warm-up at PENDING_EVAL gets a Flow 4 input from its WarmUpTextBox row', () => {
   const fx = setup();
   const add = (id) => {
-    const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+    const row = new Array(fx.exported.WQ_BASE_WIDTH).fill('');
     row[0] = id; row[3] = 'Sam Student'; row[5] = '2026-10-19'; row[8] = 'PENDING_EVAL';
     row[12] = 3; row[18] = 'Teams sell tickets and sponsorships.';
     fx.wq.appendRow(row);
@@ -180,7 +180,7 @@ const RET_HEADERS = ['Timestamp', 'Flow', 'QueueID', 'RawOutput', 'HarvestStatus
 const ANCHOR = 'How does a team make money?';
 function textBoxJob(fx, id, date, status) {
   fx.sandbox.PropertiesService.getScriptProperties().setProperty('WARMUP_TEXT_BOX', 'all');
-  const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+  const row = new Array(fx.exported.WQ_BASE_WIDTH).fill('');
   row[0] = id; row[3] = 'Sam Student'; row[5] = date; row[8] = status;
   row[6] = JSON.stringify({ course_name: 'Sports Entertainment and Event Marketing',
     course_objective: 'Explain sponsorship revenue streams', warmup_anchor: ANCHOR });
@@ -277,7 +277,7 @@ test('repairFailedWarmUps delivers the anchor for a job failed as fabricated, no
 // says an answer is thin.
 const PROMPT = 'How does a sports franchise generate revenue?';
 function scoringJob(fx, id, status, answer) {
-  const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+  const row = new Array(fx.exported.WQ_BASE_WIDTH).fill('');
   row[0] = id; row[3] = 'Sam Student'; row[5] = '2026-10-19'; row[8] = status;
   row[12] = 2; row[18] = answer;
   fx.wq.appendRow(row);

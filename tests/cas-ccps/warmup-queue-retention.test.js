@@ -7,7 +7,7 @@
 // pattern (tests/cas-ccps/competency-evidence-retention.test.js is the
 // direct template) to this tab. Lives in 34_QueueWatchdog.js, not
 // 25_WarmUpWriter.js, because that file already owns WarmUpQueue health
-// monitoring and already keeps its own WD_WARMUP_QUEUE_COLUMNS map.
+// monitoring and reads 00's WQ map.
 //
 // Loaded together with 22_LessonContextHandler.js (_normalizeLessonDateCell_)
 // and 23_StudentProfileManager.js (formatDateYMD_) — all bound to the same
@@ -35,7 +35,7 @@ function load() {
   ]);
 }
 
-// WQ25_COL_COUNT is 21 (0-20); ARCHIVE_STATUS is the new column at 21.
+// WQ_BASE_WIDTH is 21 (0-20); ARCHIVE_STATUS is the new column at 21.
 const COL_COUNT = 22;
 const QUEUE_ID = 0, STUDENT_EMAIL = 2, LESSON_DATE = 5, ARCHIVE_STATUS = 21;
 

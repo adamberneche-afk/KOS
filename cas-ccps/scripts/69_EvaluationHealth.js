@@ -47,7 +47,7 @@ const EH_HEADERS = ["WeekOf", "Course", "Checks", "Passed", "NeedsRevision", "Er
   "ErrorSuspectFabrication", "ErrorHarvestFailed", "ErrorMalformedOutput", "ErrorOther", "NeverReturned", "FailureRate",
   "WaitMedianMin", "WaitSlowestTenthMin", "StudentLessons", "DraftsPerStudentLesson", "MostDrafts",
   "WarmUpsDelivered", "WarmUpsAnswered", "WarmUpAnswerRate", "UpdatedAt"];
-// WarmUpQueue's lesson_context_snapshot column (25's WQ25_LESSON_CTX_SNAP):
+// WarmUpQueue's lesson_context_snapshot column (25's WQ.LESSON_CTX_SNAP):
 // the course is its course_name. Column 1 is the lesson ID (LES-...), which
 // names no course; until 2026-11-01 this read column 1, so every warm-up
 // counted under "(unknown)".
@@ -141,15 +141,15 @@ function evaluationHealth_(opts) {
 
   // WarmUpQueue: delivered that week, and answered.
   const wq = ss.getSheetByName(cfg.tabs.warmUpQueue);
-  if (wq && wq.getLastRow() > 1 && wq.getLastColumn() > WQ_TIMING.DELIVERED_AT) {
-    wq.getRange(2, 1, wq.getLastRow() - 1, WQ_TIMING.ANSWERED_AT + 1).getValues().forEach(function (r) {
-      const at = sheetTimestampMs_(r[WQ_TIMING.DELIVERED_AT]);
-      if (!r[WQ_TIMING.DELIVERED_AT] || !inWindow(at)) return;
+  if (wq && wq.getLastRow() > 1 && wq.getLastColumn() > WQ.DELIVERED_AT) {
+    wq.getRange(2, 1, wq.getLastRow() - 1, WQ.ANSWERED_AT + 1).getValues().forEach(function (r) {
+      const at = sheetTimestampMs_(r[WQ.DELIVERED_AT]);
+      if (!r[WQ.DELIVERED_AT] || !inWindow(at)) return;
       let courseName = "";
       try { courseName = String(JSON.parse(String(r[EH_WQ_SNAPSHOT] || "{}")).course_name || ""); } catch (e) { courseName = ""; }
       const c = cell(_ehWeekKey_(at), warmUpCourseCode_(courseName) || "(unknown)");
       c.delivered++;
-      if (String(r[WQ_TIMING.ANSWERED_AT] || "").trim()) c.answered++;
+      if (String(r[WQ.ANSWERED_AT] || "").trim()) c.answered++;
     });
   }
 

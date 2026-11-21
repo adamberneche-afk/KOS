@@ -16,9 +16,9 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
   '04_Form2_TurnInGate.js', '02_Form1_IntakeAndWorkspaceGenerator.js', '25_WarmUpWriter.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '68_LessonParts.js', '03_QueueBridge.js', '41_WarmUpFlowBridge.js']
   .map((f) => path.join(CC, f));
 const EXPOSE = ['wfbApplyFlow3_', 'wfbFindQueueRow_', '_registerDeliveredWarmUps_', 'runWarmUpEvaluation',
-  'warmUpTextBoxFor_', 'WQ25_COL_COUNT', 'WQ25_STATUS', 'WQ25_DOC_ID', 'WQ25_RESPONSE_TEXT',
-  'WQ25_WORD_COUNT_SCORE', 'WQ25_TOTAL_SCORE', 'WQ25_EXTRA_CREDIT', 'WR_COL_COUNT', 'WR_QUEUE_ID',
-  'WR_DOC_ID', 'WR_TOTAL_SCORE', 'WR_EXTRA_CREDIT', 'WTB', '_capFeedback_', 'MAX_FEEDBACK_CHARS', 'previewMissedWarmUpScoring', 'WQ25_ARCHETYPE', 'WQ25_BRIDGE_OUTPUT'];
+  'warmUpTextBoxFor_', 'WQ_BASE_WIDTH', 'WQ', 'WQ', 'WQ',
+  'WQ', 'WQ', 'WQ', 'WR_COL_COUNT', 'WR_QUEUE_ID',
+  'WR_DOC_ID', 'WR_TOTAL_SCORE', 'WR_EXTRA_CREDIT', 'WTB', '_capFeedback_', 'MAX_FEEDBACK_CHARS', 'previewMissedWarmUpScoring', 'WQ', 'WQ'];
 
 function daysAgoStr(k) {
   const d = new Date();
@@ -47,7 +47,7 @@ function setup(flag) {
 }
 
 function pendingRow(exported, queueId, lessonDate) {
-  const row = new Array(exported.WQ25_COL_COUNT).fill('');
+  const row = new Array(exported.WQ_BASE_WIDTH).fill('');
   row[0] = queueId;
   row[1] = 'LES-1';
   row[2] = 'student@ccpsnet.net';
@@ -78,15 +78,15 @@ test('the flag is per course, like the other shared switches', () => {
 test('Flow 3 with the flag on: the warm-up goes to WarmUpTextBox, no doc, DELIVERED; a retry adds nothing', () => {
   const fx = setup('all');
   assert.deepEqual(deliver(fx, 'WQ-1', daysAgoStr(0)), { ok: true });
-  const wqRow = fx.wq.getRange(2, 1, 1, fx.exported.WQ25_COL_COUNT).getValues()[0];
-  assert.equal(wqRow[fx.exported.WQ25_STATUS], 'DELIVERED');
-  assert.equal(wqRow[fx.exported.WQ25_DOC_ID], '');
+  const wqRow = fx.wq.getRange(2, 1, 1, fx.exported.WQ_BASE_WIDTH).getValues()[0];
+  assert.equal(wqRow[fx.exported.WQ.STATUS], 'DELIVERED');
+  assert.equal(wqRow[fx.exported.WQ.DOC_ID], '');
   const tb = fx.ss.getSheetByName('WarmUpTextBox');
   assert.equal(tb.getLastRow(), 2);
   assert.equal(tb.getRange(2, fx.exported.WTB.WARMUP + 1).getValue(), RAW);
   assert.equal(tb.getRange(2, fx.exported.WTB.LESSON_DATE + 1).getValue(), daysAgoStr(0));
 
-  fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).setValue('PENDING');
+  fx.wq.getRange(2, fx.exported.WQ.STATUS + 1).setValue('PENDING');
   fx.exported.wfbApplyFlow3_(fx.wq, fx.exported.wfbFindQueueRow_(fx.wq, 'WQ-1'), 'WQ-1', RAW);
   assert.equal(tb.getLastRow(), 2, 'no second row');
 });
@@ -104,11 +104,11 @@ test('registered without a doc, then the saved answer is scored the next night; 
   tb.getRange(2, fx.exported.WTB.RESPONSE + 1).setValue(answer);
 
   fx.exported.runWarmUpEvaluation();
-  const [a, b] = fx.wq.getRange(2, 1, 2, fx.exported.WQ25_COL_COUNT).getValues();
-  assert.equal(a[fx.exported.WQ25_STATUS], 'PENDING_EVAL');
-  assert.equal(a[fx.exported.WQ25_RESPONSE_TEXT], answer);
-  assert.equal(a[fx.exported.WQ25_WORD_COUNT_SCORE], 3, '23 words');
-  assert.equal(b[fx.exported.WQ25_STATUS], 'INCOMPLETE');
+  const [a, b] = fx.wq.getRange(2, 1, 2, fx.exported.WQ_BASE_WIDTH).getValues();
+  assert.equal(a[fx.exported.WQ.STATUS], 'PENDING_EVAL');
+  assert.equal(a[fx.exported.WQ.RESPONSE_TEXT], answer);
+  assert.equal(a[fx.exported.WQ.WORD_COUNT_SCORE], 3, '23 words');
+  assert.equal(b[fx.exported.WQ.STATUS], 'INCOMPLETE');
 });
 
 test('a late answer: an INCOMPLETE warm-up answered afterwards is scored on a later night, with no extra credit', () => {
@@ -116,12 +116,12 @@ test('a late answer: an INCOMPLETE warm-up answered afterwards is scored on a la
   deliver(fx, 'WQ-L', daysAgoStr(1));
   deliver(fx, 'WQ-OLD', daysAgoStr(3)); // stamped INCOMPLETE on an earlier night
   fx.exported._registerDeliveredWarmUps_();
-  fx.wq.getRange(3, fx.exported.WQ25_STATUS + 1).setValue('INCOMPLETE');
+  fx.wq.getRange(3, fx.exported.WQ.STATUS + 1).setValue('INCOMPLETE');
   fx.wr.getRange(3, fx.exported.WR_TOTAL_SCORE + 1).setValue(0);
 
   fx.exported.runWarmUpEvaluation();
-  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'INCOMPLETE', 'blank on its night');
-  assert.equal(fx.wq.getRange(3, fx.exported.WQ25_STATUS + 1).getValue(), 'INCOMPLETE', 'still blank: left alone');
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ.STATUS + 1).getValue(), 'INCOMPLETE', 'blank on its night');
+  assert.equal(fx.wq.getRange(3, fx.exported.WQ.STATUS + 1).getValue(), 'INCOMPLETE', 'still blank: left alone');
 
   const tb = fx.ss.getSheetByName('WarmUpTextBox');
   const answer = 'Fans pay more because the stadium is the only place to buy water and the experience is part of the price.';
@@ -129,14 +129,14 @@ test('a late answer: an INCOMPLETE warm-up answered afterwards is scored on a la
   tb.getRange(3, fx.exported.WTB.RESPONSE + 1).setValue(answer);
   fx.exported.runWarmUpEvaluation();
   [2, 3].forEach((r) => {
-    const row = fx.wq.getRange(r, 1, 1, fx.exported.WQ25_COL_COUNT).getValues()[0];
-    assert.equal(row[fx.exported.WQ25_STATUS], 'PENDING_EVAL', 'parked for Flow 4 like an on-time answer');
-    assert.equal(row[fx.exported.WQ25_RESPONSE_TEXT], answer);
-    assert.equal(row[fx.exported.WQ25_EXTRA_CREDIT], 0);
+    const row = fx.wq.getRange(r, 1, 1, fx.exported.WQ_BASE_WIDTH).getValues()[0];
+    assert.equal(row[fx.exported.WQ.STATUS], 'PENDING_EVAL', 'parked for Flow 4 like an on-time answer');
+    assert.equal(row[fx.exported.WQ.RESPONSE_TEXT], answer);
+    assert.equal(row[fx.exported.WQ.EXTRA_CREDIT], 0);
   });
 
   fx.exported.runWarmUpEvaluation();
-  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'PENDING_EVAL', 'picked up once');
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ.STATUS + 1).getValue(), 'PENDING_EVAL', 'picked up once');
 });
 
 test('extra credit: a reply of 10+ words saved on the dashboard is credited', () => {
@@ -145,8 +145,8 @@ test('extra credit: a reply of 10+ words saved on the dashboard is credited', ()
   deliver(fx, 'WQ-D', daysAgoStr(3));
   fx.exported._registerDeliveredWarmUps_();
   [2, 3].forEach((r) => {
-    fx.wq.getRange(r, fx.exported.WQ25_STATUS + 1).setValue('SCORED');
-    fx.wq.getRange(r, fx.exported.WQ25_TOTAL_SCORE + 1).setValue(6);
+    fx.wq.getRange(r, fx.exported.WQ.STATUS + 1).setValue('SCORED');
+    fx.wq.getRange(r, fx.exported.WQ.TOTAL_SCORE + 1).setValue(6);
     fx.wr.getRange(r, fx.exported.WR_TOTAL_SCORE + 1).setValue(6);
   });
   const tb = fx.ss.getSheetByName('WarmUpTextBox');
@@ -156,8 +156,8 @@ test('extra credit: a reply of 10+ words saved on the dashboard is credited', ()
   fx.exported.runWarmUpEvaluation();
   const wr = fx.wr.getRange(2, 1, 2, fx.exported.WR_COL_COUNT).getValues();
   assert.deepEqual(wr.map((r) => [r[fx.exported.WR_TOTAL_SCORE], r[fx.exported.WR_EXTRA_CREDIT]]), [[7, 1], [6, '']]);
-  const wq = fx.wq.getRange(2, 1, 1, fx.exported.WQ25_COL_COUNT).getValues()[0];
-  assert.deepEqual([wq[fx.exported.WQ25_TOTAL_SCORE], wq[fx.exported.WQ25_EXTRA_CREDIT]], [7, 1]);
+  const wq = fx.wq.getRange(2, 1, 1, fx.exported.WQ_BASE_WIDTH).getValues()[0];
+  assert.deepEqual([wq[fx.exported.WQ.TOTAL_SCORE], wq[fx.exported.WQ.EXTRA_CREDIT]], [7, 1]);
 });
 
 test('Flow 3 with the flag on: a blank teacher_name still delivers (no folder is needed); a doc still needs it', () => {
@@ -168,7 +168,7 @@ test('Flow 3 with the flag on: a blank teacher_name still delivers (no folder is
   row[6] = JSON.stringify(snap);
   fx.wq.appendRow(row);
   assert.deepEqual(fx.exported.wfbApplyFlow3_(fx.wq, fx.exported.wfbFindQueueRow_(fx.wq, 'WQ-T'), 'WQ-T', RAW), { ok: true });
-  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'DELIVERED');
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ.STATUS + 1).getValue(), 'DELIVERED');
 
   snap.course_name = 'Sports Entertainment and Event Management'; // 8177: flag off, so a doc
   const docRow = pendingRow(fx.exported, 'WQ-U', daysAgoStr(0));
@@ -182,9 +182,9 @@ test('a NOT_MEETING warm-up (24: its period does not meet that day) is never sco
   const fx = setup('all');
   deliver(fx, 'WQ-N', daysAgoStr(1));
   fx.exported._registerDeliveredWarmUps_();
-  fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).setValue('NOT_MEETING');
+  fx.wq.getRange(2, fx.exported.WQ.STATUS + 1).setValue('NOT_MEETING');
   fx.exported.runWarmUpEvaluation();
-  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'NOT_MEETING');
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ.STATUS + 1).getValue(), 'NOT_MEETING');
   assert.equal(fx.wr.getRange(2, fx.exported.WR_TOTAL_SCORE + 1).getValue(), '');
 });
 
@@ -198,7 +198,7 @@ test('timing: delivered_at is set once on delivery, answered_at from the saved a
   const firstDelivered = fx.wq.getRange(2, 23).getValue();
   assert.equal(Object.prototype.toString.call(firstDelivered), '[object Date]');
 
-  fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).setValue('PENDING');
+  fx.wq.getRange(2, fx.exported.WQ.STATUS + 1).setValue('PENDING');
   fx.exported.wfbApplyFlow3_(fx.wq, fx.exported.wfbFindQueueRow_(fx.wq, 'WQ-A'), 'WQ-A', RAW);
   assert.equal(fx.wq.getRange(2, 23).getValue(), firstDelivered, 'a second delivery keeps the first time');
 
@@ -248,10 +248,10 @@ test('a missed night: warm-ups its own run never scored are scored on a later ni
 
   const preview = fx.exported.previewMissedWarmUpScoring();
   assert.deepEqual([preview.total, preview.byReason.yesterday, preview.byReason.missed_night], [2, 1, 1]);
-  assert.equal(fx.wq.getRange(3, fx.exported.WQ25_STATUS + 1).getValue(), 'DELIVERED', 'the preview changes nothing');
+  assert.equal(fx.wq.getRange(3, fx.exported.WQ.STATUS + 1).getValue(), 'DELIVERED', 'the preview changes nothing');
 
   fx.exported.runWarmUpEvaluation();
-  const status = (r) => fx.wq.getRange(r, fx.exported.WQ25_STATUS + 1).getValue();
+  const status = (r) => fx.wq.getRange(r, fx.exported.WQ.STATUS + 1).getValue();
   assert.deepEqual([status(2), status(3), status(4), status(5)], ['PENDING_EVAL', 'PENDING_EVAL', 'DELIVERED', 'DELIVERED']);
 
   fx.exported.runWarmUpEvaluation();
@@ -264,15 +264,15 @@ test('a missed night: a blank warm-up from it is stamped INCOMPLETE, like yester
   deliver(fx, 'WQ-B', daysAgoStr(2));
   fx.exported._registerDeliveredWarmUps_();
   fx.exported.runWarmUpEvaluation();
-  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'INCOMPLETE');
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ.STATUS + 1).getValue(), 'INCOMPLETE');
 });
 
 // ── D6 (2026-10-24): a baseline warm-up's checks and fallback ────────────────
 
 function deliverBaseline(fx, queueId, raw) {
   const row = pendingRow(fx.exported, queueId, daysAgoStr(0));
-  row[fx.exported.WQ25_ARCHETYPE] = 'BASELINE 8175-14';
-  row[fx.exported.WQ25_BRIDGE_OUTPUT] = 'A bridge about last lesson.';
+  row[fx.exported.WQ.ARCHETYPE] = 'BASELINE 8175-14';
+  row[fx.exported.WQ.BRIDGE_OUTPUT] = 'A bridge about last lesson.';
   fx.wq.appendRow(row);
   return fx.exported.wfbApplyFlow3_(fx.wq, fx.exported.wfbFindQueueRow_(fx.wq, queueId), queueId, raw);
 }
@@ -315,7 +315,7 @@ test('the lead-in: split from the warm-up, shown above it, kept on the queue row
   assert.deepEqual(deliverWithPrior(fx, 'WQ-L1', 'LEAD-IN: ' + lead + '\nWARM-UP: ' + RAW), { ok: true });
   assert.equal(textBoxRow(fx)[fx.exported.WTB.BRIDGE], lead);
   assert.equal(textBoxRow(fx)[fx.exported.WTB.WARMUP], RAW, 'the label is not shown');
-  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_BRIDGE_OUTPUT + 1).getValue(), lead);
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ.BRIDGE_OUTPUT + 1).getValue(), lead);
 });
 
 test('a lead-in that has nothing to do with the last answer is dropped; the warm-up still goes out', () => {

@@ -15,7 +15,7 @@
 //      canary markers, so neither one's cleanup can eat the other's rows.
 //
 // Loaded with the central-ledger files the fixtures reference: 00_SharedConfig.js
-// (getConfig_/LEDGER), 24_WarmUpBridge.js (WQ24_* constants),
+// (getConfig_/LEDGER), 24_WarmUpBridge.js (00's WQ columns),
 // 37_FlowInputBuilder.js (FI, _fiEnsureTab_) and the fixtures themselves.
 // 22_LessonContextHandler.js comes along because 24_WarmUpBridge.js calls its
 // _normalizeLessonDateCell_ — same one GAS project, see
@@ -54,14 +54,14 @@ function load() {
     'installFlowFixtures', 'installFlow1Fixture', 'installFlow2Fixture', 'checkFlow2Fixture', 'removeFlow2Fixture',
     '_fiFindTeacherMatrixRow_',
     'installWarmUpFixtures', 'checkFlowFixtures', 'removeFlowFixtures',
-    'FI', 'WQ24_QUEUE_ID', 'WQ24_STATUS', 'WQ24_LESSON_CTX_SNAP',
-    'WQ24_STUDENT_PROFILE_SNAP', 'WQ24_RESPONSE_TEXT', 'WQ24_COL_COUNT',
+    'FI', 'WQ', 'WQ', 'WQ',
+    'WQ', 'WQ', 'WQ_BASE_WIDTH',
     'FX_QUEUE_PREFIX', 'FX_CONFIG_PREFIX', 'FX_TEACHER_EMAIL', 'FX_STUDENT_EMAIL',
     // 41_WarmUpFlowBridge.js — the fixtures exist to feed it, so the
     // end-to-end tests at the bottom of this file drive it directly.
     'buildWarmUpFlowInputs', 'wfbBuildFlow3Fields_', 'evaluateWarmUpDoc_',
-    'WQ25_ARCHETYPE',
-    'WQ24_DOC_ID', 'WQ24_WORD_COUNT_SCORE', 'WFB_INPUT_TABS',
+    'WQ',
+    'WQ', 'WQ', 'WFB_INPUT_TABS',
     'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS',
     'RESPONSE_ZONE_MARKER',
     // 37_FlowInputBuilder.js's harvest — the Flow 2 fixture's consumer. The
@@ -127,8 +127,8 @@ test('installFlowFixtures: seeds all five flows, each at its own trigger status'
   const wq = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
   const statusOf = (suffix) => {
     const row = wq.find((r) =>
-      String(r[exported.WQ24_QUEUE_ID]).trim() === exported.FX_QUEUE_PREFIX + suffix);
-    return row ? String(row[exported.WQ24_STATUS]).trim() : null;
+      String(r[exported.WQ.QUEUE_ID]).trim() === exported.FX_QUEUE_PREFIX + suffix);
+    return row ? String(row[exported.WQ.STATUS]).trim() : null;
   };
   assert.equal(statusOf('F3L'), 'PENDING');
   assert.equal(statusOf('F3'), 'PENDING');
@@ -242,13 +242,13 @@ test('installWarmUpFixtures: snapshots are valid JSON carrying the keys the flow
 
   const wq = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
   const rowFor = (suffix) => wq.find((r) =>
-    String(r[exported.WQ24_QUEUE_ID]).trim() === exported.FX_QUEUE_PREFIX + suffix);
+    String(r[exported.WQ.QUEUE_ID]).trim() === exported.FX_QUEUE_PREFIX + suffix);
 
   // Flow 3 reads lesson_context_snapshot + student_profile_snapshot and
   // resolves the doc folder from admin_root_folder_id.
   const f3 = rowFor('F3');
-  const ctx = JSON.parse(f3[exported.WQ24_LESSON_CTX_SNAP]);
-  const profile = JSON.parse(f3[exported.WQ24_STUDENT_PROFILE_SNAP]);
+  const ctx = JSON.parse(f3[exported.WQ.LESSON_CTX_SNAP]);
+  const profile = JSON.parse(f3[exported.WQ.STUDENT_PROFILE_SNAP]);
   ['lesson_id', 'objective', 'competency_ids', 'course_name', 'admin_root_folder_id',
    'pacing_prior_connection'].forEach((k) => {
     assert.ok(k in ctx, 'lesson context must carry ' + k);
@@ -259,7 +259,7 @@ test('installWarmUpFixtures: snapshots are valid JSON carrying the keys the flow
 
   // The F3L row is the RETURNING-student case: Flow 3 writes its lead-in
   // from the prior response.
-  const f5ctx = JSON.parse(rowFor('F3L')[exported.WQ24_LESSON_CTX_SNAP]);
+  const f5ctx = JSON.parse(rowFor('F3L')[exported.WQ.LESSON_CTX_SNAP]);
   assert.ok(f5ctx.flow5_prior_response, 'the lead-in needs a prior response to connect');
   assert.ok(f5ctx.flow5_prior_date);
   assert.ok('flow5_prior_score' in f5ctx);
@@ -267,7 +267,7 @@ test('installWarmUpFixtures: snapshots are valid JSON carrying the keys the flow
     'the Flow 3 row is the first-week case and must NOT carry prior-response data');
 
   // Flow 4 reads response_text off the trigger row, not from the doc.
-  assert.ok(String(rowFor('F4')[exported.WQ24_RESPONSE_TEXT]).trim().length > 0);
+  assert.ok(String(rowFor('F4')[exported.WQ.RESPONSE_TEXT]).trim().length > 0);
 });
 
 test('installWarmUpFixtures: reports cleanly when the WarmUpQueue tab does not exist', () => {
@@ -296,7 +296,7 @@ test('installFlowFixtures: a second run seeds nothing and duplicates nothing', (
     .filter((r) => String(r[idx]).trim() === needle).length;
   assert.equal(count('RubricQueue', 1, exported.FX_TEACHER_EMAIL), 1);
   assert.equal(count('FlowInput', exported.FI.STUDENT_EMAIL, exported.FX_STUDENT_EMAIL), 1);
-  assert.equal(count('WarmUpQueue', exported.WQ24_QUEUE_ID, exported.FX_QUEUE_PREFIX + 'F3'), 1);
+  assert.equal(count('WarmUpQueue', exported.WQ.QUEUE_ID, exported.FX_QUEUE_PREFIX + 'F3'), 1);
 });
 
 // ── checkFlowFixtures ────────────────────────────────────────────────────────
@@ -324,8 +324,8 @@ test('checkFlowFixtures: a consumed fixture reads as not-ready, and says why', (
   const wq = ss.getSheetByName('WarmUpQueue');
   const data = wq.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][exported.WQ24_QUEUE_ID]).trim() === exported.FX_QUEUE_PREFIX + 'F3L') {
-      wq.getRange(i + 1, exported.WQ24_STATUS + 1).setValue('DELIVERED');
+    if (String(data[i][exported.WQ.QUEUE_ID]).trim() === exported.FX_QUEUE_PREFIX + 'F3L') {
+      wq.getRange(i + 1, exported.WQ.STATUS + 1).setValue('DELIVERED');
     }
   }
 
@@ -349,8 +349,8 @@ test('removeFlowFixtures: clears every fixture row and leaves real rows untouche
     'Tier 1 Core', 'Real rubric text', 'real-template-id', 'real-matrix-id',
     'PENDING_EXTRACTION']);
   const realWq = new Array(21).fill('');
-  realWq[exported.WQ24_QUEUE_ID] = 'WUQ-REAL-1';
-  realWq[exported.WQ24_STATUS] = 'PENDING';
+  realWq[exported.WQ.QUEUE_ID] = 'WUQ-REAL-1';
+  realWq[exported.WQ.STATUS] = 'PENDING';
   ss.getSheetByName('WarmUpQueue').appendRow(realWq);
 
   exported.installFlowFixtures();
@@ -362,12 +362,12 @@ test('removeFlowFixtures: clears every fixture row and leaves real rows untouche
     .every((r) => String(r[idx]).trim() !== needle);
   assert.ok(gone('RubricQueue', 1, exported.FX_TEACHER_EMAIL));
   assert.ok(gone('FlowInput', exported.FI.STUDENT_EMAIL, exported.FX_STUDENT_EMAIL));
-  assert.ok(gone('WarmUpQueue', exported.WQ24_QUEUE_ID, exported.FX_QUEUE_PREFIX + 'F3L'));
+  assert.ok(gone('WarmUpQueue', exported.WQ.QUEUE_ID, exported.FX_QUEUE_PREFIX + 'F3L'));
 
   const survives = (tab, idx, needle) => ss.getSheetByName(tab).getDataRange().getValues()
     .some((r) => String(r[idx]).trim() === needle);
   assert.ok(survives('RubricQueue', 1, 'real.teacher@ccpsnet.net'), 'real rubric row survives');
-  assert.ok(survives('WarmUpQueue', exported.WQ24_QUEUE_ID, 'WUQ-REAL-1'), 'real queue row survives');
+  assert.ok(survives('WarmUpQueue', exported.WQ.QUEUE_ID, 'WUQ-REAL-1'), 'real queue row survives');
 });
 
 test('removeFlowFixtures: trashes the scratch files the fixtures created', () => {
@@ -445,9 +445,9 @@ test('the Flow 4 fixture brings a real document, with extractable zones', () => 
   exported.installWarmUpFixtures();
 
   const rows = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
-  const f4 = rows.find((r) => String(r[exported.WQ24_QUEUE_ID]).indexOf('F4') !== -1);
+  const f4 = rows.find((r) => String(r[exported.WQ.QUEUE_ID]).indexOf('F4') !== -1);
   assert.ok(f4, 'the F4 fixture row exists');
-  const docId = String(f4[exported.WQ24_DOC_ID] || '').trim();
+  const docId = String(f4[exported.WQ.DOC_ID] || '').trim();
   assert.ok(docId, 'and carries a Doc_ID — without one Flow 4 materializes nothing');
 
   // The assertion that matters: the reader the bridge actually uses can find
@@ -464,11 +464,11 @@ test('the Flow 4 fixture carries a word-count score, so its total is not blank-s
   const ss = setUp(sandbox);
   exported.installWarmUpFixtures();
   const rows = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
-  const f4 = rows.find((r) => String(r[exported.WQ24_QUEUE_ID]).indexOf('F4') !== -1);
+  const f4 = rows.find((r) => String(r[exported.WQ.QUEUE_ID]).indexOf('F4') !== -1);
   // The harvest reads this cell rather than recomputing it, so a 0 here would
   // score a plausible response as if it had been left empty — reading as a
   // scoring bug rather than a fixture gap.
-  assert.ok(Number(f4[exported.WQ24_WORD_COUNT_SCORE]) > 0);
+  assert.ok(Number(f4[exported.WQ.WORD_COUNT_SCORE]) > 0);
 });
 
 test('the seeded profile drives a real archetype branch, not the fallback tail', () => {
@@ -477,9 +477,9 @@ test('the seeded profile drives a real archetype branch, not the fallback tail',
   exported.installWarmUpFixtures();
 
   const rows = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
-  const f3 = rows.find((r) => String(r[exported.WQ24_QUEUE_ID]).indexOf('F3') !== -1);
-  const lesson = JSON.parse(String(f3[exported.WQ24_LESSON_CTX_SNAP]));
-  const profile = JSON.parse(String(f3[exported.WQ24_STUDENT_PROFILE_SNAP]));
+  const f3 = rows.find((r) => String(r[exported.WQ.QUEUE_ID]).indexOf('F3') !== -1);
+  const lesson = JSON.parse(String(f3[exported.WQ.LESSON_CTX_SNAP]));
+  const profile = JSON.parse(String(f3[exported.WQ.STUDENT_PROFILE_SNAP]));
 
   // evaluation_signals must be the OBJECT shape. As a plain string array this
   // silently produced "- : (strengths: None; gaps: None)" in the prompt and
@@ -505,8 +505,8 @@ test('building Flow 3\'s input records the chosen archetype on the queue row, on
   exported.installWarmUpFixtures();
   const archetypeOf = (suffix) => {
     const rows = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
-    const r = rows.find((x) => String(x[exported.WQ24_QUEUE_ID]).indexOf(suffix) !== -1);
-    return String(r[exported.WQ25_ARCHETYPE] || '');
+    const r = rows.find((x) => String(x[exported.WQ.QUEUE_ID]).indexOf(suffix) !== -1);
+    return String(r[exported.WQ.ARCHETYPE] || '');
   };
   assert.equal(archetypeOf('F3'), '', 'blank before the input row is built');
 
@@ -518,8 +518,8 @@ test('building Flow 3\'s input records the chosen archetype on the queue row, on
   // A second build skips the row, and a value already on it is kept.
   const sheet = ss.getSheetByName('WarmUpQueue');
   const rows = sheet.getDataRange().getValues();
-  const idx = rows.findIndex((x) => String(x[exported.WQ24_QUEUE_ID]).indexOf('F3') !== -1);
-  sheet.getRange(idx + 1, exported.WQ25_ARCHETYPE + 1).setValue('PARADOX');
+  const idx = rows.findIndex((x) => String(x[exported.WQ.QUEUE_ID]).indexOf('F3') !== -1);
+  sheet.getRange(idx + 1, exported.WQ.ARCHETYPE + 1).setValue('PARADOX');
   exported.buildWarmUpFlowInputs();
   assert.equal(archetypeOf('F3'), 'PARADOX');
 });
@@ -1039,10 +1039,10 @@ test('D6: a student with no baseline history gets a baseline warm-up (Mode C, co
 
   const rows = wq.getDataRange().getValues();
   const real = rows.find((r) => r[0] === 'WUQ-REAL-1');
-  assert.match(String(real[exported.WQ25_ARCHETYPE]), /^BASELINE 817[57]-3$/);
+  assert.match(String(real[exported.WQ.ARCHETYPE]), /^BASELINE 817[57]-3$/);
   const fixture = rows.find((r) => String(r[0]).indexOf(exported.FX_QUEUE_PREFIX) === 0 &&
-    String(r[exported.WQ25_ARCHETYPE]).trim());
-  assert.ok(fixture && String(fixture[exported.WQ25_ARCHETYPE]).indexOf('BASELINE') !== 0,
+    String(r[exported.WQ.ARCHETYPE]).trim());
+  assert.ok(fixture && String(fixture[exported.WQ.ARCHETYPE]).indexOf('BASELINE') !== 0,
     'the canary\'s fixture student keeps a lesson warm-up');
 
   const input = flow3Inputs(sandbox, exported).find((r) => r[1] === 'WUQ-REAL-1');
@@ -1058,14 +1058,14 @@ test('D6: each baseline warm-up is a new skill; five answered or on their way en
   exported.installWarmUpFixtures();
   const past = (id, n, status) => {
     const r = new Array(21).fill('');
-    r[0] = id; r[4] = 'real@ccpsnet.net'; r[8] = status; r[exported.WQ25_ARCHETYPE] = 'BASELINE 8175-' + n;
+    r[0] = id; r[4] = 'real@ccpsnet.net'; r[8] = status; r[exported.WQ.ARCHETYPE] = 'BASELINE 8175-' + n;
     return r;
   };
   // 3 and 14 answered, 10 blank, 2 delivered: next is 10 again (blank), then 13.
   const { wq } = addRealStudentFlow3Row(sandbox, 'WUQ-REAL-2', 'real@ccpsnet.net',
     [past('P1', 3, 'SCORED'), past('P2', 14, 'PENDING_EVAL'), past('P3', 10, 'INCOMPLETE'), past('P4', 2, 'DELIVERED')]);
   exported.buildWarmUpFlowInputs();
-  const pick = () => String(wq.getDataRange().getValues().find((r) => r[0] === 'WUQ-REAL-2')[exported.WQ25_ARCHETYPE]);
+  const pick = () => String(wq.getDataRange().getValues().find((r) => r[0] === 'WUQ-REAL-2')[exported.WQ.ARCHETYPE]);
   assert.match(pick(), /-10$/, 'the blank one is asked again');
 
   const done = load();
@@ -1074,6 +1074,6 @@ test('D6: each baseline warm-up is a new skill; five answered or on their way en
   const five = [3, 14, 10, 2, 13].map((n, i) => past('Q' + i, n, i === 4 ? 'DELIVERED' : 'SCORED'));
   const r2 = addRealStudentFlow3Row(done.sandbox, 'WUQ-REAL-3', 'real@ccpsnet.net', five);
   done.exported.buildWarmUpFlowInputs();
-  const after = String(r2.wq.getDataRange().getValues().find((r) => r[0] === 'WUQ-REAL-3')[exported.WQ25_ARCHETYPE]);
+  const after = String(r2.wq.getDataRange().getValues().find((r) => r[0] === 'WUQ-REAL-3')[exported.WQ.ARCHETYPE]);
   assert.ok(after && after.indexOf('BASELINE') !== 0, 'five counted: back to lesson warm-ups (' + after + ')');
 });

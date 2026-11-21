@@ -701,39 +701,39 @@ function installWarmUpFixtures() {
   let skipped = 0;
   specs.forEach(function (spec) {
     const queueId = FX_QUEUE_PREFIX + spec.suffix;
-    if (_fxFindRow_(sheet, WQ24_QUEUE_ID, queueId) !== -1) {
+    if (_fxFindRow_(sheet, WQ.QUEUE_ID, queueId) !== -1) {
       Logger.log("[Fixtures] WarmUpQueue " + spec.status + " fixture (" + queueId +
                  ") already present — leaving it alone.");
       skipped++;
       return;
     }
 
-    const row = new Array(WQ24_COL_COUNT).fill("");
-    row[WQ24_QUEUE_ID] = queueId;
-    row[WQ24_LESSON_ID] = ctxBase.lesson_id;
-    row[WQ24_STUDENT_EMAIL] = FX_STUDENT_EMAIL;
-    row[WQ24_STUDENT_NAME] = "Fixture Student";
-    row[WQ24_GOOGLE_ID] = FX_STUDENT_EMAIL;
-    row[WQ24_LESSON_DATE] = lessonDate;
-    row[WQ24_LESSON_CTX_SNAP] = JSON.stringify(spec.ctx);
-    row[WQ24_STUDENT_PROFILE_SNAP] = JSON.stringify(profileBase);
-    row[WQ24_STATUS] = spec.status;
+    const row = new Array(WQ_BASE_WIDTH).fill("");
+    row[WQ.QUEUE_ID] = queueId;
+    row[WQ.LESSON_ID] = ctxBase.lesson_id;
+    row[WQ.STUDENT_EMAIL] = FX_STUDENT_EMAIL;
+    row[WQ.STUDENT_NAME] = "Fixture Student";
+    row[WQ.GOOGLE_ID] = FX_STUDENT_EMAIL;
+    row[WQ.LESSON_DATE] = lessonDate;
+    row[WQ.LESSON_CTX_SNAP] = JSON.stringify(spec.ctx);
+    row[WQ.STUDENT_PROFILE_SNAP] = JSON.stringify(profileBase);
+    row[WQ.STATUS] = spec.status;
     if (spec.response) {
-      row[WQ24_RESPONSE_TEXT] = spec.response;
+      row[WQ.RESPONSE_TEXT] = spec.response;
       const words = spec.response.split(/\s+/).filter(Boolean).length;
-      row[WQ24_WORD_COUNT] = words;
+      row[WQ.WORD_COUNT] = words;
       // Flow 4's total is word_count_score + grammar + engagement +
       // extra_credit, and the harvest reads this cell rather than recomputing
       // it. Left at 0 the fixture would score a plausible response as if it
       // had been blank, which reads as a scoring bug rather than a fixture
       // gap. 2 is the mid band for a response of this length.
-      row[WQ24_WORD_COUNT_SCORE] = 2;
+      row[WQ.WORD_COUNT_SCORE] = 2;
     }
     if (spec.withDoc) {
       const made = _fxCreateWarmUpFixtureDoc_(queueId, spec.ctx, spec.response);
       if (made) {
-        row[WQ24_DOC_ID] = made.id;
-        row[WQ24_DOC_URL] = made.url;
+        row[WQ.DOC_ID] = made.id;
+        row[WQ.DOC_URL] = made.url;
       }
     }
     sheet.appendRow(row);
@@ -793,11 +793,11 @@ function checkFlowFixtures() {
 
   const wq = ledgerSs.getSheetByName(cfg.tabs.warmUpQueue || "WarmUpQueue");
   check("Flow 3 (lead-in) — WarmUpQueue PENDING", wq,
-    WQ24_QUEUE_ID, FX_QUEUE_PREFIX + "F3L", "PENDING", WQ24_STATUS);
+    WQ.QUEUE_ID, FX_QUEUE_PREFIX + "F3L", "PENDING", WQ.STATUS);
   check("Flow 3 — WarmUpQueue PENDING", wq,
-    WQ24_QUEUE_ID, FX_QUEUE_PREFIX + "F3", "PENDING", WQ24_STATUS);
+    WQ.QUEUE_ID, FX_QUEUE_PREFIX + "F3", "PENDING", WQ.STATUS);
   check("Flow 4 — WarmUpQueue PENDING_EVAL", wq,
-    WQ24_QUEUE_ID, FX_QUEUE_PREFIX + "F4", "PENDING_EVAL", WQ24_STATUS);
+    WQ.QUEUE_ID, FX_QUEUE_PREFIX + "F4", "PENDING_EVAL", WQ.STATUS);
 
   report.forEach(function (r) {
     Logger.log("[Fixtures] " + (r.ok ? "✅" : "⬜") + " " + r.label + " — " + r.detail);
@@ -885,7 +885,7 @@ function removeFlowFixtures() {
 
   // WarmUpQueue — Flow 3 may have created a doc of its own; collect it too.
   clearWhere(ledgerSs.getSheetByName(cfg.tabs.warmUpQueue || "WarmUpQueue"),
-    WQ24_QUEUE_ID, { prefix: FX_QUEUE_PREFIX }, [WQ24_DOC_ID]);
+    WQ.QUEUE_ID, { prefix: FX_QUEUE_PREFIX }, [WQ.DOC_ID]);
 
   // Any CompetencyEvidence a real Flow 2 harvest wrote from the fixture row.
   clearWhere(ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence"),

@@ -49,7 +49,7 @@ function ledgerRow({ email, name, teacher = TEACHER, period = '2', status = 'ACT
 function setup(opts = {}) {
   const viewer = opts.viewer || TEACHER;
   const env = loadGasFiles(FILES, ['buildUpcomingLessons', 'buildUpcomingLessonPlan_', 'buildWarmUpQueues',
-    'updateAllStudentProfiles', 'createWarmUpTabs_', 'WQ24_COL_COUNT', 'SP_COL_COUNT'], {
+    'updateAllStudentProfiles', 'createWarmUpTabs_', 'WQ_BASE_WIDTH', 'SP_COL_COUNT'], {
     Session: { getActiveUser: () => ({ getEmail: () => viewer }), getEffectiveUser: () => ({ getEmail: () => TEACHER }),
       getScriptTimeZone: () => 'America/New_York' },
   });
@@ -101,7 +101,7 @@ function setup(opts = {}) {
   // Earlier warm-ups: Amy's two scored ones (an answer for 24's bridge,
   // engagement and extra credit for 23), and Ben already queued for tomorrow.
   const wq = ss.getSheetByName('WarmUpQueue');
-  const wqRow = (f) => { const r = new Array(exported.WQ24_COL_COUNT).fill(''); Object.keys(f).forEach((k) => { r[k] = f[k]; }); return r; };
+  const wqRow = (f) => { const r = new Array(exported.WQ_BASE_WIDTH).fill(''); Object.keys(f).forEach((k) => { r[k] = f[k]; }); return r; };
   wq.appendRow(wqRow({ 0: 'WUQ-A1', 1: 'LC-EARLIER', 2: A, 3: 'Amy', 5: '2026-11-02', 8: 'SCORED', 12: 4, 13: 1, 14: 2,
     15: 1, 16: 8, 18: 'I would price student tickets lower so more of the school comes.' }));
   wq.appendRow(wqRow({ 0: 'WUQ-A2', 1: 'LC-EARLIER2', 2: A, 3: 'Amy', 5: '2026-11-04', 8: 'SCORED', 12: 4, 13: 1, 14: 3,
