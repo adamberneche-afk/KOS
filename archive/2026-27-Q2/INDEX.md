@@ -15,6 +15,14 @@ How files are filed and searched: the [archive index](../INDEX.md).
 - 2026-10-31 · [`meta/HANDOFF_2026-10-31.md`](meta/HANDOFF_2026-10-31.md) — Session handoff, 10-31: the two history rewrites (superseded; agent notes in meta/AGENT_NOTES.md) Replaced by `meta/HANDOFF_2026-11-01.md`.
 - 2026-11-01 · [`meta/HANDOFF_2026-11-01.md`](meta/HANDOFF_2026-11-01.md) — Session handoff, 11-01: #352-#373 (superseded; agent notes in meta/AGENT_NOTES.md) Replaced by `meta/HANDOFF_2026-11-08.md`.
 - 2026-11-08 · [`meta/HANDOFF_2026-11-08.md`](meta/HANDOFF_2026-11-08.md) — Session handoff, 11-02 to 11-09: #375-#417 (superseded; agent notes in meta/AGENT_NOTES.md) Replaced by `meta/HANDOFF_2026-11-15.md`.
+- 2026-11-15 · [`meta/HANDOFF_2026-11-15.md`](meta/HANDOFF_2026-11-15.md) — Repo-wide session handoff, replaced by a newer one
+- 2026-11-17 · [`meta/HANDOFF_2026-11-17.md`](meta/HANDOFF_2026-11-17.md) — Repo-wide session handoff, replaced by a newer one
+- 2026-11-18 · [`meta/HANDOFF_2026-11-18.md`](meta/HANDOFF_2026-11-18.md) — Repo-wide session handoff, replaced by a newer one
+
+## Plans, sprints and specs
+
+- ~2026-11-21 · [`meta/COURSE_BUILDER_PLAN_2026-10.md`](meta/COURSE_BUILDER_PLAN_2026-10.md) — The course year builder's plan (decided 2026-10-22, built as script 51) *(Filed by: Claude Code.)*
+- ~2026-11-21 · [`meta/STUDENT_WORK_PLAN_2026-10.md`](meta/STUDENT_WORK_PLAN_2026-10.md) — The student work plan (phases 1-4: parts, work types), built *(Filed by: Claude Code.)*
 
 ## Audits and reviews
 
@@ -31,6 +39,7 @@ How files are filed and searched: the [archive index](../INDEX.md).
 - ~2026-11-21 · [`cas-ccps/docs/CAS_Module4_Documentation_v1.1.docx`](cas-ccps/docs/CAS_Module4_Documentation_v1.1.docx) — Module 4 documentation as of August 2026, untouched since *(Filed by: Claude Code.)*
 - ~2026-11-21 · [`cas-ccps/docs/CAS_Module5_Documentation_v1.1.docx`](cas-ccps/docs/CAS_Module5_Documentation_v1.1.docx) — Module 5 documentation as of August 2026, untouched since *(Filed by: Claude Code.)*
 - ~2026-11-21 · [`cas-ccps/docs/PLATFORM_DOCUMENTATION.html`](cas-ccps/docs/PLATFORM_DOCUMENTATION.html) — The original platform plan (2026-10 note); its design principle is in SYSTEM_ARCHITECTURE.html *(Filed by: Claude Code.)*
+- ~2026-11-21 · [`meta/VERSION_CONTROL_CONCEPTS.md`](meta/VERSION_CONTROL_CONCEPTS.md) — Conceptual background for the move to git (August 2026), one commit *(Filed by: Claude Code.)*
 - 2026-11-17 · [`tests/cas-ccps/archived/`](tests/cas-ccps/archived) — Tests of the archived Studio steps and work-file probe; no npm test glob reached them (structure audit 2.7)
 
 ## History logs (older entries)

@@ -129,7 +129,7 @@ the dead-ends audit's backlog fixes):
   First, the library and a class list. The four hardcoded 8175/8177 rules
   are gone: packaging step 1 (#363) put the courses in configuration
   (`SCHOOL_COURSES`). See
-  [`COURSE_BUILDER_PLAN_2026-10.md`](./COURSE_BUILDER_PLAN_2026-10.md);
+  [`COURSE_BUILDER_PLAN_2026-10.md`](../archive/2026-27-Q2/meta/COURSE_BUILDER_PLAN_2026-10.md);
   A public library and a private option; using the public library files
   the lessons a teacher builds with CAS in it. C1 to C10 decided 2026-10-22
   (C8: check the division's policy on teacher-created materials before

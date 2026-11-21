@@ -77,7 +77,7 @@ its `filed_on` doesn't fall in, or a stale generated file.
 ## Archiving something: `file.js`
 
 ```sh
-node tools/archive/file.js meta/HANDOFF_2026-11-15.md --summary "Session handoff, 11-09 to 11-15"
+node tools/archive/file.js archive/2026-27-Q2/meta/HANDOFF_2026-11-15.md --summary "Session handoff, 11-09 to 11-15"
 node tools/archive/file.js cas-ccps/old-tool --summary "…" --filed-on 2026-12-01 --filed-by "retired 2026-12-01"
 node tools/archive/file.js <path> --summary "…" --dry-run      # print, change nothing
 ```

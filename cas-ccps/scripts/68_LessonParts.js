@@ -4,7 +4,7 @@
 //   cycle's unlock job) AND the Teacher Dashboard (cas-ccps:teacher-dashboard:
 //   the teacher's unlock).
 //
-// A lesson in parts (meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3; 55b's
+// A lesson in parts (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3; 55b's
 // LESSON_PARTS): each part its own assignment and work file, unlocked in
 // order. The rollout (58) seeds and enrolls every part when the lesson comes
 // up; Part 1 is shared on its release night like any lesson, and the rest
@@ -38,7 +38,7 @@ const LP_LOG_HEADERS = ["UnlockedAt", "StudentConfigID", "PartConfigID", "By"];
 // last check ended in a failure that wasn't their work (the lane timed out,
 // or the result couldn't be used: Ledger ERROR_TIMEOUT / ERROR_EVALUATION),
 // so the next part can't unlock on its own; flagged once a full school day
-// has passed since the submit (meta/STUDENT_WORK_PLAN_2026-10.md, "What
+// has passed since the submit (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, "What
 // reaches the teacher anyway"; dead-ends audit #5). The teacher unlocks it
 // (07's "Open Part n now"). School days are weekdays not listed in
 // SCHOOL_DAYS_OFF (00's isSchoolDay_; packaging step 1).

@@ -6,7 +6,7 @@
 //   cas-ccps file in this project that calls SlidesApp; the project's
 //   manifest has the presentations scope for it.
 //
-// Phase 4c (2026-11-09; meta/STUDENT_WORK_PLAN_2026-10.md §5): the Slides
+// Phase 4c (2026-11-09; archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md §5): the Slides
 // reader at Submit, built as 75 is for a form. For a Slides part, 13's
 // Submit:
 //   1. reads the deck's STRUCTURE (readSlidesStructure_): for each slide in

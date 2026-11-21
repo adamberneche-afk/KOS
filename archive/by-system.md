@@ -99,9 +99,15 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2026-27-Q1 · 2026-10-28 · [`meta/HANDOFF_2026-10-28.md`](2026-27-Q1/meta/HANDOFF_2026-10-28.md) — Session handoff, 10-28 (superseded; agent notes in meta/AGENT_NOTES.md)
 - 2026-27-Q1 · 2026-10-29 · [`meta/AUDIT_DEAD_ENDS_2026-10-29.md`](2026-27-Q1/meta/AUDIT_DEAD_ENDS_2026-10-29.md) — Dead-ends audit, 10-29; its actions went into PLAN_2026-11
 - 2026-27-Q1 · 2026-10-29 · [`meta/HANDOFF_2026-10-29.md`](2026-27-Q1/meta/HANDOFF_2026-10-29.md) — Session handoff, 10-29 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-27-Q2 · ~2026-11-21 · [`meta/COURSE_BUILDER_PLAN_2026-10.md`](2026-27-Q2/meta/COURSE_BUILDER_PLAN_2026-10.md) — The course year builder's plan (decided 2026-10-22, built as script 51)
+- 2026-27-Q2 · ~2026-11-21 · [`meta/STUDENT_WORK_PLAN_2026-10.md`](2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md) — The student work plan (phases 1-4: parts, work types), built
+- 2026-27-Q2 · ~2026-11-21 · [`meta/VERSION_CONTROL_CONCEPTS.md`](2026-27-Q2/meta/VERSION_CONTROL_CONCEPTS.md) — Conceptual background for the move to git (August 2026), one commit
 - 2026-27-Q2 · 2026-10-31 · [`meta/HANDOFF_2026-10-31.md`](2026-27-Q2/meta/HANDOFF_2026-10-31.md) — Session handoff, 10-31: the two history rewrites (superseded; agent notes in meta/AGENT_NOTES.md)
 - 2026-27-Q2 · 2026-11-01 · [`meta/HANDOFF_2026-11-01.md`](2026-27-Q2/meta/HANDOFF_2026-11-01.md) — Session handoff, 11-01: #352-#373 (superseded; agent notes in meta/AGENT_NOTES.md)
 - 2026-27-Q2 · 2026-11-08 · [`meta/HANDOFF_2026-11-08.md`](2026-27-Q2/meta/HANDOFF_2026-11-08.md) — Session handoff, 11-02 to 11-09: #375-#417 (superseded; agent notes in meta/AGENT_NOTES.md)
+- 2026-27-Q2 · 2026-11-15 · [`meta/HANDOFF_2026-11-15.md`](2026-27-Q2/meta/HANDOFF_2026-11-15.md) — Repo-wide session handoff, replaced by a newer one
+- 2026-27-Q2 · 2026-11-17 · [`meta/HANDOFF_2026-11-17.md`](2026-27-Q2/meta/HANDOFF_2026-11-17.md) — Repo-wide session handoff, replaced by a newer one
+- 2026-27-Q2 · 2026-11-18 · [`meta/HANDOFF_2026-11-18.md`](2026-27-Q2/meta/HANDOFF_2026-11-18.md) — Repo-wide session handoff, replaced by a newer one
 
 ## tests/
 

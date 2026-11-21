@@ -83,7 +83,7 @@ const SOURCES = [
     'meta/BACKLOG.md',
     'archive/2026-27-Q1/meta/CAS_DESIGN_THREADS_2026-10-16.md',
     'archive/2026-27-Q1/meta/CAS_COGNITIVE_EXHAUST_2026-10-16.md',
-    'meta/COURSE_BUILDER_PLAN_2026-10.md',
+    'archive/2026-27-Q2/meta/COURSE_BUILDER_PLAN_2026-10.md',
     'archive/2026-27-Q1/meta/LESSON_AUTHORING_PLAN_2026-10.md',
   ] },
 ];

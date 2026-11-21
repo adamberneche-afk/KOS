@@ -47,7 +47,7 @@ block gets a mode (Chromebooks out, listening, discussion, writing) from its wor
 minutes in its heading for the plan to use them.
 
 `PARTS.json` (2026-10-27) splits a lesson into **parts**, one work file each, unlocked in order
-(`meta/STUDENT_WORK_PLAN_2026-10.md`, Phase 3). The generator makes each part an assignment of its
+(`archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md`, Phase 3). The generator makes each part an assignment of its
 own in 55b's `LESSON_PARTS` ("<lesson>-P2"): its tiers and criteria from the file, its task from the
 prompt's opening plus its own "Part n:" paragraphs and vocabulary (Part 1 also carries the
 background, key terms and example). It refuses a part with no primary, a tier that isn't one of the
@@ -93,5 +93,5 @@ together on 2026-10-28, to be edited as they are taught; each keeps its `why` an
 `PARTS.json`'s shape with its status, why and concerns (empty now, but for the notes that run
 across lessons); the builder never reads it. `node tools/cas-ccps/check-parts-drafts.js [file]`
 builds and checks the drafts (or `PARTS.json` itself); `node tools/cas-ccps/render-parts-drafts.js`
-writes the teacher's copy of every lesson in parts, `meta/LESSON_PARTS_2026-10.md`. Approving a
+writes the teacher's copy of every lesson in parts, `cas-ccps/curriculum/lessons/LESSON_PARTS.md`. Approving a
 draft moves its entry, unchanged, into `PARTS.json`.

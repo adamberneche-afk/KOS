@@ -1,5 +1,5 @@
 'use strict';
-// The process reflection on Submit (meta/STUDENT_WORK_PLAN_2026-10.md,
+// The process reflection on Submit (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md,
 // Phase 1, 2026-10-24). With REFLECTION_ON_SUBMIT on, Submit for Feedback on
 // the Student Dashboard (13) asks one or two questions about how the student
 // worked, chosen in code from fixed frames (00), checks each answer has 10

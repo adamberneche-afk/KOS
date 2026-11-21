@@ -1,5 +1,5 @@
 'use strict';
-// 68's unlocks (meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3): a student's next
+// 68's unlocks (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3): a student's next
 // part opens when their latest check of the part before found its primary
 // MET, or when their teacher unlocks it; PartUnlocks records each.
 // explainLockedParts (2026-11-16) says why each next locked part is locked,
