@@ -17,7 +17,7 @@ is to run the same command without it, then commit what changed.
 
 | Tool | What it is | Runs | The command (and its fix) |
 |---|---|---|---|
-| [`gas-lint/`](./gas-lint/) | static checks for the GAS systems | CI | `node tools/gas-lint/check.js`; `--stale-refs` lists comments naming files no longer in the repo |
+| [`gas-lint/`](./gas-lint/) | static checks for the GAS systems | CI | `node tools/gas-lint/check.js`; `--stale-refs` lists comments naming files no longer in the repo; exceptions with why in `second-copy-allow.json`, `size-budgets.json` (the size ratchet) |
 | [`doc-currency/`](./doc-currency/) | checks the docs against the code | CI | `node tools/doc-currency/check.js` |
 | [`setup-guide/`](./setup-guide/) | the CAS setup guide's reference, from the code | CI (`--check`) | `node tools/setup-guide/build.js` |
 | [`archive/`](./archive/) | the archive's catalog, indexes and search | CI (`build.js --check`) | `node tools/archive/build.js`; file a doc with `file.js`, find one with `search.js` |
