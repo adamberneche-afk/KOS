@@ -1,0 +1,130 @@
+{
+  "_comment": "gas-lint's size-budget check (CLAUDE.md, \"Keeping debt down\"). A ratchet: anything over budget is listed here with its size and why, may not grow past that size, and loses its entry once back under budget. Keys are paths; a '#literal' key is the file's longest string or template literal.",
+  "budgets": {
+    "file": 1500,
+    "literal": 100,
+    "readme": 250
+  },
+  "over": {
+    "cas-ccps/README.md": {
+      "lines": 326,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "cas-ccps/scripts/00_SharedConfig.js": {
+      "lines": 2939,
+      "why": "Loaded by every CAS project: getConfig_, TABS, each tab's columns and the shared helpers; one-project code moved out in audit 4.6."
+    },
+    "cas-ccps/scripts/07_TeacherDashboard.js": {
+      "lines": 2574,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "cas-ccps/scripts/07_TeacherDashboardPage.html": {
+      "lines": 4394,
+      "why": "The Teacher Dashboard's whole page (audit 4.5 moved it out of its .js). Split by panel when next reworked."
+    },
+    "cas-ccps/scripts/13_StudentDashboard.js": {
+      "lines": 3154,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "cas-ccps/scripts/13_StudentDashboard.js#literal": {
+      "lines": 194,
+      "why": "Client code still held in a server string for the page (the walkthrough). Moving it into 13_StudentDashboardPage.html is the fix."
+    },
+    "cas-ccps/scripts/13_StudentDashboardPage.html": {
+      "lines": 2188,
+      "why": "The Student Dashboard's whole page (audit 4.5). Split by tab when next reworked."
+    },
+    "cas-ccps/scripts/15b_StudioFlowPrompts_Flow2_Revised.js#literal": {
+      "lines": 194,
+      "why": "FLOW_2_SYSTEM_PROMPT: a prompt's length is its content, and 15b is its one source (structure audit 3.12)."
+    },
+    "cas-ccps/scripts/16_UnifiedManualSetup.js": {
+      "lines": 1771,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "cas-ccps/scripts/37_FlowInputBuilder.js": {
+      "lines": 2246,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "cas-ccps/scripts/41_WarmUpFlowBridge.js": {
+      "lines": 2491,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "cas-ccps/scripts/60_FamilyMailSentinel.js": {
+      "lines": 1831,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "cas-ccps/scripts/71b_TurnInStudent.js#literal": {
+      "lines": 153,
+      "why": "The turn-in card's client half, held as a string and pasted into the Student Dashboard page. Moving it into the page's .html is the fix."
+    },
+    "kos-personal/12_StudioReturnHarvest.gs": {
+      "lines": 1687,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "kos-personal/4_Vector_Router.gs": {
+      "lines": 1547,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "kos-personal/5_Error_And_Utilities.gs": {
+      "lines": 2235,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "kos-personal/8_WebApp_UI.html": {
+      "lines": 3820,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "leader-hub/src/04-markup-modals-and-feature-views.html": {
+      "lines": 1665,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "leader-hub/src/05-data-helpers-dashboard.html": {
+      "lines": 1762,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "leader-hub/src/06-tasks-trips-and-modals-core.html": {
+      "lines": 1573,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "leader-hub/src/07-events-email-members-goals.html": {
+      "lines": 2232,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "leader-hub/src/08-permission-forms-archive-competency.html": {
+      "lines": 2209,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "leader-hub/src/09-wbl-lessonplans-procurement-finance-esports.html": {
+      "lines": 2381,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "leader-hub/src/10-command-engine-ai-and-widgets.html": {
+      "lines": 2606,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "leader-hub/src/11-journal-cron-settings-and-sync.html": {
+      "lines": 3328,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "leader-hub/src/12-integrations-pacing-subplan-brag.html": {
+      "lines": 3746,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "tools/README.md": {
+      "lines": 349,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "tools/clasp-sync/README.md": {
+      "lines": 399,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "tools/deploy-drift/README.md": {
+      "lines": 274,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    },
+    "tools/gas-lint/README.md": {
+      "lines": 524,
+      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
+    }
+  }
+}

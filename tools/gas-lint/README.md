@@ -443,18 +443,15 @@ it — that gap is closed now.
     something current, point it at the live file. Tests:
     `tests/tools/gas-lint-flow-map.test.js`.
 
-17. **Second copy** (`checkSecondCopy`, 2026-11-21, CLAUDE.md "Keeping debt
-    down"). A function body of 5 or more lines, identical but for comments
-    and whitespace (strings count), in two files of one system (cas-ccps,
-    kos-personal, leader-hub; `.html` pages' scripts included) is an
-    **error**: the second copy moves to one place (00, `tools/lib/`, or
-    `shared/` with a sync). A pair that must stay is named in
-    `second-copy-allow.json` with why; an entry that no longer matches is an
-    error too. Across systems, copies are the sync recipe's job
-    (`tools/flow-harness-sync`). First run: three pairs, one fixed (71's and
-    72's tab helpers were copies of 00's `ensureTab_`), two allowed.
-    Bodies are found by `tools/lib/declarations.js`, the lexer-based finder
-    the tests cut with. Tests: `tests/tools/gas-lint-second-copy.test.js`.
+17. **Second copy** (`checkSecondCopy`, 2026-11-21). An identical function
+    body (5+ lines, comments and whitespace aside) in two files of one
+    system is an error; allowed pairs, with why, in `second-copy-allow.json`.
+    Tests: `tests/tools/gas-lint-second-copy.test.js`.
+18. **Size budgets** (`checkSizeBudgets`, 2026-11-21). A ratchet: a source
+    file over 1,500 lines, a literal over 100 or a README over 250 is an
+    error unless `size-budgets.json` lists it with its size and why, and a
+    listed one may not grow. Tests: `tests/tools/gas-lint-size-budget.test.js`.
+    Both checks: CLAUDE.md, "Keeping debt down".
 
 ## What this is NOT
 
