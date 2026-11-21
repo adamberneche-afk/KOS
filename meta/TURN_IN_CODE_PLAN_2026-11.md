@@ -1,9 +1,10 @@
 # Turn-in code: proof of engagement in Canvas (2026-11-07)
 
-**Status:** design, from the operator's decisions of 2026-11-07 and
-2026-11-08. Stages 1 (PR #391), 2 (Flow 6, the turn-in check, PR #392),
-3 (the teacher's side, PR #393) and 4 (the Canvas side, PR #394) are built,
-behind a switch that is off; see "Build stages". The switch takes lessons
+**Status:** built. All five stages are: 1 (PR #391), 2 (Flow 6, the
+turn-in check, PR #392), 3 (the teacher's side, PR #393), 4 (the Canvas
+side, PR #394) and 5 (the lesson report, `69c_LessonReport.js`, PR #508);
+see "Build stages". The design below is from the operator's decisions of
+2026-11-07 and 2026-11-08 and is kept as the record of why it works this way. The switch takes lessons
 and codes carry the lesson's number since 2026-11-08 ("The pilot").
 **Live 2026-11-09:** Flow 6 built in Studio and running, and the operator
 turned the code on for **every lesson in both courses**

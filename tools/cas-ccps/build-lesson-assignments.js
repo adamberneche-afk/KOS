@@ -101,7 +101,7 @@ const TIERS_FILE = path.join(LESSONS, 'COMPETENCY_TIERS.json');
 const competencyTiers = () => (fs.existsSync(TIERS_FILE) ? JSON.parse(fs.readFileSync(TIERS_FILE, 'utf8')) : {});
 
 // Each competency as a learning objective the student owns ("I can …",
-// approved 2026-10-24, meta/STUDENT_WORK_PLAN_2026-10.md). Shown in the task
+// approved 2026-10-24, archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md). Shown in the task
 // in place of the competency's title, and carried as a.objectives for the
 // reflection questions (00). A competency without one keeps its title.
 const OBJECTIVES_FILE = path.join(LESSONS, 'STUDENT_CRITERIA.json');
@@ -371,7 +371,7 @@ function plan8177(text, warm) {
   return { duration: live.length > 1 ? live.length + ' class periods' : '', days: live };
 }
 
-// ── Parts (meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3; 2026-10-27) ──────────
+// ── Parts (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3; 2026-10-27) ──────────
 // A lesson in PARTS.json becomes one assignment per part (LESSON_PARTS in
 // 55b): its own ConfigID ("CAS-<lesson>-P2"), tiers, criteria and task. The
 // task is the prompt's opening (title and scenario), the part's own
@@ -383,7 +383,7 @@ function plan8177(text, warm) {
 const PARTS_FILE = path.join(LESSONS, 'PARTS.json');
 const lessonParts = () => (fs.existsSync(PARTS_FILE) ? JSON.parse(fs.readFileSync(PARTS_FILE, 'utf8')) : {});
 
-// A part's workType (Phase 4a, meta/STUDENT_WORK_PLAN_2026-10.md §5; Slides
+// A part's workType (Phase 4a, archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md §5; Slides
 // and Sheets, Phases 4c and 4d): what the rollout makes for each student.
 // "doc" (the default, also when unset), "form", a copy of the part's
 // template form, "slides", a copy of its template deck, or "sheet", a copy

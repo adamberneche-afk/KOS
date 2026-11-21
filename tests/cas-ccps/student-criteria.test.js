@@ -2,7 +2,7 @@
 // Each assignment's learning objectives, owned by the student: one
 // "I can …" line per competency (cas-ccps/curriculum/lessons/
 // STUDENT_CRITERIA.json, the operator's direction 2026-10-24,
-// meta/STUDENT_WORK_PLAN_2026-10.md). The reflection questions will quote
+// archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md). The reflection questions will quote
 // them ("Where in your work do you show this: “…”?"), so each must exist
 // for every competency the tiers give an assignment, read as one first-person
 // sentence, and carry no system words.

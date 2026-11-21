@@ -1,5 +1,5 @@
 'use strict';
-// A lesson in parts (meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3; Appendix B
+// A lesson in parts (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3; Appendix B
 // approved 2026-10-27): PARTS.json → 55b's LESSON_PARTS, one assignment per
 // part with its own tiers, criteria and task.
 

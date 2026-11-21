@@ -283,7 +283,7 @@ function intakeStudent_(cfg, s) {
     teacherEmail: assignedTeacherEmail };
 }
 
-// A form, Slides or Sheets part's copy (Phase 4a/4c/4d, meta/STUDENT_WORK_PLAN_2026-10.md
+// A form, Slides or Sheets part's copy (Phase 4a/4c/4d, archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md
 // §5): the part's template file copied with DriveApp, as the doc is (no
 // FormApp or SlidesApp call, so no Forms or Slides scope is used here), into
 // the same admin folder, shared and recorded the same way, SCHEDULED with

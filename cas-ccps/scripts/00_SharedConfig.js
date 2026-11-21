@@ -2502,7 +2502,7 @@ function workFileHasSnapshot_(type) {
 }
 
 // ---------------------------------------------------------------------------
-// A form part's snapshot (Phase 4b, 2026-11-08; meta/STUDENT_WORK_PLAN_2026-10.md
+// A form part's snapshot (Phase 4b, 2026-11-08; archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md
 // §5). Each student's form copy gets a Google Doc beside it at intake (02's
 // _makeFormSnapshotDoc_): its "feedback page". At Submit the Student
 // Dashboard (75's reader, 13) reads the form's structure, runs the part's
@@ -3020,7 +3020,7 @@ function _sendDeployVersionReport_(projectName, sha) {
 }
 
 // ---------------------------------------------------------------------------
-// The process reflection on Submit (meta/STUDENT_WORK_PLAN_2026-10.md,
+// The process reflection on Submit (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md,
 // Phase 1, decided 2026-10-24)
 //
 // With REFLECTION_ON_SUBMIT on for a course (blank/"off", "all", or a course
@@ -3059,7 +3059,7 @@ const REFLECTION_FRAMES = [
   { id: "C1", kind: "CHOICE",   text: "What was the hardest choice in this assignment? What did you pick?" },
   { id: "C2", kind: "CHOICE",   text: "What would someone who disagrees with your work say? What would you tell them?" },
   { id: "C3", kind: "CHOICE",   text: "What is another way you could have done this? Why didn't you?" },
-  // Phase 2 (meta/STUDENT_WORK_PLAN_2026-10.md, Appendix A, approved
+  // Phase 2 (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, Appendix A, approved
   // 2026-10-24): a resubmission after the primary wasn't met.
   { id: "F1", kind: "FEEDBACK", goal: true, goalLabel: "Not shown yet", text: "What will you change to show this goal?" },
   { id: "F2", kind: "FEEDBACK", text: "What part of the feedback do you agree with most? What are you doing about it?" },

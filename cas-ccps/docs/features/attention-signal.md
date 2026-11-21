@@ -110,7 +110,7 @@ Submit first asks one or two questions about how the student worked
 to the `ReflectionLog` tab and only then queues the work; 37 puts that
 submission's answers into Flow 2's `PromptText` and posts them back to the
 student as a comment on the doc
-(`meta/STUDENT_WORK_PLAN_2026-10.md`, Phase 1).
+(`archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md`, Phase 1).
 Students turn in on Canvas, where the teacher grades. The Turn-In Form and
 its handler (Script 04's 3-point match, stamp check and forensic
 Drive-revision check) were retired on 2026-10-10 (HISTORY.md, P0-04): no

@@ -720,7 +720,7 @@ The earlier notes still hold. Added:
     for approval, and the builder never reads it.
   - `node tools/cas-ccps/check-parts-drafts.js [file]` builds and checks
     a split, including `PARTS.json` itself.
-  - `render-parts-drafts.js` regenerates `meta/LESSON_PARTS_2026-10.md`
+  - `render-parts-drafts.js` regenerates `cas-ccps/curriculum/lessons/LESSON_PARTS.md`
     (a test keeps it current).
   - A part's paragraph must **start** with "Part n:", with a blank line
     before it.

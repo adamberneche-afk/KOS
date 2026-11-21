@@ -117,7 +117,7 @@ removed, and "the docs that say the wrong thing" fixed in one docs PR.
 Q26 (the 13 competencies no lesson measures); Flow 3 warm-up set-asides;
 The Back Room sheet; the zero-shot target; L1's gate; packaging (paused
 11-09); LeaderHub tightening except #442; turn-in stage 5 (after a few
-weeks of data). Source: `meta/HANDOFF_2026-11-17.md`.
+weeks of data). Source: `archive/2026-27-Q2/meta/HANDOFF_2026-11-17.md`.
 
 ## Unchanged warnings
 

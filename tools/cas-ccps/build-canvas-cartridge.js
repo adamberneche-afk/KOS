@@ -234,7 +234,7 @@ const fmtDate = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { 
 
 // parts: a lesson in parts' [{ part, partTitle }] (PARTS.json, 2026-11-01;
 // dead-ends audit #6), or none. Canvas keeps one assignment and one grade per
-// lesson (meta/STUDENT_WORK_PLAN_2026-10.md, "Where the costs land"); the
+// lesson (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, "Where the costs land"); the
 // page lists the parts, says each has its own doc that opens in turn, and
 // asks for the last part's link.
 // opts.turnIn (stage 4): a text entry for the turn-in code, not a Website URL;

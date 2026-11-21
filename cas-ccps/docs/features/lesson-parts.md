@@ -45,7 +45,7 @@ pressing Submit.
 
 ## Work types: a part as a Google Form (Phase 4a, 2026-11-08)
 
-A part's work file has a type (`meta/STUDENT_WORK_PLAN_2026-10.md` §5):
+A part's work file has a type (`archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md` §5):
 `doc` (the default) or `form`. It is the part's `workType` in
 `curriculum/lessons/PARTS.json`; unset is `doc`, so a lesson nobody marks
 builds exactly as before (55b, the cartridges and the demo file are

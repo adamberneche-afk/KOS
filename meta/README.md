@@ -6,6 +6,9 @@ why this repo exists at all.
 
 ## Contents
 
+Older handoffs and finished plans are in `archive/` (`node tools/archive/search.js`,
+or `archive/INDEX.md`); 4.4 of `AUDIT_STRUCTURE_2026-11-20.md` filed the last batch.
+
 - **`CI_FLOOR.md`** — the CI checks copied from the Mothership hub's floor
   (doc-link-check, doc-placeholder-check, secrets-doctor) and how the hub
   reads this repo; moved out of the root README 2026-11-21.
@@ -26,28 +29,6 @@ why this repo exists at all.
   merged, not pushed), the operator's queue in order (the push, the Studio
   Repeat for each with each flow's fixture, the flows-and-prompts audit),
   the decisions, and notes for an agent.
-- **`HANDOFF_2026-11-18.md`** — the previous handoff, kept as the record: what merged
-  11-17 to 11-18 (#462–#485: the archive, a lesson's missing parts made,
-  competency IDs Sheets stored as dates repaired, plain-worded questions,
-  View feedback opening the comment, Show me around, a Slides part's
-  feedback on the deck, the harvest delivering once, a prompt to submit),
-  what is live (KOS through #485, pushed 11-18, and the live repairs), the
-  operator's queue in order, the decisions, and notes for an agent.
-- **`HANDOFF_2026-11-17.md`** — an earlier handoff, kept as the record: what merged
-  11-15 to 11-16 (#444–#459: Flow 2's results checked before a student sees
-  them, the Ledger cycle's checks before work, the 11-15 re-grade and what it
-  showed, provenance on every result, StudioConfig and the daily drift
-  probe, why a part is locked, the turn-in question), what is live (KOS
-  through #459, pushed 11-16; Studio's 11-13 to 11-15 changes), the
-  operator's queue in order, the decisions waiting, and notes for an agent.
-- **`HANDOFF_2026-11-15.md`** — replaced for the queue by 11-17's; the record of 11-09 to 11-15: what merged
-  11-09 to 11-15 (#418–#443: Flow 2 resilience after Studio stopped
-  answering, the Ledger cycle every minute with each job's run time, the
-  Student Dashboard's navigation and Competencies tab, news, stages and Try
-  again, the Teacher Dashboard's waiting strip, the Canvas button), what is
-  live (KOS through #417, pushed 11-09; #418 on merged but not pushed), the
-  operator's queue in order, the decisions of 11-14/15, what is on hold,
-  and the agent notes added.
 - **`RELEASE_AUDIT_2026-11-08.md`** — the first full-repo run of
   `tools/release-check` (plan item L1), before its CI gate turns on: counts
   per rule and per folder, the file list with every value redacted, git
@@ -58,18 +39,11 @@ why this repo exists at all.
   PRs, the CAS design threads, the second-user and KOS Lite concepts
   (deferred until after Oct 30), and repo chores. Nothing in it is
   committed work; `PLAN_2026-11.md` wins. Reviewed at each sprint boundary.
-- **`LESSON_PARTS_2026-10.md`** — every lesson split into parts (35), in
-  the first lesson's pattern (the student work plan's Appendix B): each
-  part's work file and tiers, why, the criteria in a student's words, and
-  what is still open, with the issues that run across lessons first. The
-  other 34 were drafted and approved together on 2026-10-28. Generated from
-  `cas-ccps/curriculum/lessons/PARTS.json` (and any drafts in
-  `PARTS_DRAFTS.json`) by `tools/cas-ccps/render-parts-drafts.js`; edit the JSON.
 - **`FLOW2_VERSIONS_2026-11.md`** — what changed in Flow 2 and when it was
   live (the grader, students' behavior, Studio and its model), for reading a
   grading against the version that made it; `reportGradingByVersion` (69)
   groups the data the same way.
-- **`TURN_IN_CODE_PLAN_2026-11.md`** — the turn-in code's design, from the
+- **`TURN_IN_CODE_PLAN_2026-11.md`** — built (stages 1-5, the last 2026-11-20); the turn-in code's design, from the
   operator's decisions of 2026-11-07: a code in a Canvas text-entry box
   earns formative completion credit once the student has answered one
   question about their feedback (checked by an Apps Script screen and a
@@ -77,26 +51,11 @@ why this repo exists at all.
   per-course switch; the standing rules that keep the grade from poisoning
   the competency measure; the per-lesson engagement-to-competency report;
   what to verify in a Canvas submissions ZIP; and the build stages.
-- **`STUDENT_WORK_PLAN_2026-10.md`** — the plan (direction decided
-  2026-10-24) for the student's side of an assignment, from rendering two
-  new student docs: multi-part lessons split into parts that unlock in
-  order (one Canvas assignment per lesson), short varied reflections on
-  Submit tied to the lesson's competencies, Flow 2 reading them, and where
-  each cost lands. Nothing built; open decisions at its end.
-- **`COURSE_BUILDER_PLAN_2026-10.md`** — a decided plan (2026-10-22) for
-  building a new course from the VDOE framework, with teachers submitting
-  the course they want, built so adopting teachers can adapt it: how 8175
-  and 8177 were built, what assumes two courses, the library/class split,
-  the public library (lessons filed back) and the private option, seven
-  phases (an onboarding and deployment Phase 0, then A to F) and its
-  decisions. Nothing built; after Oct 30.
 - **`PRD_CAS_RESEARCH_PIVOT.md`** — the cas-ccps research-alignment PRD
   (revised 2026-10-10, checked against the code): a Phase 0 of live defects
   to fix before the warm-up week, then measurement, pedagogy and
   student-experience requirements, each with its secondary effects. It runs
   alongside `PLAN_2026-10.md`, which stays the plan of record.
-- **`VERSION_CONTROL_CONCEPTS.md`** — supporting conceptual background for
-  the PSD above.
 - **`CLASP_AND_APPS_SCRIPT.md`** — supporting technical background on
   `clasp`, referenced by the PSD.
 - **`Drive_Steward_Methodology_and_Prompt.md`** — cross-referenced here

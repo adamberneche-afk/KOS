@@ -2,7 +2,7 @@
 // Lessons in parts: every approved lesson (lessons/PARTS.json) and any draft
 // awaiting approval (lessons/PARTS_DRAFTS.json) passes the draft checks with
 // the lesson builder, no draft is already approved, and the teacher's copy
-// (meta/LESSON_PARTS_2026-10.md) is current.
+// (cas-ccps/curriculum/lessons/LESSON_PARTS.md) is current.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -59,6 +59,6 @@ test('the checker names what is wrong with a broken draft', () => {
   assert.match(check(file).lessons[0].problems.join('\n'), /the builder refused it: .*no part covers 8177-79/);
 });
 
-test('the teacher\'s copy (meta/LESSON_PARTS_2026-10.md) matches PARTS.json and the drafts', () => {
+test('the teacher\'s copy (cas-ccps/curriculum/lessons/LESSON_PARTS.md) matches PARTS.json and the drafts', () => {
   execFileSync(process.execPath, [path.join(ROOT, 'tools/cas-ccps/render-parts-drafts.js'), '--check'], { cwd: ROOT });
 });

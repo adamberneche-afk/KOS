@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /**
- * Checks drafted lesson parts (meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3)
+ * Checks drafted lesson parts (archive/2026-27-Q2/meta/STUDENT_WORK_PLAN_2026-10.md, Phase 3)
  * before the teacher approves them: lessons/PARTS_DRAFTS.json, or a file
  * given, in PARTS.json's shape. Each draft is built by the lesson builder
  * itself, as if it were in PARTS.json, so a draft that passes here moves to
