@@ -89,7 +89,7 @@ function logAlignmentForLesson_(lessonId) {
   let lessonRow    = null;
 
   for (let i = 1; i < lcData.length; i++) {
-    if (String(lcData[i][LC_LESSON_ID]).trim() === lessonId) {
+    if (String(lcData[i][LCTX.LESSON_ID]).trim() === lessonId) {
       lessonRowIdx = i;
       lessonRow    = lcData[i];
       break;
@@ -101,21 +101,21 @@ function logAlignmentForLesson_(lessonId) {
   }
 
   // ── Guard: only process RECEIVED rows ────────────────────────────────────
-  const currentStatus = String(lessonRow[LC_STATUS]).trim();
+  const currentStatus = String(lessonRow[LCTX.STATUS]).trim();
   if (currentStatus !== "RECEIVED") {
     Logger.log("[S26] Skipping " + lessonId + " — status is " + currentStatus);
     return { success: true, rowsWritten: 0 };  // Not an error — already processed
   }
 
   // ── Guard: skip if already logged ────────────────────────────────────────
-  const alreadyLogged = String(lessonRow[LC_ALIGNMENT_LOGGED_AT]).trim();
+  const alreadyLogged = String(lessonRow[LCTX.ALIGNMENT_LOGGED_AT]).trim();
   if (alreadyLogged) {
     Logger.log("[S26] Skipping " + lessonId + " — already logged at " + alreadyLogged);
     return { success: true, rowsWritten: 0 };
   }
 
   // ── Parse competency IDs ──────────────────────────────────────────────────
-  const rawIds = String(lessonRow[LC_COMPETENCY_IDS]).trim();
+  const rawIds = String(lessonRow[LCTX.COMPETENCY_IDS]).trim();
   if (!rawIds) {
     return { success: false, retry: false, error: "No competency_ids on LessonContext row " + lessonId };
   }
@@ -129,9 +129,9 @@ function logAlignmentForLesson_(lessonId) {
   const compMap = buildCompetencyMap_(ss, cfg);
 
   // ── Build AlignmentLog rows ───────────────────────────────────────────────
-  const lessonDate       = String(lessonRow[LC_LESSON_DATE]).trim();
-  const teacherEmail     = String(lessonRow[LC_TEACHER_EMAIL]).trim();
-  const learningObjective = String(lessonRow[LC_LEARNING_OBJECTIVE]).trim();
+  const lessonDate       = String(lessonRow[LCTX.LESSON_DATE]).trim();
+  const teacherEmail     = String(lessonRow[LCTX.TEACHER_EMAIL]).trim();
+  const learningObjective = String(lessonRow[LCTX.LEARNING_OBJECTIVE]).trim();
   const loggedAt         = new Date();
   const rowsToAppend     = [];
 
@@ -180,7 +180,7 @@ function logAlignmentForLesson_(lessonId) {
   // reverse.
   try {
     const sheetRow = lessonRowIdx + 1; // +1 for 1-based index
-    lcSheet.getRange(sheetRow, LC_STATUS + 1, 1, 2)
+    lcSheet.getRange(sheetRow, LCTX.STATUS + 1, 1, 2)
       .setValues([[LC_STATUS_ALIGNMENT_LOGGED, loggedAt]]);
   } catch (err) {
     // AlignmentLog rows were written — this is a partial failure.

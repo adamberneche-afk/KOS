@@ -223,10 +223,10 @@ function buildUpcomingLessonPlan_(opts) {
   // Slots that already have a lesson (any status but SUPERSEDED).
   const taken = new Set();
   lcSheet.getDataRange().getValues().slice(1).forEach(r => {
-    if (String(r[LC_STATUS] || "").trim() === LC_STATUS_SUPERSEDED) return;
-    taken.add([String(r[LC_TEACHER_EMAIL] || "").trim().toLowerCase(),
-      _normalizeLessonDateCell_(r[LC_LESSON_DATE]),
-      _lessonPeriodText_(r[LC_PERIOD_OR_CLASS]).toLowerCase()].join("|"));
+    if (String(r[LCTX.STATUS] || "").trim() === LC_STATUS_SUPERSEDED) return;
+    taken.add([String(r[LCTX.TEACHER_EMAIL] || "").trim().toLowerCase(),
+      _normalizeLessonDateCell_(r[LCTX.LESSON_DATE]),
+      _lessonPeriodText_(r[LCTX.PERIOD_OR_CLASS]).toLowerCase()].join("|"));
   });
 
   const noSchool = _cybNoSchoolDays_(ss);
@@ -329,20 +329,20 @@ function removeDraftedLessons_(opts) {
   const data = lcSheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     const r = data[i];
-    if (String(r[LC_ACTIVITY_DESCRIPTION] || "").indexOf(CYB_DRAFT_PREFIX) !== 0) continue;
-    const date = _normalizeLessonDateCell_(r[LC_LESSON_DATE]);
+    if (String(r[LCTX.ACTIVITY_DESCRIPTION] || "").indexOf(CYB_DRAFT_PREFIX) !== 0) continue;
+    const date = _normalizeLessonDateCell_(r[LCTX.LESSON_DATE]);
     if (date < today) continue;
-    const live = String(r[LC_STATUS] || "").trim() !== LC_STATUS_SUPERSEDED;
-    const docId = String(r[LC_FRAME_DOC_ID] || "").trim();
+    const live = String(r[LCTX.STATUS] || "").trim() !== LC_STATUS_SUPERSEDED;
+    const docId = String(r[LCTX.FRAME_DOC_ID] || "").trim();
     if (!live && !docId) continue;
-    result.rows.push({ row: i + 1, lessonId: String(r[LC_LESSON_ID]), date: date,
-      period: _lessonPeriodText_(r[LC_PERIOD_OR_CLASS]), live: live, docId: docId });
+    result.rows.push({ row: i + 1, lessonId: String(r[LCTX.LESSON_ID]), date: date,
+      period: _lessonPeriodText_(r[LCTX.PERIOD_OR_CLASS]), live: live, docId: docId });
   }
 
   if (apply) {
     result.rows.forEach(x => {
       if (x.live) {
-        lcSheet.getRange(x.row, LC_STATUS + 1).setValue(LC_STATUS_SUPERSEDED);
+        lcSheet.getRange(x.row, LCTX.STATUS + 1).setValue(LC_STATUS_SUPERSEDED);
         result.superseded++;
       }
       if (x.docId) {

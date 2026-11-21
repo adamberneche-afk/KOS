@@ -91,7 +91,7 @@ function generateLessonFrame_(lessonId) {
   let lessonRowIdx = -1;
   let lessonRow    = null;
   for (let i = 1; i < lcData.length; i++) {
-    if (String(lcData[i][LC_LESSON_ID]).trim() === lessonId) {
+    if (String(lcData[i][LCTX.LESSON_ID]).trim() === lessonId) {
       lessonRowIdx = i;
       lessonRow    = lcData[i];
       break;
@@ -109,13 +109,13 @@ function generateLessonFrame_(lessonId) {
   // status other than ALIGNMENT_LOGGED just means S26 hasn't finished for
   // this row (or it's already SUPERSEDED/ERROR) — not a fault in this
   // function.
-  const currentStatus = String(lessonRow[LC_STATUS]).trim();
-  const existingUrl    = String(lessonRow[LC_FRAME_DOC_URL] || "").trim();
+  const currentStatus = String(lessonRow[LCTX.STATUS]).trim();
+  const existingUrl    = String(lessonRow[LCTX.FRAME_DOC_URL] || "").trim();
   if (currentStatus === LC_STATUS_FRAME_GENERATED && existingUrl) {
     Logger.log("[S27] Skipping " + lessonId + " — frame already generated.");
     return {
       success: true,
-      docId:   String(lessonRow[LC_FRAME_DOC_ID] || "").trim(),
+      docId:   String(lessonRow[LCTX.FRAME_DOC_ID] || "").trim(),
       docUrl:  existingUrl,
     };
   }
@@ -125,14 +125,14 @@ function generateLessonFrame_(lessonId) {
   }
 
   // ── Gather lesson fields ──────────────────────────────────────────────────
-  const teacherEmail     = String(lessonRow[LC_TEACHER_EMAIL]           || "").trim();
-  const lessonDate       = String(lessonRow[LC_LESSON_DATE]             || "").trim();
-  const periodOrClass    = String(lessonRow[LC_PERIOD_OR_CLASS]         || "").trim();
-  const activity         = String(lessonRow[LC_ACTIVITY_DESCRIPTION]    || "").trim();
-  const objective        = String(lessonRow[LC_LEARNING_OBJECTIVE]      || "").trim();
-  const priorConnection  = String(lessonRow[LC_PRIOR_LESSON_CONNECTION] || "").trim();
-  const rawCompIds       = String(lessonRow[LC_COMPETENCY_IDS]          || "").trim();
-  const term             = String(lessonRow[LC_TERM]                   || "").trim();
+  const teacherEmail     = String(lessonRow[LCTX.TEACHER_EMAIL]           || "").trim();
+  const lessonDate       = String(lessonRow[LCTX.LESSON_DATE]             || "").trim();
+  const periodOrClass    = String(lessonRow[LCTX.PERIOD_OR_CLASS]         || "").trim();
+  const activity         = String(lessonRow[LCTX.ACTIVITY_DESCRIPTION]    || "").trim();
+  const objective        = String(lessonRow[LCTX.LEARNING_OBJECTIVE]      || "").trim();
+  const priorConnection  = String(lessonRow[LCTX.PRIOR_LESSON_CONNECTION] || "").trim();
+  const rawCompIds       = String(lessonRow[LCTX.COMPETENCY_IDS]          || "").trim();
+  const term             = String(lessonRow[LCTX.TERM]                   || "").trim();
   const compIds = rawCompIds ? rawCompIds.split(",").map(id => id.trim()).filter(Boolean) : [];
 
   // ── Competency alignment — Script 32's rubric lookup ──────────────────────
@@ -224,10 +224,10 @@ function generateLessonFrame_(lessonId) {
 
   // ── Write back to the LessonContext row ────────────────────────────────────
   const sheetRow = lessonRowIdx + 1; // +1 for 1-based index, same as Script 26
-  lcSheet.getRange(sheetRow, LC_FRAME_DOC_ID + 1).setValue(docId);
-  lcSheet.getRange(sheetRow, LC_FRAME_DOC_URL + 1).setValue(docUrl);
-  lcSheet.getRange(sheetRow, LC_FRAME_GENERATED_AT + 1).setValue(generatedAt);
-  lcSheet.getRange(sheetRow, LC_STATUS + 1).setValue(LC_STATUS_FRAME_GENERATED);
+  lcSheet.getRange(sheetRow, LCTX.FRAME_DOC_ID + 1).setValue(docId);
+  lcSheet.getRange(sheetRow, LCTX.FRAME_DOC_URL + 1).setValue(docUrl);
+  lcSheet.getRange(sheetRow, LCTX.FRAME_GENERATED_AT + 1).setValue(generatedAt);
+  lcSheet.getRange(sheetRow, LCTX.STATUS + 1).setValue(LC_STATUS_FRAME_GENERATED);
 
   return { success: true, docId: docId, docUrl: docUrl };
 }

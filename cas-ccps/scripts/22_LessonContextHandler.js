@@ -50,44 +50,8 @@
 //
 // =============================================================================
 
-// LessonContext column indices (0-based) — matches schema defined in schema doc.
-// Column order is canonical: scripts write by index, not by name search,
-// for performance. If columns are reordered, update these constants.
-const LC_LESSON_ID              = 0;
-const LC_TEACHER_EMAIL          = 1;
-const LC_SUBMITTED_AT           = 2;
-const LC_LESSON_DATE            = 3;
-const LC_PERIOD_OR_CLASS        = 4;
-const LC_ACTIVITY_DESCRIPTION   = 5;
-const LC_LEARNING_OBJECTIVE     = 6;
-const LC_KEY_VOCABULARY         = 7;
-const LC_PRIOR_LESSON_CONNECTION = 8;
-const LC_COMPETENCY_IDS         = 9;
-const LC_STATUS                 = 10;
-const LC_ALIGNMENT_LOGGED_AT    = 11;
-const LC_ERROR_NOTES            = 12;
-const LC_TERM                   = 13;
-
-// Column 14 — 24_WarmUpBridge.js's warm_up_generated (QUEUED/DELIVERED
-// status string). Reserved here, not written by this file, so nothing else
-// ever claims this index. FOUND AND FIXED during the Script 27 build's own
-// aftermath: LC_FRAME_DOC_ID was originally also assigned 14 — a genuine
-// column collision with this pre-existing column, since 24_WarmUpBridge.js
-// hardcodes LC24_WARM_UP_GENERATED = 14 / 25_WarmUpWriter.js hardcodes
-// LC25_WARM_UP_GENERATED = 14 as read/write targets, independent of
-// whatever _ensureFrameColumns_ below happened to write there. The frame
-// columns were moved to 15-17 to resolve it; see HISTORY.md.
-const LC_WARM_UP_GENERATED       = 14;
-
-// Columns 15-17 — 27_LessonFrameGenerator.js. Added self-healing (see
-// _ensureFrameColumns_ below) rather than only in createModule2Tabs_()'s
-// initial header write, so a deployment created before this feature existed
-// gets these columns on first use instead of needing a migration step —
-// same convention as _ensureTurnInReviewColumns_() (07_TeacherDashboard.js)
-// and _ensureScrDecisionLogArchiveColumn_() (30_SCRSuggestionEngine.js).
-const LC_FRAME_DOC_ID            = 15;
-const LC_FRAME_DOC_URL           = 16;
-const LC_FRAME_GENERATED_AT      = 17;
+// LessonContext's columns are 00_SharedConfig.js's LCTX, beside LCTX_HEADERS
+// (this file's LC_* copy was folded in 2026-11-21, structure audit 3.1).
 
 // LessonContext status values
 const LC_STATUS_RECEIVED          = "RECEIVED";
@@ -106,15 +70,15 @@ const LC_STATUS_ERROR             = "ERROR";
 // _ensureFrameColumns_
 // Idempotent header add for columns 16-18 (1-based) — frame_doc_id,
 // frame_doc_url, frame_generated_at. Deliberately starts one column past
-// LC_WARM_UP_GENERATED (column 15, 1-based) rather than adjacent to `term`,
+// LCTX.WARM_UP_GENERATED (column 15, 1-based) rather than adjacent to `term`,
 // so this function can never clobber 24_WarmUpBridge.js's warm_up_generated
 // header even on a deployment where that column hasn't been added yet.
 // Safe to call on every generateLessonFrame_() invocation; a no-op once the
 // headers exist.
 // ---------------------------------------------------------------------------
 function _ensureFrameColumns_(lcSheet) {
-  const headers = ["frame_doc_id", "frame_doc_url", "frame_generated_at"];
-  const startCol = LC_FRAME_DOC_ID + 1; // 16, 1-based
+  const headers = LCTX_HEADERS.slice(LCTX.FRAME_DOC_ID); // 00_SharedConfig.js
+  const startCol = LCTX.FRAME_DOC_ID + 1; // 16, 1-based
   headers.forEach((name, i) => {
     const cell = lcSheet.getRange(1, startCol + i);
     if (String(cell.getValue()).trim() !== name) {
@@ -176,20 +140,20 @@ function onLessonContextSubmit_(payload) {
   // ── Build row ─────────────────────────────────────────────────────────────
   // Row length must match column count defined by LC_ constants above (14 cols).
   const row = new Array(14).fill("");
-  row[LC_LESSON_ID]               = lessonId;
-  row[LC_TEACHER_EMAIL]           = payload.teacherEmail;
-  row[LC_SUBMITTED_AT]            = new Date();
-  row[LC_LESSON_DATE]             = payload.lessonDate;       // "YYYY-MM-DD" string
-  row[LC_PERIOD_OR_CLASS]         = payload.periodOrClass     || "";
-  row[LC_ACTIVITY_DESCRIPTION]    = payload.activityDescription;
-  row[LC_LEARNING_OBJECTIVE]      = payload.learningObjective;
-  row[LC_KEY_VOCABULARY]          = payload.keyVocabulary     || "";
-  row[LC_PRIOR_LESSON_CONNECTION] = payload.priorLessonConnection || "";
-  row[LC_COMPETENCY_IDS]          = validation.normalizedCompetencyIds; // trimmed, validated
-  row[LC_STATUS]                  = LC_STATUS_RECEIVED;
-  row[LC_ALIGNMENT_LOGGED_AT]     = "";
-  row[LC_ERROR_NOTES]             = "";
-  row[LC_TERM]                    = currentTerm;
+  row[LCTX.LESSON_ID]               = lessonId;
+  row[LCTX.TEACHER_EMAIL]           = payload.teacherEmail;
+  row[LCTX.SUBMITTED_AT]            = new Date();
+  row[LCTX.LESSON_DATE]             = payload.lessonDate;       // "YYYY-MM-DD" string
+  row[LCTX.PERIOD_OR_CLASS]         = payload.periodOrClass     || "";
+  row[LCTX.ACTIVITY_DESCRIPTION]    = payload.activityDescription;
+  row[LCTX.LEARNING_OBJECTIVE]      = payload.learningObjective;
+  row[LCTX.KEY_VOCABULARY]          = payload.keyVocabulary     || "";
+  row[LCTX.PRIOR_LESSON_CONNECTION] = payload.priorLessonConnection || "";
+  row[LCTX.COMPETENCY_IDS]          = validation.normalizedCompetencyIds; // trimmed, validated
+  row[LCTX.STATUS]                  = LC_STATUS_RECEIVED;
+  row[LCTX.ALIGNMENT_LOGGED_AT]     = "";
+  row[LCTX.ERROR_NOTES]             = "";
+  row[LCTX.TERM]                    = currentTerm;
 
   // ── Write to LessonContext tab ────────────────────────────────────────────
   try {
@@ -408,10 +372,10 @@ function supersedeDuplicates_(lcSheet, teacherEmail, lessonDate, periodOrClass) 
   const targetDate = _normalizeLessonDateCell_(lessonDate);
 
   for (let i = 1; i < data.length; i++) {
-    const rowEmail  = String(data[i][LC_TEACHER_EMAIL]).trim().toLowerCase();
-    const rowDate   = _normalizeLessonDateCell_(data[i][LC_LESSON_DATE]);
-    const rowPeriod = _lessonPeriodText_(data[i][LC_PERIOD_OR_CLASS]).toLowerCase();
-    const rowStatus = String(data[i][LC_STATUS]).trim();
+    const rowEmail  = String(data[i][LCTX.TEACHER_EMAIL]).trim().toLowerCase();
+    const rowDate   = _normalizeLessonDateCell_(data[i][LCTX.LESSON_DATE]);
+    const rowPeriod = _lessonPeriodText_(data[i][LCTX.PERIOD_OR_CLASS]).toLowerCase();
+    const rowStatus = String(data[i][LCTX.STATUS]).trim();
 
     if (
       rowEmail  === teacherEmail.toLowerCase() &&
@@ -420,8 +384,8 @@ function supersedeDuplicates_(lcSheet, teacherEmail, lessonDate, periodOrClass) 
       rowStatus === LC_STATUS_RECEIVED
     ) {
       // +1 for 1-based row index, +1 for header row
-      lcSheet.getRange(i + 1, LC_STATUS + 1).setValue(LC_STATUS_SUPERSEDED);
-      Logger.log("[S22] Superseded row " + (i + 1) + " — LessonID: " + data[i][LC_LESSON_ID]);
+      lcSheet.getRange(i + 1, LCTX.STATUS + 1).setValue(LC_STATUS_SUPERSEDED);
+      Logger.log("[S22] Superseded row " + (i + 1) + " — LessonID: " + data[i][LCTX.LESSON_ID]);
     }
   }
 }
@@ -434,8 +398,8 @@ function writeErrorNote_(lcSheet, lessonId, note) {
   try {
     const data = lcSheet.getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][LC_LESSON_ID]).trim() === lessonId) {
-        lcSheet.getRange(i + 1, LC_ERROR_NOTES + 1).setValue(note);
+      if (String(data[i][LCTX.LESSON_ID]).trim() === lessonId) {
+        lcSheet.getRange(i + 1, LCTX.ERROR_NOTES + 1).setValue(note);
         return;
       }
     }
@@ -506,15 +470,15 @@ function runAlignmentLogBackfill_() {
   let processed = 0;
 
   for (let i = 1; i < data.length; i++) {
-    const status      = String(data[i][LC_STATUS]).trim();
-    const loggedAt    = String(data[i][LC_ALIGNMENT_LOGGED_AT]).trim();
+    const status      = String(data[i][LCTX.STATUS]).trim();
+    const loggedAt    = String(data[i][LCTX.ALIGNMENT_LOGGED_AT]).trim();
 
     if (status !== LC_STATUS_RECEIVED || loggedAt !== "") continue;
 
-    const lessonId = String(data[i][LC_LESSON_ID]).trim();
+    const lessonId = String(data[i][LCTX.LESSON_ID]).trim();
     if (!lessonId) continue;
 
-    const note = String(data[i][LC_ERROR_NOTES] || "");
+    const note = String(data[i][LCTX.ERROR_NOTES] || "");
     let result;
     try {
       result = logAlignmentForLesson_(lessonId);
@@ -529,7 +493,7 @@ function runAlignmentLogBackfill_() {
       processed++;
       Logger.log("[S22 BACKFILL] Processed " + lessonId);
       if (note.indexOf(LC_NOTE_DEFERRED) === 0) {
-        lcSheet.getRange(sheetRow, LC_ERROR_NOTES + 1).setValue("");
+        lcSheet.getRange(sheetRow, LCTX.ERROR_NOTES + 1).setValue("");
       }
       continue;
     }
@@ -539,13 +503,13 @@ function runAlignmentLogBackfill_() {
     if (result.retry === false || attempts >= LC_BACKFILL_MAX_ATTEMPTS) {
       Logger.log("[S22 BACKFILL] Giving up on " + lessonId + " after " + attempts +
                  " attempt(s): " + result.error);
-      lcSheet.getRange(sheetRow, LC_STATUS + 1).setValue(LC_STATUS_ERROR);
-      lcSheet.getRange(sheetRow, LC_ERROR_NOTES + 1).setValue(
+      lcSheet.getRange(sheetRow, LCTX.STATUS + 1).setValue(LC_STATUS_ERROR);
+      lcSheet.getRange(sheetRow, LCTX.ERROR_NOTES + 1).setValue(
         "Alignment logging stopped after " + attempts + " attempt(s): " + result.error +
         " Fix the row, then set status back to " + LC_STATUS_RECEIVED + " to retry.");
     } else {
       Logger.log("[S22 BACKFILL] S26 returned failure for " + lessonId + ": " + result.error);
-      lcSheet.getRange(sheetRow, LC_ERROR_NOTES + 1).setValue(
+      lcSheet.getRange(sheetRow, LCTX.ERROR_NOTES + 1).setValue(
         LC_NOTE_DEFERRED + " (attempt " + attempts + " of " + LC_BACKFILL_MAX_ATTEMPTS + "): " + result.error);
     }
   }
@@ -574,16 +538,9 @@ function createModule2Tabs_() {
   // "warm_up_generated" (col 15) is included here for fresh installs so it
   // never needs a manual migration (24_WarmUpBridge.js's old
   // createLessonContextWarmUpColumn_(), deleted 2026-11-07) at all — and so the frame columns that follow it can never
-  // land in its slot. See LC_WARM_UP_GENERATED's own comment above for why
+  // land in its slot. See LCTX.WARM_UP_GENERATED's own comment above for why
   // that matters.
-  _createTabIfMissing_(ss, cfg.tabs.lessonContext, [
-    "lesson_id", "teacher_email", "submitted_at", "lesson_date",
-    "period_or_class", "activity_description", "learning_objective",
-    "key_vocabulary", "prior_lesson_connection", "competency_ids",
-    "status", "alignment_logged_at", "error_notes", "term",
-    "warm_up_generated",
-    "frame_doc_id", "frame_doc_url", "frame_generated_at"
-  ], [4]);
+  _createTabIfMissing_(ss, cfg.tabs.lessonContext, LCTX_HEADERS.slice(), [4]);
 
   // CompetencyRegistry
   _createTabIfMissing_(ss, cfg.tabs.competencyRegistry, [
