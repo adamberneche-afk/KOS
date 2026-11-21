@@ -20,7 +20,7 @@ const ROOT = path.join(__dirname, '..', '..');
 const read = (p) => fs.readFileSync(path.join(ROOT, p), 'utf8');
 const GUIDE = read('cas-ccps/docs/STUDENT_QUICK_START.html');
 const UX = read('cas-ccps/docs/USER_EXPERIENCE_REFERENCE.html');
-const DASH = read('cas-ccps/scripts/13_StudentDashboard.js');
+const DASH = read('cas-ccps/scripts/13_StudentDashboard.js') + read('cas-ccps/scripts/13_StudentDashboardPage.html'); // the page since audit 4.5
 const TURN_IN = read('cas-ccps/scripts/71b_TurnInStudent.js');
 const text = (html) => html.split(/<[^>]+>/).join('').replace(/&rsquo;/g, '’').replace(/\s+/g, ' ');
 const guideText = text(GUIDE);

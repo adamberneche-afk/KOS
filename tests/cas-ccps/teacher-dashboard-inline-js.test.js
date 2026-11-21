@@ -171,7 +171,7 @@ test('jsAttr() round-trips hostile names through a real onclick handler', () => 
 });
 
 test('the dashboard\'s onclick buttons use jsAttr() for names and ids', () => {
-  const src = require('fs').readFileSync(path.join(SCRIPTS, '07_TeacherDashboard.js'), 'utf8');
+  const src = require('fs').readFileSync(path.join(SCRIPTS, '07_TeacherDashboardPage.html'), 'utf8'); // the page since audit 4.5
   ['wrIdSafe', 'wrNameSafe', 'rvConfigSafe', 'rvNameSafe'].forEach((v) => {
     assert.match(src, new RegExp('const ' + v + '\\s*=\\s*jsAttr\\('), v);
   });

@@ -2870,6 +2870,18 @@ function getCompetencyTextMap_(registrySheet) {
   return compTextMap;
 }
 
+// A web app page from its .html file (structure audit 4.5, 2026-11-21): the
+// Teacher and Student Dashboards were each one template literal inside their
+// .js file. Each page is now an .html file in its project (project-map's
+// "html"), a template whose only scriptlets are <?!= name ?>, filled from
+// `values` and printed as-is, exactly as the literal's ${name} was. Returns the
+// page as a string, so doGet() and the tests are unchanged.
+function renderPageTemplate_(file, values) {
+  const t = HtmlService.createTemplateFromFile(file);
+  Object.keys(values).forEach(function (k) { t[k] = values[k]; });
+  return t.evaluate().getContent();
+}
+
 // ===== BEGIN deploy-version report: generated from shared/deploy-report/deploy-version-report.js by tools/flow-harness-sync/sync-deploy-report.js. Edit there, then run it. =====
 // The deploy-version report every Apps Script project sends (process-hardening
 // sprint Phase 3; structure audit 3.8, 2026-11-21: one copy instead of three).

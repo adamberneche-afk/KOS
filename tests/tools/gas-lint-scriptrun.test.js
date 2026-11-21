@@ -163,9 +163,10 @@ test('every real client call in the repo resolves to a declared server function'
 });
 
 test('the cas-ccps teacher dashboard specifically is covered', () => {
-  // 10 calls in template literals in a .js file — zero of which the old
-  // per-line raw-text scan could see.
-  const rel = 'cas-ccps/scripts/07_TeacherDashboard.js';
+  // Its page was template literals in 07's .js file until 2026-11-21 (audit
+  // 4.5), where the old per-line raw-text scan saw none of its calls; it is
+  // now 07_TeacherDashboardPage.html, read the same way as any .html.
+  const rel = 'cas-ccps/scripts/07_TeacherDashboardPage.html';
   const found = findGoogleScriptRunCalls(rel, fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8'));
   assert.ok(found.calls.length >= 10, `expected >=10 calls, found ${found.calls.length}`);
   assert.ok(found.calls.some((c) => c.name === 'getDashboardData'));

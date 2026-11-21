@@ -1501,6 +1501,54 @@ function makeDriveAdvancedMock(opts = {}) {
 // cas-ccps installers filter on. The builder is chainable and records the
 // calls made against it, so a test can assert onWeekDay(FRIDAY) was used
 // rather than everyDays(7) without needing a live Apps Script project.
+// HtmlService: createHtmlOutput, and createTemplateFromFile for a project's
+// .html pages (structure audit 4.5: the dashboards' pages moved out of their
+// .js files). A template is found beside the files the test loaded. Only the
+// scriptlets the pages use are supported: <?!= expr ?> prints as-is and
+// <?= expr ?> HTML-escapes, each expr evaluated against the template's own
+// properties, as Apps Script does; any other scriptlet throws, so a page can't
+// grow one these tests silently ignore.
+function makeHtmlOutput(content) {
+  return {
+    _content: content, _title: '', _xfo: null,
+    getContent() { return this._content; },
+    setTitle(t) { this._title = t; return this; },
+    getTitle() { return this._title; },
+    setXFrameOptionsMode(m) { this._xfo = m; return this; },
+    addMetaTag() { return this; },
+  };
+}
+function renderTemplateText(text, scope) {
+  const keys = Object.keys(scope);
+  const vals = keys.map((k) => scope[k]);
+  const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  return text.replace(/<\?(!=|=)?([\s\S]*?)\?>/g, (m, kind, expr) => {
+    if (!kind) throw new Error('gas-sandbox HtmlService: unsupported scriptlet ' + m.slice(0, 40));
+    // eslint-disable-next-line no-new-func
+    const v = new Function(...keys, 'return (' + expr + ');')(...vals);
+    return kind === '!=' ? String(v) : esc(v);
+  });
+}
+function makeHtmlServiceMock(absPaths) {
+  const dirs = [...new Set((absPaths || []).map((p) => require('path').dirname(p)))];
+  return {
+    XFrameOptionsMode: { ALLOWALL: 'ALLOWALL', DEFAULT: 'DEFAULT' },
+    createHtmlOutput: (html) => makeHtmlOutput(String(html == null ? '' : html)),
+    createTemplateFromFile(name) {
+      const fs = require('fs');
+      const file = dirs.map((d) => require('path').join(d, name + '.html')).find((f) => fs.existsSync(f));
+      if (!file) throw new Error('gas-sandbox HtmlService: no ' + name + '.html beside the loaded files');
+      const text = fs.readFileSync(file, 'utf8');
+      const t = {};
+      Object.defineProperty(t, 'evaluate', { enumerable: false, value: () => {
+        const scope = {}; Object.keys(t).forEach((k) => { scope[k] = t[k]; });
+        return makeHtmlOutput(renderTemplateText(text, scope));
+      } });
+      return t;
+    },
+  };
+}
+
 function makeScriptAppMock() {
   const triggers = [];
   let nextId = 1;
@@ -1571,6 +1619,7 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     SlidesApp: makeSlidesAppMock(),
     MailApp: makeMailAppMock(),
     ScriptApp: makeScriptAppMock(),
+    HtmlService: makeHtmlServiceMock(absPaths),
     Utilities: {
       // FIXED: used to return 'fake-uuid-' + a base36 tail — after any
       // caller's own hyphen-stripping (e.g. _generateEvidenceId_()'s
@@ -1734,6 +1783,7 @@ function makeStudioEvent(inputMap) {
 }
 
 module.exports = {
+  makeHtmlServiceMock,
   loadGasFile, loadGasFiles, FakeSheet, FakeSpreadsheet,
   FakeDriveFolder, FakeDriveFile, FakeDoc, makeStudioEvent, fakeZipBlob,
   makeDriveAdvancedMock, makeWorkSheetMock,

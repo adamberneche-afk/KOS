@@ -148,6 +148,7 @@
   "cas-ccps:teacher-dashboard": {
     "_bound_to": "Standalone web app",
     "manifest": "cas-ccps/clasp/manifests/teacher-dashboard.appsscript.json",
+    "html": ["cas-ccps/scripts/07_TeacherDashboardPage.html", "cas-ccps/scripts/07_MyContextPage.html"],
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/00b_ScriptOwnerGuard.js",
@@ -174,6 +175,7 @@
   "cas-ccps:student-dashboard": {
     "_bound_to": "Standalone web app",
     "manifest": "cas-ccps/clasp/manifests/student-dashboard.appsscript.json",
+    "html": ["cas-ccps/scripts/13_StudentDashboardPage.html"],
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/00b_ScriptOwnerGuard.js",

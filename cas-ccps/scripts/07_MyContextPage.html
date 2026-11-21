@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Context</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:14px}
+header{background:#1967d2;color:white;padding:16px 24px}
+header h1{font-size:18px;font-weight:500}
+.main{padding:20px 24px;max-width:640px;margin:0 auto}
+#loading{text-align:center;padding:60px 24px;color:var(--text-secondary)}
+.spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1557b0;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header><h1>📄 My Context</h1></header>
+<div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading your context…</p></div>
+<div id="main" class="main" style="display:none"></div>
+
+<script>
+<?!= CLIENT_ESC_JS ?>
+<?!= CLIENT_SAFE_DOC_URL_JS ?>
+
+function loadOwnContext() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById("loading").style.display = "none";
+      const view = document.getElementById("main");
+      view.style.display = "block";
+      if (result.error) {
+        view.innerHTML = '<p style="color:#b3261e;padding:24px 0;">' + esc(result.error) + '</p>';
+        return;
+      }
+      if (!result.hasContent) {
+        view.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-secondary);">' +
+          '<p style="font-size:14px;">' + esc(result.message) + '</p></div>';
+        return;
+      }
+      view.innerHTML =
+        '<div style="text-align:center;padding:40px 0;">' +
+        '<p style="font-size:14px;color:#3c4043;margin-bottom:6px;">Your context record was last updated:</p>' +
+        '<p style="font-size:16px;font-weight:500;color:#202124;margin-bottom:20px;">' + esc(result.lastUpdatedAt) + '</p>' +
+        (safeDocUrl(result.docUrl)
+          ? '<a href="' + esc(safeDocUrl(result.docUrl)) + '" target="_blank" style="background:#1967d2;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>'
+          : '<p style="font-size:13px;color:var(--text-secondary);">Document not yet available</p>') +
+        '</div>';
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById("loading").style.display = "none";
+      const view = document.getElementById("main");
+      view.style.display = "block";
+      view.innerHTML = '<p style="color:#b3261e;padding:24px 0;">Could not load your context: ' + esc(e.message || e) + '</p>';
+    })
+    .getMyStudentContext();
+}
+
+loadOwnContext();
+</script>
+</body>
+</html>
