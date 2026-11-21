@@ -248,7 +248,7 @@ function _ldocMeetings_(ss, cfg, code, start, end) {
 // on its own row: "3 · Part 2".
 function _ldocClassStatus_(ss, cfg, key) {
   const label = {}; // assignment ConfigID -> "" (the whole lesson) or " · Part n"
-  label["CAS-" + String(key).toUpperCase()] = "";
+  label[casConfigId_(key)] = "";
   (lessonPartsOf_(key) || []).forEach(function (p) { label[p.configId] = " · Part " + p.n; });
   const mine = {};
   const sa = ss.getSheetByName(TABS.studentAssignments);
@@ -294,7 +294,7 @@ function _ldocClassStatus_(ss, cfg, key) {
 function _ldocNotShownYet_(ss, cfg, key, a) {
   const files = {};
   const configs = {};
-  configs["CAS-" + String(key).toUpperCase()] = true;
+  configs[casConfigId_(key)] = true;
   (lessonPartsOf_(key) || []).forEach(function (p) { configs[p.configId] = true; });
   const sa = ss.getSheetByName(TABS.studentAssignments);
   const mine = {};

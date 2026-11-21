@@ -643,8 +643,8 @@ function _lrCourseOfKey_(key) {
 }
 
 function _lrCourseOfConfigId_(configId) {
-  const m = String(configId).match(/^CAS-(\d{4})-/);
-  return m ? m[1] : "-";
+  const id = parseCasId_(configId);
+  return id && id.course ? id.course : "-";
 }
 
 function _lrWriteLog_(ss, rows) {

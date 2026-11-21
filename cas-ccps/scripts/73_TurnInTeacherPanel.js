@@ -84,8 +84,9 @@ function _tipWho_(row) {
 function _tipAssignmentName_(lessonCtx, assignmentId) {
   const lesson = lessonCtx.lessons[assignmentId];
   if (lesson) return lesson.name;
-  const part = /^(.*)-P(\d+)$/i.exec(String(assignmentId || ""));
-  if (part && lessonCtx.lessons[part[1]]) return lessonCtx.lessons[part[1]].name + ", part " + Number(part[2]);
+  const id = parseCasId_(assignmentId);
+  const whole = id && id.part ? casConfigId_(id.lessonKey) : "";
+  if (whole && lessonCtx.lessons[whole]) return lessonCtx.lessons[whole].name + ", part " + id.part;
   return assignmentId || "Unassigned";
 }
 

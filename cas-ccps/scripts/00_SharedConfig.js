@@ -452,8 +452,9 @@ function feedbackAsCommentChecker_() {
   return function (configId, courseName) {
     if (value === "" || value === "off" || value === "all") return _pivotValueOn_(raw, null);
     const id = String(configId || "").trim();
-    const m = id.match(/^CAS-([A-Za-z0-9]+)-/);
-    let code = m && schoolCourseCodes_().indexOf(m[1]) !== -1 ? m[1] : warmUpCourseCode_(courseName);
+    const parsed = parseCasId_(id);
+    const fromId = parsed ? parsed.lessonKey.split("-")[0] : "";
+    let code = fromId && schoolCourseCodes_().indexOf(fromId) !== -1 ? fromId : warmUpCourseCode_(courseName);
     if (!code && id) {
       if (!byConfigId) byConfigId = _ledgerCourseCodes_();
       code = byConfigId[id] || "";
@@ -2241,6 +2242,28 @@ const LEDGER = {
   FIRST_PASSED_AT:        25,  // when an evaluation first passed; never cleared
   LAST_SUGGESTED_SCORE:   26,  // Flow 2's [SUGGESTED_SCORE: N] on the latest check, "" if none
 };
+
+// A lesson's assignment ConfigID, built and read in one place (structure
+// audit 3.4, 2026-11-21; 15 hand-built or hand-parsed copies until then).
+//   casConfigId_("8175-L24")    -> "CAS-8175-L24"
+//   casConfigId_("8175-L24", 2) -> "CAS-8175-L24-P2" (a part; 55b's part keys
+//                                  already end "-P2" and are passed whole)
+//   parseCasId_("CAS-8175-L24-P2") -> { course: "8175", lessonKey: "8175-L24", part: 2 }
+// parseCasId_ gives part 0 for a whole lesson, course "" when the ID doesn't
+// start with a four-digit course (53's unit seeds, "CAS-S1-U1-8175"), and null
+// for anything not "CAS-…". lessonKey comes back upper case: compare without
+// case against 55b's keys, which keep the teacher's spelling.
+function casConfigId_(lessonKey, part) {
+  return "CAS-" + String(lessonKey || "").trim().toUpperCase() + (part ? "-P" + Number(part) : "");
+}
+
+function parseCasId_(id) {
+  const m = /^CAS-(.+?)(?:-P(\d+))?$/i.exec(String(id || "").trim());
+  if (!m) return null;
+  const lessonKey = m[1].toUpperCase();
+  const course = /^(\d{4})-/.exec(lessonKey);
+  return { course: course ? course[1] : "", lessonKey: lessonKey, part: m[2] ? Number(m[2]) : 0 };
+}
 
 // ensureTab_ — the one "make sure this tab exists" (structure audit 3.2,
 // 2026-11-21; seven near-copies in 22, 23, 28, 29, 30, 37 and 60 until then).
