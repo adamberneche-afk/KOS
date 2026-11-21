@@ -50,7 +50,7 @@ function purposeOf(text) {
   if (end >= 0) out = out.slice(0, end + 1);
   out = out.replace(/\s+/g, ' ');
   if (out.length > MAX_PURPOSE) out = out.slice(0, out.lastIndexOf(' ', MAX_PURPOSE)).replace(/[,;:—-]\s*$/, '') + ' …';
-  return (out.charAt(0).toUpperCase() + out.slice(1)).replace(/\|/g, '\\|');
+  return (out.charAt(0).toUpperCase() + out.slice(1)).replace(/[\\|]/g, '\\$&');
 }
 
 function generatorOf(text) {

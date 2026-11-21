@@ -40,6 +40,7 @@ test('purposeOf takes the first sentence, across lines, in either comment style'
   const long = idx.purposeOf('// PURPOSE: ' + 'word '.repeat(80) + 'end.\n');
   assert.ok(long.length <= 202 && long.endsWith(' …'), long);
   assert.equal(idx.purposeOf('// PURPOSE: a | b.\n'), 'A \\| b.', 'a pipe would break the table');
+  assert.equal(idx.purposeOf('// PURPOSE: a \\| b.\n'), 'A \\\\\\| b.', 'a backslash is escaped too, so it cannot unescape a pipe');
 });
 
 test('generatorOf reads the GENERATED header, in either case', () => {
