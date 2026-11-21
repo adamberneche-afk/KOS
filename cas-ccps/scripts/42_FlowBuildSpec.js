@@ -105,7 +105,7 @@ function _fbsAppendFlow1_(rows) {
     "Bind the Gemini step's system prompt to a Sheets lookup on " + FLOW_PROMPT_TAB +
     " where prompt_key = FLOW_1, rather than pasting it. Then a prompt change is a clasp " +
     "push plus syncFlowPromptsToSheet()."]);
-  rows.push(["Flow 1", "narrative", "", "", "", "15_StudioFlowPrompts.js",
+  rows.push(["Flow 1", "narrative", "", "", "", "docs/RUBRIC_EXTRACTION_FLOW.md",
     "Connector names, the step order and the Gemini settings live there. NOTE: its Step 3 " +
     "(\"write DRAFT row to Teacher Matrix\") was later given a custom step, " +
     "CommitRubricDraftStep.gs, which is BLOCKED on this account — so build Step 3 natively, " +
@@ -245,11 +245,8 @@ const FBS_ONE_ROW_PER_RUN = "Studio's starter can hand one run several changed r
   "(FULL_LIST) and the overnight email counts it.";
 
 function _fbsAppendWarmUpFlows_(rows) {
-  // Flow 5 (the bridge) is RETIRED, merged into Flow 3 (2026-11-01): one row
-  // says so, and nothing is listed to build.
-  rows.push(["Flow 5", "retired", WFB_INPUT_TABS[5], "", "", "41_WarmUpFlowBridge.js",
-    "RETIRED 2026-11-01: Flow 3 writes the lead-in now. Turn Flow 5 off in Studio (or delete " +
-    "it); nothing writes " + WFB_INPUT_TABS[5] + " any more, and its old rows stay for retention."]);
+  // Flow 5 (the bridge) was merged into Flow 3 on 2026-11-01; its retired row
+  // here was removed 2026-11-20 (Flow 5 is off in Studio).
   const specs = [
     { flow: 3, headers: WFB_FLOW3_HEADERS, prompt: "FLOW_3_MODE_A/B/C",
       note: "Warm-Up Generation. Mode is materialized: A when a warmup_anchor exists, B " +

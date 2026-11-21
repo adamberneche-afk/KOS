@@ -4,8 +4,8 @@
  * Writes one assignment rubric per pacing-guide unit and course into
  * cas-ccps/curriculum/unit-rubrics/, for the Rubric Upload Form (Studio
  * Flow 1 turns the pasted rubric into a TeacherMatrix draft, which the
- * teacher confirms; see 05_TeacherIntakePipeline.js and FLOW_1_SYSTEM_PROMPT
- * in 15_StudioFlowPrompts.js).
+ * teacher confirms; see 05_TeacherIntakePipeline.js and the prompt in
+ * cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md).
  *
  * Sources: curriculum/PacingGuide_CAS_Context.json (units, objectives,
  * competency IDs per course), data/CompetencyRubrics.json (demonstration

@@ -631,7 +631,7 @@ The output JSON for `COG_STIMULUS` should contain only the `cog_registry` sectio
 
 **Trigger:** `Status = READY` on `VectorClassifyInput` — a single condition, same reasoning as the Curator flow's own trigger above (see the banner). `13_StudioInputBuilder.gs` is what still polls `STAGING_PIPELINE` for `Status = STUDIO_ACTIVE` rows where `Payload_Type = VECTOR_CLASSIFY`, in Apps Script, on its own 1-minute trigger; Studio itself never touches `STAGING_PIPELINE` for either flow any more. Same Turnstile gating, same staleness guard underneath.
 
-**System prompt:** the full, paste-verbatim text lives in [`VECTOR_CLASSIFY_PROMPT.md`](./VECTOR_CLASSIFY_PROMPT.md) — same convention as cas-ccps's `15_StudioFlowPrompts.js`: paste it exactly, don't paraphrase.
+**System prompt:** the full, paste-verbatim text lives in [`VECTOR_CLASSIFY_PROMPT.md`](./VECTOR_CLASSIFY_PROMPT.md) — same convention as cas-ccps's `docs/RUBRIC_EXTRACTION_FLOW.md`: paste it exactly, don't paraphrase.
 
 **Known vectors to classify against** — hardcoded directly into the prompt rather than passed as a trigger-row variable, since `STAGING_PIPELINE`'s columns (unlike cas-ccps's per-teacher `RubricQueue` rows) carry no natural place to source a dynamic value from. This is a real, accepted tradeoff: the prompt's list must be updated by hand every time a theme promotes out of the Incubator, or that theme misclassifies as `unmapped_signals` until someone notices and fixes it (this is exactly the "known_vectors configuration array becomes a system dependency" risk the SMP itself flags). Current list, must match `VECTOR_MATRIX`'s live column headers:
 ```

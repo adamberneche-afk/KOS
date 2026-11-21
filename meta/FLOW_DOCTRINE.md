@@ -469,7 +469,7 @@ by hand:**
   → `16_FlowPrompts.gs`'s `CURATOR_SYSTEM_PROMPT` /
   `VECTOR_CLASSIFY_SYSTEM_PROMPT` / `CURATOR_AUDITOR_SYSTEM_PROMPT`.
 - `cas-ccps/docs/CAS_Flow3_Flow4_Specification.html` +
-  `cas-ccps/scripts/15_StudioFlowPrompts.js` →
+  `archive/2026-27-Q2/cas-ccps/scripts/15_StudioFlowPrompts.js` →
   `tools/cas-ccps/generate-flow-prompts.js` → `40_FlowPrompts.js`'s five
   `FLOW_*_PROMPT` constants (Flow 2's `FLOW_2_SYSTEM_PROMPT` is a
   standing exception — `15b_StudioFlowPrompts_Flow2_Revised.js` is itself

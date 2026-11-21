@@ -127,7 +127,6 @@ function runFlowPreflightCheck() {
   // failure — but present-and-too-narrow IS a failure, because a native
   // "add row to sheet" step bound to a column that doesn't exist writes
   // nowhere and reports success.
-  results.push(_pfCheckSelfHealingTab_(ss, 'Flow5Input', 7, 'buildWarmUpFlowInputs()'));
   results.push(_pfCheckSelfHealingTab_(ss, 'Flow3Input', 30, 'buildWarmUpFlowInputs()'));
   results.push(_pfCheckSelfHealingTab_(ss, 'Flow4Input', 9, 'buildWarmUpFlowInputs()'));
   results.push(_pfCheckSelfHealingTab_(ss, 'WarmUpFlowReturn', 7, 'harvestWarmUpFlowReturns()'));

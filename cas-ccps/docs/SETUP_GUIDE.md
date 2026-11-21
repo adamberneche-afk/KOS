@@ -312,8 +312,8 @@ canary, binding and liveness checks.
    works with Studio stubbed.
 4. Build Flow 2, then Flows 3 and 4 (Flow 5 is merged into Flow 3), from
    the `FlowBuildSpec` tab. The judgement half (connector names,
-   temperature, token limits) is in the Module 2 wizard's dialogs and
-   `15_StudioFlowPrompts.js`. Keep `checkFlow2Binding()` /
+   temperature, token limits) is in the Module 2 wizard's dialogs (and, for
+   Flow 1, `cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md`). Keep `checkFlow2Binding()` /
    `checkFlowBinding()` open while wiring each Flow's last step.
    **Every flow, one row per run** (2026-11-19): Studio's starter can hand
    a run several changed rows and binds a chip as a "Full list" by

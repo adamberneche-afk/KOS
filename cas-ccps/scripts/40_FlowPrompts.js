@@ -12,13 +12,14 @@
 // THE GAP THIS CLOSES: before this file, five of the six prompt texts had no
 // deployable home at all —
 //
-//   Flow 1        15_StudioFlowPrompts.js, which project-map.json lists under
-//                 _excluded_not_deployed_scripts. Never pushed anywhere.
+//   Flow 1        15_StudioFlowPrompts.js, never deployed (since 2026-11-20
+//                 the source is cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md).
 //   Flow 2        15b_StudioFlowPrompts_Flow2_Revised.js — the one exception,
 //                 genuinely deployed with cas-ccps:central-ledger.
 //   Flow 3 A/B    docs/CAS_Flow3_Flow4_Specification.html
 //   Flow 4        the same HTML
-//   Flow 5        the same HTML
+//   Flow 5        the same HTML (retired 2026-11-01, merged into Flow 3;
+//                 its prompt was removed from here 2026-11-20)
 //
 // A prompt living only in a rendered HTML spec means every update is a
 // copy-paste out of a browser and into Studio's UI, with the doc's own
@@ -27,17 +28,18 @@
 // says, and no way to tell whether Studio matches the spec.
 //
 // PROVENANCE — THE TEXT BELOW IS GENERATED, NEVER HAND-EDITED
-// (meta/FLOW_DOCTRINE.md rule 16). The Flow 3/4/5 constants come from the
-// HTML spec's own `prompt-body` and `<pre>` blocks (strip `<span
+// (meta/FLOW_DOCTRINE.md rule 16). The Flow 3/4 constants come from the
+// HTML spec's own `prompt-body` blocks (strip `<span
 // class="kw">` wrappers, strip tags, unescape entities, trim), and
-// FLOW_1_PROMPT from 15_StudioFlowPrompts.js's own FLOW_1_SYSTEM_PROMPT, and
+// FLOW_1_PROMPT from everything below the "---" in
+// cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md, and
 // FLOW_6_PROMPT (the turn-in check, 72) from everything below the "---" in
 // cas-ccps/docs/TURN_IN_CHECK_FLOW.md — all extracted by
 // tools/cas-ccps/generate-flow-prompts.js (--check to verify), not retyped.
 // Nothing is paraphrased, reordered, or "improved" in transit.
 // tests/cas-ccps/flow-prompts.test.js re-runs that same extraction against
-// the HTML and against file 15 and fails if either has drifted from what's
-// here. TO CHANGE A PROMPT: edit the HTML spec (or file 15 for Flow 1),
+// the HTML and the two .md files and fails if either has drifted from what's
+// here. TO CHANGE A PROMPT: edit the HTML spec (or the .md for Flows 1 and 6),
 // run that generator script, then push — never hand-edit the constants
 // below directly. A direct hotfix here never passed through that gate, and
 // this file's own header used to invite exactly that shortcut; rule 16
@@ -64,10 +66,9 @@
 // deliberately leaves unsubstituted.
 // =============================================================================
 
-// Flow 1 — Rubric Extraction. Byte-identical to 15_StudioFlowPrompts.js's
-// FLOW_1_SYSTEM_PROMPT; that file stays as the annotated reference (its
-// per-placeholder mapping comments are worth keeping) but is not deployed,
-// so this is the copy a running project can actually read.
+// Flow 1 — Rubric Extraction. GENERATED from everything below the "---" in
+// cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md, which also holds the flow's steps
+// and placeholder mappings.
 const FLOW_1_PROMPT = `
 You are a curriculum structure parser for an automated academic assignment system.
 
@@ -319,37 +320,6 @@ Return ONLY valid JSON. No preamble, no markdown, no explanation outside the JSO
 }
 `.trim();
 
-// Flow 5 — Warm-Up Bridging. Temperature 0.4, max 150 tokens per the spec —
-// connective, not generative.
-const FLOW_5_PROMPT = `
-You are writing a one-paragraph bridge for a high school CTE student in a Sports, Entertainment, and Event Management/Marketing course.
-
-YOUR ROLE:
-The student wrote a warm-up response in a previous class. Today's lesson builds on what they engaged with. Write 2-3 sentences that make that connection explicit - what they thought about before, how it leads to today, and why that matters. The bridge goes at the top of their warm-up doc before the new prompt.
-
-WHAT THE STUDENT WROTE LAST TIME:
-{flow5_prior_response}
-
-HOW TODAY CONNECTS TO THE PRIOR LESSON:
-{pacing_prior_connection}
-
-TODAY'S COURSE:
-{course_name}
-
-CONSTRAINTS:
-1. Exactly 2-3 sentences. No more, no less.
-2. Address the student in second person ("you", "your").
-3. Reference what they actually wrote - name a specific idea if they expressed one.
-4. Do not preview today's lesson - only make the connection to the prior one.
-5. Never mention grades, scores, or warm-ups.
-6. Avoid "last time" - use "recently" or "in your last response" at most once.
-7. End with a sentence that creates forward momentum.
-8. If the prior response is too short or generic to reference, use only pacing_prior_connection.
-
-OUTPUT FORMAT:
-Return only the bridge paragraph. No label, no preamble. 2-3 sentences.
-`.trim();
-
 // Flow 6 — the turn-in check (72_TurnInCheckFlow.js, D17 stage 2). GENERATED
 // from cas-ccps/docs/TURN_IN_CHECK_FLOW.md (everything below its "---"
 // line) by tools/cas-ccps/generate-flow-prompts.js. 72 substitutes all four
@@ -401,7 +371,7 @@ The first line is either "VERDICT: ADDRESSES" or "VERDICT: NOT_YET".
 // =============================================================================
 
 const FLOW_PROMPT_KEYS = [
-  "FLOW_1", "FLOW_2", "FLOW_3_MODE_A", "FLOW_3_MODE_B", "FLOW_3_MODE_C", "FLOW_4", "FLOW_5", "FLOW_6",
+  "FLOW_1", "FLOW_2", "FLOW_3_MODE_A", "FLOW_3_MODE_B", "FLOW_3_MODE_C", "FLOW_4", "FLOW_6",
 ];
 
 const FLOW_PROMPT_TAB = "FlowPrompts";
@@ -423,7 +393,6 @@ function flowPromptText_(key) {
     case "FLOW_3_MODE_B": return FLOW_3_PROMPT_MODE_B;
     case "FLOW_3_MODE_C": return FLOW_3_PROMPT_MODE_C;
     case "FLOW_4":        return FLOW_4_PROMPT;
-    case "FLOW_5":        return FLOW_5_PROMPT;
     case "FLOW_6":        return FLOW_6_PROMPT;
     default:              return "";
   }
@@ -437,7 +406,6 @@ function flowPromptMeta_(key) {
     case "FLOW_3_MODE_B": return { flow: "3", title: "Warm-Up Generation — Mode B (generative)" };
     case "FLOW_3_MODE_C": return { flow: "3", title: "Warm-Up Generation — Mode C (baseline)" };
     case "FLOW_4":        return { flow: "4", title: "Warm-Up Evaluation" };
-    case "FLOW_5":        return { flow: "5", title: "Warm-Up Bridging" };
     case "FLOW_6":        return { flow: "6", title: "Turn-in Check" };
     default:              return { flow: "?", title: "unknown" };
   }
@@ -489,7 +457,7 @@ function substituteFlowPrompt_(text, vars, keepUnmatched) {
   return out;
 }
 
-// Public resolver: getFlowPrompt("FLOW_5", { flow5_prior_response: "…" }).
+// Public resolver: getFlowPrompt("FLOW_4", { response_text: "…" }).
 // Pass no vars to get the raw template.
 function getFlowPrompt(key, vars) {
   const text = flowPromptText_(key);

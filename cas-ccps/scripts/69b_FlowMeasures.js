@@ -19,8 +19,8 @@
 //   Flow 4  warm-up scoring    Flow4Input + WarmUpFlowReturn (41)
 //   Flow 6  turn-in check      TurnInChecks, TurnInCodes (71),
 //                              TurnInCheckInput + TurnInCheckReturn (72)
-//   Flow 5 is retired (merged into Flow 3, 2026-11-01): its old input rows
-//   count as Studio runs and nothing else.
+//   Flow 5 is retired (merged into Flow 3, 2026-11-01); its old input rows
+//   are no longer counted (2026-11-20).
 //
 // PER FLOW AND WEEK (a job is one FlowInput row, one warm-up per flow, one
 // turn-in answer, or one RubricQueue row; its week is when it was first sent):
@@ -213,7 +213,7 @@ function _fmWarmUpFlows_(ctx) {
     const key = Number(r[WFB_RET.FLOW]) + "|" + String(r[WFB_RET.QUEUE_ID] || "").trim();
     (returns[key] = returns[key] || []).push(r);
   });
-  [3, 4, 5].forEach(function (flow) {
+  [3, 4].forEach(function (flow) {
     const rows = _fmValues_(ctx.ss.getSheetByName(WFB_INPUT_TABS[flow]), 3);
     const jobs = {};
     rows.forEach(function (r) {

@@ -8,13 +8,12 @@
 // and nothing else in this repo would notice. So these tests re-run the same
 // extraction and demand a byte-for-byte match:
 //
-//   Flows 3 A/B, 4, 5  <-  docs/CAS_Flow3_Flow4_Specification.html
-//   Flow 1             <-  15_StudioFlowPrompts.js (which project-map.json
-//                          lists as not-deployed, hence the duplicate)
+//   Flows 3 A/B, 4  <-  docs/CAS_Flow3_Flow4_Specification.html
+//   Flow 1          <-  docs/RUBRIC_EXTRACTION_FLOW.md (below its "---")
 //
 // A failure here means "these two disagree," not "this code is broken" —
-// and per meta/FLOW_DOCTRINE.md rule 16, the source (the HTML spec / file
-// 15) is always the side that's right: run
+// and per meta/FLOW_DOCTRINE.md rule 16, the source (the HTML spec / the
+// .md) is always the side that's right: run
 // tools/cas-ccps/generate-flow-prompts.js to bring 40_FlowPrompts.js back
 // in step, rather than hand-editing either side to match the other. If a
 // prompt was tuned directly in 40_FlowPrompts.js instead, port that tune
@@ -34,7 +33,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const ROOT = path.join(__dirname, '..', '..');
 const S = (f) => path.join(ROOT, 'cas-ccps', 'scripts', f);
 const SPEC_HTML = path.join(ROOT, 'cas-ccps', 'docs', 'CAS_Flow3_Flow4_Specification.html');
-const FLOW1_REFERENCE = S('15_StudioFlowPrompts.js');
+const generator = require('../../tools/cas-ccps/generate-flow-prompts');
 
 function load() {
   return loadGasFiles(
@@ -44,7 +43,7 @@ function load() {
       'substituteFlowPrompt_', 'flowPromptPlaceholders_', 'flowPromptText_',
       'FLOW_PROMPT_KEYS', 'FLOW_PROMPT_TAB', 'FLOW_PROMPT_HEADERS',
       'FLOW_1_PROMPT', 'FLOW_3_PROMPT_MODE_A', 'FLOW_3_PROMPT_MODE_B', 'FLOW_3_PROMPT_MODE_C',
-      'FLOW_4_PROMPT', 'FLOW_5_PROMPT',
+      'FLOW_4_PROMPT',
     ],
   );
 }
@@ -76,14 +75,12 @@ function extractFromSpec() {
   const re = /<h4>([^<]+)<\/h4>[\s\S]*?<div class="prompt-body">([\s\S]*?)<\/div>/g;
   let m;
   while ((m = re.exec(src)) !== null) out[m[1].trim()] = cleanPromptMarkup(m[2]);
-  const bridge = src.match(/<pre[^>]*>(You are writing a one-paragraph bridge[\s\S]*?)<\/pre>/);
-  if (bridge) out['System Prompt — Flow 5 Bridging'] = cleanPromptMarkup(bridge[1]);
   return out;
 }
 
 // ── Provenance: the constants must still match their sources ────────────────
 
-test('FLOW_3/4/5 constants are byte-identical to the HTML spec they were extracted from', () => {
+test('FLOW_3/4 constants are byte-identical to the HTML spec they were extracted from', () => {
   const { exported } = load();
   const spec = extractFromSpec();
 
@@ -95,17 +92,13 @@ test('FLOW_3/4/5 constants are byte-identical to the HTML spec they were extract
     'Flow 3 Mode C has drifted from the spec');
   assert.equal(exported.FLOW_4_PROMPT, spec['System Prompt — Studio Flow 4'],
     'Flow 4 has drifted from the spec');
-  assert.equal(exported.FLOW_5_PROMPT, spec['System Prompt — Flow 5 Bridging'],
-    'Flow 5 has drifted from the spec');
 });
 
-test('FLOW_1_PROMPT is byte-identical to 15_StudioFlowPrompts.js, the non-deployed reference', () => {
+test('FLOW_1_PROMPT is byte-identical to RUBRIC_EXTRACTION_FLOW.md, below its "---"', () => {
   const { exported } = load();
-  const src = fs.readFileSync(FLOW1_REFERENCE, 'utf8');
-  const m = src.match(/const FLOW_1_SYSTEM_PROMPT = `([\s\S]*?)`\.trim\(\);/);
-  assert.ok(m, 'could not find FLOW_1_SYSTEM_PROMPT in the reference file');
-  assert.equal(exported.FLOW_1_PROMPT, m[1].trim(),
-    'the deployed Flow 1 prompt and the reference copy have diverged');
+  const md = fs.readFileSync(generator.FLOW1_SOURCE_PATH, 'utf8');
+  assert.equal(exported.FLOW_1_PROMPT, generator.extractFromMarkdown(md, 'RUBRIC_EXTRACTION_FLOW.md'),
+    'run node tools/cas-ccps/generate-flow-prompts.js');
 });
 
 test('every prompt is non-trivial and carries the placeholders its flow needs', () => {
@@ -117,7 +110,6 @@ test('every prompt is non-trivial and carries the placeholders its flow needs', 
     FLOW_3_MODE_B: ['{archetype}', '{objective}', '{first_name}'],
     FLOW_3_MODE_C: ['{baseline_competency}', '{baseline_skill}', '{baseline_indicators}', '{first_name}', '{course_name}'],
     FLOW_4: ['{response_text}', '{word_count_score}'],
-    FLOW_5: ['{flow5_prior_response}', '{pacing_prior_connection}', '{course_name}'],
   };
   Object.keys(expected).forEach((key) => {
     const text = exported.flowPromptText_(key);
@@ -178,15 +170,12 @@ test('substituteFlowPrompt_: a null or undefined var counts as unmatched, not as
 
 test('getFlowPrompt: returns the raw template with no vars, substituted with them', () => {
   const { exported } = load();
-  const raw = exported.getFlowPrompt('FLOW_5');
-  assert.ok(raw.indexOf('{course_name}') !== -1);
+  const raw = exported.getFlowPrompt('FLOW_4');
+  assert.ok(raw.indexOf('{response_text}') !== -1);
 
-  const filled = exported.getFlowPrompt('FLOW_5', {
-    flow5_prior_response: 'PRIOR', pacing_prior_connection: 'LINK', course_name: 'COURSE',
-  });
-  assert.ok(filled.indexOf('{course_name}') === -1, 'placeholder should be gone');
-  assert.ok(filled.indexOf('COURSE') !== -1);
-  assert.ok(filled.indexOf('PRIOR') !== -1);
+  const filled = exported.getFlowPrompt('FLOW_4', { response_text: 'ANSWER', word_count_score: '2' });
+  assert.ok(filled.indexOf('{response_text}') === -1, 'placeholder should be gone');
+  assert.ok(filled.indexOf('ANSWER') !== -1);
 });
 
 test('getFlowPrompt: an unknown key returns empty and logs rather than throwing', () => {

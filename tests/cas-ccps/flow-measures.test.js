@@ -239,8 +239,9 @@ test('Studio runs per day: every input row, fixtures included, the last 14 days'
   assert.equal(runs.days.length, 14);
   assert.equal(runs.days[13].day, '2026-10-28');
   const day = (d) => runs.days.find((x) => x.day === d).runs;
-  // 10-27: RubricQueue 1, FlowInput 4 (b, c, e, the fixture), Flow3Input 6, Flow5Input 1, TurnInCheckInput 4.
-  assert.equal(day('2026-10-27'), 16);
+  // 10-27: RubricQueue 1, FlowInput 4 (b, c, e, the fixture), Flow3Input 6, TurnInCheckInput 4.
+  // Flow5Input's row isn't counted (Flow 5 retired 2026-11-01; dropped from the count 2026-11-20).
+  assert.equal(day('2026-10-27'), 15);
   assert.equal(runs.busiest.day, '2026-10-27');
   assert.equal(runs.days.some((x) => x.day === '2026-10-12'), false, 'older than 14 days');
   assert.equal(runs.limit, null);
@@ -279,7 +280,7 @@ test('the email\'s second line: flows over the bar or with jobs never returned, 
     'Flow 3 2 of 6 never returned, 2 set aside (66.7%), 2 sent as the teacher\'s own question; ' +
     'Flow 6 1 of 5 never returned, 1 set aside (40%); ' +
     'Flow 6 engagement (not learning evidence): 5 answers checked, 1 addresses, 1 not yet, 2 check failed. ' +
-    'Studio runs (CAS flows), last 14 days: busiest 2026-10-27 with 16; limit not set — set STUDIO_DAILY_RUN_LIMIT from Workspace Studio\'s quota.');
+    'Studio runs (CAS flows), last 14 days: busiest 2026-10-27 with 15; limit not set — set STUDIO_DAILY_RUN_LIMIT from Workspace Studio\'s quota.');
   assert.equal(out.flowLine.split('\n').length, 1, 'one line');
   assert.match(out.line, /^Flow 2, week of 2026-10-26: /, 'Flow 2 keeps its own line');
   assert.match(out.line, /D8's bar is under 5%/);
@@ -313,7 +314,7 @@ test('reportEvaluationHealth rewrites FlowMeasures, and nothing identifying leav
   env.exported.reportEvaluationHealth();
   assert.equal(env.ss.getSheetByName('FlowMeasures').getDataRange().getValues().length, tab.length, 'rewritten, not appended');
   assert.ok(logged.some((l) => /Flow=Flow 6 turn-in check Kind=engagement/.test(l)), 'the per-flow table is logged');
-  assert.ok(logged.some((l) => /Studio runs per day \(CAS flows\): .*2026-10-27=16/.test(l)));
+  assert.ok(logged.some((l) => /Studio runs per day \(CAS flows\): .*2026-10-27=15/.test(l)));
   const text = JSON.stringify(tab) + out.line + out.flowLine + logged.join('\n');
   assert.doesNotMatch(text, /file-|CFG-|Q\d|TIC-|WUQ-|VDOE-|@|my answer|CAS-8177|SECRET|a warm-up/);
 });

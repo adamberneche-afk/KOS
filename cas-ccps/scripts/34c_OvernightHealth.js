@@ -68,7 +68,7 @@ const ON_STAGES = [
   { key: "M2_STAGE3_LAST_RUN",  label: "3:30 warm-up queue build (24)" },
 ];
 const ON_STAGE_MAX_AGE_MS = 26 * 60 * 60 * 1000;
-const ON_STUDIO_STALL_MS = { 2: 15 * 60 * 1000, 3: 30 * 60 * 1000, 4: 30 * 60 * 1000, 5: 30 * 60 * 1000 };
+const ON_STUDIO_STALL_MS = { 2: 15 * 60 * 1000, 3: 30 * 60 * 1000, 4: 30 * 60 * 1000 };
 const ON_RETURN_WINDOW_MS = 24 * 60 * 60 * 1000;
 const ON_MAIL_HOUR = 5;
 const ON_MAIL_STATE_KEY = "CAS_OVERNIGHT_MAILED";
@@ -263,14 +263,14 @@ function overnightHealth_(now, tz) {
 
   try {
     const st = _onStudioCounts_(ss, now);
-    [2, 3, 4, 5].forEach(function (f) {
+    [2, 3, 4].forEach(function (f) {
       if (st.stalled[f] > 0) {
         problems.push("Studio Flow " + f + ": " + st.stalled[f] + " job(s) with no return after " +
           Math.round(ON_STUDIO_STALL_MS[f] / 60000) + " minutes" +
           " (check the Flow's run history in Studio)");
       }
     });
-    [3, 4, 5].forEach(function (f) {
+    [3, 4].forEach(function (f) {
       if (st.failed[f] > 0) {
         problems.push("Flow " + f + " returns that failed or need attention in the last 24 hours: " + st.failed[f]);
       }
@@ -535,8 +535,8 @@ function _onWarmUpCounts_(ss, today, tomorrow) {
 
 // Studio jobs with no return yet, and recent failed returns.
 function _onStudioCounts_(ss, now) {
-  const out = { stalled: { 2: 0, 3: 0, 4: 0, 5: 0 }, failed: { 3: 0, 4: 0, 5: 0 }, fallback: 0 };
-  const returned = { 3: {}, 4: {}, 5: {} };
+  const out = { stalled: { 2: 0, 3: 0, 4: 0 }, failed: { 3: 0, 4: 0 }, fallback: 0 };
+  const returned = { 3: {}, 4: {} };
   const ret = ss.getSheetByName("WarmUpFlowReturn");
   if (ret && ret.getLastRow() > 1) {
     ret.getRange(2, 1, ret.getLastRow() - 1, 7).getValues().forEach(function (r) {
@@ -552,7 +552,7 @@ function _onStudioCounts_(ss, now) {
       if (f === 3 && hs === "HARVESTED" && recent && /^ANCHOR_FALLBACK/.test(String(r[6] || ""))) out.fallback++;
     });
   }
-  [3, 4, 5].forEach(function (f) {
+  [3, 4].forEach(function (f) {
     const sheet = ss.getSheetByName("Flow" + f + "Input");
     if (!sheet || sheet.getLastRow() < 2) return;
     sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(function (r) {

@@ -874,7 +874,6 @@ function removeFlowFixtures() {
   // would report them as failures forever.
   clearWhere(ledgerSs.getSheetByName("Flow3Input"), 1, { prefix: FX_QUEUE_PREFIX });
   clearWhere(ledgerSs.getSheetByName("Flow4Input"), 1, { prefix: FX_QUEUE_PREFIX });
-  clearWhere(ledgerSs.getSheetByName("Flow5Input"), 1, { prefix: FX_QUEUE_PREFIX });
   // The return tab keys Queue_ID in column 3 (0-based 2), after Flow.
   clearWhere(ledgerSs.getSheetByName("WarmUpFlowReturn"), 2, { prefix: FX_QUEUE_PREFIX });
 

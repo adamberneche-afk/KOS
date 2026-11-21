@@ -62,7 +62,7 @@ function load() {
     'buildWarmUpFlowInputs', 'wfbBuildFlow3Fields_', 'evaluateWarmUpDoc_',
     'WQ25_ARCHETYPE',
     'WQ24_DOC_ID', 'WQ24_WORD_COUNT_SCORE', 'WFB_INPUT_TABS',
-    'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS',
+    'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS',
     'RESPONSE_ZONE_MARKER',
     // 37_FlowInputBuilder.js's harvest — the Flow 2 fixture's consumer. The
     // tests at the bottom of this file drive the fixture through it.

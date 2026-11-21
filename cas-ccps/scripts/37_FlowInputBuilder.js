@@ -89,8 +89,8 @@
 //   - Since then: FlowInput is in the retention schedule (57, working
 //     data), and 34c's overnight check counts Flow 2 rows still READY
 //     after 15 minutes. Flows 3, 4 and 5 were built later on this same
-//     pattern, in 41_WarmUpFlowBridge.js (Flow3Input/Flow4Input/
-//     Flow5Input and WarmUpFlowReturn).
+//     pattern, in 41_WarmUpFlowBridge.js (Flow3Input/Flow4Input and
+//     WarmUpFlowReturn; Flow 5 was merged into Flow 3 on 2026-11-01).
 // =============================================================================
 
 // ---------------------------------------------------------------------------

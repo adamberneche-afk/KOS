@@ -120,8 +120,8 @@ this stage, but a second account would start here):
    but run `syncFlowBuildSpec()` first and build from the `FlowBuildSpec` tab
    it writes: every tab name, column number, header, trigger condition and
    prompt key for all five flows, derived from the constants the code
-   actually reads. The wizard's Phase B dialogs and `15_StudioFlowPrompts.js`
-   still carry the judgement half — connector names, temperature, token
+   actually reads. The wizard's Phase B dialogs and
+   `cas-ccps/docs/RUBRIC_EXTRACTION_FLOW.md` (Flow 1) still carry the judgement half — connector names, temperature, token
    limits — which is deliberately not generated, because it needs judgement
    and does not drift. Keep `checkFlowBinding()` open in a second tab while
    wiring each Flow's last step (row 8 of the table above), and confirm with

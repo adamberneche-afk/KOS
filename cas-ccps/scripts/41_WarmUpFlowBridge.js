@@ -18,8 +18,8 @@
  *
  * WHICH STEPS THIS REPLACES, AND WHICH HALF OF EACH FLOW MOVES:
  *
- *   Flow 5 (Bridging)         input : ExtractBridgeInputsStep
- *                             output: none — a native Sheets update sufficed
+ *   Flow 5 (Bridging)         retired 2026-11-01 (merged into Flow 3); its
+ *                             code here was removed 2026-11-20
  *   Flow 3 (Warm-Up Generate) input : SelectWarmUpArchetypeStep
  *                             output: CreateWarmUpDocStep
  *   Flow 4 (Warm-Up Scoring)  input : ExtractWarmUpPromptTextStep
@@ -89,7 +89,7 @@
  * fine, since no index or 21-wide write reaches them: 34's archive_status,
  * and 00's delivered_at and answered_at, WQ_TIMING.) So:
  *
- *   Flow3Input / Flow4Input / Flow5Input — one flat literal row per pending
+ *   Flow3Input / Flow4Input — one flat literal row per pending
  *       job, one tab per flow so each Flow's native "get row" step points at
  *       its own columns through the fixed picker it is limited to.
  *   WarmUpFlowReturn — where every flow's last native "add row to sheet"
@@ -118,7 +118,7 @@
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
 const WFB_RETURN_TAB = "WarmUpFlowReturn";
-const WFB_INPUT_TABS = { 3: "Flow3Input", 4: "Flow4Input", 5: "Flow5Input" };
+const WFB_INPUT_TABS = { 3: "Flow3Input", 4: "Flow4Input" };
 
 const WFB_RETURN_HEADERS = [
   "Timestamp", "Flow", "QueueID", "RawOutput", "HarvestStatus", "Attempts", "Error",
@@ -127,17 +127,6 @@ const WFB_RET = {
   TIMESTAMP: 0, FLOW: 1, QUEUE_ID: 2, RAW_OUTPUT: 3,
   HARVEST_STATUS: 4, ATTEMPTS: 5, ERROR: 6,
 };
-
-// RETIRED (2026-11-01): Flow 5 merged into Flow 3, which writes the lead-in.
-// No Flow5Input row is written; the headers stay for the tab's old rows
-// (retention, 57) and the build spec's retired row (42).
-// Flow 5 needs three values that all live inside the single
-// lesson_context_snapshot blob — the one genuinely non-native-friendly part
-// of that flow, and the whole reason ExtractBridgeInputsStep existed.
-const WFB_FLOW5_HEADERS = [
-  "Timestamp", "QueueID", "Status",
-  "PriorResponse", "PacingPriorConnection", "CourseName", "PromptText",
-];
 
 // Flow 3's full materialized input: the archetype decision plus every
 // {placeholder} its system prompt interpolates, pre-formatted as plain text.
@@ -892,11 +881,6 @@ const WFB_PROMPT_VARS = {
     response_text: "responseText",
     word_count_score: "wordCountScore",
   },
-  5: {
-    flow5_prior_response: "priorResponse",
-    pacing_prior_connection: "pacingPriorConnection",
-    course_name: "courseName",
-  },
 };
 
 /**
@@ -913,7 +897,6 @@ const WFB_PROMPT_VARS = {
 function wfbPromptFor_(flow, vars) {
   if (typeof substituteFlowPrompt_ !== "function") return "";
   let template = "";
-  if (flow === 5 && typeof FLOW_5_PROMPT === "string") template = FLOW_5_PROMPT;
   if (flow === 4 && typeof FLOW_4_PROMPT === "string") template = FLOW_4_PROMPT;
   if (flow === 3) {
     // Flow 3 has three prompts: Mode A is anchor-aware, Mode B generative,
@@ -932,9 +915,9 @@ function wfbPromptFor_(flow, vars) {
     resolved[placeholder] = (value === null || value === undefined) ? "" : String(value);
   });
   if (flow === 3) template = wfbDropBlankLines_(template, resolved);
-  // A student's own words (the answer Flow 4 scores, the prior answer Flow 5
-  // builds on) never reach the prompt with system text in them (Docket IV).
-  ["response_text", "flow5_prior_response", "prior_response"].forEach(function (k) {
+  // A student's own words (the answer Flow 4 scores, the prior answer Flow 3's
+  // lead-in builds on) never reach the prompt with system text in them (Docket IV).
+  ["response_text", "prior_response"].forEach(function (k) {
     if (resolved[k]) resolved[k] = neutralizeSystemText_(resolved[k]);
   });
   return substituteFlowPrompt_(template, resolved, true);
@@ -1180,7 +1163,7 @@ function wfbHarvestUnderLock_(result) {
       continue;
     }
 
-    if (!queueId || [3, 4, 5].indexOf(flow) === -1) {
+    if (!queueId || [3, 4].indexOf(flow) === -1) {
       wfbMarkReturn_(returns, sheetRow, "FAILED", "Missing QueueID or unknown Flow " + flow, WFB_MAX_ATTEMPTS);
       result.failed++;
       continue;
@@ -1228,33 +1211,8 @@ function wfbApplyReturn_(wqSheet, wrSheet, flow, queueId, raw) {
   if (!found) return { ok: false, error: "No WarmUpQueue row for Queue_ID " + queueId };
   if (String(raw).trim() === "") return { ok: false, error: "Empty model output" };
 
-  if (flow === 5) return wfbApplyFlow5_(wqSheet, found, raw);
   if (flow === 3) return wfbApplyFlow3_(wqSheet, found, queueId, raw);
   return wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw);
-}
-
-// Flow 5: the bridge paragraph goes in col 20 and the row advances to
-// PENDING, which is what hands it to Flow 3. Retired 2026-11-01 (Flow 3
-// writes the lead-in); kept so an answer already on its way still lands.
-function wfbApplyFlow5_(wqSheet, found, raw) {
-  const status = String(found.row[WQ25_STATUS] || "").trim();
-  if (status === "PENDING" || status === "DELIVERED") {
-    return { ok: true, duplicate: true }; // already bridged
-  }
-
-  let lesson;
-  try { lesson = JSON.parse(String(found.row[WQ25_LESSON_CTX_SNAP] || "{}")); } catch (e) { lesson = {}; }
-  const plausibility = _wfbCheckPlausible_({
-    priorResponse: lesson.flow5_prior_response,
-    priorConnection: lesson.pacing_prior_connection,
-    courseName: lesson.course_name,
-  }, raw);
-  if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
-
-  wqSheet.getRange(found.sheetRow, WQ25_BRIDGE_OUTPUT + 1).setValue(String(raw).trim());
-  wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("PENDING");
-  SpreadsheetApp.flush();
-  return { ok: true };
 }
 
 // Flow 3's answer split into { leadIn, warmUp } (2026-11-01): "LEAD-IN: …"
@@ -2004,7 +1962,7 @@ function retryWarmUpFolderPathFailures() {
 function checkWarmUpFlowLiveness() {
   const ctx = wfbLedger_();
   const returns = wfbTab_(ctx.ss, WFB_RETURN_TAB, WFB_RETURN_HEADERS);
-  const everReturned = { 3: 0, 4: 0, 5: 0 };
+  const everReturned = { 3: 0, 4: 0 };
 
   const rLast = returns.getLastRow();
   if (rLast > 1) {
@@ -2015,7 +1973,7 @@ function checkWarmUpFlowLiveness() {
   }
 
   const report = { flows: {} };
-  [3, 4, 5].forEach(function (flow) {
+  [3, 4].forEach(function (flow) {
     const sheet = ctx.ss.getSheetByName(WFB_INPUT_TABS[flow]);
     let ready = 0, consumed = 0;
     if (sheet && sheet.getLastRow() > 1) {
@@ -2030,7 +1988,7 @@ function checkWarmUpFlowLiveness() {
   });
 
   Logger.log("[WFB] checkWarmUpFlowLiveness: " + JSON.stringify(report.flows));
-  [3, 4, 5].forEach(function (flow) {
+  [3, 4].forEach(function (flow) {
     const f = report.flows[flow];
     if (!f.everReturned && f.ready > 0) {
       Logger.log("[WFB] Flow " + flow + ": NOTHING has ever been written to " + WFB_RETURN_TAB +
@@ -2512,7 +2470,7 @@ function removeWarmUpFlowFixtures() {
     }
   }
 
-  [3, 4, 5].forEach(function (flow) {
+  [3, 4].forEach(function (flow) {
     const sheet = ctx.ss.getSheetByName(WFB_INPUT_TABS[flow]);
     if (!sheet || sheet.getLastRow() <= 1) return;
     const ids = sheet.getRange(2, 2, sheet.getLastRow() - 1, 1).getValues();
