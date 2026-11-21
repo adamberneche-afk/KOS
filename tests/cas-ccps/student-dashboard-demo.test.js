@@ -10,7 +10,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
-const { loadGasFiles } = require('../harness/gas-sandbox');
+const { loadGasFiles, makeHtmlServiceMock } = require('../harness/gas-sandbox');
 const { extractInlineScripts } = require('../../tools/html-lint/check.js');
 const demoLessons = require('../../tools/cas-ccps/build-dashboard-demo-lessons.js');
 const ALLOW = require('../../tools/gas-lint/webapp-public-allow.json');
@@ -31,8 +31,11 @@ function load(viewer, opts = {}) {
   const globals = {
     Session: { getActiveUser: () => ({ getEmail: () => viewer }), getEffectiveUser: () => ({ getEmail: () => OWNER }),
       getScriptTimeZone: () => 'America/New_York' },
-    HtmlService: { createHtmlOutput: (html) => ({ html, setTitle(t) { this.title = t; return this; },
-      setXFrameOptionsMode() { return this; } }), XFrameOptionsMode: { ALLOWALL: 'ALLOWALL' } },
+    // The real page templates (makeHtmlServiceMock), with createHtmlOutput kept
+    // as this test's own, so doGet's page is readable as .html.
+    HtmlService: Object.assign(makeHtmlServiceMock(SD), {
+      createHtmlOutput: (html) => ({ html, setTitle(t) { this.title = t; return this; },
+        setXFrameOptionsMode() { return this; } }) }),
   };
   for (const s of ['SpreadsheetApp', 'DocumentApp', 'DriveApp', 'MailApp', 'UrlFetchApp', 'LockService']) {
     globals[s] = tripwire(s, touched);

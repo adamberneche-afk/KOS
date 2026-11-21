@@ -884,3 +884,20 @@ The earlier notes still hold. Added 11-02 to 11-08:
 - **Stacked PRs and squash merges:** after the lower PR merges, rebase the
   upper one with `git rebase --onto origin/main <lower branch>` and retarget
   its base to main; CodeQL runs only on a PR whose base is main.
+
+## The dashboards' pages are .html files (2026-11-21, structure audit 4.5)
+
+- **The template-literal traps above no longer apply.** The Teacher
+  Dashboard's page and My Context page, and the Student Dashboard's page,
+  are `cas-ccps/scripts/07_TeacherDashboardPage.html`, `07_MyContextPage.html`
+  and `13_StudentDashboardPage.html`: plain HTML and JavaScript, so no `\'`,
+  `` \` `` or `\${` escaping. The notes above about quotes in 07's and 13's
+  template literal describe the old files.
+- **Server values are `<?!= name ?>`**, set by the build function
+  (`buildDashboardHtml_`, `buildMyContextHtml_`, `buildStudentDashboardHtml_`)
+  in its `renderPageTemplate_("<page>", { name: ... })` call (00). A new value
+  needs both; `tests/cas-ccps/dashboard-pages.test.js` fails on a name set in
+  one and not the other, because Apps Script throws on an unset one and the
+  page would not load.
+- **A test that reads the page's text** reads the `.html` (and the `.js` for
+  server code). The sandbox's `HtmlService` renders the templates.

@@ -65,7 +65,11 @@ function stripCommentsAndStrings(src, opts) {
       lastSig = quote;
       continue;
     }
-    if (c === '/' && REGEX_CONTEXT.test(lastSig)) {
+    // A keyword before the `/` (return /re/, typeof /x/) also opens a regex:
+    // lastSig holds one character, so the word is read from the output so far
+    // (2026-11-21: `return /^https:\/\/[^\s"'<>`\\]+$/` in 13 was read as
+    // division, its backtick and quotes desynced the rest of the file).
+    if (c === '/' && (REGEX_CONTEXT.test(lastSig) || /(?:^|[^\w$])(?:return|typeof|case|in|of|void|delete|throw|new|yield|await|else|do)\s*$/.test(out.slice(-24)))) {
       let j = i + 1, inClass = false, closed = false;
       while (j < n && src[j] !== '\n') {
         if (src[j] === '\\') { j += 2; continue; }

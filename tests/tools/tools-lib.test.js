@@ -61,3 +61,12 @@ test('prompt-constants: replaces one named constant, escapes, and never reads $ 
   assert.match(out, /const B = `\nkeep\n`\.trim\(\);/);
   assert.throws(() => pc.replaceTemplateConstant(src, 'C', 'x', 'f.js'), /f\.js: could not find "const C/);
 });
+
+test('js-source: a regex after return, typeof or case is a regex, quotes and backticks inside it included', () => {
+  const src = 'function f(v) {\n  return /^https:\\/\\/[^\\s"\'<>`\\\\]+$/.test(v) ? v : "x";\n}\nfunction g() { return 1; }\n';
+  const out = js.stripCommentsAndStrings(src);
+  let depth = 0;
+  for (const c of out) { if (c === '{') depth++; else if (c === '}') depth--; }
+  assert.equal(depth, 0, 'braces balance: the regex did not open a string');
+  assert.match(out, /function g\(\) \{ return 1; \}/);
+});

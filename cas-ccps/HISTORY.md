@@ -1784,3 +1784,34 @@ as the original build spec.
 Not done: moving every dated comment (591) into HISTORY.md. The warning now
 reports only references that send a reader somewhere missing (none today),
 which was the part that misled.
+
+## The dashboards' pages out of their .js files, 2026-11-21
+
+Structure audit 4.5. The Teacher Dashboard (07) built its page as one
+template literal of 4,395 lines, 63% of the file, and the Student Dashboard
+(13) as one of 2,187, so every edit to the page meant escaping quotes,
+backticks and `${` inside a JavaScript string, and the traps in
+`meta/AGENT_NOTES.md` were about that.
+
+Now each page is an `.html` file beside its script: `07_TeacherDashboardPage`,
+`07_MyContextPage` and `13_StudentDashboardPage`. Each is an Apps Script
+template whose only scriptlets are `<?!= name ?>`, the server values the
+literal had as `${...}` (5, 2 and 15 of them). The build functions compute the
+same values and call 00's `renderPageTemplate_`, which fills the template and
+returns the page as a string, so `doGet()` is unchanged. The `.html` files were
+written by cooking each literal exactly as JavaScript does and turning each
+server `${expr}` into a named scriptlet; before anything else, every page was
+rendered with the old code and the new under the same inputs (seven cases,
+including the demo link's both branches and the student demo page) and they
+matched byte for byte.
+
+Found on the way: the shared comment stripper (`tools/lib/js-source.js`) read a
+`/` after `return` as division, because it only remembered the last character,
+not the word. 13's `return /^https:\/\/[^\s"'<>\`\\]+$/` then desynced the rest
+of the file for gas-lint, which hid 13's later declarations. It now reads the
+word before the `/`.
+
+Not done: one shared include for the client code both pages carry. Only about
+31 lines are identical (the spinner timing); the More menu's seven functions
+have drifted apart, so sharing them is a decision about which behaviour is
+right, not a move.

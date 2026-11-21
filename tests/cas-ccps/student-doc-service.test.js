@@ -438,7 +438,7 @@ test('submitMyWork: failing to record a failure never changes what the student i
 });
 
 test('the page words DOC_UNREADABLE and NO_QUEUE as "tell your teacher", not "try again"', () => {
-  const src = require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboard.js'), 'utf8');
+  const src = (require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboard.js'), 'utf8') + require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboardPage.html'), 'utf8')); // the page's text is in its .html since 2026-11-21 (audit 4.5)
   const block = src.match(/const SUBMIT_ERRORS = \{[\s\S]*?\n\};/)[0];
   for (const code of ['DOC_UNREADABLE', 'NO_QUEUE']) {
     const line = (block.match(new RegExp(code + ':\\s*"([^"]+)"')) || [])[1];
@@ -502,7 +502,7 @@ test('submitMyWork: a stamp in a feedback block below the footer is not the resp
 });
 
 test('the dashboard tells the student which text to delete', () => {
-  const src = require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboard.js'), 'utf8');
+  const src = (require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboard.js'), 'utf8') + require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboardPage.html'), 'utf8')); // the page's text is in its .html since 2026-11-21 (audit 4.5)
   assert.match(src, /code === "SYSTEM_TEXT_IN_RESPONSE"/);
   assert.match(src, /copied from a feedback block/);
 });
@@ -620,7 +620,7 @@ test('every card with a submission shows when it was last submitted', () => {
   // The card's markup: shown whenever submittedAt is set, not only on
   // finished (DONE) cards, which nothing reaches since the turn-in gate
   // was retired.
-  const src = require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboard.js'), 'utf8');
-  assert.match(src, /\\\$\{a\.submittedAt\s*\n\s*\? \\`<div class="submitted-note">Last submitted /);
+  const src = (require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboard.js'), 'utf8') + require('fs').readFileSync(path.join(SCRIPTS, '13_StudentDashboardPage.html'), 'utf8')); // the page's text is in its .html since 2026-11-21 (audit 4.5)
+  assert.match(src, /\$\{a\.submittedAt\s*\n\s*\? `<div class="submitted-note">Last submitted /);
   assert.doesNotMatch(src, /isDone && a\.submittedAt/);
 });
