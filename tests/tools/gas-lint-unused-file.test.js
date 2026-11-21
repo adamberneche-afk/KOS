@@ -42,3 +42,14 @@ test('the repo has no unused deployed file (17_MasterStudentTemplate.js was the 
   }
   assert.ok(!fs.existsSync(path.join(ROOT, 'cas-ccps', 'scripts', '17_MasterStudentTemplate.js')));
 });
+
+test('a name with $ in it is matched as itself, not as a regex', () => {
+  assert.deepEqual(findUnusedFiles([
+    { file: 'p/a.js', code: 'function $wrap_() {}\n' },
+    { file: 'p/b.js', code: 'function run() { $wrap_(); }\n' },
+  ]), []);
+  assert.deepEqual(findUnusedFiles([
+    { file: 'p/a.js', code: 'function a$b_() {}\n' },
+    { file: 'p/b.js', code: 'function run() { ab_(); }\n' },
+  ]).map((u) => u.file), ['p/a.js']);
+});
