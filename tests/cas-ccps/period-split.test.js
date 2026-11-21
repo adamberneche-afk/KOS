@@ -162,7 +162,7 @@ test('with PeriodOverride, a plain export no longer moves period 3 back to "3"',
 function retireSetup() {
   const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('22_LessonContextHandler.js'),
     S('23_StudentProfileManager.js'), S('24_WarmUpBridge.js')],
-  ['previewOffDayWarmUps', 'retireOffDayWarmUps', 'WQ24_COL_COUNT', 'WQ24_STATUS', 'WTB_HEADERS', 'WTB']);
+  ['previewOffDayWarmUps', 'retireOffDayWarmUps', 'WQ_BASE_WIDTH', 'WQ', 'WTB_HEADERS', 'WTB']);
   const props = sandbox.PropertiesService.getScriptProperties();
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -184,7 +184,7 @@ function retireSetup() {
   tb.appendRow(exported.WTB_HEADERS);
   let n = 0;
   const queue = (account, date, status, answer) => {
-    const row = new Array(exported.WQ24_COL_COUNT).fill('');
+    const row = new Array(exported.WQ_BASE_WIDTH).fill('');
     row[0] = 'Q' + (++n); row[4] = account; row[5] = date; row[8] = status;
     wq.appendRow(row);
     if (answer !== undefined) {
@@ -206,7 +206,7 @@ function retireSetup() {
 
 test('retireOffDayWarmUps sets off-day warm-ups NOT_MEETING, keeps answered and DAILY ones', () => {
   const { exported, wq } = retireSetup();
-  const statuses = () => wq.getRange(2, exported.WQ24_STATUS + 1, 7, 1).getValues().map((r) => r[0]);
+  const statuses = () => wq.getRange(2, exported.WQ.STATUS + 1, 7, 1).getValues().map((r) => r[0]);
   const preview = exported.previewOffDayWarmUps();
   assert.deepEqual([preview.checked, preview.retired, preview.answeredKept, preview.unknownPeriod], [6, 2, 1, 1]);
   assert.equal(statuses()[1], 'DELIVERED', 'a preview changes nothing');

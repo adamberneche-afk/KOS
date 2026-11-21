@@ -21,7 +21,7 @@ const plain = (o) => JSON.parse(JSON.stringify(o));
 
 function load() {
   const env = loadGasFiles(FILES, ['flowKeyList_', 'flowFullListNote_', 'harvestWarmUpFlowReturns',
-    'runTurnInCheckFlow', 'overnightHealth_', 'syncFlowBuildSpec', 'WQ25_COL_COUNT', 'wfbFindQueueRow_',
+    'runTurnInCheckFlow', 'overnightHealth_', 'syncFlowBuildSpec', 'WQ_BASE_WIDTH', 'wfbFindQueueRow_',
     'TIC_RETURN_HEADERS']);
   const ss = env.sandbox.SpreadsheetApp.create('Central Ledger');
   env.sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -61,7 +61,7 @@ test('the warm-up harvest sets a Full-list return aside, applies nothing, and se
   const wq = ss.insertSheet('WarmUpQueue');
   wq.appendRow(new Array(21).fill('header'));
   ['Q1', 'Q2'].forEach((id) => {
-    const r = new Array(exported.WQ25_COL_COUNT).fill('');
+    const r = new Array(exported.WQ_BASE_WIDTH).fill('');
     r[0] = id; r[3] = 'Sam Student'; r[5] = '2026-11-19';
     r[6] = JSON.stringify({ course_name: 'Sports Entertainment and Event Management', warmup_anchor: 'How does a team make money?' });
     r[8] = 'GENERATING';

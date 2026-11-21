@@ -1,7 +1,8 @@
 'use strict';
-// The Ledger's columns are declared once, in 00_SharedConfig.js (structure
-// audit 3.1, 2026-11-21): LEDGER's indexes and LEDGER_HEADERS' names must
-// stay in step, and no other file may keep its own copy of the indexes.
+// A tab's columns are declared once, in 00_SharedConfig.js (structure audit
+// 3.1, 2026-11-21): the Ledger (LEDGER, LEDGER_HEADERS) and WarmUpQueue (WQ,
+// WQ_HEADERS). Each index map must stay in step with its header row, and no
+// other file may keep its own copy.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -11,7 +12,8 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 const x = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')],
-  ['LEDGER', 'LEDGER_HEADERS', 'LEDGER_BASE_WIDTH', 'LEDGER_COL_COUNT', 'LEDGER_LATER_HEADERS']).exported;
+  ['LEDGER', 'LEDGER_HEADERS', 'LEDGER_BASE_WIDTH', 'LEDGER_COL_COUNT', 'LEDGER_LATER_HEADERS',
+    'WQ', 'WQ_HEADERS', 'WQ_BASE_WIDTH']).exported;
 
 // Each LEDGER key and the header it names.
 const NAMES = {
@@ -43,4 +45,23 @@ test('no script keeps its own copy of the Ledger\'s column indexes', () => {
     if (/"AdminFileURL"\s*,\s*"StudentFileURL"/.test(src)) copies.push(f + ': a header list');
   }
   assert.deepEqual(copies, [], 'use 00_SharedConfig.js\'s LEDGER and LEDGER_HEADERS');
+});
+
+test('WarmUpQueue: WQ\'s indexes are WQ_HEADERS\' positions, the header in lower case with underscores', () => {
+  const snake = (k) => ({ LESSON_CTX_SNAP: 'lesson_context_snapshot', STUDENT_PROFILE_SNAP: 'student_profile_snapshot' })[k] || k.toLowerCase();
+  const keys = Object.keys(x.WQ);
+  assert.equal(keys.length, x.WQ_HEADERS.length);
+  for (const k of keys) assert.equal(x.WQ_HEADERS[x.WQ[k]], snake(k), k);
+  assert.equal(x.WQ_HEADERS[x.WQ_BASE_WIDTH - 1], 'bridge_output', '24 writes through bridge_output');
+});
+
+test('no script keeps its own copy of WarmUpQueue\'s column indexes or header row', () => {
+  const copies = [];
+  for (const f of fs.readdirSync(SCRIPTS).filter((n) => n.endsWith('.js') && n !== '00_SharedConfig.js')) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    const m = src.match(/^const (WQ\d*|DASH_WQ|WFB)_(QUEUE_ID|STATUS|LESSON_DATE|PROFILE_SNAP|GOOGLE_ID)\s*=\s*\d+/m);
+    if (m) copies.push(f + ': ' + m[0]);
+    if (/"lesson_context_snapshot"\s*,\s*"student_profile_snapshot"/.test(src)) copies.push(f + ': a header list');
+  }
+  assert.deepEqual(copies, [], 'use 00_SharedConfig.js\'s WQ and WQ_HEADERS');
 });

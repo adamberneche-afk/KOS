@@ -86,7 +86,7 @@ from reading the code. Full detail, with the exact logs and diagnosis, is in
    **Follow-up:** Flows 3/4/5 (`41_WarmUpFlowBridge.js`) had the identical
    gap and now reuse this same check directly (`_wfbCheckPlausible_`,
    same GAS project — no FERPA workaround needed there, since
-   `WQ25_RESPONSE_TEXT` is already a documented, retained field). See
+   `WQ.RESPONSE_TEXT` is already a documented, retained field). See
    `HISTORY.md`'s own entry for that follow-up.
 
 ## What changed to get here

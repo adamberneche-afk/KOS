@@ -82,12 +82,11 @@
  * have been removed.
  *
  * THE TABS, AND WHY NOT NEW WarmUpQueue COLUMNS. WarmUpQueue is 21 columns
- * read by hardcoded WQ*_ index constants in Scripts 23, 24 and 25
- * (WQ25_COL_COUNT === 21 is asserted in several getRange calls). Widening it
- * means touching all three, which is exactly the trade kos-personal's
+ * read by 00's WQ in Scripts 23, 24 and 25 (WQ_BASE_WIDTH, 21, is the
+ * width of several getRange calls). Widening it means touching all three, which is exactly the trade kos-personal's
  * 10_Turnstile.gs refused for the same reason. (Columns after the 21 are
  * fine, since no index or 21-wide write reaches them: 34's archive_status,
- * and 00's delivered_at and answered_at, WQ_TIMING.) So:
+ * and 00's delivered_at and answered_at, WQ.) So:
  *
  *   Flow3Input / Flow4Input — one flat literal row per pending
  *       job, one tab per flow so each Flow's native "get row" step points at
@@ -174,13 +173,6 @@ const WFB_CANARY_PREFIX = "WUQ-CANARY-";
 // states is what keeps Scripts 23/24/25 unaware that anything changed.
 const WFB_TRIGGER_STATUS = { 5: "PENDING_BRIDGE", 3: "PENDING", 4: "PENDING_EVAL" };
 
-// The student-profile snapshot column. 25_WarmUpWriter.js's WQ25_* constants
-// skip index 7 — that file never needed it — so this names it explicitly
-// rather than writing WQ25_LESSON_CTX_SNAP + 1, which is the kind of
-// positional cleverness that has already cost this repo a live session.
-// Confirmed against 24_WarmUpBridge.js:60 (WQ24_STUDENT_PROFILE_SNAP = 7),
-// the code that writes it.
-const WFB_PROFILE_SNAP = 7;
 
 // ── Archetype selection — ported from SelectWarmUpArchetypeStep.gs ───────────
 
@@ -426,12 +418,12 @@ function wfbParseBaseline_(archetypeCell) {
 function wfbBaselineState_(rows) {
   const out = {};
   rows.forEach(function (row) {
-    const b = wfbParseBaseline_(row[WQ25_ARCHETYPE]);
+    const b = wfbParseBaseline_(row[WQ.ARCHETYPE]);
     if (!b) return;
-    const gid = String(row[WQ25_GOOGLE_ID] || "").trim().toLowerCase();
+    const gid = String(row[WQ.GOOGLE_ID] || "").trim().toLowerCase();
     if (!gid) return;
     const st = out[gid] || (out[gid] = { count: 0, asked: {} });
-    if (WFB_BASELINE_COUNTED[String(row[WQ25_STATUS] || "").trim()]) {
+    if (WFB_BASELINE_COUNTED[String(row[WQ.STATUS] || "").trim()]) {
       st.count++;
       st.asked[b.n] = true;
     }
@@ -539,9 +531,9 @@ function wfbTab_(ss, name, headers) {
 function wfbFindQueueRow_(wqSheet, queueId) {
   const lastRow = wqSheet.getLastRow();
   if (lastRow <= 1) return null;
-  const data = wqSheet.getRange(2, 1, lastRow - 1, WQ25_COL_COUNT).getValues();
+  const data = wqSheet.getRange(2, 1, lastRow - 1, WQ_BASE_WIDTH).getValues();
   for (let i = 0; i < data.length; i++) {
-    if (String(data[i][WQ25_QUEUE_ID]).trim() === queueId) {
+    if (String(data[i][WQ.QUEUE_ID]).trim() === queueId) {
       return { sheetRow: i + 2, row: data[i] };
     }
   }
@@ -648,8 +640,8 @@ function wfbFallbackExhaustedInputs_(ss, flow3Tab, wqSheet, now) {
     const at = new Date(r[0]).getTime();
     if (!isNaN(at) && now.getTime() - at < WFB_INPUT_RETRY_AFTER_MS) return;
     const found = wfbFindQueueRow_(wqSheet, id);
-    if (!found || String(found.row[WQ25_STATUS] || "").trim() !== "PENDING") return;
-    if (wfbNormalizeDateIso_(found.row[WQ25_LESSON_DATE]) < today) return;
+    if (!found || String(found.row[WQ.STATUS] || "").trim() !== "PENDING") return;
+    if (wfbNormalizeDateIso_(found.row[WQ.LESSON_DATE]) < today) return;
     const out = wfbApplyFlow3_(wqSheet, found, id, "", WFB_NO_RETURN_REASON);
     if (!out.ok) return; // no anchor, or a doc that can't be made: left for 34c's stall line
     ret.appendRow([now, 3, id, "", "HARVESTED", 0, WFB_ANCHOR_FALLBACK + ": " + WFB_NO_RETURN_REASON]);
@@ -683,7 +675,7 @@ function buildWarmUpFlowInputs() {
   const lastRow = wqSheet.getLastRow();
   if (lastRow <= 1) return result;
 
-  const data = wqSheet.getRange(2, 1, lastRow - 1, WQ25_COL_COUNT).getValues();
+  const data = wqSheet.getRange(2, 1, lastRow - 1, WQ_BASE_WIDTH).getValues();
   const tabs = {
     3: wfbTab_(ctx.ss, WFB_INPUT_TABS[3], WFB_FLOW3_HEADERS),
     4: wfbTab_(ctx.ss, WFB_INPUT_TABS[4], WFB_FLOW4_HEADERS),
@@ -702,8 +694,8 @@ function buildWarmUpFlowInputs() {
 
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
-    const status = String(row[WQ25_STATUS] || "").trim();
-    const queueId = String(row[WQ25_QUEUE_ID] || "").trim();
+    const status = String(row[WQ.STATUS] || "").trim();
+    const queueId = String(row[WQ.QUEUE_ID] || "").trim();
     if (!queueId) continue;
 
     // Flow 5 is retired (2026-11-01, merged into Flow 3): no Flow5Input row
@@ -719,8 +711,8 @@ function buildWarmUpFlowInputs() {
 
     try {
       if (flow === 3) {
-        const gid = String(row[WQ25_GOOGLE_ID] || "").trim().toLowerCase();
-        const kept = wfbParseBaseline_(row[WQ25_ARCHETYPE]); // a rebuild keeps its skill
+        const gid = String(row[WQ.GOOGLE_ID] || "").trim().toLowerCase();
+        const kept = wfbParseBaseline_(row[WQ.ARCHETYPE]); // a rebuild keeps its skill
         // The canary's fixture student (an .invalid address, 39) keeps the
         // lesson warm-up, so the canary still runs Modes A and B.
         const n = kept ? kept.n : (/\.invalid$/.test(gid) ? 0 : wfbBaselineChoice_(baseline[gid]));
@@ -737,8 +729,8 @@ function buildWarmUpFlowInputs() {
           // from the early-unit rule forever. Written once, here, where the
           // choice is made; 25's full-row writes re-read the row first, so
           // they keep it.
-          if (!String(row[WQ25_ARCHETYPE] || "").trim()) {
-            wqSheet.getRange(i + 2, WQ25_ARCHETYPE + 1).setValue(archetype);
+          if (!String(row[WQ.ARCHETYPE] || "").trim()) {
+            wqSheet.getRange(i + 2, WQ.ARCHETYPE + 1).setValue(archetype);
           }
         } else {
           result.skipped++;
@@ -764,13 +756,13 @@ function buildWarmUpFlowInputs() {
 function wfbBuildFlow3Row_(sheet, row, queueId, baselineN) {
   let lesson, profile;
   try {
-    lesson = JSON.parse(String(row[WQ25_LESSON_CTX_SNAP] || "{}"));
+    lesson = JSON.parse(String(row[WQ.LESSON_CTX_SNAP] || "{}"));
   } catch (e) {
     Logger.log("[WFB] " + queueId + " flow 3: LESSON_SNAPSHOT_PARSE_FAILED");
     return false;
   }
   try {
-    profile = JSON.parse(String(row[WFB_PROFILE_SNAP] || "{}"));
+    profile = JSON.parse(String(row[WQ.STUDENT_PROFILE_SNAP] || "{}"));
   } catch (e) {
     Logger.log("[WFB] " + queueId + " flow 3: PROFILE_SNAPSHOT_PARSE_FAILED");
     return false;
@@ -789,9 +781,9 @@ function wfbBuildFlow3Row_(sheet, row, queueId, baselineN) {
     f.priorConnection, f.competencyTexts, f.competencyGaps, f.evaluationSignals,
     f.avgEngagementScore, f.extraCreditCount, f.shadowArchetypeNote,
     f.competenciesAddressedCount, f.totalCompetencies,
-    f.mode === "C" ? "" : String(row[WQ25_BRIDGE_OUTPUT] || ""),
-    String(row[WQ25_GOOGLE_ID] || ""), String(row[WQ25_STUDENT_NAME] || ""),
-    row[WQ25_LESSON_DATE],
+    f.mode === "C" ? "" : String(row[WQ.BRIDGE_OUTPUT] || ""),
+    String(row[WQ.GOOGLE_ID] || ""), String(row[WQ.STUDENT_NAME] || ""),
+    row[WQ.LESSON_DATE],
     wfbPromptFor_(3, f),
   ]);
   // The caller records this on the WarmUpQueue row (column 19), where the
@@ -800,7 +792,7 @@ function wfbBuildFlow3Row_(sheet, row, queueId, baselineN) {
 }
 
 function wfbBuildFlow4Row_(sheet, row, queueId, tb) {
-  const docId = String(row[WQ25_DOC_ID] || "").trim();
+  const docId = String(row[WQ.DOC_ID] || "").trim();
   if (!docId && !tb) {
     Logger.log("[WFB] " + queueId + " flow 4: no Doc_ID and no WarmUpTextBox row — skipped");
     return false;
@@ -818,14 +810,14 @@ function wfbBuildFlow4Row_(sheet, row, queueId, tb) {
   }
   const originalPrompt = (extracted && extracted.promptText) || "";
   const responseText = (extracted && extracted.responseText) ||
-    String(row[WQ25_RESPONSE_TEXT] || "");
+    String(row[WQ.RESPONSE_TEXT] || "");
 
-  const wordCountScore = Number(row[WQ25_WORD_COUNT_SCORE] || 0);
+  const wordCountScore = Number(row[WQ.WORD_COUNT_SCORE] || 0);
 
   sheet.appendRow([
     new Date(), queueId, "READY",
     originalPrompt, responseText,
-    wordCountScore, Number(row[WQ25_EXTRA_CREDIT] || 0), docId,
+    wordCountScore, Number(row[WQ.EXTRA_CREDIT] || 0), docId,
     wfbPromptFor_(4, {
       originalPrompt: originalPrompt,
       responseText: responseText,
@@ -962,7 +954,7 @@ function wfbDropBlankLines_(template, resolved) {
 // function calls.
 //
 // NO FERPA BOUNDARY TO ROUTE AROUND HERE, UNLIKE FLOW 2. WarmUpQueue's
-// response text (WQ25_RESPONSE_TEXT) is already a documented, retained
+// response text (WQ.RESPONSE_TEXT) is already a documented, retained
 // field (docs/FERPA_DATA_MAP.md's WarmUpQueue section) — this project
 // already legitimately holds it, so Flow 4's check below compares straight
 // against the real response rather than working around a boundary the way
@@ -1250,13 +1242,13 @@ function wfbLeadInProblem_(leadIn, lesson) {
 // returned; see wfbFallbackExhaustedInputs_), with this reason.
 function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
   const row = found.row;
-  if (String(row[WQ25_STATUS] || "").trim() === "DELIVERED") {
+  if (String(row[WQ.STATUS] || "").trim() === "DELIVERED") {
     return { ok: true, duplicate: true };
   }
   // A doc already recorded means a previous pass got as far as creating one.
   // Retrying would make a SECOND doc for the same student, which is worse
   // than stopping — same category as kos-personal's unretryable state.
-  const existingDocId = String(row[WQ25_DOC_ID] || "").trim();
+  const existingDocId = String(row[WQ.DOC_ID] || "").trim();
   if (existingDocId) {
     return {
       ok: false, needsAttention: true,
@@ -1268,7 +1260,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
 
   let lesson;
   try {
-    lesson = JSON.parse(String(row[WQ25_LESSON_CTX_SNAP] || "{}"));
+    lesson = JSON.parse(String(row[WQ.LESSON_CTX_SNAP] || "{}"));
   } catch (e) {
     return { ok: false, error: "LESSON_SNAPSHOT_PARSE_FAILED" };
   }
@@ -1279,7 +1271,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
 
   // A baseline warm-up (D6) is checked against its skill, not the lesson,
   // and its fallback is the question code writes for that skill.
-  const baselineOf = wfbParseBaseline_(row[WQ25_ARCHETYPE]);
+  const baselineOf = wfbParseBaseline_(row[WQ.ARCHETYPE]);
   const gate = baselineOf ? {
     warmup_anchor: wfbBaselineQuestion_(baselineOf.n),
     objective: WFB_BASELINE_SKILLS[baselineOf.n].text,
@@ -1290,7 +1282,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
   // merged in, 2026-11-01). The lead-in is checked on its own and dropped,
   // never the warm-up, if it doesn't hold. An answer with no markers is the
   // warm-up alone, as before. A bridge Flow 5 wrote before then still shows.
-  let bridge = baselineOf ? "" : String(row[WQ25_BRIDGE_OUTPUT] || "");
+  let bridge = baselineOf ? "" : String(row[WQ.BRIDGE_OUTPUT] || "");
   if (!forcedFallback) {
     const parts = wfbSplitLeadIn_(raw);
     raw = parts.warmUp;
@@ -1300,7 +1292,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
         Logger.log("[WFB] " + queueId + ": lead-in dropped (" + leadCheck + "); the warm-up goes out without it.");
       } else {
         bridge = parts.leadIn;
-        wqSheet.getRange(found.sheetRow, WQ25_BRIDGE_OUTPUT + 1).setValue(bridge);
+        wqSheet.getRange(found.sheetRow, WQ.BRIDGE_OUTPUT + 1).setValue(bridge);
       }
     }
   }
@@ -1345,10 +1337,10 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
     return { ok: false, error: "FOLDER_PATH_FIELDS_MISSING" };
   }
 
-  const studentName = String(row[WQ25_STUDENT_NAME] || "");
+  const studentName = String(row[WQ.STUDENT_NAME] || "");
   const firstName = studentName.trim().split(/\s+/)[0] || "";
-  const dateIso = wfbNormalizeDateIso_(row[WQ25_LESSON_DATE]);
-  const dateReadable = wfbFormatReadableDate_(dateIso) || String(row[WQ25_LESSON_DATE]);
+  const dateIso = wfbNormalizeDateIso_(row[WQ.LESSON_DATE]);
+  const dateReadable = wfbFormatReadableDate_(dateIso) || String(row[WQ.LESSON_DATE]);
 
   let file;
   try {
@@ -1359,7 +1351,7 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
     return { ok: false, error: "DOC_CREATE_FAILED: " + e.message };
   }
 
-  const shareWith = String(row[WQ25_GOOGLE_ID] || "");
+  const shareWith = String(row[WQ.GOOGLE_ID] || "");
   try {
     file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
     // .invalid is the reserved TLD, so it can never be a real student — this
@@ -1384,10 +1376,10 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw, forcedFallback) {
     };
   }
 
-  wqSheet.getRange(found.sheetRow, WQ25_DOC_ID + 1).setValue(file.getId());
-  wqSheet.getRange(found.sheetRow, WQ25_DOC_URL + 1).setValue(file.getUrl());
-  wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("DELIVERED");
-  stampWarmUpTiming_(wqSheet, found.sheetRow, WQ_TIMING.DELIVERED_AT, new Date());
+  wqSheet.getRange(found.sheetRow, WQ.DOC_ID + 1).setValue(file.getId());
+  wqSheet.getRange(found.sheetRow, WQ.DOC_URL + 1).setValue(file.getUrl());
+  wqSheet.getRange(found.sheetRow, WQ.STATUS + 1).setValue("DELIVERED");
+  stampWarmUpTiming_(wqSheet, found.sheetRow, WQ.DELIVERED_AT, new Date());
   SpreadsheetApp.flush();
   return fallback ? { ok: true, fallback: fallback } : { ok: true };
 }
@@ -1496,7 +1488,7 @@ function repairWarmUpTextBox() {
     let anchor = "";
     if (!found) { result.noAnchor++; return; }
     try {
-      anchor = String(JSON.parse(String(found.row[WQ25_LESSON_CTX_SNAP] || "{}")).warmup_anchor || "").trim();
+      anchor = String(JSON.parse(String(found.row[WQ.LESSON_CTX_SNAP] || "{}")).warmup_anchor || "").trim();
     } catch (e) { anchor = ""; }
     if (!anchor) { result.noAnchor++; return; }
     sheet.getRange(i + 2, WTB.WARMUP + 1).setValue(sheetSafeText_(anchor));
@@ -1532,8 +1524,8 @@ function wfbRepairFailedWarmUps_(dryRun) {
     result.failed++;
     const queueId = String(r[WFB_RET.QUEUE_ID]).trim();
     const found = wfbFindQueueRow_(wqSheet, queueId);
-    if (!found || String(found.row[WQ25_STATUS] || "").trim() !== "ERROR") { result.notError++; return; }
-    if (wfbNormalizeDateIso_(found.row[WQ25_LESSON_DATE]) < today) { result.pastDay++; return; }
+    if (!found || String(found.row[WQ.STATUS] || "").trim() !== "ERROR") { result.notError++; return; }
+    if (wfbNormalizeDateIso_(found.row[WQ.LESSON_DATE]) < today) { result.pastDay++; return; }
     if (dryRun) { result.delivered++; return; }
     const out = wfbApplyFlow3_(wqSheet, found, queueId, "", error);
     if (!out.ok) { result.noAnchor++; return; }
@@ -1580,7 +1572,7 @@ function wfbRepairFailedScoring_(dryRun, accept) {
     result.failed++;
     const queueId = String(r[WFB_RET.QUEUE_ID]).trim();
     const found = wfbFindQueueRow_(wqSheet, queueId);
-    if (!found || String(found.row[WQ25_STATUS] || "").trim() !== "EVAL_ERROR") { result.notEvalError++; return; }
+    if (!found || String(found.row[WQ.STATUS] || "").trim() !== "EVAL_ERROR") { result.notEvalError++; return; }
     if (dryRun) {
       // The same gate the apply runs, with no writes.
       let parsed = null;
@@ -1588,7 +1580,7 @@ function wfbRepairFailedScoring_(dryRun, accept) {
       const feedback = parsed ? String(parsed.feedback || "") : "";
       const ok = feedback && (accept
         ? wfbScoreInRange_(Number(parsed.grammar), 0, 1) && wfbScoreInRange_(Number(parsed.engagement), 0, 3)
-        : wfbFlow4Plausible_(found.row[WQ25_RESPONSE_TEXT], wfbFlow4PromptText_(ctx.ss, queueId), feedback).ok);
+        : wfbFlow4Plausible_(found.row[WQ.RESPONSE_TEXT], wfbFlow4PromptText_(ctx.ss, queueId), feedback).ok);
       if (ok) wfbCountScored_(result, found.row); else result.stillFailing++;
       return;
     }
@@ -1607,7 +1599,7 @@ function wfbRepairFailedScoring_(dryRun, accept) {
 
 function wfbCountScored_(result, row) {
   result.scored++;
-  const date = wfbNormalizeDateIso_(row[WQ25_LESSON_DATE]) || "no date";
+  const date = wfbNormalizeDateIso_(row[WQ.LESSON_DATE]) || "no date";
   result.byDate[date] = (result.byDate[date] || 0) + 1;
 }
 
@@ -1638,24 +1630,24 @@ function wfbRescoreEvalErrors_(dryRun) {
       Logger.log("[WFB] rescoreEvalErrorWarmUps: " + JSON.stringify(result));
       return result;
     }
-    const data = wqSheet.getRange(2, 1, wqSheet.getLastRow() - 1, WQ25_COL_COUNT).getValues();
+    const data = wqSheet.getRange(2, 1, wqSheet.getLastRow() - 1, WQ_BASE_WIDTH).getValues();
     const textBox = readWarmUpTextBox_(ctx.ss);
     const input = dryRun ? null : wfbTab_(ctx.ss, WFB_INPUT_TABS[4], WFB_FLOW4_HEADERS);
     const resent = {};
     data.forEach(function (row, i) {
-      const queueId = String(row[WQ25_QUEUE_ID] || "").trim();
-      if (!queueId || String(row[WQ25_STATUS] || "").trim() !== "EVAL_ERROR") return;
+      const queueId = String(row[WQ.QUEUE_ID] || "").trim();
+      if (!queueId || String(row[WQ.STATUS] || "").trim() !== "EVAL_ERROR") return;
       result.evalError++;
-      if (!String(row[WQ25_DOC_ID] || "").trim() && !textBox[queueId]) { result.noAnswer++; return; }
+      if (!String(row[WQ.DOC_ID] || "").trim() && !textBox[queueId]) { result.noAnswer++; return; }
       if (result.resent >= WFB_INPUTS_PER_RUN) { result.deferred++; return; }
       if (!dryRun) {
         wfbConsumeInputRow_(ctx.ss, 4, queueId); // the old job is finished
         if (!wfbBuildFlow4Row_(input, row, queueId, textBox[queueId])) { result.noAnswer++; return; }
-        wqSheet.getRange(i + 2, WQ25_STATUS + 1).setValue(WFB_TRIGGER_STATUS[4]);
+        wqSheet.getRange(i + 2, WQ.STATUS + 1).setValue(WFB_TRIGGER_STATUS[4]);
         resent[queueId] = true;
       }
       result.resent++;
-      const date = wfbNormalizeDateIso_(row[WQ25_LESSON_DATE]) || "no date";
+      const date = wfbNormalizeDateIso_(row[WQ.LESSON_DATE]) || "no date";
       result.byDate[date] = (result.byDate[date] || 0) + 1;
     });
     // Bottom up, so the rows above keep their numbers. Studio's new returns
@@ -1688,13 +1680,13 @@ function wfbDeliverToTextBox_(wqSheet, found, queueId, raw, bridge) {
   if (!readWarmUpTextBox_(ss)[queueId]) {
     const row = new Array(WTB_HEADERS.length).fill("");
     row[WTB.QUEUE_ID]    = queueId;
-    row[WTB.LESSON_DATE] = wfbNormalizeDateIso_(found.row[WQ25_LESSON_DATE]);
-    row[WTB.BRIDGE]      = sheetSafeText_(String(bridge === undefined ? found.row[WQ25_BRIDGE_OUTPUT] || "" : bridge).trim());
+    row[WTB.LESSON_DATE] = wfbNormalizeDateIso_(found.row[WQ.LESSON_DATE]);
+    row[WTB.BRIDGE]      = sheetSafeText_(String(bridge === undefined ? found.row[WQ.BRIDGE_OUTPUT] || "" : bridge).trim());
     row[WTB.WARMUP]      = sheetSafeText_(String(raw).trim());
     sheet.appendRow(row);
   }
-  wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("DELIVERED");
-  stampWarmUpTiming_(wqSheet, found.sheetRow, WQ_TIMING.DELIVERED_AT, new Date());
+  wqSheet.getRange(found.sheetRow, WQ.STATUS + 1).setValue("DELIVERED");
+  stampWarmUpTiming_(wqSheet, found.sheetRow, WQ.DELIVERED_AT, new Date());
   SpreadsheetApp.flush();
   return { ok: true };
 }
@@ -1706,7 +1698,7 @@ function wfbDeliverToTextBox_(wqSheet, found, queueId, raw, bridge) {
 // parse and score-range checks still run.
 function wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw, opts) {
   const row = found.row;
-  if (String(row[WQ25_STATUS] || "").trim() === "SCORED") {
+  if (String(row[WQ.STATUS] || "").trim() === "SCORED") {
     return { ok: true, duplicate: true };
   }
 
@@ -1727,18 +1719,18 @@ function wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw, opts) {
       ", engagement=" + parsed.engagement };
   }
   const feedback = String(parsed.feedback || "Your response has been reviewed.");
-  const wordCountScore = Number(row[WQ25_WORD_COUNT_SCORE] || 0);
-  const extraCredit = Number(row[WQ25_EXTRA_CREDIT] || 0);
+  const wordCountScore = Number(row[WQ.WORD_COUNT_SCORE] || 0);
+  const extraCredit = Number(row[WQ.EXTRA_CREDIT] || 0);
   const total = wordCountScore + grammar + engagement + extraCredit;
 
   // Plausibility gate BEFORE any score or feedback write — the highest-
   // stakes of the three flows this file harvests: grammar/engagement
   // become part of the student's real grade, and unlike Flow 2's
-  // FERPA-blocked student text, WQ25_RESPONSE_TEXT is already a
+  // FERPA-blocked student text, WQ.RESPONSE_TEXT is already a
   // documented, retained field this project legitimately holds (see this
   // section's own header comment), so the check compares straight against
   // the real response.
-  const plausibility = (opts && opts.accepted) ? { ok: true } : wfbFlow4Plausible_(row[WQ25_RESPONSE_TEXT],
+  const plausibility = (opts && opts.accepted) ? { ok: true } : wfbFlow4Plausible_(row[WQ.RESPONSE_TEXT],
     wfbFlow4PromptText_(wfbLedger_().ss, queueId), feedback);
   if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
 
@@ -1747,7 +1739,7 @@ function wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw, opts) {
   // Zone 3 and the registry are best-effort, exactly as the step had it: a
   // scored row with no feedback paragraph is recoverable, an unscored row is
   // not, so neither of these failing undoes the scores above.
-  const docId = String(row[WQ25_DOC_ID] || "").trim();
+  const docId = String(row[WQ.DOC_ID] || "").trim();
   if (docId) {
     try {
       writeFeedbackToDoc_(docId, feedback, wordCountScore, grammar, engagement, total);
@@ -1869,7 +1861,7 @@ function wfbFindRegistryRow_(wrSheet, queueId) {
 function wfbWriteQueueStatus_(wqSheet, queueId, status) {
   try {
     const found = wfbFindQueueRow_(wqSheet, queueId);
-    if (found) wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue(status);
+    if (found) wqSheet.getRange(found.sheetRow, WQ.STATUS + 1).setValue(status);
   } catch (e) {
     Logger.log("[WFB] could not write status " + status + " for " + queueId + ": " + e.message);
   }
@@ -2056,7 +2048,7 @@ function checkFlowBinding() {
   const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
   const knownIds = {};
   if (wqSheet && wqSheet.getLastRow() > 1) {
-    wqSheet.getRange(2, WQ25_QUEUE_ID + 1, wqSheet.getLastRow() - 1, 1)
+    wqSheet.getRange(2, WQ.QUEUE_ID + 1, wqSheet.getLastRow() - 1, 1)
       .getValues().forEach(function (r) {
         const id = String(r[0]).trim();
         if (id) knownIds[id] = true;
@@ -2101,7 +2093,7 @@ function wfbRecentBindingCounts_(ss, now, windowMs) {
   const knownIds = {};
   const wq = ss.getSheetByName(getConfig_().tabs.warmUpQueue);
   if (wq && wq.getLastRow() > 1) {
-    wq.getRange(2, WQ25_QUEUE_ID + 1, wq.getLastRow() - 1, 1).getValues().forEach(function (r) {
+    wq.getRange(2, WQ.QUEUE_ID + 1, wq.getLastRow() - 1, 1).getValues().forEach(function (r) {
       const id = String(r[0]).trim();
       if (id) knownIds[id] = true;
     });
@@ -2412,14 +2404,14 @@ function runWarmUpFlowCanary() {
       flow5_prior_response: "CANARY-PRIOR-ANSWER", pacing_prior_connection: "connects", course_name: "CAS",
     });
     const wqRow = [];
-    for (let i = 0; i < WQ25_COL_COUNT; i++) wqRow.push("");
-    wqRow[WQ25_QUEUE_ID] = queueId;
-    wqRow[WQ25_LESSON_CTX_SNAP] = snapshot;
-    wqRow[WQ25_STATUS] = "PENDING_BRIDGE";
-    wqRow[WQ25_STUDENT_NAME] = "Canary Student";
+    for (let i = 0; i < WQ_BASE_WIDTH; i++) wqRow.push("");
+    wqRow[WQ.QUEUE_ID] = queueId;
+    wqRow[WQ.LESSON_CTX_SNAP] = snapshot;
+    wqRow[WQ.STATUS] = "PENDING_BRIDGE";
+    wqRow[WQ.STUDENT_NAME] = "Canary Student";
     // .invalid keeps it on lesson warm-ups (Mode A/B), as the fixture
     // student does; a new student's baseline warm-up (Mode C) has no lead-in.
-    wqRow[WQ25_GOOGLE_ID] = "canary-student@example.invalid";
+    wqRow[WQ.GOOGLE_ID] = "canary-student@example.invalid";
     wqSheet.appendRow(wqRow);
 
     const built = buildWarmUpFlowInputs();
@@ -2462,9 +2454,9 @@ function removeWarmUpFlowFixtures() {
 
   const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
   if (wqSheet && wqSheet.getLastRow() > 1) {
-    const data = wqSheet.getRange(2, 1, wqSheet.getLastRow() - 1, WQ25_COL_COUNT).getValues();
+    const data = wqSheet.getRange(2, 1, wqSheet.getLastRow() - 1, WQ_BASE_WIDTH).getValues();
     for (let i = data.length - 1; i >= 0; i--) {
-      if (String(data[i][WQ25_QUEUE_ID] || "").trim().indexOf(WFB_CANARY_PREFIX) !== 0) continue;
+      if (String(data[i][WQ.QUEUE_ID] || "").trim().indexOf(WFB_CANARY_PREFIX) !== 0) continue;
       wqSheet.deleteRow(i + 2);
       removed.queue++;
     }

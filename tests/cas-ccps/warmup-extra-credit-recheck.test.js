@@ -32,7 +32,7 @@ const PATHS = [
 ];
 const EXPORTS = [
   'runWarmUpEvaluation',
-  'WQ25_QUEUE_ID', 'WQ25_STATUS', 'WQ25_TOTAL_SCORE', 'WQ25_EXTRA_CREDIT', 'WQ25_COL_COUNT',
+  'WQ', 'WQ', 'WQ', 'WQ', 'WQ_BASE_WIDTH',
   'WR_WARMUP_ID', 'WR_QUEUE_ID', 'WR_LESSON_ID', 'WR_LESSON_DATE', 'WR_STUDENT_EMAIL',
   'WR_STUDENT_NAME', 'WR_TEACHER_EMAIL', 'WR_DOC_ID', 'WR_DOC_URL', 'WR_GENERATED_AT',
   'WR_TOTAL_SCORE', 'WR_EXTRA_CREDIT', 'WR_TERM', 'WR_EXTRA_CREDIT_CHECKED', 'WR_COL_COUNT',
@@ -72,11 +72,11 @@ function daysAgoStr(n) {
 }
 
 function makeQueueRow(exported, { queueId, totalScore = 6, extraCredit = 0 }) {
-  const row = new Array(exported.WQ25_COL_COUNT).fill('');
-  row[exported.WQ25_QUEUE_ID] = queueId;
-  row[exported.WQ25_STATUS] = 'SCORED';
-  row[exported.WQ25_TOTAL_SCORE] = totalScore;
-  row[exported.WQ25_EXTRA_CREDIT] = extraCredit;
+  const row = new Array(exported.WQ_BASE_WIDTH).fill('');
+  row[exported.WQ.QUEUE_ID] = queueId;
+  row[exported.WQ.STATUS] = 'SCORED';
+  row[exported.WQ.TOTAL_SCORE] = totalScore;
+  row[exported.WQ.EXTRA_CREDIT] = extraCredit;
   return row;
 }
 
@@ -119,9 +119,9 @@ test('a reply written after feedback is credited on a later night\'s run', () =>
   assert.equal(wrRow[exported.WR_TOTAL_SCORE], 7, 'total_score must be incremented by 1');
   assert.ok(wrRow[exported.WR_EXTRA_CREDIT_CHECKED], 'extra_credit_checked must be stamped once credited');
 
-  const wqRow = fx.wq.getRange(2, 1, 1, exported.WQ25_COL_COUNT).getValues()[0];
-  assert.equal(wqRow[exported.WQ25_EXTRA_CREDIT], 1, 'WarmUpQueue mirror must also be updated');
-  assert.equal(wqRow[exported.WQ25_TOTAL_SCORE], 7);
+  const wqRow = fx.wq.getRange(2, 1, 1, exported.WQ_BASE_WIDTH).getValues()[0];
+  assert.equal(wqRow[exported.WQ.EXTRA_CREDIT], 1, 'WarmUpQueue mirror must also be updated');
+  assert.equal(wqRow[exported.WQ.TOTAL_SCORE], 7);
 });
 
 test('this sweep runs even on a quiet night with nothing new to evaluate', () => {

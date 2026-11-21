@@ -19,7 +19,7 @@ const DAY = (d, h) => new Date(2026, 9, d, h || 10, 0, 0);
 
 function load() {
   const env = loadGasFiles(FILES, ['reportEvaluationHealth', 'evaluationHealth_', 'LEDGER', 'LEDGER_COL_COUNT',
-    'EH_HEADERS', 'EVAL_LOG_HEADERS', 'WQ_TIMING']);
+    'EH_HEADERS', 'EVAL_LOG_HEADERS', 'WQ']);
   const { sandbox, exported: x } = env;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
@@ -58,14 +58,14 @@ function load() {
   staging.appendRow([DAY(27), 3, 'f5', 'M1', 't', 'COMPLETE']);
 
   const wq = ss.insertSheet('WarmUpQueue');
-  wq.appendRow(new Array(x.WQ_TIMING.ANSWERED_AT + 1).fill('h'));
+  wq.appendRow(new Array(x.WQ.ANSWERED_AT + 1).fill('h'));
   // The real row: column 1 is the lesson ID, which names no course; the
   // course is the lesson snapshot's course_name (column 6).
   const w = (courseName, delivered, answered) => {
-    const r = new Array(x.WQ_TIMING.ANSWERED_AT + 1).fill('');
+    const r = new Array(x.WQ.ANSWERED_AT + 1).fill('');
     r[1] = 'LES-20261026-ABCDEF123456';
     r[6] = JSON.stringify({ course_name: courseName, lesson_title: 'x' });
-    r[x.WQ_TIMING.DELIVERED_AT] = delivered; r[x.WQ_TIMING.ANSWERED_AT] = answered || '';
+    r[x.WQ.DELIVERED_AT] = delivered; r[x.WQ.ANSWERED_AT] = answered || '';
     wq.appendRow(r);
   };
   w('8175 Sports Marketing L05', DAY(26, 8), DAY(26, 9));

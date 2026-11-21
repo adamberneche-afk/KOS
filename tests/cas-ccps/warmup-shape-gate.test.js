@@ -16,7 +16,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentPr
   '04_Form2_TurnInGate.js', '25_WarmUpWriter.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '39b_Flow2Provenance.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '41_WarmUpFlowBridge.js']
   .map((f) => path.join(CC, f));
 const EXPOSE = ['wfbApplyFlow3_', 'wfbFindQueueRow_', 'wfbWarmUpShapeProblem_', 'repairWarmUpTextBox',
-  'harvestWarmUpFlowReturns', 'WQ25_COL_COUNT', 'WQ25_STATUS', 'WTB', 'WTB_HEADERS'];
+  'harvestWarmUpFlowReturns', 'WQ_BASE_WIDTH', 'WQ', 'WTB', 'WTB_HEADERS'];
 
 const ANCHOR = 'How does a sports team make money? List as many ways as you can think of.';
 const GOOD = 'Think about the last game you watched. How does a sports team make money, and which way brings in the most?';
@@ -43,7 +43,7 @@ function setup() {
 }
 
 function queue(fx, queueId, anchor) {
-  const row = new Array(fx.exported.WQ25_COL_COUNT).fill('');
+  const row = new Array(fx.exported.WQ_BASE_WIDTH).fill('');
   row[0] = queueId;
   row[3] = 'Sam Student';
   row[5] = '2026-10-20';
@@ -128,7 +128,7 @@ test('junk output delivers the teacher\'s anchor instead, and says why', () => {
   assert.equal(out.ok, true);
   assert.match(out.fallback, /Flow 3's own prompt/);
   assert.equal(boxText(fx), ANCHOR);
-  assert.equal(fx.wq.getRange(2, fx.exported.WQ25_STATUS + 1).getValue(), 'DELIVERED');
+  assert.equal(fx.wq.getRange(2, fx.exported.WQ.STATUS + 1).getValue(), 'DELIVERED');
 });
 
 test('with no anchor to fall back on, junk is refused rather than shown', () => {

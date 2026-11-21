@@ -67,27 +67,6 @@ const SP25_SHADOW_MATRIX  = 12; // JSON — per-student × per-unit confidence
 // reads the SP25_* names directly (caught by tools/gas-lint/check.js).
 
 // ── WarmUpQueue column indices (0-based) — must match Scripts 23 + 24 ─────────
-const WQ25_QUEUE_ID          = 0;
-const WQ25_LESSON_ID         = 1;
-const WQ25_STUDENT_EMAIL     = 2;
-const WQ25_STUDENT_NAME      = 3;
-const WQ25_GOOGLE_ID         = 4;
-const WQ25_LESSON_DATE       = 5;
-const WQ25_LESSON_CTX_SNAP   = 6;
-const WQ25_STATUS            = 8;
-const WQ25_DOC_ID            = 9;
-const WQ25_DOC_URL           = 10;
-const WQ25_WORD_COUNT        = 11;
-const WQ25_WORD_COUNT_SCORE  = 12;
-const WQ25_GRAMMAR_SCORE     = 13;
-const WQ25_ENGAGEMENT_SCORE  = 14;
-const WQ25_EXTRA_CREDIT      = 15;
-const WQ25_TOTAL_SCORE       = 16;
-const WQ25_FLOW4_FEEDBACK    = 17;
-const WQ25_RESPONSE_TEXT     = 18;
-const WQ25_ARCHETYPE         = 19; // Flow 3 writes selected archetype — read by S23 shadow matrix
-const WQ25_BRIDGE_OUTPUT      = 20; // Flow 5 writes bridge paragraph prior→today
-const WQ25_COL_COUNT         = 21;
 
 // ── WarmUpRegistry column indices (0-based) — must match schema doc ───────────
 const WR_WARMUP_ID    = 0;
@@ -235,11 +214,11 @@ function _registerDeliveredWarmUps_() {
 
   for (let i = 1; i < wqData.length; i++) {
     const row      = wqData[i];
-    const status   = String(row[WQ25_STATUS]       || "").trim();
-    const queueId  = String(row[WQ25_QUEUE_ID]     || "").trim();
-    const lessonId = String(row[WQ25_LESSON_ID]    || "").trim();
-    const docId    = String(row[WQ25_DOC_ID]       || "").trim();
-    const docUrl   = String(row[WQ25_DOC_URL]      || "").trim();
+    const status   = String(row[WQ.STATUS]       || "").trim();
+    const queueId  = String(row[WQ.QUEUE_ID]     || "").trim();
+    const lessonId = String(row[WQ.LESSON_ID]    || "").trim();
+    const docId    = String(row[WQ.DOC_ID]       || "").trim();
+    const docUrl   = String(row[WQ.DOC_URL]      || "").trim();
 
     if (!lessonId) continue;
 
@@ -265,9 +244,9 @@ function _registerDeliveredWarmUps_() {
     // _normalizeLessonDateCell_ (22_LessonContextHandler.js) — without this,
     // a coerced Date value read from WarmUpQueue would propagate its
     // non-"YYYY-MM-DD" String() form straight into WarmUpRegistry.
-    regRow[WR_LESSON_DATE]   = _normalizeLessonDateCell_(row[WQ25_LESSON_DATE]);
-    regRow[WR_STUDENT_EMAIL] = String(row[WQ25_STUDENT_EMAIL] || "").trim();
-    regRow[WR_STUDENT_NAME]  = String(row[WQ25_STUDENT_NAME]  || "").trim();
+    regRow[WR_LESSON_DATE]   = _normalizeLessonDateCell_(row[WQ.LESSON_DATE]);
+    regRow[WR_STUDENT_EMAIL] = String(row[WQ.STUDENT_EMAIL] || "").trim();
+    regRow[WR_STUDENT_NAME]  = String(row[WQ.STUDENT_NAME]  || "").trim();
     regRow[WR_TEACHER_EMAIL] = teacherEmail;
     regRow[WR_DOC_ID]        = docId;
     regRow[WR_DOC_URL]       = docUrl;
@@ -488,9 +467,9 @@ function _selectWarmUpsToScore_(wrData, wqData, textBox, teacherEmail, now) {
   const queueRowByQueueId = {};
   const notMeeting = {}; // set NOT_MEETING by 24's retireOffDayWarmUps(): never scored
   for (let i = 1; i < wqData.length; i++) {
-    const qId = String(wqData[i][WQ25_QUEUE_ID] || "").trim();
+    const qId = String(wqData[i][WQ.QUEUE_ID] || "").trim();
     if (qId) queueRowByQueueId[qId] = i + 1;
-    if (qId && String(wqData[i][WQ25_STATUS] || "").trim() === "NOT_MEETING") notMeeting[qId] = true;
+    if (qId && String(wqData[i][WQ.STATUS] || "").trim() === "NOT_MEETING") notMeeting[qId] = true;
   }
 
   const toEvaluate = []; // { wrRowNum, queueId, docId, queueRowNum, lessonDate, reason }
@@ -517,7 +496,7 @@ function _selectWarmUpsToScore_(wrData, wqData, textBox, teacherEmail, now) {
     if (totalScore === "" && lessonDate === yesterdayStr) {
       reason = "yesterday";
     } else if (totalScore === "" && lessonDate >= fromStr && lessonDate < yesterdayStr &&
-               String(wqRow[WQ25_STATUS] || "").trim() === "DELIVERED") {
+               String(wqRow[WQ.STATUS] || "").trim() === "DELIVERED") {
       reason = "missed_night";
     } else if (_answeredLate_(wqRow, textBox[queueId])) {
       reason = "late_answer";
@@ -573,7 +552,7 @@ function previewMissedWarmUpScoring() {
 // the student has since written on the Student Dashboard.
 function _answeredLate_(wqRow, tbEntry) {
   if (!wqRow || !tbEntry) return false;
-  if (String(wqRow[WQ25_STATUS] || "").trim() !== "INCOMPLETE") return false;
+  if (String(wqRow[WQ.STATUS] || "").trim() !== "INCOMPLETE") return false;
   return String(tbEntry.row[WTB.RESPONSE] || "").trim() !== "";
 }
 
@@ -585,7 +564,7 @@ function _stampWarmUpAnswered_(wqSheet, item, tbEntry) {
     const when = item.docId
       ? DriveApp.getFileById(item.docId).getLastUpdated()
       : (tbEntry && tbEntry.row[WTB.SUBMITTED_AT]) || "";
-    if (when) stampWarmUpTiming_(wqSheet, item.queueRowNum, WQ_TIMING.ANSWERED_AT, when);
+    if (when) stampWarmUpTiming_(wqSheet, item.queueRowNum, WQ.ANSWERED_AT, when);
   } catch (e) {
     Logger.log("[S25-J2] answered_at not recorded for queue " + item.queueId + ": " + e.message);
   }
@@ -697,8 +676,8 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId,
 
       const queueRowNum = queueRowByQueueId[queueId];
       if (queueRowNum) {
-        wqSheet.getRange(queueRowNum, WQ25_TOTAL_SCORE  + 1).setValue(newTotal);
-        wqSheet.getRange(queueRowNum, WQ25_EXTRA_CREDIT + 1).setValue(1);
+        wqSheet.getRange(queueRowNum, WQ.TOTAL_SCORE  + 1).setValue(newTotal);
+        wqSheet.getRange(queueRowNum, WQ.EXTRA_CREDIT + 1).setValue(1);
       }
       credited++;
     } else if (pastWindow) {
@@ -957,15 +936,15 @@ function _warmUpWordCountScore_(wordCount) {
 // ---------------------------------------------------------------------------
 function writeIncomplete_(wqSheet, queueRowNum, wrSheet, wrRowNum) {
   // Update WarmUpQueue row
-  const wqUpdates = wqSheet.getRange(queueRowNum, 1, 1, WQ25_COL_COUNT).getValues()[0];
-  wqUpdates[WQ25_STATUS]           = "INCOMPLETE";
-  wqUpdates[WQ25_WORD_COUNT]       = 0;
-  wqUpdates[WQ25_WORD_COUNT_SCORE] = 0;
-  wqUpdates[WQ25_GRAMMAR_SCORE]    = 0;
-  wqUpdates[WQ25_ENGAGEMENT_SCORE] = 0;
-  wqUpdates[WQ25_EXTRA_CREDIT]     = 0;
-  wqUpdates[WQ25_TOTAL_SCORE]      = 0;
-  wqSheet.getRange(queueRowNum, 1, 1, WQ25_COL_COUNT).setValues([wqUpdates]);
+  const wqUpdates = wqSheet.getRange(queueRowNum, 1, 1, WQ_BASE_WIDTH).getValues()[0];
+  wqUpdates[WQ.STATUS]           = "INCOMPLETE";
+  wqUpdates[WQ.WORD_COUNT]       = 0;
+  wqUpdates[WQ.WORD_COUNT_SCORE] = 0;
+  wqUpdates[WQ.GRAMMAR_SCORE]    = 0;
+  wqUpdates[WQ.ENGAGEMENT_SCORE] = 0;
+  wqUpdates[WQ.EXTRA_CREDIT]     = 0;
+  wqUpdates[WQ.TOTAL_SCORE]      = 0;
+  wqSheet.getRange(queueRowNum, 1, 1, WQ_BASE_WIDTH).setValues([wqUpdates]);
 
   // Update WarmUpRegistry
   wrSheet.getRange(wrRowNum, WR_TOTAL_SCORE + 1).setValue(0);
@@ -980,13 +959,13 @@ function writeIncomplete_(wqSheet, queueRowNum, wrSheet, wrRowNum) {
 function writePreEvalScores_(wqSheet, queueRowNum,
                               wordCount, wordCountScore, responseText,
                               extraCredit) {
-  const row = wqSheet.getRange(queueRowNum, 1, 1, WQ25_COL_COUNT).getValues()[0];
-  row[WQ25_STATUS]           = "PENDING_EVAL";
-  row[WQ25_WORD_COUNT]       = wordCount;
-  row[WQ25_WORD_COUNT_SCORE] = wordCountScore;
-  row[WQ25_EXTRA_CREDIT]     = extraCredit;
-  row[WQ25_RESPONSE_TEXT]    = responseText.substring(0, 5000); // cap at 5000 chars
-  wqSheet.getRange(queueRowNum, 1, 1, WQ25_COL_COUNT).setValues([row]);
+  const row = wqSheet.getRange(queueRowNum, 1, 1, WQ_BASE_WIDTH).getValues()[0];
+  row[WQ.STATUS]           = "PENDING_EVAL";
+  row[WQ.WORD_COUNT]       = wordCount;
+  row[WQ.WORD_COUNT_SCORE] = wordCountScore;
+  row[WQ.EXTRA_CREDIT]     = extraCredit;
+  row[WQ.RESPONSE_TEXT]    = responseText.substring(0, 5000); // cap at 5000 chars
+  wqSheet.getRange(queueRowNum, 1, 1, WQ_BASE_WIDTH).setValues([row]);
 }
 
 // ---------------------------------------------------------------------------
@@ -996,13 +975,13 @@ function writePreEvalScores_(wqSheet, queueRowNum,
 // ---------------------------------------------------------------------------
 function writeFinalScores_(wqSheet, queueRowNum,
                             grammar, engagement, feedback, total) {
-  const row = wqSheet.getRange(queueRowNum, 1, 1, WQ25_COL_COUNT).getValues()[0];
-  row[WQ25_STATUS]           = "SCORED";
-  row[WQ25_GRAMMAR_SCORE]    = grammar;
-  row[WQ25_ENGAGEMENT_SCORE] = engagement;
-  row[WQ25_TOTAL_SCORE]      = total;
-  row[WQ25_FLOW4_FEEDBACK]   = _capFeedback_(feedback);
-  wqSheet.getRange(queueRowNum, 1, 1, WQ25_COL_COUNT).setValues([row]);
+  const row = wqSheet.getRange(queueRowNum, 1, 1, WQ_BASE_WIDTH).getValues()[0];
+  row[WQ.STATUS]           = "SCORED";
+  row[WQ.GRAMMAR_SCORE]    = grammar;
+  row[WQ.ENGAGEMENT_SCORE] = engagement;
+  row[WQ.TOTAL_SCORE]      = total;
+  row[WQ.FLOW4_FEEDBACK]   = _capFeedback_(feedback);
+  wqSheet.getRange(queueRowNum, 1, 1, WQ_BASE_WIDTH).setValues([row]);
 }
 
 function _capFeedback_(feedback) {

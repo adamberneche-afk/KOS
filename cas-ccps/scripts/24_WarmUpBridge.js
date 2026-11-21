@@ -51,30 +51,8 @@
 // ── WarmUpQueue column indices (0-based) — canonical order ───────────────────
 // Must match createWarmUpTabs_() header definition in Script 23
 // and WR_ constants in Script 25.
-const WQ24_QUEUE_ID             = 0;
-const WQ24_LESSON_ID            = 1;
-const WQ24_STUDENT_EMAIL        = 2;
-const WQ24_STUDENT_NAME         = 3;
-const WQ24_GOOGLE_ID            = 4;
-const WQ24_LESSON_DATE          = 5;
-const WQ24_LESSON_CTX_SNAP      = 6;
-const WQ24_STUDENT_PROFILE_SNAP = 7;
-const WQ24_STATUS               = 8;
-const WQ24_DOC_ID               = 9;
-const WQ24_DOC_URL              = 10;
-const WQ24_WORD_COUNT           = 11;
-const WQ24_WORD_COUNT_SCORE     = 12;
-const WQ24_GRAMMAR_SCORE        = 13;
-const WQ24_ENGAGEMENT_SCORE     = 14;
-const WQ24_EXTRA_CREDIT         = 15;
-const WQ24_TOTAL_SCORE          = 16;
-const WQ24_FLOW4_FEEDBACK       = 17;
-const WQ24_RESPONSE_TEXT        = 18; // Script 25 writes extracted response
-const WQ24_ARCHETYPE            = 19; // Flow 3 writes selected archetype back to queue row
-const WQ24_BRIDGE_OUTPUT        = 20; // Flow 5 writes bridge paragraph (prior → today)
 
 // Total column count for WarmUpQueue — update if schema changes
-const WQ24_COL_COUNT = 21;
 
 // ── LessonContext column indices (0-based) — from Script 22 ──────────────────
 const LC24_LESSON_ID        = 0;
@@ -330,20 +308,20 @@ function buildWarmUpQueues() {
       // ── Look up prior warm-up response for Flow 5 bridging ────────────────
       // Flow 5 takes the student's most recent scored response and the
       // current lesson's pacing_prior_connection to generate a bridge
-      // paragraph. The bridge is written to WQ24_BRIDGE_OUTPUT by Flow 5
+      // paragraph. The bridge is written to WQ.BRIDGE_OUTPUT by Flow 5
       // and can be prepended to the student's warm-up doc by Flow 3.
       const priorResponse = getPriorWarmUpResponse_(
         wqData, student.email, lesson.lessonId
       );
 
-      const row     = new Array(WQ24_COL_COUNT).fill("");
+      const row     = new Array(WQ_BASE_WIDTH).fill("");
 
-      row[WQ24_QUEUE_ID]             = queueId;
-      row[WQ24_LESSON_ID]            = lesson.lessonId;
-      row[WQ24_STUDENT_EMAIL]        = student.email;
-      row[WQ24_STUDENT_NAME]         = student.name;
-      row[WQ24_GOOGLE_ID]            = student.email; // same in this system
-      row[WQ24_LESSON_DATE]          = tomorrowStr;
+      row[WQ.QUEUE_ID]             = queueId;
+      row[WQ.LESSON_ID]            = lesson.lessonId;
+      row[WQ.STUDENT_EMAIL]        = student.email;
+      row[WQ.STUDENT_NAME]         = student.name;
+      row[WQ.GOOGLE_ID]            = student.email; // same in this system
+      row[WQ.LESSON_DATE]          = tomorrowStr;
       // Per-student snapshot: embed prior warm-up response for Flow 5
       let studentSnapshot = snapshotObj;
       if (priorResponse) {
@@ -354,14 +332,14 @@ function buildWarmUpQueues() {
         });
       }
 
-      row[WQ24_LESSON_CTX_SNAP]      = JSON.stringify(studentSnapshot);
-      row[WQ24_STUDENT_PROFILE_SNAP] = JSON.stringify(profileSnapshot || {});
+      row[WQ.LESSON_CTX_SNAP]      = JSON.stringify(studentSnapshot);
+      row[WQ.STUDENT_PROFILE_SNAP] = JSON.stringify(profileSnapshot || {});
       // Every row starts at PENDING (2026-11-01). Until then a row with a
       // prior response started at PENDING_BRIDGE for Flow 5's bridge, and
       // Flow 5 moved it to PENDING. Flow 5 is merged into Flow 3, which
       // writes the lead-in from flow5_prior_response in the snapshot (41).
       // A PENDING_BRIDGE row made before then is built for Flow 3 too.
-      row[WQ24_STATUS]               = "PENDING";
+      row[WQ.STATUS]               = "PENDING";
       // Scoring columns default to "" — written by S25 and Flow 4
 
       rowsToWrite.push(row);
@@ -377,7 +355,7 @@ function buildWarmUpQueues() {
 
     // ── Batch write all rows for this period ──────────────────────────────
     const startRow = wqSheet.getLastRow() + 1;
-    wqSheet.getRange(startRow, 1, rowsToWrite.length, WQ24_COL_COUNT)
+    wqSheet.getRange(startRow, 1, rowsToWrite.length, WQ_BASE_WIDTH)
       .setValues(rowsToWrite);
 
     totalQueued += rowsToWrite.length;
@@ -644,8 +622,8 @@ function buildExistingQueueKeys_(wqData) {
   if (wqData.length < 2) return keys;
 
   for (let i = 1; i < wqData.length; i++) {
-    const lessonId = String(wqData[i][WQ24_LESSON_ID]     || "").trim();
-    const email    = String(wqData[i][WQ24_STUDENT_EMAIL] || "").trim().toLowerCase();
+    const lessonId = String(wqData[i][WQ.LESSON_ID]     || "").trim();
+    const email    = String(wqData[i][WQ.STUDENT_EMAIL] || "").trim().toLowerCase();
     if (lessonId && email) keys.add(lessonId + "|" + email);
   }
 
@@ -697,15 +675,15 @@ function getPriorWarmUpResponse_(wqData, studentEmail, currentLessonId) {
 
   for (let i = 1; i < wqData.length; i++) {
     const row = wqData[i];
-    const rowEmail    = String(row[WQ24_STUDENT_EMAIL] || "").trim().toLowerCase();
-    const rowStatus   = String(row[WQ24_STATUS]        || "").trim();
-    const rowLessonId = String(row[WQ24_LESSON_ID]     || "").trim();
+    const rowEmail    = String(row[WQ.STUDENT_EMAIL] || "").trim().toLowerCase();
+    const rowStatus   = String(row[WQ.STATUS]        || "").trim();
+    const rowLessonId = String(row[WQ.LESSON_ID]     || "").trim();
     // _normalizeLessonDateCell_ — see 22_LessonContextHandler.js. The
     // "most recent" comparison below (`rowDate > best.lessonDate`) relies
     // on lexicographic YYYY-MM-DD ordering also being chronological
     // ordering, which breaks if this cell got silently coerced to a Date.
-    const rowDate     = _normalizeLessonDateCell_(row[WQ24_LESSON_DATE]);
-    const rowResponse = String(row[WQ24_RESPONSE_TEXT] || "").trim();
+    const rowDate     = _normalizeLessonDateCell_(row[WQ.LESSON_DATE]);
+    const rowResponse = String(row[WQ.RESPONSE_TEXT] || "").trim();
 
     if (rowEmail    !== emailLower)    continue;
     if (rowLessonId === currentLessonId) continue; // skip today's lesson
@@ -717,8 +695,8 @@ function getPriorWarmUpResponse_(wqData, studentEmail, currentLessonId) {
       best = {
         responseText: rowResponse.substring(0, 800), // cap at 800 chars for snapshot
         lessonDate:   rowDate,
-        totalScore:   Number(row[WQ24_TOTAL_SCORE] || 0),
-        queueId:      String(row[WQ24_QUEUE_ID]    || "").trim()
+        totalScore:   Number(row[WQ.TOTAL_SCORE] || 0),
+        queueId:      String(row[WQ.QUEUE_ID]    || "").trim()
       };
     }
   }
@@ -777,10 +755,10 @@ function validateQueueBuild() {
 
   for (let i = 1; i < data.length; i++) {
     const row         = data[i];
-    const studentEmail = String(row[WQ24_STUDENT_EMAIL] || "").trim();
-    const status       = String(row[WQ24_STATUS]        || "").trim();
+    const studentEmail = String(row[WQ.STUDENT_EMAIL] || "").trim();
+    const status       = String(row[WQ.STATUS]        || "").trim();
     // _normalizeLessonDateCell_ — see 22_LessonContextHandler.js.
-    const lessonDate   = _normalizeLessonDateCell_(row[WQ24_LESSON_DATE]);
+    const lessonDate   = _normalizeLessonDateCell_(row[WQ.LESSON_DATE]);
 
     // Check if this row's lesson_date is tomorrow
     const tomorrow = formatDateYMD_(getTomorrow_());
@@ -791,7 +769,7 @@ function validateQueueBuild() {
 
     // Count by period — extract from lesson context snapshot
     try {
-      const snap = JSON.parse(String(row[WQ24_LESSON_CTX_SNAP] || "{}"));
+      const snap = JSON.parse(String(row[WQ.LESSON_CTX_SNAP] || "{}"));
       const p = snap.period || "unknown";
       periodCounts[p] = (periodCounts[p] || 0) + 1;
     } catch (e) {}
@@ -871,22 +849,22 @@ function retireOffDayWarmUps_(opts) {
   const wq = ss.getSheetByName(cfg.tabs.warmUpQueue);
   if (wq && wq.getLastRow() > 1) {
     const textBox = readWarmUpTextBox_(ss);
-    const rows = wq.getRange(2, 1, wq.getLastRow() - 1, WQ24_COL_COUNT).getValues();
+    const rows = wq.getRange(2, 1, wq.getLastRow() - 1, WQ_BASE_WIDTH).getValues();
     rows.forEach((r, i) => {
-      const status = String(r[WQ24_STATUS] || "").trim();
+      const status = String(r[WQ.STATUS] || "").trim();
       if (["PENDING_BRIDGE", "PENDING", "DELIVERED"].indexOf(status) === -1) return;
-      if (String(r[WQ24_TOTAL_SCORE] || "").trim() !== "") return;
-      const dateStr = _normalizeLessonDateCell_(r[WQ24_LESSON_DATE]);
+      if (String(r[WQ.TOTAL_SCORE] || "").trim() !== "") return;
+      const dateStr = _normalizeLessonDateCell_(r[WQ.LESSON_DATE]);
       const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateStr);
       if (!m) return;
       result.checked++;
-      const types = meets[periodOf[String(r[WQ24_GOOGLE_ID] || "").trim().toLowerCase()] || ""];
+      const types = meets[periodOf[String(r[WQ.GOOGLE_ID] || "").trim().toLowerCase()] || ""];
       if (!types) { result.unknownPeriod++; return; }
       if (types.DAILY || types.DAILY_HALF || types[getDayType_(new Date(+m[1], +m[2] - 1, +m[3]))]) return;
-      const tb = textBox[String(r[WQ24_QUEUE_ID] || "").trim()];
+      const tb = textBox[String(r[WQ.QUEUE_ID] || "").trim()];
       if (tb && String(tb.row[WTB.RESPONSE] || "").trim()) { result.answeredKept++; return; }
       result.retired++;
-      if (apply) wq.getRange(i + 2, WQ24_STATUS + 1).setValue(WQ_NOT_MEETING);
+      if (apply) wq.getRange(i + 2, WQ.STATUS + 1).setValue(WQ_NOT_MEETING);
     });
   }
   result.message = (apply ? "Set " : "DRY RUN: would set ") + result.retired + " warm-up(s) to " +

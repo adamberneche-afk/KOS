@@ -1501,7 +1501,24 @@ From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.1, the first tab:
   `LEDGER_LATER_HEADERS`, 07's turn-in headers and `LEDGER_COL_COUNT` come
   from it. A new Ledger made by setup now gets all 27 header cells at once,
   rather than 23 and the last four on first use.
-- `tests/cas-ccps/ledger-columns.test.js` holds `LEDGER` and `LEDGER_HEADERS`
+- `tests/cas-ccps/tab-columns.test.js` (then `ledger-columns.test.js`) holds `LEDGER` and `LEDGER_HEADERS`
   in step and fails if a script declares its own copy again.
 
 WarmUpQueue (five maps, no canonical one) is next.
+
+## WarmUpQueue's columns in one place, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.1, the second tab:
+
+- Five files kept their own copy of WarmUpQueue's column numbers: 13
+  (`DASH_WQ_*`), 23 (`WQ23_*`), 24 (`WQ24_*`), 25 (`WQ25_*`) and 34
+  (`WD_WARMUP_QUEUE_COLUMNS`), plus 41's `WFB_PROFILE_SNAP` and 00's
+  `WQ_TIMING`. All agreed. They now read one map, `WQ` in 00, beside
+  `WQ_HEADERS` (all 24 headers) and `WQ_BASE_WIDTH` (21, what 24 writes).
+- 23's and 28's tab creation, 34's archive_status header, 35's preflight
+  width and 00's timing headers come from `WQ_HEADERS`.
+- gas-lint's column-map registry lists the one map; the test
+  (`tab-columns.test.js`, renamed from `ledger-columns.test.js`) holds `WQ`
+  and `WQ_HEADERS` in step and fails on a new copy.
+
+No column moved; every number is the one the code read before.

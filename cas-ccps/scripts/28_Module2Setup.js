@@ -1054,13 +1054,7 @@ function _createM2WarmUpTabs_(ss) {
     "warmup_scores","extra_credit_count","avg_engagement_score","last_updated",
     "shadow_matrix","unit_current"
   ]);
-  _createTabIfMissing28_(ss, "WarmUpQueue", [
-    "queue_id","lesson_id","student_email","student_name","google_id",
-    "lesson_date","lesson_context_snapshot","student_profile_snapshot",
-    "status","doc_id","doc_url","word_count","word_count_score",
-    "grammar_score","engagement_score","extra_credit","total_score",
-    "flow4_feedback","response_text","archetype","bridge_output"
-  ], [6]);
+  _createTabIfMissing28_(ss, "WarmUpQueue", WQ_HEADERS.slice(0, WQ_BASE_WIDTH), [6]);
   _createTabIfMissing28_(ss, "WarmUpRegistry", [
     "warmup_id","queue_id","lesson_id","lesson_date","student_email",
     "student_name","teacher_email","doc_id","doc_url","generated_at",

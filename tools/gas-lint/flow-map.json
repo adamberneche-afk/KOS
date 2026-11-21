@@ -42,29 +42,12 @@
       ]
     },
     "cas-ccps:WarmUpQueue": {
-      "why": "21 columns indexed by hardcoded constants in three scripts, which is why 41_WarmUpFlowBridge.js added tabs instead of columns. Two prefixed constant runs and one object map describe the same sheet.",
-      "authoritative": "WQ24_* in 24_WarmUpBridge.js, the script that writes the rows",
+      "why": "24 writes the rows, 23, 25, 13, 34 and 41 read them by position. Until 2026-11-21 five files each kept a copy of the column numbers; now there is one, 00's WQ, beside WQ_HEADERS. One map, declared so a second copy is added here rather than beside it.",
+      "authoritative": "WQ in 00_SharedConfig.js",
       "maps": [
         {
-          "file": "cas-ccps/scripts/24_WarmUpBridge.js",
-          "prefix": "WQ24_",
-          "exclude": [
-            "COL_COUNT"
-          ]
-        },
-        {
-          "file": "cas-ccps/scripts/25_WarmUpWriter.js",
-          "prefix": "WQ25_",
-          "exclude": [
-            "COL_COUNT"
-          ]
-        },
-        {
-          "file": "cas-ccps/scripts/34_QueueWatchdog.js",
-          "object": "WD_WARMUP_QUEUE_COLUMNS",
-          "exclude": [
-            "ARCHIVE_STATUS"
-          ]
+          "file": "cas-ccps/scripts/00_SharedConfig.js",
+          "object": "WQ"
         }
       ]
     },

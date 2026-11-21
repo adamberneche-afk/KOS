@@ -103,7 +103,7 @@ function runFlowPreflightCheck() {
 
   results.push(_pfCheckTab_(ss, 'RubricQueue', 10)); // Flow 1 — see WD_RUBRIC_QUEUE_COLUMNS
   results.push(_pfCheckTab_(ss, 'STAGING_PIPELINE', 6)); // Flow 2 — see WD_STAGING_PIPELINE_COLUMNS
-  results.push(_pfCheckTab_(ss, 'WarmUpQueue', 21)); // Flows 3/4/5 — see WD_WARMUP_QUEUE_COLUMNS
+  results.push(_pfCheckTab_(ss, 'WarmUpQueue', WQ_BASE_WIDTH)); // Flows 3/4 — 00's WQ
   results.push(_pfCheckTab_(ss, 'WarmUpRegistry', 12)); // Flow 4's finalizeWarmUpScore target
   // 8, not 9 — archive_status (roadmap 2.2) is self-healing
   // (_ensureCompetencyEvidenceArchiveColumn_, 30_SCRSuggestionEngine.js)

@@ -45,16 +45,16 @@ const EXPOSE = [
   'wfbFormatList_', 'wfbFormatEvaluationSignals_', 'wfbStripFence_',
   'wfbNormalizeDateIso_', 'wfbFormatReadableDate_', 'pivotFlagFor_', 'checkShadowMatrixInterrupts_',
   '_wfbDiagnoseReturnRow_', 'checkFlowBinding', 'checkFlow2Binding', '_wfbIsCanaryLeftover_', 'wfbRecentBindingCounts_', 'removeWarmUpFlowFixtures',
-  'WFB_ARCHETYPES', 'WFB_TRIGGER_STATUS', 'WFB_PROFILE_SNAP', 'WFB_RET',
+  'WFB_ARCHETYPES', 'WFB_TRIGGER_STATUS', 'WFB_RET',
   'WFB_RETURN_HEADERS', 'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS',
   'WFB_INPUT_TABS', 'WFB_RETURN_TAB',
-  'RESPONSE_ZONE_MARKER', 'WQ25_COL_COUNT', 'WQ25_QUEUE_ID', 'WQ25_STATUS',
-  'WQ25_LESSON_CTX_SNAP', 'WQ25_BRIDGE_OUTPUT',
+  'RESPONSE_ZONE_MARKER', 'WQ_BASE_WIDTH', 'WQ', 'WQ',
+  'WQ', 'WQ',
   // The plausibility gate and its harvest entry point
   '_wfbCheckPlausible_', '_wfbCollectText_', 'harvestWarmUpFlowReturns', 'wfbFindQueueRow_',
-  'WQ25_RESPONSE_TEXT', 'WQ25_DOC_ID', 'WQ25_WORD_COUNT_SCORE', 'WQ25_EXTRA_CREDIT',
-  'WQ25_GRAMMAR_SCORE', 'WQ25_ENGAGEMENT_SCORE', 'WQ25_TOTAL_SCORE', 'WQ25_STUDENT_NAME',
-  'WQ25_GOOGLE_ID', 'WQ25_LESSON_DATE', 'getConfig_',
+  'WQ', 'WQ', 'WQ', 'WQ',
+  'WQ', 'WQ', 'WQ', 'WQ',
+  'WQ', 'WQ', 'getConfig_',
 ];
 
 function load() {
@@ -309,13 +309,10 @@ test('a bare yyyy-MM-dd date is the lesson day, not the day before', () => {
 
 // ── Schema and wiring invariants ─────────────────────────────────────────────
 
-test('the profile snapshot column is named, and matches the writer', () => {
+test('the profile snapshot column is 00\'s WQ, right after the lesson snapshot', () => {
   const { exported } = load();
-  // 24_WarmUpBridge.js:60 declares WQ24_STUDENT_PROFILE_SNAP = 7 and is the
-  // code that writes it. 25_WarmUpWriter.js's WQ25_* constants skip 7, so
-  // this port names it rather than computing LESSON_CTX_SNAP + 1.
-  assert.equal(exported.WFB_PROFILE_SNAP, 7);
-  assert.equal(exported.WQ25_LESSON_CTX_SNAP, 6, 'and it sits right after the lesson snapshot');
+  assert.equal(exported.WQ.STUDENT_PROFILE_SNAP, 7);
+  assert.equal(exported.WQ.LESSON_CTX_SNAP, 6);
 });
 
 test('each flow triggers off an EXISTING WarmUpQueue status, not a new one', () => {
@@ -539,7 +536,7 @@ test('binding probe: a SHORT but valid output is not reported as missing', () =>
 // Flow 2, reused directly here rather than duplicated: a model can return
 // well-formed output without engaging with what it was actually given.
 // Flow 4's check needs no FERPA workaround the way Flow 2's did —
-// WQ25_RESPONSE_TEXT is already a documented, retained field this project
+// WQ.RESPONSE_TEXT is already a documented, retained field this project
 // legitimately holds (docs/FERPA_DATA_MAP.md's WarmUpQueue section).
 
 function setUpLedger(sandbox, exported) {
@@ -551,12 +548,12 @@ function setUpLedger(sandbox, exported) {
   const wq = ss.insertSheet('WarmUpQueue');
   // wfbFindQueueRow_ reads from row 2 on — a header row here, or its first
   // real data row is invisible to every apply function under test.
-  wq.appendRow(new Array(exported.WQ25_COL_COUNT).fill('header'));
+  wq.appendRow(new Array(exported.WQ_BASE_WIDTH).fill('header'));
   return { ss, wq };
 }
 
 function wqRow(exported, overrides) {
-  const row = new Array(exported.WQ25_COL_COUNT).fill('');
+  const row = new Array(exported.WQ_BASE_WIDTH).fill('');
   Object.keys(overrides || {}).forEach((k) => { row[Number(k)] = overrides[k]; });
   return row;
 }
@@ -615,8 +612,8 @@ test('harvestWarmUpFlowReturns: a Flow 5 return fails as an unknown flow and the
   const { wq } = setUpLedger(sandbox, exported);
   const queueId = 'WUQ-STRAY-5';
   wq.appendRow(wqRow(exported, {
-    [exported.WQ25_QUEUE_ID]: queueId,
-    [exported.WQ25_STATUS]: 'PENDING_BRIDGE',
+    [exported.WQ.QUEUE_ID]: queueId,
+    [exported.WQ.STATUS]: 'PENDING_BRIDGE',
   }));
   const returns = sandbox.SpreadsheetApp.openById(
     sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
@@ -627,11 +624,11 @@ test('harvestWarmUpFlowReturns: a Flow 5 return fails as an unknown flow and the
   const result = exported.harvestWarmUpFlowReturns();
   assert.equal(result.applied, 0, JSON.stringify(result));
   assert.equal(result.failed, 1, JSON.stringify(result));
-  assert.equal(exported.wfbFindQueueRow_(wq, queueId).row[exported.WQ25_STATUS], 'PENDING_BRIDGE');
+  assert.equal(exported.wfbFindQueueRow_(wq, queueId).row[exported.WQ.STATUS], 'PENDING_BRIDGE');
 });
 
 // ── Flow 4, through the real harvest ─────────────────────────────────────────
-// No Drive access needed: WQ25_DOC_ID is left blank, so writeFeedbackToDoc_
+// No Drive access needed: WQ.DOC_ID is left blank, so writeFeedbackToDoc_
 // is skipped (best-effort, per wfbApplyFlow4_'s own comment) and only the
 // score columns this test actually asserts on are touched.
 
@@ -640,11 +637,11 @@ test('harvestWarmUpFlowReturns (Flow 4): a grounded evaluation is applied and sc
   const { wq } = setUpLedger(sandbox, exported);
   const queueId = 'WUQ-GROUNDED-4';
   wq.appendRow(wqRow(exported, {
-    [exported.WQ25_QUEUE_ID]: queueId,
-    [exported.WQ25_STATUS]: 'PENDING_EVAL',
-    [exported.WQ25_RESPONSE_TEXT]: 'I think the supply chain bottleneck was caused by the vendor delay.',
-    [exported.WQ25_WORD_COUNT_SCORE]: 2,
-    [exported.WQ25_EXTRA_CREDIT]: 0,
+    [exported.WQ.QUEUE_ID]: queueId,
+    [exported.WQ.STATUS]: 'PENDING_EVAL',
+    [exported.WQ.RESPONSE_TEXT]: 'I think the supply chain bottleneck was caused by the vendor delay.',
+    [exported.WQ.WORD_COUNT_SCORE]: 2,
+    [exported.WQ.EXTRA_CREDIT]: 0,
   }));
 
   const returns = sandbox.SpreadsheetApp.openById(
@@ -660,8 +657,8 @@ test('harvestWarmUpFlowReturns (Flow 4): a grounded evaluation is applied and sc
   assert.equal(result.applied, 1, JSON.stringify(result));
 
   const after = exported.wfbFindQueueRow_(wq, queueId);
-  assert.equal(after.row[exported.WQ25_GRAMMAR_SCORE], 1);
-  assert.equal(after.row[exported.WQ25_TOTAL_SCORE], 5);
+  assert.equal(after.row[exported.WQ.GRAMMAR_SCORE], 1);
+  assert.equal(after.row[exported.WQ.TOTAL_SCORE], 5);
 });
 
 test('harvestWarmUpFlowReturns (Flow 4): a fabricated evaluation is caught before any score is written', () => {
@@ -669,11 +666,11 @@ test('harvestWarmUpFlowReturns (Flow 4): a fabricated evaluation is caught befor
   const { wq } = setUpLedger(sandbox, exported);
   const queueId = 'WUQ-FAB-4';
   wq.appendRow(wqRow(exported, {
-    [exported.WQ25_QUEUE_ID]: queueId,
-    [exported.WQ25_STATUS]: 'PENDING_EVAL',
-    [exported.WQ25_RESPONSE_TEXT]: 'I think the supply chain bottleneck was caused by the vendor delay.',
-    [exported.WQ25_WORD_COUNT_SCORE]: 2,
-    [exported.WQ25_EXTRA_CREDIT]: 0,
+    [exported.WQ.QUEUE_ID]: queueId,
+    [exported.WQ.STATUS]: 'PENDING_EVAL',
+    [exported.WQ.RESPONSE_TEXT]: 'I think the supply chain bottleneck was caused by the vendor delay.',
+    [exported.WQ.WORD_COUNT_SCORE]: 2,
+    [exported.WQ.EXTRA_CREDIT]: 0,
   }));
 
   const returns = sandbox.SpreadsheetApp.openById(
@@ -688,9 +685,9 @@ test('harvestWarmUpFlowReturns (Flow 4): a fabricated evaluation is caught befor
   assert.equal(result.applied, 0, JSON.stringify(result));
 
   const after = exported.wfbFindQueueRow_(wq, queueId);
-  assert.equal(String(after.row[exported.WQ25_GRAMMAR_SCORE] || ''), '',
+  assert.equal(String(after.row[exported.WQ.GRAMMAR_SCORE] || ''), '',
     'no score must be written for a fabricated evaluation');
-  assert.equal(after.row[exported.WQ25_STATUS], 'PENDING_EVAL', 'status must not advance to SCORED');
+  assert.equal(after.row[exported.WQ.STATUS], 'PENDING_EVAL', 'status must not advance to SCORED');
 });
 
 test('harvestWarmUpFlowReturns (Flow 4): a score outside the rubric\'s range is never written', () => {
@@ -698,11 +695,11 @@ test('harvestWarmUpFlowReturns (Flow 4): a score outside the rubric\'s range is 
   const { wq } = setUpLedger(sandbox, exported);
   const queueId = 'WUQ-RANGE-4';
   wq.appendRow(wqRow(exported, {
-    [exported.WQ25_QUEUE_ID]: queueId,
-    [exported.WQ25_STATUS]: 'PENDING_EVAL',
-    [exported.WQ25_RESPONSE_TEXT]: 'I think the supply chain bottleneck was caused by the vendor delay.',
-    [exported.WQ25_WORD_COUNT_SCORE]: 2,
-    [exported.WQ25_EXTRA_CREDIT]: 0,
+    [exported.WQ.QUEUE_ID]: queueId,
+    [exported.WQ.STATUS]: 'PENDING_EVAL',
+    [exported.WQ.RESPONSE_TEXT]: 'I think the supply chain bottleneck was caused by the vendor delay.',
+    [exported.WQ.WORD_COUNT_SCORE]: 2,
+    [exported.WQ.EXTRA_CREDIT]: 0,
   }));
   const returns = sandbox.SpreadsheetApp.openById(
     sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
@@ -717,8 +714,8 @@ test('harvestWarmUpFlowReturns (Flow 4): a score outside the rubric\'s range is 
   const result = exported.harvestWarmUpFlowReturns();
   assert.equal(result.applied, 0, JSON.stringify(result));
   const after = exported.wfbFindQueueRow_(wq, queueId);
-  assert.equal(String(after.row[exported.WQ25_TOTAL_SCORE] || ''), '', 'no total may be written');
-  assert.notEqual(after.row[exported.WQ25_STATUS], 'SCORED');
+  assert.equal(String(after.row[exported.WQ.TOTAL_SCORE] || ''), '', 'no total may be written');
+  assert.notEqual(after.row[exported.WQ.STATUS], 'SCORED');
 });
 
 // ── Flow 3's rejection path — the doc-creation guard ─────────────────────────
@@ -730,10 +727,10 @@ test('harvestWarmUpFlowReturns (Flow 3): a fabricated warm-up prompt is caught b
   const { wq } = setUpLedger(sandbox, exported);
   const queueId = 'WUQ-FAB-3';
   wq.appendRow(wqRow(exported, {
-    [exported.WQ25_QUEUE_ID]: queueId,
-    [exported.WQ25_STATUS]: 'PENDING_PROMPT',
-    [exported.WQ25_STUDENT_NAME]: 'Jordan Smith',
-    [exported.WQ25_LESSON_CTX_SNAP]: JSON.stringify({
+    [exported.WQ.QUEUE_ID]: queueId,
+    [exported.WQ.STATUS]: 'PENDING_PROMPT',
+    [exported.WQ.STUDENT_NAME]: 'Jordan Smith',
+    [exported.WQ.LESSON_CTX_SNAP]: JSON.stringify({
       admin_root_folder_id: 'root-folder-id',
       course_name: 'Business Operations',
       teacher_name: 'Ms. Rivera',
@@ -753,9 +750,9 @@ test('harvestWarmUpFlowReturns (Flow 3): a fabricated warm-up prompt is caught b
   assert.equal(result.applied, 0, JSON.stringify(result));
 
   const after = exported.wfbFindQueueRow_(wq, queueId);
-  assert.equal(String(after.row[exported.WQ25_DOC_ID] || ''), '',
+  assert.equal(String(after.row[exported.WQ.DOC_ID] || ''), '',
     'no doc must be created for a fabricated warm-up prompt');
-  assert.equal(after.row[exported.WQ25_STATUS], 'PENDING_PROMPT', 'status must not advance to DELIVERED');
+  assert.equal(after.row[exported.WQ.STATUS], 'PENDING_PROMPT', 'status must not advance to DELIVERED');
 });
 
 // ── Prompt substitution (P0-01) ──────────────────────────────────────────────
@@ -791,9 +788,9 @@ function builtPrompt(exported, builder, row) {
 }
 
 function queueRow(exported, lesson, profile) {
-  const row = new Array(exported.WQ25_COL_COUNT).fill('');
-  row[exported.WQ25_LESSON_CTX_SNAP] = JSON.stringify(lesson);
-  row[exported.WFB_PROFILE_SNAP] = JSON.stringify(profile || {});
+  const row = new Array(exported.WQ_BASE_WIDTH).fill('');
+  row[exported.WQ.LESSON_CTX_SNAP] = JSON.stringify(lesson);
+  row[exported.WQ.STUDENT_PROFILE_SNAP] = JSON.stringify(profile || {});
   return row;
 }
 
@@ -859,8 +856,8 @@ test('Flow 4 PromptText carries the prompt, the response and the word-count scor
   const { exported, sandbox } = loadWithPrompts();
   sandbox.evaluateWarmUpDoc_ = () => ({ promptText: 'ORIGINAL-PROMPT', responseText: 'STUDENT-RESPONSE' });
   const row = queueRow(exported, {}, {});
-  row[exported.WQ25_DOC_ID] = 'doc-1';
-  row[exported.WQ25_WORD_COUNT_SCORE] = 5;
+  row[exported.WQ.DOC_ID] = 'doc-1';
+  row[exported.WQ.WORD_COUNT_SCORE] = 5;
   const prompt = builtPrompt(exported, 'wfbBuildFlow4Row_', row);
   assert.deepEqual(exported.flowPromptPlaceholders_(prompt), []);
   assert.match(prompt, /ORIGINAL-PROMPT/);
@@ -972,9 +969,9 @@ test('a canary\'s leftover return row is not a binding problem; a live canary ro
   const ss = sandbox.SpreadsheetApp.create('Ledger');
   sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   const wq = ss.insertSheet(exported.getConfig_().tabs.warmUpQueue);
-  const qrow = new Array(exported.WQ25_COL_COUNT).fill('');
-  qrow[exported.WQ25_QUEUE_ID] = 'WUQ-1';
-  wq.appendRow(new Array(exported.WQ25_COL_COUNT).fill('h'));
+  const qrow = new Array(exported.WQ_BASE_WIDTH).fill('');
+  qrow[exported.WQ.QUEUE_ID] = 'WUQ-1';
+  wq.appendRow(new Array(exported.WQ_BASE_WIDTH).fill('h'));
   wq.appendRow(qrow);
   const ret = ss.insertSheet(exported.WFB_RETURN_TAB);
   ret.appendRow(exported.WFB_RETURN_HEADERS);
