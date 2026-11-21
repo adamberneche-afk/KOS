@@ -39,7 +39,7 @@ const C = 'cal@students.ccpsnet.net';   // archived
 const D = 'dee@students.ccpsnet.net';   // another teacher's
 const E = 'eli@students.ccpsnet.net';   // a period that doesn't meet tomorrow
 
-// A Ledger row with the columns the jobs read (23's LD_*, 24's LD24_*).
+// A Ledger row with the columns the jobs read (00's LEDGER).
 function ledgerRow({ email, name, teacher = TEACHER, period = '2', status = 'ACTIVE', fileId = '' }) {
   const r = new Array(27).fill('');
   r[1] = email; r[3] = fileId; r[4] = name; r[8] = teacher; r[10] = COURSE; r[11] = period; r[12] = status;

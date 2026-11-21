@@ -82,14 +82,8 @@ const SP_SHADOW_MATRIX          = 12; // JSON — per-student × per-unit archet
 const SP_UNIT_CURRENT           = 13; // current pacing guide unit_id as of last update
 const SP_COL_COUNT              = 14;
 
-// ── Ledger column indices (0-based) — Module 1 ───────────────────────────────
-const LD_GOOGLE_ID     = 1;
-const LD_FILE_ID       = 3;
-const LD_STUDENT_NAME  = 4;
-const LD_TEACHER_EMAIL = 8;
-const LD_PERIOD        = 11;
-const LD_STATUS        = 12;
-const LD_TERM          = 18;
+// Ledger columns: 00_SharedConfig.js's LEDGER (this file's copy was folded in
+// 2026-11-21, structure audit 3.1).
 
 // ── WarmUpQueue column indices (0-based) — must match Script 24 + 25 ─────────
 const WQ23_QUEUE_ID        = 0;
@@ -322,10 +316,10 @@ function buildStudentRoster_(ledgerData, teacherEmail, currentTerm) {
 
   for (let i = 1; i < ledgerData.length; i++) {
     const row    = ledgerData[i];
-    const tEmail = String(row[LD_TEACHER_EMAIL] || "").trim().toLowerCase();
-    const status = String(row[LD_STATUS]        || "").trim();
-    const term   = String(row[LD_TERM]          || "").trim();
-    const email  = String(row[LD_GOOGLE_ID]     || "").trim().toLowerCase();
+    const tEmail = String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
+    const status = String(row[LEDGER.STATUS]        || "").trim();
+    const term   = String(row[LEDGER.ACADEMIC_YEAR]          || "").trim();
+    const email  = String(row[LEDGER.GOOGLE_ID]     || "").trim().toLowerCase();
 
     if (tEmail !== teacherEmail.toLowerCase()) continue;
     if (status === "ARCHIVED")                 continue;
@@ -335,8 +329,8 @@ function buildStudentRoster_(ledgerData, teacherEmail, currentTerm) {
     seen.add(email);
     students.push({
       email:  email,
-      name:   String(row[LD_STUDENT_NAME] || "").trim(),
-      period: String(row[LD_PERIOD]       || "").trim()
+      name:   String(row[LEDGER.STUDENT_NAME] || "").trim(),
+      period: String(row[LEDGER.PERIOD]       || "").trim()
     });
   }
 
@@ -401,11 +395,11 @@ function buildEvalSignals_(stagingData, ledgerData, teacherEmail) {
   const fileToStudent = {};
   for (let i = 1; i < ledgerData.length; i++) {
     const row    = ledgerData[i];
-    const tEmail = String(row[LD_TEACHER_EMAIL] || "").trim().toLowerCase();
+    const tEmail = String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
     if (tEmail !== teacherEmail.toLowerCase()) continue;
-    const fileId   = String(row[LD_FILE_ID]     || "").trim();
-    const email    = String(row[LD_GOOGLE_ID]   || "").trim().toLowerCase();
-    const configId = String(row[LD_FILE_ID]     || "").trim(); // used as fallback key
+    const fileId   = String(row[LEDGER.FILE_ID]     || "").trim();
+    const email    = String(row[LEDGER.GOOGLE_ID]   || "").trim().toLowerCase();
+    const configId = String(row[LEDGER.FILE_ID]     || "").trim(); // used as fallback key
     if (fileId && email) fileToStudent[fileId] = { email, configId };
   }
 

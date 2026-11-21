@@ -76,15 +76,8 @@ const TM_SUBJECT           = 13;
 const TM_COURSE_NAME       = 14;
 // The competency IDs are found by header (s33CompetencyColumns_), not index.
 
-// ── Ledger column indices (0-based) — from Module 1 ──────────────────────────
-const LD33_GOOGLE_ID      = 1;
-const LD33_CONFIG_ID      = 2;
-const LD33_FILE_ID        = 3;
-const LD33_STUDENT_NAME   = 4;
-const LD33_TEACHER_EMAIL  = 8;
-const LD33_PERIOD         = 11;
-const LD33_STATUS         = 12;
-const LD33_TERM           = 18;
+// Ledger columns: 00_SharedConfig.js's LEDGER (this file's copy was folded in
+// 2026-11-21, structure audit 3.1).
 
 // ── STAGING_PIPELINE column indices (0-based) — from Module 1 ────────────────
 // Resolved dynamically by header name — stored here for documentation
@@ -217,13 +210,13 @@ function syncArtifactCompetencies() {
 
   for (let i = 1; i < ledgerData.length; i++) {
     const row      = ledgerData[i];
-    const tEmail   = String(row[LD33_TEACHER_EMAIL] || "").trim().toLowerCase();
-    const status   = String(row[LD33_STATUS]        || "").trim();
-    const term     = String(row[LD33_TERM]          || "").trim();
-    const email    = String(row[LD33_GOOGLE_ID]     || "").trim().toLowerCase();
-    const fileId   = String(row[LD33_FILE_ID]       || "").trim();
-    const configId = String(row[LD33_CONFIG_ID]     || "").trim();
-    const period   = String(row[LD33_PERIOD]        || "").trim();
+    const tEmail   = String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
+    const status   = String(row[LEDGER.STATUS]        || "").trim();
+    const term     = String(row[LEDGER.ACADEMIC_YEAR]          || "").trim();
+    const email    = String(row[LEDGER.GOOGLE_ID]     || "").trim().toLowerCase();
+    const fileId   = String(row[LEDGER.FILE_ID]       || "").trim();
+    const configId = String(row[LEDGER.CONFIG_ID]     || "").trim();
+    const period   = String(row[LEDGER.PERIOD]        || "").trim();
 
     if (tEmail !== teacherEmail.toLowerCase()) continue;
     if (status === "ARCHIVED") continue;

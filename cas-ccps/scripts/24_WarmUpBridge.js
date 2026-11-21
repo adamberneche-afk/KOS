@@ -96,14 +96,8 @@ const CS_DAY_TYPE      = 2;
 const CS_COURSE_NAME   = 3;
 const CS_ACTIVE        = 4;
 
-// ── Ledger column indices (0-based) — from Module 1 ──────────────────────────
-const LD24_GOOGLE_ID     = 1;
-const LD24_STUDENT_NAME  = 4;
-const LD24_TEACHER_EMAIL = 8;
-const LD24_COURSE_NAME   = 10;
-const LD24_PERIOD        = 11;
-const LD24_STATUS        = 12;
-const LD24_TERM          = 18;
+// Ledger columns: 00_SharedConfig.js's LEDGER (this file's copy was folded in
+// 2026-11-21, structure audit 3.1).
 
 // ---------------------------------------------------------------------------
 // buildWarmUpQueues — primary entry point
@@ -580,23 +574,23 @@ function getEnrolledStudents_(ledgerData, teacherEmail, period, currentTerm, cou
 
   for (let i = 1; i < ledgerData.length; i++) {
     const row    = ledgerData[i];
-    const tEmail = String(row[LD24_TEACHER_EMAIL] || "").trim().toLowerCase();
-    const lPeriod = String(row[LD24_PERIOD]       || "").trim();
-    const status = String(row[LD24_STATUS]        || "").trim();
-    const term   = String(row[LD24_TERM]          || "").trim();
-    const email  = String(row[LD24_GOOGLE_ID]     || "").trim().toLowerCase();
+    const tEmail = String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
+    const lPeriod = String(row[LEDGER.PERIOD]       || "").trim();
+    const status = String(row[LEDGER.STATUS]        || "").trim();
+    const term   = String(row[LEDGER.ACADEMIC_YEAR]          || "").trim();
+    const email  = String(row[LEDGER.GOOGLE_ID]     || "").trim().toLowerCase();
 
     if (tEmail  !== teacherEmail.toLowerCase()) continue;
     if (lPeriod !== period)                     continue;
     if (status  === "ARCHIVED")                 continue;
     if (!sameSchoolYearTerm_(term, currentTerm)) continue;
-    if (courseCode && courseCodeFromName_(row[LD24_COURSE_NAME]) !== courseCode) continue;
+    if (courseCode && courseCodeFromName_(row[LEDGER.COURSE_NAME]) !== courseCode) continue;
     if (!email || seen.has(email))              continue;
 
     seen.add(email);
     students.push({
       email: email,
-      name:  String(row[LD24_STUDENT_NAME] || "").trim()
+      name:  String(row[LEDGER.STUDENT_NAME] || "").trim()
     });
   }
 
@@ -865,12 +859,12 @@ function retireOffDayWarmUps_(opts) {
   const ledger = ss.getSheetByName(cfg.tabs.ledger);
   if (ledger && ledger.getLastRow() > 1) {
     ledger.getDataRange().getValues().slice(1).forEach(r => {
-      if (String(r[LD24_TEACHER_EMAIL] || "").trim().toLowerCase() !== teacherEmail) return;
-      if (String(r[LD24_STATUS] || "").trim() === "ARCHIVED") return;
-      const term = String(r[LD24_TERM] || "").trim();
+      if (String(r[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== teacherEmail) return;
+      if (String(r[LEDGER.STATUS] || "").trim() === "ARCHIVED") return;
+      const term = String(r[LEDGER.ACADEMIC_YEAR] || "").trim();
       if (!sameSchoolYearTerm_(term, currentTerm)) return;
-      const account = String(r[LD24_GOOGLE_ID] || "").trim().toLowerCase();
-      if (account) periodOf[account] = String(r[LD24_PERIOD] || "").trim();
+      const account = String(r[LEDGER.GOOGLE_ID] || "").trim().toLowerCase();
+      if (account) periodOf[account] = String(r[LEDGER.PERIOD] || "").trim();
     });
   }
 

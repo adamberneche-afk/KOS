@@ -325,18 +325,9 @@ function createAdminAssets_(adminEmail, orgName) {
   let ledgerSheet = ledgerSs.getSheetByName("Ledger");
   if (!ledgerSheet) {
     ledgerSheet = ledgerSs.getActiveSheet().setName("Ledger");
-    setHeaders_(ledgerSheet, [
-      "Timestamp","GoogleID","ConfigID","FileID","StudentName",
-      "Block","ClassName","TeacherName","TeacherEmail","Subject",
-      "CourseName","Period","Status","SubmissionTS","Notes",
-      "LastEval","AdminFileURL","StudentFileURL","AcademicYear",
-      // Columns 20-23 (Say/Do Ledger cas-ccps finding #1) — the turn-in
-      // review flow's AI-suggested and teacher-final scores. A Ledger
-      // created before this feature existed self-heals the same 4 columns
-      // on first use via 04_Form2_TurnInGate.js's _ensureTurnInReviewColumns_
-      // rather than needing a separate migration step.
-      "SuggestedScore","FinalScore","ScoreDecidedBy","ScoreDecidedAt"
-    ]);
+    // The full header row from 00_SharedConfig.js (LEDGER_HEADERS); an older
+    // Ledger gets the later columns on first use.
+    setHeaders_(ledgerSheet, LEDGER_HEADERS.slice());
   }
 
   if (!ledgerSs.getSheetByName("ReviewQueue")) {

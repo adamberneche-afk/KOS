@@ -1486,3 +1486,22 @@ From meta/AUDIT_STRUCTURE_2026-11-20.md, 2.3 and 2.4:
 
 After the next push, run `syncFlowPromptsToSheet()` once: the FlowPrompts
 tab is rewritten without its FLOW_5 row.
+
+## Audit step 3 begins: the Ledger's columns in one place, 2026-11-21
+
+From meta/AUDIT_STRUCTURE_2026-11-20.md, 3.1, the first tab:
+
+- 03, 23, 24 and 33 each kept their own copy of the Ledger's column
+  numbers (`L_*`, `LD_*`, `LD24_*`, `LD33_*`). All agreed with 00's
+  `LEDGER`; they now read `LEDGER` (the `TERM` copies are
+  `LEDGER.ACADEMIC_YEAR`).
+- The header row is `LEDGER_HEADERS` in 00, beside `LEDGER`. 38's schema
+  guard checks against it (its own copy, `LEDGER_CANONICAL_HEADERS`, is
+  gone, and its 19 is `LEDGER_BASE_WIDTH`), 16's setup writes it, and
+  `LEDGER_LATER_HEADERS`, 07's turn-in headers and `LEDGER_COL_COUNT` come
+  from it. A new Ledger made by setup now gets all 27 header cells at once,
+  rather than 23 and the last four on first use.
+- `tests/cas-ccps/ledger-columns.test.js` holds `LEDGER` and `LEDGER_HEADERS`
+  in step and fails if a script declares its own copy again.
+
+WarmUpQueue (five maps, no canonical one) is next.
