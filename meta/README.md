@@ -62,6 +62,10 @@ or `archive/INDEX.md`); 4.4 of `AUDIT_STRUCTURE_2026-11-20.md` filed the last ba
   and from `kos-personal/rtp-core-router/protocols/` (same file, filed in
   both places) since its methodology applies across systems, not just to
   kos-personal's own governance.
+- **Drive Steward, on hold (the operator, 2026-11-21):** the methodology doc
+  and `drive-steward-deploy/` below are kept, not archived. Automated Drive
+  maintenance will be needed; it waits until CAS and KOS are prepared for a
+  second user's deployment (structure audit 4.12).
 - **`drive-steward-deploy/`** — the methodology doc's Part 5: a
   ready-to-paste Apps Script package (scanner, weekly Wilson-score
   calibration, Sheet setup) plus a Studio Flow configuration spec, so

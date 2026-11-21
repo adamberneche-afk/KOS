@@ -1,5 +1,7 @@
 # Drive curation
 
+**On hold (the operator, 2026-11-21):** kept, not archived. Automated Drive maintenance will be needed; this waits until CAS and KOS are prepared for a second user's deployment (structure audit 4.12).
+
 Filed here for reference during Round 3 reconciliation, at the user's
 explicit request — **this is not part of either software system in this
 repo.** It is included so nothing is lost, not because it integrates with
