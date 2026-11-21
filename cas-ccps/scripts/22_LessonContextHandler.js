@@ -540,23 +540,23 @@ function createModule2Tabs_() {
   // createLessonContextWarmUpColumn_(), deleted 2026-11-07) at all — and so the frame columns that follow it can never
   // land in its slot. See LCTX.WARM_UP_GENERATED's own comment above for why
   // that matters.
-  _createTabIfMissing_(ss, cfg.tabs.lessonContext, LCTX_HEADERS.slice(), [4]);
+  ensureTab_(ss, cfg.tabs.lessonContext, LCTX_HEADERS.slice(), { textColumns: [4] });
 
   // CompetencyRegistry
-  _createTabIfMissing_(ss, cfg.tabs.competencyRegistry, [
+  ensureTab_(ss, cfg.tabs.competencyRegistry, [
     "competency_id", "competency_text", "subject", "grade_band",
     "strand", "teacher_email", "active"
   ]);
 
   // AlignmentLog — same lesson_date risk, same fix (col 4).
-  _createTabIfMissing_(ss, cfg.tabs.alignmentLog, [
+  ensureTab_(ss, cfg.tabs.alignmentLog, [
     "log_id", "lesson_id", "logged_at", "lesson_date",
     "teacher_email", "learning_objective", "competency_id",
     "competency_text", "strand"
-  ], [4]);
+  ], { textColumns: [4] });
 
   // ReportRegistry — append-only record of every generated alignment report
-  _createTabIfMissing_(ss, cfg.tabs.reportRegistry, [
+  ensureTab_(ss, cfg.tabs.reportRegistry, [
     "report_id", "generated_at", "term", "teacher_email",
     "doc_id", "doc_url", "report_type"
   ]);
@@ -564,22 +564,3 @@ function createModule2Tabs_() {
   Logger.log("[S22] Module 2 tab creation complete.");
 }
 
-// textColumns: optional array of 1-based column indices to force to plain
-// text format, so ISO-date-shaped strings written into them later never
-// get silently auto-converted to a real Date value by Sheets.
-function _createTabIfMissing_(ss, tabName, headers, textColumns) {
-  if (ss.getSheetByName(tabName)) {
-    Logger.log("[S22] Tab '" + tabName + "' already exists — skipping.");
-    return;
-  }
-  const sheet = ss.insertSheet(tabName);
-  sheet.getRange(1, 1, 1, headers.length)
-    .setValues([headers])
-    .setFontWeight("bold")
-    .setBackground("#f3f3f3");
-  sheet.setFrozenRows(1);
-  (textColumns || []).forEach(col => {
-    sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("@");
-  });
-  Logger.log("[S22] Created tab: " + tabName);
-}

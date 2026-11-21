@@ -1163,7 +1163,7 @@ function createWarmUpTabs_() {
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
 
-  _createTabIfAbsent_(ss, cfg.tabs.studentProfiles, [
+  ensureTab_(ss, cfg.tabs.studentProfiles, [
     "student_email", "student_name", "google_id", "teacher_email", "period",
     "competencies_addressed", "competency_gaps", "evaluation_signals",
     "warmup_scores", "extra_credit_count", "avg_engagement_score", "last_updated",
@@ -1171,20 +1171,20 @@ function createWarmUpTabs_() {
   ]);
 
   // lesson_date (col 6) forced to text format — see the textColumns comment
-  // on _createTabIfAbsent_ below. This is a documented fallback tab-creation
+  // on 00's ensureTab_. This is a documented fallback tab-creation
   // path (run manually when Script 28's setup wizard hasn't run yet) that
   // otherwise reintroduces the exact Sheets-auto-coercion bug already fixed
   // for 22_LessonContextHandler.js's and 28_Module2Setup.js's tab creators.
-  _createTabIfAbsent_(ss, cfg.tabs.warmUpQueue, WQ_HEADERS.slice(0, WQ_BASE_WIDTH), [6]);
+  ensureTab_(ss, cfg.tabs.warmUpQueue, WQ_HEADERS.slice(0, WQ_BASE_WIDTH), { textColumns: [6] });
 
   // lesson_date (col 4) — same reasoning as above.
-  _createTabIfAbsent_(ss, cfg.tabs.warmUpRegistry, [
+  ensureTab_(ss, cfg.tabs.warmUpRegistry, [
     "warmup_id", "queue_id", "lesson_id", "lesson_date", "student_email",
     "student_name", "teacher_email", "doc_id", "doc_url", "generated_at",
     "total_score", "extra_credit", "term"
-  ], [4]);
+  ], { textColumns: [4] });
 
-  _createTabIfAbsent_(ss, cfg.tabs.classSchedule, [
+  ensureTab_(ss, cfg.tabs.classSchedule, [
     "teacher_email", "period", "day_type", "course_name", "active"
   ]);
 
@@ -1192,9 +1192,9 @@ function createWarmUpTabs_() {
   // Created here so they exist before the import scripts run.
   // Content populated by importPacingGuide() (S29) and
   // importCompetencyRubrics() (S30) — read-only after import.
-  _createTabIfAbsent_(ss, "PacingGuide", PG_HEADERS.slice());
+  ensureTab_(ss, "PacingGuide", PG_HEADERS.slice());
 
-  _createTabIfAbsent_(ss, "CompetencyRubrics", [
+  ensureTab_(ss, "CompetencyRubrics", [
     "competency_id","course","task_number","duty_area",
     "competency_text","demonstration_standard",
     "demonstration_indicators","skill_questions"
@@ -1203,30 +1203,6 @@ function createWarmUpTabs_() {
   Logger.log("[S23] Warm-up tab creation complete.");
 }
 
-// textColumns: optional array of 1-based column indices to force to plain
-// text format, so ISO-date-shaped strings ("YYYY-MM-DD") written into them
-// later never get silently auto-converted to a real Date value by Sheets —
-// mirrors 22_LessonContextHandler.js's _createTabIfMissing_ and
-// 28_Module2Setup.js's _createTabIfMissing28_. This function previously had
-// no such parameter at all, so tabs created through this fallback path
-// (used when Script 28's setup wizard hasn't run yet) had zero protection
-// against the exact lesson_date coercion bug fixed everywhere else.
-function _createTabIfAbsent_(ss, tabName, headers, textColumns) {
-  if (ss.getSheetByName(tabName)) {
-    Logger.log("[S23] Tab '" + tabName + "' already exists — skipping.");
-    return;
-  }
-  const sheet = ss.insertSheet(tabName);
-  sheet.getRange(1, 1, 1, headers.length)
-    .setValues([headers])
-    .setFontWeight("bold")
-    .setBackground("#f3f3f3");
-  sheet.setFrozenRows(1);
-  (textColumns || []).forEach(col => {
-    sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("@");
-  });
-  Logger.log("[S23] Created tab: " + tabName);
-}
 
 // ---------------------------------------------------------------------------
 // validateStudentProfiles — run manually to check data integrity

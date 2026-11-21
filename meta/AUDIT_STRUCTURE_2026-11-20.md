@@ -1,6 +1,6 @@
 # Audit: structural debt (2026-11-20)
 
-**Status:** findings; section 1 (1.1-1.3) built 2026-11-20 (#515); section 2's 2.1, 2.2, 2.5, 2.7 and part of 2.6 built 2026-11-20 in the PR after #515 (cas-ccps/HISTORY.md says what stayed and why); 2.3 and 2.4 built 2026-11-20 (#517); 3.1 built 2026-11-21 for the Ledger (#518), WarmUpQueue (#519), TeacherMatrix, RubricQueue and ReviewQueue (#520), LessonContext (#521), and PacingGuide in the PR after #521; 3.2-3.5 next; the rest open.
+**Status:** findings; section 1 (1.1-1.3) built 2026-11-20 (#515); section 2's 2.1, 2.2, 2.5, 2.7 and part of 2.6 built 2026-11-20 in the PR after #515 (cas-ccps/HISTORY.md says what stayed and why); 2.3 and 2.4 built 2026-11-20 (#517); 3.1 built 2026-11-21 for the Ledger (#518), WarmUpQueue (#519), TeacherMatrix, RubricQueue and ReviewQueue (#520), LessonContext (#521), PacingGuide (#522); 3.2 (one ensureTab_) in the PR after #522; 3.3-3.5 next; the rest open.
 Asked by the operator: "Our scripts are becoming disjointed and clumsy. What
 can we fold in together? What is redundant without purpose? Is our codebase
 navigable and intuitive?" Three read-only reviews (cas-ccps scripts; tools,

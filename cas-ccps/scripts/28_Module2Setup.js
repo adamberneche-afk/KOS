@@ -1028,45 +1028,45 @@ function _createM2LightweightTabs_(ss) {
   // (22_LessonContextHandler.js / 24_WarmUpBridge.js).
   // All 18 headers (00's LCTX_HEADERS); this list stopped at "term" until
   // 2026-11-21, leaving warm_up_generated's header blank on a tab made here.
-  _createTabIfMissing28_(ss, "LessonContext", LCTX_HEADERS.slice(), [4]);
-  _createTabIfMissing28_(ss, "CompetencyRegistry", [
+  ensureTab_(ss, "LessonContext", LCTX_HEADERS.slice(), { textColumns: [4] });
+  ensureTab_(ss, "CompetencyRegistry", [
     "competency_id","competency_text","subject","grade_band",
     "strand","teacher_email","active"
   ]);
-  _createTabIfMissing28_(ss, "AlignmentLog", [
+  ensureTab_(ss, "AlignmentLog", [
     "log_id","lesson_id","logged_at","lesson_date",
     "teacher_email","learning_objective","competency_id",
     "competency_text","strand"
-  ], [4]);
-  _createTabIfMissing28_(ss, "ReportRegistry", [
+  ], { textColumns: [4] });
+  ensureTab_(ss, "ReportRegistry", [
     "report_id","generated_at","term","teacher_email",
     "doc_id","doc_url","report_type"
   ]);
 }
 
 function _createM2WarmUpTabs_(ss) {
-  _createTabIfMissing28_(ss, "StudentProfiles", [
+  ensureTab_(ss, "StudentProfiles", [
     "student_email","student_name","google_id","teacher_email","period",
     "competencies_addressed","competency_gaps","evaluation_signals",
     "warmup_scores","extra_credit_count","avg_engagement_score","last_updated",
     "shadow_matrix","unit_current"
   ]);
-  _createTabIfMissing28_(ss, "WarmUpQueue", WQ_HEADERS.slice(0, WQ_BASE_WIDTH), [6]);
-  _createTabIfMissing28_(ss, "WarmUpRegistry", [
+  ensureTab_(ss, "WarmUpQueue", WQ_HEADERS.slice(0, WQ_BASE_WIDTH), { textColumns: [6] });
+  ensureTab_(ss, "WarmUpRegistry", [
     "warmup_id","queue_id","lesson_id","lesson_date","student_email",
     "student_name","teacher_email","doc_id","doc_url","generated_at",
     "total_score","extra_credit","term","extra_credit_checked"
-  ], [4]);
-  _createTabIfMissing28_(ss, "ClassSchedule", [
+  ], { textColumns: [4] });
+  ensureTab_(ss, "ClassSchedule", [
     "teacher_email","period","day_type","course_name","active"
   ]);
 
   // ── Pacing guide + competency rubric tabs ─────────────────────────────────
   // Headers only — content populated by importPacingGuide() (S29)
   // and importCompetencyRubrics() (S30) after upload.
-  _createTabIfMissing28_(ss, "PacingGuide", PG_HEADERS.slice());
+  ensureTab_(ss, "PacingGuide", PG_HEADERS.slice());
 
-  _createTabIfMissing28_(ss, "CompetencyRubrics", [
+  ensureTab_(ss, "CompetencyRubrics", [
     "competency_id","course","task_number","duty_area",
     "competency_text","demonstration_standard",
     "demonstration_indicators","skill_questions"
@@ -1094,24 +1094,6 @@ function _addWarmUpGeneratedColumn_(ss) {
   Logger.log("[S28] warm_up_generated column added.");
 }
 
-// textColumns: optional array of 1-based column indices to force to plain
-// text format, so ISO-date-shaped strings ("YYYY-MM-DD") written into them
-// later never get silently auto-converted to a real Date value by Sheets —
-// see 22_LessonContextHandler.js's _normalizeLessonDateCell_ for the bug
-// this prevents.
-function _createTabIfMissing28_(ss, tabName, headers, textColumns) {
-  if (ss.getSheetByName(tabName)) return;
-  const sheet = ss.insertSheet(tabName);
-  sheet.getRange(1, 1, 1, headers.length)
-    .setValues([headers])
-    .setFontWeight("bold")
-    .setBackground("#f3f3f3");
-  sheet.setFrozenRows(1);
-  (textColumns || []).forEach(col => {
-    sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("@");
-  });
-  Logger.log("[S28] Created tab: " + tabName);
-}
 
 // =============================================================================
 // MISPLACED TRIGGERS — ones this wizard used to install in this project

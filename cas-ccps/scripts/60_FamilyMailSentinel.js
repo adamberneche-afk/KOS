@@ -314,11 +314,11 @@ function removeFamilySentinelTrigger() {
 // One-time setup: tabs, labels, the signal doc. Safe to re-run.
 function setupFamilySentinel() {
   const ss = _fmsSpreadsheet_();
-  _fmsEnsureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
-  _fmsEnsureTab_(ss, FMS_RETURN_TAB, FMS_RETURN_HEADERS);
-  _fmsEnsureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
-  _fmsEnsureTab_(ss, FMS_CONTACTS_TAB, FMS_CONTACTS_HEADERS);
-  _fmsEnsureTab_(ss, FMS_NICKNAMES_TAB, FMS_NICKNAMES_HEADERS);
+  ensureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
+  ensureTab_(ss, FMS_RETURN_TAB, FMS_RETURN_HEADERS);
+  ensureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
+  ensureTab_(ss, FMS_CONTACTS_TAB, FMS_CONTACTS_HEADERS);
+  ensureTab_(ss, FMS_NICKNAMES_TAB, FMS_NICKNAMES_HEADERS);
   const labels = _fmsEnsureLabels_();
   const doc = _fmsSignalDoc_();
   syncFamilyMailFlowBuildSpec();
@@ -344,8 +344,8 @@ function setupFamilySentinel() {
 function scanFamilyMail(opts) {
   opts = opts || {};
   const ss = _fmsSpreadsheet_();
-  const logSheet = _fmsEnsureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
-  const inputSheet = _fmsEnsureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
+  const logSheet = ensureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const inputSheet = ensureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
   const seen = {};
   _fmsRows_(logSheet).forEach(function (r) { seen[String(r[FMS_LOG.MESSAGE_ID])] = true; });
 
@@ -639,7 +639,7 @@ function _fmsSafetyTripwire_(text) {
 // system sender are reclassified, the label stays). Logs counts only.
 function reclassifySystemSenderThreads(dryRun) {
   const apply = dryRun === false;
-  const logSheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const logSheet = ensureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
   const rows = _fmsRows_(logSheet);
   const out = { dryRun: !apply, checked: 0, systemMessages: 0, reclassified: 0, threads: 0,
     labelsRemoved: 0, keptSafety: 0, keptLabelMixed: 0, unreadable: 0 };
@@ -775,9 +775,9 @@ function _fmsStripQuoted_(body) {
 // "couldn't classify", with its course and waiting time.
 function harvestFamilyMailReturns() {
   const ss = _fmsSpreadsheet_();
-  const inputSheet = _fmsEnsureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
-  const returnSheet = _fmsEnsureTab_(ss, FMS_RETURN_TAB, FMS_RETURN_HEADERS);
-  const logSheet = _fmsEnsureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const inputSheet = ensureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
+  const returnSheet = ensureTab_(ss, FMS_RETURN_TAB, FMS_RETURN_HEADERS);
+  const logSheet = ensureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
   const inputs = _fmsRows_(inputSheet);
   const returns = _fmsRows_(returnSheet);
   const logRows = _fmsRows_(logSheet);
@@ -898,7 +898,7 @@ function harvestFamilyMailReturns() {
 // mail text longer. Returns the number written again.
 function _fmsRetryStaleInputs_(now) {
   now = now ? new Date(now) : new Date();
-  const sheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_INPUT_TAB, FMS_INPUT_HEADERS);
+  const sheet = ensureTab_(_fmsSpreadsheet_(), FMS_INPUT_TAB, FMS_INPUT_HEADERS);
   const rows = _fmsRows_(sheet);
   const tries = {};
   rows.forEach(function (r) {
@@ -1040,7 +1040,7 @@ function _fmsGrounded_(ask, promptText) {
 function writeFamilySignal(now) {
   now = now ? new Date(now) : new Date();
   const ss = _fmsSpreadsheet_();
-  const logSheet = _fmsEnsureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const logSheet = ensureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
   const since = now.getTime() - FMS_SIGNAL_DAYS * 24 * 3600 * 1000;
   const rows = _fmsRows_(logSheet).filter(function (r) {
     const st = String(r[FMS_LOG.STATUS]);
@@ -1384,7 +1384,7 @@ function _fmsNameParts_(name) {
 // blank since 2026-10-23, when teachers began sending reports themselves).
 function _fmsLoadContacts_(ss) {
   const contacts = {};
-  const tab = _fmsEnsureTab_(ss, FMS_CONTACTS_TAB, FMS_CONTACTS_HEADERS);
+  const tab = ensureTab_(ss, FMS_CONTACTS_TAB, FMS_CONTACTS_HEADERS);
   _fmsRows_(tab).forEach(function (r) {
     const p = String(r[0] || "").trim().toLowerCase();
     if (p) contacts[p] = String(r[1] || "").trim().toLowerCase();
@@ -1438,7 +1438,7 @@ function sendFamilySafetyAlerts(now) {
   const topic = String(props.getProperty("FAMILY_ALERT_NTFY_TOPIC") || "").trim();
   if (!topic) return { sent: 0, reason: "FAMILY_ALERT_NTFY_TOPIC not set" };
 
-  const logSheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const logSheet = ensureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
   const rows = _fmsRows_(logSheet);
   const since = now.getTime() - FMS_ALERT_LOOKBACK_HOURS * 3600 * 1000;
   const alertedThreads = {};
@@ -1525,7 +1525,7 @@ function makeFamilyAlertTopic(replace) {
 // sendFamilyAlertTest() only proves ntfy reaches the phone; this proves the
 // sentinel would push for a flagged message. It counts toward the daily cap.
 function runFamilySafetyAlertFixture() {
-  const logSheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const logSheet = ensureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
   const id = FMS_FIXTURE_PREFIX + "SAFETY-" + Date.now();
   const row = _fmsBlankLogRow_();
   row[FMS_LOG.MESSAGE_ID] = id;
@@ -1630,9 +1630,9 @@ function runFamilySentinelPreflight() {
 // the Flow; checkFamilyMailFlowLiveness() does.
 function runFamilyMailCanary() {
   const ss = _fmsSpreadsheet_();
-  const inputSheet = _fmsEnsureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
-  const returnSheet = _fmsEnsureTab_(ss, FMS_RETURN_TAB, FMS_RETURN_HEADERS);
-  const logSheet = _fmsEnsureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const inputSheet = ensureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
+  const returnSheet = ensureTab_(ss, FMS_RETURN_TAB, FMS_RETURN_HEADERS);
+  const logSheet = ensureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS);
   const itemId = FMS_CANARY_PREFIX + Date.now();
   const msg = _fmsSyntheticMessage_();
   const roster = { byEmail: {}, students: [{ email: "x@student.ccpsnet.net", first: "jordan", last: "rivers", course: "8175", period: "3" }] };
@@ -1671,9 +1671,9 @@ function _fmsSyntheticMessage_() {
 // answers with an empty Primary_JSON.
 function checkFamilyMailFlowBinding() {
   const ss = _fmsSpreadsheet_();
-  const returns = _fmsRows_(_fmsEnsureTab_(ss, FMS_RETURN_TAB, FMS_RETURN_HEADERS));
-  const inputs = _fmsRows_(_fmsEnsureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS));
-  const logRows = _fmsRows_(_fmsEnsureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS));
+  const returns = _fmsRows_(ensureTab_(ss, FMS_RETURN_TAB, FMS_RETURN_HEADERS));
+  const inputs = _fmsRows_(ensureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS));
+  const logRows = _fmsRows_(ensureTab_(ss, FMS_LOG_TAB, FMS_LOG_HEADERS));
   const known = {};
   inputs.forEach(function (r) { known[String(r[FMS_IN.ITEM_ID])] = true; });
   logRows.forEach(function (r) { known[FMS_ITEM_PREFIX + String(r[FMS_LOG.MESSAGE_ID])] = true; });
@@ -1691,7 +1691,7 @@ function checkFamilyMailFlowBinding() {
 // Has the Flow ever answered? Counts real classifications and fixture
 // answers, and reports the newest of each.
 function checkFamilyMailFlowLiveness() {
-  const rows = _fmsRows_(_fmsEnsureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS));
+  const rows = _fmsRows_(ensureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS));
   let real = 0, fixtures = 0, lastReal = null, lastFixture = null;
   rows.forEach(function (r) {
     const st = String(r[FMS_LOG.STATUS]);
@@ -1718,7 +1718,7 @@ function checkFamilyMailFlowLiveness() {
 // as FIXTURE, never shown in the signal doc. Idempotent per day.
 function installFamilyMailFixture() {
   const ss = _fmsSpreadsheet_();
-  const inputSheet = _fmsEnsureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
+  const inputSheet = ensureTab_(ss, FMS_INPUT_TAB, FMS_INPUT_HEADERS);
   const itemId = FMS_FIXTURE_PREFIX + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd");
   if (_fmsFindIndex_(_fmsRows_(inputSheet), FMS_IN.ITEM_ID, itemId) !== -1) {
     return { installed: false, itemId: itemId };
@@ -1773,22 +1773,6 @@ function _fmsOperatorEmail_() {
 
 // Makes the tab, or adds headers appended since it was made (FamilyMailLog's
 // Needs_Reply, 2026-10-20), when the ones it has are the start of the list.
-function _fmsEnsureTab_(ss, name, headers) {
-  let sh = ss.getSheetByName(name);
-  if (!sh) {
-    sh = ss.insertSheet(name);
-    sh.getRange(1, 1, 1, headers.length).setValues([headers]);
-    return sh;
-  }
-  const width = sh.getLastColumn();
-  if (width > 0 && width < headers.length) {
-    const have = sh.getRange(1, 1, 1, width).getValues()[0].map(String);
-    if (have.every(function (h, i) { return h === headers[i]; })) {
-      sh.getRange(1, width + 1, 1, headers.length - width).setValues([headers.slice(width)]);
-    }
-  }
-  return sh;
-}
 
 // Data rows below the header, as arrays.
 function _fmsRows_(sheet) {

@@ -150,3 +150,39 @@ test('no script keeps its own copy of PacingGuide\'s columns or header row', () 
   }
   assert.deepEqual(copies, [], 'use 00_SharedConfig.js\'s PG and PG_HEADERS');
 });
+
+// ── ensureTab_ (structure audit 3.2): the one "make sure this tab exists" ──
+test('ensureTab_: creates a missing tab with its headers once, and returns it', () => {
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')], ['ensureTab_']);
+  const ss = env.sandbox.SpreadsheetApp.create('Ledger');
+  const before = ss.getSheets().length;
+  const sheet = env.exported.ensureTab_(ss, 'Things', ['a', 'b', 'c'], { textColumns: [2] });
+  assert.ok(sheet && ss.getSheetByName('Things'));
+  const made = ss.getSheetByName('Things');
+  assert.deepEqual(made.getRange(1, 1, 1, 3).getValues()[0], ['a', 'b', 'c']);
+  assert.ok(env.exported.ensureTab_(ss, 'Things', ['a', 'b', 'c']), 'a second call returns the tab');
+  assert.equal(ss.getSheets().length, before + 1, 'and makes no second one');
+});
+
+test('ensureTab_: fills in trailing headers on a tab whose headers match, leaves a different one alone', () => {
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')], ['ensureTab_']);
+  const ss = env.sandbox.SpreadsheetApp.create('Ledger');
+  const older = ss.insertSheet('Older');
+  older.appendRow(['a', 'b']);
+  env.exported.ensureTab_(ss, 'Older', ['a', 'b', 'c', 'd']);
+  assert.deepEqual(older.getRange(1, 1, 1, older.getLastColumn()).getValues()[0], ['a', 'b', 'c', 'd']);
+  const other = ss.insertSheet('Other');
+  other.appendRow(['a', 'x']);
+  env.exported.ensureTab_(ss, 'Other', ['a', 'b', 'c']);
+  assert.deepEqual(other.getRange(1, 1, 1, other.getLastColumn()).getValues()[0], ['a', 'x'], 'not ours to change');
+});
+
+test('no script keeps its own create-the-tab helper', () => {
+  const found = [];
+  for (const f of fs.readdirSync(SCRIPTS).filter((n) => n.endsWith('.js'))) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    const m = src.match(/^function (_createTabIf\w+|_fmsEnsureTab_)\(/m);
+    if (m) found.push(f + ': ' + m[1]);
+  }
+  assert.deepEqual(found, [], 'use 00_SharedConfig.js\'s ensureTab_');
+});

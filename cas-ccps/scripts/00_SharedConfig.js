@@ -2227,6 +2227,40 @@ const LEDGER = {
   LAST_SUGGESTED_SCORE:   26,  // Flow 2's [SUGGESTED_SCORE: N] on the latest check, "" if none
 };
 
+// ensureTab_ — the one "make sure this tab exists" (structure audit 3.2,
+// 2026-11-21; seven near-copies in 22, 23, 28, 29, 30, 37 and 60 until then).
+// A missing tab is created with the header row (bold, grey, frozen); a
+// textColumns option (1-based) formats those columns as plain text, so a
+// "YYYY-MM-DD" string stays a string. An existing tab whose header row is a
+// prefix of `headers` gets the missing trailing headers (a column added since
+// it was made); one whose headers differ is left exactly as it is. Returns
+// the sheet.
+function ensureTab_(ss, tabName, headers, opts) {
+  opts = opts || {};
+  let sheet = ss.getSheetByName(tabName);
+  if (!sheet) {
+    sheet = ss.insertSheet(tabName);
+    sheet.getRange(1, 1, 1, headers.length)
+      .setValues([headers])
+      .setFontWeight("bold")
+      .setBackground("#f3f3f3");
+    sheet.setFrozenRows(1);
+    (opts.textColumns || []).forEach(function (col) {
+      sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("@");
+    });
+    Logger.log("[Tabs] Created tab: " + tabName);
+    return sheet;
+  }
+  const width = sheet.getLastColumn();
+  if (width > 0 && width < headers.length) {
+    const have = sheet.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim(); });
+    if (have.every(function (h, i) { return h === headers[i]; })) {
+      sheet.getRange(1, width + 1, 1, headers.length - width).setValues([headers.slice(width)]);
+    }
+  }
+  return sheet;
+}
+
 // PacingGuide: 31's importPacingGuide() writes it from the repo's pacing guide
 // JSON; 31 reads it. 23 and 28 created the tab with the first 16 headers
 // until 2026-11-21 (31's import rewrote the header row); all three use

@@ -152,18 +152,7 @@ const FI_HEADERS = [
 // A tab made before the last columns were appended gets their headers, so
 // a person reading the sheet sees what the cells are.
 function _fiEnsureTab_(ledgerSs, cfg) {
-  const tabName = (cfg && cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME;
-  let sheet = ledgerSs.getSheetByName(tabName);
-  if (!sheet) {
-    sheet = ledgerSs.insertSheet(tabName);
-    sheet.appendRow(FI_HEADERS);
-    return sheet;
-  }
-  const width = sheet.getLastColumn();
-  if (width > 0 && width < FI_HEADERS.length) {
-    sheet.getRange(1, width + 1, 1, FI_HEADERS.length - width).setValues([FI_HEADERS.slice(width)]);
-  }
-  return sheet;
+  return ensureTab_(ledgerSs, (cfg && cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME, FI_HEADERS);
 }
 
 // ---------------------------------------------------------------------------
