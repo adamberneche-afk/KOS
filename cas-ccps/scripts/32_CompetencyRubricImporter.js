@@ -87,9 +87,9 @@ function importCompetencyRubrics() {
   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
 
   // ── Ensure tab exists ─────────────────────────────────────────────────────
-  let crSheet = ss.getSheetByName("CompetencyRubrics");
+  let crSheet = ss.getSheetByName(TABS.competencyRubrics);
   if (!crSheet) {
-    crSheet = ss.insertSheet("CompetencyRubrics");
+    crSheet = ss.insertSheet(TABS.competencyRubrics);
     Logger.log("[S32] Created CompetencyRubrics tab.");
   }
 
@@ -189,7 +189,7 @@ function validateRubricImport() {
   requireScriptOwner_();
   const cfg   = getConfig_();
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName("CompetencyRubrics");
+  const sheet = ss.getSheetByName(TABS.competencyRubrics);
 
   if (!sheet || sheet.getLastRow() < 2) {
     Logger.log("[S32-VALIDATE] CompetencyRubrics tab empty or missing.");
@@ -316,7 +316,7 @@ function _buildArchetypeQuestionMap_(questions) {
 function _loadAllRubrics_() {
   const cfg   = getConfig_();
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName("CompetencyRubrics");
+  const sheet = ss.getSheetByName(TABS.competencyRubrics);
 
   if (!sheet || sheet.getLastRow() < 2) {
     Logger.log("[S32] CompetencyRubrics tab empty — run importCompetencyRubrics() first.");

@@ -65,7 +65,7 @@ function seedAssignments_(opts) {
   }
 
   const units = _asUnits_(opts);
-  const sheet = matrix.ss.getSheetByName("TeacherMatrix");
+  const sheet = matrix.ss.getSheetByName(TABS.teacherMatrix);
   const existing = {};
   if (sheet && sheet.getLastRow() > 1) {
     sheet.getRange(2, 1, sheet.getLastRow() - 1, 12).getValues().forEach(r => {
@@ -189,7 +189,7 @@ function refreshAssignments_(opts) {
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const result = { apply: apply, changed: [], unchanged: 0, notInRepo: 0, message: "" };
   const matrix = _asTeacherMatrix_(ss, cfg);
-  const sheet = matrix.ss && matrix.ss.getSheetByName("TeacherMatrix");
+  const sheet = matrix.ss && matrix.ss.getSheetByName(TABS.teacherMatrix);
   if (!sheet || sheet.getLastRow() < 2) {
     result.message = "No TeacherMatrix rows for this teacher. Nothing to refresh.";
     Logger.log("[S53] " + result.message);
@@ -315,7 +315,7 @@ function _asTeacherMatrix_(ss, cfg) {
 }
 
 function _asAddTab_(matrixSs) {
-  const tab = matrixSs.insertSheet("TeacherMatrix");
+  const tab = matrixSs.insertSheet(TABS.teacherMatrix);
   tab.getRange(1, 1, 1, TM_HEADERS.length).setValues([TM_HEADERS]).setFontWeight("bold");
   tab.setFrozenRows(1);
   return tab;

@@ -1391,7 +1391,7 @@ function _fmsLoadContacts_(ss) {
   });
   try {
     const cfg = getConfig_();
-    const log = cfg.ledgerSsId && SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.parentReportLog || "ParentReportLog");
+    const log = cfg.ledgerSsId && SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TABS.parentReportLog);
     if (log && log.getLastRow() > 1) {
       const head = log.getRange(1, 1, 1, log.getLastColumn()).getValues()[0].map(String);
       const si = head.indexOf("student_email"), ri = head.indexOf("recipient_address");

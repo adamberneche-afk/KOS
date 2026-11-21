@@ -121,8 +121,8 @@ function _s30Run_(opts) {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
 
-  const evidenceSheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
-  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  const evidenceSheet = ss.getSheetByName(TABS.competencyEvidence);
+  const suggestionsSheet = ss.getSheetByName(TABS.scrSuggestions);
 
   const summary = { dryRun: dryRun, pairs: 0, newRows: 0, updated: 0, unchanged: 0, skippedFrozen: 0 };
   if (!evidenceSheet) {
@@ -380,7 +380,7 @@ function getStudentScrStandingForCompetencies_(studentEmail, competencyIds) {
   if (!_scrStandingRawCache_) {
     const cfg = getConfig_();
     const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-    const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+    const suggestionsSheet = ss.getSheetByName(TABS.scrSuggestions);
     if (!suggestionsSheet) { _scrStandingRawCache_ = { data: [], compTextMap: {} }; }
     else {
       const registrySheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
@@ -486,7 +486,7 @@ function _ensureScrDecisionLogArchiveColumn_(sheet) {
 function _archiveExpiredScrDecisions_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+  const sheet = ss.getSheetByName(TABS.scrDecisionLog);
   if (!sheet) return { archived: 0, checked: 0 };
 
   _ensureScrDecisionLogArchiveColumn_(sheet);
@@ -532,7 +532,7 @@ function _archiveExpiredScrDecisions_() {
 function _countScrDecisionsPastRetentionUnarchived_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+  const sheet = ss.getSheetByName(TABS.scrDecisionLog);
   if (!sheet) return 0;
 
   const cutoff = _retentionCutoff_(_scrRetentionYears_());
@@ -604,7 +604,7 @@ function _ensureCompetencyEvidenceArchiveColumn_(sheet) {
 function _archiveExpiredCompetencyEvidence_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  const sheet = ss.getSheetByName(TABS.competencyEvidence);
   if (!sheet) return { archived: 0, checked: 0 };
 
   _ensureCompetencyEvidenceArchiveColumn_(sheet);
@@ -654,7 +654,7 @@ function _archiveExpiredCompetencyEvidence_() {
 function _countCompetencyEvidencePastRetentionUnarchived_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  const sheet = ss.getSheetByName(TABS.competencyEvidence);
   if (!sheet) return 0;
 
   const data = sheet.getDataRange().getValues();
@@ -718,7 +718,7 @@ function reactivateCompetencyEvidence() {
   if (confirm !== ui.Button.YES) return;
 
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  const sheet = ss.getSheetByName(TABS.competencyEvidence);
   if (!sheet) { ui.alert("⚠️ CompetencyEvidence tab not found."); return; }
 
   const data = sheet.getDataRange().getValues();
@@ -776,7 +776,7 @@ function reactivateCompetencyEvidence() {
 function exportToWorkbookGrid_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+  const decisionLogSheet = ss.getSheetByName(TABS.scrDecisionLog);
   const ledgerSheet = ss.getSheetByName(cfg.tabs.ledger);
 
   if (!decisionLogSheet || !ledgerSheet) {
@@ -1032,7 +1032,7 @@ function exportScrDecisionLogForAudit() {
 // the Module 2 block):
 //
 //   menu.addSeparator();
-//   if (!ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions")) {
+//   if (!ss.getSheetByName(TABS.scrSuggestions)) {
 //     menu.addItem("📐 Set Up Student Competency Records (Module 5)", "createSCRTabs_");
 //   } else {
 //     menu.addItem("📐 Module 5 Status", "installSCRTrigger_");
@@ -1050,19 +1050,19 @@ function createSCRTabs_() {
   // cas-ccps/studio-steps/CommitStudentEvaluationStep.gs /
   // 15c_Flow2DirectEvaluationService.js) must stay byte-identical here —
   // see tests/cas-ccps/competency-evidence-schema-compat.test.js.
-  ensureTab_(ss, cfg.tabs.competencyEvidence || "CompetencyEvidence", [
+  ensureTab_(ss, TABS.competencyEvidence, [
     "evidence_id", "student_email", "competency_id", "milestone_text",
     "outcome", "config_id", "evaluated_at", "student_file_id", "archive_status"
   ]);
 
-  ensureTab_(ss, cfg.tabs.scrSuggestions || "SCRSuggestions", [
+  ensureTab_(ss, TABS.scrSuggestions, [
     "student_email", "competency_id", "suggested_rating",
     "met_count", "not_met_count", "partial_count",
     "status", "last_computed_at",
     "confirmed_rating", "confirmed_at", "confirmed_by"
   ]);
 
-  ensureTab_(ss, cfg.tabs.scrDecisionLog || "SCRDecisionLog", [
+  ensureTab_(ss, TABS.scrDecisionLog, [
     "decision_id", "student_email", "competency_id", "suggested_rating",
     "final_rating", "decision_type", "decided_at", "decided_by",
     "evidence_snapshot", "archive_status"
@@ -1097,9 +1097,9 @@ function installSCRTrigger_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   [
-    cfg.tabs.competencyEvidence || "CompetencyEvidence",
-    cfg.tabs.scrSuggestions || "SCRSuggestions",
-    cfg.tabs.scrDecisionLog || "SCRDecisionLog",
+    TABS.competencyEvidence,
+    TABS.scrSuggestions,
+    TABS.scrDecisionLog,
   ].forEach(tabName => {
     const sheet = ss.getSheetByName(tabName);
     Logger.log("[S30] Tab '" + tabName + "': " + (sheet ? "FOUND" : "MISSING — run setupCompetencySuggestions() first, or confirm Flow 2 has been deployed for CompetencyEvidence."));
@@ -1177,7 +1177,7 @@ function buildCompetencySuggestionsNow() {
 // CONFIG KEYS THIS FILE EXPECTS (add to Script 00, same pattern as M2/M4
 // addenda — not written as a separate addendum file since this module's
 // tab-name keys are read with inline fallback defaults throughout this
-// file, e.g. cfg.tabs.scrSuggestions || "SCRSuggestions" — meaning this
+// file, e.g. TABS.scrSuggestions — meaning this
 // script runs correctly even before Script 00 is formally updated, then
 // picks up the formal config the moment it's added):
 //   tabs.competencyEvidence = "CompetencyEvidence"

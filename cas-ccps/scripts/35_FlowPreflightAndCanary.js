@@ -1079,7 +1079,7 @@ function showSetupStatus() {
 
 // Tabs, in guide order. `rows`: the tab must also have rows below its header.
 // Names as the code that makes each tab spells them (getConfig_().tabs,
-// FLOW_PROMPT_TAB in 40, FBS_TAB in 42, LS_TAB in 55, CRI_SECTION_MAP_TAB in
+// FLOW_PROMPT_TAB in 40, FBS_TAB in 42, TABS.lessonSchedule in 55, CRI_SECTION_MAP_TAB in
 // 52, CONFIG_TAB_NAME in 00); the test pins them to those constants.
 const SETUP_CHECKLIST_TABS = [
   { step: 2, tab: "Ledger",             fix: "run the Unified Manual's setup wizard (⚙️ Assignment System menu)" },
@@ -1240,7 +1240,7 @@ function setupChecklist_(all, resolved, handlers, cycleJobs) {
 // the fixture (StagingRowRef "FIXTURE", 39). Columns found by header.
 function setupFlow2Answers_(ss) {
   const res = { any: 0, real: 0 };
-  const sh = ss ? ss.getSheetByName("FlowInput") : null;
+  const sh = ss ? ss.getSheetByName(TABS.flowInput) : null;
   if (!sh || sh.getLastRow() < 2) return res;
   const width = sh.getLastColumn();
   const head = sh.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim(); });
@@ -1259,7 +1259,7 @@ function setupFlow2Answers_(ss) {
 // creates the tab (checkWarmUpFlowLiveness() does).
 function setupWarmUpReturns_(ss) {
   const res = { 3: 0, 4: 0 };
-  const sh = ss ? ss.getSheetByName("WarmUpFlowReturn") : null;
+  const sh = ss ? ss.getSheetByName(TABS.warmUpFlowReturn) : null;
   if (!sh || sh.getLastRow() < 2) return res;
   const width = sh.getLastColumn();
   const flowCol = sh.getRange(1, 1, 1, width).getValues()[0].map(function (h) { return String(h).trim(); }).indexOf("Flow");

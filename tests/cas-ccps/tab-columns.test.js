@@ -186,3 +186,23 @@ test('no script keeps its own create-the-tab helper', () => {
   }
   assert.deepEqual(found, [], 'use 00_SharedConfig.js\'s ensureTab_');
 });
+
+// ── Tab names (structure audit 3.3): one list, TABS in 00 ─────────────────
+test('tab names: no "tabs.x || literal" fallback, no file redeclaring a TABS name or another file\'s tab', () => {
+  const env = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js')], ['TABS']);
+  const names = new Set(Object.values(env.exported.TABS));
+  const found = [];
+  const owners = {};
+  for (const f of fs.readdirSync(SCRIPTS).filter((n) => n.endsWith('.js'))) {
+    const src = fs.readFileSync(path.join(SCRIPTS, f), 'utf8');
+    const fb = src.match(/tabs\)?\.\w+\)?\s*\|\|\s*"[A-Za-z_]+"/);
+    if (fb) found.push(f + ': ' + fb[0]);
+    for (const m of src.matchAll(/^(?:const|var) (\w*TAB\w*)\s*=\s*"([^"]+)"/gm)) {
+      if (names.has(m[2])) found.push(f + ': ' + m[1] + ' repeats TABS\'s "' + m[2] + '"');
+      (owners[m[2]] = owners[m[2]] || []).push(f);
+    }
+  }
+  Object.entries(owners).filter(([, fs2]) => fs2.length > 1)
+    .forEach(([n, fs2]) => found.push('"' + n + '" declared in ' + fs2.join(', ')));
+  assert.deepEqual(found, [], 'use 00_SharedConfig.js\'s TABS');
+});

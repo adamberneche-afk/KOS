@@ -148,7 +148,7 @@ let _lpSaCache_ = null;
 function _lpAssignmentOf_(ss) {
   if (_lpSaCache_) return _lpSaCache_;
   const out = {};
-  const sa = ss.getSheetByName("StudentAssignments");
+  const sa = ss.getSheetByName(TABS.studentAssignments);
   if (sa && sa.getLastRow() > 1) {
     sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
       const sid = String(r[0] || "").trim(), aid = String(r[2] || "").trim();
@@ -212,7 +212,7 @@ function _lpReady_(ss, cfg) {
   const ledger = ss.getSheetByName(cfg.tabs.ledger);
   if (!ledger || ledger.getLastRow() < 2) return { ledger: ledger, ready: [] };
   const assignmentOf = _lpAssignmentOf_(ss);
-  const outcomes = _lpLatestOutcomes_(ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence"));
+  const outcomes = _lpLatestOutcomes_(ss.getSheetByName(TABS.competencyEvidence));
   const data = ledger.getRange(1, 1, ledger.getLastRow(), LEDGER_COL_COUNT).getValues();
   // Each student's part rows: { "<googleId>|<lessonKey>": { n: { rowIndex, row, sid } } }.
   const byStudent = {};
@@ -276,8 +276,8 @@ function partUnlocksHaveWork_(ctx) {
   if (status === null) return false; // no Ledger tab: the job finds nothing
   if (!status.some(function (r) { return String(r[0]).trim() === "SCHEDULED"; })) return false;
   const sig = [status.length, ctx.digest(status),
-    ctx.lastRow("ledger", cfg.tabs.competencyEvidence || "CompetencyEvidence"),
-    ctx.lastRow("ledger", "StudentAssignments")].join(":");
+    ctx.lastRow("ledger", TABS.competencyEvidence),
+    ctx.lastRow("ledger", TABS.studentAssignments)].join(":");
   if (ctx.remembered("unlockReadyParts") === sig) return false;
   ctx.offer("unlockReadyParts", sig);
   return true;
@@ -344,7 +344,7 @@ function lockedPartReasons_(ss, cfg) {
   const ledger = ss.getSheetByName(cfg.tabs.ledger);
   if (!ledger || ledger.getLastRow() < 2) return out;
   const assignmentOf = _lpAssignmentOf_(ss);
-  const history = _lpEvidenceHistory_(ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence"));
+  const history = _lpEvidenceHistory_(ss.getSheetByName(TABS.competencyEvidence));
   const coded = _lpCodedStudentIds_(ss);
   const fromMs = Date.parse(LP_REGRADE_FROM), toMs = Date.parse(LP_REGRADE_TO);
   const data = ledger.getRange(1, 1, ledger.getLastRow(), LEDGER_COL_COUNT).getValues();

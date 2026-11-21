@@ -1192,9 +1192,9 @@ function createWarmUpTabs_() {
   // Created here so they exist before the import scripts run.
   // Content populated by importPacingGuide() (S29) and
   // importCompetencyRubrics() (S30) — read-only after import.
-  ensureTab_(ss, "PacingGuide", PG_HEADERS.slice());
+  ensureTab_(ss, TABS.pacingGuide, PG_HEADERS.slice());
 
-  ensureTab_(ss, "CompetencyRubrics", [
+  ensureTab_(ss, TABS.competencyRubrics, [
     "competency_id","course","task_number","duty_area",
     "competency_text","demonstration_standard",
     "demonstration_indicators","skill_questions"

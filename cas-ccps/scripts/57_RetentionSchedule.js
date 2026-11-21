@@ -81,23 +81,23 @@ function _retentionSchedule_() {
       where: ledger(function (cfg) { return cfg.tabs.ledger; }), dateCol: LEDGER.TIMESTAMP,
       docCol: LEDGER.FILE_ID, archived: archivedIn(LEDGER.STATUS, "ARCHIVED") },
     { label: "StudentAssignments", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
-      where: ledger(STUDENT_ASSIGNMENTS_TAB), dateCol: "RecordedAt" },
+      where: ledger(TABS.studentAssignments), dateCol: "RecordedAt" },
     { label: "StudentDocRegistry", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
       where: ledger(function (cfg) { return cfg.tabs.studentDocRegistry; }), dateCol: SDR_CREATED_AT,
       docCol: SDR_DOC_ID },
     { label: "CompetencyEvidence", tier: RETENTION_TIER_RECORD, years: _competencyEvidenceRetentionYears_,
-      where: ledger(function (cfg) { return cfg.tabs.competencyEvidence || "CompetencyEvidence"; }),
+      where: ledger(function (cfg) { return TABS.competencyEvidence; }),
       dateCol: "evaluated_at", archiveHeader: "archive_status" },
     { label: "SCRDecisionLog", tier: RETENTION_TIER_RECORD, years: _scrRetentionYears_,
-      where: ledger(function (cfg) { return cfg.tabs.scrDecisionLog || "SCRDecisionLog"; }),
+      where: ledger(function (cfg) { return TABS.scrDecisionLog; }),
       dateCol: SCRDL.DECIDED_AT, archived: archivedIn(SCRDL.ARCHIVE_STATUS) },
     // The student's own words about their work, kept as long as the work
     // itself (their Doc follows its Ledger row) and theirs to take in their
     // portfolio (the operator, 2026-10-24).
     { label: "ReflectionLog", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
-      where: ledger(function (cfg) { return cfg.tabs.reflectionLog || "ReflectionLog"; }), dateCol: "SubmittedAt" },
+      where: ledger(function (cfg) { return TABS.reflectionLog; }), dateCol: "SubmittedAt" },
     { label: "EvaluationLog", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
-      where: ledger(function (cfg) { return cfg.tabs.evaluationLog || "EvaluationLog"; }), dateCol: "EvaluatedAt" },
+      where: ledger(function (cfg) { return TABS.evaluationLog; }), dateCol: "EvaluatedAt" },
     // What opened each part of a lesson for a student, their check or the
     // teacher (68), kept as long as the work it opened (2026-10-28).
     { label: "PartUnlocks", tier: RETENTION_TIER_RECORD, years: _ledgerRetentionYears_,
@@ -129,7 +129,7 @@ function _retentionSchedule_() {
       dateCol: PRL.GENERATED_AT, archived: archivedIn(PRL.ARCHIVE_STATUS) },
 
     { label: "WarmUpQueue", tier: RETENTION_TIER_WORKING, years: _warmUpQueueRetentionYears_,
-      where: ledger(function (cfg) { return cfg.tabs.warmUpQueue || "WarmUpQueue"; }),
+      where: ledger(function (cfg) { return TABS.warmUpQueue; }),
       dateCol: WQ.LESSON_DATE, docCol: WQ.DOC_ID,
       archived: archivedIn(WQ.ARCHIVE_STATUS) },
     { label: "StudentProfiles", tier: RETENTION_TIER_WORKING, years: working,
@@ -143,7 +143,7 @@ function _retentionSchedule_() {
     { label: "SCRSuggestions", tier: RETENTION_TIER_WORKING, years: working,
       where: ledger(function (cfg) { return cfg.tabs.scrSuggestions; }), dateCol: SCRS.LAST_COMPUTED_AT },
     { label: "FlowInput", tier: RETENTION_TIER_WORKING, years: working,
-      where: ledger(function (cfg) { return cfg.tabs.flowInput || FI_TAB_NAME; }), dateCol: FI.TIMESTAMP },
+      where: ledger(function (cfg) { return cfg.tabs.flowInput || TABS.flowInput; }), dateCol: FI.TIMESTAMP },
     { label: "Flow3Input", tier: RETENTION_TIER_WORKING, years: working,
       where: ledger(WFB_INPUT_TABS[3]), dateCol: "Timestamp" },
     { label: "Flow4Input", tier: RETENTION_TIER_WORKING, years: working,

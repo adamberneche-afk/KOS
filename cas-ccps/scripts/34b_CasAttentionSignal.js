@@ -273,7 +273,7 @@ function _casSignalLines_(students, admin, now, tz, lastNight) {
 // student lines (a doc resubmitted twice is one student waiting).
 function _casSignalQueueCounts_() {
   const cfg = getConfig_();
-  const sheet = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.stagingPipeline || "STAGING_PIPELINE");
+  const sheet = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(TABS.stagingPipeline);
   if (!sheet) throw new Error("STAGING_PIPELINE tab missing");
   const C = WD_STAGING_PIPELINE_COLUMNS;
   const data = sheet.getDataRange().getValues();
@@ -299,7 +299,7 @@ function _casSignalQueueCounts_() {
 // counted: an unreadable signal must never look like an all-clear.
 function _casSignalSubmitFailures_(now) {
   const cfg = getConfig_();
-  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.submitFailures || "SubmitFailures");
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TABS.submitFailures);
   const out = { total: 0, byCode: {} };
   if (!sheet) return out;
   const since = now.getTime() - CAS_SIGNAL_SUBMIT_FAILURE_WINDOW_MS;
@@ -320,7 +320,7 @@ function _casSignalSubmitFailures_(now) {
 // installed yet) is a quiet zero.
 function _casSignalRollout_(now) {
   const cfg = getConfig_();
-  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName("RolloutLog");
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TABS.rolloutLog);
   const rows = sheet && sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues().slice(1) : [];
   const since = now.getTime() - CAS_SIGNAL_SUBMIT_FAILURE_WINDOW_MS;
   const shadow = {};
@@ -354,7 +354,7 @@ function _casSignalScr_(state, now) {
   let data = null;
   try {
     const cfg = getConfig_();
-    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TABS.scrSuggestions);
     if (!sheet) throw new Error("SCRSuggestions tab missing");
     data = sheet.getDataRange().getValues();
     scr = _casSignalScrCounts_(data);
@@ -406,7 +406,7 @@ function _casSignalMaybeRetryScan_(state, now, suggestionData) {
     let data = suggestionData;
     if (!data) {
       const cfg = getConfig_();
-      const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+      const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TABS.scrSuggestions);
       if (!sheet) throw new Error("SCRSuggestions tab missing");
       data = sheet.getDataRange().getValues();
     }

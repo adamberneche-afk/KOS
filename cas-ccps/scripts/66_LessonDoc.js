@@ -164,7 +164,7 @@ function _ldocFind_(reg, key) {
 // Read here, not through 55, which is not in the Teacher Dashboard.
 function _ldocScheduleRows_(ss) {
   const out = {};
-  const sheet = ss.getSheetByName("LessonSchedule");
+  const sheet = ss.getSheetByName(TABS.lessonSchedule);
   if (!sheet || sheet.getLastRow() < 2) return out;
   sheet.getRange(2, 1, sheet.getLastRow() - 1, 4).getValues().forEach(function (r) {
     const code = String(r[0]).trim(), key = String(r[1]).trim();
@@ -189,7 +189,7 @@ function _ldocWindow_(ss, key) {
 
 // The teacher's ClassSchedule rows for a course: [{ period, dayType }].
 function _ldocCoursePeriods_(ss, cfg, code) {
-  const sheet = ss.getSheetByName(cfg.tabs.classSchedule || "ClassSchedule");
+  const sheet = ss.getSheetByName(TABS.classSchedule);
   if (!sheet || sheet.getLastRow() < 2) return [];
   const teacher = String(cfg.teacherEmail || "").trim().toLowerCase();
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues().filter(function (r) {
@@ -216,7 +216,7 @@ function _ldocCourseBlocks_(ss, cfg, code) {
 function _ldocMeetings_(ss, cfg, code, start, end) {
   const periods = _ldocCoursePeriods_(ss, cfg, code);
   const off = {};
-  const ns = ss.getSheetByName("NoSchoolDays");
+  const ns = ss.getSheetByName(TABS.noSchoolDays);
   if (ns && ns.getLastRow() > 1) {
     ns.getRange(2, 1, ns.getLastRow() - 1, 1).getValues().forEach(function (r) {
       const d = _normalizeLessonDateCell_(r[0]);
@@ -251,7 +251,7 @@ function _ldocClassStatus_(ss, cfg, key) {
   label["CAS-" + String(key).toUpperCase()] = "";
   (lessonPartsOf_(key) || []).forEach(function (p) { label[p.configId] = " · Part " + p.n; });
   const mine = {};
-  const sa = ss.getSheetByName("StudentAssignments");
+  const sa = ss.getSheetByName(TABS.studentAssignments);
   if (sa && sa.getLastRow() > 1) {
     sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
       const aid = String(r[2] || "").trim().toUpperCase();
@@ -296,7 +296,7 @@ function _ldocNotShownYet_(ss, cfg, key, a) {
   const configs = {};
   configs["CAS-" + String(key).toUpperCase()] = true;
   (lessonPartsOf_(key) || []).forEach(function (p) { configs[p.configId] = true; });
-  const sa = ss.getSheetByName("StudentAssignments");
+  const sa = ss.getSheetByName(TABS.studentAssignments);
   const mine = {};
   if (sa && sa.getLastRow() > 1) {
     sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
@@ -311,7 +311,7 @@ function _ldocNotShownYet_(ss, cfg, key, a) {
       }
     });
   }
-  const ev = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+  const ev = ss.getSheetByName(TABS.competencyEvidence);
   if (!ev || ev.getLastRow() < 2) return [];
   const rows = ev.getDataRange().getValues();
   const h = rows[0].map(function (x) { return String(x).trim(); });

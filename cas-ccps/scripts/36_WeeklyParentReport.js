@@ -261,10 +261,9 @@ function _prCompetencyText_() {
 // { studentWorkspaceConfigId: assignmentConfigId } from the StudentAssignments
 // tab (54 writes it; read by name here because 54 isn't in the dashboard
 // project). The Ledger's ConfigID is the student's workspace, not the lesson.
-const PR_STUDENT_ASSIGNMENTS_TAB = "StudentAssignments";
 function _prAssignmentOfWorkspace_(ss) {
   const out = {};
-  const sheet = ss.getSheetByName(PR_STUDENT_ASSIGNMENTS_TAB);
+  const sheet = ss.getSheetByName(TABS.studentAssignments);
   if (!sheet || sheet.getLastRow() < 2) return out;
   sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(function (r) {
     const ws = String(r[0] || "").trim();

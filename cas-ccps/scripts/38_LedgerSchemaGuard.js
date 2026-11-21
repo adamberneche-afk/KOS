@@ -451,14 +451,14 @@ function previewOddLedgerRows() {
 // (StudentFileID) points at: a Ledger row they point at is in use.
 function _lsgReferencedFileIds_(ss, cfg) {
   const out = { reviewQueue: {}, staging: {} };
-  const rq = ss.getSheetByName(cfg.tabs.reviewQueue || "ReviewQueue");
+  const rq = ss.getSheetByName(TABS.reviewQueue);
   if (rq && rq.getLastRow() > 1) {
     rq.getRange(2, 3, rq.getLastRow() - 1, 1).getValues().forEach(function (r) {
       const id = String(r[0] || "").trim();
       if (id) out.reviewQueue[id] = true;
     });
   }
-  const sp = ss.getSheetByName(cfg.tabs.stagingPipeline || "STAGING_PIPELINE");
+  const sp = ss.getSheetByName(TABS.stagingPipeline);
   if (sp && sp.getLastRow() > 1) {
     const data = sp.getDataRange().getValues();
     const col = data[0].map(function (h) { return String(h).trim(); }).indexOf("StudentFileID");

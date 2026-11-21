@@ -40,6 +40,7 @@
 //   RUBRIC_FORM_URL, INTAKE_FORM_URL, CONFIRM_REVIEW_FORM_URL
 //   CONFIRM_REVIEW_FORM_ID, RUBRIC_QUEUE_TAB
 //   CONFIRM_ENTRY_DRAFT_ID ... CONFIRM_ENTRY_DOD
+
 // =============================================================================
 
 // The shadow matrix's two numbers (23 builds it, 25 emails on it). Constants
@@ -49,6 +50,86 @@
 // student.
 const SHADOW_MATRIX_CONFIDENCE_THRESHOLD = 0.75; // a unit's archetype "locks"; the teacher's digest
 const SHADOW_MATRIX_DECAY_FACTOR = 0.85;         // KOS-derived cross-unit decay
+
+// Every tab name, one place (structure audit 3.3, 2026-11-21). getConfig_()
+// hands out a copy as cfg.tabs; code without a cfg reads TABS directly. The
+// "cfg.tabs.x || \"Literal\"" fallbacks that repeated these names are gone.
+const TABS = {
+  ledger:          "Ledger",
+  reviewQueue:     "ReviewQueue",
+  stagingPipeline: "STAGING_PIPELINE",
+  rubricQueue:     "RubricQueue",      // Central Studio Flow 1 trigger tab
+  teacherMatrix:   "TeacherMatrix",
+  draftUnits:      "DraftUnits",
+  matrixRegistry:  "MatrixRegistry",   // Teacher Matrix SS ID lookup for Script 02
+  flowInput:       "FlowInput",        // Script 37's materialized Flow 2 input row
+  evaluationLog:   "EvaluationLog",    // Script 37: one row per Flow 2 result, times and outcome only
+  reflectionLog:   "ReflectionLog",    // Script 13: the student's process reflection, one row per answer
+  // Student Dashboard (13) appends one row (timestamp, error code, nothing
+  // else) here each time Submit for Feedback fails for a system-side
+  // reason; the CAS attention signal (34b) counts them. Created on the
+  // first failure, so a missing tab means no failures, not a problem.
+  submitFailures:  "SubmitFailures",
+
+  // ── M2 Lightweight (merged from 00_SharedConfig_M2_ADDENDUM_v2.js) ──
+  lessonContext:      "LessonContext",
+  competencyRegistry: "CompetencyRegistry",
+  alignmentLog:       "AlignmentLog",
+  reportRegistry:     "ReportRegistry",
+
+  // ── M2 Full / Warm-Ups (merged from 00_SharedConfig_M2_ADDENDUM_v2.js) ──
+  studentProfiles:    "StudentProfiles",
+  warmUpQueue:        "WarmUpQueue",
+  warmUpRegistry:     "WarmUpRegistry",
+  warmUpTextBox:      "WarmUpTextBox",
+  classSchedule:      "ClassSchedule",
+  pacingGuide:        "PacingGuide",
+  competencyRubrics:  "CompetencyRubrics",
+
+  // ── M4 (merged from 00_SharedConfig_M4_ADDENDUM.js) ──
+  studentDocRegistry: "StudentDocRegistry",
+  warmUpResponses:    "WarmUpResponses",
+
+  // ── Module 5 (30_SCRSuggestionEngine.js) — documented as expected by
+  // that file's own architectural notes but never actually added here
+  // until now; every existing reference already falls back to these
+  // exact same literal names via `|| "SCRSuggestions"`/`|| "SCRDecisionLog"`,
+  // so adding them is a no-op for current behavior, just makes the
+  // fallback unnecessary going forward.
+  scrSuggestions:     "SCRSuggestions",
+  scrDecisionLog:     "SCRDecisionLog",
+
+  // ── Flow 2's evidence tab (15c_Flow2DirectEvaluationService.js's
+  // writeCompetencyEvidenceFromFlow2_, this project's own
+  // installSCRTrigger_ in 30_SCRSuggestionEngine.js) — same
+  // "documented but never added" situation as scrSuggestions/
+  // scrDecisionLog above: every existing reference in THIS project
+  // already falls back to this exact literal name via
+  // `|| "CompetencyEvidence"`, so adding it is a no-op for current
+  // behavior. cas-ccps/studio-steps/CommitStudentEvaluationStep.gs
+  // is a separate GAS project with no access to this file or
+  // getConfig_() — it hardcodes the same literal name directly, by
+  // necessity, not via this config key.
+  competencyEvidence: "CompetencyEvidence",
+
+  // ── 36_WeeklyParentReport.js ──
+  // One row per student per week: what was prepared, and when the
+  // teacher copied it (with the copied text, since 2026-10-28). Since
+  // D1 (2026-10-23) the teacher sends each report from their own
+  // account, so recipient_address is left blank: the app never knows who
+  // it went to. Rows from before then can hold an address, which the
+  // Family Mail Sentinel (60) still reads to recognise a parent.
+  parentReportLog:    "ParentReportLog",
+
+  // ── Named in two or more files until 2026-11-21 ──
+  studentAssignments: "StudentAssignments", // 54: each student's assignment per workspace
+  noSchoolDays:       "NoSchoolDays",       // 51: the school's days off
+  lessonSchedule:     "LessonSchedule",     // 55: the teacher's lessons on dates
+  rolloutLog:         "RolloutLog",         // 58: the nightly rollout's log
+  flow2Duplicates:    "Flow2Duplicates",    // 37: one answer in several rows of a doc
+  warmUpFlowReturn:   "WarmUpFlowReturn",   // 41: Flows 3 and 4's answers
+  config:             "_CONFIG",            // the shared settings tab (see below)
+};
 
 function getConfig_() {
   const p = _resolveConfigValues_().values;
@@ -150,74 +231,9 @@ function getConfig_() {
     // without this property skips all M2 handlers.
     m2Enabled:                       p.M2_ENABLED || "false",
 
-    // ── Shared tab names (consistent across all projects) ──
-    tabs: {
-      ledger:          "Ledger",
-      reviewQueue:     "ReviewQueue",
-      stagingPipeline: "STAGING_PIPELINE",
-      rubricQueue:     "RubricQueue",      // Central Studio Flow 1 trigger tab
-      teacherMatrix:   "TeacherMatrix",
-      draftUnits:      "DraftUnits",
-      matrixRegistry:  "MatrixRegistry",   // Teacher Matrix SS ID lookup for Script 02
-      flowInput:       "FlowInput",        // Script 37's materialized Flow 2 input row
-      evaluationLog:   "EvaluationLog",    // Script 37: one row per Flow 2 result, times and outcome only
-      reflectionLog:   "ReflectionLog",    // Script 13: the student's process reflection, one row per answer
-      // Student Dashboard (13) appends one row (timestamp, error code, nothing
-      // else) here each time Submit for Feedback fails for a system-side
-      // reason; the CAS attention signal (34b) counts them. Created on the
-      // first failure, so a missing tab means no failures, not a problem.
-      submitFailures:  "SubmitFailures",
-
-      // ── M2 Lightweight (merged from 00_SharedConfig_M2_ADDENDUM_v2.js) ──
-      lessonContext:      "LessonContext",
-      competencyRegistry: "CompetencyRegistry",
-      alignmentLog:       "AlignmentLog",
-      reportRegistry:     "ReportRegistry",
-
-      // ── M2 Full / Warm-Ups (merged from 00_SharedConfig_M2_ADDENDUM_v2.js) ──
-      studentProfiles:    "StudentProfiles",
-      warmUpQueue:        "WarmUpQueue",
-      warmUpRegistry:     "WarmUpRegistry",
-      warmUpTextBox:      "WarmUpTextBox",
-      classSchedule:      "ClassSchedule",
-      pacingGuide:        "PacingGuide",
-      competencyRubrics:  "CompetencyRubrics",
-
-      // ── M4 (merged from 00_SharedConfig_M4_ADDENDUM.js) ──
-      studentDocRegistry: "StudentDocRegistry",
-      warmUpResponses:    "WarmUpResponses",
-
-      // ── Module 5 (30_SCRSuggestionEngine.js) — documented as expected by
-      // that file's own architectural notes but never actually added here
-      // until now; every existing reference already falls back to these
-      // exact same literal names via `|| "SCRSuggestions"`/`|| "SCRDecisionLog"`,
-      // so adding them is a no-op for current behavior, just makes the
-      // fallback unnecessary going forward.
-      scrSuggestions:     "SCRSuggestions",
-      scrDecisionLog:     "SCRDecisionLog",
-
-      // ── Flow 2's evidence tab (15c_Flow2DirectEvaluationService.js's
-      // writeCompetencyEvidenceFromFlow2_, this project's own
-      // installSCRTrigger_ in 30_SCRSuggestionEngine.js) — same
-      // "documented but never added" situation as scrSuggestions/
-      // scrDecisionLog above: every existing reference in THIS project
-      // already falls back to this exact literal name via
-      // `|| "CompetencyEvidence"`, so adding it is a no-op for current
-      // behavior. cas-ccps/studio-steps/CommitStudentEvaluationStep.gs
-      // is a separate GAS project with no access to this file or
-      // getConfig_() — it hardcodes the same literal name directly, by
-      // necessity, not via this config key.
-      competencyEvidence: "CompetencyEvidence",
-
-      // ── 36_WeeklyParentReport.js ──
-      // One row per student per week: what was prepared, and when the
-      // teacher copied it (with the copied text, since 2026-10-28). Since
-      // D1 (2026-10-23) the teacher sends each report from their own
-      // account, so recipient_address is left blank: the app never knows who
-      // it went to. Rows from before then can hold an address, which the
-      // Family Mail Sentinel (60) still reads to recognise a parent.
-      parentReportLog:    "ParentReportLog"
-    }
+    // ── Shared tab names: TABS below (a copy, so a caller can't change the
+    // shared one) ──
+    tabs: Object.assign({}, TABS),
   };
 }
 
@@ -597,7 +613,6 @@ function _schoolIdPattern_(raw) {
 // and a single date typed into _CONFIG became a date cell this dropped.
 // Read the first time a day is checked, not with the profile: most runs
 // never ask, and the profile is read on every one.
-const SCHOOL_NO_SCHOOL_TAB = "NoSchoolDays";
 let _schoolDaysOffCache_ = null;
 function schoolDaysOff_() {
   if (_schoolDaysOffCache_) return _schoolDaysOffCache_;
@@ -609,7 +624,7 @@ function _schoolDaysOff_(fromConfig, ledgerId) {
   const out = fromConfig.slice();
   if (!ledgerId) return out;
   try {
-    const sheet = SpreadsheetApp.openById(ledgerId).getSheetByName(SCHOOL_NO_SCHOOL_TAB);
+    const sheet = SpreadsheetApp.openById(ledgerId).getSheetByName(TABS.noSchoolDays);
     if (sheet && sheet.getLastRow() > 1) {
       sheet.getRange(2, 1, sheet.getLastRow() - 1, 1).getValues().forEach(function (r) {
         const d = _schoolDateCell_(r[0]);
@@ -1045,7 +1060,7 @@ function sheetTimestampMs_(value) {
 
 // Same Key | Value tab 19_ClonedSheetConfig.js already writes into each
 // teacher's cloned sheets. On the Ledger, a SYSTEM_ROLE row marks it.
-const CONFIG_TAB_NAME   = "_CONFIG";
+const CONFIG_TAB_NAME   = TABS.config;
 const LEDGER_ROLE_KEY   = "SYSTEM_ROLE";
 const LEDGER_ROLE_VALUE = "CENTRAL_LEDGER";
 
@@ -1535,7 +1550,7 @@ function _scrOwnership_(cfg, teacherEmail) {
     });
   }
 
-  const evidence = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  const evidence = ss.getSheetByName(TABS.competencyEvidence);
   if (!evidence || evidence.getLastRow() < 2) return out;
   const data = evidence.getDataRange().getValues();
   const h = data[0].map(function (x) { return String(x).trim(); });
@@ -1718,7 +1733,7 @@ function scrRetryRoles_(ss, cfg) {
       if (!id || seen[id]) return;
       seen[id] = true;
       try {
-        const tm = SpreadsheetApp.openById(id).getSheetByName(cfg.tabs.teacherMatrix || "TeacherMatrix");
+        const tm = SpreadsheetApp.openById(id).getSheetByName(TABS.teacherMatrix);
         if (!tm || tm.getLastRow() < 2) return;
         tm.getDataRange().getValues().slice(1).forEach(function (row) {
           const assignmentId = String(row[0] || "").trim();
@@ -1736,7 +1751,7 @@ function scrRetryRoles_(ss, cfg) {
     });
   }
   Object.keys(byAssignment).forEach(function (a) { out.byConfig[a] = byAssignment[a]; });
-  const sa = ss.getSheetByName("StudentAssignments"); // 54's tab
+  const sa = ss.getSheetByName(TABS.studentAssignments); // 54's tab
   if (sa && sa.getLastRow() > 1) {
     sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
       const configId = String(r[0] || "").trim(), assignmentId = String(r[2] || "").trim();
@@ -1750,7 +1765,7 @@ function scrRetryRoles_(ss, cfg) {
 // case), comp, outcome, configId, key } (key: evidenceAssignmentKey_).
 // onlyEmail keeps one student's.
 function scrRetryEvidence_(ss, cfg, onlyEmail) {
-  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  const sheet = ss.getSheetByName(TABS.competencyEvidence);
   if (!sheet || sheet.getLastRow() < 2) return [];
   const data = sheet.getDataRange().getValues();
   const h = data[0].map(function (x) { return String(x).trim(); });
@@ -1920,7 +1935,7 @@ const SDR_LAST_RUN_HAD_CONTENT = 6;
 // A student's doc from StudentDocRegistry: { docId, docUrl, lastUpdatedAt }
 // or null.
 function studentContextDocFor_(ss, cfg, email) {
-  const sheet = ss.getSheetByName(cfg.tabs.studentDocRegistry || "StudentDocRegistry");
+  const sheet = ss.getSheetByName(TABS.studentDocRegistry);
   if (!sheet || sheet.getLastRow() < 2) return null;
   const want = String(email || "").trim().toLowerCase();
   const data = sheet.getDataRange().getValues();
@@ -2006,7 +2021,7 @@ function readLatestScrRatings_(ss, cfg, decidedBy) {
 // course in each competency_id ("8175-14"): { "8175": 113, ... }. {} with
 // no tab, so a counter shows its count with no total.
 function competencyCourseTotals_(ss, cfg) {
-  const sheet = ss.getSheetByName(cfg.tabs.competencyRegistry || "CompetencyRegistry");
+  const sheet = ss.getSheetByName(TABS.competencyRegistry);
   const totals = {};
   if (!sheet || sheet.getLastRow() < 2) return totals;
   const data = sheet.getDataRange().getValues();
@@ -3112,7 +3127,7 @@ function chooseReflectionQuestions_(criteria, prior, key, shortfall) {
 // CompetencyEvidence by header; the latest evaluated_at is the last check.
 function reflectionShortfall_(ss, cfg, fileId, criteria) {
   if (!criteria || !criteria.length) return null;
-  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+  const sheet = ss.getSheetByName(TABS.competencyEvidence);
   if (!sheet || sheet.getLastRow() < 2) return null;
   const rows = sheet.getDataRange().getValues();
   const h = rows[0].map(function (x) { return String(x).trim(); });
@@ -3139,7 +3154,7 @@ function reflectionShortfall_(ss, cfg, fileId, criteria) {
 function reflectionMatrixRow_(cfg, studentConfigId, teacherEmail) {
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   let assignmentId = studentConfigId;
-  const sa = ss.getSheetByName("StudentAssignments"); // 54's tab
+  const sa = ss.getSheetByName(TABS.studentAssignments); // 54's tab
   if (sa && sa.getLastRow() > 1) {
     sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(function (r) {
       if (String(r[0] || "").trim() === studentConfigId && String(r[2] || "").trim()) {
@@ -3154,7 +3169,7 @@ function reflectionMatrixRow_(cfg, studentConfigId, teacherEmail) {
     return String(r[1] || "").trim().toLowerCase() === lower && String(r[2] || "").trim();
   })[0];
   if (!regRow) return null;
-  const tm = SpreadsheetApp.openById(String(regRow[2]).trim()).getSheetByName(cfg.tabs.teacherMatrix || "TeacherMatrix");
+  const tm = SpreadsheetApp.openById(String(regRow[2]).trim()).getSheetByName(TABS.teacherMatrix);
   if (!tm) return null;
   // TeacherMatrix columns: TM above.
   const row = tm.getDataRange().getValues().slice(1).filter(function (r) {
@@ -3174,7 +3189,7 @@ function reflectionMatrixRow_(cfg, studentConfigId, teacherEmail) {
 // This student's earlier answers for one workspace (ConfigID + doc), as
 // chooseReflectionQuestions_ takes them. A missing tab is no answers.
 function readReflections_(ss, cfg, configId, fileId) {
-  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.reflectionLog) || "ReflectionLog");
+  const sheet = ss.getSheetByName(TABS.reflectionLog);
   if (!sheet || sheet.getLastRow() < 2) return [];
   return sheet.getRange(2, 1, sheet.getLastRow() - 1, REFLECTION_LOG_HEADERS.length).getValues()
     .filter(function (r) {
@@ -3191,7 +3206,7 @@ function readReflections_(ss, cfg, configId, fileId) {
 // starts with "=" stays words and never becomes a formula.
 function appendReflections_(ss, cfg, rows) {
   if (!rows.length) return;
-  const name = (cfg.tabs && cfg.tabs.reflectionLog) || "ReflectionLog";
+  const name = TABS.reflectionLog;
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);

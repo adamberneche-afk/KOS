@@ -484,7 +484,7 @@ function getWeeklyTextBoxWarmUps_(ss, cfg, windowStart) {
 // ---------------------------------------------------------------------------
 function getWeeklyReflections_(ss, cfg, windowStart) {
   const result = new Map();
-  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.reflectionLog) || "ReflectionLog");
+  const sheet = ss.getSheetByName(TABS.reflectionLog);
   if (!sheet || sheet.getLastRow() < 2) return result;
   const since = windowStart.getTime();
   sheet.getRange(2, 1, sheet.getLastRow() - 1, REFLECTION_LOG_HEADERS.length).getValues().forEach(function (r) {

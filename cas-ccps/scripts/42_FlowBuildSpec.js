@@ -270,7 +270,7 @@ function _fbsAppendWarmUpFlows_(rows) {
     rows.push([label, "prompt", FLOW_PROMPT_TAB, "", spec.prompt, "40_FlowPrompts.js",
       "Alternative to the PromptText chip above."]);
     rows.push([label, "gemini", "", "", "one row per run", "the Flow", FBS_ONE_ROW_PER_RUN +
-      " Inside the loop: Ask Gemini (PromptText) and the add-row to " + WFB_RETURN_TAB + " (QueueID)."]);
+      " Inside the loop: Ask Gemini (PromptText) and the add-row to " + TABS.warmUpFlowReturn + " (QueueID)."]);
   });
 
   rows.push(["Flows 3/4", "narrative", "", "", "",
@@ -299,10 +299,10 @@ function _fbsAppendReturnSurface_(rows) {
       note = "LEAVE EMPTY. The harvest writes this; a value here also makes it read your " +
         "output as its own bookkeeping and skip the row.";
     }
-    rows.push(["Flows 3/4/5", flowWrites ? "write" : "leave empty", WFB_RETURN_TAB,
+    rows.push(["Flows 3/4/5", flowWrites ? "write" : "leave empty", TABS.warmUpFlowReturn,
       i + 1, h, flowWrites ? "the Flow" : "the harvest", note]);
   });
-  rows.push(["Flows 3/4/5", "verify", WFB_RETURN_TAB, "", "", "41_WarmUpFlowBridge.js",
+  rows.push(["Flows 3/4/5", "verify", TABS.warmUpFlowReturn, "", "", "41_WarmUpFlowBridge.js",
     "Run checkFlowBinding() WHILE wiring this step. It reports where values actually landed, " +
     "so a one-column shift comes back as a shift with its offset rather than as \"nothing " +
     "came back\"."]);

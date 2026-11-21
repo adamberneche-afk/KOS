@@ -272,7 +272,7 @@ function _runPhaseA_(ui, props, ss) {
 
 function _resolveCourseNames_(ui, props, ss) {
   // ── Try 1: Read from populated CompetencyRegistry tab ────────────────────
-  const regSheet = ss.getSheetByName("CompetencyRegistry");
+  const regSheet = ss.getSheetByName(TABS.competencyRegistry);
   if (regSheet && regSheet.getLastRow() > 1) {
     const data     = regSheet.getDataRange().getValues();
     const headers  = data[0].map(h => String(h).trim());
@@ -461,7 +461,7 @@ function _executeImportAndVerify_(ui, ss, csvFile, courseNames) {
   }
 
   // Verify: count rows in CompetencyRegistry and check course coverage
-  const regSheet = ss.getSheetByName("CompetencyRegistry");
+  const regSheet = ss.getSheetByName(TABS.competencyRegistry);
   if (!regSheet || regSheet.getLastRow() < 2) {
     ui.alert(
       "✗ Import Verification Failed",
@@ -563,7 +563,7 @@ function runModule2WarmUps() {
     return;
   }
 
-  const stagingSheet = ss.getSheetByName("STAGING_PIPELINE");
+  const stagingSheet = ss.getSheetByName(TABS.stagingPipeline);
   const hasEvalHistory = stagingSheet && stagingSheet.getLastRow() > 1;
   if (!hasEvalHistory) {
     const proceed = ui.alert(
@@ -978,7 +978,7 @@ function _collectScheduleCompact_(ui, props, ss, teacherEmail) {
     if (confirm !== ui.Button.OK) continue;
 
     // Write to ClassSchedule tab
-    const schedSheet = ss.getSheetByName("ClassSchedule");
+    const schedSheet = ss.getSheetByName(TABS.classSchedule);
 
     // Clear existing rows for this teacher (safe re-run)
     const existing = schedSheet.getDataRange().getValues();
@@ -1028,45 +1028,45 @@ function _createM2LightweightTabs_(ss) {
   // (22_LessonContextHandler.js / 24_WarmUpBridge.js).
   // All 18 headers (00's LCTX_HEADERS); this list stopped at "term" until
   // 2026-11-21, leaving warm_up_generated's header blank on a tab made here.
-  ensureTab_(ss, "LessonContext", LCTX_HEADERS.slice(), { textColumns: [4] });
-  ensureTab_(ss, "CompetencyRegistry", [
+  ensureTab_(ss, TABS.lessonContext, LCTX_HEADERS.slice(), { textColumns: [4] });
+  ensureTab_(ss, TABS.competencyRegistry, [
     "competency_id","competency_text","subject","grade_band",
     "strand","teacher_email","active"
   ]);
-  ensureTab_(ss, "AlignmentLog", [
+  ensureTab_(ss, TABS.alignmentLog, [
     "log_id","lesson_id","logged_at","lesson_date",
     "teacher_email","learning_objective","competency_id",
     "competency_text","strand"
   ], { textColumns: [4] });
-  ensureTab_(ss, "ReportRegistry", [
+  ensureTab_(ss, TABS.reportRegistry, [
     "report_id","generated_at","term","teacher_email",
     "doc_id","doc_url","report_type"
   ]);
 }
 
 function _createM2WarmUpTabs_(ss) {
-  ensureTab_(ss, "StudentProfiles", [
+  ensureTab_(ss, TABS.studentProfiles, [
     "student_email","student_name","google_id","teacher_email","period",
     "competencies_addressed","competency_gaps","evaluation_signals",
     "warmup_scores","extra_credit_count","avg_engagement_score","last_updated",
     "shadow_matrix","unit_current"
   ]);
-  ensureTab_(ss, "WarmUpQueue", WQ_HEADERS.slice(0, WQ_BASE_WIDTH), { textColumns: [6] });
-  ensureTab_(ss, "WarmUpRegistry", [
+  ensureTab_(ss, TABS.warmUpQueue, WQ_HEADERS.slice(0, WQ_BASE_WIDTH), { textColumns: [6] });
+  ensureTab_(ss, TABS.warmUpRegistry, [
     "warmup_id","queue_id","lesson_id","lesson_date","student_email",
     "student_name","teacher_email","doc_id","doc_url","generated_at",
     "total_score","extra_credit","term","extra_credit_checked"
   ], { textColumns: [4] });
-  ensureTab_(ss, "ClassSchedule", [
+  ensureTab_(ss, TABS.classSchedule, [
     "teacher_email","period","day_type","course_name","active"
   ]);
 
   // ── Pacing guide + competency rubric tabs ─────────────────────────────────
   // Headers only — content populated by importPacingGuide() (S29)
   // and importCompetencyRubrics() (S30) after upload.
-  ensureTab_(ss, "PacingGuide", PG_HEADERS.slice());
+  ensureTab_(ss, TABS.pacingGuide, PG_HEADERS.slice());
 
-  ensureTab_(ss, "CompetencyRubrics", [
+  ensureTab_(ss, TABS.competencyRubrics, [
     "competency_id","course","task_number","duty_area",
     "competency_text","demonstration_standard",
     "demonstration_indicators","skill_questions"
@@ -1074,7 +1074,7 @@ function _createM2WarmUpTabs_(ss) {
 }
 
 function _addWarmUpGeneratedColumn_(ss) {
-  const sheet = ss.getSheetByName("LessonContext");
+  const sheet = ss.getSheetByName(TABS.lessonContext);
   if (!sheet) return;
   // Its own column, 15 (00's LCTX.WARM_UP_GENERATED), which 24 and 25 write
   // by index. This used to add the header past the last column, which on a

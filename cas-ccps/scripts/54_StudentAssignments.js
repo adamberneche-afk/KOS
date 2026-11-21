@@ -15,13 +15,12 @@
 // and the Flow 2 input builder (37) looked up the TeacherMatrix with the
 // student's ID, which never matches. One row per workspace, written at intake (intakeStudent_, 02).
 // ---------------------------------------------------------------------------
-const STUDENT_ASSIGNMENTS_TAB = "StudentAssignments";
 const SA_HEADERS = ["StudentConfigID", "GoogleID", "AssignmentConfigID", "RecordedAt"];
 
 function _saSheet_(ss) {
-  let sheet = ss.getSheetByName(STUDENT_ASSIGNMENTS_TAB);
+  let sheet = ss.getSheetByName(TABS.studentAssignments);
   if (!sheet) {
-    sheet = ss.insertSheet(STUDENT_ASSIGNMENTS_TAB);
+    sheet = ss.insertSheet(TABS.studentAssignments);
     sheet.getRange(1, 1, 1, SA_HEADERS.length).setValues([SA_HEADERS]).setFontWeight("bold");
     sheet.setFrozenRows(1);
   }
@@ -43,7 +42,7 @@ function recordStudentAssignment_(ss, studentConfigId, googleId, assignmentConfi
  */
 function readStudentAssignments_(ss) {
   const out = { byStudent: {}, enrolled: new Set() };
-  const sheet = ss.getSheetByName(STUDENT_ASSIGNMENTS_TAB);
+  const sheet = ss.getSheetByName(TABS.studentAssignments);
   if (!sheet || sheet.getLastRow() < 2) return out;
   sheet.getRange(2, 1, sheet.getLastRow() - 1, 3).getValues().forEach(r => {
     const sid = String(r[0] || "").trim(), acct = String(r[1] || "").trim().toLowerCase();

@@ -107,7 +107,7 @@ function evaluationHealth_(opts) {
   const inWindow = function (ms) { return !isNaN(ms) && ms >= firstWeek.getTime() && ms <= now.getTime(); };
 
   // EvaluationLog: one row per Flow 2 result (37).
-  const log = ss.getSheetByName((cfg.tabs && cfg.tabs.evaluationLog) || "EvaluationLog");
+  const log = ss.getSheetByName(TABS.evaluationLog);
   if (log && log.getLastRow() > 1) {
     const rows = log.getRange(2, 1, log.getLastRow() - 1, EVAL_LOG_HEADERS.length).getValues();
     rows.forEach(function (r) {
@@ -293,7 +293,7 @@ function reportRegradeConsistency(opts) {
   const cleanFromMs = opts.cleanFrom ? Date.parse(opts.cleanFrom) : NaN;
   if (opts.cleanFrom && isNaN(cleanFromMs)) throw new Error("reportRegradeConsistency: cleanFrom is not a time.");
   const cfg = getConfig_();
-  const tab = (cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME;
+  const tab = (cfg.tabs && cfg.tabs.flowInput) || TABS.flowInput;
   const nowSheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(tab);
   const beforeSheet = SpreadsheetApp.openById(opts.beforeSsId).getSheetByName(tab);
   if (!nowSheet || !beforeSheet) throw new Error("reportRegradeConsistency: a FlowInput tab is missing.");
@@ -462,7 +462,7 @@ function reportGradingByVersion(opts) {
     throw new Error("reportGradingByVersion: pass { beforeSsId: <ID of a copy of the Ledger from before the 11-15 re-grade> }.");
   }
   const cfg = getConfig_();
-  const tab = (cfg.tabs && cfg.tabs.flowInput) || FI_TAB_NAME;
+  const tab = (cfg.tabs && cfg.tabs.flowInput) || TABS.flowInput;
   const nowSheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(tab);
   const beforeSheet = SpreadsheetApp.openById(opts.beforeSsId).getSheetByName(tab);
   if (!nowSheet || !beforeSheet) throw new Error("reportGradingByVersion: a FlowInput tab is missing.");

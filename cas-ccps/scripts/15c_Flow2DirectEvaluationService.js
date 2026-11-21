@@ -324,7 +324,7 @@ function _generateEvidenceId_(now) {
 function writeCompetencyEvidenceFromFlow2_(studentEmail, configId, studentFileId, competencyIds, milestoneTexts, milestoneOutcomes) {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const evidenceSheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  const evidenceSheet = ss.getSheetByName(TABS.competencyEvidence);
   if (!evidenceSheet) {
     Logger.log("[S15c] CompetencyEvidence tab not found. Cannot write evidence.");
     return { written: 0, skipped: 0 };
@@ -402,18 +402,18 @@ function repairCompetencyIdDates(apply) {
   apply = apply === true;
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const out = competencyIdDateRepair_(ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence"), apply);
+  const out = competencyIdDateRepair_(ss.getSheetByName(TABS.competencyEvidence), apply);
   // The sources (2026-11-18): FlowInput's and each teacher's TeacherMatrix's
   // competency ID columns (16 to 19), where a date became the text the
   // harvest wrote.
   const more = [];
-  more.push(competencyIdDateRepair_(ss.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput"), apply,
+  more.push(competencyIdDateRepair_(ss.getSheetByName(TABS.flowInput), apply,
     { cols: [16, 17, 18, 19], label: "FlowInput" }));
-  const reg = ss.getSheetByName((cfg.tabs && cfg.tabs.matrixRegistry) || "MatrixRegistry");
+  const reg = ss.getSheetByName(TABS.matrixRegistry);
   const ids = reg && reg.getLastRow() > 1 ? reg.getRange(2, 3, reg.getLastRow() - 1, 1).getValues().map(function (r) { return String(r[0]).trim(); }) : [];
   ids.filter(function (id, k, all) { return id && all.indexOf(id) === k; }).forEach(function (id, n) {
     try {
-      more.push(competencyIdDateRepair_(SpreadsheetApp.openById(id).getSheetByName("TeacherMatrix"), apply,
+      more.push(competencyIdDateRepair_(SpreadsheetApp.openById(id).getSheetByName(TABS.teacherMatrix), apply,
         { cols: [16, 17, 18, 19], label: "TeacherMatrix " + (n + 1) }));
     } catch (e) {
       Logger.log("[S15c] TeacherMatrix " + (n + 1) + " not opened: " + e.message);

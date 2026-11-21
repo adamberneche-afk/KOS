@@ -129,7 +129,7 @@ function installFlowFixtures() {
 function installFlow1Fixture() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.adminSsId);
-  const sheet = ss.getSheetByName(cfg.tabs.rubricQueue || "RubricQueue");
+  const sheet = ss.getSheetByName(TABS.rubricQueue);
   if (!sheet) {
     Logger.log("[Fixtures] Flow 1: RubricQueue tab not found — run runFlowPreflightCheck().");
     return { flow: 1, seeded: 0, skipped: 0, error: "RubricQueue tab missing" };
@@ -303,7 +303,7 @@ function installFlow2Fixture(count) {
   const n = Math.max(1, Math.min(FX_FLOW2_SPECS.length, Math.floor(Number(count) || 1)));
   const cfg = getConfig_();
   const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const tabName = (cfg.tabs && cfg.tabs.flowInput) || "FlowInput";
+  const tabName = TABS.flowInput;
   let sheet = ledgerSs.getSheetByName(tabName);
   if (!sheet) {
     // _fiEnsureTab_ (37_FlowInputBuilder.js) owns this tab's creation; reuse
@@ -369,7 +369,7 @@ function installFlow2Fixture(count) {
  */
 function checkFlow2Fixture() {
   const cfg = getConfig_();
-  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput");
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TABS.flowInput);
   const data = sheet && sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues().slice(1) : [];
   const keys = { "F2": /campaign|demographic|promotional/i, "F2B": /concession|pretzel|stadium/i };
   const rows = data.filter(function (r) { return String(r[FI.CONFIG_ID]).trim().indexOf(FX_CONFIG_PREFIX) === 0; });
@@ -461,7 +461,7 @@ function installFlow2ReflectionFixture(pairs) {
   const n = Math.max(1, Math.min(FX_REFLECTION_MAX_PAIRS, Math.floor(Number(pairs) || 3)));
   const cfg = getConfig_();
   const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput") || _fiEnsureTab_(ledgerSs, cfg);
+  const sheet = ledgerSs.getSheetByName(TABS.flowInput) || _fiEnsureTab_(ledgerSs, cfg);
   const data = sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues().slice(1) : [];
   if (data.some(function (r) { return _fxIsReflectionFixtureConfig_(r[FI.CONFIG_ID]); })) {
     Logger.log("[Fixtures] Reflection fixture: already seeded. checkFlow2ReflectionFixture() reads it; " +
@@ -491,7 +491,7 @@ function installFlow2ReflectionFixture(pairs) {
  */
 function checkFlow2ReflectionFixture() {
   const cfg = getConfig_();
-  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput");
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(TABS.flowInput);
   const data = sheet && sheet.getLastRow() >= 2 ? sheet.getDataRange().getValues().slice(1) : [];
   const byPair = {};
   data.forEach(function (r) {
@@ -611,7 +611,7 @@ function _fxCreateWarmUpFixtureDoc_(queueId, ctx, responseText) {
 function installWarmUpFixtures() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName(cfg.tabs.warmUpQueue || "WarmUpQueue");
+  const sheet = ss.getSheetByName(TABS.warmUpQueue);
   if (!sheet) {
     Logger.log("[Fixtures] Flows 3/4/5: WarmUpQueue tab not found. That tab is " +
                "created by 28_Module2Setup.js's Module 2 Full setup — if you " +
@@ -784,14 +784,14 @@ function checkFlowFixtures() {
   };
 
   check("Flow 1 — RubricQueue PENDING_EXTRACTION",
-    adminSs.getSheetByName(cfg.tabs.rubricQueue || "RubricQueue"),
+    adminSs.getSheetByName(TABS.rubricQueue),
     1, FX_TEACHER_EMAIL, "PENDING_EXTRACTION", 9);
 
   check("Flow 2 — FlowInput READY",
-    ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput"),
+    ledgerSs.getSheetByName(TABS.flowInput),
     FI.STUDENT_EMAIL, FX_STUDENT_EMAIL, "READY", FI.READY_STATUS);
 
-  const wq = ledgerSs.getSheetByName(cfg.tabs.warmUpQueue || "WarmUpQueue");
+  const wq = ledgerSs.getSheetByName(TABS.warmUpQueue);
   check("Flow 3 (lead-in) — WarmUpQueue PENDING", wq,
     WQ.QUEUE_ID, FX_QUEUE_PREFIX + "F3L", "PENDING", WQ.STATUS);
   check("Flow 3 — WarmUpQueue PENDING", wq,
@@ -864,7 +864,7 @@ function removeFlowFixtures() {
   const fixtureEmails = { exact: [FX_TEACHER_EMAIL, FX_STUDENT_EMAIL] };
 
   // RubricQueue — also collect the template doc (7) and scratch matrix (8).
-  clearWhere(adminSs.getSheetByName(cfg.tabs.rubricQueue || "RubricQueue"),
+  clearWhere(adminSs.getSheetByName(TABS.rubricQueue),
     1, fixtureEmails, [7, 8]);
 
   // 41_WarmUpFlowBridge.js's four tabs. Materialized input rows and harvested
@@ -875,7 +875,7 @@ function removeFlowFixtures() {
   clearWhere(ledgerSs.getSheetByName("Flow3Input"), 1, { prefix: FX_QUEUE_PREFIX });
   clearWhere(ledgerSs.getSheetByName("Flow4Input"), 1, { prefix: FX_QUEUE_PREFIX });
   // The return tab keys Queue_ID in column 3 (0-based 2), after Flow.
-  clearWhere(ledgerSs.getSheetByName("WarmUpFlowReturn"), 2, { prefix: FX_QUEUE_PREFIX });
+  clearWhere(ledgerSs.getSheetByName(TABS.warmUpFlowReturn), 2, { prefix: FX_QUEUE_PREFIX });
 
   // FlowInput — also collect the scratch student doc (removeFlow2Fixture's
   // match: any fixture marker, not only the student address).
@@ -884,11 +884,11 @@ function removeFlowFixtures() {
   f2.trashIds.forEach(function (id) { trashIds.push(id); });
 
   // WarmUpQueue — Flow 3 may have created a doc of its own; collect it too.
-  clearWhere(ledgerSs.getSheetByName(cfg.tabs.warmUpQueue || "WarmUpQueue"),
+  clearWhere(ledgerSs.getSheetByName(TABS.warmUpQueue),
     WQ.QUEUE_ID, { prefix: FX_QUEUE_PREFIX }, [WQ.DOC_ID]);
 
   // Any CompetencyEvidence a real Flow 2 harvest wrote from the fixture row.
-  clearWhere(ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence"),
+  clearWhere(ledgerSs.getSheetByName(TABS.competencyEvidence),
     5, { prefix: FX_CONFIG_PREFIX }, []);
 
   trashIds.forEach(function (id) {
@@ -919,7 +919,7 @@ function removeFlow2Fixture() {
   const cfg = getConfig_();
   const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
   const res = _fxClearFlow2FixtureRows_(ledgerSs, cfg);
-  const evidence = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.competencyEvidence) || "CompetencyEvidence");
+  const evidence = ledgerSs.getSheetByName(TABS.competencyEvidence);
   if (evidence && evidence.getLastRow() >= 2) {
     evidence.getDataRange().getValues().forEach(function (r, i) {
       if (i === 0 || String(r[5]).trim().indexOf(FX_CONFIG_PREFIX) !== 0) return;
@@ -949,7 +949,7 @@ function _fxIsFlow2FixtureRow_(row) {
 // Clears the fixture's FlowInput rows: { cleared, trashIds (scratch docs) }.
 function _fxClearFlow2FixtureRows_(ledgerSs, cfg) {
   const out = { cleared: 0, trashIds: [] };
-  const sheet = ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput");
+  const sheet = ledgerSs.getSheetByName(TABS.flowInput);
   if (!sheet || sheet.getLastRow() < 2) return out;
   const data = sheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
@@ -965,7 +965,7 @@ function _fxClearFlow2FixtureRows_(ledgerSs, cfg) {
 
 // How many Flow 2 fixture rows FlowInput holds (showSetupStatus, 35).
 function flow2FixtureRows_(ss) {
-  const sheet = ss.getSheetByName("FlowInput");
+  const sheet = ss.getSheetByName(TABS.flowInput);
   if (!sheet || sheet.getLastRow() < 2) return 0;
   // The daily drift probe's row (39b) is meant to stay; it isn't a leftover.
   return sheet.getDataRange().getValues().slice(1).filter(function (r) {

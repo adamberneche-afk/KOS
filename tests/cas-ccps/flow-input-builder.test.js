@@ -40,7 +40,7 @@ function load(extraGlobals) {
     [SHARED_CONFIG_PATH, path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '32_CompetencyRubricImporter.js'), DOC_HEADER_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PARTS_PATH, PROMPTS_PATH,
       ASSIGNMENTS_PATH],
     [
-      'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',
+      'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'TABS',
       'STG_STATUS', 'STG_STUDENT_FILE_ID', 'STG_CONFIG_ID', 'STG_TEACHER_EMAIL',
       'LEDGER', '_fiCheckPlausibility_', '_fiDistinguishingWords_', 'recordStudentAssignment_',
       '_fiInsertEvaluation_', 'responseZoneBounds_', 'flow2HeldTwiceLine_',

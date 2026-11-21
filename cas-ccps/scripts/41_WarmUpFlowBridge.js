@@ -116,7 +116,6 @@
 
 // ── Tabs ─────────────────────────────────────────────────────────────────────
 
-const WFB_RETURN_TAB = "WarmUpFlowReturn";
 const WFB_INPUT_TABS = { 3: "Flow3Input", 4: "Flow4Input" };
 
 const WFB_RETURN_HEADERS = [
@@ -570,7 +569,7 @@ function wfbExistingInputIds_(sheet) {
 function wfbRetryStaleInputs_(ss, tabs, budget, now) {
   if (budget <= 0) return 0;
   const returned = { 3: {}, 4: {}, 5: {} };
-  const ret = ss.getSheetByName(WFB_RETURN_TAB);
+  const ret = ss.getSheetByName(TABS.warmUpFlowReturn);
   if (ret && ret.getLastRow() > 1) {
     ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues().forEach(function (r) {
       const f = Number(r[WFB_RET.FLOW]);
@@ -620,7 +619,7 @@ function wfbFallbackExhaustedInputs_(ss, flow3Tab, wqSheet, now) {
   const lastRow = flow3Tab.getLastRow();
   if (lastRow <= 1 || !wqSheet) return 0;
   const returned = {};
-  const ret = wfbTab_(ss, WFB_RETURN_TAB, WFB_RETURN_HEADERS);
+  const ret = wfbTab_(ss, TABS.warmUpFlowReturn, WFB_RETURN_HEADERS);
   if (ret.getLastRow() > 1) {
     ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues().forEach(function (r) {
       if (Number(r[WFB_RET.FLOW]) === 3) returned[String(r[WFB_RET.QUEUE_ID]).trim()] = true;
@@ -1115,7 +1114,7 @@ function harvestWarmUpFlowReturns() {
 
 function wfbHarvestUnderLock_(result) {
   const ctx = wfbLedger_();
-  const returns = wfbTab_(ctx.ss, WFB_RETURN_TAB, WFB_RETURN_HEADERS);
+  const returns = wfbTab_(ctx.ss, TABS.warmUpFlowReturn, WFB_RETURN_HEADERS);
   const lastRow = returns.getLastRow();
   if (lastRow <= 1) return result;
 
@@ -1509,7 +1508,7 @@ function repairFailedWarmUps() { return wfbRepairFailedWarmUps_(false); }
 function wfbRepairFailedWarmUps_(dryRun) {
   const ctx = wfbLedger_();
   const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
-  const ret = ctx.ss.getSheetByName(WFB_RETURN_TAB);
+  const ret = ctx.ss.getSheetByName(TABS.warmUpFlowReturn);
   const result = { dryRun: dryRun, failed: 0, delivered: 0, pastDay: 0, notError: 0, noAnchor: 0 };
   if (!wqSheet || !ret || ret.getLastRow() < 2) {
     Logger.log("[WFB] repairFailedWarmUps: " + JSON.stringify(result));
@@ -1558,7 +1557,7 @@ function wfbRepairFailedScoring_(dryRun, accept) {
   const ctx = wfbLedger_();
   const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
   const wrSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpRegistry);
-  const ret = ctx.ss.getSheetByName(WFB_RETURN_TAB);
+  const ret = ctx.ss.getSheetByName(TABS.warmUpFlowReturn);
   const result = { dryRun: dryRun, failed: 0, scored: 0, stillFailing: 0, notEvalError: 0, byDate: {} };
   const label = accept ? "acceptFailedWarmUpFeedback" : "repairFailedWarmUpScoring";
   if (!wqSheet || !ret || ret.getLastRow() < 2) {
@@ -1652,7 +1651,7 @@ function wfbRescoreEvalErrors_(dryRun) {
     });
     // Bottom up, so the rows above keep their numbers. Studio's new returns
     // land below these and arrive with no HarvestStatus.
-    const ret = dryRun ? null : ctx.ss.getSheetByName(WFB_RETURN_TAB);
+    const ret = dryRun ? null : ctx.ss.getSheetByName(TABS.warmUpFlowReturn);
     if (ret && ret.getLastRow() > 1) {
       const rows = ret.getRange(2, 1, ret.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues();
       for (let j = rows.length - 1; j >= 0; j--) {
@@ -1928,7 +1927,7 @@ function installWarmUpFlowTriggers() {
  */
 function retryWarmUpFolderPathFailures() {
   const ctx = wfbLedger_();
-  const returns = wfbTab_(ctx.ss, WFB_RETURN_TAB, WFB_RETURN_HEADERS);
+  const returns = wfbTab_(ctx.ss, TABS.warmUpFlowReturn, WFB_RETURN_HEADERS);
   const lastRow = returns.getLastRow();
   let reset = 0;
   if (lastRow >= 2) {
@@ -1953,7 +1952,7 @@ function retryWarmUpFolderPathFailures() {
  */
 function checkWarmUpFlowLiveness() {
   const ctx = wfbLedger_();
-  const returns = wfbTab_(ctx.ss, WFB_RETURN_TAB, WFB_RETURN_HEADERS);
+  const returns = wfbTab_(ctx.ss, TABS.warmUpFlowReturn, WFB_RETURN_HEADERS);
   const everReturned = { 3: 0, 4: 0 };
 
   const rLast = returns.getLastRow();
@@ -1983,10 +1982,10 @@ function checkWarmUpFlowLiveness() {
   [3, 4].forEach(function (flow) {
     const f = report.flows[flow];
     if (!f.everReturned && f.ready > 0) {
-      Logger.log("[WFB] Flow " + flow + ": NOTHING has ever been written to " + WFB_RETURN_TAB +
+      Logger.log("[WFB] Flow " + flow + ": NOTHING has ever been written to " + TABS.warmUpFlowReturn +
         ", but " + f.ready + " job(s) are waiting in " + WFB_INPUT_TABS[flow] + ". Either the " +
         "Flow is not built, or its last step is not the native \"add row to sheet\" into " +
-        WFB_RETURN_TAB + " this harvest reads. A green \"Run Completed\" rules out neither.");
+        TABS.warmUpFlowReturn + " this harvest reads. A green \"Run Completed\" rules out neither.");
     } else if (!f.everReturned) {
       Logger.log("[WFB] Flow " + flow + ": no returns and nothing waiting — nothing to conclude.");
     }
@@ -2030,16 +2029,16 @@ function checkFlowBinding() {
     const owner = (idx <= WFB_RET.RAW_OUTPUT) ? 'the Flow writes this' : 'leave EMPTY — the harvest owns it';
     report.expected.push({ column: idx + 1, header: name, owner: owner });
   });
-  Logger.log('[WFB] Expected binding for the final "add row to sheet" step, into ' + WFB_RETURN_TAB + ':');
+  Logger.log('[WFB] Expected binding for the final "add row to sheet" step, into ' + TABS.warmUpFlowReturn + ':');
   report.expected.forEach(function (e) {
     Logger.log('[WFB]   col ' + e.column + '  ' + e.header + '  — ' + e.owner);
   });
   Logger.log('[WFB]   Flow must be the literal 3, 4 or 5. QueueID must be the trigger row\'s ' +
     'Queue_ID. RawOutput is the Gemini step\'s output, unmodified.');
 
-  const returns = ctx.ss.getSheetByName(WFB_RETURN_TAB);
+  const returns = ctx.ss.getSheetByName(TABS.warmUpFlowReturn);
   if (!returns || returns.getLastRow() <= 1) {
-    Logger.log('[WFB] No rows in ' + WFB_RETURN_TAB + ' yet, so there is no binding to diagnose. ' +
+    Logger.log('[WFB] No rows in ' + TABS.warmUpFlowReturn + ' yet, so there is no binding to diagnose. ' +
       'That is case 1 or 2 above — the Flow has never written here at all. ' +
       'checkWarmUpFlowLiveness() covers those.');
     return report;
@@ -2088,7 +2087,7 @@ function checkFlowBinding() {
 // last windowMs, how many checkFlowBinding() would flag. Counts only.
 function wfbRecentBindingCounts_(ss, now, windowMs) {
   const out = { recent: 0, bad: 0 };
-  const returns = ss.getSheetByName(WFB_RETURN_TAB);
+  const returns = ss.getSheetByName(TABS.warmUpFlowReturn);
   if (!returns || returns.getLastRow() < 2) return out;
   const knownIds = {};
   const wq = ss.getSheetByName(getConfig_().tabs.warmUpQueue);
@@ -2368,7 +2367,7 @@ function runWarmUpFlowCanary() {
     Logger.log("[WFB] canary aborted: no WarmUpQueue tab");
     return { ok: false, passed: 0, total: 0, steps: [] };
   }
-  const returns = wfbTab_(ctx.ss, WFB_RETURN_TAB, WFB_RETURN_HEADERS);
+  const returns = wfbTab_(ctx.ss, TABS.warmUpFlowReturn, WFB_RETURN_HEADERS);
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd-HHmmss");
   const queueId = WFB_CANARY_PREFIX + stamp;
 
@@ -2473,7 +2472,7 @@ function removeWarmUpFlowFixtures() {
     }
   });
 
-  const returns = ctx.ss.getSheetByName(WFB_RETURN_TAB);
+  const returns = ctx.ss.getSheetByName(TABS.warmUpFlowReturn);
   if (returns && returns.getLastRow() > 1) {
     const data = returns.getRange(2, 1, returns.getLastRow() - 1, WFB_RETURN_HEADERS.length).getValues();
     for (let i = data.length - 1; i >= 0; i--) {

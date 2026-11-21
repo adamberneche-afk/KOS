@@ -144,7 +144,7 @@ function _fmFlow1_(ctx) {
   const timeoutMs = WD_STALE_MINS.RUBRIC_QUEUE * 60000;
   const admin = ctx.cfg.adminSsId && ctx.cfg.adminSsId !== ctx.cfg.ledgerSsId
     ? SpreadsheetApp.openById(ctx.cfg.adminSsId) : ctx.ss;
-  const sheet = admin.getSheetByName((ctx.cfg.tabs && ctx.cfg.tabs.rubricQueue) || "RubricQueue");
+  const sheet = admin.getSheetByName(TABS.rubricQueue);
   _fmValues_(sheet, C.STATUS + 1).forEach(function (r) {
     ctx.countRun(r[C.TIMESTAMP]);
     const at = sheetTimestampMs_(r[C.TIMESTAMP]);
@@ -163,11 +163,11 @@ function _fmFlow1_(ctx) {
 // Flow 2: one FlowInput row per submission (37). The wait runs to the
 // harvest's EvaluationLog row for the same submission.
 function _fmFlow2_(ctx) {
-  const sheet = ctx.ss.getSheetByName((ctx.cfg.tabs && ctx.cfg.tabs.flowInput) || FI_TAB_NAME);
+  const sheet = ctx.ss.getSheetByName((ctx.cfg.tabs && ctx.cfg.tabs.flowInput) || TABS.flowInput);
   const rows = _fmValues_(sheet, FI.READY_STATUS + 1);
   if (!rows.length) return;
   const logged = {};
-  _fmValues_(ctx.ss.getSheetByName((ctx.cfg.tabs && ctx.cfg.tabs.evaluationLog) || "EvaluationLog"),
+  _fmValues_(ctx.ss.getSheetByName(TABS.evaluationLog),
     EVAL_LOG_HEADERS.length).forEach(function (r) {
     const ms = sheetTimestampMs_(r[0]);
     if (isNaN(ms)) return;
@@ -209,7 +209,7 @@ function _fmFlow2_(ctx) {
 // row for the same QueueID; the answer is a WarmUpFlowReturn row.
 function _fmWarmUpFlows_(ctx) {
   const returns = {};
-  _fmValues_(ctx.ss.getSheetByName(WFB_RETURN_TAB), WFB_RETURN_HEADERS.length).forEach(function (r) {
+  _fmValues_(ctx.ss.getSheetByName(TABS.warmUpFlowReturn), WFB_RETURN_HEADERS.length).forEach(function (r) {
     const key = Number(r[WFB_RET.FLOW]) + "|" + String(r[WFB_RET.QUEUE_ID] || "").trim();
     (returns[key] = returns[key] || []).push(r);
   });

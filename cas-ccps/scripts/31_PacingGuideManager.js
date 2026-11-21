@@ -98,9 +98,9 @@ function importPacingGuide() {
   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
 
   // ── Ensure PacingGuide tab exists ─────────────────────────────────────────
-  let pgSheet = ss.getSheetByName("PacingGuide");
+  let pgSheet = ss.getSheetByName(TABS.pacingGuide);
   if (!pgSheet) {
-    pgSheet = ss.insertSheet("PacingGuide");
+    pgSheet = ss.insertSheet(TABS.pacingGuide);
     Logger.log("[S31] Created PacingGuide tab.");
   }
 
@@ -184,7 +184,7 @@ function validatePacingGuide() {
   requireScriptOwner_();
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName("PacingGuide");
+  const sheet = ss.getSheetByName(TABS.pacingGuide);
 
   if (!sheet || sheet.getLastRow() < 2) {
     Logger.log("[S31-VALIDATE] PacingGuide tab empty or missing.");
@@ -463,7 +463,7 @@ function _getFullPacingField_(unitId, fieldName) {
   try {
     const cfg   = getConfig_();
     const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
-    const sheet = ss.getSheetByName("PacingGuide");
+    const sheet = ss.getSheetByName(TABS.pacingGuide);
     if (!sheet || sheet.getLastRow() < 2) return "";
 
     const data    = sheet.getDataRange().getValues();
@@ -526,7 +526,7 @@ function _loadPacingGuide_() {
   // ── Read from sheet ────────────────────────────────────────────────────────
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = ss.getSheetByName("PacingGuide");
+  const sheet = ss.getSheetByName(TABS.pacingGuide);
 
   if (!sheet || sheet.getLastRow() < 2) {
     Logger.log("[S31] PacingGuide tab empty — run importPacingGuide() first.");
