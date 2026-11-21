@@ -50,7 +50,7 @@ function fileCode(file) {
 function scriptText(src, file) {
   if (!/\.html?$/i.test(file || '')) return src;
   const parts = [];
-  const re = /<script\b[^>]*>([\s\S]*?)<\/script>/gi;
+  const re = /<script\b[^>]*>([\s\S]*?)<\/script[^>]*>/gi;
   let m;
   while ((m = re.exec(src))) parts.push(m[1]);
   return parts.join('\n;\n');

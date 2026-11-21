@@ -45,6 +45,10 @@ test('cutDeclarations, cutSpan and cutStatement on a file; an .html file reads o
   assert.equal(cd.cutSpan(file, 'X', 'y'), 'const X = 1;\nfunction y() { return X; }');
   assert.equal(cd.cutStatement(file, 'el.innerHTML = '), "el.innerHTML = [1].map(n => `<b>${n}</b>`).join('');");
   assert.throws(() => cd.cutStatement(file, 'missing text'), /is not in/);
+  const spaced = path.join(dir, 'spaced.html');
+  fs.writeFileSync(spaced, '<script>\nconst P = 1;\n</script >\n<p>const Q = 2;</p>\n<SCRIPT type="x">const R = 3;</SCRIPT\n>');
+  assert.deepEqual(cd.listDeclarations(cd.scriptText(fs.readFileSync(spaced, 'utf8'), spaced)).map((d) => d.name), ['P', 'R'],
+    'an end tag with a space or a newline before > still ends the script; markup between scripts is not read');
 });
 
 test('a LeaderHub fragment is read as part of the assembled page', () => {
