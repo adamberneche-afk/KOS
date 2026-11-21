@@ -199,15 +199,8 @@ function _ticLedger_() {
   return SpreadsheetApp.openById(getConfig_().ledgerSsId);
 }
 
-function _ticTab_(ss, name, headers) {
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.setFrozenRows(1);
-  }
-  return sheet;
-}
+// The tabs are made by 00's ensureTab_ (this file's own copy, _ticTab_, was
+// folded in 2026-11-21: gas-lint's second-copy check).
 
 function _ticValues_(sheet, width) {
   if (!sheet || sheet.getLastRow() < 2) return [];
@@ -280,7 +273,7 @@ function _ticMaterialize_(ss, now, raw) {
   });
   if (!pending.length) return result;
 
-  const input = _ticTab_(ss, TIC_INPUT_TAB, TIC_INPUT_HEADERS);
+  const input = ensureTab_(ss, TIC_INPUT_TAB, TIC_INPUT_HEADERS);
   const inRows = _ticValues_(input, TIC_INPUT_HEADERS.length);
   const sent = {}; // CheckID -> indexes of its input rows, oldest first
   inRows.forEach(function (r, i) {
@@ -558,7 +551,7 @@ const TIC_FIXTURE_ANSWER = "In section two I will add a short survey of twenty f
 function installTurnInCheckFixture() {
   const ss = _ticLedger_();
   const id = TIC_FIXTURE_PREFIX + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyyMMdd-HHmmss");
-  _ticAppendInput_(_ticTab_(ss, TIC_INPUT_TAB, TIC_INPUT_HEADERS), new Date(), id, 1,
+  _ticAppendInput_(ensureTab_(ss, TIC_INPUT_TAB, TIC_INPUT_HEADERS), new Date(), id, 1,
     ticPromptText_(_ticSyntheticCheck_(id, TIC_FIXTURE_ANSWER)));
   Logger.log("[TIC] Fixture " + id + " written to " + TIC_INPUT_TAB + " (READY). Once the Flow has answered " +
     "it, run checkTurnInCheckFlowBinding() and checkTurnInCheckFlowLiveness().");
@@ -594,7 +587,7 @@ function runTurnInCheckFlowCanary() {
       "VERDICT: ADDRESSES\nREASON: Good.\nVERDICT: NOT_YET", "VERDICT: ADDRESSES\nREASON: Your grade is an A."];
     step("garbled answers are refused", garbled.every(function (g) { return !ticParseReturn_(g).ok; }));
 
-    const input = _ticTab_(ss, TIC_INPUT_TAB, TIC_INPUT_HEADERS);
+    const input = ensureTab_(ss, TIC_INPUT_TAB, TIC_INPUT_HEADERS);
     _ticAppendInput_(input, new Date(), id, 1, prompt);
     const back = _ticValues_(input, TIC_INPUT_HEADERS.length).filter(function (r) {
       return String(r[TCI.CHECK_ID]).trim() === id;
@@ -602,7 +595,7 @@ function runTurnInCheckFlowCanary() {
     step("the input row reads back READY with its prompt", !!back &&
       String(back[TCI.STATUS]) === TIC_READY && String(back[TCI.PROMPT_TEXT]) === prompt);
 
-    const returns = _ticTab_(ss, TIC_RETURN_TAB, TIC_RETURN_HEADERS);
+    const returns = ensureTab_(ss, TIC_RETURN_TAB, TIC_RETURN_HEADERS);
     returns.appendRow([new Date(), id, "```\nVERDICT: ADDRESSES\nREASON: You name the section and the change.\n```", "", "", ""]);
     const h = _ticHarvest_(ss, { prefix: TIC_CANARY_PREFIX });
     const ret = _ticValues_(returns, TIC_RETURN_HEADERS.length).filter(function (r) {

@@ -463,7 +463,7 @@ function _tccSaveReport_(folder, run, now) {
 
 function _tccLogRun_(cfg, run, now) {
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet = _turnInSheet_(ss, TCC_RUNS_TAB, TCC_RUN_HEADERS);
+  const sheet = ensureTab_(ss, TCC_RUNS_TAB, TCC_RUN_HEADERS);
   const row = [now.toISOString(), String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase(),
     run.assignmentId, sheetSafeText_(run.column), String(run.files)]
     .concat(TCC_OUTCOMES.map(function (o) { return String(run.counts[o]); }))

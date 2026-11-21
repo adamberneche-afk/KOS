@@ -2026,6 +2026,72 @@ function findStaleFileRefs(sources, liveNames, archivedNames, trackedPaths) {
   return out;
 }
 
+// -----------------------------------------------------------------------
+// Second copy (2026-11-21, CLAUDE.md "Keeping debt down"): a function body of
+// SECOND_COPY_MIN_LINES or more, identical (comments and whitespace aside) in
+// two files of one system, is an error. The second copy moves to one place:
+// 00 (cas-ccps), tools/lib/, or shared/ with a sync. A pair that must stay is
+// named in second-copy-allow.json with why; an entry nothing matches is an
+// error too. Across systems the sync recipe (tools/flow-harness-sync) and its
+// own tests hold copies equal, so they aren't compared here.
+// -----------------------------------------------------------------------
+const SECOND_COPY_MIN_LINES = 5;
+const SECOND_COPY_ALLOW_PATH = 'tools/gas-lint/second-copy-allow.json';
+
+// sources: [{ file, code }] of one system. Returns [[{file, name, lines}, ...]]
+// for each body found in two or more files. Pure; tested.
+function findSecondCopies(sources) {
+  const decls = require('../lib/declarations.js');
+  const seen = new Map();
+  for (const { file, code } of sources) {
+    let ds;
+    try { ds = decls.listDeclarations(code); } catch (e) { continue; }
+    for (const d of ds) {
+      if (d.kind !== 'function') continue;
+      const text = code.slice(d.start, d.end);
+      const body = text.slice(text.indexOf('{'));
+      const lines = body.split('\n').length;
+      if (lines < SECOND_COPY_MIN_LINES) continue;
+      const key = stripCommentsAndStrings(body, { keepStrings: true }).replace(/\s+/g, ' ').trim();
+      if (!seen.has(key)) seen.set(key, []);
+      seen.get(key).push({ file, name: d.name, lines });
+    }
+  }
+  return [...seen.values()].filter((g) => new Set(g.map((x) => x.file)).size > 1);
+}
+
+function checkSecondCopy() {
+  let allow = { allow: [] };
+  try { allow = JSON.parse(readFile(SECOND_COPY_ALLOW_PATH)); } catch (e) { /* no exceptions */ }
+  const allowed = (allow.allow || []).map((a) => ({ set: new Set(a.copies), used: false, copies: a.copies }));
+  const decls = require('../lib/declarations.js');
+  const bySystem = {};
+  for (const [name, def] of Object.entries(PROJECT_MAP)) {
+    if (name.startsWith('_')) continue;
+    const sys = name.split(':')[0];
+    if (!bySystem[sys]) bySystem[sys] = new Set();
+    (def.files || []).concat(def.html || []).forEach((f) => bySystem[sys].add(f));
+  }
+  for (const [sys, files] of Object.entries(bySystem)) {
+    const sources = [...files].filter(exists).map((f) => {
+      const raw = readFile(f);
+      return { file: f, code: f.endsWith('.html') ? decls.scriptText(raw, f) : raw };
+    });
+    for (const group of findSecondCopies(sources)) {
+      const ids = group.map((x) => x.file.split('/').pop() + ':' + x.name);
+      const ok = allowed.find((a) => ids.every((id) => a.set.has(id)));
+      if (ok) { ok.used = true; continue; }
+      err('second-copy',
+        `${sys}: the same ${group[0].lines}-line function body is in ${ids.join(' and ')}. ` +
+        `The second copy moves to one place (00, tools/lib/, or shared/ with a sync; CLAUDE.md, "Keeping debt down"), ` +
+        `or, if it must stay, name the pair in ${SECOND_COPY_ALLOW_PATH} with why.`, group[1].file);
+    }
+  }
+  allowed.filter((a) => !a.used).forEach((a) => err('second-copy-stale-allow',
+    `${SECOND_COPY_ALLOW_PATH} allows ${a.copies.join(' and ')}, which are no longer identical copies: remove the entry.`,
+    SECOND_COPY_ALLOW_PATH));
+}
+
 function checkStaleFileRefs() {
   let tracked = [];
   try { tracked = require('../lib/repo.js').trackedFiles(); }
@@ -2049,6 +2115,7 @@ function checkStaleFileRefs() {
 }
 
 module.exports = {
+  findSecondCopies,
   stripCommentsAndStrings,
   flowCheckNameProblem,
   parseColumnMap,
@@ -2104,6 +2171,7 @@ checkUndefinedFunctionCalls();
 checkGcpSurfaces();
 checkColumnMapAgreement();
 checkFlowSurfaces();
+checkSecondCopy();
 checkFixtureConsumers();
 checkSandboxScope();
 checkPlausibilityGateDrift();

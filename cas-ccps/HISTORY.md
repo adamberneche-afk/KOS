@@ -1840,3 +1840,12 @@ which 3.1 put there on purpose, beside each tab's headers.
 
 The audit counted ~943 lines; following calls through 00's own helpers, and
 into the pages, most of those turned out to be shared.
+
+## Two tab helpers folded into ensureTab_, 2026-11-21
+
+gas-lint's new second-copy check (CLAUDE.md, "Keeping debt down") found 71's
+`_turnInSheet_` and 72's `_ticTab_`: the same body, and both copies of 00's
+`ensureTab_` that structure audit 3.2 missed. 71, 71b, 72 and 74 call
+`ensureTab_` now. The one visible difference: a turn-in tab made from now on
+has the bold, grey header every other tab has, and an existing one gains a
+header column added since it was made.

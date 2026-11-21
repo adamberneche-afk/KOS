@@ -211,8 +211,9 @@ marked "check" is held by CI; the rest are how a session works.
   always a local copy: one tab's columns in five files, three zip readers,
   three deploy reports. The second time code is copied, it moves to one
   place: 00 (cas-ccps), `tools/lib/`, or `shared/` with a sync script and a
-  test. (Check to come: gas-lint `second-copy`, an identical function body
-  in two files of one system.)
+  test. gas-lint's `second-copy` check fails on an identical function body
+  in two files of one system; a pair that must stay is named, with why, in
+  `tools/gas-lint/second-copy-allow.json`.
 - **Retiring is deleting.** A retired file stayed deployed "for reference",
   and comments, tests and docs kept citing it. The PR that retires a
   feature deletes its code, tests and mentions, and leaves one HISTORY.md

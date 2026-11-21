@@ -1,0 +1,13 @@
+{
+  "_comment": "Function bodies gas-lint's second-copy check lets stand in two files, each with why (CLAUDE.md, \"Keeping debt down\": the second copy moves to one place). An entry lists the copies as \"<file basename>:<function>\"; one that no longer matches a pair is an error, so this list can't outlive its reason.",
+  "allow": [
+    {
+      "copies": ["07_TeacherDashboard.js:formatDate_", "13_StudentDashboard.js:formatDate_"],
+      "why": "It calls Session.getScriptTimeZone(), and 00 (the shared place) is in two projects without the userinfo.email scope Session needs (structure audit 3.5); the two dashboards are separate projects."
+    },
+    {
+      "copies": ["07_TeacherDashboardPage.html:_afterMinSpinnerDelay", "13_StudentDashboardPage.html:_afterMinSpinnerDelay"],
+      "why": "Client code in two separate web apps' pages; a shared include was judged not worth it for ~31 identical lines while the rest of their client code has drifted (structure audit 4.5)."
+    }
+  ]
+}

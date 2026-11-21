@@ -573,7 +573,7 @@ function _turnInOpenAssignment_(assignmentKey, reason, until) {
   const lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    const sheet = _turnInSheet_(ss, TURN_IN_OVERRIDES_TAB, TURN_IN_OVERRIDE_HEADERS);
+    const sheet = ensureTab_(ss, TURN_IN_OVERRIDES_TAB, TURN_IN_OVERRIDE_HEADERS);
     const out = new Array(TURN_IN_OVERRIDE_HEADERS.length).fill("");
     out[TOVR.KEY] = key;
     out[TOVR.OPENED_BY] = String(Session.getEffectiveUser().getEmail() || "").trim().toLowerCase();
@@ -708,15 +708,8 @@ function turnInCodeValid_(typed) {
 // The tabs
 // ---------------------------------------------------------------------------
 
-function _turnInSheet_(ss, name, headers) {
-  let sheet = ss.getSheetByName(name);
-  if (!sheet) {
-    sheet = ss.insertSheet(name);
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.setFrozenRows(1);
-  }
-  return sheet;
-}
+// The tabs are made by 00's ensureTab_ (this file's own copy, _turnInSheet_, was
+// folded in 2026-11-21: gas-lint's second-copy check).
 
 function _turnInRows_(ss, name, width, cache) {
   return _turnInRead_(cache, name + ":" + width, function () {
@@ -788,7 +781,7 @@ function _turnInIssueCode_(ss, row, how, grantReason) {
       code = turnInMakeCode_(course, lesson, _turnInRandomPart_());
     }
     if (!code || taken[code]) throw new Error("Couldn't make a unique turn-in code.");
-    const sheet = _turnInSheet_(ss, TURN_IN_CODES_TAB, TURN_IN_CODE_HEADERS);
+    const sheet = ensureTab_(ss, TURN_IN_CODES_TAB, TURN_IN_CODE_HEADERS);
     const at = sheet.getLastRow() + 1;
     sheet.getRange(at, 1, 1, TURN_IN_CODE_HEADERS.length).setNumberFormat("@");
     const out = new Array(TURN_IN_CODE_HEADERS.length).fill("");

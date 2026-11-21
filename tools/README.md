@@ -55,6 +55,9 @@ their own files. A new tool takes these from here instead of writing its own.
 - `repo.js`: `ROOT`, `trackedFiles()` (git) and `projectMap()`. The git and
   project-map readers use it; the many `const ROOT = …` lines elsewhere were
   left where nothing else changed.
+- `declarations.js`: the lexer-based declaration finder (moved from
+  `tests/harness/cut-declarations.js`, which re-exports it), so gas-lint's
+  second-copy check reads function bodies the way the tests cut them.
 - `prompt-constants.js`: `escapeForTemplateLiteral` and
   `replaceTemplateConstant`, for every prompt generator (cas-ccps's and
   leader-hub's each had a copy). The replacement is passed as a function, so
