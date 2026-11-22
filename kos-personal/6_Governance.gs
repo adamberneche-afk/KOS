@@ -1114,7 +1114,7 @@ function _appendBlocks_(body, blocks) {
  */
 function _primerBlocks_(onboardingLine, vision, vectorState, shadowState, quality) {
   const out = [];
-  out.push({ kind: 'p', text: onboardingLine });
+  if (onboardingLine) out.push({ kind: 'p', text: onboardingLine });
 
   out.push({ kind: 'h2', text: '90-Day Vision' });
   out.push({ kind: 'p', text: vision });

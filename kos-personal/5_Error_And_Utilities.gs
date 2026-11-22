@@ -1529,14 +1529,13 @@ function _logOnboardingDay(day, event, note) {
 
 /**
  * The one onboarding line the primer, the session context block and the
- * KOS Project read: "Onboarding Day N of 21" while it runs, and
- * "Onboarding: complete (closed YYYY-MM-DD)" once closeOutOnboarding()
- * has run. Before the close-out the counter stops at the cap and stays
+ * KOS Project read: "Onboarding Day N of 21" while it runs, and "" (no
+ * line) once closeOutOnboarding() has run (the operator: drop it once
+ * closed). Before the close-out the counter stops at the cap and stays
  * there, which said nothing about whether onboarding had finished.
  */
 function _onboardingStatusLine_(props) {
-  const closed = props.getProperty(CFG.PROP.ONBOARDING_CLOSED);
-  if (closed) return 'Onboarding: complete (closed ' + closed + ')';
+  if (props.getProperty(CFG.PROP.ONBOARDING_CLOSED)) return '';
   return 'Onboarding Day ' + (props.getProperty(CFG.PROP.ONBOARDING_DAY) || '0') +
     ' of ' + CFG.ONBOARDING_DAYS;
 }
@@ -1545,7 +1544,7 @@ function _onboardingStatusLine_(props) {
  * Show-then-confirm close-out of the 21-day onboarding. The preview
  * changes nothing; closeOutOnboarding() records the close date, writes an
  * ONBOARDING_CLOSED row in ONBOARDING_TRACKER, and from then on the
- * primer reads "Onboarding: complete (closed …)". Refuses while the engine
+ * primer has no onboarding line. Refuses while the engine
  * is cold or before the counter reaches CFG.ONBOARDING_DAYS. Safe to
  * re-run: a second call reports the existing close date and writes
  * nothing. Re-arming the engine (either onboarding path) clears it.

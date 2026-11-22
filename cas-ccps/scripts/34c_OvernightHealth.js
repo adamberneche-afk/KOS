@@ -180,7 +180,17 @@ function _onAdminChecks_(now) {
     out.unreadable = true;
     out.problems.push("FERPA checks: unavailable (" + e.message + ")");
   }
+  const note = _onCasSignalDocNote_(PropertiesService.getScriptProperties(), now);
+  if (note) out.problems.push(note);
   return out;
+}
+
+// 34b's note when KOS_CAS_SIGNAL changed doc in the last 7 days, or "".
+function _onCasSignalDocNote_(props, now) {
+  let n = null;
+  try { n = JSON.parse(props.getProperty("CAS_SIGNAL_DOC_NOTE") || "null"); } catch (e) { n = null; }
+  if (!n || !n.at || new Date(now).getTime() - new Date(n.at).getTime() > 7 * 24 * 60 * 60 * 1000) return "";
+  return "KOS_CAS_SIGNAL " + n.what + " (" + String(n.at).slice(0, 10) + ")";
 }
 
 // Today's retention archiving, as a problem line or "" (and whether it ran).

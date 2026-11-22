@@ -151,7 +151,9 @@ unknown statuses, and then `writeCasSignal_()` rewrites the doc: LAST
 NIGHT, then 1. STUDENTS & FAMILIES, then 2. ADMIN.
 - *Stuck:* a stamp over 30 minutes old (the watchdog, or the Ledger
   cycle that runs it, has stopped); "Queue watchdog: the last run failed";
-  "DRY RUN" (it reports stuck rows but doesn't fix them).
+  "DRY RUN" (it reports stuck rows but doesn't fix them). The doc is never
+  replaced while it exists; if it is gone, the overnight email says the
+  watchdog re-linked or made a new one, and the link here must change.
 - *Code:* `cas-ccps/scripts/34_QueueWatchdog.js`,
   `cas-ccps/scripts/34b_CasAttentionSignal.js`.
 

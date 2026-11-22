@@ -174,3 +174,10 @@ test('_primerBlocks_: the Data Quality status rides on the Vector State heading 
   const k = ok.findIndex((b) => b.kind === 'h2' && /^Vector State/.test(b.text));
   assert.deepEqual([ok[k].text, ok[k + 1].text], ['Vector State (Data Quality OK)', 'Data Quality: OK.']);
 });
+
+test('a closed-out onboarding leaves no onboarding line in the primer (L15)', () => {
+  const { exported } = load();
+  const blocks = exported._primerBlocks_('', 'vision', VECTOR_FULL, SHADOW_FULL, QUALITY);
+  assert.ok(!blocks.some((b) => /Onboarding/.test(String(b.text || ''))), 'no onboarding line');
+  assert.equal(blocks[0].kind, 'h2', 'the primer starts at the vision');
+});
