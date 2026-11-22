@@ -3,43 +3,12 @@
 // BOUND TO: kos-personal (main flat-folder project)
 // ================================================================
 //
-// Replaces: PART 16 (Shared Utilities), PART 15 (Calibration &
-//           Diagnostics), PART 13 (generateIdentityKey,
-//           runHardeningAudit), and PART 17 (Admin) from the retired
-//           KOS_MASTER_v3_1.gs.
-//
-// ── CANONICAL OWNERSHIP NOTICE ───────────────────────────────
-// This file is the single source of truth for all shared utility
-// functions. Remove the following duplicates to prevent GAS
-// compile errors (duplicate function declarations):
-//
-//   (Both done: 1_Config_And_Deploy.gs no longer has its own
-//   _getOrCreateSheet(), and KOS_PHASE0_PATCHES.gs is deleted.)
-//
-// ── KEY CHANGES FROM v5.4 ────────────────────────────────────
-// _reportError()         No longer sends email on every error.
-//                        Writes to ERROR_LOG sheet + console only.
-//                        sendDailyErrorReport() is the sole email
-//                        path. The ui param is kept for any
-//                        remaining HITL callers that pass it.
-//
-// sendDailyErrorReport() New. Reads unread ERROR_LOG rows, emails
-//                        a grouped digest to the admin, and marks
-//                        rows as REPORTED. Also callable from the
-//                        web app Diagnostics tab on demand.
-//
-// _getOrCreateSheet()    Each sheet's schema (STAGING 7 cols,
-//                        ERROR_LOG's Reported_At in col 5).
-//
-// _getOrCreateDoc()      BUG-03 pattern: saveAndClose → moveTo →
-//                        openById(captured dId). No name-search.
-//
-// archiveStagingPipeline() Headless: no ui.alert. Archives finished rows
-//                        only (failed rows stay, so they can be retried);
-//                        returns the count so the web app can display it.
-//
-// resetProperties()      Preserves KOS_PROMOTED_VECTORS (v8.0 key)
-//                        in addition to existing preserved keys.
+// The shared utilities every kos-personal file uses: error reporting
+// (_reportError() writes ERROR_LOG and the console; sendDailyErrorReport()
+// is the one email path), the sheet/doc/spreadsheet get-or-create helpers
+// (each sheet's schema lives in _getOrCreateSheet()), archiving finished
+// STAGING_PIPELINE rows, and resetProperties(), which keeps
+// KOS_PROMOTED_VECTORS.
 // ================================================================
 
 
@@ -762,6 +731,7 @@ function _isWithinSystemFolderTree_(fileId) {
 function _isUnderFolderId_(start, rootId) {
   let frontier = [start];
   const visited = new Set();
+  const started = Date.now();
   for (let depth = 0; depth < 25 && frontier.length; depth++) {
     const next = [];
     for (const node of frontier) {
@@ -769,7 +739,9 @@ function _isUnderFolderId_(start, rootId) {
       if (visited.has(id)) continue;
       visited.add(id);
       const parents = node.getParents();
+      let seen = 0;
       while (parents.hasNext()) {
+        if (seen++ >= CFG.DRIVE_LOOP_MAX_ITEMS || Date.now() - started > CFG.DRIVE_LOOP_MAX_MS) break;
         const p = parents.next();
         if (p.getId() === rootId) return true;
         next.push(p);
@@ -939,7 +911,14 @@ function _getOrCreateSheet(ss, name) {
  */
 function _getOrCreateSpreadsheet(name, parentFolder) {
   const files = parentFolder.getFilesByName(name);
+  const started = Date.now();
+  let seen = 0;
   while (files.hasNext()) {
+    // Stopping short must not create a second copy: throw instead.
+    if (seen++ >= CFG.DRIVE_LOOP_MAX_ITEMS || Date.now() - started > CFG.DRIVE_LOOP_MAX_MS) {
+      throw new Error('_getOrCreateSpreadsheet: stopped after ' + (seen - 1) + ' files named "' + name +
+        '" without finding the spreadsheet; not creating a second one.');
+    }
     const f = files.next();
     if (f.getMimeType() === MimeType.GOOGLE_SHEETS) {
       return SpreadsheetApp.openById(f.getId());

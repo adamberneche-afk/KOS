@@ -1030,7 +1030,16 @@ function generateDailyPrimer() {
 
     // Idempotent: remove today's primer if this already ran once today.
     const existing = folder.getFilesByName(docName);
-    while (existing.hasNext()) existing.next().setTrashed(true);
+    const trashStarted = Date.now();
+    let trashed = 0;
+    while (existing.hasNext()) {
+      if (trashed >= CFG.DRIVE_LOOP_MAX_ITEMS || Date.now() - trashStarted > CFG.DRIVE_LOOP_MAX_MS) {
+        console.warn('[generateDailyPrimer] stopped trashing old copies of ' + docName + ' after ' + trashed + '.');
+        break;
+      }
+      existing.next().setTrashed(true);
+      trashed++;
+    }
 
     const doc  = DocumentApp.create(docName);
     const dId  = doc.getId();

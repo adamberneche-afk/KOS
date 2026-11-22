@@ -6,6 +6,17 @@ This file holds the current plan of record's era; `node tools/archive/search.js 
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
 
+### Every Drive iterator loop has a cap (2026-11-22)
+
+The last four `while (it.hasNext())` loops with no limit (dead-ends audit
+6.1): `_findHighestVersionDoc` (1), `_isUnderFolderId_` and
+`_getOrCreateSpreadsheet` (5), and the primer's trash of today's earlier
+copy (6). Each stops at `CFG.DRIVE_LOOP_MAX_ITEMS` (500) or
+`CFG.DRIVE_LOOP_MAX_MS` (60 s) and logs it; `_getOrCreateSpreadsheet` throws
+instead, so stopping short never creates a second spreadsheet. gas-lint's
+`bounded-loop-convention` is now an error. 5's header now states its
+purpose (its v5.4-era change notes are in git history).
+
 ### Retired: the managed-service switch and the intake vector path (2026-11-22)
 
 From the 11-22 dead-ends audit (`meta/AUDIT_DEAD_ENDS_2026-11-22.md`, 2.5
