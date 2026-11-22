@@ -112,7 +112,7 @@ are on live (feature-switches doc and handoffs): not gaps.
 | 5.3 | `FERPA_DATA_MAP.md` says 29 writes `WarmUpResponses`; it only reads it (the tab is legacy, its form retired) | fix |
 | 5.4 | `claude-project/README.md` "six doc links" (seven placeholders) | fix |
 | 5.5 | `DEPLOYMENT_GUIDE.md:75` points at a moved archive path (doc-currency's one warning) | fix |
-| 5.6 | `meta/AGENT_NOTES.md`, due for pruning after 11-21, is 909 lines | fix |
+| 5.6 | `meta/AGENT_NOTES.md`, due for pruning after 11-21, is 909 lines | done: 143 lines (#562) |
 
 ### 6. Checks that still only warn
 

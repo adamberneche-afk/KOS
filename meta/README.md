@@ -141,9 +141,10 @@ or `archive/INDEX.md`); 4.4 of `AUDIT_STRUCTURE_2026-11-20.md` filed the last ba
   coverage-gaps can't see 12 trigger registrations; three editor functions
   undocumented; whether doc-currency should check file paths. Partial (the
   function-level sweep is in the 11-22 audit).
-- **`AGENT_NOTES.md`** — the notes for an agent session from every
-  archived handoff (10-05 to 11-08), word for word and oldest first. The
-  live handoffs keep their own.
+- **`AGENT_NOTES.md`** — the traps and conventions from the archived
+  handoffs' agent notes (10-05 to 11-08) that still hold, merged by topic,
+  each citing its date(s). The handoffs keep the originals; the live
+  handoffs keep their own.
 - **Archived** — superseded handoffs, finished plans, sprints and audits
   are in [`archive/`](../archive/INDEX.md), filed by school quarter and
   kept at their old paths inside it, out of everyday search;
