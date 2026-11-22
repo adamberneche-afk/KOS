@@ -1889,3 +1889,19 @@ doc that still exists is never replaced (the run is skipped); only a doc
 that is gone is replaced, by the newest doc of the same title or a new
 one, and a note (`CAS_SIGNAL_DOC_NOTE`) puts the change in the overnight
 email for a week.
+
+## Warm-ups with the Student Context: an A/B test, 2026-11-22
+
+The operator asked how Flow 3's warm-ups change when Gemini also gets the
+student's Student Context, the weekly record 29 writes, which no flow read.
+41b builds the test without touching live warm-ups: one student at random
+from each class period and course, two Flow 3 jobs each from their latest
+WarmUpQueue row (41's own row builder), A as today and B with their last
+two weeks of context and a rule (connect to what they did or said; never a
+score, grade, rating or missing work; quote only a few words). The jobs'
+QueueIDs start `WUQ-CTXFIX-`, which the harvest leaves alone and
+`checkFlowBinding` treats as a test's leftover, so nothing is delivered.
+`WarmUpContextResults` pairs the answers as Left and Right in random order
+for the teacher to rate blind, beside automatic checks. Flow 3's prompt
+already has a "STUDENT CONTEXT:" heading (the profile), so the new block is
+called the student's weekly record.

@@ -167,10 +167,10 @@ const WFB_MAX_INPUT_RETRIES = 2;
 const WFB_NO_RETURN_REASON = "no return from Studio after " + WFB_MAX_INPUT_RETRIES + " retries";
 const WFB_PRUNE_AFTER_DAYS = 14;
 const WFB_CANARY_PREFIX = "WUQ-CANARY-";
+const WCF_PREFIX = "WUQ-CTXFIX-"; // 41b's A/B test jobs: the harvest leaves them alone
 
-// Which WarmUpQueue status makes a row eligible for each flow's input row.
-// Reading these off the existing status machine rather than inventing new
-// states is what keeps Scripts 23/24/25 unaware that anything changed.
+// Which WarmUpQueue status makes a row eligible for each flow's input row: the
+// existing status machine, so Scripts 23/24/25 needed no change.
 const WFB_TRIGGER_STATUS = { 5: "PENDING_BRIDGE", 3: "PENDING", 4: "PENDING_EVAL" };
 
 
@@ -1140,6 +1140,7 @@ function wfbHarvestUnderLock_(result) {
     const queueId = String(row[WFB_RET.QUEUE_ID] || "").trim();
     const raw = String(row[WFB_RET.RAW_OUTPUT] || "");
     const attempts = Number(row[WFB_RET.ATTEMPTS] || 0) + 1;
+    if (queueId.indexOf(WCF_PREFIX) === 0) { result.skipped++; continue; } // 41b's A/B test: never delivered
 
     // Several jobs' QueueIDs in one return: the flow used a Full list (00,
     // 2026-11-19). Set aside, never applied: one answer can't be split among
@@ -2112,14 +2113,13 @@ function wfbRecentBindingCounts_(ss, now, windowMs) {
  * A canary's return row whose queue row is gone (the canary removed its own
  * fixture, or removeWarmUpFlowFixtures() ran before the return arrived): a
  * test's leftover, not evidence about the binding. Skipped by
- * checkFlowBinding() and the overnight count. Plan L5, 2026-11-09: the
- * 11-02 signal's "1 of 1 returns in the wrong columns" was the 11-01
- * canary's leftover; every live row was bound correctly (461 of 461).
- * A canary row whose queue row still exists is diagnosed like any other.
+ * checkFlowBinding() and the overnight count (plan L5: the 11-02 signal's
+ * one wrong-column return was the 11-01 canary's leftover).
+ * A canary row whose queue row still exists is diagnosed like any other; 41b's rows have none.
  */
 function _wfbIsCanaryLeftover_(row, knownIds) {
   const id = String(row[WFB_RET.QUEUE_ID] === undefined ? '' : row[WFB_RET.QUEUE_ID]).trim();
-  return id.indexOf(WFB_CANARY_PREFIX) === 0 && !knownIds[id];
+  return (id.indexOf(WFB_CANARY_PREFIX) === 0 || id.indexOf(WCF_PREFIX) === 0) && !knownIds[id];
 }
 
 /**
