@@ -217,9 +217,9 @@ marked "check" is held by CI; the rest are how a session works.
 - **Retiring is deleting.** A retired file stayed deployed "for reference",
   and comments, tests and docs kept citing it. The PR that retires a
   feature deletes its code, tests and mentions, and leaves one HISTORY.md
-  entry; `tools/archive/file.js` keeps a doc that matters. (Check to come:
-  gas-lint `retired-in-project`, a project file whose header says it is
-  retired or superseded.)
+  entry; `tools/archive/file.js` keeps a doc that matters. gas-lint's
+  `unused-file` check fails on a deployed file nothing in its project uses
+  (no public function, no declaration another file names).
 - **Files grow where adding is easiest.** 63% of the Teacher Dashboard was
   one string. gas-lint's `size-budget` check is a ratchet: a deployed file
   over 1,500 lines, a string literal over 100 or a README over 250 fails
