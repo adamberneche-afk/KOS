@@ -13,7 +13,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 function pages() {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('07_TeacherDashboard.js')],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('07_TeacherDashboard.js'), S('80_WarmUpPoints.js'), S('80b_WarmUpPointsPanel.js')],
     ['buildStudentDashboardHtml_', 'buildDashboardHtml_', 'CLIENT_WORDS_JS', 'CAS_STUDENT_TERMS', 'CAS_TEACHER_TERMS']);
   return { student: exported.buildStudentDashboardHtml_(), teacher: exported.buildDashboardHtml_(), exported };
 }
@@ -144,7 +144,7 @@ test('after a successful Submit, the card says it is waiting and Submit is gone'
 // the student isn't told to report what the teacher already knows, and the
 // teacher's row says why and what to do.
 test('a failed or timed-out check reads as the system\'s problem, with a next step for the teacher', () => {
-  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('07_TeacherDashboard.js')],
+  const { exported } = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('13_StudentDashboard.js'), S('13c_StudentDashboardLessons.js'), S('71_TurnInCodes.js'), S('71b_TurnInStudent.js'), S('07_TeacherDashboard.js'), S('80_WarmUpPoints.js'), S('80b_WarmUpPointsPanel.js')],
     ['resolveStudentStatus_', '_tdFlagReason_']);
   // Plain words and a next step since 2026-11-14: the card's Try again.
   assert.match(exported.resolveStudentStatus_('ERROR_TIMEOUT'), /^Check stopped ⚠ — it took too long\. Your work is saved\. Press Try again/);
