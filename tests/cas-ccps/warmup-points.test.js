@@ -10,6 +10,7 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const vm = require('vm');
 const { loadGasFiles } = require('../harness/gas-sandbox');
+const { extractInlineScripts } = require('../../tools/html-lint/check.js');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js',
@@ -108,7 +109,7 @@ function panel(env) {
   const html = env.exported.buildDashboardHtml_({ teacherEmail: TEACHER });
   assert.match(html, /id="warmup-points-btn"[^>]*onclick="openWarmUpPoints\(\)"/, 'More ▾ opens the panel');
   assert.match(html, /id="wup-modal-backdrop"/);
-  const script = /<script>\s*let _wup = null;[\s\S]*?<\/script>/.exec(html)[0].replace(/^<script>|<\/script>$/g, '');
+  const script = extractInlineScripts(html).filter((code) => /let _wup = null;/.test(code))[0];
   const body = { innerHTML: '' };
   const ctx = vm.createContext({ document: { getElementById: () => body },
     esc: (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;') });
