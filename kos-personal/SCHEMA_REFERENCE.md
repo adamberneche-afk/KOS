@@ -712,6 +712,9 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `KOS_RECENT_SESSIONS_DOC_ID`, `KOS_OPEN_DECISIONS_DOC_ID`, `KOS_CORE_FACTS_DOC_ID`, `KOS_SMP_REGISTER_DOC_ID` | `CFG.PROP.RECENT_SESSIONS_DOC_ID` etc. | Stable doc IDs of the four briefing docs, written on their first run |
 | `KOS_GEMINI_BRIEF_DOC_ID` | `CFG.PROP.GEMINI_BRIEF_DOC_ID` | Stable doc ID of `KOS_GEMINI_BRIEF` (`28_GeminiBrief.gs`), written with the primer |
 | `KOS_GEMINI_CHECK_WORDS` | `GB_WORDS_PROP` (28) | Today's three check words and their date (JSON), picked once a day; the brief's start, middle and end |
+| `VECTOR_ITEM_LABELER_LAST_RUN`, `VECTOR_DOCS_LAST_RUN` | `VI_LAST_RUN_PROP`, `VD_LAST_RUN_PROP` (25) | The last run of the Vector Item Labeler and of `compileVectorDocs_` (JSON, with what each did); `checkVectorDocs()` reports them |
+| `FIDELITY_LOGS_SEEN` | `FS_SEEN_PROP` (27) | How many session logs the fidelity draw has considered (a count, in the primer's Fidelity line) |
+| `ID_03_6_SESSION_TRANSCRIPTS` | `FS_FOLDER_PROP` (27) | The `03.6_SESSION_TRANSCRIPTS` folder's ID, where a drawn log's transcript Doc is looked for |
 | `DEPLOY_DRIFT_GITHUB_TOKEN` | `CFG.PROP.DEPLOY_DRIFT_GITHUB_TOKEN` | Fine-grained GitHub token for `reportDeployVersion()` (`17_DeployVersionReport.gs`). Deliberately unprefixed, matching leader-hub and cas-ccps. A no-op if unset |
 | `MORAL_DEBT_MUSE_AT`, `MORAL_DEBT_HALF_LIFE_DAYS` | — | Optional overrides for the moral debt counter's MUSE threshold (default 3) and half-life (default 7 days) (`23_MoralDebt.gs`) |
 

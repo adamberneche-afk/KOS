@@ -71,7 +71,7 @@ the live Project runs the 2026-11-09 paste.
 ## Setting it up (operator, once)
 
 1. On claude.ai, create a Project named **KOS**.
-2. Get the six doc links. In Drive, open each Google Doc and copy its
+2. Get the seven doc links. In Drive, open each Google Doc and copy its
    URL (each is a Google **Doc**, never a spreadsheet):
    - `KOS_LATEST_PRIMER`
    - `KOS_OPEN_DECISIONS`
@@ -85,6 +85,7 @@ the live Project runs the 2026-11-09 paste.
      Property `CAS_SIGNAL_DOC_ID`)
    - `KOS_SMP_REGISTER` (created by the first kos-personal morning run,
      or `generateBriefingDocs()`, after the SMP register code is pushed)
+   - `KOS_CODE_REPLY` (written by Claude Code; below, "Claude Code's reply")
 
    They keep the same file ID every day; Apps Script rewrites them in
    place.

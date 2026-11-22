@@ -85,6 +85,14 @@ items from the Apps Script editor's **Run** menu instead:
 | `runKosPersonalPreflightNow` | Runs `runKosPersonalPreflight()` and shows (or, standalone, logs) how many checks passed; the Preflight tab has the detail. Not on the menu |
 | `previewMoralDebt` / `resetMoralDebt` | SMP-019's moral debt counter (`23_MoralDebt.gs`): the primer's line, changing nothing; or set the counter to 0 from now. Not on the menu |
 | `getKOSCalibration` | Reads one calibration weight (a Script Property) by key; logs `[CALIBRATION_MISSING]` if it isn't set. Not on the menu, and nothing calls it: a check by hand after `setupCalibration` |
+| `installStudioInputTrigger`, `installClassifyBackfillTrigger` | Catch-up installers: the 1-minute Studio input trigger on an instance deployed before `13_StudioInputBuilder.gs`; the classify backfill's trigger (`20`), which drains it a batch at a time. Both are safe to run again |
+| `checkFlowPrompts` | Read-only: whether the FlowPrompts tab matches what the code would write now (`16`) |
+| `removeStudioFlowFixtures` | Removes the Studio flow fixture's staging rows, docs and returns (`12`) |
+| `checkVectorClassifySessions` | Read-only: the classify flow's sessions, including parts that died (`20`; `19`'s requeue retries them) |
+| `runRegistrarFlowCanary`, `runVectorItemLabelCanary` | The Registrar's and the Vector Item Labeler's Apps Script halves end to end with Studio stubbed; each removes its own rows (`24`, `25`) |
+| `checkVectorDocs`, `listPersonalItems` | Read-only: the `VECTOR_*` docs' state, the last compile and labeler run, items awaiting a label; and the items labelled personal, for review (`25`) |
+| `checkFidelitySamples` | Logs the primer's Fidelity line now (`27`) |
+| `previewDuplicateSessions`, `previewVectorMatrixRederive`, `previewUnrebuildableReset` | The `VECTOR_MATRIX` repairs' previews, changing nothing; each has an `apply…` twin (`21`) |
 
 Any of these that shows a dialog (`getUi()`) can't do so from a standalone
 project; read the function before relying on it from the editor.

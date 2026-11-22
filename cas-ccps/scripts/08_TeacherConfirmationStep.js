@@ -52,15 +52,10 @@
 // Script Properties don't clone with makeCopy(). Script 16 writes a _CONFIG
 // tab to this sheet at creation time. getSheetConfig_() reads from there.
 //
-// ── M5 ── Script 16 must be extended to discover and write four new
-// properties: confirmEntryComp1, confirmEntryComp2, confirmEntryComp3,
-// confirmEntryComp4 — the entry IDs for the four new competency dropdown
-// questions on the Confirmation Form. This file reads those properties
-// defensively (see buildPrefilledUrl_) and degrades gracefully if they
-// are not yet set, but the new competency fields will not pre-fill or
-// validate correctly until Script 16's discovery logic is extended.
-// This is the one open dependency for Module 5's confirmation-step
-// integration — tracked here, not silently assumed.
+// ── M5 ── Script 16 discovers the four competency dropdowns' entry IDs
+// (CONFIRM_ENTRY_COMP_1..4, with CONFIRM_ENTRY_LESSON_UNIT) and 19 writes
+// them to this sheet's _CONFIG. This file reads them defensively (see
+// buildPrefilledUrl_): a sheet made before they existed doesn't pre-fill them.
 // ---------------------------------------------------------------------------
 function getConfig_08() {
   return getSheetConfig_(); // defined in 19_ClonedSheetConfig.js

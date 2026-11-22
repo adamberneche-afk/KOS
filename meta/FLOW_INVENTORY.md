@@ -126,8 +126,9 @@ rather than reporting a green "Run Completed" over zero rows —
 `installStudioFlowFixture()`.
 
 The admin-facing signal below predates those and still stands: ⚙️ Admin
-Controls → 📊 Run System Health Check (or the daily `autoHealthAlert()`
-email), in `10_AdminRecoveryPanel.js`. Two checks, both fed by the shared
+Controls → 📊 Run System Health Check, in `10_AdminRecoveryPanel.js`, and
+the overnight email (`34c_OvernightHealth.js`'s `overnightHealth_()`, which
+took over the 6 a.m. alert's checks on 11-20). Two checks, both fed by the shared
 `_stagingPipelineHealthChecks_()` scan:
 - **Stuck `IN_PROCESS` rows** (past 15 min) — an evaluation that started
   but never finished. *Never completed a job*-equivalent for one specific
@@ -145,13 +146,23 @@ checkable from `STAGING_PIPELINE` itself, unlike leader-hub's AI_Queue below.
 
 ---
 
-## cas-ccps — Flows 1, 3, 4 and 5
+## cas-ccps — Flows 1, 3, 4 and 6
 
 Flow 1 (rubric intake: the Rubric Upload Form → a TeacherMatrix draft the
-teacher confirms) and the warm-up flows 3, 4 and 5 (`41_WarmUpFlowBridge.js`:
+teacher confirms) and the warm-up flows 3 and 4 (`41_WarmUpFlowBridge.js`:
 materialize, then harvest from `WarmUpFlowReturn`) are built in Studio on the
 same native-step pattern and verified live; `checkFlowBinding()` and
 `checkWarmUpFlowLiveness()` are their checks (`cas-ccps/DEPLOYMENT_HANDOFF.md`).
+Flow 5 (the bridge) was merged into Flow 3 on 11-01 and is off.
+
+Flow 6, the turn-in check (`72_TurnInCheckFlow.js`, live since 11-09): Apps
+Script writes one `TurnInCheckInput` row per answer to the feedback question,
+Studio's Ask Gemini returns a verdict to `TurnInCheckReturn`, and the harvest
+applies it (a code, or not yet), retrying and then marking `CHECK_FAILED` for
+the teacher's review queue (🎟 Turn-in codes). Its checks:
+`checkTurnInCheckFlowBinding()` and `checkTurnInCheckFlowLiveness()`;
+`installTurnInCheckFixture()` / `removeTurnInCheckFixtures()` exercise it
+end to end (`cas-ccps/docs/TURN_IN_CHECK_FLOW.md`).
 
 ## cas-ccps — Family Mail Triage Flow
 
@@ -228,9 +239,10 @@ vocabulary).
   terminal status, `AUDIT_REJECTED` (`5_Error_And_Utilities.gs`'s
   `_isAuditFailure_()`/`_archiveAuditFailure_()`,
   `3_Queue_Processor.gs`'s `processInferenceQueue()`). Like
-  `STUDIO_TIMEOUT` and the other terminal-failure statuses, this doesn't
-  have a dedicated three-state health-panel signal of its own yet — check
-  `STAGING_PIPELINE`'s Status column or `AUDIT_LOG` directly.
+  `STUDIO_TIMEOUT` and the other terminal-failure statuses, it is named in
+  plain words in the web app's failed list (`8_WebApp_UI.html`'s
+  `FAILED_STATUS_TEXT`, with a retry where the server has one); there is
+  no three-state health signal of its own. `AUDIT_LOG` holds the detail.
 - **Registrar** — `getRegistrarStatus()`'s `groups` (`11_Registrar_
   CogRelay.gs`): `groups.routed`/`groups.failed` both count as reaching a
   terminal outcome (an attempt-tracker-driven `CRITICAL_FAILURE` proves the

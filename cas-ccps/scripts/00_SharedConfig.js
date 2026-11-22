@@ -2709,8 +2709,8 @@ function _installDeployVersionReportTrigger_() {
 // rotating); it is asked on every Submit when the assignment has any. A
 // first Submit adds one Approach or Choice question. No frame is asked twice
 // of the same student for the same assignment while an unused one is left.
-// The feedback reflection (a resubmission after Revise) is Phase 2 and not
-// built: a resubmission gets an Evidence question only.
+// A resubmission after the primary wasn't met gets a Feedback question
+// (00e's F frames) instead of an Approach or Choice one.
 // ---------------------------------------------------------------------------
 const REFLECTION_MIN_WORDS = 10;
 

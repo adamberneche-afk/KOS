@@ -56,8 +56,8 @@ LIVE assignment the Canvas roster import enrolls into (script 52).
   Covered So Far doc) and `COVERED_SO_FAR_HASH_<course>` (its last text, so
   an unchanged doc isn't rewritten). Delete the doc ID to start a course's doc
   over.
-- Script 16 (teacher setup wizard) writes `TEACHER_*`, `*_RESPONSE_SS_ID`,
-  `*_FORM_URL`, `CONFIRM_ENTRY_*`, `MASTER_*` — all default to `""` (degraded,
+- Script 16 (teacher setup wizard) writes `TEACHER_*`, `ORG_NAME` (its summary page's school name), `*_RESPONSE_SS_ID`,
+  `*_FORM_URL`, `CONFIRM_ENTRY_*` (with `CONFIRM_ENTRY_LESSON_UNIT`; 19 copies them to a teacher sheet's `_CONFIG`), `MASTER_*` — all default to `""` (degraded,
   not broken) if somehow missed.
 - `28_Module2Setup.js` writes `M2_ENABLED`, `M2_COURSES`,
   `M2_SETUP_PHASE_A_COMPLETE`, `M2_REGISTRY_IMPORTED`,

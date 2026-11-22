@@ -61,14 +61,6 @@ function onOpen() {
         .addSeparator();
     }
 
-    // The Apps Script API installer (21) was archived 2026-11-17 (clean-up
-    // C2): run.js pushes every project, so its menu item is gone.
-
-    if (role === "ADMIN") {
-      menu.addItem("📊 Open Admin Health Check", "openAdminHealthCheck");
-      menu.addItem("📋 View Admin Setup Details", "showAdminSummary");
-      menu.addSeparator();
-    }
 
     menu
       .addItem("📋 View My Setup Details",              "showTeacherSummary")
@@ -442,8 +434,7 @@ function createAdminAssets_(adminEmail, orgName) {
   // The master student template is a Google Doc with Scripts 00 and 01 bound.
   // It cannot be created programmatically (Apps Script can't create Docs with
   // bound scripts). The admin must create it manually then set its ID.
-  // Instructions are included in the admin summary page below.
-  // For now, insert a placeholder property — admin updates after manual creation.
+  // Instructions are included in the admin summary page below; nothing is set here.
 
   // ── 7. CENTRAL SCRIPTS PROJECT PLACEHOLDER ────────────────────────────────
   // Scripts 00 + 02 + 03 + 04 + 06 + 10 + 18 need to be bound to the ledger
@@ -453,30 +444,20 @@ function createAdminAssets_(adminEmail, orgName) {
   if (!ledgerSs.getSheetByName("SETUP INSTRUCTIONS")) {
     const scriptInstSheet = ledgerSs.insertSheet("SETUP INSTRUCTIONS");
     scriptInstSheet.getRange("A1").setValue(
-      "ADMIN ACTION REQUIRED — bind central scripts to THIS spreadsheet:\n\n" +
-      "1. Open Extensions → Apps Script in THIS spreadsheet\n" +
-      "2. Create these script files (one file per script):\n" +
-      "   00_SharedConfig.js\n" +
-      "   02_Form1_IntakeAndWorkspaceGenerator.js\n" +
-      "   03_QueueBridge.js\n" +
-      "   04_Form2_TurnInGate.js (shared helpers; the turn-in handler is retired)\n" +
-      "   06_StagingPipeline_Turnstile.js\n" +
-      "   10_AdminRecoveryPanel.js\n" +
-      "   18_FormSubmitDispatcher.js\n\n" +
-      "3. In Project Settings → Script Properties, add:\n" +
-      "   ID_ADMIN_SPREADSHEET = " + ledgerSs.getId() + "\n\n" +
-      "4. Set these triggers:\n" +
-      "   bridgeQueue              → Time-driven, every 1 minute\n" +
-      "   backPropagateCompletions → Time-driven, every 1 minute\n" +
-      "   runStagingTurnstile      → Time-driven, every 1 minute\n" +
-      "   dispatchFormSubmit       → From spreadsheet, On form submit (handler lives in 18_FormSubmitDispatcher.js)\n" +
-      "   Then, with 64_LedgerCycle.js in the project, run installLedgerCycle(): it replaces\n" +
-      "   the three timed triggers with one cycle that runs each at its own pace\n" +
-      "   (all three every minute).\n\n" +
+      "ADMIN ACTION REQUIRED — set up the scripts bound to THIS spreadsheet\n" +
+      "(cas-ccps/docs/SETUP_GUIDE.md has every step):\n\n" +
+      "1. Push the central-ledger project's files to this spreadsheet with run.js\n" +
+      "   (tools/gas-lint/project-map.json lists them).\n\n" +
+      "2. In Project Settings → Script Properties, add TEACHER_EMAIL and TEACHER_NAME.\n" +
+      "   The dashboards need CENTRAL_LEDGER_SS_ID and ADMIN_SS_ID = " + ledgerSs.getId() + "\n\n" +
+      "3. In this spreadsheet's editor run installIntakeTriggers() (and\n" +
+      "   installFormSubmitTrigger() if students use the intake form), then\n" +
+      "   previewLedgerCycle() and installLedgerCycle(): one cycle runs the\n" +
+      "   frequent jobs, each at its own pace.\n\n" +
       "NOTE: The Ledger tab includes an AcademicYear column (column S, index 18).\n" +
       "Script 02 populates this automatically from the CURRENT_TERM property.\n" +
       "Set CURRENT_TERM in Script Properties (school year and marking period, e.g. '2627_MP1') before registering students.\n\n" +
-      "5. Enable Drive Advanced Service in the Services panel\n\n" +
+      "4. Enable Drive Advanced Service in the Services panel\n\n" +
       "See the admin summary page in your manual for all IDs."
     );
     scriptInstSheet.getRange("A1").setWrap(true);

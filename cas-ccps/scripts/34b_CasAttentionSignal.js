@@ -167,7 +167,7 @@ function writeCasSignal_(watchdog, now) {
       const ti = turnInCheckCounts_(SpreadsheetApp.openById(getConfig_().ledgerSsId), now);
       if (ti && ti.failed > 0) {
         students.push("Turn-in answers the check couldn't decide, waiting for you: " + ti.failed +
-          " (no code issued; grantTurnInCode() from the editor until the Teacher Dashboard's review queue)");
+          " (no code issued; review them in 🎟 Turn-in codes on the Teacher Dashboard)");
       }
     } catch (e) {
       console.error("[CasSignal] Turn-in check count failed: " + e.message);
