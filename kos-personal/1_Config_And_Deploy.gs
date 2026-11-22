@@ -49,11 +49,9 @@ const CFG = {
 
   // ── Sheet Names ───────────────────────────────────────────────
   STAGING_SHEET:            'STAGING_PIPELINE',
-  // MATRIX_LEDGER, ONBOARDING_TRACKER and EXECUTION_LEDGER are audit logs
+  // ONBOARDING_TRACKER and EXECUTION_LEDGER are audit logs
   // (D16): written, never read by code, kept as history for the operator
   // (SCHEMA_REFERENCE.md). ACTION_REGISTER is read by listPersonalItems (25).
-  MATRIX_LEDGER_SHEET:      'MATRIX_LEDGER',
-  DYNAMIC_STATE_MATRIX:     'DYNAMIC_STATE_MATRIX',
   BLACKBOARD_SHEET:         'Blackboard',
   ACTION_REGISTER_SHEET:    'ACTION_REGISTER',
   SESSION_LOG_SHEET:        'SESSION_LOG',
@@ -162,25 +160,6 @@ const CFG = {
 
   // ── Auto-Council (reconciliation decision 1 / 6_Governance.gs) ──
   COUNCIL_AUTO_TRIGGER_SESSIONS: 5,  // sessions between auto-council checks
-
-  // ── Inference Mode (Round 3 reconciliation) ────────────────────
-  // 'STUDIO'          — default. Native Workspace Studio + Gemini inference,
-  //                     no external server, no vendor billing relationship.
-  //                     This is the architecture kos-personal/README.md
-  //                     commits to by default.
-  // 'MANAGED_SERVICE' — optional. Routes inference through the standalone
-  //                     Node.js service at kos-personal/inference-service/
-  //                     (Express + Postgres + Stripe, deployed separately
-  //                     to Cloud Run or similar). A real, documented
-  //                     alternative for multi-tenant or non-Studio
-  //                     deployments — see archive/2026-27-Q2/kos-personal/archive/inference-service/INFERENCE_SERVICE_DEPLOYMENT.md.
-  //                     Requires CFG.PROP.MANAGED_SERVICE_BASE_URL and
-  //                     CFG.PROP.MANAGED_SERVICE_API_KEY to be set as
-  //                     Script Properties (deployment-specific, not
-  //                     hardcoded here). getQueueMetrics() only attempts
-  //                     to reach the service, and the web UI only renders
-  //                     the credits panel, when this is 'MANAGED_SERVICE'.
-  INFERENCE_MODE: 'STUDIO',
 
   // ── Chunking ──────────────────────────────────────────────────
   // 25000 per kos-personal/docs/runtime-reference.md's "Key Configuration" table and
@@ -311,25 +290,6 @@ const CFG = {
     ONBOARDING_DAY:     'KOS_ONBOARDING_DAY',
     ONBOARDING_START:   'KOS_ONBOARDING_START',
     ONBOARDING_CLOSED:  'KOS_ONBOARDING_CLOSED', // date the operator closed it out (closeOutOnboarding)
-
-    // Managed inference service (optional — see CFG.INFERENCE_MODE above).
-    // Deployment-specific values, set once as Script Properties, never
-    // hardcoded into this file.
-    MANAGED_SERVICE_BASE_URL: 'KOS_MANAGED_SERVICE_BASE_URL',
-    MANAGED_SERVICE_API_KEY:  'KOS_MANAGED_SERVICE_API_KEY',
-    // Shared HMAC secret matching inference-service's WEBHOOK_SECRET env
-    // var — signs POST /api/v1/jobs submissions so the service can reject
-    // forged job-submission requests (see archive/2026-27-Q2/kos-personal/archive/inference-service/src/server.js's validateWebhookSignature).
-    // REQUIRED in production, despite what this comment used to say.
-    // It previously read "Optional: if unset, job submission still runs,
-    // unsigned" — true when written, false since the fail-closed fix.
-    // archive/2026-27-Q2/kos-personal/archive/inference-service/src/server.js now process.exit(1)s at startup if WEBHOOK_SECRET is
-    // unset while NODE_ENV=production, and rejects an unsigned request
-    // with 401. So leaving this property unset against a production
-    // service means every job submission fails, not that it runs
-    // unsigned. Genuinely optional only against a dev service. Only read
-    // by _submitManagedServiceJob_() in 3_Queue_Processor.gs.
-    MANAGED_SERVICE_WEBHOOK_SECRET: 'KOS_MANAGED_SERVICE_WEBHOOK_SECRET',
 
     // Google Chat incoming webhook (optional). Unset by default — every
     // caller of _sendChatAlert() in 5_Error_And_Utilities.gs degrades to
@@ -467,8 +427,6 @@ function deployFullSystem() {
     const sheetNames = [
       CFG.STAGING_SHEET,
       'EXECUTION_LEDGER',
-      CFG.MATRIX_LEDGER_SHEET,
-      CFG.DYNAMIC_STATE_MATRIX,
       CFG.BLACKBOARD_SHEET,
       CFG.ACTION_REGISTER_SHEET,
       CFG.SESSION_LOG_SHEET,

@@ -176,40 +176,11 @@ skips intake rows and counts a log's chunks as one session.
 
 ---
 
-### MATRIX_LEDGER
+### MATRIX_LEDGER and DYNAMIC_STATE_MATRIX (retired)
 
-Calibrated vector scores per session. Primary audit trail for domain weighting. **Audit log (D16, 2026-11-01):** written, never read by code; kept as history for you to read.
-
-| Col | Name | Type | Description |
-|---|---|---|---|
-| A | Session_UID | String | Payload_UID |
-| B | Timestamp | DateTime | Processing timestamp |
-| C | ARCHITECTURE | Float | 0.0–1.0, calibrated score |
-| D | UI | Float | 0.0–1.0, calibrated score |
-| E | SECURITY | Float | 0.0–1.0, calibrated score |
-| F | PEDAGOGY | Float | 0.0–1.0, calibrated score |
-| G | GAS_DEVELOPMENT | Float | 0.0–1.0, calibrated score |
-| H | RELATIONAL | Float | 0.0–1.0, calibrated score |
-| I | DOMAIN_COMPLIANCE | Float | 0.0–1.0, calibrated score — 7th known vector, added alongside RELATIONAL (CE-SMP Vector Weight Calculation Engine v1.0) |
-| J | TOTAL | Float | Sum of all domain scores |
-
-Note: v5.4 had 7 columns (no GAS_DEVELOPMENT or RELATIONAL). `runPhase0Migration()` adds these columns to existing sheets — that function lives in `KOS_PHASE0_PATCHES.gs`, which is **not in this repo's working tree** — it was deleted by `45ad8c8` and is preserved on the `pre-archive-cleanup` branch, which a fresh clone must `git fetch origin pre-archive-cleanup` before it can read (see `DEPLOYMENT_GUIDE.md`'s "Migrating from v5.4" for the exact commands). DOMAIN_COMPLIANCE was added later still, as the 7th `CFG.KNOWN_VECTORS` entry.
-
----
-
-### DYNAMIC_STATE_MATRIX
-
-Long-format decayed scores per theme per session. Used by the vector router for incubator tracking.
-
-| Col | Name | Type | Description |
-|---|---|---|---|
-| A | Session_UID | String | Payload_UID |
-| B | Timestamp | DateTime | Processing timestamp |
-| C | Theme | String | Domain name (e.g. ARCHITECTURE) or incubator theme |
-| D | Raw_Score | Float | Score before decay |
-| E | Decayed_Score | Float | Score after time-based decay |
-| F | Session_Count | Integer | Number of sessions this theme has appeared in |
-| G | Promoted | Boolean | Whether this theme has been promoted to KNOWN_VECTORS |
+No code writes or reads either tab: theme scores come only from
+VECTOR_CLASSIFY, into `VECTOR_MATRIX` below. Setup no longer creates them;
+a copy in an existing BRAIN_TRUST_INDEX is history you can keep or delete.
 
 ---
 
@@ -704,9 +675,6 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 
 | Key | CFG.PROP reference | Description |
 |---|---|---|
-| `KOS_MANAGED_SERVICE_BASE_URL` | `CFG.PROP.MANAGED_SERVICE_BASE_URL` | Base URL of the optional `inference-service/` deployment — only read when `CFG.INFERENCE_MODE = 'MANAGED_SERVICE'` |
-| `KOS_MANAGED_SERVICE_API_KEY` | `CFG.PROP.MANAGED_SERVICE_API_KEY` | API key for the optional `inference-service/` deployment |
-| `KOS_MANAGED_SERVICE_WEBHOOK_SECRET` | `CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET` | Shared HMAC secret matching `inference-service`'s `WEBHOOK_SECRET` env var; signs `POST /api/v1/jobs`. **Optional only against a dev service.** A production `inference-service` exits at startup without `WEBHOOK_SECRET` and 401s an unsigned request, so leaving this unset against production means every job submission fails. Read by `_submitManagedServiceJob_()` in `3_Queue_Processor.gs` |
 | `KOS_CHAT_WEBHOOK_URL` | `CFG.PROP.CHAT_WEBHOOK_URL` | Google Chat incoming webhook for `_sendChatAlert()` (Registrar Fail Loud Protocol, Apollo Kill-Switch). Degrades to a console.log no-op if unset |
 | `KOS_LATEST_PRIMER_DOC_ID` | `CFG.PROP.LATEST_PRIMER_DOC_ID` | Stable doc ID of `KOS_LATEST_PRIMER`. Written on the first `generateDailyPrimer()` run so later runs open the doc by ID instead of searching by name |
 | `KOS_RECENT_SESSIONS_DOC_ID`, `KOS_OPEN_DECISIONS_DOC_ID`, `KOS_CORE_FACTS_DOC_ID`, `KOS_SMP_REGISTER_DOC_ID` | `CFG.PROP.RECENT_SESSIONS_DOC_ID` etc. | Stable doc IDs of the four briefing docs, written on their first run |

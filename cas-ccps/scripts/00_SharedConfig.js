@@ -149,11 +149,8 @@ function getConfig_() {
     studentEmailDomain:   p.STUDENT_EMAIL_DOMAIN     || SCHOOL_DEFAULTS.STUDENT_EMAIL_DOMAIN,
 
     // ── Evaluation escape hatch (external product review, Finding 3,
-    // "this quarter") — same CFG.INFERENCE_MODE pattern kos-personal
-    // already uses (1_Config_And_Deploy.gs), scaled down: cas-ccps has no
-    // separate managed-inference-service, so the opt-in path here is a
-    // direct Gemini API call (15c_Flow2DirectEvaluationService.js)
-    // instead of a whole second deployment. Default "STUDIO" is today's
+    // "this quarter"): the opt-in path is a direct Gemini API call
+    // (15c_Flow2DirectEvaluationService.js). Default "STUDIO" is today's
     // unchanged behavior — Flow 2 (Student Evaluation) runs as a native
     // Google Workspace Studio Flow, no code path in this repo calls it.
     // Set EVALUATION_MODE = "DIRECT_GEMINI" as a Script Property, plus a

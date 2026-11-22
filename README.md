@@ -41,8 +41,8 @@ auto-council trigger) has been implemented, `10_Turnstile.gs` was rebuilt
 against the real schema (original archived), and all `PERSONA_*` cog
 docs are now filed under `rtp-core-router/`. A later reupload batch added
 two backported fixes, ten governance/protocol docs, and a real optional
-managed-inference-service alternative to native Studio (opt-in, gated
-behind `CFG.INFERENCE_MODE`, off by default). Since then, nine further
+managed-inference-service alternative to native Studio (opt-in, off by
+default; archived 2026-11-17, its switch retired 2026-11-22). Since then, nine further
 rounds of dedicated UI/UX auditing (see
 [`kos-personal/CHANGELOG.md`](./archive/2026-27-Q1/kos-personal/CHANGELOG.md#uiux-hardening--rounds-19))
 have fixed real bugs including a race condition, an unguarded status-line

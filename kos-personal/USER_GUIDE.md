@@ -12,7 +12,7 @@ KOS routes everything that matters from a session to the right place automatical
 - Decisions and next steps go to your CURRENT_STATE document
 - Pivots and lessons go to your PIVOTS_AND_LESSONS document
 - Action items go to your ACTION_REGISTER sheet
-- Theme scores go to your MATRIX_LEDGER and build up a vector model of your expertise
+- Theme scores go to your VECTOR_MATRIX and build up a vector model of your expertise
 - The system quietly learns your values from session patterns, building a model of what you protect and what you refuse to automate
 
 Over time, KOS builds a calibrated picture of how you work that makes each new session more grounded than the last.
@@ -321,7 +321,7 @@ Your BRAIN_TRUST_INDEX spreadsheet contains all the system's structured outputs.
 |---|---|
 | STAGING_PIPELINE | Current and recent queue status |
 | SESSION_LOG | One row per processed session with summary |
-| MATRIX_LEDGER | Calibrated vector scores per session |
+| VECTOR_MATRIX | Theme scores per classified session |
 | ACTION_REGISTER | All action items extracted from sessions |
 | COG_REGISTRY | Council verdicts from all sessions |
 | Blackboard | System modification proposals (SMP governance) |

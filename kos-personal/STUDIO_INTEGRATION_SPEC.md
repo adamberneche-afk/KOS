@@ -745,7 +745,6 @@ layer underneath both.
 After `processInferenceQueue()` runs:
 - The STAGING_PIPELINE row status should be `PROCESSED`
 - A new row should appear in `SESSION_LOG`
-- A new row should appear in `MATRIX_LEDGER`
 - The `CURRENT_STATE` document should have been updated
 - The web app Queue tab should show updated counts
 

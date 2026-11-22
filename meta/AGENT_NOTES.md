@@ -663,8 +663,8 @@ The 10-19 to 10-22 notes still hold. Added today:
 
 The 10-19 to 10-24 notes still hold. Added:
 - **Settings live in one place.** 00's `DASHBOARD_SETTING_KEYS`; 07's
-  `TD_SETTINGS` (label, on, off) and `getSettings` /
-  `setSettingForCourse` / `setMarkingPeriodEnds`, which write the
+  `TD_SETTINGS` (label, on, off) and `getSettings` / `saveSettings`
+  (the two older single-setting setters were retired 11-22), which write the
   Ledger's `_CONFIG` row and a `SettingsLog` row. A new switch: add it to
   both, and to `SHARED_CONFIG_KEYS`; read it with `pivotFlagFor_`.
 - **A switch value can be a list** ("8175,8177"); `_pivotValueOn_` reads
