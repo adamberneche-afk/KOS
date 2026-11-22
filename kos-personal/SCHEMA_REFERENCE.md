@@ -710,6 +710,8 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `KOS_CHAT_WEBHOOK_URL` | `CFG.PROP.CHAT_WEBHOOK_URL` | Google Chat incoming webhook for `_sendChatAlert()` (Registrar Fail Loud Protocol, Apollo Kill-Switch). Degrades to a console.log no-op if unset |
 | `KOS_LATEST_PRIMER_DOC_ID` | `CFG.PROP.LATEST_PRIMER_DOC_ID` | Stable doc ID of `KOS_LATEST_PRIMER`. Written on the first `generateDailyPrimer()` run so later runs open the doc by ID instead of searching by name |
 | `KOS_RECENT_SESSIONS_DOC_ID`, `KOS_OPEN_DECISIONS_DOC_ID`, `KOS_CORE_FACTS_DOC_ID`, `KOS_SMP_REGISTER_DOC_ID` | `CFG.PROP.RECENT_SESSIONS_DOC_ID` etc. | Stable doc IDs of the four briefing docs, written on their first run |
+| `KOS_GEMINI_BRIEF_DOC_ID` | `CFG.PROP.GEMINI_BRIEF_DOC_ID` | Stable doc ID of `KOS_GEMINI_BRIEF` (`28_GeminiBrief.gs`), written with the primer |
+| `KOS_GEMINI_CHECK_WORDS` | `GB_WORDS_PROP` (28) | Today's three check words and their date (JSON), picked once a day; the brief's start, middle and end |
 | `DEPLOY_DRIFT_GITHUB_TOKEN` | `CFG.PROP.DEPLOY_DRIFT_GITHUB_TOKEN` | Fine-grained GitHub token for `reportDeployVersion()` (`17_DeployVersionReport.gs`). Deliberately unprefixed, matching leader-hub and cas-ccps. A no-op if unset |
 | `MORAL_DEBT_MUSE_AT`, `MORAL_DEBT_HALF_LIFE_DAYS` | — | Optional overrides for the moral debt counter's MUSE threshold (default 3) and half-life (default 7 days) (`23_MoralDebt.gs`) |
 

@@ -1045,6 +1045,12 @@ function generateDailyPrimer() {
     // its own, so one failure doesn't hold back the rest; failures are in
     // ERROR_LOG and named in the result.
     const briefing = generateBriefingDocs_(folder, now);
+    // KOS_GEMINI_BRIEF (28_GeminiBrief.gs): start's lines in one short doc,
+    // with the day's check words. Never holds back the primer.
+    try { writeGeminiBrief_(folder, now, blocks); briefing.written.push('KOS_GEMINI_BRIEF'); } catch (gbErr) {
+      _reportError('generateDailyPrimer:geminiBrief', gbErr, null);
+      briefing.failed.push({ doc: 'KOS_GEMINI_BRIEF', message: gbErr.message });
+    }
 
     // The VECTOR_* docs, the Registrar's Stage 2 standard (25_VectorDocs.gs),
     // from the same record. Each doc is written on its own; failures are in
