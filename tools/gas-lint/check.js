@@ -2221,6 +2221,40 @@ function checkUnusedFiles() {
   }
 }
 
+// Every deployed .js/.gs file parses as a script, as Apps Script's V8 runtime
+// will parse it: [{ file, line, message }] for each that doesn't. Pages
+// (.html) are left to the tests that render them: their scripts hold
+// <?!= ?> scriptlets until rendered.
+function findSyntaxErrors(sources) {
+  const vm = require('vm');
+  const out = [];
+  sources.forEach(({ file, code }) => {
+    try {
+      new vm.Script(code, { filename: file });
+    } catch (e) {
+      const m = new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ':(\\d+)').exec(String(e.stack));
+      out.push({ file, line: m ? Number(m[1]) : 0, message: e.message });
+    }
+  });
+  return out;
+}
+
+function checkSyntax() {
+  const seen = new Set();
+  const sources = [];
+  for (const [name, def] of Object.entries(PROJECT_MAP)) {
+    if (name.startsWith('_')) continue;
+    (def.files || []).filter((f) => /\.(js|gs)$/.test(f) && exists(f) && !seen.has(f)).forEach((f) => {
+      seen.add(f);
+      sources.push({ file: f, code: readFile(f) });
+    });
+  }
+  for (const s of findSyntaxErrors(sources)) {
+    err('syntax', `${s.file}:${s.line}: ${s.message}. The file doesn't parse, so its whole project would fail to load ` +
+      `in Apps Script.`, s.file);
+  }
+}
+
 function checkStaleFileRefs() {
   let tracked = [];
   try { tracked = require('../lib/repo.js').trackedFiles(); }
@@ -2244,6 +2278,7 @@ function checkStaleFileRefs() {
 }
 
 module.exports = {
+  findSyntaxErrors,
   findUnusedFiles,
   sizeOverages,
   longestLiteralLines,
@@ -2293,6 +2328,7 @@ if (require.main !== module) return;
 // -----------------------------------------------------------------------
 // Run everything
 // -----------------------------------------------------------------------
+checkSyntax();
 checkDuplicateDeclarations();
 checkProjectMapCoverage();
 checkKosPersonalCfgKeys();
