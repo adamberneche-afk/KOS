@@ -74,6 +74,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 25_VectorDocs.gs           Vector Item Labeler flow (Apps Script half) + VECTOR_* docs compiled from its labels (Stage 2's standard) ✅ in repo — see "Registrar / Cog Relay" below
 26_WeeklyReview.gs         Mails the Sunday build review on Monday (or says it is missing) ✅ in repo
 27_FidelitySample.gs       Randomized closeout-fidelity draw (10%), FIDELITY_AUDIT, the primer's Fidelity line ✅ in repo
+28_GeminiBrief.gs          KOS_GEMINI_BRIEF: start's lines in one short doc, three daily check words, an END line (Gemini harness) ✅ in repo
 archive/inference-service/ Optional Node.js managed-inference backend — ARCHIVED 2026-11-17 (dormant since D16; needs Google Cloud, off for the district)
 rtp-core-router/protocols/ governance/protocol docs                       ✅ filed in — see CHANGELOG.md. SMPs aren't kept here: `SMP_REGISTER` + `01.3_SMP_PROPOSALS` (meta/SMP_PROCESS.md)
 prompts/                   every Studio flow prompt, the .md the source    ✅ in repo — prompts/README.md lists each one's constant (2026-11-21)

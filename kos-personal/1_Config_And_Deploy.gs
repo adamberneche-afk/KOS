@@ -373,6 +373,8 @@ const CFG = {
     OPEN_DECISIONS_DOC_ID:  'KOS_OPEN_DECISIONS_DOC_ID',
     SMP_REGISTER_DOC_ID:    'KOS_SMP_REGISTER_DOC_ID',
     CORE_FACTS_DOC_ID:      'KOS_CORE_FACTS_DOC_ID',
+    // KOS_GEMINI_BRIEF (28_GeminiBrief.gs), held by ID like the others.
+    GEMINI_BRIEF_DOC_ID:    'KOS_GEMINI_BRIEF_DOC_ID',
 
     // When the VECTOR_MATRIX repairs and the classify backfill last wrote
     // anything (ISO timestamps). The primer's Data Quality block reports

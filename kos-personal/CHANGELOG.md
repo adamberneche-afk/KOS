@@ -6,6 +6,19 @@ This file holds the current plan of record's era; `node tools/archive/search.js 
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
 
+### KOS_GEMINI_BRIEF (2026-11-22)
+
+The operator's Gemini harness (G1 in the November plan) showed significant
+truncation somewhere, and its `start` read seven live docs (~43,000
+characters) to quote about a dozen lines. `28_GeminiBrief.gs` writes those
+lines, copied as written from the primer's blocks and the open decisions,
+into one short stable doc with the primer run, under a 4,000-character
+budget. Three plain words picked once a day sit at its start, middle and
+end, and it ends with an END line: a harness that repeats all three read
+the whole of today's brief, which tells a doc read in part from one not
+read at all. Started narrow at the operator's word; end lines on the other
+live docs and the ingestion alarms wait for the first tests.
+
 ### No onboarding line once closed out (2026-11-22)
 
 The primer read "Onboarding Day 21 of 21" for over a month because
