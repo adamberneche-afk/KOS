@@ -28,13 +28,7 @@
 // onOpen — detects role, builds appropriate menu
 // ---------------------------------------------------------------------------
 function onOpen() {
-  // FIX (reconciliation decision 10): `props` was referenced below
-  // (line ~56, `props.getProperty("INSTALLER_COMPLETE")`) without ever
-  // being declared in this function's scope — a ReferenceError on every
-  // doc open once SETUP_COMPLETE is set, i.e. for every user after
-  // first-time setup finishes. Declared once here and reused for both
-  // property reads, matching every other function in this file, which
-  // already takes `props` as an explicit parameter.
+  // Declared once and reused, as every other function here takes `props`.
   const props = PropertiesService.getScriptProperties();
   const ui    = DocumentApp.getUi();
   const role  = detectRole_();
@@ -1434,14 +1428,6 @@ function showTeacherSummary() {
     "Registration Form:\n" + (p.INTAKE_FORM_URL  || "—") + "\n\n" +
     "Scroll to Your Teacher Setup Details for full information.",
     DocumentApp.getUi().ButtonSet.OK);
-}
-
-// ---------------------------------------------------------------------------
-// markInstallerComplete — called by Script 21 after successful installation
-// Removes the installer menu item on next open
-// ---------------------------------------------------------------------------
-function markInstallerComplete() {
-  PropertiesService.getScriptProperties().setProperty("INSTALLER_COMPLETE", "true");
 }
 
 // =============================================================================

@@ -15,11 +15,11 @@
       "why": "Loaded by every CAS project: getConfig_, TABS, each tab's columns and the shared helpers; one-project code moved out in audit 4.6."
     },
     "cas-ccps/scripts/07_TeacherDashboard.js": {
-      "lines": 2574,
+      "lines": 2567,
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "cas-ccps/scripts/07_TeacherDashboardPage.html": {
-      "lines": 4394,
+      "lines": 4390,
       "why": "The Teacher Dashboard's whole page (audit 4.5 moved it out of its .js). Split by panel when next reworked."
     },
     "cas-ccps/scripts/13_StudentDashboard.js": {
@@ -39,7 +39,7 @@
       "why": "FLOW_2_SYSTEM_PROMPT: a prompt's length is its content, and 15b is its one source (structure audit 3.12)."
     },
     "cas-ccps/scripts/16_UnifiedManualSetup.js": {
-      "lines": 1771,
+      "lines": 1738,
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "cas-ccps/scripts/37_FlowInputBuilder.js": {
@@ -103,7 +103,7 @@
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "leader-hub/src/11-journal-cron-settings-and-sync.html": {
-      "lines": 3328,
+      "lines": 3260,
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "leader-hub/src/12-integrations-pacing-subplan-brag.html": {

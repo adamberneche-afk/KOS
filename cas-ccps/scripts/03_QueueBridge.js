@@ -791,15 +791,3 @@ function updateLedgerStatus_(ledgerSheet, fileId, configId, status) {
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// markQueueRowComplete
-// ---------------------------------------------------------------------------
-function markQueueRowComplete(queueRowRef) {
-  const cfg        = getConfig_();
-  const ss         = SpreadsheetApp.openById(cfg.adminSsId);
-  const sheet      = ss.getSheetByName(cfg.tabs.reviewQueue);
-  const rowNumber  = parseInt(queueRowRef, 10);
-  if (isNaN(rowNumber) || rowNumber < 2) return;
-  sheet.getRange(rowNumber, RVQ.STATUS + 1).setValue("COMPLETE");
-}

@@ -1534,11 +1534,6 @@ function teacherCopiedParentReport(studentEmail, subject, text) {
 //   { courses: [{ code, name, competencies: [{ id, taskNum, text, strand }] }] }
 //   courses sorted by code (8175 before 8177 etc.)
 //   competencies within each course sorted by taskNum ascending
-//
-// ── M3 HOOK ──
-//   Each competency carries a scaffolding placeholder populated by
-//   getStudentScaffoldingData() when Module 3 student profiles exist.
-//   For now scaffolding is always an empty array — zero UI cost.
 // ── M2 ──────────────────────────────────────────────────────────────────────
 // ---------------------------------------------------------------------------
 // ⚙ Settings (2026-10-27, archive/2026-27-Q1/meta/SPRINT_DASHBOARD_2026-11.md, PR 3): the
@@ -2219,7 +2214,6 @@ function _getCompetenciesForEmail_(cfg, email) {
       taskNum:    taskNum,
       text:       String(row[iText]).trim(),
       strand:     iStrand !== -1 ? String(row[iStrand]).trim() : "",
-      scaffolding: []  // ── M3 hook: populated by getStudentScaffoldingData() ──
     });
   }
 
@@ -2243,8 +2237,7 @@ function _getCompetenciesForEmail_(cfg, email) {
       id:          comp.id,
       taskNum:     comp.taskNum,
       text:        comp.text,
-      strand:      comp.strand,
-      scaffolding: comp.scaffolding
+      strand:      comp.strand
     });
   }
 

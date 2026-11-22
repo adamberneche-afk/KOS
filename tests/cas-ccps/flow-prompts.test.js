@@ -39,7 +39,7 @@ function load() {
   return loadGasFiles(
     [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('40_FlowPrompts.js')],
     [
-      'getFlowPrompt', 'syncFlowPromptsToSheet', 'checkFlowPrompts',
+      'syncFlowPromptsToSheet', 'checkFlowPrompts',
       'substituteFlowPrompt_', 'flowPromptPlaceholders_', 'flowPromptText_',
       'FLOW_PROMPT_KEYS', 'FLOW_PROMPT_TAB', 'FLOW_PROMPT_HEADERS',
       'FLOW_1_PROMPT', 'FLOW_3_PROMPT_MODE_A', 'FLOW_3_PROMPT_MODE_B', 'FLOW_3_PROMPT_MODE_C',
@@ -166,21 +166,6 @@ test('substituteFlowPrompt_: a null or undefined var counts as unmatched, not as
   assert.equal(exported.substituteFlowPrompt_('{{A}}', { A: undefined }, true), '{{A}}');
   // An empty string, though, is a deliberate value and does substitute.
   assert.equal(exported.substituteFlowPrompt_('{{A}}', { A: '' }, true), '');
-});
-
-test('getFlowPrompt: returns the raw template with no vars, substituted with them', () => {
-  const { exported } = load();
-  const raw = exported.getFlowPrompt('FLOW_4');
-  assert.ok(raw.indexOf('{response_text}') !== -1);
-
-  const filled = exported.getFlowPrompt('FLOW_4', { response_text: 'ANSWER', word_count_score: '2' });
-  assert.ok(filled.indexOf('{response_text}') === -1, 'placeholder should be gone');
-  assert.ok(filled.indexOf('ANSWER') !== -1);
-});
-
-test('getFlowPrompt: an unknown key returns empty and logs rather than throwing', () => {
-  const { exported } = load();
-  assert.equal(exported.getFlowPrompt('FLOW_99'), '');
 });
 
 test('flowPromptPlaceholders_: reports both styles, sorted and deduplicated', () => {

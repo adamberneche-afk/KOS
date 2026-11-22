@@ -220,7 +220,6 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
 .competency-item input[type="checkbox"]{margin-top:2px;flex-shrink:0;accent-color:#1557b0;width:15px;height:15px;cursor:pointer}
 .competency-item .c-num{font-family:monospace;font-size:12px;color:#1557b0;font-weight:700;white-space:nowrap;min-width:32px}
 .competency-item .c-text{font-size:13px;color:#3c4043;line-height:1.45}
-.competency-item .c-scaffold{font-size:12px;color:#137333;margin-top:2px}
 .competency-empty{font-size:13px;color:var(--text-secondary);padding:8px 0}
 .comp-container{max-height:260px;overflow-y:auto;border:1px solid #e8eaed;border-radius:6px;padding:8px 4px}
 
@@ -3852,11 +3851,8 @@ function loadCompetencies() {
               <span class="c-num">${esc(String(c.taskNum))}</span>
               <span class="c-text">
                 ${esc(c.text)}
-                <span class="c-scaffold" id="scaffold-${esc(c.id)}"></span>
               </span>
             </label>`;
-            // ── M3 hook: scaffold-{id} span populated by
-            //    getStudentScaffoldingData() when profiles exist ──
           });
           panelsHtml += '</div>';
         });

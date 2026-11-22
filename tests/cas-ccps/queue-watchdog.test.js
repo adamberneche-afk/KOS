@@ -23,7 +23,7 @@ const WATCHDOG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '3
 function load(extraGlobals) {
   return loadGasFiles(
     [SHARED_CONFIG_PATH, ...SHARED_CONFIG_PATH_PARTS, WATCHDOG_PATH, path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '64_LedgerCycle.js')],
-    ['runQueueWatchdog', 'runQueueWatchdogNow', 'installQueueWatchdogTrigger', 'removeQueueWatchdogTrigger'],
+    ['runQueueWatchdog', 'installQueueWatchdogTrigger', 'removeQueueWatchdogTrigger'],
     extraGlobals,
   );
 }
@@ -356,26 +356,6 @@ test('runQueueWatchdog: DRY RUN (default, no CAS_WATCHDOG_DRY_RUN set) never wri
   const health = ss.getSheetByName('Health');
   assert.match(healthCell(health, 1, 1), /DRY RUN/);
   assert.equal(healthCell(health, 5, 3), 1, 'the Health tab still reports it as "would have timed out" this run');
-});
-
-test('runQueueWatchdogNow: alerts that the run was a dry run', () => {
-  const { exported, sandbox } = load();
-  const ss = sandbox.SpreadsheetApp.create('Admin');
-  setUpConfig(sandbox, ss);
-  exported.runQueueWatchdogNow();
-  const calls = sandbox.SpreadsheetApp.getUi()._calls;
-  assert.equal(calls.length, 1);
-  assert.match(calls[0].message, /DRY RUN/);
-});
-
-test('runQueueWatchdogNow: once live (CAS_WATCHDOG_DRY_RUN=false), the alert no longer mentions dry run', () => {
-  const { exported, sandbox } = load();
-  const ss = sandbox.SpreadsheetApp.create('Admin');
-  setUpConfig(sandbox, ss);
-  goLive(sandbox);
-  exported.runQueueWatchdogNow();
-  const calls = sandbox.SpreadsheetApp.getUi()._calls;
-  assert.ok(!/DRY RUN/.test(calls[0].message));
 });
 
 // ── Chat alert graceful degradation ─────────────────────────────────────────

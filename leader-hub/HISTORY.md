@@ -95,3 +95,10 @@ searches the archived ones entry by entry.
   always allowed, a student refused with nothing read or written, `none`),
   `horizon-route-and-sync-escaping.test.js`; `plain-words.test.js`'s
   pattern follows the escaped call.
+
+## The "5 Ideas per Work Area" modal retired, 2026-11-22
+
+Settings' Quick Links opened 25 feature ideas as cards that nothing
+tracked, some since built (sub plans, the DECA season timeline), with an
+unused `surveyAnswers` beside them (11-22 dead-ends audit, item 2.13).
+Retired; the backlog in `meta/BACKLOG.md` is where ideas live.
