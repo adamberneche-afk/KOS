@@ -12,7 +12,7 @@ const vm = require('vm');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 const { extractInlineScripts } = require('../../tools/html-lint/check.js');
 
-const SD = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '63_DocHeader.js', '13_StudentDashboard.js', '13c_StudentDashboardLessons.js', '13d_StudentDashboardReview.js', '71_TurnInCodes.js', '71b_TurnInStudent.js']
+const SD = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '80_WarmUpPoints.js', '63_DocHeader.js', '13_StudentDashboard.js', '13c_StudentDashboardLessons.js', '13d_StudentDashboardReview.js', '71_TurnInCodes.js', '71b_TurnInStudent.js']
   .map(f => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f));
 const ME = '1234567@ccpsnet.net';
 const OTHER = '7654321@ccpsnet.net';
@@ -164,7 +164,8 @@ test('Warm-ups: every past warm-up, newest first, nothing open to answer', () =>
   assert.equal(d.success, true, JSON.stringify(d));
   assert.deepEqual(d.warmUps.map(w => w.queueId), ['Q2', 'Q1'], 'mine, before today, newest first');
   assert.equal(d.warmUps[0].feedback, 'Good use of sponsors.');
-  assert.equal(d.warmUps[0].score.points, 9);
+  assert.ok(d.warmUps.every(w => w.score === null), 'no score in the history: it shows once, on the card');
+  assert.ok(Array.isArray(d.points) && d.points.every(p => p.term && typeof p.points === 'number'), 'points per term');
   assert.equal(d.warmUps[0].warmup, 'Question for 2026-10-21');
   assert.ok(d.warmUps.every(w => !w.canAnswer && !w.extraCredit.canReply), 'history is read-only');
 });

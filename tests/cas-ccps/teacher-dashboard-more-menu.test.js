@@ -14,7 +14,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const { extractInlineScripts } = require('../../tools/html-lint/check.js');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-const FILES = [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '07_TeacherDashboard.js')];
+const FILES = [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '80_WarmUpPoints.js'), path.join(SCRIPTS, '07_TeacherDashboard.js'), path.join(SCRIPTS, '80b_WarmUpPointsPanel.js')];
 const DEMO = 'https://script.google.com/macros/s/AKfyDEMO/exec';
 
 function html(cfg) {
@@ -41,11 +41,12 @@ function controls(header) {
   return out;
 }
 
-const MENU = ['parent-report-btn', 'scr-review-btn', 'lesson-schedule-btn', 'settings-btn', 'demo-student-btn', 'cas-terms-btn'];
+const MENU = ['parent-report-btn', 'scr-review-btn', 'lesson-schedule-btn', 'warmup-points-btn', 'settings-btn', 'demo-student-btn', 'cas-terms-btn'];
 const HANDLERS = {
   'parent-report-btn': 'openParentReportModal()',
   'scr-review-btn': 'openScrReviewModal()',
   'lesson-schedule-btn': 'openLessonScheduleModal()',
+  'warmup-points-btn': 'openWarmUpPoints()',
   'settings-btn': 'openSettingsModal()',
   'cas-terms-btn': 'casOpenTerms()',
 };
@@ -231,7 +232,7 @@ test('arrows wrap, Home and End jump, and only the focused item is tabbable', ()
   assert.equal(p.state().focus, 'cas-terms-btn');
   p.key('Home');
   assert.equal(p.state().focus, 'parent-report-btn');
-  assert.deepEqual(MENU.map((id) => p.els[id].getAttribute('tabindex')), ['0', '-1', '-1', '-1', '-1', '-1']);
+  assert.deepEqual(MENU.map((id) => p.els[id].getAttribute('tabindex')), ['0'].concat(MENU.slice(1).map(() => '-1')));
 });
 
 test('Escape closes the menu, returns focus to More, and does not reach the page\'s panel Escape', () => {

@@ -1577,22 +1577,22 @@ function toggleCompEvidence(on) {
   renderTab("competencies");
 }
 
-// Every past warm-up, newest first, as the card shows it.
+// Points by term, then past warm-ups newest first: feedback, no score (that showed once, on the card).
 function renderWarmUpHistory(d) {
-  if (!d.warmUps.length) return '<p class="rec-empty">No past warm-ups yet.</p>';
-  return '<p class="rec-sub">Your warm-ups before today, newest first. Today\'s, and the last one while it is still open, are on the Assignments tab.</p>' +
+  const pts = (d.points || []).map(function (p) { return '<li><b>' + esc(String(p.points)) + ' points</b> · ' + (p.current ? 'this marking period' : esc(p.label)) + '</li>'; }).join("");
+  const head = pts ? '<section class="ctx-up" aria-labelledby="wu-pts-h"><h3 id="wu-pts-h">Your warm-up points</h3><ul>' + pts + '</ul></section>' : '';
+  if (!d.warmUps.length) return head + '<p class="rec-empty">No past warm-ups yet.</p>';
+  return head + '<p class="rec-sub">Your warm-ups before today, newest first. Today\'s, and the last one while it is still open, are on the Assignments tab.</p>' +
     '<div class="card warmup-card">' + d.warmUps.map(function (w) { return _wuPrevious(w, "Warm-up"); }).join("") + '</div>';
 }
 
-// The Student Context doc one week at a time, with its link on every week.
-// A link straight to one week of the context doc (29's bookmark), or the
-// doc itself when the week has none.
+// A link straight to one week of the Student Context doc (29's bookmark), or
+// the doc itself when the week has none.
 function weekDocUrl(url, bookmark) {
   if (!url) return "";
   return /^[A-Za-z0-9._-]+$/.test(String(bookmark || "")) ? url.split("#")[0] + "#bookmark=" + bookmark : url;
 }
-// Coming up (2026-11-19): the student's assignments still to do with a due
-// date today or later, soonest first, from the cards already on the page.
+// Coming up: assignments still to do, due today or later, soonest first.
 const COMING_UP_MAX = 8;
 function comingUp() {
   return ((_lastDashData && _lastDashData.assignments) || [])

@@ -14,7 +14,7 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // 34c's setup checks reach 38, 40, 41 and 57, and those reach the rest
 // (the retention schedule names every record's tab and columns).
-const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '22_LessonContextHandler.js', '50_StudentDataAccess.js', '34c_OvernightHealth.js', '58_LessonRollout.js', '43_DeployVersionMarker_CentralLedger.js', '64_LedgerCycle.js',
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '80_WarmUpPoints.js', '22_LessonContextHandler.js', '50_StudentDataAccess.js', '34c_OvernightHealth.js', '58_LessonRollout.js', '43_DeployVersionMarker_CentralLedger.js', '64_LedgerCycle.js',
   '03_QueueBridge.js', '10_AdminRecoveryPanel.js', '15b_StudioFlowPrompts_Flow2_Revised.js', '23_StudentProfileManager.js',
   '25_WarmUpWriter.js', '29_StudentContextAggregator.js', '30_SCRSuggestionEngine.js', '34_QueueWatchdog.js',
   '36_WeeklyParentReport.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '39b_Flow2Provenance.js', '55b_LessonAssignmentData.js', '68_LessonParts.js', '38_LedgerSchemaGuard.js', '40_FlowPrompts.js',
@@ -135,7 +135,7 @@ test('a Studio return row\'s text timestamp ages out of the 24 hours', () => {
 });
 
 test('sheetTimestampMs_ reads a Date, an ISO string and Studio\'s text; anything else is NaN', () => {
-  const ts = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js')], ['sheetTimestampMs_']).exported.sheetTimestampMs_;
+  const ts = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('80_WarmUpPoints.js')], ['sheetTimestampMs_']).exported.sheetTimestampMs_;
   assert.equal(ts(new Date('2026-10-20T07:29:00Z')), Date.parse('2026-10-20T07:29:00Z'));
   assert.equal(ts('2026-10-20T07:29:00Z'), Date.parse('2026-10-20T07:29:00Z'));
   assert.equal(ts('October 20, 2026 at 3:29 AM EDT'), Date.parse('2026-10-20T07:29:00Z'));

@@ -16,7 +16,7 @@ const demoLessons = require('../../tools/cas-ccps/build-dashboard-demo-lessons.j
 const ALLOW = require('../../tools/gas-lint/webapp-public-allow.json');
 
 const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-const SD = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboard.js', '13b_StudentDashboardDemoLessons.js', '13c_StudentDashboardLessons.js', '13d_StudentDashboardReview.js',
+const SD = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '80_WarmUpPoints.js', '00b_ScriptOwnerGuard.js', '13_StudentDashboard.js', '13b_StudentDashboardDemoLessons.js', '13c_StudentDashboardLessons.js', '13d_StudentDashboardReview.js',
   '63_DocHeader.js', '71_TurnInCodes.js', '71b_TurnInStudent.js'].map((f) => path.join(SCRIPTS, f));
 const OWNER = 'teacher@ccpsnet.net';
 const KID = 'kid@ccpsnet.net';
@@ -331,7 +331,7 @@ test('the real page never asks for the demo fixture', () => {
 });
 
 test('the Teacher Dashboard has "View as a student", opening the Student Dashboard with ?demo=1', () => {
-  const { exported } = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '07_TeacherDashboard.js')],
+  const { exported } = loadGasFiles([path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '00c_CentralLedgerShared.js'), path.join(SCRIPTS, '00d_TeacherDashboardShared.js'), path.join(SCRIPTS, '00e_StudentDashboardShared.js'), path.join(SCRIPTS, '80_WarmUpPoints.js'), path.join(SCRIPTS, '07_TeacherDashboard.js'), path.join(SCRIPTS, '80b_WarmUpPointsPanel.js')],
     ['buildDashboardHtml_', 'studentDemoUrl_']);
   const url = 'https://script.google.com/a/macros/example.net/s/AKfyDEMO_url-1/exec';
   const html = exported.buildDashboardHtml_({ studentDashboardUrl: url });
