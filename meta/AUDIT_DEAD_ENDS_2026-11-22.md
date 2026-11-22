@@ -119,7 +119,7 @@ are on live (feature-switches doc and handoffs): not gaps.
 | # | Check | Why it warns | Kind |
 |---|---|---|---|
 | 6.1 | gas-lint `bounded-loop-convention` | Four kos-personal loops (1:1325, 5:775, 5:962, 6:1033) have no cap; process hardening 2b left them | done; an error now (#560) |
-| 6.2 | gas-lint `unused-oauth-scope` | Central Ledger declares `forms` with no FormApp call (4a said it would move with the reader) | fix |
+| 6.2 | gas-lint `unused-oauth-scope` | Central Ledger declares `forms` with no FormApp call (4a said it would move with the reader) | done (#561) |
 | 6.3 | gas-lint `dynamic-server-dispatch` | kos-personal's `callServer('name')` isn't cross-checked (all 24 names exist today) | proposed |
 | 6.4 | coverage-gaps allowlist | Nine scheduled handlers "flagged for follow-up" since the check began (four kos-personal, five cas-ccps) | fix over time |
 

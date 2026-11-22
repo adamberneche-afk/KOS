@@ -85,7 +85,7 @@ function _reportDeployVersion_(projectName, sha) {
 // by the sync from the manifests: edit a manifest and run it.
 const DEPLOY_PROJECT_SCOPES = {
   'kos-personal': ['drive', 'spreadsheets', 'documents', 'script.scriptapp', 'script.send_mail', 'userinfo.email', 'script.external_request'],
-  'cas-ccps:central-ledger': ['spreadsheets', 'drive', 'documents', 'presentations', 'forms', 'script.send_mail', 'userinfo.email', 'script.scriptapp', 'script.external_request'],
+  'cas-ccps:central-ledger': ['spreadsheets', 'drive', 'documents', 'presentations', 'script.send_mail', 'userinfo.email', 'script.scriptapp', 'script.external_request'],
   'cas-ccps:unified-manual': ['drive', 'spreadsheets', 'documents', 'forms', 'userinfo.email', 'script.external_request', 'script.scriptapp'],
   'cas-ccps:master-student-template': ['spreadsheets', 'documents', 'userinfo.email', 'script.external_request', 'script.scriptapp', 'drive.readonly'],
   'cas-ccps:rubric-response-sheet': ['spreadsheets', 'drive', 'documents', 'script.send_mail', 'script.external_request', 'script.scriptapp'],

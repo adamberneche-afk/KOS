@@ -49,7 +49,7 @@ push folder. A new scope means every user of that project approves again after t
 ### `central-ledger`
 
 - Time zone: America/New_York; runtime: V8
-- OAuth scopes: `spreadsheets`, `drive`, `documents`, `presentations`, `forms`, `script.send_mail`, `userinfo.email`, `script.scriptapp`, `script.external_request`
+- OAuth scopes: `spreadsheets`, `drive`, `documents`, `presentations`, `script.send_mail`, `userinfo.email`, `script.scriptapp`, `script.external_request`
 - Advanced services: `Drive` (drive v3)
 - Libraries: none
 - Web app: no

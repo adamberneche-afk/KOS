@@ -1960,3 +1960,12 @@ for a `getStudentScaffoldingData()` that was never written.
 `setSettingForCourse` and `setMarkingPeriodEnds` (07) were superseded by
 `saveSettings`, which the page calls for both, and stayed callable from the
 page (audit item 3.5). The tests that used them call `saveSettings`.
+
+## The Central Ledger drops the Forms scope, 2026-11-22
+
+Dead-ends audit 6.2: the Central Ledger's manifest asked for
+`auth/forms`, but nothing in that project calls FormApp (a form part's copy
+is made with DriveApp, 02). FormApp runs in the Student Dashboard
+(`75_FormReader.js`) and the Unified Manual's setup, whose manifests keep
+it. Narrowing a scope asks nobody to approve again; it takes effect at the
+Ledger's next push.
