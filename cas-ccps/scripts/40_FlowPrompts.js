@@ -457,18 +457,6 @@ function substituteFlowPrompt_(text, vars, keepUnmatched) {
   return out;
 }
 
-// Public resolver: getFlowPrompt("FLOW_4", { response_text: "…" }).
-// Pass no vars to get the raw template.
-function getFlowPrompt(key, vars) {
-  const text = flowPromptText_(key);
-  if (!text) {
-    Logger.log("[Prompts] Unknown prompt key \"" + key + "\". Known: " +
-               FLOW_PROMPT_KEYS.join(", "));
-    return "";
-  }
-  return vars ? substituteFlowPrompt_(text, vars, true) : text;
-}
-
 // ---------------------------------------------------------------------------
 // syncFlowPromptsToSheet — write every prompt to the FlowPrompts tab.
 //

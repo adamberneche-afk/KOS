@@ -88,7 +88,7 @@
 //                                   prepares reports, sends nothing
 //   recordParentReportCopied()      the teacher copied ONE report to send
 //   installWeeklyParentReportTrigger()  one-time manual setup
-//   archiveExpiredParentReports()   retention, admin menu
+// Retention: _archiveExpiredParentReports_(), run nightly by 34c's archive pass.
 // =============================================================================
 
 // ParentReportLog column indices (0-based) — canonical order.
@@ -738,21 +738,6 @@ function _countParentReportsPastRetentionUnarchived_() {
 }
 
 // ---------------------------------------------------------------------------
-// archiveExpiredParentReports
-// Public wrapper for the admin menu. Public (no trailing underscore) because
-// an underscore-suffixed function cannot be picked from the Apps Script Run
-// dropdown or wired to a menu item — the trap installSCRTrigger_() and
-// installStudentAggregatorTrigger_() both fall into while their own headers
-// tell the operator to "run once manually from the Script Editor."
-// ---------------------------------------------------------------------------
-function archiveExpiredParentReports() {
-  requireScriptOwner_();
-  const result = _archiveExpiredParentReports_();
-  Logger.log("[S36] Archive run: " + result.archived + " of " + result.checked + " row(s).");
-  return result;
-}
-
-// ---------------------------------------------------------------------------
 // runWeeklyParentReportPrep
 // Weekly trigger handler. Prepares the week's rows so the teacher opens the
 // dashboard to a ready list; SENDS NOTHING.
@@ -851,7 +836,7 @@ function _prStudentCourses_(cfg) {
 // something a person expects on a particular day. A report that arrives on a
 // drifting weekday is a report nobody learns to look for.
 //
-// Public name for the same reason as archiveExpiredParentReports() above.
+// Public (no trailing underscore) so it can be picked from the editor's Run menu.
 // ---------------------------------------------------------------------------
 function installWeeklyParentReportTrigger() {
   requireScriptOwner_();

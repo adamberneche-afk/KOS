@@ -1941,3 +1941,16 @@ app on its last push). The nightly rollout runs in APPLY for both
 courses and catches itself up (#333). The history of earlier pushes is in
 [`archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md`](../archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md); what is live now, and the operator's queue, are in
 [`archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md`](../archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md).
+
+## Retired: five orphan functions and the empty scaffolding hook, 2026-11-22
+
+From the 11-22 dead-ends audit (`meta/AUDIT_DEAD_ENDS_2026-11-22.md`, items
+2.4, 3.1–3.4, 3.6), each with no caller in any trigger, menu, page, Ledger
+cycle job or doc: `markQueueRowComplete` (03), `markInstallerComplete` and
+the `INSTALLER_COMPLETE` it wrote (16; its caller, script 21, was archived
+11-17), `runQueueWatchdogNow` (34; the "Health" menu it was written for
+never existed), the `archiveExpiredParentReports` wrapper (36; 34c's
+nightly archive pass calls `_archiveExpiredParentReports_`), and the
+test-only `getFlowPrompt` (40). The Teacher Dashboard's "M3 scaffolding"
+hook went too: every competency carried `scaffolding: []` and an empty span
+for a `getStudentScaffoldingData()` that was never written.

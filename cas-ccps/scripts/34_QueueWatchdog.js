@@ -548,18 +548,6 @@ function _wdWriteHealthTab_(ss, results, dryRun) {
   sheet.autoResizeColumns(1, 3);
 }
 
-// Callable from a custom menu item ("Health > Run Watchdog Now") for a
-// manual, on-demand check, same "safe to run manually" convention
-// kos-personal's runMatrixTurnstile() documents for itself.
-function runQueueWatchdogNow() {
-  const dryRun = PropertiesService.getScriptProperties().getProperty('CAS_WATCHDOG_DRY_RUN') !== 'false';
-  runQueueWatchdog();
-  SpreadsheetApp.getUi().alert(
-    'Watchdog run complete' + (dryRun ? ' (DRY RUN — nothing was actually changed)' : '') +
-    ' — see the Health tab.'
-  );
-}
-
 // =============================================================================
 // WARMUP QUEUE RETENTION — a third-party review found WarmUpQueue was the
 // one major operational tab (alongside Ledger, SCRDecisionLog,

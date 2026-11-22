@@ -175,6 +175,9 @@ research PRD past Phase 0 (P1-01 to P5-07, the pre-registration doc, the 14
    the retire PR.
 2. **One "retire" PR**: 2.4–2.6, 3.1–3.5, 2.13, per "retiring is deleting"
    (code, tests, mentions; one HISTORY entry each system).
+   **Built in two parts (the operator, 11-22):** first 2.4, 3.1–3.4, 3.6's
+   `getFlowPrompt` and 2.13 (cas-ccps and LeaderHub); then 2.5, 2.6 and 3.5,
+   which reach into kos-personal's queue and the settings tests.
 3. **6.1 and 6.2**, then `bounded-loop-convention` becomes an error.
 4. **The operator's decisions**: 2.3, 2.7–2.9, 2.11–2.12, 2.14 and the
    three switches in 4.1–4.3.
