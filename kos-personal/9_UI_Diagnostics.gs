@@ -444,7 +444,7 @@ function buildSessionContext() {
       'Assembled: ' + new Date().toLocaleString() + '\n' +
       'Active Files: ' + loaded.join(', ') + '\n' +
       'Operator: ' + (props.getProperty(CFG.PROP.OPERATOR_ROLE) || 'Unknown') + '\n' +
-      _onboardingStatusLine_(props) + '\n\n' +
+      (_onboardingStatusLine_(props) ? _onboardingStatusLine_(props) + '\n' : '') + '\n' +
       '═'.repeat(50) + '\n\n' +
       sections.join('\n\n' + '─'.repeat(50) + '\n\n') +
       '\n\n' + '═'.repeat(50) + '\n' +

@@ -1878,3 +1878,14 @@ shows each past warm-up's score; the card keeps it beside the feedback.
 warm-up scored below 10 with extra credit had its extra point counted in the
 points and again as extra credit (9 + 1 EC read as 9/10 and +1 EC; it is
 now 8/10 and +1 EC). The report still covers the current term only.
+
+## The CAS signal never silently replaces its doc, 2026-11-22
+
+The RTP read a dead `KOS_CAS_SIGNAL` from 11-11 to 11-22: one failed open
+of the doc made 34b's `_casSignalDoc_` create a new one, and the Claude
+Project's link kept pointing at the old doc (L16, from the RTP's 11-17 and
+11-19 briefs, which marked it stale). A failed open is now tried again; a
+doc that still exists is never replaced (the run is skipped); only a doc
+that is gone is replaced, by the newest doc of the same title or a new
+one, and a note (`CAS_SIGNAL_DOC_NOTE`) puts the change in the overnight
+email for a week.

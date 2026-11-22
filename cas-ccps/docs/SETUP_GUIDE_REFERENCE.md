@@ -202,6 +202,7 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `CAS_OVERNIGHT_MAILED` | via the constant ON_MAIL_STATE_KEY | — | 34c_OvernightHealth.js | 34c_OvernightHealth.js |
 | `CAS_OVERNIGHT_SETUP_CHECKS` | via the constant ON_SETUP_STATE_KEY | "null" | 34c_OvernightHealth.js | 34c_OvernightHealth.js |
 | `CAS_SIGNAL_DOC_ID` | direct | — | 34b_CasAttentionSignal.js | 34b_CasAttentionSignal.js |
+| `CAS_SIGNAL_DOC_NOTE` | direct | "null" | 34b_CasAttentionSignal.js | 34c_OvernightHealth.js |
 | `CAS_SIGNAL_FOLDER_ID` | direct | — | no | 34b_CasAttentionSignal.js |
 | `CAS_SIGNAL_STATE` | via the constant CAS_SIGNAL_STATE_KEY | "{}" | 34b_CasAttentionSignal.js | 34b_CasAttentionSignal.js |
 | `CAS_WATCHDOG_DRY_RUN` | direct | — | no | 34_QueueWatchdog.js |

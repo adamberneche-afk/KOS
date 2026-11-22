@@ -400,3 +400,48 @@ test('writeCasSignal_: a failing Ledger cycle job is named with its counts', () 
   assert.match(text, /- Ledger job bridgeQueue: failing, 4 runs in a row, 6 failures today/);
   assert.doesNotMatch(text, /harvestFlowInputResults/, 'an old day with no streak is not shown');
 });
+
+// ── The signal doc is never silently replaced (L16: on 11-11 a failed open
+// made a new doc, and the RTP's link kept reading the dead one) ──
+
+function failOpens(env, times) {
+  const real = env.sandbox.DocumentApp.openById.bind(env.sandbox.DocumentApp);
+  let left = times;
+  env.sandbox.DocumentApp.openById = (id) => { if (left > 0) { left--; throw new Error('Service unavailable'); } return real(id); };
+}
+
+test('the signal doc: a failed open is tried again, and a doc that exists is never replaced', () => {
+  const env = load();
+  staging(env.ss, []);
+  suggestions(env.ss, []);
+  env.exported.writeCasSignal_(okWatchdog());
+  const id = env.props.getProperty('CAS_SIGNAL_DOC_ID');
+  failOpens(env, 1);
+  env.exported.writeCasSignal_(okWatchdog());
+  assert.equal(env.props.getProperty('CAS_SIGNAL_DOC_ID'), id, 'one failed open: the second try writes the same doc');
+  failOpens(env, 2);
+  env.exported.writeCasSignal_(okWatchdog());
+  assert.equal(env.props.getProperty('CAS_SIGNAL_DOC_ID'), id, 'two failed opens on a doc that exists: skipped, not replaced');
+  assert.equal(env.props.getProperty('CAS_SIGNAL_DOC_NOTE'), null);
+});
+
+test('the signal doc: a gone doc is re-linked to the newest of its title, or made, with a note for the overnight email', () => {
+  const env = load();
+  staging(env.ss, []);
+  suggestions(env.ss, []);
+  env.exported.writeCasSignal_(okWatchdog());
+  const first = env.props.getProperty('CAS_SIGNAL_DOC_ID');
+  const other = env.sandbox.DocumentApp.create('KOS_CAS_SIGNAL').getId();
+  env.sandbox.DriveApp.getFileById(first).setTrashed(true);
+  failOpens(env, 2);
+  env.exported.writeCasSignal_(okWatchdog());
+  assert.equal(env.props.getProperty('CAS_SIGNAL_DOC_ID'), other, 'the other doc of that name');
+  assert.match(env.props.getProperty('CAS_SIGNAL_DOC_NOTE'), /re-linked/);
+  env.sandbox.DriveApp.getFileById(other).setTrashed(true);
+  failOpens(env, 2);
+  env.exported.writeCasSignal_(okWatchdog());
+  const made = env.props.getProperty('CAS_SIGNAL_DOC_ID');
+  assert.ok(made !== first && made !== other, 'none left: a new doc');
+  assert.match(env.props.getProperty('CAS_SIGNAL_DOC_NOTE'), /made a new doc/);
+  assert.match(signalText(env), /^KOS_CAS_SIGNAL\n/);
+});

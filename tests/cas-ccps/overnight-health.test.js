@@ -408,3 +408,14 @@ test('the retired 6 a.m. alert removes its own trigger and sends nothing', () =>
   assert.deepEqual(env.sandbox.ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction()), ['runQueueWatchdog']);
   assert.equal(sent.length, 0);
 });
+
+test('the overnight email names a change of KOS_CAS_SIGNAL doc for a week (L16)', () => {
+  const env = load();
+  env.sandbox.PropertiesService.getScriptProperties().setProperty('CAS_SIGNAL_DOC_NOTE',
+    JSON.stringify({ at: HOURS(30).toISOString(), what: 'made a new doc (the old one is gone); paste its link into the RTP\'s instructions' }));
+  const r = env.exported.overnightHealth_(NOW, 'America/New_York');
+  assert.ok(r.problems.some((p) => /^KOS_CAS_SIGNAL made a new doc .*\(2026-10-18\)$/.test(p)), JSON.stringify(r.problems));
+  env.sandbox.PropertiesService.getScriptProperties().setProperty('CAS_SIGNAL_DOC_NOTE',
+    JSON.stringify({ at: HOURS(8 * 24).toISOString(), what: 'made a new doc' }));
+  assert.ok(!env.exported.overnightHealth_(NOW, 'America/New_York').problems.some((p) => /KOS_CAS_SIGNAL/.test(p)), 'gone after a week');
+});

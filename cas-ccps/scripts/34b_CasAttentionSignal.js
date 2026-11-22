@@ -69,11 +69,14 @@
 // the Apps Script editor. The first run creates KOS_CAS_SIGNAL in My
 // Drive (or in CAS_SIGNAL_FOLDER_ID's folder, if set) and stores its ID in
 // CAS_SIGNAL_DOC_ID. Paste the doc's link into the KOS Project's
-// instructions.
+// instructions. A doc that fails to open is never silently replaced
+// (_casSignalDoc_); a change of doc is in the overnight email.
 // =============================================================================
 
 const CAS_SIGNAL_TITLE = "KOS_CAS_SIGNAL";
 const CAS_SIGNAL_STATE_KEY = "CAS_SIGNAL_STATE";
+const CAS_SIGNAL_RETRY_PAUSE_MS = 2000;
+const CAS_SIGNAL_MAX_MATCHES = 20;
 const CAS_SIGNAL_SCR_EVERY_MS = 60 * 60 * 1000;
 const CAS_SIGNAL_RETRY_BUDGET_MS = 90 * 1000;
 const CAS_SIGNAL_SUBMIT_FAILURE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -469,6 +472,7 @@ function _casSignalWriteState_(props, state) {
 
 function _casSignalWriteDoc_(props, lines) {
   const doc = _casSignalDoc_(props);
+  if (!doc) return; // the doc exists but didn't open: the next run writes it
   const body = doc.getBody();
   // A cleared body keeps one empty paragraph: the title goes into it.
   body.clear();
@@ -477,10 +481,29 @@ function _casSignalWriteDoc_(props, lines) {
   doc.saveAndClose();
 }
 
+// The doc, or null to skip this run. A failed open is tried once more; a doc
+// that still exists is never replaced (a new one would leave the RTP's link
+// dead without a word, as on 11-11). Only when the stored doc is gone does it
+// take the newest doc of its title, or make one, and leave a note
+// (CAS_SIGNAL_DOC_NOTE) the overnight email reports for a week.
 function _casSignalDoc_(props) {
   const id = props.getProperty("CAS_SIGNAL_DOC_ID");
   if (id) {
-    try { return DocumentApp.openById(id); } catch (e) { /* recreated below */ }
+    for (let i = 0; i < 2; i++) {
+      try { return DocumentApp.openById(id); } catch (e) { if (i === 0) Utilities.sleep(CAS_SIGNAL_RETRY_PAUSE_MS); }
+    }
+    let exists = false;
+    try { exists = !DriveApp.getFileById(id).isTrashed(); } catch (e) { exists = false; }
+    if (exists) {
+      Logger.log("[CasSignal] " + CAS_SIGNAL_TITLE + " exists but didn't open; skipped this run.");
+      return null;
+    }
+  }
+  const found = _casSignalNewestByTitle_();
+  if (found) {
+    props.setProperty("CAS_SIGNAL_DOC_ID", found.getId());
+    _casSignalNote_(props, "re-linked to the newest doc named " + CAS_SIGNAL_TITLE + "; check the RTP's link opens it");
+    return DocumentApp.openById(found.getId());
   }
   const doc = DocumentApp.create(CAS_SIGNAL_TITLE);
   const folderId = props.getProperty("CAS_SIGNAL_FOLDER_ID");
@@ -488,7 +511,27 @@ function _casSignalDoc_(props) {
     try { DriveApp.getFileById(doc.getId()).moveTo(DriveApp.getFolderById(folderId)); } catch (e) { /* stays in My Drive */ }
   }
   props.setProperty("CAS_SIGNAL_DOC_ID", doc.getId());
+  if (id) _casSignalNote_(props, "made a new doc (the old one is gone); paste its link into the RTP's instructions");
   return doc;
+}
+
+// The most recently updated, untrashed doc named CAS_SIGNAL_TITLE, or null.
+function _casSignalNewestByTitle_() {
+  let best = null;
+  try {
+    const it = DriveApp.getFilesByName(CAS_SIGNAL_TITLE);
+    for (let n = 0; it.hasNext() && n < CAS_SIGNAL_MAX_MATCHES; n++) {
+      const f = it.next();
+      if (f.isTrashed() || f.getMimeType() !== MimeType.GOOGLE_DOCS) continue;
+      if (!best || f.getLastUpdated() > best.getLastUpdated()) best = f;
+    }
+  } catch (e) { best = null; }
+  return best;
+}
+
+function _casSignalNote_(props, what) {
+  props.setProperty("CAS_SIGNAL_DOC_NOTE", JSON.stringify({ at: new Date().toISOString(), what: what }));
+  Logger.log("[CasSignal] " + CAS_SIGNAL_TITLE + ": " + what);
 }
 
 function _casSignalPlural_(n, word) {

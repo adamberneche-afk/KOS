@@ -57,7 +57,7 @@ test('the preview changes nothing; the close-out records the date and a tracker 
   assert.equal(rows[0][0], 21);
   assert.equal(rows[0][2], 'ONBOARDING_CLOSED');
   assert.match(rows[0][3], /started 2026-09-14/);
-  assert.equal(exported._onboardingStatusLine_(props), 'Onboarding: complete (closed ' + closed + ')');
+  assert.equal(exported._onboardingStatusLine_(props), '', 'closed out: no onboarding line');
 });
 
 test('a second close-out reports the existing date and writes nothing', () => {
