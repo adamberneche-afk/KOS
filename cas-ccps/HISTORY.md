@@ -1859,3 +1859,22 @@ its stampSystemIds() moved into 02. Its still-true part (how a student doc
 finds the system IDs) is in 01's header now; the setup wizard's admin
 summary (16) asks for two script files on the template, not three. A
 template made before this keeps its copy of 17, which does nothing.
+
+## Warm-up points by term, 2026-11-22
+
+The operator wanted to follow students' warm-up points over the term, with
+every delivered warm-up in the pool of possible points, and students to see
+their total but not each warm-up's score after its feedback. 80 holds the
+one tally (WarmUpRegistry's columns moved there from 25, since all three
+projects that read the tab now load it): a delivered warm-up is worth 10
+once its day has passed, an unanswered or unscored one counts 0, extra
+credit is counted apart. The Teacher Dashboard's More ▾ gains ✏ Warm-up
+points (80b): each student's points, percentage, warm-ups checked and extra
+credit by term or for the whole year, filtered by course. The Student
+Dashboard's Warm-ups tab shows the student's points per term and no longer
+shows each past warm-up's score; the card keeps it beside the feedback.
+
+25's term report now uses the same tally, which fixes a double count: a
+warm-up scored below 10 with extra credit had its extra point counted in the
+points and again as extra credit (9 + 1 EC read as 9/10 and +1 EC; it is
+now 8/10 and +1 EC). The report still covers the current term only.

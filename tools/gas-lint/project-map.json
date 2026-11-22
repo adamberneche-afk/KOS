@@ -101,7 +101,8 @@
       "cas-ccps/scripts/72_TurnInCheckFlow.js",
       "cas-ccps/scripts/76_CoveredSoFar.js",
       "cas-ccps/scripts/79_CanvasWeeklyCartridge.js",
-      "cas-ccps/scripts/79b_CanvasCartridgeData.js"
+      "cas-ccps/scripts/79b_CanvasCartridgeData.js",
+      "cas-ccps/scripts/80_WarmUpPoints.js"
     ]
   },
   "cas-ccps:unified-manual": {
@@ -148,7 +149,7 @@
   "cas-ccps:teacher-dashboard": {
     "_bound_to": "Standalone web app",
     "manifest": "cas-ccps/clasp/manifests/teacher-dashboard.appsscript.json",
-    "html": ["cas-ccps/scripts/07_TeacherDashboardPage.html", "cas-ccps/scripts/07_MyContextPage.html"],
+    "html": ["cas-ccps/scripts/07_TeacherDashboardPage.html", "cas-ccps/scripts/07_MyContextPage.html", "cas-ccps/scripts/80b_WarmUpPointsPanel.html"],
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/00b_ScriptOwnerGuard.js",
@@ -170,7 +171,9 @@
       "cas-ccps/scripts/68_LessonParts.js",
       "cas-ccps/scripts/71_TurnInCodes.js",
       "cas-ccps/scripts/73_TurnInTeacherPanel.js",
-      "cas-ccps/scripts/74_TurnInCanvasCheck.js"
+      "cas-ccps/scripts/74_TurnInCanvasCheck.js",
+      "cas-ccps/scripts/80_WarmUpPoints.js",
+      "cas-ccps/scripts/80b_WarmUpPointsPanel.js"
     ]
   },
   "cas-ccps:student-dashboard": {
@@ -191,7 +194,8 @@
       "cas-ccps/scripts/71b_TurnInStudent.js",
       "cas-ccps/scripts/75_FormReader.js",
       "cas-ccps/scripts/77_SlidesReader.js",
-      "cas-ccps/scripts/78_SheetReader.js"
+      "cas-ccps/scripts/78_SheetReader.js",
+      "cas-ccps/scripts/80_WarmUpPoints.js"
     ]
   },
   "cas-ccps:family-sentinel": {

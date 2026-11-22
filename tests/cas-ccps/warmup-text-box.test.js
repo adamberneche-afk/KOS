@@ -12,7 +12,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const CC = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
-const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
+const FILES = ['00_SharedConfig.js', '00c_CentralLedgerShared.js', '00d_TeacherDashboardShared.js', '00e_StudentDashboardShared.js', '80_WarmUpPoints.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
   '04_Form2_TurnInGate.js', '02_Form1_IntakeAndWorkspaceGenerator.js', '25_WarmUpWriter.js', '32_CompetencyRubricImporter.js', '37_FlowInputBuilder.js', '68_LessonParts.js', '03_QueueBridge.js', '41_WarmUpFlowBridge.js']
   .map((f) => path.join(CC, f));
 const EXPOSE = ['wfbApplyFlow3_', 'wfbFindQueueRow_', '_registerDeliveredWarmUps_', 'runWarmUpEvaluation',

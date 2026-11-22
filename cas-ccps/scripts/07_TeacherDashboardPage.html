@@ -319,17 +319,16 @@ footer{text-align:center;padding:16px;font-size:12px;color:var(--text-secondary)
   <div class="hdr-more" id="hdr-more">
     <button id="more-btn" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="more-menu">More <span aria-hidden="true">▾</span></button>
     <div id="more-menu" role="menu" aria-labelledby="more-btn" hidden>
-      <!-- Weekly parent reports (36_WeeklyParentReport.js). Opens a review
-           list; nothing is sent until the teacher enters an address and
-           presses Send on one student. -->
+      <!-- Weekly parent reports (36): a review list; nothing is sent until
+           the teacher enters an address and presses Send on one student. -->
       <button id="parent-report-btn" type="button" role="menuitem" tabindex="-1" onclick="openParentReportModal()"><span aria-hidden="true">✉</span> Parent Reports</button>
-      <!-- SCR review (Open Items #4 — 30_SCRSuggestionEngine.js). Opens a
-           review queue of AI-suggested Module 5 competency ratings; nothing
+      <!-- SCR review (30): AI-suggested Module 5 competency ratings; nothing
            is decided until the teacher confirms or overrides one. -->
       <button id="scr-review-btn" type="button" role="menuitem" tabindex="-1" onclick="openScrReviewModal()"><span aria-hidden="true">🎓</span> Competency ratings</button>
       <!-- Lesson schedule (LessonSchedule tab, 55): start dates by course, with
            what the last nightly rollout (58) did for each lesson. -->
       <button id="lesson-schedule-btn" type="button" role="menuitem" tabindex="-1" onclick="openLessonScheduleModal()"><span aria-hidden="true">📅</span> Lessons</button>
+      <button id="warmup-points-btn" type="button" role="menuitem" tabindex="-1" onclick="openWarmUpPoints()" aria-haspopup="dialog"><span aria-hidden="true">✏</span> Warm-up points</button>
       <!-- ⚙ Settings (sprint PR 3): the features turned on per course and the
            marking period end dates, each a _CONFIG row (00). -->
       <button id="settings-btn" type="button" role="menuitem" tabindex="-1" onclick="openSettingsModal()"><span aria-hidden="true">⚙</span> Settings</button>
@@ -4389,6 +4388,7 @@ loadWaitStrip();
 
 loadData();
 </script>
+<?!= warmUpPointsPanel ?>
 <?!= termsPanel ?>
 </body>
 </html>

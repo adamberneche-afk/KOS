@@ -11,7 +11,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('07_TeacherDashboard.js')];
+const FILES = [S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('80_WarmUpPoints.js'), S('07_TeacherDashboard.js'), S('80b_WarmUpPointsPanel.js')];
 const EXPOSE = ['getLessonSchedule', 'setLessonStartDate', 'setLessonHold'];
 const TEACHER = 'teacher@example.com'; // the sandbox's default Session user
 

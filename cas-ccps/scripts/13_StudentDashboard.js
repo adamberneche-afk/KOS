@@ -477,6 +477,7 @@ function dashDemoFixture_(now) {
     previous: _dashWarmUpView_(previous, tz, today, closesOn)
   };
   const history = [previous].concat(older).map(function (w) { return _dashWarmUpView_(w, tz, today, null); });
+  const demoPoints = history.reduce(function (n, w) { return n + (w.score ? w.score.points + w.score.extra : 0); }, 0);
 
   // My Context: two weeks, laid out as 29 writes them (00's
   // contextWeekLines_ and contextWeekLabel_), read back as 13 reads the doc.
@@ -533,7 +534,8 @@ function dashDemoFixture_(now) {
         termStart: _dashTermStartMs_(term, (function () {
           try { return PropertiesService.getScriptProperties().getProperty("MARKING_PERIOD_ENDS") || ""; } catch (e) { return ""; }
         })()) },
-      warmups:      { success: true, warmUps: history },
+      warmups:      { success: true, warmUps: history.map(function (w) { return Object.assign({}, w, { score: null }); }),
+        points: [{ term: term, label: termLabel_(term), current: true, points: demoPoints }] },
       context:      { success: true, context: { docUrl: "", lastUpdatedAt: formatDate_(_dashDemoDaysAgo_(now, 1)), weeks: contextWeeks } }
     },
     walkthrough: {
@@ -1337,16 +1339,14 @@ function _dashPartNames_(unitName) {
 }
 
 // ---------------------------------------------------------------------------
-// Warm-ups card: the student's last warm-up and the current one (the
-// operator's rule, 2026-10-24). The current warm-up is answered on its own
-// day. The last one stays open until the end of the student's next class
-// day: a student who answered it replies to its feedback for extra credit;
-// one who didn't can answer it late, and the late answer is scored without
-// feedback or extra credit (25 scores it the night after). Older warm-ups
-// stay in the Ledger; the card doesn't list them.
+// Warm-ups card: the student's last warm-up and the current one. The current
+// one is answered on its own day. The last one stays open until the end of
+// the student's next class day: a student who answered it replies to its
+// feedback for extra credit; one who didn't can answer it late, scored
+// without feedback or extra credit (25 scores it the night after). Its score
+// shows here, with the feedback; the Warm-ups tab shows older ones without it.
 //
-// WarmUpQueue's columns are 00's WQ (this file's DASH_WQ_* copy was folded
-// into it 2026-11-21); the total includes extra credit once it is earned. A warm-up answered here (WARMUP_TEXT_BOX) has a
+// WarmUpQueue's columns are 00's WQ; the total includes extra credit once it is earned. A warm-up answered here (WARMUP_TEXT_BOX) has a
 // WarmUpTextBox row (00's WTB) and no doc. The 3:15am run after the lesson
 // day (runWarmUpEvaluation) scores it, and replies are checked each night
 // for EXTRA_CREDIT_RECHECK_WINDOW_DAYS (7) with at least
@@ -1427,20 +1427,18 @@ function getStudentWarmUps_(ss, cfg, googleId, now) {
   };
 }
 
-// ── The student's own record (2026-10-27) ─────────────────────────────────
-// Three tabs beside Assignments, each loaded when first opened, each only
-// the signed-in student's own data (identity from the session, never a
-// parameter): their competencies with the teacher's confirmed rating and
-// the evidence behind it, every past warm-up with its feedback, and their
-// Student Context doc by week. The AI's suggested ratings stay
-// teacher-only (decided 2026-10-27).
+// ── The student's own record ──────────────────────────────────────────────
+// Three tabs beside Assignments, each loaded when first opened, each only the
+// signed-in student's own data (identity from the session, never a parameter):
+// competencies with the teacher's confirmed rating and evidence, past warm-ups
+// with feedback and term points, and the Student Context doc by week. The AI's
+// suggested ratings stay teacher-only.
 
 // The student's courses this school year, and each workspace's assignment
 // name, from their own Ledger rows. The name is the TeacherMatrix's, as on
 // the cards (_dashUnitNames_, #424), with the Ledger's CourseName column only
 // as the fallback: the roster import writes the Canvas course name there, so
-// every piece of evidence on the Competencies tab read as the course
-// (2026-11-15).
+// every piece of evidence on the Competencies tab read as the course.
 function _dashOwnCourses_(ss, cfg, email) {
   const out = { courses: {}, assignmentOf: {} };
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
@@ -1620,8 +1618,9 @@ function getMyCompetencies() {
   }
 }
 
-// Every warm-up before today, newest first, as the card shows it (score,
-// feedback, the question and the answer), with nothing left to answer.
+// Every warm-up before today, newest first, with its feedback, question and
+// answer but not its score (that shows once, on the card), and the student's
+// points per term (80's studentWarmUpPoints_). Nothing is left to answer.
 const DASH_WARMUP_HISTORY_MAX = 200;
 function getMyWarmUpHistory() {
   const email = String(Session.getActiveUser().getEmail() || "").trim();
@@ -1634,7 +1633,8 @@ function getMyWarmUpHistory() {
     const past = _dashOwnWarmUps_(ss, cfg, email, tz).list
       .filter(function (w) { return w.lessonDate < today; })
       .reverse().slice(0, DASH_WARMUP_HISTORY_MAX);
-    return { success: true, warmUps: past.map(function (w) { return _dashWarmUpView_(w, tz, today, null); }) };
+    return { success: true, points: studentWarmUpPoints_(ss, cfg, email),
+      warmUps: past.map(function (w) { return Object.assign(_dashWarmUpView_(w, tz, today, null), { score: null }); }) };
   } catch (e) {
     Logger.log("[S13] getMyWarmUpHistory failed: " + e.message);
     return { success: false, error: "Your warm-ups could not be loaded. Try again in a minute." };

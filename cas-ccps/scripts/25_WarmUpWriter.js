@@ -69,25 +69,8 @@ const SP25_SHADOW_MATRIX  = 12; // JSON — per-student × per-unit confidence
 
 // ── WarmUpQueue column indices (0-based) — must match Scripts 23 + 24 ─────────
 
-// ── WarmUpRegistry column indices (0-based) — must match schema doc ───────────
-const WR_WARMUP_ID    = 0;
-const WR_QUEUE_ID     = 1;
-const WR_LESSON_ID    = 2;
-const WR_LESSON_DATE  = 3;
-const WR_STUDENT_EMAIL = 4;
-const WR_STUDENT_NAME  = 5;
-const WR_TEACHER_EMAIL = 6;
-const WR_DOC_ID       = 7;
-const WR_DOC_URL      = 8;
-const WR_GENERATED_AT = 9;
-const WR_TOTAL_SCORE  = 10;
-const WR_EXTRA_CREDIT = 11;
-const WR_TERM         = 12;
-// extra_credit_checked — self-healing (see _ensureWarmUpRegistryExtraCreditColumn_
-// below), added to close a real "extra credit can never be captured" bug:
-// see _recheckExtraCredit_()'s own header for the full story.
-const WR_EXTRA_CREDIT_CHECKED = 13;
-const WR_COL_COUNT    = 14;
+// WarmUpRegistry's columns (WR_*): 80_WarmUpPoints.js, loaded by every
+// project that reads the tab.
 
 // LessonContext columns: 00_SharedConfig.js's LCTX (this file's LC25_* copy was
 // folded in 2026-11-21).
@@ -1068,46 +1051,25 @@ function generateWarmUpReport() {
     return null;
   }
 
-  const wrData = wrSheet.getDataRange().getValues();
-
-  // Build per-student summary from WarmUpRegistry
+  // Per-student points this term, from 80's tally (the same numbers the
+  // dashboards show): delivered warm-ups whose day has passed, each out of 10.
+  const tally = warmUpPointsTally_(wrSheet.getDataRange().getValues().slice(1), {
+    today: ymd_(generatedAt, "America/New_York"), teacherEmail: teacherEmail, termOf: warmUpTermOf_() });
   const studentSummary = {}; // email → { name, generated, completed, totalPoints, possiblePoints, extraCredits }
-
-  for (let i = 1; i < wrData.length; i++) {
-    const row        = wrData[i];
-    const tEmail     = String(row[WR_TEACHER_EMAIL] || "").trim().toLowerCase();
-    const term       = String(row[WR_TERM]          || "").trim();
-    const email      = String(row[WR_STUDENT_EMAIL] || "").trim().toLowerCase();
-    const name       = String(row[WR_STUDENT_NAME]  || "").trim();
-    const totalScore = row[WR_TOTAL_SCORE];
-    const ec         = Number(row[WR_EXTRA_CREDIT]  || 0);
-
-    if (tEmail !== teacherEmail.toLowerCase()) continue;
-    if (currentTerm !== "All Terms" && term && term !== currentTerm) continue;
-    if (!email) continue;
-
-    if (!studentSummary[email]) {
-      studentSummary[email] = {
-        name:           name || email,
-        generated:      0,
-        completed:      0,
-        totalPoints:    0,
-        possiblePoints: 0,
-        extraCredits:   0
-      };
-    }
-
-    studentSummary[email].generated++;
-    studentSummary[email].possiblePoints += 10; // max per warm-up excluding extra credit
-
-    if (totalScore !== "" && totalScore !== null && totalScore !== undefined) {
-      const score = Number(totalScore);
-      studentSummary[email].completed++;
-      // Subtract extra credit from total to get base score for possible calculation
-      studentSummary[email].totalPoints += Math.min(score, 10);
-      studentSummary[email].extraCredits += ec;
-    }
-  }
+  Object.keys(tally.students).forEach(function (email) {
+    const st = tally.students[email];
+    Object.keys(st.terms).forEach(function (term) {
+      if (currentTerm !== "All Terms" && term && term !== currentTerm) return;
+      const t = st.terms[term];
+      const s = studentSummary[email] || (studentSummary[email] =
+        { name: st.name, generated: 0, completed: 0, totalPoints: 0, possiblePoints: 0, extraCredits: 0 });
+      s.generated += t.delivered;
+      s.completed += t.scored;
+      s.totalPoints += t.earned;
+      s.possiblePoints += t.delivered * WUP_MAX;
+      s.extraCredits += t.extra;
+    });
+  });
 
   if (Object.keys(studentSummary).length === 0) {
     Logger.log("[S25] No WarmUpRegistry rows found for " + teacherEmail +

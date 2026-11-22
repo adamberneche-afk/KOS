@@ -2529,7 +2529,6 @@ function formatDate_(d) {
 
 // ---------------------------------------------------------------------------
 // buildDashboardHtml_ — self-contained single-page UI
-// M2 additions: "New Lesson" button in header, modal markup, modal JS
 // ---------------------------------------------------------------------------
 // The Student Dashboard in demo mode (13's "Demo mode", 2026-11-07): its
 // one deployment URL (STUDENT_DASHBOARD_URL, a _CONFIG row) with ?demo=1.
@@ -2550,6 +2549,7 @@ function buildDashboardHtml_(cfg) {
     CLIENT_ESC_JS: CLIENT_ESC_JS,
     CLIENT_SAFE_DOC_URL_JS: CLIENT_SAFE_DOC_URL_JS,
     CLIENT_WORDS_JS: CLIENT_WORDS_JS,
+    warmUpPointsPanel: warmUpPointsPanelHtml_(),
     termsPanel: casTermsPanelHtml_("Terms used on this dashboard", "What each word and number means. The sheets and Studio flows use the system's own names (Flow 2, SCRSuggestions, LessonSchedule).", CAS_TEACHER_TERMS),
   });
 }
