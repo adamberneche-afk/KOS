@@ -370,8 +370,8 @@ read-only. Retention: working data, 1 year, on `lesson_date`.
 
 ### WarmUpResponses
 Raw student-written warm-up response text, keyed by student email + lesson
-unit. Read/written entirely within Script 29; not currently surfaced outside
-that script.
+unit. Legacy: its Google Form was retired (D16), so nothing writes it; Script
+29 reads its old rows and the retention schedule (57) counts them.
 
 ### StudentDocRegistry
 Student email/name + their Student Context doc's (Script 29, the weekly

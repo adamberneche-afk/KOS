@@ -59,7 +59,7 @@
 //                        same file's triggerSevenBridgesReview(), not
 //                        by this function.
 //
-// consolidateInferenceChunks() / generateSessionVectorPrimer()
+// consolidateInferenceChunks()
 //                        HITL Phase 4 legacy functions. Preserved
 //                        for manual use; in headless mode the
 //                        queue processor handles intake end-to-end.

@@ -72,7 +72,7 @@ This is a one-time step. Every future deploy uses the same GCP project.
 > It does not create or link a *standard* (non-default) Cloud project, and
 > neither does enabling the Drive API in Troubleshooting below. Some
 > capabilities do need a standard project: publishing a Workspace Add-on,
-> which is what `archive/studio-steps/`'s two custom Studio steps are, and calling
+> which is what `archive/2026-27-Q1/kos-personal/archive/studio-steps/`'s two custom Studio steps are, and calling
 > the Gemini API or Vertex directly with a key. Before building on any of
 > those, read the linked project in **Project Settings** rather than
 > assuming this phase covered it, and declare what you find in

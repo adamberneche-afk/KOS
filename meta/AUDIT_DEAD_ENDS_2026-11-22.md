@@ -170,6 +170,9 @@ research PRD past Phase 0 (P1-01 to P5-07, the pre-registration doc, the 14
 
 1. **One "fix" PR**: 1.4, 1.5, 2.1, 2.2, 3.6–3.7, section 5 and the
    editor-tool tables. Docs and comments, two menu lines; no behavior change.
+   **Built (the operator, 11-22: "go ahead"):** all of it except 5.6
+   (`AGENT_NOTES.md`'s prune, its own PR) and 3.6's `getFlowPrompt`, left to
+   the retire PR.
 2. **One "retire" PR**: 2.4–2.6, 3.1–3.5, 2.13, per "retiring is deleting"
    (code, tests, mentions; one HISTORY entry each system).
 3. **6.1 and 6.2**, then `bounded-loop-convention` becomes an error.

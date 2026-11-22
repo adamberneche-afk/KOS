@@ -66,10 +66,10 @@ const LH_CONFIG_KEYS = [
   // purchase-order id) — the WBL/Store/E-Sports domains with real `id`
   // fields (roster, inventory, sales log, purchase orders, esports
   // roster/matches) live in leader-hub/Data.gs's row-shaped mechanism
-  // instead; see this project's migration plan for lh_wbl_hours_log,
-  // deliberately NOT migrated here (its log entries have no `id` field
-  // and are capped at 200 — a synthetic id from a timestamp was judged
-  // more fragile than leaving this one small log local-only for now).
+  // instead. lh_wbl_hours_log isn't here either: its entries have no `id`
+  // field, so it syncs as an id-keyed log (the page's LH_ID_LOG_KEYS,
+  // which gives each entry an id) rather than through this map-shaped
+  // list.
   'lh_receiving_status',
   // Added during Phase 8 (server-migration): the Horizon system uses its
   // own {short:[], mid:[], long:[]} buckets — not a flat list of

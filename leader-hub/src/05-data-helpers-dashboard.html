@@ -168,10 +168,10 @@ const LH_SERVER_SYNCED_CONFIG_KEYS = [
   // SCR scores are NOT here — see LH_SERVER_SYNCED_DATA_KEYS/
   // leader-hub/SCR.gs for why that domain needs a different shape.
   'lh_custom_pacing_units', 'lh_cas_pacing_notes', 'lh_scr_student_emails',
-  // Phase 7: map-shaped (keyed by purchase-order id). lh_wbl_hours_log is
-  // deliberately NOT synced anywhere yet — its entries have no `id` field
-  // and are capped at 200, so neither this mechanism nor
-  // LH_SERVER_SYNCED_DATA_KEYS fits without a fragile synthetic key.
+  // Phase 7: map-shaped (keyed by purchase-order id). lh_wbl_hours_log
+  // is not here: its entries have no `id` field, so it syncs through
+  // LH_ID_LOG_KEYS above, which gives each entry an id, rather than this
+  // map-shaped list.
   'lh_receiving_status',
   // Phase 8: the Horizon system uses its own bucketed {short,mid,long}
   // shape, not a flat record list — see LH_SERVER_SYNCED_DATA_KEYS for the

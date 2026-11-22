@@ -54,8 +54,8 @@ into a course whose assignments were switched must be built with the same
 **The week's cartridge, with due dates (2026-11-19).** Lessons were
 opening before their Canvas assignment was posted, and there is no Canvas
 API to post them. `buildWeeklyCanvasCartridge()` (79, Central Ledger;
-`installWeeklyCanvasCartridge()` runs it Fridays about 2 p.m.,
-`previewWeeklyCanvasCartridge()` writes nothing) makes one cartridge per
+`installWeeklyCanvasCartridge()` runs it Fridays about 2 p.m. and
+`removeWeeklyCanvasCartridge()` stops it; `previewWeeklyCanvasCartridge()` writes nothing) makes one cartridge per
 course, `Canvas <course> week of <date>.imscc` in the teacher folder, with
 each lesson starting in the next 7 days (LessonSchedule, not held). Import
 it as above. Each assignment is the full cartridge's, generated into

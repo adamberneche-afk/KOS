@@ -1,37 +1,10 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-11-01)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons
 >
-> **2026-11-01: everything through #370 is pushed** (`run.js --latest`,
-> commit `9090981`: every project; the web apps on new versions, Teacher
-> Dashboard v36, Student Dashboard v26). Merged since, not yet pushed:
-> #373 (69 counts warm-ups under their course). The after-push steps and
-> what each run showed are in
-> [`archive/2026-27-Q2/meta/HANDOFF_2026-11-01.md`](../archive/2026-27-Q2/meta/HANDOFF_2026-11-01.md).
->
-> **What #338 to #370 brought, since 10-31:** the SCR
-> retry (D15), Flow 2's health numbers (`69`, a `Measures` tab), Flow 5
-> merged into Flow 3 (turn Flow 5 off in Studio and run
-> `syncFlowPromptsToSheet()` after the push), a part held by a failed check
-> flagged, and the Canvas cartridges listing parts (re-import both). The
-> after-push checks are in
-> [`archive/2026-27-Q2/meta/HANDOFF_2026-11-01.md`](../archive/2026-27-Q2/meta/HANDOFF_2026-11-01.md).
->
-> **2026-10-31: #338 to #351 were merged.** They fix every code
-> finding of KOS Audit Docket IV: a caller check on every public function
-> of both dashboards (new file `00b_ScriptOwnerGuard.js`), injection guards,
-> retention approved by row, the duplicate repair opening each duplicate,
-> the Family Sentinel's label, scan and scope (no Drive: run any function
-> once after the push to approve). Git history was rewritten on 10-31:
-> re-clone or download a fresh ZIP before pushing. The checks after the
-> push are in [`archive/2026-27-Q2/meta/HANDOFF_2026-10-31.md`](../archive/2026-27-Q2/meta/HANDOFF_2026-10-31.md).
->
-> **2026-10-29: everything merged through #337 is pushed** to every
-> project with `run.js` and checked with `node run.js --verify` (every web
-> app on its last push). The nightly rollout runs in APPLY for both
-> courses and catches itself up (#333). The history of earlier pushes is in
-> [`archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md`](../archive/2026-27-Q2/cas-ccps/DEPLOYMENT_HANDOFF.md); what is live now, and the operator's queue, are in
-> [`archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md`](../archive/2026-27-Q1/meta/HANDOFF_2026-10-29.md).
+> What is pushed, and what each push showed, is in the repo-wide handoff
+> below, not here: this doc keeps the standing rules and the deployment
+> reference. Its dated push notes (10-29 to 11-01) are in `HISTORY.md`.
 >
 > **The repo-wide handoff is [`meta/HANDOFF_2026-11-22.md`](../meta/HANDOFF_2026-11-22.md)**:
 > every system's state and the operator's queue in order. The other two

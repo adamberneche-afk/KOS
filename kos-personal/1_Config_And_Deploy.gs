@@ -49,9 +49,9 @@ const CFG = {
 
   // ── Sheet Names ───────────────────────────────────────────────
   STAGING_SHEET:            'STAGING_PIPELINE',
-  // MATRIX_LEDGER, ACTION_REGISTER, ONBOARDING_TRACKER and EXECUTION_LEDGER
-  // are audit logs (D16, 2026-11-01): written, never read by code, kept as
-  // history for the operator (SCHEMA_REFERENCE.md).
+  // MATRIX_LEDGER, ONBOARDING_TRACKER and EXECUTION_LEDGER are audit logs
+  // (D16): written, never read by code, kept as history for the operator
+  // (SCHEMA_REFERENCE.md). ACTION_REGISTER is read by listPersonalItems (25).
   MATRIX_LEDGER_SHEET:      'MATRIX_LEDGER',
   DYNAMIC_STATE_MATRIX:     'DYNAMIC_STATE_MATRIX',
   BLACKBOARD_SHEET:         'Blackboard',
@@ -809,8 +809,8 @@ function setupAllTriggers() {
 
   // ── Governance — onEdit on BRAIN_TRUST_INDEX (6_Governance.gs) ──
   // Previously only installed via a separate manual installGovernanceTrigger()
-  // call — folded in here so setupAllTriggers() installs all 10 documented
-  // triggers in one pass (see DEPLOYMENT_GUIDE.md Phase 9).
+  // call — folded in here so setupAllTriggers() installs every documented
+  // trigger in one pass (see DEPLOYMENT_GUIDE.md Phase 9).
   tryInstall('onGovernanceEdit', () => {
     const indexId = PropertiesService.getScriptProperties().getProperty('INDEX_ID');
     if (!indexId) throw new Error('INDEX_ID not set — run deployFullSystem first');
