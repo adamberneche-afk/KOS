@@ -130,12 +130,17 @@ or `archive/INDEX.md`); 4.4 of `AUDIT_STRUCTURE_2026-11-20.md` filed the last ba
   them) measured: a median of 44 words and up to 110, because each quoted a
   whole goal. Reworded so the goal sits on its own line above a short
   question (8 to 16 words); the goals themselves are still long.
+- **`AUDIT_DEAD_ENDS_2026-11-22.md`** — the third: what was discussed but
+  not fully built, one row per item (half-built, wired wrong, orphan
+  functions, switches off, docs out of step, warn-only checks, operator
+  steps, proposed, on hold), with a proposed order; completes the 11-17
+  function-level sweep.
 - **`AUDIT_DEAD_ENDS_2026-11-17.md`** — the second dead-ends audit, at the
   sprint boundary: the 10-29 audit all closed; what's live is behind main
   (a push clears it); one quadratic function makes three tools slow;
   coverage-gaps can't see 12 trigger registrations; three editor functions
   undocumented; whether doc-currency should check file paths. Partial (the
-  function-level sweep is for the next one).
+  function-level sweep is in the 11-22 audit).
 - **`AGENT_NOTES.md`** — the notes for an agent session from every
   archived handoff (10-05 to 11-08), word for word and oldest first. The
   live handoffs keep their own.
