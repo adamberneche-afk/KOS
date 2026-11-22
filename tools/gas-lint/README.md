@@ -449,8 +449,8 @@ it — that gap is closed now.
     lines, a literal over 100 or a README over 250 fails unless `size-budgets.json`
     lists it with its size and why; a listed one may not grow.
 19. **Unused file** (`checkUnusedFiles`): a deployed file nothing in its project
-    uses, with no public function. Errors, all three, 2026-11-21 (CLAUDE.md, "Keeping
-    debt down"); tests `tests/tools/gas-lint-{second-copy,size-budget,unused-file}.test.js`.
+    uses, with no public function. Errors, all three, 2026-11-21 (CLAUDE.md, "Keeping debt down"); tests `tests/tools/gas-lint-{second-copy,size-budget,unused-file}.test.js`.
+20. **Syntax** (`checkSyntax`, an error): every deployed .js/.gs file parses (`gas-lint-syntax.test.js`).
 
 ## What this is NOT
 
