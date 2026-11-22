@@ -18,6 +18,7 @@ How files are filed and searched: the [archive index](../INDEX.md).
 - 2026-11-15 · [`meta/HANDOFF_2026-11-15.md`](meta/HANDOFF_2026-11-15.md) — Repo-wide session handoff, replaced by a newer one
 - 2026-11-17 · [`meta/HANDOFF_2026-11-17.md`](meta/HANDOFF_2026-11-17.md) — Repo-wide session handoff, replaced by a newer one
 - 2026-11-18 · [`meta/HANDOFF_2026-11-18.md`](meta/HANDOFF_2026-11-18.md) — Repo-wide session handoff, replaced by a newer one
+- 2026-11-19 · [`meta/HANDOFF_2026-11-19.md`](meta/HANDOFF_2026-11-19.md) — Repo handoff, 11-19 (11-18 to 11-20, #486–#510; point-in-time)
 
 ## Plans, sprints and specs
 

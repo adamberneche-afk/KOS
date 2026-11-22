@@ -108,6 +108,7 @@ entry with `node tools/archive/search.js --system <system>`.
 - 2026-27-Q2 · 2026-11-15 · [`meta/HANDOFF_2026-11-15.md`](2026-27-Q2/meta/HANDOFF_2026-11-15.md) — Repo-wide session handoff, replaced by a newer one
 - 2026-27-Q2 · 2026-11-17 · [`meta/HANDOFF_2026-11-17.md`](2026-27-Q2/meta/HANDOFF_2026-11-17.md) — Repo-wide session handoff, replaced by a newer one
 - 2026-27-Q2 · 2026-11-18 · [`meta/HANDOFF_2026-11-18.md`](2026-27-Q2/meta/HANDOFF_2026-11-18.md) — Repo-wide session handoff, replaced by a newer one
+- 2026-27-Q2 · 2026-11-19 · [`meta/HANDOFF_2026-11-19.md`](2026-27-Q2/meta/HANDOFF_2026-11-19.md) — Repo handoff, 11-19 (11-18 to 11-20, #486–#510; point-in-time)
 
 ## tests/
 
