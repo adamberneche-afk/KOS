@@ -21,14 +21,12 @@ or `archive/INDEX.md`); 4.4 of `AUDIT_STRUCTURE_2026-11-20.md` filed the last ba
   does what (Gemini runs the Google-side flows; a Claude Project is the
   thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
   pipeline kept and repaired, and the RTP Gem frozen.
-- **`HANDOFF_2026-11-19.md`** — the repo-wide session handoff: what merged
-  11-18 to 11-19 (#486–#492: the doc-path warnings fixed, the nightly jobs
-  tested, a reposted comment linked, turn-in codes in the teacher's demo,
-  the Slides vision probe and each image's alt text in the snapshot, every
-  Studio flow one row per run), what is live (KOS through #485; #486–#492
-  merged, not pushed), the operator's queue in order (the push, the Studio
-  Repeat for each with each flow's fixture, the flows-and-prompts audit),
-  the decisions, and notes for an agent.
+- **`HANDOFF_2026-11-22.md`** — the repo-wide session handoff: what merged
+  11-20 to 11-22 (#511–#549: Q26, the structural-debt audit, the debt rules
+  and their three gas-lint checks, warm-up points by term), what is live
+  (KOS through #548; the dead `KOS_CAS_SIGNAL` link, SMP-020 unregistered,
+  onboarding never closed out), the operator's queue in order, the
+  decisions (the Gemini harness waits), and notes for an agent.
 - **`RELEASE_AUDIT_2026-11-08.md`** — the first full-repo run of
   `tools/release-check` (plan item L1), before its CI gate turns on: counts
   per rule and per folder, the file list with every value redacted, git
