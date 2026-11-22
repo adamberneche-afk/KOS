@@ -293,7 +293,7 @@ test('resolveStudentStatus_: an evaluated assignment points to Comments only whe
 function loadTeacher(viewer) {
   const loaded = loadGasFiles([S('00_SharedConfig.js'), S('00c_CentralLedgerShared.js'), S('00d_TeacherDashboardShared.js'), S('00e_StudentDashboardShared.js'), S('00b_ScriptOwnerGuard.js'), S('07_TeacherDashboard.js'), S('29_StudentContextAggregator.js'),
     S('36_WeeklyParentReport.js')],
-    ['getSettings', 'setSettingForCourse', 'saveSettings', 'setMarkingPeriodEnds', 'pivotFlagFor_', 'feedbackAsCommentFor_'],
+    ['getSettings', 'saveSettings', 'pivotFlagFor_', 'feedbackAsCommentFor_'],
     { Session: { getActiveUser: () => ({ getEmail: () => viewer }), getScriptTimeZone: () => 'America/New_York' } });
   const { sandbox } = loaded;
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
@@ -325,17 +325,17 @@ test('⚙ Settings: each feature per course, written as one _CONFIG row, "all" w
   assert.deepEqual(setting(res, 'FEEDBACK_AS_COMMENT').courses.map((c) => [c.code, c.on]), [['8175', false], ['8177', false]]);
   assert.equal(setting(res, 'FEEDBACK_AS_COMMENT').value, 'off', 'the live value is sent for the panel');
 
-  res = exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', true);
+  res = exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8175', on: true }]);
   assert.deepEqual(config(), ['8175']);
   assert.deepEqual(setting(res, 'FEEDBACK_AS_COMMENT').courses.map((c) => c.on), [true, false], 'read back at once here');
-  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8177', true);
+  exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8177', on: true }]);
   assert.deepEqual(config(), ['all'], 'still one row');
-  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', false);
+  exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8175', on: false }]);
   assert.deepEqual(config(), ['8177']);
-  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8177', false);
+  exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8177', on: false }]);
   assert.deepEqual(config(), ['off']);
 
-  exported.setSettingForCourse('ROLLOUT_AUTO_APPLY', '8177', true);
+  exported.saveSettings([{ key: 'ROLLOUT_AUTO_APPLY', code: '8177', on: true }]);
   assert.deepEqual(config('ROLLOUT_AUTO_APPLY'), ['8177']);
   assert.equal(exported.pivotFlagFor_('ROLLOUT_AUTO_APPLY', '8177'), true);
   assert.equal(exported.pivotFlagFor_('ROLLOUT_AUTO_APPLY', '8175'), false);
@@ -346,13 +346,13 @@ test('⚙ Settings: a listed course with no assignments yet is kept, and a list 
   const tab = ss.insertSheet('_CONFIG');
   tab.appendRow(['Key', 'Value']);
   tab.appendRow(['REFLECTION_ON_SUBMIT', '8179']);
-  exported.setSettingForCourse('REFLECTION_ON_SUBMIT', '8175', true);
+  exported.saveSettings([{ key: 'REFLECTION_ON_SUBMIT', code: '8175', on: true }]);
   assert.deepEqual(config('REFLECTION_ON_SUBMIT'), ['8175,8179']);
   assert.equal(exported.pivotFlagFor_('REFLECTION_ON_SUBMIT', '8175'), true);
   assert.equal(exported.pivotFlagFor_('REFLECTION_ON_SUBMIT', '8179'), true);
   assert.equal(exported.pivotFlagFor_('REFLECTION_ON_SUBMIT', '8177'), false);
   assert.equal(exported.pivotFlagFor_('REFLECTION_ON_SUBMIT', null), false, 'a course-wide action needs "all"');
-  exported.setSettingForCourse('REFLECTION_ON_SUBMIT', '8177', true);
+  exported.saveSettings([{ key: 'REFLECTION_ON_SUBMIT', code: '8177', on: true }]);
   assert.deepEqual(config('REFLECTION_ON_SUBMIT'), ['8175,8177,8179'], 'not "all": 8179 is listed but not known');
   sandbox.PropertiesService.getScriptProperties().setProperty('FEEDBACK_AS_COMMENT', '8175,8177');
   assert.equal(exported.feedbackAsCommentFor_('CAS-8177-L01', ''), true, 'feedback placement reads a list too');
@@ -361,15 +361,15 @@ test('⚙ Settings: a listed course with no assignments yet is kept, and a list 
 test('⚙ Settings: Parent reports ready on Fridays adds the Friday 5 a.m. job here when on for any course, and removes it when off for all', () => {
   const { exported, config, sandbox } = loadTeacher('teacher@ccpsnet.net');
   const jobs = () => sandbox.ScriptApp.getProjectTriggers().filter((t) => t.getHandlerFunction() === 'runWeeklyParentReportPrep');
-  exported.setSettingForCourse('PARENT_REPORT_PREP', '8175', true);
+  exported.saveSettings([{ key: 'PARENT_REPORT_PREP', code: '8175', on: true }]);
   assert.deepEqual(config('PARENT_REPORT_PREP'), ['8175']);
   assert.equal(jobs().length, 1);
   assert.deepEqual(jobs()[0].__calls.map((c) => c.method), ['timeBased', 'onWeekDay', 'atHour']);
-  exported.setSettingForCourse('PARENT_REPORT_PREP', '8177', true);
+  exported.saveSettings([{ key: 'PARENT_REPORT_PREP', code: '8177', on: true }]);
   assert.equal(jobs().length, 1, 'never a second job');
-  exported.setSettingForCourse('PARENT_REPORT_PREP', '8175', false);
+  exported.saveSettings([{ key: 'PARENT_REPORT_PREP', code: '8175', on: false }]);
   assert.equal(jobs().length, 1, 'still on for 8177');
-  exported.setSettingForCourse('PARENT_REPORT_PREP', '8177', false);
+  exported.saveSettings([{ key: 'PARENT_REPORT_PREP', code: '8177', on: false }]);
   assert.deepEqual(config('PARENT_REPORT_PREP'), ['off']);
   assert.equal(jobs().length, 0);
 });
@@ -425,9 +425,9 @@ test('⚙ Settings: activity and delay days, saved with the one Save, in date or
 
 test('⚙ Settings: each change is a SettingsLog row, and an unchanged value writes none', () => {
   const { exported, ss } = loadTeacher('teacher@ccpsnet.net');
-  exported.setSettingForCourse('WARMUP_TEXT_BOX', '8175', true);
-  exported.setSettingForCourse('WARMUP_TEXT_BOX', '8175', true);
-  const res = exported.setSettingForCourse('WARMUP_TEXT_BOX', '8175', false);
+  exported.saveSettings([{ key: 'WARMUP_TEXT_BOX', code: '8175', on: true }]);
+  exported.saveSettings([{ key: 'WARMUP_TEXT_BOX', code: '8175', on: true }]);
+  const res = exported.saveSettings([{ key: 'WARMUP_TEXT_BOX', code: '8175', on: false }]);
   const rows = ss.getSheetByName('SettingsLog').getDataRange().getValues();
   assert.deepEqual(rows[0], ['Timestamp', 'ChangedBy', 'Setting', 'From', 'To']);
   assert.deepEqual(rows.slice(1).map((r) => r.slice(1)), [
@@ -445,25 +445,25 @@ test('⚙ Settings: the marking period dates, the district calendar until change
   assert.deepEqual(mp.ends.map((e) => e.term), ['2627_MP1', '2627_MP2', '2627_MP3', '2627_MP4']);
   const ends = mp.ends.map((e) => ({ term: e.term, end: e.end }));
   ends[0].end = '2026-11-02';
-  const res = exported.setMarkingPeriodEnds(ends);
+  const res = exported.saveSettings([], ends);
   assert.equal(res.success, true);
   assert.equal(res.markingPeriods.isDefault, false);
   assert.match(config('MARKING_PERIOD_ENDS')[0], /^2627_MP1=2026-11-02,2627_MP2=2027-01-22,/);
   ends[1].end = '2027-1-2';
-  assert.match(exported.setMarkingPeriodEnds(ends).error, /whole date/);
+  assert.match(exported.saveSettings([], ends).error, /whole date/);
   ends[1].end = '2026-11-02';
-  assert.match(exported.setMarkingPeriodEnds(ends).error, /same day/);
+  assert.match(exported.saveSettings([], ends).error, /same day/);
 });
 
 test('⚙ Settings: only the authorized teacher, and only a known setting and course', () => {
   const other = loadTeacher('student@ccpsnet.net');
-  assert.equal(other.exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', true).success, false);
+  assert.equal(other.exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8175', on: true }]).success, false);
   assert.equal(other.exported.getSettings().success, false);
-  assert.equal(other.exported.setMarkingPeriodEnds([]).success, false);
+  assert.equal(other.exported.saveSettings([], []).success, false);
   assert.deepEqual(other.config(), []);
   const teacher = loadTeacher('teacher@ccpsnet.net');
-  assert.match(teacher.exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '9999', true).error, /Unknown course/);
-  assert.match(teacher.exported.setSettingForCourse('M2_ENABLED', '8175', true).error, /Unknown setting/);
+  assert.match(teacher.exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '9999', on: true }]).error, /Unknown course/);
+  assert.match(teacher.exported.saveSettings([{ key: 'M2_ENABLED', code: '8175', on: true }]).error, /Unknown setting/);
 });
 
 test('⚙ Settings: says when a Script Property overrides the tab here', () => {
@@ -533,7 +533,7 @@ test('stampDocument_: the assignment table: the task with headings and bullets, 
 test('⚙ Settings: a save while another holds the lock changes nothing and says so (Docket IV)', () => {
   const { exported, config, sandbox } = loadTeacher('teacher@ccpsnet.net');
   sandbox.LockService.getScriptLock = () => ({ tryLock: () => false, releaseLock() {} });
-  const res = exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', true);
+  const res = exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8175', on: true }]);
   assert.equal(res.success, false);
   assert.match(res.error, /being saved elsewhere/);
   assert.deepEqual(config('FEEDBACK_AS_COMMENT'), [], 'nothing written');
@@ -542,13 +542,13 @@ test('⚙ Settings: a save while another holds the lock changes nothing and says
 
 test('⚙ Settings: a change reads the _CONFIG tab, not a stale cached copy, so a change made elsewhere is kept', () => {
   const { exported, config, sandbox } = loadTeacher('teacher@ccpsnet.net');
-  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', true);
+  exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8175', on: true }]);
   // Another dashboard turns 8177 on, writing the tab directly; this project's cache still says 8175 only.
   const tab = sandbox.SpreadsheetApp.openById(sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
     .getSheetByName('_CONFIG');
   const rows = tab.getDataRange().getValues();
   const at = rows.findIndex((r) => r[0] === 'FEEDBACK_AS_COMMENT');
   tab.getRange(at + 1, 2).setValue('all');
-  exported.setSettingForCourse('FEEDBACK_AS_COMMENT', '8175', false);
+  exported.saveSettings([{ key: 'FEEDBACK_AS_COMMENT', code: '8175', on: false }]);
   assert.deepEqual(config('FEEDBACK_AS_COMMENT'), ['8177'], 'the other change survives');
 });

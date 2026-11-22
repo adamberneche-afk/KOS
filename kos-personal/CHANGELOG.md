@@ -6,6 +6,23 @@ This file holds the current plan of record's era; `node tools/archive/search.js 
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
 
+### Retired: the managed-service switch and the intake vector path (2026-11-22)
+
+From the 11-22 dead-ends audit (`meta/AUDIT_DEAD_ENDS_2026-11-22.md`, 2.5
+and 2.6). `CFG.INFERENCE_MODE` and its `MANAGED_SERVICE` branch had nothing
+to call once the inference service was archived (11-17): the Turnstile's
+hand-off, `_submitManagedServiceJob_`, `_getManagedServiceStatus_`, the
+web app's credits panel and the three `KOS_MANAGED_SERVICE_*` properties
+are gone; the Turnstile always releases to Studio. The intake's vector path
+never ran either, since the harvest sets a Curator payload's
+`vector_weights` to null and theme scores come only from VECTOR_CLASSIFY:
+the `MATRIX_LEDGER` write (which appended 9 values under a 10-column
+header), `_routeVectorWeightsInternal`, `_writeDynamicStateRow` and
+`_routeToVectorDocs` are gone, and setup no longer creates `MATRIX_LEDGER`
+or `DYNAMIC_STATE_MATRIX`. The `VECTOR_*` docs are filled by
+`25_VectorDocs.gs`. An existing copy of either tab is history to keep or
+delete.
+
 ### KOS_GEMINI_BRIEF (2026-11-22)
 
 The operator's Gemini harness (G1 in the November plan) showed significant

@@ -13,13 +13,6 @@
 // ("Bifurcation Boundary") — GAS computes all quantitative math;
 // Studio (THE_CURATOR / VECTOR_CLASSIFY) only classifies.
 //
-// MATRIX_LEDGER (written by processIntakePayload in 3_Queue_Processor.gs)
-//   Purpose : Append-only audit log of RAW scores per session.
-//   Schema  : Fixed columns — Session_UID, Timestamp,
-//             ARCHITECTURE, UI, SECURITY, PEDAGOGY,
-//             GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLIANCE, TOTAL
-//   No decay. Never used for live state reads.
-//
 // VECTOR_MATRIX (written by _writeMatrixRow here)
 //   Purpose : Living state matrix. Current DECAYED scores.
 //   Schema  : Dynamic — Session_UID, Timestamp, [known themes...],
@@ -39,16 +32,7 @@
 //             _ensureIncubatorCoreFactColumn_() and holds the asserted
 //             fact text for an operator pin — see pinThemeToCore)
 //
-// DYNAMIC_STATE_MATRIX (written by _writeDynamicStateRow here)
-//   Purpose : Long-format version of VECTOR_MATRIX. One row per
-//             theme per session. Useful for per-theme trend queries
-//             without pivoting the wide VECTOR_MATRIX.
-//   Schema  : Session_UID, Timestamp, Theme, Raw_Score,
-//             Decayed_Score, Session_Count, Promoted
-//
 // PUBLIC ENTRY POINTS
-//   _routeVectorWeightsInternal()  lock-free; the caller holds the
-//                            script lock (processIntakePayload does)
 //   processVectorClassificationPayload()  VECTOR_CLASSIFY flow entry
 //   getVectorState()         web app Diagnostics tab
 //   runPromotionCheck()      web app Diagnostics tab button
@@ -67,8 +51,6 @@
 //                            own header comment before running it.
 //
 // BUG FIXES CARRIED FROM PHASE 0
-//   BUG-01  Lock: _routeVectorWeightsInternal has no lock
-//   BUG-03  File ID: _routeToVectorDocs uses captured dId
 //   BUG-04  Persistence: _checkPromotionCandidates uses
 //           _persistPromotedVector + _getKnownVectors
 // ================================================================
@@ -77,99 +59,6 @@
 // ================================================================
 // PUBLIC ENTRY POINTS
 // ================================================================
-
-/**
- * Core routing pipeline. No lock — callers must own the script
- * lock before calling.
- *
- * PIPELINE
- *   1. Split vector_weights into known (VECTOR_MATRIX target) and
- *      unknown (INCUBATOR target) using _getKnownVectors().
- *   2. _writeMatrixRow()    → VECTOR_MATRIX (decayed, wide-format)
- *   3. _writeDynamicStateRow() → DYNAMIC_STATE_MATRIX (long-format)
- *   4. _logToIncubator()    → INCUBATOR sheet
- *   5. _routeToVectorDocs() → individual VECTOR_xxx Google Docs
- *   6. _checkPromotionCandidates() → promote mature incubator themes
- *
- * @param  {Object} pd          Parsed inference JSON payload.
- * @param  {string} sessionUid  UID string for row labelling.
- * @param  {string} timestamp   Formatted timestamp string.
- * @returns {Object} { status, matrixRow, dynamicRows, routedDocs,
- *                     incubatorSignals, promotions }
- */
-function _routeVectorWeightsInternal(pd, sessionUid, timestamp) {
-  try {
-    const ss          = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
-    const matrixSheet = _getOrCreateSheet(ss, CFG.VECTOR_MATRIX_SHEET);
-    const dynamicSheet= _getOrCreateSheet(ss, CFG.DYNAMIC_STATE_MATRIX);
-    const incubSheet  = _getOrCreateSheet(ss, CFG.INCUBATOR_SHEET);
-    const raw         = pd.vector_weights || {};
-
-    // ── Split raw weights into known vs incubator candidates ────
-    const known   = {};
-    const unknown = {};
-
-    // BUG-04 FIX: _getKnownVectors() merges CFG base + promoted
-    const knownList = _getKnownVectors();
-
-    // FIXED: an explicit 0.0 score for a known theme used to be treated
-    // as "scored this session" by _writeMatrixRow, hard-resetting that
-    // theme's value instead of decaying it from history — the design
-    // _writeMatrixRow's own header describes ("Otherwise → apply
-    // DECAY_FACTOR to the previous row's score"). The model's own
-    // extraction-rule prompt defines 0.0 as meaning "not present" (see
-    // archive/2026-27-Q2/kos-personal/archive/inference-service/src/inference.js's system prompt), and the
-    // output schema requires every base theme present on every
-    // response — so an explicit 0.0 for a known theme is the model's
-    // *only* way to say "not present," never a genuine near-zero score
-    // worth preserving as a hard value. Skip it here instead (don't add
-    // it to `known`) so _writeMatrixRow's existing
-    // `known[t] !== undefined` check naturally falls through to its
-    // decay branch, with no change needed to that function itself.
-    Object.entries(raw).forEach(([t, v]) => {
-      const score = parseFloat(v);
-      if (isNaN(score) || score < 0) return;
-      const upper = t.toUpperCase().trim();
-      if (knownList.includes(upper)) {
-        if (score > 0) known[upper] = score;
-        // score === 0 for a known theme: absent, stored as 0; the decay is
-        // applied when the matrix is read (_vmDecayedState_).
-      } else if (score >= CFG.INCUBATOR_THRESHOLD) {
-        unknown[upper] = score;
-      }
-    });
-
-    // ── Write to sheets ─────────────────────────────────────────
-    const matrixRow    = _writeMatrixRow(matrixSheet, known, sessionUid, timestamp);
-    const dynamicRows  = _writeDynamicStateRow(dynamicSheet, known, unknown, sessionUid, timestamp);
-    const incubSignals = _logToIncubator(incubSheet, unknown, sessionUid, timestamp);
-    const routedDocs   = _routeToVectorDocs(pd, known, sessionUid, timestamp);
-    _applyIncubatorDecay_(incubSheet, timestamp);
-    const promotions   = _checkPromotionCandidates(incubSheet, matrixSheet);
-
-    // Back-fill promoted column scores for the triggering session.
-    // _writeMatrixRow resolves headers before _checkPromotionCandidates
-    // inserts the new column, so the triggering session always writes
-    // a zero for the newly promoted theme. Without this, the session that
-    // actually earned a theme's promotion is the one session whose row
-    // for it reads 0.
-    _backfillPromotedScores_(matrixSheet, promotions, unknown);
-
-    SpreadsheetApp.flush();
-    return {
-      status: 'SUCCESS',
-      matrixRow,
-      dynamicRows,
-      routedDocs,
-      incubatorSignals: incubSignals,
-      promotions,
-    };
-  } catch (e) {
-    _reportError('_routeVectorWeightsInternal', e, null);
-    return { status: 'ERROR', message: e.message };
-  }
-}
-
 
 // ================================================================
 // SENTENCE-LEVEL VECTOR CLASSIFICATION (Bifurcation Boundary)
@@ -242,7 +131,7 @@ function processVectorClassificationPayload(rawJSONPayload, sessionUid, timestam
     _applyIncubatorDecay_(incubSheet, timestamp);
     const promotions = _checkPromotionCandidates(incubSheet, matrixSheet);
 
-    // Same triggering-session back-fill as _routeVectorWeightsInternal.
+    // Back-fill this session's own score for each theme it just promoted.
     _backfillPromotedScores_(matrixSheet, promotions, aggregated.unknown);
 
     SpreadsheetApp.flush();
@@ -532,58 +421,6 @@ function _computeMatrixRowChecksum_(sessionUid, scores) {
 
 
 /**
- * Appends one row per theme to DYNAMIC_STATE_MATRIX (long-format).
- * Records both the raw session score and the decayed score side-by-side.
- * This format makes per-theme trend analysis straightforward without
- * pivoting the wide VECTOR_MATRIX.
- *
- * Writes rows for known themes (with scores) only.
- * Unknown/incubator themes are tracked in _logToIncubator instead.
- *
- * @param  {Sheet}  sheet      DYNAMIC_STATE_MATRIX sheet.
- * @param  {Object} known      Known themes with session scores.
- * @param  {Object} unknown    Incubator-bound themes (logged separately).
- * @param  {string} sessionUid UID for the new rows.
- * @param  {string} timestamp  Formatted timestamp.
- * @returns {number} Number of rows written.
- */
-function _writeDynamicStateRow(sheet, known, unknown, sessionUid, timestamp) {
-  let written = 0;
-
-  // Known themes — write raw score, compute decayed score from last entry
-  Object.entries(known).forEach(([theme, rawScore]) => {
-    // Find previous score for this theme to compute decay baseline
-    let prevDecayed = 0;
-    if (sheet.getLastRow() > 1) {
-      const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 5).getValues();
-      for (let i = data.length - 1; i >= 0; i--) {
-        if (String(data[i][2]) === theme) {
-          prevDecayed = parseFloat(data[i][4]) || 0;
-          break;
-        }
-      }
-    }
-    const decayedScore = prevDecayed > 0
-      ? parseFloat((prevDecayed * CFG.DECAY_FACTOR).toFixed(4))
-      : parseFloat(rawScore.toFixed(4));
-
-    sheet.appendRow([
-      sessionUid,
-      timestamp,
-      theme,
-      parseFloat(rawScore.toFixed(4)),
-      decayedScore,
-      0,        // Session_Count — updated by _checkPromotionCandidates
-      false,    // Promoted
-    ]);
-    written++;
-  });
-
-  return written;
-}
-
-
-/**
  * Tracks emerging themes in the INCUBATOR sheet (CE-SMP Vector Weight
  * Calculation Engine v1.0 schema — cumulative score + raw score log,
  * not a rolling average).
@@ -754,17 +591,8 @@ function _addThemeColumnToMatrix_(matrixSheet, theme, rawLogJson) {
  *      skips PROMOTED rows going forward).
  *   4. Persists the theme to PropertiesService (BUG-04 fix) so
  *      _getKnownVectors() picks it up on the very next session.
- *   5. Logs an operator notification — PRIMER doc creation itself is
- *      NOT staged as a separate HITL approval step here: _routeToVectorDocs
- *      already auto-creates a lightweight VECTOR_<THEME> doc the next
- *      time this theme scores as a known vector, which is this
- *      codebase's existing, already-automatic doc-creation path (unlike
- *      the SMP's proposed separate CE-LOG CREATE_NEW mutation type,
- *      which this repo's Governance Engine doesn't implement — see
- *      6_Governance.gs, FIND_REPLACE only). The operator decision to
- *      require "always manual HITL approval" is honored as a review
- *      notification on promotion, not as a block on that existing,
- *      low-risk auto-creation.
+ *   5. Logs an operator notification, the review step for a promotion.
+ *      The theme's VECTOR_<THEME> doc is filled by 25_VectorDocs.gs.
  *
  * @param  {Sheet} incubSheet   INCUBATOR sheet.
  * @param  {Sheet} matrixSheet  VECTOR_MATRIX sheet.
@@ -1026,86 +854,6 @@ function _fileBlackboardAuditRow_(title, notes) {
     // write shouldn't roll it back or surface as the operation's own error.
     console.error('[_fileBlackboardAuditRow_] Failed to file audit row: ' + e.message);
   }
-}
-
-
-/**
- * Creates or updates one Google Doc per high-weight known theme
- * in the 05_Vector_Repository folder.
- *
- * Docs named VECTOR_THEME are created if they don't exist.
- * High-weight sessions (score > VECTOR_THRESHOLD) append a heading
- * entry with the session summary.
- * Standard sessions append a brief signal note.
- *
- * BUG-03 FIX: File ID captured before saveAndClose to prevent
- * Drive name-search race condition on newly created docs.
- *
- * @param  {Object} pd          Parsed inference payload.
- * @param  {Object} known       { THEME: score } known themes.
- * @param  {string} sessionUid  Session UID.
- * @param  {string} timestamp   Formatted timestamp string.
- * @returns {number} Count of vector docs written to.
- */
-function _routeToVectorDocs(pd, known, sessionUid, timestamp) {
-  const folderId = PropertiesService.getScriptProperties()
-                     .getProperty('ID_05_VECTOR_REPOSITORY');
-  if (!folderId) {
-    console.warn('[VectorRouter] ID_05_VECTOR_REPOSITORY not set — skipping doc routing.');
-    return 0;
-  }
-
-  const folder = DriveApp.getFolderById(folderId);
-  let count = 0;
-
-  Object.entries(known).forEach(([theme, score]) => {
-    if (score <= CFG.INCUBATOR_THRESHOLD) return;
-
-    const docName  = 'VECTOR_' + theme;
-    const existing = folder.getFilesByName(docName);
-
-    let doc;
-    if (existing.hasNext()) {
-      doc = DocumentApp.openById(existing.next().getId());
-    } else {
-      // BUG-03 FIX: capture dId before saveAndClose
-      const d   = DocumentApp.create(docName);
-      const dId = d.getId();
-      d.getBody().appendParagraph(docName)
-       .setHeading(DocumentApp.ParagraphHeading.HEADING1);
-      d.saveAndClose();
-      DriveApp.getFileById(dId).moveTo(folder);
-      doc = DocumentApp.openById(dId);  // open by captured ID, not name search
-    }
-
-    const body = doc.getBody();
-
-    if (score > CFG.VECTOR_THRESHOLD) {
-      // High-weight session — record heading + summary
-      body.appendParagraph(
-        '\n[HIGH-WEIGHT: ' + timestamp + ' | ' + sessionUid + ' | Score: ' + score + ']'
-      ).setHeading(DocumentApp.ParagraphHeading.HEADING3);
-      if (pd.session_summary) {
-        body.appendParagraph(pd.session_summary);
-      }
-      if (pd.dynamic_state?.next_steps?.length > 0) {
-        body.appendParagraph('Key Next Steps:').setBold(true);
-        pd.dynamic_state.next_steps
-          .slice(0, 3)
-          .forEach(s => body.appendListItem(String(s)));
-      }
-    } else {
-      // Standard signal — brief inline note
-      body.appendParagraph(
-        '[Signal: ' + timestamp + ' | ' + sessionUid + ' | Score: ' + score + ']'
-      );
-    }
-
-    doc.saveAndClose();
-    count++;
-  });
-
-  return count;
 }
 
 

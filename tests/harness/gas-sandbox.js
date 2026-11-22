@@ -61,8 +61,7 @@ const crypto = require('crypto');
 // test reads, and a mock object with methods (e.g. a Sheet returned by
 // exported._getOrCreateSheet()) comes back stripped down to plain data,
 // with every method gone (found via 10_Turnstile.gs's own test file,
-// which needs both: a live sheet to keep calling appendRow() on, and a
-// live CFG.INFERENCE_MODE flip to exercise its MANAGED_SERVICE branch).
+// which needs a live sheet to keep calling appendRow() on).
 // For a sheet, get it from the live spreadsheet instead — call
 // ss.getSheetByName()/insertSheet() directly on an `ss` obtained via
 // sandbox.SpreadsheetApp, never through `exported`. For a value like CFG,

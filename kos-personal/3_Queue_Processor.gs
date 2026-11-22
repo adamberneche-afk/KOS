@@ -30,10 +30,9 @@
 //
 //  processIntakePayload()   ← this file
 //    └─ writes to CURRENT_STATE, PIVOTS_AND_LESSONS
-//    └─ writes to MATRIX_LEDGER, SESSION_LOG, COG_REGISTRY,
-//       ACTION_REGISTER, Blackboard
+//    └─ writes to SESSION_LOG, COG_REGISTRY, ACTION_REGISTER, Blackboard
 //    └─ flags alignment RED/YELLOW to error queue
-//    └─ calls _routeVectorWeightsInternal() (4_Vector_Router.gs)
+//    (Theme scores come only from VECTOR_CLASSIFY, 4_Vector_Router.gs.)
 //
 // STATUS LIFECYCLE
 //   PENDING_FLOW → [Studio] → FLOW_COMPLETE
@@ -346,17 +345,15 @@ function processInferenceQueue() {
 
 /**
  * Routes a fully parsed inference JSON payload to all downstream
- * ledgers, docs, and the vector router.
+ * ledgers and docs.
  *
  * WRITE TARGETS
  *   CURRENT_STATE doc         next_steps, deferred_decisions
  *   PIVOTS_AND_LESSONS doc    pivots_and_lessons
- *   MATRIX_LEDGER sheet       vector_weights (raw scores)
  *   SESSION_LOG sheet         session_metadata + summary
  *   COG_REGISTRY sheet        cog_verdicts
  *   ACTION_REGISTER sheet     action_exhaust items
  *   Blackboard sheet          smp_proposals_filed
- *   Vector Router             _routeVectorWeightsInternal()
  *
  * Acquires the script lock to prevent concurrent writes across
  * concurrent trigger firings.
@@ -373,7 +370,7 @@ function processInferenceQueue() {
  *   Payload_UID by 2_Ingestion_Sensors.gs) land under the same uid in
  *   VECTOR_MATRIX — two independent Studio flows for the same session
  *   would otherwise have no shared key to correlate on.
- * @returns {Object} { status: 'SUCCESS'|'LOCKED'|'ERROR', uid, vectorRouting?, message? }
+ * @returns {Object} { status: 'SUCCESS'|'LOCKED'|'ERROR', uid, message? }
  */
 function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
   // processInferenceQueue() already holds the script lock when it calls
@@ -446,27 +443,6 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
       pivotBody.appendParagraph('\n[Session: ' + ts + ' | ' + uid + ']')
                .setHeading(DocumentApp.ParagraphHeading.HEADING3);
       pl.forEach(p => pivotBody.appendListItem(String(p)));
-    }
-
-    // ── MATRIX_LEDGER — raw vector scores ───────────────────────
-    const ledger = ss.getSheetByName(CFG.MATRIX_LEDGER_SHEET);
-    // FIX: real THE_CURATOR output sends vector_weights as the literal
-    // string "UNAVAILABLE — Vector_Router.gs output missing" (not an
-    // object) whenever the router hasn't run yet — a genuinely common case
-    // in real logs, not an edge case. `pd.vector_weights || {}` doesn't
-    // catch this, since a non-empty string is truthy, so every field read
-    // off it came back undefined and this silently wrote a fake all-zero
-    // row into the ledger instead of skipping a session with no real data.
-    if (ledger && pd.vector_weights && typeof pd.vector_weights === 'object') {
-      const w    = pd.vector_weights;
-      const arch = parseFloat(w.ARCHITECTURE)    || 0;
-      const ui_  = parseFloat(w.UI)              || 0;
-      const sec  = parseFloat(w.SECURITY)        || 0;
-      const ped  = parseFloat(w.PEDAGOGY)        || 0;
-      const gas  = parseFloat(w.GAS_DEVELOPMENT) || 0;
-      const rel  = parseFloat(w.RELATIONAL)      || 0;
-      const tot  = (arch + ui_ + sec + ped + gas + rel).toFixed(4);
-      ledger.appendRow([uid, ts, arch, ui_, sec, ped, gas, rel, tot]);
     }
 
     // ── SESSION_LOG ──────────────────────────────────────────────
@@ -573,31 +549,7 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
     try { _updateShadowMatrix(pd.alignment_observations); }
     catch (shadowErr) { console.warn('[processIntakePayload] Shadow matrix update failed: ' + shadowErr.message); }
 
-    // ── VECTOR ROUTER ────────────────────────────────────────────
-    // BUG-01 FIX: call _routeVectorWeightsInternal directly
-    // since this function holds the lock.
-    //
-    // FIX (found verifying the rebuilt kos-personal Studio integration):
-    // this used to call _routeVectorWeightsInternal() unconditionally, for
-    // every payload type this function handles — including SESSION_LOG
-    // (Curator) payloads, whose vector_weights is explicitly null by the
-    // Bifurcation Boundary design (see 4_Vector_Router.gs's file header:
-    // the Curator never computes a session-level vector weight, only the
-    // Classification flow does). _routeVectorWeightsInternal defaults a
-    // null vector_weights to {} and still calls _writeMatrixRow(), which
-    // unconditionally appends a VECTOR_MATRIX row — harmless on an empty
-    // matrix (writes all zeros) but NOT harmless once real scores exist:
-    // _writeMatrixRow's decay branch (4_Vector_Router.gs:442-450) applies
-    // CFG.DECAY_FACTOR to the *previous* row's real score for any theme
-    // absent from `known`, so every Curator-only session would silently
-    // decay the entire real vector matrix regardless of whether any actual
-    // classification happened that session. Guarded the same way the
-    // MATRIX_LEDGER write just above already is.
-    const vr = (pd.vector_weights && typeof pd.vector_weights === 'object')
-      ? _routeVectorWeightsInternal(pd, uid, ts)
-      : { status: 'SKIPPED', reason: 'no vector_weights on this payload type' };
-
-    return { status: 'SUCCESS', uid, vectorRouting: vr };
+    return { status: 'SUCCESS', uid };
 
   } catch (error) {
     _reportError('processIntakePayload', error, null);
@@ -638,20 +590,10 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
  * visible tile so a permanently-stuck row is never mistaken for an empty
  * queue.
  *
- * `managed_service` field: reconciliation decision 3 originally removed
- * the HTML's "Managed Inference" credits panel entirely because no vendor
- * billing relationship existed anywhere in this system. Round 3
- * reconciliation revived that path as an explicit opt-in — see
- * CFG.INFERENCE_MODE. `managed_service` is `null` (panel stays hidden)
- * unless CFG.INFERENCE_MODE is 'MANAGED_SERVICE' AND the deployment has
- * configured CFG.PROP.MANAGED_SERVICE_BASE_URL / _API_KEY as Script
- * Properties — in the default 'STUDIO' mode this is always null, so the
- * "nothing on a vendor server by default" framing still holds.
- *
  * Called by the web app via:
  *   google.script.run.withSuccessHandler(renderQueue).getQueueMetrics()
  *
- * @returns {Object} { success, counts, needs_curator[], total, last_updated, managed_service }
+ * @returns {Object} { success, counts, needs_curator[], total, last_updated }
  */
 /**
  * Editor: the Queue tab's counts in the execution log, plus what the
@@ -789,174 +731,11 @@ function getQueueMetrics() {
       needs_curator:   needsCuratorRows,
       total:           queued + active + needsReview + processed + failed + duplicate,
       last_updated:    new Date().toLocaleTimeString(),
-      managed_service: _getManagedServiceStatus_(),
     };
 
   } catch (e) {
     _reportError('getQueueMetrics', e, null);
     return { success: false, message: e.message };
-  }
-}
-
-
-/**
- * _getManagedServiceStatus_ — optional inference-service account lookup.
- *
- * Returns null (panel hidden client-side, see renderServiceStatus() in
- * 8_WebApp_UI.html) unless ALL of the following hold:
- *   - CFG.INFERENCE_MODE === 'MANAGED_SERVICE' (default is 'STUDIO' — see
- *     1_Config_And_Deploy.gs for the full explanation of both paths)
- *   - CFG.PROP.MANAGED_SERVICE_BASE_URL and _API_KEY are both set as
- *     Script Properties for this deployment
- *
- * Calls GET {base}/api/v1/account on the standalone Node.js service at
- * kos-personal/inference-service/ (see that directory's
- * archive/2026-27-Q2/kos-personal/archive/inference-service/INFERENCE_SERVICE_DEPLOYMENT.md — a separate Cloud Run / Postgres /
- * Stripe deployment, not part of this Apps Script project). Any failure
- * (unset properties, network error, non-200 response) is non-fatal and
- * returns null — a managed-service outage should never break the rest of
- * the queue dashboard.
- *
- * @returns {Object|null} { credit_balance, subscription_tier } or null
- */
-function _getManagedServiceStatus_() {
-  if (CFG.INFERENCE_MODE !== 'MANAGED_SERVICE') return null;
-
-  const props   = PropertiesService.getScriptProperties();
-  const baseUrl = props.getProperty(CFG.PROP.MANAGED_SERVICE_BASE_URL);
-  const apiKey  = props.getProperty(CFG.PROP.MANAGED_SERVICE_API_KEY);
-  if (!baseUrl || !apiKey) return null;
-
-  try {
-    const resp = UrlFetchApp.fetch(baseUrl.replace(/\/$/, '') + '/api/v1/account', {
-      method: 'get',
-      headers: { 'X-KOS-API-Key': apiKey },
-      muteHttpExceptions: true,
-    });
-    if (resp.getResponseCode() !== 200) return null;
-
-    const body = JSON.parse(resp.getContentText());
-    if (typeof body.credit_balance !== 'number' || !body.subscription_tier) return null;
-
-    return {
-      credit_balance:    body.credit_balance,
-      subscription_tier: body.subscription_tier,
-    };
-  } catch (e) {
-    // Non-fatal — a managed-service outage should never break the queue tab.
-    return null;
-  }
-}
-
-
-/**
- * _submitManagedServiceJob_ — hands a released row off to the managed
- * inference service instead of native Workspace Studio.
- *
- * Fixes the gap kos-personal/README.md flagged: CFG.INFERENCE_MODE ===
- * 'MANAGED_SERVICE' got you a working account-status panel, but nothing
- * anywhere ever called the service's POST /api/v1/jobs webhook — a row
- * released to STUDIO_ACTIVE in that mode would just sit there forever,
- * since there's no Studio watching it and nothing else submits the job.
- *
- * Called from runMatrixTurnstile() (10_Turnstile.gs) immediately before
- * a PENDING_FLOW row is flipped to STUDIO_ACTIVE, ONLY when
- * CFG.INFERENCE_MODE === 'MANAGED_SERVICE'. In the default 'STUDIO' mode
- * this is never called — Turnstile's release loop is unchanged from
- * before this fix.
- *
- * The service does the rest itself once the job is queued: its worker
- * reads the session doc, runs inference, writes results back to Drive,
- * and calls back into this same spreadsheet to set FLOW_COMPLETE (see
- * archive/2026-27-Q2/kos-personal/archive/inference-service/src/worker.js's setFlowComplete call) using its own
- * stored OAuth connection for this user — this function's only job is
- * the initial hand-off, not polling for completion. Turnstile's existing
- * staleness reset (CFG.TURNSTILE_STALE_MINS) is the safety net if the
- * service never finishes a job, exactly as it already is for a stalled
- * Studio flow.
- *
- * @param {string} payloadUid
- * @param {string} fileId
- * @param {string} docUrl
- * @param {string} payloadType
- * @param {string} indexSpreadsheetId - this instance's own Index spreadsheet
- *   ID. FIXED: this used to never be sent, so the service's
- *   users.index_spreadsheet_id stayed permanently empty and
- *   setFlowComplete()/readOperatorContext() always failed — see
- *   archive/2026-27-Q2/kos-personal/archive/inference-service/INFERENCE_SERVICE_DEPLOYMENT.md's integration-status note and the
- *   commit that added this parameter for the full failure trace.
- * @returns {Object} { ok: true, job_id } or { ok: false, error }
- */
-function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType, indexSpreadsheetId) {
-  if (CFG.INFERENCE_MODE !== 'MANAGED_SERVICE') {
-    return { ok: false, error: 'CFG.INFERENCE_MODE is not MANAGED_SERVICE' };
-  }
-
-  const props   = PropertiesService.getScriptProperties();
-  const baseUrl = props.getProperty(CFG.PROP.MANAGED_SERVICE_BASE_URL);
-  const apiKey  = props.getProperty(CFG.PROP.MANAGED_SERVICE_API_KEY);
-  if (!baseUrl || !apiKey) {
-    return { ok: false, error: 'MANAGED_SERVICE_BASE_URL/API_KEY not configured' };
-  }
-
-  const bodyString = JSON.stringify({
-    payload_uid:          payloadUid,
-    file_id:              fileId,
-    doc_url:              docUrl,
-    payload_type:         payloadType,
-    index_spreadsheet_id: indexSpreadsheetId,
-  });
-
-  const headers = { 'X-KOS-API-Key': apiKey };
-
-  // The signature is REQUIRED by any production service — archive/2026-27-Q2/kos-personal/archive/inference-service/src/server.js
-  // refuses to boot without WEBHOOK_SECRET and 401s an unsigned request.
-  // (This comment used to call it "optional server-side"; that was true
-  // before the fail-closed fix and is now only true against a dev
-  // service.) Sent whenever a secret is configured here, matching the
-  // service's HMAC-SHA256 over the raw request body.
-  const secret = props.getProperty(CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET);
-  if (secret) {
-    const sigBytes = Utilities.computeHmacSha256Signature(bodyString, secret);
-    const sigHex = sigBytes.map(b => {
-      const v = (b < 0 ? b + 256 : b).toString(16);
-      return v.length === 1 ? '0' + v : v;
-    }).join('');
-    headers['X-KOS-Signature'] = 'sha256=' + sigHex;
-  }
-
-  try {
-    const resp = UrlFetchApp.fetch(baseUrl.replace(/\/$/, '') + '/api/v1/jobs', {
-      method: 'post',
-      contentType: 'application/json',
-      headers,
-      payload: bodyString,
-      muteHttpExceptions: true,
-    });
-
-    const code = resp.getResponseCode();
-    // 201 = a fresh job was created. 200 = the service already had a job
-    // for this payload_uid (idempotency guard — see archive/2026-27-Q2/kos-personal/archive/inference-service/src/server.js's
-    // POST /api/v1/jobs) and returned that existing job's status instead
-    // of creating a duplicate; either code is a successful submission.
-    if (code !== 201 && code !== 200) {
-      let message = 'HTTP ' + code;
-      try {
-        const errBody = JSON.parse(resp.getContentText());
-        if (errBody.error) message = errBody.error;
-      } catch (parseErr) {
-        // Response body wasn't JSON — keep the plain HTTP-code message.
-      }
-      return { ok: false, error: message };
-    }
-
-    const body = JSON.parse(resp.getContentText());
-    return { ok: true, job_id: body.job_id };
-
-  } catch (e) {
-    // Network error, timeout, etc. — non-fatal to the caller, which
-    // leaves the row in PENDING_FLOW to retry on the next Turnstile run.
-    return { ok: false, error: e.message };
   }
 }
 

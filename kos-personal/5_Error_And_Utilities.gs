@@ -28,10 +28,8 @@
 //                        rows as REPORTED. Also callable from the
 //                        web app Diagnostics tab on demand.
 //
-// _getOrCreateSheet()    Updated schemas throughout: STAGING 7 cols,
-//                        MATRIX_LEDGER adds GAS_DEVELOPMENT +
-//                        RELATIONAL, EXTERNAL_TELEMETRY new,
-//                        ERROR_LOG adds Reported_At (col 5).
+// _getOrCreateSheet()    Each sheet's schema (STAGING 7 cols,
+//                        ERROR_LOG's Reported_At in col 5).
 //
 // _getOrCreateDoc()      BUG-03 pattern: saveAndClose → moveTo →
 //                        openById(captured dId). No name-search.
@@ -242,8 +240,7 @@ function archiveErrorLog(retentionDays) {
  * Kill-Switch (human_intervention_required) both call this.
  *
  * Gracefully degrades to a console.log no-op if CFG.PROP.CHAT_WEBHOOK_URL
- * isn't set as a Script Property — this is an optional integration, same
- * pattern as CFG.INFERENCE_MODE's MANAGED_SERVICE path. Never throws;
+ * isn't set as a Script Property — this is an optional integration. Never throws;
  * a failed alert must not block the caller's own state transition.
  *
  * @param  {string} message  Plain-text message body.
@@ -856,23 +853,6 @@ function _getOrCreateSheet(ss, name) {
     ],
 
     // ── Vector & matrix ───────────────────────────────────────
-    // MATRIX_LEDGER: fixed audit log of raw scores per session.
-    // v8.0 adds GAS_DEVELOPMENT + RELATIONAL to match CFG.KNOWN_VECTORS.
-    // DOMAIN_COMPLIANCE added when the 7th known vector was adopted
-    // (tracked alongside RELATIONAL rather than replacing it — the SMP's
-    // audit example used DOMAIN_COMPLIANCE, real live sessions use
-    // RELATIONAL; both are kept as known vectors going forward).
-    [CFG.MATRIX_LEDGER_SHEET]: [
-      'Session_UID','Timestamp',
-      'ARCHITECTURE','UI','SECURITY','PEDAGOGY',
-      'GAS_DEVELOPMENT','RELATIONAL','DOMAIN_COMPLIANCE',
-      'TOTAL',
-    ],
-    // DYNAMIC_STATE_MATRIX: long-format decayed scores per theme/session.
-    [CFG.DYNAMIC_STATE_MATRIX]: [
-      'Session_UID','Timestamp','Theme',
-      'Raw_Score','Decayed_Score','Session_Count','Promoted',
-    ],
     // VECTOR_MATRIX: wide-format living state with decay.
     // Columns grow when themes are promoted from the incubator.
     // CHECKSUM (row-integrity hash, CFG.MATRIX_ROW_CHECKSUM_ALGO) is

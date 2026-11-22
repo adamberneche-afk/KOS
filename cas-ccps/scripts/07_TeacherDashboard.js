@@ -1578,27 +1578,6 @@ function getSettings() {
   return _tdSettings_(cfg);
 }
 
-// Turns one feature on or off for one course.
-function setSettingForCourse(key, courseCode, on) {
-  const cfg = getConfig_();
-  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
-  const def = TD_SETTINGS.filter(function (d) { return d.key === key; })[0];
-  if (!def) return { success: false, error: "Unknown setting: " + key };
-  const courses = _tdKnownCourses_(cfg);
-  const code = String(courseCode || "").trim();
-  if (courses.indexOf(code) === -1) return { success: false, error: "Unknown course: " + code };
-  const locked = _tdWithSettingsLock_(function () {
-    const raw = String(freshConfigValues_()[key] || "").trim();
-    const change = {};
-    change[code] = !!on;
-    const value = _tdSettingValue_(raw, courses, change);
-    _tdWriteSetting_(cfg, key, raw || "off", value);
-    if (key === "PARENT_REPORT_PREP") _tdSyncParentReportPrepTrigger_(value !== "off");
-  });
-  if (locked) return locked;
-  return _tdSettings_(cfg);
-}
-
 // A change to a shared setting reads the _CONFIG tab and writes it back:
 // two saves at once (two tabs, or two teachers on one Ledger) could each
 // write over the other's change. The read and the write run under the
@@ -1728,17 +1707,6 @@ function _tdSyncParentReportPrepTrigger_(on) {
   } catch (e) {
     Logger.log("[Dashboard] The Friday parent report job could not be " + (on ? "added" : "removed") + ": " + e.message);
   }
-}
-
-// The marking period end dates: [{ term: "2627_MP1", end: "2026-10-30" }, ...].
-function setMarkingPeriodEnds(ends) {
-  const cfg = getConfig_();
-  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
-  const mp = _tdMarkingPeriodValue_(ends);
-  if (mp.error) return { success: false, error: mp.error };
-  const raw = String(_resolveConfigValues_().values.MARKING_PERIOD_ENDS || "").trim();
-  _tdWriteSetting_(cfg, "MARKING_PERIOD_ENDS", raw || "(the district calendar)", mp.value);
-  return _tdSettings_(cfg);
 }
 
 // [{ term, end }] -> { value: "2627_MP1=2026-10-30,..." } or { error }.

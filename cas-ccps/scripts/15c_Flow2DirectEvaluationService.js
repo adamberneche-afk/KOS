@@ -17,13 +17,7 @@
 // exercise Flow 2's evaluation logic (prompt construction, response
 // parsing, competency-evidence extraction) without a live Studio Flow.
 //
-// This gives cas-ccps the same escape hatch kos-personal already has via
-// CFG.INFERENCE_MODE (1_Config_And_Deploy.gs / 10_Turnstile.gs), scaled
-// down to match what cas-ccps actually needs: kos-personal's
-// MANAGED_SERVICE mode hands a job off to a whole separate, billed
-// Node.js/Postgres deployment (kos-personal/inference-service/) — that's
-// real infrastructure this fix does not attempt to rebuild for cas-ccps.
-// Instead, cfg.evaluationMode === "DIRECT_GEMINI" (00_SharedConfig.js,
+// The escape hatch: cfg.evaluationMode === "DIRECT_GEMINI" (00_SharedConfig.js,
 // default "STUDIO") calls the Gemini API directly via UrlFetchApp, using
 // FLOW_2_SYSTEM_PROMPT verbatim from 15b_StudioFlowPrompts_Flow2_Revised.js
 // (now loaded into this same project — see that file's own header) so the

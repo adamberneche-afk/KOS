@@ -11,11 +11,11 @@
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "cas-ccps/scripts/00_SharedConfig.js": {
-      "lines": 2939,
+      "lines": 2936,
       "why": "Loaded by every CAS project: getConfig_, TABS, each tab's columns and the shared helpers; one-project code moved out in audit 4.6."
     },
     "cas-ccps/scripts/07_TeacherDashboard.js": {
-      "lines": 2567,
+      "lines": 2535,
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "cas-ccps/scripts/07_TeacherDashboardPage.html": {
@@ -59,19 +59,15 @@
       "why": "The turn-in card's client half, held as a string and pasted into the Student Dashboard page. Moving it into the page's .html is the fix."
     },
     "kos-personal/12_StudioReturnHarvest.gs": {
-      "lines": 1687,
-      "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
-    },
-    "kos-personal/4_Vector_Router.gs": {
-      "lines": 1547,
+      "lines": 1686,
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "kos-personal/5_Error_And_Utilities.gs": {
-      "lines": 2234,
+      "lines": 2214,
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "kos-personal/8_WebApp_UI.html": {
-      "lines": 3820,
+      "lines": 3769,
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "leader-hub/src/04-markup-modals-and-feature-views.html": {

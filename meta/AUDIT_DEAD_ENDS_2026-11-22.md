@@ -53,16 +53,16 @@ operator), *proposed* (suggested, never approved).
 | 2.1 | **Admin menu items added twice** **(checked)** | `16_UnifiedManualSetup.js` `onOpen`: "Open Admin Health Check" and "View Admin Setup Details" in two identical blocks, left from removing script 21's item | fix |
 | 2.2 | **The setup wizard's SETUP INSTRUCTIONS sheet** **(checked)** | 16 l.453–480 tells the admin to set `ID_ADMIN_SPREADSHEET`, which nothing reads (the keys are `CENTRAL_LEDGER_SS_ID`/`ADMIN_SS_ID`), and lists triggers the Ledger cycle now owns; l.440–446 promises a placeholder property no code inserts | fix |
 | 2.3 | **The Module 2 menu was never wired** | 28's header holds a paste-in menu (`runModule2ImportOnly`, `showModule2Status`, `openLessonDashboard`) never added to 16's `onOpen`; the functions are reachable only from the editor | decide: wire or retire |
-| 2.4 | **The "M3 scaffolding" hook** **(checked)** | `scaffolding: []` on every Teacher Dashboard student (07 l.2222, page l.3858); `getStudentScaffoldingData()` exists nowhere | retire (or decide) |
-| 2.5 | **kos-personal's intake vector path** **(checked)** | `_srNormalizeCuratorPayload_` (12) sets `vector_weights = null` on purpose (scores come only from `VECTOR_CLASSIFY`), so the intake's `MATRIX_LEDGER` write (3 l.460), `_routeVectorWeightsInternal` and the `DYNAMIC_STATE_MATRIX` writes never run. The dead writer also appends 9 values under a 10-column header. `SCHEMA_REFERENCE` still describes the matrix as used | retire |
-| 2.6 | **The retired inference service's mode** | `CFG.INFERENCE_MODE` (1), the Turnstile's MANAGED_SERVICE branch (10), `_submitManagedServiceJob_`, the credits panel, three `KOS_MANAGED_SERVICE_*` properties; the service was archived 11-17 (D16). The plan still lists its Dependabot bumps | retire |
+| 2.4 | **The "M3 scaffolding" hook** **(checked)** | `scaffolding: []` on every Teacher Dashboard student (07 l.2222, page l.3858); `getStudentScaffoldingData()` exists nowhere | retired (#558) |
+| 2.5 | **kos-personal's intake vector path** **(checked)** | `_srNormalizeCuratorPayload_` (12) sets `vector_weights = null` on purpose (scores come only from `VECTOR_CLASSIFY`), so the intake's `MATRIX_LEDGER` write (3 l.460), `_routeVectorWeightsInternal` and the `DYNAMIC_STATE_MATRIX` writes never run. The dead writer also appends 9 values under a 10-column header. `SCHEMA_REFERENCE` still describes the matrix as used | retired (#559) |
+| 2.6 | **The retired inference service's mode** | `CFG.INFERENCE_MODE` (1), the Turnstile's MANAGED_SERVICE branch (10), `_submitManagedServiceJob_`, the credits panel, three `KOS_MANAGED_SERVICE_*` properties; the service was archived 11-17 (D16). The plan still lists its Dependabot bumps | retired (#559) |
 | 2.7 | **`KOS_RECENT_SESSIONS`** **(checked)** | Written every morning (22); the RTP's instructions link six docs and not this one | decide: link it or stop writing it |
 | 2.8 | **ALIGNMENT threshold B has no data** | B is "three sessions in a row with no relational check-in"; the log's relational line is never parsed and the primer carries no streak (moral debt, by contrast, is counted) | decide: count it, or drop B |
 | 2.9 | **The Calibration Silo folders** (`ID_04_*`) | Written by the Registrar and the CE-tag router; read by nothing, code or RTP | decide |
 | 2.10 | **Registrar routing** | Every routed draft lands in `06_CLASSROOM_ASSETS`' root; "pending a real per-type routing rule" | proposed |
 | 2.11 | **LeaderHub key contacts** | `saveKeyContacts` (src/05) is never called: the list can be filled only from the console; the empty state still says "in this browser" | decide: a form, or retire |
 | 2.12 | **LeaderHub horizon items** **(checked)** | `scanHorizonLabel_()` returns `[]`; the page polls it and shows "temporarily off" | decide |
-| 2.13 | **LeaderHub's "5 Ideas per Work Area" modal** | 25 idea cards from Settings, some now built; `surveyAnswers` unused | retire |
+| 2.13 | **LeaderHub's "5 Ideas per Work Area" modal** | 25 idea cards from Settings, some now built; `surveyAnswers` unused | retired (#558) |
 | 2.14 | **LeaderHub's Trips "Chapter Reference"** | Last season's trips typed into the page, "RESULTS PENDING" | fix or retire |
 
 ### 3. Public functions nothing calls
@@ -73,12 +73,12 @@ there).
 
 | # | Function | Why it's left | Kind |
 |---|---|---|---|
-| 3.1 | `markQueueRowComplete` (03) **(checked)** | No caller, doc or test | retire |
-| 3.2 | `markInstallerComplete` (16) and the `INSTALLER_COMPLETE` it writes | "called by Script 21", archived 11-17; nothing reads the property | retire |
-| 3.3 | `runQueueWatchdogNow` (34) **(checked)** | "callable from Health > Run Watchdog Now", a menu that doesn't exist; tests only | wire or retire |
-| 3.4 | `archiveExpiredParentReports` (36) **(checked)** | "for the admin menu"; not in it. 34c calls the private `_archiveExpiredParentReports_` | retire the wrapper |
-| 3.5 | `setSettingForCourse`, `setMarkingPeriodEnds` (07) | Superseded by `saveSettings`; still callable from the page (teacher-gated) | retire |
-| 3.6 | `getFlowPrompt` (40), `removeWeeklyCanvasCartridge` (79) | A test-only resolver; an undocumented remove half | fix (document) or retire |
+| 3.1 | `markQueueRowComplete` (03) **(checked)** | No caller, doc or test | retired (#558) |
+| 3.2 | `markInstallerComplete` (16) and the `INSTALLER_COMPLETE` it writes | "called by Script 21", archived 11-17; nothing reads the property | retired (#558) |
+| 3.3 | `runQueueWatchdogNow` (34) **(checked)** | "callable from Health > Run Watchdog Now", a menu that doesn't exist; tests only | retired (#558) |
+| 3.4 | `archiveExpiredParentReports` (36) **(checked)** | "for the admin menu"; not in it. 34c calls the private `_archiveExpiredParentReports_` | retired (#558) |
+| 3.5 | `setSettingForCourse`, `setMarkingPeriodEnds` (07) | Superseded by `saveSettings`; still callable from the page (teacher-gated) | retired (#559) |
+| 3.6 | `getFlowPrompt` (40), `removeWeeklyCanvasCartridge` (79) | A test-only resolver; an undocumented remove half | retired (#558) |
 | 3.7 | kos-personal `installStudioInputTrigger` (13), `checkFidelitySamples` (27) | Named in no doc | fix (document) |
 
 Editor tools that are fine but hard to find (named only in their own

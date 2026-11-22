@@ -5,8 +5,7 @@
 // runMatrixTurnstile before this file). Covers: normal release under
 // concurrency, the staleness reset, the STUDIO_TIMEOUT escalation ceiling,
 // audit-retry priority ordering and its one-shot pruning, release-map
-// pruning, the unknown-status catch-all's once-per-UID alert, and the
-// MANAGED_SERVICE hand-off's failure-to-release path.
+// pruning, and the unknown-status catch-all's once-per-UID alert.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -16,7 +15,6 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const KP = path.join(__dirname, '..', '..', 'kos-personal');
 const FILES = [
   path.join(KP, '1_Config_And_Deploy.gs'),
-  path.join(KP, '3_Queue_Processor.gs'), // _submitManagedServiceJob_
   path.join(KP, '5_Error_And_Utilities.gs'),
   path.join(KP, '10_Turnstile.gs'),
 ];
@@ -77,16 +75,6 @@ function seed(exported, sandbox, rows) {
   const staging = tab(ss, exported.CFG.STAGING_SHEET, STAGING_HEADERS);
   rows.forEach((r) => staging.appendRow(stagingRow(r)));
   return { ss, staging };
-}
-
-// exported.CFG is a structuredClone (see crossRealmSafe above it in
-// gas-sandbox.js) — mutating it changes nothing production code sees.
-// sandbox.__exported.CFG is the vm's own live object, grabbed before that
-// clone happens, so a mutation through it actually changes what
-// runMatrixTurnstile() reads. Needed only for CFG.INFERENCE_MODE below —
-// every other test here runs at the real, unmutated defaults.
-function liveCfg(sandbox) {
-  return sandbox.__exported.CFG;
 }
 
 function statusesByUid(staging) {
@@ -509,21 +497,6 @@ test('runMatrixTurnstile: the unknown-status alerted set is pruned once the row 
 
   const alerted = exported._readUnknownStatusAlertedSet_();
   assert.ok(!alerted['LONG-GONE']);
-});
-
-test('runMatrixTurnstile: MANAGED_SERVICE mode leaves a row PENDING_FLOW when the service is not configured', () => {
-  const { exported, sandbox } = load();
-  liveCfg(sandbox).INFERENCE_MODE = 'MANAGED_SERVICE';
-  // Deliberately not setting MANAGED_SERVICE_BASE_URL / API_KEY — the
-  // hand-off must fail closed, same as _submitManagedServiceJob_'s own
-  // "not configured" branch documents.
-  const { staging } = seed(exported, sandbox, [{ uid: 'UID-1', status: 'PENDING_FLOW' }]);
-
-  exported.runMatrixTurnstile();
-
-  const after = statusesByUid(staging);
-  assert.equal(after['UID-1'].status, 'PENDING_FLOW',
-    'a failed managed-service submission must leave the row for the next 5-minute retry, not release it with nothing watching it');
 });
 
 test('runMatrixTurnstile: does nothing when it cannot acquire the script lock', () => {

@@ -443,9 +443,8 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
 // CURATOR_PROMPT.md Rules 1 and 2, enforced on the harvest side. On real
 // sessions the Curator has copied the RTP Curator JSON block the transcript
 // itself ends with (schema_version 5.0, build_state, numeric vector_weights,
-// no alignment_observations). A payload with numeric vector_weights would
-// write made-up scores to MATRIX_LEDGER and VECTOR_MATRIX at intake if an
-// audit ever let it through; only a VECTOR_CLASSIFY row may do that. A
+// no alignment_observations). Those numbers are made up: theme scores come
+// only from a VECTOR_CLASSIFY row, so the intake never sees one. A
 // missing alignment_observations gets the empty skeleton, which reads as
 // "no evidence this session" (all deltas 0.0).
 //

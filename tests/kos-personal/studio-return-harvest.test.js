@@ -1093,8 +1093,7 @@ test('binding probe: a SHORT but valid output is not reported as missing', () =>
 });
 
 // On real sessions the Curator copied the RTP Curator JSON the transcript
-// ends with: numeric vector_weights and no alignment_observations. Intake
-// writes a MATRIX_LEDGER row for any object-valued vector_weights, so the
+// ends with: numeric vector_weights and no alignment_observations. The
 // harvest forces CURATOR_PROMPT.md Rules 1 and 2 before the doc is written.
 test('curator output: numeric vector_weights become null, a missing alignment_observations gets the empty skeleton', () => {
   const { exported } = load();

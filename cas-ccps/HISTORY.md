@@ -1954,3 +1954,9 @@ nightly archive pass calls `_archiveExpiredParentReports_`), and the
 test-only `getFlowPrompt` (40). The Teacher Dashboard's "M3 scaffolding"
 hook went too: every competency carried `scaffolding: []` and an empty span
 for a `getStudentScaffoldingData()` that was never written.
+
+## Retired: the Teacher Dashboard's two old settings setters, 2026-11-22
+
+`setSettingForCourse` and `setMarkingPeriodEnds` (07) were superseded by
+`saveSettings`, which the page calls for both, and stayed callable from the
+page (audit item 3.5). The tests that used them call `saveSettings`.
