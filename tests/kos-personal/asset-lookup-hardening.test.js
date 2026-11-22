@@ -184,3 +184,20 @@ test('_registerDocPointers: two same-named docs in the folder are not guessed be
   assert.equal(props(sandbox).getProperty('ID_CURRENT_STATE'), null);
   assert.equal(props(sandbox).getProperty('ID_PIVOTS_AND_LESSONS'), pivots.getId());
 });
+
+// The bounded-loop convention (gas-lint): a name lookup that stops at its
+// cap must not create a second spreadsheet, so _getOrCreateSpreadsheet
+// throws instead. The folder's iterator never runs out, so only the cap ends it.
+test('_getOrCreateSpreadsheet stops at CFG.DRIVE_LOOP_MAX_ITEMS and throws rather than create a copy', () => {
+  const { exported, sandbox } = loadGasFiles(FILES, ['CFG', '_getOrCreateSpreadsheet']);
+  let reads = 0;
+  const endless = {
+    getFilesByName: () => ({ hasNext: () => true, next: () => { reads++; return { getMimeType: () => 'application/pdf' }; } }),
+  };
+  const created = sandbox.SpreadsheetApp.create;
+  let made = 0;
+  sandbox.SpreadsheetApp.create = (...a) => { made++; return created.apply(sandbox.SpreadsheetApp, a); };
+  assert.throws(() => exported._getOrCreateSpreadsheet('BRAIN_TRUST_INDEX', endless), /not creating a second one/);
+  assert.equal(reads, exported.CFG.DRIVE_LOOP_MAX_ITEMS);
+  assert.equal(made, 0);
+});

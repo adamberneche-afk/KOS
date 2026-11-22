@@ -1,10 +1,7 @@
 'use strict';
 // Regression tests for gas-lint's Check N — the bounded-loop convention.
 // A `while (x.hasNext())` loop over a Drive/Docs/Sheets iterator should
-// reference both a cap and a pacing call; this is warning-level, not
-// error-level (see check.js's Check N comment for why: real production
-// loops already exist with neither, and this is a new convention being
-// introduced, not a retrofit).
+// reference both a cap and a pacing call, or gas-lint fails (an error).
 //
 // extractWhileLoopBody() and the two pattern regexes are the pure units —
 // the check itself walks the whole repo via PROJECT_MAP.

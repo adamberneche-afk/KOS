@@ -1810,27 +1810,17 @@ function checkWebAppPublicFunctions() {
 }
 
 // -----------------------------------------------------------------------
-// Check N — bounded-loop convention (warning-level).
+// Check N — bounded-loop convention (an error).
 //
 // A `while (x.hasNext())` loop over a Drive/Docs/Sheets iterator
 // (DriveApp.getFiles(), .getFilesByName(), .searchFiles(), a folder's
 // .getFiles(), etc.) has no built-in size limit — it runs until the
-// resource is exhausted, however large that turns out to be. Two things
-// can go wrong with that: (1) Apps Script has a hard 6-minute execution
-// ceiling, so a big-enough Drive folder just times out mid-loop with no
-// partial-progress signal; (2) per the process-hardening brainstorm this
-// check came out of, a stuck or slow loop is a debugging dead end — there
-// is no checkpoint to point at, just "it didn't finish."
-//
-// This is a NEW convention, not a retrofit of existing code, and it is
-// deliberately warning-level, not error-level: grep before writing it
-// turned up real production loops (kos-personal/6_Governance.gs,
-// kos-personal/1_Config_And_Deploy.gs, cas-ccps/10_AdminRecoveryPanel.js,
-// among others) with neither a cap nor a pacing call today. Erroring on
-// all of them at once would make this check something to silence, not
-// something to act on — see meta/PROCESS_HARDENING_SPRINT.md phase 2b for
-// the up-front acknowledgment that these are now-visible, pre-existing
-// warnings, not regressions this change introduced.
+// resource is exhausted, however large that turns out to be. Apps Script
+// has a hard 6-minute execution ceiling, so a big-enough folder times out
+// mid-loop with no partial-progress signal, and there is no checkpoint to
+// point at, just "it didn't finish." Every such loop needs a cap and a
+// pacing (elapsed-time) check: cas-ccps uses per-function MAX_* settings,
+// kos-personal CFG.DRIVE_LOOP_MAX_ITEMS and CFG.DRIVE_LOOP_MAX_MS.
 //
 // "References a cap" is read loosely on purpose (a `break`, or any
 // identifier whose name contains MAX/LIMIT/CAP) — this can't prove the cap
@@ -1896,13 +1886,13 @@ function checkBoundedLoopConvention() {
         const missing = [];
         if (!hasCap) missing.push('a cap constant (a break, or a MAX_*/LIMIT_*/CAP_*-named reference)');
         if (!hasPacing) missing.push('a pacing call (Utilities.sleep(...), or an elapsed-time budget check)');
-        warn('bounded-loop-convention',
+        err('bounded-loop-convention',
           `${relPath}:${lineAt(stripped, m.index)} — a \`while (${m[1]}.hasNext())\` loop over ` +
           `what looks like a Drive/Docs/Sheets iterator doesn't reference ${missing.join(' or ')}` +
           `. Apps Script has a hard 6-minute execution ceiling, and an unbounded loop over a ` +
-          `growing external resource times out mid-loop with no partial-progress signal — this ` +
-          `is a new convention (meta/PROCESS_HARDENING_SPRINT.md phase 2b), not yet applied ` +
-          `everywhere, so it's a warning: worth tightening when you're already in this function.`,
+          `growing external resource times out mid-loop with no partial-progress signal. Stop ` +
+          `the loop at a count and an elapsed time (kos-personal: CFG.DRIVE_LOOP_MAX_ITEMS / ` +
+          `CFG.DRIVE_LOOP_MAX_MS) and log where it stopped.`,
           relPath);
       }
     }

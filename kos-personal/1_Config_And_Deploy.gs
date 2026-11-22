@@ -161,6 +161,12 @@ const CFG = {
   // ── Auto-Council (reconciliation decision 1 / 6_Governance.gs) ──
   COUNCIL_AUTO_TRIGGER_SESSIONS: 5,  // sessions between auto-council checks
 
+  // ── Drive iterator loops (gas-lint's bounded-loop-convention) ──
+  // A while (it.hasNext()) loop stops at this many items or this long,
+  // well inside Apps Script's 6-minute ceiling, and says so in the log.
+  DRIVE_LOOP_MAX_ITEMS: 500,
+  DRIVE_LOOP_MAX_MS:    60000,
+
   // ── Chunking ──────────────────────────────────────────────────
   // 25000 per kos-personal/docs/runtime-reference.md's "Key Configuration" table and
   // STUDIO_INTEGRATION_SPEC.md's Error Handling section (reconciliation
@@ -1279,8 +1285,13 @@ function _copyPersonas(f02) {
 function _findHighestVersionDoc(baseName) {
   const it = DriveApp.searchFiles(
     `title contains "${baseName}" and mimeType = "${MimeType.GOOGLE_DOCS}" and trashed = false`);
-  let best = null, bestV = -1;
+  let best = null, bestV = -1, seen = 0;
+  const started = Date.now();
   while (it.hasNext()) {
+    if (seen++ >= CFG.DRIVE_LOOP_MAX_ITEMS || Date.now() - started > CFG.DRIVE_LOOP_MAX_MS) {
+      console.warn('[_findHighestVersionDoc] stopped after ' + (seen - 1) + ' docs matching "' + baseName + '"; using the highest so far.');
+      break;
+    }
     const f = it.next();
     const n = f.getName();
     if (n.includes('[UID_')) continue;

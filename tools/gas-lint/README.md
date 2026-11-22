@@ -392,25 +392,16 @@ it — that gap is closed now.
     not a real call-graph analysis — it can't prove a same-project checker
     is actually reachable from the handler, only that one exists at all.
 
-14. **Bounded-loop convention** (`checkBoundedLoopConvention`) — warning
-    level. A `while (x.hasNext())` loop over a Drive/Docs/Sheets iterator
-    has no built-in size limit — it runs until the resource is exhausted,
-    however large that turns out to be. Two things can go wrong with that:
-    Apps Script has a hard 6-minute execution ceiling, so a big-enough
-    Drive folder just times out mid-loop with no partial-progress signal;
-    and a stuck or slow loop is a debugging dead end — there's no
-    checkpoint to point at, just "it didn't finish."
-
-    This is a **new** convention, not a retrofit of existing code, and it's
-    deliberately warning-level: a grep across the repo before writing it
-    turned up seven real production loops with neither a cap nor a pacing
-    call. Erroring on all of them at once would make this check something
-    to silence, not something to act on. A run on 2026-10-23 reports eleven
-    (`kos-personal/1_Config_And_Deploy.gs`, `5_Error_And_Utilities.gs` (×2),
-    `6_Governance.gs` (×3), `11_Registrar_CogRelay.gs`,
-    `cas-ccps/scripts/10_AdminRecoveryPanel.js`,
-    `cas-ccps/scripts/50_StudentDataAccess.js` (×3)). These are expected,
-    pre-existing findings — see `meta/PROCESS_HARDENING_SPRINT.md` phase 2b.
+14. **Bounded-loop convention** (`checkBoundedLoopConvention`). An
+    **error** when a `while (x.hasNext())` loop over a Drive/Docs/Sheets
+    iterator lacks a cap or a pacing check. Such a loop runs until the
+    resource is exhausted, and Apps Script's 6-minute ceiling stops a big
+    one mid-loop with no partial-progress signal. Stop it at a count and an
+    elapsed time and log where it stopped (cas-ccps: per-function `MAX_*`
+    settings; kos-personal: `CFG.DRIVE_LOOP_MAX_ITEMS` and
+    `CFG.DRIVE_LOOP_MAX_MS`). It was a warning while the eleven loops
+    written before it were capped (`meta/PROCESS_HARDENING_SPRINT.md` 2b;
+    the last four in the 11-22 dead-ends audit, 6.1).
 
     "References a cap" and "references pacing" are both read loosely on
     purpose: a `break`, or any identifier whose name contains
