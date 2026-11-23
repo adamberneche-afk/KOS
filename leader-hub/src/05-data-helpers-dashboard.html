@@ -155,7 +155,7 @@ const LS = {
 // write-through automatically, with no per-call-site changes anywhere.
 const LH_SERVER_SYNCED_CONFIG_KEYS = [
   'lh_profile', 'lh_modules', 'lh_schedule_config', 'lh_custom_orgs',
-  'lh_custom_courses', 'lh_keyContacts', 'lh_student_id_map',
+  'lh_custom_courses', 'lh_keyContacts', 'lh_chapter_reference', 'lh_student_id_map',
   'lh_cas_ccps_api_url', 'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
   'lh_sub_period_assignments', 'lh_sbe_status', 'lh_deca_season',
   'lh_deca_approvals', 'lh_ftp_overrides', 'lh_conf_leave', 'lh_mk8_check',
@@ -925,26 +925,14 @@ function saveProfile(updates) {
 }
 let PROFILE = getProfile();
 
-// ─── KEY CONTACTS (Trips → Chapter Reference) ───────────────────────────
-// FIXED (external product review, Finding 9 / "this month" hardcoded-
-// credentials cleanup): this list used to be a hardcoded array of ~8 real
-// people's names, phone numbers, and emails baked directly into source —
-// committed to source control regardless of whether the live app ever
-// showed them to anyone else. Same fix as PROFILE above: ships with an
-// empty default, and reads through localStorage instead (so nothing real
-// lives in committed source), via getKeyContacts()/saveKeyContacts()
-// below. There's no dedicated Settings panel for this one (it's a short
-// reference list, not a single profile), so populate it once, locally,
-// from the browser console:
-//   saveKeyContacts([
-//     {name:'...', role:'Head Advisor / Sponsor', phone:'...', email:'...'},
-//     ...
-//   ]);
-// That call saves to the server's copy (a Script Property, like every
-// Settings field), never to this repo.
+// ─── KEY CONTACTS and the CHAPTER REFERENCE (DECA hub) ─────────────────
+// The advisor's own lists, edited on the DECA hub (openDecaListEditor) and
+// saved to the server's copy like every setting; never in source.
 const KEY_CONTACTS_DEFAULTS = [];
 function getKeyContacts() { return LS.get('lh_keyContacts', KEY_CONTACTS_DEFAULTS); }
 function saveKeyContacts(list) { LS.set('lh_keyContacts', list || []); }
+function getChapterReference() { return LS.get('lh_chapter_reference', []); }
+function saveChapterReference(list) { LS.set('lh_chapter_reference', list || []); }
 
 // A couple of subtitle strings are static page HTML (not JS-rendered), so
 // PROFILE changes can't reach them just by reading PROFILE at generation

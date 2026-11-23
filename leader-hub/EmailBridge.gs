@@ -19,16 +19,12 @@
  * appsscript.json's webapp.access setting:
  *   action: "subPlan"       → Create Google Doc sub plan  → {ok, docUrl}
  *   action: "bragEmail"     → Send an email via MailApp          → {ok}
- *   action: "markConsumed"  → Mark horizon items consumed  → {ok, consumed}
  *   action: "aiDraft"       → Queue an AI drafting job      → {ok, jobId}
  *   action: "checkAiJob"    → Poll a queued AI job          → {ok, status, result|error}
  *   action: "flowHealth"    → Lifetime per-type AI job stats → {ok, stats, types}
  *   action: "pushOrgSync"   → Publish an org snapshot       → {ok, updatedAt} | {ok:false, conflict:true, ...}  (†)
  *   action: "pullOrgSync"   → Fetch an org's synced state   → {ok, found, ...}  (†)
  *   action: "listOrgSyncs"  → List orgs shared on this bridge → {ok, orgs:[...]}
- *
- * GET endpoint (unchanged):
- *   Returns pending horizon items from Gmail label "LeaderHub"
  *
  * Setup:
  *   1. script.google.com → New Project → paste this file
@@ -60,7 +56,6 @@
  */
 
 const CONFIG = {
-  horizonLabel:    'LeaderHub',   // Gmail label to scan for horizon items
   subPlanFolderId: '',            // Drive folder ID for sub plans ('' = root)
   // FIXED (external product review, Finding 9 / "this month" hardcoded-
   // credentials cleanup): was a real personal email baked into committed
@@ -74,37 +69,13 @@ const CONFIG = {
 
 // ── Entry points ──────────────────────────────────────────────────────────────
 //
-// NOTE (2026-11-15): the `?api=horizon` GET route and its handler,
-// emailBridgeGetHorizonItems_(), are gone: it ran before doGet()'s owner
-// check, and nothing called it. _horizonItemsResult_() stays for
-// lhGetHorizonItems() (Code.gs, owner-gated).
-//
-// NOTE (server-migration Phase 1): this file used to own doGet() itself,
-// returning horizon-items JSON unconditionally. Now that Code.gs's doGet()
-// serves the hub UI (GAS allows exactly one doGet per project — a second
-// top-level declaration is a real collision, not just a style issue), this
-// logic moved to a plain function Code.gs's doGet() calls for the
-// `?api=horizon` polling request EMAIL_BRIDGE.poll() used to make when
-// opened as a local file (no google.script.run available there — see
-// Code.gs's lhGetHorizonItems_()/lhApiCall_(), which poll()/callGAS() now
-// call directly in the same-origin (deployed web app) case).
-//
 // NOTE (server-migration Phase 2): doPost()'s action dispatch is now
 // factored into _lhDispatchAction_() below, shared with Code.gs's
 // lhApiCall_() (the google.script.run entry point the same-origin client
 // uses instead of doPost() once served by the deployed web app) — one
 // action table, not two that could silently drift apart.
 
-function _horizonItemsResult_() {
-  try {
-    return { ok: true, items: scanHorizonLabel_() };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-}
-
 function _lhDispatchAction_(action, body) {
-  if (action === 'markConsumed') return markConsumed_(body.ids || []);
   if (action === 'subPlan')      return createSubPlanDoc_(body);
   if (action === 'bragEmail')    return createBragDraft_(body);
   if (action === 'aiDraft')      return queueAiJob_(body);
@@ -161,7 +132,7 @@ function _lhDispatchAction_(action, body) {
 // (ORG_SYNC_CO_ADVISORS): the owner plus named co-advisors, warn-only until
 // the owner sets it.
 const LH_OWNER_ONLY_ACTIONS = [
-  'subPlan', 'bragEmail', 'markConsumed', 'aiDraft', 'checkAiJob',
+  'subPlan', 'bragEmail', 'aiDraft', 'checkAiJob',
   'flowHealth', 'listOrgSyncs',
 ];
 
@@ -876,58 +847,6 @@ function lhOrgSyncCall_(bridgeUrl, action, payload) {
   }
   try { return JSON.parse(resp.getContentText()); }
   catch (_) { return { ok: false, error: 'The shared organization\'s bridge did not answer with JSON.' }; }
-}
-
-// ── Horizon label scanner (GET) ───────────────────────────────────────────────
-// Scans a Gmail label for hashtag-tagged messages (#horizon:short/mid/long,
-// #deadline:YYYY-MM-DD, #role:...) and surfaces them as dashboard horizon
-// items — the one read-side use of Gmail in this file (send-side mail is
-// MailApp/the brag queue below, unrelated).
-//
-// HISTORY: disabled entirely once before (round 3 of this investigation)
-// as a decisive test of whether GmailApp itself — any scope, not just how
-// narrow — was the trigger behind a live "Unexpected identifier 'style'"
-// OAuth-consent-dialog crash. It wasn't, at the time: the same crash
-// reproduced identically across three different scope sets, including
-// none at all, and was traced to the assembled page's overall size,
-// unrelated to OAuth scope composition — see leader-hub/HISTORY.md's
-// 2026-09-15 entry. Restored once that was confirmed.
-//
-// Disabled again now (round 5) because a live redeploy of BOTH the
-// size-based fix (script splitting + hoisting) AND round 4's gmail.compose
-// removal still crashed identically — reopening the question of whether
-// Gmail scope really is unrelated. This round removes gmail.readonly too,
-// leaving zero Gmail scope in appsscript.json, so nothing in this project
-// asks for or depends on Gmail access at all. See leader-hub/HISTORY.md's
-// newest entry. RESOLVED 2026-09-28: Gmail was not the cause (HtmlService
-// stripping sourceURL comments with their closing tags, then split load
-// order; see HISTORY.md's closing entry), so turning this back on is now an
-// ordinary feature decision. Returns an empty list rather than throwing so callers
-// (both the horizon-items GET path and the client's local fallback) don't
-// need their own special case for "this feature is off."
-function scanHorizonLabel_() {
-  return [];
-}
-
-// ── Mark consumed (POST) — unchanged ─────────────────────────────────────────
-
-// PropertiesService caps each property VALUE at 9216 bytes. Gmail message
-// IDs are ~16 hex chars; JSON-array-encoded with quotes/comma that's
-// ~19 bytes/entry, so the old cap of 500 entries (~9.5KB) was already
-// over the limit — prop.setProperty() would start throwing
-// "Argument too large" once the list grew past ~450-480 entries,
-// permanently breaking markConsumed_ from that point on (compounding the
-// payload-shape bug fixed in student-leader-hub.html — items would
-// reappear on every poll AND the fix for that would eventually fail
-// too). 300 entries (~5.7KB) leaves real margin for ID-length variance.
-const CONSUMED_ID_CAP = 300;
-
-function markConsumed_(ids) {
-  if (!ids.length) return { ok: true, consumed: 0 };
-  const prop    = PropertiesService.getScriptProperties();
-  const existing = JSON.parse(prop.getProperty('consumed') || '[]');
-  prop.setProperty('consumed', JSON.stringify([...new Set([...existing, ...ids])].slice(-CONSUMED_ID_CAP)));
-  return { ok: true, consumed: ids.length };
 }
 
 // ── Utility ───────────────────────────────────────────────────────────────────

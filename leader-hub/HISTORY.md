@@ -25,6 +25,32 @@ its history.
 This file holds the current plan of record's era; `node tools/archive/search.js --entries`
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
+## Key contacts editable, the Gmail horizon source retired, last season's data gone, 2026-11-23
+
+The operator's decisions on the 11-22 dead-ends audit (2.11, 2.12, 2.14).
+
+- **Key contacts and the chapter reference** are edited on the DECA hub
+  (✏️ Edit: one line each, fields split on `|`) and saved to the server's
+  copy like every setting (`lh_keyContacts`, new `lh_chapter_reference`).
+  Key contacts could only be filled from the browser console before.
+- **The Gmail horizon source is retired.** `scanHorizonLabel_()` had
+  returned `[]` since September, behind a "temporarily off" banner,
+  though the crash it was switched off for was traced elsewhere on 09-28.
+  Turning it on would have meant a Gmail read permission for a web app;
+  manual horizon entries and Org Sync cover the need. Gone: the scanner,
+  `lhGetHorizonItems`, the `markConsumed` action and its stored list, the
+  page's 10-minute poll and its toast, and the Email Bridge modal's banner
+  and Poll Now button.
+- **Last season's typed-in data is gone** from the DECA hub: the 25–26
+  trip cards ("RESULTS PENDING" for a conference long over), the fee and
+  deadline lists, and an ICDC 2026 alert whose dates had passed. The
+  timeline card is titled from `DECA_SEASON`, which the season editor
+  already keeps current. Two lists still name last season's conferences:
+  the Competitive Results board (`DECA_RESULT_EVENTS`) and the Admin
+  Approval Checklist (`DECA_APPROVAL_EVENTS`). Their event IDs key saved
+  results and checklist ticks, so changing them waits for its own
+  decision.
+
 ## The deploy-version report checks its permissions, 2026-11-21
 
 - **Now:** `DeployVersionReport.gs` holds the one deploy-version report

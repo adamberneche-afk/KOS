@@ -45,12 +45,7 @@
  * including the person who deployed it — by design, same as
  * TEACHER_EMAIL's fail-closed behavior in cas-ccps/00_SharedConfig.js.
  *
- * doGet() used to answer `?api=horizon` before the owner check, for the
- * retired standalone file's fetch(). Nothing called it (EMAIL_BRIDGE.poll()
- * reaches lhGetHorizonItems() through google.script.run, owner-gated), and
- * it was the one GET any account in the domain could reach without the
- * check, so it was removed on 2026-11-15. A `?api=horizon` request now gets
- * the same owner check as every other GET.
+ * Every GET, whatever its parameters, meets the owner check first.
  *
  * NOTE for implementation follow-up: once this is actually deployed and
  * opened, check the browser console for CSP violations — the assembled
@@ -108,13 +103,6 @@ function doGet(e) {
 // response, which google.script.run would choke on (it expects the raw
 // return value, not an HtmlService/ContentService output object).
 
-// Same-origin replacement for EMAIL_BRIDGE.poll()'s old `?api=horizon`
-// fetch() — same underlying result shape (_horizonItemsResult_() in
-// EmailBridge.gs), reached via RPC instead of a URL fetch.
-function lhGetHorizonItems_() {
-  return _horizonItemsResult_();
-}
-
 // Same-origin replacement for callGAS()'s old fetch()-to-doPost() call —
 // one action dispatch table (_lhDispatchAction_() in EmailBridge.gs)
 // shared with doPost(), so the two transports can never drift apart.
@@ -158,7 +146,6 @@ function requireScriptOwner_() {
 
 function lhApiCall(action, payload) { _lhRequireOwner_(); return lhApiCall_(action, payload); }
 function lhOrgSyncCall(bridgeUrl, action, payload) { _lhRequireOwner_(); return lhOrgSyncCall_(bridgeUrl, action, payload); }
-function lhGetHorizonItems() { _lhRequireOwner_(); return lhGetHorizonItems_(); }
 function lhGetAllConfig() { _lhRequireOwner_(); return lhGetAllConfig_(); }
 function lhSaveConfig(key, value) { _lhRequireOwner_(); return lhSaveConfig_(key, value); }
 function lhPushData(body) { _lhRequireOwner_(); return lhPushData_(body); }

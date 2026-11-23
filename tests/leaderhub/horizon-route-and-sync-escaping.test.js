@@ -2,10 +2,9 @@
 // LeaderHub's two security items (2026-11-15).
 //
 // 1. doGet() answered `?api=horizon` before its owner check, so any account
-//    in the domain got JSON from it (scanHorizonLabel_(), a stub returning
-//    []). Nothing called it: the page reaches lhGetHorizonItems() through
-//    google.script.run, owner-gated. The route is gone, so the request now
-//    meets the owner check like every other GET.
+//    in the domain got JSON from it. The route is gone, so the request now
+//    meets the owner check like every other GET. (The Gmail horizon source
+//    behind it was retired 2026-11-23, with lhGetHorizonItems.)
 // 2. Values that come from another account (an org pulled from a shared
 //    bridge) or from mail (horizon and deadline items) reached the page in
 //    four places without escaping: a horizon item's id in an attribute and in
@@ -52,7 +51,7 @@ test('the horizon GET handler is gone from the bridge', () => {
   const bridge = fs.readFileSync(path.join(LH, 'EmailBridge.gs'), 'utf8');
   assert.doesNotMatch(code, /e\.parameter\.api === 'horizon'/);
   assert.doesNotMatch(bridge, /function emailBridgeGetHorizonItems_/);
-  assert.match(code, /function lhGetHorizonItems\(\) \{ _lhRequireOwner_\(\);/, 'the page\'s own path stays owner-gated');
+  assert.doesNotMatch(code + bridge, /lhGetHorizonItems|scanHorizonLabel_|markConsumed/, 'the Gmail horizon source is retired');
 });
 
 test('a horizon item\'s id and text are escaped wherever the page writes them', () => {

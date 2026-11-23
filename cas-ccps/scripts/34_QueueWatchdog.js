@@ -43,9 +43,8 @@
 // this file was considered safe to land — all four were confirmed
 // against real reader/writer code, not assumed:
 //   1. UNBOUNDED PropertiesService GROWTH (a repeat of a bug class this
-//      repo has already been burned by — leader-hub/EmailBridge.gs's
-//      CONSUMED_ID_CAP comment, kos-personal/10_Turnstile.gs's own
-//      pruning). An earlier drop copied the release-map read/write
+//      repo has already been burned by — kos-personal/10_Turnstile.gs's
+//      own pruning). An earlier drop copied the release-map read/write
 //      helpers verbatim but dropped the pruning step entirely — every
 //      row that ever passed through a watched status left a permanent
 //      entry. Fixed: runQueueWatchdog() now tracks every release-map
@@ -499,9 +498,8 @@ function _wdWriteReleaseMap_(map) {
 // row that has since moved to an untracked status (resolved normally,
 // escalated, or archived/deleted) and is safe to drop. This is what
 // keeps CAS_WATCHDOG_RELEASED from growing without bound over the
-// system's lifetime — the same failure class documented in
-// leader-hub/EmailBridge.gs's CONSUMED_ID_CAP comment and already fixed
-// once in kos-personal/10_Turnstile.gs, which this port had otherwise
+// system's lifetime — the same failure class already fixed once in
+// kos-personal/10_Turnstile.gs, which this port had otherwise
 // silently reintroduced.
 function _wdPruneReleaseMap_(releaseMap, touchedKeys) {
   Object.keys(releaseMap).forEach(function (key) {

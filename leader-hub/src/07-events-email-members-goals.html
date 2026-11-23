@@ -602,141 +602,32 @@ function renderDECAHub() {
     }).join('')}
   </div>`;
 
-  // ── ICDC urgent alert ─────────────────────────────────────────────────────
-  const icdcDaysLeft = Math.ceil((new Date('2026-03-13') - today) / 86400000);
-  const icdcFormDeadline = Math.ceil((new Date('2026-03-11') - today) / 86400000);
-  const icdcUrgent = today < new Date('2026-04-30');
-
-  const icdcAlert = icdcUrgent ? `
-    <div class="alert" style="background:#fef2f2;border:2px solid var(--red);border-radius:8px;padding:.85rem 1rem;margin-bottom:.75rem">
-      <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1rem;letter-spacing:1px;color:var(--red);margin-bottom:.5rem">🚨 ICDC — ACTION REQUIRED NOW</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;font-size:.78rem">
-        <div style="background:#fff;border-radius:6px;padding:.6rem;border:1px solid #fecaca">
-          <div style="font-weight:700;color:var(--red);margin-bottom:.2rem">Field Trip Form</div>
-          <div>Submit to TripTracker by <strong>~Mar 11</strong></div>
-          <div style="color:var(--muted);font-size:.75rem">45-day lead for out-of-state overnight</div>
-          <div style="margin-top:.4rem">${icdcFormDeadline > 0 ? badge(icdcFormDeadline+'d left','var(--red)') : badge('OVERDUE','#7f1d1d')}</div>
-          <button class="btn btn-sm" onclick="openModal('newTrip')" style="margin-top:.4rem;width:100%;background:var(--red);color:#fff;border:none;font-size:.75rem">Start Form →</button>
-        </div>
-        <div style="background:#fff;border-radius:6px;padding:.6rem;border:1px solid #fecaca">
-          <div style="font-weight:700;color:#b45309;margin-bottom:.2rem">Registration Window</div>
-          <div>Opens <strong>Mar 2</strong> · Closes <strong>Mar 13</strong></div>
-          <div style="color:var(--muted);font-size:.75rem">$155/student · Top 8 + bumps from Top 10</div>
-          <div style="margin-top:.4rem">${icdcDaysLeft > 0 ? badge('Reg closes in '+icdcDaysLeft+'d','var(--orange)') : badge('Reg CLOSED','#7f1d1d')}</div>
-          <div style="font-size:.75rem;color:var(--muted);margin-top:.3rem">70%+ SLC test score required</div>
-        </div>
-        <div style="background:#fff;border-radius:6px;padding:.6rem;border:1px solid #fecaca">
-          <div style="font-weight:700;color:var(--navy);margin-bottom:.2rem">Logistics</div>
-          <div>Payment due <strong>Apr 1</strong></div>
-          <div style="color:var(--muted);font-size:.75rem">Atlanta Hilton · $260/night · 4/room</div>
-          <div style="font-size:.75rem;margin-top:.3rem">Coordinate flights + rooming with other CCPS advisors</div>
-          <div style="font-size:.75rem;font-weight:700;margin-top:.3rem">Apr 25–29 · Atlanta, GA</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:.5rem;margin-top:.65rem;flex-wrap:wrap">
-        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'students')" style="font-size:.75rem;background:var(--navy);color:#fff;border:none">✉️ Email Qualifiers</button>
-        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'parents')" style="font-size:.75rem;background:var(--navy);color:#fff;border:none">✉️ Email Families</button>
-        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'school')" style="font-size:.75rem;background:var(--navy);color:#fff;border:none">✉️ Notify Admin</button>
-        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'faculty')" style="font-size:.75rem;background:var(--navy);color:#fff;border:none">✉️ Notify Faculty</button>
-      </div>
-    </div>` : '';
-
-  // ── Season record cards ───────────────────────────────────────────────────
-  const seasonCards = `
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.75rem">
-      <div class="card" style="background:var(--navy);color:#fff;border:none">
-        <div style="font-size:.75rem;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:1px">Ultimate Power Trip · Nov 21–23</div>
-        <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">13 students traveled</div>
-        ${row('Location','Renaissance Arlington Capital View')}
-        ${row('Transport','Amtrak from Staples Mills + Rental')}
-        ${row('Chaperones','Advisor + 1 co-chaperone')}
-        ${row('Cost','~$250/student')}
-        ${row('Account','DECA 4280')}
-      </div>
-      <div class="card" style="background:var(--navy);color:#fff;border:none">
-        <div style="font-size:.75rem;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:1px">District Leadership Conference · Dec 3</div>
-        <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">15 students competed</div>
-        ${row('Location','Chesterfield Towne Center')}
-        ${row('Transport','Parent Transportation (1 vehicle)')}
-        ${row('Students','9F / 6M · 23 invited')}
-        ${row('Chaperones','Advisor + 1 co-chaperone')}
-        ${row('Cost','$0 (included w/membership)')}
-        ${row('Job interview topic','Ice Cream Innovator @ Sweet Scoops')}
-      </div>
-      <div class="card" style="background:var(--navy);color:#fff;border:none">
-        <div style="font-size:.75rem;color:rgba(255,255,255,.75);text-transform:uppercase;letter-spacing:1px">State Leadership Conference · Feb 27–Mar 1 ⏳</div>
-        <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">15 students · RESULTS PENDING</div>
-        ${row('Location','Virginia Beach Convention Center')}
-        ${row('Housing','Hampton Inn North Oceanfront, $171/night, 4/room')}
-        ${row('Transport','Winn Charter · ~$70/student')}
-        ${row('Chaperones','Advisor + 1 co-chaperone')}
-        ${row('Students','8F / 7M · 30 invited')}
-      </div>
-    </div>`;
-
-  // ── Key contacts ──────────────────────────────────────────────────────────
-  // FIXED (external product review, Finding 9): reads from getKeyContacts()
-  // (localStorage, per-browser) instead of a hardcoded array of real
-  // people's contact info — see that function's own comment above for how
-  // to populate it locally. Empty by default; the empty-state message
-  // below only ever shows in a fresh checkout that hasn't done that yet.
+  // ── Key contacts and the chapter reference: the advisor's own, edited
+  // here (✏️ Edit, one line each), saved to the server's copy like every
+  // setting, never in source.
+  const editBtn = (kind) => `<button class="btn btn-outline btn-sm" style="font-size:.75rem;margin-bottom:.5rem" onclick="openDecaListEditor('${kind}')">✏️ Edit</button>`;
   const keyContactsList = getKeyContacts();
-  const contacts = !keyContactsList.length
-    ? `<div style="font-size:.75rem;color:var(--muted);padding:.5rem 0">No key contacts saved yet in this browser. See the comment above getKeyContacts() in source for how to add your own — never committed, local to this browser only.</div>`
-    : `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem">
+  const contacts = editBtn('contacts') + (!keyContactsList.length
+    ? `<div style="font-size:.75rem;color:var(--muted);padding:.5rem 0">No key contacts yet. Tap ✏️ Edit and add one per line: Name | Role | Phone | Email.</div>`
+    : `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.5rem">
     ${keyContactsList.map(c => `<div style="border:1px solid var(--border);border-radius:8px;padding:.6rem;background:var(--surface)">
       <div style="font-weight:700;font-size:.78rem">${escH(c.name)}</div>
       <div style="font-size:.75rem;color:var(--muted);margin:.1rem 0">${escH(c.role)}</div>
       ${c.phone && c.phone !== '—' ? `<div style="font-size:.75rem">📞 ${escH(c.phone)}</div>` : ''}
       ${c.email && c.email !== '—' ? `<div style="font-size:.75rem">✉️ ${escH(c.email)}</div>` : ''}
     </div>`).join('')}
-  </div>`;
-
-  // ── Chapter reference ──────────────────────────────────────────────────────
-  const refInfo = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
-    <div>
-      <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px">Fee Schedule (25–26)</div>
-      ${[
-        ['Membership','$20 — accepted all year'],
-        ['State dues','$2 to the district DECA contact — due Nov 1'],
-        ['DLC','$0 (with paid membership)'],
-        ['Ultimate Power Trip','~$250/student'],
-        ['SLC','$350/student (w/Friday dinner option: $165 conf + housing + bus)'],
-        ['SLC — Conf Only','$135/student'],
-        ['SLC — w/Fri Dinner','$165/student'],
-        ['SLC — Chaperone Judge','$75 (note: $60 fee if chaperone no-shows judging)'],
-        ['SLC — Sat Meal Add-On','$35/person (optional; whole chapter must match)'],
-        ['ICDC Registration','$155/student (payment due Apr 1)'],
-        ['ICDC Total Est.','~$1,000/student'],
-        ['ICDC Housing','Atlanta Hilton · $260/night · 4/room'],
-      ].map(([l,v]) => row(l,v)).join('')}
-    </div>
-    <div>
-      <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px">Key Rules & Deadlines</div>
-      ${[
-        ['Membership Form','Due Dec 1 — submit verified roster to the CTE coordinator'],
-        ['Membership Dues','$2 to the district DECA contact by Nov 1'],
-        ['Team Event Limit','1–150 members: 4 teams · 151–300: 6 · 301+: 8 · max 2/category'],
-        ['Annual Report','Register at same time as SLC — can\'t add later'],
-        ['SLC Test Threshold','70%+ required for ICDC eligibility'],
-        ['SLC → ICDC Qualify','Top 8 + possible bumps to Top 10'],
-        ['ICDC Field Trip Lead','45 days for out-of-state overnight'],
-        ['ICDC 45-day Deadline','~March 11 for Apr 25 departure'],
-        ['ICDC Reg Window','March 2–13'],
-        ['ICDC Pay Due','April 1'],
-        ['ICDC Rooming Rule','4 to a room — advisors, adults AND students'],
-        ['Chapter Account','DECA — 4280'],
-      ].map(([l,v]) => row(l,v)).join('')}
-    </div>
-  </div>`;
+  </div>`);
+  const refList = getChapterReference();
+  const refInfo = editBtn('reference') + (!refList.length
+    ? `<div style="font-size:.75rem;color:var(--muted);padding:.5rem 0">No chapter reference yet. Tap ✏️ Edit and add one per line: Label | Value (fees, rules, deadlines for this season).</div>`
+    : refList.map(r => row(escH(r.label), escH(r.value))).join(''));
 
   el.innerHTML =
-    icdcAlert +
-    card('25–26 Season Timeline', '📅', timeline) +
+    card(escH(DECA_SEASON.title || 'Season Timeline'), '📅', timeline) +
     card('📋 Admin Approval Checklist — CCPS Required Forms', '🏛️', renderDecaApprovalChecklist(), true) +
     `<div style="margin-bottom:.75rem">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
-        <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1rem;letter-spacing:1.5px;color:var(--navy)">📊 Season Record</div>
+        <div style="font-family:'Bebas Neue',Impact,'Arial Narrow',sans-serif;font-size:1rem;letter-spacing:1.5px;color:var(--navy)">✉️ Email the Chapter</div>
         <div style="display:flex;gap:.35rem;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" style="font-size:.75rem" onclick="openEmailComposer(null,'students')">✉️ Email All Students</button>
           <button class="btn btn-outline btn-sm" style="font-size:.75rem" onclick="openEmailComposer(null,'parents')">✉️ Email All Families</button>
@@ -744,13 +635,56 @@ function renderDECAHub() {
           <button class="btn btn-outline btn-sm" style="font-size:.75rem" onclick="openEmailComposer(null,'faculty')">✉️ Email Faculty</button>
         </div>
       </div>
-      ${seasonCards}
     </div>` +
     card('🏅 Competitive Results', '📈', renderDecaResults()) +
     card('Key Contacts', '📞', contacts) +
     card('Chapter Reference — Fees, Rules & Deadlines', '📋', refInfo);
 }
 
+
+// The key contacts and chapter reference editor: one line per entry, fields
+// split on "|". Saving an empty box clears the list.
+const DECA_LIST_KINDS = {
+  contacts:  { title: 'Key Contacts', fields: ['name', 'role', 'phone', 'email'], get: () => getKeyContacts(), save: (l) => saveKeyContacts(l) },
+  reference: { title: 'Chapter Reference', fields: ['label', 'value'], get: () => getChapterReference(), save: (l) => saveChapterReference(l) },
+};
+function decaListToText_(kind, list) {
+  const k = DECA_LIST_KINDS[kind];
+  return (list || []).map(o => k.fields.map(f => String(o[f] || '').trim()).join(' | ')).join('\n');
+}
+function decaListFromText_(kind, text) {
+  const k = DECA_LIST_KINDS[kind];
+  return String(text || '').split(/\r?\n/).map(l => l.trim()).filter(Boolean).map(l => {
+    const parts = l.split('|').map(p => p.trim());
+    const o = {};
+    k.fields.forEach((f, i) => { o[f] = i < k.fields.length - 1 ? (parts[i] || '') : parts.slice(i).join(' | '); });
+    return o;
+  });
+}
+function openDecaListEditor(kind) {
+  const k = DECA_LIST_KINDS[kind];
+  document.getElementById('deca-list-editor')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'deca-list-editor';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:640px;width:92%;border-radius:12px;padding:1.5rem;max-height:85vh;overflow-y:auto">
+    <div style="font-weight:800;margin-bottom:.4rem">Edit ${escH(k.title)}</div>
+    <div style="font-size:.76rem;color:var(--muted);margin-bottom:.6rem">One per line: ${k.fields.join(' | ')}. Saved to your Google account through this web app.</div>
+    <textarea id="deca-list-text" style="width:100%;height:240px;font-size:.8rem;border:1px solid var(--border);border-radius:8px;padding:.6rem">${escH(decaListToText_(kind, k.get()))}</textarea>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem">
+      <button class="btn btn-outline" onclick="this.closest('#deca-list-editor').remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDecaListEditor('${kind}')">Save</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('deca-list-text').focus();
+}
+function saveDecaListEditor(kind) {
+  DECA_LIST_KINDS[kind].save(decaListFromText_(kind, document.getElementById('deca-list-text').value));
+  document.getElementById('deca-list-editor').remove();
+  renderDECAHub();
+  _showToast('✅ ' + DECA_LIST_KINDS[kind].title + ' saved');
+}
 
 // ── DECA Competitive Results Board ────────────────────────────────────────────
 const DECA_RESULT_EVENTS = [

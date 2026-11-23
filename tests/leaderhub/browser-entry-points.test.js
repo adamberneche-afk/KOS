@@ -26,7 +26,7 @@ const { findGoogleScriptRunCalls } = require('../../tools/gas-lint/check.js');
 
 const LH = path.join(__dirname, '..', '..', 'leader-hub');
 const FILES = ['Code.gs', 'EmailBridge.gs', 'Config.gs', 'Data.gs', 'SCR.gs'].map((f) => path.join(LH, f));
-const ENTRY_POINTS = ['lhApiCall', 'lhGetHorizonItems', 'lhGetAllConfig', 'lhSaveConfig',
+const ENTRY_POINTS = ['lhApiCall', 'lhGetAllConfig', 'lhSaveConfig',
   'lhPushData', 'lhPullData', 'lhSaveScrScores', 'lhOrgSyncCall'];
 // Called by ?diag=1's page (Diagnostics.gs), not the app: since 2026-10-22
 // the app gets its settings with the boot data.
