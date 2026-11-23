@@ -941,7 +941,7 @@ function saveChapterReference(list) { LS.set('lh_chapter_reference', list || [])
 function _applyProfileToStaticDOM() {
   const decaSub = document.getElementById('deca-hub-subtitle');
   if (decaSub && (typeof activeOrgId === 'undefined' || activeOrgId === 'deca')) {
-    decaSub.textContent = `${PROFILE.school} · 25–26 Season · All data sourced from Google Drive`;
+    decaSub.textContent = `${PROFILE.school} · ${(typeof DECA_SEASON !== 'undefined' && DECA_SEASON.year) || DECA_SEASON_YEAR} Season · All data sourced from Google Drive`;
   }
   // Only DECA's own subtitle is PROFILE-bound here — a non-DECA org's
   // subtitle is set by _populateMemberFormForOrg() instead, and would be

@@ -25,6 +25,14 @@ its history.
 This file holds the current plan of record's era; `node tools/archive/search.js --entries`
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
+## The DECA hub's title and registration email name the season's year, 2026-11-23
+
+The hub's subtitle said "25–26 Season", typed into both the page markup and
+`_applyProfileToStaticDOM()`, and the members' registration email asked for
+registration "for the 25-26 season". Both now read the season's year
+(`DECA_SEASON.year`, else `DECA_SEASON_YEAR`), and saving or loading a season
+retitles the hub at once.
+
 ## A passing error never replaces LeaderHub's own spreadsheets, 2026-11-23
 
 `_getLhDataSpreadsheet_` (Data.gs), the AI queue's and Org Sync's sheets
