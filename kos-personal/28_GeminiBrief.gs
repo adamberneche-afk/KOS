@@ -92,6 +92,8 @@ function geminiBriefBlocks_(primerBlocks, decisions, words, stampTime) {
   if (onboarding) out.push({ kind: 'p', text: text(onboarding) });
   const debt = find(/^Moral debt:/);
   out.push({ kind: 'p', text: debt ? text(debt) : 'Moral debt: unknown (not in the primer).' });
+  const streak = find(/^Relational streak:/);
+  if (streak) out.push({ kind: 'p', text: text(streak) });
   out.push({ kind: 'h2', text: vectorHeading ? text(vectorHeading) : 'Vector State (unknown)' });
   after('Vector State').forEach((b) => out.push({ kind: b.kind === 'li' ? 'li' : 'p', text: text(b) }));
   out.push({ kind: 'p', text: quality ? text(quality) : 'Data Quality Status: unknown (not in the primer).' });

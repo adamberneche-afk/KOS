@@ -83,6 +83,7 @@ items from the Apps Script editor's **Run** menu instead:
 | `installStudioReturnTrigger` | Installs `harvestStudioReturns` every 5 minutes on an instance deployed before `12_StudioReturnHarvest.gs` existed (`setupAllTriggers` installs it on a fresh deploy); safe to run again. Not on the menu |
 | `runKosPersonalPreflightNow` | Runs `runKosPersonalPreflight()` and shows (or, standalone, logs) how many checks passed; the Preflight tab has the detail. Not on the menu |
 | `previewMoralDebt` / `resetMoralDebt` | SMP-019's moral debt counter (`23_MoralDebt.gs`): the primer's line, changing nothing; or set the counter to 0 from now. Not on the menu |
+| `previewRelationalStreak` | ALIGNMENT Threshold B's streak (`23_MoralDebt.gs`): the primer's `Relational streak:` line, changing nothing |
 | `getKOSCalibration` | Reads one calibration weight (a Script Property) by key; logs `[CALIBRATION_MISSING]` if it isn't set. Not on the menu, and nothing calls it: a check by hand after `setupCalibration` |
 | `installStudioInputTrigger`, `installClassifyBackfillTrigger` | Catch-up installers: the 1-minute Studio input trigger on an instance deployed before `13_StudioInputBuilder.gs`; the classify backfill's trigger (`20`), which drains it a batch at a time. Both are safe to run again |
 | `checkFlowPrompts` | Read-only: whether the FlowPrompts tab matches what the code would write now (`16`) |

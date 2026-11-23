@@ -1011,9 +1011,11 @@ function generateDailyPrimer() {
     const blocks = _primerBlocks_(_onboardingStatusLine_(props), vision, vectorState, shadowState, quality);
     // SMP-019: the moral debt counter, under the onboarding line (23_MoralDebt.gs).
     blocks.splice(1, 0, { kind: 'p', text: moralDebtLine_(props, now) });
+    // Threshold B's streak, under it (23_MoralDebt.gs).
+    blocks.splice(2, 0, { kind: 'p', text: relationalStreakLine_(props) });
     // The randomized fidelity check (27_FidelitySample.gs): what's waiting, on
     // whom. A failure here is reported and never holds back the primer.
-    let at = 2;
+    let at = 3;
     try { blocks.splice(at, 0, { kind: 'p', text: fidelityLine_(now) }); at++; } catch (fsErr) {
       _reportError('generateDailyPrimer:fidelity', fsErr, null);
     }

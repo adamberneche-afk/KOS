@@ -254,6 +254,10 @@ function _afterSessionLogQueued_(logUUID, rawText, source, name) {
   try { recordMoralDebt_(rawText, new Date()); } catch (mdErr) {
     _reportError(source + ':moralDebt:' + name, mdErr, null);
   }
+  // Threshold B's streak: the closeout's relational check-in, yes or no.
+  try { recordRelationalCheckIn_(rawText, new Date()); } catch (rcErr) {
+    _reportError(source + ':relational:' + name, rcErr, null);
+  }
   // The randomized fidelity draw (27_FidelitySample.gs), after the RTP
   // wrote the log, so it can't know which logs are checked.
   try { sampleSessionLogForFidelity_(logUUID, rawText, new Date()); } catch (fsErr) {
