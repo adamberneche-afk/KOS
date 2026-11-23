@@ -1,79 +1,14 @@
 // ══════════════════════════════════════════════════════════════════════════════
 // EMAIL BRIDGE INTEGRATION
-// Polls the Apps Script Web App endpoint for action items from forwarded emails.
-// Items land in HORIZON lists (and DEADLINES if a date was extracted).
-// Polls on boot + every 10 min, same-origin (the app is the web app).
-// ══════════════════════════════════════════════════════════════════════════════
+// The bridge is this web app itself (AI drafting, sub plans, brag mail,
+// Organization Sync). Gmail-sourced horizon items were retired 2026-11-23.
+// ═══════════════════════════════════════════════════════
 
 const EMAIL_BRIDGE = {
   // This web app's own URL, from the server (Data.gs's lhBootData_). It
   // used to be typed in as the "Email Bridge URL" for the standalone file,
   // retired 2026-10-22; Organization Sync's share codes still carry it.
   url() { return (typeof LH_BOOT !== 'undefined' && LH_BOOT && LH_BOOT.appUrl) || null; },
-
-  async poll() {
-    if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
-    let data;
-    try {
-      data = await new Promise((resolve, reject) => {
-        google.script.run
-          .withSuccessHandler(resolve)
-          .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-          .lhGetHorizonItems();
-      });
-    } catch (e) {
-      console.warn('[EmailBridge] Poll failed:', e.message);
-      return;
-    }
-    if (!data.ok || !data.items || !data.items.length) return;
-
-    const consumed = [];
-    let addedH = 0, addedD = 0;
-
-    data.items.forEach(item => {
-      const h = ['short','mid','long'].includes(item.horizon) ? item.horizon : 'mid';
-      const alreadyH = ['short','mid','long'].some(b => HORIZON[b].some(x => x.id === item.id));
-      if (!alreadyH) {
-        HORIZON[h].unshift({ id: item.id, text: '\u{1F4E7} ' + item.text, done: false, source: 'email' });
-        addedH++;
-      }
-      if (item.deadlineDate && /^\d{4}-\d{2}-\d{2}$/.test(item.deadlineDate)) {
-        if (!DEADLINES.some(d => d.id === item.id)) {
-          DEADLINES.push({ id: item.id, title: item.text.substring(0,80), date: item.deadlineDate, role: item.role || 'general' });
-          addedD++;
-        }
-      }
-      consumed.push(item.id);
-    });
-
-    LS.set('lh_horizon', HORIZON);
-    LS.set('lh_deadlines', DEADLINES);
-
-    if (consumed.length) {
-      try {
-        // Routed through callGAS(), like every other server call. Historical
-        // note from the retired fetch() path: this used to send
-        // {consumed:[...]} with no `action` field (server always fell
-        // through to "Unknown action" and never persisted anything — items
-        // marked done here would reappear on every poll forever), and a
-        // 'Content-Type':'application/json' header (triggers a CORS
-        // preflight Apps Script Web Apps don't answer) — both fixed by
-        // routing through the same shared, already-correct call path.
-        const result = await callGAS('markConsumed', { ids: consumed }).catch(() => null);
-        if (!result || !result.ok) {
-          console.warn('[EmailBridge] Mark-consumed rejected by server:', result && result.error);
-        }
-      } catch (e) { console.warn('[EmailBridge] Mark-consumed failed:', e.message); }
-    }
-
-    if (addedH > 0 || addedD > 0) {
-      renderHorizons();
-      if (typeof renderDeadlines === 'function') renderDeadlines();
-      if (typeof refreshNextAction === 'function') refreshNextAction();
-      emailBridgeToast_(addedH, addedD);
-      console.log('[EmailBridge] Added ' + addedH + ' horizon items, ' + addedD + ' deadlines.');
-    }
-  },
 };
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -483,17 +418,6 @@ function _showCasCcpsRosterReport_(report) {
     </div>
   </div>`;
   document.body.appendChild(modal);
-}
-
-function emailBridgeToast_(h, d) {
-  const old = document.getElementById('eb-toast'); if (old) old.remove();
-  const total = h + d;
-  const el = document.createElement('div');
-  el.id = 'eb-toast';
-  el.innerHTML = '<span style="font-size:1.1rem">\u{1F4E7}</span><div><div style="font-weight:700;font-size:.82rem">' + total + ' item' + (total===1?'':'s') + ' from email</div><div style="font-size:.75rem;color:rgba(255,255,255,.75)">' + h + ' horizon' + (d ? ' \u00b7 ' + d + ' deadline' + (d===1?'':'s') : '') + '</div></div><button onclick="document.getElementById(\'eb-toast\').remove()" style="background:none;border:none;color:rgba(255,255,255,.75);font-size:1rem;cursor:pointer;margin-left:.5rem">\u2715</button>';
-  Object.assign(el.style, { position:'fixed', bottom:'1.5rem', right:'1.5rem', background:'#0f2044', color:'#fff', borderRadius:'10px', padding:'.75rem 1rem', display:'flex', alignItems:'center', gap:'.6rem', boxShadow:'0 4px 20px rgba(0,0,0,.3)', zIndex:'9999', fontSize:'.84rem' });
-  document.body.appendChild(el);
-  setTimeout(() => { if (document.getElementById('eb-toast')) el.remove(); }, 8000);
 }
 
 function updateEmailBridgeBadge_() {
@@ -2863,9 +2787,6 @@ try {
     if (h && b) { h.classList.add('open'); b.classList.add('open'); }
   }
 } catch (e) {}
-// Email bridge: poll on boot, then every 10 minutes
-EMAIL_BRIDGE.poll();
-setInterval(() => EMAIL_BRIDGE.poll(), 10 * 60 * 1000);
 // No catch-up calls here: the page arrives with the server's current data
 // (window.__LH_BOOT__, no browser storage Phase 3).
 // Initialize badge state

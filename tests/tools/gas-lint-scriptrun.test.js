@@ -178,6 +178,6 @@ test('leader-hub\'s multi-line chains are covered', () => {
   const got = [...new Set(found.calls.map((c) => c.name))].sort();
   // No lhGetAllConfig/lhGetScrScores since 2026-10-22: the page gets that
   // data with doGet()'s boot data.
-  assert.deepEqual(got, ['lhApiCall', 'lhGetHorizonItems',
+  assert.deepEqual(got, ['lhApiCall',
                          'lhOrgSyncCall', 'lhPullData', 'lhPushData', 'lhSaveConfig', 'lhSaveScrScores']);
 });

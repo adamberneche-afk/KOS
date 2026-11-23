@@ -25,17 +25,15 @@ const DATA_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'Data.gs');
 function load() {
   return loadGasFiles([DATA_PATH, EMAILBRIDGE_PATH], [
     'pushOrgSync_', 'pullOrgSync_', 'listOrgSyncs_',
-    'queueAiJob_', 'checkAiJob_', 'markConsumed_',
-    'scanHorizonLabel_', 'createBragDraft_',
+    'queueAiJob_', 'checkAiJob_', 'createBragDraft_',
   ]);
 }
 
 // GmailApp is deliberately absent from the shared harness (gas-sandbox.js's
 // own header) — calling it without a mock throws ReferenceError, by design,
 // so a missing OAuth scope is caught by a test rather than a live consent
-// prompt. This repo's only real GmailApp caller (scanHorizonLabel_(), used
-// to have its own mock here) is currently disabled (see its own tests
-// below) and calls no Gmail API at all, so no such mock is needed anymore.
+// prompt. LeaderHub calls no Gmail API (its Gmail horizon scanner was
+// retired 2026-11-23), so no such mock is needed.
 
 // ── Organization Sync: push / pull / list ─────────────────────────────────
 
@@ -248,47 +246,6 @@ test('checkAiJob_ returns NOT_FOUND for an unknown jobId', () => {
 test('checkAiJob_ requires a jobId', () => {
   const { exported } = load();
   assert.equal(exported.checkAiJob_({}).ok, false);
-});
-
-// ── markConsumed_ (horizon-item dedup) ─────────────────────────────────────
-
-test('markConsumed_ caps the stored id list at 300 entries so it never exceeds PropertiesService\'s per-value limit', () => {
-  const { exported, sandbox } = load();
-  exported.markConsumed_(Array.from({ length: 250 }, (_, i) => 'first-' + i));
-  exported.markConsumed_(Array.from({ length: 100 }, (_, i) => 'second-' + i));
-
-  const stored = JSON.parse(sandbox.PropertiesService.getScriptProperties().getProperty('consumed') || '[]');
-  assert.ok(stored.length <= 300, `expected <=300 stored ids, got ${stored.length}`);
-  // the most RECENT ids must be the ones kept, not the oldest
-  assert.ok(stored.includes('second-99'));
-  assert.ok(!stored.includes('first-0'));
-});
-
-test('markConsumed_ with an empty list is a no-op', () => {
-  const { exported } = load();
-  assert.deepEqual(exported.markConsumed_([]), { ok: true, consumed: 0 });
-});
-
-// ── scanHorizonLabel_ ──────────────────────────────────────────────────────
-// See this function's own header in EmailBridge.gs: disabled again (round 5
-// of this repo's long OAuth-consent-dialog-crash investigation) after a live
-// redeploy of the split+hoisted fix AND round 4's gmail.compose removal
-// still crashed identically. This project currently requests zero Gmail
-// scope, so the function no longer touches GmailApp at all -- these tests
-// assert exactly that, using the plain load() helper (no GmailApp mock
-// needed, unlike before): scanHorizonLabel_() must work even with NO
-// GmailApp global present at all, proving it has zero Gmail dependency
-// right now.
-
-test('scanHorizonLabel_: disabled -- always returns an empty list, without needing GmailApp at all', () => {
-  const { exported } = load();
-  assert.deepEqual(exported.scanHorizonLabel_(), []);
-});
-
-test('scanHorizonLabel_: ignores arguments and script properties -- there is no logic left to feed', () => {
-  const { exported, sandbox } = load();
-  sandbox.PropertiesService.getScriptProperties().setProperty('consumed', JSON.stringify(['anything']));
-  assert.deepEqual(exported.scanHorizonLabel_(), []);
 });
 
 // ── createBragDraft_ ───────────────────────────────────────────────────────

@@ -18,9 +18,9 @@ defaults, matching the same "fresh adopter fills in Settings" pattern
   hardcoded array of ~8 real people's names/phones/emails. Now reads from
   `getKeyContacts()`/`saveKeyContacts()` (`lh_keyContacts`, same convention
   as `PROFILE`: then localStorage, now a server config key), shipping
-  empty by default. Populate your own list once via the browser console —
-  see that function's own comment in source for the exact call. Never
-  committed; saved only to your own deployment's Script Properties.
+  empty by default. Edit it on the DECA hub (✏️ Edit, one per line: Name |
+  Role | Phone | Email; since 2026-11-23). Never committed; saved only to
+  your own deployment's Script Properties.
 
 `EmailBridge.gs`'s `CONFIG.defaultBragTo` and `drive-tools/LH_DriveDocSplitter.gs`'s
 four `sourceDocId` values got the same treatment — blanked/placeholder'd

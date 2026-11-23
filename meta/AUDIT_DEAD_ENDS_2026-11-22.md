@@ -60,10 +60,10 @@ operator), *proposed* (suggested, never approved).
 | 2.8 | **ALIGNMENT threshold B has no data** | B is "three sessions in a row with no relational check-in"; the log's relational line is never parsed and the primer carries no streak (moral debt, by contrast, is counted) | counted (operator, 11-23; #564) |
 | 2.9 | **The Calibration Silo folders** (`ID_04_*`) | Written by the Registrar and the CE-tag router; read by nothing, code or RTP | a sheet, one row per block (operator, 11-23; #563) |
 | 2.10 | **Registrar routing** | Every routed draft lands in `06_CLASSROOM_ASSETS`' root; "pending a real per-type routing rule" | proposed |
-| 2.11 | **LeaderHub key contacts** | `saveKeyContacts` (src/05) is never called: the list can be filled only from the console; the empty state still says "in this browser" | decide: a form, or retire |
-| 2.12 | **LeaderHub horizon items** **(checked)** | `scanHorizonLabel_()` returns `[]`; the page polls it and shows "temporarily off" | decide |
+| 2.11 | **LeaderHub key contacts** | `saveKeyContacts` (src/05) is never called: the list can be filled only from the console; the empty state still says "in this browser" | an editor on the DECA hub (operator, 11-23; #565) |
+| 2.12 | **LeaderHub horizon items** **(checked)** | `scanHorizonLabel_()` returns `[]`; the page polls it and shows "temporarily off" | retired (operator, 11-23; #565) |
 | 2.13 | **LeaderHub's "5 Ideas per Work Area" modal** | 25 idea cards from Settings, some now built; `surveyAnswers` unused | retired (#558) |
-| 2.14 | **LeaderHub's Trips "Chapter Reference"** | Last season's trips typed into the page, "RESULTS PENDING" | fix or retire |
+| 2.14 | **LeaderHub's Trips "Chapter Reference"** | Last season's trips typed into the page, "RESULTS PENDING" | removed (operator, 11-23; #565) |
 
 ### 3. Public functions nothing calls
 

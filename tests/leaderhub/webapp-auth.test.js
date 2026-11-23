@@ -63,7 +63,7 @@ function sessionAs(email) {
 
 test('_isOwnerOnlyAction_: every non-Organization-Sync action is owner-only', () => {
   const { exported } = load();
-  ['subPlan', 'bragEmail', 'markConsumed', 'aiDraft', 'checkAiJob', 'flowHealth', 'listOrgSyncs']
+  ['subPlan', 'bragEmail', 'aiDraft', 'checkAiJob', 'flowHealth', 'listOrgSyncs']
     .forEach((action) => assert.equal(exported._isOwnerOnlyAction_(action), true, action));
 });
 

@@ -61,8 +61,8 @@ split, before any live test, which is the likeliest reason the split
   available on that machine.
 
 **Current state:** zero Gmail scope in `appsscript.json` (7 scopes, none
-Gmail); `createBragDraft_()` sends via `MailApp.sendEmail()`;
-`scanHorizonLabel_()` returns `[]` without calling GmailApp; the assembled
+Gmail); `createBragDraft_()` sends via `MailApp.sendEmail()`; nothing calls GmailApp
+(the Gmail horizon scanner was retired 2026-11-23); the assembled
 file carries 17 `<script>` blocks (the small error handler plus 16 parts
 of the main script, each under 70,000 characters).
 

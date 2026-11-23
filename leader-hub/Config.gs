@@ -31,6 +31,7 @@ const LH_CONFIG_KEYS = [
   'lh_custom_orgs',
   'lh_custom_courses',
   'lh_keyContacts',
+  'lh_chapter_reference',
   'lh_student_id_map',
   'lh_cas_ccps_api_url',
   'lh_cas_ccps_oauth_client_id',
