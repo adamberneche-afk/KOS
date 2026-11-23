@@ -226,3 +226,24 @@ test('the canary passes with the flow stubbed, says so, and leaves no fixture be
   assert.ok(c.steps.some((s) => /STUBBED/.test(s.name)));
   assert.equal(rows(env.ledger).length, 1);
 });
+
+// The Calibration Silo is a sheet (operator, 2026-11-23): one CALIBRATION_SILO
+// row per persona block of a routed draft, not a JSON doc per draft per folder.
+test('a routed draft adds one CALIBRATION_SILO row per persona block', () => {
+  const env = load();
+  const fileId = queueDraft(env, 'A real unit draft about pricing tickets for a minor-league ballpark promoter.');
+  env.x.runRegistrarProcessor();
+  env.x.runRegistrarMicrobatch();
+  flowAnswers(env, inputRows(env, env.x.RG_STAGE1_TAB)[0][1], STAGE1_OK);
+  env.x.runRegistrarProcessor();
+  env.x.runRegistrarMicrobatch();
+  flowAnswers(env, inputRows(env, env.x.RG_STAGE2_TAB)[0][1], STAGE2_OK);
+  env.x.runRegistrarProcessor();
+  env.x.runRegistrarProcessor();
+  assert.equal(ledgerRow(env, fileId)[2], 'COMPLETELY_ROUTED');
+  const silo = rows(env.ss.getSheetByName(env.x.CFG.CALIBRATION_SILO_SHEET));
+  assert.deepEqual(silo[0], env.x.CFG.CALIBRATION_SILO_HEADERS);
+  assert.deepEqual(silo.slice(1).map((r) => r[3]), ['ARCHITECT', 'MUSE', 'DEVELOPER', 'ALIGNER', 'RTP']);
+  assert.ok(silo.slice(1).every((r) => r[1] === fileId && r[2] === 'Unit 3 draft'));
+  assert.equal(silo[1][4], JSON.stringify({ topic: 'ticket pricing for a ballpark promoter' }));
+});

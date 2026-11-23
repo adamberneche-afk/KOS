@@ -10,8 +10,6 @@
  * GAS is the only writer; the notebook syncs the docs and the RTP Gem
  * reads them (ADR-001).
  *
- *   KOS_RECENT_SESSIONS  the last few processed sessions' summaries, plus
- *                        any older session that still has an open decision.
  *   KOS_OPEN_DECISIONS   every DECISION_REGISTER row still OPEN.
  *   KOS_CORE_FACTS       the operator-pinned Core facts (ALIGNMENT
  *                        Threshold D) and the relational targets.
@@ -45,8 +43,6 @@
  * KOS_SMP_REGISTER by link, never a copy in its knowledge.
  */
 
-const BD_RECENT_SESSIONS = 5;          // sessions shown in full in KOS_RECENT_SESSIONS
-const BD_SUMMARY_MAX_CHARS = 1500;     // per session, across its chunks
 const BD_OPEN_STATUS = 'OPEN';
 const BD_CLOSED_STATUSES = ['RESOLVED', 'DROPPED'];
 
@@ -468,77 +464,6 @@ function _bdDay_(v) {
   return String(v || '').slice(0, 10);
 }
 
-/**
- * Processed sessions from SESSION_LOG's Curator rows (one per chunk),
- * grouped by session, newest first: [{uid, lastAt, type, chunks, summary}].
- */
-function _bdSessions_(ss) {
-  const log = ss.getSheetByName(CFG.SESSION_LOG_SHEET);
-  if (!log || log.getLastRow() <= 1) return [];
-  const by = {};
-  log.getRange(2, 1, log.getLastRow() - 1, 6).getValues().forEach(function (r) {
-    if (_isIntakeSessionLogRow_(r) || !String(r[0]).trim()) return;
-    const stem = _bdSessionStem_(r[0]);
-    const s = by[stem] = by[stem] || { uid: stem, lastAt: 0, lastRaw: '', type: '', chunks: [] };
-    const t = new Date(r[1]).getTime();
-    if (!isNaN(t) && t >= s.lastAt) { s.lastAt = t; s.lastRaw = r[1]; }
-    if (r[2]) s.type = String(r[2]);
-    s.chunks.push({ uid: String(r[0]).trim(), summary: String(r[5] || '').trim() });
-  });
-  return Object.keys(by).map(function (k) {
-    const s = by[k];
-    s.chunks.sort(function (a, b) { return a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0; });
-    s.summary = _truncateWithMarker_(s.chunks.map(function (c) { return c.summary; })
-      .filter(Boolean).join(' '), BD_SUMMARY_MAX_CHARS);
-    return s;
-  }).sort(function (a, b) { return b.lastAt - a.lastAt; });
-}
-
-function _bdSessionBlocks_(s, openBySession) {
-  const out = [];
-  out.push({ kind: 'h2', text: s.uid + ' (' + (_bdDay_(s.lastRaw) || 'date unknown') + ')' });
-  out.push({ kind: 'p', text: (s.type ? 'Type: ' + s.type + '. ' : '') + 'Chunks processed: ' + s.chunks.length + '.' });
-  out.push({ kind: 'p', text: s.summary || 'No summary recorded.' });
-  const open = openBySession[s.uid] || [];
-  if (open.length) {
-    out.push({ kind: 'p', text: 'Open decisions from this session (see KOS_OPEN_DECISIONS):' });
-    open.forEach(function (d) { out.push({ kind: 'li', text: d.id + ': ' + d.decision }); });
-  }
-  return out;
-}
-
-/** KOS_RECENT_SESSIONS content. */
-function _recentSessionsBlocks_(ss) {
-  const sessions = _bdSessions_(ss);
-  const open = _bdOpenDecisions_(ss);
-  const openBySession = {};
-  open.forEach(function (d) {
-    const stem = _bdSessionStem_(d.sessionUid);
-    (openBySession[stem] = openBySession[stem] || []).push(d);
-  });
-
-  const recent = sessions.slice(0, BD_RECENT_SESSIONS);
-  const shown = {};
-  recent.forEach(function (s) { shown[s.uid] = true; });
-  const older = sessions.slice(BD_RECENT_SESSIONS).filter(function (s) { return openBySession[s.uid]; });
-
-  const out = [];
-  out.push({ kind: 'p', text: 'The ' + BD_RECENT_SESSIONS + ' most recently processed sessions, newest first, ' +
-    'then any older session that still has an open decision. Summaries come from SESSION_LOG. ' +
-    'Next steps and the full decision list live in CURRENT_STATE and KOS_OPEN_DECISIONS.' });
-  if (!recent.length) {
-    out.push({ kind: 'p', text: 'No sessions processed yet.' });
-    return out;
-  }
-  out.push({ kind: 'h2', text: 'Recent sessions' });
-  recent.forEach(function (s) { out.push.apply(out, _bdSessionBlocks_(s, openBySession)); });
-  if (older.length) {
-    out.push({ kind: 'h2', text: 'Older sessions with open decisions' });
-    older.forEach(function (s) { out.push.apply(out, _bdSessionBlocks_(s, openBySession)); });
-  }
-  return out;
-}
-
 /** KOS_OPEN_DECISIONS content. */
 function _openDecisionsBlocks_(ss) {
   const open = _bdOpenDecisions_(ss);
@@ -672,7 +597,6 @@ function _smpRegisterBlocks_(ss) {
 // ================================================================
 
 const BD_DOCS = [
-  { name: 'KOS_RECENT_SESSIONS', title: 'RECENT SESSIONS', prop: 'RECENT_SESSIONS_DOC_ID', build: '_recentSessionsBlocks_' },
   { name: 'KOS_OPEN_DECISIONS',  title: 'OPEN DECISIONS',  prop: 'OPEN_DECISIONS_DOC_ID',  build: '_openDecisionsBlocks_' },
   { name: 'KOS_CORE_FACTS',      title: 'CORE FACTS',      prop: 'CORE_FACTS_DOC_ID',      build: '_coreFactsBlocks_' },
   { name: 'KOS_SMP_REGISTER',    title: 'SMP REGISTER',    prop: 'SMP_REGISTER_DOC_ID',    build: '_smpRegisterBlocks_' },
@@ -698,7 +622,6 @@ function generateBriefingDocs_(folder, now) {
     return result;
   }
   const builders = {
-    _recentSessionsBlocks_: _recentSessionsBlocks_,
     _openDecisionsBlocks_: _openDecisionsBlocks_,
     _coreFactsBlocks_: _coreFactsBlocks_,
     _smpRegisterBlocks_: _smpRegisterBlocks_,

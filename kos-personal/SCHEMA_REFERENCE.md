@@ -226,13 +226,25 @@ Curriculum-drafts auditing pipeline ledger (`11_Registrar_CogRelay.gs`) — a se
 | C | Current_State | String | State-machine status (e.g. AWAITING_COG1, AWAITING_COG2, AWAITING_CARBON, CRITICAL_FAILURE) |
 | D | Cog_1_JSON_Output | String | Stage 1 "Auditor" Master Schema extraction |
 | E | Cog_2_JSON_Output | String | Stage 2 "Curator" verification + dissonance score |
-| F | Final_Human_Translation | String | Markdown briefing deposited into the Calibration Silo |
+| F | Final_Human_Translation | String | The Markdown briefing for the routed draft (its persona blocks go to `CALIBRATION_SILO`) |
 | G | Attempt_Tracker | Integer | Consecutive bounce-back count — 3 hits `CRITICAL_FAILURE` (`CFG.REGISTRAR_RETRY_LIMIT`) |
 | H | Error_Log | String | Bounce-back / validation error detail |
 | I | Timestamp_Intake | DateTime | When `runRegistrarIntake` picked up the file |
 | J | Timestamp_Finalized | DateTime | When the file was routed or terminally failed |
 
 Column order matches `CFG.REGISTRAR_COLS` exactly.
+
+### CALIBRATION_SILO
+
+The Calibration Silo (`11_Registrar_CogRelay.gs`): when a draft is routed, one row per Council persona block of its Stage 1 output (ARCHITECT, MUSE, DEVELOPER, ALIGNER, RTP). Headers are `CFG.CALIBRATION_SILO_HEADERS`; created on first use. Nothing in code reads it: it is the record, in one place, that the `04.x` folders used to hold as a JSON doc per draft. Fixture rows (`FIXTURE-RG-`) are never routed, so never land here.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | Deposited_At | String | When the draft was routed |
+| B | Doc_UID | String | Stage 1's `doc_uid`, or the draft's File_ID |
+| C | File_Name | String | The draft's file name |
+| D | Persona | String | ARCHITECT, MUSE, DEVELOPER, ALIGNER or RTP |
+| E | Block_JSON | String | That persona's block, as JSON (cut at 45,000 characters with a marker) |
 
 ---
 
@@ -582,8 +594,7 @@ Active_Brain_Trust_System           ← root (CFG.SYSTEM_NAME)
 | `PIVOTS_AND_LESSONS` | 03.2_Pivots_And_Lessons | Rolling lessons log — updated each session |
 | `DAILY_PRIMER_YYYY-MM-DD` | 03.1_Current_State | Daily session starter (generated 06:00 each morning) — one new file per day, kept forever as an audit trail |
 | `KOS_LATEST_PRIMER` | 03.1_Current_State | The same content as the dated primer above, but as one fixed-name doc overwritten in place every run instead of a new file each day — the integration point for anything external that watches a single Drive file for edits rather than a folder for new files (the Claude Project opens it by link; earlier, the RTP notebook used it as a source). Its doc ID is tracked in `CFG.PROP.LATEST_PRIMER_DOC_ID` so it's found by ID, not by name search, after the first run. Opens with a `Generated at:` stamp and a Data Quality block (OK or FLAGGED, and why). |
-| `KOS_RECENT_SESSIONS` | 03.1_Current_State | The five newest processed sessions' summaries, plus any older session with an open decision (`22_BriefingDocs.gs`). Like the three below it, overwritten in place under one doc ID (`CFG.PROP.RECENT_SESSIONS_DOC_ID`), with a `Generated at:` stamp under the title; written after the primer each morning and on demand by `generateBriefingDocs()` |
-| `KOS_OPEN_DECISIONS` | 03.1_Current_State | Every OPEN row of `DECISION_REGISTER` (`CFG.PROP.OPEN_DECISIONS_DOC_ID`) |
+| `KOS_OPEN_DECISIONS` | 03.1_Current_State | Every OPEN row of `DECISION_REGISTER` (`CFG.PROP.OPEN_DECISIONS_DOC_ID`). Like the two below it (`22_BriefingDocs.gs`), overwritten in place under one doc ID, with a `Generated at:` stamp under the title; written after the primer each morning and on demand by `generateBriefingDocs()` |
 | `KOS_CORE_FACTS` | 03.1_Current_State | The operator-pinned Core facts ALIGNMENT Threshold D reads, plus the relational targets (`CFG.PROP.CORE_FACTS_DOC_ID`) |
 | `KOS_SMP_REGISTER` | 03.1_Current_State | Every SMP in `SMP_REGISTER`: in force, pending, then retired (`CFG.PROP.SMP_REGISTER_DOC_ID`). The Claude Project reads it by link |
 | `PERSONA_[NAME]_V5…` | 02_Council_Alignments | AI persona calibration docs — `_copyPersonas()` copies the highest-version Drive doc for each `CFG.PERSONAS` entry (6) |
@@ -677,7 +688,7 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 |---|---|---|
 | `KOS_CHAT_WEBHOOK_URL` | `CFG.PROP.CHAT_WEBHOOK_URL` | Google Chat incoming webhook for `_sendChatAlert()` (Registrar Fail Loud Protocol, Apollo Kill-Switch). Degrades to a console.log no-op if unset |
 | `KOS_LATEST_PRIMER_DOC_ID` | `CFG.PROP.LATEST_PRIMER_DOC_ID` | Stable doc ID of `KOS_LATEST_PRIMER`. Written on the first `generateDailyPrimer()` run so later runs open the doc by ID instead of searching by name |
-| `KOS_RECENT_SESSIONS_DOC_ID`, `KOS_OPEN_DECISIONS_DOC_ID`, `KOS_CORE_FACTS_DOC_ID`, `KOS_SMP_REGISTER_DOC_ID` | `CFG.PROP.RECENT_SESSIONS_DOC_ID` etc. | Stable doc IDs of the four briefing docs, written on their first run |
+| `KOS_OPEN_DECISIONS_DOC_ID`, `KOS_CORE_FACTS_DOC_ID`, `KOS_SMP_REGISTER_DOC_ID` | `CFG.PROP.OPEN_DECISIONS_DOC_ID` etc. | Stable doc IDs of the three briefing docs, written on their first run |
 | `KOS_GEMINI_BRIEF_DOC_ID` | `CFG.PROP.GEMINI_BRIEF_DOC_ID` | Stable doc ID of `KOS_GEMINI_BRIEF` (`28_GeminiBrief.gs`), written with the primer |
 | `KOS_GEMINI_CHECK_WORDS` | `GB_WORDS_PROP` (28) | Today's three check words and their date (JSON), picked once a day; the brief's start, middle and end |
 | `VECTOR_ITEM_LABELER_LAST_RUN`, `VECTOR_DOCS_LAST_RUN` | `VI_LAST_RUN_PROP`, `VD_LAST_RUN_PROP` (25) | The last run of the Vector Item Labeler and of `compileVectorDocs_` (JSON, with what each did); `checkVectorDocs()` reports them |

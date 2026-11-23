@@ -883,7 +883,7 @@ function _getOrCreateSheet(ss, name) {
       'Cog_1_JSON_Output','Cog_2_JSON_Output','Final_Human_Translation',
       'Attempt_Tracker','Error_Log','Timestamp_Intake','Timestamp_Finalized',
     ],
-
+    [CFG.CALIBRATION_SILO_SHEET]: CFG.CALIBRATION_SILO_HEADERS,
     // ── v8.0 additions ────────────────────────────────────────
     [CFG.EXTERNAL_TELEMETRY_SHEET]: [
       'Timestamp','Title','Content','Status','Payload_UID',

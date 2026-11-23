@@ -80,7 +80,7 @@ Pre-authorization never covers deletions, external communications, or writes to 
 
 ## Turn Loop Reference · Startup brief
 
-`@Startup` builds the Morning Brief from the primer and three live reads, in one reply. The primer is regenerated daily at 06:00 by `generateDailyPrimer()` and carries the 90-day vision, onboarding status, Vector State, the Data Quality block and the Shadow Matrix calibration status. Open decisions come from `KOS_OPEN_DECISIONS`, recent sessions from `KOS_RECENT_SESSIONS`, and the operator-pinned Core facts from `KOS_CORE_FACTS`.
+`@Startup` builds the Morning Brief from the primer and three live reads, in one reply. The primer is regenerated daily at 06:00 by `generateDailyPrimer()` and carries the 90-day vision, onboarding status, Vector State, the Data Quality block and the Shadow Matrix calibration status. Recent sessions are summarized in the primer, open decisions come from `KOS_OPEN_DECISIONS`, and the operator-pinned Core facts from `KOS_CORE_FACTS`.
 
 No persona documents are loaded at startup. Each persona's document is retrieved when that persona speaks.
 
