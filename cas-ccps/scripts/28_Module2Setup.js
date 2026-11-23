@@ -35,35 +35,11 @@
 //   The dashboard shows a banner until the gap is resolved.
 //   Re-entry is always in-place — the wizard doesn't exit on deferral.
 //
-// INTEGRATION WITH SCRIPT 16:
-//   Add to onOpen() after SETUP_COMPLETE block (paste verbatim):
-//
-//     const m2PhaseA = props.getProperty("M2_SETUP_PHASE_A_COMPLETE");
-//     const m2Full   = props.getProperty("M2_SETUP_COMPLETE");
-//     const m2Ready  = props.getProperty("M2_REGISTRY_IMPORTED");
-//     menu.addSeparator();
-//     if (!m2PhaseA) {
-//       menu.addItem("📚 Set Up Lesson Intelligence (Module 2)", "runModule2Setup");
-//     } else if (!m2Ready) {
-//       menu.addItem("⚠ Module 2 — Import Competencies Required", "runModule2ImportOnly");
-//     } else if (!m2Full) {
-//       menu.addItem("📚 Module 2 Status", "showModule2Status")
-//           .addItem("🌅 Set Up Warm-Up Generation (Phase B)", "runModule2WarmUps");
-//     } else {
-//       menu.addItem("📚 Open Lesson Dashboard", "openLessonDashboard")
-//           .addItem("📊 Module 2 Status", "showModule2Status");
-//     }
-//
-//   Add at end of runTeacherSetup_() success block (paste verbatim):
-//
-//     const offerM2 = ui.alert(
-//       "📚 Set Up Lesson Intelligence?",
-//       "Module 2 automates competency alignment documentation.\n\n" +
-//       "Takes about 30 seconds. Can be done now or later from the menu.\n\n" +
-//       "Click OK to set it up now.",
-//       ui.ButtonSet.OK_CANCEL
-//     );
-//     if (offerM2 === ui.Button.OK) runModule2Setup();
+// NOT ON A MENU: runModule2Setup, runModule2ImportOnly, runModule2WarmUps,
+//   showModule2Status and openLessonDashboard run from the editor. A menu
+//   for them waits for packaging (on hold): it is for a teacher installing
+//   CAS, and this installation was set up without the wizard. The menu
+//   that was planned is in cas-ccps/HISTORY.md.
 //
 // =============================================================================
 

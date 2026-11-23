@@ -1969,3 +1969,16 @@ is made with DriveApp, 02). FormApp runs in the Student Dashboard
 (`75_FormReader.js`) and the Unified Manual's setup, whose manifests keep
 it. Narrowing a scope asks nobody to approve again; it takes effect at the
 Ledger's next push.
+
+## Module 2's menu waits for packaging, 2026-11-23
+
+The operator's decision on dead-ends audit 2.3. `28_Module2Setup.js`'s
+header carried a menu to paste into 16's `onOpen` (set up lesson
+intelligence, import competencies, warm-up setup, Module 2 status, open the
+lesson dashboard) and an offer at the end of teacher setup; neither was ever
+pasted, so the wizard runs only from the editor. It is a first-day tool for
+a teacher installing CAS, and this installation was set up without it, so
+the menu goes on hold with packaging rather than being wired or retired.
+The paste-in text is out of the header (it is in git history); the wizard
+is unchanged.
+
