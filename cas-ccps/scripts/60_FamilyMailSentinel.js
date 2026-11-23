@@ -1280,12 +1280,12 @@ function _fmsSignalDoc_() {
   const props = PropertiesService.getScriptProperties();
   const id = props.getProperty("FAMILY_SIGNAL_DOC_ID");
   if (id) {
-    try { return DocumentApp.openById(id); } catch (e) { /* recreated below */ }
+    try { return DocumentApp.openById(id); } catch (e) { // replaced only when really gone: a new doc strands the RTP's link
+      if (!/not found|no item with the given id|document is missing|does not exist/i.test(String((e && e.message) || e))) throw e;
+    }
   }
-  // Made in My Drive; move it by hand if wanted (it keeps its ID). Moving it
-  // here needed the full Drive scope beside gmail.modify, so the one project
-  // that reads a school mailbox could also read the whole Drive (KOS Audit
-  // Docket IV, 2026-10-31). FAMILY_SIGNAL_FOLDER_ID is no longer read.
+  // Made in My Drive (move it by hand; it keeps its ID): this project has no
+  // Drive scope beside gmail.modify, so it can't read or move other files.
   const doc = DocumentApp.create(FMS_SIGNAL_TITLE);
   props.setProperty("FAMILY_SIGNAL_DOC_ID", doc.getId());
   return doc;

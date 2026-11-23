@@ -40,6 +40,7 @@ const JOB_TYPES = ['EMAIL_COMPOSE', 'ARCHIVE_INSIGHTS', 'WBL_INSIGHTS',
 const FILES = [
   path.join(LH, 'Code.gs'), // _lhRequireOwner_(): the mutating functions are owner-only
   path.join(LH, 'EmailBridge.gs'),
+  path.join(LH, 'Data.gs'), // _lhOpenOwnSheet_
   path.join(LH, 'AiPrompts.gs'),
   path.join(LH, 'FlowOps.gs'),
 ];

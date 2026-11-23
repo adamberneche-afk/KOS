@@ -6,6 +6,14 @@ This file holds the current plan of record's era; `node tools/archive/search.js 
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
 
+### The transcripts folder is never replaced after a passing error (2026-11-23)
+
+`_fsFolder_` (27) made a new transcripts folder whenever the stored one
+failed to open, so a passing Drive error would point the fidelity check at
+an empty folder. It now makes one only when `_isMissingFileError_` says the
+folder is gone, as `_writeStableDoc_` does. From the count of silent catches
+across the repo (cas-ccps HISTORY, same date).
+
 ### Threshold B can fire: the relational streak (2026-11-23)
 
 The operator's decision on dead-ends audit 2.8. ALIGNMENT's Threshold B

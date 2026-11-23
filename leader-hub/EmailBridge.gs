@@ -341,7 +341,7 @@ function _getAiQueueSheet_() {
   let id = prop.getProperty(AI_QUEUE_SHEET_PROP);
   let ss;
   if (id) {
-    try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } // deleted/moved — rebuild below
+    ss = _lhOpenOwnSheet_(id, AI_QUEUE_SHEET_PROP); // null only when it is gone: made again below
   }
   if (!ss) {
     ss = SpreadsheetApp.create('LeaderHub AI Queue');
@@ -655,7 +655,7 @@ function _getOrgSyncSpreadsheet_() {
   let id = prop.getProperty(ORG_SYNC_SHEET_PROP);
   let ss;
   if (id) {
-    try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } // deleted/moved — rebuild below
+    ss = _lhOpenOwnSheet_(id, ORG_SYNC_SHEET_PROP); // null only when it is gone: made again below
   }
   if (!ss) {
     ss = SpreadsheetApp.create('LeaderHub Org Sync');

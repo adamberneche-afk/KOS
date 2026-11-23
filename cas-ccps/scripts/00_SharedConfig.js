@@ -1065,6 +1065,21 @@ function _ledgerIdFromAttachedSheet_() {
 // A part's work template setting (68's workTemplateKey): a Script Property
 // or, since 2026-11-19, a row of the Central Ledger's _CONFIG tab.
 const WORK_TEMPLATE_KEY_RE = /^WORK_TEMPLATE_[A-Z0-9_]+$/;
+// The last _CONFIG values read, in this project's Script Properties.
+const SHARED_CONFIG_LAST_GOOD_PROP = "SHARED_CONFIG_LAST_GOOD";
+function _sharedConfigRemember_(ledgerId, values) {
+  try {
+    const json = JSON.stringify({ id: ledgerId, values: values });
+    const props = PropertiesService.getScriptProperties();
+    if (json.length < 8000 && props.getProperty(SHARED_CONFIG_LAST_GOOD_PROP) !== json) props.setProperty(SHARED_CONFIG_LAST_GOOD_PROP, json);
+  } catch (e) { /* the next successful read tries again */ }
+}
+function _sharedConfigLastGood_(ledgerId) {
+  try {
+    const saved = JSON.parse(PropertiesService.getScriptProperties().getProperty(SHARED_CONFIG_LAST_GOOD_PROP) || "null");
+    return saved && saved.id === ledgerId ? saved.values : null;
+  } catch (e) { return null; }
+}
 function _readSharedConfig_(ledgerId) {
   if (_sharedConfigMemo_ && _sharedConfigMemo_.id === ledgerId) return _sharedConfigMemo_.values;
   const cacheKey = SHARED_CONFIG_CACHE_PREFIX + ledgerId;
@@ -1086,8 +1101,14 @@ function _readSharedConfig_(ledgerId) {
       try {
         CacheService.getScriptCache().put(cacheKey, JSON.stringify(values), SHARED_CONFIG_CACHE_TTL_SECONDS);
       } catch (e) { /* uncached is only slower */ }
+      _sharedConfigRemember_(ledgerId, values);
     } catch (e) {
-      values = {};
+      // Unread (a simple trigger can't open the Ledger; Google can fail): the
+      // last values read, so a switch never reads as off by accident; logged.
+      const last = _sharedConfigLastGood_(ledgerId);
+      console.warn("[Config] The Ledger's _CONFIG couldn't be read (" + e.message + "); " +
+        (last ? "using the last values read." : "none stored yet, so shared switches are unset this run."));
+      values = last || {};
     }
   }
 
@@ -1860,18 +1881,8 @@ function casTermsPanelHtml_(title, intro, entries) {
 // LEDGER — column indices (0-based) for the "Ledger" tab (cfg.tabs.ledger),
 // canonical order per registerLedger_() (02_Form1_IntakeAndWorkspaceGenerator.js).
 //
-// External product review, Finding 8: 13_StudentDashboard.js's
-// getStudentDashboardData() already builds one lookup this way correctly
-// (stagingHeaders.indexOf("StudentFileID")) sitting right next to a dozen
-// hardcoded row[N] literals reading this exact tab in the same function —
-// a real header-shift (a column inserted/reordered on the live Ledger)
-// would silently corrupt every one of those, with no error, just wrong
-// data rendered to a student or teacher. This constant object is the
-// same SCRS/SCRDL-style fix 30_SCRSuggestionEngine.js already uses for
-// its own tabs (see that file's column-index comments) — matched to
-// 13_StudentDashboard.js and 07_TeacherDashboard.js, the two files with
-// this exact pattern: several hardcoded Ledger indices read together to
-// build one dashboard-facing object.
+// Read the Ledger by these names, never by literal column numbers; a
+// column inserted on the live tab is caught by 38's checkLedgerSchema().
 //
 // TURN_IN_SUGGESTED_SCORE (column 19) is NOT written by registerLedger_
 // above — 07_TeacherDashboard.js's _ensureTurnInReviewColumns_() adds it
@@ -2447,33 +2458,11 @@ const SCRDL = {
 };
 
 // =============================================================================
-// getCompetencyTextMap_ — CacheService layer over CompetencyRegistry
-// (external product review, Finding 6, "this quarter" scaling fix).
-//
-// CompetencyRegistry maps competency_id -> competency_text: imported once
-// at setup (22b_CompetencyRegistryImporter.js) and re-imported only on a
-// deliberate admin action — read constantly (every SCR dashboard load,
-// every warm-up bridge call, every alignment log write) but changes rarely.
-// 30_SCRSuggestionEngine.js's getStudentScrStandingForCompetencies_() (and
-// the since-deleted getSCRDashboardData_()) used to each independently
-// getDataRange() + build this same map from scratch on every call. This
-// wraps that identical block once, backed by Apps Script's own
-// CacheService (a real cross-execution cache with a TTL, unlike a
-// module-level variable, which resets every fresh execution) — a cache
-// hit costs nothing beyond a JSON.parse of a small cached string, no
-// sheet read at all.
-//
-// Cache key/TTL are process-wide (CacheService.getScriptCache(), not
-// getUserCache()) — CompetencyRegistry isn't per-user data, every caller
-// in every project should see the same map. 6-hour TTL: long enough that
-// a busy day of dashboard loads costs at most one real read per 6 hours,
-// short enough that a deliberate re-import (rare, admin-only) is visible
-// well within the same day rather than needing a manual cache-bust step.
-// Falls back to a direct, uncached read on any CacheService error (e.g.
-// a value that happens to exceed CacheService's 100KB-per-key cap) rather
-// than ever throwing — same fail-open-to-slow-path discipline as this
-// file's own PropertiesService-backed caches elsewhere in this repo
-// (31_PacingGuideManager.js's per-unit pacing cache).
+// getCompetencyTextMap_: competency_id -> competency_text from
+// CompetencyRegistry, which is imported rarely (22b) and read constantly.
+// Cached project-wide in CacheService for 6 hours, so a re-import shows the
+// same day; any cache error (such as the 100KB-per-key cap) falls back to
+// an uncached read rather than throwing.
 // =============================================================================
 const COMPETENCY_REGISTRY_CACHE_KEY = "competency_registry_text_map_v1";
 const COMPETENCY_REGISTRY_CACHE_TTL_SECONDS = 6 * 60 * 60; // 6 hours

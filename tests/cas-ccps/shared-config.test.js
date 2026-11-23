@@ -464,3 +464,27 @@ test('claimRunSlot_: no lock within 5 seconds counts as taken', () => {
     { LockService: { getScriptLock: () => ({ tryLock: () => false, releaseLock() {} }) } });
   assert.equal(exported.claimRunSlot_('X_BUSY_UNTIL', 60000), false);
 });
+
+// A failed read of the Ledger's _CONFIG (a simple trigger can't open it;
+// Google can fail) uses the last values read, so a shared switch never
+// reads as off by accident (the silent-defaults audit, 2026-11-23).
+test('_readSharedConfig_: a read stores the last good values; a failed read uses them, never {}', () => {
+  const first = load(['_readSharedConfig_', 'SHARED_CONFIG_LAST_GOOD_PROP']);
+  const ledger = makeLedger(first.sandbox, [['FEEDBACK_AS_COMMENT', 'all']]);
+  first.sandbox.SpreadsheetApp._registry.set(ledger.getId(), ledger);
+  assert.equal(first.exported._readSharedConfig_(ledger.getId()).FEEDBACK_AS_COMMENT, 'all');
+  const saved = first.sandbox.PropertiesService.getScriptProperties().getProperty(first.exported.SHARED_CONFIG_LAST_GOOD_PROP);
+  assert.deepEqual(JSON.parse(saved), { id: ledger.getId(), values: { FEEDBACK_AS_COMMENT: 'all' } });
+
+  // A new execution whose open fails: the stored values, not an empty set.
+  const next = load(['_readSharedConfig_', 'SHARED_CONFIG_LAST_GOOD_PROP']);
+  next.sandbox.PropertiesService.getScriptProperties().setProperty(next.exported.SHARED_CONFIG_LAST_GOOD_PROP, saved);
+  next.sandbox.SpreadsheetApp.openById = () => { throw new Error('Service Spreadsheets failed while accessing document'); };
+  assert.equal(next.exported._readSharedConfig_(ledger.getId()).FEEDBACK_AS_COMMENT, 'all');
+
+  // Stored values for another Ledger are not used.
+  const other = load(['_readSharedConfig_', 'SHARED_CONFIG_LAST_GOOD_PROP']);
+  other.sandbox.PropertiesService.getScriptProperties().setProperty(other.exported.SHARED_CONFIG_LAST_GOOD_PROP, saved);
+  other.sandbox.SpreadsheetApp.openById = () => { throw new Error('Service Spreadsheets failed'); };
+  assert.deepEqual(JSON.parse(JSON.stringify(other.exported._readSharedConfig_('another-ledger'))), {});
+});

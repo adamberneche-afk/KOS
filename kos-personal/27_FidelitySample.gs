@@ -76,7 +76,8 @@ function _fsFolder_() {
   const props = PropertiesService.getScriptProperties();
   const id = props.getProperty(FS_FOLDER_PROP);
   if (id) {
-    try { return DriveApp.getFolderById(id); } catch (e) { /* gone: make it again */ }
+    // Made again only when it is really gone, never after a passing error.
+    try { return DriveApp.getFolderById(id); } catch (e) { if (!_isMissingFileError_(e)) throw e; }
   }
   const inboundId = props.getProperty('ID_03_5_INBOUND_SESSIONS');
   if (!inboundId) throw new Error('ID_03_5_INBOUND_SESSIONS is not set. Run deployFullSystem().');

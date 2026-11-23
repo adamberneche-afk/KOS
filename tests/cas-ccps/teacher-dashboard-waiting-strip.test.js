@@ -235,3 +235,21 @@ test('the Flow 2 light says when an answer was copied into another submission th
   const html = env.exported.buildDashboardHtml_();
   assert.match(html, /match on StagingRowRef/);
 });
+
+// The silent-defaults audit (2026-11-23): a ReviewQueue that can't be read
+// used to read as empty, so a queued student silently left the strip.
+test('an unreadable review queue is flagged, and the strip says some waiting students may be missing', () => {
+  const env = load();
+  env.props.setProperty('ADMIN_SS_ID', 'admin-sheet-that-will-not-open');
+  env.sandbox.SpreadsheetApp.openById = ((open) => (id) => {
+    if (id === 'admin-sheet-that-will-not-open') throw new Error('Service Spreadsheets failed');
+    return open(id);
+  })(env.sandbox.SpreadsheetApp.openById.bind(env.sandbox.SpreadsheetApp));
+  const d = plain(env.exported.getWaitingStrip());
+  assert.equal(d.success, true);
+  assert.equal(d.queueUnreadable, true);
+  assert.equal(d.waitingCount, 3, 'Bo, only in the unreadable queue, is not counted');
+  assert.equal(plain(load().exported.getWaitingStrip()).queueUnreadable, false);
+  const page = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'cas-ccps', 'scripts', '07_TeacherDashboardPage.html'), 'utf8');
+  assert.match(page, /d\.queueUnreadable \? esc\("The review queue couldn't be read, so some waiting students may be missing\. "\)/);
+});

@@ -149,3 +149,25 @@ test('lhBootData_ returns every domain, found or not, with each one\'s version',
   assert.ok(boot.config && 'lh_profile' in boot.config);
   assert.equal(boot.scr.found, false);
 });
+
+// The silent-defaults audit (2026-11-23): a passing error opening LeaderHub's
+// own spreadsheet used to make a new, empty one and repoint the property,
+// leaving every synced record behind. Now only a sheet that is gone is replaced.
+test('_lhOpenOwnSheet_: a passing error throws; a deleted or trashed sheet returns null', () => {
+  const { loadGasFile: lgf } = require('../harness/gas-sandbox');
+  const { exported, sandbox } = lgf(DATA_PATH, ['_lhOpenOwnSheet_', 'lhPullData_', 'LH_DATA_SHEET_PROP']);
+  sandbox.SpreadsheetApp.openById = () => { throw new Error('Service Spreadsheets failed while accessing document'); };
+  sandbox.DriveApp.getFileById = () => ({ isTrashed: () => false });
+  assert.throws(() => exported._lhOpenOwnSheet_('real-sheet', 'LH'), /Nothing was replaced/);
+  sandbox.DriveApp.getFileById = () => ({ isTrashed: () => true });
+  assert.equal(exported._lhOpenOwnSheet_('real-sheet', 'LH'), null);
+  sandbox.DriveApp.getFileById = () => { throw new Error('No item with the given ID could be found.'); };
+  assert.equal(exported._lhOpenOwnSheet_('real-sheet', 'LH'), null);
+
+  // Through a real call: the data sheet is not replaced after a passing error.
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty(exported.LH_DATA_SHEET_PROP, 'real-sheet');
+  sandbox.DriveApp.getFileById = () => ({ isTrashed: () => false });
+  assert.throws(() => exported.lhPullData_({ domain: 'trips' }));
+  assert.equal(props.getProperty(exported.LH_DATA_SHEET_PROP), 'real-sheet');
+});

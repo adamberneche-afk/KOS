@@ -263,7 +263,10 @@ function _sdaFixFile_(t, apply, result) {
 // to every doc inside.
 function _sdaFixClassFolders_(apply, result, walk) {
   let roots;
-  try { roots = DriveApp.getFoldersByName(SDA_CLASS_FOLDERS_NAME); } catch (e) { return; }
+  try { roots = DriveApp.getFoldersByName(SDA_CLASS_FOLDERS_NAME); } catch (e) {
+    _sdaStoppedEarly_(result, "class folders", "Drive couldn't list them (" + e.message + "); none were checked");
+    return;
+  }
   let rootCount = 0;
   let folderCount = 0;
   while (roots.hasNext()) {
@@ -311,7 +314,10 @@ function _sdaFixClassFolders_(apply, result, walk) {
 
 function _sdaFixExports_(apply, result, walk) {
   let files;
-  try { files = DriveApp.searchFiles('title contains "SCR Export — "'); } catch (e) { return; }
+  try { files = DriveApp.searchFiles('title contains "SCR Export — "'); } catch (e) {
+    _sdaStoppedEarly_(result, "SCR exports", "Drive couldn't list them (" + e.message + "); none were checked");
+    return;
+  }
   let count = 0;
   while (files.hasNext()) {
     if (count >= walk.maxExports) {

@@ -1202,3 +1202,26 @@ test('the safety tripwire reads through quotes, straight or curly', () => {
   }
   assert.equal(fx.exported._fmsSafetyTripwire_("The project's suicide-squeeze play"), false, 'still whole words only');
 });
+
+// The family signal doc is replaced only when it is really gone: after a
+// passing error a new doc would leave the RTP's link dead without a word,
+// as KOS_CAS_SIGNAL's was on 11-11 (the silent-defaults audit, 2026-11-23).
+test('_fmsSignalDoc_: a passing error throws and keeps the doc; a missing doc is made again', () => {
+  const { loadGasFiles } = require('../harness/gas-sandbox');
+  const { exported, sandbox } = loadGasFiles(PATHS, ['_fmsSignalDoc_']);
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('FAMILY_SIGNAL_DOC_ID', 'old-doc');
+  const realCreate = sandbox.DocumentApp.create.bind(sandbox.DocumentApp);
+  let made = 0;
+  sandbox.DocumentApp.create = (t) => { made++; return realCreate(t); };
+
+  sandbox.DocumentApp.openById = () => { throw new Error('Service Documents failed while accessing document'); };
+  assert.throws(() => exported._fmsSignalDoc_(), /Service Documents failed/);
+  assert.equal(props.getProperty('FAMILY_SIGNAL_DOC_ID'), 'old-doc', 'the stored doc is kept');
+  assert.equal(made, 0);
+
+  sandbox.DocumentApp.openById = () => { throw new Error('Document is missing (perhaps it was deleted, or you don\'t have read access?)'); };
+  exported._fmsSignalDoc_();
+  assert.equal(made, 1, 'a deleted doc is made again');
+  assert.notEqual(props.getProperty('FAMILY_SIGNAL_DOC_ID'), 'old-doc');
+});

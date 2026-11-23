@@ -13,7 +13,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const KP = path.join(__dirname, '..', '..', 'kos-personal');
-const FILES = ['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '27_FidelitySample.gs'].map((f) => path.join(KP, f));
+const FILES = ['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '6_Governance.gs', '27_FidelitySample.gs'].map((f) => path.join(KP, f));
 const LOG = 'KOS SESSION LOG — 2026-11-03 — Morning start\nSource: Claude Project\n\n[🧠 RTP — EXCHANGE 1]\n…\n\n[🧠 RTP — EXCHANGE 2]\n…';
 // What the operator pastes: the chat (which may quote an earlier draft of
 // the log), then the final log.
@@ -93,4 +93,26 @@ test('a comparison Claude Code recorded counts as compared', () => {
   t.x.sampleSessionLogForFidelity_('LOG-eeee5555', PASTE, new Date(), 0);
   t.ss.getSheetByName('FIDELITY_AUDIT').getRange(2, 5, 1, 1).setValue('COMPARED');
   assert.match(t.x.fidelityLine_(new Date()), /1 drawn \(100% of 1 logs; set to 10%\), 1 compared\.$/);
+});
+
+// The silent-defaults audit (2026-11-23): the transcripts folder is made
+// again only when it is really gone, never after a passing Drive error.
+test('_fsFolder_: a passing error throws and keeps the folder; a missing one is made again', () => {
+  const env = loadGasFiles(FILES, ['_fsFolder_', 'FS_FOLDER_PROP']);
+  const { exported: x, sandbox } = env;
+  const p = sandbox.PropertiesService.getScriptProperties();
+  const inbound = sandbox.DriveApp.getRootFolder().createFolder('03.5_INBOUND_SESSIONS');
+  sandbox.DriveApp._registerFolder(inbound);
+  p.setProperty('ID_03_5_INBOUND_SESSIONS', inbound.getId());
+  p.setProperty(x.FS_FOLDER_PROP, 'old-folder');
+  const get = sandbox.DriveApp.getFolderById.bind(sandbox.DriveApp);
+  sandbox.DriveApp.getFolderById = (id) => { if (id === 'old-folder') throw new Error('Service Drive failed'); return get(id); };
+  assert.throws(() => x._fsFolder_(), /Service Drive failed/);
+  assert.equal(p.getProperty(x.FS_FOLDER_PROP), 'old-folder', 'the stored folder is kept');
+  sandbox.DriveApp.getFolderById = (id) => {
+    if (id === 'old-folder') throw new Error('No item with the given ID could be found.');
+    return get(id);
+  };
+  x._fsFolder_();
+  assert.notEqual(p.getProperty(x.FS_FOLDER_PROP), 'old-folder', 'a folder that is gone is made again');
 });
