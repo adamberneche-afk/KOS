@@ -388,7 +388,7 @@ function runSemanticSweeper() {
     try {
       const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
       ledger   = _getOrCreateSheet(ss, 'EXECUTION_LEDGER');
-    } catch (_) {}
+    } catch (e) { console.warn('[sweepRootForExhaust] EXECUTION_LEDGER not opened (' + e.message + '); this run\'s routes are not logged there.'); }
 
     let routed = 0, skipped = 0, noTag = 0, nullId = 0, stoppedEarly = false;
     const ledgerRows = [];

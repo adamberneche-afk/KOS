@@ -450,7 +450,12 @@ function _lrCheckExports_(cfg, now, log, plan, modes) {
   }
   if (!plan || !files.length) return;
   try {
-    const exports = _lrExportsByCourse_(files);
+    const unread = [];
+    const exports = _lrExportsByCourse_(files, unread);
+    if (unread.length) {
+      log("-", "-", "-", "PROBLEM", unread.length, unread.length + " Canvas export(s) couldn't be read, so their courses " +
+        "count as having no export below: " + unread.join(", "));
+    }
     Object.keys(plan).forEach(function (course) {
       const ex = exports[course];
       const mode = (modes && modes[course]) || "SHADOW";
@@ -484,11 +489,14 @@ function _lrCheckExports_(cfg, now, log, plan, modes) {
 // { course: { titles, updated } } from the newest export of each course: the
 // course from the file's name ("..._Grades-8177...") or, failing that, from
 // its students' sections ("[74-C8177H-P01]"), the most common one.
-function _lrExportsByCourse_(files) {
+function _lrExportsByCourse_(files, unread) {
   const out = {};
   files.forEach(function (f) {
     let rows;
-    try { rows = canvasCsvRows_(f.getBlob().getDataAsString("UTF-8")); } catch (e) { return; }
+    try { rows = canvasCsvRows_(f.getBlob().getDataAsString("UTF-8")); } catch (e) {
+      if (unread) unread.push(f.getName());
+      return;
+    }
     if (!rows.length) return;
     let course = _cybCourseCode_(f.getName());
     if (!course) {

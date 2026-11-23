@@ -6,6 +6,14 @@ This file holds the current plan of record's era; `node tools/archive/search.js 
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
 
+### Three swallowed failures now say so (2026-11-23)
+
+The second pass over silent catches (cas-ccps HISTORY, same date). The
+session context (9) said nothing when the vector matrix couldn't be read, so
+the RTP couldn't tell "no data" from "not read": it now has a line saying the
+primer is unavailable this session. The exhaust sweep (6) and the onboarding
+day (3) log a failure they used to drop.
+
 ### The transcripts folder is never replaced after a passing error (2026-11-23)
 
 `_fsFolder_` (27) made a new transcripts folder whenever the stored one

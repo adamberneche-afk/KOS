@@ -458,6 +458,7 @@ function _ldocWriteLookFors_(body, a) {
   try {
     getRubricsForLesson_(ids).forEach(function (r) { rubrics[r.competency_id] = r; });
   } catch (e) {
+    Logger.log("[S66] Rubrics not read (" + e.message + "); the look-fors show the competency text only.");
     rubrics = {};
   }
   const goals = a.objectives || {};
