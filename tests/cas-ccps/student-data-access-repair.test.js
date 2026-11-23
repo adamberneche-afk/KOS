@@ -192,3 +192,15 @@ test('under the caps nothing stops early', () => {
   assert.equal(r.stoppedEarly, false);
   assert.deepEqual(r.failures, []);
 });
+
+// The silent-defaults audit (2026-11-23): a Drive listing that fails used to
+// return as if there were nothing to fix, so the check looked clean.
+test('a Drive listing that fails is reported as stopped early, never as clean', () => {
+  const fx = setup();
+  fx.sandbox.DriveApp.getFoldersByName = () => { throw new Error('Service Drive failed'); };
+  fx.sandbox.DriveApp.searchFiles = () => { throw new Error('Service Drive failed'); };
+  const r = fx.exported.runStudentDataAccessRepair_({ apply: false });
+  assert.equal(r.stoppedEarly, true);
+  assert.match(r.failures.find((f) => f.target === 'class folders').error, /STOPPED EARLY: Drive couldn't list them \(Service Drive failed\); none were checked/);
+  assert.match(r.failures.find((f) => f.target === 'SCR exports').error, /none were checked/);
+});

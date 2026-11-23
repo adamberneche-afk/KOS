@@ -718,11 +718,11 @@ function _tdWaitingStrip_(cfg, now) {
   });
   // ReviewQueue: submitted, not yet taken by the bridge.
   const queued = {};
-  let queue = [];
+  let queue = [], queueUnreadable = false;
   try {
     const adminSs = cfg.adminSsId && cfg.adminSsId !== cfg.ledgerSsId ? SpreadsheetApp.openById(cfg.adminSsId) : ss;
     queue = _tdTabRows_(adminSs, cfg.tabs.reviewQueue);
-  } catch (e) { queue = []; }
+  } catch (e) { queueUnreadable = true; }
   queue.forEach(function (r) {
     const st = String(r[5] || "").trim();
     if (st === "PENDING" || st === "STAGED") queued[String(r[2] || "").trim()] = true;
@@ -785,7 +785,7 @@ function _tdWaitingStrip_(cfg, now) {
     overMin: TD_WAIT_OVER_MIN,
     silentMin: TD_SILENT_MIN,
     waitingCount: waiting.length,
-    over: over,
+    over: over, queueUnreadable: queueUnreadable,
     health: { flow2: _tdHealthLight_(flow2, t), flow6: _tdHealthLight_(flow6, t) },
     checkedAt: formatDate_(now)
   };

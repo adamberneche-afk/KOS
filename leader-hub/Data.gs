@@ -83,12 +83,27 @@ const LH_DATA_TABS = [
 const LH_DATA_SHEET_PROP = 'LH_DATA_SHEET_ID';
 const LH_DATA_META_TAB = '_lh_data_meta'; // one row per domain: Domain, UpdatedAt, UpdatedBy
 
+// Opens a spreadsheet this project made, or returns null only when it is gone
+// (deleted, or in the trash). Any other failure, such as a passing Google
+// error, throws: making a new sheet then would leave the real one orphaned
+// and the page empty.
+function _lhOpenOwnSheet_(id, prop) {
+  try { return SpreadsheetApp.openById(id); } catch (e) {
+    let gone;
+    try { gone = DriveApp.getFileById(id).isTrashed(); } catch (e2) {
+      gone = /not found|no item with the given id|does not exist/i.test(String((e2 && e2.message) || e2));
+    }
+    if (gone) return null;
+    throw new Error("LeaderHub couldn't open its spreadsheet (" + prop + "): " + e.message + ". Nothing was replaced; try again in a minute.");
+  }
+}
+
 function _getLhDataSpreadsheet_() {
   const prop = PropertiesService.getScriptProperties();
   let id = prop.getProperty(LH_DATA_SHEET_PROP);
   let ss;
   if (id) {
-    try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } // deleted/moved — rebuild below
+    ss = _lhOpenOwnSheet_(id, LH_DATA_SHEET_PROP); // null only when it is gone: made again below
   }
   if (!ss) {
     ss = SpreadsheetApp.create('LeaderHub Data');

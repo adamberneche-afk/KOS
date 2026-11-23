@@ -249,6 +249,7 @@ run in a project, says where each value came from. `CENTRAL_LEDGER_SS_ID` is the
 | `ROSTER_CONFIG_ID` | direct | — | no | 52_CanvasRosterImport.js |
 | `SCR_RETENTION_YEARS` | direct | — | no | 30_SCRSuggestionEngine.js |
 | `SEED_UNITS` | direct | — | no | 53_AssignmentSeeder.js |
+| `SHARED_CONFIG_LAST_GOOD` | via the constant SHARED_CONFIG_LAST_GOOD_PROP | "null" | 00_SharedConfig.js | 00_SharedConfig.js |
 | `STUDENT_DATA_ACCESS_REPAIR_CURSOR` | via the constant SDA_CURSOR_PROP | — | 50_StudentDataAccess.js | 50_StudentDataAccess.js |
 | `TEACHER_MATRIX_SS_ID` | direct | — | no | 33_ArtifactCompetencyBridge.js |
 | `WARMUP_QUEUE_RETENTION_YEARS` | direct | — | no | 34_QueueWatchdog.js |
@@ -276,6 +277,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 | `FAMILY_SENTINEL_SS_ID` | via _fmsProp_() | — | no | 60_FamilyMailSentinel.js |
 | `FAMILY_SIGNAL_DOC_ID` | direct | — | 60_FamilyMailSentinel.js | 60_FamilyMailSentinel.js |
 | `MARKING_PERIOD_ENDS` | direct | — | no | 00_SharedConfig.js |
+| `SHARED_CONFIG_LAST_GOOD` | via the constant SHARED_CONFIG_LAST_GOOD_PROP | "null" | 00_SharedConfig.js | 00_SharedConfig.js |
 
 Not resolved (the key is built at run time or passed in; read the code):
 
@@ -289,6 +291,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 | `CURRENT_TERM` | direct | — | no | 00_SharedConfig.js |
 | `DEPLOY_DRIFT_GITHUB_TOKEN` | direct | — | no | 00_SharedConfig.js |
 | `MARKING_PERIOD_ENDS` | direct | — | no | 00_SharedConfig.js |
+| `SHARED_CONFIG_LAST_GOOD` | via the constant SHARED_CONFIG_LAST_GOOD_PROP | "null" | 00_SharedConfig.js | 00_SharedConfig.js |
 | `STUDENT_DASHBOARD_URL` | direct | — | no | 01_StudentDoc_ContainerScript.js |
 | `STUDENT_EMAIL_DOMAIN` | direct | — | no | 01_StudentDoc_ContainerScript.js |
 
@@ -303,6 +306,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 | `CURRENT_TERM` | direct | — | no | 00_SharedConfig.js |
 | `DEPLOY_DRIFT_GITHUB_TOKEN` | direct | — | no | 00_SharedConfig.js |
 | `MARKING_PERIOD_ENDS` | direct | — | no | 00_SharedConfig.js |
+| `SHARED_CONFIG_LAST_GOOD` | via the constant SHARED_CONFIG_LAST_GOOD_PROP | "null" | 00_SharedConfig.js | 00_SharedConfig.js |
 
 ### 3.5 `student-dashboard`
 
@@ -314,6 +318,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 | `DASH_TOUR_SEEN` | via the constant DASH_TOUR_PROP | — | 13_StudentDashboard.js | 13_StudentDashboard.js |
 | `DEPLOY_DRIFT_GITHUB_TOKEN` | direct | — | no | 00_SharedConfig.js |
 | `MARKING_PERIOD_ENDS` | direct | — | no | 00_SharedConfig.js, 13_StudentDashboard.js |
+| `SHARED_CONFIG_LAST_GOOD` | via the constant SHARED_CONFIG_LAST_GOOD_PROP | "null" | 00_SharedConfig.js | 00_SharedConfig.js |
 | `TEACHER_EMAIL` | direct | — | no | 13_StudentDashboard.js |
 
 Not resolved (the key is built at run time or passed in; read the code):
@@ -335,6 +340,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 | `M2_PACING_GUIDE_INDEX` | via the constant PACING_CACHE_KEY | — | 31_PacingGuideManager.js | 31_PacingGuideManager.js |
 | `MARKING_PERIOD_ENDS` | direct | — | no | 00_SharedConfig.js, 36_WeeklyParentReport.js |
 | `PARENT_REPORT_RETENTION_YEARS` | direct | — | no | 36_WeeklyParentReport.js |
+| `SHARED_CONFIG_LAST_GOOD` | via the constant SHARED_CONFIG_LAST_GOOD_PROP | "null" | 00_SharedConfig.js | 00_SharedConfig.js |
 | `TURN_IN_CANVAS_ASSIGNMENT` | direct | — | no | 74_TurnInCanvasCheck.js |
 | `TURN_IN_CANVAS_COLUMN` | direct | — | no | 74_TurnInCanvasCheck.js |
 | `TURN_IN_CANVAS_POINTS` | direct | — | no | 74_TurnInCanvasCheck.js |
@@ -346,6 +352,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 | `CURRENT_TERM` | direct | — | no | 00_SharedConfig.js |
 | `DEPLOY_DRIFT_GITHUB_TOKEN` | direct | — | no | 00_SharedConfig.js |
 | `MARKING_PERIOD_ENDS` | direct | — | no | 00_SharedConfig.js |
+| `SHARED_CONFIG_LAST_GOOD` | via the constant SHARED_CONFIG_LAST_GOOD_PROP | "null" | 00_SharedConfig.js | 00_SharedConfig.js |
 
 ### 3.8 `unified-manual`
 
@@ -370,6 +377,7 @@ Not resolved (the key is built at run time or passed in; read the code):
 | `MASTER_TEACHER_MATRIX_SS_ID` | direct | — | 16_UnifiedManualSetup.js | 16_UnifiedManualSetup.js |
 | `RUBRIC_FORM_URL` | direct | — | 16_UnifiedManualSetup.js | 16_UnifiedManualSetup.js |
 | `SETUP_COMPLETE` | direct | — | 16_UnifiedManualSetup.js | 16_UnifiedManualSetup.js, 28_Module2Setup.js |
+| `SHARED_CONFIG_LAST_GOOD` | via the constant SHARED_CONFIG_LAST_GOOD_PROP | "null" | 00_SharedConfig.js | 00_SharedConfig.js |
 | `TEACHER_DASHBOARD_URL` | direct | "[Dashboard URL not set]" | 16_UnifiedManualSetup.js | 16_UnifiedManualSetup.js, 28_Module2Setup.js |
 | `TEACHER_EMAIL` | direct | — | 16_UnifiedManualSetup.js | 28_Module2Setup.js |
 | `TEACHER_FOLDER_ID` | direct | — | 16_UnifiedManualSetup.js | 28_Module2Setup.js |

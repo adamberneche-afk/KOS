@@ -1982,3 +1982,21 @@ the menu goes on hold with packaging rather than being wired or retired.
 The paste-in text is out of the header (it is in git history); the wizard
 is unchanged.
 
+## Failed reads report instead of defaulting, 2026-11-23
+
+From a count of every `catch` in deployed code (719; 331 report nothing, most
+of them parse fallbacks by design), the Google reads that failed into a
+default. The operator chose to fix them. Each one now:
+- **Shared settings (00).** A failed read of the Ledger's `_CONFIG` uses the
+  last values read (`SHARED_CONFIG_LAST_GOOD`, this project's Script
+  Properties) and logs it, instead of every shared switch reading as unset.
+- **The student-data sharing check (50).** A Drive listing that fails is
+  reported as stopped early ("none were checked"), not as nothing to fix.
+- **The Teacher Dashboard's waiting strip (07).** An unreadable ReviewQueue
+  says some waiting students may be missing (`queueUnreadable`).
+- **The family signal doc (60).** A passing error throws; only a doc that is
+  really gone is made again, so the RTP's link isn't stranded (as
+  `KOS_CAS_SIGNAL`'s was on 11-11). It reads the error, since the project
+  has no Drive scope to ask.
+The other silent catches not around a Google read (105) are not reviewed yet.
+

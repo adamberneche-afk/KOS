@@ -11,7 +11,7 @@
       "why": "Over budget when the budget began (2026-11-21). It may not grow; split it when it is next reworked."
     },
     "cas-ccps/scripts/00_SharedConfig.js": {
-      "lines": 2936,
+      "lines": 2925,
       "why": "Loaded by every CAS project: getConfig_, TABS, each tab's columns and the shared helpers; one-project code moved out in audit 4.6."
     },
     "cas-ccps/scripts/07_TeacherDashboard.js": {

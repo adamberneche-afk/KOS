@@ -25,6 +25,16 @@ its history.
 This file holds the current plan of record's era; `node tools/archive/search.js --entries`
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
+## A passing error never replaces LeaderHub's own spreadsheets, 2026-11-23
+
+`_getLhDataSpreadsheet_` (Data.gs), the AI queue's and Org Sync's sheets
+(EmailBridge.gs) took any failure to open their sheet as "deleted", made a
+new empty one and repointed the Script Property: one passing Google error
+would leave every synced record (or the shared organizations) behind and the
+page empty. `_lhOpenOwnSheet_` now returns null only when Drive says the sheet
+is gone or in the trash; anything else throws ("Nothing was replaced; try
+again"). From the count of silent catches (cas-ccps HISTORY, same date).
+
 ## DECA conferences come from the season, one set per school year, 2026-11-23
 
 The operator: "Each school year should have a new batch of DECA

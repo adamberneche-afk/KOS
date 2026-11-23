@@ -4329,7 +4329,7 @@ function waitStripHtml(d) {
   let h = '<div class="ws-lights" aria-label="Checkers">' + _wsLight("Feedback (Flow 2)", d.health.flow2) +
     _wsLight("Turn-in check (Flow 6)", d.health.flow6) + '</div>';
   const n = d.over.length;
-  h += '<div class="ws-wait">';
+  h += '<div class="ws-wait">' + (d.queueUnreadable ? esc("The review queue couldn't be read, so some waiting students may be missing. ") : "");
   if (!n) {
     h += esc(d.waitingCount ? d.waitingCount + " waiting, none over " + d.overMin + " minutes" : "No one waiting for a check");
   } else {
