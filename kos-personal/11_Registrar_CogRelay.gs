@@ -573,6 +573,9 @@ function _anonymousTriage_(t) {
   };
 }
 
+// A CALIBRATION_SILO cell holds one persona block, under Sheets' 50,000-character limit.
+const RG_SILO_CELL_MAX = 45000;
+
 /**
  * Phase 3: Translation & Routing. For a fully-verified row —
  *   1. Apollo Kill-Switch check (APP_FLOW_INTERVENTION_CONTRACT.pdf
@@ -651,32 +654,26 @@ function _translateAndRouteRegistrarRow(ledger, sheetRow, row) {
   ].join('\n');
   ledger.getRange(sheetRow, RC.TRANSLATION + 1).setValue(briefing);
 
-  // ── Deposit into the 5 Calibration Silos (Phase 2 hand-off) ──
-  // ARCHITECT/MUSE/DEVELOPER/ALIGNER/RTP consume their named block.
-  // AUDITOR and CURATOR are the pipeline's own producing stages here,
-  // not additional hand-off targets — Phase 2 of
-  // APP_FLOW_INTERVENTION_CONTRACT.pdf lists exactly these 5.
-  const silos = [
-    ['ID_04_1_ARCHITECT', schema1.architect_data],
-    ['ID_04_3_MUSE',       schema1.muse_data],
-    ['ID_04_4_DEVELOPER',  schema1.developer_data],
-    ['ID_04_5_ALIGNER',    schema1.aligner_data],
-    ['ID_04_7_RTP',        schema1.rtp_data],
-  ];
-  const props = PropertiesService.getScriptProperties();
-  silos.forEach(([propKey, block]) => {
-    if (block === undefined) return;
+  // ── The Calibration Silo (Phase 2 hand-off) ──
+  // One CALIBRATION_SILO row per persona block: ARCHITECT, MUSE, DEVELOPER,
+  // ALIGNER and RTP (APP_FLOW_INTERVENTION_CONTRACT.pdf's Phase 2 lists
+  // exactly these 5; AUDITOR and CURATOR are the pipeline's own stages).
+  const siloAt = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+  const siloRows = [['ARCHITECT', schema1.architect_data], ['MUSE', schema1.muse_data],
+    ['DEVELOPER', schema1.developer_data], ['ALIGNER', schema1.aligner_data], ['RTP', schema1.rtp_data]]
+    .filter(function (p) { return p[1] !== undefined; })
+    .map(function (p) {
+      return [siloAt, String(schema1.doc_uid || fileId), String(row[RC.FILE_NAME]), p[0],
+        _truncateWithMarker_(JSON.stringify(p[1]), RG_SILO_CELL_MAX)];
+    });
+  if (siloRows.length) {
     try {
-      const folderId = props.getProperty(propKey);
-      if (!folderId) return;  // deployFullSystem hasn't registered this silo yet
-      const folder = DriveApp.getFolderById(folderId);
-      const doc = _getOrCreateDoc('UID_' + (schema1.doc_uid || fileId), folder);
-      doc.getBody().appendParagraph(JSON.stringify(block));
-      doc.saveAndClose();
+      const silo = _getOrCreateSheet(ledger.getParent(), CFG.CALIBRATION_SILO_SHEET);
+      silo.getRange(silo.getLastRow() + 1, 1, siloRows.length, siloRows[0].length).setValues(siloRows);
     } catch (siloErr) {
-      _reportError('_translateAndRouteRegistrarRow:silo:' + propKey, siloErr, null);
+      _reportError('_translateAndRouteRegistrarRow:silo', siloErr, null);
     }
-  });
+  }
 
   // ── Route the file ──
   try {

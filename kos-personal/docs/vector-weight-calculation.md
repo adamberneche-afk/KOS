@@ -77,7 +77,7 @@ re-queue the session for classification from its CuratorInput text, and
 **Notebook briefing docs (2026-10-03):** the RTP notebook's pipeline-written
 sources (`rtp-core-router/notebook-plan/`, Phase 1). `generateDailyPrimer()`
 now stamps `KOS_LATEST_PRIMER` with a generated-at line and adds a Data
-Quality block, then `22_BriefingDocs.gs` writes `KOS_RECENT_SESSIONS`,
+Quality block, then `22_BriefingDocs.gs` writes
 `KOS_OPEN_DECISIONS` and `KOS_CORE_FACTS` (also on demand with
 `generateBriefingDocs()`). Each keeps one Drive file ID and is overwritten
 in place; a failed run leaves the old doc and its old stamp. Open decisions

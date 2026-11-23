@@ -159,44 +159,21 @@ test('each briefing doc opens on its title and stamp, and keeps its file ID acro
   const folder = env.sandbox.DriveApp.getRootFolder();
   const first = env.exported.generateBriefingDocs_(folder, NOW);
   assert.deepEqual(first.failed, []);
-  assert.deepEqual(first.written, ['KOS_RECENT_SESSIONS', 'KOS_OPEN_DECISIONS', 'KOS_CORE_FACTS', 'KOS_SMP_REGISTER']);
-  const ids = ['RECENT_SESSIONS_DOC_ID', 'OPEN_DECISIONS_DOC_ID', 'CORE_FACTS_DOC_ID']
+  assert.deepEqual(first.written, ['KOS_OPEN_DECISIONS', 'KOS_CORE_FACTS', 'KOS_SMP_REGISTER']);
+  const ids = ['OPEN_DECISIONS_DOC_ID', 'CORE_FACTS_DOC_ID']
     .map((k) => env.props.getProperty(env.exported.CFG.PROP[k]));
 
   env.exported.generateBriefingDocs_(folder, new Date('2026-10-05T06:00:00'));
-  const again = ['RECENT_SESSIONS_DOC_ID', 'OPEN_DECISIONS_DOC_ID', 'CORE_FACTS_DOC_ID']
+  const again = ['OPEN_DECISIONS_DOC_ID', 'CORE_FACTS_DOC_ID']
     .map((k) => env.props.getProperty(env.exported.CFG.PROP[k]));
   assert.deepEqual(again, ids, 'a notebook source holds each doc by ID; the ID must never change');
 
-  const body = env.sandbox.DocumentApp.openById(ids[2]).getBody();
+  const body = env.sandbox.DocumentApp.openById(ids[1]).getBody();
   assert.equal(body.getChild(0).getText(), 'CORE FACTS — 2026-10-05');
   assert.match(body.getChild(1).getText(), /^Generated at: 2026-10-05 06:00 \(America\/New_York\) by generateBriefingDocs\./);
   assert.equal(body.getText().match(/Generated at:/g).length, 1, 'the old stamp is gone');
   assert.equal(body.getChild(2).getText(), 'Notebook source: KOS_CORE_FACTS.');
   assert.equal(body.getText().match(/Notebook source:/g).length, 1, 'a rewrite leaves one source line');
-});
-
-test('KOS_RECENT_SESSIONS: newest sessions first, chunks grouped, older sessions only when a decision is open', () => {
-  const env = setup();
-  for (let d = 1; d <= 7; d++) {
-    sessionLog(env, 'LOG-0000000' + d + '_CH01', new Date('2026-09-0' + d + 'T10:00:00'), 'Session ' + d + ' part one.');
-  }
-  sessionLog(env, 'LOG-00000007_CH02', new Date('2026-09-07T11:00:00'), 'Session 7 part two.');
-  env.ss.getSheetByName('SESSION_LOG').appendRow(['LOG-00000008', new Date(), 'SENSOR_INTAKE', '', '', '2 chunk(s) created']);
-  env.exported._recordDeferredDecisions_(env.ss, 'LOG-00000001_CH01', 't', [DECISIONS[0]]);
-
-  env.exported.generateBriefingDocs_(env.sandbox.DriveApp.getRootFolder(), NOW);
-  const text = docText(env, 'RECENT_SESSIONS_DOC_ID');
-
-  const order = ['LOG-00000007', 'LOG-00000006', 'LOG-00000005', 'LOG-00000004', 'LOG-00000003']
-    .map((u) => text.indexOf(u + ' ('));
-  assert.ok(order.every((p, i) => p > -1 && (i === 0 || p > order[i - 1])), 'the five newest, newest first');
-  assert.match(text, /Session 7 part one\. Session 7 part two\./);
-  assert.match(text, /Chunks processed: 2\./);
-  assert.doesNotMatch(text, /LOG-00000002 \(/, 'an older session with nothing open is left out');
-  assert.match(text, /Older sessions with open decisions\nLOG-00000001 \(2026-09-01\)/);
-  assert.match(text, /LOG-00000001_CH01#1: Pick a notebook host/);
-  assert.doesNotMatch(text, /LOG-00000008/, 'the intake\'s own SENSOR_INTAKE row is not a session');
 });
 
 test('KOS_CORE_FACTS uses the heading Threshold D looks for, and says so when nothing is pinned', () => {
@@ -229,7 +206,7 @@ test('a doc whose read fails keeps its old content and stamp; the others are sti
   env.ss.getSheetByName = (n) => { if (n === 'INCUBATOR') throw new Error('Service Spreadsheets failed'); return realGet(n); };
   const res = env.exported.generateBriefingDocs_(folder, new Date('2026-10-05T06:00:00'));
 
-  assert.deepEqual(res.written, ['KOS_RECENT_SESSIONS', 'KOS_OPEN_DECISIONS', 'KOS_SMP_REGISTER']);
+  assert.deepEqual(res.written, ['KOS_OPEN_DECISIONS', 'KOS_SMP_REGISTER']);
   assert.equal(res.failed[0].doc, 'KOS_CORE_FACTS');
   assert.equal(docText(env, 'CORE_FACTS_DOC_ID'), before, 'the failed doc is left exactly as it was');
   assert.match(docText(env, 'OPEN_DECISIONS_DOC_ID'), /Generated at: 2026-10-05/);

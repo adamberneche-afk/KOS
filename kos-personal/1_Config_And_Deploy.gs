@@ -212,6 +212,10 @@ const CFG = {
   // schema, different purpose, despite similar naming in the source
   // design docs ("Automated Execution Ledger").
   REGISTRAR_LEDGER_SHEET:     'REGISTRAR_LEDGER',
+  // One row per Council persona's block of a routed draft (11): the
+  // Calibration Silo as a sheet rather than a JSON doc per draft per folder.
+  CALIBRATION_SILO_SHEET:     'CALIBRATION_SILO',
+  CALIBRATION_SILO_HEADERS:   ['Deposited_At', 'Doc_UID', 'File_Name', 'Persona', 'Block_JSON'],
   REGISTRAR_UNC_FOLDER:       '09_Unclassified_Curriculum_Drafts',  // [UNC]
   REGISTRAR_HLD_FOLDER:       '09.1_HOLD_FOR_REVIEW',                // [HLD]
   REGISTRAR_ROUTED_FOLDER:    '06_CLASSROOM_ASSETS',  // successfully-routed default target —
@@ -335,7 +339,6 @@ const CFG = {
     // The other notebook briefing docs (22_BriefingDocs.gs), held by ID for
     // the same reason as the primer: a notebook source follows one Drive
     // file, so each doc is overwritten in place and its ID never changes.
-    RECENT_SESSIONS_DOC_ID: 'KOS_RECENT_SESSIONS_DOC_ID',
     OPEN_DECISIONS_DOC_ID:  'KOS_OPEN_DECISIONS_DOC_ID',
     SMP_REGISTER_DOC_ID:    'KOS_SMP_REGISTER_DOC_ID',
     CORE_FACTS_DOC_ID:      'KOS_CORE_FACTS_DOC_ID',

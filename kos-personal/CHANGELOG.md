@@ -6,6 +6,18 @@ This file holds the current plan of record's era; `node tools/archive/search.js 
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
 
+### KOS_RECENT_SESSIONS retired; the Calibration Silo is a sheet (2026-11-23)
+
+The operator's decisions on dead-ends audit 2.7 and 2.9.
+`KOS_RECENT_SESSIONS` was rewritten every morning and read by nothing: the
+RTP's instructions never linked it, and the primer already summarizes recent
+sessions. `22_BriefingDocs.gs` no longer writes it; the doc left in Drive can
+be trashed. The Registrar used to append each routed draft's persona blocks
+as JSON to a doc per draft in five `04.x` silo folders, which nothing read.
+It now adds one `CALIBRATION_SILO` row per block in BRAIN_TRUST_INDEX, so
+the data stays in one sortable place without the sprawl. The `04.x` folders
+stay, for the CE-tag router's filing.
+
 ### Every Drive iterator loop has a cap (2026-11-22)
 
 The last four `while (it.hasNext())` loops with no limit (dead-ends audit
