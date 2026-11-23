@@ -1285,7 +1285,7 @@ function saveDecaSeasonEditor() {
     const parsed = JSON.parse(ta.value);
     if (!parsed || !Array.isArray(parsed.stages)) throw new Error('Expected an object with a "stages" array.');
     DECA_SEASON = parsed;
-    persistDecaSeason();
+    persistDecaSeason(); _applyProfileToStaticDOM();
     document.getElementById('deca-season-editor').remove();
     renderDECAPipeline();
     _showToast('✅ Season updated');
@@ -1301,7 +1301,7 @@ function lhUseBuiltInDecaSeason() {
   _showConfirm('Replace the season pipeline with the built-in Virginia DECA ' + DECA_SEASON_YEAR +
     ' season?\n\nIn Deadlines, only the Virginia DECA entries are replaced; ones you added yourself are kept.', () => {
     DECA_SEASON = JSON.parse(JSON.stringify(DECA_SEASON_DEFAULT));
-    persistDecaSeason();
+    persistDecaSeason(); _applyProfileToStaticDOM();
     const stale = new Set(['dl_icdc_pay', 'dl6']);
     DEADLINES = DEADLINES.filter(d => !String(d.id || '').startsWith('deca_') && !stale.has(d.id))
       .concat(DECA_DEADLINES_DEFAULT.map(d => Object.assign({}, d)));
@@ -2014,7 +2014,7 @@ if(typeof EMAIL_TEMPLATES !== 'undefined'){
       subject: ()=>'DECA Registration — Please Submit Your Info',
       body: ()=>`Hi DECA Team,
 
-It's time to get your membership registration finalized for the 25-26 season! Please make sure I have all of the information below on file.
+It's time to get your membership registration finalized for the ${(DECA_SEASON && DECA_SEASON.year) || DECA_SEASON_YEAR} season! Please make sure I have all of the information below on file.
 
 WHAT I NEED FROM YOU:
 □ Full legal name + CCPS Student ID

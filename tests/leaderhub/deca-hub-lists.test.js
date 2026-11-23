@@ -95,3 +95,10 @@ test('earlier seasons\' results keep a readable label', () => {
 test('no fixed list of conferences is left on the hub', () => {
   assert.doesNotMatch(SRC, /DECA_RESULT_EVENTS|DECA_APPROVAL_EVENTS|tripId:\d/);
 });
+
+test('the hub\'s subtitle and the registration email name the season\'s own year, not 25–26', () => {
+  const f05 = fs.readFileSync(path.join(__dirname, '..', '..', 'leader-hub', 'src', '05-data-helpers-dashboard.html'), 'utf8');
+  assert.match(f05, /decaSub\.textContent = `\$\{PROFILE\.school\} · \$\{\(typeof DECA_SEASON !== 'undefined' && DECA_SEASON\.year\) \|\| DECA_SEASON_YEAR\} Season/);
+  assert.match(SRC, /registration finalized for the \$\{\(DECA_SEASON && DECA_SEASON\.year\) \|\| DECA_SEASON_YEAR\} season!/);
+  assert.match(SRC, /persistDecaSeason\(\); _applyProfileToStaticDOM\(\);[\s\S]*persistDecaSeason\(\); _applyProfileToStaticDOM\(\);/, 'a season change retitles the hub');
+});
