@@ -25,6 +25,23 @@ its history.
 This file holds the current plan of record's era; `node tools/archive/search.js --entries`
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
+## DECA conferences come from the season, one set per school year, 2026-11-23
+
+The operator: "Each school year should have a new batch of DECA
+conferences." The Competitive Results board and the Admin Approval
+Checklist had fixed lists of the 25–26 conferences (`DECA_RESULT_EVENTS`,
+`DECA_APPROVAL_EVENTS`), and the checklist found its trip by sample-data
+trip numbers. Now both read `decaSeasonConferences_()`: the `DECA_SEASON`
+stages with a `conference` name (the built-in 26–27 season tags Power
+Trip, DLC, SLC and ICDC; DLC, SLC and ICDC are `competitive`, so on the
+results board), keyed `<year>:<name>` from the season's new `year`. Results
+and ticks are saved under that key, so loading next year's season starts a
+new set; results under other keys (last season's `dlc25`, `slc26`,
+`icdc26`) stay, under "Earlier seasons", and the Brag Board still reads
+them. A conference's trip is the one departing from two days before it
+through its last day. A saved season with no year or tags shows how to fix
+it (Edit Season, the built-in season) instead of empty cards.
+
 ## Key contacts editable, the Gmail horizon source retired, last season's data gone, 2026-11-23
 
 The operator's decisions on the 11-22 dead-ends audit (2.11, 2.12, 2.14).
@@ -45,11 +62,8 @@ The operator's decisions on the 11-22 dead-ends audit (2.11, 2.12, 2.14).
   trip cards ("RESULTS PENDING" for a conference long over), the fee and
   deadline lists, and an ICDC 2026 alert whose dates had passed. The
   timeline card is titled from `DECA_SEASON`, which the season editor
-  already keeps current. Two lists still name last season's conferences:
-  the Competitive Results board (`DECA_RESULT_EVENTS`) and the Admin
-  Approval Checklist (`DECA_APPROVAL_EVENTS`). Their event IDs key saved
-  results and checklist ticks, so changing them waits for its own
-  decision.
+  already keeps current. The results board and the approval checklist
+  followed the same day (the entry above).
 
 ## The deploy-version report checks its permissions, 2026-11-21
 

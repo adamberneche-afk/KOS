@@ -42,7 +42,7 @@ function emailSandbox(extra) {
   ctx.getSlipRoster = (id) => ctx.slipRosters[id] || [];
   ctx.resolveSlipStudent = (s) => s;
   vm.createContext(ctx);
-  vm.runInContext(between(F07, 'const DECA_SEASON_DEFAULT = {', 'let DECA_SEASON =') +
+  vm.runInContext(between(F07, 'const DECA_SEASON_YEAR =', 'let DECA_SEASON =') +
     '\nvar DECA_SEASON = DECA_SEASON_DEFAULT;\n' +
     between(F07, 'function _decaStageStatus(', 'function renderDECAPipeline(') +
     between(F07, 'function _emailLongDate(', '// ── Audience-specific template definitions') +
