@@ -6,6 +6,19 @@ This file holds the current plan of record's era; `node tools/archive/search.js 
 searches the archived ones entry by entry.
 <!-- /archive:pointer -->
 
+### Threshold B can fire: the relational streak (2026-11-23)
+
+The operator's decision on dead-ends audit 2.8. ALIGNMENT's Threshold B
+("three or more sessions in a row with no relational check-in") could never
+fire: each log's closeout has a "Relational check-in this session:" line,
+but nothing read it, and the RTP starts each session with no memory of the
+last. `recordRelationalCheckIn_()` (23) now reads that line as each log
+arrives, beside the moral debt counter: yes resets the streak, no adds 1,
+and a log without the line leaves it as it was. Only the yes or no is read;
+who is never stored. The primer and KOS_GEMINI_BRIEF carry a
+`Relational streak:` line, and the RTP's instructions say B fires at 3 from
+it. It puts an existing rule into effect, so no new SMP.
+
 ### KOS_RECENT_SESSIONS retired; the Calibration Silo is a sheet (2026-11-23)
 
 The operator's decisions on dead-ends audit 2.7 and 2.9.

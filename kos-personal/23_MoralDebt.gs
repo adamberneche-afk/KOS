@@ -22,7 +22,16 @@
  * Script Properties: MORAL_DEBT_VALUE and MORAL_DEBT_AS_OF (the value as
  * of that time, before decay); MORAL_DEBT_MUSE_AT and
  * MORAL_DEBT_HALF_LIFE_DAYS to adjust. previewMoralDebt() shows the
- * current value; resetMoralDebt() sets it to 0.
+ * current value; resetMoralDebt() sets it to 0. *
+ * Threshold B's streak (the operator, 2026-11-23). ALIGNMENT's Threshold B
+ * is "three or more sessions in a row with no relational check-in", and a
+ * session starts with no memory of the last, so the count lives here too.
+ * recordRelationalCheckIn_() reads the closeout's "Relational check-in this
+ * session:" line from the same entry point: "yes" resets the streak, "no"
+ * adds 1, and a log without the line leaves it as it was (unknown is not
+ * "no"). Only the yes or no is read; who is never stored. The primer states
+ * the streak. Script Properties: RELATIONAL_STREAK, RELATIONAL_LAST
+ * (yes, no or unknown) and RELATIONAL_AS_OF; previewRelationalStreak().
  */
 
 const MORAL_DEBT_DEFAULT_MUSE_AT = 3;
@@ -102,4 +111,48 @@ function resetMoralDebt() {
   props.setProperty('MORAL_DEBT_VALUE', '0');
   props.setProperty('MORAL_DEBT_AS_OF', new Date().toISOString());
   return previewMoralDebt();
+}
+
+
+// ── Threshold B: sessions in a row without a relational check-in ──
+
+const RELATIONAL_STREAK_B_AT = 3;
+
+/** 'yes', 'no', or null when the closeout has no readable check-in line. */
+function _relationalCheckIn_(rawText) {
+  const text = String(rawText || '');
+  const close = text.lastIndexOf('[🧠 RTP — CLOSEOUT]');
+  if (close === -1) return null;
+  const m = text.slice(close).match(/^\s*-?\s*Relational check-in this session:\s*(yes|no)\b/im);
+  return m ? m[1].toLowerCase() : null;
+}
+
+/** Updates the streak from a new session log. Returns 'yes', 'no' or 'unknown'. */
+function recordRelationalCheckIn_(rawText, now) {
+  const answer = _relationalCheckIn_(rawText) || 'unknown';
+  const props = PropertiesService.getScriptProperties();
+  const streak = Number(props.getProperty('RELATIONAL_STREAK')) || 0;
+  if (answer === 'yes') props.setProperty('RELATIONAL_STREAK', '0');
+  if (answer === 'no') props.setProperty('RELATIONAL_STREAK', String(streak + 1));
+  props.setProperty('RELATIONAL_LAST', answer);
+  props.setProperty('RELATIONAL_AS_OF', (now ? new Date(now) : new Date()).toISOString());
+  return answer;
+}
+
+/** The primer's line. */
+function relationalStreakLine_(props) {
+  const last = props.getProperty('RELATIONAL_LAST');
+  if (!last) return 'Relational streak: not counted yet (no session log since the counter started).';
+  const n = Number(props.getProperty('RELATIONAL_STREAK')) || 0;
+  return 'Relational streak: ' + n + ' session' + (n === 1 ? '' : 's') + ' in a row without a relational check-in' +
+    (n >= RELATIONAL_STREAK_B_AT ? ' (Threshold B crossed: ALIGNMENT pauses at the start of the next session).'
+      : ' (Threshold B at ' + RELATIONAL_STREAK_B_AT + ').') +
+    (last === 'unknown' ? ' The last log had no check-in line, so it was not counted.' : '');
+}
+
+/** Run from the editor: logs the current streak. Changes nothing. */
+function previewRelationalStreak() {
+  const line = relationalStreakLine_(PropertiesService.getScriptProperties());
+  console.log('[Relational] ' + line);
+  return line;
 }

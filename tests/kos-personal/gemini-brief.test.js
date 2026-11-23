@@ -20,9 +20,11 @@ const DECISIONS = [
   { id: 'LOG-2_CH01#1', owner: 'RTP', decision: 'Second decision' },
 ];
 
+const STREAK = 'Relational streak: 1 session in a row without a relational check-in (Threshold B at 3).';
 function primer(exported, onboarding) {
   const blocks = exported._primerBlocks_(onboarding, 'My students are ready.', VECTOR, SHADOW, QUALITY);
-  blocks.splice(onboarding ? 1 : 0, 0, { kind: 'p', text: 'Moral debt: 0.0 (MUSE suggests alternatives at 3.0).' });
+  blocks.splice(onboarding ? 1 : 0, 0, { kind: 'p', text: 'Moral debt: 0.0 (MUSE suggests alternatives at 3.0).' },
+    { kind: 'p', text: STREAK });
   return blocks;
 }
 const texts = (blocks) => blocks.map((b) => b.text);
@@ -35,6 +37,7 @@ test('the brief copies start\'s lines from the primer as written, between three 
   assert.ok(t.includes('My students are ready.'), 'the vision, exactly');
   assert.ok(t.includes('Onboarding Day 21 of 21'));
   assert.ok(t.includes('Moral debt: 0.0 (MUSE suggests alternatives at 3.0).'));
+  assert.ok(t.includes(STREAK), 'Threshold B\'s streak, as written');
   assert.ok(t.includes('Vector State (Data Quality OK)'));
   assert.ok(t.includes('Status: OK. No known data-quality problems.'), 'the Data Quality Status line, word for word');
   assert.ok(t.includes('Engine mode: CALIBRATED'));

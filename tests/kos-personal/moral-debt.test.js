@@ -65,3 +65,30 @@ test('resetMoralDebt sets the counter to 0 from now; previewMoralDebt changes no
   exported.recordMoralDebt_(log(['  - A: PROCEED — x']), new Date());
   assert.match(exported.previewMoralDebt(), /^Moral debt: 1\.0 /, 'counting starts again from 0');
 });
+
+// Threshold B's streak (the operator, 2026-11-23): sessions in a row whose
+// closeout says "Relational check-in this session: no". Only yes or no is
+// read; a log without the line is unknown, not "no".
+test('the relational streak: no adds 1, yes resets, a missing line changes nothing; who is never kept', () => {
+  const env = loadGasFiles(FILES, ['recordRelationalCheckIn_', 'relationalStreakLine_', 'previewRelationalStreak']);
+  const { exported } = env;
+  const props = env.sandbox.PropertiesService.getScriptProperties();
+  const withLine = (answer) => log(['  none']).replace('- Relational check-in this session: no',
+    '- Relational check-in this session: ' + answer);
+  assert.match(exported.relationalStreakLine_(props), /^Relational streak: not counted yet/);
+
+  assert.equal(exported.recordRelationalCheckIn_(withLine('no'), new Date()), 'no');
+  assert.equal(exported.recordRelationalCheckIn_(withLine('No'), new Date()), 'no');
+  assert.match(exported.relationalStreakLine_(props), /^Relational streak: 2 sessions in a row without a relational check-in \(Threshold B at 3\)\.$/);
+  assert.equal(exported.recordRelationalCheckIn_(log(['  none']).replace(/- Relational check-in.*$/m, ''), new Date()), 'unknown');
+  assert.match(exported.relationalStreakLine_(props), /^Relational streak: 2 sessions .* The last log had no check-in line, so it was not counted\.$/);
+  exported.recordRelationalCheckIn_(withLine('no'), new Date());
+  assert.match(exported.previewRelationalStreak(), /^Relational streak: 3 sessions .*\(Threshold B crossed: ALIGNMENT pauses at the start of the next session\)\.$/);
+
+  assert.equal(exported.recordRelationalCheckIn_(withLine('yes: a colleague, after the department meeting'), new Date()), 'yes');
+  assert.match(exported.relationalStreakLine_(props), /^Relational streak: 0 sessions in a row/);
+  const kept = JSON.stringify(props.getProperties());
+  assert.doesNotMatch(kept, /colleague|department/, 'who is never stored');
+  // An exchange that talks about a check-in, outside the closeout, doesn't count.
+  assert.equal(exported.recordRelationalCheckIn_('Relational check-in this session: no', new Date()), 'unknown');
+});
