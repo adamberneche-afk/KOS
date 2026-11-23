@@ -1998,5 +1998,13 @@ default. The operator chose to fix them. Each one now:
   really gone is made again, so the RTP's link isn't stranded (as
   `KOS_CAS_SIGNAL`'s was on 11-11). It reads the error, since the project
   has no Drive scope to ask.
-The other silent catches not around a Google read (105) are not reviewed yet.
+The other 105 silent catches were read the same day (the second pass).
+Most report already (a PROBLEM row, an error result, a log line) or fall back
+on purpose (caches, link formatting, optional Forms and Slides properties,
+an unconfigured project's switches). Two in cas-ccps lost information:
+- **The rollout's Canvas check (58).** An export that couldn't be read was
+  skipped, so its course read as "no Canvas export was found"; now a
+  PROBLEM row names the unreadable export(s).
+- **The lesson doc (66).** Rubrics that couldn't be read left the look-fors
+  with competency text only, unlogged; now logged.
 

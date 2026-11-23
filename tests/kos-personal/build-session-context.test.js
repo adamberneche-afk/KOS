@@ -88,3 +88,15 @@ test('buildSessionContext: the vector primer lists theme columns only, not INCUB
   assert.doesNotMatch(text, /INCUBATOR_SIGNALS/);
   assert.doesNotMatch(text, /CHECKSUM/);
 });
+
+// The silent-catch review (2026-11-23): a matrix that can't be read used to
+// drop the primer without a word; the RTP then couldn't tell "no data" from
+// "not read".
+test('buildSessionContext: an unreadable matrix says so in the context instead of vanishing', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  const get = ss.getSheetByName.bind(ss);
+  ss.getSheetByName = (n) => { if (n === 'VECTOR_MATRIX') throw new Error('Service Spreadsheets failed'); return get(n); };
+  exported.buildSessionContext();
+  assert.match(latestDocText(sandbox), /VECTOR_MATRIX — STARTUP CALIBRATION\nUnavailable this session: the matrix could not be read\./);
+});

@@ -322,7 +322,7 @@ function processInferenceQueue() {
     if (answeredUids.length > 0) _clearTurnstileStaleCounts_(answeredUids);
 
     if (processed + requeued + failed > 0) SpreadsheetApp.flush();
-    if (processed > 0) { try { _advanceOnboardingDay(); } catch (_) {} }
+    if (processed > 0) { try { _advanceOnboardingDay(); } catch (e) { console.warn('[Queue] Onboarding day not advanced: ' + e.message); } }
 
     console.log(
       '[Queue] processed=' + processed +

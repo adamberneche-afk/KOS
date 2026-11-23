@@ -415,7 +415,10 @@ function buildSessionContext() {
         sections.push(primer);
         loaded.push('BRAIN_TRUST_INDEX (Vector Primer)');
       }
-    } catch (_) {}
+    } catch (e) {
+      console.warn('[buildSessionContext] Vector primer not read: ' + e.message);
+      sections.push('## VECTOR_MATRIX — STARTUP CALIBRATION\nUnavailable this session: the matrix could not be read.\n');
+    }
 
     const targets = getRelationalTargets();
     if (targets.length > 0) {

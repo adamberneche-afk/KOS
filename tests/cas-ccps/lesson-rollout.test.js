@@ -705,3 +705,20 @@ test('an export\'s course comes from its file name, else from its sections', () 
   assert.deepEqual(byName['8177'].titles, ['A'], 'the newest file per course');
   assert.deepEqual(byName['8175'].titles, ['B'], 'the course from the section when the name has none');
 });
+
+// The silent-catch review (2026-11-23): an export that can't be read used to
+// be skipped, so its course read as "no Canvas export was found".
+test('an export that can\'t be read is listed, not silently skipped', () => {
+  const { exported } = setup();
+  const file = (name, csv) => ({ getName: () => name, getLastUpdated: () => new Date(),
+    getBlob: () => ({ getDataAsString: () => { if (csv === null) throw new Error('blob unreadable'); return csv; } }) });
+  const unread = [];
+  const byName = JSON.parse(JSON.stringify(exported._lrExportsByCourse_([
+    file('2026-11-19_Grades-8177_Sports.csv', null),
+    file('2026-11-19_Grades-8175.csv', '"Student","Section","B (3)"\n'),
+  ], unread)));
+  assert.deepEqual(unread, ['2026-11-19_Grades-8177_Sports.csv']);
+  assert.deepEqual(Object.keys(byName), ['8175']);
+  const src = require('fs').readFileSync(require('path').join(__dirname, '..', '..', 'cas-ccps', 'scripts', '58_LessonRollout.js'), 'utf8');
+  assert.match(src, /Canvas export\(s\) couldn't be read, so their courses/);
+});
